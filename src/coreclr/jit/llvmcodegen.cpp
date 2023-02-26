@@ -11,13 +11,6 @@
 //
 void Llvm::Compile()
 {
-    // TODO-LLVM: enable. Currently broken because RyuJit inserts RPI helpers for RPI methods, then we
-    // also create an RPI wrapper stub, resulting in a double transition.
-    if (_compiler->opts.IsReversePInvoke())
-    {
-        failFunctionCompilation();
-    }
-
     if (initializeFunctions())
     {
         return;
@@ -267,20 +260,31 @@ void Llvm::generateProlog()
 
 void Llvm::initializeLocals()
 {
+    if (_compiler->opts.IsReversePInvoke())
+    {
+        m_rootFunctionShadowStackValue = emitHelperCall(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP);
+
+        JITDUMP("Setting V%02u's initial value to the recovered shadow stack\n", _shadowStackLclNum);
+        JITDUMPEXEC(m_rootFunctionShadowStackValue->dump());
+    }
+    else
+    {
+        m_rootFunctionShadowStackValue = getRootLlvmFunction()->getArg(0);
+    }
+
     llvm::AllocaInst** allocas = new (_compiler->getAllocator(CMK_Codegen)) llvm::AllocaInst*[_compiler->lvaCount];
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
-        // Using the "raw" ref count here helps us to not create useless allocas for implicitly references locals
-        // that live on the shadow stack (especially in debug codegen).
-        if (varDsc->lvRawRefCnt() == 0)
+        // Don't look at unreferenced temporaries.
+        if (varDsc->lvRefCnt() == 0)
         {
             continue;
         }
 
-        if (lclNum == _originalShadowStackLclNum)
+        if (isFuncletParameter(lclNum))
         {
             // We model funclet parameters specially because it is not trivial to represent them in IR faithfully.
             continue;
@@ -1226,8 +1230,8 @@ void Llvm::visitNode(GenTree* node)
             // TODO-LLVM-CQ: enable these as intrinsics.
             unreached();
         case GT_MEMORYBARRIER:
-            // TODO-LLVM: atomics.
-            failFunctionCompilation();
+            buildMemoryBarrier(node);
+            break;
         case GT_EQ:
         case GT_NE:
         case GT_LE:
@@ -1902,15 +1906,7 @@ void Llvm::buildCmp(GenTreeOp* node)
 
 void Llvm::buildCnsDouble(GenTreeDblCon* node)
 {
-    if (node->TypeIs(TYP_DOUBLE))
-    {
-        mapGenTreeToValue(node, llvm::ConstantFP::get(Type::getDoubleTy(_llvmContext), node->gtDconVal));
-    }
-    else
-    {
-        assert(node->TypeIs(TYP_FLOAT));
-        mapGenTreeToValue(node, llvm::ConstantFP::get(Type::getFloatTy(_llvmContext), node->gtDconVal));
-    }
+    mapGenTreeToValue(node, llvm::ConstantFP::get(getLlvmTypeForVarType(node->TypeGet()), node->gtDconVal));
 }
 
 void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
@@ -1921,12 +1917,6 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
     Value* constValue;
     if (node->IsCnsIntOrI() && node->IsIconHandle()) // TODO-LLVM: change to simply "IsIconHandle" once upstream does.
     {
-        if (node->IsIconHandle(GTF_ICON_FTN_ADDR))
-        {
-            // TODO-LLVM: we need to reference the proper function symbol here.
-            failFunctionCompilation();
-        }
-
         constValue = getOrCreateSymbol(CORINFO_GENERIC_HANDLE(node->AsIntCon()->IconValue()));
     }
     else
@@ -1964,13 +1954,10 @@ void Llvm::buildCall(GenTreeCall* call)
     }
 
     // We may come back into managed from the unmanaged call so store the shadow stack.
-    Value* shadowStackToRestoreValue = nullptr;
-    Value* shadowStackTopAddrValue = nullptr;
-    if (callRequiresShadowStackSaveRestore(call))
+    if (callRequiresShadowStackSave(call))
     {
-        shadowStackTopAddrValue = getOrCreateExternalSymbol("t_pShadowStackTop");
-        shadowStackToRestoreValue = _builder.CreateLoad(getPtrLlvmType(), shadowStackTopAddrValue);
-        _builder.CreateStore(getShadowStackForCallee(), shadowStackTopAddrValue);
+        // TODO-LLVM-CQ: fold it into the PI helper call when possible.
+        emitHelperCall(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP, getShadowStackForCallee());
     }
 
     llvm::FunctionCallee llvmFuncCallee = consumeCallTarget(call);
@@ -1986,12 +1973,6 @@ void Llvm::buildCall(GenTreeCall* call)
     else
     {
         callValue = emitCallOrInvoke(llvmFuncCallee, argVec);
-    }
-
-    // Restore the saved shadow stack.
-    if (shadowStackToRestoreValue != nullptr)
-    {
-        _builder.CreateStore(shadowStackToRestoreValue, shadowStackTopAddrValue);
     }
 
     mapGenTreeToValue(call, callValue);
@@ -2040,7 +2021,7 @@ void Llvm::buildBlk(GenTreeBlk* blkNode)
     mapGenTreeToValue(blkNode, blkValue);
 }
 
-// TODO-LLVM: delete when https://github.com/dotnet/runtime/pull/70518 from upstream is merged.
+// TODO-LLVM: delete when https://github.com/dotnet/runtime/pull/70518 (Jun 16) from upstream is merged.
 bool storeIndRequiresTrunc(var_types storeType, var_types dataType)
 {
     return varTypeIsSmall(storeType) && dataType == TYP_LONG;
@@ -2329,9 +2310,20 @@ void Llvm::buildIntrinsic(GenTreeIntrinsic* intrinsicNode)
     mapGenTreeToValue(intrinsicNode, intrinsicValue);
 }
 
+void Llvm::buildMemoryBarrier(GenTree* node)
+{
+    assert(node->OperIs(GT_MEMORYBARRIER));
+    _builder.CreateFence(llvm::AtomicOrdering::AcquireRelease);
+}
+
 void Llvm::buildReturn(GenTree* node)
 {
     assert(node->OperIs(GT_RETURN, GT_RETFILT));
+
+    if (node->OperIs(GT_RETURN) && _compiler->opts.IsReversePInvoke())
+    {
+        emitHelperCall(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP, getShadowStack());
+    }
 
     if (node->TypeIs(TYP_VOID))
     {
@@ -2598,7 +2590,7 @@ void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind
         _builder.CreateCondBr(jumpCondValue, throwLlvmBlock, nextLlvmBlock);
 
         _builder.SetInsertPoint(throwLlvmBlock);
-        emitHelperCall(static_cast<CorInfoHelpFunc>(_compiler->acdHelper(throwKind)));
+        emitHelperCall(_compiler->acdHelper(throwKind));
         _builder.CreateUnreachable();
 
         _builder.SetInsertPoint(nextLlvmBlock);
@@ -2633,14 +2625,11 @@ Value* Llvm::emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Val
     return _builder.CreateExtractValue(checkedValue, 0);
 }
 
-Value* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs)
+Value* Llvm::emitHelperCall(CorInfoHelpAnyFunc helperFunc, ArrayRef<Value*> sigArgs)
 {
-    assert(!helperCallRequiresShadowStackSaveRestore(helperFunc));
+    assert(!helperCallRequiresShadowStackSave(helperFunc));
 
-    void* pAddr = nullptr;
-    void* handle = _compiler->compGetHelperFtn(helperFunc, &pAddr);
-    assert(pAddr == nullptr);
-
+    void* handle = getSymbolHandleForHelperFunc(helperFunc);
     const char* symbolName = GetMangledSymbolName(handle);
     AddCodeReloc(handle);
 
@@ -2706,13 +2695,7 @@ llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Val
 
 FunctionType* Llvm::getFunctionType()
 {
-    // TODO-LLVM: delete this when these signatures implemented
-    if (_sigInfo.hasExplicitThis())
-        failFunctionCompilation();
-
     std::vector<llvm::Type*> argVec(_llvmArgCount);
-    llvm::Type*              retLlvmType;
-
     for (unsigned i = 0; i < _compiler->lvaCount; i++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(i);
@@ -2723,11 +2706,11 @@ FunctionType* Llvm::getFunctionType()
         }
     }
 
-    retLlvmType = _retAddressLclNum == BAD_VAR_NUM
+    llvm::Type* retLlvmType = _retAddressLclNum == BAD_VAR_NUM
         ? getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)
         : Type::getVoidTy(_llvmContext);
 
-    return FunctionType::get(retLlvmType, ArrayRef<Type*>(argVec), false);
+    return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
 }
 
 llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)
@@ -2743,14 +2726,11 @@ llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)
     }
     else
     {
-        void* handle = call->gtEntryPoint.handle;
+        CORINFO_GENERIC_HANDLE handle = call->gtEntryPoint.handle;
         CorInfoHelpFunc helperFunc = _compiler->eeGetHelperNum(call->gtCallMethHnd);
         if (handle == nullptr)
         {
-            assert(helperFunc != CORINFO_HELP_UNDEF);
-            void* pAddr = nullptr;
-            handle = _compiler->compGetHelperFtn(helperFunc, &pAddr);
-            assert(pAddr == nullptr);
+            handle = getSymbolHandleForHelperFunc(helperFunc);
         }
         else
         {
@@ -2784,6 +2764,42 @@ llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)
     return callee;
 }
 
+FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)
+{
+    assert(!pSig->isVarArg()); // We do not support varargs.
+    bool isManagedCallConv = pSig->getCallConv() == CORINFO_CALLCONV_DEFAULT;
+
+    std::vector<Type*> llvmParamTypes{};
+    if (isManagedCallConv)
+    {
+        llvmParamTypes.push_back(getPtrLlvmType()); // The shadow stack.
+    }
+
+    bool hasReturnSlot = isManagedCallConv && needsReturnStackSlot(pSig->retType, pSig->retTypeClass);
+    if (hasReturnSlot)
+    {
+        llvmParamTypes.push_back(getPtrLlvmType());
+    }
+
+    CORINFO_ARG_LIST_HANDLE sigArgs = pSig->args;
+    for (unsigned i = 0; i < pSig->numArgs; i++, sigArgs = m_info->compCompHnd->getArgNext(sigArgs))
+    {
+        CORINFO_CLASS_HANDLE sigArgClass;
+        CorInfoType sigArgType = strip(m_info->compCompHnd->getArgType(pSig, sigArgs, &sigArgClass));
+
+        // TODO-LLVM-ABI: this will need to be changed once we support the correct ABI for structs.
+        if (!isManagedCallConv || canStoreArgOnLlvmStack(sigArgType, sigArgClass))
+        {
+            llvmParamTypes.push_back(getLlvmTypeForCorInfoType(sigArgType, sigArgClass));
+        }
+    }
+
+    Type* retLlvmType = hasReturnSlot ? Type::getVoidTy(_llvmContext)
+                                      : getLlvmTypeForCorInfoType(pSig->retType, pSig->retTypeClass);
+
+    return FunctionType::get(retLlvmType, llvmParamTypes, /* isVarArg */ false);
+}
+
 FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
 {
     llvm::Type* retLlvmType = getLlvmTypeForCorInfoType(call->gtCorInfoType, call->gtRetClsHnd);
@@ -2798,7 +2814,7 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
     return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
 }
 
-FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
+FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpAnyFunc helperFunc)
 {
     INDEBUG(bool isManagedHelper = helperCallHasManagedCallingConvention(helperFunc));
 
@@ -2830,25 +2846,32 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
     return llvmFuncType;
 }
 
-void Llvm::annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc)
+void Llvm::annotateHelperFunction(CorInfoHelpAnyFunc helperFunc, Function* llvmFunc)
 {
-    if (Compiler::s_helperCallProperties.NoThrow(helperFunc))
-    {
-        llvmFunc->setDoesNotThrow();
-    }
-    if (Compiler::s_helperCallProperties.AlwaysThrow(helperFunc))
-    {
-        llvmFunc->setDoesNotReturn();
-    }
-    if (Compiler::s_helperCallProperties.NonNullReturn(helperFunc))
-    {
-        llvmFunc->addRetAttr(llvm::Attribute::NonNull);
-    }
-
     if (!llvmFunc->getReturnType()->isVoidTy())
     {
         // Assume helpers won't return uninitialized memory or the like.
         llvmFunc->addRetAttr(llvm::Attribute::NoUndef);
+    }
+
+    if (helperFunc > CORINFO_HELP_COUNT)
+    {
+        // TODO-LLVM-CQ: annotate LLVM-specific helpers.
+        return;
+    }
+
+    CorInfoHelpFunc jitHelperFunc = static_cast<CorInfoHelpFunc>(helperFunc);
+    if (Compiler::s_helperCallProperties.NoThrow(jitHelperFunc))
+    {
+        llvmFunc->setDoesNotThrow();
+    }
+    if (Compiler::s_helperCallProperties.AlwaysThrow(jitHelperFunc))
+    {
+        llvmFunc->setDoesNotReturn();
+    }
+    if (Compiler::s_helperCallProperties.NonNullReturn(jitHelperFunc) && llvmFunc->getReturnType()->isPointerTy())
+    {
+        llvmFunc->addRetAttr(llvm::Attribute::NonNull);
     }
 }
 
@@ -2877,7 +2900,7 @@ Function* Llvm::getOrCreateExternalLlvmFunctionAccessor(StringRef name)
     return accessorFuncRef;
 }
 
-llvm::GlobalVariable* Llvm::getOrCreateExternalSymbol(StringRef symbolName)
+llvm::GlobalVariable* Llvm::getOrCreateDataSymbol(StringRef symbolName)
 {
     llvm::GlobalVariable* symbol = _module->getGlobalVariable(symbolName);
     if (symbol == nullptr)
@@ -2889,26 +2912,25 @@ llvm::GlobalVariable* Llvm::getOrCreateExternalSymbol(StringRef symbolName)
     return symbol;
 }
 
-llvm::GlobalVariable* Llvm::getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle)
+llvm::GlobalValue* Llvm::getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle)
 {
-    const char* symbolName = GetMangledSymbolName(symbolHandle);
+    StringRef symbolName = GetMangledSymbolName(symbolHandle);
     AddCodeReloc(symbolHandle);
-    llvm::GlobalVariable* symbol = getOrCreateExternalSymbol(symbolName);
+
+    CORINFO_SIG_INFO sig;
+    llvm::GlobalValue* symbol;
+    if (GetSignatureForMethodSymbol(symbolHandle, &sig)) // Is this a data symbol or a function symbol?
+    {
+        symbol = getOrCreateKnownLlvmFunction(symbolName, [this, &sig]() {
+            return createFunctionTypeForSignature(&sig);
+        });
+    }
+    else
+    {
+        symbol = getOrCreateDataSymbol(symbolName);
+    }
 
     return symbol;
-}
-
-CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForClassToken(mdToken token)
-{
-    // The importer call here relies on RyuJit not inlining EH (which it currently does not).
-    CORINFO_RESOLVED_TOKEN resolvedToken;
-    _compiler->impResolveToken((BYTE*)&token, &resolvedToken, CORINFO_TOKENKIND_Class);
-
-    void* pIndirection = nullptr;
-    CORINFO_CLASS_HANDLE typeSymbolHandle = m_info->compCompHnd->embedClassHandle(resolvedToken.hClass, &pIndirection);
-    assert(pIndirection == nullptr);
-
-    return CORINFO_GENERIC_HANDLE(typeSymbolHandle);
 }
 
 Instruction* Llvm::getCast(Value* source, Type* targetType)
@@ -2957,7 +2979,13 @@ Value* Llvm::gepOrAddr(Value* addr, unsigned offset)
 
 Value* Llvm::getShadowStack()
 {
-    // Note that funclets have the shadow stack arg in the same position (0) as the main function.
+    if (getCurrentLlvmFunctionIndex() == ROOT_FUNC_IDX)
+    {
+        assert(m_rootFunctionShadowStackValue != nullptr);
+        return m_rootFunctionShadowStackValue;
+    }
+
+    // Note that funclets have the shadow stack arg in the 0th position.
     return getCurrentLlvmFunction()->getArg(0);
 }
 

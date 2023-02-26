@@ -163,28 +163,31 @@ void Llvm::populateLlvmArgNums()
         originalShadowStackVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
     }
 
-    _shadowStackLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
-    LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(_shadowStackLclNum);
-    unsigned   nextLlvmArgNum    = 0;
+    unsigned nextLlvmArgNum = 0;
 
-    shadowStackVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
+    _shadowStackLclNum = _compiler->lvaGrabTempWithImplicitUse(true DEBUGARG("shadowstack"));
+    LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(_shadowStackLclNum);
     shadowStackVarDsc->lvType = TYP_I_IMPL;
     shadowStackVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
-    shadowStackVarDsc->lvIsParam = true;
+    if (!_compiler->opts.IsReversePInvoke())
+    {
+        shadowStackVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
+        shadowStackVarDsc->lvIsParam = true;
+    }
 
     if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
     {
         _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("returnslot"));
-        LclVarDsc* retAddressVarDsc  = _compiler->lvaGetDesc(_retAddressLclNum);
-        retAddressVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
-        retAddressVarDsc->lvType       = TYP_I_IMPL;
+        LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
+        retAddressVarDsc->lvType = TYP_I_IMPL;
         retAddressVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
-        retAddressVarDsc->lvIsParam    = true;
+        retAddressVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
+        retAddressVarDsc->lvIsParam = true;
     }
 
     unsigned firstSigArgLclNum = 0;
     assert(_sigInfo.hasThis() == (m_info->compThisArg != BAD_VAR_NUM));
-    if (_sigInfo.hasThis())
+    if (_sigInfo.hasThis() && !_sigInfo.hasExplicitThis())
     {
         // "this" is never an LLVM parameter as it is always a GC reference.
         assert(varTypeIsGC(_compiler->lvaGetDesc(m_info->compThisArg)));
@@ -204,7 +207,7 @@ void Llvm::populateLlvmArgNums()
     }
 
     CORINFO_ARG_LIST_HANDLE sigArgs = _sigInfo.args;
-    for (unsigned int i = 0; i < _sigInfo.numArgs; i++, sigArgs = m_info->compCompHnd->getArgNext(sigArgs))
+    for (unsigned i = 0; i < _sigInfo.numArgs; i++, sigArgs = m_info->compCompHnd->getArgNext(sigArgs))
     {
         CORINFO_CLASS_HANDLE classHnd;
         CorInfoType          corInfoType = strip(m_info->compCompHnd->getArgType(&_sigInfo, sigArgs, &classHnd));
@@ -215,6 +218,11 @@ void Llvm::populateLlvmArgNums()
             varDsc->lvLlvmArgNum = nextLlvmArgNum++;
             varDsc->lvCorInfoType = corInfoType;
             varDsc->lvClassHnd = classHnd;
+        }
+        else
+        {
+            // No shadow parameters in RPI methods.
+            assert(!_compiler->opts.IsReversePInvoke());
         }
     }
 
@@ -484,7 +492,8 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
     {
         if (data->TypeIs(TYP_STRUCT))
         {
-            normalizeStructUse(data, varDsc->GetLayout());
+            LIR::Use dataUse(CurrentRange(), &storeLclNode->gtOp1, storeLclNode);
+            data = normalizeStructUse(dataUse, varDsc->GetLayout());
         }
         else if (data->OperIsInitVal())
         {
@@ -621,11 +630,20 @@ bool Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
 
 void Llvm::lowerCall(GenTreeCall* callNode)
 {
+    // TODO-LLVM-CQ: enable fast shadow tail calls. Requires correct ABI handling.
+    assert(!callNode->IsTailCall());
     failUnsupportedCalls(callNode);
 
     if (callNode->IsHelperCall(_compiler, CORINFO_HELP_RETHROW))
     {
         lowerRethrow(callNode);
+    }
+    // "gtFoldExprConst" can attach a superflous argument to the overflow helper. Remove it.
+    else if (callNode->IsHelperCall(_compiler, CORINFO_HELP_OVERFLOW) && !callNode->gtArgs.IsEmpty())
+    {
+        // TODO-LLVM: fix upstream to not attach this argument.
+        CurrentRange().Remove(callNode->gtArgs.GetArgByIndex(0)->GetNode());
+        callNode->gtArgs.RemoveAfter(nullptr);
     }
 
     // Doing this early simplifies code below.
@@ -792,14 +810,13 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
     }
 
     GenTree* retVal = retNode->gtGetOp1();
-    ClassLayout* retLayout = retNode->TypeIs(TYP_STRUCT) ? _compiler->typGetObjLayout(_sigInfo.retTypeClass) : nullptr;
+    LIR::Use retValUse(CurrentRange(), &retNode->gtOp1, retNode);
     if (retNode->TypeIs(TYP_STRUCT) && retVal->TypeIs(TYP_STRUCT))
     {
-        normalizeStructUse(retVal, retLayout);
+        normalizeStructUse(retValUse, _compiler->typGetObjLayout(_sigInfo.retTypeClass));
     }
 
     bool isStructZero = retNode->TypeIs(TYP_STRUCT) && retVal->IsIntegralConst(0);
-
     if (_retAddressLclNum != BAD_VAR_NUM)
     {
         GenTreeLclVar* retAddrNode = _compiler->gtNewLclvNode(_retAddressLclNum, TYP_I_IMPL);
@@ -807,7 +824,7 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
         if (isStructZero)
         {
             storeNode = new (_compiler, GT_STORE_BLK) GenTreeBlk(GT_STORE_BLK, TYP_STRUCT, retAddrNode, retVal,
-                                                                 retLayout);
+                                                                 _compiler->typGetObjLayout(_sigInfo.retTypeClass));
             storeNode->gtFlags |= (GTF_ASG | GTF_IND_NONFAULTING);
         }
         else
@@ -827,7 +844,6 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
     // of the important cases). Exclude zero-init-ed structs (codegen supports them directly).
     else if ((retNode->TypeGet() != genActualType(retVal)) && !isStructZero)
     {
-        LIR::Use retValUse(CurrentRange(), &retNode->gtOp1, retNode);
         retValUse.ReplaceWithLclVar(_compiler);
 
         GenTreeLclVar* lclVarNode = retValUse.Def()->AsLclVar();
@@ -964,7 +980,7 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
         {
             if (arg.GetNode()->TypeIs(TYP_STRUCT))
             {
-                // TODO-LLVM: implement proper ABI for structs.
+                // TODO-LLVM-ABI: implement proper ABI for structs.
                 failFunctionCompilation();
             }
 
@@ -1076,56 +1092,43 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 
     while (callArg != nullptr)
     {
-        GenTree*             argNode     = callArg->GetNode();
-        CORINFO_CLASS_HANDLE clsHnd      = NO_CLASS_HANDLE;
-        CorInfoType          corInfoType;
-        bool                 isSigArg    = argIx >= firstSigArgIx;
+        GenTree* argNode = callArg->GetNode();
+        CorInfoType argSigType;
+        CORINFO_CLASS_HANDLE argSigClass = NO_CLASS_HANDLE;
 
         if (sigInfo != nullptr)
         {
             // Is this an in-signature argument?
-            if (isSigArg)
+            if (argIx >= firstSigArgIx)
             {
-                corInfoType = strip(m_info->compCompHnd->getArgType(sigInfo, sigArgs, &clsHnd));
-                sigArgs     = _compiler->info.compCompHnd->getArgNext(sigArgs);
+                argSigType = strip(m_info->compCompHnd->getArgType(sigInfo, sigArgs, &argSigClass));
+                sigArgs = _compiler->info.compCompHnd->getArgNext(sigArgs);
             }
-            else // Not-in-sig arguments. We need to handle these specially.
+            else if (callArg->GetWellKnownArg() == WellKnownArg::ThisPointer)
             {
-                if (callArg->GetWellKnownArg() == WellKnownArg::ThisPointer)
-                {
-                    corInfoType = argNode->TypeIs(TYP_REF) ? CORINFO_TYPE_CLASS : CORINFO_TYPE_BYREF;
-                }
-                else if (callArg->GetWellKnownArg() == WellKnownArg::InstParam)
-                {
-                    assert((argIx == 0) || (sigInfo->hasThis() && (argIx == 1)));
-                    corInfoType = CORINFO_TYPE_PTR;
-                }
-                else
-                {
-                    // TODO-LLVM: this should not be reachable.
-                    corInfoType = toCorInfoType(genActualType(argNode));
-                }
+                argSigType = argNode->TypeIs(TYP_REF) ? CORINFO_TYPE_CLASS : CORINFO_TYPE_BYREF;
+            }
+            else if (callArg->GetWellKnownArg() == WellKnownArg::InstParam)
+            {
+                argSigType = CORINFO_TYPE_PTR;
+            }
+            else
+            {
+                argSigType = toCorInfoType(callArg->GetSignatureType());
             }
         }
         else
         {
             assert(helperInfo != nullptr);
-            if (!isSigArg)
-            {
-                // There are helpers that do not have a specified signature (have a variable number of args).
-                // We'll have to wait for upstream call args changes to get merged to handle those properly.
-                failFunctionCompilation();
-            }
-
-            corInfoType = helperInfo->GetSigArgType(argIx);
-            clsHnd = helperInfo->GetSigArgClass(_compiler, argIx);
+            argSigType = helperInfo->GetSigArgType(argIx);
+            argSigClass = helperInfo->GetSigArgClass(_compiler, argIx);
         }
 
-        if (isManagedCall && !canStoreArgOnLlvmStack(corInfoType, clsHnd))
+        if (isManagedCall && !canStoreArgOnLlvmStack(argSigType, argSigClass))
         {
-            if (corInfoType == CORINFO_TYPE_VALUECLASS)
+            if (argSigType == CORINFO_TYPE_VALUECLASS)
             {
-                shadowStackUseOffset = padOffset(corInfoType, clsHnd, shadowStackUseOffset);
+                shadowStackUseOffset = padOffset(argSigType, argSigClass, shadowStackUseOffset);
             }
 
             if (argNode->OperIs(GT_FIELD_LIST))
@@ -1152,9 +1155,9 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 CurrentRange().InsertBefore(callNode, storeNode);
             }
 
-            if (corInfoType == CORINFO_TYPE_VALUECLASS)
+            if (argSigType == CORINFO_TYPE_VALUECLASS)
             {
-                shadowStackUseOffset = padNextOffset(corInfoType, clsHnd, shadowStackUseOffset);
+                shadowStackUseOffset = padNextOffset(argSigType, argSigClass, shadowStackUseOffset);
             }
             else
             {
@@ -1169,16 +1172,17 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             {
                 if (!argNode->OperIs(GT_FIELD_LIST) && argNode->TypeIs(TYP_STRUCT))
                 {
-                    normalizeStructUse(argNode, _compiler->typGetObjLayout(clsHnd));
+                    LIR::Use argNodeUse(CurrentRange(), &callArg->EarlyNodeRef(), callNode);
+                    argNode = normalizeStructUse(argNodeUse, _compiler->typGetObjLayout(argSigClass));
                 }
 
                 // TODO-LLVM: delete (together with 'SetSignatureClassHandle') when merging
                 // https://github.com/dotnet/runtime/pull/69969 (May 31).
-                callArg->SetSignatureClassHandle(clsHnd);
+                callArg->SetSignatureClassHandle(argSigClass);
             }
 
             callArg->SetEarlyNode(argNode);
-            callArg->SetSignatureCorInfoType(corInfoType);
+            callArg->SetSignatureCorInfoType(argSigType);
             lastLlvmStackArg = callArg;
         }
 
@@ -1194,12 +1198,6 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
     if (callNode->IsHelperCall())
     {
         return;
-    }
-
-    // we can't do these yet
-    if (callNode->IsTailCall())
-    {
-        failFunctionCompilation();
     }
 
     CORINFO_SIG_INFO* calleeSigInfo = callNode->callSig;
@@ -1291,13 +1289,16 @@ CallArg* Llvm::lowerCallReturn(GenTreeCall* callNode)
 // So in lowering we retype uses (and users) to match LLVM's expectations.
 //
 // Arguments:
-//    node   - The struct node to retype
+//    use    - Use of the struct node to retype
 //    layout - The target layout
 //
-void Llvm::normalizeStructUse(GenTree* node, ClassLayout* layout)
+// Return Value:
+//    The retyped node.
+//
+GenTree* Llvm::normalizeStructUse(LIR::Use& use, ClassLayout* layout)
 {
-    // Note on SIMD: we will support it in codegen via bitcasts.
-    assert(node->TypeIs(TYP_STRUCT));
+    GenTree* node = use.Def();
+    assert(node->TypeIs(TYP_STRUCT)); // Note on SIMD: we will support it in codegen via bitcasts.
 
     // "IND<struct>" nodes always need to be normalized.
     if (node->OperIs(GT_IND))
@@ -1328,8 +1329,14 @@ void Llvm::normalizeStructUse(GenTree* node, ClassLayout* layout)
                     }
                     break;
 
+                case GT_CALL:
+                    use.ReplaceWithLclVar(_compiler);
+                    node = use.Def();
+                    FALLTHROUGH;
+
                 case GT_LCL_VAR:
                 {
+                    // TODO-LLVM: morph into TYP_STRUCT LCL_FLD once we merge it.
                     unsigned lclNum = node->AsLclVarCommon()->GetLclNum();
                     GenTree* lclAddrNode = _compiler->gtNewLclVarAddrNode(lclNum);
                     _compiler->lvaGetDesc(lclNum)->lvHasLocalAddr = true;
@@ -1344,10 +1351,6 @@ void Llvm::normalizeStructUse(GenTree* node, ClassLayout* layout)
                 }
                 break;
 
-                case GT_CALL:
-                    // TODO-LLVM: implement by spilling to a local.
-                    failFunctionCompilation();
-
                 case GT_LCL_FLD:
                     // TODO-LLVM: handle by altering the layout once enough of upstream is merged.
                     failFunctionCompilation();
@@ -1357,6 +1360,8 @@ void Llvm::normalizeStructUse(GenTree* node, ClassLayout* layout)
             }
         }
     }
+
+    return node;
 }
 
 unsigned Llvm::representAsLclVar(LIR::Use& use)

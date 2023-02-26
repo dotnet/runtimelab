@@ -17,6 +17,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #include "allocacheck.h" // for alloca
 
+<<<<<<< HEAD
 #if TARGET_WASM
 #include "llvm.h"
 #define max(a, b) (((a) > (b)) ? (a) : (b))
@@ -121,6 +122,8 @@ PhaseStatus Compiler::fgMorphInit()
     return madeChanges ? PhaseStatus::MODIFIED_EVERYTHING : PhaseStatus::MODIFIED_NOTHING;
 }
 
+=======
+>>>>>>> origin/feature/NativeAOT-LLVM
 // Convert the given node into a call to the specified helper passing
 // the given argument list.
 //
@@ -5839,8 +5842,12 @@ void Compiler::fgMorphCallInlineHelper(GenTreeCall* call, InlineResult* result, 
 //    caller({ double, double, double, double, double, double }) // 48 byte stack
 //    callee(int, int) -- 2 int registers
 //
+<<<<<<< HEAD
 // LLVM Wasm:
 //    Fast tail calls cannot be made if the return type is going to be lowered into the shadow stack
+=======
+
+>>>>>>> origin/feature/NativeAOT-LLVM
 bool Compiler::fgCanFastTailCall(GenTreeCall* callee, const char** failReason)
 {
 #if FEATURE_FASTTAILCALL
@@ -6050,14 +6057,6 @@ bool Compiler::fgCanFastTailCall(GenTreeCall* callee, const char** failReason)
         reportFastTailCallDecision("Callee has a byref parameter");
         return false;
     }
-
-#if TARGET_WASM
-    if (m_llvm->needsReturnStackSlot(callee))
-    {
-        reportFastTailCallDecision("Callee has a return type that must be passed on the LLVM shadow stack");
-        return false;
-    }
-#endif // TARGET_WASM
 
     reportFastTailCallDecision(nullptr);
     return true;

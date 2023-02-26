@@ -62,16 +62,36 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        public static byte* getSymbolMangledName(IntPtr thisHandle, void* handle)
+        public static byte* getMangledSymbolName(IntPtr thisHandle, IntPtr symbolHandle)
         {
             var _this = GetThis(thisHandle);
+            var node = (ISymbolNode)_this.HandleToObject(symbolHandle);
 
-            var node = (ISymbolNode)_this.HandleToObject((IntPtr)handle);
             Utf8StringBuilder sb = new Utf8StringBuilder();
             node.AppendMangledName(_this._compilation.NameMangler, sb);
 
             sb.Append("\0");
             return (byte*)_this.GetPin(sb.UnderlyingArray);
+        }
+
+        [UnmanagedCallersOnly]
+        public static int getSignatureForMethodSymbol(IntPtr thisHandle, IntPtr symbolHandle, CORINFO_SIG_INFO* pSig)
+        {
+            var _this = GetThis(thisHandle);
+            var node = (ISymbolNode)_this.HandleToObject(symbolHandle);
+
+            if (node is IMethodNode { Offset: 0, Method: MethodDesc method })
+            {
+                _this.Get_CORINFO_SIG_INFO(method, pSig, scope: null);
+                if (method.IsUnmanagedCallersOnly)
+                {
+                    pSig->callConv |= CorInfoCallConv.CORINFO_CALLCONV_UNMANAGED;
+                }
+
+                return 1;
+            }
+
+            return 0;
         }
 
         [UnmanagedCallersOnly]
@@ -213,13 +233,21 @@ namespace Internal.JitInterface
         public static byte* getAlternativeFunctionName(IntPtr thisHandle)
         {
             var _this = GetThis(thisHandle);
-            MethodDesc method = _this.MethodBeingCompiled;
-            if (_this._compilation.GetRuntimeExportManagedEntrypointName(method) is string alternativeName)
+            IMethodNode methodNode = _this._methodCodeNode;
+            RyuJitCompilation compilation = _this._compilation;
+
+            string alternativeName = compilation.GetRuntimeExportManagedEntrypointName(methodNode.Method);
+            if (alternativeName == null)
             {
-                return (byte*)_this.GetPin(StringToUTF8(alternativeName));
+                alternativeName = compilation.NodeFactory.GetSymbolAlternateName(methodNode);
+            }
+            if ((alternativeName == null) && methodNode.Method.IsUnmanagedCallersOnly)
+            {
+                // TODO-LLVM: delete once the IL backend is gone.
+                alternativeName = methodNode.Method.Name;
             }
 
-            return null;
+            return (alternativeName != null) ? (byte*)_this.GetPin(StringToUTF8(alternativeName)) : null;
         }
 
         [UnmanagedCallersOnly]
@@ -230,6 +258,21 @@ namespace Internal.JitInterface
             ISymbolNode accessorNode = _this._compilation.GetExternalMethodAccessor(method, new ReadOnlySpan<TargetAbiType>(sig, sigLength));
 
             return _this.ObjectToHandle(accessorNode);
+        }
+
+        [UnmanagedCallersOnly]
+        private static IntPtr getLlvmHelperFuncEntrypoint(IntPtr thisHandle, CorInfoHelpLlvmFunc helperFunc)
+        {
+            CorInfoImpl _this = GetThis(thisHandle);
+            NodeFactory factory = _this._compilation.NodeFactory;
+            ISymbolNode helperFuncNode = helperFunc switch
+            {
+                CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP => factory.ExternSymbol("RhpGetOrInitShadowStackTop"),
+                CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP => factory.ExternSymbol("RhpSetShadowStackTop"),
+                _ => throw new UnreachableException()
+            };
+
+            return _this.ObjectToHandle(helperFuncNode);
         }
 
         public struct TypeDescriptor
@@ -297,7 +340,8 @@ namespace Internal.JitInterface
         enum EEApiId
         {
             GetMangledMethodName,
-            GetSymbolMangledName,
+            GetMangledSymbolName,
+            GetSignatureForMethodSymbol,
             GetEHDispatchFunctionName,
             GetTypeName,
             AddCodeReloc,
@@ -310,6 +354,7 @@ namespace Internal.JitInterface
             GetInstanceFieldAlignment,
             GetAlternativeFunctionName,
             GetExternalMethodAccessor,
+            GetLlvmHelperFuncEntrypoint,
             Count
         }
 
@@ -320,6 +365,14 @@ namespace Internal.JitInterface
             Count
         };
 
+        enum CorInfoHelpLlvmFunc
+        {
+            CORINFO_HELP_LLVM_UNDEF = CorInfoHelpFunc.CORINFO_HELP_COUNT,
+            CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP,
+            CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP,
+            CORINFO_HELP_ANY_COUNT
+        }
+
         [DllImport(JitLibrary)]
         private extern static void registerLlvmCallbacks(void** jitImports, void** jitExports);
 
@@ -327,7 +380,8 @@ namespace Internal.JitInterface
         {
             void** jitImports = stackalloc void*[(int)EEApiId.Count + 1];
             jitImports[(int)EEApiId.GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
-            jitImports[(int)EEApiId.GetSymbolMangledName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getSymbolMangledName;
+            jitImports[(int)EEApiId.GetMangledSymbolName] = (delegate* unmanaged<IntPtr, IntPtr, byte*>)&getMangledSymbolName;
+            jitImports[(int)EEApiId.GetSignatureForMethodSymbol] = (delegate* unmanaged<IntPtr, IntPtr, CORINFO_SIG_INFO*, int>)&getSignatureForMethodSymbol;
             jitImports[(int)EEApiId.GetEHDispatchFunctionName] = (delegate* unmanaged<IntPtr, CORINFO_EH_CLAUSE_FLAGS, byte*>)&getEHDispatchFunctionName;
             jitImports[(int)EEApiId.GetTypeName] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*>)&getTypeName;
             jitImports[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
@@ -340,6 +394,7 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.GetInstanceFieldAlignment] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint>)&getInstanceFieldAlignment;
             jitImports[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
             jitImports[(int)EEApiId.GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
+            jitImports[(int)EEApiId.GetLlvmHelperFuncEntrypoint] = (delegate* unmanaged<IntPtr, CorInfoHelpLlvmFunc, IntPtr>)&getLlvmHelperFuncEntrypoint;
             jitImports[(int)EEApiId.Count] = (void*)0x1234;
 
 #if DEBUG

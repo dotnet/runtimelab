@@ -985,7 +985,6 @@ private:
 
 public:
     unsigned short lvRefCnt(RefCountState state = RCS_NORMAL) const;
-    unsigned short lvRawRefCnt(RefCountState state = RCS_NORMAL) const;
     void incLvRefCnt(unsigned short delta, RefCountState state = RCS_NORMAL);
     void setLvRefCnt(unsigned short newValue, RefCountState state = RCS_NORMAL);
 

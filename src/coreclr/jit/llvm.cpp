@@ -20,7 +20,8 @@ enum class EEApiId
 {
     GetMangledMethodName,
     GetSymbolMangledName,
-    GetEHDispatchFunctionName,
+    GetSignatureForMethodSymbol,
+    GetEHDispatchFunctionName, // TODO-LLVM: move these to the LLVM helper mechanism.
     GetTypeName,
     AddCodeReloc,
     IsRuntimeImport,
@@ -32,6 +33,7 @@ enum class EEApiId
     GetInstanceFieldAlignment,
     GetAlternativeFunctionName,
     GetExternalMethodAccessor,
+    GetLlvmHelperFuncEntrypoint,
     Count
 };
 
@@ -211,12 +213,12 @@ bool Llvm::needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE cl
     return (corInfoType != CORINFO_TYPE_VOID) && !canStoreArgOnLlvmStack(corInfoType, classHnd);
 }
 
-bool Llvm::callRequiresShadowStackSaveRestore(const GenTreeCall* call) const
+bool Llvm::callRequiresShadowStackSave(const GenTreeCall* call) const
 {
     // In general, if the call is itself not managed (does not have a shadow stack argument) **and** may call
-    // back into managed code, we need to save/restore the shadow stack pointer, so that the RPI frame can pick
-    // it up. Another case where the save/restore is required is when calling into native runtime code that can
-    // trigger a GC (canonical example: allocators), to communicate shadow stack bounds to the roots scan.
+    // back into managed code, we need to save the shadow stack pointer, so that the RPI frame can pick it up.
+    // Another case where the save/restore is required is when calling into native runtime code that can trigger
+    // a GC (canonical example: allocators), to communicate shadow stack bounds to the roots scan.
     // TODO-LLVM-CQ: optimize the GC case by using specialized helpers which would sink the save/restore to the
     // unlikely path of a GC actually happening.
     // TODO-LLVM-CQ: we should skip the managed -> native -> managed transition for runtime imports implemented
@@ -224,14 +226,14 @@ bool Llvm::callRequiresShadowStackSaveRestore(const GenTreeCall* call) const
     //
     if (call->IsHelperCall())
     {
-        return helperCallRequiresShadowStackSaveRestore(_compiler->eeGetHelperNum(call->gtCallMethHnd));
+        return helperCallRequiresShadowStackSave(_compiler->eeGetHelperNum(call->gtCallMethHnd));
     }
 
     // SPGCT calls are assumed to never RPI by contract.
     return !callHasShadowStackArg(call) && !call->IsSuppressGCTransition();
 }
 
-bool Llvm::helperCallRequiresShadowStackSaveRestore(CorInfoHelpFunc helperFunc) const
+bool Llvm::helperCallRequiresShadowStackSave(CorInfoHelpAnyFunc helperFunc) const
 {
     // Save/restore is needed if the helper doesn't have a shadow stack argument, unless we know it won't call
     // back into managed code. TODO-LLVM-CQ: mark (make, if required) more helpers "HFIF_NO_RPI_OR_GC".
@@ -244,7 +246,7 @@ bool Llvm::callHasShadowStackArg(const GenTreeCall* call) const
     return callHasManagedCallingConvention(call);
 }
 
-bool Llvm::helperCallHasShadowStackArg(CorInfoHelpFunc helperFunc) const
+bool Llvm::helperCallHasShadowStackArg(CorInfoHelpAnyFunc helperFunc) const
 {
     return helperCallHasManagedCallingConvention(helperFunc);
 }
@@ -265,7 +267,7 @@ bool Llvm::callHasManagedCallingConvention(const GenTreeCall* call) const
     return !call->IsUnmanaged();
 }
 
-bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) const
+bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) const
 {
     return getHelperFuncInfo(helperFunc).HasFlags(HFIF_SS_ARG);
 }
@@ -287,7 +289,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) con
 // Return Value:
 //    Reference to the info structure for "helperFunc".
 //
-/* static */ const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpFunc helperFunc)
+/* static */ const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpAnyFunc helperFunc)
 {
     // Note on Runtime[Type|Method|Field]Handle: it should faithfully be represented as CORINFO_TYPE_VALUECLASS.
     // However, that is currently both not necessary due to the unwrapping performed for LLVM types and not what
@@ -508,7 +510,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) con
         { FUNC(CORINFO_HELP_PROF_FCN_TAILCALL) },
         { FUNC(CORINFO_HELP_BBT_FCN_ENTER) },
 
-        // TODO-LLVM: this is not a real "helper"; investigate what needs to be done to enable it.
+        // Not used in NativeAOT.
         { FUNC(CORINFO_HELP_PINVOKE_CALLI) },
 
         // NYI in NativeAOT.
@@ -617,14 +619,18 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) con
         { FUNC(CORINFO_HELP_VTABLEPROFILE64) },
         { FUNC(CORINFO_HELP_PARTIAL_COMPILATION_PATCHPOINT) },
         { FUNC(CORINFO_HELP_VALIDATE_INDIRECT_CALL) },
-        { FUNC(CORINFO_HELP_DISPATCH_INDIRECT_CALL) }
+        { FUNC(CORINFO_HELP_DISPATCH_INDIRECT_CALL) },
+        { FUNC(CORINFO_HELP_COUNT) },
+
+        { FUNC(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP) CORINFO_TYPE_PTR, { }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
     };
     // clang-format on
 
     // Make sure our array is up-to-date.
-    static_assert_no_msg(ArrLen(s_infos) == CORINFO_HELP_COUNT);
+    static_assert_no_msg(ArrLen(s_infos) == CORINFO_HELP_ANY_COUNT);
 
-    assert(helperFunc < CORINFO_HELP_COUNT);
+    assert(helperFunc < CORINFO_HELP_ANY_COUNT);
     const HelperFuncInfo& info = s_infos[helperFunc];
 
     // We don't fill out the info for some helpers because we don't expect to encounter them.
@@ -710,6 +716,34 @@ TargetAbiType Llvm::getAbiTypeForType(var_types type)
     }
 }
 
+CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForHelperFunc(CorInfoHelpAnyFunc helperFunc)
+{
+    if (helperFunc < CORINFO_HELP_COUNT)
+    {
+        void* pIndirection = nullptr;
+        void* handle = _compiler->compGetHelperFtn(static_cast<CorInfoHelpFunc>(helperFunc), &pIndirection);
+        assert(pIndirection == nullptr);
+
+        return CORINFO_GENERIC_HANDLE(handle);
+    }
+
+    assert(helperFunc < CORINFO_HELP_ANY_COUNT);
+    return GetLlvmHelperFuncEntrypoint(static_cast<CorInfoHelpLlvmFunc>(helperFunc));
+}
+
+CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForClassToken(mdToken token)
+{
+    // The importer call here relies on RyuJit not inlining EH (which it currently does not).
+    CORINFO_RESOLVED_TOKEN resolvedToken;
+    _compiler->impResolveToken((BYTE*)&token, &resolvedToken, CORINFO_TOKENKIND_Class);
+
+    void* pIndirection = nullptr;
+    CORINFO_CLASS_HANDLE typeSymbolHandle = m_info->compCompHnd->embedClassHandle(resolvedToken.hClass, &pIndirection);
+    assert(pIndirection == nullptr);
+
+    return CORINFO_GENERIC_HANDLE(typeSymbolHandle);
+}
+
 [[noreturn]] void Llvm::failFunctionCompilation()
 {
     for (FunctionInfo& funcInfo : m_functions)
@@ -737,6 +771,11 @@ const char* Llvm::GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle)
 const char* Llvm::GetMangledSymbolName(void* symbol)
 {
     return CallEEApi<EEApiId::GetSymbolMangledName, const char*>(m_pEECorInfo, symbol);
+}
+
+bool Llvm::GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig)
+{
+    return CallEEApi<EEApiId::GetSignatureForMethodSymbol, int>(m_pEECorInfo, symbolHandle, pSig) != 0;
 }
 
 const char* Llvm::GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType)
@@ -801,6 +840,11 @@ CORINFO_GENERIC_HANDLE Llvm::GetExternalMethodAccessor(
 {
     return CallEEApi<EEApiId::GetExternalMethodAccessor, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, methodHandle, sig,
                                                                                sigLength);
+}
+
+CORINFO_GENERIC_HANDLE Llvm::GetLlvmHelperFuncEntrypoint(CorInfoHelpLlvmFunc helperFunc)
+{
+    return CallEEApi<EEApiId::GetLlvmHelperFuncEntrypoint, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, helperFunc);
 }
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExports)

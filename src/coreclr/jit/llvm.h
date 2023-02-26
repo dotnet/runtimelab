@@ -56,6 +56,18 @@ enum class TargetAbiType : uint8_t
     Double
 };
 
+// LLVM/WASM-specific helper functions. Reside in the same "namespace" as the regular Jit helpers.
+//
+enum CorInfoHelpLlvmFunc
+{
+    CORINFO_HELP_LLVM_UNDEF = CORINFO_HELP_COUNT,
+    CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP,
+    CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP,
+    CORINFO_HELP_ANY_COUNT
+};
+
+typedef unsigned CorInfoHelpAnyFunc; // Allow us to use both flavors of helpers.
+
 enum HelperFuncInfoFlags
 {
     HFIF_NONE = 0,
@@ -152,6 +164,8 @@ private:
     std::vector<FunctionInfo> m_functions;
     std::vector<llvm::BasicBlock*> m_EHDispatchLlvmBlocks;
 
+    Value* m_rootFunctionShadowStackValue = nullptr;
+
     // Codegen emit context.
     unsigned m_currentLlvmFunctionIndex = ROOT_FUNC_IDX;
     unsigned m_currentProtectedRegionIndex = EHblkDsc::NO_ENCLOSING_INDEX;
@@ -194,14 +208,14 @@ private:
 
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
-    bool callRequiresShadowStackSaveRestore(const GenTreeCall* call) const;
-    bool helperCallRequiresShadowStackSaveRestore(CorInfoHelpFunc helperFunc) const;
+    bool callRequiresShadowStackSave(const GenTreeCall* call) const;
+    bool helperCallRequiresShadowStackSave(CorInfoHelpAnyFunc helperFunc) const;
     bool callHasShadowStackArg(const GenTreeCall* call) const;
-    bool helperCallHasShadowStackArg(CorInfoHelpFunc helperFunc) const;
+    bool helperCallHasShadowStackArg(CorInfoHelpAnyFunc helperFunc) const;
     bool callHasManagedCallingConvention(const GenTreeCall* call) const;
-    bool helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) const;
+    bool helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) const;
 
-    static const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpFunc helperFunc);
+    static const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpAnyFunc helperFunc);
 
     bool canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
@@ -210,12 +224,16 @@ private:
 
     TargetAbiType getAbiTypeForType(var_types type);
 
+    CORINFO_GENERIC_HANDLE getSymbolHandleForHelperFunc(CorInfoHelpAnyFunc helperFunc);
+    CORINFO_GENERIC_HANDLE getSymbolHandleForClassToken(mdToken token);
+
     [[noreturn]] void failFunctionCompilation();
 
     // Raw Jit-EE interface functions.
     //
     const char* GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle);
     const char* GetMangledSymbolName(void* symbol);
+    bool GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig);
     const char* GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType);
     const char* GetTypeName(CORINFO_CLASS_HANDLE typeHandle);
     void AddCodeReloc(void* handle);
@@ -229,6 +247,7 @@ private:
     const char* GetAlternativeFunctionName();
     CORINFO_GENERIC_HANDLE GetExternalMethodAccessor(
         CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* callSiteSig, int sigLength);
+    CORINFO_GENERIC_HANDLE GetLlvmHelperFuncEntrypoint(CorInfoHelpLlvmFunc helperFunc);
 
 public:
     static void StartThreadContextBoundCompilation(const char* path, const char* triple, const char* dataLayout);
@@ -293,7 +312,7 @@ private:
     void failUnsupportedCalls(GenTreeCall* callNode);
     CallArg* lowerCallReturn(GenTreeCall* callNode);
 
-    void normalizeStructUse(GenTree* node, ClassLayout* layout);
+    GenTree* normalizeStructUse(LIR::Use& use, ClassLayout* layout);
 
     unsigned representAsLclVar(LIR::Use& use);
     GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data);
@@ -360,6 +379,7 @@ private:
     void buildBinaryOperation(GenTree* node);
     void buildShift(GenTreeOp* node);
     void buildIntrinsic(GenTreeIntrinsic* intrinsicNode);
+    void buildMemoryBarrier(GenTree* node);
     void buildReturn(GenTree* node);
     void buildJTrue(GenTree* node);
     void buildSwitch(GenTreeUnOp* switchNode);
@@ -377,22 +397,22 @@ private:
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
-    Value* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = { });
+    Value* emitHelperCall(CorInfoHelpAnyFunc helperFunc, ArrayRef<Value*> sigArgs = { });
     llvm::CallBase* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args);
 
     FunctionType* getFunctionType();
     llvm::FunctionCallee consumeCallTarget(GenTreeCall* call);
+    FunctionType* createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig);
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);
-    FunctionType* createFunctionTypeForHelper(CorInfoHelpFunc helperFunc);
-    void annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc);
+    FunctionType* createFunctionTypeForHelper(CorInfoHelpAnyFunc helperFunc);
+    void annotateHelperFunction(CorInfoHelpAnyFunc helperFunc, Function* llvmFunc);
     Function* getOrCreateKnownLlvmFunction(StringRef name,
                                            std::function<FunctionType*()> createFunctionType,
                                            std::function<void(Function*)> annotateFunction = [](Function*) { });
     Function* getOrCreateExternalLlvmFunctionAccessor(StringRef name);
 
-    llvm::GlobalVariable* getOrCreateExternalSymbol(StringRef symbolName);
-    llvm::GlobalVariable* getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle);
-    CORINFO_GENERIC_HANDLE getSymbolHandleForClassToken(mdToken token);
+    llvm::GlobalVariable* getOrCreateDataSymbol(StringRef symbolName);
+    llvm::GlobalValue* getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle);
 
     Instruction* getCast(Value* source, Type* targetType);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);

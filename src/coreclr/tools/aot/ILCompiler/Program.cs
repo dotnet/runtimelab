@@ -767,7 +767,7 @@ namespace ILCompiler
             CompilationBuilder builder;
             if (_isLlvmCodegen)
             {
-                builder = new LLVMCodegenCompilationBuilder(typeSystemContext, compilationGroup, _nativeLib);
+                builder = new LLVMCodegenCompilationBuilder(typeSystemContext, compilationGroup);
             }
             else
             {

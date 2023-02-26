@@ -47,17 +47,7 @@ namespace Internal.IL
             ILImporter ilImporter = null;
             try
             {
-                string mangledName;
-
-                // TODO: Better detection of the StartupCodeMain method
-                if (methodCodeNodeNeedingCode.Method.Signature.IsStatic && methodCodeNodeNeedingCode.Method.Name == "StartupCodeMain")
-                {
-                    mangledName = "StartupCodeMain";
-                }
-                else
-                {
-                    mangledName = compilation.NameMangler.GetMangledMethodName(methodCodeNodeNeedingCode.Method).ToString();
-                }
+                string mangledName = compilation.NameMangler.GetMangledMethodName(methodCodeNodeNeedingCode.Method).ToString();
 
                 ilImporter = new ILImporter(compilation, method, methodIL, mangledName);
 
@@ -114,7 +104,6 @@ namespace Internal.IL
         static LLVMValueRef DoNothingFunction = default(LLVMValueRef);
         static LLVMValueRef CxaBeginCatchFunction = default(LLVMValueRef);
         static LLVMValueRef CxaEndCatchFunction = default(LLVMValueRef);
-        static LLVMValueRef RhpThrowEx = default(LLVMValueRef);
         static LLVMValueRef RhpCallCatchFunclet = default(LLVMValueRef);
         static LLVMValueRef LlvmCatchFunclet = default(LLVMValueRef);
         static LLVMValueRef LlvmFilterFunclet = default(LLVMValueRef);
@@ -220,18 +209,13 @@ namespace Internal.IL
             return llvmFunction;
         }
 
-        internal static void GenerateRuntimeExportThunk(LLVMCodegenCompilation compilation, MethodDesc compiledMethod, LLVMValueRef llvmFunction)
+        internal static void GenerateRuntimeExportThunk(LLVMCodegenCompilation compilation, MethodDesc method, LLVMValueRef llvmFunction)
         {
-            if ((compiledMethod.IsRuntimeExport || compiledMethod.IsUnmanagedCallersOnly) && compiledMethod is EcmaMethod)  // TODO: Reverse delegate invokes probably need something here, but what would be the export name?
+            if (method.IsRuntimeExport || method.IsUnmanagedCallersOnly)
             {
-                EcmaMethod ecmaMethod = ((EcmaMethod)compiledMethod);
-                string exportName = ecmaMethod.IsRuntimeExport ? ecmaMethod.GetRuntimeExportName() : ecmaMethod.GetUnmanagedCallersOnlyExportName();
-                if (exportName == null)
-                {
-                    exportName = ecmaMethod.Name;
-                }
-
-                EmitNativeToManagedThunk(compilation, compiledMethod, exportName, llvmFunction);
+                IMethodNode methodNode = compilation.NodeFactory.MethodEntrypoint(method);
+                string name = compilation.NodeFactory.GetSymbolAlternateName(methodNode) ?? method.Name;
+                EmitNativeToManagedThunk(compilation, method, name, llvmFunction);
             }
         }
 
@@ -251,28 +235,17 @@ namespace Internal.IL
             LLVMTypeRef thunkSig = LLVMTypeRef.CreateFunction(GetLLVMTypeForTypeDesc(method.Signature.ReturnType), llvmParams, false);
             LLVMValueRef thunkFunc = GetOrCreateLLVMFunction(LLVMCodegenCompilation.Module, nativeName, thunkSig);
 
-            LLVMBasicBlockRef shadowStackSetupBlock = thunkFunc.AppendBasicBlock("ShadowStackSetupBlock");
-            LLVMBasicBlockRef allocateShadowStackBlock = thunkFunc.AppendBasicBlock("allocateShadowStackBlock");
-            LLVMBasicBlockRef managedCallBlock = thunkFunc.AppendBasicBlock("ManagedCallBlock");
+            using LLVMBuilderRef builder = Context.CreateBuilder();
+            LLVMBasicBlockRef block = thunkFunc.AppendBasicBlock("ManagedCallBlock");
+            builder.PositionAtEnd(block);
 
-            LLVMBuilderRef builder = Context.CreateBuilder();
-            builder.PositionAtEnd(shadowStackSetupBlock);
+            // Get the shadow stack. If we are wrapping a runtime export, the caller is (by definition) managed, so we must have set up the shadow
+            // stack already and can bypass the init check.
+            string getShadowStackFuncName = method.IsRuntimeExport ? "RhpGetShadowStackTop" : "RhpGetOrInitShadowStackTop";
+            LLVMTypeRef getShadowStackFuncSig = LLVMTypeRef.CreateFunction(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), Array.Empty<LLVMTypeRef>());
+            LLVMValueRef getShadowStackFunc = GetOrCreateLLVMFunction(LLVMCodegenCompilation.Module, getShadowStackFuncName, getShadowStackFuncSig);
+            LLVMValueRef shadowStack = builder.BuildCall(getShadowStackFunc, Array.Empty<LLVMValueRef>());
 
-            // Allocate shadow stack if it's null
-            LLVMValueRef shadowStackPtr = builder.BuildAlloca(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "ShadowStackPtr");
-            LLVMValueRef savedShadowStack = builder.BuildLoad(ShadowStackTop, "SavedShadowStack");
-            builder.BuildStore(savedShadowStack, shadowStackPtr);
-            LLVMValueRef shadowStackNull = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, savedShadowStack, LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)), "ShadowStackNull");
-            builder.BuildCondBr(shadowStackNull, allocateShadowStackBlock, managedCallBlock);
-
-            builder.PositionAtEnd(allocateShadowStackBlock);
-
-            LLVMValueRef newShadowStack = builder.BuildArrayMalloc(LLVMTypeRef.Int8, BuildConstInt32(1000000), "NewShadowStack");
-            builder.BuildStore(newShadowStack, shadowStackPtr);
-            builder.BuildStore(newShadowStack, ShadowStackTop);
-            builder.BuildBr(managedCallBlock);
-
-            builder.PositionAtEnd(managedCallBlock);
             LLVMTypeRef reversePInvokeFrameType = LLVMTypeRef.CreateStruct(new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
             LLVMValueRef reversePInvokeFrame = default(LLVMValueRef);
             LLVMTypeRef reversePInvokeFunctionType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false);
@@ -283,7 +256,6 @@ namespace Internal.IL
                 builder.BuildCall(RhpReversePInvoke, new LLVMValueRef[] { reversePInvokeFrame }, "");
             }
 
-            LLVMValueRef shadowStack = builder.BuildLoad(shadowStackPtr, "ShadowStack");
             int curOffset = 0;
             curOffset = PadNextOffset(method.Signature.ReturnType, curOffset);
             ImportCallMemset(shadowStack, 0, curOffset, builder); // clear any uncovered object references for GC.Collect
@@ -323,6 +295,11 @@ namespace Internal.IL
             {
                 LLVMValueRef RhpReversePInvokeReturn = GetOrCreateLLVMFunction(LLVMCodegenCompilation.Module, "RhpReversePInvokeReturn", reversePInvokeFunctionType);
                 builder.BuildCall(RhpReversePInvokeReturn, new LLVMValueRef[] { reversePInvokeFrame }, "");
+
+                // Restore the shadow stack. Note: only needed for UCO methods as otherwise the caller is guaranteed to never use the stale value.
+                LLVMTypeRef setShadowStackFuncSig = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) });
+                LLVMValueRef setShadowStackFunc = GetOrCreateLLVMFunction(LLVMCodegenCompilation.Module, "RhpSetShadowStackTop", setShadowStackFuncSig);
+                builder.BuildCall(setShadowStackFunc, new[] { shadowStack });
             }
 
             if (!method.Signature.ReturnType.IsVoid)
@@ -388,8 +365,6 @@ namespace Internal.IL
                 if (s_shadowStackTop.Handle.Equals(IntPtr.Zero))
                 {
                     s_shadowStackTop = LLVMCodegenCompilation.Module.AddGlobal(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "t_pShadowStackTop");
-                    s_shadowStackTop.Linkage = LLVMLinkage.LLVMExternalLinkage;
-                    s_shadowStackTop.Initializer = LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
                     s_shadowStackTop.ThreadLocalMode = LLVMThreadLocalMode.LLVMLocalDynamicTLSModel;
                 }
                 return s_shadowStackTop;
