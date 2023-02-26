@@ -4389,17 +4389,7 @@ namespace Internal.IL
             LLVMValueRef throwFunc = Module.GetNamedFunction("RhpThrowEx");
             if (throwFunc.Handle.Equals(IntPtr.Zero))
             {
-<<<<<<< HEAD
-                RhpThrowEx = Module.GetNamedFunction("RhpThrowEx");
-                if (RhpThrowEx == null)
-                {
-                    RhpThrowEx = Module.AddFunction("RhpThrowEx",
-                        LLVMTypeRef.CreateFunction(LLVMTypeRef.Void,
-                            new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false));
-                }
-=======
                 throwFunc = Module.AddFunction("RhpThrowEx", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false));
->>>>>>> origin/feature/NativeAOT-LLVM
             }
 
             _builder.BuildStore(GetShadowStack(), ShadowStackTop);

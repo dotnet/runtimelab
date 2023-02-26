@@ -17,13 +17,6 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #include "allocacheck.h" // for alloca
 
-<<<<<<< HEAD
-#if TARGET_WASM
-#include "llvm.h"
-#define max(a, b) (((a) > (b)) ? (a) : (b))
-#define min(a, b) (((a) < (b)) ? (a) : (b))
-#endif // TARGET_WASM
-
 //-------------------------------------------------------------
 // fgMorphInit: prepare for running the morph phases
 //
@@ -122,8 +115,6 @@ PhaseStatus Compiler::fgMorphInit()
     return madeChanges ? PhaseStatus::MODIFIED_EVERYTHING : PhaseStatus::MODIFIED_NOTHING;
 }
 
-=======
->>>>>>> origin/feature/NativeAOT-LLVM
 // Convert the given node into a call to the specified helper passing
 // the given argument list.
 //
@@ -5842,12 +5833,7 @@ void Compiler::fgMorphCallInlineHelper(GenTreeCall* call, InlineResult* result, 
 //    caller({ double, double, double, double, double, double }) // 48 byte stack
 //    callee(int, int) -- 2 int registers
 //
-<<<<<<< HEAD
-// LLVM Wasm:
-//    Fast tail calls cannot be made if the return type is going to be lowered into the shadow stack
-=======
 
->>>>>>> origin/feature/NativeAOT-LLVM
 bool Compiler::fgCanFastTailCall(GenTreeCall* callee, const char** failReason)
 {
 #if FEATURE_FASTTAILCALL
