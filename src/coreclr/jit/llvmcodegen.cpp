@@ -1417,7 +1417,6 @@ void Llvm::buildStoreLocalField(GenTreeLclFld* lclFld)
     Value* dataValue;
     if (lclFld->TypeIs(TYP_STRUCT) && genActualTypeIsInt(data))
     {
-        ClassLayout* layout = lclFld->GetLayout();
         if (!data->IsIntegralConst(0))
         {
             assert(data->OperIsInitVal());
