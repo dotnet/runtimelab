@@ -592,7 +592,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) con
         // Dead code.
         { FUNC(CORINFO_HELP_THROW_TYPE_NOT_SUPPORTED) },
 
-        // TODO-LLVM:
+        // Not used in NativeAOT.
         { FUNC(CORINFO_HELP_THROW_AMBIGUOUS_RESOLUTION_EXCEPTION) },
 
         // [R]PI helpers, implemented in "Runtime\thread.cpp".
