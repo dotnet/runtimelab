@@ -17169,7 +17169,6 @@ GenTree* Compiler::fgMorphReduceAddOps(GenTree* tree)
     return morphed;
 }
 
-#ifndef TARGET_WASM
 //------------------------------------------------------------------------
 // Compiler::MorphMDArrayTempCache::TempList::GetTemp: return a local variable number to use as a temporary variable
 // in multi-dimensional array operation expansion.
@@ -17589,4 +17588,3 @@ PhaseStatus Compiler::fgMorphArrayOps()
 
     return changed ? PhaseStatus::MODIFIED_EVERYTHING : PhaseStatus::MODIFIED_NOTHING;
 }
-#endif // TARGET_WASM

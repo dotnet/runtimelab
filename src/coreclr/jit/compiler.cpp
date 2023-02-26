@@ -4719,13 +4719,11 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     fgDebugCheckLinks();
 #endif
 
-#ifndef TARGET_WASM
     // Morph multi-dimensional array operations.
     // (Consider deferring all array operation morphing, including single-dimensional array ops,
     // from global morph to here, so cloning doesn't have to deal with morphed forms.)
     //
     DoPhase(this, PHASE_MORPH_MDARR, &Compiler::fgMorphArrayOps);
-#endif // TARGET_WASM
 
     // Create the variable table (and compute variable ref counts)
     //

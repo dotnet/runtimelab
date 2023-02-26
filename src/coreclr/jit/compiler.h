@@ -4576,7 +4576,6 @@ public:
 
     bool fgMorphBlockStmt(BasicBlock* block, Statement* stmt DEBUGARG(const char* msg));
 
-#ifndef TARGET_WASM
     //------------------------------------------------------------------------------------------------------------
     // MorphMDArrayTempCache: a simple cache of compiler temporaries in the local variable table, used to minimize
     // the number of locals allocated when doing early multi-dimensional array operation expansion. Two types of
@@ -4640,7 +4639,6 @@ public:
     PhaseStatus fgMorphArrayOps();
 
     void fgSetOptions();
-#endif // !TARGET_WASM
 
 #ifdef DEBUG
     static fgWalkPreFn fgAssertNoQmark;

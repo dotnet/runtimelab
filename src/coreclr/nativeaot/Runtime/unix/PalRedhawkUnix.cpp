@@ -997,12 +997,7 @@ REDHAWK_PALEXPORT UInt32_BOOL REDHAWK_PALAPI PalRegisterHijackCallback(_In_ PalH
 
 REDHAWK_PALEXPORT void REDHAWK_PALAPI PalHijack(HANDLE hThread, _In_opt_ void* pThreadToHijack)
 {
-// TODO-LLVM: enable if we implement wasm threads
-#if HOST_WASM
-    abort();
-#endif
-
-  ThreadUnixHandle* threadHandle = (ThreadUnixHandle*)hThread;
+    ThreadUnixHandle* threadHandle = (ThreadUnixHandle*)hThread;
     int status = pthread_kill(*threadHandle->GetObject(), INJECT_ACTIVATION_SIGNAL);
     // We can get EAGAIN when printing stack overflow stack trace and when other threads hit
     // stack overflow too. Those are held in the sigsegv_handler with blocked signals until

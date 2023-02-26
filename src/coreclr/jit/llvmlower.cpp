@@ -475,10 +475,10 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
     GenTree* data = storeLclNode->gtGetOp1();
 
-    unsigned convertToStoreLclFldVarNum = BAD_VAR_NUM;
+    unsigned convertToStoreLclFldLclNum = BAD_VAR_NUM;
     if (varDsc->CanBeReplacedWithItsField(_compiler))
     {
-        convertToStoreLclFldVarNum = varDsc->lvFieldLclStart;
+        convertToStoreLclFldLclNum = varDsc->lvFieldLclStart;
     }
     else if (storeLclNode->TypeIs(TYP_STRUCT))
     {
@@ -489,17 +489,17 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
         else if (data->OperIsInitVal())
         {
             // We need the local's address to create a memset.
-            convertToStoreLclFldVarNum = lclNum;
+            convertToStoreLclFldLclNum = lclNum;
         }
     }
 
-    if (convertToStoreLclFldVarNum != BAD_VAR_NUM)
+    if (convertToStoreLclFldLclNum != BAD_VAR_NUM)
     {
         storeLclNode->SetOper(GT_STORE_LCL_FLD);
-        LclVarDsc* lclFldVarDsc = _compiler->lvaGetDesc(convertToStoreLclFldVarNum);
+        LclVarDsc* lclFldVarDsc  = _compiler->lvaGetDesc(convertToStoreLclFldLclNum);
         var_types lclFldVarType = lclFldVarDsc->TypeGet();
         storeLclNode->ChangeType(lclFldVarType);
-        storeLclNode->SetLclNum(convertToStoreLclFldVarNum);
+        storeLclNode->SetLclNum(convertToStoreLclFldLclNum);
         GenTreeLclFld* storeLclFldNode = storeLclNode->AsLclFld();
         storeLclFldNode->SetLclOffs(lclFldVarDsc->lvFldOffset);
         if (varTypeIsStruct(lclFldVarType))

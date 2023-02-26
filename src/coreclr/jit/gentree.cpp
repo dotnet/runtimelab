@@ -2922,6 +2922,7 @@ AGAIN:
                 add = tree->AsStrCon()->gtSconCPX;
                 break;
 
+#ifndef TARGET_WASM
             case GT_CNS_VEC:
             {
                 GenTreeVecCon* vecCon = tree->AsVecCon();
@@ -2964,8 +2965,11 @@ AGAIN:
                         unreached();
                     }
                 }
+
+                add = genTreeHashAdd(ulo32(add), vecCon->GetSimdBaseType());
                 break;
             }
+#endif
 
             case GT_JMP:
                 add = tree->AsVal()->gtVal1;

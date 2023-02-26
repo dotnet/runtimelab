@@ -37,16 +37,6 @@ The executable looks like a native executable, in the sense that it can be debug
 
 The compiler also has a mode where each managed assembly can be compiled into a separate object file. The object files are later linked into a single executable using the platform linker. This mode is mostly used in testing (it's faster to compile this way because we don't need to recompiling the same code from e.g. CoreLib). It's not a shipping configuration and has many problems (requires exactly matching compilation settings, forfeits many optimizations, and has trouble around cross-module generic virtual method implementations).
 
-## Building
-
-- [Install pre-requisites](../../README.md#build-requirements)
-- Run `build[.cmd|.sh] -c Release` from the repo root to build the NativeAOT toolchain packages. The build will place the toolchain packages at `artifacts\packages\Release\Shipping`. To publish your project using these packages:
-   - Add the package directory to your `nuget.config` file. For example, add `<add key="local" value="C:\runtime\artifacts\packages\Release\Shipping" />`
-   - Run `dotnet publish --packages pkg -r [win-x64|linux-x64|osx-64] -c [Debug|Release]` to publish your project. `--packages pkg` option restores the package into a local directory that is easy to cleanup once you are done. It avoids polluting the global nuget cache with your locally built dev package.
-- The toolchain packages are not required for day to day development. Run `build[.cmd|.sh] clr+libs -rc [Debug|Release] -lc Release` from the repo root to build just the parts of the repo required for general CoreCLR development. Alternatively, instead of specifying `clr+libs`, you can specify `clr.alljits+clr.tools+clr.nativeaotlibs+clr.nativeaotruntime+libs` which is more targeted and builds faster.
-- The paths to major components can be overriden using `IlcToolsPath`, `IlcSdkPath`, `IlcFrameworkPath`, `IlcFrameworkNativePath` and `IlcMibcPath` properties for `dotnet publish`. For example, `/p:IlcToolsPath=<repo root>\artifacts\bin\coreclr\windows.x64.Debug\ilc` can be used to override the compiler with a local debug build for troubleshooting or quick iterations.
-- The component that writes out object files (objwriter.dll/libobjwriter.so/libobjwriter.dylib) is based on LLVM and doesn't build in the runtime repo. It gets published as a NuGet package out of the [dotnet/llvm-project](https://github.com/dotnet/llvm-project) repo (branch [objwriter/12.x](https://github.com/dotnet/llvm-project/tree/objwriter/12.x)). If you're working on ObjWriter or bringing up a new platform that doesn't have ObjWriter packages yet, as additional pre-requiresites you need to build objwriter out of that repo and replace the file in the output.
-
 ## Building for Web Assembly
 
 - This branch contains a version of the WebAssembly compiler that creates LLVM from the clrjit to take advantage of RyuJit's optimizations specific to managed code, and its compiler infrastructure. It goes from RyuJIT IR -> LLVM instead of the older CoreRT way of CIL -> LLVM.

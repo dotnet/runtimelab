@@ -604,7 +604,7 @@ void Thread::Hijack()
     PalHijack(m_hPalThread, this);
 }
 
-#if !defined(HOST_WASM) // Wasm cannot get the instruction pointer
+#if !defined(HOST_WASM)
 void Thread::HijackCallback(NATIVE_CONTEXT* pThreadContext, void* pThreadToHijack)
 {
     // If we are no longer trying to suspend, no need to do anything.
@@ -752,7 +752,7 @@ void Thread::HijackReturnAddress(NATIVE_CONTEXT* pSuspendCtx, HijackFunc* pfnHij
     HijackReturnAddressWorker(&frameIterator, pfnHijackFunction);
 }
 
-#if !defined(HOST_WASM) // Wasm has no implementation for ReturnKindToTransitionFrameFlags
+#if !defined(HOST_WASM)
 void Thread::HijackReturnAddressWorker(StackFrameIterator* frameIterator, HijackFunc* pfnHijackFunction)
 {
     void** ppvRetAddrLocation;
