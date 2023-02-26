@@ -1409,7 +1409,6 @@ void Llvm::buildLocalField(GenTreeLclFld* lclFld)
 void Llvm::buildStoreLocalField(GenTreeLclFld* lclFld)
 {
     GenTree* data = lclFld->gtGetOp1();
-
     ClassLayout* layout = lclFld->TypeIs(TYP_STRUCT) ? lclFld->GetLayout() : nullptr;
     Type* llvmStoreType = (layout != nullptr) ? getLlvmTypeForStruct(layout)
                                               : getLlvmTypeForVarType(lclFld->TypeGet());
