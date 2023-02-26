@@ -6,8 +6,8 @@
 #include "CommonTypes.h"
 #include "CommonMacros.h"
 
-extern "C" void* t_pShadowStackBottom = nullptr;
-extern "C" void* t_pShadowStackTop;
+extern "C" thread_local void* t_pShadowStackBottom = nullptr;
+extern "C" thread_local void* t_pShadowStackTop = nullptr;
 
 COOP_PINVOKE_HELPER(void*, RhpGetOrInitShadowStackTop, ())
 {
@@ -29,4 +29,14 @@ COOP_PINVOKE_HELPER(void*, RhpGetShadowStackTop, ())
 COOP_PINVOKE_HELPER(void, RhpSetShadowStackTop, (void* pShadowStack))
 {
     t_pShadowStackTop = pShadowStack;
+}
+
+void* GetShadowStackBottom()
+{
+    return t_pShadowStackBottom;
+}
+
+void* GetShadowStackTop()
+{
+    return t_pShadowStackTop;
 }

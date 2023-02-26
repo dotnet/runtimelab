@@ -233,6 +233,7 @@ private:
     //
     const char* GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle);
     const char* GetMangledSymbolName(void* symbol);
+    bool GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig);
     const char* GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType);
     const char* GetTypeName(CORINFO_CLASS_HANDLE typeHandle);
     void AddCodeReloc(void* handle);
@@ -311,7 +312,7 @@ private:
     void failUnsupportedCalls(GenTreeCall* callNode);
     CallArg* lowerCallReturn(GenTreeCall* callNode);
 
-    void normalizeStructUse(GenTree* node, ClassLayout* layout);
+    GenTree* normalizeStructUse(LIR::Use& use, ClassLayout* layout);
 
     unsigned representAsLclVar(LIR::Use& use);
     GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data);
@@ -378,6 +379,7 @@ private:
     void buildBinaryOperation(GenTree* node);
     void buildShift(GenTreeOp* node);
     void buildIntrinsic(GenTreeIntrinsic* intrinsicNode);
+    void buildMemoryBarrier(GenTree* node);
     void buildReturn(GenTree* node);
     void buildJTrue(GenTree* node);
     void buildSwitch(GenTreeUnOp* switchNode);
@@ -400,6 +402,7 @@ private:
 
     FunctionType* getFunctionType();
     llvm::FunctionCallee consumeCallTarget(GenTreeCall* call);
+    FunctionType* createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig);
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);
     FunctionType* createFunctionTypeForHelper(CorInfoHelpAnyFunc helperFunc);
     void annotateHelperFunction(CorInfoHelpAnyFunc helperFunc, Function* llvmFunc);
@@ -408,8 +411,8 @@ private:
                                            std::function<void(Function*)> annotateFunction = [](Function*) { });
     Function* getOrCreateExternalLlvmFunctionAccessor(StringRef name);
 
-    llvm::GlobalVariable* getOrCreateExternalSymbol(StringRef symbolName);
-    llvm::GlobalVariable* getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle);
+    llvm::GlobalVariable* getOrCreateDataSymbol(StringRef symbolName);
+    llvm::GlobalValue* getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle);
 
     Instruction* getCast(Value* source, Type* targetType);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);

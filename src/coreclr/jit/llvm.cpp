@@ -20,6 +20,7 @@ enum class EEApiId
 {
     GetMangledMethodName,
     GetSymbolMangledName,
+    GetSignatureForMethodSymbol,
     GetEHDispatchFunctionName, // TODO-LLVM: move these to the LLVM helper mechanism.
     GetTypeName,
     AddCodeReloc,
@@ -509,7 +510,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
         { FUNC(CORINFO_HELP_PROF_FCN_TAILCALL) },
         { FUNC(CORINFO_HELP_BBT_FCN_ENTER) },
 
-        // TODO-LLVM: this is not a real "helper"; investigate what needs to be done to enable it.
+        // Not used in NativeAOT.
         { FUNC(CORINFO_HELP_PINVOKE_CALLI) },
 
         // NYI in NativeAOT.
@@ -763,6 +764,11 @@ const char* Llvm::GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle)
 const char* Llvm::GetMangledSymbolName(void* symbol)
 {
     return CallEEApi<EEApiId::GetSymbolMangledName, const char*>(m_pEECorInfo, symbol);
+}
+
+bool Llvm::GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig)
+{
+    return CallEEApi<EEApiId::GetSignatureForMethodSymbol, int>(m_pEECorInfo, symbolHandle, pSig) != 0;
 }
 
 const char* Llvm::GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType)

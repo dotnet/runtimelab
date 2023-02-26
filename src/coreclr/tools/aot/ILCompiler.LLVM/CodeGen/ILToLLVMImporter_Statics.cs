@@ -104,7 +104,6 @@ namespace Internal.IL
         static LLVMValueRef DoNothingFunction = default(LLVMValueRef);
         static LLVMValueRef CxaBeginCatchFunction = default(LLVMValueRef);
         static LLVMValueRef CxaEndCatchFunction = default(LLVMValueRef);
-        static LLVMValueRef RhpThrowEx = default(LLVMValueRef);
         static LLVMValueRef RhpCallCatchFunclet = default(LLVMValueRef);
         static LLVMValueRef LlvmCatchFunclet = default(LLVMValueRef);
         static LLVMValueRef LlvmFilterFunclet = default(LLVMValueRef);
@@ -366,8 +365,6 @@ namespace Internal.IL
                 if (s_shadowStackTop.Handle.Equals(IntPtr.Zero))
                 {
                     s_shadowStackTop = LLVMCodegenCompilation.Module.AddGlobal(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "t_pShadowStackTop");
-                    s_shadowStackTop.Linkage = LLVMLinkage.LLVMExternalLinkage;
-                    s_shadowStackTop.Initializer = LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
                     s_shadowStackTop.ThreadLocalMode = LLVMThreadLocalMode.LLVMLocalDynamicTLSModel;
                 }
                 return s_shadowStackTop;

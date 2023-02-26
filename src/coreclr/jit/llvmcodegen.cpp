@@ -1230,8 +1230,8 @@ void Llvm::visitNode(GenTree* node)
             // TODO-LLVM-CQ: enable these as intrinsics.
             unreached();
         case GT_MEMORYBARRIER:
-            // TODO-LLVM: atomics.
-            failFunctionCompilation();
+            buildMemoryBarrier(node);
+            break;
         case GT_EQ:
         case GT_NE:
         case GT_LE:
@@ -1920,12 +1920,6 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
     Value* constValue;
     if (node->IsCnsIntOrI() && node->IsIconHandle()) // TODO-LLVM: change to simply "IsIconHandle" once upstream does.
     {
-        if (node->IsIconHandle(GTF_ICON_FTN_ADDR))
-        {
-            // TODO-LLVM: we need to reference the proper function symbol here.
-            failFunctionCompilation();
-        }
-
         constValue = getOrCreateSymbol(CORINFO_GENERIC_HANDLE(node->AsIntCon()->IconValue()));
     }
     else
@@ -2319,6 +2313,12 @@ void Llvm::buildIntrinsic(GenTreeIntrinsic* intrinsicNode)
     mapGenTreeToValue(intrinsicNode, intrinsicValue);
 }
 
+void Llvm::buildMemoryBarrier(GenTree* node)
+{
+    assert(node->OperIs(GT_MEMORYBARRIER));
+    _builder.CreateFence(llvm::AtomicOrdering::AcquireRelease);
+}
+
 void Llvm::buildReturn(GenTree* node)
 {
     assert(node->OperIs(GT_RETURN, GT_RETFILT));
@@ -2698,13 +2698,7 @@ llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Val
 
 FunctionType* Llvm::getFunctionType()
 {
-    // TODO-LLVM: delete this when these signatures implemented
-    if (_sigInfo.hasExplicitThis())
-        failFunctionCompilation();
-
     std::vector<llvm::Type*> argVec(_llvmArgCount);
-    llvm::Type*              retLlvmType;
-
     for (unsigned i = 0; i < _compiler->lvaCount; i++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(i);
@@ -2715,11 +2709,11 @@ FunctionType* Llvm::getFunctionType()
         }
     }
 
-    retLlvmType = _retAddressLclNum == BAD_VAR_NUM
+    llvm::Type* retLlvmType = _retAddressLclNum == BAD_VAR_NUM
         ? getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)
         : Type::getVoidTy(_llvmContext);
 
-    return FunctionType::get(retLlvmType, ArrayRef<Type*>(argVec), false);
+    return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
 }
 
 llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)
@@ -2771,6 +2765,42 @@ llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)
     }
 
     return callee;
+}
+
+FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)
+{
+    assert(!pSig->isVarArg()); // We do not support varargs.
+    bool isManagedCallConv = pSig->getCallConv() == CORINFO_CALLCONV_DEFAULT;
+
+    std::vector<Type*> llvmParamTypes{};
+    if (isManagedCallConv)
+    {
+        llvmParamTypes.push_back(getPtrLlvmType()); // The shadow stack.
+    }
+
+    bool hasReturnSlot = isManagedCallConv && needsReturnStackSlot(pSig->retType, pSig->retTypeClass);
+    if (hasReturnSlot)
+    {
+        llvmParamTypes.push_back(getPtrLlvmType());
+    }
+
+    CORINFO_ARG_LIST_HANDLE sigArgs = pSig->args;
+    for (unsigned i = 0; i < pSig->numArgs; i++, sigArgs = m_info->compCompHnd->getArgNext(sigArgs))
+    {
+        CORINFO_CLASS_HANDLE sigArgClass;
+        CorInfoType sigArgType = strip(m_info->compCompHnd->getArgType(pSig, sigArgs, &sigArgClass));
+
+        // TODO-LLVM-ABI: this will need to be changed once we support the correct ABI for structs.
+        if (!isManagedCallConv || canStoreArgOnLlvmStack(sigArgType, sigArgClass))
+        {
+            llvmParamTypes.push_back(getLlvmTypeForCorInfoType(sigArgType, sigArgClass));
+        }
+    }
+
+    Type* retLlvmType = hasReturnSlot ? Type::getVoidTy(_llvmContext)
+                                      : getLlvmTypeForCorInfoType(pSig->retType, pSig->retTypeClass);
+
+    return FunctionType::get(retLlvmType, llvmParamTypes, /* isVarArg */ false);
 }
 
 FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
@@ -2842,7 +2872,7 @@ void Llvm::annotateHelperFunction(CorInfoHelpAnyFunc helperFunc, Function* llvmF
     {
         llvmFunc->setDoesNotReturn();
     }
-    if (Compiler::s_helperCallProperties.NonNullReturn(jitHelperFunc))
+    if (Compiler::s_helperCallProperties.NonNullReturn(jitHelperFunc) && llvmFunc->getReturnType()->isPointerTy())
     {
         llvmFunc->addRetAttr(llvm::Attribute::NonNull);
     }
@@ -2873,7 +2903,7 @@ Function* Llvm::getOrCreateExternalLlvmFunctionAccessor(StringRef name)
     return accessorFuncRef;
 }
 
-llvm::GlobalVariable* Llvm::getOrCreateExternalSymbol(StringRef symbolName)
+llvm::GlobalVariable* Llvm::getOrCreateDataSymbol(StringRef symbolName)
 {
     llvm::GlobalVariable* symbol = _module->getGlobalVariable(symbolName);
     if (symbol == nullptr)
@@ -2885,11 +2915,23 @@ llvm::GlobalVariable* Llvm::getOrCreateExternalSymbol(StringRef symbolName)
     return symbol;
 }
 
-llvm::GlobalVariable* Llvm::getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle)
+llvm::GlobalValue* Llvm::getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle)
 {
-    const char* symbolName = GetMangledSymbolName(symbolHandle);
+    StringRef symbolName = GetMangledSymbolName(symbolHandle);
     AddCodeReloc(symbolHandle);
-    llvm::GlobalVariable* symbol = getOrCreateExternalSymbol(symbolName);
+
+    CORINFO_SIG_INFO sig;
+    llvm::GlobalValue* symbol;
+    if (GetSignatureForMethodSymbol(symbolHandle, &sig)) // Is this a data symbol or a function symbol?
+    {
+        symbol = getOrCreateKnownLlvmFunction(symbolName, [this, &sig]() {
+            return createFunctionTypeForSignature(&sig);
+        });
+    }
+    else
+    {
+        symbol = getOrCreateDataSymbol(symbolName);
+    }
 
     return symbol;
 }
