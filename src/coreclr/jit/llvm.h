@@ -309,7 +309,6 @@ private:
     void insertNullCheckForCall(GenTreeCall* callNode);
     void lowerUnmanagedCall(GenTreeCall* callNode);
     unsigned lowerCallToShadowStack(GenTreeCall* callNode);
-    void failUnsupportedCalls(GenTreeCall* callNode);
     CallArg* lowerCallReturn(GenTreeCall* callNode);
 
     GenTree* normalizeStructUse(LIR::Use& use, ClassLayout* layout);
