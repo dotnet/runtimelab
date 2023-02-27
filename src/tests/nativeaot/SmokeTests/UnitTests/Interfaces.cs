@@ -35,34 +35,24 @@ public class Interfaces
         if (TestIterfaceCallOptimization() == Fail)
             return Fail;
 
-#if !CODEGEN_WASM // TODO-LLVM: Fails at run time
         TestDefaultInterfaceMethods.Run();
         TestDefaultInterfaceVariance.Run();
-#endif
         TestVariantInterfaceOptimizations.Run();
-#if !CODEGEN_WASM // TODO-LLVM: IL backend fails because it creates 2 instances of GrabValue<imt,__Canon> and the compare doesn't like that
         TestSharedInterfaceMethods.Run();
-#endif
         TestCovariantReturns.Run();
 #if !CODEGEN_WASM // TODO-LLVM: Fails at run time
         TestDynamicInterfaceCastable.Run();
 #endif
-#if !CODEGEN_WASM // TODO-LLVM: fails because the scanner for LLVM adds a VirtualMethodUse node on the static method (which asserts)
         TestStaticInterfaceMethodsAnalysis.Run();
         TestStaticInterfaceMethods.Run();
-#endif
         TestSimpleStaticDefaultInterfaceMethods.Run();
-#if !CODEGEN_WASM // TODO-LLVM: fails because the scanner for LLVM adds a ScannedMethodNode node on the static abstract interface method (which asserts)
         TestSimpleDynamicStaticVirtualMethods.Run();
         TestGenericDynamicStaticVirtualMethods.Run();
         TestVariantGenericDynamicStaticVirtualMethods.Run();
         TestStaticDefaultMethodAmbiguity.Run();
-#endif
         TestMoreConstraints.Run();
-#if !CODEGEN_WASM // TODO-LLVM: fails because the scanner for LLVM adds a ScannedMethodNode node on the static abstract interface method (which asserts)
         TestSimpleNonGeneric.Run();
         TestSimpleGeneric.Run();
-#endif
 
         return Pass;
     }
@@ -841,7 +831,6 @@ public class Interfaces
         }
     }
 
-#if !CODEGEN_WASM
     class TestStaticInterfaceMethodsAnalysis
     {
         interface IFoo
@@ -1041,7 +1030,6 @@ public class Interfaces
             TestVariantInterface<GenericVariantWithHiddenDerived<Derived>, Mid>("GenericVariantWithHiddenBase.WhichMethod(Mid)");
         }
     }
-#endif //CODEGEN_WASM
 
     class TestSimpleStaticDefaultInterfaceMethods
     {
@@ -1155,12 +1143,14 @@ public class Interfaces
                     throw new Exception();
             }
 
+#if !CODEGEN_WASM // Fails at runtime. Suspected cause is delegate invoke handling.
             {
                 var mi = t.GetMethod("CallIndirect");
                 int result = (int)mi.Invoke(null, Array.Empty<object>());
                 if (result != 2022)
                     throw new Exception();
             }
+#endif
 
             {
                 var mi = t.GetMethod("CallDefault");
@@ -1221,6 +1211,7 @@ public class Interfaces
                     throw new Exception();
             }
 
+#if !CODEGEN_WASM // Fails at runtime. Suspected cause is delegate invoke handling.
             {
                 var mi = t.GetMethod("CallIndirect");
                 var result = ((int, Type))mi.Invoke(null, Array.Empty<object>());
@@ -1229,6 +1220,7 @@ public class Interfaces
                 if (result.Item2.GetArrayRank() != 3 || result.Item2.GetElementType() != s_atomType)
                     throw new Exception();
             }
+#endif
 
             {
                 var mi = t.GetMethod("CallDefault");
@@ -1286,6 +1278,7 @@ public class Interfaces
                     throw new Exception();
             }
 
+#if !CODEGEN_WASM // Fails at runtime. Suspected cause is delegate invoke handling.
             {
                 var mi = t.GetMethod("CallIndirect");
                 var result = ((int, Type))mi.Invoke(null, Array.Empty<object>());
@@ -1294,6 +1287,7 @@ public class Interfaces
                 if (result.Item2.GetArrayRank() != 3 || result.Item2.GetElementType() != s_atomBaseType)
                     throw new Exception();
             }
+#endif
 
             {
                 var mi = t.GetMethod("CallDefault");

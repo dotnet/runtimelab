@@ -161,20 +161,9 @@ namespace Internal.IL
 
             if (_compilation.TargetArchIsWasm() && (_canonMethod.IsSynchronized || _exceptionRegions.Length != 0))
             {
-                // TODO-LLVM: delete these once IL backend is no more.
-                MetadataType helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EHClauseIterator");
-                MethodDesc helperMethod = helperType.GetKnownMethod("InitFromEhInfo", null);
-                _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
-
-                helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EH");
-                helperMethod = helperType.GetKnownMethod("FindFirstPassHandlerWasm", null);
-                _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
-
-                helperMethod = helperType.GetKnownMethod("InvokeSecondPassWasm", null);
-                _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
-
                 // TODO-LLVM: make these into normal "ReadyToRunHelper" instead of hardcoding things here.
-                helperMethod = helperType.GetKnownMethod("HandleExceptionWasmMutuallyProtectingCatches", null);
+                TypeDesc helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EH");
+                MethodDesc helperMethod = helperType.GetKnownMethod("HandleExceptionWasmMutuallyProtectingCatches", null);
                 _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
 
                 helperMethod = helperType.GetKnownMethod("HandleExceptionWasmFilteredCatch", null);
@@ -370,87 +359,9 @@ namespace Internal.IL
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.NewObject), reason);
                     }
                 }
-
-                // TOOO-LLVM: this if block exists solely for LLVM, it is deleted upstream.
-                if (owningType.IsDelegate && _compilation.TargetArchIsWasm())
-                {
-                    // If this is a verifiable delegate construction sequence, the previous instruction is a ldftn/ldvirtftn
-                    if (_previousInstructionOffset >= 0 && _ilBytes[_previousInstructionOffset] == (byte)ILOpcode.prefix1)
-                    {
-                        // TODO: for ldvirtftn we need to also check for the `dup` instruction, otherwise this is a normal newobj.
-
-                        ILOpcode previousOpcode = (ILOpcode)(0x100 + _ilBytes[_previousInstructionOffset + 1]);
-                        if (previousOpcode == ILOpcode.ldvirtftn || previousOpcode == ILOpcode.ldftn)
-                        {
-                            int delTargetToken = ReadILTokenAt(_previousInstructionOffset + 2);
-                            var delTargetMethod = (MethodDesc)_methodIL.GetObject(delTargetToken);
-                            TypeDesc canonDelegateType = method.OwningType.ConvertToCanonForm(CanonicalFormKind.Specific);
-                            DelegateCreationInfo info = _compilation.GetDelegateCtor(canonDelegateType, delTargetMethod, _constrained, previousOpcode == ILOpcode.ldvirtftn);
-
-                            if (info.NeedsRuntimeLookup)
-                            {
-                                if (_canonMethod.RequiresInstMethodDescArg())
-                                {
-                                    if (delTargetMethod.OwningType.IsRuntimeDeterminedSubtype &&
-                                        delTargetMethod.OwningType.IsInterface)
-                                    {
-                                        _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, delTargetMethod.OwningType), reason);
-                                    }
-                                    else
-                                    {
-                                        MethodDesc canonDelTargetMethod = delTargetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
-
-                                        if (canonDelTargetMethod.IsSharedByGenericInstantiations &&
-                                            (canonDelTargetMethod.HasInstantiation || canonDelTargetMethod.Signature.IsStatic))
-                                        {
-                                            var delegateNeedsRuntimeLookup = canonDelTargetMethod.HasInstantiation
-                                                ? canonDelTargetMethod.IsSharedByGenericInstantiations
-                                                : canonDelTargetMethod.OwningType.IsCanonicalSubtype(CanonicalFormKind.Any);
-                                            if (delegateNeedsRuntimeLookup)
-                                            {
-                                                if (previousOpcode == ILOpcode.ldvirtftn)
-                                                {
-                                                    _dependencies.Add(
-                                                        GetGenericLookupHelper(ReadyToRunHelperId.MethodHandle,
-                                                            delTargetMethod), reason);
-                                                }
-                                                else
-                                                {
-                                                    _dependencies.Add(
-                                                        GetGenericLookupHelper(ReadyToRunHelperId.MethodEntry,
-                                                            delTargetMethod), reason);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, delTargetMethod.OwningType), reason);
-                                }
-
-                                _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.DelegateCtor, info), "LLVM delegate ctor");
-                            }
-                            else
-                            {
-                                _dependencies.Add(_factory.ReadyToRunHelper(ReadyToRunHelperId.DelegateCtor, info), "LLVM delegate ctor");
-                            }
-                            return;
-                        }
-                    }
-                }
             }
 
-            // TODO-LLVM: delete when IL->LLVM module is gone
-            if (_compilation.TargetArchIsWasm())
-            {
-                if (!method.IsRuntimeDeterminedExactMethod && method.IsVirtual && !method.HasInstantiation &&
-                    MetadataVirtualMethodAlgorithm.FindSlotDefiningMethodForVirtualMethod(method) == method)
-                {
-                    _dependencies.Add(_factory.VirtualMethodUse(method), "LLVM VTable slot");
-                }
-            }
-
+            // TODO-LLVM: implement the delegate invoke optimization and delete "!TargetArchIsWasm".
             if (!_compilation.TargetArchIsWasm())
             {
                 if (method.OwningType.IsDelegate && method.Name == "Invoke" &&
@@ -666,54 +577,12 @@ namespace Internal.IL
                     _dependencies.Add(_factory.FatFunctionPointer(targetMethod), reason);
                 }
             }
-            //TODO-LLVM: Can we delete this now? or delete when IL->LLVM module gone
-            else if (directCall && resolvedConstraint && exactContextNeedsRuntimeLookup && _compilation.TargetArchIsWasm())
-            {
-                // We want to do a direct call to a shared method on a valuetype. We need to provide
-                // a generic context, but the JitInterface doesn't provide a way for us to do it from here.
-                // So we do the next best thing and ask RyuJIT to look up a fat pointer.
-                //
-                // We have the canonical version of the method - find the runtime determined version.
-                // This is simplified because we know the method is on a valuetype.
-                Debug.Assert(targetMethod.OwningType.IsValueType);
-                MethodDesc targetOfLookup;
-                if (_constrained.IsRuntimeDeterminedType)
-                    targetOfLookup = _compilation.TypeSystemContext.GetMethodForRuntimeDeterminedType(targetMethod.GetTypicalMethodDefinition(), (RuntimeDeterminedType)_constrained);
-                else
-                    targetOfLookup = _compilation.TypeSystemContext.GetMethodForInstantiatedType(targetMethod.GetTypicalMethodDefinition(), (InstantiatedType)_constrained);
-                if (targetOfLookup.HasInstantiation)
-                {
-                    targetOfLookup = targetOfLookup.MakeInstantiatedMethod(runtimeDeterminedMethod.Instantiation);
-                }
-
-                if (_constrained.IsRuntimeDeterminedSubtype)
-                {
-                    if (targetMethod.RequiresInstMethodTableArg())
-                    {
-                        _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, _constrained), reason);
-                    }
-                    else
-                    {
-                        _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.MethodDictionary, targetOfLookup), reason);
-                    }
-                }
-
-                Debug.Assert(targetOfLookup.GetCanonMethodTarget(CanonicalFormKind.Specific) == targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific));
-                _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.MethodEntry, targetOfLookup), reason);
-            }
             else if (directCall)
             {
                 bool referencingArrayAddressMethod = false;
 
                 if (targetMethod.IsIntrinsic)
                 {
-                    // We don't know if compilation will be via clrjit or IL->LLVM, for the latter we need the original method so add it in case
-                    // TODO-LLVM: delete when Il->LLVM module has gone
-                    if (_compilation.TargetArchIsWasm())
-                    {
-                        _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific)), reason);
-                    }
-
                     // If this is an intrinsic method with a callsite-specific expansion, this will replace
                     // the method with a method the intrinsic expands into. If it's not the special intrinsic,
                     // method stays unchanged.
@@ -903,12 +772,6 @@ namespace Internal.IL
             {
                 if (exactContextNeedsRuntimeLookup)
                 {
-                    //TODO-LLVM: remove when the IL->LLVM module has gone
-                    if (_compilation.TargetArchIsWasm())
-                    {
-                        _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.OwningType), reason);
-                    }
-
                     _dependencies.Add(GetGenericLookupHelper(ReadyToRunHelperId.VirtualDispatchCell, runtimeDeterminedMethod), reason);
                 }
                 else
@@ -1579,17 +1442,7 @@ namespace Internal.IL
         private void ImportVolatilePrefix() { }
         private void ImportTailPrefix() { }
         private void ImportNoPrefix(byte mask) { }
-
-        private void ImportThrow()
-        {
-            if (_compilation.TargetArchIsWasm())
-            {
-                MetadataType helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("System", "Exception");
-                MethodDesc helperMethod = helperType.GetKnownMethod("DispatchExLLVM", null);
-                _dependencies.Add(_factory.MethodEntrypoint(helperMethod), "Wasm EH");
-            }
-        }
-
+        private void ImportThrow() { }
         private void ImportInitObj(int token) { }
         private void ImportLoadLength() { }
         private void ImportEndFinally() { }
