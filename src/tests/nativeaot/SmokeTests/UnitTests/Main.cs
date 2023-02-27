@@ -8,8 +8,8 @@ bool success = true;
 
 #if !CODEGEN_WASM
 success &= RunTest(BasicThreading.Run);
-success &= RunTest(Delegates.Run);
 #endif
+success &= RunTest(Delegates.Run);
 success &= RunTest(Generics.Run);
 success &= RunTest(Interfaces.Run);
 #if !CODEGEN_WASM
