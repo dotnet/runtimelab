@@ -174,15 +174,25 @@ namespace Internal.IL
                 builder.BuildCall(RhpReversePInvoke, new LLVMValueRef[] { reversePInvokeFrame }, "");
             }
 
+            bool needsReturnSlot = LLVMCodegenCompilation.NeedsReturnStackSlot(method.Signature);
+
             int curOffset = 0;
-            curOffset = PadNextOffset(method.Signature.ReturnType, curOffset);
-            ImportCallMemset(shadowStack, 0, curOffset, builder); // clear any uncovered object references for GC.Collect
-            LLVMValueRef calleeFrame = builder.BuildGEP(shadowStack, new LLVMValueRef[] { BuildConstInt32(curOffset) }, "calleeFrame");
+            LLVMValueRef calleeFrame;
+            if (needsReturnSlot)
+            {
+                curOffset = PadNextOffset(method.Signature.ReturnType, curOffset);
+                curOffset = PadOffset(compilation.GetWellKnownType(WellKnownType.Object), curOffset); // Align the stack to pointer size.
+                ImportCallMemset(shadowStack, 0, curOffset, builder); // clear any uncovered object references for GC.Collect
+
+                calleeFrame = builder.BuildGEP(shadowStack, new LLVMValueRef[] { BuildConstInt32(curOffset) }, "calleeFrame");
+            }
+            else
+            {
+                calleeFrame = shadowStack;
+            }
 
             List<LLVMValueRef> llvmArgs = new List<LLVMValueRef>();
             llvmArgs.Add(calleeFrame);
-
-            bool needsReturnSlot = LLVMCodegenCompilation.NeedsReturnStackSlot(method.Signature);
 
             if (needsReturnSlot)
             {
