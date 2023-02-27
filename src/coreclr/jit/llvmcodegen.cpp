@@ -1294,8 +1294,6 @@ void Llvm::visitNode(GenTree* node)
             // NOP is a true no-op, while NO_OP is usually used to help generate correct debug info.
             // The latter use case is not representable in LLVM, so we don't need to do anything.
             break;
-        case GT_ARR_ELEM:
-            failFunctionCompilation(); // TODO-LLVM: delete once we merge https://github.com/dotnet/runtime/pull/70271 (Jun 2).
         case GT_JMP:
             NYI("LLVM/GT_JMP"); // Requires support for explicit tailcalls.
         default:
@@ -2021,29 +2019,13 @@ void Llvm::buildBlk(GenTreeBlk* blkNode)
     mapGenTreeToValue(blkNode, blkValue);
 }
 
-// TODO-LLVM: delete when https://github.com/dotnet/runtime/pull/70518 (Jun 16) from upstream is merged.
-bool storeIndRequiresTrunc(var_types storeType, var_types dataType)
-{
-    return varTypeIsSmall(storeType) && dataType == TYP_LONG;
-}
-
 void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 {
     GCInfo::WriteBarrierForm wbf = getGCInfo()->gcIsWriteBarrierCandidate(storeIndOp);
 
     Type* storeLlvmType = getLlvmTypeForVarType(storeIndOp->TypeGet());
     Value* addrValue = consumeValue(storeIndOp->Addr(), getPtrLlvmType());
-
-    Value* dataValue;
-    if (storeIndRequiresTrunc(storeIndOp->TypeGet(), storeIndOp->Data()->TypeGet()))
-    {
-        dataValue = consumeValue(storeIndOp->Data(), getLlvmTypeForVarType(storeIndOp->Data()->TypeGet()));
-        dataValue = _builder.CreateTrunc(dataValue, storeLlvmType);
-    }
-    else
-    {
-        dataValue = consumeValue(storeIndOp->Data(), storeLlvmType);
-    }
+    Value* dataValue = consumeValue(storeIndOp->Data(), storeLlvmType);;
 
     emitNullCheckForIndir(storeIndOp, addrValue);
 
