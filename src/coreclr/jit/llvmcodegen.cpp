@@ -2763,6 +2763,11 @@ FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)
         llvmParamTypes.push_back(getPtrLlvmType());
     }
 
+    if (pSig->hasTypeArg())
+    {
+        llvmParamTypes.push_back(getPtrLlvmType());
+    }
+
     CORINFO_ARG_LIST_HANDLE sigArgs = pSig->args;
     for (unsigned i = 0; i < pSig->numArgs; i++, sigArgs = m_info->compCompHnd->getArgNext(sigArgs))
     {
