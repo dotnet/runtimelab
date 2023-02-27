@@ -947,7 +947,7 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
             if (arg.GetNode()->TypeIs(TYP_STRUCT))
             {
                 // TODO-LLVM-ABI: implement proper ABI for structs.
-                failFunctionCompilation();
+                NYI("Unmanaged ABI for structs");
             }
 
             sig.Push(getAbiTypeForType(arg.GetNode()->TypeGet()));

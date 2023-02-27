@@ -744,19 +744,6 @@ CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForClassToken(mdToken token)
     return CORINFO_GENERIC_HANDLE(typeSymbolHandle);
 }
 
-[[noreturn]] void Llvm::failFunctionCompilation()
-{
-    for (FunctionInfo& funcInfo : m_functions)
-    {
-        if (funcInfo.LlvmFunction != nullptr)
-        {
-            funcInfo.LlvmFunction->deleteBody();
-        }
-    }
-
-    fatal(CORJIT_SKIPPED);
-}
-
 template <EEApiId Func, typename TReturn, typename... TArgs>
 TReturn CallEEApi(TArgs... args)
 {

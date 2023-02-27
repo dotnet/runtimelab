@@ -227,8 +227,6 @@ private:
     CORINFO_GENERIC_HANDLE getSymbolHandleForHelperFunc(CorInfoHelpAnyFunc helperFunc);
     CORINFO_GENERIC_HANDLE getSymbolHandleForClassToken(mdToken token);
 
-    [[noreturn]] void failFunctionCompilation();
-
     // Raw Jit-EE interface functions.
     //
     const char* GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle);
