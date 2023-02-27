@@ -26,7 +26,7 @@ namespace ILCompiler
         private readonly ExternSymbolMappedField _hardwareIntrinsicFlags;
         private readonly Dictionary<string, InstructionSet> _instructionSetMap;
         private readonly ProfileDataManager _profileDataManager;
-        private readonly MethodImportationErrorProvider _methodImportationErrorProvider;
+        protected readonly MethodImportationErrorProvider _methodImportationErrorProvider;
         private readonly int _parallelism;
 
         public InstructionSetSupport InstructionSetSupport { get; }

@@ -35,7 +35,7 @@ namespace ILCompiler
             LLVMCodegenNodeFactory factory = new LLVMCodegenNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, GetPreinitializationManager());
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
 
-            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, GetILProvider(), _debugInformationProvider, _logger, _config, _inliningPolicy, _devirtualizationManager, _instructionSetSupport, _wasmImportPolicy, _methodImportationErrorProvider);
+            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, GetILProvider(), _debugInformationProvider, _logger, _config, _inliningPolicy, _devirtualizationManager, _instructionSetSupport, _wasmImportPolicy, _methodImportationErrorProvider, options);
         }
     }
 
@@ -52,9 +52,6 @@ namespace ILCompiler
                         break;
                     case "ModuleName":
                         ModuleName = value;
-                        break;
-                    case "DisableRyuJit":
-                        DisableRyuJit = value;
                         break;
                     case "DataLayout":
                         DataLayout = value;
@@ -75,6 +72,5 @@ namespace ILCompiler
         public string DataLayout { get; private set; } = "e-m:e-p:32:32-i64:64-n32:64-S128";
         public string Target { get; private set; } = "wasm32-unknown-emscripten";
         public string ModuleName { get; private set; } = "netscripten";
-        public string DisableRyuJit { get; private set; } = "0";
     }
 }

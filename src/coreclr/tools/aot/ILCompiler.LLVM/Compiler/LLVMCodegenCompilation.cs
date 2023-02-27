@@ -13,6 +13,7 @@ using ILCompiler.Compiler;
 using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysisFramework;
 using ILCompiler.LLVM;
+using ILLink.Shared;
 
 using Internal.IL;
 using Internal.IL.Stubs;
@@ -30,7 +31,6 @@ namespace ILCompiler
         public static extern LLVMContextRef LLVMContextSetOpaquePointers(LLVMContextRef C, bool OpaquePointers);
 
         private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new();
-        private readonly bool _disableRyuJit;
         private string _outputFile;
 
         // the LLVM Module generated from IL, can only be one.
@@ -52,9 +52,10 @@ namespace ILCompiler
             DevirtualizationManager devirtualizationManager,
             InstructionSetSupport instructionSetSupport,
             ConfigurableWasmImportPolicy configurableWasmImportPolicy,
-            MethodImportationErrorProvider errorProvider)
+            MethodImportationErrorProvider errorProvider,
+            RyuJitCompilationOptions baseOptions)
             : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy ?? new LLVMNoInLiningPolicy(), instructionSetSupport,
-                null /* ProfileDataManager */, errorProvider, 0, 1)
+                null /* ProfileDataManager */, errorProvider, baseOptions, 1)
         {
             NodeFactory = nodeFactory;
             LLVMModuleRef m = LLVMModuleRef.CreateWithName(options.ModuleName);
@@ -68,7 +69,6 @@ namespace ILCompiler
             LLVMContextSetOpaquePointers(Module.Context, false);
 
             ConfigurableWasmImportPolicy = configurableWasmImportPolicy;
-            _disableRyuJit = options.DisableRyuJit == "1"; // TODO-LLVM: delete when all code is compiled via RyuJIT
         }
 
         private static IEnumerable<ICompilationRootProvider> GetCompilationRoots(IEnumerable<ICompilationRootProvider> existingRoots, NodeFactory factory)
@@ -93,8 +93,6 @@ namespace ILCompiler
             CorInfoImpl.JitFinishCompilation();
 
             LLVMObjectWriter.EmitObject(outputFile, _dependencyGraph.MarkedNodeList, this, dumper);
-
-            Console.WriteLine($"RyuJIT compilation results, total methods {totalMethodCount} RyuJit Methods {ryuJitMethodCount} {((decimal)ryuJitMethodCount * 100 / totalMethodCount):n4}%");
         }
 
         protected override void ComputeDependencyNodeDependencies(List<DependencyNodeCore<NodeFactory>> obj)
@@ -145,73 +143,58 @@ namespace ILCompiler
             }
         }
 
-        static int totalMethodCount;
-        static int ryuJitMethodCount;
         private unsafe void CompileSingleMethod(CorInfoImpl corInfo, LLVMMethodCodeNode methodCodeNodeNeedingCode)
         {
             MethodDesc method = methodCodeNodeNeedingCode.Method;
 
-            try
+            TypeSystemException exception = _methodImportationErrorProvider.GetCompilationError(method);
+
+            // If we previously failed to import the method, do not try to import it again and go
+            // directly to the error path.
+            if (exception == null)
             {
-                var methodIL = GetMethodIL(method);
-
-                if (methodIL == null)
+                try
                 {
-                    if (method.IsInternalCall)
-                    {
-                        // this might have been the subject of a call in the clrjit module.  We need the function here so we can populate the symbol
-                        var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                        var sig = method.Signature;
-                        ILImporter.GetOrCreateLLVMFunction(Module, mangledName, GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
-                    }
-
-                    methodCodeNodeNeedingCode.CompilationCompleted = true;
-                    return;
+                    CompileSingleMethodInternal(corInfo, methodCodeNodeNeedingCode);
                 }
-
-                if (!_disableRyuJit)
+                catch (TypeSystemException ex)
                 {
-                    corInfo.CompileMethod(methodCodeNodeNeedingCode);
-                    methodCodeNodeNeedingCode.CompilationCompleted = true;
-
-                    // TODO: delete this external function when old module is gone
-                    var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                    LLVMValueRef externFunc = ILImporter.GetOrCreateLLVMFunction(Module, mangledName, GetLLVMSignatureForMethod(method.Signature, method.RequiresInstArg()));
-
-                    if (method.IsRuntimeExport)
-                    {
-                        ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
-                    }
-
-                    ryuJitMethodCount++;
-                }
-                else
-                {
-                    ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
+                    exception = ex;
                 }
             }
-            catch (CodeGenerationFailedException)
-            {
-                ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
-            }
-            catch (TypeSystemException ex)
-            {
-                // TODO: fail compilation if a switch was passed
 
+            if (exception != null)
+            {
                 // Try to compile the method again, but with a throwing method body this time.
-                MethodIL throwingIL = TypeSystemThrowingILEmitter.EmitIL(method, ex);
-                corInfo.CompileMethod(methodCodeNodeNeedingCode, throwingIL);
+                MethodIL throwingIL = TypeSystemThrowingILEmitter.EmitIL(method, exception);
+                CompileSingleMethodInternal(corInfo, methodCodeNodeNeedingCode, throwingIL);
 
-                // TODO: Log as a warning. For now, just log to the logger; but this needs to
-                // have an error code, be supressible, the method name/sig needs to be properly formatted, etc.
-                // https://github.com/dotnet/corert/issues/72
-                Logger.LogMessage($"Warning: Method `{method}` will always throw because: {ex.Message}");
+                if (exception is TypeSystemException.InvalidProgramException
+                    && method.OwningType is MetadataType mdOwningType
+                    && mdOwningType.HasCustomAttribute("System.Runtime.InteropServices", "ClassInterfaceAttribute"))
+                {
+                    Logger.LogWarning(method, DiagnosticId.COMInteropNotSupportedInFullAOT);
+                }
+                if ((_compilationOptions & RyuJitCompilationOptions.UseResilience) != 0)
+                    Logger.LogMessage($"Method '{method}' will always throw because: {exception.Message}");
+                else
+                    Logger.LogError($"Method will always throw because: {exception.Message}", 1005, method, MessageSubCategory.AotAnalysis);
             }
-            finally
+        }
+
+        private unsafe void CompileSingleMethodInternal(CorInfoImpl corInfo, LLVMMethodCodeNode methodCodeNodeNeedingCode, MethodIL methodIL = null)
+        {
+            // Add a declaration to this module. The method may be referenced in compiler's data structures.
+            MethodDesc method = methodCodeNodeNeedingCode.Method;
+            string mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
+            LLVMValueRef externFunc = ILImporter.GetOrCreateLLVMFunction(Module, mangledName, method.Signature, method.RequiresInstArg());
+
+            corInfo.CompileMethod(methodCodeNodeNeedingCode, methodIL);
+            methodCodeNodeNeedingCode.CompilationCompleted = true;
+
+            if (method.IsRuntimeExport)
             {
-                totalMethodCount++;
-                // if (_compilationCountdown != null)
-                //     _compilationCountdown.Signal();
+                ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
             }
         }
 
