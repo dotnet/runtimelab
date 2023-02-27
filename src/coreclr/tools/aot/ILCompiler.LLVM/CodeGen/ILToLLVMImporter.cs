@@ -1521,11 +1521,10 @@ namespace Internal.IL
             return false;
         }
 
-        // TODO-LLVM: this is a copy of some of the logic in GatherClassGCLayout so we get the same logic as clrjit for
         // determining if a struct should be passed on the shadow stack.  Span<char/T> is an example.
-        private static bool ContainsIsByReferenceOfT(TypeDesc type)
+        private static bool ContainsIsByRef(TypeDesc type)
         {
-            if (type.IsByReferenceOfT)
+            if (type.IsByRef || type.IsByRefLike)
             {
                 return true;
             }
@@ -1542,7 +1541,7 @@ namespace Internal.IL
                     if (!fieldDefType.ContainsGCPointers && !fieldDefType.IsByRefLike)
                         continue;
 
-                    if (ContainsIsByReferenceOfT(fieldType))
+                    if (ContainsIsByRef(fieldType))
                     {
                         return true;
                     }
@@ -1559,7 +1558,7 @@ namespace Internal.IL
         {
             if (type is DefType defType)
             {
-                if (!defType.IsGCPointer && !defType.ContainsGCPointers && !ContainsIsByReferenceOfT(type))
+                if (!defType.IsGCPointer && !defType.ContainsGCPointers && !ContainsIsByRef(type))
                 {
                     return true;
                 }
@@ -2125,8 +2124,15 @@ namespace Internal.IL
                     eeTypeExpression = new LoadExpressionEntry(StackValueKind.ValueType, "eeType", thisPointer, GetWellKnownType(WellKnownType.IntPtr));
                 }
 
+                // No generic context - static lookup not supported
+                var ptrPtrMethodTableLlvmType = LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(
+                    GetLLVMTypeForTypeDesc(_compilation.TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime", "MethodTable")),
+                    0), 0);
+                var nullPtrPtr = LLVMValueRef.CreateConstPointerNull(ptrPtrMethodTableLlvmType);
+                ExpressionEntry genericContextExpression = new ExpressionEntry(StackValueKind.NativeInt, "genericContextPtrPtr", nullPtrPtr);
+
                 var targetEntry = CallRuntime(_compilation.TypeSystemContext, DispatchResolve, "FindInterfaceMethodImplementationTarget",
-                    new StackEntry[] { eeTypeExpression, interfaceEEType, new ExpressionEntry(StackValueKind.Int32, "slot", slot, GetWellKnownType(WellKnownType.UInt16)) });
+                    new StackEntry[] { eeTypeExpression, interfaceEEType, new ExpressionEntry(StackValueKind.Int32, "slot", slot, GetWellKnownType(WellKnownType.UInt16)), genericContextExpression });
                 functionPtr = targetEntry.ValueAsType(LLVMTypeRef.CreatePointer(llvmSignature, 0), _builder);
             }
             else
@@ -2302,7 +2308,7 @@ namespace Internal.IL
 
                         // TODO: Does fldHandle always come from ldtoken? If not, what to do with other cases?
                         if (!(fieldSlot is LdTokenEntry<FieldDesc> checkedFieldSlot) ||
-                            !(_compilation.GetFieldRvaData(checkedFieldSlot.LdToken) is BlobNode fieldNode))
+                            !(_compilation.GetFieldRvaData(checkedFieldSlot.LdToken) is FieldRvaDataNode fieldNode))
                             throw new InvalidProgramException("Provided field handle is invalid.");
 
                         LLVMValueRef src = LoadAddressOfSymbolNode(fieldNode);
@@ -2352,33 +2358,6 @@ namespace Internal.IL
                             throw new NotImplementedException();
                         }
 
-                        return true;
-                    }
-                    break;
-                case "get_Value":
-                    if (metadataType.IsByReferenceOfT)
-                    {
-                        StackEntry byRefHolder = _stack.Pop();
-
-                        TypeDesc byRefType = metadataType.Instantiation[0].MakeByRefType();
-                        PushLoadExpression(StackValueKind.ByRef, "byref", byRefHolder.ValueForStackKind(StackValueKind.ByRef, _builder, false), byRefType);
-                        return true;
-                    }
-                    break;
-                case ".ctor":
-                    if (metadataType.IsByReferenceOfT)
-                    {
-                        StackEntry byRefValueParamHolder = _stack.Pop();
-
-                        // Allocate a slot on the shadow stack for the ByReference type
-                        int spillIndex = _spilledExpressions.Count;
-                        SpilledExpressionEntry spillEntry = new SpilledExpressionEntry(StackValueKind.ByRef, "byref" + _currentOffset, metadataType, spillIndex, this);
-                        _spilledExpressions.Add(spillEntry);
-                        LLVMValueRef addrOfValueType = LoadVarAddress(spillIndex, LocalVarKind.Temp, out TypeDesc unused);
-                        var typedAddress = CastIfNecessary(_builder, addrOfValueType, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0));
-                        _builder.BuildStore(byRefValueParamHolder.ValueForStackKind(StackValueKind.ByRef, _builder, false), typedAddress);
-
-                        _stack.Push(spillEntry);
                         return true;
                     }
                     break;
@@ -2465,9 +2444,11 @@ namespace Internal.IL
         private void PushMethodTableForInstantiationParameter(MethodDesc method, MethodDesc runtimeDeterminedMethod)
         {
             LLVMValueRef eeTypePtrRef;
+            TypeDesc expressionTypeDesc;
             if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
             {
                 eeTypePtrRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.Instantiation[0]);
+                expressionTypeDesc = GetWellKnownType(WellKnownType.IntPtr);
             }
             else
             {
@@ -2476,9 +2457,10 @@ namespace Internal.IL
                 ISymbolNode node = _compilation.ComputeConstantLookup(helperId, method.Instantiation[0]);
                 _dependencies.Add(node, "LLVM Type ptr");
                 eeTypePtrRef = LoadAddressOfSymbolNode(node);
+                expressionTypeDesc = method.Signature.ReturnType;
             }
 
-            PushExpression(StackValueKind.Int32, "eeTypePtr", eeTypePtrRef, GetWellKnownType(WellKnownType.IntPtr));
+            PushExpression(StackValueKind.Int32, "eeTypePtr", eeTypePtrRef, expressionTypeDesc);
         }
 
         // if the call is done via `invoke` then we need the try/then block passed back in case the calling code takes the result from a phi.

@@ -145,7 +145,7 @@ bool CodeGenInterface::siVarLoc::vlIsOnStack() const
 }
 
 //------------------------------------------------------------------------
-// storeVariableInRegisters: Convert the siVarLoc instance in a regsiter
+// storeVariableInRegisters: Convert the siVarLoc instance in a register
 //  location using the given registers.
 //
 // Arguments:
@@ -296,7 +296,7 @@ void CodeGenInterface::siVarLoc::siFillStackVarLoc(
         case TYP_LONG:
         case TYP_DOUBLE:
 #endif // TARGET_64BIT
-#if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64)
+#if FEATURE_IMPLICIT_BYREFS
             // In the AMD64 ABI we are supposed to pass a struct by reference when its
             // size is not 1, 2, 4 or 8 bytes in size. During fgMorph, the compiler modifies
             // the IR to comply with the ABI and therefore changes the type of the lclVar
@@ -307,7 +307,7 @@ void CodeGenInterface::siVarLoc::siFillStackVarLoc(
             // See lvaSetStruct for further detail.
             //
             // Now, the VM expects a special enum for these type of local vars: VLT_STK_BYREF
-            // to accomodate for this situation.
+            // to accommodate for this situation.
             if (varDsc->lvIsImplicitByRef)
             {
                 assert(varDsc->lvIsParam);
@@ -315,7 +315,7 @@ void CodeGenInterface::siVarLoc::siFillStackVarLoc(
                 this->vlType = VLT_STK_BYREF;
             }
             else
-#endif // defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64)
+#endif // FEATURE_IMPLICIT_BYREFS
             {
                 this->vlType = VLT_STK;
             }
@@ -1789,7 +1789,7 @@ void CodeGen::psiMoveESPtoEBP()
  *                          psiMoveToReg
  *
  * Called when a parameter is loaded into its assigned register from the stack,
- * or when parameters are moved around due to circular dependancy.
+ * or when parameters are moved around due to circular dependency.
  * If reg != REG_NA, then the parameter is being moved into its assigned
  * register, else it may be being moved to a temp register.
  */
@@ -1813,7 +1813,7 @@ void CodeGen::psiMoveToReg(unsigned varNum, regNumber reg, regNumber otherReg)
 
 #ifdef ACCURATE_PROLOG_DEBUG_INFO
 
-    /* If reg!=REG_NA, the parameter is part of a cirular dependancy, and is
+    /* If reg!=REG_NA, the parameter is part of a cirular dependency, and is
      * being moved through temp register "reg".
      * If reg==REG_NA, it is being moved to its assigned register.
      */

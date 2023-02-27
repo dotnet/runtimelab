@@ -1397,42 +1397,39 @@ void Llvm::buildEmptyPhi(GenTreePhi* phi)
 
 void Llvm::buildLocalField(GenTreeLclFld* lclFld)
 {
-    assert(!lclFld->TypeIs(TYP_STRUCT));
-
     unsigned lclNum = lclFld->GetLclNum();
+
+    ClassLayout* layout = lclFld->TypeIs(TYP_STRUCT) ? lclFld->GetLayout() : nullptr;
+    Type* llvmLoadType = (layout != nullptr) ? getLlvmTypeForStruct(lclFld->GetLayout())
+                                             : getLlvmTypeForVarType(lclFld->TypeGet());
 
     // TODO-LLVM: if this is an only value type field, or at offset 0, we can optimize.
     Value* structAddrValue = getLocalAddr(lclNum);
     Value* fieldAddressValue = gepOrAddr(structAddrValue, lclFld->GetLclOffs());
 
-    mapGenTreeToValue(lclFld, _builder.CreateLoad(getLlvmTypeForVarType(lclFld->TypeGet()), fieldAddressValue));
+    mapGenTreeToValue(lclFld, _builder.CreateLoad(llvmLoadType, fieldAddressValue));
 }
 
 void Llvm::buildStoreLocalField(GenTreeLclFld* lclFld)
 {
     GenTree* data = lclFld->gtGetOp1();
-    Type* llvmStoreType = getLlvmTypeForVarType(lclFld->TypeGet());
-    // TODO-LLVM: uncomment once we merge https://github.com/dotnet/runtime/pull/68986 (May 27).
-    // ClassLayout* layout = lclFld->TypeIs(TYP_STRUCT) ? lclFld->GetLayout() : nullptr;
-    // Type* llvmStoreType = (layout != nullptr) ? getLlvmTypeForStruct(lclFld->GetLayout())
-    //                                           : getLlvmTypeForVarType(lclFld->TypeGet());
+    ClassLayout* layout = lclFld->TypeIs(TYP_STRUCT) ? lclFld->GetLayout() : nullptr;
+    Type* llvmStoreType = (layout != nullptr) ? getLlvmTypeForStruct(layout)
+                                              : getLlvmTypeForVarType(lclFld->TypeGet());
     Value* addrValue = gepOrAddr(getLocalAddr(lclFld->GetLclNum()), lclFld->GetLclOffs());
 
     Value* dataValue;
     if (lclFld->TypeIs(TYP_STRUCT) && genActualTypeIsInt(data))
     {
-        failFunctionCompilation();
-        // ClassLayout* layout = lclFld->GetLayout();
-        // if (!data->IsIntegralConst(0))
-        // {
-        //     assert(data->OperIsInitVal());
-        //     Value* fillValue = consumeValue(data->gtGetOp1(), Type::getInt8Ty(_llvmContext));
-        //     Value* sizeValue = _builder.getInt32(layout->GetSize());
-        //     _builder.CreateMemSet(addrValue, fillValue, sizeValue, llvm::MaybeAlign());
-        //     return;
-        // }
-        //
-        // dataValue = llvm::Constant::getNullValue(llvmStoreType);
+        if (!data->IsIntegralConst(0))
+        {
+            assert(data->OperIsInitVal());
+            Value* fillValue = consumeValue(data->gtGetOp1(), Type::getInt8Ty(_llvmContext));
+            Value* sizeValue = _builder.getInt32(layout->GetSize());
+            _builder.CreateMemSet(addrValue, fillValue, sizeValue, llvm::MaybeAlign());
+            return;
+        }
+        dataValue = llvm::Constant::getNullValue(llvmStoreType);
     }
     else
     {

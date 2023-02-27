@@ -140,6 +140,7 @@ namespace Internal.JitInterface
                 TargetArchitecture.ARM64 => "arm64",
                 TargetArchitecture.Wasm32 => "wasm32",
                 TargetArchitecture.Wasm64 => "wasm64",
+                TargetArchitecture.LoongArch64 => "loongarch64",
                 _ => throw new NotImplementedException(target.Architecture.ToString())
             };
 

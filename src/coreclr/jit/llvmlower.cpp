@@ -483,10 +483,10 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
     GenTree* data = storeLclNode->gtGetOp1();
 
-    unsigned convertToStoreObjLclNum = BAD_VAR_NUM;
+    unsigned convertToStoreLclFldLclNum = BAD_VAR_NUM;
     if (varDsc->CanBeReplacedWithItsField(_compiler))
     {
-        convertToStoreObjLclNum = varDsc->lvFieldLclStart;
+        convertToStoreLclFldLclNum = varDsc->lvFieldLclStart;
     }
     else if (storeLclNode->TypeIs(TYP_STRUCT))
     {
@@ -498,22 +498,19 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
         else if (data->OperIsInitVal())
         {
             // We need the local's address to create a memset.
-            convertToStoreObjLclNum = lclNum;
+            convertToStoreLclFldLclNum = lclNum;
         }
     }
 
-    if (convertToStoreObjLclNum != BAD_VAR_NUM)
+    if (convertToStoreLclFldLclNum != BAD_VAR_NUM)
     {
-        // TODO-LLVM: change to STORE_LCL_FLD once we merge https://github.com/dotnet/runtime/pull/68986 (May 27).
-        storeLclNode->SetOper(GT_LCL_VAR_ADDR);
-        storeLclNode->ChangeType(TYP_I_IMPL);
-        storeLclNode->SetLclNum(convertToStoreObjLclNum);
-
-        GenTree* storeObjNode = new (_compiler, GT_STORE_OBJ)
-            GenTreeObj(varDsc->TypeGet(), storeLclNode, data, varDsc->GetLayout());
-        storeObjNode->gtFlags |= (GTF_ASG | GTF_IND_NONFAULTING);
-
-        CurrentRange().InsertAfter(storeLclNode, storeObjNode);
+        storeLclNode->SetOper(GT_STORE_LCL_FLD);
+        LclVarDsc* lclFldVarDsc  = _compiler->lvaGetDesc(convertToStoreLclFldLclNum);
+        var_types  lclFldVarType = lclFldVarDsc->TypeGet();
+        storeLclNode->ChangeType(lclFldVarType);
+        storeLclNode->SetLclNum(convertToStoreLclFldLclNum);
+        storeLclNode->AsLclFld()->SetLclOffs(0);
+        storeLclNode->AsLclFld()->SetLayout(varDsc->GetLayout());
     }
 }
 

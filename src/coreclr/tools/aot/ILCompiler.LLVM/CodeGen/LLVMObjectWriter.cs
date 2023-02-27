@@ -665,6 +665,7 @@ namespace ILCompiler.DependencyAnalysis
                 case ReadyToRunHelperId.VirtualDispatchCell:
                 case ReadyToRunHelperId.DefaultConstructor:
                 case ReadyToRunHelperId.ObjectAllocator:
+                case ReadyToRunHelperId.ConstrainedDirectCall:
                     break;
 
                 default:

@@ -17,6 +17,7 @@ namespace Internal.TypeSystem
         X64,
         X86,
         Wasm32,
-        Wasm64
+        Wasm64,
+        LoongArch64,
     }
 }

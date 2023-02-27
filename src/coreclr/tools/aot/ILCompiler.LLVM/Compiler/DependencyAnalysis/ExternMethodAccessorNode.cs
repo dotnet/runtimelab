@@ -8,6 +8,7 @@ using ILCompiler.DependencyAnalysis.X64;
 using ILCompiler.DependencyAnalysis.X86;
 using ILCompiler.DependencyAnalysis.ARM;
 using ILCompiler.DependencyAnalysis.ARM64;
+using ILCompiler.DependencyAnalysis.LoongArch64;
 using ILCompiler.DependencyAnalysis.Wasm;
 
 using Internal.IL.Stubs;
@@ -82,6 +83,7 @@ namespace ILCompiler.DependencyAnalysis
         protected override void EmitCode(NodeFactory factory, ref X86Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
         protected override void EmitCode(NodeFactory factory, ref ARMEmitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
         protected override void EmitCode(NodeFactory factory, ref ARM64Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
+        protected override void EmitCode(NodeFactory factory, ref LoongArch64Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
         protected override void EmitCode(NodeFactory factory, ref WasmEmitter instructionEncoder, bool relocsOnly) { }
 
         protected override string GetName(NodeFactory context) => $"ExternMethodAccessor {ExternMethodName}";

@@ -95,10 +95,8 @@ size_t HelperFuncInfo::GetSigArgCount(unsigned* callArgCount) const
 }
 
 bool Compiler::IsHfa(CORINFO_CLASS_HANDLE hClass) { return false; }
-var_types Compiler::GetHfaType(GenTree* tree) { return TYP_UNDEF; }
 var_types Compiler::GetHfaType(CORINFO_CLASS_HANDLE hClass) { return TYP_UNDEF; }
 unsigned Compiler::GetHfaCount(CORINFO_CLASS_HANDLE hClass) { return 0; }
-unsigned Compiler::GetHfaCount(GenTree* tree) { return 0; }
 
 Llvm::Llvm(Compiler* compiler)
     : _compiler(compiler)
@@ -397,6 +395,8 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
         { FUNC(CORINFO_HELP_CHKCASTCLASS) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
         { FUNC(CORINFO_HELP_CHKCASTANY) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
         { FUNC(CORINFO_HELP_CHKCASTCLASS_SPECIAL) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
+        { FUNC(CORINFO_HELP_ISINSTANCEOF_EXCEPTION) CORINFO_TYPE_BOOL, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
+
         { FUNC(CORINFO_HELP_BOX) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_BYREF } },
         { FUNC(CORINFO_HELP_BOX_NULLABLE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_BYREF } },
         { FUNC(CORINFO_HELP_UNBOX) CORINFO_TYPE_BYREF, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS } },
@@ -594,6 +594,9 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
         // Dead code.
         { FUNC(CORINFO_HELP_THROW_TYPE_NOT_SUPPORTED) },
 
+        // Not used in NativeAOT.
+        { FUNC(CORINFO_HELP_THROW_AMBIGUOUS_RESOLUTION_EXCEPTION) },
+
         // [R]PI helpers, implemented in "Runtime\thread.cpp".
         { FUNC(CORINFO_HELP_JIT_PINVOKE_BEGIN) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_JIT_PINVOKE_END) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
@@ -610,6 +613,10 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
         { FUNC(CORINFO_HELP_PATCHPOINT) },
         { FUNC(CORINFO_HELP_CLASSPROFILE32) },
         { FUNC(CORINFO_HELP_CLASSPROFILE64) },
+        { FUNC(CORINFO_HELP_DELEGATEPROFILE32) },
+        { FUNC(CORINFO_HELP_DELEGATEPROFILE64) },
+        { FUNC(CORINFO_HELP_VTABLEPROFILE32) },
+        { FUNC(CORINFO_HELP_VTABLEPROFILE64) },
         { FUNC(CORINFO_HELP_PARTIAL_COMPILATION_PATCHPOINT) },
         { FUNC(CORINFO_HELP_VALIDATE_INDIRECT_CALL) },
         { FUNC(CORINFO_HELP_DISPATCH_INDIRECT_CALL) },

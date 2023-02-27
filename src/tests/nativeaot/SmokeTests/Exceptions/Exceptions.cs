@@ -30,6 +30,10 @@ public class BringUpTest
             new BringUpTest().ToString();
         }
 
+#if !CODEGEN_WASM // TODO-LLVM: Fails in consumeValue with a TYP_INT GT_CALL return value which does not pass "assert(varTypeIsSmall(trueNodeType));" 
+        TestGenericExceptions();
+#endif
+
         int counter = 0;
         AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionEventHandler;
 
@@ -50,8 +54,8 @@ public class BringUpTest
             Console.WriteLine("Exception caught!");
             if (e.Message != "My exception")
             {
-                 Console.WriteLine("Unexpected exception message!");
-                 return Fail;
+                Console.WriteLine("Unexpected exception message!");
+                return Fail;
             }
 
             string stackTrace = e.StackTrace;
@@ -65,7 +69,7 @@ public class BringUpTest
 
         try
         {
-             g.myObjectField = new Object();
+            g.myObjectField = new Object();
         }
         catch (NullReferenceException)
         {
@@ -75,14 +79,14 @@ public class BringUpTest
 
         try
         {
-             try
-             {
-                 g.myField++;
-             }
-             finally
-             {
-                 counter++;
-             }
+            try
+            {
+                g.myField++;
+            }
+            finally
+            {
+                counter++;
+            }
         }
         catch (NullReferenceException)
         {
@@ -99,8 +103,8 @@ public class BringUpTest
             Console.WriteLine("Exception caught via filter!");
             if (e.Message != "Testing filter")
             {
-                 Console.WriteLine("Unexpected exception message!");
-                 return Fail;
+                Console.WriteLine("Unexpected exception message!");
+                return Fail;
             }
             counter++;
         }
@@ -211,6 +215,36 @@ public class BringUpTest
         {
             Console.WriteLine("Executing finally in {0}", s);
             finallyCounter++;
+        }
+    }
+
+    static void TestGenericExceptions()
+    {
+        if (CatchGenericException<DivideByZeroException>(100, 0) != 42)
+        {
+            Environment.Exit(Fail);
+        }
+
+        try
+        {
+            CatchGenericException<NotSupportedException>(100, 0);
+        }
+        catch (DivideByZeroException)
+        {
+            return;
+        }
+        Environment.Exit(Fail);
+    }
+
+    static int CatchGenericException<T>(int a, int b) where T : Exception
+    {
+        try
+        {
+            return a / b;
+        }
+        catch (T)
+        {
+            return 42;
         }
     }
 

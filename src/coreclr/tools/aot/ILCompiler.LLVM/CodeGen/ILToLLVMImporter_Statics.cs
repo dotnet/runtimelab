@@ -24,7 +24,7 @@ namespace Internal.IL
             if (compilation.Logger.IsVerbose)
             {
                 string methodName = method.ToString();
-                compilation.Logger.Writer.WriteLine("Compiling " + methodName);
+                compilation.Logger.LogMessage("Compiling " + methodName);
             }
 
             if (method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute"))
@@ -76,7 +76,7 @@ namespace Internal.IL
             }
             catch (Exception e)
             {
-                compilation.Logger.Writer.WriteLine(e.Message + " (" + method + ")");
+                compilation.Logger.LogMessage(e.Message + " (" + method + ")");
 
                 methodCodeNodeNeedingCode.CompilationCompleted = true;
 //                methodCodeNodeNeedingCode.SetDependencies(ilImporter.GetDependencies());

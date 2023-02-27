@@ -77,6 +77,12 @@ namespace ILCompiler.DependencyAnalysis
 
                     return wasmEmitter.Builder.ToObjectData();
 #endif
+                case TargetArchitecture.LoongArch64:
+                    LoongArch64.LoongArch64Emitter loongarch64Emitter = new LoongArch64.LoongArch64Emitter(factory, relocsOnly);
+                    EmitCode(factory, ref loongarch64Emitter, relocsOnly);
+                    loongarch64Emitter.Builder.RequireInitialAlignment(alignment);
+                    loongarch64Emitter.Builder.AddSymbol(this);
+                    return loongarch64Emitter.Builder.ToObjectData();
 
                 default:
                     throw new NotImplementedException();
@@ -90,5 +96,6 @@ namespace ILCompiler.DependencyAnalysis
 #if !READYTORUN
         protected abstract void EmitCode(NodeFactory factory, ref Wasm.WasmEmitter instructionEncoder, bool relocsOnly);
 #endif
+        protected abstract void EmitCode(NodeFactory factory, ref LoongArch64.LoongArch64Emitter instructionEncoder, bool relocsOnly);
     }
 }
