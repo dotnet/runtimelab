@@ -1091,7 +1091,7 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
             switch (node->OperGet())
             {
                 case GT_CALL:
-                    trueNodeType = static_cast<var_types>(node->AsCall()->gtReturnType);
+                    trueNodeType = JITtype2varType(node->AsCall()->gtCorInfoType);
                     break;
 
                 case GT_LCL_VAR:
