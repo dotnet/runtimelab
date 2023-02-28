@@ -23,16 +23,16 @@ namespace ILCompiler.DependencyAnalysis
     /// <summary>
     /// Object writer that emits LLVM (bitcode).
     /// </summary>
-    internal unsafe class LLVMObjectWriter : IDisposable
+    internal unsafe class LLVMObjectWriter
     {
-        // The module with ILC-generated code and data.
+        // Module with ILC-generated code and data.
         private readonly LLVMModuleRef _module;
 
         // Module with the external functions and getters for them. Must be separate from the main module so as to avoid
         // direct calls with mismatched signatures at the LLVM level.
         private readonly LLVMModuleRef _moduleWithExternalFunctions;
 
-        // Nodefactory and compilation for which ObjectWriter is instantiated for.
+        // Node factory and compilation for which ObjectWriter was instantiated.
         private readonly LLVMCodegenCompilation _compilation;
         private readonly NodeFactory _nodeFactory;
 
@@ -52,7 +52,7 @@ namespace ILCompiler.DependencyAnalysis
         private static readonly Dictionary<string, ISymbolNode> _previouslyWrittenNodeNames = new Dictionary<string, ISymbolNode>();
 #endif
 
-        public LLVMObjectWriter(string objectFilePath, LLVMCodegenCompilation compilation)
+        private LLVMObjectWriter(string objectFilePath, LLVMCodegenCompilation compilation)
         {
             [DllImport("libLLVM", CallingConvention = CallingConvention.Cdecl)]
             static extern LLVMContextRef LLVMContextSetOpaquePointers(LLVMContextRef C, bool OpaquePointers);
@@ -61,6 +61,7 @@ namespace ILCompiler.DependencyAnalysis
             _module.Target = compilation.Target;
             _module.DataLayout = compilation.DataLayout;
 
+            // TODO-LLVM: move to opaque pointers.
             LLVMContextSetOpaquePointers(_module.Context, false);
 
             _moduleWithExternalFunctions = LLVMModuleRef.CreateWithName("external");
@@ -70,23 +71,6 @@ namespace ILCompiler.DependencyAnalysis
             _compilation = compilation;
             _nodeFactory = compilation.NodeFactory;
             _objectFilePath = objectFilePath;
-        }
-
-        public void Dispose() => Dispose(true);
-
-        public virtual void Dispose(bool bDisposing)
-        {
-            FinishObjWriter();
-
-            if (bDisposing)
-            {
-                GC.SuppressFinalize(this);
-            }
-        }
-
-        ~LLVMObjectWriter()
-        {
-            Dispose(false);
         }
 
         public static void EmitObject(string objectFilePath, IEnumerable<DependencyNode> nodes, LLVMCodegenCompilation compilation, IObjectDumper dumper)
@@ -196,7 +180,7 @@ namespace ILCompiler.DependencyAnalysis
             }
             finally
             {
-                objectWriter.Dispose();
+                objectWriter.FinishObjWriter();
 
                 if (!succeeded)
                 {
