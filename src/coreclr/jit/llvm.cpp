@@ -350,8 +350,8 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
         { FUNC(CORINFO_HELP_DBL2ULNG_OVF) CORINFO_TYPE_ULONG, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
 
         // Implemented in "Runtime\MathHelpers.cpp".
-        { FUNC(CORINFO_HELP_FLTREM) CORINFO_TYPE_FLOAT, { CORINFO_TYPE_FLOAT } },
-        { FUNC(CORINFO_HELP_DBLREM) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_DOUBLE } },
+        { FUNC(CORINFO_HELP_FLTREM) CORINFO_TYPE_FLOAT, { CORINFO_TYPE_FLOAT, CORINFO_TYPE_FLOAT } },
+        { FUNC(CORINFO_HELP_DBLREM) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_DOUBLE, CORINFO_TYPE_DOUBLE } },
         { FUNC(CORINFO_HELP_FLTROUND) CORINFO_TYPE_FLOAT, { CORINFO_TYPE_FLOAT } },
         { FUNC(CORINFO_HELP_DBLROUND) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_DOUBLE } },
 
@@ -742,19 +742,6 @@ CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForClassToken(mdToken token)
     assert(pIndirection == nullptr);
 
     return CORINFO_GENERIC_HANDLE(typeSymbolHandle);
-}
-
-[[noreturn]] void Llvm::failFunctionCompilation()
-{
-    for (FunctionInfo& funcInfo : m_functions)
-    {
-        if (funcInfo.LlvmFunction != nullptr)
-        {
-            funcInfo.LlvmFunction->deleteBody();
-        }
-    }
-
-    fatal(CORJIT_SKIPPED);
 }
 
 template <EEApiId Func, typename TReturn, typename... TArgs>

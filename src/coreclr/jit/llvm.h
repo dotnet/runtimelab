@@ -227,8 +227,6 @@ private:
     CORINFO_GENERIC_HANDLE getSymbolHandleForHelperFunc(CorInfoHelpAnyFunc helperFunc);
     CORINFO_GENERIC_HANDLE getSymbolHandleForClassToken(mdToken token);
 
-    [[noreturn]] void failFunctionCompilation();
-
     // Raw Jit-EE interface functions.
     //
     const char* GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle);
@@ -309,7 +307,6 @@ private:
     void insertNullCheckForCall(GenTreeCall* callNode);
     void lowerUnmanagedCall(GenTreeCall* callNode);
     unsigned lowerCallToShadowStack(GenTreeCall* callNode);
-    void failUnsupportedCalls(GenTreeCall* callNode);
     CallArg* lowerCallReturn(GenTreeCall* callNode);
 
     GenTree* normalizeStructUse(LIR::Use& use, ClassLayout* layout);

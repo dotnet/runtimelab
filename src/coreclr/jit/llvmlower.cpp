@@ -609,7 +609,6 @@ void Llvm::lowerCall(GenTreeCall* callNode)
 {
     // TODO-LLVM-CQ: enable fast shadow tail calls. Requires correct ABI handling.
     assert(!callNode->IsTailCall());
-    failUnsupportedCalls(callNode);
 
     if (callNode->IsHelperCall(_compiler, CORINFO_HELP_RETHROW))
     {
@@ -948,7 +947,7 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
             if (arg.GetNode()->TypeIs(TYP_STRUCT))
             {
                 // TODO-LLVM-ABI: implement proper ABI for structs.
-                failFunctionCompilation();
+                NYI("Unmanaged ABI for structs");
             }
 
             sig.Push(getAbiTypeForType(arg.GetNode()->TypeGet()));
@@ -1017,30 +1016,15 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     unsigned shadowFrameSize = getCurrentShadowFrameSize();
     unsigned shadowStackUseOffset = 0;
 
-    CORINFO_SIG_INFO* sigInfo = nullptr;
-    CORINFO_ARG_LIST_HANDLE sigArgs = nullptr;
     const HelperFuncInfo* helperInfo = nullptr;
-    unsigned sigArgCount = 0;
-    unsigned callArgCount = callNode->gtArgs.CountArgs();
     if (callNode->IsHelperCall())
     {
         helperInfo = &getHelperFuncInfo(_compiler->eeGetHelperNum(callNode->gtCallMethHnd));
-        sigArgCount = helperInfo->GetSigArgCount(&callArgCount);
-    }
-    else
-    {
-        sigInfo = callNode->callSig;
-        sigArgs = sigInfo->args;
-        sigArgCount = sigInfo->numArgs;
     }
 
-    // Relies on the fact all arguments not in the signature come before those that are.
-    unsigned firstSigArgIx    = callArgCount - sigArgCount;
-    unsigned argIx            = 0;
-    CallArg* lastLlvmStackArg = nullptr;
-
-    // gets the first arg before we start pushing non IR args to the list.
+    // Get the first arg before we start pushing non IR args to the list.
     CallArg* callArg = callNode->gtArgs.Args().begin().GetArg();
+    CallArg* lastLlvmStackArg = nullptr;
 
     // Insert the shadow stack at the front
     if (callHasShadowStackArg(callNode))
@@ -1057,21 +1041,15 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         lastLlvmStackArg = returnSlot;
     }
 
+    unsigned sigArgIdx = 0;
     while (callArg != nullptr)
     {
         GenTree* argNode = callArg->GetNode();
         CorInfoType argSigType;
-        CORINFO_CLASS_HANDLE argSigClass = NO_CLASS_HANDLE;
-
-        if (sigInfo != nullptr)
+        CORINFO_CLASS_HANDLE argSigClass;
+        if (helperInfo == nullptr)
         {
-            // Is this an in-signature argument?
-            if (argIx >= firstSigArgIx)
-            {
-                argSigType = strip(m_info->compCompHnd->getArgType(sigInfo, sigArgs, &argSigClass));
-                sigArgs = _compiler->info.compCompHnd->getArgNext(sigArgs);
-            }
-            else if (callArg->GetWellKnownArg() == WellKnownArg::ThisPointer)
+            if (callArg->GetWellKnownArg() == WellKnownArg::ThisPointer)
             {
                 argSigType = argNode->TypeIs(TYP_REF) ? CORINFO_TYPE_CLASS : CORINFO_TYPE_BYREF;
             }
@@ -1079,16 +1057,22 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             {
                 argSigType = CORINFO_TYPE_PTR;
             }
+            else if (callArg->GetSignatureCorInfoType() != CORINFO_TYPE_UNDEF)
+            {
+                argSigType = callArg->GetSignatureCorInfoType();
+            }
             else
             {
+                assert(callArg->GetSignatureType() != TYP_I_IMPL);
                 argSigType = toCorInfoType(callArg->GetSignatureType());
             }
+
+            argSigClass = callArg->GetSignatureClassHandle();
         }
         else
         {
-            assert(helperInfo != nullptr);
-            argSigType = helperInfo->GetSigArgType(argIx);
-            argSigClass = helperInfo->GetSigArgClass(_compiler, argIx);
+            argSigType = helperInfo->GetSigArgType(sigArgIdx);
+            argSigClass = helperInfo->GetSigArgClass(_compiler, sigArgIdx);
         }
 
         if (isManagedCall && !canStoreArgOnLlvmStack(argSigType, argSigClass))
@@ -1135,44 +1119,21 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         }
         else // Arg on LLVM stack.
         {
-            if (argNode->TypeIs(TYP_STRUCT))
+            if (argNode->TypeIs(TYP_STRUCT) && !argNode->OperIs(GT_FIELD_LIST))
             {
-                if (!argNode->OperIs(GT_FIELD_LIST) && argNode->TypeIs(TYP_STRUCT))
-                {
-                    LIR::Use argNodeUse(CurrentRange(), &callArg->EarlyNodeRef(), callNode);
-                    argNode = normalizeStructUse(argNodeUse, _compiler->typGetObjLayout(argSigClass));
-                }
-
-                // TODO-LLVM: delete (together with 'SetSignatureClassHandle') when merging
-                // https://github.com/dotnet/runtime/pull/69969 (May 31).
-                callArg->SetSignatureClassHandle(argSigClass);
+                LIR::Use argNodeUse(CurrentRange(), &callArg->EarlyNodeRef(), callNode);
+                argNode = normalizeStructUse(argNodeUse, _compiler->typGetObjLayout(argSigClass));
             }
 
-            callArg->SetEarlyNode(argNode);
             callArg->SetSignatureCorInfoType(argSigType);
             lastLlvmStackArg = callArg;
         }
 
-        argIx++;
+        sigArgIdx++;
         callArg = callArg->GetNext();
     }
 
     return roundUp(shadowStackUseOffset, TARGET_POINTER_SIZE);
-}
-
-void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
-{
-    if (callNode->IsHelperCall())
-    {
-        return;
-    }
-
-    CORINFO_SIG_INFO* calleeSigInfo = callNode->callSig;
-    // Investigate which methods do not get callSig set - happens currently with the Generics test
-    if (calleeSigInfo == nullptr)
-    {
-        failFunctionCompilation();
-    }
 }
 
 // If the return type must be GC tracked, removes the return type
@@ -1239,9 +1200,10 @@ CallArg* Llvm::lowerCallReturn(GenTreeCall* callNode)
             CorInfoHelpFunc helperFunc = _compiler->eeGetHelperNum(callNode->gtCallMethHnd);
             callNode->gtCorInfoType = getHelperFuncInfo(helperFunc).GetSigReturnType();
         }
-        else
+        else if (callNode->gtCorInfoType == CORINFO_TYPE_UNDEF)
         {
-            callNode->gtCorInfoType = callNode->callSig->retType;
+            assert(callNode->TypeGet() != TYP_I_IMPL);
+            callNode->gtCorInfoType = toCorInfoType(callNode->TypeGet());
         }
     }
 

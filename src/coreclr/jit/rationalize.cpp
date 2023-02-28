@@ -180,13 +180,11 @@ void Rationalizer::RewriteNodeAsCall(GenTree**             use,
         call->gtFlags |= arg1->gtFlags & GTF_ALL_EFFECT;
     }
 
-#if defined(DEBUG) || defined(TARGET_WASM)
-    CORINFO_SIG_INFO* sig = new (comp->getAllocator()) CORINFO_SIG_INFO();
-    comp->eeGetMethodSig(callHnd, sig);
-    assert(JITtype2varType(sig->retType) == tree->gtType);
-
-    call->callSig = sig;
-#endif // defined(DEBUG) || defined(TARGET_WASM)
+#if DEBUG
+    CORINFO_SIG_INFO sig;
+    comp->eeGetMethodSig(callHnd, &sig);
+    assert(JITtype2varType(sig.retType) == tree->gtType);
+#endif // DEBUG
 
 #ifdef FEATURE_READYTORUN
     call->AsCall()->setEntryPoint(entryPoint);

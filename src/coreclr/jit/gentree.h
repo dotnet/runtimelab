@@ -4654,7 +4654,6 @@ public:
 #ifdef TARGET_WASM
     CorInfoType GetSignatureCorInfoType() { return m_signatureCorInfoType; }
     void SetSignatureCorInfoType(CorInfoType signatureCorInfoType) { m_signatureCorInfoType = signatureCorInfoType; }
-    void SetSignatureClassHandle(CORINFO_CLASS_HANDLE signatureClsHnd) { m_signatureClsHnd = signatureClsHnd; }
 #endif
     WellKnownArg GetWellKnownArg() { return m_wellKnownArg; }
     bool IsTemp() { return m_isTmp; }
@@ -4904,10 +4903,10 @@ struct GenTreeCall final : public GenTree
 {
     CallArgs gtArgs;
 
-#if defined(DEBUG) || defined(TARGET_WASM)
+#ifdef DEBUG
     // Used to register callsites with the EE
     CORINFO_SIG_INFO* callSig;
-#endif // defined(DEBUG) || defined(TARGET_WASM)
+#endif
 
     union {
         TailCallSiteInfo* tailCallInfo;
@@ -5523,7 +5522,7 @@ struct GenTreeCall final : public GenTree
     var_types            gtReturnType : 5;   // exact return type
     CORINFO_CLASS_HANDLE gtRetClsHnd;        // The return type handle of the call if it is a struct; always available
 #if defined(TARGET_WASM)
-    CorInfoType gtCorInfoType;               // the precise return type used to construct the signature
+    CorInfoType gtCorInfoType = CORINFO_TYPE_UNDEF; // the precise return type used to construct the signature
 #endif // defined(TARGET_WASM)
     void*                gtStubCallStubAddr; // GTF_CALL_VIRT_STUB - these are never inlined
 

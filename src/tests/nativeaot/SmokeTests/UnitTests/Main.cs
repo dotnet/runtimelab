@@ -4,14 +4,15 @@
 using System;
 using System.Runtime.CompilerServices;
 
-#if CODEGEN_WASM
-bool success = RunTest(Generics.Run);
-success &= RunTest(Interfaces.Run);
-#else
-bool success = RunTest(BasicThreading.Run);
+bool success = true;
+
+#if !CODEGEN_WASM
+success &= RunTest(BasicThreading.Run);
+#endif
 success &= RunTest(Delegates.Run);
 success &= RunTest(Generics.Run);
 success &= RunTest(Interfaces.Run);
+#if !CODEGEN_WASM
 success &= RunTest(Threading.Run);
 success &= RunTest(Devirtualization.Run);
 #endif

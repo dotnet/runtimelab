@@ -1091,7 +1091,7 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
             switch (node->OperGet())
             {
                 case GT_CALL:
-                    trueNodeType = static_cast<var_types>(node->AsCall()->gtReturnType);
+                    trueNodeType = JITtype2varType(node->AsCall()->gtCorInfoType);
                     break;
 
                 case GT_LCL_VAR:
@@ -2759,6 +2759,11 @@ FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)
 
     bool hasReturnSlot = isManagedCallConv && needsReturnStackSlot(pSig->retType, pSig->retTypeClass);
     if (hasReturnSlot)
+    {
+        llvmParamTypes.push_back(getPtrLlvmType());
+    }
+
+    if (pSig->hasTypeArg())
     {
         llvmParamTypes.push_back(getPtrLlvmType());
     }

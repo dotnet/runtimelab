@@ -17,88 +17,6 @@ namespace Internal.IL
 {
     internal partial class ILImporter
     {
-        public static void CompileMethod(LLVMCodegenCompilation compilation, LLVMMethodCodeNode methodCodeNodeNeedingCode)
-        {
-            MethodDesc method = methodCodeNodeNeedingCode.Method;
-
-            if (compilation.Logger.IsVerbose)
-            {
-                string methodName = method.ToString();
-                compilation.Logger.LogMessage("Compiling " + methodName);
-            }
-
-            if (method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute"))
-            {
-                methodCodeNodeNeedingCode.CompilationCompleted = true;
-                //throw new NotImplementedException();
-                //CompileExternMethod(methodCodeNodeNeedingCode, ((EcmaMethod)method).GetRuntimeImportName());
-                //return;
-            }
-
-            if (method.IsRawPInvoke())
-            {
-                //CompileExternMethod(methodCodeNodeNeedingCode, method.GetPInvokeMethodMetadata().Name ?? method.Name);
-                //return;
-            }
-            var methodIL = compilation.GetMethodIL(method);
-            if (methodIL == null)
-                return;
-
-            ILImporter ilImporter = null;
-            try
-            {
-                string mangledName = compilation.NameMangler.GetMangledMethodName(methodCodeNodeNeedingCode.Method).ToString();
-
-                ilImporter = new ILImporter(compilation, method, methodIL, mangledName);
-
-                CompilerTypeSystemContext typeSystemContext = compilation.TypeSystemContext;
-
-                //MethodDebugInformation debugInfo = compilation.GetDebugInfo(methodIL);
-
-               /* if (!compilation.Options.HasOption(CppCodegenConfigProvider.NoLineNumbersString))*/
-                {
-                    //IEnumerable<ILSequencePoint> sequencePoints = debugInfo.GetSequencePoints();
-                    /*if (sequencePoints != null)
-                        ilImporter.SetSequencePoints(sequencePoints);*/
-                }
-
-                //IEnumerable<ILLocalVariable> localVariables = debugInfo.GetLocalVariables();
-                /*if (localVariables != null)
-                    ilImporter.SetLocalVariables(localVariables);*/
-
-                IEnumerable<string> parameters = GetParameterNamesForMethod(method);
-                /*if (parameters != null)
-                    ilImporter.SetParameterNames(parameters);*/
-
-                ilImporter.Import();
-                ilImporter.CreateEHData(methodCodeNodeNeedingCode);
-                methodCodeNodeNeedingCode.CompilationCompleted = true;
-            }
-            catch (Exception e)
-            {
-                compilation.Logger.LogMessage(e.Message + " (" + method + ")");
-
-                methodCodeNodeNeedingCode.CompilationCompleted = true;
-//                methodCodeNodeNeedingCode.SetDependencies(ilImporter.GetDependencies());
-                //throw new NotImplementedException();
-                //methodCodeNodeNeedingCode.SetCode(sb.ToString(), Array.Empty<Object>());
-            }
-
-            // Uncomment the block below to get specific method failures when LLVM fails for cryptic reasons
-#if false
-            LLVMBool result = LLVM.VerifyFunction(ilImporter._llvmFunction, LLVMVerifierFailureAction.LLVMPrintMessageAction);
-            if (result.Value != 0)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error compliling {method.OwningType}.{method}");
-                Console.ResetColor();
-            }
-#endif // false
-
-            // Ensure dependencies show up regardless of exceptions to avoid breaking LLVM
-            methodCodeNodeNeedingCode.SetDependencies(ilImporter.GetDependencies());
-        }
-
         static LLVMValueRef DebugtrapFunction = default(LLVMValueRef);
         static LLVMValueRef TrapFunction = default(LLVMValueRef);
         static LLVMValueRef DoNothingFunction = default(LLVMValueRef);
@@ -256,15 +174,25 @@ namespace Internal.IL
                 builder.BuildCall(RhpReversePInvoke, new LLVMValueRef[] { reversePInvokeFrame }, "");
             }
 
+            bool needsReturnSlot = LLVMCodegenCompilation.NeedsReturnStackSlot(method.Signature);
+
             int curOffset = 0;
-            curOffset = PadNextOffset(method.Signature.ReturnType, curOffset);
-            ImportCallMemset(shadowStack, 0, curOffset, builder); // clear any uncovered object references for GC.Collect
-            LLVMValueRef calleeFrame = builder.BuildGEP(shadowStack, new LLVMValueRef[] { BuildConstInt32(curOffset) }, "calleeFrame");
+            LLVMValueRef calleeFrame;
+            if (needsReturnSlot)
+            {
+                curOffset = PadNextOffset(method.Signature.ReturnType, curOffset);
+                curOffset = PadOffset(compilation.GetWellKnownType(WellKnownType.Object), curOffset); // Align the stack to pointer size.
+                ImportCallMemset(shadowStack, 0, curOffset, builder); // clear any uncovered object references for GC.Collect
+
+                calleeFrame = builder.BuildGEP(shadowStack, new LLVMValueRef[] { BuildConstInt32(curOffset) }, "calleeFrame");
+            }
+            else
+            {
+                calleeFrame = shadowStack;
+            }
 
             List<LLVMValueRef> llvmArgs = new List<LLVMValueRef>();
             llvmArgs.Add(calleeFrame);
-
-            bool needsReturnSlot = LLVMCodegenCompilation.NeedsReturnStackSlot(method.Signature);
 
             if (needsReturnSlot)
             {
