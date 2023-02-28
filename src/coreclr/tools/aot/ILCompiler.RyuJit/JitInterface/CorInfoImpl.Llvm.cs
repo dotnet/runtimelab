@@ -212,12 +212,12 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        public static uint padOffset(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd, uint ilOffset)
+        public static uint padOffset(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd, uint atOffset)
         {
             var _this = GetThis(thisHandle);
-            TypeDesc typeDesc = _this.HandleToObject(structHnd);
+            TypeDesc type = _this.HandleToObject(structHnd);
 
-            return (uint)_this._compilation.PadOffset(typeDesc, ilOffset);
+            return (uint)_this._compilation.PadOffset(type, (int)atOffset);
         }
 
         [UnmanagedCallersOnly]
