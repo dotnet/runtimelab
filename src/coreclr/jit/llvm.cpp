@@ -22,15 +22,13 @@ enum class EEApiId
     GetSymbolMangledName,
     GetSignatureForMethodSymbol,
     GetEHDispatchFunctionName, // TODO-LLVM: move these to the LLVM helper mechanism.
-    GetTypeName,
     AddCodeReloc,
     IsRuntimeImport,
     GetDocumentFileName,
     GetOffsetLineNumber,
-    StructIsWrappedPrimitive,
+    GetPrimitiveTypeForTrivialWasmStruct,
     PadOffset,
     GetTypeDescriptor,
-    GetInstanceFieldAlignment,
     GetAlternativeFunctionName,
     GetExternalMethodAccessor,
     GetLlvmHelperFuncEntrypoint,
@@ -770,11 +768,6 @@ const char* Llvm::GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType)
     return CallEEApi<EEApiId::GetEHDispatchFunctionName, const char*>(m_pEECorInfo, handlerType);
 }
 
-const char* Llvm::GetTypeName(CORINFO_CLASS_HANDLE typeHandle)
-{
-    return CallEEApi<EEApiId::GetTypeName, const char*>(m_pEECorInfo, typeHandle);
-}
-
 void Llvm::AddCodeReloc(void* handle)
 {
     CallEEApi<EEApiId::AddCodeReloc, void>(m_pEECorInfo, handle);
@@ -795,11 +788,9 @@ uint32_t Llvm::GetOffsetLineNumber(unsigned ilOffset)
     return CallEEApi<EEApiId::GetOffsetLineNumber, uint32_t>(m_pEECorInfo, ilOffset);
 }
 
-bool Llvm::StructIsWrappedPrimitive(CORINFO_CLASS_HANDLE typeHandle, CorInfoType corInfoType)
+CorInfoType Llvm::GetPrimitiveTypeForTrivialWasmStruct(CORINFO_CLASS_HANDLE structHandle)
 {
-    // Maintains compatiblity with the IL->LLVM generation.
-    // TODO-LLVM, when IL generation is no more, see if we can remove this unwrapping.
-    return CallEEApi<EEApiId::StructIsWrappedPrimitive, uint32_t>(m_pEECorInfo, typeHandle, corInfoType) != 0;
+    return CallEEApi<EEApiId::GetPrimitiveTypeForTrivialWasmStruct, CorInfoType>(m_pEECorInfo, structHandle);
 }
 
 uint32_t Llvm::PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset)
@@ -810,11 +801,6 @@ uint32_t Llvm::PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset)
 TypeDescriptor Llvm::GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle)
 {
     return CallEEApi<EEApiId::GetTypeDescriptor, TypeDescriptor>(m_pEECorInfo, typeHandle);
-}
-
-uint32_t Llvm::GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle)
-{
-    return CallEEApi<EEApiId::GetInstanceFieldAlignment, uint32_t>(m_pEECorInfo, fieldTypeHandle);
 }
 
 const char* Llvm::GetAlternativeFunctionName()

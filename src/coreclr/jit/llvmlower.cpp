@@ -941,16 +941,38 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
         assert((callNode->gtCallType == CT_USER_FUNC) && !callNode->IsVarargs());
 
         ArrayStack<TargetAbiType> sig(_compiler->getAllocator(CMK_Codegen));
-        sig.Push(getAbiTypeForType(callNode->TypeGet()));
-        for (CallArg& arg : callNode->gtArgs.Args())
+        var_types returnType = callNode->TypeGet();
+        if (returnType == TYP_STRUCT)
         {
-            if (arg.GetNode()->TypeIs(TYP_STRUCT))
+            CorInfoType simpleReturnType = GetPrimitiveTypeForTrivialWasmStruct(callNode->gtRetClsHnd);
+
+            if (returnType == CORINFO_TYPE_UNDEF)
             {
-                // TODO-LLVM-ABI: implement proper ABI for structs.
+                // TODO-LLVM-ABI: implement by-ref passing of structs.
                 NYI("Unmanaged ABI for structs");
             }
 
-            sig.Push(getAbiTypeForType(arg.GetNode()->TypeGet()));
+            returnType = JITtype2varType(simpleReturnType);
+        }
+        sig.Push(getAbiTypeForType(returnType));
+
+        for (CallArg& arg : callNode->gtArgs.Args())
+        {
+            var_types argType = arg.GetSignatureType();
+            if (argType == TYP_STRUCT)
+            {
+                CorInfoType simpleArgType = GetPrimitiveTypeForTrivialWasmStruct(arg.GetSignatureClassHandle());
+
+                if (simpleArgType == CORINFO_TYPE_UNDEF)
+                {
+                    // TODO-LLVM-ABI: implement by-ref passing of structs.
+                    NYI("Unmanaged ABI for structs");
+                }
+
+                argType = JITtype2varType(simpleArgType);
+            }
+
+            sig.Push(getAbiTypeForType(argType));
         }
 
         // WASM requires the callee and caller signature to match. At the LLVM level, "callee type" is the function
