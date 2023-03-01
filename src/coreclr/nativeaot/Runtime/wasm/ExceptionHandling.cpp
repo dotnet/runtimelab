@@ -21,21 +21,3 @@ COOP_PINVOKE_HELPER(void, RhpThrowNativeException, (Object* pManagedException))
 {
     throw ManagedExceptionWrapper(pManagedException);
 }
-
-extern "C" uint32_t LlvmCatchFunclet(void* pHandlerIP, void* pvRegDisplay); 
-extern "C" uint32_t RhpCallCatchFunclet(void * exceptionObj, void* pHandlerIP, void* pvRegDisplay, void *exInfo)
-{
-    return LlvmCatchFunclet(pHandlerIP, pvRegDisplay);
-}
-
-extern "C" uint32_t LlvmFilterFunclet(void* pHandlerIP, void* pvRegDisplay);
-extern "C" uint32_t RhpCallFilterFunclet(void* exceptionObj, void * pHandlerIP, void* shadowStack)
-{
-    return LlvmFilterFunclet(pHandlerIP, shadowStack);
-}
-
-extern "C" void LlvmFinallyFunclet(void *finallyHandler, void *shadowStack);
-extern "C" void RhpCallFinallyFunclet(void *finallyHandler, void *shadowStack)
-{
-    LlvmFinallyFunclet(finallyHandler, shadowStack);
-}
