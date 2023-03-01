@@ -48,7 +48,7 @@ namespace ILCompiler
             ConfigurableWasmImportPolicy configurableWasmImportPolicy,
             MethodImportationErrorProvider errorProvider,
             RyuJitCompilationOptions baseOptions)
-            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy, instructionSetSupport,
+            : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy, instructionSetSupport,
                 null /* ProfileDataManager */, errorProvider, baseOptions, 1)
         {
             NodeFactory = nodeFactory;
@@ -56,12 +56,6 @@ namespace ILCompiler
             DataLayout = options.DataLayout;
             ModuleName = options.ModuleName;
             ConfigurableWasmImportPolicy = configurableWasmImportPolicy;
-        }
-
-        private static IEnumerable<ICompilationRootProvider> GetCompilationRoots(IEnumerable<ICompilationRootProvider> existingRoots, NodeFactory factory)
-        {
-            foreach (var existingRoot in existingRoots)
-                yield return existingRoot;
         }
 
         protected override void CompileInternal(string outputFile, ObjectDumper dumper)
