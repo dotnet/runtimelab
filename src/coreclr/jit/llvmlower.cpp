@@ -1260,13 +1260,13 @@ GenTree* Llvm::normalizeStructUse(LIR::Use& use, ClassLayout* layout)
     }
     else
     {
+        // TODO-LLVM: use GenTree::GetLayout here once enough of upstream is merged and delete the
+        // "useHandle == NO_CLASS_HANDLE" check below.
         CORINFO_CLASS_HANDLE useHandle = _compiler->gtGetStructHandleIfPresent(node);
 
         // Note both can be blocks ("NO_CLASS_HANDLE"), in which case we don't need to do anything.
-        // TODO-LLVM-CQ: base this check on the actual LLVM types not being equivalent, as layout ->
-        // LLVM type correspondence is reductive. Additionally (but orthogonally), we should map
-        // canonically equivalent types to the same LLVM type.
-        if (useHandle != layout->GetClassHandle())
+        if ((useHandle != layout->GetClassHandle()) &&
+            ((useHandle == NO_CLASS_HANDLE) || (getLlvmTypeForStruct(useHandle) != getLlvmTypeForStruct(layout))))
         {
             switch (node->OperGet())
             {
