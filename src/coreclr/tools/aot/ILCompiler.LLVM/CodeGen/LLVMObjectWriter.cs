@@ -3,20 +3,16 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Diagnostics;
-using ILCompiler;
-using ILCompiler.DependencyAnalysisFramework;
-using Internal.Text;
-using Internal.TypeSystem;
-using ObjectData = ILCompiler.DependencyAnalysis.ObjectNode.ObjectData;
+using System.IO;
 
-using LLVMSharp.Interop;
-using ILCompiler.DependencyAnalysis;
+using ILCompiler.DependencyAnalysisFramework;
+
 using Internal.IL;
-using Internal.TypeSystem.Ecma;
 using Internal.JitInterface;
-using System.Runtime.InteropServices;
+using Internal.TypeSystem;
+using LLVMSharp.Interop;
+using ObjectData = ILCompiler.DependencyAnalysis.ObjectNode.ObjectData;
 
 namespace ILCompiler.DependencyAnalysis
 {
@@ -31,6 +27,9 @@ namespace ILCompiler.DependencyAnalysis
         // Module with the external functions and getters for them. Must be separate from the main module so as to avoid
         // direct calls with mismatched signatures at the LLVM level.
         private readonly LLVMModuleRef _moduleWithExternalFunctions;
+
+        private LLVMTypeRef _ptrType;
+        private LLVMTypeRef _intPtrType;
 
         // Node factory and compilation for which ObjectWriter was instantiated.
         private readonly LLVMCodegenCompilation _compilation;
@@ -54,19 +53,16 @@ namespace ILCompiler.DependencyAnalysis
 
         private LLVMObjectWriter(string objectFilePath, LLVMCodegenCompilation compilation)
         {
-            [DllImport("libLLVM", CallingConvention = CallingConvention.Cdecl)]
-            static extern LLVMContextRef LLVMContextSetOpaquePointers(LLVMContextRef C, bool OpaquePointers);
-
             _module = LLVMModuleRef.CreateWithName(compilation.ModuleName);
             _module.Target = compilation.Target;
             _module.DataLayout = compilation.DataLayout;
 
-            // TODO-LLVM: move to opaque pointers.
-            LLVMContextSetOpaquePointers(_module.Context, false);
-
             _moduleWithExternalFunctions = LLVMModuleRef.CreateWithName("external");
             _moduleWithExternalFunctions.Target = compilation.Target;
             _moduleWithExternalFunctions.DataLayout = compilation.DataLayout;
+
+            _ptrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
+            _intPtrType = compilation.NodeFactory.Target.PointerSize == 4 ? LLVMTypeRef.Int32 : LLVMTypeRef.Int64;
 
             _compilation = compilation;
             _nodeFactory = compilation.NodeFactory;
@@ -83,12 +79,6 @@ namespace ILCompiler.DependencyAnalysis
             {
                 foreach (DependencyNode depNode in nodes)
                 {
-                    if (depNode is ExternSymbolNode externSymbolNode)
-                    {
-                        objectWriter.EmitExternalSymbol(externSymbolNode);
-                        continue;
-                    }
-
                     if (depNode is LLVMMethodCodeNode { Method: { IsRuntimeExport: true } } runtimeExportNode)
                     {
                         objectWriter.EmitRuntimeExportThunk(runtimeExportNode);
@@ -197,33 +187,6 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        private LLVMValueRef EmitExternalSymbol(ExternSymbolNode node)
-        {
-            // Most external symbols (functions) have already been referenced by codegen. However, some are only
-            // referenced by the compiler itself, in its data structures. Emit the declarations for them now.
-            //
-            string externFuncName = node.GetMangledName(_nodeFactory.NameMangler);
-            LLVMValueRef externFunc = _module.GetNamedFunction(externFuncName);
-            if (externFunc.Handle == IntPtr.Zero)
-            {
-                LLVMTypeRef funcType;
-                if (IsRhpUnmanagedIndirection(externFuncName))
-                {
-                    LLVMTypeRef ptrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
-                    funcType = LLVMTypeRef.CreateFunction(ptrType, new[] { ptrType });
-                }
-                else
-                {
-                    funcType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, Array.Empty<LLVMTypeRef>());
-                }
-
-                Debug.Assert(_module.GetNamedGlobal(externFuncName).Handle == IntPtr.Zero);
-                externFunc = _module.AddFunction(externFuncName, funcType);
-            }
-
-            return externFunc;
-        }
-
         private void DoneObjectNode(ObjectNode node, ISymbolDefinitionNode[] definedSymbols)
         {
             EmitAlignment(_nodeFactory.Target.PointerSize);
@@ -236,8 +199,7 @@ namespace ILCompiler.DependencyAnalysis
             // All references to this symbol are through "ordinarily named" aliases. Thus, we need to suffix the real definition.
             string dataSymbolName = symbolName + "__DATA";
 
-            LLVMTypeRef intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
-            LLVMTypeRef symbolType = LLVMTypeRef.CreateArray(intPtrType, (uint)countOfPointerSizedElements);
+            LLVMTypeRef symbolType = LLVMTypeRef.CreateArray(_ptrType, (uint)countOfPointerSizedElements);
             LLVMValueRef dataSymbol = _module.AddGlobal(symbolType, dataSymbolName);
 
             // Indirections to RhpNew* unmanaged functions are made using delegate*s so get a shadow stack first argument which is not present in the function.
@@ -288,27 +250,17 @@ namespace ILCompiler.DependencyAnalysis
 
         private void EmitSymbolDef(LLVMValueRef baseSymbol, string symbolIdentifier, int offsetFromBaseSymbol)
         {
-            LLVMTypeRef intType = LLVMTypeRef.Int32;
-            LLVMTypeRef int8PtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
-            LLVMTypeRef intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
-
-            LLVMValueRef symbolAddress;
+            LLVMValueRef symbolAddress = baseSymbol;
             if (offsetFromBaseSymbol != 0)
             {
-                LLVMValueRef baseSymbolAddress = LLVMValueRef.CreateConstBitCast(baseSymbol, int8PtrType);
-                LLVMValueRef offsetValue = LLVMValueRef.CreateConstInt(intType, (uint)offsetFromBaseSymbol);
-                symbolAddress = LLVMValueRef.CreateConstGEP(baseSymbolAddress, new LLVMValueRef[] { offsetValue });
+                LLVMValueRef offsetValue = CreateConst(LLVMTypeRef.Int32, offsetFromBaseSymbol);
+                symbolAddress = LLVMValueRef.CreateConstGEP2(LLVMTypeRef.Int8, symbolAddress, new[] { offsetValue });
             }
-            else
-            {
-                symbolAddress = baseSymbol;
-            }
-            symbolAddress = LLVMValueRef.CreateConstBitCast(symbolAddress, intPtrType);
 
             LLVMValueRef symbolDef = _module.GetNamedAlias(symbolIdentifier);
             if (symbolDef.Handle == IntPtr.Zero)
             {
-                _module.AddAlias(intPtrType, symbolAddress, symbolIdentifier);
+                _module.AddAlias2(LLVMTypeRef.Int8, 0, symbolAddress, symbolIdentifier);
             }
             else
             {
@@ -321,6 +273,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             string symbolName = target.GetMangledName(_nodeFactory.NameMangler);
             uint symbolRefOffset = checked(unchecked((uint)target.Offset) + (uint)delta);
+            GetOrCreateSymbol(target); // Cause the symbol's declaration to be created (if needed).
 
             _currentObjectSymbolRefs.Add(offset, new SymbolRefData(symbolName, symbolRefOffset));
         }
@@ -348,10 +301,8 @@ namespace ILCompiler.DependencyAnalysis
 
                 if (Offset != 0)
                 {
-                    LLVMTypeRef int8PtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
-                    LLVMValueRef bitCast = LLVMValueRef.CreateConstBitCast(valRef, int8PtrType);
-                    LLVMValueRef[] index = new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, Offset) };
-                    valRef = LLVMValueRef.CreateConstGEP(bitCast, index);
+                    LLVMValueRef[] index = new[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, Offset) };
+                    valRef = LLVMValueRef.CreateConstGEP2(LLVMTypeRef.Int8, valRef, index);
                 }
 
                 return valRef;
@@ -370,15 +321,11 @@ namespace ILCompiler.DependencyAnalysis
             readonly byte[] Data;
             readonly Dictionary<int, SymbolRefData> ObjectSymbolRefs;
 
-            public void Fill(LLVMModuleRef module, NodeFactory nodeFactory)
+            public void Fill(LLVMObjectWriter writer)
             {
-                List<LLVMValueRef> entries = new List<LLVMValueRef>();
-                int pointerSize = nodeFactory.Target.PointerSize;
-
+                int pointerSize = writer._nodeFactory.Target.PointerSize;
+                ArrayBuilder<LLVMValueRef> entries = new ArrayBuilder<LLVMValueRef>();
                 int countOfPointerSizedElements = Data.Length / pointerSize;
-
-                byte[] currentObjectData = Data;
-                var intPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0);
 
                 for (int i = 0; i < countOfPointerSizedElements; i++)
                 {
@@ -386,19 +333,16 @@ namespace ILCompiler.DependencyAnalysis
                     SymbolRefData symbolRef;
                     if (ObjectSymbolRefs.TryGetValue(curOffset, out symbolRef))
                     {
-                        LLVMValueRef pointedAtValue = symbolRef.ToLLVMValueRef(module);
-                        var ptrValue = LLVMValueRef.CreateConstBitCast(pointedAtValue, intPtrType);
-                        entries.Add(ptrValue);
+                        entries.Add(symbolRef.ToLLVMValueRef(writer._module));
                     }
                     else
                     {
-                        int value = BitConverter.ToInt32(currentObjectData, curOffset);
-                        entries.Add(LLVMValueRef.CreateConstIntToPtr(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)value, false), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0)));
+                        uint value = BitConverter.ToUInt32(Data, curOffset);
+                        entries.Add(LLVMValueRef.CreateConstIntToPtr(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, value), writer._ptrType));
                     }
                 }
 
-                var funcptrarray = LLVMValueRef.CreateConstArray(intPtrType, entries.ToArray());
-                Node.Initializer = funcptrarray;
+                Node.Initializer = LLVMValueRef.CreateConstArray(writer._ptrType, entries.ToArray());
             }
         }
 
@@ -432,20 +376,15 @@ namespace ILCompiler.DependencyAnalysis
             var thunkFunc = _module.GetNamedFunction(thunkSymbolName);
             if (thunkFunc.Handle == IntPtr.Zero)
             {
-                LLVMValueRef callee = _module.GetNamedFunction(unmanagedSymbolName);
-                if (callee.Handle == IntPtr.Zero)
-                {
-                    callee = EmitExternalSymbol(new ExternSymbolNode(unmanagedSymbolName));
-                }
-
                 thunkFunc = _module.AddFunction(thunkSymbolName,
                     LLVMTypeRef.CreateFunction(LLVMTypeRef.Void,
-                        new[] { PtrType /* shadow stack, not used */, PtrType /* return spill slot */, PtrType /* MethodTable* */ }));
+                        new[] { _ptrType /* shadow stack, not used */, _ptrType /* return spill slot */, _ptrType /* MethodTable* */ }));
                 using LLVMBuilderRef builder = LLVMBuilderRef.Create(_module.Context);
                 builder.PositionAtEnd(thunkFunc.AppendBasicBlock("Thunk"));
 
-                LLVMValueRef allocatedObj = builder.BuildCall(callee, new[] { thunkFunc.Params[2] });
-                CreateStore(builder, thunkFunc.Params[1], allocatedObj);
+                LLVMValueRef allocatorFunc = GetOrCreateSymbol(new ExternSymbolNode(unmanagedSymbolName));
+                LLVMValueRef allocatedObj = CreateCall(builder, allocatorFunc, new[] { thunkFunc.Params[2] });
+                builder.BuildStore(allocatedObj, thunkFunc.Params[1]);
                 builder.BuildRetVoid();
             }
 
@@ -467,7 +406,7 @@ namespace ILCompiler.DependencyAnalysis
             // Since emission to llvm is delayed until after all nodes are emitted... emit now.
             foreach (var nodeData in _dataToFill)
             {
-                nodeData.Fill(_module, _nodeFactory);
+                nodeData.Fill(this);
             }
 
 #if DEBUG
@@ -492,7 +431,8 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             string nativeName = _compilation.NodeFactory.GetSymbolAlternateName(methodNode);
-            LLVMTypeRef thunkSig = LLVMTypeRef.CreateFunction(_compilation.GetLLVMTypeForTypeDesc(method.Signature.ReturnType), llvmParams, false);
+            LLVMTypeRef nativeReturnType = _compilation.GetLLVMTypeForTypeDesc(method.Signature.ReturnType);
+            LLVMTypeRef thunkSig = LLVMTypeRef.CreateFunction(nativeReturnType, llvmParams, false);
             LLVMValueRef thunkFunc = GetOrCreateLLVMFunction(nativeName, thunkSig);
 
             using LLVMBuilderRef builder = _module.Context.CreateBuilder();
@@ -501,9 +441,9 @@ namespace ILCompiler.DependencyAnalysis
 
             // Get the shadow stack. Since we are wrapping a runtime export, the caller is (by definition) managed, so we must have set up the shadow
             // stack already and can bypass the init check.
-            LLVMTypeRef getShadowStackFuncSig = LLVMTypeRef.CreateFunction(PtrType, Array.Empty<LLVMTypeRef>());
+            LLVMTypeRef getShadowStackFuncSig = LLVMTypeRef.CreateFunction(_ptrType, Array.Empty<LLVMTypeRef>());
             LLVMValueRef getShadowStackFunc = GetOrCreateLLVMFunction("RhpGetShadowStackTop", getShadowStackFuncSig);
-            LLVMValueRef shadowStack = builder.BuildCall(getShadowStackFunc, Array.Empty<LLVMValueRef>());
+            LLVMValueRef shadowStack = builder.BuildCall2(getShadowStackFuncSig, getShadowStackFunc, Array.Empty<LLVMValueRef>());
 
             bool needsReturnSlot = LLVMCodegenCompilation.NeedsReturnStackSlot(method.Signature);
 
@@ -518,8 +458,9 @@ namespace ILCompiler.DependencyAnalysis
                 LLVMValueRef lengthValue = CreateConst(LLVMTypeRef.Int32, curOffset);
                 LLVMValueRef fillValue = CreateConst(LLVMTypeRef.Int8, 0);
                 LLVMValueRef isVolatileValue = CreateConst(LLVMTypeRef.Int1, 0);
-                LLVMTypeRef memsetFuncType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new[] { PtrType, LLVMTypeRef.Int8, LLVMTypeRef.Int32, LLVMTypeRef.Int1 });
-                builder.BuildCall(GetOrCreateLLVMFunction("llvm.memset.p0i8.i32", memsetFuncType), new[] { shadowStack, fillValue, lengthValue, isVolatileValue }, "");
+                LLVMTypeRef memsetFuncType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new[] { _ptrType, LLVMTypeRef.Int8, LLVMTypeRef.Int32, LLVMTypeRef.Int1 });
+                LLVMValueRef memsetFunc = GetOrCreateLLVMFunction("llvm.memset.p0.i32", memsetFuncType);
+                builder.BuildCall2(memsetFuncType, memsetFunc, new[] { shadowStack, fillValue, lengthValue, isVolatileValue }, "");
 
                 calleeFrame = CreateAddOffset(builder, shadowStack, curOffset, "calleeFrame");
             }
@@ -549,20 +490,19 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     curOffset = _compilation.PadOffset(method.Signature[i], curOffset);
                     LLVMValueRef argAddr = CreateAddOffset(builder, shadowStack, curOffset, $"arg{i}");
-                    CreateStore(builder, argAddr, argValue);
+                    builder.BuildStore(argValue, argAddr);
                     curOffset = _compilation.PadNextOffset(method.Signature[i], curOffset);
                 }
             }
 
             LLVMValueRef managedFunction = GetOrCreateLLVMFunction(methodNode);
-            LLVMValueRef llvmReturnValue = builder.BuildCall(managedFunction, llvmArgs.ToArray(), "");
+            LLVMValueRef llvmReturnValue = CreateCall(builder, managedFunction, llvmArgs.ToArray(), "");
 
             if (!method.Signature.ReturnType.IsVoid)
             {
                 if (needsReturnSlot)
                 {
-                    LLVMValueRef returnValue = CreateLoad(builder, shadowStack, managedFunction.GetValueType().ReturnType, "returnValue");
-                    builder.BuildRet(returnValue);
+                    builder.BuildRet(builder.BuildLoad2(nativeReturnType, shadowStack, "returnValue"));
                 }
                 else
                 {
@@ -577,7 +517,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private void EmitReadyToRunHeaderCallback(ModulesSectionNode node)
         {
-            LLVMValueRef callback = _module.AddFunction("RtRHeaderWrapper", LLVMTypeRef.CreateFunction(PtrType, Array.Empty<LLVMTypeRef>()));
+            LLVMValueRef callback = _module.AddFunction("RtRHeaderWrapper", LLVMTypeRef.CreateFunction(_ptrType, Array.Empty<LLVMTypeRef>()));
             using LLVMBuilderRef builder = _module.Context.CreateBuilder();
             LLVMBasicBlockRef block = callback.AppendBasicBlock("Block");
             builder.PositionAtEnd(block);
@@ -594,7 +534,7 @@ namespace ILCompiler.DependencyAnalysis
                 return;
             }
 
-            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(PtrType, new[] { PtrType /* shadow stack */, PtrType /* generic context */ });
+            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(_ptrType, new[] { _ptrType /* shadow stack */, _ptrType /* generic context */ });
             LLVMValueRef helperFunc = GetOrCreateLLVMFunction(node.GetMangledName(factory.NameMangler), helperFuncType);
 
             LLVMBuilderRef builder = _module.Context.CreateBuilder();
@@ -610,10 +550,8 @@ namespace ILCompiler.DependencyAnalysis
                 int pointerSize = factory.Target.PointerSize;
                 // Load the dictionary pointer from the VTable
                 int slotOffset = EETypeNode.GetVTableOffset(pointerSize) + (vtableSlot * pointerSize);
-                var slotGep = builder.BuildGEP(helperFunc.GetParam(1), new[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)slotOffset, false) }, "slotGep");
-                var slotGepPtrPtr = builder.BuildPointerCast(slotGep,
-                    LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "slotGepPtrPtr");
-                ctx = builder.BuildLoad(slotGepPtrPtr, "dictGep");
+                var slotAddr = CreateAddOffset(builder, helperFunc.GetParam(1), slotOffset, "slotAddr");
+                ctx = builder.BuildLoad2(_ptrType, slotAddr, "dictGep");
                 gepName = "typeNodeGep";
             }
             else
@@ -648,7 +586,7 @@ namespace ILCompiler.DependencyAnalysis
                             OutputCodeForTriggerCctor(builder, nonGcStaticsBase);
                         }
 
-                        result = CreateLoad(builder, result, PtrType, "gcBase");
+                        result = builder.BuildLoad2(_ptrType, result, "gcBase");
                     }
                     break;
 
@@ -695,8 +633,7 @@ namespace ILCompiler.DependencyAnalysis
                 return;
             }
 
-            LLVMTypeRef ptrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
-            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(ptrType, new[] { ptrType /* shadow stack */ });
+            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(_ptrType, new[] { _ptrType /* shadow stack */ });
             LLVMValueRef helperFunc = GetOrCreateLLVMFunction(node.GetMangledName(factory.NameMangler), helperFuncType);
 
             using LLVMBuilderRef builder = _module.Context.CreateBuilder();
@@ -729,7 +666,7 @@ namespace ILCompiler.DependencyAnalysis
                         }
 
                         result = GetSymbolReferenceValue(factory.TypeGCStaticsSymbol(target));
-                        result = CreateLoad(builder, result, PtrType, "gcBase");
+                        result = builder.BuildLoad2(_ptrType, result, "gcBase");
                     }
                     break;
 
@@ -765,12 +702,12 @@ namespace ILCompiler.DependencyAnalysis
             if (genericNode != null)
             {
                 delegateCreationInfo = (DelegateCreationInfo)genericNode.Target;
-                helperFuncParams = new[] { PtrType /* shadow stack */, PtrType /* generic context */ };
+                helperFuncParams = new[] { _ptrType /* shadow stack */, _ptrType /* generic context */ };
             }
             else
             {
                 delegateCreationInfo = (DelegateCreationInfo)((ReadyToRunHelperNode)node).Target;
-                helperFuncParams = new[] { PtrType /* shadow stack */ };
+                helperFuncParams = new[] { _ptrType /* shadow stack */ };
             }
             LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, helperFuncParams);
             LLVMValueRef helperFunc = GetOrCreateLLVMFunction(node.GetMangledName(factory.NameMangler), helperFuncType);
@@ -794,14 +731,14 @@ namespace ILCompiler.DependencyAnalysis
             else if (delegateCreationInfo.TargetNeedsVTableLookup)
             {
                 LLVMValueRef addrOfTargetObj = CreateAddOffset(builder, shadowStack, factory.Target.PointerSize, "addrOfTargetObj");
-                LLVMValueRef targetObjThis = CreateLoad(builder, addrOfTargetObj, PtrType, "targetObjThis");
-                LLVMValueRef pMethodTable = CreateLoad(builder, targetObjThis, PtrType, "pMethodTable");
+                LLVMValueRef targetObjThis = builder.BuildLoad2(_ptrType, addrOfTargetObj, "targetObjThis");
+                LLVMValueRef pMethodTable = builder.BuildLoad2(_ptrType, targetObjThis, "pMethodTable");
 
                 int slot = VirtualMethodSlotHelper.GetVirtualMethodSlot(factory, delegateCreationInfo.TargetMethod, delegateCreationInfo.TargetMethod.OwningType);
                 int slotOffset = EETypeNode.GetVTableOffset(factory.Target.PointerSize) + (slot * factory.Target.PointerSize);
                 LLVMValueRef pSlot = CreateAddOffset(builder, pMethodTable, slotOffset, "pSlot");
 
-                targetValue = CreateLoad(builder, pSlot, targetValueType, "pTarget");
+                targetValue = builder.BuildLoad2(targetValueType, pSlot, "pTarget");
             }
             else
             {
@@ -822,7 +759,7 @@ namespace ILCompiler.DependencyAnalysis
                 initializerArgs[2] = builder.BuildPointerCast(thunkValue, initializerFuncParamTypes[2]);
             }
 
-            builder.BuildCall(initializerFunc, initializerArgs);
+            CreateCall(builder, initializerFunc, initializerArgs);
             builder.BuildRetVoid();
         }
 
@@ -835,7 +772,7 @@ namespace ILCompiler.DependencyAnalysis
             LLVMBasicBlockRef block = tentativeStub.AppendBasicBlock("TentativeStub");
             builder.PositionAtEnd(block);
 
-            builder.BuildCall(helperFunc, new LLVMValueRef[] { tentativeStub.GetParam(0) }, string.Empty);
+            CreateCall(builder, helperFunc, new[] { tentativeStub.GetParam(0) });
             builder.BuildUnreachable();
         }
 
@@ -854,10 +791,9 @@ namespace ILCompiler.DependencyAnalysis
 
             // Adjust "this" by the method table offset.
             LLVMValueRef shadowStack = unboxingLlvmFunc.GetParam(0);
-            LLVMValueRef addrOfThis = builder.BuildBitCast(shadowStack, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "addrOfThis");
-            LLVMValueRef objThis = builder.BuildLoad(addrOfThis, "objThis");
-            LLVMValueRef dataThis = builder.BuildGEP(objThis, new[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)factory.Target.PointerSize) }, "dataThis");
-            builder.BuildStore(dataThis, addrOfThis);
+            LLVMValueRef objThis = builder.BuildLoad2(_ptrType, shadowStack, "objThis");
+            LLVMValueRef dataThis = CreateAddOffset(builder, objThis, factory.Target.PointerSize, "dataThis");
+            builder.BuildStore(dataThis, shadowStack);
 
             // Pass the rest of arguments as-is.
             Debug.Assert(unboxingLlvmFunc.ParamsCount == unboxedLlvmFunc.ParamsCount);
@@ -867,7 +803,7 @@ namespace ILCompiler.DependencyAnalysis
                 args[i] = unboxingLlvmFunc.GetParam(i);
             }
 
-            LLVMValueRef unboxedCall = builder.BuildCall(unboxedLlvmFunc, args);
+            LLVMValueRef unboxedCall = CreateCall(builder, unboxedLlvmFunc, args);
             if (unboxedCall.TypeOf != LLVMTypeRef.Void)
             {
                 builder.BuildRet(unboxedCall);
@@ -950,15 +886,13 @@ namespace ILCompiler.DependencyAnalysis
             int offset = dictionarySlot * factory.Target.PointerSize;
 
             // Load the generic dictionary cell
-            LLVMValueRef retGep = builder.BuildGEP(ctx, new[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)offset, false) }, "retGep");
-            LLVMValueRef castGep = builder.BuildBitCast(retGep, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "ptrPtr");
-            LLVMValueRef retRef = builder.BuildLoad(castGep, gepName);
+            LLVMValueRef retGep = CreateAddOffset(builder, ctx, offset, "retGep");
+            LLVMValueRef retRef = builder.BuildLoad2(_ptrType, retGep, gepName);
 
             switch (lookup.LookupResultReferenceType(factory))
             {
                 case GenericLookupResultReferenceType.Indirect:
-                    var ptrPtr = builder.BuildBitCast(retRef, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "ptrPtr");
-                    retRef = builder.BuildLoad(ptrPtr, "indLoad");
+                    retRef = builder.BuildLoad2(_ptrType, retRef, "indLoad");
                     break;
 
                 case GenericLookupResultReferenceType.ConditionalIndirect:
@@ -976,24 +910,24 @@ namespace ILCompiler.DependencyAnalysis
             // We need to trigger the cctor before returning the base. It is stored at the beginning of the non-GC statics region.
             int pContextOffset = -NonGCStaticsNode.GetClassConstructorContextSize(_nodeFactory.Target);
             LLVMValueRef pContext = CreateAddOffset(builder, nonGcStaticBaseValue, pContextOffset, "pContext");
-            LLVMValueRef initialized = CreateLoad(builder, nonGcStaticBaseValue, IntPtrType, "initialized");
-            LLVMValueRef isInitialized = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, initialized, CreateConst(IntPtrType, 1), "isInitialized");
+            LLVMValueRef initialized = builder.BuildLoad2(_intPtrType, pContext, "initialized");
+            LLVMValueRef isInitialized = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, initialized, CreateConst(_intPtrType, 1), "isInitialized");
 
             LLVMValueRef func = builder.InsertBlock.Parent;
             LLVMBasicBlockRef callHelperBlock = func.AppendBasicBlock("CallHelper");
-            LLVMBasicBlockRef nextBlock = func.AppendBasicBlock("Return");
-            builder.BuildCondBr(isInitialized, nextBlock, callHelperBlock);
+            LLVMBasicBlockRef returnBlock = func.AppendBasicBlock("Return");
+            builder.BuildCondBr(isInitialized, returnBlock, callHelperBlock);
 
             builder.PositionAtEnd(callHelperBlock);
-            IMethodNode helperFuncNode = (IMethodNode)_nodeFactory.HelperEntrypoint(HelperEntrypoint.EnsureClassConstructorRunAndReturnGCStaticBase);
+            IMethodNode helperFuncNode = (IMethodNode)_nodeFactory.HelperEntrypoint(HelperEntrypoint.EnsureClassConstructorRunAndReturnNonGCStaticBase);
             LLVMValueRef helperFunc = GetOrCreateLLVMFunction(helperFuncNode);
-            LLVMValueRef nonGcStaticBaseValueArg = builder.BuildPtrToInt(nonGcStaticBaseValue, IntPtrType);
+            LLVMValueRef nonGcStaticBaseValueArg = builder.BuildPtrToInt(nonGcStaticBaseValue, _intPtrType);
             LLVMValueRef[] helperCallArgs = new[] { func.GetParam(0), pContext, nonGcStaticBaseValueArg };
 
-            builder.BuildCall(helperFunc, helperCallArgs);
-            builder.BuildBr(nextBlock);
+            CreateCall(builder, helperFunc, helperCallArgs);
+            builder.BuildBr(returnBlock);
 
-            builder.PositionAtEnd(nextBlock);
+            builder.PositionAtEnd(returnBlock);
         }
 
         private LLVMValueRef OutputCodeForGetThreadStaticBase(LLVMBuilderRef builder, LLVMValueRef pModuleDataSlot)
@@ -1006,45 +940,80 @@ namespace ILCompiler.DependencyAnalysis
 
             // First arg: address of the TypeManager slot that provides the helper with information about
             // module index and the type manager instance (which is used for initialization on first access).
-            LLVMValueRef pModuleData = CreateLoad(builder, pModuleDataSlot, PtrType, "pModuleData");
+            LLVMValueRef pModuleData = builder.BuildLoad2(_ptrType, pModuleDataSlot, "pModuleData");
 
             // Second arg: index of the type in the ThreadStatic section of the modules.
             LLVMValueRef pTypeTlsIndex = CreateAddOffset(builder, pModuleDataSlot, _nodeFactory.Target.PointerSize, "pTypeTlsIndex");
-            LLVMValueRef typeTlsIndex = CreateLoad(builder, pTypeTlsIndex, LLVMTypeRef.Int32, "typeTlsIndex");
+            LLVMValueRef typeTlsIndex = builder.BuildLoad2(LLVMTypeRef.Int32, pTypeTlsIndex, "typeTlsIndex");
 
             IMethodNode getBaseHelperNode = (IMethodNode)_nodeFactory.HelperEntrypoint(HelperEntrypoint.GetThreadStaticBaseForType);
             LLVMValueRef getBaseHelperFunc = GetOrCreateLLVMFunction(getBaseHelperNode);
             LLVMValueRef[] getBaseHelperArgs = new[] { calleeShadowStack, shadowStack, pModuleData, typeTlsIndex };
-            builder.BuildCall(getBaseHelperFunc, getBaseHelperArgs);
+            CreateCall(builder, getBaseHelperFunc, getBaseHelperArgs);
 
-            return CreateLoad(builder, shadowStack, PtrType, "threadStaticBase");
+            return builder.BuildLoad2(_ptrType, shadowStack, "threadStaticBase");
+        }
+
+        private LLVMValueRef GetOrCreateSymbol(ISymbolNode symbolRef)
+        {
+            LLVMValueRef symbolDefValue;
+            if (symbolRef is IMethodNode { Offset: 0 } methodNode)
+            {
+                symbolDefValue = GetOrCreateLLVMFunction(methodNode);
+            }
+            else if (symbolRef is ExternSymbolNode)
+            {
+                // We assume extenal symbol nodes are functions. This is rather fragile, but handling this precisely
+                // would require modifying producers of these nodes to provide more information (namely, the signature
+                // for function symbols).
+                //
+                string externFuncName = symbolRef.GetMangledName(_nodeFactory.NameMangler);
+                LLVMValueRef externFunc = _module.GetNamedFunction(externFuncName);
+                if (externFunc.Handle == IntPtr.Zero)
+                {
+                    LLVMTypeRef funcType;
+                    if (IsRhpUnmanagedIndirection(externFuncName))
+                    {
+                        funcType = LLVMTypeRef.CreateFunction(_ptrType, new[] { _ptrType });
+                    }
+                    else
+                    {
+                        funcType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, Array.Empty<LLVMTypeRef>());
+                    }
+
+                    Debug.Assert(_module.GetNamedGlobal(externFuncName).Handle == IntPtr.Zero);
+                    externFunc = _module.AddFunction(externFuncName, funcType);
+                }
+
+                symbolDefValue = externFunc;
+            }
+            else
+            {
+                string symbolDefName = symbolRef.GetMangledName(_compilation.NameMangler);
+                symbolDefValue = _module.GetNamedAlias(symbolDefName);
+
+                if (symbolDefValue.Handle == IntPtr.Zero)
+                {
+                    // Dummy aliasee; emission will fill in the real value.
+                    LLVMValueRef aliasee = LLVMValueRef.CreateConstPointerNull(_ptrType);
+                    symbolDefValue = _module.AddAlias2(LLVMTypeRef.Int8, 0, aliasee, symbolDefName);
+                }
+            }
+
+            return symbolDefValue;
         }
 
         private LLVMValueRef GetSymbolReferenceValue(ISymbolNode symbolRef)
         {
-            LLVMValueRef symbolRefValue;
-            if (symbolRef is IMethodNode { Offset: 0 } methodNode)
+            LLVMValueRef symbolRefValue = GetOrCreateSymbol(symbolRef);
+            if (symbolRef.Offset != 0)
             {
-                symbolRefValue = GetOrCreateLLVMFunction(methodNode);
-            }
-            else
-            {
-                string symbolRefName = symbolRef.GetMangledName(_compilation.NameMangler);
-                symbolRefValue = _module.GetNamedAlias(symbolRefName);
-
-                if (symbolRefValue.Handle == IntPtr.Zero)
-                {
-                    // Dummy aliasee; emission will fill in the real value.
-                    LLVMValueRef aliasee = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0);
-                    symbolRefValue = _module.AddAlias(LLVMTypeRef.Int8, aliasee, symbolRefName);
-                }
+                LLVMValueRef offsetValue = CreateConst(LLVMTypeRef.Int32, symbolRef.Offset);
+                symbolRefValue = LLVMValueRef.CreateConstGEP2(LLVMTypeRef.Int8, symbolRefValue, new[] { offsetValue });
             }
 
             return symbolRefValue;
         }
-
-        private LLVMTypeRef PtrType { get; } = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
-        private LLVMTypeRef IntPtrType { get; }
 
         private LLVMValueRef GetOrCreateLLVMFunction(IMethodNode methodNode)
         {
@@ -1077,36 +1046,17 @@ namespace ILCompiler.DependencyAnalysis
             return llvmFunction;
         }
 
-        private LLVMValueRef CreateLoad(LLVMBuilderRef builder, LLVMValueRef address, LLVMTypeRef type, string name)
+        private LLVMValueRef CreateCall(LLVMBuilderRef builder, LLVMValueRef func, LLVMValueRef[] args, string name = "")
         {
-            if (address.TypeOf.ElementType != type)
-            {
-                address = builder.BuildBitCast(address, LLVMTypeRef.CreatePointer(type, 0), address.Name + "ForLoad");
-            }
-
-            return builder.BuildLoad2(type, address, name);
-        }
-
-        private LLVMValueRef CreateStore(LLVMBuilderRef builder, LLVMValueRef address, LLVMValueRef value)
-        {
-            if (address.TypeOf.ElementType != value.TypeOf)
-            {
-                address = builder.BuildBitCast(address, LLVMTypeRef.CreatePointer(value.TypeOf, 0), address.Name + "ForStore");
-            }
-
-            return builder.BuildStore(value, address);
+            Debug.Assert(func.IsAFunction.Handle != IntPtr.Zero);
+            return builder.BuildCall2(func.GetValueType(), func, args, name);
         }
 
         private LLVMValueRef CreateAddOffset(LLVMBuilderRef builder, LLVMValueRef address, int offset, string name)
         {
-            if (address.TypeOf.ElementType != LLVMTypeRef.Int8)
-            {
-                address = builder.BuildBitCast(address, PtrType, address.Name + "Cast");
-            }
-
             if (offset != 0)
             {
-                LLVMValueRef offsetValue = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)offset);
+                LLVMValueRef offsetValue = CreateConst(LLVMTypeRef.Int32, offset);
                 address = builder.BuildGEP2(LLVMTypeRef.Int8, address, new[] { offsetValue }, name);
             }
 

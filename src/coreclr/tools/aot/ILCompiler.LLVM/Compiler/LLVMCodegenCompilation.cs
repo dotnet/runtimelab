@@ -7,7 +7,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Threading;
 
 using ILCompiler.DependencyAnalysis;
@@ -339,17 +338,17 @@ namespace ILCompiler
                 case TypeFlags.Int32:
                 case TypeFlags.UInt32:
                     return LLVMTypeRef.Int32;
+
                 case TypeFlags.IntPtr:
                 case TypeFlags.UIntPtr:
+                    return _nodeFactory.Target.PointerSize == 4 ? LLVMTypeRef.Int32 : LLVMTypeRef.Int64;
+
                 case TypeFlags.Array:
                 case TypeFlags.SzArray:
                 case TypeFlags.ByRef:
                 case TypeFlags.Class:
                 case TypeFlags.Interface:
-                    return LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
-
                 case TypeFlags.Pointer:
-                    return LLVMTypeRef.CreatePointer(type.GetParameterType().IsVoid ? LLVMTypeRef.Int8 : GetLLVMTypeForTypeDesc(type.GetParameterType()), 0);
                 case TypeFlags.FunctionPointer:
                     return LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
 
@@ -507,7 +506,7 @@ namespace ILCompiler
                     return LLVMTypeRef.Void;
 
                 default:
-                    throw new NotImplementedException(type.Category.ToString());
+                    throw new UnreachableException(type.Category.ToString());
             }
         }
 

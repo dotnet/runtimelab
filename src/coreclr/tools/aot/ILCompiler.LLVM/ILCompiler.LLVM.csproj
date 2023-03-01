@@ -6,8 +6,7 @@
     <AssemblyName>ILCompiler.LLVM</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TargetFramework>$(NetCoreAppToolCurrent)</TargetFramework>
-    <!-- not ready for LLVM opaque pointers yet, so disable deprecated function: 0618 -->
-    <NoWarn>8002;0618</NoWarn>
+    <NoWarn>8002</NoWarn>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <Platforms>x64;x86</Platforms>
     <PlatformTarget>AnyCPU</PlatformTarget>
