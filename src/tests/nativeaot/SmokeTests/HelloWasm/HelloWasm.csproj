@@ -22,6 +22,6 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <EmccExtraArgs>--js-library &quot;$(MSBuildProjectDirectory)\dotnet_support.js&quot; --pre-js &quot;$(MSBuildProjectDirectory)\Microsoft.JSInterop.js&quot; --post-js &quot;$(MSBuildProjectDirectory)\HelloWasm.js&quot;</EmccExtraArgs>
+    <EmccExtraArgs>--js-library $(MSBuildProjectDirectory)\dotnet_support.js --pre-js $(MSBuildProjectDirectory)\Microsoft.JSInterop.js --post-js $(MSBuildProjectDirectory)\HelloWasm.js</EmccExtraArgs>
   </PropertyGroup>
 </Project>
