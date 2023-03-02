@@ -424,19 +424,28 @@ namespace ILCompiler.DependencyAnalysis
             MethodDesc method = methodNode.Method;
             Debug.Assert(method.IsRuntimeExport && methodNode.CompilationCompleted);
 
+            LLVMTypeRef nativeReturnType = _compilation.GetLlvmReturnType(isManagedAbi: false, method.Signature.ReturnType, out bool isNativeReturnByRef);
+            if (isNativeReturnByRef)
+            {
+                throw new NotSupportedException("Runtime export with a complex struct return");
+            }
+
             LLVMTypeRef[] llvmParams = new LLVMTypeRef[method.Signature.Length];
             for (int i = 0; i < llvmParams.Length; i++)
             {
-                llvmParams[i] = _compilation.GetLLVMTypeForTypeDesc(method.Signature[i]);
+                _compilation.GetLlvmArgTypeForArg(isManagedAbi: false, method.Signature[i], out llvmParams[i], out bool isPassedByRef);
+                if (isPassedByRef)
+                {
+                    throw new NotSupportedException("Runtime export with a complex struct argument"); // Not supported by the Jit.
+                }
             }
 
             string nativeName = _compilation.NodeFactory.GetSymbolAlternateName(methodNode);
-            LLVMTypeRef nativeReturnType = _compilation.GetLLVMTypeForTypeDesc(method.Signature.ReturnType);
-            LLVMTypeRef thunkSig = LLVMTypeRef.CreateFunction(nativeReturnType, llvmParams, false);
-            LLVMValueRef thunkFunc = GetOrCreateLLVMFunction(nativeName, thunkSig);
+            LLVMTypeRef nativeSig = LLVMTypeRef.CreateFunction(nativeReturnType, llvmParams, false);
+            LLVMValueRef nativeFunc = GetOrCreateLLVMFunction(nativeName, nativeSig);
 
             using LLVMBuilderRef builder = _module.Context.CreateBuilder();
-            LLVMBasicBlockRef block = thunkFunc.AppendBasicBlock("ManagedCallBlock");
+            LLVMBasicBlockRef block = nativeFunc.AppendBasicBlock("ManagedCallBlock");
             builder.PositionAtEnd(block);
 
             // Get the shadow stack. Since we are wrapping a runtime export, the caller is (by definition) managed, so we must have set up the shadow
@@ -445,14 +454,14 @@ namespace ILCompiler.DependencyAnalysis
             LLVMValueRef getShadowStackFunc = GetOrCreateLLVMFunction("RhpGetShadowStackTop", getShadowStackFuncSig);
             LLVMValueRef shadowStack = builder.BuildCall2(getShadowStackFuncSig, getShadowStackFunc, Array.Empty<LLVMValueRef>());
 
-            bool needsReturnSlot = LLVMCodegenCompilation.NeedsReturnStackSlot(method.Signature);
+            _compilation.GetLlvmReturnType(isManagedAbi: true, method.Signature.ReturnType, out bool isManagedReturnByRef);
 
             int curOffset = 0;
             LLVMValueRef calleeFrame;
-            if (needsReturnSlot)
+            if (isManagedReturnByRef)
             {
                 curOffset = _compilation.PadNextOffset(method.Signature.ReturnType, curOffset);
-                curOffset = _compilation.PadOffset(_compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Object), curOffset); // Align the stack to pointer size.
+                curOffset = curOffset.AlignUp(_nodeFactory.Target.PointerSize);
 
                 // Clear any uncovered object references for GC.Collect.
                 LLVMValueRef lengthValue = CreateConst(LLVMTypeRef.Int32, curOffset);
@@ -472,7 +481,7 @@ namespace ILCompiler.DependencyAnalysis
             List<LLVMValueRef> llvmArgs = new List<LLVMValueRef>();
             llvmArgs.Add(calleeFrame);
 
-            if (needsReturnSlot)
+            if (isManagedReturnByRef)
             {
                 // Slot for return value if necessary
                 llvmArgs.Add(shadowStack);
@@ -480,7 +489,7 @@ namespace ILCompiler.DependencyAnalysis
 
             for (int i = 0; i < llvmParams.Length; i++)
             {
-                LLVMValueRef argValue = thunkFunc.GetParam((uint)i);
+                LLVMValueRef argValue = nativeFunc.GetParam((uint)i);
 
                 if (LLVMCodegenCompilation.CanStoreTypeOnStack(method.Signature[i]))
                 {
@@ -500,7 +509,7 @@ namespace ILCompiler.DependencyAnalysis
 
             if (!method.Signature.ReturnType.IsVoid)
             {
-                if (needsReturnSlot)
+                if (isManagedReturnByRef)
                 {
                     builder.BuildRet(builder.BuildLoad2(nativeReturnType, shadowStack, "returnValue"));
                 }
@@ -1030,7 +1039,8 @@ namespace ILCompiler.DependencyAnalysis
 
             if (llvmFunction.Handle == IntPtr.Zero)
             {
-                return _module.AddFunction(mangledName, _compilation.GetLLVMSignatureForMethod(signature, hasHiddenParam));
+                LLVMTypeRef llvmFuncType = _compilation.GetLLVMSignatureForMethod(isManagedAbi: true, signature, hasHiddenParam);
+                return _module.AddFunction(mangledName, llvmFuncType);
             }
             return llvmFunction;
         }

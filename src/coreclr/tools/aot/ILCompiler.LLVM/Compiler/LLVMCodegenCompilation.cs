@@ -191,50 +191,34 @@ namespace ILCompiler
             return NodeFactory.ExternSymbolWithAccessor(name, method, sig);
         }
 
-        internal LLVMTypeRef GetLLVMSignatureForMethod(MethodSignature signature, bool hasHiddenParam)
+        internal LLVMTypeRef GetLLVMSignatureForMethod(bool isManagedAbi, MethodSignature signature, bool hasHiddenParam)
         {
-            TypeDesc returnType = signature.ReturnType;
-            LLVMTypeRef llvmReturnType;
-            bool returnOnStack = false;
-            if (!NeedsReturnStackSlot(signature))
-            {
-                returnOnStack = true;
-                llvmReturnType = GetLLVMTypeForTypeDesc(returnType);
-            }
-            else
-            {
-                llvmReturnType = LLVMTypeRef.Void;
-            }
+            LLVMTypeRef llvmReturnType = GetLlvmReturnType(isManagedAbi, signature.ReturnType, out bool isReturnByRef);
 
-            List<LLVMTypeRef> signatureTypes = new List<LLVMTypeRef>();
+            ArrayBuilder<LLVMTypeRef> signatureTypes = new ArrayBuilder<LLVMTypeRef>();
             signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // Shadow stack pointer
 
-            if (!returnOnStack && !signature.ReturnType.IsVoid)
+            if (isReturnByRef)
             {
                 signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
             }
 
             if (hasHiddenParam)
             {
-                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // *MethodTable
+                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
             }
 
             // Intentionally skipping the 'this' pointer since it could always be a GC reference
             // and thus must be on the shadow stack
             foreach (TypeDesc type in signature)
             {
-                if (CanStoreTypeOnStack(type))
+                if (GetLlvmArgTypeForArg(isManagedAbi, type, out LLVMTypeRef llvmArgType, out _))
                 {
-                    signatureTypes.Add(GetLLVMTypeForTypeDesc(type));
+                    signatureTypes.Add(llvmArgType);
                 }
             }
 
             return LLVMTypeRef.CreateFunction(llvmReturnType, signatureTypes.ToArray(), false);
-        }
-
-        internal static bool NeedsReturnStackSlot(MethodSignature signature)
-        {
-            return !signature.ReturnType.IsVoid && !CanStoreTypeOnStack(signature.ReturnType);
         }
 
         internal static bool CanStoreTypeOnStack(TypeDesc type)
@@ -256,7 +240,6 @@ namespace ILCompiler
 
         public override TypeDesc GetPrimitiveTypeForTrivialWasmStruct(TypeDesc type)
         {
-            static bool IsStruct(TypeDesc type) => type.Category is TypeFlags.ValueType or TypeFlags.Nullable;
             Debug.Assert(IsStruct(type));
 
             int size = type.GetElementSize().AsInt;
@@ -301,11 +284,40 @@ namespace ILCompiler
             return null;
         }
 
+        internal bool GetLlvmArgTypeForArg(bool isManagedAbi, TypeDesc argSigType, out LLVMTypeRef llvmArgType, out bool isPassedByRef)
+        {
+            isPassedByRef = false;
+            bool isLlvmArg = !isManagedAbi || CanStoreTypeOnStack(argSigType);
+            TypeDesc argType = argSigType;
+            if (isLlvmArg && IsStruct(argSigType))
+            {
+                argType = GetPrimitiveTypeForTrivialWasmStruct(argSigType);
+                if (argType == null)
+                {
+                    isPassedByRef = true;
+                }
+            }
+
+            llvmArgType = isPassedByRef ? LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) : GetLLVMTypeForTypeDesc(argType);
+            return isLlvmArg;
+        }
+
+        internal LLVMTypeRef GetLlvmReturnType(bool isManagedAbi, TypeDesc sigReturnType, out bool isPassedByRef)
+        {
+            isPassedByRef = isManagedAbi && !CanStoreTypeOnStack(sigReturnType);
+            if (isPassedByRef || sigReturnType.IsVoid)
+            {
+                return LLVMTypeRef.Void;
+            }
+
+            return GetLLVMTypeForTypeDesc(sigReturnType);
+        }
+
         public override int PadOffset(TypeDesc type, int atOffset)
         {
             var fieldAlignment = type is DefType && type.IsValueType ? ((DefType)type).InstanceFieldAlignment : type.Context.Target.LayoutPointerSize;
             var alignment = LayoutInt.Min(fieldAlignment, new LayoutInt(ComputePackingSize(type))).AsInt;
-            var padding = (atOffset + (alignment - 1)) & ~(alignment - 1);
+            var padding = atOffset.AlignUp(alignment);
 
             return padding;
         }
@@ -521,5 +533,7 @@ namespace ILCompiler
                 llvmFields.Add(LLVMTypeRef.Int8);
             }
         }
+
+        private static bool IsStruct(TypeDesc type) => type.Category is TypeFlags.ValueType or TypeFlags.Nullable;
     }
 }

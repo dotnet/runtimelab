@@ -198,7 +198,7 @@ Type* Llvm::getLlvmTypeForLclVar(LclVarDsc* varDsc)
     }
     if (varDsc->lvCorInfoType != CORINFO_TYPE_UNDEF)
     {
-        return getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, varDsc->lvClassHnd);
+        return getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, NO_CLASS_HANDLE);
     }
 
     return getLlvmTypeForVarType(varDsc->TypeGet());
@@ -209,7 +209,7 @@ Type* Llvm::getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HAN
     switch (corInfoType)
     {
         case CORINFO_TYPE_PTR:
-            return Type::getInt8Ty(_llvmContext)->getPointerTo();
+            return getPtrLlvmType();
 
         case CORINFO_TYPE_VALUECLASS:
             return getLlvmTypeForStruct(classHnd);
