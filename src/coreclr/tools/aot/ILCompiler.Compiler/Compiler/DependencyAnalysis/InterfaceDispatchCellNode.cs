@@ -116,12 +116,25 @@ namespace ILCompiler.DependencyAnalysis
             }
             else
             {
+<<<<<<< HEAD
                 // There are no free bits in the cache flags, but we could support the indirection cell case
                 // by repurposing "CachePointerIsIndirectedInterfaceRelativePointer" to mean "relative indirect
                 // if the target supports it, simple indirect otherwise".
                 Debug.Assert(!interfaceType.RepresentsIndirectionCell);
                 objData.EmitPointerReloc(interfaceType,
                     (int)InterfaceDispatchCellCachePointerFlags.CachePointerIsInterfacePointerOrMetadataToken);
+=======
+                objData.EmitReloc(interfaceType, RelocType.IMAGE_REL_BASED_RELPTR32,
+                    (int)InterfaceDispatchCellCachePointerFlags.CachePointerIsInterfaceRelativePointer);
+            }
+
+            if (objData.TargetPointerSize == 8)
+            {
+                // IMAGE_REL_BASED_RELPTR is a 32-bit relocation. However, the cell needs a full pointer
+                // width there since a pointer to the cache will be written into the cell. Emit additional
+                // 32 bits on targets whose pointer size is 64 bit.
+                objData.EmitInt(0);
+>>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
             }
         }
 

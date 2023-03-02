@@ -146,8 +146,9 @@ set( JIT_SOURCES
   hwintrinsic.cpp
   hostallocator.cpp
   indirectcalltransformer.cpp
+  importercalls.cpp
   importer.cpp
-  importer_vectorization.cpp
+  importervectorization.cpp
   inline.cpp
   inlinepolicy.cpp
   instr.cpp
@@ -175,7 +176,7 @@ set( JIT_SOURCES
   rationalize.cpp
   redundantbranchopts.cpp
   regalloc.cpp
-  register_arg_convention.cpp
+  registerargconvention.cpp
   regset.cpp
   scopeinfo.cpp
   sideeffects.cpp
@@ -186,7 +187,6 @@ set( JIT_SOURCES
   ssarenamestate.cpp
   stacklevelsetter.cpp
   treelifeupdater.cpp
-  typeinfo.cpp
   unwind.cpp
   utils.cpp
   valuenum.cpp
@@ -337,8 +337,8 @@ set( JIT_HEADERS
   host.h
   hostallocator.h
   hwintrinsic.h
-  ICorJitInfo_API_names.h
-  ICorJitInfo_API_wrapper.hpp
+  ICorJitInfo_names_generated.h
+  ICorJitInfo_wrapper_generated.hpp
   inline.h
   inlinepolicy.h
   instr.h
@@ -371,7 +371,7 @@ set( JIT_HEADERS
   rangecheck.h
   rationalize.h
   regalloc.h
-  register_arg_convention.h
+  registerargconvention.h
   register.h
   regset.h
   sideeffects.h

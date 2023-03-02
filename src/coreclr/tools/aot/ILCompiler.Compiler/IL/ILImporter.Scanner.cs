@@ -1,8 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-
 using Internal.TypeSystem;
 using Internal.ReadyToRunConstants;
 
@@ -16,7 +14,7 @@ namespace Internal.IL
 {
     // Implements an IL scanner that scans method bodies to be compiled by the code generation
     // backend before the actual compilation happens to gain insights into the code.
-    partial class ILImporter
+    internal partial class ILImporter
     {
         private readonly MethodIL _methodIL;
         private readonly MethodIL _canonMethodIL;
@@ -32,7 +30,7 @@ namespace Internal.IL
 
         private readonly byte[] _ilBytes;
 
-        private class BasicBlock
+        private sealed class BasicBlock
         {
             // Common fields
             public enum ImportState : byte
@@ -57,7 +55,7 @@ namespace Internal.IL
         private int _currentInstructionOffset;
         private int _previousInstructionOffset;
 
-        private class ExceptionRegion
+        private sealed class ExceptionRegion
         {
             public ILExceptionRegion ILRegion;
         }
@@ -205,8 +203,8 @@ namespace Internal.IL
             return _compilation.GetHelperEntrypoint(helper);
         }
 
-        private void MarkInstructionBoundary() { }
-        private void EndImportingBasicBlock(BasicBlock basicBlock) { }
+        private static void MarkInstructionBoundary() { }
+        private static void EndImportingBasicBlock(BasicBlock basicBlock) { }
 
         private void StartImportingBasicBlock(BasicBlock basicBlock)
         {
@@ -1031,12 +1029,12 @@ namespace Internal.IL
             }
         }
 
-        private void ImportRefAnyType()
+        private static void ImportRefAnyType()
         {
             // TODO
         }
 
-        private void ImportArgList()
+        private static void ImportArgList()
         {
         }
 
@@ -1292,27 +1290,27 @@ namespace Internal.IL
                 + (_ilBytes[ilOffset + 3] << 24));
         }
 
-        private void ReportInvalidBranchTarget(int targetOffset)
+        private static void ReportInvalidBranchTarget(int targetOffset)
         {
             ThrowHelper.ThrowInvalidProgramException();
         }
 
-        private void ReportFallthroughAtEndOfMethod()
+        private static void ReportFallthroughAtEndOfMethod()
         {
             ThrowHelper.ThrowInvalidProgramException();
         }
 
-        private void ReportMethodEndInsideInstruction()
+        private static void ReportMethodEndInsideInstruction()
         {
             ThrowHelper.ThrowInvalidProgramException();
         }
 
-        private void ReportInvalidInstruction(ILOpcode opcode)
+        private static void ReportInvalidInstruction(ILOpcode opcode)
         {
             ThrowHelper.ThrowInvalidProgramException();
         }
 
-        private bool IsRuntimeHelpersInitializeArrayOrCreateSpan(MethodDesc method)
+        private static bool IsRuntimeHelpersInitializeArrayOrCreateSpan(MethodDesc method)
         {
             if (method.IsIntrinsic)
             {
@@ -1330,7 +1328,7 @@ namespace Internal.IL
             return false;
         }
 
-        private bool IsTypeGetTypeFromHandle(MethodDesc method)
+        private static bool IsTypeGetTypeFromHandle(MethodDesc method)
         {
             if (method.IsIntrinsic && method.Name == "GetTypeFromHandle")
             {
@@ -1344,7 +1342,7 @@ namespace Internal.IL
             return false;
         }
 
-        private bool IsTypeEquals(MethodDesc method)
+        private static bool IsTypeEquals(MethodDesc method)
         {
             if (method.IsIntrinsic && method.Name == "op_Equality")
             {
@@ -1358,7 +1356,7 @@ namespace Internal.IL
             return false;
         }
 
-        private bool IsActivatorDefaultConstructorOf(MethodDesc method)
+        private static bool IsActivatorDefaultConstructorOf(MethodDesc method)
         {
             if (method.IsIntrinsic && method.Name == "DefaultConstructorOf" && method.Instantiation.Length == 1)
             {
@@ -1372,7 +1370,7 @@ namespace Internal.IL
             return false;
         }
 
-        private bool IsActivatorAllocatorOf(MethodDesc method)
+        private static bool IsActivatorAllocatorOf(MethodDesc method)
         {
             if (method.IsIntrinsic && method.Name == "AllocatorOf" && method.Instantiation.Length == 1)
             {
@@ -1386,7 +1384,7 @@ namespace Internal.IL
             return false;
         }
 
-        private bool IsEETypePtrOf(MethodDesc method)
+        private static bool IsEETypePtrOf(MethodDesc method)
         {
             if (method.IsIntrinsic && (method.Name == "EETypePtrOf" || method.Name == "Of") && method.Instantiation.Length == 1)
             {
@@ -1406,6 +1404,7 @@ namespace Internal.IL
             return _compilation.TypeSystemContext.GetWellKnownType(wellKnownType);
         }
 
+<<<<<<< HEAD
         private void ImportNop() { }
         private void ImportBreak() { }
         private void ImportLoadVar(int index, bool argument) { }
@@ -1446,5 +1445,42 @@ namespace Internal.IL
         private void ImportInitObj(int token) { }
         private void ImportLoadLength() { }
         private void ImportEndFinally() { }
+=======
+        private static void ImportNop() { }
+        private static void ImportBreak() { }
+        private static void ImportLoadVar(int index, bool argument) { }
+        private static void ImportStoreVar(int index, bool argument) { }
+        private static void ImportAddressOfVar(int index, bool argument) { }
+        private static void ImportDup() { }
+        private static void ImportPop() { }
+        private static void ImportLoadNull() { }
+        private static void ImportReturn() { }
+        private static void ImportLoadInt(long value, StackValueKind kind) { }
+        private static void ImportLoadFloat(double value) { }
+        private static void ImportLoadIndirect(int token) { }
+        private static void ImportLoadIndirect(TypeDesc type) { }
+        private static void ImportStoreIndirect(int token) { }
+        private static void ImportStoreIndirect(TypeDesc type) { }
+        private static void ImportShiftOperation(ILOpcode opcode) { }
+        private static void ImportCompareOperation(ILOpcode opcode) { }
+        private static void ImportConvert(WellKnownType wellKnownType, bool checkOverflow, bool unsigned) { }
+        private static void ImportUnaryOperation(ILOpcode opCode) { }
+        private static void ImportCpOpj(int token) { }
+        private static void ImportCkFinite() { }
+        private static void ImportLocalAlloc() { }
+        private static void ImportEndFilter() { }
+        private static void ImportCpBlk() { }
+        private static void ImportInitBlk() { }
+        private static void ImportRethrow() { }
+        private static void ImportSizeOf(int token) { }
+        private static void ImportUnalignedPrefix(byte alignment) { }
+        private static void ImportVolatilePrefix() { }
+        private static void ImportTailPrefix() { }
+        private static void ImportNoPrefix(byte mask) { }
+        private static void ImportThrow() { }
+        private static void ImportInitObj(int token) { }
+        private static void ImportLoadLength() { }
+        private static void ImportEndFinally() { }
+>>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
     }
 }

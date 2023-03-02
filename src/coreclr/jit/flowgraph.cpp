@@ -2295,19 +2295,31 @@ private:
         {
             // There is a return value, so create a temp for it.  Real returns will store the value in there and
             // it'll be reloaded by the single return.
+<<<<<<< HEAD
             unsigned returnLocalNum   = comp->lvaGrabTemp(true DEBUGARG("Single return block return value"));
             comp->genReturnLocal      = returnLocalNum;
             LclVarDsc& returnLocalDsc = comp->lvaTable[returnLocalNum];
 #ifndef TARGET_WASM
             if (comp->compMethodReturnsNativeScalarType())
 #endif // !TARGET_WASM
+=======
+            unsigned retLclNum   = comp->lvaGrabTemp(true DEBUGARG("Single return block return value"));
+            comp->genReturnLocal = retLclNum;
+            LclVarDsc* retVarDsc = comp->lvaGetDesc(retLclNum);
+            var_types  retLclType =
+                comp->compMethodReturnsRetBufAddr() ? TYP_BYREF : genActualType(comp->info.compRetType);
+
+            if (varTypeIsStruct(retLclType))
+>>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
             {
-                returnLocalDsc.lvType = genActualType(comp->info.compRetType);
-                if (varTypeIsStruct(returnLocalDsc.lvType))
+                comp->lvaSetStruct(retLclNum, comp->info.compMethodInfo->args.retTypeClass, false);
+
+                if (comp->compMethodReturnsMultiRegRetType())
                 {
-                    comp->lvaSetStruct(returnLocalNum, comp->info.compMethodInfo->args.retTypeClass, false);
+                    retVarDsc->lvIsMultiRegRet = true;
                 }
             }
+<<<<<<< HEAD
 #ifndef TARGET_WASM
             else if (comp->compMethodReturnsRetBufAddr())
             {
@@ -2319,13 +2331,15 @@ private:
                 comp->lvaSetStruct(returnLocalNum, comp->info.compMethodInfo->args.retTypeClass, true);
                 returnLocalDsc.lvIsMultiRegRet = true;
             }
+=======
+>>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
             else
             {
-                assert(!"unreached");
+                retVarDsc->lvType = retLclType;
             }
 #endif // !TARGET_WASM
 
-            if (varTypeIsFloating(returnLocalDsc.lvType))
+            if (varTypeIsFloating(retVarDsc->TypeGet()))
             {
                 comp->compFloatingPointUsed = true;
             }
@@ -2333,19 +2347,18 @@ private:
 #ifdef DEBUG
             // This temporary should not be converted to a double in stress mode,
             // because we introduce assigns to it after the stress conversion
-            returnLocalDsc.lvKeepType = 1;
+            retVarDsc->lvKeepType = 1;
 #endif
 
-            GenTree* retTemp = comp->gtNewLclvNode(returnLocalNum, returnLocalDsc.TypeGet());
+            GenTree* retTemp = comp->gtNewLclvNode(retLclNum, retVarDsc->TypeGet());
 
             // make sure copy prop ignores this node (make sure it always does a reload from the temp).
             retTemp->gtFlags |= GTF_DONT_CSE;
-            returnExpr = comp->gtNewOperNode(GT_RETURN, retTemp->gtType, retTemp);
+            returnExpr = comp->gtNewOperNode(GT_RETURN, retTemp->TypeGet(), retTemp);
         }
-        else
+        else // Return void.
         {
-            // return void
-            noway_assert(comp->info.compRetType == TYP_VOID || varTypeIsStruct(comp->info.compRetType));
+            assert((comp->info.compRetType == TYP_VOID) || varTypeIsStruct(comp->info.compRetType));
             comp->genReturnLocal = BAD_VAR_NUM;
 
             returnExpr = new (comp, GT_RETURN) GenTreeOp(GT_RETURN, TYP_VOID);
@@ -3220,6 +3233,12 @@ BasicBlock* Compiler::fgGetDomSpeculatively(const BasicBlock* block)
                 return block->bbIDom;
             }
             lastReachablePred = predBlock;
+        }
+        else if (predBlock == block->bbIDom)
+        {
+            // IDom is unreachable, so assume this block is too.
+            //
+            return nullptr;
         }
     }
 

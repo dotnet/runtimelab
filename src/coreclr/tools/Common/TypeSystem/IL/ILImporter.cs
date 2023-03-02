@@ -1,16 +1,17 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-
 using Internal.TypeSystem;
+<<<<<<< HEAD
 using Internal.IL;
 using Internal.IL.Stubs;
 using Internal.TypeSystem.Ecma;
+=======
+>>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
 
 namespace Internal.IL
 {
-    internal partial class ILImporter
+    internal sealed partial class ILImporter
     {
         private BasicBlock[] _basicBlocks; // Maps IL offset to basic block
 
@@ -31,22 +32,22 @@ namespace Internal.IL
             return _ilBytes[_currentOffset++];
         }
 
-        private UInt16 ReadILUInt16()
+        private ushort ReadILUInt16()
         {
             if (_currentOffset + 1 >= _ilBytes.Length)
                 ReportMethodEndInsideInstruction();
 
-            UInt16 val = (UInt16)(_ilBytes[_currentOffset] + (_ilBytes[_currentOffset + 1] << 8));
+            ushort val = (ushort)(_ilBytes[_currentOffset] + (_ilBytes[_currentOffset + 1] << 8));
             _currentOffset += 2;
             return val;
         }
 
-        private UInt32 ReadILUInt32()
+        private uint ReadILUInt32()
         {
             if (_currentOffset + 3 >= _ilBytes.Length)
                 ReportMethodEndInsideInstruction();
 
-            UInt32 val = (UInt32)(_ilBytes[_currentOffset] + (_ilBytes[_currentOffset + 1] << 8) + (_ilBytes[_currentOffset + 2] << 16) + (_ilBytes[_currentOffset + 3] << 24));
+            uint val = (uint)(_ilBytes[_currentOffset] + (_ilBytes[_currentOffset + 1] << 8) + (_ilBytes[_currentOffset + 2] << 16) + (_ilBytes[_currentOffset + 3] << 24));
             _currentOffset += 4;
             return val;
         }
