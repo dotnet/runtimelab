@@ -11,9 +11,198 @@
 //
 void Llvm::Lower()
 {
+    lowerSpillTempsLiveAcrossSafePoints();
     lowerLocals();
     insertProlog();
     lowerBlocks();
+}
+
+//------------------------------------------------------------------------
+// lowerSpillTempsLiveAcrossSafePoints: Spill GC SDSUs live across safe points.
+//
+// Rewrites:
+//   gcTmp = IND<ref>(...)
+//           CALL ; May trigger GC
+//           USE(gcTmp)
+// Into:
+//   gcTmp = IND<ref>(...)
+//           STORE_LCL_VAR<V00>(gcTmp)
+//           CALL ; May trigger GC
+//           USE(LCL_VAR<V00>)
+//
+// Done as a full IR walk pre-pass before the general lowering since we need
+// to know about all GC locals to lay out the shadow stack.
+//
+void Llvm::lowerSpillTempsLiveAcrossSafePoints()
+{
+    // Set of SDSUs live at (after) the current node.
+    SmallHashTable<GenTree*, unsigned> liveGcDefs(_compiler->getAllocator(CMK_Codegen));
+    ArrayStack<unsigned> spillLclsRef(_compiler->getAllocator(CMK_Codegen));
+    ArrayStack<unsigned> spillLclsByref(_compiler->getAllocator(CMK_Codegen));
+    ArrayStack<GenTree*> containedOperands(_compiler->getAllocator(CMK_Codegen));
+
+    auto getSpillLcl = [&](GenTree* node) {
+        var_types type = node->TypeGet();
+        CORINFO_CLASS_HANDLE structHandle = NO_CLASS_HANDLE;
+        unsigned lclNum = BAD_VAR_NUM;
+        switch (type)
+        {
+            case TYP_REF:
+                if (!spillLclsRef.Empty())
+                {
+                    lclNum = spillLclsRef.Pop();
+                }
+                break;
+            case TYP_BYREF:
+                if (!spillLclsByref.Empty())
+                {
+                    lclNum = spillLclsByref.Pop();
+                }
+                break;
+            case TYP_STRUCT:
+                // This case should be **very** rare if at all possible. Just use a new local.
+                structHandle = _compiler->gtGetStructHandle(node);
+                break;
+            default:
+                unreached();
+        }
+
+        if (lclNum == BAD_VAR_NUM)
+        {
+            lclNum = _compiler->lvaGrabTemp(true DEBUGARG("GC SDSU live across a safepoint"));
+            _compiler->lvaGetDesc(lclNum)->lvType = type;
+            if (type == TYP_STRUCT)
+            {
+                noway_assert(structHandle != NO_CLASS_HANDLE);
+                _compiler->lvaSetStruct(lclNum, structHandle, false);
+            }
+        }
+
+        return lclNum;
+    };
+
+    auto releaseSpillLcl = [&](unsigned lclNum) {
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+        if (varDsc->TypeGet() == TYP_REF)
+        {
+            spillLclsRef.Push(lclNum);
+        }
+        else if (varDsc->TypeGet() == TYP_BYREF)
+        {
+            spillLclsByref.Push(lclNum);
+        }
+    };
+
+    auto isGcTemp = [compiler = _compiler](GenTree* node) {
+        if (varTypeIsGC(node) || node->TypeIs(TYP_STRUCT))
+        {
+            if (node->TypeIs(TYP_STRUCT))
+            {
+                // TODO-LLVM: replace with "!node->GetLayout()->HasGCPtr()" once enough of upstream is merged.
+                CORINFO_CLASS_HANDLE structHandle = compiler->gtGetStructHandleIfPresent(node);
+                if ((structHandle == NO_CLASS_HANDLE) || !compiler->typGetObjLayout(structHandle)->HasGCPtr())
+                {
+                    return false;
+                }
+            }
+
+            return !node->OperIsLocal() && !node->OperIsLocalAddr();
+        }
+
+        return false;
+    };
+
+    for (BasicBlock* block : _compiler->Blocks())
+    {
+        assert(liveGcDefs.Count() == 0);
+        LIR::Range& blockRange = LIR::AsRange(block);
+
+        for (GenTree* node : blockRange)
+        {
+            if (node->isContained())
+            {
+                assert(!isPotentialGcSafePoint(node));
+                continue;
+            }
+
+            GenTree* user = node;
+            while (true)
+            {
+                for (GenTree** use : user->UseEdges())
+                {
+                    GenTree* operand = *use;
+                    if (operand->isContained())
+                    {
+                        // Operands of contained nodes are used by the containing nodes. Note this algorithm will
+                        // process contained operands in an out-of-order fashion; that is ok.
+                        assert(operand->OperIs(GT_FIELD_LIST));
+                        containedOperands.Push(operand);
+                        continue;
+                    }
+
+                    if (isGcTemp(operand))
+                    {
+                        unsigned spillLclNum = BAD_VAR_NUM;
+                        bool operandWasRemoved = liveGcDefs.TryRemove(operand, &spillLclNum);
+                        assert(operandWasRemoved);
+
+                        if (spillLclNum != BAD_VAR_NUM)
+                        {
+                            LclVarDsc* spillVarDsc = _compiler->lvaGetDesc(spillLclNum);
+                            GenTree* lclVarNode = _compiler->gtNewLclvNode(spillLclNum, spillVarDsc->TypeGet());
+
+                            *use = lclVarNode;
+                            blockRange.InsertBefore(user, lclVarNode);
+                            releaseSpillLcl(spillLclNum);
+
+                            JITDUMP("Spilled [%06u] used by [%06u] replaced with V%02u:\n",
+                                    Compiler::dspTreeID(operand), Compiler::dspTreeID(user), spillLclNum);
+                            DISPNODE(lclVarNode);
+                        }
+                    }
+                }
+
+                if (containedOperands.Empty())
+                {
+                    break;
+                }
+
+                user = containedOperands.Pop();
+            }
+
+            // Find out if we need to spill anything.
+            if (isPotentialGcSafePoint(node) && (liveGcDefs.Count() != 0))
+            {
+                JITDUMP("\nFound a safe point with GC SDSUs live across it:\n", Compiler::dspTreeID(node));
+                DISPNODE(node);
+
+                for (auto def : liveGcDefs)
+                {
+                    if (def.Value() != BAD_VAR_NUM)
+                    {
+                        // We may have already spilled this def live across multiple safe points.
+                        continue;
+                    }
+
+                    GenTree* defNode = def.Key();
+                    unsigned spillLclNum = getSpillLcl(defNode);
+                    JITDUMP("Spilling as V%02u:\n", spillLclNum);
+                    DISPNODE(defNode);
+
+                    GenTree* store = _compiler->gtNewTempAssign(spillLclNum, defNode);
+                    blockRange.InsertAfter(defNode, store);
+
+                    def.Value() = spillLclNum;
+                }
+            }
+
+            // Add the value defined by this node.
+            if (node->IsValue() && !node->IsUnusedValue() && isGcTemp(node))
+            {
+                liveGcDefs.AddOrUpdate(node, BAD_VAR_NUM);
+            }
+        }
+    }
 }
 
 //------------------------------------------------------------------------
@@ -1348,6 +1537,43 @@ GenTree* Llvm::insertShadowStackAddr(GenTree* insertBefore, ssize_t offset, unsi
     CurrentRange().InsertBefore(insertBefore, addNode);
 
     return addNode;
+}
+
+//------------------------------------------------------------------------
+// isPotentialGcSafePoint: Can this node be a GC safe point?
+//
+// Arguments:
+//    node - The node
+//
+// Return Value:
+//    Whether "node" can trigger GC.
+//
+// Notes:
+//    Similar to "Compiler::IsGcSafePoint", with the difference being that
+//    the "conservative" return value for this method is "true".
+//
+bool Llvm::isPotentialGcSafePoint(GenTree* node)
+{
+    if (node->IsCall())
+    {
+        if (node->AsCall()->IsUnmanaged() && node->AsCall()->IsSuppressGCTransition())
+        {
+            return false;
+        }
+        if (node->IsHelperCall())
+        {
+            CorInfoHelpFunc helperFunc = _compiler->eeGetHelperNum(node->AsCall()->gtCallMethHnd);
+            if (getHelperFuncInfo(helperFunc).HasFlags(HFIF_NO_RPI_OR_GC))
+            {
+                return false;
+            }
+        }
+
+        // All other calls are assumed to be possible safe points.
+        return true;
+    }
+
+    return false;
 }
 
 //------------------------------------------------------------------------

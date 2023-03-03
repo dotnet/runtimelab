@@ -278,6 +278,7 @@ public:
     void Lower();
 
 private:
+    void lowerSpillTempsLiveAcrossSafePoints();
     void lowerLocals();
     void populateLlvmArgNums();
     void assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, unsigned shadowStackParamCount);
@@ -315,6 +316,8 @@ private:
     GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data);
     GenTree* createShadowStackStoreNode(var_types storeType, GenTree* addr, GenTree* data);
     GenTree* insertShadowStackAddr(GenTree* insertBefore, ssize_t offset, unsigned shadowStackLclNum);
+
+    bool isPotentialGcSafePoint(GenTree* node);
 
     bool isShadowFrameLocal(LclVarDsc* varDsc) const;
     bool isFuncletParameter(unsigned lclNum) const;
