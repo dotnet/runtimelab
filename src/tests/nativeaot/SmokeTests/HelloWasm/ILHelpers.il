@@ -5,6 +5,8 @@
 
 .assembly ILHelpers { }
 
+.typedef [mscorlib]System.ICloneable as ICloneable
+
 .class public ILHelpers.ILHelpersTest
 {
   // RVA static field
@@ -136,6 +138,44 @@
   {
     ldtoken method int32 ILHelpers.ILHelpersTest::TestLdTokenMethod(int32)
     call class [mscorlib]System.Reflection.MethodBase [mscorlib]System.Reflection.MethodBase::GetMethodFromHandle(valuetype [mscorlib]System.RuntimeMethodHandle)
+    ret
+  }
+
+  .method public static bool TestLdvirtftnVTable(object obj)
+  {
+    ldarg obj
+    ldarg obj
+    call void* .this::GetToStringFunctionPointer(object)
+    calli instance string()
+    ldarg obj
+    callvirt instance string object::ToString()
+    call bool string::Equals(string, string)
+    ret
+  }
+
+  .method private static void* GetToStringFunctionPointer(object obj) noinlining
+  {
+    ldarg obj
+    ldvirtftn instance string object::ToString()
+    ret
+  }
+
+  .method public static bool TestLdvirtftnInterface(class ICloneable obj)
+  {
+    ldarg obj
+    ldarg obj
+    call void* .this::GetCloneFunctionPointer(class ICloneable)
+    calli instance object()
+    ldarg obj
+    callvirt instance object ICloneable::Clone()
+    ceq
+    ret
+  }
+
+  .method private static void* GetCloneFunctionPointer(class ICloneable obj) noinlining
+  {
+    ldarg obj
+    ldvirtftn instance object ICloneable::Clone()
     ret
   }
 }
