@@ -223,7 +223,7 @@ namespace ILCompiler
                 syntax.DefineOption("completetypemetadata", ref _completeTypesMetadata, "Generate complete metadata for types");
                 syntax.DefineOption("reflectiondata", ref _reflectionData, $"Reflection data to generate (one of: {string.Join(", ", validReflectionDataOptions)})");
                 syntax.DefineOption("scanreflection", ref _scanReflection, "Scan IL for reflection patterns");
-                syntax.DefineOption("scan", ref _useScanner, "Use IL scanner to generate optimized code (implied by -O).  For LLVM this has no effect because the scanner is always on");
+                syntax.DefineOption("scan", ref _useScanner, "Use IL scanner to generate optimized code (implied by -O)");
                 syntax.DefineOption("noscan", ref _noScanner, "Do not use IL scanner to generate optimized code");
                 syntax.DefineOption("ildump", ref _ilDump, "Dump IL assembly listing for compiler-generated IL");
                 syntax.DefineOption("stacktracedata", ref _emitStackTraceData, "Emit data to support generating stack trace strings at runtime");
@@ -875,8 +875,7 @@ namespace ILCompiler
             // We also don't do this for multifile because scanner doesn't simulate inlining (this would be
             // fixable by using a CompilationGroup for the scanner that has a bigger worldview, but
             // let's cross that bridge when we get there).
-            // For LLVM the scanner is always on to enable precomputed vtable slots
-            bool useScanner = _useScanner || _isLlvmCodegen ||
+            bool useScanner = _useScanner ||
                 (_optimizationMode != OptimizationMode.None && !_multiFile);
 
             useScanner &= !_noScanner;

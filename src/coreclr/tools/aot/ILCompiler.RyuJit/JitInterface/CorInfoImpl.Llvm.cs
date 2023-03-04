@@ -80,12 +80,22 @@ namespace Internal.JitInterface
             var _this = GetThis(thisHandle);
             var node = (ISymbolNode)_this.HandleToObject(symbolHandle);
 
-            if (node is IMethodNode { Offset: 0, Method: MethodDesc method })
+            MethodDesc method = null;
+            if (node is IMethodNode { Offset: 0 } methodNode)
+            {
+                method = methodNode.Method;
+            }
+            else if (node is ReadyToRunHelperNode { Id: ReadyToRunHelperId.VirtualCall } helperNode)
+            {
+                method = (MethodDesc)helperNode.Target;
+            }
+
+            if (method != null)
             {
                 _this.Get_CORINFO_SIG_INFO(method, pSig, scope: null);
-                if (method.IsUnmanagedCallersOnly)
+                if (method.IsUnmanagedCallersOnly || node is RuntimeImportMethodNode)
                 {
-                    pSig->callConv |= CorInfoCallConv.CORINFO_CALLCONV_UNMANAGED;
+                    pSig->callConv = CorInfoCallConv.CORINFO_CALLCONV_UNMANAGED;
                 }
 
                 return 1;
