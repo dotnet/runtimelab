@@ -631,6 +631,10 @@ void Llvm::lowerCall(GenTreeCall* callNode)
     {
         lowerVirtualStubCallBeforeArgs(callNode, &thisArgLclNum, &cellArgNode);
     }
+    else if (callNode->IsDelegateInvoke())
+    {
+        lowerDelegateInvoke(callNode);
+    }
 
     if (callNode->NeedsNullCheck())
     {
@@ -929,6 +933,45 @@ void Llvm::insertNullCheckForCall(GenTreeCall* callNode)
     CurrentRange().InsertBefore(callNode, thisArgNode, thisArgNullCheck);
 
     lowerIndir(thisArgNullCheck->AsIndir());
+}
+
+void Llvm::lowerDelegateInvoke(GenTreeCall* callNode)
+{
+    // Copy of the corresponding "Lower::LowerDelegateInvoke".
+    assert(callNode->IsDelegateInvoke());
+
+    // We're going to use the 'this' expression multiple times, so make a local to copy it.
+    LIR::Use thisArgUse(CurrentRange(), &callNode->gtArgs.GetThisArg()->EarlyNodeRef(), callNode);
+    unsigned delegateThisLclNum = representAsLclVar(thisArgUse);
+
+    CORINFO_EE_INFO* eeInfo = _compiler->eeGetEEInfo();
+
+    // Replace original expression feeding into "this" with [originalThis + offsetOfDelegateInstance].
+    GenTree* delegateThis = thisArgUse.Def();
+    GenTree* targetThisOffet = _compiler->gtNewIconNode(eeInfo->offsetOfDelegateInstance, TYP_I_IMPL);
+    GenTree* targetThisAddr = _compiler->gtNewOperNode(GT_ADD, TYP_BYREF, delegateThis, targetThisOffet);
+    GenTree* targetThis = _compiler->gtNewIndir(TYP_REF, targetThisAddr);
+
+    // Insert the new nodes just before the call. This is important to prevent the target "this" from being
+    // moved by the GC while arguments after the original "this" are being evaluated.
+    CurrentRange().InsertBefore(callNode, targetThisOffet, targetThisAddr, targetThis);
+    thisArgUse.ReplaceWith(targetThis);
+
+    // This indirection will null-check the original "this".
+    assert(!callNode->NeedsNullCheck());
+    lowerIndir(targetThis->AsIndir());
+
+    // The new control target is [originalThis + firstTgtOffs].
+    delegateThis = _compiler->gtNewLclvNode(delegateThisLclNum, TYP_REF);
+    GenTree* callTargetOffset = _compiler->gtNewIconNode(eeInfo->offsetOfDelegateFirstTarget, TYP_I_IMPL);
+    GenTree* callTargetAddr = _compiler->gtNewOperNode(GT_ADD, TYP_BYREF, delegateThis, callTargetOffset);
+    GenTree* callTarget = _compiler->gtNewIndir(TYP_I_IMPL, callTargetAddr);
+    callTarget->SetAllEffectsFlags(GTF_EMPTY);
+    callTarget->gtFlags |= GTF_IND_NONFAULTING | GTF_ORDER_SIDEEFF;
+
+    CurrentRange().InsertBefore(callNode, delegateThis, callTargetOffset, callTargetAddr, callTarget);
+
+    callNode->gtControlExpr = callTarget;
 }
 
 void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)

@@ -305,6 +305,7 @@ private:
     void lowerVirtualStubCallAfterArgs(
         GenTreeCall* callNode, unsigned thisArgLclNum, GenTree* cellArgNode, unsigned shadowArgsSize);
     void insertNullCheckForCall(GenTreeCall* callNode);
+    void lowerDelegateInvoke(GenTreeCall* callNode);
     void lowerUnmanagedCall(GenTreeCall* callNode);
     unsigned lowerCallToShadowStack(GenTreeCall* callNode);
     CallArg* lowerCallReturn(GenTreeCall* callNode);
