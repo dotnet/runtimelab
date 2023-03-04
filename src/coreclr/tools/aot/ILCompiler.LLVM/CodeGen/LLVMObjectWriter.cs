@@ -633,7 +633,7 @@ namespace ILCompiler.DependencyAnalysis
                 return;
             }
 
-            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(_ptrType, new[] { _ptrType /* shadow stack */ });
+            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(_ptrType, new[] { _ptrType /* shadow stack or "this" */ });
             LLVMValueRef helperFunc = GetOrCreateLLVMFunction(node.GetMangledName(factory.NameMangler), helperFuncType);
 
             using LLVMBuilderRef builder = _module.Context.CreateBuilder();
@@ -685,6 +685,29 @@ namespace ILCompiler.DependencyAnalysis
                     }
                     break;
 
+                case ReadyToRunHelperId.ResolveVirtualFunction:
+                    {
+                        MethodDesc targetMethod = (MethodDesc)node.Target;
+
+                        if (targetMethod.OwningType.IsInterface)
+                        {
+                            // TODO-LLVM: would be nice to use pointers instead of IntPtr in "RhpResolveInterfaceMethod".
+                            LLVMTypeRef resolveFuncType = LLVMTypeRef.CreateFunction(_intPtrType, new[] { _ptrType, _intPtrType });
+                            LLVMValueRef resolveFunc = GetOrCreateLLVMFunction("RhpResolveInterfaceMethod", resolveFuncType);
+
+                            LLVMValueRef cell = GetSymbolReferenceValue(factory.InterfaceDispatchCell(targetMethod));
+                            LLVMValueRef cellArg = builder.BuildPtrToInt(cell, _intPtrType, "cellArg");
+                            result = builder.BuildCall2(resolveFuncType, resolveFunc, new[] { helperFunc.GetParam(0), cellArg });
+                            result = builder.BuildIntToPtr(result, _ptrType, "pInterfaceFunc");
+                        }
+                        else
+                        {
+                            Debug.Assert(!targetMethod.CanMethodBeInSealedVTable());
+                            result = OutputCodeForVTableLookup(builder, helperFunc.GetParam(0), targetMethod);
+                        }
+                    }
+                    break;
+
                 default:
                     throw new NotImplementedException();
             }
@@ -732,13 +755,7 @@ namespace ILCompiler.DependencyAnalysis
             {
                 LLVMValueRef addrOfTargetObj = CreateAddOffset(builder, shadowStack, factory.Target.PointerSize, "addrOfTargetObj");
                 LLVMValueRef targetObjThis = builder.BuildLoad2(_ptrType, addrOfTargetObj, "targetObjThis");
-                LLVMValueRef pMethodTable = builder.BuildLoad2(_ptrType, targetObjThis, "pMethodTable");
-
-                int slot = VirtualMethodSlotHelper.GetVirtualMethodSlot(factory, delegateCreationInfo.TargetMethod, delegateCreationInfo.TargetMethod.OwningType);
-                int slotOffset = EETypeNode.GetVTableOffset(factory.Target.PointerSize) + (slot * factory.Target.PointerSize);
-                LLVMValueRef pSlot = CreateAddOffset(builder, pMethodTable, slotOffset, "pSlot");
-
-                targetValue = builder.BuildLoad2(targetValueType, pSlot, "pTarget");
+                targetValue = OutputCodeForVTableLookup(builder, targetObjThis, delegateCreationInfo.TargetMethod);
             }
             else
             {
@@ -903,6 +920,18 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             return retRef;
+        }
+
+        private LLVMValueRef OutputCodeForVTableLookup(LLVMBuilderRef builder, LLVMValueRef objThis, MethodDesc method)
+        {
+            LLVMValueRef pMethodTable = builder.BuildLoad2(_ptrType, objThis, "pMethodTable");
+
+            int slot = VirtualMethodSlotHelper.GetVirtualMethodSlot(_nodeFactory, method, method.OwningType);
+            int slotOffset = EETypeNode.GetVTableOffset(_nodeFactory.Target.PointerSize) + (slot * _nodeFactory.Target.PointerSize);
+            LLVMValueRef pSlot = CreateAddOffset(builder, pMethodTable, slotOffset, "pSlot");
+            LLVMValueRef slotValue = builder.BuildLoad2(_ptrType, pSlot, "pTarget");
+
+            return slotValue;
         }
 
         private void OutputCodeForTriggerCctor(LLVMBuilderRef builder, LLVMValueRef nonGcStaticBaseValue)
