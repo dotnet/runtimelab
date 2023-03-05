@@ -108,27 +108,6 @@ Llvm::Llvm(Compiler* compiler)
 {
 }
 
-bool Llvm::needsReturnStackSlot(const GenTreeCall* callee)
-{
-    if (!callHasManagedCallingConvention(callee))
-    {
-        return false;
-    }
-
-    CorInfoType sigRetType;
-    if (callee->IsHelperCall())
-    {
-        sigRetType = getHelperFuncInfo(_compiler->eeGetHelperNum(callee->gtCallMethHnd)).GetSigReturnType();
-    }
-    else
-    {
-        noway_assert(!callee->IsUnmanaged());
-        sigRetType = toCorInfoType(callee->TypeGet());
-    }
-
-    return Llvm::needsReturnStackSlot(sigRetType, callee->gtRetClsHnd);
-}
-
 var_types Llvm::GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size)
 {
     // Note the managed and unmanaged ABIs are the same for structs that do not contain GC pointers. Thus, since
@@ -161,11 +140,42 @@ GCInfo* Llvm::getGCInfo()
     return _gcInfo;
 }
 
+bool Llvm::needsReturnStackSlot(const GenTreeCall* callee)
+{
+    if (!callHasManagedCallingConvention(callee))
+    {
+        return false;
+    }
+
+    CorInfoType sigRetType;
+    if (callee->IsHelperCall())
+    {
+        sigRetType = getHelperFuncInfo(_compiler->eeGetHelperNum(callee->gtCallMethHnd)).GetSigReturnType();
+    }
+    else
+    {
+        noway_assert(!callee->IsUnmanaged());
+        sigRetType = toCorInfoType(callee->TypeGet());
+    }
+
+    return Llvm::needsReturnStackSlot(sigRetType, callee->gtRetClsHnd);
+}
+
 // Returns true if the method returns a type that must be kept on the shadow stack
 //
-bool Llvm::needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
+bool Llvm::needsReturnStackSlot(CorInfoType sigRetType, CORINFO_CLASS_HANDLE sigRetClass)
 {
-    return (corInfoType != CORINFO_TYPE_VOID) && !canStoreArgOnLlvmStack(corInfoType, classHnd);
+    if (sigRetType == CORINFO_TYPE_REFANY)
+    {
+        return true;
+    }
+    if ((sigRetType == CORINFO_TYPE_VALUECLASS) && !canStoreArgOnLlvmStack(sigRetType, sigRetClass) &&
+        (GetPrimitiveTypeForTrivialWasmStruct(sigRetClass) == CORINFO_TYPE_UNDEF))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 bool Llvm::callRequiresShadowStackSave(const GenTreeCall* call) const
