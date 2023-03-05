@@ -82,7 +82,7 @@ ThreadStore * ThreadStore::Create(RuntimeInstance * pRuntimeInstance)
     if (NULL == pNewThreadStore)
         return NULL;
 
-#ifndef HOST_WASM
+#ifdef FEATURE_HIJACK
     if (!PalRegisterHijackCallback(Thread::HijackCallback))
         return NULL;
 #endif
@@ -275,10 +275,12 @@ void ThreadStore::SuspendAllThreads(bool waitForGCEvent)
             if (!pTargetThread->CacheTransitionFrameForSuspend())
             {
                 remaining++;
+#ifdef FEATURE_HIJACK
                 if (!observeOnly)
                 {
                     pTargetThread->Hijack();
                 }
+#endif // FEATURE_HIJACK
             }
         }
         END_FOREACH_THREAD

@@ -948,6 +948,7 @@ extern "C" uint16_t RtlCaptureStackBackTrace(uint32_t arg1, uint32_t arg2, void*
     return 0;
 }
 
+#ifdef FEATURE_HIJACK
 static PalHijackCallback g_pHijackCallback;
 static struct sigaction g_previousActivationHandler;
 
@@ -1019,6 +1020,7 @@ REDHAWK_PALEXPORT void REDHAWK_PALAPI PalHijack(HANDLE hThread, _In_opt_ void* p
         abort();
     }
 }
+#endif // FEATURE_HIJACK
 
 extern "C" uint32_t WaitForSingleObjectEx(HANDLE handle, uint32_t milliseconds, UInt32_BOOL alertable)
 {

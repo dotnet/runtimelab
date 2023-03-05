@@ -219,6 +219,9 @@ list(APPEND RUNTIME_SOURCES_ARCH_ASM
 convert_to_absolute_path(ARCH_SOURCES_DIR ${ARCH_SOURCES_DIR})
 include_directories(${ARCH_SOURCES_DIR})
 
+if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
+  add_definitions(-DFEATURE_HIJACK)
+endif()
 add_definitions(-DFEATURE_BASICFREEZE)
 add_definitions(-DFEATURE_CONSERVATIVE_GC)
 add_definitions(-DFEATURE_CUSTOM_IMPORTS)
