@@ -61,8 +61,15 @@ enum class TargetAbiType : uint8_t
 enum CorInfoHelpLlvmFunc
 {
     CORINFO_HELP_LLVM_UNDEF = CORINFO_HELP_COUNT,
+
     CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP,
     CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP,
+
+    CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH,
+    CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER,
+    CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT,
+    CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING,
+
     CORINFO_HELP_ANY_COUNT
 };
 
@@ -78,11 +85,11 @@ enum HelperFuncInfoFlags
 
 struct HelperFuncInfo
 {
-    static const int MAX_SIG_ARG_COUNT = 3;
+    static const int MAX_SIG_ARG_COUNT = 4;
 
     INDEBUG(unsigned char Func);
     unsigned char SigReturnType;
-    unsigned char SigArgTypes[MAX_SIG_ARG_COUNT];
+    unsigned char SigArgTypes[MAX_SIG_ARG_COUNT + 1];
     unsigned char Flags;
 
     bool IsInitialized() const
@@ -232,7 +239,6 @@ private:
     const char* GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle);
     const char* GetMangledSymbolName(void* symbol);
     bool GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig);
-    const char* GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType);
     const char* GetTypeName(CORINFO_CLASS_HANDLE typeHandle);
     void AddCodeReloc(void* handle);
     bool IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle) const;
@@ -394,7 +400,7 @@ private:
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
-    Value* emitHelperCall(CorInfoHelpAnyFunc helperFunc, ArrayRef<Value*> sigArgs = { });
+    llvm::CallBase* emitHelperCall(CorInfoHelpAnyFunc helperFunc, ArrayRef<Value*> sigArgs = { });
     llvm::CallBase* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args);
 
     FunctionType* getFunctionType();
