@@ -1143,7 +1143,7 @@ public class Interfaces
                     throw new Exception();
             }
 
-#if !CODEGEN_WASM // Fails at runtime. Suspected cause is delegate invoke handling.
+#if !CODEGEN_WASM // Fails at runtime. Method receives a corrupt type context.
             {
                 var mi = t.GetMethod("CallIndirect");
                 int result = (int)mi.Invoke(null, Array.Empty<object>());
@@ -1211,7 +1211,7 @@ public class Interfaces
                     throw new Exception();
             }
 
-#if !CODEGEN_WASM // Fails at runtime. Suspected cause is delegate invoke handling.
+#if !CODEGEN_WASM // Fails at runtime. Method receives a corrupt type context.
             {
                 var mi = t.GetMethod("CallIndirect");
                 var result = ((int, Type))mi.Invoke(null, Array.Empty<object>());
@@ -1278,7 +1278,7 @@ public class Interfaces
                     throw new Exception();
             }
 
-#if !CODEGEN_WASM // Fails at runtime. Suspected cause is delegate invoke handling.
+#if !CODEGEN_WASM // Fails at runtime. Method receives a corrupt type context.
             {
                 var mi = t.GetMethod("CallIndirect");
                 var result = ((int, Type))mi.Invoke(null, Array.Empty<object>());
