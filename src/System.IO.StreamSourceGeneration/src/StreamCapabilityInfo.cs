@@ -7,18 +7,18 @@ namespace System.IO.StreamSourceGeneration
 {
     internal class StreamCapabilityInfo
     {
-        internal StreamMember? SyncPreferredMember { get; set; }
-        internal StreamMember? AsyncPreferredMember { get; set; }
+        private StreamMember? _syncPreferredMember;
+        private StreamMember? _asyncPreferredMember;
 
         public StreamCapabilityInfo(StreamMember preferredMember, bool isAsync)
         {
             if (isAsync)
             {
-                AsyncPreferredMember = preferredMember;
+                _asyncPreferredMember = preferredMember;
             }
             else
             {
-                SyncPreferredMember = preferredMember;
+                _syncPreferredMember = preferredMember;
             }
         }
 
@@ -26,26 +26,30 @@ namespace System.IO.StreamSourceGeneration
         {
             if (isAsync)
             {
-                if (AsyncPreferredMember == null || candidateInfo.HasPriority)
+                if (_asyncPreferredMember == null || candidateInfo.HasPriority)
                 {
-                    AsyncPreferredMember = member;
+                    _asyncPreferredMember = member;
                 }
             }
             else
             {
-                if (SyncPreferredMember == null || candidateInfo.HasPriority)
+                if (_syncPreferredMember == null || candidateInfo.HasPriority)
                 {
-                    SyncPreferredMember = member;
+                    _syncPreferredMember = member;
                 }
             }
         }
 
-        internal StreamMember GetPreferredMember(bool isAsync)
+        internal StreamMember GetSyncPreferredMember()
         {
-            StreamMember? retVal = isAsync ?
-                AsyncPreferredMember ?? SyncPreferredMember :
-                SyncPreferredMember ?? AsyncPreferredMember;
+            StreamMember? retVal = _syncPreferredMember ?? _asyncPreferredMember;
+            Debug.Assert(retVal != null, "Both properties can't be null.");
+            return retVal!.Value;
+        }
 
+        internal StreamMember GetAsyncPreferredMember()
+        {
+            StreamMember? retVal = _asyncPreferredMember ?? _syncPreferredMember;
             Debug.Assert(retVal != null, "Both properties can't be null.");
             return retVal!.Value;
         }

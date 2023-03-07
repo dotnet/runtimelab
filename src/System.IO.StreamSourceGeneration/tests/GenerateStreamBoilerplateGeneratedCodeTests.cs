@@ -11,7 +11,7 @@ namespace System.IO.StreamSourceGeneration.Tests
     public class GenerateStreamBoilerplateGeneratedCodeTests
     {
         [Fact]
-        public void StreamThatImplementsNothingThrowsOnAllGeneratedMethods() // Except Flush.
+        public void StreamThatImplementsNothingThrowsOnAllGeneratedMethods()
         {
             using Stream s = new StreamThatImplementsNothing();
             byte[] dummyBuffer = Array.Empty<byte>();
@@ -41,7 +41,7 @@ namespace System.IO.StreamSourceGeneration.Tests
         }
 
         [Fact]
-        public async Task StreamThatImplementsReadSuccessfullyReads() // Add the other read streams 
+        public async Task StreamThatImplementsReadSuccessfullyReads()
         {
             foreach (Stream s in new Stream[] {
             new StreamThatImplementsReadSpan(),
@@ -57,7 +57,7 @@ namespace System.IO.StreamSourceGeneration.Tests
 
                 Assert.Equal(expected, await s.ReadAsync(dummyBuffer.AsMemory(), CancellationToken.None).AsTask());
                 Assert.Equal(expected, await s.ReadAsync(dummyBuffer, 0, dummyBuffer.Length, CancellationToken.None));
-                Assert.Equal(expected, await Task.Factory.FromAsync(s.BeginRead, s.EndRead, dummyBuffer, 0, dummyBuffer.Length, null)); // todo find out how to consume IAsyncResult
+                Assert.Equal(expected, await Task.Factory.FromAsync(s.BeginRead, s.EndRead, dummyBuffer, 0, dummyBuffer.Length, null));
 
                 Assert.True(s.ReadByte() > -1);
                 Assert.True(s.CanRead);
@@ -67,7 +67,7 @@ namespace System.IO.StreamSourceGeneration.Tests
         }
 
         [Fact]
-        public async Task StreamThatImplementsWriteSuccessfullyWrites() // Add the other write streams
+        public async Task StreamThatImplementsWriteSuccessfullyWrites()
         {
             byte[] dummyBuffer;
             byte[] streamBuffer = new byte[1024];

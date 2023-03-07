@@ -45,10 +45,10 @@ namespace System.IO.StreamSourceGeneration
             }
 
 #if LAUNCH_DEBUGGER
-        if (!Diagnostics.Debugger.IsAttached)
-        {
-            Diagnostics.Debugger.Launch();
-        }
+            if (!Diagnostics.Debugger.IsAttached)
+            {
+                Diagnostics.Debugger.Launch();
+            }
 #endif
 
             List<StreamTypeInfo>? classesWithGenerationOptions = 
@@ -69,6 +69,8 @@ namespace System.IO.StreamSourceGeneration
                 INamedTypeSymbol typeSymbol = streamTypeInfo.TypeSymbol;
                 string hintName = $"{typeSymbol.ContainingNamespace}.{typeSymbol.Name}.Boilerplate.g.cs";
                 context.AddSource(hintName, sb.ToString());
+
+                ReportDiagnostics(context, streamTypeInfo);
             }
         }
 
@@ -88,11 +90,6 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
 
             HashSet<StreamMember> overriddenMembers = streamTypeInfo.OverriddenMembers;
 
-            // Read*/Write*/Seek can hint that a stream CanRead/Write/Seek => true but not vice versa.
-            bool canRead = streamTypeInfo.ReadInfo != null;
-            bool canWrite = streamTypeInfo.WriteInfo != null;
-            bool canSeek = overriddenMembers.Contains(StreamMember.Seek);
-
             foreach (BoilerplateCandidateInfo candidateInfo in BoilerplateCandidateInfo.CandidatesList)
             {
                 StreamMember member = candidateInfo.StreamMember;
@@ -102,7 +99,6 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
                 }
 
                 string boilerplate;
-
                 switch (member)
                 {
                     case StreamMember.ReadBytes:
@@ -123,7 +119,9 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
                         else
                         {
                             // Determine preferred method to call for the to-be-generated method.
-                            StreamMember memberToCall = capabilityInfo.GetPreferredMember(member.IsAsync());
+                            StreamMember memberToCall = member.IsAsync() ? 
+                                capabilityInfo.GetAsyncPreferredMember() : capabilityInfo.GetSyncPreferredMember();
+
                             string? memberToCallTemplate = Helpers.GetMemberToCallForTemplate(member, memberToCall);
 
                             if (memberToCallTemplate == null)
@@ -134,14 +132,14 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
                         }
                         break;
                     case StreamMember.ReadByte:
-                        if (streamTypeInfo.ReadInfo?.SyncPreferredMember is not StreamMember.ReadSpan)
+                        if (streamTypeInfo.ReadInfo?.GetSyncPreferredMember() is not StreamMember.ReadSpan)
                         {
                             continue;
                         }
                         boilerplate = candidateInfo.Boilerplate!;
                         break;
                     case StreamMember.WriteByte:
-                        if (streamTypeInfo.WriteInfo?.SyncPreferredMember is not StreamMember.WriteSpan)
+                        if (streamTypeInfo.WriteInfo?.GetSyncPreferredMember() is not StreamMember.WriteSpan)
                         {
                             continue;
                         }
@@ -150,15 +148,15 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
                     case StreamMember.BeginRead:
                     case StreamMember.CanRead:
                     case StreamMember.EndRead:
-                        boilerplate = canRead ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported!;
+                        boilerplate = streamTypeInfo.CanRead ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported!;
                         break;
                     case StreamMember.BeginWrite:
                     case StreamMember.CanWrite:
                     case StreamMember.EndWrite:
-                        boilerplate = canWrite ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported!;
+                        boilerplate = streamTypeInfo.CanWrite ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported!;
                         break;
                     case StreamMember.SetLength:
-                        if (canSeek && canWrite)
+                        if (streamTypeInfo.CanSeek && streamTypeInfo.CanWrite)
                         {
                             continue;
                         }
@@ -167,20 +165,20 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
                         break;
                     case StreamMember.Position:
                     case StreamMember.Length:
-                        if (canSeek)
+                        if (streamTypeInfo.CanSeek)
                         {
                             continue;
                         }
                         boilerplate = candidateInfo.BoilerplateForUnsupported!;
                         break;
                     case StreamMember.CanSeek:
-                        boilerplate = canSeek ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported!;
+                        boilerplate = streamTypeInfo.CanSeek ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported!;
                         break;
                     default:
                         // If Seek wasn't contained in overriddenMembers, it means
                         // that it wasn't implemented and seeking is not supported.
                         Debug.Assert(member is StreamMember.Seek);
-                        Debug.Assert(!canSeek);
+                        Debug.Assert(!streamTypeInfo.CanSeek);
                         boilerplate = candidateInfo.BoilerplateForUnsupported!;
                         break;
                 }
@@ -193,5 +191,212 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
     }
 }");
         }
+
+        // Diagnostics
+        // Stream does not support read/write/seek
+        private static readonly DiagnosticDescriptor s_TypeDoesNotImplementRead = 
+            new DiagnosticDescriptor(
+                id: "FOOBAR001",
+                title: "Type does not implement any Read",
+                messageFormat: "'{0}' does not implement any Read method and hence is unable to be read",
+                category: "StreamSourceGen",
+                DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor s_TypeDoesNotImplementWrite = 
+            new DiagnosticDescriptor(
+                id: "FOOBAR002",
+                title: "Type does not implement any Write",
+                messageFormat: "'{0}' does not implement any Write method and hence is unable to be written to",
+                category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor s_TypeDoesNotImplementSeek =
+            new DiagnosticDescriptor(
+                id: "FOOBAR003",
+                title: "Type does not implement Seek",
+                messageFormat: "'{0}' does not implement a Seek method and hence is unable to be seek",
+                category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+        // Sync-over-async or async-over-sync
+        private static readonly DiagnosticDescriptor s_ReadDoingAsyncOverSync =
+            new DiagnosticDescriptor(
+                id: "FOOBAR004",
+                title: "Stream does Read as async-over-sync",
+                messageFormat: "'{0}' does not implement any Read method and hence is doing async-over-sync",
+                category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+
+        private static readonly DiagnosticDescriptor s_ReadAsyncDoingSyncOverAsync =
+            new DiagnosticDescriptor(
+                id: "FOOBAR005",
+                title: "Stream does ReadAsync as sync-over-async",
+                messageFormat: "'{0}' does not implement any ReadAsync method and hence is doing sync-over-async",
+                category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor s_WriteDoingAsyncOverSync =
+            new DiagnosticDescriptor(
+                id: "FOOBAR006",
+                title: "Stream does Write as async-over-sync",
+                messageFormat: "'{0}' does not implement any Write method and hence is doing async-over-sync",
+                category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor s_WriteAsyncDoingSyncOverAsync =
+            new DiagnosticDescriptor(
+                id: "FOOBAR007",
+                title: "Stream does WriteAsync as sync-over-async",
+                messageFormat: "'{0}' does not implement any WriteAsync method and hence is doing sync-over-async",
+                category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
+        
+        // Consider Span/Memory overloads for better performance
+        private static readonly DiagnosticDescriptor s_ConsiderImplementingReadSpan =
+            new DiagnosticDescriptor(
+                id: "FOOBAR008",
+                title: "Consider implementing Read(Span<byte>)",
+                messageFormat: "'{0}' does not implement Read(Span<byte>), for better performance, consider providing an implementation for Read(Span<byte>) and make other Read methods overloads to it",
+                category: "StreamSourceGen",
+                DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor s_ConsiderImplementingWriteReadOnlySpan =
+            new DiagnosticDescriptor(
+                id: "FOOBAR009",
+                title: "Consider implementing Write(ReadOnlySpan<byte>)",
+                messageFormat: "'{0}' does not implement Write(ReadOnlySpan<byte>), for better performance, consider providing an implementation for Write(ReadOnlySpan<byte>) and make other Write overloads defer to it",
+                category: "StreamSourceGen",
+                DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor s_ConsiderImplementingReadAsyncMemory =
+            new DiagnosticDescriptor(
+                id: "FOOBAR010",
+                title: "Consider implementing ReadAsync(Memory<byte>, CancellationToken)",
+                messageFormat: "'{0}' does not implement ReadAsync(Memory<byte>, CancellationToken), for better performance, consider providing an implementation for ReadAsync(Memory<byte>, CancellationToken) and make other ReadAsync overloads defer to it",
+                category: "StreamSourceGen",
+                DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor s_ConsiderImplementingWriteAsyncReadOnlyMemory =
+            new DiagnosticDescriptor(
+                id: "FOOBAR011",
+                title: "Consider implementing WriteAsync(ReadOnlyMemory<byte>, CancellationToken)",
+                messageFormat: "'{0}' does not implement WriteAsync(ReadOnlyMemory<byte>, CancellationToken), for better performance, consider providing an implementation for WriteAsync(ReadOnlyMemory<byte>, CancellationToken) and make other WriteAsync overloads defer to it",
+                category: "StreamSourceGen",
+                DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+        // Avoid implementing APM (Begin/End) methods
+        private static readonly DiagnosticDescriptor s_AvoidBeginReadEndRead =
+            new DiagnosticDescriptor(
+                id: "FOOBAR012",
+                title: "Avoid BeingRead or EndRead",
+                messageFormat: "'{0}' implements BeginRead or EndRead, Task-based methods shoud be preferred when possible, consider removing them to allow the source generator to emit an implementation based on Task-based ReadAsync",
+                category: "StreamSourceGen",
+                DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor s_AvoidBeginWriteEndWrite =
+            new DiagnosticDescriptor(
+                id: "FOOBAR013",
+                title: "Avoid BeingWrite or EndWrite",
+                messageFormat: "'{0}' implements BeingWrite or EndWrite, Task-based methods shoud be preferred when possible, consider removing them to allow the source generator to emit an implementation based on Task-based WriteAsync",
+                category: "StreamSourceGen",
+                DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+        private static void ReportDiagnostics(SourceProductionContext context, StreamTypeInfo streamTypeInfo)
+        {
+            if (!streamTypeInfo.CanRead)
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_TypeDoesNotImplementRead, streamTypeInfo));
+            }
+            else
+            {
+                ReportReadDiagnostics(context, streamTypeInfo);
+            }
+
+            if (!streamTypeInfo.CanWrite)
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_TypeDoesNotImplementWrite, streamTypeInfo));
+            }
+            else
+            {
+                ReportWriteDiagnostics(context, streamTypeInfo);
+            }
+
+            if (!streamTypeInfo.CanSeek)
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_TypeDoesNotImplementSeek, streamTypeInfo));
+            }
+
+            if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.BeginRead) || 
+                streamTypeInfo.OverriddenMembers.Contains(StreamMember.EndRead))
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_AvoidBeginReadEndRead, streamTypeInfo));
+            }
+
+            if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.BeginWrite) || 
+                streamTypeInfo.OverriddenMembers.Contains(StreamMember.EndWrite))
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_AvoidBeginWriteEndWrite, streamTypeInfo));
+            }
+        }
+
+        private static void ReportReadDiagnostics(SourceProductionContext context, StreamTypeInfo streamTypeInfo)
+        {
+            Debug.Assert(streamTypeInfo.CanRead);
+            Debug.Assert(streamTypeInfo.ReadInfo is not null);
+            StreamCapabilityInfo readInfo = streamTypeInfo.ReadInfo!;
+
+            bool asyncOverSync = readInfo.GetSyncPreferredMember().IsAsync();
+            bool syncOverAsync = !readInfo.GetAsyncPreferredMember().IsAsync();
+            Debug.Assert(asyncOverSync != syncOverAsync);
+
+            if (asyncOverSync)
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_ReadDoingAsyncOverSync, streamTypeInfo));
+            }
+
+            if (syncOverAsync)
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_ReadAsyncDoingSyncOverAsync, streamTypeInfo));
+            }
+
+            if (!asyncOverSync && !streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadSpan))
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingReadSpan, streamTypeInfo));
+            }
+
+            if (!syncOverAsync && !streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadAsyncMemory))
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingReadAsyncMemory, streamTypeInfo));
+            }
+        }
+
+        private static void ReportWriteDiagnostics(SourceProductionContext context, StreamTypeInfo streamTypeInfo)
+        {
+            Debug.Assert(streamTypeInfo.CanWrite);
+            Debug.Assert(streamTypeInfo.WriteInfo is not null);
+            StreamCapabilityInfo writeInfo = streamTypeInfo.WriteInfo!;
+
+            bool asyncOverSync = writeInfo.GetSyncPreferredMember().IsAsync();
+            bool syncOverAsync = !writeInfo.GetAsyncPreferredMember().IsAsync();
+            Debug.Assert(asyncOverSync != syncOverAsync);
+
+            if (asyncOverSync)
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_WriteDoingAsyncOverSync, streamTypeInfo));
+            }
+
+            if (syncOverAsync)
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_WriteAsyncDoingSyncOverAsync, streamTypeInfo));
+            }
+
+            if (!asyncOverSync && !streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteSpan))
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingWriteReadOnlySpan, streamTypeInfo));
+            }
+
+            if (!syncOverAsync && !streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteAsyncMemory))
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingWriteAsyncReadOnlyMemory, streamTypeInfo));
+            }
+        }
+
+        private static Diagnostic CreateDiagnostic(DiagnosticDescriptor descriptor, StreamTypeInfo streamTypeInfo)
+            => Diagnostic.Create(descriptor, Location.None, streamTypeInfo.TypeSymbol.Name);
     }
 }

@@ -3,7 +3,6 @@
 
 namespace System.IO.StreamSourceGeneration
 {
-    [Flags]
     internal enum StreamMember
     {
         ReadBytes,

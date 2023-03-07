@@ -12,6 +12,9 @@ namespace System.IO.StreamSourceGeneration
         internal HashSet<StreamMember> OverriddenMembers { get; }
         internal StreamCapabilityInfo? ReadInfo { get; }
         internal StreamCapabilityInfo? WriteInfo { get; }
+        internal bool CanRead => ReadInfo is not null;
+        internal bool CanWrite => WriteInfo is not null;
+        internal bool CanSeek => OverriddenMembers.Contains(StreamMember.Seek);
 
         public StreamTypeInfo(INamedTypeSymbol typeSymbol)
         {
