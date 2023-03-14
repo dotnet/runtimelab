@@ -100,5 +100,6 @@
 
   <ItemGroup>
     <Compile Include="JitInterface\CorInfoImpl.Llvm.cs" />
+    <Compile Include="JitInterface\CorInfoImpl.Llvm.DebugInfo.cs" />
   </ItemGroup>
 </Project>

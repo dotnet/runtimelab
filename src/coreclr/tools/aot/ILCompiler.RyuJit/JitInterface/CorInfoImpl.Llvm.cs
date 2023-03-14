@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -167,21 +170,6 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        public static byte* getDocumentFileName(IntPtr thisHandle)
-        {
-            var _this = GetThis(thisHandle);
-            var curSequencePoint = _this.GetSequencePoint(0);
-            string fullPath = curSequencePoint.Document;
-
-            if (string.IsNullOrEmpty(fullPath))
-            {
-                return null;
-            }
-
-            return (byte*)_this.GetPin(StringToUTF8(fullPath));
-        }
-
-        [UnmanagedCallersOnly]
         public static uint getOffsetLineNumber(IntPtr thisHandle, uint ilOffset)
         {
             var _this = GetThis(thisHandle);
@@ -335,6 +323,24 @@ namespace Internal.JitInterface
             return typeDescriptor;
         }
 
+        [UnmanagedCallersOnly]
+        private static CORINFO_LLVM_DEBUG_TYPE_HANDLE getDebugTypeForType(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* typeHandle)
+        {
+            return GetThis(thisHandle).GetDebugTypeForType(typeHandle);
+        }
+
+        [UnmanagedCallersOnly]
+        private static void getDebugInfoForDebugType(IntPtr thisHandle, CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo)
+        {
+            GetThis(thisHandle).GetDebugInfoForDebugType(debugTypeHandle, pInfo);
+        }
+
+        [UnmanagedCallersOnly]
+        private static void getDebugInfoForCurrentMethod(IntPtr thisHandle, CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
+        {
+            GetThis(thisHandle).GetDebugInfoForMethod(pInfo);
+        }
+
         // These enums must be kept in sync with their unmanaged versions in "jit/llvm.cpp".
         //
         enum EEApiId
@@ -346,7 +352,6 @@ namespace Internal.JitInterface
             GetTypeName,
             AddCodeReloc,
             IsRuntimeImport,
-            GetDocumentFileName,
             GetOffsetLineNumber,
             StructIsWrappedPrimitive,
             PadOffset,
@@ -355,6 +360,9 @@ namespace Internal.JitInterface
             GetAlternativeFunctionName,
             GetExternalMethodAccessor,
             GetLlvmHelperFuncEntrypoint,
+            GetDebugTypeForType,
+            GetDebugInfoForDebugType,
+            GetDebugInfoForCurrentMethod,
             Count
         }
 
@@ -386,7 +394,6 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.GetTypeName] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*>)&getTypeName;
             jitImports[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
             jitImports[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;
-            jitImports[(int)EEApiId.GetDocumentFileName] = (delegate* unmanaged<IntPtr, byte*>)&getDocumentFileName;
             jitImports[(int)EEApiId.GetOffsetLineNumber] = (delegate* unmanaged<IntPtr, uint, uint>)&getOffsetLineNumber;
             jitImports[(int)EEApiId.StructIsWrappedPrimitive] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint>)&structIsWrappedPrimitive;
             jitImports[(int)EEApiId.PadOffset] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint>)&padOffset;
@@ -395,6 +402,9 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
             jitImports[(int)EEApiId.GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
             jitImports[(int)EEApiId.GetLlvmHelperFuncEntrypoint] = (delegate* unmanaged<IntPtr, CorInfoHelpLlvmFunc, IntPtr>)&getLlvmHelperFuncEntrypoint;
+            jitImports[(int)EEApiId.GetDebugTypeForType] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_LLVM_DEBUG_TYPE_HANDLE>)&getDebugTypeForType;
+            jitImports[(int)EEApiId.GetDebugInfoForDebugType] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_DEBUG_TYPE_HANDLE, CORINFO_LLVM_TYPE_DEBUG_INFO*, void>)&getDebugInfoForDebugType;
+            jitImports[(int)EEApiId.GetDebugInfoForCurrentMethod] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_METHOD_DEBUG_INFO*, void>)&getDebugInfoForCurrentMethod;
             jitImports[(int)EEApiId.Count] = (void*)0x1234;
 
 #if DEBUG

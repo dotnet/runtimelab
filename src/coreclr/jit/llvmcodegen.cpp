@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 // ================================================================================================================
 // |                                            LLVM-based codegen                                                |
 // ================================================================================================================
@@ -188,63 +191,6 @@ bool Llvm::initializeFunctions()
     }
 
     return false;
-}
-
-void Llvm::initializeDebugInfo()
-{
-    if (!_compiler->opts.compDbgInfo)
-    {
-        return;
-    }
-
-    const char* documentFileName = GetDocumentFileName();
-    if (documentFileName == nullptr)
-    {
-        return;
-    }
-
-    // Check Unix and Windows path styles
-    std::string fullPath = documentFileName;
-    std::size_t botDirPos = fullPath.find_last_of("/");
-    if (botDirPos == std::string::npos)
-    {
-        botDirPos = fullPath.find_last_of("\\");
-    }
-    std::string directory = "";
-    std::string fileName;
-    if (botDirPos != std::string::npos)
-    {
-        directory = fullPath.substr(0, botDirPos);
-        fileName = fullPath.substr(botDirPos + 1, fullPath.length());
-    }
-    else
-    {
-        fileName = fullPath;
-    }
-
-
-    m_diBuilder = new (_compiler->getAllocator(CMK_DebugInfo)) llvm::DIBuilder(*_module);
-
-    // TODO-LLVM: we are allocating a new CU for each compiled function, which is rather inefficient. We should instead
-    // allocate one CU per file.
-    llvm::DIFile* fileMetadata = m_diBuilder->createFile(fileName, directory);
-    m_diBuilder->createCompileUnit(llvm::dwarf::DW_LANG_C /* no dotnet choices in the enum */, fileMetadata, "ILC",
-                                   _compiler->opts.OptimizationEnabled(), "", 1, "", llvm::DICompileUnit::FullDebug,
-                                   0, false);
-
-    // TODO-LLVM: function parameter types.
-    llvm::DISubroutineType* functionType = m_diBuilder->createSubroutineType({});
-    uint32_t lineNumber = GetOffsetLineNumber(0);
-
-    // TODO-LLVM: "getMethodName" is meant for (Jit) debugging. Find/add a more suitable API.
-    const char* methodName = m_info->compCompHnd->getMethodName(m_info->compMethodHnd, nullptr);
-    m_diFunction =
-        m_diBuilder->createFunction(fileMetadata, methodName, methodName, fileMetadata, lineNumber, functionType,
-                                    lineNumber, llvm::DINode::FlagZero,
-                                    llvm::DISubprogram::SPFlagDefinition | llvm::DISubprogram::SPFlagLocalToUnit);
-
-    // TODO-LLVM-EH: debugging in funclets.
-    getRootLlvmFunction()->setSubprogram(m_diFunction);
 }
 
 void Llvm::generateProlog()
@@ -2995,23 +2941,6 @@ Value* Llvm::getOriginalShadowStack()
 
     // The original shadow stack pointer is the second funclet parameter.
     return getCurrentLlvmFunction()->getArg(1);
-}
-
-llvm::DILocation* Llvm::createDebugLocation(unsigned lineNo)
-{
-    assert(m_diFunction != nullptr);
-    return llvm::DILocation::get(_llvmContext, lineNo, 0, m_diFunction);
-}
-
-llvm::DILocation* Llvm::getArtificialDebugLocation()
-{
-    if (m_diFunction == nullptr)
-    {
-        return nullptr;
-    }
-
-    // Line number "0" is used to represent non-user code in DWARF.
-    return createDebugLocation(0);
 }
 
 void Llvm::setCurrentEmitContextForBlock(BasicBlock* block)
