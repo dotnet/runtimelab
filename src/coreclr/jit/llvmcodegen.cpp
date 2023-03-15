@@ -197,11 +197,12 @@ void Llvm::generateProlog()
 {
     JITDUMP("\n=============== Generating prolog:\n");
 
-    llvm::BasicBlock* prologLlvmBlock = getOrCreatePrologLlvmBlockForFunction(ROOT_FUNC_IDX);
-    _builder.SetInsertPoint(prologLlvmBlock->getTerminator());
-    _builder.SetCurrentDebugLocation(llvm::DebugLoc()); // By convention, prologs have no debug info.
+    LlvmBlockRange prologLlvmBlocks(getOrCreatePrologLlvmBlockForFunction(ROOT_FUNC_IDX));
+    setCurrentEmitContext(ROOT_FUNC_IDX, EHblkDsc::NO_ENCLOSING_INDEX, &prologLlvmBlocks);
+    _builder.SetCurrentDebugLocation(nullptr); // By convention, prologs have no debug info.
 
     initializeLocals();
+    declareDebugVariables();
 }
 
 void Llvm::initializeLocals()
@@ -219,20 +220,19 @@ void Llvm::initializeLocals()
     }
 
     llvm::AllocaInst** allocas = new (_compiler->getAllocator(CMK_Codegen)) llvm::AllocaInst*[_compiler->lvaCount];
-
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
-        // Don't look at unreferenced temporaries.
-        if (varDsc->lvRefCnt() == 0)
-        {
-            continue;
-        }
-
         if (isFuncletParameter(lclNum))
         {
             // We model funclet parameters specially because it is not trivial to represent them in IR faithfully.
+            continue;
+        }
+
+        // Don't look at unreferenced temporaries.
+        if (varDsc->lvRefCnt() == 0)
+        {
             continue;
         }
 
@@ -308,6 +308,7 @@ void Llvm::initializeLocals()
         if (_compiler->lvaInSsa(lclNum))
         {
             _localsMap.Set({lclNum, SsaConfig::FIRST_SSA_NUM}, initValue);
+            assignDebugVariable(lclNum, initValue);
         }
         else
         {
@@ -946,14 +947,13 @@ void Llvm::fillPhis()
 
     for (PhiPair phiPair : _phiPairs)
     {
-        llvm::PHINode* llvmPhiNode = phiPair.llvmPhiNode;
-        GenTreePhi* phiNode = phiPair.irPhiNode;
+        llvm::PHINode* llvmPhiNode = phiPair.LlvmPhiNode;
+        GenTreeLclVar* phiStore = phiPair.StoreNode;
 
-        GenTreeLclVar* phiStore = phiNode->gtNext->AsLclVar();
         unsigned lclNum = phiStore->GetLclNum();
         BasicBlock* phiBlock = _compiler->lvaGetDesc(lclNum)->GetPerSsaData(phiStore->GetSsaNum())->GetBlock();
 
-        for (GenTreePhi::Use& use : phiNode->Uses())
+        for (GenTreePhi::Use& use : phiStore->Data()->AsPhi()->Uses())
         {
             GenTreePhiArg* phiArg = use.GetNode()->AsPhiArg();
             Value* phiArgValue = _localsMap[{lclNum, phiArg->GetSsaNum()}];
@@ -1314,12 +1314,18 @@ void Llvm::buildStoreLocalVar(GenTreeLclVar* lclVar)
     }
     else
     {
-        localValue = consumeValue(lclVar->gtGetOp1(), destLlvmType);
+        localValue = consumeValue(lclVar->Data(), destLlvmType);
     }
 
     if (lclVar->HasSsaName())
     {
+        if (lclVar->Data()->OperIs(GT_PHI))
+        {
+            _phiPairs.push_back({lclVar, llvm::cast<llvm::PHINode>(localValue)});
+        }
+
         _localsMap.Set({lclNum, lclVar->GetSsaNum()}, localValue);
+        assignDebugVariable(lclNum, localValue);
     }
     else
     {
@@ -1332,9 +1338,7 @@ void Llvm::buildEmptyPhi(GenTreePhi* phi)
 {
     LclVarDsc* varDsc = _compiler->lvaGetDesc(phi->Uses().begin()->GetNode()->AsPhiArg());
     Type* lclLlvmType = getLlvmTypeForLclVar(varDsc);
-
     llvm::PHINode* llvmPhiNode = _builder.CreatePHI(lclLlvmType, 2);
-    _phiPairs.push_back({ phi, llvmPhiNode });
 
     mapGenTreeToValue(phi, llvmPhiNode);
 }
@@ -2384,8 +2388,8 @@ void Llvm::buildILOffset(GenTreeILOffset* ilOffsetNode)
     }
 
     unsigned ilOffset = debugInfo.GetLocation().GetOffset();
-    unsigned lineNo = GetOffsetLineNumber(ilOffset);
-    llvm::DILocation* diLocation = createDebugLocation(lineNo);
+    unsigned lineNo = getLineNumberForILOffset(ilOffset);
+    llvm::DILocation* diLocation = getDebugLocation(lineNo);
 
     _builder.SetCurrentDebugLocation(diLocation);
 }
@@ -2957,7 +2961,15 @@ void Llvm::setCurrentEmitContext(unsigned funcIdx, unsigned tryIndex, LlvmBlockR
 {
     assert(getLlvmFunctionForIndex(funcIdx) == llvmBlocks->LastBlock->getParent());
 
-    _builder.SetInsertPoint(llvmBlocks->LastBlock);
+    llvm::BasicBlock* insertLlvmBlock = llvmBlocks->LastBlock;
+    if (insertLlvmBlock->getTerminator() != nullptr)
+    {
+        _builder.SetInsertPoint(insertLlvmBlock->getTerminator());
+    }
+    else
+    {
+        _builder.SetInsertPoint(insertLlvmBlock);
+    }
     m_currentLlvmFunctionIndex = funcIdx;
     m_currentProtectedRegionIndex = tryIndex;
     m_currentLlvmBlocks = llvmBlocks;

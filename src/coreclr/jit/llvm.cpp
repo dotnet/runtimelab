@@ -14,7 +14,7 @@ Module* _module = nullptr;
 std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs = new std::unordered_map<CORINFO_CLASS_HANDLE, Type*>();
 std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap = new std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>();
 JitHashTable<CORINFO_LLVM_DEBUG_TYPE_HANDLE, JitSmallPrimitiveKeyFuncs<CORINFO_LLVM_DEBUG_TYPE_HANDLE>, llvm::DIType*, MallocAllocator> s_debugTypesMap({});
-llvm::DICompileUnit* s_debugCompileUnit = nullptr;
+JitHashTable<llvm::DIFile*, JitPtrKeyFuncs<llvm::DIFile>, llvm::DICompileUnit*, MallocAllocator> s_debugCompileUnitsMap({});
 
 // Must be kept in sync with the managed version in "CorInfoImpl.Llvm.cs".
 //
@@ -27,7 +27,6 @@ enum class EEApiId
     GetTypeName,
     AddCodeReloc,
     IsRuntimeImport,
-    GetOffsetLineNumber,
     StructIsWrappedPrimitive,
     PadOffset,
     GetTypeDescriptor,
@@ -790,11 +789,6 @@ bool Llvm::IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle) const
     return CallEEApi<EEApiId::IsRuntimeImport, uint32_t>(m_pEECorInfo, methodHandle) != 0;
 }
 
-uint32_t Llvm::GetOffsetLineNumber(unsigned ilOffset)
-{
-    return CallEEApi<EEApiId::GetOffsetLineNumber, uint32_t>(m_pEECorInfo, ilOffset);
-}
-
 bool Llvm::StructIsWrappedPrimitive(CORINFO_CLASS_HANDLE typeHandle, CorInfoType corInfoType)
 {
     // Maintains compatiblity with the IL->LLVM generation.
@@ -870,7 +864,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExp
 /* static */ void Llvm::FinishThreadContextBoundCompilation()
 {
     assert(_module != nullptr);
-    if (s_debugCompileUnit != nullptr)
+    if (s_debugCompileUnitsMap.GetCount() != 0)
     {
         _module->addModuleFlag(llvm::Module::Warning, "Dwarf Version", 4);
         _module->addModuleFlag(llvm::Module::Warning, "Debug Info Version", 3);

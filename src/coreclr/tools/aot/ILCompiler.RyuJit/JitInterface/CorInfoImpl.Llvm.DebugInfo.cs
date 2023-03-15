@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -60,7 +61,7 @@ namespace Internal.JitInterface
         public uint GetClassTypeIndex(ClassTypeDescriptor classTypeDescriptor)
         {
             // Multiple type forwards may be requested for the same underlying type. Return the same index for all of of them to support later
-            // updating the shape entry with the complete type.
+            // updating the entry with a complete type.
             ref uint index = ref CollectionsMarshal.GetValueRefOrAddDefault(_incompleteTypesMap, classTypeDescriptor.Name, out bool exists);
             if (exists)
             {
@@ -389,9 +390,19 @@ namespace Internal.JitInterface
             public CORINFO_LLVM_DEBUG_TYPE_HANDLE Type;
         }
 
+        struct CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO
+        {
+            public uint ILOffset;
+            public uint LineNumber;
+        }
+
         struct CORINFO_LLVM_METHOD_DEBUG_INFO
         {
             public byte* Name;
+            public byte* Directory;
+            public byte* FileName;
+            public uint LineNumberCount;
+            public CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO* SortedLineNumbers;
             public CORINFO_LLVM_DEBUG_TYPE_HANDLE OwnerType;
             public CORINFO_LLVM_DEBUG_TYPE_HANDLE Type;
             public uint VariableCount;
@@ -407,6 +418,31 @@ namespace Internal.JitInterface
             pInfo->Name = ToPinnedUtf8String(descriptor.Name);
             pInfo->OwnerType = IndexToDebugTypeHandle(descriptor.ParentClass);
             pInfo->Type = IndexToDebugTypeHandle(descriptor.MemberFunction);
+
+            string documentPath = null;
+            ArrayBuilder<CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO> lineNumbersBuilder = new();
+            foreach (ILSequencePoint sequencePoint in _debugInfo.GetSequencePoints())
+            {
+                lineNumbersBuilder.Add(new() { ILOffset = (uint)sequencePoint.Offset, LineNumber = (uint)sequencePoint.LineNumber });
+                documentPath ??= sequencePoint.Document;
+            }
+
+            if (documentPath != null)
+            {
+                pInfo->Directory = ToPinnedUtf8String(Path.GetDirectoryName(documentPath));
+                pInfo->FileName = ToPinnedUtf8String(Path.GetFileName(documentPath));
+            }
+            else
+            {
+                pInfo->Directory = null;
+                pInfo->FileName = null;
+            }
+
+            CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO[] lineNumbers = lineNumbersBuilder.ToArray();
+            Array.Sort(lineNumbers, static (x, y) => (int)(x.ILOffset - y.ILOffset));
+
+            pInfo->LineNumberCount = (uint)lineNumbers.Length;
+            pInfo->SortedLineNumbers = (CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO*)GetPin(lineNumbers);
 
             bool isStateMachineMoveNextMethod = _debugInfo.IsStateMachineMoveNextMethod;
             MethodSignature sig = method.Signature;

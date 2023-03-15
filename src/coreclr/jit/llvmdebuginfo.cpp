@@ -14,8 +14,10 @@ using llvm::DINode;
 using llvm::DINodeArray;
 using llvm::DIFile;
 using llvm::DIType;
+using llvm::DIDerivedType;
 using llvm::DISubroutineType;
 using llvm::DILocation;
+using llvm::DIExpression;
 
 enum CorInfoLlvmDebugTypeKind
 {
@@ -116,9 +118,19 @@ struct CORINFO_LLVM_VARIABLE_DEBUG_INFO
     CORINFO_LLVM_DEBUG_TYPE_HANDLE Type;
 };
 
+struct CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO
+{
+    unsigned ILOffset;
+    unsigned LineNumber;
+};
+
 struct CORINFO_LLVM_METHOD_DEBUG_INFO
 {
     const char* Name;
+    const char* Directory;
+    const char* FileName;
+    unsigned LineNumberCount;
+    CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO* SortedLineNumbers;
     CORINFO_LLVM_DEBUG_TYPE_HANDLE OwnerType;
     CORINFO_LLVM_DEBUG_TYPE_HANDLE Type;
     unsigned VariableCount;
@@ -135,20 +147,58 @@ void Llvm::initializeDebugInfo()
     CORINFO_LLVM_METHOD_DEBUG_INFO info;
     GetDebugInfoForCurrentMethod(&info);
 
-    initializeDebugInfoBuilder();
+    if (info.FileName == nullptr || info.LineNumberCount == 0)
+    {
+        return;
+    }
 
-    DIFile* debugFile = getUnknownDebugFile();
+    assert(info.SortedLineNumbers != nullptr);
+    m_lineNumberCount = info.LineNumberCount;
+    m_lineNumbers = info.SortedLineNumbers;
+
+    DIFile* debugFile = initializeDebugInfoBuilder(&info);
     DIType* ownerDebugType = getOrCreateDebugType(info.OwnerType);
+    unsigned lineNum = m_lineNumbers[0].LineNumber;
     DISubroutineType* debugFuncType = llvm::cast<DISubroutineType>(getOrCreateDebugType(info.Type));
     StringRef linkageName = getRootLlvmFunction()->getName();
     llvm::DISubprogram::DISPFlags flags = llvm::DISubprogram::SPFlagDefinition | llvm::DISubprogram::SPFlagLocalToUnit;
 
-    m_diFunction = m_diBuilder->createMethod(ownerDebugType, info.Name, linkageName, debugFile, 0, debugFuncType, 0, 0,
-                                             nullptr, DINode::FlagZero, flags);
+    m_diFunction = m_diBuilder->createMethod(ownerDebugType, info.Name, linkageName, debugFile, lineNum, debugFuncType,
+                                             0, 0, nullptr, DINode::FlagZero, flags);
 
-    for (size_t i = 0; i < info.VariableCount; i++)
+    initializeDebugVariables(&info);
+
+    // TODO-LLVM-EH: debugging in funclets.
+    getRootLlvmFunction()->setSubprogram(m_diFunction);
+}
+
+DIFile* Llvm::initializeDebugInfoBuilder(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
+{
+    assert((pInfo->FileName != nullptr) && (pInfo->Directory != nullptr));
+
+    DIFile* debugFile = DIFile::get(_llvmContext, pInfo->FileName, pInfo->Directory);
+
+    llvm::DICompileUnit* debugCompileUnit = nullptr;
+    s_debugCompileUnitsMap.Lookup(debugFile, &debugCompileUnit);
+
+    m_diBuilder = new (_compiler->getAllocator(CMK_DebugInfo)) llvm::DIBuilder(*_module, true, debugCompileUnit);
+
+    if (debugCompileUnit == nullptr)
     {
-        CORINFO_LLVM_VARIABLE_DEBUG_INFO* pVariableInfo = &info.Variables[i];
+        debugCompileUnit = m_diBuilder->createCompileUnit(DW_LANG_C_plus_plus, debugFile, "ILC", false, "", 1, "",
+                                                          llvm::DICompileUnit::FullDebug, 0, false);
+        s_debugCompileUnitsMap.Set(debugFile, debugCompileUnit);
+    }
+
+    return debugFile;
+}
+
+void Llvm::initializeDebugVariables(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
+{
+    DIFile* debugFile = m_diFunction->getFile();
+    for (size_t i = 0; i < pInfo->VariableCount; i++)
+    {
+        CORINFO_LLVM_VARIABLE_DEBUG_INFO* pVariableInfo = &pInfo->Variables[i];
         DIType* debugType = getOrCreateDebugType(pVariableInfo->Type);
         unsigned num = pVariableInfo->VarNumber;
 
@@ -169,23 +219,120 @@ void Llvm::initializeDebugInfo()
         unsigned lclNum = _compiler->compMapILvarNum(num);
         m_debugVariablesMap.Set(lclNum, debugVariable);
     }
-
-    // TODO-LLVM-EH: debugging in funclets.
-    getRootLlvmFunction()->setSubprogram(m_diFunction);
 }
 
-void Llvm::initializeDebugInfoBuilder()
+void Llvm::declareDebugVariables()
 {
-    m_diBuilder = new (_compiler->getAllocator(CMK_DebugInfo)) llvm::DIBuilder(*_module, true, s_debugCompileUnit);
+    // We only expect to declare variables in prologs.
+    assert(_builder.getCurrentDebugLocation().get() == nullptr);
 
-    if (s_debugCompileUnit == nullptr)
+    if (m_diFunction == nullptr)
     {
-        m_diBuilder->createCompileUnit(DW_LANG_C_plus_plus, getUnknownDebugFile(), "ILC", false, "", 1, "",
-                                       llvm::DICompileUnit::FullDebug, 0, false);
+        return;
+    }
+
+    DILocation* debugLocation = getArtificialDebugLocation();
+    Instruction* insertInst = _builder.GetInsertBlock()->getTerminator();
+    Value* spilledShadowStackAddr = nullptr;
+    for (auto lcl = m_debugVariablesMap.Begin(); !lcl.Equal(m_debugVariablesMap.End()); ++lcl)
+    {
+        unsigned lclNum = lcl.Get();
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+
+        Value* addressValue;
+        DIExpression* debugExpression;
+        if (isShadowFrameLocal(varDsc))
+        {
+            // The obvious way to implement this (by just passing the shadow stack to dbg.declare) does not
+            // work due to downstream issues. We use a workaround of spilling the shadow stack to an alloca.
+            if (spilledShadowStackAddr == nullptr)
+            {
+                spilledShadowStackAddr = _builder.CreateAlloca(getPtrLlvmType());
+                JITDUMPEXEC(spilledShadowStackAddr->dump());
+                Instruction* storeInst = _builder.CreateStore(getShadowStack(), spilledShadowStackAddr);
+                JITDUMPEXEC(storeInst->dump());
+            }
+
+            addressValue = spilledShadowStackAddr;
+            unsigned offset = static_cast<unsigned>(varDsc->GetStackOffset());
+            debugExpression = m_diBuilder->createExpression({DW_OP_deref, DW_OP_plus_uconst, offset});
+        }
+        else if (!_compiler->lvaInSsa(lclNum) && (varDsc->lvRefCnt() != 0))
+        {
+            addressValue = getLocalAddr(lclNum);
+            debugExpression = m_diBuilder->createExpression();
+        }
+        else
+        {
+            continue;
+        }
+
+        llvm::DILocalVariable* debugVariable = lcl.GetValue();
+        Instruction* debugInst =
+            m_diBuilder->insertDeclare(addressValue, debugVariable, debugExpression, debugLocation, insertInst);
+        JITDUMP("Declaring V%02u:\n", lclNum);
+        JITDUMPEXEC(debugInst->dump());
     }
 }
 
-DILocation* Llvm::createDebugLocation(unsigned lineNo)
+void Llvm::assignDebugVariable(unsigned lclNum, Value* value)
+{
+    assert(_compiler->lvaInSsa(lclNum));
+
+    llvm::DILocalVariable* debugVariable;
+    if (m_debugVariablesMap.Lookup(lclNum, &debugVariable))
+    {
+        DILocation* debugLocation = getCurrentOrArtificialDebugLocation();
+        Instruction* debugInst;
+        if (_builder.GetInsertPoint() == _builder.GetInsertBlock()->end())
+        {
+            debugInst = m_diBuilder->insertDbgValueIntrinsic(value, debugVariable, m_diBuilder->createExpression(),
+                                                             debugLocation, _builder.GetInsertBlock());
+        }
+        else
+        {
+            debugInst = m_diBuilder->insertDbgValueIntrinsic(value, debugVariable, m_diBuilder->createExpression(),
+                                                             debugLocation, &*_builder.GetInsertPoint());
+        }
+        DBEXEC(CurrentBlock() == nullptr, JITDUMPEXEC(debugInst->dump()));
+    }
+}
+
+unsigned Llvm::getLineNumberForILOffset(unsigned ilOffset)
+{
+    // The line number array we have is sorted; we'll use a blend of binary and linear search to find the mapping.
+    const int LINEAR_SEARCH_THRESHOLD = 8;
+
+    unsigned lowIndex = 0;
+    unsigned highIndex = m_lineNumberCount;
+    while ((highIndex - lowIndex) > LINEAR_SEARCH_THRESHOLD)
+    {
+        unsigned middleIndex = (lowIndex + highIndex) / 2;
+        if (ilOffset < m_lineNumbers[middleIndex].ILOffset)
+        {
+            highIndex = middleIndex;
+        }
+        else
+        {
+            lowIndex = middleIndex;
+        }
+    }
+
+    unsigned lineNumber = m_lineNumbers[lowIndex].LineNumber;
+    for (unsigned index = lowIndex; index < highIndex; index++)
+    {
+        if (ilOffset < m_lineNumbers[index].ILOffset)
+        {
+            break;
+        }
+
+        lineNumber = m_lineNumbers[index].LineNumber;
+    }
+
+    return lineNumber;
+}
+
+DILocation* Llvm::getDebugLocation(unsigned lineNo)
 {
     assert(m_diFunction != nullptr);
     return DILocation::get(_llvmContext, lineNo, 0, m_diFunction);
@@ -199,7 +346,18 @@ DILocation* Llvm::getArtificialDebugLocation()
     }
 
     // Line number "0" is used to represent non-user code in DWARF.
-    return createDebugLocation(0);
+    return getDebugLocation(0);
+}
+
+DILocation* Llvm::getCurrentOrArtificialDebugLocation()
+{
+    DILocation* debugLocation = _builder.getCurrentDebugLocation();
+    if (debugLocation == nullptr)
+    {
+        debugLocation = getArtificialDebugLocation();
+    }
+
+    return debugLocation;
 }
 
 DIFile* Llvm::getUnknownDebugFile()
@@ -274,9 +432,9 @@ DIType* Llvm::createDebugTypeForPrimitive(CorInfoType type)
         case CORINFO_TYPE_NATIVEUINT:
             return m_diBuilder->createBasicType("nuint", TARGET_POINTER_BITS, DW_ATE_unsigned);
         case CORINFO_TYPE_FLOAT:
-            return m_diBuilder->createBasicType("float", 4, DW_ATE_float);
+            return m_diBuilder->createBasicType("float", 32, DW_ATE_float);
         case CORINFO_TYPE_DOUBLE:
-            return m_diBuilder->createBasicType("double", 8, DW_ATE_float);
+            return m_diBuilder->createBasicType("double", 64, DW_ATE_float);
         default:
             unreached();
     }
@@ -434,7 +592,7 @@ DIType* Llvm::createClassDebugType(StringRef name, unsigned size, ArrayRef<Metad
 DIDerivedType* Llvm::createDebugMember(StringRef name, llvm::DIType* debugType, unsigned offset)
 {
     return m_diBuilder->createMemberType(nullptr, name, getUnknownDebugFile(), 0, debugType->getSizeInBits(),
-                                         debugType->getAlignInBits(), offset * BITS_PER_SIZE_T, DINode::FlagZero,
+                                         debugType->getAlignInBits(), offset * BITS_PER_BYTE, DINode::FlagZero,
                                          debugType);
 }
 

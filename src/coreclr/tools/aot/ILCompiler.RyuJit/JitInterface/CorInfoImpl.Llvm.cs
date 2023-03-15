@@ -147,36 +147,6 @@ namespace Internal.JitInterface
             return method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute") ? 1u : 0u; // bool is not blittable in .net5 so use uint, TODO: revert to bool for .net 6 (https://github.com/dotnet/runtime/issues/51170)
         }
 
-        ILSequencePoint GetSequencePoint(uint offset)
-        {
-            var sequencePointsEnumerable = _debugInfo.GetSequencePoints();
-            if (sequencePointsEnumerable == null) return default;
-
-            ILSequencePoint curSequencePoint = default;
-
-            foreach (var sequencePoint in sequencePointsEnumerable)
-            {
-                if (offset <= sequencePoint.Offset) // take the first sequence point in case we need to make a call to RhNewObject before the first matching sequence point
-                {
-                    curSequencePoint = sequencePoint;
-                    break;
-                }
-                if (sequencePoint.Offset < offset)
-                {
-                    curSequencePoint = sequencePoint;
-                }
-            }
-            return curSequencePoint;
-        }
-
-        [UnmanagedCallersOnly]
-        public static uint getOffsetLineNumber(IntPtr thisHandle, uint ilOffset)
-        {
-            var _this = GetThis(thisHandle);
-
-            return (uint)_this.GetSequencePoint(ilOffset).LineNumber;
-        }
-
         [UnmanagedCallersOnly]
         public static uint structIsWrappedPrimitive(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd, CorInfoType corInfoPrimitiveType)
         {
@@ -352,7 +322,6 @@ namespace Internal.JitInterface
             GetTypeName,
             AddCodeReloc,
             IsRuntimeImport,
-            GetOffsetLineNumber,
             StructIsWrappedPrimitive,
             PadOffset,
             GetTypeDescriptor,
@@ -394,7 +363,6 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.GetTypeName] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*>)&getTypeName;
             jitImports[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
             jitImports[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;
-            jitImports[(int)EEApiId.GetOffsetLineNumber] = (delegate* unmanaged<IntPtr, uint, uint>)&getOffsetLineNumber;
             jitImports[(int)EEApiId.StructIsWrappedPrimitive] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint>)&structIsWrappedPrimitive;
             jitImports[(int)EEApiId.PadOffset] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint>)&padOffset;
             jitImports[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor>)&getTypeDescriptor;
