@@ -3,6 +3,7 @@
 
 using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace System.IO.StreamSourceGeneration
 {
@@ -21,7 +22,7 @@ namespace System.IO.StreamSourceGeneration
             TypeSymbol = typeSymbol;
             OverriddenMembers = new HashSet<StreamMember>();
 
-            foreach (string memberName in Helpers.GetOverriddenMembers(typeSymbol))
+            foreach (string memberName in GetOverriddenMembers(typeSymbol))
             {
                 if (!BoilerplateCandidateInfo.CandidatesDictionary.TryGetValue(memberName, out BoilerplateCandidateInfo candidateInfo))
                 {
@@ -54,6 +55,19 @@ namespace System.IO.StreamSourceGeneration
                     }
                 }
             }
+        }
+
+        internal static IEnumerable<string> GetOverriddenMembers(ITypeSymbol symbol)
+        {
+            return symbol.GetMembers().Select(m => GetOverriddenMember(m)?.ToDisplayString()).Where(s => s != null)!;
+
+            static ISymbol? GetOverriddenMember(ISymbol member)
+                => member switch
+                {
+                    IMethodSymbol method => method.OverriddenMethod,
+                    IPropertySymbol property => property.OverriddenProperty,
+                    _ => null
+                };
         }
     }
 }
