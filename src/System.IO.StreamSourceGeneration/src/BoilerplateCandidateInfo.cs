@@ -36,6 +36,7 @@ namespace System.IO.StreamSourceGeneration
             new(MConsts.SetLength, StreamMember.SetLength, null, BpConsts.SetLengthUnsupported),
             new(MConsts.Length, StreamMember.Length, null, BpConsts.LengthUnsupported),
             new(MConsts.Position, StreamMember.Position, null, BpConsts.PositionUnsupported),
+            new(MConsts.Flush, StreamMember.Flush, BpConsts.Flush, null),
         };
 
         private static readonly Dictionary<string, BoilerplateCandidateInfo> s_lookupBoilerplateGenerationCandidates = CandidatesList.ToDictionary(x => x.Name);

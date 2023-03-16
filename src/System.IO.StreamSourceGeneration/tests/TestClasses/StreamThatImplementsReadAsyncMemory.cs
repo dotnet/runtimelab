@@ -14,7 +14,5 @@ namespace System.IO.StreamSourceGeneration.Tests.TestClasses
             Random.Shared.NextBytes(buffer.Span);
             return ValueTask.FromResult(buffer.Length);
         }
-
-        public override void Flush() { }
     }
 }

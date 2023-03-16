@@ -41,7 +41,5 @@ namespace System.IO.StreamSourceGeneration.Tests.TestClasses
         public override long Position { get => _position; set => Seek(value, SeekOrigin.Begin); }
 
         public override long Length => _length;
-
-        public override void Flush() { }
     }
 }

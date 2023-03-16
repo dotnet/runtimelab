@@ -26,6 +26,7 @@ namespace System.IO.StreamSourceGeneration
         Position,
         Seek,
         SetLength,
+        Flush
     }
 
     internal static class StreamMemberExtensions

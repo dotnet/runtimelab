@@ -30,5 +30,6 @@ namespace System.IO.StreamSourceGeneration
         internal const string SetLength = "System.IO.Stream.SetLength(long)";
         internal const string Length = "System.IO.Stream.Length";
         internal const string Position = "System.IO.Stream.Position";
+        internal const string Flush = "System.IO.Stream.Flush()";
     }
 }

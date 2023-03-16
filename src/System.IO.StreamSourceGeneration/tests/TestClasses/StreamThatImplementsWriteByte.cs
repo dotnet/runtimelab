@@ -19,7 +19,5 @@ namespace System.IO.StreamSourceGeneration.Tests.TestClasses
             Array.Copy(buffer, offset, _internalBuffer, Position, count);
             Position += count;
         }
-
-        public override void Flush() { }
     }
 }

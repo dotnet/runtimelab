@@ -6,6 +6,5 @@ namespace System.IO.StreamSourceGeneration.Tests.TestClasses
     [GenerateStreamBoilerplate]
     internal partial class StreamThatImplementsNothing : Stream
     {
-        public override void Flush() { }
     }
 }

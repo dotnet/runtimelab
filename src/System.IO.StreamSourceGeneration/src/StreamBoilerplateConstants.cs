@@ -59,6 +59,10 @@ using System.Threading.Tasks;";
         }
 ";
 
+        internal const string Flush = @"
+        public override void Flush() { }
+";
+
         // Helpers
         internal const string Helpers = @"
         private void EnsureCanRead()

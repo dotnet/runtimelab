@@ -19,7 +19,5 @@ namespace System.IO.StreamSourceGeneration.Tests.TestClasses
             buffer.CopyTo(_internalBuffer.AsSpan((int)Position));
             Position += buffer.Length;
         }
-
-        public override void Flush() { }
     }
 }

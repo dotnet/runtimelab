@@ -174,6 +174,11 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
                     case StreamMember.CanSeek:
                         boilerplate = streamTypeInfo.CanSeek ? candidateInfo.Boilerplate! : candidateInfo.BoilerplateForUnsupported!;
                         break;
+                    case StreamMember.Flush:
+                        // We emit Flush as an empty method.
+                        // If the Stream supports writing, we report a "Consider implementing Flush()" diagnostic.
+                        boilerplate =  candidateInfo.Boilerplate!;
+                        break;
                     default:
                         // If Seek wasn't contained in overriddenMembers, it means
                         // that it wasn't implemented and seeking is not supported.
@@ -296,6 +301,14 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
                 category: "StreamSourceGen",
                 DiagnosticSeverity.Info, isEnabledByDefault: true);
 
+        private static readonly DiagnosticDescriptor s_ConsiderImplementingFlush =
+            new DiagnosticDescriptor(
+                id: "FOOBAR014",
+                title: "Consider implementing Flush() to move any buffered data to its destination",
+                messageFormat: "'{0}' does not implement Flush but it implements one or more Write method(s), Consider implementing Flush() to move any buffered data to its destination, clear the buffer, or both",
+                category: "StreamSourceGen",
+                DiagnosticSeverity.Info, isEnabledByDefault: true);
+
         private static void ReportDiagnostics(SourceProductionContext context, StreamTypeInfo streamTypeInfo)
         {
             if (!streamTypeInfo.CanRead)
@@ -393,6 +406,11 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
             if (!syncOverAsync && !streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteAsyncMemory))
             {
                 context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingWriteAsyncReadOnlyMemory, streamTypeInfo));
+            }
+
+            if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.Flush))
+            { 
+                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingFlush, streamTypeInfo));
             }
         }
 

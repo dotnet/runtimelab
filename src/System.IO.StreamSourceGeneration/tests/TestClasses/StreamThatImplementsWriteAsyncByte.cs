@@ -24,7 +24,5 @@ namespace System.IO.StreamSourceGeneration.Tests.TestClasses
 
             return Task.CompletedTask;
         }
-
-        public override void Flush() { }
     }
 }
