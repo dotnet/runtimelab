@@ -198,55 +198,40 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
         }
 
         // Diagnostics
-        // Stream does not support read/write/seek
-        private static readonly DiagnosticDescriptor s_TypeDoesNotImplementRead = 
+        // Stream does not support read or write
+        private static readonly DiagnosticDescriptor s_TypeDoesNotImplementReadOrWrite =
             new DiagnosticDescriptor(
                 id: "FOOBAR001",
-                title: "Type does not implement any Read",
-                messageFormat: "'{0}' does not implement any Read method and hence is unable to be read",
+                title: "Type does not implement any Read or Write",
+                messageFormat: "'{0}' does not implement any Read or Write method",
                 category: "StreamSourceGen",
                 DiagnosticSeverity.Info, isEnabledByDefault: true);
-
-        private static readonly DiagnosticDescriptor s_TypeDoesNotImplementWrite = 
-            new DiagnosticDescriptor(
-                id: "FOOBAR002",
-                title: "Type does not implement any Write",
-                messageFormat: "'{0}' does not implement any Write method and hence is unable to be written to",
-                category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
-
-        private static readonly DiagnosticDescriptor s_TypeDoesNotImplementSeek =
-            new DiagnosticDescriptor(
-                id: "FOOBAR003",
-                title: "Type does not implement Seek",
-                messageFormat: "'{0}' does not implement a Seek method and hence is unable to be seek",
-                category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
         // Sync-over-async or async-over-sync
         private static readonly DiagnosticDescriptor s_ReadDoingAsyncOverSync =
             new DiagnosticDescriptor(
-                id: "FOOBAR004",
+                id: "FOOBAR002",
                 title: "Stream does Read as async-over-sync",
                 messageFormat: "'{0}' does not implement any Read method and hence is doing async-over-sync",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
-
         private static readonly DiagnosticDescriptor s_ReadAsyncDoingSyncOverAsync =
             new DiagnosticDescriptor(
-                id: "FOOBAR005",
+                id: "FOOBAR003",
                 title: "Stream does ReadAsync as sync-over-async",
                 messageFormat: "'{0}' does not implement any ReadAsync method and hence is doing sync-over-async",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
         private static readonly DiagnosticDescriptor s_WriteDoingAsyncOverSync =
             new DiagnosticDescriptor(
-                id: "FOOBAR006",
+                id: "FOOBAR004",
                 title: "Stream does Write as async-over-sync",
                 messageFormat: "'{0}' does not implement any Write method and hence is doing async-over-sync",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
         private static readonly DiagnosticDescriptor s_WriteAsyncDoingSyncOverAsync =
             new DiagnosticDescriptor(
-                id: "FOOBAR007",
+                id: "FOOBAR005",
                 title: "Stream does WriteAsync as sync-over-async",
                 messageFormat: "'{0}' does not implement any WriteAsync method and hence is doing sync-over-async",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
@@ -254,7 +239,7 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
         // Consider Span/Memory overloads for better performance
         private static readonly DiagnosticDescriptor s_ConsiderImplementingReadSpan =
             new DiagnosticDescriptor(
-                id: "FOOBAR008",
+                id: "FOOBAR006",
                 title: "Consider implementing Read(Span<byte>)",
                 messageFormat: "'{0}' does not implement Read(Span<byte>), for better performance, consider providing an implementation for Read(Span<byte>) and make other Read methods overloads to it",
                 category: "StreamSourceGen",
@@ -262,7 +247,7 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
 
         private static readonly DiagnosticDescriptor s_ConsiderImplementingWriteReadOnlySpan =
             new DiagnosticDescriptor(
-                id: "FOOBAR009",
+                id: "FOOBAR007",
                 title: "Consider implementing Write(ReadOnlySpan<byte>)",
                 messageFormat: "'{0}' does not implement Write(ReadOnlySpan<byte>), for better performance, consider providing an implementation for Write(ReadOnlySpan<byte>) and make other Write overloads defer to it",
                 category: "StreamSourceGen",
@@ -270,7 +255,7 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
 
         private static readonly DiagnosticDescriptor s_ConsiderImplementingReadAsyncMemory =
             new DiagnosticDescriptor(
-                id: "FOOBAR010",
+                id: "FOOBAR008",
                 title: "Consider implementing ReadAsync(Memory<byte>, CancellationToken)",
                 messageFormat: "'{0}' does not implement ReadAsync(Memory<byte>, CancellationToken), for better performance, consider providing an implementation for ReadAsync(Memory<byte>, CancellationToken) and make other ReadAsync overloads defer to it",
                 category: "StreamSourceGen",
@@ -278,7 +263,7 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
 
         private static readonly DiagnosticDescriptor s_ConsiderImplementingWriteAsyncReadOnlyMemory =
             new DiagnosticDescriptor(
-                id: "FOOBAR011",
+                id: "FOOBAR009",
                 title: "Consider implementing WriteAsync(ReadOnlyMemory<byte>, CancellationToken)",
                 messageFormat: "'{0}' does not implement WriteAsync(ReadOnlyMemory<byte>, CancellationToken), for better performance, consider providing an implementation for WriteAsync(ReadOnlyMemory<byte>, CancellationToken) and make other WriteAsync overloads defer to it",
                 category: "StreamSourceGen",
@@ -287,7 +272,7 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
         // Avoid implementing APM (Begin/End) methods
         private static readonly DiagnosticDescriptor s_AvoidBeginReadEndRead =
             new DiagnosticDescriptor(
-                id: "FOOBAR012",
+                id: "FOOBAR010",
                 title: "Avoid BeingRead or EndRead",
                 messageFormat: "'{0}' implements BeginRead or EndRead, Task-based methods shoud be preferred when possible, consider removing them to allow the source generator to emit an implementation based on Task-based ReadAsync",
                 category: "StreamSourceGen",
@@ -295,7 +280,7 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
 
         private static readonly DiagnosticDescriptor s_AvoidBeginWriteEndWrite =
             new DiagnosticDescriptor(
-                id: "FOOBAR013",
+                id: "FOOBAR011",
                 title: "Avoid BeingWrite or EndWrite",
                 messageFormat: "'{0}' implements BeingWrite or EndWrite, Task-based methods shoud be preferred when possible, consider removing them to allow the source generator to emit an implementation based on Task-based WriteAsync",
                 category: "StreamSourceGen",
@@ -303,7 +288,7 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
 
         private static readonly DiagnosticDescriptor s_ConsiderImplementingFlush =
             new DiagnosticDescriptor(
-                id: "FOOBAR014",
+                id: "FOOBAR012",
                 title: "Consider implementing Flush() to move any buffered data to its destination",
                 messageFormat: "'{0}' does not implement Flush but it implements one or more Write method(s), Consider implementing Flush() to move any buffered data to its destination, clear the buffer, or both",
                 category: "StreamSourceGen",
@@ -311,27 +296,21 @@ namespace {streamTypeInfo.TypeSymbol.ContainingNamespace}
 
         private static void ReportDiagnostics(SourceProductionContext context, StreamTypeInfo streamTypeInfo)
         {
-            if (!streamTypeInfo.CanRead)
+            if (!streamTypeInfo.CanRead && !streamTypeInfo.CanWrite)
             {
-                context.ReportDiagnostic(CreateDiagnostic(s_TypeDoesNotImplementRead, streamTypeInfo));
+                context.ReportDiagnostic(CreateDiagnostic(s_TypeDoesNotImplementReadOrWrite, streamTypeInfo));
             }
             else
             {
-                ReportReadDiagnostics(context, streamTypeInfo);
-            }
+                if (streamTypeInfo.CanRead) 
+                { 
+                    ReportReadDiagnostics(context, streamTypeInfo);
+                }
 
-            if (!streamTypeInfo.CanWrite)
-            {
-                context.ReportDiagnostic(CreateDiagnostic(s_TypeDoesNotImplementWrite, streamTypeInfo));
-            }
-            else
-            {
-                ReportWriteDiagnostics(context, streamTypeInfo);
-            }
-
-            if (!streamTypeInfo.CanSeek)
-            {
-                context.ReportDiagnostic(CreateDiagnostic(s_TypeDoesNotImplementSeek, streamTypeInfo));
+                if (streamTypeInfo.CanWrite)
+                {
+                    ReportWriteDiagnostics(context, streamTypeInfo);
+                }
             }
 
             if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.BeginRead) || 
