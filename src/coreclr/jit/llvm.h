@@ -372,6 +372,7 @@ private:
     bool initializeFunctions();
     void generateProlog();
     void initializeLocals();
+    void generateBlocks();
     void generateBlock(BasicBlock* block);
     void generateEHDispatch();
     Value* generateEHDispatchTable(Function* llvmFunc, unsigned innerEHIndex, unsigned outerEHIndex);

@@ -25,33 +25,7 @@ void Llvm::Compile()
     JITDUMPEXEC(_compiler->fgDispHandlerTab());
 
     generateProlog();
-
-    class LlvmCompileDomTreeVisitor : public DomTreeVisitor<LlvmCompileDomTreeVisitor>
-    {
-        Llvm* m_llvm;
-
-    public:
-        LlvmCompileDomTreeVisitor(Compiler* compiler, Llvm* llvm)
-            : DomTreeVisitor(compiler, compiler->fgSsaDomTree)
-            , m_llvm(llvm)
-        {
-        }
-
-        void PreOrderVisit(BasicBlock* block) const
-        {
-            m_llvm->generateBlock(block);
-        }
-    };
-
-    LlvmCompileDomTreeVisitor visitor(_compiler, this);
-    visitor.WalkTree();
-
-    // Walk all the exceptional code blocks and generate them, since they don't appear in the normal flow graph.
-    for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
-    {
-        generateBlock(add->acdDstBlk);
-    }
-
+    generateBlocks();
     generateEHDispatch();
 
     fillPhis();
@@ -322,6 +296,48 @@ void Llvm::initializeLocals()
     }
 
     getLlvmFunctionInfoForIndex(ROOT_FUNC_IDX).Allocas = allocas;
+}
+
+void Llvm::generateBlocks()
+{
+    // When optimizing, we'll have built SSA and so have to process the blocks in the dominator pre-order
+    // for SSA uses to be available at the point we request them.
+    if (_compiler->fgSsaDomTree != nullptr)
+    {
+        class LlvmCompileDomTreeVisitor : public DomTreeVisitor<LlvmCompileDomTreeVisitor>
+        {
+            Llvm* m_llvm;
+
+        public:
+            LlvmCompileDomTreeVisitor(Compiler* compiler, Llvm* llvm)
+                : DomTreeVisitor(compiler, compiler->fgSsaDomTree)
+                , m_llvm(llvm)
+            {
+            }
+
+            void PreOrderVisit(BasicBlock* block) const
+            {
+                m_llvm->generateBlock(block);
+            }
+        };
+
+        LlvmCompileDomTreeVisitor visitor(_compiler, this);
+        visitor.WalkTree();
+
+        // Walk all the exceptional code blocks and generate them, since they don't appear in the normal flow graph.
+        for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
+        {
+            generateBlock(add->acdDstBlk);
+        }
+    }
+    else
+    {
+        // When not optimizing, simply generate all of the blocks in layout order.
+        for (BasicBlock* block : _compiler->Blocks())
+        {
+            generateBlock(block);
+        }
+    }
 }
 
 void Llvm::generateBlock(BasicBlock* block)
@@ -3153,11 +3169,12 @@ llvm::BasicBlock* Llvm::getOrCreatePrologLlvmBlockForFunction(unsigned funcIdx)
 //
 // Return Value:
 //    Whether "block" has an immediate dominator, i. e. is statically
-//    reachable, not the first block, and not a throw helper block.
+//    reachable, not the first block, and not a throw helper block. If
+//    we do not have dominators built, all blocks are assumed reachable.
 //
 bool Llvm::isReachable(BasicBlock* block) const
 {
-    return block->bbIDom != nullptr;
+    return (_compiler->fgSsaDomTree != nullptr) ? (block->bbIDom != nullptr) : true;
 }
 
 BasicBlock* Llvm::getFirstBlockForFunction(unsigned funcIdx) const
@@ -3192,10 +3209,10 @@ Value* Llvm::getLocalAddr(unsigned lclNum)
 // getOrCreateAllocaForLocalInFunclet: Get an address for a funclet local.
 //
 // For a local to be (locally) live on the LLVM frame in a funclet, it has
-// to be tracked and have its address taken (but not exposed!). Such locals
-// are rare, and it is not cheap to indentify their set precisely before
-// the code has been generated. We therefore use a lazy strategy for their
-// materialization in the funclet prologs.
+// to be tracked and have its address taken (but not exposed!), or be one
+// of locals lowering adds after shadow frame layout. Such locals are rare,
+// and it is not cheap to indentify their set precisely before the code has
+// been generated. We therefore materialize them in funclet prologs lazily.
 //
 // Arguments:
 //    lclNum - The local for which to get the allocated home
@@ -3206,11 +3223,14 @@ Value* Llvm::getLocalAddr(unsigned lclNum)
 Value* Llvm::getOrCreateAllocaForLocalInFunclet(unsigned lclNum)
 {
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
-    assert(varDsc->lvTracked); // Untracked locals in functions with funclets live on the shadow frame.
-
     unsigned funcIdx = getCurrentLlvmFunctionIndex();
+
+    // Untracked locals in functions with funclets live on the shadow frame, except if they're temporaries
+    // created by lowering, known to only be live inside the funclet.
+    assert(varDsc->lvTracked || varDsc->lvIsTemp);
+    assert(!varDsc->lvTracked ||
+           !VarSetOps::IsMember(_compiler, getFirstBlockForFunction(funcIdx)->bbLiveIn, varDsc->lvVarIndex));
     assert(funcIdx != ROOT_FUNC_IDX); // The root's prolog is generated eagerly.
-    assert(!VarSetOps::IsMember(_compiler, getFirstBlockForFunction(funcIdx)->bbLiveIn, varDsc->lvVarIndex));
 
     FunctionInfo& funcInfo = getLlvmFunctionInfoForIndex(funcIdx);
     AllocaMap* allocaMap = funcInfo.AllocaMap;
