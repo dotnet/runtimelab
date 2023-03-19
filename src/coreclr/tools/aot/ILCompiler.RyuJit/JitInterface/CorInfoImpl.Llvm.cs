@@ -83,7 +83,7 @@ namespace Internal.JitInterface
             if (node is IMethodNode { Offset: 0, Method: MethodDesc method })
             {
                 _this.Get_CORINFO_SIG_INFO(method, pSig, scope: null);
-                if (method.IsUnmanagedCallersOnly)
+                if (method.IsUnmanagedCallersOnly || node is RuntimeImportMethodNode)
                 {
                     pSig->callConv |= CorInfoCallConv.CORINFO_CALLCONV_UNMANAGED;
                 }
