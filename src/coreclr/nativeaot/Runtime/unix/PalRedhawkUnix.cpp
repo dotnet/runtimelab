@@ -688,12 +688,7 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartBackgroundGCThread(_In_ Background
 
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartFinalizerThread(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext)
 {
-#ifdef HOST_WASM
-    // WASMTODO: No threads so we can't start the finalizer thread
-    return true;
-#else // HOST_WASM
     return PalStartBackgroundWork(callback, pCallbackContext, UInt32_TRUE);
-#endif // HOST_WASM
 }
 
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartEventPipeHelperThread(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext)
