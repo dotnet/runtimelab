@@ -447,6 +447,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-O2 -flto" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
+      <CustomLinkerArg Condition="'$(ExportsFile)' != ''" Include="-s EXPORTED_FUNCTIONS=@&quot;$(ExportsFile)&quot;" />
+      <CustomLinkerArg Condition="$(NativeLib) == 'Shared'" Include="-s EXPORTED_FUNCTIONS=_NativeAOT_StaticInitialization" />
     </ItemGroup>
 
     <PropertyGroup>
@@ -457,7 +459,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <Message Text="Emscripten not found, not linking WebAssembly. To enable WebAssembly linking, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
              Condition="'$(NativeCodeGen)' == 'llvm' and '$(EMSDK)' == ''" Importance="High" />
   </Target>
-  
+
   <Target Name="LinkNative"
       DependsOnTargets="$(LinkNativeDependsOnSingleOrLlvm)">
   </Target>
