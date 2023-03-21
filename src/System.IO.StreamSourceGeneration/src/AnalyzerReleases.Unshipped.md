@@ -17,3 +17,7 @@ FOOBAR009 | StreamSourceGen | Info | StreamSourceGen
 FOOBAR010 | StreamSourceGen | Info | StreamSourceGen
 FOOBAR011 | StreamSourceGen | Info | StreamSourceGen
 FOOBAR012 | StreamSourceGen | Info | StreamSourceGen
+FOOBAR013 | StreamSourceGen | Info | StreamSourceGen
+FOOBAR014 | StreamSourceGen | Info | StreamSourceGen
+FOOBAR015 | StreamSourceGen | Info | StreamSourceGen
+FOOBAR016 | StreamSourceGen | Info | StreamSourceGen

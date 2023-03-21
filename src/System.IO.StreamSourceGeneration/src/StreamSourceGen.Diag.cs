@@ -104,6 +104,39 @@ namespace System.IO.StreamSourceGeneration
                 category: "StreamSourceGen",
                 DiagnosticSeverity.Info, isEnabledByDefault: true);
 
+        // Consider removing array-based overloads if span-based are available
+        private static readonly DiagnosticDescriptor s_ConsiderRemovingReadBytes =
+            new DiagnosticDescriptor(
+                id: "FOOBAR013",
+                title: "Consider removing array-based Read",
+                messageFormat: "'{0}' implements Read(Span<byte>), consider removing Read(byte[], int, int) to let the source generator handle it",
+                category: "StreamSourceGen",
+                DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor s_ConsiderRemovingReadAsyncBytes =
+            new DiagnosticDescriptor(
+                id: "FOOBAR014",
+                title: "Consider removing array-based ReadAsync",
+                messageFormat: "'{0}' implements ReadAsync(Memory<byte>, CancellationToken), consider removing ReadAsync(byte[], int, int, CancellationToken) to let the source generator handle it",
+                category: "StreamSourceGen",
+                DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor s_ConsiderRemovingWriteBytes =
+            new DiagnosticDescriptor(
+                id: "FOOBAR015",
+                title: "Consider removing array-based Write",
+                messageFormat: "'{0}' implements Write(ReadOnlySpan<byte>), consider removing Write(byte[], int, int) to let the source generator handle it",
+                category: "StreamSourceGen",
+                DiagnosticSeverity.Info, isEnabledByDefault: true);
+
+        private static readonly DiagnosticDescriptor s_ConsiderRemovingWriteAsyncBytes =
+            new DiagnosticDescriptor(
+                id: "FOOBAR016",
+                title: "Consider removing array-based WriteAsync",
+                messageFormat: "'{0}' implements WriteAsync(ReadOnlyMemory<byte>, CancellationToken), consider removing WriteAsync(byte[], int, int, CancellationToken) to let the source generator handle it",
+                category: "StreamSourceGen",
+                DiagnosticSeverity.Info, isEnabledByDefault: true);
+
         private static void ReportDiagnostics(SourceProductionContext context, StreamTypeInfo streamTypeInfo)
         {
             if (!streamTypeInfo.CanRead && !streamTypeInfo.CanWrite)
@@ -157,14 +190,28 @@ namespace System.IO.StreamSourceGeneration
                 context.ReportDiagnostic(CreateDiagnostic(s_ReadAsyncDoingSyncOverAsync, streamTypeInfo));
             }
 
-            if (!asyncOverSync && !streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadSpan))
+            if (!asyncOverSync)
             {
-                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingReadSpan, streamTypeInfo));
+                if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadSpan))
+                {
+                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingReadSpan, streamTypeInfo));
+                }
+                else if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadBytes))
+                {
+                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderRemovingReadBytes, streamTypeInfo));
+                }
             }
 
-            if (!syncOverAsync && !streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadAsyncMemory))
+            if (!syncOverAsync)
             {
-                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingReadAsyncMemory, streamTypeInfo));
+                if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadAsyncMemory))
+                {
+                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingReadAsyncMemory, streamTypeInfo));
+                }
+                else if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadAsyncBytes))
+                {
+                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderRemovingReadAsyncBytes, streamTypeInfo));
+                }
             }
         }
 
@@ -189,14 +236,28 @@ namespace System.IO.StreamSourceGeneration
                 context.ReportDiagnostic(CreateDiagnostic(s_WriteAsyncDoingSyncOverAsync, streamTypeInfo));
             }
 
-            if (!asyncOverSync && !streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteSpan))
+            if (!asyncOverSync)
             {
-                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingWriteReadOnlySpan, streamTypeInfo));
+                if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteSpan))
+                {
+                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingWriteReadOnlySpan, streamTypeInfo));
+                }
+                else if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteBytes))
+                {
+                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderRemovingWriteBytes, streamTypeInfo));
+                }
             }
 
-            if (!syncOverAsync && !streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteAsyncMemory))
+            if (!syncOverAsync)
             {
-                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingWriteAsyncReadOnlyMemory, streamTypeInfo));
+                if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteAsyncMemory))
+                {
+                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingWriteAsyncReadOnlyMemory, streamTypeInfo));
+                }
+                else if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteAsyncBytes))
+                {
+                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderRemovingWriteAsyncBytes, streamTypeInfo));
+                }
             }
 
             if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.Flush))
