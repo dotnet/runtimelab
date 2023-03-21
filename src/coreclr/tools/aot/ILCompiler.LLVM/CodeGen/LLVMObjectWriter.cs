@@ -540,27 +540,8 @@ namespace ILCompiler.DependencyAnalysis
             LLVMBuilderRef builder = _module.Context.CreateBuilder();
             builder.PositionAtEnd(helperFunc.AppendBasicBlock("GenericReadyToRunHelper"));
 
-            LLVMValueRef ctx;
-            string gepName;
-            if (node is ReadyToRunGenericLookupFromTypeNode)
-            {
-                // Locate the VTable slot that points to the dictionary
-                int vtableSlot = VirtualMethodSlotHelper.GetGenericDictionarySlot(factory, (TypeDesc)node.DictionaryOwner);
-
-                int pointerSize = factory.Target.PointerSize;
-                // Load the dictionary pointer from the VTable
-                int slotOffset = EETypeNode.GetVTableOffset(pointerSize) + (vtableSlot * pointerSize);
-                var slotAddr = CreateAddOffset(builder, helperFunc.GetParam(1), slotOffset, "slotAddr");
-                ctx = builder.BuildLoad2(_ptrType, slotAddr, "dictGep");
-                gepName = "typeNodeGep";
-            }
-            else
-            {
-                ctx = helperFunc.GetParam(1);
-                gepName = "paramGep";
-            }
-
-            LLVMValueRef result = OutputCodeForDictionaryLookup(builder, factory, node, node.LookupSignature, ctx, gepName);
+            LLVMValueRef dictionary = OutputCodeForGetGenericDictionary(builder, helperFunc.GetParam(1), node);
+            LLVMValueRef result = OutputCodeForDictionaryLookup(builder, factory, node, node.LookupSignature, dictionary);
 
             switch (node.Id)
             {
@@ -582,7 +563,7 @@ namespace ILCompiler.DependencyAnalysis
                         if (_compilation.HasLazyStaticConstructor(target))
                         {
                             GenericLookupResult nonGcBaseLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
-                            LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, ctx, "lazyGep");
+                            LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, dictionary);
                             OutputCodeForTriggerCctor(builder, nonGcStaticsBase);
                         }
 
@@ -597,7 +578,7 @@ namespace ILCompiler.DependencyAnalysis
                         if (_compilation.HasLazyStaticConstructor(target))
                         {
                             GenericLookupResult nonGcBaseLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
-                            LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, ctx, "tsGep");
+                            LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, dictionary);
                             OutputCodeForTriggerCctor(builder, nonGcStaticsBase);
                         }
 
@@ -726,7 +707,8 @@ namespace ILCompiler.DependencyAnalysis
             LLVMValueRef targetValue;
             if (genericNode != null)
             {
-                targetValue = OutputCodeForDictionaryLookup(builder, factory, genericNode, genericNode.LookupSignature, helperFunc.GetParam(1), "pTarget");
+                LLVMValueRef dictionary = OutputCodeForGetGenericDictionary(builder, helperFunc.GetParam(1), genericNode);
+                targetValue = OutputCodeForDictionaryLookup(builder, factory, genericNode, genericNode.LookupSignature, dictionary);
             }
             else if (delegateCreationInfo.TargetNeedsVTableLookup)
             {
@@ -878,21 +860,43 @@ namespace ILCompiler.DependencyAnalysis
             builder.BuildRet(externFunc);
         }
 
+        private LLVMValueRef OutputCodeForGetGenericDictionary(LLVMBuilderRef builder, LLVMValueRef context, ReadyToRunGenericHelperNode node)
+        {
+            LLVMValueRef dictionary;
+            if (node is ReadyToRunGenericLookupFromTypeNode)
+            {
+                // Locate the VTable slot that points to the dictionary
+                int vtableSlot = VirtualMethodSlotHelper.GetGenericDictionarySlot(_nodeFactory, (TypeDesc)node.DictionaryOwner);
+
+                // Load the dictionary pointer from the VTable
+                int pointerSize = _nodeFactory.Target.PointerSize;
+                int slotOffset = EETypeNode.GetVTableOffset(pointerSize) + (vtableSlot * pointerSize);
+                var slotAddr = CreateAddOffset(builder, context, slotOffset, "dictionarySlotAddr");
+                dictionary = builder.BuildLoad2(_ptrType, slotAddr, "dictionary");
+            }
+            else
+            {
+                dictionary = context;
+            }
+
+            return dictionary;
+        }
+
         private LLVMValueRef OutputCodeForDictionaryLookup(LLVMBuilderRef builder, NodeFactory factory,
-            ReadyToRunGenericHelperNode node, GenericLookupResult lookup, LLVMValueRef ctx, string gepName)
+            ReadyToRunGenericHelperNode node, GenericLookupResult lookup, LLVMValueRef dictionary)
         {
             // Find the generic dictionary slot
             int dictionarySlot = factory.GenericDictionaryLayout(node.DictionaryOwner).GetSlotForEntry(lookup);
             int offset = dictionarySlot * factory.Target.PointerSize;
 
             // Load the generic dictionary cell
-            LLVMValueRef retGep = CreateAddOffset(builder, ctx, offset, "retGep");
-            LLVMValueRef retRef = builder.BuildLoad2(_ptrType, retGep, gepName);
+            LLVMValueRef slotAddr = CreateAddOffset(builder, dictionary, offset, "dictionarySlotAddr");
+            LLVMValueRef lookupResult = builder.BuildLoad2(_ptrType, slotAddr, "slotValue");
 
             switch (lookup.LookupResultReferenceType(factory))
             {
                 case GenericLookupResultReferenceType.Indirect:
-                    retRef = builder.BuildLoad2(_ptrType, retRef, "indLoad");
+                    lookupResult = builder.BuildLoad2(_ptrType, lookupResult, "actualSlotValue");
                     break;
 
                 case GenericLookupResultReferenceType.ConditionalIndirect:
@@ -902,7 +906,7 @@ namespace ILCompiler.DependencyAnalysis
                     break;
             }
 
-            return retRef;
+            return lookupResult;
         }
 
         private void OutputCodeForTriggerCctor(LLVMBuilderRef builder, LLVMValueRef nonGcStaticBaseValue)
