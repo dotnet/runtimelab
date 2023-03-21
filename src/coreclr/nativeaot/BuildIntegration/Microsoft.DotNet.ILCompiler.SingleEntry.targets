@@ -58,17 +58,10 @@
     <Error Condition="'@(ResolvedILCompilerPack)' == ''" Text="The ResolvedILCompilerPack ItemGroup is required for target ImportRuntimeIlcPackageTarget" />
 
 
-    <!-- This targets file is imported by the SDK when the PublishAot property is set. Use the SDK runtime package resolve property to set  down stream properties -->
-    <PropertyGroup Condition="'$(PublishAot)' == 'true'">
+    <PropertyGroup >
       <IlcHostPackagePath Condition="'@(ResolvedILCompilerPack)' == '$(IlcHostPackageName)'">@(ResolvedILCompilerPack->'%(PackageDirectory)')</IlcHostPackagePath>
       <RuntimePackagePath Condition="'@(ResolvedTargetILCompilerPack)' == '$(RuntimeIlcPackageName)'">@(ResolvedTargetILCompilerPack->'%(PackageDirectory)')</RuntimePackagePath>
       <RuntimePackagePath Condition="'@(ResolvedTargetILCompilerPack)' == ''">@(ResolvedILCompilerPack->'%(PackageDirectory)')</RuntimePackagePath>
-    </PropertyGroup>
-
-    <!-- Use the non-SDK runtime package resolve property to set down stream properties if SDK is not involved -->
-    <PropertyGroup Condition="'$(PublishAot)' != 'true'">
-      <RuntimePackagePath Condition="'%(PackageDefinitions.Name)' == '$(RuntimeIlcPackageName)'">%(PackageDefinitions.ResolvedPath)</RuntimePackagePath>
-      <IlcHostPackagePath Condition="'%(PackageDefinitions.Name)' == '$(IlcHostPackageName)'">%(PackageDefinitions.ResolvedPath)</IlcHostPackagePath>
     </PropertyGroup>
 
   </Target>
