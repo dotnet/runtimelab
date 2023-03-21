@@ -33,7 +33,7 @@
     <IlcHostArch Condition="'$(IlcHostArch)' == ''">$(OSHostArch)</IlcHostArch>
     <IlcHostPackageName>runtime.$(OSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler</IlcHostPackageName>
     <IlcHostPackageName Condition="'$(TargetArchitecture)' == 'wasm'">$(IlcHostPackageName).LLVM</IlcHostPackageName>
-
+    
     <IlcCalledViaPackage>true</IlcCalledViaPackage>
   </PropertyGroup>
 
@@ -56,7 +56,6 @@
   <!-- Locate the runtime package according to the current target runtime -->
   <Target Name="ImportRuntimeIlcPackageTarget" Condition="'$(BuildingFrameworkLibrary)' != 'true' and '$(PublishAot)' == 'true' and $(IlcCalledViaPackage) == 'true'" DependsOnTargets="$(ImportRuntimeIlcPackageTargetDependsOn)" BeforeTargets="Publish">
     <Error Condition="'@(ResolvedILCompilerPack)' == ''" Text="The ResolvedILCompilerPack ItemGroup is required for target ImportRuntimeIlcPackageTarget" />
-
 
     <PropertyGroup>
       <IlcHostPackagePath Condition="'@(ResolvedILCompilerPack)' == '$(IlcHostPackageName)'">@(ResolvedILCompilerPack->'%(PackageDirectory)')</IlcHostPackagePath>
