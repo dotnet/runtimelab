@@ -442,13 +442,13 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="@(NativeObjects->'&quot;%(Identity)&quot;')" />
       <CustomLinkerArg Include="-o &quot;$(NativeBinary)&quot;" />
       <CustomLinkerArg Condition="'$(WasmHtmlTemplate)' != ''" Include="--shell-file &quot;$(WasmHtmlTemplate)&quot;" />
+      <CustomLinkerArg Condition="'$(ExportsFile)' != ''" Include="-s EXPORTED_FUNCTIONS=@&quot;$(ExportsFile)&quot;" />
       <CustomLinkerArg Include="-s ALLOW_MEMORY_GROWTH=1" />
       <CustomLinkerArg Include="-s DISABLE_EXCEPTION_CATCHING=0" />
       <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-O2 -flto" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
-      <CustomLinkerArg Condition="'$(ExportsFile)' != ''" Include="-s EXPORTED_FUNCTIONS=@&quot;$(ExportsFile)&quot;" />
-      <CustomLinkerArg Condition="$(NativeLib) == 'Shared'" Include="-s EXPORTED_FUNCTIONS=_NativeAOT_StaticInitialization" />
+      <CustomLinkerArg Condition="$(NativeLib) == 'Shared'" Include="-Wl,--export,NativeAOT_StaticInitialization" />
     </ItemGroup>
 
     <PropertyGroup>
