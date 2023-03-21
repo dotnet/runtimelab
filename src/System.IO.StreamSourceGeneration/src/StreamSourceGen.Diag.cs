@@ -21,61 +21,61 @@ namespace System.IO.StreamSourceGeneration
         private static readonly DiagnosticDescriptor s_ReadDoingAsyncOverSync =
             new DiagnosticDescriptor(
                 id: "FOOBAR002",
-                title: "Stream does Read as async-over-sync",
-                messageFormat: "'{0}' does not implement any Read method and hence is doing async-over-sync",
+                title: "Stream does Read as sync-over-async",
+                messageFormat: "'{0}' does not implement any Read method and hence is doing sync-over-async",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
         private static readonly DiagnosticDescriptor s_ReadAsyncDoingSyncOverAsync =
             new DiagnosticDescriptor(
                 id: "FOOBAR003",
-                title: "Stream does ReadAsync as sync-over-async",
-                messageFormat: "'{0}' does not implement any ReadAsync method and hence is doing sync-over-async",
+                title: "Stream does ReadAsync as async-over-sync",
+                messageFormat: "'{0}' does not implement any ReadAsync method and hence is doing async-over-sync",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
         private static readonly DiagnosticDescriptor s_WriteDoingAsyncOverSync =
             new DiagnosticDescriptor(
                 id: "FOOBAR004",
-                title: "Stream does Write as async-over-sync",
-                messageFormat: "'{0}' does not implement any Write method and hence is doing async-over-sync",
+                title: "Stream does Write as sync-over-async",
+                messageFormat: "'{0}' does not implement any Write method and hence is doing sync-over-async",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
         private static readonly DiagnosticDescriptor s_WriteAsyncDoingSyncOverAsync =
             new DiagnosticDescriptor(
                 id: "FOOBAR005",
-                title: "Stream does WriteAsync as sync-over-async",
-                messageFormat: "'{0}' does not implement any WriteAsync method and hence is doing sync-over-async",
+                title: "Stream does WriteAsync as async-over-sync",
+                messageFormat: "'{0}' does not implement any WriteAsync method and hence is doing async-over-sync",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
         // Consider Span/Memory overloads for better performance
         private static readonly DiagnosticDescriptor s_ConsiderImplementingReadSpan =
             new DiagnosticDescriptor(
                 id: "FOOBAR006",
-                title: "Consider implementing Read(Span<byte>)",
-                messageFormat: "'{0}' does not implement Read(Span<byte>), for better performance, consider providing an implementation for Read(Span<byte>) and make other Read methods overloads to it",
+                title: "Consider implementing Span-based Read",
+                messageFormat: "'{0}' does not implement Read(Span<byte>), for better performance, consider providing an implementation for it",
                 category: "StreamSourceGen",
                 DiagnosticSeverity.Info, isEnabledByDefault: true);
 
         private static readonly DiagnosticDescriptor s_ConsiderImplementingWriteReadOnlySpan =
             new DiagnosticDescriptor(
                 id: "FOOBAR007",
-                title: "Consider implementing Write(ReadOnlySpan<byte>)",
-                messageFormat: "'{0}' does not implement Write(ReadOnlySpan<byte>), for better performance, consider providing an implementation for Write(ReadOnlySpan<byte>) and make other Write overloads defer to it",
+                title: "Consider implementing Span-based Write",
+                messageFormat: "'{0}' does not implement Write(ReadOnlySpan<byte>), for better performance, consider providing an implementation for it",
                 category: "StreamSourceGen",
                 DiagnosticSeverity.Info, isEnabledByDefault: true);
 
         private static readonly DiagnosticDescriptor s_ConsiderImplementingReadAsyncMemory =
             new DiagnosticDescriptor(
                 id: "FOOBAR008",
-                title: "Consider implementing ReadAsync(Memory<byte>, CancellationToken)",
-                messageFormat: "'{0}' does not implement ReadAsync(Memory<byte>, CancellationToken), for better performance, consider providing an implementation for ReadAsync(Memory<byte>, CancellationToken) and make other ReadAsync overloads defer to it",
+                title: "Consider implementing Memory-based ReadAsync",
+                messageFormat: "'{0}' does not implement ReadAsync(Memory<byte>, CancellationToken), for better performance, consider providing an implementation for it",
                 category: "StreamSourceGen",
                 DiagnosticSeverity.Info, isEnabledByDefault: true);
 
         private static readonly DiagnosticDescriptor s_ConsiderImplementingWriteAsyncReadOnlyMemory =
             new DiagnosticDescriptor(
                 id: "FOOBAR009",
-                title: "Consider implementing WriteAsync(ReadOnlyMemory<byte>, CancellationToken)",
-                messageFormat: "'{0}' does not implement WriteAsync(ReadOnlyMemory<byte>, CancellationToken), for better performance, consider providing an implementation for WriteAsync(ReadOnlyMemory<byte>, CancellationToken) and make other WriteAsync overloads defer to it",
+                title: "Consider implementing Memory-based WriteAsync",
+                messageFormat: "'{0}' does not implement WriteAsync(ReadOnlyMemory<byte>, CancellationToken), for better performance, consider providing an implementation for it",
                 category: "StreamSourceGen",
                 DiagnosticSeverity.Info, isEnabledByDefault: true);
 
