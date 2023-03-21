@@ -31,9 +31,9 @@
         $([System.Environment]::GetEnvironmentVariable('PROCESSOR_ARCHITECTURE', EnvironmentVariableTarget.Machine)) == 'ARM64'">arm64</OSHostArch>
 
     <IlcHostArch Condition="'$(IlcHostArch)' == ''">$(OSHostArch)</IlcHostArch>
-    <IlcHostPackageName>runtime.$(OSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler</IlcHostPackageName>
+    <IlcHostPackageName>runtime.$(HostOSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler</IlcHostPackageName>
     <IlcHostPackageName Condition="'$(TargetArchitecture)' == 'wasm'">$(IlcHostPackageName).LLVM</IlcHostPackageName>
-    
+
     <IlcCalledViaPackage>true</IlcCalledViaPackage>
   </PropertyGroup>
 
