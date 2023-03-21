@@ -144,7 +144,8 @@ namespace System.IO.StreamSourceGeneration
 
             bool asyncOverSync = readInfo.GetSyncPreferredMember().IsAsync();
             bool syncOverAsync = !readInfo.GetAsyncPreferredMember().IsAsync();
-            Debug.Assert(asyncOverSync != syncOverAsync);
+            Debug.Assert(asyncOverSync != syncOverAsync || (!asyncOverSync && !syncOverAsync), 
+                "We can have async-over-sync, sync-over-async, or none, but never both");
 
             if (asyncOverSync)
             {
@@ -175,7 +176,8 @@ namespace System.IO.StreamSourceGeneration
 
             bool asyncOverSync = writeInfo.GetSyncPreferredMember().IsAsync();
             bool syncOverAsync = !writeInfo.GetAsyncPreferredMember().IsAsync();
-            Debug.Assert(asyncOverSync != syncOverAsync);
+            Debug.Assert(asyncOverSync != syncOverAsync || (!asyncOverSync && !syncOverAsync),
+                "We can have async-over-sync, sync-over-async, or none, but never both");
 
             if (asyncOverSync)
             {
