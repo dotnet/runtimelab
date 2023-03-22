@@ -424,19 +424,28 @@ namespace ILCompiler.DependencyAnalysis
             MethodDesc method = methodNode.Method;
             Debug.Assert(method.IsRuntimeExport && methodNode.CompilationCompleted);
 
+            LLVMTypeRef nativeReturnType = _compilation.GetLlvmReturnType(isManagedAbi: false, method.Signature.ReturnType, out bool isNativeReturnByRef);
+            if (isNativeReturnByRef)
+            {
+                throw new NotSupportedException("Runtime export with a complex struct return");
+            }
+
             LLVMTypeRef[] llvmParams = new LLVMTypeRef[method.Signature.Length];
             for (int i = 0; i < llvmParams.Length; i++)
             {
-                llvmParams[i] = _compilation.GetLLVMTypeForTypeDesc(method.Signature[i]);
+                _compilation.GetLlvmArgTypeForArg(isManagedAbi: false, method.Signature[i], out llvmParams[i], out bool isPassedByRef);
+                if (isPassedByRef)
+                {
+                    throw new NotSupportedException("Runtime export with a complex struct argument"); // Not supported by the Jit.
+                }
             }
 
             string nativeName = _compilation.NodeFactory.GetSymbolAlternateName(methodNode);
-            LLVMTypeRef nativeReturnType = _compilation.GetLLVMTypeForTypeDesc(method.Signature.ReturnType);
-            LLVMTypeRef thunkSig = LLVMTypeRef.CreateFunction(nativeReturnType, llvmParams, false);
-            LLVMValueRef thunkFunc = GetOrCreateLLVMFunction(nativeName, thunkSig);
+            LLVMTypeRef nativeSig = LLVMTypeRef.CreateFunction(nativeReturnType, llvmParams, false);
+            LLVMValueRef nativeFunc = GetOrCreateLLVMFunction(nativeName, nativeSig);
 
             using LLVMBuilderRef builder = _module.Context.CreateBuilder();
-            LLVMBasicBlockRef block = thunkFunc.AppendBasicBlock("ManagedCallBlock");
+            LLVMBasicBlockRef block = nativeFunc.AppendBasicBlock("ManagedCallBlock");
             builder.PositionAtEnd(block);
 
             // Get the shadow stack. Since we are wrapping a runtime export, the caller is (by definition) managed, so we must have set up the shadow
@@ -445,14 +454,14 @@ namespace ILCompiler.DependencyAnalysis
             LLVMValueRef getShadowStackFunc = GetOrCreateLLVMFunction("RhpGetShadowStackTop", getShadowStackFuncSig);
             LLVMValueRef shadowStack = builder.BuildCall2(getShadowStackFuncSig, getShadowStackFunc, Array.Empty<LLVMValueRef>());
 
-            bool needsReturnSlot = LLVMCodegenCompilation.NeedsReturnStackSlot(method.Signature);
+            _compilation.GetLlvmReturnType(isManagedAbi: true, method.Signature.ReturnType, out bool isManagedReturnByRef);
 
             int curOffset = 0;
             LLVMValueRef calleeFrame;
-            if (needsReturnSlot)
+            if (isManagedReturnByRef)
             {
                 curOffset = _compilation.PadNextOffset(method.Signature.ReturnType, curOffset);
-                curOffset = _compilation.PadOffset(_compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Object), curOffset); // Align the stack to pointer size.
+                curOffset = curOffset.AlignUp(_nodeFactory.Target.PointerSize);
 
                 // Clear any uncovered object references for GC.Collect.
                 LLVMValueRef lengthValue = CreateConst(LLVMTypeRef.Int32, curOffset);
@@ -472,7 +481,7 @@ namespace ILCompiler.DependencyAnalysis
             List<LLVMValueRef> llvmArgs = new List<LLVMValueRef>();
             llvmArgs.Add(calleeFrame);
 
-            if (needsReturnSlot)
+            if (isManagedReturnByRef)
             {
                 // Slot for return value if necessary
                 llvmArgs.Add(shadowStack);
@@ -480,7 +489,7 @@ namespace ILCompiler.DependencyAnalysis
 
             for (int i = 0; i < llvmParams.Length; i++)
             {
-                LLVMValueRef argValue = thunkFunc.GetParam((uint)i);
+                LLVMValueRef argValue = nativeFunc.GetParam((uint)i);
 
                 if (LLVMCodegenCompilation.CanStoreTypeOnStack(method.Signature[i]))
                 {
@@ -500,7 +509,7 @@ namespace ILCompiler.DependencyAnalysis
 
             if (!method.Signature.ReturnType.IsVoid)
             {
-                if (needsReturnSlot)
+                if (isManagedReturnByRef)
                 {
                     builder.BuildRet(builder.BuildLoad2(nativeReturnType, shadowStack, "returnValue"));
                 }
@@ -540,27 +549,8 @@ namespace ILCompiler.DependencyAnalysis
             LLVMBuilderRef builder = _module.Context.CreateBuilder();
             builder.PositionAtEnd(helperFunc.AppendBasicBlock("GenericReadyToRunHelper"));
 
-            LLVMValueRef ctx;
-            string gepName;
-            if (node is ReadyToRunGenericLookupFromTypeNode)
-            {
-                // Locate the VTable slot that points to the dictionary
-                int vtableSlot = VirtualMethodSlotHelper.GetGenericDictionarySlot(factory, (TypeDesc)node.DictionaryOwner);
-
-                int pointerSize = factory.Target.PointerSize;
-                // Load the dictionary pointer from the VTable
-                int slotOffset = EETypeNode.GetVTableOffset(pointerSize) + (vtableSlot * pointerSize);
-                var slotAddr = CreateAddOffset(builder, helperFunc.GetParam(1), slotOffset, "slotAddr");
-                ctx = builder.BuildLoad2(_ptrType, slotAddr, "dictGep");
-                gepName = "typeNodeGep";
-            }
-            else
-            {
-                ctx = helperFunc.GetParam(1);
-                gepName = "paramGep";
-            }
-
-            LLVMValueRef result = OutputCodeForDictionaryLookup(builder, factory, node, node.LookupSignature, ctx, gepName);
+            LLVMValueRef dictionary = OutputCodeForGetGenericDictionary(builder, helperFunc.GetParam(1), node);
+            LLVMValueRef result = OutputCodeForDictionaryLookup(builder, factory, node, node.LookupSignature, dictionary);
 
             switch (node.Id)
             {
@@ -582,7 +572,7 @@ namespace ILCompiler.DependencyAnalysis
                         if (_compilation.HasLazyStaticConstructor(target))
                         {
                             GenericLookupResult nonGcBaseLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
-                            LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, ctx, "lazyGep");
+                            LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, dictionary);
                             OutputCodeForTriggerCctor(builder, nonGcStaticsBase);
                         }
 
@@ -597,7 +587,7 @@ namespace ILCompiler.DependencyAnalysis
                         if (_compilation.HasLazyStaticConstructor(target))
                         {
                             GenericLookupResult nonGcBaseLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
-                            LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, ctx, "tsGep");
+                            LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, dictionary);
                             OutputCodeForTriggerCctor(builder, nonGcStaticsBase);
                         }
 
@@ -726,7 +716,8 @@ namespace ILCompiler.DependencyAnalysis
             LLVMValueRef targetValue;
             if (genericNode != null)
             {
-                targetValue = OutputCodeForDictionaryLookup(builder, factory, genericNode, genericNode.LookupSignature, helperFunc.GetParam(1), "pTarget");
+                LLVMValueRef dictionary = OutputCodeForGetGenericDictionary(builder, helperFunc.GetParam(1), genericNode);
+                targetValue = OutputCodeForDictionaryLookup(builder, factory, genericNode, genericNode.LookupSignature, dictionary);
             }
             else if (delegateCreationInfo.TargetNeedsVTableLookup)
             {
@@ -878,21 +869,43 @@ namespace ILCompiler.DependencyAnalysis
             builder.BuildRet(externFunc);
         }
 
+        private LLVMValueRef OutputCodeForGetGenericDictionary(LLVMBuilderRef builder, LLVMValueRef context, ReadyToRunGenericHelperNode node)
+        {
+            LLVMValueRef dictionary;
+            if (node is ReadyToRunGenericLookupFromTypeNode)
+            {
+                // Locate the VTable slot that points to the dictionary
+                int vtableSlot = VirtualMethodSlotHelper.GetGenericDictionarySlot(_nodeFactory, (TypeDesc)node.DictionaryOwner);
+
+                // Load the dictionary pointer from the VTable
+                int pointerSize = _nodeFactory.Target.PointerSize;
+                int slotOffset = EETypeNode.GetVTableOffset(pointerSize) + (vtableSlot * pointerSize);
+                var slotAddr = CreateAddOffset(builder, context, slotOffset, "dictionarySlotAddr");
+                dictionary = builder.BuildLoad2(_ptrType, slotAddr, "dictionary");
+            }
+            else
+            {
+                dictionary = context;
+            }
+
+            return dictionary;
+        }
+
         private LLVMValueRef OutputCodeForDictionaryLookup(LLVMBuilderRef builder, NodeFactory factory,
-            ReadyToRunGenericHelperNode node, GenericLookupResult lookup, LLVMValueRef ctx, string gepName)
+            ReadyToRunGenericHelperNode node, GenericLookupResult lookup, LLVMValueRef dictionary)
         {
             // Find the generic dictionary slot
             int dictionarySlot = factory.GenericDictionaryLayout(node.DictionaryOwner).GetSlotForEntry(lookup);
             int offset = dictionarySlot * factory.Target.PointerSize;
 
             // Load the generic dictionary cell
-            LLVMValueRef retGep = CreateAddOffset(builder, ctx, offset, "retGep");
-            LLVMValueRef retRef = builder.BuildLoad2(_ptrType, retGep, gepName);
+            LLVMValueRef slotAddr = CreateAddOffset(builder, dictionary, offset, "dictionarySlotAddr");
+            LLVMValueRef lookupResult = builder.BuildLoad2(_ptrType, slotAddr, "slotValue");
 
             switch (lookup.LookupResultReferenceType(factory))
             {
                 case GenericLookupResultReferenceType.Indirect:
-                    retRef = builder.BuildLoad2(_ptrType, retRef, "indLoad");
+                    lookupResult = builder.BuildLoad2(_ptrType, lookupResult, "actualSlotValue");
                     break;
 
                 case GenericLookupResultReferenceType.ConditionalIndirect:
@@ -902,7 +915,7 @@ namespace ILCompiler.DependencyAnalysis
                     break;
             }
 
-            return retRef;
+            return lookupResult;
         }
 
         private void OutputCodeForTriggerCctor(LLVMBuilderRef builder, LLVMValueRef nonGcStaticBaseValue)
@@ -1030,7 +1043,8 @@ namespace ILCompiler.DependencyAnalysis
 
             if (llvmFunction.Handle == IntPtr.Zero)
             {
-                return _module.AddFunction(mangledName, _compilation.GetLLVMSignatureForMethod(signature, hasHiddenParam));
+                LLVMTypeRef llvmFuncType = _compilation.GetLLVMSignatureForMethod(isManagedAbi: true, signature, hasHiddenParam);
+                return _module.AddFunction(mangledName, llvmFuncType);
             }
             return llvmFunction;
         }

@@ -1493,6 +1493,10 @@ void Compiler::lvaInitVarDsc(LclVarDsc*              varDsc,
     varDsc->lvIsSplit   = 0;
 #endif // TARGET_LOONGARCH64
 
+#ifdef TARGET_WASM
+    varDsc->lvCorInfoType = corInfoType;
+#endif // TARGET_WASM
+
     // Set the lvType (before this point it is TYP_UNDEF).
 
     if (GlobalJitOptions::compFeatureHfa)
@@ -2906,7 +2910,7 @@ bool Compiler::lvaIsImplicitByRefLocal(unsigned lclNum) const
     {
         assert(varDsc->lvIsParam);
 
-        assert(varTypeIsStruct(varDsc) || (varDsc->TypeGet() == TYP_BYREF));
+        assert(varTypeIsStruct(varDsc) || (varDsc->TypeGet() == TYP_BYREF) || (varDsc->TypeGet() == TYP_I_IMPL));
         return true;
     }
 #endif // FEATURE_IMPLICIT_BYREFS
