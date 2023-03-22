@@ -100,104 +100,60 @@ Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
 {
     if (_llvmStructs->find(structHandle) == _llvmStructs->end())
     {
-        Type* llvmType;
-        unsigned fieldAlignment;
+        Type* llvmStructType;
 
-        // LLVM thinks certain sizes of struct have a different calling convention than Clang does.
-        // Treating them as ints fixes that and is more efficient in general
-
-        unsigned structSize = m_info->compCompHnd->getClassSize(structHandle);
-        switch (structSize)
+        // We treat trivial structs like their underlying types for compatibility with the native ABI.
+        CorInfoType primitiveType = GetPrimitiveTypeForTrivialWasmStruct(structHandle);
+        if (primitiveType != CORINFO_TYPE_UNDEF)
         {
-            case 1:
-                llvmType = Type::getInt8Ty(_llvmContext);
-                break;
-            case 2:
-                fieldAlignment = GetInstanceFieldAlignment(structHandle);
-                if (fieldAlignment == 2)
-                {
-                    llvmType = Type::getInt16Ty(_llvmContext);
-                    break;
-                }
-            case 4:
-                fieldAlignment = GetInstanceFieldAlignment(structHandle);
-                if (fieldAlignment == 4)
-                {
-                    if (StructIsWrappedPrimitive(structHandle, CORINFO_TYPE_FLOAT))
-                    {
-                        llvmType = Type::getFloatTy(_llvmContext);
-                    }
-                    else
-                    {
-                        llvmType = Type::getInt32Ty(_llvmContext);
-                    }
-                    break;
-                }
-            case 8:
-                fieldAlignment = GetInstanceFieldAlignment(structHandle);
-                if (fieldAlignment == 8)
-                {
-                    if (StructIsWrappedPrimitive(structHandle, CORINFO_TYPE_DOUBLE))
-                    {
-                        llvmType = Type::getDoubleTy(_llvmContext);
-                    }
-                    else
-                    {
-                        llvmType = Type::getInt64Ty(_llvmContext);
-                    }
-                    break;
-                }
-
-            default:
-                // Forward-declare the struct in case there's a reference to it in the fields.
-                // This must be a named struct or LLVM hits a stack overflow
-                const char* name = GetTypeName(structHandle);
-                llvm::StructType* llvmStructType = llvm::StructType::create(_llvmContext, name);
-                llvmType = llvmStructType;
-                StructDesc* structDesc = getStructDesc(structHandle);
-                unsigned    fieldCnt   = structDesc->getFieldCount();
-
-
-                unsigned lastOffset = 0;
-                unsigned totalSize = 0;
-                std::vector<Type*> llvmFields = std::vector<Type*>();
-                unsigned prevElementSize = 0;
-
-
-                for (unsigned fieldIx = 0; fieldIx < fieldCnt; fieldIx++)
-                {
-                    FieldDesc* fieldDesc = structDesc->getFieldDesc(fieldIx);
-
-                    // Pad to this field if necessary
-                    unsigned paddingSize = fieldDesc->getFieldOffset() - lastOffset - prevElementSize;
-                    if (paddingSize > 0)
-                    {
-                        addPaddingFields(paddingSize, llvmFields);
-                        totalSize += paddingSize;
-                    }
-
-                    CorInfoType fieldCorType = fieldDesc->getCorType();
-
-                    unsigned fieldSize = getElementSize(fieldDesc->getClassHandle(), fieldCorType);
-
-                    llvmFields.push_back(getLlvmTypeForCorInfoType(fieldCorType, fieldDesc->getClassHandle()));
-
-                    totalSize += fieldSize;
-                    lastOffset = fieldDesc->getFieldOffset();
-                    prevElementSize = fieldSize;
-                }
-
-                // If explicit layout is greater than the sum of fields, add padding
-                if (totalSize < structSize)
-                {
-                    addPaddingFields(structSize - totalSize, llvmFields);
-                }
-
-                llvmStructType->setBody(llvmFields, true);
-                break;
+            llvmStructType = getLlvmTypeForCorInfoType(primitiveType, NO_CLASS_HANDLE);
         }
-        _llvmStructs->insert({ structHandle, llvmType });
+        else
+        {
+            StructDesc* structDesc = getStructDesc(structHandle);
+            unsigned fieldCount = structDesc->getFieldCount();
+
+            unsigned lastOffset = 0;
+            unsigned totalSize = 0;
+            std::vector<Type*> llvmFields = std::vector<Type*>();
+            unsigned prevElementSize = 0;
+
+            for (unsigned fieldIx = 0; fieldIx < fieldCount; fieldIx++)
+            {
+                FieldDesc* fieldDesc = structDesc->getFieldDesc(fieldIx);
+
+                // Pad to this field if necessary
+                unsigned paddingSize = fieldDesc->getFieldOffset() - lastOffset - prevElementSize;
+                if (paddingSize > 0)
+                {
+                    addPaddingFields(paddingSize, llvmFields);
+                    totalSize += paddingSize;
+                }
+
+                CorInfoType fieldCorType = fieldDesc->getCorType();
+
+                unsigned fieldSize = getElementSize(fieldDesc->getClassHandle(), fieldCorType);
+
+                llvmFields.push_back(getLlvmTypeForCorInfoType(fieldCorType, fieldDesc->getClassHandle()));
+
+                totalSize += fieldSize;
+                lastOffset = fieldDesc->getFieldOffset();
+                prevElementSize = fieldSize;
+            }
+
+            // If explicit layout is greater than the sum of fields, add padding
+            unsigned structSize = m_info->compCompHnd->getClassSize(structHandle);
+            if (totalSize < structSize)
+            {
+                addPaddingFields(structSize - totalSize, llvmFields);
+            }
+
+            llvmStructType = llvm::StructType::get(_llvmContext, llvmFields, /* isPacked */ true);
+        }
+
+        _llvmStructs->insert({structHandle, llvmStructType});
     }
+
     return _llvmStructs->at(structHandle);
 }
 
@@ -245,7 +201,7 @@ Type* Llvm::getLlvmTypeForLclVar(LclVarDsc* varDsc)
     }
     if (varDsc->lvCorInfoType != CORINFO_TYPE_UNDEF)
     {
-        return getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, varDsc->lvClassHnd);
+        return getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, NO_CLASS_HANDLE);
     }
 
     return getLlvmTypeForVarType(varDsc->TypeGet());
@@ -256,7 +212,7 @@ Type* Llvm::getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HAN
     switch (corInfoType)
     {
         case CORINFO_TYPE_PTR:
-            return Type::getInt8Ty(_llvmContext)->getPointerTo();
+            return getPtrLlvmType();
 
         case CORINFO_TYPE_VALUECLASS:
             return getLlvmTypeForStruct(classHnd);

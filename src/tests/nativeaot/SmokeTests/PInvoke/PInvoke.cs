@@ -202,10 +202,10 @@ namespace PInvokeTests
         static extern void StructTest_ByRef(ref SequentialStruct ss);
 
         [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall, EntryPoint = "StructTest_ByRef")]
-        static extern bool ClassTest([In, Out] SequentialClass ss);
+        static extern void ClassTest([In, Out] SequentialClass ss);
 
         [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall, EntryPoint = "StructTest_ByRef")]
-        static extern bool AsAnyTest([In, Out, MarshalAs(40 /* UnmanagedType.AsAny */)] object o);
+        static extern void AsAnyTest([In, Out, MarshalAs(40 /* UnmanagedType.AsAny */)] object o);
 
         [DllImport("PInvokeNative", CallingConvention = CallingConvention.StdCall)]
         static extern void StructTest_ByOut(out SequentialStruct ss);
@@ -330,11 +330,8 @@ namespace PInvokeTests
             TestString();
             TestStringBuilder();
             TestLastError();
-#if !CODEGEN_WASM
-            // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
             TestHandleRef();
             TestSafeHandle();
-#endif
             TestStringArray();
             TestSizeParamIndex();
 #if !CODEGEN_WASM
@@ -342,12 +339,9 @@ namespace PInvokeTests
             TestDelegate();
 #endif
             TestStruct();
-#if !CODEGEN_WASM
-            // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
             TestLayoutClassPtr();
             TestLayoutClass();
             TestAsAny();
-#endif
             TestMarshalStructAPIs();
             TestWithoutPreserveSig();
 #if !CODEGEN_WASM
@@ -355,24 +349,8 @@ namespace PInvokeTests
             TestForwardDelegateWithUnmanagedCallersOnly();
             // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
             TestDecimal();
-
-            // TODO-LLVM: Invalid Program: attempted to call a UnmanagedCallersOnly method from managed code.
-            //at abort(E:\GitHub\runtimelab\artifacts\tests\coreclr\Browser.wasm.Debug\nativeaot\SmokeTests\PInvoke\PInvoke\native\PInvoke.js:942:11)
-            //at _abort(E:\GitHub\runtimelab\artifacts\tests\coreclr\Browser.wasm.Debug\nativeaot\SmokeTests\PInvoke\PInvoke\native\PInvoke.js:5178:7)
-            //at RaiseFailFastException(< anonymous >:wasm - function[464]:0x34d82)
-            //at PalRaiseFailFastException(_EXCEPTION_RECORD32*, _CONTEXT*, unsigned int) (< anonymous >:wasm - function[285]:0x20a8b)
-            //at Thread::ReversePInvokeAttachOrTrapThread(ReversePInvokeFrame *)(< anonymous >:wasm - function[314]:0x21efc)
-            //at RhpReversePInvokeAttachOrTrapThread2(< anonymous >:wasm - function[323]:0x2291a)
-            //at RhpReversePInvoke(< anonymous >:wasm - function[324]:0x22b54)
-            //at UnmanagedMethod(< anonymous >:wasm - function[2413]:0x189dd2)
-            //at PInvoke_PInvokeTests_Program__TestDifferentModopts(< anonymous >:wasm - function[2412]:0x189884)
-            //at PInvoke_PInvokeTests_Program__Main(< anonymous >:wasm - function[9321]:0x67560a)
-            //at PInvoke__Module___MainMethodWrapper(< anonymous >:wasm - function[9320]:0x6754e7)
-            //at StartupCodeMain(< anonymous >:wasm - function[2332]:0x182278)
-            //at __managed__Main(< anonymous >:wasm - function[4429]:0x1c80a9)
-            //at main(< anonymous >:wasm - function[19533]:0x134d3ff)
-            TestDifferentModopts();
 #endif
+            TestDifferentModopts();
 
             return 100;
         }
@@ -859,20 +837,15 @@ namespace PInvokeTests
             ss.f3 = "Hello";
             ss.f4 = "Hola";
 
-#if !CODEGEN_WASM
-            // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
             ThrowIfNotEquals(true, StructTest(ss), "Struct marshalling scenario1 failed.");
 
             StructTest_ByRef(ref ss);
             ThrowIfNotEquals(true,  ss.f1 == 2 && ss.f2 == 11.0 && ss.f3.Equals("Ifmmp") && ss.f4.Equals("Ipmb"), "Struct marshalling scenario2 failed.");
-#endif
 
             SequentialStruct ss2 = new SequentialStruct();
             StructTest_ByOut(out ss2);
             ThrowIfNotEquals(true, ss2.f0 == 1 && ss2.f1 == 1.0 &&  ss2.f2 == 1.0 && ss2.f3.Equals("0123456") && ss2.f4.Equals("789"), "Struct marshalling scenario3 failed.");
 
-#if !CODEGEN_WASM
-            // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
             NesterOfSequentialStruct.SequentialStruct ss3 = new NesterOfSequentialStruct.SequentialStruct();
             ss3.f1 = 10.0f;
             ss3.f2 = 123;
@@ -885,12 +858,10 @@ namespace PInvokeTests
             es.f3 = "Hello";
             ThrowIfNotEquals(true, StructTest_Explicit(es), "Struct marshalling scenario4 failed.");
 
-            // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
             NestedStruct ns = new NestedStruct();
             ns.f1 = 100;
             ns.f2 = es;
             ThrowIfNotEquals(true, StructTest_Nested(ns), "Struct marshalling scenario5 failed.");
-#endif
 
             SequentialStruct[] ssa = null;
             ThrowIfNotEquals(true, IsNULL(ssa), "Non-blittable array null check failed");

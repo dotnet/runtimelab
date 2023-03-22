@@ -164,12 +164,13 @@ void Llvm::populateLlvmArgNums()
     }
 
     unsigned nextLlvmArgNum = 0;
+    bool isManagedAbi = !_compiler->opts.IsReversePInvoke();
 
     _shadowStackLclNum = _compiler->lvaGrabTempWithImplicitUse(true DEBUGARG("shadowstack"));
     LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(_shadowStackLclNum);
     shadowStackVarDsc->lvType = TYP_I_IMPL;
     shadowStackVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
-    if (!_compiler->opts.IsReversePInvoke())
+    if (isManagedAbi)
     {
         shadowStackVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
         shadowStackVarDsc->lvIsParam = true;
@@ -185,44 +186,34 @@ void Llvm::populateLlvmArgNums()
         retAddressVarDsc->lvIsParam = true;
     }
 
-    unsigned firstSigArgLclNum = 0;
-    assert(_sigInfo.hasThis() == (m_info->compThisArg != BAD_VAR_NUM));
-    if (_sigInfo.hasThis() && !_sigInfo.hasExplicitThis())
+    if (m_info->compThisArg != BAD_VAR_NUM)
     {
-        // "this" is never an LLVM parameter as it is always a GC reference.
-        assert(varTypeIsGC(_compiler->lvaGetDesc(m_info->compThisArg)));
-        firstSigArgLclNum++;
+        LclVarDsc* thisVarDsc = _compiler->lvaGetDesc(m_info->compThisArg);
+        thisVarDsc->lvCorInfoType = toCorInfoType(thisVarDsc->TypeGet());
     }
 
-    assert(_sigInfo.hasTypeArg() == (m_info->compTypeCtxtArg != BAD_VAR_NUM));
-    if (_sigInfo.hasTypeArg())
+    if (m_info->compTypeCtxtArg != BAD_VAR_NUM)
     {
-        // Type context is an unmanaged pointer and thus LLVM parameter.
-        LclVarDsc* typeCtxtVarDsc = _compiler->lvaGetDesc(m_info->compTypeCtxtArg);
-        assert(typeCtxtVarDsc->lvIsParam);
-
-        typeCtxtVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
-        typeCtxtVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
-        firstSigArgLclNum++;
+        _compiler->lvaGetDesc(m_info->compTypeCtxtArg)->lvCorInfoType = CORINFO_TYPE_PTR;
     }
 
-    CORINFO_ARG_LIST_HANDLE sigArgs = _sigInfo.args;
-    for (unsigned i = 0; i < _sigInfo.numArgs; i++, sigArgs = m_info->compCompHnd->getArgNext(sigArgs))
+    for (unsigned lclNum = 0; lclNum < m_info->compArgsCount; lclNum++)
     {
-        CORINFO_CLASS_HANDLE classHnd;
-        CorInfoType          corInfoType = strip(m_info->compCompHnd->getArgType(&_sigInfo, sigArgs, &classHnd));
-        if (canStoreArgOnLlvmStack(corInfoType, classHnd))
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+
+        if (_compiler->lvaIsImplicitByRefLocal(lclNum))
         {
-            LclVarDsc* varDsc = _compiler->lvaGetDesc(firstSigArgLclNum + i);
-
-            varDsc->lvLlvmArgNum = nextLlvmArgNum++;
-            varDsc->lvCorInfoType = corInfoType;
-            varDsc->lvClassHnd = classHnd;
+            // Implicit byrefs in our calling convention always point to the stack.
+            assert(varDsc->TypeGet() == TYP_BYREF);
+            varDsc->lvType = TYP_I_IMPL;
+            varDsc->lvCorInfoType = CORINFO_TYPE_PTR;
         }
-        else
+
+        CorInfoType argSigType = varDsc->lvCorInfoType;
+        CORINFO_CLASS_HANDLE argSigClass = (varDsc->TypeGet() == TYP_STRUCT) ? varDsc->GetStructHnd() : NO_CLASS_HANDLE;
+        if (getLlvmArgTypeForArg(isManagedAbi, argSigType, argSigClass))
         {
-            // No shadow parameters in RPI methods.
-            assert(!_compiler->opts.IsReversePInvoke());
+            varDsc->lvLlvmArgNum = nextLlvmArgNum++;
         }
     }
 
@@ -903,6 +894,11 @@ void Llvm::lowerVirtualStubCallAfterArgs(
     stubCall->gtArgs.PushFront(_compiler, NewCallArg::Primitive(shadowStackForStub, CORINFO_TYPE_PTR),
                                NewCallArg::Primitive(thisForStub, CORINFO_TYPE_CLASS),
                                NewCallArg::Primitive(cellArgNode, CORINFO_TYPE_PTR));
+    for (CallArg& arg : stubCall->gtArgs.Args())
+    {
+        arg.AbiInfo.IsPointer = arg.GetSignatureCorInfoType() == CORINFO_TYPE_PTR;
+        arg.AbiInfo.ArgType = arg.GetSignatureType();
+    }
     stubCall->gtCorInfoType = CORINFO_TYPE_PTR;
     stubCall->gtFlags |= GTF_CALL_UNMANAGED;
     stubCall->gtCallMoreFlags |= GTF_CALL_M_SUPPRESS_GC_TRANSITION;
@@ -941,16 +937,24 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
         assert((callNode->gtCallType == CT_USER_FUNC) && !callNode->IsVarargs());
 
         ArrayStack<TargetAbiType> sig(_compiler->getAllocator(CMK_Codegen));
-        sig.Push(getAbiTypeForType(callNode->TypeGet()));
-        for (CallArg& arg : callNode->gtArgs.Args())
+        var_types returnType = callNode->TypeGet();
+        if (returnType == TYP_STRUCT)
         {
-            if (arg.GetNode()->TypeIs(TYP_STRUCT))
+            CorInfoType simpleReturnType = GetPrimitiveTypeForTrivialWasmStruct(callNode->gtRetClsHnd);
+
+            if (returnType == CORINFO_TYPE_UNDEF)
             {
-                // TODO-LLVM-ABI: implement proper ABI for structs.
+                // TODO-LLVM-ABI: implement by-ref passing of structs.
                 NYI("Unmanaged ABI for structs");
             }
 
-            sig.Push(getAbiTypeForType(arg.GetNode()->TypeGet()));
+            returnType = JITtype2varType(simpleReturnType);
+        }
+        sig.Push(getAbiTypeForType(returnType));
+
+        for (CallArg& arg : callNode->gtArgs.Args())
+        {
+            sig.Push(getAbiTypeForType(JITtype2varType(getLlvmArgTypeForCallArg(&arg))));
         }
 
         // WASM requires the callee and caller signature to match. At the LLVM level, "callee type" is the function
@@ -980,7 +984,7 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
         lowerLocal(frameAddr);
         lowerCall(helperCall);
 
-        // Insert CORINFO_HELP_JIT_PINVOKE_END. // No need to explicitly lower the call/local address as the
+        // Insert CORINFO_HELP_JIT_PINVOKE_END. No need to explicitly lower the call/local address as the
         // normal lowering loop will pick them up.
         frameAddr = _compiler->gtNewLclVarAddrNode(_compiler->lvaInlinedPInvokeFrameVar);
         helperCall = _compiler->gtNewHelperCallNode(CORINFO_HELP_JIT_PINVOKE_END, TYP_VOID, frameAddr);
@@ -1014,7 +1018,20 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     // it doesn't apply to runtime imports, or helpers implemented as FCalls, etc).
     const bool isManagedCall = callHasManagedCallingConvention(callNode);
     unsigned shadowFrameSize = getCurrentShadowFrameSize();
-    unsigned shadowStackUseOffset = 0;
+    int sigArgIdx = 0;
+
+    // Insert the shadow stack at the front
+    if (callHasShadowStackArg(callNode))
+    {
+        GenTree* calleeShadowStack = insertShadowStackAddr(callNode, shadowFrameSize, _shadowStackLclNum);
+        callNode->gtArgs.PushFront(_compiler, NewCallArg::Primitive(calleeShadowStack, CORINFO_TYPE_PTR));
+        sigArgIdx--;
+    }
+
+    if (lowerCallReturn(callNode) != nullptr)
+    {
+        sigArgIdx--;
+    }
 
     const HelperFuncInfo* helperInfo = nullptr;
     if (callNode->IsHelperCall())
@@ -1022,32 +1039,15 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         helperInfo = &getHelperFuncInfo(_compiler->eeGetHelperNum(callNode->gtCallMethHnd));
     }
 
-    // Get the first arg before we start pushing non IR args to the list.
-    CallArg* callArg = callNode->gtArgs.Args().begin().GetArg();
+    unsigned shadowStackUseOffset = 0;
     CallArg* lastLlvmStackArg = nullptr;
-
-    // Insert the shadow stack at the front
-    if (callHasShadowStackArg(callNode))
-    {
-        GenTree* calleeShadowStack = insertShadowStackAddr(callNode, shadowFrameSize, _shadowStackLclNum);
-
-        lastLlvmStackArg = callNode->gtArgs.PushFront(_compiler, NewCallArg::Primitive(calleeShadowStack, CORINFO_TYPE_PTR));
-    }
-
-    CallArg* returnSlot = lowerCallReturn(callNode);
-
-    if (returnSlot != nullptr)
-    {
-        lastLlvmStackArg = returnSlot;
-    }
-
-    unsigned sigArgIdx = 0;
+    CallArg* callArg = callNode->gtArgs.Args().begin().GetArg();
     while (callArg != nullptr)
     {
         GenTree* argNode = callArg->GetNode();
         CorInfoType argSigType;
         CORINFO_CLASS_HANDLE argSigClass;
-        if (helperInfo == nullptr)
+        if ((helperInfo == nullptr) || (sigArgIdx < 0))
         {
             if (callArg->GetWellKnownArg() == WellKnownArg::ThisPointer)
             {
@@ -1075,11 +1075,13 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             argSigClass = helperInfo->GetSigArgClass(_compiler, sigArgIdx);
         }
 
-        if (isManagedCall && !canStoreArgOnLlvmStack(argSigType, argSigClass))
+        CorInfoType argType;
+        if (!getLlvmArgTypeForArg(isManagedCall, argSigType, argSigClass, &argType))
         {
-            if (argSigType == CORINFO_TYPE_VALUECLASS)
+            assert(!callArg->AbiInfo.PassedByRef);
+            if (argType == CORINFO_TYPE_VALUECLASS)
             {
-                shadowStackUseOffset = padOffset(argSigType, argSigClass, shadowStackUseOffset);
+                shadowStackUseOffset = padOffset(argType, argSigClass, shadowStackUseOffset);
             }
 
             if (argNode->OperIs(GT_FIELD_LIST))
@@ -1106,9 +1108,9 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 CurrentRange().InsertBefore(callNode, storeNode);
             }
 
-            if (argSigType == CORINFO_TYPE_VALUECLASS)
+            if (argType == CORINFO_TYPE_VALUECLASS)
             {
-                shadowStackUseOffset = padNextOffset(argSigType, argSigClass, shadowStackUseOffset);
+                shadowStackUseOffset = padNextOffset(argType, argSigClass, shadowStackUseOffset);
             }
             else
             {
@@ -1125,7 +1127,8 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
                 argNode = normalizeStructUse(argNodeUse, _compiler->typGetObjLayout(argSigClass));
             }
 
-            callArg->SetSignatureCorInfoType(argSigType);
+            callArg->AbiInfo.IsPointer = argType == CORINFO_TYPE_PTR;
+            callArg->AbiInfo.ArgType = JITtype2varType(argType);
             lastLlvmStackArg = callArg;
         }
 
@@ -1151,11 +1154,11 @@ CallArg* Llvm::lowerCallReturn(GenTreeCall* callNode)
         GenTree* returnValueAddress = insertShadowStackAddr(callNode, getCurrentShadowFrameSize(), _shadowStackLclNum);
 
         // create temp for the return address
-        unsigned   returnTempNum    = _compiler->lvaGrabTemp(true DEBUGARG("return value address"));
+        unsigned returnTempNum = _compiler->lvaGrabTemp(true DEBUGARG("return value address"));
         LclVarDsc* returnAddrVarDsc = _compiler->lvaGetDesc(returnTempNum);
-        returnAddrVarDsc->lvType    = TYP_I_IMPL;
+        returnAddrVarDsc->lvType = TYP_I_IMPL;
 
-        GenTree* addrStore     = _compiler->gtNewStoreLclVar(returnTempNum, returnValueAddress);
+        GenTree* addrStore = _compiler->gtNewStoreLclVar(returnTempNum, returnValueAddress);
         GenTree* returnAddrLcl = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
 
         GenTree* returnAddrLclAfterCall = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
@@ -1238,13 +1241,13 @@ GenTree* Llvm::normalizeStructUse(LIR::Use& use, ClassLayout* layout)
     }
     else
     {
+        // TODO-LLVM: use GenTree::GetLayout here once enough of upstream is merged and delete the
+        // "useHandle == NO_CLASS_HANDLE" check below.
         CORINFO_CLASS_HANDLE useHandle = _compiler->gtGetStructHandleIfPresent(node);
 
         // Note both can be blocks ("NO_CLASS_HANDLE"), in which case we don't need to do anything.
-        // TODO-LLVM-CQ: base this check on the actual LLVM types not being equivalent, as layout ->
-        // LLVM type correspondence is reductive. Additionally (but orthogonally), we should map
-        // canonically equivalent types to the same LLVM type.
-        if (useHandle != layout->GetClassHandle())
+        if ((useHandle != layout->GetClassHandle()) &&
+            ((useHandle == NO_CLASS_HANDLE) || (getLlvmTypeForStruct(useHandle) != getLlvmTypeForStruct(layout))))
         {
             switch (node->OperGet())
             {
