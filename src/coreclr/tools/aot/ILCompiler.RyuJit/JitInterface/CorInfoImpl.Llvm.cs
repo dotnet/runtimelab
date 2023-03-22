@@ -119,21 +119,6 @@ namespace Internal.JitInterface
             return GetMangledMethodNameImpl(_this, dispatchMethod);
         }
 
-        // IL backend does not use the mangled name.  The unmangled name is easier to read.
-        [UnmanagedCallersOnly]
-        public static byte* getTypeName(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd)
-        {
-            var _this = GetThis(thisHandle);
-
-            TypeDesc typeDesc = _this.HandleToObject(structHnd);
-
-            Utf8StringBuilder sb = new Utf8StringBuilder();
-            sb.Append(typeDesc.ToString());
-
-            sb.Append("\0");
-            return (byte*)_this.GetPin(sb.UnderlyingArray);
-        }
-
         [UnmanagedCallersOnly]
         public static uint isRuntimeImport(IntPtr thisHandle, CORINFO_METHOD_STRUCT_* ftn)
         {
@@ -190,25 +175,16 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        public static uint structIsWrappedPrimitive(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd, CorInfoType corInfoPrimitiveType)
+        public static CorInfoType getPrimitiveTypeForTrivialWasmStruct(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd)
         {
             var _this = GetThis(thisHandle);
-            TypeDesc typeDesc = _this.HandleToObject(structHnd);
-
-            TypeDesc primitiveTypeDesc;
-            switch (corInfoPrimitiveType)
+            TypeDesc structType = _this.HandleToObject(structHnd);
+            if (_this._compilation.GetPrimitiveTypeForTrivialWasmStruct(structType) is TypeDesc primitiveType)
             {
-                case CorInfoType.CORINFO_TYPE_FLOAT:
-                    primitiveTypeDesc = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Single);
-                    break;
-                case CorInfoType.CORINFO_TYPE_DOUBLE:
-                    primitiveTypeDesc = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Double);
-                    break;
-                default:
-                    return 0u;
+                return _this.asCorInfoType(primitiveType);
             }
 
-            return _this._compilation.StructIsWrappedPrimitive(typeDesc, primitiveTypeDesc) ? 1u : 0u;
+            return CorInfoType.CORINFO_TYPE_UNDEF;
         }
 
         [UnmanagedCallersOnly]
@@ -218,15 +194,6 @@ namespace Internal.JitInterface
             TypeDesc type = _this.HandleToObject(structHnd);
 
             return (uint)_this._compilation.PadOffset(type, (int)atOffset);
-        }
-
-        [UnmanagedCallersOnly]
-        public static uint getInstanceFieldAlignment(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* cls)
-        {
-            var _this = GetThis(thisHandle);
-            DefType type = (DefType)_this.HandleToObject(cls);
-
-            return (uint)type.InstanceFieldAlignment.AsInt;
         }
 
         [UnmanagedCallersOnly]
@@ -343,15 +310,13 @@ namespace Internal.JitInterface
             GetMangledSymbolName,
             GetSignatureForMethodSymbol,
             GetEHDispatchFunctionName,
-            GetTypeName,
             AddCodeReloc,
             IsRuntimeImport,
             GetDocumentFileName,
             GetOffsetLineNumber,
-            StructIsWrappedPrimitive,
+            GetPrimitiveTypeForTrivialWasmStruct,
             PadOffset,
             GetTypeDescriptor,
-            GetInstanceFieldAlignment,
             GetAlternativeFunctionName,
             GetExternalMethodAccessor,
             GetLlvmHelperFuncEntrypoint,
@@ -383,15 +348,13 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.GetMangledSymbolName] = (delegate* unmanaged<IntPtr, IntPtr, byte*>)&getMangledSymbolName;
             jitImports[(int)EEApiId.GetSignatureForMethodSymbol] = (delegate* unmanaged<IntPtr, IntPtr, CORINFO_SIG_INFO*, int>)&getSignatureForMethodSymbol;
             jitImports[(int)EEApiId.GetEHDispatchFunctionName] = (delegate* unmanaged<IntPtr, CORINFO_EH_CLAUSE_FLAGS, byte*>)&getEHDispatchFunctionName;
-            jitImports[(int)EEApiId.GetTypeName] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*>)&getTypeName;
             jitImports[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
             jitImports[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;
             jitImports[(int)EEApiId.GetDocumentFileName] = (delegate* unmanaged<IntPtr, byte*>)&getDocumentFileName;
             jitImports[(int)EEApiId.GetOffsetLineNumber] = (delegate* unmanaged<IntPtr, uint, uint>)&getOffsetLineNumber;
-            jitImports[(int)EEApiId.StructIsWrappedPrimitive] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint>)&structIsWrappedPrimitive;
+            jitImports[(int)EEApiId.GetPrimitiveTypeForTrivialWasmStruct] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType>)&getPrimitiveTypeForTrivialWasmStruct;
             jitImports[(int)EEApiId.PadOffset] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint>)&padOffset;
             jitImports[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor>)&getTypeDescriptor;
-            jitImports[(int)EEApiId.GetInstanceFieldAlignment] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint>)&getInstanceFieldAlignment;
             jitImports[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
             jitImports[(int)EEApiId.GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
             jitImports[(int)EEApiId.GetLlvmHelperFuncEntrypoint] = (delegate* unmanaged<IntPtr, CorInfoHelpLlvmFunc, IntPtr>)&getLlvmHelperFuncEntrypoint;

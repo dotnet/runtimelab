@@ -80,7 +80,7 @@ void Llvm::Compile()
 bool Llvm::initializeFunctions()
 {
     const char* mangledName = GetMangledMethodName(m_info->compMethodHnd);
-    Function* rootLlvmFunction = getOrCreateKnownLlvmFunction(mangledName, [=]() { return getFunctionType(); });
+    Function* rootLlvmFunction = getOrCreateKnownLlvmFunction(mangledName, [=]() { return createFunctionType(); });
     if (!rootLlvmFunction->isDeclaration())
     {
         BADCODE("Duplicate definition");
@@ -1929,24 +1929,10 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
 void Llvm::buildCall(GenTreeCall* call)
 {
     std::vector<Value*> argVec = std::vector<Value*>();
-
-    GenTree* argNode = nullptr;
-    for (CallArg& callArg: call->gtArgs.Args())
+    for (CallArg& arg : call->gtArgs.Args())
     {
-        argNode = callArg.GetNode();
-
-        Type*    argLlvmType = getLlvmTypeForCorInfoType(callArg.GetSignatureCorInfoType(), callArg.GetSignatureClassHandle());
-        Value*   argValue;
-
-        if (argNode->OperIs(GT_FIELD_LIST))
-        {
-            assert(callArg.GetSignatureType() == TYP_STRUCT);
-            argValue = buildFieldList(argNode->AsFieldList(), argLlvmType);
-        }
-        else
-        {
-            argValue = consumeValue(argNode, argLlvmType);
-        }
+        Type* argLlvmType = getLlvmTypeForCorInfoType(getLlvmArgTypeForCallArg(&arg), arg.GetSignatureClassHandle());
+        Value* argValue = consumeValue(arg.GetNode(), argLlvmType);
 
         argVec.push_back(argValue);
     }
@@ -1974,27 +1960,6 @@ void Llvm::buildCall(GenTreeCall* call)
     }
 
     mapGenTreeToValue(call, callValue);
-}
-
-Value* Llvm::buildFieldList(GenTreeFieldList* fieldList, Type* llvmType)
-{
-    assert(fieldList->TypeIs(TYP_STRUCT));
-
-    if (llvmType->isStructTy() || fieldList->Uses().begin()->GetNext() != nullptr)
-    {
-        Value* alloca = _builder.CreateAlloca(llvmType);
-
-        for (GenTreeFieldList::Use& use : fieldList->Uses())
-        {
-            Value* fieldAddr = gepOrAddr(alloca, use.GetOffset());
-            Type*  fieldType = getLlvmTypeForVarType(use.GetType());
-            _builder.CreateStore(consumeValue(use.GetNode(), fieldType), fieldAddr);
-        }
-
-        return _builder.CreateLoad(llvmType, alloca);
-    }
-
-    return consumeValue(fieldList->Uses().begin()->GetNode(), llvmType);
 }
 
 void Llvm::buildInd(GenTreeIndir* indNode)
@@ -2675,7 +2640,7 @@ llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Val
     return callInst;
 }
 
-FunctionType* Llvm::getFunctionType()
+FunctionType* Llvm::createFunctionType()
 {
     std::vector<llvm::Type*> argVec(_llvmArgCount);
     for (unsigned i = 0; i < _compiler->lvaCount; i++)
@@ -2771,13 +2736,13 @@ FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)
     CORINFO_ARG_LIST_HANDLE sigArgs = pSig->args;
     for (unsigned i = 0; i < pSig->numArgs; i++, sigArgs = m_info->compCompHnd->getArgNext(sigArgs))
     {
-        CORINFO_CLASS_HANDLE sigArgClass;
-        CorInfoType sigArgType = strip(m_info->compCompHnd->getArgType(pSig, sigArgs, &sigArgClass));
+        CORINFO_CLASS_HANDLE argSigClass;
+        CorInfoType argSigType = strip(m_info->compCompHnd->getArgType(pSig, sigArgs, &argSigClass));
 
-        // TODO-LLVM-ABI: this will need to be changed once we support the correct ABI for structs.
-        if (!isManagedCallConv || canStoreArgOnLlvmStack(sigArgType, sigArgClass))
+        CorInfoType argType;
+        if (getLlvmArgTypeForArg(isManagedCallConv, argSigType, argSigClass, &argType))
         {
-            llvmParamTypes.push_back(getLlvmTypeForCorInfoType(sigArgType, sigArgClass));
+            llvmParamTypes.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
         }
     }
 
@@ -2792,10 +2757,9 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
     llvm::Type* retLlvmType = getLlvmTypeForCorInfoType(call->gtCorInfoType, call->gtRetClsHnd);
 
     std::vector<llvm::Type*> argVec = std::vector<llvm::Type*>();
-
-    for (CallArg& callArg: call->gtArgs.Args())
+    for (CallArg& arg : call->gtArgs.Args())
     {
-        argVec.push_back(getLlvmTypeForCorInfoType(callArg.GetSignatureCorInfoType(), callArg.GetSignatureClassHandle()));
+        argVec.push_back(getLlvmTypeForCorInfoType(getLlvmArgTypeForCallArg(&arg), arg.GetSignatureClassHandle()));
     }
 
     return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
@@ -2803,8 +2767,7 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
 
 FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpAnyFunc helperFunc)
 {
-    INDEBUG(bool isManagedHelper = helperCallHasManagedCallingConvention(helperFunc));
-
+    const bool isManagedHelper = helperCallHasManagedCallingConvention(helperFunc);
     const HelperFuncInfo& helperInfo = getHelperFuncInfo(helperFunc);
     std::vector<Type*> argVec = std::vector<Type*>();
 
@@ -2816,11 +2779,15 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpAnyFunc helperFunc)
     size_t sigArgCount = helperInfo.GetSigArgCount();
     for (size_t i = 0; i < sigArgCount; i++)
     {
-        CorInfoType argType = helperInfo.GetSigArgType(i);
-        CORINFO_CLASS_HANDLE argClass = helperInfo.GetSigArgClass(_compiler, i);
-        assert(!isManagedHelper || canStoreArgOnLlvmStack(argType, argClass));
+        CorInfoType argSigType =  helperInfo.GetSigArgType(i);
+        CORINFO_CLASS_HANDLE argSigClass = helperInfo.GetSigArgClass(_compiler, i);
 
-        argVec.push_back(getLlvmTypeForCorInfoType(argType, argClass));
+        CorInfoType argType;
+        bool isArgPassedByRef;
+        bool isLlvmArg = getLlvmArgTypeForArg(isManagedHelper, argSigType, argSigClass, &argType, &isArgPassedByRef);
+        assert(isLlvmArg && !isArgPassedByRef);
+
+        argVec.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
     }
 
     CorInfoType sigRetType = helperInfo.GetSigReturnType();
