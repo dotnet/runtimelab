@@ -2663,10 +2663,10 @@ FunctionType* Llvm::createFunctionType()
 llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)
 {
     llvm::FunctionCallee callee;
-    if (call->IsVirtualVtable() || (call->gtCallType == CT_INDIRECT))
+    if (call->IsVirtualVtable() || call->IsDelegateInvoke() || (call->gtCallType == CT_INDIRECT))
     {
         FunctionType* calleeFuncType = createFunctionTypeForCall(call);
-        GenTree* calleeNode = call->IsVirtualVtable() ? call->gtControlExpr : call->gtCallAddr;
+        GenTree* calleeNode = (call->gtCallType == CT_INDIRECT) ? call->gtCallAddr : call->gtControlExpr;
         Value* calleeValue = consumeValue(calleeNode, getPtrLlvmType());
 
         callee = {calleeFuncType, calleeValue};
