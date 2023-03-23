@@ -2185,8 +2185,7 @@ void Llvm::buildReturn(GenTree* node)
     }
 
     GenTree* retValNode = node->gtGetOp1();
-    Type* retLlvmType = node->OperIs(GT_RETURN) ? getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)
-                                                : Type::getInt32Ty(_llvmContext);
+    Type* retLlvmType = getCurrentLlvmFunction()->getFunctionType()->getReturnType();
     Value* retValValue;
     // Special-case returning zero-initialized structs.
     if (node->TypeIs(TYP_STRUCT) && retValNode->IsIntegralConst(0))
@@ -2548,7 +2547,7 @@ llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Val
 
 FunctionType* Llvm::createFunctionType()
 {
-    std::vector<llvm::Type*> argVec(_llvmArgCount);
+    std::vector<Type*> argVec(_llvmArgCount);
     for (unsigned i = 0; i < _compiler->lvaCount; i++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(i);
@@ -2559,9 +2558,9 @@ FunctionType* Llvm::createFunctionType()
         }
     }
 
-    llvm::Type* retLlvmType = _retAddressLclNum == BAD_VAR_NUM
-        ? getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)
-        : Type::getVoidTy(_llvmContext);
+    CORINFO_SIG_INFO* sig = &m_info->compMethodInfo->args;
+    CorInfoType retType = getLlvmReturnType(sig->retType, sig->retTypeClass);
+    Type* retLlvmType = getLlvmTypeForCorInfoType(retType, sig->retTypeClass);
 
     return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
 }
@@ -2622,14 +2621,17 @@ FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)
     assert(!pSig->isVarArg()); // We do not support varargs.
     bool isManagedCallConv = pSig->getCallConv() == CORINFO_CALLCONV_DEFAULT;
 
+    bool isReturnByRef;
+    CorInfoType retType = getLlvmReturnType(pSig->retType, pSig->retTypeClass, &isReturnByRef);
+    Type* retLlvmType = getLlvmTypeForCorInfoType(retType, pSig->retTypeClass);
+
     std::vector<Type*> llvmParamTypes{};
     if (isManagedCallConv)
     {
         llvmParamTypes.push_back(getPtrLlvmType()); // The shadow stack.
     }
 
-    bool hasReturnSlot = isManagedCallConv && needsReturnStackSlot(pSig->retType, pSig->retTypeClass);
-    if (hasReturnSlot)
+    if (isReturnByRef)
     {
         llvmParamTypes.push_back(getPtrLlvmType());
     }
@@ -2651,9 +2653,6 @@ FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)
             llvmParamTypes.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
         }
     }
-
-    Type* retLlvmType = hasReturnSlot ? Type::getVoidTy(_llvmContext)
-                                      : getLlvmTypeForCorInfoType(pSig->retType, pSig->retTypeClass);
 
     return FunctionType::get(retLlvmType, llvmParamTypes, /* isVarArg */ false);
 }
@@ -2696,11 +2695,12 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpAnyFunc helperFunc)
         argVec.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
     }
 
-    CorInfoType sigRetType = helperInfo.GetSigReturnType();
+    bool isReturnByRef;
     CORINFO_CLASS_HANDLE sigRetClass = helperInfo.GetSigReturnClass(_compiler);
-    assert(!isManagedHelper || !needsReturnStackSlot(sigRetType, sigRetClass));
+    CorInfoType retType = getLlvmReturnType(helperInfo.GetSigReturnType(), sigRetClass, &isReturnByRef);
+    assert(!isReturnByRef);
 
-    Type* retLlvmType = getLlvmTypeForCorInfoType(sigRetType, sigRetClass);
+    Type* retLlvmType = getLlvmTypeForCorInfoType(retType, sigRetClass);
     FunctionType* llvmFuncType = FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
 
     return llvmFuncType;

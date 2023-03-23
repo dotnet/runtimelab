@@ -23492,9 +23492,6 @@ void ReturnTypeDesc::InitializeStructReturnType(Compiler*                comp,
                 m_regType[i] = comp->getJitGCType(gcPtrs[i]);
             }
 
-#elif defined(TARGET_WASM)
-            m_regType[0] = TYP_STRUCT;
-
 #else //  TARGET_XXX
 
             // This target needs support here!

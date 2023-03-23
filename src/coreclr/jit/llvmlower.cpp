@@ -35,7 +35,7 @@ void Llvm::Lower()
 //
 void Llvm::lowerSpillTempsLiveAcrossSafePoints()
 {
-    // Set of SDSUs live at (after) the current node.
+    // Set of SDSUs live after the current node.
     SmallHashTable<GenTree*, unsigned> liveGcDefs(_compiler->getAllocator(CMK_Codegen));
     ArrayStack<unsigned> spillLclsRef(_compiler->getAllocator(CMK_Codegen));
     ArrayStack<unsigned> spillLclsByref(_compiler->getAllocator(CMK_Codegen));
@@ -112,6 +112,23 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
         return false;
     };
 
+    auto spillValue = [this, &getSpillLcl](LIR::Range& blockRange, GenTree* defNode, unsigned* pSpillLclNum) {
+        if (*pSpillLclNum != BAD_VAR_NUM)
+        {
+            // We may have already spilled this def live across multiple safe points.
+            return;
+        }
+
+        unsigned spillLclNum = getSpillLcl(defNode);
+        JITDUMP("Spilling as V%02u:\n", spillLclNum);
+        DISPNODE(defNode);
+
+        GenTree* store = _compiler->gtNewTempAssign(spillLclNum, defNode);
+        blockRange.InsertAfter(defNode, store);
+
+        *pSpillLclNum = spillLclNum;
+    };
+
     for (BasicBlock* block : _compiler->Blocks())
     {
         assert(liveGcDefs.Count() == 0);
@@ -123,6 +140,19 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
             {
                 assert(!isPotentialGcSafePoint(node));
                 continue;
+            }
+
+            // Handle a special case: calls with return buffer pointers need them pinned.
+            if (node->IsCall() && node->AsCall()->gtArgs.HasRetBuffer())
+            {
+                GenTree* retBufNode = node->AsCall()->gtArgs.GetRetBufferArg()->GetNode();
+                if ((retBufNode->gtLIRFlags & LIR::Flags::Mark) != 0)
+                {
+                    unsigned spillLclNum;
+                    liveGcDefs.TryGetValue(retBufNode, &spillLclNum);
+                    spillValue(blockRange, retBufNode, &spillLclNum);
+                    liveGcDefs.AddOrUpdate(retBufNode, spillLclNum);
+                }
             }
 
             GenTree* user = node;
@@ -140,7 +170,7 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
                         continue;
                     }
 
-                    if (isGcTemp(operand))
+                    if ((operand->gtLIRFlags & LIR::Flags::Mark) != 0)
                     {
                         unsigned spillLclNum = BAD_VAR_NUM;
                         bool operandWasRemoved = liveGcDefs.TryRemove(operand, &spillLclNum);
@@ -159,6 +189,8 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
                                     Compiler::dspTreeID(operand), Compiler::dspTreeID(user), spillLclNum);
                             DISPNODE(lclVarNode);
                         }
+
+                        operand->gtLIRFlags &= ~LIR::Flags::Mark;
                     }
                 }
 
@@ -178,27 +210,14 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
 
                 for (auto def : liveGcDefs)
                 {
-                    if (def.Value() != BAD_VAR_NUM)
-                    {
-                        // We may have already spilled this def live across multiple safe points.
-                        continue;
-                    }
-
-                    GenTree* defNode = def.Key();
-                    unsigned spillLclNum = getSpillLcl(defNode);
-                    JITDUMP("Spilling as V%02u:\n", spillLclNum);
-                    DISPNODE(defNode);
-
-                    GenTree* store = _compiler->gtNewTempAssign(spillLclNum, defNode);
-                    blockRange.InsertAfter(defNode, store);
-
-                    def.Value() = spillLclNum;
+                    spillValue(blockRange, def.Key(), &def.Value());
                 }
             }
 
             // Add the value defined by this node.
             if (node->IsValue() && !node->IsUnusedValue() && isGcTemp(node))
             {
+                node->gtLIRFlags |= LIR::Flags::Mark;
                 liveGcDefs.AddOrUpdate(node, BAD_VAR_NUM);
             }
         }
@@ -365,20 +384,19 @@ void Llvm::populateLlvmArgNums()
         shadowStackVarDsc->lvIsParam = true;
     }
 
-    if (needsReturnStackSlot(_sigInfo.retType, _sigInfo.retTypeClass))
-    {
-        _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("returnslot"));
-        LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
-        retAddressVarDsc->lvType = TYP_I_IMPL;
-        retAddressVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
-        retAddressVarDsc->lvLlvmArgNum = nextLlvmArgNum++;
-        retAddressVarDsc->lvIsParam = true;
-    }
-
     if (m_info->compThisArg != BAD_VAR_NUM)
     {
         LclVarDsc* thisVarDsc = _compiler->lvaGetDesc(m_info->compThisArg);
         thisVarDsc->lvCorInfoType = toCorInfoType(thisVarDsc->TypeGet());
+    }
+
+    if (m_info->compRetBuffArg != BAD_VAR_NUM)
+    {
+        // The return buffer is always pinned in our calling convetion, so that we can pass it as an LLVM argument.
+        LclVarDsc* retBufVarDsc = _compiler->lvaGetDesc(m_info->compRetBuffArg);
+        assert(retBufVarDsc->TypeGet() == TYP_BYREF);
+        retBufVarDsc->lvType = TYP_I_IMPL;
+        retBufVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
     }
 
     if (m_info->compTypeCtxtArg != BAD_VAR_NUM)
@@ -821,6 +839,8 @@ void Llvm::lowerCall(GenTreeCall* callNode)
         insertNullCheckForCall(callNode);
     }
 
+    lowerCallReturn(callNode);
+
     unsigned shadowArgsSize = lowerCallToShadowStack(callNode);
 
     if (callNode->IsVirtualStub())
@@ -971,38 +991,18 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
 
     GenTree* retVal = retNode->gtGetOp1();
     LIR::Use retValUse(CurrentRange(), &retNode->gtOp1, retNode);
-    ClassLayout* layout = retNode->TypeIs(TYP_STRUCT) ? _compiler->typGetObjLayout(_sigInfo.retTypeClass) : nullptr;
+    ClassLayout* layout =
+        retNode->TypeIs(TYP_STRUCT) ? _compiler->typGetObjLayout(m_info->compMethodInfo->args.retTypeClass) : nullptr;
     if (retNode->TypeIs(TYP_STRUCT) && retVal->TypeIs(TYP_STRUCT))
     {
         normalizeStructUse(retValUse, layout);
     }
 
-    bool isStructZero = retNode->TypeIs(TYP_STRUCT) && retVal->IsIntegralConst(0);
-    if (_retAddressLclNum != BAD_VAR_NUM)
-    {
-        GenTreeLclVar* retAddrNode = _compiler->gtNewLclvNode(_retAddressLclNum, TYP_I_IMPL);
-        GenTree* storeNode;
-        if (isStructZero)
-        {
-            storeNode = new (_compiler, GT_STORE_BLK) GenTreeBlk(GT_STORE_BLK, TYP_STRUCT, retAddrNode, retVal, layout);
-            storeNode->gtFlags |= (GTF_ASG | GTF_IND_NONFAULTING);
-        }
-        else
-        {
-            // Morph will not create size mismatches beyond the "zero" case handled above,
-            // so here we can store the value (of whichever "actual" type) directly.
-            storeNode = createShadowStackStoreNode(genActualType(retVal), retAddrNode, retVal);
-        }
-
-        retNode->gtOp1 = nullptr;
-        retNode->ChangeType(TYP_VOID);
-
-        CurrentRange().InsertBefore(retNode, retAddrNode, storeNode);
-    }
     // Morph can create pretty much any type mismatch here (struct <-> primitive, primitive <-> struct, etc).
     // Fix these by spilling to a temporary (we could do better but it is not worth it, upstream will get rid
     // of the important cases). Exclude zero-init-ed structs (codegen supports them directly).
-    else if ((retNode->TypeGet() != genActualType(retVal)) && !isStructZero)
+    bool isStructZero = retNode->TypeIs(TYP_STRUCT) && retVal->IsIntegralConst(0);
+    if ((retNode->TypeGet() != genActualType(retVal)) && !isStructZero)
     {
         retValUse.ReplaceWithLclVar(_compiler);
 
@@ -1177,21 +1177,7 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
         assert((callNode->gtCallType == CT_USER_FUNC) && !callNode->IsVarargs());
 
         ArrayStack<TargetAbiType> sig(_compiler->getAllocator(CMK_Codegen));
-        var_types returnType = callNode->TypeGet();
-        if (returnType == TYP_STRUCT)
-        {
-            CorInfoType simpleReturnType = GetPrimitiveTypeForTrivialWasmStruct(callNode->gtRetClsHnd);
-
-            if (returnType == CORINFO_TYPE_UNDEF)
-            {
-                // TODO-LLVM-ABI: implement by-ref passing of structs.
-                NYI("Unmanaged ABI for structs");
-            }
-
-            returnType = JITtype2varType(simpleReturnType);
-        }
-        sig.Push(getAbiTypeForType(returnType));
-
+        sig.Push(getAbiTypeForType(JITtype2varType(callNode->gtCorInfoType)));
         for (CallArg& arg : callNode->gtArgs.Args())
         {
             sig.Push(getAbiTypeForType(JITtype2varType(getLlvmArgTypeForCallArg(&arg))));
@@ -1242,12 +1228,11 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
 //  2) Rewrite arguments and the return to be stored on the shadow stack. We take
 //     the arguments which need to be on the shadow stack, remove them from the call
 //     arguments list, store their values on the shadow stack, at offsets calculated
-//     in a simple increasing order, matching the signature. We also rewrite returns
-//     that must be on the shadow stack, see "lowerCallReturn".
+//     in a simple increasing order, matching the signature.
 //
 // LLVM Arg layout:
 //    - Shadow stack (if required)
-//    - Return slot (if required)
+//    - Return buffer (if required)
 //    - Generic context (if required)
 //    - Args passed as LLVM parameters (not on the shadow stack)
 //
@@ -1265,11 +1250,6 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     {
         GenTree* calleeShadowStack = insertShadowStackAddr(callNode, shadowFrameSize, _shadowStackLclNum);
         callNode->gtArgs.PushFront(_compiler, NewCallArg::Primitive(calleeShadowStack, CORINFO_TYPE_PTR));
-        sigArgIdx--;
-    }
-
-    if (lowerCallReturn(callNode) != nullptr)
-    {
         sigArgIdx--;
     }
 
@@ -1293,7 +1273,8 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             {
                 argSigType = argNode->TypeIs(TYP_REF) ? CORINFO_TYPE_CLASS : CORINFO_TYPE_BYREF;
             }
-            else if (callArg->GetWellKnownArg() == WellKnownArg::InstParam)
+            else if ((callArg->GetWellKnownArg() == WellKnownArg::InstParam) ||
+                     (callArg->GetWellKnownArg() == WellKnownArg::RetBuffer))
             {
                 argSigType = CORINFO_TYPE_PTR;
             }
@@ -1379,78 +1360,35 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     return roundUp(shadowStackUseOffset, TARGET_POINTER_SIZE);
 }
 
-// If the return type must be GC tracked, removes the return type
-// and converts to a return slot arg, modifying the call args, and building the necessary IR
+// Assigns "callNode->gtCorInfoType". After this method, "gtCorInfoType" switches meaning from
+// "the signature return type" to "the ABI return type".
 //
-// Returns:
-//   The "CallArg*" for the created call return slot, if created, otherwise "nullptr"
-CallArg* Llvm::lowerCallReturn(GenTreeCall* callNode)
+void Llvm::lowerCallReturn(GenTreeCall* callNode)
 {
-    CallArg* returnSlot = nullptr;
-
-    if (needsReturnStackSlot(callNode))
+    GenTreeLclVarCommon* lcl;
+    if (callNode->IsOptimizingRetBufAsLocal() && !callNode->gtArgs.GetRetBufferArg()->GetNode()->DefinesLocalAddr(&lcl))
     {
-        // replace the "CALL ref" with a "CALL void" that takes a return address as the first argument
-        GenTree* returnValueAddress = insertShadowStackAddr(callNode, getCurrentShadowFrameSize(), _shadowStackLclNum);
+        // We may have lost track of a shadow local defined by this call. Clear the flag if so.
+        callNode->gtCallMoreFlags &= ~GTF_CALL_M_RETBUFFARG_LCLOPT;
+    }
 
-        // create temp for the return address
-        unsigned returnTempNum = _compiler->lvaGrabTemp(true DEBUGARG("return value address"));
-        LclVarDsc* returnAddrVarDsc = _compiler->lvaGetDesc(returnTempNum);
-        returnAddrVarDsc->lvType = TYP_I_IMPL;
-
-        GenTree* addrStore = _compiler->gtNewStoreLclVar(returnTempNum, returnValueAddress);
-        GenTree* returnAddrLcl = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
-
-        GenTree* returnAddrLclAfterCall = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
-        GenTree* indirNode;
-        if (callNode->TypeIs(TYP_STRUCT))
-        {
-            indirNode = _compiler->gtNewObjNode(callNode->gtRetClsHnd, returnAddrLclAfterCall);
-        }
-        else
-        {
-            indirNode = _compiler->gtNewIndir(callNode->TypeGet(), returnAddrLclAfterCall);
-        }
-        indirNode->gtFlags |= GTF_IND_NONFAULTING;
-        indirNode->SetAllEffectsFlags(GTF_EMPTY);
-
-        LIR::Use callUse;
-        if (CurrentRange().TryGetUse(callNode, &callUse))
-        {
-            callUse.ReplaceWith(indirNode);
-        }
-        else
-        {
-            indirNode->SetUnusedValue();
-            callNode->ClearUnusedValue();
-        }
-
-        // if we are lowering a return, then we will at least have a shadow stack CallArg
-        returnSlot = callNode->gtArgs.InsertAfter(_compiler, callNode->gtArgs.GetArgByIndex(0),
-                                                  NewCallArg::Primitive(returnAddrLcl, CORINFO_TYPE_PTR));
-
-        callNode->gtReturnType = TYP_VOID;
-        callNode->gtCorInfoType = CORINFO_TYPE_VOID;
-        callNode->ChangeType(TYP_VOID);
-
-        CurrentRange().InsertBefore(callNode, addrStore, returnAddrLcl);
-        CurrentRange().InsertAfter(callNode, returnAddrLclAfterCall, indirNode);
+    CorInfoType sigRetType;
+    if (callNode->IsHelperCall())
+    {
+        CorInfoHelpFunc helperFunc = _compiler->eeGetHelperNum(callNode->gtCallMethHnd);
+        sigRetType = getHelperFuncInfo(helperFunc).GetSigReturnType();
+    }
+    else if (callNode->gtCorInfoType == CORINFO_TYPE_UNDEF)
+    {
+        assert(callNode->TypeGet() != TYP_I_IMPL);
+        sigRetType = toCorInfoType(callNode->TypeGet());
     }
     else
     {
-        if (callNode->IsHelperCall())
-        {
-            CorInfoHelpFunc helperFunc = _compiler->eeGetHelperNum(callNode->gtCallMethHnd);
-            callNode->gtCorInfoType = getHelperFuncInfo(helperFunc).GetSigReturnType();
-        }
-        else if (callNode->gtCorInfoType == CORINFO_TYPE_UNDEF)
-        {
-            assert(callNode->TypeGet() != TYP_I_IMPL);
-            callNode->gtCorInfoType = toCorInfoType(callNode->TypeGet());
-        }
+        sigRetType = callNode->gtCorInfoType;
     }
 
-    return returnSlot;
+    callNode->gtCorInfoType = getLlvmReturnType(sigRetType, callNode->gtRetClsHnd);
 }
 
 //------------------------------------------------------------------------
