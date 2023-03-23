@@ -511,9 +511,9 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
         { FUNC(CORINFO_HELP_READYTORUN_ISINSTANCEOF) },
         { FUNC(CORINFO_HELP_READYTORUN_CHKCAST) },
 
-        // Emitted by the compiler as intrinsics. (see "ILCompiler.LLVM\CodeGen\LLVMObjectWriter.cs", "GetCodeForReadyToRunGenericHelper").
+        // Emitted by the compiler as intrinsics. (see "ILCompiler.LLVM\CodeGen\LLVMObjectWriter.cs", "GetCodeForReadyToRunGenericHelper" and others).
         { FUNC(CORINFO_HELP_READYTORUN_STATIC_BASE) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_READYTORUN_VIRTUAL_FUNC_PTR) }, // Not used in NativeAOT.
+        { FUNC(CORINFO_HELP_READYTORUN_VIRTUAL_FUNC_PTR) CORINFO_TYPE_PTR, { CORINFO_TYPE_CLASS } },
         { FUNC(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG | HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_READYTORUN_DELEGATE_CTOR) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS, CORINFO_TYPE_CLASS, CORINFO_TYPE_PTR }, HFIF_SS_ARG | HFIF_VAR_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
