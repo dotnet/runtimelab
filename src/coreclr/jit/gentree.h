@@ -4342,6 +4342,9 @@ struct CallArgABIInformation
 #ifdef TARGET_LOONGARCH64
         , StructFloatFieldType()
 #endif
+#ifdef TARGET_WASM
+        , IsPointer(false)
+#endif
         , ArgType(TYP_UNDEF)
         , IsBackFilled(false)
         , IsStruct(false)
@@ -4385,6 +4388,10 @@ public:
     // e.g  `struct {int a; float b;}` passed by an integer register and a float register.
     var_types StructFloatFieldType[2];
 #endif
+#ifdef TARGET_WASM
+    // Whether the ABI type of this argument is an unmanaged pointer.
+    bool IsPointer : 1;
+#endif // TARGET_WASM
     // The type used to pass this argument. This is generally the original
     // argument type, but when a struct is passed as a scalar type, this is
     // that type. Note that if a struct is passed by reference, this will still
@@ -4653,7 +4660,6 @@ public:
     var_types GetSignatureType() { return m_signatureType; }
 #ifdef TARGET_WASM
     CorInfoType GetSignatureCorInfoType() { return m_signatureCorInfoType; }
-    void SetSignatureCorInfoType(CorInfoType signatureCorInfoType) { m_signatureCorInfoType = signatureCorInfoType; }
 #endif
     WellKnownArg GetWellKnownArg() { return m_wellKnownArg; }
     bool IsTemp() { return m_isTmp; }

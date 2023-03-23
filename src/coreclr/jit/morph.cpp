@@ -3495,7 +3495,7 @@ GenTreeCall* Compiler::fgMorphArgs(GenTreeCall* call)
 #endif
 
 #if defined(TARGET_X86) || defined(TARGET_WASM)
-        if (isStructArg)
+        if (isStructArg && !arg.AbiInfo.PassedByRef)
         {
             GenTreeLclVar* lcl = nullptr;
 

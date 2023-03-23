@@ -350,7 +350,7 @@ protected:
     }
 
 public:
-#ifdef DEBUG
+#if defined(DEBUG) || defined(TARGET_WASM)
     class Iterator;
 
     class KeyValuePair final
@@ -456,7 +456,7 @@ public:
     {
         return Iterator(m_buckets, m_numBuckets, m_numBuckets);
     }
-#endif // DEBUG
+#endif // defined(DEBUG) || defined(TARGET_WASM)
 
     unsigned Count() const
     {
