@@ -442,11 +442,13 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="@(NativeObjects->'&quot;%(Identity)&quot;')" />
       <CustomLinkerArg Include="-o &quot;$(NativeBinary)&quot;" />
       <CustomLinkerArg Condition="'$(WasmHtmlTemplate)' != ''" Include="--shell-file &quot;$(WasmHtmlTemplate)&quot;" />
+      <CustomLinkerArg Condition="'$(ExportsFile)' != ''" Include="-s EXPORTED_FUNCTIONS=@&quot;$(ExportsFile)&quot;" />
       <CustomLinkerArg Include="-s ALLOW_MEMORY_GROWTH=1" />
       <CustomLinkerArg Include="-s DISABLE_EXCEPTION_CATCHING=0" />
       <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-O2 -flto" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
+      <CustomLinkerArg Condition="$(NativeLib) == 'Shared'" Include="-Wl,--export,NativeAOT_StaticInitialization" />
       <CustomLinkerArg Include="@(LinkerArg)" />
     </ItemGroup>
 
@@ -456,7 +458,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <Message Text="Emscripten not found, not linking WebAssembly. To enable WebAssembly linking, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
              Condition="'$(NativeCodeGen)' == 'llvm' and '$(EMSDK)' == ''" Importance="High" />
   </Target>
-  
+
   <Target Name="LinkNative"
       DependsOnTargets="$(LinkNativeDependsOnSingleOrLlvm)">
   </Target>
