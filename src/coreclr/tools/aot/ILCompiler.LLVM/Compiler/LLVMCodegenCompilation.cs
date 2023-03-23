@@ -60,8 +60,9 @@ namespace ILCompiler
 
         protected override void CompileInternal(string outputFile, ObjectDumper dumper)
         {
-            _outputFile = outputFile;
+            Stopwatch stopwatch = Stopwatch.StartNew();
 
+            _outputFile = outputFile;
             CorInfoImpl.JitStartCompilation();
 
             _dependencyGraph.ComputeMarkedNodes();
@@ -74,6 +75,8 @@ namespace ILCompiler
             CorInfoImpl.JitFinishCompilation();
 
             LLVMObjectWriter.EmitObject(outputFile, _dependencyGraph.MarkedNodeList, this, dumper);
+
+            Console.WriteLine($"LLVM bitcode generation finished in {stopwatch.Elapsed.TotalSeconds:0.##} seconds");
         }
 
         protected override void ComputeDependencyNodeDependencies(List<DependencyNodeCore<NodeFactory>> obj)
