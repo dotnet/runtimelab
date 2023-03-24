@@ -24,7 +24,7 @@ namespace System.Diagnostics
 
             fixed (byte* curChar = backtraceBuffer)
             {
-                callstackLen = emscripten_get_callstack(8 /* original source stack if source maps available, not tested */, curChar, backtraceBuffer.Length);
+                callstackLen = emscripten_get_callstack(16 /* EM_LOG_JS_STACK */, curChar, backtraceBuffer.Length);
             }
             int _numOfFrames = 1;
             int lineStartIx = 0;

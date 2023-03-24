@@ -18,9 +18,7 @@ class Program
         TestAbstractDerivedByUnrelatedTypeWithDevirtualizedCall.Run();
         TestUnusedDefaultInterfaceMethod.Run();
         TestArrayElementTypeOperations.Run();
-#if !CODEGEN_WASM // TODO-LLVM: Fails in at runtime
         TestStaticVirtualMethodOptimizations.Run();
-#endif
         TestTypeEquals.Run();
 
         return 100;

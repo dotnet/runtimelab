@@ -21,7 +21,6 @@ enum class EEApiId
     GetMangledMethodName,
     GetSymbolMangledName,
     GetSignatureForMethodSymbol,
-    GetEHDispatchFunctionName, // TODO-LLVM: move these to the LLVM helper mechanism.
     AddCodeReloc,
     IsRuntimeImport,
     GetDocumentFileName,
@@ -89,6 +88,7 @@ size_t HelperFuncInfo::GetSigArgCount(unsigned* callArgCount) const
         count++;
     }
 
+    assert(count <= MAX_SIG_ARG_COUNT);
     return count;
 }
 
@@ -579,6 +579,12 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
 
         { FUNC(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP) CORINFO_TYPE_PTR, { }, HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
+
+        { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH) CORINFO_TYPE_INT, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER) CORINFO_TYPE_INT, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING) CORINFO_TYPE_INT, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+
     };
     // clang-format on
 
@@ -822,11 +828,6 @@ const char* Llvm::GetMangledSymbolName(void* symbol)
 bool Llvm::GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig)
 {
     return CallEEApi<EEApiId::GetSignatureForMethodSymbol, int>(m_pEECorInfo, symbolHandle, pSig) != 0;
-}
-
-const char* Llvm::GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType)
-{
-    return CallEEApi<EEApiId::GetEHDispatchFunctionName, const char*>(m_pEECorInfo, handlerType);
 }
 
 void Llvm::AddCodeReloc(void* handle)

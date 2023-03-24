@@ -370,6 +370,7 @@ bool GCToOSInterface::Initialize()
     // support for FlusProcessWriteBuffers
     //
 
+#ifndef TARGET_WASM
     assert(s_flushUsingMemBarrier == 0);
 
     if (CanFlushUsingMembarrier())
@@ -409,6 +410,7 @@ bool GCToOSInterface::Initialize()
         }
     }
 #endif // !TARGET_OSX
+#endif // !TARGET_WASM
 
     InitializeCGroup();
 
@@ -519,7 +521,7 @@ bool GCToOSInterface::CanGetCurrentProcessorNumber()
     return HAVE_SCHED_GETCPU;
 }
 
-#if !TARGET_WASM
+#ifndef TARGET_WASM
 // Flush write buffers of processors that are executing threads of the current process
 void GCToOSInterface::FlushProcessWriteBuffers()
 {
