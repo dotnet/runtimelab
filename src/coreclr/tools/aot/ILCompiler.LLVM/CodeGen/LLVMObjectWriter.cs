@@ -617,6 +617,11 @@ namespace ILCompiler.DependencyAnalysis
 
         private void GetCodeForReadyToRunHelper(ReadyToRunHelperNode node, NodeFactory factory)
         {
+            if (node.Id == ReadyToRunHelperId.VirtualCall)
+            {
+                GetCodeForVirtualCallHelper(node);
+                return;
+            }
             if (node.Id == ReadyToRunHelperId.DelegateCtor)
             {
                 GetCodeForDelegateCtorHelper(node);
@@ -703,6 +708,40 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             builder.BuildRet(result);
+        }
+
+        private void GetCodeForVirtualCallHelper(ReadyToRunHelperNode node)
+        {
+            MethodDesc targetMethod = (MethodDesc)node.Target;
+            Debug.Assert(!targetMethod.OwningType.IsInterface);
+            Debug.Assert(!targetMethod.CanMethodBeInSealedVTable());
+            Debug.Assert(!targetMethod.RequiresInstArg());
+
+            string helperFuncName = node.GetMangledName(_compilation.NameMangler);
+            LLVMTypeRef funcType = _compilation.GetLLVMSignatureForMethod(isManagedAbi: true, targetMethod.Signature, hasHiddenParam: false);
+            LLVMValueRef helperFunc = GetOrCreateLLVMFunction(helperFuncName, funcType);
+
+            using LLVMBuilderRef builder = _module.Context.CreateBuilder();
+            builder.PositionAtEnd(helperFunc.AppendBasicBlock("VirtualCall"));
+
+            LLVMValueRef objThis = builder.BuildLoad2(_ptrType, helperFunc.GetParam(0), "objThis");
+            LLVMValueRef pTargetMethod = OutputCodeForVTableLookup(builder, objThis, targetMethod);
+
+            LLVMValueRef[] args = new LLVMValueRef[helperFunc.ParamsCount];
+            for (uint i = 0; i < args.Length; i++)
+            {
+                args[i] = helperFunc.GetParam(i);
+            }
+
+            LLVMValueRef callTarget = builder.BuildCall2(funcType, pTargetMethod, args);
+            if (funcType.ReturnType != LLVMTypeRef.Void)
+            {
+                builder.BuildRet(callTarget);
+            }
+            else
+            {
+                builder.BuildRetVoid();
+            }
         }
 
         private void GetCodeForDelegateCtorHelper(AssemblyStubNode node)
