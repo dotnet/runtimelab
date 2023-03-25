@@ -47,8 +47,8 @@ namespace System.Runtime
         {
             object exception = BeginSingleDispatch(RhEHClauseKind.RH_EH_CLAUSE_UNUSED, pEHTable, pShadowFrame, pDispatchData);
 
-            EHRyuJitClauseIteratorWasm clauseIter = new EHRyuJitClauseIteratorWasm(pEHTable);
-            EHRyuJitClauseWasm clause;
+            EHClauseIteratorWasm clauseIter = new EHClauseIteratorWasm(pEHTable);
+            EHClauseWasm clause;
             while (clauseIter.Next(&clause))
             {
                 WasmEHLogEHTableEntry(clause, pShadowFrame);
@@ -56,7 +56,7 @@ namespace System.Runtime
                 bool foundHandler = false;
                 if (clause.Filter != null)
                 {
-                    if (CallFilterFunclet(clause.Filter, exception, pShadowFrame, ryuJitAbi: true))
+                    if (CallFilterFunclet(clause.Filter, exception, pShadowFrame))
                     {
                         foundHandler = true;
                     }
@@ -83,7 +83,7 @@ namespace System.Runtime
         {
             object exception = BeginSingleDispatch(RhEHClauseKind.RH_EH_CLAUSE_FILTER, null, pShadowFrame, pDispatchData);
 
-            if (CallFilterFunclet(pFilter, exception, pShadowFrame, ryuJitAbi: true))
+            if (CallFilterFunclet(pFilter, exception, pShadowFrame))
             {
                 __cxa_end_catch();
                 return CallCatchFunclet(pHandler, exception, pShadowFrame);
@@ -107,13 +107,13 @@ namespace System.Runtime
 
         private static void HandleExceptionWasmFault(void* pShadowFrame, DispatchData* pDispatchData, void* pHandler)
         {
-            // TODO-LLVM-EH: for compatiblity with the IL backend we will invoke faults/finallys even if we do not find
-            // a suitable catch in a frame. A correct implementation of this will require us to keep a stack of pending
-            // faults/finallys (inside the native exception), to be invoked at the point we find the handling frame. We
-            // should also fail fast instead of invoking the second pass handlers if the exception goes unhandled.
+            // TODO-LLVM-EH: we invoke faults/finallys even if we do not find a suitable catch in a frame. A correct
+            // implementation of this will require us to keep a stack of pending faults/finallys (inside the native
+            // exception), to be invoked at the point we find the handling frame. We should also fail fast instead
+            // of invoking the second pass handlers if the exception goes unhandled.
             //
             object exception = BeginSingleDispatch(RhEHClauseKind.RH_EH_CLAUSE_FAULT, null, pShadowFrame, pDispatchData);
-            CallFinallyFunclet(pHandler, pShadowFrame, ryuJitAbi: true);
+            CallFinallyFunclet(pHandler, pShadowFrame);
             DispatchContinueSearch(exception, pDispatchData);
         }
 
@@ -164,181 +164,50 @@ namespace System.Runtime
         [RuntimeExport("RhpThrowEx")]
         private static void RhpThrowEx(object exception)
         {
+#if INPLACE_RUNTIME
+            // Turn "throw null" into "throw new NullReferenceException()".
+            exception ??= new NullReferenceException();
+#endif
             Exception.DispatchExLLVM(exception);
             InternalCalls.RhpThrowNativeException(exception);
         }
 
         [RuntimeExport("RhpRethrow")]
-        private static void RhpRethrow(void** pException) // TODO-LLVM: use object* once C#11 is available.
+        private static void RhpRethrow(void** pException) // TODO-LLVM: update to be typed "object*" once C#11 is available.
         {
             RhpThrowEx(Unsafe.Read<object>(pException));
-        }
-
-        // The below two handlers are invoked by LLVM code generated via the IL backend.
-        //
-        internal struct RhEHClauseWasm
-        {
-            internal uint _tryStartOffset;
-            internal EHClauseIterator.RhEHClauseKindWasm _clauseKind;
-            internal uint _tryEndOffset;
-            internal uint _typeSymbol;
-            internal byte* _handlerAddress;
-            internal byte* _filterAddress;
-
-            public bool ContainsCodeOffset(uint idxTryLandingStart)
-            {
-                return (idxTryLandingStart >= _tryStartOffset) && (idxTryLandingStart < _tryEndOffset);
-            }
-        }
-
-        private static bool FindFirstPassHandlerWasm(object exception, uint idxStart, uint idxCurrentBlockStart /* the start IL idx of the current block for the landing pad, will use in place of PC */,
-            void* shadowStack, ref EHClauseIterator clauseIter, out uint tryRegionIdx, out byte* pHandler)
-        {
-            WasmEHLogFirstPassEnter(exception, idxCurrentBlockStart, shadowStack);
-
-            pHandler = null;
-            tryRegionIdx = MaxTryRegionIdx;
-
-            uint lastTryStart = 0, lastTryEnd = 0;
-            RhEHClauseWasm ehClause = new RhEHClauseWasm();
-            for (uint curIdx = 0; clauseIter.Next(ref ehClause); curIdx++)
-            {
-                WasmEHLogEHInfoEntry(&ehClause, curIdx, "1", shadowStack);
-                //
-                // Skip to the starting try region.  This is used by collided unwinds and rethrows to pickup where
-                // the previous dispatch left off.
-                //
-                if (idxStart != MaxTryRegionIdx)
-                {
-                    if (curIdx <= idxStart)
-                    {
-                        lastTryStart = ehClause._tryStartOffset;
-                        lastTryEnd = ehClause._tryEndOffset;
-                        continue;
-                    }
-
-                    // Now, we continue skipping while the try region is identical to the one that invoked the
-                    // previous dispatch.
-                    if ((ehClause._tryStartOffset == lastTryStart) && (ehClause._tryEndOffset == lastTryEnd))
-                    {
-                        continue;
-                    }
-
-                    // We are done skipping. This is required to handle empty finally block markers that are used
-                    // to separate runs of different try blocks with same native code offsets.
-                    idxStart = MaxTryRegionIdx;
-                }
-
-                EHClauseIterator.RhEHClauseKindWasm clauseKind = ehClause._clauseKind;
-                if (((clauseKind != EHClauseIterator.RhEHClauseKindWasm.RH_EH_CLAUSE_TYPED) &&
-                     (clauseKind != EHClauseIterator.RhEHClauseKindWasm.RH_EH_CLAUSE_FILTER))
-                    || !ehClause.ContainsCodeOffset(idxCurrentBlockStart))
-                {
-                    continue;
-                }
-
-                // Found a containing clause. Because of the order of the clauses, we know this is the
-                // most containing.
-                if (clauseKind == EHClauseIterator.RhEHClauseKindWasm.RH_EH_CLAUSE_TYPED)
-                {
-                    if (ShouldTypedClauseCatchThisException(exception, (MethodTable*)ehClause._typeSymbol))
-                    {
-                        pHandler = ehClause._handlerAddress;
-                        tryRegionIdx = curIdx;
-
-                        WasmEHLogFirstPassExit(pHandler, shadowStack);
-                        return true;
-                    }
-                }
-                else
-                {
-                    bool shouldInvokeHandler = CallFilterFunclet(ehClause._filterAddress, exception, shadowStack, ryuJitAbi: false);
-                    if (shouldInvokeHandler)
-                    {
-                        pHandler = ehClause._handlerAddress;
-                        tryRegionIdx = curIdx;
-
-                        WasmEHLogFirstPassExit(pHandler, shadowStack);
-                        return true;
-                    }
-                }
-            }
-
-            WasmEHLogFirstPassExit(null, shadowStack);
-            return false;
-        }
-
-        private static void InvokeSecondPassWasm(uint idxStart, uint idxTryLandingStart /* we do dont have the PC, so use the start of the block */,
-            ref EHClauseIterator clauseIter, uint idxLimit, void* shadowStack)
-        {
-            // Search the clauses for one that contains the current offset.
-            RhEHClauseWasm ehClause = new RhEHClauseWasm();
-            for (uint curIdx = 0; clauseIter.Next(ref ehClause) && curIdx < idxLimit; curIdx++)
-            {
-                if (curIdx > idxStart)
-                {
-                    break; // these blocks are after the catch
-                }
-
-                EHClauseIterator.RhEHClauseKindWasm clauseKind = ehClause._clauseKind;
-
-                if ((clauseKind != EHClauseIterator.RhEHClauseKindWasm.RH_EH_CLAUSE_FAULT)
-                    || !ehClause.ContainsCodeOffset(idxTryLandingStart))
-                {
-                    continue;
-                }
-
-                // Found a containing clause. Because of the order of the clauses, we know this is the
-                // most containing.
-                CallFinallyFunclet(ehClause._handlerAddress, shadowStack, ryuJitAbi: false);
-            }
         }
 
         private static int CallCatchFunclet(void* pFunclet, object exception, void* pShadowFrame)
         {
             // IL backend invokes the catch handler in generated code.
-            WasmEHLogFunletEnter(pFunclet, RhEHClauseKind.RH_EH_CLAUSE_TYPED, pShadowFrame, ryuJitAbi: true);
+            WasmEHLogFunletEnter(pFunclet, RhEHClauseKind.RH_EH_CLAUSE_TYPED, pShadowFrame);
             int catchRetIdx = ((delegate*<object, void*, int>)pFunclet)(exception, pShadowFrame);
-            WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_TYPED, catchRetIdx, pShadowFrame, ryuJitAbi: true);
+            WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_TYPED, catchRetIdx, pShadowFrame);
 
             return catchRetIdx;
         }
 
-        private static bool CallFilterFunclet(void* pFunclet, object exception, void* pShadowFrame, bool ryuJitAbi)
+        private static bool CallFilterFunclet(void* pFunclet, object exception, void* pShadowFrame)
         {
-            bool result;
-            WasmEHLogFunletEnter(pFunclet, RhEHClauseKind.RH_EH_CLAUSE_FILTER, pShadowFrame, ryuJitAbi);
-            if (ryuJitAbi)
-            {
-                result = ((delegate*<object, void*, int>)pFunclet)(exception, pShadowFrame) != 0;
-            }
-            else
-            {
-                result = InternalCalls.RhpCallFilterFunclet(exception, (byte*)pFunclet, pShadowFrame);
-            }
-            WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_FILTER, result ? 1 : 0, pShadowFrame, ryuJitAbi);
+            WasmEHLogFunletEnter(pFunclet, RhEHClauseKind.RH_EH_CLAUSE_FILTER, pShadowFrame);
+            bool result = ((delegate*<object, void*, int>)pFunclet)(exception, pShadowFrame) != 0;
+            WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_FILTER, result ? 1 : 0, pShadowFrame);
 
             return result;
         }
 
-        private static void CallFinallyFunclet(void* pFunclet, void* pShadowFrame, bool ryuJitAbi)
+        private static void CallFinallyFunclet(void* pFunclet, void* pShadowFrame)
         {
-            WasmEHLogFunletEnter(pFunclet, RhEHClauseKind.RH_EH_CLAUSE_FAULT, pShadowFrame, ryuJitAbi);
-            if (ryuJitAbi)
-            {
-                ((delegate*<void*, void>)pFunclet)(pShadowFrame);
-            }
-            else
-            {
-                InternalCalls.RhpCallFinallyFunclet((byte*)pFunclet, pShadowFrame);
-            }
-            WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_FAULT, 0, pShadowFrame, ryuJitAbi);
+            WasmEHLogFunletEnter(pFunclet, RhEHClauseKind.RH_EH_CLAUSE_FAULT, pShadowFrame);
+            ((delegate*<void*, void>)pFunclet)(pShadowFrame);
+            WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_FAULT, 0, pShadowFrame);
         }
 
         [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
-        private static void WasmEHLog(string message, void* pShadowFrame, string pass, bool ryuJitAbi)
+        private static void WasmEHLog(string message, void* pShadowFrame, string pass)
         {
-            string log = "WASM EH/" + (ryuJitAbi ? "RyuJit" : "IL");
+            string log = "WASM EH";
             log += " [SF: " + ToHex(pShadowFrame) + "]";
             log += " [" + pass + "]";
             log += ": " + message + Environment.NewLineConst;
@@ -360,15 +229,15 @@ namespace System.Runtime
         {
             string description = GetClauseDescription(kind, data);
             string pass = kind == RhEHClauseKind.RH_EH_CLAUSE_FAULT ? "2" : "1";
-            WasmEHLog("Handling" + (isActive ? " (active)" : "") + ": " + description, pShadowFrame, pass, ryuJitAbi: true);
+            WasmEHLog("Handling" + (isActive ? " (active)" : "") + ": " + description, pShadowFrame, pass);
         }
 
         [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
-        private static void WasmEHLogEHTableEntry(EHRyuJitClauseWasm clause, void* pShadowFrame)
+        private static void WasmEHLogEHTableEntry(EHClauseWasm clause, void* pShadowFrame)
         {
             string description = clause.Filter != null ? GetClauseDescription(RhEHClauseKind.RH_EH_CLAUSE_FILTER, clause.Filter)
                                                        : GetClauseDescription(RhEHClauseKind.RH_EH_CLAUSE_TYPED, clause.ClauseType);
-            WasmEHLog("Clause: " + description, pShadowFrame, "1", ryuJitAbi: true);
+            WasmEHLog("Clause: " + description, pShadowFrame, "1");
         }
 
         private static string GetClauseDescription(RhEHClauseKind kind, void* data) => kind switch
@@ -380,7 +249,7 @@ namespace System.Runtime
         };
 
         [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
-        private static void WasmEHLogFunletEnter(void* pHandler, RhEHClauseKind kind, void* pShadowFrame, bool ryuJitAbi)
+        private static void WasmEHLogFunletEnter(void* pHandler, RhEHClauseKind kind, void* pShadowFrame)
         {
             (string name, string pass) = kind switch
             {
@@ -389,11 +258,11 @@ namespace System.Runtime
                 _ => ("catch", "2")
             };
 
-            WasmEHLog("Calling " + name + " funclet at [" + ToHex(pHandler) + "]", pShadowFrame, pass, ryuJitAbi);
+            WasmEHLog("Calling " + name + " funclet at [" + ToHex(pHandler) + "]", pShadowFrame, pass);
         }
 
         [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
-        private static void WasmEHLogFunletExit(RhEHClauseKind kind, int result, void* pShadowFrame, bool ryuJitAbi)
+        private static void WasmEHLogFunletExit(RhEHClauseKind kind, int result, void* pShadowFrame)
         {
             (string resultString, string pass) = kind switch
             {
@@ -402,48 +271,7 @@ namespace System.Runtime
                 _ => (ToHex(result), "2")
             };
 
-            WasmEHLog("Funclet returned: " + resultString, pShadowFrame, pass, ryuJitAbi);
-        }
-
-        [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
-        private static void WasmEHLogFirstPassEnter(object exception, uint codeIdx, void* pShadowFrame)
-        {
-            WasmEHLog("Pass start; at: " + ToHex(codeIdx) + ", exception: [" + exception.GetTypeHandle().LastResortToString + "]",
-                pShadowFrame, "1", ryuJitAbi: false);
-        }
-
-        [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
-        private static void WasmEHLogFirstPassExit(void* pHandler, void* pShadowFrame)
-        {
-            WasmEHLog("Pass end; handler " + (pHandler != null ? "found at [" + ToHex(pHandler) + "]" : "not found"),
-                pShadowFrame, "1", ryuJitAbi: false);
-        }
-
-        [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
-        private static void WasmEHLogEHInfoEntry(RhEHClauseWasm* pClause, uint index, string pass, void* pShadowFrame)
-        {
-            string tryBeg = ToHex(pClause->_tryStartOffset);
-            string tryEnd = ToHex(pClause->_tryEndOffset);
-            string hndAddr = ToHex(pClause->_handlerAddress);
-            string log = "EH#" + ToHex(index) + ": try [" + tryBeg + ".." + tryEnd + ") handled by [" + hndAddr + "]";
-
-            switch (pClause->_clauseKind)
-            {
-                case EHClauseIterator.RhEHClauseKindWasm.RH_EH_CLAUSE_FILTER:
-                    log += ", filter at [" + ToHex(pClause->_filterAddress) + "]";
-                    break;
-                case EHClauseIterator.RhEHClauseKindWasm.RH_EH_CLAUSE_TYPED:
-                    log += ", class [" + new RuntimeTypeHandle(new EETypePtr((MethodTable*)pClause->_typeSymbol)).LastResortToString + "]";
-                    break;
-                case EHClauseIterator.RhEHClauseKindWasm.RH_EH_CLAUSE_FAULT:
-                    log += ", fault";
-                    break;
-                default:
-                    log += ", unknown?!";
-                    break;
-            }
-
-            WasmEHLog(log, pShadowFrame, pass, ryuJitAbi: false);
+            WasmEHLog("Funclet returned: " + resultString, pShadowFrame, pass);
         }
 
         private static string ToHex(uint value) => ToHex((int)value);
@@ -459,6 +287,84 @@ namespace System.Runtime
             }
 
             return new string(chars, 0, length);
+        }
+
+        // This iterator is used for EH tables produces by codegen for runs of mutually protecting catch handlers.
+        //
+        internal unsafe struct EHClauseWasm
+        {
+            public void* Handler;
+            public void* Filter;
+            public MethodTable* ClauseType;
+        }
+
+        // See codegen code ("jit/llvmcodegen.cpp, generateEHDispatchTable") for details on the format of the table.
+        //
+        internal unsafe struct EHClauseIteratorWasm
+        {
+            private const nuint HeaderRecordSize = 1;
+            private const nuint ClauseRecordSize = 2;
+            private static nuint FirstSectionSize => HeaderRecordSize + (nuint)sizeof(nuint) / 2 * 8 * ClauseRecordSize;
+            private static nuint LargeSectionSize => HeaderRecordSize + (nuint)sizeof(nuint) * 8 * ClauseRecordSize;
+
+            private readonly void** _pTableEnd;
+            private void** _pCurrentSectionClauses;
+            private void** _pNextSection;
+            private nuint _currentIndex;
+            private nuint _clauseKindMask;
+
+            public EHClauseIteratorWasm(void** pEHTable)
+            {
+                _pCurrentSectionClauses = pEHTable + HeaderRecordSize;
+                _pNextSection = pEHTable + FirstSectionSize;
+                _currentIndex = 0;
+#if TARGET_32BIT
+                _clauseKindMask = ((ushort*)pEHTable)[1];
+                nuint tableSize = ((ushort*)pEHTable)[0];
+#else
+                _clauseKindMask = ((uint*)pEHTable)[1];
+                nuint tableSize = ((uint*)pEHTable)[0];
+#endif
+                _pTableEnd = pEHTable + tableSize;
+            }
+
+            public bool Next(EHClauseWasm* pClause)
+            {
+                void** pCurrent = _pCurrentSectionClauses + _currentIndex * ClauseRecordSize;
+                if (pCurrent >= _pTableEnd)
+                {
+                    return false;
+                }
+
+                if ((_clauseKindMask & ((nuint)1 << (int)_currentIndex)) != 0)
+                {
+                    pClause->Filter = pCurrent[0];
+                    pClause->ClauseType = null;
+                }
+                else
+                {
+                    pClause->Filter = null;
+                    pClause->ClauseType = (MethodTable*)pCurrent[0];
+                }
+
+                pClause->Handler = pCurrent[1];
+
+                // Initialize the state for the next iteration.
+                void** pCurrentNext = pCurrent + ClauseRecordSize;
+                if ((pCurrentNext != _pTableEnd) && (pCurrentNext == _pNextSection))
+                {
+                    _pCurrentSectionClauses = pCurrentNext + HeaderRecordSize;
+                    _pNextSection += LargeSectionSize;
+                    _currentIndex = 0;
+                    _clauseKindMask = (nuint)pCurrentNext[0];
+                }
+                else
+                {
+                    _currentIndex++;
+                }
+
+                return true;
+            }
         }
     }
 }

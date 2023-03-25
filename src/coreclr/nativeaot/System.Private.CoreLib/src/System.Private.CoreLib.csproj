@@ -596,13 +596,10 @@
     <Compile Include="$(RuntimeBasePath)System\Runtime\ExceptionHandling.wasm.cs" Condition="'$(WasmAbi)' == 'true'">
       <Link>Runtime.Base\src\System\Runtime\ExceptionHandling.wasm.cs</Link>
     </Compile>
-    <Compile Include="$(RuntimeBasePath)System\Runtime\StackFrameIterator.wasm.cs" Condition="'$(WasmAbi)' == 'true'">
-      <Link>Runtime.Base\src\System\Runtime\StackFrameIterator.wasm.cs</Link>
-    </Compile>
   </ItemGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
-    <Compile Include="$(IntermediatesDir)\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(WasmAbi)' != 'true'"/>
-    <Compile Include="$(IntermediatesDir.Replace('\ide', ''))\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(WasmAbi)' == 'true'"/> <!-- its never in \ide\ -->
+    <Compile Include="$(IntermediatesDir)\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(WasmAbi)' != 'true'" />
+    <Compile Include="$(IntermediatesDir.Replace('\ide', ''))\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(WasmAbi)' == 'true'" /> <!-- its never in \ide\ -->
   </ItemGroup>
 
   <Import Project="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System.Private.CoreLib.Shared.projitems" Label="Shared" />

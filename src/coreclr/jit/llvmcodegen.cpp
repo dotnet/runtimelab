@@ -80,7 +80,7 @@ void Llvm::Compile()
 bool Llvm::initializeFunctions()
 {
     const char* mangledName = GetMangledMethodName(m_info->compMethodHnd);
-    Function* rootLlvmFunction = getOrCreateKnownLlvmFunction(mangledName, [=]() { return getFunctionType(); });
+    Function* rootLlvmFunction = getOrCreateKnownLlvmFunction(mangledName, [=]() { return createFunctionType(); });
     if (!rootLlvmFunction->isDeclaration())
     {
         BADCODE("Duplicate definition");
@@ -442,61 +442,6 @@ void Llvm::generateEHDispatch()
             Function::Create(gxxPersonalityLlvmFuncType, Function::ExternalLinkage, GXX_PERSONALITY_NAME, _module);
     }
 
-    // Recover the runtime helper routines. TODO-LLVM: use proper "CorInfoHelpFunc"s for these.
-    Function* dispatchLlvmFuncs[EH_HANDLER_COUNT]{};
-    auto getDispatchLlvmFunc = [&](EHblkDsc* hndDsc) {
-        Function** pDispatchLlvmFunc;
-        if (hndDsc == nullptr)
-        {
-            static_assert_no_msg(EH_HANDLER_CATCH == 1); // We rely on zero being invalid.
-            pDispatchLlvmFunc = &dispatchLlvmFuncs[0];
-        }
-        else
-        {
-            pDispatchLlvmFunc = &dispatchLlvmFuncs[hndDsc->ebdHandlerType];
-        }
-
-        Function* dispatchLlvmFunc = *pDispatchLlvmFunc;
-        if (dispatchLlvmFunc == nullptr)
-        {
-            CORINFO_EH_CLAUSE_FLAGS eeHndType = (hndDsc == nullptr) ? CORINFO_EH_CLAUSE_SAMETRY
-                                                                    : ToCORINFO_EH_CLAUSE_FLAGS(hndDsc->ebdHandlerType);
-            const char* dispatchFuncName = GetEHDispatchFunctionName(eeHndType);
-            dispatchLlvmFunc = _module->getFunction(dispatchFuncName);
-            if (dispatchLlvmFunc == nullptr)
-            {
-                FunctionType* dispatchLlvmFuncType;
-                switch (eeHndType)
-                {
-                    case CORINFO_EH_CLAUSE_NONE:
-                    case CORINFO_EH_CLAUSE_FILTER:
-                        dispatchLlvmFuncType = FunctionType::get(
-                            int32LlvmType, {ptrLlvmType, ptrLlvmType, ptrLlvmType, ptrLlvmType, ptrLlvmType},
-                            /* isVarArg */ false);
-                        break;
-                    case CORINFO_EH_CLAUSE_SAMETRY:
-                        dispatchLlvmFuncType = FunctionType::get(
-                            int32LlvmType, {ptrLlvmType, ptrLlvmType, ptrLlvmType, ptrLlvmType}, /* isVarArg */ false);
-                        break;
-                    case CORINFO_EH_CLAUSE_FAULT:
-                    case CORINFO_EH_CLAUSE_FINALLY:
-                        dispatchLlvmFuncType = FunctionType::get(
-                            Type::getVoidTy(_llvmContext), {ptrLlvmType, ptrLlvmType, ptrLlvmType, ptrLlvmType},
-                            /* isVarArg */ false);
-                        break;
-                    default:
-                        unreached();
-                }
-
-                dispatchLlvmFunc =
-                    Function::Create(dispatchLlvmFuncType, Function::ExternalLinkage, dispatchFuncName, _module);
-                *pDispatchLlvmFunc = dispatchLlvmFunc;
-            }
-        }
-
-        return dispatchLlvmFunc;
-    };
-
     BitVecTraits blockVecTraits(_compiler->fgBBNumMax + 1, _compiler);
 
     struct DispatchData
@@ -637,7 +582,6 @@ void Llvm::generateEHDispatch()
         // The dispatcher uses the passed-in shadow stack pointer to call funclets. All funclets (no matter how
         // nested) share the same original shadow frame, thus we need to pass the original shadow stack in case
         // the exception is being dispatched out of a funclet.
-        Value* dispatcherShadowStackValue = getShadowStackForCallee();
         Value* funcletShadowStackValue = getOriginalShadowStack();
 
         // Do we only have one (catch) handler? We will use specialized dispatchers for this case as an optimization:
@@ -655,36 +599,31 @@ void Llvm::generateEHDispatch()
         llvm::CallBase* dispatchDestValue = nullptr;
         if (innerEHIndex == ehIndex)
         {
-            Function* dispatchLlvmFunc = getDispatchLlvmFunc(ehDsc);
             Value* handlerValue = getLlvmFunctionForIndex(ehDsc->ebdFuncIndex);
 
             if (ehDsc->ebdHandlerType == EH_HANDLER_CATCH)
             {
                 Value* typeSymbolRefValue = getOrCreateSymbol(getSymbolHandleForClassToken(ehDsc->ebdTyp));
-                dispatchDestValue =
-                    emitCallOrInvoke(dispatchLlvmFunc, {dispatcherShadowStackValue, funcletShadowStackValue,
-                                     dispatchDataRefValue, handlerValue, typeSymbolRefValue});
+                dispatchDestValue = emitHelperCall(CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH, {funcletShadowStackValue,
+                                                   dispatchDataRefValue, handlerValue, typeSymbolRefValue});
             }
             else if (ehDsc->ebdHandlerType == EH_HANDLER_FILTER)
             {
                 Value* filterValue = getLlvmFunctionForIndex(ehDsc->ebdFuncIndex - 1);
-                dispatchDestValue =
-                    emitCallOrInvoke(dispatchLlvmFunc, {dispatcherShadowStackValue, funcletShadowStackValue,
-                                     dispatchDataRefValue, handlerValue, filterValue});
+                dispatchDestValue = emitHelperCall(CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER, {funcletShadowStackValue,
+                                                   dispatchDataRefValue, handlerValue, filterValue});
             }
             else
             {
-                dispatchDestValue = emitCallOrInvoke(dispatchLlvmFunc, {dispatcherShadowStackValue,
-                                                     funcletShadowStackValue, dispatchDataRefValue, handlerValue});
+                dispatchDestValue = emitHelperCall(CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT, {funcletShadowStackValue,
+                                                   dispatchDataRefValue, handlerValue});
             }
         }
         else
         {
-            Function* dispatchLlvmFunc = getDispatchLlvmFunc(nullptr);
             Value* dispatchTableRefValue = generateEHDispatchTable(llvmFunc, innerEHIndex, ehIndex);
-            dispatchDestValue =
-                emitCallOrInvoke(dispatchLlvmFunc, {dispatcherShadowStackValue, funcletShadowStackValue,
-                                 dispatchDataRefValue, dispatchTableRefValue});
+            dispatchDestValue = emitHelperCall(CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING,
+                                               {funcletShadowStackValue, dispatchDataRefValue, dispatchTableRefValue});
         }
 
         // Generate code for per-funclet dispatch blocks. The dispatch switch block is only needed if we have
@@ -1930,24 +1869,10 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
 void Llvm::buildCall(GenTreeCall* call)
 {
     std::vector<Value*> argVec = std::vector<Value*>();
-
-    GenTree* argNode = nullptr;
-    for (CallArg& callArg: call->gtArgs.Args())
+    for (CallArg& arg : call->gtArgs.Args())
     {
-        argNode = callArg.GetNode();
-
-        Type*    argLlvmType = getLlvmTypeForCorInfoType(callArg.GetSignatureCorInfoType(), callArg.GetSignatureClassHandle());
-        Value*   argValue;
-
-        if (argNode->OperIs(GT_FIELD_LIST))
-        {
-            assert(callArg.GetSignatureType() == TYP_STRUCT);
-            argValue = buildFieldList(argNode->AsFieldList(), argLlvmType);
-        }
-        else
-        {
-            argValue = consumeValue(argNode, argLlvmType);
-        }
+        Type* argLlvmType = getLlvmTypeForCorInfoType(getLlvmArgTypeForCallArg(&arg), arg.GetSignatureClassHandle());
+        Value* argValue = consumeValue(arg.GetNode(), argLlvmType);
 
         argVec.push_back(argValue);
     }
@@ -1975,27 +1900,6 @@ void Llvm::buildCall(GenTreeCall* call)
     }
 
     mapGenTreeToValue(call, callValue);
-}
-
-Value* Llvm::buildFieldList(GenTreeFieldList* fieldList, Type* llvmType)
-{
-    assert(fieldList->TypeIs(TYP_STRUCT));
-
-    if (llvmType->isStructTy() || fieldList->Uses().begin()->GetNext() != nullptr)
-    {
-        Value* alloca = _builder.CreateAlloca(llvmType);
-
-        for (GenTreeFieldList::Use& use : fieldList->Uses())
-        {
-            Value* fieldAddr = gepOrAddr(alloca, use.GetOffset());
-            Type*  fieldType = getLlvmTypeForVarType(use.GetType());
-            _builder.CreateStore(consumeValue(use.GetNode(), fieldType), fieldAddr);
-        }
-
-        return _builder.CreateLoad(llvmType, alloca);
-    }
-
-    return consumeValue(fieldList->Uses().begin()->GetNode(), llvmType);
 }
 
 void Llvm::buildInd(GenTreeIndir* indNode)
@@ -2608,7 +2512,7 @@ Value* Llvm::emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Val
     return _builder.CreateExtractValue(checkedValue, 0);
 }
 
-Value* Llvm::emitHelperCall(CorInfoHelpAnyFunc helperFunc, ArrayRef<Value*> sigArgs)
+llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpAnyFunc helperFunc, ArrayRef<Value*> sigArgs)
 {
     assert(!helperCallRequiresShadowStackSave(helperFunc));
 
@@ -2622,20 +2526,20 @@ Value* Llvm::emitHelperCall(CorInfoHelpAnyFunc helperFunc, ArrayRef<Value*> sigA
         annotateHelperFunction(helperFunc, llvmFunc);
     });
 
-    Value* callValue;
+    llvm::CallBase* call;
     if (helperCallHasShadowStackArg(helperFunc))
     {
         std::vector<Value*> args = sigArgs.vec();
         args.insert(args.begin(), getShadowStackForCallee());
 
-        callValue = emitCallOrInvoke(helperLlvmFunc, args);
+        call = emitCallOrInvoke(helperLlvmFunc, args);
     }
     else
     {
-        callValue = emitCallOrInvoke(helperLlvmFunc, sigArgs);
+        call = emitCallOrInvoke(helperLlvmFunc, sigArgs);
     }
 
-    return callValue;
+    return call;
 }
 
 llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args)
@@ -2676,7 +2580,7 @@ llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Val
     return callInst;
 }
 
-FunctionType* Llvm::getFunctionType()
+FunctionType* Llvm::createFunctionType()
 {
     std::vector<llvm::Type*> argVec(_llvmArgCount);
     for (unsigned i = 0; i < _compiler->lvaCount; i++)
@@ -2699,10 +2603,10 @@ FunctionType* Llvm::getFunctionType()
 llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)
 {
     llvm::FunctionCallee callee;
-    if (call->IsVirtualVtable() || (call->gtCallType == CT_INDIRECT))
+    if (call->IsVirtualVtable() || call->IsDelegateInvoke() || (call->gtCallType == CT_INDIRECT))
     {
         FunctionType* calleeFuncType = createFunctionTypeForCall(call);
-        GenTree* calleeNode = call->IsVirtualVtable() ? call->gtControlExpr : call->gtCallAddr;
+        GenTree* calleeNode = (call->gtCallType == CT_INDIRECT) ? call->gtCallAddr : call->gtControlExpr;
         Value* calleeValue = consumeValue(calleeNode, getPtrLlvmType());
 
         callee = {calleeFuncType, calleeValue};
@@ -2772,13 +2676,13 @@ FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)
     CORINFO_ARG_LIST_HANDLE sigArgs = pSig->args;
     for (unsigned i = 0; i < pSig->numArgs; i++, sigArgs = m_info->compCompHnd->getArgNext(sigArgs))
     {
-        CORINFO_CLASS_HANDLE sigArgClass;
-        CorInfoType sigArgType = strip(m_info->compCompHnd->getArgType(pSig, sigArgs, &sigArgClass));
+        CORINFO_CLASS_HANDLE argSigClass;
+        CorInfoType argSigType = strip(m_info->compCompHnd->getArgType(pSig, sigArgs, &argSigClass));
 
-        // TODO-LLVM-ABI: this will need to be changed once we support the correct ABI for structs.
-        if (!isManagedCallConv || canStoreArgOnLlvmStack(sigArgType, sigArgClass))
+        CorInfoType argType;
+        if (getLlvmArgTypeForArg(isManagedCallConv, argSigType, argSigClass, &argType))
         {
-            llvmParamTypes.push_back(getLlvmTypeForCorInfoType(sigArgType, sigArgClass));
+            llvmParamTypes.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
         }
     }
 
@@ -2793,10 +2697,9 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
     llvm::Type* retLlvmType = getLlvmTypeForCorInfoType(call->gtCorInfoType, call->gtRetClsHnd);
 
     std::vector<llvm::Type*> argVec = std::vector<llvm::Type*>();
-
-    for (CallArg& callArg: call->gtArgs.Args())
+    for (CallArg& arg : call->gtArgs.Args())
     {
-        argVec.push_back(getLlvmTypeForCorInfoType(callArg.GetSignatureCorInfoType(), callArg.GetSignatureClassHandle()));
+        argVec.push_back(getLlvmTypeForCorInfoType(getLlvmArgTypeForCallArg(&arg), arg.GetSignatureClassHandle()));
     }
 
     return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
@@ -2804,8 +2707,7 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
 
 FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpAnyFunc helperFunc)
 {
-    INDEBUG(bool isManagedHelper = helperCallHasManagedCallingConvention(helperFunc));
-
+    const bool isManagedHelper = helperCallHasManagedCallingConvention(helperFunc);
     const HelperFuncInfo& helperInfo = getHelperFuncInfo(helperFunc);
     std::vector<Type*> argVec = std::vector<Type*>();
 
@@ -2817,11 +2719,15 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpAnyFunc helperFunc)
     size_t sigArgCount = helperInfo.GetSigArgCount();
     for (size_t i = 0; i < sigArgCount; i++)
     {
-        CorInfoType argType = helperInfo.GetSigArgType(i);
-        CORINFO_CLASS_HANDLE argClass = helperInfo.GetSigArgClass(_compiler, i);
-        assert(!isManagedHelper || canStoreArgOnLlvmStack(argType, argClass));
+        CorInfoType argSigType =  helperInfo.GetSigArgType(i);
+        CORINFO_CLASS_HANDLE argSigClass = helperInfo.GetSigArgClass(_compiler, i);
 
-        argVec.push_back(getLlvmTypeForCorInfoType(argType, argClass));
+        CorInfoType argType;
+        bool isArgPassedByRef;
+        bool isLlvmArg = getLlvmArgTypeForArg(isManagedHelper, argSigType, argSigClass, &argType, &isArgPassedByRef);
+        assert(isLlvmArg && !isArgPassedByRef);
+
+        argVec.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
     }
 
     CorInfoType sigRetType = helperInfo.GetSigReturnType();

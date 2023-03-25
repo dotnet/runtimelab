@@ -14,7 +14,6 @@ namespace ILCompiler.DependencyAnalysis
     public sealed class LLVMCodegenNodeFactory : NodeFactory
     {
         private readonly Dictionary<string, ExternMethodAccessorNode> _externSymbolsWithAccessors = new();
-        private readonly NodeCache<MethodDesc, LLVMVTableSlotNode> _vTableSlotNodes;
 
         public LLVMCodegenNodeFactory(CompilerTypeSystemContext context, CompilationModuleGroup compilationModuleGroup, MetadataManager metadataManager,
             InteropStubManager interopStubManager, NameMangler nameMangler, VTableSliceProvider vtableSliceProvider, DictionaryLayoutProvider dictionaryLayoutProvider, PreinitializationManager preinitializationManager)
@@ -29,10 +28,6 @@ namespace ILCompiler.DependencyAnalysis
                   new ImportedNodeProviderThrowing(),
                   preinitializationManager)
         {
-            _vTableSlotNodes = new NodeCache<MethodDesc, LLVMVTableSlotNode>(methodKey =>
-            {
-                return new LLVMVTableSlotNode(methodKey);
-            });
         }
 
         public override bool IsCppCodegenTemporaryWorkaround => true;
@@ -97,11 +92,6 @@ namespace ILCompiler.DependencyAnalysis
                 node.AddMethod(method);
                 return node;
             }
-        }
-
-        internal LLVMVTableSlotNode VTableSlot(MethodDesc method)
-        {
-            return _vTableSlotNodes.GetOrAdd(method);
         }
 
         protected override IMethodNode CreateUnboxingStubNode(MethodDesc method)

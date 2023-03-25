@@ -61,8 +61,15 @@ enum class TargetAbiType : uint8_t
 enum CorInfoHelpLlvmFunc
 {
     CORINFO_HELP_LLVM_UNDEF = CORINFO_HELP_COUNT,
+
     CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP,
     CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP,
+
+    CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH,
+    CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER,
+    CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT,
+    CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING,
+
     CORINFO_HELP_ANY_COUNT
 };
 
@@ -78,11 +85,11 @@ enum HelperFuncInfoFlags
 
 struct HelperFuncInfo
 {
-    static const int MAX_SIG_ARG_COUNT = 3;
+    static const int MAX_SIG_ARG_COUNT = 4;
 
     INDEBUG(unsigned char Func);
     unsigned char SigReturnType;
-    unsigned char SigArgTypes[MAX_SIG_ARG_COUNT];
+    unsigned char SigArgTypes[MAX_SIG_ARG_COUNT + 1];
     unsigned char Flags;
 
     bool IsInitialized() const
@@ -204,8 +211,6 @@ private:
 
     GCInfo* getGCInfo();
 
-    static CorInfoType toCorInfoType(var_types varType);
-
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
     bool callRequiresShadowStackSave(const GenTreeCall* call) const;
@@ -218,10 +223,17 @@ private:
     static const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpAnyFunc helperFunc);
 
     bool canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+    bool getLlvmArgTypeForArg(bool                 isManagedAbi,
+                              CorInfoType          argSigType,
+                              CORINFO_CLASS_HANDLE argSigClass,
+                              CorInfoType*         pArgType = nullptr,
+                              bool*                pIsByRef = nullptr);
 
     unsigned padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
     unsigned padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
 
+    static CorInfoType toCorInfoType(var_types varType);
+    static CorInfoType getLlvmArgTypeForCallArg(CallArg* arg);
     TargetAbiType getAbiTypeForType(var_types type);
 
     CORINFO_GENERIC_HANDLE getSymbolHandleForHelperFunc(CorInfoHelpAnyFunc helperFunc);
@@ -232,16 +244,13 @@ private:
     const char* GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle);
     const char* GetMangledSymbolName(void* symbol);
     bool GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig);
-    const char* GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType);
-    const char* GetTypeName(CORINFO_CLASS_HANDLE typeHandle);
     void AddCodeReloc(void* handle);
     bool IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle) const;
     const char* GetDocumentFileName();
     uint32_t GetOffsetLineNumber(unsigned ilOffset);
-    bool StructIsWrappedPrimitive(CORINFO_CLASS_HANDLE typeHandle, CorInfoType corInfoType);
+    CorInfoType GetPrimitiveTypeForTrivialWasmStruct(CORINFO_CLASS_HANDLE structHandle);
     uint32_t PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset);
     TypeDescriptor GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle);
-    uint32_t GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle);
     const char* GetAlternativeFunctionName();
     CORINFO_GENERIC_HANDLE GetExternalMethodAccessor(
         CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* callSiteSig, int sigLength);
@@ -278,6 +287,7 @@ public:
     void Lower();
 
 private:
+    void lowerSpillTempsLiveAcrossSafePoints();
     void lowerLocals();
     void populateLlvmArgNums();
     void assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, unsigned shadowStackParamCount);
@@ -305,6 +315,7 @@ private:
     void lowerVirtualStubCallAfterArgs(
         GenTreeCall* callNode, unsigned thisArgLclNum, GenTree* cellArgNode, unsigned shadowArgsSize);
     void insertNullCheckForCall(GenTreeCall* callNode);
+    void lowerDelegateInvoke(GenTreeCall* callNode);
     void lowerUnmanagedCall(GenTreeCall* callNode);
     unsigned lowerCallToShadowStack(GenTreeCall* callNode);
     CallArg* lowerCallReturn(GenTreeCall* callNode);
@@ -315,6 +326,8 @@ private:
     GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data);
     GenTree* createShadowStackStoreNode(var_types storeType, GenTree* addr, GenTree* data);
     GenTree* insertShadowStackAddr(GenTree* insertBefore, ssize_t offset, unsigned shadowStackLclNum);
+
+    bool isPotentialGcSafePoint(GenTree* node);
 
     bool isShadowFrameLocal(LclVarDsc* varDsc) const;
     bool isFuncletParameter(unsigned lclNum) const;
@@ -366,7 +379,6 @@ private:
     void buildCnsDouble(GenTreeDblCon* node);
     void buildIntegralConst(GenTreeIntConCommon* node);
     void buildCall(GenTreeCall* node);
-    Value* buildFieldList(GenTreeFieldList* fieldList, Type* llvmType);
     void buildInd(GenTreeIndir* indNode);
     void buildBlk(GenTreeBlk* blkNode);
     void buildStoreInd(GenTreeStoreInd* storeIndOp);
@@ -394,10 +406,10 @@ private:
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
-    Value* emitHelperCall(CorInfoHelpAnyFunc helperFunc, ArrayRef<Value*> sigArgs = { });
+    llvm::CallBase* emitHelperCall(CorInfoHelpAnyFunc helperFunc, ArrayRef<Value*> sigArgs = { });
     llvm::CallBase* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args);
 
-    FunctionType* getFunctionType();
+    FunctionType* createFunctionType();
     llvm::FunctionCallee consumeCallTarget(GenTreeCall* call);
     FunctionType* createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig);
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);

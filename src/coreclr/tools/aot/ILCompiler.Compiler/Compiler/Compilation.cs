@@ -381,9 +381,8 @@ namespace ILCompiler
 
             // Can we do a fixed lookup? Start by checking if we can get to the dictionary.
             // Context source having a vtable with fixed slots is a prerequisite.
-            // TODO-LLVM: Is this going to prevent CT_INDIRECT being implemented for LLVM clrjit?
-            if (!TargetArchIsWasm() && (contextSource == GenericContextSource.MethodParameter
-                || HasFixedSlotVTable(contextMethod.OwningType)))
+            if (contextSource == GenericContextSource.MethodParameter
+                || HasFixedSlotVTable(contextMethod.OwningType))
             {
                 DictionaryLayoutNode dictionaryLayout;
                 if (contextSource == GenericContextSource.MethodParameter)

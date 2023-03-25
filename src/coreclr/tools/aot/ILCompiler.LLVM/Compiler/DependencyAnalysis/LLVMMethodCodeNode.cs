@@ -21,12 +21,6 @@ namespace ILCompiler.DependencyAnalysis
             _method = method;
         }
 
-        public void SetDependencies(DependencyList dependencies)
-        {
-            Debug.Assert(dependencies != null);
-            _dependencies = dependencies;
-        }
-        
         public MethodDesc Method
         {
             get

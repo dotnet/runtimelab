@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <exception>
 
 #include "CommonMacros.h"
@@ -22,20 +23,10 @@ COOP_PINVOKE_HELPER(void, RhpThrowNativeException, (Object* pManagedException))
     throw ManagedExceptionWrapper(pManagedException);
 }
 
-extern "C" uint32_t LlvmCatchFunclet(void* pHandlerIP, void* pvRegDisplay); 
-extern "C" uint32_t RhpCallCatchFunclet(void * exceptionObj, void* pHandlerIP, void* pvRegDisplay, void *exInfo)
-{
-    return LlvmCatchFunclet(pHandlerIP, pvRegDisplay);
-}
-
-extern "C" uint32_t LlvmFilterFunclet(void* pHandlerIP, void* pvRegDisplay);
-extern "C" uint32_t RhpCallFilterFunclet(void* exceptionObj, void * pHandlerIP, void* shadowStack)
-{
-    return LlvmFilterFunclet(pHandlerIP, shadowStack);
-}
-
-extern "C" void LlvmFinallyFunclet(void *finallyHandler, void *shadowStack);
-extern "C" void RhpCallFinallyFunclet(void *finallyHandler, void *shadowStack)
-{
-    LlvmFinallyFunclet(finallyHandler, shadowStack);
-}
+// We do not use these helpers, but we also do not exclude code referencing them from the
+// build, and so define these stubs to avoid undefined symbol warnings. TODO-LLVM: exclude
+// the general EH code from WASM-targeting runtime build.
+//
+COOP_PINVOKE_HELPER(void*, RhpCallCatchFunclet, (void*, void*, void*, void*)) { abort(); }
+COOP_PINVOKE_HELPER(bool, RhpCallFilterFunclet, (void*, void*, void*)) { abort(); }
+COOP_PINVOKE_HELPER(void, RhpCallFinallyFunclet, (void*, void*)) { abort(); }
