@@ -75,17 +75,10 @@ jobs:
       - name: _osParameter
         value: -os ${{ parameters.osGroup }}
 
-<<<<<<< HEAD
-      - ${{ if and(eq(parameters.osGroup, 'Linux'), eq(parameters.osSubGroup, '_musl')) }}:
-        - name: _osParameter
-          value: /p:RuntimeOS=linux-musl /p:OutputRid=linux-musl-${{ parameters.archType }}
-
       - ${{ if and(eq(parameters.archType, 'wasm'), eq(parameters.runtimeFlavor, 'coreclr')) }}:
         - name: _osParameter
           value: -os Browser
 
-=======
->>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
       - ${{ if and(eq(parameters.osGroup, 'Linux'), eq(parameters.osSubGroup, '_bionic')) }}:
         - name: _osParameter
           value: /p:RuntimeOS=linux-bionic

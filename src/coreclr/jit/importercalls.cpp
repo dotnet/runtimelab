@@ -3,6 +3,12 @@
 
 #include "jitpch.h"
 
+#ifdef TARGET_WASM
+#include "llvm.h"
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif // TARGET_WASM
+
 #define Verify(cond, msg)                                                                                              \
     do                                                                                                                 \
     {                                                                                                                  \
@@ -1370,6 +1376,10 @@ DONE_CALL:
                 // Need to treat all "split tree" cases here, not just inline candidates
                 call = impFixupCallStructReturn(call->AsCall(), sig->retTypeClass);
             }
+
+#ifdef TARGET_WASM
+            origCall->gtCorInfoType = sig->retType;
+#endif // TARGET_WASM
 
             // TODO: consider handling fatcalli cases this way too...?
             if (isInlineCandidate || isGuardedDevirtualizationCandidate)
@@ -4194,7 +4204,12 @@ void Compiler::impPopCallArgs(CORINFO_SIG_INFO* sig, GenTreeCall* call)
         }
         else
         {
+            // TODO-LLVM: lowerCallToShadowStack fails without the SignatureCorInfoType set (which is TARGET_WASM specific in NewCallArg 
+#if defined(TARGET_WASM)
+            arg = NewCallArg::Primitive(argNode, params[i - 1].CorType);
+#else
             arg = NewCallArg::Primitive(argNode, jitSigType);
+#endif
         }
 
         call->gtArgs.PushFront(this, arg);
@@ -5500,6 +5515,8 @@ bool Compiler::IsTargetIntrinsic(NamedIntrinsic intrinsicName)
         default:
             return false;
     }
+#elif TARGET_WASM
+    return m_llvm->IsLlvmIntrinsic(intrinsicName);
 #elif defined(TARGET_LOONGARCH64)
     // TODO-LoongArch64: add some intrinsics.
     return false;

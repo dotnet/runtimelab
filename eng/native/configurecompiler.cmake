@@ -805,11 +805,6 @@ if (CLR_CMAKE_HOST_WIN32)
         message(FATAL_ERROR "MC not found")
     endif()
 
-<<<<<<< HEAD
-elseif(CLR_CMAKE_TARGET_ARCH_WASM)
-    # No other tools required, emcmake is already running this script
-else (CLR_CMAKE_HOST_WIN32)
-=======
 elseif (NOT CLR_CMAKE_HOST_BROWSER)
     # This is a workaround for upstream issue: https://gitlab.kitware.com/cmake/cmake/-/issues/22995.
     #
@@ -818,7 +813,6 @@ elseif (NOT CLR_CMAKE_HOST_BROWSER)
     # so it picks up single hyphen options, which new clang versions don't recognize.
     set (CMAKE_ASM_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")
 
->>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
     enable_language(ASM)
 
 endif(CLR_CMAKE_HOST_WIN32)

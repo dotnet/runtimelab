@@ -839,7 +839,9 @@ REDHAWK_PALEXPORT void PalFlushInstructionCache(_In_ void* pAddress, size_t size
         begin = endOrNextPageBegin;
     }
 #else
+#if !defined(HOST_WASM)
     __builtin___clear_cache((char *)pAddress, (char *)pAddress + size);
+#endif
 #endif
 }
 

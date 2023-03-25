@@ -111,8 +111,8 @@ CompPhaseNameMacro(PHASE_EMIT_GCEH,                  "Emit GC+EH tables",       
 CompPhaseNameMacro(PHASE_POST_EMIT,                  "Post-Emit",                      false, -1, false)
 
 #ifdef TARGET_WASM
-CompPhaseNameMacro(PHASE_LOWER_LLVM,             "LLVM Lowering",                  "LOWER-LLVM", false, -1, false)
-CompPhaseNameMacro(PHASE_BUILD_LLVM,             "Build LLVM",                     "BUILD-LLVM", false, -1, false)
+CompPhaseNameMacro(PHASE_LOWER_LLVM,                 "LLVM Lowering",                  false, -1, false)
+CompPhaseNameMacro(PHASE_BUILD_LLVM,                 "Build LLVM",                     false, -1, false)
 #endif
 
 #if MEASURE_CLRAPI_CALLS

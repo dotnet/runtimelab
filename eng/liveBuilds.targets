@@ -192,16 +192,12 @@
         $(LibrariesNativeArtifactsPath)dotnet.timezones.blat;
         $(LibrariesNativeArtifactsPath)*.dat;"
         IsNative="true" />
-<<<<<<< HEAD
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' == 'Mono'"
-=======
       <!-- for threaded wasm -->
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'Browser' and Exists('$(LibrariesNativeArtifactsPath)dotnet.worker.js')"
+      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' == 'Mono' and Exists('$(LibrariesNativeArtifactsPath)dotnet.worker.js')"
                              Include="
         $(LibrariesNativeArtifactsPath)dotnet.worker.js"
         IsNative="true" />
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'Browser'"
->>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
+      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' == 'Mono'"
                              Include="
         $(LibrariesNativeArtifactsPath)src\*.c;
         $(LibrariesNativeArtifactsPath)src\*.js;

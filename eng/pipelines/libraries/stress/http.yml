@@ -24,17 +24,6 @@ variables:
     value: dotnet-sdk-libraries-current
 
 
-<<<<<<< HEAD
-jobs:
-- job: linux
-  displayName: Docker Linux
-  timeoutInMinutes: 180
-  variables:
-    DUMPS_SHARE_MOUNT_ROOT: "/dumps-share"
-  pool:
-    name: NetCore-Public
-    demands: ImageOverride -equals 1es-ubuntu-1804-open
-=======
 extends:
   template:  /eng/pipelines/common/templates/single-stage-pipeline-with-resources.yml
   parameters:
@@ -47,7 +36,6 @@ extends:
       pool:
         name: NetCore-Public
         demands: ImageOverride -equals 1es-ubuntu-1804-open
->>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
 
       steps:
       - checkout: self
@@ -106,20 +94,6 @@ extends:
         artifact: DumpsLinux
         condition: failed()
 
-<<<<<<< HEAD
-- job: windows
-  displayName: Docker NanoServer
-  timeoutInMinutes: 150
-  variables:
-    DUMPS_SHARE_MOUNT_ROOT: "C:/dumps-share"
-  pool:
-<<<<<<< HEAD
-    name: NetCore-Public
-=======
-    name: NetCore1ESPool-Public
->>>>>>> 442c137891821a567e9a05411f821dbf2aec5aa5
-    demands: ImageOverride -equals 1es-windows-2022-open
-=======
     - job: windows
       displayName: Docker NanoServer
       timeoutInMinutes: 150
@@ -128,7 +102,6 @@ extends:
       pool:
         name: NetCore-Public
         demands: ImageOverride -equals 1es-windows-2022-open
->>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
 
       steps:
       - checkout: self

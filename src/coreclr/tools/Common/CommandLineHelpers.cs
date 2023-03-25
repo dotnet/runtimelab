@@ -76,6 +76,8 @@ namespace System.CommandLine
                 return TargetOS.Linux;
             else if (token.Equals("osx", StringComparison.OrdinalIgnoreCase))
                 return TargetOS.OSX;
+            else if (token.Equals("wasm", StringComparison.OrdinalIgnoreCase))
+                return TargetOS.WebAssembly;
 
             throw new CommandLineException($"Target OS '{token}' is not supported");
         }
@@ -91,6 +93,7 @@ namespace System.CommandLine
                     Architecture.Arm => TargetArchitecture.ARM,
                     Architecture.Arm64 => TargetArchitecture.ARM64,
                     Architecture.LoongArch64 => TargetArchitecture.LoongArch64,
+                    Architecture.Wasm => TargetArchitecture.Wasm32,
                     _ => throw new NotImplementedException()
                 };
             }
@@ -105,6 +108,8 @@ namespace System.CommandLine
                 return TargetArchitecture.ARM64;
             else if (token.Equals("loongarch64", StringComparison.OrdinalIgnoreCase))
                 return TargetArchitecture.LoongArch64;
+            else if (token.Equals("wasm", StringComparison.OrdinalIgnoreCase) || token.Equals("llvm", StringComparison.OrdinalIgnoreCase))
+                return TargetArchitecture.Wasm32;
 
             throw new CommandLineException($"Target architecture '{token}' is not supported");
         }

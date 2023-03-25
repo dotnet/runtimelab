@@ -141,11 +141,7 @@ namespace Internal.JitInterface
         }
 
         [DllImport(JitSupportLibrary)]
-<<<<<<< HEAD
-        internal extern static CorJitResult JitCompileMethod(out IntPtr exception,
-=======
-        private static extern CorJitResult JitCompileMethod(out IntPtr exception,
->>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
+        internal static extern CorJitResult JitCompileMethod(out IntPtr exception,
             IntPtr jit, IntPtr thisHandle, IntPtr callbacks,
             ref CORINFO_METHOD_INFO info, uint flags, out IntPtr nativeEntry, out uint codeSize);
 

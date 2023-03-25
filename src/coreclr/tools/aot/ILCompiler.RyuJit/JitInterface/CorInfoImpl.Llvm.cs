@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -16,7 +19,7 @@ using Internal.TypeSystem.Ecma;
 
 namespace Internal.JitInterface
 {
-    sealed unsafe partial class CorInfoImpl
+    internal sealed unsafe partial class CorInfoImpl
     {
         private static readonly List<IntPtr> s_allocedMemory = new List<IntPtr>();
         private static readonly void*[] s_jitExports = new void*[(int)JitApiId.Count + 1];
@@ -27,7 +30,7 @@ namespace Internal.JitInterface
         public static void addCodeReloc(IntPtr thisHandle, void* handle)
         {
             var _this = GetThis(thisHandle);
-            var obj = _this.HandleToObject((IntPtr)handle);
+            var obj = _this.HandleToObject(handle);
 
             AddCodeRelocImpl(_this, (ISymbolNode)obj);
         }
@@ -62,7 +65,7 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        public static byte* getMangledSymbolName(IntPtr thisHandle, IntPtr symbolHandle)
+        public static byte* getMangledSymbolName(IntPtr thisHandle, void* symbolHandle)
         {
             var _this = GetThis(thisHandle);
             var node = (ISymbolNode)_this.HandleToObject(symbolHandle);
@@ -75,7 +78,7 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        public static int getSignatureForMethodSymbol(IntPtr thisHandle, IntPtr symbolHandle, CORINFO_SIG_INFO* pSig)
+        public static int getSignatureForMethodSymbol(IntPtr thisHandle, void* symbolHandle, CORINFO_SIG_INFO* pSig)
         {
             var _this = GetThis(thisHandle);
             var node = (ISymbolNode)_this.HandleToObject(symbolHandle);
@@ -83,7 +86,7 @@ namespace Internal.JitInterface
             if (node is IMethodNode { Offset: 0, Method: MethodDesc method })
             {
                 _this.Get_CORINFO_SIG_INFO(method, pSig, scope: null);
-                if (method.IsUnmanagedCallersOnly)
+                if (method.IsUnmanagedCallersOnly || node is RuntimeImportMethodNode)
                 {
                     pSig->callConv |= CorInfoCallConv.CORINFO_CALLCONV_UNMANAGED;
                 }
@@ -144,7 +147,7 @@ namespace Internal.JitInterface
             return method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute") ? 1u : 0u; // bool is not blittable in .net5 so use uint, TODO: revert to bool for .net 6 (https://github.com/dotnet/runtime/issues/51170)
         }
 
-        ILSequencePoint GetSequencePoint(uint offset)
+        private ILSequencePoint GetSequencePoint(uint offset)
         {
             var sequencePointsEnumerable = _debugInfo.GetSequencePoints();
             if (sequencePointsEnumerable == null) return default;
@@ -236,11 +239,7 @@ namespace Internal.JitInterface
             IMethodNode methodNode = _this._methodCodeNode;
             RyuJitCompilation compilation = _this._compilation;
 
-            string alternativeName = compilation.GetRuntimeExportManagedEntrypointName(methodNode.Method);
-            if (alternativeName == null)
-            {
-                alternativeName = compilation.NodeFactory.GetSymbolAlternateName(methodNode);
-            }
+            string alternativeName = compilation.GetRuntimeExportManagedEntrypointName(methodNode.Method) ?? compilation.NodeFactory.GetSymbolAlternateName(methodNode);
             if ((alternativeName == null) && methodNode.Method.IsUnmanagedCallersOnly)
             {
                 // TODO-LLVM: delete once the IL backend is gone.
@@ -337,7 +336,7 @@ namespace Internal.JitInterface
 
         // These enums must be kept in sync with their unmanaged versions in "jit/llvm.cpp".
         //
-        enum EEApiId
+        private enum EEApiId
         {
             GetMangledMethodName,
             GetMangledSymbolName,
@@ -358,14 +357,14 @@ namespace Internal.JitInterface
             Count
         }
 
-        enum JitApiId
+        private enum JitApiId
         {
             StartThreadContextBoundCompilation,
             FinishThreadContextBoundCompilation,
             Count
         };
 
-        enum CorInfoHelpLlvmFunc
+        private enum CorInfoHelpLlvmFunc
         {
             CORINFO_HELP_LLVM_UNDEF = CorInfoHelpFunc.CORINFO_HELP_COUNT,
             CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP,
@@ -374,14 +373,14 @@ namespace Internal.JitInterface
         }
 
         [DllImport(JitLibrary)]
-        private extern static void registerLlvmCallbacks(void** jitImports, void** jitExports);
+        private static extern void registerLlvmCallbacks(void** jitImports, void** jitExports);
 
         public static void JitStartCompilation()
         {
             void** jitImports = stackalloc void*[(int)EEApiId.Count + 1];
             jitImports[(int)EEApiId.GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
-            jitImports[(int)EEApiId.GetMangledSymbolName] = (delegate* unmanaged<IntPtr, IntPtr, byte*>)&getMangledSymbolName;
-            jitImports[(int)EEApiId.GetSignatureForMethodSymbol] = (delegate* unmanaged<IntPtr, IntPtr, CORINFO_SIG_INFO*, int>)&getSignatureForMethodSymbol;
+            jitImports[(int)EEApiId.GetMangledSymbolName] = (delegate* unmanaged<IntPtr, void*, byte*>)&getMangledSymbolName;
+            jitImports[(int)EEApiId.GetSignatureForMethodSymbol] = (delegate* unmanaged<IntPtr, void*, CORINFO_SIG_INFO*, int>)&getSignatureForMethodSymbol;
             jitImports[(int)EEApiId.GetEHDispatchFunctionName] = (delegate* unmanaged<IntPtr, CORINFO_EH_CLAUSE_FLAGS, byte*>)&getEHDispatchFunctionName;
             jitImports[(int)EEApiId.GetTypeName] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*>)&getTypeName;
             jitImports[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;

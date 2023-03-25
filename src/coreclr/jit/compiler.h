@@ -1919,7 +1919,9 @@ public:
     var_types GetHfaType(CORINFO_CLASS_HANDLE hClass);
     unsigned GetHfaCount(CORINFO_CLASS_HANDLE hClass);
 
+#if !defined(TARGET_WASM)
     bool IsMultiRegReturnedType(CORINFO_CLASS_HANDLE hClass, CorInfoCallConvExtension callConv);
+#endif // !TARGET_WASM
 
     //-------------------------------------------------------------------------
     // The following is used for validating format of EH table
@@ -9854,53 +9856,6 @@ public:
         return (JitConfig.JitObjectStackAllocation() != 0);
     }
 
-<<<<<<< HEAD
-    // Returns true if the method returns a value in more than one return register,
-    // it should replace/be  merged with compMethodReturnsMultiRegRetType when #36868 is fixed.
-    // The difference from original `compMethodReturnsMultiRegRetType` is in ARM64 SIMD* handling,
-    // this method correctly returns false for it (it is passed as HVA), when the original returns true.
-    bool compMethodReturnsMultiRegRegTypeAlternate()
-    {
-#if FEATURE_MULTIREG_RET
-#if defined(TARGET_X86)
-        // On x86, 64-bit longs and structs are returned in multiple registers
-        return varTypeIsLong(info.compRetNativeType) ||
-               (varTypeIsStruct(info.compRetNativeType) && (info.compRetBuffArg == BAD_VAR_NUM));
-#else // targets: X64-UNIX, ARM64 or ARM32
-#if defined(TARGET_ARM64)
-        // TYP_SIMD* are returned in one register.
-        if (varTypeIsSIMD(info.compRetNativeType))
-        {
-            return false;
-        }
-#endif
-        // On all other targets that support multireg return values:
-        // Methods returning a struct in multiple registers have a return value of TYP_STRUCT.
-        // Such method's compRetNativeType is TYP_STRUCT without a hidden RetBufArg
-        return varTypeIsStruct(info.compRetNativeType) && (info.compRetBuffArg == BAD_VAR_NUM);
-#endif // TARGET_XXX
-
-#else // not FEATURE_MULTIREG_RET
-
-        // For this architecture there are no multireg returns
-        return false;
-
-#endif // FEATURE_MULTIREG_RET
-    }
-
-    // Returns true if the method being compiled returns a value
-    bool compMethodHasRetVal()
-    {
-#if defined(TARGET_WASM)
-        return info.compRetType != TYP_VOID;
-#else
-        return compMethodReturnsNativeScalarType() || compMethodReturnsRetBufAddr() ||
-               compMethodReturnsMultiRegRetType();
-#endif // TARGET_WASM
-    }
-
-=======
->>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
     // Returns true if the method requires a PInvoke prolog and epilog
     bool compMethodRequiresPInvokeFrame()
     {

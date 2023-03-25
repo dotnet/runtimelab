@@ -2295,14 +2295,6 @@ private:
         {
             // There is a return value, so create a temp for it.  Real returns will store the value in there and
             // it'll be reloaded by the single return.
-<<<<<<< HEAD
-            unsigned returnLocalNum   = comp->lvaGrabTemp(true DEBUGARG("Single return block return value"));
-            comp->genReturnLocal      = returnLocalNum;
-            LclVarDsc& returnLocalDsc = comp->lvaTable[returnLocalNum];
-#ifndef TARGET_WASM
-            if (comp->compMethodReturnsNativeScalarType())
-#endif // !TARGET_WASM
-=======
             unsigned retLclNum   = comp->lvaGrabTemp(true DEBUGARG("Single return block return value"));
             comp->genReturnLocal = retLclNum;
             LclVarDsc* retVarDsc = comp->lvaGetDesc(retLclNum);
@@ -2310,7 +2302,6 @@ private:
                 comp->compMethodReturnsRetBufAddr() ? TYP_BYREF : genActualType(comp->info.compRetType);
 
             if (varTypeIsStruct(retLclType))
->>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
             {
                 comp->lvaSetStruct(retLclNum, comp->info.compMethodInfo->args.retTypeClass, false);
 
@@ -2319,25 +2310,10 @@ private:
                     retVarDsc->lvIsMultiRegRet = true;
                 }
             }
-<<<<<<< HEAD
-#ifndef TARGET_WASM
-            else if (comp->compMethodReturnsRetBufAddr())
-            {
-                returnLocalDsc.lvType = TYP_BYREF;
-            }
-            else if (comp->compMethodReturnsMultiRegRetType())
-            {
-                returnLocalDsc.lvType = TYP_STRUCT;
-                comp->lvaSetStruct(returnLocalNum, comp->info.compMethodInfo->args.retTypeClass, true);
-                returnLocalDsc.lvIsMultiRegRet = true;
-            }
-=======
->>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
             else
             {
                 retVarDsc->lvType = retLclType;
             }
-#endif // !TARGET_WASM
 
             if (varTypeIsFloating(retVarDsc->TypeGet()))
             {

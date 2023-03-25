@@ -1404,48 +1404,6 @@ namespace Internal.IL
             return _compilation.TypeSystemContext.GetWellKnownType(wellKnownType);
         }
 
-<<<<<<< HEAD
-        private void ImportNop() { }
-        private void ImportBreak() { }
-        private void ImportLoadVar(int index, bool argument) { }
-        private void ImportStoreVar(int index, bool argument) { }
-        private void ImportAddressOfVar(int index, bool argument) { }
-        private void ImportDup() { }
-        private void ImportPop() { }
-        private void ImportLoadNull() { }
-        private void ImportReturn() { }
-        private void ImportLoadInt(long value, StackValueKind kind) { }
-        private void ImportLoadFloat(double value) { }
-        private void ImportLoadIndirect(int token) { }
-        private void ImportLoadIndirect(TypeDesc type) { }
-        private void ImportStoreIndirect(int token) { }
-        private void ImportStoreIndirect(TypeDesc type) { }
-        private void ImportShiftOperation(ILOpcode opcode) { }
-        private void ImportCompareOperation(ILOpcode opcode) { }
-        private void ImportConvert(WellKnownType wellKnownType, bool checkOverflow, bool unsigned) { }
-        private void ImportUnaryOperation(ILOpcode opCode) { }
-        private void ImportCpOpj(int token) { }
-
-        private void ImportCkFinite()
-        {
-            _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Overflow), "_ckfinite");
-        }
-
-        private void ImportLocalAlloc() { }
-        private void ImportEndFilter() { }
-        private void ImportCpBlk() { }
-        private void ImportInitBlk() { }
-        private void ImportRethrow() { }
-        private void ImportSizeOf(int token) { }
-        private void ImportUnalignedPrefix(byte alignment) { }
-        private void ImportVolatilePrefix() { }
-        private void ImportTailPrefix() { }
-        private void ImportNoPrefix(byte mask) { }
-        private void ImportThrow() { }
-        private void ImportInitObj(int token) { }
-        private void ImportLoadLength() { }
-        private void ImportEndFinally() { }
-=======
         private static void ImportNop() { }
         private static void ImportBreak() { }
         private static void ImportLoadVar(int index, bool argument) { }
@@ -1481,6 +1439,5 @@ namespace Internal.IL
         private static void ImportInitObj(int token) { }
         private static void ImportLoadLength() { }
         private static void ImportEndFinally() { }
->>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
     }
 }

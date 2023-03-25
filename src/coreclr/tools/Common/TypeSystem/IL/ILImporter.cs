@@ -2,12 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using Internal.TypeSystem;
-<<<<<<< HEAD
-using Internal.IL;
-using Internal.IL.Stubs;
-using Internal.TypeSystem.Ecma;
-=======
->>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
 
 namespace Internal.IL
 {

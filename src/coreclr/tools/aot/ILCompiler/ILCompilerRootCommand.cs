@@ -157,6 +157,10 @@ namespace ILCompiler
             new(new[] { "--singlemethodgenericarg" }, "Single method compilation: generic arguments to the method");
         public Option<string> MakeReproPath { get; } =
             new(new[] { "--make-repro-path" }, "Path where to place a repro package");
+        public Option<string[]> WasmImport { get; } =
+            new(new[] { "--wasmimport" }, "WebAssembly import module names for PInvoke functions");
+        public Option<string[]> WasmImportList { get; } =
+            new(new[] { "--wasmimportlist" }, "File with list of WebAssembly import module names for PInvoke functions");
 
         public OptimizationMode OptimizationMode { get; private set; }
         public ParseResult Result;
@@ -227,6 +231,8 @@ namespace ILCompiler
             AddOption(SingleMethodName);
             AddOption(SingleMethodGenericArgs);
             AddOption(MakeReproPath);
+            AddOption(WasmImport);
+            AddOption(WasmImportList);
 
             this.SetHandler(context =>
             {

@@ -104,10 +104,6 @@ struct UNIX_CONTEXT
 
     uintptr_t GetIp() { return (uintptr_t)Rip(); }
     uintptr_t GetSp() { return (uintptr_t)Rsp(); }
-<<<<<<< HEAD
-#elif defined(HOST_WASM)
-    // no registers/IP/SP for WASM
-=======
 
     template <typename F>
     void ForEachPossibleObjectRef(F lambda)
@@ -129,7 +125,14 @@ struct UNIX_CONTEXT
         lambda((size_t*)&R14());
         lambda((size_t*)&R15());
     }
->>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
+
+#elif defined(HOST_WASM)
+    // no registers/IP/SP for WASM
+    template <typename F>
+    void ForEachPossibleObjectRef(F lambda)
+    {
+    }
+    
 #else
     PORTABILITY_ASSERT("UNIX_CONTEXT");
 #endif // TARGET_ARM

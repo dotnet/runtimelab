@@ -60,107 +60,6 @@ extends:
     - stage: Build
       jobs:
 
-<<<<<<< HEAD
-  #
-  # Build with Release config and Debug runtimeConfiguration - the default subsets - not for Wasm
-  #
-  - ${{ if ne(variables.isOfficialBuild, true) }}:
-    - template: /eng/pipelines/common/platform-matrix.yml
-      parameters:
-        jobTemplate: /eng/pipelines/common/global-build-job.yml
-        buildConfig: Debug
-        platforms:
-        - Linux_x64
-        - windows_x64
-        - OSX_x64
-        jobParameters:
-          timeoutInMinutes: 300
-          testGroup: innerloop
-          buildArgs: -s clr.alljits+clr.tools+clr.nativeaotruntime+clr.nativeaotlibs+libs+nativeaot.packages -lc Release -rc Debug
-          extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-
-  #
-  # Build with Release config and Debug runtimeConfiguration - Wasm
-  #
-  - ${{ if ne(variables.isOfficialBuild, true) }}:
-    - template: /eng/pipelines/common/platform-matrix.yml
-      parameters:
-        jobTemplate: /eng/pipelines/common/global-build-job.yml
-        buildConfig: Debug
-        platforms:
-        - Browser_wasm_win
-        jobParameters:
-          timeoutInMinutes: 300
-          testGroup: innerloop
-          buildArgs: -s clr.nativeaotruntime+clr.nativeaotlibs+libs -lc Release -rc Debug
-          extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-
-  #
-  # Build with Release config and Checked runtimeConfiguration
-  #
-  - ${{ if ne(variables.isOfficialBuild, true) }}:
-    - template: /eng/pipelines/common/platform-matrix.yml
-      parameters:
-        jobTemplate: /eng/pipelines/common/global-build-job.yml
-        buildConfig: Checked
-        platforms:
-        - Linux_x64
-        - windows_x64
-        jobParameters:
-          timeoutInMinutes: 300
-          testGroup: innerloop
-          buildArgs: -s clr.alljits+clr.tools+clr.nativeaotruntime+clr.nativeaotlibs+libs+nativeaot.packages -lc Release -rc Checked
-          extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-
-  #
-  # Build with Release config and Release runtimeConfiguration (used for official builds) - the default subsets - not for Wasm
-  #
-  - template: /eng/pipelines/common/platform-matrix.yml
-    parameters:
-      jobTemplate: /eng/pipelines/common/global-build-job.yml
-      buildConfig: Release
-      platforms:
-#     - Linux_x64        # Tests fail with a few errors, e.g. System.BadImageFormatException: Read out of bounds.  TODO-LLVM try to reinstate when more merged
-#     - Linux_musl_x64
-#     - Linux_arm64      # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
-#     - Linux_arm        # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
-#     - Linux_musl_arm64 # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
-#     - windows_x64      # Part of the combined (target + host) WASM build below
-      - windows_arm64
-#     - OSX_x64          # Reinstate when upstream OSX build is merged in https://github.com/dotnet/runtime/pull/75421
-      jobParameters:
-        timeoutInMinutes: 300
-        isOfficialBuild: ${{ variables.isOfficialBuild }}
-        testGroup: innerloop
-        buildArgs: -s clr.alljits+clr.tools+clr.nativeaotruntime+clr.nativeaotlibs+libs+nativeaot.packages -c Release
-        extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-        extraStepsParameters:
-          isOfficialBuild: ${{ variables.isOfficialBuild }}
-
-  #
-  # Build with Release config and Release runtimeConfiguration (used for official builds) - Wasm
-  #
-  - template: /eng/pipelines/common/platform-matrix.yml
-    parameters:
-      jobTemplate: /eng/pipelines/common/global-build-job.yml
-      buildConfig: Release
-      platforms:
-      - Browser_wasm_win
-      jobParameters:
-        timeoutInMinutes: 300
-        isOfficialBuild: ${{ variables.isOfficialBuild }}
-        testGroup: innerloop
-        buildArgs: -s clr.nativeaotruntime+clr.nativeaotlibs+libs+nativeaot.packages -c Release
-        extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-        extraStepsParameters:
-          isOfficialBuild: ${{ variables.isOfficialBuild }}
-
-
-- ${{ if eq(variables.isOfficialBuild, true) }}:
-  - template: /eng/pipelines/official/stages/publish.yml
-    parameters:
-      isOfficialBuild: true
-=======
       #
       # Build with Debug config and Checked runtimeConfiguration
       #
@@ -238,6 +137,24 @@ extends:
             platforms:
             - Linux_x64
             - windows_x64
+
+      #
+      # Build with Release config and Release runtimeConfiguration (used for official builds) - Wasm
+      #
+      - template: /eng/pipelines/common/platform-matrix.yml
+        parameters:
+          jobTemplate: /eng/pipelines/common/global-build-job.yml
+          buildConfig: Release
+          platforms:
+          - Browser_wasm_win
+          jobParameters:
+            timeoutInMinutes: 300
+            isOfficialBuild: ${{ variables.isOfficialBuild }}
+            testGroup: innerloop
+            buildArgs: -s clr.nativeaotruntime+clr.nativeaotlibs+libs+nativeaot.packages -c Release
+            extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+            extraStepsParameters:
+              isOfficialBuild: ${{ variables.isOfficialBuild }}
 
       - ${{ if ne(variables.isOfficialBuild, true) }}:
         #
@@ -325,8 +242,22 @@ extends:
               dependsOn:
               - build_windows_x64_Release_
 
+        #
+        # Build with Release config and Debug runtimeConfiguration - Wasm
+        #
+        - template: /eng/pipelines/common/platform-matrix.yml
+          parameters:
+            jobTemplate: /eng/pipelines/common/global-build-job.yml
+          buildConfig: Debug
+          platforms:
+          - Browser_wasm_win
+          jobParameters:
+            timeoutInMinutes: 300
+            testGroup: innerloop
+            buildArgs: -s clr.nativeaotruntime+clr.nativeaotlibs+libs -lc Release -rc Debug
+            extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+
     - ${{ if eq(variables.isOfficialBuild, true) }}:
       - template: /eng/pipelines/official/stages/publish.yml
         parameters:
           isOfficialBuild: ${{ variables.isOfficialBuild }}
->>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25

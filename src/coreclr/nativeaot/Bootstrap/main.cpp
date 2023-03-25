@@ -155,12 +155,7 @@ static int InitializeRuntime()
     if (!RhInitialize())
         return -1;
 
-<<<<<<< HEAD
-#if defined HOST_WASM
-    RhpEnableConservativeStackReporting();
-#else
-=======
->>>>>>> 9e7a8a1b312b159d739b19c536b1d8a2f6b3fd25
+#if !defined HOST_WASM
     void * osModule = PalGetModuleHandleFromPointer((void*)&NATIVEAOT_ENTRYPOINT);
 
     // TODO: pass struct with parameters instead of the large signature of RhRegisterOSModule
