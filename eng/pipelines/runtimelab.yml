@@ -257,7 +257,7 @@ extends:
             buildArgs: -s clr.nativeaotruntime+clr.nativeaotlibs+libs -lc Release -rc Debug
             extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
 
-    - ${{ if eq(variables.isOfficialBuild, true) }}:
-      - template: /eng/pipelines/official/stages/publish.yml
-        parameters:
-          isOfficialBuild: ${{ variables.isOfficialBuild }}
+      - ${{ if eq(variables.isOfficialBuild, true) }}:
+        - template: /eng/pipelines/official/stages/publish.yml
+          parameters:
+            isOfficialBuild: ${{ variables.isOfficialBuild }}
