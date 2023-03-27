@@ -1,13 +1,13 @@
 using Mono.Cecil;
 using Mono.Cecil.Rocks;
 
-namespace NativeAOTSizeAnalyzer;
+namespace MstatDump;
 
 internal class Program
 {
     static void Main(string[] args)
     {
-        var asm = AssemblyDefinition.ReadAssembly(@"something.mstat");
+        var asm = AssemblyDefinition.ReadAssembly(args[1]);
         var globalType = (TypeDefinition)asm.MainModule.LookupToken(0x02000001);
 
         var types = globalType.Methods.First(x => x.Name == "Types");
