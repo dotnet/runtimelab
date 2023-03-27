@@ -1,42 +1,17 @@
-﻿using System.Collections.Generic;
-using System;
-
 using Mono.Cecil;
 using Mono.Cecil.Rocks;
-using System.Linq;
-using System.Reflection.PortableExecutable;
 
-using BlobReader = System.Reflection.Metadata.BlobReader;
-
-namespace MstatDump;
+namespace NativeAOTSizeAnalyzer;
 
 internal class Program
 {
-    static int Main(string[] args)
+    static void Main(string[] args)
     {
-        if (args.Length == 0)
-        {
-            Console.WriteLine("Usage: MstatDump <mstat file>");
-            return -1;
-        }
-
-        var fileName = args[0];
-
-        var asm = AssemblyDefinition.ReadAssembly(args[0]);
+        var asm = AssemblyDefinition.ReadAssembly(@"something.mstat");
         var globalType = (TypeDefinition)asm.MainModule.LookupToken(0x02000001);
 
-        int versionMajor = asm.Name.Version.Major;
-
-        PEReader peReader = new PEReader(System.IO.File.OpenRead(fileName));
-        BlobReader nameMapReader = default;
-        if (versionMajor > 1)
-        {
-            PEMemoryBlock nameMap = peReader.GetSectionData(".names");
-            nameMapReader = nameMap.GetReader();
-        }
-
         var types = globalType.Methods.First(x => x.Name == "Types");
-        var typeStats = GetTypes(versionMajor, nameMapReader, types).ToList();
+        var typeStats = GetTypes(types).ToList();
         var typeSize = typeStats.Sum(x => x.Size);
         var typesByModules = typeStats.GroupBy(x => x.Type.Scope).Select(x => new { x.Key.Name, Sum = x.Sum(x => x.Size) }).ToList();
         Console.WriteLine($"// ********** Types Total Size {typeSize:n0}");
@@ -49,7 +24,7 @@ internal class Program
         Console.WriteLine();
 
         var methods = globalType.Methods.First(x => x.Name == "Methods");
-        var methodStats = GetMethods(versionMajor, methods).ToList();
+        var methodStats = GetMethods(methods).ToList();
         var methodSize = methodStats.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize);
         var methodsByModules = methodStats.GroupBy(x => x.Method.DeclaringType.Scope).Select(x => new { x.Key.Name, Sum = x.Sum(x => x.Size + x.GcInfoSize + x.EhInfoSize) }).ToList();
         Console.WriteLine($"// ********** Methods Total Size {methodSize:n0}");
@@ -99,27 +74,16 @@ internal class Program
             Console.WriteLine($"{m.Name,-40} {m.Size,7:n0}");
         }
         Console.WriteLine($"// **********");
-        return 0;
     }
 
-    public static IEnumerable<TypeStats> GetTypes(int formatVersion, BlobReader nameMapReader, MethodDefinition types)
+    public static IEnumerable<TypeStats> GetTypes(MethodDefinition types)
     {
-        int entrySize = formatVersion == 1 ? 2 : 3;
-
         types.Body.SimplifyMacros();
         var il = types.Body.Instructions;
-        for (int i = 0; i + entrySize < il.Count; i += entrySize)
+        for (int i = 0; i + 2 < il.Count; i += 2)
         {
             var type = (TypeReference)il[i + 0].Operand;
             var size = (int)il[i + 1].Operand;
-
-            if (formatVersion > 1)
-            {
-                var index = (int)il[i + 2].Operand;
-                nameMapReader.Offset = index;
-                Console.WriteLine(nameMapReader.ReadSerializedString());
-            }
-
             yield return new TypeStats
             {
                 Type = type,
@@ -128,13 +92,11 @@ internal class Program
         }
     }
 
-    public static IEnumerable<MethodStats> GetMethods(int formatVersion, MethodDefinition methods)
+    public static IEnumerable<MethodStats> GetMethods(MethodDefinition methods)
     {
-        int entrySize = formatVersion == 1 ? 4 : 5;
-
         methods.Body.SimplifyMacros();
         var il = methods.Body.Instructions;
-        for (int i = 0; i + entrySize < il.Count; i += entrySize)
+        for (int i = 0; i + 4 < il.Count; i += 4)
         {
             var method = (MethodReference)il[i + 0].Operand;
             var size = (int)il[i + 1].Operand;
