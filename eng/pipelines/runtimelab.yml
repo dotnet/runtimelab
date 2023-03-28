@@ -93,23 +93,24 @@ extends:
               isOfficialBuild: ${{ variables.isOfficialBuild }}
 
       #
-      # Build with Debug config
+      # Build with Debug config and Checked runtimeConfiguration
       #
       - ${{ if ne(variables.isOfficialBuild, true) }}:
         - template: /eng/pipelines/common/platform-matrix.yml
           parameters:
             jobTemplate: /eng/pipelines/common/global-build-job.yml
-            buildConfig: Debug
+            buildConfig: Checked
             platforms:
             - Linux_x64
             - windows_x64
             jobParameters:
               timeoutInMinutes: 100
               testGroup: innerloop
-              buildArgs: -s clr.alljits+clr.tools+clr.nativeaotruntime+clr.nativeaotlibs+libs+nativeaot.packages -lc Release -rc Debug
+              buildArgs: -s clr+libs+host+packs -c debug -runtimeConfiguration Checked
               extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
               extraStepsParameters:
                 uploadRuntimeTests: true
+                librariesConfiguration: Debug
 
       #
       # Build with Release config and Release runtimeConfiguration
