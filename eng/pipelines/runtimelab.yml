@@ -133,7 +133,7 @@ extends:
       #       ${{ if eq(variables.isOfficialBuild, false) }}:
       #         buildArgs: -s clr+libs+libs.tests+host+packs -c $(_BuildConfig) /p:ArchiveTests=true
       #       ${{ if eq(variables.isOfficialBuild, true) }}:
-      #        #buildArgs: -s clr+libs -c $(_BuildConfig)
+      #         buildArgs: -s clr+libs -c $(_BuildConfig)
 
       #
       # Build with Release allConfigurations to produce packages
