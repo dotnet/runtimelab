@@ -126,12 +126,12 @@ extends:
             timeoutInMinutes: 100
             isOfficialBuild: ${{ variables.isOfficialBuild }}
             testGroup: innerloop
-            #extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-            #extraStepsParameters:
-            #  uploadLibrariesTests: ${{ eq(variables.isOfficialBuild, false) }}
-            #  uploadIntermediateArtifacts: false
+            extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+            extraStepsParameters:
+              uploadLibrariesTests: ${{ eq(variables.isOfficialBuild, false) }}
+              uploadIntermediateArtifacts: false
             ${{ if eq(variables.isOfficialBuild, false) }}:
-              buildArgs: -s clr+libs+libs.tests+host+packs -c $(_BuildConfig) /p:ArchiveTests=true
+              buildArgs: -s clr+libs+host+packs -c $(_BuildConfig) /p:ArchiveTests=true
             ${{ if eq(variables.isOfficialBuild, true) }}:
               buildArgs: -s clr+libs -c $(_BuildConfig)
 
