@@ -10,6 +10,7 @@ parameters:
   testFilter: tree nativeaot
   runSingleFileTests: true
   isOfficialBuild: false
+  libraryConfiguration: Debug
 
 steps:
 - ${{ if and(ne(parameters.archType, 'arm'), ne(parameters.archType, 'arm64')) }}:
@@ -40,7 +41,7 @@ steps:
     - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.testFilter }} /p:NativeAotMultimodule=true /p:LibrariesConfiguration=${{ parameters.libraryConfiguration }}
       displayName: Build tests
   - ${{ else }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} 'tree nativeaot'
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} 'tree nativeaot' /p:LibrariesConfiguration=${{ parameters.libraryConfiguration }}
       displayName: Build tests
 
   - ${{ if eq(parameters.runSingleFileTests, true) }}:
