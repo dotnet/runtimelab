@@ -115,25 +115,25 @@ extends:
       #
       # Build with Release config and Release runtimeConfiguration
       #
-      # - template: /eng/pipelines/common/platform-matrix.yml
-      #  parameters:
-      #     jobTemplate: /eng/pipelines/common/global-build-job.yml
-      #     buildConfig: Release
-      #     platforms:
-      #     - Linux_x64
-      #     - windows_x64
-      #     jobParameters:
-      #       timeoutInMinutes: 100
-      #       isOfficialBuild: ${{ variables.isOfficialBuild }}
-      #       testGroup: innerloop
-      #       extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-      #       extraStepsParameters:
-      #         uploadLibrariesTests: ${{ eq(variables.isOfficialBuild, false) }}
-      #         uploadIntermediateArtifacts: false
-      #       ${{ if eq(variables.isOfficialBuild, false) }}:
-      #         buildArgs: -s clr+libs+libs.tests+host+packs -c $(_BuildConfig) /p:ArchiveTests=true
-      #       ${{ if eq(variables.isOfficialBuild, true) }}:
-      #         buildArgs: -s clr+libs -c $(_BuildConfig)
+      - template: /eng/pipelines/common/platform-matrix.yml
+        parameters:
+          jobTemplate: /eng/pipelines/common/global-build-job.yml
+          buildConfig: Release
+          platforms:
+          - Linux_x64
+          - windows_x64
+          jobParameters:
+            timeoutInMinutes: 100
+            isOfficialBuild: ${{ variables.isOfficialBuild }}
+            testGroup: innerloop
+            #extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+            #extraStepsParameters:
+            #  uploadLibrariesTests: ${{ eq(variables.isOfficialBuild, false) }}
+            #  uploadIntermediateArtifacts: false
+            ${{ if eq(variables.isOfficialBuild, false) }}:
+              buildArgs: -s clr+libs+libs.tests+host+packs -c $(_BuildConfig) /p:ArchiveTests=true
+            ${{ if eq(variables.isOfficialBuild, true) }}:
+              buildArgs: -s clr+libs -c $(_BuildConfig)
 
       #
       # Build with Release allConfigurations to produce packages
