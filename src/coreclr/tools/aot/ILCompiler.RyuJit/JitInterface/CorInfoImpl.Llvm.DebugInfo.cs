@@ -3,16 +3,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 using ILCompiler;
-using ILCompiler.DependencyAnalysis;
 
 using Internal.IL;
 using Internal.TypeSystem;
@@ -126,7 +121,7 @@ namespace Internal.JitInterface
             return _compilation.NodeFactory.NameMangler.GetMangledTypeName(type);
         }
 
-        struct DebugTypeShape
+        private struct DebugTypeShape
         {
             public CorInfoLlvmDebugTypeKind Kind;
             public object Data;
@@ -134,9 +129,9 @@ namespace Internal.JitInterface
             public DebugTypeShape(CorInfoLlvmDebugTypeKind kind, object data) => (Kind, Data) = (kind, data);
         }
 
-        enum CORINFO_LLVM_DEBUG_TYPE_HANDLE { }
+        private enum CORINFO_LLVM_DEBUG_TYPE_HANDLE { }
 
-        enum CorInfoLlvmDebugTypeKind
+        private enum CorInfoLlvmDebugTypeKind
         {
             CORINFO_LLVM_DEBUG_TYPE_UNDEF,
             CORINFO_LLVM_DEBUG_TYPE_PRIMITIVE,
@@ -148,14 +143,14 @@ namespace Internal.JitInterface
             CORINFO_LLVM_DEBUG_TYPE_COUNT
         }
 
-        struct CORINFO_LLVM_INSTANCE_FIELD_DEBUG_INFO
+        private struct CORINFO_LLVM_INSTANCE_FIELD_DEBUG_INFO
         {
             public byte* Name;
             public CORINFO_LLVM_DEBUG_TYPE_HANDLE Type;
             public uint Offset;
         }
 
-        struct CORINFO_LLVM_STATIC_FIELD_DEBUG_INFO
+        private struct CORINFO_LLVM_STATIC_FIELD_DEBUG_INFO
         {
             public byte* Name;
             public CORINFO_LLVM_DEBUG_TYPE_HANDLE Type;
@@ -164,7 +159,7 @@ namespace Internal.JitInterface
             public int IsStaticDataInObject;
         }
 
-        struct CORINFO_LLVM_COMPOSITE_TYPE_DEBUG_INFO
+        private struct CORINFO_LLVM_COMPOSITE_TYPE_DEBUG_INFO
         {
             public byte* Name;
             public CORINFO_LLVM_DEBUG_TYPE_HANDLE BaseClass;
@@ -177,13 +172,13 @@ namespace Internal.JitInterface
             public CORINFO_LLVM_STATIC_FIELD_DEBUG_INFO* StaticFields;
         }
 
-        struct CORINFO_LLVM_ENUM_ELEMENT_DEBUG_INFO
+        private struct CORINFO_LLVM_ENUM_ELEMENT_DEBUG_INFO
         {
             public byte* Name;
             public ulong Value;
         }
 
-        struct CORINFO_LLVM_ENUM_TYPE_DEBUG_INFO
+        private struct CORINFO_LLVM_ENUM_TYPE_DEBUG_INFO
         {
             public byte* Name;
             public CORINFO_LLVM_DEBUG_TYPE_HANDLE ElementType;
@@ -191,7 +186,7 @@ namespace Internal.JitInterface
             public CORINFO_LLVM_ENUM_ELEMENT_DEBUG_INFO* Elements;
         }
 
-        struct CORINFO_LLVM_ARRAY_TYPE_DEBUG_INFO
+        private struct CORINFO_LLVM_ARRAY_TYPE_DEBUG_INFO
         {
             public byte* Name;
             public uint Rank;
@@ -199,13 +194,13 @@ namespace Internal.JitInterface
             public int IsMultiDimensional;
         }
 
-        struct CORINFO_LLVM_POINTER_TYPE_DEBUG_INFO
+        private struct CORINFO_LLVM_POINTER_TYPE_DEBUG_INFO
         {
             public CORINFO_LLVM_DEBUG_TYPE_HANDLE ElementType;
             public int IsReference;
         }
 
-        struct CORINFO_LLVM_FUNCTION_TYPE_DEBUG_INFO
+        private struct CORINFO_LLVM_FUNCTION_TYPE_DEBUG_INFO
         {
             public CORINFO_LLVM_DEBUG_TYPE_HANDLE TypeOfThisPointer;
             public CORINFO_LLVM_DEBUG_TYPE_HANDLE ReturnType;
@@ -213,14 +208,16 @@ namespace Internal.JitInterface
             public CORINFO_LLVM_DEBUG_TYPE_HANDLE* ArgumentTypes;
         }
 
-        struct CORINFO_LLVM_TYPE_DEBUG_INFO
+        private struct CORINFO_LLVM_TYPE_DEBUG_INFO
         {
             public CorInfoLlvmDebugTypeKind Kind;
+#pragma warning disable CS0649
             public CORINFO_LLVM_TYPE_DEBUG_INFO_UNION Union;
+#pragma warning restore CS0649
         }
 
         [StructLayout(LayoutKind.Explicit)]
-        struct CORINFO_LLVM_TYPE_DEBUG_INFO_UNION
+        private struct CORINFO_LLVM_TYPE_DEBUG_INFO_UNION
         {
             [FieldOffset(0)]
             public CorInfoType PrimitiveType;
@@ -236,7 +233,7 @@ namespace Internal.JitInterface
             public CORINFO_LLVM_FUNCTION_TYPE_DEBUG_INFO FunctionInfo;
         }
 
-        CORINFO_LLVM_DEBUG_TYPE_HANDLE GetDebugTypeForType(CORINFO_CLASS_STRUCT_* typeHandle)
+        private CORINFO_LLVM_DEBUG_TYPE_HANDLE GetDebugTypeForType(CORINFO_CLASS_STRUCT_* typeHandle)
         {
             TypeDesc type = HandleToObject(typeHandle);
             uint index = DebugTypesDescriptor.GetVariableTypeIndex(type);
@@ -244,7 +241,7 @@ namespace Internal.JitInterface
             return IndexToDebugTypeHandle(index);
         }
 
-        void GetDebugInfoForDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo)
+        private void GetDebugInfoForDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo)
         {
             int index = (int)DebugTypeHandleToIndex(debugTypeHandle);
             DebugTypeShape shape = _debugTypesShapes[index];
@@ -383,20 +380,20 @@ namespace Internal.JitInterface
             pInfo->ArgumentTypes = (CORINFO_LLVM_DEBUG_TYPE_HANDLE*)GetPin(argumentTypes);
         }
 
-        struct CORINFO_LLVM_VARIABLE_DEBUG_INFO
+        private struct CORINFO_LLVM_VARIABLE_DEBUG_INFO
         {
             public byte* Name;
             public uint VarNumber;
             public CORINFO_LLVM_DEBUG_TYPE_HANDLE Type;
         }
 
-        struct CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO
+        private struct CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO
         {
             public uint ILOffset;
             public uint LineNumber;
         }
 
-        struct CORINFO_LLVM_METHOD_DEBUG_INFO
+        private struct CORINFO_LLVM_METHOD_DEBUG_INFO
         {
             public byte* Name;
             public byte* Directory;
@@ -420,7 +417,7 @@ namespace Internal.JitInterface
             pInfo->Type = IndexToDebugTypeHandle(descriptor.MemberFunction);
 
             string documentPath = null;
-            ArrayBuilder<CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO> lineNumbersBuilder = new();
+            ArrayBuilder<CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO> lineNumbersBuilder = default;
             foreach (ILSequencePoint sequencePoint in _debugInfo.GetSequencePoints())
             {
                 lineNumbersBuilder.Add(new() { ILOffset = (uint)sequencePoint.Offset, LineNumber = (uint)sequencePoint.LineNumber });
