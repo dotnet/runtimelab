@@ -20,7 +20,7 @@ using Internal.TypeSystem.TypesDebugInfo;
 
 namespace Internal.JitInterface
 {
-    sealed unsafe partial class CorInfoImpl : ITypesDebugInfoWriter
+    internal sealed unsafe partial class CorInfoImpl : ITypesDebugInfoWriter
     {
         // We want to reuse the code inside UserDefinedTypeDescriptor for our debug info writing. That code assumes a  "push"
         // model, where something (object writer) is emitting types as it goes along. This is in contrast to the "pull" model
