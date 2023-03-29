@@ -45,6 +45,8 @@ using structPassingKind = Compiler::structPassingKind;
 #define IMAGE_FILE_MACHINE_WASM32             0xFFFF
 #define IMAGE_FILE_MACHINE_WASM64             0xFFFE // TODO: appropriate values for this?  Used to check compilation is for intended target
 
+const int TARGET_POINTER_BITS = TARGET_POINTER_SIZE * BITS_PER_BYTE;
+
 // Part of the Jit/EE interface, must be kept in sync with the managed version in "CorInfoImpl.Llvm.cs".
 //
 enum class TargetAbiType : uint8_t
@@ -74,6 +76,33 @@ enum CorInfoHelpLlvmFunc
 };
 
 typedef unsigned CorInfoHelpAnyFunc; // Allow us to use both flavors of helpers.
+typedef unsigned CORINFO_LLVM_DEBUG_TYPE_HANDLE;
+
+const CORINFO_LLVM_DEBUG_TYPE_HANDLE NO_DEBUG_TYPE = 0;
+
+struct CORINFO_LLVM_FORWARD_REF_TYPE_DEBUG_INFO;
+struct CORINFO_LLVM_COMPOSITE_TYPE_DEBUG_INFO;
+struct CORINFO_LLVM_ENUM_TYPE_DEBUG_INFO;
+struct CORINFO_LLVM_ARRAY_TYPE_DEBUG_INFO;
+struct CORINFO_LLVM_POINTER_TYPE_DEBUG_INFO;
+struct CORINFO_LLVM_FUNCTION_TYPE_DEBUG_INFO;
+struct CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO;
+struct CORINFO_LLVM_METHOD_DEBUG_INFO;
+struct CORINFO_LLVM_TYPE_DEBUG_INFO;
+
+struct MallocAllocator
+{
+    template <typename T>
+    T* allocate(size_t count)
+    {
+        return static_cast<T*>(malloc(count * sizeof(T)));
+    }
+
+    void deallocate(void* p)
+    {
+        free(p);
+    }
+};
 
 enum HelperFuncInfoFlags
 {
@@ -111,8 +140,8 @@ struct HelperFuncInfo
 
 struct PhiPair
 {
-    GenTreePhi* irPhiNode;
-    llvm::PHINode* llvmPhiNode;
+    GenTreeLclVar* StoreNode;
+    llvm::PHINode* LlvmPhiNode;
 };
 
 struct LlvmBlockRange
@@ -145,6 +174,8 @@ extern Module* _module;
 extern LLVMContext _llvmContext;
 extern std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs;
 extern std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap;
+extern JitHashTable<CORINFO_LLVM_DEBUG_TYPE_HANDLE, JitSmallPrimitiveKeyFuncs<CORINFO_LLVM_DEBUG_TYPE_HANDLE>, llvm::DIType*, MallocAllocator> s_debugTypesMap;
+extern JitHashTable<llvm::DIFile*, JitPtrKeyFuncs<llvm::DIFile>, llvm::DICompileUnit*, MallocAllocator> s_debugCompileUnitsMap;
 
 class Llvm
 {
@@ -181,6 +212,9 @@ private:
     // DWARF debug info.
     llvm::DIBuilder* m_diBuilder = nullptr;
     llvm::DISubprogram* m_diFunction = nullptr;
+    JitHashTable<unsigned, JitSmallPrimitiveKeyFuncs<unsigned>, llvm::DILocalVariable*> m_debugVariablesMap;
+    unsigned m_lineNumberCount;
+    CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO* m_lineNumbers;
 
     unsigned _shadowStackLocalsSize = 0;
     unsigned _originalShadowStackLclNum = BAD_VAR_NUM;
@@ -246,8 +280,6 @@ private:
     bool GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig);
     void AddCodeReloc(void* handle);
     bool IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle) const;
-    const char* GetDocumentFileName();
-    uint32_t GetOffsetLineNumber(unsigned ilOffset);
     CorInfoType GetPrimitiveTypeForTrivialWasmStruct(CORINFO_CLASS_HANDLE structHandle);
     uint32_t PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset);
     TypeDescriptor GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle);
@@ -255,6 +287,9 @@ private:
     CORINFO_GENERIC_HANDLE GetExternalMethodAccessor(
         CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* callSiteSig, int sigLength);
     CORINFO_GENERIC_HANDLE GetLlvmHelperFuncEntrypoint(CorInfoHelpLlvmFunc helperFunc);
+    CORINFO_LLVM_DEBUG_TYPE_HANDLE GetDebugTypeForType(CORINFO_CLASS_HANDLE typeHandle);
+    void GetDebugInfoForDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo);
+    void GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
 
 public:
     static void StartThreadContextBoundCompilation(const char* path, const char* triple, const char* dataLayout);
@@ -348,9 +383,9 @@ private:
     const unsigned ROOT_FUNC_IDX = 0;
 
     bool initializeFunctions();
-    void initializeDebugInfo();
     void generateProlog();
     void initializeLocals();
+    void generateBlocks();
     void generateBlock(BasicBlock* block);
     void generateEHDispatch();
     Value* generateEHDispatchTable(Function* llvmFunc, unsigned innerEHIndex, unsigned outerEHIndex);
@@ -430,9 +465,6 @@ private:
     Value* getShadowStackForCallee();
     Value* getOriginalShadowStack();
 
-    llvm::DILocation* createDebugLocation(unsigned lineNo);
-    llvm::DILocation* getArtificialDebugLocation();
-
     void setCurrentEmitContextForBlock(BasicBlock* block);
     void setCurrentEmitContext(unsigned funcIdx, unsigned tryIndex, LlvmBlockRange* llvmBlock);
     unsigned getCurrentLlvmFunctionIndex() const;
@@ -463,5 +495,36 @@ public:
 
 private:
     llvm::Intrinsic::ID getLlvmIntrinsic(NamedIntrinsic intrinsicName) const;
+
+    // ================================================================================================================
+    // |                                    DWARF debug info (part of codegen)                                        |
+    // ================================================================================================================
+
+    void initializeDebugInfo();
+    llvm::DIFile* initializeDebugInfoBuilder(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
+    void initializeDebugVariables(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
+
+    void declareDebugVariables();
+    void assignDebugVariable(unsigned lclNum, Value* value);
+
+    unsigned getLineNumberForILOffset(unsigned ilOffset);
+    llvm::DILocation* getDebugLocation(unsigned lineNo);
+    llvm::DILocation* getArtificialDebugLocation();
+    llvm::DILocation* getCurrentOrArtificialDebugLocation();
+    llvm::DIFile* getUnknownDebugFile();
+
+    llvm::DIType* getOrCreateDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle);
+    llvm::DIType* createDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle);
+    llvm::DIType* createDebugTypeForPrimitive(CorInfoType type);
+    llvm::DIType* createDebugTypeForCompositeType(
+        CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_COMPOSITE_TYPE_DEBUG_INFO* pInfo);
+    llvm::DIType* createDebugTypeForEnumType(CORINFO_LLVM_ENUM_TYPE_DEBUG_INFO* pInfo);
+    llvm::DIType* createDebugTypeForArrayType(CORINFO_LLVM_ARRAY_TYPE_DEBUG_INFO* pInfo);
+    llvm::DIType* createDebugTypeForPointerType(CORINFO_LLVM_POINTER_TYPE_DEBUG_INFO* pInfo);
+    llvm::DIType* createFixedArrayDebugType(llvm::DIType* elementDebugType, unsigned size);
+    llvm::DISubroutineType* createDebugTypeForFunctionType(CORINFO_LLVM_FUNCTION_TYPE_DEBUG_INFO* pInfo);
+    llvm::DIType* createClassDebugType(StringRef name, unsigned size, ArrayRef<llvm::Metadata*> elements);
+    llvm::DIDerivedType* createDebugMember(StringRef name, llvm::DIType* debugType, unsigned offset);
+    llvm::DIDerivedType* createPointerDebugType(llvm::DIType* pointeeDebugType);
 };
 #endif /* End of _LLVM_H_ */

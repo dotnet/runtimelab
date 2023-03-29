@@ -1386,7 +1386,7 @@ CallArg* Llvm::lowerCallReturn(GenTreeCall* callNode)
         GenTree* returnValueAddress = insertShadowStackAddr(callNode, getCurrentShadowFrameSize(), _shadowStackLclNum);
 
         // create temp for the return address
-        unsigned returnTempNum = _compiler->lvaGrabTemp(false DEBUGARG("return value address"));
+        unsigned returnTempNum = _compiler->lvaGrabTemp(true DEBUGARG("return value address"));
         LclVarDsc* returnAddrVarDsc = _compiler->lvaGetDesc(returnTempNum);
         returnAddrVarDsc->lvType = TYP_I_IMPL;
 

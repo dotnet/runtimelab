@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 // ================================================================================================================
 // |                                            LLVM-based codegen                                                |
 // ================================================================================================================
@@ -22,33 +25,7 @@ void Llvm::Compile()
     JITDUMPEXEC(_compiler->fgDispHandlerTab());
 
     generateProlog();
-
-    class LlvmCompileDomTreeVisitor : public DomTreeVisitor<LlvmCompileDomTreeVisitor>
-    {
-        Llvm* m_llvm;
-
-    public:
-        LlvmCompileDomTreeVisitor(Compiler* compiler, Llvm* llvm)
-            : DomTreeVisitor(compiler, compiler->fgSsaDomTree)
-            , m_llvm(llvm)
-        {
-        }
-
-        void PreOrderVisit(BasicBlock* block) const
-        {
-            m_llvm->generateBlock(block);
-        }
-    };
-
-    LlvmCompileDomTreeVisitor visitor(_compiler, this);
-    visitor.WalkTree();
-
-    // Walk all the exceptional code blocks and generate them, since they don't appear in the normal flow graph.
-    for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
-    {
-        generateBlock(add->acdDstBlk);
-    }
-
+    generateBlocks();
     generateEHDispatch();
 
     fillPhis();
@@ -191,72 +168,16 @@ bool Llvm::initializeFunctions()
     return false;
 }
 
-void Llvm::initializeDebugInfo()
-{
-    if (!_compiler->opts.compDbgInfo)
-    {
-        return;
-    }
-
-    const char* documentFileName = GetDocumentFileName();
-    if (documentFileName == nullptr)
-    {
-        return;
-    }
-
-    // Check Unix and Windows path styles
-    std::string fullPath = documentFileName;
-    std::size_t botDirPos = fullPath.find_last_of("/");
-    if (botDirPos == std::string::npos)
-    {
-        botDirPos = fullPath.find_last_of("\\");
-    }
-    std::string directory = "";
-    std::string fileName;
-    if (botDirPos != std::string::npos)
-    {
-        directory = fullPath.substr(0, botDirPos);
-        fileName = fullPath.substr(botDirPos + 1, fullPath.length());
-    }
-    else
-    {
-        fileName = fullPath;
-    }
-
-
-    m_diBuilder = new (_compiler->getAllocator(CMK_DebugInfo)) llvm::DIBuilder(*_module);
-
-    // TODO-LLVM: we are allocating a new CU for each compiled function, which is rather inefficient. We should instead
-    // allocate one CU per file.
-    llvm::DIFile* fileMetadata = m_diBuilder->createFile(fileName, directory);
-    m_diBuilder->createCompileUnit(llvm::dwarf::DW_LANG_C /* no dotnet choices in the enum */, fileMetadata, "ILC",
-                                   _compiler->opts.OptimizationEnabled(), "", 1, "", llvm::DICompileUnit::FullDebug,
-                                   0, false);
-
-    // TODO-LLVM: function parameter types.
-    llvm::DISubroutineType* functionType = m_diBuilder->createSubroutineType({});
-    uint32_t lineNumber = GetOffsetLineNumber(0);
-
-    // TODO-LLVM: "getMethodName" is meant for (Jit) debugging. Find/add a more suitable API.
-    const char* methodName = m_info->compCompHnd->getMethodName(m_info->compMethodHnd, nullptr);
-    m_diFunction =
-        m_diBuilder->createFunction(fileMetadata, methodName, methodName, fileMetadata, lineNumber, functionType,
-                                    lineNumber, llvm::DINode::FlagZero,
-                                    llvm::DISubprogram::SPFlagDefinition | llvm::DISubprogram::SPFlagLocalToUnit);
-
-    // TODO-LLVM-EH: debugging in funclets.
-    getRootLlvmFunction()->setSubprogram(m_diFunction);
-}
-
 void Llvm::generateProlog()
 {
     JITDUMP("\n=============== Generating prolog:\n");
 
-    llvm::BasicBlock* prologLlvmBlock = getOrCreatePrologLlvmBlockForFunction(ROOT_FUNC_IDX);
-    _builder.SetInsertPoint(prologLlvmBlock->getTerminator());
-    _builder.SetCurrentDebugLocation(llvm::DebugLoc()); // By convention, prologs have no debug info.
+    LlvmBlockRange prologLlvmBlocks(getOrCreatePrologLlvmBlockForFunction(ROOT_FUNC_IDX));
+    setCurrentEmitContext(ROOT_FUNC_IDX, EHblkDsc::NO_ENCLOSING_INDEX, &prologLlvmBlocks);
+    _builder.SetCurrentDebugLocation(nullptr); // By convention, prologs have no debug info.
 
     initializeLocals();
+    declareDebugVariables();
 }
 
 void Llvm::initializeLocals()
@@ -274,20 +195,19 @@ void Llvm::initializeLocals()
     }
 
     llvm::AllocaInst** allocas = new (_compiler->getAllocator(CMK_Codegen)) llvm::AllocaInst*[_compiler->lvaCount];
-
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
-        // Don't look at unreferenced temporaries.
-        if (varDsc->lvRefCnt() == 0)
-        {
-            continue;
-        }
-
         if (isFuncletParameter(lclNum))
         {
             // We model funclet parameters specially because it is not trivial to represent them in IR faithfully.
+            continue;
+        }
+
+        // Don't look at unreferenced temporaries.
+        if (varDsc->lvRefCnt() == 0)
+        {
             continue;
         }
 
@@ -363,6 +283,7 @@ void Llvm::initializeLocals()
         if (_compiler->lvaInSsa(lclNum))
         {
             _localsMap.Set({lclNum, SsaConfig::FIRST_SSA_NUM}, initValue);
+            assignDebugVariable(lclNum, initValue);
         }
         else
         {
@@ -376,6 +297,48 @@ void Llvm::initializeLocals()
     }
 
     getLlvmFunctionInfoForIndex(ROOT_FUNC_IDX).Allocas = allocas;
+}
+
+void Llvm::generateBlocks()
+{
+    // When optimizing, we'll have built SSA and so have to process the blocks in the dominator pre-order
+    // for SSA uses to be available at the point we request them.
+    if (_compiler->fgSsaDomTree != nullptr)
+    {
+        class LlvmCompileDomTreeVisitor : public DomTreeVisitor<LlvmCompileDomTreeVisitor>
+        {
+            Llvm* m_llvm;
+
+        public:
+            LlvmCompileDomTreeVisitor(Compiler* compiler, Llvm* llvm)
+                : DomTreeVisitor(compiler, compiler->fgSsaDomTree)
+                , m_llvm(llvm)
+            {
+            }
+
+            void PreOrderVisit(BasicBlock* block) const
+            {
+                m_llvm->generateBlock(block);
+            }
+        };
+
+        LlvmCompileDomTreeVisitor visitor(_compiler, this);
+        visitor.WalkTree();
+
+        // Walk all the exceptional code blocks and generate them, since they don't appear in the normal flow graph.
+        for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
+        {
+            generateBlock(add->acdDstBlk);
+        }
+    }
+    else
+    {
+        // When not optimizing, simply generate all of the blocks in layout order.
+        for (BasicBlock* block : _compiler->Blocks())
+        {
+            generateBlock(block);
+        }
+    }
 }
 
 void Llvm::generateBlock(BasicBlock* block)
@@ -940,14 +903,13 @@ void Llvm::fillPhis()
 
     for (PhiPair phiPair : _phiPairs)
     {
-        llvm::PHINode* llvmPhiNode = phiPair.llvmPhiNode;
-        GenTreePhi* phiNode = phiPair.irPhiNode;
+        llvm::PHINode* llvmPhiNode = phiPair.LlvmPhiNode;
+        GenTreeLclVar* phiStore = phiPair.StoreNode;
 
-        GenTreeLclVar* phiStore = phiNode->gtNext->AsLclVar();
         unsigned lclNum = phiStore->GetLclNum();
         BasicBlock* phiBlock = _compiler->lvaGetDesc(lclNum)->GetPerSsaData(phiStore->GetSsaNum())->GetBlock();
 
-        for (GenTreePhi::Use& use : phiNode->Uses())
+        for (GenTreePhi::Use& use : phiStore->Data()->AsPhi()->Uses())
         {
             GenTreePhiArg* phiArg = use.GetNode()->AsPhiArg();
             Value* phiArgValue = _localsMap[{lclNum, phiArg->GetSsaNum()}];
@@ -1308,12 +1270,18 @@ void Llvm::buildStoreLocalVar(GenTreeLclVar* lclVar)
     }
     else
     {
-        localValue = consumeValue(lclVar->gtGetOp1(), destLlvmType);
+        localValue = consumeValue(lclVar->Data(), destLlvmType);
     }
 
     if (lclVar->HasSsaName())
     {
+        if (lclVar->Data()->OperIs(GT_PHI))
+        {
+            _phiPairs.push_back({lclVar, llvm::cast<llvm::PHINode>(localValue)});
+        }
+
         _localsMap.Set({lclNum, lclVar->GetSsaNum()}, localValue);
+        assignDebugVariable(lclNum, localValue);
     }
     else
     {
@@ -1326,9 +1294,7 @@ void Llvm::buildEmptyPhi(GenTreePhi* phi)
 {
     LclVarDsc* varDsc = _compiler->lvaGetDesc(phi->Uses().begin()->GetNode()->AsPhiArg());
     Type* lclLlvmType = getLlvmTypeForLclVar(varDsc);
-
     llvm::PHINode* llvmPhiNode = _builder.CreatePHI(lclLlvmType, 2);
-    _phiPairs.push_back({ phi, llvmPhiNode });
 
     mapGenTreeToValue(phi, llvmPhiNode);
 }
@@ -2343,8 +2309,8 @@ void Llvm::buildILOffset(GenTreeILOffset* ilOffsetNode)
     }
 
     unsigned ilOffset = debugInfo.GetLocation().GetOffset();
-    unsigned lineNo = GetOffsetLineNumber(ilOffset);
-    llvm::DILocation* diLocation = createDebugLocation(lineNo);
+    unsigned lineNo = getLineNumberForILOffset(ilOffset);
+    llvm::DILocation* diLocation = getDebugLocation(lineNo);
 
     _builder.SetCurrentDebugLocation(diLocation);
 }
@@ -2904,23 +2870,6 @@ Value* Llvm::getOriginalShadowStack()
     return getCurrentLlvmFunction()->getArg(1);
 }
 
-llvm::DILocation* Llvm::createDebugLocation(unsigned lineNo)
-{
-    assert(m_diFunction != nullptr);
-    return llvm::DILocation::get(_llvmContext, lineNo, 0, m_diFunction);
-}
-
-llvm::DILocation* Llvm::getArtificialDebugLocation()
-{
-    if (m_diFunction == nullptr)
-    {
-        return nullptr;
-    }
-
-    // Line number "0" is used to represent non-user code in DWARF.
-    return createDebugLocation(0);
-}
-
 void Llvm::setCurrentEmitContextForBlock(BasicBlock* block)
 {
     unsigned funcIdx = getLlvmFunctionIndexForBlock(block);
@@ -2935,7 +2884,15 @@ void Llvm::setCurrentEmitContext(unsigned funcIdx, unsigned tryIndex, LlvmBlockR
 {
     assert(getLlvmFunctionForIndex(funcIdx) == llvmBlocks->LastBlock->getParent());
 
-    _builder.SetInsertPoint(llvmBlocks->LastBlock);
+    llvm::BasicBlock* insertLlvmBlock = llvmBlocks->LastBlock;
+    if (insertLlvmBlock->getTerminator() != nullptr)
+    {
+        _builder.SetInsertPoint(insertLlvmBlock->getTerminator());
+    }
+    else
+    {
+        _builder.SetInsertPoint(insertLlvmBlock);
+    }
     m_currentLlvmFunctionIndex = funcIdx;
     m_currentProtectedRegionIndex = tryIndex;
     m_currentLlvmBlocks = llvmBlocks;
@@ -3119,11 +3076,12 @@ llvm::BasicBlock* Llvm::getOrCreatePrologLlvmBlockForFunction(unsigned funcIdx)
 //
 // Return Value:
 //    Whether "block" has an immediate dominator, i. e. is statically
-//    reachable, not the first block, and not a throw helper block.
+//    reachable, not the first block, and not a throw helper block. If
+//    we do not have dominators built, all blocks are assumed reachable.
 //
 bool Llvm::isReachable(BasicBlock* block) const
 {
-    return block->bbIDom != nullptr;
+    return (_compiler->fgSsaDomTree != nullptr) ? (block->bbIDom != nullptr) : true;
 }
 
 BasicBlock* Llvm::getFirstBlockForFunction(unsigned funcIdx) const
@@ -3158,10 +3116,10 @@ Value* Llvm::getLocalAddr(unsigned lclNum)
 // getOrCreateAllocaForLocalInFunclet: Get an address for a funclet local.
 //
 // For a local to be (locally) live on the LLVM frame in a funclet, it has
-// to be tracked and have its address taken (but not exposed!). Such locals
-// are rare, and it is not cheap to indentify their set precisely before
-// the code has been generated. We therefore use a lazy strategy for their
-// materialization in the funclet prologs.
+// to be tracked and have its address taken (but not exposed!), or be one
+// of locals lowering adds after shadow frame layout. Such locals are rare,
+// and it is not cheap to indentify their set precisely before the code has
+// been generated. We therefore materialize them in funclet prologs lazily.
 //
 // Arguments:
 //    lclNum - The local for which to get the allocated home
@@ -3172,11 +3130,14 @@ Value* Llvm::getLocalAddr(unsigned lclNum)
 Value* Llvm::getOrCreateAllocaForLocalInFunclet(unsigned lclNum)
 {
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
-    assert(varDsc->lvTracked); // Untracked locals in functions with funclets live on the shadow frame.
-
     unsigned funcIdx = getCurrentLlvmFunctionIndex();
+
+    // Untracked locals in functions with funclets live on the shadow frame, except if they're temporaries
+    // created by lowering, known to only be live inside the funclet.
+    assert(varDsc->lvTracked || varDsc->lvIsTemp);
+    assert(!varDsc->lvTracked ||
+           !VarSetOps::IsMember(_compiler, getFirstBlockForFunction(funcIdx)->bbLiveIn, varDsc->lvVarIndex));
     assert(funcIdx != ROOT_FUNC_IDX); // The root's prolog is generated eagerly.
-    assert(!VarSetOps::IsMember(_compiler, getFirstBlockForFunction(funcIdx)->bbLiveIn, varDsc->lvVarIndex));
 
     FunctionInfo& funcInfo = getLlvmFunctionInfoForIndex(funcIdx);
     AllocaMap* allocaMap = funcInfo.AllocaMap;

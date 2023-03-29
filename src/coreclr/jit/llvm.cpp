@@ -13,6 +13,8 @@ Module* _module = nullptr;
 
 std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs = new std::unordered_map<CORINFO_CLASS_HANDLE, Type*>();
 std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap = new std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>();
+JitHashTable<CORINFO_LLVM_DEBUG_TYPE_HANDLE, JitSmallPrimitiveKeyFuncs<CORINFO_LLVM_DEBUG_TYPE_HANDLE>, llvm::DIType*, MallocAllocator> s_debugTypesMap({});
+JitHashTable<llvm::DIFile*, JitPtrKeyFuncs<llvm::DIFile>, llvm::DICompileUnit*, MallocAllocator> s_debugCompileUnitsMap({});
 
 // Must be kept in sync with the managed version in "CorInfoImpl.Llvm.cs".
 //
@@ -23,14 +25,15 @@ enum class EEApiId
     GetSignatureForMethodSymbol,
     AddCodeReloc,
     IsRuntimeImport,
-    GetDocumentFileName,
-    GetOffsetLineNumber,
     GetPrimitiveTypeForTrivialWasmStruct,
     PadOffset,
     GetTypeDescriptor,
     GetAlternativeFunctionName,
     GetExternalMethodAccessor,
     GetLlvmHelperFuncEntrypoint,
+    GetDebugTypeForType,
+    GetDebugInfoForDebugType,
+    GetDebugInfoForCurrentMethod,
     Count
 };
 
@@ -105,6 +108,7 @@ Llvm::Llvm(Compiler* compiler)
     , _blkToLlvmBlksMap(compiler->getAllocator(CMK_Codegen))
     , _sdsuMap(compiler->getAllocator(CMK_Codegen))
     , _localsMap(compiler->getAllocator(CMK_Codegen))
+    , m_debugVariablesMap(compiler->getAllocator(CMK_Codegen))
 {
 }
 
@@ -840,16 +844,6 @@ bool Llvm::IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle) const
     return CallEEApi<EEApiId::IsRuntimeImport, uint32_t>(m_pEECorInfo, methodHandle) != 0;
 }
 
-const char* Llvm::GetDocumentFileName()
-{
-    return CallEEApi<EEApiId::GetDocumentFileName, const char*>(m_pEECorInfo);
-}
-
-uint32_t Llvm::GetOffsetLineNumber(unsigned ilOffset)
-{
-    return CallEEApi<EEApiId::GetOffsetLineNumber, uint32_t>(m_pEECorInfo, ilOffset);
-}
-
 CorInfoType Llvm::GetPrimitiveTypeForTrivialWasmStruct(CORINFO_CLASS_HANDLE structHandle)
 {
     return CallEEApi<EEApiId::GetPrimitiveTypeForTrivialWasmStruct, CorInfoType>(m_pEECorInfo, structHandle);
@@ -882,6 +876,21 @@ CORINFO_GENERIC_HANDLE Llvm::GetLlvmHelperFuncEntrypoint(CorInfoHelpLlvmFunc hel
     return CallEEApi<EEApiId::GetLlvmHelperFuncEntrypoint, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, helperFunc);
 }
 
+CORINFO_LLVM_DEBUG_TYPE_HANDLE Llvm::GetDebugTypeForType(CORINFO_CLASS_HANDLE typeHandle)
+{
+    return CallEEApi<EEApiId::GetDebugTypeForType, CORINFO_LLVM_DEBUG_TYPE_HANDLE>(m_pEECorInfo, typeHandle);
+}
+
+void Llvm::GetDebugInfoForDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo)
+{
+    CallEEApi<EEApiId::GetDebugInfoForDebugType, void>(m_pEECorInfo, debugTypeHandle, pInfo);
+}
+
+void Llvm::GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
+{
+    CallEEApi<EEApiId::GetDebugInfoForCurrentMethod, void>(m_pEECorInfo, pInfo);
+}
+
 extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExports)
 {
     assert((jitImports != nullptr) && (jitImports[static_cast<int>(EEApiId::Count)] == (void*)0x1234));
@@ -903,7 +912,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExp
 /* static */ void Llvm::FinishThreadContextBoundCompilation()
 {
     assert(_module != nullptr);
-    if (_module->getNamedMetadata("llvm.dbg.cu") != nullptr)
+    if (s_debugCompileUnitsMap.GetCount() != 0)
     {
         _module->addModuleFlag(llvm::Module::Warning, "Dwarf Version", 4);
         _module->addModuleFlag(llvm::Module::Warning, "Debug Info Version", 3);

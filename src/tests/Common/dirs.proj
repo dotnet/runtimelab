@@ -26,6 +26,8 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\Reflection.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\Reflection_FromUsage.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\ComWrappers\ComWrappers.csproj" />
+
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\WasmDebugging.csproj" />
     </ItemGroup>
 
     <ItemGroup>

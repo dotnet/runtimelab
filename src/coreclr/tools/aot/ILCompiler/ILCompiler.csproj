@@ -9,7 +9,7 @@
 
 
   <!-- BEGIN: Workaround for https://github.com/dotnet/runtime/issues/67742 -->
-  <PropertyGroup Condition="'$(BuildingInsideVisualStudio)' != 'true'">
+  <PropertyGroup Condition="'$(BuildingInsideVisualStudio)' != 'true' and '$(IlcInnerLoop)' != 'true'">
     <PublishDir>$(RuntimeBinDir)ilc-published/</PublishDir>
     <PublishTrimmed>true</PublishTrimmed>
     <!-- Don't R2R on ARM64 machines because ARM64 crossgen2 that comes with .NET SDK <= 7.0 Preview 7 crashes.-->
@@ -18,7 +18,7 @@
   </PropertyGroup>
 
   <Target Name="PublishCompiler"
-          Condition="'$(BuildingInsideVisualStudio)' != 'true'"
+          Condition="'$(BuildingInsideVisualStudio)' != 'true' and '$(IlcInnerLoop)' != 'true'"
           AfterTargets="Build"
           DependsOnTargets="Publish;StompSingleFileHostPath" />
 

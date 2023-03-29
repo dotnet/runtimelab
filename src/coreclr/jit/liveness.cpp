@@ -997,9 +997,9 @@ void Compiler::fgExtendDbgLifetimes()
                     LIR::Range initRange = LIR::EmptyRange();
                     initRange.InsertBefore(nullptr, zero, store);
 
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
+#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32)
                     DecomposeLongs::DecomposeRange(this, initRange);
-#endif // !defined(TARGET_64BIT)
+#endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM32)
 #ifndef TARGET_WASM
                     m_pLowering->LowerRange(block, initRange);
 #endif // !TARGET_WASM
@@ -2184,10 +2184,6 @@ bool Compiler::fgTryRemoveNonLocal(GenTree* node, LIR::Range* blockRange)
 //
 bool Compiler::fgTryRemoveDeadStoreLIR(GenTree* store, GenTreeLclVarCommon* lclNode, BasicBlock* block)
 {
-    // TODO-LLVM: we should not need this for correctness, investigate removing.
-    if (!PreciseRefCountsRequired())
-        return false;
-
     assert(!opts.MinOpts());
 
     // We cannot remove stores to (tracked) TYP_STRUCT locals with GC pointers marked as "explicit init",

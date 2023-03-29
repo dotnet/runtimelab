@@ -107,51 +107,6 @@ namespace Internal.JitInterface
             return method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute") ? 1u : 0u; // bool is not blittable in .net5 so use uint, TODO: revert to bool for .net 6 (https://github.com/dotnet/runtime/issues/51170)
         }
 
-        private ILSequencePoint GetSequencePoint(uint offset)
-        {
-            var sequencePointsEnumerable = _debugInfo.GetSequencePoints();
-            if (sequencePointsEnumerable == null) return default;
-
-            ILSequencePoint curSequencePoint = default;
-
-            foreach (var sequencePoint in sequencePointsEnumerable)
-            {
-                if (offset <= sequencePoint.Offset) // take the first sequence point in case we need to make a call to RhNewObject before the first matching sequence point
-                {
-                    curSequencePoint = sequencePoint;
-                    break;
-                }
-                if (sequencePoint.Offset < offset)
-                {
-                    curSequencePoint = sequencePoint;
-                }
-            }
-            return curSequencePoint;
-        }
-
-        [UnmanagedCallersOnly]
-        public static byte* getDocumentFileName(IntPtr thisHandle)
-        {
-            var _this = GetThis(thisHandle);
-            var curSequencePoint = _this.GetSequencePoint(0);
-            string fullPath = curSequencePoint.Document;
-
-            if (string.IsNullOrEmpty(fullPath))
-            {
-                return null;
-            }
-
-            return (byte*)_this.GetPin(StringToUTF8(fullPath));
-        }
-
-        [UnmanagedCallersOnly]
-        public static uint getOffsetLineNumber(IntPtr thisHandle, uint ilOffset)
-        {
-            var _this = GetThis(thisHandle);
-
-            return (uint)_this.GetSequencePoint(ilOffset).LineNumber;
-        }
-
         [UnmanagedCallersOnly]
         public static CorInfoType getPrimitiveTypeForTrivialWasmStruct(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd)
         {
@@ -296,6 +251,24 @@ namespace Internal.JitInterface
             return typeDescriptor;
         }
 
+        [UnmanagedCallersOnly]
+        private static CORINFO_LLVM_DEBUG_TYPE_HANDLE getDebugTypeForType(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* typeHandle)
+        {
+            return GetThis(thisHandle).GetDebugTypeForType(typeHandle);
+        }
+
+        [UnmanagedCallersOnly]
+        private static void getDebugInfoForDebugType(IntPtr thisHandle, CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo)
+        {
+            GetThis(thisHandle).GetDebugInfoForDebugType(debugTypeHandle, pInfo);
+        }
+
+        [UnmanagedCallersOnly]
+        private static void getDebugInfoForCurrentMethod(IntPtr thisHandle, CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
+        {
+            GetThis(thisHandle).GetDebugInfoForMethod(pInfo);
+        }
+
         // These enums must be kept in sync with their unmanaged versions in "jit/llvm.cpp".
         //
         private enum EEApiId
@@ -305,14 +278,15 @@ namespace Internal.JitInterface
             GetSignatureForMethodSymbol,
             AddCodeReloc,
             IsRuntimeImport,
-            GetDocumentFileName,
-            GetOffsetLineNumber,
             GetPrimitiveTypeForTrivialWasmStruct,
             PadOffset,
             GetTypeDescriptor,
             GetAlternativeFunctionName,
             GetExternalMethodAccessor,
             GetLlvmHelperFuncEntrypoint,
+            GetDebugTypeForType,
+            GetDebugInfoForDebugType,
+            GetDebugInfoForCurrentMethod,
             Count
         }
 
@@ -346,14 +320,15 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.GetSignatureForMethodSymbol] = (delegate* unmanaged<IntPtr, void*, CORINFO_SIG_INFO*, int>)&getSignatureForMethodSymbol;
             jitImports[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
             jitImports[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;
-            jitImports[(int)EEApiId.GetDocumentFileName] = (delegate* unmanaged<IntPtr, byte*>)&getDocumentFileName;
-            jitImports[(int)EEApiId.GetOffsetLineNumber] = (delegate* unmanaged<IntPtr, uint, uint>)&getOffsetLineNumber;
             jitImports[(int)EEApiId.GetPrimitiveTypeForTrivialWasmStruct] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType>)&getPrimitiveTypeForTrivialWasmStruct;
             jitImports[(int)EEApiId.PadOffset] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint>)&padOffset;
             jitImports[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor>)&getTypeDescriptor;
             jitImports[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
             jitImports[(int)EEApiId.GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
             jitImports[(int)EEApiId.GetLlvmHelperFuncEntrypoint] = (delegate* unmanaged<IntPtr, CorInfoHelpLlvmFunc, IntPtr>)&getLlvmHelperFuncEntrypoint;
+            jitImports[(int)EEApiId.GetDebugTypeForType] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_LLVM_DEBUG_TYPE_HANDLE>)&getDebugTypeForType;
+            jitImports[(int)EEApiId.GetDebugInfoForDebugType] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_DEBUG_TYPE_HANDLE, CORINFO_LLVM_TYPE_DEBUG_INFO*, void>)&getDebugInfoForDebugType;
+            jitImports[(int)EEApiId.GetDebugInfoForCurrentMethod] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_METHOD_DEBUG_INFO*, void>)&getDebugInfoForCurrentMethod;
             jitImports[(int)EEApiId.Count] = (void*)0x1234;
 
 #if DEBUG
