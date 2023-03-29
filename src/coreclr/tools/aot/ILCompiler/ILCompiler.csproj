@@ -8,7 +8,7 @@
 
 
   <!-- BEGIN: Workaround for https://github.com/dotnet/runtime/issues/67742 -->
-  <PropertyGroup Condition="'$(BuildingInsideVisualStudio)' != 'true'">
+  <PropertyGroup Condition="'$(BuildingInsideVisualStudio)' != 'true' and '$(IlcInnerLoop)' != 'true'">
     <PublishDir>$(RuntimeBinDir)ilc-published/</PublishDir>
     <PublishTrimmed>true</PublishTrimmed>
     <PublishReadyToRun>true</PublishReadyToRun>
@@ -16,7 +16,7 @@
   </PropertyGroup>
 
   <Target Name="PublishCompiler"
-          Condition="'$(BuildingInsideVisualStudio)' != 'true'"
+          Condition="'$(BuildingInsideVisualStudio)' != 'true' and '$(IlcInnerLoop)' != 'true'"
           AfterTargets="Build"
           DependsOnTargets="Publish;StompSingleFileHostPath" />
 

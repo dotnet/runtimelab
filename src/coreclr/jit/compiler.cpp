@@ -4941,10 +4941,16 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     };
     DoPhase(this, PHASE_LOWER_LLVM, lowerPhase);
 
-    lvaMarkLocalVars();  // For SSA.
-
-    fgResetForSsa();
-    DoPhase(this, PHASE_BUILD_SSA, &Compiler::fgSsaBuild);
+    fgSsaDomTree = nullptr;
+    if (opts.OptimizationEnabled())
+    {
+        auto lateSsaPhase = [this]() {
+            lvaMarkLocalVars();
+            fgResetForSsa();
+            fgSsaBuild();
+        };
+        DoPhase(this, PHASE_BUILD_SSA, lateSsaPhase);
+    }
 
     // The common phase checks and dumps are no longer relevant past this point.
     //

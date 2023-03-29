@@ -1563,7 +1563,9 @@ unsigned Compiler::compMapILvarNum(unsigned ILvarNum)
     {
         // Parameter
         varNum = compMapILargNum(ILvarNum);
+#ifndef TARGET_WASM // Shadow parameters will not be marked "lvIsParam" by LLVM debug info generation time.
         noway_assert(lvaTable[varNum].lvIsParam);
+#endif // !TARGET_WASM
     }
     else if (ILvarNum < info.compILlocalsCount)
     {
