@@ -130,6 +130,7 @@ extends:
             extraStepsParameters:
               uploadLibrariesTests: ${{ eq(variables.isOfficialBuild, false) }}
               uploadIntermediateArtifacts: false
+              librariesConfiguration: Release
             ${{ if eq(variables.isOfficialBuild, false) }}:
               buildArgs: -s clr+libs+host+packs -c $(_BuildConfig) /p:ArchiveTests=true
             ${{ if eq(variables.isOfficialBuild, true) }}:
