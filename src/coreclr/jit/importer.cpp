@@ -14,12 +14,6 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #include "jitpch.h"
 
-#ifdef TARGET_WASM
-#include "llvm.h"
-#define max(a, b) (((a) > (b)) ? (a) : (b))
-#define min(a, b) (((a) < (b)) ? (a) : (b))
-#endif // TARGET_WASM
-
 #ifdef _MSC_VER
 #pragma hdrstop
 #endif

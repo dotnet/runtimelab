@@ -4204,12 +4204,7 @@ void Compiler::impPopCallArgs(CORINFO_SIG_INFO* sig, GenTreeCall* call)
         }
         else
         {
-            // TODO-LLVM: lowerCallToShadowStack fails without the SignatureCorInfoType set (which is TARGET_WASM specific in NewCallArg 
-#if defined(TARGET_WASM)
             arg = NewCallArg::Primitive(argNode, params[i - 1].CorType);
-#else
-            arg = NewCallArg::Primitive(argNode, jitSigType);
-#endif
         }
 
         call->gtArgs.PushFront(this, arg);
