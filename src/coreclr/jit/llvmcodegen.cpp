@@ -65,6 +65,7 @@ bool Llvm::initializeFunctions()
 
     if (_compiler->opts.jitFlags->IsSet(JitFlags::JIT_FLAG_MIN_OPT))
     {
+        rootLlvmFunction->addFnAttr(llvm::Attribute::NoInline);
         rootLlvmFunction->addFnAttr(llvm::Attribute::OptimizeNone);
     }
     if ((_compiler->info.compFlags & CORINFO_FLG_DONT_INLINE) != 0)
@@ -1809,7 +1810,7 @@ void Llvm::buildCmp(GenTreeOp* node)
 
 void Llvm::buildCnsDouble(GenTreeDblCon* node)
 {
-    mapGenTreeToValue(node, llvm::ConstantFP::get(getLlvmTypeForVarType(node->TypeGet()), node->gtDconVal));
+    mapGenTreeToValue(node, llvm::ConstantFP::get(getLlvmTypeForVarType(node->TypeGet()), node->DconValue()));
 }
 
 void Llvm::buildIntegralConst(GenTreeIntConCommon* node)

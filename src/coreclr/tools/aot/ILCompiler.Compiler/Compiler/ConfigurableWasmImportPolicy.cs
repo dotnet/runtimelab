@@ -51,7 +51,7 @@ namespace ILCompiler
                 if (_wasmImports.ContainsKey(entrypointName))
                 {
                     // this is an artificial restriction because we are using just the PInvoke function name to distinguish WebAssembly imports
-                    throw new Exception("WebAssembly function imports must be unique"); 
+                    throw new Exception("WebAssembly function imports must be unique");
                 }
                 _wasmImports.Add(entrypointName, wasmModuleName);
             }

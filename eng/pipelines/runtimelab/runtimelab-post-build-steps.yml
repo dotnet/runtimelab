@@ -10,6 +10,7 @@ parameters:
   testFilter: tree nativeaot
   runSingleFileTests: true
   isOfficialBuild: false
+  librariesConfiguration: Debug
 
 steps:
 - ${{ if and(ne(parameters.archType, 'arm'), ne(parameters.archType, 'arm64')) }}:
@@ -25,11 +26,6 @@ steps:
       - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -c $(buildConfigUpper) $(_officialBuildParameter) -ci
         displayName: Build host packages
 
-  # Run libraries tests
-  - ${{ if and(ne(parameters.isOfficialBuild, true),and(eq(parameters.buildConfig, 'Release'),ne(parameters.archType, 'wasm'))) }}:
-    - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -c Release -test /p:TestNativeAot=true
-      displayName: Build and run libraries tests
-
   # Build coreclr native test output
   - ${{ if eq(parameters.platform, 'Browser_wasm_win') }}:
     - script: |
@@ -37,10 +33,10 @@ steps:
         $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} tree nativeaot
       displayName: Build WebAssembly tests
   - ${{ elseif eq(parameters.osGroup, 'windows') }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.testFilter }} /p:NativeAotMultimodule=true
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.testFilter }} /p:NativeAotMultimodule=true /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
       displayName: Build tests
   - ${{ else }}:
-    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} 'tree nativeaot'
+    - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} 'tree nativeaot' /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
       displayName: Build tests
 
   - ${{ if eq(parameters.runSingleFileTests, true) }}:

@@ -9,9 +9,6 @@ using ILCompiler.DependencyAnalysisFramework;
 
 using Internal.IL;
 using Internal.JitInterface;
-using Internal.TypeSystem;
-
-using Debug = System.Diagnostics.Debug;
 
 namespace ILCompiler
 {
@@ -48,7 +45,7 @@ namespace ILCompiler
 
         public override CompilationBuilder UseBackendOptions(IEnumerable<string> options)
         {
-            var builder = new ArrayBuilder<KeyValuePair<string, string>>();
+            var builder = default(ArrayBuilder<KeyValuePair<string, string>>);
 
             foreach (string param in options)
             {
@@ -86,7 +83,7 @@ namespace ILCompiler
 
         public sealed override ICompilation ToCompilation()
         {
-            ArrayBuilder<CorJitFlag> jitFlagBuilder = new ArrayBuilder<CorJitFlag>();
+            ArrayBuilder<CorJitFlag> jitFlagBuilder = default(ArrayBuilder<CorJitFlag>);
 
             switch (_optimizationMode)
             {

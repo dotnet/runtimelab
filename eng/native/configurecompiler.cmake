@@ -220,6 +220,7 @@ elseif (CLR_CMAKE_HOST_ARCH_ARM)
   add_definitions(-DHOST_ARM)
 elseif (CLR_CMAKE_HOST_ARCH_ARMV6)
   set(ARCH_HOST_NAME armv6)
+  add_definitions(-DHOST_ARM)
   add_definitions(-DHOST_ARMV6)
 elseif (CLR_CMAKE_HOST_ARCH_ARM64)
   set(ARCH_HOST_NAME arm64)
@@ -457,7 +458,6 @@ if (CLR_CMAKE_HOST_UNIX)
     add_compile_options(-Wno-uninitialized)
     add_compile_options(-Wno-strict-aliasing)
     add_compile_options(-Wno-array-bounds)
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-class-memaccess>)
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-misleading-indentation>)
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-stringop-overflow>)
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-restrict>)
@@ -468,6 +468,8 @@ if (CLR_CMAKE_HOST_UNIX)
       # src/coreclr/vm/stackingallocator.h. It is a false-positive, fixed in g++ 12.
       # see: https://github.com/dotnet/runtime/pull/69188#issuecomment-1136764770
       add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-placement-new>)
+
+      add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-class-memaccess>)
     endif()
 
     if (CMAKE_CXX_COMPILER_ID)
@@ -515,7 +517,7 @@ if (CLR_CMAKE_HOST_UNIX)
       set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0")
       add_compile_options(-arch arm64)
     elseif(CLR_CMAKE_HOST_ARCH_AMD64)
-      set(CMAKE_OSX_DEPLOYMENT_TARGET "10.14")
+      set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15")
       add_compile_options(-arch x86_64)
     else()
       clr_unknown_arch()
@@ -803,9 +805,14 @@ if (CLR_CMAKE_HOST_WIN32)
         message(FATAL_ERROR "MC not found")
     endif()
 
-elseif(CLR_CMAKE_TARGET_ARCH_WASM)
-    # No other tools required, emcmake is already running this script
-else (CLR_CMAKE_HOST_WIN32)
+elseif (NOT CLR_CMAKE_HOST_BROWSER)
+    # This is a workaround for upstream issue: https://gitlab.kitware.com/cmake/cmake/-/issues/22995.
+    #
+    # In Clang.cmake, the decision to use single or double hyphen for target and gcc-toolchain
+    # is made based on CMAKE_${LANG}_COMPILER_VERSION, but CMAKE_ASM_COMPILER_VERSION is empty
+    # so it picks up single hyphen options, which new clang versions don't recognize.
+    set (CMAKE_ASM_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")
+
     enable_language(ASM)
 
 endif(CLR_CMAKE_HOST_WIN32)

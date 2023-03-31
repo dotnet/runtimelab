@@ -50,6 +50,7 @@ set(COMMON_RUNTIME_SOURCES
     ${GC_DIR}/handletablecore.cpp
     ${GC_DIR}/handletablescan.cpp
     ${GC_DIR}/objecthandle.cpp
+    ${GC_DIR}/softwarewritewatch.cpp
 )
 
 set(SERVER_GC_SOURCES
@@ -104,9 +105,6 @@ if (WIN32)
     ${GC_DIR}/handletablepriv.h
     ${GC_DIR}/objecthandle.h
     ${GC_DIR}/softwarewritewatch.h)
-endif(WIN32)
-
-if(WIN32)
 
   include_directories(windows)
 
@@ -224,6 +222,16 @@ if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
 endif()
 add_definitions(-DFEATURE_BASICFREEZE)
 add_definitions(-DFEATURE_CONSERVATIVE_GC)
+
+if(CLR_CMAKE_TARGET_UNIX)
+  add_definitions(-DFEATURE_USE_SOFTWARE_WRITE_WATCH_FOR_GC_HEAP)
+  
+  # FEATURE_MANUALLY_MANAGED_CARD_BUNDLES only supported for 64 bit hosts
+  if (NOT CLR_CMAKE_TARGET_ARCH_WASM) 
+    add_definitions(-DFEATURE_MANUALLY_MANAGED_CARD_BUNDLES)
+  endif()
+endif()
+
 add_definitions(-DFEATURE_CUSTOM_IMPORTS)
 add_definitions(-DFEATURE_DYNAMIC_CODE)
 add_compile_definitions($<$<OR:$<CONFIG:Debug>,$<CONFIG:Checked>>:FEATURE_GC_STRESS>)

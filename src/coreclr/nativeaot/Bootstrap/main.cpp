@@ -98,7 +98,6 @@ extern "C" void* RtRHeaderWrapper();
 #endif // HOST_WASM
 
 extern "C" bool RhInitialize();
-extern "C" void RhpEnableConservativeStackReporting();
 extern "C" void RhpShutdown();
 extern "C" void RhSetRuntimeInitializationCallback(int (*fPtr)());
 
@@ -156,9 +155,7 @@ static int InitializeRuntime()
     if (!RhInitialize())
         return -1;
 
-#if defined HOST_WASM
-    RhpEnableConservativeStackReporting();
-#else
+#if !defined HOST_WASM
     void * osModule = PalGetModuleHandleFromPointer((void*)&NATIVEAOT_ENTRYPOINT);
 
     // TODO: pass struct with parameters instead of the large signature of RhRegisterOSModule
