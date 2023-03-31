@@ -972,6 +972,12 @@ namespace System.Runtime
         internal static unsafe partial void RhCpuIdEx(int* cpuInfo, int functionId, int subFunctionId);
 #endif
 
+#if TARGET_WASM
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        [RuntimeImport(RuntimeLibrary, "RhpRawCalli_OI")]
+        internal static extern object RhpRawCalli_OI(IntPtr pfn, IntPtr arg);
+#endif
+
         internal static RhCorElementTypeInfo GetRhCorElementTypeInfo(CorElementType elementType)
         {
             return RhCorElementTypeInfo.GetRhCorElementTypeInfo(elementType);

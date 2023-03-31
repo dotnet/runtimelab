@@ -199,23 +199,9 @@ namespace ILCompiler.DependencyAnalysis
             // All references to this symbol are through "ordinarily named" aliases. Thus, we need to suffix the real definition.
             string dataSymbolName = symbolName + "__DATA";
 
-            LLVMTypeRef symbolType = LLVMTypeRef.CreateArray(_ptrType, (uint)countOfPointerSizedElements);
-            LLVMValueRef dataSymbol = _module.AddGlobal(symbolType, dataSymbolName);
-
-            // Indirections to RhpNew* unmanaged functions are made using delegate*s so get a shadow stack first argument which is not present in the function.
-            // This IsRhpUnmanagedIndirection condition identifies those indirections and replaces the destination with a thunk which removes the shadow stack argument.
-            if (IsRhpUnmanagedIndirection(symbolName))
-            {
-                _dataToFill.Add(new ObjectNodeDataEmission(dataSymbol, _currentObjectData.ToArray(), ReplaceIndirectionSymbolsWithThunks(_currentObjectSymbolRefs)));
-            }
-            else if (node is MethodGenericDictionaryNode)
-            {
-                _dataToFill.Add(new ObjectNodeDataEmission(dataSymbol, _currentObjectData.ToArray(), ReplaceMethodDictionaryUnmanagedSymbolsWithThunks(_currentObjectSymbolRefs)));
-            }
-            else
-            {
-                _dataToFill.Add(new ObjectNodeDataEmission(dataSymbol, _currentObjectData.ToArray(), _currentObjectSymbolRefs));
-            }
+            LLVMTypeRef dataSymbolType = LLVMTypeRef.CreateArray(_ptrType, (uint)countOfPointerSizedElements);
+            LLVMValueRef dataSymbol = _module.AddGlobal(dataSymbolType, dataSymbolName);
+            _dataToFill.Add(new ObjectNodeDataEmission(dataSymbol, _currentObjectData.ToArray(), _currentObjectSymbolRefs));
 
             foreach (ISymbolDefinitionNode definedSymbol in definedSymbols)
             {
@@ -344,59 +330,6 @@ namespace ILCompiler.DependencyAnalysis
 
                 Node.Initializer = LLVMValueRef.CreateConstArray(writer._ptrType, entries.ToArray());
             }
-        }
-
-        private Dictionary<int, SymbolRefData> ReplaceMethodDictionaryUnmanagedSymbolsWithThunks(Dictionary<int, SymbolRefData> unmanagedSymbolRefs)
-        {
-            foreach (KeyValuePair<int, SymbolRefData> keyValuePair in unmanagedSymbolRefs)
-            {
-                if (IsRhpUnmanagedIndirection(keyValuePair.Value.SymbolName))
-                {
-                    unmanagedSymbolRefs[keyValuePair.Key] = new SymbolRefData(EnsureIndirectionThunk(keyValuePair.Value.SymbolName), keyValuePair.Value.Offset);
-                }
-            }
-
-            return unmanagedSymbolRefs;
-        }
-
-        private Dictionary<int, SymbolRefData> ReplaceIndirectionSymbolsWithThunks(Dictionary<int, SymbolRefData> unmanagedSymbolRefs)
-        {
-            Dictionary<int, SymbolRefData> thunks = new Dictionary<int, SymbolRefData>();
-            foreach (KeyValuePair<int, SymbolRefData> keyValuePair in unmanagedSymbolRefs)
-            {
-                thunks[keyValuePair.Key] = new SymbolRefData(EnsureIndirectionThunk(keyValuePair.Value.SymbolName), keyValuePair.Value.Offset);
-            }
-
-            return thunks;
-        }
-
-        private string EnsureIndirectionThunk(string unmanagedSymbolName)
-        {
-            string thunkSymbolName = unmanagedSymbolName + "_Thunk";
-            var thunkFunc = _module.GetNamedFunction(thunkSymbolName);
-            if (thunkFunc.Handle == IntPtr.Zero)
-            {
-                LLVMTypeRef thunkFuncType = LLVMTypeRef.CreateFunction(_ptrType, new[] { _ptrType /* shadow stack, not used */, _ptrType /* MethodTable* */ });
-                thunkFunc = _module.AddFunction(thunkSymbolName, thunkFuncType);
-                using LLVMBuilderRef builder = LLVMBuilderRef.Create(_module.Context);
-                builder.PositionAtEnd(thunkFunc.AppendBasicBlock("Thunk"));
-
-                LLVMValueRef allocatorFunc = GetOrCreateSymbol(new ExternSymbolNode(unmanagedSymbolName));
-                LLVMValueRef allocatedObj = CreateCall(builder, allocatorFunc, new[] { thunkFunc.Params[1] });
-                builder.BuildRet(allocatedObj);
-            }
-
-            return thunkSymbolName;
-        }
-
-        // hack to identify unmanaged symbols which dont accept a shadowstack arg.  Copy of names from JitHelper.GetNewObjectHelperForType
-        private static bool IsRhpUnmanagedIndirection(string realName)
-        {
-            return realName.EndsWith("RhpNewFast")
-                   || realName.EndsWith("RhpNewFinalizableAlign8")
-                   || realName.EndsWith("RhpNewFastMisalign")
-                   || realName.EndsWith("RhpNewFastAlign8")
-                   || realName.EndsWith("RhpNewFinalizable");
         }
 
         private void FinishObjWriter()
@@ -1046,16 +979,7 @@ namespace ILCompiler.DependencyAnalysis
                 LLVMValueRef externFunc = _module.GetNamedFunction(externFuncName);
                 if (externFunc.Handle == IntPtr.Zero)
                 {
-                    LLVMTypeRef funcType;
-                    if (IsRhpUnmanagedIndirection(externFuncName))
-                    {
-                        funcType = LLVMTypeRef.CreateFunction(_ptrType, new[] { _ptrType });
-                    }
-                    else
-                    {
-                        funcType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, Array.Empty<LLVMTypeRef>());
-                    }
-
+                    LLVMTypeRef funcType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, Array.Empty<LLVMTypeRef>());
                     Debug.Assert(_module.GetNamedGlobal(externFuncName).Handle == IntPtr.Zero);
                     externFunc = _module.AddFunction(externFuncName, funcType);
                 }
