@@ -229,7 +229,6 @@ private:
 public:
     Llvm(Compiler* compiler);
 
-    bool needsReturnStackSlot(const GenTreeCall* callee);
     var_types GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size);
     var_types GetReturnTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size);
 
@@ -245,7 +244,8 @@ private:
 
     GCInfo* getGCInfo();
 
-    bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+    bool needsReturnStackSlot(const GenTreeCall* callee);
+    bool needsReturnStackSlot(CorInfoType sigRetType, CORINFO_CLASS_HANDLE sigRetClass);
 
     bool callRequiresShadowStackSave(const GenTreeCall* call) const;
     bool helperCallRequiresShadowStackSave(CorInfoHelpAnyFunc helperFunc) const;

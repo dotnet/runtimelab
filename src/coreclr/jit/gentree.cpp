@@ -14,12 +14,6 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #include "hwintrinsic.h"
 #include "simd.h"
 
-#if TARGET_WASM
-#include "llvm.h"
-#define max(a, b) (((a) > (b)) ? (a) : (b))
-#define min(a, b) (((a) < (b)) ? (a) : (b))
-#endif // TARGET_WASM
-
 #ifdef _MSC_VER
 #pragma hdrstop
 #endif
@@ -2069,14 +2063,6 @@ bool GenTreeCall::HasSideEffects(Compiler* compiler, bool ignoreExceptions, bool
     {
         return true;
     }
-
-#ifdef TARGET_WASM
-    // This call may have an implicit side effect of writing to the return slot pointer.
-    if (TypeIs(TYP_VOID) && compiler->m_llvm->needsReturnStackSlot(this))
-    {
-        return true;
-    }
-#endif // TARGET_WASM
 
     CorInfoHelpFunc       helper           = compiler->eeGetHelperNum(gtCallMethHnd);
     HelperCallProperties& helperProperties = compiler->s_helperCallProperties;

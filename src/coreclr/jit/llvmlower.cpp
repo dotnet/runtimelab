@@ -1110,14 +1110,22 @@ void Llvm::insertNullCheckForCall(GenTreeCall* callNode)
 {
     assert(callNode->NeedsNullCheck() && callNode->gtArgs.HasThisPointer());
 
-    LIR::Use thisArgUse(CurrentRange(), &callNode->gtArgs.GetThisArg()->EarlyNodeRef(), callNode);
-    unsigned thisArgLclNum = representAsLclVar(thisArgUse);
+    CallArg* thisArg = callNode->gtArgs.GetThisArg();
+    if (_compiler->fgAddrCouldBeNull(thisArg->GetNode()))
+    {
+        LIR::Use thisArgUse(CurrentRange(), &thisArg->EarlyNodeRef(), callNode);
+        unsigned thisArgLclNum = representAsLclVar(thisArgUse);
 
-    GenTree* thisArgNode = _compiler->gtNewLclvNode(thisArgLclNum, _compiler->lvaGetDesc(thisArgLclNum)->TypeGet());
-    GenTree* thisArgNullCheck = _compiler->gtNewNullCheck(thisArgNode, CurrentBlock());
-    CurrentRange().InsertBefore(callNode, thisArgNode, thisArgNullCheck);
+        GenTree* thisArgNode = _compiler->gtNewLclvNode(thisArgLclNum, _compiler->lvaGetDesc(thisArgLclNum)->TypeGet());
+        GenTree* thisArgNullCheck = _compiler->gtNewNullCheck(thisArgNode, CurrentBlock());
+        CurrentRange().InsertBefore(callNode, thisArgNode, thisArgNullCheck);
 
-    lowerIndir(thisArgNullCheck->AsIndir());
+        lowerIndir(thisArgNullCheck->AsIndir());
+    }
+    else
+    {
+        callNode->gtFlags &= ~GTF_CALL_NULLCHECK;
+    }
 }
 
 void Llvm::lowerDelegateInvoke(GenTreeCall* callNode)

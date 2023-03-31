@@ -376,16 +376,14 @@ namespace ILCompiler.DependencyAnalysis
             var thunkFunc = _module.GetNamedFunction(thunkSymbolName);
             if (thunkFunc.Handle == IntPtr.Zero)
             {
-                thunkFunc = _module.AddFunction(thunkSymbolName,
-                    LLVMTypeRef.CreateFunction(LLVMTypeRef.Void,
-                        new[] { _ptrType /* shadow stack, not used */, _ptrType /* return spill slot */, _ptrType /* MethodTable* */ }));
+                LLVMTypeRef thunkFuncType = LLVMTypeRef.CreateFunction(_ptrType, new[] { _ptrType /* shadow stack, not used */, _ptrType /* MethodTable* */ });
+                thunkFunc = _module.AddFunction(thunkSymbolName, thunkFuncType);
                 using LLVMBuilderRef builder = LLVMBuilderRef.Create(_module.Context);
                 builder.PositionAtEnd(thunkFunc.AppendBasicBlock("Thunk"));
 
                 LLVMValueRef allocatorFunc = GetOrCreateSymbol(new ExternSymbolNode(unmanagedSymbolName));
-                LLVMValueRef allocatedObj = CreateCall(builder, allocatorFunc, new[] { thunkFunc.Params[2] });
-                builder.BuildStore(allocatedObj, thunkFunc.Params[1]);
-                builder.BuildRetVoid();
+                LLVMValueRef allocatedObj = CreateCall(builder, allocatorFunc, new[] { thunkFunc.Params[1] });
+                builder.BuildRet(allocatedObj);
             }
 
             return thunkSymbolName;
@@ -1013,11 +1011,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private LLVMValueRef OutputCodeForGetThreadStaticBase(LLVMBuilderRef builder, LLVMValueRef pModuleDataSlot)
         {
-            // Unfortunately, the helper to get the thread static base returns the pointer indirectly, so we have to
-            // allocate some space on the shadow stack for it (note: the base is an unpinned object). TODO-LLVM-ABI:
-            // simplify once we stop returning GC primitives by reference.
             LLVMValueRef shadowStack = builder.InsertBlock.Parent.GetParam(0);
-            LLVMValueRef calleeShadowStack = CreateAddOffset(builder, shadowStack, _nodeFactory.Target.PointerSize, "calleeShadowStack");
 
             // First arg: address of the TypeManager slot that provides the helper with information about
             // module index and the type manager instance (which is used for initialization on first access).
@@ -1029,10 +1023,10 @@ namespace ILCompiler.DependencyAnalysis
 
             IMethodNode getBaseHelperNode = (IMethodNode)_nodeFactory.HelperEntrypoint(HelperEntrypoint.GetThreadStaticBaseForType);
             LLVMValueRef getBaseHelperFunc = GetOrCreateLLVMFunction(getBaseHelperNode);
-            LLVMValueRef[] getBaseHelperArgs = new[] { calleeShadowStack, shadowStack, pModuleData, typeTlsIndex };
-            CreateCall(builder, getBaseHelperFunc, getBaseHelperArgs);
+            LLVMValueRef[] getBaseHelperArgs = new[] { shadowStack, pModuleData, typeTlsIndex };
+            LLVMValueRef getBaseHelperCall = CreateCall(builder, getBaseHelperFunc, getBaseHelperArgs);
 
-            return builder.BuildLoad2(_ptrType, shadowStack, "threadStaticBase");
+            return getBaseHelperCall;
         }
 
         private LLVMValueRef GetOrCreateSymbol(ISymbolNode symbolRef)

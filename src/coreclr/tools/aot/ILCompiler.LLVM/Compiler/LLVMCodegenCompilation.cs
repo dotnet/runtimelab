@@ -307,7 +307,9 @@ namespace ILCompiler
 
         internal LLVMTypeRef GetLlvmReturnType(bool isManagedAbi, TypeDesc sigReturnType, out bool isPassedByRef)
         {
-            isPassedByRef = isManagedAbi && !CanStoreTypeOnStack(sigReturnType);
+            isPassedByRef = isManagedAbi && IsStruct(sigReturnType) && !CanStoreTypeOnStack(sigReturnType) &&
+                            GetPrimitiveTypeForTrivialWasmStruct(sigReturnType) == null;
+
             if (isPassedByRef || sigReturnType.IsVoid)
             {
                 return LLVMTypeRef.Void;
