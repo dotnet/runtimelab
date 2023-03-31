@@ -355,19 +355,28 @@ namespace ILCompiler.DependencyAnalysis
             MethodDesc method = methodNode.Method;
             Debug.Assert(method.IsRuntimeExport && methodNode.CompilationCompleted);
 
+            LLVMTypeRef nativeReturnType = _compilation.GetLlvmReturnType(isManagedAbi: false, method.Signature.ReturnType, out bool isNativeReturnByRef);
+            if (isNativeReturnByRef)
+            {
+                throw new NotSupportedException("Runtime export with a complex struct return");
+            }
+
             LLVMTypeRef[] llvmParams = new LLVMTypeRef[method.Signature.Length];
             for (int i = 0; i < llvmParams.Length; i++)
             {
-                llvmParams[i] = _compilation.GetLLVMTypeForTypeDesc(method.Signature[i]);
+                _compilation.GetLlvmArgTypeForArg(isManagedAbi: false, method.Signature[i], out llvmParams[i], out bool isPassedByRef);
+                if (isPassedByRef)
+                {
+                    throw new NotSupportedException("Runtime export with a complex struct argument"); // Not supported by the Jit.
+                }
             }
 
             string nativeName = _compilation.NodeFactory.GetSymbolAlternateName(methodNode);
-            LLVMTypeRef nativeReturnType = _compilation.GetLLVMTypeForTypeDesc(method.Signature.ReturnType);
-            LLVMTypeRef thunkSig = LLVMTypeRef.CreateFunction(nativeReturnType, llvmParams, false);
-            LLVMValueRef thunkFunc = GetOrCreateLLVMFunction(nativeName, thunkSig);
+            LLVMTypeRef nativeSig = LLVMTypeRef.CreateFunction(nativeReturnType, llvmParams, false);
+            LLVMValueRef nativeFunc = GetOrCreateLLVMFunction(nativeName, nativeSig);
 
             using LLVMBuilderRef builder = _module.Context.CreateBuilder();
-            LLVMBasicBlockRef block = thunkFunc.AppendBasicBlock("ManagedCallBlock");
+            LLVMBasicBlockRef block = nativeFunc.AppendBasicBlock("ManagedCallBlock");
             builder.PositionAtEnd(block);
 
             // Get the shadow stack. Since we are wrapping a runtime export, the caller is (by definition) managed, so we must have set up the shadow
@@ -376,14 +385,14 @@ namespace ILCompiler.DependencyAnalysis
             LLVMValueRef getShadowStackFunc = GetOrCreateLLVMFunction("RhpGetShadowStackTop", getShadowStackFuncSig);
             LLVMValueRef shadowStack = builder.BuildCall2(getShadowStackFuncSig, getShadowStackFunc, Array.Empty<LLVMValueRef>());
 
-            bool needsReturnSlot = LLVMCodegenCompilation.NeedsReturnStackSlot(method.Signature);
+            _compilation.GetLlvmReturnType(isManagedAbi: true, method.Signature.ReturnType, out bool isManagedReturnByRef);
 
             int curOffset = 0;
             LLVMValueRef calleeFrame;
-            if (needsReturnSlot)
+            if (isManagedReturnByRef)
             {
                 curOffset = _compilation.PadNextOffset(method.Signature.ReturnType, curOffset);
-                curOffset = _compilation.PadOffset(_compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Object), curOffset); // Align the stack to pointer size.
+                curOffset = curOffset.AlignUp(_nodeFactory.Target.PointerSize);
 
                 // Clear any uncovered object references for GC.Collect.
                 LLVMValueRef lengthValue = CreateConst(LLVMTypeRef.Int32, curOffset);
@@ -403,7 +412,7 @@ namespace ILCompiler.DependencyAnalysis
             List<LLVMValueRef> llvmArgs = new List<LLVMValueRef>();
             llvmArgs.Add(calleeFrame);
 
-            if (needsReturnSlot)
+            if (isManagedReturnByRef)
             {
                 // Slot for return value if necessary
                 llvmArgs.Add(shadowStack);
@@ -411,7 +420,7 @@ namespace ILCompiler.DependencyAnalysis
 
             for (int i = 0; i < llvmParams.Length; i++)
             {
-                LLVMValueRef argValue = thunkFunc.GetParam((uint)i);
+                LLVMValueRef argValue = nativeFunc.GetParam((uint)i);
 
                 if (LLVMCodegenCompilation.CanStoreTypeOnStack(method.Signature[i]))
                 {
@@ -431,7 +440,7 @@ namespace ILCompiler.DependencyAnalysis
 
             if (!method.Signature.ReturnType.IsVoid)
             {
-                if (needsReturnSlot)
+                if (isManagedReturnByRef)
                 {
                     builder.BuildRet(builder.BuildLoad2(nativeReturnType, shadowStack, "returnValue"));
                 }
@@ -471,27 +480,8 @@ namespace ILCompiler.DependencyAnalysis
             LLVMBuilderRef builder = _module.Context.CreateBuilder();
             builder.PositionAtEnd(helperFunc.AppendBasicBlock("GenericReadyToRunHelper"));
 
-            LLVMValueRef ctx;
-            string gepName;
-            if (node is ReadyToRunGenericLookupFromTypeNode)
-            {
-                // Locate the VTable slot that points to the dictionary
-                int vtableSlot = VirtualMethodSlotHelper.GetGenericDictionarySlot(factory, (TypeDesc)node.DictionaryOwner);
-
-                int pointerSize = factory.Target.PointerSize;
-                // Load the dictionary pointer from the VTable
-                int slotOffset = EETypeNode.GetVTableOffset(pointerSize) + (vtableSlot * pointerSize);
-                var slotAddr = CreateAddOffset(builder, helperFunc.GetParam(1), slotOffset, "slotAddr");
-                ctx = builder.BuildLoad2(_ptrType, slotAddr, "dictGep");
-                gepName = "typeNodeGep";
-            }
-            else
-            {
-                ctx = helperFunc.GetParam(1);
-                gepName = "paramGep";
-            }
-
-            LLVMValueRef result = OutputCodeForDictionaryLookup(builder, factory, node, node.LookupSignature, ctx, gepName);
+            LLVMValueRef dictionary = OutputCodeForGetGenericDictionary(builder, helperFunc.GetParam(1), node);
+            LLVMValueRef result = OutputCodeForDictionaryLookup(builder, factory, node, node.LookupSignature, dictionary);
 
             switch (node.Id)
             {
@@ -513,7 +503,7 @@ namespace ILCompiler.DependencyAnalysis
                         if (_compilation.HasLazyStaticConstructor(target))
                         {
                             GenericLookupResult nonGcBaseLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
-                            LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, ctx, "lazyGep");
+                            LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, dictionary);
                             OutputCodeForTriggerCctor(builder, nonGcStaticsBase);
                         }
 
@@ -528,7 +518,7 @@ namespace ILCompiler.DependencyAnalysis
                         if (_compilation.HasLazyStaticConstructor(target))
                         {
                             GenericLookupResult nonGcBaseLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
-                            LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, ctx, "tsGep");
+                            LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, dictionary);
                             OutputCodeForTriggerCctor(builder, nonGcStaticsBase);
                         }
 
@@ -558,13 +548,18 @@ namespace ILCompiler.DependencyAnalysis
 
         private void GetCodeForReadyToRunHelper(ReadyToRunHelperNode node, NodeFactory factory)
         {
+            if (node.Id == ReadyToRunHelperId.VirtualCall)
+            {
+                GetCodeForVirtualCallHelper(node);
+                return;
+            }
             if (node.Id == ReadyToRunHelperId.DelegateCtor)
             {
                 GetCodeForDelegateCtorHelper(node);
                 return;
             }
 
-            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(_ptrType, new[] { _ptrType /* shadow stack */ });
+            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(_ptrType, new[] { _ptrType /* shadow stack or "this" */ });
             LLVMValueRef helperFunc = GetOrCreateLLVMFunction(node.GetMangledName(factory.NameMangler), helperFuncType);
 
             using LLVMBuilderRef builder = _module.Context.CreateBuilder();
@@ -616,11 +611,68 @@ namespace ILCompiler.DependencyAnalysis
                     }
                     break;
 
+                case ReadyToRunHelperId.ResolveVirtualFunction:
+                    {
+                        MethodDesc targetMethod = (MethodDesc)node.Target;
+
+                        if (targetMethod.OwningType.IsInterface)
+                        {
+                            // TODO-LLVM: would be nice to use pointers instead of IntPtr in "RhpResolveInterfaceMethod".
+                            LLVMTypeRef resolveFuncType = LLVMTypeRef.CreateFunction(_intPtrType, new[] { _ptrType, _intPtrType });
+                            LLVMValueRef resolveFunc = GetOrCreateLLVMFunction("RhpResolveInterfaceMethod", resolveFuncType);
+
+                            LLVMValueRef cell = GetSymbolReferenceValue(factory.InterfaceDispatchCell(targetMethod));
+                            LLVMValueRef cellArg = builder.BuildPtrToInt(cell, _intPtrType, "cellArg");
+                            result = builder.BuildCall2(resolveFuncType, resolveFunc, new[] { helperFunc.GetParam(0), cellArg });
+                            result = builder.BuildIntToPtr(result, _ptrType, "pInterfaceFunc");
+                        }
+                        else
+                        {
+                            Debug.Assert(!targetMethod.CanMethodBeInSealedVTable());
+                            result = OutputCodeForVTableLookup(builder, helperFunc.GetParam(0), targetMethod);
+                        }
+                    }
+                    break;
+
                 default:
                     throw new NotImplementedException();
             }
 
             builder.BuildRet(result);
+        }
+
+        private void GetCodeForVirtualCallHelper(ReadyToRunHelperNode node)
+        {
+            MethodDesc targetMethod = (MethodDesc)node.Target;
+            Debug.Assert(!targetMethod.OwningType.IsInterface);
+            Debug.Assert(!targetMethod.CanMethodBeInSealedVTable());
+            Debug.Assert(!targetMethod.RequiresInstArg());
+
+            string helperFuncName = node.GetMangledName(_compilation.NameMangler);
+            LLVMTypeRef funcType = _compilation.GetLLVMSignatureForMethod(isManagedAbi: true, targetMethod.Signature, hasHiddenParam: false);
+            LLVMValueRef helperFunc = GetOrCreateLLVMFunction(helperFuncName, funcType);
+
+            using LLVMBuilderRef builder = _module.Context.CreateBuilder();
+            builder.PositionAtEnd(helperFunc.AppendBasicBlock("VirtualCall"));
+
+            LLVMValueRef objThis = builder.BuildLoad2(_ptrType, helperFunc.GetParam(0), "objThis");
+            LLVMValueRef pTargetMethod = OutputCodeForVTableLookup(builder, objThis, targetMethod);
+
+            LLVMValueRef[] args = new LLVMValueRef[helperFunc.ParamsCount];
+            for (uint i = 0; i < args.Length; i++)
+            {
+                args[i] = helperFunc.GetParam(i);
+            }
+
+            LLVMValueRef callTarget = builder.BuildCall2(funcType, pTargetMethod, args);
+            if (funcType.ReturnType != LLVMTypeRef.Void)
+            {
+                builder.BuildRet(callTarget);
+            }
+            else
+            {
+                builder.BuildRetVoid();
+            }
         }
 
         private void GetCodeForDelegateCtorHelper(AssemblyStubNode node)
@@ -657,19 +709,14 @@ namespace ILCompiler.DependencyAnalysis
             LLVMValueRef targetValue;
             if (genericNode != null)
             {
-                targetValue = OutputCodeForDictionaryLookup(builder, factory, genericNode, genericNode.LookupSignature, helperFunc.GetParam(1), "pTarget");
+                LLVMValueRef dictionary = OutputCodeForGetGenericDictionary(builder, helperFunc.GetParam(1), genericNode);
+                targetValue = OutputCodeForDictionaryLookup(builder, factory, genericNode, genericNode.LookupSignature, dictionary);
             }
             else if (delegateCreationInfo.TargetNeedsVTableLookup)
             {
                 LLVMValueRef addrOfTargetObj = CreateAddOffset(builder, shadowStack, factory.Target.PointerSize, "addrOfTargetObj");
                 LLVMValueRef targetObjThis = builder.BuildLoad2(_ptrType, addrOfTargetObj, "targetObjThis");
-                LLVMValueRef pMethodTable = builder.BuildLoad2(_ptrType, targetObjThis, "pMethodTable");
-
-                int slot = VirtualMethodSlotHelper.GetVirtualMethodSlot(factory, delegateCreationInfo.TargetMethod, delegateCreationInfo.TargetMethod.OwningType);
-                int slotOffset = EETypeNode.GetVTableOffset(factory.Target.PointerSize) + (slot * factory.Target.PointerSize);
-                LLVMValueRef pSlot = CreateAddOffset(builder, pMethodTable, slotOffset, "pSlot");
-
-                targetValue = builder.BuildLoad2(targetValueType, pSlot, "pTarget");
+                targetValue = OutputCodeForVTableLookup(builder, targetObjThis, delegateCreationInfo.TargetMethod);
             }
             else
             {
@@ -809,21 +856,43 @@ namespace ILCompiler.DependencyAnalysis
             builder.BuildRet(externFunc);
         }
 
+        private LLVMValueRef OutputCodeForGetGenericDictionary(LLVMBuilderRef builder, LLVMValueRef context, ReadyToRunGenericHelperNode node)
+        {
+            LLVMValueRef dictionary;
+            if (node is ReadyToRunGenericLookupFromTypeNode)
+            {
+                // Locate the VTable slot that points to the dictionary
+                int vtableSlot = VirtualMethodSlotHelper.GetGenericDictionarySlot(_nodeFactory, (TypeDesc)node.DictionaryOwner);
+
+                // Load the dictionary pointer from the VTable
+                int pointerSize = _nodeFactory.Target.PointerSize;
+                int slotOffset = EETypeNode.GetVTableOffset(pointerSize) + (vtableSlot * pointerSize);
+                var slotAddr = CreateAddOffset(builder, context, slotOffset, "dictionarySlotAddr");
+                dictionary = builder.BuildLoad2(_ptrType, slotAddr, "dictionary");
+            }
+            else
+            {
+                dictionary = context;
+            }
+
+            return dictionary;
+        }
+
         private LLVMValueRef OutputCodeForDictionaryLookup(LLVMBuilderRef builder, NodeFactory factory,
-            ReadyToRunGenericHelperNode node, GenericLookupResult lookup, LLVMValueRef ctx, string gepName)
+            ReadyToRunGenericHelperNode node, GenericLookupResult lookup, LLVMValueRef dictionary)
         {
             // Find the generic dictionary slot
             int dictionarySlot = factory.GenericDictionaryLayout(node.DictionaryOwner).GetSlotForEntry(lookup);
             int offset = dictionarySlot * factory.Target.PointerSize;
 
             // Load the generic dictionary cell
-            LLVMValueRef retGep = CreateAddOffset(builder, ctx, offset, "retGep");
-            LLVMValueRef retRef = builder.BuildLoad2(_ptrType, retGep, gepName);
+            LLVMValueRef slotAddr = CreateAddOffset(builder, dictionary, offset, "dictionarySlotAddr");
+            LLVMValueRef lookupResult = builder.BuildLoad2(_ptrType, slotAddr, "slotValue");
 
             switch (lookup.LookupResultReferenceType(factory))
             {
                 case GenericLookupResultReferenceType.Indirect:
-                    retRef = builder.BuildLoad2(_ptrType, retRef, "indLoad");
+                    lookupResult = builder.BuildLoad2(_ptrType, lookupResult, "actualSlotValue");
                     break;
 
                 case GenericLookupResultReferenceType.ConditionalIndirect:
@@ -833,7 +902,19 @@ namespace ILCompiler.DependencyAnalysis
                     break;
             }
 
-            return retRef;
+            return lookupResult;
+        }
+
+        private LLVMValueRef OutputCodeForVTableLookup(LLVMBuilderRef builder, LLVMValueRef objThis, MethodDesc method)
+        {
+            LLVMValueRef pMethodTable = builder.BuildLoad2(_ptrType, objThis, "pMethodTable");
+
+            int slot = VirtualMethodSlotHelper.GetVirtualMethodSlot(_nodeFactory, method, method.OwningType);
+            int slotOffset = EETypeNode.GetVTableOffset(_nodeFactory.Target.PointerSize) + (slot * _nodeFactory.Target.PointerSize);
+            LLVMValueRef pSlot = CreateAddOffset(builder, pMethodTable, slotOffset, "pSlot");
+            LLVMValueRef slotValue = builder.BuildLoad2(_ptrType, pSlot, "pTarget");
+
+            return slotValue;
         }
 
         private void OutputCodeForTriggerCctor(LLVMBuilderRef builder, LLVMValueRef nonGcStaticBaseValue)
@@ -863,11 +944,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private LLVMValueRef OutputCodeForGetThreadStaticBase(LLVMBuilderRef builder, LLVMValueRef pModuleDataSlot)
         {
-            // Unfortunately, the helper to get the thread static base returns the pointer indirectly, so we have to
-            // allocate some space on the shadow stack for it (note: the base is an unpinned object). TODO-LLVM-ABI:
-            // simplify once we stop returning GC primitives by reference.
             LLVMValueRef shadowStack = builder.InsertBlock.Parent.GetParam(0);
-            LLVMValueRef calleeShadowStack = CreateAddOffset(builder, shadowStack, _nodeFactory.Target.PointerSize, "calleeShadowStack");
 
             // First arg: address of the TypeManager slot that provides the helper with information about
             // module index and the type manager instance (which is used for initialization on first access).
@@ -879,10 +956,10 @@ namespace ILCompiler.DependencyAnalysis
 
             IMethodNode getBaseHelperNode = (IMethodNode)_nodeFactory.HelperEntrypoint(HelperEntrypoint.GetThreadStaticBaseForType);
             LLVMValueRef getBaseHelperFunc = GetOrCreateLLVMFunction(getBaseHelperNode);
-            LLVMValueRef[] getBaseHelperArgs = new[] { calleeShadowStack, shadowStack, pModuleData, typeTlsIndex };
-            CreateCall(builder, getBaseHelperFunc, getBaseHelperArgs);
+            LLVMValueRef[] getBaseHelperArgs = new[] { shadowStack, pModuleData, typeTlsIndex };
+            LLVMValueRef getBaseHelperCall = CreateCall(builder, getBaseHelperFunc, getBaseHelperArgs);
 
-            return builder.BuildLoad2(_ptrType, shadowStack, "threadStaticBase");
+            return getBaseHelperCall;
         }
 
         private LLVMValueRef GetOrCreateSymbol(ISymbolNode symbolRef)
@@ -952,7 +1029,8 @@ namespace ILCompiler.DependencyAnalysis
 
             if (llvmFunction.Handle == IntPtr.Zero)
             {
-                return _module.AddFunction(mangledName, _compilation.GetLLVMSignatureForMethod(signature, hasHiddenParam));
+                LLVMTypeRef llvmFuncType = _compilation.GetLLVMSignatureForMethod(isManagedAbi: true, signature, hasHiddenParam);
+                return _module.AddFunction(mangledName, llvmFuncType);
             }
             return llvmFunction;
         }

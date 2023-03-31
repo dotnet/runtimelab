@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -16,7 +19,7 @@ using Internal.TypeSystem.Ecma;
 
 namespace Internal.JitInterface
 {
-    sealed unsafe partial class CorInfoImpl
+    internal sealed unsafe partial class CorInfoImpl
     {
         private static readonly List<IntPtr> s_allocedMemory = new List<IntPtr>();
         private static readonly void*[] s_jitExports = new void*[(int)JitApiId.Count + 1];
@@ -27,13 +30,8 @@ namespace Internal.JitInterface
         public static void addCodeReloc(IntPtr thisHandle, void* handle)
         {
             var _this = GetThis(thisHandle);
-            var obj = _this.HandleToObject((IntPtr)handle);
+            ISymbolNode node = (ISymbolNode)_this.HandleToObject(handle);
 
-            AddCodeRelocImpl(_this, (ISymbolNode)obj);
-        }
-
-        private static void AddCodeRelocImpl(CorInfoImpl _this, ISymbolNode node)
-        {
             _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0, node));
         }
 
@@ -51,18 +49,13 @@ namespace Internal.JitInterface
         {
             var _this = GetThis(thisHandle);
             MethodDesc method = _this.HandleToObject(ftn);
-
-            return GetMangledMethodNameImpl(_this, method);
-        }
-
-        private static byte* GetMangledMethodNameImpl(CorInfoImpl _this, MethodDesc method)
-        {
             Utf8String mangledName = _this._compilation.NameMangler.GetMangledMethodName(method);
+
             return (byte*)_this.GetPin(AppendNullByte(mangledName.UnderlyingArray));
         }
 
         [UnmanagedCallersOnly]
-        public static byte* getMangledSymbolName(IntPtr thisHandle, IntPtr symbolHandle)
+        public static byte* getMangledSymbolName(IntPtr thisHandle, void* symbolHandle)
         {
             var _this = GetThis(thisHandle);
             var node = (ISymbolNode)_this.HandleToObject(symbolHandle);
@@ -75,63 +68,33 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        public static int getSignatureForMethodSymbol(IntPtr thisHandle, IntPtr symbolHandle, CORINFO_SIG_INFO* pSig)
+        public static int getSignatureForMethodSymbol(IntPtr thisHandle, void* symbolHandle, CORINFO_SIG_INFO* pSig)
         {
             var _this = GetThis(thisHandle);
             var node = (ISymbolNode)_this.HandleToObject(symbolHandle);
 
-            if (node is IMethodNode { Offset: 0, Method: MethodDesc method })
+            MethodDesc method = null;
+            if (node is IMethodNode { Offset: 0 } methodNode)
+            {
+                method = methodNode.Method;
+            }
+            else if (node is ReadyToRunHelperNode { Id: ReadyToRunHelperId.VirtualCall } helperNode)
+            {
+                method = (MethodDesc)helperNode.Target;
+            }
+
+            if (method != null)
             {
                 _this.Get_CORINFO_SIG_INFO(method, pSig, scope: null);
                 if (method.IsUnmanagedCallersOnly || node is RuntimeImportMethodNode)
                 {
-                    pSig->callConv |= CorInfoCallConv.CORINFO_CALLCONV_UNMANAGED;
+                    pSig->callConv = CorInfoCallConv.CORINFO_CALLCONV_UNMANAGED;
                 }
 
                 return 1;
             }
 
             return 0;
-        }
-
-        [UnmanagedCallersOnly]
-        public static byte* getEHDispatchFunctionName(IntPtr thisHandle, CORINFO_EH_CLAUSE_FLAGS handlerType)
-        {
-            var _this = GetThis(thisHandle);
-            string dispatchMethodName = handlerType switch
-            {
-                CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_SAMETRY => "HandleExceptionWasmMutuallyProtectingCatches",
-                CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_NONE => "HandleExceptionWasmCatch",
-                CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_FILTER => "HandleExceptionWasmFilteredCatch",
-                CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_FINALLY or CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_FAULT => "HandleExceptionWasmFault",
-                _ => throw new NotSupportedException()
-            };
-
-            // TODO-LLVM: we are breaking the abstraction here. Compiler is not allowed to access methods from the
-            // managed runtime directly and assume they are compiled into CoreLib. The dispatch routine should be
-            // made into a RuntimeExport once we solve the issues around calling convention mismatch for them.
-            MetadataType ehType = _this._compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EH");
-            MethodDesc dispatchMethod = ehType.GetKnownMethod(dispatchMethodName, null);
-
-            // Codegen is asking for the dispatcher; assume it'll use it.
-            AddCodeRelocImpl(_this, _this._compilation.NodeFactory.MethodEntrypoint(dispatchMethod));
-
-            return GetMangledMethodNameImpl(_this, dispatchMethod);
-        }
-
-        // IL backend does not use the mangled name.  The unmangled name is easier to read.
-        [UnmanagedCallersOnly]
-        public static byte* getTypeName(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd)
-        {
-            var _this = GetThis(thisHandle);
-
-            TypeDesc typeDesc = _this.HandleToObject(structHnd);
-
-            Utf8StringBuilder sb = new Utf8StringBuilder();
-            sb.Append(typeDesc.ToString());
-
-            sb.Append("\0");
-            return (byte*)_this.GetPin(sb.UnderlyingArray);
         }
 
         [UnmanagedCallersOnly]
@@ -144,71 +107,17 @@ namespace Internal.JitInterface
             return method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute") ? 1u : 0u; // bool is not blittable in .net5 so use uint, TODO: revert to bool for .net 6 (https://github.com/dotnet/runtime/issues/51170)
         }
 
-        ILSequencePoint GetSequencePoint(uint offset)
-        {
-            var sequencePointsEnumerable = _debugInfo.GetSequencePoints();
-            if (sequencePointsEnumerable == null) return default;
-
-            ILSequencePoint curSequencePoint = default;
-
-            foreach (var sequencePoint in sequencePointsEnumerable)
-            {
-                if (offset <= sequencePoint.Offset) // take the first sequence point in case we need to make a call to RhNewObject before the first matching sequence point
-                {
-                    curSequencePoint = sequencePoint;
-                    break;
-                }
-                if (sequencePoint.Offset < offset)
-                {
-                    curSequencePoint = sequencePoint;
-                }
-            }
-            return curSequencePoint;
-        }
-
         [UnmanagedCallersOnly]
-        public static byte* getDocumentFileName(IntPtr thisHandle)
+        public static CorInfoType getPrimitiveTypeForTrivialWasmStruct(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd)
         {
             var _this = GetThis(thisHandle);
-            var curSequencePoint = _this.GetSequencePoint(0);
-            string fullPath = curSequencePoint.Document;
-
-            if (string.IsNullOrEmpty(fullPath))
+            TypeDesc structType = _this.HandleToObject(structHnd);
+            if (_this._compilation.GetPrimitiveTypeForTrivialWasmStruct(structType) is TypeDesc primitiveType)
             {
-                return null;
+                return _this.asCorInfoType(primitiveType);
             }
 
-            return (byte*)_this.GetPin(StringToUTF8(fullPath));
-        }
-
-        [UnmanagedCallersOnly]
-        public static uint getOffsetLineNumber(IntPtr thisHandle, uint ilOffset)
-        {
-            var _this = GetThis(thisHandle);
-
-            return (uint)_this.GetSequencePoint(ilOffset).LineNumber;
-        }
-
-        [UnmanagedCallersOnly]
-        public static uint structIsWrappedPrimitive(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd, CorInfoType corInfoPrimitiveType)
-        {
-            var _this = GetThis(thisHandle);
-            TypeDesc typeDesc = _this.HandleToObject(structHnd);
-
-            TypeDesc primitiveTypeDesc;
-            switch (corInfoPrimitiveType)
-            {
-                case CorInfoType.CORINFO_TYPE_FLOAT:
-                    primitiveTypeDesc = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Single);
-                    break;
-                case CorInfoType.CORINFO_TYPE_DOUBLE:
-                    primitiveTypeDesc = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Double);
-                    break;
-                default:
-                    return 0u;
-            }
-
-            return _this._compilation.StructIsWrappedPrimitive(typeDesc, primitiveTypeDesc) ? 1u : 0u;
+            return CorInfoType.CORINFO_TYPE_UNDEF;
         }
 
         [UnmanagedCallersOnly]
@@ -221,26 +130,13 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        public static uint getInstanceFieldAlignment(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* cls)
-        {
-            var _this = GetThis(thisHandle);
-            DefType type = (DefType)_this.HandleToObject(cls);
-
-            return (uint)type.InstanceFieldAlignment.AsInt;
-        }
-
-        [UnmanagedCallersOnly]
         public static byte* getAlternativeFunctionName(IntPtr thisHandle)
         {
             var _this = GetThis(thisHandle);
             IMethodNode methodNode = _this._methodCodeNode;
             RyuJitCompilation compilation = _this._compilation;
 
-            string alternativeName = compilation.GetRuntimeExportManagedEntrypointName(methodNode.Method);
-            if (alternativeName == null)
-            {
-                alternativeName = compilation.NodeFactory.GetSymbolAlternateName(methodNode);
-            }
+            string alternativeName = compilation.GetRuntimeExportManagedEntrypointName(methodNode.Method) ?? compilation.NodeFactory.GetSymbolAlternateName(methodNode);
             if ((alternativeName == null) && methodNode.Method.IsUnmanagedCallersOnly)
             {
                 // TODO-LLVM: delete once the IL backend is gone.
@@ -265,12 +161,32 @@ namespace Internal.JitInterface
         {
             CorInfoImpl _this = GetThis(thisHandle);
             NodeFactory factory = _this._compilation.NodeFactory;
-            ISymbolNode helperFuncNode = helperFunc switch
+            ISymbolNode helperFuncNode;
+            switch (helperFunc)
             {
-                CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP => factory.ExternSymbol("RhpGetOrInitShadowStackTop"),
-                CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP => factory.ExternSymbol("RhpSetShadowStackTop"),
-                _ => throw new UnreachableException()
-            };
+                case CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
+                    helperFuncNode = factory.ExternSymbol("RhpGetOrInitShadowStackTop");
+                    break;
+                case CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP:
+                    helperFuncNode = factory.ExternSymbol("RhpSetShadowStackTop");
+                    break;
+                default:
+                    string dispatchMethodName = helperFunc switch
+                    {
+                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING => "HandleExceptionWasmMutuallyProtectingCatches",
+                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH => "HandleExceptionWasmCatch",
+                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER => "HandleExceptionWasmFilteredCatch",
+                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT => "HandleExceptionWasmFault",
+                        _ => throw new UnreachableException()
+                    };
+                    // TODO-LLVM: we are breaking the abstraction here. Compiler is not allowed to access methods from the
+                    // managed runtime directly and assume they are compiled into CoreLib. The dispatch routine should be
+                    // made into a RuntimeExport once we solve the issues around calling convention mismatch for them.
+                    MetadataType ehType = _this._compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EH");
+                    MethodDesc dispatchMethod = ehType.GetKnownMethod(dispatchMethodName, null);
+                    helperFuncNode = factory.MethodEntrypoint(dispatchMethod);
+                    break;
+            }
 
             return _this.ObjectToHandle(helperFuncNode);
         }
@@ -335,66 +251,84 @@ namespace Internal.JitInterface
             return typeDescriptor;
         }
 
+        [UnmanagedCallersOnly]
+        private static CORINFO_LLVM_DEBUG_TYPE_HANDLE getDebugTypeForType(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* typeHandle)
+        {
+            return GetThis(thisHandle).GetDebugTypeForType(typeHandle);
+        }
+
+        [UnmanagedCallersOnly]
+        private static void getDebugInfoForDebugType(IntPtr thisHandle, CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo)
+        {
+            GetThis(thisHandle).GetDebugInfoForDebugType(debugTypeHandle, pInfo);
+        }
+
+        [UnmanagedCallersOnly]
+        private static void getDebugInfoForCurrentMethod(IntPtr thisHandle, CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
+        {
+            GetThis(thisHandle).GetDebugInfoForMethod(pInfo);
+        }
+
         // These enums must be kept in sync with their unmanaged versions in "jit/llvm.cpp".
         //
-        enum EEApiId
+        private enum EEApiId
         {
             GetMangledMethodName,
             GetMangledSymbolName,
             GetSignatureForMethodSymbol,
-            GetEHDispatchFunctionName,
-            GetTypeName,
             AddCodeReloc,
             IsRuntimeImport,
-            GetDocumentFileName,
-            GetOffsetLineNumber,
-            StructIsWrappedPrimitive,
+            GetPrimitiveTypeForTrivialWasmStruct,
             PadOffset,
             GetTypeDescriptor,
-            GetInstanceFieldAlignment,
             GetAlternativeFunctionName,
             GetExternalMethodAccessor,
             GetLlvmHelperFuncEntrypoint,
+            GetDebugTypeForType,
+            GetDebugInfoForDebugType,
+            GetDebugInfoForCurrentMethod,
             Count
         }
 
-        enum JitApiId
+        private enum JitApiId
         {
             StartThreadContextBoundCompilation,
             FinishThreadContextBoundCompilation,
             Count
         };
 
-        enum CorInfoHelpLlvmFunc
+        private enum CorInfoHelpLlvmFunc
         {
             CORINFO_HELP_LLVM_UNDEF = CorInfoHelpFunc.CORINFO_HELP_COUNT,
             CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP,
             CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP,
+            CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH,
+            CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER,
+            CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT,
+            CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING,
             CORINFO_HELP_ANY_COUNT
         }
 
         [DllImport(JitLibrary)]
-        private extern static void registerLlvmCallbacks(void** jitImports, void** jitExports);
+        private static extern void registerLlvmCallbacks(void** jitImports, void** jitExports);
 
         public static void JitStartCompilation()
         {
             void** jitImports = stackalloc void*[(int)EEApiId.Count + 1];
             jitImports[(int)EEApiId.GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
-            jitImports[(int)EEApiId.GetMangledSymbolName] = (delegate* unmanaged<IntPtr, IntPtr, byte*>)&getMangledSymbolName;
-            jitImports[(int)EEApiId.GetSignatureForMethodSymbol] = (delegate* unmanaged<IntPtr, IntPtr, CORINFO_SIG_INFO*, int>)&getSignatureForMethodSymbol;
-            jitImports[(int)EEApiId.GetEHDispatchFunctionName] = (delegate* unmanaged<IntPtr, CORINFO_EH_CLAUSE_FLAGS, byte*>)&getEHDispatchFunctionName;
-            jitImports[(int)EEApiId.GetTypeName] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, byte*>)&getTypeName;
+            jitImports[(int)EEApiId.GetMangledSymbolName] = (delegate* unmanaged<IntPtr, void*, byte*>)&getMangledSymbolName;
+            jitImports[(int)EEApiId.GetSignatureForMethodSymbol] = (delegate* unmanaged<IntPtr, void*, CORINFO_SIG_INFO*, int>)&getSignatureForMethodSymbol;
             jitImports[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
             jitImports[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;
-            jitImports[(int)EEApiId.GetDocumentFileName] = (delegate* unmanaged<IntPtr, byte*>)&getDocumentFileName;
-            jitImports[(int)EEApiId.GetOffsetLineNumber] = (delegate* unmanaged<IntPtr, uint, uint>)&getOffsetLineNumber;
-            jitImports[(int)EEApiId.StructIsWrappedPrimitive] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint>)&structIsWrappedPrimitive;
+            jitImports[(int)EEApiId.GetPrimitiveTypeForTrivialWasmStruct] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType>)&getPrimitiveTypeForTrivialWasmStruct;
             jitImports[(int)EEApiId.PadOffset] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint>)&padOffset;
             jitImports[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor>)&getTypeDescriptor;
-            jitImports[(int)EEApiId.GetInstanceFieldAlignment] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint>)&getInstanceFieldAlignment;
             jitImports[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
             jitImports[(int)EEApiId.GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
             jitImports[(int)EEApiId.GetLlvmHelperFuncEntrypoint] = (delegate* unmanaged<IntPtr, CorInfoHelpLlvmFunc, IntPtr>)&getLlvmHelperFuncEntrypoint;
+            jitImports[(int)EEApiId.GetDebugTypeForType] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_LLVM_DEBUG_TYPE_HANDLE>)&getDebugTypeForType;
+            jitImports[(int)EEApiId.GetDebugInfoForDebugType] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_DEBUG_TYPE_HANDLE, CORINFO_LLVM_TYPE_DEBUG_INFO*, void>)&getDebugInfoForDebugType;
+            jitImports[(int)EEApiId.GetDebugInfoForCurrentMethod] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_METHOD_DEBUG_INFO*, void>)&getDebugInfoForCurrentMethod;
             jitImports[(int)EEApiId.Count] = (void*)0x1234;
 
 #if DEBUG

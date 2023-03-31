@@ -370,6 +370,7 @@ bool GCToOSInterface::Initialize()
     // support for FlusProcessWriteBuffers
     //
 
+#ifndef TARGET_WASM
     assert(s_flushUsingMemBarrier == 0);
 
     if (CanFlushUsingMembarrier())
@@ -409,6 +410,7 @@ bool GCToOSInterface::Initialize()
         }
     }
 #endif // !TARGET_OSX
+#endif // !TARGET_WASM
 
     InitializeCGroup();
 
@@ -519,7 +521,7 @@ bool GCToOSInterface::CanGetCurrentProcessorNumber()
     return HAVE_SCHED_GETCPU;
 }
 
-#if !TARGET_WASM
+#ifndef TARGET_WASM
 // Flush write buffers of processors that are executing threads of the current process
 void GCToOSInterface::FlushProcessWriteBuffers()
 {
@@ -636,7 +638,7 @@ void GCToOSInterface::YieldThread(uint32_t switchCount)
 static void* VirtualReserveInner(size_t size, size_t alignment, uint32_t flags, uint32_t hugePagesFlag = 0)
 {
     assert(!(flags & VirtualReserveFlags::WriteWatch) && "WriteWatch not supported on Unix");
-    if (alignment == 0)
+    if (alignment < OS_PAGE_SIZE)
     {
         alignment = OS_PAGE_SIZE;
     }
@@ -972,10 +974,11 @@ static size_t GetLogicalProcessorCacheSizeFromOS()
         int64_t cacheSizeFromSysctl = 0;
         size_t sz = sizeof(cacheSizeFromSysctl);
         const bool success = false
-            // macOS-arm64: Since macOS 12.0, Apple added ".perflevelX." to determinate cache sizes for efficiency
+            // macOS: Since macOS 12.0, Apple added ".perflevelX." to determinate cache sizes for efficiency
             // and performance cores separately. "perflevel0" stands for "performance"
+            || sysctlbyname("hw.perflevel0.l3cachesize", &cacheSizeFromSysctl, &sz, nullptr, 0) == 0
             || sysctlbyname("hw.perflevel0.l2cachesize", &cacheSizeFromSysctl, &sz, nullptr, 0) == 0
-            // macOS-arm64: these report cache sizes for efficiency cores only:
+            // macOS: these report cache sizes for efficiency cores only:
             || sysctlbyname("hw.l3cachesize", &cacheSizeFromSysctl, &sz, nullptr, 0) == 0
             || sysctlbyname("hw.l2cachesize", &cacheSizeFromSysctl, &sz, nullptr, 0) == 0
             || sysctlbyname("hw.l1dcachesize", &cacheSizeFromSysctl, &sz, nullptr, 0) == 0;
@@ -1414,17 +1417,22 @@ void GCToOSInterface::GetMemoryStatus(uint64_t restricted_limit, uint32_t* memor
 //  The counter value
 int64_t GCToOSInterface::QueryPerformanceCounter()
 {
-    // TODO: This is not a particularly efficient implementation - we certainly could
-    // do much more specific platform-dependent versions if we find that this method
-    // runs hot. However, most likely it does not.
-    struct timeval tv;
-    if (gettimeofday(&tv, NULL) == -1)
+#if HAVE_CLOCK_GETTIME_NSEC_NP
+    return (int64_t)clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+#elif HAVE_CLOCK_MONOTONIC
+    struct timespec ts;
+    int result = clock_gettime(CLOCK_MONOTONIC, &ts);
+
+    if (result != 0)
     {
-        assert(!"gettimeofday() failed");
-        // TODO (segilles) unconditional asserts
-        return 0;
+        assert(!"clock_gettime(CLOCK_MONOTONIC) failed");
+        __UNREACHABLE();
     }
-    return (int64_t) tv.tv_sec * (int64_t) tccSecondsToMicroSeconds + (int64_t) tv.tv_usec;
+
+    return ((int64_t)(ts.tv_sec) * (int64_t)(tccSecondsToNanoSeconds)) + (int64_t)(ts.tv_nsec);
+#else
+#error " clock_gettime(CLOCK_MONOTONIC) or clock_gettime_nsec_np() must be supported."
+#endif
 }
 
 // Get a frequency of the high precision performance counter
@@ -1433,16 +1441,38 @@ int64_t GCToOSInterface::QueryPerformanceCounter()
 int64_t GCToOSInterface::QueryPerformanceFrequency()
 {
     // The counter frequency of gettimeofday is in microseconds.
-    return tccSecondsToMicroSeconds;
+    return tccSecondsToNanoSeconds;
 }
 
 // Get a time stamp with a low precision
 // Return:
 //  Time stamp in milliseconds
-uint32_t GCToOSInterface::GetLowPrecisionTimeStamp()
+uint64_t GCToOSInterface::GetLowPrecisionTimeStamp()
 {
-    // TODO(segilles) this is pretty naive, we can do better
     uint64_t retval = 0;
+
+#if HAVE_CLOCK_GETTIME_NSEC_NP
+    retval = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) / tccMilliSecondsToNanoSeconds;
+#elif HAVE_CLOCK_MONOTONIC
+    struct timespec ts;
+
+#if HAVE_CLOCK_MONOTONIC_COARSE
+    clockid_t clockType = CLOCK_MONOTONIC_COARSE; // good enough resolution, fastest speed
+#else
+    clockid_t clockType = CLOCK_MONOTONIC;
+#endif
+
+    if (clock_gettime(clockType, &ts) != 0)
+    {
+#if HAVE_CLOCK_MONOTONIC_COARSE
+        assert(!"clock_gettime(HAVE_CLOCK_MONOTONIC_COARSE) failed\n");
+#else
+        assert(!"clock_gettime(CLOCK_MONOTONIC) failed\n");
+#endif
+    }
+
+    retval = (ts.tv_sec * tccSecondsToMilliSeconds) + (ts.tv_nsec / tccMilliSecondsToNanoSeconds);
+#else
     struct timeval tv;
     if (gettimeofday(&tv, NULL) == 0)
     {
@@ -1452,6 +1482,7 @@ uint32_t GCToOSInterface::GetLowPrecisionTimeStamp()
     {
         assert(!"gettimeofday() failed\n");
     }
+#endif
 
     return retval;
 }

@@ -13,6 +13,8 @@ Module* _module = nullptr;
 
 std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs = new std::unordered_map<CORINFO_CLASS_HANDLE, Type*>();
 std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap = new std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>();
+JitHashTable<CORINFO_LLVM_DEBUG_TYPE_HANDLE, JitSmallPrimitiveKeyFuncs<CORINFO_LLVM_DEBUG_TYPE_HANDLE>, llvm::DIType*, MallocAllocator> s_debugTypesMap({});
+JitHashTable<llvm::DIFile*, JitPtrKeyFuncs<llvm::DIFile>, llvm::DICompileUnit*, MallocAllocator> s_debugCompileUnitsMap({});
 
 // Must be kept in sync with the managed version in "CorInfoImpl.Llvm.cs".
 //
@@ -21,19 +23,17 @@ enum class EEApiId
     GetMangledMethodName,
     GetSymbolMangledName,
     GetSignatureForMethodSymbol,
-    GetEHDispatchFunctionName, // TODO-LLVM: move these to the LLVM helper mechanism.
-    GetTypeName,
     AddCodeReloc,
     IsRuntimeImport,
-    GetDocumentFileName,
-    GetOffsetLineNumber,
-    StructIsWrappedPrimitive,
+    GetPrimitiveTypeForTrivialWasmStruct,
     PadOffset,
     GetTypeDescriptor,
-    GetInstanceFieldAlignment,
     GetAlternativeFunctionName,
     GetExternalMethodAccessor,
     GetLlvmHelperFuncEntrypoint,
+    GetDebugTypeForType,
+    GetDebugInfoForDebugType,
+    GetDebugInfoForCurrentMethod,
     Count
 };
 
@@ -91,6 +91,7 @@ size_t HelperFuncInfo::GetSigArgCount(unsigned* callArgCount) const
         count++;
     }
 
+    assert(count <= MAX_SIG_ARG_COUNT);
     return count;
 }
 
@@ -107,7 +108,40 @@ Llvm::Llvm(Compiler* compiler)
     , _blkToLlvmBlksMap(compiler->getAllocator(CMK_Codegen))
     , _sdsuMap(compiler->getAllocator(CMK_Codegen))
     , _localsMap(compiler->getAllocator(CMK_Codegen))
+    , m_debugVariablesMap(compiler->getAllocator(CMK_Codegen))
 {
+}
+
+var_types Llvm::GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size)
+{
+    // Note the managed and unmanaged ABIs are the same for structs that do not contain GC pointers. Thus, since
+    // unmanaged calls in general cannot have struct arguments with GC pointers in them, always passing "true" for
+    // "isManagedAbi" is ok. The one scenario which would break down with this handling is FCalls with such args.
+    // Luckily, none currently exist.
+    CorInfoType argType;
+    bool isPassedByRef;
+    getLlvmArgTypeForArg(/* isManagedAbi */ true, CORINFO_TYPE_VALUECLASS, structHnd, &argType, &isPassedByRef);
+
+    *pPassKind = isPassedByRef ? Compiler::SPK_ByReference : Compiler::SPK_ByValue;
+    return JITtype2varType(argType);
+}
+
+var_types Llvm::GetReturnTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size)
+{
+    // We do not currently expose the frontend to WASM ABI.
+    // TODO-LLVM-ABI: change this.
+    *pPassKind = Compiler::SPK_ByValue;
+    return TYP_STRUCT;
+}
+
+GCInfo* Llvm::getGCInfo()
+{
+    if (_gcInfo == nullptr)
+    {
+        _gcInfo = new (_compiler->getAllocator(CMK_GC)) GCInfo(_compiler);
+    }
+
+    return _gcInfo;
 }
 
 bool Llvm::needsReturnStackSlot(const GenTreeCall* callee)
@@ -131,86 +165,21 @@ bool Llvm::needsReturnStackSlot(const GenTreeCall* callee)
     return Llvm::needsReturnStackSlot(sigRetType, callee->gtRetClsHnd);
 }
 
-var_types Llvm::GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size)
-{
-    assert(size != 0);
-    //
-    // WASM C ABI is documented here: https://github.com/WebAssembly/tool-conventions/blob/main/BasicCABI.md.
-    // In essense, structs are passed by reference except if they are trivial wrappers of a primitive (scalar).
-    // Additionally, structs which cannot be passed on the LLVM stack are passed on the shadow one in the managed
-    // calling convention.
-    //
-    // However, we currently do not conform to this ABI and so cannot pass non-trivial structs to PI methods.
-    // TODO-LLVM: fix this once the IL backend is gone, s. t. the managed and unmanaged ABIs are the same (for
-    // values that can be passed as LLVM arguments).
-    //
-    *pPassKind = Compiler::SPK_ByValue;
-    return TYP_STRUCT;
-}
-
-var_types Llvm::GetReturnTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size)
-{
-    return GetArgTypeForStructWasm(structHnd, pPassKind, size);
-}
-
-GCInfo* Llvm::getGCInfo()
-{
-    if (_gcInfo == nullptr)
-    {
-        _gcInfo = new (_compiler->getAllocator(CMK_GC)) GCInfo(_compiler);
-    }
-
-    return _gcInfo;
-}
-
-// When looking at a sigInfo from eeGetMethodSig we have CorInfoType(s) but when looking at lclVars we have LclVarDsc or var_type(s),
-// This method exists to allow both to map to LLVM types.
-/* static */ CorInfoType Llvm::toCorInfoType(var_types varType)
-{
-    switch (varType)
-    {
-        case TYP_BOOL:
-            return CORINFO_TYPE_BOOL;
-        case TYP_BYREF:
-            return CORINFO_TYPE_BYREF;
-        case TYP_BYTE:
-            return CORINFO_TYPE_BYTE;
-        case TYP_UBYTE:
-            return CORINFO_TYPE_UBYTE;
-        case TYP_DOUBLE:
-            return CORINFO_TYPE_DOUBLE;
-        case TYP_FLOAT:
-            return CORINFO_TYPE_FLOAT;
-        case TYP_INT:
-            return CORINFO_TYPE_INT;
-        case TYP_UINT:
-            return CORINFO_TYPE_UINT;
-        case TYP_LONG:
-            return CORINFO_TYPE_LONG;
-        case TYP_ULONG:
-            return CORINFO_TYPE_ULONG;
-        case TYP_REF:
-            return CORINFO_TYPE_CLASS;
-        case TYP_SHORT:
-            return CORINFO_TYPE_SHORT;
-        case TYP_USHORT:
-            return CORINFO_TYPE_USHORT;
-        case TYP_STRUCT:
-            return CORINFO_TYPE_VALUECLASS;
-        case TYP_UNDEF:
-            return CORINFO_TYPE_UNDEF;
-        case TYP_VOID:
-            return CORINFO_TYPE_VOID;
-        default:
-            unreached();
-    }
-}
-
 // Returns true if the method returns a type that must be kept on the shadow stack
 //
-bool Llvm::needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
+bool Llvm::needsReturnStackSlot(CorInfoType sigRetType, CORINFO_CLASS_HANDLE sigRetClass)
 {
-    return (corInfoType != CORINFO_TYPE_VOID) && !canStoreArgOnLlvmStack(corInfoType, classHnd);
+    if (sigRetType == CORINFO_TYPE_REFANY)
+    {
+        return true;
+    }
+    if ((sigRetType == CORINFO_TYPE_VALUECLASS) && !canStoreArgOnLlvmStack(sigRetType, sigRetClass) &&
+        (GetPrimitiveTypeForTrivialWasmStruct(sigRetClass) == CORINFO_TYPE_UNDEF))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 bool Llvm::callRequiresShadowStackSave(const GenTreeCall* call) const
@@ -293,7 +262,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
 {
     // Note on Runtime[Type|Method|Field]Handle: it should faithfully be represented as CORINFO_TYPE_VALUECLASS.
     // However, that is currently both not necessary due to the unwrapping performed for LLVM types and not what
-    // the Jit expects. When deleting the unwrapping, fix the runtime signatures to take the underlying pointer instead.
+    // the Jit expects.
     const int CORINFO_TYPE_RT_HANDLE = CORINFO_TYPE_NATIVEINT;
 
 #define FUNC(helper) INDEBUG_COMMA(helper)
@@ -533,8 +502,8 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
         { FUNC(CORINFO_HELP_RUNTIMEHANDLE_CLASS_LOG) },
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs".
-        { FUNC(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_RT_HANDLE }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE_MAYBENULL) CORINFO_TYPE_CLASS, { CORINFO_TYPE_RT_HANDLE }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_NATIVEINT }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE_MAYBENULL) CORINFO_TYPE_CLASS, { CORINFO_TYPE_NATIVEINT }, HFIF_SS_ARG },
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\LdTokenHelpers.cs".
         { FUNC(CORINFO_HELP_METHODDESC_TO_STUBRUNTIMEMETHOD) CORINFO_TYPE_VALUECLASS, { CORINFO_TYPE_NATIVEINT }, HFIF_SS_ARG },
@@ -556,10 +525,10 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
         { FUNC(CORINFO_HELP_READYTORUN_ISINSTANCEOF) },
         { FUNC(CORINFO_HELP_READYTORUN_CHKCAST) },
 
-        // Emitted by the compiler as intrinsics. (see "ILCompiler.LLVM\CodeGen\LLVMObjectWriter.cs", "GetCodeForReadyToRunGenericHelper").
+        // Emitted by the compiler as intrinsics. (see "ILCompiler.LLVM\CodeGen\LLVMObjectWriter.cs", "GetCodeForReadyToRunGenericHelper" and others).
         { FUNC(CORINFO_HELP_READYTORUN_STATIC_BASE) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_READYTORUN_VIRTUAL_FUNC_PTR) }, // Not used in NativeAOT.
-        { FUNC(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_READYTORUN_VIRTUAL_FUNC_PTR) CORINFO_TYPE_PTR, { CORINFO_TYPE_CLASS } },
+        { FUNC(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG | HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_READYTORUN_DELEGATE_CTOR) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS, CORINFO_TYPE_CLASS, CORINFO_TYPE_PTR }, HFIF_SS_ARG | HFIF_VAR_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
 
@@ -624,6 +593,12 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
 
         { FUNC(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP) CORINFO_TYPE_PTR, { }, HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
+
+        { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH) CORINFO_TYPE_INT, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER) CORINFO_TYPE_INT, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING) CORINFO_TYPE_INT, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+
     };
     // clang-format on
 
@@ -639,21 +614,59 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
     return info;
 }
 
-bool Llvm::canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
+bool Llvm::canStoreArgOnLlvmStack(CorInfoType argSigType, CORINFO_CLASS_HANDLE argSigClass)
 {
-    // structs with no GC pointers can go on LLVM stack.
-    if (corInfoType == CORINFO_TYPE_VALUECLASS)
+    switch (argSigType)
     {
-        ClassLayout* classLayout = _compiler->typGetObjLayout(classHnd);
-        return !classLayout->HasGCPtr();
+        case CORINFO_TYPE_BYREF:
+        case CORINFO_TYPE_CLASS:
+        case CORINFO_TYPE_REFANY:
+            return false;
+        case CORINFO_TYPE_VALUECLASS:
+            return !_compiler->typGetObjLayout(argSigClass)->HasGCPtr();
+        default:
+            return true;
+    }
+}
+
+bool Llvm::getLlvmArgTypeForArg(bool                 isManagedAbi,
+                                CorInfoType          argSigType,
+                                CORINFO_CLASS_HANDLE argSigClass,
+                                CorInfoType*         pArgType,
+                                bool*                pIsByRef)
+{
+    assert(argSigType != CORINFO_TYPE_UNDEF);
+    if (argSigType == CORINFO_TYPE_REFANY)
+    {
+        argSigType = CORINFO_TYPE_VALUECLASS;
+    }
+    //
+    // WASM C ABI is documented here: https://github.com/WebAssembly/tool-conventions/blob/main/BasicCABI.md.
+    // In essense, structs are passed by reference except if they are trivial wrappers of a primitive (scalar).
+    // We follow this rule for the native calling convention as well as non-GC structs. GC structs are passed
+    // by value on the shadow stack in the managed calling convention.
+    //
+    bool isByRef = false;
+    bool isLlvmArg = !isManagedAbi || canStoreArgOnLlvmStack(argSigType, argSigClass);
+    CorInfoType argType = argSigType;
+    if (isLlvmArg && (argSigType == CORINFO_TYPE_VALUECLASS))
+    {
+        argType = GetPrimitiveTypeForTrivialWasmStruct(argSigClass);
+        if (argType == CORINFO_TYPE_UNDEF)
+        {
+            isByRef = true;
+        }
     }
 
-    if (corInfoType == CORINFO_TYPE_BYREF || corInfoType == CORINFO_TYPE_CLASS || corInfoType == CORINFO_TYPE_REFANY)
+    if (pArgType != nullptr)
     {
-        return false;
+        *pArgType = isByRef ? CORINFO_TYPE_PTR : argType;
     }
-
-    return true;
+    if (pIsByRef != nullptr)
+    {
+        *pIsByRef = isByRef;
+    }
+    return isLlvmArg;
 }
 
 static unsigned corInfoTypeAligment(CorInfoType corInfoType)
@@ -692,6 +705,72 @@ unsigned Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE struc
     }
 
     return padOffset(corInfoType, structClassHandle, atOffset) + size;
+}
+
+// When looking at a sigInfo from eeGetMethodSig we have CorInfoType(s) but when looking at lclVars we have LclVarDsc or var_type(s),
+// This method exists to allow both to map to LLVM types.
+/* static */ CorInfoType Llvm::toCorInfoType(var_types type)
+{
+    switch (type)
+    {
+        case TYP_BOOL:
+            return CORINFO_TYPE_BOOL;
+        case TYP_BYREF:
+            return CORINFO_TYPE_BYREF;
+        case TYP_BYTE:
+            return CORINFO_TYPE_BYTE;
+        case TYP_UBYTE:
+            return CORINFO_TYPE_UBYTE;
+        case TYP_DOUBLE:
+            return CORINFO_TYPE_DOUBLE;
+        case TYP_FLOAT:
+            return CORINFO_TYPE_FLOAT;
+        case TYP_INT:
+            return CORINFO_TYPE_INT;
+        case TYP_UINT:
+            return CORINFO_TYPE_UINT;
+        case TYP_LONG:
+            return CORINFO_TYPE_LONG;
+        case TYP_ULONG:
+            return CORINFO_TYPE_ULONG;
+        case TYP_REF:
+            return CORINFO_TYPE_CLASS;
+        case TYP_SHORT:
+            return CORINFO_TYPE_SHORT;
+        case TYP_USHORT:
+            return CORINFO_TYPE_USHORT;
+        case TYP_STRUCT:
+            return CORINFO_TYPE_VALUECLASS;
+        case TYP_UNDEF:
+            return CORINFO_TYPE_UNDEF;
+        case TYP_VOID:
+            return CORINFO_TYPE_VOID;
+        default:
+            unreached();
+    }
+}
+
+//------------------------------------------------------------------------
+// getLlvmArgTypeForCallArg: Get the ABI type for the given call argument.
+//
+// Assumes that the ABI info has already been initialized.
+//
+// Arguments:
+//    arg - The call argument
+//
+// Return Value:
+//    The type to use for "arg" when constructing LLVM signatures.
+//
+/* static */ CorInfoType Llvm::getLlvmArgTypeForCallArg(CallArg* arg)
+{
+    assert(arg->AbiInfo.ArgType != TYP_UNDEF);
+    if (arg->AbiInfo.IsPointer)
+    {
+        return CORINFO_TYPE_PTR;
+    }
+
+    assert(!arg->AbiInfo.PassedByRef);
+    return toCorInfoType(arg->AbiInfo.ArgType);
 }
 
 TargetAbiType Llvm::getAbiTypeForType(var_types type)
@@ -765,16 +844,6 @@ bool Llvm::GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORI
     return CallEEApi<EEApiId::GetSignatureForMethodSymbol, int>(m_pEECorInfo, symbolHandle, pSig) != 0;
 }
 
-const char* Llvm::GetEHDispatchFunctionName(CORINFO_EH_CLAUSE_FLAGS handlerType)
-{
-    return CallEEApi<EEApiId::GetEHDispatchFunctionName, const char*>(m_pEECorInfo, handlerType);
-}
-
-const char* Llvm::GetTypeName(CORINFO_CLASS_HANDLE typeHandle)
-{
-    return CallEEApi<EEApiId::GetTypeName, const char*>(m_pEECorInfo, typeHandle);
-}
-
 void Llvm::AddCodeReloc(void* handle)
 {
     CallEEApi<EEApiId::AddCodeReloc, void>(m_pEECorInfo, handle);
@@ -785,21 +854,9 @@ bool Llvm::IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle) const
     return CallEEApi<EEApiId::IsRuntimeImport, uint32_t>(m_pEECorInfo, methodHandle) != 0;
 }
 
-const char* Llvm::GetDocumentFileName()
+CorInfoType Llvm::GetPrimitiveTypeForTrivialWasmStruct(CORINFO_CLASS_HANDLE structHandle)
 {
-    return CallEEApi<EEApiId::GetDocumentFileName, const char*>(m_pEECorInfo);
-}
-
-uint32_t Llvm::GetOffsetLineNumber(unsigned ilOffset)
-{
-    return CallEEApi<EEApiId::GetOffsetLineNumber, uint32_t>(m_pEECorInfo, ilOffset);
-}
-
-bool Llvm::StructIsWrappedPrimitive(CORINFO_CLASS_HANDLE typeHandle, CorInfoType corInfoType)
-{
-    // Maintains compatiblity with the IL->LLVM generation.
-    // TODO-LLVM, when IL generation is no more, see if we can remove this unwrapping.
-    return CallEEApi<EEApiId::StructIsWrappedPrimitive, uint32_t>(m_pEECorInfo, typeHandle, corInfoType) != 0;
+    return CallEEApi<EEApiId::GetPrimitiveTypeForTrivialWasmStruct, CorInfoType>(m_pEECorInfo, structHandle);
 }
 
 uint32_t Llvm::PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset)
@@ -810,11 +867,6 @@ uint32_t Llvm::PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset)
 TypeDescriptor Llvm::GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle)
 {
     return CallEEApi<EEApiId::GetTypeDescriptor, TypeDescriptor>(m_pEECorInfo, typeHandle);
-}
-
-uint32_t Llvm::GetInstanceFieldAlignment(CORINFO_CLASS_HANDLE fieldTypeHandle)
-{
-    return CallEEApi<EEApiId::GetInstanceFieldAlignment, uint32_t>(m_pEECorInfo, fieldTypeHandle);
 }
 
 const char* Llvm::GetAlternativeFunctionName()
@@ -832,6 +884,21 @@ CORINFO_GENERIC_HANDLE Llvm::GetExternalMethodAccessor(
 CORINFO_GENERIC_HANDLE Llvm::GetLlvmHelperFuncEntrypoint(CorInfoHelpLlvmFunc helperFunc)
 {
     return CallEEApi<EEApiId::GetLlvmHelperFuncEntrypoint, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, helperFunc);
+}
+
+CORINFO_LLVM_DEBUG_TYPE_HANDLE Llvm::GetDebugTypeForType(CORINFO_CLASS_HANDLE typeHandle)
+{
+    return CallEEApi<EEApiId::GetDebugTypeForType, CORINFO_LLVM_DEBUG_TYPE_HANDLE>(m_pEECorInfo, typeHandle);
+}
+
+void Llvm::GetDebugInfoForDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo)
+{
+    CallEEApi<EEApiId::GetDebugInfoForDebugType, void>(m_pEECorInfo, debugTypeHandle, pInfo);
+}
+
+void Llvm::GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
+{
+    CallEEApi<EEApiId::GetDebugInfoForCurrentMethod, void>(m_pEECorInfo, pInfo);
 }
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExports)
@@ -855,7 +922,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExp
 /* static */ void Llvm::FinishThreadContextBoundCompilation()
 {
     assert(_module != nullptr);
-    if (_module->getNamedMetadata("llvm.dbg.cu") != nullptr)
+    if (s_debugCompileUnitsMap.GetCount() != 0)
     {
         _module->addModuleFlag(llvm::Module::Warning, "Dwarf Version", 4);
         _module->addModuleFlag(llvm::Module::Warning, "Debug Info Version", 3);

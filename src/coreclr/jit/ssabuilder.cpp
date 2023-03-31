@@ -592,8 +592,17 @@ void SsaBuilder::InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum)
     GenTree*  phi      = new (m_pCompiler, GT_PHI) GenTreePhi(type);
     GenTree*  storeLcl = m_pCompiler->gtNewStoreLclVar(lclNum, phi);
 
+    GenTree* insertionPoint = nullptr;
+    for (GenTree* node : LIR::AsRange(block))
+    {
+        if (!node->OperIs(GT_PHI))
+        {
+            insertionPoint = node;
+            break;
+        }
+    }
     LIR::AsRange(block).InsertAtBeginning(phi);
-    LIR::AsRange(block).InsertAfter(phi, storeLcl);
+    LIR::AsRange(block).InsertBefore(insertionPoint, storeLcl);
 
     JITDUMP("Added PHI definition for V%02u at start of " FMT_BB ".\n", lclNum, block->bbNum);
 }

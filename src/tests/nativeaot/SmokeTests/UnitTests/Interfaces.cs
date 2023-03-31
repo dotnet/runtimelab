@@ -1143,14 +1143,12 @@ public class Interfaces
                     throw new Exception();
             }
 
-#if !CODEGEN_WASM // Fails at runtime. Suspected cause is delegate invoke handling.
             {
                 var mi = t.GetMethod("CallIndirect");
                 int result = (int)mi.Invoke(null, Array.Empty<object>());
                 if (result != 2022)
                     throw new Exception();
             }
-#endif
 
             {
                 var mi = t.GetMethod("CallDefault");
@@ -1211,7 +1209,6 @@ public class Interfaces
                     throw new Exception();
             }
 
-#if !CODEGEN_WASM // Fails at runtime. Suspected cause is delegate invoke handling.
             {
                 var mi = t.GetMethod("CallIndirect");
                 var result = ((int, Type))mi.Invoke(null, Array.Empty<object>());
@@ -1220,7 +1217,6 @@ public class Interfaces
                 if (result.Item2.GetArrayRank() != 3 || result.Item2.GetElementType() != s_atomType)
                     throw new Exception();
             }
-#endif
 
             {
                 var mi = t.GetMethod("CallDefault");
@@ -1278,7 +1274,6 @@ public class Interfaces
                     throw new Exception();
             }
 
-#if !CODEGEN_WASM // Fails at runtime. Suspected cause is delegate invoke handling.
             {
                 var mi = t.GetMethod("CallIndirect");
                 var result = ((int, Type))mi.Invoke(null, Array.Empty<object>());
@@ -1287,7 +1282,6 @@ public class Interfaces
                 if (result.Item2.GetArrayRank() != 3 || result.Item2.GetElementType() != s_atomBaseType)
                     throw new Exception();
             }
-#endif
 
             {
                 var mi = t.GetMethod("CallDefault");

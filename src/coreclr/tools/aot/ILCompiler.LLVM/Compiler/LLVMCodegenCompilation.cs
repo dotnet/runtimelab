@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
@@ -48,7 +48,7 @@ namespace ILCompiler
             ConfigurableWasmImportPolicy configurableWasmImportPolicy,
             MethodImportationErrorProvider errorProvider,
             RyuJitCompilationOptions baseOptions)
-            : base(dependencyGraph, nodeFactory, GetCompilationRoots(roots, nodeFactory), ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy, instructionSetSupport,
+            : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy, instructionSetSupport,
                 null /* ProfileDataManager */, errorProvider, baseOptions, 1)
         {
             NodeFactory = nodeFactory;
@@ -58,16 +58,11 @@ namespace ILCompiler
             ConfigurableWasmImportPolicy = configurableWasmImportPolicy;
         }
 
-        private static IEnumerable<ICompilationRootProvider> GetCompilationRoots(IEnumerable<ICompilationRootProvider> existingRoots, NodeFactory factory)
-        {
-            foreach (var existingRoot in existingRoots)
-                yield return existingRoot;
-        }
-
         protected override void CompileInternal(string outputFile, ObjectDumper dumper)
         {
-            _outputFile = outputFile;
+            Stopwatch stopwatch = Stopwatch.StartNew();
 
+            _outputFile = outputFile;
             CorInfoImpl.JitStartCompilation();
 
             _dependencyGraph.ComputeMarkedNodes();
@@ -80,6 +75,8 @@ namespace ILCompiler
             CorInfoImpl.JitFinishCompilation();
 
             LLVMObjectWriter.EmitObject(outputFile, _dependencyGraph.MarkedNodeList, this, dumper);
+
+            Console.WriteLine($"LLVM bitcode generation finished in {stopwatch.Elapsed.TotalSeconds:0.##} seconds");
         }
 
         protected override void ComputeDependencyNodeDependencies(List<DependencyNodeCore<NodeFactory>> obj)
@@ -197,50 +194,34 @@ namespace ILCompiler
             return NodeFactory.ExternSymbolWithAccessor(name, method, sig);
         }
 
-        internal LLVMTypeRef GetLLVMSignatureForMethod(MethodSignature signature, bool hasHiddenParam)
+        internal LLVMTypeRef GetLLVMSignatureForMethod(bool isManagedAbi, MethodSignature signature, bool hasHiddenParam)
         {
-            TypeDesc returnType = signature.ReturnType;
-            LLVMTypeRef llvmReturnType;
-            bool returnOnStack = false;
-            if (!NeedsReturnStackSlot(signature))
-            {
-                returnOnStack = true;
-                llvmReturnType = GetLLVMTypeForTypeDesc(returnType);
-            }
-            else
-            {
-                llvmReturnType = LLVMTypeRef.Void;
-            }
+            LLVMTypeRef llvmReturnType = GetLlvmReturnType(isManagedAbi, signature.ReturnType, out bool isReturnByRef);
 
-            List<LLVMTypeRef> signatureTypes = new List<LLVMTypeRef>();
+            ArrayBuilder<LLVMTypeRef> signatureTypes = new ArrayBuilder<LLVMTypeRef>();
             signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // Shadow stack pointer
 
-            if (!returnOnStack && !signature.ReturnType.IsVoid)
+            if (isReturnByRef)
             {
                 signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
             }
 
             if (hasHiddenParam)
             {
-                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // *MethodTable
+                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
             }
 
             // Intentionally skipping the 'this' pointer since it could always be a GC reference
             // and thus must be on the shadow stack
             foreach (TypeDesc type in signature)
             {
-                if (CanStoreTypeOnStack(type))
+                if (GetLlvmArgTypeForArg(isManagedAbi, type, out LLVMTypeRef llvmArgType, out _))
                 {
-                    signatureTypes.Add(GetLLVMTypeForTypeDesc(type));
+                    signatureTypes.Add(llvmArgType);
                 }
             }
 
             return LLVMTypeRef.CreateFunction(llvmReturnType, signatureTypes.ToArray(), false);
-        }
-
-        internal static bool NeedsReturnStackSlot(MethodSignature signature)
-        {
-            return !signature.ReturnType.IsVoid && !CanStoreTypeOnStack(signature.ReturnType);
         }
 
         internal static bool CanStoreTypeOnStack(TypeDesc type)
@@ -260,58 +241,88 @@ namespace ILCompiler
             return false;
         }
 
-        public override bool StructIsWrappedPrimitive(TypeDesc type, TypeDesc primitiveType)
+        public override TypeDesc GetPrimitiveTypeForTrivialWasmStruct(TypeDesc type)
         {
-            Debug.Assert(type.IsValueType);
-            Debug.Assert(primitiveType.IsPrimitive);
+            Debug.Assert(IsStruct(type));
 
-            if (type.GetElementSize().AsInt != primitiveType.GetElementSize().AsInt)
+            int size = type.GetElementSize().AsInt;
+            if (size <= sizeof(double) && BitOperations.IsPow2(size))
             {
-                return false;
+                while (true)
+                {
+                    FieldDesc singleInstanceField = null;
+                    foreach (FieldDesc field in type.GetFields())
+                    {
+                        if (!field.IsStatic)
+                        {
+                            if (singleInstanceField != null)
+                            {
+                                return null;
+                            }
+
+                            singleInstanceField = field;
+                        }
+                    }
+
+                    if (singleInstanceField == null)
+                    {
+                        return null;
+                    }
+
+                    TypeDesc singleInstanceFieldType = singleInstanceField.FieldType;
+                    if (!IsStruct(singleInstanceFieldType))
+                    {
+                        if (singleInstanceFieldType.GetElementSize().AsInt != size)
+                        {
+                            return null;
+                        }
+
+                        return singleInstanceFieldType;
+                    }
+
+                    type = singleInstanceFieldType;
+                }
             }
 
-            int instanceFieldCount = 0;
-            bool foundPrimitive = false;
+            return null;
+        }
 
-            foreach (FieldDesc field in type.GetFields())
+        internal bool GetLlvmArgTypeForArg(bool isManagedAbi, TypeDesc argSigType, out LLVMTypeRef llvmArgType, out bool isPassedByRef)
+        {
+            isPassedByRef = false;
+            bool isLlvmArg = !isManagedAbi || CanStoreTypeOnStack(argSigType);
+            TypeDesc argType = argSigType;
+            if (isLlvmArg && IsStruct(argSigType))
             {
-                if (field.IsStatic)
+                argType = GetPrimitiveTypeForTrivialWasmStruct(argSigType);
+                if (argType == null)
                 {
-                    continue;
-                }
-
-                instanceFieldCount++;
-
-                // If there's more than one field, figuring out whether this is a primitive gets complicated, so assume it's not
-                if (instanceFieldCount > 1)
-                {
-                    break;
-                }
-
-                TypeDesc fieldType = field.FieldType;
-                if (fieldType == primitiveType)
-                {
-                    foundPrimitive = true;
-                }
-                else if (fieldType.IsValueType && !fieldType.IsPrimitive && StructIsWrappedPrimitive(fieldType, primitiveType))
-                {
-                    foundPrimitive = true;
+                    isPassedByRef = true;
                 }
             }
 
-            if (instanceFieldCount == 1 && foundPrimitive)
+            llvmArgType = isPassedByRef ? LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) : GetLLVMTypeForTypeDesc(argType);
+            return isLlvmArg;
+        }
+
+        internal LLVMTypeRef GetLlvmReturnType(bool isManagedAbi, TypeDesc sigReturnType, out bool isPassedByRef)
+        {
+            isPassedByRef = isManagedAbi && IsStruct(sigReturnType) && !CanStoreTypeOnStack(sigReturnType) &&
+                            GetPrimitiveTypeForTrivialWasmStruct(sigReturnType) == null;
+
+            if (isPassedByRef || sigReturnType.IsVoid)
             {
-                return true;
+                return LLVMTypeRef.Void;
             }
 
-            return false;
+            return GetLLVMTypeForTypeDesc(sigReturnType);
         }
 
         public override int PadOffset(TypeDesc type, int atOffset)
         {
             var fieldAlignment = type is DefType && type.IsValueType ? ((DefType)type).InstanceFieldAlignment : type.Context.Target.LayoutPointerSize;
             var alignment = LayoutInt.Min(fieldAlignment, new LayoutInt(ComputePackingSize(type))).AsInt;
-            var padding = (atOffset + (alignment - 1)) & ~(alignment - 1);
+            var padding = atOffset.AlignUp(alignment);
 
             return padding;
         }
@@ -364,140 +375,97 @@ namespace ILCompiler
 
                 case TypeFlags.ValueType:
                 case TypeFlags.Nullable:
+                    if (!_llvmStructs.TryGetValue(type, out LLVMTypeRef llvmStructType))
                     {
-                        if (!_llvmStructs.TryGetValue(type, out LLVMTypeRef llvmStructType))
+                        // Treat trivial structs like their underlying types for compatibility with the native ABI.
+                        if (GetPrimitiveTypeForTrivialWasmStruct(type) is TypeDesc primitiveType)
                         {
-                            // LLVM thinks certain sizes of struct have a different calling convention than Clang does.
-                            // Treating them as ints fixes that and is more efficient in general
-                            int structSize = type.GetElementSize().AsInt;
-                            int structAlignment = ((DefType)type).InstanceFieldAlignment.AsInt;
-                            switch (structSize)
+                            llvmStructType = GetLLVMTypeForTypeDesc(primitiveType);
+                        }
+                        else
+                        {
+                            List<FieldDesc> sortedFields = new();
+                            foreach (FieldDesc field in type.GetFields())
                             {
-                                case 1:
-                                    llvmStructType = LLVMTypeRef.Int8;
-                                    break;
-                                case 2:
-                                    if (structAlignment == 2)
-                                    {
-                                        llvmStructType = LLVMTypeRef.Int16;
-                                    }
-                                    else
-                                    {
-                                        goto default;
-                                    }
-                                    break;
-                                case 4:
-                                    if (structAlignment == 4)
-                                    {
-                                        if (StructIsWrappedPrimitive(type, type.Context.GetWellKnownType(WellKnownType.Single)))
-                                        {
-                                            llvmStructType = LLVMTypeRef.Float;
-                                        }
-                                        else
-                                        {
-                                            llvmStructType = LLVMTypeRef.Int32;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        goto default;
-                                    }
-                                    break;
-                                case 8:
-                                    if (structAlignment == 8)
-                                    {
-                                        if (StructIsWrappedPrimitive(type, type.Context.GetWellKnownType(WellKnownType.Double)))
-                                        {
-                                            llvmStructType = LLVMTypeRef.Double;
-                                        }
-                                        else
-                                        {
-                                            llvmStructType = LLVMTypeRef.Int64;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        goto default;
-                                    }
-                                    break;
-
-                                default:
-                                    // Forward-declare the struct in case there's a reference to it in the fields.
-                                    // This must be a named struct or LLVM hits a stack overflow
-                                    llvmStructType = LLVMTypeRef.Int8.Context.CreateNamedStruct(type.ToString());
-                                    _llvmStructs[type] = llvmStructType;
-
-                                    FieldDesc[] instanceFields = type.GetFields().Where(field => !field.IsStatic).ToArray();
-                                    FieldAndOffset[] fieldLayout = new FieldAndOffset[instanceFields.Length];
-                                    for (int i = 0; i < instanceFields.Length; i++)
-                                    {
-                                        fieldLayout[i] = new FieldAndOffset(instanceFields[i], instanceFields[i].Offset);
-                                    }
-
-                                    // Sort fields by offset and size in order to handle generating unions
-                                    FieldAndOffset[] sortedFields = fieldLayout.OrderBy(fieldAndOffset => fieldAndOffset.Offset.AsInt).
-                                        ThenByDescending(fieldAndOffset => fieldAndOffset.Field.FieldType.GetElementSize().AsInt).ToArray();
-
-                                    List<LLVMTypeRef> llvmFields = new List<LLVMTypeRef>(sortedFields.Length);
-                                    int lastOffset = -1;
-                                    int nextNewOffset = -1;
-                                    TypeDesc prevType = null;
-                                    int totalSize = 0;
-
-                                    foreach (FieldAndOffset fieldAndOffset in sortedFields)
-                                    {
-                                        int curOffset = fieldAndOffset.Offset.AsInt;
-
-                                        if (prevType == null || (curOffset != lastOffset && curOffset >= nextNewOffset))
-                                        {
-                                            // The layout should be in order
-                                            Debug.Assert(curOffset > lastOffset);
-
-                                            int prevElementSize;
-                                            if (prevType == null)
-                                            {
-                                                lastOffset = 0;
-                                                prevElementSize = 0;
-                                            }
-                                            else
-                                            {
-                                                prevElementSize = prevType.GetElementSize().AsInt;
-                                            }
-
-                                            // Pad to this field if necessary
-                                            int paddingSize = curOffset - lastOffset - prevElementSize;
-                                            if (paddingSize > 0)
-                                            {
-                                                AddPaddingFields(paddingSize, llvmFields);
-                                                totalSize += paddingSize;
-                                            }
-
-                                            TypeDesc fieldType = fieldAndOffset.Field.FieldType;
-                                            int fieldSize = fieldType.GetElementSize().AsInt;
-
-                                            llvmFields.Add(GetLLVMTypeForTypeDesc(fieldType));
-
-                                            totalSize += fieldSize;
-                                            lastOffset = curOffset;
-                                            prevType = fieldType;
-                                            nextNewOffset = curOffset + fieldSize;
-                                        }
-                                    }
-
-                                    // If explicit layout is greater than the sum of fields, add padding
-                                    if (totalSize < structSize)
-                                    {
-                                        AddPaddingFields(structSize - totalSize, llvmFields);
-                                    }
-
-                                    llvmStructType.StructSetBody(llvmFields.ToArray(), true);
-                                    break;
+                                if (!field.IsStatic)
+                                {
+                                    sortedFields.Add(field);
+                                }
                             }
 
-                            _llvmStructs[type] = llvmStructType;
+                            // Sort fields by offset and size in order to handle generating unions
+                            sortedFields.Sort((left, right) =>
+                            {
+                                int leftOffset = left.Offset.AsInt;
+                                int rightOffset = right.Offset.AsInt;
+                                if (leftOffset == rightOffset)
+                                {
+                                    // Sort union fields in a descending order.
+                                    return right.FieldType.GetElementSize().AsInt - left.FieldType.GetElementSize().AsInt;
+                                }
+
+                                return leftOffset - rightOffset;
+                            });
+
+                            List<LLVMTypeRef> llvmFields = new List<LLVMTypeRef>(sortedFields.Count);
+                            int lastOffset = -1;
+                            int nextNewOffset = -1;
+                            TypeDesc prevType = null;
+                            int totalSize = 0;
+
+                            foreach (FieldDesc field in sortedFields)
+                            {
+                                int curOffset = field.Offset.AsInt;
+
+                                if (prevType == null || (curOffset != lastOffset && curOffset >= nextNewOffset))
+                                {
+                                    // The layout should be in order
+                                    Debug.Assert(curOffset > lastOffset);
+
+                                    int prevElementSize;
+                                    if (prevType == null)
+                                    {
+                                        lastOffset = 0;
+                                        prevElementSize = 0;
+                                    }
+                                    else
+                                    {
+                                        prevElementSize = prevType.GetElementSize().AsInt;
+                                    }
+
+                                    // Pad to this field if necessary
+                                    int paddingSize = curOffset - lastOffset - prevElementSize;
+                                    if (paddingSize > 0)
+                                    {
+                                        AddPaddingFields(paddingSize, llvmFields);
+                                        totalSize += paddingSize;
+                                    }
+
+                                    TypeDesc fieldType = field.FieldType;
+                                    int fieldSize = fieldType.GetElementSize().AsInt;
+
+                                    llvmFields.Add(GetLLVMTypeForTypeDesc(fieldType));
+
+                                    totalSize += fieldSize;
+                                    lastOffset = curOffset;
+                                    prevType = fieldType;
+                                    nextNewOffset = curOffset + fieldSize;
+                                }
+                            }
+
+                            // If explicit layout is greater than the sum of fields, add padding
+                            int structSize = type.GetElementSize().AsInt;
+                            if (totalSize < structSize)
+                            {
+                                AddPaddingFields(structSize - totalSize, llvmFields);
+                            }
+
+                            llvmStructType = LLVMTypeRef.CreateStruct(llvmFields.ToArray(), true);
                         }
-                        return llvmStructType;
+
+                        _llvmStructs[type] = llvmStructType;
                     }
+                    return llvmStructType;
 
                 case TypeFlags.Enum:
                     return GetLLVMTypeForTypeDesc(type.UnderlyingType);
@@ -570,5 +538,7 @@ namespace ILCompiler
                 llvmFields.Add(LLVMTypeRef.Int8);
             }
         }
+
+        private static bool IsStruct(TypeDesc type) => type.Category is TypeFlags.ValueType or TypeFlags.Nullable;
     }
 }

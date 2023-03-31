@@ -305,14 +305,12 @@ bool Thread::IsInitialized()
 // -----------------------------------------------------------------------------------------------------------
 // GC support APIs - do not use except from GC itself
 //
-void Thread::SetGCSpecial(bool isGCSpecial)
+void Thread::SetGCSpecial()
 {
     if (!IsInitialized())
         Construct();
-    if (isGCSpecial)
-        SetState(TSF_IsGcSpecialThread);
-    else
-        ClearState(TSF_IsGcSpecialThread);
+
+    SetState(TSF_IsGcSpecialThread);
 }
 
 bool Thread::IsGCSpecial()
@@ -476,6 +474,18 @@ void Thread::GcScanRootsWorker(void * pfnEnumCallback, void * pvCallbackData, St
             // Transition frame may contain callee saved registers that need to be reported as well
             PInvokeTransitionFrame* pTransitionFrame = GetTransitionFrame();
             ASSERT(pTransitionFrame != NULL);
+
+            if (pTransitionFrame == INTERRUPTED_THREAD_MARKER)
+            {
+                GetInterruptedContext()->ForEachPossibleObjectRef
+                (
+                    [&](size_t* pRef)
+                    {
+                        RedhawkGCInterface::EnumGcRefConservatively((PTR_RtuObjectRef)pRef, pfnEnumCallback, pvCallbackData);
+                    }
+                );
+            }
+
             if (pTransitionFrame < pLowerBound)
                 pLowerBound = pTransitionFrame;
 
@@ -580,6 +590,7 @@ bool Thread::IsHijackTarget(void* address)
     return false;
 }
 
+#ifdef FEATURE_HIJACK
 void Thread::Hijack()
 {
     ASSERT(ThreadStore::GetCurrentThread() == ThreadStore::GetSuspendingThread());
@@ -588,6 +599,12 @@ void Thread::Hijack()
     if (m_hPalThread == INVALID_HANDLE_VALUE)
     {
         // cannot proceed
+        return;
+    }
+
+    if (IsGCSpecial())
+    {
+        // GC threads can not be forced to run preemptively, so we will not try.
         return;
     }
 
@@ -604,7 +621,6 @@ void Thread::Hijack()
     PalHijack(m_hPalThread, this);
 }
 
-#if !defined(HOST_WASM)
 void Thread::HijackCallback(NATIVE_CONTEXT* pThreadContext, void* pThreadToHijack)
 {
     // If we are no longer trying to suspend, no need to do anything.
@@ -650,11 +666,13 @@ void Thread::HijackCallback(NATIVE_CONTEXT* pThreadContext, void* pThreadToHijac
     // we may be able to do GC stack walk right where the threads is now,
     // as long as the location is a GC safe point.
     ICodeManager* codeManager = runtime->GetCodeManagerForAddress(pvAddress);
-    if (codeManager->IsSafePoint(pvAddress))
+    if (runtime->IsConservativeStackReportingEnabled() ||
+        codeManager->IsSafePoint(pvAddress))
     {
         // we may not be able to unwind in some locations, such as epilogs.
         // such locations should not contain safe points.
-        ASSERT(codeManager->IsUnwindable(pvAddress));
+        // when scanning conservatively we do not need to unwind
+        ASSERT(codeManager->IsUnwindable(pvAddress) || runtime->IsConservativeStackReportingEnabled());
 
         // if we are not given a thread to hijack
         // perform in-line wait on the current thread
@@ -675,7 +693,6 @@ void Thread::HijackCallback(NATIVE_CONTEXT* pThreadContext, void* pThreadToHijac
 
     pThread->HijackReturnAddress(pThreadContext, &RhpGcProbeHijack);
 }
-#endif // !HOST_WASM
 
 #ifdef FEATURE_GC_STRESS
 // This is a helper called from RhpHijackForGcStress which will place a GC Stress
@@ -752,7 +769,6 @@ void Thread::HijackReturnAddress(NATIVE_CONTEXT* pSuspendCtx, HijackFunc* pfnHij
     HijackReturnAddressWorker(&frameIterator, pfnHijackFunction);
 }
 
-#if !defined(HOST_WASM)
 void Thread::HijackReturnAddressWorker(StackFrameIterator* frameIterator, HijackFunc* pfnHijackFunction)
 {
     void** ppvRetAddrLocation;
@@ -786,7 +802,7 @@ void Thread::HijackReturnAddressWorker(StackFrameIterator* frameIterator, Hijack
             GetPalThreadIdForLogging(), frameIterator->GetRegisterSet()->GetIP());
     }
 }
-#endif // !HOST_WASM
+#endif // FEATURE_HIJACK
 
 NATIVE_CONTEXT* Thread::GetInterruptedContext()
 {
@@ -833,6 +849,7 @@ bool Thread::Redirect()
 }
 #endif //FEATURE_SUSPEND_REDIRECTION
 
+#ifdef FEATURE_HIJACK
 bool Thread::InlineSuspend(NATIVE_CONTEXT* interruptedContext)
 {
     ASSERT(!IsDoNotTriggerGcSet());
@@ -914,6 +931,7 @@ bool Thread::IsHijacked()
 
     return m_pvHijackedReturnAddress != NULL;
 }
+#endif // FEATURE_HIJACK
 
 void Thread::SetState(ThreadStateFlags flags)
 {

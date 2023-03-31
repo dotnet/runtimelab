@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
-using System.Runtime.InteropServices;
 
 using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysisFramework;
@@ -266,7 +265,7 @@ namespace ILCompiler
         public ReadyToRunHelperId GetLdTokenHelperForType(TypeDesc type)
         {
             bool canConstructPerWholeProgramAnalysis = _devirtualizationManager == null ? true : _devirtualizationManager.CanConstructType(type);
-            bool creationAllowed = DependencyAnalysis.ConstructedEETypeNode.CreationAllowed(type);
+            bool creationAllowed = ConstructedEETypeNode.CreationAllowed(type);
             return (canConstructPerWholeProgramAnalysis && creationAllowed)
                 ? ReadyToRunHelperId.TypeHandle
                 : ReadyToRunHelperId.NecessaryTypeHandle;
@@ -382,9 +381,8 @@ namespace ILCompiler
 
             // Can we do a fixed lookup? Start by checking if we can get to the dictionary.
             // Context source having a vtable with fixed slots is a prerequisite.
-            // TODO-LLVM: Is this going to prevent CT_INDIRECT being implemented for LLVM clrjit?
-            if (!TargetArchIsWasm() && (contextSource == GenericContextSource.MethodParameter
-                || HasFixedSlotVTable(contextMethod.OwningType)))
+            if (contextSource == GenericContextSource.MethodParameter
+                || HasFixedSlotVTable(contextMethod.OwningType))
             {
                 DictionaryLayoutNode dictionaryLayout;
                 if (contextSource == GenericContextSource.MethodParameter)
@@ -521,17 +519,11 @@ namespace ILCompiler
 
         CompilationResults ICompilation.Compile(string outputFile, ObjectDumper dumper)
         {
-            if (dumper != null)
-            {
-                dumper.Begin();
-            }
+            dumper?.Begin();
 
             CompileInternal(outputFile, dumper);
 
-            if (dumper != null)
-            {
-                dumper.End();
-            }
+            dumper?.End();
 
             return new CompilationResults(_dependencyGraph, _nodeFactory);
         }
@@ -562,18 +554,18 @@ namespace ILCompiler
             }
             protected override bool CompareKeyToValue(MethodDesc key, MethodILData value)
             {
-                return Object.ReferenceEquals(key, value.Method);
+                return ReferenceEquals(key, value.Method);
             }
             protected override bool CompareValueToValue(MethodILData value1, MethodILData value2)
             {
-                return Object.ReferenceEquals(value1.Method, value2.Method);
+                return ReferenceEquals(value1.Method, value2.Method);
             }
             protected override MethodILData CreateValueFromKey(MethodDesc key)
             {
                 return new MethodILData() { Method = key, MethodIL = ILProvider.GetMethodIL(key) };
             }
 
-            internal class MethodILData
+            internal sealed class MethodILData
             {
                 public MethodDesc Method;
                 public MethodIL MethodIL;

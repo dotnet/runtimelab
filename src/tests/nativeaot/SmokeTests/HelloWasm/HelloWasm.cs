@@ -280,6 +280,8 @@ internal unsafe static class Program
 
         TestConstrainedStructCalls();
 
+        TestLdvirtftn();
+
         TestValueTypeElementIndexing();
 
         TestArrayItfDispatch();
@@ -599,13 +601,11 @@ internal unsafe static class Program
             return;
         }
 
-#if DEBUG // TODO-LLVM: spilling temporaries live across safe points to the shadow stack
         if (!StackEntriesLiveAcrossSafePointsGetScanned())
         {
             FailTest("Stack entry live across a safe point was not reported");
             return;
         }
-#endif
 
         EndTest(TestGeneration2Rooting());
     }
@@ -1378,6 +1378,24 @@ internal unsafe static class Program
         StartTest("Array interface dispatch test");
         EndTest(arrayItfDispatchTest.Count == 37,
             "Failed.  asm.js (WASM=1) known to fail due to alignment problem, although this problem sometimes means we don't even get this far and fails with an invalid function pointer.");
+    }
+
+    class ClassForLdvirtftnTest : ICloneable
+    {
+        public override string ToString() => "ClassForLdvirtftnTest";
+
+        public object Clone() => "ClassForLdvirtftnTestClone";
+    }
+
+    private static void TestLdvirtftn()
+    {
+        ClassForLdvirtftnTest obj = new();
+
+        StartTest("Testing ldvirtftn (vtable)");
+        EndTest(ILHelpers.ILHelpersTest.TestLdvirtftnVTable(obj));
+
+        StartTest("Testing ldvirtftn (interface)");
+        EndTest(ILHelpers.ILHelpersTest.TestLdvirtftnInterface(obj));
     }
 
     private static void TestValueTypeElementIndexing()

@@ -9,7 +9,7 @@ using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
 {
-    partial class ReadyToRunGenericHelperNode
+    public partial class ReadyToRunGenericHelperNode
     {
         protected sealed override void EmitCode(NodeFactory factory, ref WasmEmitter encoder, bool relocsOnly)
         {
