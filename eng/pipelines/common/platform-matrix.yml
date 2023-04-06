@@ -374,27 +374,6 @@ jobs:
         crossBuild: true
         ${{ insert }}: ${{ parameters.jobParameters }}
 
-# WebAssembly
-
-- ${{ if containsValue(parameters.platforms, 'Browser_wasm') }}:
-  - template: xplat-setup.yml
-    parameters:
-      jobTemplate: ${{ parameters.jobTemplate }}
-      helixQueuesTemplate: ${{ parameters.helixQueuesTemplate }}
-      variables: ${{ parameters.variables }}
-      osGroup: Browser
-      archType: wasm
-      targetRid: browser-wasm
-      platform: Browser_wasm
-      shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
-      container: Browser_wasm
-      jobParameters:
-        hostedOs: Linux
-        runtimeFlavor: ${{ parameters.runtimeFlavor }}
-        stagedBuild: ${{ parameters.stagedBuild }}
-        buildConfig: ${{ parameters.buildConfig }}
-        ${{ insert }}: ${{ parameters.jobParameters }}
-
 # WebAssembly Linux Firefox
 
 - ${{ if containsValue(parameters.platforms, 'Browser_wasm_firefox') }}:
