@@ -53,42 +53,24 @@
     </KnownILCompilerPack>
   </ItemGroup>
 
-  <PropertyGroup Condition="'$(TargetArchitecture)' == 'wasm'">
-    <NeedNativePublishSupportForLLVM>true</NeedNativePublishSupportForLLVM>
-  </PropertyGroup>
-
   <!-- Generate a warning if the non-SDK path is used  -->
-  <Target Name="GenerateILCompilerExplicitPackageReferenceWarning" Condition="'$(SuppressGenerateILCompilerExplicitPackageReferenceWarning)' == '' and '$(AotRuntimePackageLoadedViaSDK)' != 'true' and '$(ILCompilerTargetsPath)' != ''  and '$(NeedNativePublishSupportForLLVM)' != 'true'" 
+  <Target Name="GenerateILCompilerExplicitPackageReferenceWarning"
+      Condition="'$(SuppressGenerateILCompilerExplicitPackageReferenceWarning)' == '' and '$(AotRuntimePackageLoadedViaSDK)' != 'true' and '$(ILCompilerTargetsPath)' != '' and '$(TargetArchitecture)' != 'wasm'"
       BeforeTargets="ImportRuntimeIlcPackageTarget">
     <Warning Text="Delete explicit 'Microsoft.DotNet.ILCompiler' package reference in your project file. Explicit 'Microsoft.DotNet.ILCompiler' package reference can run into version errors." />
   </Target>
 
+  <!-- NativeAOT-LLVM: override ImportRuntimeIlcPackageTarget to not depend on the SDK-provided ResolvedILCompilerPack item -->
+  <PropertyGroup>
+    <!-- EmitLegacyAssetsFileItems tells the SDK to generate PackageDefinitions -->
+    <EmitLegacyAssetsFileItems>true</EmitLegacyAssetsFileItems>
+  </PropertyGroup>
+
   <!-- Locate the runtime package according to the current target runtime -->
-  <Target Name="ImportRuntimeIlcPackageTarget" Condition="'$(BuildingFrameworkLibrary)' != 'true' and ('$(PublishAot)' == 'true' or '$(NeedNativePublishSupportForLLVM)' == 'true') and $(IlcCalledViaPackage) == 'true'" DependsOnTargets="$(ImportRuntimeIlcPackageTargetDependsOn)" BeforeTargets="Publish">
-    <Error Condition="'@(ResolvedILCompilerPack)' == '' and '$(NeedNativePublishSupportForLLVM)' != 'true'" Text="The ResolvedILCompilerPack ItemGroup is required for target ImportRuntimeIlcPackageTarget" />
+  <Target Name="ImportRuntimeIlcPackageTarget" Condition="'$(BuildingFrameworkLibrary)' != 'true'" DependsOnTargets="$(ImportRuntimeIlcPackageTargetDependsOn)" BeforeTargets="Publish">
+    <Error Condition="'@(PackageDefinitions)' == ''" Text="The PackageDefinitions ItemGroup is required for target ImportRuntimeIlcPackageTarget" />
 
-    <PropertyGroup Condition="'$(NeedNativePublishSupportForLLVM)' != 'true'">
-      <IlcHostPackagePath Condition="'@(ResolvedILCompilerPack)' == '$(IlcHostPackageName)'">@(ResolvedILCompilerPack->'%(PackageDirectory)')</IlcHostPackagePath>
-      <RuntimePackagePath Condition="'@(ResolvedTargetILCompilerPack)' == '$(RuntimeIlcPackageName)'">@(ResolvedTargetILCompilerPack->'%(PackageDirectory)')</RuntimePackagePath>
-      <RuntimePackagePath Condition="'@(ResolvedTargetILCompilerPack)' == ''">@(ResolvedILCompilerPack->'%(PackageDirectory)')</RuntimePackagePath>
-    </PropertyGroup>
-
-    <ResolvePackageDependencies
-      ProjectPath="$(MSBuildProjectFullPath)"
-      ProjectAssetsFile="$(ProjectAssetsFile)"
-      ProjectLanguage="$(Language)"
-      TargetFramework="$(TargetFramework)"
-      ContinueOnError="ErrorAndContinue"
-      Condition="'$(NeedNativePublishSupportForLLVM)' == 'true'">
-
-      <Output TaskParameter="PackageDefinitions" ItemName="PackageDefinitions" />
-      <Output TaskParameter="PackageDependencies" ItemName="PackageDependencies" />
-      <Output TaskParameter="TargetDefinitions" ItemName="TargetDefinitions" />
-      <Output TaskParameter="FileDefinitions" ItemName="FileDefinitions" />
-      <Output TaskParameter="FileDependencies" ItemName="FileDependencies" />
-    </ResolvePackageDependencies>
-
-    <PropertyGroup Condition="'$(NeedNativePublishSupportForLLVM)' == 'true'">
+    <PropertyGroup>
       <RuntimePackagePath Condition="'%(PackageDefinitions.Name)' == '$(RuntimeIlcPackageName)'">%(PackageDefinitions.ResolvedPath)</RuntimePackagePath>
       <IlcHostPackagePath Condition="'%(PackageDefinitions.Name)' == '$(IlcHostPackageName)'">%(PackageDefinitions.ResolvedPath)</IlcHostPackagePath>
     </PropertyGroup>

@@ -61,17 +61,19 @@ Install and activate Emscripten. See [Install Emscripten](https://emscripten.org
 For WebAssembly, it is always a cross-architecture scenario as the compiler runs on Windows/Linux/MacOS and the runtime is for WebAssembly.  WebAssembly is not integrated into the main ILCompiler so first remove (if you added it from above)
 
 ```xml
-<PackageReference Include="Microsoft.DotNet.ILCompiler" Version="7.0.0-*" />
+<PackageReference Include="Microsoft.DotNet.ILCompiler" Version="8.0.0-*" />
 ```
 
 Then, the required package reference is
 ```xml
-<PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM; runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="7.0.0-*" />
+<PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM; runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="8.0.0-*" />
 ```
 and the publish command (there is no Release build currently)
 ```bash
 > dotnet publish -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false --self-contained
 ```
+
+Publishing using `PublishAot=true` is not currently supported for WebAssembly.
 
 Note that the wasm-tools workload is identified as a dependency even though its not used, and this confuses the toolchain, hence `/p:MSBuildEnableWorkloadResolver=false`
 
