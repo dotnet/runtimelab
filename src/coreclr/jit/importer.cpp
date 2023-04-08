@@ -11460,24 +11460,6 @@ bool Compiler::impReturnInstruction(int prefixFlags, OPCODE& opcode)
                     }
                 }
                 else // The struct was to be returned via a return buffer.
-#if defined(TARGET_WASM)
-                assert(!iciCall->gtArgs.HasRetBuffer());
-
-                if (fgNeedReturnSpillTemp())
-                {
-                    if (!impInlineInfo->retExpr)
-                    {
-                        // The inlinee compiler has figured out the type of the temp already. Use it here.
-                        impInlineInfo->retExpr =
-                            gtNewLclvNode(lvaInlineeReturnSpillTemp, lvaTable[lvaInlineeReturnSpillTemp].lvType);
-                    }
-                }
-                else
-                {
-                    impInlineInfo->retExpr = op2;
-                }
-#endif // defined(TARGET_WASM)
-#if !defined (TARGET_WASM)
                 {
                     assert(iciCall->gtArgs.HasRetBuffer());
                     GenTree* dest = gtCloneExpr(iciCall->gtArgs.GetRetBufferArg()->GetEarlyNode());
@@ -11497,7 +11479,6 @@ bool Compiler::impReturnInstruction(int prefixFlags, OPCODE& opcode)
                         impInlineInfo->retExpr = impAssignStructPtr(dest, op2, retClsHnd, CHECK_SPILL_ALL);
                     }
                 }
-#endif // !defined TARGET_WASM
             }
 
             if (impInlineInfo->retExpr != nullptr)
@@ -11534,7 +11515,7 @@ bool Compiler::impReturnInstruction(int prefixFlags, OPCODE& opcode)
     }
     else if (varTypeIsStruct(info.compRetType))
     {
-#if !defined(FEATURE_MULTIREG_RET) && !defined(TARGET_WASM)
+#if !FEATURE_MULTIREG_RET
         // For both ARM architectures the HFA native types are maintained as structs.
         // Also on System V AMD64 the multireg structs returns are also left as structs.
         noway_assert(info.compRetNativeType != TYP_STRUCT);

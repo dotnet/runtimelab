@@ -183,7 +183,6 @@ private:
     Compiler* const _compiler;
     Compiler::Info* const m_info;
     void* const m_pEECorInfo; // TODO-LLVM: workaround for not changing the JIT/EE interface.
-    CORINFO_SIG_INFO _sigInfo; // sigInfo of function being compiled
     GCInfo* _gcInfo = nullptr;
 
     // Used by both lowering and codegen.
@@ -219,7 +218,6 @@ private:
     unsigned _shadowStackLocalsSize = 0;
     unsigned _originalShadowStackLclNum = BAD_VAR_NUM;
     unsigned _shadowStackLclNum = BAD_VAR_NUM;
-    unsigned _retAddressLclNum = BAD_VAR_NUM;
     unsigned _llvmArgCount = 0;
 
     // ================================================================================================================
@@ -229,8 +227,8 @@ private:
 public:
     Llvm(Compiler* compiler);
 
-    var_types GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size);
-    var_types GetReturnTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size);
+    var_types GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind);
+    var_types GetReturnTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind);
 
 private:
     LIR::Range& CurrentRange()
@@ -243,9 +241,6 @@ private:
     }
 
     GCInfo* getGCInfo();
-
-    bool needsReturnStackSlot(const GenTreeCall* callee);
-    bool needsReturnStackSlot(CorInfoType sigRetType, CORINFO_CLASS_HANDLE sigRetClass);
 
     bool callRequiresShadowStackSave(const GenTreeCall* call) const;
     bool helperCallRequiresShadowStackSave(CorInfoHelpAnyFunc helperFunc) const;
@@ -262,6 +257,7 @@ private:
                               CORINFO_CLASS_HANDLE argSigClass,
                               CorInfoType*         pArgType = nullptr,
                               bool*                pIsByRef = nullptr);
+    CorInfoType getLlvmReturnType(CorInfoType sigRetType, CORINFO_CLASS_HANDLE sigRetClass, bool* pIsByRef = nullptr);
 
     unsigned padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
     unsigned padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
@@ -353,7 +349,7 @@ private:
     void lowerDelegateInvoke(GenTreeCall* callNode);
     void lowerUnmanagedCall(GenTreeCall* callNode);
     unsigned lowerCallToShadowStack(GenTreeCall* callNode);
-    CallArg* lowerCallReturn(GenTreeCall* callNode);
+    void lowerCallReturn(GenTreeCall* callNode);
 
     GenTree* normalizeStructUse(LIR::Use& use, ClassLayout* layout);
 

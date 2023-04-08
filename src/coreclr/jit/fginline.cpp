@@ -289,9 +289,6 @@ private:
 
 #endif // FEATURE_MULTIREG_RET
 
-#ifdef TARGET_WASM
-                case Compiler::SPK_ByValue:
-#endif // TARGET_WASM
                 case Compiler::SPK_EnclosingType:
                 case Compiler::SPK_PrimitiveType:
                     // No work needs to be done, the call has struct type and should keep it.

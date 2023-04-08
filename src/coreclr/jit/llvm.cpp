@@ -103,7 +103,6 @@ Llvm::Llvm(Compiler* compiler)
     : _compiler(compiler)
     , m_info(&compiler->info)
     , m_pEECorInfo(*((void**)compiler->info.compCompHnd + 1)) // TODO-LLVM: hack. CorInfoImpl* is the first field of JitInterfaceWrapper.
-    , _sigInfo(compiler->info.compMethodInfo->args)
     , _builder(_llvmContext)
     , _blkToLlvmBlksMap(compiler->getAllocator(CMK_Codegen))
     , _sdsuMap(compiler->getAllocator(CMK_Codegen))
@@ -112,7 +111,7 @@ Llvm::Llvm(Compiler* compiler)
 {
 }
 
-var_types Llvm::GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size)
+var_types Llvm::GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind)
 {
     // Note the managed and unmanaged ABIs are the same for structs that do not contain GC pointers. Thus, since
     // unmanaged calls in general cannot have struct arguments with GC pointers in them, always passing "true" for
@@ -126,12 +125,18 @@ var_types Llvm::GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPa
     return JITtype2varType(argType);
 }
 
-var_types Llvm::GetReturnTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind, unsigned size)
+var_types Llvm::GetReturnTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind)
 {
-    // We do not currently expose the frontend to WASM ABI.
-    // TODO-LLVM-ABI: change this.
-    *pPassKind = Compiler::SPK_ByValue;
-    return TYP_STRUCT;
+    bool isReturnByRef;
+    CorInfoType retType = getLlvmReturnType(CORINFO_TYPE_VALUECLASS, structHnd, &isReturnByRef);
+    if (isReturnByRef)
+    {
+        *pPassKind = Compiler::SPK_ByReference;
+        return TYP_UNKNOWN;
+    }
+
+    *pPassKind = Compiler::SPK_PrimitiveType;
+    return JITtype2varType(retType);
 }
 
 GCInfo* Llvm::getGCInfo()
@@ -142,44 +147,6 @@ GCInfo* Llvm::getGCInfo()
     }
 
     return _gcInfo;
-}
-
-bool Llvm::needsReturnStackSlot(const GenTreeCall* callee)
-{
-    if (!callHasManagedCallingConvention(callee))
-    {
-        return false;
-    }
-
-    CorInfoType sigRetType;
-    if (callee->IsHelperCall())
-    {
-        sigRetType = getHelperFuncInfo(_compiler->eeGetHelperNum(callee->gtCallMethHnd)).GetSigReturnType();
-    }
-    else
-    {
-        noway_assert(!callee->IsUnmanaged());
-        sigRetType = toCorInfoType(callee->TypeGet());
-    }
-
-    return Llvm::needsReturnStackSlot(sigRetType, callee->gtRetClsHnd);
-}
-
-// Returns true if the method returns a type that must be kept on the shadow stack
-//
-bool Llvm::needsReturnStackSlot(CorInfoType sigRetType, CORINFO_CLASS_HANDLE sigRetClass)
-{
-    if (sigRetType == CORINFO_TYPE_REFANY)
-    {
-        return true;
-    }
-    if ((sigRetType == CORINFO_TYPE_VALUECLASS) && !canStoreArgOnLlvmStack(sigRetType, sigRetClass) &&
-        (GetPrimitiveTypeForTrivialWasmStruct(sigRetClass) == CORINFO_TYPE_UNDEF))
-    {
-        return true;
-    }
-
-    return false;
 }
 
 bool Llvm::callRequiresShadowStackSave(const GenTreeCall* call) const
@@ -667,6 +634,28 @@ bool Llvm::getLlvmArgTypeForArg(bool                 isManagedAbi,
         *pIsByRef = isByRef;
     }
     return isLlvmArg;
+}
+
+CorInfoType Llvm::getLlvmReturnType(CorInfoType sigRetType, CORINFO_CLASS_HANDLE sigRetClass, bool* pIsByRef)
+{
+    assert(sigRetType != CORINFO_TYPE_UNDEF);
+    if (sigRetType == CORINFO_TYPE_REFANY)
+    {
+        sigRetType = CORINFO_TYPE_VALUECLASS;
+    }
+
+    CorInfoType returnType = sigRetType;
+    if (sigRetType == CORINFO_TYPE_VALUECLASS)
+    {
+        returnType = GetPrimitiveTypeForTrivialWasmStruct(sigRetClass);
+    }
+
+    bool isByRef = returnType == CORINFO_TYPE_UNDEF;
+    if (pIsByRef != nullptr)
+    {
+        *pIsByRef = isByRef;
+    }
+    return isByRef ? CORINFO_TYPE_VOID : returnType;
 }
 
 static unsigned corInfoTypeAligment(CorInfoType corInfoType)

@@ -347,9 +347,8 @@ namespace PInvokeTests
 #if !CODEGEN_WASM
             // GetFunctionPointerForDelegate NYI on WASM
             TestForwardDelegateWithUnmanagedCallersOnly();
-            // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2190
-            TestDecimal();
 #endif
+            TestDecimal();
             TestDifferentModopts();
 
             return 100;

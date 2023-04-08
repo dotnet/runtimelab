@@ -626,7 +626,7 @@ var_types Compiler::getArgTypeForStruct(CORINFO_CLASS_HANDLE clsHnd,
                                         unsigned             structSize)
 {
 #ifdef TARGET_WASM
-    return m_llvm->GetArgTypeForStructWasm(clsHnd, wbPassStruct, structSize);
+    return m_llvm->GetArgTypeForStructWasm(clsHnd, wbPassStruct);
 #else // !TARGET_WASM
 
     var_types         useType         = TYP_UNKNOWN;
@@ -869,15 +869,14 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
 
     assert(clsHnd != NO_CLASS_HANDLE);
 
+#ifdef TARGET_WASM
+    return m_llvm->GetReturnTypeForStructWasm(clsHnd, wbReturnStruct);
+#else // !TARGET_WASM
     if (structSize == 0)
     {
         structSize = info.compCompHnd->getClassSize(clsHnd);
     }
     assert(structSize > 0);
-
-#ifdef TARGET_WASM
-    return m_llvm->GetReturnTypeForStructWasm(clsHnd, wbReturnStruct, structSize);
-#else // !TARGET_WASM
 
 #ifdef UNIX_AMD64_ABI
     // An 8-byte struct may need to be returned in a floating point register
@@ -1871,13 +1870,15 @@ void Compiler::compInit(ArenaAllocator*       pAlloc,
     fgInit();
     lvaInit();
 
+#ifdef TARGET_WASM
+    m_llvm = new (getAllocator(CMK_Codegen)) Llvm(this);
+#endif // TARGET_WASM
+
     if (!compIsForInlining())
     {
 #ifndef TARGET_WASM
         codeGen = getCodeGenerator(this);
-#else
-        m_llvm = new (getAllocator(CMK_Codegen)) Llvm(this);
-#endif
+#endif // !TARGET_WASM
         optInit();
         hashBv::Init(this);
 
