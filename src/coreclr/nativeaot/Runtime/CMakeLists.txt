@@ -27,7 +27,6 @@ set(COMMON_RUNTIME_SOURCES
     RestrictedCallouts.cpp
     RhConfig.cpp
     RuntimeInstance.cpp
-    RWLock.cpp
     StackFrameIterator.cpp
     startup.cpp
     stressLog.cpp
@@ -177,6 +176,12 @@ else()
   set(ASM_SUFFIX S)
 endif()
 
+if (CLR_CMAKE_TARGET_OSX)
+  list(APPEND COMMON_RUNTIME_SOURCES
+    interoplibinterface_objc.cpp
+  )
+endif (CLR_CMAKE_TARGET_OSX)
+
 if (CLR_CMAKE_TARGET_ARCH_AMD64 AND CLR_CMAKE_TARGET_WIN32)
   list(APPEND COMMON_RUNTIME_SOURCES
     ${GC_DIR}/vxsort/isa_detection.cpp
@@ -223,6 +228,7 @@ if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
 endif()
 add_definitions(-DFEATURE_BASICFREEZE)
 add_definitions(-DFEATURE_CONSERVATIVE_GC)
+<<<<<<< HEAD
 
 if(CLR_CMAKE_TARGET_UNIX)
   add_definitions(-DFEATURE_USE_SOFTWARE_WRITE_WATCH_FOR_GC_HEAP)
@@ -232,6 +238,10 @@ if(CLR_CMAKE_TARGET_UNIX)
     add_definitions(-DFEATURE_MANUALLY_MANAGED_CARD_BUNDLES)
   endif()
 endif()
+=======
+add_definitions(-DFEATURE_USE_SOFTWARE_WRITE_WATCH_FOR_GC_HEAP)
+add_definitions(-DFEATURE_MANUALLY_MANAGED_CARD_BUNDLES)
+>>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
 
 add_definitions(-DFEATURE_CUSTOM_IMPORTS)
 add_definitions(-DFEATURE_DYNAMIC_CODE)
@@ -249,6 +259,7 @@ if(WIN32)
   add_definitions(-DFEATURE_ETW)
   add_definitions(-DFEATURE_EVENT_TRACE)
   add_definitions(-DFEATURE_SUSPEND_REDIRECTION)
+  add_definitions(-DFEATURE_SPECIAL_USER_MODE_APC)
 else()
   if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
     add_definitions(-DFEATURE_READONLY_GS_COOKIE)
@@ -284,3 +295,11 @@ if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 else()
   add_subdirectory(Portable)
 endif()
+
+if (CLR_CMAKE_TARGET_UNIX)
+  add_library(numasupportdynamic STATIC ${GC_DIR}/unix/numasupport.dynamic.cpp)
+  install_static_library(numasupportdynamic aotsdk nativeaot)
+
+  add_library(numasupportstatic STATIC ${GC_DIR}/unix/numasupport.static.cpp)
+  install_static_library(numasupportstatic aotsdk nativeaot)
+endif(CLR_CMAKE_TARGET_UNIX)

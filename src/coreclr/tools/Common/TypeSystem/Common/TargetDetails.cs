@@ -109,12 +109,12 @@ namespace Internal.TypeSystem
             {
                 if (Architecture == TargetArchitecture.ARM)
                 {
-                    // Corresponds to alignment required for __m128 (there's no __m256)
+                    // Corresponds to alignment required for __m128 (there's no __m256/__m512)
                     return 8;
                 }
                 else if (Architecture == TargetArchitecture.ARM64)
                 {
-                    // Corresponds to alignmet required for __m256
+                    // Corresponds to alignmet required for __m128 (there's no __m256/__m512)
                     return 16;
                 }
                 else if (Architecture == TargetArchitecture.LoongArch64)
@@ -122,8 +122,8 @@ namespace Internal.TypeSystem
                     return 16;
                 }
 
-                // 256-bit vector is the type with the highest alignment we support
-                return 32;
+                // 512-bit vector is the type with the highest alignment we support
+                return 64;
             }
         }
 
@@ -136,8 +136,8 @@ namespace Internal.TypeSystem
         {
             get
             {
-                // We use default packing size of 32 irrespective of the platform.
-                return 32;
+                // We use default packing size of 64 irrespective of the platform.
+                return 64;
             }
         }
 
@@ -333,6 +333,7 @@ namespace Internal.TypeSystem
             }
         }
 
+<<<<<<< HEAD
 
         // TODO-LLVM: adding this back as used by the IL->LLVM compiler, delete when the IL->LLVM module is gone
         /// <summary>
@@ -341,5 +342,11 @@ namespace Internal.TypeSystem
         /// WebAssembly uses index tables, not addresses for function pointers, so the lower bits are not free to use.
         /// </summary>
         public int FatFunctionPointerOffset => Architecture == TargetArchitecture.Wasm32 ? 1 << 31 : 2;
+=======
+        /// <summary>
+        /// CodeDelta - encapsulate the fact that ARM requires a thumb bit
+        /// </summary>
+        public int CodeDelta { get => (Architecture == TargetArchitecture.ARM) ? 1 : 0; }
+>>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
     }
 }

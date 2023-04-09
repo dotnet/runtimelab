@@ -68,13 +68,17 @@ REGALIAS(EDI, RDI)
 
 #ifdef TARGET_AMD64
 #define XMMBASE 16
+<<<<<<< HEAD
 #define XMMMASK(x) (__int64(1) << ((x)+XMMBASE))
 #elif defined(TARGET_WASM)
 #define XMMBASE 16
 #define XMMMASK(x) (__int64(1) << ((x)+XMMBASE))
+=======
+#define XMMMASK(x) ((__int64)(1) << ((x)+XMMBASE))
+>>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
 #else // !TARGET_AMD64
 #define XMMBASE 8
-#define XMMMASK(x) (__int32(1) << ((x)+XMMBASE))
+#define XMMMASK(x) ((__int32)(1) << ((x)+XMMBASE))
 #endif // !TARGET_AMD64
 
 REGDEF(XMM0,    0+XMMBASE,  XMMMASK(0),   "mm0"  )
