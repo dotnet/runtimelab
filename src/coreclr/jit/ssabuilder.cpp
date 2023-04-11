@@ -840,7 +840,8 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
 
     GenTreeLclVarCommon* lclNode;
     bool                 isFullDef = false;
-<<<<<<< HEAD
+    ssize_t              offset    = 0;
+    unsigned             storeSize = 0;
 #if defined(TARGET_WASM)
     bool isLocal;
     if (block->IsLIR())
@@ -852,16 +853,11 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
     }
     else
     {
-        isLocal = defNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef);
+        isLocal = defNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef, &offset, &storeSize);
     }
 #else
-    bool isLocal = defNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef);
-#endif
-=======
-    ssize_t              offset    = 0;
-    unsigned             storeSize = 0;
     bool                 isLocal   = defNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef, &offset, &storeSize);
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
+#endif
 
     if (isLocal)
     {
@@ -873,47 +869,8 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
 
         if (m_pCompiler->lvaInSsa(lclNum))
         {
-<<<<<<< HEAD
-            // Promoted variables are not in SSA, only their fields are.
-            assert(!m_pCompiler->lvaGetDesc(lclNum)->lvPromoted);
-            // This should have been marked as definition.
-            assert((lclNode->gtFlags & GTF_VAR_DEF) != 0);
-
-            unsigned ssaNum = varDsc->lvPerSsaData.AllocSsaNum(m_allocator, block,
-                                                               !defNode->OperIs(GT_CALL) ? defNode->AsOp() : nullptr);
-
-            if (!isFullDef)
-            {
-                assert((lclNode->gtFlags & GTF_VAR_USEASG) != 0);
-
-                // This is a partial definition of a variable. The node records only the SSA number
-                // of the use that is implied by this partial definition. The SSA number of the new
-                // definition will be recorded in the m_opAsgnVarDefSsaNums map.
-                lclNode->SetSsaNum(m_renameStack.Top(lclNum));
-                m_pCompiler->GetOpAsgnVarDefSsaNums()->Set(lclNode, ssaNum);
-            }
-            else
-            {
-                assert((lclNode->gtFlags & GTF_VAR_USEASG) == 0);
-                lclNode->SetSsaNum(ssaNum);
-            }
-
-            m_renameStack.Push(block, lclNum, ssaNum);
-
-            // If necessary, add "lclNum/ssaNum" to the arg list of a phi def in any
-            // handlers for try blocks that "block" is within.  (But only do this for "real" definitions,
-            // not phi definitions.)
-            if (!defNode->IsPhiDefn())
-            {
-                AddDefToHandlerPhis(block, lclNum, ssaNum);
-            }
-
-            // If it's a SSA local then it cannot be address exposed and thus does not define SSA memory.
-            assert(!m_pCompiler->lvaVarAddrExposed(lclNum));
-=======
             lclNode->SetSsaNum(RenamePushDef(defNode, block, lclNum, isFullDef));
             assert(!varDsc->IsAddressExposed()); // Cannot define SSA memory.
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
             return;
         }
 
@@ -1343,7 +1300,7 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
                 // PHI_ARG nodes already have SSA numbers so we only need to check LCL_VAR and LCL_FLD nodes.
                 else if (tree->OperIs(GT_LCL_VAR, GT_LCL_FLD) && ((tree->gtFlags & GTF_VAR_DEF) == 0))
                 {
-                    RenameLclUse(tree->AsLclVarCommon());
+                    RenameLclUse(tree->AsLclVarCommon(), block);
                 }
             }
         }
@@ -1929,30 +1886,10 @@ void Compiler::DumpSsaSummary()
     {
         LclVarDsc* const varDsc = lvaGetDesc(lclNum);
 
-<<<<<<< HEAD
-    if (varDsc->IsAddressExposed())
-    {
-        return false; // We exclude address-exposed variables.
-    }
-    if (!varDsc->lvTracked)
-    {
-        return false; // SSA is only done for tracked variables
-    }
-#if TARGET_WASM
-    if (varDsc->lvHasLocalAddr)
-    {
-        return false; // For LLVM these will be in an alloca
-    }
-#endif //TARGET_WASM
-
-    // lvPromoted structs are never tracked...
-    assert(!varDsc->lvPromoted);
-=======
         if (!varDsc->lvInSsa)
         {
             continue;
         }
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
 
         const SsaDefArray<LclSsaVarDsc>& ssaDefs = varDsc->lvPerSsaData;
         unsigned const                   numDefs = ssaDefs.GetCount();

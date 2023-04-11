@@ -140,19 +140,14 @@ extends:
           jobTemplate: /eng/pipelines/common/global-build-job.yml
           buildConfig: Release
           platforms:
-<<<<<<< HEAD
-    #     - Linux_x64        # Tests fail with a few errors, e.g. System.BadImageFormatException: Read out of bounds.  TODO-LLVM try to reinstate when more merged
-    #     - Linux_musl_x64
-    #     - Linux_arm64      # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
-    #     - Linux_arm        # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
-    #     - Linux_musl_arm64 # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
+    #     - linux_x64        # Tests fail with a few errors, e.g. System.BadImageFormatException: Read out of bounds.  TODO-LLVM try to reinstate when more merged
+    #     - linux_musl_x64
+    #     - linux_arm64      # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
+    #     - linux_arm        # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
+    #     - linux_musl_arm64 # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
     #     - windows_x64      # Part of the combined (target + host) WASM build below
           - windows_arm64
     #     - OSX_x64          # Reinstate when upstream OSX build is merged in https://github.com/dotnet/runtime/pull/75421
-=======
-          - linux_x64
-          - windows_x64
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
           jobParameters:
             timeoutInMinutes: 300
             isOfficialBuild: ${{ variables.isOfficialBuild }}
@@ -161,100 +156,6 @@ extends:
             extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
             extraStepsParameters:
               isOfficialBuild: ${{ variables.isOfficialBuild }}
-<<<<<<< HEAD
-=======
-              useOfficialAllConfigurations: true
-              dependsOnGlobalBuild: true
-            platforms:
-            - linux_x64
-            - windows_x64
-
-      - ${{ if ne(variables.isOfficialBuild, true) }}:
-        #
-        # CoreCLR Test builds using live libraries release build
-        #
-        - template: /eng/pipelines/common/platform-matrix.yml
-          parameters:
-            jobTemplate: /eng/pipelines/common/templates/runtimes/build-test-job.yml
-            buildConfig: Checked
-            platforms:
-            - CoreClrTestBuildHost # Either osx_x64 or linux_x64
-            jobParameters:
-              testGroup: innerloop
-              dependsOn:
-              - build_linux_x64_Checked_
-              - build_linux_x64_Release_
-
-        #
-        # CoreCLR Test executions using live libraries
-        #
-        - template: /eng/pipelines/common/platform-matrix.yml
-          parameters:
-            jobTemplate: /eng/pipelines/common/templates/runtimes/run-test-job.yml
-            buildConfig: Checked
-            platforms:
-            - linux_x64
-            helixQueueGroup: pr
-            helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
-            jobParameters:
-              testGroup: innerloop
-              liveLibrariesBuildConfig: Release
-              dependsOn:
-              - coreclr_common_test_build_p0_AnyOS_AnyCPU_Checked
-
-        - template: /eng/pipelines/common/platform-matrix.yml
-          parameters:
-            jobTemplate: /eng/pipelines/common/templates/runtimes/run-test-job.yml
-            buildConfig: Checked
-            platforms:
-            - windows_x64
-            helixQueueGroup: pr
-            helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
-            jobParameters:
-              testGroup: innerloop
-              liveLibrariesBuildConfig: Release
-              dependsOn:
-              - coreclr_common_test_build_p0_AnyOS_AnyCPU_Checked
-              - build_windows_x64_Checked_
-              - build_windows_x64_Release_
-
-        #
-        # Libraries Release Test Execution against a release coreclr runtime
-        #
-        - template: /eng/pipelines/common/platform-matrix.yml
-          parameters:
-            jobTemplate: /eng/pipelines/libraries/run-test-job.yml
-            buildConfig: Release
-            platforms:
-            - linux_x64
-            helixQueuesTemplate: /eng/pipelines/libraries/helix-queues-setup.yml
-            jobParameters:
-              isRollingBuild: false
-              isOfficialBuild: false
-              testScope: innerloop
-              liveRuntimeBuildConfig: Release
-              dependsOnTestBuildConfiguration: Release
-              dependsOnTestArchitecture: x64
-              dependsOn:
-              - build_linux_x64_Release_
-
-        - template: /eng/pipelines/common/platform-matrix.yml
-          parameters:
-            jobTemplate: /eng/pipelines/libraries/run-test-job.yml
-            buildConfig: Release
-            platforms:
-            - windows_x64
-            helixQueuesTemplate: /eng/pipelines/libraries/helix-queues-setup.yml
-            jobParameters:
-              isRollingBuild: false
-              isOfficialBuild: false
-              testScope: innerloop
-              liveRuntimeBuildConfig: Release
-              dependsOnTestBuildConfiguration: Release
-              dependsOnTestArchitecture: x64
-              dependsOn:
-              - build_windows_x64_Release_
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
 
     - ${{ if eq(variables.isOfficialBuild, true) }}:
       - template: /eng/pipelines/official/stages/publish.yml

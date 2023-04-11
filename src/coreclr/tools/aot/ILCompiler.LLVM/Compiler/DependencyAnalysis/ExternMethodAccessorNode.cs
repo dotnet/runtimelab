@@ -18,7 +18,7 @@ using Internal.Text;
 
 namespace ILCompiler.DependencyAnalysis
 {
-    internal class ExternMethodAccessorNode : AssemblyStubNode
+    internal sealed class ExternMethodAccessorNode : AssemblyStubNode
     {
         private readonly Utf8String _externMethodName;
         private TargetAbiType[] _signature;

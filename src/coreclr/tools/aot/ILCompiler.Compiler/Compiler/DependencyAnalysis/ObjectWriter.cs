@@ -1010,12 +1010,7 @@ namespace ILCompiler.DependencyAnalysis
                     }
 #endif
 
-<<<<<<< HEAD
-                    ObjectNodeSection section = node.Section;
-=======
-
                     ObjectNodeSection section = node.GetSection(factory);
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
                     if (objectWriter.ShouldShareSymbol(node))
                     {
                         section = GetSharedSection(section, ((ISymbolNode)node).GetMangledName(factory.NameMangler));

@@ -10,23 +10,12 @@ for %%x in (%*) do Set /A argC+=1
 if %argC% lss 4 GOTO :USAGE
 if %1=="/?" GOTO :USAGE
 
-<<<<<<< HEAD
-setlocal
-set basePath=%~dp0
-set __repoRoot=%~dp0..\..\
-REM a parameter ending with \" seems to be causing a problem for python or emscripten so convert to forward slashes.
-set "__repoRoot=!__repoRoot:\=/!"
-
-:: remove quotes
-set "basePath=%basePath:"=%"
-:: remove trailing slash
-if %basePath:~-1%==\ set "basePath=%basePath:~0,-1%"
-=======
 setlocal enabledelayedexpansion
 set "__repoRoot=%~dp0..\.."
+REM a parameter ending with \" seems to be causing a problem for python or emscripten so convert to forward slashes.
+set "__repoRoot=!__repoRoot:\=/!"
 :: normalize
 for %%i in ("%__repoRoot%") do set "__repoRoot=%%~fi"
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
 
 set __SourceDir=%1
 set __IntermediatesDir=%2
@@ -47,31 +36,22 @@ if /i "%__Ninja%" == "1" (
     if /i "%__Arch%" == "x86" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A Win32)
 )
 
+echo checking arch
 if /i "%__Arch%" == "wasm" (
-<<<<<<< HEAD
-    set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
-    set __UseEmcmake=1
-=======
-
+    echo wasm
     if "%__Os%" == "" (
         echo Error: Please add target OS parameter
         exit /B 1
     )
     if /i "%__Os%" == "browser" (
-        if "%EMSDK_PATH%" == "" (
-            if not exist "%__repoRoot%\src\mono\wasm\emsdk" (
-                echo Error: Should set EMSDK_PATH environment variable pointing to emsdk root.
-                exit /B 1
-            )
-
-            set "EMSDK_PATH=%__repoRoot%\src\mono\wasm\emsdk"
+        if "%EMSDK%" == "" (
+            echo Error: Should set EMSDK environment variable pointing to emsdk root.
+            exit /B 1
         )
-        :: replace backslash with forward slash and append last slash
-        set "EMSDK_PATH=!EMSDK_PATH:\=/!"
-        if not "!EMSDK_PATH:~-1!" == "/" set "EMSDK_PATH=!EMSDK_PATH!/"
 
-        set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TOOLCHAIN_FILE=!EMSDK_PATH!/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+        set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
         set __UseEmcmake=1
+        echo using emcmake !__ExtraCmakeParams!
     )
     if /i "%__Os%" == "wasi" (
         if "%WASI_SDK_PATH%" == "" (
@@ -88,7 +68,6 @@ if /i "%__Arch%" == "wasm" (
         set __CmakeGenerator=Ninja
         set __ExtraCmakeParams=%__ExtraCmakeParams% -DCLR_CMAKE_TARGET_OS=wasi -DCLR_CMAKE_TARGET_ARCH=wasm "-DWASI_SDK_PREFIX=!WASI_SDK_PATH!" "-DCMAKE_TOOLCHAIN_FILE=!WASI_SDK_PATH!/share/cmake/wasi-sdk.cmake" "-DCMAKE_SYSROOT=!WASI_SDK_PATH!/share/wasi-sysroot"
     )
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
 ) else (
     set __ExtraCmakeParams=%__ExtraCmakeParams%  "-DCMAKE_SYSTEM_VERSION=10.0"
 )
@@ -124,6 +103,8 @@ if not "%__ConfigureOnly%" == "1" (
     )
 )
 
+
+echo checkimg __UseEmcmake !__UseEmcmake!
 if /i "%__UseEmcmake%" == "1" (
     REM workaround for https://github.com/emscripten-core/emscripten/issues/15440 - emscripten cache lock problems
     REM build the ports for ICU and ZLIB upfront
@@ -131,8 +112,10 @@ if /i "%__UseEmcmake%" == "1" (
 
     REM Add call in front of emcmake as for some not understood reason, perhaps to do with scopes, by calling emcmake (or any batch script),
     REM delayed expansion is getting turned off. TODO: remove this and see if CI is ok and hence its just my machine.
+echo calling emcmake
     call emcmake "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir% 
 setlocal EnableDelayedExpansion EnableExtensions
+echo called emcmake
 ) else (
     "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir%
 )

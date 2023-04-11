@@ -417,6 +417,8 @@ if(CLR_CMAKE_TARGET_OS STREQUAL sunos)
     set(CLR_CMAKE_TARGET_SUNOS 1)
 endif(CLR_CMAKE_TARGET_OS STREQUAL sunos)
 
+message("CLR_CMAKE_TARGET_OS")
+message(${CLR_CMAKE_TARGET_OS})
 if(CLR_CMAKE_TARGET_OS STREQUAL emscripten)
     set(CLR_CMAKE_TARGET_UNIX 1)
     set(CLR_CMAKE_TARGET_BROWSER 1)
@@ -459,7 +461,7 @@ else()
 endif(CLR_CMAKE_TARGET_UNIX)
 
 # check if host & target os/arch combination are valid
-if (NOT (CLR_CMAKE_TARGET_OS STREQUAL CLR_CMAKE_HOST_OS) AND NOT CLR_CMAKE_TARGET_WASI)
+if (NOT (CLR_CMAKE_TARGET_OS STREQUAL CLR_CMAKE_HOST_OS) AND NOT CLR_CMAKE_TARGET_WASI AND NOT CLR_CMAKE_TARGET_OS STREQUAL browser)
     if(NOT (CLR_CMAKE_HOST_OS STREQUAL windows))
         message(FATAL_ERROR "Invalid host and target os/arch combination. Host OS: ${CLR_CMAKE_HOST_OS}")
     endif()

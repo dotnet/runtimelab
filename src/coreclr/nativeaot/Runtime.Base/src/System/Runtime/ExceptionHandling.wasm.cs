@@ -155,11 +155,11 @@ namespace System.Runtime
             return 0;
         }
 
-        [DllImport("*"), SuppressGCTransition]
-        private static extern byte* __cxa_begin_catch(void* pExceptionData);
+        [LibraryImport("*"), SuppressGCTransition]
+        private static partial byte* __cxa_begin_catch(void* pExceptionData);
 
-        [DllImport("*"), SuppressGCTransition]
-        private static extern void __cxa_end_catch();
+        [LibraryImport("*"), SuppressGCTransition]
+        private static partial void __cxa_end_catch();
 
         [RuntimeExport("RhpThrowEx")]
         private static void RhpThrowEx(object exception)

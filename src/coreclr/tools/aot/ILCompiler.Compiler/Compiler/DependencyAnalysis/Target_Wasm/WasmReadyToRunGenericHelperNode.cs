@@ -4,8 +4,6 @@
 using System;
 using System.Diagnostics;
 using ILCompiler.DependencyAnalysis.Wasm;
-using Internal.IL;
-using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
 {
@@ -17,9 +15,7 @@ namespace ILCompiler.DependencyAnalysis
             {
                 case ReadyToRunHelperId.GetNonGCStaticBase:
                     {
-                        MetadataType target = (MetadataType)_target;
-
-                        if (factory.PreinitializationManager.HasLazyStaticConstructor(target))
+                        if (TriggersLazyStaticConstructor(factory))
                         {
                             encoder.Builder.EmitReloc(factory.HelperEntrypoint(HelperEntrypoint.EnsureClassConstructorRunAndReturnNonGCStaticBase), RelocType.IMAGE_REL_BASED_REL32);
                         }
@@ -28,9 +24,7 @@ namespace ILCompiler.DependencyAnalysis
 
                 case ReadyToRunHelperId.GetGCStaticBase:
                     {
-                        MetadataType target = (MetadataType)_target;
-
-                        if (factory.PreinitializationManager.HasLazyStaticConstructor(target))
+                        if (TriggersLazyStaticConstructor(factory))
                         {
                             encoder.Builder.EmitReloc(factory.HelperEntrypoint(HelperEntrypoint.EnsureClassConstructorRunAndReturnGCStaticBase), RelocType.IMAGE_REL_BASED_REL32);
                         }
@@ -39,10 +33,8 @@ namespace ILCompiler.DependencyAnalysis
 
                 case ReadyToRunHelperId.GetThreadStaticBase:
                     {
-                        MetadataType target = (MetadataType)_target;
-
                         ISymbolNode helperEntrypoint;
-                        if (factory.PreinitializationManager.HasLazyStaticConstructor(target))
+                        if (TriggersLazyStaticConstructor(factory))
                         {
                             helperEntrypoint = factory.HelperEntrypoint(HelperEntrypoint.EnsureClassConstructorRunAndReturnThreadStaticBase);
                         }

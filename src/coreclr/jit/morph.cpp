@@ -3256,7 +3256,7 @@ GenTreeCall* Compiler::fgMorphArgs(GenTreeCall* call)
                         passingSize  = genTypeSize(structBaseType);
                     }
                 }
-#if !defined(TARGET_X86)
+#if !defined(TARGET_X86) && !defined(TARGET_WASM)
                 else
                 {
                     hasMultiregStructArgs = true;

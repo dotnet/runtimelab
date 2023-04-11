@@ -1097,6 +1097,8 @@ def find_test_from_name(host_os, test_location, test_name):
         if not os.path.isdir(os.path.dirname(test_path)):
             pass
 
+        print("test_path")
+        print(test_path)
         assert os.path.isdir(os.path.dirname(test_path))
         size_of_largest_name_file = 0
 

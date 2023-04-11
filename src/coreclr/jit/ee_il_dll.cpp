@@ -120,11 +120,6 @@ extern "C" DLLEXPORT void jitStartup(ICorJitHost* jitHost)
     g_jitInitialized = true;
 }
 
-<<<<<<< HEAD
-#if TARGET_WASM
-extern "C" DLLEXPORT
-#endif
-=======
 #ifndef DEBUG
 void jitprintf(const char* fmt, ...)
 {
@@ -135,7 +130,9 @@ void jitprintf(const char* fmt, ...)
 }
 #endif
 
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
+#if TARGET_WASM
+extern "C" DLLEXPORT
+#endif
 void jitShutdown(bool processIsTerminating)
 {
     if (!g_jitInitialized)

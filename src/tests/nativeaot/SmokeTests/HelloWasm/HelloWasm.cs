@@ -1653,9 +1653,9 @@ internal unsafe static class Program
 
         var genericType = typeof(List<object>);
         StartTest("type of generic");
-        if (genericType.FullName.Substring(0, genericType.FullName.LastIndexOf(",")) != "System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=7.0.0.0, Culture=neutral")
+        if (genericType.FullName.Substring(0, genericType.FullName.LastIndexOf(",")) != "System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral")
         {
-            FailTest("expected System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=7.0.0.0, Culture=neutral  but was " + genericType.FullName);
+            FailTest("expected System.Collections.Generic.List`1[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral  but was " + genericType.FullName);
         }
         else
         {

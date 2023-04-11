@@ -19,7 +19,7 @@ namespace ILCompiler.DependencyAnalysis
     /// <summary>
     /// Object writer that emits LLVM (bitcode).
     /// </summary>
-    internal unsafe class LLVMObjectWriter
+    internal sealed unsafe class LLVMObjectWriter
     {
         // Module with ILC-generated code and data.
         private readonly LLVMModuleRef _module;
@@ -39,7 +39,7 @@ namespace ILCompiler.DependencyAnalysis
         private readonly string _objectFilePath;
 
         // Raw data emitted for the current object node.
-        private ArrayBuilder<byte> _currentObjectData = new ArrayBuilder<byte>();
+        private ArrayBuilder<byte> _currentObjectData;
 
         // References (pointers) to symbols the current object node contains (and thus depends on).
         private Dictionary<int, SymbolRefData> _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
@@ -79,7 +79,7 @@ namespace ILCompiler.DependencyAnalysis
             {
                 foreach (DependencyNode depNode in nodes)
                 {
-                    if (depNode is LLVMMethodCodeNode { Method: { IsRuntimeExport: true } } runtimeExportNode)
+                    if (depNode is LLVMMethodCodeNode runtimeExportNode && runtimeExportNode.Method.HasCustomAttribute("System.Runtime", "RuntimeExportAttribute"))
                     {
                         objectWriter.EmitRuntimeExportThunk(runtimeExportNode);
                         continue;
@@ -118,10 +118,7 @@ namespace ILCompiler.DependencyAnalysis
 
                     ObjectData nodeContents = node.GetData(factory);
 
-                    if (dumper != null)
-                    {
-                        dumper.DumpObjectNode(factory.NameMangler, node, nodeContents);
-                    }
+                    dumper?.DumpObjectNode(factory.NameMangler, node, nodeContents);
 #if DEBUG
                     foreach (ISymbolNode definedSymbol in nodeContents.DefinedSymbols)
                     {
@@ -217,7 +214,7 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
-            _currentObjectData = new ArrayBuilder<byte>();
+            _currentObjectData = default;
         }
 
         private void EmitAlignment(int byteAlignment)
@@ -299,36 +296,36 @@ namespace ILCompiler.DependencyAnalysis
         {
             public ObjectNodeDataEmission(LLVMValueRef node, byte[] data, Dictionary<int, SymbolRefData> objectSymbolRefs)
             {
-                Node = node;
-                Data = data;
-                ObjectSymbolRefs = objectSymbolRefs;
+                _node = node;
+                _data = data;
+                _objectSymbolRefs = objectSymbolRefs;
             }
-            LLVMValueRef Node;
-            readonly byte[] Data;
-            readonly Dictionary<int, SymbolRefData> ObjectSymbolRefs;
+            private LLVMValueRef _node;
+            private readonly byte[] _data;
+            private readonly Dictionary<int, SymbolRefData> _objectSymbolRefs;
 
             public void Fill(LLVMObjectWriter writer)
             {
                 int pointerSize = writer._nodeFactory.Target.PointerSize;
-                ArrayBuilder<LLVMValueRef> entries = new ArrayBuilder<LLVMValueRef>();
-                int countOfPointerSizedElements = Data.Length / pointerSize;
+                ArrayBuilder<LLVMValueRef> entries = default;
+                int countOfPointerSizedElements = _data.Length / pointerSize;
 
                 for (int i = 0; i < countOfPointerSizedElements; i++)
                 {
                     int curOffset = (i * pointerSize);
                     SymbolRefData symbolRef;
-                    if (ObjectSymbolRefs.TryGetValue(curOffset, out symbolRef))
+                    if (_objectSymbolRefs.TryGetValue(curOffset, out symbolRef))
                     {
                         entries.Add(symbolRef.ToLLVMValueRef(writer._module));
                     }
                     else
                     {
-                        uint value = BitConverter.ToUInt32(Data, curOffset);
+                        uint value = BitConverter.ToUInt32(_data, curOffset);
                         entries.Add(LLVMValueRef.CreateConstIntToPtr(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, value), writer._ptrType));
                     }
                 }
 
-                Node.Initializer = LLVMValueRef.CreateConstArray(writer._ptrType, entries.ToArray());
+                _node.Initializer = LLVMValueRef.CreateConstArray(writer._ptrType, entries.ToArray());
             }
         }
 
@@ -353,9 +350,9 @@ namespace ILCompiler.DependencyAnalysis
         private void EmitRuntimeExportThunk(LLVMMethodCodeNode methodNode)
         {
             MethodDesc method = methodNode.Method;
-            Debug.Assert(method.IsRuntimeExport && methodNode.CompilationCompleted);
+            Debug.Assert(method.HasCustomAttribute("System.Runtime", "RuntimeExportAttribute") && methodNode.CompilationCompleted);
 
-            LLVMTypeRef nativeReturnType = _compilation.GetLlvmReturnType(isManagedAbi: false, method.Signature.ReturnType, out bool isNativeReturnByRef);
+            LLVMTypeRef nativeReturnType = _compilation.GetLlvmReturnType(method.Signature.ReturnType, out bool isNativeReturnByRef);
             if (isNativeReturnByRef)
             {
                 throw new NotSupportedException("Runtime export with a complex struct return");
@@ -385,7 +382,7 @@ namespace ILCompiler.DependencyAnalysis
             LLVMValueRef getShadowStackFunc = GetOrCreateLLVMFunction("RhpGetShadowStackTop", getShadowStackFuncSig);
             LLVMValueRef shadowStack = builder.BuildCall2(getShadowStackFuncSig, getShadowStackFunc, Array.Empty<LLVMValueRef>());
 
-            _compilation.GetLlvmReturnType(isManagedAbi: true, method.Signature.ReturnType, out bool isManagedReturnByRef);
+            _compilation.GetLlvmReturnType(method.Signature.ReturnType, out bool isManagedReturnByRef);
 
             int curOffset = 0;
             LLVMValueRef calleeFrame;
@@ -489,7 +486,7 @@ namespace ILCompiler.DependencyAnalysis
                     {
                         MetadataType target = (MetadataType)node.Target;
 
-                        if (_compilation.HasLazyStaticConstructor(target))
+                        if (TriggersLazyStaticConstructor(factory, target))
                         {
                             OutputCodeForTriggerCctor(builder, result);
                         }
@@ -500,7 +497,7 @@ namespace ILCompiler.DependencyAnalysis
                     {
                         MetadataType target = (MetadataType)node.Target;
 
-                        if (_compilation.HasLazyStaticConstructor(target))
+                        if (TriggersLazyStaticConstructor(factory, target))
                         {
                             GenericLookupResult nonGcBaseLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
                             LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, dictionary);
@@ -515,7 +512,7 @@ namespace ILCompiler.DependencyAnalysis
                     {
                         MetadataType target = (MetadataType)node.Target;
 
-                        if (_compilation.HasLazyStaticConstructor(target))
+                        if (TriggersLazyStaticConstructor(factory, target))
                         {
                             GenericLookupResult nonGcBaseLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
                             LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, dictionary);
@@ -544,6 +541,11 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             builder.BuildRet(result);
+        }
+
+        private static bool TriggersLazyStaticConstructor(NodeFactory factory, TypeDesc type)
+        {
+            return factory.PreinitializationManager.HasLazyStaticConstructor(type.ConvertToCanonForm(CanonicalFormKind.Specific));
         }
 
         private void GetCodeForReadyToRunHelper(ReadyToRunHelperNode node, NodeFactory factory)
@@ -795,7 +797,7 @@ namespace ILCompiler.DependencyAnalysis
         private void GetCodeForExternMethodAccessor(ExternMethodAccessorNode node)
         {
             string externFuncName = node.ExternMethodName.ToString();
-            LLVMTypeRef externFuncType = default;
+            LLVMTypeRef externFuncType;
 
             if (node.Signature != null)
             {
@@ -1046,13 +1048,13 @@ namespace ILCompiler.DependencyAnalysis
             return llvmFunction;
         }
 
-        private LLVMValueRef CreateCall(LLVMBuilderRef builder, LLVMValueRef func, LLVMValueRef[] args, string name = "")
+        private static LLVMValueRef CreateCall(LLVMBuilderRef builder, LLVMValueRef func, LLVMValueRef[] args, string name = "")
         {
             Debug.Assert(func.IsAFunction.Handle != IntPtr.Zero);
             return builder.BuildCall2(func.GetValueType(), func, args, name);
         }
 
-        private LLVMValueRef CreateAddOffset(LLVMBuilderRef builder, LLVMValueRef address, int offset, string name)
+        private static LLVMValueRef CreateAddOffset(LLVMBuilderRef builder, LLVMValueRef address, int offset, string name)
         {
             if (offset != 0)
             {
@@ -1063,6 +1065,6 @@ namespace ILCompiler.DependencyAnalysis
             return address;
         }
 
-        private LLVMValueRef CreateConst(LLVMTypeRef type, int value) => LLVMValueRef.CreateConstInt(type, (ulong)value);
+        private static LLVMValueRef CreateConst(LLVMTypeRef type, int value) => LLVMValueRef.CreateConstInt(type, (ulong)value);
     }
 }

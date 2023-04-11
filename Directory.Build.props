@@ -11,7 +11,7 @@
 
   <!-- Seeding these two properties from Platform allows one to use VS's configuration manager to switch targets -->
   <PropertyGroup Condition="'$(Platform)' != ''">
-    <TargetOS Condition="'$(Platform)' == 'wasm'">Browser</TargetOS>
+    <TargetOS Condition="'$(Platform)' == 'wasm'">browser</TargetOS>
     <TargetArchitecture Condition="'$(Platform)' != 'AnyCPU'">$(Platform)</TargetArchitecture>
   </PropertyGroup>
 
@@ -26,13 +26,8 @@
     <HostOS>$(_hostOS)</HostOS>
     <TargetOS Condition="'$(TargetOS)' == '' and '$(RuntimeIdentifier)' == 'browser-wasm'">browser</TargetOS>
     <TargetOS Condition="'$(TargetOS)' == ''">$(_hostOS)</TargetOS>
-<<<<<<< HEAD
-    <TargetsMobile Condition="'$(TargetOS)' == 'iOS' or '$(TargetOS)' == 'iOSSimulator' or '$(TargetOS)' == 'MacCatalyst' or '$(TargetOS)' == 'tvOS' or '$(TargetOS)' == 'tvOSSimulator' or '$(TargetOS)' == 'Android' or ('$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' == 'mono')">true</TargetsMobile>
-    <TargetsAppleMobile Condition="'$(TargetOS)' == 'iOS' or '$(TargetOS)' == 'iOSSimulator' or '$(TargetOS)' == 'MacCatalyst' or '$(TargetOS)' == 'tvOS' or '$(TargetOS)' == 'tvOSSimulator'">true</TargetsAppleMobile>
-=======
-    <TargetsMobile Condition="'$(TargetOS)' == 'ios' or '$(TargetOS)' == 'iossimulator' or '$(TargetOS)' == 'maccatalyst' or '$(TargetOS)' == 'tvos' or '$(TargetOS)' == 'tvossimulator' or '$(TargetOS)' == 'android' or '$(TargetOS)' == 'browser' or '$(TargetOS)' == 'wasi'">true</TargetsMobile>
+    <TargetsMobile Condition="'$(TargetOS)' == 'ios' or '$(TargetOS)' == 'iossimulator' or '$(TargetOS)' == 'maccatalyst' or '$(TargetOS)' == 'tvos' or '$(TargetOS)' == 'tvossimulator' or '$(TargetOS)' == 'android' or (('$(TargetOS)' == 'browser' or '$(TargetOS)' == 'wasi') and '$(RuntimeFlavor)' == 'mono')">true</TargetsMobile>
     <TargetsAppleMobile Condition="'$(TargetOS)' == 'ios' or '$(TargetOS)' == 'iossimulator' or '$(TargetOS)' == 'maccatalyst' or '$(TargetOS)' == 'tvos' or '$(TargetOS)' == 'tvossimulator'">true</TargetsAppleMobile>
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
   </PropertyGroup>
 
   <!-- Platform property is required by RepoLayout.props in Arcade SDK. -->
@@ -174,7 +169,7 @@
 
     <!-- _runtimeOS is calculated based on the build system OS, however if building for Browser/iOS/Android we need to let
          the build system to use browser/ios/android as the _runtimeOS for produced package RIDs. -->
-    <_runtimeOS Condition="'$(TargetsMobile)' == 'true' or '$(TargetOS)' == 'Browser'">$(TargetOS.ToLowerInvariant())</_runtimeOS>
+    <_runtimeOS Condition="'$(TargetsMobile)' == 'true' or '$(TargetOS)' == 'browser'">$(TargetOS.ToLowerInvariant())</_runtimeOS>
 
     <_portableOS>linux</_portableOS>
     <_portableOS Condition="'$(_runtimeOS)' == 'linux-musl' or $(_runtimeOS.StartsWith('alpine'))">linux-musl</_portableOS>

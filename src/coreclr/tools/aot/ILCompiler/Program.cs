@@ -262,7 +262,6 @@ namespace ILCompiler
             //
             // Compile
             //
-<<<<<<< HEAD
             CompilationBuilder builder;
             bool isLlvmCodegen = targetArchitecture == TargetArchitecture.Wasm32 ||
                                  targetArchitecture == TargetArchitecture.Wasm64;
@@ -274,10 +273,6 @@ namespace ILCompiler
             {
                 builder = new RyuJitCompilationBuilder(typeSystemContext, compilationGroup);
             }
-=======
-
-            var builder = new RyuJitCompilationBuilder(typeSystemContext, compilationGroup);
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
 
             string compilationUnitPrefix = multiFile ? Path.GetFileNameWithoutExtension(outputFilePath) : "";
             builder.UseCompilationUnitPrefix(compilationUnitPrefix);

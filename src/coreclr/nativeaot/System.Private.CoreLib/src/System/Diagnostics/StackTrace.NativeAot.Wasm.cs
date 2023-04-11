@@ -10,8 +10,8 @@ namespace System.Diagnostics
     {
         private readonly StringBuilder _builder = new StringBuilder();
 
-        [DllImport("*")]
-        static extern unsafe int emscripten_get_callstack(int flags, byte* outBuf, int maxBytes);
+        [LibraryImport("*")]
+        private static unsafe partial int emscripten_get_callstack(int flags, byte* outBuf, int maxBytes);
 
         private unsafe void InitializeForCurrentThread(int skipFrames, bool needFileInfo)
         {

@@ -48,13 +48,9 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
     add_compile_options(-I${CMAKE_CURRENT_SOURCE_DIR}/Common)
     add_compile_options(-I${CMAKE_CURRENT_BINARY_DIR}/Common)
 
-<<<<<<< HEAD
-    if (CLR_CMAKE_TARGET_BROWSER)
+    if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         # NativeAOT-LLVM enables -Weverything but these will cause failures so disable individually
         add_compile_options(-Wno-unused-parameter -Wno-declaration-after-statement)
-=======
-    if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
         set(GEN_SHARED_LIB 0)
         set(STATIC_LIB_DESTINATION .)
 

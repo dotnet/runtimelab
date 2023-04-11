@@ -241,7 +241,7 @@
     <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrILToolsSubset=true</ClrRuntimeBuildSubsets>
   </PropertyGroup>
 
-  <PropertyGroup Condition="($(_subset.Contains('+clr.nativeaotruntime+')) and '$(NativeAotSupported)' == 'true') or ('$(TargetOS)' == 'Browser' and '$(TargetArchitecture)' == 'wasm')">
+  <PropertyGroup Condition="($(_subset.Contains('+clr.nativeaotruntime+')) and '$(NativeAotSupported)' == 'true') or ('$(TargetOS)' == 'browser' and '$(TargetArchitecture)' == 'wasm')">
     <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrNativeAotSubset=true</ClrRuntimeBuildSubsets>
   </PropertyGroup>
 
@@ -261,7 +261,7 @@
   </ItemGroup>
 
   <!-- Build the CoreCLR cross-arch tools when we're doing a cross-architecture build and either we're building any CoreCLR native tools for platforms CoreCLR fully supports or when someone explicitly requests them, but never for Browser/Wasm -->
-  <ItemGroup Condition="(('$(ClrRuntimeBuildSubsets)' != '' and '$(PrimaryRuntimeFlavor)' == 'CoreCLR' and '$(TargetsMobile)' != 'true' and !('$(TargetOS)' == 'Browser' and '$(TargetArchitecture)' == 'wasm')) or $(_subset.Contains('+clr.crossarchtools+'))) and '$(BuildArchitecture)' != '$(TargetArchitecture)'">
+  <ItemGroup Condition="(('$(ClrRuntimeBuildSubsets)' != '' and '$(PrimaryRuntimeFlavor)' == 'CoreCLR' and '$(TargetsMobile)' != 'true' and !('$(TargetOS)' == 'browser' and '$(TargetArchitecture)' == 'wasm')) or $(_subset.Contains('+clr.crossarchtools+'))) and '$(BuildArchitecture)' != '$(TargetArchitecture)'">
     <ProjectToBuild
       Include="$(CoreClrProjectRoot)runtime.proj"
       AdditionalProperties="%(AdditionalProperties);
@@ -388,7 +388,7 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\dotnet-pgo\dotnet-pgo-pack.proj" Pack="true" Category="clr" Condition="'$(DotNetBuildFromSource)' != 'true' and '$(RuntimeFlavor)' != 'Mono'"/>
   </ItemGroup>
 
-  <ItemGroup Condition="$(_subset.Contains('+clr.nativeaotlibs+')) and ('$(NativeAotSupported)' == 'true' or ('$(TargetOS)' == 'Browser' and '$(TargetArchitecture)' == 'wasm'))">
+  <ItemGroup Condition="$(_subset.Contains('+clr.nativeaotlibs+')) and ('$(NativeAotSupported)' == 'true' or ('$(TargetOS)' == 'browser' and '$(TargetArchitecture)' == 'wasm'))">
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\**\src\*.csproj" Category="clr" />
   </ItemGroup>
 

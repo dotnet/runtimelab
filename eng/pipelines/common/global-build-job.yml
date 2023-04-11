@@ -76,15 +76,11 @@ jobs:
       - name: _osParameter
         value: -os ${{ parameters.osGroup }}
 
-<<<<<<< HEAD
       - ${{ if and(eq(parameters.archType, 'wasm'), eq(parameters.runtimeFlavor, 'coreclr')) }}:
         - name: _osParameter
           value: -os Browser
 
-      - ${{ if and(eq(parameters.osGroup, 'Linux'), eq(parameters.osSubGroup, '_bionic')) }}:
-=======
       - ${{ if and(eq(parameters.osGroup, 'linux'), eq(parameters.osSubGroup, '_bionic')) }}:
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
         - name: _osParameter
           value: /p:RuntimeOS=linux-bionic
 
@@ -179,8 +175,7 @@ jobs:
           df -h
         displayName: Disk Usage before Build
 
-<<<<<<< HEAD
-    - ${{ if and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.platform, 'Browser_wasm_win')) }}:
+    - ${{ if and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.platform, 'browser_wasm_win')) }}:
       # Install Wasm dependencies: emscripten, LLVM
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.cmd $(Build.SourcesDirectory)\wasm-tools
         displayName: Install/activate emscripten
@@ -193,10 +188,7 @@ jobs:
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.cmd $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory) ${{ parameters.buildConfig }}
         displayName: Install/build LLVM
 
-    - ${{ if eq(parameters.platform, 'Browser_wasm_win') }}:
-=======
     - ${{ if eq(parameters.platform, 'browser_wasm_win') }}:
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
       # Update machine certs
       - task: PowerShell@2
         displayName: Update machine certs

@@ -333,20 +333,9 @@ namespace Internal.TypeSystem
             }
         }
 
-<<<<<<< HEAD
-
-        // TODO-LLVM: adding this back as used by the IL->LLVM compiler, delete when the IL->LLVM module is gone
-        /// <summary>
-        /// Offset by which fat function pointers are shifted to distinguish them
-        /// from real function pointers.
-        /// WebAssembly uses index tables, not addresses for function pointers, so the lower bits are not free to use.
-        /// </summary>
-        public int FatFunctionPointerOffset => Architecture == TargetArchitecture.Wasm32 ? 1 << 31 : 2;
-=======
         /// <summary>
         /// CodeDelta - encapsulate the fact that ARM requires a thumb bit
         /// </summary>
         public int CodeDelta { get => (Architecture == TargetArchitecture.ARM) ? 1 : 0; }
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
     }
 }

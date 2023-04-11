@@ -234,9 +234,11 @@ void Llvm::declareDebugVariables()
     DILocation* debugLocation = getArtificialDebugLocation();
     Instruction* insertInst = _builder.GetInsertBlock()->getTerminator();
     Value* spilledShadowStackAddr = nullptr;
-    for (auto lcl = m_debugVariablesMap.Begin(); !lcl.Equal(m_debugVariablesMap.End()); ++lcl)
+    for (auto lcl :
+         JitHashTable<unsigned, JitSmallPrimitiveKeyFuncs<unsigned>, llvm::DILocalVariable*>::KeyValueIteration(
+             &m_debugVariablesMap))
     {
-        unsigned lclNum = lcl.Get();
+        unsigned lclNum = lcl->GetKey();
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
         Value* addressValue;
@@ -267,7 +269,7 @@ void Llvm::declareDebugVariables()
             continue;
         }
 
-        llvm::DILocalVariable* debugVariable = lcl.GetValue();
+        llvm::DILocalVariable* debugVariable = lcl->GetValue();
         Instruction* debugInst =
             m_diBuilder->insertDeclare(addressValue, debugVariable, debugExpression, debugLocation, insertInst);
         JITDUMP("Declaring V%02u:\n", lclNum);

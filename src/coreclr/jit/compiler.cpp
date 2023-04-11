@@ -1880,11 +1880,7 @@ void Compiler::compInit(ArenaAllocator*       pAlloc,
     {
 #ifndef TARGET_WASM
         codeGen = getCodeGenerator(this);
-<<<<<<< HEAD
 #endif // !TARGET_WASM
-        optInit();
-=======
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
         hashBv::Init(this);
         compVarScopeMap = nullptr;
 
@@ -5517,18 +5513,11 @@ void Compiler::ResetOptAnnotations()
     assert(opts.optRepeat);
     assert(JitConfig.JitOptRepeatCount() > 0);
     fgResetForSsa();
-<<<<<<< HEAD
-    vnStore               = nullptr;
-    m_opAsgnVarDefSsaNums = nullptr;
-    fgSsaPassesCompleted  = 0;
-    fgVNPassesCompleted   = 0;
-=======
     vnStore              = nullptr;
     m_blockToEHPreds     = nullptr;
     fgSsaPassesCompleted = 0;
     fgVNPassesCompleted  = 0;
     fgSsaChecksEnabled   = false;
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
 
     for (BasicBlock* const block : Blocks())
     {

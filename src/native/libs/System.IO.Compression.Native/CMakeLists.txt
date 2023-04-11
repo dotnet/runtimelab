@@ -31,14 +31,10 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
     set(NATIVE_LIBS_EXTRA)
     append_extra_compression_libs(NATIVE_LIBS_EXTRA)
 
-<<<<<<< HEAD
-    if (CLR_CMAKE_TARGET_BROWSER)
-        # LLVM/clang v15 is has K&R function signatures deprecated https://github.com/madler/zlib/issues/633
-          add_compile_options(-Wno-deprecated-non-prototype -Wno-strict-prototypes)
-
-=======
     if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
->>>>>>> d7d154d7e25b5a4472b75c963b0a73dc23f5fb9b
+        # LLVM/clang v15 is has K&R function signatures deprecated https://github.com/madler/zlib/issues/633
+        add_compile_options(-Wno-deprecated-non-prototype -Wno-strict-prototypes)
+
         include(${CLR_SRC_NATIVE_DIR}/external/zlib.cmake)
         add_definitions(-DINTERNAL_ZLIB)
         set(NATIVECOMPRESSION_SOURCES ${ZLIB_SOURCES} ${NATIVECOMPRESSION_SOURCES})

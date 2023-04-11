@@ -304,7 +304,9 @@ bool GCToOSInterface::Initialize()
 
 #endif // HAVE_SCHED_GETAFFINITY
 
+#ifndef TARGET_WASM
     NUMASupportInitialize();
+#endif // TARGET_WASM
 
     return true;
 }
