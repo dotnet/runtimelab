@@ -78,7 +78,7 @@ jobs:
 
       - ${{ if and(eq(parameters.archType, 'wasm'), eq(parameters.runtimeFlavor, 'coreclr')) }}:
         - name: _osParameter
-          value: -os Browser
+          value: -os browser
 
       - ${{ if and(eq(parameters.osGroup, 'linux'), eq(parameters.osSubGroup, '_bionic')) }}:
         - name: _osParameter
