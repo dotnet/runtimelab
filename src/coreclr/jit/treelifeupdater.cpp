@@ -54,7 +54,7 @@ bool TreeLifeUpdater<ForCodeGen>::UpdateLifeFieldVar(GenTreeLclVar* lclNode, uns
         bool previouslyLive = VarSetOps::IsMember(compiler, compiler->compCurLife, fldVarDsc->lvVarIndex);
         UpdateLifeBit(compiler->compCurLife, fldVarDsc, isBorn, isDying);
 
-#ifndef TARGET_WASM // this method is never called for TARGET_WASM, just #if-ing out code to make it compile
+#ifndef TARGET_WASM // Not used and not compilable on WASM.
         if (ForCodeGen)
         {
             regNumber reg        = lclNode->GetRegNumByIdx(multiRegIndex);
@@ -243,7 +243,7 @@ void TreeLifeUpdater<ForCodeGen>::UpdateLifeVar(GenTree* tree, GenTreeLclVarComm
                     continue;
                 }
 
-#ifndef TARGET_WASM // the rest of this code will never get reached as ForCodeGen is always false for TARGET_WASM
+#ifndef TARGET_WASM // Not used and not compilable on WASM.
                 // We should never see enregistered fields in a struct local unless
                 // IsMultiRegLclVar() returns true.
                 assert(isMultiRegLocal || !fldVarDsc->lvIsInReg());

@@ -234,9 +234,7 @@ void Llvm::declareDebugVariables()
     DILocation* debugLocation = getArtificialDebugLocation();
     Instruction* insertInst = _builder.GetInsertBlock()->getTerminator();
     Value* spilledShadowStackAddr = nullptr;
-    for (auto lcl :
-         JitHashTable<unsigned, JitSmallPrimitiveKeyFuncs<unsigned>, llvm::DILocalVariable*>::KeyValueIteration(
-             &m_debugVariablesMap))
+    for (auto lcl : decltype(m_debugVariablesMap)::KeyValueIteration(&m_debugVariablesMap))
     {
         unsigned lclNum = lcl->GetKey();
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);

@@ -36,9 +36,7 @@ if /i "%__Ninja%" == "1" (
     if /i "%__Arch%" == "x86" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A Win32)
 )
 
-echo checking arch
 if /i "%__Arch%" == "wasm" (
-    echo wasm
     if "%__Os%" == "" (
         echo Error: Please add target OS parameter
         exit /B 1
@@ -51,7 +49,6 @@ if /i "%__Arch%" == "wasm" (
 
         set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
         set __UseEmcmake=1
-        echo using emcmake !__ExtraCmakeParams!
     )
     if /i "%__Os%" == "wasi" (
         if "%WASI_SDK_PATH%" == "" (
@@ -104,7 +101,6 @@ if not "%__ConfigureOnly%" == "1" (
 )
 
 
-echo checkimg __UseEmcmake !__UseEmcmake!
 if /i "%__UseEmcmake%" == "1" (
     REM workaround for https://github.com/emscripten-core/emscripten/issues/15440 - emscripten cache lock problems
     REM build the ports for ICU and ZLIB upfront
@@ -112,10 +108,8 @@ if /i "%__UseEmcmake%" == "1" (
 
     REM Add call in front of emcmake as for some not understood reason, perhaps to do with scopes, by calling emcmake (or any batch script),
     REM delayed expansion is getting turned off. TODO: remove this and see if CI is ok and hence its just my machine.
-echo calling emcmake
     call emcmake "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir% 
 setlocal EnableDelayedExpansion EnableExtensions
-echo called emcmake
 ) else (
     "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir%
 )

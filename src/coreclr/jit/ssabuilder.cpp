@@ -856,7 +856,7 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
         isLocal = defNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef, &offset, &storeSize);
     }
 #else
-    bool                 isLocal   = defNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef, &offset, &storeSize);
+    bool isLocal   = defNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef, &offset, &storeSize);
 #endif
 
     if (isLocal)
@@ -1009,11 +1009,7 @@ unsigned SsaBuilder::RenamePushDef(GenTree* defNode, BasicBlock* block, unsigned
     assert(m_pCompiler->lvaInSsa(lclNum) && !m_pCompiler->lvaGetDesc(lclNum)->lvPromoted);
 
     LclVarDsc* const varDsc = m_pCompiler->lvaGetDesc(lclNum);
-    unsigned const   ssaNum = varDsc->lvPerSsaData.AllocSsaNum(m_allocator, block, defNode->OperIs(GT_ASG)
-#ifdef TARGET_WASM // for the second pass through SSA with LIR
-            || defNode->OperIs(GT_STORE_LCL_VAR)
-#endif // TARGET_WASM
-            ? defNode->AsOp() : nullptr);
+    unsigned const   ssaNum = varDsc->lvPerSsaData.AllocSsaNum(m_allocator, block, !defNode->IsCall() ? defNode->AsOp() : nullptr);
 
     if (!isFullDef)
     {

@@ -229,14 +229,11 @@ endif()
 add_definitions(-DFEATURE_BASICFREEZE)
 add_definitions(-DFEATURE_CONSERVATIVE_GC)
 
-if(CLR_CMAKE_TARGET_UNIX)
-  
-  # FEATURE_MANUALLY_MANAGED_CARD_BUNDLES only supported for 64 bit hosts
-  if (NOT CLR_CMAKE_TARGET_ARCH_WASM) 
-    add_definitions(-DFEATURE_MANUALLY_MANAGED_CARD_BUNDLES)
-  endif()
-endif()
 add_definitions(-DFEATURE_USE_SOFTWARE_WRITE_WATCH_FOR_GC_HEAP)
+
+if (NOT CLR_CMAKE_TARGET_ARCH_WASM) # FEATURE_MANUALLY_MANAGED_CARD_BUNDLES only supported for 64 bit hosts
+  add_definitions(-DFEATURE_MANUALLY_MANAGED_CARD_BUNDLES)
+endif()
 
 add_definitions(-DFEATURE_CUSTOM_IMPORTS)
 add_definitions(-DFEATURE_DYNAMIC_CODE)

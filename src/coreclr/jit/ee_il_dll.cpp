@@ -130,9 +130,6 @@ void jitprintf(const char* fmt, ...)
 }
 #endif
 
-#if TARGET_WASM
-extern "C" DLLEXPORT
-#endif
 void jitShutdown(bool processIsTerminating)
 {
     if (!g_jitInitialized)
