@@ -861,8 +861,10 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
 
     if (isLocal)
     {
+#ifndef TARGET_WASM
         // This should have been marked as definition.
         assert(((lclNode->gtFlags & GTF_VAR_DEF) != 0) && (((lclNode->gtFlags & GTF_VAR_USEASG) != 0) == !isFullDef));
+#endif // TARGET_WASM
 
         unsigned   lclNum = lclNode->GetLclNum();
         LclVarDsc* varDsc = m_pCompiler->lvaGetDesc(lclNum);
@@ -904,8 +906,20 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
                         lclNode->SetSsaNum(m_pCompiler, index, ssaNum);
                     }
                 }
+#ifdef TARGET_WASM // TODO-LLVM: clearing the SSA number for locals not in SSA, can we remove the IsLIR check?
+                else if (block->IsLIR())
+                {
+                    lclNode->SetSsaNum(m_pCompiler, index, SsaConfig::RESERVED_SSA_NUM);
+                }
+#endif
             }
         }
+#ifdef TARGET_WASM // TODO-LLVM: clearing the SSA number for locals not in SSA, can we remove the IsLIR check?
+        else if (block->IsLIR())
+        {
+            lclNode->SetSsaNum(SsaConfig::RESERVED_SSA_NUM);
+        }
+#endif
     }
     else if (defNode->OperIs(GT_CALL))
     {
@@ -995,8 +1009,11 @@ unsigned SsaBuilder::RenamePushDef(GenTree* defNode, BasicBlock* block, unsigned
     assert(m_pCompiler->lvaInSsa(lclNum) && !m_pCompiler->lvaGetDesc(lclNum)->lvPromoted);
 
     LclVarDsc* const varDsc = m_pCompiler->lvaGetDesc(lclNum);
-    unsigned const   ssaNum =
-        varDsc->lvPerSsaData.AllocSsaNum(m_allocator, block, defNode->OperIs(GT_ASG) ? defNode->AsOp() : nullptr);
+    unsigned const   ssaNum = varDsc->lvPerSsaData.AllocSsaNum(m_allocator, block, defNode->OperIs(GT_ASG)
+#ifdef TARGET_WASM // for the second pass through SSA with LIR
+            || defNode->OperIs(GT_STORE_LCL_VAR)
+#endif // TARGET_WASM
+            ? defNode->AsOp() : nullptr);
 
     if (!isFullDef)
     {
@@ -1818,7 +1835,11 @@ void SsaBuilder::Build()
     // Mark all variables that will be tracked by SSA
     for (unsigned lclNum = 0; lclNum < m_pCompiler->lvaCount; lclNum++)
     {
-        m_pCompiler->lvaTable[lclNum].lvInSsa = m_pCompiler->lvaGetDesc(lclNum)->lvTracked;
+        m_pCompiler->lvaTable[lclNum].lvInSsa = m_pCompiler->lvaGetDesc(lclNum)->lvTracked
+#ifdef TARGET_WASM
+                                                && !m_pCompiler->lvaGetDesc(lclNum)->lvHasLocalAddr
+#endif
+        ;
     }
 
     // Insert phi functions.

@@ -10182,6 +10182,12 @@ void Compiler::optRemoveRedundantZeroInits()
     }
 #endif // DEBUG
 
+    // NativeAOT-LLVM has a second pass through with LIR, but will find no Statements so exit early
+    if (fgNodeThreading == NodeThreading::LIR)
+    {
+        return;
+    }
+
     CompAllocator   allocator(getAllocator(CMK_ZeroInit));
     LclVarRefCounts refCounts(allocator);
     BitVecTraits    bitVecTraits(lvaCount, this);

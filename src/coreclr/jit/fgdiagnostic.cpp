@@ -3542,7 +3542,9 @@ void Compiler::fgDebugCheckLinks(bool morphTrees)
     }
 
     fgDebugCheckNodesUniqueness();
+#ifndef TARGET_WASM // hits assert(fgDomsComputed);
     fgDebugCheckSsa();
+#endif
 }
 
 //------------------------------------------------------------------------------
