@@ -861,10 +861,8 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
 
     if (isLocal)
     {
-#ifndef TARGET_WASM
         // This should have been marked as definition.
         assert(((lclNode->gtFlags & GTF_VAR_DEF) != 0) && (((lclNode->gtFlags & GTF_VAR_USEASG) != 0) == !isFullDef));
-#endif // TARGET_WASM
 
         unsigned   lclNum = lclNode->GetLclNum();
         LclVarDsc* varDsc = m_pCompiler->lvaGetDesc(lclNum);

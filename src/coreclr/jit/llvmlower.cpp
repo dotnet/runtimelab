@@ -670,6 +670,12 @@ void Llvm::lowerLocal(GenTreeLclVarCommon* node)
     }
 }
 
+static bool isFullDefStore(GenTreeLclVarCommon* lclVar, LclVarDsc* varDsc)
+{
+    bool isLocal = lclVar->OperIsLocalStore();
+    return isLocal && (lclVar->OperIs(GT_STORE_LCL_VAR) || varDsc->lvExactSize == genTypeSize(lclVar->gtType));
+}
+
 void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
 {
     assert(storeLclNode->OperIs(GT_STORE_LCL_VAR));
@@ -702,6 +708,10 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
         storeLclNode->SetLclNum(convertToStoreLclFldLclNum);
         storeLclNode->AsLclFld()->SetLclOffs(0);
         storeLclNode->AsLclFld()->SetLayout(varDsc->GetLayout());
+        if (!isFullDefStore(storeLclNode, _compiler->lvaGetDesc(convertToStoreLclFldLclNum)))
+        {
+            storeLclNode->gtFlags |= GTF_VAR_USEASG;
+        }
     }
 }
 
@@ -723,6 +733,10 @@ void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
 
                 case GT_STORE_LCL_VAR:
                     lclVar->SetOper(GT_STORE_LCL_FLD);
+                    if (!isFullDefStore(lclVar, _compiler->lvaGetDesc(varDsc->lvParentLcl)))
+                    {
+                        lclVar->gtFlags |= GTF_VAR_USEASG;
+                    }
                     break;
 
                 case GT_LCL_VAR_ADDR:
@@ -736,8 +750,10 @@ void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
             if ((node->gtFlags & GTF_VAR_DEF) != 0)
             {
                 // Conservatively assume these become partial.
-                // TODO-ADDR: only apply to stores be precise.
-                node->gtFlags |= GTF_VAR_USEASG;
+                if (!isFullDefStore(lclVar, varDsc))
+                {
+                    node->gtFlags |= GTF_VAR_USEASG;
+                }
             }
         }
     }
