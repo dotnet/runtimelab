@@ -12200,7 +12200,7 @@ void Compiler::gtDispLeaf(GenTree* tree, IndentStack* indentStack)
                             fieldVarDsc->PrintVarReg();
                         }
 
-                        if (fieldVarDsc->lvTracked && fgLocalVarLivenessDone && tree->AsLclVar()->IsLastUse(index))
+                        if (fieldVarDsc->lvTracked && fgLocalVarLivenessDone && tree->IsLastUse(index))
                         {
                             printf(" (last use)");
                         }
