@@ -848,15 +848,14 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
         isLocal = defNode->OperIsLocalStore();
         lclNode = isLocal ? defNode->AsLclVarCommon() : nullptr;
         isFullDef = !lclNode->IsPartialLclFld(m_pCompiler);
+        offset = lclNode->GetLclOffs();
 
         if (lclNode->OperIs(GT_STORE_LCL_FLD))
         {
-            offset = lclNode->AsLclFld()->GetLclOffs();
             storeSize = lclNode->AsLclFld()->GetSize();
         }
         else
         {
-            offset = lclNode->GetLclOffs();
             storeSize = m_pCompiler->lvaLclExactSize(lclNode->GetLclNum());
         }
     }
