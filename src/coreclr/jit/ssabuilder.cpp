@@ -115,10 +115,24 @@ void Compiler::fgResetForSsa()
             {
                 if (tree->IsLocal() || tree->OperIsLocalAddr())
                 {
+                    GenTreeLclVarCommon* lclNode = tree->AsLclVarCommon();
+                    unsigned lclNum = lclNode->GetLclNum();
+                    LclVarDsc* varDsc = lvaGetDesc(lclNum);
+
+                    if (varDsc->lvPromoted)
+                    {
+                        for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
+                        {
+                            unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
+                            if (!lvaInSsa(fieldLclNum))
+                            {
+                                lclNode->SetSsaNum(this, index, SsaConfig::RESERVED_SSA_NUM);
+                            }
+                        }
+                    }
                     tree->AsLclVarCommon()->SetSsaNum(SsaConfig::RESERVED_SSA_NUM);
                 }
             }
-            return;
         }
 #endif
         for (Statement* const stmt : blk->Statements())
@@ -904,20 +918,8 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
                         lclNode->SetSsaNum(m_pCompiler, index, ssaNum);
                     }
                 }
-#ifdef TARGET_WASM // TODO-LLVM: clearing the SSA number for locals not in SSA, can we remove the IsLIR check?
-                else if (block->IsLIR())
-                {
-                    lclNode->SetSsaNum(m_pCompiler, index, SsaConfig::RESERVED_SSA_NUM);
-                }
-#endif
             }
         }
-#ifdef TARGET_WASM // TODO-LLVM: clearing the SSA number for locals not in SSA, can we remove the IsLIR check?
-        else if (block->IsLIR())
-        {
-            lclNode->SetSsaNum(SsaConfig::RESERVED_SSA_NUM);
-        }
-#endif
     }
     else if (defNode->OperIs(GT_CALL))
     {
