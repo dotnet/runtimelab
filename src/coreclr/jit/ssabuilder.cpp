@@ -115,21 +115,6 @@ void Compiler::fgResetForSsa()
             {
                 if (tree->IsLocal() || tree->OperIsLocalAddr())
                 {
-                    GenTreeLclVarCommon* lclNode = tree->AsLclVarCommon();
-                    unsigned lclNum = lclNode->GetLclNum();
-                    LclVarDsc* varDsc = lvaGetDesc(lclNum);
-
-                    if (varDsc->lvPromoted)
-                    {
-                        for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
-                        {
-                            unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
-                            if (!lvaInSsa(fieldLclNum))
-                            {
-                                lclNode->SetSsaNum(this, index, SsaConfig::RESERVED_SSA_NUM);
-                            }
-                        }
-                    }
                     tree->AsLclVarCommon()->SetSsaNum(SsaConfig::RESERVED_SSA_NUM);
                 }
             }
@@ -860,8 +845,19 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
     bool isLocal;
     if (block->IsLIR())
     {
-        isLocal   = defNode->OperIsLocalStore();
-        lclNode   = isLocal ? defNode->AsLclVarCommon() : nullptr;
+        isLocal = defNode->OperIsLocalStore();
+        lclNode = isLocal ? defNode->AsLclVarCommon() : nullptr;
+        storeSize = m_pCompiler->lvaLclExactSize(lclNode->GetLclNum());
+
+        if (lclNode->OperIs(GT_STORE_LCL_FLD))
+        {
+            offset = lclNode->AsLclFld()->GetLclOffs();
+        }
+        else
+        {
+            offset = lclNode->GetLclOffs();
+        }
+
         isFullDef = isLocal && (lclNode->OperIs(GT_STORE_LCL_VAR) ||
                         (m_pCompiler->lvaTable[lclNode->GetLclNum()].lvExactSize == genTypeSize(defNode->gtType)));
     }
