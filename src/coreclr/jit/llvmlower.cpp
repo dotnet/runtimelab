@@ -749,7 +749,6 @@ void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
 
             if ((node->gtFlags & GTF_VAR_DEF) != 0)
             {
-                // Conservatively assume these become partial.
                 if (!isFullDefStore(lclVar, varDsc))
                 {
                     node->gtFlags |= GTF_VAR_USEASG;
