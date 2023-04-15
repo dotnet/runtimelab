@@ -26,6 +26,7 @@ namespace System.Text.Json.SourceGeneration
             private const string DefaultOptionsStaticVarName = "s_defaultOptions";
             private const string DefaultContextBackingStaticVarName = "s_defaultContext";
             internal const string GetConverterFromFactoryMethodName = "GetConverterFromFactory";
+            private const string OriginatingResolverPropertyName = "OriginatingResolver";
             private const string InfoVarName = "info";
             private const string PropertyInfoVarName = "propertyInfo";
             internal const string JsonContextVarName = "jsonContext";
@@ -40,9 +41,9 @@ namespace System.Text.Json.SourceGeneration
             private const string ValueVarName = "value";
             private const string WriterVarName = "writer";
 
-            private static AssemblyName _assemblyName = typeof(Emitter).Assembly.GetName();
+            private static readonly AssemblyName s_assemblyName = typeof(Emitter).Assembly.GetName();
             private static readonly string s_generatedCodeAttributeSource = $@"
-[global::System.CodeDom.Compiler.GeneratedCodeAttribute(""{_assemblyName.Name}"", ""{_assemblyName.Version}"")]
+[global::System.CodeDom.Compiler.GeneratedCodeAttribute(""{s_assemblyName.Name}"", ""{s_assemblyName.Version}"")]
 ";
 
             // global::fully.qualified.name for referenced types
@@ -829,7 +830,7 @@ private static {JsonParameterInfoValuesTypeRef}[] {typeGenerationSpec.TypeInfoPr
                         sb.Append(@$"
     {InfoVarName} = new()
     {{
-        Name = ""{spec.Property.JsonPropertyName ?? spec.Property.ClrName}"",
+        Name = ""{spec.Property.ClrName}"",
         ParameterType = typeof({spec.Property.TypeGenerationSpec.TypeRef}),
         Position = {spec.ParameterIndex},
         HasDefaultValue = false,
@@ -1160,6 +1161,9 @@ private {typeInfoPropertyTypeRef} {typeMetadata.CreateTypeInfoMethodName}({JsonS
     {typeInfoPropertyTypeRef}? {JsonTypeInfoReturnValueLocalVariableName} = null;
     {WrapWithCheckForCustomConverter(metadataInitSource, typeCompilableName)}
 
+    { /* NB OriginatingResolver should be the last property set by the source generator. */ ""}
+    {JsonTypeInfoReturnValueLocalVariableName}.{OriginatingResolverPropertyName} = this;
+
     return {JsonTypeInfoReturnValueLocalVariableName};
 }}
 {additionalSource}";
@@ -1318,33 +1322,16 @@ private static {JsonConverterTypeRef} {GetConverterFromFactoryMethodName}({JsonS
             {
                 StringBuilder sb = new();
 
+                // JsonSerializerContext.GetTypeInfo override -- returns cached metadata via JsonSerializerOptions
                 sb.Append(
 @$"/// <inheritdoc/>
 public override {JsonTypeInfoTypeRef}? GetTypeInfo({TypeTypeRef} type)
-{{");
-                // This method body grows linearly over the number of generated types.
-                // In line with https://github.com/dotnet/runtime/issues/77897 we should
-                // eventually replace this method with a direct call to Options.GetTypeInfo().
-                // We can't do this currently because Options.GetTypeInfo throws whereas
-                // this GetTypeInfo returns null for unsupported types, so we need new API to support it.
-                foreach (TypeGenerationSpec metadata in _currentContext.TypesWithMetadataGenerated)
-                {
-                    if (metadata.ClassType != ClassType.TypeUnsupportedBySourceGen)
-                    {
-                        sb.Append($@"
-    if (type == typeof({metadata.TypeRef}))
-    {{
-        return this.{metadata.TypeInfoPropertyName};
-    }}
+{{
+    {OptionsInstanceVariableName}.TryGetTypeInfo(type, out {JsonTypeInfoTypeRef}? typeInfo);
+    return typeInfo;
+}}
 ");
-                    }
-                }
-
-                sb.AppendLine(@"
-    return null;
-}");
-
-                // Explicit IJsonTypeInfoResolver implementation
+                // Explicit IJsonTypeInfoResolver implementation -- the source of truth for metadata resolution
                 sb.AppendLine();
                 sb.Append(@$"{JsonTypeInfoTypeRef}? {JsonTypeInfoResolverTypeRef}.GetTypeInfo({TypeTypeRef} type, {JsonSerializerOptionsTypeRef} {OptionsLocalVariableName})
 {{");

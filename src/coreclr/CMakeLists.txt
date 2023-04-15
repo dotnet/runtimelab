@@ -40,6 +40,10 @@ if(CORECLR_SET_RPATH)
     set(MACOSX_RPATH ON)
 endif(CORECLR_SET_RPATH)
 
+if(CLR_CMAKE_HOST_MACCATALYST OR CLR_CMAKE_HOST_IOS OR CLR_CMAKE_HOST_TVOS)
+  set(FEATURE_EVENT_TRACE 0)
+endif()
+
 OPTION(CLR_CMAKE_ENABLE_CODE_COVERAGE "Enable code coverage" OFF)
 
 #----------------------------------------------------
@@ -107,23 +111,44 @@ if(CLR_CMAKE_HOST_UNIX AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
         endif()
     endif()
 
-    add_subdirectory(pal)
-    add_subdirectory(hosts)
+    if(CLR_CMAKE_TARGET_LINUX AND CLR_CMAKE_TARGET_ARCH_I386)
+      add_linker_flag(-Wl,-z,notext)
+    endif()
+
+    if(NOT CLR_CMAKE_HOST_MACCATALYST AND NOT CLR_CMAKE_HOST_IOS AND NOT CLR_CMAKE_HOST_TVOS)
+      add_subdirectory(pal)
+      add_subdirectory(hosts)
+    endif()
 else()
     if(CLR_CMAKE_TARGET_UNIX AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
         add_subdirectory(${CLR_SRC_NATIVE_DIR}/external/libunwind_extras ${CLR_ARTIFACTS_OBJ_DIR}/external/libunwind)
     endif()
 endif()
 
+#----------------------------------------------------
+# Build the test watchdog alongside the CLR
+#----------------------------------------------------
+add_subdirectory("${CLR_SRC_NATIVE_DIR}/watchdog" test-watchdog)
+
 # Add this subdir. We install the headers for the jit.
 add_subdirectory(pal/prebuilt/inc)
 
+<<<<<<< HEAD
 if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
     # These need to happen before the VM and debug-pal includes.
     set(EP_GENERATED_HEADER_PATH "${GENERATED_INCLUDE_DIR}")
     include (${CLR_SRC_NATIVE_DIR}/eventpipe/configure.cmake)
     add_subdirectory(debug/debug-pal)
 endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
+=======
+# These need to happen before the VM and debug-pal includes.
+set(EP_GENERATED_HEADER_PATH "${GENERATED_INCLUDE_DIR}")
+include (${CLR_SRC_NATIVE_DIR}/eventpipe/configure.cmake)
+
+if(NOT CLR_CMAKE_HOST_MACCATALYST AND NOT CLR_CMAKE_HOST_IOS AND NOT CLR_CMAKE_HOST_TVOS)
+  add_subdirectory(debug/debug-pal)
+endif()
+>>>>>>> runtime/main
 
 add_subdirectory(minipal)
 
@@ -241,6 +266,7 @@ if(CLR_CMAKE_HOST_UNIX)
   add_subdirectory(nativeresources)
 endif(CLR_CMAKE_HOST_UNIX)
 
+<<<<<<< HEAD
 if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_subdirectory(utilcode)
   add_subdirectory(inc)
@@ -251,6 +277,16 @@ if(CLR_CMAKE_HOST_UNIX)
 endif(CLR_CMAKE_HOST_UNIX)
 
 if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
+=======
+if(NOT CLR_CMAKE_HOST_MACCATALYST AND NOT CLR_CMAKE_HOST_IOS AND NOT CLR_CMAKE_HOST_TVOS)
+  add_subdirectory(utilcode)
+  add_subdirectory(inc)
+
+  if(CLR_CMAKE_HOST_UNIX)
+      add_subdirectory(palrt)
+  endif(CLR_CMAKE_HOST_UNIX)
+
+>>>>>>> runtime/main
   add_subdirectory(ilasm)
   add_subdirectory(ildasm)
   add_subdirectory(gcinfo)
@@ -264,11 +300,15 @@ if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_subdirectory(tools)
   add_subdirectory(unwinder)
   add_subdirectory(interop)
+<<<<<<< HEAD
 endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
+=======
+>>>>>>> runtime/main
 
-if(CLR_CMAKE_HOST_WIN32)
-  add_subdirectory(hosts)
-endif(CLR_CMAKE_HOST_WIN32)
+  if(CLR_CMAKE_HOST_WIN32)
+    add_subdirectory(hosts)
+  endif(CLR_CMAKE_HOST_WIN32)
+endif(NOT CLR_CMAKE_HOST_MACCATALYST AND NOT CLR_CMAKE_HOST_IOS AND NOT CLR_CMAKE_HOST_TVOS)
 
 #----------------------------------------------------
 # Cross target Component install configuration
@@ -276,3 +316,4 @@ endif(CLR_CMAKE_HOST_WIN32)
 if(CLR_CROSS_COMPONENTS_BUILD)
   include(crosscomponents.cmake)
 endif(CLR_CROSS_COMPONENTS_BUILD)
+

@@ -4,7 +4,11 @@
     <CLRTestKind>BuildAndRun</CLRTestKind>
     <CLRTestPriority>0</CLRTestPriority>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+<<<<<<< HEAD
     <DefineConstants Condition="$(TargetArchitecture) == 'wasm'">$(DefineConstants);CODEGEN_WASM</DefineConstants>
+=======
+    <NullabilityInfoContextSupport>false</NullabilityInfoContextSupport>
+>>>>>>> runtime/main
 
     <!-- We don't run the scanner in optimized builds -->
     <CLRTestTargetUnsupported Condition="'$(IlcMultiModule)' == 'true'">true</CLRTestTargetUnsupported>
@@ -12,12 +16,17 @@
   <ItemGroup>
     <Compile Include="Dataflow.cs" />
     <Compile Include="DeadCodeElimination.cs" />
+    <Compile Include="DependencyInjectionPattern.cs" />
     <Compile Include="ILLinkDescriptor.cs" />
+    <Compile Include="ILLinkLinkAttributes.cs" />
     <Compile Include="FeatureSwitches.cs" />
     <Compile Include="Main.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="ILLink.LinkAttributes.xml">
+      <LogicalName>ILLink.LinkAttributes.xml</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="ILLink.Substitutions.xml">
       <LogicalName>ILLink.Substitutions.xml</LogicalName>
     </EmbeddedResource>

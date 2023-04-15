@@ -23,6 +23,7 @@ if(MSVC)
 endif (MSVC)
 
 if(CLR_CMAKE_HOST_UNIX)
+<<<<<<< HEAD
   # Up for grabs to clean these warnings up
   if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     add_compile_options(-Wno-error)
@@ -32,12 +33,15 @@ if(CLR_CMAKE_HOST_UNIX)
   if (NOT CLR_CMAKE_TARGET_ARCH_WASM)     # Native AOT runtime targeting WASM uses C++ exception handling to implement managed exceptions
     add_compile_options(-fno-exceptions)  # Regular Native AOT runtime doesn't use C++ exception handling
   endif()
+=======
+  add_compile_options(-fno-exceptions)    # Native AOT runtime doesn't use C++ exception handling
+>>>>>>> runtime/main
   add_compile_options(-nostdlib)
 
-  if(CLR_CMAKE_TARGET_OSX)
+  if(CLR_CMAKE_TARGET_APPLE)
     add_definitions(-D_XOPEN_SOURCE)
     add_definitions(-DFEATURE_OBJCMARSHAL)
-  endif(CLR_CMAKE_TARGET_OSX)
+  endif(CLR_CMAKE_TARGET_APPLE)
 
   if(CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_I386)
     # Allow 16 byte compare-exchange

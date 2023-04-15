@@ -148,6 +148,7 @@ else()
   list(APPEND COMMON_RUNTIME_SOURCES
     unix/PalRedhawkUnix.cpp
     ${GC_DIR}/unix/gcenv.unix.cpp
+    ${GC_DIR}/unix/numasupport.cpp
     ${GC_DIR}/unix/events.cpp
     ${GC_DIR}/unix/cgroup.cpp
   )
@@ -160,7 +161,7 @@ else()
   endif()
 
   list(APPEND FULL_RUNTIME_SOURCES
-    unix/cgroup.cpp
+    unix/cgroupcpu.cpp
     unix/HardwareExceptions.cpp
     unix/UnixContext.cpp
     unix/UnixSignals.cpp
@@ -176,11 +177,11 @@ else()
   set(ASM_SUFFIX S)
 endif()
 
-if (CLR_CMAKE_TARGET_OSX)
+if (CLR_CMAKE_TARGET_APPLE)
   list(APPEND COMMON_RUNTIME_SOURCES
     interoplibinterface_objc.cpp
   )
-endif (CLR_CMAKE_TARGET_OSX)
+endif (CLR_CMAKE_TARGET_APPLE)
 
 if (CLR_CMAKE_TARGET_ARCH_AMD64 AND CLR_CMAKE_TARGET_WIN32)
   list(APPEND COMMON_RUNTIME_SOURCES
@@ -223,9 +224,20 @@ list(APPEND RUNTIME_SOURCES_ARCH_ASM
 convert_to_absolute_path(ARCH_SOURCES_DIR ${ARCH_SOURCES_DIR})
 include_directories(${ARCH_SOURCES_DIR})
 
+<<<<<<< HEAD
 if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_definitions(-DFEATURE_HIJACK)
 endif()
+=======
+if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
+  set(FEATURE_PERFTRACING 1)
+endif()
+
+if(FEATURE_PERFTRACING)
+  add_definitions(-DFEATURE_PERFTRACING)
+endif()
+
+>>>>>>> runtime/main
 add_definitions(-DFEATURE_BASICFREEZE)
 add_definitions(-DFEATURE_CONSERVATIVE_GC)
 
@@ -253,7 +265,11 @@ if(WIN32)
   add_definitions(-DFEATURE_SUSPEND_REDIRECTION)
   add_definitions(-DFEATURE_SPECIAL_USER_MODE_APC)
 else()
+<<<<<<< HEAD
   if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
+=======
+  if(NOT CLR_CMAKE_TARGET_MACCATALYST AND NOT CLR_CMAKE_TARGET_IOS AND NOT CLR_CMAKE_TARGET_TVOS)
+>>>>>>> runtime/main
     add_definitions(-DFEATURE_READONLY_GS_COOKIE)
   endif()
   add_definitions(-DNO_UI_ASSERT)
@@ -288,10 +304,6 @@ else()
   add_subdirectory(Portable)
 endif()
 
-if (CLR_CMAKE_TARGET_UNIX)
-  add_library(numasupportdynamic STATIC ${GC_DIR}/unix/numasupport.dynamic.cpp)
-  install_static_library(numasupportdynamic aotsdk nativeaot)
-
-  add_library(numasupportstatic STATIC ${GC_DIR}/unix/numasupport.static.cpp)
-  install_static_library(numasupportstatic aotsdk nativeaot)
-endif(CLR_CMAKE_TARGET_UNIX)
+if(FEATURE_PERFTRACING)
+  add_subdirectory(eventpipe)
+endif()

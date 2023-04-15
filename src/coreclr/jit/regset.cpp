@@ -320,7 +320,7 @@ void RegSet::rsSpillTree(regNumber reg, GenTree* tree, unsigned regIdx /* =0 */)
     if (isFloatRegType(treeType))
     {
         floatSpill = true;
-        mask       = genRegMaskFloat(reg, treeType);
+        mask       = genRegMaskFloat(reg ARM_ARG(treeType));
     }
     else
     {

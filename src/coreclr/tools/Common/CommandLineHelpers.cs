@@ -70,6 +70,7 @@ namespace System.CommandLine
                 throw new NotImplementedException();
             }
 
+<<<<<<< HEAD
             if (token.Equals("windows", StringComparison.OrdinalIgnoreCase))
                 return TargetOS.Windows;
             else if (token.Equals("linux", StringComparison.OrdinalIgnoreCase))
@@ -82,6 +83,21 @@ namespace System.CommandLine
                 return TargetOS.FreeBSD;
 
             throw new CommandLineException($"Target OS '{token}' is not supported");
+=======
+            return token.ToLowerInvariant() switch
+            {
+                "linux" => TargetOS.Linux,
+                "win" or "windows" => TargetOS.Windows,
+                "osx" => TargetOS.OSX,
+                "freebsd" => TargetOS.FreeBSD,
+                "maccatalyst" => TargetOS.MacCatalyst,
+                "iossimulator" => TargetOS.iOSSimulator,
+                "ios" => TargetOS.iOS,
+                "tvossimulator" => TargetOS.tvOSSimulator,
+                "tvos" => TargetOS.tvOS,
+                _ => throw new CommandLineException($"Target OS '{token}' is not supported")
+            };
+>>>>>>> runtime/main
         }
 
         public static TargetArchitecture GetTargetArchitecture(string token)
@@ -99,6 +115,7 @@ namespace System.CommandLine
                     _ => throw new NotImplementedException()
                 };
             }
+<<<<<<< HEAD
 
             if (token.Equals("x86", StringComparison.OrdinalIgnoreCase))
                 return TargetArchitecture.X86;
@@ -114,6 +131,20 @@ namespace System.CommandLine
                 return TargetArchitecture.Wasm32;
 
             throw new CommandLineException($"Target architecture '{token}' is not supported");
+=======
+            else
+            {
+                return token.ToLowerInvariant() switch
+                {
+                    "x86" => TargetArchitecture.X86,
+                    "x64" => TargetArchitecture.X64,
+                    "arm" or "armel" => TargetArchitecture.ARM,
+                    "arm64" => TargetArchitecture.ARM64,
+                    "loongarch64" => TargetArchitecture.LoongArch64,
+                    _ => throw new CommandLineException($"Target architecture '{token}' is not supported")
+                };
+            }
+>>>>>>> runtime/main
         }
 
         public static void MakeReproPackage(string makeReproPath, string outputFilePath, string[] args, ParseResult res, IEnumerable<string> inputOptions, IEnumerable<string> outputOptions = null)
