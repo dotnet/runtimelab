@@ -702,6 +702,11 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
         storeLclNode->SetLclNum(convertToStoreLclFldLclNum);
         storeLclNode->AsLclFld()->SetLclOffs(0);
         storeLclNode->AsLclFld()->SetLayout(varDsc->GetLayout());
+
+        if (storeLclNode->IsPartialLclFld(_compiler))
+        {
+            storeLclNode->gtFlags |= GTF_VAR_USEASG;
+        }
     }
 }
 
@@ -723,6 +728,10 @@ void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
 
                 case GT_STORE_LCL_VAR:
                     lclVar->SetOper(GT_STORE_LCL_FLD);
+                    if (lclVar->IsPartialLclFld(_compiler))
+                    {
+                        lclVar->gtFlags |= GTF_VAR_USEASG;
+                    }
                     break;
 
                 case GT_LCL_VAR_ADDR:
@@ -735,9 +744,10 @@ void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
 
             if ((node->gtFlags & GTF_VAR_DEF) != 0)
             {
-                // Conservatively assume these become partial.
-                // TODO-ADDR: only apply to stores be precise.
-                node->gtFlags |= GTF_VAR_USEASG;
+                if (lclVar->IsPartialLclFld(_compiler))
+                {
+                    node->gtFlags |= GTF_VAR_USEASG;
+                }
             }
         }
     }

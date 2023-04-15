@@ -27,7 +27,7 @@ steps:
         displayName: Build host packages
 
   # Build coreclr native test output
-  - ${{ if eq(parameters.platform, 'Browser_wasm_win') }}:
+  - ${{ if eq(parameters.platform, 'browser_wasm_win') }}:
     - script: |
         call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
         $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} tree nativeaot
@@ -40,7 +40,7 @@ steps:
       displayName: Build tests
 
   - ${{ if eq(parameters.runSingleFileTests, true) }}:
-    - ${{ if eq(parameters.platform, 'Browser_wasm_win') }}:
+    - ${{ if eq(parameters.platform, 'browser_wasm_win') }}:
       - script: |
           call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
           $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}

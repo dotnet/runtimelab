@@ -8,7 +8,7 @@ set(NATIVECOMPRESSION_SOURCES
     pal_zlib.c
 )
 
-if (NOT CLR_CMAKE_TARGET_BROWSER)
+if (NOT CLR_CMAKE_TARGET_BROWSER AND NOT CLR_CMAKE_TARGET_WASI)
 
     if (CLR_CMAKE_USE_SYSTEM_BROTLI)
         add_definitions(-DFEATURE_USE_SYSTEM_BROTLI)
@@ -27,13 +27,13 @@ if (NOT CLR_CMAKE_TARGET_BROWSER)
     )
 endif ()
 
-if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER)
+if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
     set(NATIVE_LIBS_EXTRA)
     append_extra_compression_libs(NATIVE_LIBS_EXTRA)
 
-    if (CLR_CMAKE_TARGET_BROWSER)
+    if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         # LLVM/clang v15 is has K&R function signatures deprecated https://github.com/madler/zlib/issues/633
-          add_compile_options(-Wno-deprecated-non-prototype -Wno-strict-prototypes)
+        add_compile_options(-Wno-deprecated-non-prototype -Wno-strict-prototypes)
 
         include(${CLR_SRC_NATIVE_DIR}/external/zlib.cmake)
         add_definitions(-DINTERNAL_ZLIB)
@@ -54,7 +54,9 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER)
 
     # Delete this suppression once brotli is upgraded to vNext (current latest v1.0.9
     # does not contain upstream fix: https://github.com/google/brotli/commit/0a3944c)
-    set(FLAGS "${FLAGS} -Wno-vla-parameter")
+    if (NOT CLR_CMAKE_TARGET_WASI)
+        set(FLAGS "${FLAGS} -Wno-vla-parameter")
+    endif ()
 
     set_source_files_properties(${NATIVECOMPRESSION_SOURCES} PROPERTIES COMPILE_FLAGS ${FLAGS})
 
@@ -128,7 +130,7 @@ else ()
         )
     endif ()
 
-    if (NOT GEN_SHARED_LIB AND NOT CLR_CMAKE_TARGET_MACCATALYST AND NOT CLR_CMAKE_TARGET_IOS AND NOT CLR_CMAKE_TARGET_TVOS AND NOT CLR_CMAKE_TARGET_ANDROID AND NOT CLR_CMAKE_TARGET_BROWSER)
+    if (NOT GEN_SHARED_LIB AND NOT CLR_CMAKE_TARGET_MACCATALYST AND NOT CLR_CMAKE_TARGET_IOS AND NOT CLR_CMAKE_TARGET_TVOS AND NOT CLR_CMAKE_TARGET_ANDROID AND NOT CLR_CMAKE_TARGET_BROWSER AND NOT CLR_CMAKE_TARGET_WASI)
         set(NATIVECOMPRESSION_SOURCES ${NATIVECOMPRESSION_SOURCES} entrypoints.c)
     endif ()
 

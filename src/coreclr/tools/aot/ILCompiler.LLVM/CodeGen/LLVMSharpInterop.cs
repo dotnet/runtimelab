@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -6,22 +9,10 @@ using LLVMSharp.Interop;
 
 namespace Internal.IL
 {
-    //TODO-LLVM: delete this file when IL->LLVM module has gone
     internal static unsafe class LLVMSharpInterop
     {
-        ///
-        /// Wrapper while waiting for https://github.com/microsoft/LLVMSharp/pull/144
-        /// 
-        internal static void DISetSubProgram(LLVMValueRef function, LLVMMetadataRef diFunction)
-        {
-            LLVM.SetSubprogram(function, diFunction);
-        }
-
         internal static LLVMAttributeRef CreateAttribute(LLVMContextRef context, string name, string value)
         {
-            ReadOnlySpan<char> nameSpan = name.AsSpan();
-            ReadOnlySpan<char> valueSpan = value.AsSpan();
-
             using var marshaledName = new MarshaledString(name);
             using var marshaledValue = new MarshaledString(value);
 

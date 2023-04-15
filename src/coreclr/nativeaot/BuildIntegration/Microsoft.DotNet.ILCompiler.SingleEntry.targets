@@ -5,6 +5,7 @@
     <OSIdentifier Condition="$(RuntimeIdentifier.StartsWith('win'))">win</OSIdentifier>
     <OSIdentifier Condition="$(RuntimeIdentifier.StartsWith('osx'))">osx</OSIdentifier>
     <OSIdentifier Condition="$(RuntimeIdentifier.StartsWith('browser'))">browser</OSIdentifier>
+    <OSIdentifier Condition="$(RuntimeIdentifier.StartsWith('freebsd'))">freebsd</OSIdentifier>
     <OSIdentifier Condition="$(RuntimeIdentifier.StartsWith('linux-musl')) OR $(RuntimeIdentifier.StartsWith('alpine'))">linux-musl</OSIdentifier>
     <OSIdentifier Condition="'$(OSIdentifier)' == ''">linux</OSIdentifier>
 
@@ -24,16 +25,11 @@
     <HostOSIdentifier Condition="$([MSBuild]::IsOSPlatform('WINDOWS'))">win</HostOSIdentifier>
     <HostOSIdentifier Condition="'$(HostOSIdentifier)' == ''">linux</HostOSIdentifier>
 
-    <OSHostArch>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant)</OSHostArch>
-    <!-- OSArchitecture does not report the true OS architecture for x86 and x64 processes running on Windows ARM64. -->
-    <!-- The following condition checks those cases. -->
-    <OSHostArch Condition="$([MSBuild]::IsOSPlatform('Windows')) and
-        $([System.Environment]::GetEnvironmentVariable('PROCESSOR_ARCHITECTURE', EnvironmentVariableTarget.Machine)) == 'ARM64'">arm64</OSHostArch>
-
-    <OSHostArch Condition="$([MSBuild]::IsOSPlatform('osx')) and '$(CrossBuild)' == 'true'">x64</OSHostArch>
-
-    <IlcHostArch Condition="'$(IlcHostArch)' == ''">$(OSHostArch)</IlcHostArch>
-    <IlcHostPackageName>runtime.$(HostOSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler</IlcHostPackageName>
+    <!-- Default to host that matches OS architecture on Windows. It allows compilation using msbuild.exe that is x86 by default -->
+    <IlcHostArch Condition="'$(OS)' == 'Windows_NT' and '$(IlcHostArch)' == ''">$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant)</IlcHostArch>
+    <!-- Default to host that matches SDK architecture on non-Windows -->
+    <IlcHostArch Condition="'$(IlcHostArch)' == ''">$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant)</IlcHostArch>
+    <IlcHostPackageName>runtime.$(OSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler</IlcHostPackageName>
     <IlcHostPackageName Condition="'$(TargetArchitecture)' == 'wasm'">$(IlcHostPackageName).LLVM</IlcHostPackageName>
 
     <IlcCalledViaPackage>true</IlcCalledViaPackage>
@@ -57,7 +53,8 @@
   <Target Name="GenerateILCompilerExplicitPackageReferenceWarning"
       Condition="'$(SuppressGenerateILCompilerExplicitPackageReferenceWarning)' == '' and '$(AotRuntimePackageLoadedViaSDK)' != 'true' and '$(ILCompilerTargetsPath)' != '' and '$(TargetArchitecture)' != 'wasm'"
       BeforeTargets="ImportRuntimeIlcPackageTarget">
-    <Warning Text="Delete explicit 'Microsoft.DotNet.ILCompiler' package reference in your project file. Explicit 'Microsoft.DotNet.ILCompiler' package reference can run into version errors." />
+    <Warning Condition="'%(PackageReference.Identity)' == 'Microsoft.DotNet.ILCompiler' And '%(PackageReference.IsImplicitlyDefined)' != 'true'"
+             Text="Delete explicit 'Microsoft.DotNet.ILCompiler' package reference in your project file. Explicit 'Microsoft.DotNet.ILCompiler' package reference can run into version errors." />
   </Target>
 
   <!-- NativeAOT-LLVM: override ImportRuntimeIlcPackageTarget to not depend on the SDK-provided ResolvedILCompilerPack item -->

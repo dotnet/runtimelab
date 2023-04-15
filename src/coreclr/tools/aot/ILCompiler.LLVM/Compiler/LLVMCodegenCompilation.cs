@@ -23,7 +23,7 @@ using LLVMSharp.Interop;
 
 namespace ILCompiler
 {
-    public unsafe sealed class LLVMCodegenCompilation : RyuJitCompilation
+    public sealed class LLVMCodegenCompilation : RyuJitCompilation
     {
         private readonly Dictionary<TypeDesc, LLVMTypeRef> _llvmStructs = new();
         private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new();
@@ -67,7 +67,7 @@ namespace ILCompiler
 
             _dependencyGraph.ComputeMarkedNodes();
 
-            foreach (var (_, corInfo) in _corinfos)
+            foreach (var (_, _) in _corinfos)
             {
                 CorInfoImpl.JitFinishThreadContextBoundCompilation();
             }
@@ -166,7 +166,7 @@ namespace ILCompiler
             }
         }
 
-        private unsafe void CompileSingleMethodInternal(CorInfoImpl corInfo, LLVMMethodCodeNode methodCodeNodeNeedingCode, MethodIL methodIL = null)
+        private static void CompileSingleMethodInternal(CorInfoImpl corInfo, LLVMMethodCodeNode methodCodeNodeNeedingCode, MethodIL methodIL = null)
         {
             corInfo.CompileMethod(methodCodeNodeNeedingCode, methodIL);
             methodCodeNodeNeedingCode.CompilationCompleted = true;
@@ -178,7 +178,7 @@ namespace ILCompiler
         // runtime.
         public override string GetRuntimeExportManagedEntrypointName(MethodDesc method)
         {
-            if (!method.IsRuntimeExport)
+            if (!method.HasCustomAttribute("System.Runtime", "RuntimeExportAttribute"))
             {
                 return null;
             }
@@ -196,9 +196,9 @@ namespace ILCompiler
 
         internal LLVMTypeRef GetLLVMSignatureForMethod(bool isManagedAbi, MethodSignature signature, bool hasHiddenParam)
         {
-            LLVMTypeRef llvmReturnType = GetLlvmReturnType(isManagedAbi, signature.ReturnType, out bool isReturnByRef);
+            LLVMTypeRef llvmReturnType = GetLlvmReturnType(signature.ReturnType, out bool isReturnByRef);
 
-            ArrayBuilder<LLVMTypeRef> signatureTypes = new ArrayBuilder<LLVMTypeRef>();
+            ArrayBuilder<LLVMTypeRef> signatureTypes = default;
             signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // Shadow stack pointer
 
             if (isReturnByRef)
@@ -305,7 +305,7 @@ namespace ILCompiler
             return isLlvmArg;
         }
 
-        internal LLVMTypeRef GetLlvmReturnType(bool isManagedAbi, TypeDesc sigReturnType, out bool isPassedByRef)
+        internal LLVMTypeRef GetLlvmReturnType(TypeDesc sigReturnType, out bool isPassedByRef)
         {
             isPassedByRef = IsStruct(sigReturnType) && GetPrimitiveTypeForTrivialWasmStruct(sigReturnType) == null;
             if (isPassedByRef || sigReturnType.IsVoid)

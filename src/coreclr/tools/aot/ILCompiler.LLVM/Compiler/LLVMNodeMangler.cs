@@ -8,7 +8,7 @@ namespace ILCompiler
 {
     //
     // The naming format of these names is known to the debugger
-    // 
+    //
     public sealed class LLVMNodeMangler : NodeMangler
     {
         // Mangled name of boxed version of a type

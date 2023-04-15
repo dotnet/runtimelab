@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.Internal;
 
@@ -127,17 +128,66 @@ namespace Microsoft.Extensions.DependencyInjection
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type instanceType,
             Type[] argumentTypes)
         {
-            FindApplicableConstructor(instanceType, argumentTypes, out ConstructorInfo constructor, out int?[] parameterMap);
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            if (!RuntimeFeature.IsDynamicCodeSupported)
+            {
+                // Create a reflection-based factory when dynamic code isn't supported, e.g. app is published with NativeAOT.
+                // Reflection-based factory is faster than interpreted expressions and doesn't pull in System.Linq.Expressions dependency.
+                return CreateFactoryReflection(instanceType, argumentTypes);
+            }
+#endif
 
-            ParameterExpression? provider = Expression.Parameter(typeof(IServiceProvider), "provider");
-            ParameterExpression? argumentArray = Expression.Parameter(typeof(object[]), "argumentArray");
-            Expression? factoryExpressionBody = BuildFactoryExpression(constructor, parameterMap, provider, argumentArray);
+            CreateFactoryInternal(instanceType, argumentTypes, out ParameterExpression provider, out ParameterExpression argumentArray, out Expression factoryExpressionBody);
 
             var factoryLambda = Expression.Lambda<Func<IServiceProvider, object?[]?, object>>(
                 factoryExpressionBody, provider, argumentArray);
 
             Func<IServiceProvider, object?[]?, object>? result = factoryLambda.Compile();
             return result.Invoke;
+        }
+
+        /// <summary>
+        /// Create a delegate that will instantiate a type with constructor arguments provided directly
+        /// and/or from an <see cref="IServiceProvider"/>.
+        /// </summary>
+        /// <typeparam name="T">The type to activate</typeparam>
+        /// <param name="argumentTypes">
+        /// The types of objects, in order, that will be passed to the returned function as its second parameter
+        /// </param>
+        /// <returns>
+        /// A factory that will instantiate type T using an <see cref="IServiceProvider"/>
+        /// and an argument array containing objects matching the types defined in argumentTypes
+        /// </returns>
+        public static ObjectFactory<T>
+            CreateFactory<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>(
+                Type[] argumentTypes)
+        {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+            if (!RuntimeFeature.IsDynamicCodeSupported)
+            {
+                // Create a reflection-based factory when dynamic code isn't supported, e.g. app is published with NativeAOT.
+                // Reflection-based factory is faster than interpreted expressions and doesn't pull in System.Linq.Expressions dependency.
+                var factory = CreateFactoryReflection(typeof(T), argumentTypes);
+                return (serviceProvider, arguments) => (T)factory(serviceProvider, arguments);
+            }
+#endif
+
+            CreateFactoryInternal(typeof(T), argumentTypes, out ParameterExpression provider, out ParameterExpression argumentArray, out Expression factoryExpressionBody);
+
+            var factoryLambda = Expression.Lambda<Func<IServiceProvider, object?[]?, T>>(
+                factoryExpressionBody, provider, argumentArray);
+
+            Func<IServiceProvider, object?[]?, T>? result = factoryLambda.Compile();
+            return result.Invoke;
+        }
+
+        private static void CreateFactoryInternal([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type instanceType, Type[] argumentTypes, out ParameterExpression provider, out ParameterExpression argumentArray, out Expression factoryExpressionBody)
+        {
+            FindApplicableConstructor(instanceType, argumentTypes, out ConstructorInfo constructor, out int?[] parameterMap);
+
+            provider = Expression.Parameter(typeof(IServiceProvider), "provider");
+            argumentArray = Expression.Parameter(typeof(object[]), "argumentArray");
+            factoryExpressionBody = BuildFactoryExpression(constructor, parameterMap, provider, argumentArray);
         }
 
         /// <summary>
@@ -192,7 +242,7 @@ namespace Microsoft.Extensions.DependencyInjection
             return service;
         }
 
-        private static Expression BuildFactoryExpression(
+        private static NewExpression BuildFactoryExpression(
             ConstructorInfo constructor,
             int?[] parameterMap,
             Expression serviceProvider,
@@ -233,6 +283,67 @@ namespace Microsoft.Extensions.DependencyInjection
 
             return Expression.New(constructor, constructorArguments);
         }
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP
+        private static ObjectFactory CreateFactoryReflection(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type instanceType,
+            Type?[] argumentTypes)
+        {
+            FindApplicableConstructor(instanceType, argumentTypes, out ConstructorInfo constructor, out int?[] parameterMap);
+
+            ParameterInfo[] constructorParameters = constructor.GetParameters();
+            if (constructorParameters.Length == 0)
+            {
+                return (IServiceProvider serviceProvider, object?[]? arguments) =>
+                    constructor.Invoke(BindingFlags.DoNotWrapExceptions, binder: null, parameters: null, culture: null);
+            }
+
+            FactoryParameterContext[] parameters = new FactoryParameterContext[constructorParameters.Length];
+            for (int i = 0; i < constructorParameters.Length; i++)
+            {
+                ParameterInfo constructorParameter = constructorParameters[i];
+                bool hasDefaultValue = ParameterDefaultValue.TryGetDefaultValue(constructorParameter, out object? defaultValue);
+
+                parameters[i] = new FactoryParameterContext(constructorParameter.ParameterType, hasDefaultValue, defaultValue, parameterMap[i] ?? -1);
+            }
+            Type declaringType = constructor.DeclaringType!;
+
+            return (IServiceProvider serviceProvider, object?[]? arguments) =>
+            {
+                object?[] constructorArguments = new object?[parameters.Length];
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    ref FactoryParameterContext parameter = ref parameters[i];
+                    constructorArguments[i] = ((parameter.ArgumentIndex != -1)
+                        // Throws an NullReferenceException if arguments is null. Consistent with expression-based factory.
+                        ? arguments![parameter.ArgumentIndex]
+                        : GetService(
+                            serviceProvider,
+                            parameter.ParameterType,
+                            declaringType,
+                            parameter.HasDefaultValue)) ?? parameter.DefaultValue;
+                }
+
+                return constructor.Invoke(BindingFlags.DoNotWrapExceptions, binder: null, constructorArguments, culture: null);
+            };
+        }
+
+        private readonly struct FactoryParameterContext
+        {
+            public FactoryParameterContext(Type parameterType, bool hasDefaultValue, object? defaultValue, int argumentIndex)
+            {
+                ParameterType = parameterType;
+                HasDefaultValue = hasDefaultValue;
+                DefaultValue = defaultValue;
+                ArgumentIndex = argumentIndex;
+            }
+
+            public Type ParameterType { get; }
+            public bool HasDefaultValue { get; }
+            public object? DefaultValue { get; }
+            public int ArgumentIndex { get; }
+        }
+#endif
 
         private static void FindApplicableConstructor(
             [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type instanceType,

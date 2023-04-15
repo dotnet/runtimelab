@@ -145,6 +145,7 @@ set( JIT_SOURCES
   hashbv.cpp
   hwintrinsic.cpp
   hostallocator.cpp
+  ifconversion.cpp
   indirectcalltransformer.cpp
   importercalls.cpp
   importer.cpp
@@ -379,7 +380,6 @@ set( JIT_HEADERS
   sideeffects.h
   simd.h
   simdashwintrinsic.h
-  simdintrinsiclist.h
   sm.h
   smallhash.h
   smcommon.h
@@ -544,7 +544,6 @@ if(CLR_CMAKE_HOST_UNIX)
     list(APPEND JIT_LINK_LIBRARIES
        mscorrc
        coreclrpal
-       palrt
     )
 else()
     list(APPEND JIT_LINK_LIBRARIES

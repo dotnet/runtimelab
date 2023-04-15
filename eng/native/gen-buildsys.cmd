@@ -10,21 +10,18 @@ for %%x in (%*) do Set /A argC+=1
 if %argC% lss 4 GOTO :USAGE
 if %1=="/?" GOTO :USAGE
 
-setlocal
-set basePath=%~dp0
-set __repoRoot=%~dp0..\..\
+setlocal enabledelayedexpansion
+set "__repoRoot=%~dp0..\.."
 REM a parameter ending with \" seems to be causing a problem for python or emscripten so convert to forward slashes.
 set "__repoRoot=!__repoRoot:\=/!"
-
-:: remove quotes
-set "basePath=%basePath:"=%"
-:: remove trailing slash
-if %basePath:~-1%==\ set "basePath=%basePath:~0,-1%"
+:: normalize
+for %%i in ("%__repoRoot%") do set "__repoRoot=%%~fi"
 
 set __SourceDir=%1
 set __IntermediatesDir=%2
 set __VSVersion=%3
 set __Arch=%4
+set __Os=%5
 set __CmakeGenerator=Visual Studio
 set __UseEmcmake=0
 
@@ -40,15 +37,41 @@ if /i "%__Ninja%" == "1" (
 )
 
 if /i "%__Arch%" == "wasm" (
-    set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
-    set __UseEmcmake=1
+    if "%__Os%" == "" (
+        echo Error: Please add target OS parameter
+        exit /B 1
+    )
+    if /i "%__Os%" == "browser" (
+        if "%EMSDK%" == "" (
+            echo Error: Should set EMSDK environment variable pointing to emsdk root.
+            exit /B 1
+        )
+
+        set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+        set __UseEmcmake=1
+    )
+    if /i "%__Os%" == "wasi" (
+        if "%WASI_SDK_PATH%" == "" (
+            if not exist "%__repoRoot%\src\mono\wasi\wasi-sdk" (
+                echo Error: Should set WASI_SDK_PATH environment variable pointing to emsdk root.
+                exit /B 1
+            )
+
+            set "WASI_SDK_PATH=%__repoRoot%src\mono\wasi\wasi-sdk"
+        )
+        :: replace backslash with forward slash and append last slash
+        set "WASI_SDK_PATH=!WASI_SDK_PATH:\=/!"
+        if not "!WASI_SDK_PATH:~-1!" == "/" set "WASI_SDK_PATH=!WASI_SDK_PATH!/"
+        set __CmakeGenerator=Ninja
+        set __ExtraCmakeParams=%__ExtraCmakeParams% -DCLR_CMAKE_TARGET_OS=wasi -DCLR_CMAKE_TARGET_ARCH=wasm "-DWASI_SDK_PREFIX=!WASI_SDK_PATH!" "-DCMAKE_TOOLCHAIN_FILE=!WASI_SDK_PATH!/share/cmake/wasi-sdk.cmake" "-DCMAKE_SYSROOT=!WASI_SDK_PATH!/share/wasi-sysroot"
+    )
 ) else (
     set __ExtraCmakeParams=%__ExtraCmakeParams%  "-DCMAKE_SYSTEM_VERSION=10.0"
 )
 
 :loop
-if [%5] == [] goto end_loop
-set __ExtraCmakeParams=%__ExtraCmakeParams% %5
+if [%6] == [] goto end_loop
+set __ExtraCmakeParams=%__ExtraCmakeParams% %6
 shift
 goto loop
 :end_loop
@@ -77,6 +100,7 @@ if not "%__ConfigureOnly%" == "1" (
     )
 )
 
+
 if /i "%__UseEmcmake%" == "1" (
     REM workaround for https://github.com/emscripten-core/emscripten/issues/15440 - emscripten cache lock problems
     REM build the ports for ICU and ZLIB upfront
@@ -94,7 +118,7 @@ exit /B %errorlevel%
 
 :USAGE
   echo "Usage..."
-  echo "gen-buildsys.cmd <path to top level CMakeLists.txt> <path to location for intermediate files> <VSVersion> <arch>"
+  echo "gen-buildsys.cmd <path to top level CMakeLists.txt> <path to location for intermediate files> <VSVersion> <arch> <os>"
   echo "Specify the path to the top level CMake file - <ProjectK>/src/NDP"
   echo "Specify the VSVersion to be used - VS2017 or VS2019"
   EXIT /B 1

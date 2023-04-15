@@ -107,7 +107,7 @@ namespace ILCompiler.DependencyAnalysis
         }
     }
 
-    internal class LlvmMethodBodyNode : LLVMMethodCodeNode, IMethodBodyNode
+    internal sealed class LlvmMethodBodyNode : LLVMMethodCodeNode, IMethodBodyNode
     {
         public LlvmMethodBodyNode(MethodDesc method)
             : base(method)
@@ -127,9 +127,9 @@ namespace ILCompiler.DependencyAnalysis
                 foreach (DependencyListEntry node in _dependencies)
                 {
                     dependencies.Add(node);
-                }                
+                }
             }
-           
+
             return dependencies;
         }
 

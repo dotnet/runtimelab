@@ -69,7 +69,7 @@ For the runtime libraries:
   ./emsdk install 3.1.23
   ./emsdk activate 3.1.23
   ```
-- Run `build clr.nativeaotruntime+clr.nativeaotlibs+libs -c [Debug|Release] -a wasm -os Browser`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
+- Run `build clr.nativeaotruntime+clr.nativeaotlibs+libs -c [Debug|Release] -a wasm -os browser`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
 
 For the compilers:
 - Download the LLVM 15.0.6 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.6/llvm-15.0.6.src.tar.xz
@@ -87,12 +87,12 @@ For the compilers:
 - Build the Jits and the ILC: `build clr.jit+clr.wasmjit+clr.nativeaotruntime+clr.nativeaotlibs+clr.tools -c [Debug|Release]`. Note that `clr.jit` only needs to be built once.  Add the `libs` subsets if you want the packages for publishing, e.g. `build clr.jit+clr.wasmjit+clr.nativeaotruntime+clr.nativeaotlibs+clr.tools+libs -c Debug`.
 - You can use the `-msbuild` option, `build clr.wasmjit -msbuild`, to generate a Visual Studio solution for the Jit, to be found in `artifacts/obj/coreclr/windows.x64.Debug/ide/jit`.
 
-With the above binaries built, the ILC can be run and debugged as normal. The runtime tests can also be built, in bulk: `src/tests/build nativeaot debug wasm tree nativeaot`, or individually: `cd <test-directory> && dotnet build TestProjectName.csproj /t:BuildNativeAot /p:TestBuildMode=nativeaot /p:TargetArchitecture=wasm /p:TargetOS=Browser`, and run as described in the sections below.
+With the above binaries built, the ILC can be run and debugged as normal. The runtime tests can also be built, in bulk: `src/tests/build nativeaot debug wasm tree nativeaot`, or individually: `cd <test-directory> && dotnet build TestProjectName.csproj /t:BuildNativeAot /p:TestBuildMode=nativeaot /p:TargetArchitecture=wasm /p:TargetOS=browser`, and run as described in the sections below.
 
 Working on the Jit itself, one possible workflow is taking advantage of the generated VS project:
 - Open the Ilc solution and add the aforementioned Jit project, `clrjit_browser_wasm32_x64.vcxproj`. Then in the project properties, General section, change the output folder to the full path for `artifacts\bin\coreclr\windows.x64.Debug\ilc` e.g. `E:\GitHub\runtimelab\artifacts\bin\coreclr\windows.x64.Debug\ilc`. Build `clrjit_browser_wasm32_x64` project and you should now be able to change and put breakpoints in the C++ code.
 
-It is also possible to publish an ordinary console project for Wasm using packages produced by the build: `build nativeaot.packages && build nativeaot.packages -a wasm -os Browser`, assuming all the binaries mentioned above have been built (note that the order is important - the build always produces an architecture-independent package that has a dependency on an architecture-dependent one, and we want that architecture-dependent package to be built for Wasm). Add the `path-to-repo/artifacts/packages/[Debug|Release]/Shipping` directory to your project's `NuGet.Config`, and the following two references to the project file itself:
+It is also possible to publish an ordinary console project for Wasm using packages produced by the build: `build nativeaot.packages && build nativeaot.packages -a wasm -os browser`, assuming all the binaries mentioned above have been built (note that the order is important - the build always produces an architecture-independent package that has a dependency on an architecture-dependent one, and we want that architecture-dependent package to be built for Wasm). Add the `path-to-repo/artifacts/packages/[Debug|Release]/Shipping` directory to your project's `NuGet.Config`, and the following two references to the project file itself:
 ```xml
 <ItemGroup>
   <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="8.0.0-dev" />
@@ -140,14 +140,14 @@ If you haven't built the tests yet, run `src\tests\build.cmd nativeaot [Debug|Re
 
 To run all the tests that got built, run `src\tests\run.cmd runnativeaottests [Debug|Release] [wasm]` on Windows, or `src/tests/run.sh --runnativeaottests [Debug|Release] [wasm]` on Linux. The `Debug`/`Release` flag should match the flag that was passed to `build.cmd` in the previous step.
 
-To run an individual test (after it was built), navigate to the `artifacts\tests\coreclr\[Windows|Linux|OSX[.x64.[Debug|Release]\$path_to_test` directory. `$path_to_test` matches the subtree of `src\tests`. You should see a `[.cmd|.sh]` file there. This file is a script that will compile and launch the individual test for you. Before invoking the script, set the following environment variables:
+To run an individual test (after it was built), navigate to the `artifacts\tests\coreclr\[windows|linux|osx[.x64.[Debug|Release]\$path_to_test` directory. `$path_to_test` matches the subtree of `src\tests`. You should see a `[.cmd|.sh]` file there. This file is a script that will compile and launch the individual test for you. Before invoking the script, set the following environment variables:
 
-* CORE_ROOT=$repo_root\artifacts\tests\coreclr\[Windows|Linux|OSX].x64.[Debug|Release]\Tests\Core_Root
+* CORE_ROOT=$repo_root\artifacts\tests\coreclr\[windows|linux|osx].x64.[Debug|Release]\Tests\Core_Root
 * CLRCustomTestLauncher=$repo_root\src\tests\Common\scripts\nativeaottest[.cmd|.sh]
 
 `$repo_root` is the root of your clone of the repo.
 
-Sometimes it's handy to be able to rebuild the managed test manually or run the compilation under a debugger. A response file that was used to invoke the ahead of time compiler can be found in `$repo_root\artifacts\tests\coreclr\obj\[Windows|Linux|OSX].x64.[Debug|Release]\Managed`.
+Sometimes it's handy to be able to rebuild the managed test manually or run the compilation under a debugger. A response file that was used to invoke the ahead of time compiler can be found in `$repo_root\artifacts\tests\coreclr\obj\[windows|linux|osx].x64.[Debug|Release]\Managed`.
 
 For more advanced scenarios, look for at [Building the Tests](/docs/workflow/testing/coreclr/testing.md#building-the-tests) and [Building the Core_Root](../../testing/coreclr/testing.md#building-the-coreroot)
 

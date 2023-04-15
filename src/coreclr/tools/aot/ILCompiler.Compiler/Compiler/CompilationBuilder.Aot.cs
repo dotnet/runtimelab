@@ -23,6 +23,7 @@ namespace ILCompiler
         protected InstructionSetSupport _instructionSetSupport;
         protected SecurityMitigationOptions _mitigationOptions;
         protected ConfigurableWasmImportPolicy _wasmImportPolicy;
+        protected bool _dehydrate;
         protected bool _useDwarf5;
 
         partial void InitializePartial()
@@ -85,6 +86,12 @@ namespace ILCompiler
             return this;
         }
 
+        public CompilationBuilder UseDehydration(bool dehydrate)
+        {
+            _dehydrate = dehydrate;
+            return this;
+        }
+
         public CompilationBuilder UseMethodBodyFolding(bool enable)
         {
             _methodBodyFolding = enable;
@@ -118,7 +125,7 @@ namespace ILCompiler
         protected PreinitializationManager GetPreinitializationManager()
         {
             if (_preinitializationManager == null)
-                return new PreinitializationManager(_context, _compilationGroup, GetILProvider(), enableInterpreter: false);
+                return new PreinitializationManager(_context, _compilationGroup, GetILProvider(), new TypePreinit.DisabledPreinitializationPolicy());
             return _preinitializationManager;
         }
 

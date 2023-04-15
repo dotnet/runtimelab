@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using ILCompiler.DependencyAnalysisFramework;
 
 using Internal.JitInterface;
 using Internal.TypeSystem;
@@ -55,11 +54,6 @@ namespace ILCompiler.DependencyAnalysis
             }
             if (CompilationModuleGroup.ContainsMethodBody(method, false))
             {
-                // TODO-LLVM: delete when merging https://github.com/dotnet/runtime/pull/80414 (Jan 10, 2023)
-                // We might be able to optimize the method body away if the owning type was never seen as allocated.
-                if (method.NotCallableWithoutOwningEEType() && CompilationModuleGroup.AllowInstanceMethodOptimization(method))
-                    return new TentativeInstanceMethodNode(new LlvmMethodBodyNode(method));
-
                 return new LlvmMethodBodyNode(method);
             }
             else
@@ -107,7 +101,7 @@ namespace ILCompiler.DependencyAnalysis
             else
             {
                 // Otherwise we just unbox 'this' and don't touch anything else.
-                return new UnboxingStubNode(method, Target);
+                return new UnboxingStubNode(method);
             }
         }
 

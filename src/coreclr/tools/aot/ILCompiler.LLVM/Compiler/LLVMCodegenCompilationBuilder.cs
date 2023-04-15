@@ -14,7 +14,7 @@ namespace ILCompiler
 {
     public sealed class LLVMCodegenCompilationBuilder : RyuJitCompilationBuilder
     {
-        LLVMCodegenConfigProvider _config = new LLVMCodegenConfigProvider();
+        private LLVMCodegenConfigProvider _config = new LLVMCodegenConfigProvider();
 
         public LLVMCodegenCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group)
             : base(context, group, new LLVMNodeMangler())
@@ -39,7 +39,7 @@ namespace ILCompiler
         }
     }
 
-    internal class LLVMCodegenConfigProvider
+    internal sealed class LLVMCodegenConfigProvider
     {
         internal void SetOptions(IEnumerable<KeyValuePair<string, string>> options)
         {
@@ -64,7 +64,7 @@ namespace ILCompiler
 
         // https://llvm.org/docs/LangRef.html#langref-datalayout
         // e litte endian, mangled names
-        // m:e ELF mangling 
+        // m:e ELF mangling
         // p:32:32 pointer size 32, abi 32
         // i64:64 64 ints aligned 64
         // n:32:64 native widths
