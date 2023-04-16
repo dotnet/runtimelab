@@ -156,7 +156,7 @@ else()
   if(CLR_CMAKE_TARGET_ARCH_WASM)
     list(APPEND COMMON_RUNTIME_SOURCES
       ${GC_DIR}/wasm/gcenv.wasm.cpp
-      unix/cgroup.cpp
+      unix/cgroupcpu.cpp
     )
   endif()
 
@@ -224,11 +224,10 @@ list(APPEND RUNTIME_SOURCES_ARCH_ASM
 convert_to_absolute_path(ARCH_SOURCES_DIR ${ARCH_SOURCES_DIR})
 include_directories(${ARCH_SOURCES_DIR})
 
-<<<<<<< HEAD
 if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_definitions(-DFEATURE_HIJACK)
 endif()
-=======
+
 if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
   set(FEATURE_PERFTRACING 1)
 endif()
@@ -237,7 +236,6 @@ if(FEATURE_PERFTRACING)
   add_definitions(-DFEATURE_PERFTRACING)
 endif()
 
->>>>>>> runtime/main
 add_definitions(-DFEATURE_BASICFREEZE)
 add_definitions(-DFEATURE_CONSERVATIVE_GC)
 
@@ -265,11 +263,7 @@ if(WIN32)
   add_definitions(-DFEATURE_SUSPEND_REDIRECTION)
   add_definitions(-DFEATURE_SPECIAL_USER_MODE_APC)
 else()
-<<<<<<< HEAD
-  if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
-=======
-  if(NOT CLR_CMAKE_TARGET_MACCATALYST AND NOT CLR_CMAKE_TARGET_IOS AND NOT CLR_CMAKE_TARGET_TVOS)
->>>>>>> runtime/main
+  if(NOT CLR_CMAKE_TARGET_MACCATALYST AND NOT CLR_CMAKE_TARGET_IOS AND NOT CLR_CMAKE_TARGET_TVOS AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
     add_definitions(-DFEATURE_READONLY_GS_COOKIE)
   endif()
   add_definitions(-DNO_UI_ASSERT)

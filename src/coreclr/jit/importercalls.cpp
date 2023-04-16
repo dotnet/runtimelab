@@ -6436,13 +6436,9 @@ bool Compiler::IsTargetIntrinsic(NamedIntrinsic intrinsicName)
         default:
             return false;
     }
-<<<<<<< HEAD
 #elif TARGET_WASM
     return m_llvm->IsLlvmIntrinsic(intrinsicName);
-#elif defined(TARGET_LOONGARCH64)
-=======
 #elif defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
->>>>>>> runtime/main
     // TODO-LoongArch64: add some intrinsics.
     return false;
 #else

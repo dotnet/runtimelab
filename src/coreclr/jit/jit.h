@@ -193,15 +193,12 @@
 #if defined(TARGET_LOONGARCH64)
 #error Cannot define both TARGET_ARM64 and TARGET_LOONGARCH64
 #endif
-<<<<<<< HEAD
-
-#elif defined(TARGET_WASM)
-
-=======
 #if defined(TARGET_RISCV64)
 #error Cannot define both TARGET_ARM64 and TARGET_RISCV64
 #endif
->>>>>>> runtime/main
+
+#elif defined(TARGET_WASM)
+
 #elif defined(TARGET_LOONGARCH64)
 #if defined(TARGET_X86)
 #error Cannot define both TARGET_LOONGARCH64 and TARGET_X86

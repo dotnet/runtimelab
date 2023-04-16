@@ -275,7 +275,6 @@ function(set_target_definitions_to_custom_os_and_arch)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE FEATURE_MULTIREG_RETURN)
   elseif((TARGETDETAILS_ARCH STREQUAL "arm") OR (TARGETDETAILS_ARCH STREQUAL "armel"))
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_ARM)
-<<<<<<< HEAD
   elseif(TARGETDETAILS_ARCH STREQUAL "wasm64")
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_64BIT)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM64)
@@ -283,12 +282,10 @@ function(set_target_definitions_to_custom_os_and_arch)
   elseif(TARGETDETAILS_ARCH STREQUAL "wasm32")
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM32)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_WASM)
-=======
   elseif((TARGETDETAILS_ARCH STREQUAL "riscv64"))
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_64BIT)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE TARGET_RISCV64)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE FEATURE_MULTIREG_RETURN)
->>>>>>> runtime/main
   endif()
 
   if (TARGETDETAILS_ARCH STREQUAL "armel")

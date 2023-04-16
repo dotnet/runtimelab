@@ -251,11 +251,7 @@ extern void notYetImplemented(const char* msg, const char* file, unsigned line);
 
 #else
 
-<<<<<<< HEAD
-#error "Unknown platform, not x86, ARM, WASM32, WASM64, LOONGARCH64 or AMD64?"
-=======
-#error "Unknown platform, not x86, ARM, LOONGARCH64, AMD64, or RISCV64?"
->>>>>>> runtime/main
+#error "Unknown platform, not x86, ARM, WASM32, WASM64, LOONGARCH64, AMD64, or RISCV64?"
 
 #endif
 

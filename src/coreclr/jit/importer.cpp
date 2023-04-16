@@ -11053,16 +11053,7 @@ GenTree* Compiler::impAssignMultiRegTypeToVar(GenTree*             op,
     unsigned tmpNum = lvaGrabTemp(true DEBUGARG("Return value temp for multireg return"));
     impAssignTempGen(tmpNum, op, hClass, CHECK_SPILL_ALL);
 
-<<<<<<< HEAD
-    // TODO-1stClassStructs: Handle constant propagation and CSE-ing of multireg returns.
-    ret->gtFlags |= GTF_DONT_CSE;
-
-#if !defined(TARGET_WASM)
-    assert(IsMultiRegReturnedType(hClass, callConv) || op->IsMultiRegNode());
-#endif //! TARGET_WASM
-=======
     LclVarDsc* varDsc = lvaGetDesc(tmpNum);
->>>>>>> runtime/main
 
     // Set "lvIsMultiRegRet" to block promotion under "!lvaEnregMultiRegVars".
     varDsc->lvIsMultiRegRet = true;
@@ -11072,8 +11063,9 @@ GenTree* Compiler::impAssignMultiRegTypeToVar(GenTree*             op,
     // TODO-1stClassStructs: Handle constant propagation and CSE-ing of multireg returns.
     ret->SetDoNotCSE();
 
+#if !defined(TARGET_WASM)
     assert(IsMultiRegReturnedType(hClass, callConv) || op->IsMultiRegNode());
-
+#endif // !TARGET_WASM
     return ret;
 }
 

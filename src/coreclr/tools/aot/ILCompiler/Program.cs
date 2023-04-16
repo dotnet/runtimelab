@@ -415,18 +415,6 @@ namespace ILCompiler
             InteropStateManager interopStateManager = new InteropStateManager(typeSystemContext.GeneratedAssembly);
             InteropStubManager interopStubManager = new UsageBasedInteropStubManager(interopStateManager, pinvokePolicy, logger);
 
-<<<<<<< HEAD
-            // Unless explicitly opted in at the command line, we enable scanner for retail builds by default.
-            // We also don't do this for multifile because scanner doesn't simulate inlining (this would be
-            // fixable by using a CompilationGroup for the scanner that has a bigger worldview, but
-            // let's cross that bridge when we get there).
-            bool useScanner = Get(_command.UseScanner) ||
-                              (_command.OptimizationMode != OptimizationMode.None && !multiFile);
-
-            useScanner &= !Get(_command.NoScanner);
-
-=======
->>>>>>> runtime/main
             // Enable static data preinitialization in optimized builds.
             bool preinitStatics = Get(_command.PreinitStatics) ||
                 (_command.OptimizationMode != OptimizationMode.None && !multiFile);
@@ -543,15 +531,9 @@ namespace ILCompiler
                 .UseOptimizationMode(_command.OptimizationMode)
                 .UseSecurityMitigationOptions(securityMitigationOptions)
                 .UseDebugInfoProvider(debugInfoProvider)
-<<<<<<< HEAD
                 .UseWasmImportPolicy(wasmImportPolicy)
-                .UseDwarf5(Get(_command.UseDwarf5));
-
-            builder.UseResilience(Get(_command.Resilient));
-=======
                 .UseDwarf5(Get(_command.UseDwarf5))
                 .UseResilience(resilient);
->>>>>>> runtime/main
 
             ICompilation compilation = builder.ToCompilation();
 

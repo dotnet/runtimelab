@@ -51,12 +51,10 @@ public class Delegates
             result = Fail;
         }
 
-<<<<<<< HEAD
 #if !CODEGEN_WASM // TODO-LLVM: fails trying to create a thread. We need correct TryEnsureSufficientExecutionStack.
-=======
->>>>>>> runtime/main
         TestLinqExpressions.Run();
         TestDefaultInterfaceMethods.Run();
+#endif
 
         return result;
     }

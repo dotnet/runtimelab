@@ -924,13 +924,13 @@ bool Thread::IsHijacked()
 
     return m_pvHijackedReturnAddress != NULL;
 }
-#endif // FEATURE_HIJACK
 
 void* Thread::GetHijackedReturnAddress()
 {
     ASSERT(ThreadStore::GetCurrentThread() == this);
     return m_pvHijackedReturnAddress;
 }
+#endif // FEATURE_HIJACK
 
 void Thread::SetState(ThreadStateFlags flags)
 {

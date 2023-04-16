@@ -50,7 +50,7 @@ void Compiler::fgMarkUseDef(GenTreeLclVarCommon* tree)
         if (compRationalIRForm && (varDsc->lvType != TYP_STRUCT) && !varTypeIsMultiReg(varDsc))
         {
 #if defined(TARGET_WASM)
-            assert(!tree->OperIsLocalAddr() || varDsc->lvHasLocalAddr);
+            assert(!tree->OperIs(GT_LCL_ADDR) || varDsc->lvHasLocalAddr);
 #else
             // If this is an enregisterable variable that is not marked doNotEnregister,
             // we should only see direct references (not ADDRs).

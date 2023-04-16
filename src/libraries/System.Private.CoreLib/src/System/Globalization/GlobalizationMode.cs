@@ -16,11 +16,9 @@ namespace System.Globalization
             internal static bool Invariant { get; } = true;
 #else
             internal static bool Invariant { get; } = AppContextConfigHelper.GetBooleanConfig("System.Globalization.Invariant", "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT");
-<<<<<<< HEAD
-=======
+#endif
 #if TARGET_OSX || TARGET_MACCATALYST || TARGET_IOS || TARGET_TVOS || TARGET_BROWSER
             internal static bool Hybrid { get; } = AppContextConfigHelper.GetBooleanConfig("System.Globalization.Hybrid", "DOTNET_SYSTEM_GLOBALIZATION_HYBRID");
->>>>>>> runtime/main
 #endif
             internal static bool PredefinedCulturesOnly { get; } = AppContextConfigHelper.GetBooleanConfig("System.Globalization.PredefinedCulturesOnly", "DOTNET_SYSTEM_GLOBALIZATION_PREDEFINED_CULTURES_ONLY", GlobalizationMode.Invariant);
         }

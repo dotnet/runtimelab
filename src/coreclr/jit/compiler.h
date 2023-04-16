@@ -502,20 +502,13 @@ public:
     //
     // Initialize the ArgRegs to REG_STK.
     // Morph will update if this local is passed in a register.
-    LclVarDsc()
-<<<<<<< HEAD
-        :
+    LclVarDsc() :
 #if defined(TARGET_WASM)
         lvLlvmArgNum(BAD_LLVM_ARG_NUM),
         lvCorInfoType(CORINFO_TYPE_UNDEF),
-        lvHasLocalAddr(0)
-        ,
+        lvHasLocalAddr(0),
 #endif // TARGET_WASM
         _lvArgReg(REG_STK)
-        ,
-=======
-        : _lvArgReg(REG_STK)
->>>>>>> runtime/main
 #if FEATURE_MULTIREG_ARGS
         , _lvOtherArgReg(REG_STK)
 #endif // FEATURE_MULTIREG_ARGS
@@ -8492,35 +8485,6 @@ private:
     }
 #endif // DEBUG
 
-<<<<<<< HEAD
-    // Get highest available level for SIMD codegen
-    SIMDLevel getSIMDSupportLevel()
-    {
-#if defined(TARGET_XARCH)
-        if (compOpportunisticallyDependsOn(InstructionSet_AVX2))
-        {
-            return SIMD_AVX2_Supported;
-        }
-
-        if (compOpportunisticallyDependsOn(InstructionSet_SSE42))
-        {
-            return SIMD_SSE4_Supported;
-        }
-
-        // min bar is SSE2
-        return SIMD_SSE2_Supported;
-#elif defined(TARGET_WASM)
-        assert(!"WASM supports SIMD so what to do here?");
-        return SIMD_Not_Supported;
-#else
-        assert(!"Available instruction set(s) for SIMD codegen is not defined for target arch");
-        unreached();
-        return SIMD_Not_Supported;
-#endif
-    }
-
-=======
->>>>>>> runtime/main
     bool isIntrinsicType(CORINFO_CLASS_HANDLE clsHnd)
     {
         return info.compCompHnd->isIntrinsicType(clsHnd);

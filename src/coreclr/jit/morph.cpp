@@ -27,17 +27,7 @@ PhaseStatus Compiler::fgMorphInit()
 {
     bool madeChanges = false;
 
-<<<<<<< HEAD
-#if !FEATURE_EH
-    // If we aren't yet supporting EH in a compiler bring-up, remove as many EH handlers as possible, so
-    // we can pass tests that contain try/catch EH, but don't actually throw any exceptions.
-    fgRemoveEH();
-    madeChanges = true;
-#endif // !FEATURE_EH
-
 #ifndef TARGET_WASM
-=======
->>>>>>> runtime/main
     // We could allow ESP frames. Just need to reserve space for
     // pushing EBP if the method becomes an EBP-frame after an edit.
     // Note that requiring a EBP Frame disallows double alignment.  Thus if we change this
@@ -2227,18 +2217,9 @@ void CallArgs::AddFinalArgsAndDetermineABIInfo(Compiler* comp, GenTreeCall* call
         assert(arg.GetEarlyNode() != nullptr);
         GenTree* argx = arg.GetEarlyNode();
 
-<<<<<<< HEAD
-        // Change the node to TYP_I_IMPL so we don't report GC info
-        // NOTE: We deferred this from the importer because of the inliner.
-
-        // TODO-ARGS: Quirk this to match previous behavior. This optimization
-        // is not being done for 'this' pointer. It should be.
-        if ((arg.GetWellKnownArg() != WellKnownArg::ThisPointer) && argx->IsLocalAddrExpr() != nullptr)
-=======
         // TODO-Cleanup: this is duplicative with the code in args morphing, however, also kicks in for
         // "non-standard" (return buffer on ARM64) arguments. Fix args morphing and delete this code.
         if (argx->OperIs(GT_LCL_ADDR))
->>>>>>> runtime/main
         {
             argx->gtType = TYP_I_IMPL;
         }

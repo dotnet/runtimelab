@@ -194,11 +194,6 @@ Type* Llvm::getLlvmTypeForLclVar(LclVarDsc* varDsc)
     {
         return getLlvmTypeForStruct(varDsc->GetLayout());
     }
-    if (varDsc->TypeGet() == TYP_BLK)
-    {
-        assert(varDsc->lvExactSize != 0);
-        return llvm::ArrayType::get(Type::getInt8Ty(_llvmContext), varDsc->lvExactSize);
-    }
     if (varDsc->lvCorInfoType != CORINFO_TYPE_UNDEF)
     {
         return getLlvmTypeForCorInfoType(varDsc->lvCorInfoType, NO_CLASS_HANDLE);

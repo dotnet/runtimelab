@@ -118,7 +118,7 @@ namespace ILCompiler.DependencyAnalysis
 
                     ObjectData nodeContents = node.GetData(factory);
 
-                    dumper?.DumpObjectNode(factory.NameMangler, node, nodeContents);
+                    dumper?.DumpObjectNode(factory, node, nodeContents);
 #if DEBUG
                     foreach (ISymbolNode definedSymbol in nodeContents.DefinedSymbols)
                     {
@@ -884,7 +884,11 @@ namespace ILCompiler.DependencyAnalysis
             ReadyToRunGenericHelperNode node, GenericLookupResult lookup, LLVMValueRef dictionary)
         {
             // Find the generic dictionary slot
-            int dictionarySlot = factory.GenericDictionaryLayout(node.DictionaryOwner).GetSlotForEntry(lookup);
+            if (!factory.GenericDictionaryLayout(node.DictionaryOwner)
+                    .TryGetSlotForEntry(lookup, out int dictionarySlot))
+            {
+                throw new Exception($"Failed to find slot entry in generic dictionary layout ${node.DictionaryOwner.GetDisplayName()}, entry {lookup}");
+            }
             int offset = dictionarySlot * factory.Target.PointerSize;
 
             // Load the generic dictionary cell

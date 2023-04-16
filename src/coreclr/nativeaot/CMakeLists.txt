@@ -23,19 +23,9 @@ if(MSVC)
 endif (MSVC)
 
 if(CLR_CMAKE_HOST_UNIX)
-<<<<<<< HEAD
-  # Up for grabs to clean these warnings up
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    add_compile_options(-Wno-error)
-  endif()
-
-  add_compile_options(-fno-rtti)          # Native AOT runtime doesn't use RTTI
   if (NOT CLR_CMAKE_TARGET_ARCH_WASM)     # Native AOT runtime targeting WASM uses C++ exception handling to implement managed exceptions
     add_compile_options(-fno-exceptions)  # Regular Native AOT runtime doesn't use C++ exception handling
   endif()
-=======
-  add_compile_options(-fno-exceptions)    # Native AOT runtime doesn't use C++ exception handling
->>>>>>> runtime/main
   add_compile_options(-nostdlib)
 
   if(CLR_CMAKE_TARGET_APPLE)

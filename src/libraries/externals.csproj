@@ -72,11 +72,7 @@
   <Target Name="OverrideRuntimeCoreCLR"
           DependsOnTargets="ResolveRuntimeFilesFromLocalBuild"
           AfterTargets="AfterResolveReferences"
-<<<<<<< HEAD
-          Condition="'$(RuntimeFlavor)' != 'Mono' and '$(TestNativeAot)' != 'true' and '$(ClrNativeAot)' != 'true'">
-=======
           Condition="'$(RuntimeFlavor)' != 'Mono' and '$(UseNativeAotCoreLib)' != 'true'">
->>>>>>> runtime/main
     <ItemGroup>
       <RuntimeFiles Include="@(HostFxrFile)" Condition="Exists('@(HostFxrFile)')" />
       <RuntimeFiles Include="@(HostPolicyFile)" Condition="Exists('@(HostPolicyFile)')" />

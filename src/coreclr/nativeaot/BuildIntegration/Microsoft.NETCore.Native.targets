@@ -25,14 +25,6 @@ The .NET Foundation licenses this file to you under the MIT license.
     <NativeOutputPath Condition="'$(NativeOutputPath)' == ''">$(OutputPath)native\</NativeOutputPath>
     <NativeCompilationDuringPublish Condition="'$(NativeCompilationDuringPublish)' == ''">true</NativeCompilationDuringPublish>
     <IlcBuildTasksPath Condition="'$(IlcBuildTasksPath)' == ''">$(MSBuildThisFileDirectory)..\tools\netstandard\ILCompiler.Build.Tasks.dll</IlcBuildTasksPath>
-<<<<<<< HEAD
-    <TargetOS Condition="$(RuntimeIdentifier.StartsWith('win'))">windows</TargetOS>
-    <TargetOS Condition="$(RuntimeIdentifier.StartsWith('osx'))">osx</TargetOS>
-    <TargetOS Condition="$(RuntimeIdentifier.StartsWith('freebsd'))">freebsd</TargetOS>
-    <TargetOS Condition="$(RuntimeIdentifier.StartsWith('browser'))'">browser</TargetOS>
-    <TargetOS Condition="'$(TargetOS)' == ''">linux</TargetOS>
-=======
->>>>>>> runtime/main
     <NativeDebugSymbols Condition="$(DebugSymbols) == 'true' or ($(DebugType) != 'none' and $(DebugType) != '')">true</NativeDebugSymbols>
     <!-- Workaround for https://github.com/dotnet/runtimelab/issues/771 -->
     <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
@@ -60,14 +52,9 @@ The .NET Foundation licenses this file to you under the MIT license.
   </PropertyGroup>
 
   <PropertyGroup>
-<<<<<<< HEAD
-    <NativeObjectExt Condition="'$(TargetOS)' == 'windows'">.obj</NativeObjectExt>
-    <NativeObjectExt Condition="'$(TargetOS)' != 'windows'">.o</NativeObjectExt>
-    <LlvmObjectExt Condition="'$(NativeCodeGen)' == 'llvm'">.bc</LlvmObjectExt>
-=======
     <NativeObjectExt Condition="'$(_targetOS)' == 'win'">.obj</NativeObjectExt>
     <NativeObjectExt Condition="'$(_targetOS)' != 'win'">.o</NativeObjectExt>
->>>>>>> runtime/main
+    <LlvmObjectExt Condition="'$(NativeCodeGen)' == 'llvm'">.bc</LlvmObjectExt>
 
     <LibFileExt Condition="'$(_targetOS)' == 'win'">.lib</LibFileExt>
     <LibFileExt Condition="'$(_targetOS)' != 'win'">.a</LibFileExt>
@@ -77,16 +64,6 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <IsNativeExecutable Condition="'$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe'">true</IsNativeExecutable>
 
-<<<<<<< HEAD
-    <NativeBinaryExt Condition="'$(IsNativeExecutable)' == 'true' and '$(TargetOS)' == 'windows'">.exe</NativeBinaryExt>
-    <NativeBinaryExt Condition="'$(IsNativeExecutable)' == 'true' and '$(TargetOS)' != 'windows'"></NativeBinaryExt>
-    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' == 'windows' and '$(NativeLib)' == 'Shared'">.dll</NativeBinaryExt>
-    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' == 'osx' and '$(NativeLib)' == 'Shared'">.dylib</NativeBinaryExt>
-    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' != 'windows' and '$(TargetOS)' != 'osx' and '$(NativeLib)' == 'Shared'">.so</NativeBinaryExt>
-    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' == 'windows' and '$(NativeLib)' == 'Static'">.lib</NativeBinaryExt>
-    <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(TargetOS)' != 'windows' and '$(NativeLib)' == 'Static'">.a</NativeBinaryExt>
-    <NativeBinaryExt Condition="'$(TargetOS)' == 'browser'">.html</NativeBinaryExt>
-=======
     <NativeBinaryExt Condition="'$(IsNativeExecutable)' == 'true' and '$(_targetOS)' == 'win'">.exe</NativeBinaryExt>
     <NativeBinaryExt Condition="'$(IsNativeExecutable)' == 'true' and '$(_targetOS)' != 'win'"></NativeBinaryExt>
     <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(_targetOS)' == 'win' and '$(NativeLib)' == 'Shared'">.dll</NativeBinaryExt>
@@ -94,7 +71,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(_targetOS)' != 'win' and '$(_IsApplePlatform)' != 'true' and '$(NativeLib)' == 'Shared'">.so</NativeBinaryExt>
     <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(_targetOS)' == 'win' and '$(NativeLib)' == 'Static'">.lib</NativeBinaryExt>
     <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(_targetOS)' != 'win' and '$(NativeLib)' == 'Static'">.a</NativeBinaryExt>
->>>>>>> runtime/main
+    <NativeBinaryExt Condition="'$(_targetOS)' == 'browser'">.html</NativeBinaryExt>
 
     <NativeSymbolExt Condition="'$(_IsApplePlatform)' == 'true'">.dwarf</NativeSymbolExt>
     <NativeSymbolExt Condition="'$(_targetOS)' == 'win'">.pdb</NativeSymbolExt>
@@ -243,13 +220,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Include="@(IlcReference->'-r:%(Identity)')" />
       <IlcArg Include="@(MibcFile->'--mibc:%(Identity)')" />
       <IlcArg Condition="$(IlcGenerateMetadataLog) == 'true'" Include="--metadatalog:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).metadata.csv" />
-<<<<<<< HEAD
-      <IlcArg Condition="$(TargetArchitecture) != ''" Include="--targetarch:$(TargetArchitecture)" />
-      <IlcArg Condition="'$(TargetArchitecture)' == 'wasm'" Include="--targetos:wasm" />
-=======
       <IlcArg Condition="$(_targetOS) != ''" Include="--targetos:$(_targetOS)" />
       <IlcArg Condition="$(_targetArchitecture) != ''" Include="--targetarch:$(_targetArchitecture)" />
->>>>>>> runtime/main
       <IlcArg Condition="$(IlcMultiModule) == 'true'" Include="--multifile" />
       <IlcArg Condition="$(IlcMultiModule) != 'true' and '$(IlcDehydrate)' != 'false' and '$(ControlFlowGuard)' != 'Guard' and '$(TargetArchitecture)' != 'wasm'" Include="--dehydrate" />
       <IlcArg Condition="$(Optimize) == 'true'" Include="-O" />
@@ -328,14 +300,9 @@ The .NET Foundation licenses this file to you under the MIT license.
     <Touch Condition="$([MSBuild]::VersionLessThan('$(NETCoreSdkVersion)', '7.0.0'))" Files="$(_LinkSemaphore)" AlwaysCreate="true" />
   </Target>
 
-<<<<<<< HEAD
-  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Windows.targets" Condition="'$(TargetOS)' == 'windows'" />
-  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Unix.targets" Condition="'$(TargetOS)' != 'windows' and '$(TargetOS)' != 'browser'" />
-  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Browser.props" Condition="'$(TargetOS)' == 'browser'" />
-=======
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Windows.targets" Condition="'$(_targetOS)' == 'win'" />
-  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Unix.targets" Condition="'$(_targetOS)' != 'win'" />
->>>>>>> runtime/main
+  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Unix.targets" Condition="'$(_targetOS)' != 'win' and '$(TargetOS)' != 'browser'" />
+  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Browser.props" Condition="'$(_targetOS)' == 'browser'" />
 
   <Target Name="MultiFileCopyNative"
       Inputs="@(NativeObjects)"

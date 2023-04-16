@@ -882,16 +882,16 @@ void Llvm::fillPhis()
         if (!predCountMap.TryGetValue({predBlock, phiBlock}, &predCount))
         {
             // Eagerly memoize all of the switch edge counts to avoid quadratic behavior.
-            for (flowList* edge : phiBlock->PredEdges())
+            for (FlowEdge* edge : phiBlock->PredEdges())
             {
-                BasicBlock* edgePredBlock = edge->getBlock();
+                BasicBlock* edgePredBlock = edge->getSourceBlock();
                 if (edgePredBlock->bbJumpKind == BBJ_SWITCH)
                 {
-                    predCountMap.AddOrUpdate({predBlock, phiBlock}, edge->flDupCount);
+                    predCountMap.AddOrUpdate({predBlock, phiBlock}, edge->getDupCount());
 
                     if (edgePredBlock == predBlock)
                     {
-                        predCount = edge->flDupCount;
+                        predCount = edge->getDupCount();
                     }
                 }
             }
@@ -1112,8 +1112,8 @@ void Llvm::visitNode(GenTree* node)
         case GT_STORE_LCL_VAR:
             buildStoreLocalVar(node->AsLclVar());
             break;
-        case GT_LCL_VAR_ADDR:
-        case GT_LCL_FLD_ADDR:
+        case GT_LCL_ADDR:
+        case GT_FIELD_ADDR:
             buildLocalVarAddr(node->AsLclVarCommon());
             break;
         case GT_LSH:
@@ -1156,7 +1156,6 @@ void Llvm::visitNode(GenTree* node)
         case GT_CKFINITE:
             buildCkFinite(node->AsUnOp());
             break;
-        case GT_OBJ:
         case GT_BLK:
             buildBlk(node->AsBlk());
             break;
@@ -1939,7 +1938,7 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     }
 
     Value* dataValue = consumeValue(dataNode, getLlvmTypeForStruct(layout));
-    if (layout->HasGCPtr() && ((blockOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0) && !addrNode->OperIsLocalAddr())
+    if (layout->HasGCPtr() && ((blockOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0) && !addrNode->OperIs(GT_LCL_ADDR))
     {
         storeObjAtAddress(addrValue, dataValue, getStructDesc(layout->GetClassHandle()));
     }

@@ -268,12 +268,8 @@ bool GCToOSInterface::Initialize()
             return false;
         }
     }
-<<<<<<< HEAD
-#endif // !TARGET_OSX
-#endif // !TARGET_WASM
-=======
 #endif // !TARGET_APPLE
->>>>>>> runtime/main
+#endif // !TARGET_WASM
 
     InitializeCGroup();
 

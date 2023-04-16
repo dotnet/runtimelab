@@ -4816,19 +4816,7 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
         lvaRefCountState       = RCS_INVALID;
         fgLocalVarLivenessDone = false;
 
-<<<<<<< HEAD
-#if defined(FEATURE_EH_FUNCLETS) && defined(TARGET_ARM)
-        if (fgNeedToAddFinallyTargetBits)
-        {
-            // We previously wiped out the BBF_FINALLY_TARGET bits due to some morphing; add them back.
-            fgAddFinallyTargetFlags();
-            fgNeedToAddFinallyTargetBits = false;
-        }
-#endif // defined(FEATURE_EH_FUNCLETS) && defined(TARGET_ARM)
-
 #ifndef TARGET_WASM
-=======
->>>>>>> runtime/main
         // Decide the kind of code we want to generate
         fgSetOptions();
 #endif // !TARGET_WASM
@@ -5087,7 +5075,9 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     optLoopsRequirePreHeaders = false;
 
 #ifdef DEBUG
+#ifndef TARGET_WASM
     DoPhase(this, PHASE_STRESS_SPLIT_TREE, &Compiler::StressSplitTree);
+#endif // !TARGET_WASM
 #endif
 
     // Expand runtime lookups (an optimization but we'd better run it in tier0 too)
@@ -6853,14 +6843,11 @@ int Compiler::compCompileHelper(CORINFO_MODULE_HANDLE classPtr,
     compBasicBlockID = 0;
 #endif
 
-<<<<<<< HEAD
-#ifndef TARGET_WASM
-=======
 #ifdef TARGET_ARM64
     info.compNeedsConsecutiveRegisters = false;
 #endif
 
->>>>>>> runtime/main
+#ifndef TARGET_WASM
     /* Initialize emitter */
 
     if (!compIsForInlining())

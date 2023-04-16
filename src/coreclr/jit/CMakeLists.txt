@@ -95,7 +95,7 @@ function(create_standalone_jit)
     separate_arguments(LLVM_DEFINITIONS)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_DEFINITIONS})
     llvm_map_components_to_libnames(llvm_libs core bitwriter)
-    target_link_libraries(${TARGETDETAILS_TARGET} ${llvm_libs})
+    target_link_libraries(${TARGETDETAILS_TARGET} PRIVATE ${llvm_libs})
   endif()
 
 endfunction()
