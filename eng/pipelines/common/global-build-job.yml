@@ -193,7 +193,7 @@ jobs:
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.cmd $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory) ${{ parameters.buildConfig }}
         displayName: Install/build LLVM
 
-    - ${{ if eq(parameters.platform, 'browser_wasm_win', 'wasi_wasm_win') }}:
+    - ${{ if in(parameters.platform, 'browser_wasm_win', 'wasi_wasm_win') }}:
       # Update machine certs
       - task: PowerShell@2
         displayName: Update machine certs

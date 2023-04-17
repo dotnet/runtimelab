@@ -368,6 +368,7 @@ void Llvm::generateBlock(BasicBlock* block)
             buildCallFinally(block);
             break;
         case BBJ_EHFINALLYRET:
+        case BBJ_EHFAULTRET:
             // "fgCreateMonitorTree" forgets to insert RETFILT nodes for some faults. Compensate.
             if (!block->lastNode()->OperIs(GT_RETFILT))
             {

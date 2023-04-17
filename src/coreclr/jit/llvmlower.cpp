@@ -96,10 +96,9 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
     auto isGcTemp = [compiler = _compiler, this](GenTree* node) {
         if (varTypeIsGC(node) || node->TypeIs(TYP_STRUCT))
         {
-            if (node->TypeIs(TYP_STRUCT))
+            if (node->TypeIs(TYP_STRUCT) && !node->OperIs(GT_IND))
             {
-                // TODO-LLVM: replace with "!node->GetLayout()->HasGCPtr()" once enough of upstream is merged.
-                if (!node->GetLayout(_compiler)->HasGCPtr())
+                if (!node->GetLayout(compiler)->HasGCPtr())
                 {
                     return false;
                 }
@@ -435,13 +434,24 @@ void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, 
 
     unsigned offset = 0;
     auto assignOffset = [this, &offset](LclVarDsc* varDsc) {
-        CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-        CORINFO_CLASS_HANDLE classHandle =
-            varTypeIsStruct(varDsc) ? varDsc->GetLayout()->GetClassHandle() : NO_CLASS_HANDLE;
+        if (varDsc->TypeGet() == TYP_STRUCT && varDsc->GetLayout()->IsBlockLayout())
+        {
+            assert((varDsc->lvSize() % TARGET_POINTER_SIZE) == 0);
 
-        offset = padOffset(corInfoType, classHandle, offset);
-        varDsc->SetStackOffset(offset);
-        offset = padNextOffset(corInfoType, classHandle, offset);
+            offset = roundUp(offset, TARGET_POINTER_SIZE);
+            varDsc->SetStackOffset(offset);
+            offset += varDsc->lvSize();
+        }
+        else
+        {
+            CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
+            CORINFO_CLASS_HANDLE classHandle =
+                varTypeIsStruct(varDsc) ? varDsc->GetLayout()->GetClassHandle() : NO_CLASS_HANDLE;
+
+            offset = padOffset(corInfoType, classHandle, offset);
+            varDsc->SetStackOffset(offset);
+            offset = padNextOffset(corInfoType, classHandle, offset);
+        } 
 
         // We will use this as the indication that the local has a home on the shadow stack.
         varDsc->SetRegNum(REG_STK);
@@ -495,8 +505,19 @@ void Llvm::initializeLocalInProlog(unsigned lclNum, GenTree* value)
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
     JITDUMP("Adding initialization for V%02u, %s:\n", lclNum, varDsc->lvReason);
 
-    // TYP_BLK locals have to be handled specially as they can only be referenced indirectly.
-    GenTreeUnOp* store = _compiler->gtNewStoreLclVar(lclNum, value);
+    // Block layout struct locals have to be handled specially as they can only be referenced indirectly.
+    GenTreeUnOp* store;
+    if (varDsc->TypeGet() == TYP_STRUCT && varDsc->GetLayout()->IsBlockLayout())
+    {
+        ClassLayout* layout = _compiler->typGetBlkLayout(varDsc->lvExactSize());
+        store        = new (_compiler, GT_STORE_LCL_FLD) GenTreeLclFld(GT_STORE_LCL_FLD, TYP_STRUCT, lclNum, 0, layout);
+        store->gtOp1 = value;
+        store->gtFlags |= (GTF_ASG | GTF_VAR_DEF);
+    }
+    else
+    {
+        store = _compiler->gtNewStoreLclVar(lclNum, value);
+    }
 
     m_prologRange.InsertAtEnd(value);
     m_prologRange.InsertAtEnd(store);
