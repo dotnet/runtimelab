@@ -209,6 +209,7 @@ extern void notYetImplemented(const char* msg, const char* file, unsigned line);
 #define NYI_WASM32(msg)  do { } while (0)
 #define NYI_WASM64(msg) do { } while (0)
 #define NYI_LOONGARCH64(msg) do { } while (0)
+#define NYI_RISCV64(msg) do { } while (0)
 
 #elif defined(TARGET_WASM64)
 
@@ -219,6 +220,7 @@ extern void notYetImplemented(const char* msg, const char* file, unsigned line);
 #define NYI_WASM32(msg)  do { } while (0)
 #define NYI_WASM64(msg) NYIRAW("NYI_WASM64: " msg)
 #define NYI_LOONGARCH64(msg) do { } while (0)
+#define NYI_RISCV64(msg) do { } while (0)
 
 #elif defined(TARGET_WASM32)
 
