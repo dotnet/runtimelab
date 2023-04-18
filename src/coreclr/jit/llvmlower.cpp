@@ -93,7 +93,7 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
         }
     };
 
-    auto isGcTemp = [compiler = _compiler, this](GenTree* node) {
+    auto isGcTemp = [compiler = _compiler](GenTree* node) {
         if (varTypeIsGC(node) || node->TypeIs(TYP_STRUCT))
         {
             if (node->TypeIs(TYP_STRUCT) && !node->OperIs(GT_IND))
@@ -595,7 +595,6 @@ void Llvm::lowerNode(GenTree* node)
         case GT_LCL_VAR:
         case GT_LCL_FLD:
         case GT_LCL_ADDR:
-        case GT_FIELD_ADDR:
         case GT_STORE_LCL_VAR:
         case GT_STORE_LCL_FLD:
             lowerLocal(node->AsLclVarCommon());
@@ -731,10 +730,6 @@ void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
                         lclVar->gtFlags |= GTF_VAR_USEASG;
                     }
                     break;
-
-                case GT_LCL_ADDR:
-                    lclVar->SetOper(GT_FIELD_ADDR);
-                    break;
             }
 
             lclVar->SetLclNum(varDsc->lvParentLcl);
@@ -780,7 +775,6 @@ bool Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* lclNode)
                 indirOper = (layout != nullptr) ? GT_BLK : GT_IND;
                 break;
             case GT_LCL_ADDR:
-            case GT_FIELD_ADDR:
                 // Local address nodes are directly replaced with the ADD.
                 CurrentRange().Remove(lclAddress);
                 lclNode->ReplaceWith(lclAddress, _compiler);
@@ -1430,7 +1424,7 @@ GenTree* Llvm::normalizeStructUse(LIR::Use& use, ClassLayout* layout)
 
         // Note both can be blocks ("NO_CLASS_HANDLE"), in which case we don't need to do anything.
         if ((useHandle != layout->GetClassHandle()) &&
-            ((getLlvmTypeForStruct(useHandle) != getLlvmTypeForStruct(layout))))
+            ((useHandle == NO_CLASS_HANDLE) || (getLlvmTypeForStruct(useHandle) != getLlvmTypeForStruct(layout))))
         {
             switch (node->OperGet())
             {

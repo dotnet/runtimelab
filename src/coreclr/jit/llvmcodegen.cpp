@@ -325,10 +325,17 @@ void Llvm::generateBlocks()
         LlvmCompileDomTreeVisitor visitor(_compiler, this);
         visitor.WalkTree();
 
-        // Walk all the exceptional code blocks and generate them, since they don't appear in the normal flow graph.
+        // Walk all the exceptional code blocks and generate them since they don't appear in the normal flow graph.
         for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
         {
-            generateBlock(add->acdDstBlk);
+            // if the LLVM function was not created due to the first block not being reachable
+            // or the exceptional code block is part of a try that was not reachable,
+            // then don't generate the exceptional code block
+            if (m_functions[getLlvmFunctionIndexForBlock(add->acdDstBlk)].LlvmFunction != nullptr &&
+                !(add->acdDstBlk->hasTryIndex() && m_EHDispatchLlvmBlocks[add->acdDstBlk->getTryIndex()] == nullptr))
+            {
+                generateBlock(add->acdDstBlk);
+            }
         }
     }
     else
@@ -1114,7 +1121,6 @@ void Llvm::visitNode(GenTree* node)
             buildStoreLocalVar(node->AsLclVar());
             break;
         case GT_LCL_ADDR:
-        case GT_FIELD_ADDR:
             buildLocalVarAddr(node->AsLclVarCommon());
             break;
         case GT_LSH:
