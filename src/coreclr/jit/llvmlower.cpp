@@ -452,7 +452,7 @@ void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, 
             offset = padOffset(corInfoType, classHandle, offset);
             varDsc->SetStackOffset(offset);
             offset = padNextOffset(corInfoType, classHandle, offset);
-        } 
+        }
 
         // We will use this as the indication that the local has a home on the shadow stack.
         varDsc->SetRegNum(REG_STK);
