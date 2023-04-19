@@ -435,7 +435,7 @@ void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, 
 
     unsigned offset = 0;
     auto assignOffset = [this, &offset](LclVarDsc* varDsc) {
-        if (varDsc->TypeGet() == TYP_STRUCT && varDsc->GetLayout()->IsBlockLayout())
+        if ((varDsc->TypeGet() == TYP_STRUCT) && varDsc->GetLayout()->IsBlockLayout())
         {
             assert((varDsc->lvSize() % TARGET_POINTER_SIZE) == 0);
 
