@@ -61,6 +61,7 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
                 break;
             case TYP_STRUCT:
                 // This case should be **very** rare if at all possible. Just use a new local.
+                // TODO-LLVM: switch this logic to use layouts instead of handles.
                 structHandle = node->GetLayout(_compiler)->GetClassHandle();
                 break;
             default:
