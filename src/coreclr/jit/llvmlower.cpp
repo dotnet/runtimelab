@@ -923,6 +923,7 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
         }
         else
         {
+            // TODO-LLVM: switch this logic to use layouts.
             CORINFO_CLASS_HANDLE srcHandle = src->GetLayout(_compiler)->GetClassHandle();
 
             if (dstLayout->GetClassHandle() != srcHandle)
