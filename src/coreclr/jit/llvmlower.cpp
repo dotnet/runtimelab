@@ -61,6 +61,7 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
                 break;
             case TYP_STRUCT:
                 // This case should be **very** rare if at all possible. Just use a new local.
+                // TODO-LLVM: switch this logic to use layouts instead of handles.
                 structHandle = node->GetLayout(_compiler)->GetClassHandle();
                 break;
             default:
@@ -434,7 +435,7 @@ void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, 
 
     unsigned offset = 0;
     auto assignOffset = [this, &offset](LclVarDsc* varDsc) {
-        if (varDsc->TypeGet() == TYP_STRUCT && varDsc->GetLayout()->IsBlockLayout())
+        if ((varDsc->TypeGet() == TYP_STRUCT) && varDsc->GetLayout()->IsBlockLayout())
         {
             assert((varDsc->lvSize() % TARGET_POINTER_SIZE) == 0);
 
@@ -451,7 +452,7 @@ void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, 
             offset = padOffset(corInfoType, classHandle, offset);
             varDsc->SetStackOffset(offset);
             offset = padNextOffset(corInfoType, classHandle, offset);
-        } 
+        }
 
         // We will use this as the indication that the local has a home on the shadow stack.
         varDsc->SetRegNum(REG_STK);
@@ -910,6 +911,7 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
         }
         else
         {
+            // TODO-LLVM: switch this logic to use layouts.
             CORINFO_CLASS_HANDLE srcHandle = src->GetLayout(_compiler)->GetClassHandle();
 
             if (dstLayout->GetClassHandle() != srcHandle)
