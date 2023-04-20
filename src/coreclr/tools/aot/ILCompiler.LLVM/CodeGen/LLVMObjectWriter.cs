@@ -887,7 +887,7 @@ namespace ILCompiler.DependencyAnalysis
             if (!factory.GenericDictionaryLayout(node.DictionaryOwner)
                     .TryGetSlotForEntry(lookup, out int dictionarySlot))
             {
-                throw new Exception($"Failed to find slot entry in generic dictionary layout ${node.DictionaryOwner.GetDisplayName()}, entry {lookup}");
+                return LLVMValueRef.CreateConstPointerNull(_ptrType);
             }
             int offset = dictionarySlot * factory.Target.PointerSize;
 
