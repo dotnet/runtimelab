@@ -1295,7 +1295,7 @@ internal unsafe static class Program
 
         StartTest("NonBeforeFieldInit test");
         NonBeforeFieldInitTest.Nop();
-        EndTest(StaticsInited.NonBeforeFieldInitInited, "cctor not run");
+        EndTest(StaticsInited.NonBeforeFieldInitInited && NonBeforeFieldInitTest.TestField == 4, "cctor not run or run more than once");
     }
 
     private static void TestConstrainedClassCalls()
@@ -4214,6 +4214,10 @@ public class NonBeforeFieldInitTest
 
     static NonBeforeFieldInitTest()
     {
+        if (TestField == 4)
+        {
+            throw new Exception("static cctor called twice");
+        }
         TestField = 4;
         StaticsInited.NonBeforeFieldInitInited = true;
     }

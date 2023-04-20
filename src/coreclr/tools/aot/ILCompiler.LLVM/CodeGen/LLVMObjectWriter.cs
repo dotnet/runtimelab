@@ -929,7 +929,7 @@ namespace ILCompiler.DependencyAnalysis
             int pContextOffset = -NonGCStaticsNode.GetClassConstructorContextSize(_nodeFactory.Target);
             LLVMValueRef pContext = CreateAddOffset(builder, nonGcStaticBaseValue, pContextOffset, "pContext");
             LLVMValueRef initialized = builder.BuildLoad2(_intPtrType, pContext, "initialized");
-            LLVMValueRef isInitialized = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, initialized, CreateConst(_intPtrType, 1), "isInitialized");
+            LLVMValueRef isInitialized = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, initialized, CreateConst(_intPtrType, 0), "isInitialized");
 
             LLVMValueRef func = builder.InsertBlock.Parent;
             LLVMBasicBlockRef callHelperBlock = func.AppendBasicBlock("CallHelper");
