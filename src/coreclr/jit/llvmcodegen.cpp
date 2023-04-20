@@ -331,8 +331,7 @@ void Llvm::generateBlocks()
             // if the LLVM function was not created due to the first block not being reachable
             // or the exceptional code block is part of a try that was not reachable,
             // then don't generate the exceptional code block
-            if (m_functions[getLlvmFunctionIndexForBlock(add->acdDstBlk)].LlvmFunction != nullptr &&
-                !(add->acdDstBlk->hasTryIndex() && m_EHDispatchLlvmBlocks[add->acdDstBlk->getTryIndex()] == nullptr))
+            if (m_functions[getLlvmFunctionIndexForBlock(add->acdDstBlk)].LlvmFunction != nullptr)
             {
                 generateBlock(add->acdDstBlk);
             }
@@ -2520,17 +2519,21 @@ llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Val
     {
         catchLlvmBlock = m_EHDispatchLlvmBlocks[getCurrentProtectedRegionIndex()];
 
-        // Protected region index that is set in the emit context refers to the "logical" enclosing
-        // protected region, i. e. the one before funclet creation. But we do not need to (in fact,
-        // cannot) emit an invoke targeting block inside a different LLVM function.
-        if (catchLlvmBlock->getParent() != getCurrentLlvmFunction())
+        if (catchLlvmBlock != nullptr)
         {
-            catchLlvmBlock = nullptr;
-        }
-        // No need to invoke no-throw functions.
-        else if (llvm::isa<Function>(callee.getCallee()) && llvm::cast<Function>(callee.getCallee())->doesNotThrow())
-        {
-            catchLlvmBlock = nullptr;
+            // Protected region index that is set in the emit context refers to the "logical" enclosing
+            // protected region, i. e. the one before funclet creation. But we do not need to (in fact,
+            // cannot) emit an invoke targeting block inside a different LLVM function.
+            if (catchLlvmBlock->getParent() != getCurrentLlvmFunction())
+            {
+                catchLlvmBlock = nullptr;
+            }
+            // No need to invoke no-throw functions.
+            else if (llvm::isa<Function>(callee.getCallee()) &&
+                     llvm::cast<Function>(callee.getCallee())->doesNotThrow())
+            {
+                catchLlvmBlock = nullptr;
+            }
         }
     }
 

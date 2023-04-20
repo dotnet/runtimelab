@@ -18,9 +18,9 @@
     <_targetArchitecture>$(RuntimeIdentifier.SubString($([MSBuild]::Add($(RuntimeIdentifier.LastIndexOf('-')), 1))))</_targetArchitecture>
 
     <_hostPackageName>runtime.$(_hostOS)-$(_hostArchitecture).Microsoft.DotNet.ILCompiler</_hostPackageName>
-    <_hostPackageName Condition="'$(TargetArchitecture)' == 'wasm'">$(_hostPackageName).LLVM</_hostPackageName>
+    <_hostPackageName Condition="'$(_targetArchitecture)' == 'wasm'">$(_hostPackageName).LLVM</_hostPackageName>
     <_targetPackageName>runtime.$(_targetOS)-$(_targetArchitecture).Microsoft.DotNet.ILCompiler</_targetPackageName>
-    <_targetPackageName Condition="'$(TargetArchitecture)' == 'wasm'">$(_targetPackageName).LLVM</_targetPackageName>
+    <_targetPackageName Condition="'$(_targetArchitecture)' == 'wasm'">$(_targetPackageName).LLVM</_targetPackageName>
 
     <!-- From this point onwards, we will treat linux-musl as linux -->
     <_targetOS Condition="$(_targetOS.StartsWith('linux'))">linux</_targetOS>
@@ -43,19 +43,15 @@
   </ItemGroup>
 
   <!-- Generate a warning if the non-SDK path is used  -->
-  <Target Name="GenerateILCompilerExplicitPackageReferenceWarning" Condition="'$(SuppressGenerateILCompilerExplicitPackageReferenceWarning)' == '' and '$(AotRuntimePackageLoadedViaSDK)' != 'true' and '$(ILCompilerTargetsPath)' != '' and '$(TargetArchitecture)' != 'wasm'"
+  <Target Name="GenerateILCompilerExplicitPackageReferenceWarning" Condition="'$(SuppressGenerateILCompilerExplicitPackageReferenceWarning)' == '' and '$(AotRuntimePackageLoadedViaSDK)' != 'true' and '$(ILCompilerTargetsPath)' != ''"
       BeforeTargets="ImportRuntimeIlcPackageTarget">
     <Warning Condition="'%(PackageReference.Identity)' == 'Microsoft.DotNet.ILCompiler' And '%(PackageReference.IsImplicitlyDefined)' != 'true'"
              Text="Delete explicit 'Microsoft.DotNet.ILCompiler' package reference in your project file. Explicit 'Microsoft.DotNet.ILCompiler' package reference can run into version errors." />
   </Target>
 
-  <!-- NativeAOT-LLVM: override ImportRuntimeIlcPackageTarget to not depend on the SDK-provided ResolvedILCompilerPack item -->
-  <PropertyGroup>
-    <!-- EmitLegacyAssetsFileItems tells the SDK to generate PackageDefinitions -->
-    <EmitLegacyAssetsFileItems>true</EmitLegacyAssetsFileItems>
-  </PropertyGroup>
 
   <!-- Locate the runtime package according to the current target runtime -->
+  <!-- Upstream version which we can't use with the current SDK for LLVM/Wasm -->
   <Target Name="ImportRuntimeIlcPackageTarget" Condition="'$(BuildingFrameworkLibrary)' != 'true' and '$(PublishAot)' == 'true' and $(IlcCalledViaPackage) == 'true'" DependsOnTargets="$(ImportRuntimeIlcPackageTargetDependsOn)" BeforeTargets="Publish">
     <Error Condition="'@(ResolvedILCompilerPack)' == ''" Text="The ResolvedILCompilerPack ItemGroup is required for target ImportRuntimeIlcPackageTarget" />
 
@@ -66,6 +62,34 @@
     </PropertyGroup>
 
   </Target>
+
+  <PropertyGroup>
+    <!-- EmitLegacyAssetsFileItems tells the SDK to generate PackageDefinitions -->
+    <EmitLegacyAssetsFileItems>true</EmitLegacyAssetsFileItems>
+  </PropertyGroup>
+
+  <!-- NativeAOT-LLVM: override ImportRuntimeIlcPackageTarget to not depend on the SDK-provided ResolvedILCompilerPack item -->
+  <Target Name="ImportRuntimeIlcPackageTarget" Condition="'$(BuildingFrameworkLibrary)' != 'true' and '$(_targetArchitecture)' == 'wasm'" DependsOnTargets="$(ImportRuntimeIlcPackageTargetDependsOn)" BeforeTargets="Publish">
+    <Error Condition="'@(PackageDefinitions)' == ''" Text="The PackageDefinitions ItemGroup is required for target ImportRuntimeIlcPackageTarget" />
+
+    <PropertyGroup>
+      <HostOSIdentifier Condition="$([MSBuild]::IsOSPlatform('OSX'))">osx</HostOSIdentifier>
+      <HostOSIdentifier Condition="$([MSBuild]::IsOSPlatform('WINDOWS'))">win</HostOSIdentifier>
+      <HostOSIdentifier Condition="'$(HostOSIdentifier)' == ''">linux</HostOSIdentifier>
+
+      <!-- Default to host that matches OS architecture on Windows. It allows compilation using msbuild.exe that is x86 by default -->
+      <IlcHostArch Condition="'$(OS)' == 'Windows_NT' and '$(IlcHostArch)' == ''">$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant)</IlcHostArch>
+      <!-- Default to host that matches SDK architecture on non-Windows -->
+      <IlcHostArch Condition="'$(IlcHostArch)' == ''">$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant)</IlcHostArch>
+      <IlcHostPackageName>runtime.$(HostOSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler.LLVM</IlcHostPackageName>
+
+      <IlcHostPackagePath Condition="'%(PackageDefinitions.Name)' == '$(IlcHostPackageName)'">%(PackageDefinitions.ResolvedPath)</IlcHostPackagePath>
+      <RuntimePackagePath Condition="'%(PackageDefinitions.Name)' == 'runtime.browser-wasm.Microsoft.DotNet.ILCompiler.LLVM'">%(PackageDefinitions.ResolvedPath)</RuntimePackagePath>
+    </PropertyGroup>
+
+  </Target>
+
+  <Target Name="GenerateILCompilerExplicitPackageReferenceWarning" Condition="'$(_targetArchitecture)' == 'wasm'" />
 
   <Import Project="$(MSBuildThisFileDirectory)\Microsoft.NETCore.Native.targets" />
 

@@ -5075,9 +5075,7 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     optLoopsRequirePreHeaders = false;
 
 #ifdef DEBUG
-#ifndef TARGET_WASM
     DoPhase(this, PHASE_STRESS_SPLIT_TREE, &Compiler::StressSplitTree);
-#endif // !TARGET_WASM
 #endif
 
     // Expand runtime lookups (an optimization but we'd better run it in tier0 too)
@@ -5472,7 +5470,6 @@ PhaseStatus Compiler::placeLoopAlignInstructions()
 }
 #endif
 
-#ifndef TARGET_WASM
 //------------------------------------------------------------------------
 // StressSplitTree: A phase that stresses the gtSplitTree function.
 //
@@ -5644,7 +5641,9 @@ void Compiler::generatePatchpointInfo()
 
     // Patchpoints are only found in Tier0 code, which is unoptimized, and so
     // should always have frame pointer.
+#ifndef TARGET_WASM
     assert(codeGen->isFramePointerUsed());
+#endif // TARGET_WASM
 
     // Allocate patchpoint info storage from runtime, and fill in initial bits of data.
     const unsigned        patchpointInfoSize = PatchpointInfo::ComputeSize(info.compLocalsCount);
@@ -5768,7 +5767,6 @@ void Compiler::generatePatchpointInfo()
     // Register this with the runtime.
     info.compCompHnd->setPatchpointInfo(patchpointInfo);
 }
-#endif // !TARGET_WASM
 
 //------------------------------------------------------------------------
 // ResetOptAnnotations: Clear annotations produced during global optimizations.

@@ -505,19 +505,7 @@ void Llvm::initializeLocalInProlog(unsigned lclNum, GenTree* value)
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
     JITDUMP("Adding initialization for V%02u, %s:\n", lclNum, varDsc->lvReason);
 
-    // Block layout struct locals have to be handled specially as they can only be referenced indirectly.
-    GenTreeUnOp* store;
-    if (varDsc->TypeGet() == TYP_STRUCT && varDsc->GetLayout()->IsBlockLayout())
-    {
-        ClassLayout* layout = _compiler->typGetBlkLayout(varDsc->lvExactSize());
-        store        = new (_compiler, GT_STORE_LCL_FLD) GenTreeLclFld(GT_STORE_LCL_FLD, TYP_STRUCT, lclNum, 0, layout);
-        store->gtOp1 = value;
-        store->gtFlags |= (GTF_ASG | GTF_VAR_DEF);
-    }
-    else
-    {
-        store = _compiler->gtNewStoreLclVar(lclNum, value);
-    }
+    GenTreeUnOp* store = _compiler->gtNewStoreLclVar(lclNum, value);
 
     m_prologRange.InsertAtEnd(value);
     m_prologRange.InsertAtEnd(store);
