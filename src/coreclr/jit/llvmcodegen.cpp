@@ -329,7 +329,6 @@ void Llvm::generateBlocks()
         for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
         {
             // if the LLVM function was not created due to the first block not being reachable
-            // or the exceptional code block is part of a try that was not reachable,
             // then don't generate the exceptional code block
             if (m_functions[getLlvmFunctionIndexForBlock(add->acdDstBlk)].LlvmFunction != nullptr)
             {
