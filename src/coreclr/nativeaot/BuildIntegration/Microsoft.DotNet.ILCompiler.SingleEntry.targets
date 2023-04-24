@@ -84,7 +84,7 @@
       <IlcHostPackageName>runtime.$(HostOSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler.LLVM</IlcHostPackageName>
 
       <IlcHostPackagePath Condition="'%(PackageDefinitions.Name)' == '$(IlcHostPackageName)'">%(PackageDefinitions.ResolvedPath)</IlcHostPackagePath>
-      <RuntimePackagePath Condition="'%(PackageDefinitions.Name)' == 'runtime.browser-wasm.Microsoft.DotNet.ILCompiler.LLVM'">%(PackageDefinitions.ResolvedPath)</RuntimePackagePath>
+      <RuntimePackagePath Condition="'%(PackageDefinitions.Name)' == '$(_targetPackageName)'">%(PackageDefinitions.ResolvedPath)</RuntimePackagePath>
     </PropertyGroup>
 
   </Target>
