@@ -330,8 +330,7 @@ void Llvm::generateBlocks()
         {
             // if the LLVM function was not created due to the first block not being reachable
             // then don't generate the exceptional code block
-            if ((add->acdDstBlk->bbFlags & BBF_MARKED) > 0 &&
-                m_functions[getLlvmFunctionIndexForBlock(add->acdDstBlk)].LlvmFunction != nullptr)
+            if ((add->acdDstBlk->bbFlags & BBF_MARKED) != 0)
             {
                 generateBlock(add->acdDstBlk);
             }
