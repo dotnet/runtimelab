@@ -73,13 +73,7 @@
     <Error Condition="'@(PackageDefinitions)' == ''" Text="The PackageDefinitions ItemGroup is required for target ImportRuntimeIlcPackageTarget" />
 
     <PropertyGroup>
-      <!-- Default to host that matches OS architecture on Windows. It allows compilation using msbuild.exe that is x86 by default -->
-      <IlcHostArch Condition="'$(OS)' == 'Windows_NT' and '$(IlcHostArch)' == ''">$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant)</IlcHostArch>
-      <!-- Default to host that matches SDK architecture on non-Windows -->
-      <IlcHostArch Condition="'$(IlcHostArch)' == ''">$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant)</IlcHostArch>
-      <IlcHostPackageName>runtime.$(_hostOS)-$(IlcHostArch).Microsoft.DotNet.ILCompiler.LLVM</IlcHostPackageName>
-
-      <IlcHostPackagePath Condition="'%(PackageDefinitions.Name)' == '$(IlcHostPackageName)'">%(PackageDefinitions.ResolvedPath)</IlcHostPackagePath>
+      <IlcHostPackagePath Condition="'%(PackageDefinitions.Name)' == '$(_hostPackageName)'">%(PackageDefinitions.ResolvedPath)</IlcHostPackagePath>
       <RuntimePackagePath Condition="'%(PackageDefinitions.Name)' == '$(_targetPackageName)'">%(PackageDefinitions.ResolvedPath)</RuntimePackagePath>
     </PropertyGroup>
 
