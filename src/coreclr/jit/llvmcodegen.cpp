@@ -2527,8 +2527,7 @@ llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Val
             catchLlvmBlock = nullptr;
         }
         // No need to invoke no-throw functions.
-        else if (llvm::isa<Function>(callee.getCallee()) &&
-                 llvm::cast<Function>(callee.getCallee())->doesNotThrow())
+        else if (llvm::isa<Function>(callee.getCallee()) && llvm::cast<Function>(callee.getCallee())->doesNotThrow())
         {
             catchLlvmBlock = nullptr;
         }
