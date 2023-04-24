@@ -73,15 +73,11 @@
     <Error Condition="'@(PackageDefinitions)' == ''" Text="The PackageDefinitions ItemGroup is required for target ImportRuntimeIlcPackageTarget" />
 
     <PropertyGroup>
-      <HostOSIdentifier Condition="$([MSBuild]::IsOSPlatform('OSX'))">osx</HostOSIdentifier>
-      <HostOSIdentifier Condition="$([MSBuild]::IsOSPlatform('WINDOWS'))">win</HostOSIdentifier>
-      <HostOSIdentifier Condition="'$(HostOSIdentifier)' == ''">linux</HostOSIdentifier>
-
       <!-- Default to host that matches OS architecture on Windows. It allows compilation using msbuild.exe that is x86 by default -->
       <IlcHostArch Condition="'$(OS)' == 'Windows_NT' and '$(IlcHostArch)' == ''">$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant)</IlcHostArch>
       <!-- Default to host that matches SDK architecture on non-Windows -->
       <IlcHostArch Condition="'$(IlcHostArch)' == ''">$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant)</IlcHostArch>
-      <IlcHostPackageName>runtime.$(HostOSIdentifier)-$(IlcHostArch).Microsoft.DotNet.ILCompiler.LLVM</IlcHostPackageName>
+      <IlcHostPackageName>runtime.$(_hostOS)-$(IlcHostArch).Microsoft.DotNet.ILCompiler.LLVM</IlcHostPackageName>
 
       <IlcHostPackagePath Condition="'%(PackageDefinitions.Name)' == '$(IlcHostPackageName)'">%(PackageDefinitions.ResolvedPath)</IlcHostPackagePath>
       <RuntimePackagePath Condition="'%(PackageDefinitions.Name)' == 'runtime.browser-wasm.Microsoft.DotNet.ILCompiler.LLVM'">%(PackageDefinitions.ResolvedPath)</RuntimePackagePath>

@@ -85,7 +85,7 @@ if (MSVC)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /sourcelink:${CLR_SOURCELINK_FILE_PATH}")
   endif(EXISTS ${CLR_SOURCELINK_FILE_PATH})
 
-  add_linker_flag(/INCREMENTAL:NO) # Not compatible with /DEBUGTYPE
+  add_linker_flag(/INCREMENTAL:NO) # Not compatible with /DEBUGTYPE see https://github.com/dotnet/runtime/issues/64082
 
   # Checked build specific flags
   add_linker_flag(/INCREMENTAL:NO CHECKED) # prevent "warning LNK4075: ignoring '/INCREMENTAL' due to '/OPT:REF' specification"
