@@ -126,7 +126,7 @@ jobs:
     # Linux builds use docker images with dependencies preinstalled,
     # and FreeBSD builds use a build agent with dependencies
     # preinstalled, so we only need this step for OSX and Windows.
-    - ${{ if in(parameters.osGroup, 'osx', 'ios', 'tvos') }}:
+    - ${{ if in(parameters.osGroup, 'osx', 'maccatalyst', 'ios', 'iossimulator', 'tvos', 'tvossimulator') }}:
       - script: $(Build.SourcesDirectory)/eng/install-native-dependencies.sh $(osGroup)
         displayName: Install native dependencies
 
@@ -145,7 +145,7 @@ jobs:
 
     # Build
     - ${{ if ne(parameters.osGroup, 'windows') }}:
-      - script: ./build$(scriptExt) -subset mono$(msCorDbi)+clr.hosts -c $(buildConfig) -arch $(archType) $(osOverride) -ci $(officialBuildIdArg) $(aotCrossParameter) $(llvmParameter) $(darwinFrameworks)
+      - script: ./build$(scriptExt) -subset mono$(msCorDbi)+clr.hosts $(crossArg) -c $(buildConfig) -arch $(archType) $(osOverride) -ci $(officialBuildIdArg) $(aotCrossParameter) $(llvmParameter) $(darwinFrameworks)
         displayName: Build product
     - ${{ if eq(parameters.osGroup, 'windows') }}:
       - script: build$(scriptExt) -subset mono$(msCorDbi)+clr.hosts -c $(buildConfig) -arch $(archType) $(osOverride) -ci $(officialBuildIdArg) $(aotCrossParameter) $(llvmParameter)
@@ -170,7 +170,7 @@ jobs:
 
     # Build packages
     - ${{ if ne(parameters.osGroup, 'windows') }}:
-      - script: ./build$(scriptExt) -subset mono$(msCorDbi)+clr.hosts -c $(buildConfig) -arch $(archType) $(osOverride) -ci $(officialBuildIdArg) $(aotCrossParameter) $(llvmParameter) -pack $(OutputRidArg)
+      - script: ./build$(scriptExt) -subset mono$(msCorDbi)+clr.hosts $(crossArg) -c $(buildConfig) -arch $(archType) $(osOverride) -ci $(officialBuildIdArg) $(aotCrossParameter) $(llvmParameter) -pack $(OutputRidArg)
         displayName: Build nupkg
     - ${{ if eq(parameters.osGroup, 'windows') }}:
       - script: build$(scriptExt) -subset mono$(msCorDbi)+clr.hosts -c $(buildConfig) -arch $(archType) $(osOverride) -ci $(officialBuildIdArg) $(aotCrossParameter) $(llvmParameter) -pack $(OutputRidArg)

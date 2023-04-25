@@ -125,7 +125,7 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         message(FATAL_ERROR "Unknown build type. Set CMAKE_BUILD_TYPE to DEBUG or RELEASE.")
     endif ()
 
-    if (CLR_CMAKE_TARGET_OSX OR CLR_CMAKE_TARGET_MACCATALYST OR CLR_CMAKE_TARGET_IOS OR CLR_CMAKE_TARGET_TVOS)
+    if (CLR_CMAKE_TARGET_APPLE)
         add_definitions(-D__APPLE_USE_RFC_3542)
     endif ()
 
@@ -163,6 +163,10 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         add_compile_options(-Wno-strict-prototypes)
         # TODO-LLVM: fix the reasons for this warning failure
         add_compile_options(-Wno-unused-but-set-variable)
+        if (CLR_CMAKE_TARGET_BROWSER)
+            add_compile_options(-Wno-unsafe-buffer-usage)
+            add_compile_options(-Wno-cast-function-type-strict)
+        endif ()
     endif ()
 
     add_subdirectory(System.Native)
@@ -191,7 +195,7 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         add_subdirectory(System.Security.Cryptography.Native)
     endif ()
 
-    if (CLR_CMAKE_TARGET_OSX OR CLR_CMAKE_TARGET_MACCATALYST OR CLR_CMAKE_TARGET_IOS OR CLR_CMAKE_TARGET_TVOS)
+    if (CLR_CMAKE_TARGET_APPLE)
         add_subdirectory(System.Security.Cryptography.Native.Apple)
     endif ()
 endif ()

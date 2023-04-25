@@ -390,6 +390,7 @@ struct PInvokeTransitionFrame
 {
     Thread*     m_pThread; // Cached so that GetThread is only called once per method
     uint32_t    m_Flags; // PInvokeTransitionFrameFlags. TODO-LLVM-CQ: Remove. Only needed for Thread.Abort "support".
+    TgtPTR_Void m_RIP; // PInvokeTransitionFrameFlags. TODO-LLVM-CQ: Remove.
 };
 #else // USE_PORTABLE_HELPERS
 struct PInvokeTransitionFrame

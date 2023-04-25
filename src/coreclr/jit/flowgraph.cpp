@@ -487,6 +487,7 @@ void Compiler::fgSwitchToOptimized(const char* reason)
     assert(opts.jitFlags->IsSet(JitFlags::JIT_FLAG_TIER0));
     opts.jitFlags->Clear(JitFlags::JIT_FLAG_TIER0);
     opts.jitFlags->Clear(JitFlags::JIT_FLAG_BBINSTR);
+    opts.jitFlags->Clear(JitFlags::JIT_FLAG_BBINSTR_IF_LOOPS);
     opts.jitFlags->Clear(JitFlags::JIT_FLAG_OSR);
     opts.jitFlags->Set(JitFlags::JIT_FLAG_BBOPT);
 
@@ -616,14 +617,6 @@ PhaseStatus Compiler::fgImport()
         compInlineResult->SetImportedILSize(info.compILImportSize);
     }
 
-    // Full preds are only used later on
-    assert(!fgComputePredsDone);
-    if (fgCheapPredsValid)
-    {
-        // Cheap predecessors are only used during importation
-        fgRemovePreds();
-    }
-
     return PhaseStatus::MODIFIED_EVERYTHING;
 }
 
@@ -701,7 +694,19 @@ bool Compiler::fgIsCommaThrow(GenTree* tree, bool forFolding /* = false */)
     return false;
 }
 
-GenTreeCall* Compiler::fgGetStaticsCCtorHelper(CORINFO_CLASS_HANDLE cls, CorInfoHelpFunc helper)
+//------------------------------------------------------------------------
+// fgGetStaticsCCtorHelper: Creates a BasicBlock from the `tree` node.
+//
+// Arguments:
+//    cls       - The class handle
+//    helper    - The helper function
+//    typeIndex - The static block type index. Used only for
+//                CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED to cache
+//                the static block in an array at index typeIndex.
+//
+// Return Value:
+//    The call node corresponding to the helper
+GenTreeCall* Compiler::fgGetStaticsCCtorHelper(CORINFO_CLASS_HANDLE cls, CorInfoHelpFunc helper, uint32_t typeIndex)
 {
     bool         bNeedClassID = true;
     GenTreeFlags callFlags    = GTF_EMPTY;
@@ -729,6 +734,7 @@ GenTreeCall* Compiler::fgGetStaticsCCtorHelper(CORINFO_CLASS_HANDLE cls, CorInfo
             // type = TYP_BYREF;
             break;
 
+        case CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED:
         case CORINFO_HELP_GETSHARED_NONGCSTATIC_BASE_NOCTOR:
             bNeedClassID = false;
             FALLTHROUGH;
@@ -792,11 +798,21 @@ GenTreeCall* Compiler::fgGetStaticsCCtorHelper(CORINFO_CLASS_HANDLE cls, CorInfo
 
         result = gtNewHelperCallNode(helper, type, opModuleIDArg, opClassIDArg);
     }
+    else if (helper == CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED)
+    {
+        result = gtNewHelperCallNode(helper, type, gtNewIconNode(typeIndex, TYP_UINT));
+        result->SetExpTLSFieldAccess();
+    }
     else
     {
         result = gtNewHelperCallNode(helper, type, opModuleIDArg);
     }
 
+    if (IsStaticHelperEligibleForExpansion(result))
+    {
+        // Keep class handle attached to the helper call since it's difficult to restore it.
+        result->gtInitClsHnd = cls;
+    }
     result->gtFlags |= callFlags;
 
     // If we're importing the special EqualityComparer<T>.Default or Comparer<T>.Default
@@ -864,8 +880,7 @@ bool Compiler::fgAddrCouldBeNull(GenTree* addr)
 
         case GT_CNS_STR:
         case GT_FIELD_ADDR:
-        case GT_LCL_VAR_ADDR:
-        case GT_LCL_FLD_ADDR:
+        case GT_LCL_ADDR:
         case GT_CLS_VAR_ADDR:
             return false;
 
@@ -1568,7 +1583,7 @@ void Compiler::fgAddSyncMethodEnterExit()
     assert(!fgFuncletsCreated);
 
     // We need to update the bbPreds lists.
-    assert(fgComputePredsDone);
+    assert(fgPredsComputed);
 
 #if !FEATURE_EH
     // If we don't support EH, we can't add the EH needed by synchronized methods.
@@ -1600,7 +1615,7 @@ void Compiler::fgAddSyncMethodEnterExit()
     // It gets an artificial ref count.
 
     assert(!tryLastBB->bbFallsThrough());
-    BasicBlock* faultBB = fgNewBBafter(BBJ_EHFINALLYRET, tryLastBB, false);
+    BasicBlock* faultBB = fgNewBBafter(BBJ_EHFAULTRET, tryLastBB, false);
 
     assert(tryLastBB->bbNext == faultBB);
     assert(faultBB->bbNext == nullptr);
@@ -1810,16 +1825,7 @@ GenTree* Compiler::fgCreateMonitorTree(unsigned lvaMonAcquired, unsigned lvaThis
             // ret(...) ->
             // ret(comma(comma(tmp=...,call mon_exit), tmp))
             //
-            //
-            // Before morph stage, it is possible to have a case of GT_RETURN(TYP_LONG, op1) where op1's type is
-            // TYP_STRUCT (of 8-bytes) and op1 is call node. See the big comment block in impReturnInstruction()
-            // for details for the case where info.compRetType is not the same as info.compRetNativeType.  For
-            // this reason pass compMethodInfo->args.retTypeClass which is guaranteed to be a valid class handle
-            // if the return type is a value class.  Note that fgInsertCommFormTemp() in turn uses this class handle
-            // if the type of op1 is TYP_STRUCT to perform lvaSetStruct() on the new temp that is created, which
-            // in turn passes it to VM to know the size of value type.
-            GenTree* temp = fgInsertCommaFormTemp(&retNode->AsOp()->gtOp1, info.compMethodInfo->args.retTypeClass);
-
+            GenTree* temp   = fgInsertCommaFormTemp(&retNode->AsOp()->gtOp1);
             GenTree* lclVar = retNode->AsOp()->gtOp1->AsOp()->gtOp2;
 
             // The return can't handle all of the trees that could be on the right-hand-side of an assignment,
@@ -1903,9 +1909,8 @@ void Compiler::fgAddReversePInvokeEnterExit()
 
     lvaReversePInvokeFrameVar = lvaGrabTempWithImplicitUse(false DEBUGARG("Reverse Pinvoke FrameVar"));
 
-    LclVarDsc* varDsc   = lvaGetDesc(lvaReversePInvokeFrameVar);
-    varDsc->lvType      = TYP_BLK;
-    varDsc->lvExactSize = eeGetEEInfo()->sizeOfReversePInvokeFrame;
+    LclVarDsc* varDsc = lvaGetDesc(lvaReversePInvokeFrameVar);
+    lvaSetStruct(lvaReversePInvokeFrameVar, typGetBlkLayout(eeGetEEInfo()->sizeOfReversePInvokeFrame), false);
 
     // Add enter pinvoke exit callout at the start of prolog
 
@@ -2676,21 +2681,8 @@ PhaseStatus Compiler::fgAddInternal()
         lvaSetVarAddrExposed(lvaInlinedPInvokeFrameVar DEBUGARG(AddressExposedReason::ESCAPE_ADDRESS));
 
         LclVarDsc* varDsc = lvaGetDesc(lvaInlinedPInvokeFrameVar);
-        varDsc->lvType    = TYP_BLK;
         // Make room for the inlined frame.
-        varDsc->lvExactSize = eeGetEEInfo()->inlinedCallFrameInfo.size;
-#if FEATURE_FIXED_OUT_ARGS
-        // Grab and reserve space for TCB, Frame regs used in PInvoke epilog to pop the inlined frame.
-        // See genPInvokeMethodEpilog() for use of the grabbed var. This is only necessary if we are
-        // not using the P/Invoke helpers.
-        if (!opts.ShouldUsePInvokeHelpers() && compJmpOpUsed)
-        {
-            lvaPInvokeFrameRegSaveVar = lvaGrabTempWithImplicitUse(false DEBUGARG("PInvokeFrameRegSave Var"));
-            varDsc                    = lvaGetDesc(lvaPInvokeFrameRegSaveVar);
-            varDsc->lvType            = TYP_BLK;
-            varDsc->lvExactSize       = 2 * REGSIZE_BYTES;
-        }
-#endif
+        lvaSetStruct(lvaInlinedPInvokeFrameVar, typGetBlkLayout(eeGetEEInfo()->inlinedCallFrameInfo.size), false);
     }
 
     // Do we need to insert a "JustMyCode" callback?
@@ -2959,37 +2951,14 @@ PhaseStatus Compiler::fgSimpleLowering()
                     break;
                 }
 
-#if FEATURE_FIXED_OUT_ARGS
-                case GT_CALL:
+                case GT_CAST:
                 {
-                    GenTreeCall* call = tree->AsCall();
-                    // Fast tail calls use the caller-supplied scratch
-                    // space so have no impact on this method's outgoing arg size.
-                    if (!call->IsFastTailCall() && !call->IsHelperCall(this, CORINFO_HELP_VALIDATE_INDIRECT_CALL))
+                    if (tree->AsCast()->CastOp()->OperIsSimple() && fgSimpleLowerCastOfSmpOp(range, tree->AsCast()))
                     {
-                        // Update outgoing arg size to handle this call
-                        const unsigned thisCallOutAreaSize = call->gtArgs.OutgoingArgsStackSize();
-                        assert(thisCallOutAreaSize >= MIN_ARG_AREA_FOR_CALL);
-
-                        if (thisCallOutAreaSize > outgoingArgSpaceSize)
-                        {
-                            JITDUMP("Bumping outgoingArgSpaceSize from %u to %u for call [%06d]\n",
-                                    outgoingArgSpaceSize, thisCallOutAreaSize, dspTreeID(tree));
-                            outgoingArgSpaceSize = thisCallOutAreaSize;
-                        }
-                        else
-                        {
-                            JITDUMP("outgoingArgSpaceSize %u sufficient for call [%06d], which needs %u\n",
-                                    outgoingArgSpaceSize, dspTreeID(tree), thisCallOutAreaSize);
-                        }
-                    }
-                    else
-                    {
-                        JITDUMP("outgoingArgSpaceSize not impacted by fast tail call [%06d]\n", dspTreeID(tree));
+                        madeChanges = true;
                     }
                     break;
                 }
-#endif // FEATURE_FIXED_OUT_ARGS
 
 #ifdef TARGET_WASM
                 case GT_RETURN:
@@ -3016,53 +2985,92 @@ PhaseStatus Compiler::fgSimpleLowering()
         }     // foreach tree
     }         // foreach BB
 
-#if FEATURE_FIXED_OUT_ARGS
-    // Finish computing the outgoing args area size
-    //
-    // Need to make sure the MIN_ARG_AREA_FOR_CALL space is added to the frame if:
-    // 1. there are calls to THROW_HELPER methods.
-    // 2. we are generating profiling Enter/Leave/TailCall hooks. This will ensure
-    //    that even methods without any calls will have outgoing arg area space allocated.
-    // 3. We will be generating calls to PInvoke helpers. TODO: This shouldn't be required because
-    //    if there are any calls to PInvoke methods, there should be a call that we processed
-    //    above. However, we still generate calls to PInvoke prolog helpers even if we have dead code
-    //    eliminated all the calls.
-    // 4. We will be generating a stack cookie check. In this case we can call a helper to fail fast.
-    //
-    // An example for these two cases is Windows Amd64, where the ABI requires to have 4 slots for
-    // the outgoing arg space if the method makes any calls.
-    if (outgoingArgSpaceSize < MIN_ARG_AREA_FOR_CALL)
-    {
-        if (compUsesThrowHelper || compIsProfilerHookNeeded() ||
-            (compMethodRequiresPInvokeFrame() && !opts.ShouldUsePInvokeHelpers()) || getNeedsGSSecurityCookie())
-        {
-            outgoingArgSpaceSize = MIN_ARG_AREA_FOR_CALL;
-            JITDUMP("Bumping outgoingArgSpaceSize to %u for possible helper or profile hook call",
-                    outgoingArgSpaceSize);
-        }
-    }
-
-    // If a function has localloc, we will need to move the outgoing arg space when the
-    // localloc happens. When we do this, we need to maintain stack alignment. To avoid
-    // leaving alignment-related holes when doing this move, make sure the outgoing
-    // argument space size is a multiple of the stack alignment by aligning up to the next
-    // stack alignment boundary.
-    if (compLocallocUsed)
-    {
-        outgoingArgSpaceSize = roundUp(outgoingArgSpaceSize, STACK_ALIGN);
-        JITDUMP("Bumping outgoingArgSpaceSize to %u for localloc", outgoingArgSpaceSize);
-    }
-
-    assert((outgoingArgSpaceSize % TARGET_POINTER_SIZE) == 0);
-
-    // Publish the final value and mark it as read only so any update
-    // attempt later will cause an assert.
-    lvaOutgoingArgSpaceSize = outgoingArgSpaceSize;
-    lvaOutgoingArgSpaceSize.MarkAsReadOnly();
-
-#endif // FEATURE_FIXED_OUT_ARGS
-
     return madeChanges ? PhaseStatus::MODIFIED_EVERYTHING : PhaseStatus::MODIFIED_NOTHING;
+}
+
+//------------------------------------------------------------------------
+// fgSimpleLowerCastOfSmpOp: Optimization to remove CAST nodes from operands of some simple ops that are safe to do so
+// since the upper bits do not affect the lower bits, and result of the simple op is zero/sign-extended via a CAST.
+// Example:
+//      CAST(ADD(CAST(x), CAST(y))) transforms to CAST(ADD(x, y))
+//
+// Returns:
+//      True or false, representing changes were made.
+//
+// Notes:
+//      This optimization could be done in morph, but it cannot because there are correctness
+//      problems with NOLs (normalized-on-load locals) and how they are handled in VN.
+//      Simple put, you cannot remove a CAST from CAST(LCL_VAR{nol}) in HIR.
+//
+//      Because the optimization happens after rationalization, turning into LIR, it is safe to remove the CAST.
+//
+bool Compiler::fgSimpleLowerCastOfSmpOp(LIR::Range& range, GenTreeCast* cast)
+{
+    GenTree*  castOp     = cast->CastOp();
+    var_types castToType = cast->CastToType();
+    var_types srcType    = castOp->TypeGet();
+
+    assert(castOp->OperIsSimple());
+
+    if (opts.OptimizationDisabled())
+        return false;
+
+    if (cast->gtOverflow())
+        return false;
+
+    if (castOp->OperMayOverflow() && castOp->gtOverflow())
+        return false;
+
+    // Only optimize if the castToType is a small integer type.
+    // Only optimize if the srcType is an integer type.
+    if (!varTypeIsSmall(castToType) || !varTypeIsIntegral(srcType))
+        return false;
+
+    // These are the only safe ops where the CAST is not necessary for the inputs.
+    if (castOp->OperIs(GT_ADD, GT_SUB, GT_MUL, GT_AND, GT_XOR, GT_OR, GT_NOT, GT_NEG))
+    {
+        bool madeChanges = false;
+
+        if (castOp->gtGetOp1()->OperIs(GT_CAST))
+        {
+            GenTreeCast* op1 = castOp->gtGetOp1()->AsCast();
+
+            if (!op1->gtOverflow() && (genActualType(op1->CastOp()) == genActualType(srcType)) &&
+                (castToType == op1->CastToType()))
+            {
+                // Removes the cast.
+                castOp->AsOp()->gtOp1 = op1->CastOp();
+                range.Remove(op1);
+                madeChanges = true;
+            }
+        }
+
+        if (castOp->OperIsBinary() && castOp->gtGetOp2()->OperIs(GT_CAST))
+        {
+            GenTreeCast* op2 = castOp->gtGetOp2()->AsCast();
+
+            if (!op2->gtOverflow() && (genActualType(op2->CastOp()) == genActualType(srcType)) &&
+                (castToType == op2->CastToType()))
+            {
+                // Removes the cast.
+                castOp->AsOp()->gtOp2 = op2->CastOp();
+                range.Remove(op2);
+                madeChanges = true;
+            }
+        }
+
+#ifdef DEBUG
+        if (madeChanges)
+        {
+            JITDUMP("Lower - Cast of Simple Op %s:\n", GenTree::OpName(cast->OperGet()));
+            DISPTREE(cast);
+        }
+#endif // DEBUG
+
+        return madeChanges;
+    }
+
+    return false;
 }
 
 /*****************************************************************************************************
@@ -3103,9 +3111,9 @@ BasicBlock* Compiler::fgGetDomSpeculatively(const BasicBlock* block)
     BasicBlock* lastReachablePred = nullptr;
 
     // Check if we have unreachable preds
-    for (const flowList* predEdge : block->PredEdges())
+    for (const FlowEdge* predEdge : block->PredEdges())
     {
-        BasicBlock* predBlock = predEdge->getBlock();
+        BasicBlock* predBlock = predEdge->getSourceBlock();
         if (predBlock == block)
         {
             continue;
@@ -3236,7 +3244,7 @@ void Compiler::fgInsertFuncletPrologBlock(BasicBlock* block)
 //
 void Compiler::fgCreateFuncletPrologBlocks()
 {
-    noway_assert(fgComputePredsDone);
+    noway_assert(fgPredsComputed);
     noway_assert(!fgDomsComputed); // this function doesn't maintain the dom sets
     assert(!fgFuncletsCreated);
 
@@ -3407,6 +3415,7 @@ PhaseStatus Compiler::fgDetermineFirstColdBlock()
     // Since we may need to create a new transition block
     // we assert that it is OK to create new blocks.
     //
+    assert(fgPredsComputed);
     assert(fgSafeBasicBlockCreation);
     assert(fgFirstColdBlock == nullptr);
 
@@ -3607,8 +3616,6 @@ PhaseStatus Compiler::fgDetermineFirstColdBlock()
                         BasicBlock* transitionBlock = fgNewBBafter(BBJ_ALWAYS, prevToFirstColdBlock, true);
                         transitionBlock->bbJumpDest = firstColdBlock;
                         transitionBlock->inheritWeight(firstColdBlock);
-
-                        noway_assert(fgComputePredsDone);
 
                         // Update the predecessor list for firstColdBlock
                         fgReplacePred(firstColdBlock, prevToFirstColdBlock, transitionBlock);

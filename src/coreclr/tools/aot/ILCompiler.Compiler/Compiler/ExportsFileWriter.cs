@@ -37,7 +37,7 @@ namespace ILCompiler
                     foreach (var method in _methods)
                         streamWriter.WriteLine($"   {method.GetUnmanagedCallersOnlyExportName()}");
                 }
-                else if(_context.Target.IsOSX || _context.Target.OperatingSystem == TargetOS.WebAssembly)
+                else if(_context.Target.IsOSXLike || _context.Target.OperatingSystem == TargetOS.WebAssembly)
                 {
                     foreach (var method in _methods)
                         streamWriter.WriteLine($"_{method.GetUnmanagedCallersOnlyExportName()}");

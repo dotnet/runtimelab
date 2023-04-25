@@ -61,7 +61,8 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
                 break;
             case TYP_STRUCT:
                 // This case should be **very** rare if at all possible. Just use a new local.
-                structHandle = _compiler->gtGetStructHandle(node);
+                // TODO-LLVM: switch this logic to use layouts instead of handles.
+                structHandle = node->GetLayout(_compiler)->GetClassHandle();
                 break;
             default:
                 unreached();
@@ -96,17 +97,15 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
     auto isGcTemp = [compiler = _compiler](GenTree* node) {
         if (varTypeIsGC(node) || node->TypeIs(TYP_STRUCT))
         {
-            if (node->TypeIs(TYP_STRUCT))
+            if (node->TypeIs(TYP_STRUCT) && !node->OperIs(GT_IND))
             {
-                // TODO-LLVM: replace with "!node->GetLayout()->HasGCPtr()" once enough of upstream is merged.
-                CORINFO_CLASS_HANDLE structHandle = compiler->gtGetStructHandleIfPresent(node);
-                if ((structHandle == NO_CLASS_HANDLE) || !compiler->typGetObjLayout(structHandle)->HasGCPtr())
+                if (!node->GetLayout(compiler)->HasGCPtr())
                 {
                     return false;
                 }
             }
 
-            return !node->OperIsLocal() && !node->OperIsLocalAddr();
+            return !node->OperIsLocal() && !node->OperIs(GT_LCL_ADDR);
         }
 
         return false;
@@ -343,9 +342,7 @@ void Llvm::lowerLocals()
                 else if (!_compiler->fgVarNeedsExplicitZeroInit(lclNum, /* bbInALoop */ false, /* bbIsReturn*/ false) ||
                          varDsc->HasGCPtr())
                 {
-                    var_types zeroType =
-                        ((varDsc->TypeGet() == TYP_STRUCT) || (varDsc->TypeGet() == TYP_BLK)) ? TYP_INT
-                                                                                              : genActualType(varDsc);
+                    var_types zeroType = (varDsc->TypeGet() == TYP_STRUCT) ? TYP_INT : genActualType(varDsc);
                     initializeLocalInProlog(lclNum, _compiler->gtNewZeroConNode(zeroType));
                 }
             }
@@ -417,7 +414,8 @@ void Llvm::populateLlvmArgNums()
         }
 
         CorInfoType argSigType = varDsc->lvCorInfoType;
-        CORINFO_CLASS_HANDLE argSigClass = (varDsc->TypeGet() == TYP_STRUCT) ? varDsc->GetStructHnd() : NO_CLASS_HANDLE;
+        CORINFO_CLASS_HANDLE argSigClass =
+            (varDsc->TypeGet() == TYP_STRUCT) ? varDsc->GetLayout()->GetClassHandle() : NO_CLASS_HANDLE;
         if (getLlvmArgTypeForArg(isManagedAbi, argSigType, argSigClass))
         {
             varDsc->lvLlvmArgNum = nextLlvmArgNum++;
@@ -437,7 +435,7 @@ void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, 
 
     unsigned offset = 0;
     auto assignOffset = [this, &offset](LclVarDsc* varDsc) {
-        if (varDsc->TypeGet() == TYP_BLK)
+        if ((varDsc->TypeGet() == TYP_STRUCT) && varDsc->GetLayout()->IsBlockLayout())
         {
             assert((varDsc->lvSize() % TARGET_POINTER_SIZE) == 0);
 
@@ -448,7 +446,8 @@ void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, 
         else
         {
             CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-            CORINFO_CLASS_HANDLE classHandle = varTypeIsStruct(varDsc) ? varDsc->GetStructHnd() : NO_CLASS_HANDLE;
+            CORINFO_CLASS_HANDLE classHandle =
+                varTypeIsStruct(varDsc) ? varDsc->GetLayout()->GetClassHandle() : NO_CLASS_HANDLE;
 
             offset = padOffset(corInfoType, classHandle, offset);
             varDsc->SetStackOffset(offset);
@@ -507,19 +506,7 @@ void Llvm::initializeLocalInProlog(unsigned lclNum, GenTree* value)
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
     JITDUMP("Adding initialization for V%02u, %s:\n", lclNum, varDsc->lvReason);
 
-    // TYP_BLK locals have to be handled specially as they can only be referenced indirectly.
-    GenTreeUnOp* store;
-    if (varDsc->TypeGet() == TYP_BLK)
-    {
-        ClassLayout* layout = _compiler->typGetBlkLayout(varDsc->lvExactSize);
-        store = new (_compiler, GT_STORE_LCL_FLD) GenTreeLclFld(GT_STORE_LCL_FLD, TYP_STRUCT, lclNum, 0, layout);
-        store->gtOp1 = value;
-        store->gtFlags |= (GTF_ASG | GTF_VAR_DEF);
-    }
-    else
-    {
-        store = _compiler->gtNewStoreLclVar(lclNum, value);
-    }
+    GenTreeUnOp* store = _compiler->gtNewStoreLclVar(lclNum, value);
 
     m_prologRange.InsertAtEnd(value);
     m_prologRange.InsertAtEnd(store);
@@ -596,8 +583,7 @@ void Llvm::lowerNode(GenTree* node)
     {
         case GT_LCL_VAR:
         case GT_LCL_FLD:
-        case GT_LCL_VAR_ADDR:
-        case GT_LCL_FLD_ADDR:
+        case GT_LCL_ADDR:
         case GT_STORE_LCL_VAR:
         case GT_STORE_LCL_FLD:
             lowerLocal(node->AsLclVarCommon());
@@ -612,7 +598,6 @@ void Llvm::lowerNode(GenTree* node)
             break;
 
         case GT_IND:
-        case GT_OBJ:
         case GT_BLK:
         case GT_NULLCHECK:
         case GT_STOREIND:
@@ -653,7 +638,8 @@ void Llvm::lowerLocal(GenTreeLclVarCommon* node)
         lowerStoreLcl(node->AsLclVarCommon());
     }
 
-    if ((node->OperIsLocal() || node->OperIsLocalAddr()) && ConvertShadowStackLocalNode(node->AsLclVarCommon()))
+    if ((node->OperIsLocal() || node->OperIs(GT_LCL_ADDR)) &&
+        ConvertShadowStackLocalNode(node->AsLclVarCommon()))
     {
         return;
     }
@@ -663,7 +649,7 @@ void Llvm::lowerLocal(GenTreeLclVarCommon* node)
         node->gtGetOp1()->SetContained();
     }
 
-    if (node->OperIsLocalAddr() || node->OperIsLocalField())
+    if (node->OperIs(GT_LCL_ADDR) || node->OperIsLocalField())
     {
         // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
         _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
@@ -712,7 +698,7 @@ void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
 
 void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
 {
-    if (node->OperIsLocal() || node->OperIsLocalAddr())
+    if (node->OperIsLocal() || node->OperIs(GT_LCL_ADDR))
     {
         GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
         uint16_t             offset = lclVar->GetLclOffs();
@@ -732,10 +718,6 @@ void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
                     {
                         lclVar->gtFlags |= GTF_VAR_USEASG;
                     }
-                    break;
-
-                case GT_LCL_VAR_ADDR:
-                    lclVar->SetOper(GT_LCL_FLD_ADDR);
                     break;
             }
 
@@ -779,10 +761,9 @@ bool Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* lclNode)
                 break;
             case GT_LCL_FLD:
             case GT_LCL_VAR:
-                indirOper = (layout != nullptr) ? GT_OBJ : GT_IND;
+                indirOper = (layout != nullptr) ? GT_BLK : GT_IND;
                 break;
-            case GT_LCL_VAR_ADDR:
-            case GT_LCL_FLD_ADDR:
+            case GT_LCL_ADDR:
                 // Local address nodes are directly replaced with the ADD.
                 CurrentRange().Remove(lclAddress);
                 lclNode->ReplaceWith(lclAddress, _compiler);
@@ -930,7 +911,8 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
         }
         else
         {
-            CORINFO_CLASS_HANDLE srcHandle = _compiler->gtGetStructHandleIfPresent(src);
+            // TODO-LLVM: switch this logic to use layouts.
+            CORINFO_CLASS_HANDLE srcHandle = src->GetLayout(_compiler)->GetClassHandle();
 
             if (dstLayout->GetClassHandle() != srcHandle)
             {
@@ -1214,7 +1196,7 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
         assert(_compiler->lvaInlinedPInvokeFrameVar != BAD_VAR_NUM);
 
         // Insert CORINFO_HELP_JIT_PINVOKE_BEGIN.
-        GenTreeLclVar* frameAddr = _compiler->gtNewLclVarAddrNode(_compiler->lvaInlinedPInvokeFrameVar);
+        GenTreeLclFld* frameAddr = _compiler->gtNewLclVarAddrNode(_compiler->lvaInlinedPInvokeFrameVar);
         GenTreeCall* helperCall = _compiler->gtNewHelperCallNode(CORINFO_HELP_JIT_PINVOKE_BEGIN, TYP_VOID, frameAddr);
         CurrentRange().InsertBefore(callNode, frameAddr, helperCall);
         lowerLocal(frameAddr);
@@ -1375,8 +1357,7 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 //
 void Llvm::lowerCallReturn(GenTreeCall* callNode)
 {
-    GenTreeLclVarCommon* lcl;
-    if (callNode->IsOptimizingRetBufAsLocal() && !callNode->gtArgs.GetRetBufferArg()->GetNode()->DefinesLocalAddr(&lcl))
+    if (callNode->IsOptimizingRetBufAsLocal() && !callNode->gtArgs.GetRetBufferArg()->GetNode()->OperIs(GT_LCL_ADDR))
     {
         // We may have lost track of a shadow local defined by this call. Clear the flag if so.
         callNode->gtCallMoreFlags &= ~GTF_CALL_M_RETBUFFARG_LCLOPT;
@@ -1429,9 +1410,7 @@ GenTree* Llvm::normalizeStructUse(LIR::Use& use, ClassLayout* layout)
     }
     else
     {
-        // TODO-LLVM: use GenTree::GetLayout here once enough of upstream is merged and delete the
-        // "useHandle == NO_CLASS_HANDLE" check below.
-        CORINFO_CLASS_HANDLE useHandle = _compiler->gtGetStructHandleIfPresent(node);
+        CORINFO_CLASS_HANDLE useHandle = node->GetLayout(_compiler)->GetClassHandle();
 
         // Note both can be blocks ("NO_CLASS_HANDLE"), in which case we don't need to do anything.
         if ((useHandle != layout->GetClassHandle()) &&
@@ -1440,13 +1419,7 @@ GenTree* Llvm::normalizeStructUse(LIR::Use& use, ClassLayout* layout)
             switch (node->OperGet())
             {
                 case GT_BLK:
-                case GT_OBJ:
                     node->AsBlk()->SetLayout(layout);
-                    if (layout->IsBlockLayout() && node->OperIs(GT_OBJ))
-                    {
-                        // OBJ nodes cannot have block layouts.
-                        node->SetOper(GT_BLK);
-                    }
                     break;
 
                 case GT_LCL_FLD:
@@ -1491,18 +1464,8 @@ GenTree* Llvm::createStoreNode(var_types storeType, GenTree* addr, GenTree* data
     GenTree* storeNode;
     if (storeType == TYP_STRUCT)
     {
-        ClassLayout* layout;
-        // TODO-LLVM: use "GenTree::GetLayout" once enough of upstream is merged.
-        if (data->OperIsBlk())
-        {
-            layout = data->AsBlk()->GetLayout();
-        }
-        else
-        {
-            layout = _compiler->typGetObjLayout(_compiler->gtGetStructHandle(data));
-        }
-
-        storeNode = new (_compiler, GT_STORE_BLK) GenTreeBlk(GT_STORE_BLK, storeType, addr, data, layout);
+        storeNode =
+            new (_compiler, GT_STORE_BLK) GenTreeBlk(GT_STORE_BLK, storeType, addr, data, data->GetLayout(_compiler));
     }
     else
     {

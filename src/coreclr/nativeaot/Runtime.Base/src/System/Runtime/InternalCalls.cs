@@ -162,8 +162,8 @@ namespace System.Runtime
 #endif
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        [RuntimeImport(Redhawk.BaseName, "RhpInitMultibyte")]
-        internal static extern unsafe ref byte RhpInitMultibyte(ref byte dmem, int c, nuint size);
+        [RuntimeImport(Redhawk.BaseName, "RhpGcSafeZeroMemory")]
+        internal static extern unsafe ref byte RhpGcSafeZeroMemory(ref byte dmem, nuint size);
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(Redhawk.BaseName, "memmove")]
@@ -322,14 +322,6 @@ namespace System.Runtime
         [DllImport(Redhawk.BaseName)]
         [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvCdecl) })]
         internal static extern void RhpSignalFinalizationComplete();
-
-        [DllImport(Redhawk.BaseName)]
-        [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvCdecl) })]
-        internal static extern void RhpAcquireCastCacheLock();
-
-        [DllImport(Redhawk.BaseName)]
-        [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvCdecl) })]
-        internal static extern void RhpReleaseCastCacheLock();
 
         [DllImport(Redhawk.BaseName)]
         [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvCdecl) })]

@@ -34,6 +34,8 @@ namespace ILCompiler
             new(new[] { "--gdwarf-5" }, "Generate source-level debug information with dwarf version 5");
         public Option<bool> NativeLib { get; } =
             new(new[] { "--nativelib" }, "Compile as static or shared library");
+        public Option<bool> SplitExeInitialization { get; } =
+            new(new[] { "--splitinit" }, "Split initialization of an executable between the library entrypoint and a main entrypoint");
         public Option<string> ExportsFile { get; } =
             new(new[] { "--exportsfile" }, "File to write exported method definitions");
         public Option<string> DgmlLogFileName { get; } =
@@ -162,6 +164,8 @@ namespace ILCompiler
             new(new[] { "--wasmimport" }, "WebAssembly import module names for PInvoke functions");
         public Option<string[]> WasmImportList { get; } =
             new(new[] { "--wasmimportlist" }, "File with list of WebAssembly import module names for PInvoke functions");
+        public Option<string[]> UnmanagedEntryPointsAssemblies { get; } =
+            new(new[] { "--generateunmanagedentrypoints" }, Array.Empty<string>, "Generate unmanaged entrypoints for a given assembly");
 
         public OptimizationMode OptimizationMode { get; private set; }
         public ParseResult Result;
@@ -178,6 +182,7 @@ namespace ILCompiler
             AddOption(EnableDebugInfo);
             AddOption(UseDwarf5);
             AddOption(NativeLib);
+            AddOption(SplitExeInitialization);
             AddOption(ExportsFile);
             AddOption(DgmlLogFileName);
             AddOption(GenerateFullDgmlLog);
@@ -235,6 +240,7 @@ namespace ILCompiler
             AddOption(MakeReproPath);
             AddOption(WasmImport);
             AddOption(WasmImportList);
+            AddOption(UnmanagedEntryPointsAssemblies);
 
             this.SetHandler(context =>
             {
@@ -312,7 +318,7 @@ namespace ILCompiler
                     "considered to be input files. If no input files begin with '--' then this option is not necessary.\n");
 
                 string[] ValidArchitectures = new string[] { "arm", "arm64", "x86", "x64" };
-                string[] ValidOS = new string[] { "windows", "linux", "osx", "freebsd" };
+                string[] ValidOS = new string[] { "windows", "linux", "freebsd", "osx", "maccatalyst", "ios", "iossimulator", "tvos", "tvossimulator" };
 
                 Console.WriteLine("Valid switches for {0} are: '{1}'. The default value is '{2}'\n", "--targetos", string.Join("', '", ValidOS), Helpers.GetTargetOS(null).ToString().ToLowerInvariant());
 

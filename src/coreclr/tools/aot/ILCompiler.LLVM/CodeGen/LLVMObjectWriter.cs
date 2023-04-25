@@ -118,7 +118,7 @@ namespace ILCompiler.DependencyAnalysis
 
                     ObjectData nodeContents = node.GetData(factory);
 
-                    dumper?.DumpObjectNode(factory.NameMangler, node, nodeContents);
+                    dumper?.DumpObjectNode(factory, node, nodeContents);
 #if DEBUG
                     foreach (ISymbolNode definedSymbol in nodeContents.DefinedSymbols)
                     {
@@ -884,7 +884,11 @@ namespace ILCompiler.DependencyAnalysis
             ReadyToRunGenericHelperNode node, GenericLookupResult lookup, LLVMValueRef dictionary)
         {
             // Find the generic dictionary slot
-            int dictionarySlot = factory.GenericDictionaryLayout(node.DictionaryOwner).GetSlotForEntry(lookup);
+            if (!factory.GenericDictionaryLayout(node.DictionaryOwner)
+                    .TryGetSlotForEntry(lookup, out int dictionarySlot))
+            {
+                return LLVMValueRef.CreateConstPointerNull(_ptrType);
+            }
             int offset = dictionarySlot * factory.Target.PointerSize;
 
             // Load the generic dictionary cell
@@ -925,7 +929,7 @@ namespace ILCompiler.DependencyAnalysis
             int pContextOffset = -NonGCStaticsNode.GetClassConstructorContextSize(_nodeFactory.Target);
             LLVMValueRef pContext = CreateAddOffset(builder, nonGcStaticBaseValue, pContextOffset, "pContext");
             LLVMValueRef initialized = builder.BuildLoad2(_intPtrType, pContext, "initialized");
-            LLVMValueRef isInitialized = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, initialized, CreateConst(_intPtrType, 1), "isInitialized");
+            LLVMValueRef isInitialized = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, initialized, CreateConst(_intPtrType, 0), "isInitialized");
 
             LLVMValueRef func = builder.InsertBlock.Parent;
             LLVMBasicBlockRef callHelperBlock = func.AppendBasicBlock("CallHelper");
