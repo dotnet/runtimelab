@@ -99,6 +99,16 @@ public static int Answer()
 ```bash
 > dotnet publish /p:NativeLib=Static /p:SelfContained=true -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false /p:EmccExtraArgs="-s EXPORTED_FUNCTIONS=_Answer -s EXPORTED_RUNTIME_METHODS=cwrap" --self-contained
 ```
+From Javascript, before calling your library the runtime must be initialised explicitly.  This is done with the following Javascript
+```js
+// Initialise the .Net runtime
+const corertInit = Module.cwrap('NativeAOT_StaticInitialization', 'number', []);
+corertInit();
+
+// Call your function
+const answer = Module.cwrap('Answer', 'number', []);
+console.log(answer());
+```
 
 #### WebAssembly module imports
 Functions in other WebAssembly modules can be imported and invoked using `DllImport` e.g.
