@@ -66,7 +66,7 @@ For WebAssembly, it is always a cross-architecture scenario as the compiler runs
 
 Then, remove 
 ```xml
-<NativeAot>true</NativeAot>
+<PublishAot>true</PublishAot>
 ```
 from any `PropertyGroup` tags if you have it. Instead, add
 ```xml
