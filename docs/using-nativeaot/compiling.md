@@ -19,13 +19,13 @@ from the project's root directory. New package sources must be added after the `
 
 Once you have added the package sources, add a reference to the ILCompiler package either by running
 ```bash
-> dotnet add package Microsoft.DotNet.ILCompiler -v 7.0.0-*
+> dotnet add package Microsoft.DotNet.ILCompiler -v 8.0.0-*
 ```
 
 or by adding the following element to the project file:
 ```xml
   <ItemGroup>
-    <PackageReference Include="Microsoft.DotNet.ILCompiler" Version="7.0.0-*" />
+    <PackageReference Include="Microsoft.DotNet.ILCompiler" Version="8.0.0-*" />
   </ItemGroup>
 ```
 
@@ -64,7 +64,17 @@ For WebAssembly, it is always a cross-architecture scenario as the compiler runs
 <PackageReference Include="Microsoft.DotNet.ILCompiler" Version="8.0.0-*" />
 ```
 
-Then, the required package reference is
+Then, remove 
+```xml
+<NativeAot>true</NativeAot>
+```
+from any `PropertyGroup` tags if you have it. Instead, add
+```xml
+<PropertyGroup>
+  <PublishTrimmed>true</PublishTrimmed>
+</PropertyGroup>
+```
+The required package reference is
 ```xml
 <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM; runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="8.0.0-*" />
 ```
