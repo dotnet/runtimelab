@@ -437,7 +437,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-O2 -flto" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
-      <CustomLinkerArg Condition="$(NativeLib) != ''" Include="-Wl,--export,NativeAOT_StaticInitialization" />
+      <CustomLinkerArg Condition="$(NativeLib) == 'Shared'" Include="-Wl,--export,NativeAOT_StaticInitialization" />
       <CustomLinkerArg Include="@(LinkerArg)" />
     </ItemGroup>
 
