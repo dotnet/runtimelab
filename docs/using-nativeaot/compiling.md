@@ -97,7 +97,15 @@ public static int Answer()
 }
 ```
 ```bash
-> dotnet publish /p:NativeLib=Static /p:SelfContained=true -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false /p:EmccExtraArgs="-s EXPORTED_FUNCTIONS=_Answer -s EXPORTED_RUNTIME_METHODS=cwrap" --self-contained
+> dotnet publish /p:NativeLib=Shared -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false /p:EmccExtraArgs="-s EXPORTED_FUNCTIONS=_Answer -s EXPORTED_RUNTIME_METHODS=cwrap --post-js=invokeLibraryFunction.js" --self-contained
+```
+Where `invokeLibraryFunction.js` is a Javascript file with the callback to call `Answer`, e.g.
+```js
+Module['onRuntimeInitialized'] = function() { 
+  // Call your function
+  const answer = Module.cwrap('Answer', 'number', []);
+  console.log(answer())
+};
 ```
 
 #### WebAssembly module imports
