@@ -326,6 +326,11 @@ The .NET Foundation licenses this file to you under the MIT license.
 
   </Target>
 
+  <PropertyGroup Condition="'$(NativeCodeGen)' == 'llvm'">
+    <EmccOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) != 'Size'">-O3</EmccOptimizationSetting>
+    <EmccOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) == 'Size'">-Oz</EmccOptimizationSetting>
+  </PropertyGroup>
+
   <Target Name="WasmObjects"
       Inputs="@(LlvmObjects)"
       Outputs="@(NativeObjects)"
@@ -340,7 +345,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CompileEmccArgs Condition="'$(NativeDebugSymbols)' != 'true'">$(CompileEmccArgs) -O2</CompileEmccArgs>
       <CompileEmccArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileEmccArgs) -g3</CompileEmccArgs>
       <!-- TODO-LLVM: remove when we update to Emscripten with https://github.com/emscripten-core/emscripten/pull/18443 -->
-      <CompileEmccArgs>$(CompileEmccArgs) -s USE_SDL=0</CompileEmccArgs>
+      <CompileEmccArgs>$(CompileEmccArgs) -s USE_SDL=0 $(EmccOptimizationSetting)</CompileEmccArgs>
 
       <ScriptExt Condition="'$(OS)' == 'Windows_NT'">.bat</ScriptExt>
       <EmccPath>&quot;$(EMSDK)/upstream/emscripten/emcc$(ScriptExt)&quot;</EmccPath>
@@ -435,8 +440,9 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s ALLOW_MEMORY_GROWTH=1" />
       <CustomLinkerArg Include="-s DISABLE_EXCEPTION_CATCHING=0" />
       <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" />
-      <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-O2 -flto" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
+      <CustomLinkerArg Condition="'$(Optimize)' == 'true'" Include="-flto" />
+      <CustomLinkerArg Condition="'$(EmccOptimizationSetting)' != ''" Include="$(EmccOptimizationSetting)" />
       <CustomLinkerArg Condition="$(NativeLib) == 'Shared'" Include="-Wl,--export,NativeAOT_StaticInitialization" />
       <CustomLinkerArg Include="@(LinkerArg)" />
     </ItemGroup>
