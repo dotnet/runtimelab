@@ -241,6 +241,12 @@ elseif (CLR_CMAKE_TARGET_ARCH_WASM)
   set(ARCH_HOST_NAME wasm)
   add_definitions(-DHOST_WASM=1)
   add_definitions(-DFEATURE_64BIT_ALIGNMENT=1)
+  if (CLR_CMAKE_TARGET_OS STREQUAL wasi)
+    add_definitions(-DTARGET_WASI=1 -D_WASI_EMULATED_PROCESS_CLOCKS -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_GETPID)
+    # no-unsafe-buffer-usage for pal_random.c
+    # no-unused-macros for _version.c
+    add_compile_options(-Wno-deprecated-declarations -Wno-unsafe-buffer-usage -Wno-unused-macros)
+  endif ()
 elseif (CLR_CMAKE_HOST_ARCH_MIPS64)
   set(ARCH_HOST_NAME mips64)
   add_definitions(-DHOST_MIPS64 -DHOST_64BIT=1)

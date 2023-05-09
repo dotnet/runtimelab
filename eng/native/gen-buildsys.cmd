@@ -53,7 +53,7 @@ if /i "%__Arch%" == "wasm" (
     if /i "%__Os%" == "wasi" (
         if "%WASI_SDK_PATH%" == "" (
             if not exist "%__repoRoot%\src\mono\wasi\wasi-sdk" (
-                echo Error: Should set WASI_SDK_PATH environment variable pointing to emsdk root.
+                echo Error: Should set WASI_SDK_PATH environment variable pointing to wasi-sdk root.
                 exit /B 1
             )
 
@@ -63,7 +63,7 @@ if /i "%__Arch%" == "wasm" (
         set "WASI_SDK_PATH=!WASI_SDK_PATH:\=/!"
         if not "!WASI_SDK_PATH:~-1!" == "/" set "WASI_SDK_PATH=!WASI_SDK_PATH!/"
         set __CmakeGenerator=Ninja
-        set __ExtraCmakeParams=%__ExtraCmakeParams% -DCLR_CMAKE_TARGET_OS=wasi -DCLR_CMAKE_TARGET_ARCH=wasm "-DWASI_SDK_PREFIX=!WASI_SDK_PATH!" "-DCMAKE_TOOLCHAIN_FILE=!WASI_SDK_PATH!/share/cmake/wasi-sdk.cmake" "-DCMAKE_SYSROOT=!WASI_SDK_PATH!/share/wasi-sysroot"
+        set __ExtraCmakeParams=%__ExtraCmakeParams% -DCLR_CMAKE_TARGET_OS=wasi -DCLR_CMAKE_TARGET_ARCH=wasm "-DWASI_SDK_PREFIX=!WASI_SDK_PATH!" "-DCMAKE_TOOLCHAIN_FILE=!WASI_SDK_PATH!/share/cmake/wasi-sdk-pthread.cmake" -DCMAKE_CROSSCOMPILING_EMULATOR="%EMSDK_NODE% --experimental-wasm-bigint --experimental-wasi-unstable-preview1"
     )
 ) else (
     set __ExtraCmakeParams=%__ExtraCmakeParams%  "-DCMAKE_SYSTEM_VERSION=10.0"

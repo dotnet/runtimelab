@@ -224,7 +224,7 @@
         IsNative="true" />
     </ItemGroup>
 
-    <ItemGroup Label="Wasi" Condition="'$(TargetOS)' == 'wasi'">
+    <ItemGroup Label="Wasi" Condition="'$(TargetOS)' == 'wasi' and '$(RuntimeFlavor)' == 'Mono'">
       <LibrariesRuntimeFiles
                              Include="
         $(LibrariesNativeArtifactsPath)dotnet.wasm;

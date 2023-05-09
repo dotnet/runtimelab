@@ -71,10 +71,6 @@ jobs:
       - name: _osParameter
         value: -os ${{ parameters.osGroup }}
 
-      - ${{ if and(eq(parameters.archType, 'wasm'), eq(parameters.runtimeFlavor, 'coreclr')) }}:
-        - name: _osParameter
-          value: -os browser
-
       - ${{ if and(eq(parameters.osGroup, 'linux'), eq(parameters.osSubGroup, '_bionic')) }}:
         - name: _osParameter
           value: /p:RuntimeOS=linux-bionic
@@ -187,13 +183,23 @@ jobs:
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.cmd $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory) ${{ parameters.buildConfig }}
         displayName: Install/build LLVM
 
+    - ${{ if and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.platform, 'wasi_wasm_win')) }}:
+      # Install Wasi Wasm dependencies: emscripten, LLVM,  wasi-sdk
+      - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.cmd $(Build.SourcesDirectory)\wasm-tools
+        displayName: Install/activate emscripten
+      - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.cmd $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory) ${{ parameters.buildConfig }}
+        displayName: Install/build LLVM
+      - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-wasi-sdk.cmd $(Build.SourcesDirectory)\wasm-tools
+        displayName: Install wasi-sdk
+      - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-wasmer.cmd $(Build.SourcesDirectory)\wasm-tools
+        displayName: Install wasmer
 
     - ${{ if and(eq(parameters.osGroup, 'windows'), eq(parameters.archType, 'x64')) }}:
       # Install LLVM for the win-x64 build as it will build the clrjit for browser_wasm cross compilation
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.cmd $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory) ${{ parameters.buildConfig }}
         displayName: Install/build LLVM
 
-    - ${{ if in(parameters.platform, 'browser_wasm_win', 'wasi_wasm_win') }}:
+    - ${{ if or(eq(parameters.platform, 'browser_wasm_win'), and(eq(parameters.platform, 'wasi_wasm_win'), not(eq(parameters.runtimeFlavor, 'coreclr')))) }}:
       # Update machine certs
       - task: PowerShell@2
         displayName: Update machine certs

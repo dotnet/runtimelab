@@ -1297,7 +1297,7 @@ namespace ILCompiler.DependencyAnalysis
                     sys = "tvos11.0";
                     abi = "simulator";
                     break;
-                case TargetOS.WebAssembly:
+                case TargetOS.Browser:
                     vendor = "unknown";
                     sys = "unknown";
                     abi = "wasm";

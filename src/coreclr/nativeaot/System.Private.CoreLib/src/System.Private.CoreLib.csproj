@@ -30,11 +30,14 @@
 
   <PropertyGroup>
     <FeaturePortableThreadPool Condition="'$(FeaturePortableThreadPool)' == ''">false</FeaturePortableThreadPool>
-    <FeaturePortableThreadPool Condition="'$(TargetsUnix)' == 'true' or '$(TargetsBrowser)'=='true'">true</FeaturePortableThreadPool>
+    <FeaturePortableThreadPool Condition="'$(TargetsUnix)' == 'true' or '$(TargetsBrowser)'=='true' or '$(TargetsWasi)'=='true'">true</FeaturePortableThreadPool>
   </PropertyGroup>
   <PropertyGroup>
     <FeaturePortableTimer Condition="'$(FeaturePortableTimer)' == ''">false</FeaturePortableTimer>
-    <FeaturePortableTimer Condition="'$(TargetsUnix)' == 'true' or '$(TargetsBrowser)'=='true'">true</FeaturePortableTimer>
+    <FeaturePortableTimer Condition="'$(TargetsUnix)' == 'true' or '$(TargetsBrowser)'=='true' or '$(TargetsWasi)'=='true'">true</FeaturePortableTimer>
+  </PropertyGroup>
+  <PropertyGroup>
+    <FeatureWasmThreads Condition="'$(TargetsWasi)' == 'true'">true</FeatureWasmThreads>
   </PropertyGroup>
   <PropertyGroup>
     <FeatureHardwareIntrinsics>true</FeatureHardwareIntrinsics>
@@ -312,7 +315,7 @@
     <Compile Include="System\Threading\Win32ThreadPoolNativeOverlapped.OverlappedData.cs" />
     <Compile Include="System\Threading\Win32ThreadPoolPreAllocatedOverlapped.cs" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetsUnix)'=='true' or '$(TargetsBrowser)'=='true'">
+  <ItemGroup Condition="'$(TargetsUnix)'=='true' or '$(TargetsBrowser)'=='true' or '$(TargetsWasi)'=='true'">
     <Compile Include="System\Environment.NativeAot.Unix.cs" />
     <Compile Include="System\Runtime\InteropServices\NativeLibrary.NativeAot.Unix.cs" />
     <Compile Include="System\Runtime\InteropServices\PInvokeMarshal.Unix.cs" />

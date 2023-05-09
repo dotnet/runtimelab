@@ -13,7 +13,7 @@ if(CLR_CMAKE_TARGET_UNIX)
     add_compile_options(-Wno-extra-semi-stmt)
     add_compile_options(-Wno-unknown-warning-option)
 
-    if (CLR_CMAKE_TARGET_UNIX_WASM)
+    if (CLR_CMAKE_TARGET_UNIX_WASM AND CLR_CMAKE_TARGET_BROWSER)
         message("including ICU")
         # add ICU support to emscripten and workaround https://github.com/emscripten-core/emscripten/issues/9302
         # ucol_setVariableTop is deprecated so disable warnings

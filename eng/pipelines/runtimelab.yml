@@ -58,7 +58,7 @@ extends:
     - stage: Build
       jobs:
       #
-      # Build with Release config and Debug runtimeConfiguration - Wasm
+      # Build with Release config and Debug runtimeConfiguration - browser-wasm
       #
       - ${{ if ne(variables.isOfficialBuild, true) }}:
         - template: /eng/pipelines/common/platform-matrix.yml
@@ -72,6 +72,41 @@ extends:
               testGroup: innerloop
               buildArgs: -s clr.nativeaotruntime+clr.nativeaotlibs+libs -lc Release -rc Debug
               extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+
+      #
+      # Build with Release config and Debug runtimeConfiguration - wasi-wasm
+      #
+      - ${{ if ne(variables.isOfficialBuild, true) }}:
+        - template: /eng/pipelines/common/platform-matrix.yml
+          parameters:
+            jobTemplate: /eng/pipelines/common/global-build-job.yml
+            buildConfig: Debug
+            platforms:
+            - wasi_wasm_win
+            jobParameters:
+              timeoutInMinutes: 300
+              testGroup: innerloop
+              buildArgs: -s clr.nativeaotruntime+clr.nativeaotlibs+libs -lc Release -rc Debug
+              extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+
+      #
+      # Build with Release config and Release runtimeConfiguration (used for official builds) - Wasi Wasm
+      #
+      - template: /eng/pipelines/common/platform-matrix.yml
+        parameters:
+          jobTemplate: /eng/pipelines/common/global-build-job.yml
+          buildConfig: Release
+          platforms:
+          - wasi_wasm_win
+          jobParameters:
+            timeoutInMinutes: 300
+            isOfficialBuild: ${{ variables.isOfficialBuild }}
+            testGroup: innerloop
+            buildArgs: -s clr.nativeaotruntime+clr.nativeaotlibs+libs+nativeaot.packages -c Release
+            extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+            extraStepsParameters:
+              isOfficialBuild: ${{ variables.isOfficialBuild }}
+
       #
       # Build with Release config and Debug runtimeConfiguration - the default subsets - not for Wasm
       #
@@ -93,7 +128,7 @@ extends:
                 librariesConfiguration: Release
 
       #
-      # Build with Release config and Release runtimeConfiguration (used for official builds) - Wasm
+      # Build with Release config and Release runtimeConfiguration (used for official builds) - Browser Wasm
       #
       - template: /eng/pipelines/common/platform-matrix.yml
         parameters:

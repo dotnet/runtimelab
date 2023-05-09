@@ -8,5 +8,6 @@
     <OfficialBuildRID Include="win-arm64" Platform="arm64" />
     <OfficialBuildRID Include="win-x64" Platform="x64" />
     <OfficialBuildRID Include="browser-wasm" Platform="wasm" />
+    <OfficialBuildRID Include="wasi-wasm" Platform="wasi" />
   </ItemGroup>
 </Project>

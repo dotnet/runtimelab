@@ -68,6 +68,11 @@
     <EmitLegacyAssetsFileItems>true</EmitLegacyAssetsFileItems>
   </PropertyGroup>
 
+  <PropertyGroup Condition="">
+    <!-- prevent error: Self-contained applications are required to use the application host. Either set SelfContained to false or set UseAppHost to true. Normally set in SDK -->
+    <_RuntimeIdentifierUsesAppHost>false</_RuntimeIdentifierUsesAppHost>
+  </PropertyGroup>
+
   <!-- NativeAOT-LLVM: override ImportRuntimeIlcPackageTarget to not depend on the SDK-provided ResolvedILCompilerPack item -->
   <Target Name="ImportRuntimeIlcPackageTarget" Condition="'$(BuildingFrameworkLibrary)' != 'true' and '$(_targetArchitecture)' == 'wasm'" DependsOnTargets="$(ImportRuntimeIlcPackageTargetDependsOn)" BeforeTargets="Publish">
     <Error Condition="'@(PackageDefinitions)' == ''" Text="The PackageDefinitions ItemGroup is required for target ImportRuntimeIlcPackageTarget" />

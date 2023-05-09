@@ -73,6 +73,7 @@ if /i "%1" == "x86"                      (set __BuildArch=x86&set processedArgs=
 if /i "%1" == "arm"                      (set __BuildArch=arm&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "arm64"                    (set __BuildArch=arm64&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "wasm"                     (set __BuildArch=wasm&set __TargetOS=browser&set __DistroRid=browser-wasm&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
+if /i "%1" == "targetos"                 (set __TargetOS=%2&set __DistroRid=wasi-wasm&set processedArgs=!processedArgs! %1 %2&shift&shift&goto Arg_Loop)
 
 if /i "%1" == "debug"                    (set __BuildType=Debug&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "release"                  (set __BuildType=Release&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)

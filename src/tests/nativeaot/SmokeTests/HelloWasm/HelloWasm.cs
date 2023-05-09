@@ -313,7 +313,9 @@ internal unsafe static class Program
 
         TestInitObjDouble();
 
+#if !CODEGEN_WASI
         TestTryCatch();
+#endif
 
         StartTest("Non/GCStatics field access test");
         if (new FieldStatics().TestGetSet())
@@ -353,6 +355,7 @@ internal unsafe static class Program
 
         TestInterlockedExchange();
 
+#if !CODEGEN_WASI
         TestThrowIfNull();
 
         TestCkFinite();
@@ -362,6 +365,7 @@ internal unsafe static class Program
         TestStackTrace();
 
         TestJavascriptCall();
+#endif
 
         TestPalRandom();
 

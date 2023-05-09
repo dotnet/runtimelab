@@ -9,6 +9,11 @@ include(CheckTypeSize)
 include(CheckLibraryExists)
 
 check_include_files(sys/time.h HAVE_SYS_TIME_H)
+
+if (CLR_CMAKE_TARGET_OS STREQUAL wasi)
+  set(CMAKE_REQUIRED_DEFINITIONS "-D_WASI_EMULATED_MMAN")
+endif ()
+
 check_include_files(sys/mman.h HAVE_SYS_MMAN_H)
 check_include_files(pthread_np.h HAVE_PTHREAD_NP_H)
 

@@ -32,6 +32,17 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\WasmDebugging.csproj" />
     </ItemGroup>
 
+    <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetOS)' == 'wasi'">
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\Reflection_FromUsage.csproj" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\PInvoke\*.csproj" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\MultiModule\*.csproj" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Exceptions\*.csproj" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\UseSystemResourceKeys\*.csproj" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\FrameworkStrings\*.csproj" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\TrimmingBehaviors\*.csproj" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\UnitTests\*.csproj" />
+    </ItemGroup>
+
     <ItemGroup>
       <BuildTestProjects Include="$(__BuildTestProject.Split(';'))" />
       <BuildTestDirs Include="$(__BuildTestDir.Split(';'))" />
