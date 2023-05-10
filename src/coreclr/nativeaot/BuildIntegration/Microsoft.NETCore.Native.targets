@@ -342,7 +342,6 @@ The .NET Foundation licenses this file to you under the MIT license.
     <PropertyGroup>
       <CompileEmccArgs>-c</CompileEmccArgs>
       <CompileEmccArgs>$(CompileEmccArgs) -s DISABLE_EXCEPTION_CATCHING=0</CompileEmccArgs>
-      <CompileEmccArgs Condition="'$(NativeDebugSymbols)' != 'true'">$(CompileEmccArgs) -O2</CompileEmccArgs>
       <CompileEmccArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileEmccArgs) -g3</CompileEmccArgs>
       <!-- TODO-LLVM: remove when we update to Emscripten with https://github.com/emscripten-core/emscripten/pull/18443 -->
       <CompileEmccArgs>$(CompileEmccArgs) -s USE_SDL=0 $(EmccOptimizationSetting)</CompileEmccArgs>
