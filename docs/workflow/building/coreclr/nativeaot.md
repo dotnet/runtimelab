@@ -70,7 +70,7 @@ For the runtime libraries:
   ./emsdk install 3.1.23
   ./emsdk activate 3.1.23
   ```
-- To build for WASI, download and install the Wasi SDK from https://github.com/WebAssembly/wasi-sdk/releases (only Windows is supported currently) and set the `WASI_SDK_PATH` to the location where it is installed, e.g. `set WASI_SDK_PATH=c:\github\wasi-sdk`
+- To build for WASI, download and install the Wasi SDK from https://github.com/WebAssembly/wasi-sdk/releases (only Windows is supported currently) and set the `WASI_SDK_PATH` environment variable to the location where it is installed, e.g. `set WASI_SDK_PATH=c:\github\wasi-sdk`.
 - Run `build clr.nativeaotruntime+clr.nativeaotlibs+libs -c [Debug|Release] -a wasm -os [browser|wasi]`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
 
 For the compilers:
