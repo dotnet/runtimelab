@@ -10,7 +10,7 @@ include(CheckLibraryExists)
 
 check_include_files(sys/time.h HAVE_SYS_TIME_H)
 
-if (CLR_CMAKE_TARGET_OS STREQUAL wasi)
+if (CLR_CMAKE_TARGET_WASI)
   set(CMAKE_REQUIRED_DEFINITIONS "-D_WASI_EMULATED_MMAN")
 endif ()
 

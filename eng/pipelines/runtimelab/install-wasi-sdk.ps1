@@ -2,3 +2,5 @@ Invoke-WebRequest -Uri https://github.com/WebAssembly/wasi-sdk/releases/download
 
 tar -xzf wasi-sdk-20.0.m-mingw.tar.gz
 
+mv wasi-sdk-20.0+m wasi-sdk
+

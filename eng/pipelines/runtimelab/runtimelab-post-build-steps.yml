@@ -27,7 +27,6 @@ steps:
         displayName: Build host packages
 
   # Build coreclr native test output
-  # For Wasm, we are passing the osGroup where normally the archType would be so we can set the right __DistroRid in src/tests/build.cmd
   - ${{ if eq(parameters.platform, 'browser_wasm_win') }}:
     - script: |
         call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
@@ -36,8 +35,8 @@ steps:
   - ${{ elseif eq(parameters.platform, 'wasi_wasm_win') }}:
     - script: |
         call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-        $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} targetos wasi tree nativeaot
-      displayName: Build tests
+        $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} wasi tree nativeaot
+      displayName: Build WebAssembly tests
 
   - ${{ elseif eq(parameters.osGroup, 'windows') }}:
     - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.testFilter }} /p:NativeAotMultimodule=true /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
@@ -55,7 +54,7 @@ steps:
     - ${{ elseif eq(parameters.platform, 'wasi_wasm_win') }}:
       - script: |
           call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-          $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} targetos wasi
+          $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} wasi
         displayName: Run WebAssembly Wasi tests in single file mode
     - ${{ elseif eq(parameters.osGroup, 'windows') }}:
       - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}

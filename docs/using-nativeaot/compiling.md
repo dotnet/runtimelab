@@ -134,12 +134,7 @@ Currently NativeAOT-LLVM supports following additional properties
 
 #### WASM with WASI
 Currently, many things do not work with the WASI publish, notable Exceptions, threads, and any Globalization.  It is also likely to crash when running anything but the simplest programs.  HelloWorld (i.e. `dotnet new console`) does work.
-Set up the project file as above, but in addition add
-```xml
-<ItemGroup>
-  <IlcArg Include="--codegenopt:Target=wasm32-wasi-threads" />
-</ItemGroup>
-```
+Set up the project file as above.
 
 Create the wasm with
 ```

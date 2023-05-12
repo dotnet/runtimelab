@@ -4,10 +4,8 @@
 #ifndef __UNIX_CONTEXT_H__
 #define __UNIX_CONTEXT_H__
 
-// WASI has no ucontext.h file - TODO-LLVM: create and include one?
+// WASI has no thread state contexts.
 #ifndef TARGET_WASI
-#include <ucontext.h>
-#endif
 
 // Convert Unix native context to PAL_LIMITED_CONTEXT
 void NativeContextToPalContext(const void* context, PAL_LIMITED_CONTEXT* palContext);
@@ -138,4 +136,5 @@ struct UNIX_CONTEXT
 #endif // TARGET_ARM
 };
 
+#endif // TARGET_WASI
 #endif // __UNIX_CONTEXT_H__

@@ -6,8 +6,8 @@ echo Installing Wasi SDK
 powershell -NoProfile -NoLogo -ExecutionPolicy ByPass -File "%~dp0install-wasi-sdk.ps1"
 if %errorlevel% NEQ 0 goto fail
 
-echo Setting WASI_SDK_PATH to %1\wasi-sdk-20.0+m
-echo ##vso[task.setvariable variable=WASI_SDK_PATH]%1\wasi-sdk-20.0+m
+echo Setting WASI_SDK_PATH to %1\wasi-sdk
+echo ##vso[task.setvariable variable=WASI_SDK_PATH]%1\wasi-sdk
 
 exit /b 0
 
