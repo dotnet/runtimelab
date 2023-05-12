@@ -119,6 +119,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <IlcCompileDependsOn Condition="'$(BuildingFrameworkLibrary)' != 'true'">Compile;ComputeIlcCompileInputs</IlcCompileDependsOn>
     <IlcCompileDependsOn Condition="'$(IlcMultiModule)' == 'true' and '$(BuildingFrameworkLibrary)' != 'true'">$(IlcCompileDependsOn);BuildFrameworkLib</IlcCompileDependsOn>
     <IlcCompileDependsOn>$(IlcCompileDependsOn);SetupOSSpecificProps</IlcCompileDependsOn>
+    <IlcCompileDependsOn>$(IlcCompileDependsOn);PrepareForILLink</IlcCompileDependsOn>
   </PropertyGroup>
 
   <ItemGroup Condition="$(IlcSystemModule) == ''">
@@ -300,8 +301,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Windows.targets" Condition="'$(_targetOS)' == 'win'" />
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Unix.targets" Condition="'$(_targetOS)' != 'win' and '$(_targetOS)' != 'browser' and '$(_targetOS)' != 'wasi'" />
-  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Browser.props" Condition="'$(_targetOS)' == 'browser'" />
-  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Wasi.props" Condition="'$(_targetOS)' == 'wasi'" />
+  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Wasm.props" Condition="'$(_targetArchitecture)' == 'wasm'" />
 
   <Target Name="MultiFileCopyNative"
       Inputs="@(NativeObjects)"

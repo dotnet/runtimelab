@@ -50,16 +50,11 @@ else()
     set(BUILD_SHARED_LIBS ON)
 endif()
 
-if (CLR_CMAKE_TARGET_BROWSER)
+if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
     # NativeAOT-LLVM: only compile the smoke tests. We do not (currently) need more and 'more' doesn't all compile.
-    add_subdirectory(nativeaot/SmokeTests/PInvoke)
-    add_subdirectory(nativeaot/SmokeTests/HelloWasm)
-    return()
-endif()
-
-# TODO-LLVM: WsSI cannot do the pinvoke tests
-if (CLR_CMAKE_TARGET_WASI)
-    # NativeAOT-LLVM: only compile the smoke tests. We do not (currently) need more and 'more' doesn't all compile.
+    if (CLR_CMAKE_TARGET_BROWSER)
+        add_subdirectory(nativeaot/SmokeTests/PInvoke)
+    endif()
     add_subdirectory(nativeaot/SmokeTests/HelloWasm)
     return()
 endif()

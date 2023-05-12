@@ -291,6 +291,9 @@ if ($os -eq "browser") {
 }
 
 if ($os -eq "wasi") {
+  # override default arch for Browser, we only support wasm
+  $arch = "wasm"
+
   if ($msbuild -eq $True) {
     Write-Error "Using the -msbuild option isn't supported when building for WASI on Windows, we need ninja for WASI-SDK."
     exit 1

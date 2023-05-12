@@ -7,7 +7,5 @@ if (CLR_CMAKE_TARGET_UNIX)
     target_link_libraries (SharedLibraryDriver PRIVATE ${CMAKE_DL_LIBS})
 endif()
 
-if (!CLR_CMAKE_TARGET_WASI)
-  # add the install targets
-  install (TARGETS PInvokeNative DESTINATION bin)
-endif()
+# add the install targets
+install (TARGETS PInvokeNative DESTINATION bin)

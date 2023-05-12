@@ -30,14 +30,11 @@
 
   <PropertyGroup>
     <FeaturePortableThreadPool Condition="'$(FeaturePortableThreadPool)' == ''">false</FeaturePortableThreadPool>
-    <FeaturePortableThreadPool Condition="'$(TargetsUnix)' == 'true' or '$(TargetsBrowser)'=='true' or '$(TargetsWasi)'=='true'">true</FeaturePortableThreadPool>
+    <FeaturePortableThreadPool Condition="'$(TargetsUnix)' == 'true' or '$(TargetsBrowser)'=='true'">true</FeaturePortableThreadPool>
   </PropertyGroup>
   <PropertyGroup>
     <FeaturePortableTimer Condition="'$(FeaturePortableTimer)' == ''">false</FeaturePortableTimer>
-    <FeaturePortableTimer Condition="'$(TargetsUnix)' == 'true' or '$(TargetsBrowser)'=='true' or '$(TargetsWasi)'=='true'">true</FeaturePortableTimer>
-  </PropertyGroup>
-  <PropertyGroup>
-    <FeatureWasmThreads Condition="'$(TargetsWasi)' == 'true'">true</FeatureWasmThreads>
+    <FeaturePortableTimer Condition="'$(TargetsUnix)' == 'true' or '$(TargetsBrowser)'=='true'">true</FeaturePortableTimer>
   </PropertyGroup>
   <PropertyGroup>
     <FeatureHardwareIntrinsics>true</FeatureHardwareIntrinsics>
@@ -333,6 +330,9 @@
   </ItemGroup>
   <ItemGroup Condition="'$(TargetsBrowser)'=='true' and '$(FeatureWasmThreads)' != 'true'">
     <Compile Include="System\Threading\PreAllocatedOverlapped.NativeAot.Wasm.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetsWasi)'=='true'">
+    <Compile Include="System\Threading\ThreadApiCompat.Wasi.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(CompilerCommonPath)\System\Collections\Generic\ArrayBuilder.cs">

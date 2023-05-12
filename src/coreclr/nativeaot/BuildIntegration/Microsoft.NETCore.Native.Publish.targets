@@ -99,10 +99,6 @@
     <Delete Files="$(PublishDir)\$(TargetName).js" Condition="'$(_targetOS)' == 'browser'"/>
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName).js" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser'"/>
 
-    <!-- For Wasi, the .wasm file is the NativeBinaryExt -->
-    <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(_targetOS)' == 'browser'"/>
-    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser'"/>
-
     <!-- dotnet CLI produces managed debug symbols, which we will delete and copy native symbols instead -->
     <Delete Files="$(PublishDir)\$(TargetName).pdb" />
 
