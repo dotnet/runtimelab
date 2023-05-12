@@ -3932,7 +3932,7 @@ internal unsafe static class Program
     {
         StartTest("Test StackTrace");
 #if DEBUG
-        EndTest(new StackTrace().ToString().Contains("TestStackTrace"));
+        EndTest(new StackTrace().ToString().Contains("TestStackTrace"), new StackTrace().ToString());
 #else
         EndTest(new StackTrace().ToString().Contains("wasm-function"));
 #endif

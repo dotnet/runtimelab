@@ -328,6 +328,11 @@ The .NET Foundation licenses this file to you under the MIT license.
 
   </Target>
 
+  <PropertyGroup Condition="'$(NativeCodeGen)' == 'llvm'">
+    <EmccOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) != 'Size'">-O3</EmccOptimizationSetting>
+    <EmccOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) == 'Size'">-Oz</EmccOptimizationSetting>
+  </PropertyGroup>
+
   <Target Name="WasmObjects"
       Inputs="@(LlvmObjects)"
       Outputs="@(NativeObjects)"
@@ -339,10 +344,9 @@ The .NET Foundation licenses this file to you under the MIT license.
     <PropertyGroup Condition="'$(_targetOS)' == 'browser'">
       <CompileWasmArgs>-c</CompileWasmArgs>
       <CompileWasmArgs>$(CompileWasmArgs) -s DISABLE_EXCEPTION_CATCHING=0</CompileWasmArgs>
-      <CompileWasmArgs Condition="'$(NativeDebugSymbols)' != 'true'">$(CompileWasmArgs) -O2</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileWasmArgs) -g3</CompileWasmArgs>
-      <!-- TODO-LLVM: remove when we update to Emscripten with https://github.com/emscripten-core/emscripten/pull/18443 -->
-      <CompileWasmArgs>$(CompileWasmArgs) -s USE_SDL=0</CompileWasmArgs>
+      <!-- TODO-LLVM: remove -s USE_SDL=0 when we update to Emscripten with https://github.com/emscripten-core/emscripten/pull/18443 -->
+      <CompileWasmArgs>$(CompileEmccArgs) -s USE_SDL=0 $(EmccOptimizationSetting)</CompileWasmArgs>
 
       <ScriptExt Condition="'$(OS)' == 'Windows_NT'">.bat</ScriptExt>
       <WasmCompilerPath>&quot;$(EMSDK)/upstream/emscripten/emcc$(ScriptExt)&quot;</WasmCompilerPath>
@@ -460,6 +464,11 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s ALLOW_MEMORY_GROWTH=1" />
       <CustomLinkerArg Include="-s DISABLE_EXCEPTION_CATCHING=0" />
       <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" />
+      <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
+      <CustomLinkerArg Condition="'$(Optimize)' == 'true'" Include="-flto" />
+      <CustomLinkerArg Condition="'$(EmccOptimizationSetting)' != ''" Include="$(EmccOptimizationSetting)" />
+      <CustomLinkerArg Condition="$(NativeLib) == 'Shared'" Include="-Wl,--export,NativeAOT_StaticInitialization" />
+      <CustomLinkerArg Include="@(LinkerArg)" />
     </ItemGroup>
 
     <ItemGroup Condition  ="'$(_targetOS)' == 'wasi'" >
