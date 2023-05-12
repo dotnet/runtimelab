@@ -423,7 +423,7 @@ bool Thread::GcScanRoots(GcScanRootsCallbackFunc * pfnEnumCallback, void * token
 }
 #endif //DACCESS_COMPILE
 
-#ifndef TARGET_WASI
+#ifndef TARGET_WASM
 void Thread::GcScanRootsWorker(void * pfnEnumCallback, void * pvCallbackData, StackFrameIterator & frameIterator)
 {
     PTR_RtuObjectRef pHijackedReturnValue = NULL;
@@ -555,7 +555,7 @@ void Thread::GcScanRootsWorker(void * pfnEnumCallback, void * pvCallbackData, St
     PTR_RtuObjectRef pThreadAbortExceptionObj = dac_cast<PTR_RtuObjectRef>(&m_threadAbortException);
     RedhawkGCInterface::EnumGcRef(pThreadAbortExceptionObj, GCRK_Object, pfnEnumCallback, pvCallbackData);
 }
-#endif //TARGET_WASI
+#endif //TARGET_WASM
 
 #ifndef DACCESS_COMPILE
 

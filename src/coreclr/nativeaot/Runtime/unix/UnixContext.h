@@ -4,8 +4,8 @@
 #ifndef __UNIX_CONTEXT_H__
 #define __UNIX_CONTEXT_H__
 
-// WASI has no thread state contexts.
-#ifndef TARGET_WASI
+// WASM has no thread state contexts.
+#ifndef HOST_WASM
 
 // Convert Unix native context to PAL_LIMITED_CONTEXT
 void NativeContextToPalContext(const void* context, PAL_LIMITED_CONTEXT* palContext);
@@ -22,9 +22,7 @@ uint64_t GetPC(void* context);
 
 struct UNIX_CONTEXT
 {
-#ifndef TARGET_WASI
     ucontext_t ctx;
-#endif
 
 #ifdef TARGET_ARM64
 
@@ -136,5 +134,5 @@ struct UNIX_CONTEXT
 #endif // TARGET_ARM
 };
 
-#endif // TARGET_WASI
+#endif // HOST_WASM
 #endif // __UNIX_CONTEXT_H__
