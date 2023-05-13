@@ -58,6 +58,7 @@
     <DefaultCoreClrSubsets Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'">clr.iltools+clr.packages</DefaultCoreClrSubsets>
 
     <DefaultNativeAotSubsets>clr.alljits+clr.tools+clr.nativeaotlibs+clr.nativeaotruntime</DefaultNativeAotSubsets>
+    <DefaultNativeAotSubsets Condition="'$(TargetArchitecture)' == 'wasm'">clr.nativeaotlibs+clr.nativeaotruntime+nativeaot.build</DefaultNativeAotSubsets>
 
     <DefaultMonoSubsets Condition="'$(MonoEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
     <DefaultMonoSubsets Condition="'$(MonoAOTEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
@@ -81,12 +82,10 @@
     <DefaultHostSubsets Condition="'$(RuntimeFlavor)' != '$(PrimaryRuntimeFlavor)'"></DefaultHostSubsets>
     <DefaultHostSubsets Condition="'$(RuntimeFlavor)' != '$(PrimaryRuntimeFlavor)' and '$(TargetsMobile)' != 'true'">host.native</DefaultHostSubsets>
 
-    <!-- Runtime packs fail to build in NativeAOT branch due to incompatible customizations under libraries. See https://github.com/dotnet/runtimelab/issues/106
     <DefaultPacksSubsets>packs.product</DefaultPacksSubsets>
     <DefaultPacksSubsets Condition="'$(BuildMonoAOTCrossCompilerOnly)' != 'true' and '$(DotNetBuildFromSource)' != 'true'">$(DefaultPacksSubsets)+packs.tests</DefaultPacksSubsets>
     <DefaultPacksSubsets Condition="'$(DotNetBuildFromSource)' == 'true'">$(DefaultPacksSubsets)+packs.installers</DefaultPacksSubsets>
     <DefaultPacksSubsets Condition="'$(RuntimeFlavor)' != 'Mono' and '$(ForceBuildMobileManifests)' == 'true'">$(DefaultPacksSubsets)+mono.manifests</DefaultPacksSubsets>
-    -->
   </PropertyGroup>
 
   <PropertyGroup>
@@ -117,6 +116,7 @@
   <ItemGroup>
     <!-- CoreClr Native AOT -->
     <SubsetName Include="NativeAot.Packages" Description="The CoreCLR native AOT compiler." />
+    <SubsetName Include="NativeAot.Build" Description="The CoreCLR native AOT build integration." />
 
     <!-- CoreClr -->
     <SubsetName Include="Clr" Description="The full CoreCLR runtime. Equivalent to: $(DefaultCoreClrSubsets)" />
@@ -391,8 +391,7 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\**\src\*.csproj" Category="clr" />
   </ItemGroup>
 
-  <!-- TODO-LLVM: Keeps the command line shorter, but delete when we merge clr.aot -->
-  <ItemGroup Condition="$(_subset.Contains('+clr.nativeaotruntime+'))">
+  <ItemGroup Condition="$(_subset.Contains('+nativeaot.build+'))">
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
   </ItemGroup>
