@@ -291,7 +291,7 @@ if ($os -eq "browser") {
 }
 
 if ($os -eq "wasi") {
-  # override default arch for Browser, we only support wasm
+  # override default arch for wasi, we only support wasm
   $arch = "wasm"
 
   if ($msbuild -eq $True) {

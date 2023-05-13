@@ -70,7 +70,7 @@ For the runtime libraries:
   ./emsdk install 3.1.23
   ./emsdk activate 3.1.23
   ```
-- To build for WASI, download and install the Wasi SDK from https://github.com/WebAssembly/wasi-sdk/releases (only Windows is supported currently) and set the `WASI_SDK_PATH` to the location where it is installed, e.g. `set WASI_SDK_PATH=c:\github\wasi-sdk`
+- To build for WASI, download and install the Wasi SDK from https://github.com/WebAssembly/wasi-sdk/releases (only Windows is supported currently) and set the `WASI_SDK_PATH` environment variable to the location where it is installed, e.g. `set WASI_SDK_PATH=c:\github\wasi-sdk`.
 - Run `build clr.nativeaotruntime+clr.nativeaotlibs+libs -c [Debug|Release] -a wasm -os [browser|wasi]`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
 
 For the compilers:
@@ -109,13 +109,6 @@ and the following two references to the project file itself:
 ```
 You should now be able to publish the project for Wasm: `dotnet publish --self-contained -r browser-wasm /p:MSBuildEnableWorkloadResolver=false`. This produces `YourApp.html` and `YourApp.js` files under `bin\<Config>\<TFM>\browser-wasm\native`. The former can be opened in the browser, the latter - run via NodeJS.
 
-### WASI
-To build with WASI, 
-- Download and install the Wasi SDK from https://github.com/WebAssembly/wasi-sdk/releases (only Windows is supported currently)
-- Set the WASI_SDK_PATH to the location where it is installed, e.g. set WASI_SDK_PATH=c:\github\wasi-sdk
--  Run `build clr.nativeaotruntime+clr.nativeaotlibs+libs -c [Debug|Release] -a wasm -os wasi`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
-- If you want to test the packages then they can be built with `build nativeaot.packages -a wasm -os wasi`
- 
 ## Visual Studio Solutions
 
 The repository has a number of Visual Studio Solutions files (`*.sln`) that are useful for editing parts of the repository. Build the repo from command line first before building using the solution files. Remember to select the appropriate configuration that you built. By default, `build.cmd` builds Debug x64 and so `Debug` and `x64` must be selected in the solution build configuration drop downs.
