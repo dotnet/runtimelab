@@ -24,6 +24,7 @@ int getrlimit (int resource_id, struct rlimit * ret_rlimit);
 #define PALEXPORT __attribute__ ((__visibility__ ("default")))
 #endif // PALEXPORT
 
+/*
 PALEXPORT int GlobalizationNative_IndexOf(void* pSortHandle,
                                               void* lpTarget,
                                               int cwTargetLength,
@@ -31,7 +32,7 @@ PALEXPORT int GlobalizationNative_IndexOf(void* pSortHandle,
                                               int cwSourceLength,
                                               int options,
                                               void* pMatchedLength);
-
+*/
 void *mmap_wasi(void *addr, size_t length, int prot, int flags,
                   int fd, off_t offset);
 int munmap_wasi(void *addr, size_t length);

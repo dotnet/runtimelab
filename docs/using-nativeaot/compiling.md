@@ -138,7 +138,7 @@ Set up the project file as above.
 
 Create the wasm with
 ```
-dotnet publish -r wasi-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false --self-contained```
+dotnet publish -r wasi-wasm -c Debug /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false --self-contained```
 `wasmtime` is the only tested runtime.  An example invocation with wasmer:
 ```
 wasmer bin\Debug\net8.0\wasi-wasm\publish\console.wasm
