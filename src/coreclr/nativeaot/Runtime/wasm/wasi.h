@@ -6,7 +6,6 @@
 
 #include <sys/resource.h>
 #include <sys/mman.h>
-#include <pthread.h>
 
 typedef unsigned long long rlim_t;
 
@@ -20,23 +19,8 @@ struct rlimit {
 
 int getrlimit (int resource_id, struct rlimit * ret_rlimit);
 
-#ifndef PALEXPORT
-#define PALEXPORT __attribute__ ((__visibility__ ("default")))
-#endif // PALEXPORT
-
-/*
-PALEXPORT int GlobalizationNative_IndexOf(void* pSortHandle,
-                                              void* lpTarget,
-                                              int cwTargetLength,
-                                              void* lpSource,
-                                              int cwSourceLength,
-                                              int options,
-                                              void* pMatchedLength);
-*/
 void *mmap_wasi(void *addr, size_t length, int prot, int flags,
                   int fd, off_t offset);
 int munmap_wasi(void *addr, size_t length);
-
-int pthread_getattr_np(pthread_t t, pthread_attr_t *a);
 
 #endif // _WASI_H

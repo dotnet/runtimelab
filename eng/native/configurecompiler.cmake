@@ -613,7 +613,7 @@ if(CLR_CMAKE_TARGET_UNIX)
 elseif(CLR_CMAKE_TARGET_WASI)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_OS>>>:TARGET_WASI>)
   if (CLR_CMAKE_TARGET_OS STREQUAL wasi)
-    add_definitions(-D_WASI_EMULATED_PROCESS_CLOCKS -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_GETPID)
+    add_definitions(-D_WASI_EMULATED_PROCESS_CLOCKS -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_GETPID -D_GNU_SOURCES)
     # no-unsafe-buffer-usage for pal_random.c
     # no-unused-macros for _version.c
     add_compile_options(-Wno-deprecated-declarations -Wno-unsafe-buffer-usage -Wno-unused-macros)

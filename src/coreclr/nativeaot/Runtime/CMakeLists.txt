@@ -160,7 +160,6 @@ else()
     )
     if (CLR_CMAKE_TARGET_WASI)
       list(APPEND COMMON_RUNTIME_SOURCES
-        wasm/wasi_pthread.c
         wasm/wasi_mmap.cpp
       )
     endif()
