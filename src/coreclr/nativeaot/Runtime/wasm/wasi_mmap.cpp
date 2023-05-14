@@ -2,8 +2,10 @@
 #include <string.h>
 
 #include "CommonTypes.h"
-#include "../CommonMacros.h"
+#include "CommonMacros.h"
 
+// WASI SDK currently has an implementation of mmap that does not observe the alignment requirement
+// so we have an incomplete implementation here which cannot handle partial unmaps.
 void *mmap_wasi(void *addr, size_t length, int prot, int flags,
                   int fd, off_t offset)
 {

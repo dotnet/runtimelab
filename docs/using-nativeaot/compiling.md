@@ -138,17 +138,18 @@ Set up the project file as above.
 
 Create the wasm with
 ```
-dotnet publish -r wasi-wasm -c Debug /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false --self-contained```
-`wasmtime` is the only tested runtime.  An example invocation with wasmer:
+dotnet publish -r wasi-wasm -c Debug /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false --self-contained
+```
+`wasmer` is the only tested runtime.  An example invocation with wasmer:
 ```
 wasmer bin\Debug\net8.0\wasi-wasm\publish\console.wasm
 ```
-Or with wasmtime passing the required flags:
+
+Note that while we are enabling threads, they do not work attempting to create a thread will most likely crash.
+`wasmtime` can also be used by passing the required flags:
 ```
 wasmtime --wasm-features=threads --wasi-modules=experimental-wasi-threads bin\Debug\net8.0\wasi-wasm\publish\console.wasm
 ```
-Note that while we are enabling threads, they do not work attempting to create a thread will most likely crash.
-
 ### Cross-compiling on Linux
 Similarly, to target linux-arm64 on a Linux x64 host, in addition to the `Microsoft.DotNet.ILCompiler` package reference, also add the `runtime.linux-x64.Microsoft.DotNet.ILCompiler` package reference to get the x64-hosted compiler:
 ```xml

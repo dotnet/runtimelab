@@ -458,7 +458,6 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Condition="'$(Optimize)' != 'true'" Include="$(WasmOptimizationSetting) -flto" />
       <CustomLinkerArg Condition="$(NativeLib) == 'Shared'" Include="-Wl,--export,NativeAOT_StaticInitialization" />
       <CustomLinkerArg Condition="'$(IlcLlvmTarget)' != ''" Include="-target $(IlcLlvmTarget)" />
-      <CustomLinkerArg Include="@(LinkerArg)" />
     </ItemGroup>
 
     <ItemGroup Condition = "'$(_targetOS)' == 'browser'" >
@@ -476,6 +475,10 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="--sysroot=&quot;$(WASI_SDK_PATH.Replace(&quot;\&quot;, &quot;/&quot;))/share/wasi-sysroot&quot;" />
       <CustomLinkerArg Include="-Wl,--import-memory,--export-memory,--max-memory=2147483648" />
       <CustomLinkerArg Include="-lwasi-emulated-process-clocks -lwasi-emulated-signal -lwasi-emulated-mman -lwasi-emulated-getpid" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <CustomLinkerArg Include="@(LinkerArg)" />
     </ItemGroup>
 
     <WriteLinesToFile File="$(NativeIntermediateOutputPath)link.rsp" Lines="@(CustomLinkerArg)" Overwrite="true" Encoding="utf-8" />
