@@ -12,30 +12,10 @@
 
 struct TypeDescriptor
 {
-private:
-    unsigned              m_fieldCount;
-    CORINFO_FIELD_HANDLE* m_fields;
-    unsigned              m_hasSignificantPadding;
-
-    TypeDescriptor()
-    {
-    }
-
-public:
-    unsigned getFieldCount()
-    {
-        return m_fieldCount;
-    }
-
-    CORINFO_FIELD_HANDLE getField(unsigned index)
-    {
-        return m_fields[index];
-    }
-
-    unsigned hasSignificantPadding()
-    {
-        return m_hasSignificantPadding;
-    }
+    unsigned              Size;
+    unsigned              FieldCount;
+    CORINFO_FIELD_HANDLE* Fields;
+    unsigned              HasSignificantPadding;
 };
 
 struct FieldDesc

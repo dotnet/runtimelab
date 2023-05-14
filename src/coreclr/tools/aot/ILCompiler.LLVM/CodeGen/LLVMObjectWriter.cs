@@ -338,12 +338,12 @@ namespace ILCompiler.DependencyAnalysis
             }
 
 #if DEBUG
-            _module.PrintToFile(Path.ChangeExtension(_objectFilePath, ".txt"));
+            _module.PrintToFile(Path.ChangeExtension(_objectFilePath, "data.txt"));
 #endif
             _module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
             _moduleWithExternalFunctions.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 
-            _module.WriteBitcodeToFile(_objectFilePath);
+            _module.WriteBitcodeToFile(Path.ChangeExtension(_objectFilePath, "data.bc"));
             _moduleWithExternalFunctions.WriteBitcodeToFile(Path.ChangeExtension(_objectFilePath, "external.bc"));
         }
 

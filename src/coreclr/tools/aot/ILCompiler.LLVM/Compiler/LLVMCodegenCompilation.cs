@@ -2,12 +2,13 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 
 using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysisFramework;
@@ -25,9 +26,10 @@ namespace ILCompiler
 {
     public sealed class LLVMCodegenCompilation : RyuJitCompilation
     {
+        private ConcurrentDictionary<int, CorInfoImpl> _corinfos;
         private readonly Dictionary<TypeDesc, LLVMTypeRef> _llvmStructs = new();
-        private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new();
         private string _outputFile;
+        private int _bitcodeFileId;
 
         internal string Target { get; }
         internal string DataLayout { get; }
@@ -47,7 +49,8 @@ namespace ILCompiler
             InstructionSetSupport instructionSetSupport,
             ConfigurableWasmImportPolicy configurableWasmImportPolicy,
             MethodImportationErrorProvider errorProvider,
-            RyuJitCompilationOptions baseOptions)
+            RyuJitCompilationOptions baseOptions,
+            int /* parallelism */ _)
             : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy, instructionSetSupport,
                 null /* ProfileDataManager */, errorProvider, baseOptions, 1)
         {
@@ -63,16 +66,16 @@ namespace ILCompiler
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             _outputFile = outputFile;
+            _corinfos = new();
             CorInfoImpl.JitStartCompilation();
 
             _dependencyGraph.ComputeMarkedNodes();
 
-            foreach (var (_, _) in _corinfos)
+            foreach (var (_, corInfo) in _corinfos)
             {
-                CorInfoImpl.JitFinishThreadContextBoundCompilation();
+                corInfo.JitFinishSingleThreadedCompilation();
             }
-
-            CorInfoImpl.JitFinishCompilation();
+            _corinfos = null;
 
             LLVMObjectWriter.EmitObject(outputFile, _dependencyGraph.MarkedNodeList, this, dumper);
 
@@ -83,7 +86,9 @@ namespace ILCompiler
         {
             // Determine the list of method we actually need to compile
             var methodsToCompile = new List<LLVMMethodCodeNode>();
-            foreach (var dependency in obj)
+            var canonicalMethodsToCompile = new HashSet<MethodDesc>();
+
+            foreach (DependencyNodeCore<NodeFactory> dependency in obj)
             {
                 var methodCodeNodeNeedingCode = dependency as LLVMMethodCodeNode;
                 if (methodCodeNodeNeedingCode == null)
@@ -94,24 +99,43 @@ namespace ILCompiler
                     methodCodeNodeNeedingCode = (LLVMMethodCodeNode)dependencyMethod.CanonicalMethodNode;
                 }
 
-                // We might have already compiled this method.
-                if (methodCodeNodeNeedingCode.StaticDependenciesAreComputed)
+                // We might have already queued this method for compilation
+                MethodDesc method = methodCodeNodeNeedingCode.Method;
+                if (method.IsCanonicalMethod(CanonicalFormKind.Any)
+                    && !canonicalMethodsToCompile.Add(method))
+                {
                     continue;
+                }
 
                 methodsToCompile.Add(methodCodeNodeNeedingCode);
             }
-            CompileSingleThreaded(methodsToCompile);
+
+            if (_parallelism == 1)
+            {
+                CompileSingleThreaded(methodsToCompile);
+            }
+            else
+            {
+                CompileMultiThreaded(methodsToCompile);
+            }
+        }
+
+        private void CompileMultiThreaded(List<LLVMMethodCodeNode> methodsToCompile)
+        {
+            if (Logger.IsVerbose)
+            {
+                Logger.LogMessage($"Compiling {methodsToCompile.Count} methods...");
+            }
+
+            Parallel.ForEach(
+                methodsToCompile,
+                new ParallelOptions { MaxDegreeOfParallelism = _parallelism },
+                CompileSingleMethod);
         }
 
         private void CompileSingleThreaded(List<LLVMMethodCodeNode> methodsToCompile)
         {
-            CorInfoImpl corInfo = _corinfos.GetValue(Thread.CurrentThread, thread =>
-            {
-                string outputFilePath = Path.ChangeExtension(_outputFile, null) + "clrjit.bc";
-                CorInfoImpl.JitStartThreadContextBoundCompilation(outputFilePath, Target, DataLayout);
-
-                return new CorInfoImpl(this);
-            });
+            CorInfoImpl corInfo = _corinfos.GetOrAdd(Environment.CurrentManagedThreadId, StartSingleThreadedCompilation);
 
             foreach (LLVMMethodCodeNode methodCodeNodeNeedingCode in methodsToCompile)
             {
@@ -125,6 +149,27 @@ namespace ILCompiler
 
                 CompileSingleMethod(corInfo, methodCodeNodeNeedingCode);
             }
+        }
+
+        private void CompileSingleMethod(LLVMMethodCodeNode methodCodeNodeNeedingCode)
+        {
+            CorInfoImpl corInfo = _corinfos.GetOrAdd(Environment.CurrentManagedThreadId, StartSingleThreadedCompilation);
+            CompileSingleMethod(corInfo, methodCodeNodeNeedingCode);
+        }
+
+        private CorInfoImpl StartSingleThreadedCompilation(int _)
+        {
+            CorInfoImpl corInfo = new CorInfoImpl(this);
+
+            string outputFilePath = _outputFile;
+            if (_parallelism != 1)
+            {
+                int id = Interlocked.Increment(ref _bitcodeFileId);
+                outputFilePath = Path.ChangeExtension(_outputFile, null) + $".{id}.bc";
+            }
+            corInfo.JitStartSingleThreadedCompilation(outputFilePath, Target, DataLayout);
+
+            return corInfo;
         }
 
         private unsafe void CompileSingleMethod(CorInfoImpl corInfo, LLVMMethodCodeNode methodCodeNodeNeedingCode)
