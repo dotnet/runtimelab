@@ -55,7 +55,7 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         set(STATIC_LIB_DESTINATION .)
 
         if (CLR_CMAKE_TARGET_BROWSER)
-            # no ICU for wasi
+            # NativeAOT-LLVM: no ICU for WASI yet.
             add_subdirectory(System.Globalization.Native)
         endif ()
     endif ()
