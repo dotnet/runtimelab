@@ -568,19 +568,21 @@ void Llvm::generateEHDispatch()
         llvm::CallBase* dispatchDestValue = nullptr;
         if (innerEHIndex == ehIndex)
         {
-            Value* handlerValue = getLlvmFunctionForIndex(ehDsc->ebdFuncIndex);
+            // Filters can have unreachable handlers. Pass a null function pointer to the dispatcher in that case.
+            Value* handlerValue = isReachable(ehDsc->ebdHndBeg) ? getLlvmFunctionForIndex(ehDsc->ebdFuncIndex)
+                                                                : llvm::Constant::getNullValue(getPtrLlvmType());
 
-            if (ehDsc->ebdHandlerType == EH_HANDLER_CATCH)
-            {
-                Value* typeSymbolRefValue = getOrCreateSymbol(getSymbolHandleForClassToken(ehDsc->ebdTyp));
-                dispatchDestValue = emitHelperCall(CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH, {funcletShadowStackValue,
-                                                   dispatchDataRefValue, handlerValue, typeSymbolRefValue});
-            }
-            else if (ehDsc->ebdHandlerType == EH_HANDLER_FILTER)
+            if (ehDsc->ebdHandlerType == EH_HANDLER_FILTER)
             {
                 Value* filterValue = getLlvmFunctionForIndex(ehDsc->ebdFuncIndex - 1);
                 dispatchDestValue = emitHelperCall(CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER, {funcletShadowStackValue,
                                                    dispatchDataRefValue, handlerValue, filterValue});
+            }
+            else if (ehDsc->ebdHandlerType == EH_HANDLER_CATCH)
+            {
+                Value* typeSymbolRefValue = getOrCreateSymbol(getSymbolHandleForClassToken(ehDsc->ebdTyp));
+                dispatchDestValue = emitHelperCall(CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH, {funcletShadowStackValue,
+                                                   dispatchDataRefValue, handlerValue, typeSymbolRefValue});
             }
             else
             {
@@ -1838,6 +1840,13 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
 
 void Llvm::buildCall(GenTreeCall* call)
 {
+    if (isUnhandledExceptionHandler(call))
+    {
+        // Note: the exception object argument is already on the shadow stack since we're in a filter.
+        emitHelperCall(CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION, {}, /* doTailCall */ true);
+        return;
+    }
+
     std::vector<Value*> argVec = std::vector<Value*>();
     for (CallArg& arg : call->gtArgs.Args())
     {
@@ -2422,6 +2431,20 @@ unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned en
     return size;
 }
 
+bool Llvm::isUnhandledExceptionHandler(GenTreeCall* call)
+{
+    if (call->IsHelperCall(_compiler, CORINFO_HELP_FAIL_FAST))
+    {
+        FuncInfoDsc* funcDsc = _compiler->funGetFunc(getCurrentLlvmFunctionIndex());
+        if ((funcDsc->funKind == FUNC_FILTER) && (funcDsc->funEHIndex == m_unhandledExceptionHandlerIndex))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind)
 {
     if (_compiler->fgUseThrowHelperBlocks())
@@ -2482,7 +2505,7 @@ Value* Llvm::emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Val
     return _builder.CreateExtractValue(checkedValue, 0);
 }
 
-llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpAnyFunc helperFunc, ArrayRef<Value*> sigArgs)
+llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpAnyFunc helperFunc, ArrayRef<Value*> sigArgs, bool doTailCall)
 {
     assert(!helperCallRequiresShadowStackSave(helperFunc));
 
@@ -2500,7 +2523,7 @@ llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpAnyFunc helperFunc, ArrayRef<Val
     if (helperCallHasShadowStackArg(helperFunc))
     {
         std::vector<Value*> args = sigArgs.vec();
-        args.insert(args.begin(), getShadowStackForCallee());
+        args.insert(args.begin(), doTailCall ? getShadowStack() : getShadowStackForCallee());
 
         call = emitCallOrInvoke(helperLlvmFunc, args);
     }
@@ -2695,9 +2718,12 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpAnyFunc helperFunc)
         CorInfoType argType;
         bool isArgPassedByRef;
         bool isLlvmArg = getLlvmArgTypeForArg(isManagedHelper, argSigType, argSigClass, &argType, &isArgPassedByRef);
-        assert(isLlvmArg && !isArgPassedByRef);
+        assert(!isArgPassedByRef);
 
-        argVec.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
+        if (isLlvmArg)
+        {
+            argVec.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
+        }
     }
 
     bool isReturnByRef;

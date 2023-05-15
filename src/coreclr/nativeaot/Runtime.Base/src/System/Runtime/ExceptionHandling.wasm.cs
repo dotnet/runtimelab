@@ -2,10 +2,13 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 using Internal.Runtime;
+
+// Disable: Filter expression is a constant. We know. We just can't do an unfiltered catch.
+#pragma warning disable 7095
 
 namespace System.Runtime
 {
@@ -115,6 +118,48 @@ namespace System.Runtime
             object exception = BeginSingleDispatch(RhEHClauseKind.RH_EH_CLAUSE_FAULT, null, pShadowFrame, pDispatchData);
             CallFinallyFunclet(pHandler, pShadowFrame);
             DispatchContinueSearch(exception, pDispatchData);
+        }
+
+        // This handler is called by codegen for exceptions that escape from RPI methods (i. e. unhandled exceptions).
+        //
+        private static void HandleUnhandledException(object exception)
+        {
+            // We have to duplicate the logic because the helpers are runtime exports and need a calling convention conversion.
+            // Also, we cannot use code addresses to get helpers.
+            IntPtr pOnUnhandledExceptionFunction =
+                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(exception.GetMethodTable(), ClassLibFunctionId.OnUnhandledException);
+
+            if (pOnUnhandledExceptionFunction != IntPtr.Zero)
+            {
+                try
+                {
+                    InternalCalls.RhpRawCalli_VO(pOnUnhandledExceptionFunction, exception);
+                }
+                catch when (true)
+                {
+                    // disallow all exceptions leaking out of callbacks
+                }
+            }
+
+            IntPtr pFailFastFunction =
+                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(exception.GetMethodTable(), ClassLibFunctionId.FailFast);
+
+            if (pFailFastFunction == IntPtr.Zero)
+            {
+                FallbackFailFast(RhFailFastReason.UnhandledException, exception);
+            }
+
+            try
+            {
+                InternalCalls.RhpRawCalli_ViOII(pFailFastFunction, (int)RhFailFastReason.UnhandledException, exception, 0, 0);
+            }
+            catch when (true)
+            {
+                // disallow all exceptions leaking out of callbacks
+            }
+
+            // The classlib's function should never return and should not throw. If it does, then we fail our way...
+            FallbackFailFast(RhFailFastReason.UnhandledException, exception);
         }
 
         private static object BeginSingleDispatch(RhEHClauseKind kind, void* data, void* pShadowFrame, DispatchData* pDispatchData)
