@@ -71,7 +71,7 @@ For the runtime libraries:
   ./emsdk activate 3.1.23
   ```
 - To build for WASI, download and install the Wasi SDK from https://github.com/WebAssembly/wasi-sdk/releases (only Windows is supported currently) and set the `WASI_SDK_PATH` environment variable to the location where it is installed, e.g. `set WASI_SDK_PATH=c:\github\wasi-sdk`.
-- Run `build clr.nativeaotruntime+clr.nativeaotlibs+libs -c [Debug|Release] -a wasm -os [browser|wasi]`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
+- Run `build clr.aot+libs -c [Debug|Release] -a wasm -os [browser|wasi]`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
 
 For the compilers:
 - Download the LLVM 15.0.6 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.6/llvm-15.0.6.src.tar.xz
@@ -86,7 +86,7 @@ For the compilers:
 - Configure the LLVM source to use the same runtime as the Jit: `cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd -DLLVM_INCLUDE_BENCHMARKS=OFF -S f:\llvm-project\llvm-15.0.6.src -B f:\llvm-project\llvm-15.0.6.src\build` or if building for the Release configuration `cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release -D LLVM_USE_CRT_RELEASE=MT -DLLVM_INCLUDE_BENCHMARKS=OFF -S f:\llvm-project\llvm-15.0.6.src -B f:\llvm-project\llvm-15.0.6.src\build`.
 - Build LLVM either from the command line (`cmake --build f:\llvm-project\llvm-15.0.6.src\build --target LLVMCore LLVMBitWriter`) or from VS 2022. Currently the Jit depends only on the output of LLVMCore and LLVMBitWriter projects.  For the Release configuration, `cmake --build f:\llvm-project\llvm-15.0.6.src\build --config Release --target LLVMCore LLVMBitWriter`
 - Set the enviroment variable `LLVM_CMAKE_CONFIG` to locate the LLVM config: `set LLVM_CMAKE_CONFIG=f:/llvm-project/llvm-15.0.6.src/build/lib/cmake/llvm`. This location should contain the file `LLVMConfig.cmake`. `LLVM_CMAKE_CONFIG_DEBUG` and `LLVM_CMAKE_CONFIG_RELEASE` can be used instead of `LLVM_CMAKE_CONFIG` to allow the build to select the config file based on the configuration. If set, these variables take precedence over `LLVM_CMAKE_CONFIG`.
-- Build the Jits and the ILC: `build clr.jit+clr.wasmjit+clr.nativeaotruntime+clr.nativeaotlibs+clr.tools -c [Debug|Release]`. Note that `clr.jit` only needs to be built once.  Add the `libs` subsets if you want the packages for publishing, e.g. `build clr.jit+clr.wasmjit+clr.nativeaotruntime+clr.nativeaotlibs+clr.tools+libs -c Debug`.
+- Build the Jits and the ILC: `build clr.wasmjit+clr.aot -c [Debug|Release]`. Add the `libs` subset if you want the packages for publishing, e.g. `build clr.wasmjit+clr.aot+libs -c Debug`.
 - You can use the `-msbuild` option, `build clr.wasmjit -msbuild`, to generate a Visual Studio solution for the Jit, to be found in `artifacts/obj/coreclr/windows.x64.Debug/ide/jit`.
 
 With the above binaries built, the ILC can be run and debugged as normal. The runtime tests can also be built, in bulk: `src/tests/build nativeaot debug wasm tree nativeaot`, or individually: `cd <test-directory> && dotnet build TestProjectName.csproj /t:BuildNativeAot /p:TestBuildMode=nativeaot /p:TargetArchitecture=wasm /p:TargetOS=browser`, and run as described in the sections below.
