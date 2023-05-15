@@ -32,6 +32,12 @@ steps:
         call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
         $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} tree nativeaot
       displayName: Build WebAssembly tests
+  - ${{ elseif eq(parameters.platform, 'wasi_wasm_win') }}:
+    - script: |
+        call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
+        $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} wasi tree nativeaot
+      displayName: Build WebAssembly tests
+
   - ${{ elseif eq(parameters.osGroup, 'windows') }}:
     - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.testFilter }} /p:NativeAotMultimodule=true /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
       displayName: Build tests
@@ -44,7 +50,12 @@ steps:
       - script: |
           call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
           $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
-        displayName: Run WebAssembly tests in single file mode
+        displayName: Run WebAssembly Browser tests in single file mode
+    - ${{ elseif eq(parameters.platform, 'wasi_wasm_win') }}:
+      - script: |
+          call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
+          $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} wasi
+        displayName: Run WebAssembly Wasi tests in single file mode
     - ${{ elseif eq(parameters.osGroup, 'windows') }}:
       - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
         displayName: Run tests in single file mode

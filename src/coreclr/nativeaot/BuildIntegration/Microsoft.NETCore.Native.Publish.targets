@@ -96,11 +96,11 @@
     <Delete Files="$(PublishDir)\$(TargetName)$(NativeBinaryExt)" />
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)" DestinationFolder="$(PublishDir)" />
 
-    <Delete Files="$(PublishDir)\$(TargetName).js" Condition="'$(_targetArchitecture)'=='wasm'"/>
-    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).js" DestinationFolder="$(PublishDir)" Condition="'$(_targetArchitecture)'=='wasm'"/>
+    <Delete Files="$(PublishDir)\$(TargetName).js" Condition="'$(_targetOS)' == 'browser'"/>
+    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).js" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser'"/>
 
-    <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(_targetArchitecture)'=='wasm'"/>
-    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetArchitecture)'=='wasm'"/>
+    <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(_targetOS)' == 'browser'"/>
+    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser'"/>
 
     <!-- dotnet CLI produces managed debug symbols, which we will delete and copy native symbols instead -->
     <Delete Files="$(PublishDir)\$(TargetName).pdb" />

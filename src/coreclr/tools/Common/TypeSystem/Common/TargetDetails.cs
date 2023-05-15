@@ -23,7 +23,8 @@ namespace Internal.TypeSystem
         FreeBSD,
         NetBSD,
         SunOS,
-        WebAssembly
+        Browser,
+        Wasi
     }
 
     public enum TargetAbi

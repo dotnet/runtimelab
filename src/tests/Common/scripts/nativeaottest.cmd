@@ -16,8 +16,18 @@ set __JsFileName=%2
 set __JsFileName=%__JsFileName:~0,-4%.js
 set __JsFilePath=%1\native\%__JsFileName%
 
+set __WasmFileName=%2
+set __WasmFileName=%__WasmFileName:~0,-4%.wasm
+set __WasmFilePath=%1native\%__WasmFileName%
+
 if exist %__JsFilePath% (
   %_DebuggerFullPath% %EMSDK_NODE% --stack-trace-limit=100 %__JsFilePath% %3 %4 %5 %6 %7 %8 %9
+) else if exist %__WasmFilePath% (
+  if "%WASMER_EXECUTABLE%" == "" (
+    REM when running tests locally, assume wasmer is in the path
+    set WASMER_EXECUTABLE=wasmer
+  )
+  %_DebuggerFullPath% !WASMER_EXECUTABLE! %__WasmFilePath% %3 %4 %5 %6 %7 %8 %9
 ) else (
   %_DebuggerFullPath% %1\native\%__ExeFileName% %3 %4 %5 %6 %7 %8 %9
 )

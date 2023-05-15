@@ -271,8 +271,16 @@ class CoreclrArguments:
                     lambda arch: "Unknown arch {}.\nSupported architectures: {}".format(arch, (", ".join(self.valid_arches))),
                     modify_arg=lambda arch: CoreclrArguments.provide_default_arch() if arch is None else arch)
         
-        self.target_os = self.host_os
-        if self.arch == "wasm":
+        self.verify(args,
+                    "target_os",
+                    lambda target_os: True,
+                    lambda target_os: "Unknown target_os {}.".format(target_os),
+                    modify_arg=lambda target_os: target_os)
+
+        if self.target_os is None:
+            self.target_os = self.host_os
+
+        if self.arch == "wasm" and self.target_os != "wasi":
             self.target_os = "Browser" # assume we need to differentiate between running wasm tests on Windows and *nix so leave host_os as the os where the tests are running
 
         self.verify(args,

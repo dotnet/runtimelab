@@ -151,7 +151,7 @@ struct REGDISPLAY
     PTR_PCODE    pIP;
     PCODE        IP;
 
-    inline PCODE GetIP() { return NULL; }
+    inline PCODE GetIP() { return 0; }
     inline PTR_PCODE GetAddrOfIP() { return NULL; }
     inline uintptr_t GetSP() { return 0; }
     inline uintptr_t GetFP() { return 0; }

@@ -54,7 +54,10 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         set(GEN_SHARED_LIB 0)
         set(STATIC_LIB_DESTINATION .)
 
-        add_subdirectory(System.Globalization.Native)
+        if (CLR_CMAKE_TARGET_BROWSER)
+            # NativeAOT-LLVM: no ICU for WASI yet.
+            add_subdirectory(System.Globalization.Native)
+        endif ()
     endif ()
 
     if (CLR_CMAKE_TARGET_WASI)

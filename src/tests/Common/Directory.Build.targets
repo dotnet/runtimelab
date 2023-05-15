@@ -17,7 +17,7 @@
     <CopyCoreDisToolsToCoreRoot>false</CopyCoreDisToolsToCoreRoot>
     <CopyCoreDisToolsToCoreRoot Condition="$(GCStressDependsOnCoreDisTools) And '$(DotNetBuildFromSource)' != 'true'">true</CopyCoreDisToolsToCoreRoot>
     <!-- Non-desktop OS's use a custom dotnet host, instead of corerun -->
-    <IsDesktopOS Condition="'$(TargetsBrowser)' != 'true' and '$(TargetsAndroid)' != 'true' and '$(TargetstvOS)' != 'true' and '$(TargetsiOS)' != 'true' and '$(TargetsMacCatalyst)' != 'true'">true</IsDesktopOS>
+    <IsDesktopOS Condition="'$(TargetsWasi)' != 'true' and '$(TargetsBrowser)' != 'true' and '$(TargetsAndroid)' != 'true' and '$(TargetstvOS)' != 'true' and '$(TargetsiOS)' != 'true' and '$(TargetsMacCatalyst)' != 'true'">true</IsDesktopOS>
   </PropertyGroup>
 
   <Import Project="$(RepositoryEngineeringDir)coredistools.targets" Condition="$(CopyCoreDisToolsToCoreRoot)" />

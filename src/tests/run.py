@@ -938,8 +938,11 @@ def setup_args(args):
                                           require_built_product_dir=False)
 
     target_os = coreclr_setup_args.host_os
-    if coreclr_setup_args.arch == "wasm":
+    # using the arg target_os always breaks the OSX tests
+    if coreclr_setup_args.target_os == "Browser":
         target_os = "Browser"
+    if coreclr_setup_args.target_os == "wasi":
+        target_os = "wasi"
 
     normal_location = os.path.join(coreclr_setup_args.artifacts_location, "tests", "coreclr", "%s.%s.%s" % (target_os, coreclr_setup_args.arch, coreclr_setup_args.build_type))
 

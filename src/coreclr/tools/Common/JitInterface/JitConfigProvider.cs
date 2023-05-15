@@ -130,7 +130,8 @@ namespace Internal.JitInterface
 
         private static string GetTargetSpec(TargetDetails target)
         {
-            string targetOSComponent = (target.OperatingSystem == TargetOS.Windows ? "win" : (target.OperatingSystem == TargetOS.WebAssembly ? "browser" : "unix"));
+            // Use the same Jir for browser and wasi
+            string targetOSComponent = (target.OperatingSystem == TargetOS.Windows ? "win" : (target.OperatingSystem == TargetOS.Browser || target.OperatingSystem == TargetOS.Wasi ? "browser" : "unix"));
             string targetArchComponent = target.Architecture switch
             {
                 TargetArchitecture.X86 => "x86",

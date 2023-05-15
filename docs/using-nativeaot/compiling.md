@@ -132,6 +132,24 @@ This can be used to import WASI functions that are in other modules, either as t
 Currently NativeAOT-LLVM supports following additional properties
 - `WasmHtmlTemplate`: specifies path to the HTML template within which the WASM application will be embedded. An example of a minimal template can be found in the Emscripten repo: https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html
 
+#### WASM with WASI
+Currently, many things do not work with the WASI publish, notable Exceptions, threads, and any Globalization.  It is also likely to crash when running anything but the simplest programs.  HelloWorld (i.e. `dotnet new console`) does work.
+Set up the project file as above.
+
+Create the wasm with
+```
+dotnet publish -r wasi-wasm -c Debug /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false --self-contained
+```
+`wasmer` is the only tested runtime.  An example invocation with wasmer:
+```
+wasmer bin\Debug\net8.0\wasi-wasm\publish\console.wasm
+```
+
+Note that while we are enabling threads, they do not work attempting to create a thread will most likely crash.
+`wasmtime` can also be used by passing the required flags:
+```
+wasmtime --wasm-features=threads --wasi-modules=experimental-wasi-threads bin\Debug\net8.0\wasi-wasm\publish\console.wasm
+```
 ### Cross-compiling on Linux
 Similarly, to target linux-arm64 on a Linux x64 host, in addition to the `Microsoft.DotNet.ILCompiler` package reference, also add the `runtime.linux-x64.Microsoft.DotNet.ILCompiler` package reference to get the x64-hosted compiler:
 ```xml

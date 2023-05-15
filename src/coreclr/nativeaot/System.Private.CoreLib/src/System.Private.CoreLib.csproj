@@ -312,7 +312,7 @@
     <Compile Include="System\Threading\Win32ThreadPoolNativeOverlapped.OverlappedData.cs" />
     <Compile Include="System\Threading\Win32ThreadPoolPreAllocatedOverlapped.cs" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetsUnix)'=='true' or '$(TargetsBrowser)'=='true'">
+  <ItemGroup Condition="'$(TargetsUnix)'=='true' or '$(TargetsBrowser)'=='true' or '$(TargetsWasi)'=='true'">
     <Compile Include="System\Environment.NativeAot.Unix.cs" />
     <Compile Include="System\Runtime\InteropServices\NativeLibrary.NativeAot.Unix.cs" />
     <Compile Include="System\Runtime\InteropServices\PInvokeMarshal.Unix.cs" />
@@ -330,6 +330,9 @@
   </ItemGroup>
   <ItemGroup Condition="'$(TargetsBrowser)'=='true' and '$(FeatureWasmThreads)' != 'true'">
     <Compile Include="System\Threading\PreAllocatedOverlapped.NativeAot.Wasm.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetsWasi)'=='true'">
+    <Compile Include="System\Threading\ThreadApiCompat.Wasi.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(CompilerCommonPath)\System\Collections\Generic\ArrayBuilder.cs">

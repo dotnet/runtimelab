@@ -32,7 +32,9 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
+#ifndef TARGET_WASI // no dynamic linking in Wasi
 #include <dlfcn.h>
+#endif
 #include <dirent.h>
 #include <string.h>
 #include <ctype.h>
@@ -41,6 +43,13 @@
 #include <sys/time.h>
 #include <cstdarg>
 #include <signal.h>
+
+#ifdef TARGET_WASI
+#include "../wasm/wasi.h"
+// aligning version of mmap, but will fail badly if munmap is called for a partial unmap
+#define mmap(addr, length, prot, flags, fd, offset) mmap_wasi(addr, length, prot, flags, fd, offset)
+#define munmap(addr, length) munmap_wasi(addr, length)
+#endif
 
 #if HAVE_PTHREAD_GETTHREADID_NP
 #include <pthread_np.h>
@@ -1183,6 +1192,9 @@ REDHAWK_PALEXPORT bool PalGetMaximumStackBounds(_Out_ void** ppStackLowOut, _Out
 #if HAVE_PTHREAD_ATTR_GET_NP
         status = pthread_attr_get_np(thread, &attr);
 #elif HAVE_PTHREAD_GETATTR_NP
+        status = pthread_getattr_np(thread, &attr);
+#elif TARGET_WASI
+        // implementation provided in wasi.c
         status = pthread_getattr_np(thread, &attr);
 #else
 #error Dont know how to get thread attributes on this platform!

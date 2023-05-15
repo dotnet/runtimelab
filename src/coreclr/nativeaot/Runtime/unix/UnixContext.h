@@ -4,7 +4,8 @@
 #ifndef __UNIX_CONTEXT_H__
 #define __UNIX_CONTEXT_H__
 
-#include <ucontext.h>
+// WASM has no thread state contexts.
+#ifndef HOST_WASM
 
 // Convert Unix native context to PAL_LIMITED_CONTEXT
 void NativeContextToPalContext(const void* context, PAL_LIMITED_CONTEXT* palContext);
@@ -133,4 +134,5 @@ struct UNIX_CONTEXT
 #endif // TARGET_ARM
 };
 
+#endif // HOST_WASM
 #endif // __UNIX_CONTEXT_H__

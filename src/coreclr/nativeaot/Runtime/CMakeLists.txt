@@ -135,7 +135,7 @@ else()
 
   include(${GC_DIR}/unix/configure.cmake)
 
-  if(CLR_CMAKE_TARGET_ARCH_WASM)
+  if (CLR_CMAKE_TARGET_ARCH_WASM)
     include_directories($ENV{EMSCRIPTEN/system/lib/libcxxabi/include})
   endif()
 
@@ -153,7 +153,7 @@ else()
     ${GC_DIR}/unix/cgroup.cpp
   )
 
-  if(CLR_CMAKE_TARGET_ARCH_WASM)
+  if (CLR_CMAKE_TARGET_ARCH_WASM)
     list(APPEND COMMON_RUNTIME_SOURCES
       ${GC_DIR}/wasm/gcenv.wasm.cpp
       unix/cgroupcpu.cpp
@@ -204,6 +204,13 @@ if (CLR_CMAKE_TARGET_ARCH_WASM)
     ${ARCH_SOURCES_DIR}/ExceptionHandling.cpp
     ${ARCH_SOURCES_DIR}/PInvoke.cpp
 )
+
+  if (CLR_CMAKE_TARGET_WASI)
+    list(APPEND COMMON_RUNTIME_SOURCES
+      wasm/wasi_pthread.c
+      wasm/wasi_mmap.cpp
+    )
+  endif()
 endif (CLR_CMAKE_TARGET_ARCH_WASM)
 
 list(APPEND RUNTIME_SOURCES_ARCH_ASM

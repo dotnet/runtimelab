@@ -70,6 +70,7 @@ extends:
             - windows_x64
             - OSX_x64
             - Browser_wasm_win
+            - wasi_wasm_win
             jobParameters:
               timeoutInMinutes: 300
               testGroup: innerloop
@@ -115,6 +116,7 @@ extends:
           - windows_arm64
           - OSX_x64
           - Browser_wasm_win
+          - wasi_wasm_win
           jobParameters:
             timeoutInMinutes: 300
             isOfficialBuild: ${{ variables.isOfficialBuild }}

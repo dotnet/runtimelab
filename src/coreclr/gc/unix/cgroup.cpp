@@ -24,6 +24,8 @@ Abstract:
 #if defined(__APPLE__) || defined(__FreeBSD__)
 #include <sys/param.h>
 #include <sys/mount.h>
+#elif defined(TARGET_WASI)
+#include "../../nativeaot/Runtime/wasm/wasi.h"
 #else
 #include <sys/vfs.h>
 #endif

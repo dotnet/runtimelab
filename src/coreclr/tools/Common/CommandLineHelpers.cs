@@ -83,7 +83,8 @@ namespace System.CommandLine
                 "ios" => TargetOS.iOS,
                 "tvossimulator" => TargetOS.tvOSSimulator,
                 "tvos" => TargetOS.tvOS,
-                "browser" => TargetOS.WebAssembly,
+                "browser" => TargetOS.Browser,
+                "wasi" => TargetOS.Wasi,
                 _ => throw new CommandLineException($"Target OS '{token}' is not supported")
             };
         }

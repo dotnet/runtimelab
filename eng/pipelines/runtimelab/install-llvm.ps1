@@ -2,7 +2,7 @@ param (
     [string]$buildConfig
 )
 
-# LLVM is supplied in a gz file which Windows doesn't natively understand, so we need gz to unpack it - TODO this is liable to fail randomly when a new version comes out and the version number changes
+# LLVM is supplied in a xz file which Windows doesn't natively understand, so we need gz to unpack it - TODO this is liable to fail randomly when a new version comes out and the version number changes
 Invoke-WebRequest -Uri https://tukaani.org/xz/xz-5.2.5-windows.zip -OutFile xz.zip
 Expand-Archive -LiteralPath xz.zip -DestinationPath .
 copy bin_i686\xz.exe . # get it in the path for tar

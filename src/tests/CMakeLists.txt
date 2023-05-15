@@ -42,17 +42,19 @@ if (CLR_CMAKE_HOST_WIN32)
     add_compile_options(/EHa) # enable C++ EH (w/ SEH exceptions)
 endif()
 
-# NativeAOT-LLVM: by default, build static libraries when targeting Browser.
-if (CLR_CMAKE_TARGET_BROWSER)
+# NativeAOT-LLVM: by default, build static libraries when targeting Browser or Wasi.
+if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
     set(TEST_LIBRARY_DESTINATION lib)
 else()
     set(TEST_LIBRARY_DESTINATION bin)
     set(BUILD_SHARED_LIBS ON)
 endif()
 
-if (CLR_CMAKE_TARGET_BROWSER)
+if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
     # NativeAOT-LLVM: only compile the smoke tests. We do not (currently) need more and 'more' doesn't all compile.
-    add_subdirectory(nativeaot/SmokeTests/PInvoke)
+    if (CLR_CMAKE_TARGET_BROWSER)
+        add_subdirectory(nativeaot/SmokeTests/PInvoke)
+    endif()
     add_subdirectory(nativeaot/SmokeTests/HelloWasm)
     return()
 endif()
