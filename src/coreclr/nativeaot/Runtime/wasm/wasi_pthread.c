@@ -6,7 +6,7 @@
 #include "wasi.h"
 #include <pthread.h>
 
-// copied from internal/pthread_impl.h
+// copied from https://github.com/WebAssembly/wasi-libc/blob/main/libc-top-half/musl/src/internal/pthread_impl.h
 #define __SU (sizeof(size_t)/sizeof(int))
 
 #define _a_stacksize __u.__s[0]
