@@ -111,7 +111,7 @@ if(CLR_CMAKE_HOST_UNIX AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
         endif()
     endif()
 
-    if(CLR_CMAKE_TARGET_LINUX AND CLR_CMAKE_TARGET_ARCH_I386)
+    if(CLR_CMAKE_TARGET_LINUX AND (CLR_CMAKE_TARGET_ARCH_I386 OR CLR_CMAKE_TARGET_ARCH_RISCV64))
       add_linker_flag(-Wl,-z,notext)
     endif()
 
@@ -125,11 +125,19 @@ else()
     endif()
 endif()
 
+<<<<<<< HEAD
 if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
     #----------------------------------------------------
     # Build the test watchdog alongside the CLR
     #----------------------------------------------------
     add_subdirectory("${CLR_SRC_NATIVE_DIR}/watchdog" test-watchdog)
+=======
+#----------------------------------------------------
+# Build the test watchdog alongside the CLR
+#----------------------------------------------------
+if(NOT CLR_CMAKE_HOST_MACCATALYST AND NOT CLR_CMAKE_HOST_IOS AND NOT CLR_CMAKE_HOST_TVOS)
+  add_subdirectory("${CLR_SRC_NATIVE_DIR}/watchdog" test-watchdog)
+>>>>>>> runtime/main
 endif()
 
 # Add this subdir. We install the headers for the jit.

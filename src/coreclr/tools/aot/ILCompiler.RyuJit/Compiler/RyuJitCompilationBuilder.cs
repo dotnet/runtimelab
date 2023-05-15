@@ -129,6 +129,11 @@ namespace ILCompiler
             if (_resilient)
                 options |= RyuJitCompilationOptions.UseResilience;
 
+<<<<<<< HEAD
+=======
+            var factory = new RyuJitNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager());
+
+>>>>>>> runtime/main
             JitConfigProvider.Initialize(_context.Target, jitFlagBuilder.ToArray(), _ryujitOptions, _jitPath);
             return CreateCompilation(options);
         }
