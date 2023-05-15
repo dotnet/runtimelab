@@ -43,7 +43,7 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
 
     auto getSpillLcl = [&](GenTree* node) {
         var_types type = node->TypeGet();
-        CORINFO_CLASS_HANDLE structHandle = NO_CLASS_HANDLE;
+        ClassLayout* layout = nullptr;
         unsigned lclNum = BAD_VAR_NUM;
         switch (type)
         {
@@ -61,8 +61,7 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
                 break;
             case TYP_STRUCT:
                 // This case should be **very** rare if at all possible. Just use a new local.
-                // TODO-LLVM: switch this logic to use layouts instead of handles.
-                structHandle = node->GetLayout(_compiler)->GetClassHandle();
+                layout = node->GetLayout(_compiler);
                 break;
             default:
                 unreached();
@@ -74,8 +73,7 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
             _compiler->lvaGetDesc(lclNum)->lvType = type;
             if (type == TYP_STRUCT)
             {
-                noway_assert(structHandle != NO_CLASS_HANDLE);
-                _compiler->lvaSetStruct(lclNum, structHandle, false);
+                _compiler->lvaSetStruct(lclNum, layout, false);
             }
         }
 
@@ -902,33 +900,16 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
     // Fix up type mismatches on copies for codegen.
     if (storeBlkNode->OperIsCopyBlkOp())
     {
+        // TODO-LLVM: simplify to just "storeBlkNode->SetLayout(src->GetLayout(_compiler))" when merging STORE_OBJ removal.
         ClassLayout* dstLayout = storeBlkNode->GetLayout();
-        if (src->OperIs(GT_IND))
+        ClassLayout* srcLayout = src->GetLayout(_compiler);
+        if (dstLayout != srcLayout)
         {
-            src->SetOper(GT_BLK);
-            src->AsBlk()->SetLayout(dstLayout);
-            src->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
-        }
-        else
-        {
-            // TODO-LLVM: switch this logic to use layouts.
-            CORINFO_CLASS_HANDLE srcHandle = src->GetLayout(_compiler)->GetClassHandle();
-
-            if (dstLayout->GetClassHandle() != srcHandle)
+            if (srcLayout->IsBlockLayout())
             {
-                ClassLayout* dataLayout;
-                if (srcHandle != NO_CLASS_HANDLE)
-                {
-                    dataLayout = _compiler->typGetObjLayout(srcHandle);
-                }
-                else
-                {
-                    assert(src->OperIs(GT_BLK));
-                    dataLayout = src->AsBlk()->GetLayout();
-                }
-
-                storeBlkNode->SetLayout(dataLayout);
+                storeBlkNode->SetOper(GT_STORE_BLK);
             }
+            storeBlkNode->SetLayout(srcLayout);
         }
     }
     else
@@ -936,19 +917,7 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
         src->SetContained();
     }
 
-    // A zero-sized block store is a no-op. Lower it away.
-    if (storeBlkNode->Size() == 0)
-    {
-        assert(storeBlkNode->OperIsInitBlkOp() || storeBlkNode->Data()->OperIs(GT_BLK));
-
-        storeBlkNode->Addr()->SetUnusedValue();
-        CurrentRange().Remove(storeBlkNode->Data(), /* markOperandsUnused */ true);
-        CurrentRange().Remove(storeBlkNode);
-    }
-    else
-    {
-        lowerIndir(storeBlkNode);
-    }
+    lowerIndir(storeBlkNode);
 }
 
 void Llvm::lowerStoreDynBlk(GenTreeStoreDynBlk* storeDynBlkNode)
@@ -1401,45 +1370,33 @@ GenTree* Llvm::normalizeStructUse(LIR::Use& use, ClassLayout* layout)
     GenTree* node = use.Def();
     assert(node->TypeIs(TYP_STRUCT)); // Note on SIMD: we will support it in codegen via bitcasts.
 
-    // "IND<struct>" nodes always need to be normalized.
-    if (node->OperIs(GT_IND))
-    {
-        node->SetOper(GT_BLK);
-        node->AsBlk()->SetLayout(layout);
-        node->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindInvalid;
-    }
-    else
-    {
-        CORINFO_CLASS_HANDLE useHandle = node->GetLayout(_compiler)->GetClassHandle();
+    ClassLayout* useLayout = node->GetLayout(_compiler);
 
-        // Note both can be blocks ("NO_CLASS_HANDLE"), in which case we don't need to do anything.
-        if ((useHandle != layout->GetClassHandle()) &&
-            ((useHandle == NO_CLASS_HANDLE) || (getLlvmTypeForStruct(useHandle) != getLlvmTypeForStruct(layout))))
+    if ((useLayout != layout) && (getLlvmTypeForStruct(useLayout) != getLlvmTypeForStruct(layout)))
+    {
+        switch (node->OperGet())
         {
-            switch (node->OperGet())
-            {
-                case GT_BLK:
-                    node->AsBlk()->SetLayout(layout);
-                    break;
+            case GT_BLK:
+                node->AsBlk()->SetLayout(layout);
+                break;
 
-                case GT_LCL_FLD:
-                    node->AsLclFld()->SetLayout(layout);
-                    break;
+            case GT_LCL_FLD:
+                node->AsLclFld()->SetLayout(layout);
+                break;
 
-                case GT_CALL:
-                    use.ReplaceWithLclVar(_compiler);
-                    node = use.Def();
-                    FALLTHROUGH;
+            case GT_CALL:
+                use.ReplaceWithLclVar(_compiler);
+                node = use.Def();
+                FALLTHROUGH;
 
-                case GT_LCL_VAR:
-                    node->SetOper(GT_LCL_FLD);
-                    node->AsLclFld()->SetLayout(layout);
-                    _compiler->lvaGetDesc(node->AsLclFld())->lvHasLocalAddr = true;
-                    break;
+            case GT_LCL_VAR:
+                node->SetOper(GT_LCL_FLD);
+                node->AsLclFld()->SetLayout(layout);
+                _compiler->lvaGetDesc(node->AsLclFld())->lvHasLocalAddr = true;
+                break;
 
-                default:
-                    unreached();
-            }
+            default:
+                unreached();
         }
     }
 
