@@ -504,7 +504,7 @@ void Llvm::initializeLocalInProlog(unsigned lclNum, GenTree* value)
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
     JITDUMP("Adding initialization for V%02u, %s:\n", lclNum, varDsc->lvReason);
 
-    GenTreeUnOp* store = _compiler->gtNewStoreLclVar(lclNum, value);
+    GenTreeUnOp* store = _compiler->gtNewStoreLclVarNode(lclNum, value);
 
     m_prologRange.InsertAtEnd(value);
     m_prologRange.InsertAtEnd(store);
@@ -603,7 +603,6 @@ void Llvm::lowerNode(GenTree* node)
             break;
 
         case GT_STORE_BLK:
-        case GT_STORE_OBJ:
             lowerStoreBlk(node->AsBlk());
             break;
 
@@ -754,7 +753,7 @@ bool Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* lclNode)
         {
             case GT_STORE_LCL_VAR:
             case GT_STORE_LCL_FLD:
-                indirOper = (layout != nullptr) ? GT_STORE_OBJ : GT_STOREIND;
+                indirOper = (layout != nullptr) ? GT_STORE_BLK : GT_STOREIND;
                 storedValue = lclNode->Data();
                 break;
             case GT_LCL_FLD:
@@ -893,7 +892,7 @@ void Llvm::lowerIndir(GenTreeIndir* indirNode)
 
 void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
 {
-    assert(storeBlkNode->OperIs(GT_STORE_BLK, GT_STORE_OBJ));
+    assert(storeBlkNode->OperIs(GT_STORE_BLK));
 
     GenTree* src = storeBlkNode->Data();
 

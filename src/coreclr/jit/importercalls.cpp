@@ -3,24 +3,12 @@
 
 #include "jitpch.h"
 
-<<<<<<< HEAD
 #ifdef TARGET_WASM
 #include "llvm.h"
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif // TARGET_WASM
 
-#define Verify(cond, msg)                                                                                              \
-    do                                                                                                                 \
-    {                                                                                                                  \
-        if (!(cond))                                                                                                   \
-        {                                                                                                              \
-            verRaiseVerifyExceptionIfNeeded(INDEBUG(msg) DEBUGARG(__FILE__) DEBUGARG(__LINE__));                       \
-        }                                                                                                              \
-    } while (0)
-
-=======
->>>>>>> runtime/main
 //------------------------------------------------------------------------
 // impImportCall: import a call-inspiring opcode
 //

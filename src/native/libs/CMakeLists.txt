@@ -53,11 +53,6 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         add_compile_options(-Wno-unused-parameter -Wno-declaration-after-statement)
         set(GEN_SHARED_LIB 0)
         set(STATIC_LIB_DESTINATION .)
-
-        if (CLR_CMAKE_TARGET_BROWSER)
-            # NativeAOT-LLVM: no ICU for WASI yet.
-            add_subdirectory(System.Globalization.Native)
-        endif ()
     endif ()
 
     if (CLR_CMAKE_TARGET_WASI)
@@ -173,7 +168,9 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
     endif ()
 
     add_subdirectory(System.Native)
-    add_subdirectory(System.Globalization.Native)
+    if (NOT CLR_CMAKE_TARGET_WASI)
+      add_subdirectory(System.Globalization.Native)
+    endif ()
 
     if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         # skip for now

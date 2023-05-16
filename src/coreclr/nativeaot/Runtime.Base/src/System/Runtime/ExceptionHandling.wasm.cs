@@ -242,7 +242,7 @@ namespace System.Runtime
 
         private static string GetClauseDescription(RhEHClauseKind kind, void* data) => kind switch
         {
-            RhEHClauseKind.RH_EH_CLAUSE_TYPED => "catch, class [" + new RuntimeTypeHandle(new EETypePtr((MethodTable*)data)).LastResortToString + "]",
+            RhEHClauseKind.RH_EH_CLAUSE_TYPED => "catch, class [" + Type.GetTypeFromHandle(new RuntimeTypeHandle(new EETypePtr((MethodTable*)data))) + "]",
             RhEHClauseKind.RH_EH_CLAUSE_FILTER => "filtered catch",
             RhEHClauseKind.RH_EH_CLAUSE_UNUSED => "mutually protecting catches, table at [" + ToHex(data) + "]",
             _ => "fault",

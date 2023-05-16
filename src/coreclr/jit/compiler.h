@@ -240,15 +240,7 @@ public:
 
     LclSsaVarDsc(BasicBlock* block, GenTreeLclVarCommon* defNode) : m_block(block)
     {
-<<<<<<< HEAD
-#if defined(TARGET_WASM)
-        assert((asg == nullptr) || asg->OperIs(GT_ASG) || asg->OperIsLocalStore());
-#else
-        assert((asg == nullptr) || asg->OperIs(GT_ASG));
-#endif
-=======
         SetAssignment(defNode);
->>>>>>> runtime/main
     }
 
     BasicBlock* GetBlock() const
@@ -270,17 +262,8 @@ public:
     // TODO-ASG: rename to "SetDefNode".
     void SetAssignment(GenTreeLclVarCommon* defNode)
     {
-<<<<<<< HEAD
-#if defined(TARGET_WASM)
-        assert((asg == nullptr) || asg->OperIs(GT_ASG) || asg->OperIsLocalStore());
-#else
-        assert((asg == nullptr) || asg->OperIs(GT_ASG));
-#endif
-        m_asg = asg;
-=======
         assert((defNode == nullptr) || defNode->OperIsLocalStore());
         m_defNode = defNode;
->>>>>>> runtime/main
     }
 
     unsigned GetUseDefSsaNum() const

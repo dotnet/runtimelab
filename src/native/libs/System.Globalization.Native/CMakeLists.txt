@@ -14,7 +14,6 @@ if(CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_WASI)
     add_compile_options(-Wno-extra-semi-stmt)
     add_compile_options(-Wno-unknown-warning-option)
 
-<<<<<<< HEAD
     if (CLR_CMAKE_TARGET_BROWSER)
         message("including ICU")
         # add ICU support to emscripten and workaround https://github.com/emscripten-core/emscripten/issues/9302
@@ -23,12 +22,8 @@ if(CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_WASI)
         # TODO-LLVM: remove these suppresession when https://github.com/dotnet/runtime/commit/2265a61565e20fc26ca8ec0632eb14268b99158e is merged
         # and when emscripten ICU is updated.
         add_compile_options(-s USE_ICU=1 -I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n -Wno-deprecated-declarations -Wno-reserved-identifier -Wno-unused-but-set-variable)
-    elseif (NOT CLR_CMAKE_TARGET_ANDROID)
-        if (CLR_CMAKE_TARGET_OSX OR CLR_CMAKE_TARGET_MACCATALYST)
-=======
-    if (NOT CLR_CMAKE_TARGET_ANDROID AND NOT DEFINED CMAKE_ICU_DIR)
+    elseif (NOT CLR_CMAKE_TARGET_ANDROID AND NOT DEFINED CMAKE_ICU_DIR)
         if (CLR_CMAKE_TARGET_OSX)
->>>>>>> runtime/main
             execute_process(COMMAND  brew --prefix OUTPUT_VARIABLE brew_prefix OUTPUT_STRIP_TRAILING_WHITESPACE)
             set(ICU_HOMEBREW_INC_PATH "${brew_prefix}/opt/icu4c/include")
         endif()

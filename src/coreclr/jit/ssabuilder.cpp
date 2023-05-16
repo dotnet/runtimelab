@@ -533,15 +533,8 @@ static GenTree* GetPhiNode(BasicBlock* block, unsigned lclNum)
             break;
         }
 
-<<<<<<< HEAD
-        GenTree* tree   = stmt->GetRootNode();
-        GenTree* phiLhs = tree->AsOp()->gtOp1;
-        assert(phiLhs->OperIs(GT_LCL_VAR));
-        if (phiLhs->AsLclVarCommon()->GetLclNum() == lclNum)
-=======
         GenTree* tree = stmt->GetRootNode();
         if (tree->AsLclVar()->GetLclNum() == lclNum)
->>>>>>> runtime/main
         {
             return tree->AsLclVar()->Data();
         }
@@ -561,10 +554,6 @@ void SsaBuilder::InsertPhi(BasicBlock* block, unsigned lclNum)
 {
     var_types type = m_pCompiler->lvaGetDesc(lclNum)->TypeGet();
 
-<<<<<<< HEAD
-    GenTreeLclVar* lhs = m_pCompiler->gtNewLclvNode(lclNum, type);
-=======
->>>>>>> runtime/main
     // PHIs and all the associated nodes do not generate any code so the costs are always 0
     GenTree* phi = new (m_pCompiler, GT_PHI) GenTreePhi(type);
     phi->SetCosts(0, 0);
@@ -598,7 +587,7 @@ void SsaBuilder::InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum)
 
     var_types type     = m_pCompiler->lvaGetDesc(lclNum)->TypeGet();
     GenTree*  phi      = new (m_pCompiler, GT_PHI) GenTreePhi(type);
-    GenTree*  storeLcl = m_pCompiler->gtNewStoreLclVar(lclNum, phi);
+    GenTree*  storeLcl = m_pCompiler->gtNewStoreLclVarNode(lclNum, phi);
 
     GenTree* insertionPoint = nullptr;
     for (GenTree* node : LIR::AsRange(block))
@@ -630,24 +619,20 @@ void SsaBuilder::InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum)
 void SsaBuilder::AddPhiArg(
     BasicBlock* block, Statement* stmt, GenTreePhi* phi, unsigned lclNum, unsigned ssaNum, BasicBlock* pred)
 {
-<<<<<<< HEAD
 #if DEBUG
 #if defined(TARGET_WASM)
     // For LLVM backed, every predecessor must have its own phi arg
     if (!block->IsLIR())
     {
-#endif // TARGET_WASM
         // Make sure it isn't already present: we should only add each definition once.
         for (GenTreePhi::Use& use : phi->Uses())
         {
             assert(use.GetNode()->AsPhiArg()->GetSsaNum() != ssaNum);
         }
-#if defined(TARGET_WASM)
     }
 #endif // TARGET_WASM
-
 #endif // DEBUG
-=======
+
     // If there's already a phi arg for this pred, it had better have
     // matching ssaNum, unless this block is a handler entry.
     //
@@ -656,7 +641,6 @@ void SsaBuilder::AddPhiArg(
     for (GenTreePhi::Use& use : phi->Uses())
     {
         GenTreePhiArg* const phiArg = use.GetNode()->AsPhiArg();
->>>>>>> runtime/main
 
         if (phiArg->gtPredBB == pred)
         {
@@ -852,26 +836,7 @@ void SsaBuilder::InsertPhiFunctions(BasicBlock** postOrder, int count)
 //
 void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
 {
-<<<<<<< HEAD
-#if defined(TARGET_WASM)
-    assert(defNode->OperIsSsaDef() || defNode->OperIsLocalStore());
-#else
-    assert(defNode->OperIsSsaDef());
-#endif // TARGET_WASM
-
-    if (defNode->OperIs(GT_ASG))
-    {
-        // This is perhaps temporary -- maybe should be done elsewhere.  Label GT_INDs on LHS of assignments, so we
-        // can skip these during (at least) value numbering.
-        GenTree* lhs = defNode->gtGetOp1()->gtEffectiveVal(/*commaOnly*/ true);
-        if (lhs->OperIs(GT_IND, GT_BLK))
-        {
-            lhs->gtFlags |= GTF_IND_ASG_LHS;
-        }
-    }
-=======
     assert(defNode->OperIsStore() || defNode->OperIs(GT_CALL));
->>>>>>> runtime/main
 
     GenTreeLclVarCommon* lclNode;
     bool                 isFullDef = false;
@@ -1040,12 +1005,8 @@ unsigned SsaBuilder::RenamePushDef(GenTree* defNode, BasicBlock* block, unsigned
     assert(m_pCompiler->lvaInSsa(lclNum) && !m_pCompiler->lvaGetDesc(lclNum)->lvPromoted);
 
     LclVarDsc* const varDsc = m_pCompiler->lvaGetDesc(lclNum);
-<<<<<<< HEAD
-    unsigned const   ssaNum = varDsc->lvPerSsaData.AllocSsaNum(m_allocator, block, !defNode->IsCall() ? defNode->AsOp() : nullptr);
-=======
     unsigned const   ssaNum =
         varDsc->lvPerSsaData.AllocSsaNum(m_allocator, block, !defNode->IsCall() ? defNode->AsLclVarCommon() : nullptr);
->>>>>>> runtime/main
 
     if (!isFullDef)
     {
@@ -1135,7 +1096,6 @@ void SsaBuilder::AddDefToHandlerPhis(BasicBlock* block, unsigned lclNum, unsigne
                             break;
                         }
 
-<<<<<<< HEAD
                         // skip the phi node to get to the GT_STORE_LCL_VAR
                         if (tree->OperIs(GT_PHI_ARG, GT_PHI))
                         {
@@ -1146,15 +1106,6 @@ void SsaBuilder::AddDefToHandlerPhis(BasicBlock* block, unsigned lclNum, unsigne
                         if (tree->AsLclVarCommon()->GetLclNum() == lclNum)
                         {
                             AddPhiArg(handler, nullptr, tree->gtGetOp1()->AsPhi(), lclNum, ssaNum, block);
-=======
-                    GenTreeLclVar* phiDef = stmt->GetRootNode()->AsLclVar();
-                    assert(phiDef->IsPhiDefn());
-
-                    if (phiDef->GetLclNum() == lclNum)
-                    {
-                        // It's the definition for the right local.  Add "ssaNum" to the RHS.
-                        AddPhiArg(handler, stmt, phiDef->Data()->AsPhi(), lclNum, ssaNum, block);
->>>>>>> runtime/main
 #ifdef DEBUG
                             phiFound = true;
 #endif
@@ -1333,11 +1284,7 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
             
         for (GenTree* tree : LIR::AsRange(block))
         {
-<<<<<<< HEAD
             if (tree->OperIsLocalStore())
-=======
-            if (tree->OperIsStore() || tree->OperIs(GT_CALL))
->>>>>>> runtime/main
             {
                 RenameDef(tree, block);
             }
@@ -1356,12 +1303,12 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
         {
             for (GenTree* const tree : stmt->TreeList())
             {
-                if (tree->OperIsSsaDef())
+                if (tree->OperIsStore() || tree->OperIs(GT_CALL))
                 {
                     RenameDef(tree, block);
                 }
                 // PHI_ARG nodes already have SSA numbers so we only need to check LCL_VAR and LCL_FLD nodes.
-                else if (tree->OperIs(GT_LCL_VAR, GT_LCL_FLD) && ((tree->gtFlags & GTF_VAR_DEF) == 0))
+                else if (tree->OperIs(GT_LCL_VAR, GT_LCL_FLD))
                 {
                     RenameLclUse(tree->AsLclVarCommon(), block);
                 }
@@ -1433,7 +1380,6 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
         {
             for (GenTree* tree : LIR::AsRange(succ))
             {
-<<<<<<< HEAD
                 if (!tree->IsPhiNode())
                 {
                     break;
@@ -1450,17 +1396,6 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
 
                 AddPhiArg(succ, nullptr /* no statements in LIR form */, phi, lclNum, ssaNum, block);
             }
-=======
-                break;
-            }
-
-            GenTreeLclVar* store  = stmt->GetRootNode()->AsLclVar();
-            GenTreePhi*    phi    = store->Data()->AsPhi();
-            unsigned       lclNum = store->GetLclNum();
-            unsigned       ssaNum = m_renameStack.Top(lclNum);
-
-            AddPhiArg(succ, stmt, phi, lclNum, ssaNum, block);
->>>>>>> runtime/main
         }
         else
         {
@@ -1475,29 +1410,12 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
                     break;
                 }
 
-                GenTree*    tree = stmt->GetRootNode();
-                GenTreePhi* phi  = tree->gtGetOp2()->AsPhi();
+                GenTreeLclVar* store  = stmt->GetRootNode()->AsLclVar();
+                GenTreePhi*    phi    = store->Data()->AsPhi();
+                unsigned       lclNum = store->GetLclNum();
+                unsigned       ssaNum = m_renameStack.Top(lclNum);
 
-                unsigned lclNum = tree->AsOp()->gtOp1->AsLclVar()->GetLclNum();
-                unsigned ssaNum = m_renameStack.Top(lclNum);
-                // Search the arglist for an existing definition for ssaNum.
-                // (Can we assert that its the head of the list?  This should only happen when we add
-                // during renaming for a definition that occurs within a try, and then that's the last
-                // value of the var within that basic block.)
-
-                bool found = false;
-                for (GenTreePhi::Use& use : phi->Uses())
-                {
-                    if (use.GetNode()->AsPhiArg()->GetSsaNum() == ssaNum)
-                    {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                {
-                    AddPhiArg(succ, stmt, phi, lclNum, ssaNum, block);
-                }
+                AddPhiArg(succ, stmt, phi, lclNum, ssaNum, block);
             }
 #if defined(TARGET_WASM)
         }

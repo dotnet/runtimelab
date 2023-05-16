@@ -101,13 +101,9 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <SharedLibrary Condition="'$(_targetOS)' == 'win'">$(FrameworkLibPath)\Framework$(LibFileExt)</SharedLibrary>
     <SharedLibrary Condition="'$(_targetOS)' != 'win'">$(FrameworkLibPath)\libframework$(LibFileExt)</SharedLibrary>
-<<<<<<< HEAD
-    <IlcDynamicBuildPropertyDependencies Condition="'$(IlcCalledViaPackage)' == 'true'">SetupProperties</IlcDynamicBuildPropertyDependencies>
+    <IlcDynamicBuildPropertyDependencies>SetupProperties</IlcDynamicBuildPropertyDependencies>
     <IlcDisableUnhandledExceptionExperience Condition="$(NativeCodeGen) == 'llvm'">true</IlcDisableUnhandledExceptionExperience>
     <IlcLlvmTarget Condition="'$(NativeCodeGen)' == 'llvm' and '$(_targetOS)' == 'wasi'">wasm32-wasi-threads</IlcLlvmTarget>
-=======
-    <IlcDynamicBuildPropertyDependencies>SetupProperties</IlcDynamicBuildPropertyDependencies>
->>>>>>> runtime/main
   </PropertyGroup>
 
   <ItemGroup Condition="'$(NativeCodeGen)' == 'llvm'">

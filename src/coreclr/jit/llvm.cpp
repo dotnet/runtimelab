@@ -293,6 +293,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
 
         // Runtime export, implemented in "Runtime.Base\src\System\Runtime\RuntimeExports.cs".
         { FUNC(CORINFO_HELP_NEWFAST) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_NEWFAST_MAYBEFROZEN) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR } },
 
         // Implemented in "Runtime\portable.cpp".
         { FUNC(CORINFO_HELP_NEWSFAST) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR } },
@@ -307,6 +308,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
 
         // Runtime export, implemented in "Runtime.Base\src\System\Runtime\RuntimeExports.cs".
         { FUNC(CORINFO_HELP_NEWARR_1_DIRECT) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT } },
+        { FUNC(CORINFO_HELP_NEWARR_1_MAYBEFROZEN) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT } },
 
         // Not used in NativeAOT.
         { FUNC(CORINFO_HELP_NEWARR_1_OBJ) },
@@ -420,6 +422,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
         { FUNC(CORINFO_HELP_GETFIELDDOUBLE) },
         { FUNC(CORINFO_HELP_SETFIELDDOUBLE) },
         { FUNC(CORINFO_HELP_GETFIELDADDR) },
+        { FUNC(CORINFO_HELP_GETSTATICFIELDADDR) },
         { FUNC(CORINFO_HELP_GETSTATICFIELDADDR_TLS) },
         { FUNC(CORINFO_HELP_GETGENERICS_GCSTATIC_BASE) },
         { FUNC(CORINFO_HELP_GETGENERICS_NONGCSTATIC_BASE) },
@@ -438,6 +441,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
         { FUNC(CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_NOCTOR) },
         { FUNC(CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE_DYNAMICCLASS) },
         { FUNC(CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_DYNAMICCLASS) },
+        { FUNC(CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED) },
         { FUNC(CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED) },
             
         // NYI in NativeAOT.
@@ -480,9 +484,6 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs".
         { FUNC(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE_MAYBENULL) CORINFO_TYPE_VALUECLASS, { CORINFO_TYPE_RT_HANDLE }, HFIF_SS_ARG },
-
-        // Another runtime export from "TypeCast.cs".
-        { FUNC(CORINFO_HELP_ARE_TYPES_EQUIVALENT) CORINFO_TYPE_BOOL, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR } },
 
         // Not used in NativeAOT.
         { FUNC(CORINFO_HELP_VIRTUAL_FUNC_PTR) },

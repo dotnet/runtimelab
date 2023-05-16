@@ -63,5 +63,12 @@ namespace System
         }
 
         public static int TickCount => (int)TickCount64;
+
+#if TARGET_WASM
+        private static unsafe string[] GetCommandLineArgsNative()
+        {
+            throw new PlatformNotSupportedException();
+        }
+#endif
     }
 }
