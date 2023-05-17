@@ -619,20 +619,6 @@ void SsaBuilder::InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum)
 void SsaBuilder::AddPhiArg(
     BasicBlock* block, Statement* stmt, GenTreePhi* phi, unsigned lclNum, unsigned ssaNum, BasicBlock* pred)
 {
-#if DEBUG
-#if defined(TARGET_WASM)
-    // For LLVM backed, every predecessor must have its own phi arg
-    if (!block->IsLIR())
-    {
-        // Make sure it isn't already present: we should only add each definition once.
-        for (GenTreePhi::Use& use : phi->Uses())
-        {
-            assert(use.GetNode()->AsPhiArg()->GetSsaNum() != ssaNum);
-        }
-    }
-#endif // TARGET_WASM
-#endif // DEBUG
-
     // If there's already a phi arg for this pred, it had better have
     // matching ssaNum, unless this block is a handler entry.
     //
@@ -1124,14 +1110,13 @@ void SsaBuilder::AddDefToHandlerPhis(BasicBlock* block, unsigned lclNum, unsigne
                             break;
                         }
 
-                        GenTree* tree = stmt->GetRootNode();
+                        GenTreeLclVar* phiDef = stmt->GetRootNode()->AsLclVar();
+                        assert(phiDef->IsPhiDefn());
 
-                        assert(tree->IsPhiDefn());
-
-                        if (tree->AsOp()->gtOp1->AsLclVar()->GetLclNum() == lclNum)
+                        if (phiDef->GetLclNum() == lclNum)
                         {
                             // It's the definition for the right local.  Add "ssaNum" to the RHS.
-                            AddPhiArg(handler, stmt, tree->gtGetOp2()->AsPhi(), lclNum, ssaNum, block);
+                            AddPhiArg(handler, stmt, phiDef->Data()->AsPhi(), lclNum, ssaNum, block);
 #ifdef DEBUG
                             phiFound = true;
 #endif
