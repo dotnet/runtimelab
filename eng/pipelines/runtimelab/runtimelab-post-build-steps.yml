@@ -22,7 +22,7 @@ steps:
     - script: $(Build.SourcesDirectory)/build$(scriptExt) clr.wasmjit+clr.aot -c $(buildConfigUpper) $(_officialBuildParameter) -ci
       displayName: Build the ILC and RyuJit cross-compilers
 
-    - ${{ if eq(parameters.isOfficialBuild, true) }}:
+    - ${{ if and(eq(parameters.isOfficialBuild, true), eq(parameters.platform, 'browser_wasm_win')) }}:
       - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -c $(buildConfigUpper) $(_officialBuildParameter) -ci
         displayName: Build host packages
 

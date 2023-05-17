@@ -21,10 +21,9 @@ namespace Internal.JitInterface
 {
     internal sealed unsafe partial class CorInfoImpl
     {
-        private static readonly List<IntPtr> s_allocedMemory = new List<IntPtr>();
         private static readonly void*[] s_jitExports = new void*[(int)JitApiId.Count + 1];
 
-        private Dictionary<IntPtr, TypeDescriptor> typeDescriptorDict = new Dictionary<IntPtr, TypeDescriptor>();
+        private void* _pNativeContext; // Per-thread context pointer. Used by the Jit; opaque to the EE.
 
         [UnmanagedCallersOnly]
         public static void addCodeReloc(IntPtr thisHandle, void* handle)
@@ -177,6 +176,7 @@ namespace Internal.JitInterface
                         CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH => "HandleExceptionWasmCatch",
                         CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER => "HandleExceptionWasmFilteredCatch",
                         CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT => "HandleExceptionWasmFault",
+                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION => "HandleUnhandledException",
                         _ => throw new UnreachableException()
                     };
                     // TODO-LLVM: we are breaking the abstraction here. Compiler is not allowed to access methods from the
@@ -191,30 +191,25 @@ namespace Internal.JitInterface
             return _this.ObjectToHandle(helperFuncNode);
         }
 
+        [UnmanagedCallersOnly]
+        private static void* getSingleThreadedCompilationContext(IntPtr thisHandle)
+        {
+            return GetThis(thisHandle)._pNativeContext;
+        }
+
         public struct TypeDescriptor
         {
+            public uint Size;
             public uint FieldCount;
             public CORINFO_FIELD_STRUCT_** Fields; // array of CORINFO_FIELD_STRUCT_*
             public uint HasSignificantPadding; // Change to a uint flags if we need more bools
         }
 
         [UnmanagedCallersOnly]
-        public static TypeDescriptor getTypeDescriptor(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* inputType)
+        public static void getTypeDescriptor(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* inputType, TypeDescriptor* pTypeDescriptor)
         {
             var _this = GetThis(thisHandle);
-
-            if (_this.typeDescriptorDict.TryGetValue((IntPtr)inputType, out var typeDescriptor))
-            {
-                return typeDescriptor;
-            }
-
             TypeDesc type = _this.HandleToObject(inputType);
-
-            bool hasSignificantPadding = false;
-            if (type is EcmaType ecmaType)
-            {
-                hasSignificantPadding = ecmaType.IsExplicitLayout || ecmaType.GetClassLayout().Size > 0;
-            };
 
             uint fieldCount = 0;
             foreach (var field in type.GetFields())
@@ -225,30 +220,28 @@ namespace Internal.JitInterface
                 }
             }
 
-            //TODO-LLVM: change to NativeMemory.Alloc when upgraded to .net6
-            IntPtr fieldArray = Marshal.AllocHGlobal((int)(sizeof(CORINFO_FIELD_STRUCT_*) * fieldCount));
-            s_allocedMemory.Add(fieldArray);
-
-            typeDescriptor = new TypeDescriptor
-            {
-                FieldCount = fieldCount,
-                Fields = (CORINFO_FIELD_STRUCT_**)fieldArray,
-                HasSignificantPadding = hasSignificantPadding ? 1u : 0
-            };
+            CORINFO_FIELD_STRUCT_*[] fields = new CORINFO_FIELD_STRUCT_*[fieldCount];
 
             fieldCount = 0;
             foreach (var field in type.GetFields())
             {
                 if (!field.IsStatic)
                 {
-                    typeDescriptor.Fields[fieldCount] = _this.ObjectToHandle(field);
+                    fields[fieldCount] = _this.ObjectToHandle(field);
                     fieldCount++;
                 }
             }
 
-            _this.typeDescriptorDict.Add((IntPtr)inputType, typeDescriptor);
+            bool hasSignificantPadding = false;
+            if (type is EcmaType ecmaType)
+            {
+                hasSignificantPadding = ecmaType.IsExplicitLayout || ecmaType.GetClassLayout().Size > 0;
+            };
 
-            return typeDescriptor;
+            pTypeDescriptor->Size = (uint)type.GetElementSize().AsInt;
+            pTypeDescriptor->FieldCount = fieldCount;
+            pTypeDescriptor->Fields = (CORINFO_FIELD_STRUCT_**)_this.GetPin(fields);
+            pTypeDescriptor->HasSignificantPadding = hasSignificantPadding ? 1u : 0u;
         }
 
         [UnmanagedCallersOnly]
@@ -287,13 +280,14 @@ namespace Internal.JitInterface
             GetDebugTypeForType,
             GetDebugInfoForDebugType,
             GetDebugInfoForCurrentMethod,
+            GetSingleThreadedCompilationContext,
             Count
         }
 
         private enum JitApiId
         {
-            StartThreadContextBoundCompilation,
-            FinishThreadContextBoundCompilation,
+            StartSingleThreadedCompilation,
+            FinishSingleThreadedCompilation,
             Count
         };
 
@@ -306,6 +300,7 @@ namespace Internal.JitInterface
             CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER,
             CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT,
             CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING,
+            CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION,
             CORINFO_HELP_ANY_COUNT
         }
 
@@ -322,13 +317,14 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;
             jitImports[(int)EEApiId.GetPrimitiveTypeForTrivialWasmStruct] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType>)&getPrimitiveTypeForTrivialWasmStruct;
             jitImports[(int)EEApiId.PadOffset] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint>)&padOffset;
-            jitImports[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor>)&getTypeDescriptor;
+            jitImports[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor*, void>)&getTypeDescriptor;
             jitImports[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
             jitImports[(int)EEApiId.GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
             jitImports[(int)EEApiId.GetLlvmHelperFuncEntrypoint] = (delegate* unmanaged<IntPtr, CorInfoHelpLlvmFunc, IntPtr>)&getLlvmHelperFuncEntrypoint;
             jitImports[(int)EEApiId.GetDebugTypeForType] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_LLVM_DEBUG_TYPE_HANDLE>)&getDebugTypeForType;
             jitImports[(int)EEApiId.GetDebugInfoForDebugType] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_DEBUG_TYPE_HANDLE, CORINFO_LLVM_TYPE_DEBUG_INFO*, void>)&getDebugInfoForDebugType;
             jitImports[(int)EEApiId.GetDebugInfoForCurrentMethod] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_METHOD_DEBUG_INFO*, void>)&getDebugInfoForCurrentMethod;
+            jitImports[(int)EEApiId.GetSingleThreadedCompilationContext] = (delegate* unmanaged<IntPtr, void*>)&getSingleThreadedCompilationContext;
             jitImports[(int)EEApiId.Count] = (void*)0x1234;
 
 #if DEBUG
@@ -345,28 +341,18 @@ namespace Internal.JitInterface
             }
         }
 
-        public static void JitFinishCompilation()
-        {
-            foreach (var ptr in s_allocedMemory)
-            {
-                Marshal.FreeHGlobal(ptr);
-            }
-
-            s_allocedMemory.Clear();
-        }
-
-        public static void JitStartThreadContextBoundCompilation(string outputFileName, string triple, string dataLayout)
+        public void JitStartSingleThreadedCompilation(string outputFileName, string triple, string dataLayout)
         {
             fixed (byte* pOutputFileName = StringToUTF8(outputFileName), pTriple = StringToUTF8(triple), pDataLayout = StringToUTF8(dataLayout))
             {
-                var pExport = (delegate* unmanaged<byte*, byte*, byte*, void>)s_jitExports[(int)JitApiId.StartThreadContextBoundCompilation];
-                pExport(pOutputFileName, pTriple, pDataLayout);
+                var pExport = (delegate* unmanaged<byte*, byte*, byte*, void*>)s_jitExports[(int)JitApiId.StartSingleThreadedCompilation];
+                _pNativeContext = pExport(pOutputFileName, pTriple, pDataLayout);
             }
         }
 
-        public static void JitFinishThreadContextBoundCompilation()
+        public void JitFinishSingleThreadedCompilation()
         {
-            ((delegate* unmanaged<void>)s_jitExports[(int)JitApiId.FinishThreadContextBoundCompilation])();
+            ((delegate* unmanaged<void*, void>)s_jitExports[(int)JitApiId.FinishSingleThreadedCompilation])(_pNativeContext);
         }
     }
 

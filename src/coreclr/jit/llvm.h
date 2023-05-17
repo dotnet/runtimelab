@@ -63,15 +63,13 @@ enum class TargetAbiType : uint8_t
 enum CorInfoHelpLlvmFunc
 {
     CORINFO_HELP_LLVM_UNDEF = CORINFO_HELP_COUNT,
-
     CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP,
     CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP,
-
     CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH,
     CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER,
     CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT,
     CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING,
-
+    CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION,
     CORINFO_HELP_ANY_COUNT
 };
 
@@ -166,23 +164,28 @@ struct FunctionInfo
     };
 };
 
-// TODO: The module/context pair must be bound to a thread context. We should investigate removing the type maps.
-// Note we declare all statics here, and define them in llvm.cpp, for documentation and visibility purposes even as
-// some are only needed in other compilation units.
-//
-extern Module* _module;
-extern LLVMContext _llvmContext;
-extern std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs;
-extern std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap;
-extern JitHashTable<CORINFO_LLVM_DEBUG_TYPE_HANDLE, JitSmallPrimitiveKeyFuncs<CORINFO_LLVM_DEBUG_TYPE_HANDLE>, llvm::DIType*, MallocAllocator> s_debugTypesMap;
-extern JitHashTable<llvm::DIFile*, JitPtrKeyFuncs<llvm::DIFile>, llvm::DICompileUnit*, MallocAllocator> s_debugCompileUnitsMap;
+class SingleThreadedCompilationContext
+{
+public:
+    LLVMContext Context;
+    Module Module;
+    std::unordered_map<CORINFO_CLASS_HANDLE, Type*> LlvmStructTypesMap;
+    std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*> StructDescMap;
+    JitHashTable<CORINFO_LLVM_DEBUG_TYPE_HANDLE, JitSmallPrimitiveKeyFuncs<CORINFO_LLVM_DEBUG_TYPE_HANDLE>, llvm::DIType*, MallocAllocator> DebugTypesMap;
+    JitHashTable<llvm::DIFile*, JitPtrKeyFuncs<llvm::DIFile>, llvm::DICompileUnit*, MallocAllocator> DebugCompileUnitsMap;
+
+    SingleThreadedCompilationContext(StringRef name) : Module(name, Context), DebugTypesMap({}), DebugCompileUnitsMap({})
+    {
+    }
+};
 
 class Llvm
 {
 private:
+    void* const m_pEECorInfo; // TODO-LLVM: workaround for not changing the JIT/EE interface.
+    SingleThreadedCompilationContext* const m_context;
     Compiler* const _compiler;
     Compiler::Info* const m_info;
-    void* const m_pEECorInfo; // TODO-LLVM: workaround for not changing the JIT/EE interface.
     GCInfo* _gcInfo = nullptr;
 
     // Used by both lowering and codegen.
@@ -201,6 +204,7 @@ private:
     std::vector<FunctionInfo> m_functions;
     std::vector<llvm::BasicBlock*> m_EHDispatchLlvmBlocks;
 
+    unsigned m_unhandledExceptionHandlerIndex = EHblkDsc::NO_ENCLOSING_INDEX;
     Value* m_rootFunctionShadowStackValue = nullptr;
 
     // Codegen emit context.
@@ -278,7 +282,7 @@ private:
     bool IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle) const;
     CorInfoType GetPrimitiveTypeForTrivialWasmStruct(CORINFO_CLASS_HANDLE structHandle);
     uint32_t PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset);
-    TypeDescriptor GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle);
+    void GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle, TypeDescriptor* pTypeDescriptor);
     const char* GetAlternativeFunctionName();
     CORINFO_GENERIC_HANDLE GetExternalMethodAccessor(
         CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* callSiteSig, int sigLength);
@@ -286,10 +290,12 @@ private:
     CORINFO_LLVM_DEBUG_TYPE_HANDLE GetDebugTypeForType(CORINFO_CLASS_HANDLE typeHandle);
     void GetDebugInfoForDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo);
     void GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
+    SingleThreadedCompilationContext* GetSingleThreadedCompilationContext();
 
 public:
-    static void StartThreadContextBoundCompilation(const char* path, const char* triple, const char* dataLayout);
-    static void FinishThreadContextBoundCompilation();
+    static SingleThreadedCompilationContext* StartSingleThreadedCompilation(
+        const char* path, const char* triple, const char* dataLayout);
+    static void FinishSingleThreadedCompilation(SingleThreadedCompilationContext* context);
 
     // ================================================================================================================
     // |                                                 Type system                                                  |
@@ -315,6 +321,7 @@ private:
     // ================================================================================================================
 
 public:
+    void AddUnhandledExceptionHandler();
     void Lower();
 
 private:
@@ -434,10 +441,13 @@ private:
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
 
+    bool isUnhandledExceptionHandler(GenTreeCall* call);
+
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
-    llvm::CallBase* emitHelperCall(CorInfoHelpAnyFunc helperFunc, ArrayRef<Value*> sigArgs = { });
+    llvm::CallBase* emitHelperCall(
+        CorInfoHelpAnyFunc helperFunc, ArrayRef<Value*> sigArgs = { }, bool doTailCall = false);
     llvm::CallBase* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args);
 
     FunctionType* createFunctionType();

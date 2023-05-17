@@ -102,14 +102,12 @@ The .NET Foundation licenses this file to you under the MIT license.
     <SharedLibrary Condition="'$(_targetOS)' == 'win'">$(FrameworkLibPath)\Framework$(LibFileExt)</SharedLibrary>
     <SharedLibrary Condition="'$(_targetOS)' != 'win'">$(FrameworkLibPath)\libframework$(LibFileExt)</SharedLibrary>
     <IlcDynamicBuildPropertyDependencies>SetupProperties</IlcDynamicBuildPropertyDependencies>
-    <IlcDisableUnhandledExceptionExperience Condition="$(NativeCodeGen) == 'llvm'">true</IlcDisableUnhandledExceptionExperience>
     <IlcLlvmTarget Condition="'$(NativeCodeGen)' == 'llvm' and '$(_targetOS)' == 'wasi'">wasm32-wasi-threads</IlcLlvmTarget>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(NativeCodeGen)' == 'llvm'">
-    <!-- TODO-LLVM: remove the IL objects when the IL backend is gone -->
     <LlvmObjectNames Include="$(TargetName)" />
-    <LlvmObjectNames Include="$(TargetName)clrjit" />
+    <LlvmObjectNames Include="$(TargetName).data" />
     <LlvmObjectNames Include="$(TargetName).external" />
 
     <LlvmObjects Include="@(LlvmObjectNames->'$(NativeIntermediateOutputPath)%(Identity)$(LlvmObjectExt)')">

@@ -27,7 +27,7 @@ namespace ILCompiler
         private readonly Dictionary<string, InstructionSet> _instructionSetMap;
         private readonly ProfileDataManager _profileDataManager;
         protected readonly MethodImportationErrorProvider _methodImportationErrorProvider;
-        private readonly int _parallelism;
+        protected readonly int _parallelism;
 
         public InstructionSetSupport InstructionSetSupport { get; }
 

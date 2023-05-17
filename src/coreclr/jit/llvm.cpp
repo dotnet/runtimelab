@@ -8,14 +8,6 @@
 #include "llvm/Bitcode/BitcodeWriter.h"
 #pragma warning (error: 4459)
 
-LLVMContext _llvmContext;
-Module* _module = nullptr;
-
-std::unordered_map<CORINFO_CLASS_HANDLE, Type*>* _llvmStructs = new std::unordered_map<CORINFO_CLASS_HANDLE, Type*>();
-std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>* _structDescMap = new std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*>();
-JitHashTable<CORINFO_LLVM_DEBUG_TYPE_HANDLE, JitSmallPrimitiveKeyFuncs<CORINFO_LLVM_DEBUG_TYPE_HANDLE>, llvm::DIType*, MallocAllocator> s_debugTypesMap({});
-JitHashTable<llvm::DIFile*, JitPtrKeyFuncs<llvm::DIFile>, llvm::DICompileUnit*, MallocAllocator> s_debugCompileUnitsMap({});
-
 // Must be kept in sync with the managed version in "CorInfoImpl.Llvm.cs".
 //
 enum class EEApiId
@@ -34,13 +26,14 @@ enum class EEApiId
     GetDebugTypeForType,
     GetDebugInfoForDebugType,
     GetDebugInfoForCurrentMethod,
+    GetSingleThreadedCompilationContext,
     Count
 };
 
 enum class JitApiId
 {
-    StartThreadContextBoundCompilation,
-    FinishThreadContextBoundCompilation,
+    StartSingleThreadedCompilation,
+    FinishSingleThreadedCompilation,
     Count
 };
 
@@ -100,10 +93,11 @@ var_types Compiler::GetHfaType(CORINFO_CLASS_HANDLE hClass) { return TYP_UNDEF; 
 unsigned Compiler::GetHfaCount(CORINFO_CLASS_HANDLE hClass) { return 0; }
 
 Llvm::Llvm(Compiler* compiler)
-    : _compiler(compiler)
+    : m_pEECorInfo(*((void**)compiler->info.compCompHnd + 1)) // TODO-LLVM: hack. CorInfoImpl* is the first field of JitInterfaceWrapper.
+    , m_context(GetSingleThreadedCompilationContext())
+    , _compiler(compiler)
     , m_info(&compiler->info)
-    , m_pEECorInfo(*((void**)compiler->info.compCompHnd + 1)) // TODO-LLVM: hack. CorInfoImpl* is the first field of JitInterfaceWrapper.
-    , _builder(_llvmContext)
+    , _builder(m_context->Context)
     , _blkToLlvmBlksMap(compiler->getAllocator(CMK_Codegen))
     , _sdsuMap(compiler->getAllocator(CMK_Codegen))
     , _localsMap(compiler->getAllocator(CMK_Codegen))
@@ -572,6 +566,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
         { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER) CORINFO_TYPE_INT, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING) CORINFO_TYPE_INT, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS }, HFIF_SS_ARG },
 
     };
     // clang-format on
@@ -860,9 +855,9 @@ uint32_t Llvm::PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset)
     return CallEEApi<EEApiId::PadOffset, uint32_t>(m_pEECorInfo, typeHandle, atOffset);
 }
 
-TypeDescriptor Llvm::GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle)
+void Llvm::GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle, TypeDescriptor* pTypeDescriptor)
 {
-    return CallEEApi<EEApiId::GetTypeDescriptor, TypeDescriptor>(m_pEECorInfo, typeHandle);
+    CallEEApi<EEApiId::GetTypeDescriptor, void>(m_pEECorInfo, typeHandle, pTypeDescriptor);
 }
 
 const char* Llvm::GetAlternativeFunctionName()
@@ -897,50 +892,54 @@ void Llvm::GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
     CallEEApi<EEApiId::GetDebugInfoForCurrentMethod, void>(m_pEECorInfo, pInfo);
 }
 
+SingleThreadedCompilationContext* Llvm::GetSingleThreadedCompilationContext()
+{
+    return CallEEApi<EEApiId::GetSingleThreadedCompilationContext, SingleThreadedCompilationContext*>(m_pEECorInfo);
+}
+
 extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExports)
 {
     assert((jitImports != nullptr) && (jitImports[static_cast<int>(EEApiId::Count)] == (void*)0x1234));
     assert(jitExports != nullptr);
 
     memcpy(g_callbacks, jitImports, static_cast<int>(EEApiId::Count) * sizeof(void*));
-    jitExports[static_cast<int>(JitApiId::StartThreadContextBoundCompilation)] = &Llvm::StartThreadContextBoundCompilation;
-    jitExports[static_cast<int>(JitApiId::FinishThreadContextBoundCompilation)] = &Llvm::FinishThreadContextBoundCompilation;
+    jitExports[static_cast<int>(JitApiId::StartSingleThreadedCompilation)] = &Llvm::StartSingleThreadedCompilation;
+    jitExports[static_cast<int>(JitApiId::FinishSingleThreadedCompilation)] = &Llvm::FinishSingleThreadedCompilation;
     jitExports[static_cast<int>(JitApiId::Count)] = (void*)0x1234;
 }
 
-/* static */ void Llvm::StartThreadContextBoundCompilation(const char* path, const char* triple, const char* dataLayout)
+/* static */ SingleThreadedCompilationContext* Llvm::StartSingleThreadedCompilation(
+    const char* path, const char* triple, const char* dataLayout)
 {
-    _module = new Module(path, _llvmContext);
-    _module->setTargetTriple(triple);
-    _module->setDataLayout(dataLayout);
+    SingleThreadedCompilationContext* context = new SingleThreadedCompilationContext(path);
+    context->Module.setTargetTriple(triple);
+    context->Module.setDataLayout(dataLayout);
+
+    return context;
 }
 
-/* static */ void Llvm::FinishThreadContextBoundCompilation()
+/* static */ void Llvm::FinishSingleThreadedCompilation(SingleThreadedCompilationContext* context)
 {
-    assert(_module != nullptr);
-    if (s_debugCompileUnitsMap.GetCount() != 0)
+    assert(context != nullptr);
+
+    Module& module = context->Module;
+    if (context->DebugCompileUnitsMap.GetCount() != 0)
     {
-        _module->addModuleFlag(llvm::Module::Warning, "Dwarf Version", 4);
-        _module->addModuleFlag(llvm::Module::Warning, "Debug Info Version", 3);
+        module.addModuleFlag(llvm::Module::Warning, "Dwarf Version", 4);
+        module.addModuleFlag(llvm::Module::Warning, "Debug Info Version", 3);
     }
 
     std::error_code code;
 
     // TODO-LLVM: put under #ifdef DEBUG. Useful for debugging for now.
-    StringRef outputFilePath = _module->getName();
+    StringRef outputFilePath = module.getName();
     StringRef outputFilePathWithoutExtension = outputFilePath.take_front(outputFilePath.find_last_of('.'));
     llvm::raw_fd_ostream textOutputStream(Twine(outputFilePathWithoutExtension + ".txt").str(), code);
-    _module->print(textOutputStream, nullptr);
+    module.print(textOutputStream, nullptr);
 
-    assert(!llvm::verifyModule(*_module, &llvm::errs()));
+    assert(!llvm::verifyModule(module, &llvm::errs()));
     llvm::raw_fd_ostream bitCodeFileStream(outputFilePath, code);
-    llvm::WriteBitcodeToFile(*_module, bitCodeFileStream);
+    llvm::WriteBitcodeToFile(module, bitCodeFileStream);
 
-    delete _module;
-
-    // The struct descriptor map is notionally a global resource. We should investigate removing it.
-    for (const auto &structDesc : *_structDescMap)
-    {
-        delete structDesc.second;
-    }
+    delete context;
 }
