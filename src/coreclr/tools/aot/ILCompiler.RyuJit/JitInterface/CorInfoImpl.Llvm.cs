@@ -177,6 +177,7 @@ namespace Internal.JitInterface
                         CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH => "HandleExceptionWasmCatch",
                         CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER => "HandleExceptionWasmFilteredCatch",
                         CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT => "HandleExceptionWasmFault",
+                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION => "HandleUnhandledException",
                         _ => throw new UnreachableException()
                     };
                     // TODO-LLVM: we are breaking the abstraction here. Compiler is not allowed to access methods from the
@@ -306,6 +307,7 @@ namespace Internal.JitInterface
             CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER,
             CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT,
             CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING,
+            CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION,
             CORINFO_HELP_ANY_COUNT
         }
 

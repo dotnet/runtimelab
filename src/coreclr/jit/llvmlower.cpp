@@ -4,6 +4,111 @@
 
 #include "llvm.h"
 
+void Llvm::AddUnhandledExceptionHandler()
+{
+    if (!_compiler->opts.IsReversePInvoke())
+    {
+        return;
+    }
+
+    BasicBlock* firstTryBlock = _compiler->fgFirstBB;
+    BasicBlock* lastTryBlock = _compiler->fgLastBB;
+
+    // Make sure the first block is not in a protected region to uphold the invariant that no
+    // two such regions share the first block.
+    if (firstTryBlock->hasTryIndex())
+    {
+        _compiler->fgEnsureFirstBBisScratch();
+        firstTryBlock = _compiler->fgFirstBBScratch;
+        _compiler->fgFirstBBScratch = nullptr;
+    }
+
+    // Create a block for the filter and filter handler. The handler part is unreachable, but
+    // we need it for the EH table to be well-formed.
+    BasicBlock* filterBlock = _compiler->fgNewBBafter(BBJ_THROW, lastTryBlock, false);
+    BasicBlock* handlerBlock = _compiler->fgNewBBafter(BBJ_THROW, filterBlock, false);
+
+    // Add the new EH region at the end, since it is the least nested, and thus should be last.
+    unsigned newEhIndex = _compiler->compHndBBtabCount;
+    EHblkDsc* newEhDsc = _compiler->fgAddEHTableEntry(newEhIndex);
+
+    // Initialize the new entry.
+    newEhDsc->ebdHandlerType = EH_HANDLER_FILTER;
+    newEhDsc->ebdTryBeg = firstTryBlock;
+    newEhDsc->ebdTryLast = lastTryBlock;
+    newEhDsc->ebdFilter = filterBlock;
+    newEhDsc->ebdHndBeg = handlerBlock;
+    newEhDsc->ebdHndLast = handlerBlock;
+
+    newEhDsc->ebdEnclosingTryIndex = EHblkDsc::NO_ENCLOSING_INDEX;
+    newEhDsc->ebdEnclosingHndIndex = EHblkDsc::NO_ENCLOSING_INDEX;
+
+    newEhDsc->ebdTryBegOffset = firstTryBlock->bbCodeOffs;
+    newEhDsc->ebdTryEndOffset = lastTryBlock->bbCodeOffsEnd;
+    newEhDsc->ebdFilterBegOffset = 0; // Filter doesn't correspond to any IL.
+    newEhDsc->ebdHndBegOffset = 0; // Handler doesn't correspond to any IL.
+    newEhDsc->ebdHndEndOffset = 0; // Handler doesn't correspond to any IL.
+
+    // Set some flags on the new region. This is the same as when we set up
+    // EH regions in fgFindBasicBlocks(). Note that the try has no enclosing
+    // handler, and the filter with filter handler have no enclosing try.
+    firstTryBlock->bbFlags |= BBF_DONT_REMOVE | BBF_TRY_BEG | BBF_IMPORTED;
+    firstTryBlock->setTryIndex(newEhIndex);
+    firstTryBlock->clearHndIndex();
+
+    filterBlock->bbFlags |= BBF_DONT_REMOVE | BBF_IMPORTED;
+    filterBlock->bbCatchTyp = BBCT_FILTER;
+    filterBlock->clearTryIndex();
+    filterBlock->setHndIndex(newEhIndex);
+
+    handlerBlock->bbFlags |= BBF_DONT_REMOVE | BBF_IMPORTED;
+    handlerBlock->bbCatchTyp = BBCT_FILTER_HANDLER;
+    handlerBlock->clearTryIndex();
+    handlerBlock->setHndIndex(newEhIndex);
+
+    // Walk the user code blocks and set all blocks that don't already have a try handler
+    // to point to the new try handler.
+    for (BasicBlock* block : _compiler->Blocks(firstTryBlock, lastTryBlock))
+    {
+        if (!block->hasTryIndex())
+        {
+            block->setTryIndex(newEhIndex);
+        }
+    }
+
+    // Walk the EH table. Make every EH entry that doesn't already have an enclosing try
+    // index mark this new entry as their enclosing try index.
+    for (unsigned ehIndex = 0; ehIndex < newEhIndex; ehIndex++)
+    {
+        EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
+        if (ehDsc->ebdEnclosingTryIndex == EHblkDsc::NO_ENCLOSING_INDEX)
+        {
+            // This EH region wasn't previously nested, but now it is.
+            ehDsc->ebdEnclosingTryIndex = static_cast<unsigned short>(newEhIndex);
+        }
+    }
+
+    // Insert a fail-fast into the filter block. This is an approximation of the helper
+    // codegen will know to actually use for this special block.
+    GenTree* handlerCall = _compiler->gtNewHelperCallNode(CORINFO_HELP_FAIL_FAST, TYP_VOID);
+    Statement* handlerStmt = _compiler->gtNewStmt(handlerCall);
+    _compiler->fgInsertStmtAtEnd(filterBlock, handlerStmt);
+
+    m_unhandledExceptionHandlerIndex = newEhIndex;
+
+#ifdef DEBUG
+    if (_compiler->verbose)
+    {
+        printf("ReversePInvoke method - created additional EH descriptor EH#%u for the unhandled exception filter\n",
+               newEhIndex);
+        _compiler->fgDispBasicBlocks();
+        _compiler->fgDispHandlerTab();
+    }
+
+    _compiler->fgVerifyHandlerTab();
+#endif // DEBUG
+}
+
 //------------------------------------------------------------------------
 // Convert GT_STORE_LCL_VAR and GT_LCL_VAR to use the shadow stack when the local needs to be GC tracked,
 // rewrite calls that returns GC types to do so via a store to a passed in address on the shadow stack.

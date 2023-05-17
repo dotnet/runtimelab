@@ -3,6 +3,12 @@
 
 #include "jitpch.h"
 
+#ifdef TARGET_WASM
+#include "llvm.h"
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif // TARGET_WASM
+
 #ifdef _MSC_VER
 #pragma hdrstop
 #endif
@@ -2594,6 +2600,10 @@ PhaseStatus Compiler::fgAddInternal()
 
     // Merge return points if required or beneficial
     MergedReturns merger(this);
+
+#ifdef TARGET_WASM
+    m_llvm->AddUnhandledExceptionHandler();
+#endif // TARGET_WASM
 
 #if defined(FEATURE_EH_FUNCLETS)
     // Add the synchronized method enter/exit calls and try/finally protection. Note
