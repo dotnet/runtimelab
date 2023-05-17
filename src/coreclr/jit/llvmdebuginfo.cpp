@@ -176,18 +176,19 @@ DIFile* Llvm::initializeDebugInfoBuilder(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
 {
     assert((pInfo->FileName != nullptr) && (pInfo->Directory != nullptr));
 
-    DIFile* debugFile = DIFile::get(_llvmContext, pInfo->FileName, pInfo->Directory);
+    DIFile* debugFile = DIFile::get(m_context->Context, pInfo->FileName, pInfo->Directory);
 
     llvm::DICompileUnit* debugCompileUnit = nullptr;
-    s_debugCompileUnitsMap.Lookup(debugFile, &debugCompileUnit);
+    m_context->DebugCompileUnitsMap.Lookup(debugFile, &debugCompileUnit);
 
-    m_diBuilder = new (_compiler->getAllocator(CMK_DebugInfo)) llvm::DIBuilder(*_module, true, debugCompileUnit);
+    m_diBuilder =
+        new (_compiler->getAllocator(CMK_DebugInfo)) llvm::DIBuilder(m_context->Module, true, debugCompileUnit);
 
     if (debugCompileUnit == nullptr)
     {
         debugCompileUnit = m_diBuilder->createCompileUnit(DW_LANG_C_plus_plus, debugFile, "ILC", false, "", 1, "",
                                                           llvm::DICompileUnit::FullDebug, 0, false);
-        s_debugCompileUnitsMap.Set(debugFile, debugCompileUnit);
+        m_context->DebugCompileUnitsMap.Set(debugFile, debugCompileUnit);
     }
 
     return debugFile;
@@ -335,7 +336,7 @@ unsigned Llvm::getLineNumberForILOffset(unsigned ilOffset)
 DILocation* Llvm::getDebugLocation(unsigned lineNo)
 {
     assert(m_diFunction != nullptr);
-    return DILocation::get(_llvmContext, lineNo, 0, m_diFunction);
+    return DILocation::get(m_context->Context, lineNo, 0, m_diFunction);
 }
 
 DILocation* Llvm::getArtificialDebugLocation()
@@ -368,10 +369,11 @@ DIFile* Llvm::getUnknownDebugFile()
 DIType* Llvm::getOrCreateDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle)
 {
     DIType* debugType;
-    if (!s_debugTypesMap.Lookup(debugTypeHandle, &debugType))
+    auto& debugTypesMap = m_context->DebugTypesMap;
+    if (!debugTypesMap.Lookup(debugTypeHandle, &debugType))
     {
         debugType = createDebugType(debugTypeHandle);
-        s_debugTypesMap.Set(debugTypeHandle, debugType, decltype(s_debugTypesMap)::Overwrite);
+        debugTypesMap.Set(debugTypeHandle, debugType, decltype(m_context->DebugTypesMap)::Overwrite);
     }
 
     return debugType;
@@ -448,7 +450,7 @@ DIType* Llvm::createDebugTypeForCompositeType(
     DIFile* debugFile = getUnknownDebugFile();
     llvm::TempDIType declType = llvm::TempDIType(
         m_diBuilder->createReplaceableCompositeType(DW_TAG_structure_type, name, nullptr, debugFile, 0));
-    s_debugTypesMap.Set(debugTypeHandle, declType.get());
+    m_context->DebugTypesMap.Set(debugTypeHandle, declType.get());
 
     unsigned index = 0;
     std::vector<Metadata*> debugElements((pInfo->BaseClass != NO_DEBUG_TYPE) + pInfo->InstanceFieldCount);

@@ -76,7 +76,7 @@ bool Llvm::initializeFunctions()
     // TODO-LLVM: investigate.
     if (!strcmp(mangledName, "S_P_CoreLib_System_Globalization_CalendarData__EnumCalendarInfo"))
     {
-        llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(_llvmContext, "", rootLlvmFunction);
+        llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(m_context->Context, "", rootLlvmFunction);
         _builder.SetInsertPoint(llvmBlock);
         _builder.CreateRet(_builder.getInt8(0));
         return true;
@@ -101,7 +101,7 @@ bool Llvm::initializeFunctions()
         {
             // Filter and catch handler funclets return int32. "HasCatchHandler" handles both cases.
             Type* retLlvmType =
-                ehDsc->HasCatchHandler() ? Type::getInt32Ty(_llvmContext) : Type::getVoidTy(_llvmContext);
+                ehDsc->HasCatchHandler() ? Type::getInt32Ty(m_context->Context) : Type::getVoidTy(m_context->Context);
 
             // All funclets have two arguments: original and actual shadow stacks.
             Type* ptrLlvmType = getPtrLlvmType();
@@ -130,7 +130,7 @@ bool Llvm::initializeFunctions()
 
             Function* llvmFunc =
                 Function::Create(llvmFuncType, Function::InternalLinkage,
-                                 mangledName + Twine("$F") + Twine(funcIdx) + "_" + kindName, _module);
+                                 mangledName + Twine("$F") + Twine(funcIdx) + "_" + kindName, &m_context->Module);
 
             m_functions[funcIdx] = {llvmFunc};
         }
@@ -157,7 +157,7 @@ bool Llvm::initializeFunctions()
                 unsigned enclosingFuncIdx = getLlvmFunctionIndexForProtectedRegion(ehIndex);
                 Function* dispatchLlvmFunc = getLlvmFunctionForIndex(enclosingFuncIdx);
                 dispatchLlvmBlock =
-                    llvm::BasicBlock::Create(_llvmContext, BBNAME("BT", ehDsc->ebdTryBeg->getTryIndex()),
+                    llvm::BasicBlock::Create(m_context->Context, BBNAME("BT", ehDsc->ebdTryBeg->getTryIndex()),
                                              dispatchLlvmFunc);
             }
 
@@ -397,18 +397,18 @@ void Llvm::generateEHDispatch()
 
     // Recover the C++ personality function.
     Type* ptrLlvmType = getPtrLlvmType();
-    Type* int32LlvmType = Type::getInt32Ty(_llvmContext);
+    Type* int32LlvmType = Type::getInt32Ty(m_context->Context);
     Type* cppExcTupleLlvmType = llvm::StructType::get(ptrLlvmType, int32LlvmType);
     llvm::StructType* dispatchDataLlvmType = llvm::StructType::get(cppExcTupleLlvmType, ptrLlvmType);
 
     static const char* const GXX_PERSONALITY_NAME = "__gxx_personality_v0";
-    Function* gxxPersonalityLlvmFunc = _module->getFunction(GXX_PERSONALITY_NAME);
+    Function* gxxPersonalityLlvmFunc = m_context->Module.getFunction(GXX_PERSONALITY_NAME);
     if (gxxPersonalityLlvmFunc == nullptr)
     {
         FunctionType* gxxPersonalityLlvmFuncType =
             FunctionType::get(cppExcTupleLlvmType, {int32LlvmType, ptrLlvmType, ptrLlvmType}, /* isVarArg */ true);
-        gxxPersonalityLlvmFunc =
-            Function::Create(gxxPersonalityLlvmFuncType, Function::ExternalLinkage, GXX_PERSONALITY_NAME, _module);
+        gxxPersonalityLlvmFunc = Function::Create(gxxPersonalityLlvmFuncType, Function::ExternalLinkage,
+                                                  GXX_PERSONALITY_NAME, m_context->Module);
     }
 
     BitVecTraits blockVecTraits(_compiler->fgBBNumMax + 1, _compiler);
@@ -539,7 +539,7 @@ void Llvm::generateEHDispatch()
 
         // The dispatchers rely on this being set to null to detect whether the ongoing dispatch is already "active".
         unsigned dispatcherDataFieldOffset =
-            _module->getDataLayout().getStructLayout(dispatchDataLlvmType)->getElementOffset(1);
+            m_context->Module.getDataLayout().getStructLayout(dispatchDataLlvmType)->getElementOffset(1);
         Value* dispatchDataFieldRefValue = gepOrAddr(dispatchDataRefValue, dispatcherDataFieldOffset);
         _builder.CreateStore(llvm::Constant::getNullValue(ptrLlvmType), dispatchDataFieldRefValue);
 
@@ -603,7 +603,7 @@ void Llvm::generateEHDispatch()
         llvm::BasicBlock* resumeLlvmBlock = funcDispatchData.ResumeLlvmBlock;
         if (resumeLlvmBlock == nullptr)
         {
-            resumeLlvmBlock = llvm::BasicBlock::Create(_llvmContext, "BBDR", llvmFunc);
+            resumeLlvmBlock = llvm::BasicBlock::Create(m_context->Context, "BBDR", llvmFunc);
 
             _builder.SetInsertPoint(resumeLlvmBlock); // No need for a full emit context.
             Value* resumeOperandValue = _builder.CreateLoad(landingPadInst->getType(), dispatchDataRefValue);
@@ -617,8 +617,8 @@ void Llvm::generateEHDispatch()
         llvm::BasicBlock* dispatchSwitchLlvmBlock = funcDispatchData.GetDispatchSwitchLlvmBlock();
         if (ehDsc->HasCatchHandler() && (dispatchSwitchLlvmBlock == nullptr))
         {
-            dispatchSwitchLlvmBlock = llvm::BasicBlock::Create(_llvmContext, "BBDS", llvmFunc, resumeLlvmBlock);
-            llvm::BasicBlock* failFastLlvmBlock = llvm::BasicBlock::Create(_llvmContext, "BBFF", llvmFunc);
+            dispatchSwitchLlvmBlock = llvm::BasicBlock::Create(m_context->Context, "BBDS", llvmFunc, resumeLlvmBlock);
+            llvm::BasicBlock* failFastLlvmBlock = llvm::BasicBlock::Create(m_context->Context, "BBFF", llvmFunc);
 
             LlvmBlockRange dispatchSwitchLlvmBlocks(dispatchSwitchLlvmBlock);
             setCurrentEmitContext(funcIdx, EHblkDsc::NO_ENCLOSING_INDEX, &dispatchSwitchLlvmBlocks);
@@ -734,7 +734,7 @@ void Llvm::generateEHDispatch()
                                 if (predBlock->bbJumpKind == BBJ_EHCATCHRET)
                                 {
                                     llvm::BasicBlock* catchRetLlvmBlock = getLastLlvmBlockForBlock(predBlock);
-                                    llvm::ReturnInst::Create(_llvmContext, destIndexValue, catchRetLlvmBlock);
+                                    llvm::ReturnInst::Create(m_context->Context, destIndexValue, catchRetLlvmBlock);
                                 }
                             }
 
@@ -769,7 +769,7 @@ Value* Llvm::generateEHDispatchTable(Function* llvmFunc, unsigned innerEHIndex, 
     const int LARGE_SECTION_CLAUSE_COUNT = TARGET_POINTER_SIZE * BITS_PER_BYTE;
     const int FIRST_SECTION_CLAUSE_COUNT = LARGE_SECTION_CLAUSE_COUNT / 2;
 
-    Type* firstClauseMaskType = Type::getIntNTy(_llvmContext, FIRST_SECTION_CLAUSE_COUNT);
+    Type* firstClauseMaskType = Type::getIntNTy(m_context->Context, FIRST_SECTION_CLAUSE_COUNT);
     Type* largeClauseMaskType = getIntPtrLlvmType();
 
     unsigned clauseCount = outerEHIndex - innerEHIndex + 1;
@@ -829,12 +829,12 @@ Value* Llvm::generateEHDispatchTable(Function* llvmFunc, unsigned innerEHIndex, 
     {
         llvmTypeBuilder.Push(data.Bottom(i)->getType());
     }
-    llvm::StructType* tableLlvmType = llvm::StructType::get(_llvmContext, {&llvmTypeBuilder.BottomRef(0),
+    llvm::StructType* tableLlvmType = llvm::StructType::get(m_context->Context, {&llvmTypeBuilder.BottomRef(0),
                                                             static_cast<size_t>(llvmTypeBuilder.Height())});
     llvm::Constant* tableValue = llvm::ConstantStruct::get(tableLlvmType, {&data.BottomRef(0),
                                                            static_cast<size_t>(data.Height())});
 
-    llvm::GlobalVariable* tableRef = new llvm::GlobalVariable(*_module, tableLlvmType, /* isConstant */ true,
+    llvm::GlobalVariable* tableRef = new llvm::GlobalVariable(m_context->Module, tableLlvmType, /* isConstant */ true,
                                                              llvm::GlobalVariable::InternalLinkage, tableValue,
                                                              llvmFunc->getName() + "__EHTable");
     tableRef->setAlignment(llvm::MaybeAlign(TARGET_POINTER_SIZE));
@@ -1015,7 +1015,7 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
                 case GT_GE:
                 case GT_GT:
                     // This is the special case for relops. Ordinary codegen "just knows" they need zero-extension.
-                    assert(nodeValue->getType() == Type::getInt1Ty(_llvmContext));
+                    assert(nodeValue->getType() == Type::getInt1Ty(m_context->Context));
                     trueNodeType = TYP_UBYTE;
                     break;
 
@@ -1256,7 +1256,7 @@ void Llvm::buildLocalVar(GenTreeLclVar* lclVar)
     // Implicit truncating from long to int.
     if ((varDsc->TypeGet() == TYP_LONG) && lclVar->TypeIs(TYP_INT))
     {
-        llvmRef = _builder.CreateTrunc(llvmRef, Type::getInt32Ty(_llvmContext));
+        llvmRef = _builder.CreateTrunc(llvmRef, Type::getInt32Ty(m_context->Context));
     }
 
     mapGenTreeToValue(lclVar, llvmRef);
@@ -1334,7 +1334,7 @@ void Llvm::buildStoreLocalField(GenTreeLclFld* lclFld)
         if (!data->IsIntegralConst(0))
         {
             assert(data->OperIsInitVal());
-            Value* fillValue = consumeValue(data->gtGetOp1(), Type::getInt8Ty(_llvmContext));
+            Value* fillValue = consumeValue(data->gtGetOp1(), Type::getInt8Ty(m_context->Context));
             Value* sizeValue = _builder.getInt32(layout->GetSize());
             _builder.CreateMemSet(addrValue, fillValue, sizeValue, llvm::MaybeAlign());
             return;
@@ -1370,7 +1370,7 @@ void Llvm::buildAdd(GenTreeOp* node)
         Value* offsetValue = consumeValue(op1RawType->isPointerTy() ? op2 : op1, getIntPtrLlvmType());
 
         // GEPs scale indices, use type i8 makes them equivalent to the raw offsets we have in IR
-        addValue = _builder.CreateGEP(Type::getInt8Ty(_llvmContext), baseValue, offsetValue);
+        addValue = _builder.CreateGEP(Type::getInt8Ty(m_context->Context), baseValue, offsetValue);
     }
     else
     {
@@ -1415,7 +1415,7 @@ void Llvm::buildSub(GenTreeOp* node)
         Value* addOffsetValue = _builder.CreateNeg(subOffsetValue);
 
         // GEPs scale indices, use type i8 makes them equivalent to the raw offsets we have in IR
-        subValue = _builder.CreateGEP(Type::getInt8Ty(_llvmContext), baseValue, addOffsetValue);
+        subValue = _builder.CreateGEP(Type::getInt8Ty(m_context->Context), baseValue, addOffsetValue);
     }
     else
     {
@@ -1512,7 +1512,7 @@ void Llvm::buildRotate(GenTreeOp* node)
 
     Type* rotateLlvmType = getLlvmTypeForVarType(node->TypeGet());
     Value* srcValue = consumeValue(node->gtGetOp1(), rotateLlvmType);
-    Value* indexValue = consumeValue(node->gtGetOp2(), Type::getInt32Ty(_llvmContext));
+    Value* indexValue = consumeValue(node->gtGetOp2(), Type::getInt32Ty(m_context->Context));
     if (indexValue->getType() != rotateLlvmType)
     {
         // The intrinsics require all operands have the same type.
@@ -1732,7 +1732,7 @@ void Llvm::buildLclHeap(GenTreeUnOp* lclHeap)
     }
     else
     {
-        llvm::AllocaInst* allocaInst = _builder.CreateAlloca(Type::getInt8Ty(_llvmContext), sizeValue);
+        llvm::AllocaInst* allocaInst = _builder.CreateAlloca(Type::getInt8Ty(m_context->Context), sizeValue);
 
         // LCLHEAP (aka IL's "localloc") is specified to return a pointer "...aligned so that any built-in data type
         // can be stored there using the stind instructions", so we'll be a bit conservative and align it maximally.
@@ -1945,8 +1945,9 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     // Check for the "initblk" operation ("dataNode" is either INIT_VAL or constant zero).
     if (blockOp->OperIsInitBlkOp())
     {
-        Value* fillValue = dataNode->OperIsInitVal() ? consumeValue(dataNode->gtGetOp1(), Type::getInt8Ty(_llvmContext))
-                                                     : _builder.getInt8(0);
+        Value* fillValue = dataNode->OperIsInitVal()
+            ? consumeValue(dataNode->gtGetOp1(), Type::getInt8Ty(m_context->Context))
+            : _builder.getInt8(0);
         _builder.CreateMemSet(addrValue, fillValue, _builder.getInt32(layout->GetSize()), llvm::Align());
         return;
     }
@@ -1976,12 +1977,13 @@ void Llvm::buildStoreDynBlk(GenTreeStoreDynBlk* blockOp)
     }
     else
     {
-        srcValue = srcNode->OperIsInitVal() ? consumeValue(srcNode->AsUnOp()->gtGetOp1(), Type::getInt8Ty(_llvmContext))
-                                            : _builder.getInt8(0);
+        srcValue = srcNode->OperIsInitVal()
+            ? consumeValue(srcNode->AsUnOp()->gtGetOp1(), Type::getInt8Ty(m_context->Context))
+            : _builder.getInt8(0);
     }
     // Per ECMA 335, cpblk/initblk only allow int32-sized operands. We'll be a bit more permissive and allow native ints
     // as well (as do other backends).
-    Type* sizeLlvmType = genActualTypeIsInt(sizeNode) ? Type::getInt32Ty(_llvmContext) : getIntPtrLlvmType();
+    Type* sizeLlvmType = genActualTypeIsInt(sizeNode) ? Type::getInt32Ty(m_context->Context) : getIntPtrLlvmType();
     Value* sizeValue = consumeValue(sizeNode, sizeLlvmType);
 
     // STORE_DYN_BLK's contract is that it must not throw any exceptions in case the dynamic size is zero and must throw
@@ -2199,6 +2201,7 @@ void Llvm::buildReturn(GenTree* node)
 
     GenTree* retValNode = node->gtGetOp1();
     Type* retLlvmType = getCurrentLlvmFunction()->getFunctionType()->getReturnType();
+
     Value* retValValue;
     // Special-case returning zero-initialized structs.
     if (node->TypeIs(TYP_STRUCT) && retValNode->IsIntegralConst(0))
@@ -2216,7 +2219,7 @@ void Llvm::buildReturn(GenTree* node)
 void Llvm::buildJTrue(GenTree* node)
 {
     Value* condValue = getGenTreeValue(node->gtGetOp1());
-    assert(condValue->getType() == Type::getInt1Ty(_llvmContext)); // We only expect relops to appear as JTRUE operands.
+    assert(condValue->getType() == Type::getInt1Ty(m_context->Context)); // Only relops expected.
 
     BasicBlock* srcBlock = CurrentBlock();
     llvm::BasicBlock* jmpLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->bbJumpDest);
@@ -2372,7 +2375,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
         Value* fieldData = nullptr;
         if (data->getType()->isStructTy())
         {
-            const llvm::StructLayout* structLayout = _module->getDataLayout().getStructLayout(static_cast<llvm::StructType*>(data->getType()));
+            const llvm::StructLayout* structLayout = m_context->Module.getDataLayout().getStructLayout(static_cast<llvm::StructType*>(data->getType()));
 
             unsigned llvmFieldIndex = structLayout->getElementContainingOffset(fieldOffset);
             fieldData               = _builder.CreateExtractValue(data, llvmFieldIndex);
@@ -2769,10 +2772,10 @@ void Llvm::annotateHelperFunction(CorInfoHelpAnyFunc helperFunc, Function* llvmF
 Function* Llvm::getOrCreateKnownLlvmFunction(
     StringRef name, std::function<FunctionType*()> createFunctionType, std::function<void(Function*)> annotateFunction)
 {
-    Function* llvmFunc = _module->getFunction(name);
+    Function* llvmFunc = m_context->Module.getFunction(name);
     if (llvmFunc == nullptr)
     {
-        llvmFunc = Function::Create(createFunctionType(), Function::ExternalLinkage, name, _module);
+        llvmFunc = Function::Create(createFunctionType(), Function::ExternalLinkage, name, m_context->Module);
         annotateFunction(llvmFunc);
     }
 
@@ -2781,11 +2784,11 @@ Function* Llvm::getOrCreateKnownLlvmFunction(
 
 Function* Llvm::getOrCreateExternalLlvmFunctionAccessor(StringRef name)
 {
-    Function* accessorFuncRef = _module->getFunction(name);
+    Function* accessorFuncRef = m_context->Module.getFunction(name);
     if (accessorFuncRef == nullptr)
     {
         FunctionType* accessorFuncType = FunctionType::get(getPtrLlvmType(), /* isVarArg */ false);
-        accessorFuncRef = Function::Create(accessorFuncType, Function::ExternalLinkage, name, _module);
+        accessorFuncRef = Function::Create(accessorFuncType, Function::ExternalLinkage, name, m_context->Module);
     }
 
     return accessorFuncRef;
@@ -2793,11 +2796,11 @@ Function* Llvm::getOrCreateExternalLlvmFunctionAccessor(StringRef name)
 
 llvm::GlobalVariable* Llvm::getOrCreateDataSymbol(StringRef symbolName)
 {
-    llvm::GlobalVariable* symbol = _module->getGlobalVariable(symbolName);
+    llvm::GlobalVariable* symbol = m_context->Module.getGlobalVariable(symbolName);
     if (symbol == nullptr)
     {
         Type* symbolLlvmType = getPtrLlvmType();
-        symbol = new llvm::GlobalVariable(*_module, symbolLlvmType, false, llvm::GlobalValue::ExternalLinkage,
+        symbol = new llvm::GlobalVariable(m_context->Module, symbolLlvmType, false, llvm::GlobalValue::ExternalLinkage,
                                           nullptr, symbolName);
     }
     return symbol;
@@ -2865,7 +2868,7 @@ Value* Llvm::gepOrAddr(Value* addr, unsigned offset)
         return addr;
     }
 
-    return _builder.CreateGEP(Type::getInt8Ty(_llvmContext), addr, _builder.getInt32(offset));
+    return _builder.CreateGEP(Type::getInt8Ty(m_context->Context), addr, _builder.getInt32(offset));
 }
 
 Value* Llvm::getShadowStack()
@@ -3020,7 +3023,7 @@ llvm::BasicBlock* Llvm::createInlineLlvmBlock()
     Function* llvmFunc = getCurrentLlvmFunction();
     LlvmBlockRange* llvmBlocks = getCurrentLlvmBlocks();
     llvm::BasicBlock* insertBefore = llvmBlocks->LastBlock->getNextNode();
-    llvm::BasicBlock* inlineLlvmBlock = llvm::BasicBlock::Create(_llvmContext, "", llvmFunc, insertBefore);
+    llvm::BasicBlock* inlineLlvmBlock = llvm::BasicBlock::Create(m_context->Context, "", llvmFunc, insertBefore);
 
 #ifdef DEBUG
     StringRef blocksName = llvmBlocks->FirstBlock->getName();
@@ -3049,7 +3052,8 @@ LlvmBlockRange* Llvm::getLlvmBlocksForBlock(BasicBlock* block)
     if (llvmBlockRange == nullptr)
     {
         Function* llvmFunc = getLlvmFunctionForIndex(getLlvmFunctionIndexForBlock(block));
-        llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(_llvmContext, BBNAME("BB", block->bbNum), llvmFunc);
+        llvm::BasicBlock* llvmBlock =
+            llvm::BasicBlock::Create(m_context->Context, BBNAME("BB", block->bbNum), llvmFunc);
 
         llvmBlockRange = _blkToLlvmBlksMap.Emplace(block, llvmBlock);
     }
@@ -3090,7 +3094,7 @@ llvm::BasicBlock* Llvm::getOrCreatePrologLlvmBlockForFunction(unsigned funcIdx)
     if ((prologLlvmBlock == nullptr) || !prologLlvmBlock->getName().startswith(PROLOG_BLOCK_NAME))
     {
         Function* llvmFunc = firstLlvmUserBlock->getParent();
-        prologLlvmBlock = llvm::BasicBlock::Create(_llvmContext, PROLOG_BLOCK_NAME, llvmFunc, firstLlvmUserBlock);
+        prologLlvmBlock = llvm::BasicBlock::Create(m_context->Context, PROLOG_BLOCK_NAME, llvmFunc, firstLlvmUserBlock);
 
         // Eagerly insert jump to the user block to simplify calling code.
         llvm::BranchInst::Create(firstLlvmUserBlock, prologLlvmBlock);
