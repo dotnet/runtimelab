@@ -9319,7 +9319,11 @@ public:
     // copies of susceptible parameters to avoid buffer overrun attacks through locals/params
     bool getNeedsGSSecurityCookie() const
     {
+#ifdef TARGET_WASM
+        return false; // Cookie checks NYI in the LLVM backend.
+#else
         return compNeedsGSSecurityCookie;
+#endif
     }
     void setNeedsGSSecurityCookie()
     {
