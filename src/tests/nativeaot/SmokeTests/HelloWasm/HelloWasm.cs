@@ -2147,6 +2147,10 @@ internal unsafe static class Program
 
         TestFilterNested();
 
+        TestIntraFrameFilterOrderBasic();
+
+        TestIntraFrameFilterOrderDeep();
+
         TestCatchAndThrow();
 
         TestRethrow();
@@ -2454,6 +2458,120 @@ internal unsafe static class Program
         }
         PrintLine(exceptionFlowSequence);
         EndTest(exceptionFlowSequence == @"In middle catchRunning outer filterIn outer catchRunning inner filterIn inner catch");
+    }
+
+    private static void TestIntraFrameFilterOrderBasic()
+    {
+        static bool CheckOrder(int turn, ref int counter)
+        {
+            if (++counter != turn)
+            {
+                counter = -1;
+            }
+
+            return turn == 2;
+        }
+
+        StartTest("TestIntraFrameFilterOrderBasic");
+
+        int counter = 0;
+        try
+        {
+            static void InnerFilterAndFinally(ref int counter)
+            {
+                try
+                {
+                    try
+                    {
+                        throw new Exception();
+                    }
+                    catch when (CheckOrder(1, ref counter))
+                    {
+                    }
+                }
+                finally
+                {
+                    CheckOrder(3, ref counter);
+                }
+            }
+
+            InnerFilterAndFinally(ref counter);
+        }
+        catch when (CheckOrder(2, ref counter))
+        {
+            CheckOrder(4, ref counter);
+        }
+
+        EndTest(counter == 4);
+    }
+
+    private static void TestIntraFrameFilterOrderDeep()
+    {
+        static bool CheckOrder(int turn, ref int counter)
+        {
+            if (++counter != turn)
+            {
+                counter = -1;
+            }
+
+            return turn == 4;
+        }
+
+        StartTest("TestIntraFrameFilterOrderDeep");
+
+        int counter = 0;
+        try
+        {
+            static void InnerFilterAndFinally(ref int counter)
+            {
+                try
+                {
+                    try
+                    {
+                        try
+                        {
+                            static void InnerInnerFilterAndFinally(ref int counter)
+                            {
+                                try
+                                {
+                                    try
+                                    {
+                                        throw new Exception();
+                                    }
+                                    catch when (CheckOrder(1, ref counter))
+                                    {
+                                    }
+                                }
+                                finally
+                                {
+                                    CheckOrder(5, ref counter);
+                                }
+                            }
+
+                            InnerInnerFilterAndFinally(ref counter);
+                        }
+                        catch when (CheckOrder(2, ref counter))
+                        {
+                        }
+                    }
+                    catch when (CheckOrder(3, ref counter))
+                    {
+                    }
+                }
+                finally
+                {
+                    CheckOrder(6, ref counter);
+                }
+            }
+
+            InnerFilterAndFinally(ref counter);
+        }
+        catch when (CheckOrder(4, ref counter))
+        {
+            CheckOrder(7, ref counter);
+        }
+
+        EndTest(counter == 7);
     }
 
     private static void TestRethrow()
