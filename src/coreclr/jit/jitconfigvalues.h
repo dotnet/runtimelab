@@ -659,6 +659,10 @@ CONFIG_INTEGER(JitDispIns, W("JitDispIns"), 0)
 #endif // defined(TARGET_LOONGARCH64)
 #endif // DEBUG
 
+#ifdef TARGET_WASM
+CONFIG_INTEGER(JitUseDynamicStackForLclHeap, W("JitUseDynamicStackForLclHeap"), 0)
+#endif // TARGET_WASM
+
 CONFIG_INTEGER(JitEnregStructLocals, W("JitEnregStructLocals"), 1) // Allow to enregister locals with struct type.
 
 #undef CONFIG_INTEGER

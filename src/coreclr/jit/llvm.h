@@ -70,6 +70,8 @@ enum CorInfoHelpLlvmFunc
     CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT,
     CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING,
     CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION,
+    CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC,
+    CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE,
     CORINFO_HELP_ANY_COUNT
 };
 
@@ -108,6 +110,7 @@ enum HelperFuncInfoFlags
     HFIF_SS_ARG = 1, // The helper has shadow stack arg.
     HFIF_VAR_ARG = 1 << 1, // The helper has a variable number of args and must be treated specially.
     HFIF_NO_RPI_OR_GC = 1 << 2, // The helper will not call (back) into managed code or trigger GC.
+    HFIF_NO_SS_SAVE = 1 << 3, // This a special helper that does not need shadow stack save.
 };
 
 struct HelperFuncInfo
@@ -206,6 +209,7 @@ private:
 
     unsigned m_unhandledExceptionHandlerIndex = EHblkDsc::NO_ENCLOSING_INDEX;
     Value* m_rootFunctionShadowStackValue = nullptr;
+    bool m_lclHeapUsed = false; // Same as "compLocallocUsed", but calculated in lowering.
 
     // Codegen emit context.
     unsigned m_currentLlvmFunctionIndex = ROOT_FUNC_IDX;
@@ -328,7 +332,7 @@ private:
     void lowerSpillTempsLiveAcrossSafePoints();
     void lowerLocals();
     void populateLlvmArgNums();
-    void assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, unsigned shadowStackParamCount);
+    void assignShadowStackOffsets(std::vector<unsigned>& shadowStackLocals, unsigned shadowStackParamCount);
     void initializeLocalInProlog(unsigned lclNum, GenTree* value);
 
     void insertProlog();
@@ -374,6 +378,8 @@ private:
     unsigned getShadowFrameSize(unsigned hndIndex) const;
     unsigned getOriginalShadowFrameSize() const;
     unsigned getCatchArgOffset() const;
+
+    bool doUseDynamicStackForLclHeap();
 
     // ================================================================================================================
     // |                                                   Codegen                                                    |

@@ -166,9 +166,10 @@ bool Llvm::callRequiresShadowStackSave(const GenTreeCall* call) const
 bool Llvm::helperCallRequiresShadowStackSave(CorInfoHelpAnyFunc helperFunc) const
 {
     // Save/restore is needed if the helper doesn't have a shadow stack argument, unless we know it won't call
-    // back into managed code. TODO-LLVM-CQ: mark (make, if required) more helpers "HFIF_NO_RPI_OR_GC".
-    const HelperFuncInfo& helperInfo = getHelperFuncInfo(helperFunc);
-    return !helperInfo.HasFlags(HFIF_SS_ARG) && !helperInfo.HasFlags(HFIF_NO_RPI_OR_GC);
+    // back into managed code or has special semantics. TODO-LLVM-CQ: mark (make, if required) more helpers
+    // "HFIF_NO_RPI_OR_GC".
+    unsigned helperFlags = getHelperFuncInfo(helperFunc).Flags;
+    return (helperFlags & (HFIF_SS_ARG | HFIF_NO_RPI_OR_GC | HFIF_NO_SS_SAVE)) == HFIF_NONE;
 }
 
 bool Llvm::callHasShadowStackArg(const GenTreeCall* call) const
@@ -563,10 +564,11 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
 
         { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH) CORINFO_TYPE_INT, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER) CORINFO_TYPE_INT, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_NO_SS_SAVE },
         { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING) CORINFO_TYPE_INT, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS }, HFIF_SS_ARG },
-
+        { FUNC(CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC) CORINFO_TYPE_PTR, { CORINFO_TYPE_INT, CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
     };
     // clang-format on
 
