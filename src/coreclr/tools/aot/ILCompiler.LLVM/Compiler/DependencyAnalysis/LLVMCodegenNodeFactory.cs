@@ -15,7 +15,7 @@ namespace ILCompiler.DependencyAnalysis
         private readonly Dictionary<string, ExternMethodAccessorNode> _externSymbolsWithAccessors = new();
 
         public LLVMCodegenNodeFactory(CompilerTypeSystemContext context, CompilationModuleGroup compilationModuleGroup, MetadataManager metadataManager,
-            InteropStubManager interopStubManager, NameMangler nameMangler, VTableSliceProvider vtableSliceProvider, DictionaryLayoutProvider dictionaryLayoutProvider, PreinitializationManager preinitializationManager)
+            InteropStubManager interopStubManager, NameMangler nameMangler, VTableSliceProvider vtableSliceProvider, DictionaryLayoutProvider dictionaryLayoutProvider, InlinedThreadStatics inlinedThreadStatics, PreinitializationManager preinitializationManager)
             : base(context,
                   compilationModuleGroup,
                   metadataManager,
@@ -24,6 +24,7 @@ namespace ILCompiler.DependencyAnalysis
                   new LazyGenericsDisabledPolicy(),
                   vtableSliceProvider,
                   dictionaryLayoutProvider,
+                  inlinedThreadStatics,
                   new ImportedNodeProviderThrowing(),
                   preinitializationManager)
         {

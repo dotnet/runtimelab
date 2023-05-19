@@ -1179,7 +1179,6 @@ void Llvm::visitNode(GenTree* node)
             buildStoreInd(node->AsStoreInd());
             break;
         case GT_STORE_BLK:
-        case GT_STORE_OBJ:
             buildStoreBlk(node->AsBlk());
             break;
         case GT_STORE_DYN_BLK:

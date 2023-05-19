@@ -26,7 +26,6 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 extern ICorJitHost* g_jitHost;
 
-<<<<<<< HEAD
 #ifdef TARGET_WASM
 #include "llvm.h"
 
@@ -35,16 +34,6 @@ extern ICorJitHost* g_jitHost;
 
 #endif // TARGET_WASM
 
-#if defined(DEBUG)
-// Column settings for DOTNET_JitDumpIR.  We could(should) make these programmable.
-#define COLUMN_OPCODE 30
-#define COLUMN_OPERANDS (COLUMN_OPCODE + 25)
-#define COLUMN_KINDS 110
-#define COLUMN_FLAGS (COLUMN_KINDS + 32)
-#endif
-
-=======
->>>>>>> 83f71b53d7f08700fd059191859f7931cf5712f4
 unsigned Compiler::jitTotalMethodCompiled = 0;
 
 #if defined(DEBUG)

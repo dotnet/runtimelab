@@ -471,13 +471,6 @@ if(CLR_CMAKE_TARGET_UNIX)
     else()
         clr_unknown_arch()
     endif()
-<<<<<<< HEAD
-else()
-    if(NOT (CLR_CMAKE_TARGET_WASI))
-        set(CLR_CMAKE_TARGET_WIN32 1)
-    endif()
-=======
->>>>>>> 83f71b53d7f08700fd059191859f7931cf5712f4
 endif(CLR_CMAKE_TARGET_UNIX)
 
 if(CLR_CMAKE_TARGET_OS STREQUAL windows)

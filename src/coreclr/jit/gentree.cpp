@@ -8160,13 +8160,6 @@ GenTree* Compiler::gtNewOneConNode(var_types type, var_types simdBaseType /* = T
 //
 GenTree* Compiler::gtNewConWithPattern(var_types type, uint8_t pattern)
 {
-<<<<<<< HEAD
-    LclVarDsc*     varDsc = lvaGetDesc(dstLclNum);
-    var_types      type   = varDsc->lvNormalizeOnLoad() ? varDsc->TypeGet() : genActualType(varDsc);
-    GenTreeLclVar* store  = new (this, GT_STORE_LCL_VAR) GenTreeLclVar(GT_STORE_LCL_VAR, type, dstLclNum);
-    store->gtOp1          = src;
-    store->gtFlags |= (GTF_VAR_DEF | GTF_ASG | (src->gtFlags & GTF_ALL_EFFECT));
-=======
     switch (type)
     {
         case TYP_BOOL:
@@ -8241,7 +8234,6 @@ GenTreeLclFld* Compiler::gtNewStoreLclFldNode(unsigned lclNum, var_types type, u
         store->gtFlags |= GTF_GLOB_REF;
     }
 
->>>>>>> 83f71b53d7f08700fd059191859f7931cf5712f4
     return store;
 }
 
@@ -17721,19 +17713,12 @@ bool GenTree::IsPhiNode()
 
 bool GenTree::IsPhiDefn()
 {
-<<<<<<< HEAD
 #ifdef TARGET_WASM // LIR SSA pass can have GT_STORE_LCL_VAR as a phi arg
-    bool res = OperIs(GT_ASG) && AsOp()->gtOp2->OperIs(GT_PHI) ||
+    return OperIs(GT_ASG) && AsOp()->gtOp2->OperIs(GT_PHI) ||
                ((OperGet() == GT_STORE_LCL_VAR) && (AsOp()->gtOp1->OperGet() == GT_PHI));
-    assert(!res || AsOp()->gtOp1->OperIs(GT_LCL_VAR) || OperGet() == GT_STORE_LCL_VAR);
 #else
-    bool res = OperIs(GT_ASG) && AsOp()->gtOp2->OperIs(GT_PHI);
-    assert(!res || AsOp()->gtOp1->OperIs(GT_LCL_VAR));
-#endif
-    return res;
-=======
     return OperIs(GT_STORE_LCL_VAR) && AsLclVar()->Data()->OperIs(GT_PHI);
->>>>>>> 83f71b53d7f08700fd059191859f7931cf5712f4
+#endif
 }
 
 bool GenTree::IsLclVarAddr() const

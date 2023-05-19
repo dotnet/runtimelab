@@ -125,19 +125,11 @@ else()
     endif()
 endif()
 
-<<<<<<< HEAD
-if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
-    #----------------------------------------------------
-    # Build the test watchdog alongside the CLR
-    #----------------------------------------------------
-    add_subdirectory("${CLR_SRC_NATIVE_DIR}/watchdog" test-watchdog)
-=======
 #----------------------------------------------------
 # Build the test watchdog alongside the CLR
 #----------------------------------------------------
-if(NOT CLR_CMAKE_HOST_MACCATALYST AND NOT CLR_CMAKE_HOST_IOS AND NOT CLR_CMAKE_HOST_TVOS)
+if(NOT CLR_CMAKE_HOST_MACCATALYST AND NOT CLR_CMAKE_HOST_IOS AND NOT CLR_CMAKE_HOST_TVOS AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_subdirectory("${CLR_SRC_NATIVE_DIR}/watchdog" test-watchdog)
->>>>>>> 83f71b53d7f08700fd059191859f7931cf5712f4
 endif()
 
 # Add this subdir. We install the headers for the jit.
