@@ -63,6 +63,7 @@ call "%__engNativeDir%\version\copy_version_files.cmd"
 :: cmake requires forward slashes in paths
 set __cmakeRepoRoot=%__repoRoot:\=/%
 set __ExtraCmakeParams="-DCMAKE_REPO_ROOT=%__cmakeRepoRoot%"
+set __ExtraCmakeParams=%__ExtraCmakeParams% "-DRUNTIME_FLAVOR=CoreCLR"
 set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE%"
 
 if NOT %__icuDir% == "" (
