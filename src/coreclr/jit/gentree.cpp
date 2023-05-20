@@ -17713,12 +17713,7 @@ bool GenTree::IsPhiNode()
 
 bool GenTree::IsPhiDefn()
 {
-#ifdef TARGET_WASM // LIR SSA pass can have GT_STORE_LCL_VAR as a phi arg
-    return OperIs(GT_ASG) && AsOp()->gtOp2->OperIs(GT_PHI) ||
-               ((OperGet() == GT_STORE_LCL_VAR) && (AsOp()->gtOp1->OperGet() == GT_PHI));
-#else
     return OperIs(GT_STORE_LCL_VAR) && AsLclVar()->Data()->OperIs(GT_PHI);
-#endif
 }
 
 bool GenTree::IsLclVarAddr() const

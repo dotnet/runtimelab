@@ -1001,20 +1001,9 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
 
     GenTree* src = storeBlkNode->Data();
 
-    // Fix up type mismatches on copies for codegen.
     if (storeBlkNode->OperIsCopyBlkOp())
     {
-        // TODO-LLVM: simplify to just "storeBlkNode->SetLayout(src->GetLayout(_compiler))" when merging STORE_OBJ removal.
-        ClassLayout* dstLayout = storeBlkNode->GetLayout();
-        ClassLayout* srcLayout = src->GetLayout(_compiler);
-        if (dstLayout != srcLayout)
-        {
-            if (srcLayout->IsBlockLayout())
-            {
-                storeBlkNode->SetOper(GT_STORE_BLK);
-            }
-            storeBlkNode->SetLayout(srcLayout);
-        }
+        storeBlkNode->SetLayout(src->GetLayout(_compiler));
     }
     else
     {

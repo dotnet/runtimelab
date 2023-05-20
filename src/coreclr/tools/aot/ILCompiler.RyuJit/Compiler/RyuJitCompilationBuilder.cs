@@ -21,8 +21,7 @@ namespace ILCompiler
         private ProfileDataManager _profileDataManager;
         private string _jitPath;
 
-        protected RyuJitCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group,
-            NodeMangler mangler)
+        protected RyuJitCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group, NodeMangler mangler)
             : base(context, group, new NativeAotNameMangler(mangler, false))
         {
         }
