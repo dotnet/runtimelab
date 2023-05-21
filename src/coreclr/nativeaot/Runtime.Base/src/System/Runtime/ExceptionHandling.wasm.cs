@@ -267,6 +267,22 @@ namespace System.Runtime
 
         private static void ThrowException(object exception)
         {
+            // Copy of "OnFirstChanceExceptionViaClassLib"; cannot use it directly due to the calling convention mismatch.
+            IntPtr pOnFirstChanceFunction =
+                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(exception.GetMethodTable(), ClassLibFunctionId.OnFirstChance);
+
+            if (pOnFirstChanceFunction != IntPtr.Zero)
+            {
+                try
+                {
+                    InternalCalls.RhpRawCalli_VO(pOnFirstChanceFunction, exception);
+                }
+                catch when (true)
+                {
+                    // disallow all exceptions leaking out of callbacks
+                }
+            }
+
             // We will pass around the managed exception address in the native exception to avoid having to report it
             // explicitly to the GC (or having a hole, or using a GCHandle). This will work as intended as the shadow
             // stack associated with this method will only be freed after the last (catch) handler returns.
