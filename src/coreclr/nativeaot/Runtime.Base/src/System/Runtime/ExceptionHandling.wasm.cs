@@ -227,7 +227,15 @@ namespace System.Runtime
         private static bool CallFilterFunclet(void* pFunclet, object exception, void* pShadowFrame)
         {
             WasmEHLogFunletEnter(pFunclet, RhEHClauseKind.RH_EH_CLAUSE_FILTER, pShadowFrame);
-            bool result = ((delegate*<object, void*, int>)pFunclet)(exception, pShadowFrame) != 0;
+            bool result;
+            try
+            {
+                result = ((delegate*<object, void*, int>)pFunclet)(exception, pShadowFrame) != 0;
+            }
+            catch when (true)
+            {
+                result = false; // A filter that throws is treated as if it returned "continue search".
+            }
             WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_FILTER, result ? 1 : 0, pShadowFrame);
 
             return result;
