@@ -412,6 +412,7 @@ namespace Internal.JitInterface
             int methodIndex = (int)DebugTypesDescriptor.GetMethodFunctionIdTypeIndex(method);
             MemberFunctionIdTypeDescriptor descriptor = _debugFunctions[methodIndex];
 
+            *pInfo = default;
             pInfo->Name = ToPinnedUtf8String(descriptor.Name);
             pInfo->OwnerType = IndexToDebugTypeHandle(descriptor.ParentClass);
             pInfo->Type = IndexToDebugTypeHandle(descriptor.MemberFunction);
@@ -424,16 +425,13 @@ namespace Internal.JitInterface
                 documentPath ??= sequencePoint.Document;
             }
 
-            if (documentPath != null)
+            if (documentPath == null)
             {
-                pInfo->Directory = ToPinnedUtf8String(Path.GetDirectoryName(documentPath));
-                pInfo->FileName = ToPinnedUtf8String(Path.GetFileName(documentPath));
+                return; // No debug info for this method.
             }
-            else
-            {
-                pInfo->Directory = null;
-                pInfo->FileName = null;
-            }
+
+            pInfo->Directory = ToPinnedUtf8String(Path.GetDirectoryName(documentPath));
+            pInfo->FileName = ToPinnedUtf8String(Path.GetFileName(documentPath));
 
             CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO[] lineNumbers = lineNumbersBuilder.ToArray();
             Array.Sort(lineNumbers, static (x, y) => (int)(x.ILOffset - y.ILOffset));
