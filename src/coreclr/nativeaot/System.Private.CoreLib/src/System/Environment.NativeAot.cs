@@ -67,7 +67,7 @@ namespace System
 #if TARGET_WASM
         private static unsafe string[] GetCommandLineArgsNative()
         {
-            throw new PlatformNotSupportedException();
+            return Array.Empty<string>();
         }
 #endif
     }

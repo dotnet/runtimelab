@@ -9,7 +9,7 @@
     <ProjectReference Include="runtime-prereqs.proj" GlobalPropertiesToRemove="$(NativeBuildPartitionPropertiesToRemove)" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetsAppleMobile)' == 'true'">
+  <ItemGroup Condition="'$(TargetsAppleMobile)' == 'true' or '$(TargetArchitecture)' == 'wasm'">
     <PackageReference Include="Microsoft.NETCore.Runtime.ICU.Transport" PrivateAssets="all" Version="$(MicrosoftNETCoreRuntimeICUTransportVersion)" GeneratePathProperty="true" />
   </ItemGroup>
 
@@ -58,8 +58,8 @@
       <_CoreClrBuildArg Condition="'$(ClrCrossComponentsSubset)' == 'true'" Include="-component crosscomponents" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(TargetsAppleMobile)' == 'true'">
-      <_CoreClrBuildArg Include="-cmakeargs -DCMAKE_ICU_DIR=&quot;$(_IcuDir)&quot;" />
+    <ItemGroup Condition="'$(TargetsAppleMobile)' == 'true' or '$(TargetArchitecture)' == 'wasm'">
+      <_CoreClrBuildArg Include="-cmakeargs &quot;-DCMAKE_ICU_DIR=$(_IcuDir)&quot;" />
     </ItemGroup>
 
     <PropertyGroup>

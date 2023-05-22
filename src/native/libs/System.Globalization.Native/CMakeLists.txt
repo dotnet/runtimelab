@@ -14,15 +14,7 @@ if(CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_WASI)
     add_compile_options(-Wno-extra-semi-stmt)
     add_compile_options(-Wno-unknown-warning-option)
 
-    if (CLR_CMAKE_TARGET_BROWSER)
-        message("including ICU")
-        # add ICU support to emscripten and workaround https://github.com/emscripten-core/emscripten/issues/9302
-        # ucol_setVariableTop is deprecated so disable warnings
-        # emscripten ICU source has __xxxx variables so suppress reserved identifiers.
-        # TODO-LLVM: remove these suppresession when https://github.com/dotnet/runtime/commit/2265a61565e20fc26ca8ec0632eb14268b99158e is merged
-        # and when emscripten ICU is updated.
-        add_compile_options(-s USE_ICU=1 -I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n -Wno-deprecated-declarations -Wno-reserved-identifier -Wno-unused-but-set-variable)
-    elseif (NOT CLR_CMAKE_TARGET_ANDROID AND NOT DEFINED CMAKE_ICU_DIR)
+    if (NOT CLR_CMAKE_TARGET_ANDROID AND NOT DEFINED CMAKE_ICU_DIR)
         if (CLR_CMAKE_TARGET_OSX)
             execute_process(COMMAND  brew --prefix OUTPUT_VARIABLE brew_prefix OUTPUT_STRIP_TRAILING_WHITESPACE)
             set(ICU_HOMEBREW_INC_PATH "${brew_prefix}/opt/icu4c/include")
@@ -89,7 +81,7 @@ if (LOCAL_BUILD)
     # For minipal files
     include_directories(../../)
     include_directories(${CMAKE_CURRENT_BINARY_DIR})
-elseif ((CLR_CMAKE_TARGET_MACCATALYST OR CLR_CMAKE_TARGET_IOS OR CLR_CMAKE_TARGET_TVOS OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI) AND NOT RUNTIME_FLAVOR STREQUAL "CoreCLR")
+elseif ((CLR_CMAKE_TARGET_MACCATALYST OR CLR_CMAKE_TARGET_IOS OR CLR_CMAKE_TARGET_TVOS OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI))
     add_definitions(-DSTATIC_ICU)
     set(NATIVEGLOBALIZATION_SOURCES ${NATIVEGLOBALIZATION_SOURCES} pal_icushim_static.c)
 else()
@@ -140,6 +132,12 @@ add_library(System.Globalization.Native-Static
 
 if(CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_WASI)
     set_target_properties(System.Globalization.Native-Static PROPERTIES OUTPUT_NAME System.Globalization.Native  CLEAN_DIRECT_OUTPUT 1)
+endif()
+
+if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
+   add_custom_command(TARGET System.Globalization.Native-Static
+       POST_BUILD 
+       COMMAND ${CMAKE_AR} qL $<TARGET_FILE:System.Globalization.Native-Static> ${CMAKE_ICU_DIR}/lib/libicuuc.a ${CMAKE_ICU_DIR}/lib/libicui18n.a ${CMAKE_ICU_DIR}/lib/libicudata.a)
 endif()
 
 install (TARGETS System.Globalization.Native-Static DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
