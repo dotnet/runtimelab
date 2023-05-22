@@ -456,9 +456,7 @@ void Llvm::generateEHDispatch()
             llvmFunc->setPersonalityFn(gxxPersonalityLlvmFunc);
         }
 
-        // The code we will generate effectively inlines the usual runtime dispatch logic. The main reason this
-        // scheme was chosen is the fact (re)throwing funclets are handled by it seamlessly and efficiently. The
-        // downside to it is the code size overhead of the calls made for each protected region.
+        // The code we will generate effectively inlines the usual runtime dispatch logic.
         //
         // DISPATCH_PAD_INNER:
         //   dispatchData.CppExceptionTuple = landingPadInst
@@ -695,12 +693,10 @@ void Llvm::generateEHDispatch()
 
         // Finally, add in the possible "catchret" destinations. Do not forget to consider all of the mutally protecting
         // handlers, since there is only one dispatch block for all of them. Note how we are only doing linear work here
-        // because the funclet creating process will hoist nested handlers, "flattening" the basic block list. Also, we
+        // because the funclet creation process will hoist nested handlers, "flattening" the basic block list. Also, we
         // check for the reachability of the handler here, even as we've already checked for whether the dispatch itself
         // is reachable. The reason for this is a possibility of a dispatch with a reachable filter but an unreachable
-        // handler (where the filter always returns false). This is currently, technically, redundant, because RyuJit
-        // doesn't perform flow optimizations which would expose the handler as unreachable. We choose to be resilient
-        // against this anyway.
+        // handler (where the filter always returns false or throws).
         //
         if (ehDsc->HasCatchHandler() && isReachable(ehDsc->ebdHndBeg))
         {
