@@ -2782,6 +2782,7 @@ internal unsafe static class Program
                 }
             }
 
+            result = false;
             OuterMethodWithEmptyShadowStack(&result);
         }
         EndTest(result);
