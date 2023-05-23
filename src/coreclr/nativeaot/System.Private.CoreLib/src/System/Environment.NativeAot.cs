@@ -64,17 +64,11 @@ namespace System
 
         public static int TickCount => (int)TickCount64;
 
-        private static string[]? s_commandLineArgs;
-
-        public static string[] GetCommandLineArgs()
+#if TARGET_WASM
+        private static unsafe string[] GetCommandLineArgsNative()
         {
-            Debug.Assert(s_commandLineArgs != null, "VM did not properly setup application.");
-            return (string[])s_commandLineArgs.Clone();
+            return Array.Empty<string>();
         }
-
-        internal static void SetCommandLineArgs(string[] cmdLineArgs)
-        {
-            s_commandLineArgs = cmdLineArgs;
-        }
+#endif
     }
 }
