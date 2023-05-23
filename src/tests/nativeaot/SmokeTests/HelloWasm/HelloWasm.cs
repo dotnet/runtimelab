@@ -2708,6 +2708,7 @@ internal unsafe static class Program
             byte* stkOne = stackalloc byte[StkAllocSize];
             Volatile.Write(ref stkOne[StkAllocSize - 1], 2);
 
+            result = false;
             byte* stkTwo = null;
             byte* stkThree = null;
             try
@@ -2795,7 +2796,6 @@ internal unsafe static class Program
                 Volatile.Write(ref stk[StkAllocSize / 2], 2);
                 Volatile.Write(ref stk[StkAllocSize - 1], 3);
 
-                result = false;
                 try
                 {
                     throw new Exception();
@@ -2817,6 +2817,7 @@ internal unsafe static class Program
                        Volatile.Read(ref stk[StkAllocSize - 1]) == Volatile.Read(ref *pFill);
             }
 
+            result = false;
             byte fill = 0x17;
             try
             {
