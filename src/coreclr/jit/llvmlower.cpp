@@ -469,7 +469,7 @@ void Llvm::lowerLocals()
         // an ambiguity in what state must be released on return arises - our caller might have an empty shadow frame
         // as well, but of course we don't want to release its dynamic state accidentally. To solve this, pad out the
         // shadow frame in methods that use the dynamic stack if it is empty. The need to do this should be pretty rare
-        // so it is ok to waste a shadow stack slow here.
+        // so it is ok to waste a shadow stack slot here.
         unsigned paddingLclNum = _compiler->lvaGrabTempWithImplicitUse(true DEBUGARG("SS padding for the dynamic stack"));
         _compiler->lvaGetDesc(paddingLclNum)->lvType = TYP_REF;
         initializeLocalInProlog(paddingLclNum, _compiler->gtNewIconNode(0, TYP_REF));
