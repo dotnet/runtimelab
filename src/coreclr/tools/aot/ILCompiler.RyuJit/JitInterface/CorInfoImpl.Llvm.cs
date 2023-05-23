@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -163,28 +162,28 @@ namespace Internal.JitInterface
             ISymbolNode helperFuncNode;
             switch (helperFunc)
             {
-                case CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
-                    helperFuncNode = factory.ExternSymbol("RhpGetOrInitShadowStackTop");
-                    break;
-                case CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP:
-                    helperFuncNode = factory.ExternSymbol("RhpSetShadowStackTop");
+                case CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION:
+                    // TODO-LLVM: we are breaking the abstraction here. Compiler is not allowed to access methods from the
+                    // managed runtime directly and assume they are compiled into CoreLib. The handler routine should be
+                    // made into a RuntimeExport once we solve the issues around calling convention mismatch for them.
+                    MetadataType type = _this._compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EH");
+                    MethodDesc method = type.GetKnownMethod("HandleUnhandledException", null);
+                    helperFuncNode = factory.MethodEntrypoint(method);
                     break;
                 default:
-                    string dispatchMethodName = helperFunc switch
+                    string methodName = helperFunc switch
                     {
-                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING => "HandleExceptionWasmMutuallyProtectingCatches",
-                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH => "HandleExceptionWasmCatch",
-                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER => "HandleExceptionWasmFilteredCatch",
-                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT => "HandleExceptionWasmFault",
-                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION => "HandleUnhandledException",
+                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP => "RhpGetOrInitShadowStackTop",
+                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP => "RhpSetShadowStackTop",
+                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING => "RhpDispatchHandleExceptionWasmMutuallyProtectingCatches",
+                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH => "RhpDispatchHandleExceptionWasmCatch",
+                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER => "RhpDispatchHandleExceptionWasmFilteredCatch",
+                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT => "RhpDispatchHandleExceptionWasmFault",
+                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC => "RhpDynamicStackAlloc",
+                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE => "RhpDynamicStackRelease",
                         _ => throw new UnreachableException()
                     };
-                    // TODO-LLVM: we are breaking the abstraction here. Compiler is not allowed to access methods from the
-                    // managed runtime directly and assume they are compiled into CoreLib. The dispatch routine should be
-                    // made into a RuntimeExport once we solve the issues around calling convention mismatch for them.
-                    MetadataType ehType = _this._compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EH");
-                    MethodDesc dispatchMethod = ehType.GetKnownMethod(dispatchMethodName, null);
-                    helperFuncNode = factory.MethodEntrypoint(dispatchMethod);
+                    helperFuncNode = factory.ExternSymbol(methodName);
                     break;
             }
 
@@ -301,6 +300,8 @@ namespace Internal.JitInterface
             CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT,
             CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING,
             CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION,
+            CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC,
+            CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE,
             CORINFO_HELP_ANY_COUNT
         }
 

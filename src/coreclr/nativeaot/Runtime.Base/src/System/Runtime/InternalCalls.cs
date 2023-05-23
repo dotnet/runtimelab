@@ -269,9 +269,11 @@ namespace System.Runtime
         internal static extern unsafe void RhpCopyContextFromExInfo(void* pOSContext, int cbOSContext, EH.PAL_LIMITED_CONTEXT* pPalContext);
 
 #if TARGET_WASM
+#pragma warning disable 8500
         [RuntimeImport(Redhawk.BaseName, "RhpThrowNativeException")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void RhpThrowNativeException(object exception);
+        internal static extern unsafe void RhpThrowNativeException(void* pDispatcherShadowFrame, object* pManagedException);
+#pragma warning restore 8500
 
         [RuntimeImport(Redhawk.BaseName, "RhpRawCalli_VO")]
         [MethodImpl(MethodImplOptions.InternalCall)]

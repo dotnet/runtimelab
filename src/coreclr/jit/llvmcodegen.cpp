@@ -572,17 +572,17 @@ void Llvm::generateEHDispatch()
             Value* handlerValue = isReachable(ehDsc->ebdHndBeg) ? getLlvmFunctionForIndex(ehDsc->ebdFuncIndex)
                                                                 : llvm::Constant::getNullValue(getPtrLlvmType());
 
-            if (ehDsc->ebdHandlerType == EH_HANDLER_FILTER)
-            {
-                Value* filterValue = getLlvmFunctionForIndex(ehDsc->ebdFuncIndex - 1);
-                dispatchDestValue = emitHelperCall(CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER, {funcletShadowStackValue,
-                                                   dispatchDataRefValue, handlerValue, filterValue});
-            }
-            else if (ehDsc->ebdHandlerType == EH_HANDLER_CATCH)
+            if (ehDsc->ebdHandlerType == EH_HANDLER_CATCH)
             {
                 Value* typeSymbolRefValue = getOrCreateSymbol(getSymbolHandleForClassToken(ehDsc->ebdTyp));
                 dispatchDestValue = emitHelperCall(CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH, {funcletShadowStackValue,
                                                    dispatchDataRefValue, handlerValue, typeSymbolRefValue});
+            }
+            else if (ehDsc->ebdHandlerType == EH_HANDLER_FILTER)
+            {
+                Value* filterValue = getLlvmFunctionForIndex(ehDsc->ebdFuncIndex - 1);
+                dispatchDestValue = emitHelperCall(CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER, {funcletShadowStackValue,
+                                                   dispatchDataRefValue, handlerValue, filterValue});
             }
             else
             {
@@ -1731,30 +1731,52 @@ void Llvm::buildLclHeap(GenTreeUnOp* lclHeap)
     }
     else
     {
-        llvm::AllocaInst* allocaInst = _builder.CreateAlloca(Type::getInt8Ty(m_context->Context), sizeValue);
+        llvm::BasicBlock* beforeAllocLlvmBlock = nullptr;
+        llvm::BasicBlock* joinLlvmBlock = nullptr;
+        if (!sizeNode->IsIntegralConst())
+        {
+            beforeAllocLlvmBlock = _builder.GetInsertBlock();
+            llvm::BasicBlock* allocLlvmBlock = createInlineLlvmBlock();
+            joinLlvmBlock = createInlineLlvmBlock();
 
-        // LCLHEAP (aka IL's "localloc") is specified to return a pointer "...aligned so that any built-in data type
-        // can be stored there using the stind instructions", so we'll be a bit conservative and align it maximally.
-        llvm::Align allocaAlignment = llvm::Align(genTypeSize(TYP_DOUBLE));
-        allocaInst->setAlignment(allocaAlignment);
+            Value* zeroSizeValue = llvm::Constant::getNullValue(sizeValue->getType());
+            Value* isSizeZeroValue = _builder.CreateICmpEQ(sizeValue, zeroSizeValue);
+            _builder.CreateCondBr(isSizeZeroValue, joinLlvmBlock, allocLlvmBlock);
+            _builder.SetInsertPoint(allocLlvmBlock);
+        }
+
+        // LCLHEAP (aka IL's "localloc") is specified to return a pointer "...aligned so that any built-in
+        // data type can be stored there using the stind instructions"; that means 8 bytes for a double.
+        llvm::Align lclHeapAlignment = llvm::Align(genTypeSize(TYP_DOUBLE));
+
+        if (doUseDynamicStackForLclHeap())
+        {
+            lclHeapValue = emitHelperCall(CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC, {sizeValue, getShadowStack()});
+        }
+        else
+        {
+            llvm::AllocaInst* allocaInst = _builder.CreateAlloca(Type::getInt8Ty(m_context->Context), sizeValue);
+            allocaInst->setAlignment(lclHeapAlignment);
+            lclHeapValue = allocaInst;
+        }
 
         // "If the localsinit flag on the method is true, the block of memory returned is initialized to 0".
         if (_compiler->info.compInitMem)
         {
-            _builder.CreateMemSet(allocaInst, _builder.getInt8(0), sizeValue, allocaAlignment);
+            _builder.CreateMemSet(lclHeapValue, _builder.getInt8(0), sizeValue, lclHeapAlignment);
         }
 
-        if (!sizeNode->IsIntegralConst()) // Build: %lclHeapValue = (%sizeValue != 0) ? "alloca" : "null".
+        if (joinLlvmBlock != nullptr)
         {
-            Value* zeroSizeValue = llvm::Constant::getNullValue(sizeValue->getType());
-            Value* isSizeNotZeroValue = _builder.CreateCmp(llvm::CmpInst::ICMP_NE, sizeValue, zeroSizeValue);
-            Value* nullValue = llvm::Constant::getNullValue(getPtrLlvmType());
+            llvm::BasicBlock* allocLlvmBlock = _builder.GetInsertBlock();
+            _builder.CreateBr(joinLlvmBlock);
 
-            lclHeapValue = _builder.CreateSelect(isSizeNotZeroValue, allocaInst, nullValue);
-        }
-        else
-        {
-            lclHeapValue = allocaInst;
+            _builder.SetInsertPoint(joinLlvmBlock);
+            llvm::PHINode* lclHeapPhi = _builder.CreatePHI(lclHeapValue->getType(), 2);
+            lclHeapPhi->addIncoming(lclHeapValue, allocLlvmBlock);
+            lclHeapPhi->addIncoming(llvm::Constant::getNullValue(getPtrLlvmType()), beforeAllocLlvmBlock);
+
+            lclHeapValue = lclHeapPhi;
         }
     }
 
@@ -2187,9 +2209,16 @@ void Llvm::buildReturn(GenTree* node)
 {
     assert(node->OperIs(GT_RETURN, GT_RETFILT));
 
-    if (node->OperIs(GT_RETURN) && _compiler->opts.IsReversePInvoke())
+    if (node->OperIs(GT_RETURN))
     {
-        emitHelperCall(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP, getShadowStack());
+        if (m_lclHeapUsed && doUseDynamicStackForLclHeap())
+        {
+            emitHelperCall(CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE, getShadowStack());
+        }
+        if (_compiler->opts.IsReversePInvoke())
+        {
+            emitHelperCall(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP, getShadowStack());
+        }
     }
 
     if (node->TypeIs(TYP_VOID))

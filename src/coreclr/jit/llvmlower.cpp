@@ -238,6 +238,11 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
 
         for (GenTree* node : blockRange)
         {
+            if (node->OperIs(GT_LCLHEAP))
+            {
+                m_lclHeapUsed = true;
+            }
+
             if (node->isContained())
             {
                 assert(!isPotentialGcSafePoint(node));
@@ -341,7 +346,7 @@ void Llvm::lowerLocals()
 {
     populateLlvmArgNums();
 
-    std::vector<LclVarDsc*> shadowStackLocals;
+    std::vector<unsigned> shadowStackLocals;
     unsigned shadowStackParamCount = 0;
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
@@ -413,7 +418,7 @@ void Llvm::lowerLocals()
             if (varDsc->lvIsParam && !isLlvmParam)
             {
                 shadowStackParamCount++;
-                shadowStackLocals.push_back(varDsc);
+                shadowStackLocals.push_back(lclNum);
                 continue;
             }
 
@@ -450,12 +455,26 @@ void Llvm::lowerLocals()
                 }
             }
 
-            shadowStackLocals.push_back(varDsc);
+            shadowStackLocals.push_back(lclNum);
         }
         else
         {
             INDEBUG(varDsc->lvOnFrame = false); // For more accurate frame layout dumping.
         }
+    }
+
+    if ((shadowStackLocals.size() == 0) && m_lclHeapUsed && doUseDynamicStackForLclHeap())
+    {
+        // The dynamic stack is tied to the shadow one. If we have an empty shadow frame with a non-empty dynamic one,
+        // an ambiguity in what state must be released on return arises - our caller might have an empty shadow frame
+        // as well, but of course we don't want to release its dynamic state accidentally. To solve this, pad out the
+        // shadow frame in methods that use the dynamic stack if it is empty. The need to do this should be pretty rare
+        // so it is ok to waste a shadow stack slot here.
+        unsigned paddingLclNum = _compiler->lvaGrabTempWithImplicitUse(true DEBUGARG("SS padding for the dynamic stack"));
+        _compiler->lvaGetDesc(paddingLclNum)->lvType = TYP_REF;
+        initializeLocalInProlog(paddingLclNum, _compiler->gtNewIconNode(0, TYP_REF));
+
+        shadowStackLocals.push_back(paddingLclNum);
     }
 
     assignShadowStackOffsets(shadowStackLocals, shadowStackParamCount);
@@ -528,12 +547,17 @@ void Llvm::populateLlvmArgNums()
     _llvmArgCount = nextLlvmArgNum;
 }
 
-void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, unsigned shadowStackParamCount)
+void Llvm::assignShadowStackOffsets(std::vector<unsigned>& shadowStackLocals, unsigned shadowStackParamCount)
 {
     if (_compiler->opts.OptimizationEnabled())
     {
         std::sort(shadowStackLocals.begin() + shadowStackParamCount, shadowStackLocals.end(),
-                  [](const LclVarDsc* lhs, const LclVarDsc* rhs) { return lhs->lvRefCntWtd() > rhs->lvRefCntWtd(); });
+                  [compiler = _compiler](unsigned lhsLclNum, unsigned rhsLclNum)
+        {
+            LclVarDsc* lhsVarDsc = compiler->lvaGetDesc(lhsLclNum);
+            LclVarDsc* rhsVarDsc = compiler->lvaGetDesc(rhsLclNum);
+            return lhsVarDsc->lvRefCntWtd() > rhsVarDsc->lvRefCntWtd();
+        });
     }
 
     unsigned offset = 0;
@@ -567,7 +591,7 @@ void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, 
     unsigned assignedShadowStackParamCount = 0;
     for (unsigned i = 0; i < shadowStackLocals.size(); i++)
     {
-        LclVarDsc* varDsc = shadowStackLocals.at(i);
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(shadowStackLocals.at(i));
 
         if (varDsc->lvIsParam && (varDsc->lvLlvmArgNum == BAD_LLVM_ARG_NUM))
         {
@@ -584,7 +608,7 @@ void Llvm::assignShadowStackOffsets(std::vector<LclVarDsc*>& shadowStackLocals, 
 
     for (unsigned i = 0; i < shadowStackLocals.size(); i++)
     {
-        LclVarDsc* varDsc = shadowStackLocals.at(i);
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(shadowStackLocals.at(i));
 
         if (!isShadowFrameLocal(varDsc))
         {
@@ -677,7 +701,6 @@ void Llvm::lowerBlock(BasicBlock* block)
     }
 
     INDEBUG(CurrentRange().CheckLIR(_compiler, /* checkUnusedValues */ true));
-
 }
 
 void Llvm::lowerNode(GenTree* node)
@@ -1662,4 +1685,14 @@ unsigned Llvm::getOriginalShadowFrameSize() const
 unsigned Llvm::getCatchArgOffset() const
 {
     return 0;
+}
+
+bool Llvm::doUseDynamicStackForLclHeap()
+{
+    // TODO-LLVM: add a stress mode.
+    assert(m_lclHeapUsed);
+
+    // We assume LCLHEAPs in methods with EH escape into handlers and so
+    // have to use a special EH-aware allocator instead of the native stack.
+    return _compiler->ehAnyFunclets() || JitConfig.JitUseDynamicStackForLclHeap();
 }
