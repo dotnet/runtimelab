@@ -20,8 +20,8 @@ void Llvm::AddUnhandledExceptionHandler()
     {
         _compiler->fgEnsureFirstBBisScratch();
         firstTryBlock = _compiler->fgFirstBBScratch;
-        _compiler->fgFirstBBScratch = nullptr;
     }
+    _compiler->fgFirstBBScratch = nullptr;
 
     // Create a block for the filter and filter handler. The handler part is unreachable, but
     // we need it for the EH table to be well-formed.
