@@ -476,7 +476,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <!-- Wasi has lots of undefined symbols currently, mostly globalization -->
       <CustomLinkerArg Include="-Wl,--unresolved-symbols=ignore-all -lstdc++ -Wl,--error-limit=0 -lpthread -pthread" />
       <CustomLinkerArg Include="--sysroot=&quot;$(WASI_SDK_PATH.Replace(&quot;\&quot;, &quot;/&quot;))/share/wasi-sysroot&quot;" />
-      <CustomLinkerArg Include="-Wl,--import-memory,--export-memory,--max-memory=2147483648" />
+      <CustomLinkerArg Include="-Wl,--max-memory=2147483648" />
       <CustomLinkerArg Include="-lwasi-emulated-process-clocks -lwasi-emulated-signal -lwasi-emulated-mman -lwasi-emulated-getpid" />
     </ItemGroup>
 
