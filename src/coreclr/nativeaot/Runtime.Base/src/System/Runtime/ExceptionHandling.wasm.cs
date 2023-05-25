@@ -227,7 +227,15 @@ namespace System.Runtime
         private static bool CallFilterFunclet(void* pFunclet, object exception, void* pShadowFrame)
         {
             WasmEHLogFunletEnter(pFunclet, RhEHClauseKind.RH_EH_CLAUSE_FILTER, pShadowFrame);
-            bool result = ((delegate*<object, void*, int>)pFunclet)(exception, pShadowFrame) != 0;
+            bool result;
+            try
+            {
+                result = ((delegate*<object, void*, int>)pFunclet)(exception, pShadowFrame) != 0;
+            }
+            catch when (true)
+            {
+                result = false; // A filter that throws is treated as if it returned "continue search".
+            }
             WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_FILTER, result ? 1 : 0, pShadowFrame);
 
             return result;
@@ -259,6 +267,22 @@ namespace System.Runtime
 
         private static void ThrowException(object exception)
         {
+            // Copy of "OnFirstChanceExceptionViaClassLib"; cannot use it directly due to the calling convention mismatch.
+            IntPtr pOnFirstChanceFunction =
+                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(exception.GetMethodTable(), ClassLibFunctionId.OnFirstChance);
+
+            if (pOnFirstChanceFunction != IntPtr.Zero)
+            {
+                try
+                {
+                    InternalCalls.RhpRawCalli_VO(pOnFirstChanceFunction, exception);
+                }
+                catch when (true)
+                {
+                    // disallow all exceptions leaking out of callbacks
+                }
+            }
+
             // We will pass around the managed exception address in the native exception to avoid having to report it
             // explicitly to the GC (or having a hole, or using a GCHandle). This will work as intended as the shadow
             // stack associated with this method will only be freed after the last (catch) handler returns.
