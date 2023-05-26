@@ -895,7 +895,7 @@ void Llvm::fillPhis()
                 BasicBlock* edgePredBlock = edge->getSourceBlock();
                 if (edgePredBlock->bbJumpKind == BBJ_SWITCH)
                 {
-                    predCountMap.AddOrUpdate({predBlock, phiBlock}, edge->getDupCount());
+                    predCountMap.AddOrUpdate({edgePredBlock, phiBlock}, edge->getDupCount());
 
                     if (edgePredBlock == predBlock)
                     {
