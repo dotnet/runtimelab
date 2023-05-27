@@ -12,6 +12,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="HelloWasm.cs" />
+    <Compile Include="ExceptionHandlingTests.Common.cs" />
 
     <CMakeProjectReference Include="CMakeLists.txt" />
   </ItemGroup>
