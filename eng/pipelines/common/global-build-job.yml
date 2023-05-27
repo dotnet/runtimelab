@@ -177,14 +177,16 @@ jobs:
         displayName: Disk Usage before Build
 
     - ${{ if and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.platform, 'browser_wasm_win')) }}:
-      # Install Wasm dependencies: emscripten, LLVM
+      # Install Wasm dependencies: emscripten, LLVM, NodeJS
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.cmd $(Build.SourcesDirectory)\wasm-tools
         displayName: Install/activate emscripten
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.cmd $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory) ${{ parameters.buildConfig }}
         displayName: Install/build LLVM
+      - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-nodejs.cmd $(Build.SourcesDirectory)\wasm-tools
+        displayName: Install NodeJS
 
     - ${{ if and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.platform, 'wasi_wasm_win')) }}:
-      # Install Wasi Wasm dependencies: emscripten, LLVM,  wasi-sdk
+      # Install Wasi Wasm dependencies: emscripten, LLVM, wasi-sdk
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.cmd $(Build.SourcesDirectory)\wasm-tools
         displayName: Install/activate emscripten
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.cmd $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory) ${{ parameters.buildConfig }}

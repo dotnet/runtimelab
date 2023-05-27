@@ -146,6 +146,8 @@ The workflow looks like this:
 
 If you haven't built the tests yet, run `src\tests\build.cmd nativeaot [Debug|Release] tree nativeaot` on Windows, or `src/tests/build.sh -nativeaot [Debug|Release] -tree:nativeaot` on Linux. This will build the smoke tests only - they usually suffice to ensure the runtime and compiler is in a workable shape. To build all Pri-0 tests, drop the `tree nativeaot` parameter. The `Debug`/`Release` parameter should match the build configuration you used to build the runtime.
 
+Note that to run WASM tests targeting Browser, NodeJS that supports the exception handling feature is required (v17+). In particular, NodeJS that comes with the Emscripten SDK is not suitable.
+
 To run all the tests that got built, run `src\tests\run.cmd runnativeaottests [Debug|Release] [wasm]` on Windows, or `src/tests/run.sh --runnativeaottests [Debug|Release] [wasm]` on Linux. The `Debug`/`Release` flag should match the flag that was passed to `build.cmd` in the previous step.
 
 To run an individual test (after it was built), navigate to the `artifacts\tests\coreclr\[windows|linux|osx[.x64.[Debug|Release]\$path_to_test` directory. `$path_to_test` matches the subtree of `src\tests`. You should see a `[.cmd|.sh]` file there. This file is a script that will compile and launch the individual test for you. Before invoking the script, set the following environment variables:
