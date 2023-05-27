@@ -31,9 +31,7 @@ namespace ILCompiler
         private string _outputFile;
         private int _bitcodeFileId;
 
-        internal string Target { get; }
-        internal string DataLayout { get; }
-        internal string ModuleName { get; }
+        internal LLVMCodegenConfigProvider Options { get; }
         internal ConfigurableWasmImportPolicy ConfigurableWasmImportPolicy { get; }
         public new LLVMCodegenNodeFactory NodeFactory { get; }
 
@@ -55,9 +53,7 @@ namespace ILCompiler
                 null /* ProfileDataManager */, errorProvider, baseOptions, 1)
         {
             NodeFactory = nodeFactory;
-            Target = options.Target;
-            DataLayout = options.DataLayout;
-            ModuleName = options.ModuleName;
+            Options = options;
             ConfigurableWasmImportPolicy = configurableWasmImportPolicy;
         }
 
@@ -167,7 +163,7 @@ namespace ILCompiler
                 int id = Interlocked.Increment(ref _bitcodeFileId);
                 outputFilePath = Path.ChangeExtension(_outputFile, null) + $".{id}.bc";
             }
-            corInfo.JitStartSingleThreadedCompilation(outputFilePath, Target, DataLayout);
+            corInfo.JitStartSingleThreadedCompilation(outputFilePath, Options.Target, Options.DataLayout);
 
             return corInfo;
         }
@@ -238,6 +234,8 @@ namespace ILCompiler
 
             return NodeFactory.ExternSymbolWithAccessor(name, method, sig);
         }
+
+        public override CorInfoLlvmEHModel GetLlvmExceptionHandlingModel() => Options.ExceptionHandlingModel;
 
         internal LLVMTypeRef GetLLVMSignatureForMethod(bool isManagedAbi, MethodSignature signature, bool hasHiddenParam)
         {

@@ -102,7 +102,12 @@ The .NET Foundation licenses this file to you under the MIT license.
     <SharedLibrary Condition="'$(_targetOS)' == 'win'">$(FrameworkLibPath)\Framework$(LibFileExt)</SharedLibrary>
     <SharedLibrary Condition="'$(_targetOS)' != 'win'">$(FrameworkLibPath)\libframework$(LibFileExt)</SharedLibrary>
     <IlcDynamicBuildPropertyDependencies>SetupProperties</IlcDynamicBuildPropertyDependencies>
-    <IlcLlvmTarget Condition="'$(NativeCodeGen)' == 'llvm' and '$(_targetOS)' == 'wasi'">wasm32-wasi-threads</IlcLlvmTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(NativeCodeGen)' == 'llvm'">
+    <!-- Most browsers support WASM EH, so we enable it by default. This is aligned with the upstream behavior. -->
+    <WasmEnableExceptionHandling Condition="'$(WasmEnableExceptionHandling)' == '' and '$(_targetOS)' == 'browser'">true</WasmEnableExceptionHandling>
+    <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-wasi-threads</IlcLlvmTarget>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(NativeCodeGen)' == 'llvm'">
@@ -272,6 +277,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Include="--resilient" />
       <IlcArg Include="@(UnmanagedEntryPointsAssembly->'--generateunmanagedentrypoints:%(Identity)')" />
       <IlcArg Condition="'$(IlcLlvmTarget)' != ''" Include="--codegenopt:Target=$(IlcLlvmTarget)" />
+      <IlcArg Condition="'$(WasmEnableExceptionHandling)' == 'true'" Include="--codegenopt:LlvmExceptionHandlingModel=wasm" />
 
       <IlcArg Condition="$(IlcDisableReflection) == 'true'" Include="--feature:System.Reflection.IsReflectionExecutionAvailable=false" />
 
@@ -346,7 +352,8 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <PropertyGroup Condition="'$(_targetOS)' == 'browser'">
       <CompileWasmArgs>-c</CompileWasmArgs>
-      <CompileWasmArgs>$(CompileWasmArgs) -s DISABLE_EXCEPTION_CATCHING=0</CompileWasmArgs>
+      <CompileWasmArgs Condition="'$(WasmEnableExceptionHandling)' != 'true'">$(CompileWasmArgs) -s DISABLE_EXCEPTION_CATCHING=0</CompileWasmArgs>
+      <CompileWasmArgs Condition="'$(WasmEnableExceptionHandling)' == 'true'">$(CompileWasmArgs) -fwasm-exceptions</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileWasmArgs) -g3</CompileWasmArgs>
       <!-- TODO-LLVM: remove -s USE_SDL=0 when we update to Emscripten with https://github.com/emscripten-core/emscripten/pull/18443 -->
       <CompileWasmArgs>$(CompileWasmArgs) -s USE_SDL=0 $(WasmOptimizationSetting)</CompileWasmArgs>
@@ -452,6 +459,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <NativeLibrary Condition="$(NativeLib) == ''" Include="$(IlcSdkPath)libbootstrapper.a" />
       <NativeLibrary Condition="$(NativeLib) != ''" Include="$(IlcSdkPath)libbootstrapperdll.a" />
       <NativeLibrary Include="$(IlcSdkPath)libPortableRuntime.a" />
+      <NativeLibrary Condition="'$(WasmEnableExceptionHandling)' != 'true'" Include="$(IlcSdkPath)libCppExceptionHandling.a" />
+      <NativeLibrary Condition="'$(WasmEnableExceptionHandling)' == 'true'" Include="$(IlcSdkPath)libWasmExceptionHandling.a" />
 
       <!-- wasi-sdk clang wants forward slashes, emscripten doesn't care -->
       <CustomLinkerArg Include="@(NativeLibrary->'&quot;%(Identity)&quot;'->Replace(&quot;\&quot;, &quot;/&quot;))" />
@@ -468,8 +477,9 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Condition="'$(WasmHtmlTemplate)' != ''" Include="--shell-file &quot;$(WasmHtmlTemplate)&quot;" />
       <CustomLinkerArg Condition="'$(ExportsFile)' != ''" Include="-s EXPORTED_FUNCTIONS=@&quot;$(ExportsFile)&quot;" />
       <CustomLinkerArg Include="-s ALLOW_MEMORY_GROWTH=1" />
-      <CustomLinkerArg Include="-s DISABLE_EXCEPTION_CATCHING=0" />
       <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" />
+      <CustomLinkerArg Condition="'$(WasmEnableExceptionHandling)' != 'true'" Include="-s DISABLE_EXCEPTION_CATCHING=0" />
+      <CustomLinkerArg Condition="'$(WasmEnableExceptionHandling)' == 'true'" Include="-fwasm-exceptions" />
     </ItemGroup>
 
     <ItemGroup Condition  ="'$(_targetOS)' == 'wasi'" >

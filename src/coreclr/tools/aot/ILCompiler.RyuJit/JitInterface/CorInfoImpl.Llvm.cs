@@ -196,6 +196,12 @@ namespace Internal.JitInterface
             return GetThis(thisHandle)._pNativeContext;
         }
 
+        [UnmanagedCallersOnly]
+        private static CorInfoLlvmEHModel getExceptionHandlingModel(IntPtr thisHandle)
+        {
+            return GetThis(thisHandle)._compilation.GetLlvmExceptionHandlingModel();
+        }
+
         public struct TypeDescriptor
         {
             public uint Size;
@@ -280,6 +286,7 @@ namespace Internal.JitInterface
             GetDebugInfoForDebugType,
             GetDebugInfoForCurrentMethod,
             GetSingleThreadedCompilationContext,
+            GetExceptionHandlingModel,
             Count
         }
 
@@ -326,6 +333,7 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.GetDebugInfoForDebugType] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_DEBUG_TYPE_HANDLE, CORINFO_LLVM_TYPE_DEBUG_INFO*, void>)&getDebugInfoForDebugType;
             jitImports[(int)EEApiId.GetDebugInfoForCurrentMethod] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_METHOD_DEBUG_INFO*, void>)&getDebugInfoForCurrentMethod;
             jitImports[(int)EEApiId.GetSingleThreadedCompilationContext] = (delegate* unmanaged<IntPtr, void*>)&getSingleThreadedCompilationContext;
+            jitImports[(int)EEApiId.GetExceptionHandlingModel] = (delegate* unmanaged<IntPtr, CorInfoLlvmEHModel>)&getExceptionHandlingModel;
             jitImports[(int)EEApiId.Count] = (void*)0x1234;
 
 #if DEBUG
@@ -365,4 +373,10 @@ namespace Internal.JitInterface
         Float,
         Double
     }
+
+    public enum CorInfoLlvmEHModel
+    {
+        Cpp,
+        Wasm
+    };
 }

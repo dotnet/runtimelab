@@ -195,12 +195,14 @@ namespace System.Runtime
 
         private static int EndDispatchAndCallSecondPassHandlers(void* pCatchFunclet, ExceptionDispatchData* pDispatchData, void* pCatchShadowFrame)
         {
-            [DllImport("*"), SuppressGCTransition]
-            static extern void __cxa_end_catch();
-
-            __cxa_end_catch();
-
+            // Make sure to get the data we need before releasing the native exception.
             FaultNode* lastFault = pDispatchData->LastFault;
+            object exception = *pDispatchData->ManagedExceptionAddress;
+
+            // Note that the first pass will never let exceptions escape out of the dispatcher, and so we can guarantee that no
+            // native exceptions will be leaked. This also depends on us not using native rethrow in the catch handler below.
+            InternalCalls.RhpReleaseNativeException(pDispatchData);
+
             if (lastFault != null)
             {
                 for (FaultNode* fault = lastFault->Next, nextFault; ; fault = nextFault)
@@ -218,7 +220,7 @@ namespace System.Runtime
             }
 
             WasmEHLogFunletEnter(pCatchFunclet, RhEHClauseKind.RH_EH_CLAUSE_TYPED, pCatchShadowFrame);
-            int catchRetIdx = ((delegate*<object, void*, int>)pCatchFunclet)(*pDispatchData->ManagedExceptionAddress, pCatchShadowFrame);
+            int catchRetIdx = ((delegate*<object, void*, int>)pCatchFunclet)(exception, pCatchShadowFrame);
             WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_TYPED, catchRetIdx, pCatchShadowFrame);
 
             return catchRetIdx;

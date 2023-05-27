@@ -27,6 +27,7 @@ enum class EEApiId
     GetDebugInfoForDebugType,
     GetDebugInfoForCurrentMethod,
     GetSingleThreadedCompilationContext,
+    GetExceptionHandlingModel,
     Count
 };
 
@@ -897,6 +898,11 @@ void Llvm::GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
 SingleThreadedCompilationContext* Llvm::GetSingleThreadedCompilationContext()
 {
     return CallEEApi<EEApiId::GetSingleThreadedCompilationContext, SingleThreadedCompilationContext*>(m_pEECorInfo);
+}
+
+CorInfoLlvmEHModel Llvm::GetExceptionHandlingModel()
+{
+    return CallEEApi<EEApiId::GetExceptionHandlingModel, CorInfoLlvmEHModel>(m_pEECorInfo);
 }
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExports)

@@ -275,6 +275,10 @@ namespace System.Runtime
         internal static extern unsafe void RhpThrowNativeException(void* pDispatcherShadowFrame, object* pManagedException);
 #pragma warning restore 8500
 
+        [RuntimeImport(Redhawk.BaseName, "RhpReleaseNativeException")]
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        internal static extern unsafe void RhpReleaseNativeException(void* pDispatchData);
+
         [RuntimeImport(Redhawk.BaseName, "RhpRawCalli_VO")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern void RhpRawCalli_VO(IntPtr pfn, object arg);

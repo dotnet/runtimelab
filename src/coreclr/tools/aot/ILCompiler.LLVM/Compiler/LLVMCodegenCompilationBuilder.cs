@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysisFramework;
 
+using Internal.JitInterface;
+
 namespace ILCompiler
 {
     public sealed class LLVMCodegenCompilationBuilder : RyuJitCompilationBuilder
@@ -52,6 +54,9 @@ namespace ILCompiler
                     case "DataLayout":
                         DataLayout = value;
                         break;
+                    case "LlvmExceptionHandlingModel" when value is "wasm":
+                        ExceptionHandlingModel = CorInfoLlvmEHModel.Wasm;
+                        break;
                     default:
                         break;
                 }
@@ -68,5 +73,6 @@ namespace ILCompiler
         public string DataLayout { get; private set; } = "e-m:e-p:32:32-i64:64-n32:64-S128";
         public string Target { get; private set; } = "wasm32-unknown-emscripten";
         public string ModuleName { get; private set; } = "netscripten";
+        public CorInfoLlvmEHModel ExceptionHandlingModel { get; private set; } = CorInfoLlvmEHModel.Cpp;
     }
 }

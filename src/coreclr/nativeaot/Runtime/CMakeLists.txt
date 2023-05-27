@@ -203,10 +203,10 @@ endif (CLR_CMAKE_TARGET_ARCH_AMD64 AND CLR_CMAKE_TARGET_WIN32)
 
 if (CLR_CMAKE_TARGET_ARCH_WASM)
   list(APPEND COMMON_RUNTIME_SOURCES
+    ${ARCH_SOURCES_DIR}/ExceptionHandling/ExceptionHandling.cpp
     ${ARCH_SOURCES_DIR}/RawCalliHelper.cpp
     ${ARCH_SOURCES_DIR}/DynamicStackAlloc.cpp
     ${ARCH_SOURCES_DIR}/StubDispatch.cpp
-    ${ARCH_SOURCES_DIR}/ExceptionHandling.cpp
     ${ARCH_SOURCES_DIR}/PInvoke.cpp
 )
 
@@ -310,6 +310,7 @@ if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_subdirectory(Full)
 else()
   add_subdirectory(Portable)
+  add_subdirectory(wasm/ExceptionHandling)
 endif()
 
 if(FEATURE_PERFTRACING)

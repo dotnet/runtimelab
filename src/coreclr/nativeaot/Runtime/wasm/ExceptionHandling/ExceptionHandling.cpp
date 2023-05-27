@@ -1,50 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <exception>
-
-#include "CommonMacros.h"
-
-class Object;
-struct ExceptionDispatchData
-{
-    ExceptionDispatchData(void* pDispatcherShadowFrame, Object** pManagedException)
-        : DispatchShadowFrameAddress(pDispatcherShadowFrame)
-        , ManagedExceptionAddress(pManagedException)
-        , LastFault(nullptr)
-    {
-        ASSERT(pDispatcherShadowFrame != nullptr);
-    }
-
-    // The layout of this struct must match the managed version in "ExceptionHandling.wasm.cs" exactly.
-    void* DispatchShadowFrameAddress;
-    Object** ManagedExceptionAddress;
-    void* LastFault;
-};
-
-struct ManagedExceptionWrapper : std::exception
-{
-    ManagedExceptionWrapper(ExceptionDispatchData dispatchData) : DispatchData(dispatchData)
-    {
-    }
-
-    ExceptionDispatchData DispatchData;
-};
-
-// The layout of this struct must match what codegen expects (see "jit/llvmcodegen.cpp, generateEHDispatch").
-// Instances of it are shared between dispatchers across a single native frame.
-//
-struct FrameDispatchData
-{
-    struct {
-        void* ExceptionData;
-        int Selector;
-    } CppExceptionTuple; // Owned by codegen.
-
-    ExceptionDispatchData* DispatchData; // Owned by runtime.
-};
+#include "ExceptionHandling.h"
 
 static const int CONTINUE_SEARCH = 0;
 
@@ -53,18 +10,6 @@ extern "C" int RhpHandleExceptionWasmFilteredCatch_Managed(void* pDispatchShadow
 extern "C" int RhpHandleExceptionWasmCatch_Managed(void* pDispatchShadowFrame, void* pOriginalShadowFrame, ExceptionDispatchData* pDispatchData, void* pHandler, void* pClauseType);
 extern "C" void RhpHandleExceptionWasmFault_Managed(void* pDispatchShadowFrame, void* pOriginalShadowFrame, ExceptionDispatchData* pDispatchData, void* pHandler);
 extern "C" void RhpDynamicStackRelease(void* pShadowFrame);
-extern "C" void* __cxa_begin_catch(void* pExceptionData);
-
-static ExceptionDispatchData* BeginFrameDispatch(FrameDispatchData* pFrameDispatchData)
-{
-    if (pFrameDispatchData->DispatchData == nullptr)
-    {
-        ManagedExceptionWrapper* pException = (ManagedExceptionWrapper*)__cxa_begin_catch(pFrameDispatchData->CppExceptionTuple.ExceptionData);
-        pFrameDispatchData->DispatchData = &pException->DispatchData;
-    }
-
-    return pFrameDispatchData->DispatchData;
-}
 
 // These per-clause handlers are invoked by RyuJit-generated LLVM code. The general dispatcher machinery is split into two parts: the managed and
 // native portions. Here, in the native portion, we handle "activating" the dispatch (i. e. calling "__cxa_begin_catch") and extracting the shadow
@@ -75,9 +20,9 @@ static ExceptionDispatchData* BeginFrameDispatch(FrameDispatchData* pFrameDispat
 // to return) catch handler would release state of dispatchers still active above it.
 //
 COOP_PINVOKE_HELPER(int, RhpDispatchHandleExceptionWasmMutuallyProtectingCatches,
-                    (void* pShadowFrame, void* pOriginalShadowFrame, FrameDispatchData* pFrameDispatchData, void** pEHTable))
+                    (void* pShadowFrame, void* pOriginalShadowFrame, void* pFrameDispatchData, void** pEHTable))
 {
-    ExceptionDispatchData* pData = BeginFrameDispatch(pFrameDispatchData);
+    ExceptionDispatchData* pData = BeginSingleFrameDispatch(pFrameDispatchData);
     int catchRetIdx = RhpHandleExceptionWasmMutuallyProtectingCatches_Managed(pData->DispatchShadowFrameAddress, pOriginalShadowFrame, pData, pEHTable);
     if (catchRetIdx != CONTINUE_SEARCH)
     {
@@ -87,9 +32,9 @@ COOP_PINVOKE_HELPER(int, RhpDispatchHandleExceptionWasmMutuallyProtectingCatches
 }
 
 COOP_PINVOKE_HELPER(int, RhpDispatchHandleExceptionWasmFilteredCatch,
-                    (void* pShadowFrame, void* pOriginalShadowFrame, FrameDispatchData* pFrameDispatchData, void* pHandler, void* pFilter))
+                    (void* pShadowFrame, void* pOriginalShadowFrame, void* pFrameDispatchData, void* pHandler, void* pFilter))
 {
-    ExceptionDispatchData* pData = BeginFrameDispatch(pFrameDispatchData);
+    ExceptionDispatchData* pData = BeginSingleFrameDispatch(pFrameDispatchData);
     int catchRetIdx = RhpHandleExceptionWasmFilteredCatch_Managed(pData->DispatchShadowFrameAddress, pOriginalShadowFrame, pData, pHandler, pFilter);
     if (catchRetIdx != CONTINUE_SEARCH)
     {
@@ -99,9 +44,9 @@ COOP_PINVOKE_HELPER(int, RhpDispatchHandleExceptionWasmFilteredCatch,
 }
 
 COOP_PINVOKE_HELPER(int, RhpDispatchHandleExceptionWasmCatch,
-                    (void* pShadowFrame, void* pOriginalShadowFrame, FrameDispatchData* pFrameDispatchData, void* pHandler, void* pClauseType))
+                    (void* pShadowFrame, void* pOriginalShadowFrame, void* pFrameDispatchData, void* pHandler, void* pClauseType))
 {
-    ExceptionDispatchData* pData = BeginFrameDispatch(pFrameDispatchData);
+    ExceptionDispatchData* pData = BeginSingleFrameDispatch(pFrameDispatchData);
     int catchRetIdx = RhpHandleExceptionWasmCatch_Managed(pData->DispatchShadowFrameAddress, pOriginalShadowFrame, pData, pHandler, pClauseType);
     if (catchRetIdx != CONTINUE_SEARCH)
     {
@@ -110,15 +55,10 @@ COOP_PINVOKE_HELPER(int, RhpDispatchHandleExceptionWasmCatch,
     return catchRetIdx;
 }
 
-COOP_PINVOKE_HELPER(void, RhpDispatchHandleExceptionWasmFault, (void* pOriginalShadowFrame, FrameDispatchData* pFrameDispatchData, void* pHandler))
+COOP_PINVOKE_HELPER(void, RhpDispatchHandleExceptionWasmFault, (void* pOriginalShadowFrame, void* pFrameDispatchData, void* pHandler))
 {
-    ExceptionDispatchData* pData = BeginFrameDispatch(pFrameDispatchData);
+    ExceptionDispatchData* pData = BeginSingleFrameDispatch(pFrameDispatchData);
     RhpHandleExceptionWasmFault_Managed(pData->DispatchShadowFrameAddress, pOriginalShadowFrame, pData, pHandler);
-}
-
-COOP_PINVOKE_HELPER(void, RhpThrowNativeException, (void* pDispatcherShadowFrame, Object** pManagedException))
-{
-    throw ManagedExceptionWrapper(ExceptionDispatchData(pDispatcherShadowFrame, pManagedException));
 }
 
 // We do not use these helpers, but we also do not exclude code referencing them from the

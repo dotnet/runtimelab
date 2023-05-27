@@ -53,13 +53,13 @@ namespace ILCompiler.DependencyAnalysis
 
         private LLVMObjectWriter(string objectFilePath, LLVMCodegenCompilation compilation)
         {
-            _module = LLVMModuleRef.CreateWithName(compilation.ModuleName);
-            _module.Target = compilation.Target;
-            _module.DataLayout = compilation.DataLayout;
+            _module = LLVMModuleRef.CreateWithName(compilation.Options.ModuleName);
+            _module.Target = compilation.Options.Target;
+            _module.DataLayout = compilation.Options.DataLayout;
 
             _moduleWithExternalFunctions = LLVMModuleRef.CreateWithName("external");
-            _moduleWithExternalFunctions.Target = compilation.Target;
-            _moduleWithExternalFunctions.DataLayout = compilation.DataLayout;
+            _moduleWithExternalFunctions.Target = compilation.Options.Target;
+            _moduleWithExternalFunctions.DataLayout = compilation.Options.DataLayout;
 
             _ptrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
             _intPtrType = compilation.NodeFactory.Target.PointerSize == 4 ? LLVMTypeRef.Int32 : LLVMTypeRef.Int64;
