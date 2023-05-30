@@ -241,6 +241,7 @@ namespace ILCompiler
         public virtual int PadOffset(TypeDesc type, int atOffset) => throw new NotImplementedException();
         public virtual string GetRuntimeExportManagedEntrypointName(MethodDesc method) => throw new NotImplementedException();
         public virtual ISymbolNode GetExternalMethodAccessor(MethodDesc method, ReadOnlySpan<TargetAbiType> signature) => throw new NotImplementedException();
+        public virtual CorInfoLlvmEHModel GetLlvmExceptionHandlingModel() => throw new NotImplementedException();
     }
 
     [Flags]

@@ -23,6 +23,7 @@
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/IR/IntrinsicsWebAssembly.h"
 #pragma warning (error: 4702)
 
 #include <unordered_map>
@@ -47,7 +48,7 @@ using structPassingKind = Compiler::structPassingKind;
 
 const int TARGET_POINTER_BITS = TARGET_POINTER_SIZE * BITS_PER_BYTE;
 
-// Part of the Jit/EE interface, must be kept in sync with the managed version in "CorInfoImpl.Llvm.cs".
+// Part of the Jit/EE interface, must be kept in sync with the managed versions in "CorInfoImpl.Llvm.cs".
 //
 enum class TargetAbiType : uint8_t
 {
@@ -56,6 +57,12 @@ enum class TargetAbiType : uint8_t
     Int64,
     Float,
     Double
+};
+
+enum class CorInfoLlvmEHModel
+{
+    Cpp, // Landingpad-based LLVM IR; compatible with Itanium ABI.
+    Wasm, // WinEH-based LLVM IR; custom WASM EH-based ABI.
 };
 
 // LLVM/WASM-specific helper functions. Reside in the same "namespace" as the regular Jit helpers.
@@ -295,6 +302,7 @@ private:
     void GetDebugInfoForDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo);
     void GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
     SingleThreadedCompilationContext* GetSingleThreadedCompilationContext();
+    CorInfoLlvmEHModel GetExceptionHandlingModel();
 
 public:
     static SingleThreadedCompilationContext* StartSingleThreadedCompilation(
@@ -452,9 +460,12 @@ private:
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
-    llvm::CallBase* emitHelperCall(
-        CorInfoHelpAnyFunc helperFunc, ArrayRef<Value*> sigArgs = { }, bool doTailCall = false);
-    llvm::CallBase* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args);
+    llvm::CallBase* emitHelperCall(CorInfoHelpAnyFunc               helperFunc,
+                                   ArrayRef<Value*>                 sigArgs = {},
+                                   ArrayRef<llvm::OperandBundleDef> opBundles = {},
+                                   bool doTailCall = false);
+    llvm::CallBase* emitCallOrInvoke(
+        llvm::FunctionCallee callee, ArrayRef<Value*> args = {}, ArrayRef<llvm::OperandBundleDef> opBundles = {});
 
     FunctionType* createFunctionType();
     llvm::FunctionCallee consumeCallTarget(GenTreeCall* call);
@@ -466,6 +477,7 @@ private:
                                            std::function<FunctionType*()> createFunctionType,
                                            std::function<void(Function*)> annotateFunction = [](Function*) { });
     Function* getOrCreateExternalLlvmFunctionAccessor(StringRef name);
+    Function* getOrCreatePersonalityLlvmFunction(CorInfoLlvmEHModel ehModel);
 
     llvm::GlobalVariable* getOrCreateDataSymbol(StringRef symbolName);
     llvm::GlobalValue* getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle);
@@ -495,6 +507,7 @@ private:
     llvm::BasicBlock* getFirstLlvmBlockForBlock(BasicBlock* block);
     llvm::BasicBlock* getLastLlvmBlockForBlock(BasicBlock* block);
     llvm::BasicBlock* getOrCreatePrologLlvmBlockForFunction(unsigned funcIdx);
+    llvm::BasicBlock* getUnwindLlvmBlockForCurrentInvoke();
 
     bool isReachable(BasicBlock* block) const;
     BasicBlock* getFirstBlockForFunction(unsigned funcIdx) const;
