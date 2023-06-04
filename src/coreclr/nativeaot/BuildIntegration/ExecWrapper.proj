@@ -1,0 +1,5 @@
+<Project DefaultTargets="Exec" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Target Name="Exec">
+    <Exec Command="$(ExecCommand)" />
+  </Target>
+</Project>

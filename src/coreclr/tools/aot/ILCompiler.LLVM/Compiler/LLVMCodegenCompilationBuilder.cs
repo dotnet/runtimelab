@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System;
 using System.Collections.Generic;
 
 using ILCompiler.DependencyAnalysis;
@@ -41,21 +42,25 @@ namespace ILCompiler
     {
         internal void SetOptions(IEnumerable<KeyValuePair<string, string>> options)
         {
-            foreach (var (name, value) in options)
+            foreach ((string name, string value) in options)
             {
                 switch (name)
                 {
                     case "Target":
                         Target = value;
                         break;
-                    case "ModuleName":
-                        ModuleName = value;
-                        break;
                     case "DataLayout":
                         DataLayout = value;
                         break;
                     case "LlvmExceptionHandlingModel" when value is "wasm":
                         ExceptionHandlingModel = CorInfoLlvmEHModel.Wasm;
+                        break;
+                    case "MaxLlvmModuleCount":
+                        MaxLlvmModuleCount = int.Parse(value);
+                        if (MaxLlvmModuleCount < 1)
+                        {
+                            throw new InvalidOperationException("LLVM module count must be positive");
+                        }
                         break;
                     default:
                         break;
@@ -72,7 +77,9 @@ namespace ILCompiler
         // S128 natural alignment of stack
         public string DataLayout { get; private set; } = "e-m:e-p:32:32-i64:64-n32:64-S128";
         public string Target { get; private set; } = "wasm32-unknown-emscripten";
-        public string ModuleName { get; private set; } = "netscripten";
         public CorInfoLlvmEHModel ExceptionHandlingModel { get; private set; } = CorInfoLlvmEHModel.Cpp;
+
+        // Below options are debug-only and not supported.
+        public int MaxLlvmModuleCount { get; private set; } = 8;
     }
 }
