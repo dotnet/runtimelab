@@ -7,15 +7,26 @@ using System.Runtime.InteropServices;
 
 using Internal.JitInterface;
 using Internal.TypeSystem;
+using Internal.TypeSystem.Ecma;
 
 namespace ILCompiler.DependencyAnalysis
 {
     public sealed class LLVMCodegenNodeFactory : NodeFactory
     {
         private readonly Dictionary<string, ExternMethodAccessorNode> _externSymbolsWithAccessors = new();
+        private readonly Dictionary<string, EcmaMethod> _runtimeExports = new();
 
-        public LLVMCodegenNodeFactory(CompilerTypeSystemContext context, CompilationModuleGroup compilationModuleGroup, MetadataManager metadataManager,
-            InteropStubManager interopStubManager, NameMangler nameMangler, VTableSliceProvider vtableSliceProvider, DictionaryLayoutProvider dictionaryLayoutProvider, InlinedThreadStatics inlinedThreadStatics, PreinitializationManager preinitializationManager)
+        public LLVMCodegenNodeFactory(
+            CompilerTypeSystemContext context,
+            CompilationModuleGroup compilationModuleGroup,
+            MetadataManager metadataManager,
+            InteropStubManager interopStubManager,
+            NameMangler nameMangler,
+            VTableSliceProvider vtableSliceProvider,
+            DictionaryLayoutProvider dictionaryLayoutProvider,
+            InlinedThreadStatics inlinedThreadStatics,
+            PreinitializationManager preinitializationManager,
+            IEnumerable<ICompilationRootProvider> roots)
             : base(context,
                   compilationModuleGroup,
                   metadataManager,
@@ -28,39 +39,14 @@ namespace ILCompiler.DependencyAnalysis
                   new ImportedNodeProviderThrowing(),
                   preinitializationManager)
         {
+            InitializeRuntimeExportsMap(roots);
         }
 
         public override bool IsCppCodegenTemporaryWorkaround => true;
 
-        protected override IMethodNode CreateMethodEntrypointNode(MethodDesc method)
+        public override IMethodNode RuntimeExportManagedEntrypoint(string name)
         {
-            if (method.IsInternalCall)
-            {
-                if (TypeSystemContext.IsSpecialUnboxingThunkTargetMethod(method))
-                {
-                    return MethodEntrypoint(TypeSystemContext.GetRealSpecialUnboxingThunkTargetMethod(method));
-                }
-                else if (TypeSystemContext.IsDefaultInterfaceMethodImplementationThunkTargetMethod(method))
-                {
-                    return MethodEntrypoint(TypeSystemContext.GetRealDefaultInterfaceMethodImplementationThunkTargetMethod(method));
-                }
-                else if (method.IsArrayAddressMethod())
-                {
-                    return MethodEntrypoint(((ArrayType)method.OwningType).GetArrayMethod(ArrayMethodKind.AddressWithHiddenArg));
-                }
-                else if (method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute"))
-                {
-                    return new RuntimeImportMethodNode(method);
-                }
-            }
-            if (CompilationModuleGroup.ContainsMethodBody(method, false))
-            {
-                return new LlvmMethodBodyNode(method);
-            }
-            else
-            {
-                return new ExternMethodSymbolNode(this, method);
-            }
+            return _runtimeExports.TryGetValue(name, out EcmaMethod export) ? MethodEntrypoint(export) : null;
         }
 
         internal ExternMethodAccessorNode ExternSymbolWithAccessor(string name, MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
@@ -89,6 +75,42 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
+        protected override IMethodNode CreateMethodEntrypointNode(MethodDesc method)
+        {
+            if (method.IsInternalCall)
+            {
+                if (TypeSystemContext.IsSpecialUnboxingThunkTargetMethod(method))
+                {
+                    return MethodEntrypoint(TypeSystemContext.GetRealSpecialUnboxingThunkTargetMethod(method));
+                }
+                else if (TypeSystemContext.IsDefaultInterfaceMethodImplementationThunkTargetMethod(method))
+                {
+                    return MethodEntrypoint(TypeSystemContext.GetRealDefaultInterfaceMethodImplementationThunkTargetMethod(method));
+                }
+                else if (method.IsArrayAddressMethod())
+                {
+                    return MethodEntrypoint(((ArrayType)method.OwningType).GetArrayMethod(ArrayMethodKind.AddressWithHiddenArg));
+                }
+                else if (method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute"))
+                {
+                    if (RuntimeExportManagedEntrypoint(((EcmaMethod)method).GetRuntimeImportName()) is IMethodNode methodNode)
+                    {
+                        return methodNode;
+                    }
+
+                    return new RuntimeImportMethodNode(method);
+                }
+            }
+            if (CompilationModuleGroup.ContainsMethodBody(method, false))
+            {
+                return new LlvmMethodBodyNode(method);
+            }
+            else
+            {
+                return new ExternMethodSymbolNode(this, method);
+            }
+        }
+
         protected override IMethodNode CreateUnboxingStubNode(MethodDesc method)
         {
             if (method.IsCanonicalMethod(CanonicalFormKind.Specific) && !method.HasInstantiation)
@@ -109,6 +131,26 @@ namespace ILCompiler.DependencyAnalysis
         protected override ISymbolNode CreateReadyToRunHelperNode(ReadyToRunHelperKey helperCall)
         {
             return new ReadyToRunHelperNode(helperCall.HelperId, helperCall.Target);
+        }
+
+        private void InitializeRuntimeExportsMap(IEnumerable<ICompilationRootProvider> roots)
+        {
+            foreach (ICompilationRootProvider root in roots)
+            {
+                if (root is UnmanagedEntryPointsRootProvider unmanagedRoot)
+                {
+                    foreach (EcmaMethod export in unmanagedRoot.ExportedMethods)
+                    {
+                        if (CompilationModuleGroup.ContainsMethodBody(export, unboxingStub: false))
+                        {
+                            if (export.GetRuntimeExportName() is string name)
+                            {
+                                _runtimeExports.Add(name, export);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
