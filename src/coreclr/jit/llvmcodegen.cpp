@@ -2526,7 +2526,7 @@ void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind
         _builder.CreateCondBr(jumpCondValue, throwLlvmBlock, nextLlvmBlock);
 
         _builder.SetInsertPoint(throwLlvmBlock);
-        emitHelperCall(_compiler->acdHelper(throwKind));
+        emitHelperCall(static_cast<CorInfoHelpFunc>(_compiler->acdHelper(throwKind)));
         _builder.CreateUnreachable();
 
         _builder.SetInsertPoint(nextLlvmBlock);
@@ -2561,7 +2561,7 @@ Value* Llvm::emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Val
     return _builder.CreateExtractValue(checkedValue, 0);
 }
 
-llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpAnyFunc               helperFunc,
+llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpFunc                  helperFunc,
                                      ArrayRef<Value*>                 sigArgs,
                                      ArrayRef<llvm::OperandBundleDef> opBundles,
                                      bool                             doTailCall)
@@ -2747,7 +2747,7 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
     return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
 }
 
-FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpAnyFunc helperFunc)
+FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
 {
     const bool isManagedHelper = helperCallHasManagedCallingConvention(helperFunc);
     const HelperFuncInfo& helperInfo = getHelperFuncInfo(helperFunc);
@@ -2786,7 +2786,7 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpAnyFunc helperFunc)
     return llvmFuncType;
 }
 
-void Llvm::annotateHelperFunction(CorInfoHelpAnyFunc helperFunc, Function* llvmFunc)
+void Llvm::annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc)
 {
     if (!llvmFunc->getReturnType()->isVoidTy())
     {
@@ -2794,22 +2794,19 @@ void Llvm::annotateHelperFunction(CorInfoHelpAnyFunc helperFunc, Function* llvmF
         llvmFunc->addRetAttr(llvm::Attribute::NoUndef);
     }
 
-    if (helperFunc > CORINFO_HELP_COUNT)
-    {
-        // TODO-LLVM-CQ: annotate LLVM-specific helpers.
-        return;
-    }
+    HelperCallProperties& properties = Compiler::s_helperCallProperties;
 
-    CorInfoHelpFunc jitHelperFunc = static_cast<CorInfoHelpFunc>(helperFunc);
-    if (Compiler::s_helperCallProperties.NoThrow(jitHelperFunc))
+    // Note that allocators are marked no-throw in the Jit model, but can
+    // still throw OOM and we should generate code that is able to catch it.
+    if (properties.NoThrow(helperFunc) && !properties.IsAllocator(helperFunc))
     {
         llvmFunc->setDoesNotThrow();
     }
-    if (Compiler::s_helperCallProperties.AlwaysThrow(jitHelperFunc))
+    if (properties.AlwaysThrow(helperFunc))
     {
         llvmFunc->setDoesNotReturn();
     }
-    if (Compiler::s_helperCallProperties.NonNullReturn(jitHelperFunc) && llvmFunc->getReturnType()->isPointerTy())
+    if (properties.NonNullReturn(helperFunc) && llvmFunc->getReturnType()->isPointerTy())
     {
         llvmFunc->addRetAttr(llvm::Attribute::NonNull);
     }

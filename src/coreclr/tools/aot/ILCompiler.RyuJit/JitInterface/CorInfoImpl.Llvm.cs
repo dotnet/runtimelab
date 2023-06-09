@@ -9,7 +9,6 @@ using System.Runtime.InteropServices;
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
 
-using Internal.IL;
 using Internal.Text;
 using Internal.TypeSystem;
 using Internal.TypeSystem.Ecma;
@@ -155,42 +154,6 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        private static IntPtr getLlvmHelperFuncEntrypoint(IntPtr thisHandle, CorInfoHelpLlvmFunc helperFunc)
-        {
-            CorInfoImpl _this = GetThis(thisHandle);
-            NodeFactory factory = _this._compilation.NodeFactory;
-            ISymbolNode helperFuncNode;
-            switch (helperFunc)
-            {
-                case CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION:
-                    // TODO-LLVM: we are breaking the abstraction here. Compiler is not allowed to access methods from the
-                    // managed runtime directly and assume they are compiled into CoreLib. The handler routine should be
-                    // made into a RuntimeExport once we solve the issues around calling convention mismatch for them.
-                    MetadataType type = _this._compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EH");
-                    MethodDesc method = type.GetKnownMethod("HandleUnhandledException", null);
-                    helperFuncNode = factory.MethodEntrypoint(method);
-                    break;
-                default:
-                    string methodName = helperFunc switch
-                    {
-                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP => "RhpGetOrInitShadowStackTop",
-                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP => "RhpSetShadowStackTop",
-                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING => "RhpDispatchHandleExceptionWasmMutuallyProtectingCatches",
-                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH => "RhpDispatchHandleExceptionWasmCatch",
-                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER => "RhpDispatchHandleExceptionWasmFilteredCatch",
-                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT => "RhpDispatchHandleExceptionWasmFault",
-                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC => "RhpDynamicStackAlloc",
-                        CorInfoHelpLlvmFunc.CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE => "RhpDynamicStackRelease",
-                        _ => throw new UnreachableException()
-                    };
-                    helperFuncNode = factory.ExternSymbol(methodName);
-                    break;
-            }
-
-            return _this.ObjectToHandle(helperFuncNode);
-        }
-
-        [UnmanagedCallersOnly]
         private static void* getSingleThreadedCompilationContext(IntPtr thisHandle)
         {
             return GetThis(thisHandle)._pNativeContext;
@@ -281,7 +244,6 @@ namespace Internal.JitInterface
             GetTypeDescriptor,
             GetAlternativeFunctionName,
             GetExternalMethodAccessor,
-            GetLlvmHelperFuncEntrypoint,
             GetDebugTypeForType,
             GetDebugInfoForDebugType,
             GetDebugInfoForCurrentMethod,
@@ -296,21 +258,6 @@ namespace Internal.JitInterface
             FinishSingleThreadedCompilation,
             Count
         };
-
-        private enum CorInfoHelpLlvmFunc
-        {
-            CORINFO_HELP_LLVM_UNDEF = CorInfoHelpFunc.CORINFO_HELP_COUNT,
-            CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP,
-            CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP,
-            CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH,
-            CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER,
-            CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT,
-            CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING,
-            CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION,
-            CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC,
-            CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE,
-            CORINFO_HELP_ANY_COUNT
-        }
 
         [DllImport(JitLibrary)]
         private static extern void registerLlvmCallbacks(void** jitImports, void** jitExports);
@@ -328,7 +275,6 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor*, void>)&getTypeDescriptor;
             jitImports[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
             jitImports[(int)EEApiId.GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
-            jitImports[(int)EEApiId.GetLlvmHelperFuncEntrypoint] = (delegate* unmanaged<IntPtr, CorInfoHelpLlvmFunc, IntPtr>)&getLlvmHelperFuncEntrypoint;
             jitImports[(int)EEApiId.GetDebugTypeForType] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_LLVM_DEBUG_TYPE_HANDLE>)&getDebugTypeForType;
             jitImports[(int)EEApiId.GetDebugInfoForDebugType] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_DEBUG_TYPE_HANDLE, CORINFO_LLVM_TYPE_DEBUG_INFO*, void>)&getDebugInfoForDebugType;
             jitImports[(int)EEApiId.GetDebugInfoForCurrentMethod] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_METHOD_DEBUG_INFO*, void>)&getDebugInfoForCurrentMethod;

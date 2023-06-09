@@ -65,24 +65,6 @@ enum class CorInfoLlvmEHModel
     Wasm, // WinEH-based LLVM IR; custom WASM EH-based ABI.
 };
 
-// LLVM/WASM-specific helper functions. Reside in the same "namespace" as the regular Jit helpers.
-//
-enum CorInfoHelpLlvmFunc
-{
-    CORINFO_HELP_LLVM_UNDEF = CORINFO_HELP_COUNT,
-    CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP,
-    CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP,
-    CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH,
-    CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER,
-    CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT,
-    CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING,
-    CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION,
-    CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC,
-    CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE,
-    CORINFO_HELP_ANY_COUNT
-};
-
-typedef unsigned CorInfoHelpAnyFunc; // Allow us to use both flavors of helpers.
 typedef unsigned CORINFO_LLVM_DEBUG_TYPE_HANDLE;
 
 const CORINFO_LLVM_DEBUG_TYPE_HANDLE NO_DEBUG_TYPE = 0;
@@ -258,13 +240,13 @@ private:
     GCInfo* getGCInfo();
 
     bool callRequiresShadowStackSave(const GenTreeCall* call) const;
-    bool helperCallRequiresShadowStackSave(CorInfoHelpAnyFunc helperFunc) const;
+    bool helperCallRequiresShadowStackSave(CorInfoHelpFunc helperFunc) const;
     bool callHasShadowStackArg(const GenTreeCall* call) const;
-    bool helperCallHasShadowStackArg(CorInfoHelpAnyFunc helperFunc) const;
+    bool helperCallHasShadowStackArg(CorInfoHelpFunc helperFunc) const;
     bool callHasManagedCallingConvention(const GenTreeCall* call) const;
-    bool helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) const;
+    bool helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) const;
 
-    static const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpAnyFunc helperFunc);
+    static const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpFunc helperFunc);
 
     bool canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
     bool getLlvmArgTypeForArg(bool                 isManagedAbi,
@@ -281,7 +263,7 @@ private:
     static CorInfoType getLlvmArgTypeForCallArg(CallArg* arg);
     TargetAbiType getAbiTypeForType(var_types type);
 
-    CORINFO_GENERIC_HANDLE getSymbolHandleForHelperFunc(CorInfoHelpAnyFunc helperFunc);
+    CORINFO_GENERIC_HANDLE getSymbolHandleForHelperFunc(CorInfoHelpFunc helperFunc);
     CORINFO_GENERIC_HANDLE getSymbolHandleForClassToken(mdToken token);
 
     // Raw Jit-EE interface functions.
@@ -297,7 +279,6 @@ private:
     const char* GetAlternativeFunctionName();
     CORINFO_GENERIC_HANDLE GetExternalMethodAccessor(
         CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* callSiteSig, int sigLength);
-    CORINFO_GENERIC_HANDLE GetLlvmHelperFuncEntrypoint(CorInfoHelpLlvmFunc helperFunc);
     CORINFO_LLVM_DEBUG_TYPE_HANDLE GetDebugTypeForType(CORINFO_CLASS_HANDLE typeHandle);
     void GetDebugInfoForDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo);
     void GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
@@ -460,7 +441,7 @@ private:
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
-    llvm::CallBase* emitHelperCall(CorInfoHelpAnyFunc               helperFunc,
+    llvm::CallBase* emitHelperCall(CorInfoHelpFunc                  helperFunc,
                                    ArrayRef<Value*>                 sigArgs = {},
                                    ArrayRef<llvm::OperandBundleDef> opBundles = {},
                                    bool doTailCall = false);
@@ -471,8 +452,8 @@ private:
     llvm::FunctionCallee consumeCallTarget(GenTreeCall* call);
     FunctionType* createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig);
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);
-    FunctionType* createFunctionTypeForHelper(CorInfoHelpAnyFunc helperFunc);
-    void annotateHelperFunction(CorInfoHelpAnyFunc helperFunc, Function* llvmFunc);
+    FunctionType* createFunctionTypeForHelper(CorInfoHelpFunc helperFunc);
+    void annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc);
     Function* getOrCreateKnownLlvmFunction(StringRef name,
                                            std::function<FunctionType*()> createFunctionType,
                                            std::function<void(Function*)> annotateFunction = [](Function*) { });

@@ -1558,6 +1558,26 @@ void HelperCallProperties::init()
                 noThrow = true;
                 break;
 
+            case CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
+            case CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP:
+            case CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC:
+            case CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE:
+
+                noThrow = true;
+                mutatesHeap = true;
+
+                switch (helper)
+                {
+                    case CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
+                    case CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC:
+                        nonNullReturn = true;
+                        break;
+
+                    default:
+                        break;
+                }
+                break;
+
             // Not sure how to handle optimization involving the rest of these  helpers
             default:
 

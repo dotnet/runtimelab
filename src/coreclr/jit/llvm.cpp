@@ -22,7 +22,6 @@ enum class EEApiId
     GetTypeDescriptor,
     GetAlternativeFunctionName,
     GetExternalMethodAccessor,
-    GetLlvmHelperFuncEntrypoint,
     GetDebugTypeForType,
     GetDebugInfoForDebugType,
     GetDebugInfoForCurrentMethod,
@@ -164,7 +163,7 @@ bool Llvm::callRequiresShadowStackSave(const GenTreeCall* call) const
     return !callHasShadowStackArg(call) && !call->IsSuppressGCTransition();
 }
 
-bool Llvm::helperCallRequiresShadowStackSave(CorInfoHelpAnyFunc helperFunc) const
+bool Llvm::helperCallRequiresShadowStackSave(CorInfoHelpFunc helperFunc) const
 {
     // Save/restore is needed if the helper doesn't have a shadow stack argument, unless we know it won't call
     // back into managed code or has special semantics. TODO-LLVM-CQ: mark (make, if required) more helpers
@@ -178,7 +177,7 @@ bool Llvm::callHasShadowStackArg(const GenTreeCall* call) const
     return callHasManagedCallingConvention(call);
 }
 
-bool Llvm::helperCallHasShadowStackArg(CorInfoHelpAnyFunc helperFunc) const
+bool Llvm::helperCallHasShadowStackArg(CorInfoHelpFunc helperFunc) const
 {
     return helperCallHasManagedCallingConvention(helperFunc);
 }
@@ -199,7 +198,7 @@ bool Llvm::callHasManagedCallingConvention(const GenTreeCall* call) const
     return !call->IsUnmanaged();
 }
 
-bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) const
+bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) const
 {
     return getHelperFuncInfo(helperFunc).HasFlags(HFIF_SS_ARG);
 }
@@ -221,7 +220,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
 // Return Value:
 //    Reference to the info structure for "helperFunc".
 //
-/* static */ const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpAnyFunc helperFunc)
+/* static */ const HelperFuncInfo& Llvm::getHelperFuncInfo(CorInfoHelpFunc helperFunc)
 {
     // Note on Runtime[Type|Method|Field]Handle: it should faithfully be represented as CORINFO_TYPE_VALUECLASS.
     // However, that is currently both not necessary due to the unwrapping performed for LLVM types and not what
@@ -559,7 +558,6 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
         { FUNC(CORINFO_HELP_PARTIAL_COMPILATION_PATCHPOINT) },
         { FUNC(CORINFO_HELP_VALIDATE_INDIRECT_CALL) },
         { FUNC(CORINFO_HELP_DISPATCH_INDIRECT_CALL) },
-        { FUNC(CORINFO_HELP_COUNT) },
 
         { FUNC(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP) CORINFO_TYPE_PTR, { }, HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
@@ -575,9 +573,9 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpAnyFunc helperFunc) 
     // clang-format on
 
     // Make sure our array is up-to-date.
-    static_assert_no_msg(ArrLen(s_infos) == CORINFO_HELP_ANY_COUNT);
+    static_assert_no_msg(ArrLen(s_infos) == CORINFO_HELP_COUNT);
 
-    assert(helperFunc < CORINFO_HELP_ANY_COUNT);
+    assert(helperFunc < CORINFO_HELP_COUNT);
     const HelperFuncInfo& info = s_infos[helperFunc];
 
     // We don't fill out the info for some helpers because we don't expect to encounter them.
@@ -789,19 +787,13 @@ TargetAbiType Llvm::getAbiTypeForType(var_types type)
     }
 }
 
-CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForHelperFunc(CorInfoHelpAnyFunc helperFunc)
+CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForHelperFunc(CorInfoHelpFunc helperFunc)
 {
-    if (helperFunc < CORINFO_HELP_COUNT)
-    {
-        void* pIndirection = nullptr;
-        void* handle = _compiler->compGetHelperFtn(static_cast<CorInfoHelpFunc>(helperFunc), &pIndirection);
-        assert(pIndirection == nullptr);
+    void* pIndirection = nullptr;
+    void* handle = _compiler->compGetHelperFtn(static_cast<CorInfoHelpFunc>(helperFunc), &pIndirection);
+    assert(pIndirection == nullptr);
 
-        return CORINFO_GENERIC_HANDLE(handle);
-    }
-
-    assert(helperFunc < CORINFO_HELP_ANY_COUNT);
-    return GetLlvmHelperFuncEntrypoint(static_cast<CorInfoHelpLlvmFunc>(helperFunc));
+    return CORINFO_GENERIC_HANDLE(handle);
 }
 
 CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForClassToken(mdToken token)
@@ -873,11 +865,6 @@ CORINFO_GENERIC_HANDLE Llvm::GetExternalMethodAccessor(
 {
     return CallEEApi<EEApiId::GetExternalMethodAccessor, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, methodHandle, sig,
                                                                                sigLength);
-}
-
-CORINFO_GENERIC_HANDLE Llvm::GetLlvmHelperFuncEntrypoint(CorInfoHelpLlvmFunc helperFunc)
-{
-    return CallEEApi<EEApiId::GetLlvmHelperFuncEntrypoint, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, helperFunc);
 }
 
 CORINFO_LLVM_DEBUG_TYPE_HANDLE Llvm::GetDebugTypeForType(CORINFO_CLASS_HANDLE typeHandle)
