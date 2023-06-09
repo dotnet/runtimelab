@@ -196,7 +196,6 @@ private:
     std::vector<FunctionInfo> m_functions;
     std::vector<llvm::BasicBlock*> m_EHDispatchLlvmBlocks;
 
-    unsigned m_unhandledExceptionHandlerIndex = EHblkDsc::NO_ENCLOSING_INDEX;
     Value* m_rootFunctionShadowStackValue = nullptr;
     bool m_lclHeapUsed = false; // Same as "compLocallocUsed", but calculated in lowering.
 
@@ -435,8 +434,6 @@ private:
 
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
-
-    bool isUnhandledExceptionHandler(GenTreeCall* call);
 
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);

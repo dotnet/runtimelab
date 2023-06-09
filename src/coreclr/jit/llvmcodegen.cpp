@@ -1886,13 +1886,6 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
 
 void Llvm::buildCall(GenTreeCall* call)
 {
-    if (isUnhandledExceptionHandler(call))
-    {
-        // Note: the exception object argument is already on the shadow stack since we're in a filter.
-        emitHelperCall(CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION, {}, {}, /* doTailCall */ true);
-        return;
-    }
-
     std::vector<Value*> argVec = std::vector<Value*>();
     for (CallArg& arg : call->gtArgs.Args())
     {
@@ -2485,20 +2478,6 @@ unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned en
     _builder.CreateMemCpy(destAddress, llvm::Align(), srcAddress, llvm::Align(), size);
 
     return size;
-}
-
-bool Llvm::isUnhandledExceptionHandler(GenTreeCall* call)
-{
-    if (call->IsHelperCall(_compiler, CORINFO_HELP_FAIL_FAST))
-    {
-        FuncInfoDsc* funcDsc = _compiler->funGetFunc(getCurrentLlvmFunctionIndex());
-        if ((funcDsc->funKind == FUNC_FILTER) && (funcDsc->funEHIndex == m_unhandledExceptionHandlerIndex))
-        {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind)
