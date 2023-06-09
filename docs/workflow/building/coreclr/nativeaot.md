@@ -165,6 +165,10 @@ For more advanced scenarios, look for at [Building the Tests](/docs/workflow/tes
 
 Build library tests by passing the `libs.tests` subset together with the `/p:TestNativeAot=true` to build the libraries, i.e. `clr.aot+libs+libs.tests /p:TestNativeAot=true` together with the full arguments as specified [above](#building). Then, to run a specific library, go to the tests directory of the library and run the usual command to run tests for the library (see [Running tests for a single library](/docs/workflow/testing/libraries/testing.md#running-tests-for-a-single-library)) but add the `/p:TestNativeAot=true` and the build configuration that was used, i.e. `dotnet.cmd build /t:Test /p:TestNativeAot=true -c Release`.
 
+### NativeAOT-LLVM: `wasmjit-diff.ps1`
+
+This script under `src/tests/nativeaot/SmokeTests/HelloWasm` is useful for assesing codegen changes and works a bit like `jit-diff`/`jit-analyze`. Invoke it without arguments to get details about usage. Note that the script requires a modern (7.0+) PowerShell version.
+
 ## Design Documentation
 
 * [ILC Compiler Architecture](/docs/design/coreclr/botr/ilc-architecture.md)

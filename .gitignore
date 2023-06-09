@@ -364,3 +364,6 @@ src/coreclr/System.Private.CoreLib/common
 .dotnet-daily/
 run-stress-*
 test:.cs
+
+# NativeAOT-LLVM: wasmjit-diff analysis results
+wasmjit-diff/
