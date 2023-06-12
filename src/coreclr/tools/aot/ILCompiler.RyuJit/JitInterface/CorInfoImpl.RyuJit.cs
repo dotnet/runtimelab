@@ -776,6 +776,8 @@ namespace Internal.JitInterface
                     return _compilation.NodeFactory.ExternSymbol("RhpDynamicStackAlloc");
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE:
                     return _compilation.NodeFactory.ExternSymbol("RhpDynamicStackRelease");
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET:
+                    return _compilation.NodeFactory.ExternSymbol("RhpResolveInterfaceDispatch");
 
                 default:
                     throw new NotImplementedException(ftnNum.ToString());

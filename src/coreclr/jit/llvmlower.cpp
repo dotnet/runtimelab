@@ -1146,54 +1146,36 @@ void Llvm::lowerVirtualStubCallAfterArgs(
     // We transform:
     //  Call(pCell, [@this], args...)
     // Into:
-    //  delegate* pStub = *pCell;
-    //  delegate* pTarget = pStub(SS, @this, pCell)
+    //  delegate* pTarget = ResolveTarget(SS, @this, pCell)
     //  pTarget([@this], args...)
     //
-    // We "lower" this call manually as it is rather special, inserted **after** the arguments for the main call have
-    // been set up and thus needing a larger shadow stack offset. This is done to not create a new safe point across
-    // which GC arguments to the main call would be live; the stub itself may call into managed code and trigger a GC.
+    // Note that call is rather special, inserted **after** the arguments for the main call have been set up and thus
+    // needing a larger shadow stack offset. This is done to not create a new safe point across which GC arguments to
+    // the main call would be live; the stub itself may call into managed code and trigger a GC.
     //
     unsigned shadowStackOffsetForStub = getCurrentShadowFrameSize() + shadowArgsSize;
     GenTree* shadowStackForStub = insertShadowStackAddr(callNode, shadowStackOffsetForStub, _shadowStackLclNum);
     GenTree* thisForStub = _compiler->gtNewLclvNode(thisArgLclNum, TYP_REF);
     CurrentRange().InsertBefore(callNode, thisForStub);
 
-    // This call could be indirect (in case this is shared code and the cell address needed
-    // to be resolved dynamically). Use the available address node directly in that case.
-    GenTree* stubAddr;
+    GenTreeCall* stubCall = _compiler->gtNewHelperCallNode(
+        CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET, TYP_I_IMPL, shadowStackForStub, thisForStub, cellArgNode);
+    CurrentRange().InsertBefore(callNode, stubCall);
+
+    // This call could be indirect (in case this is shared code and the cell address needed to be resolved dynamically).
+    // Discard the now-not-needed address in that case.
     if (callNode->gtCallType == CT_INDIRECT)
     {
-        stubAddr = callNode->gtCallAddr;
+        GenTree* addr = callNode->gtCallAddr;
+        if (addr->OperIs(GT_LCL_VAR))
+        {
+            CurrentRange().Remove(addr);
+        }
+        else
+        {
+            addr->SetUnusedValue();
+        }
     }
-    else
-    {
-        // Frontend makes this into an FTN_ADDR, but it is actually a data address in our case.
-        assert(cellArgNode->IsIconHandle(GTF_ICON_FTN_ADDR));
-        cellArgNode->gtFlags = GTF_ICON_GLOBAL_PTR;
-
-        stubAddr = _compiler->gtNewIconHandleNode(cellArgNode->AsIntCon()->IconValue(), GTF_ICON_GLOBAL_PTR);
-        CurrentRange().InsertBefore(callNode, stubAddr);
-    }
-    // This is the cell's address, stub itself is its first field - get it.
-    stubAddr = _compiler->gtNewIndir(TYP_I_IMPL, stubAddr);
-    stubAddr->SetAllEffectsFlags(GTF_EMPTY);
-    stubAddr->gtFlags |= GTF_IND_NONFAULTING;
-    CurrentRange().InsertBefore(callNode, stubAddr);
-
-    GenTreeCall* stubCall = _compiler->gtNewIndCallNode(stubAddr, TYP_I_IMPL);
-    stubCall->gtArgs.PushFront(_compiler, NewCallArg::Primitive(shadowStackForStub, CORINFO_TYPE_PTR),
-                               NewCallArg::Primitive(thisForStub, CORINFO_TYPE_CLASS),
-                               NewCallArg::Primitive(cellArgNode, CORINFO_TYPE_PTR));
-    for (CallArg& arg : stubCall->gtArgs.Args())
-    {
-        arg.AbiInfo.IsPointer = arg.GetSignatureCorInfoType() == CORINFO_TYPE_PTR;
-        arg.AbiInfo.ArgType = arg.GetSignatureType();
-    }
-    stubCall->gtCorInfoType = CORINFO_TYPE_PTR;
-    stubCall->gtFlags |= GTF_CALL_UNMANAGED;
-    stubCall->gtCallMoreFlags |= GTF_CALL_M_SUPPRESS_GC_TRANSITION;
-    CurrentRange().InsertBefore(callNode, stubCall);
 
     // Finally, retarget our call. It is no longer VSD.
     callNode->gtCallType = CT_INDIRECT;
@@ -1202,6 +1184,9 @@ void Llvm::lowerVirtualStubCallAfterArgs(
     callNode->gtCallCookie = nullptr;
     callNode->gtFlags &= ~GTF_CALL_VIRT_STUB;
     callNode->gtCallMoreFlags &= ~GTF_CALL_M_VIRTSTUB_REL_INDIRECT;
+
+    // Lower the newly introduced stub call.
+    lowerCall(stubCall);
 }
 
 void Llvm::insertNullCheckForCall(GenTreeCall* callNode)
