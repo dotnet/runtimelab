@@ -1046,15 +1046,14 @@ void Llvm::lowerDivMod(GenTreeOp* divModNode)
 {
     assert(divModNode->OperIs(GT_DIV, GT_MOD, GT_UDIV, GT_UMOD));
 
-    // TODO-LLVM: use OperExceptions here when enough of upstream is merged.
-    if (divModNode->OperMayThrow(_compiler))
+    ExceptionSetFlags exceptions = divModNode->OperExceptions(_compiler);
+    if ((exceptions & ExceptionSetFlags::DivideByZeroException) != ExceptionSetFlags::None)
     {
         _compiler->fgAddCodeRef(CurrentBlock(), _compiler->bbThrowIndex(CurrentBlock()), SCK_DIV_BY_ZERO);
-
-        if (divModNode->OperIs(GT_DIV, GT_MOD))
-        {
-            _compiler->fgAddCodeRef(CurrentBlock(), _compiler->bbThrowIndex(CurrentBlock()), SCK_OVERFLOW);
-        }
+    }
+    if ((exceptions & ExceptionSetFlags::ArithmeticException) != ExceptionSetFlags::None)
+    {
+        _compiler->fgAddCodeRef(CurrentBlock(), _compiler->bbThrowIndex(CurrentBlock()), SCK_OVERFLOW);
     }
 }
 
