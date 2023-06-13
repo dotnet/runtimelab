@@ -1480,31 +1480,20 @@ void Llvm::buildDivMod(GenTree* node)
     Value* divisorValue  = consumeValue(divisorNode, llvmType);
     Value* divModValue   = nullptr;
 
-    // TODO-LLVM: use OperExceptions here when enough of upstream is merged.
-    if (varTypeIsIntegral(node))
+    ExceptionSetFlags exceptions = node->OperExceptions(_compiler);
+    if ((exceptions & ExceptionSetFlags::DivideByZeroException) != ExceptionSetFlags::None)
     {
-        // First, check for divide by zero.
-        if (!divisorNode->IsIntegralConst() || divisorNode->IsIntegralConst(0))
-        {
-            Value* isDivisorZeroValue =
-                _builder.CreateCmp(llvm::CmpInst::ICMP_EQ, divisorValue, llvm::ConstantInt::get(llvmType, 0));
-            emitJumpToThrowHelper(isDivisorZeroValue, SCK_DIV_BY_ZERO);
-        }
-
-        // Second, check for "INT_MIN / -1" (which throws ArithmeticException).
-        if (node->OperIs(GT_DIV, GT_MOD) && (!divisorNode->IsIntegralConst() || divisorNode->IsIntegralConst(-1)))
-        {
-            int64_t minDividend = node->TypeIs(TYP_LONG) ? INT64_MIN : INT32_MIN;
-            if (!dividendNode->IsIntegralConst() || (dividendNode->AsIntConCommon()->IntegralValue() == minDividend))
-            {
-                Value* isDivisorMinusOneValue =
-                    _builder.CreateCmp(llvm::CmpInst::ICMP_EQ, divisorValue, llvm::ConstantInt::get(llvmType, -1));
-                Value* isDividendMinValue = _builder.CreateCmp(llvm::CmpInst::ICMP_EQ, dividendValue,
-                                                               llvm::ConstantInt::get(llvmType, minDividend));
-                Value* isOverflowValue = _builder.CreateAnd(isDivisorMinusOneValue, isDividendMinValue);
-                emitJumpToThrowHelper(isOverflowValue, SCK_ARITH_EXCPN);
-            }
-        }
+        Value* isDivisorZeroValue = _builder.CreateICmpEQ(divisorValue, llvm::ConstantInt::get(llvmType, 0));
+        emitJumpToThrowHelper(isDivisorZeroValue, SCK_DIV_BY_ZERO);
+    }
+    if ((exceptions & ExceptionSetFlags::ArithmeticException) != ExceptionSetFlags::None)
+    {
+        // Check for "INT_MIN / -1" (which throws ArithmeticException).
+        int64_t minDividend = node->TypeIs(TYP_LONG) ? INT64_MIN : INT32_MIN;
+        Value* isDivisorMinusOneValue = _builder.CreateICmpEQ(divisorValue, llvm::ConstantInt::get(llvmType, -1));
+        Value* isDividendMinValue = _builder.CreateICmpEQ(dividendValue, llvm::ConstantInt::get(llvmType, minDividend));
+        Value* isOverflowValue = _builder.CreateAnd(isDivisorMinusOneValue, isDividendMinValue);
+        emitJumpToThrowHelper(isOverflowValue, SCK_ARITH_EXCPN);
     }
 
     switch (node->OperGet())
