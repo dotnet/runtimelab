@@ -141,8 +141,22 @@ void Llvm::Lower()
 //
 void Llvm::lowerSpillTempsLiveAcrossSafePoints()
 {
+    // Cannot use raw node pointers as their values influence hash table iteration order.
+    struct DeterministicNodeHashInfo : public HashTableInfo<DeterministicNodeHashInfo>
+    {
+        static bool Equals(GenTree* left, GenTree* right)
+        {
+            return left == right;
+        }
+
+        static unsigned GetHashCode(GenTree* node)
+        {
+            return node->TypeGet() ^ node->OperGet();
+        }
+    };
+
     // Set of SDSUs live after the current node.
-    SmallHashTable<GenTree*, unsigned> liveGcDefs(_compiler->getAllocator(CMK_Codegen));
+    SmallHashTable<GenTree*, unsigned, 8, DeterministicNodeHashInfo> liveGcDefs(_compiler->getAllocator(CMK_Codegen));
     ArrayStack<unsigned> spillLclsRef(_compiler->getAllocator(CMK_Codegen));
     ArrayStack<unsigned> spillLclsByref(_compiler->getAllocator(CMK_Codegen));
     ArrayStack<GenTree*> containedOperands(_compiler->getAllocator(CMK_Codegen));
@@ -201,15 +215,22 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
     auto isGcTemp = [compiler = _compiler](GenTree* node) {
         if (varTypeIsGC(node) || node->TypeIs(TYP_STRUCT))
         {
-            if (node->TypeIs(TYP_STRUCT) && !node->OperIs(GT_IND))
+            if (node->TypeIs(TYP_STRUCT))
             {
+                if (node->OperIs(GT_IND))
+                {
+                    return false;
+                }
                 if (!node->GetLayout(compiler)->HasGCPtr())
                 {
                     return false;
                 }
             }
 
-            return !node->OperIsLocal() && !node->OperIs(GT_LCL_ADDR);
+            // Locals are handled by the general shadow stack lowering (already "spilled" so to speak).
+            // Local address nodes always point to the stack (native or shadow). Constant handles will
+            // only point to immortal and immovable (frozen) objects.
+            return !node->OperIsLocal() && !node->OperIs(GT_LCL_ADDR) && !node->IsIconHandle();
         }
 
         return false;
@@ -241,6 +262,7 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
         {
             if (node->OperIs(GT_LCLHEAP))
             {
+                // Calculated here as it is needed to lay out the shadow stack.
                 m_lclHeapUsed = true;
             }
 
@@ -286,8 +308,7 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
 
                         if (spillLclNum != BAD_VAR_NUM)
                         {
-                            LclVarDsc* spillVarDsc = _compiler->lvaGetDesc(spillLclNum);
-                            GenTree* lclVarNode = _compiler->gtNewLclvNode(spillLclNum, spillVarDsc->TypeGet());
+                            GenTree* lclVarNode = _compiler->gtNewLclVarNode(spillLclNum);
 
                             *use = lclVarNode;
                             blockRange.InsertBefore(user, lclVarNode);
