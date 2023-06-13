@@ -758,6 +758,25 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_DISPATCH_INDIRECT_CALL:
                     return _compilation.NodeFactory.ExternIndirectSymbol("__guard_dispatch_icall_fptr");
 
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
+                    return _compilation.NodeFactory.ExternSymbol("RhpGetOrInitShadowStackTop");
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP:
+                    return _compilation.NodeFactory.ExternSymbol("RhpSetShadowStackTop");
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING:
+                    return _compilation.NodeFactory.ExternSymbol("RhpDispatchHandleExceptionWasmMutuallyProtectingCatches");
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH:
+                    return _compilation.NodeFactory.ExternSymbol("RhpDispatchHandleExceptionWasmCatch");
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER:
+                    return _compilation.NodeFactory.ExternSymbol("RhpDispatchHandleExceptionWasmFilteredCatch");
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT:
+                    return _compilation.NodeFactory.ExternSymbol("RhpDispatchHandleExceptionWasmFault");
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION:
+                    return _compilation.NodeFactory.ExternSymbol("RhpHandleUnhandledException");
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC:
+                    return _compilation.NodeFactory.ExternSymbol("RhpDynamicStackAlloc");
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE:
+                    return _compilation.NodeFactory.ExternSymbol("RhpDynamicStackRelease");
+
                 default:
                     throw new NotImplementedException(ftnNum.ToString());
             }

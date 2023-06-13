@@ -159,14 +159,6 @@ namespace Internal.IL
                 }
             }
 
-            if (_compilation.TargetArchIsWasm() && _canonMethod.IsUnmanagedCallersOnly)
-            {
-                // TODO-LLVM: make these into normal "ReadyToRunHelper" instead of hardcoding things here.
-                TypeDesc helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "EH");
-                MethodDesc helperMethod = helperType.GetKnownMethod("HandleUnhandledException", null);
-                _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(helperMethod), "Wasm EH");
-            }
-
             FindBasicBlocks();
             ImportBasicBlocks();
 

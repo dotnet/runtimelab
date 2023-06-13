@@ -153,6 +153,7 @@ namespace System.Runtime
 
         // This handler is called by codegen for exceptions that escape from RPI methods (i. e. unhandled exceptions).
         //
+        [RuntimeExport("RhpHandleUnhandledException")]
         private static void HandleUnhandledException(object exception)
         {
             // We have to duplicate the logic because the helpers are runtime exports and need a calling convention conversion.

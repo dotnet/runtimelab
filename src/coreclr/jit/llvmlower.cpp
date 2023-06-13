@@ -90,11 +90,12 @@ void Llvm::AddUnhandledExceptionHandler()
 
     // Insert a fail-fast into the filter block. This is an approximation of the helper
     // codegen will know to actually use for this special block.
-    GenTree* handlerCall = _compiler->gtNewHelperCallNode(CORINFO_HELP_FAIL_FAST, TYP_VOID);
+    GenTree* catchArg = new (_compiler, GT_CATCH_ARG) GenTree(GT_CATCH_ARG, TYP_REF);
+    catchArg->gtFlags |= GTF_ORDER_SIDEEFF;
+
+    GenTree* handlerCall = _compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION, TYP_VOID, catchArg);
     Statement* handlerStmt = _compiler->gtNewStmt(handlerCall);
     _compiler->fgInsertStmtAtEnd(filterBlock, handlerStmt);
-
-    m_unhandledExceptionHandlerIndex = newEhIndex;
 
 #ifdef DEBUG
     if (_compiler->verbose)
