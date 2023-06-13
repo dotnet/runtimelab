@@ -36,6 +36,7 @@ internal unsafe partial class Program
         TestMetaData();
 
         TestGC();
+        TestFinalization();
 
         Add(1, 2);
         PrintLine("Hello from C#!");
@@ -1057,6 +1058,95 @@ internal unsafe partial class Program
             return wr;
         }
         return wr;
+    }
+
+    private static void TestFinalization()
+    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static void CreateFinalizableObject(int keepAliveCount, bool gcOnFinalization = false, bool waitOnFinalization = false)
+        {
+            new ClassWithFinalizer()
+            {
+                KeepAliveCount = keepAliveCount,
+                TriggerCollectionOnFinalization = gcOnFinalization,
+                WaitOnFinalization = waitOnFinalization
+            };
+        }
+
+        StartTest("Finalization");
+        int expectedTotalFinalizationCount = 0;
+
+        CreateFinalizableObject(0);
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        expectedTotalFinalizationCount++;
+        if (ClassWithFinalizer.TotalFinalizationCount != expectedTotalFinalizationCount)
+        {
+            FailTest("Object was not finalized");
+            return;
+        }
+
+        int keepAliveCount = 3;
+        CreateFinalizableObject(keepAliveCount);
+        expectedTotalFinalizationCount += keepAliveCount + 1;
+        for (int i = 0; i < keepAliveCount + 1; i++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
+        if (ClassWithFinalizer.TotalFinalizationCount != expectedTotalFinalizationCount)
+        {
+            FailTest($"Object was not resurrected enough times (e: {expectedTotalFinalizationCount} / a: {ClassWithFinalizer.TotalFinalizationCount})");
+            return;
+        }
+
+        CreateFinalizableObject(0, gcOnFinalization: true);
+        CreateFinalizableObject(0, gcOnFinalization: true);
+        CreateFinalizableObject(0, gcOnFinalization: true);
+        expectedTotalFinalizationCount += 3;
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+
+        CreateFinalizableObject(0, waitOnFinalization: true);
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        expectedTotalFinalizationCount += 1;
+
+        if (ClassWithFinalizer.TotalFinalizationCount != expectedTotalFinalizationCount)
+        {
+            FailTest("Objects triggering recursive GCs did not finalize properly");
+            return;
+        }
+
+        PassTest();
+    }
+
+    class ClassWithFinalizer
+    {
+        public static int TotalFinalizationCount;
+
+        public int KeepAliveCount;
+        public bool TriggerCollectionOnFinalization;
+        public bool WaitOnFinalization;
+
+        ~ClassWithFinalizer()
+        {
+            TotalFinalizationCount++;
+
+            if (KeepAliveCount > 0)
+            {
+                GC.ReRegisterForFinalize(this);
+                KeepAliveCount--;
+            }
+            if (TriggerCollectionOnFinalization)
+            {
+                GC.Collect();
+            }
+            if (WaitOnFinalization)
+            {
+                GC.WaitForPendingFinalizers();
+            }
+        }
     }
 
     private static void TestBox()
