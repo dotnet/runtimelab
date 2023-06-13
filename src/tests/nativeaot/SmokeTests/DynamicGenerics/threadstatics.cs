@@ -490,7 +490,11 @@ namespace ThreadLocalStatics
 #else
             const int numTasks = 20;
 #endif
-            MultiThreaded_Test(TypeOf.TLS_T4, TypeOf.TLS_T5, numTasks, 20);
+            try
+            {
+                MultiThreaded_Test(TypeOf.TLS_T4, TypeOf.TLS_T5, numTasks, 20);
+            }
+            catch (TaskSchedulerException e) when (e.InnerException is PlatformNotSupportedException) { }
         }
     }
 }

@@ -20,7 +20,6 @@
 
     <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm'">
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HardwareIntrinsics\*.csproj" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DynamicGenerics\DynamicGenerics.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\SharedLibrary\SharedLibrary.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\Reflection.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\Reflection_FromUsage.csproj" />
@@ -36,6 +35,7 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\PInvoke\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Preinitialization\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\MultiModule\*.csproj" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DynamicGenerics\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Exceptions\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\UseSystemResourceKeys\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\FrameworkStrings\*.csproj" />
