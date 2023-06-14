@@ -107,14 +107,23 @@ extern "C" bool RhRegisterOSModule(void * pModule,
 
 extern "C" void* PalGetModuleHandleFromPointer(void* pointer);
 
+// The runtime assumes classlib exports have a managed calling convention.
+// For WASM, however, they are exported with the native calling convention
+// by default so we must explicitly use the managed entrypoint here.
+#ifdef HOST_WASM
+#define MANAGED_RUNTIME_EXPORT(name) name##_Managed
+#else
+#define MANAGED_RUNTIME_EXPORT(name) name
+#endif
+
 extern "C" void GetRuntimeException();
 extern "C" void FailFast();
 extern "C" void AppendExceptionStackFrame();
 extern "C" void GetSystemArrayEEType();
 extern "C" void OnFirstChanceException();
 extern "C" void OnUnhandledException();
-extern "C" void IDynamicCastableIsInterfaceImplemented();
-extern "C" void IDynamicCastableGetInterfaceImplementation();
+extern "C" void MANAGED_RUNTIME_EXPORT(IDynamicCastableIsInterfaceImplemented)();
+extern "C" void MANAGED_RUNTIME_EXPORT(IDynamicCastableGetInterfaceImplementation)();
 #ifdef FEATURE_OBJCMARSHAL
 extern "C" void ObjectiveCMarshalTryGetTaggedMemory();
 extern "C" void ObjectiveCMarshalGetIsTrackedReferenceCallback();
@@ -133,8 +142,8 @@ static const pfn c_classlibFunctions[] = {
     &GetSystemArrayEEType,
     &OnFirstChanceException,
     &OnUnhandledException,
-    &IDynamicCastableIsInterfaceImplemented,
-    &IDynamicCastableGetInterfaceImplementation,
+    &MANAGED_RUNTIME_EXPORT(IDynamicCastableIsInterfaceImplemented),
+    &MANAGED_RUNTIME_EXPORT(IDynamicCastableGetInterfaceImplementation),
 #ifdef FEATURE_OBJCMARSHAL
     &ObjectiveCMarshalTryGetTaggedMemory,
     &ObjectiveCMarshalGetIsTrackedReferenceCallback,

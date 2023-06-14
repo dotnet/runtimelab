@@ -14,8 +14,8 @@ success &= RunTest(Generics.Run);
 success &= RunTest(Interfaces.Run);
 #if !CODEGEN_WASM
 success &= RunTest(Threading.Run);
-success &= RunTest(Devirtualization.Run);
 #endif
+success &= RunTest(Devirtualization.Run);
 
 return success ? 100 : 1;
 
