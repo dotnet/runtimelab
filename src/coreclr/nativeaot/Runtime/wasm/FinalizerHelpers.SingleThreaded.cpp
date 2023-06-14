@@ -45,7 +45,7 @@ void RhEnableFinalization()
 
 EXTERN_C NATIVEAOT_API void __cdecl RhWaitForPendingFinalizers(UInt32_BOOL allowReentrantWait)
 {
-    // Must be called in cooperative mode as "ProcessFinalizersAndReturn" RPIs back into managed.
+    // Must be called in preemptive mode as "ProcessFinalizersAndReturn" RPIs back into managed.
     ASSERT(!ThreadStore::GetCurrentThread()->IsCurrentThreadInCooperativeMode());
 
     ProcessFinalizersAndReturn();
