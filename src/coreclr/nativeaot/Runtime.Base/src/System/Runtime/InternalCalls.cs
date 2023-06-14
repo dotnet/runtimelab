@@ -278,14 +278,6 @@ namespace System.Runtime
         [RuntimeImport(Redhawk.BaseName, "RhpReleaseNativeException")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpReleaseNativeException(void* pDispatchData);
-
-        [RuntimeImport(Redhawk.BaseName, "RhpRawCalli_VO")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void RhpRawCalli_VO(IntPtr pfn, object arg);
-
-        [RuntimeImport(Redhawk.BaseName, "RhpRawCalli_ViOII")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void RhpRawCalli_ViOII(IntPtr pfn, int arg0, object arg1, IntPtr arg2, IntPtr arg3);
 #endif
 
         [RuntimeImport(Redhawk.BaseName, "RhpGetNumThunkBlocksPerMapping")]

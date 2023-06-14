@@ -116,12 +116,12 @@ extern "C" void* PalGetModuleHandleFromPointer(void* pointer);
 #define MANAGED_RUNTIME_EXPORT(name) name
 #endif
 
-extern "C" void GetRuntimeException();
-extern "C" void FailFast();
-extern "C" void AppendExceptionStackFrame();
-extern "C" void GetSystemArrayEEType();
-extern "C" void OnFirstChanceException();
-extern "C" void OnUnhandledException();
+extern "C" void MANAGED_RUNTIME_EXPORT(GetRuntimeException)();
+extern "C" void MANAGED_RUNTIME_EXPORT(FailFast)();
+extern "C" void MANAGED_RUNTIME_EXPORT(AppendExceptionStackFrame)();
+extern "C" void MANAGED_RUNTIME_EXPORT(GetSystemArrayEEType)();
+extern "C" void MANAGED_RUNTIME_EXPORT(OnFirstChanceException)();
+extern "C" void MANAGED_RUNTIME_EXPORT(OnUnhandledException)();
 extern "C" void MANAGED_RUNTIME_EXPORT(IDynamicCastableIsInterfaceImplemented)();
 extern "C" void MANAGED_RUNTIME_EXPORT(IDynamicCastableGetInterfaceImplementation)();
 #ifdef FEATURE_OBJCMARSHAL
@@ -134,14 +134,14 @@ extern "C" void ObjectiveCMarshalGetUnhandledExceptionPropagationHandler();
 typedef void(*pfn)();
 
 static const pfn c_classlibFunctions[] = {
-    &GetRuntimeException,
-    &FailFast,
+    &MANAGED_RUNTIME_EXPORT(GetRuntimeException),
+    &MANAGED_RUNTIME_EXPORT(FailFast),
     nullptr, // &UnhandledExceptionHandler,
-    &AppendExceptionStackFrame,
+    &MANAGED_RUNTIME_EXPORT(AppendExceptionStackFrame),
     nullptr, // &CheckStaticClassConstruction,
-    &GetSystemArrayEEType,
-    &OnFirstChanceException,
-    &OnUnhandledException,
+    &MANAGED_RUNTIME_EXPORT(GetSystemArrayEEType),
+    &MANAGED_RUNTIME_EXPORT(OnFirstChanceException),
+    &MANAGED_RUNTIME_EXPORT(OnUnhandledException),
     &MANAGED_RUNTIME_EXPORT(IDynamicCastableIsInterfaceImplemented),
     &MANAGED_RUNTIME_EXPORT(IDynamicCastableGetInterfaceImplementation),
 #ifdef FEATURE_OBJCMARSHAL
