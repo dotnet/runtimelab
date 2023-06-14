@@ -20,7 +20,6 @@
 
     <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm'">
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\SharedLibrary\SharedLibrary.csproj" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\CustomMain\CustomMain.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\GenerateUnmanagedEntryPoints\GenerateUnmanagedEntryPoints.csproj" />
 
       <!-- Manual test. -->
