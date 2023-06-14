@@ -10,4 +10,8 @@
     <!-- We expect trimming to be fully enabled in these tests -->
     <EnableAggressiveTrimming>true</EnableAggressiveTrimming>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <DefineConstants Condition="$(TargetArchitecture) == 'wasm'">$(DefineConstants);CODEGEN_WASM</DefineConstants>
+  </PropertyGroup>
 </Project>

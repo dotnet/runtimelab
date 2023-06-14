@@ -11,7 +11,6 @@
 
     <!-- Look for MULTIMODULE_BUILD #define for the more specific incompatible parts -->
     <CLRTestTargetUnsupported Condition="'$(IlcMultiModule)' == 'true'">true</CLRTestTargetUnsupported>
-    <DefineConstants Condition="$(TargetArchitecture) == 'wasm'">$(DefineConstants);CODEGEN_WASM</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Reflection.cs" />

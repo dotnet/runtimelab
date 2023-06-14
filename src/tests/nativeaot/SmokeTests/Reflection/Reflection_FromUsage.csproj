@@ -14,7 +14,6 @@
     <CLRTestTargetUnsupported Condition="'$(IlcMultiModule)' == 'true'">true</CLRTestTargetUnsupported>
 
     <IlcTrimMetadata>false</IlcTrimMetadata>
-    <DefineConstants Condition="$(TargetArchitecture) == 'wasm'">$(DefineConstants);CODEGEN_WASM</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Reflection.cs" />
