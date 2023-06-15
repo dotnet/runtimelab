@@ -9,8 +9,8 @@ Param(
     [switch]$Build = $false,
     [switch]$Analyze = $false,
     [switch]$SummaryOnly = $false,
-    [ValidateSet("Debug,Release")][string]$Config = "Release",
-    [ValidateSet("Debug,Checked,Release")][string]$IlcConfig = "Release",
+    [ValidateSet("Debug","Release")][string]$Config = "Release",
+    [ValidateSet("Debug","Checked","Release")][string]$IlcConfig = "Release",
     [Nullable[bool]]$DebugSymbols = $null,
     [uint]$NumberOfDiffsToShow = 20,
     [string]$PassThrough = ""
