@@ -223,6 +223,8 @@ private:
 public:
     Llvm(Compiler* compiler);
 
+    static void ConfigureDiagnosticOutput();
+
     var_types GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind);
     var_types GetReturnTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind);
 

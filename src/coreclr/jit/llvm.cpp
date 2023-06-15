@@ -6,6 +6,7 @@
 
 #pragma warning (disable: 4459)
 #include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/Support/Signals.h"
 #pragma warning (error: 4459)
 
 // Must be kept in sync with the managed version in "CorInfoImpl.Llvm.cs".
@@ -103,6 +104,22 @@ Llvm::Llvm(Compiler* compiler)
     , _localsMap(compiler->getAllocator(CMK_Codegen))
     , m_debugVariablesMap(compiler->getAllocator(CMK_Codegen))
 {
+}
+
+/* static */ void Llvm::ConfigureDiagnosticOutput()
+{
+    llvm::sys::PrintStackTraceOnErrorSignal("");
+
+#ifdef HOST_WINDOWS
+    // Disable popups for CRT asserts (which LLVM uses).
+    ::_set_error_mode(_OUT_TO_STDERR);
+    _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
+    _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
+    _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
+    _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
+    _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
+    _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+#endif // HOST_WINDOWS
 }
 
 var_types Llvm::GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind)
