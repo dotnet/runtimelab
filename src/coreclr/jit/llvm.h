@@ -318,12 +318,13 @@ public:
 
 private:
     void lowerSpillTempsLiveAcrossSafePoints();
-    void lowerLocals();
+    void lowerLocalsBeforeNodes();
     void populateLlvmArgNums();
     void assignShadowStackOffsets(std::vector<unsigned>& shadowStackLocals, unsigned shadowStackParamCount);
     void initializeLocalInProlog(unsigned lclNum, GenTree* value);
 
     void insertProlog();
+    void lowerLocalsAfterNodes();
 
     void lowerBlocks();
     void lowerBlock(BasicBlock* block);

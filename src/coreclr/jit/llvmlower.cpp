@@ -118,9 +118,10 @@ void Llvm::AddUnhandledExceptionHandler()
 void Llvm::Lower()
 {
     lowerSpillTempsLiveAcrossSafePoints();
-    lowerLocals();
+    lowerLocalsBeforeNodes();
     insertProlog();
     lowerBlocks();
+    lowerLocalsAfterNodes();
 }
 
 //------------------------------------------------------------------------
@@ -354,17 +355,17 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
 }
 
 //------------------------------------------------------------------------
-// lowerLocals: "Lower" locals: strip annotations and insert initializations.
+// lowerLocalsBeforeNodes: strip annotations and insert initializations.
 //
 // We decouple promoted structs from their field locals: for independently
 // promoted ones, we treat the fields as regular temporaries; parameters are
 // initialized explicitly via "STORE_LCL_VAR<field>(LCL_FLD<parent>)". For
 // dependently promoted cases, we will later rewrite all fields to reference
-// the parent instead, and so here strip some annotations ("lvIsParam"). We
-// also determine the set of locals which will need to go on the shadow stack,
-// zero-initialize them if required, and assign stack offsets.
+// the parent instead. We strip the annotations in "lowerLocalsAfterNodes".
+// We also determine the set of locals which will need to go on the shadow
+// stack, zero-initialize them if required, and assign stack offsets.
 //
-void Llvm::lowerLocals()
+void Llvm::lowerLocalsBeforeNodes()
 {
     populateLlvmArgNums();
 
@@ -375,39 +376,20 @@ void Llvm::lowerLocals()
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
-        if (varDsc->lvIsParam)
+        // Initialize independently promoted field locals.
+        if (varDsc->lvIsParam && (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT))
         {
-            if (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
+            for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
             {
-                for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
+                unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
+                LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
+                if (fieldVarDsc->lvRefCnt(RCS_NORMAL) != 0)
                 {
-                    unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
-                    LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
-                    if (fieldVarDsc->lvRefCnt(RCS_NORMAL) != 0)
-                    {
-                        GenTree* fieldValue =
-                            _compiler->gtNewLclFldNode(lclNum, fieldVarDsc->TypeGet(), fieldVarDsc->lvFldOffset);
-                        initializeLocalInProlog(fieldLclNum, fieldValue);
-                    }
+                    GenTree* fieldValue =
+                        _compiler->gtNewLclFldNode(lclNum, fieldVarDsc->TypeGet(), fieldVarDsc->lvFldOffset);
+                    initializeLocalInProlog(fieldLclNum, fieldValue);
 
-                    fieldVarDsc->lvIsStructField   = false;
-                    fieldVarDsc->lvParentLcl       = BAD_VAR_NUM;
-                    fieldVarDsc->lvIsParam         = false;
                     fieldVarDsc->lvHasExplicitInit = true;
-                }
-
-                varDsc->lvPromoted      = false;
-                varDsc->lvFieldLclStart = BAD_VAR_NUM;
-                varDsc->lvFieldCnt      = 0;
-            }
-            else if (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_DEPENDENT)
-            {
-                // Dependent promotion, just mark fields as not lvIsParam.
-                for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
-                {
-                    unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
-                    LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
-                    fieldVarDsc->lvIsParam = false;
                 }
             }
         }
@@ -424,6 +406,15 @@ void Llvm::lowerLocals()
         //
         if (!isFuncletParameter(lclNum) && (varDsc->HasGCPtr() || varDsc->lvLiveInOutOfHndlr))
         {
+            // We will always need to assign offsets to shadow stack parameters.
+            const bool isLlvmParam = varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM;
+            if (varDsc->lvIsParam && !isLlvmParam)
+            {
+                shadowStackParamCount++;
+                shadowStackLocals.push_back(lclNum);
+                continue;
+            }
+
             if (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
             {
                 // The individual fields will placed on the shadow stack.
@@ -432,15 +423,6 @@ void Llvm::lowerLocals()
             if (_compiler->lvaIsFieldOfDependentlyPromotedStruct(varDsc))
             {
                 // The fields will be referenced through the parent.
-                continue;
-            }
-
-            // We will always need to assign offsets to shadow stack parameters.
-            const bool isLlvmParam = varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM;
-            if (varDsc->lvIsParam && !isLlvmParam)
-            {
-                shadowStackParamCount++;
-                shadowStackLocals.push_back(lclNum);
                 continue;
             }
 
@@ -684,6 +666,29 @@ void Llvm::insertProlog()
     if (!m_prologRange.IsEmpty())
     {
         firstBlockRange.InsertAtBeginning(std::move(m_prologRange));
+    }
+}
+
+void Llvm::lowerLocalsAfterNodes()
+{
+    for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
+    {
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+        if (varDsc->lvPromoted)
+        {
+            for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
+            {
+                LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(varDsc->lvFieldLclStart + index);
+
+                fieldVarDsc->lvIsStructField = false;
+                fieldVarDsc->lvParentLcl = BAD_VAR_NUM;
+                fieldVarDsc->lvIsParam = false;
+            }
+
+            varDsc->lvPromoted = false;
+            varDsc->lvFieldLclStart = BAD_VAR_NUM;
+            varDsc->lvFieldCnt = 0;
+        }
     }
 }
 
@@ -997,6 +1002,11 @@ void Llvm::lowerCall(GenTreeCall* callNode)
         while (CurrentRange().LastNode() != callNode)
         {
             CurrentRange().Remove(CurrentRange().LastNode(), /* markOperandsUnused */ true);
+        }
+
+        if (!CurrentBlock()->KindIs(BBJ_THROW))
+        {
+            _compiler->fgConvertBBToThrowBB(CurrentBlock());
         }
     }
 }
