@@ -454,7 +454,7 @@ void Llvm::lowerLocalsBeforeNodes()
                 else if (!_compiler->fgVarNeedsExplicitZeroInit(lclNum, /* bbInALoop */ false, /* bbIsReturn*/ false) ||
                          varDsc->HasGCPtr())
                 {
-                    var_types zeroType = (varDsc->TypeGet() == TYP_STRUCT) ? TYP_INT : genActualType(varDsc);
+                    var_types zeroType = (varDsc->TypeGet() == TYP_STRUCT) ? TYP_INT : varDsc->TypeGet();
                     initializeLocalInProlog(lclNum, _compiler->gtNewZeroConNode(zeroType));
                 }
             }
@@ -1266,9 +1266,8 @@ void Llvm::lowerDelegateInvoke(GenTreeCall* callNode)
     delegateThis = _compiler->gtNewLclvNode(delegateThisLclNum, TYP_REF);
     GenTree* callTargetOffset = _compiler->gtNewIconNode(eeInfo->offsetOfDelegateFirstTarget, TYP_I_IMPL);
     GenTree* callTargetAddr = _compiler->gtNewOperNode(GT_ADD, TYP_BYREF, delegateThis, callTargetOffset);
-    GenTree* callTarget = _compiler->gtNewIndir(TYP_I_IMPL, callTargetAddr);
-    callTarget->SetAllEffectsFlags(GTF_EMPTY);
-    callTarget->gtFlags |= GTF_IND_NONFAULTING | GTF_ORDER_SIDEEFF;
+    GenTree* callTarget = _compiler->gtNewIndir(TYP_I_IMPL, callTargetAddr, GTF_IND_NONFAULTING);
+    callTarget->gtFlags |= GTF_ORDER_SIDEEFF;
 
     CurrentRange().InsertBefore(callNode, delegateThis, callTargetOffset, callTargetAddr, callTarget);
 

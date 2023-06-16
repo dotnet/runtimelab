@@ -133,12 +133,9 @@ namespace Internal.JitInterface
             IMethodNode methodNode = _this._methodCodeNode;
             RyuJitCompilation compilation = _this._compilation;
 
-            string alternativeName = compilation.GetRuntimeExportManagedEntrypointName(methodNode.Method) ?? compilation.NodeFactory.GetSymbolAlternateName(methodNode);
-            if ((alternativeName == null) && methodNode.Method.IsUnmanagedCallersOnly)
-            {
-                // TODO-LLVM: delete once the IL backend is gone.
-                alternativeName = methodNode.Method.Name;
-            }
+            string alternativeName =
+                compilation.GetRuntimeExportManagedEntrypointName(methodNode.Method) ??
+                compilation.NodeFactory.GetSymbolAlternateName(methodNode);
 
             return (alternativeName != null) ? (byte*)_this.GetPin(StringToUTF8(alternativeName)) : null;
         }
