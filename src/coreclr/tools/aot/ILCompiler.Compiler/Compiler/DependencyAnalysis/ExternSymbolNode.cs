@@ -23,6 +23,8 @@ namespace ILCompiler.DependencyAnalysis
             _isIndirection = isIndirection;
         }
 
+        public Utf8String Utf8Name => _name;
+
         protected override string GetName(NodeFactory factory) => $"ExternSymbol {_name}{(_isIndirection ? " (indirected)" : "")}";
 
         public void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)

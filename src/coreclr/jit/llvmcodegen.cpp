@@ -2786,6 +2786,7 @@ Function* Llvm::getOrCreateKnownLlvmFunction(
     Function* llvmFunc = m_context->Module.getFunction(name);
     if (llvmFunc == nullptr)
     {
+        assert(m_context->Module.getNamedValue(name) == nullptr); // No duplicate symbols!
         llvmFunc = Function::Create(createFunctionType(), Function::ExternalLinkage, name, m_context->Module);
         annotateFunction(llvmFunc);
     }
@@ -2831,6 +2832,7 @@ llvm::GlobalVariable* Llvm::getOrCreateDataSymbol(StringRef symbolName)
     llvm::GlobalVariable* symbol = m_context->Module.getGlobalVariable(symbolName);
     if (symbol == nullptr)
     {
+        assert(m_context->Module.getNamedValue(symbolName) == nullptr); // No duplicate symbols!
         Type* symbolLlvmType = getPtrLlvmType();
         symbol = new llvm::GlobalVariable(m_context->Module, symbolLlvmType, false, llvm::GlobalValue::ExternalLinkage,
                                           nullptr, symbolName);
