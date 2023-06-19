@@ -91,6 +91,30 @@ namespace Internal.JitInterface
                 return 1;
             }
 
+            // TODO-LLVM: below is a hack. A proper solution would involve upstream work to allow ExternSymbolNode
+            // to specify whether it represents a function or data symbol (and what its signature is if the former).
+            if (node is ExternSymbolNode externSymbolNode)
+            {
+                ReadOnlySpan<byte> name = externSymbolNode.Utf8Name.UnderlyingArray;
+                if (name.StartsWith("RhpNew"u8))
+                {
+                    if (name.SequenceEqual("RhpNewFast"u8) ||
+                        name.SequenceEqual("RhpNewFinalizable"u8) ||
+                        name.SequenceEqual("RhpNewFastAlign8"u8) ||
+                        name.SequenceEqual("RhpNewFastMisalign"u8) ||
+                        name.SequenceEqual("RhpNewFinalizableAlign8"u8))
+                    {
+                        TypeDesc pointerType = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Void).MakePointerType();
+                        MethodSignatureFlags signatureFlags = MethodSignatureFlags.Static | MethodSignatureFlags.UnmanagedCallingConvention;
+                        MethodSignature signature = new MethodSignature(signatureFlags, 0, pointerType, new[] { pointerType });
+
+                        // We're technically leaking the signature object here, but we don't get here often, so it's ok.
+                        _this.Get_CORINFO_SIG_INFO(signature, pSig, scope: null);
+                        return 1;
+                    }
+                }
+            }
+
             return 0;
         }
 
