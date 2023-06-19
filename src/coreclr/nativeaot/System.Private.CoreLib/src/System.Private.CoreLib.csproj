@@ -550,8 +550,11 @@
     <Compile Include="$(RuntimeBasePath)System\Runtime\GCStress.cs">
       <Link>Runtime.Base\src\System\Runtime\GCStress.cs</Link>
     </Compile>
-    <Compile Include="$(RuntimeBasePath)System\Runtime\__Finalizer.cs">
+    <Compile Include="$(RuntimeBasePath)System\Runtime\__Finalizer.cs" Condition="'$(WasmAbi)' != 'true' or '$(FeatureWasmThreads)' == 'true'">
       <Link>Runtime.Base\src\System\Runtime\__Finalizer.cs</Link>
+    </Compile>
+    <Compile Include="$(RuntimeBasePath)System\Runtime\__Finalizer.SingleThreaded.cs" Condition="'$(WasmAbi)' == 'true' and '$(FeatureWasmThreads)' != 'true'">
+      <Link>Runtime.Base\src\System\Runtime\__Finalizer.SingleThreaded.cs</Link>
     </Compile>
     <Compile Include="$(RuntimeBasePath)System\Runtime\MethodTable.Runtime.cs">
       <Link>Runtime.Base\src\System\Runtime\MethodTable.Runtime.cs</Link>

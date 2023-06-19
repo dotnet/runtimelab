@@ -202,8 +202,10 @@ if (CLR_CMAKE_TARGET_ARCH_AMD64 AND CLR_CMAKE_TARGET_WIN32)
 endif (CLR_CMAKE_TARGET_ARCH_AMD64 AND CLR_CMAKE_TARGET_WIN32)
 
 if (CLR_CMAKE_TARGET_ARCH_WASM)
+  list(REMOVE_ITEM COMMON_RUNTIME_SOURCES FinalizerHelpers.cpp)
   list(APPEND COMMON_RUNTIME_SOURCES
     ${ARCH_SOURCES_DIR}/ExceptionHandling/ExceptionHandling.cpp
+    ${ARCH_SOURCES_DIR}/FinalizerHelpers.SingleThreaded.cpp
     ${ARCH_SOURCES_DIR}/RawCalliHelper.cpp
     ${ARCH_SOURCES_DIR}/DynamicStackAlloc.cpp
     ${ARCH_SOURCES_DIR}/StubDispatch.cpp
