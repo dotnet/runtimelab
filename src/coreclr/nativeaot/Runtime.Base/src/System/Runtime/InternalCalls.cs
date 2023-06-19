@@ -154,13 +154,6 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpAssignRef(ref object address, object obj);
 
-#if TARGET_WASM
-        // TODO-LLVM: the IL backend needs this for store indirect, when all code is through the RyuJIT backend, remove it
-        [RuntimeImport(Redhawk.BaseName, "RhpCheckedAssignRef")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe void RhpCheckedAssignRef(ref object address, object obj);
-#endif
-
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(Redhawk.BaseName, "RhpGcSafeZeroMemory")]
         internal static extern unsafe ref byte RhpGcSafeZeroMemory(ref byte dmem, nuint size);
@@ -278,6 +271,10 @@ namespace System.Runtime
         [RuntimeImport(Redhawk.BaseName, "RhpReleaseNativeException")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpReleaseNativeException(void* pDispatchData);
+
+        [RuntimeImport(Redhawk.BaseName, "RhpCallCatchOrFilterFunclet")]
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        internal static extern unsafe int RhpCallCatchOrFilterFunclet(void* pShadowFrame, void* pOriginalShadowFrame, object exception, void* pFunclet);
 #endif
 
         [RuntimeImport(Redhawk.BaseName, "RhpGetNumThunkBlocksPerMapping")]

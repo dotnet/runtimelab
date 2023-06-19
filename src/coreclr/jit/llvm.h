@@ -249,12 +249,7 @@ private:
 
     static const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpFunc helperFunc);
 
-    bool canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    bool getLlvmArgTypeForArg(bool                 isManagedAbi,
-                              CorInfoType          argSigType,
-                              CORINFO_CLASS_HANDLE argSigClass,
-                              CorInfoType*         pArgType = nullptr,
-                              bool*                pIsByRef = nullptr);
+    CorInfoType getLlvmArgTypeForArg(CorInfoType argSigType, CORINFO_CLASS_HANDLE argSigClass, bool* pIsByRef = nullptr);
     CorInfoType getLlvmReturnType(CorInfoType sigRetType, CORINFO_CLASS_HANDLE sigRetClass, bool* pIsByRef = nullptr);
 
     unsigned padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
@@ -322,7 +317,7 @@ private:
     void lowerSpillTempsLiveAcrossSafePoints();
     void lowerLocalsBeforeNodes();
     void populateLlvmArgNums();
-    void assignShadowStackOffsets(std::vector<unsigned>& shadowStackLocals, unsigned shadowStackParamCount);
+    void assignShadowStackOffsets(std::vector<unsigned>& shadowStackLocals);
     void initializeLocalInProlog(unsigned lclNum, GenTree* value);
 
     void insertProlog();
@@ -345,12 +340,11 @@ private:
     void lowerReturn(GenTreeUnOp* retNode);
 
     void lowerVirtualStubCallBeforeArgs(GenTreeCall* callNode, unsigned* pThisLclNum, GenTree** pCellArgNode);
-    void lowerVirtualStubCallAfterArgs(
-        GenTreeCall* callNode, unsigned thisArgLclNum, GenTree* cellArgNode, unsigned shadowArgsSize);
+    void lowerVirtualStubCallAfterArgs(GenTreeCall* callNode, unsigned thisArgLclNum, GenTree* cellArgNode);
     void insertNullCheckForCall(GenTreeCall* callNode);
     void lowerDelegateInvoke(GenTreeCall* callNode);
     void lowerUnmanagedCall(GenTreeCall* callNode);
-    unsigned lowerCallToShadowStack(GenTreeCall* callNode);
+    void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerCallReturn(GenTreeCall* callNode);
 
     GenTree* normalizeStructUse(LIR::Use& use, ClassLayout* layout);

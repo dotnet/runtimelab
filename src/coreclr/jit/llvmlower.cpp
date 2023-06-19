@@ -370,7 +370,6 @@ void Llvm::lowerLocalsBeforeNodes()
     populateLlvmArgNums();
 
     std::vector<unsigned> shadowStackLocals;
-    unsigned shadowStackParamCount = 0;
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
@@ -406,15 +405,6 @@ void Llvm::lowerLocalsBeforeNodes()
         //
         if (!isFuncletParameter(lclNum) && (varDsc->HasGCPtr() || varDsc->lvLiveInOutOfHndlr))
         {
-            // We will always need to assign offsets to shadow stack parameters.
-            const bool isLlvmParam = varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM;
-            if (varDsc->lvIsParam && !isLlvmParam)
-            {
-                shadowStackParamCount++;
-                shadowStackLocals.push_back(lclNum);
-                continue;
-            }
-
             if (_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
             {
                 // The individual fields will placed on the shadow stack.
@@ -435,8 +425,7 @@ void Llvm::lowerLocalsBeforeNodes()
             // We may need to insert initialization:
             //
             //  1) Zero-init if this is a non-parameter GC local, to fullfill frontend's expectations.
-            //  2) Copy the initial value if this a parameter not passed on the shadow stack, but
-            //     still assigned a home on it.
+            //  2) Copy the initial value if this is a parameter with the home on the shadow stack.
             //
             // TODO-LLVM: in both cases we should avoid redundant initializations using liveness
             // info (for tracked locals), sharing code with "initializeLocals" in codegen. However,
@@ -444,7 +433,7 @@ void Llvm::lowerLocalsBeforeNodes()
             //
             if (!varDsc->lvHasExplicitInit)
             {
-                if (isLlvmParam)
+                if (varDsc->lvIsParam)
                 {
                     GenTree* initVal = _compiler->gtNewLclvNode(lclNum, varDsc->TypeGet());
                     initVal->SetRegNum(REG_LLVM);
@@ -454,7 +443,7 @@ void Llvm::lowerLocalsBeforeNodes()
                 else if (!_compiler->fgVarNeedsExplicitZeroInit(lclNum, /* bbInALoop */ false, /* bbIsReturn*/ false) ||
                          varDsc->HasGCPtr())
                 {
-                    var_types zeroType = (varDsc->TypeGet() == TYP_STRUCT) ? TYP_INT : varDsc->TypeGet();
+                    var_types zeroType = (varDsc->TypeGet() == TYP_STRUCT) ? TYP_INT : genActualType(varDsc);
                     initializeLocalInProlog(lclNum, _compiler->gtNewZeroConNode(zeroType));
                 }
             }
@@ -481,9 +470,16 @@ void Llvm::lowerLocalsBeforeNodes()
         shadowStackLocals.push_back(paddingLclNum);
     }
 
-    assignShadowStackOffsets(shadowStackLocals, shadowStackParamCount);
+    assignShadowStackOffsets(shadowStackLocals);
 }
 
+// LLVM Arg layout:
+//    - Shadow stack (if required)
+//    - This pointer (if required)
+//    - Return buffer (if required)
+//    - Generic context (if required)
+//    - Rest of the args passed as LLVM parameters
+//
 void Llvm::populateLlvmArgNums()
 {
     if (_compiler->ehAnyFunclets())
@@ -539,23 +535,17 @@ void Llvm::populateLlvmArgNums()
             varDsc->lvCorInfoType = CORINFO_TYPE_PTR;
         }
 
-        CorInfoType argSigType = varDsc->lvCorInfoType;
-        CORINFO_CLASS_HANDLE argSigClass =
-            (varDsc->TypeGet() == TYP_STRUCT) ? varDsc->GetLayout()->GetClassHandle() : NO_CLASS_HANDLE;
-        if (getLlvmArgTypeForArg(isManagedAbi, argSigType, argSigClass))
-        {
-            varDsc->lvLlvmArgNum = nextLlvmArgNum++;
-        }
+        varDsc->lvLlvmArgNum = nextLlvmArgNum++;
     }
 
     _llvmArgCount = nextLlvmArgNum;
 }
 
-void Llvm::assignShadowStackOffsets(std::vector<unsigned>& shadowStackLocals, unsigned shadowStackParamCount)
+void Llvm::assignShadowStackOffsets(std::vector<unsigned>& shadowStackLocals)
 {
     if (_compiler->opts.OptimizationEnabled())
     {
-        std::sort(shadowStackLocals.begin() + shadowStackParamCount, shadowStackLocals.end(),
+        std::sort(shadowStackLocals.begin(), shadowStackLocals.end(),
                   [compiler = _compiler](unsigned lhsLclNum, unsigned rhsLclNum)
         {
             LclVarDsc* lhsVarDsc = compiler->lvaGetDesc(lhsLclNum);
@@ -565,7 +555,9 @@ void Llvm::assignShadowStackOffsets(std::vector<unsigned>& shadowStackLocals, un
     }
 
     unsigned offset = 0;
-    auto assignOffset = [this, &offset](LclVarDsc* varDsc) {
+    for (unsigned i = 0; i < shadowStackLocals.size(); i++)
+    {
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(shadowStackLocals.at(i));
         if ((varDsc->TypeGet() == TYP_STRUCT) && varDsc->GetLayout()->IsBlockLayout())
         {
             assert((varDsc->lvSize() % TARGET_POINTER_SIZE) == 0);
@@ -587,37 +579,6 @@ void Llvm::assignShadowStackOffsets(std::vector<unsigned>& shadowStackLocals, un
 
         // We will use this as the indication that the local has a home on the shadow stack.
         varDsc->SetRegNum(REG_STK);
-    };
-
-    // First, we process the parameters, since their offsets are fixed by the ABI. Then, we process the rest.
-    // Doing this ensures we don't count LLVM parameters live on the shadow stack as shadow parameters.
-    //
-    unsigned assignedShadowStackParamCount = 0;
-    for (unsigned i = 0; i < shadowStackLocals.size(); i++)
-    {
-        LclVarDsc* varDsc = _compiler->lvaGetDesc(shadowStackLocals.at(i));
-
-        if (varDsc->lvIsParam && (varDsc->lvLlvmArgNum == BAD_LLVM_ARG_NUM))
-        {
-            assignOffset(varDsc);
-            assignedShadowStackParamCount++;
-            varDsc->lvIsParam = false; // After lowering, "lvIsParam" <=> "is LLVM parameter".
-
-            if (assignedShadowStackParamCount == shadowStackParamCount)
-            {
-                break;
-            }
-        }
-    }
-
-    for (unsigned i = 0; i < shadowStackLocals.size(); i++)
-    {
-        LclVarDsc* varDsc = _compiler->lvaGetDesc(shadowStackLocals.at(i));
-
-        if (!isShadowFrameLocal(varDsc))
-        {
-            assignOffset(varDsc);
-        }
     }
 
     _shadowStackLocalsSize = AlignUp(offset, TARGET_POINTER_SIZE);
@@ -959,8 +920,9 @@ void Llvm::lowerCall(GenTreeCall* callNode)
     else if (callNode->IsHelperCall(_compiler, CORINFO_HELP_OVERFLOW) && !callNode->gtArgs.IsEmpty())
     {
         // TODO-LLVM: fix upstream to not attach this argument.
-        CurrentRange().Remove(callNode->gtArgs.GetArgByIndex(0)->GetNode());
-        callNode->gtArgs.RemoveAfter(nullptr);
+        CallArg* arg = callNode->gtArgs.GetArgByIndex(0);
+        CurrentRange().Remove(arg->GetNode());
+        callNode->gtArgs.Remove(arg);
     }
 
     // Doing this early simplifies code below.
@@ -984,11 +946,11 @@ void Llvm::lowerCall(GenTreeCall* callNode)
 
     lowerCallReturn(callNode);
 
-    unsigned shadowArgsSize = lowerCallToShadowStack(callNode);
+    lowerCallToShadowStack(callNode);
 
     if (callNode->IsVirtualStub())
     {
-        lowerVirtualStubCallAfterArgs(callNode, thisArgLclNum, cellArgNode, shadowArgsSize);
+        lowerVirtualStubCallAfterArgs(callNode, thisArgLclNum, cellArgNode);
     }
     else if (callNode->IsUnmanaged())
     {
@@ -1147,29 +1109,25 @@ void Llvm::lowerVirtualStubCallBeforeArgs(GenTreeCall* callNode, unsigned* pThis
     *pCellArgNode = cellArg->GetNode();
 }
 
-void Llvm::lowerVirtualStubCallAfterArgs(
-    GenTreeCall* callNode, unsigned thisArgLclNum, GenTree* cellArgNode, unsigned shadowArgsSize)
+void Llvm::lowerVirtualStubCallAfterArgs(GenTreeCall* callNode, unsigned thisArgLclNum, GenTree* cellArgNode)
 {
     assert(callNode->IsVirtualStub() && (callNode->gtControlExpr == nullptr));
-    assert((shadowArgsSize % TARGET_POINTER_SIZE) == 0);
     //
     // We transform:
-    //  Call(pCell, [@this], args...)
+    //  Call(SS, pCell, @this, args...)
     // Into:
     //  delegate* pTarget = ResolveTarget(SS, @this, pCell)
-    //  pTarget([@this], args...)
+    //  pTarget(SS, @this, args...)
     //
-    // Note that call is rather special, inserted **after** the arguments for the main call have been set up and thus
-    // needing a larger shadow stack offset. This is done to not create a new safe point across which GC arguments to
-    // the main call would be live; the stub itself may call into managed code and trigger a GC.
+    // Note that call is rather special, inserted **after** the arguments for the main call have been set. This
+    // is done to not create a new safe point across which GC arguments to the main call would be live; the stub
+    // itself may call into managed code and trigger a GC.
     //
-    unsigned shadowStackOffsetForStub = getCurrentShadowFrameSize() + shadowArgsSize;
-    GenTree* shadowStackForStub = insertShadowStackAddr(callNode, shadowStackOffsetForStub, _shadowStackLclNum);
     GenTree* thisForStub = _compiler->gtNewLclvNode(thisArgLclNum, TYP_REF);
     CurrentRange().InsertBefore(callNode, thisForStub);
 
     GenTreeCall* stubCall = _compiler->gtNewHelperCallNode(
-        CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET, TYP_I_IMPL, shadowStackForStub, thisForStub, cellArgNode);
+        CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET, TYP_I_IMPL, thisForStub, cellArgNode);
     CurrentRange().InsertBefore(callNode, stubCall);
 
     // This call could be indirect (in case this is shared code and the cell address needed to be resolved dynamically).
@@ -1251,8 +1209,9 @@ void Llvm::lowerDelegateInvoke(GenTreeCall* callNode)
     delegateThis = _compiler->gtNewLclvNode(delegateThisLclNum, TYP_REF);
     GenTree* callTargetOffset = _compiler->gtNewIconNode(eeInfo->offsetOfDelegateFirstTarget, TYP_I_IMPL);
     GenTree* callTargetAddr = _compiler->gtNewOperNode(GT_ADD, TYP_BYREF, delegateThis, callTargetOffset);
-    GenTree* callTarget = _compiler->gtNewIndir(TYP_I_IMPL, callTargetAddr, GTF_IND_NONFAULTING);
-    callTarget->gtFlags |= GTF_ORDER_SIDEEFF;
+    GenTree* callTarget = _compiler->gtNewIndir(TYP_I_IMPL, callTargetAddr);
+    callTarget->SetAllEffectsFlags(GTF_EMPTY);
+    callTarget->gtFlags |= GTF_IND_NONFAULTING | GTF_ORDER_SIDEEFF;
 
     CurrentRange().InsertBefore(callNode, delegateThis, callTargetOffset, callTargetAddr, callTarget);
 
@@ -1313,34 +1272,17 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
 //------------------------------------------------------------------------
 // lowerCallToShadowStack: Lower the call, rewriting its arguments.
 //
-// This method has two primary objectives:
-//  1) Transfer the information about the arguments from gtArgs to explicit
-//     PutArgType nodes, to make it easy for codegen to consume it. Also, all
-//     of the late argument nodes are moved (back) to the early list.
-//  2) Rewrite arguments and the return to be stored on the shadow stack. We take
-//     the arguments which need to be on the shadow stack, remove them from the call
-//     arguments list, store their values on the shadow stack, at offsets calculated
-//     in a simple increasing order, matching the signature.
+// Initializes the AbiInfo structure to help codegen in signature building.
 //
-// LLVM Arg layout:
-//    - Shadow stack (if required)
-//    - Return buffer (if required)
-//    - Generic context (if required)
-//    - Args passed as LLVM parameters (not on the shadow stack)
-//
-unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
+void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 {
     // Rewrite the args, adding shadow stack, and moving gc tracked args to the shadow stack.
     // This transformation only applies to calls that have a managed calling convention (e. g.
     // it doesn't apply to runtime imports, or helpers implemented as FCalls, etc).
-    const bool isManagedCall = callHasManagedCallingConvention(callNode);
-    unsigned shadowFrameSize = getCurrentShadowFrameSize();
     int sigArgIdx = 0;
-
-    // Insert the shadow stack at the front
-    if (callHasShadowStackArg(callNode))
+    if (callHasManagedCallingConvention(callNode))
     {
-        GenTree* calleeShadowStack = insertShadowStackAddr(callNode, shadowFrameSize, _shadowStackLclNum);
+        GenTree* calleeShadowStack = insertShadowStackAddr(callNode, getCurrentShadowFrameSize(), _shadowStackLclNum);
         callNode->gtArgs.PushFront(_compiler, NewCallArg::Primitive(calleeShadowStack, CORINFO_TYPE_PTR));
         sigArgIdx--;
     }
@@ -1351,36 +1293,33 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         helperInfo = &getHelperFuncInfo(_compiler->eeGetHelperNum(callNode->gtCallMethHnd));
     }
 
-    unsigned shadowStackUseOffset = 0;
-    CallArg* lastLlvmStackArg = nullptr;
-    CallArg* callArg = callNode->gtArgs.Args().begin().GetArg();
-    while (callArg != nullptr)
+    for (CallArg& callArg : callNode->gtArgs.Args())
     {
-        GenTree* argNode = callArg->GetNode();
+        GenTree* argNode = callArg.GetNode();
         CorInfoType argSigType;
         CORINFO_CLASS_HANDLE argSigClass;
         if ((helperInfo == nullptr) || (sigArgIdx < 0))
         {
-            if (callArg->GetWellKnownArg() == WellKnownArg::ThisPointer)
+            if (callArg.GetWellKnownArg() == WellKnownArg::ThisPointer)
             {
                 argSigType = argNode->TypeIs(TYP_REF) ? CORINFO_TYPE_CLASS : CORINFO_TYPE_BYREF;
             }
-            else if ((callArg->GetWellKnownArg() == WellKnownArg::InstParam) ||
-                     (callArg->GetWellKnownArg() == WellKnownArg::RetBuffer))
+            else if ((callArg.GetWellKnownArg() == WellKnownArg::InstParam) ||
+                     (callArg.GetWellKnownArg() == WellKnownArg::RetBuffer))
             {
                 argSigType = CORINFO_TYPE_PTR;
             }
-            else if (callArg->GetSignatureCorInfoType() != CORINFO_TYPE_UNDEF)
+            else if (callArg.GetSignatureCorInfoType() != CORINFO_TYPE_UNDEF)
             {
-                argSigType = callArg->GetSignatureCorInfoType();
+                argSigType = callArg.GetSignatureCorInfoType();
             }
             else
             {
-                assert(callArg->GetSignatureType() != TYP_I_IMPL);
-                argSigType = toCorInfoType(callArg->GetSignatureType());
+                assert(callArg.GetSignatureType() != TYP_I_IMPL);
+                argSigType = toCorInfoType(callArg.GetSignatureType());
             }
 
-            argSigClass = callArg->GetSignatureClassHandle();
+            argSigClass = callArg.GetSignatureClassHandle();
         }
         else
         {
@@ -1388,68 +1327,18 @@ unsigned Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
             argSigClass = helperInfo->GetSigArgClass(_compiler, sigArgIdx);
         }
 
-        CorInfoType argType;
-        if (!getLlvmArgTypeForArg(isManagedCall, argSigType, argSigClass, &argType))
+        if (argNode->TypeIs(TYP_STRUCT))
         {
-            assert(!callArg->AbiInfo.PassedByRef);
-            if (argType == CORINFO_TYPE_VALUECLASS)
-            {
-                shadowStackUseOffset = padOffset(argType, argSigClass, shadowStackUseOffset);
-            }
-
-            if (argNode->OperIs(GT_FIELD_LIST))
-            {
-                for (GenTreeFieldList::Use& use : argNode->AsFieldList()->Uses())
-                {
-                    assert(use.GetType() != TYP_STRUCT);
-
-                    unsigned fieldOffsetValue = shadowFrameSize + shadowStackUseOffset + use.GetOffset();
-                    GenTree* fieldSlotAddr = insertShadowStackAddr(callNode, fieldOffsetValue, _shadowStackLclNum);
-                    GenTree* fieldStoreNode = createShadowStackStoreNode(use.GetType(), fieldSlotAddr, use.GetNode());
-
-                    CurrentRange().InsertBefore(callNode, fieldStoreNode);
-                }
-
-                CurrentRange().Remove(argNode);
-            }
-            else
-            {
-                unsigned offsetValue = shadowFrameSize + shadowStackUseOffset;
-                GenTree* slotAddr  = insertShadowStackAddr(callNode, offsetValue, _shadowStackLclNum);
-                GenTree* storeNode = createShadowStackStoreNode(argNode->TypeGet(), slotAddr, argNode);
-
-                CurrentRange().InsertBefore(callNode, storeNode);
-            }
-
-            if (argType == CORINFO_TYPE_VALUECLASS)
-            {
-                shadowStackUseOffset = padNextOffset(argType, argSigClass, shadowStackUseOffset);
-            }
-            else
-            {
-                shadowStackUseOffset += TARGET_POINTER_SIZE;
-            }
-
-            callNode->gtArgs.RemoveAfter(lastLlvmStackArg);
+            LIR::Use argNodeUse(CurrentRange(), &callArg.EarlyNodeRef(), callNode);
+            argNode = normalizeStructUse(argNodeUse, _compiler->typGetObjLayout(argSigClass));
         }
-        else // Arg on LLVM stack.
-        {
-            if (argNode->TypeIs(TYP_STRUCT) && !argNode->OperIs(GT_FIELD_LIST))
-            {
-                LIR::Use argNodeUse(CurrentRange(), &callArg->EarlyNodeRef(), callNode);
-                argNode = normalizeStructUse(argNodeUse, _compiler->typGetObjLayout(argSigClass));
-            }
 
-            callArg->AbiInfo.IsPointer = argType == CORINFO_TYPE_PTR;
-            callArg->AbiInfo.ArgType = JITtype2varType(argType);
-            lastLlvmStackArg = callArg;
-        }
+        CorInfoType argType = getLlvmArgTypeForArg(argSigType, argSigClass);
+        callArg.AbiInfo.IsPointer = argType == CORINFO_TYPE_PTR;
+        callArg.AbiInfo.ArgType = JITtype2varType(argType);
 
         sigArgIdx++;
-        callArg = callArg->GetNext();
     }
-
-    return roundUp(shadowStackUseOffset, TARGET_POINTER_SIZE);
 }
 
 // Assigns "callNode->gtCorInfoType". After this method, "gtCorInfoType" switches meaning from
