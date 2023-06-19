@@ -926,14 +926,16 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExp
     }
 
     std::error_code code;
-
-    // TODO-LLVM: put under #ifdef DEBUG. Useful for debugging for now.
     StringRef outputFilePath = module.getName();
-    StringRef outputFilePathWithoutExtension = outputFilePath.take_front(outputFilePath.find_last_of('.'));
-    llvm::raw_fd_ostream textOutputStream(Twine(outputFilePathWithoutExtension + ".txt").str(), code);
-    module.print(textOutputStream, nullptr);
+    if (JitConfig.JitCheckLlvmIR())
+    {
+        StringRef outputFilePathWithoutExtension = outputFilePath.take_front(outputFilePath.find_last_of('.'));
+        llvm::raw_fd_ostream textOutputStream(Twine(outputFilePathWithoutExtension + ".txt").str(), code);
+        module.print(textOutputStream, nullptr);
 
-    assert(!llvm::verifyModule(module, &llvm::errs()));
+        noway_assert(!llvm::verifyModule(module, &llvm::errs()));
+    }
+
     llvm::raw_fd_ostream bitCodeFileStream(outputFilePath, code);
     llvm::WriteBitcodeToFile(module, bitCodeFileStream);
 

@@ -53,7 +53,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private LLVMObjectWriter(string objectFilePath, LLVMCodegenCompilation compilation)
         {
-            _module = LLVMModuleRef.CreateWithName(compilation.Options.ModuleName);
+            _module = LLVMModuleRef.CreateWithName("data");
             _module.Target = compilation.Options.Target;
             _module.DataLayout = compilation.Options.DataLayout;
 
@@ -343,8 +343,16 @@ namespace ILCompiler.DependencyAnalysis
             _module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
             _moduleWithExternalFunctions.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 
-            _module.WriteBitcodeToFile(Path.ChangeExtension(_objectFilePath, "data.bc"));
-            _moduleWithExternalFunctions.WriteBitcodeToFile(Path.ChangeExtension(_objectFilePath, "external.bc"));
+            string dataLlvmObjectPath = _objectFilePath;
+            _module.WriteBitcodeToFile(dataLlvmObjectPath);
+
+            string externalLlvmObjectPath = Path.ChangeExtension(_objectFilePath, "external.bc");
+            _moduleWithExternalFunctions.WriteBitcodeToFile(externalLlvmObjectPath);
+
+            LLVMCompilationResults compilationResults = _compilation.GetCompilationResults();
+            compilationResults.Add(dataLlvmObjectPath);
+            compilationResults.Add(externalLlvmObjectPath);
+            compilationResults.SerializeToFile(Path.ChangeExtension(_objectFilePath, "results.txt"));
         }
 
         private void EmitRuntimeExportThunk(LLVMMethodCodeNode methodNode)

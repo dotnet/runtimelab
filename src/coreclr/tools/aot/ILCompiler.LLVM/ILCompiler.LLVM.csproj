@@ -12,7 +12,6 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
 
-
   <ItemGroup>
     <ProjectReference Include="..\ILCompiler.DependencyAnalysisFramework\ILCompiler.DependencyAnalysisFramework.csproj" />
     <ProjectReference Include="..\ILCompiler.MetadataTransform\ILCompiler.MetadataTransform.csproj" />
@@ -20,12 +19,15 @@
     <ProjectReference Include="..\ILCompiler.TypeSystem\ILCompiler.TypeSystem.csproj" />
     <ProjectReference Include="..\ILCompiler.Compiler\ILCompiler.Compiler.csproj" />
   </ItemGroup>
+
   <ItemGroup>
+    <Compile Include="CodeGen\LLVMCodegenCompilation.CodeGen.cs" />
     <Compile Include="CodeGen\LLVMSharpInterop.cs" />
     <Compile Include="CodeGen\LLVMObjectWriter.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ExternMethodAccessorNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\LLVMCodegenNodeFactory.cs" />
     <Compile Include="Compiler\DependencyAnalysis\LLVMMethodCodeNode.cs" />
+    <Compile Include="Compiler\LLVMCompilationResults.cs" />
     <Compile Include="Compiler\LLVMNodeMangler.cs" />
     <Compile Include="Compiler\LLVMCodegenCompilation.cs" />
     <Compile Include="Compiler\LLVMCodegenCompilationBuilder.cs" />

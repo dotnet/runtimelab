@@ -91,7 +91,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <IlcCompileOutput>$(NativeObject)</IlcCompileOutput>
 
     <LinkNativeDependsOn>IlcCompile</LinkNativeDependsOn>
-    <LinkNativeDependsOn Condition="$(NativeCodeGen) == 'llvm'">WasmObjects</LinkNativeDependsOn>
+    <LinkNativeDependsOn Condition="$(NativeCodeGen) == 'llvm'">CompileWasmObjects</LinkNativeDependsOn>
 
     <LinkNativeDependsOnSingleOrLlvm>LinkNativeSingle</LinkNativeDependsOnSingleOrLlvm>
     <LinkNativeDependsOnSingleOrLlvm Condition="$(NativeCodeGen) == 'llvm'">LinkNativeLlvm</LinkNativeDependsOnSingleOrLlvm>
@@ -107,19 +107,15 @@ The .NET Foundation licenses this file to you under the MIT license.
   <PropertyGroup Condition="'$(NativeCodeGen)' == 'llvm'">
     <!-- Most browsers support WASM EH, so we enable it by default. This is aligned with the upstream behavior. -->
     <WasmEnableExceptionHandling Condition="'$(WasmEnableExceptionHandling)' == '' and '$(_targetOS)' == 'browser'">true</WasmEnableExceptionHandling>
+
+    <!-- TODO-LLVM: update 'IlcOptimizationPreference' to 'OptimizationPreference' when merging. -->
+    <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) != 'Size' and '$(_targetOS)' == 'browser'">-O3</WasmOptimizationSetting>
+    <!-- TODO-LLVM: test -O1/-O2/-O3 for size with Wasi SDK -->
+    <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) != 'Size' and '$(_targetOS)' == 'wasi'">-O2</WasmOptimizationSetting>
+    <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) == 'Size'">-Oz</WasmOptimizationSetting>
+
     <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-wasi-threads</IlcLlvmTarget>
   </PropertyGroup>
-
-  <ItemGroup Condition="'$(NativeCodeGen)' == 'llvm'">
-    <LlvmObjectNames Include="$(TargetName)" />
-    <LlvmObjectNames Include="$(TargetName).data" />
-    <LlvmObjectNames Include="$(TargetName).external" />
-
-    <LlvmObjects Include="@(LlvmObjectNames->'$(NativeIntermediateOutputPath)%(Identity)$(LlvmObjectExt)')">
-      <NativeObject>%(RelativeDir)%(Filename)$(NativeObjectExt)</NativeObject>
-    </LlvmObjects>
-    <NativeObjects Include="@(LlvmObjects->'%(NativeObject)')" />
-  </ItemGroup>
 
   <PropertyGroup Condition="'$(IlcCompileDependsOn)'=='' and '$(NativeCompilationDuringPublish)' != 'false'">
     <IlcCompileDependsOn Condition="'$(BuildingFrameworkLibrary)' != 'true'">Compile;ComputeIlcCompileInputs</IlcCompileDependsOn>
@@ -276,8 +272,13 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Condition="'$(TrimmerDefaultAction)' == 'copyused' or '$(TrimmerDefaultAction)' == 'copy' or '$(TrimMode)' == 'partial'" Include="--defaultrooting" />
       <IlcArg Include="--resilient" />
       <IlcArg Include="@(UnmanagedEntryPointsAssembly->'--generateunmanagedentrypoints:%(Identity)')" />
-      <IlcArg Condition="'$(IlcLlvmTarget)' != ''" Include="--codegenopt:Target=$(IlcLlvmTarget)" />
+
+      <!-- These LLVM options are public and supported. -->
       <IlcArg Condition="'$(WasmEnableExceptionHandling)' == 'true'" Include="--codegenopt:LlvmExceptionHandlingModel=wasm" />
+
+      <!-- These LLVM options are internal and not supported. -->
+      <IlcArg Condition="'$(IlcLlvmTarget)' != ''" Include="--codegenopt:Target=$(IlcLlvmTarget)" />
+      <IlcArg Condition="'$(IlcMaxLlvmModuleCount)' != ''" Include="--codegenopt:MaxLlvmModuleCount=$(IlcMaxLlvmModuleCount)" />
 
       <IlcArg Condition="$(IlcDisableReflection) == 'true'" Include="--feature:System.Reflection.IsReflectionExecutionAvailable=false" />
 
@@ -335,16 +336,24 @@ The .NET Foundation licenses this file to you under the MIT license.
 
   </Target>
 
-  <PropertyGroup Condition="'$(NativeCodeGen)' == 'llvm'">
-    <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) != 'Size' and '$(_targetOS)' == 'browser'">-O3</WasmOptimizationSetting>
-    <!-- TODO-LLVM: test -O1/-O2/-O3 for size with Wasi SDK -->
-    <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) != 'Size' and '$(_targetOS)' == 'wasi'">-O2</WasmOptimizationSetting>
-    <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) == 'Size'">-Oz</WasmOptimizationSetting>
-  </PropertyGroup>
+  <Target Name="InitializeTheListOfLlvmObjects"
+      AfterTargets="IlcCompile"
+      BeforeTargets="CompileWasmObjects;LinkNativeLlvm">
+    <ReadLinesFromFile File="$(NativeIntermediateOutputPath)$(TargetName).results.txt">
+      <Output TaskParameter="Lines" ItemName="LlvmObjects" />
+    </ReadLinesFromFile>
 
-  <Target Name="WasmObjects"
+    <ItemGroup>
+      <LlvmObjects>
+        <NativeObject>%(RelativeDir)%(Filename)$(NativeObjectExt)</NativeObject>
+      </LlvmObjects>
+      <NativeObjects Include="@(LlvmObjects->'%(NativeObject)')" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="CompileWasmObjects"
       Inputs="@(LlvmObjects)"
-      Outputs="@(NativeObjects)"
+      Outputs="@(LlvmObjects->'%(NativeObject)')"
       DependsOnTargets="IlcCompile;GenerateResFile"
       Condition="'$(NativeCodeGen)' == 'llvm'">
 
@@ -374,7 +383,16 @@ The .NET Foundation licenses this file to you under the MIT license.
       <WasmLinkerPath>&quot;$(WASI_SDK_PATH)/bin/clang&quot;</WasmLinkerPath>
     </PropertyGroup>
 
-    <Exec Command="$(WasmCompilerPath) &quot;%(LlvmObjects.Identity)&quot; -o &quot;%(LlvmObjects.NativeObject)&quot; $(CompileWasmArgs)" Condition="'$(EMSDK)' != ''" />
+    <!-- We use a wrapper project to invoke the compilers in parallel. -->
+    <ItemGroup>
+      <ExecProjects Include="$(MSBuildThisFileDirectory)ExecWrapper.proj">
+        <AdditionalProperties>
+          ExecCommand=$(WasmCompilerPath) &quot;%(LlvmObjects.Identity)&quot; -o &quot;%(LlvmObjects.NativeObject)&quot; $(CompileWasmArgs)
+        </AdditionalProperties>
+      </ExecProjects>
+    </ItemGroup>
+
+    <MSBuild Projects="@(ExecProjects)" BuildInParallel="true" Condition="'$(EMSDK)' != ''" />
     <Message Text="Emscripten not found, not linking WebAssembly. To enable WebAssembly linking, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
              Condition="'$(EMSDK)' == '' and '$(_targetOS)' == 'browser'" />
     <Message Text="Wasi SDK not found, not linking WebAssembly. To enable WebAssembly linking, install Wasi SDK and ensure the WASI_SDK_PATH environment variable points to the directory containing share/wasi-sysroot"

@@ -651,7 +651,14 @@ CONFIG_INTEGER(JitDispIns, W("JitDispIns"), 0)
 #endif // DEBUG
 
 #ifdef TARGET_WASM
+#ifdef DEBUG
+#define DEBUG_ONLY_BY_DEFAULT 1
+#else
+#define DEBUG_ONLY_BY_DEFAULT 0
+#endif
+
 CONFIG_INTEGER(JitUseDynamicStackForLclHeap, W("JitUseDynamicStackForLclHeap"), 0)
+CONFIG_INTEGER(JitCheckLlvmIR, W("JitCheckLlvmIR"), DEBUG_ONLY_BY_DEFAULT)
 #endif // TARGET_WASM
 
 CONFIG_INTEGER(JitEnregStructLocals, W("JitEnregStructLocals"), 1) // Allow to enregister locals with struct type.
