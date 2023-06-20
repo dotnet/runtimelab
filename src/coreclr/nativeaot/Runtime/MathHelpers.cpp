@@ -97,7 +97,7 @@ EXTERN_C NATIVEAOT_API float REDHAWK_CALLCONV RhpFltRound(float value)
     return roundf(value);
 }
 
-#if defined(HOST_ARM) || defined(TARGET_WASM)
+#ifdef HOST_ARM
 EXTERN_C NATIVEAOT_API int32_t REDHAWK_CALLCONV RhpIDiv(int32_t i, int32_t j)
 {
     ASSERT(j && "Divide by zero!");
@@ -196,4 +196,4 @@ EXTERN_C NATIVEAOT_API double REDHAWK_CALLCONV RhpULng2Dbl(uint64_t val)
     return (double)val;
 }
 
-#endif // defined(HOST_ARM) || defined(TARGET_WASM)
+#endif // HOST_ARM
