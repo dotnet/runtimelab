@@ -298,6 +298,17 @@ namespace Internal.TypeSystem
         }
 
         /// <summary>
+        /// Returns True if compiling for WebAssembly
+        /// </summary>
+        public bool IsWasm
+        {
+            get
+            {
+                return Architecture == TargetArchitecture.Wasm32 || Architecture == TargetArchitecture.Wasm64;
+            }
+        }
+
+        /// <summary>
         /// Returns True if compiling for Windows
         /// </summary>
         public bool IsWindows

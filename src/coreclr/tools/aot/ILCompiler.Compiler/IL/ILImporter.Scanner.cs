@@ -83,7 +83,7 @@ namespace Internal.IL
             _compilation = compilation;
             _factory = (ILScanNodeFactory)compilation.NodeFactory;
 
-            if (_compilation.TargetArchIsWasm())
+            if (_factory.Target.IsWasm)
             {
                 // ThrowNullReferenceException is needed by the explicit null checks we generate with LLVM.
                 MetadataType helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime.CompilerHelpers", "ThrowHelpers");
@@ -1288,8 +1288,8 @@ namespace Internal.IL
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.UDiv), "_udiv");
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Div), "_div");
                     }
-                    if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM64
-                        || _compilation.TargetArchIsWasm())
+                    if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM64 ||
+                        _compilation.TypeSystemContext.Target.IsWasm)
                     {
                         if (opcode == ILOpcode.div)
                         {
@@ -1307,8 +1307,8 @@ namespace Internal.IL
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.UMod), "_umod");
                         _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.Mod), "_mod");
                     }
-                    if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM64
-                        || _compilation.TargetArchIsWasm())
+                    if (_compilation.TypeSystemContext.Target.Architecture == TargetArchitecture.ARM64 ||
+                        _compilation.TypeSystemContext.Target.IsWasm)
                     {
                         if (opcode == ILOpcode.rem)
                         {

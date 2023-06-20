@@ -527,13 +527,6 @@ namespace ILCompiler
             return new CompilationResults(_dependencyGraph, _nodeFactory);
         }
 
-        // TODO-LLVM: delete when IL->LLVM module has gone
-        public bool TargetArchIsWasm()
-        {
-            return TypeSystemContext.Target.Architecture == TargetArchitecture.Wasm32 ||
-                   TypeSystemContext.Target.Architecture == TargetArchitecture.Wasm64;
-        }
-
         private sealed class ILCache : LockFreeReaderHashtable<MethodDesc, ILCache.MethodILData>
         {
             public ILProvider ILProvider { get; }

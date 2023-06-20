@@ -3095,7 +3095,7 @@ namespace Internal.JitInterface
             pEEInfoOut.osPageSize = new UIntPtr(0x1000);
 
 #if !READYTORUN
-            if (_compilation.TargetArchIsWasm())
+            if (_compilation.NodeFactory.Target.IsWasm)
             {
                 // The low 1024 bytes are reserved by Emscripten; no valid address will point there.
                 pEEInfoOut.maxUncheckedOffsetForNullObject = new UIntPtr(1024 - 1);
