@@ -6,10 +6,10 @@
 [CmdletBinding()]
 Param(
     [ValidateSet("browser,wasi")][string]$OS = "browser",
-    [switch]$Build = $false,
-    [switch]$Rebuild = $false,
-    [switch]$Analyze = $false,
-    [switch]$SummaryOnly = $false,
+    [switch]$Build,
+    [switch]$Rebuild,
+    [switch]$Analyze,
+    [switch]$Summary,
     [ValidateSet("Debug","Release")][string]$Config = "Release",
     [ValidateSet("Debug","Checked","Release")][string]$IlcConfig = "Release",
     [Nullable[bool]]$DebugSymbols = $null,
@@ -21,7 +21,7 @@ $ErrorActionPreference = "Stop"
 
 $Arch="wasm"
 
-$ShowHelp = !$Analyze -and !$Build -and !$Rebuild
+$ShowHelp = !$Analyze -and !$Build -and !$Rebuild -and !$Summary
 
 if ($ShowHelp)
 {
@@ -33,7 +33,7 @@ if ($ShowHelp)
     Write-Host "  -Build               : Build the HelloWasm test for analysis"
     Write-Host "  -Rebuild             : Force-build the 'base' to diff against"
     Write-Host "  -Analyze             : Analyze the results from two HelloWasm builds"
-    Write-Host "  -SummaryOnly         : Only print the summary (for -Analyze)"
+    Write-Host "  -Summary             : Analyze the results and only print the summary"
     Write-Host "  -Config              : Test configuration (Debug/Release). Default is Release"
     Write-Host "  -IlcConfig           : ILC configuration (Debug/Checked/Release). Default is Release"
     Write-Host "  -DebugSymbols        : Whether to build with debug symbols. Default is yes"
@@ -114,7 +114,7 @@ if ($Build -or $Rebuild)
     }
 }
 
-if ($Analyze)
+if ($Analyze -or $Summary)
 {
     if ($BuildingBase)
     {
@@ -128,7 +128,7 @@ if ($Analyze)
         Write-Host -NoNewLine "Analysing ${SummaryName}"
 
         $TotalCodeSize = 0
-        $Summary = [Collections.Generic.Dictionary[string, object]]::new()
+        $SummaryList = [Collections.Generic.Dictionary[string, object]]::new()
         $LineIndex = 0
         $OutputProgressInterval = [int]($RawSummary.Length / 10)
         foreach ($Line in $RawSummary)
@@ -144,7 +144,7 @@ if ($Analyze)
             $Name = [string]$Matches[3].Value
 
             $TotalCodeSize += $Size
-            $Summary.Add($Name, @{ Index = $Index; Size = $Size })
+            $SummaryList.Add($Name, @{ Index = $Index; Size = $Size })
 
             if ($LineIndex % $OutputProgressInterval -eq 0)
             {
@@ -154,7 +154,7 @@ if ($Analyze)
         }
         Write-Host ""
 
-        return $Summary, $TotalCodeSize
+        return $SummaryList, $TotalCodeSize
     }
 
     $BaseSummaryRaw = wasm-objdump -x -j Code $TestProjectBaseWasmOutput
@@ -207,7 +207,7 @@ if ($Analyze)
             $DiffFileIndex++
         }
 
-        if (!$SummaryOnly)
+        if ($Analyze)
         {
             $AnalysisDirectory = "$PSScriptRoot/wasmjit-diff"
             if (!(Test-Path $AnalysisDirectory))
@@ -402,12 +402,12 @@ if ($Analyze)
         Write-Host "    average relative diff is $($AverageRelativeCodeSizeDelta -lt 0 ? 'an improvement' : 'a regression')"
         Write-Host ""
 
-        function ShowRelativeDiffs($Message, $ShowBaseOnlyMethods = $false, $ShowDiffOnlyMethods = $false)
+        function ShowRelativeDiffs($DiffsToShow, $Message, $ShowBaseOnlyMethods = $false, $ShowDiffOnlyMethods = $false)
         {
             Write-Host $Message
 
             $DiffsShown = 0
-            foreach ($Diff in $Diffs)
+            foreach ($Diff in $DiffsToShow)
             {
                 if ($DiffsShown -ge $NumberOfDiffsToShow)
                 {
@@ -428,27 +428,27 @@ if ($Analyze)
 
         if ($RegressionCount -ne 0)
         {
-            $Diffs = $Diffs | sort { $_.CodeSizeDelta / $_.Base.Size } -Descending
+            $RegressionDiffs = $Diffs | sort { $_.CodeSizeDelta / $_.Base.Size } -Descending | where CodeSizeDelta -gt 0
             if ($HaveRegressionDiffs)
             {
-                ShowRelativeDiffs "Top method regressions (percentages):"
+                ShowRelativeDiffs $RegressionDiffs "Top method regressions (percentages):"
             }
             if ($HaveDiffOnlyMethods)
             {
-                ShowRelativeDiffs "Top methods only present in diff:" -ShowDiffOnlyMethods $true
+                ShowRelativeDiffs $RegressionDiffs "Top methods only present in diff:" -ShowDiffOnlyMethods $true
             }
         }
 
         if ($ImprovementCount -ne 0)
         {
-            $Diffs = $Diffs | sort { $_.CodeSizeDelta / $_.Base.Size }
+            $ImprovementDiffs = $Diffs | sort { $_.CodeSizeDelta / $_.Base.Size } | where CodeSizeDelta -lt 0
             if ($HaveImprovementDiffs)
             {
-                ShowRelativeDiffs "Top method improvements (percentages):"
+                ShowRelativeDiffs $ImprovementDiffs "Top method improvements (percentages):"
             }
             if ($HaveBaseOnlyMethods)
             {
-                ShowRelativeDiffs "Top methods only present in base:" -ShowBaseOnlyMethods $true
+                ShowRelativeDiffs $ImprovementDiffs "Top methods only present in base:" -ShowBaseOnlyMethods $true
             }
         }
 
