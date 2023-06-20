@@ -7,6 +7,7 @@
 Param(
     [ValidateSet("browser,wasi")][string]$OS = "browser",
     [switch]$Build = $false,
+    [switch]$Rebuild = $false,
     [switch]$Analyze = $false,
     [switch]$SummaryOnly = $false,
     [ValidateSet("Debug","Release")][string]$Config = "Release",
@@ -19,7 +20,8 @@ Param(
 $ErrorActionPreference = "Stop"
 
 $Arch="wasm"
-$ShowHelp = !$Analyze -and !$Build
+
+$ShowHelp = !$Analyze -and !$Build -and !$Rebuild
 
 if ($ShowHelp)
 {
@@ -29,6 +31,7 @@ if ($ShowHelp)
     Write-Host " Options:"
     Write-Host "  -OS                  : Target OS (browser/wasi)"
     Write-Host "  -Build               : Build the HelloWasm test for analysis"
+    Write-Host "  -Rebuild             : Force-build the 'base' to diff against"
     Write-Host "  -Analyze             : Analyze the results from two HelloWasm builds"
     Write-Host "  -SummaryOnly         : Only print the summary (for -Analyze)"
     Write-Host "  -Config              : Test configuration (Debug/Release). Default is Release"
@@ -72,8 +75,15 @@ $TestProjectBaseNativeOutputDirectory = "$TestProjectNativeOutputDirectory.base"
 $TestProjectWasmOutput = "$TestProjectNativeOutputDirectory/$TestProjectName.wasm"
 $TestProjectBaseWasmOutput = "$TestProjectBaseNativeOutputDirectory/$TestProjectName.wasm"
 
-$BuildingBase = !(Test-Path $TestProjectBaseNativeOutputDirectory)
-if ($Build)
+$TestProjectBaseNativeOutputDirectoryExists = Test-Path $TestProjectBaseNativeOutputDirectory
+if ($Rebuild -and $TestProjectBaseNativeOutputDirectoryExists)
+{
+    Remove-Item $TestProjectBaseNativeOutputDirectory -Recurse -Force
+    $TestProjectBaseNativeOutputDirectoryExists = $false
+}
+
+$BuildingBase = !$TestProjectBaseNativeOutputDirectoryExists
+if ($Build -or $Rebuild)
 {
     # "Touch" the project file to avoid MSBuild incrementality.
     (Get-Item $TestProjectPath).LastWriteTime = Get-Date
