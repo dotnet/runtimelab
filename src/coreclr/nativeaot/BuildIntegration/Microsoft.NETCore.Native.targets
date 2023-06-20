@@ -105,6 +105,7 @@ The .NET Foundation licenses this file to you under the MIT license.
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(NativeCodeGen)' == 'llvm'">
+    <WasmEnableJSBigIntIntegration Condition="'$(WasmEnableJSBigIntIntegration)' == ''">true</WasmEnableJSBigIntIntegration>
     <!-- Most browsers support WASM EH, so we enable it by default. This is aligned with the upstream behavior. -->
     <WasmEnableExceptionHandling Condition="'$(WasmEnableExceptionHandling)' == '' and '$(_targetOS)' == 'browser'">true</WasmEnableExceptionHandling>
 
@@ -496,6 +497,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Condition="'$(ExportsFile)' != ''" Include="-s EXPORTED_FUNCTIONS=@&quot;$(ExportsFile)&quot;" />
       <CustomLinkerArg Include="-s ALLOW_MEMORY_GROWTH=1" />
       <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" />
+      <CustomLinkerArg Condition="'$(WasmEnableJSBigIntIntegration)' == 'true'" Include="-s WASM_BIGINT=1" />
       <CustomLinkerArg Condition="'$(WasmEnableExceptionHandling)' != 'true'" Include="-s DISABLE_EXCEPTION_CATCHING=0" />
       <CustomLinkerArg Condition="'$(WasmEnableExceptionHandling)' == 'true'" Include="-fwasm-exceptions" />
     </ItemGroup>
