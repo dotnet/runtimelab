@@ -149,20 +149,6 @@ namespace ILCompiler
             return isPassedByRef ? LLVMTypeRef.Void : GetLLVMTypeForTypeDesc(returnType);
         }
 
-        public override int PadOffset(TypeDesc type, int atOffset)
-        {
-            var fieldAlignment = type is DefType && type.IsValueType ? ((DefType)type).InstanceFieldAlignment : type.Context.Target.LayoutPointerSize;
-            var alignment = LayoutInt.Min(fieldAlignment, new LayoutInt(ComputePackingSize(type))).AsInt;
-            var padding = atOffset.AlignUp(alignment);
-
-            return padding;
-        }
-
-        internal int PadNextOffset(TypeDesc type, int atOffset)
-        {
-            return PadOffset(type, atOffset) + type.GetElementSize().AsInt;
-        }
-
         internal LLVMTypeRef GetLLVMTypeForTypeDesc(TypeDesc type)
         {
             switch (type.Category)
@@ -212,25 +198,6 @@ namespace ILCompiler
 
                 default:
                     throw new UnreachableException(type.Category.ToString());
-            }
-        }
-
-        private static int ComputePackingSize(TypeDesc type)
-        {
-            if (type is MetadataType)
-            {
-                var metaType = type as MetadataType;
-                var layoutMetadata = metaType.GetClassLayout();
-
-                // If a type contains pointers then the metadata specified packing size is ignored (On desktop this is disqualification from ManagedSequential)
-                if (layoutMetadata.PackingSize == 0 || metaType.ContainsGCPointers)
-                    return type.Context.Target.DefaultPackingSize;
-                else
-                    return layoutMetadata.PackingSize;
-            }
-            else
-            {
-                return type.Context.Target.DefaultPackingSize;
             }
         }
 

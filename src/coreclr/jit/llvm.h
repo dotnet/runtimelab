@@ -254,9 +254,6 @@ private:
     CorInfoType getLlvmArgTypeForArg(CorInfoType argSigType, CORINFO_CLASS_HANDLE argSigClass, bool* pIsByRef = nullptr);
     CorInfoType getLlvmReturnType(CorInfoType sigRetType, CORINFO_CLASS_HANDLE sigRetClass, bool* pIsByRef = nullptr);
 
-    unsigned padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
-    unsigned padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
-
     static CorInfoType toCorInfoType(var_types varType);
     static CorInfoType getLlvmArgTypeForCallArg(CallArg* arg);
     TargetAbiType getAbiTypeForType(var_types type);
