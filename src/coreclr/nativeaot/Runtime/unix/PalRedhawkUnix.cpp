@@ -68,6 +68,10 @@
 #include <mach-o/getsect.h>
 #endif
 
+#ifdef HOST_WASM
+#include "wasm/PalRedhawkWasm.h"
+#endif
+
 using std::nullptr_t;
 
 #define PalRaiseFailFastException RaiseFailFastException
@@ -1170,7 +1174,9 @@ REDHAWK_PALEXPORT bool PalGetMaximumStackBounds(_Out_ void** ppStackLowOut, _Out
 {
     if (pStackHighOut == NULL)
     {
-#ifdef __APPLE__
+#if defined(HOST_WASM) && !defined(FEATURE_WASM_THREADS)
+        PalGetMaximumStackBounds_SingleThreadedWasm(&pStackLowOut, &pStackHighOut);
+#elif defined(__APPLE__)
         // This is a Mac specific method
         pStackHighOut = pthread_get_stackaddr_np(pthread_self());
         pStackLowOut = ((uint8_t *)pStackHighOut - pthread_get_stacksize_np(pthread_self()));
@@ -1187,9 +1193,6 @@ REDHAWK_PALEXPORT bool PalGetMaximumStackBounds(_Out_ void** ppStackLowOut, _Out
 #if HAVE_PTHREAD_ATTR_GET_NP
         status = pthread_attr_get_np(thread, &attr);
 #elif HAVE_PTHREAD_GETATTR_NP
-        status = pthread_getattr_np(thread, &attr);
-#elif TARGET_WASI
-        // implementation provided in wasi.c
         status = pthread_getattr_np(thread, &attr);
 #else
 #error Dont know how to get thread attributes on this platform!

@@ -338,7 +338,7 @@ namespace ILCompiler.DependencyAnalysis
             }
 
 #if DEBUG
-            _module.PrintToFile(Path.ChangeExtension(_objectFilePath, "data.txt"));
+            _module.PrintToFile(Path.ChangeExtension(_objectFilePath, ".txt"));
 #endif
             _module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
             _moduleWithExternalFunctions.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
@@ -892,8 +892,7 @@ namespace ILCompiler.DependencyAnalysis
             ReadyToRunGenericHelperNode node, GenericLookupResult lookup, LLVMValueRef dictionary)
         {
             // Find the generic dictionary slot
-            if (!factory.GenericDictionaryLayout(node.DictionaryOwner)
-                    .TryGetSlotForEntry(lookup, out int dictionarySlot))
+            if (!factory.GenericDictionaryLayout(node.DictionaryOwner).TryGetSlotForEntry(lookup, out int dictionarySlot))
             {
                 return LLVMValueRef.CreateConstPointerNull(_ptrType);
             }
@@ -902,6 +901,26 @@ namespace ILCompiler.DependencyAnalysis
             // Load the generic dictionary cell
             LLVMValueRef slotAddr = CreateAddOffset(builder, dictionary, offset, "dictionarySlotAddr");
             LLVMValueRef lookupResult = builder.BuildLoad2(_ptrType, slotAddr, "slotValue");
+
+            if (node.HandlesInvalidEntries(factory))
+            {
+                LLVMBasicBlockRef currentBlock = builder.InsertBlock;
+                LLVMValueRef currentFunc = currentBlock.Parent;
+                LLVMBasicBlockRef slotNotAvailableBlock = currentFunc.AppendBasicBlock("DictionarySlotNotAvailable");
+                LLVMBasicBlockRef slotAvailableBlock = currentFunc.AppendBasicBlock("DictionarySlotAvailable");
+                slotAvailableBlock.MoveAfter(currentBlock);
+
+                LLVMValueRef nullValue = LLVMValueRef.CreateConstPointerNull(_ptrType);
+                LLVMValueRef isSlotNotAvailable = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, lookupResult, nullValue, "isSlotNotAvailable");
+                builder.BuildCondBr(isSlotNotAvailable, slotNotAvailableBlock, slotAvailableBlock);
+
+                LLVMValueRef slotNotAvailableFunc = GetOrCreateLLVMFunction(ReadyToRunGenericHelperNode.GetBadSlotHelper(factory));
+                builder.PositionAtEnd(slotNotAvailableBlock);
+                CreateCall(builder, slotNotAvailableFunc, new[] { currentFunc.GetParam(0) });
+                builder.BuildUnreachable();
+
+                builder.PositionAtEnd(slotAvailableBlock);
+            }
 
             switch (lookup.LookupResultReferenceType(factory))
             {

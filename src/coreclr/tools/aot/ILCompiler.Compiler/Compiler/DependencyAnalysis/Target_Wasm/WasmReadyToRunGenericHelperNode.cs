@@ -74,8 +74,8 @@ namespace ILCompiler.DependencyAnalysis
                 case ReadyToRunHelperId.ObjectAllocator:
                 case ReadyToRunHelperId.TypeHandleForCasting:
                 case ReadyToRunHelperId.ConstrainedDirectCall:
-                    // TODO-LLVM: should use GetBadSlotHelper/ThrowUnavailableType in base class when merged
                     break;
+
                 default:
                     throw new NotImplementedException();
             }

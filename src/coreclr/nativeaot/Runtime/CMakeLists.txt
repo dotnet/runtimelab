@@ -204,17 +204,17 @@ endif (CLR_CMAKE_TARGET_ARCH_AMD64 AND CLR_CMAKE_TARGET_WIN32)
 if (CLR_CMAKE_TARGET_ARCH_WASM)
   list(REMOVE_ITEM COMMON_RUNTIME_SOURCES FinalizerHelpers.cpp)
   list(APPEND COMMON_RUNTIME_SOURCES
-    ${ARCH_SOURCES_DIR}/ExceptionHandling/ExceptionHandling.cpp
     ${ARCH_SOURCES_DIR}/FinalizerHelpers.SingleThreaded.cpp
+    ${ARCH_SOURCES_DIR}/PalRedhawkWasm.cpp
+    ${ARCH_SOURCES_DIR}/ExceptionHandling/ExceptionHandling.cpp
     ${ARCH_SOURCES_DIR}/RawCalliHelper.cpp
     ${ARCH_SOURCES_DIR}/DynamicStackAlloc.cpp
     ${ARCH_SOURCES_DIR}/StubDispatch.cpp
     ${ARCH_SOURCES_DIR}/PInvoke.cpp
-)
+  )
 
   if (CLR_CMAKE_TARGET_WASI)
     list(APPEND COMMON_RUNTIME_SOURCES
-      wasm/wasi_pthread.c
       wasm/wasi_mmap.cpp
     )
   endif()

@@ -1351,6 +1351,10 @@ void Compiler::compStartup()
     ValueNumStore::InitValueNumStoreStatics();
 
     compDisplayStaticSizes(jitstdout);
+
+#ifdef TARGET_WASM
+    Llvm::ConfigureDiagnosticOutput();
+#endif // TARGET_WASM
 }
 
 /*****************************************************************************

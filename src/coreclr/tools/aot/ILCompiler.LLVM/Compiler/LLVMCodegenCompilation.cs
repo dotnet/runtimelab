@@ -55,8 +55,11 @@ namespace ILCompiler
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             StartCompilation(outputFile);
+
             _dependencyGraph.ComputeMarkedNodes();
+            NodeFactory.SetMarkingComplete();
             Console.WriteLine($"LLVM compilation to IR finished in {stopwatch.Elapsed.TotalSeconds:0.##} seconds");
+
             FinishCompilation();
 
             LLVMObjectWriter.EmitObject(outputFile, _dependencyGraph.MarkedNodeList, this, dumper);

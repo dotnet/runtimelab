@@ -156,25 +156,10 @@ namespace System.Runtime
         [RuntimeExport("RhpHandleUnhandledException")]
         private static void HandleUnhandledException(object exception)
         {
-            // We have to duplicate the logic because the helpers are runtime exports and need a calling convention conversion.
-            // Also, we cannot use code addresses to get helpers.
-            IntPtr pOnUnhandledExceptionFunction =
-                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(exception.GetMethodTable(), ClassLibFunctionId.OnUnhandledException);
+            OnUnhandledExceptionViaClassLib(exception);
 
-            if (pOnUnhandledExceptionFunction != IntPtr.Zero)
-            {
-                try
-                {
-                    InternalCalls.RhpRawCalli_VO(pOnUnhandledExceptionFunction, exception);
-                }
-                catch when (true)
-                {
-                    // disallow all exceptions leaking out of callbacks
-                }
-            }
-
-            IntPtr pFailFastFunction =
-                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(exception.GetMethodTable(), ClassLibFunctionId.FailFast);
+            // We have to duplicate "UnhandledExceptionFailFastViaClasslib" because we cannot use code addresses to get helpers.
+            IntPtr pFailFastFunction = exception.GetMethodTable()->GetClasslibFunction(ClassLibFunctionId.FailFast);
 
             if (pFailFastFunction == IntPtr.Zero)
             {
@@ -183,7 +168,8 @@ namespace System.Runtime
 
             try
             {
-                InternalCalls.RhpRawCalli_ViOII(pFailFastFunction, (int)RhFailFastReason.UnhandledException, exception, 0, 0);
+                ((delegate*<RhFailFastReason, object, IntPtr, void*, void>)pFailFastFunction)
+                    (RhFailFastReason.UnhandledException, exception, 0, null);
             }
             catch when (true)
             {
@@ -270,21 +256,8 @@ namespace System.Runtime
 
         private static void ThrowException(object exception)
         {
-            // Copy of "OnFirstChanceExceptionViaClassLib"; cannot use it directly due to the calling convention mismatch.
-            IntPtr pOnFirstChanceFunction =
-                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(exception.GetMethodTable(), ClassLibFunctionId.OnFirstChance);
-
-            if (pOnFirstChanceFunction != IntPtr.Zero)
-            {
-                try
-                {
-                    InternalCalls.RhpRawCalli_VO(pOnFirstChanceFunction, exception);
-                }
-                catch when (true)
-                {
-                    // disallow all exceptions leaking out of callbacks
-                }
-            }
+            WasmEHLog("Throwing: [" + exception.GetType() + "]", &exception, "1");
+            OnFirstChanceExceptionViaClassLib(exception);
 
             // We will pass around the managed exception address in the native exception to avoid having to report it
             // explicitly to the GC (or having a hole, or using a GCHandle). This will work as intended as the shadow
@@ -331,7 +304,7 @@ namespace System.Runtime
 
         private static string GetClauseDescription(RhEHClauseKind kind, void* data) => kind switch
         {
-            RhEHClauseKind.RH_EH_CLAUSE_TYPED => "catch, class [" + Type.GetTypeFromHandle(new RuntimeTypeHandle(new EETypePtr((MethodTable*)data))) + "]",
+            RhEHClauseKind.RH_EH_CLAUSE_TYPED => "catch, class [" + Type.GetTypeFromMethodTable((MethodTable*)data) + "]",
             RhEHClauseKind.RH_EH_CLAUSE_FILTER => "filtered catch",
             RhEHClauseKind.RH_EH_CLAUSE_UNUSED => "mutually protecting catches, table at [" + ToHex(data) + "]",
             _ => "fault",

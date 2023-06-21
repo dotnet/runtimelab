@@ -41,9 +41,7 @@ public class Interfaces
         TestVariantInterfaceOptimizations.Run();
         TestSharedInterfaceMethods.Run();
         TestCovariantReturns.Run();
-#if !CODEGEN_WASM // TODO-LLVM: Fails at run time
         TestDynamicInterfaceCastable.Run();
-#endif
         TestStaticInterfaceMethodsAnalysis.Run();
         TestStaticInterfaceMethods.Run();
         TestSimpleStaticDefaultInterfaceMethods.Run();

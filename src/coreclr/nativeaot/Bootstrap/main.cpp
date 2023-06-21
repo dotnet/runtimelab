@@ -107,14 +107,23 @@ extern "C" bool RhRegisterOSModule(void * pModule,
 
 extern "C" void* PalGetModuleHandleFromPointer(void* pointer);
 
-extern "C" void GetRuntimeException();
-extern "C" void FailFast();
-extern "C" void AppendExceptionStackFrame();
-extern "C" void GetSystemArrayEEType();
-extern "C" void OnFirstChanceException();
-extern "C" void OnUnhandledException();
-extern "C" void IDynamicCastableIsInterfaceImplemented();
-extern "C" void IDynamicCastableGetInterfaceImplementation();
+// The runtime assumes classlib exports have a managed calling convention.
+// For WASM, however, they are exported with the native calling convention
+// by default so we must explicitly use the managed entrypoint here.
+#ifdef HOST_WASM
+#define MANAGED_RUNTIME_EXPORT(name) name##_Managed
+#else
+#define MANAGED_RUNTIME_EXPORT(name) name
+#endif
+
+extern "C" void MANAGED_RUNTIME_EXPORT(GetRuntimeException)();
+extern "C" void MANAGED_RUNTIME_EXPORT(FailFast)();
+extern "C" void MANAGED_RUNTIME_EXPORT(AppendExceptionStackFrame)();
+extern "C" void MANAGED_RUNTIME_EXPORT(GetSystemArrayEEType)();
+extern "C" void MANAGED_RUNTIME_EXPORT(OnFirstChanceException)();
+extern "C" void MANAGED_RUNTIME_EXPORT(OnUnhandledException)();
+extern "C" void MANAGED_RUNTIME_EXPORT(IDynamicCastableIsInterfaceImplemented)();
+extern "C" void MANAGED_RUNTIME_EXPORT(IDynamicCastableGetInterfaceImplementation)();
 #ifdef FEATURE_OBJCMARSHAL
 extern "C" void ObjectiveCMarshalTryGetTaggedMemory();
 extern "C" void ObjectiveCMarshalGetIsTrackedReferenceCallback();
@@ -125,16 +134,16 @@ extern "C" void ObjectiveCMarshalGetUnhandledExceptionPropagationHandler();
 typedef void(*pfn)();
 
 static const pfn c_classlibFunctions[] = {
-    &GetRuntimeException,
-    &FailFast,
+    &MANAGED_RUNTIME_EXPORT(GetRuntimeException),
+    &MANAGED_RUNTIME_EXPORT(FailFast),
     nullptr, // &UnhandledExceptionHandler,
-    &AppendExceptionStackFrame,
+    &MANAGED_RUNTIME_EXPORT(AppendExceptionStackFrame),
     nullptr, // &CheckStaticClassConstruction,
-    &GetSystemArrayEEType,
-    &OnFirstChanceException,
-    &OnUnhandledException,
-    &IDynamicCastableIsInterfaceImplemented,
-    &IDynamicCastableGetInterfaceImplementation,
+    &MANAGED_RUNTIME_EXPORT(GetSystemArrayEEType),
+    &MANAGED_RUNTIME_EXPORT(OnFirstChanceException),
+    &MANAGED_RUNTIME_EXPORT(OnUnhandledException),
+    &MANAGED_RUNTIME_EXPORT(IDynamicCastableIsInterfaceImplemented),
+    &MANAGED_RUNTIME_EXPORT(IDynamicCastableGetInterfaceImplementation),
 #ifdef FEATURE_OBJCMARSHAL
     &ObjectiveCMarshalTryGetTaggedMemory,
     &ObjectiveCMarshalGetIsTrackedReferenceCallback,

@@ -336,8 +336,7 @@ namespace PInvokeTests
             TestSafeHandle();
             TestStringArray();
             TestSizeParamIndex();
-#if !CODEGEN_WASM
-            // GetFunctionPointerForDelegate NYI on WASM
+#if !CODEGEN_WASM // TODO-LLVM: GetFunctionPointerForDelegate NYI on WASM.
             TestDelegate();
 #endif
             TestStruct();
@@ -346,8 +345,7 @@ namespace PInvokeTests
             TestAsAny();
             TestMarshalStructAPIs();
             TestWithoutPreserveSig();
-#if !CODEGEN_WASM
-            // GetFunctionPointerForDelegate NYI on WASM
+#if !CODEGEN_WASM // TODO-LLVM: GetFunctionPointerForDelegate NYI on WASM.
             TestForwardDelegateWithUnmanagedCallersOnly();
 #endif
             TestDecimal();
@@ -933,8 +931,7 @@ namespace PInvokeTests
             }
             ThrowIfNotEquals(true, pass, "Struct marshalling scenario6 failed.");
 
-#if !CODEGEN_WASM
-            // GetFunctionPointerForDelegate NYI on WASM
+#if !CODEGEN_WASM // TODO-LLVM: GetFunctionPointerForDelegate NYI on WASM.
             Callbacks callbacks = new Callbacks();
             callbacks.callback0 = new Callback0(callbackFunc0);
             callbacks.callback1 = new Callback1(callbackFunc1);

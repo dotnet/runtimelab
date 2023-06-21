@@ -7,8 +7,7 @@
     <NoWarn>$(NoWarn);IL3055</NoWarn>
 
     <!-- Look for MULTIMODULE_BUILD #define for the more specific incompatible parts -->
-    <CLRTestTargetUnsupported Condition="'$(IlcMultiModule)' == 'true'">true</CLRTestTargetUnsupported>
-    <DefineConstants Condition="$(TargetArchitecture) == 'wasm'">$(DefineConstants);CODEGEN_WASM</DefineConstants>
+    <CLRTestTargetUnsupported Condition="'$(IlcMultiModule)' == 'true'">true</CLRTestTargetUnsupported>    
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="PInvoke.cs" />

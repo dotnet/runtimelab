@@ -184,7 +184,7 @@ namespace ILCompiler.DependencyAnalysis
             return result.ToArray();
         }
 
-        private static IMethodNode GetBadSlotHelper(NodeFactory factory)
+        public static IMethodNode GetBadSlotHelper(NodeFactory factory)
         {
             return factory.MethodEntrypoint(factory.TypeSystemContext.GetHelperEntryPoint("ThrowHelpers", "ThrowUnavailableType"));
         }

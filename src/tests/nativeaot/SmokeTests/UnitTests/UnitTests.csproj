@@ -8,7 +8,6 @@
     <!-- There's just too many of these warnings -->
     <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
     <NoWarn>$(NoWarn);IL3050;IL3054</NoWarn>
-    <DefineConstants Condition="$(TargetArchitecture) == 'wasm'">$(DefineConstants);CODEGEN_WASM</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="BasicThreading.cs" />

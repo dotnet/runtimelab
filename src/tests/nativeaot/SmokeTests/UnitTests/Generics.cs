@@ -42,15 +42,11 @@ class Generics
         TestConstrainedGvmCalls.Run();
         TestConstrainedGvmValueTypeCalls.Run();
         TestDefaultGenericVirtualInterfaceMethods.Run();
-#if !CODEGEN_WASM // TODO-LLVM: Fails at runtime. We're not detecting the cycle correctly.
         TestSimpleGenericRecursion.Run();
-#endif
         TestGenericRecursionFromNpgsql.Run();
         TestRecursionInGenericVirtualMethods.Run();
         TestRecursionInGenericInterfaceMethods.Run();
-#if !CODEGEN_WASM // TODO-LLVM: Fails at runtime. We're not detecting the cycle correctly.
         TestRecursionThroughGenericLookups.Run();
-#endif
         TestGvmLookupDependency.Run();
         TestInvokeMemberCornerCaseInGenerics.Run();
         TestRefAny.Run();

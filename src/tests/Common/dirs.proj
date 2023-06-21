@@ -19,12 +19,7 @@
     </ItemGroup>
 
     <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm'">
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HardwareIntrinsics\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\SharedLibrary\SharedLibrary.csproj" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\Reflection.csproj" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\Reflection_FromUsage.csproj" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\ComWrappers\ComWrappers.csproj" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\CustomMain\CustomMain.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\GenerateUnmanagedEntryPoints\GenerateUnmanagedEntryPoints.csproj" />
 
       <!-- Manual test. -->
@@ -39,6 +34,7 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Exceptions\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\UseSystemResourceKeys\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\FrameworkStrings\*.csproj" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\TrimmingBehaviors\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\UnitTests\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\ExceptionHandlingTests.Cpp.csproj" />

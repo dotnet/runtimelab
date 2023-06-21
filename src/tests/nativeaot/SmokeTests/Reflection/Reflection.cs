@@ -37,7 +37,9 @@ internal static class ReflectionTest
 #if !OPTIMIZED_MODE_WITHOUT_SCANNER
         TestContainment.Run();
         TestInterfaceMethod.Run();
+#if !CODEGEN_WASM // TODO-LLVM: RhGetCodeTarget NYI.        
         TestByRefLikeTypeMethod.Run();
+#endif
 #endif
         TestILScanner.Run();
         TestUnreferencedEnum.Run();
@@ -54,7 +56,9 @@ internal static class ReflectionTest
 #if !REFLECTION_FROM_USAGE
         TestNotReflectedIsNotReflectable.Run();
         TestGenericInstantiationsAreEquallyReflectable.Run();
+#if !CODEGEN_WASM // TODO-LLVM: managed stack traces.        
         TestStackTraces.Run();
+#endif
 #endif
         TestAttributeInheritance2.Run();
         TestInvokeMethodMetadata.Run();
