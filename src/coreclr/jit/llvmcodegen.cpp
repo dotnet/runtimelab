@@ -176,24 +176,54 @@ void Llvm::generateProlog()
     setCurrentEmitContext(ROOT_FUNC_IDX, EHblkDsc::NO_ENCLOSING_INDEX, &prologLlvmBlocks);
     _builder.SetCurrentDebugLocation(nullptr); // By convention, prologs have no debug info.
 
+    initializeShadowStack();
     initializeLocals();
     declareDebugVariables();
 }
 
-void Llvm::initializeLocals()
+void Llvm::initializeShadowStack()
 {
+    Value* shadowStackValue;
     if (_compiler->opts.IsReversePInvoke())
     {
-        m_rootFunctionShadowStackValue = emitHelperCall(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP);
+        shadowStackValue = emitHelperCall(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP);
 
         JITDUMP("Setting V%02u's initial value to the recovered shadow stack\n", _shadowStackLclNum);
-        JITDUMPEXEC(m_rootFunctionShadowStackValue->dump());
+        JITDUMPEXEC(shadowStackValue->dump());
     }
     else
     {
-        m_rootFunctionShadowStackValue = getRootLlvmFunction()->getArg(0);
+        shadowStackValue = getRootLlvmFunction()->getArg(0);
     }
 
+    unsigned alignment = m_shadowFrameAlignment;
+    if (alignment != DEFAULT_SHADOW_STACK_ALIGNMENT)
+    {
+        JITDUMP("Aligning the shadow frame to %u bytes:\n", alignment);
+        assert(isPow2(alignment));
+
+        // IR taken from what Clang generates for "__builtin_align_up".
+        Value* shadowStackIntValue = _builder.CreatePtrToInt(shadowStackValue, getIntPtrLlvmType());
+        JITDUMPEXEC(shadowStackIntValue->dump());
+        Value* alignedShadowStackIntValue = _builder.CreateAdd(shadowStackIntValue, getIntPtrConst(alignment - 1));
+        JITDUMPEXEC(alignedShadowStackIntValue->dump());
+        alignedShadowStackIntValue = _builder.CreateAnd(alignedShadowStackIntValue, getIntPtrConst(~(alignment - 1)));
+        JITDUMPEXEC(alignedShadowStackIntValue->dump());
+        Value* alignOffset = _builder.CreateSub(alignedShadowStackIntValue, shadowStackIntValue);
+        JITDUMPEXEC(alignOffset->dump());
+        shadowStackValue = _builder.CreateGEP(Type::getInt8Ty(m_context->Context), shadowStackValue, alignOffset);
+        JITDUMPEXEC(shadowStackValue->dump());
+
+        llvm::CallInst* alignAssume =
+            _builder.CreateAlignmentAssumption(m_context->Module.getDataLayout(), shadowStackValue, alignment);
+        JITDUMPEXEC(alignAssume);
+    }
+
+    m_rootFunctionShadowStackValue = shadowStackValue;
+}
+
+void Llvm::initializeLocals()
+{
     llvm::AllocaInst** allocas = new (_compiler->getAllocator(CMK_Codegen)) llvm::AllocaInst*[_compiler->lvaCount];
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
@@ -2510,9 +2540,7 @@ void Llvm::emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue)
         // The frontend's contract with the backend is that it will not insert null checks for accesses which
         // are inside the "[0..compMaxUncheckedOffsetForNullObject]" range. Thus, we need to check not just
         // for "null", but "null + small offset".
-        Value* checkValue = llvm::Constant::getIntegerValue(
-            addrValue->getType(),
-            llvm::APInt(TARGET_POINTER_SIZE * BITS_PER_BYTE, _compiler->compMaxUncheckedOffsetForNullObject + 1));
+        Value* checkValue = getIntPtrConst(_compiler->compMaxUncheckedOffsetForNullObject + 1, addrValue->getType());
         Value* isNullValue = _builder.CreateICmpULT(addrValue, checkValue);
         emitJumpToThrowHelper(isNullValue, SCK_NULL_REF_EXCPN);
     }
@@ -2890,6 +2918,15 @@ Value* Llvm::castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>*
         return source;
 
     return builder->Insert(castInst);
+}
+
+llvm::Constant* Llvm::getIntPtrConst(target_size_t value, Type* llvmType)
+{
+    if (llvmType == nullptr)
+    {
+        llvmType = getIntPtrLlvmType();
+    }
+    return llvm::Constant::getIntegerValue(llvmType, llvm::APInt(TARGET_POINTER_BITS, value));
 }
 
 // We assume that all the GEPs are for elements of size Int8 (byte)

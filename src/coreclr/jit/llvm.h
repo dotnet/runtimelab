@@ -174,6 +174,8 @@ public:
 class Llvm
 {
 private:
+    static const unsigned DEFAULT_SHADOW_STACK_ALIGNMENT = TARGET_POINTER_SIZE;
+
     void* const m_pEECorInfo; // TODO-LLVM: workaround for not changing the JIT/EE interface.
     SingleThreadedCompilationContext* const m_context;
     Compiler* const _compiler;
@@ -210,6 +212,7 @@ private:
     unsigned m_lineNumberCount;
     CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO* m_lineNumbers;
 
+    unsigned m_shadowFrameAlignment = DEFAULT_SHADOW_STACK_ALIGNMENT;
     unsigned _shadowStackLocalsSize = 0;
     unsigned _originalShadowStackLclNum = BAD_VAR_NUM;
     unsigned _shadowStackLclNum = BAD_VAR_NUM;
@@ -372,6 +375,7 @@ private:
 
     bool initializeFunctions();
     void generateProlog();
+    void initializeShadowStack();
     void initializeLocals();
     void generateBlocks();
     void generateBlock(BasicBlock* block);
@@ -454,6 +458,7 @@ private:
     Instruction* getCast(Value* source, Type* targetType);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
     Value* gepOrAddr(Value* addr, unsigned offset);
+    llvm::Constant* getIntPtrConst(target_size_t value, Type* llvmType = nullptr);
     Value* getShadowStack();
     Value* getShadowStackForCallee();
     Value* getOriginalShadowStack();
