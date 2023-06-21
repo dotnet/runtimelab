@@ -144,6 +144,11 @@ if ($Analyze -or $Summary)
             $Name = [string]$Matches[3].Value
 
             $TotalCodeSize += $Size
+            while ($SummaryList.ContainsKey($Name))
+            {
+                # Sometimes we get duplicates with demangled names that wasm-objdump produces. Tolerate them.
+                $Name += "*"
+            }
             $SummaryList.Add($Name, @{ Index = $Index; Size = $Size })
 
             if ($LineIndex % $OutputProgressInterval -eq 0)
