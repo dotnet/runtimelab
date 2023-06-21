@@ -764,7 +764,6 @@ internal unsafe partial class Program
                     {
                         byte* stk = stackalloc byte[StkAllocSize];
                         SideEffect(stk);
-                        Console.WriteLine((int)stk);
                     }
                     catch (Exception)
                     {
