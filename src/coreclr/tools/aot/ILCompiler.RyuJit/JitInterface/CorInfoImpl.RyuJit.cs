@@ -1988,7 +1988,7 @@ namespace Internal.JitInterface
         {
             get
             {
-                if (_compilation.TargetArchIsWasm())
+                if (_compilation.TypeSystemContext.Target.IsWasm)
                 {
                     // Only m_pThread used.
                     return this.PointerSize;
