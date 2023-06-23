@@ -39,14 +39,8 @@ namespace ILCompiler.DependencyAnalysis
         // Path to the bitcode file we're emitting.
         private readonly string _objectFilePath;
 
-        // Raw data emitted for the current object node.
-        private ArrayBuilder<byte> _currentObjectData;
-
-        // References (pointers) to symbols the current object node contains (and thus depends on).
-        private Dictionary<int, SymbolRefData> _currentObjectSymbolRefs = new();
-
-        // Data to be emitted as LLVM bitcode after all of the object nodes have been processed.
-        private readonly List<ObjectNodeDataEmission> _dataToFill = new();
+        // Data emitted for the current object node. Initial capacity chosen to be the size of the largest node in a small program.
+        private LLVMValueRef[] _currentObjectData = new LLVMValueRef[100_000];
 
         // List of global values to be kept alive via @llvm.used.
         private readonly List<LLVMValueRef> _keepAliveList = new();
@@ -135,33 +129,7 @@ namespace ILCompiler.DependencyAnalysis
                         }
                     }
 #endif
-                    // Ensure alignment for the node.
-                    objectWriter.EmitAlignment(nodeContents.Alignment);
-
-                    objectWriter.EmitBytes(nodeContents.Data);
-
-                    Relocation[] relocs = nodeContents.Relocs;
-                    foreach (var reloc in relocs)
-                    {
-                        long delta;
-                        unsafe
-                        {
-                            fixed (void* location = &nodeContents.Data[reloc.Offset])
-                            {
-                                delta = Relocation.ReadValue(reloc.RelocType, location);
-                            }
-                        }
-
-                        ISymbolNode symbolToWrite = reloc.Target;
-                        if (reloc.Target is EETypeNode eeTypeNode && eeTypeNode.ShouldSkipEmittingObjectNode(factory))
-                        {
-                            symbolToWrite = factory.ConstructedTypeSymbol(eeTypeNode.Type);
-                        }
-
-                        objectWriter.EmitSymbolReference(symbolToWrite, reloc.Offset, (int)delta);
-                    }
-
-                    objectWriter.DoneObjectNode(node, nodeContents.DefinedSymbols);
+                    objectWriter.EmitObjectNode(node, nodeContents);
                 }
 
                 succeeded = true;
@@ -185,31 +153,84 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        private void DoneObjectNode(ObjectNode node, ISymbolDefinitionNode[] definedSymbols)
+        private unsafe void EmitObjectNode(ObjectNode node, ObjectData nodeContents)
         {
-            EmitAlignment(_nodeFactory.Target.PointerSize);
-            Debug.Assert(_nodeFactory.Target.PointerSize == 4);
-            int countOfPointerSizedElements = _currentObjectData.Count / _nodeFactory.Target.PointerSize;
-
-            ISymbolNode symNode = node as ISymbolNode ?? ((IHasStartSymbol)node).StartSymbol;
-            string symbolName = symNode.GetMangledName(_nodeFactory.NameMangler);
+            NodeFactory factory = _nodeFactory;
+            int pointerSize = factory.Target.PointerSize;
 
             // All references to this symbol are through "ordinarily named" aliases. Thus, we need to suffix the real definition.
+            ISymbolNode symbolNode = node as ISymbolNode ?? ((IHasStartSymbol)node).StartSymbol;
+            string symbolName = symbolNode.GetMangledName(factory.NameMangler);
             string dataSymbolName = symbolName + "__DATA";
 
-            LLVMTypeRef dataSymbolType = LLVMTypeRef.CreateArray(_ptrType, (uint)countOfPointerSizedElements);
+            // Calculate the size of this object node.
+            int dataSizeInBytes = nodeContents.Data.Length;
+            int dataSizeInBytesAligned = dataSizeInBytes.AlignUp(pointerSize); // TODO-LLVM: do not pad out the data.
+            int dataSizeInPointers = dataSizeInBytesAligned / pointerSize;
+
+            // Create and initialize the LLVM global value.
+            LLVMTypeRef dataSymbolType = LLVMTypeRef.CreateArray(_ptrType, (uint)dataSizeInPointers);
             LLVMValueRef dataSymbol = _module.AddGlobal(dataSymbolType, dataSymbolName);
-            dataSymbol.Section = node.GetSection(_nodeFactory).Name;
+            dataSymbol.Section = node.GetSection(factory).Name;
+            dataSymbol.Alignment = (uint)nodeContents.Alignment;
 
-            _dataToFill.Add(new ObjectNodeDataEmission(dataSymbol, _currentObjectData.ToArray(), _currentObjectSymbolRefs));
-
-            foreach (ISymbolDefinitionNode definedSymbol in definedSymbols)
+            // Emit the value of this object node.
+            if (_currentObjectData.Length < dataSizeInPointers)
             {
-                string definedSymbolName = definedSymbol.GetMangledName(_nodeFactory.NameMangler);
+                Array.Resize(ref _currentObjectData, Math.Max(_currentObjectData.Length * 2, dataSizeInPointers));
+            }
+            Span<LLVMValueRef> dataElements = _currentObjectData.AsSpan(0, dataSizeInPointers);
+            dataElements.Clear();
+
+            // Emit relocations. We assume these are always aligned.
+            foreach (Relocation reloc in nodeContents.Relocs)
+            {
+                long delta;
+                fixed (void* location = &nodeContents.Data[reloc.Offset])
+                {
+                    delta = Relocation.ReadValue(reloc.RelocType, location);
+                }
+
+                int symbolRefIndex = Math.DivRem(reloc.Offset, pointerSize, out int unalignedOffset);
+                if (unalignedOffset != 0)
+                {
+                    throw new NotImplementedException("Unaligned relocation");
+                }
+
+                ISymbolNode symbolRefNode = reloc.Target;
+                if (symbolRefNode is EETypeNode eeTypeNode && eeTypeNode.ShouldSkipEmittingObjectNode(factory))
+                {
+                    symbolRefNode = factory.ConstructedTypeSymbol(eeTypeNode.Type);
+                }
+
+                dataElements[symbolRefIndex] = GetSymbolReferenceValue(symbolRefNode, checked((int)delta));
+            }
+
+            // Emit binary data.
+            ReadOnlySpan<byte> data = nodeContents.Data.AsSpan();
+            for (int i = 0; i < dataElements.Length; i++)
+            {
+                ref LLVMValueRef dataElementRef = ref dataElements[i];
+                if (dataElementRef == default)
+                {
+                    ulong value = 0;
+                    int offset = i * pointerSize;
+                    int size = Math.Min(dataSizeInBytes - offset, pointerSize);
+                    data.Slice(offset, size).CopyTo(new Span<byte>(&value, size));
+
+                    dataElementRef = LLVMValueRef.CreateConstIntToPtr(LLVMValueRef.CreateConstInt(_intPtrType, value), _ptrType);
+                }
+            }
+
+            dataSymbol.Initializer = LLVMValueRef.CreateConstArray(_ptrType, dataElements);
+
+            foreach (ISymbolDefinitionNode definedSymbol in nodeContents.DefinedSymbols)
+            {
+                string definedSymbolName = definedSymbol.GetMangledName(factory.NameMangler);
                 int definedSymbolOffset = definedSymbol.Offset;
                 EmitSymbolDef(dataSymbol, definedSymbolName, definedSymbolOffset);
 
-                string alternateDefinedSymbolName = _nodeFactory.GetSymbolAlternateName(definedSymbol);
+                string alternateDefinedSymbolName = factory.GetSymbolAlternateName(definedSymbol);
                 if (alternateDefinedSymbolName != null)
                 {
                     EmitSymbolDef(dataSymbol, alternateDefinedSymbolName, definedSymbolOffset);
@@ -219,23 +240,6 @@ namespace ILCompiler.DependencyAnalysis
             if (ObjectNodeMustBeArtificiallyKeptAlive(node))
             {
                 _keepAliveList.Add(dataSymbol);
-            }
-
-            _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
-            _currentObjectData = default;
-        }
-
-        private void EmitAlignment(int byteAlignment)
-        {
-            while ((_currentObjectData.Count % byteAlignment) != 0)
-                _currentObjectData.Add(0);
-        }
-
-        private void EmitBytes(ReadOnlySpan<byte> bytes)
-        {
-            for (int i = 0; i < bytes.Length; i++)
-            {
-                _currentObjectData.Add(bytes[i]);
             }
         }
 
@@ -256,17 +260,8 @@ namespace ILCompiler.DependencyAnalysis
             else
             {
                 // Set the aliasee.
-                LLVMSharp.Interop.LLVM.AliasSetAliasee(symbolDef, symbolAddress);
+                LLVM.AliasSetAliasee(symbolDef, symbolAddress);
             }
-        }
-
-        private void EmitSymbolReference(ISymbolNode target, int offset, int delta)
-        {
-            string symbolName = target.GetMangledName(_nodeFactory.NameMangler);
-            uint symbolRefOffset = checked(unchecked((uint)target.Offset) + (uint)delta);
-            GetOrCreateSymbol(target); // Cause the symbol's declaration to be created (if needed).
-
-            _currentObjectSymbolRefs.Add(offset, new SymbolRefData(symbolName, symbolRefOffset));
         }
 
         private static bool ObjectNodeMustBeArtificiallyKeptAlive(ObjectNode node)
@@ -276,83 +271,8 @@ namespace ILCompiler.DependencyAnalysis
             return node is ModulesSectionNode;
         }
 
-        private struct SymbolRefData
-        {
-            public SymbolRefData(string symbolName, uint offset)
-            {
-                SymbolName = symbolName;
-                Offset = offset;
-            }
-
-            internal readonly string SymbolName;
-            internal readonly uint Offset;
-
-            public LLVMValueRef ToLLVMValueRef(LLVMModuleRef module)
-            {
-                // Dont know if symbol is for an extern function or a variable, so check both
-                LLVMValueRef valRef = module.GetNamedAlias(SymbolName);
-                if (valRef.Handle == IntPtr.Zero)
-                {
-                    valRef = module.GetNamedFunction(SymbolName);
-                }
-                Debug.Assert(valRef.Handle != IntPtr.Zero, $"Undefined symbol: {SymbolName}");
-
-                if (Offset != 0)
-                {
-                    LLVMValueRef[] index = new[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, Offset) };
-                    valRef = LLVMValueRef.CreateConstGEP2(LLVMTypeRef.Int8, valRef, index);
-                }
-
-                return valRef;
-            }
-        }
-
-        private struct ObjectNodeDataEmission
-        {
-            public ObjectNodeDataEmission(LLVMValueRef node, byte[] data, Dictionary<int, SymbolRefData> objectSymbolRefs)
-            {
-                _node = node;
-                _data = data;
-                _objectSymbolRefs = objectSymbolRefs;
-            }
-            private LLVMValueRef _node;
-            private readonly byte[] _data;
-            private readonly Dictionary<int, SymbolRefData> _objectSymbolRefs;
-
-            public void Fill(LLVMObjectWriter writer)
-            {
-                int pointerSize = writer._nodeFactory.Target.PointerSize;
-                ArrayBuilder<LLVMValueRef> entries = default;
-                int countOfPointerSizedElements = _data.Length / pointerSize;
-
-                for (int i = 0; i < countOfPointerSizedElements; i++)
-                {
-                    int curOffset = (i * pointerSize);
-                    SymbolRefData symbolRef;
-                    if (_objectSymbolRefs.TryGetValue(curOffset, out symbolRef))
-                    {
-                        entries.Add(symbolRef.ToLLVMValueRef(writer._module));
-                    }
-                    else
-                    {
-                        ulong value = (pointerSize == 4) ? BitConverter.ToUInt32(_data, curOffset)
-                                                         : BitConverter.ToUInt64(_data, curOffset);
-                        entries.Add(LLVMValueRef.CreateConstIntToPtr(LLVMValueRef.CreateConstInt(writer._intPtrType, value), writer._ptrType));
-                    }
-                }
-
-                _node.Initializer = LLVMValueRef.CreateConstArray(writer._ptrType, entries.ToArray());
-            }
-        }
-
         private void FinishObjWriter()
         {
-            // Since emission to llvm is delayed until after all nodes are emitted... emit now.
-            foreach (var nodeData in _dataToFill)
-            {
-                nodeData.Fill(this);
-            }
-
             EmitKeepAliveList();
 
 #if DEBUG
@@ -377,11 +297,14 @@ namespace ILCompiler.DependencyAnalysis
         {
             // See https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable.
             ReadOnlySpan<LLVMValueRef> llvmUsedSymbols = CollectionsMarshal.AsSpan(_keepAliveList);
-            LLVMTypeRef llvmUsedType = LLVMTypeRef.CreateArray(_ptrType, (uint)llvmUsedSymbols.Length);
-            LLVMValueRef llvmUsedGlobal = _module.AddGlobal(llvmUsedType, "llvm.used");
-            llvmUsedGlobal.Linkage = LLVMLinkage.LLVMAppendingLinkage;
-            llvmUsedGlobal.Section = "llvm.metadata";
-            llvmUsedGlobal.Initializer = LLVMValueRef.CreateConstArray(_ptrType, llvmUsedSymbols);
+            if (llvmUsedSymbols.Length != 0)
+            {
+                LLVMTypeRef llvmUsedType = LLVMTypeRef.CreateArray(_ptrType, (uint)llvmUsedSymbols.Length);
+                LLVMValueRef llvmUsedGlobal = _module.AddGlobal(llvmUsedType, "llvm.used");
+                llvmUsedGlobal.Linkage = LLVMLinkage.LLVMAppendingLinkage;
+                llvmUsedGlobal.Section = "llvm.metadata";
+                llvmUsedGlobal.Initializer = LLVMValueRef.CreateConstArray(_ptrType, llvmUsedSymbols);
+            }
         }
 
         private void EmitRuntimeExportThunk(LLVMMethodCodeNode methodNode)
@@ -994,12 +917,13 @@ namespace ILCompiler.DependencyAnalysis
             return symbolDefValue;
         }
 
-        private LLVMValueRef GetSymbolReferenceValue(ISymbolNode symbolRef)
+        private LLVMValueRef GetSymbolReferenceValue(ISymbolNode symbolRef, int delta = 0)
         {
             LLVMValueRef symbolRefValue = GetOrCreateSymbol(symbolRef);
-            if (symbolRef.Offset != 0)
+            int symbolRefOffset = symbolRef.Offset + delta;
+            if (symbolRefOffset != 0)
             {
-                LLVMValueRef offsetValue = CreateConst(LLVMTypeRef.Int32, symbolRef.Offset);
+                LLVMValueRef offsetValue = CreateConst(LLVMTypeRef.Int32, symbolRefOffset);
                 symbolRefValue = LLVMValueRef.CreateConstGEP2(LLVMTypeRef.Int8, symbolRefValue, new[] { offsetValue });
             }
 
