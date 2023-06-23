@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 
 using ILCompiler.DependencyAnalysisFramework;
 
@@ -42,13 +43,16 @@ namespace ILCompiler.DependencyAnalysis
         private ArrayBuilder<byte> _currentObjectData;
 
         // References (pointers) to symbols the current object node contains (and thus depends on).
-        private Dictionary<int, SymbolRefData> _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
+        private Dictionary<int, SymbolRefData> _currentObjectSymbolRefs = new();
 
         // Data to be emitted as LLVM bitcode after all of the object nodes have been processed.
-        private readonly List<ObjectNodeDataEmission> _dataToFill = new List<ObjectNodeDataEmission>();
+        private readonly List<ObjectNodeDataEmission> _dataToFill = new();
+
+        // List of global values to be kept alive via @llvm.used.
+        private readonly List<LLVMValueRef> _keepAliveList = new();
 
 #if DEBUG
-        private static readonly Dictionary<string, ISymbolNode> _previouslyWrittenNodeNames = new Dictionary<string, ISymbolNode>();
+        private static readonly Dictionary<string, ISymbolNode> _previouslyWrittenNodeNames = new();
 #endif
 
         private LLVMObjectWriter(string objectFilePath, LLVMCodegenCompilation compilation)
@@ -109,9 +113,6 @@ namespace ILCompiler.DependencyAnalysis
                         case ExternMethodAccessorNode accessorNode:
                             objectWriter.GetCodeForExternMethodAccessor(accessorNode);
                             continue;
-                        case ModulesSectionNode modulesSectionNode:
-                            objectWriter.EmitReadyToRunHeaderCallback(modulesSectionNode);
-                            goto default;
                         default:
                             break;
                     }
@@ -198,6 +199,8 @@ namespace ILCompiler.DependencyAnalysis
 
             LLVMTypeRef dataSymbolType = LLVMTypeRef.CreateArray(_ptrType, (uint)countOfPointerSizedElements);
             LLVMValueRef dataSymbol = _module.AddGlobal(dataSymbolType, dataSymbolName);
+            dataSymbol.Section = node.GetSection(_nodeFactory).Name;
+
             _dataToFill.Add(new ObjectNodeDataEmission(dataSymbol, _currentObjectData.ToArray(), _currentObjectSymbolRefs));
 
             foreach (ISymbolDefinitionNode definedSymbol in definedSymbols)
@@ -211,6 +214,11 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     EmitSymbolDef(dataSymbol, alternateDefinedSymbolName, definedSymbolOffset);
                 }
+            }
+
+            if (ObjectNodeMustBeArtificiallyKeptAlive(node))
+            {
+                _keepAliveList.Add(dataSymbol);
             }
 
             _currentObjectSymbolRefs = new Dictionary<int, SymbolRefData>();
@@ -259,6 +267,13 @@ namespace ILCompiler.DependencyAnalysis
             GetOrCreateSymbol(target); // Cause the symbol's declaration to be created (if needed).
 
             _currentObjectSymbolRefs.Add(offset, new SymbolRefData(symbolName, symbolRefOffset));
+        }
+
+        private static bool ObjectNodeMustBeArtificiallyKeptAlive(ObjectNode node)
+        {
+            // The modules section is referenced through the special __start/__stop
+            // symbols, which don't cause the linker to consider it alive by default.
+            return node is ModulesSectionNode;
         }
 
         private struct SymbolRefData
@@ -320,8 +335,9 @@ namespace ILCompiler.DependencyAnalysis
                     }
                     else
                     {
-                        uint value = BitConverter.ToUInt32(_data, curOffset);
-                        entries.Add(LLVMValueRef.CreateConstIntToPtr(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, value), writer._ptrType));
+                        ulong value = (pointerSize == 4) ? BitConverter.ToUInt32(_data, curOffset)
+                                                         : BitConverter.ToUInt64(_data, curOffset);
+                        entries.Add(LLVMValueRef.CreateConstIntToPtr(LLVMValueRef.CreateConstInt(writer._intPtrType, value), writer._ptrType));
                     }
                 }
 
@@ -336,6 +352,8 @@ namespace ILCompiler.DependencyAnalysis
             {
                 nodeData.Fill(this);
             }
+
+            EmitKeepAliveList();
 
 #if DEBUG
             _module.PrintToFile(Path.ChangeExtension(_objectFilePath, ".txt"));
@@ -353,6 +371,17 @@ namespace ILCompiler.DependencyAnalysis
             compilationResults.Add(dataLlvmObjectPath);
             compilationResults.Add(externalLlvmObjectPath);
             compilationResults.SerializeToFile(Path.ChangeExtension(_objectFilePath, "results.txt"));
+        }
+
+        private void EmitKeepAliveList()
+        {
+            // See https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable.
+            ReadOnlySpan<LLVMValueRef> llvmUsedSymbols = CollectionsMarshal.AsSpan(_keepAliveList);
+            LLVMTypeRef llvmUsedType = LLVMTypeRef.CreateArray(_ptrType, (uint)llvmUsedSymbols.Length);
+            LLVMValueRef llvmUsedGlobal = _module.AddGlobal(llvmUsedType, "llvm.used");
+            llvmUsedGlobal.Linkage = LLVMLinkage.LLVMAppendingLinkage;
+            llvmUsedGlobal.Section = "llvm.metadata";
+            llvmUsedGlobal.Initializer = LLVMValueRef.CreateConstArray(_ptrType, llvmUsedSymbols);
         }
 
         private void EmitRuntimeExportThunk(LLVMMethodCodeNode methodNode)
@@ -458,17 +487,6 @@ namespace ILCompiler.DependencyAnalysis
             {
                 builder.BuildRetVoid();
             }
-        }
-
-        private void EmitReadyToRunHeaderCallback(ModulesSectionNode node)
-        {
-            LLVMValueRef callback = _module.AddFunction("RtRHeaderWrapper", LLVMTypeRef.CreateFunction(_ptrType, Array.Empty<LLVMTypeRef>()));
-            using LLVMBuilderRef builder = _module.Context.CreateBuilder();
-            LLVMBasicBlockRef block = callback.AppendBasicBlock("Block");
-            builder.PositionAtEnd(block);
-
-            LLVMValueRef headerAddress = GetSymbolReferenceValue(node);
-            builder.BuildRet(headerAddress);
         }
 
         private void GetCodeForReadyToRunGenericHelper(ReadyToRunGenericHelperNode node, NodeFactory factory)
