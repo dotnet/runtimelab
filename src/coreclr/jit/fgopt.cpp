@@ -1753,12 +1753,12 @@ PhaseStatus Compiler::fgPostImportationCleanup()
 
                 // Zero the entry state at method entry.
                 //
-                GenTree* const initEntryState = gtNewTempAssign(entryStateVar, gtNewZeroConNode(TYP_INT));
+                GenTree* const initEntryState = gtNewTempStore(entryStateVar, gtNewZeroConNode(TYP_INT));
                 fgNewStmtAtBeg(fgFirstBB, initEntryState);
 
                 // Set the state variable once control flow reaches the OSR entry.
                 //
-                GenTree* const setEntryState = gtNewTempAssign(entryStateVar, gtNewOneConNode(TYP_INT));
+                GenTree* const setEntryState = gtNewTempStore(entryStateVar, gtNewOneConNode(TYP_INT));
                 fgNewStmtAtBeg(osrEntry, setEntryState);
 
                 // Helper method to add flow
@@ -3449,9 +3449,8 @@ bool Compiler::fgBlockEndFavorsTailDuplication(BasicBlock* block, unsigned lclNu
     while (count < limit)
     {
         count++;
-        unsigned       storeLclNum;
         GenTree* const tree = stmt->GetRootNode();
-        if (tree->OperIsStoreLcl(&storeLclNum) && (storeLclNum == lclNum) && !tree->OperIsBlkOp())
+        if (tree->OperIsLocalStore() && !tree->OperIsBlkOp() && (tree->AsLclVarCommon()->GetLclNum() == lclNum))
         {
             GenTree* const data = tree->Data();
             if (data->OperIsArrLength() || data->OperIsConst() || data->OperIsCompare())
@@ -3610,12 +3609,13 @@ bool Compiler::fgBlockIsGoodTailDuplicationCandidate(BasicBlock* target, unsigne
     // Otherwise check the first stmt.
     // Verify the branch is just a simple local compare.
     //
-    unsigned       storeLclNum;
     GenTree* const firstTree = firstStmt->GetRootNode();
-    if (!firstTree->OperIsStoreLclVar(&storeLclNum))
+    if (!firstTree->OperIs(GT_STORE_LCL_VAR))
     {
         return false;
     }
+
+    unsigned storeLclNum = firstTree->AsLclVar()->GetLclNum();
 
     if (storeLclNum != *lclNum)
     {
@@ -3624,7 +3624,7 @@ bool Compiler::fgBlockIsGoodTailDuplicationCandidate(BasicBlock* target, unsigne
 
     // Could allow unary here too...
     //
-    GenTree* const data = firstTree->Data();
+    GenTree* const data = firstTree->AsLclVar()->Data();
     if (!data->OperIsBinary())
     {
         return false;

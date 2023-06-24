@@ -222,7 +222,6 @@ endif (CLR_CMAKE_TARGET_ARCH_WASM)
 
 list(APPEND RUNTIME_SOURCES_ARCH_ASM
   ${ARCH_SOURCES_DIR}/AllocFast.${ASM_SUFFIX}
-  ${ARCH_SOURCES_DIR}/CallDescrWorker.${ASM_SUFFIX}
   ${ARCH_SOURCES_DIR}/ExceptionHandling.${ASM_SUFFIX}
   ${ARCH_SOURCES_DIR}/GcProbe.${ASM_SUFFIX}
   ${ARCH_SOURCES_DIR}/Interlocked.${ASM_SUFFIX}
@@ -244,10 +243,15 @@ endif()
 
 if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
   set(FEATURE_PERFTRACING 1)
+  set(FEATURE_EVENT_TRACE 1)
 endif()
 
 if(FEATURE_PERFTRACING)
   add_definitions(-DFEATURE_PERFTRACING)
+endif()
+
+if(FEATURE_EVENT_TRACE)
+  add_definitions(-DFEATURE_EVENT_TRACE)
 endif()
 
 add_definitions(-DFEATURE_BASICFREEZE)
@@ -273,7 +277,6 @@ add_definitions(-D_LIB)
 
 if(WIN32)
   add_definitions(-DFEATURE_ETW)
-  add_definitions(-DFEATURE_EVENT_TRACE)
   add_definitions(-DFEATURE_SUSPEND_REDIRECTION)
   add_definitions(-DFEATURE_SPECIAL_USER_MODE_APC)
 else()

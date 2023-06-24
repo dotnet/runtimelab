@@ -16,15 +16,25 @@ public:
 #define TARGET_UNIX_POSSIBLY_SUPPORTED
     static const bool IsWindows = false;
     static const bool IsUnix = true;
+#if defined(TARGET_UNIX_ANYOS)
+#define TARGET_OS_RUNTIMEDETERMINED
+#define TARGET_UNIX_OS_RUNTIMEDETERMINED
+    static bool OSSettingConfigured;
+    static bool IsMacOS;
+#else
 #if defined(TARGET_OSX)
     static const bool IsMacOS = true;
 #else
     static const bool IsMacOS = false;
 #endif
+<<<<<<< HEAD
 #elif defined(TARGET_WASM)
     static const bool IsWindows = false;
     static const bool IsUnix = false;
     static const bool IsMacOS = false;
+=======
+#endif
+>>>>>>> origin/runtime-main
 #else
 #define TARGET_WINDOWS_POSSIBLY_SUPPORTED
 #define TARGET_UNIX_POSSIBLY_SUPPORTED
