@@ -234,7 +234,7 @@ void Llvm::initializeLocals()
                     continue;
                 }
 
-                bool hasImplicitDef = varDsc->GetPerSsaData(SsaConfig::FIRST_SSA_NUM)->GetAssignment() == nullptr;
+                bool hasImplicitDef = varDsc->GetPerSsaData(SsaConfig::FIRST_SSA_NUM)->GetDefNode() == nullptr;
                 if (!hasImplicitDef)
                 {
                     // Nothing else needs to be done for this local.

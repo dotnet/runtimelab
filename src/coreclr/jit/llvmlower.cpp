@@ -248,7 +248,7 @@ void Llvm::lowerSpillTempsLiveAcrossSafePoints()
         JITDUMP("Spilling as V%02u:\n", spillLclNum);
         DISPNODE(defNode);
 
-        GenTree* store = _compiler->gtNewTempAssign(spillLclNum, defNode);
+        GenTree* store = _compiler->gtNewTempStore(spillLclNum, defNode);
         blockRange.InsertAfter(defNode, store);
 
         *pSpillLclNum = spillLclNum;
