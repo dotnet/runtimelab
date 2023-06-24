@@ -27,14 +27,11 @@ public:
 #else
     static const bool IsMacOS = false;
 #endif
-<<<<<<< HEAD
+#endif
 #elif defined(TARGET_WASM)
     static const bool IsWindows = false;
     static const bool IsUnix = false;
     static const bool IsMacOS = false;
-=======
-#endif
->>>>>>> origin/runtime-main
 #else
 #define TARGET_WINDOWS_POSSIBLY_SUPPORTED
 #define TARGET_UNIX_POSSIBLY_SUPPORTED

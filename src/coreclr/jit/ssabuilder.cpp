@@ -1356,17 +1356,9 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
 //
 void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
 {
-<<<<<<< HEAD
-
-    for (BasicBlock* succ : block->GetAllSuccs(m_pCompiler))
-    {
+    block->VisitAllSuccs(m_pCompiler, [this, block](BasicBlock* succ) {
 #if defined(TARGET_WASM)
         if (block->IsLIR())
-=======
-    block->VisitAllSuccs(m_pCompiler, [this, block](BasicBlock* succ) {
-        // Walk the statements for phi nodes.
-        for (Statement* const stmt : succ->Statements())
->>>>>>> origin/runtime-main
         {
             for (GenTree* tree : LIR::AsRange(succ))
             {
@@ -1393,23 +1385,28 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
             // Walk the statements for phi nodes.
             for (Statement* const stmt : succ->Statements())
             {
-                // A prefix of the statements of the block are phi definition nodes. If we complete processing
-                // that prefix, exit.
-                if (!stmt->IsPhiDefnStmt())
+                // Walk the statements for phi nodes.
+                for (Statement* const stmt : succ->Statements())
                 {
-                    break;
+                    // A prefix of the statements of the block are phi definition nodes. If we complete processing
+                    // that prefix, exit.
+                    if (!stmt->IsPhiDefnStmt())
+                    {
+                        break;
+                    }
+
+                    GenTreeLclVar* store  = stmt->GetRootNode()->AsLclVar();
+                    GenTreePhi*    phi    = store->Data()->AsPhi();
+                    unsigned       lclNum = store->GetLclNum();
+                    unsigned       ssaNum = m_renameStack.Top(lclNum);
+
+                    AddPhiArg(succ, stmt, phi, lclNum, ssaNum, block);
                 }
-
-                GenTreeLclVar* store  = stmt->GetRootNode()->AsLclVar();
-                GenTreePhi*    phi    = store->Data()->AsPhi();
-                unsigned       lclNum = store->GetLclNum();
-                unsigned       ssaNum = m_renameStack.Top(lclNum);
-
-                AddPhiArg(succ, stmt, phi, lclNum, ssaNum, block);
             }
 #if defined(TARGET_WASM)
         }
 #endif
+
         // Now handle memory.
         for (MemoryKind memoryKind : allMemoryKinds())
         {

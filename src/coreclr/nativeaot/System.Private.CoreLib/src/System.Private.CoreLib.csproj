@@ -29,19 +29,10 @@
   </PropertyGroup>
 
   <PropertyGroup>
-<<<<<<< HEAD
-    <FeaturePortableThreadPool Condition="'$(FeaturePortableThreadPool)' == ''">false</FeaturePortableThreadPool>
-    <FeaturePortableThreadPool Condition="'$(TargetsUnix)' == 'true' or '$(TargetsBrowser)'=='true'">true</FeaturePortableThreadPool>
-  </PropertyGroup>
-  <PropertyGroup>
-    <FeaturePortableTimer Condition="'$(FeaturePortableTimer)' == ''">false</FeaturePortableTimer>
-    <FeaturePortableTimer Condition="'$(TargetsUnix)' == 'true' or '$(TargetsBrowser)'=='true'">true</FeaturePortableTimer>
-=======
     <FeaturePortableThreadPool>true</FeaturePortableThreadPool>
   </PropertyGroup>
   <PropertyGroup>
     <FeaturePortableTimer>true</FeaturePortableTimer>
->>>>>>> origin/runtime-main
   </PropertyGroup>
   <PropertyGroup>
     <FeatureHardwareIntrinsics>true</FeatureHardwareIntrinsics>

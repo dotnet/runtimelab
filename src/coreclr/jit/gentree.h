@@ -5575,17 +5575,6 @@ struct GenTreeCall final : public GenTree
         return mayUseDispatcher && shouldUseDispatcher ? CFGCallKind::Dispatch : CFGCallKind::ValidateAndCall;
     }
 
-<<<<<<< HEAD
-    GenTreeCallFlags     gtCallMoreFlags;  // in addition to gtFlags
-    gtCallTypes          gtCallType : 3;   // value from the gtCallTypes enumeration
-    var_types            gtReturnType : 5; // exact return type
-    CORINFO_CLASS_HANDLE gtRetClsHnd;      // The return type handle of the call if it is a struct; always available
-#if defined(TARGET_WASM)
-    CorInfoType gtCorInfoType = CORINFO_TYPE_UNDEF; // the precise return type used to construct the signature
-#endif                                              // defined(TARGET_WASM)
-    union
-    {
-=======
     GenTreeCallFlags gtCallMoreFlags;  // in addition to gtFlags
     gtCallTypes      gtCallType : 3;   // value from the gtCallTypes enumeration
     var_types        gtReturnType : 5; // exact return type
@@ -5593,8 +5582,10 @@ struct GenTreeCall final : public GenTree
     uint8_t gtInlineInfoCount; // number of inline candidates for the given call
 
     CORINFO_CLASS_HANDLE gtRetClsHnd; // The return type handle of the call if it is a struct; always available
+#if defined(TARGET_WASM)
+    CorInfoType gtCorInfoType = CORINFO_TYPE_UNDEF; // the precise return type used to construct the signature
+#endif                                              // defined(TARGET_WASM)
     union {
->>>>>>> origin/runtime-main
         void*                gtStubCallStubAddr; // GTF_CALL_VIRT_STUB - these are never inlined
         CORINFO_CLASS_HANDLE gtInitClsHnd;       // Used by static init helpers, represents a class they init
     };
