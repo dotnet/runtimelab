@@ -115,7 +115,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) != 'Size' and '$(_targetOS)' == 'wasi'">-O2</WasmOptimizationSetting>
     <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) == 'Size'">-Oz</WasmOptimizationSetting>
 
-    <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-wasi-threads</IlcLlvmTarget>
+    <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-wasi</IlcLlvmTarget>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(IlcCompileDependsOn)'=='' and '$(NativeCompilationDuringPublish)' != 'false'">
@@ -374,7 +374,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     </PropertyGroup>
 
    <PropertyGroup Condition="'$(_targetOS)' == 'wasi'">
-      <CompileWasmArgs>-fvisibility=default -mllvm -combiner-global-alias-analysis=false -mllvm -disable-lsr --sysroot=&quot;$(WASI_SDK_PATH)/share/wasi-sysroot&quot; -pthread -target wasm32-wasi-threads -c</CompileWasmArgs>
+      <CompileWasmArgs>-fvisibility=default -mllvm -combiner-global-alias-analysis=false -mllvm -disable-lsr --sysroot=&quot;$(WASI_SDK_PATH)/share/wasi-sysroot&quot; -target wasm32-wasi -c</CompileWasmArgs>
       <CompileWasmArgs>$(CompileWasmArgs) $(WasmOptimizationSetting)</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileWasmArgs) -g3</CompileWasmArgs>
 
@@ -504,7 +504,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ItemGroup Condition  ="'$(_targetOS)' == 'wasi'" >
       <!-- Wasi has lots of undefined symbols currently, mostly globalization -->
-      <CustomLinkerArg Include="-Wl,--unresolved-symbols=ignore-all -lstdc++ -Wl,--error-limit=0 -lpthread -pthread" />
+      <CustomLinkerArg Include="-Wl,--unresolved-symbols=ignore-all -lstdc++ -Wl,--error-limit=0" />
       <CustomLinkerArg Include="--sysroot=&quot;$(WASI_SDK_PATH.Replace(&quot;\&quot;, &quot;/&quot;))/share/wasi-sysroot&quot;" />
       <CustomLinkerArg Include="-Wl,--max-memory=2147483648" />
       <CustomLinkerArg Include="-lwasi-emulated-process-clocks -lwasi-emulated-signal -lwasi-emulated-mman -lwasi-emulated-getpid" />
