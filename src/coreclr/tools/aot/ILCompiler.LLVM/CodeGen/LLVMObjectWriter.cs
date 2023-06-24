@@ -190,7 +190,7 @@ namespace ILCompiler.DependencyAnalysis
             Debug.Assert(_nodeFactory.Target.PointerSize == 4);
             int countOfPointerSizedElements = _currentObjectData.Count / _nodeFactory.Target.PointerSize;
 
-            ISymbolNode symNode = node as ISymbolNode ?? ((IHasStartSymbol)node).StartSymbol;
+            ISymbolNode symNode =(ISymbolNode)node;
             string symbolName = symNode.GetMangledName(_nodeFactory.NameMangler);
 
             // All references to this symbol are through "ordinarily named" aliases. Thus, we need to suffix the real definition.

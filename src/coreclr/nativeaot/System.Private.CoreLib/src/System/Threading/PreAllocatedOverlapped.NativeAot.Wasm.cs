@@ -8,6 +8,8 @@ namespace System.Threading
     /// </summary>
     public sealed class PreAllocatedOverlapped : System.IDisposable
     {
+        internal ThreadPoolBoundHandleOverlapped? _overlappedPortableCore;
+
         [CLSCompliantAttribute(false)]
         public PreAllocatedOverlapped(IOCompletionCallback callback, object? state, object? pinData) { }
         [CLSCompliantAttribute(false)]
