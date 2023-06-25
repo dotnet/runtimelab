@@ -43,22 +43,22 @@ void PalGetMaximumStackBounds_SingleThreadedWasm(void** ppStackLowOut, void** pp
 #ifdef TARGET_WASI
 // nop stubs
 
-int pthread_mutex_init(pthread_mutex_t * m, const pthread_mutexattr_t *__restrict a)
+int pthread_mutex_init(pthread_mutex_t *, const pthread_mutexattr_t *)
 {
     return 0;
 }
 
-int pthread_mutexattr_init(pthread_mutexattr_t *a)
+int pthread_mutexattr_init(pthread_mutexattr_t *)
 {
     return 0;
 }
 
-int pthread_mutexattr_settype(pthread_mutexattr_t *a, int type)
+int pthread_mutexattr_settype(pthread_mutexattr_t *, int)
 {
     return 0;
 }
 
-int pthread_mutex_destroy(pthread_mutex_t *mutex)
+int pthread_mutex_destroy(pthread_mutex_t *)
 {
     return 0;
 }
@@ -68,12 +68,12 @@ int pthread_mutexattr_destroy(pthread_mutexattr_t *)
     return 0;
 }
 
-int pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr)
+int pthread_cond_init(pthread_cond_t *, const pthread_condattr_t *)
 {
     return 0;
 }
 
-int pthread_condattr_init(pthread_condattr_t *attr)
+int pthread_condattr_init(pthread_condattr_t *)
 {
     return 0;
 }
@@ -123,8 +123,7 @@ int pthread_attr_setdetachstate(pthread_attr_t *, int)
     return 0;
 }
 
-#include <sys/mman.h>
-int mprotect(void* addr, size_t len, int prot)
+int mprotect(void *, size_t, int)
 {
     return 0;
 }

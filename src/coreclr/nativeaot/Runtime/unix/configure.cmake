@@ -26,7 +26,7 @@ elseif (HAVE_PTHREAD_IN_LIBC)
   set(PTHREAD_LIBRARY c)
 endif()
 
-if (NOT(CMAKE_SYSTEM_NAME STREQUAL WASI))
+if (NOT(CLR_CMAKE_TARGET_WASI))
   check_library_exists(${PTHREAD_LIBRARY} pthread_attr_get_np "" HAVE_PTHREAD_ATTR_GET_NP)
   check_library_exists(${PTHREAD_LIBRARY} pthread_getattr_np "" HAVE_PTHREAD_GETATTR_NP)
   check_library_exists(${PTHREAD_LIBRARY} pthread_condattr_setclock "" HAVE_PTHREAD_CONDATTR_SETCLOCK)
