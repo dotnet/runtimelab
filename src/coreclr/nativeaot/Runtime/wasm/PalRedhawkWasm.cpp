@@ -127,9 +127,55 @@ int mprotect(void *, size_t, int)
     return 0;
 }
 
-extern "C" int __cxa_thread_atexit(void (*func)(), void*, void*)
-{
-    return 0;
-}
+namespace __cxxabiv1 {
+
+    namespace {
+
+        using Dtor = void(*)(void*);
+
+        struct DtorList {
+            Dtor dtor;
+            void* obj;
+            DtorList* next;
+        };
+
+        // The linked list of thread-local destructors to run
+        DtorList* dtors = nullptr;
+
+        void run_dtors(void*) {
+            while (auto head = dtors) {
+                dtors = head->next;
+                head->dtor(head->obj);
+                ::free(head);
+            }
+        }
+
+        struct DtorsManager {
+            DtorsManager() {
+            }
+
+            ~DtorsManager() {
+                run_dtors(nullptr);
+            }
+        };
+    } // namespace
+
+    extern "C" int __cxa_thread_atexit(Dtor dtor, void* obj, void*)
+    {
+        static DtorsManager manager;
+
+        auto head = static_cast<DtorList*>(::malloc(sizeof(DtorList)));
+        if (!head) {
+            return -1;
+        }
+
+        head->dtor = dtor;
+        head->obj = obj;
+        head->next = dtors;
+        dtors = head;
+
+        return 0;
+    }
+} // namespace
 #endif // TARGET_WASI
 #endif // !FEATURE_WASM_THREADS
