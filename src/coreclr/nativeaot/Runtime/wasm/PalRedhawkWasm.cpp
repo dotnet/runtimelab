@@ -132,7 +132,5 @@ extern "C" int __cxa_thread_atexit(void (*func)(), void*, void*)
 {
     return 0;
 }
-
 #endif // TARGET_WASI
-
 #endif // !FEATURE_WASM_THREADS
