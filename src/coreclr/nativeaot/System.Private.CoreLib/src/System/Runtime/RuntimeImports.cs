@@ -1019,7 +1019,7 @@ namespace System.Runtime
 #if TARGET_WASM
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "RhpRawCalli_OI")]
-        internal static extern object RhpRawCalli_OI(IntPtr pfn, IntPtr arg);
+        public static extern object RhpRawCalli_OI(IntPtr pfn, IntPtr arg);
 #endif
 
         internal static RhCorElementTypeInfo GetRhCorElementTypeInfo(CorElementType elementType)

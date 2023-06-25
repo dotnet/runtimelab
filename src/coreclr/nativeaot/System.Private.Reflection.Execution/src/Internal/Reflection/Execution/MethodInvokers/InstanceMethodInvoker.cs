@@ -112,7 +112,14 @@ namespace Internal.Reflection.Execution.MethodInvokers
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static T Call<T>(delegate*<IntPtr, T> pfn, IntPtr arg)
+#if TARGET_WASM
+            {
+                object obj = System.Runtime.RuntimeImports.RhpRawCalli_OI((IntPtr)pfn, arg);
+                return Unsafe.As<object, T>(ref obj);
+            }
+#else
             => pfn(arg);
+#endif
         }
     }
 }
