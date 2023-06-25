@@ -287,9 +287,11 @@ namespace ILCompiler.DependencyAnalysis
 
 #if DEBUG
             _module.PrintToFile(Path.ChangeExtension(_objectFilePath, ".txt"));
-#endif
             _module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
+
+            _module.PrintToFile(Path.ChangeExtension(_objectFilePath, "external.txt"));
             _moduleWithExternalFunctions.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
+#endif
 
             string dataLlvmObjectPath = _objectFilePath;
             _module.WriteBitcodeToFile(dataLlvmObjectPath);
@@ -706,7 +708,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private void GetCodeForExternMethodAccessor(ExternMethodAccessorNode node)
         {
-            // TODO: use the Utf8 string directly here.
+            // TODO-LLVM: use the Utf8 string directly here.
             string externFuncName = node.ExternMethodName.ToString();
             LLVMTypeRef externFuncType;
 
