@@ -1012,6 +1012,9 @@
         <ExcludeList Include="$(XunitTestBinBase)/JIT/Regression/JitBlue/Runtime_66624/Runtime_66624/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/155: Collectible assemblies</Issue>
         </ExcludeList>
+        <ExcludeList Include="$(XunitTestBinBase)/nativeaot/SmokeTests/HardwareIntrinsics/X64Avx512.csproj">
+            <Issue>https://github.com/dotnet/runtime/issues/87931: HardwareIntrinsics\X64Avx512 test fails on machines with no avx512 (on Windows only)</Issue>
+        </ExcludeList>
         <ExcludeList Include="$(XunitTestBinBase)/Loader/ContextualReflection/ContextualReflection/*">
             <Issue>https://github.com/dotnet/runtimelab/issues/165</Issue>
         </ExcludeList>
