@@ -41,8 +41,7 @@ void PalGetMaximumStackBounds_SingleThreadedWasm(void** ppStackLowOut, void** pp
 }
 
 #ifdef TARGET_WASI
-// nop stubs
-
+// No-op stubs that assume a single-threaded environment.
 int pthread_mutex_init(pthread_mutex_t * m, const pthread_mutexattr_t *__restrict a)
 {
     return 0;
