@@ -259,7 +259,7 @@ namespace ILCompiler.DependencyAnalysis
             if (offsetFromBaseSymbol != 0)
             {
                 LLVMValueRef offsetValue = CreateConst(LLVMTypeRef.Int32, offsetFromBaseSymbol);
-                symbolAddress = LLVMValueRef.CreateConstGEP2(LLVMTypeRef.Int8, symbolAddress, new[] { offsetValue });
+                symbolAddress = LLVMValueRef.CreateConstGEP2(LLVMTypeRef.Int8, symbolAddress, stackalloc[] { offsetValue });
             }
 
             LLVMValueRef symbolDef = _module.GetNamedAlias(symbolIdentifier);
@@ -344,12 +344,13 @@ namespace ILCompiler.DependencyAnalysis
             LLVMValueRef getShadowStackFunc = GetOrCreateLLVMFunction("RhpGetShadowStackTop"u8, getShadowStackFuncSig);
             LLVMValueRef shadowStack = builder.BuildCall2(getShadowStackFuncSig, getShadowStackFunc, Array.Empty<LLVMValueRef>());
 
-            LLVMValueRef[] args = new LLVMValueRef[managedFuncParamTypes.Length];
+            int argsCount = managedFuncParamTypes.Length;
+            Span<LLVMValueRef> args = argsCount > 100 ? new LLVMValueRef[argsCount] : stackalloc LLVMValueRef[argsCount];
             args[0] = shadowStack;
 
-            for (uint i = 0; i < nativeFuncParamTypes.Length; i++)
+            for (int i = 0; i < nativeFuncParamTypes.Length; i++)
             {
-                args[i + 1] = nativeFunc.GetParam(i);
+                args[i + 1] = nativeFunc.GetParam((uint)i);
             }
 
             LLVMValueRef returnValue = CreateCall(builder, managedFunc, args, "");
@@ -373,7 +374,8 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             using Utf8Name helperFuncName = GetMangledUtf8Name(node);
-            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(_ptrType, new[] { _ptrType /* shadow stack */, _ptrType /* generic context */ });
+            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(
+                _ptrType, stackalloc[] { _ptrType /* shadow stack */, _ptrType /* generic context */ }, IsVarArg: false);
             LLVMValueRef helperFunc = GetOrCreateLLVMFunction(helperFuncName, helperFuncType);
 
             LLVMBuilderRef builder = _module.Context.CreateBuilder();
@@ -464,7 +466,8 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             using Utf8Name helperFuncName = GetMangledUtf8Name(node);
-            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(_ptrType, new[] { _ptrType /* shadow stack or "this" */ });
+            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(
+                _ptrType, stackalloc[] { _ptrType /* shadow stack or "this" */ }, IsVarArg: false);
             LLVMValueRef helperFunc = GetOrCreateLLVMFunction(helperFuncName, helperFuncType);
 
             using LLVMBuilderRef builder = _module.Context.CreateBuilder();
@@ -523,12 +526,13 @@ namespace ILCompiler.DependencyAnalysis
                         if (targetMethod.OwningType.IsInterface)
                         {
                             // TODO-LLVM: would be nice to use pointers instead of IntPtr in "RhpResolveInterfaceMethod".
-                            LLVMTypeRef resolveFuncType = LLVMTypeRef.CreateFunction(_intPtrType, new[] { _ptrType, _intPtrType });
+                            LLVMTypeRef resolveFuncType = LLVMTypeRef.CreateFunction(
+                                _intPtrType, stackalloc[] { _ptrType, _intPtrType }, IsVarArg: false);
                             LLVMValueRef resolveFunc = GetOrCreateLLVMFunction("RhpResolveInterfaceMethod"u8, resolveFuncType);
 
                             LLVMValueRef cell = GetSymbolReferenceValue(factory.InterfaceDispatchCell(targetMethod));
                             LLVMValueRef cellArg = builder.BuildPtrToInt(cell, _intPtrType, "cellArg");
-                            result = builder.BuildCall2(resolveFuncType, resolveFunc, new[] { helperFunc.GetParam(0), cellArg });
+                            result = builder.BuildCall2(resolveFuncType, resolveFunc, stackalloc[] { helperFunc.GetParam(0), cellArg }, "");
                             result = builder.BuildIntToPtr(result, _ptrType, "pInterfaceFunc");
                         }
                         else
@@ -560,14 +564,15 @@ namespace ILCompiler.DependencyAnalysis
             using LLVMBuilderRef builder = _module.Context.CreateBuilder();
             builder.PositionAtEnd(helperFunc.AppendBasicBlock("VirtualCall"));
 
-            LLVMValueRef[] args = new LLVMValueRef[helperFunc.ParamsCount];
-            for (uint i = 0; i < args.Length; i++)
+            int argsCount = (int)helperFunc.ParamsCount;
+            Span<LLVMValueRef> args = argsCount > 100 ? new LLVMValueRef[argsCount] : stackalloc LLVMValueRef[argsCount];
+            for (int i = 0; i < args.Length; i++)
             {
-                args[i] = helperFunc.GetParam(i);
+                args[i] = helperFunc.GetParam((uint)i);
             }
 
             LLVMValueRef pTargetMethod = OutputCodeForVTableLookup(builder, helperFunc.GetParam(1), targetMethod);
-            LLVMValueRef callTarget = builder.BuildCall2(funcType, pTargetMethod, args);
+            LLVMValueRef callTarget = builder.BuildCall2(funcType, pTargetMethod, args, "");
             if (funcType.ReturnType != LLVMTypeRef.Void)
             {
                 builder.BuildRet(callTarget);
@@ -584,20 +589,20 @@ namespace ILCompiler.DependencyAnalysis
             ReadyToRunGenericHelperNode genericNode = node as ReadyToRunGenericHelperNode;
 
             DelegateCreationInfo delegateCreationInfo;
-            LLVMTypeRef[] helperFuncParams;
+            scoped Span<LLVMTypeRef> helperFuncParams;
             if (genericNode != null)
             {
                 delegateCreationInfo = (DelegateCreationInfo)genericNode.Target;
-                helperFuncParams = new[] { _ptrType, _ptrType, _ptrType, _ptrType };
+                helperFuncParams = stackalloc[] { _ptrType, _ptrType, _ptrType, _ptrType };
             }
             else
             {
                 delegateCreationInfo = (DelegateCreationInfo)((ReadyToRunHelperNode)node).Target;
-                helperFuncParams = new[] { _ptrType, _ptrType, _ptrType };
+                helperFuncParams = stackalloc[] { _ptrType, _ptrType, _ptrType };
             }
 
             using Utf8Name helperFuncName = GetMangledUtf8Name(node);
-            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, helperFuncParams);
+            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, helperFuncParams, IsVarArg: false);
             LLVMValueRef helperFunc = GetOrCreateLLVMFunction(helperFuncName, helperFuncType);
 
             // Incoming parameters are: (SS, this, targetObj, [GenericContext]).
@@ -632,7 +637,7 @@ namespace ILCompiler.DependencyAnalysis
                 targetValue = builder.BuildPointerCast(targetValue, targetValueType, "pTarget");
             }
 
-            LLVMValueRef[] initializerArgs = new LLVMValueRef[initializerFuncParamTypes.Length];
+            Span<LLVMValueRef> initializerArgs = stackalloc LLVMValueRef[initializerFuncParamTypes.Length];
             initializerArgs[0] = helperFunc.GetParam(0);
             initializerArgs[1] = helperFunc.GetParam(1);
             initializerArgs[2] = targetObj;
@@ -656,7 +661,7 @@ namespace ILCompiler.DependencyAnalysis
             LLVMBasicBlockRef block = tentativeStub.AppendBasicBlock("TentativeStub");
             builder.PositionAtEnd(block);
 
-            CreateCall(builder, helperFunc, new[] { tentativeStub.GetParam(0) });
+            CreateCall(builder, helperFunc, stackalloc[] { tentativeStub.GetParam(0) });
             builder.BuildUnreachable();
         }
 
@@ -669,15 +674,16 @@ namespace ILCompiler.DependencyAnalysis
             //
             LLVMValueRef unboxingLlvmFunc = GetOrCreateLLVMFunction(node);
             LLVMValueRef unboxedLlvmFunc = GetOrCreateLLVMFunction(node.GetUnderlyingMethodEntrypoint(factory));
+            Debug.Assert(unboxingLlvmFunc.ParamsCount == unboxedLlvmFunc.ParamsCount);
 
             using LLVMBuilderRef builder = _module.Context.CreateBuilder();
             builder.PositionAtEnd(unboxingLlvmFunc.AppendBasicBlock("SimpleUnboxingThunk"));
 
-            Debug.Assert(unboxingLlvmFunc.ParamsCount == unboxedLlvmFunc.ParamsCount);
-            LLVMValueRef[] args = new LLVMValueRef[unboxingLlvmFunc.ParamsCount];
-            for (uint i = 0; i < args.Length; i++)
+            int argsCount = (int)unboxingLlvmFunc.ParamsCount;
+            Span<LLVMValueRef> args = argsCount > 100 ? new LLVMValueRef[argsCount] : stackalloc LLVMValueRef[argsCount];
+            for (int i = 0; i < args.Length; i++)
             {
-                LLVMValueRef arg = unboxingLlvmFunc.GetParam(i);
+                LLVMValueRef arg = unboxingLlvmFunc.GetParam((uint)i);
                 if (i == 1)
                 {
                     // Adjust "this" by the method table offset.
@@ -813,7 +819,7 @@ namespace ILCompiler.DependencyAnalysis
 
                 LLVMValueRef slotNotAvailableFunc = GetOrCreateLLVMFunction(ReadyToRunGenericHelperNode.GetBadSlotHelper(factory));
                 builder.PositionAtEnd(slotNotAvailableBlock);
-                CreateCall(builder, slotNotAvailableFunc, new[] { currentFunc.GetParam(0) });
+                CreateCall(builder, slotNotAvailableFunc, stackalloc[] { currentFunc.GetParam(0) });
                 builder.BuildUnreachable();
 
                 builder.PositionAtEnd(slotAvailableBlock);
@@ -864,7 +870,7 @@ namespace ILCompiler.DependencyAnalysis
             IMethodNode helperFuncNode = (IMethodNode)_nodeFactory.HelperEntrypoint(HelperEntrypoint.EnsureClassConstructorRunAndReturnNonGCStaticBase);
             LLVMValueRef helperFunc = GetOrCreateLLVMFunction(helperFuncNode);
             LLVMValueRef nonGcStaticBaseValueArg = builder.BuildPtrToInt(nonGcStaticBaseValue, _intPtrType);
-            LLVMValueRef[] helperCallArgs = new[] { func.GetParam(0), pContext, nonGcStaticBaseValueArg };
+            Span<LLVMValueRef> helperCallArgs = stackalloc[] { func.GetParam(0), pContext, nonGcStaticBaseValueArg };
 
             CreateCall(builder, helperFunc, helperCallArgs);
             builder.BuildBr(returnBlock);
@@ -886,7 +892,7 @@ namespace ILCompiler.DependencyAnalysis
 
             IMethodNode getBaseHelperNode = (IMethodNode)_nodeFactory.HelperEntrypoint(HelperEntrypoint.GetThreadStaticBaseForType);
             LLVMValueRef getBaseHelperFunc = GetOrCreateLLVMFunction(getBaseHelperNode);
-            LLVMValueRef[] getBaseHelperArgs = new[] { shadowStack, pModuleData, typeTlsIndex };
+            Span<LLVMValueRef> getBaseHelperArgs = stackalloc[] { shadowStack, pModuleData, typeTlsIndex };
             LLVMValueRef getBaseHelperCall = CreateCall(builder, getBaseHelperFunc, getBaseHelperArgs);
 
             return getBaseHelperCall;
@@ -939,7 +945,7 @@ namespace ILCompiler.DependencyAnalysis
             if (symbolRefOffset != 0)
             {
                 LLVMValueRef offsetValue = CreateConst(LLVMTypeRef.Int32, symbolRefOffset);
-                symbolRefValue = LLVMValueRef.CreateConstGEP2(LLVMTypeRef.Int8, symbolRefValue, new[] { offsetValue });
+                symbolRefValue = LLVMValueRef.CreateConstGEP2(LLVMTypeRef.Int8, symbolRefValue, stackalloc[] { offsetValue });
             }
 
             return symbolRefValue;
@@ -999,7 +1005,7 @@ namespace ILCompiler.DependencyAnalysis
             return new(builder, offset);
         }
 
-        private static LLVMValueRef CreateCall(LLVMBuilderRef builder, LLVMValueRef func, LLVMValueRef[] args, string name = "")
+        private static LLVMValueRef CreateCall(LLVMBuilderRef builder, LLVMValueRef func, ReadOnlySpan<LLVMValueRef> args, string name = "")
         {
             Debug.Assert(func.IsAFunction.Handle != IntPtr.Zero);
             return builder.BuildCall2(func.GetValueType(), func, args, name);
@@ -1010,7 +1016,7 @@ namespace ILCompiler.DependencyAnalysis
             if (offset != 0)
             {
                 LLVMValueRef offsetValue = CreateConst(LLVMTypeRef.Int32, offset);
-                address = builder.BuildGEP2(LLVMTypeRef.Int8, address, new[] { offsetValue }, name);
+                address = builder.BuildGEP2(LLVMTypeRef.Int8, address, stackalloc[] { offsetValue }, name);
             }
 
             return address;
