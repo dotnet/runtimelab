@@ -52,7 +52,7 @@ namespace System.Runtime
         ObjectiveCMarshalGetUnhandledExceptionPropagationHandler = 13,
     }
 
-    internal static class InternalCalls
+    internal static partial class InternalCalls
     {
         //
         // internalcalls for System.GC.
@@ -117,6 +117,7 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern IntPtr RhHandleSet(IntPtr handle, object value);
 
+#if !TARGET_WASM
         //
         // internal calls for allocation
         //
@@ -149,6 +150,7 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe object RhpNewFastMisalign(MethodTable * pEEType);
 #endif // FEATURE_64BIT_ALIGNMENT
+#endif // !TARGET_WASM
 
         [RuntimeImport(Redhawk.BaseName, "RhpAssignRef")]
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -260,22 +262,6 @@ namespace System.Runtime
         [RuntimeImport(Redhawk.BaseName, "RhpCopyContextFromExInfo")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpCopyContextFromExInfo(void* pOSContext, int cbOSContext, EH.PAL_LIMITED_CONTEXT* pPalContext);
-
-#if TARGET_WASM
-#pragma warning disable 8500
-        [RuntimeImport(Redhawk.BaseName, "RhpThrowNativeException")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe void RhpThrowNativeException(void* pDispatcherShadowFrame, object* pManagedException);
-#pragma warning restore 8500
-
-        [RuntimeImport(Redhawk.BaseName, "RhpReleaseNativeException")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe void RhpReleaseNativeException(void* pDispatchData);
-
-        [RuntimeImport(Redhawk.BaseName, "RhpCallCatchOrFilterFunclet")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe int RhpCallCatchOrFilterFunclet(void* pShadowFrame, void* pOriginalShadowFrame, object exception, void* pFunclet);
-#endif
 
         [RuntimeImport(Redhawk.BaseName, "RhpGetNumThunkBlocksPerMapping")]
         [MethodImpl(MethodImplOptions.InternalCall)]
