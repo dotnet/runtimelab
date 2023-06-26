@@ -928,31 +928,26 @@ void Llvm::lowerCall(GenTreeCall* callNode)
     // Doing this early simplifies code below.
     callNode->gtArgs.MoveLateToEarly();
 
-    unsigned thisArgLclNum = BAD_VAR_NUM;
-    GenTree* cellArgNode = nullptr;
+    if (callNode->NeedsNullCheck() || callNode->IsVirtualStub())
+    {
+        // Virtual stub calls: our stubs don't handle null "this", as we presume doing
+        // the check here has better chances for its elimination as redundant (by LLVM).
+        insertNullCheckForCall(callNode);
+    }
+
     if (callNode->IsVirtualStub())
     {
-        lowerVirtualStubCallBeforeArgs(callNode, &thisArgLclNum, &cellArgNode);
+        lowerVirtualStubCall(callNode);
     }
     else if (callNode->IsDelegateInvoke())
     {
         lowerDelegateInvoke(callNode);
     }
 
-    if (callNode->NeedsNullCheck())
-    {
-        insertNullCheckForCall(callNode);
-    }
-
     lowerCallReturn(callNode);
-
     lowerCallToShadowStack(callNode);
 
-    if (callNode->IsVirtualStub())
-    {
-        lowerVirtualStubCallAfterArgs(callNode, thisArgLclNum, cellArgNode);
-    }
-    else if (callNode->IsUnmanaged())
+    if (callNode->IsUnmanaged())
     {
         lowerUnmanagedCall(callNode);
     }
@@ -1088,30 +1083,9 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
     }
 }
 
-void Llvm::lowerVirtualStubCallBeforeArgs(GenTreeCall* callNode, unsigned* pThisLclNum, GenTree** pCellArgNode)
+void Llvm::lowerVirtualStubCall(GenTreeCall* callNode)
 {
-    assert(callNode->IsVirtualStub());
-
-    // Make "this" available for reuse. Note we pass the raw pointer value to the stub, this is ok as the stub runs in
-    // cooperative mode and makes sure to spill the value to the shadow stack in case it needs to call managed code.
-    LIR::Use thisArgUse(CurrentRange(), &callNode->gtArgs.GetThisArg()->EarlyNodeRef(), callNode);
-    unsigned thisArgLclNum = representAsLclVar(thisArgUse);
-
-    // Flag the call as needing a null check. Our stubs don't handle null "this", as we presume doing the check here is
-    // better as it will likely be eliminated as redundant (by LLVM).
-    callNode->gtFlags |= GTF_CALL_NULLCHECK;
-
-    // Remove the cell arg from the arg list before lowering args (it will be reused for the stub later).
-    CallArg* cellArg = callNode->gtArgs.FindWellKnownArg(WellKnownArg::VirtualStubCell);
-    callNode->gtArgs.Remove(cellArg);
-
-    *pThisLclNum = thisArgLclNum;
-    *pCellArgNode = cellArg->GetNode();
-}
-
-void Llvm::lowerVirtualStubCallAfterArgs(GenTreeCall* callNode, unsigned thisArgLclNum, GenTree* cellArgNode)
-{
-    assert(callNode->IsVirtualStub() && (callNode->gtControlExpr == nullptr));
+    assert(callNode->IsVirtualStub() && (callNode->gtControlExpr == nullptr) && !callNode->NeedsNullCheck());
     //
     // We transform:
     //  Call(SS, pCell, @this, args...)
@@ -1119,15 +1093,19 @@ void Llvm::lowerVirtualStubCallAfterArgs(GenTreeCall* callNode, unsigned thisArg
     //  delegate* pTarget = ResolveTarget(SS, @this, pCell)
     //  pTarget(SS, @this, args...)
     //
-    // Note that call is rather special, inserted **after** the arguments for the main call have been set. This
-    // is done to not create a new safe point across which GC arguments to the main call would be live; the stub
-    // itself may call into managed code and trigger a GC.
+    // TODO-LLVM-Bug: this is currently creating a GC hole where GC arguments to the main call become live
+    // across the stub.
     //
+    LIR::Use thisArgUse(CurrentRange(), &callNode->gtArgs.GetThisArg()->EarlyNodeRef(), callNode);
+    unsigned thisArgLclNum = representAsLclVar(thisArgUse);
     GenTree* thisForStub = _compiler->gtNewLclvNode(thisArgLclNum, TYP_REF);
     CurrentRange().InsertBefore(callNode, thisForStub);
 
+    CallArg* cellArg = callNode->gtArgs.FindWellKnownArg(WellKnownArg::VirtualStubCell);
+    callNode->gtArgs.Remove(cellArg);
+
     GenTreeCall* stubCall = _compiler->gtNewHelperCallNode(
-        CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET, TYP_I_IMPL, thisForStub, cellArgNode);
+        CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET, TYP_I_IMPL, thisForStub, cellArg->GetNode());
     CurrentRange().InsertBefore(callNode, stubCall);
 
     // This call could be indirect (in case this is shared code and the cell address needed to be resolved dynamically).
@@ -1159,7 +1137,7 @@ void Llvm::lowerVirtualStubCallAfterArgs(GenTreeCall* callNode, unsigned thisArg
 
 void Llvm::insertNullCheckForCall(GenTreeCall* callNode)
 {
-    assert(callNode->NeedsNullCheck() && callNode->gtArgs.HasThisPointer());
+    assert(callNode->gtArgs.HasThisPointer());
 
     CallArg* thisArg = callNode->gtArgs.GetThisArg();
     if (_compiler->fgAddrCouldBeNull(thisArg->GetNode()))
@@ -1173,10 +1151,8 @@ void Llvm::insertNullCheckForCall(GenTreeCall* callNode)
 
         lowerIndir(thisArgNullCheck->AsIndir());
     }
-    else
-    {
-        callNode->gtFlags &= ~GTF_CALL_NULLCHECK;
-    }
+
+    callNode->gtFlags &= ~GTF_CALL_NULLCHECK;
 }
 
 void Llvm::lowerDelegateInvoke(GenTreeCall* callNode)
@@ -1209,9 +1185,8 @@ void Llvm::lowerDelegateInvoke(GenTreeCall* callNode)
     delegateThis = _compiler->gtNewLclvNode(delegateThisLclNum, TYP_REF);
     GenTree* callTargetOffset = _compiler->gtNewIconNode(eeInfo->offsetOfDelegateFirstTarget, TYP_I_IMPL);
     GenTree* callTargetAddr = _compiler->gtNewOperNode(GT_ADD, TYP_BYREF, delegateThis, callTargetOffset);
-    GenTree* callTarget = _compiler->gtNewIndir(TYP_I_IMPL, callTargetAddr);
-    callTarget->SetAllEffectsFlags(GTF_EMPTY);
-    callTarget->gtFlags |= GTF_IND_NONFAULTING | GTF_ORDER_SIDEEFF;
+    GenTree* callTarget = _compiler->gtNewIndir(TYP_I_IMPL, callTargetAddr, GTF_IND_NONFAULTING);
+    callTarget->gtFlags |= GTF_ORDER_SIDEEFF;
 
     CurrentRange().InsertBefore(callNode, delegateThis, callTargetOffset, callTargetAddr, callTarget);
 
