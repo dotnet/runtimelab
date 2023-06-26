@@ -122,11 +122,6 @@ int pthread_attr_setdetachstate(pthread_attr_t *, int)
     return 0;
 }
 
-int mprotect(void *, size_t, int)
-{
-    return 0;
-}
-
 using Dtor = void(*)(void*);
 
 // Due to a bug in the toolchain, we have to provide an implementation of thread-local destruction.
@@ -175,3 +170,10 @@ extern "C" int __cxa_thread_atexit(Dtor dtor, void* obj, void*)
 }
 #endif // TARGET_WASI
 #endif // !FEATURE_WASM_THREADS
+
+#ifdef TARGET_WASI
+int mprotect(void *, size_t, int)
+{
+    return 0;
+}
+#endif // TARGET_WASI
