@@ -127,55 +127,51 @@ int mprotect(void *, size_t, int)
     return 0;
 }
 
-namespace __cxxabiv1 {
+using Dtor = void(*)(void*);
 
-    namespace {
-
-        using Dtor = void(*)(void*);
-
-        struct DtorList {
-            Dtor dtor;
-            void* obj;
-            DtorList* next;
-        };
-
-        // The linked list of thread-local destructors to run
-        DtorList* dtors = nullptr;
-
-        void run_dtors(void*) {
-            while (auto head = dtors) {
-                dtors = head->next;
-                head->dtor(head->obj);
-                ::free(head);
-            }
-        }
-
-        struct DtorsManager {
-            DtorsManager() {
-            }
-
-            ~DtorsManager() {
-                run_dtors(nullptr);
-            }
-        };
-    } // namespace
-
-    extern "C" int __cxa_thread_atexit(Dtor dtor, void* obj, void*)
+// Due to a bug in the toolchain, we have to provide an implementation of thread-local destruction.
+// Since this is the single-threaded case, we simply delegate to the static destruction mechanism.
+// Reference: https://github.com/llvm/llvm-project/blob/main/libcxxabi/src/cxa_thread_atexit.cpp.
+//
+extern "C" int __cxa_thread_atexit(Dtor dtor, void* obj, void*)
+{
+    struct DtorList
     {
-        static DtorsManager manager;
+        Dtor dtor;
+        void* obj;
+        DtorList* next;
+    };
 
-        auto head = static_cast<DtorList*>(::malloc(sizeof(DtorList)));
-        if (!head) {
-            return -1;
+    struct DtorsManager
+    {
+        DtorList* m_dtors = nullptr;
+
+        ~DtorsManager()
+        {
+            while (DtorList* head = m_dtors)
+            {
+                m_dtors = head->next;
+                head->dtor(head->obj);
+                free(head);
+            }
         }
+    };
 
-        head->dtor = dtor;
-        head->obj = obj;
-        head->next = dtors;
-        dtors = head;
+    // The linked list of "thread-local" destructors to run.
+    static DtorsManager s_dtorsManager;
 
-        return 0;
+    DtorList* head = static_cast<DtorList*>(malloc(sizeof(DtorList)));
+    if (head == nullptr)
+    {
+        return -1;
     }
-} // namespace
+
+    head->dtor = dtor;
+    head->obj = obj;
+    head->next = s_dtorsManager.m_dtors;
+    s_dtorsManager.m_dtors = head;
+
+    return 0;
+}
 #endif // TARGET_WASI
 #endif // !FEATURE_WASM_THREADS
