@@ -26,10 +26,58 @@ namespace Internal.IL
             LLVM.AddAttributeAtIndex(function, LLVMAttributeIndex.LLVMAttributeFunctionIndex, attribute);
         }
 
-        internal static LLVMValueRef GetNamedAlias(this LLVMModuleRef module, ReadOnlySpan<char> name)
+        internal static LLVMValueRef GetNamedAlias(this LLVMModuleRef module, ReadOnlySpan<byte> name)
         {
-            using var marshaledName = new MarshaledString(name);
-            return LLVM.GetNamedGlobalAlias(module, marshaledName, (nuint)marshaledName.Length);
+            fixed (byte* pName = name)
+            {
+                Debug.Assert(pName[name.Length] == '\0');
+                return LLVM.GetNamedGlobalAlias(module, (sbyte*)pName, (nuint)name.Length);
+            }
+        }
+
+        internal static LLVMValueRef GetNamedFunction(this LLVMModuleRef module, ReadOnlySpan<byte> name)
+        {
+            fixed (byte* pName = name)
+            {
+                Debug.Assert(pName[name.Length] == '\0');
+                return LLVM.GetNamedFunction(module, (sbyte*)pName);
+            }
+        }
+
+        internal static LLVMValueRef GetNamedGlobal(this LLVMModuleRef module, ReadOnlySpan<byte> name)
+        {
+            fixed (byte* pName = name)
+            {
+                Debug.Assert(pName[name.Length] == '\0');
+                return LLVM.GetNamedGlobal(module, (sbyte*)pName);
+            }
+        }
+
+        internal static LLVMValueRef AddAlias(this LLVMModuleRef module, ReadOnlySpan<byte> name, LLVMTypeRef valueType, LLVMValueRef aliasee)
+        {
+            fixed (byte* pName = name)
+            {
+                Debug.Assert(pName[name.Length] == '\0');
+                return LLVM.AddAlias2(module, valueType, 0, aliasee, (sbyte*)pName);
+            }
+        }
+
+        internal static LLVMValueRef AddFunction(this LLVMModuleRef module, ReadOnlySpan<byte> name, LLVMTypeRef type)
+        {
+            fixed (byte* pName = name)
+            {
+                Debug.Assert(pName[name.Length] == '\0');
+                return LLVM.AddFunction(module, (sbyte*)pName, type);
+            }
+        }
+
+        internal static LLVMValueRef AddGlobal(this LLVMModuleRef module, ReadOnlySpan<byte> name, LLVMTypeRef type)
+        {
+            fixed (byte* pName = name)
+            {
+                Debug.Assert(pName[name.Length] == '\0');
+                return LLVM.AddGlobal(module, type, (sbyte*)pName);
+            }
         }
 
         internal static LLVMTypeRef GetValueType(this LLVMValueRef value)

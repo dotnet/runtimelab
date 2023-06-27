@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
 
@@ -44,32 +43,37 @@ namespace ILCompiler
 
         internal LLVMTypeRef GetLLVMSignatureForMethod(MethodSignature signature, bool hasHiddenParam)
         {
+            LLVMTypeRef llvmPtrType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
             LLVMTypeRef llvmReturnType = GetLlvmReturnType(signature.ReturnType, out bool isReturnByRef);
 
-            ArrayBuilder<LLVMTypeRef> signatureTypes = default;
-            signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // Shadow stack pointer
+            int maxLlvmSigLength = signature.Length + 4;
+            Span<LLVMTypeRef> signatureTypes =
+                maxLlvmSigLength > 100 ? new LLVMTypeRef[maxLlvmSigLength] : stackalloc LLVMTypeRef[maxLlvmSigLength];
+
+            int index = 0;
+            signatureTypes[index++] = llvmPtrType;
 
             if (!signature.IsStatic) // Bug: doesn't handle explicit 'this'.
             {
-                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
+                signatureTypes[index++] = llvmPtrType;
             }
 
             if (isReturnByRef)
             {
-                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
+                signatureTypes[index++] = llvmPtrType;
             }
 
             if (hasHiddenParam)
             {
-                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
+                signatureTypes[index++] = llvmPtrType;
             }
 
             foreach (TypeDesc type in signature)
             {
-                signatureTypes.Add(GetLlvmArgTypeForArg(type));
+                signatureTypes[index++] = GetLlvmArgTypeForArg(type);
             }
 
-            return LLVMTypeRef.CreateFunction(llvmReturnType, signatureTypes.ToArray(), false);
+            return LLVMTypeRef.CreateFunction(llvmReturnType, signatureTypes.Slice(0, index), false);
         }
 
         public override TypeDesc GetPrimitiveTypeForTrivialWasmStruct(TypeDesc type)
