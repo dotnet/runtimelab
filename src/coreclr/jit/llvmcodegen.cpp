@@ -2676,6 +2676,11 @@ FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)
         llvmParamTypes.push_back(getPtrLlvmType()); // The shadow stack.
     }
 
+    if (pSig->hasImplicitThis())
+    {
+        llvmParamTypes.push_back(getPtrLlvmType());
+    }
+
     if (isReturnByRef)
     {
         llvmParamTypes.push_back(getPtrLlvmType());
@@ -2691,12 +2696,9 @@ FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)
     {
         CORINFO_CLASS_HANDLE argSigClass;
         CorInfoType argSigType = strip(m_info->compCompHnd->getArgType(pSig, sigArgs, &argSigClass));
+        CorInfoType argType = getLlvmArgTypeForArg(argSigType, argSigClass);
 
-        CorInfoType argType;
-        if (getLlvmArgTypeForArg(isManagedCallConv, argSigType, argSigClass, &argType))
-        {
-            llvmParamTypes.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
-        }
+        llvmParamTypes.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
     }
 
     return FunctionType::get(retLlvmType, llvmParamTypes, /* isVarArg */ false);
@@ -2729,18 +2731,14 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
     size_t sigArgCount = helperInfo.GetSigArgCount();
     for (size_t i = 0; i < sigArgCount; i++)
     {
-        CorInfoType argSigType =  helperInfo.GetSigArgType(i);
+        CorInfoType argSigType = helperInfo.GetSigArgType(i);
         CORINFO_CLASS_HANDLE argSigClass = helperInfo.GetSigArgClass(_compiler, i);
 
-        CorInfoType argType;
         bool isArgPassedByRef;
-        bool isLlvmArg = getLlvmArgTypeForArg(isManagedHelper, argSigType, argSigClass, &argType, &isArgPassedByRef);
+        CorInfoType argType = getLlvmArgTypeForArg(argSigType, argSigClass, &isArgPassedByRef);
         assert(!isArgPassedByRef);
 
-        if (isLlvmArg)
-        {
-            argVec.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
-        }
+        argVec.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
     }
 
     bool isReturnByRef;

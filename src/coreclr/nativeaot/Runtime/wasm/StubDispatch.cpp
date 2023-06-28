@@ -22,17 +22,11 @@
 //
 
 // Cache miss case, call the runtime to resolve the target and update the cache.
-extern "C" void* RhpCidResolveWasm_Managed(void* pShadowStack, void* pCell);
-extern "C" void* RuntimeResolveInterfaceDispatch(void* pShadowStack, Object* pObject, InterfaceDispatchCell* pCell)
-{
-    *(Object**)pShadowStack = pObject;
-    void* pTarget = RhpCidResolveWasm_Managed(pShadowStack, pCell);
-
-    return pTarget;
-}
+extern "C" void* RhpCidResolveWasm_Managed(void* pShadowStack, Object* pObject, void* pCell);
 
 COOP_PINVOKE_HELPER(void*, RhpResolveInterfaceDispatch, (void* pShadowStack, Object* pObject, InterfaceDispatchCell* pCell))
 {
+    ASSERT(pObject != nullptr);
     InterfaceDispatchCache* pCache = (InterfaceDispatchCache*)pCell->GetCache();
     if (pCache != nullptr)
     {
@@ -47,11 +41,11 @@ COOP_PINVOKE_HELPER(void*, RhpResolveInterfaceDispatch, (void* pShadowStack, Obj
         }
     }
 
-    return RuntimeResolveInterfaceDispatch(pShadowStack, pObject, pCell);
+    return RhpCidResolveWasm_Managed(pShadowStack, pObject, pCell);
 }
 
-extern "C" void* RhpInitialInterfaceDispatch(void*, Object*, InterfaceDispatchCell*) __attribute__((alias ("RuntimeResolveInterfaceDispatch")));
-extern "C" void* RhpInitialDynamicInterfaceDispatch(void*, Object*, InterfaceDispatchCell*) __attribute__((alias ("RuntimeResolveInterfaceDispatch")));
+extern "C" void* RhpInitialInterfaceDispatch(void*, Object*, InterfaceDispatchCell*) __attribute__((alias ("RhpResolveInterfaceDispatch")));
+extern "C" void* RhpInitialDynamicInterfaceDispatch(void*, Object*, InterfaceDispatchCell*) __attribute__((alias ("RhpResolveInterfaceDispatch")));
 extern "C" void* RhpInterfaceDispatch1(void*, Object*, InterfaceDispatchCell*) __attribute__((alias ("RhpResolveInterfaceDispatch")));
 extern "C" void* RhpInterfaceDispatch2(void*, Object*, InterfaceDispatchCell*) __attribute__((alias ("RhpResolveInterfaceDispatch")));
 extern "C" void* RhpInterfaceDispatch4(void*, Object*, InterfaceDispatchCell*) __attribute__((alias ("RhpResolveInterfaceDispatch")));

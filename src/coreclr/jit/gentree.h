@@ -4761,7 +4761,6 @@ public:
     void PushLateBack(CallArg* arg);
     void Remove(CallArg* arg);
 #if TARGET_WASM
-    void RemoveAfter(CallArg* arg);
     void MoveLateToEarly();
 #endif
 

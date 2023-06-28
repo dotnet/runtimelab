@@ -124,13 +124,10 @@ Llvm::Llvm(Compiler* compiler)
 
 var_types Llvm::GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind)
 {
-    // Note the managed and unmanaged ABIs are the same for structs that do not contain GC pointers. Thus, since
-    // unmanaged calls in general cannot have struct arguments with GC pointers in them, always passing "true" for
-    // "isManagedAbi" is ok. The one scenario which would break down with this handling is FCalls with such args.
-    // Luckily, none currently exist.
-    CorInfoType argType;
+    // Note the managed and unmanaged ABIs are the same in terms of values, but do differ w.r.t by-ref
+    // parameter aliasing guarantees (native assumes no aliasing, we do not).
     bool isPassedByRef;
-    getLlvmArgTypeForArg(/* isManagedAbi */ true, CORINFO_TYPE_VALUECLASS, structHnd, &argType, &isPassedByRef);
+    CorInfoType argType = getLlvmArgTypeForArg(CORINFO_TYPE_VALUECLASS, structHnd, &isPassedByRef);
 
     *pPassKind = isPassedByRef ? Compiler::SPK_ByReference : Compiler::SPK_ByValue;
     return JITtype2varType(argType);
@@ -586,7 +583,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) con
         { FUNC(CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS } },
         { FUNC(CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC) CORINFO_TYPE_PTR, { CORINFO_TYPE_INT, CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
-        { FUNC(CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS, CORINFO_TYPE_PTR }, HFIF_NO_SS_SAVE }
+        { FUNC(CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET) CORINFO_TYPE_PTR, { CORINFO_TYPE_CLASS, CORINFO_TYPE_PTR }, HFIF_SS_ARG }
     };
     // clang-format on
 
@@ -602,26 +599,7 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) con
     return info;
 }
 
-bool Llvm::canStoreArgOnLlvmStack(CorInfoType argSigType, CORINFO_CLASS_HANDLE argSigClass)
-{
-    switch (argSigType)
-    {
-        case CORINFO_TYPE_BYREF:
-        case CORINFO_TYPE_CLASS:
-        case CORINFO_TYPE_REFANY:
-            return false;
-        case CORINFO_TYPE_VALUECLASS:
-            return !_compiler->typGetObjLayout(argSigClass)->HasGCPtr();
-        default:
-            return true;
-    }
-}
-
-bool Llvm::getLlvmArgTypeForArg(bool                 isManagedAbi,
-                                CorInfoType          argSigType,
-                                CORINFO_CLASS_HANDLE argSigClass,
-                                CorInfoType*         pArgType,
-                                bool*                pIsByRef)
+CorInfoType Llvm::getLlvmArgTypeForArg(CorInfoType argSigType, CORINFO_CLASS_HANDLE argSigClass, bool* pIsByRef)
 {
     assert(argSigType != CORINFO_TYPE_UNDEF);
     if (argSigType == CORINFO_TYPE_REFANY)
@@ -631,30 +609,25 @@ bool Llvm::getLlvmArgTypeForArg(bool                 isManagedAbi,
     //
     // WASM C ABI is documented here: https://github.com/WebAssembly/tool-conventions/blob/main/BasicCABI.md.
     // In essense, structs are passed by reference except if they are trivial wrappers of a primitive (scalar).
-    // We follow this rule for the native calling convention as well as non-GC structs. GC structs are passed
-    // by value on the shadow stack in the managed calling convention.
+    // We follow this rule for the native calling convention as well as the managed one.
     //
     bool isByRef = false;
-    bool isLlvmArg = !isManagedAbi || canStoreArgOnLlvmStack(argSigType, argSigClass);
     CorInfoType argType = argSigType;
-    if (isLlvmArg && (argSigType == CORINFO_TYPE_VALUECLASS))
+    if (argSigType == CORINFO_TYPE_VALUECLASS)
     {
         argType = GetPrimitiveTypeForTrivialWasmStruct(argSigClass);
         if (argType == CORINFO_TYPE_UNDEF)
         {
+            argType = CORINFO_TYPE_PTR;
             isByRef = true;
         }
     }
 
-    if (pArgType != nullptr)
-    {
-        *pArgType = isByRef ? CORINFO_TYPE_PTR : argType;
-    }
     if (pIsByRef != nullptr)
     {
         *pIsByRef = isByRef;
     }
-    return isLlvmArg;
+    return argType;
 }
 
 CorInfoType Llvm::getLlvmReturnType(CorInfoType sigRetType, CORINFO_CLASS_HANDLE sigRetClass, bool* pIsByRef)

@@ -207,7 +207,9 @@ namespace System.Runtime
             }
 
             WasmEHLogFunletEnter(pCatchFunclet, RhEHClauseKind.RH_EH_CLAUSE_TYPED, pCatchShadowFrame);
-            int catchRetIdx = ((delegate*<object, void*, int>)pCatchFunclet)(exception, pCatchShadowFrame);
+            // Implicitly pass the callee's shadow stack.
+            void* pCallCatch = (delegate*<void*, void*, object, void*, int>)&InternalCalls.RhpCallCatchOrFilterFunclet;
+            int catchRetIdx = ((delegate*<void*, object, void*, int>)pCallCatch)(pCatchShadowFrame, exception, pCatchFunclet);
             WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_TYPED, catchRetIdx, pCatchShadowFrame);
 
             return catchRetIdx;
@@ -219,7 +221,9 @@ namespace System.Runtime
             bool result;
             try
             {
-                result = ((delegate*<object, void*, int>)pFunclet)(exception, pShadowFrame) != 0;
+                // Implicitly pass the callee's shadow stack.
+                void* pCallFilter = (delegate*<void*, void*, object, void*, int>)&InternalCalls.RhpCallCatchOrFilterFunclet;
+                result = ((delegate*<void*, object, void*, int>)pCallFilter)(pShadowFrame, exception, pFunclet) != 0;
             }
             catch when (true)
             {
