@@ -5139,10 +5139,9 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
 
 #if defined(TARGET_WASM)
     assert(m_llvm != nullptr);
-    auto lowerPhase = [this]() {
+    DoPhase(this, PHASE_LOWER_LLVM, [this]() {
         m_llvm->Lower();
-    };
-    DoPhase(this, PHASE_LOWER_LLVM, lowerPhase);
+    });
 
     if (opts.OptimizationEnabled())
     {
@@ -5157,12 +5156,11 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     fgSsaDomTree = nullptr;
     if (opts.OptimizationEnabled())
     {
-        auto lateSsaPhase = [this]() {
+        DoPhase(this, PHASE_BUILD_SSA, [this]() {
             lvaMarkLocalVars();
             fgResetForSsa();
             fgSsaBuild();
-        };
-        DoPhase(this, PHASE_BUILD_SSA, lateSsaPhase);
+        });
     }
 
     // The common phase checks and dumps are no longer relevant past this point.
@@ -5170,10 +5168,9 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     activePhaseChecks = PhaseChecks::CHECK_NONE;
     activePhaseDumps  = PhaseDumps::DUMP_NONE;
 
-    auto buildLlvmPhase = [this]() {
+    DoPhase(this, PHASE_BUILD_LLVM, [this]() {
         m_llvm->Compile();
-    };
-    DoPhase(this, PHASE_BUILD_LLVM, buildLlvmPhase);
+    });
 #else
 
 #ifdef TARGET_ARM
