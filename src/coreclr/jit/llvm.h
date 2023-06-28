@@ -350,7 +350,6 @@ private:
 
     unsigned representAsLclVar(LIR::Use& use);
     GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data);
-    GenTree* createShadowStackStoreNode(var_types storeType, GenTree* addr, GenTree* data);
     GenTree* insertShadowStackAddr(GenTree* insertBefore, ssize_t offset, unsigned shadowStackLclNum);
 
     bool isPotentialGcSafePoint(GenTree* node);

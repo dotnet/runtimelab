@@ -1428,14 +1428,6 @@ GenTree* Llvm::createStoreNode(var_types storeType, GenTree* addr, GenTree* data
     return storeNode;
 }
 
-GenTree* Llvm::createShadowStackStoreNode(var_types storeType, GenTree* addr, GenTree* data)
-{
-    GenTree* storeNode = createStoreNode(storeType, addr, data);
-    storeNode->gtFlags |= (GTF_IND_TGT_NOT_HEAP | GTF_IND_NONFAULTING);
-
-    return storeNode;
-}
-
 GenTree* Llvm::insertShadowStackAddr(GenTree* insertBefore, ssize_t offset, unsigned shadowStackLclNum)
 {
     assert((shadowStackLclNum == _shadowStackLclNum) || (shadowStackLclNum == _originalShadowStackLclNum));
