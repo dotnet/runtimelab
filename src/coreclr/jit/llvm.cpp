@@ -108,8 +108,6 @@ Llvm::Llvm(Compiler* compiler)
 
 /* static */ void Llvm::ConfigureDiagnosticOutput()
 {
-    llvm::sys::PrintStackTraceOnErrorSignal("");
-
 #ifdef HOST_WINDOWS
     // Disable popups for CRT asserts (which LLVM uses).
     ::_set_error_mode(_OUT_TO_STDERR);
