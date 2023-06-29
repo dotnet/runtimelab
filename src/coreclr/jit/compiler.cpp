@@ -5133,17 +5133,21 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     compJitStats();
 
 #if defined(TARGET_WASM)
+    assert(m_llvm != nullptr);
+    auto lowerPhase = [this]() {
+        m_llvm->Lower();
+    };
+    DoPhase(this, PHASE_LOWER_LLVM, lowerPhase);
+
     if (opts.OptimizationEnabled())
     {
         // When optimizing, we'll sort the locals on the shadow stack by ref count.
         lvaMarkLocalVars();
     }
 
-    assert(m_llvm != nullptr);
-    auto lowerPhase = [this]() {
-        m_llvm->Lower();
-    };
-    DoPhase(this, PHASE_LOWER_LLVM, lowerPhase);
+    DoPhase(this, PHASE_ALLOCATE_SHADOW_STACK, [this]() {
+        m_llvm->Allocate();
+    });
 
     fgSsaDomTree = nullptr;
     if (opts.OptimizationEnabled())

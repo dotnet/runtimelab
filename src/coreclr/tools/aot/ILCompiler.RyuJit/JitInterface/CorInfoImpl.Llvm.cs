@@ -105,7 +105,7 @@ namespace Internal.JitInterface
                         name.SequenceEqual("RhpNewFinalizableAlign8"u8))
                     {
                         TypeDesc pointerType = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Void).MakePointerType();
-                        MethodSignatureFlags signatureFlags = MethodSignatureFlags.Static | MethodSignatureFlags.UnmanagedCallingConvention;
+                        MethodSignatureFlags signatureFlags = MethodSignatureFlags.Static;
                         MethodSignature signature = new MethodSignature(signatureFlags, 0, pointerType, new[] { pointerType });
 
                         // We're technically leaking the signature object here, but we don't get here often, so it's ok.

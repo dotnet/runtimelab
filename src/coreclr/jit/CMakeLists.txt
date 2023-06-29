@@ -226,6 +226,7 @@ set( JIT_WASM64_SOURCES
   llvm.cpp
   llvmtypes.cpp
   llvmlower.cpp
+  llvmlssa.cpp
   llvmcodegen.cpp
   llvmdebuginfo.cpp
 )
@@ -234,6 +235,7 @@ set( JIT_WASM32_SOURCES
   llvm.cpp
   llvmtypes.cpp
   llvmlower.cpp
+  llvmlssa.cpp
   llvmcodegen.cpp
   llvmdebuginfo.cpp
 )

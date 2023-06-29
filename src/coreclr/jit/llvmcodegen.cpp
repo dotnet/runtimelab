@@ -3068,7 +3068,8 @@ llvm::BasicBlock* Llvm::createInlineLlvmBlock()
         blocksName = blocksName.take_front(blocksName.find_last_of('.'));
     }
 
-    inlineLlvmBlock->setName(blocksName + "." + Twine(++llvmBlocks->Count));
+    llvmBlocks->Count++;
+    inlineLlvmBlock->setName(blocksName + "." + Twine(llvmBlocks->Count));
 #endif // DEBUG
 
     llvmBlocks->LastBlock = inlineLlvmBlock;
