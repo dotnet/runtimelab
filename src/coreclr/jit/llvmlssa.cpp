@@ -656,9 +656,8 @@ unsigned Llvm::getShadowFrameSize(unsigned hndIndex) const
 //
 bool Llvm::isShadowFrameLocal(LclVarDsc* varDsc) const
 {
-    // Other backends use "lvOnFrame" for this value, but for us it is not
-    // a great fit because we add new locals after shadow frame layout.
-    // TODO-LLVM-LSSA: the above is no longer correct. Use "lvOnFrame".
+    // Other backends use "lvOnFrame" for this value, but for us it is
+    // not a great fit because of defaulting to "true" for new locals.
     return varDsc->GetRegNum() == REG_STK;
 }
 
