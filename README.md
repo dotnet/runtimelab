@@ -15,6 +15,7 @@ Currently, this repo contains the following experimental projects:
 - [AssemblyBuilder.Save()](https://github.com/dotnet/runtimelab/tree/feature/assembly-builder-save) - Prototyping the implementation of AssemblyBuilder.Save() functionality.
 - [Hot-Cold Splitting](https://github.com/dotnet/runtimelab/tree/feature/hot-cold-splitting) - Support the hot-cold splitting optimization in crossgen2.
 - [Green Threads](https://github.com/dotnet/runtimelab/tree/feature/green-threads) - Prototyping the implementation of green threads.
+- [ManagedZLib](https://github.com/dotnet/runtimelab/tree/feature/ManagedZLib) - Fully managed implementation of DEFLATE algorithm and GZip/ZLib envelope formats.
 
 You can create your own experiment, learn more [here](CreateAnExperiment.md)!
 
