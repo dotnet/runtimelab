@@ -34,7 +34,7 @@
 #include "GCMemoryHelpers.h"
 #include "GCMemoryHelpers.inl"
 
-#if defined(USE_PORTABLE_HELPERS)
+#if defined(USE_PORTABLE_HELPERS) && !defined(HOST_WASM)
 EXTERN_C NATIVEAOT_API void* REDHAWK_CALLCONV RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame);
 
 struct gc_alloc_context
@@ -158,10 +158,7 @@ COOP_PINVOKE_HELPER(String *, RhNewString, (MethodTable * pArrayEEType, int numE
     return (String*)RhpNewArray(pArrayEEType, numElements);
 }
 
-#endif
-#if defined(USE_PORTABLE_HELPERS)
 #if defined(FEATURE_64BIT_ALIGNMENT)
-
 GPTR_DECL(MethodTable, g_pFreeObjectEEType);
 
 COOP_PINVOKE_HELPER(Object *, RhpNewFinalizableAlign8, (MethodTable* pEEType))
@@ -338,9 +335,8 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArrayAlign8, (MethodTable * pArrayEEType, int
     return pObject;
 }
 #endif // !HOST_64BIT
-#endif // defined(HOST_ARM) || defined(HOST_WASM)
+#endif // FEATURE_64BIT_ALIGNMENT
 
-#ifndef HOST_WASM
 COOP_PINVOKE_HELPER(void, RhpInitialDynamicInterfaceDispatch, ())
 {
     ASSERT_UNCONDITIONALLY("NYI");
@@ -385,7 +381,6 @@ COOP_PINVOKE_HELPER(void, RhpVTableOffsetDispatch, ())
 {
     ASSERT_UNCONDITIONALLY("NYI");
 }
-#endif // !HOST_WASM
 
 // @TODO Implement UniversalTransition
 EXTERN_C void * ReturnFromUniversalTransition;
@@ -395,7 +390,7 @@ void * ReturnFromUniversalTransition;
 EXTERN_C void * ReturnFromUniversalTransition_DebugStepTailCall;
 void * ReturnFromUniversalTransition_DebugStepTailCall;
 
-#endif // USE_PORTABLE_HELPERS
+#endif // defined(USE_PORTABLE_HELPERS) && !defined(HOST_WASM)
 
 // @TODO Implement CallDescrThunk
 EXTERN_C void * ReturnFromCallDescrThunk;

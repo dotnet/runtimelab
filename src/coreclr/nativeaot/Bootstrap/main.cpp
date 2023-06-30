@@ -93,10 +93,6 @@ static char& __unbox_z = __stop___unbox;
 
 #endif // _MSC_VER
 
-#ifdef HOST_WASM
-extern "C" void* RtRHeaderWrapper();
-#endif // HOST_WASM
-
 extern "C" bool RhInitialize();
 extern "C" void RhSetRuntimeInitializationCallback(int (*fPtr)());
 
@@ -180,9 +176,9 @@ static int InitializeRuntime()
     if (!RhInitialize())
         return -1;
 
-#if !defined HOST_WASM
     void * osModule = PalGetModuleHandleFromPointer((void*)&NATIVEAOT_ENTRYPOINT);
 
+#if !defined HOST_WASM
     // TODO: pass struct with parameters instead of the large signature of RhRegisterOSModule
     if (!RhRegisterOSModule(
         osModule,
@@ -194,11 +190,7 @@ static int InitializeRuntime()
     }
 #endif // HOST_WASM
 
-#if defined HOST_WASM
-    InitializeModules(nullptr, (void**)RtRHeaderWrapper(), 1, (void **)&c_classlibFunctions, _countof(c_classlibFunctions));
-#else // !HOST_WASM
     InitializeModules(osModule, __modules_a, (int)((__modules_z - __modules_a)), (void **)&c_classlibFunctions, _countof(c_classlibFunctions));
-#endif
 
 #ifdef NATIVEAOT_DLL
     // Run startup method immediately for a native library

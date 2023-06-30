@@ -369,23 +369,5 @@ namespace System.Runtime
         [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
         public static ref byte Call(IntPtr pfn, void* arg1, ref byte arg2, ref byte arg3, void* arg4)
             => ref ((delegate*<void*, ref byte, ref byte, void*, ref byte>)pfn)(arg1, ref arg2, ref arg3, arg4);
-
-        //
-        // Runtime imports, canonically, have native calling convetion, which we need to handle specially
-        // for WASM as the managed and native calling conventions differ significantly - the latter does
-        // not use the shadow stack.
-        //
-
-        [MethodImplAttribute(MethodImplOptions.AggressiveInlining)]
-        public static T CallRuntimeImport<T>(System.IntPtr pfn, IntPtr arg)
-        {
-#if TARGET_WASM
-            object obj = RuntimeImports.RhpRawCalli_OI(pfn, arg);
-            Debug.Assert(RuntimeHelpers.IsReference<T>() && obj.GetType() == typeof(T));
-            return Unsafe.As<object, T>(ref obj);
-#else
-            return ((delegate*<IntPtr, T>)pfn)(arg);
-#endif
-        }
     }
 }

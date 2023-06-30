@@ -180,7 +180,7 @@ private:
     Compiler::Info* const m_info;
     GCInfo* _gcInfo = nullptr;
 
-    // Used by both lowering and codegen.
+    // Used by all of lowering, allocator and codegen.
     BasicBlock* m_currentBlock = nullptr;
 
     // Lowering members.
@@ -249,12 +249,7 @@ private:
 
     static const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpFunc helperFunc);
 
-    bool canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    bool getLlvmArgTypeForArg(bool                 isManagedAbi,
-                              CorInfoType          argSigType,
-                              CORINFO_CLASS_HANDLE argSigClass,
-                              CorInfoType*         pArgType = nullptr,
-                              bool*                pIsByRef = nullptr);
+    CorInfoType getLlvmArgTypeForArg(CorInfoType argSigType, CORINFO_CLASS_HANDLE argSigClass, bool* pIsByRef = nullptr);
     CorInfoType getLlvmReturnType(CorInfoType sigRetType, CORINFO_CLASS_HANDLE sigRetClass, bool* pIsByRef = nullptr);
 
     unsigned padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned atOffset);
@@ -319,22 +314,14 @@ public:
     void Lower();
 
 private:
-    void lowerSpillTempsLiveAcrossSafePoints();
-    void lowerLocalsBeforeNodes();
-    void populateLlvmArgNums();
-    void assignShadowStackOffsets(std::vector<unsigned>& shadowStackLocals, unsigned shadowStackParamCount);
-    void initializeLocalInProlog(unsigned lclNum, GenTree* value);
-
-    void insertProlog();
-    void lowerLocalsAfterNodes();
+    void initializeLlvmArgInfo();
 
     void lowerBlocks();
-    void lowerBlock(BasicBlock* block);
+    void lowerRange(BasicBlock* block, LIR::Range& range);
     void lowerNode(GenTree* node);
     void lowerLocal(GenTreeLclVarCommon* node);
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
-    bool ConvertShadowStackLocalNode(GenTreeLclVarCommon* node);
     void lowerCall(GenTreeCall* callNode);
     void lowerRethrow(GenTreeCall* callNode);
     void lowerCatchArg(GenTree* catchArgNode);
@@ -343,32 +330,50 @@ private:
     void lowerStoreDynBlk(GenTreeStoreDynBlk* storeDynBlkNode);
     void lowerDivMod(GenTreeOp* divModNode);
     void lowerReturn(GenTreeUnOp* retNode);
+    void lowerLclHeap(GenTreeUnOp* lclHeapNode);
 
-    void lowerVirtualStubCallBeforeArgs(GenTreeCall* callNode, unsigned* pThisLclNum, GenTree** pCellArgNode);
-    void lowerVirtualStubCallAfterArgs(
-        GenTreeCall* callNode, unsigned thisArgLclNum, GenTree* cellArgNode, unsigned shadowArgsSize);
+    void lowerVirtualStubCall(GenTreeCall* callNode);
     void insertNullCheckForCall(GenTreeCall* callNode);
     void lowerDelegateInvoke(GenTreeCall* callNode);
     void lowerUnmanagedCall(GenTreeCall* callNode);
-    unsigned lowerCallToShadowStack(GenTreeCall* callNode);
+    void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerCallReturn(GenTreeCall* callNode);
 
     GenTree* normalizeStructUse(LIR::Use& use, ClassLayout* layout);
 
     unsigned representAsLclVar(LIR::Use& use);
-    GenTree* createStoreNode(var_types nodeType, GenTree* addr, GenTree* data);
-    GenTree* createShadowStackStoreNode(var_types storeType, GenTree* addr, GenTree* data);
     GenTree* insertShadowStackAddr(GenTree* insertBefore, ssize_t offset, unsigned shadowStackLclNum);
+
+    unsigned getCatchArgOffset() const;
+
+    // ================================================================================================================
+    // |                                           Shadow stack allocation                                            |
+    // ================================================================================================================
+public:
+    void Allocate();
+
+private:
+    void allocSpillTempsLiveAcrossSafePoints();
+
+    void allocInitializeAndAllocateLocals();
+    void allocDissolvePromotedLocals();
+    void allocAssignShadowFrameOffsets(std::vector<unsigned>& shadowFrameLocals);
+
+    void allocLowerAndInsertProlog();
+    void allocInitializeLocalInProlog(unsigned lclNum, GenTree* value);
+
+    void allocRewriteShadowFrameReferences();
+    void allocRewriteLocal(GenTreeLclVarCommon* lclNode);
+    void allocRewriteCall(GenTreeCall* call);
 
     bool isPotentialGcSafePoint(GenTree* node);
 
     bool isShadowFrameLocal(LclVarDsc* varDsc) const;
+    bool isShadowStackLocal(unsigned lclNum) const;
     bool isFuncletParameter(unsigned lclNum) const;
 
-    unsigned getCurrentShadowFrameSize() const;
     unsigned getShadowFrameSize(unsigned hndIndex) const;
     unsigned getOriginalShadowFrameSize() const;
-    unsigned getCatchArgOffset() const;
 
     bool doUseDynamicStackForLclHeap();
 

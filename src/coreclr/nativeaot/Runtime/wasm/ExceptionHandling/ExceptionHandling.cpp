@@ -61,10 +61,16 @@ COOP_PINVOKE_HELPER(void, RhpDispatchHandleExceptionWasmFault, (void* pOriginalS
     RhpHandleExceptionWasmFault_Managed(pData->DispatchShadowFrameAddress, pOriginalShadowFrame, pData, pHandler);
 }
 
-// We do not use these helpers, but we also do not exclude code referencing them from the
-// build, and so define these stubs to avoid undefined symbol warnings. TODO-LLVM: exclude
-// the general EH code from WASM-targeting runtime build.
+// Catch and filter funclets have a special calling convention which saves the exception object to the shadow stack.
+// This is intended to optimize for size: the exception object comes "pre-spilled". It also makes implementing rethrow simple.
 //
+COOP_PINVOKE_HELPER(int, RhpCallCatchOrFilterFunclet, (void* pShadowFrame, void* pOriginalShadowFrame, Object* exception, int (*pFunclet)(void*, void*)))
+{
+    *((Object**)pShadowFrame) = exception;
+    return pFunclet(pShadowFrame, pOriginalShadowFrame);
+}
+
+// We do not use these helpers. TODO-LLVM: exclude them from the WASM build.
 COOP_PINVOKE_HELPER(void*, RhpCallCatchFunclet, (void*, void*, void*, void*)) { abort(); }
 COOP_PINVOKE_HELPER(bool, RhpCallFilterFunclet, (void*, void*, void*)) { abort(); }
 COOP_PINVOKE_HELPER(void, RhpCallFinallyFunclet, (void*, void*)) { abort(); }

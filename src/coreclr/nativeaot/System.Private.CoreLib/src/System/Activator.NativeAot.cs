@@ -52,7 +52,7 @@ namespace System
                 {
                     // Grab a pointer to the optimized allocator for the type and call it.
                     IntPtr allocator = AllocatorOf<T>();
-                    t = RawCalliHelper.CallRuntimeImport<T>(allocator, EETypePtr.EETypePtrOf<T>().RawValue);
+                    t = RawCalliHelper.Call<T>(allocator, EETypePtr.EETypePtrOf<T>().RawValue);
                     RawCalliHelper.Call(defaultConstructor, t);
 
                     // Debugger goo so that stepping in works. Only affects debug info generation.

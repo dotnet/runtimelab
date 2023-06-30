@@ -207,7 +207,7 @@ namespace System.Runtime
             }
 
             WasmEHLogFunletEnter(pCatchFunclet, RhEHClauseKind.RH_EH_CLAUSE_TYPED, pCatchShadowFrame);
-            int catchRetIdx = ((delegate*<object, void*, int>)pCatchFunclet)(exception, pCatchShadowFrame);
+            int catchRetIdx = InternalCalls.RhpCallCatchOrFilterFunclet(pCatchShadowFrame, exception, pCatchFunclet);
             WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_TYPED, catchRetIdx, pCatchShadowFrame);
 
             return catchRetIdx;
@@ -219,7 +219,7 @@ namespace System.Runtime
             bool result;
             try
             {
-                result = ((delegate*<object, void*, int>)pFunclet)(exception, pShadowFrame) != 0;
+                result = InternalCalls.RhpCallCatchOrFilterFunclet(pShadowFrame, exception, pFunclet) != 0;
             }
             catch when (true)
             {
@@ -262,8 +262,7 @@ namespace System.Runtime
             // We will pass around the managed exception address in the native exception to avoid having to report it
             // explicitly to the GC (or having a hole, or using a GCHandle). This will work as intended as the shadow
             // stack associated with this method will only be freed after the last (catch) handler returns.
-            void* pFunc = (delegate*<void*, object*, void>)&InternalCalls.RhpThrowNativeException;
-            ((delegate*<object*, void>)pFunc)(&exception); // Implicitly pass the callee's shadow stack.
+            InternalCalls.RhpThrowNativeException(&exception); // Implicitly pass the callee's shadow stack.
         }
 
         [Conditional("ENABLE_NOISY_WASM_EH_LOG")]

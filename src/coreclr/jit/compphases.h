@@ -121,6 +121,7 @@ CompPhaseNameMacro(PHASE_POST_EMIT,                  "Post-Emit",               
 
 #ifdef TARGET_WASM
 CompPhaseNameMacro(PHASE_LOWER_LLVM,                 "LLVM Lowering",                  false, -1, false)
+CompPhaseNameMacro(PHASE_ALLOCATE_SHADOW_STACK,      "Allocate shadow stack slots",    false, -1, false)
 CompPhaseNameMacro(PHASE_BUILD_LLVM,                 "Build LLVM",                     false, -1, false)
 #endif
 
