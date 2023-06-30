@@ -1357,11 +1357,17 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
 //
 void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
 {
+<<<<<<< HEAD
 
     for (BasicBlock* succ : block->GetAllSuccs(m_pCompiler))
     {
 #if defined(TARGET_WASM)
         if (block->IsLIR())
+=======
+    block->VisitAllSuccs(m_pCompiler, [this, block](BasicBlock* succ) {
+        // Walk the statements for phi nodes.
+        for (Statement* const stmt : succ->Statements())
+>>>>>>> 89c96dcbd4e389eee697ce229aa730ccfe0fcb8a
         {
             for (GenTree* tree : LIR::AsRange(succ))
             {
@@ -1590,7 +1596,9 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
                 tryInd = succTry->ebdEnclosingTryIndex;
             }
         }
-    }
+
+        return BasicBlockVisit::Continue;
+    });
 }
 
 //------------------------------------------------------------------------

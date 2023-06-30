@@ -5526,7 +5526,7 @@ void Compiler::fgValueNumberArrayElemLoad(GenTree* loadTree, VNFuncApp* addrFunc
 //                              to an array element.
 //
 // Arguments:
-//    storeNode - The ASG node performing the store
+//    storeNode - The store node
 //    addrFunc  - The "VNF_PtrToArrElem" function representing the address
 //    storeSize - The number of bytes being stored
 //    value     - (VN of) the value being stored
@@ -5644,7 +5644,7 @@ void Compiler::fgValueNumberFieldLoad(GenTree* loadTree, GenTree* baseAddr, Fiel
 //                          a class/static field.
 //
 // Arguments:
-//    storeNode - The ASG node performing the store
+//    storeNode - The store node
 //    baseAddr  - The "base address" of the field (see "GenTree::IsFieldAddr")
 //    fieldSeq  - The field sequence representing the address
 //    offset    - The offset, relative to the field, of the target location
@@ -9242,15 +9242,14 @@ struct ValueNumberState
 
         SetVisitBit(blk->bbNum, BVB_complete);
 
-        for (BasicBlock* succ : blk->GetAllSuccs(m_comp))
-        {
+        blk->VisitAllSuccs(m_comp, [&](BasicBlock* succ) {
 #ifdef DEBUG_VN_VISIT
             JITDUMP("   Succ(" FMT_BB ").\n", succ->bbNum);
 #endif // DEBUG_VN_VISIT
 
             if (GetVisitBit(succ->bbNum, BVB_complete))
             {
-                continue;
+                return BasicBlockVisit::Continue;
             }
 #ifdef DEBUG_VN_VISIT
             JITDUMP("     Not yet completed.\n");
@@ -9273,8 +9272,8 @@ struct ValueNumberState
                 JITDUMP("     All preds complete, adding to allDone.\n");
 #endif // DEBUG_VN_VISIT
 
-                assert(!GetVisitBit(succ->bbNum, BVB_onAllDone)); // Only last completion of last succ should add to
-                                                                  // this.
+                // Only last completion of last succ should add to this.
+                assert(!GetVisitBit(succ->bbNum, BVB_onAllDone));
                 m_toDoAllPredsDone.Push(succ);
                 SetVisitBit(succ->bbNum, BVB_onAllDone);
             }
@@ -9293,7 +9292,9 @@ struct ValueNumberState
                     SetVisitBit(succ->bbNum, BVB_onNotAllDone);
                 }
             }
-        }
+
+            return BasicBlockVisit::Continue;
+        });
     }
 
     bool ToDoExists()
@@ -10493,10 +10494,32 @@ bool Compiler::fgValueNumberConstLoad(GenTreeIndir* tree)
             uint8_t buffer[maxElementSize] = {0};
             if (info.compCompHnd->getObjectContent(obj, buffer, size, (int)byteOffset))
             {
-                ValueNum vn = vnStore->VNForGenericCon(tree->TypeGet(), buffer);
-                assert(!vnStore->IsVNObjHandle(vn));
-                tree->gtVNPair.SetBoth(vn);
-                return true;
+                // If we have IND<size_t>(frozenObj) then it means we're reading object type
+                // so make sure we report the constant as class handle
+                if ((size == TARGET_POINTER_SIZE) && (byteOffset == 0))
+                {
+                    // In case of 64bit jit emitting 32bit codegen this handle will be 64bit
+                    // value holding 32bit handle with upper half zeroed (hence, "= NULL").
+                    // It's done to match the current crossgen/ILC behavior.
+                    CORINFO_CLASS_HANDLE rawHandle = NULL;
+                    memcpy(&rawHandle, buffer, TARGET_POINTER_SIZE);
+
+                    void* pEmbedClsHnd;
+                    void* embedClsHnd = (void*)info.compCompHnd->embedClassHandle(rawHandle, &pEmbedClsHnd);
+                    if (pEmbedClsHnd == nullptr)
+                    {
+                        // getObjectContent doesn't support reading handles for AOT (NativeAOT) yet
+                        tree->gtVNPair.SetBoth(vnStore->VNForHandle((ssize_t)embedClsHnd, GTF_ICON_CLASS_HDL));
+                        return true;
+                    }
+                }
+                else
+                {
+                    ValueNum vn = vnStore->VNForGenericCon(tree->TypeGet(), buffer);
+                    assert(!vnStore->IsVNObjHandle(vn));
+                    tree->gtVNPair.SetBoth(vn);
+                    return true;
+                }
             }
         }
     }
