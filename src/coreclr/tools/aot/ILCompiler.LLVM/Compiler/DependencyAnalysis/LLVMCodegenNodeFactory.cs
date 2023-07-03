@@ -30,8 +30,6 @@ namespace ILCompiler.DependencyAnalysis
         {
         }
 
-        public override bool IsCppCodegenTemporaryWorkaround => true;
-
         protected override IMethodNode CreateMethodEntrypointNode(MethodDesc method)
         {
             if (method.IsInternalCall)

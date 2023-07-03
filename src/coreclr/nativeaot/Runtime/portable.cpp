@@ -392,12 +392,6 @@ void * ReturnFromUniversalTransition_DebugStepTailCall;
 
 #endif // defined(USE_PORTABLE_HELPERS) && !defined(HOST_WASM)
 
-// @TODO Implement CallDescrThunk
-EXTERN_C void * ReturnFromCallDescrThunk;
-#ifdef USE_PORTABLE_HELPERS
-void * ReturnFromCallDescrThunk;
-#endif
-
 #if defined(USE_PORTABLE_HELPERS)
 //
 // Return address hijacking
@@ -460,14 +454,6 @@ COOP_PINVOKE_HELPER(int64_t, RhpLockCmpXchg64, (int64_t * location, int64_t valu
     return PalInterlockedCompareExchange64(location, value, comparand);
 }
 
-#endif // USE_PORTABLE_HELPERS
-
-COOP_PINVOKE_HELPER(void, RhpMemoryBarrier, ())
-{
-    PalMemoryBarrier();
-}
-
-#if defined(USE_PORTABLE_HELPERS)
 EXTERN_C NATIVEAOT_API void* __cdecl RhAllocateThunksMapping()
 {
     return NULL;
@@ -512,11 +498,6 @@ COOP_PINVOKE_HELPER(int, RhpGetThunkBlockSize, ())
 {
     ASSERT_UNCONDITIONALLY("NYI");
     return 0;
-}
-
-COOP_PINVOKE_HELPER(void, RhCallDescrWorker, (void * callDescr))
-{
-    ASSERT_UNCONDITIONALLY("NYI");
 }
 
 COOP_PINVOKE_HELPER(void *, RhGetCommonStubAddress, ())
