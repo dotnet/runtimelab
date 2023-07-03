@@ -107,5 +107,12 @@ namespace Internal.Reflection.Execution.MethodInvokers
 
         private RuntimeTypeHandle _declaringTypeHandle;
         private delegate*<nint, object> _allocatorMethod;
+
+        private static class RawCalliHelper
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static T Call<T>(delegate*<IntPtr, T> pfn, IntPtr arg)
+            => pfn(arg);
+        }
     }
 }

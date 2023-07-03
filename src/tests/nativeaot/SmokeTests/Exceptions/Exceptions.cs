@@ -25,10 +25,11 @@ public class BringUpTest
 
     public static int Main()
     {
+#if !CODEGEN_WASM // FEATURE_SVR_GC is not defined for WASM
         // This test also doubles as server GC test
         if (!System.Runtime.GCSettings.IsServerGC)
             return 42;
-
+#endif
         if (string.Empty.Length > 0)
         {
             // Just something to make sure we generate reflection metadata for the type
