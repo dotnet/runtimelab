@@ -42,8 +42,6 @@ namespace ILCompiler.DependencyAnalysis
             InitializeRuntimeExportsMap(roots);
         }
 
-        public override bool IsCppCodegenTemporaryWorkaround => true;
-
         public override IMethodNode RuntimeExportManagedEntrypoint(string name)
         {
             return _runtimeExports.TryGetValue(name, out EcmaMethod export) ? MethodEntrypoint(export) : null;

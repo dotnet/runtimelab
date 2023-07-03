@@ -16,6 +16,9 @@
       <DisabledProjects Include="$(TestRoot)TestWrappers*\**\*.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\*.csproj" Condition="!('$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm')"/>
       <DisabledProjects Include="$(TestRoot)nativeaot\**\*.csproj" Condition="'$(TestBuildMode)' != 'nativeaot'" />
+
+      <!-- issue https://github.com/dotnet/runtime/issues/87931 -->
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HardwareIntrinsics\X64Avx512.csproj" Condition="'$(TestBuildMode)' == 'nativeaot'" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm'">
