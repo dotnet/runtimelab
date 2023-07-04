@@ -121,11 +121,9 @@ namespace Internal.JitInterface
         [UnmanagedCallersOnly]
         public static uint isRuntimeImport(IntPtr thisHandle, CORINFO_METHOD_STRUCT_* ftn)
         {
-            var _this = GetThis(thisHandle);
-
+            CorInfoImpl _this = GetThis(thisHandle);
             MethodDesc method = _this.HandleToObject(ftn);
-
-            return method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute") ? 1u : 0u; // bool is not blittable in .net5 so use uint, TODO: revert to bool for .net 6 (https://github.com/dotnet/runtime/issues/51170)
+            return method.IsInternalCall && _this._compilation.NodeFactory.MethodEntrypoint(method) is RuntimeImportMethodNode ? 1u : 0u;
         }
 
         [UnmanagedCallersOnly]
@@ -153,7 +151,7 @@ namespace Internal.JitInterface
         [UnmanagedCallersOnly]
         public static byte* getAlternativeFunctionName(IntPtr thisHandle)
         {
-            var _this = GetThis(thisHandle);
+            CorInfoImpl _this = GetThis(thisHandle);
             IMethodNode methodNode = _this._methodCodeNode;
             RyuJitCompilation compilation = _this._compilation;
 

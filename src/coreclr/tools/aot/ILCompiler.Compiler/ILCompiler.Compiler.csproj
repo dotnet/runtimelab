@@ -284,7 +284,6 @@
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\INodeWithRuntimeDeterminedDependencies.cs" Link="Compiler\DependencyAnalysis\INodeWithRuntimeDeterminedDependencies.cs" />
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\ISortableNode.cs" Link="Compiler\DependencyAnalysis\ISortableNode.cs" />
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\ISymbolNode.cs" Link="Compiler\DependencyAnalysis\ISymbolNode.cs" />
-    <Compile Include="..\..\Common\Compiler\DependencyAnalysis\ObjectAndOffsetSymbolNode.cs" Link="Compiler\DependencyAnalysis\ObjectAndOffsetSymbolNode.cs" />
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\ObjectDataBuilder.cs" Link="Compiler\DependencyAnalysis\ObjectDataBuilder.cs" />
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\ObjectNode.cs" Link="Compiler\DependencyAnalysis\ObjectNode.cs" />
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\ObjectNodeSection.cs" Link="Compiler\DependencyAnalysis\ObjectNodeSection.cs" />
@@ -395,6 +394,7 @@
     <Compile Include="Compiler\Dataflow\ValueNode.cs" />
     <Compile Include="Compiler\DebugInformationProvider.cs" />
     <Compile Include="Compiler\DependencyAnalysis\CustomAttributeMetadataNode.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\DelegateTargetVirtualMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\EmbeddedTrimmingDescriptorNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DataflowAnalyzedMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DataflowAnalyzedTypeDefinitionNode.cs" />
@@ -403,6 +403,7 @@
     <Compile Include="Compiler\DependencyAnalysis\ExternSymbolsImportedNodeProvider.cs" />
     <Compile Include="Compiler\DependencyAnalysis\FieldRvaDataNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\FunctionPointerMapNode.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\GenericMethodsHashtableEntryNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\GenericStaticBaseInfoNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\GenericVarianceNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\GenericVirtualMethodImplNode.cs" />
@@ -424,6 +425,7 @@
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmReadyToRunHelperNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmTentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmUnboxingStubNode.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmNodeFactory.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_LoongArch64\LoongArch64TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_X64\X64TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_X86\X86TentativeMethodNode.cs" />
@@ -445,13 +447,6 @@
     <Compile Include="Compiler\FeatureSwitchManager.cs" />
     <Compile Include="Compiler\GeneratingMetadataManager.cs" />
     <Compile Include="Compiler\GenericRootProvider.cs" />
-    <Compile Include="Compiler\LazyGenerics\ModuleCycleInfo.cs" />
-    <Compile Include="Compiler\LazyGenerics\Graph.cs" />
-    <Compile Include="Compiler\LazyGenerics\Graph.Cycles.cs" />
-    <Compile Include="Compiler\LazyGenerics\Graph.Vertex.cs" />
-    <Compile Include="Compiler\LazyGenerics\GraphBuilder.cs" />
-    <Compile Include="Compiler\LazyGenerics\GraphBuilder.ForEach.cs" />
-    <Compile Include="Compiler\LazyGenerics\GraphBuilder.MethodCall.cs" />
     <Compile Include="Compiler\HardwareIntrinsicHelpers.Aot.cs" />
     <Compile Include="Compiler\IInliningPolicy.cs" />
     <Compile Include="Compiler\Logging\NativeAotFatalErrorException.cs" />
@@ -538,6 +533,7 @@
     <Compile Include="Compiler\DependencyAnalysis\ReadyToRunHeaderNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ModulesSectionNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\TypeManagerIndirectionNode.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\TlsRootNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\BlobNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\EETypeNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\CanonicalDefinitionEETypeNode.cs" />
@@ -629,8 +625,6 @@
     <Compile Include="Compiler\XmlObjectDumper.cs" />
     <Compile Include="IL\ILImporter.Scanner.cs" />
     <Compile Include="IL\Stubs\PInvokeILProvider.cs" />
-    <Compile Include="IL\Stubs\StartupCode\AppContextInitializerMethod.cs" />
-    <Compile Include="IL\Stubs\StartupCode\AppContextInitializerMethod.Sorting.cs" />
     <Compile Include="IL\Stubs\StartupCode\StartupCodeMainMethod.cs" />
     <Compile Include="IL\Stubs\StartupCode\StartupCodeMainMethod.Sorting.cs" />
     <Compile Include="IL\Stubs\StartupCode\NativeLibraryStartupMethod.cs" />
@@ -720,4 +714,6 @@
   </ItemGroup>
 
   <Import Project="..\..\..\..\tools\illink\src\ILLink.Shared\ILLink.Shared.projitems" Label="Shared" />
+  <Import Project="..\..\Common\Compiler\GenericCycleDetection\GenericCycleDetection.projitems" />
+
 </Project>

@@ -150,7 +150,7 @@ private:
             JITDUMP("Spilling as V%02u:\n", spillLclNum);
             DISPNODE(defNode);
 
-            GenTree* store = m_compiler->gtNewTempAssign(spillLclNum, defNode);
+            GenTree* store = m_compiler->gtNewTempStore(spillLclNum, defNode);
             blockRange.InsertAfter(defNode, store);
 
             *pSpillLclNum = spillLclNum;

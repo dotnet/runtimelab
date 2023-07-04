@@ -18,17 +18,16 @@ namespace ILCompiler
     public sealed partial class LLVMCodegenCompilation
     {
         // We define an alternative entrypoint for the runtime exports, one that has the (original) managed calling convention.
-        // This allows managed code as well as low-level runtime helpers to avoid the overhead of shadow stack save/restore
-        // when calling the export. Thus, the "mangling" we use here is effectively an ABI contract between the compiler and
-        // runtime.
+        // This allows low-level runtime helpers to avoid the overhead of shadow stack save/restore when calling the export.
+        // Thus, the "mangling" we use here is effectively an ABI contract between the compiler and runtime.
         public override string GetRuntimeExportManagedEntrypointName(MethodDesc method)
         {
-            if (!method.HasCustomAttribute("System.Runtime", "RuntimeExportAttribute"))
+            if (method is EcmaMethod ecmaMethod && ecmaMethod.GetRuntimeExportName() is string name)
             {
-                return null;
+                return name + "_Managed";
             }
 
-            return ((EcmaMethod)method).GetRuntimeExportName() + "_Managed";
+            return null;
         }
 
         public override ISymbolNode GetExternalMethodAccessor(MethodDesc method, ReadOnlySpan<TargetAbiType> sig)

@@ -169,7 +169,7 @@ namespace ILCompiler.DependencyAnalysis
             int pointerSize = factory.Target.PointerSize;
 
             // All references to this symbol are through "ordinarily named" aliases. Thus, we need to suffix the real definition.
-            ISymbolNode symbolNode = node as ISymbolNode ?? ((IHasStartSymbol)node).StartSymbol;
+            ISymbolNode symbolNode = (ISymbolNode)node;
             using Utf8Name dataSymbolName = GetMangledUtf8Name(symbolNode, "__DATA");
 
             // Calculate the size of this object node.

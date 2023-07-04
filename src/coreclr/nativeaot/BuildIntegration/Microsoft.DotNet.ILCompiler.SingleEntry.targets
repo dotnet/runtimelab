@@ -23,6 +23,7 @@
     <_targetPackageName Condition="'$(_targetArchitecture)' == 'wasm'">$(_targetPackageName).LLVM</_targetPackageName>
 
     <!-- From this point onwards, we will treat linux-musl as linux -->
+    <_linuxLibcFlavor Condition="$(_targetOS.StartsWith('linux-'))">$(_targetOS.SubString(6))</_linuxLibcFlavor>
     <_targetOS Condition="$(_targetOS.StartsWith('linux'))">linux</_targetOS>
   </PropertyGroup>
 
