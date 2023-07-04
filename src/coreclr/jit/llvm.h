@@ -184,7 +184,6 @@ private:
     BasicBlock* m_currentBlock = nullptr;
 
     // Lowering members.
-    LIR::Range m_prologRange = LIR::Range();
     LIR::Range* m_currentRange = nullptr;
 
     // Codegen members.
@@ -353,29 +352,13 @@ public:
     void Allocate();
 
 private:
-    void allocSpillTempsLiveAcrossSafePoints();
+    friend class ShadowStackAllocator;
 
-    void allocInitializeAndAllocateLocals();
-    void allocDissolvePromotedLocals();
-    void allocAssignShadowFrameOffsets(std::vector<unsigned>& shadowFrameLocals);
-
-    void allocLowerAndInsertProlog();
-    void allocInitializeLocalInProlog(unsigned lclNum, GenTree* value);
-
-    void allocRewriteShadowFrameReferences();
-    void allocRewriteLocal(GenTreeLclVarCommon* lclNode);
-    void allocRewriteCall(GenTreeCall* call);
-
-    bool isPotentialGcSafePoint(GenTree* node);
-
+    unsigned getShadowFrameSize(unsigned hndIndex) const;
     bool isShadowFrameLocal(LclVarDsc* varDsc) const;
     bool isShadowStackLocal(unsigned lclNum) const;
     bool isFuncletParameter(unsigned lclNum) const;
-
-    unsigned getShadowFrameSize(unsigned hndIndex) const;
-    unsigned getOriginalShadowFrameSize() const;
-
-    bool doUseDynamicStackForLclHeap();
+    bool doUseDynamicStackForLclHeap() const;
 
     // ================================================================================================================
     // |                                                   Codegen                                                    |
