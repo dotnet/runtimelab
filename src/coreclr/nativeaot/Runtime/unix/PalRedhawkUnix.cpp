@@ -231,7 +231,7 @@ public:
             NanosecondsToTimeSpec(nanoseconds, &endTime);
             endNanoseconds = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) + nanoseconds;
         }
-#elif HAVE_PTHREAD_CONDATTR_SETCLOCK
+#elif HAVE_PTHREAD_CONDATTR_SETCLOCK || _WASI_EMULATED_PROCESS_CLOCKS
         if (milliseconds != INFINITE)
         {
             clock_gettime(CLOCK_MONOTONIC, &endTime);
