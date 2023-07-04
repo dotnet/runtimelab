@@ -453,7 +453,8 @@ namespace Internal.JitInterface
 
         private ISymbolNode GetHelperFtnUncached(CorInfoHelpFunc ftnNum)
         {
-            ReadyToRunHelper id;
+            ReadyToRunHelper id = ReadyToRunHelper.Invalid;
+            string mangledName = null;
 
             switch (ftnNum)
             {
@@ -759,40 +760,58 @@ namespace Internal.JitInterface
                     return _compilation.NodeFactory.ExternIndirectSymbol("__guard_dispatch_icall_fptr");
 
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
-                    return _compilation.NodeFactory.ExternSymbol("RhpGetOrInitShadowStackTop");
+                    mangledName = "RhpGetOrInitShadowStackTop";
+                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP:
-                    return _compilation.NodeFactory.ExternSymbol("RhpSetShadowStackTop");
+                    mangledName = "RhpSetShadowStackTop";
+                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING:
-                    return _compilation.NodeFactory.ExternSymbol("RhpDispatchHandleExceptionWasmMutuallyProtectingCatches");
+                    mangledName = "RhpDispatchHandleExceptionWasmMutuallyProtectingCatches";
+                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH:
-                    return _compilation.NodeFactory.ExternSymbol("RhpDispatchHandleExceptionWasmCatch");
+                    mangledName = "RhpDispatchHandleExceptionWasmCatch";
+                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER:
-                    return _compilation.NodeFactory.ExternSymbol("RhpDispatchHandleExceptionWasmFilteredCatch");
+                    mangledName = "RhpDispatchHandleExceptionWasmFilteredCatch";
+                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT:
-                    return _compilation.NodeFactory.ExternSymbol("RhpDispatchHandleExceptionWasmFault");
+                    mangledName = "RhpDispatchHandleExceptionWasmFault";
+                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION:
-                    return _compilation.NodeFactory.ExternSymbol("RhpHandleUnhandledException");
+                    mangledName = "RhpHandleUnhandledException";
+                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC:
-                    return _compilation.NodeFactory.ExternSymbol("RhpDynamicStackAlloc");
+                    mangledName = "RhpDynamicStackAlloc";
+                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE:
-                    return _compilation.NodeFactory.ExternSymbol("RhpDynamicStackRelease");
+                    mangledName = "RhpDynamicStackRelease";
+                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET:
-                    return _compilation.NodeFactory.ExternSymbol("RhpResolveInterfaceDispatch");
+                    mangledName = "RhpResolveInterfaceDispatch";
+                    break;
 
                 default:
                     throw new NotImplementedException(ftnNum.ToString());
             }
 
-            string mangledName;
-            MethodDesc methodDesc;
-            JitHelper.GetEntryPoint(_compilation.TypeSystemContext, id, out mangledName, out methodDesc);
+            MethodDesc methodDesc = null;
+            if (mangledName == null)
+            {
+                Debug.Assert(id != ReadyToRunHelper.Invalid);
+                JitHelper.GetEntryPoint(_compilation.TypeSystemContext, id, out mangledName, out methodDesc);
+            }
             Debug.Assert(mangledName != null || methodDesc != null);
 
             ISymbolNode entryPoint;
             if (mangledName != null)
-                entryPoint = _compilation.NodeFactory.ExternSymbol(mangledName);
+            {
+                entryPoint = _compilation.NodeFactory.RuntimeExportManagedEntrypoint(mangledName);
+                entryPoint ??= _compilation.NodeFactory.ExternSymbol(mangledName);
+            }
             else
+            {
                 entryPoint = _compilation.NodeFactory.MethodEntrypoint(methodDesc);
+            }
 
             return entryPoint;
         }
