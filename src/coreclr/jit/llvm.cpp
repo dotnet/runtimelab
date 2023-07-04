@@ -110,7 +110,16 @@ Llvm::Llvm(Compiler* compiler)
 {
 #ifdef HOST_WINDOWS
     // Disable popups for CRT asserts (which LLVM uses).
+    auto dbgBreakHook = [](int reportType, char* message, int* returnValue) -> int {
+        if (IsDebuggerPresent())
+        {
+            DebugBreak();
+        }
+        return FALSE;
+    };
+
     ::_set_error_mode(_OUT_TO_STDERR);
+    _CrtSetReportHook2(_CRT_RPTHOOK_INSTALL, dbgBreakHook);
     _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
     _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
     _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
