@@ -495,6 +495,8 @@ namespace ILCompiler.DependencyAnalysis
                 return new StringAllocatorMethodNode(constructor);
             });
 
+            InitializeUnboxingStubTargetMappings();
+
             NativeLayout = new NativeLayoutHelper(this);
         }
 
@@ -1310,6 +1312,10 @@ namespace ILCompiler.DependencyAnalysis
             {
                 graph.AddRoot(_inlinedThreadStatiscNode, "Inlined threadstatics are used if present");
                 graph.AddRoot(TlsRoot, "Inlined threadstatics are used if present");
+            }
+            if (UseUnboxingStubTargetMappings)
+            {
+                graph.AddRoot(UnboxingStubTargetMappings, "Unboxing stub target mappings are always generated for WASM");
             }
 
             ReadyToRunHeader.Add(ReadyToRunSectionType.GCStaticRegion, GCStaticsRegion);

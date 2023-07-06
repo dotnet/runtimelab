@@ -12,6 +12,10 @@ enum GenericVarianceType : uint8_t;
 
 #include "ICodeManager.h"
 
+#ifdef USE_PORTABLE_HELPERS
+#include "shash.h"
+#endif // USE_PORTABLE_HELPERS
+
 extern "C" void PopulateDebugHeaders();
 
 class RuntimeInstance
@@ -61,6 +65,7 @@ private:
 
     bool                        m_conservativeStackReportingEnabled;
 
+#ifndef USE_PORTABLE_HELPERS
     struct  UnboxingStubsRegion
     {
         PTR_VOID                m_pRegionStart;
@@ -70,7 +75,21 @@ private:
         UnboxingStubsRegion() : m_pRegionStart(0), m_cbRegion(0), m_pNextRegion(NULL) { }
     };
 
-    UnboxingStubsRegion*        m_pUnboxingStubsRegion;
+    UnboxingStubsRegion*        m_pUnboxingStubsRegion = nullptr;
+#else // USE_PORTABLE_HELPERS
+    struct UnboxingStubTargetMapping
+    {
+        uint8_t* m_pStub;
+        uint8_t* m_pTarget;
+
+        uint8_t* GetKey() { return m_pStub; }
+        static uint32_t Hash(uint8_t* key) { return (uint32_t)key; }
+    };
+
+    typedef PtrSHash<UnboxingStubTargetMapping, uint8_t*> UnboxingStubTargetsMap;
+    UnboxingStubTargetsMap m_unboxingStubTargetsMap;
+    UnboxingStubTargetsMap m_unboxingAndInstantiatingStubTargetsMap;
+#endif // USE_PORTABLE_HELPERS
 
     RuntimeInstance();
 
@@ -101,8 +120,13 @@ public:
     TypeManagerList& GetTypeManagerList();
     OsModuleList* GetOsModuleList();
 
+#ifndef USE_PORTABLE_HELPERS
     bool RegisterUnboxingStubs(PTR_VOID pvStartRange, uint32_t cbRange);
     bool IsUnboxingStub(uint8_t* pCode);
+#else // USE_PORTABLE_HELPERS
+    bool RegisterUnboxingStubTargetMappings(void* pMappings, uint32_t mappingsSizeInBytes);
+    uint8_t* GetUnboxingStubTarget(uint8_t* pCode);
+#endif // USE_PORTABLE_HELPERS
 
     bool IsManaged(PTR_VOID pvAddress);
 

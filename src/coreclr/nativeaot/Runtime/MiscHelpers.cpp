@@ -198,6 +198,14 @@ inline int32_t GetThumb2BlRel24(uint16_t * p)
 // or unboxing stub, and if so, return the address that stub jumps to
 COOP_PINVOKE_HELPER(uint8_t *, RhGetCodeTarget, (uint8_t * pCodeOrg))
 {
+#ifdef USE_PORTABLE_HELPERS
+    uint8_t* pUnboxingStubTarget = GetRuntimeInstance()->GetUnboxingStubTarget(pCodeOrg);
+    if (pUnboxingStubTarget != nullptr)
+    {
+        return pUnboxingStubTarget;
+    }
+#else // !USE_PORTABLE_HELPERS
+
     bool unboxingStub = false;
 
     // First, check the unboxing stubs regions known by the runtime (if any exist)
@@ -336,6 +344,7 @@ COOP_PINVOKE_HELPER(uint8_t *, RhGetCodeTarget, (uint8_t * pCodeOrg))
     UNREFERENCED_PARAMETER(unboxingStub);
     PORTABILITY_ASSERT("RhGetCodeTarget");
 #endif
+#endif // !USE_PORTABLE_HELPERS
 
     return pCodeOrg;
 }
