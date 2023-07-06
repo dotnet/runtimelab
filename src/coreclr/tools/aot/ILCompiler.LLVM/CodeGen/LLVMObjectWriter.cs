@@ -77,7 +77,6 @@ namespace ILCompiler.DependencyAnalysis
             LLVMObjectWriter objectWriter = new LLVMObjectWriter(objectFilePath, compilation);
             NodeFactory factory = compilation.NodeFactory;
 
-            bool succeeded = false;
             try
             {
                 foreach (DependencyNode depNode in nodes)
@@ -137,29 +136,23 @@ namespace ILCompiler.DependencyAnalysis
                     objectWriter.EmitObjectNode(node, nodeContents);
                 }
 
-                succeeded = true;
-            }
-            finally
-            {
                 objectWriter.FinishObjWriter();
 
-                if (!succeeded)
+                // Make sure we have released all memory used for mangling names.
+                Debug.Assert(objectWriter._utf8StringBuilder.Length == 0);
+            }
+            catch
+            {
+                // If there was an exception while generating the OBJ file, make sure we don't leave the unfinished object file around.
+                // TODO-LLVM: we also emit the results file, etc, should delete those too.
+                try
                 {
-                    // If there was an exception while generating the OBJ file, make sure we don't leave the unfinished
-                    // object file around.
-                    try
-                    {
-                        File.Delete(objectFilePath);
-                    }
-                    catch
-                    {
-                    }
+                    File.Delete(objectFilePath);
                 }
-                else
-                {
-                    // Make sure we have released all memory used for mangling names.
-                    Debug.Assert(objectWriter._utf8StringBuilder.Length == 0);
-                }
+                catch { }
+
+                // Continue with the original exception.
+                throw;
             }
         }
 
