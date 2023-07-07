@@ -128,6 +128,14 @@ struct HelperFuncInfo
     size_t GetSigArgCount(unsigned* callArgCount = nullptr) const;
 };
 
+enum class ValueInitKind
+{
+    None,
+    Param,
+    Zero,
+    Uninit
+};
+
 struct PhiPair
 {
     GenTreeLclVar* StoreNode;
@@ -354,10 +362,16 @@ public:
 private:
     friend class ShadowStackAllocator;
 
+    ValueInitKind getInitKindForLocal(unsigned lclNum) const;
+#ifdef DEBUG
+    void displayInitKindForLocal(unsigned lclNum, ValueInitKind initKind);
+#endif // DEBUG
+
     unsigned getShadowFrameSize(unsigned hndIndex) const;
     bool isShadowFrameLocal(LclVarDsc* varDsc) const;
     bool isShadowStackLocal(unsigned lclNum) const;
     bool isFuncletParameter(unsigned lclNum) const;
+
     bool doUseDynamicStackForLclHeap() const;
 
     // ================================================================================================================

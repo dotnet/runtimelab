@@ -642,6 +642,67 @@ unsigned Llvm::getShadowFrameSize(unsigned hndIndex) const
     return 0;
 }
 
+ValueInitKind Llvm::getInitKindForLocal(unsigned lclNum) const
+{
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+
+    // Is the value live on entry?
+    if (varDsc->lvHasExplicitInit)
+    {
+        // No - no need to initialize it, even in the GC case.
+        return ValueInitKind::None;
+    }
+
+    // We choose to always initialize GC values to reduce the number of "random" pointers on the shadow stack.
+    if (varDsc->HasGCPtr())
+    {
+        // This value may or may not be live.
+        return varDsc->lvIsParam ? ValueInitKind::Param : ValueInitKind::Zero;
+    }
+
+    if (varDsc->lvTracked && !VarSetOps::IsMember(_compiler, _compiler->fgFirstBB->bbLiveIn, varDsc->lvVarIndex))
+    {
+        // Not live and not GC. Nothing needs to be done.
+        return ValueInitKind::None;
+    }
+
+    if (varDsc->lvIsParam)
+    {
+        return ValueInitKind::Param;
+    }
+
+    if (!_compiler->fgVarNeedsExplicitZeroInit(lclNum, /* bbInALoop */ false, /* bbIsReturn */ false))
+    {
+        return ValueInitKind::Zero;
+    }
+
+    return ValueInitKind::Uninit;
+}
+
+#ifdef DEBUG
+void Llvm::displayInitKindForLocal(unsigned lclNum, ValueInitKind initKind)
+{
+    printf("Setting V%02u's initial value to ", lclNum);
+    switch (initKind)
+    {
+        case ValueInitKind::None:
+            printf("nothing\n");
+            break;
+        case ValueInitKind::Param:
+            printf("param %%%u\n", _compiler->lvaGetDesc(lclNum)->lvLlvmArgNum);
+            break;
+        case ValueInitKind::Zero:
+            printf("zero\n");
+            break;
+        case ValueInitKind::Uninit:
+            printf("uninit\n");
+            break;
+        default:
+            unreached();
+    }
+}
+#endif // DEBUG
+
 //------------------------------------------------------------------------
 // isShadowFrameLocal: Does the given local have a home on the shadow frame?
 //

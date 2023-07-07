@@ -211,79 +211,47 @@ void Llvm::initializeLocals()
             continue;
         }
 
-        // See "genCheckUseBlockInit", "fgInterBlockLocalVarLiveness" and "SsaBuilder::RenameVariables" as references
-        // for the zero-init logic.
-        //
+        ValueInitKind initValueKind = getInitKindForLocal(lclNum);
+        JITDUMPEXEC(displayInitKindForLocal(lclNum, initValueKind));
+
+        Value* initValue;
         Type* lclLlvmType = getLlvmTypeForLclVar(varDsc);
-        Value* initValue = nullptr;
-        Value* zeroValue = llvm::Constant::getNullValue(lclLlvmType);
-        if (varDsc->lvIsParam)
+        switch (initValueKind)
         {
-            assert(varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM);
-            initValue = getRootLlvmFunction()->getArg(varDsc->lvLlvmArgNum);
-        }
-        else
-        {
-            // If the local is in SSA, things are somewhat simple: we must provide an initial value if there is an
-            // "implicit" def, and must not if there is not.
-            if (_compiler->lvaInSsa(lclNum))
-            {
-                // Filter out "implicitly" referenced local that the ref count check above didn't catch.
-                if (varDsc->lvPerSsaData.GetCount() == 0)
-                {
-                    continue;
-                }
-
-                bool hasImplicitDef = varDsc->GetPerSsaData(SsaConfig::FIRST_SSA_NUM)->GetDefNode() == nullptr;
-                if (!hasImplicitDef)
-                {
-                    // Nothing else needs to be done for this local.
-                    assert(!varDsc->lvMustInit);
-                    continue;
-                }
-
-                // SSA locals are always tracked; use liveness' determination on whether we need to zero-init.
-                if (varDsc->lvMustInit)
-                {
-                    initValue = zeroValue;
-                }
-            }
-            else if (!varDsc->lvHasExplicitInit) // We do not need to zero-init locals with explicit inits.
-            {
-                // This reduces to, essentially, "!isTemp && compInitMem", the general test for whether
-                // we need to zero-initialize, under the assumption there are use-before-def references.
-                if (!_compiler->fgVarNeedsExplicitZeroInit(lclNum, /* bbInALoop */ false, /* bbIsReturn */ false))
-                {
-                    // For untracked locals, we have to be conservative. For tracked ones, we can query the
-                    // "lvMustInit" bit liveness has set.
-                    if (!varDsc->lvTracked || varDsc->lvMustInit)
-                    {
-                        initValue = zeroValue;
-                    }
-                }
-            }
-
-            JITDUMP("Setting V%02u's initial value to %s\n", lclNum, (initValue == zeroValue) ? "zero" : "uninit");
+            case ValueInitKind::None:
+                initValue = nullptr;
+                break;
+            case ValueInitKind::Param:
+                assert(varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM);
+                initValue = getRootLlvmFunction()->getArg(varDsc->lvLlvmArgNum);
+                break;
+            case ValueInitKind::Zero:
+                initValue = llvm::Constant::getNullValue(lclLlvmType);
+                break;
+            case ValueInitKind::Uninit:
+                // Using a frozen undef value here should ensure we don't run into UB issues
+                // with undefined values (which uninitialized allocas produce, see LangRef).
+                initValue = llvm::UndefValue::get(lclLlvmType);
+                initValue = _builder.CreateFreeze(initValue);
+                JITDUMPEXEC(initValue->dump());
+                break;
+            default:
+                unreached();
         }
 
         // Reset the bit so that subsequent dumping reflects our decision here.
-        varDsc->lvMustInit = initValue == zeroValue;
+        varDsc->lvMustInit = initValueKind == ValueInitKind::Zero;
 
-        // If we're not zero-initializing, use a frozen undef value. This will ensure we don't run
-        // into UB issues with undefined values (which uninitialized allocas produce, see LangRef)
-        if (initValue == nullptr)
-        {
-            initValue = llvm::UndefValue::get(lclLlvmType);
-            initValue = _builder.CreateFreeze(initValue);
-            JITDUMPEXEC(initValue->dump());
-        }
-
-        assert(initValue->getType() == lclLlvmType);
-
+        assert((initValue == nullptr) || (initValue->getType() == lclLlvmType));
         if (_compiler->lvaInSsa(lclNum))
         {
-            _localsMap.Set({lclNum, SsaConfig::FIRST_SSA_NUM}, initValue);
-            assignDebugVariable(lclNum, initValue);
+            if (initValue != nullptr)
+            {
+                // Make sure to verify that the first definition is implicit as we expect.
+                assert(varDsc->GetPerSsaData(SsaConfig::FIRST_SSA_NUM)->GetDefNode() == nullptr);
+                _localsMap.Set({lclNum, SsaConfig::FIRST_SSA_NUM}, initValue);
+                assignDebugVariable(lclNum, initValue);
+            }
         }
         else
         {
@@ -291,8 +259,11 @@ void Llvm::initializeLocals()
             allocas[lclNum] = allocaInst;
             JITDUMPEXEC(allocaInst->dump());
 
-            Instruction* storeInst = _builder.CreateStore(initValue, allocaInst);
-            JITDUMPEXEC(storeInst->dump());
+            if (initValue != nullptr)
+            {
+                Instruction* storeInst = _builder.CreateStore(initValue, allocaInst);
+                JITDUMPEXEC(storeInst->dump());
+            }
         }
     }
 
