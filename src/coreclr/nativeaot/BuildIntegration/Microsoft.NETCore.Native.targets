@@ -111,11 +111,10 @@ The .NET Foundation licenses this file to you under the MIT license.
     <!-- Most browsers support WASM EH, so we enable it by default. This is aligned with the upstream behavior. -->
     <WasmEnableExceptionHandling Condition="'$(WasmEnableExceptionHandling)' == '' and '$(_targetOS)' == 'browser'">true</WasmEnableExceptionHandling>
 
-    <!-- TODO-LLVM: update 'IlcOptimizationPreference' to 'OptimizationPreference' when merging. -->
-    <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) != 'Size' and '$(_targetOS)' == 'browser'">-O3</WasmOptimizationSetting>
+    <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(OptimizationPreference) != 'Size' and '$(_targetOS)' == 'browser'">-O3</WasmOptimizationSetting>
     <!-- TODO-LLVM: test -O1/-O2/-O3 for size with Wasi SDK -->
-    <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) != 'Size' and '$(_targetOS)' == 'wasi'">-O2</WasmOptimizationSetting>
-    <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(IlcOptimizationPreference) == 'Size'">-Oz</WasmOptimizationSetting>
+    <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(OptimizationPreference) != 'Size' and '$(_targetOS)' == 'wasi'">-O2</WasmOptimizationSetting>
+    <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(OptimizationPreference) == 'Size'">-Oz</WasmOptimizationSetting>
 
     <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-wasi</IlcLlvmTarget>
   </PropertyGroup>
