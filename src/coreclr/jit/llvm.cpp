@@ -19,7 +19,6 @@ enum class EEApiId
     AddCodeReloc,
     IsRuntimeImport,
     GetPrimitiveTypeForTrivialWasmStruct,
-    PadOffset,
     GetTypeDescriptor,
     GetAlternativeFunctionName,
     GetExternalMethodAccessor,
@@ -653,44 +652,6 @@ CorInfoType Llvm::getLlvmReturnType(CorInfoType sigRetType, CORINFO_CLASS_HANDLE
     return isByRef ? CORINFO_TYPE_VOID : returnType;
 }
 
-static unsigned corInfoTypeAligment(CorInfoType corInfoType)
-{
-    unsigned size = TARGET_POINTER_SIZE; // TODO Wasm64 aligns pointers at 4 or 8?
-    switch (corInfoType)
-    {
-        case CORINFO_TYPE_LONG:
-        case CORINFO_TYPE_ULONG:
-        case CORINFO_TYPE_DOUBLE:
-            size = 8;
-    }
-    return size;
-}
-
-unsigned Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned atOffset)
-{
-    if (corInfoType == CORINFO_TYPE_VALUECLASS)
-    {
-        return PadOffset(structClassHandle, atOffset);
-    }
-
-    return roundUp(atOffset, corInfoTypeAligment(corInfoType));
-}
-
-unsigned Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE structClassHandle, unsigned atOffset)
-{
-    unsigned int size;
-    if (corInfoType == CORINFO_TYPE_VALUECLASS)
-    {
-        size = getElementSize(structClassHandle, corInfoType);
-    }
-    else
-    {
-        size = corInfoTypeAligment(corInfoType);
-    }
-
-    return padOffset(corInfoType, structClassHandle, atOffset) + size;
-}
-
 // When looking at a sigInfo from eeGetMethodSig we have CorInfoType(s) but when looking at lclVars we have LclVarDsc or var_type(s),
 // This method exists to allow both to map to LLVM types.
 /* static */ CorInfoType Llvm::toCorInfoType(var_types type)
@@ -835,11 +796,6 @@ bool Llvm::IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle) const
 CorInfoType Llvm::GetPrimitiveTypeForTrivialWasmStruct(CORINFO_CLASS_HANDLE structHandle)
 {
     return CallEEApi<EEApiId::GetPrimitiveTypeForTrivialWasmStruct, CorInfoType>(m_pEECorInfo, structHandle);
-}
-
-uint32_t Llvm::PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset)
-{
-    return CallEEApi<EEApiId::PadOffset, uint32_t>(m_pEECorInfo, typeHandle, atOffset);
 }
 
 void Llvm::GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle, TypeDescriptor* pTypeDescriptor)

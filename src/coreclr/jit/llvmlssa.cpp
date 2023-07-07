@@ -396,33 +396,39 @@ private:
         }
 
         unsigned offset = 0;
-        for (unsigned i = 0; i < shadowFrameLocals.size(); i++)
-        {
-            LclVarDsc* varDsc = m_compiler->lvaGetDesc(shadowFrameLocals.at(i));
-            if ((varDsc->TypeGet() == TYP_STRUCT) && varDsc->GetLayout()->IsBlockLayout())
-            {
-                assert((varDsc->lvSize() % TARGET_POINTER_SIZE) == 0);
-
-                offset = roundUp(offset, TARGET_POINTER_SIZE);
-                varDsc->SetStackOffset(offset);
-                offset += varDsc->lvSize();
-            }
-            else
-            {
-                CorInfoType corInfoType = m_llvm->toCorInfoType(varDsc->TypeGet());
-                CORINFO_CLASS_HANDLE classHandle =
-                    varTypeIsStruct(varDsc) ? varDsc->GetLayout()->GetClassHandle() : NO_CLASS_HANDLE;
-
-                offset = m_llvm->padOffset(corInfoType, classHandle, offset);
-                varDsc->SetStackOffset(offset);
-                offset = m_llvm->padNextOffset(corInfoType, classHandle, offset);
-            }
+        auto assignOffset = [this, &offset](LclVarDsc* varDsc, unsigned alignment) {
+            offset = AlignUp(offset, alignment);
+            varDsc->SetStackOffset(offset);
+            offset += m_compiler->lvaLclSize(m_compiler->lvaGetLclNum(varDsc));
 
             // We will use this as the indication that the local has a home on the shadow stack.
             varDsc->SetRegNum(REG_STK);
+        };
+
+#ifndef TARGET_64BIT
+        // We assign offsets to the variables that require double alignment first to pack them together.
+        for (unsigned i = 0; i < shadowFrameLocals.size(); i++)
+        {
+            LclVarDsc* varDsc = m_compiler->lvaGetDesc(shadowFrameLocals.at(i));
+            if (varDsc->lvStructDoubleAlign)
+            {
+                assignOffset(varDsc, 8);
+                m_llvm->m_shadowFrameAlignment = 8;
+            }
+        }
+#endif // !TARGET_64BIT
+
+        for (unsigned i = 0; i < shadowFrameLocals.size(); i++)
+        {
+            LclVarDsc* varDsc = m_compiler->lvaGetDesc(shadowFrameLocals.at(i));
+
+            if (!m_llvm->isShadowFrameLocal(varDsc))
+            {
+                assignOffset(varDsc, TARGET_POINTER_SIZE);
+            }
         }
 
-        m_llvm->_shadowStackLocalsSize = AlignUp(offset, TARGET_POINTER_SIZE);
+        m_llvm->_shadowStackLocalsSize = AlignUp(offset, Llvm::DEFAULT_SHADOW_STACK_ALIGNMENT);
 
         m_compiler->compLclFrameSize = m_llvm->_shadowStackLocalsSize;
         m_compiler->lvaDoneFrameLayout = Compiler::TENTATIVE_FRAME_LAYOUT;

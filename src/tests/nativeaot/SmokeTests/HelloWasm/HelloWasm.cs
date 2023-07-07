@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
+
 using System;
 using System.Threading;
 using System.Runtime.InteropServices;
@@ -201,6 +203,8 @@ internal unsafe partial class Program
         StartTest("Newobj value type test");
         IntPtr returnedIntPtr = NewobjValueType();
         EndTest(returnedIntPtr.ToInt32() == 3);
+
+        TestShadowStackAlignment();
 
         StackallocTest();
 
@@ -1216,6 +1220,57 @@ internal unsafe partial class Program
     private static IntPtr NewobjValueType()
     {
         return new IntPtr(3);
+    }
+
+    private static void TestShadowStackAlignment()
+    {
+        StartTest("Shadow stack alignment test");
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static bool TestNormalAlignment()
+        {
+            object alignedObject = default;
+            Volatile.Write(ref alignedObject, new object());
+            return ((nuint)(void*)&alignedObject & (nuint)(sizeof(nint) - 1)) == 0;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static bool TestNormalAlignmentTwo()
+        {
+            object paddingObject = default;
+            Volatile.Write(ref paddingObject, new object());
+            return TestNormalAlignment();
+        }
+
+        if (!TestNormalAlignment() || !TestNormalAlignmentTwo())
+        {
+            FailTest("Shadow stack wasn't aligned to pointer size");
+            return;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static bool TestDoubleAlignment()
+        {
+            StructWithObjectAndDouble doubleAlignedStruct = default;
+            Volatile.Write(ref doubleAlignedStruct.DoubleField, 1);
+            return ((nuint)(void*)&doubleAlignedStruct & (nuint)(sizeof(double) - 1)) == 0;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static bool TestDoubleAlignmentTwo()
+        {
+            object paddingObject = default;
+            Volatile.Write(ref paddingObject, new object());
+            return TestDoubleAlignment();
+        }
+
+        if (!TestDoubleAlignment() || !TestDoubleAlignmentTwo())
+        {
+            FailTest("Shadow stack wasn't aligned to 8");
+            return;
+        }
+
+        PassTest();
     }
 
     private unsafe static void StackallocTest()
@@ -3816,6 +3871,12 @@ public sealed class MySealedClass
 
 public struct StructWithDouble
 {
+    public double DoubleField;
+}
+
+public struct StructWithObjectAndDouble
+{
+    public object ObjectField;
     public double DoubleField;
 }
 

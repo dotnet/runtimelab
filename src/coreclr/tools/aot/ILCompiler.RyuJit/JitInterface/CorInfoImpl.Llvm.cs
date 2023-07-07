@@ -140,15 +140,6 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        public static uint padOffset(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd, uint atOffset)
-        {
-            var _this = GetThis(thisHandle);
-            TypeDesc type = _this.HandleToObject(structHnd);
-
-            return (uint)_this._compilation.PadOffset(type, (int)atOffset);
-        }
-
-        [UnmanagedCallersOnly]
         public static byte* getAlternativeFunctionName(IntPtr thisHandle)
         {
             CorInfoImpl _this = GetThis(thisHandle);
@@ -259,7 +250,6 @@ namespace Internal.JitInterface
             AddCodeReloc,
             IsRuntimeImport,
             GetPrimitiveTypeForTrivialWasmStruct,
-            PadOffset,
             GetTypeDescriptor,
             GetAlternativeFunctionName,
             GetExternalMethodAccessor,
@@ -290,7 +280,6 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
             jitImports[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;
             jitImports[(int)EEApiId.GetPrimitiveTypeForTrivialWasmStruct] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType>)&getPrimitiveTypeForTrivialWasmStruct;
-            jitImports[(int)EEApiId.PadOffset] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint>)&padOffset;
             jitImports[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor*, void>)&getTypeDescriptor;
             jitImports[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
             jitImports[(int)EEApiId.GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
