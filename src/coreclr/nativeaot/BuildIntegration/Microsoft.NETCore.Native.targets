@@ -408,7 +408,8 @@ The .NET Foundation licenses this file to you under the MIT license.
     <ItemGroup>
       <ExecProjects Include="$(MSBuildThisFileDirectory)ExecWrapper.proj">
         <AdditionalProperties>
-          ExecCommand=$(WasmCompilerPath) &quot;$(ProjectDir)/%(LlvmObjects.Identity)&quot; -o &quot;$(ProjectDir)/%(LlvmObjects.NativeObject)&quot; $(CompileWasmArgs)
+          ExecCommand=$(WasmCompilerPath) &quot;%(LlvmObjects.Identity)&quot; -o &quot;%(LlvmObjects.NativeObject)&quot; $(CompileWasmArgs)
+          ExecWorkingDirectory=$(MSBuildProjectDirectory)
         </AdditionalProperties>
       </ExecProjects>
     </ItemGroup>
