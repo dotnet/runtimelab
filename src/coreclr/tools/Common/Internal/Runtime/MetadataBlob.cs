@@ -18,7 +18,7 @@ namespace Internal.Runtime
         ByRefTypeMap                                = 11,
         // unused                                   = 12,
         EmbeddedMetadata                            = 13,
-        // Unused                                   = 14,
+        UnboxingStubMap                             = 14,
         UnboxingAndInstantiatingStubMap             = 15,
         StructMarshallingStubMap                    = 16,
         DelegateMarshallingStubMap                  = 17,

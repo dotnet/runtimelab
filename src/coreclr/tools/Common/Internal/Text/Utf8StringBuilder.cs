@@ -38,10 +38,10 @@ namespace Internal.Text
             return Append(value.UnderlyingArray);
         }
 
-        public Utf8StringBuilder Append(byte[] value)
+        public Utf8StringBuilder Append(ReadOnlySpan<byte> value)
         {
             Ensure(value.Length);
-            Buffer.BlockCopy(value, 0, _buffer, _length, value.Length);
+            value.CopyTo(_buffer.AsSpan(_length, value.Length));
             _length += value.Length;
             return this;
         }
