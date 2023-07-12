@@ -4,7 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+
 using ILCompiler.DependencyAnalysisFramework;
+
 using Internal.IL;
 using Internal.Text;
 using Internal.TypeSystem;
@@ -13,26 +15,18 @@ using CombinedDependencyList = System.Collections.Generic.List<ILCompiler.Depend
 
 namespace ILCompiler.DependencyAnalysis
 {
-    internal abstract class LLVMMethodCodeNode : DependencyNodeCore<NodeFactory>, IMethodCodeNode
+    internal sealed class LLVMMethodCodeNode : DependencyNodeCore<NodeFactory>, IMethodBodyNode, IMethodCodeNode, ISpecialUnboxThunkNode
     {
-        protected readonly MethodDesc _method;
-        protected DependencyList _dependencies;
+        private readonly MethodDesc _method;
+        private DependencyList _dependencies;
 
-        protected LLVMMethodCodeNode(MethodDesc method)
+        public LLVMMethodCodeNode(MethodDesc method)
         {
             Debug.Assert(!method.IsAbstract);
             _method = method;
         }
 
-        public MethodDesc Method
-        {
-            get
-            {
-                return _method;
-            }
-        }
-
-        public override bool StaticDependenciesAreComputed => CompilationCompleted;
+        public MethodDesc Method => _method;
 
         public bool CompilationCompleted { get; set; }
 
@@ -57,11 +51,22 @@ namespace ILCompiler.DependencyAnalysis
             return dependencies ?? (IEnumerable<CombinedDependencyListEntry>)Array.Empty<CombinedDependencyListEntry>();
         }
 
-        public int ClassCode { get; }
+        public override bool StaticDependenciesAreComputed => CompilationCompleted;
 
-        public int CompareToImpl(ISortableNode other, CompilerComparer comparer)
+        public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
         {
-            return comparer.Compare(_method, ((LLVMMethodCodeNode)other)._method);
+            DependencyList dependencies = null;
+
+            if (_dependencies != null)
+            {
+                dependencies = new DependencyList();
+                foreach (DependencyListEntry node in _dependencies)
+                {
+                    dependencies.Add(node);
+                }
+            }
+
+            return dependencies;
         }
 
         public void SetCode(ObjectNode.ObjectData data, bool isFoldable)
@@ -116,39 +121,24 @@ namespace ILCompiler.DependencyAnalysis
         public void InitializeLocalTypes(TypeDesc[] localTypes)
         {
         }
-    }
 
-    internal sealed class LlvmMethodBodyNode : LLVMMethodCodeNode, IMethodBodyNode
-    {
-        public LlvmMethodBodyNode(MethodDesc method)
-            : base(method)
+        public bool IsSpecialUnboxingThunk => ((CompilerTypeSystemContext)Method.Context).IsSpecialUnboxingThunk(_method);
+
+        public ISymbolNode GetUnboxingThunkTarget(NodeFactory factory)
         {
-            Debug.Assert(!method.IsAbstract);
+            Debug.Assert(IsSpecialUnboxingThunk);
+
+            MethodDesc nonUnboxingMethod = ((CompilerTypeSystemContext)Method.Context).GetTargetOfSpecialUnboxingThunk(_method);
+            return factory.MethodEntrypoint(nonUnboxingMethod);
         }
 
         protected override string GetName(NodeFactory factory) => this.GetMangledName(factory.NameMangler);
 
-        public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
+        public int ClassCode => -1502960727;
+
+        public int CompareToImpl(ISortableNode other, CompilerComparer comparer)
         {
-            DependencyList dependencies = null;
-
-            if (_dependencies != null)
-            {
-                dependencies = new DependencyList();
-                foreach (DependencyListEntry node in _dependencies)
-                {
-                    dependencies.Add(node);
-                }
-            }
-
-            return dependencies;
-        }
-
-        int ISortableNode.ClassCode => -1502960727;
-
-        int ISortableNode.CompareToImpl(ISortableNode other, CompilerComparer comparer)
-        {
-            return comparer.Compare(_method, ((LlvmMethodBodyNode)other)._method);
+            return comparer.Compare(_method, ((LLVMMethodCodeNode)other)._method);
         }
     }
 }
