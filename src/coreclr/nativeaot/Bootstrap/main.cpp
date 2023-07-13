@@ -100,7 +100,6 @@ extern "C" bool RhRegisterOSModule(void * pModule,
     void * pvManagedCodeStartRange, uint32_t cbManagedCodeRange,
     void * pvUnboxingStubsStartRange, uint32_t cbUnboxingStubsRange,
     void ** pClasslibFunctions, uint32_t nClasslibFunctions);
-extern "C" bool RhRegisterUnboxingStubTargetMappings(void* pMappings, uint32_t mappingsSizeInBytes);
 
 extern "C" void* PalGetModuleHandleFromPointer(void* pointer);
 
@@ -179,18 +178,13 @@ static int InitializeRuntime()
 
     void * osModule = PalGetModuleHandleFromPointer((void*)&NATIVEAOT_ENTRYPOINT);
 
-#ifndef HOST_WASM
+#if !defined HOST_WASM
     // TODO: pass struct with parameters instead of the large signature of RhRegisterOSModule
     if (!RhRegisterOSModule(
         osModule,
         (void*)&__managedcode_a, (uint32_t)((char *)&__managedcode_z - (char*)&__managedcode_a),
         (void*)&__unbox_a, (uint32_t)((char *)&__unbox_z - (char*)&__unbox_a),
         (void **)&c_classlibFunctions, _countof(c_classlibFunctions)))
-    {
-        return -1;
-    }
-#else // HOST_WASM
-    if (!RhRegisterUnboxingStubTargetMappings((void*)&__unbox_a, (uint32_t)((char*)&__unbox_z - (char*)&__unbox_a)))
     {
         return -1;
     }

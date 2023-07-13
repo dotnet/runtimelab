@@ -48,7 +48,6 @@ namespace ILCompiler.DependencyAnalysis
         {
             CombinedDependencyList dependencies = null;
             CodeBasedDependencyAlgorithm.AddConditionalDependenciesDueToMethodCodePresence(ref dependencies, factory, _method);
-            UnboxingStubTargetMappingNode.AddConditionalMappingDependency(ref dependencies, factory, this);
             return dependencies ?? (IEnumerable<CombinedDependencyListEntry>)Array.Empty<CombinedDependencyListEntry>();
         }
 

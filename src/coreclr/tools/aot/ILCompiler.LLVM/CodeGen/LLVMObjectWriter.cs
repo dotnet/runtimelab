@@ -276,9 +276,9 @@ namespace ILCompiler.DependencyAnalysis
 
         private static bool ObjectNodeMustBeArtificiallyKeptAlive(ObjectNode node)
         {
-            // These are referenced through the special __start/__stop symbols,
-            // which don't cause the linker to consider them used by default.
-            return node is ModulesSectionNode or UnboxingStubTargetMappingsNode;
+            // The modules section is referenced through the special __start/__stop
+            // symbols, which don't cause the linker to consider it alive by default.
+            return node is ModulesSectionNode;
         }
 
         private void FinishObjWriter()

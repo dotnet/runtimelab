@@ -113,7 +113,6 @@ void * RuntimeInstance::GetClasslibFunctionFromCodeAddress(PTR_VOID address, Cla
 
 PTR_UInt8 RuntimeInstance::GetTargetOfUnboxingAndInstantiatingStub(PTR_VOID ControlPC)
 {
-#ifndef USE_PORTABLE_HELPERS
     ICodeManager * pCodeManager = GetCodeManagerForAddress(ControlPC);
     if (pCodeManager != NULL)
     {
@@ -126,13 +125,6 @@ PTR_UInt8 RuntimeInstance::GetTargetOfUnboxingAndInstantiatingStub(PTR_VOID Cont
                 return pData + *dac_cast<PTR_Int32>(pData);
         }
     }
-#else // USE_PORTABLE_HELPERS
-    UnboxingStubTargetMapping* pMapping = m_unboxingAndInstantiatingStubTargetsMap.Lookup((uint8_t*)ControlPC);
-    if (pMapping != nullptr)
-    {
-        return pMapping->m_pTarget;
-    }
-#endif // USE_PORTABLE_HELPERS
 
     return NULL;
 }
@@ -158,7 +150,8 @@ RuntimeInstance::OsModuleList* RuntimeInstance::GetOsModuleList()
 RuntimeInstance::RuntimeInstance() :
     m_pThreadStore(NULL),
     m_CodeManager(NULL),
-    m_conservativeStackReportingEnabled(false)
+    m_conservativeStackReportingEnabled(false),
+    m_pUnboxingStubsRegion(NULL)
 {
 }
 
@@ -196,7 +189,6 @@ extern "C" void __stdcall RegisterCodeManager(ICodeManager * pCodeManager, PTR_V
     GetRuntimeInstance()->RegisterCodeManager(pCodeManager, pvStartRange, cbRange);
 }
 
-#ifndef USE_PORTABLE_HELPERS
 bool RuntimeInstance::RegisterUnboxingStubs(PTR_VOID pvStartRange, uint32_t cbRange)
 {
     ASSERT(pvStartRange != NULL && cbRange > 0);
@@ -236,65 +228,6 @@ extern "C" bool __stdcall RegisterUnboxingStubs(PTR_VOID pvStartRange, uint32_t 
 {
     return GetRuntimeInstance()->RegisterUnboxingStubs(pvStartRange, cbRange);
 }
-
-#else // USE_PORTABLE_HELPERS
-
-bool RuntimeInstance::RegisterUnboxingStubTargetMappings(void* pMappings, uint32_t mappingsSizeInBytes)
-{
-    struct MappingsBlob
-    {
-        uint32_t SimpleUnboxingStubCount;
-        UnboxingStubTargetMapping Data[];
-    };
-
-    ASSERT(((mappingsSizeInBytes - sizeof(MappingsBlob)) % sizeof(UnboxingStubTargetMapping)) == 0);
-    auto initMap = [](UnboxingStubTargetsMap& map, UnboxingStubTargetMapping* mappings, uint32_t count) {
-        // Supporting multiple registrations would require synchronizing access to the tables.
-        ASSERT(map.GetCount() == 0);
-        map.Reallocate(count);
-
-        for (size_t i = 0; i < count; i++)
-        {
-            ASSERT(map.Lookup(mappings[i].GetKey()) == nullptr); // No duplicates.
-            if (!map.Add(&mappings[i]))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    };
-
-    MappingsBlob* allMappings = (MappingsBlob*)pMappings;
-    uint32_t allMappingsCount = mappingsSizeInBytes / sizeof(UnboxingStubTargetMapping);
-    uint32_t simpleStubCount = allMappings->SimpleUnboxingStubCount;
-    uint32_t instantiatingStubCount = allMappingsCount - simpleStubCount;
-
-    if (!initMap(m_unboxingStubTargetsMap, &allMappings->Data[0], simpleStubCount) ||
-        !initMap(m_unboxingAndInstantiatingStubTargetsMap, &allMappings->Data[simpleStubCount], instantiatingStubCount))
-    {
-        return false;
-    }
-
-    return true;
-}
-
-uint8_t* RuntimeInstance::GetUnboxingStubTarget(uint8_t* pCode)
-{
-    UnboxingStubTargetMapping* pMapping = m_unboxingStubTargetsMap.Lookup(pCode);
-    if (pMapping != nullptr)
-    {
-        return pMapping->m_pTarget;
-    }
-
-    return nullptr;
-}
-
-extern "C" bool __stdcall RhRegisterUnboxingStubTargetMappings(void* pMappings, uint32_t mappingsSizeInBytes)
-{
-    return GetRuntimeInstance()->RegisterUnboxingStubTargetMappings(pMappings, mappingsSizeInBytes);
-}
-#endif // USE_PORTABLE_HELPERS
 
 bool RuntimeInstance::RegisterTypeManager(TypeManager * pTypeManager)
 {
