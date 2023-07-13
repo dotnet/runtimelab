@@ -143,13 +143,9 @@ new CoreFXTestLibrary.Internal.TestInfo("PartialUniversalGen.Test.TestCornerCase
 #endif
 new CoreFXTestLibrary.Internal.TestInfo("B282745.testIntMDArrayWithPointerLikeValues", () => global::B282745.testIntMDArrayWithPointerLikeValues(), null),
 new CoreFXTestLibrary.Internal.TestInfo("B282745.testLongMDArrayWithPointerLikeValues", () => global::B282745.testLongMDArrayWithPointerLikeValues(), null),
-#if !CODEGEN_WASM
 new CoreFXTestLibrary.Internal.TestInfo("B282745.testMDArrayWithPointerLikeValuesOfKnownStructType", () => global::B282745.testMDArrayWithPointerLikeValuesOfKnownStructType(), null),
-#endif
 new CoreFXTestLibrary.Internal.TestInfo("B282745.testMDArrayWithPointerLikeValuesOfKnownStructTypeLargerType", () => global::B282745.testMDArrayWithPointerLikeValuesOfKnownStructTypeLargerType(), null),
-#if !CODEGEN_WASM
 new CoreFXTestLibrary.Internal.TestInfo("B282745.testMDArrayWithPointerLikeValuesOfUnknownStructReferenceType", () => global::B282745.testMDArrayWithPointerLikeValuesOfUnknownStructReferenceType(), null),
-#endif
 new CoreFXTestLibrary.Internal.TestInfo("B282745.testMDArrayWithPointerLikeValuesOfUnknownStructPrimitiveType", () => global::B282745.testMDArrayWithPointerLikeValuesOfUnknownStructPrimitiveType(), null),
 // TODO-LLVM: times out in NativeAOT-LLVM after 30 minutes in Win x64 Checked config
 // new CoreFXTestLibrary.Internal.TestInfo("B282745.testMDArrayWith3Dimensions", () => global::B282745.testMDArrayWith3Dimensions(), null),
