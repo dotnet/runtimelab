@@ -315,7 +315,7 @@ if ($Analyze -or $Summary)
             }
 
             $OutputProgressIndex = 0
-            $OutputProgressInterval = [int]($Diffs.Count / 10)
+            $OutputProgressInterval = [Math]::Max([int]($Diffs.Count / 10), 1)
 
             Write-Host -NoNewLine "Writing diff files"
             foreach ($Diff in $Diffs)
