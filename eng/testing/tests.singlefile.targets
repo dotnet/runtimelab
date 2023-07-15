@@ -80,11 +80,18 @@
 
   <ItemGroup>
     <Compile Include="$(CommonTestPath)SingleFileTestRunner\SingleFileTestRunner.cs"
-             Link="Common\SingleFileTestRunner\SingleFileTestRunner.cs" />
+             Link="Common\SingleFileTestRunner\SingleFileTestRunner.cs"
+             Condition="'$(TargetsSingleThreadedWasm)' != 'true'" />
+    <Compile Include="$(CommonTestPath)WasmTestRunner\WasmTestRunner.cs"
+             Link="Common\WasmTestRunner\WasmTestRunner.cs"
+             Condition="'$(TargetsSingleThreadedWasm)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="xunit.runner.utility" Version="$(XUnitVersion)" />
+    <PackageReference Include="xunit.runner.utility" Version="$(XUnitVersion)"
+                      Condition="'$(TargetsSingleThreadedWasm)' != 'true'" />
+    <PackageReference Include="Microsoft.DotNet.XHarness.TestRunners.Xunit" Version="$(MicrosoftDotNetXHarnessTestRunnersXunitVersion)"
+                      Condition="'$(TargetsSingleThreadedWasm)' == 'true'" />
   </ItemGroup>
 
   <Target Name="__ExcludeAssembliesFromSingleFile"

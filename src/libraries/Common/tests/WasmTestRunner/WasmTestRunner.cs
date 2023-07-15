@@ -5,26 +5,35 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
+using Microsoft.DotNet.XHarness.TestRunners.Common;
 using Microsoft.DotNet.XHarness.TestRunners.Xunit;
 
 public class SimpleWasmTestRunner : WasmApplicationEntryPoint
 {
     public static async Task<int> Main(string[] args)
     {
+        int index = 0;
+
+#if SINGLE_FILE_TEST_RUNNER
+        // This runner is also used for NativeAOT testing, which defines SINGLE_FILE_TEST_RUNNER.
+        var testAssembly = typeof(SimpleWasmTestRunner).Assembly.GetName().Name;
+#else
         if (args.Length == 0)
         {
             Console.WriteLine ($"No args given");
             return -1;
         }
 
-        var testAssembly = args[0];
+        var testAssembly = args[index++];
+#endif
+
         var excludedTraits = new List<string>();
         var includedTraits = new List<string>();
         var includedNamespaces = new List<string>();
         var includedClasses = new List<string>();
         var includedMethods = new List<string>();
 
-        for (int i = 1; i < args.Length; i++)
+        for (int i = index; i < args.Length; i++)
         {
             var option = args[i];
             switch (option)
@@ -64,11 +73,18 @@ public class SimpleWasmTestRunner : WasmApplicationEntryPoint
             IncludedMethods = includedMethods
         };
 
+#if !SINGLE_FILE_TEST_RUNNER
         if (OperatingSystem.IsBrowser())
         {
             await Task.Yield();
         }
+#endif
 
         return await runner.Run();
     }
+
+#if SINGLE_FILE_TEST_RUNNER
+    protected override IEnumerable<TestAssemblyInfo> GetTestAssemblies()
+        => new[] { new TestAssemblyInfo(typeof(SimpleWasmTestRunner).Assembly, typeof(SimpleWasmTestRunner).Assembly.GetName().Name) };
+#endif
 }
