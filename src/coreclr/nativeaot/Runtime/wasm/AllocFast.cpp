@@ -100,28 +100,18 @@ COOP_PINVOKE_HELPER(Array*, RhpNewArray, (void* pShadowStack, MethodTable* pArra
         ThrowOverflowException(pShadowStack, pArrayEEType);
     }
 
-    size_t size;
 #ifndef HOST_64BIT
     // if the element count is <= 0x10000, no overflow is possible because the component size is
     // <= 0xffff, and thus the product is <= 0xffff0000, and the base size is only ~12 bytes
     if (numElements > 0x10000)
     {
-        // Perform the size computation using 64-bit integeres to detect overflow
-        uint64_t size64 = (uint64_t)pArrayEEType->get_BaseSize() + ((uint64_t)numElements * (uint64_t)pArrayEEType->RawGetComponentSize());
-        size64 = (size64 + (sizeof(uintptr_t)-1)) & ~(sizeof(uintptr_t)-1);
-
-        size = (size_t)size64;
-        if (size != size64)
-        {
-            ThrowOverflowException(pShadowStack, pArrayEEType);
-        }
+        // Overflow here should result in an OOM. Let the slow path take care of it.
+        return (Array*)AllocateObject(pShadowStack, pArrayEEType, 0, numElements);
     }
-    else
 #endif // !HOST_64BIT
-    {
-        size = (size_t)pArrayEEType->get_BaseSize() + ((size_t)numElements * (size_t)pArrayEEType->RawGetComponentSize());
-        size = ALIGN_UP(size, sizeof(uintptr_t));
-    }
+
+    size_t size = (size_t)pArrayEEType->get_BaseSize() + ((size_t)numElements * (size_t)pArrayEEType->RawGetComponentSize());
+    size = ALIGN_UP(size, sizeof(uintptr_t));
 
     uint8_t* alloc_ptr = acontext->alloc_ptr;
     ASSERT(alloc_ptr <= acontext->alloc_limit);
@@ -160,7 +150,7 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastAlign8, (void* pShadowStack, MethodTable*
     gc_alloc_context* acontext = pCurThread->GetAllocContext();
 
     size_t size = pEEType->get_BaseSize();
-    size = (size + (sizeof(uintptr_t) - 1)) & ~(sizeof(uintptr_t) - 1);
+    size = ALIGN_UP(size, sizeof(uintptr_t));
 
     uint8_t* result = acontext->alloc_ptr;
 
@@ -242,27 +232,17 @@ COOP_PINVOKE_HELPER(Array*, RhpNewArrayAlign8, (void* pShadowStack, MethodTable*
         ThrowOverflowException(pShadowStack, pArrayEEType);
     }
 
-    size_t size;
-    uint32_t baseSize = pArrayEEType->get_BaseSize();
     // if the element count is <= 0x10000, no overflow is possible because the component size is
     // <= 0xffff, and thus the product is <= 0xffff0000, and the base size is only ~12 bytes
     if (numElements > 0x10000)
     {
-        // Perform the size computation using 64-bit integeres to detect overflow
-        uint64_t size64 = (uint64_t)baseSize + ((uint64_t)numElements * (uint64_t)pArrayEEType->RawGetComponentSize());
-        size64 = (size64 + (sizeof(uintptr_t) - 1)) & ~(sizeof(uintptr_t) - 1);
+        // Overflow here should result in an OOM. Let the slow path take care of it.
+        return (Array*)AllocateObject(pShadowStack, pArrayEEType, GC_ALLOC_ALIGN8, numElements);
+    }
 
-        size = (size_t)size64;
-        if (size != size64)
-        {
-            ThrowOverflowException(pShadowStack, pArrayEEType);
-        }
-    }
-    else
-    {
-        size = (size_t)baseSize + ((size_t)numElements * (size_t)pArrayEEType->RawGetComponentSize());
-        size = ALIGN_UP(size, sizeof(uintptr_t));
-    }
+    uint32_t baseSize = pArrayEEType->get_BaseSize();
+    size_t size = (size_t)baseSize + ((size_t)numElements * (size_t)pArrayEEType->RawGetComponentSize());
+    size = ALIGN_UP(size, sizeof(uintptr_t));
 
     uint8_t* result = acontext->alloc_ptr;
     int requiresAlignObject = ((uint32_t)result) & 7;
