@@ -158,6 +158,7 @@ namespace System
             }
         }
 
+#if !TARGET_WASM
         //==================================================================================================================
         // Support for ExceptionDispatchInfo class - imports and exports the stack trace.
         //==================================================================================================================
@@ -206,6 +207,7 @@ namespace System
                 StackTrace = stackTrace;
             }
         }
+#endif
 
         // This is the object against which a lock will be taken
         // when attempt to restore the EDI. Since its static, its possible

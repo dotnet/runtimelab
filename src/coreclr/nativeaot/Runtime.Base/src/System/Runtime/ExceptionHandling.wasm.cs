@@ -244,20 +244,26 @@ namespace System.Runtime
             // Turn "throw null" into "throw new NullReferenceException()".
             exception ??= new NullReferenceException();
 #endif
-            Exception.DispatchExLLVM(exception);
-            ThrowException(exception);
+            ThrowException(exception, 0);
         }
 
         [RuntimeExport("RhpRethrow")]
         private static void RhpRethrow(object* pException)
         {
-            ThrowException(*pException);
+            ThrowException(*pException, RhEHFrameType.RH_EH_FIRST_RETHROW_FRAME);
         }
 
-        private static void ThrowException(object exception)
+        private static void ThrowException(object exception, RhEHFrameType flags)
         {
             WasmEHLog("Throwing: [" + exception.GetType() + "]", &exception, "1");
+
             OnFirstChanceExceptionViaClassLib(exception);
+
+#if INPLACE_RUNTIME
+            Exception.InitializeExceptionStackFrameLLVM(exception, (int)flags);
+#else
+#error Make InitializeExceptionStackFrameLLVM into a classlib export
+#endif
 
             // We will pass around the managed exception address in the native exception to avoid having to report it
             // explicitly to the GC (or having a hole, or using a GCHandle). This will work as intended as the shadow
