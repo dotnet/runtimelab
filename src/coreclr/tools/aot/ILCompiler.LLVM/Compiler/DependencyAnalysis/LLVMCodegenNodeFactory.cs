@@ -101,7 +101,7 @@ namespace ILCompiler.DependencyAnalysis
             }
             if (CompilationModuleGroup.ContainsMethodBody(method, false))
             {
-                return new LlvmMethodBodyNode(method);
+                return new LLVMMethodCodeNode(method);
             }
             else
             {
@@ -117,7 +117,7 @@ namespace ILCompiler.DependencyAnalysis
                 // 'this' and also provides an instantiation argument (we do a calling convention conversion).
                 // We don't do this for generic instance methods though because they don't use the MethodTable
                 // for the generic context anyway.
-                return new LlvmMethodBodyNode(TypeSystemContext.GetSpecialUnboxingThunk(method, TypeSystemContext.GeneratedAssembly));
+                return new LLVMMethodCodeNode(TypeSystemContext.GetSpecialUnboxingThunk(method, TypeSystemContext.GeneratedAssembly));
             }
             else
             {
