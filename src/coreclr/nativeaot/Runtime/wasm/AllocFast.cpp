@@ -251,7 +251,7 @@ COOP_PINVOKE_HELPER(Array*, RhpNewArrayAlign8, (void* pShadowStack, MethodTable*
     {
         if (paddedSize > SIZE_MAX - 12)
         {
-            ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw overflow
+            ThrowOverflowException(pShadowStack, pArrayEEType);
         }
         paddedSize += 12;
     }
