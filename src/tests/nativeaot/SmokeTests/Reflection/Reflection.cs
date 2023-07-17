@@ -37,9 +37,7 @@ internal static class ReflectionTest
 #if !OPTIMIZED_MODE_WITHOUT_SCANNER
         TestContainment.Run();
         TestInterfaceMethod.Run();
-#if !CODEGEN_WASM // TODO-LLVM: RhGetCodeTarget NYI.        
         TestByRefLikeTypeMethod.Run();
-#endif
 #endif
         TestILScanner.Run();
         TestUnreferencedEnum.Run();

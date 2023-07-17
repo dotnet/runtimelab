@@ -11,7 +11,7 @@ namespace ILCompiler.DependencyAnalysis
     /// <summary>
     /// Represents an unboxing stub that supports calling instance methods on boxed valuetypes.
     /// </summary>
-    public partial class UnboxingStubNode : AssemblyStubNode, IMethodNode, ISymbolDefinitionNode
+    public sealed partial class UnboxingStubNode : AssemblyStubNode, IMethodNode, ISymbolDefinitionNode
     {
         public MethodDesc Method { get; }
 

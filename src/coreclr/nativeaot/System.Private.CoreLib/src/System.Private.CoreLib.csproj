@@ -39,6 +39,10 @@
     <FeatureSharedLowLevelLock>true</FeatureSharedLowLevelLock>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(WasmAbi)' == 'true'">
+    <FeaturePortableGetUnboxingStubTarget>true</FeaturePortableGetUnboxingStubTarget>
+  </PropertyGroup>
+
   <!-- Sources -->
   <ItemGroup>
     <Compile Include="$(CompilerCommonPath)\Internal\Runtime\DehydratedData.cs">
@@ -126,6 +130,9 @@
     <Compile Include="Internal\Runtime\Augments\StackTraceMetadataCallbacks.cs" />
     <Compile Include="Internal\Runtime\Augments\DynamicDelegateAugments.cs" />
   </ItemGroup>
+  <ItemGroup Condition="'$(FeaturePortableGetUnboxingStubTarget)' == 'true'">
+    <Compile Include="Internal\Runtime\CompilerServices\UnboxingStubTargetsMap.cs" />
+  </ItemGroup>
   <ItemGroup>
     <Compile Include="Internal\Reflection\Core\NonPortable\RuntimeTypeUnifier.cs" />
     <Compile Include="Internal\Reflection\Extensions\NonPortable\CustomAttributeInheritanceRules.cs" />
@@ -176,7 +183,7 @@
     <Compile Include="System\Diagnostics\StackFrame.NativeAot.cs" />
     <Compile Include="System\Diagnostics\StackFrameExtensions.cs" />
     <Compile Include="System\Diagnostics\StackTrace.NativeAot.cs" />
-    <Compile Include="System\Diagnostics\StackTrace.NativeAot.Wasm.cs" Condition="'$(WasmAbi)' == 'true'"/>
+    <Compile Include="System\Diagnostics\StackTrace.NativeAot.Wasm.cs" Condition="'$(WasmAbi)' == 'true'" />
     <Compile Include="System\Diagnostics\Eventing\EventPipe.NativeAot.cs" />
     <Compile Include="System\Enum.NativeAot.cs" />
     <Compile Include="System\Environment.NativeAot.cs" />
@@ -220,7 +227,7 @@
     <Compile Include="System\Delegate.cs" />
     <Compile Include="System\RuntimeTypeHandle.cs" />
     <Compile Include="System\Exception.NativeAot.cs" />
-    <Compile Include="System\Exception.NativeAot.LLVM.cs" Condition="'$(WasmAbi)' == 'true'"/>
+    <Compile Include="System\Exception.NativeAot.LLVM.cs" Condition="'$(WasmAbi)' == 'true'" />
     <Compile Include="System\RuntimeExceptionHelpers.cs" />
     <Compile Include="System\EETypePtr.cs" />
     <Compile Include="System\Runtime\RuntimeImports.cs" />
@@ -506,6 +513,7 @@
     <DefineConstants Condition="'$(Platform)' == 'arm'">FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
     <DefineConstants Condition="'$(Platform)' == 'armel'">FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
     <DefineConstants Condition="'$(Platform)' == 'wasm'">FEATURE_64BIT_ALIGNMENT;$(DefineConstants)</DefineConstants>
+    <DefineConstants Condition="'$(FeaturePortableGetUnboxingStubTarget)' == 'true'">FEATURE_PORTABLE_GET_UNBOXING_STUB_TARGET;$(DefineConstants)</DefineConstants>
 
     <IntermediatesDir>$(ArtifactsObjDir)\coreclr\$(TargetOS).$(TargetArchitecture).$(CoreCLRConfiguration)</IntermediatesDir>
     <IntermediatesDir Condition="'$(Ninja)' == 'false' and $([MSBuild]::IsOsPlatform('Windows'))">$(IntermediatesDir)\ide</IntermediatesDir>

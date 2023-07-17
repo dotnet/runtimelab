@@ -56,6 +56,8 @@ namespace ILCompiler
         private readonly SortedSet<TypeDesc> _typesWithConstructedEETypesGenerated = new SortedSet<TypeDesc>(TypeSystemComparer.Instance);
         private readonly SortedSet<MethodDesc> _methodsGenerated = new SortedSet<MethodDesc>(TypeSystemComparer.Instance);
         private readonly SortedSet<MethodDesc> _reflectableMethods = new SortedSet<MethodDesc>(TypeSystemComparer.Instance);
+        private readonly SortedSet<UnboxingStubNode> _unboxingStubs = new SortedSet<UnboxingStubNode>(CompilerComparer.Instance);
+        private readonly SortedSet<ISpecialUnboxThunkNode> _unboxingAndInstantiatingStubs = new SortedSet<ISpecialUnboxThunkNode>(CompilerComparer.Instance);
         private readonly SortedSet<GenericDictionaryNode> _genericDictionariesGenerated = new SortedSet<GenericDictionaryNode>(CompilerComparer.Instance);
         private readonly SortedSet<IMethodBodyNode> _methodBodiesGenerated = new SortedSet<IMethodBodyNode>(CompilerComparer.Instance);
         private readonly SortedSet<EmbeddedObjectNode> _frozenObjects = new SortedSet<EmbeddedObjectNode>(CompilerComparer.Instance);
@@ -82,6 +84,9 @@ namespace ILCompiler
             _dynamicInvokeThunkGenerationPolicy = dynamicInvokeThunkGenerationPolicy;
             _options = options;
         }
+
+        public bool GenerateUnboxingStubTargetMappings => _typeSystemContext.Target.IsWasm;
+        public bool GenerateUnboxingAndInstantiatingStubTargetMappings => _typeSystemContext.Target.IsWasm;
 
         public bool IsDataDehydrated => (_options & MetadataManagerOptions.DehydrateData) != 0;
 
@@ -144,6 +149,18 @@ namespace ILCompiler
 
             var invokeMapNode = new ReflectionInvokeMapNode(commonFixupsTableNode);
             header.Add(BlobIdToReadyToRunSection(ReflectionMapBlob.InvokeMap), invokeMapNode);
+
+            if (GenerateUnboxingStubTargetMappings)
+            {
+                var unboxingStubTargetsMapNode = new UnboxingStubTargetMappingsNode();
+                header.Add(BlobIdToReadyToRunSection(ReflectionMapBlob.UnboxingStubMap), unboxingStubTargetsMapNode);
+            }
+
+            if (GenerateUnboxingAndInstantiatingStubTargetMappings)
+            {
+                var unboxingAndInstantiatingStubTargetsMapNode = new UnboxingAndInstantiatingStubTargetMappingsNode();
+                header.Add(BlobIdToReadyToRunSection(ReflectionMapBlob.UnboxingAndInstantiatingStubMap), unboxingAndInstantiatingStubTargetsMapNode);
+            }
 
             var arrayMapNode = new ArrayMapNode(commonFixupsTableNode);
             header.Add(BlobIdToReadyToRunSection(ReflectionMapBlob.ArrayMap), arrayMapNode);
@@ -217,6 +234,17 @@ namespace ILCompiler
                 }
 
                 return;
+            }
+
+            if (GenerateUnboxingStubTargetMappings && obj is UnboxingStubNode unboxingStub)
+            {
+                _unboxingStubs.Add(unboxingStub);
+            }
+
+            if (GenerateUnboxingAndInstantiatingStubTargetMappings &&
+                obj is ISpecialUnboxThunkNode { IsSpecialUnboxingThunk: true } unboxingAndInstantiatingStub)
+            {
+                _unboxingAndInstantiatingStubs.Add(unboxingAndInstantiatingStub);
             }
 
             IMethodBodyNode methodBodyNode = obj as IMethodBodyNode;
@@ -747,6 +775,16 @@ namespace ILCompiler
         public IEnumerable<MethodDesc> GetReflectableMethods()
         {
             return _reflectableMethods;
+        }
+
+        internal IEnumerable<UnboxingStubNode> GetUnboxingStubs()
+        {
+            return _unboxingStubs;
+        }
+
+        internal IEnumerable<ISpecialUnboxThunkNode> GetUnboxingAndInstantiatingStubs()
+        {
+            return _unboxingAndInstantiatingStubs;
         }
 
         public IEnumerable<TypeDesc> GetTypeTemplates()

@@ -599,28 +599,6 @@ namespace Internal.Runtime.TypeLoader
             return externalReferencesLookup.InitializeNativeReferences(module);
         }
 
-        public static unsafe void GetFieldAlignmentAndSize(RuntimeTypeHandle fieldType, out int alignment, out int size)
-        {
-            MethodTable* typePtr = fieldType.ToEETypePtr();
-            if (typePtr->IsValueType)
-            {
-                size = (int)typePtr->ValueTypeSize;
-            }
-            else
-            {
-                size = IntPtr.Size;
-            }
-
-            alignment = (int)typePtr->FieldAlignmentRequirement;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct UnboxingAndInstantiatingStubMapEntry
-        {
-            public uint StubMethodRva;
-            public uint MethodRva;
-        }
-
         public static unsafe bool TryGetTargetOfUnboxingAndInstantiatingStub(IntPtr maybeInstantiatingAndUnboxingStub, out IntPtr targetMethod)
         {
             targetMethod = RuntimeAugments.GetTargetOfUnboxingAndInstantiatingStub(maybeInstantiatingAndUnboxingStub);

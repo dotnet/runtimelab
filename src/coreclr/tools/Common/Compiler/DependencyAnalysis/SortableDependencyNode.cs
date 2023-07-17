@@ -74,6 +74,8 @@ namespace ILCompiler.DependencyAnalysis
             TypeMetadataMapNode,
             ClassConstructorContextMap,
             ReflectionInvokeMapNode,
+            UnboxingStubTargetsMapNode,
+            UnboxingAndInstantiatingStubTargetsMapNode,
             DelegateMarshallingStubMapNode,
             StructMarshallingStubMapNode,
             ArrayMapNode,

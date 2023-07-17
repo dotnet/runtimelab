@@ -738,12 +738,21 @@ namespace Internal.Runtime.Augments
         // if functionPointer points at an import or unboxing stub, find the target of the stub
         public static IntPtr GetCodeTarget(IntPtr functionPointer)
         {
+#if FEATURE_PORTABLE_GET_UNBOXING_STUB_TARGET
+            IntPtr targetFunctionPointer = UnboxingStubTargetsMap.GetTargetOfUnboxingStub(functionPointer);
+            return targetFunctionPointer != 0 ? targetFunctionPointer : functionPointer;
+#else
             return RuntimeImports.RhGetCodeTarget(functionPointer);
+#endif
         }
 
         public static IntPtr GetTargetOfUnboxingAndInstantiatingStub(IntPtr functionPointer)
         {
+#if FEATURE_PORTABLE_GET_UNBOXING_STUB_TARGET
+            return UnboxingStubTargetsMap.GetTargetOfUnboxingAndInstantiatingStub(functionPointer);
+#else
             return RuntimeImports.RhGetTargetOfUnboxingAndInstantiatingStub(functionPointer);
+#endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
