@@ -693,63 +693,57 @@ void Llvm::generateEHDispatch()
                 }
             }
 
-            if (dispatchHasReachableHandler)
+            unsigned dispatchDestCount = static_cast<unsigned>(dispatchSwitchTargets.size());
+            if (dispatchHasReachableHandler && ((dispatchDestCount != 0)))
             {
-                unsigned dispatchDestCount = static_cast<unsigned>(dispatchSwitchTargets.size());
-                if (dispatchDestCount != 0)
+                const int EH_CONTINUE_SEARCH = 0;
+
+                llvm::SwitchInst* dispatchSwitchInst =
+                    _builder.CreateSwitch(dispatchDestValue, unreachableLlvmBlock, dispatchDestCount + 1);
+                llvm::ConstantInt* continueSearchValue = _builder.getInt32(EH_CONTINUE_SEARCH);
+
+                if (model == CorInfoLlvmEHModel::Wasm)
                 {
-                    const int EH_CONTINUE_SEARCH = 0;
+                    llvm::BasicBlock* doRethrowLlvmBlock = createInlineLlvmBlock();
+                    _builder.SetInsertPoint(doRethrowLlvmBlock);
+                    emitJmpToOuterDispatch();
 
-                    llvm::SwitchInst* dispatchSwitchInst =
-                        _builder.CreateSwitch(dispatchDestValue, unreachableLlvmBlock, dispatchDestCount + 1);
-                    llvm::ConstantInt* continueSearchValue = _builder.getInt32(EH_CONTINUE_SEARCH);
-
-                    if (model == CorInfoLlvmEHModel::Wasm)
-                    {
-                        llvm::BasicBlock* doRethrowLlvmBlock = createInlineLlvmBlock();
-                        _builder.SetInsertPoint(doRethrowLlvmBlock);
-                        emitJmpToOuterDispatch();
-
-                        dispatchSwitchInst->addCase(continueSearchValue, doRethrowLlvmBlock);
-                    }
-                    else if (outerDispatchLlvmBlock != nullptr)
-                    {
-                        dispatchSwitchInst->addCase(continueSearchValue, outerDispatchLlvmBlock);
-                    }
-                    else
-                    {
-                        dispatchSwitchInst->addCase(continueSearchValue, resumeLlvmBlock);
-                    }
-
-                    for (unsigned destIndex = 1; destIndex <= dispatchDestCount; destIndex++)
-                    {
-                        llvm::ConstantInt* destIndexValue = _builder.getInt32(destIndex);
-                        llvm::BasicBlock* destLlvmBlock = dispatchSwitchTargets[destIndex - 1];
-
-                        if (model == CorInfoLlvmEHModel::Wasm)
-                        {
-                            llvm::BasicBlock* catchRetToDispatchDestLlvmBlock = createInlineLlvmBlock();
-                            _builder.SetInsertPoint(catchRetToDispatchDestLlvmBlock);
-                            _builder.CreateCatchRet(catchPadInst, destLlvmBlock);
-
-                            dispatchSwitchInst->addCase(destIndexValue, catchRetToDispatchDestLlvmBlock);
-                        }
-                        else
-                        {
-                            dispatchSwitchInst->addCase(destIndexValue, destLlvmBlock);
-                        }
-                    }
+                    dispatchSwitchInst->addCase(continueSearchValue, doRethrowLlvmBlock);
+                }
+                else if (outerDispatchLlvmBlock != nullptr)
+                {
+                    dispatchSwitchInst->addCase(continueSearchValue, outerDispatchLlvmBlock);
                 }
                 else
                 {
-                    // This set of handlers always (re)throws and unwinds to the outer dispatch.
-                    assert(dispatchDestCount == 0);
-                    _builder.CreateUnreachable();
+                    dispatchSwitchInst->addCase(continueSearchValue, resumeLlvmBlock);
+                }
+
+                for (unsigned destIndex = 1; destIndex <= dispatchDestCount; destIndex++)
+                {
+                    llvm::ConstantInt* destIndexValue = _builder.getInt32(destIndex);
+                    llvm::BasicBlock* destLlvmBlock = dispatchSwitchTargets[destIndex - 1];
+
+                    if (model == CorInfoLlvmEHModel::Wasm)
+                    {
+                        llvm::BasicBlock* catchRetToDispatchDestLlvmBlock = createInlineLlvmBlock();
+                        _builder.SetInsertPoint(catchRetToDispatchDestLlvmBlock);
+                        _builder.CreateCatchRet(catchPadInst, destLlvmBlock);
+
+                        dispatchSwitchInst->addCase(destIndexValue, catchRetToDispatchDestLlvmBlock);
+                    }
+                    else
+                    {
+                        dispatchSwitchInst->addCase(destIndexValue, destLlvmBlock);
+                    }
                 }
             }
             else
             {
-                // The filter(s) for this dispatch will always return "continue search".
+                // Either the filter(s) for this dispatch will always return "continue search"
+                // or this set of handlers always (re)throws and unwinds to the outer dispatch.
+                // Note that in the latter case, the dispatcher can still return "continue search",
+                // but we don't need to explicitly test for it as the only possible value.
                 emitJmpToOuterDispatch();
             }
         }
