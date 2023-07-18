@@ -33,6 +33,8 @@ internal unsafe partial class Program
 
         TestThrowInCatch();
 
+        TestUnconditionalThrowInCatch();
+
         TestExceptionInGvmCall();
 
         TestCatchHandlerNeedsGenericContext();
@@ -323,6 +325,30 @@ internal unsafe partial class Program
             }
         }
         EndTest(i == 11);
+    }
+
+    private static void TestUnconditionalThrowInCatch()
+    {
+        StartTest("TestUnconditionalThrowInCatch");
+
+        bool pass = true;
+        try
+        {
+            try
+            {
+                ThrowException(new ArgumentException());
+            }
+            catch (IndexOutOfRangeException)
+            {
+                pass = false;
+                throw new ArgumentException();
+            }
+        }
+        catch (ArgumentException)
+        {
+        }
+
+        EndTest(pass);
     }
 
     private static void TestExceptionInGvmCall()
