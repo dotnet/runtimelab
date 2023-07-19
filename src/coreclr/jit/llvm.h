@@ -409,6 +409,7 @@ private:
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
     void buildAdd(GenTreeOp* node);
     void buildSub(GenTreeOp* node);
+    void buildAddrMode(GenTreeAddrMode* addrMode);
     void buildDivMod(GenTree* node);
     void buildRotate(GenTreeOp* node);
     void buildCast(GenTreeCast* cast);
@@ -469,6 +470,7 @@ private:
     Instruction* getCast(Value* source, Type* targetType);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
     Value* gepOrAddr(Value* addr, unsigned offset);
+    Value* gepOrAddrInBounds(Value* addr, unsigned offset);
     llvm::Constant* getIntPtrConst(target_size_t value, Type* llvmType = nullptr);
     Value* getShadowStack();
     Value* getShadowStackForCallee();

@@ -870,12 +870,12 @@ GenTree* Llvm::insertShadowStackAddr(GenTree* insertBefore, ssize_t offset, unsi
         return shadowStackLcl;
     }
 
-    GenTree* offsetNode = _compiler->gtNewIconNode(offset, TYP_I_IMPL);
-    CurrentRange().InsertBefore(insertBefore, offsetNode);
-    GenTree* addNode = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackLcl, offsetNode);
-    CurrentRange().InsertBefore(insertBefore, addNode);
+    // Using an address mode node here explicitizes our assumption that the shadow stack does not overflow.
+    assert(offset < getShadowFrameSize(EHblkDsc::NO_ENCLOSING_INDEX));
+    GenTree* addrModeNode = new (_compiler, GT_LEA) GenTreeAddrMode(TYP_I_IMPL, shadowStackLcl, nullptr, 0, offset);
+    CurrentRange().InsertBefore(insertBefore, addrModeNode);
 
-    return addNode;
+    return addrModeNode;
 }
 
 unsigned Llvm::getCatchArgOffset() const

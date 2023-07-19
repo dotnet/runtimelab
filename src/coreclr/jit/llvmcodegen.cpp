@@ -1099,6 +1099,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_SUB:
             buildSub(node->AsOp());
             break;
+        case GT_LEA:
+            buildAddrMode(node->AsAddrMode());
+            break;
         case GT_DIV:
         case GT_MOD:
         case GT_UDIV:
@@ -1340,7 +1343,7 @@ void Llvm::buildLocalField(GenTreeLclFld* lclFld)
 
     // TODO-LLVM: if this is an only value type field, or at offset 0, we can optimize.
     Value* structAddrValue = getLocalAddr(lclNum);
-    Value* fieldAddressValue = gepOrAddr(structAddrValue, lclFld->GetLclOffs());
+    Value* fieldAddressValue = gepOrAddrInBounds(structAddrValue, lclFld->GetLclOffs());
 
     mapGenTreeToValue(lclFld, _builder.CreateLoad(llvmLoadType, fieldAddressValue));
 }
@@ -1351,7 +1354,7 @@ void Llvm::buildStoreLocalField(GenTreeLclFld* lclFld)
     ClassLayout* layout = lclFld->TypeIs(TYP_STRUCT) ? lclFld->GetLayout() : nullptr;
     Type* llvmStoreType = (layout != nullptr) ? getLlvmTypeForStruct(layout)
                                               : getLlvmTypeForVarType(lclFld->TypeGet());
-    Value* addrValue = gepOrAddr(getLocalAddr(lclFld->GetLclNum()), lclFld->GetLclOffs());
+    Value* addrValue = gepOrAddrInBounds(getLocalAddr(lclFld->GetLclNum()), lclFld->GetLclOffs());
 
     Value* dataValue;
     if (lclFld->TypeIs(TYP_STRUCT) && genActualTypeIsInt(data))
@@ -1378,7 +1381,7 @@ void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
 {
     unsigned int lclNum = lclAddr->GetLclNum();
     Value* localAddr = getLocalAddr(lclNum);
-    mapGenTreeToValue(lclAddr, gepOrAddr(localAddr, lclAddr->GetLclOffs()));
+    mapGenTreeToValue(lclAddr, gepOrAddrInBounds(localAddr, lclAddr->GetLclOffs()));
 }
 
 void Llvm::buildAdd(GenTreeOp* node)
@@ -1470,6 +1473,21 @@ void Llvm::buildSub(GenTreeOp* node)
     }
 
     mapGenTreeToValue(node, subValue);
+}
+
+void Llvm::buildAddrMode(GenTreeAddrMode* addrMode)
+{
+    // Address mode nodes (LEAs) as used in this backend signify two assumptions:
+    //  1) The base address points (dynamically) at an allocated object (not null).
+    //  2) The offset addition will never overflow.
+    // Using LEAs in such a manner allows us to translate them to inbounds geps.
+    //
+    assert(addrMode->HasBase() && !addrMode->HasIndex());
+
+    Value* baseValue = consumeValue(addrMode->Base(), getPtrLlvmType());
+    Value* addrModeValue = gepOrAddrInBounds(baseValue, addrMode->Offset());
+
+    mapGenTreeToValue(addrMode, addrModeValue);
 }
 
 void Llvm::buildDivMod(GenTree* node)
@@ -2911,6 +2929,17 @@ Value* Llvm::gepOrAddr(Value* addr, unsigned offset)
     return _builder.CreateGEP(Type::getInt8Ty(m_context->Context), addr, _builder.getInt32(offset));
 }
 
+Value* Llvm::gepOrAddrInBounds(Value* addr, unsigned offset)
+{
+    Value* gepValue = gepOrAddr(addr, offset);
+    if (offset != 0)
+    {
+        llvm::cast<llvm::GetElementPtrInst>(gepValue)->setIsInBounds();
+    }
+
+    return gepValue;
+}
+
 Value* Llvm::getShadowStack()
 {
     if (getCurrentLlvmFunctionIndex() == ROOT_FUNC_IDX)
@@ -2930,7 +2959,7 @@ Value* Llvm::getShadowStackForCallee()
     unsigned hndIndex =
         (funcIdx == ROOT_FUNC_IDX) ? EHblkDsc::NO_ENCLOSING_INDEX : _compiler->funGetFunc(funcIdx)->funEHIndex;
 
-    return gepOrAddr(getShadowStack(), getShadowFrameSize(hndIndex));
+    return gepOrAddrInBounds(getShadowStack(), getShadowFrameSize(hndIndex));
 }
 
 Value* Llvm::getOriginalShadowStack()
