@@ -227,20 +227,9 @@ public partial class DeflateStream : Stream
         throw new NotImplementedException();
     }
 
-    /// <summary>
-    /// Writes the bytes that have already been deflated
-    /// </summary>
-    private async ValueTask WriteDeflaterOutputAsync(CancellationToken cancellationToken)
+    private ValueTask WriteDeflaterOutputAsync(CancellationToken cancellationToken)
     {
-        Debug.Assert(_deflater != null && _buffer != null);
-        while (!_deflater.NeedsInput())
-        {
-            int compressedBytes = _deflater.GetDeflateOutput(_buffer);
-            if (compressedBytes > 0)
-            {
-                await _stream.WriteAsync(new ReadOnlyMemory<byte>(_buffer, 0, compressedBytes), cancellationToken).ConfigureAwait(false);
-            }
-        }
+        throw new NotImplementedException();
     }
 
     public override void CopyTo(Stream destination, int bufferSize)
@@ -265,7 +254,7 @@ public partial class DeflateStream : Stream
             throw new NotImplementedException();
         }
 
-        public async Task CopyFromSourceToDestinationAsync()
+        public Task CopyFromSourceToDestinationAsync()
         {
             throw new NotImplementedException();
         }
