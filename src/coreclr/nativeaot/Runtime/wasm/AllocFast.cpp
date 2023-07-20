@@ -152,20 +152,14 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastAlign8, (void* pShadowStack, MethodTable*
     size_t size = pEEType->get_BaseSize();
     size = ALIGN_UP(size, sizeof(uintptr_t));
 
-    uint8_t* result = acontext->alloc_ptr;
-
-    int requiresPadding = ((uint32_t)result) & 7;
+    uint8_t* alloc_ptr = acontext->alloc_ptr;
+    int requiresPadding = ((uint32_t)alloc_ptr) & 7;
     size_t paddedSize = size;
     if (requiresPadding)
     {
-        if (paddedSize > SIZE_MAX - 12)
-        {
-            ThrowOverflowException(pShadowStack, pEEType);
-        }
         paddedSize += 12;
     }
 
-    uint8_t* alloc_ptr = acontext->alloc_ptr;
     ASSERT(alloc_ptr <= acontext->alloc_limit);
     if ((size_t)(acontext->alloc_limit - alloc_ptr) >= paddedSize)
     {
@@ -174,7 +168,7 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastAlign8, (void* pShadowStack, MethodTable*
         {
             Object* dummy = (Object*)alloc_ptr;
             dummy->set_EEType(g_pFreeObjectEEType);
-            alloc_ptr += 12; // if result + paddedSize was ok, then cant overflow
+            alloc_ptr += 12;
         }
         Object* pObject = (Object*)alloc_ptr;
         pObject->set_EEType(pEEType);
@@ -190,20 +184,15 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastMisalign, (void* pShadowStack, MethodTabl
     gc_alloc_context* acontext = pCurThread->GetAllocContext();
 
     size_t size = pEEType->get_BaseSize();
-    uint8_t* result = acontext->alloc_ptr;
 
-    int requiresPadding = (((uint32_t)result) & 7) != 4;
+    uint8_t* alloc_ptr = acontext->alloc_ptr;
+    int requiresPadding = (((uint32_t)alloc_ptr) & 7) != 4;
     size_t paddedSize = size;
     if (requiresPadding)
     {
-        if (paddedSize > SIZE_MAX - 12)
-        {
-            ThrowOverflowException(pShadowStack, pEEType);
-        }
         paddedSize += 12;
     }
 
-    uint8_t* alloc_ptr = acontext->alloc_ptr;
     ASSERT(alloc_ptr <= acontext->alloc_limit);
     if ((size_t)(acontext->alloc_limit - alloc_ptr) >= paddedSize)
     {
@@ -212,7 +201,7 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastMisalign, (void* pShadowStack, MethodTabl
         {
             Object* dummy = (Object*)alloc_ptr;
             dummy->set_EEType(g_pFreeObjectEEType);
-            alloc_ptr += 12; // if result + paddedSize was ok, then cant overflow
+            alloc_ptr += 12;
         }
         Object* pObject = (Object *)alloc_ptr;
         pObject->set_EEType(pEEType);
@@ -244,19 +233,14 @@ COOP_PINVOKE_HELPER(Array*, RhpNewArrayAlign8, (void* pShadowStack, MethodTable*
     size_t size = (size_t)baseSize + ((size_t)numElements * (size_t)pArrayEEType->RawGetComponentSize());
     size = ALIGN_UP(size, sizeof(uintptr_t));
 
-    uint8_t* result = acontext->alloc_ptr;
-    int requiresAlignObject = ((uint32_t)result) & 7;
+    uint8_t* alloc_ptr = acontext->alloc_ptr;
+    int requiresAlignObject = ((uint32_t)alloc_ptr) & 7;
     size_t paddedSize = size;
     if (requiresAlignObject)
     {
-        if (paddedSize > SIZE_MAX - 12)
-        {
-            ThrowOverflowException(pShadowStack, pArrayEEType);
-        }
         paddedSize += 12;
     }
 
-    uint8_t* alloc_ptr = acontext->alloc_ptr;
     ASSERT(alloc_ptr <= acontext->alloc_limit);
     if ((size_t)(acontext->alloc_limit - alloc_ptr) >= paddedSize)
     {
@@ -265,7 +249,7 @@ COOP_PINVOKE_HELPER(Array*, RhpNewArrayAlign8, (void* pShadowStack, MethodTable*
         {
             Object* dummy = (Object*)alloc_ptr;
             dummy->set_EEType(g_pFreeObjectEEType);
-            alloc_ptr += 12; // if result + paddedSize was ok, then cant overflow
+            alloc_ptr += 12;
         }
         Array* pObject = (Array*)alloc_ptr;
         pObject->set_EEType(pArrayEEType);
