@@ -11,7 +11,7 @@ using Xunit.Sdk;
 
 namespace Microsoft.ManagedZLib.Tests;
 
-public class MyClassTests
+public class DeflateStreamTests
 {
  
     public static IEnumerable<object[]> UncompressedTestFiles()
