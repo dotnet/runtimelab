@@ -7,7 +7,31 @@ if (!(Test-Path $InstallPath))
 {
     mkdir $InstallPath
 }
-Invoke-WebRequest -Uri "https://nodejs.org/dist/$NodeJSVersion/$NodeJSZipName" -OutFile "$InstallPath\$NodeJSZipName"
+
+$RetryCount = 10
+$RetryInterval = 10
+
+while ($RetryCount -ge 0)
+{
+    try
+    {
+        $RetryCount--
+        Invoke-WebRequest -Uri "https://nodejs.org/dist/$NodeJSVersion/$NodeJSZipName" -OutFile "$InstallPath\$NodeJSZipName"
+        break
+    }
+    catch [System.Net.WebException]
+    {
+        Write-Host "Invoke-WebRequest failed with: $_"
+        Write-Host "Retrying in $RetryInterval seconds; $RetryCount retries remaining"
+        Start-Sleep -Seconds $RetryInterval
+    }
+}
+
+if ($RetryCount -le 0)
+{
+    Write-Host "All retries exhausted; exiting with error"
+    exit 1
+}
 
 Expand-Archive -LiteralPath "$InstallPath\$NodeJSInstallName.zip" -DestinationPath $InstallPath -Force
 
