@@ -473,6 +473,8 @@ void Llvm::lowerIndir(GenTreeIndir* indirNode)
     {
         _compiler->fgAddCodeRef(CurrentBlock(), _compiler->bbThrowIndex(CurrentBlock()), SCK_NULL_REF_EXCPN);
     }
+
+    lowerAddressToAddressMode(indirNode);
 }
 
 void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
@@ -658,8 +660,9 @@ void Llvm::lowerDelegateInvoke(GenTreeCall* callNode)
     callTarget->gtFlags |= GTF_ORDER_SIDEEFF;
 
     CurrentRange().InsertBefore(callNode, delegateThis, callTargetOffset, callTargetAddr, callTarget);
-
     callNode->gtControlExpr = callTarget;
+
+    lowerIndir(callTarget->AsIndir());
 }
 
 void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
@@ -796,6 +799,161 @@ void Llvm::lowerCallReturn(GenTreeCall* callNode)
     callNode->gtCorInfoType = getLlvmReturnType(sigRetType, callNode->gtRetClsHnd);
 }
 
+void Llvm::lowerAddressToAddressMode(GenTreeIndir* indir)
+{
+    GenTree* addr = indir->Addr();
+    if (!addr->OperIs(GT_ADD))
+    {
+        return;
+    }
+
+    // Only perform this transformation when optimizing. The analysis below is not cheap.
+    if (_compiler->opts.OptimizationDisabled())
+    {
+        return;
+    }
+
+    // Transform this addition into a LEA if possible. This will help us do two things:
+    //  1. Null-check using a straight comparison with "null".
+    //  2. Generate an inbounds GEP, allowing for the folding of address computation into the load/store.
+    //
+    GenTree* baseAddr = addr;
+    FieldSeq* fieldSeq = nullptr;
+    target_size_t offset = 0;
+    ArrayStack<GenTree*> addrModeNodes(_compiler->getAllocator(CMK_Codegen));
+    while (baseAddr->OperIs(GT_ADD) && !baseAddr->gtOverflow())
+    {
+        GenTree* offsetNode = baseAddr->gtGetOp2();
+        if (!offsetNode->IsCnsIntOrI() || offsetNode->IsIconHandle())
+        {
+            break;
+        }
+
+        target_size_t newOffset = offset + static_cast<target_size_t>(offsetNode->AsIntCon()->IconValue());
+        if (_compiler->fgIsBigOffset(newOffset))
+        {
+            break;
+        }
+
+        addrModeNodes.Push(offsetNode);
+        addrModeNodes.Push(baseAddr);
+
+        baseAddr = baseAddr->gtGetOp1();
+        fieldSeq = offsetNode->AsIntCon()->gtFieldSeq;
+        offset = newOffset;
+
+        // If we have found a field sequence, abort, since the offset it contains is relative to this exact "baseAddr".
+        if (fieldSeq != nullptr)
+        {
+            break;
+        }
+    }
+
+    if (addr == baseAddr)
+    {
+        return;
+    }
+
+    JITDUMP("Converting [%06u] into LEA([%06u], %zu): ", Compiler::dspTreeID(addr), Compiler::dspTreeID(baseAddr),
+            (size_t)offset);
+
+    if (!isAddressInBounds(baseAddr, fieldSeq, offset))
+    {
+        JITDUMP("no, not in bounds\n");
+        return;
+    }
+
+    if (!isInvariantInRange(addrModeNodes.Top(), indir))
+    {
+        JITDUMP("no, not containable\n");
+        return;
+    }
+
+    addr->ChangeOper(GT_LEA);
+    addr->AsAddrMode()->SetBase(baseAddr);
+    addr->AsAddrMode()->SetIndex(nullptr);
+    addr->AsAddrMode()->SetScale(0);
+    addr->AsAddrMode()->SetOffset(static_cast<unsigned>(offset));
+    addr->AsAddrMode()->SetContained();
+    JITDUMP("\n");
+    DISPNODE(addr);
+
+    // Remove all of the nodes that contributed to this address mode from LIR.
+    while (!addrModeNodes.Empty())
+    {
+        GenTree* node = addrModeNodes.Pop();
+        if (node != addr)
+        {
+            CurrentRange().Remove(node);
+        }
+    }
+}
+
+//------------------------------------------------------------------------
+// isAddressInBounds: Can this address computation be marked "in bounds"?
+//
+// The definition of "in bounds" here is the same as LLVM's, i. e.:
+//  1. "addr" points to an allocated object.
+//  2. "addr" + "offset" points to that same object, or one past its end.
+// Notably, here we assume that the caller ensured "addr" cannot be null.
+//
+// Arguments:
+//    addr     - The base address
+//    fieldSeq - The field sequence associated with "offset"
+//    offset   - Offset to be added to "addr"
+//
+// Return Value:
+//    Whether "addr" + "offset" can be considered "in bounds".
+//
+bool Llvm::isAddressInBounds(GenTree* addr, FieldSeq* fieldSeq, target_size_t offset)
+{
+    // Static fields as well as instance fields on objects.
+    if (fieldSeq != nullptr)
+    {
+        assert(fieldSeq->GetKind() != FieldSeq::FieldKind::SimpleStaticKnownAddress);
+        target_size_t fieldAccessOffset = offset - static_cast<target_size_t>(fieldSeq->GetOffset());
+        if (fieldAccessOffset == 0)
+        {
+            // Throughput: no need to check the field size if we are accessing it at zero offset.
+            return true;
+        }
+
+        CORINFO_CLASS_HANDLE fieldStructType;
+        CorInfoType fieldType = m_info->compCompHnd->getFieldType(fieldSeq->GetFieldHandle(), &fieldStructType);
+        target_size_t fieldSize = _compiler->compGetTypeSize(fieldType, fieldStructType);
+
+        // Note the "<=" that allows one-past-the-end access.
+        return fieldAccessOffset <= fieldSize;
+    }
+
+    if (addr->TypeIs(TYP_REF))
+    {
+        // Here we are primarily concerned with array access.
+        return offset <= getObjectSizeBound(addr);
+    }
+
+    // TODO-LLVM-CQ: VTable access.
+    return false;
+}
+
+//------------------------------------------------------------------------
+// getObjectSizeBound: Get the uppermost estimate for an object's size.
+//
+// Arguments:
+//    obj - Node representing the object in question
+//
+// Return Value:
+//    The number of bytes of this object, counting starting from (and
+//    including) the VTable pointer, that is known to be allocated.
+//
+unsigned Llvm::getObjectSizeBound(GenTree* obj)
+{
+    assert(obj->TypeIs(TYP_REF));
+
+    // TODO-LLVM-CQ: improve this estimate using "gtGetClassHandle".
+    return TARGET_POINTER_SIZE * 2;
+}
+
 //------------------------------------------------------------------------
 // normalizeStructUse: Retype "node" to have the exact type of "layout".
 //
@@ -871,7 +1029,7 @@ GenTree* Llvm::insertShadowStackAddr(GenTree* insertBefore, ssize_t offset, unsi
     }
 
     // Using an address mode node here explicitizes our assumption that the shadow stack does not overflow.
-    assert(offset < getShadowFrameSize(EHblkDsc::NO_ENCLOSING_INDEX));
+    assert(offset <= getShadowFrameSize(EHblkDsc::NO_ENCLOSING_INDEX));
     GenTree* addrModeNode = new (_compiler, GT_LEA) GenTreeAddrMode(TYP_I_IMPL, shadowStackLcl, nullptr, 0, offset);
     CurrentRange().InsertBefore(insertBefore, addrModeNode);
 
@@ -881,4 +1039,48 @@ GenTree* Llvm::insertShadowStackAddr(GenTree* insertBefore, ssize_t offset, unsi
 unsigned Llvm::getCatchArgOffset() const
 {
     return 0;
+}
+
+//------------------------------------------------------------------------
+// isInvariantInRange: Check if a node is invariant in the specified range. In
+// other words, can 'node' be moved to right before 'endExclusive' without its
+// computation changing values?
+//
+// Arguments:
+//    node         -  The node.
+//    endExclusive -  The exclusive end of the range to check invariance for.
+//
+// Returns:
+//    True if 'node' can be evaluated at any point between its current
+//    location and 'endExclusive' without giving a different result; otherwise
+//    false.
+//
+// Notes:
+//    (Almost) exact copy of Lowering::IsInvariantInRange.
+//
+bool Llvm::isInvariantInRange(GenTree* node, GenTree* endExclusive)
+{
+    assert((node != nullptr) && (endExclusive != nullptr));
+
+    // Quick early-out for unary cases
+    //
+    if (node->gtNext == endExclusive)
+    {
+        return true;
+    }
+
+    m_scratchSideEffects.Clear();
+    m_scratchSideEffects.AddNode(_compiler, node);
+
+    for (GenTree* cur = node->gtNext; cur != endExclusive; cur = cur->gtNext)
+    {
+        assert((cur != nullptr) && "Expected first node to precede end node");
+        const bool strict = true;
+        if (m_scratchSideEffects.InterferesWith(_compiler, cur, strict))
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
