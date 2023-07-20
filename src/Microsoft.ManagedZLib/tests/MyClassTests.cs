@@ -66,20 +66,14 @@ public class MyClassTests
 
     private void VerifyRead (Stream originalStream)
     {
-        MemoryStream compressedDestination = new(); // Compressed with System.IO.Compresion - Stored here
-        //System.IO.Compression.DeflateStream compressor = new System.IO.Compression.DeflateStream(compressedDestination, System.IO.Compression.CompressionMode.Compress, leaveOpen: true);
-
+        MemoryStream compressedDestination = new(); // Compressed data (with System.IO.Compresion)
         using (System.IO.Compression.DeflateStream compressor = new System.IO.Compression.DeflateStream(compressedDestination, System.IO.Compression.CompressionMode.Compress, leaveOpen: true))
         {
             originalStream.CopyTo(compressor);  //Compressor has the compressed data now.
         }
-        // In case I want to print it out:
-        byte[] compressedBytes = new byte[10]; //For printing the compressed Bytes
-        compressedDestination.Position = 0;
-        compressedDestination.ReadAtLeast(compressedBytes, 1, throwOnEndOfStream: false); //Reading compressed bytes
         compressedDestination.Position = 0;
 
-        // ---------------- Read --------------------- (Decompressing method)
+        // Decompression
         MemoryStream expectedStream = new();
         using (DeflateStream decompressor = new DeflateStream(compressedDestination, CompressionMode.Decompress, leaveOpen: true))
         {
@@ -98,14 +92,5 @@ public class MyClassTests
 
             Assert.Equal(expectedLine, originalLine);
         }
-    }
-
-    private void Print(byte[] arr)
-    {
-        foreach (byte b in arr)
-        {
-            Console.Write($"{b}, ");
-        }
-        Console.WriteLine();
     }
 }

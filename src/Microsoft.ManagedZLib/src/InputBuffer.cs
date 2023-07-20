@@ -34,7 +34,7 @@ internal sealed class InputBuffer
     {
         Debug.Assert(0 < count && count <= 16, "count is invalid.");
 
-        // manual inlining to improve perf
+        // Manual inlining to improve perf
         if (_bitsInBuffer < count)
         {
             if (NeedsInput())
@@ -42,7 +42,7 @@ internal sealed class InputBuffer
                 return false;
             }
 
-            // insert a byte to bitbuffer
+            // Insert a byte to bitbuffer
             _bitBuffer |= (uint)_buffer.Span[0] << _bitsInBuffer;
             _buffer = _buffer.Slice(1);
             _bitsInBuffer += 8;
@@ -53,7 +53,7 @@ internal sealed class InputBuffer
                 {
                     return false;
                 }
-                // insert a byte to bitbuffer
+                // Insert a byte to bitbuffer
                 _bitBuffer |= (uint)_buffer.Span[0] << _bitsInBuffer;
                 _buffer = _buffer.Slice(1);
                 _bitsInBuffer += 8;
@@ -120,7 +120,8 @@ internal sealed class InputBuffer
         return result;
     }
 
-    /// <summary> For copying data in Deflate blocks:
+    /// <summary> 
+    /// For copying the data on the Deflate blocks:
     /// Copies bytes from input buffer to output buffer.
     /// You have to make sure, that the buffer is byte aligned. If not enough bytes are
     /// available, copies fewer bytes.

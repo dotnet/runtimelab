@@ -49,7 +49,6 @@ public partial class DeflateStream : Stream
     /// Internal constructor to check stream validity and call the correct initialization function depending on
     /// the value of the CompressionMode given.
     /// </summary>
-
     public DeflateStream(Stream stream, CompressionMode mode, bool leaveOpen, int windowBits, long uncompressedSize = -1)
     {
         ArgumentNullException.ThrowIfNull(stream);
@@ -58,8 +57,6 @@ public partial class DeflateStream : Stream
         {
             case CompressionMode.Decompress:
                 if (!stream.CanRead)
-                    //This would normally use System.SR
-                    //For testing purposes, we are going to use the exception message directly
                     throw new ArgumentException("NotSupported_UnreadableStream - Stream does not support reading.", nameof(stream));
 
                 _inflater = new Inflater(windowBits, uncompressedSize);
@@ -76,13 +73,9 @@ public partial class DeflateStream : Stream
                 throw new ArgumentException("ArgumentOutOfRange_Enum - Enum value was out of legal range.", nameof(mode));
         }
         //For iflater having a buffer with the default size is enough for reading the input stream (compressed data)
-        // For compressing this will vary depending on the Level of compression ask.
+        // For compressing this will vary depending on the Level of compression needed.
         // Reading more data at a time is more efficient
-        _buffer = new byte[DefaultBufferSize]; //Instead of using array pool in Read** When tests working check if it's possible a change back
-        //InflateInit2 - set the reference of the underlying stream, into input buffer
-        //Debug.Assert(_inflater != null);
-        //_inflater.SetInput(_buffer);
-
+        _buffer = new byte[DefaultBufferSize];
     }
 
     /// <summary>
@@ -114,7 +107,6 @@ public partial class DeflateStream : Stream
         InitializeBuffer();
     }
 
-    //In case we decide to use this instead of initializing _buffer in the constructor as a regular byte array
     [MemberNotNull(nameof(_buffer))]
     private void InitializeBuffer()
     {
@@ -213,24 +205,21 @@ public partial class DeflateStream : Stream
 
             while (true)
             {
-                // Try to decompress any data from the inflater into the caller's buffer.
-                // If we're able to decompress any bytes, or if decompression is completed, we're done.
-                bytesRead = _inflater.Inflate(buffer); //Todo o la mayoria se hace aqui - lo mas modular
+                // Try to decompress any data from the inflater's underlying input stream
+                // into the caller's buffer.
+                bytesRead = _inflater.Inflate(buffer);
 
-                buffer = buffer.Slice(bytesRead); //This would have now the bytes that could have been read
-                                                  // If BytesRead (input available) < buffer.Length, then the slice will be smaller thant the original
-                                                  // else, it would be same size - being the input either all decompressed or just a buffer.Length part
+                // If BytesRead (input available) < buffer.Length,
+                // the slice will be smaller thant the original.
+                buffer = buffer.Slice(bytesRead); 
 
                 if (bytesRead != 0 && InflatorIsFinished)
                 {
-                    // Here the check for GZip will be done
-                    int what = _inflater.AvailableOutput;
-                    // if we finished decompressing, we can't have anything left in the outputwindow.
-                    Debug.Assert(what == 0, "We should have copied all stuff out!");
-                    break; //Break outside of the loop
+                    break;
                 }
 
-                // We were unable to decompress any data.  If the inflater needs additional input
+                // We were unable to decompress any data.
+                // If the inflater needs additional input
                 // data to proceed, read some to populate it.
                 if (_inflater.NeedsInput())
                 {
@@ -254,6 +243,7 @@ public partial class DeflateStream : Stream
                     }
                     else
                     {
+                        //Filling the input buffer
                         _inflater.SetInput(_buffer, 0, n);
                     }
                 }
@@ -597,12 +587,13 @@ public partial class DeflateStream : Stream
                     }
                     else if (_deflateStream._inflater.NeedsInput())
                     {
-                        // only break if we read 0 and ran out of input, if input is still available it may be another GZip payload
+                        // only break if we read 0 and ran out of input,
+                        // if input is still available it may be another GZip payload
                         break;
                     }
                 }
 
-                // Now, use the source stream's CopyToAsync to push directly to our inflater via this helper stream
+                // Now, use the source stream's CopyTo to push directly to our inflater via this helper stream
                 _deflateStream._stream.CopyTo(this, _arrayPoolBuffer.Length);
                 if (s_useStrictValidation && !_deflateStream._inflater.Finished())
                 {

@@ -1,26 +1,13 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-using System.IO;
-using System.Reflection.Metadata;
-using static Microsoft.ManagedZLib.ManagedZLib;
-using System.Runtime.InteropServices;
-//Vivi's notes> Taking out the InteropServices lib because we're not using PInvokes anymore
-
 namespace Microsoft.ManagedZLib;
 
-/// <summary>
-/// 
-/// This class is attemp to migrate ZLib to managed code. This will contain the methods that need to be 
-/// written from native to a managed implemntation.
-/// 
-/// See also: How to choose a compression level (in comments to <code>CompressionLevel</code>.
-/// </summary>
+//Vivi's notes: I'll keep this class until the bare basics are met, like Raw In/Deflate for handling Deflate Blocks (RFC1951).
+// So far it seems to not be needed anymore, since all is being handled by Inflator and Deflator.
 public static class ManagedZLib
 {
-
-    public enum FlushCode : int //Vivi's notes: For knowing how much and when to produce output
+    public enum FlushCode : int // For knowing how much and when to produce output. Mainly applicable to Deflater.
     {
         NoFlush = 0,
         SyncFlush = 2,
@@ -28,7 +15,7 @@ public static class ManagedZLib
         Block = 5
     }
 
-    public enum ErrorCode : int //Vivi's notes: For error checking and other pointers usage (avail_tot)
+    public enum ErrorCode : int //For error checking - Can be replaced by using exceptions
     {
         Ok = 0,
         StreamEnd = 1,
@@ -45,8 +32,40 @@ public static class ManagedZLib
         Static = 1, //Fixed
         Dynamic = 2
     }
-
-    // Vivi's notes> Tengo que copiar el summary de este enum
+    /// <summary>
+    /// <p>ZLib can accept any integer value between 0 and 9 (inclusive) as a valid compression level parameter:
+    /// 1 gives best speed, 9 gives best compression, 0 gives no compression at all (the input data is simply copied a block at a time).
+    /// <code>CompressionLevel.DefaultCompression</code> = -1 requests a default compromise between speed and compression
+    /// (currently equivalent to level 6).</p>
+    ///
+    /// <p><strong>How to choose a compression level:</strong></p>
+    ///
+    /// <p>The names <code>NoCompression</code>, <code>BestSpeed</code>, <code>DefaultCompression</code>, <code>BestCompression</code> are taken over from
+    /// the corresponding ZLib definitions, which map to our public NoCompression, Fastest, Optimal, and SmallestSize respectively.</p>
+    /// <p><em>Optimal Compression:</em></p>
+    /// <p><code>ZLibNative.CompressionLevel compressionLevel = ZLibNative.CompressionLevel.DefaultCompression;</code> <br />
+    ///    <code>int windowBits = 15;  // or -15 if no headers required</code> <br />
+    ///    <code>int memLevel = 8;</code> <br />
+    ///    <code>ZLibNative.CompressionStrategy strategy = ZLibNative.CompressionStrategy.DefaultStrategy;</code> </p>
+    ///
+    ///<p><em>Fastest compression:</em></p>
+    ///<p><code>ZLibNative.CompressionLevel compressionLevel = ZLibNative.CompressionLevel.BestSpeed;</code> <br />
+    ///   <code>int windowBits = 15;  // or -15 if no headers required</code> <br />
+    ///   <code>int memLevel = 8; </code> <br />
+    ///   <code>ZLibNative.CompressionStrategy strategy = ZLibNative.CompressionStrategy.DefaultStrategy;</code> </p>
+    ///
+    /// <p><em>No compression (even faster, useful for data that cannot be compressed such some image formats):</em></p>
+    /// <p><code>ZLibNative.CompressionLevel compressionLevel = ZLibNative.CompressionLevel.NoCompression;</code> <br />
+    ///    <code>int windowBits = 15;  // or -15 if no headers required</code> <br />
+    ///    <code>int memLevel = 7;</code> <br />
+    ///    <code>ZLibNative.CompressionStrategy strategy = ZLibNative.CompressionStrategy.DefaultStrategy;</code> </p>
+    ///
+    /// <p><em>Smallest Size Compression:</em></p>
+    /// <p><code>ZLibNative.CompressionLevel compressionLevel = ZLibNative.CompressionLevel.BestCompression;</code> <br />
+    ///    <code>int windowBits = 15;  // or -15 if no headers required</code> <br />
+    ///    <code>int memLevel = 8;</code> <br />
+    ///    <code>ZLibNative.CompressionStrategy strategy = ZLibNative.CompressionStrategy.DefaultStrategy;</code> </p>
+    /// </summary>
     public enum CompressionLevel : int
     {
         NoCompression = 0,
@@ -149,41 +168,38 @@ public static class ManagedZLib
     /// <code>false</code>, which can for instance happen if the underlying ZLib <code>XxxxEnd</code>
     /// routines return an failure error code.
     /// </summary>
-    public sealed class ZLibStreamHandle //Vivi's notes: Took off the inheritance part, I elaborate bellow on why
+    public sealed class ZLibStreamHandle
     {
-        //Vivi's notes: If we decide to do everything (compress and uncompress) in a class called Deflate/Inflate then this class might be
-        // just for error checking or like a initial setup on the buffers.
         public ErrorCode DeflateInit2_(CompressionLevel level, int windowBits, int memLevel, CompressionStrategy strategy)
         {
             //This would have gone to a PInvoke
-            //Vivi's notes: Kept notation for clarity
-            return ErrorCode.Ok; //errorCode is an enum - this (int = 0) means Ok
+            return ErrorCode.Ok;
         }
 
 
         public ErrorCode Deflate(FlushCode flush)
         {
-            //This would have gone to a PInvoke
+            // This would have gone to a PInvoke
             return ErrorCode.Ok;
         }
 
 
         public ErrorCode DeflateEnd()
         {
-            //Vivi's notes: This would have gone to a PInvoke
+            // This would have gone to a PInvoke
             return ErrorCode.Ok;
         }
 
         public ErrorCode InflateInit2_(int windowBits)
         {
-            //Vivi's notes: This would have gone to a PInvoke
+            // This would have gone to a PInvoke
             return ErrorCode.Ok;
         }
 
 
         public ErrorCode Inflate(FlushCode flush)
         {
-            //Vivi's notes: This would have gone to a PInvoke for the native version of ZLib inflate
+            // This would have gone to a PInvoke for the native version of ZLib inflate
             return ErrorCode.Ok;
         }
 
@@ -194,7 +210,4 @@ public static class ManagedZLib
         }
         
     }
-
-    // Vivi's note> CreateZLibStreamForDeflate and CreateZLibStreamForInflate are for setting the underlying stream.
-    // I think DeflateStream handles it now.
 }

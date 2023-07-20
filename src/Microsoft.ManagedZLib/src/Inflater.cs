@@ -38,7 +38,7 @@ internal class Inflater
 
     private InflaterState _state;
     private BlockType _blockType;
-    private int _finalByte;                             // Whether the end byte of the block has been reached
+    private int _finalByte;         // Check if it's final block
     private readonly byte[] _blockLengthBuffer = new byte[4]; //For LEN and NLEN(3.2.2 section in RFC1951) for uncompressed blocks
     private int _blockLength;
 
@@ -61,7 +61,8 @@ internal class Inflater
                                        // to store the code length for literal/Length and distance
     private readonly byte[] _codeLengthTreeCodeLength;
 
-    private readonly bool _deflate64; //32k or 64k(true) or else(possible enum)
+    private readonly bool _deflate64; //Whether it's 32K or 63K LZ77 window
+    private int _decodeLimit = 258; // For 32K, it'll be 258. For 64K, it'll be 65536
 
 
 
@@ -128,17 +129,11 @@ internal class Inflater
     internal Inflater(int windowBits, long uncompressedSize = -1)
     {
         _input = new InputBuffer();
-        // For window bits, if it's a negative number, its raw deflate format, with no additional headers.
-        // Then the window size bit remain the same but positive.
-        // If it's Gzip, then to the positive number 16 is added
-        // If it can be either Gzip or ZLib, then 32 is added
-        // That's why the minimum bit capacity is -15 and the maximum is 47
-        // The regular range is from 8 to 15 and then to it can be added 16 or 32 corresponding 
-        // the cases stated before.
+        // Error checking
         _windowBits = InflateInit(windowBits);
         // Initializing window size according the type of deflate (window limits - 32k or 64k)
         // This has mainly: Output Window, Index last position (Where in window bytes array) and BytesUsed (As the quantity)
-        _output = _deflate64? new OutputWindow() : new OutputWindow(windowBits);
+        _output = _deflate64? new OutputWindow() : new OutputWindow(_windowBits);
         _codeList = new byte[IHuffmanTree.MaxLiteralTreeElements + IHuffmanTree.MaxDistTreeElements];
         _codeLengthTreeCodeLength = new byte[IHuffmanTree.NumberOfCodeLengthTreeElements];
         _nonEmptyInput = false;
@@ -154,6 +149,9 @@ internal class Inflater
     internal Inflater(bool deflate64, int windowBits, long uncompressedSize = -1) : this(windowBits, uncompressedSize)
     {
         _deflate64= deflate64;
+        _decodeLimit = 65536; //64K window
+        // With Deflate64 we can have up to a 64kb length, so we ensure at least that much space is available
+        // in the OutputWindow to avoid overwriting previous unflushed output data.
     }
 
 
@@ -382,25 +380,20 @@ internal class Inflater
         return result;
     }
 
-    // Pseudocode in pag10-11 mainly of RFC1951 - Follows the merging specifications of the Literal and length alphabet (0...285)
-    // like [0...255] literal bytes, 256 End-of-block, [257-285] length codes.
-    //Format of Compressed fixed Huffman codes blocks(BTYPE= 01) - RFC1951 spec
-    // -------------------- Decoding algorithm for the actual data per Deflate block ---------------------
-    private bool DecodeBlock(out bool end_of_block_code_seen) //Possibility of putting GZip member checking here.
+    // Decoding algorithm (RFC1951) for the actual compressed data per Deflate block
+    // GZip member checking should have been done before this.
+    private bool DecodeBlock(out bool end_of_block_code_seen)
     {
         end_of_block_code_seen = false;
-
-        int freeBytes = _output.FreeBytes;   // it is a little bit faster than frequently accessing the property
-        while (freeBytes > 65536) //[bytesUsed] The approach goes, instead of filling it, taking away what's available
+        // A little bit faster than frequently accessing the property
+        int freeBytes = _output.FreeBytes;
+        while (freeBytes > _decodeLimit)
         {
-            // With Deflate64 we can have up to a 64kb length, so we ensure at least that much space is available
-            // in the OutputWindow to avoid overwriting previous unflushed output data.
-
             int symbol;
             switch (_state)
             {
                 case InflaterState.DecodeTop:
-                    // decode an element from the literal tree
+                    // Decode an element from the literal tree
 
                     Debug.Assert(_literalLengthTree != null);
                     // TODO: optimize this!!!
@@ -530,7 +523,6 @@ internal class Inflater
 
         return true;
     }
-    //-------------------------- Decoding depending on the type of compression ------
 
     // Format of Non-compressed blocks (BTYPE=00) - RFC1951 spec
     private bool DecodeUncompressedBlock(out bool end_of_block)

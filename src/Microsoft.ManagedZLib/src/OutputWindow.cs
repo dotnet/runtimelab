@@ -16,33 +16,32 @@ namespace Microsoft.ManagedZLib;
 /// </summary>
 internal sealed class OutputWindow
 {
-    private int WindowSize; //Const pa hacerlo static para crear el arreglo de bytes.
+    private int WindowSize;
     private int WindowMask;
-    // With Deflate64 we can have up to a 65536 length as well as up to a 65538 distance. This means we need a Window that is at
-    // least 131074 bytes long so we have space to retrieve up to a full 64kb in lookback and place it in our buffer without
-    // overwriting existing data. OutputBuffer requires that the WindowSize be an exponent of 2, so we round up to 2^18.
-    //private const int WindowSize64k = 262144; // -------- 64K
-    //private const int WindowMask64k = 262143; //18bit
-
     private byte[] _window; // The window is 2^n bytes where n is number of bits
-    private int _lastIndex;       // this is the position to where we should write next byte
-    private int _bytesUsed; // The number of bytes in the output window which is not consumed.
+    private int _lastIndex; // Position to where we should write next byte
+    private int _bytesUsed; // Number of bytes in the output window that haven't been consumed yet.
 
     /// <summary>
-    /// Initialized of the output buffer size with the window bits given.
-    /// This will recieve the window bits and turn that into a base 2 number for the actual window byte size.
-    /// The Output buffer is divided in 2 parts, depending in thetype of deflate, each one of 32K and 64K.
+    /// The constructor will recieve the window bits and with that construct the 
+    /// output window. In theory, the Output window is divided in 2 parts, 
+    /// depending in the type of deflate, each one of 32K and 64K.
     ///     +---------+---------+
-    ///     | 32K/64K | 32K/64K | Giving a total of 64K or 128K (aproximately) sliding window
+    ///     | 32K/64K | 32K/64K | Giving a total of 64K/128K sliding window
     ///     +---------+---------+
-    /// The decompressed input will go to one of the parts, while the other part will have the 
+    /// The decompressed input would go to the second part. 
+    /// This class represents the first part: 
+    /// A search buffer for the length/distance pair to look back.
     /// </summary>
     internal OutputWindow(int windowBits)
     {
-        WindowSize = 1 << windowBits; //logaritmic base 2 required - It's like 2^windowBits
+        WindowSize = 1 << windowBits; //logaritmic base 2
         WindowMask = WindowSize - 1;
         _window = new byte[WindowSize];
     }
+    // With Deflate64 we can have up to a 65536 length as well as up to a 65538 distance. This means we need a Window that is at
+    // least 131074 bytes long so we have space to retrieve up to a full 64kb in lookback and place it in our buffer without
+    // overwriting existing data. OutputBuffer requires that the WindowSize be an exponent of 2, so we round up to 2^18.
     internal OutputWindow() //deflate64
     {
         WindowSize = 262144;
@@ -65,15 +64,15 @@ internal sealed class OutputWindow
     //Important part of LZ77 algorithm
     public void WriteLengthDistance(int length, int distance)
     {
-        //Checking there's enough space for copying
+        //Checking there's enough space for copying the output
         Debug.Assert((_bytesUsed + length) <= WindowSize, "No Enough space");
 
-        // move backwards distance bytes in the output stream,
+        // Move backwards distance bytes in the output stream,
         // and copy length bytes from this position to the output stream.
         _bytesUsed += length;
-        int copyStart = (_lastIndex - distance) & WindowMask; // start position for coping.
+        int copyStart = (_lastIndex - distance) & WindowMask;
 
-        // Total - space that would be taken by copying the length bytes
+        // Total space that would be taken by copying the length bytes
         int border = WindowSize - length;
         if (copyStart <= border && _lastIndex < border)
         {
@@ -97,7 +96,7 @@ internal sealed class OutputWindow
         }
         else
         {
-            // copy byte by byte
+            // Copy byte by byte
             while (length-- > 0)
             {
                 _window[_lastIndex++] = _window[copyStart++];
@@ -113,38 +112,34 @@ internal sealed class OutputWindow
     /// </summary>
     public int CopyFrom(InputBuffer input, int length)
     {
-        // Remember: We are copying the data to the second portion of the window -look-ahead-
-        // So bytesUsed might be the size of the first portion 32K or 64K, at this point.
-        // AvailableBytes is usually the size of the underlying buffer of the stream (for DeflateStream)
-        // This in particular is for copying the input respecting the I/O boundaries. 
-        // It will lead us to either copy LEN bytes or just the amount available in the output window
-        // (taking into account the byte boundaries)
         /// <summary> 
         /// Either how much input is available or how much free space in the output buffer we have. 
-        /// length = Amount decompressed that we are trying to put in the output window
+        /// length = Amount of decompressed that we are trying to put in the output window.
+        /// It will lead us to either copy LEN bytes or just the amount available in the output window
+        // taking into account the byte boundaries.
         /// </summary>
         length = Math.Min(Math.Min(length, WindowSize - _bytesUsed), input.AvailableBytes);
         int copied;
 
         // We might need wrap around to copy all bytes.
         int spaceLeft = WindowSize - _lastIndex;
-        if (length > spaceLeft) //Checking is in the boundaries
+        if (length > spaceLeft) //Checking is within the boundaries
         {
-            // copy the first part
+            // Copy the first part
             copied = input.CopyTo(_window, _lastIndex, spaceLeft);
             if (copied == spaceLeft)
             {
-                // only try to copy the second part if we have enough bytes in input
+                // Only try to copy the second part if we have enough bytes in input
                 copied += input.CopyTo(_window, 0, length - spaceLeft);
             }
         }
         else
         {
-            // only one copy is needed if there is no wrap around.
+            // Only one copy is needed if there is no wrap around.
             copied = input.CopyTo(_window, _lastIndex, length);
         }
 
-        _lastIndex = (_lastIndex + copied) & WindowMask; //To keep it withting the window size boundary
+        _lastIndex = (_lastIndex + copied) & WindowMask;
         _bytesUsed += copied;
         return copied; 
     }
@@ -155,7 +150,6 @@ internal sealed class OutputWindow
     /// <summary>Bytes not consumed in output window.</summary>
     public int AvailableBytes => _bytesUsed;
 
-    // ReadInflateOutput
     /// <summary>Copy the decompressed bytes to output buffer.</summary>
     public int CopyTo(Span<byte> usersOutput)
     {
@@ -163,13 +157,14 @@ internal sealed class OutputWindow
 
         if (usersOutput.Length > _bytesUsed)
         {
-            // we can copy all the decompressed bytes out
+            // We can copy all the decompressed bytes out
             copy_lastIndex = _lastIndex; //Last index auxiliar
             usersOutput = usersOutput.Slice(0,_bytesUsed);
         }
         else
         {
-            copy_lastIndex = (_lastIndex - _bytesUsed + usersOutput.Length) & WindowMask; // copy length of bytes
+            // Copy length of bytes
+            copy_lastIndex = (_lastIndex - _bytesUsed + usersOutput.Length) & WindowMask;
         }
 
         int copied = usersOutput.Length;
@@ -178,7 +173,7 @@ internal sealed class OutputWindow
         if (spaceLeft > 0)
         {
             // this means we need to copy two parts separately
-            // copy the spaceLeft bytes from the end of the output window
+            // copy the spaceLeft-bytes from the end of the output window
             _window.AsSpan(WindowSize - spaceLeft, spaceLeft).CopyTo(usersOutput);
             usersOutput = usersOutput.Slice(spaceLeft, copy_lastIndex);
         }
