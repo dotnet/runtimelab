@@ -48,7 +48,6 @@ namespace System.Diagnostics
             _methodsToSkip = 0;
         }
 
-
         internal string ToString(TraceFormat traceFormat)
         {
             var stackTraceString = _builder.ToString();
