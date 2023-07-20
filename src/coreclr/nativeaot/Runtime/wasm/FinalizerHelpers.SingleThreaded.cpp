@@ -14,19 +14,31 @@
 #include "threadstore.inl"
 #include "thread.inl"
 
+// Set when we have finalizable objects in the queue. Used for quick early outs.
+bool g_FinalizationRequestPending = false;
+static bool g_FinalizationInProgress = false;
+
 // Finalizer method implemented by the managed runtime.
 extern "C" void RhpProcessFinalizersAndReturn();
 
-static void ProcessFinalizersAndReturn()
+void FinalizeFinalizableObjects()
 {
+    // Must be called in preemptive mode as "FinalizeFinalizableObjects" RPIs back into managed.
+    ASSERT(!ThreadStore::GetCurrentThread()->IsCurrentThreadInCooperativeMode());
+
     static bool s_finalizing = false;
 
     // Recursive wait on finalization is a no-op.
-    if (!s_finalizing)
+    if (g_FinalizationRequestPending && !g_FinalizationInProgress)
     {
-        s_finalizing = true;
+        g_FinalizationInProgress = true;
         RhpProcessFinalizersAndReturn();
-        s_finalizing = false;
+
+        // Note that managed code from above may have added new objects into the queue (via, e. g.,
+        // "GC.ReRegisterForFinalize"). Let them wait for the next 'top-level' GC cycle. Restarting
+        // now could lead to an infinite loop with "self-rearming" finalizers.
+        g_FinalizationRequestPending = false;
+        g_FinalizationInProgress = false;
     }
 }
 
@@ -38,16 +50,12 @@ bool RhInitializeFinalization()
 // This method is called at the end of GC in case finalizable objects were present.
 void RhEnableFinalization()
 {
-    // TODO: Implement automatic finalization. Cannot just call "ProcessFinalizersAndReturn"
-    // here as it will deadlock the GC.
+    g_FinalizationRequestPending = true;
 }
 
 EXTERN_C void QCALLTYPE RhWaitForPendingFinalizers(UInt32_BOOL allowReentrantWait)
 {
-    // Must be called in preemptive mode as "ProcessFinalizersAndReturn" RPIs back into managed.
-    ASSERT(!ThreadStore::GetCurrentThread()->IsCurrentThreadInCooperativeMode());
-
-    ProcessFinalizersAndReturn();
+    FinalizeFinalizableObjects();
 }
 
 // Fetch next object which needs finalization or return null if we've reached the end of the list.
