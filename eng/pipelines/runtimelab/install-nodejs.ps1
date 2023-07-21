@@ -11,7 +11,7 @@ if (!(Test-Path $InstallPath))
 $RetryCount = 10
 $RetryInterval = 10
 
-while ($RetryCount -ge 0)
+while ($RetryCount -gt 0)
 {
     try
     {
