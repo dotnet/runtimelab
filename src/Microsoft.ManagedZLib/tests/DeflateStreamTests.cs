@@ -62,12 +62,12 @@ public class DeflateStreamTests
         VerifyRead(fileStream);
     }
 
-    private void VerifyRead(Stream originalStream)
+    private void VerifyRead(Stream actualStream)
     {
         MemoryStream compressedDestination = new(); // Compressed data (with System.IO.Compresion)
         using (System.IO.Compression.DeflateStream compressor = new System.IO.Compression.DeflateStream(compressedDestination, System.IO.Compression.CompressionMode.Compress, leaveOpen: true))
         {
-            originalStream.CopyTo(compressor);  //Copies the compressed data to Compressor
+            actualStream.CopyTo(compressor);  //Copies the compressed data to Compressor
         }
         compressedDestination.Position = 0;
 
@@ -78,16 +78,16 @@ public class DeflateStreamTests
             decompressor.CopyTo(expectedStream); //Copies decompress data to ExpectedStream
         }
 
-        using StreamReader readerOriginal = new StreamReader(originalStream);
         using StreamReader readerExpected = new StreamReader(expectedStream);
-        string originalLine = null;
+        using StreamReader readerActual = new StreamReader(actualStream);
         string expectedLine = null;
-        while (originalLine != string.Empty && expectedLine != string.Empty)
+        string actualLine = null;
+        while (expectedLine != string.Empty && actualLine != string.Empty)
         {
-            originalLine = readerOriginal.ReadToEnd();
             expectedLine = readerExpected.ReadToEnd();
+            actualLine = readerActual.ReadToEnd();
 
-            Assert.Equal(expectedLine, originalLine);
+            Assert.Equal(expectedLine, actualLine);
         }
     }
 }
