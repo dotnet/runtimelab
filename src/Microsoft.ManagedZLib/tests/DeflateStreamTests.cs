@@ -1,13 +1,9 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit;
-using Xunit.Sdk;
 
 namespace Microsoft.ManagedZLib.Tests;
 
@@ -51,7 +47,7 @@ public class DeflateStreamTests
         VerifyRead(fileStream);
     }
 
-    private void VerifyRead(Stream actualStream)
+    private static void VerifyRead(Stream actualStream)
     {
         MemoryStream compressedDestination = new(); // Compressed data (with System.IO.Compresion)
         using (System.IO.Compression.DeflateStream compressor = new System.IO.Compression.DeflateStream(compressedDestination, System.IO.Compression.CompressionMode.Compress, leaveOpen: true))
@@ -66,17 +62,19 @@ public class DeflateStreamTests
         {
             decompressor.CopyTo(expectedStream); //Copies decompress data to ExpectedStream
         }
+        actualStream.Position = 0;
 
-        using StreamReader readerExpected = new StreamReader(expectedStream);
-        using StreamReader readerActual = new StreamReader(actualStream);
-        string expectedLine = null;
-        string actualLine = null;
-        while (expectedLine != string.Empty && actualLine != string.Empty)
+        byte[] bufferActual = new byte[4096];
+        byte[] bufferExpected = new byte[4096];
+        int bytesReadActual = 0;
+        int bytesReadExpected = 0;
+        while (bytesReadActual != 0 && bytesReadExpected != 0)
         {
-            expectedLine = readerExpected.ReadToEnd();
-            actualLine = readerActual.ReadToEnd();
+            //actualStream against expectedStream
+            bytesReadActual = actualStream.Read(bufferActual,0, bufferActual.Length);
+            bytesReadExpected = expectedStream.Read(bufferExpected,0,bufferExpected.Length);
 
-            Assert.Equal(expectedLine, actualLine);
+            Assert.Equal(bytesReadExpected, bytesReadActual);
         }
     }
 }

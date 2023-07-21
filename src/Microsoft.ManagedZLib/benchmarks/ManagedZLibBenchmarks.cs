@@ -3,7 +3,9 @@
 
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 
 namespace Microsoft.ManagedZLib.Benchmarks;
 
@@ -13,7 +15,7 @@ namespace Microsoft.ManagedZLib.Benchmarks;
 // and it has to BE PUBLIC. It also has to be a class (no structs support).
 public class ManagedZLibBenchmark
 {
-    public IEnumerable<string> UncompressedTestFileNames()
+    public static IEnumerable<string> UncompressedTestFileNames()
     {
         yield return "TestDocument.pdf"; // 199 KB small test document with repeated paragraph, PDF are common
         yield return "alice29.txt"; // 145 KB, copy of "ALICE'S ADVENTURES IN WONDERLAND" book, an example of text file
@@ -62,12 +64,9 @@ public class ManagedZLibBenchmark
         return 0;
     }
 
-    public class programRun
+    public class ProgramRun
     {
-        static void Main()
-        {
-            BenchmarkRunner.Run<ManagedZLibBenchmark>();
-        }
+        static void Main() => BenchmarkRunner.Run<ManagedZLibBenchmark>();
     }
 
 }
