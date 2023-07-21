@@ -3,8 +3,7 @@
 
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
-using System.IO.Compression;
-using System.Text;
+using System.Diagnostics;
 
 namespace Microsoft.ManagedZLib.Benchmarks;
 
@@ -14,52 +13,59 @@ namespace Microsoft.ManagedZLib.Benchmarks;
 // and it has to BE PUBLIC. It also has to be a class (no structs support).
 public class ManagedZLibBenchmark
 {
+    public IEnumerable<string> UncompressedTestFileNames()
+    {
+        yield return "TestDocument.pdf"; // 199 KB small test document with repeated paragraph, PDF are common
+        yield return "alice29.txt"; // 145 KB, copy of "ALICE'S ADVENTURES IN WONDERLAND" book, an example of text file
+        yield return "sum"; // 37.3 KB, some binary content, an example of binary file
+    }
+
+    public CompressedFile? CompressedFile;
 
     [GlobalSetup]
     public void Setup()
     {
-        //CompressedFile = new CompressedFile(file, level, CreateStream);
+        Debug.Assert(File != null);
+        CompressedFile = new CompressedFile(File, Level);
     }
+
+
+    [ParamsSource(nameof(UncompressedTestFileNames))]
+    public string? File { get; set; }
+
+    [Params(System.IO.Compression.CompressionLevel.SmallestSize,
+            System.IO.Compression.CompressionLevel.Optimal,
+            System.IO.Compression.CompressionLevel.Fastest)] // we don't test the performance of CompressionLevel.NoCompression on purpose
+    public System.IO.Compression.CompressionLevel Level { get; set; }
+
 
     [GlobalCleanup]
-    //public void Cleanup() => Directory.Delete(_rootDirPath, recursive: true);
+    public void Cleanup() => CompressedFile?.CompressedDataStream.Dispose();
 
     [Benchmark]
-    public void zipProccess()
+    public int DecompressNative()
     {
-        //Check why it's still complaining of zip existing if we deleted it in the setUp function
-        //ZipIt(_testDirPath);
-        //File.Delete(_testDirPath);
+        CompressedFile!.CompressedDataStream.Position = 0;
+        MemoryStream expectedStream = new();
+        System.IO.Compression.DeflateStream decompressor = new System.IO.Compression.DeflateStream(CompressedFile.CompressedDataStream, System.IO.Compression.CompressionMode.Decompress);
+        decompressor.CopyTo(expectedStream);
+        return 0;
     }
 
-    private readonly string zipName = @".\resultZip.zip";
-    public void MakeFile(string filename, string message)
+    [Benchmark]
+    public int DecompressManaged()
     {
-        //Creates a file
-        FileStream fs = new(filename, FileMode.Create, FileAccess.ReadWrite);
+        CompressedFile!.CompressedDataStream.Position = 0;
+        MemoryStream expectedStream = new();
+        DeflateStream decompressor = new DeflateStream(CompressedFile.CompressedDataStream, CompressionMode.Decompress);
+        decompressor.CopyTo(expectedStream);
+        return 0;
+    }
 
-        if (fs.CanWrite)
-        {
-            byte[] buffer = Encoding.Default.GetBytes(message);
-            fs.Write(buffer, 0, buffer.Length);
-        }
-        fs.Flush();
-        fs.Close();
-    }
-    public void ZipIt(string directoryPath)
-    {
-        ZipFile.CreateFromDirectory(directoryPath, zipName);
-    }
-    public void UnzipIt(string ZipFilePath, string ExtractDestination)
-    {
-
-        ZipFile.CreateFromDirectory(ZipFilePath, ExtractDestination);
-    }
     public class programRun
     {
         static void Main()
         {
-            //The benchmark I want to test
             BenchmarkRunner.Run<ManagedZLibBenchmark>();
         }
     }

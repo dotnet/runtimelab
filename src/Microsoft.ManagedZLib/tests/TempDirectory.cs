@@ -10,7 +10,7 @@ namespace Microsoft.ManagedZLib;
 /// Represents a temporary directory.  Creating an instance creates a directory at the specified path,
 /// and disposing the instance deletes the directory.
 /// </summary>
-public class TempDirectory : IDisposable
+public class TempDirectory
 {
     public const int MaxNameLength = 255;
 

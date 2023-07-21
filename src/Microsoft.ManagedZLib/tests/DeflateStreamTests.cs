@@ -50,9 +50,7 @@ public class DeflateStreamTests
     [MemberData(nameof(ByteArrayData))]
     public void ReadSmallArrays(byte[] bytes)
     {
-        using MemoryStream originalData = new MemoryStream();
-        originalData.Write(bytes);
-        originalData.Position = 0;
+        using MemoryStream originalData = new(bytes);
         VerifyRead(originalData);
     }
 
@@ -64,12 +62,12 @@ public class DeflateStreamTests
         VerifyRead(fileStream);
     }
 
-    private void VerifyRead (Stream originalStream)
+    private void VerifyRead(Stream originalStream)
     {
         MemoryStream compressedDestination = new(); // Compressed data (with System.IO.Compresion)
         using (System.IO.Compression.DeflateStream compressor = new System.IO.Compression.DeflateStream(compressedDestination, System.IO.Compression.CompressionMode.Compress, leaveOpen: true))
         {
-            originalStream.CopyTo(compressor);  //Compressor has the compressed data now.
+            originalStream.CopyTo(compressor);  //Copies the compressed data to Compressor
         }
         compressedDestination.Position = 0;
 
@@ -77,12 +75,11 @@ public class DeflateStreamTests
         MemoryStream expectedStream = new();
         using (DeflateStream decompressor = new DeflateStream(compressedDestination, CompressionMode.Decompress, leaveOpen: true))
         {
-            decompressor.CopyTo(expectedStream);
+            decompressor.CopyTo(expectedStream); //Copies decompress data to ExpectedStream
         }
 
         using StreamReader readerOriginal = new StreamReader(originalStream);
         using StreamReader readerExpected = new StreamReader(expectedStream);
-
         string originalLine = null;
         string expectedLine = null;
         while (originalLine != string.Empty && expectedLine != string.Empty)

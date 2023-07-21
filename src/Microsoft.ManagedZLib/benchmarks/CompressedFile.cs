@@ -6,13 +6,13 @@ namespace Microsoft.ManagedZLib.Benchmarks;
 public class CompressedFile
 {
     public string Name { get; }
-    public CompressionLevel CompressionLevel { get; }
+    public System.IO.Compression.CompressionLevel CompressionLevel { get; }
 
     public byte[] UncompressedData { get; }
     public byte[] CompressedData { get; }
     public MemoryStream CompressedDataStream { get; }
 
-    public CompressedFile(string fileName, CompressionLevel compressionLevel, Func<Stream, CompressionLevel, Stream> factory)
+    public CompressedFile(string fileName, System.IO.Compression.CompressionLevel compressionLevel)
     {
         Name = fileName;
         CompressionLevel = compressionLevel;
@@ -21,7 +21,7 @@ public class CompressedFile
         UncompressedData = File.ReadAllBytes(filePath);
         CompressedDataStream = new MemoryStream(capacity: UncompressedData.Length);
 
-        var compressionStream = factory(CompressedDataStream, compressionLevel);
+        var compressionStream = new System.IO.Compression.DeflateStream(CompressedDataStream, compressionLevel);
         compressionStream.Write(UncompressedData, 0, UncompressedData.Length);
         compressionStream.Flush();
 
@@ -32,8 +32,5 @@ public class CompressedFile
     public override string ToString() => Name;
 
     internal static string GetFilePath(string fileName)
-        => Path.Combine(
-            AppContext.BaseDirectory,
-            "libraries", "System.IO.Compression", "TestData",
-            fileName);
+        => Path.Combine("DeflateTestData", fileName);
 }
