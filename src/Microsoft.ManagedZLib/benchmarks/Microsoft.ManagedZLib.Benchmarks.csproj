@@ -3,13 +3,17 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="$(NuGetPackageRoot)\system.io.compression.testdata\8.0.0-beta.23326.1\contentFiles\any\any\DeflateTestData\~%24stDocument.doc" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.13.5" />
-	<ProjectReference Include="..\src\Microsoft.ManagedZLib.csproj" />
+	  <ProjectReference Include="..\src\Microsoft.ManagedZLib.csproj" />
+    <PackageReference Include="System.IO.Compression.TestData" Version="8.0.0-beta.23326.1" />
   </ItemGroup>
 	
 </Project>
