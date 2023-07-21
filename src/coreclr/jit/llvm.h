@@ -545,7 +545,6 @@ private:
     Function* getOrCreateKnownLlvmFunction(StringRef name,
                                            std::function<FunctionType*()> createFunctionType,
                                            std::function<void(Function*)> annotateFunction = [](Function*) { });
-    Function* getOrCreateExternalLlvmFunctionAccessor(StringRef name);
 
     EHRegionInfo& getEHRegionInfo(unsigned ehIndex);
     llvm::BasicBlock* getUnwindLlvmBlockForCurrentInvoke();

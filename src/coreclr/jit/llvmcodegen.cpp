@@ -2608,25 +2608,14 @@ llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)
         const char* symbolName = GetMangledSymbolName(handle);
         AddCodeReloc(handle); // Replacement for _info.compCompHnd->recordRelocation.
 
-        if (call->IsUnmanaged()) // External functions.
-        {
-            FunctionType* callFuncType = createFunctionTypeForCall(call);
-            Function* calleeAccessorFunc = getOrCreateExternalLlvmFunctionAccessor(symbolName);
-            Value* calleeValue = emitCallOrInvoke(calleeAccessorFunc);
-
-            callee = {callFuncType, calleeValue};
-        }
-        else // Known functions.
-        {
-            callee = getOrCreateKnownLlvmFunction(symbolName, [this, call]() -> FunctionType* {
-                return createFunctionTypeForCall(call);
-            }, [this, helperFunc](Function* llvmFunc) {
-                if (helperFunc != CORINFO_HELP_UNDEF)
-                {
-                    annotateHelperFunction(helperFunc, llvmFunc);
-                }
-            });
-        }
+        callee = getOrCreateKnownLlvmFunction(symbolName, [this, call]() -> FunctionType* {
+            return createFunctionTypeForCall(call);
+        }, [this, helperFunc](Function* llvmFunc) {
+            if (helperFunc != CORINFO_HELP_UNDEF)
+            {
+                annotateHelperFunction(helperFunc, llvmFunc);
+            }
+        });
     }
 
     return callee;
@@ -2769,18 +2758,6 @@ Function* Llvm::getOrCreateKnownLlvmFunction(
     }
 
     return llvmFunc;
-}
-
-Function* Llvm::getOrCreateExternalLlvmFunctionAccessor(StringRef name)
-{
-    Function* accessorFuncRef = m_context->Module.getFunction(name);
-    if (accessorFuncRef == nullptr)
-    {
-        FunctionType* accessorFuncType = FunctionType::get(getPtrLlvmType(), /* isVarArg */ false);
-        accessorFuncRef = Function::Create(accessorFuncType, Function::ExternalLinkage, name, m_context->Module);
-    }
-
-    return accessorFuncRef;
 }
 
 EHRegionInfo& Llvm::getEHRegionInfo(unsigned ehIndex)
