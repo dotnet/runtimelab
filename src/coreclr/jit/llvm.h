@@ -466,8 +466,6 @@ private:
     llvm::GlobalVariable* getOrCreateDataSymbol(StringRef symbolName);
     llvm::GlobalValue* getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle);
 
-    Instruction* getCast(Value* source, Type* targetType);
-    Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
     Value* gepOrAddr(Value* addr, unsigned offset);
     llvm::Constant* getIntPtrConst(target_size_t value, Type* llvmType = nullptr);
     Value* getShadowStack();
