@@ -44,7 +44,7 @@ public class ManagedZLibBenchmark
     [GlobalCleanup]
     public void Cleanup() => CompressedFile?.CompressedDataStream.Dispose();
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public int DecompressNative()
     {
         CompressedFile!.CompressedDataStream.Position = 0;
