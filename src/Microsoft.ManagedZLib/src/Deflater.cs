@@ -77,8 +77,15 @@ namespace Microsoft.ManagedZLib
         }
         private int DeflateInit( int windowBits)
         {
-            Debug.Assert(windowBits >= minWindowBits && windowBits <= maxWindowBits);
-            //-15 to -1 or 0 to 47
+            //int wrap = 1; // To check which type of wrapper are we checking
+            //              // (0) No wrapper, (1) 
+            //Debug.Assert(windowBits >= minWindowBits && windowBits <= maxWindowBits);
+            ////-15 to -1 or 0 to 47
+            //if (windowBits < 0) 
+            //{//Raw deflate - Suppress ZLib Wrapper
+            //    wrap = 0;
+            //    windowBits = -windowBits;
+            //}
             return (windowBits < 0) ? -windowBits : windowBits &= 15;
         }
         //This will use asserts instead of the ZLibNative error checking

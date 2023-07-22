@@ -54,7 +54,7 @@ public class ManagedZLibBenchmark
         return 0;
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public int DecompressManaged()
     {
         CompressedFile!.CompressedDataStream.Position = 0;
