@@ -2790,6 +2790,10 @@ void Llvm::annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc
     {
         llvmFunc->addRetAttr(llvm::Attribute::NonNull);
     }
+    if (properties.IsAllocator(helperFunc))
+    {
+        llvmFunc->addRetAttr(llvm::Attribute::NoAlias);
+    }
 }
 
 Function* Llvm::getOrCreateKnownLlvmFunction(
