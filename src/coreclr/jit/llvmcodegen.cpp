@@ -1093,6 +1093,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_SUB:
             buildSub(node->AsOp());
             break;
+        case GT_LEA:
+            buildAddrMode(node->AsAddrMode());
+            break;
         case GT_DIV:
         case GT_MOD:
         case GT_UDIV:
@@ -1334,7 +1337,7 @@ void Llvm::buildLocalField(GenTreeLclFld* lclFld)
 
     // TODO-LLVM: if this is an only value type field, or at offset 0, we can optimize.
     Value* structAddrValue = getLocalAddr(lclNum);
-    Value* fieldAddressValue = gepOrAddr(structAddrValue, lclFld->GetLclOffs());
+    Value* fieldAddressValue = gepOrAddrInBounds(structAddrValue, lclFld->GetLclOffs());
 
     mapGenTreeToValue(lclFld, _builder.CreateLoad(llvmLoadType, fieldAddressValue));
 }
@@ -1345,7 +1348,7 @@ void Llvm::buildStoreLocalField(GenTreeLclFld* lclFld)
     ClassLayout* layout = lclFld->TypeIs(TYP_STRUCT) ? lclFld->GetLayout() : nullptr;
     Type* llvmStoreType = (layout != nullptr) ? getLlvmTypeForStruct(layout)
                                               : getLlvmTypeForVarType(lclFld->TypeGet());
-    Value* addrValue = gepOrAddr(getLocalAddr(lclFld->GetLclNum()), lclFld->GetLclOffs());
+    Value* addrValue = gepOrAddrInBounds(getLocalAddr(lclFld->GetLclNum()), lclFld->GetLclOffs());
 
     Value* dataValue;
     if (lclFld->TypeIs(TYP_STRUCT) && genActualTypeIsInt(data))
@@ -1372,7 +1375,7 @@ void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
 {
     unsigned int lclNum = lclAddr->GetLclNum();
     Value* localAddr = getLocalAddr(lclNum);
-    mapGenTreeToValue(lclAddr, gepOrAddr(localAddr, lclAddr->GetLclOffs()));
+    mapGenTreeToValue(lclAddr, gepOrAddrInBounds(localAddr, lclAddr->GetLclOffs()));
 }
 
 void Llvm::buildAdd(GenTreeOp* node)
@@ -1464,6 +1467,21 @@ void Llvm::buildSub(GenTreeOp* node)
     }
 
     mapGenTreeToValue(node, subValue);
+}
+
+void Llvm::buildAddrMode(GenTreeAddrMode* addrMode)
+{
+    // Address mode nodes (LEAs) as used in this backend signify two assumptions:
+    //  1) The base address points (dynamically) at an allocated object (not null).
+    //  2) The offset addition will never overflow.
+    // Using LEAs in such a manner allows us to translate them to inbounds geps.
+    //
+    assert(addrMode->HasBase() && !addrMode->HasIndex());
+
+    Value* baseValue = consumeValue(addrMode->Base(), getPtrLlvmType());
+    Value* addrModeValue = gepOrAddrInBounds(baseValue, addrMode->Offset());
+
+    mapGenTreeToValue(addrMode, addrModeValue);
 }
 
 void Llvm::buildDivMod(GenTree* node)
@@ -1907,9 +1925,7 @@ void Llvm::buildCall(GenTreeCall* call)
 void Llvm::buildInd(GenTreeIndir* indNode)
 {
     Type* loadLlvmType = getLlvmTypeForVarType(indNode->TypeGet());
-    Value* addrValue = consumeValue(indNode->Addr(), getPtrLlvmType());
-
-    emitNullCheckForIndir(indNode, addrValue);
+    Value* addrValue = consumeAddressAndEmitNullCheck(indNode);
     Value* loadValue = _builder.CreateLoad(loadLlvmType, addrValue);
 
     mapGenTreeToValue(indNode, loadValue);
@@ -1918,9 +1934,7 @@ void Llvm::buildInd(GenTreeIndir* indNode)
 void Llvm::buildBlk(GenTreeBlk* blkNode)
 {
     Type* blkLlvmType = getLlvmTypeForStruct(blkNode->GetLayout());
-    Value* addrValue = consumeValue(blkNode->Addr(), getPtrLlvmType());
-
-    emitNullCheckForIndir(blkNode, addrValue);
+    Value* addrValue = consumeAddressAndEmitNullCheck(blkNode);
     Value* blkValue = _builder.CreateLoad(blkLlvmType, addrValue);
 
     mapGenTreeToValue(blkNode, blkValue);
@@ -1931,10 +1945,8 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
     GCInfo::WriteBarrierForm wbf = getGCInfo()->gcIsWriteBarrierCandidate(storeIndOp);
 
     Type* storeLlvmType = getLlvmTypeForVarType(storeIndOp->TypeGet());
-    Value* addrValue = consumeValue(storeIndOp->Addr(), getPtrLlvmType());
+    Value* addrValue = consumeAddressAndEmitNullCheck(storeIndOp);
     Value* dataValue = consumeValue(storeIndOp->Data(), storeLlvmType);;
-
-    emitNullCheckForIndir(storeIndOp, addrValue);
 
     switch (wbf)
     {
@@ -1961,9 +1973,7 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     ClassLayout* layout = blockOp->GetLayout();
     GenTree* addrNode = blockOp->Addr();
     GenTree* dataNode = blockOp->Data();
-    Value* addrValue = consumeValue(addrNode, getPtrLlvmType());
-
-    emitNullCheckForIndir(blockOp, addrValue);
+    Value* addrValue = consumeAddressAndEmitNullCheck(blockOp);
 
     // Check for the "initblk" operation ("dataNode" is either INIT_VAL or constant zero).
     if (blockOp->OperIsInitBlkOp())
@@ -1992,21 +2002,8 @@ void Llvm::buildStoreDynBlk(GenTreeStoreDynBlk* blockOp)
     GenTree* srcNode = blockOp->Data();
     GenTree* sizeNode = blockOp->gtDynamicSize;
 
-    Value* dstAddrValue = consumeValue(blockOp->Addr(), getPtrLlvmType());
-    Value* srcValue;
-    if (isCopyBlock)
-    {
-        srcValue = consumeValue(srcNode->AsIndir()->Addr(), getPtrLlvmType());
-    }
-    else
-    {
-        srcValue = srcNode->OperIsInitVal()
-            ? consumeValue(srcNode->AsUnOp()->gtGetOp1(), Type::getInt8Ty(m_context->Context))
-            : _builder.getInt8(0);
-    }
-    // Per ECMA 335, cpblk/initblk only allow int32-sized operands. We'll be a bit more permissive and allow native ints
-    // as well (as do other backends).
-    Type* sizeLlvmType = genActualTypeIsInt(sizeNode) ? Type::getInt32Ty(m_context->Context) : getIntPtrLlvmType();
+    // STORE_DYN_BLK accepts native-sized size operands.
+    Type* sizeLlvmType = getIntPtrLlvmType();
     Value* sizeValue = consumeValue(sizeNode, sizeLlvmType);
 
     // STORE_DYN_BLK's contract is that it must not throw any exceptions in case the dynamic size is zero and must throw
@@ -2021,9 +2018,6 @@ void Llvm::buildStoreDynBlk(GenTreeStoreDynBlk* blockOp)
     // have the right semantics (don't throw NREs).
     if (dstAddrMayBeNull || srcAddrMayBeNull)
     {
-        checkSizeLlvmBlock = _builder.GetInsertBlock();
-        nullChecksLlvmBlock = createInlineLlvmBlock();
-        _builder.SetInsertPoint(nullChecksLlvmBlock);
         //
         // if (sizeIsZeroValue) goto PASSED; else goto CHECK_DST; (we'll add this below)
         // CHECK_DST:
@@ -2034,27 +2028,27 @@ void Llvm::buildStoreDynBlk(GenTreeStoreDynBlk* blockOp)
         //   memcpy/memset
         // PASSED:
         //
-        if (dstAddrMayBeNull)
-        {
-            emitNullCheckForIndir(blockOp, dstAddrValue);
-        }
-        if (srcAddrMayBeNull)
-        {
-            emitNullCheckForIndir(srcNode->AsIndir(), srcValue);
-        }
+        checkSizeLlvmBlock = _builder.GetInsertBlock();
+        nullChecksLlvmBlock = createInlineLlvmBlock();
+        _builder.SetInsertPoint(nullChecksLlvmBlock);
     }
 
     // Technically cpblk/initblk specify that they expect their sources/destinations to be aligned, but in
     // practice these instructions are used like memcpy/memset, which do not require this. So we do not try
     // to be more precise with the alignment specification here as well.
     // TODO-LLVM: volatile STORE_DYN_BLK.
+    Value* dstAddrValue = consumeAddressAndEmitNullCheck(blockOp);
     if (isCopyBlock)
     {
-        _builder.CreateMemCpy(dstAddrValue, llvm::MaybeAlign(), srcValue, llvm::MaybeAlign(), sizeValue);
+        Value* srcAddrValue = consumeAddressAndEmitNullCheck(srcNode->AsIndir());
+        _builder.CreateMemCpy(dstAddrValue, llvm::MaybeAlign(), srcAddrValue, llvm::MaybeAlign(), sizeValue);
     }
     else
     {
-        _builder.CreateMemSet(dstAddrValue, srcValue, sizeValue, llvm::MaybeAlign());
+        Value* initValue = srcNode->OperIsInitVal()
+            ? consumeValue(srcNode->AsUnOp()->gtGetOp1(), Type::getInt8Ty(m_context->Context))
+            : _builder.getInt8(0);
+        _builder.CreateMemSet(dstAddrValue, initValue, sizeValue, llvm::MaybeAlign());
     }
 
     if (checkSizeLlvmBlock != nullptr)
@@ -2296,8 +2290,7 @@ void Llvm::buildSwitch(GenTreeUnOp* switchNode)
 
 void Llvm::buildNullCheck(GenTreeIndir* nullCheckNode)
 {
-    Value* addrValue = consumeValue(nullCheckNode->Addr(), getPtrLlvmType());
-    emitNullCheckForIndir(nullCheckNode, addrValue);
+    consumeAddressAndEmitNullCheck(nullCheckNode);
 }
 
 void Llvm::buildBoundsCheck(GenTreeBoundsChk* boundsCheckNode)
@@ -2384,6 +2377,49 @@ void Llvm::buildCallFinally(BasicBlock* block)
         assert(block->isBBCallAlwaysPair());
         _builder.CreateBr(getFirstLlvmBlockForBlock(block->bbNext));
     }
+}
+
+Value* Llvm::consumeAddressAndEmitNullCheck(GenTreeIndir* indir)
+{
+    GenTree* addr = indir->Addr();
+    unsigned offset = 0;
+    if (addr->isContained())
+    {
+        assert(addr->OperIs(GT_LEA) && addr->AsAddrMode()->HasBase() && !addr->AsAddrMode()->HasIndex());
+        offset = addr->AsAddrMode()->Offset();
+        addr = addr->AsAddrMode()->Base();
+    }
+
+    Value* addrValue = consumeValue(addr, getPtrLlvmType());
+
+    if ((indir->gtFlags & GTF_IND_NONFAULTING) == 0)
+    {
+        // Note how we emit the check **before** the inbounds GEP so as to avoid the latter producing poison.
+        emitNullCheckForAddress(addr, addrValue);
+    }
+
+    addrValue = gepOrAddrInBounds(addrValue, offset);
+    return addrValue;
+}
+
+void Llvm::emitNullCheckForAddress(GenTree* addr, Value* addrValue)
+{
+    // The frontend's contract with the backend is that it will not insert null checks for accesses which
+    // are inside the "[0..compMaxUncheckedOffsetForNullObject]" range. Thus, we usually need to check not
+    // just for "null", but "null + small offset". However, for TYP_REF, we know it will either be a valid
+    // object on heap, or null, and can utilize the more direct form.
+    Value* isNullValue;
+    if (addr->TypeIs(TYP_REF))
+    {
+        isNullValue = _builder.CreateIsNull(addrValue);
+    }
+    else
+    {
+        Value* checkValue = getIntPtrConst(_compiler->compMaxUncheckedOffsetForNullObject + 1, addrValue->getType());
+        isNullValue = _builder.CreateICmpULT(addrValue, checkValue);
+    }
+
+    emitJumpToThrowHelper(isNullValue, SCK_NULL_REF_EXCPN);
 }
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
@@ -2493,21 +2529,6 @@ void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind
         _builder.CreateUnreachable();
 
         _builder.SetInsertPoint(nextLlvmBlock);
-    }
-}
-
-void Llvm::emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue)
-{
-    if ((indir->gtFlags & GTF_IND_NONFAULTING) == 0)
-    {
-        assert(addrValue->getType()->isPointerTy());
-
-        // The frontend's contract with the backend is that it will not insert null checks for accesses which
-        // are inside the "[0..compMaxUncheckedOffsetForNullObject]" range. Thus, we need to check not just
-        // for "null", but "null + small offset".
-        Value* checkValue = getIntPtrConst(_compiler->compMaxUncheckedOffsetForNullObject + 1, addrValue->getType());
-        Value* isNullValue = _builder.CreateICmpULT(addrValue, checkValue);
-        emitJumpToThrowHelper(isNullValue, SCK_NULL_REF_EXCPN);
     }
 }
 
@@ -2905,6 +2926,16 @@ Value* Llvm::gepOrAddr(Value* addr, unsigned offset)
     return _builder.CreateGEP(Type::getInt8Ty(m_context->Context), addr, _builder.getInt32(offset));
 }
 
+Value* Llvm::gepOrAddrInBounds(Value* addr, unsigned offset)
+{
+    if (offset == 0)
+    {
+        return addr;
+    }
+
+    return _builder.CreateInBoundsGEP(Type::getInt8Ty(m_context->Context), addr, _builder.getInt32(offset));
+}
+
 Value* Llvm::getShadowStack()
 {
     if (getCurrentLlvmFunctionIndex() == ROOT_FUNC_IDX)
@@ -2924,7 +2955,7 @@ Value* Llvm::getShadowStackForCallee()
     unsigned hndIndex =
         (funcIdx == ROOT_FUNC_IDX) ? EHblkDsc::NO_ENCLOSING_INDEX : _compiler->funGetFunc(funcIdx)->funEHIndex;
 
-    return gepOrAddr(getShadowStack(), getShadowFrameSize(hndIndex));
+    return gepOrAddrInBounds(getShadowStack(), getShadowFrameSize(hndIndex));
 }
 
 Value* Llvm::getOriginalShadowStack()

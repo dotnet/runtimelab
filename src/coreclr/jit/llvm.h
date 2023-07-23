@@ -8,6 +8,7 @@
 
 #include "alloc.h"
 #include "jitpch.h"
+#include "sideeffects.h"
 #include "jitgcinfo.h"
 #include "llvmtypes.h"
 #include <new>
@@ -195,6 +196,7 @@ private:
 
     // Lowering members.
     LIR::Range* m_currentRange = nullptr;
+    SideEffectSet m_scratchSideEffects; // Used for IsInvariantInRange.
 
     // Codegen members.
     llvm::IRBuilder<> _builder;
@@ -346,12 +348,18 @@ private:
     void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerCallReturn(GenTreeCall* callNode);
 
+    void lowerAddressToAddressMode(GenTreeIndir* indir);
+    bool isAddressInBounds(GenTree* addr, FieldSeq* fieldSeq, target_size_t offset);
+    unsigned getObjectSizeBound(GenTree* obj);
+
     GenTree* normalizeStructUse(LIR::Use& use, ClassLayout* layout);
 
     unsigned representAsLclVar(LIR::Use& use);
     GenTree* insertShadowStackAddr(GenTree* insertBefore, ssize_t offset, unsigned shadowStackLclNum);
 
     unsigned getCatchArgOffset() const;
+
+    bool isInvariantInRange(GenTree* node, GenTree* endExclusive);
 
     // ================================================================================================================
     // |                                           Shadow stack allocation                                            |
@@ -409,6 +417,7 @@ private:
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
     void buildAdd(GenTreeOp* node);
     void buildSub(GenTreeOp* node);
+    void buildAddrMode(GenTreeAddrMode* addrMode);
     void buildDivMod(GenTree* node);
     void buildRotate(GenTreeOp* node);
     void buildCast(GenTreeCast* cast);
@@ -438,11 +447,13 @@ private:
 
     void buildCallFinally(BasicBlock* block);
 
+    Value* consumeAddressAndEmitNullCheck(GenTreeIndir* indir);
+    void emitNullCheckForAddress(GenTree* addr, Value* addrValue);
+
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
 
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
-    void emitNullCheckForIndir(GenTreeIndir* indir, Value* addrValue);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
     llvm::CallBase* emitHelperCall(CorInfoHelpFunc                  helperFunc,
                                    ArrayRef<Value*>                 sigArgs = {},
@@ -469,6 +480,7 @@ private:
     Instruction* getCast(Value* source, Type* targetType);
     Value* castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder = nullptr);
     Value* gepOrAddr(Value* addr, unsigned offset);
+    Value* gepOrAddrInBounds(Value* addr, unsigned offset);
     llvm::Constant* getIntPtrConst(target_size_t value, Type* llvmType = nullptr);
     Value* getShadowStack();
     Value* getShadowStackForCallee();
