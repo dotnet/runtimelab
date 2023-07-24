@@ -23,12 +23,14 @@ public class ManagedZLibBenchmark
     }
 
     public CompressedFile? CompressedFile;
+    private MemoryStream _outputStream;
 
     [GlobalSetup]
     public void Setup()
     {
         Debug.Assert(File != null);
         CompressedFile = new CompressedFile(File, Level);
+        _outputStream = new MemoryStream(UncompressedData.Length); 
     }
 
 
@@ -45,23 +47,23 @@ public class ManagedZLibBenchmark
     public void Cleanup() => CompressedFile?.CompressedDataStream.Dispose();
 
     [Benchmark(Baseline = true)]
-    public int DecompressNative()
+    public void DecompressNative()
     {
         CompressedFile!.CompressedDataStream.Position = 0;
-        MemoryStream expectedStream = new();
+        _outputStream.Position = 0;
+        
         System.IO.Compression.DeflateStream decompressor = new System.IO.Compression.DeflateStream(CompressedFile.CompressedDataStream, System.IO.Compression.CompressionMode.Decompress);
-        decompressor.CopyTo(expectedStream);
-        return 0;
+        decompressor.CopyTo(_outputStream);
     }
 
     [Benchmark]
-    public int DecompressManaged()
+    public void DecompressManaged()
     {
         CompressedFile!.CompressedDataStream.Position = 0;
-        MemoryStream expectedStream = new();
+        _outputStream.Position = 0;
+
         DeflateStream decompressor = new DeflateStream(CompressedFile.CompressedDataStream, CompressionMode.Decompress);
-        decompressor.CopyTo(expectedStream);
-        return 0;
+        decompressor.CopyTo(_outputStream);
     }
 
     public class ProgramRun
