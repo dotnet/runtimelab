@@ -197,7 +197,7 @@ internal class Inflater
                 {
                     int newLength = (int)Math.Min(bufferBytes.Length, _uncompressedSize - _currentInflatedCount);
                     bufferBytes = bufferBytes.Slice(newLength);
-                    copied = ReadOutput(bufferBytes); //Vivi's notes> Here you would pass a slice of the Span
+                    copied = ReadOutput(bufferBytes);
                     _currentInflatedCount += copied;
                 }
                 else

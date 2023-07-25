@@ -22,7 +22,6 @@ public partial class DeflateStream : Stream
     private CompressionMode _mode;
     private bool _leaveOpen;
     private bool _wroteBytes;
-
     internal DeflateStream(Stream stream, CompressionMode mode, long uncompressedSize) : this(stream, mode, leaveOpen: false, ManagedZLib.Deflate_DefaultWindowBits, uncompressedSize)
     {
     }

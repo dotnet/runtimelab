@@ -26,7 +26,7 @@ public static class ManagedZLib
         VersionError = -6
     }
 
-    public enum BlockType // For inflate (RFC1951 deflate format)
+    public enum BlockType
     {
         Uncompressed = 0,
         Static = 1, //Fixed

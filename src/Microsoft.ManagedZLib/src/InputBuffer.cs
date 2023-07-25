@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Dynamic;
 
 namespace Microsoft.ManagedZLib;
 
@@ -15,7 +16,7 @@ namespace Microsoft.ManagedZLib;
 // The byte array is not reused. We will go from 'start' to 'end'.
 // When we reach the end, most read operations will return -1,
 // which means we are running out of input.
-internal sealed class InputBuffer
+public  class InputBuffer
 {
     private Memory<byte> _buffer; // Input stream buffer
     private uint _bitBuffer;      // To quickly shift in this buffer

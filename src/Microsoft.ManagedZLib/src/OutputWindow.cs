@@ -1,9 +1,13 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.Win32;
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.Text.RegularExpressions;
 using static Microsoft.ManagedZLib.ManagedZLib.ZLibStreamHandle;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Microsoft.ManagedZLib;
 
@@ -14,13 +18,62 @@ namespace Microsoft.ManagedZLib;
 /// we need to look back in the output window and copy bytes from there.
 /// We use a byte array of WindowSize circularly.
 /// </summary>
-internal sealed class OutputWindow
+internal class OutputWindow
 {
-    private int WindowSize;
-    private int WindowMask;
+    public int _windowSize;
+    private int _windowMask;
     private byte[] _window; // The window is 2^n bytes where n is number of bits
     private int _lastIndex; // Position to where we should write next byte
     private int _bytesUsed; // Number of bytes in the output window that haven't been consumed yet.
+
+    public const int Length_codes = 29; /* number of length codes, not counting the special END_BLOCK code */
+    public const int Literals = 256; //Num of literal bytes from 0 to 255
+    public const int LengthCodes = Literals + 1 + Length_codes; /* number of Literal or Length codes, including the END_BLOCK code */
+    public const int DistanceCodes = 30;
+    public const int BitLengthsCodes = 19; // Number of bits used to transfer the bit lengths
+    public const int HeapSize = 2 * LengthCodes + 1;
+    public const int CodesMaxBit = 15; // All codes must not exceed MaxBit bits
+    //Min&Max matching lengths.
+    public const int MinMatch = 3;
+    public const int MaxMatch = 258;
+    public const int MinLookahead = MaxMatch + MinMatch + 1;
+
+    // To speed up deflation, hash chains are never searched beyond this
+    // length.  A higher limit improves compression ratio but degrades the speed.
+    public uint MaxChainLength;
+
+    //Window position at the beginning of the current output block. Gets
+    //negative when the window is moved backwards.
+    long block_start; //This might be AvailOut
+
+    public int _strHashIndex;  // hash index of string to be inserted 
+    public int _hashSize;      // number of elements in hash table 
+    public int _hashBits;      // log2(hash_size)
+    public int _hashMask;      // hash_size-1
+    ushort[]? _hashHead; // The window is 2^n bytes where n is number of bits
+    ushort[]? _prev; // The window is 2^n bytes where n is number of bits
+
+    //Number of bits by which ins_h must be shifted at each input
+    //step. It must be such that after MIN_MATCH steps, the oldest
+    //byte no longer takes part in the hash key, that is:
+    //hash_shift * MIN_MATCH >= hash_bits
+    public int _hashShift;
+
+    // Minimum amount of lookahead, except at the end of the
+    // input file, then MIN_MATCH+1.
+    public uint _matchLength;           // length of best match 
+    public byte _prevMatch;             // previous match 
+    public int _matchAvailable;         // set if previous match exists 
+    public uint _strStart;              // start of string to insert 
+    public uint _matchStart;            // start of matching string 
+    public uint _lookahead;             // number of valid bytes ahead in window 
+    public uint _prevLength; //Length of the best match at previous step. Matches not greater than this
+                             //are discarded.This is used in the lazy match evaluation.
+    public int _niceMatch;  // Stop searching when current match exceeds this 
+    public int _goodMatch;
+    //To build Huffman tree
+    public Memory<byte> Heap = new byte[HeapSize];
+
 
     /// <summary>
     /// The constructor will recieve the window bits and with that construct the 
@@ -35,29 +88,95 @@ internal sealed class OutputWindow
     /// </summary>
     internal OutputWindow(int windowBits)
     {
-        WindowSize = 1 << windowBits; //logaritmic base 2
-        WindowMask = WindowSize - 1;
-        _window = new byte[WindowSize];
+        _windowSize = 1 << windowBits; //logaritmic base 2
+        _windowMask = _windowSize - 1;
+        _window = new byte[_windowSize];
     }
     // With Deflate64 we can have up to a 65536 length as well as up to a 65538 distance. This means we need a Window that is at
     // least 131074 bytes long so we have space to retrieve up to a full 64kb in lookback and place it in our buffer without
     // overwriting existing data. OutputBuffer requires that the WindowSize be an exponent of 2, so we round up to 2^18.
     internal OutputWindow() //deflate64
     {
-        WindowSize = 262144;
-        WindowMask = 262143;
-        _window = new byte[WindowSize];
+        _windowSize = 262144;
+        _windowMask = 262143;
+        _window = new byte[_windowSize];
     }
-    internal void ClearBytesUsed()
+    internal OutputWindow(int windowBits, int memLevel)
     {
-        _bytesUsed = 0;
+        _windowSize = 1 << windowBits; //logaritmic base 2
+        _windowMask = _windowSize - 1;
+        _window = new byte[_windowSize];
+        _prev = new ushort[_windowSize];
+
+        _hashBits = memLevel + 7;
+        _hashSize = 1 << _hashBits;
+        _hashMask = _hashSize - 1;
+        _strHashIndex = 0;
+        // MinMatch = 3 , MaxMatch = 258 for Lengths
+        _hashShift = ((_hashBits + MinMatch - 1) / MinMatch);
+        _hashHead = new ushort[_hashSize];
     }
+    //Update a hash value with the given input byte
+    public void UpdateHash(byte inputByte)
+    {
+        _strHashIndex = ((_strHashIndex << _hashShift) ^ inputByte) & _hashMask;
+    }
+
+    //Insert string str in the dictionary and set match_head to the previous head
+    //of the hash chain (the most recent string with same hash key). Return
+    //the previous length of the hash chain.
+    //If this file is compiled with -DFASTEST, the compression level is forced
+    //to 1, and no hash chains are maintained.
+    //IN  assertion: all calls to INSERT_STRING are made with consecutive input
+    //characters and the first MIN_MATCH bytes of str are valid (except for
+    //the last MIN_MATCH-1 bytes of the input file).
+    public ushort InsertString(uint strStart)
+    {
+        ushort match_head;
+        Debug.Assert(_hashHead != null);
+        Debug.Assert(_prev != null);
+        UpdateHash(_window[strStart + (MinMatch - 1)]);
+        match_head = _prev[strStart & _windowMask] = _hashHead[_strHashIndex];
+        _hashHead[_strHashIndex] = (ushort)strStart;
+        return match_head;
+    }
+
+    public uint LongestMatch(uint currHashHead) 
+    {
+        Debug.Assert(_window != null);
+        uint chainLength = MaxChainLength;
+        Span<byte> scan = _window.AsSpan((int)_strStart);
+        Span<byte> match;
+        int len;
+        int bestLength = (int)_prevLength;
+        int niceMatch = _niceMatch;
+        /* Stop when cur_match becomes <= limit. To simplify the code,
+        * we prevent matches with the string of window index 0.
+        */
+        uint limit = (_strStart > (uint)MaxDistance())? _strStart - (uint)MaxDistance(): 0;
+        ushort[]? prev = _prev;
+        int wMask = _windowMask;
+        Span<byte> sTrend = _window.AsSpan((int)_strStart + MaxMatch);
+        byte scan_end1 = scan[bestLength - 1];
+        byte scan_end = scan[bestLength];
+        // The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
+        // It is easy to get rid of this optimization if necessary.
+        Debug.Assert(_hashBits >= 8 && MaxMatch == 258, "Code too clever");
+        /* Do not waste too much time if we already have a good match: */
+        if (s->prev_length >= GoodMatch)
+        {
+            chain_length >>= 2;
+        }
+        return 0;
+    }
+    internal void ClearBytesUsed() => _bytesUsed = 0;
+    public int MaxDistance() => _windowSize - MinLookahead;
     /// <summary>Add a byte to output window.</summary>
     public void Write(byte b)
     {
-        Debug.Assert(_bytesUsed < WindowSize, "Can't add byte when window is full!");
+        Debug.Assert(_bytesUsed < _windowSize, "Can't add byte when window is full!");
         _window[_lastIndex++] = b;
-        _lastIndex &= WindowMask;
+        _lastIndex &= _windowMask;
         ++_bytesUsed;
     }
 
@@ -65,15 +184,15 @@ internal sealed class OutputWindow
     public void WriteLengthDistance(int length, int distance)
     {
         //Checking there's enough space for copying the output
-        Debug.Assert((_bytesUsed + length) <= WindowSize, "No Enough space");
+        Debug.Assert((_bytesUsed + length) <= _windowSize, "No Enough space");
 
         // Move backwards distance bytes in the output stream,
         // and copy length bytes from this position to the output stream.
         _bytesUsed += length;
-        int copyStart = (_lastIndex - distance) & WindowMask;
+        int copyStart = (_lastIndex - distance) & _windowMask;
 
         // Total space that would be taken by copying the length bytes
-        int border = WindowSize - length;
+        int border = _windowSize - length;
         if (copyStart <= border && _lastIndex < border)
         {
             if (length <= distance)
@@ -100,8 +219,8 @@ internal sealed class OutputWindow
             while (length-- > 0)
             {
                 _window[_lastIndex++] = _window[copyStart++];
-                _lastIndex &= WindowMask;
-                copyStart &= WindowMask;
+                _lastIndex &= _windowMask;
+                copyStart &= _windowMask;
             }
         }
     }
@@ -118,11 +237,11 @@ internal sealed class OutputWindow
         /// It will lead us to either copy LEN bytes or just the amount available in the output window
         // taking into account the byte boundaries.
         /// </summary>
-        length = Math.Min(Math.Min(length, WindowSize - _bytesUsed), input.AvailableBytes);
+        length = Math.Min(Math.Min(length, _windowSize - _bytesUsed), input.AvailableBytes);
         int copied;
 
         // We might need wrap around to copy all bytes.
-        int spaceLeft = WindowSize - _lastIndex;
+        int spaceLeft = _windowSize - _lastIndex;
         if (length > spaceLeft) //Checking is within the boundaries
         {
             // Copy the first part
@@ -139,13 +258,13 @@ internal sealed class OutputWindow
             copied = input.CopyTo(_window, _lastIndex, length);
         }
 
-        _lastIndex = (_lastIndex + copied) & WindowMask;
+        _lastIndex = (_lastIndex + copied) & _windowMask;
         _bytesUsed += copied;
         return copied; 
     }
 
     /// <summary>Free space in output window.</summary>
-    public int FreeBytes => WindowSize - _bytesUsed;
+    public int FreeBytes => _windowSize - _bytesUsed;
 
     /// <summary>Bytes not consumed in output window.</summary>
     public int AvailableBytes => _bytesUsed;
@@ -164,7 +283,7 @@ internal sealed class OutputWindow
         else
         {
             // Copy length of bytes
-            copy_lastIndex = (_lastIndex - _bytesUsed + usersOutput.Length) & WindowMask;
+            copy_lastIndex = (_lastIndex - _bytesUsed + usersOutput.Length) & _windowMask;
         }
 
         int copied = usersOutput.Length;
@@ -174,7 +293,7 @@ internal sealed class OutputWindow
         {
             // this means we need to copy two parts separately
             // copy the spaceLeft-bytes from the end of the output window
-            _window.AsSpan(WindowSize - spaceLeft, spaceLeft).CopyTo(usersOutput);
+            _window.AsSpan(_windowSize - spaceLeft, spaceLeft).CopyTo(usersOutput);
             usersOutput = usersOutput.Slice(spaceLeft, copy_lastIndex);
         }
         _window.AsSpan(copy_lastIndex - usersOutput.Length, usersOutput.Length).CopyTo(usersOutput);
