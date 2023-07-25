@@ -264,7 +264,7 @@ namespace Microsoft.ManagedZLib
         public bool DeflateFast(Span<byte> buffer, ZFlushCode flushCode)
         {
             uint hashHead; //Head of the hash chain - index
-            bool blockFlush; //Set if current block must be flushed
+            //bool blockFlush; //Set if current block must be flushed
 
             while (true)
             {
