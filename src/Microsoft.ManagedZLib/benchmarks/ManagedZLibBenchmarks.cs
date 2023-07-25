@@ -68,7 +68,7 @@ public class ManagedZLibBenchmark
 
     public class ProgramRun
     {
-        static void Main() => BenchmarkRunner.Run<ManagedZLibBenchmark>();
+        public static void Main(string[] args) => BenchmarkSwitcher.FromAssembly(typeof(ProgramRun).Assembly).Run(args);
     }
 
 }
