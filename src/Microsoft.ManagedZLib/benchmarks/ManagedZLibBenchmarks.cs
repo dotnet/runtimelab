@@ -31,6 +31,7 @@ public class ManagedZLibBenchmark
         Debug.Assert(File != null);
         CompressedFile = new CompressedFile(File, Level);
         _outputStream = new MemoryStream(CompressedFile.UncompressedData.Length); 
+
     }
 
 
@@ -51,7 +52,7 @@ public class ManagedZLibBenchmark
     {
         CompressedFile!.CompressedDataStream.Position = 0;
         _outputStream!.Position = 0;
-        
+
         System.IO.Compression.DeflateStream decompressor = new System.IO.Compression.DeflateStream(CompressedFile.CompressedDataStream, System.IO.Compression.CompressionMode.Decompress);
         decompressor.CopyTo(_outputStream);
     }
@@ -62,13 +63,14 @@ public class ManagedZLibBenchmark
         CompressedFile!.CompressedDataStream.Position = 0;
         _outputStream!.Position = 0;
 
+
         DeflateStream decompressor = new DeflateStream(CompressedFile.CompressedDataStream, CompressionMode.Decompress);
         decompressor.CopyTo(_outputStream);
     }
 
     public class ProgramRun
     {
-        static void Main() => BenchmarkRunner.Run<ManagedZLibBenchmark>();
+        public static void Main(string[] args) => BenchmarkSwitcher.FromAssembly(typeof(ProgramRun).Assembly).Run(args);
     }
 
 }
