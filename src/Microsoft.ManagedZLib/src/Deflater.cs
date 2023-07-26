@@ -293,9 +293,16 @@ namespace Microsoft.ManagedZLib
                      * of window index 0 (in particular we have to avoid a match
                      * of the string with itself at the start of the input file).
                      */
-                    _output._matchLength = _output.LongestMatch(hashHead);// Sets _output._matchStart
+                    _output._matchLength = _output.LongestMatch(hashHead);// Sets _output._matchStart and eventually the _lookahead
                 }
+                if (_output._matchLength >= MinMatch) 
+                {
+                    //_output.CheckMatch(s, s->strstart, s->match_start, s->match_length); //Aqui creo que no le pasas nada
+                    // le terminaras pasando el flush, el resto ya lo tiene la clase
+                    _tr_tally_dist(s, s->strstart - s->match_start, s->match_length - MIN_MATCH, bflush);
 
+                    _output._lookahead -= _output._matchLength;
+                }
 
 
             }

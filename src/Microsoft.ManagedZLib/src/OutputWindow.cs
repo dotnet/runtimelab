@@ -147,10 +147,8 @@ internal class OutputWindow
     {
         Debug.Assert(_window != null);
         uint chainLength = MaxChainLength;
-        Span<byte> scan = _window.AsSpan((int)_strStart);
+        Span<byte> scan = _window.AsSpan((int)_strStart); //Initial scan point
         Span<byte> match;
-        int scanIndex = 0;
-        int matchIndex = 0;
         int len;
         int bestLength = (int)_prevLength;
         int niceMatch = _niceMatch;
@@ -160,10 +158,6 @@ internal class OutputWindow
         uint limit = (_strStart > (uint)MaxDistance())? _strStart - (uint)MaxDistance(): 0;
         ushort[]? prev = _prev;
         int wMask = _windowMask;
-        Span<byte> sTrend = _window.AsSpan((int)_strStart + MaxMatch);
-        int sTrendIndex = 0;
-        byte scanEnd1 = scan[bestLength - 1];
-        byte scanEnd = scan[bestLength];
         // The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
         // It is easy to get rid of this optimization if necessary.
         Debug.Assert(_hashBits >= 8 && MaxMatch == 258, "Code too clever");
@@ -184,36 +178,9 @@ internal class OutputWindow
         do
         {
             Debug.Assert(currHashHead < _strStart, "no future");
-            match = _window.AsSpan((int)currHashHead);
-            /* Skip to next match if the match length cannot increase
-             * or if the match length is less than 2.  Note that the checks below
-             * for insufficient lookahead only occur occasionally for performance
-             * reasons.  Therefore uninitialized memory will be accessed, and
-             * conditional jumps will be made that depend on those values.
-             * However the length of the match is limited to the lookahead, so
-             * the output of deflate is not affected by the uninitialized values.
-             */
-            if (match[bestLength] != scanEnd ||
-            match[bestLength - 1] != scanEnd1 ||
-            match[matchIndex] != scan[scanIndex] ||
-            match[++matchIndex] != scan[scanIndex + 1]) continue;
-            scanIndex += 2;
-            matchIndex++;
-            Debug.Assert(scan[scanIndex] == match[matchIndex], "match[2]?");
+            match = _window.AsSpan((int)currHashHead);         
+            len = scan.CommonPrefixLength(match);
 
-            // We check for insufficient lookahead only every 8th comparison;
-            //the 256th check will be made at strstart + 258.
-            do { } while (scan[++scanIndex] == match[++matchIndex] && scan[++scanIndex] == match[++matchIndex] &&
-                     scan[++scanIndex] == match[++matchIndex] && scan[++scanIndex] == match[++matchIndex] &&
-                     scan[++scanIndex] == match[++matchIndex] && scan[++scanIndex] == match[++matchIndex] &&
-                     scan[++scanIndex] == match[++matchIndex] && scan[++scanIndex] == match[++matchIndex] &&
-                     Unsafe.IsAddressLessThan(ref scan[scanIndex], ref sTrend[sTrendIndex]));
-
-            //Last byte of scan (or where the Index was left) with last byte of window
-            Debug.Assert(scan[scanIndex] <= _window![_windowSize - 1], "wild scan");
-
-            len = MaxMatch - Unsafe.Subtract(ref sTrend[sTrendIndex], (int)scan[scanIndex]);
-            scan[scanIndex] = Unsafe.Subtract(ref sTrend[sTrendIndex], MaxMatch);
             if (len > bestLength)
             {
                 _matchStart = currHashHead;
@@ -222,12 +189,9 @@ internal class OutputWindow
                 {
                     break;
                 }
-                scanEnd1 = scan[bestLength - 1];
-                scanEnd = scan[bestLength];
             }
 
-        } while ((currHashHead = prev![currHashHead & wMask]) > limit
-             && --chainLength != 0);
+        } while ((currHashHead = prev![currHashHead & wMask]) > limit && (--chainLength != 0));
 
         if ((uint)bestLength <= _lookahead) return (uint)bestLength;
 
