@@ -25,7 +25,7 @@ internal class DeflateTrees
 
     //To build Huffman tree (dynamic trees)
     CtData[] _dynLitLenTree   = new CtData[HeapSize];                 // literal and length tree
-    CtData[] _dynDistancetree = new CtData[2 * DistanceCodes + 1];    // distance tree
+    CtData[] _dynDistanceTree = new CtData[2 * DistanceCodes + 1];    // distance tree
     CtData[] _codesTree       = new CtData[2 * BitLengthsCodes + 1];  // Huffman tree for bit lengths
 
     TreeDesc? _literlDesc;              // Description for literal tree\\
@@ -52,7 +52,8 @@ internal class DeflateTrees
     ulong _staticLength;       // bit length of current block with static trees
     uint _matchesInBlock;      // number of string matches in current block
     uint _insertLeftToInsert;  // bytes at end of window left to insert
-    public bool DistCode(ushort dist) =>
+    static public ushort GetDistCode(ushort dist)
+        => (dist < 256) ? StaticTreeTables.DistanceCode[dist] : StaticTreeTables.DistanceCode[256 + (dist>>7)];
     // Extra bits for each length code.
     private static ReadOnlySpan<byte> ExtraLengthBits
         => new byte[LengthCodes] { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0 };
@@ -79,19 +80,19 @@ internal class DeflateTrees
         // on 16 bit machines and because stored blocks are restricted to 64K-1 bytes.
         _symEnd = (litBufferSize - 1) * 3;
     }
-    public void treeInit() {
+    public void TreeInit() {
         _literlDesc!.dynamicTree = _dynLitLenTree; // Dynamic part
         _literlDesc!.StaticTreeDesc = StaticLengthDesc; // Length Static table in StaticTreeTables.cs
 
-        _distanceDesc!.dynamicTree = _dynDistancetree;
+        _distanceDesc!.dynamicTree = _dynDistanceTree;
         _distanceDesc!.StaticTreeDesc = StaticDistanceDesc; // Distance static table
 
         _codeDesc!.dynamicTree = _codesTree;
         _codeDesc!.StaticTreeDesc = StaticCodeDesc; // Codes' static table
     }
-    // For building the frequency table (nummber of ocurrences) per alphabet (Lit-Length, distance)
-    // for Huffman Tree construction
-    public bool treeTallyLit(byte WindowValue) //Whether or not to flush the block
+    // For building the frequency table (nummber of ocurrences)
+    // per alphabet (Lit-Length, distance) for Huffman Tree construction
+    public bool TreeTallyLit(byte WindowValue) //Whether or not to flush the block
     {
         byte DynLTreeIndex = WindowValue;
         _symBuffer.ToArray()[_symIndex++] = 0;
@@ -102,7 +103,7 @@ internal class DeflateTrees
         return (_symIndex == _symEnd);
     }
 
-    public bool treeTallyDist(uint distance, uint length) 
+    public bool TreeTallyDist(uint distance, uint length) 
     {
         byte len = (byte)length;
         ushort dist = (ushort)distance;
@@ -111,7 +112,7 @@ internal class DeflateTrees
         _symBuffer.ToArray()[_symIndex++] = len;
         dist--;
         _dynLitLenTree[StaticTreeTables.LengthCode[len]+Literals+1].Freq++;
-        _dynDistanceTree[DynLTreeIndex].Freq++;
+        _dynDistanceTree[GetDistCode(dist)].Freq++; //Distance frenquency count
 
         return (_symIndex == _symEnd);
     }

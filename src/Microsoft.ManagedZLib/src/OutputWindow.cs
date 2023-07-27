@@ -38,6 +38,13 @@ internal class OutputWindow
     // To speed up deflation, hash chains are never searched beyond this
     // length.  A higher limit improves compression ratio but degrades the speed.
     public uint MaxChainLength;
+    // Attempt to find a better match only when the current match is strictly
+    // smaller than this value. This mechanism is used only for compression levels >= 4.
+    public uint MaxLazyMatch;
+    // Insert new strings in the hash table only if the match length is not
+    // greater than this length. This saves time but degrades compression.
+    // max_insert_length is used only for compression levels <= 3.
+    public uint MaxInsertLength() => MaxLazyMatch;
 
     //Window position at the beginning of the current output block. Gets
     //negative when the window is moved backwards.
@@ -72,7 +79,7 @@ internal class OutputWindow
  
     public int _niceMatch;  // Stop searching when current match exceeds this 
     public int _goodMatch;
-    public ulong _highWater;
+    public ulong _highWater; 
 
     
     public Memory<byte> _pendingBuffer; //Output still pending

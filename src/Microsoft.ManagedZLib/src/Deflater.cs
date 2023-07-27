@@ -307,9 +307,8 @@ namespace Microsoft.ManagedZLib
                 {
                     //_output.CheckMatch(s, s->strstart, s->match_start, s->match_length); //Aqui creo que no le pasas nada
                     // le terminaras pasando el flush, el resto ya lo tiene la clase
-                    blockFlush = _trees.treeTallyDist(_output._strStart - _output._matchStart, _output._matchLength - MinMatch);
+                    blockFlush = _trees.TreeTallyDist(_output._strStart - _output._matchStart, _output._matchLength - MinMatch);
                     //blockFlush = _trees.treeTallyLit(_output._window[_output._strstart]);
-
                     _output._lookahead -= _output._matchLength;
                 }
 
