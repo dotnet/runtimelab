@@ -41,7 +41,7 @@ internal class OutputWindow
 
     //Window position at the beginning of the current output block. Gets
     //negative when the window is moved backwards.
-    long block_start; //This might be AvailOut
+    long blockStart; //This might be AvailOut
     public int _method; // It can just be deflate and it might not be used
                  // anywhere else but in init for error checking.
                  // Putting it just it case, might delete later.

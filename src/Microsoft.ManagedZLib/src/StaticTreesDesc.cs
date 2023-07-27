@@ -6,7 +6,7 @@ using System;
 namespace Microsoft.ManagedZLib;
 
 //Static part of the Huffman tree
-internal class StaticTreesDesc
+public class StaticTreesDesc
 {
     public CtData[]? staticTree { get; set; }   // static tree or NULL */
     public byte[]? extraBits { get; set; }     // extra bits for each code or NULL */

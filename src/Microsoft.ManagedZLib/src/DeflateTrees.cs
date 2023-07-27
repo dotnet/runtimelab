@@ -22,18 +22,37 @@ internal class DeflateTrees
     public const int MaxCodeBits = 7;
     public const int MinMatch = 3;
     public const int MaxMatch = 258;
-    //To build Huffman tree
-    public Memory<byte> Heap = new byte[HeapSize];
+
+    //To build Huffman tree (dynamic trees)
+    CtData[] _dynLitLenTree   = new CtData[HeapSize];                 // literal and length tree
+    CtData[] _dynDistancetree = new CtData[2 * DistanceCodes + 1];    // distance tree
+    CtData[] _codesTree       = new CtData[2 * BitLengthsCodes + 1];  // Huffman tree for bit lengths
+
+    TreeDesc? _literlDesc;              // Description for literal tree\\
+    TreeDesc? _distanceDesc;           // Description for distance tree \\
+    TreeDesc? _codeDesc;              // Description for bit length tree \\
+
+    // Number of codes at each bit length for an optimal tree
+    public Memory <ushort> _codeCount = new ushort[MaxBits + 1];
+    // Depth of each subtree used as tie breaker for trees of equal frequency
+    public Memory<byte> _depth = new byte[HeapSize];
+    // The sons of heap[n] are heap[2*n] and heap[2*n+1]. heap[0] is not used.
+    // The same heap array is used to build all trees.
+    public Memory<int> Heap = new int[HeapSize]; // heap used to build the Huffman trees
+    int _heapLen;   // number of elements in the heap
+    int _heapMax;   // element of largest frequency
+    
 
     public Memory<byte> _symBuffer;     // Buffer for distances and literal/lengths
     // For tallying - building a frequency table:
     // Count the ocurrences of a Length-dintance pair
-    internal uint _symIndex;     // Index for symBuf - sym_next in C
-    internal uint _symEnd;       // symbol table full when symIndex reaches this 
-    ulong _optLength;        /* bit length of current block with optimal trees */
-    ulong _staticLength;     /* bit length of current block with static trees */
-    uint _matchesInBlock;       /* number of string matches in current block */
-    uint _insertLeftToInsert;        /* bytes at end of window left to insert */
+    internal uint _symIndex;   // Index for symBuf - sym_next in C
+    internal uint _symEnd;     // symbol table full when symIndex reaches this 
+    ulong _optLength;          // bit length of current block with optimal trees
+    ulong _staticLength;       // bit length of current block with static trees
+    uint _matchesInBlock;      // number of string matches in current block
+    uint _insertLeftToInsert;  // bytes at end of window left to insert
+    public bool DistCode(ushort dist) =>
     // Extra bits for each length code.
     private static ReadOnlySpan<byte> ExtraLengthBits
         => new byte[LengthCodes] { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0 };
@@ -61,9 +80,39 @@ internal class DeflateTrees
         _symEnd = (litBufferSize - 1) * 3;
     }
     public void treeInit() {
+        _literlDesc!.dynamicTree = _dynLitLenTree; // Dynamic part
+        _literlDesc!.StaticTreeDesc = StaticLengthDesc; // Length Static table in StaticTreeTables.cs
+
+        _distanceDesc!.dynamicTree = _dynDistancetree;
+        _distanceDesc!.StaticTreeDesc = StaticDistanceDesc; // Distance static table
+
+        _codeDesc!.dynamicTree = _codesTree;
+        _codeDesc!.StaticTreeDesc = StaticCodeDesc; // Codes' static table
     }
-    public int treeTallyDist(uint distance, uint length, ManagedZLib.FlushCode flush) 
+    // For building the frequency table (nummber of ocurrences) per alphabet (Lit-Length, distance)
+    // for Huffman Tree construction
+    public bool treeTallyLit(byte WindowValue) //Whether or not to flush the block
     {
-        return 0;
+        byte DynLTreeIndex = WindowValue;
+        _symBuffer.ToArray()[_symIndex++] = 0;
+        _symBuffer.ToArray()[_symIndex++] = 0;
+        _symBuffer.ToArray()[_symIndex++] = DynLTreeIndex;
+        _dynLitLenTree[DynLTreeIndex].Freq++; //Literal-Length frenquency count 
+                                              // For later building the code: Bit String
+        return (_symIndex == _symEnd);
+    }
+
+    public bool treeTallyDist(uint distance, uint length) 
+    {
+        byte len = (byte)length;
+        ushort dist = (ushort)distance;
+        _symBuffer.ToArray()[_symIndex++] = (byte)dist;
+        _symBuffer.ToArray()[_symIndex++] = (byte)(dist>>8);
+        _symBuffer.ToArray()[_symIndex++] = len;
+        dist--;
+        _dynLitLenTree[StaticTreeTables.LengthCode[len]+Literals+1].Freq++;
+        _dynDistanceTree[DynLTreeIndex].Freq++;
+
+        return (_symIndex == _symEnd);
     }
 }

@@ -5,7 +5,7 @@ namespace Microsoft.ManagedZLib;
 
 public class StaticTreeTables
 {
-    internal static readonly CtData[] StaticLengthTree = new CtData[DeflateTrees.LitLenCodes + 2]  { //My change to just an array
+    public static readonly CtData[] StaticLengthTree = new CtData[DeflateTrees.LitLenCodes + 2]  { //My change to just an array
         new CtData { Freq = 12, Len = 8}, new CtData { Freq =140, Len = 8}, new CtData { Freq = 76, Len = 8 }, new CtData { Freq = 204, Len = 8 }, new CtData { Freq = 44, Len = 8 },
         new CtData { Freq = 172, Len = 8 }, new CtData { Freq = 108, Len = 8 }, new CtData { Freq = 236, Len = 8 }, new CtData { Freq = 28, Len = 8 }, new CtData { Freq = 156, Len = 8 },
         new CtData { Freq = 92, Len = 8 }, new CtData { Freq = 220, Len = 8 }, new CtData { Freq = 60, Len = 8 }, new CtData { Freq = 188, Len = 8 }, new CtData { Freq = 124, Len = 8 },
@@ -66,7 +66,7 @@ public class StaticTreeTables
         new CtData { Freq = 163, Len = 8 }, new CtData { Freq = 99, Len = 8 }, new CtData { Freq = 227, Len = 8 }
         };
 
-    internal static readonly CtData[] StaticDistanceTree = new CtData[DeflateTrees.DistanceCodes]{
+    public static readonly CtData[] StaticDistanceTree = new CtData[DeflateTrees.DistanceCodes]{
         new CtData { Freq =  0, Len =  5}, new CtData { Freq = 16, Len =  5}, new CtData { Freq =  8, Len =  5}, new CtData { Freq = 24, Len =  5}, new CtData { Freq =  4, Len =  5}, 
         new CtData { Freq = 20, Len =  5}, new CtData { Freq = 12, Len =  5}, new CtData { Freq = 28, Len =  5}, new CtData { Freq =  2, Len =  5}, new CtData { Freq = 18, Len =  5}, 
         new CtData { Freq = 10, Len =  5}, new CtData { Freq = 26, Len =  5}, new CtData { Freq =  6, Len =  5}, new CtData { Freq = 22, Len =  5}, new CtData { Freq = 14, Len =  5}, 
@@ -78,7 +78,7 @@ public class StaticTreeTables
      * 3 .. 258, the last 256 values correspond to the top 8 bits of
      * the 15 bit distances.
      */
-    internal static readonly byte[] DistanceCode = new byte[] {
+    public static readonly byte[] DistanceCode = new byte[] {
          0,  1,  2,  3,  4,  4,  5,  5,  6,  6,  6,  6,  7,  7,  7,  7,  8,  8,  8,  8,
          8,  8,  8,  8,  9,  9,  9,  9,  9,  9,  9,  9, 10, 10, 10, 10, 10, 10, 10, 10,
         10, 10, 10, 10, 10, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
@@ -106,7 +106,7 @@ public class StaticTreeTables
         29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29,
         29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29
     };
-    static readonly byte[] LengthCode = new byte[DeflateTrees.MaxMatch - DeflateTrees.MinMatch+1]
+    public static readonly byte[] LengthCode = new byte[DeflateTrees.MaxMatch - DeflateTrees.MinMatch+1]
     {
         0,  1,  2,  3,  4,  5,  6,  7,  8,  8,  9,  9, 10, 10, 11, 11, 12, 12, 12, 12,
         13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16,
@@ -122,12 +122,12 @@ public class StaticTreeTables
         26, 26, 26, 26, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27,
         27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 27, 2
     };
-    static readonly int[] baseLength = new int[DeflateTrees.LengthCodes] 
+    public static readonly int[] baseLength = new int[DeflateTrees.LengthCodes] 
     {
         0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56,
         64, 80, 96, 112, 128, 160, 192, 224, 0
     };
-    static readonly int[] baseLDistance = new int[DeflateTrees.DistanceCodes]
+    public static readonly int[] baseLDistance = new int[DeflateTrees.DistanceCodes]
     {
         0,     1,     2,     3,     4,     6,     8,    12,    16,    24,
         32,    48,    64,    96,   128,   192,   256,   384,   512,   768,

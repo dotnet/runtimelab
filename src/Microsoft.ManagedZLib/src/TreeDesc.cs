@@ -3,9 +3,10 @@
 
 namespace Microsoft.ManagedZLib;
 
-internal class TreeDesc
+public class TreeDesc
 {
-    CtData[]? dynamicTree;
-    int maxCode;
-    StaticTreesDesc? StaticTreeDesc;
+    public CtData[]? dynamicTree;
+    public int maxCode;
+    public StaticTreesDesc? StaticTreeDesc;
 }
+
