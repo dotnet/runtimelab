@@ -92,7 +92,7 @@ internal class Inflater
     {
             0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3,
             3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 16
-    }; //Vivi's notes> This come from RFC1951 - Extra bits table
+    }; // RFC1951 - Extra bits table
 
     // The base distance for distance code 0 - 31
     // The real distance for a distance code is  distanceBasePosition[code] + (value stored in extraBits)
@@ -101,11 +101,6 @@ internal class Inflater
             1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513,
             769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 32769, 49153
     }; //Vivi's notes> This come from RFC1951
-    private static ReadOnlySpan<ushort> ExtraDistancePosotionBits => new ushort[]
-    {
-            1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513,
-            769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 32769, 49153
-    };
     // code lengths for code length alphabet is stored in following order
     private static ReadOnlySpan<byte> CodeOrder => new byte[] { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
 

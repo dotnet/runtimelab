@@ -28,12 +28,7 @@ internal class OutputWindow
     private int _lastIndex; // Position to where we should write next byte
     private int _bytesUsed; // Number of bytes in the output window that haven't been consumed yet.
 
-    public const int Length_codes = 29; /* number of length codes, not counting the special END_BLOCK code */
-    public const int Literals = 256; //Num of literal bytes from 0 to 255
-    public const int LengthCodes = Literals + 1 + Length_codes; /* number of Literal or Length codes, including the END_BLOCK code */
-    public const int DistanceCodes = 30;
-    public const int BitLengthsCodes = 19; // Number of bits used to transfer the bit lengths
-    public const int HeapSize = 2 * LengthCodes + 1;
+    
     public const int CodesMaxBit = 15; // All codes must not exceed MaxBit bits
     //Min&Max matching lengths.
     public const int MinMatch = 3;
@@ -47,6 +42,9 @@ internal class OutputWindow
     //Window position at the beginning of the current output block. Gets
     //negative when the window is moved backwards.
     long block_start; //This might be AvailOut
+    public int _method; // It can just be deflate and it might not be used
+                 // anywhere else but in init for error checking.
+                 // Putting it just it case, might delete later.
 
     public int _strHashIndex;  // hash index of string to be inserted 
     public int _hashSize;      // number of elements in hash table 
@@ -71,11 +69,17 @@ internal class OutputWindow
     public uint _lookahead;             // number of valid bytes ahead in window 
     public uint _prevLength; //Length of the best match at previous step. Matches not greater than this
                              //are discarded.This is used in the lazy match evaluation.
+ 
     public int _niceMatch;  // Stop searching when current match exceeds this 
     public int _goodMatch;
-    //To build Huffman tree
-    public Memory<byte> Heap = new byte[HeapSize];
+    public ulong _highWater;
 
+    
+    public Memory<byte> _pendingBuffer; //Output still pending
+    public Memory<byte> _pendingOut;    //Next pending byte to output to the stream
+    public uint _litBufferSize; 
+    public ulong _penBufferSize;       //Size of pending buffer
+    public ulong _pedingBufferBytes;   //number of bytes in pending buffer
 
     /// <summary>
     /// The constructor will recieve the window bits and with that construct the 
@@ -117,6 +121,11 @@ internal class OutputWindow
         // MinMatch = 3 , MaxMatch = 258 for Lengths
         _hashShift = ((_hashBits + MinMatch - 1) / MinMatch);
         _hashHead = new ushort[_hashSize];
+
+        _highWater = 0; //Nothing written to the _window yet
+        _litBufferSize = 1U << (memLevel+6); //16K by default
+        _penBufferSize = (ulong)_litBufferSize * 4;
+        _pendingBuffer = new byte[_penBufferSize];
     }
     //Update a hash value with the given input byte
     public void UpdateHash(byte inputByte)
@@ -197,6 +206,7 @@ internal class OutputWindow
 
         return _lookahead;
     }
+
     internal void ClearBytesUsed() => _bytesUsed = 0;
     public int MaxDistance() => _windowSize - MinLookahead;
     /// <summary>Add a byte to output window.</summary>

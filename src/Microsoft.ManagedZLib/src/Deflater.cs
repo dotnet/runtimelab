@@ -37,21 +37,24 @@ namespace Microsoft.ManagedZLib
         private const int MaxWindowBits = 31;   // zlib header, or 24..31 for a GZip header
         private int _windowBits;
         private int _strHashIndex;
-        
+        private uint _litBufferSize;
+
         private int _wrap; //Default: Raw Deflate
         int _status;
 
         private DeflaterState _state; //Class with states - See if its suitable to have a class like with the inflater
         private readonly OutputWindow _output;
         private readonly InputBuffer _input;
+        private readonly DeflateTrees _trees;
         public bool NeedsInput() => _input.NeedsInput();
+        public bool HasSymNext() => _trees._symIndex !=0;
         public bool BlockDone() => _flushDone == true;
         // This is when inputBuffer is empty, all processed and the output buffer is not.
         //It's the start of the finish.
         //public bool NeedJustOutput() => _deflater.NeedsInput() && ((Deflater)_buffer?.Length != 0);
         public bool Finished() => _state == DeflaterState.Done; //Change this to all the checks done in DeflateEnd() -
                                                                 //To see if it ahs finished the state machine
-        public int MaxDistance() => _output._windowSize - MinLookahead; 
+        public int MaxDistance() => _output._windowSize - MinLookahead;
 
         // Note, DeflateStream or the deflater do not try to be thread safe.
         // The lock is just used to make writing to unmanaged structures atomic to make sure
@@ -93,10 +96,15 @@ namespace Microsoft.ManagedZLib
             }
             _windowBits = DeflateInit(windowBits); //Checking format of compression> Raw, Gzip or ZLib
             _output = new OutputWindow(_windowBits,memLevel); //Setting window size and mask
+            _output._method = (int)ManagedZLib.CompressionMethod.Deflated; //Deflated - only option
+            _litBufferSize = 1U << (memLevel + 6); //16K by default
+            _trees = new DeflateTrees(_output._pendingBuffer.Slice((int)_litBufferSize),_litBufferSize);
             _status = InitState;
             _strHashIndex = 0;
             ManagedZLib.CompressionStrategy strategy = ManagedZLib.CompressionStrategy.DefaultStrategy;
+            
 
+            //Might not be necessary - constructors do everything that DelfateInit2 used to do
             DeflateInit2(zlibCompressionLevel, ManagedZLib.CompressionMethod.Deflated, windowBits, memLevel, strategy);
 
 
@@ -299,7 +307,7 @@ namespace Microsoft.ManagedZLib
                 {
                     //_output.CheckMatch(s, s->strstart, s->match_start, s->match_length); //Aqui creo que no le pasas nada
                     // le terminaras pasando el flush, el resto ya lo tiene la clase
-                    _tr_tally_dist(s, s->strstart - s->match_start, s->match_length - MIN_MATCH, bflush);
+                    //_tr_tally_dist(s, s->strstart - s->match_start, s->match_length - MIN_MATCH, bflush);
 
                     _output._lookahead -= _output._matchLength;
                 }
