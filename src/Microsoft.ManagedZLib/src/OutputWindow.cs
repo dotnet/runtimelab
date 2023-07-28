@@ -1,15 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using Microsoft.Win32;
 using System;
 using System.Diagnostics;
-using System.IO;
-using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using static Microsoft.ManagedZLib.ManagedZLib.ZLibStreamHandle;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Microsoft.ManagedZLib;
 
@@ -27,13 +20,14 @@ internal class OutputWindow
     private byte[] _window; // The window is 2^n bytes where n is number of bits
     private int _lastIndex; // Position to where we should write next byte
     private int _bytesUsed; // Number of bytes in the output window that haven't been consumed yet.
-
+    public byte Window(uint bit) => _window[bit];
     
     public const int CodesMaxBit = 15; // All codes must not exceed MaxBit bits
     //Min&Max matching lengths.
     public const int MinMatch = 3;
     public const int MaxMatch = 258;
     public const int MinLookahead = MaxMatch + MinMatch + 1;
+    public uint _insert; // ----------------------------------------Se usa para FillWindow
 
     // To speed up deflation, hash chains are never searched beyond this
     // length.  A higher limit improves compression ratio but degrades the speed.

@@ -281,8 +281,9 @@ namespace Microsoft.ManagedZLib
                  * for the next match, plus MIN_MATCH bytes to insert the
                  * string following the next match.
                  */
-                if (_output._lookahead == MinMatch) 
+                if (_output._lookahead < MinMatch) 
                 {
+                    fillWindow(s); // ------------------------------------------------------------------Pending to implement
                     if (_output._lookahead < MinLookahead && flushCode == ManagedZLib.FlushCode.NoFlush)
                     {
                         return NeedsInput();
@@ -310,12 +311,56 @@ namespace Microsoft.ManagedZLib
                     blockFlush = _trees.TreeTallyDist(_output._strStart - _output._matchStart, _output._matchLength - MinMatch);
                     //blockFlush = _trees.treeTallyLit(_output._window[_output._strstart]);
                     _output._lookahead -= _output._matchLength;
+
+                    if (_output._matchLength <= _output.MaxInsertLength() && _output._lookahead >= MinMatch)
+                    {
+                        _output._matchLength--;
+                        do
+                        {
+                            _output._strStart++;
+                            // _strStart never exceeds _windowSize-MaxMatch, so there
+                            // are always MinMatch bytes ahead.
+                            hashHead = _output.InsertString(_output._strStart);
+                        }
+                        while (--_output._matchLength != 0);
+                        _output._strStart++;
+                    }
+                    else 
+                    {
+                        _output._strStart += _output._matchLength;
+                        _output._matchLength = 0;
+                        _output._strHashIndex = _output.Window(_output._strStart);
+                        _output.UpdateHash(_output.Window(_output._strStart+1));
+                    }
+                }
+                else
+                {
+                    // Not match, output a literal byte
+                    Tracevv(); // to add it
+                    blockFlush = _trees.TreeTallyLit(_output.Window(_output._strStart));
+                    _output._lookahead--;
+                    _output._strStart++;
                 }
 
-
+                if (blockFlush)
+                {
+                    // Incluir este metodo en la clase OutputWindow
+                    _output.FlushBlock(0);
+                }
+            }
+            _output._insert = (_output._strStart < MinMatch - 1) ? _output._strStart : MinMatch - 1;
+            if ( flushCode == ZFlushCode.Finish) 
+            {
+                _output.FlushBlock(1); // Sera que se le pasa true or false?? para que flushee?
+                return Finished(); // DONE STATE - Exit with true
             }
 
-            return false;
+            if (_trees._symIndex != 0) 
+            {
+                FlushBlock(0);
+            }
+            _flushDone = true; //Should I do an enum like in the C implementation?
+            return BlockDone();
         }
         
     }
