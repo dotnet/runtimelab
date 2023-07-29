@@ -4,8 +4,10 @@
 using System;
 using System.Buffers;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Drawing;
 using System.IO;
+using System.IO.Compression;
 using System.Numerics;
 using System.Reflection.Emit;
 using System.Security;
@@ -20,6 +22,7 @@ namespace Microsoft.ManagedZLib
     /// </summary>
     internal class Deflater
     {
+        private Stream? _inputStream;
         public const int NIL = 0; /* Tail of hash chains */
         // States - Might replace later for flags
         public const int InitState = 42;
@@ -46,6 +49,7 @@ namespace Microsoft.ManagedZLib
         private readonly OutputWindow _output;
         private readonly InputBuffer _input;
         private readonly DeflateTrees _trees;
+        ManagedZLib.CompressionStrategy _strategy;
         public bool NeedsInput() => _input.NeedsInput();
         public bool HasSymNext() => _trees._symIndex !=0;
         public bool BlockDone() => _flushDone == true;
@@ -101,14 +105,14 @@ namespace Microsoft.ManagedZLib
             _trees = new DeflateTrees(_output._pendingBuffer.Slice((int)_litBufferSize),_litBufferSize);
             _status = InitState;
             _strHashIndex = 0;
-            ManagedZLib.CompressionStrategy strategy = ManagedZLib.CompressionStrategy.DefaultStrategy;
+            _input._inputStream = _inputStream;
+            _strategy = ManagedZLib.CompressionStrategy.DefaultStrategy;
             
 
             //Might not be necessary - constructors do everything that DelfateInit2 used to do
-            DeflateInit2(zlibCompressionLevel, ManagedZLib.CompressionMethod.Deflated, windowBits, memLevel, strategy);
-
-
+            DeflateInit2(zlibCompressionLevel, ManagedZLib.CompressionMethod.Deflated, windowBits, memLevel, _strategy);
         }
+        public void InitInputStream (Stream inputStream) => _inputStream = inputStream;
         private int DeflateInit( int windowBits)
         {
             _wrap = 1; // To check which type of wrapper are we checking
@@ -159,25 +163,14 @@ namespace Microsoft.ManagedZLib
             }
         }
 
-        internal void SetInput(ReadOnlySpan<byte> inputBuffer)
+        internal void SetInput(Memory<byte> inputBuffer)
         {
             Debug.Assert(NeedsInput(), "We have something left in previous input!");
             if (0 == inputBuffer.Length)
             {
                 return;
             }
-        }
-        //Vivi's notes> This overloading might be repetitive
-        internal void SetInput(Span<byte> inputBuffer, int count)
-        {
-            Debug.Assert(NeedsInput(), "We have something left in previous input!");
-            Debug.Assert(inputBuffer != null);
-
-            if (count == 0)
-            {
-                return;
-            }
-
+            _input.SetInput(inputBuffer);
         }
 
         internal int GetDeflateOutput(byte[] outputBuffer)
@@ -193,15 +186,27 @@ namespace Microsoft.ManagedZLib
         public int ReadDeflateOutput(Span<byte> outputBuffer, ZFlushCode flushCode)
         {
             Debug.Assert(outputBuffer.Length > 0); // This used to be nullable - Check behavior later
-            int count = 0;
+
+            //How it was before:
+            //_zlibStream.NextOut = (IntPtr)bufPtr;
+            //_zlibStream.AvailOut = (uint)outputBuffer.Length;
+
+            //ZErrorCode errC = Deflate(flushCode);
+            //bytesRead = outputBuffer.Length - (int)_zlibStream.AvailOut;
+            // I'm leaving this block here (I'll erase when finishig porting deflate) 
+            // for me to remember:
+            // Return the number of bytes read directly from deflate instead of
+            // a bool or some error code.
+            //We are using exceptions or assets for error checking already
+
+            // Instead of returning an error, we should be just returning: (from deflate)
+            //bytesRead = outputBuffer.Length - _output.AvailableBytes;
             lock (SyncLock)
             {
-                //Here will copy from the output buffer to the stream
-                // and deflate
+                _output.Buffer = outputBuffer.ToArray(); //Find a way to not having to allocate this
+                _output._availableOutput = outputBuffer.Length;
 
-                count = Deflate(flushCode);
-                int bytesRead = outputBuffer.Length - _output.AvailableBytes;
-
+                int bytesRead = Deflate(flushCode);
                 return bytesRead;
             }
         }
@@ -283,7 +288,7 @@ namespace Microsoft.ManagedZLib
                  */
                 if (_output._lookahead < MinMatch) 
                 {
-                    fillWindow(s); // ------------------------------------------------------------------Pending to implement
+                    _output.FillWindow(); // ------------------------------------------------------------------Pending to implement
                     if (_output._lookahead < MinLookahead && flushCode == ManagedZLib.FlushCode.NoFlush)
                     {
                         return NeedsInput();

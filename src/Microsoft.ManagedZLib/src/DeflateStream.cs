@@ -13,7 +13,7 @@ namespace Microsoft.ManagedZLib;
 
 public partial class DeflateStream : Stream
 {
-    private const int DefaultBufferSize = 8192;
+    private const int DefaultBufferSize = 8192; // Default block size(8KB)
     private Stream _stream;
     private Inflater? _inflater;
     private Deflater? _deflater;
@@ -99,7 +99,6 @@ public partial class DeflateStream : Stream
             throw new ArgumentException("NotSupported_UnwritableStream - Stream does not support writing.", nameof(stream));
 
         _deflater = new Deflater(compressionLevel, windowBits);
-
         _stream = stream;
         _mode = CompressionMode.Compress;
         _leaveOpen = leaveOpen;
@@ -357,7 +356,7 @@ public partial class DeflateStream : Stream
             WriteCore(buffer);
         }
     }
-
+    // This is also used by GZipStream and ZLibStream
     internal void WriteCore(ReadOnlySpan<byte> buffer)
     {
         EnsureCompressionMode();
@@ -367,10 +366,10 @@ public partial class DeflateStream : Stream
         // Write compressed the bytes we already passed to the deflater:
         WriteDeflaterOutput();
 
-        _deflater.SetInput(buffer);
+        // Pass new bytes through deflater and write them too:
+        _deflater.SetInput(buffer.ToArray());
         WriteDeflaterOutput();
         _wroteBytes = true;
-
     }
 
     private void WriteDeflaterOutput()

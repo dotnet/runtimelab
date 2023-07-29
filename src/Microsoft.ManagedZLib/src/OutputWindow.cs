@@ -15,6 +15,9 @@ namespace Microsoft.ManagedZLib;
 /// </summary>
 internal class OutputWindow
 {
+    public int _availableOutput; //length of output buffer
+    private Memory<byte> _output; // NextOut in madler/zlib
+
     public int _windowSize;
     private int _windowMask;
     private byte[] _window; // The window is 2^n bytes where n is number of bits
@@ -39,7 +42,11 @@ internal class OutputWindow
     // greater than this length. This saves time but degrades compression.
     // max_insert_length is used only for compression levels <= 3.
     public uint MaxInsertLength() => MaxLazyMatch;
-
+    public Memory<byte> Buffer
+    {
+        get { return _output; }
+        set { _output = value; }
+    }
     //Window position at the beginning of the current output block. Gets
     //negative when the window is moved backwards.
     long blockStart; //This might be AvailOut
@@ -152,6 +159,23 @@ internal class OutputWindow
         _hashHead[_strHashIndex] = (ushort)strStart;
         return match_head;
     }
+    // Fill the window when the lookahead becomes insufficient.
+    // Updates strstart and lookahead.
+    public void FillWindow() 
+    {
+        byte bytesRead; // n
+        byte availSpaceEnd; //Amount of free space at the end of the window
+        uint windowSize = (uint)_windowSize;
+
+        Debug.Assert(_lookahead < MinLookahead, "Already enough lookahead");
+
+        do
+        {
+
+        } while (_lookahead < MinLookahead && );
+
+
+    }
 
     public uint LongestMatch(uint currHashHead) 
     {
@@ -207,7 +231,24 @@ internal class OutputWindow
 
         return _lookahead;
     }
+    public int ReadBuffer(InputBuffer input, Span<byte> buffer, uint size) 
+    {
+        uint Length = input._availInput;
+        if (Length > size) 
+        {
+            Length = size;
+        }
+        if (Length < 0)
+        { 
+            return 0; 
+        }
 
+        // AQUI SE INTENTA DEL INPUT BUFFER A LA WINDOW lit como CopyFrom casi casi
+        input._availInput -= Length;
+
+
+        return 0;
+    }
     internal void ClearBytesUsed() => _bytesUsed = 0;
     public int MaxDistance() => _windowSize - MinLookahead;
     /// <summary>Add a byte to output window.</summary>
