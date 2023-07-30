@@ -282,7 +282,7 @@ namespace ILCompiler.DependencyAnalysis
             _module.PrintToFile(Path.ChangeExtension(_objectFilePath, ".txt"));
             _module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 
-            _module.PrintToFile(Path.ChangeExtension(_objectFilePath, "external.txt"));
+            _moduleWithExternalFunctions.PrintToFile(Path.ChangeExtension(_objectFilePath, "external.txt"));
             _moduleWithExternalFunctions.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 #endif
 
