@@ -355,7 +355,8 @@ private:
     GenTree* normalizeStructUse(LIR::Use& use, ClassLayout* layout);
 
     unsigned representAsLclVar(LIR::Use& use);
-    GenTree* insertShadowStackAddr(GenTree* insertBefore, ssize_t offset, unsigned shadowStackLclNum);
+    GenTree* insertShadowStackAddr(GenTree* insertBefore, unsigned offset, unsigned shadowStackLclNum);
+    GenTreeAddrMode* createAddrModeNode(GenTree* base, unsigned offset);
 
     unsigned getCatchArgOffset() const;
 
