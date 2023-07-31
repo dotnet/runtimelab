@@ -41,6 +41,7 @@ namespace Microsoft.ManagedZLib
         private int _windowBits;
         private int _strHashIndex;
         private uint _litBufferSize;
+        private int _levelConfigTable;
 
         private int _wrap; //Default: Raw Deflate
         int _status;
@@ -98,16 +99,17 @@ namespace Microsoft.ManagedZLib
                 default:
                     throw new ArgumentOutOfRangeException(nameof(compressionLevel));
             }
-            _windowBits = DeflateInit(windowBits); //Checking format of compression> Raw, Gzip or ZLib
+            _windowBits = DeflateInit(windowBits); //Checking format of compression> Raw, Gzip or ZLib 
+                                                   // For Window and wrap flag initial configuration
             _output = new OutputWindow(_windowBits,memLevel); //Setting window size and mask
             _output._method = (int)ManagedZLib.CompressionMethod.Deflated; //Deflated - only option
             _litBufferSize = 1U << (memLevel + 6); //16K by default
             _trees = new DeflateTrees(_output._pendingBuffer.Slice((int)_litBufferSize),_litBufferSize);
             _status = InitState;
             _strHashIndex = 0;
-            _input._inputStream = _inputStream;
             _strategy = ManagedZLib.CompressionStrategy.DefaultStrategy;
-            
+            // Setting variables for doing the matches
+            DeflateReset(compressionLevel);
 
             //Might not be necessary - constructors do everything that DelfateInit2 used to do
             DeflateInit2(zlibCompressionLevel, ManagedZLib.CompressionMethod.Deflated, windowBits, memLevel, _strategy);
@@ -128,6 +130,7 @@ namespace Microsoft.ManagedZLib
                 _wrap = 2;
                 windowBits -= 16; //
             }                                      /// What's this (bellow):
+            _input._wrap = _wrap;
             if (windowBits == 8) windowBits = 9;  /* until 256-byte window bug fixed */
             return (windowBits < 0) ? -windowBits : windowBits &= 15;
         }
@@ -139,7 +142,29 @@ namespace Microsoft.ManagedZLib
             ManagedZLib.CompressionStrategy strategy) { 
 
             //Set everything up + error checking if needed - Might merge with DeflateInit later.
-    }
+        }
+        public void DeflateReset(CompressionLevel level)
+        {
+            _input._totalInput = _output._totalOutput = 0;
+            _output._pedingBufferBytes = 0;
+            _output._pendingOut = _output._pendingBuffer;
+
+            if (_wrap < 0)
+            {
+                _wrap = -_wrap; /* was made negative by deflate(..., Z_FINISH); */
+            }
+
+            _status = (_wrap == 2) ? GZipState : InitState;
+
+            if (_wrap == 2)
+                _output.Adler32();
+            else
+                _output.CRC32();
+
+            _trees.TreeInit();
+
+            _output.longestMatchInit(level);
+        }
         ~Deflater()
         {
             Dispose(false);
@@ -237,8 +262,6 @@ namespace Microsoft.ManagedZLib
             return ReadDeflateOutput(outputBuffer, ZFlushCode.SyncFlush) != 0;
         }
 
-
-
         private int Deflate(ZFlushCode flushCode)
         {
             // No estoy segura de por que debemos guardar el estado del anterior flush,
@@ -288,7 +311,7 @@ namespace Microsoft.ManagedZLib
                  */
                 if (_output._lookahead < MinMatch) 
                 {
-                    _output.FillWindow(); // ------------------------------------------------------------------Pending to implement
+                    _output.FillWindow(_input); // ------------------------------------------------------------------Pending to implement
                     if (_output._lookahead < MinLookahead && flushCode == ManagedZLib.FlushCode.NoFlush)
                     {
                         return NeedsInput();

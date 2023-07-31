@@ -20,9 +20,11 @@ namespace Microsoft.ManagedZLib;
 public  class InputBuffer
 {
     public uint _availInput; //_buffer length - it should be align with buffer being filled
+    public ulong _totalInput; //Total input read so far
     public Memory<byte> _inputBuffer; // Input stream buffer
     private uint _bitBuffer;      // To quickly shift in this buffer
     private int _bitsInBuffer;    // #bits available in bitBuffer
+    public int _wrap; //Default: Raw Deflate
 
     /// <summary>Total bits available in the input buffer.</summary>
     public int AvailableBits => _bitsInBuffer;

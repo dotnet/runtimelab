@@ -17,6 +17,9 @@ internal class OutputWindow
 {
     public int _availableOutput; //length of output buffer
     private Memory<byte> _output; // NextOut in madler/zlib
+    ulong _adler; //Adler-32 or CRC-32 value of the uncompressed data
+    public ulong _totalOutput;
+    public const int NIL = 0; /* Tail of hash chains */
 
     public int _windowSize;
     private int _windowMask;
@@ -24,7 +27,8 @@ internal class OutputWindow
     private int _lastIndex; // Position to where we should write next byte
     private int _bytesUsed; // Number of bytes in the output window that haven't been consumed yet.
     public byte Window(uint bit) => _window[bit];
-    
+    public int WindowSize() => _windowSize;
+
     public const int CodesMaxBit = 15; // All codes must not exceed MaxBit bits
     //Min&Max matching lengths.
     public const int MinMatch = 3;
@@ -42,6 +46,7 @@ internal class OutputWindow
     // greater than this length. This saves time but degrades compression.
     // max_insert_length is used only for compression levels <= 3.
     public uint MaxInsertLength() => MaxLazyMatch;
+    public int WinInit() => MaxMatch;
     public Memory<byte> Buffer
     {
         get { return _output; }
@@ -51,8 +56,8 @@ internal class OutputWindow
     //negative when the window is moved backwards.
     long blockStart; //This might be AvailOut
     public int _method; // It can just be deflate and it might not be used
-                 // anywhere else but in init for error checking.
-                 // Putting it just it case, might delete later.
+                        // anywhere else but in init for error checking.
+                        // Putting it just it case, might delete later.
 
     public int _strHashIndex;  // hash index of string to be inserted 
     public int _hashSize;      // number of elements in hash table 
@@ -77,15 +82,14 @@ internal class OutputWindow
     public uint _lookahead;             // number of valid bytes ahead in window 
     public uint _prevLength; //Length of the best match at previous step. Matches not greater than this
                              //are discarded.This is used in the lazy match evaluation.
- 
+
     public int _niceMatch;  // Stop searching when current match exceeds this 
     public int _goodMatch;
-    public ulong _highWater; 
+    public ulong _highWater;
 
-    
     public Memory<byte> _pendingBuffer; //Output still pending
     public Memory<byte> _pendingOut;    //Next pending byte to output to the stream
-    public uint _litBufferSize; 
+    public uint _litBufferSize;
     public ulong _penBufferSize;       //Size of pending buffer
     public ulong _pedingBufferBytes;   //number of bytes in pending buffer
 
@@ -131,7 +135,7 @@ internal class OutputWindow
         _hashHead = new ushort[_hashSize];
 
         _highWater = 0; //Nothing written to the _window yet
-        _litBufferSize = 1U << (memLevel+6); //16K by default
+        _litBufferSize = 1U << (memLevel + 6); //16K by default
         _penBufferSize = (ulong)_litBufferSize * 4;
         _pendingBuffer = new byte[_penBufferSize];
     }
@@ -161,20 +165,149 @@ internal class OutputWindow
     }
     // Fill the window when the lookahead becomes insufficient.
     // Updates strstart and lookahead.
-    public void FillWindow() 
+    public void FillWindow(InputBuffer inputBuffer) //more: If space is needed, how much more
     {
-        byte bytesRead; // n
-        byte availSpaceEnd; //Amount of free space at the end of the window
-        uint windowSize = (uint)_windowSize;
-
+        int bytes; // n
+        int availSpaceEnd; //Amount of free space at the end of the window
+        int wsize = WindowSize();
         Debug.Assert(_lookahead < MinLookahead, "Already enough lookahead");
 
         do
         {
+            availSpaceEnd = (int)(wsize - _lookahead - _strStart); // It shouldn't be that large
 
-        } while (_lookahead < MinLookahead && );
+            /* If the window is almost full and there is insufficient lookahead,
+            * move the upper half to the lower one to make room in the upper half.
+            */
+            if (_strStart >= wsize + MaxDistance())
+            {
+                var upperHalf = _window.AsSpan(wsize); // Creo que en un init se duplica el tamanio de la ventana
+                                                              // Checar inicializacion
+                                                              // Creo que WindowSize debe tener el tamanio solo de una mitad 32K
+                var from = _window.AsSpan(wsize, (int)wsize - availSpaceEnd);
+                from.CopyTo(upperHalf);
+                _matchStart -= (uint)wsize;
+                _strStart -= (uint)wsize; /* we now have strstart >= MAX_DIST */
+                blockStart -= (long)wsize;
+                if (_insert > _strStart)
+                    _insert = _strStart;
+                SlideHash();
+                availSpaceEnd += wsize;
+            }
 
+            if (inputBuffer._availInput == 0) break;
 
+            bytes = ReadBuffer(inputBuffer, _window.AsSpan().Slice((int)_strStart,(int)_lookahead), (uint)availSpaceEnd);
+            _lookahead += (uint)bytes;
+
+            /* Initialize the hash value now that we have some input: */
+            if (_lookahead + _insert >= MinMatch)
+            {
+                uint str = _strStart - _insert;
+                _strHashIndex = _window[str];
+                UpdateHash(_window[str + 1]);
+                while (_insert != 0)
+                {
+                    UpdateHash(_window[str + MinMatch - 1]);
+                    _prev![str & _windowMask] = _hashHead![_strHashIndex];
+                    _hashHead[_strHashIndex] = (ushort)str;
+                    str++;
+                    _insert--;
+                    if (_lookahead + _insert < MinMatch)
+                        break;
+                }
+            }
+        } while (_lookahead < MinLookahead && inputBuffer.AvailableBytes != 0);
+
+        if (_highWater < (ulong)WindowSize()) //Migth change windowSize to ulong
+        {
+            ulong curr = _strStart + (ulong)(_lookahead);
+            ulong init;
+
+            if (_highWater < curr)
+            {
+                /* Previous high water mark below current data -- zero WIN_INIT
+                 * bytes or up to end of window, whichever is less.
+                 */
+                init = (ulong)_windowSize - curr;
+                if (init > (ulong)WinInit())
+                    init = (ulong)WinInit();
+                _window = _window.AsSpan((int)curr).ToArray(); // Is it necessary to reset it like this
+                // Zeroing from curr                                               // Or can I just do: _window.AsSpan(curr)
+                Array.Clear(_window, 0, (int)init);
+                
+                _highWater = curr + init;
+            }
+            else if (_highWater < (ulong)curr + (ulong)WinInit())
+            {
+                /* High water mark at or above current data, but below current data
+                 * plus WIN_INIT -- zero out to current data plus WIN_INIT, or up
+                 * to end of window, whichever is less.
+                 */
+                init = (ulong)curr + (ulong)WinInit() - _highWater;
+                if (init > (ulong)_windowSize - _highWater)
+                    init = (ulong)_windowSize - _highWater;
+
+                _window = _window.AsSpan((int)_highWater).ToArray(); // Slice the window from _highWater
+                // Zeroing from _highWater
+                Array.Clear(_window, 0, (int)init);
+                _highWater += init;
+            }
+        }
+        Debug.Assert((ulong)_strStart <= (ulong)WindowSize() - MinLookahead,
+           "not enough room for search");
+    }
+
+    // ---- ASK WHICH ONES ARE USED - It has to be at least 1 of deflate_fast, 1 of deflate slow and stored
+    // Variables initialized depending on the level of compression
+    //configuration_table = 
+    ///*      good lazy nice chain */
+    ///* 0 */ {0,    0,  0,    0, deflate_stored},  /* store only */
+    ///* 1 */ {4,    4,  8,    4, deflate_fast}, /* max speed, no lazy matches */
+    ///* 2 */ {4,    5, 16,    8, deflate_fast},
+    ///* 3 */ {4,    6, 32,   32, deflate_fast},
+
+    ///* 4 */ {4,    4, 16,   16, deflate_slow},  /* lazy matches */
+    ///* 5 */ {8,   16, 32,   32, deflate_slow},
+    ///* 6 */ {8,   16, 128, 128, deflate_slow}, -- Default
+    ///* 7 */ {8,   32, 128, 256, deflate_slow},
+    ///* 8 */ {32, 128, 258, 1024, deflate_slow},
+    ///* 9 */ {32, 258, 258, 4096, deflate_slow} /* max compression */
+    public void longestMatchInit(CompressionLevel level)
+    {
+        switch (level)
+        {
+            // See the note in ManagedZLib.CompressionLevel for the recommended combinations.
+            case CompressionLevel.Optimal:
+                _goodMatch = 8;
+                MaxLazyMatch = 16;
+                _niceMatch = 32;
+                MaxChainLength = 32;
+                break;
+
+            case CompressionLevel.Fastest:
+                _goodMatch = 4;
+                MaxLazyMatch = 4;
+                _niceMatch = 8;
+                MaxChainLength = 4;
+                break;
+
+            case CompressionLevel.NoCompression:
+                _goodMatch = 0;
+                MaxLazyMatch = 0;
+                _niceMatch = 0;
+                MaxChainLength = 0;
+                break;
+
+            case CompressionLevel.SmallestSize:
+                _goodMatch = 32;
+                MaxLazyMatch = 258;
+                _niceMatch = 258;
+                MaxChainLength = 258;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(level));
+        }
     }
 
     public uint LongestMatch(uint currHashHead) 
@@ -231,24 +364,66 @@ internal class OutputWindow
 
         return _lookahead;
     }
-    public int ReadBuffer(InputBuffer input, Span<byte> buffer, uint size) 
+    public int ReadBuffer(InputBuffer input, Span<byte> buffer, uint sizeRequested) 
     {
         uint Length = input._availInput;
-        if (Length > size) 
+        if (Length > sizeRequested) 
         {
-            Length = size;
+            Length = sizeRequested;
         }
         if (Length < 0)
         { 
             return 0; 
         }
-
         // AQUI SE INTENTA DEL INPUT BUFFER A LA WINDOW lit como CopyFrom casi casi
         input._availInput -= Length;
+        Span<byte> bytesToBeCopied = input._inputBuffer.Span.Slice(0, (int)Length);
+        bytesToBeCopied.CopyTo(buffer);
 
+        if (input._wrap == 1) //ZLib header
+        {
+            Adler32(buffer, Length);
+        }
+        else if (input._wrap == 2) // Gzip header
+        {
+            CRC32(buffer, Length);
+        }
+
+        input._inputBuffer = input._inputBuffer.Slice((int)Length); // Slice from where we ended up copying
+        input._availInput -= Length;
 
         return 0;
     }
+
+    /* ===========================================================================
+     * Slide the hash table when sliding the window down (could be avoided with 32
+     * bit values at the expense of memory usage). We slide even when level == 0 to
+     * keep the hash table consistent if we switch back to level > 0 later.
+     */
+    public void SlideHash()
+    {
+        int n, m;
+        uint wsize = (uint)WindowSize();
+        n = _hashSize;
+        ushort[] p = new ushort[n];
+        p = _hashHead!;
+        do
+        {
+            m = p[--n];
+            p[n] = (ushort)(m >= wsize ? m - wsize : NIL);
+        } while (n > 0);
+        n = (int)wsize;
+        p = _prev!;
+        do
+        {
+            m = p[--n];
+            p[n] = (ushort)(m >= wsize ? m - wsize : NIL);
+            /* If n is not on any hash chain, prev[n] is garbage but
+             * its value will never be used.
+             */
+        } while (n > 0);
+    }
+
     internal void ClearBytesUsed() => _bytesUsed = 0;
     public int MaxDistance() => _windowSize - MinLookahead;
     /// <summary>Add a byte to output window.</summary>
@@ -307,9 +482,8 @@ internal class OutputWindow
 
     /// <summary>
     /// Copy up to length of bytes from input directly.
-    /// This is used for uncompressed block, after passing through Decode().
     /// </summary>
-    public int CopyFrom(InputBuffer input, int length)
+    public int CopyFrom(InputBuffer input, int length) // I htink this is the as ReadBuffer - To check when refactoring
     {
         /// <summary> 
         /// Either how much input is available or how much free space in the output buffer we have. 
@@ -358,7 +532,7 @@ internal class OutputWindow
         {
             // We can copy all the decompressed bytes out
             copy_lastIndex = _lastIndex; //Last index auxiliar
-            usersOutput = usersOutput.Slice(0,_bytesUsed);
+            usersOutput = usersOutput.Slice(0,_bytesUsed); /// -----COPIA MASO ESTO
         }
         else
         {
@@ -380,6 +554,44 @@ internal class OutputWindow
         _bytesUsed -= copied;
         Debug.Assert(_bytesUsed >= 0, "check this function and find why we copied more bytes than we have");
         return copied;
+    }
+
+    /*
+     Update a running Adler-32 checksum with the bytes buf[0..len-1] and
+       return the updated checksum. An Adler-32 value is in the range of a 32-bit
+       unsigned integer. If buf is Z_NULL, this function returns the required
+       initial value for the checksum.
+
+         An Adler-32 checksum is almost as reliable as a CRC-32 but can be computed
+       much faster.
+
+       Usage example:
+
+         uLong adler = adler32(0L, Z_NULL, 0);
+
+         while (read_buffer(buffer, length) != EOF) {
+           adler = adler32(adler, buffer, length);
+         }
+         if (adler != original_adler) error();
+    */
+    public void Adler32(Span<byte> buffer, uint Length) 
+    {
+        throw new NotImplementedException();
+    }
+    public void CRC32(Span<byte> buffer, uint Length)
+    {
+        throw new NotImplementedException();
+    }
+
+    // For initializing values needed in DeflateResetKeep
+    // Migth be deleted later
+    public void Adler32() 
+    {
+        throw new NotImplementedException();
+    }
+    public void CRC32()
+    {
+        throw new NotImplementedException();
     }
 }
 
