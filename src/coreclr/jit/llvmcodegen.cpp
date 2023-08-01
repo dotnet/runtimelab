@@ -2466,15 +2466,12 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
             if (fieldDesc->getCorType() == CORINFO_TYPE_CLASS)
             {
                 // We can't be sure the address is on the heap, it could be the result of pointer arithmetic on a local var.
-                emitHelperCall(CORINFO_HELP_CHECKED_ASSIGN_REF,
-                               {address, castIfNecessary(fieldData, getPtrLlvmType())});
-
+                emitHelperCall(CORINFO_HELP_CHECKED_ASSIGN_REF, {address, fieldData});
                 bytesStored += TARGET_POINTER_SIZE;
             }
             else
             {
                 _builder.CreateStore(fieldData, address);
-
                 bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
             }
         }
@@ -2875,39 +2872,6 @@ llvm::GlobalValue* Llvm::getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle)
     }
 
     return symbol;
-}
-
-Instruction* Llvm::getCast(Value* source, Type* targetType)
-{
-    Type* sourceType = source->getType();
-    if (sourceType == targetType)
-        return nullptr;
-
-    Type::TypeID sourceTypeID = sourceType->getTypeID();
-    Type::TypeID targetTypeId = targetType->getTypeID();
-
-    if (targetTypeId == Type::PointerTyID)
-    {
-        assert(sourceTypeID == Type::IntegerTyID);
-        return new llvm::IntToPtrInst(source, targetType);
-    }
-
-    assert((targetTypeId == Type::IntegerTyID) && (sourceTypeID == Type::PointerTyID));
-    return new llvm::PtrToIntInst(source, targetType);
-}
-
-Value* Llvm::castIfNecessary(Value* source, Type* targetType, llvm::IRBuilder<>* builder)
-{
-    if (builder == nullptr)
-    {
-        builder = &_builder;
-    }
-
-    llvm::Instruction* castInst = getCast(source, targetType);
-    if (castInst == nullptr)
-        return source;
-
-    return builder->Insert(castInst);
 }
 
 llvm::Constant* Llvm::getIntPtrConst(target_size_t value, Type* llvmType)
