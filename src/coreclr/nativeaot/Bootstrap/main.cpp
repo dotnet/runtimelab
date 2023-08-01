@@ -172,8 +172,13 @@ extern "C" void __managed__Startup();
 // https://github.com/WebAssembly/wasi-libc/blob/9f51a7102085ec6a6ced5778f0864c9af9f50000/libc-bottom-half/crt/crt1-reactor.c#L7-L27
 // We define and call it for NATIVEAOT_DLL and TARGET_WASI to call all the global c++ static constructors.  This ensures the runtime is intialized
 // when calling into WebAssembly Component Model components
-#if defined(TARGET_WASI)
+#if defined(NATIVEAOT_DLL) && defined(TARGET_WASI)
 extern "C" void _initialize();
+
+__attribute__((weak)) void _initialize()
+{
+}
+
 #endif // TARGET_WASI
 #endif // !NATIVEAOT_DLL
 

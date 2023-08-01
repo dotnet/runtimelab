@@ -522,7 +522,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Condition="'$(WasmEnableExceptionHandling)' == 'true'" Include="-fwasm-exceptions" />
     </ItemGroup>
 
-    <ItemGroup Condition  ="'$(_targetOS)' == 'wasi'" >
+    <ItemGroup Condition ="'$(_targetOS)' == 'wasi'" >
       <!-- Wasi has lots of undefined symbols currently, mostly globalization -->
       <CustomLinkerArg Include="-Wl,--unresolved-symbols=ignore-all -lstdc++ -Wl,--error-limit=0" />
       <CustomLinkerArg Include="--sysroot=&quot;$(WASI_SDK_PATH.Replace(&quot;\&quot;, &quot;/&quot;))/share/wasi-sysroot&quot;" />
