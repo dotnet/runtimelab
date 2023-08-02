@@ -16,7 +16,7 @@ namespace Microsoft.ManagedZLib;
 internal class OutputWindow
 {
     public int _availableOutput; //length of output buffer
-    private Memory<byte> _output; // NextOut in madler/zlib
+    public Memory<byte> _output; // NextOut in madler/zlib
     ulong _adler; //Adler-32 or CRC-32 value of the uncompressed data
     public ulong _totalOutput;
     public const int NIL = 0; /* Tail of hash chains */
@@ -139,6 +139,9 @@ internal class OutputWindow
         _penBufferSize = (ulong)_litBufferSize * 4;
         _pendingBuffer = new byte[_penBufferSize];
     }
+
+
+
     //Update a hash value with the given input byte
     public void UpdateHash(byte inputByte)
     {
@@ -162,7 +165,8 @@ internal class OutputWindow
         match_head = _prev[strStart & _windowMask] = _hashHead[_strHashIndex];
         _hashHead[_strHashIndex] = (ushort)strStart;
         return match_head;
-    }
+    }   
+
     // Fill the window when the lookahead becomes insufficient.
     // Updates strstart and lookahead.
     public void FillWindow(InputBuffer inputBuffer) //more: If space is needed, how much more

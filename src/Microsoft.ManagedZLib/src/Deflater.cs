@@ -3,6 +3,7 @@
 
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Drawing;
@@ -35,6 +36,15 @@ namespace Microsoft.ManagedZLib
         public const int MinLookahead = MaxMatch + MinMatch + 1;
 
         private bool _isDisposed;
+
+        public enum BlockState : int
+        {
+            NeedMore, /* block not completed, need more input or more output */
+            BlockDone, /* block flush performed */
+            FinishStarted, /* finish started, need only more output at next deflate */
+            FinishDone /* finish done, accept no more input or output */
+        }
+
         bool _flushDone = false;
         private const int MinWindowBits = -15;  // WindowBits must be between -8..-15 to write no header, 8..15 for a
         private const int MaxWindowBits = 31;   // zlib header, or 24..31 for a GZip header
@@ -161,7 +171,7 @@ namespace Microsoft.ManagedZLib
             else
                 _output.CRC32();
 
-            _trees.TreeInit();
+            _trees.TreeInit(_output);
 
             _output.longestMatchInit(level);
         }
@@ -297,7 +307,7 @@ namespace Microsoft.ManagedZLib
             return false;
         }
 
-        public bool DeflateFast(Span<byte> buffer, ZFlushCode flushCode)
+        public BlockState DeflateFast(Span<byte> buffer, ZFlushCode flushCode)
         {
             uint hashHead; //Head of the hash chain - index
             bool blockFlush; //Set if current block must be flushed
@@ -314,7 +324,7 @@ namespace Microsoft.ManagedZLib
                     _output.FillWindow(_input); // ------------------------------------------------------------------Pending to implement
                     if (_output._lookahead < MinLookahead && flushCode == ManagedZLib.FlushCode.NoFlush)
                     {
-                        return NeedsInput();
+                        return BlockState.NeedMore;
                     }
                     if (_output._lookahead == 0) break; /* flush the current block */
                 }
@@ -364,7 +374,6 @@ namespace Microsoft.ManagedZLib
                 else
                 {
                     // Not match, output a literal byte
-                    Tracevv(); // to add it
                     blockFlush = _trees.TreeTallyLit(_output.Window(_output._strStart));
                     _output._lookahead--;
                     _output._strStart++;
@@ -372,24 +381,78 @@ namespace Microsoft.ManagedZLib
 
                 if (blockFlush)
                 {
-                    // Incluir este metodo en la clase OutputWindow
-                    _output.FlushBlock(0);
+                    FlushBlock(last: false);
                 }
             }
             _output._insert = (_output._strStart < MinMatch - 1) ? _output._strStart : MinMatch - 1;
+
             if ( flushCode == ZFlushCode.Finish) 
             {
-                _output.FlushBlock(1); // Sera que se le pasa true or false?? para que flushee?
-                return Finished(); // DONE STATE - Exit with true
+                // DONE STATE
+                BlockState blockStatus = FlushBlock(last: true);
+                if (blockStatus == BlockState.FinishStarted)
+                {
+                    return BlockState.FinishDone;
+                }
             }
 
             if (_trees._symIndex != 0) 
             {
-                FlushBlock(0);
+                BlockState blockStatus = FlushBlock(last : false);
+                if (blockStatus == BlockState.NeedMore)
+                {
+                    return BlockState.BlockDone;
+                }
             }
-            _flushDone = true; //Should I do an enum like in the C implementation?
-            return BlockDone();
+
+            return BlockState.BlockDone;
         }
-        
+        /* =========================================================================
+     * Flush as much pending output as possible. All deflate() output, except for
+     * some deflate_stored() output, goes through this function so some
+     * applications may wish to modify it to avoid allocating a large
+     * strm->next_out buffer and copying into it. (See also read_buf()).
+     */
+        public void FlushPending(DeflateTrees tree)
+        {
+            uint len;
+
+            _trees.FlushBits(_output);
+            len = (uint)_output._pedingBufferBytes;
+            if (len > _output._availableOutput) len = (uint)_output._availableOutput;
+            if (len == 0) return;
+            // Check if there's a shorter way of doing a c++ memcopy
+            _output._pendingOut = _output._pendingOut.Span.Slice(0, (int)len).ToArray();
+            _output._pendingOut.CopyTo(_output._output); // output = NextOut
+
+            // byte [] a --- a = a+len  --- Del inicio mueve el pointer len posiciones
+            // siendo len la nueva posicion inicial - a[0]
+            _output._output.Span.Slice((int)len); // Slicing output from len
+            _output._pendingOut.Span.Slice((int)len);
+
+            _output._totalOutput += len;
+            _output._availableOutput -= (int)len;
+            _output._pedingBufferBytes -= len;
+            if (_output._pedingBufferBytes == 0)
+            {
+                _output._pendingOut = _output._pendingBuffer;
+            }
+        }
+        // Same but force premature exit if necessary.
+        public BlockState FlushBlock(bool last)
+        {
+            FlushBlockOnly(last);
+            if (_output._availableOutput == 0)
+                return (last) ? Deflater.BlockState.FinishStarted : Deflater.BlockState.NeedMore;
+            return Deflater.BlockState.NeedMore;
+        }
+
+        // Flush the current block, with given end-of-file flag.
+        public void FlushBlockOnly(bool last) // last = end-of-file
+        {
+
+        }
+
     }
+    
 }
