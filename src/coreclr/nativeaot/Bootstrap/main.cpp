@@ -175,6 +175,8 @@ extern "C" void __managed__Startup();
 #if defined(NATIVEAOT_DLL) && defined(TARGET_WASI)
 extern "C" void _initialize();
 
+// CustomNativeMain programs are built using the same libbootstrapperdll as NATIVEAOT_DLL but wasi-libc will not provide an _initialize implemeentation,
+// so create a dummy one here and make it weak to allow wasi-libc to provide the real implmentation for WASI reactor components.
 __attribute__((weak)) void _initialize()
 {
 }
