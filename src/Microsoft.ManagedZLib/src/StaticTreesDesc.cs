@@ -14,7 +14,7 @@ public class StaticTreesDesc
     public int elems { get; set; }             // max number of elements in the tree */
     public int maxLength { get; set; }         // max bit length for the codes */
 
-    public StaticTreesDesc(CtData[]? staticTree, ReadOnlySpan<byte> extraBits, int extraBase, int elems, int maxLength)
+    public StaticTreesDesc(CtData[]? staticTree, ReadOnlySpan<int> extraBits, int extraBase, int elems, int maxLength)
     {
         this.staticTree = staticTree;
         this.extraBits = extraBits.ToArray();

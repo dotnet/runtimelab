@@ -1,11 +1,14 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.VisualBasic;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
@@ -376,7 +379,8 @@ internal class DeflateTrees
             if (nIndex >= Base) extraBits = Extra[nIndex - Base];
             frequency = tree[nIndex].Freq;
             _optLength += (ulong)frequency * (uint)(bitLength + extraBits);
-            if (STree.Length != 0) _staticLen += (ulong)frequency * (uint)(STree[nIndex].Len + extraBits);
+            //if (stree) s->static_len [...]
+            if (STree.Length == 0) _staticLen += (ulong)frequency * (uint)(STree[nIndex].Len + extraBits);
         }
         if (overflow == 0) return;
 
@@ -414,7 +418,89 @@ internal class DeflateTrees
                 nIndex--;
             }
         }
-
     }
 
+    // Construct one Huffman tree and assigns the code bit strings and lengths.
+    // Update the total bit length for the current block.
+    public void BuildTree(TreeDesc descriptor)
+    {
+        CtData[] Tree = descriptor.dynamicTree!;
+        CtData[] STree = descriptor.StaticTreeDesc!.staticTree!; //This is supposed to be constant
+        int elems = descriptor.StaticTreeDesc.elems;
+        int n, m;   //iterate over the heap elements
+        int maxCode = -1;     //Largest code with non zero frequency
+        int node;             // New code being created
+
+         // Construct the initial heap, with least frequent element in
+         // heap[SMALLEST]. The sons of heap[n] are heap[2*n] and heap[2*n + 1].
+         // heap[0] is not used.
+        _heapLen = 0;
+        _heapMax = HeapSize;
+
+        for (n = 0; n < elems; n++)
+        {
+            if (Tree[n].Freq != 0)
+            {
+                Heap.Span[++(_heapLen)] = maxCode = n;
+                _depth.Span[n] = 0;
+            }
+            else
+            {
+                Tree[n].Len = 0;
+            }
+        }
+        /* The pkzip format requires that at least one distance code exists,
+         * and that at least one bit should be sent even if there is only one
+         * possible code. So to avoid special checks later on we force at least
+         * two codes of non zero frequency.
+         */
+        while (_heapLen < 2)
+        {
+            node = Heap.Span[++(_heapLen)] = (maxCode < 2 ? ++maxCode : 0);
+            Tree[node].Freq = 1;
+            _depth.Span[node] = 0;
+            _optLength--; if (STree.Length == 0) _staticLen-= STree[node].Len;
+            /* node is 0 or 1 so it does not have extra bits */
+        }
+        descriptor.maxCode = maxCode;
+
+        /* The elements heap[heap_len/2 + 1 .. heap_len] are leaves of the tree,
+         * establish sub-heaps of increasing lengths:
+         */
+        for (n = _heapLen / 2; n >= 1; n--)
+        {
+            PriorityQueueDownHeap(Tree, n);
+        }
+        // Construct the Huffman tree by repeatedly combining
+        // the least two frequent nodes.
+        node = elems;              // next internal node of the tree
+        do
+        {
+            PriorityQueueRemove(Tree, out n);  // n = node of least frequency
+            m = Heap.Span[Smallest];           // m = node of next least frequency
+
+            Heap.Span[--(_heapMax)] = n;       // keep the nodes sorted by frequency
+            Heap.Span[--(_heapMax)] = m;
+
+            // Create a new node father of n and m
+            Tree[node].Freq = (ushort)(Tree[n].Freq + Tree[m].Freq);
+            _depth.Span[node] = (byte)((_depth.Span[n] >= _depth.Span[m] ?
+                                    _depth.Span[n] : _depth.Span[m]) + 1);
+            Tree[n].Len = Tree[m].Len = (ushort)node;
+            /* and insert the new node in the heap */
+            Heap.Span[Smallest] = node++;
+            PriorityQueueDownHeap(Tree, Smallest);
+
+        } while (_heapLen >= 2);
+
+        Heap.Span[--(_heapMax)] = Heap.Span[Smallest];
+
+        // At this point, the fields freq and dad are set. We can now
+        // generate the bit lengths.
+        GenBitLen(descriptor);
+
+        // The field len is now set, we can generate the bit codes
+        GenCodes(Tree, maxCode, _codeCount.ToArray()); // I might have to change this Array 
+                                                       // to something that doesn't allocate memory
+    }
 }
