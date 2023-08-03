@@ -503,4 +503,185 @@ internal class DeflateTrees
         GenCodes(Tree, maxCode, _codeCount.ToArray()); // I might have to change this Array 
                                                        // to something that doesn't allocate memory
     }
+
+    // Scan a literal or distance tree to determine the frequencies
+    // of the codes in the bit length tree.
+    // Input: Tree* to be scanned and its largest (max) code of non zero frequency
+    public void ScanTree(CtData[] tree, int maxCode)
+    {
+        int n;                     // iterates over all tree elements 
+        int prevlen = -1;          // last emitted length 
+        int curlen;                // length of current code 
+        int nextlen = tree[0].Len; // length of next code 
+        int count = 0;             // repeat count of the current code 
+        int maxCount = 7;          // max repeat count 
+        int minCount = 4;          // min repeat count 
+
+        if (nextlen == 0) 
+        {
+            maxCount = 138;
+            minCount = 3;
+        } 
+        tree[maxCode + 1].Len = (ushort)0xffff; // guard 
+
+        for (n = 0; n <= maxCode; n++)
+        {
+            curlen = nextlen;
+            nextlen = tree[n + 1].Len;
+            if (++count < maxCount && curlen == nextlen)
+            {
+                continue;
+            }
+            else if (count < minCount)
+            {
+                _codesTree[curlen].Freq += (ushort)count;
+            }
+            else if (curlen != 0)
+            {
+                if (curlen != prevlen) _codesTree[curlen].Freq++;
+                _codesTree[Rep3To6].Freq++;
+            }
+            else if (count <= 10)
+            {
+                _codesTree[Rep3To10].Freq++;
+            }
+            else
+            {
+                _codesTree[Rep11To138].Freq++;
+            }
+            count = 0; prevlen = curlen;
+            if (nextlen == 0)
+            {
+                maxCount = 138;
+                minCount = 3;
+            }
+            else if (curlen == nextlen)
+            {
+                maxCount = 6;
+                minCount = 3;
+            }
+            else
+            {
+                maxCount = 7;
+                minCount = 4;
+            }
+        }
+    }
+
+    // Construct the Huffman tree for the bit lengths and return the index in
+    // bl_order of the last bit length code to send.
+    public int BuildBitLenTree()
+    {
+        int maxBLenIndex;  // index of last bit length code of non zero freq
+
+        // Determine the bit length frequencies for literal and distance trees
+        ScanTree(_dynLitLenTree, _literlDesc!.maxCode);
+        ScanTree(_dynDistanceTree, _distanceDesc!.maxCode);
+
+        // Build the bit length tree:
+        BuildTree(_codeDesc!);
+        /* opt_len now includes the length of the tree representations, except the
+         * lengths of the bit lengths codes and the 5 + 5 + 4 bits for the counts.
+         */
+
+         // Determine the number of bit length codes to send. The pkzip format
+         // requires that at least 4 bit length codes be sent. (appnote.txt says
+         // 3 but the actual value used is 4.)
+         
+        for (maxBLenIndex = BitLengthsCodes - 1; maxBLenIndex >= 3; maxBLenIndex--)
+        {
+            if (_codesTree[CodeOrder[maxBLenIndex]].Len != 0) break;
+        }
+        // Update opt_len to include the bit length tree and counts 
+        _optLength += 3 * ((ulong)maxBLenIndex + 1) + 5 + 5 + 4;
+
+        return maxBLenIndex;
+    }
+
+    // Send the header for a block using dynamic Huffman trees: the counts, the
+    // lengths of the bit length codes, the literal tree and the distance tree.
+    public void SendAllTrees(OutputWindow output, int LitCodes, int DistCodes, int BitLenCodes) // numb of codes for each tree
+    {
+        int rank;                    // index in bl_order or codesOrder 
+
+        Debug.Assert(LitCodes >= 257 && DistCodes >= 1 && BitLenCodes >= 4, "not enough codes");
+        Debug.Assert(LitCodes <= LitLenCodes && DistCodes <= DistanceCodes && BitLenCodes <= BitLengthsCodes,
+                "too many codes");
+
+        SendBits(output, LitCodes - 257, 5);  /* not +255 as stated in appnote.txt */
+        SendBits(output, DistCodes - 1, 5);
+        SendBits(output, BitLenCodes - 4, 4);  /* not -3 as stated in appnote.txt */
+        for (rank = 0; rank < BitLenCodes; rank++)
+        {
+            SendBits(output, _codesTree[CodeOrder[rank]].Len, 3);
+        }
+        SendTree(output, _dynLitLenTree, LitCodes - 1);  /* literal tree */
+
+        SendTree(output, _dynDistanceTree, DistCodes - 1);  /* distance tree */
+    }
+
+    public void SendTree(OutputWindow output, CtData[]Tree, int maxCode)
+    {
+        int n;                     // iterates over all tree elements 
+        int prevlen = -1;          // last emitted length 
+        int curlen;                // length of current code 
+        int nextlen = Tree[0].Len; // length of next code 
+        int count = 0;             // repeat count of the current code 
+        int maxCount = 7;          // max repeat count 
+        int minCount = 4;          // min repeat count 
+
+        if (nextlen == 0)
+        {
+            maxCount = 138;
+            minCount = 3;
+        }
+        for (n = 0; n <= maxCode; n++)
+        {
+            curlen = nextlen; nextlen = Tree[n + 1].Len;
+            if (++count < maxCount && curlen == nextlen)
+            {
+                continue;
+            }
+            else if (count < minCount)
+            {
+                do { SendCode(output, curlen, _codesTree); } while (--count != 0);
+
+            }
+            else if (curlen != 0)
+            {
+                if (curlen != prevlen)
+                {
+                    SendCode(output, curlen, _codesTree); count--;
+                }
+                Assert(count >= 3 && count <= 6, " 3_6?");
+                SendCode(output, Rep3To6, _codesTree); SendBits(output, count - 3, 2);
+
+            }
+            else if (count <= 10)
+            {
+                SendCode(output, Rep3To10, _codesTree); SendBits(output, count - 3, 3);
+
+            }
+            else
+            {
+                SendCode(output, Rep11To138, _codesTree); SendBits(output, count - 11, 7);
+            }
+            count = 0; prevlen = curlen;
+            if (nextlen == 0)
+            {
+                maxCount = 138;
+                minCount = 3;
+            }
+            else if (curlen == nextlen)
+            {
+                maxCount = 6;
+                minCount = 3;
+            }
+            else
+            {
+                maxCount = 7;
+                minCount = 4;
+            }
+        }
+    }
 }
