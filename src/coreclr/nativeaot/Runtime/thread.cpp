@@ -33,7 +33,7 @@ EXTERN_C NATIVEAOT_API void* REDHAWK_CALLCONV RhpHandleAlloc(void* pObject, int 
 EXTERN_C NATIVEAOT_API void REDHAWK_CALLCONV RhHandleSet(void* handle, void* pObject);
 EXTERN_C NATIVEAOT_API void REDHAWK_CALLCONV RhHandleFree(void* handle);
 
-static int (*g_RuntimeInitializationCallback)();
+extern int (*g_RuntimeInitializationCallback)();
 static Thread* g_RuntimeInitializingThread;
 
 #endif //!DACCESS_COMPILE
@@ -1171,11 +1171,6 @@ FORCEINLINE bool Thread::InlineTryFastReversePInvoke(ReversePInvokeFrame * pFram
     }
 
     return true;
-}
-
-EXTERN_C void RhSetRuntimeInitializationCallback(int (*fPtr)())
-{
-    g_RuntimeInitializationCallback = fPtr;
 }
 
 void Thread::ReversePInvokeAttachOrTrapThread(ReversePInvokeFrame * pFrame)
