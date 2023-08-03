@@ -4,12 +4,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Microsoft.ManagedZLib;
@@ -63,7 +65,7 @@ internal class DeflateTrees
     internal uint _symEnd;     // symbol table full when symIndex reaches this
 
     public ulong _optLength;          // bit length of current block with optimal trees
-    public ulong _staticLength;       // bit length of current block with static trees
+    public ulong _staticLen;       // bit length of current block with static trees
     public uint _matchesInBlock;      // number of string matches in current block
     public uint _LeftToInsert;  // bytes at end of window left to insert
 
@@ -75,12 +77,12 @@ internal class DeflateTrees
     static public ushort GetDistCode(ushort dist)
         => (dist < 256) ? StaticTreeTables.DistanceCode[dist] : StaticTreeTables.DistanceCode[256 + (dist>>7)];
     // Extra bits for each length code.
-    private static ReadOnlySpan<byte> ExtraLengthBits
-        => new byte[LengthCodes] { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0 };
-    private static ReadOnlySpan<byte> ExtraDistanceBits 
-        => new byte[DistanceCodes] { 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13 };    
-    private static ReadOnlySpan<byte> ExtraCodeBits
-        => new byte[BitLengthsCodes] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 7 };
+    private static ReadOnlySpan<int> ExtraLengthBits
+        => new int[LengthCodes] { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0 };
+    private static ReadOnlySpan<int> ExtraDistanceBits 
+        => new int[DistanceCodes] { 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13 };    
+    private static ReadOnlySpan<int> ExtraCodeBits
+        => new int[BitLengthsCodes] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 7 };
     private static ReadOnlySpan<byte> CodeOrder //blOrder
         => new byte[BitLengthsCodes] { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
 
@@ -203,7 +205,7 @@ internal class DeflateTrees
         for (n = 0; n < BitLengthsCodes; n++) _codesTree[n].Freq = 0;
 
         _dynLitLenTree[EndOfBlock].Freq = 1;
-        _optLength = _staticLength = 0L;
+        _optLength = _staticLen = 0L;
         _symIndex = _matchesInBlock = 0;
     }
     public void TreeInit(OutputWindow output) {
@@ -281,6 +283,138 @@ internal class DeflateTrees
             /* Now reverse the bits */
             tree[n].Freq = (ushort) BitReverse(nextCode[len]++, len);
         }
+    }
+
+    // Index within the heap array of least frequent node in the Huffman tree
+    public const int Smallest = 1;
+
+    // Remove the smallest element from the heap and recreate the heap with
+    // one less element.Updates heap and heap_len.
+    public void PriorityQueueRemove (CtData[] Tree, out int removedTop)
+    {
+        removedTop = Heap.Span[Smallest];
+        Heap.Span[Smallest] = Heap.Span[_heapLen--];
+        PriorityQueueDownHeap(Tree, Smallest);
+    }
+
+    // Compares to subtrees, using the tree depth as tie breaker when
+    // the subtrees have equal frequency. This minimizes the worst case length.
+    public static bool Smaller(CtData[] tree, int n, int m, Span<byte> depth) =>
+        (tree[n].Freq < tree[m].Freq ||
+        (tree[n].Freq == tree[m].Freq && depth[n] <= depth[m])); 
+
+    // Restore the heap property by moving down the tree starting at node k,
+    // exchanging a node with the smallest of its two sons if necessary,
+    //  stopping when the heap property is re-established
+    // (each father smaller than its two sons).
+    // tree : The tree to restore 
+    // node: Node to move down
+    public void PriorityQueueDownHeap(CtData[] tree, int node)
+    {
+        int v = Heap.Span[node];
+        int j = node << 1;  /* left son of k */
+        while (j <= _heapLen)
+        {
+            /* Set j to the smallest of the two sons: */
+            if (j < _heapLen &&
+                Smaller(tree, Heap.Span[j + 1], Heap.Span[j], _depth.Span))
+            {
+                j++;
+            }
+            /* Exit if v is smaller than both sons */
+            if (Smaller(tree, v, Heap.Span[j], _depth.Span)) break;
+
+            /* Exchange v with the smallest son */
+            Heap.Span[node] = Heap.Span[j]; node = j;
+
+            /* And continue down the tree, setting j to the left son of k */
+            j <<= 1;
+        }
+        Heap.Span[node] = v;
+    }
+
+    public void GenBitLen (TreeDesc desc)
+    {
+        CtData[] tree = desc.dynamicTree!;
+        int max_code = desc.maxCode;
+        CtData[] STree = desc.StaticTreeDesc!.staticTree!;
+        int[] Extra = desc.StaticTreeDesc.extraBits!;
+        int Base = desc.StaticTreeDesc.extraBase;
+        int maxLength = desc.StaticTreeDesc.maxLength;
+        int heapIndex;        // heap index
+        int nIndex, mIndex;   //iterate over the tree elements
+        int bitLength;        //bit length
+        int extraBits;       //extra bits
+        ushort frequency;    // frequency */
+        int overflow = 0;    // number of elements with bit length too large
+
+        // In a first pass, compute the optimal bit lengths (which may
+        // overflow in the case of the bit length tree).
+        for (bitLength = 0; bitLength <= MaxBits; bitLength++)
+        {
+            _codeCount.Span[bitLength] = 0;
+        }
+
+        tree[Heap.Span[_heapMax]].Len = 0; /* root of the heap */
+
+        for (heapIndex = _heapMax + 1; heapIndex < HeapSize; heapIndex++)
+        {
+            nIndex = Heap.Span[heapIndex];
+            bitLength = tree[tree[nIndex].Len].Len + 1;
+            if (bitLength > maxLength) 
+            {
+                bitLength = maxLength;
+                overflow++;
+            }
+            tree[nIndex].Len = (ushort)bitLength;
+            /* We overwrite tree[n].Dad which is no longer needed */
+
+            if (nIndex > max_code) continue; /* not a leaf node */
+
+            _codeCount.Span[bitLength]++;
+            extraBits = 0;
+            if (nIndex >= Base) extraBits = Extra[nIndex - Base];
+            frequency = tree[nIndex].Freq;
+            _optLength += (ulong)frequency * (uint)(bitLength + extraBits);
+            if (STree.Length != 0) _staticLen += (ulong)frequency * (uint)(STree[nIndex].Len + extraBits);
+        }
+        if (overflow == 0) return;
+
+        /* Find the first bit length which could increase: */
+        do
+        {
+            bitLength = maxLength - 1;
+            while (_codeCount.Span[bitLength] == 0) bitLength--;
+            _codeCount.Span[bitLength]--;        /* move one leaf down the tree */
+            _codeCount.Span[bitLength + 1] += 2; /* move one overflow item as its brother */
+            _codeCount.Span[maxLength]--;
+            /* The brother of the overflow item also moves one step up,
+             * but this does not affect bl_count[max_length]
+             */
+            overflow -= 2;
+        } while (overflow > 0);
+
+        /* Now recompute all bit lengths, scanning in increasing frequency.
+     * h is still equal to HEAP_SIZE. (It is simpler to reconstruct all
+     * lengths instead of fixing only the wrong ones. This idea is taken
+     * from 'ar' written by Haruhiko Okumura.)
+     */
+        for (bitLength = maxLength; bitLength != 0; bitLength--)
+        {
+            nIndex = _codeCount.Span[bitLength];
+            while (nIndex != 0)
+            {
+                mIndex = Heap.Span[--heapIndex];
+                if (mIndex > max_code) continue;
+                if ((uint)tree[mIndex].Len != (uint)bitLength)
+                {
+                    _optLength += ((ulong)bitLength - tree[mIndex].Len) * tree[mIndex].Freq;
+                    tree[mIndex].Len = (ushort)bitLength;
+                }
+                nIndex--;
+            }
+        }
+
     }
 
 }

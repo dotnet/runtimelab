@@ -5,8 +5,8 @@ namespace Microsoft.ManagedZLib;
 
 public class CtData
 {
+    //Freq or Code
     public ushort Freq { get; set; } // frequency count
-    //public ushort Code { get; set; } // bit string
+    //Dad or Len
     public ushort Len { get; set; } // length of bit string
-    //public ushort Parent { get; set; } // father node in Huffman tree
 }

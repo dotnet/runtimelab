@@ -9,7 +9,7 @@ namespace Microsoft.ManagedZLib;
 public class StaticTreesDesc
 {
     public CtData[]? staticTree { get; set; }   // static tree or NULL */
-    public byte[]? extraBits { get; set; }     // extra bits for each code or NULL */
+    public int[]? extraBits { get; set; }     // extra bits for each code or NULL */
     public int extraBase { get; set; }         // base index for extra_bits */
     public int elems { get; set; }             // max number of elements in the tree */
     public int maxLength { get; set; }         // max bit length for the codes */
