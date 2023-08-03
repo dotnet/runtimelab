@@ -653,7 +653,7 @@ internal class DeflateTrees
                 {
                     SendCode(output, curlen, _codesTree); count--;
                 }
-                Assert(count >= 3 && count <= 6, " 3_6?");
+                Debug.Assert(count >= 3 && count <= 6, " 3_6?");
                 SendCode(output, Rep3To6, _codesTree); SendBits(output, count - 3, 2);
 
             }
@@ -684,4 +684,8 @@ internal class DeflateTrees
             }
         }
     }
+    public void TreeStoredBlock(OutputWindow output, byte[] buffer, ulong storeLen, int last)
+    {
+
+    }   
 }
