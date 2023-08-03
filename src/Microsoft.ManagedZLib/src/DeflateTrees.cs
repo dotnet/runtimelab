@@ -1,21 +1,9 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using Microsoft.VisualBasic;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
-using System.IO;
-using System.Linq;
-using System.Net.NetworkInformation;
-using System.Reflection.Emit;
 using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics.X86;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Microsoft.ManagedZLib;
 
@@ -39,6 +27,11 @@ internal class DeflateTrees
     public const int Rep3To10 = 17;
     // Repeat a zero length 11-138 times  (7 bits of repeat count)
     public const int Rep11To138 = 18;
+
+    // The three kinds of block type - This might need to go somewhere else
+    public const int StoredBlock = 0;
+    public const int StaticTrees = 1;
+    public const int DynamicTrees = 2;
 
 
     //To build Huffman tree (dynamic trees)
@@ -380,7 +373,7 @@ internal class DeflateTrees
             frequency = tree[nIndex].Freq;
             _optLength += (ulong)frequency * (uint)(bitLength + extraBits);
             //if (stree) s->static_len [...]
-            if (STree.Length == 0) _staticLen += (ulong)frequency * (uint)(STree[nIndex].Len + extraBits);
+            if (STree.Length != 0) _staticLen += (ulong)frequency * (uint)(STree[nIndex].Len + extraBits);
         }
         if (overflow == 0) return;
 
@@ -459,7 +452,11 @@ internal class DeflateTrees
             node = Heap.Span[++(_heapLen)] = (maxCode < 2 ? ++maxCode : 0);
             Tree[node].Freq = 1;
             _depth.Span[node] = 0;
-            _optLength--; if (STree.Length == 0) _staticLen-= STree[node].Len;
+            _optLength--;
+            if (STree.Length != 0)
+            {
+                _staticLen -= STree[node].Len;
+            }
             /* node is 0 or 1 so it does not have extra bits */
         }
         descriptor.maxCode = maxCode;
@@ -684,8 +681,20 @@ internal class DeflateTrees
             }
         }
     }
-    public void TreeStoredBlock(OutputWindow output, byte[] buffer, ulong storeLen, int last)
-    {
 
+    // Send a stored block
+    public void TreeStoredBlock(OutputWindow output, Span<byte> buffer, ulong storedLen, int last)
+    {
+        SendBits(output, (StoredBlock << 1) + last, 3);  // send block type 
+        BitWindUp(output);        /* align on byte boundary */
+        PutShort(output, (ushort)storedLen);
+        PutShort(output, (ushort)~storedLen);
+        if (storedLen != 0)
+        {
+            output._pendingBuffer = output._pendingBuffer.Slice((int)output._pedingBufferBytes);
+            buffer = buffer.Slice(0,(int)storedLen); //Amount to copy to pendingBuff
+            buffer.CopyTo(output._pendingBuffer.Span);
+        }
+        output._pedingBufferBytes += storedLen;
     }   
 }
