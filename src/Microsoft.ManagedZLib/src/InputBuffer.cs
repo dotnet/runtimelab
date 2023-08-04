@@ -77,15 +77,15 @@ internal sealed class InputBuffer
             if (_buffer.Length > 1)
             {
                 Span<byte> span = _buffer.Span;
-                _bitBuffer |= (uint)span[0] << _bitsInBuffer;
                 _bitBuffer |= (uint)span[1] << (_bitsInBuffer + 8);
+                _bitBuffer |= (uint)span[0] << _bitsInBuffer;
                 _buffer = _buffer.Slice(2);
                 _bitsInBuffer += 16;
             }
             else if (_buffer.Length != 0)
             {
                 _bitBuffer |= (uint)_buffer.Span[0] << _bitsInBuffer;
-                _buffer = _buffer.Slice(1);
+                _buffer = Memory<byte>.Empty;
                 _bitsInBuffer += 8;
             }
         }

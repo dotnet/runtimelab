@@ -11,7 +11,7 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        CompressedFile compressedFile = new("sum", System.IO.Compression.CompressionLevel.Optimal);
+        CompressedFile compressedFile = new("TestDocument.pdf", System.IO.Compression.CompressionLevel.SmallestSize);
         compressedFile.CompressedDataStream.Position = 0;
         MemoryStream expectedStream = new();
         DeflateStream decompressor = new(compressedFile.CompressedDataStream, CompressionMode.Decompress);
