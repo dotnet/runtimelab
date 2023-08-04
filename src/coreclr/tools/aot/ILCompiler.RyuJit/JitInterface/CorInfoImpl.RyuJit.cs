@@ -477,6 +477,9 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_THROWNULLREF:
                     id = ReadyToRunHelper.ThrowNullRef;
                     break;
+                case CorInfoHelpFunc.CORINFO_HELP_THROWMISALIGN:
+                    id = ReadyToRunHelper.ThrowMisalign;
+                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_THROWDIVZERO:
                     id = ReadyToRunHelper.ThrowDivZero;
                     break;

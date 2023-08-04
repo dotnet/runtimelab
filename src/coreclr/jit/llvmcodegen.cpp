@@ -965,9 +965,11 @@ void Llvm::visitNode(GenTree* node)
         case GT_XORR:
         case GT_XADD:
         case GT_XCHG:
+            buildAtomicOp(node->AsIndir());
+            break;
         case GT_CMPXCHG:
-            // TODO-LLVM-CQ: enable these as intrinsics.
-            unreached();
+            buildCmpXchg(node->AsCmpXchg());
+            break;
         case GT_MEMORYBARRIER:
             buildMemoryBarrier(node);
             break;
@@ -1970,6 +1972,57 @@ void Llvm::buildIntrinsic(GenTreeIntrinsic* intrinsicNode)
     mapGenTreeToValue(intrinsicNode, intrinsicValue);
 }
 
+void Llvm::buildAtomicOp(GenTreeIndir* atomicOpNode)
+{
+    assert(atomicOpNode->OperIsAtomicOp());
+    var_types opType = atomicOpNode->TypeGet();
+    Value* addrValue = consumeAddressAndEmitNullCheck(atomicOpNode);
+    Value* valueValue = consumeValue(atomicOpNode->Data(), getLlvmTypeForVarType(opType));
+    emitAlignmentCheckForAddress(atomicOpNode->Addr(), addrValue, genTypeSize(opType));
+
+    llvm::AtomicRMWInst::BinOp binOpInst;
+    switch (atomicOpNode->OperGet())
+    {
+        case GT_XAND:
+            binOpInst = llvm::AtomicRMWInst::And;
+            break;
+        case GT_XORR:
+            binOpInst = llvm::AtomicRMWInst::Or;
+            break;
+        case GT_XADD:
+            binOpInst = llvm::AtomicRMWInst::Add;
+            break;
+        case GT_XCHG:
+            binOpInst = llvm::AtomicRMWInst::Xchg;
+            break;
+        default:
+            unreached();
+    }
+
+    Value* oldValue = _builder.CreateAtomicRMW(binOpInst, addrValue, valueValue, llvm::MaybeAlign(),
+                                               llvm::AtomicOrdering::SequentiallyConsistent);
+
+    mapGenTreeToValue(atomicOpNode, oldValue);
+}
+
+void Llvm::buildCmpXchg(GenTreeCmpXchg* cmpXchgNode)
+{
+    var_types opType = cmpXchgNode->TypeGet();
+    Type* opLlvmType = getLlvmTypeForVarType(opType);
+    Value* addrValue = consumeAddressAndEmitNullCheck(cmpXchgNode);
+    Value* newValue = consumeValue(cmpXchgNode->Data(), opLlvmType);
+    Value* cmpValue = consumeValue(cmpXchgNode->Comparand(), opLlvmType);
+    emitAlignmentCheckForAddress(cmpXchgNode->Addr(), addrValue, genTypeSize(opType));
+
+    // CmpXchg returns a tuple of { <type> previous value, i1 success }. We only need the former.
+    llvm::AtomicOrdering order = llvm::AtomicOrdering::SequentiallyConsistent;
+    Value* cmpXchgValue =
+        _builder.CreateAtomicCmpXchg(addrValue, cmpValue, newValue, llvm::MaybeAlign(), order, order);
+    Value* oldValue = _builder.CreateExtractValue(cmpXchgValue, 0);
+
+    mapGenTreeToValue(cmpXchgNode, oldValue);
+}
+
 void Llvm::buildMemoryBarrier(GenTree* node)
 {
     assert(node->OperIs(GT_MEMORYBARRIER));
@@ -2232,6 +2285,48 @@ void Llvm::emitNullCheckForAddress(GenTree* addr, Value* addrValue)
     }
 
     emitJumpToThrowHelper(isNullValue, CORINFO_HELP_THROWNULLREF);
+}
+
+void Llvm::emitAlignmentCheckForAddress(GenTree* addr, Value* addrValue, unsigned alignment)
+{
+    if (isAddressAligned(addr, alignment))
+    {
+        // Nothing to do. This is quite common as atomics are usually used with class/static fields.
+        return;
+    }
+
+    Value* addrValueAsIntValue = _builder.CreatePtrToInt(addrValue, getIntPtrLlvmType());
+    Value* addrAlignBitsValue = _builder.CreateAnd(addrValueAsIntValue, alignment - 1);
+    Value* addrIsNotAlignedValue = _builder.CreateICmpNE(addrAlignBitsValue, getIntPtrConst(0));
+    emitJumpToThrowHelper(addrIsNotAlignedValue, CORINFO_HELP_THROWMISALIGN);
+}
+
+bool Llvm::isAddressAligned(GenTree* addr, unsigned alignment)
+{
+    assert(isPow2(alignment));
+
+    if (_compiler->opts.OptimizationDisabled())
+    {
+        // Don't try to be smart in MinOpts.
+        return false;
+    }
+
+    target_ssize_t offset;
+    _compiler->gtPeelOffsets(&addr, &offset);
+    if ((offset & (alignment - 1)) != 0)
+    {
+        return false;
+    }
+
+    if (addr->TypeIs(TYP_REF))
+    {
+        // All heap objects are aligned to at least the pointer size.
+        return alignment <= TARGET_POINTER_SIZE;
+    }
+
+    // TODO-LLVM-CQ: support array elements here using ARR_ADDR.
+    // TODO-LLVM-CQ: support static fields (using field sequences). Likewise with larger than pointer size fields.
+    return false;
 }
 
 Value* Llvm::consumeInitVal(GenTree* initVal)

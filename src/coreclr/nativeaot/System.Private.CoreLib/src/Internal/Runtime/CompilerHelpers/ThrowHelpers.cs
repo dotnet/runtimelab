@@ -48,6 +48,11 @@ namespace Internal.Runtime.CompilerHelpers
             throw new NullReferenceException();
         }
 
+        public static void ThrowDataMisalignedException()
+        {
+            throw new DataMisalignedException();
+        }
+
         public static void ThrowDivideByZeroException()
         {
             throw new DivideByZeroException();

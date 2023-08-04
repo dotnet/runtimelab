@@ -9,6 +9,7 @@ namespace System.Threading
 {
     public static partial class Interlocked
     {
+#if !TARGET_WASM
         #region CompareExchange
 
         [Intrinsic]
@@ -84,6 +85,7 @@ namespace System.Threading
         }
 
         #endregion
+#endif
 
         #region Increment
 
@@ -131,6 +133,7 @@ namespace System.Threading
             return ExchangeAdd(ref location1, value) + value;
         }
 
+#if !TARGET_WASM
         [Intrinsic]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int ExchangeAdd(ref int location1, int value)
@@ -158,6 +161,7 @@ namespace System.Threading
 
             return oldValue;
         }
+#endif
 
         #endregion
 

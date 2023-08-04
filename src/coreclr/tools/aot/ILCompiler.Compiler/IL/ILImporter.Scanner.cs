@@ -86,9 +86,7 @@ namespace Internal.IL
             if (_factory.Target.IsWasm)
             {
                 // ThrowNullReferenceException is needed by the explicit null checks we generate with LLVM.
-                MetadataType helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime.CompilerHelpers", "ThrowHelpers");
-                MethodDesc helperMethod = helperType.GetKnownMethod("ThrowNullReferenceException", null);
-                _dependencies.Add(_factory.MethodEntrypoint(helperMethod), "Wasm EH");
+                _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowNullRef), "Explicit null checks");
             }
 
             _ilBytes = methodIL.GetILBytes();
@@ -419,6 +417,11 @@ namespace Internal.IL
                         _dependencies.Add(_factory.ConstructedTypeSymbol(method.Instantiation[0]), reason);
                     }
                     return;
+                }
+
+                if (_factory.Target.IsWasm && IsInterlockedMethod(method))
+                {
+                    _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowMisalign), "Alignment check for an atomic");
                 }
             }
 
@@ -1402,6 +1405,12 @@ namespace Internal.IL
             }
 
             return false;
+        }
+
+        private static bool IsInterlockedMethod(MethodDesc method)
+        {
+            Debug.Assert(method.IsIntrinsic);
+            return method.OwningType is MetadataType { Name: "Interlocked", Namespace: "System.Threading" };
         }
 
         private DefType GetWellKnownType(WellKnownType wellKnownType)
