@@ -33,6 +33,13 @@ internal class DeflateTrees
     public const int StaticTrees = 1;
     public const int DynamicTrees = 2;
 
+    // Classification of possible data types
+    public const int Binary = 0;
+    public const int Text = 1;
+    public const int Ascii = Text;   /* for compatibility with 1.2.2 and earlier */
+    public const int Unknown = 2;
+
+    int _dataType;  // best guess about the data type: binary or text
 
     //To build Huffman tree (dynamic trees)
     CtData[] _dynLitLenTree   = new CtData[HeapSize];                 // literal and length tree
@@ -132,8 +139,8 @@ internal class DeflateTrees
         }
     }
 
-    public void SendCode(OutputWindow output, int codeIndex, CtData[] tree) 
-        => SendBits(output, tree[codeIndex].Freq, tree[codeIndex].Len); //Freq is Code (In the C Zlib version
+    public void SendCode(OutputWindow output,CtData tree) 
+        => SendBits(output, tree.Freq, tree.Len); //Freq is Code (In the C Zlib version
                                                                         // a union struct is used for binding the 2
                                                                         // For this first iteration, I wanted to make it as simple as possible
                                                                         // Might change later to c# union implementation
@@ -169,13 +176,9 @@ internal class DeflateTrees
         _bitBuffer = 0;
         _bitsValid = 0;
     }
-    static int GetBitLength<T>()
-    {
-        return Marshal.SizeOf<T>() * 8;
-    }
+
     // Reverse the first len bits of a code, using straightforward code
     // (a faster method would use a table)
-    // IN assertion: 1 <= len <= 15
     // Code: the value to invert
     // Len: its bit length 
     public static uint BitReverse(uint code, int Len)
@@ -191,6 +194,7 @@ internal class DeflateTrees
         } while (--Len > 0);
         return res >> 1;
     }
+
     public void InitBlock()
     {
         int n; /* iterates over tree elements */
@@ -641,27 +645,30 @@ internal class DeflateTrees
             }
             else if (count < minCount)
             {
-                do { SendCode(output, curlen, _codesTree); } while (--count != 0);
+                do { SendCode(output, _codesTree[curlen]); } while (--count != 0);
 
             }
             else if (curlen != 0)
             {
                 if (curlen != prevlen)
                 {
-                    SendCode(output, curlen, _codesTree); count--;
+                    SendCode(output, _codesTree[curlen]); count--;
                 }
                 Debug.Assert(count >= 3 && count <= 6, " 3_6?");
-                SendCode(output, Rep3To6, _codesTree); SendBits(output, count - 3, 2);
+                SendCode(output,_codesTree[Rep3To6]);
+                SendBits(output, count - 3, 2);
 
             }
             else if (count <= 10)
             {
-                SendCode(output, Rep3To10, _codesTree); SendBits(output, count - 3, 3);
+                SendCode(output, _codesTree[Rep3To10]);
+                SendBits(output, count - 3, 3);
 
             }
             else
             {
-                SendCode(output, Rep11To138, _codesTree); SendBits(output, count - 11, 7);
+                SendCode(output, _codesTree[Rep11To138]);
+                SendBits(output, count - 11, 7);
             }
             count = 0; prevlen = curlen;
             if (nextlen == 0)
@@ -696,5 +703,99 @@ internal class DeflateTrees
             buffer.CopyTo(output._pendingBuffer.Span);
         }
         output._pedingBufferBytes += storedLen;
-    }   
+    }
+
+    // Send the block data compressed using the given Huffman trees
+    public void CompressBlock(OutputWindow output, CtData[] LitTree, CtData[] DistTree)
+    {
+        int dist;          // distance of matched string
+        int lc;             // match length or unmatched char (if dist == 0)
+        uint symIndex = 0;  // running index in sym_buf
+        uint code;          // the code to send
+        int extra;          // number of extra bits to send
+        if (_symIndex != 0)
+        {
+            do
+            {
+                dist = _symBuffer.Span[(int)symIndex++] & 0xff;
+                dist += (_symBuffer.Span[(int)symIndex++] & 0xff) << 8;
+                lc = _symBuffer.Span[(int)symIndex++];
+                if (dist == 0)
+                {
+                    SendCode(output, LitTree[lc]); // send a literal byte
+                }
+                else
+                {
+                    /* Here, lc is the match length - MIN_MATCH */
+                    code = StaticTreeTables.LengthCode[lc];
+                    SendCode(output, LitTree[code + Literals + 1]);   // send length code
+                    extra = ExtraLengthBits[(int)code];
+                    if (extra != 0)
+                    {
+                        lc -= StaticTreeTables.baseLength[code];
+                        SendBits(output, lc, extra);       // send the extra length bits
+                    }
+                    dist--; /* dist is now the match distance - 1 */
+                    code = GetDistCode((ushort)dist);
+                    Debug.Assert(code < DistanceCodes, "bad DistanceCode");
+
+                    SendCode(output, DistTree[code]);       // send the distance code
+                    extra = ExtraDistanceBits[(int)code];
+                    if (extra != 0)
+                    {
+                        dist -= StaticTreeTables.baseLDistance[code];
+                        SendBits(output, (int)dist, extra);   /* send the extra distance bits */
+                    }
+                } /* literal or match pair ? */
+
+                /* Check that the overlay between pending_buf and sym_buf is ok: */
+                Debug.Assert(output._pedingBufferBytes < output._litBufferSize + symIndex, "pendingBuf overflow");
+
+            } while (symIndex < _symIndex);
+        }
+
+        SendCode(output, LitTree[EndOfBlock]);
+    }
+    /* ===========================================================================
+     * Check if the data type is TEXT or BINARY, using the following algorithm:
+     * - TEXT if the two conditions below are satisfied:
+     *    a) There are no non-portable control characters belonging to the
+     *       "block list" (0..6, 14..25, 28..31).
+     *    b) There is at least one printable character belonging to the
+     *       "allow list" (9 {TAB}, 10 {LF}, 13 {CR}, 32..255).
+     * - BINARY otherwise.
+     * - The following partially-portable control characters form a
+     *   "gray list" that is ignored in this detection algorithm:
+     *   (7 {BEL}, 8 {BS}, 11 {VT}, 12 {FF}, 26 {SUB}, 27 {ESC}).
+     * IN assertion: the fields Freq of dyn_ltree are set.
+     */
+    public int DetectDataType()
+    {
+        /* block_mask is the bit mask of block-listed bytes
+     * set bits 0..6, 14..25, and 28..31
+     * 0xf3ffc07f = binary 11110011111111111100000001111111
+     */
+        ulong blockMask = 0xf3ffc07fUL;
+        int n;
+
+        /* Check for non-textual ("block-listed") bytes. */
+        for (n = 0; n <= 31; n++, blockMask >>= 1)
+            if ((blockMask & 1) && (_dynLitLenTree[n].Freq != 0))
+                return Binary;
+
+        /* Check for textual ("allow-listed") bytes. */
+        if (_dynLitLenTree[9].Freq != 0 || _dynLitLenTree[10].Freq != 0
+                || _dynLitLenTree[13].Freq != 0)
+            return Text;
+        for (n = 32; n < Literals; n++)
+            if (_dynLitLenTree[n].Freq != 0)
+                return Text;
+
+        /* There are no "block-listed" or "allow-listed" bytes:
+         * this stream either is empty or has tolerated ("gray-listed") bytes only.
+         */
+        return Binary;
+        return 0;
+    }
+
 }
