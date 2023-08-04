@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.13.5" />
+    <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.1" />
 	  <ProjectReference Include="..\src\Microsoft.ManagedZLib.csproj" />
     <PackageReference Include="System.IO.Compression.TestData" Version="8.0.0-beta.23326.1" />
   </ItemGroup>
