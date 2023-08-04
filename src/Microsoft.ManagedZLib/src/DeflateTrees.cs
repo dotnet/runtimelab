@@ -247,7 +247,10 @@ internal class DeflateTrees
 
         return (_symIndex == _symEnd);
     }
-    public void FlushBlock() 
+
+    // Determine the best encoding for the current block: dynamic trees, static
+    // trees or store, and write out the encoded block.
+    public void FlushBlock(OutputWindow output, Memory<byte> buffer, ulong storedLen, bool last) //1:true - 0:false
     {
 
     }
@@ -780,7 +783,7 @@ internal class DeflateTrees
 
         /* Check for non-textual ("block-listed") bytes. */
         for (n = 0; n <= 31; n++, blockMask >>= 1)
-            if ((blockMask & 1) && (_dynLitLenTree[n].Freq != 0))
+            if ((blockMask & 1)!=0 && (_dynLitLenTree[n].Freq != 0))
                 return Binary;
 
         /* Check for textual ("allow-listed") bytes. */
@@ -795,7 +798,6 @@ internal class DeflateTrees
          * this stream either is empty or has tolerated ("gray-listed") bytes only.
          */
         return Binary;
-        return 0;
     }
-
+    
 }
