@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 
@@ -32,6 +33,7 @@ internal sealed class IHuffmanTree
 
     private readonly int _tableBits;
     private readonly short[] _table;
+    Dictionary<uint, int> _symDict = new Dictionary<uint, int>(); // For caching the processing of symbols
     private readonly short[] _left;
     private readonly short[] _right;
     private readonly byte[] _codeLengthArray;
@@ -68,7 +70,6 @@ internal sealed class IHuffmanTree
         _tableMask = (1 << _tableBits) - 1;
 
         _table = new short[1 << _tableBits];
-
         // I need to find proof that left and right array will always be
         // enough. I think they are.
         _left = new short[2 * _codeLengthArray.Length];
@@ -279,18 +280,28 @@ internal sealed class IHuffmanTree
         // decode an element
         int symbol = _table[bitBuffer & _tableMask];
         if (symbol < 0)
-        {       //  this will be the start of the binary tree
+        {
+            //  this will be the start of the binary tree
             // navigate the tree
+            int res = symbol;
             uint mask = (uint)1 << _tableBits;
-            do
+            uint index = bitBuffer & (uint)_tableMask;
+            // If it's negative and it's not in the dictionary, 
+            // process the symbol
+            if (!_symDict.ContainsValue(symbol))
             {
-                symbol = -symbol;
-                if ((bitBuffer & mask) == 0)
-                    symbol = _left[symbol];
-                else
-                    symbol = _right[symbol];
-                mask <<= 1;
-            } while (symbol < 0);
+                do
+                {// Most expensive operation
+                    res = -res;
+                    if ((bitBuffer & mask) == 0)
+                        res = _left[res];
+                    else
+                        res = _right[res];
+                    mask <<= 1;
+                } while (res < 0);
+                _symDict[index] = res;
+            }
+            symbol = res;
         }
 
         int codeLength = _codeLengthArray[symbol];
