@@ -3,7 +3,7 @@
 
 using System;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
+using static Microsoft.ManagedZLib.ManagedZLib;
 
 namespace Microsoft.ManagedZLib;
 
@@ -33,20 +33,19 @@ internal class DeflateTrees
     public const int StaticTrees = 1;
     public const int DynamicTrees = 2;
 
-    // Classification of possible data types
+    // Classification of possible data types - Not really used in the algorithm's functionality
+                                              // But can be used for improvements later
     public const int Binary = 0;
     public const int Text = 1;
     public const int Ascii = Text;   /* for compatibility with 1.2.2 and earlier */
     public const int Unknown = 2;
-
-    int _dataType;  // best guess about the data type: binary or text
 
     //To build Huffman tree (dynamic trees)
     CtData[] _dynLitLenTree   = new CtData[HeapSize];                 // literal and length tree
     CtData[] _dynDistanceTree = new CtData[2 * DistanceCodes + 1];    // distance tree
     CtData[] _codesTree       = new CtData[2 * BitLengthsCodes + 1];  // Huffman tree for bit lengths
 
-    TreeDesc? _literlDesc;              // Description for literal tree\\
+    TreeDesc? _literalDesc;              // Description for literal tree\\
     TreeDesc? _distanceDesc;           // Description for distance tree \\
     TreeDesc? _codeDesc;              // Description for bit length tree \\
 
@@ -209,8 +208,8 @@ internal class DeflateTrees
         _symIndex = _matchesInBlock = 0;
     }
     public void TreeInit(OutputWindow output) {
-        _literlDesc!.dynamicTree = _dynLitLenTree; // Dynamic part
-        _literlDesc!.StaticTreeDesc = StaticLengthDesc; // Length Static table in StaticTreeTables.cs
+        _literalDesc!.dynamicTree = _dynLitLenTree; // Dynamic part
+        _literalDesc!.StaticTreeDesc = StaticLengthDesc; // Length Static table in StaticTreeTables.cs
 
         _distanceDesc!.dynamicTree = _dynDistanceTree;
         _distanceDesc!.StaticTreeDesc = StaticDistanceDesc; // Distance static table
@@ -250,9 +249,85 @@ internal class DeflateTrees
 
     // Determine the best encoding for the current block: dynamic trees, static
     // trees or store, and write out the encoded block.
+    // buffer: Input block, or NULL if too old
+    // storedLen: Length of input block
+    // last: If this is the last block or no
     public void FlushBlock(OutputWindow output, Memory<byte> buffer, ulong storedLen, bool last) //1:true - 0:false
     {
+        // _optLength: bit length of current block with optimal trees
+        // optLenBytes: _optLength in bytes
+        ulong optLenBytes;
+        // _sdtaticLen: bit length of current block with static trees
+        // staticLenBytes: _staticLen in Bytes
+        ulong staticLenBytes;
+        int maxBitLenIndex = 0;  // Index of last bit length code of non zero freq
 
+        /* Build the Huffman trees unless a stored block is forced */
+        if (output._level > 0)
+        {
+
+            /* Check if the file is binary or text */
+            if (output._dataType == Unknown) //Data type is just used here - It's like a good to know now
+                                               // But can be used for improvements per type.
+                output._dataType = DetectDataType();
+
+            /* Construct the literal and distance trees */
+            BuildTree(_literalDesc!);
+
+            BuildTree(_distanceDesc!);
+            // At this point, opt_len and static_len are the total bit lengths of
+            // the compressed block data, excluding the tree representations.
+
+            // Build the bit length tree for the above two trees, and get the index
+            // in bl_order of the last bit length code to send.
+            maxBitLenIndex = BuildBitLenTree();
+
+            /* Determine the best encoding. Compute the block lengths in bytes. */
+            optLenBytes = (_optLength + 3 + 7) >> 3;
+            staticLenBytes = (_staticLen + 3 + 7) >> 3;
+
+            if (staticLenBytes <= optLenBytes || output._strategy == ManagedZLib.CompressionStrategy.Fixed)
+
+                optLenBytes = staticLenBytes;
+
+        }
+        else
+        {
+            Debug.Assert(buffer.Span != null, "lost buf");
+            optLenBytes = staticLenBytes = storedLen + 5; /* force a stored block */
+        }
+
+        if (storedLen + 4 <= optLenBytes && buffer.Span != null)
+        {
+            /* 4: two words for the lengths */
+             // The test buf != NULL is only necessary if LIT_BUFSIZE > WSIZE.
+             // Otherwise we can't have processed more than WSIZE input bytes since
+             // the last block flush, because compression would have been
+             // successful. If LIT_BUFSIZE <= WSIZE, it is never too late to
+             // transform a block into a stored block.
+             
+            TreeStoredBlock(output, buffer.Span, storedLen, last);
+
+        }
+        else if (staticLenBytes == optLenBytes)
+        {
+            SendBits(output, ((int)BlockType.Static << 1) + (last ? 1 : 0), 3);
+            CompressBlock(output, StaticTreeTables.StaticLengthTree, StaticTreeTables.StaticDistanceTree);
+        }
+        else
+        {
+            SendBits(output, ((int)BlockType.Dynamic << 1) + (last ? 1 : 0), 3);
+            SendAllTrees(output, _literalDesc!.maxCode + 1, _distanceDesc!.maxCode + 1,
+                           maxBitLenIndex + 1);
+            CompressBlock(output, _dynLitLenTree, _dynDistanceTree);
+        }
+
+        InitBlock();
+
+        if (last)
+        {
+            BitWindUp(output);
+        }
     }
 
   
@@ -579,7 +654,7 @@ internal class DeflateTrees
         int maxBLenIndex;  // index of last bit length code of non zero freq
 
         // Determine the bit length frequencies for literal and distance trees
-        ScanTree(_dynLitLenTree, _literlDesc!.maxCode);
+        ScanTree(_dynLitLenTree, _literalDesc!.maxCode);
         ScanTree(_dynDistanceTree, _distanceDesc!.maxCode);
 
         // Build the bit length tree:
@@ -693,9 +768,9 @@ internal class DeflateTrees
     }
 
     // Send a stored block
-    public void TreeStoredBlock(OutputWindow output, Span<byte> buffer, ulong storedLen, int last)
+    public void TreeStoredBlock(OutputWindow output, Span<byte> buffer, ulong storedLen, bool last)
     {
-        SendBits(output, (StoredBlock << 1) + last, 3);  // send block type 
+        SendBits(output, (StoredBlock << 1) + (last ? 1 : 0), 3);  // send block type 
         BitWindUp(output);        /* align on byte boundary */
         PutShort(output, (ushort)storedLen);
         PutShort(output, (ushort)~storedLen);

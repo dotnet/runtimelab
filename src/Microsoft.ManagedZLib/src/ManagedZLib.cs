@@ -80,7 +80,8 @@ public static class ManagedZLib
     /// </summary>public enum CompressionStrategy : int
     public enum CompressionStrategy : int
     {
-        DefaultStrategy = 0
+        DefaultStrategy = 0, // The only one used really
+        Fixed = 4
     }
 
     /// <summary>

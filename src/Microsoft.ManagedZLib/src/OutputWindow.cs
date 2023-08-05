@@ -23,10 +23,11 @@ internal class OutputWindow
 
     public int _windowSize;
     private int _windowMask;
-    private byte[] _window; // The window is 2^n bytes where n is number of bits
+    //For security reasons, this might be better as private
+    public Memory<byte> _window; // The window is 2^n bytes where n is number of bits
     private int _lastIndex; // Position to where we should write next byte
     private int _bytesUsed; // Number of bytes in the output window that haven't been consumed yet.
-    public byte Window(uint bit) => _window[bit];
+    public byte Window(int bit) => _window.Span[bit];
     public int WindowSize() => _windowSize;
 
     public const int CodesMaxBit = 15; // All codes must not exceed MaxBit bits
@@ -35,6 +36,9 @@ internal class OutputWindow
     public const int MaxMatch = 258;
     public const int MinLookahead = MaxMatch + MinMatch + 1;
     public uint _insert; // ----------------------------------------Se usa para FillWindow
+    public int _level;
+    public ManagedZLib.CompressionStrategy _strategy;
+    public int _dataType;  // best guess about the data type: binary or text
 
     // To speed up deflation, hash chains are never searched beyond this
     // length.  A higher limit improves compression ratio but degrades the speed.
@@ -54,7 +58,7 @@ internal class OutputWindow
     }
     //Window position at the beginning of the current output block. Gets
     //negative when the window is moved backwards.
-    long blockStart; //This might be AvailOut
+    public long _blockStart; //This might be AvailOut
     public int _method; // It can just be deflate and it might not be used
                         // anywhere else but in init for error checking.
                         // Putting it just it case, might delete later.
@@ -156,12 +160,12 @@ internal class OutputWindow
     //IN  assertion: all calls to INSERT_STRING are made with consecutive input
     //characters and the first MIN_MATCH bytes of str are valid (except for
     //the last MIN_MATCH-1 bytes of the input file).
-    public ushort InsertString(uint strStart)
+    public ushort InsertString(int strStart)
     {
         ushort match_head;
         Debug.Assert(_hashHead != null);
         Debug.Assert(_prev != null);
-        UpdateHash(_window[strStart + (MinMatch - 1)]);
+        UpdateHash(_window.Span[strStart + (MinMatch - 1)]);
         match_head = _prev[strStart & _windowMask] = _hashHead[_strHashIndex];
         _hashHead[_strHashIndex] = (ushort)strStart;
         return match_head;
@@ -185,14 +189,14 @@ internal class OutputWindow
             */
             if (_strStart >= wsize + MaxDistance())
             {
-                var upperHalf = _window.AsSpan(wsize); // Creo que en un init se duplica el tamanio de la ventana
+                var upperHalf = _window.Slice(wsize); // Creo que en un init se duplica el tamanio de la ventana
                                                               // Checar inicializacion
                                                               // Creo que WindowSize debe tener el tamanio solo de una mitad 32K
-                var from = _window.AsSpan(wsize, (int)wsize - availSpaceEnd);
+                var from = _window.Slice(wsize, (int)wsize - availSpaceEnd);
                 from.CopyTo(upperHalf);
                 _matchStart -= (uint)wsize;
                 _strStart -= (uint)wsize; /* we now have strstart >= MAX_DIST */
-                blockStart -= (long)wsize;
+                _blockStart -= (long)wsize;
                 if (_insert > _strStart)
                     _insert = _strStart;
                 SlideHash();
@@ -201,18 +205,18 @@ internal class OutputWindow
 
             if (inputBuffer._availInput == 0) break;
 
-            bytes = ReadBuffer(inputBuffer, _window.AsSpan().Slice((int)_strStart,(int)_lookahead), (uint)availSpaceEnd);
+            bytes = ReadBuffer(inputBuffer, _window.Slice((int)_strStart,(int)_lookahead).Span, (uint)availSpaceEnd);
             _lookahead += (uint)bytes;
 
             /* Initialize the hash value now that we have some input: */
             if (_lookahead + _insert >= MinMatch)
             {
                 uint str = _strStart - _insert;
-                _strHashIndex = _window[str];
-                UpdateHash(_window[str + 1]);
+                _strHashIndex = _window.Span[(int)str];
+                UpdateHash(_window.Span[(int)str + 1]);
                 while (_insert != 0)
                 {
-                    UpdateHash(_window[str + MinMatch - 1]);
+                    UpdateHash(_window.Span[(int)str + MinMatch - 1]);
                     _prev![str & _windowMask] = _hashHead![_strHashIndex];
                     _hashHead[_strHashIndex] = (ushort)str;
                     str++;
@@ -236,10 +240,10 @@ internal class OutputWindow
                 init = (ulong)_windowSize - curr;
                 if (init > (ulong)WinInit())
                     init = (ulong)WinInit();
-                _window = _window.AsSpan((int)curr).ToArray(); // Is it necessary to reset it like this
+                _window = _window.Slice((int)curr); // Is it necessary to reset it like this
                 // Zeroing from curr                                               // Or can I just do: _window.AsSpan(curr)
-                Array.Clear(_window, 0, (int)init);
-                
+                Array.Clear(_window.ToArray(), 0, (int)init);// Clear without allocating an array - check howto
+
                 _highWater = curr + init;
             }
             else if (_highWater < (ulong)curr + (ulong)WinInit())
@@ -252,9 +256,9 @@ internal class OutputWindow
                 if (init > (ulong)_windowSize - _highWater)
                     init = (ulong)_windowSize - _highWater;
 
-                _window = _window.AsSpan((int)_highWater).ToArray(); // Slice the window from _highWater
+                _window = _window.Slice((int)_highWater); // Slice the window from _highWater
                 // Zeroing from _highWater
-                Array.Clear(_window, 0, (int)init);
+                Array.Clear(_window.ToArray(), 0, (int)init); // Clear without allocating an array - check howto
                 _highWater += init;
             }
         }
@@ -316,9 +320,9 @@ internal class OutputWindow
 
     public uint LongestMatch(uint currHashHead) 
     {
-        Debug.Assert(_window != null);
+        Debug.Assert(!_window.IsEmpty);
         uint chainLength = MaxChainLength;
-        Span<byte> scan = _window.AsSpan((int)_strStart); //Initial scan point
+        Span<byte> scan = _window.Slice((int)_strStart).Span; //Initial scan point
         Span<byte> match;
         int len;
         int bestLength = (int)_prevLength;
@@ -349,7 +353,7 @@ internal class OutputWindow
         do
         {
             Debug.Assert(currHashHead < _strStart, "no future");
-            match = _window.AsSpan((int)currHashHead);         
+            match = _window.Slice((int)currHashHead).Span;         
             len = scan.CommonPrefixLength(match);
 
             if (len > bestLength)
@@ -434,7 +438,7 @@ internal class OutputWindow
     public void Write(byte b)
     {
         Debug.Assert(_bytesUsed < _windowSize, "Can't add byte when window is full!");
-        _window[_lastIndex++] = b;
+        _window.Span[_lastIndex++] = b;
         _lastIndex &= _windowMask;
         ++_bytesUsed;
     }
@@ -457,7 +461,7 @@ internal class OutputWindow
             if (length <= distance)
             {
                 //Copying into the look-ahead buffer (where the decompressed input is stored)
-                Array.Copy(_window, copyStart, _window, _lastIndex, length);
+                _window.Slice(copyStart).CopyTo(_window.Slice(_lastIndex, length));
                 _lastIndex += length;
             }
             else
@@ -468,7 +472,7 @@ internal class OutputWindow
                 // adds X,Y,X,Y,X to the output stream.
                 while (length-- > 0)
                 {
-                    _window[_lastIndex++] = _window[copyStart++];
+                    _window.Span[_lastIndex++] = _window.Span[copyStart++];
                 }
             }
         }
@@ -477,7 +481,7 @@ internal class OutputWindow
             // Copy byte by byte
             while (length-- > 0)
             {
-                _window[_lastIndex++] = _window[copyStart++];
+                _window.Span[_lastIndex++] = _window.Span[copyStart++];
                 _lastIndex &= _windowMask;
                 copyStart &= _windowMask;
             }
@@ -500,20 +504,25 @@ internal class OutputWindow
 
         // We might need wrap around to copy all bytes.
         int spaceLeft = _windowSize - _lastIndex;
+
+        Debug.Assert(_window.Span != null);
+        Debug.Assert(_lastIndex >= 0);
+        Debug.Assert(length >= 0);
+        Debug.Assert(_lastIndex <= _window.Length - length);
         if (length > spaceLeft) //Checking is within the boundaries
         {
             // Copy the first part
-            copied = input.CopyTo(_window, _lastIndex, spaceLeft);
+            copied = input.CopyTo(_window.Slice(_lastIndex, spaceLeft).Span);
             if (copied == spaceLeft)
             {
                 // Only try to copy the second part if we have enough bytes in input
-                copied += input.CopyTo(_window, 0, length - spaceLeft);
+                copied += input.CopyTo(_window.Slice(0, length - spaceLeft).Span);
             }
         }
         else
         {
             // Only one copy is needed if there is no wrap around.
-            copied = input.CopyTo(_window, _lastIndex, length);
+            copied = input.CopyTo(_window.Slice(_lastIndex, length).Span);
         }
 
         _lastIndex = (_lastIndex + copied) & _windowMask;
@@ -551,10 +560,10 @@ internal class OutputWindow
         {
             // this means we need to copy two parts separately
             // copy the spaceLeft-bytes from the end of the output window
-            _window.AsSpan(_windowSize - spaceLeft, spaceLeft).CopyTo(usersOutput);
+            _window.Slice(_windowSize - spaceLeft, spaceLeft).Span.CopyTo(usersOutput);
             usersOutput = usersOutput.Slice(spaceLeft, copy_lastIndex);
         }
-        _window.AsSpan(copy_lastIndex - usersOutput.Length, usersOutput.Length).CopyTo(usersOutput);
+        _window.Slice(copy_lastIndex - usersOutput.Length, usersOutput.Length).Span.CopyTo(usersOutput);
         _bytesUsed -= copied;
         Debug.Assert(_bytesUsed >= 0, "check this function and find why we copied more bytes than we have");
         return copied;

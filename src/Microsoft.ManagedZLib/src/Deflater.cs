@@ -12,8 +12,6 @@ using System.IO.Compression;
 using System.Numerics;
 using System.Reflection.Emit;
 using System.Security;
-
-using ZErrorCode = Microsoft.ManagedZLib.ManagedZLib.ErrorCode;
 using ZFlushCode = Microsoft.ManagedZLib.ManagedZLib.FlushCode;
 
 namespace Microsoft.ManagedZLib
@@ -60,7 +58,6 @@ namespace Microsoft.ManagedZLib
         private readonly OutputWindow _output;
         private readonly InputBuffer _input;
         private readonly DeflateTrees _trees;
-        ManagedZLib.CompressionStrategy _strategy;
         public bool NeedsInput() => _input.NeedsInput();
         public bool HasSymNext() => _trees._symIndex !=0;
         public bool BlockDone() => _flushDone == true;
@@ -117,12 +114,13 @@ namespace Microsoft.ManagedZLib
             _trees = new DeflateTrees(_output._pendingBuffer.Slice((int)_litBufferSize),_litBufferSize);
             _status = InitState;
             _strHashIndex = 0;
-            _strategy = ManagedZLib.CompressionStrategy.DefaultStrategy;
+            _output._level = memLevel; // Compression level (1..9)
+            _output._strategy = (int)ManagedZLib.CompressionStrategy.DefaultStrategy; // Just the default
             // Setting variables for doing the matches
             DeflateReset(compressionLevel);
 
             //Might not be necessary - constructors do everything that DelfateInit2 used to do
-            DeflateInit2(zlibCompressionLevel, ManagedZLib.CompressionMethod.Deflated, windowBits, memLevel, _strategy);
+            DeflateInit2(zlibCompressionLevel, ManagedZLib.CompressionMethod.Deflated, windowBits, memLevel, _output._strategy);
         }
         public void InitInputStream (Stream inputStream) => _inputStream = inputStream;
         private int DeflateInit( int windowBits)
@@ -330,7 +328,7 @@ namespace Microsoft.ManagedZLib
                 }
                 hashHead = NIL; //hash head starts with tail's value - empty hash
                 if (_output._lookahead >= MinMatch) {
-                    hashHead = _output.InsertString(_output._strStart);
+                    hashHead = _output.InsertString((int)_output._strStart);
                 }
                 //Find the longest match, discarding those <= prev_length.
                 //At this point we have always match_length < MIN_MATCH
@@ -358,7 +356,7 @@ namespace Microsoft.ManagedZLib
                             _output._strStart++;
                             // _strStart never exceeds _windowSize-MaxMatch, so there
                             // are always MinMatch bytes ahead.
-                            hashHead = _output.InsertString(_output._strStart);
+                            hashHead = _output.InsertString((int)_output._strStart);
                         }
                         while (--_output._matchLength != 0);
                         _output._strStart++;
@@ -367,14 +365,14 @@ namespace Microsoft.ManagedZLib
                     {
                         _output._strStart += _output._matchLength;
                         _output._matchLength = 0;
-                        _output._strHashIndex = _output.Window(_output._strStart);
-                        _output.UpdateHash(_output.Window(_output._strStart+1));
+                        _output._strHashIndex = _output.Window((int)_output._strStart);
+                        _output.UpdateHash(_output.Window((int)_output._strStart+1));
                     }
                 }
                 else
                 {
                     // Not match, output a literal byte
-                    blockFlush = _trees.TreeTallyLit(_output.Window(_output._strStart));
+                    blockFlush = _trees.TreeTallyLit(_output.Window((int)_output._strStart));
                     _output._lookahead--;
                     _output._strStart++;
                 }
@@ -450,7 +448,18 @@ namespace Microsoft.ManagedZLib
         // Flush the current block, with given end-of-file flag.
         public void FlushBlockOnly(bool last) // last = end-of-file
         {
-
+            if (_output._blockStart >= 0)
+            {
+                _output._window = _output._window.Slice((int)_output._blockStart);
+            }
+            var window = window.Slice(_output._blockStart)
+            _trees.FlushBlock(_output, (_output._blockStart  >= 0 ?
+                   (charf*)&s->window[(unsigned)s->block_start] :
+                   (charf*)Z_NULL), \
+                (ulong)(_output._strStart - _output._blockStart),
+                (last));
+            _output._blockStart = _output._strStart;
+            FlushPending(_trees);
         }
 
     }
