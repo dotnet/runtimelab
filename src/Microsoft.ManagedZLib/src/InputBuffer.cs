@@ -174,23 +174,6 @@ internal sealed class InputBuffer
         }
     }
 
-    /// <summary>
-    /// Set the byte array to be processed.
-    /// All the bits remained in bitBuffer will be processed before the new bytes.
-    /// We don't clone the byte array here since it is expensive.
-    /// The caller should make sure after a buffer is passed in.
-    /// It will not be changed before calling this function again.
-    /// </summary>
-    public void SetInput(byte[] buffer, int offset, int length)
-    {
-        Debug.Assert(buffer != null);
-        Debug.Assert(offset >= 0);
-        Debug.Assert(length >= 0);
-        Debug.Assert(offset <= buffer.Length - length);
-
-        SetInput(buffer.AsMemory(offset, length));
-    }
-
     /// <summary>Skip n bits in the buffer.</summary>
     public void SkipBits(int n)
     {
