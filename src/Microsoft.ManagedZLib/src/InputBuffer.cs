@@ -17,7 +17,7 @@ namespace Microsoft.ManagedZLib;
 // which means we are running out of input.
 internal sealed class InputBuffer
 {
-    private Memory<byte> _buffer; // Input stream buffer
+    private Memory<byte> _inputBuffer; // Input stream buffer
     private uint _bitBuffer;      // To quickly shift in this buffer
     private int _bitsInBuffer;    // #bits available in bitBuffer
 
@@ -25,7 +25,7 @@ internal sealed class InputBuffer
     public int AvailableBits => _bitsInBuffer;
 
     /// <summary>Total bytes available in the input buffer.</summary>
-    public int AvailableBytes => _buffer.Length + (_bitsInBuffer / 8);
+    public int AvailableBytes => _inputBuffer.Length + (_bitsInBuffer / 8);
 
     /// <summary>Ensure that count bits are in the bit buffer.</summary>
     /// <param name="count">Can be up to 16.</param>
@@ -43,8 +43,8 @@ internal sealed class InputBuffer
             }
 
             // Insert a byte to bitbuffer
-            _bitBuffer |= (uint)_buffer.Span[0] << _bitsInBuffer;
-            _buffer = _buffer.Slice(1);
+            _bitBuffer |= (uint)_inputBuffer.Span[0] << _bitsInBuffer;
+            _inputBuffer = _inputBuffer.Slice(1);
             _bitsInBuffer += 8;
 
             if (_bitsInBuffer < count)
@@ -54,8 +54,8 @@ internal sealed class InputBuffer
                     return false;
                 }
                 // Insert a byte to bitbuffer
-                _bitBuffer |= (uint)_buffer.Span[0] << _bitsInBuffer;
-                _buffer = _buffer.Slice(1);
+                _bitBuffer |= (uint)_inputBuffer.Span[0] << _bitsInBuffer;
+                _inputBuffer = _inputBuffer.Slice(1);
                 _bitsInBuffer += 8;
             }
         }
@@ -74,27 +74,27 @@ internal sealed class InputBuffer
     {
         if (_bitsInBuffer < 8)
         {
-            if (_buffer.Length > 1)
+            if (_inputBuffer.Length > 1)
             {
-                Span<byte> span = _buffer.Span;
+                Span<byte> span = _inputBuffer.Span;
                 _bitBuffer |= (uint)span[1] << (_bitsInBuffer + 8);
                 _bitBuffer |= (uint)span[0] << _bitsInBuffer;
-                _buffer = _buffer.Slice(2);
+                _inputBuffer = _inputBuffer.Slice(2);
                 _bitsInBuffer += 16;
             }
-            else if (_buffer.Length != 0)
+            else if (_inputBuffer.Length != 0)
             {
-                _bitBuffer |= (uint)_buffer.Span[0] << _bitsInBuffer;
-                _buffer = Memory<byte>.Empty;
+                _bitBuffer |= (uint)_inputBuffer.Span[0] << _bitsInBuffer;
+                _inputBuffer = Memory<byte>.Empty;
                 _bitsInBuffer += 8;
             }
         }
         else if (_bitsInBuffer < 16)
         {
-            if (!_buffer.IsEmpty)
+            if (!_inputBuffer.IsEmpty)
             {
-                _bitBuffer |= (uint)_buffer.Span[0] << _bitsInBuffer;
-                _buffer = _buffer.Slice(1);
+                _bitBuffer |= (uint)_inputBuffer.Span[0] << _bitsInBuffer;
+                _inputBuffer = _inputBuffer.Slice(1);
                 _bitsInBuffer += 8;
             }
         }
@@ -147,9 +147,9 @@ internal sealed class InputBuffer
             return bytesFromBitBuffer;
         }
 
-        int length = Math.Min(output.Length, _buffer.Length);
-        _buffer.Slice(0, length).Span.CopyTo(output);
-        _buffer = _buffer.Slice(length);
+        int length = Math.Min(output.Length, _inputBuffer.Length);
+        _inputBuffer.Slice(0, length).Span.CopyTo(output);
+        _inputBuffer = _inputBuffer.Slice(length);
         return bytesFromBitBuffer + length;
     }
 
@@ -157,7 +157,7 @@ internal sealed class InputBuffer
     /// Return true is all input bytes are used.
     /// This means the caller can call SetInput to add more input.
     /// </summary>
-    public bool NeedsInput() => _buffer.IsEmpty;
+    public bool NeedsInput() => _inputBuffer.IsEmpty;
 
     /// <summary>
     /// Set the byte buffer to be processed.
@@ -170,7 +170,7 @@ internal sealed class InputBuffer
     {
         if (NeedsInput())
         {
-            _buffer = buffer;
+            _inputBuffer = buffer;
         }
     }
 
