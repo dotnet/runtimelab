@@ -127,7 +127,7 @@ internal sealed class InputBuffer
     /// available, copies fewer bytes.
     /// </summary>
     /// <returns>Returns the number of bytes copied, 0 if no byte is available.</returns>
-    public int CopyTo(Memory<byte> output)
+    public int CopyTo(Span<byte> output)
     {
         Debug.Assert(_bitsInBuffer % 8 == 0);
 
@@ -135,7 +135,7 @@ internal sealed class InputBuffer
         int bytesFromBitBuffer = 0;
         while (_bitsInBuffer > 0 && !output.IsEmpty)
         {
-            output.Span[0] = (byte)_bitBuffer;
+            output[0] = (byte)_bitBuffer;
             output = output.Slice(1);
             _bitBuffer >>= 8;
             _bitsInBuffer -= 8;
@@ -148,26 +148,9 @@ internal sealed class InputBuffer
         }
 
         int length = Math.Min(output.Length, _buffer.Length);
-        _buffer.Slice(0, length).CopyTo(output);
+        _buffer.Slice(0, length).Span.CopyTo(output);
         _buffer = _buffer.Slice(length);
         return bytesFromBitBuffer + length;
-    }
-
-    /// <summary>
-    /// Copies length bytes from input buffer to output buffer starting at output[offset].
-    /// You have to make sure, that the buffer is byte aligned. If not enough bytes are
-    /// available, copies fewer bytes.
-    /// </summary>
-    /// <returns>Returns the number of bytes copied, 0 if no byte is available.</returns>
-    public int CopyTo(byte[] output, int offset, int length)
-    {
-        Debug.Assert(output != null);
-        Debug.Assert(offset >= 0);
-        Debug.Assert(length >= 0);
-        Debug.Assert(offset <= output.Length - length);
-        Debug.Assert((_bitsInBuffer % 8) == 0);
-
-        return CopyTo(output.AsMemory(offset, length));
     }
 
     /// <summary>

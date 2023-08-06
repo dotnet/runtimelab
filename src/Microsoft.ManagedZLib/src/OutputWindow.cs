@@ -3,8 +3,6 @@
 
 using System;
 using System.Diagnostics;
-using static Microsoft.ManagedZLib.ManagedZLib.ZLibStreamHandle;
-
 namespace Microsoft.ManagedZLib;
 
 /// <summary>
@@ -18,7 +16,7 @@ internal sealed class OutputWindow
 {
     private int WindowSize;
     private int WindowMask;
-    private byte[] _window; // The window is 2^n bytes where n is number of bits
+    private Memory<byte> _window; // The window is 2^n bytes where n is number of bits
     private int _lastIndex; // Position to where we should write next byte
     private int _bytesUsed; // Number of bytes in the output window that haven't been consumed yet.
 
@@ -56,7 +54,7 @@ internal sealed class OutputWindow
     public void Write(byte b)
     {
         Debug.Assert(_bytesUsed < WindowSize, "Can't add byte when window is full!");
-        _window[_lastIndex++] = b;
+        _window.Span[_lastIndex++] = b;
         _lastIndex &= WindowMask;
         ++_bytesUsed;
     }
@@ -78,8 +76,10 @@ internal sealed class OutputWindow
         {
             if (length <= distance)
             {
+                Span<byte> sourceToBcopied = _window.Span.Slice(copyStart, length);
                 //Copying into the look-ahead buffer (where the decompressed input is stored)
-                Array.Copy(_window, copyStart, _window, _lastIndex, length);
+                //Array.Copy(_window, copyStart, _window, _lastIndex, length);
+                sourceToBcopied.CopyTo(_window.Span.Slice(_lastIndex, length));
                 _lastIndex += length;
             }
             else
@@ -90,7 +90,7 @@ internal sealed class OutputWindow
                 // adds X,Y,X,Y,X to the output stream.
                 while (length-- > 0)
                 {
-                    _window[_lastIndex++] = _window[copyStart++];
+                    _window.Span[_lastIndex++] = _window.Span[copyStart++];
                 }
             }
         }
@@ -99,7 +99,7 @@ internal sealed class OutputWindow
             // Copy byte by byte
             while (length-- > 0)
             {
-                _window[_lastIndex++] = _window[copyStart++];
+                _window.Span[_lastIndex++] = _window.Span[copyStart++];
                 _lastIndex &= WindowMask;
                 copyStart &= WindowMask;
             }
@@ -123,20 +123,31 @@ internal sealed class OutputWindow
 
         // We might need wrap around to copy all bytes.
         int spaceLeft = WindowSize - _lastIndex;
+
+        Debug.Assert(_window.Span != null);
         if (length > spaceLeft) //Checking is within the boundaries
         {
             // Copy the first part
-            copied = input.CopyTo(_window, _lastIndex, spaceLeft);
+            Debug.Assert(_lastIndex >= 0);
+            Debug.Assert(spaceLeft >= 0);
+            Debug.Assert(_lastIndex <= _window.Length - spaceLeft);
+            copied = input.CopyTo(_window.Span.Slice(_lastIndex, spaceLeft));
             if (copied == spaceLeft)
             {
                 // Only try to copy the second part if we have enough bytes in input
-                copied += input.CopyTo(_window, 0, length - spaceLeft);
+                Debug.Assert((length - spaceLeft) >= 0);
+                Debug.Assert(0 <= _window.Length - (length - spaceLeft));
+                copied += input.CopyTo(_window.Span.Slice(0, length - spaceLeft));
             }
         }
         else
         {
             // Only one copy is needed if there is no wrap around.
-            copied = input.CopyTo(_window, _lastIndex, length);
+            Debug.Assert(_lastIndex >= 0);
+            Debug.Assert(length >= 0);
+            Debug.Assert(_lastIndex <= _window.Length - length);
+            copied = input.CopyTo(_window.Span.Slice(_lastIndex, length));
+
         }
 
         _lastIndex = (_lastIndex + copied) & WindowMask;
@@ -174,10 +185,10 @@ internal sealed class OutputWindow
         {
             // this means we need to copy two parts separately
             // copy the spaceLeft-bytes from the end of the output window
-            _window.AsSpan(WindowSize - spaceLeft, spaceLeft).CopyTo(usersOutput);
+            _window.Span.Slice(WindowSize - spaceLeft, spaceLeft).CopyTo(usersOutput);
             usersOutput = usersOutput.Slice(spaceLeft, copy_lastIndex);
         }
-        _window.AsSpan(copy_lastIndex - usersOutput.Length, usersOutput.Length).CopyTo(usersOutput);
+        _window.Span.Slice(copy_lastIndex - usersOutput.Length, usersOutput.Length).CopyTo(usersOutput);
         _bytesUsed -= copied;
         Debug.Assert(_bytesUsed >= 0, "check this function and find why we copied more bytes than we have");
         return copied;
