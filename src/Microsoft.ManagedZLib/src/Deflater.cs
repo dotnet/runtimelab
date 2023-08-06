@@ -2,17 +2,12 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Metrics;
-using System.Drawing;
 using System.IO;
-using System.IO.Compression;
-using System.Numerics;
-using System.Reflection.Emit;
-using System.Security;
 using ZFlushCode = Microsoft.ManagedZLib.ManagedZLib.FlushCode;
+using ZState = Microsoft.ManagedZLib.ManagedZLib.DeflateStates;
+using ZBlockState = Microsoft.ManagedZLib.ManagedZLib.BlockState;
+using System.Reflection.Emit;
 
 namespace Microsoft.ManagedZLib
 {
@@ -35,14 +30,6 @@ namespace Microsoft.ManagedZLib
 
         private bool _isDisposed;
 
-        public enum BlockState : int
-        {
-            NeedMore, /* block not completed, need more input or more output */
-            BlockDone, /* block flush performed */
-            FinishStarted, /* finish started, need only more output at next deflate */
-            FinishDone /* finish done, accept no more input or output */
-        }
-
         bool _flushDone = false;
         private const int MinWindowBits = -15;  // WindowBits must be between -8..-15 to write no header, 8..15 for a
         private const int MaxWindowBits = 31;   // zlib header, or 24..31 for a GZip header
@@ -52,9 +39,10 @@ namespace Microsoft.ManagedZLib
         private int _levelConfigTable;
 
         private int _wrap; //Default: Raw Deflate
-        int _status;
+        ZState _status;
 
         private DeflaterState _state; //Class with states - See if its suitable to have a class like with the inflater
+        private CompressionLevel _compressionLevel;
         private readonly OutputWindow _output;
         private readonly InputBuffer _input;
         private readonly DeflateTrees _trees;
@@ -112,7 +100,7 @@ namespace Microsoft.ManagedZLib
             _output._method = (int)ManagedZLib.CompressionMethod.Deflated; //Deflated - only option
             _litBufferSize = 1U << (memLevel + 6); //16K by default
             _trees = new DeflateTrees(_output._pendingBuffer.Slice((int)_litBufferSize),_litBufferSize);
-            _status = InitState;
+            _status = ZState.InitState;
             _strHashIndex = 0;
             _output._level = memLevel; // Compression level (1..9)
             _output._strategy = (int)ManagedZLib.CompressionStrategy.DefaultStrategy; // Just the default
@@ -154,7 +142,7 @@ namespace Microsoft.ManagedZLib
         public void DeflateReset(CompressionLevel level)
         {
             _input._totalInput = _output._totalOutput = 0;
-            _output._pedingBufferBytes = 0;
+            _output._pendingBufferBytes = 0;
             _output._pendingOut = _output._pendingBuffer;
 
             if (_wrap < 0)
@@ -162,13 +150,15 @@ namespace Microsoft.ManagedZLib
                 _wrap = -_wrap; /* was made negative by deflate(..., Z_FINISH); */
             }
 
-            _status = (_wrap == 2) ? GZipState : InitState;
+            _status = (_wrap == 2) ? ZState.GZipState : ZState.InitState;
 
             if (_wrap == 2)
                 _output.Adler32();
             else
                 _output.CRC32();
 
+            _output.lastFlush = ZFlushCode.GenOutput; // Just used when necessary
+                                                      // More may impact on compression ratio
             _trees.TreeInit(_output);
 
             _output.longestMatchInit(level);
@@ -269,43 +259,242 @@ namespace Microsoft.ManagedZLib
 
             return ReadDeflateOutput(outputBuffer, ZFlushCode.SyncFlush) != 0;
         }
+        // Checking is a valid state
+        public bool DeflateStateCheck()
+        {
+            if (_output == null || _input == null)
+            {
+                return false;
+            }
+            return true;
+        }
 
         private int Deflate(ZFlushCode flushCode)
         {
-            // No estoy segura de por que debemos guardar el estado del anterior flush,
-            // pero copiare exactamente como esta
-            ZFlushCode olfFlush = flushCode;
-            //Se copia el stream pero ese ya esta implicito en nuestras variables globales
-            // Se checa que es stream sea valido
-            // Y no estamos en el finished stated
+            // C Zlib returning values porting interpretation:
+            // ERR - Possible Debug.Assert statement
+            // OK - return a substraction 
+            // bytesRead = outputBuffer.Length - _output.AvailableBytes
+
+            ZFlushCode oldFlush = flushCode;
+            Debug.Assert(!DeflateStateCheck());
+ 
+            // I think `if (strm->avail_out == 0)` is already covered as a Debug.Assert
+            //If there is not space available in the output buffer, then no chance of doing deflate.
+            Debug.Assert(_output._availableOutput == 0); //ToDo: More specific error checking
+
+            oldFlush = _output.lastFlush;
+            _output.lastFlush = flushCode;
+
+            // Error checking:
+            // Flush as much pending output as possible
+            if (_output._pendingBufferBytes != 0)
+            {
+                FlushPending();
+                if(_output._availableOutput == 0)
+                {
+                    /* Since avail_out is 0, deflate will be called again with
+                     * more output space, but possibly with both pending and
+                     * avail_in equal to zero. There won't be anything to do,
+                     * but this is not an error situation so make sure we
+                     * return OK instead of BUF_ERROR at next call of deflate:
+                     */
+                    _output.lastFlush = ZFlushCode.GenOutput;
+                    return 0; // OK
+                }
+            }
+
+            // User must not provide more input after the first FINISH:
+            Debug.Assert(_input.AvailableBytes != 0 && flushCode == ZFlushCode.Finish);
 
             //Write the header
-            if (_status == InitState && _wrap == 0) {
-                _status = BusyState;
-            }
-            if (_status == InitState) //ZLib
+            if (_status == ZState.InitState && _wrap == 0)
             {
+                _status = ZState.BusyState;
+            }
+            if (_status == ZState.InitState) //ZLib
+            {
+                uint levelFlags;
                 //ZLib header
                 int header = ((int)ManagedZLib.CompressionMethod.Deflated + ((_windowBits - 8) << 4)) << 8;
                 // Check the compression level and more
+                if (_output._level < 6) 
+                {
+                    levelFlags = 1;
+                }
+                else if (_output._level == 6)
+                {
+                    levelFlags = 2;
+                }
+                else
+                {
+                    levelFlags = 3;
+                }
+                header |= (int) (levelFlags << 6);
+                if (_output._strStart != 0) header |= ManagedZLib.PresetDict;
+                header += 31 - (header % 31);
+
+                _trees.PutShortMSB(_output, (uint)header);
+
+                /* Save the adler32 of the preset dictionary: */
+                if (_output._strStart != 0)
+                {
+                    //putShortMSB(s, (uInt)(strm->adler >> 16));
+                    //putShortMSB(s, (uInt)(strm->adler & 0xffff));
+                }
+                _output.Adler32(); // modifies _output._adler
+                _status = ZState.BusyState;
+
+                /* Compression must start with an empty pending buffer */
+                FlushPending();
+                if (_output._pendingBufferBytes != 0)
+                {
+                    _output.lastFlush = ZFlushCode.GenOutput;
+                    return 0; // OK
+                }
+
             }
-            if (_status == GZipState){ }//Gzip header
+            if (_status == ZState.GZipState){ }//Gzip header
 
+            if (_status == ZState.ExtraState) { } //Gzip: Start of bytes to update crc
 
-            if (flushCode != ZFlushCode.NoFlush && Finished()) { 
+            if (_status == ZState.NameState) { } // GZip: Gzip file name
+
+            if (_status == ZState.CommentState) { } // GZip: Gzip comment
+
+            if (_status == ZState.HCRCState) {
+                //Process header [..]
+                _status = ZState.BusyState;
+                //  Compression must start with an empty pending buffer */
+                FlushPending();
+                if (_output._pendingBufferBytes != 0)
+                {
+                    _output.lastFlush = ZFlushCode.GenOutput;
+                    return 0; // OK
+                }
+            } // GZip: GZip header CRC
+
+            // --------- Most basic deflate operation starts here ---------
+            // Start a new block or continue the current one.
+            if (_input.AvailableBytes != 0 || _output._lookahead != 0 ||
+                (flushCode != ZFlushCode.NoFlush && _status != ZState.FinishState))
+            {
+                ZBlockState blockState;
+                // level = 0 is No compression
+                if (_output._level == 0)
+                {
+                    blockState = DeflateStored(flushCode); // TO-DO
+                }
+                else
+                {
+                    // Compression table
+                    switch (_compressionLevel) //maybe set on longMatchInit
+                    {
+                        // See the note in ManagedZLib.CompressionLevel for the recommended combinations.
+                        case CompressionLevel.Optimal:
+                            // This should be an in between, since the level of compressions
+                            // goes from 0 to 9, I'll guess (I'll make sure later on) this is
+                            // _output.level = 4 --- DeflateSlow() - lazy matches
+                            blockState = DeflateSlow(_output.Buffer.Span, flushCode);
+                            break;
+
+                        case CompressionLevel.Fastest:
+                            // _output.level = 1 --- DeflateFastest() - no lazy matches - max speed
+                            blockState = DeflateFast(_output.Buffer.Span, flushCode);
+                            break;
+
+                        case CompressionLevel.NoCompression: 
+                            // _output.level = 0 --- DeflateStore() - Store only
+                            blockState = DeflateStored(flushCode);
+                            break;
+
+                        case CompressionLevel.SmallestSize:
+                            // _output.level = 9 --- DeflateSlow() - Max compression - the slowest
+                            blockState = DeflateSlow(_output.Buffer.Span, flushCode);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(_compressionLevel));
+                    }
+                }
+                if (blockState == ZBlockState.FinishStarted || blockState == ZBlockState.FinishDone)
+                {
+                    _status = ZState.FinishState;
+                }
+                if (blockState == ZBlockState.NeedMore || blockState == ZBlockState.FinishStarted)
+                {
+                    if (_output._availableOutput == 0)
+                    {
+                        _output.lastFlush = ZFlushCode.GenOutput; /* avoid BUF_ERROR next call, see above */
+                    }
+                    return 0; // OK
+                    /* If flush != Z_NO_FLUSH && avail_out == 0, the next call
+                     * of deflate should use the same flush parameter to make sure
+                     * that the flush is complete. So we don't have to output an
+                     * empty block here, this will be done at next call. This also
+                     * ensures that for a very small output buffer, we emit at most
+                     * one empty block.
+                     */
+                }
+                if (blockState == ZBlockState.BlockDone)
+                {
+                    if (flushCode != ZFlushCode.Block)
+                    { /* FULL_FLUSH or SYNC_FLUSH */
+                        _trees.TreeStoredBlock(_output, Span<byte>.Empty, 0L, last: false);
+                    }
+                    FlushPending();
+                    if (_output._availableOutput == 0)
+                    {
+                        _output.lastFlush = ZFlushCode.GenOutput; /* avoid BUF_ERROR at next call, see above */
+                        return 0; // OK
+                    }
+                }
+
             }
 
-            return Deflate(flushCode); ; //Deflate + error checking (in progress)
+            if (flushCode != ZFlushCode.Finish)
+            {
+                return 0; // OK
+            }
+            if (_wrap <= 0) return 0; //STREAM END: GZip
+
+            if (_wrap == 2) 
+            { } // Gzip: Write the trailer
+            else
+            {
+                _trees.PutShortMSB(_output, (uint)_output._adler >> 16);
+                _trees.PutShortMSB(_output, (uint)_output._adler & 0xffff);
+            }
+            // If avail_out is zero, the application will call deflate again
+            // to flush the rest.
+            FlushPending();
+
+            // write the trailer only once!
+            if (_wrap > 0)
+            {
+                _wrap = -_wrap;
+            }
+            if (_output._pendingBufferBytes != 0)
+            {
+                // Raw deflate bytesRead
+                return 0; // OK
+            }
+            // bytesRead + extra GZip operations
+
+            return 0; // STREAM_END 
 
         }
 
-        public bool DeflateSlow(Span<byte> buffer, ZFlushCode flushCode) 
+        private ZBlockState DeflateStored(ZFlushCode flushCode)
         {
-
-            return false;
+            throw new NotImplementedException(); // TO-DO
         }
 
-        public BlockState DeflateFast(Span<byte> buffer, ZFlushCode flushCode)
+        public ZBlockState DeflateSlow(Span<byte> buffer, ZFlushCode flushCode) 
+        {
+            throw new NotImplementedException(); // TO-DO
+        }
+
+        public ZBlockState DeflateFast(Span<byte> buffer, ZFlushCode flushCode) // TO-DO
         {
             uint hashHead; //Head of the hash chain - index
             bool blockFlush; //Set if current block must be flushed
@@ -317,19 +506,21 @@ namespace Microsoft.ManagedZLib
                  * for the next match, plus MIN_MATCH bytes to insert the
                  * string following the next match.
                  */
-                if (_output._lookahead < MinMatch) 
+            if (_output._lookahead < MinMatch) 
                 {
                     _output.FillWindow(_input); // ------------------------------------------------------------------Pending to implement
-                    if (_output._lookahead < MinLookahead && flushCode == ManagedZLib.FlushCode.NoFlush)
+                    if (_output._lookahead < MinLookahead && flushCode == ZFlushCode.NoFlush)
                     {
-                        return BlockState.NeedMore;
+                        return ZBlockState.NeedMore;
                     }
                     if (_output._lookahead == 0) break; /* flush the current block */
                 }
+
                 hashHead = NIL; //hash head starts with tail's value - empty hash
                 if (_output._lookahead >= MinMatch) {
                     hashHead = _output.InsertString((int)_output._strStart);
                 }
+
                 //Find the longest match, discarding those <= prev_length.
                 //At this point we have always match_length < MIN_MATCH
                 if (hashHead != NIL && _output._strStart - hashHead <= MaxDistance())
@@ -340,10 +531,8 @@ namespace Microsoft.ManagedZLib
                      */
                     _output._matchLength = _output.LongestMatch(hashHead);// Sets _output._matchStart and eventually the _lookahead
                 }
-                if (_output._matchLength >= MinMatch) 
-                {
-                    //_output.CheckMatch(s, s->strstart, s->match_start, s->match_length); //Aqui creo que no le pasas nada
-                    // le terminaras pasando el flush, el resto ya lo tiene la clase
+                if (_output._matchLength >= MinMatch)
+                { 
                     blockFlush = _trees.TreeTallyDist(_output._strStart - _output._matchStart, _output._matchLength - MinMatch);
                     //blockFlush = _trees.treeTallyLit(_output._window[_output._strstart]);
                     _output._lookahead -= _output._matchLength;
@@ -382,28 +571,28 @@ namespace Microsoft.ManagedZLib
                     FlushBlock(last: false);
                 }
             }
-            _output._insert = (_output._strStart < MinMatch - 1) ? _output._strStart : MinMatch - 1;
+            _output._insert = (_output._strStart < (MinMatch - 1))? _output._strStart : MinMatch - 1;
 
             if ( flushCode == ZFlushCode.Finish) 
             {
                 // DONE STATE
-                BlockState blockStatus = FlushBlock(last: true);
-                if (blockStatus == BlockState.FinishStarted)
+                ZBlockState blockStatus = FlushBlock(last: true);
+                if (blockStatus == ZBlockState.FinishStarted)
                 {
-                    return BlockState.FinishDone;
+                    return ZBlockState.FinishDone;
                 }
             }
 
             if (_trees._symIndex != 0) 
             {
-                BlockState blockStatus = FlushBlock(last : false);
-                if (blockStatus == BlockState.NeedMore)
+                ZBlockState blockStatus = FlushBlock(last : false);
+                if (blockStatus == ZBlockState.NeedMore)
                 {
-                    return BlockState.BlockDone;
+                    return ZBlockState.BlockDone;
                 }
             }
 
-            return BlockState.BlockDone;
+            return ZBlockState.BlockDone;
         }
         /* =========================================================================
      * Flush as much pending output as possible. All deflate() output, except for
@@ -411,12 +600,12 @@ namespace Microsoft.ManagedZLib
      * applications may wish to modify it to avoid allocating a large
      * strm->next_out buffer and copying into it. (See also read_buf()).
      */
-        public void FlushPending(DeflateTrees tree)
+        public void FlushPending()
         {
             uint len;
 
             _trees.FlushBits(_output);
-            len = (uint)_output._pedingBufferBytes;
+            len = (uint)_output._pendingBufferBytes;
             if (len > _output._availableOutput) len = (uint)_output._availableOutput;
             if (len == 0) return;
             // Check if there's a shorter way of doing a c++ memcopy
@@ -430,19 +619,19 @@ namespace Microsoft.ManagedZLib
 
             _output._totalOutput += len;
             _output._availableOutput -= (int)len;
-            _output._pedingBufferBytes -= len;
-            if (_output._pedingBufferBytes == 0)
+            _output._pendingBufferBytes -= len;
+            if (_output._pendingBufferBytes == 0)
             {
                 _output._pendingOut = _output._pendingBuffer;
             }
         }
         // Same but force premature exit if necessary.
-        public BlockState FlushBlock(bool last)
+        public ZBlockState FlushBlock(bool last)
         {
             FlushBlockOnly(last);
             if (_output._availableOutput == 0)
-                return (last) ? Deflater.BlockState.FinishStarted : Deflater.BlockState.NeedMore;
-            return Deflater.BlockState.NeedMore;
+                return (last) ? ZBlockState.FinishStarted : ZBlockState.NeedMore;
+            return ZBlockState.NeedMore;
         }
 
         // Flush the current block, with given end-of-file flag.
@@ -450,16 +639,21 @@ namespace Microsoft.ManagedZLib
         {
             if (_output._blockStart >= 0)
             {
-                _output._window = _output._window.Slice((int)_output._blockStart);
-            }
-            var window = window.Slice(_output._blockStart)
-            _trees.FlushBlock(_output, (_output._blockStart  >= 0 ?
-                   (charf*)&s->window[(unsigned)s->block_start] :
-                   (charf*)Z_NULL), \
+                Memory<byte> buffer = _output._window.Slice((int)_output._blockStart);
+                _trees.FlushBlock(_output, buffer,
                 (ulong)(_output._strStart - _output._blockStart),
                 (last));
+            }
+            else
+            {
+                Memory<byte> buffer = Memory<byte>.Empty;
+                _trees.FlushBlock(_output, buffer,
+                (ulong)(_output._strStart - _output._blockStart),
+                (last));
+
+            }
             _output._blockStart = _output._strStart;
-            FlushPending(_trees);
+            FlushPending();
         }
 
     }

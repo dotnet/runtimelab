@@ -319,11 +319,11 @@ internal class Inflater
             }
             // Types (2 bits): 00-No compression, 01-Fixed Huff, 10-Dynamic, 11-Reserved. 
             _blockType = (BlockType)_input.GetBits(2);
-            if (_blockType == BlockType.Dynamic) //Type = Dynamic Huffman codes
+            if (_blockType == BlockType.DynamicTrees) //Type = Dynamic Huffman codes
             {
                 _state = InflaterState.ReadingNumLitCodes;
             }
-            else if (_blockType == BlockType.Static) //Type = Fixed Huffman codes
+            else if (_blockType == BlockType.StaticTrees) //Type = Fixed Huffman codes
             {
                 _literalLengthTree = IHuffmanTree.StaticLiteralLengthTree;
                 _distanceTree = IHuffmanTree.StaticDistanceTree;
@@ -339,7 +339,7 @@ internal class Inflater
             }
         }
         // Depending on the type, we will go to the methods for decoding each
-        if (_blockType == BlockType.Dynamic)
+        if (_blockType == BlockType.DynamicTrees)
         {
             if (_state < InflaterState.DecodeTop)
             {
@@ -351,7 +351,7 @@ internal class Inflater
                 result = DecodeBlock(out EndOfBlock); // this can returns true when output is full
             }
         }
-        else if (_blockType == BlockType.Static)
+        else if (_blockType == BlockType.StaticTrees)
         {
             result = DecodeBlock(out EndOfBlock);
         }
@@ -462,7 +462,7 @@ internal class Inflater
                     goto case InflaterState.HaveFullLength;
 
                 case InflaterState.HaveFullLength:
-                    if (_blockType == BlockType.Dynamic)
+                    if (_blockType == BlockType.DynamicTrees)
                     {
                         Debug.Assert(_distanceTree != null);
                         _distanceCode = _distanceTree.GetNextSymbol(_input);

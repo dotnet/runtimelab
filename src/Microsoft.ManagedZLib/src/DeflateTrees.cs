@@ -110,7 +110,7 @@ internal class DeflateTrees
     // Output a byte on the stream.
     public void PutByte(OutputWindow output, byte c)
     {
-        output._pendingBuffer.Span[(int)output._pedingBufferBytes++] = c;
+        output._pendingBuffer.Span[(int)output._pendingBufferBytes++] = c;
     }
 
     // Output a short LSB first on the stream.
@@ -118,6 +118,13 @@ internal class DeflateTrees
     {
         PutByte(output, (byte)((w) & 0xff)); //LSB
         PutByte(output, (byte)((ushort)(w) >> 8)); //MSB
+    }
+
+    //Put a short in the pending buffer. The 16-bit value is put in MSB order.
+    public void PutShortMSB(OutputWindow output, uint w)
+    {
+        PutByte(output, (byte)((ushort)(w) >> 8)); //MSB
+        PutByte(output, (byte)((w) & 0xff)); //LSB
     }
 
     public void SendBits(OutputWindow output, int value, int length)
@@ -247,6 +254,15 @@ internal class DeflateTrees
         return (_symIndex == _symEnd);
     }
 
+    // Send one empty static block to give enough lookahead for inflate.
+    // This takes 10 bits, of which 7 may remain in the bit buffer.
+    public void TreeAlign(OutputWindow output)
+    {
+        SendBits(output, (int)BlockType.StaticTrees << 1 , 3);
+        SendCode(output, StaticTreeTables.StaticLengthTree[EndOfBlock]);
+        FlushBits(output);
+    }
+
     // Determine the best encoding for the current block: dynamic trees, static
     // trees or store, and write out the encoded block.
     // buffer: Input block, or NULL if too old
@@ -311,12 +327,12 @@ internal class DeflateTrees
         }
         else if (staticLenBytes == optLenBytes)
         {
-            SendBits(output, ((int)BlockType.Static << 1) + (last ? 1 : 0), 3);
+            SendBits(output, ((int)BlockType.StaticTrees << 1) + (last ? 1 : 0), 3);
             CompressBlock(output, StaticTreeTables.StaticLengthTree, StaticTreeTables.StaticDistanceTree);
         }
         else
         {
-            SendBits(output, ((int)BlockType.Dynamic << 1) + (last ? 1 : 0), 3);
+            SendBits(output, ((int)BlockType.DynamicTrees << 1) + (last ? 1 : 0), 3);
             SendAllTrees(output, _literalDesc!.maxCode + 1, _distanceDesc!.maxCode + 1,
                            maxBitLenIndex + 1);
             CompressBlock(output, _dynLitLenTree, _dynDistanceTree);
@@ -776,11 +792,11 @@ internal class DeflateTrees
         PutShort(output, (ushort)~storedLen);
         if (storedLen != 0)
         {
-            output._pendingBuffer = output._pendingBuffer.Slice((int)output._pedingBufferBytes);
+            output._pendingBuffer = output._pendingBuffer.Slice((int)output._pendingBufferBytes);
             buffer = buffer.Slice(0,(int)storedLen); //Amount to copy to pendingBuff
             buffer.CopyTo(output._pendingBuffer.Span);
         }
-        output._pedingBufferBytes += storedLen;
+        output._pendingBufferBytes += storedLen;
     }
 
     // Send the block data compressed using the given Huffman trees
@@ -827,7 +843,7 @@ internal class DeflateTrees
                 } /* literal or match pair ? */
 
                 /* Check that the overlay between pending_buf and sym_buf is ok: */
-                Debug.Assert(output._pedingBufferBytes < output._litBufferSize + symIndex, "pendingBuf overflow");
+                Debug.Assert(output._pendingBufferBytes < output._litBufferSize + symIndex, "pendingBuf overflow");
 
             } while (symIndex < _symIndex);
         }

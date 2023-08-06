@@ -82,15 +82,15 @@ public  class InputBuffer
             if (_inputBuffer.Length > 1)
             {
                 Span<byte> span = _inputBuffer.Span;
-                _bitBuffer |= (uint)span[0] << _bitsInBuffer;
                 _bitBuffer |= (uint)span[1] << (_bitsInBuffer + 8);
+                _bitBuffer |= (uint)span[0] << _bitsInBuffer;
                 _inputBuffer = _inputBuffer.Slice(2);
                 _bitsInBuffer += 16;
             }
             else if (_inputBuffer.Length != 0)
             {
                 _bitBuffer |= (uint)_inputBuffer.Span[0] << _bitsInBuffer;
-                _inputBuffer = _inputBuffer.Slice(1);
+                _inputBuffer = Memory<byte>.Empty;
                 _bitsInBuffer += 8;
             }
         }
@@ -179,23 +179,6 @@ public  class InputBuffer
             _inputBuffer = buffer;
             _availInput = (uint)buffer.Length;
         }
-    }
-
-    /// <summary>
-    /// Set the byte array to be processed.
-    /// All the bits remained in bitBuffer will be processed before the new bytes.
-    /// We don't clone the byte array here since it is expensive.
-    /// The caller should make sure after a buffer is passed in.
-    /// It will not be changed before calling this function again.
-    /// </summary>
-    public void SetInput(byte[] buffer, int offset, int length)
-    {
-        Debug.Assert(buffer != null);
-        Debug.Assert(offset >= 0);
-        Debug.Assert(length >= 0);
-        Debug.Assert(offset <= buffer.Length - length);
-
-        SetInput(buffer.AsMemory(offset, length));
     }
 
     /// <summary>Skip n bits in the buffer.</summary>

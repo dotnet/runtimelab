@@ -3,7 +3,7 @@
 
 using System;
 using System.Diagnostics;
-
+using ZFlushCode = Microsoft.ManagedZLib.ManagedZLib.FlushCode;
 namespace Microsoft.ManagedZLib;
 
 /// <summary>
@@ -17,9 +17,10 @@ internal class OutputWindow
 {
     public int _availableOutput; //length of output buffer
     public Memory<byte> _output; // NextOut in madler/zlib
-    ulong _adler; //Adler-32 or CRC-32 value of the uncompressed data
+    public ulong _adler; //Adler-32 or CRC-32 value of the uncompressed data
     public ulong _totalOutput;
     public const int NIL = 0; /* Tail of hash chains */
+    public ZFlushCode lastFlush; // value of flush param for previous deflate call
 
     public int _windowSize;
     private int _windowMask;
@@ -95,7 +96,7 @@ internal class OutputWindow
     public Memory<byte> _pendingOut;    //Next pending byte to output to the stream
     public uint _litBufferSize;
     public ulong _penBufferSize;       //Size of pending buffer
-    public ulong _pedingBufferBytes;   //number of bytes in pending buffer
+    public ulong _pendingBufferBytes;   //number of bytes in pending buffer
 
     /// <summary>
     /// The constructor will recieve the window bits and with that construct the 
@@ -460,8 +461,10 @@ internal class OutputWindow
         {
             if (length <= distance)
             {
+                Span<byte> sourceToBcopied = _window.Span.Slice(copyStart, length);
                 //Copying into the look-ahead buffer (where the decompressed input is stored)
-                _window.Slice(copyStart).CopyTo(_window.Slice(_lastIndex, length));
+                //Array.Copy(_window, copyStart, _window, _lastIndex, length);
+                sourceToBcopied.CopyTo(_window.Span.Slice(_lastIndex, length));
                 _lastIndex += length;
             }
             else
@@ -506,28 +509,35 @@ internal class OutputWindow
         int spaceLeft = _windowSize - _lastIndex;
 
         Debug.Assert(_window.Span != null);
-        Debug.Assert(_lastIndex >= 0);
-        Debug.Assert(length >= 0);
-        Debug.Assert(_lastIndex <= _window.Length - length);
         if (length > spaceLeft) //Checking is within the boundaries
         {
+            Debug.Assert(_lastIndex >= 0);
+            Debug.Assert(spaceLeft >= 0);
+            Debug.Assert(_lastIndex <= _window.Length - spaceLeft);
             // Copy the first part
-            copied = input.CopyTo(_window.Slice(_lastIndex, spaceLeft).Span);
+            copied = input.CopyTo(_window.Span.Slice(_lastIndex, spaceLeft));
+
             if (copied == spaceLeft)
             {
+                Debug.Assert((length - spaceLeft) >= 0);
+                Debug.Assert(0 <= _window.Length - (length - spaceLeft));
                 // Only try to copy the second part if we have enough bytes in input
-                copied += input.CopyTo(_window.Slice(0, length - spaceLeft).Span);
+                copied += input.CopyTo(_window.Span.Slice(0, length - spaceLeft));
             }
         }
         else
         {
+            Debug.Assert(_lastIndex >= 0);
+            Debug.Assert(length >= 0);
+            Debug.Assert(_lastIndex <= _window.Length - length);
             // Only one copy is needed if there is no wrap around.
-            copied = input.CopyTo(_window.Slice(_lastIndex, length).Span);
+            copied = input.CopyTo(_window.Span.Slice(_lastIndex, length));
+
         }
 
         _lastIndex = (_lastIndex + copied) & _windowMask;
         _bytesUsed += copied;
-        return copied; 
+        return copied;
     }
 
     /// <summary>Free space in output window.</summary>
@@ -560,7 +570,7 @@ internal class OutputWindow
         {
             // this means we need to copy two parts separately
             // copy the spaceLeft-bytes from the end of the output window
-            _window.Slice(_windowSize - spaceLeft, spaceLeft).Span.CopyTo(usersOutput);
+            _window.Span.Slice(_windowSize - spaceLeft, spaceLeft).CopyTo(usersOutput);
             usersOutput = usersOutput.Slice(spaceLeft, copy_lastIndex);
         }
         _window.Slice(copy_lastIndex - usersOutput.Length, usersOutput.Length).Span.CopyTo(usersOutput);
@@ -589,10 +599,12 @@ internal class OutputWindow
     */
     public void Adler32(Span<byte> buffer, uint Length) 
     {
+        _adler = 0;
         throw new NotImplementedException();
     }
     public void CRC32(Span<byte> buffer, uint Length)
     {
+        _adler = 0;
         throw new NotImplementedException();
     }
 
@@ -600,9 +612,15 @@ internal class OutputWindow
     // Migth be deleted later
     public void Adler32() 
     {
+        _adler = 0;
         throw new NotImplementedException();
     }
     public void CRC32()
+    {
+        _adler = 0;
+        throw new NotImplementedException();
+    }
+    public void PutShortMSB(int header)
     {
         throw new NotImplementedException();
     }
