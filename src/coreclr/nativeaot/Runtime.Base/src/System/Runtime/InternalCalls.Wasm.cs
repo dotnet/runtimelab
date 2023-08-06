@@ -11,35 +11,21 @@ using System.Runtime.CompilerServices;
 
 using Internal.Runtime;
 
-#pragma warning disable 8500 // Cannot take the address of, get the size of, or declare a pointer to a managed type
-
 namespace System.Runtime
 {
     internal static partial class InternalCalls
     {
-        internal static unsafe void RhpThrowNativeException(object* pManagedException)
-        {
-            [RuntimeImport(Redhawk.BaseName, "RhpThrowNativeException")]
-            [MethodImpl(MethodImplOptions.InternalCall)]
-            static extern unsafe void Impl(void* pDispatcherShadowFrame, object* pManagedException);
+        [RuntimeImport(Redhawk.BaseName, "RhpGetRawLastVirtualUnwindFrameRef")]
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        internal static extern unsafe void* RhpGetRawLastVirtualUnwindFrameRef();
 
-            void* pImpl = (delegate*<void*, object*, void>)&Impl;
-            ((delegate*<object*, void>)pImpl)(pManagedException);
-        }
+        [RuntimeImport(Redhawk.BaseName, "RhpThrowNativeException")]
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        internal static extern unsafe void RhpThrowNativeException();
 
         [RuntimeImport(Redhawk.BaseName, "RhpReleaseNativeException")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe void RhpReleaseNativeException(void* pDispatchData);
-
-        internal static unsafe int RhpCallCatchOrFilterFunclet(void* pOriginalShadowFrame, object exception, void* pFunclet)
-        {
-            [RuntimeImport(Redhawk.BaseName, "RhpCallCatchOrFilterFunclet")]
-            [MethodImpl(MethodImplOptions.InternalCall)]
-            static extern int Impl(void* pShadowFrame, void* pOriginalShadowFrame, object exception, void* pFunclet);
-
-            void* pImpl = (delegate*<void*, void*, object, void*, int>)&Impl;
-            return ((delegate*<void*, object, void*, int>)pImpl)(pOriginalShadowFrame, exception, pFunclet);
-        }
+        internal static extern unsafe void RhpReleaseNativeException();
 
         internal static unsafe object RhpNewFast(MethodTable* pEEType) // BEWARE: not for finalizable objects!
         {

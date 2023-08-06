@@ -208,7 +208,6 @@ if (CLR_CMAKE_TARGET_ARCH_WASM)
     ${ARCH_SOURCES_DIR}/PalRedhawkWasm.cpp
     ${ARCH_SOURCES_DIR}/AllocFast.cpp
     ${ARCH_SOURCES_DIR}/ExceptionHandling/ExceptionHandling.cpp
-    ${ARCH_SOURCES_DIR}/DynamicStackAlloc.cpp
     ${ARCH_SOURCES_DIR}/StubDispatch.cpp
     ${ARCH_SOURCES_DIR}/PInvoke.cpp
   )
