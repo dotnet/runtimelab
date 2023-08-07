@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
 
+using Internal.IL;
 using Internal.Text;
 using Internal.TypeSystem;
 using Internal.TypeSystem.Ecma;
@@ -44,7 +45,7 @@ namespace Internal.JitInterface
         [UnmanagedCallersOnly]
         public static byte* getMangledMethodName(IntPtr thisHandle, CORINFO_METHOD_STRUCT_* ftn)
         {
-            var _this = GetThis(thisHandle);
+            CorInfoImpl _this = GetThis(thisHandle);
             MethodDesc method = _this.HandleToObject(ftn);
             Utf8String mangledName = _this._compilation.NameMangler.GetMangledMethodName(method);
 
@@ -54,7 +55,7 @@ namespace Internal.JitInterface
         [UnmanagedCallersOnly]
         public static byte* getMangledSymbolName(IntPtr thisHandle, void* symbolHandle)
         {
-            var _this = GetThis(thisHandle);
+            CorInfoImpl _this = GetThis(thisHandle);
             var node = (ISymbolNode)_this.HandleToObject(symbolHandle);
 
             Utf8StringBuilder sb = new Utf8StringBuilder();
@@ -62,6 +63,26 @@ namespace Internal.JitInterface
 
             sb.Append("\0");
             return (byte*)_this.GetPin(sb.UnderlyingArray);
+        }
+
+        [UnmanagedCallersOnly]
+        public static byte* getMangledFilterFuncletName(IntPtr thisHandle, uint index)
+        {
+            CorInfoImpl _this = GetThis(thisHandle);
+            Utf8StringBuilder sb = new Utf8StringBuilder();
+            _this.GetMangledFilterFuncletName(sb, index);
+
+            sb.Append("\0");
+            return (byte*)_this.GetPin(sb.UnderlyingArray);
+        }
+
+        public void GetMangledFilterFuncletName(Utf8StringBuilder builder, uint index)
+        {
+            builder.Clear();
+            _methodCodeNode.AppendMangledName(_compilation.NameMangler, builder);
+            builder.Append("$F");
+            builder.Append(index.ToStringInvariant());
+            builder.Append("_Filter");
         }
 
         [UnmanagedCallersOnly]
@@ -175,6 +196,102 @@ namespace Internal.JitInterface
             return GetThis(thisHandle)._compilation.GetLlvmExceptionHandlingModel();
         }
 
+        public struct CORINFO_LLVM_EH_CLAUSE
+        {
+            public CORINFO_EH_CLAUSE_FLAGS Flags;
+            public uint EnclosingIndex;
+            public mdToken ClauseTypeToken;
+            public uint FilterIndex;
+        }
+
+        [UnmanagedCallersOnly]
+        private static IntPtr getExceptionHandlingTable(IntPtr thisHandle, CORINFO_LLVM_EH_CLAUSE* pClauses, int count)
+        {
+            CorInfoImpl _this = GetThis(thisHandle);
+            RyuJitCompilation compilation = _this._compilation;
+            MethodIL methodIL = (MethodIL)_this.HandleToObject((void*)_this._methodScope);
+            if (count == 1 && pClauses[0].Flags == CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_NONE && pClauses[0].EnclosingIndex == 0)
+            {
+                TypeDesc type = (TypeDesc)methodIL.GetObject((int)pClauses[0].ClauseTypeToken);
+                ISymbolNode symbol = compilation.NecessaryTypeSymbolIfPossible(type);
+
+                return _this.ObjectToHandle(symbol);
+            }
+
+            uint maxEclosingIndex = 0;
+            for (int i = 0; i < count; i++)
+            {
+                maxEclosingIndex = Math.Max(pClauses[i].EnclosingIndex, maxEclosingIndex);
+            }
+
+            const int MetadataFilter = 1;
+            const int MetadataShift = 1;
+
+            int align = compilation.NodeFactory.Target.PointerSize;
+            ObjectDataBuilder builder = new(compilation.NodeFactory, relocsOnly: true);
+            builder.RequireInitialAlignment(align);
+
+            bool isSmallFormat = maxEclosingIndex <= (byte.MaxValue >> MetadataShift);
+            if (isSmallFormat)
+            {
+                builder.EmitZeros(align - count % align);
+            }
+            else
+            {
+                builder.EmitZeros(align - 4 * count % align);
+            }
+
+            for (int i = count - 1; i >= 0; i--)
+            {
+                CORINFO_LLVM_EH_CLAUSE* pClause = &pClauses[i];
+                uint metadata = pClause->EnclosingIndex << MetadataShift;
+                if ((pClause->Flags & CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_FILTER) != 0)
+                {
+                    metadata |= MetadataFilter;
+                }
+
+                if (isSmallFormat)
+                {
+                    Debug.Assert((byte)metadata == metadata);
+                    builder.EmitByte((byte)metadata);
+                }
+                else
+                {
+                    builder.EmitUInt(metadata);
+                }
+            }
+
+            // This is the offset at which which the EH info symbol will be defined.
+            int symbolDefOffset = builder.CountBytes + (isSmallFormat ? 1 : 2);
+            Debug.Assert(builder.CountBytes % align == 0);
+
+            Utf8StringBuilder sb = new();
+            for (int i = 0; i < count; i++)
+            {
+                CORINFO_LLVM_EH_CLAUSE* pClause = &pClauses[i];
+
+                ISymbolNode symbol;
+                if ((pClause->Flags & CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_FILTER) != 0)
+                {
+                    _this.GetMangledFilterFuncletName(sb, pClause->FilterIndex);
+                    symbol = compilation.NodeFactory.ExternSymbol(sb.ToString());
+                }
+                else
+                {
+                    TypeDesc type = (TypeDesc)methodIL.GetObject((int)pClause->ClauseTypeToken);
+                    symbol = compilation.NecessaryTypeSymbolIfPossible(type);
+                }
+
+                builder.EmitPointerReloc(symbol);
+            }
+
+            ILLVMMethodCodeNode methodNode = ((ILLVMMethodCodeNode)_this._methodCodeNode);
+            ObjectNode.ObjectData ehInfo = builder.ToObjectData();
+            ISymbolNode ehInfoNode = methodNode.InitializeEHInfoLLVM(ehInfo, symbolDefOffset);
+
+            return _this.ObjectToHandle(ehInfoNode);
+        }
+
         public struct TypeDescriptor
         {
             public uint Size;
@@ -246,6 +363,7 @@ namespace Internal.JitInterface
         {
             GetMangledMethodName,
             GetMangledSymbolName,
+            GetMangledFilterFuncletName,
             GetSignatureForMethodSymbol,
             AddCodeReloc,
             IsRuntimeImport,
@@ -258,6 +376,7 @@ namespace Internal.JitInterface
             GetDebugInfoForCurrentMethod,
             GetSingleThreadedCompilationContext,
             GetExceptionHandlingModel,
+            GetExceptionHandlingTable,
             Count
         }
 
@@ -276,6 +395,7 @@ namespace Internal.JitInterface
             void** jitImports = stackalloc void*[(int)EEApiId.Count + 1];
             jitImports[(int)EEApiId.GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
             jitImports[(int)EEApiId.GetMangledSymbolName] = (delegate* unmanaged<IntPtr, void*, byte*>)&getMangledSymbolName;
+            jitImports[(int)EEApiId.GetMangledFilterFuncletName] = (delegate* unmanaged<IntPtr, uint, byte*>)&getMangledFilterFuncletName;
             jitImports[(int)EEApiId.GetSignatureForMethodSymbol] = (delegate* unmanaged<IntPtr, void*, CORINFO_SIG_INFO*, int>)&getSignatureForMethodSymbol;
             jitImports[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
             jitImports[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;
@@ -288,6 +408,7 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.GetDebugInfoForCurrentMethod] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_METHOD_DEBUG_INFO*, void>)&getDebugInfoForCurrentMethod;
             jitImports[(int)EEApiId.GetSingleThreadedCompilationContext] = (delegate* unmanaged<IntPtr, void*>)&getSingleThreadedCompilationContext;
             jitImports[(int)EEApiId.GetExceptionHandlingModel] = (delegate* unmanaged<IntPtr, CorInfoLlvmEHModel>)&getExceptionHandlingModel;
+            jitImports[(int)EEApiId.GetExceptionHandlingTable] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_EH_CLAUSE*, int, IntPtr>)&getExceptionHandlingTable;
             jitImports[(int)EEApiId.Count] = (void*)0x1234;
 
 #if DEBUG

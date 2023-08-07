@@ -1410,15 +1410,16 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
             m_llvm->m_unwindFrameLclNum = unwindFrameLclNum;
 
             m_llvm->m_unwindIndexMap = m_indexMap;
-            GenTree* unwindTableAddr = m_compiler->gtNewIconNode(0, TYP_I_IMPL);
+            size_t unwindTableAddr = size_t(m_llvm->generateUnwindTable());
+            GenTree* unwindTableAddrNode = m_compiler->gtNewIconHandleNode(unwindTableAddr, GTF_ICON_CONST_PTR);
             GenTree* unwindFrameLclAddr = m_compiler->gtNewLclVarAddrNode(unwindFrameLclNum);
             GenTreeIntCon* initialUnwindIndexNode = m_compiler->gtNewIconNode(m_initialIndexValue, TYP_I_IMPL);
             GenTreeCall* initializeCall =
                 m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_PUSH_VIRTUAL_UNWIND_FRAME, TYP_VOID,
-                                                unwindFrameLclAddr, unwindTableAddr, initialUnwindIndexNode);
+                                                unwindFrameLclAddr, unwindTableAddrNode, initialUnwindIndexNode);
             LIR::Range initRange;
             initRange.InsertAtEnd(unwindFrameLclAddr);
-            initRange.InsertAtEnd(unwindTableAddr);
+            initRange.InsertAtEnd(unwindTableAddrNode);
             initRange.InsertAtEnd(initialUnwindIndexNode);
             initRange.InsertAtEnd(initializeCall);
 
@@ -1740,6 +1741,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
     return PhaseStatus::MODIFIED_EVERYTHING;
 }
 
+
 void Llvm::computeBlocksInFilters()
 {
     for (EHblkDsc* ehDsc : EHClauses(_compiler))
@@ -1758,6 +1760,64 @@ void Llvm::computeBlocksInFilters()
             }
         }
     }
+}
+
+CORINFO_GENERIC_HANDLE Llvm::generateUnwindTable()
+{
+    JITDUMP("\nGenerating the unwind table:\n")
+    ArrayStack<CORINFO_LLVM_EH_CLAUSE> clauses(_compiler->getAllocator(CMK_Codegen));
+    for (unsigned ehIndex = 0; ehIndex < _compiler->compHndBBtabCount; ehIndex++)
+    {
+        EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
+        if (ehDsc->HasCatchHandler())
+        {
+            CORINFO_LLVM_EH_CLAUSE clause{};
+            if (ehDsc->HasFilter())
+            {
+                clause.Flags = CORINFO_EH_CLAUSE_FILTER;
+                clause.FilterIndex = ehIndex;
+            }
+            else
+            {
+                clause.Flags = CORINFO_EH_CLAUSE_NONE;
+                clause.ClauseTypeToken = ehDsc->ebdTyp;
+            }
+
+            if (ehDsc->ebdEnclosingTryIndex != EHblkDsc::NO_ENCLOSING_INDEX)
+            {
+                clause.EnclosingIndex = m_unwindIndexMap->Bottom(ehDsc->ebdEnclosingTryIndex);
+            }
+            else
+            {
+                clause.EnclosingIndex = UNWIND_INDEX_NOT_IN_TRY;
+            }
+
+            unsigned unwindIndex = m_unwindIndexMap->Bottom(ehIndex);
+            JITDUMP("EH#%u: T%u, ", unwindIndex, ehIndex);
+            if (clause.EnclosingIndex != UNWIND_INDEX_NOT_IN_TRY)
+            {
+                JITDUMP("enclosed by EH#%i ", clause.EnclosingIndex);
+            }
+            else
+            {
+                JITDUMP("top-level ");
+            }
+            if ((clause.Flags & CORINFO_EH_CLAUSE_FILTER) != 0)
+            {
+                JITDUMP("(filter: '%s')\n", GetMangledFilterFuncletName(clause.FilterIndex));
+            }
+            else
+            {
+                JITDUMP("(class: 0x%04X)\n", clause.ClauseTypeToken);
+            }
+
+            assert((unwindIndex - UNWIND_INDEX_BASE) == static_cast<unsigned>(clauses.Height()));
+            clauses.Push(clause);
+        }
+    }
+
+    CORINFO_GENERIC_HANDLE tableSymbolHandle = GetExceptionHandlingTable(&clauses.BottomRef(), clauses.Height());
+    return tableSymbolHandle;
 }
 
 //------------------------------------------------------------------------

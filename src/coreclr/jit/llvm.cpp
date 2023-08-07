@@ -15,6 +15,7 @@ enum class EEApiId
 {
     GetMangledMethodName,
     GetSymbolMangledName,
+    GetMangledFilterFuncletName,
     GetSignatureForMethodSymbol,
     AddCodeReloc,
     IsRuntimeImport,
@@ -27,6 +28,7 @@ enum class EEApiId
     GetDebugInfoForCurrentMethod,
     GetSingleThreadedCompilationContext,
     GetExceptionHandlingModel,
+    GetExceptionHandlingTable,
     Count
 };
 
@@ -787,6 +789,11 @@ const char* Llvm::GetMangledSymbolName(void* symbol)
     return CallEEApi<EEApiId::GetSymbolMangledName, const char*>(m_pEECorInfo, symbol);
 }
 
+const char* Llvm::GetMangledFilterFuncletName(unsigned index)
+{
+    return CallEEApi<EEApiId::GetMangledFilterFuncletName, const char*>(m_pEECorInfo, index);
+}
+
 bool Llvm::GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig)
 {
     return CallEEApi<EEApiId::GetSignatureForMethodSymbol, int>(m_pEECorInfo, symbolHandle, pSig) != 0;
@@ -847,6 +854,11 @@ SingleThreadedCompilationContext* Llvm::GetSingleThreadedCompilationContext()
 CorInfoLlvmEHModel Llvm::GetExceptionHandlingModel()
 {
     return CallEEApi<EEApiId::GetExceptionHandlingModel, CorInfoLlvmEHModel>(m_pEECorInfo);
+}
+
+CORINFO_GENERIC_HANDLE Llvm::GetExceptionHandlingTable(CORINFO_LLVM_EH_CLAUSE* pClauses, int count)
+{
+    return CallEEApi<EEApiId::GetExceptionHandlingTable, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, pClauses, count);
 }
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExports)

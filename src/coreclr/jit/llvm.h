@@ -66,6 +66,14 @@ enum class CorInfoLlvmEHModel
     Wasm, // WinEH-based LLVM IR; custom WASM EH-based ABI.
 };
 
+struct CORINFO_LLVM_EH_CLAUSE
+{
+    CORINFO_EH_CLAUSE_FLAGS Flags;
+    unsigned EnclosingIndex;
+    mdToken ClauseTypeToken;
+    unsigned FilterIndex;
+};
+
 typedef unsigned CORINFO_LLVM_DEBUG_TYPE_HANDLE;
 
 const CORINFO_LLVM_DEBUG_TYPE_HANDLE NO_DEBUG_TYPE = 0;
@@ -281,11 +289,11 @@ private:
     //
     const char* GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle);
     const char* GetMangledSymbolName(void* symbol);
+    const char* GetMangledFilterFuncletName(unsigned index);
     bool GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig);
     void AddCodeReloc(void* handle);
     bool IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle) const;
     CorInfoType GetPrimitiveTypeForTrivialWasmStruct(CORINFO_CLASS_HANDLE structHandle);
-    uint32_t PadOffset(CORINFO_CLASS_HANDLE typeHandle, unsigned atOffset);
     void GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle, TypeDescriptor* pTypeDescriptor);
     const char* GetAlternativeFunctionName();
     CORINFO_GENERIC_HANDLE GetExternalMethodAccessor(
@@ -295,6 +303,7 @@ private:
     void GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
     SingleThreadedCompilationContext* GetSingleThreadedCompilationContext();
     CorInfoLlvmEHModel GetExceptionHandlingModel();
+    CORINFO_GENERIC_HANDLE GetExceptionHandlingTable(CORINFO_LLVM_EH_CLAUSE* pClauses, int count);
 
 public:
     static SingleThreadedCompilationContext* StartSingleThreadedCompilation(
@@ -384,6 +393,7 @@ private:
     static const unsigned UNWIND_INDEX_BASE = 2;
 
     void computeBlocksInFilters();
+    CORINFO_GENERIC_HANDLE generateUnwindTable();
 
     bool mayPhysicallyThrow(GenTree* node);
     bool isBlockInFilter(BasicBlock* block);
