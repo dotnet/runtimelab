@@ -37,7 +37,7 @@ internal class OutputWindow
     public const int MinMatch = 3;
     public const int MaxMatch = 258;
     public const int MinLookahead = MaxMatch + MinMatch + 1;
-    public uint _insert; // ----------------------------------------Se usa para FillWindow
+    public uint _insert; // bytes at end of window left to insert
     public int _level;
     public ManagedZLib.CompressionStrategy _strategy;
     public int _dataType;  // best guess about the data type: binary or text
@@ -126,7 +126,7 @@ internal class OutputWindow
         _windowMask = 262143;
         _window = new byte[_windowSize];
     }
-    internal OutputWindow(int windowBits, int memLevel)
+    internal OutputWindow(int windowBits, int memLevel, ManagedZLib.CompressionLevel level)
     {
         _windowSize = 1 << windowBits; //logaritmic base 2
         _windowMask = _windowSize - 1;
@@ -145,6 +145,7 @@ internal class OutputWindow
         _litBufferSize = 1U << (memLevel + 6); //16K by default
         _penBufferSize = (ulong)_litBufferSize * 4;
         _pendingBuffer = new byte[_penBufferSize];
+        longestMatchInit(level);
     }
 
 
@@ -178,7 +179,7 @@ internal class OutputWindow
     // Updates strstart and lookahead.
     public void FillWindow(InputBuffer inputBuffer) //more: If space is needed, how much more
     {
-        int bytes; // n
+        uint bytes; // n
         int availSpaceEnd; //Amount of free space at the end of the window
         int wsize = _windowSize;
         Debug.Assert(_lookahead < MinLookahead, "Already enough lookahead");
@@ -207,7 +208,7 @@ internal class OutputWindow
             }
 
             if (inputBuffer.AvailableBytes == 0) break;
-
+            // This return number of bytes read
             bytes = ReadBuffer(inputBuffer, _window.Slice((int)_strStart,(int)_lookahead).Span, (uint)availSpaceEnd);
             _lookahead += (uint)bytes;
 
@@ -284,40 +285,39 @@ internal class OutputWindow
     ///* 7 */ {8,   32, 128, 256, deflate_slow},
     ///* 8 */ {32, 128, 258, 1024, deflate_slow},
     ///* 9 */ {32, 258, 258, 4096, deflate_slow} /* max compression */
-    public void longestMatchInit(CompressionLevel level)
+    public void longestMatchInit(ManagedZLib.CompressionLevel level)
     {
         _actualWindowSize = 2L * (ulong)_windowSize;
         ClearHash(); //TO-DO
 
         switch (level)
         {
-            // See the note in ManagedZLib.CompressionLevel for the recommended combinations.
-            case CompressionLevel.Optimal:
+            case ManagedZLib.CompressionLevel.DefaultCompression: // equivalent as level 6 in the config table
                 _goodMatch = 8;
                 MaxLazyMatch = 16;
-                _niceMatch = 32;
-                MaxChainLength = 32;
+                _niceMatch = 128;
+                MaxChainLength = 128;
                 break;
 
-            case CompressionLevel.Fastest:
+            case ManagedZLib.CompressionLevel.BestSpeed:
                 _goodMatch = 4;
                 MaxLazyMatch = 4;
                 _niceMatch = 8;
                 MaxChainLength = 4;
                 break;
 
-            case CompressionLevel.NoCompression:
+            case ManagedZLib.CompressionLevel.NoCompression:
                 _goodMatch = 0;
                 MaxLazyMatch = 0;
                 _niceMatch = 0;
                 MaxChainLength = 0;
                 break;
 
-            case CompressionLevel.SmallestSize:
+            case ManagedZLib.CompressionLevel.BestCompression:
                 _goodMatch = 32;
                 MaxLazyMatch = 258;
                 _niceMatch = 258;
-                MaxChainLength = 258;
+                MaxChainLength = 4096;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(level));
@@ -391,20 +391,22 @@ internal class OutputWindow
 
         return _lookahead;
     }
-    public int ReadBuffer(InputBuffer input, Span<byte> buffer, uint sizeRequested) 
+    public uint ReadBuffer(InputBuffer input, Span<byte> buffer, uint sizeRequested) 
     {
         uint Length = input._availInput;
         if (Length > sizeRequested) 
         {
-            Length = sizeRequested;
+            Length = sizeRequested; // All bytes requested, copied
         }
         if (Length < 0)
         { 
-            return 0; 
+            return 0;  // No available input - Nothing is copied
         }
-        // AQUI SE INTENTA DEL INPUT BUFFER A LA WINDOW lit como CopyFrom casi casi
+
         input._availInput -= Length;
-        Span<byte> bytesToBeCopied = input._inputBuffer.Span.Slice(0, (int)Length);
+
+        // If inputBuffer length is less than sizeRequested, we copy inputBuffer length
+        Span<byte> bytesToBeCopied = input._inputBuffer.Span.Slice((int)input._nextIn, (int)Length);
         bytesToBeCopied.CopyTo(buffer);
 
         if (input._wrap == 1) //ZLib header
@@ -416,10 +418,10 @@ internal class OutputWindow
             CRC32(buffer, Length);
         }
 
-        input._inputBuffer = input._inputBuffer.Slice((int)Length); // Slice from where we ended up copying
-        input._availInput -= Length;
+        input._nextIn += Length; //Moving index forward for future block copies
+        input._totalInput += Length;
 
-        return 0;
+        return Length;
     }
 
     /* ===========================================================================

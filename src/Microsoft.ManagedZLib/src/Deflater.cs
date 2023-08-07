@@ -39,8 +39,6 @@ internal class Deflater
 
     private int _wrap; //Default: Raw Deflate
     ZState _status;
-
-    private DeflaterState _state; //Class with states - See if its suitable to have a class like with the inflater
     private CompressionLevel _compressionLevel;
     private readonly OutputWindow _output;
     private readonly InputBuffer _input;
@@ -48,11 +46,6 @@ internal class Deflater
     public bool NeedsInput() => _input.NeedsInput();
     public bool HasSymNext() => _trees._symIndex !=0;
     public bool BlockDone() => _flushDone == true;
-    // This is when inputBuffer is empty, all processed and the output buffer is not.
-    //It's the start of the finish.
-    //public bool NeedJustOutput() => _deflater.NeedsInput() && ((Deflater)_buffer?.Length != 0);
-    public bool Finished() => _state == DeflaterState.Done; //Change this to all the checks done in DeflateEnd() -
-                                                            //To see if it ahs finished the state machine
     public int MaxDistance() => _output._windowSize - MinLookahead;
 
     // Note, DeflateStream or the deflater do not try to be thread safe.
@@ -62,10 +55,12 @@ internal class Deflater
     // on the stream explicitly.
     private object SyncLock => this;
 
+    // This compLevel parameter is just the version user friendly
     internal Deflater(CompressionLevel compressionLevel, int windowBits)
     {
+        _compressionLevel = compressionLevel;
         _wrap = 0;
-        ManagedZLib.CompressionLevel zlibCompressionLevel;
+        ManagedZLib.CompressionLevel zlibCompressionLevel; // This is the one actually used in all the processings
         int memLevel;
         _input = new InputBuffer();
         switch (compressionLevel)
@@ -95,7 +90,7 @@ internal class Deflater
         }
         _windowBits = DeflateInit(windowBits); //Checking format of compression> Raw, Gzip or ZLib 
                                                // For Window and wrap flag initial configuration
-        _output = new OutputWindow(_windowBits,memLevel); //Setting window size and mask
+        _output = new OutputWindow(_windowBits,memLevel, zlibCompressionLevel); //Setting window size and mask
         _output._method = (int)ManagedZLib.CompressionMethod.Deflated; //Deflated - only option
         _litBufferSize = 1U << (memLevel + 6); //16K by default
         _trees = new DeflateTrees(_output._pendingBuffer.Slice((int)_litBufferSize),_litBufferSize);
@@ -104,7 +99,7 @@ internal class Deflater
         _output._level = memLevel; // Compression level (1..9)
         _output._strategy = (int)ManagedZLib.CompressionStrategy.DefaultStrategy; // Just the default
         // Setting variables for doing the matches
-        DeflateReset(compressionLevel);
+        DeflateReset();
 
         //Might not be necessary - constructors do everything that DelfateInit2 used to do
         DeflateInit2(zlibCompressionLevel, ManagedZLib.CompressionMethod.Deflated, windowBits, memLevel, _output._strategy);
@@ -138,7 +133,14 @@ internal class Deflater
 
         //Set everything up + error checking if needed - Might merge with DeflateInit later.
     }
-    public void DeflateReset(CompressionLevel level)
+    // DeflateReset(): Sets some initial values.
+    // Methos to be reviewed/re-valuated in refactoring stage**
+    // I moved some initializations to DeflateTrees and OutputWindow constructors
+    // I'd need to put them back if this is going to be called else where again, 
+    // besides just in Deflaters constructor. 
+    // More so, if this is not called again, I can totally do this initializations
+    // in the respective constructors if I'm not doing them already.
+    public void DeflateReset()
     {
         _input._totalInput = _output._totalOutput = 0;
         _output._pendingBufferBytes = 0;
@@ -158,9 +160,6 @@ internal class Deflater
 
         _output.lastFlush = ZFlushCode.GenOutput; // Just used when necessary
                                                   // More may impact on compression ratio
-        _trees.TreeInit(_output);
-
-        _output.longestMatchInit(level);
     }
     ~Deflater()
     {
@@ -495,7 +494,7 @@ internal class Deflater
          */
         uint len, left, have;
         bool last = false;
-        uint used = (uint)_input._availInput; // _input.AvailableBytes
+        uint used = _input._availInput; // or inputBuffer length - nextIn
         do
         {
             /* Set len to the maximum size block that we can copy directly with the
@@ -511,7 +510,7 @@ internal class Deflater
             left = _output._strStart - (uint)_output._blockStart;    /* bytes left in window */
             if (len > left + _input._availInput)
             {
-                len = left + (uint)_input._availInput;     /* limit len to the input */
+                len = left + _input._availInput;     /* limit len to the input */
             }   
             if (len > have)
             {
@@ -563,7 +562,9 @@ internal class Deflater
             // the check value.
             if (len != 0)
             {
+                // ATTENTION: this returns uint - bytesRead
                 _output.ReadBuffer(_input, _output.Buffer.Span, len);
+                // ATTENTION: might be worth changing to a nextOut index like nextIn
                 _output.Buffer = _output.Buffer.Slice((int)len);
                 _output._availableOutput -= (int)len;
                 _output._totalOutput += len;
@@ -584,8 +585,9 @@ internal class Deflater
             if (used >= _output._windowSize)
             {    /* supplant the previous history */
                 _trees._matchesInBlock = 2;         /* clear hash */
-                // TO-DO porting
-                zmemcpy(s->window, s->strm->next_in - s->w_size, s->w_size);
+                Span<byte> source = _input._inputBuffer.Span.Slice((int)(_input._nextIn-(uint)_output._windowSize),_output._windowSize);
+                //source.CopyTo(_output._window.Span.Slice(0, _output._windowSize));
+                source.CopyTo(_output._window.Span);
                 _output._strStart = (uint)_output._windowSize;
                 _output._insert = _output._strStart;
             }
@@ -604,7 +606,10 @@ internal class Deflater
                 }
                 // TO-DO porting
                 // (usually this would be a CopyTo method between Memory<byte> types)
-                zmemcpy(s->window + s->strstart, s->strm->next_in - used, used);
+                Span<byte> source = _input._inputBuffer.Span.Slice((int)(_input._nextIn - (uint)used), _output._windowSize);
+                Span<byte> destination = _output._window.Span.Slice((int)_output._strStart);
+                //source.CopyTo(_output._window.Span.Slice(0, _output._windowSize));
+                source.CopyTo(destination);
                 _output._strStart += used;
                 _output._insert += Math.Min(used, (uint)_output._windowSize - _output._insert);
             }
@@ -645,6 +650,7 @@ internal class Deflater
             have = _input._availInput;
         if (have != 0)
         {
+            // ATTENTION: this returns uint - bytesRead
             _output.ReadBuffer(_input, _output._window.Span.Slice((int)_output._strStart), have);
             _output._strStart += have;
             _output._insert += Math.Min(have, (uint)_output._windowSize - _output._insert);

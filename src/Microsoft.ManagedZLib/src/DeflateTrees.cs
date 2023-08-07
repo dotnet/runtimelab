@@ -69,7 +69,6 @@ internal class DeflateTrees
     public ulong _optLength;          // bit length of current block with optimal trees
     public ulong _staticLen;       // bit length of current block with static trees
     public uint _matchesInBlock;      // number of string matches in current block
-    public uint _LeftToInsert;  // bytes at end of window left to insert
     public ushort _bitBuffer;      // Output buffer. bits are inserted starting
                                    // at the bottom (least significant bits).
     public int _bitsValid;    // Number of valid bits in bitBuffer
@@ -104,6 +103,7 @@ internal class DeflateTrees
         // We avoid equality with lit_bufsize*3 because of wraparound at 64K
         // on 16 bit machines and because stored blocks are restricted to 64K-1 bytes.
         _symEnd = (litBufferSize - 1) * 3;
+        TreeInit();
     }
 
     // Output a byte on the stream.
@@ -213,7 +213,7 @@ internal class DeflateTrees
         _optLength = _staticLen = 0L;
         _symIndex = _matchesInBlock = 0;
     }
-    public void TreeInit(OutputWindow output) {
+    public void TreeInit() {
         _literalDesc!.dynamicTree = _dynLitLenTree; // Dynamic part
         _literalDesc!.StaticTreeDesc = StaticLengthDesc; // Length Static table in StaticTreeTables.cs
 

@@ -24,12 +24,14 @@ public  class InputBuffer
     private uint _bitBuffer;      // To quickly shift in this buffer
     private int _bitsInBuffer;    // #bits available in bitBuffer
     public int _wrap; //Default: Raw Deflate
+    public uint _nextIn; // Index for next input byte to be copied
 
     /// <summary>Total bits available in the input buffer.</summary>
     public int AvailableBits => _bitsInBuffer;
-
-    public uint _availInput; //_buffer length - it should be align with buffer being filled
     /// <summary>Total bytes available in the input buffer.</summary>
+    public uint _availInput; // inputBuffer.Length - next_in
+                             // (this will be moving forward while copying from it)
+    //_buffer length - it should be align with buffer being filled
     public int AvailableBytes => _inputBuffer.Length + (_bitsInBuffer / 8);
 
     /// <summary>Ensure that count bits are in the bit buffer.</summary>
@@ -178,7 +180,8 @@ public  class InputBuffer
         {
             _inputBuffer = buffer;
             _availInput = (uint)buffer.Length;
-            //AvailableBytes() is _inputBuffer.Length
+            _nextIn = 0;
+            //AvailableBytes() is _inputBuffer.Length - nextIn
         }
     }
 
