@@ -5,8 +5,14 @@ namespace Microsoft.ManagedZLib;
 
 public class TreeDesc
 {
-    public CtData[]? dynamicTree;
+    public CtData[] _dynamicTree;
     public int maxCode;
-    public StaticTreesDesc? StaticTreeDesc;
+    public StaticTreesDesc _StaticTreeDesc;
+
+    public TreeDesc(CtData[] dynamicTree, StaticTreesDesc StaticTreeDesc)
+    {
+        _dynamicTree = dynamicTree;
+        _StaticTreeDesc = StaticTreeDesc;
+    }
 }
 

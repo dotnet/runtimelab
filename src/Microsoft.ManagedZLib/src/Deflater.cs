@@ -33,9 +33,8 @@ internal class Deflater
     private const int MinWindowBits = -15;  // WindowBits must be between -8..-15 to write no header, 8..15 for a
     private const int MaxWindowBits = 31;   // zlib header, or 24..31 for a GZip header
     private int _windowBits;
-    private int _strHashIndex;
     private uint _litBufferSize;
-    private int _levelConfigTable;
+    //private int _levelConfigTable;
 
     private int _wrap; //Default: Raw Deflate
     ZState _status;
@@ -95,7 +94,6 @@ internal class Deflater
         _litBufferSize = 1U << (memLevel + 6); //16K by default
         _trees = new DeflateTrees(_output._pendingBuffer.Slice((int)_litBufferSize),_litBufferSize);
         _status = ZState.InitState;
-        _strHashIndex = 0;
         _output._level = memLevel; // Compression level (1..9)
         _output._strategy = (int)ManagedZLib.CompressionStrategy.DefaultStrategy; // Just the default
         // Setting variables for doing the matches
@@ -824,6 +822,11 @@ internal class Deflater
                 hashHead = _output.InsertString((int)_output._strStart);
             }
 
+            // Find the longest match, discarding those <= prev_length.
+            _output._prevLength = _output._matchLength;
+            _output._prevMatch = _output._matchStart;
+            _output._matchLength = MinMatch - 1;
+
             //Find the longest match, discarding those <= prev_length.
             //At this point we have always match_length < MIN_MATCH
             if (hashHead != NIL && _output._prevLength < _output.MaxLazyMatch
@@ -855,7 +858,8 @@ internal class Deflater
                 {
                     if (++_output._strStart <= maxInsert)
                     {
-                        hashHead = _output.InsertString((int)_output._strStart);
+                        //We just care about inserting in hash - Mot retreiving hashHead
+                        _output.InsertString((int)_output._strStart);
                     }
                 }
                 while (--_output._prevLength != 0);

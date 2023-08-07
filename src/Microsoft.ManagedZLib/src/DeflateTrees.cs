@@ -47,7 +47,7 @@ internal class DeflateTrees
 
     TreeDesc? _literalDesc;              // Description for literal tree\\
     TreeDesc? _distanceDesc;           // Description for distance tree \\
-    TreeDesc? _codeDesc;              // Description for bit length tree \\
+    TreeDesc? _codeDesc; // Description for bit length tree \\
 
     // Number of codes at each bit length for an optimal tree
     public Memory <ushort> _codeCount = new ushort[MaxBits + 1];
@@ -103,7 +103,13 @@ internal class DeflateTrees
         // We avoid equality with lit_bufsize*3 because of wraparound at 64K
         // on 16 bit machines and because stored blocks are restricted to 64K-1 bytes.
         _symEnd = (litBufferSize - 1) * 3;
-        TreeInit();
+
+        _literalDesc = new TreeDesc(_dynLitLenTree, StaticLengthDesc);
+        _distanceDesc = new TreeDesc(_dynDistanceTree, StaticDistanceDesc);
+        _codeDesc = new TreeDesc(_codesTree, StaticCodeDesc);
+
+        _bitBuffer = 0;
+        _bitsValid = 0;
     }
 
     // Output a byte on the stream.
@@ -213,19 +219,7 @@ internal class DeflateTrees
         _optLength = _staticLen = 0L;
         _symIndex = _matchesInBlock = 0;
     }
-    public void TreeInit() {
-        _literalDesc!.dynamicTree = _dynLitLenTree; // Dynamic part
-        _literalDesc!.StaticTreeDesc = StaticLengthDesc; // Length Static table in StaticTreeTables.cs
 
-        _distanceDesc!.dynamicTree = _dynDistanceTree;
-        _distanceDesc!.StaticTreeDesc = StaticDistanceDesc; // Distance static table
-
-        _codeDesc!.dynamicTree = _codesTree;
-        _codeDesc!.StaticTreeDesc = StaticCodeDesc; // Codes' static table
-
-        _bitBuffer = 0;
-        _bitsValid = 0;
-    }
     // For building the frequency table (nummber of ocurrences)
     // per alphabet (Lit-Length, distance) for Huffman Tree construction
     public bool TreeTallyLit(byte WindowValue) //Whether or not to flush the block
@@ -428,12 +422,12 @@ internal class DeflateTrees
 
     public void GenBitLen (TreeDesc desc)
     {
-        CtData[] tree = desc.dynamicTree!;
+        CtData[] tree = desc._dynamicTree!;
         int max_code = desc.maxCode;
-        CtData[] STree = desc.StaticTreeDesc!.staticTree!;
-        int[] Extra = desc.StaticTreeDesc.extraBits!;
-        int Base = desc.StaticTreeDesc.extraBase;
-        int maxLength = desc.StaticTreeDesc.maxLength;
+        CtData[] STree = desc._StaticTreeDesc!.staticTree!;
+        int[] Extra = desc._StaticTreeDesc.extraBits!;
+        int Base = desc._StaticTreeDesc.extraBase;
+        int maxLength = desc._StaticTreeDesc.maxLength;
         int heapIndex;        // heap index
         int nIndex, mIndex;   //iterate over the tree elements
         int bitLength;        //bit length
@@ -514,9 +508,9 @@ internal class DeflateTrees
     // Update the total bit length for the current block.
     public void BuildTree(TreeDesc descriptor)
     {
-        CtData[] Tree = descriptor.dynamicTree!;
-        CtData[] STree = descriptor.StaticTreeDesc!.staticTree!; //This is supposed to be constant
-        int elems = descriptor.StaticTreeDesc.elems;
+        CtData[] Tree = descriptor._dynamicTree!;
+        CtData[] STree = descriptor._StaticTreeDesc!.staticTree!; //This is supposed to be constant
+        int elems = descriptor._StaticTreeDesc.elems;
         int n, m;   //iterate over the heap elements
         int maxCode = -1;     //Largest code with non zero frequency
         int node;             // New code being created

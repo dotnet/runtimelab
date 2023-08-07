@@ -82,7 +82,7 @@ internal class OutputWindow
     // Minimum amount of lookahead, except at the end of the
     // input file, then MIN_MATCH+1.
     public uint _matchLength;           // length of best match 
-    public byte _prevMatch;             // previous match 
+    public uint _prevMatch;             // previous match 
     public bool _matchAvailable;         // set if previous match exists 
     public uint _strStart;              // start of string to insert 
     public uint _matchStart;            // start of matching string 
