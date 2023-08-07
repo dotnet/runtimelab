@@ -70,7 +70,6 @@ internal class DeflateTrees
     public ulong _staticLen;       // bit length of current block with static trees
     public uint _matchesInBlock;      // number of string matches in current block
     public uint _LeftToInsert;  // bytes at end of window left to insert
-
     public ushort _bitBuffer;      // Output buffer. bits are inserted starting
                                    // at the bottom (least significant bits).
     public int _bitsValid;    // Number of valid bits in bitBuffer

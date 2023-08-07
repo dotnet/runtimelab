@@ -19,7 +19,6 @@ namespace Microsoft.ManagedZLib;
 // which means we are running out of input.
 public  class InputBuffer
 {
-    public uint _availInput; //_buffer length - it should be align with buffer being filled
     public ulong _totalInput; //Total input read so far
     public Memory<byte> _inputBuffer; // Input stream buffer
     private uint _bitBuffer;      // To quickly shift in this buffer
@@ -29,6 +28,7 @@ public  class InputBuffer
     /// <summary>Total bits available in the input buffer.</summary>
     public int AvailableBits => _bitsInBuffer;
 
+    public uint _availInput; //_buffer length - it should be align with buffer being filled
     /// <summary>Total bytes available in the input buffer.</summary>
     public int AvailableBytes => _inputBuffer.Length + (_bitsInBuffer / 8);
 
@@ -178,6 +178,7 @@ public  class InputBuffer
         {
             _inputBuffer = buffer;
             _availInput = (uint)buffer.Length;
+            //AvailableBytes() is _inputBuffer.Length
         }
     }
 

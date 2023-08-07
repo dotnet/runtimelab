@@ -22,7 +22,8 @@ internal class OutputWindow
     public const int NIL = 0; /* Tail of hash chains */
     public ZFlushCode lastFlush; // value of flush param for previous deflate call
 
-    public int _windowSize;
+    public int _windowSize; // TO-DO: Change _windowSize from int to uint
+    public ulong _actualWindowSize;
     private int _windowMask;
     //For security reasons, this might be better as private
     public Memory<byte> _window; // The window is 2^n bytes where n is number of bits
@@ -68,6 +69,7 @@ internal class OutputWindow
     public int _hashSize;      // number of elements in hash table 
     public int _hashBits;      // log2(hash_size)
     public int _hashMask;      // hash_size-1
+    // Heads of the hash chains or NIL.
     ushort[]? _hashHead; // The window is 2^n bytes where n is number of bits
     ushort[]? _prev; // The window is 2^n bytes where n is number of bits
 
@@ -81,7 +83,7 @@ internal class OutputWindow
     // input file, then MIN_MATCH+1.
     public uint _matchLength;           // length of best match 
     public byte _prevMatch;             // previous match 
-    public int _matchAvailable;         // set if previous match exists 
+    public bool _matchAvailable;         // set if previous match exists 
     public uint _strStart;              // start of string to insert 
     public uint _matchStart;            // start of matching string 
     public uint _lookahead;             // number of valid bytes ahead in window 
@@ -178,12 +180,12 @@ internal class OutputWindow
     {
         int bytes; // n
         int availSpaceEnd; //Amount of free space at the end of the window
-        int wsize = WindowSize();
+        int wsize = _windowSize;
         Debug.Assert(_lookahead < MinLookahead, "Already enough lookahead");
 
         do
         {
-            availSpaceEnd = (int)(wsize - _lookahead - _strStart); // It shouldn't be that large
+            availSpaceEnd = (int)(_actualWindowSize - _lookahead - _strStart); // It shouldn't be that large
 
             /* If the window is almost full and there is insufficient lookahead,
             * move the upper half to the lower one to make room in the upper half.
@@ -204,7 +206,7 @@ internal class OutputWindow
                 availSpaceEnd += wsize;
             }
 
-            if (inputBuffer._availInput == 0) break;
+            if (inputBuffer.AvailableBytes == 0) break;
 
             bytes = ReadBuffer(inputBuffer, _window.Slice((int)_strStart,(int)_lookahead).Span, (uint)availSpaceEnd);
             _lookahead += (uint)bytes;
@@ -228,7 +230,7 @@ internal class OutputWindow
             }
         } while (_lookahead < MinLookahead && inputBuffer.AvailableBytes != 0);
 
-        if (_highWater < (ulong)WindowSize()) //Migth change windowSize to ulong
+        if (_highWater < _actualWindowSize) //Migth change windowSize to ulong
         {
             ulong curr = _strStart + (ulong)(_lookahead);
             ulong init;
@@ -238,7 +240,7 @@ internal class OutputWindow
                 /* Previous high water mark below current data -- zero WIN_INIT
                  * bytes or up to end of window, whichever is less.
                  */
-                init = (ulong)_windowSize - curr;
+                init = _actualWindowSize - curr;
                 if (init > (ulong)WinInit())
                     init = (ulong)WinInit();
                 _window = _window.Slice((int)curr); // Is it necessary to reset it like this
@@ -254,8 +256,8 @@ internal class OutputWindow
                  * to end of window, whichever is less.
                  */
                 init = (ulong)curr + (ulong)WinInit() - _highWater;
-                if (init > (ulong)_windowSize - _highWater)
-                    init = (ulong)_windowSize - _highWater;
+                if (init > _actualWindowSize - _highWater)
+                    init = _actualWindowSize - _highWater;
 
                 _window = _window.Slice((int)_highWater); // Slice the window from _highWater
                 // Zeroing from _highWater
@@ -263,7 +265,7 @@ internal class OutputWindow
                 _highWater += init;
             }
         }
-        Debug.Assert((ulong)_strStart <= (ulong)WindowSize() - MinLookahead,
+        Debug.Assert(_strStart <= _actualWindowSize - MinLookahead,
            "not enough room for search");
     }
 
@@ -284,6 +286,9 @@ internal class OutputWindow
     ///* 9 */ {32, 258, 258, 4096, deflate_slow} /* max compression */
     public void longestMatchInit(CompressionLevel level)
     {
+        _actualWindowSize = 2L * (ulong)_windowSize;
+        ClearHash(); //TO-DO
+
         switch (level)
         {
             // See the note in ManagedZLib.CompressionLevel for the recommended combinations.
@@ -317,6 +322,19 @@ internal class OutputWindow
             default:
                 throw new ArgumentOutOfRangeException(nameof(level));
         }
+
+        _strStart = 0;
+        _blockStart = 0L;
+        _lookahead = 0;
+        _insert = 0;
+        _matchLength = _prevLength = MinMatch - 1;
+        _matchAvailable = false;
+        _strHashIndex = 0;
+    }
+
+    private void ClearHash()
+    {
+        throw new NotImplementedException();
     }
 
     public uint LongestMatch(uint currHashHead) 
@@ -349,7 +367,7 @@ internal class OutputWindow
             niceMatch = (int)_lookahead; 
         }
 
-        Debug.Assert((ulong)_strStart <= (ulong)_windowSize - MinLookahead, "need lookahead");
+        Debug.Assert((ulong)_strStart <= (ulong)_actualWindowSize - MinLookahead, "need lookahead");
 
         do
         {

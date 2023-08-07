@@ -21,9 +21,7 @@ public static class ManagedZLib
         GenOutput = -1,
         // Actual flushes
         NoFlush = 0,
-        PartialFlush = 1, // Not used in Native ZLib
         SyncFlush = 2,
-        FullFlush = 3, // Not used in Native ZLib
         Finish = 4,
         Block = 5
     }
@@ -174,6 +172,8 @@ public static class ManagedZLib
     public const byte GZip_Header_ID1 = 31;
     public const byte GZip_Header_ID2 = 139;
     public const int PresetDict = 0x20; /* preset dictionary flag in zlib header */
+    // Maximum stored block length in deflate format (not including header). 
+    public const uint MaxStored = 65535;
 
     /**
      * Do not remove the nested typing of types inside of <code>System.IO.Compression.ZLibNative</code>.
