@@ -300,6 +300,7 @@ internal sealed class IHuffmanTree
                     mask <<= 1;
                 } while (res < 0);
                 _symDict[index] = res;
+                symbol = res;
             }
         }
 
