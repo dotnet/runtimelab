@@ -141,6 +141,7 @@ internal class Deflater
     public void DeflateReset()
     {
         _input._totalInput = _output._totalOutput = 0;
+        _output._dataType = DeflateTrees.Unknown;
         _output._pendingBufferBytes = 0;
         _output._pendingOut = _output._pendingBuffer;
 
@@ -151,10 +152,13 @@ internal class Deflater
 
         _status = (_wrap == 2) ? ZState.GZipState : ZState.InitState;
 
-        if (_wrap == 2)
-            _output.Adler32();
-        else
-            _output.CRC32();
+        // This will modify _adler like:
+        //_adler = (_wrap == 2)? _output.Adler32() : _output.CRC32()
+        // But I think I'll do both void and put _adler as a field of the class
+        //if (_wrap == 2)
+        //    _output.Adler32();
+        //else
+        //    _output.CRC32();
 
         _output.lastFlush = ZFlushCode.GenOutput; // Just used when necessary
                                                   // More may impact on compression ratio
@@ -224,6 +228,7 @@ internal class Deflater
         {
             _output.Buffer = outputBuffer.ToArray(); //Find a way to not having to allocate this
             _output._availableOutput = outputBuffer.Length;
+            _output._nextOut = 0;
 
             int bytesRead = Deflate(flushCode);
             return bytesRead;
@@ -273,11 +278,6 @@ internal class Deflater
         // bytesRead = outputBuffer.Length - _output.AvailableBytes
 
         ZFlushCode oldFlush = flushCode;
-        Debug.Assert(!DeflateStateCheck());
-
-        // I think `if (strm->avail_out == 0)` is already covered as a Debug.Assert
-        //If there is not space available in the output buffer, then no chance of doing deflate.
-        Debug.Assert(_output._availableOutput == 0); //ToDo: More specific error checking
 
         oldFlush = _output.lastFlush;
         _output.lastFlush = flushCode;
@@ -391,12 +391,12 @@ internal class Deflater
                         // This should be an in between, since the level of compressions
                         // goes from 0 to 9, I'll guess (I'll make sure later on) this is
                         // _output.level = 4 --- DeflateSlow() - lazy matches
-                        blockState = DeflateSlow(_output.Buffer.Span, flushCode);
+                        blockState = DeflateSlow(flushCode);
                         break;
 
                     case CompressionLevel.Fastest:
                         // _output.level = 1 --- DeflateFastest() - no lazy matches - max speed
-                        blockState = DeflateFast(_output.Buffer.Span, flushCode);
+                        blockState = DeflateFast(flushCode);
                         break;
 
                     case CompressionLevel.NoCompression: 
@@ -406,7 +406,7 @@ internal class Deflater
 
                     case CompressionLevel.SmallestSize:
                         // _output.level = 9 --- DeflateSlow() - Max compression - the slowest
-                        blockState = DeflateSlow(_output.Buffer.Span, flushCode);
+                        blockState = DeflateSlow(flushCode);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(_compressionLevel));
@@ -541,16 +541,20 @@ internal class Deflater
             /* Write the stored block header bytes. */
             FlushPending();
 
-            /* Copy uncompressed bytes from the window to (C-ZLib's next_out)_output.Buffer. */
+            /* Copy uncompressed bytes from the window to (C-ZLib's next_out)_output.Buffer 
+             * using nextOut as the starting index. */
             if (left != 0)
             {
                 if (left > len)
                 {
                     left = len;
                 }
-                _output._window = _output._window.Slice((int)_output._blockStart, (int)left);
-                _output._window.CopyTo(_output.Buffer);
-                _output.Buffer = _output.Buffer.Slice((int)left);
+
+                Span<byte> source = _output._window.Span.Slice((int)_output._blockStart, (int)left);
+                Span<byte> dest = _output.Buffer.Span.Slice((int)_output._nextOut,(int)left);
+                source.CopyTo(dest);
+
+                _output._nextOut += left;
                 _output._availableOutput -= (int)left;
                 _output._totalOutput += left;
                 _output._blockStart += left;
@@ -560,10 +564,10 @@ internal class Deflater
             // the check value.
             if (len != 0)
             {
+                Span<byte> dest = _output.Buffer.Span.Slice((int)_output._nextOut, (int)len);
                 // ATTENTION: this returns uint - bytesRead
-                _output.ReadBuffer(_input, _output.Buffer.Span, len);
-                // ATTENTION: might be worth changing to a nextOut index like nextIn
-                _output.Buffer = _output.Buffer.Slice((int)len);
+                _output.ReadBuffer(_input,dest, len);
+                _output._nextOut += len;
                 _output._availableOutput -= (int)len;
                 _output._totalOutput += len;
             }
@@ -691,7 +695,7 @@ internal class Deflater
     // This function does not perform lazy evaluation of matches and inserts
     // new strings in the dictionary only for unmatched strings or for short
     // matches. It is used only for the fast compression options.
-    public ZBlockState DeflateFast(Span<byte> buffer, ZFlushCode flushCode) // TO-DO
+    public ZBlockState DeflateFast(ZFlushCode flushCode) // TO-DO
     {
         uint hashHead; //Head of the hash chain - index
         bool blockFlush; //Set if current block must be flushed
@@ -793,7 +797,7 @@ internal class Deflater
 
         return ZBlockState.BlockDone;
     }
-    public ZBlockState DeflateSlow(Span<byte> buffer, ZFlushCode flushCode)
+    public ZBlockState DeflateSlow(ZFlushCode flushCode)
     {
         //throw new NotImplementedException(); // TO-DO
         uint hashHead; //Head of the hash chain - index
@@ -940,19 +944,15 @@ internal class Deflater
         len = (uint)_output._pendingBufferBytes;
         if (len > _output._availableOutput) len = (uint)_output._availableOutput;
         if (len == 0) return;
-        // Check if there's a shorter way of doing a c++ memcopy
-        _output._pendingOut = _output._pendingOut.Slice(0, (int)len);
-        _output._pendingOut.CopyTo(_output.Buffer); // output = NextOut
 
-        // byte [] a --- a = a+len  --- Del inicio mueve el pointer len posiciones
-        // siendo len la nueva posicion inicial - a[0]
-        _output.Buffer.Slice((int)len); // Slicing output buffer (nextOut) from len
-        _output._pendingOut.Slice((int)len); // Moving init of both arrays by slicing them
+        // s->pending_out  += len;
+        _output._pendingOut = _output._pendingOut.Slice(0, (int)len); // TO-DO extra check in case it overflows the int casting
+        _output._pendingOut.CopyTo(_output.Buffer.Slice((int)_output._nextOut,(int)len)); // output = NextOut
 
         _output._totalOutput += len;
-        _output._availableOutput -= (int)len; // availbleOutput could be this subtraction or just a constant
-                                              // or just a _output.Buffer.Length
-        _output._pendingBufferBytes -= len;   // ditto
+        _output._nextOut += len;
+        _output._availableOutput -= (int)len;
+        _output._pendingBufferBytes -= len;
         if (_output._pendingBufferBytes == 0)
         {
             _output._pendingOut = _output._pendingBuffer;

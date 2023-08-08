@@ -35,7 +35,7 @@ internal class DeflateTrees
 
     // Classification of possible data types - Not really used in the algorithm's functionality
                                               // But can be used for improvements later
-    public const int Binary = 0;
+    public const int Binary = 0; // TO-DO enum
     public const int Text = 1;
     public const int Ascii = Text;   /* for compatibility with 1.2.2 and earlier */
     public const int Unknown = 2;

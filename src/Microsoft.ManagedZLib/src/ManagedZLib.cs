@@ -174,7 +174,8 @@ public static class ManagedZLib
     public const int PresetDict = 0x20; /* preset dictionary flag in zlib header */
     // Maximum stored block length in deflate format (not including header). 
     public const uint MaxStored = 65535;
-
+    // Tail of hash chains
+    public const int NIL = 0;
     /**
      * Do not remove the nested typing of types inside of <code>System.IO.Compression.ZLibNative</code>.
      * This was done on purpose to:

@@ -17,9 +17,10 @@ internal class OutputWindow
 {
     public int _availableOutput; //length of output buffer
     public Memory<byte> _output; // NextOut in madler/zlib
+    public uint _nextOut;
     public ulong _adler; //Adler-32 or CRC-32 value of the uncompressed data
     public ulong _totalOutput;
-    public const int NIL = 0; /* Tail of hash chains */
+    
     public ZFlushCode lastFlush; // value of flush param for previous deflate call
 
     public int _windowSize; // TO-DO: Change _windowSize from int to uint
@@ -244,9 +245,9 @@ internal class OutputWindow
                 init = _actualWindowSize - curr;
                 if (init > (ulong)WinInit())
                     init = (ulong)WinInit();
-                _window = _window.Slice((int)curr); // Is it necessary to reset it like this
-                // Zeroing from curr                                               // Or can I just do: _window.AsSpan(curr)
-                Array.Clear(_window.ToArray(), 0, (int)init);// Clear without allocating an array - check howto
+                // Zeroing from curr
+                _window.Span.Slice((int)curr).Clear();
+                //Array.Clear(_window.ToArray(), 0, (int)init);// Clear without allocating an array - check howto
 
                 _highWater = curr + init;
             }
@@ -259,10 +260,8 @@ internal class OutputWindow
                 init = (ulong)curr + (ulong)WinInit() - _highWater;
                 if (init > _actualWindowSize - _highWater)
                     init = _actualWindowSize - _highWater;
-
-                _window = _window.Slice((int)_highWater); // Slice the window from _highWater
                 // Zeroing from _highWater
-                Array.Clear(_window.ToArray(), 0, (int)init); // Clear without allocating an array - check howto
+                _window.Span.Slice((int)_highWater, (int)init).Clear(); // Slice the window from _highWater
                 _highWater += init;
             }
         }
@@ -288,7 +287,7 @@ internal class OutputWindow
     public void longestMatchInit(ManagedZLib.CompressionLevel level)
     {
         _actualWindowSize = 2L * (ulong)_windowSize;
-        ClearHash(); //TO-DO
+        ClearHash(_hashHead); //TO-DO
 
         switch (level)
         {
@@ -332,9 +331,10 @@ internal class OutputWindow
         _strHashIndex = 0;
     }
 
-    private void ClearHash()
+    private void ClearHash(Span<ushort> hash)
     {
-        throw new NotImplementedException();
+        hash[_hashSize - 1] = ManagedZLib.NIL;
+        hash.Slice(0, _hashSize - 1).Clear();
     }
 
     public uint LongestMatch(uint currHashHead) 
@@ -407,6 +407,7 @@ internal class OutputWindow
 
         // If inputBuffer length is less than sizeRequested, we copy inputBuffer length
         Span<byte> bytesToBeCopied = input._inputBuffer.Span.Slice((int)input._nextIn, (int)Length);
+        Debug.Assert(buffer.Length > 0, buffer.Length.ToString() + " VS bytesCopied: " + bytesToBeCopied.Length.ToString());
         bytesToBeCopied.CopyTo(buffer);
 
         if (input._wrap == 1) //ZLib header
@@ -439,14 +440,14 @@ internal class OutputWindow
         do
         {
             m = p[--n];
-            p[n] = (ushort)(m >= wsize ? m - wsize : NIL);
+            p[n] = (ushort)(m >= wsize ? m - wsize : ManagedZLib.NIL);
         } while (n > 0);
         n = (int)wsize;
         p = _prev!;
         do
         {
             m = p[--n];
-            p[n] = (ushort)(m >= wsize ? m - wsize : NIL);
+            p[n] = (ushort)(m >= wsize ? m - wsize : ManagedZLib.NIL);
             /* If n is not on any hash chain, prev[n] is garbage but
              * its value will never be used.
              */
