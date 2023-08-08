@@ -301,7 +301,6 @@ internal sealed class IHuffmanTree
                 } while (res < 0);
                 _symDict[index] = res;
             }
-            symbol = _symDict[index];
         }
 
         int codeLength = _codeLengthArray[symbol];
