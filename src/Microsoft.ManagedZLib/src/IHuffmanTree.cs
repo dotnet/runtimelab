@@ -288,7 +288,7 @@ internal sealed class IHuffmanTree
             uint index = bitBuffer & (uint)_tableMask;
             // If it's negative and it's not in the dictionary, 
             // process the symbol
-            if (!_symDict.ContainsKey(index))
+            if (!_symDict.TryGetValue(index, out symbol))
             {
                 do
                 {// Most expensive operation
