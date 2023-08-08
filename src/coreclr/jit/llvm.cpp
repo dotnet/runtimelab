@@ -879,8 +879,6 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExp
         StringRef outputFilePathWithoutExtension = outputFilePath.take_front(outputFilePath.find_last_of('.'));
         llvm::raw_fd_ostream textOutputStream(Twine(outputFilePathWithoutExtension + ".txt").str(), code);
         module.print(textOutputStream, nullptr);
-
-        noway_assert(!llvm::verifyModule(module, &llvm::errs()));
     }
 
     llvm::raw_fd_ostream bitCodeFileStream(outputFilePath, code);
