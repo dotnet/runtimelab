@@ -131,7 +131,7 @@ internal class OutputWindow
     {
         _windowSize = 1 << windowBits; //logaritmic base 2
         _windowMask = _windowSize - 1;
-        _window = new byte[_windowSize];
+        _window = new byte[_windowSize*2];
         _prev = new ushort[_windowSize];
 
         _hashBits = memLevel + 7;

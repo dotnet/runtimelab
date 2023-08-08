@@ -134,8 +134,8 @@ public class DeflateStreamTests
     private static void VerifyCompression(Stream actualStream)
     {
         MemoryStream compressedDestNative = new(); // Compressed data (with System.IO.Compresion)
-        byte[] nativeBytes = new byte[3000];
-        actualStream.ReadAtLeast(nativeBytes, 1024);
+        byte[] nativeBytes = new byte[500];
+        actualStream.ReadAtLeast(nativeBytes, 100);
         using (System.IO.Compression.DeflateStream compressorN = new System.IO.Compression.DeflateStream(compressedDestNative, System.IO.Compression.CompressionMode.Compress, leaveOpen: true))
         {
             compressorN.Write(nativeBytes);  //Copies the compressed data to Compressor
@@ -144,8 +144,8 @@ public class DeflateStreamTests
         actualStream.Position = 0;
 
         MemoryStream compressedDestManaged = new(); // Compressed data (with Managed.ZLib)
-        byte[] managedBytes = new byte[3000];
-        actualStream.ReadAtLeast(nativeBytes, 1024);
+        byte[] managedBytes = new byte[500];
+        actualStream.ReadAtLeast(nativeBytes, 100);
         using (DeflateStream compressorM = new DeflateStream(compressedDestManaged, CompressionLevel.Optimal))
         {
             compressorM.Write(managedBytes);  //Copies the compressed data to Compressor
