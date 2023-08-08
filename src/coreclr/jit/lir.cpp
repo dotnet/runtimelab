@@ -447,6 +447,24 @@ LIR::Range::Range(GenTree* firstNode, GenTree* lastNode) : ReadOnlyRange(firstNo
 }
 
 //------------------------------------------------------------------------
+// LIR::Range::FirstNonPhiNode: Returns the first node after all PHI-related nodes in this range.
+//
+GenTree* LIR::Range::FirstNonPhiNode() const
+{
+    for (GenTree* node : *this)
+    {
+        if (node->IsPhiNode())
+        {
+            continue;
+        }
+
+        return node;
+    }
+
+    return nullptr;
+}
+
+//------------------------------------------------------------------------
 // LIR::Range::FirstNonCatchArgNode: Returns the first node after all catch arg nodes in this range.
 //
 GenTree* LIR::Range::FirstNonCatchArgNode() const

@@ -258,6 +258,7 @@ public:
         Range();
         Range(Range&& other);
 
+        GenTree* FirstNonPhiNode() const;
         GenTree* FirstNonCatchArgNode() const;
 
         void InsertBefore(GenTree* insertionPoint, GenTree* node);

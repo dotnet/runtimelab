@@ -23,7 +23,6 @@ public:
     {
         SpillTempsLiveAcrossSafePoints();
         InitializeAndAllocateLocals();
-        DissolvePromotedLocals();
         LowerAndInsertProlog();
         RewriteShadowFrameReferences();
     }
@@ -161,7 +160,7 @@ private:
             assert(liveGcDefs.Count() == 0);
             LIR::Range& blockRange = LIR::AsRange(block);
 
-            for (GenTree* node : blockRange)
+            for (GenTree* node = blockRange.FirstNonPhiNode(); node != nullptr; node = node->gtNext)
             {
                 if (node->isContained())
                 {
@@ -253,28 +252,57 @@ private:
     {
         std::vector<unsigned> shadowFrameLocals;
 
+        // Initialize independently promoted parameter field locals.
+        //
+        for (unsigned lclNum = 0; lclNum < m_compiler->lvaCount; lclNum++)
+        {
+            LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
+            if (varDsc->lvPromoted)
+            {
+                assert(m_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT);
+                assert(varDsc->lvRefCnt() == 0);
+
+                if (varDsc->lvIsParam)
+                {
+                    for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
+                    {
+                        unsigned fieldLclNum = varDsc->lvFieldLclStart + index;
+                        LclVarDsc* fieldVarDsc = m_compiler->lvaGetDesc(fieldLclNum);
+                        if ((fieldVarDsc->lvRefCnt() != 0) &&
+                            (m_llvm->getInitKindForLocal(fieldLclNum) == ValueInitKind::Param))
+                        {
+                            GenTree* fieldValue =
+                                m_compiler->gtNewLclFldNode(lclNum, fieldVarDsc->TypeGet(), fieldVarDsc->lvFldOffset);
+                            GenTreeLclVar* store = InitializeLocalInProlog(fieldLclNum, fieldValue);
+
+                            // Update the SSA data for this now explicit definition.
+                            if (m_compiler->lvaInSsa(fieldLclNum))
+                            {
+                                store->SetSsaNum(SsaConfig::FIRST_SSA_NUM);
+
+                                LclSsaVarDsc* ssaDsc = fieldVarDsc->GetPerSsaData(store->GetSsaNum());
+                                assert(ssaDsc->GetDefNode() == nullptr);
+                                ssaDsc->SetDefNode(store);
+                            }
+
+                            // Notify codegen this local will need a home on the native stack.
+                            varDsc->setLvRefCnt(varDsc->lvRefCnt() + 1);
+                            fieldVarDsc->lvHasExplicitInit = true;
+                        }
+                    }
+                }
+            }
+        }
+
         for (unsigned lclNum = 0; lclNum < m_compiler->lvaCount; lclNum++)
         {
             LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
 
-            // We decouple promoted structs from their field locals: for independently promoted ones, we treat the fields
-            // as regular temporaries; parameters are initialized explicitly via "STORE_LCL_VAR<field>(LCL_FLD<parent>)".
-            // For dependently promoted cases, we have rewritten all fields to reference the parent instead.
-            if (varDsc->lvIsParam && (m_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT))
+            if (varDsc->lvPromoted)
             {
-                for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
-                {
-                    unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
-                    LclVarDsc* fieldVarDsc = m_compiler->lvaGetDesc(fieldLclNum);
-                    if (fieldVarDsc->lvRefCnt(RCS_NORMAL) != 0)
-                    {
-                        GenTree* fieldValue =
-                            m_compiler->gtNewLclFldNode(lclNum, fieldVarDsc->TypeGet(), fieldVarDsc->lvFldOffset);
-                        InitializeLocalInProlog(fieldLclNum, fieldValue);
-
-                        fieldVarDsc->lvHasExplicitInit = true;
-                    }
-                }
+                // As of the loop above, promoted locals are only live in the prolog. Simply dissolve them.
+                m_llvm->dissolvePromotedLocal(lclNum);
+                continue;
             }
 
             // We don't know if untracked locals are live-in/out of handlers and have to assume the worst.
@@ -289,47 +317,35 @@ private:
             //
             if (!m_llvm->isFuncletParameter(lclNum) && (varDsc->HasGCPtr() || varDsc->lvLiveInOutOfHndlr))
             {
-                if (m_compiler->lvaGetPromotionType(varDsc) == Compiler::PROMOTION_TYPE_INDEPENDENT)
-                {
-                    // The individual fields will be placed on the shadow stack.
-                    continue;
-                }
-                if (m_compiler->lvaIsFieldOfDependentlyPromotedStruct(varDsc))
-                {
-                    // The fields will be referenced through the parent.
-                    continue;
-                }
-
                 if (varDsc->lvRefCnt() == 0)
                 {
                     // No need to place unreferenced temps on the shadow stack.
                     continue;
                 }
 
-                // We may need to insert initialization:
-                //
-                //  1) Zero-init if this is a non-parameter GC local, to fullfill frontend's expectations.
-                //  2) Copy the initial value if this is a parameter with the home on the shadow stack.
-                //
-                // TODO-LLVM: in both cases we should avoid redundant initializations using liveness
-                // info (for tracked locals), sharing code with "initializeLocals" in codegen. However,
-                // that is currently not possible because late liveness runs after lowering.
-                //
-                if (!varDsc->lvHasExplicitInit)
+                GenTree* initValue;
+                ValueInitKind initValueKind = m_llvm->getInitKindForLocal(lclNum);
+                switch (initValueKind)
                 {
-                    if (varDsc->lvIsParam)
-                    {
-                        GenTree* initVal = m_compiler->gtNewLclvNode(lclNum, varDsc->TypeGet());
-                        initVal->SetRegNum(REG_LLVM);
+                    case ValueInitKind::None:
+                    case ValueInitKind::Uninit:
+                        initValue = nullptr;
+                        break;
+                    case ValueInitKind::Param:
+                        initValue = m_compiler->gtNewLclvNode(lclNum, varDsc->TypeGet());
+                        initValue->SetRegNum(REG_LLVM);
+                        break;
+                    case ValueInitKind::Zero:
+                        initValue = m_compiler->gtNewZeroConNode(
+                            (varDsc->TypeGet() == TYP_STRUCT) ? TYP_INT : genActualType(varDsc));
+                        break;
+                    default:
+                        unreached();
+                }
 
-                        InitializeLocalInProlog(lclNum, initVal);
-                    }
-                    else if (!m_compiler->fgVarNeedsExplicitZeroInit(lclNum, /* bbInALoop */ false, /* bbIsReturn */ false) ||
-                             varDsc->HasGCPtr())
-                    {
-                        var_types zeroType = (varDsc->TypeGet() == TYP_STRUCT) ? TYP_INT : genActualType(varDsc);
-                        InitializeLocalInProlog(lclNum, m_compiler->gtNewZeroConNode(zeroType));
-                    }
+                if (initValue != nullptr)
+                {
+                    InitializeLocalInProlog(lclNum, initValue);
                 }
 
                 shadowFrameLocals.push_back(lclNum);
@@ -358,30 +374,6 @@ private:
         AssignShadowFrameOffsets(shadowFrameLocals);
     }
 
-    void DissolvePromotedLocals()
-    {
-        // TODO-LLVM-LSSA: fold this into the main initialization loop.
-        for (unsigned lclNum = 0; lclNum < m_compiler->lvaCount; lclNum++)
-        {
-            LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
-            if (varDsc->lvPromoted)
-            {
-                for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
-                {
-                    LclVarDsc* fieldVarDsc = m_compiler->lvaGetDesc(varDsc->lvFieldLclStart + index);
-
-                    fieldVarDsc->lvIsStructField = false;
-                    fieldVarDsc->lvParentLcl = BAD_VAR_NUM;
-                    fieldVarDsc->lvIsParam = false;
-                }
-
-                varDsc->lvPromoted = false;
-                varDsc->lvFieldLclStart = BAD_VAR_NUM;
-                varDsc->lvFieldCnt = 0;
-            }
-        }
-    }
-
     void AssignShadowFrameOffsets(std::vector<unsigned>& shadowFrameLocals)
     {
         if (m_compiler->opts.OptimizationEnabled())
@@ -403,6 +395,7 @@ private:
 
             // We will use this as the indication that the local has a home on the shadow stack.
             varDsc->SetRegNum(REG_STK);
+            varDsc->lvInSsa = 0;
         };
 
 #ifndef TARGET_64BIT
@@ -448,22 +441,23 @@ private:
         GenTree* zeroILOffsetNode = new (m_compiler, GT_IL_OFFSET) GenTreeILOffset(zeroILOffsetDi);
         m_prologRange.InsertAtEnd(zeroILOffsetNode);
 
-        m_compiler->fgEnsureFirstBBisScratch();
+        assert(m_llvm->isFirstBlockCanonical());
         m_llvm->lowerRange(m_compiler->fgFirstBB, m_prologRange);
         LIR::AsRange(m_compiler->fgFirstBB).InsertAtBeginning(std::move(m_prologRange));
     }
 
-    void InitializeLocalInProlog(unsigned lclNum, GenTree* value)
+    GenTreeLclVar* InitializeLocalInProlog(unsigned lclNum, GenTree* value)
     {
         LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
         JITDUMP("Adding initialization for V%02u, %s:\n", lclNum, varDsc->lvReason);
 
-        GenTreeUnOp* store = m_compiler->gtNewStoreLclVarNode(lclNum, value);
+        GenTreeLclVar* store = m_compiler->gtNewStoreLclVarNode(lclNum, value);
 
         m_prologRange.InsertAtEnd(value);
         m_prologRange.InsertAtEnd(store);
 
         DISPTREERANGE(m_prologRange, store);
+        return store;
     }
 
     void RewriteShadowFrameReferences()
@@ -473,16 +467,20 @@ private:
             m_llvm->m_currentBlock = block;
             m_llvm->m_currentRange = &LIR::AsRange(block);
 
-            for (GenTree* node : m_llvm->CurrentRange())
+            GenTree* node = m_llvm->CurrentRange().FirstNode();
+            while (node != nullptr)
             {
-                if (node->OperIsAnyLocal())
+                if (node->OperIsAnyLocal() && !node->OperIs(GT_PHI_ARG))
                 {
-                    RewriteLocal(node->AsLclVarCommon());
+                    node = RewriteLocal(node->AsLclVarCommon());
+                    continue;
                 }
-                else if (node->IsCall())
+                if (node->IsCall())
                 {
                     RewriteCall(node->AsCall());
                 }
+
+                node = node->gtNext;
             }
 
             INDEBUG(m_llvm->CurrentRange().CheckLIR(m_compiler, /* checkUnusedValues */ true));
@@ -492,12 +490,17 @@ private:
         m_llvm->m_currentRange = nullptr;
     }
 
-    void RewriteLocal(GenTreeLclVarCommon* lclNode)
+    GenTree* RewriteLocal(GenTreeLclVarCommon* lclNode)
     {
         LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNode->GetLclNum());
 
         if (m_llvm->isShadowFrameLocal(varDsc) && (lclNode->GetRegNum() != REG_LLVM))
         {
+            if (lclNode->IsPhiDefn())
+            {
+                return RemovePhiDef(lclNode->AsLclVar());
+            }
+
             // Funclets (especially filters) will be called by the dispatcher while live state still exists
             // on shadow frames below (in the tradional sense, where stacks grow down) them. For this reason,
             // funclets will access state from the original frame via a dedicated shadow stack pointer, and
@@ -525,7 +528,7 @@ private:
                     // Local address nodes are directly replaced with the ADD.
                     m_llvm->CurrentRange().Remove(lclAddress);
                     lclNode->ReplaceWith(lclAddress, m_compiler);
-                    return;
+                    return lclNode->gtNext;
                 default:
                     unreached();
             }
@@ -546,11 +549,22 @@ private:
             }
         }
 
-        if (lclNode->OperIsLocalField() || lclNode->OperIs(GT_LCL_ADDR))
+        return lclNode->gtNext;
+    }
+
+    GenTree* RemovePhiDef(GenTreeLclVar* phiDefn)
+    {
+        assert(phiDefn->IsPhiDefn());
+        GenTreePhi* phi = phiDefn->Data()->AsPhi();
+        for (GenTreePhi::Use& use : phi->Uses())
         {
-            // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
-            varDsc->lvHasLocalAddr = 1;
+            m_llvm->CurrentRange().Remove(use.GetNode());
         }
+
+        GenTree* nextNode = phiDefn->gtNext;
+        m_llvm->CurrentRange().Remove(phi);
+        m_llvm->CurrentRange().Remove(phiDefn);
+        return nextNode;
     }
 
     void RewriteCall(GenTreeCall* call)
@@ -651,6 +665,7 @@ unsigned Llvm::getShadowFrameSize(unsigned hndIndex) const
 ValueInitKind Llvm::getInitKindForLocal(unsigned lclNum) const
 {
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+    assert(varDsc->lvRefCnt() != 0); // The caller is expected to check this.
 
     // Is the value live on entry?
     if (varDsc->lvHasExplicitInit)

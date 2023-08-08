@@ -362,6 +362,12 @@ private:
 
     bool isInvariantInRange(GenTree* node, GenTree* endExclusive);
 
+    void lowerDissolveDependentlyPromotedLocals();
+    void dissolvePromotedLocal(unsigned lclNum);
+
+    void lowerCanonicalizeFirstBlock();
+    bool isFirstBlockCanonical();
+
     // ================================================================================================================
     // |                                           Shadow stack allocation                                            |
     // ================================================================================================================
