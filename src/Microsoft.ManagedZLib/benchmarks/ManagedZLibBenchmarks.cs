@@ -2,6 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Diagnosers;
+using BenchmarkDotNet.Diagnostics.Windows.Configs;
 using BenchmarkDotNet.Running;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -13,6 +15,7 @@ namespace Microsoft.ManagedZLib.Benchmarks;
 // BenchmarkDotNet creates a type which derives from type with benchmarks. 
 // So the type with benchmarks must not be sealed and it can NOT BE STATIC 
 // and it has to BE PUBLIC. It also has to be a class (no structs support).
+[EtwProfiler(performExtraBenchmarksRun:true)]
 public class ManagedZLibBenchmark
 {
     public static IEnumerable<string> UncompressedTestFileNames()
