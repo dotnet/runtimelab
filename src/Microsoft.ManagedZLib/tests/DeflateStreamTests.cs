@@ -90,7 +90,7 @@ public class DeflateStreamTests
     public void verifyCompression()
     {
         using var streamN = new MemoryStream();
-        using var compressorN = new DeflateStream(streamN, CompressionMode.Compress, leaveOpen: true);
+        using var compressorN = new System.IO.Compression.DeflateStream(streamN, System.IO.Compression.CompressionMode.Compress, leaveOpen: true);
         compressorN.Write(s_messageBytes, 0, s_messageBytes.Length);
         Console.WriteLine($"The compressed stream (with NATIVE) length is {streamN.Length} bytes.");
         streamN.Position = 0;
