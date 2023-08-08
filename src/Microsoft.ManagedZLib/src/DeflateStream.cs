@@ -482,28 +482,17 @@ public partial class DeflateStream : Stream
             {
                 _stream = null!;
 
-                try
+                byte[]? buffer = _buffer;
+                if (buffer != null)
                 {
-                    _deflater?.Dispose();
-                    //_inflater?.Dispose(); - TBD
-                }
-                finally
-                {
-                    _deflater = null;
-                    _inflater = null;
-
-                    byte[]? buffer = _buffer;
-                    if (buffer != null)
+                    _buffer = null;
+                    if (!AsyncOperationIsActive)
                     {
-                        _buffer = null;
-                        if (!AsyncOperationIsActive)
-                        {
-                            ArrayPool<byte>.Shared.Return(buffer);
-                        }
+                        ArrayPool<byte>.Shared.Return(buffer);
                     }
-
-                    base.Dispose(disposing);
                 }
+
+                base.Dispose(disposing);
             }
         }
     }

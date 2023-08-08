@@ -284,9 +284,9 @@ internal class Deflater
 
         // Error checking:
         // Flush as much pending output as possible
-        if (_output._pendingBufferBytes != 0)
+        if (_output._pendingBufferBytes != 0) /////////////////////////////////////// PendingBufferBytes deberia ser 0 en la primera entrada
         {
-            FlushPending();
+            FlushPending(); // ---------------------( I need to erase this comment ) No deberia entrar aqui la primera corrida al menos
             if(_output._availableOutput == 0)
             {
                 /* Since avail_out is 0, deflate will be called again with
@@ -296,7 +296,7 @@ internal class Deflater
                  * return OK instead of BUF_ERROR at next call of deflate:
                  */
                 _output.lastFlush = ZFlushCode.GenOutput;
-                return 0; // OK
+                return 0; // OK ---------------------------------// Regresar actual cantidad de bytes
             }
         }
 
@@ -370,7 +370,11 @@ internal class Deflater
             }
         } // GZip: GZip header CRC
 
-        // --------- Most basic deflate operation starts here ---------
+        // --------- Most basic deflate operation starts here --------
+        // For regular DeflateStream scenarios (Raw Deflate) all of the above should be ignore
+        // and it should go from InitState to BusyState directly
+        // Leading to here, after the error checking
+
         // Start a new block or continue the current one.
         if (_input.AvailableBytes != 0 || _output._lookahead != 0 ||
             (flushCode != ZFlushCode.NoFlush && _status != ZState.FinishState))

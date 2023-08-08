@@ -209,6 +209,7 @@ internal class OutputWindow
             }
 
             if (inputBuffer.AvailableBytes == 0) break;
+
             // This return number of bytes read
             bytes = ReadBuffer(inputBuffer, _window.Slice((int)_strStart,(int)_lookahead).Span, (uint)availSpaceEnd);
             _lookahead += (uint)bytes;
@@ -407,17 +408,19 @@ internal class OutputWindow
 
         // If inputBuffer length is less than sizeRequested, we copy inputBuffer length
         Span<byte> bytesToBeCopied = input._inputBuffer.Span.Slice((int)input._nextIn, (int)Length);
-        Debug.Assert(buffer.Length > 0, buffer.Length.ToString() + " VS bytesCopied: " + bytesToBeCopied.Length.ToString());
         bytesToBeCopied.CopyTo(buffer);
 
-        if (input._wrap == 1) //ZLib header
-        {
-            Adler32(buffer, Length);
-        }
-        else if (input._wrap == 2) // Gzip header
-        {
-            CRC32(buffer, Length);
-        }
+        Debug.Assert(buffer.Length > 0, buffer.Length.ToString() + " VS bytesCopied: " + bytesToBeCopied.Length.ToString());
+        // I'm commenting this because is going to throw the notImplemented exception
+        // This is for skecthing later additions of GZip and ZLib
+        //if (input._wrap == 1) //ZLib header
+        //{
+        //    Adler32(buffer, Length);
+        //}
+        //else if (input._wrap == 2) // Gzip header
+        //{
+        //    CRC32(buffer, Length);
+        //}
 
         input._nextIn += Length; //Moving index forward for future block copies
         input._totalInput += Length;
