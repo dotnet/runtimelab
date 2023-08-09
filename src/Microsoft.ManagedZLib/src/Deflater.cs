@@ -29,7 +29,6 @@ internal class Deflater
 
     private bool _isDisposed;
 
-    bool _flushDone = false;
     private const int MinWindowBits = -15;  // WindowBits must be between -8..-15 to write no header, 8..15 for a
     private const int MaxWindowBits = 31;   // zlib header, or 24..31 for a GZip header
     private int _windowBits;
@@ -44,7 +43,6 @@ internal class Deflater
     private readonly DeflateTrees _trees;
     public bool NeedsInput() => _input.NeedsInput();
     public bool HasSymNext() => _trees._symIndex !=0;
-    public bool BlockDone() => _flushDone == true;
     public int MaxDistance() => _output._windowSize - MinLookahead;
 
     // Note, DeflateStream or the deflater do not try to be thread safe.
@@ -57,8 +55,6 @@ internal class Deflater
     // This compLevel parameter is just the version user friendly
     internal Deflater(CompressionLevel compressionLevel, int windowBits)
     {
-        _compressionLevel = compressionLevel;
-        _wrap = 0;
         ManagedZLib.CompressionLevel zlibCompressionLevel; // This is the one actually used in all the processings
         int memLevel;
         _input = new InputBuffer();
@@ -87,14 +83,20 @@ internal class Deflater
             default:
                 throw new ArgumentOutOfRangeException(nameof(compressionLevel));
         }
-        _windowBits = DeflateInit(windowBits); //Checking format of compression> Raw, Gzip or ZLib 
-                                               // For Window and wrap flag initial configuration
+        _wrap = 0;
+        _compressionLevel = compressionLevel;
+        //Checking format of compression> Raw, Gzip or ZLib 
+        // For Window and wrap flag initial configuration
+        _windowBits = DeflateInit(windowBits);
         _output = new OutputWindow(_windowBits,memLevel, zlibCompressionLevel); //Setting window size and mask
         _output._method = (int)ManagedZLib.CompressionMethod.Deflated; //Deflated - only option
         _litBufferSize = 1U << (memLevel + 6); //16K by default
         _trees = new DeflateTrees(_output._pendingBuffer.Slice((int)_litBufferSize),_litBufferSize);
         _status = ZState.InitState;
-        _output._level = memLevel; // Compression level (1..9)
+        // Optimal is DefaultCompression which translates to level 6 in the configuration table
+        // used for the algorithm that goes from 0 to 9.
+        // The rest matches the int value in the enum.
+        _output._level = (zlibCompressionLevel == ManagedZLib.CompressionLevel.DefaultCompression)? 6 : (int)zlibCompressionLevel;
         _output._strategy = (int)ManagedZLib.CompressionStrategy.DefaultStrategy; // Just the default
         // Setting variables for doing the matches
         DeflateReset();
@@ -132,7 +134,7 @@ internal class Deflater
         //Set everything up + error checking if needed - Might merge with DeflateInit later.
     }
     // DeflateReset(): Sets some initial values.
-    // Methos to be reviewed/re-valuated in refactoring stage**
+    // ATTENTION: This method to be reviewed/re-valuated in refactoring stage**
     // I moved some initializations to DeflateTrees and OutputWindow constructors
     // I'd need to put them back if this is going to be called else where again, 
     // besides just in Deflaters constructor. 
@@ -200,13 +202,14 @@ internal class Deflater
     {
         Debug.Assert(null != outputBuffer, "Can't pass in a null output buffer!");
         Debug.Assert(!NeedsInput(), "GetDeflateOutput should only be called after providing input");
-
-        int bytesRead = ReadDeflateOutput(outputBuffer, ZFlushCode.NoFlush);
+        Memory<byte> temp = outputBuffer;
+        int bytesRead = ReadDeflateOutput(temp, ZFlushCode.NoFlush);
         return bytesRead;
 
     }
 
-    public int ReadDeflateOutput(Span<byte> outputBuffer, ZFlushCode flushCode)
+    public int ReadDeflateOutput(Memory<byte> outputBuffer, ZFlushCode flushCode) // It threw an error when doing the conversion from byte[] to Span<byte>
+                                                                                  // So I'll change to Memory<byte>
     {
         Debug.Assert(outputBuffer.Length > 0); // This used to be nullable - Check behavior later
 
@@ -226,7 +229,7 @@ internal class Deflater
         //bytesRead = outputBuffer.Length - _output.AvailableBytes;
         lock (SyncLock)
         {
-            _output.Buffer = outputBuffer.ToArray(); //Find a way to not having to allocate this
+            _output.Buffer = outputBuffer; //Find a way to not having to allocate this
             _output._availableOutput = outputBuffer.Length;
             _output._nextOut = 0;
 
@@ -301,7 +304,11 @@ internal class Deflater
         }
 
         // User must not provide more input after the first FINISH:
-        Debug.Assert(_input.AvailableBytes != 0 && flushCode == ZFlushCode.Finish);
+        if (_input.AvailableBytes == 0)
+        {
+            Debug.Assert(flushCode != ZFlushCode.Finish);
+        }
+        //Debug.Assert(flushCode != ZFlushCode.Finish || _input.AvailableBytes != 0);
 
         //Write the header
         if (_status == ZState.InitState && _wrap == 0)

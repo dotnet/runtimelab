@@ -211,7 +211,7 @@ internal class OutputWindow
             if (inputBuffer.AvailableBytes == 0) break;
 
             // This return number of bytes read
-            bytes = ReadBuffer(inputBuffer, _window.Slice((int)_strStart,(int)_lookahead).Span, (uint)availSpaceEnd);
+            bytes = ReadBuffer(inputBuffer, _window.Slice((int)(_strStart+_lookahead)).Span, (uint)availSpaceEnd);
             _lookahead += (uint)bytes;
 
             /* Initialize the hash value now that we have some input: */
@@ -219,9 +219,11 @@ internal class OutputWindow
             {
                 uint str = _strStart - _insert;
                 _strHashIndex = _window.Span[(int)str];
-                UpdateHash(_window.Span[(int)str + 1]);
+                var value = _window.Span[(int)str + 1];
+                UpdateHash(value);
                 while (_insert != 0)
                 {
+                    value = _window.Span[(int)str + MinMatch - 1];
                     UpdateHash(_window.Span[(int)str + MinMatch - 1]);
                     _prev![str & _windowMask] = _hashHead![_strHashIndex];
                     _hashHead[_strHashIndex] = (ushort)str;
