@@ -41,13 +41,13 @@ internal class DeflateTrees
     public const int Unknown = 2;
 
     //To build Huffman tree (dynamic trees)
-    CtData[] _dynLitLenTree   = new CtData[HeapSize];                 // literal and length tree
-    CtData[] _dynDistanceTree = new CtData[2 * DistanceCodes + 1];    // distance tree
-    CtData[] _codesTree       = new CtData[2 * BitLengthsCodes + 1];  // Huffman tree for bit lengths
+    CtData[] _dynLitLenTree;   // literal and length tree
+    CtData[] _dynDistanceTree; // distance tree
+    CtData[] _codesTree;       // Huffman tree for bit lengths
 
-    TreeDesc? _literalDesc;              // Description for literal tree\\
-    TreeDesc? _distanceDesc;           // Description for distance tree \\
-    TreeDesc? _codeDesc; // Description for bit length tree \\
+    TreeDesc? _literalDesc;        // Description for literal tree\\
+    TreeDesc? _distanceDesc;      // Description for distance tree \\
+    TreeDesc? _codeDesc;         // Description for bit length tree \\
 
     // Number of codes at each bit length for an optimal tree
     public Memory <ushort> _codeCount = new ushort[MaxBits + 1];
@@ -104,12 +104,37 @@ internal class DeflateTrees
         // on 16 bit machines and because stored blocks are restricted to 64K-1 bytes.
         _symEnd = (litBufferSize - 1) * 3;
 
+        _dynLitLenTree = new CtData[HeapSize];
+        _dynDistanceTree = new CtData[2 * DistanceCodes + 1];
+        _codesTree = new CtData[2 * BitLengthsCodes + 1];
+
+        int n; /* iterates over tree elements */
+
+        /* Initialize the trees. */
+        for (n = 0; n < _dynLitLenTree.Length; n++) 
+        { 
+            _dynLitLenTree[n] = new CtData() { Freq = 0, Len = 0 }; 
+        }
+        for (n = 0; n < _dynDistanceTree.Length; n++)
+        {
+            _dynDistanceTree[n] = new CtData() { Freq = 0, Len = 0 };
+        }
+            
+        for (n = 0; n < _codesTree.Length; n++)
+        {
+            _codesTree[n] = new CtData() { Freq = 0, Len = 0 };
+        }
+
         _literalDesc = new TreeDesc(_dynLitLenTree, StaticLengthDesc);
         _distanceDesc = new TreeDesc(_dynDistanceTree, StaticDistanceDesc);
         _codeDesc = new TreeDesc(_codesTree, StaticCodeDesc);
-
+        
         _bitBuffer = 0;
         _bitsValid = 0;
+
+        _dynLitLenTree[EndOfBlock].Freq = 1;
+        _optLength = _staticLen = 0L;
+        _symIndex = _matchesInBlock = 0;
     }
 
     // Output a byte on the stream.
@@ -530,7 +555,8 @@ internal class DeflateTrees
             }
             else
             {
-                Tree[n].Len = 0;
+                Tree[n].Len = 0; // I already set this to 0 in the ctor
+                                 // Check if it's really necessary. (Like for reseting the value or something)
             }
         }
         /* The pkzip format requires that at least one distance code exists,

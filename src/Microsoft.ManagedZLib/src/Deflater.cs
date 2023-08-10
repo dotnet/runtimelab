@@ -730,7 +730,7 @@ internal class Deflater
 
             hashHead = NIL; //hash head starts with tail's value - empty hash
             if (_output._lookahead >= MinMatch) {
-                hashHead = _output.InsertString((int)_output._strStart);
+                hashHead = _output.InsertString();
             }
 
             //Find the longest match, discarding those <= prev_length.
@@ -758,7 +758,7 @@ internal class Deflater
                         _output._strStart++;
                         // _strStart never exceeds _windowSize-MaxMatch, so there
                         // are always MinMatch bytes ahead.
-                        hashHead = _output.InsertString((int)_output._strStart);
+                        hashHead = _output.InsertString();
                     }
                     while (--_output._matchLength != 0);
                     _output._strStart++;
@@ -767,7 +767,11 @@ internal class Deflater
                 {
                     _output._strStart += _output._matchLength;
                     _output._matchLength = 0;
+
+                    Debug.Assert(((int)_output._strStart) > 0); // Checking overflow due to the casting
                     _output._strHashIndex = _output.Window((int)_output._strStart);
+
+                    Debug.Assert(((int)_output._strStart+1) > 0);
                     _output.UpdateHash(_output.Window((int)_output._strStart+1));
                 }
             }
@@ -821,7 +825,7 @@ internal class Deflater
              * for the next match, plus MIN_MATCH bytes to insert the
              * string following the next match.
              */
-            if (_output._lookahead < MinMatch)
+            if (_output._lookahead < MinLookahead)
             {
                 _output.FillWindow(_input); // ------------------------------------------------------------------Pending to implement
                 if (_output._lookahead < MinLookahead && flushCode == ZFlushCode.NoFlush)
@@ -834,7 +838,7 @@ internal class Deflater
             hashHead = NIL; //hash head starts with tail's value - empty hash
             if (_output._lookahead >= MinMatch)
             {
-                hashHead = _output.InsertString((int)_output._strStart);
+                hashHead = _output.InsertString();
             }
 
             // Find the longest match, discarding those <= prev_length.
@@ -874,11 +878,13 @@ internal class Deflater
                     if (++_output._strStart <= maxInsert)
                     {
                         //We just care about inserting in hash - Mot retreiving hashHead
-                        _output.InsertString((int)_output._strStart);
+                        _output.InsertString();
                     }
                 }
-                while (--_output._prevLength != 0);
-                _output._matchAvailable = false;
+                while (--_output._prevLength != 0); //resetting prev length
+                // This must have been resetted
+                Debug.Assert(_output._prevLength == 0);
+                _output._matchAvailable = false; // Resetting matchAvail flag
                 _output._matchLength = MinMatch - 1;
                 _output._strStart++;
                 if (blockFlush)

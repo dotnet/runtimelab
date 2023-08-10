@@ -66,10 +66,10 @@ internal class OutputWindow
                         // anywhere else but in init for error checking.
                         // Putting it just it case, might delete later.
 
-    public int _strHashIndex;  // hash index of string to be inserted 
-    public int _hashSize;      // number of elements in hash table 
-    public int _hashBits;      // log2(hash_size)
-    public int _hashMask;      // hash_size-1
+    public uint _strHashIndex;  // hash index of string to be inserted 
+    public uint _hashSize;      // number of elements in hash table 
+    public uint _hashBits;      // log2(hash_size)
+    public uint _hashMask;      // hash_size-1
     // Heads of the hash chains or NIL.
     ushort[]? _hashHead; // The window is 2^n bytes where n is number of bits
     ushort[]? _prev; // The window is 2^n bytes where n is number of bits
@@ -78,7 +78,7 @@ internal class OutputWindow
     //step. It must be such that after MIN_MATCH steps, the oldest
     //byte no longer takes part in the hash key, that is:
     //hash_shift * MIN_MATCH >= hash_bits
-    public int _hashShift;
+    public uint _hashShift;
 
     // Minimum amount of lookahead, except at the end of the
     // input file, then MIN_MATCH+1.
@@ -92,7 +92,7 @@ internal class OutputWindow
                              //are discarded.This is used in the lazy match evaluation.
 
     public int _niceMatch;  // Stop searching when current match exceeds this 
-    public int _goodMatch;
+    public uint _goodMatch;
     public ulong _highWater;
 
     public Memory<byte> _pendingBuffer; //Output still pending
@@ -134,8 +134,8 @@ internal class OutputWindow
         _window = new byte[_windowSize*2];
         _prev = new ushort[_windowSize];
 
-        _hashBits = memLevel + 7;
-        _hashSize = 1 << _hashBits;
+        _hashBits = (uint)memLevel + 7;
+        _hashSize = (uint)(1 << (int)_hashBits);
         _hashMask = _hashSize - 1;
         _strHashIndex = 0;
         // MinMatch = 3 , MaxMatch = 258 for Lengths
@@ -154,7 +154,7 @@ internal class OutputWindow
     //Update a hash value with the given input byte
     public void UpdateHash(byte inputByte)
     {
-        _strHashIndex = ((_strHashIndex << _hashShift) ^ inputByte) & _hashMask;
+        _strHashIndex = ((_strHashIndex << (int)_hashShift) ^ inputByte) & _hashMask;
     }
 
     //Insert string str in the dictionary and set match_head to the previous head
@@ -165,14 +165,19 @@ internal class OutputWindow
     //IN  assertion: all calls to INSERT_STRING are made with consecutive input
     //characters and the first MIN_MATCH bytes of str are valid (except for
     //the last MIN_MATCH-1 bytes of the input file).
-    public ushort InsertString(int strStart)
+    public ushort InsertString()
     {
         ushort match_head;
         Debug.Assert(_hashHead != null);
         Debug.Assert(_prev != null);
-        UpdateHash(_window.Span[strStart + (MinMatch - 1)]);
-        match_head = _prev[strStart & _windowMask] = _hashHead[_strHashIndex];
-        _hashHead[_strHashIndex] = (ushort)strStart;
+        Debug.Assert((int)_strStart > 0); // Checking after casting it to int,
+                                          // it doesn't overflow to negative
+                                          // If so, we might need to chnge the type or
+                                          // re-think hashing function taking that
+                                          // possible overflow into account
+        UpdateHash(_window.Span[(int)_strStart + (MinMatch - 1)]);
+        match_head = _prev[_strStart & _windowMask] = _hashHead[_strHashIndex];
+        _hashHead[_strHashIndex] = (ushort)_strStart;
         return match_head;
     }   
 
@@ -194,9 +199,8 @@ internal class OutputWindow
             */
             if (_strStart >= wsize + MaxDistance())
             {
-                var upperHalf = _window.Slice(wsize); // Creo que en un init se duplica el tamanio de la ventana
-                                                              // Checar inicializacion
-                                                              // Creo que WindowSize debe tener el tamanio solo de una mitad 32K
+                var upperHalf = _window.Slice(wsize);
+
                 var from = _window.Slice(wsize, (int)wsize - availSpaceEnd);
                 from.CopyTo(upperHalf);
                 _matchStart -= (uint)wsize;
@@ -336,8 +340,11 @@ internal class OutputWindow
 
     private void ClearHash(Span<ushort> hash)
     {
-        hash[_hashSize - 1] = ManagedZLib.NIL;
-        hash.Slice(0, _hashSize - 1).Clear();
+        hash.Clear();
+        Debug.Assert(((int)_hashSize - 1) > 0); // Checking if it's still a positive number
+                                                // or if overflowed to negatives
+        hash[(int)_hashSize - 1] = ManagedZLib.NIL;
+
     }
 
     public uint LongestMatch(uint currHashHead) 
@@ -410,7 +417,8 @@ internal class OutputWindow
 
         // If inputBuffer length is less than sizeRequested, we copy inputBuffer length
         Span<byte> bytesToBeCopied = input._inputBuffer.Span.Slice((int)input._nextIn, (int)Length);
-        bytesToBeCopied.CopyTo(buffer);
+        if (bytesToBeCopied.Length != 0)
+            bytesToBeCopied.CopyTo(buffer);
 
         Debug.Assert(buffer.Length > 0, buffer.Length.ToString() + " VS bytesCopied: " + bytesToBeCopied.Length.ToString());
         // I'm commenting this because is going to throw the notImplemented exception
@@ -437,7 +445,7 @@ internal class OutputWindow
      */
     public void SlideHash()
     {
-        int n, m;
+        uint n, m;
         uint wsize = (uint)WindowSize();
         n = _hashSize;
         ushort[] p = new ushort[n];
@@ -447,7 +455,7 @@ internal class OutputWindow
             m = p[--n];
             p[n] = (ushort)(m >= wsize ? m - wsize : ManagedZLib.NIL);
         } while (n > 0);
-        n = (int)wsize;
+        n = wsize;
         p = _prev!;
         do
         {
