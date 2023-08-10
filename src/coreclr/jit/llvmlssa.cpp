@@ -352,21 +352,6 @@ private:
             }
         }
 
-        if ((shadowFrameLocals.size() == 0) && m_llvm->m_lclHeapUsed && m_llvm->doUseDynamicStackForLclHeap())
-        {
-            // The dynamic stack is tied to the shadow one. If we have an empty shadow frame with a non-empty dynamic
-            // one, an ambiguity in what state must be released on return arises - our caller might have an empty shadow
-            // frame as well, but of course we don't want to release its dynamic state accidentally. To solve this, pad
-            // out the shadow frame in methods that use the dynamic stack if it is empty. The need to do this should be
-            // pretty rare so it is ok to waste a shadow stack slot here.
-            unsigned padLclNum =
-                m_compiler->lvaGrabTempWithImplicitUse(true DEBUGARG("SS padding for the dynamic stack"));
-            m_compiler->lvaGetDesc(padLclNum)->lvType = TYP_REF;
-            InitializeLocalInProlog(padLclNum, m_compiler->gtNewIconNode(0, TYP_REF));
-
-            shadowFrameLocals.push_back(padLclNum);
-        }
-
         AssignShadowFrameOffsets(shadowFrameLocals);
     }
 
@@ -667,9 +652,7 @@ void Llvm::Allocate()
 //    the value by which the shadow stack pointer must be offset before
 //    calling managed code such that the caller will not clobber anything
 //    live on the frame. Note that funclets do not have any shadow state
-//    of their own and use the "original" frame from the parent function,
-//    with one exception: catch handlers and filters have one readonly
-//    pointer-sized argument representing the exception.
+//    of their own and use the "original" frame from the parent function.
 //
 unsigned Llvm::getShadowFrameSize(unsigned hndIndex) const
 {
@@ -677,11 +660,6 @@ unsigned Llvm::getShadowFrameSize(unsigned hndIndex) const
     {
         assert((_shadowStackLocalsSize % TARGET_POINTER_SIZE) == 0);
         return _shadowStackLocalsSize;
-    }
-    if (_compiler->ehGetDsc(hndIndex)->HasCatchHandler())
-    {
-        // For the implicit (readonly) exception object argument.
-        return TARGET_POINTER_SIZE;
     }
 
     return 0;
@@ -776,14 +754,4 @@ bool Llvm::isShadowStackLocal(unsigned lclNum) const
 bool Llvm::isFuncletParameter(unsigned lclNum) const
 {
     return isShadowStackLocal(lclNum);
-}
-
-bool Llvm::doUseDynamicStackForLclHeap() const
-{
-    // TODO-LLVM: add a stress mode.
-    assert(m_lclHeapUsed);
-
-    // We assume LCLHEAPs in methods with EH escape into handlers and so
-    // have to use a special EH-aware allocator instead of the native stack.
-    return _compiler->ehAnyFunclets() || JitConfig.JitUseDynamicStackForLclHeap();
 }

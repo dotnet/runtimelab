@@ -244,10 +244,6 @@ void Llvm::lowerNode(GenTree* node)
             lowerCall(node->AsCall());
             break;
 
-        case GT_CATCH_ARG:
-            lowerCatchArg(node);
-            break;
-
         case GT_IND:
         case GT_BLK:
         case GT_NULLCHECK:
@@ -272,10 +268,6 @@ void Llvm::lowerNode(GenTree* node)
 
         case GT_RETURN:
             lowerReturn(node->AsUnOp());
-            break;
-
-        case GT_LCLHEAP:
-            lowerLclHeap(node->AsUnOp());
             break;
 
         default:
@@ -450,29 +442,68 @@ void Llvm::lowerRethrow(GenTreeCall* callNode)
 
     // Language in ECMA 335 I.12.4.2.8.2.2 clearly states that rethrows nested inside finallys are
     // legal, however, neither C# nor the old verification system allow this. CoreCLR behavior was
-    // not tested. Implementing this would imply saving the exception object to the "original" shadow
-    // frame shared between funclets. For now we punt.
-    if (!_compiler->ehGetDsc(CurrentBlock()->getHndIndex())->HasCatchHandler())
+    // not tested. Implementing this is possible, but for now we punt.
+    EHblkDsc* ehDsc = _compiler->ehGetDsc(CurrentBlock()->getHndIndex());
+    if (!ehDsc->HasCatchHandler())
     {
         IMPL_LIMITATION("Nested rethrow");
     }
 
     // A rethrow is a special throw that preserves the stack trace. Our helper we use for rethrow has
-    // the equivalent of a managed signature "void (object*)", i. e. takes the exception object address
+    // the equivalent of a managed signature "void (object)", i. e. takes the caught exception object
     // explicitly. Add it here, before the general call lowering.
     assert(callNode->gtArgs.IsEmpty());
 
-    GenTree* excObjAddr = insertShadowStackAddr(callNode, getCatchArgOffset(), _shadowStackLclNum);
-    callNode->gtArgs.PushFront(_compiler, NewCallArg::Primitive(excObjAddr, CORINFO_TYPE_PTR));
-}
+    // By IR invariants, CATCH_ARG must either be the first node in a handler, or not present at all.
+    BasicBlock* catchArgBlock = ehDsc->ebdHndBeg;
+    LIR::Range& catchArgRange = LIR::AsRange(catchArgBlock);
+    GenTree* nonPhiNode = catchArgRange.FirstNonPhiNode();
+    GenTree* catchArgNode;
+    if ((nonPhiNode == nullptr) || !nonPhiNode->OperIs(GT_CATCH_ARG))
+    {
+#ifdef DEBUG
+        for (GenTree* node : catchArgRange)
+        {
+            assert(!node->OperIs(GT_CATCH_ARG));
+        }
+#endif // DEBUG
 
-void Llvm::lowerCatchArg(GenTree* catchArgNode)
-{
-    GenTree* excObjAddr = insertShadowStackAddr(catchArgNode, getCatchArgOffset(), _shadowStackLclNum);
+        catchArgNode = new (_compiler, GT_CATCH_ARG) GenTree(GT_CATCH_ARG, TYP_REF);
+        catchArgNode->gtFlags |= GTF_ORDER_SIDEEFF;
+        catchArgNode->SetUnusedValue();
+        catchArgRange.InsertBefore(nonPhiNode, catchArgNode);
+    }
+    else
+    {
+        catchArgNode = nonPhiNode;
+    }
 
-    catchArgNode->ChangeOper(GT_IND);
-    catchArgNode->gtFlags |= GTF_IND_NONFAULTING;
-    catchArgNode->AsIndir()->SetAddr(excObjAddr);
+    LIR::Use use;
+    GenTree* excObj;
+    bool isUsedAlready = catchArgRange.TryGetUse(catchArgNode, &use);
+    if (!isUsedAlready && (catchArgBlock == CurrentBlock()))
+    {
+        excObj = catchArgNode;
+    }
+    else
+    {
+        unsigned catchArgLclNum = _compiler->lvaGrabTemp(true DEBUGARG("exception object for rethrow"));
+        if (isUsedAlready)
+        {
+            use.ReplaceWithLclVar(_compiler, catchArgLclNum);
+        }
+        else
+        {
+            GenTree* store = _compiler->gtNewTempStore(catchArgLclNum, catchArgNode);
+            catchArgRange.InsertAfter(catchArgNode, store);
+        }
+
+        excObj = _compiler->gtNewLclVarNode(catchArgLclNum);
+        CurrentRange().InsertBefore(callNode, excObj);
+    }
+
+    catchArgNode->ClearUnusedValue();
+    callNode->gtArgs.PushFront(_compiler, NewCallArg::Primitive(excObj, CORINFO_TYPE_CLASS));
 }
 
 void Llvm::lowerIndir(GenTreeIndir* indirNode)
@@ -559,12 +590,6 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
             lclVarNode->AsLclFld()->SetLayout(layout);
         }
     }
-}
-
-void Llvm::lowerLclHeap(GenTreeUnOp* lclHeapNode)
-{
-    // TODO-LLVM: lower to the dynamic stack helper here.
-    m_lclHeapUsed = true;
 }
 
 void Llvm::lowerVirtualStubCall(GenTreeCall* callNode)
@@ -1066,7 +1091,7 @@ GenTree* Llvm::insertShadowStackAddr(GenTree* insertBefore, unsigned offset, uns
     }
 
     // Using an address mode node here explicitizes our assumption that the shadow stack does not overflow.
-    assert((offset <= getShadowFrameSize(EHblkDsc::NO_ENCLOSING_INDEX)) || (offset == TARGET_POINTER_SIZE));
+    assert(offset <= getShadowFrameSize(EHblkDsc::NO_ENCLOSING_INDEX));
     GenTree* addrModeNode = createAddrModeNode(shadowStackLcl, offset);
     CurrentRange().InsertBefore(insertBefore, addrModeNode);
 
@@ -1090,11 +1115,6 @@ GenTreeAddrMode* Llvm::createAddrModeNode(GenTree* base, unsigned offset)
 {
     return new (_compiler, GT_LEA)
         GenTreeAddrMode(varTypeIsGC(base) ? TYP_BYREF : TYP_I_IMPL, base, nullptr, 0, offset);
-}
-
-unsigned Llvm::getCatchArgOffset() const
-{
-    return 0;
 }
 
 //------------------------------------------------------------------------

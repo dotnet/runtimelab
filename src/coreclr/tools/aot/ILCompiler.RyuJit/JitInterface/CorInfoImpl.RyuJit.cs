@@ -765,26 +765,17 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP:
                     mangledName = "RhpSetShadowStackTop";
                     break;
-                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING:
-                    mangledName = "RhpDispatchHandleExceptionWasmMutuallyProtectingCatches";
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_CATCH:
+                    mangledName = "RhpHandleExceptionWasmCatch";
                     break;
-                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH:
-                    mangledName = "RhpDispatchHandleExceptionWasmCatch";
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_CATCH_POP_UNWOUND_VIRTUAL_FRAMES:
+                    mangledName = "RhpHandleExceptionWasmCatchAndPopUnwoundVirtualFrames";
                     break;
-                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER:
-                    mangledName = "RhpDispatchHandleExceptionWasmFilteredCatch";
-                    break;
-                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT:
-                    mangledName = "RhpDispatchHandleExceptionWasmFault";
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES:
+                    mangledName = "RhpPopUnwoundVirtualFrames";
                     break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION:
                     mangledName = "RhpHandleUnhandledException";
-                    break;
-                case CorInfoHelpFunc.CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC:
-                    mangledName = "RhpDynamicStackAlloc";
-                    break;
-                case CorInfoHelpFunc.CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE:
-                    mangledName = "RhpDynamicStackRelease";
                     break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET:
                     mangledName = "RhpResolveInterfaceDispatch";

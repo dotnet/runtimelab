@@ -108,7 +108,6 @@ enum HelperFuncInfoFlags
     HFIF_SS_ARG = 1, // The helper has shadow stack arg.
     HFIF_VAR_ARG = 1 << 1, // The helper has a variable number of args and must be treated specially.
     HFIF_NO_RPI_OR_GC = 1 << 2, // The helper will not call (back) into managed code or trigger GC.
-    HFIF_NO_SS_SAVE = 1 << 3, // This a special helper that does not need shadow stack save.
 };
 
 struct HelperFuncInfo
@@ -217,10 +216,9 @@ private:
     JitHashTable<SSAName, SSAName, Value*> _localsMap;
     std::vector<PhiPair> _phiPairs;
     std::vector<FunctionInfo> m_functions;
-    std::vector<llvm::BasicBlock*> m_EHDispatchLlvmBlocks;
+    std::vector<llvm::BasicBlock*> m_EHUnwindLlvmBlocks;
 
     Value* m_rootFunctionShadowStackValue = nullptr;
-    bool m_lclHeapUsed = false; // Same as "compLocallocUsed", but calculated in lowering.
 
     // Codegen emit context.
     unsigned m_currentLlvmFunctionIndex = ROOT_FUNC_IDX;
@@ -349,13 +347,11 @@ private:
     void lowerFieldOfDependentlyPromotedStruct(GenTree* node);
     void lowerCall(GenTreeCall* callNode);
     void lowerRethrow(GenTreeCall* callNode);
-    void lowerCatchArg(GenTree* catchArgNode);
     void lowerIndir(GenTreeIndir* indirNode);
     void lowerStoreBlk(GenTreeBlk* storeBlkNode);
     void lowerStoreDynBlk(GenTreeStoreDynBlk* storeDynBlkNode);
     void lowerDivMod(GenTreeOp* divModNode);
     void lowerReturn(GenTreeUnOp* retNode);
-    void lowerLclHeap(GenTreeUnOp* lclHeapNode);
 
     void lowerVirtualStubCall(GenTreeCall* callNode);
     void insertNullCheckForCall(GenTreeCall* callNode);
@@ -373,8 +369,6 @@ private:
     unsigned representAsLclVar(LIR::Use& use);
     GenTree* insertShadowStackAddr(GenTree* insertBefore, unsigned offset, unsigned shadowStackLclNum);
     GenTreeAddrMode* createAddrModeNode(GenTree* base, unsigned offset);
-
-    unsigned getCatchArgOffset() const;
 
     bool isInvariantInRange(GenTree* node, GenTree* endExclusive);
 
@@ -417,8 +411,6 @@ private:
     bool isShadowStackLocal(unsigned lclNum) const;
     bool isFuncletParameter(unsigned lclNum) const;
 
-    bool doUseDynamicStackForLclHeap() const;
-
     // ================================================================================================================
     // |                                                   Codegen                                                    |
     // ================================================================================================================
@@ -436,7 +428,6 @@ private:
     void generateBlocks();
     void generateBlock(BasicBlock* block);
     void generateEHDispatch();
-    Value* generateEHDispatchTable(Function* llvmFunc, unsigned innerEHIndex, unsigned outerEHIndex);
     void fillPhis();
     void generateAuxiliaryArtifacts();
 
@@ -473,6 +464,7 @@ private:
     void buildShift(GenTreeOp* node);
     void buildIntrinsic(GenTreeIntrinsic* intrinsicNode);
     void buildMemoryBarrier(GenTree* node);
+    void buildCatchArg(GenTree* catchArg);
     void buildReturn(GenTree* node);
     void buildJTrue(GenTree* node);
     void buildSwitch(GenTreeUnOp* switchNode);
