@@ -233,7 +233,9 @@ internal class Deflater
             _output._availableOutput = outputBuffer.Length;
             _output._nextOut = 0;
 
+            // It is either returning the bytesRead or just throwing an error
             int bytesRead = Deflate(flushCode);
+            //int bytesRead = _output.Buffer.Length - _output.AvailableBytes; // outputBuffer.Length = _output.Buffer.Length 
             return bytesRead;
         }
     }
@@ -287,10 +289,10 @@ internal class Deflater
 
         // Error checking:
         // Flush as much pending output as possible
-        if (_output._pendingBufferBytes != 0) /////////////////////////////////////// PendingBufferBytes deberia ser 0 en la primera entrada
+        if (_output._pendingBufferBytes != 0)
         {
-            FlushPending(); // ---------------------( I need to erase this comment ) No deberia entrar aqui la primera corrida al menos
-            if(_output._availableOutput == 0)
+            FlushPending();
+            if (_output._availableOutput == 0)
             {
                 /* Since avail_out is 0, deflate will be called again with
                  * more output space, but possibly with both pending and
@@ -299,7 +301,7 @@ internal class Deflater
                  * return OK instead of BUF_ERROR at next call of deflate:
                  */
                 _output.lastFlush = ZFlushCode.GenOutput;
-                return 0; // OK ---------------------------------// Regresar actual cantidad de bytes
+                return _output.Buffer.Length - _output.AvailableBytes; // OK
             }
         }
 
@@ -353,7 +355,7 @@ internal class Deflater
             if (_output._pendingBufferBytes != 0)
             {
                 _output.lastFlush = ZFlushCode.GenOutput;
-                return 0; // OK
+                return _output.Buffer.Length - _output.AvailableBytes; // OK
             }
 
         }
@@ -373,7 +375,7 @@ internal class Deflater
             if (_output._pendingBufferBytes != 0)
             {
                 _output.lastFlush = ZFlushCode.GenOutput;
-                return 0; // OK
+                return _output.Buffer.Length - _output.AvailableBytes; // OK
             }
         } // GZip: GZip header CRC
 
@@ -433,7 +435,7 @@ internal class Deflater
                 {
                     _output.lastFlush = ZFlushCode.GenOutput; /* avoid BUF_ERROR next call, see above */
                 }
-                return 0; // OK
+                return _output.Buffer.Length - _output.AvailableBytes; // OK
                 /* If flush != Z_NO_FLUSH && avail_out == 0, the next call
                  * of deflate should use the same flush parameter to make sure
                  * that the flush is complete. So we don't have to output an
@@ -452,7 +454,7 @@ internal class Deflater
                 if (_output._availableOutput == 0)
                 {
                     _output.lastFlush = ZFlushCode.GenOutput; /* avoid BUF_ERROR at next call, see above */
-                    return 0; // OK
+                    return _output.Buffer.Length - _output.AvailableBytes; // OK
                 }
             }
 
@@ -460,7 +462,7 @@ internal class Deflater
 
         if (flushCode != ZFlushCode.Finish)
         {
-            return 0; // OK
+            return _output.Buffer.Length - _output.AvailableBytes; // OK
         }
         if (_wrap <= 0) return 0; //STREAM END: GZip
 
@@ -483,11 +485,11 @@ internal class Deflater
         if (_output._pendingBufferBytes != 0)
         {
             // Raw deflate bytesRead
-            return 0; // OK
+            return _output.Buffer.Length - _output.AvailableBytes; // OK
         }
         // bytesRead + extra GZip operations
 
-        return 0; // STREAM_END 
+        return _output.Buffer.Length - _output.AvailableBytes; // STREAM_END 
 
     }
 
@@ -825,7 +827,7 @@ internal class Deflater
              * for the next match, plus MIN_MATCH bytes to insert the
              * string following the next match.
              */
-            if (_output._lookahead < MinLookahead)
+            if (_output._lookahead < MinLookahead)   //------------------
             {
                 _output.FillWindow(_input); // ------------------------------------------------------------------Pending to implement
                 if (_output._lookahead < MinLookahead && flushCode == ZFlushCode.NoFlush)
@@ -838,7 +840,7 @@ internal class Deflater
             hashHead = NIL; //hash head starts with tail's value - empty hash
             if (_output._lookahead >= MinMatch)
             {
-                hashHead = _output.InsertString();
+                hashHead = _output.InsertString(); //------------------
             }
 
             // Find the longest match, discarding those <= prev_length.
@@ -864,7 +866,7 @@ internal class Deflater
                 //Do not insert strings in hash table beyond this.
 
                 blockFlush = _trees.TreeTallyDist(_output._strStart - 1 - _output._prevMatch,
-                    _output._prevLength - MinMatch);
+                    _output._prevLength - MinMatch);                                              //------------------------------
 
                 /* Insert in hash table all strings up to the end of the match.
                  * strstart - 1 and strstart are already inserted. If there is not
@@ -884,9 +886,11 @@ internal class Deflater
                 while (--_output._prevLength != 0); //resetting prev length
                 // This must have been resetted
                 Debug.Assert(_output._prevLength == 0);
-                _output._matchAvailable = false; // Resetting matchAvail flag
+                // Reset everything for looking for a new match
+                _output._matchAvailable = false;
                 _output._matchLength = MinMatch - 1;
                 _output._strStart++;
+
                 if (blockFlush)
                 {
                     FlushBlock(last: false);
@@ -894,6 +898,9 @@ internal class Deflater
             }
             else if (_output._matchAvailable)
             {
+                //If there was no match at the previous position, output a
+                //single literal.If there was a match but the current match
+                //is longer, truncate the previous match to a single literal.
                 blockFlush = _trees.TreeTallyLit(_output.Window((int)_output._strStart - 1));
                 if (blockFlush)
                 {
@@ -921,10 +928,10 @@ internal class Deflater
             blockFlush = _trees.TreeTallyLit(_output.Window((int)_output._strStart - 1));
             _output._matchAvailable = false;
         }
+
         _output._insert = (_output._strStart < MinMatch - 1) ? 
             _output._strStart : MinMatch - 1;
-        
-        // 
+ 
         if (flushCode == ZFlushCode.Finish)
         {
             // DONE STATE

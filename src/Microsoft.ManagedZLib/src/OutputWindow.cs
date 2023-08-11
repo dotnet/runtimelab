@@ -170,7 +170,7 @@ internal class OutputWindow
         ushort match_head;
         Debug.Assert(_hashHead != null);
         Debug.Assert(_prev != null);
-        Debug.Assert((int)_strStart > 0); // Checking after casting it to int,
+        Debug.Assert((int)_strStart >= 0); // Checking after casting it to int,
                                           // it doesn't overflow to negative
                                           // If so, we might need to chnge the type or
                                           // re-think hashing function taking that
@@ -212,10 +212,11 @@ internal class OutputWindow
                 availSpaceEnd += wsize;
             }
 
-            if (inputBuffer.AvailableBytes == 0) break;
+            if (inputBuffer._availInput == 0) break;
 
+            Span <byte> WinBuffer= _window.Span.Slice((int)(_strStart + _lookahead));
             // This return number of bytes read
-            bytes = ReadBuffer(inputBuffer, _window.Slice((int)(_strStart+_lookahead)).Span, (uint)availSpaceEnd);
+            bytes = ReadBuffer(inputBuffer, WinBuffer, (uint)availSpaceEnd);
             _lookahead += (uint)bytes;
 
             /* Initialize the hash value now that we have some input: */
@@ -343,7 +344,7 @@ internal class OutputWindow
         hash.Clear();
         Debug.Assert(((int)_hashSize - 1) > 0); // Checking if it's still a positive number
                                                 // or if overflowed to negatives
-        hash[(int)_hashSize - 1] = ManagedZLib.NIL;
+        hash[(int)_hashSize - 1] = ManagedZLib.NIL; // TO-DO: Change to just 0 and check behavior
 
     }
 
