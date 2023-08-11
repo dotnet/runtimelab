@@ -1,6 +1,11 @@
-# Standalone Experiments
+# .NET Runtime - Managed Zlib
 
 This branch contains a template for standalone experiments, which means that experiments that are a library, which doesn't depend on runtime changes. This minimal template allows such experiments to avoid the overhead of having all the runtime, libraries and installer code.
+
+This branch contains an experimental porting and comparison of the C Mark Adler's Zlib library used in System.IO.Compression to a C#. This is an exploration on whether we would benefit from switching our dependencies from madler/zlib to our own managed version. With the current approach, using madler/zlib, the C# libraries team doesn't have guarantees on handling the security issues quickly which can be a vulnerability. 
+The evaluation of this experiment will be based on performance information using dotnet benchmark and madler/zlib  as baseline,  to see the main areas of opportunity of performance improvement. Because the idea is to implement a managed version, porting madler/zlib, without losing functionality in the way, this experiment covers a set of tests for securing the minimum functionality, based on the API's needs and the RFC and Zlib's manual specifications. It is necessary enough of the design for the information gathered to be reliable. 
+This is a full exploration of the idea of owning a managed performance improved version of the Compression Zlib API, considering not just porting the native version currently used but evaluating other separate and specific implementations.!
+
 
 ## Create your experiment
 
