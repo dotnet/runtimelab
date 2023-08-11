@@ -165,7 +165,7 @@ public  class InputBuffer
     /// Return true is all input bytes are used.
     /// This means the caller can call SetInput to add more input.
     /// </summary>
-    public bool NeedsInput() => _inputBuffer.IsEmpty;
+    public bool NeedsInput() => _availInput==0;
 
     /// <summary>
     /// Set the byte buffer to be processed.

@@ -398,8 +398,7 @@ public partial class DeflateStream : Stream
             bool flushSuccessful;
             do
             {
-                int compressedBytes = _deflater.ReadDeflateOutput(_buffer, ManagedZLib.FlushCode.SyncFlush);
-                flushSuccessful = _deflater.Flush(_buffer);
+                int compressedBytes = _deflater.Flush(_buffer.AsSpan(), out flushSuccessful);
                 if (flushSuccessful)
                 {
                     _stream.Write(_buffer, 0, compressedBytes);
@@ -439,9 +438,7 @@ public partial class DeflateStream : Stream
             bool finished;
             do
             {
-                int compressedBytes = _deflater.Finish(_buffer);
-                finished = compressedBytes != 0;
-
+                int compressedBytes = _deflater.Finish(_buffer, out finished);
                 if (compressedBytes > 0)
                     _stream.Write(_buffer, 0, compressedBytes);
             } while (!finished);
@@ -456,7 +453,7 @@ public partial class DeflateStream : Stream
             bool finished;
             do
             {
-                finished = _deflater.Finish(_buffer) !=0;
+                _deflater.Finish(_buffer, out finished);
             } while (!finished);
         }
     }
