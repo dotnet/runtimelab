@@ -3,7 +3,6 @@
 
 using System;
 using System.Diagnostics;
-using System.IO;
 using ZFlushCode = Microsoft.ManagedZLib.ManagedZLib.FlushCode;
 using ZState = Microsoft.ManagedZLib.ManagedZLib.DeflateStates;
 using ZBlockState = Microsoft.ManagedZLib.ManagedZLib.BlockState;
@@ -15,12 +14,7 @@ namespace Microsoft.ManagedZLib;
 /// </summary>
 internal class Deflater
 {
-    private Stream? _inputStream;
     public const int NIL = 0; /* Tail of hash chains */
-    // States - Might replace later for flags
-    public const int InitState = 42;
-    public const int GZipState = 57;
-    public const int BusyState = 113; //defalte->Finished -- using just Finished() might be enough
 
     //Min&Max match lengths.
     public const int MinMatch = 3;
@@ -104,7 +98,6 @@ internal class Deflater
         //Might not be necessary - constructors do everything that DelfateInit2 used to do
         DeflateInit2(zlibCompressionLevel, ManagedZLib.CompressionMethod.Deflated, windowBits, memLevel, _output._strategy);
     }
-    public void InitInputStream (Stream inputStream) => _inputStream = inputStream;
     private int DeflateInit( int windowBits)
     {
         _wrap = 1; // To check which type of wrapper are we checking
