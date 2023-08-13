@@ -511,14 +511,14 @@ private:
                 return RemovePhiDef(lclNode->AsLclVar());
             }
 
-            // Funclets (especially filters) will be called by the dispatcher while live state still exists
-            // on shadow frames below (in the tradional sense, where stacks grow down) them. For this reason,
-            // funclets will access state from the original frame via a dedicated shadow stack pointer, and
-            // use the actual shadow stack for calls.
-            unsigned shadowStackLclNum =
-                m_llvm->CurrentBlock()->hasHndIndex() ? m_llvm->_originalShadowStackLclNum : m_llvm->_shadowStackLclNum;
-            GenTree* lclAddress =
-                m_llvm->insertShadowStackAddr(lclNode, varDsc->GetStackOffset() + lclNode->GetLclOffs(), shadowStackLclNum);
+            // Filters will be called by the first pass while live state still exists on shadow frames above (in the
+            // tradional sense, where stacks grow down) them. For this reason, filters will access state from the
+            // original frame via a dedicated shadow stack pointer, and use the actual shadow stack for calls.
+            unsigned shadowStackLclNum = m_llvm->isBlockInFilter(m_llvm->CurrentBlock())
+                ? m_llvm->_originalShadowStackLclNum
+                : m_llvm->_shadowStackLclNum;
+            unsigned lclOffset = varDsc->GetStackOffset() + lclNode->GetLclOffs();
+            GenTree* lclAddress = m_llvm->insertShadowStackAddr(lclNode, lclOffset, shadowStackLclNum);
 
             ClassLayout* layout = lclNode->TypeIs(TYP_STRUCT) ? lclNode->GetLayout(m_compiler) : nullptr;
             GenTree* storedValue = nullptr;
@@ -582,10 +582,9 @@ private:
         // Add in the shadow stack argument now that we know the shadow frame size.
         if (m_llvm->callHasManagedCallingConvention(call))
         {
-            unsigned hndIndex = m_llvm->CurrentBlock()->hasHndIndex() ? m_llvm->CurrentBlock()->getHndIndex()
-                                                                      : EHblkDsc::NO_ENCLOSING_INDEX;
+            unsigned funcIdx = m_llvm->getLlvmFunctionIndexForBlock(m_llvm->CurrentBlock());
             GenTree* calleeShadowStack =
-                m_llvm->insertShadowStackAddr(call, m_llvm->getShadowFrameSize(hndIndex), m_llvm->_shadowStackLclNum);
+                m_llvm->insertShadowStackAddr(call, m_llvm->getShadowFrameSize(funcIdx), m_llvm->_shadowStackLclNum);
             CallArg* calleeShadowStackArg =
                 call->gtArgs.PushFront(m_compiler, NewCallArg::Primitive(calleeShadowStack, CORINFO_TYPE_PTR));
 
@@ -644,25 +643,24 @@ void Llvm::Allocate()
 // getShadowFrameSize: What is the size of a function's shadow frame?
 //
 // Arguments:
-//    hndIndex - Handler index representing the function, NO_ENCLOSING_INDEX
-//               is used for the root
+//    funcIdx - Index representing the function
 //
 // Return Value:
 //    The size of the shadow frame for the given function. We term this
 //    the value by which the shadow stack pointer must be offset before
 //    calling managed code such that the caller will not clobber anything
-//    live on the frame. Note that funclets do not have any shadow state
+//    live on the frame. Note that filters do not have any shadow state
 //    of their own and use the "original" frame from the parent function.
 //
-unsigned Llvm::getShadowFrameSize(unsigned hndIndex) const
+unsigned Llvm::getShadowFrameSize(unsigned funcIdx) const
 {
-    if (hndIndex == EHblkDsc::NO_ENCLOSING_INDEX)
+    if (_compiler->funGetFunc(funcIdx)->funKind == FUNC_FILTER)
     {
-        assert((_shadowStackLocalsSize % TARGET_POINTER_SIZE) == 0);
-        return _shadowStackLocalsSize;
+        return 0;
     }
 
-    return 0;
+    assert((_shadowStackLocalsSize % TARGET_POINTER_SIZE) == 0);
+    return _shadowStackLocalsSize;
 }
 
 ValueInitKind Llvm::getInitKindForLocal(unsigned lclNum) const

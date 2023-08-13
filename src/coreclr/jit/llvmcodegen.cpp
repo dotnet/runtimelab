@@ -98,19 +98,25 @@ bool Llvm::initializeFunctions()
             continue;
         }
 
-        // All funclets have two arguments: original and actual shadow stacks. Catch and filter funclets also
-        // take the "exception object" argument and return int32 (catchret index / retfilt value).
-        Type* ptrLlvmType = getPtrLlvmType();
         FunctionType* llvmFuncType;
-        if (ehDsc->HasCatchHandler())
+        Type* ptrLlvmType = getPtrLlvmType();
+        Type* int32LlvmType = Type::getInt32Ty(m_context->Context);
+        if (funcInfo->funKind == FUNC_FILTER)
         {
-            llvmFuncType = FunctionType::get(Type::getInt32Ty(m_context->Context),
-                                             {ptrLlvmType, ptrLlvmType, ptrLlvmType}, /* isVarArg */ false);
+            // (shadow stack, original shadow stack, exception) -> result.
+            llvmFuncType =
+                FunctionType::get(int32LlvmType, {ptrLlvmType, ptrLlvmType, ptrLlvmType}, /* isVarArg */ false);
+        }
+        else if (ehDsc->HasCatchHandler())
+        {
+            // (shadow stack, exception) -> catchret destination.
+            llvmFuncType = FunctionType::get(int32LlvmType, {ptrLlvmType, ptrLlvmType}, /* isVarArg */ false);
         }
         else
         {
-            llvmFuncType = FunctionType::get(Type::getVoidTy(m_context->Context),
-                                             {ptrLlvmType, ptrLlvmType}, /* isVarArg */ false);
+            // (shadow stack) -> void.
+            assert(ehDsc->HasFinallyOrFaultHandler());
+            llvmFuncType = FunctionType::get(Type::getVoidTy(m_context->Context), {ptrLlvmType}, /* isVarArg */ false);
         }
 
         Function* llvmFunc;
@@ -139,6 +145,11 @@ bool Llvm::initializeFunctions()
             llvmFunc = Function::Create(llvmFuncType, Function::InternalLinkage,
                                         mangledName + Twine("$F") + Twine(funcIdx) + "_" + kindName,
                                         &m_context->Module);
+            if (!ehDsc->HasFinallyHandler())
+            {
+                // Always inline funclets that will have exactly one callsite.
+                llvmFunc->addFnAttr(llvm::Attribute::AlwaysInline);
+            }
         }
         else
         {
@@ -678,7 +689,7 @@ void Llvm::generateEHDispatch()
                     // Call the catch funclet and get its dynamic catchret destination.
                     Function* catchLlvmFunc = getLlvmFunctionForIndex(hndDsc->ebdFuncIndex);
                     Value* catchRetValue =
-                        emitCallOrInvoke(catchLlvmFunc, {getShadowStackForCallee(), getOriginalShadowStack(), caughtValue}, catchPadOpBundle);
+                        emitCallOrInvoke(catchLlvmFunc, {getShadowStack(), caughtValue}, catchPadOpBundle);
 
                     // Create the dispatch switch for all possible catchret destinations. Note how we are doing linear
                     // work here because the funclet creation process will hoist nested handlers, flattening the basic
@@ -748,7 +759,7 @@ void Llvm::generateEHDispatch()
             assert(ehDsc->HasFinallyOrFaultHandler() && isReachable(ehDsc->ebdHndBeg));
 
             Function* hndLlvmFunc = getLlvmFunctionForIndex(ehDsc->ebdFuncIndex);
-            emitCallOrInvoke(hndLlvmFunc, {getShadowStackForCallee(), getOriginalShadowStack()}, catchPadOpBundle);
+            emitCallOrInvoke(hndLlvmFunc, {getShadowStack()}, catchPadOpBundle);
             if ((ehDsc->ebdEnclosingTryIndex == EHblkDsc::NO_ENCLOSING_INDEX) && (m_unwindFrameLclNum != BAD_VAR_NUM))
             {
                 emitHelperCall(CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES, {}, catchPadOpBundle);
@@ -2092,8 +2103,8 @@ void Llvm::buildCatchArg(GenTree* catchArg)
     assert(catchArg->OperIs(GT_CATCH_ARG) && handlerGetsXcptnObj(CurrentBlock()->bbCatchTyp));
     assert(catchArg == LIR::AsRange(CurrentBlock()).FirstNonPhiNode());
 
-    // Exception caught is the third argument to a catch/filter funclet.
-    Value* catchArgValue = getCurrentLlvmFunction()->getArg(2);
+    unsigned exceptionArgIndex = isBlockInFilter(CurrentBlock()) ? 2 : 1;
+    Value* catchArgValue = getCurrentLlvmFunction()->getArg(exceptionArgIndex);
     mapGenTreeToValue(catchArg, catchArgValue);
 }
 
@@ -2252,7 +2263,7 @@ void Llvm::buildCallFinally(BasicBlock* block)
     // Other backends will simply skip generating the second block, while we will branch to it.
     //
     Function* finallyLlvmFunc = getLlvmFunctionForIndex(getLlvmFunctionIndexForBlock(block->bbJumpDest));
-    emitCallOrInvoke(finallyLlvmFunc, {getShadowStackForCallee(), getOriginalShadowStack()});
+    emitCallOrInvoke(finallyLlvmFunc, getShadowStack());
 
     // Some tricky EH flow configurations can make the ALWAYS part of the pair unreachable without
     // marking "block" "BBF_RETLESS_CALL". Detect this case by checking if the next block is reachable
@@ -2806,22 +2817,19 @@ Value* Llvm::getShadowStack()
 // Shadow stack moved up to avoid overwriting anything on the stack in the compiling method
 Value* Llvm::getShadowStackForCallee()
 {
-    unsigned funcIdx = getCurrentLlvmFunctionIndex();
-    unsigned hndIndex =
-        (funcIdx == ROOT_FUNC_IDX) ? EHblkDsc::NO_ENCLOSING_INDEX : _compiler->funGetFunc(funcIdx)->funEHIndex;
-
-    return gepOrAddrInBounds(getShadowStack(), getShadowFrameSize(hndIndex));
+    unsigned shadowFrameSize = getShadowFrameSize(getCurrentLlvmFunctionIndex());
+    return gepOrAddrInBounds(getShadowStack(), shadowFrameSize);
 }
 
 Value* Llvm::getOriginalShadowStack()
 {
-    if (getCurrentLlvmFunctionIndex() == ROOT_FUNC_IDX)
+    if (_compiler->funGetFunc(getCurrentLlvmFunctionIndex())->funKind == FUNC_FILTER)
     {
-        return getShadowStack();
+        // The original shadow stack pointer is the second filter parameter.
+        return getCurrentLlvmFunction()->getArg(1);
     }
 
-    // The original shadow stack pointer is the second funclet parameter.
-    return getCurrentLlvmFunction()->getArg(1);
+    return getShadowStack();
 }
 
 void Llvm::setCurrentEmitContextForBlock(BasicBlock* block)
@@ -2911,7 +2919,7 @@ unsigned Llvm::getLlvmFunctionIndexForBlock(BasicBlock* block) const
         EHblkDsc* ehDsc = _compiler->ehGetDsc(block->getHndIndex());
         funcIdx = ehDsc->ebdFuncIndex;
 
-        if (ehDsc->InFilterRegionBBRange(block))
+        if (isBlockInFilter(block))
         {
             funcIdx--;
             assert(_compiler->funGetFunc(funcIdx)->funKind == FUNC_FILTER);

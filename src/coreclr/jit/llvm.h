@@ -390,7 +390,7 @@ private:
     CORINFO_GENERIC_HANDLE generateUnwindTable();
 
     bool mayPhysicallyThrow(GenTree* node);
-    bool isBlockInFilter(BasicBlock* block);
+    bool isBlockInFilter(BasicBlock* block) const;
 
     // ================================================================================================================
     // |                                           Shadow stack allocation                                            |
@@ -406,7 +406,7 @@ private:
     void displayInitKindForLocal(unsigned lclNum, ValueInitKind initKind);
 #endif // DEBUG
 
-    unsigned getShadowFrameSize(unsigned hndIndex) const;
+    unsigned getShadowFrameSize(unsigned funcIdx) const;
     bool isShadowFrameLocal(LclVarDsc* varDsc) const;
     bool isShadowStackLocal(unsigned lclNum) const;
     bool isFuncletParameter(unsigned lclNum) const;

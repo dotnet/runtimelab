@@ -1091,7 +1091,7 @@ GenTree* Llvm::insertShadowStackAddr(GenTree* insertBefore, unsigned offset, uns
     }
 
     // Using an address mode node here explicitizes our assumption that the shadow stack does not overflow.
-    assert(offset <= getShadowFrameSize(EHblkDsc::NO_ENCLOSING_INDEX));
+    assert(offset <= getShadowFrameSize(ROOT_FUNC_IDX));
     GenTree* addrModeNode = createAddrModeNode(shadowStackLcl, offset);
     CurrentRange().InsertBefore(insertBefore, addrModeNode);
 
@@ -1874,7 +1874,7 @@ bool Llvm::mayPhysicallyThrow(GenTree* node)
 // Return Value:
 //    Whether "block" is part of a filter funclet.
 //
-bool Llvm::isBlockInFilter(BasicBlock* block)
+bool Llvm::isBlockInFilter(BasicBlock* block) const
 {
     if (m_blocksInFilters == BlockSetOps::UninitVal())
     {
