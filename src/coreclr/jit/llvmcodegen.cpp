@@ -37,21 +37,8 @@ void Llvm::Compile()
 
     generateAuxiliaryArtifacts();
 
-#if DEBUG
-    JITDUMP("\n===================================================================================================================\n");
-    JITDUMP("LLVM IR for %s after codegen:\n", _compiler->info.compFullName);
-    JITDUMP("-------------------------------------------------------------------------------------------------------------------\n\n");
-
-    for (FunctionInfo& funcInfo : m_functions)
-    {
-        Function* llvmFunc = funcInfo.LlvmFunction;
-        if (llvmFunc != nullptr)
-        {
-            JITDUMPEXEC(llvmFunc->dump());
-            assert(!llvm::verifyFunction(*llvmFunc, &llvm::errs()));
-        }
-    }
-#endif
+    displayGeneratedCode();
+    verifyGeneratedCode();
 }
 
 bool Llvm::initializeFunctions()
@@ -189,7 +176,7 @@ void Llvm::initializeShadowStack()
         shadowStackValue = emitHelperCall(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP);
 
         JITDUMP("Setting V%02u's initial value to the recovered shadow stack\n", _shadowStackLclNum);
-        JITDUMPEXEC(shadowStackValue->dump());
+        JITDUMPEXEC(displayValue(shadowStackValue));
     }
     else
     {
@@ -204,15 +191,15 @@ void Llvm::initializeShadowStack()
 
         // IR taken from what Clang generates for "__builtin_align_up".
         Value* shadowStackIntValue = _builder.CreatePtrToInt(shadowStackValue, getIntPtrLlvmType());
-        JITDUMPEXEC(shadowStackIntValue->dump());
+        JITDUMPEXEC(displayValue(shadowStackIntValue));
         Value* alignedShadowStackIntValue = _builder.CreateAdd(shadowStackIntValue, getIntPtrConst(alignment - 1));
-        JITDUMPEXEC(alignedShadowStackIntValue->dump());
+        JITDUMPEXEC(displayValue(alignedShadowStackIntValue));
         alignedShadowStackIntValue = _builder.CreateAnd(alignedShadowStackIntValue, getIntPtrConst(~(alignment - 1)));
-        JITDUMPEXEC(alignedShadowStackIntValue->dump());
+        JITDUMPEXEC(displayValue(alignedShadowStackIntValue));
         Value* alignOffset = _builder.CreateSub(alignedShadowStackIntValue, shadowStackIntValue);
-        JITDUMPEXEC(alignOffset->dump());
+        JITDUMPEXEC(displayValue(alignOffset));
         shadowStackValue = _builder.CreateGEP(Type::getInt8Ty(m_context->Context), shadowStackValue, alignOffset);
-        JITDUMPEXEC(shadowStackValue->dump());
+        JITDUMPEXEC(displayValue(shadowStackValue));
 
         llvm::CallInst* alignAssume =
             _builder.CreateAlignmentAssumption(m_context->Module.getDataLayout(), shadowStackValue, alignment);
@@ -263,7 +250,7 @@ void Llvm::initializeLocals()
                 // with undefined values (which uninitialized allocas produce, see LangRef).
                 initValue = llvm::UndefValue::get(lclLlvmType);
                 initValue = _builder.CreateFreeze(initValue);
-                JITDUMPEXEC(initValue->dump());
+                JITDUMPEXEC(displayValue(initValue));
                 break;
             default:
                 unreached();
@@ -287,12 +274,12 @@ void Llvm::initializeLocals()
         {
             llvm::AllocaInst* allocaInst = _builder.CreateAlloca(lclLlvmType);
             allocas[lclNum] = allocaInst;
-            JITDUMPEXEC(allocaInst->dump());
+            JITDUMPEXEC(displayValue(allocaInst));
 
             if (initValue != nullptr)
             {
                 Instruction* storeInst = _builder.CreateStore(initValue, allocaInst);
-                JITDUMPEXEC(storeInst->dump());
+                JITDUMPEXEC(displayValue(storeInst));
             }
         }
     }
@@ -963,6 +950,39 @@ void Llvm::generateAuxiliaryArtifacts()
     }
 }
 
+void Llvm::verifyGeneratedCode()
+{
+#ifdef DEBUG
+    for (FunctionInfo& funcInfo : m_functions)
+    {
+        Function* llvmFunc = funcInfo.LlvmFunction;
+        if (llvmFunc != nullptr)
+        {
+            assert(!llvm::verifyFunction(*llvmFunc, &llvm::errs()));
+        }
+    }
+#endif // DEBUG
+}
+
+void Llvm::displayGeneratedCode()
+{
+    if (VERBOSE || _compiler->opts.disAsm)
+    {
+        JITDUMP("\n===================================================================================================================\n");
+        JITDUMP("LLVM IR for %s after codegen:\n", _compiler->info.compFullName);
+        JITDUMP("-------------------------------------------------------------------------------------------------------------------\n\n");
+
+        for (FunctionInfo& funcInfo : m_functions)
+        {
+            Function* llvmFunc = funcInfo.LlvmFunction;
+            if (llvmFunc != nullptr)
+            {
+                displayValue(llvmFunc);
+            }
+        }
+    }
+}
+
 Value* Llvm::getGenTreeValue(GenTree* op)
 {
     return _sdsuMap[op];
@@ -1241,7 +1261,7 @@ void Llvm::visitNode(GenTree* node)
             for (auto instrIter = (llvmBlock == lastLlvmBlock) ? ++lastInstrIter : llvmBlock->begin();
                  instrIter != llvmBlock->end(); ++instrIter)
             {
-                instrIter->dump();
+                displayValue(&*instrIter);
             }
         }
     }
@@ -3289,4 +3309,11 @@ llvm::Intrinsic::ID Llvm::getLlvmIntrinsic(NamedIntrinsic intrinsicName) const
         default:
             return llvm::Intrinsic::not_intrinsic;
     }
+}
+
+void Llvm::displayValue(Value* value)
+{
+    // TODO-LLVM: support JitStdOutFile here.
+    value->print(llvm::outs());
+    printf("\n");
 }

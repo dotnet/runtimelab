@@ -403,6 +403,8 @@ private:
     Value* generateEHDispatchTable(Function* llvmFunc, unsigned innerEHIndex, unsigned outerEHIndex);
     void fillPhis();
     void generateAuxiliaryArtifacts();
+    void verifyGeneratedCode();
+    void displayGeneratedCode();
 
     Value* getGenTreeValue(GenTree* node);
     Value* consumeValue(GenTree* node, Type* targetLlvmType = nullptr);
@@ -510,6 +512,8 @@ private:
 
     Value* getLocalAddr(unsigned lclNum);
     Value* getOrCreateAllocaForLocalInFunclet(unsigned lclNum);
+
+    void displayValue(Value* value);
 
 public:
     bool IsLlvmIntrinsic(NamedIntrinsic intrinsicName) const;
