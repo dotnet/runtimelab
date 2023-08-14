@@ -30,23 +30,25 @@ internal class Program
 
     private static void Main(string[] args)
     {
+        int i;
         Stopwatch stopWatch = new Stopwatch();
-        CompressedFile compressedFile = new("alice29.txt", System.IO.Compression.CompressionLevel.SmallestSize);
+        CompressedFile compressedFile = new("TestDocument.pdf", System.IO.Compression.CompressionLevel.SmallestSize);
         compressedFile.CompressedDataStream.Position = 0;
         MemoryStream expectedStream = new();
         // DeflateStream decompressor = new(compressedFile.CompressedDataStream, CompressionMode.Decompress);
         System.IO.Compression.DeflateStream decompressor = new(compressedFile.CompressedDataStream, System.IO.Compression.CompressionMode.Decompress);
         
         stopWatch.Start();
-        for (int i = 0; i < 1_000_000; i++)
+        for (i = 0; i < 10_000_000; i++)
         {
             TestN(expectedStream, compressedFile, decompressor);
         }
         stopWatch.Stop();
+
         // Elapsed time as a TimeSpan value.
         TimeSpan ts = stopWatch.Elapsed;
-        Console.WriteLine($"Total time elapsed (us): {ts.TotalMicroseconds}");
-        double res = ts.TotalMicroseconds / 1_000_000;
-        Console.WriteLine($"Time elapsed per iteration(us): {res}");
+        Console.WriteLine($"Total time elapsed (s): {ts.TotalSeconds}");
+        double res = ts.TotalMicroseconds / i;
+        Console.WriteLine($"Time elapsed per iteration(s): {res}");
     }
 }
