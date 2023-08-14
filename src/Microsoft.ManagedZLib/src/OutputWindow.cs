@@ -96,7 +96,9 @@ internal class OutputWindow
     public ulong _highWater;
 
     public Memory<byte> _pendingBuffer; //Output still pending
+    public uint _pendingBuffIndex;
     public Memory<byte> _pendingOut;    //Next pending byte to output to the stream
+    public uint _pendingOutIndex;
     public uint _litBufferSize;
     public ulong _penBufferSize;       //Size of pending buffer
     public ulong _pendingBufferBytes;   //number of bytes in pending buffer
@@ -146,6 +148,8 @@ internal class OutputWindow
         _litBufferSize = 1U << (memLevel + 6); //16K by default
         _penBufferSize = (ulong)_litBufferSize * 4;
         _pendingBuffer = new byte[_penBufferSize];
+        _pendingBuffIndex = 0;
+        _pendingOutIndex = 0;
         longestMatchInit(level);
     }
 

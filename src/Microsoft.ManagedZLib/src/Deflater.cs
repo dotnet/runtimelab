@@ -139,6 +139,7 @@ internal class Deflater
         _output._dataType = DeflateTrees.Unknown;
         _output._pendingBufferBytes = 0;
         _output._pendingOut = _output._pendingBuffer;
+        _output._pendingOutIndex = _output._pendingBuffIndex = 0;
 
         if (_wrap < 0)
         {
@@ -952,13 +953,15 @@ internal class Deflater
         if (len == 0) return;
 
         // s->pending_out  += len;
-        _output._pendingOut = _output._pendingOut.Slice(0, (int)len); // TO-DO extra check in case it overflows the int casting
-        _output._pendingOut.CopyTo(_output._output.Slice((int)_output._nextOut,(int)len)); // output = NextOut
+        Memory<byte> source = _output._pendingOut.Slice((int)_output._pendingOutIndex, (int)len); // TO-DO extra check in case it overflows the int casting
+        source.CopyTo(_output._output.Slice((int)_output._nextOut,(int)len)); // output = NextOut
 
         _output._totalOutput += len;
+        _output._pendingOutIndex += len;
         _output._nextOut += len;
         _output._availableOutput -= (int)len;
         _output._pendingBufferBytes -= len;
+
         if (_output._pendingBufferBytes == 0)
         {
             _output._pendingOut = _output._pendingBuffer;
