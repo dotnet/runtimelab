@@ -451,6 +451,7 @@ private:
     Value* consumeAddressAndEmitNullCheck(GenTreeIndir* indir);
     void emitNullCheckForAddress(GenTree* addr, Value* addrValue);
 
+    Value* consumeInitVal(GenTree* initVal);
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
 
