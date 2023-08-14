@@ -117,6 +117,8 @@ void Llvm::Lower()
 {
     initializeLlvmArgInfo();
     lowerBlocks();
+    lowerDissolveDependentlyPromotedLocals();
+    lowerCanonicalizeFirstBlock();
 }
 
 // LLVM Arg layout:
@@ -293,6 +295,12 @@ void Llvm::lowerLocal(GenTreeLclVarCommon* node)
     if (node->OperIsLocalStore() && node->TypeIs(TYP_STRUCT) && genActualTypeIsInt(node->gtGetOp1()))
     {
         node->gtGetOp1()->SetContained();
+    }
+
+    if (node->OperIsLocalField() || node->OperIs(GT_LCL_ADDR))
+    {
+        // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
+        _compiler->lvaGetDesc(node)->lvHasLocalAddr = 1;
     }
 }
 
@@ -542,6 +550,8 @@ void Llvm::lowerReturn(GenTreeUnOp* retNode)
         retValUse.ReplaceWithLclVar(_compiler);
 
         GenTreeLclVar* lclVarNode = retValUse.Def()->AsLclVar();
+        _compiler->lvaGetDesc(lclVarNode)->lvHasLocalAddr = true;
+
         lclVarNode->SetOper(GT_LCL_FLD);
         lclVarNode->ChangeType(m_info->compRetType);
         if (layout != nullptr)
@@ -1021,6 +1031,7 @@ GenTree* Llvm::normalizeStructUse(LIR::Use& use, ClassLayout* layout)
             case GT_LCL_VAR:
                 node->SetOper(GT_LCL_FLD);
                 node->AsLclFld()->SetLayout(layout);
+                _compiler->lvaGetDesc(node->AsLclFld())->lvHasLocalAddr = true;
                 break;
 
             default:
@@ -1055,7 +1066,7 @@ GenTree* Llvm::insertShadowStackAddr(GenTree* insertBefore, unsigned offset, uns
     }
 
     // Using an address mode node here explicitizes our assumption that the shadow stack does not overflow.
-    assert(offset <= getShadowFrameSize(EHblkDsc::NO_ENCLOSING_INDEX));
+    assert((offset <= getShadowFrameSize(EHblkDsc::NO_ENCLOSING_INDEX)) || (offset == TARGET_POINTER_SIZE));
     GenTree* addrModeNode = createAddrModeNode(shadowStackLcl, offset);
     CurrentRange().InsertBefore(insertBefore, addrModeNode);
 
@@ -1128,4 +1139,55 @@ bool Llvm::isInvariantInRange(GenTree* node, GenTree* endExclusive)
     }
 
     return true;
+}
+
+void Llvm::lowerDissolveDependentlyPromotedLocals()
+{
+    // We have now rewritten all references to dependently promoted fields to reference the parent instead.
+    // Drop the annotations such that the subsequent SSA pass will only produce normal (non-composite) names.
+    //
+    for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
+    {
+        if (_compiler->lvaGetPromotionType(lclNum) == Compiler::PROMOTION_TYPE_DEPENDENT)
+        {
+            dissolvePromotedLocal(lclNum);
+        }
+    }
+}
+
+void Llvm::dissolvePromotedLocal(unsigned lclNum)
+{
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+    assert(varDsc->lvPromoted);
+
+    for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
+    {
+        LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(varDsc->lvFieldLclStart + index);
+
+        fieldVarDsc->lvIsStructField = false;
+        fieldVarDsc->lvParentLcl = BAD_VAR_NUM;
+        fieldVarDsc->lvIsParam = false;
+    }
+
+    varDsc->lvPromoted = false;
+    varDsc->lvFieldLclStart = BAD_VAR_NUM;
+    varDsc->lvFieldCnt = 0;
+}
+
+void Llvm::lowerCanonicalizeFirstBlock()
+{
+    // Insert a block suitable for prolog code here so that subsequent phases don't have to alter the flowgraph.
+    if (!isFirstBlockCanonical())
+    {
+        JITDUMP("\nCanonicalizing the first block for later prolog insertion\n");
+        assert(!_compiler->fgFirstBBisScratch());
+        _compiler->fgEnsureFirstBBisScratch();
+    }
+}
+
+bool Llvm::isFirstBlockCanonical()
+{
+    // Note this must use conditions at least as broad as "SsaBuilder::SetupBBRoot".
+    BasicBlock* block = _compiler->fgFirstBB;
+    return !block->hasTryIndex() && (block->bbPreds == nullptr);
 }

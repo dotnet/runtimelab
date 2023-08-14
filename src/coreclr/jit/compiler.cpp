@@ -5138,25 +5138,19 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
         m_llvm->Lower();
     });
 
+    fgSsaDomTree = nullptr;
     if (opts.OptimizationEnabled())
     {
-        // When optimizing, we'll sort the locals on the shadow stack by ref count.
-        lvaMarkLocalVars();
+        DoPhase(this, PHASE_BUILD_SSA, [this]() {
+            lvaComputeRefCounts(/* isRecompute */ true, /* setSlotNumbers */ false);
+            fgResetForSsa();
+            fgSsaBuild();
+        });
     }
 
     DoPhase(this, PHASE_ALLOCATE_SHADOW_STACK, [this]() {
         m_llvm->Allocate();
     });
-
-    fgSsaDomTree = nullptr;
-    if (opts.OptimizationEnabled())
-    {
-        DoPhase(this, PHASE_BUILD_SSA, [this]() {
-            lvaMarkLocalVars();
-            fgResetForSsa();
-            fgSsaBuild();
-        });
-    }
 
     // The common phase checks and dumps are no longer relevant past this point.
     //
