@@ -50,15 +50,15 @@ internal class DeflateTrees
     TreeDesc? _codeDesc;         // Description for bit length tree \\
 
     // Number of codes at each bit length for an optimal tree
-    public Memory <ushort> _codeCount = new ushort[MaxBits + 1];
+    public ushort[] _codeCount = new ushort[MaxBits + 1];
     // Depth of each subtree used as tie breaker for trees of equal frequency
-    public Memory<byte> _depth = new byte[HeapSize];
+    public byte[] _depth = new byte[HeapSize];
     // The sons of heap[n] are heap[2*n] and heap[2*n+1]. heap[0] is not used.
     // The same heap array is used to build all trees.
-    public Memory<int> Heap = new int[HeapSize]; // heap used to build the Huffman trees
-    int _heapLen;   // number of elements in the heap
-    int _heapMax;   // element of largest frequency
-    
+    public int[] Heap = new int[HeapSize]; // heap used to build the Huffman trees
+    int _heapLen;               /* number of elements in the heap */
+    int _heapMax;               /* element of largest frequency */
+
 
     public Memory<byte> _symBuffer;     // Buffer for distances and literal/lengths
     // For tallying - building a frequency table:
@@ -212,24 +212,7 @@ internal class DeflateTrees
         _bitBuffer = 0;
         _bitsValid = 0;
     }
-
-    // Reverse the first len bits of a code, using straightforward code
-    // (a faster method would use a table)
-    // Code: the value to invert
-    // Len: its bit length 
-    public static uint BitReverse(uint code, int Len)
-    {
-        //int Len = Marshal.SizeOf(code) * 8;
-        Debug.Assert((1 <= Len) && (Len <= 15));
-        uint res = 0;
-        do
-        {
-            res |= code & 1;
-            code >>= 1;
-            res <<= 1;
-        } while (--Len > 0);
-        return res >> 1;
-    }
+    
 
     public void InitBlock()
     {
@@ -302,13 +285,17 @@ internal class DeflateTrees
 
             /* Check if the file is binary or text */
             if (output._dataType == Unknown) //Data type is just used here - It's like a good to know now
-                                               // But can be used for improvements per type.
+                                             // But can be used for improvements per type.
+            {
                 output._dataType = DetectDataType();
+            }
 
             /* Construct the literal and distance trees */
-            BuildTree(_literalDesc!);
+            _literalDesc!.BuildTree(HeapSize, _depth, ref _heapLen, ref _heapMax, _codeCount,
+                Heap, ref _optLength, ref _staticLen);
 
-            BuildTree(_distanceDesc!);
+            _distanceDesc!.BuildTree(HeapSize, _depth, ref _heapLen, ref _heapMax, _codeCount,
+                Heap, ref _optLength, ref _staticLen);
             // At this point, opt_len and static_len are the total bit lengths of
             // the compressed block data, excluding the tree representations.
 
@@ -351,7 +338,7 @@ internal class DeflateTrees
         else
         {
             SendBits(output, ((int)BlockType.DynamicTrees << 1) + (last ? 1 : 0), 3);
-            SendAllTrees(output, _literalDesc!.maxCode + 1, _distanceDesc!.maxCode + 1,
+            SendAllTrees(output, _literalDesc!._maxCode + 1, _distanceDesc!._maxCode + 1,
                            maxBitLenIndex + 1);
             CompressBlock(output, _dynLitLenTree, _dynDistanceTree);
         }
@@ -362,260 +349,6 @@ internal class DeflateTrees
         {
             BitWindUp(output);
         }
-    }
-
-  
-    //Generate the codes for a given tree and bit counts (which need not be
-    //optimal).
-    //tree - the tree to decorate 
-    //maxCode - largest code with non zero frequency
-    //codeCount - number of codes at each bit length 
-    public void GenCodes(CtData [] tree, int maxCode, ushort[] codeCount)
-    {
-        ushort[] nextCode = new ushort[MaxBits + 1]; /* next code value for each bit length */
-        uint code = 0;         /* running code value */
-        int bits;                  /* bit index */
-        int n;                     /* code index */
-
-        // The distribution counts are first used to generate
-        // the code values without bit reversal.
-        for (bits = 1; bits <= MaxBits; bits++) {
-            code = (code + codeCount[bits - 1]) << 1;
-            nextCode[bits] = (ushort) code;
-        }
-
-        // Check that the bit counts in code's count (codeCount) are consistent.
-        // The last code must be all ones.
-        Debug.Assert(code + codeCount[MaxBits] - 1 == (1 << MaxBits) - 1,
-                "inconsistent bit counts");
-
-        for (n = 0;  n <= maxCode; n++) {
-            int len = tree[n].Len;
-            if (len == 0) continue;
-            /* Now reverse the bits */
-            tree[n].Freq = (ushort) BitReverse(nextCode[len]++, len);
-        }
-    }
-
-    // Index within the heap array of least frequent node in the Huffman tree
-    public const int Smallest = 1;
-
-    // Remove the smallest element from the heap and recreate the heap with
-    // one less element.Updates heap and heap_len.
-    public void PriorityQueueRemove (CtData[] Tree, out int removedTop)
-    {
-        removedTop = Heap.Span[Smallest];
-        Heap.Span[Smallest] = Heap.Span[_heapLen--];
-        PriorityQueueDownHeap(Tree, Smallest);
-    }
-
-    // Compares to subtrees, using the tree depth as tie breaker when
-    // the subtrees have equal frequency. This minimizes the worst case length.
-    public static bool Smaller(CtData[] tree, int n, int m, Span<byte> depth) =>
-        (tree[n].Freq < tree[m].Freq ||
-        (tree[n].Freq == tree[m].Freq && depth[n] <= depth[m])); 
-
-    // Restore the heap property by moving down the tree starting at node k,
-    // exchanging a node with the smallest of its two sons if necessary,
-    //  stopping when the heap property is re-established
-    // (each father smaller than its two sons).
-    // tree : The tree to restore 
-    // node: Node to move down
-    public void PriorityQueueDownHeap(CtData[] tree, int node)
-    {
-        int v = Heap.Span[node];
-        int j = node << 1;  /* left son of k */
-        while (j <= _heapLen)
-        {
-            /* Set j to the smallest of the two sons: */
-            if (j < _heapLen &&
-                Smaller(tree, Heap.Span[j + 1], Heap.Span[j], _depth.Span))
-            {
-                j++;
-            }
-            /* Exit if v is smaller than both sons */
-            if (Smaller(tree, v, Heap.Span[j], _depth.Span)) break;
-
-            /* Exchange v with the smallest son */
-            Heap.Span[node] = Heap.Span[j]; node = j;
-
-            /* And continue down the tree, setting j to the left son of k */
-            j <<= 1;
-        }
-        Heap.Span[node] = v;
-    }
-
-    public void GenBitLen (TreeDesc desc)
-    {
-        CtData[] tree = desc._dynamicTree!;
-        int max_code = desc.maxCode;
-        CtData[] STree = desc._StaticTreeDesc!.staticTree!;
-        int[] Extra = desc._StaticTreeDesc.extraBits!;
-        int Base = desc._StaticTreeDesc.extraBase;
-        int maxLength = desc._StaticTreeDesc.maxLength;
-        int heapIndex;        // heap index
-        int nIndex, mIndex;   //iterate over the tree elements
-        int bitLength;        //bit length
-        int extraBits;       //extra bits
-        ushort frequency;    // frequency */
-        int overflow = 0;    // number of elements with bit length too large
-
-        // In a first pass, compute the optimal bit lengths (which may
-        // overflow in the case of the bit length tree).
-        for (bitLength = 0; bitLength <= MaxBits; bitLength++)
-        {
-            _codeCount.Span[bitLength] = 0;
-        }
-
-        tree[Heap.Span[_heapMax]].Len = 0; /* root of the heap */
-
-        for (heapIndex = _heapMax + 1; heapIndex < HeapSize; heapIndex++)
-        {
-            nIndex = Heap.Span[heapIndex];
-            bitLength = tree[tree[nIndex].Len].Len + 1;
-            if (bitLength > maxLength) 
-            {
-                bitLength = maxLength;
-                overflow++;
-            }
-            tree[nIndex].Len = (ushort)bitLength;
-            /* We overwrite tree[n].Dad which is no longer needed */
-
-            if (nIndex > max_code) continue; /* not a leaf node */
-
-            _codeCount.Span[bitLength]++;
-            extraBits = 0;
-            if (nIndex >= Base) extraBits = Extra[nIndex - Base];
-            frequency = tree[nIndex].Freq;
-            _optLength += (ulong)frequency * (uint)(bitLength + extraBits);
-            //if (stree) s->static_len [...]
-            if (STree.Length != 0) _staticLen += (ulong)frequency * (uint)(STree[nIndex].Len + extraBits);
-        }
-        if (overflow == 0) return;
-
-        /* Find the first bit length which could increase: */
-        do
-        {
-            bitLength = maxLength - 1;
-            while (_codeCount.Span[bitLength] == 0) bitLength--;
-            _codeCount.Span[bitLength]--;        /* move one leaf down the tree */
-            _codeCount.Span[bitLength + 1] += 2; /* move one overflow item as its brother */
-            _codeCount.Span[maxLength]--;
-            /* The brother of the overflow item also moves one step up,
-             * but this does not affect bl_count[max_length]
-             */
-            overflow -= 2;
-        } while (overflow > 0);
-
-        /* Now recompute all bit lengths, scanning in increasing frequency.
-     * h is still equal to HEAP_SIZE. (It is simpler to reconstruct all
-     * lengths instead of fixing only the wrong ones. This idea is taken
-     * from 'ar' written by Haruhiko Okumura.)
-     */
-        for (bitLength = maxLength; bitLength != 0; bitLength--)
-        {
-            nIndex = _codeCount.Span[bitLength];
-            while (nIndex != 0)
-            {
-                mIndex = Heap.Span[--heapIndex];
-                if (mIndex > max_code) continue;
-                if ((uint)tree[mIndex].Len != (uint)bitLength)
-                {
-                    _optLength += ((ulong)bitLength - tree[mIndex].Len) * tree[mIndex].Freq;
-                    tree[mIndex].Len = (ushort)bitLength;
-                }
-                nIndex--;
-            }
-        }
-    }
-
-    // Construct one Huffman tree and assigns the code bit strings and lengths.
-    // Update the total bit length for the current block.
-    public void BuildTree(TreeDesc descriptor)
-    {
-        CtData[] Tree = descriptor._dynamicTree!;
-        CtData[] STree = descriptor._StaticTreeDesc!.staticTree!; //This is supposed to be constant
-        int elems = descriptor._StaticTreeDesc.elems;
-        int n, m;   //iterate over the heap elements
-        int maxCode = -1;     //Largest code with non zero frequency
-        int node;             // New code being created
-
-         // Construct the initial heap, with least frequent element in
-         // heap[SMALLEST]. The sons of heap[n] are heap[2*n] and heap[2*n + 1].
-         // heap[0] is not used.
-        _heapLen = 0;
-        _heapMax = HeapSize;
-
-        for (n = 0; n < elems; n++)
-        {
-            if (Tree[n].Freq != 0)
-            {
-                Heap.Span[++(_heapLen)] = maxCode = n;
-                _depth.Span[n] = 0;
-            }
-            else
-            {
-                Tree[n].Len = 0; // I already set this to 0 in the ctor
-                                 // Check if it's really necessary. (Like for reseting the value or something)
-            }
-        }
-        /* The pkzip format requires that at least one distance code exists,
-         * and that at least one bit should be sent even if there is only one
-         * possible code. So to avoid special checks later on we force at least
-         * two codes of non zero frequency.
-         */
-        while (_heapLen < 2)
-        {
-            node = Heap.Span[++(_heapLen)] = (maxCode < 2 ? ++maxCode : 0);
-            Tree[node].Freq = 1;
-            _depth.Span[node] = 0;
-            _optLength--;
-            if (STree.Length != 0)
-            {
-                _staticLen -= STree[node].Len;
-            }
-            /* node is 0 or 1 so it does not have extra bits */
-        }
-        descriptor.maxCode = maxCode;
-
-        /* The elements heap[heap_len/2 + 1 .. heap_len] are leaves of the tree,
-         * establish sub-heaps of increasing lengths:
-         */
-        for (n = _heapLen / 2; n >= 1; n--)
-        {
-            PriorityQueueDownHeap(Tree, n);
-        }
-        // Construct the Huffman tree by repeatedly combining
-        // the least two frequent nodes.
-        node = elems;              // next internal node of the tree
-        do
-        {
-            PriorityQueueRemove(Tree, out n);  // n = node of least frequency
-            m = Heap.Span[Smallest];           // m = node of next least frequency
-
-            Heap.Span[--(_heapMax)] = n;       // keep the nodes sorted by frequency
-            Heap.Span[--(_heapMax)] = m;
-
-            // Create a new node father of n and m
-            Tree[node].Freq = (ushort)(Tree[n].Freq + Tree[m].Freq);
-            _depth.Span[node] = (byte)((_depth.Span[n] >= _depth.Span[m] ?
-                                    _depth.Span[n] : _depth.Span[m]) + 1);
-            Tree[n].Len = Tree[m].Len = (ushort)node;
-            /* and insert the new node in the heap */
-            Heap.Span[Smallest] = node++;
-            PriorityQueueDownHeap(Tree, Smallest);
-
-        } while (_heapLen >= 2);
-
-        Heap.Span[--(_heapMax)] = Heap.Span[Smallest];
-
-        // At this point, the fields freq and dad are set. We can now
-        // generate the bit lengths.
-        GenBitLen(descriptor);
-
-        // The field len is now set, we can generate the bit codes
-        GenCodes(Tree, maxCode, _codeCount.ToArray()); // I might have to change this Array 
-                                                       // to something that doesn't allocate memory
     }
 
     // Scan a literal or distance tree to determine the frequencies
@@ -689,11 +422,12 @@ internal class DeflateTrees
         int maxBLenIndex;  // index of last bit length code of non zero freq
 
         // Determine the bit length frequencies for literal and distance trees
-        ScanTree(_dynLitLenTree, _literalDesc!.maxCode);
-        ScanTree(_dynDistanceTree, _distanceDesc!.maxCode);
+        ScanTree(_dynLitLenTree, _literalDesc!._maxCode);
+        ScanTree(_dynDistanceTree, _distanceDesc!._maxCode);
 
         // Build the bit length tree:
-        BuildTree(_codeDesc!);
+        _codeDesc!.BuildTree(HeapSize, _depth, ref _heapLen, ref _heapMax, _codeCount,
+            Heap, ref _optLength, ref _staticLen);
         /* opt_len now includes the length of the tree representations, except the
          * lengths of the bit lengths codes and the 5 + 5 + 4 bits for the counts.
          */
