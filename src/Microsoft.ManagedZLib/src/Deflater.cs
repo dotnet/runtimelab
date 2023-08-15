@@ -965,6 +965,7 @@ internal class Deflater
         if (_output._pendingBufferBytes == 0)
         {
             _output._pendingOut = _output._pendingBuffer;
+            _output._pendingOutIndex = _output._pendingBuffIndex;
         }
     }
     // Same but force premature exit if necessary.

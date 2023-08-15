@@ -306,11 +306,6 @@ internal class DeflateTrees
             /* Determine the best encoding. Compute the block lengths in bytes. */
             optLenBytes = (_optLength + 3 + 7) >> 3;
             staticLenBytes = (_staticLen + 3 + 7) >> 3;
-
-            if (staticLenBytes <= optLenBytes || output._strategy == ManagedZLib.CompressionStrategy.Fixed)
-
-                optLenBytes = staticLenBytes;
-
         }
         else
         {
@@ -545,9 +540,10 @@ internal class DeflateTrees
         PutShort(output, (ushort)~storedLen);
         if (storedLen != 0)
         {
-            output._pendingBuffer = output._pendingBuffer.Slice((int)output._pendingBufferBytes);
-            buffer = buffer.Slice(0,(int)storedLen); //Amount to copy to pendingBuff
-            buffer.CopyTo(output._pendingBuffer.Span);
+            //Amount to copy to pendingBuff is storedLen
+            Span<byte> destBuffer = output._pendingBuffer.Span.Slice((int)output._pendingBufferBytes, (int)storedLen);
+            buffer.Slice(0, (int)storedLen).CopyTo(destBuffer);
+            output._pendingBuffIndex += (uint)output._pendingBufferBytes;
         }
         output._pendingBufferBytes += storedLen;
     }
