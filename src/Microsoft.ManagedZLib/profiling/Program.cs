@@ -5,7 +5,9 @@ using Microsoft.ManagedZLib.Benchmarks;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Microsoft.ManagedZLib;
 
@@ -30,22 +32,27 @@ internal class Program
 
     private static void Main(string[] args)
     {
-        int iter = 10_000_000;
+        int iter = 20_000_000;
         Stopwatch stopWatch = new Stopwatch();
         CompressedFile compressedFile = new("TestDocument.pdf", System.IO.Compression.CompressionLevel.SmallestSize);
         compressedFile.CompressedDataStream.Position = 0;
         MemoryStream expectedStream = new();
-        // DeflateStream decompressor = new(compressedFile.CompressedDataStream, CompressionMode.Decompress);
-        System.IO.Compression.DeflateStream decompressor = new(compressedFile.CompressedDataStream, System.IO.Compression.CompressionMode.Decompress);
+
+        Console.WriteLine($"Environment.Version: {Environment.Version}");
+        Console.WriteLine($"RuntimeInformation.FrameworkDescription: {RuntimeInformation.FrameworkDescription}");
+        Console.WriteLine($"AssemblyFileVersion: {typeof(object).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()!.Version!}");
+
+        DeflateStream decompressor = new(compressedFile.CompressedDataStream, CompressionMode.Decompress);
+        //System.IO.Compression.DeflateStream decompressor = new(compressedFile.CompressedDataStream, System.IO.Compression.CompressionMode.Decompress);
         for (int i = 0; i < 100; i++)
         {
-            TestN(expectedStream, compressedFile, decompressor);
+            TestM(expectedStream, compressedFile, decompressor);
         }
 
         stopWatch.Start();
         for (int i = 0; i < iter; i++)
         {
-            TestN(expectedStream, compressedFile, decompressor);
+            TestM(expectedStream, compressedFile, decompressor);
         }
         stopWatch.Stop();
 
