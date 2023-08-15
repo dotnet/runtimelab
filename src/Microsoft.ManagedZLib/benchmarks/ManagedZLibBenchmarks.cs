@@ -15,7 +15,7 @@ namespace Microsoft.ManagedZLib.Benchmarks;
 // BenchmarkDotNet creates a type which derives from type with benchmarks. 
 // So the type with benchmarks must not be sealed and it can NOT BE STATIC 
 // and it has to BE PUBLIC. It also has to be a class (no structs support).
-[EtwProfiler(performExtraBenchmarksRun:true)]
+[EtwProfiler(performExtraBenchmarksRun: true)]
 public class ManagedZLibBenchmark
 {
     public static IEnumerable<string> UncompressedTestFileNames()
@@ -33,7 +33,7 @@ public class ManagedZLibBenchmark
     {
         Debug.Assert(File != null);
         CompressedFile = new CompressedFile(File, Level);
-        _outputStream = new MemoryStream(CompressedFile.UncompressedData.Length); 
+        _outputStream = new MemoryStream(CompressedFile.UncompressedData.Length);
 
     }
 
