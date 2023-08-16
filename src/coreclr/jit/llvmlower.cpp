@@ -1435,7 +1435,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
             GenTree* unwindFrameLclAddr = m_compiler->gtNewLclVarAddrNode(unwindFrameLclNum);
             GenTreeIntCon* initialUnwindIndexNode = m_compiler->gtNewIconNode(m_initialIndexValue, TYP_I_IMPL);
             GenTreeCall* initializeCall =
-                m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_PUSH_VIRTUAL_UNWIND_FRAME, TYP_VOID,
+                m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME, TYP_VOID,
                                                 unwindFrameLclAddr, unwindTableAddrNode, initialUnwindIndexNode);
             LIR::Range initRange;
             initRange.InsertAtEnd(unwindFrameLclAddr);
@@ -1470,7 +1470,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
                     assert(lastNode->OperIs(GT_RETURN));
 
                     GenTreeCall* popCall =
-                        m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_POP_VIRTUAL_UNWIND_FRAME, TYP_VOID);
+                        m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME, TYP_VOID);
                     LIR::Range popCallRange;
                     popCallRange.InsertAtBeginning(popCall);
                     m_llvm->lowerRange(block, popCallRange);

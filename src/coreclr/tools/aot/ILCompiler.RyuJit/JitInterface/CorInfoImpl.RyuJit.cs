@@ -768,23 +768,20 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_CATCH:
                     mangledName = "RhpHandleExceptionWasmCatch";
                     break;
-                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_CATCH_POP_UNWOUND_VIRTUAL_FRAMES:
-                    mangledName = "RhpHandleExceptionWasmCatchAndPopUnwoundVirtualFrames";
-                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES:
                     mangledName = "RhpPopUnwoundVirtualFrames";
-                    break;
-                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION:
-                    mangledName = "RhpHandleUnhandledException";
                     break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET:
                     mangledName = "RhpResolveInterfaceDispatch";
                     break;
-                case CorInfoHelpFunc.CORINFO_HELP_LLVM_PUSH_VIRTUAL_UNWIND_FRAME:
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME:
                     mangledName = "RhpPushVirtualUnwindFrame";
                     break;
-                case CorInfoHelpFunc.CORINFO_HELP_LLVM_POP_VIRTUAL_UNWIND_FRAME:
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME:
                     mangledName = "RhpPopVirtualUnwindFrame";
+                    break;
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION:
+                    mangledName = "RhpHandleUnhandledException";
                     break;
 
                 default:
