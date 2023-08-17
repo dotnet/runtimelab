@@ -56,7 +56,7 @@ Note that it is important to use _the same version_ for both packages to avoid p
 ```
 ### WebAssembly
 
-Install and activate Emscripten. See [Install Emscripten](https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended)  Version 3.1.23 is known to work, later versions of Emscripten are known to fail.
+Install and activate Emscripten. See [Install Emscripten](https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended).  Version 3.1.23 is known to work, later versions of Emscripten are known to fail.
 
 For WebAssembly, it is always a cross-architecture scenario as the compiler runs on Windows/Linux/MacOS and the runtime is for WebAssembly.  WebAssembly is not integrated into the main ILCompiler so first remove (if you added it from above)
 
