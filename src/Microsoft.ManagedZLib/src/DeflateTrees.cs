@@ -233,9 +233,15 @@ internal class DeflateTrees
     public bool TreeTallyLit(byte WindowValue) //Whether or not to flush the block
     {
         byte DynLTreeIndex = WindowValue;
-        _symBuffer.ToArray()[_symIndex++] = 0;
-        _symBuffer.ToArray()[_symIndex++] = 0;
-        _symBuffer.ToArray()[_symIndex++] = DynLTreeIndex;
+        Debug.Assert((int)_symIndex >= 0); //Secure no type overflow
+        _symBuffer.Span[(int)_symIndex++] = 0;
+
+        Debug.Assert((int)_symIndex >= 0);
+        _symBuffer.Span[(int)_symIndex++] = 0;
+
+        Debug.Assert((int)_symIndex >= 0);
+        _symBuffer.Span[(int)_symIndex++] = DynLTreeIndex;
+
         _dynLitLenTree[DynLTreeIndex].Freq++; //Literal-Length frenquency count 
                                               // For later building the code: Bit String
         return (_symIndex == _symEnd);
@@ -245,9 +251,15 @@ internal class DeflateTrees
     {
         byte len = (byte)length;
         ushort dist = (ushort)distance;
-        _symBuffer.ToArray()[_symIndex++] = (byte)dist;
-        _symBuffer.ToArray()[_symIndex++] = (byte)(dist>>8);
-        _symBuffer.ToArray()[_symIndex++] = len;
+        Debug.Assert((int)_symIndex >= 0);
+        _symBuffer.Span[(int)_symIndex++] = (byte)dist;
+
+        Debug.Assert((int)_symIndex >= 0);
+        _symBuffer.Span[(int)_symIndex++] = (byte)(dist>>8);
+
+        Debug.Assert((int)_symIndex >= 0);
+        _symBuffer.Span[(int)_symIndex++] = len;
+
         dist--;
         _dynLitLenTree[StaticTreeTables.LengthCode[len]+Literals+1].Freq++;
         _dynDistanceTree[GetDistCode(dist)].Freq++; //Distance frenquency count
