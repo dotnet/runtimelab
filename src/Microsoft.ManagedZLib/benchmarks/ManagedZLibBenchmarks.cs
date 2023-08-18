@@ -2,7 +2,10 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
+using Perfolizer.Horology;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -68,7 +71,19 @@ public class ManagedZLibBenchmark
 
     public class ProgramRun
     {
-        public static void Main(string[] args) => BenchmarkSwitcher.FromAssembly(typeof(ProgramRun).Assembly).Run(args);
+        public static void Main(string[] args)
+        {
+            var job = Job.Default
+                .WithWarmupCount(1) // 1 warmup is enough for our purpose
+                .WithIterationTime(TimeInterval.FromMilliseconds(250)) // the default is 0.5s per iteration, which is slightly too much for us
+                .WithMinIterationCount(15)
+                .WithMaxIterationCount(20); // we don't want to run more that 20 iterations
+
+            var config = DefaultConfig.Instance
+                .AddJob(job.AsDefault());
+
+            BenchmarkSwitcher.FromAssembly(typeof(ProgramRun).Assembly).Run(args, config);
+        }
     }
 
 }
