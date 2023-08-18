@@ -1344,31 +1344,23 @@ void Llvm::buildLocalField(GenTreeLclFld* lclFld)
 
 void Llvm::buildStoreLocalField(GenTreeLclFld* lclFld)
 {
-    GenTree* data = lclFld->gtGetOp1();
+    GenTree* data = lclFld->Data();
     ClassLayout* layout = lclFld->TypeIs(TYP_STRUCT) ? lclFld->GetLayout() : nullptr;
-    Type* llvmStoreType = (layout != nullptr) ? getLlvmTypeForStruct(layout)
-                                              : getLlvmTypeForVarType(lclFld->TypeGet());
     Value* addrValue = gepOrAddrInBounds(getLocalAddr(lclFld->GetLclNum()), lclFld->GetLclOffs());
 
-    Value* dataValue;
     if (lclFld->TypeIs(TYP_STRUCT) && genActualTypeIsInt(data))
     {
-        if (!data->IsIntegralConst(0))
-        {
-            assert(data->OperIsInitVal());
-            Value* fillValue = consumeValue(data->gtGetOp1(), Type::getInt8Ty(m_context->Context));
-            Value* sizeValue = _builder.getInt32(layout->GetSize());
-            _builder.CreateMemSet(addrValue, fillValue, sizeValue, llvm::MaybeAlign());
-            return;
-        }
-        dataValue = llvm::Constant::getNullValue(llvmStoreType);
+        Value* fillValue = consumeInitVal(data);
+        Value* sizeValue = _builder.getInt32(layout->GetSize());
+        _builder.CreateMemSet(addrValue, fillValue, sizeValue, llvm::MaybeAlign());
     }
     else
     {
-        dataValue = consumeValue(data, llvmStoreType);
+        Type* llvmStoreType =
+            (layout != nullptr) ? getLlvmTypeForStruct(layout) : getLlvmTypeForVarType(lclFld->TypeGet());
+        Value* dataValue = consumeValue(data, llvmStoreType);
+        _builder.CreateStore(dataValue, addrValue);
     }
-
-    _builder.CreateStore(dataValue, addrValue);
 }
 
 void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
@@ -1978,9 +1970,7 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     // Check for the "initblk" operation ("dataNode" is either INIT_VAL or constant zero).
     if (blockOp->OperIsInitBlkOp())
     {
-        Value* fillValue = dataNode->OperIsInitVal()
-            ? consumeValue(dataNode->gtGetOp1(), Type::getInt8Ty(m_context->Context))
-            : _builder.getInt8(0);
+        Value* fillValue = consumeInitVal(dataNode);
         _builder.CreateMemSet(addrValue, fillValue, _builder.getInt32(layout->GetSize()), llvm::Align());
         return;
     }
@@ -2045,9 +2035,7 @@ void Llvm::buildStoreDynBlk(GenTreeStoreDynBlk* blockOp)
     }
     else
     {
-        Value* initValue = srcNode->OperIsInitVal()
-            ? consumeValue(srcNode->AsUnOp()->gtGetOp1(), Type::getInt8Ty(m_context->Context))
-            : _builder.getInt8(0);
+        Value* initValue = consumeInitVal(srcNode);
         _builder.CreateMemSet(dstAddrValue, initValue, sizeValue, llvm::MaybeAlign());
     }
 
@@ -2420,6 +2408,19 @@ void Llvm::emitNullCheckForAddress(GenTree* addr, Value* addrValue)
     }
 
     emitJumpToThrowHelper(isNullValue, SCK_NULL_REF_EXCPN);
+}
+
+Value* Llvm::consumeInitVal(GenTree* initVal)
+{
+    assert(initVal->isContained());
+    if (initVal->IsIntegralConst())
+    {
+        assert(initVal->IsIntegralConst(0));
+        return _builder.getInt8(0);
+    }
+
+    assert(initVal->OperIsInitVal());
+    return consumeValue(initVal->gtGetOp1(), Type::getInt8Ty(m_context->Context));
 }
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
