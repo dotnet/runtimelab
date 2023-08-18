@@ -249,9 +249,9 @@ void Llvm::declareDebugVariables()
             if (spilledShadowStackAddr == nullptr)
             {
                 spilledShadowStackAddr = _builder.CreateAlloca(getPtrLlvmType());
-                JITDUMPEXEC(spilledShadowStackAddr->dump());
+                JITDUMPEXEC(displayValue(spilledShadowStackAddr));
                 Instruction* storeInst = _builder.CreateStore(getShadowStack(), spilledShadowStackAddr);
-                JITDUMPEXEC(storeInst->dump());
+                JITDUMPEXEC(displayValue(storeInst));
             }
 
             addressValue = spilledShadowStackAddr;
@@ -272,7 +272,7 @@ void Llvm::declareDebugVariables()
         Instruction* debugInst =
             m_diBuilder->insertDeclare(addressValue, debugVariable, debugExpression, debugLocation, insertInst);
         JITDUMP("Declaring V%02u:\n", lclNum);
-        JITDUMPEXEC(debugInst->dump());
+        JITDUMPEXEC(displayValue(debugInst));
     }
 }
 
@@ -295,7 +295,7 @@ void Llvm::assignDebugVariable(unsigned lclNum, Value* value)
             debugInst = m_diBuilder->insertDbgValueIntrinsic(value, debugVariable, m_diBuilder->createExpression(),
                                                              debugLocation, &*_builder.GetInsertPoint());
         }
-        DBEXEC(CurrentBlock() == nullptr, JITDUMPEXEC(debugInst->dump()));
+        DBEXEC(CurrentBlock() == nullptr, JITDUMPEXEC(displayValue(debugInst)));
     }
 }
 
