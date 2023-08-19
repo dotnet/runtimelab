@@ -520,6 +520,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Condition="'$(WasmEnableJSBigIntIntegration)' == 'true'" Include="-s WASM_BIGINT=1" />
       <CustomLinkerArg Condition="'$(WasmEnableExceptionHandling)' != 'true'" Include="-s DISABLE_EXCEPTION_CATCHING=0" />
       <CustomLinkerArg Condition="'$(WasmEnableExceptionHandling)' == 'true'" Include="-fwasm-exceptions" />
+      <CustomLinkerArg Include="-s STACK_SIZE=1MB" />
     </ItemGroup>
 
     <ItemGroup Condition ="'$(_targetOS)' == 'wasi'" >
