@@ -54,7 +54,6 @@ public class ManagedZLibBenchmark
     {
         CompressedFile!.CompressedDataStream.Position = 0;
         _outputStream!.Position = 0;
-        
         System.IO.Compression.DeflateStream decompressor = new System.IO.Compression.DeflateStream(CompressedFile.CompressedDataStream, System.IO.Compression.CompressionMode.Decompress);
         decompressor.CopyTo(_outputStream);
     }
@@ -64,7 +63,6 @@ public class ManagedZLibBenchmark
     {
         CompressedFile!.CompressedDataStream.Position = 0;
         _outputStream!.Position = 0;
-
         DeflateStream decompressor = new DeflateStream(CompressedFile.CompressedDataStream, CompressionMode.Decompress);
         decompressor.CopyTo(_outputStream);
     }
