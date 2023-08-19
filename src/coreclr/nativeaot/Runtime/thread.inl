@@ -26,12 +26,7 @@ inline bool Thread::IsWithinStackBounds(PTR_VOID p)
 
 inline void Thread::GetStackBounds(PTR_VOID * ppStackLow, PTR_VOID * ppStackHigh)
 {
-#if TARGET_WASM
-    // 0 is a valid value for m_pStackLow in Wasm.
-    ASSERT(m_pStackHigh != 0);
-#else
     ASSERT((m_pStackLow != 0) && (m_pStackHigh != 0));
-#endif
     *ppStackLow = m_pStackLow;
     *ppStackHigh = m_pStackHigh;
 }
