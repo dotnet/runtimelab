@@ -223,6 +223,13 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) con
     return getHelperFuncInfo(helperFunc).HasFlags(HFIF_SS_ARG);
 }
 
+bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
+{
+    // Allocators can throw OOM.
+    HelperCallProperties& properties = Compiler::s_helperCallProperties;
+    return !properties.NoThrow(helperFunc) || properties.IsAllocator(helperFunc);
+}
+
 //------------------------------------------------------------------------
 // getHelperFuncInfo: Get additional information about a Jit helper.
 //
@@ -583,7 +590,9 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) con
         { FUNC(CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC) CORINFO_TYPE_PTR, { CORINFO_TYPE_INT, CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
-        { FUNC(CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET) CORINFO_TYPE_PTR, { CORINFO_TYPE_CLASS, CORINFO_TYPE_PTR }, HFIF_SS_ARG }
+        { FUNC(CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET) CORINFO_TYPE_PTR, { CORINFO_TYPE_CLASS, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LLVM_PUSH_VIRTUAL_UNWIND_FRAME) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_NATIVEUINT }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_LLVM_POP_VIRTUAL_UNWIND_FRAME) CORINFO_TYPE_VOID, { }, HFIF_NO_RPI_OR_GC },
     };
     // clang-format on
 

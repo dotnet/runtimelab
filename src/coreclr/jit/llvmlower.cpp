@@ -108,11 +108,6 @@ void Llvm::AddUnhandledExceptionHandler()
 #endif // DEBUG
 }
 
-//------------------------------------------------------------------------
-// Convert GT_STORE_LCL_VAR and GT_LCL_VAR to use the shadow stack when the local needs to be GC tracked,
-// rewrite calls that returns GC types to do so via a store to a passed in address on the shadow stack.
-// Likewise, store the returned value there if required.
-//
 void Llvm::Lower()
 {
     initializeLlvmArgInfo();
@@ -193,8 +188,7 @@ void Llvm::lowerBlocks()
 {
     for (BasicBlock* block : _compiler->Blocks())
     {
-        lowerRange(block, LIR::AsRange(block));
-        block->bbFlags |= BBF_MARKED;
+        lowerBlock(block);
     }
 
     // Lowering may insert out-of-line throw helper blocks that must themselves be lowered. We do not
@@ -205,11 +199,17 @@ void Llvm::lowerBlocks()
     {
         if ((block->bbFlags & BBF_MARKED) == 0)
         {
-            lowerRange(block, LIR::AsRange(block));
+            lowerBlock(block);
         }
 
         block->bbFlags &= ~BBF_MARKED;
     }
+}
+
+void Llvm::lowerBlock(BasicBlock* block)
+{
+    lowerRange(block, LIR::AsRange(block));
+    block->bbFlags |= BBF_MARKED;
 }
 
 void Llvm::lowerRange(BasicBlock* block, LIR::Range& range)
@@ -1190,4 +1190,618 @@ bool Llvm::isFirstBlockCanonical()
     // Note this must use conditions at least as broad as "SsaBuilder::SetupBBRoot".
     BasicBlock* block = _compiler->fgFirstBB;
     return !block->hasTryIndex() && (block->bbPreds == nullptr);
+}
+
+//------------------------------------------------------------------------
+// AddVirtualUnwindFrame: Add "virtually unwindable" frame state.
+//
+// The first pass of exception handling needs to traverse the currently
+// active stack of possible catch handlers without unwinding the native
+// or shadow stack. We accomplish this by adding explicitly linked frames
+// and maintaining "unwind index" representing the active protected region
+// throughout execution of methods with catch handlers.
+//
+// To determine which blocks need the unwind index, we walk over the IR,
+// recording where exceptions may be thrown. Then, when optimizing, we
+// partition the graph into "unwind index groups" - areas where the unwind
+// index will have the same value, and which have a well-defined set of
+// entrypoints. Consider, for example:
+//
+//  BB01 (T0) -> BB02 (T0) --> BB03 (T1) -> BB05 (NO) --> BB06 (ZR)
+//                         \-> BB04 (ZR) -/           \-> BB07 (ZR)
+//
+// We start with BB01. It has no predecessors and gets a new group (G0).
+// This is an entry block to this group. We contine with BB02. It has only
+// one predecessor - BB01, which has the same unwind index requirement so
+// we put it into the same group. Next up are BB03 and BB04. Both cannot
+// be placed into G0 as they need different unwind indices, and so will be
+// assigned their own groups (G1 and G2). Next up is BB06. It has just one
+// predecessor - BB05, which does not need an unwind index. We place both
+// BB06 and BB05 into a new group (G3). We process BB05 itself and find
+// it has predecessors with conflicting unwind index requirements, so it
+// will be the entry block for G3. Finally, we process BB07, which by now
+// has a predecessor in a group with the same unwind index as its own, so
+// we place BB07 into G3 too. In the end, we will have with 4 block which
+// end up defining the unwind index (BB01, BB03, BB04, BB05) - the optimal
+// number for this flowgraph.
+//
+// This grouping algorithm is intended to take advantage of the clustery
+// nature of protected regions while remaining fully general.
+//
+PhaseStatus Llvm::AddVirtualUnwindFrame()
+{
+    // Always compute the set of filter blocks, for simplicity.
+    computeBlocksInFilters();
+
+    // TODO-LLVM: make a distinct flag; using this alias avoids conflicts.
+    static const BasicBlockFlags BBF_MAY_THROW = BBF_HAS_CALL;
+    static const unsigned UNWIND_INDEX_NONE = -1;
+    static const unsigned UNWIND_INDEX_GROUP_NONE = -1;
+
+    // Build the mapping of EH table indices to unwind indices.
+    unsigned lastUnwindIndex = UNWIND_INDEX_BASE;
+    CompAllocator alloc = _compiler->getAllocator(CMK_Codegen);
+    ArrayStack<unsigned>* indexMap = new (alloc) ArrayStack<unsigned>(alloc, _compiler->compHndBBtabCount);
+    for (EHblkDsc* ehDsc : EHClauses(_compiler))
+    {
+        if (ehDsc->HasCatchHandler())
+        {
+            indexMap->Push(lastUnwindIndex++);
+        }
+        else
+        {
+            indexMap->Push(UNWIND_INDEX_NOT_IN_TRY_CATCH);
+        }
+    }
+
+    if (lastUnwindIndex == UNWIND_INDEX_BASE)
+    {
+        // No catch handlers; no need for virtual unwinding.
+        return PhaseStatus::MODIFIED_NOTHING;
+    }
+
+    // Now assign indices to potentially nested regions protected by fault/finally handlers.
+    for (unsigned ehIndex = 0; ehIndex < _compiler->compHndBBtabCount; ehIndex++)
+    {
+        EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
+        if (ehDsc->HasCatchHandler())
+        {
+            continue;
+        }
+
+        while (ehDsc->ebdEnclosingTryIndex != EHblkDsc::NO_ENCLOSING_INDEX)
+        {
+            unsigned index = indexMap->Bottom(ehDsc->ebdEnclosingTryIndex);
+            if (index != UNWIND_INDEX_NOT_IN_TRY_CATCH)
+            {
+                indexMap->BottomRef(ehIndex) = index;
+                break;
+            }
+
+            ehDsc = _compiler->ehGetDsc(ehDsc->ebdEnclosingTryIndex);
+        }
+    }
+
+    // Compute which blocks may throw and thus need an up-to-date unwind index.
+    for (BasicBlock* block : _compiler->Blocks())
+    {
+        // BBF_MAY_THROW overlaps with BBF_HAS_CALL.
+        block->bbFlags &= ~BBF_MAY_THROW;
+
+        for (GenTree* node : LIR::AsRange(block))
+        {
+            if (mayPhysicallyThrow(node))
+            {
+                block->bbFlags |= BBF_MAY_THROW;
+                break;
+            }
+        }
+    }
+
+    // The exceptional requirements of throw helper blocks are captured by their "source" blocks.
+    for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
+    {
+        add->acdDstBlk->bbFlags &= ~BBF_MAY_THROW;
+    }
+
+    class Inserter
+    {
+        struct IndexDef
+        {
+            BasicBlock* Block;
+            unsigned Value;
+        };
+
+        struct UnwindIndexGroup
+        {
+            unsigned UnwindIndex;
+        };
+
+        Llvm* m_llvm;
+        Compiler* m_compiler;
+        ArrayStack<unsigned>* m_indexMap;
+        ArrayStack<UnwindIndexGroup> m_groups;
+        ArrayStack<IndexDef> m_definedIndices;
+        unsigned m_initialIndexValue = UNWIND_INDEX_NOT_IN_TRY;
+
+    public:
+        Inserter(Llvm* llvm, ArrayStack<unsigned>* indexMap)
+            : m_llvm(llvm)
+            , m_compiler(llvm->_compiler)
+            , m_indexMap(indexMap)
+            , m_groups(m_compiler->getAllocator(CMK_Codegen))
+            , m_definedIndices(m_compiler->getAllocator(CMK_Codegen))
+        {
+        }
+
+        static bool IsCatchUnwindIndex(unsigned index)
+        {
+            return index >= UNWIND_INDEX_BASE;
+        }
+
+        bool BlockUsesUnwindIndex(BasicBlock* block)
+        {
+            // Exceptions thrown in filters do not unwind to their enclosing protected region and are
+            // instead always caught by the dispatcher. Thus, filter blocks do not need the unwind index.
+            return (block->bbFlags & BBF_MAY_THROW) != 0 && !m_llvm->isBlockInFilter(block);
+        }
+
+        unsigned GetUnwindIndexForBlock(BasicBlock* block)
+        {
+            if (!BlockUsesUnwindIndex(block))
+            {
+                return UNWIND_INDEX_NONE;
+            }
+            if (!block->hasTryIndex())
+            {
+                return UNWIND_INDEX_NOT_IN_TRY;
+            }
+
+            // Assert that we will only see the most nested index for mutually protecting regions.
+            unsigned ehIndex = block->getTryIndex();
+            assert((ehIndex == 0) || !m_compiler->ehGetDsc(ehIndex)->ebdIsSameTry(m_compiler, ehIndex - 1));
+
+            return m_indexMap->Bottom(ehIndex);
+        }
+
+        void DefineIndex(BasicBlock* block, unsigned indexValue)
+        {
+            JITDUMP("Setting unwind index in " FMT_BB " to %u", block->bbNum, indexValue);
+            JITDUMPEXEC(PrintUnwindIndex(indexValue));
+            JITDUMP("\n");
+
+            // As a size optimization, the first block's index will be initialized by the init helper.
+            if (block == m_compiler->fgFirstBB)
+            {
+                m_initialIndexValue = indexValue;
+                return;
+            }
+
+            m_definedIndices.Push({block, indexValue});
+        }
+
+        bool SerializeResultsIntoIR()
+        {
+            bool allIndicesAreNotInTryCatch = !IsCatchUnwindIndex(m_initialIndexValue);
+            if (allIndicesAreNotInTryCatch)
+            {
+                for (int i = 0; i < m_definedIndices.Height(); i++)
+                {
+                    if (IsCatchUnwindIndex(m_definedIndices.BottomRef(i).Value))
+                    {
+                        allIndicesAreNotInTryCatch = false;
+                        break;
+                    }
+                }
+            }
+
+            // This can happen if we have try regions without any throws. The compiler is not great at removing them.
+            if (allIndicesAreNotInTryCatch)
+            {
+                JITDUMP("All unwind indices were NOT_IN_TRY[_CATCH], skipping inserting the unwind frame\n");
+                return false;
+            }
+
+            ClassLayout* unwindFrameLayout = m_compiler->typGetBlkLayout(3 * TARGET_POINTER_SIZE);
+            unsigned unwindFrameLclNum = m_compiler->lvaGrabTempWithImplicitUse(false DEBUGARG("virtual unwind frame"));
+            m_compiler->lvaSetStruct(unwindFrameLclNum, unwindFrameLayout, /* unsafeValueClsCheck */ false);
+            m_compiler->lvaSetVarAddrExposed(unwindFrameLclNum DEBUGARG(AddressExposedReason::ESCAPE_ADDRESS));
+            m_compiler->lvaGetDesc(unwindFrameLclNum)->lvHasExplicitInit = true;
+            m_llvm->m_unwindFrameLclNum = unwindFrameLclNum;
+
+            m_llvm->m_unwindIndexMap = m_indexMap;
+            GenTree* unwindTableAddr = m_compiler->gtNewIconNode(0, TYP_I_IMPL);
+            GenTree* unwindFrameLclAddr = m_compiler->gtNewLclVarAddrNode(unwindFrameLclNum);
+            GenTreeIntCon* initialUnwindIndexNode = m_compiler->gtNewIconNode(m_initialIndexValue, TYP_I_IMPL);
+            GenTreeCall* initializeCall =
+                m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_PUSH_VIRTUAL_UNWIND_FRAME, TYP_VOID,
+                                                unwindFrameLclAddr, unwindTableAddr, initialUnwindIndexNode);
+            LIR::Range initRange;
+            initRange.InsertAtEnd(unwindFrameLclAddr);
+            initRange.InsertAtEnd(unwindTableAddr);
+            initRange.InsertAtEnd(initialUnwindIndexNode);
+            initRange.InsertAtEnd(initializeCall);
+
+            assert(m_llvm->isFirstBlockCanonical());
+            m_llvm->lowerRange(m_compiler->fgFirstBB, initRange);
+            LIR::AsRange(m_compiler->fgFirstBB).InsertAtBeginning(std::move(initRange));
+
+            for (int i = 0; i < m_definedIndices.Height(); i++)
+            {
+                const IndexDef& def = m_definedIndices.BottomRef(i);
+                GenTree* indexValueNode = m_compiler->gtNewIconNode(def.Value);
+                GenTree* indexValueStore = m_compiler->gtNewStoreLclFldNode(unwindFrameLclNum, TYP_INT,
+                                                                            2 * TARGET_POINTER_SIZE, indexValueNode);
+
+                // No need to lower these nodes at this point in time.
+                LIR::Range& blockRange = LIR::AsRange(def.Block);
+                GenTree* insertionPoint = blockRange.FirstNonPhiOrCatchArgNode();
+                blockRange.InsertBefore(insertionPoint, indexValueNode);
+                blockRange.InsertBefore(insertionPoint, indexValueStore);
+            }
+
+            for (BasicBlock* block : m_compiler->Blocks())
+            {
+                // TODO-LLVM-EH: fold NOT_IN_TRY settings into pop calls when legal.
+                if (block->KindIs(BBJ_RETURN))
+                {
+                    GenTree* lastNode = block->lastNode();
+                    assert(lastNode->OperIs(GT_RETURN));
+
+                    GenTreeCall* popCall =
+                        m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_POP_VIRTUAL_UNWIND_FRAME, TYP_VOID);
+                    LIR::Range popCallRange;
+                    popCallRange.InsertAtBeginning(popCall);
+                    m_llvm->lowerRange(block, popCallRange);
+                    LIR::AsRange(block).InsertBefore(lastNode, std::move(popCallRange));
+                }
+            }
+
+            return true;
+        }
+
+        void InsertDefinitionsBasedOnUnwindIndexGroups()
+        {
+            ArrayStack<BasicBlock*> blockList(m_compiler->getAllocator(CMK_Codegen), m_compiler->fgBBcount);
+            BitVecTraits blockListTraits(m_compiler->fgBBNumMax + 1, m_compiler);
+            BitVec blockListSet = BitVecOps::MakeEmpty(&blockListTraits);
+
+            for (BasicBlock* block = m_compiler->fgLastBB; block != nullptr; block = block->bbPrev)
+            {
+                if (BlockUsesUnwindIndex(block))
+                {
+                    blockList.Push(block);
+                    BitVecOps::AddElemD(&blockListTraits, blockListSet, block->bbNum);
+                }
+
+                SetGroup(block, UNWIND_INDEX_GROUP_NONE);
+            }
+
+            while (!blockList.Empty())
+            {
+                BasicBlock* block = blockList.Pop();
+                unsigned blockUnwindIndex = GetUnwindIndexForBlock(block);
+                unsigned blockUnwindIndexGroup = GetGroup(block);
+                assert(BitVecOps::IsMember(&blockListTraits, blockListSet, block->bbNum));
+
+                JITDUMP("At " FMT_BB, block->bbNum);
+                JITDUMPEXEC(PrintUnwindIndex(blockUnwindIndex));
+                JITDUMP(": ");
+                JITDUMPEXEC(PrintUnwindIndexGroup(blockUnwindIndexGroup));
+
+                if (blockUnwindIndex == UNWIND_INDEX_NONE)
+                {
+                    assert(blockUnwindIndexGroup != UNWIND_INDEX_GROUP_NONE);
+                    blockUnwindIndex = GetGroupUnwindIndex(blockUnwindIndexGroup);
+                }
+
+                // Due to this dependency on "BlockPredsWithEH" we run after SSA, which computes and caches it.
+                FlowEdge* allPredEdges = m_compiler->BlockPredsWithEH(block);
+
+                bool allPredsUseTheSameUnwindIndex = true;
+                unsigned selectedUnwindIndexGroup = blockUnwindIndexGroup;
+                for (BasicBlock* predBlock : PredBlockList(allPredEdges))
+                {
+                    unsigned predBlockUnwindIndex = GetUnwindIndexForBlock(predBlock);
+                    unsigned predBlockUnwindIndexGroup = GetGroup(predBlock);
+                    if (predBlockUnwindIndexGroup != UNWIND_INDEX_GROUP_NONE)
+                    {
+                        if (predBlockUnwindIndex == UNWIND_INDEX_NONE)
+                        {
+                            predBlockUnwindIndex = GetGroupUnwindIndex(predBlockUnwindIndexGroup);
+                        }
+
+                        assert(predBlockUnwindIndex == GetGroupUnwindIndex(predBlockUnwindIndexGroup));
+                    }
+
+                    if ((predBlockUnwindIndex != UNWIND_INDEX_NONE) && (predBlockUnwindIndex != blockUnwindIndex))
+                    {
+                        allPredsUseTheSameUnwindIndex = false;
+                        break;
+                    }
+
+                    if (selectedUnwindIndexGroup == UNWIND_INDEX_GROUP_NONE)
+                    {
+                        selectedUnwindIndexGroup = predBlockUnwindIndexGroup;
+                    }
+                }
+
+                const char* groupSelectionReason = nullptr;
+                if (blockUnwindIndexGroup == UNWIND_INDEX_GROUP_NONE)
+                {
+                    if (!allPredsUseTheSameUnwindIndex || (selectedUnwindIndexGroup == UNWIND_INDEX_GROUP_NONE))
+                    {
+                        groupSelectionReason = "new";
+                        blockUnwindIndexGroup = NewGroup(blockUnwindIndex);
+                    }
+                    else
+                    {
+                        groupSelectionReason = "selected";
+                        blockUnwindIndexGroup = selectedUnwindIndexGroup;
+                    }
+
+                    SetGroup(block, blockUnwindIndexGroup);
+                }
+
+                JITDUMP(" -> ");
+                JITDUMPEXEC(PrintUnwindIndexGroup(blockUnwindIndexGroup));
+                JITDUMPEXEC(PrintUnwindIndex(blockUnwindIndex));
+                if (groupSelectionReason != nullptr)
+                {
+                    JITDUMP(" - %s", groupSelectionReason);
+                }
+                assert(blockUnwindIndex == GetGroupUnwindIndex(blockUnwindIndexGroup));
+
+                bool allPredsDefineTheSameUnwindIndex = allPredsUseTheSameUnwindIndex;
+                if (allPredsUseTheSameUnwindIndex)
+                {
+                    for (BasicBlock* predBlock : PredBlockList(allPredEdges))
+                    {
+                        unsigned predBlockUnwindIndexGroup = GetGroup(predBlock);
+                        if (predBlockUnwindIndexGroup != UNWIND_INDEX_GROUP_NONE)
+                        {
+                            continue;
+                        }
+
+                        JITDUMP(", pred " FMT_BB " -> ", predBlock->bbNum);
+                        INDEBUG(const char* reasonWhyNot);
+                        if (!ExpandGroup(predBlock DEBUGARG(&reasonWhyNot)))
+                        {
+                            JITDUMP("GZ (%s)", reasonWhyNot);
+                            allPredsDefineTheSameUnwindIndex = false;
+                            continue;
+                        }
+
+                        if (!BitVecOps::IsMember(&blockListTraits, blockListSet, predBlock->bbNum))
+                        {
+                            BitVecOps::AddElemD(&blockListTraits, blockListSet, predBlock->bbNum);
+                            blockList.Push(predBlock);
+                        }
+
+                        JITDUMPEXEC(PrintUnwindIndexGroup(blockUnwindIndexGroup));
+                        SetGroup(predBlock, blockUnwindIndexGroup);
+                    }
+                }
+
+                if (!allPredsDefineTheSameUnwindIndex || (allPredEdges == nullptr))
+                {
+                    // This will be an entry block to this unwind index group.
+                    block->bbFlags |= BBF_MARKED;
+                }
+
+                JITDUMP("\n");
+            }
+
+            JITDUMPEXEC(PrintUnwindIndexGroupsForBlocks());
+
+            for (BasicBlock* block : m_compiler->Blocks())
+            {
+                if ((block->bbFlags & BBF_MARKED) != 0)
+                {
+                    DefineIndex(block, GetGroupUnwindIndex(GetGroup(block)));
+                    block->bbFlags &= ~BBF_MARKED;
+                }
+            }
+        }
+
+    private:
+        unsigned GetGroup(BasicBlock* block)
+        {
+            return static_cast<unsigned>(reinterpret_cast<size_t>(block->bbEmitCookie));
+        }
+
+        void SetGroup(BasicBlock* block, unsigned groupIndex)
+        {
+            block->bbEmitCookie = reinterpret_cast<void*>(static_cast<size_t>(groupIndex));
+        }
+
+        unsigned GetGroupUnwindIndex(unsigned groupIndex)
+        {
+            assert(groupIndex != UNWIND_INDEX_GROUP_NONE);
+            return m_groups.BottomRef(groupIndex).UnwindIndex;
+        }
+
+        unsigned NewGroup(unsigned unwindIndex)
+        {
+            assert(unwindIndex != UNWIND_INDEX_NONE);
+            unsigned groupIndex = m_groups.Height();
+            m_groups.Push({unwindIndex});
+
+            return groupIndex;
+        }
+
+        bool ExpandGroup(BasicBlock* predBlock DEBUGARG(const char** pReasonWhyNot))
+        {
+            // The compiler models exceptional flow such that the catch handler associated with a given
+            // filter is "invoked" by it (the handler's entry is a normal successor of BBJ_EHFILTERRET).
+            // This transition, while atomic in the flowgraph, is not so in execution because of the
+            // dispatch code that runs before the handler is reached. This dispatch code relies on the
+            // stack of virtual unwind frames remaining consistent. Letting filters alter the unwind
+            // index would risk "freeing" this frame too early. Therefore, we must not place any filter
+            // blocks in any group.
+            if (m_llvm->isBlockInFilter(predBlock))
+            {
+                INDEBUG(*pReasonWhyNot = "in filter");
+                return false;
+            }
+
+            // TODO-LLVM-CQ: design CQ-driven heuristics for group expansion.
+            return true;
+        }
+
+#ifdef DEBUG
+        void PrintUnwindIndex(unsigned index)
+        {
+            printf(" (");
+            switch (index)
+            {
+                case UNWIND_INDEX_NONE:
+                    printf("NO");
+                    break;
+                case UNWIND_INDEX_NOT_IN_TRY:
+                    printf("ZR");
+                    break;
+                case UNWIND_INDEX_NOT_IN_TRY_CATCH:
+                    printf("ZF");
+                    break;
+                default:
+                    for (unsigned ehIndex = 0; ehIndex < m_compiler->compHndBBtabCount; ehIndex++)
+                    {
+                        EHblkDsc* ehDsc = m_compiler->ehGetDsc(ehIndex);
+                        if (ehDsc->HasCatchHandler() && (m_indexMap->Bottom(ehIndex) == index))
+                        {
+                            printf("T%u", ehIndex);
+                            break;
+                        }
+                    }
+                    break;
+            }
+            printf(")");
+        }
+
+        void PrintUnwindIndexGroup(unsigned groupIndex)
+        {
+            if (groupIndex == UNWIND_INDEX_GROUP_NONE)
+            {
+                printf("GZ");
+                return;
+            }
+
+            printf("G%u", groupIndex);
+        }
+
+        void PrintUnwindIndexGroupsForBlocks()
+        {
+            printf("Final unwind index groups:\n");
+            for (BasicBlock* block : m_compiler->Blocks())
+            {
+                unsigned groupIndex = GetGroup(block);
+
+                printf(FMT_BB " %s : ", block->bbNum, BlockUsesUnwindIndex(block) ? "(U)" : "   ");
+                PrintUnwindIndexGroup(groupIndex);
+                if (groupIndex != UNWIND_INDEX_GROUP_NONE)
+                {
+                    PrintUnwindIndex(GetGroupUnwindIndex(groupIndex));
+                    if ((block->bbFlags & BBF_MARKED) != 0)
+                    {
+                        printf(" ENTRY");
+                    }
+                }
+                printf("\n");
+            }
+        }
+#endif // DEBUG
+    };
+
+    Inserter inserter(this, indexMap);
+
+    // We will use the more precise algorithm when optimizing.
+    if (_compiler->fgSsaDomTree != nullptr)
+    {
+        inserter.InsertDefinitionsBasedOnUnwindIndexGroups();
+    }
+    else
+    {
+        for (BasicBlock* block : _compiler->Blocks())
+        {
+            unsigned index = inserter.GetUnwindIndexForBlock(block);
+            if (index != UNWIND_INDEX_NONE)
+            {
+                inserter.DefineIndex(block, index);
+            }
+        }
+    }
+
+    if (!inserter.SerializeResultsIntoIR())
+    {
+        return PhaseStatus::MODIFIED_NOTHING;
+    }
+
+    return PhaseStatus::MODIFIED_EVERYTHING;
+}
+
+void Llvm::computeBlocksInFilters()
+{
+    for (EHblkDsc* ehDsc : EHClauses(_compiler))
+    {
+        if (ehDsc->HasFilter())
+        {
+            for (BasicBlock* block : _compiler->Blocks(ehDsc->ebdFilter, ehDsc->BBFilterLast()))
+            {
+                if (m_blocksInFilters == BlockSetOps::UninitVal())
+                {
+                    _compiler->EnsureBasicBlockEpoch();
+                    m_blocksInFilters = BlockSetOps::MakeEmpty(_compiler);
+                }
+
+                BlockSetOps::AddElemD(_compiler, m_blocksInFilters, block->bbNum);
+            }
+        }
+    }
+}
+
+//------------------------------------------------------------------------
+// mayPhysicallyThrow: Can this node cause unwinding?
+//
+// Certain nodes, such as allocator helpers, are marked no-throw in the Jit
+// model, but we must still generate code that allows for the catching of
+// exceptions they may produce.
+//
+// Arguments:
+//    node - The node in question
+//
+// Return Value:
+//    Whether "node" may physically throw.
+//
+bool Llvm::mayPhysicallyThrow(GenTree* node)
+{
+    if (node->IsHelperCall())
+    {
+        return helperCallMayPhysicallyThrow(node->AsCall()->GetHelperNum());
+    }
+
+    return node->OperMayThrow(_compiler);
+}
+
+//------------------------------------------------------------------------
+// isBlockInFilter: Is this block part of a filter funclet?
+//
+// Only valid to call after "computeBlocksInFilters" has run.
+//
+// Arguments:
+//    block - The block in question
+//
+// Return Value:
+//    Whether "block" is part of a filter funclet.
+//
+bool Llvm::isBlockInFilter(BasicBlock* block)
+{
+    if (m_blocksInFilters == BlockSetOps::UninitVal())
+    {
+        assert(!block->hasHndIndex() || !_compiler->ehGetBlockHndDsc(block)->InFilterRegionBBRange(block));
+        return false;
+    }
+
+    // Ideally, this would be a flag (BBF_*), but we make do with a bitset for now to avoid modifying the frontend.
+    return BlockSetOps::IsMember(_compiler, m_blocksInFilters, block->bbNum);
 }

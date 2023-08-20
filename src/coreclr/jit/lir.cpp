@@ -487,6 +487,20 @@ GenTree* LIR::Range::FirstNonCatchArgNode() const
 }
 
 //------------------------------------------------------------------------
+// LIR::Range::FirstNonPhiOrCatchArgNode: Returns the first node after all phi and catch arg nodes in this range.
+//
+GenTree* LIR::Range::FirstNonPhiOrCatchArgNode() const
+{
+    GenTree* nonPhiNode = FirstNonPhiNode();
+    if (nonPhiNode == nullptr)
+    {
+        return nullptr;
+    }
+
+    return LIR::Range(nonPhiNode, LastNode()).FirstNonCatchArgNode();
+}
+
+//------------------------------------------------------------------------
 // LIR::Range::InsertBefore: Inserts a node before another node in this range.
 //
 // Arguments:

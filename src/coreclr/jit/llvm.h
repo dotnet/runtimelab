@@ -198,6 +198,10 @@ private:
     LIR::Range* m_currentRange = nullptr;
     SideEffectSet m_scratchSideEffects; // Used for IsInvariantInRange.
 
+    // Shared between unwind index insertion and EH codegen.
+    ArrayStack<unsigned>* m_unwindIndexMap = nullptr;
+    BlockSet m_blocksInFilters = BlockSetOps::UninitVal();
+
     // Codegen members.
     llvm::IRBuilder<> _builder;
     JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, LlvmBlockRange> _blkToLlvmBlksMap;
@@ -226,6 +230,7 @@ private:
     unsigned _shadowStackLocalsSize = 0;
     unsigned _originalShadowStackLclNum = BAD_VAR_NUM;
     unsigned _shadowStackLclNum = BAD_VAR_NUM;
+    unsigned m_unwindFrameLclNum = BAD_VAR_NUM;
     unsigned _llvmArgCount = 0;
 
     // ================================================================================================================
@@ -258,6 +263,7 @@ private:
     bool helperCallHasShadowStackArg(CorInfoHelpFunc helperFunc) const;
     bool callHasManagedCallingConvention(const GenTreeCall* call) const;
     bool helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) const;
+    bool helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const;
 
     static const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpFunc helperFunc);
 
@@ -326,6 +332,7 @@ private:
     void initializeLlvmArgInfo();
 
     void lowerBlocks();
+    void lowerBlock(BasicBlock* block);
     void lowerRange(BasicBlock* block, LIR::Range& range);
     void lowerNode(GenTree* node);
     void lowerLocal(GenTreeLclVarCommon* node);
@@ -367,6 +374,19 @@ private:
 
     void lowerCanonicalizeFirstBlock();
     bool isFirstBlockCanonical();
+
+public:
+    PhaseStatus AddVirtualUnwindFrame();
+
+private:
+    static const unsigned UNWIND_INDEX_NOT_IN_TRY = 0;
+    static const unsigned UNWIND_INDEX_NOT_IN_TRY_CATCH = 1;
+    static const unsigned UNWIND_INDEX_BASE = 2;
+
+    void computeBlocksInFilters();
+
+    bool mayPhysicallyThrow(GenTree* node);
+    bool isBlockInFilter(BasicBlock* block);
 
     // ================================================================================================================
     // |                                           Shadow stack allocation                                            |

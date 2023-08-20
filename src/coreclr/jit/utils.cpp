@@ -1562,6 +1562,8 @@ void HelperCallProperties::init()
             case CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP:
             case CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC:
             case CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE:
+            case CORINFO_HELP_LLVM_PUSH_VIRTUAL_UNWIND_FRAME:
+            case CORINFO_HELP_LLVM_POP_VIRTUAL_UNWIND_FRAME:
 
                 noThrow = true;
                 mutatesHeap = true;

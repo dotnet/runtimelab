@@ -311,11 +311,7 @@ private:
                 varDsc->lvLiveInOutOfHndlr = 1;
             }
 
-            // GC locals needs to go on the shadow stack for the scan to find them. Locals live-in/out of handlers
-            // need to be preserved after the native unwind for the funclets to be callable, thus, they too need to
-            // go on the shadow stack (except for parameters to funclets, naturally).
-            //
-            if (!m_llvm->isFuncletParameter(lclNum) && (varDsc->HasGCPtr() || varDsc->lvLiveInOutOfHndlr))
+            if (IsShadowFrameLocalCandidate(lclNum))
             {
                 if (varDsc->lvRefCnt() == 0)
                 {
@@ -374,6 +370,22 @@ private:
         AssignShadowFrameOffsets(shadowFrameLocals);
     }
 
+    bool IsShadowFrameLocalCandidate(unsigned lclNum)
+    {
+        // The unwind frame MUST be allocated on the shadow stack. The runtime uses its value to invoke filters.
+        if (lclNum == m_llvm->m_unwindFrameLclNum)
+        {
+            return true;
+        }
+
+        // GC locals needs to go on the shadow stack for the scan to find them. Locals live-in/out of handlers
+        // need to be preserved after the native unwind for the funclets to be callable, thus, they too need to
+        // go on the shadow stack (except for parameters to funclets, naturally).
+        //
+        LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
+        return !m_llvm->isFuncletParameter(lclNum) && (varDsc->HasGCPtr() || varDsc->lvLiveInOutOfHndlr);
+    }
+
     void AssignShadowFrameOffsets(std::vector<unsigned>& shadowFrameLocals)
     {
         if (m_compiler->opts.OptimizationEnabled())
@@ -398,11 +410,23 @@ private:
             varDsc->lvInSsa = 0;
         };
 
+        // The shadow frame must be allocated at a zero offset; the runtime uses its value as the original
+        // shadow frame parameter to filter funclets.
+        if (m_llvm->m_unwindFrameLclNum != BAD_VAR_NUM)
+        {
+            assignOffset(m_compiler->lvaGetDesc(m_llvm->m_unwindFrameLclNum), TARGET_POINTER_SIZE);
+        }
+
 #ifndef TARGET_64BIT
         // We assign offsets to the variables that require double alignment first to pack them together.
         for (unsigned i = 0; i < shadowFrameLocals.size(); i++)
         {
             LclVarDsc* varDsc = m_compiler->lvaGetDesc(shadowFrameLocals.at(i));
+            if (m_llvm->isShadowFrameLocal(varDsc))
+            {
+                continue;
+            }
+
             if (varDsc->lvStructDoubleAlign)
             {
                 assignOffset(varDsc, 8);
@@ -414,11 +438,12 @@ private:
         for (unsigned i = 0; i < shadowFrameLocals.size(); i++)
         {
             LclVarDsc* varDsc = m_compiler->lvaGetDesc(shadowFrameLocals.at(i));
-
-            if (!m_llvm->isShadowFrameLocal(varDsc))
+            if (m_llvm->isShadowFrameLocal(varDsc))
             {
-                assignOffset(varDsc, TARGET_POINTER_SIZE);
+                continue;
             }
+
+            assignOffset(varDsc, TARGET_POINTER_SIZE);
         }
 
         m_llvm->_shadowStackLocalsSize = AlignUp(offset, Llvm::DEFAULT_SHADOW_STACK_ALIGNMENT);

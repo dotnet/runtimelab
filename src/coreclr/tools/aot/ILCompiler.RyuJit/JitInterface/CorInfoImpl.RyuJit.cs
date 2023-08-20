@@ -789,6 +789,12 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET:
                     mangledName = "RhpResolveInterfaceDispatch";
                     break;
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_PUSH_VIRTUAL_UNWIND_FRAME:
+                    mangledName = "RhpPushVirtualUnwindFrame";
+                    break;
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_POP_VIRTUAL_UNWIND_FRAME:
+                    mangledName = "RhpPopVirtualUnwindFrame";
+                    break;
 
                 default:
                     throw new NotImplementedException(ftnNum.ToString());

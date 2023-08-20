@@ -2773,9 +2773,7 @@ void Llvm::annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc
 
     HelperCallProperties& properties = Compiler::s_helperCallProperties;
 
-    // Note that allocators are marked no-throw in the Jit model, but can
-    // still throw OOM and we should generate code that is able to catch it.
-    if (properties.NoThrow(helperFunc) && !properties.IsAllocator(helperFunc))
+    if (!helperCallMayPhysicallyThrow(helperFunc))
     {
         llvmFunc->setDoesNotThrow();
     }
