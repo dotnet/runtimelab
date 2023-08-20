@@ -281,7 +281,7 @@ internal class DeflateTrees
     // buffer: Input block, or NULL if too old
     // storedLen: Length of input block
     // last: If this is the last block or no
-    public void FlushBlock(OutputWindow output, Memory<byte> buffer, ulong storedLen, bool last) //1:true - 0:false
+    public void FlushBlock(OutputWindow output, Memory<byte> buffer, ulong storedLen,ref bool last) //1:true - 0:false
     {
         // _optLength: bit length of current block with optimal trees
         // optLenBytes: _optLength in bytes

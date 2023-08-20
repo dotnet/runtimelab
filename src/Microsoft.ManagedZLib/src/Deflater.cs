@@ -6,6 +6,7 @@ using System.Diagnostics;
 using ZFlushCode = Microsoft.ManagedZLib.ManagedZLib.FlushCode;
 using ZState = Microsoft.ManagedZLib.ManagedZLib.DeflateStates;
 using ZBlockState = Microsoft.ManagedZLib.ManagedZLib.BlockState;
+using System.Collections.Generic;
 
 namespace Microsoft.ManagedZLib;
 
@@ -196,19 +197,19 @@ internal class Deflater
     {
         Debug.Assert(null != outputBuffer, "Can't pass in a null output buffer!");
         Debug.Assert(!NeedsInput(), "GetDeflateOutput should only be called after providing input");
-        int bytesRead = ReadDeflateOutput(outputBuffer.AsSpan(), ZFlushCode.NoFlush, out _);
+        int bytesRead = ReadDeflateOutput(outputBuffer, ZFlushCode.NoFlush, out _);
         return bytesRead;
 
     }
 
-    public int ReadDeflateOutput(Span<byte> outputBuffer, ZFlushCode flushCode, out bool finishCode) // It threw an error when doing the conversion from byte[] to Span<byte>
+    public int ReadDeflateOutput(byte[] outputBuffer, ZFlushCode flushCode, out bool finishCode) // It threw an error when doing the conversion from byte[] to Span<byte>
                                                                                   // So I'll change to Memory<byte>
     {
         Debug.Assert(outputBuffer.Length > 0); // This used to be nullable - Check behavior later
 
         lock (SyncLock)
         {
-            _output._output = outputBuffer.ToArray(); //Find a way to not having to allocate this
+            _output._output = outputBuffer; //Find a way to not having to allocate this
             _output._availableOutput = outputBuffer.Length;
             _output._nextOut = 0;
 
@@ -224,14 +225,14 @@ internal class Deflater
         Debug.Assert(null != outputBuffer, "Can't pass in a null output buffer!");
         Debug.Assert(outputBuffer.Length > 0, "Can't pass in an empty output buffer!");
 
-        int bytesRead = ReadDeflateOutput(outputBuffer.AsSpan(), ZFlushCode.Finish, out finishCode); 
+        int bytesRead = ReadDeflateOutput(outputBuffer, ZFlushCode.Finish, out finishCode); 
         return bytesRead;
     }
 
     /// <summary>
     /// Returns true if there was something to flush. Otherwise False.
     /// </summary>
-    internal int Flush(Span<byte> outputBuffer, out bool isFinished)
+    internal int Flush(byte[] outputBuffer, out bool isFinished)
     {
         Debug.Assert(null != outputBuffer, "Can't pass in a null output buffer!");
         Debug.Assert(outputBuffer.Length > 0, "Can't pass in an empty output buffer!");
@@ -779,20 +780,17 @@ internal class Deflater
         if ( flushCode == ZFlushCode.Finish) 
         {
             // DONE STATE
-            ZBlockState blockStatus = FlushBlock(last: true);
-            if (blockStatus == ZBlockState.FinishStarted)
-            {
-                return ZBlockState.FinishDone;
-            }
+            FlushBlock(last: true);
+            if (_output._availableOutput == 0)
+                return ZBlockState.FinishStarted;
+            return ZBlockState.FinishDone; 
         }
 
         if (_trees._symIndex != 0) 
         {
-            ZBlockState blockStatus = FlushBlock(last : false);
-            if (blockStatus == ZBlockState.NeedMore)
-            {
-                return ZBlockState.BlockDone;
-            }
+            FlushBlock(last : false);
+            if (_output._availableOutput == 0)
+                return ZBlockState.NeedMore;
         }
 
         return ZBlockState.BlockDone;
@@ -914,24 +912,21 @@ internal class Deflater
 
         _output._insert = (_output._strStart < MinMatch - 1) ? 
             _output._strStart : MinMatch - 1;
- 
+
         if (flushCode == ZFlushCode.Finish)
         {
             // DONE STATE
-            ZBlockState blockStatus = FlushBlock(last: true);
-            if (blockStatus == ZBlockState.FinishStarted)
-            {
-                return ZBlockState.FinishDone;
-            }
+            FlushBlock(last: true);
+            if (_output._availableOutput == 0)
+                return ZBlockState.FinishStarted;
+            return ZBlockState.FinishDone;
         }
 
         if (_trees._symIndex != 0)
         {
-            ZBlockState blockStatus = FlushBlock(last: false);
-            if (blockStatus == ZBlockState.NeedMore)
-            {
-                return ZBlockState.BlockDone;
-            }
+            FlushBlock(last: false);
+            if (_output._availableOutput == 0)
+                return ZBlockState.NeedMore;
         }
 
         return ZBlockState.BlockDone;
@@ -969,12 +964,9 @@ internal class Deflater
         }
     }
     // Same but force premature exit if necessary.
-    public ZBlockState FlushBlock(bool last)
+    public void FlushBlock(bool last)
     {
         FlushBlockOnly(last);
-        if (_output._availableOutput == 0)
-            return (last) ? ZBlockState.FinishStarted : ZBlockState.NeedMore;
-        return ZBlockState.NeedMore;
     }
 
     // Flush the current block, with given end-of-file flag.
@@ -985,14 +977,14 @@ internal class Deflater
             Memory<byte> buffer = _output._window.Slice((int)_output._blockStart);
             _trees.FlushBlock(_output, buffer,
             (ulong)(_output._strStart - _output._blockStart),
-            (last));
+            ref last);
         }
         else
         {
             Memory<byte> buffer = Memory<byte>.Empty;
             _trees.FlushBlock(_output, buffer,
             (ulong)(_output._strStart - _output._blockStart),
-            (last));
+            ref last);
 
         }
         _output._blockStart = _output._strStart;

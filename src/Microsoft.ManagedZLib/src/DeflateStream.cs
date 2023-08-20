@@ -398,7 +398,7 @@ public partial class DeflateStream : Stream
             bool flushSuccessful;
             do
             {
-                int compressedBytes = _deflater.Flush(_buffer.AsSpan(), out flushSuccessful);
+                int compressedBytes = _deflater.Flush(_buffer, out flushSuccessful);
                 if (flushSuccessful)
                 {
                     _stream.Write(_buffer, 0, compressedBytes);
