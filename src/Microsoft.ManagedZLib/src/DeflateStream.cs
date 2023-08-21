@@ -74,7 +74,7 @@ public partial class DeflateStream : Stream
         //For iflater having a buffer with the default size is enough for reading the input stream (compressed data)
         // For compressing this will vary depending on the Level of compression needed.
         // Reading more data at a time is more efficient
-        _buffer = new byte[DefaultBufferSize];
+        //_buffer = new byte[DefaultBufferSize];
     }
 
     /// <summary>
@@ -82,7 +82,7 @@ public partial class DeflateStream : Stream
     /// </summary>
     internal DeflateStream(Stream stream, CompressionLevel compressionLevel, bool leaveOpen, int windowBits)
     {
-        _buffer = new byte[DefaultBufferSize]; //Instead of using array pool in Read** When tests working check if it's possible a change back
+        //_buffer = new byte[DefaultBufferSize]; //Instead of using array pool in Read** When tests working check if it's possible a change back
         ArgumentNullException.ThrowIfNull(stream);
 
         InitializeDeflater(stream, leaveOpen, windowBits, compressionLevel);
