@@ -91,23 +91,23 @@ public class ManagedZLibBenchmark
         return 0;
     }
 
-    [Benchmark(Baseline = true)]
-    public int CompressNative()
-    {
-        CompressedStreamN!.Position = 0;
-        compressionStreamN!.Write(UncompressedData!, 0, UncompressedData!.Length);
-        compressionStreamN.Flush();
-        return 0;
-    }
+    //[Benchmark(Baseline = true)]
+    //public int CompressNative()
+    //{
+    //    CompressedStreamN!.Position = 0;
+    //    compressionStreamN!.Write(UncompressedData!, 0, UncompressedData!.Length);
+    //    compressionStreamN.Flush();
+    //    return 0;
+    //}
 
-    [Benchmark]
-    public int CompressManaged()
-    {
-        CompressedStreamM!.Position = 0;
-        compressionStreamM!.Write(UncompressedData!, 0, UncompressedData!.Length);
-        compressionStreamM.Flush();
-        return 0;
-    }
+    //[Benchmark]
+    //public int CompressManaged()
+    //{
+    //    CompressedStreamM!.Position = 0;
+    //    compressionStreamM!.Write(UncompressedData!, 0, UncompressedData!.Length);
+    //    compressionStreamM.Flush();
+    //    return 0;
+    //}
 
     [GlobalCleanup]
     public void Cleanup()

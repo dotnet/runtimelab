@@ -730,9 +730,17 @@ internal class Deflater
                 _output._matchLength = _output.LongestMatch(hashHead);// Sets _output._matchStart and eventually the _lookahead
             }
             if (_output._matchLength >= MinMatch)
-            { 
+            {
+                
                 blockFlush = _trees.TreeTallyDist(_output._strStart - _output._matchStart, _output._matchLength - MinMatch);
-                //blockFlush = _trees.treeTallyLit(_output._window[_output._strstart]);
+                int x = 1;
+                if (_trees._symIndex == 49149)
+                {
+                    x = 0;
+                }if (x == 0)
+                {
+                    Console.WriteLine("khe");
+                }
                 _output._lookahead -= _output._matchLength;
 
                 if (_output._matchLength <= _output.MaxInsertLength() && 
@@ -765,6 +773,15 @@ internal class Deflater
             {
                 // Not match, output a literal byte
                 blockFlush = _trees.TreeTallyLit(_output.Window((int)_output._strStart));
+                int x = 1;
+                if (_trees._symIndex == 49149)
+                {
+                    x = 0;
+                }
+                if (x == 0)
+                {
+                    Console.WriteLine("khe");
+                }
                 _output._lookahead--;
                 _output._strStart++;
             }
