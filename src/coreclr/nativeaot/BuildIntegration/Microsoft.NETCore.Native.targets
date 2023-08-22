@@ -522,12 +522,19 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Condition="'$(WasmEnableExceptionHandling)' == 'true'" Include="-fwasm-exceptions" />
     </ItemGroup>
 
+    <!-- wasm-ld only supports listing exports on the command line -->
+    <ReadLinesFromFile File="$(ExportsFile)" Condition="'$(_targetOS)' == 'wasi' and '$(ExportsFile)' != ''">
+      <Output TaskParameter="Lines" ItemName="CustomLinkerArgExport" />
+    </ReadLinesFromFile>
+
     <ItemGroup Condition ="'$(_targetOS)' == 'wasi'" >
       <!-- Wasi has lots of undefined symbols currently, mostly globalization -->
       <CustomLinkerArg Include="-Wl,--unresolved-symbols=ignore-all -lstdc++ -Wl,--error-limit=0" />
       <CustomLinkerArg Include="--sysroot=&quot;$(WASI_SDK_PATH.Replace(&quot;\&quot;, &quot;/&quot;))/share/wasi-sysroot&quot;" />
       <CustomLinkerArg Include="-Wl,--max-memory=2147483648" />
       <CustomLinkerArg Include="-lwasi-emulated-process-clocks -lwasi-emulated-signal -lwasi-emulated-mman -lwasi-emulated-getpid" />
+      <CustomLinkerArg Include="-mexec-model=reactor" Condition="'$(NativeLib)' == 'Shared'" />
+      <CustomLinkerArg Include="@(CustomLinkerArgExport->'-Wl,--export=%(Identity)')" />
     </ItemGroup>
 
     <ItemGroup>

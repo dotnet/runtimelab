@@ -37,10 +37,15 @@ namespace ILCompiler
                     foreach (var method in _methods)
                         streamWriter.WriteLine($"   {method.GetUnmanagedCallersOnlyExportName()}");
                 }
-                else if(_context.Target.IsOSXLike || _context.Target.OperatingSystem == TargetOS.Browser)
+                else if (_context.Target.IsOSXLike || _context.Target.OperatingSystem == TargetOS.Browser)
                 {
                     foreach (var method in _methods)
                         streamWriter.WriteLine($"_{method.GetUnmanagedCallersOnlyExportName()}");
+                }
+                else if (_context.Target.OperatingSystem == TargetOS.Wasi)
+                {
+                    foreach (var method in _methods)
+                        streamWriter.WriteLine(method.GetUnmanagedCallersOnlyExportName());
                 }
                 else
                 {
