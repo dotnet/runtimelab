@@ -116,7 +116,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(OptimizationPreference) != 'Size' and '$(_targetOS)' == 'wasi'">-O2</WasmOptimizationSetting>
     <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(OptimizationPreference) == 'Size'">-Oz</WasmOptimizationSetting>
 
-    <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-wasi</IlcLlvmTarget>
+    <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-unknown-wasi</IlcLlvmTarget>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(IlcCompileDependsOn)'=='' and '$(NativeCompilationDuringPublish)' != 'false'">
@@ -400,7 +400,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     </PropertyGroup>
 
    <PropertyGroup Condition="'$(_targetOS)' == 'wasi'">
-      <CompileWasmArgs>-fvisibility=default -mllvm -combiner-global-alias-analysis=false -mllvm -disable-lsr --sysroot=&quot;$(WASI_SDK_PATH)/share/wasi-sysroot&quot; -target wasm32-wasi -c</CompileWasmArgs>
+      <CompileWasmArgs>-fvisibility=default -mllvm -combiner-global-alias-analysis=false -mllvm -disable-lsr --sysroot=&quot;$(WASI_SDK_PATH)/share/wasi-sysroot&quot; -target $(IlcLlvmTarget) -c</CompileWasmArgs>
       <CompileWasmArgs>$(CompileWasmArgs) $(WasmOptimizationSetting)</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileWasmArgs) -g3</CompileWasmArgs>
 
