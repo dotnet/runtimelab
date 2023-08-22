@@ -371,10 +371,17 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
   </Target>
 
+  <Target Name="CheckWasmSdks">
+    <Error Text="Emscripten not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
+           Condition="'$(EMSDK)' == ''" />
+    <Error Text="Wasi SDK not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Wasi SDK and ensure the WASI_SDK_PATH environment variable points to the directory containing share/wasi-sysroot"
+           Condition="'$(WASI_SDK_PATH)' == '' and '$(_targetOS)' == 'wasi'" />
+  </Target>
+
   <Target Name="CompileWasmObjects"
       Inputs="@(LlvmObjects)"
       Outputs="@(LlvmObjects->'%(NativeObject)')"
-      DependsOnTargets="IlcCompile;GenerateResFile"
+      DependsOnTargets="IlcCompile;GenerateResFile;CheckWasmSdks"
       Condition="'$(NativeCodeGen)' == 'llvm'">
 
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
@@ -413,11 +420,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       </ExecProjects>
     </ItemGroup>
 
-    <MSBuild Projects="@(ExecProjects)" BuildInParallel="true" Condition="'$(EMSDK)' != ''" />
-    <Message Text="Emscripten not found, not linking WebAssembly. To enable WebAssembly linking, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
-             Condition="'$(EMSDK)' == '' and '$(_targetOS)' == 'browser'" />
-    <Message Text="Wasi SDK not found, not linking WebAssembly. To enable WebAssembly linking, install Wasi SDK and ensure the WASI_SDK_PATH environment variable points to the directory containing share/wasi-sysroot"
-             Condition="'$(WASI_SDK_PATH)' == '' and '$(_targetOS)' == 'wasi'" />
+    <MSBuild Projects="@(ExecProjects)" BuildInParallel="true" />
   </Target>
 
   <Target Name="LinkNativeSingle" Condition="'$(_targetOS)' != 'browser' and '$(_targetOS)' != 'wasi'"
@@ -542,13 +545,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
 
     <WriteLinesToFile File="$(NativeIntermediateOutputPath)link.rsp" Lines="@(CustomLinkerArg)" Overwrite="true" Encoding="utf-8" />
-
-    <Exec Command="$(WasmLinkerPath) @$(NativeIntermediateOutputPath)link.rsp $(EmccExtraArgs)" 
-          Condition="('$(_targetOS)' == 'browser' and '$(EMSDK)' != '') or ('$(_targetOS)' == 'wasi' and '$(WASI_SDK_PATH)' != '')" />
-    <Message Text="Emscripten not found, not linking WebAssembly. To enable WebAssembly linking, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
-             Condition="'$(NativeCodeGen)' == 'llvm' and '$(_targetOS)' == 'browser'and '$(EMSDK)' == ''" Importance="High" />
-    <Message Text="Wasi SDK not found, not linking WebAssembly. To enable WebAssembly linking, install the Wasi SDK and ensure the WASI_SDK_PATH environment variable points to the directory containing share/wasi-sysroot"
-             Condition="'$(NativeCodeGen)' == 'llvm' and '$(_targetOS)' == 'wasi'and '$(WASI_SDK_PATH)' == ''" Importance="High" />
+    <Exec Command="$(WasmLinkerPath) @$(NativeIntermediateOutputPath)link.rsp $(EmccExtraArgs)" />
   </Target>
 
   <Target Name="LinkNative"
