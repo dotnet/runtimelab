@@ -72,6 +72,21 @@ int pthread_cond_init(pthread_cond_t *, const pthread_condattr_t *)
     return 0;
 }
 
+int pthread_cond_destroy(pthread_cond_t *)
+{
+    return 0;
+}
+
+int pthread_cond_wait(pthread_cond_t *, pthread_mutex_t *)
+{
+    return 0;
+}
+
+int pthread_cond_timedwait(pthread_cond_t *, pthread_mutex_t *, const struct timespec *)
+{
+    return 0;
+}
+
 int pthread_condattr_init(pthread_condattr_t *)
 {
     return 0;
@@ -172,7 +187,7 @@ extern "C" int __cxa_thread_atexit(Dtor dtor, void* obj, void*)
 #endif // !FEATURE_WASM_THREADS
 
 #ifdef TARGET_WASI
-int mprotect(void *, size_t, int)
+extern "C" int mprotect(void*, size_t, int)
 {
     return 0;
 }
