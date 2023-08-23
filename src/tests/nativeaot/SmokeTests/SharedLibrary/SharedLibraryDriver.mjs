@@ -28,9 +28,8 @@ if (instance.exports.ReturnsPrimitiveChar() != 97) // 'a'
 // As long as no unmanaged exception is thrown managed class loaders were initialized successfully.
 instance.exports.EnsureManagedClassLoaders();
 
-// #if !CODEGEN_WASI - for some reason tries to create a background thread?
-// if (instance.exports.CheckSimpleGCCollect() != 100)
-//     process.exit(4);
+if (instance.exports.CheckSimpleGCCollect() != 100)
+    process.exit(4);
 
 // #if !CODEGEN_WASI - enable when we support exception handling
 // if (instance.exports.CheckSimpleExceptionHandling() != 100)
