@@ -183,7 +183,7 @@ __attribute__((weak)) void _initialize()
 }
 
 // Guard the "_initialize" call so that well-behaving hosts do not get affected by this workaround.
-bool g_CalledInitialize = false;
+static bool g_CalledInitialize = false;
 struct WasiInitializationFlag { WasiInitializationFlag() { *(volatile bool*)&g_CalledInitialize = true; } };
 WasiInitializationFlag g_WasiInitializationFlag;
 #endif // TARGET_WASI
