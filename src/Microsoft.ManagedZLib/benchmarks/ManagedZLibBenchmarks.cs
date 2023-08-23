@@ -63,7 +63,7 @@ public class ManagedZLibBenchmark
         outputStream!.Position = 0;
         DeflateStream decompressor = new DeflateStream(CompressedFile.CompressedDataStream, CompressionMode.Decompress, leaveOpen: true);
         decompressor?.CopyTo(outputStream);
-    }
+    } //It should dipose itself after this context
 
     
     [GlobalCleanup]
