@@ -16,6 +16,8 @@ namespace Microsoft.ManagedZLib.Benchmarks;
 // BenchmarkDotNet creates a type which derives from type with benchmarks. 
 // So the type with benchmarks must not be sealed and it can NOT BE STATIC 
 // and it has to BE PUBLIC. It also has to be a class (no structs support).
+[GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
+[CategoriesColumn]
 public class ManagedZLibBenchmark
 {
     public static IEnumerable<string> UncompressedTestFileNames()
@@ -26,14 +28,14 @@ public class ManagedZLibBenchmark
     }
 
     public CompressedFile? CompressedFile;
-    private MemoryStream? _outputStream;
+    private MemoryStream? outputStream;
 
     [GlobalSetup]
     public void Setup()
     {
         Debug.Assert(File != null);
         CompressedFile = new CompressedFile(File, Level);
-        _outputStream = new MemoryStream(CompressedFile.UncompressedData.Length); 
+        outputStream = new MemoryStream(CompressedFile.UncompressedData.Length);
     }
 
 
@@ -42,31 +44,33 @@ public class ManagedZLibBenchmark
 
     [Params(System.IO.Compression.CompressionLevel.SmallestSize,
             System.IO.Compression.CompressionLevel.Optimal,
-            System.IO.Compression.CompressionLevel.Fastest)] // we don't test the performance of CompressionLevel.NoCompression on purpose
+            System.IO.Compression.CompressionLevel.Fastest)]
     public System.IO.Compression.CompressionLevel Level { get; set; }
 
-
-    [GlobalCleanup]
-    public void Cleanup() => CompressedFile?.CompressedDataStream.Dispose();
-
     [Benchmark(Baseline = true)]
-    public void DecompressNative()
+    public void DecompressCreationNative()
     {
         CompressedFile!.CompressedDataStream.Position = 0;
-        _outputStream!.Position = 0;
-        
-        System.IO.Compression.DeflateStream decompressor = new System.IO.Compression.DeflateStream(CompressedFile.CompressedDataStream, System.IO.Compression.CompressionMode.Decompress);
-        decompressor.CopyTo(_outputStream);
+        outputStream!.Position = 0;
+        System.IO.Compression.DeflateStream decompressor = new System.IO.Compression.DeflateStream(CompressedFile.CompressedDataStream, System.IO.Compression.CompressionMode.Decompress, leaveOpen: true);
+        decompressor?.CopyTo(outputStream);
     }
 
     [Benchmark]
-    public void DecompressManaged()
+    public void DecompressCreationManaged()
     {
         CompressedFile!.CompressedDataStream.Position = 0;
-        _outputStream!.Position = 0;
+        outputStream!.Position = 0;
+        DeflateStream decompressor = new DeflateStream(CompressedFile.CompressedDataStream, CompressionMode.Decompress, leaveOpen: true);
+        decompressor?.CopyTo(outputStream);
+    }
 
-        DeflateStream decompressor = new DeflateStream(CompressedFile.CompressedDataStream, CompressionMode.Decompress);
-        decompressor.CopyTo(_outputStream);
+    
+    [GlobalCleanup]
+    public void Cleanup()
+    {
+        outputStream?.Dispose();
+        CompressedFile?.CompressedDataStream.Dispose();
     }
 
     public class ProgramRun
