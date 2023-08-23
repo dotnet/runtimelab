@@ -115,7 +115,7 @@ Functions in other WebAssembly modules can be imported and invoked using `DllImp
 [DllImport("*")]
 static extern int random_get(byte* buf, uint size);
 ```
-By default emscripten will create a WebAssembly import for this function, importing from the `env` module.  This can be controlled with `WasmImport` items in the project file. For example
+By default emscripten will create a WebAssembly import for this function, importing from the `env` module. This can be controlled with `WasmImport` items in the project file. For example
 ```xml
 <ItemGroup>
   <WasmImport Include="wasi_snapshot_preview1!random_get" />
