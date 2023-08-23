@@ -107,10 +107,12 @@ The .NET Foundation licenses this file to you under the MIT license.
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(NativeCodeGen)' == 'llvm'">
+    <!-- These LLVM options are public and supported. -->
     <WasmEnableJSBigIntIntegration Condition="'$(WasmEnableJSBigIntIntegration)' == ''">true</WasmEnableJSBigIntIntegration>
     <!-- Most browsers support WASM EH, so we enable it by default. This is aligned with the upstream behavior. -->
     <WasmEnableExceptionHandling Condition="'$(WasmEnableExceptionHandling)' == '' and '$(_targetOS)' == 'browser'">true</WasmEnableExceptionHandling>
 
+    <!-- These LLVM options are internal and not supported. -->
     <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(OptimizationPreference) != 'Size' and '$(_targetOS)' == 'browser'">-O3</WasmOptimizationSetting>
     <!-- TODO-LLVM: test -O1/-O2/-O3 for size with Wasi SDK -->
     <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(OptimizationPreference) != 'Size' and '$(_targetOS)' == 'wasi'">-O2</WasmOptimizationSetting>
@@ -119,6 +121,9 @@ The .NET Foundation licenses this file to you under the MIT license.
     <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-unknown-wasi</IlcLlvmTarget>
     <IlcWasmStackSize>1048576</IlcWasmStackSize> <!-- 1MB -->
     <IlcWasmGlobalBase>1024</IlcWasmGlobalBase> <!-- This value is also hardcoded in the compiler -->
+    <IlcLlvmExceptionHandlingModel Condition="'$(WasmEnableExceptionHandling)' == 'true'">wasm</IlcLlvmExceptionHandlingModel>
+    <IlcLlvmExceptionHandlingModel Condition="'$(IlcLlvmExceptionHandlingModel)' == '' and '$(targetOS)' == 'browser'">cpp</IlcLlvmExceptionHandlingModel>
+    <IlcLlvmExceptionHandlingModel Condition="'$(IlcLlvmExceptionHandlingModel)' == ''">emulated</IlcLlvmExceptionHandlingModel>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(IlcCompileDependsOn)'=='' and '$(NativeCompilationDuringPublish)' != 'false'">
@@ -294,10 +299,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Include="--resilient" />
       <IlcArg Include="@(UnmanagedEntryPointsAssembly->'--generateunmanagedentrypoints:%(Identity)')" />
 
-      <!-- These LLVM options are public and supported. -->
-      <IlcArg Condition="'$(WasmEnableExceptionHandling)' == 'true'" Include="--codegenopt:LlvmExceptionHandlingModel=wasm" />
-
-      <!-- These LLVM options are internal and not supported. -->
+      <IlcArg Include="--codegenopt:LlvmExceptionHandlingModel=$(IlcLlvmExceptionHandlingModel)" />
       <IlcArg Condition="'$(IlcLlvmTarget)' != ''" Include="--codegenopt:Target=$(IlcLlvmTarget)" />
       <IlcArg Condition="'$(IlcMaxLlvmModuleCount)' != ''" Include="--codegenopt:MaxLlvmModuleCount=$(IlcMaxLlvmModuleCount)" />
 
@@ -390,8 +392,8 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <PropertyGroup Condition="'$(_targetOS)' == 'browser'">
       <CompileWasmArgs>-c</CompileWasmArgs>
-      <CompileWasmArgs Condition="'$(WasmEnableExceptionHandling)' != 'true'">$(CompileWasmArgs) -s DISABLE_EXCEPTION_CATCHING=0</CompileWasmArgs>
-      <CompileWasmArgs Condition="'$(WasmEnableExceptionHandling)' == 'true'">$(CompileWasmArgs) -fwasm-exceptions</CompileWasmArgs>
+      <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'">$(CompileWasmArgs) -s DISABLE_EXCEPTION_CATCHING=0</CompileWasmArgs>
+      <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'">$(CompileWasmArgs) -fwasm-exceptions</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileWasmArgs) -g3</CompileWasmArgs>
       <!-- TODO-LLVM: remove -s USE_SDL=0 when we update to Emscripten with https://github.com/emscripten-core/emscripten/pull/18443 -->
       <CompileWasmArgs>$(CompileWasmArgs) -s USE_SDL=0 $(WasmOptimizationSetting)</CompileWasmArgs>
@@ -504,8 +506,9 @@ The .NET Foundation licenses this file to you under the MIT license.
       <NativeLibrary Condition="$(NativeLib) == '' and '$(CustomNativeMain)' != 'true'" Include="$(IlcSdkPath)libbootstrapper.a" />
       <NativeLibrary Condition="$(NativeLib) != '' or '$(CustomNativeMain)' == 'true'" Include="$(IlcSdkPath)libbootstrapperdll.a" />
       <NativeLibrary Include="$(IlcSdkPath)libPortableRuntime.a" />
-      <NativeLibrary Condition="'$(WasmEnableExceptionHandling)' != 'true'" Include="$(IlcSdkPath)libCppExceptionHandling.a" />
-      <NativeLibrary Condition="'$(WasmEnableExceptionHandling)' == 'true'" Include="$(IlcSdkPath)libWasmExceptionHandling.a" />
+      <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="$(IlcSdkPath)libCppExceptionHandling.a" />
+      <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'" Include="$(IlcSdkPath)libWasmExceptionHandling.a" />
+      <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'emulated'" Include="$(IlcSdkPath)libEmulatedExceptionHandling.a" />
 
       <!-- wasi-sdk clang wants forward slashes, emscripten doesn't care -->
       <CustomLinkerArg Include="@(NativeLibrary->'&quot;%(Identity)&quot;'->Replace(&quot;\&quot;, &quot;/&quot;))" />
@@ -516,6 +519,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-Wl,--compress-relocations" />
       <CustomLinkerArg Condition="'$(Optimize)' != 'true'" Include="$(WasmOptimizationSetting) -flto" />
       <CustomLinkerArg Condition="'$(IlcLlvmTarget)' != ''" Include="-target $(IlcLlvmTarget)" />
+      <CustomLinkerArg Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'" Include="-fwasm-exceptions" />
     </ItemGroup>
 
     <ItemGroup Condition = "'$(_targetOS)' == 'browser'" >
@@ -527,8 +531,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s GLOBAL_BASE=$(IlcWasmGlobalBase)" />
       <CustomLinkerArg Include="-s TOTAL_STACK=$(IlcWasmStackSize)" />
       <CustomLinkerArg Condition="'$(WasmEnableJSBigIntIntegration)' == 'true'" Include="-s WASM_BIGINT=1" />
-      <CustomLinkerArg Condition="'$(WasmEnableExceptionHandling)' != 'true'" Include="-s DISABLE_EXCEPTION_CATCHING=0" />
-      <CustomLinkerArg Condition="'$(WasmEnableExceptionHandling)' == 'true'" Include="-fwasm-exceptions" />
+      <CustomLinkerArg Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="-s DISABLE_EXCEPTION_CATCHING=0" />
     </ItemGroup>
 
     <!-- wasm-ld only supports listing exports on the command line -->

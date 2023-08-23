@@ -29,6 +29,9 @@
 extern "C" void* RhpGcAlloc(MethodTable* pEEType, uint32_t uFlags, uintptr_t numElements, void* pTransitionFrame);
 extern "C" void* RhpGetShadowStackTop();
 extern "C" void RhpSetShadowStackTop(void* pShadowStack);
+
+// Note that the emulated exception handling model requires us to call all managed methods that may/will throw
+// only in the tail-like position so that control can immediately return to the caller in case of an exception.
 extern "C" void RhExceptionHandling_FailedAllocation_Managed(void* pShadowStack, MethodTable* pEEType, bool isOverflow);
 
 static Object* AllocateObject(void* pShadowStack, MethodTable* pEEType, uint32_t uFlags, uintptr_t numElements)
@@ -98,6 +101,7 @@ COOP_PINVOKE_HELPER(Array*, RhpNewArray, (void* pShadowStack, MethodTable* pArra
     if (numElements < 0)
     {
         ThrowOverflowException(pShadowStack, pArrayEEType);
+        return nullptr;
     }
 
 #ifndef HOST_64BIT
@@ -219,6 +223,7 @@ COOP_PINVOKE_HELPER(Array*, RhpNewArrayAlign8, (void* pShadowStack, MethodTable*
     if (numElements < 0)
     {
         ThrowOverflowException(pShadowStack, pArrayEEType);
+        return nullptr;
     }
 
     // if the element count is <= 0x10000, no overflow is possible because the component size is

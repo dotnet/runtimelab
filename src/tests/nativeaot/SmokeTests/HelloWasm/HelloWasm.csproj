@@ -7,7 +7,6 @@
     <!-- IL3049 warns about mismatched signatures; we are intentionally testing they are handled correctly
          when the definition is statically linked -->
     <NoWarn>$(NoWarn);IL3049</NoWarn>
-    <DefineConstants Condition="$(TargetOS) == 'wasi'">$(DefineConstants);CODEGEN_WASI</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="HelloWasm.cs" />

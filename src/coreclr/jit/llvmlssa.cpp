@@ -610,7 +610,8 @@ private:
     //
     // Notes:
     //    Similar to "Compiler::IsGcSafePoint", with the difference being that
-    //    the "conservative" return value for this method is "true".
+    //    the "conservative" return value for this method is "true". Does not
+    //    consider nodes safe points only because they may throw.
     //
     bool IsPotentialGcSafePoint(GenTree* node)
     {
@@ -620,10 +621,13 @@ private:
             {
                 return false;
             }
-            if (node->IsHelperCall() &&
-                m_llvm->getHelperFuncInfo(node->AsCall()->GetHelperNum()).HasFlags(HFIF_NO_RPI_OR_GC))
+            if (node->IsHelperCall())
             {
-                return false;
+                const HelperFuncInfo& info = m_llvm->getHelperFuncInfo(node->AsCall()->GetHelperNum());
+                if (info.HasFlag(HFIF_NO_RPI_OR_GC) || info.HasFlag(HFIF_NO_RPI_OR_GC_OR_THROW))
+                {
+                    return false;
+                }
             }
 
             // All other calls are assumed to be possible safe points.

@@ -2,11 +2,13 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <CLRTestKind>BuildAndRun</CLRTestKind>
-    <CLRTestPriority>0</CLRTestPriority>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <!-- Test that the C++-based exception dispatch is working. -->
     <WasmEnableExceptionHandling>false</WasmEnableExceptionHandling>
+
+    <!-- The C++-based exception handling model is only supported on Browser -->
+    <CLRTestTargetUnsupported Condition="'$(TargetOS)' != 'browser'">true</CLRTestTargetUnsupported>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="ExceptionHandlingTests.Cpp.cs" />

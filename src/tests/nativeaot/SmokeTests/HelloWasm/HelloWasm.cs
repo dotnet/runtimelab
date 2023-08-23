@@ -315,9 +315,7 @@ internal unsafe partial class Program
 
         TestInitObjDouble();
 
-#if !CODEGEN_WASI
         TestTryCatch();
-#endif
 
         StartTest("Non/GCStatics field access test");
         if (new FieldStatics().TestGetSet())
@@ -357,17 +355,20 @@ internal unsafe partial class Program
 
         TestInterlockedExchange();
 
-#if !CODEGEN_WASI
         TestThrowIfNull();
 
         TestCkFinite();
 
         TestIntOverflows();
 
+#if !CODEGEN_WASI // TODO-LLVM: stack traces on WASI.
         TestStackTrace();
-
-        TestJavascriptCall();
 #endif
+
+        if (OperatingSystem.IsBrowser())
+        {
+            TestJavascriptCall();
+        }
 
         TestPalRandom();
 
