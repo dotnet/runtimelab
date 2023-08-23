@@ -23,7 +23,7 @@ public class CompressedFile
         UncompressedData = File.ReadAllBytes(filePath);
         CompressedDataStream = new MemoryStream(capacity: UncompressedData.Length);
 
-        var compressionStream = new System.IO.Compression.DeflateStream(CompressedDataStream, compressionLevel);
+        var compressionStream = new System.IO.Compression.DeflateStream(CompressedDataStream, compressionLevel, leaveOpen: true);
         compressionStream.Write(UncompressedData, 0, UncompressedData.Length);
         compressionStream.Flush();
 
@@ -34,5 +34,5 @@ public class CompressedFile
     public override string ToString() => Name;
 
     internal static string GetFilePath(string fileName)
-        => Path.Combine("DeflateTestData", fileName);
+        => Path.Combine("UncompressedTestFiles", fileName);
 }
