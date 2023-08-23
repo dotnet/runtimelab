@@ -47,7 +47,7 @@ If the compilation succeeds, the native executable will be placed under the `bin
 
 Native AOT toolchain allows targeting ARM64 on an x64 host and vice versa for both Windows and Linux. Cross-OS compilation, such as targeting Linux on a Windows host, is not supported. To target win-arm64 on a Windows x64 host, in addition to the `Microsoft.DotNet.ILCompiler` package reference, also add the `runtime.win-x64.Microsoft.DotNet.ILCompiler` package reference to get the x64-hosted compiler:
 ```xml
-<PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM; runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="7.0.0-alpha.1.21423.2" />
+<PackageReference Include="Microsoft.DotNet.ILCompiler; runtime.win-x64.Microsoft.DotNet.ILCompiler" Version="7.0.0-alpha.1.21423.2" />
 ```
 
 Note that it is important to use _the same version_ for both packages to avoid potential hard-to-debug issues (use the latest version from the [dotnet-experimental feed](https://dev.azure.com/dnceng/public/_packaging?_a=package&feed=dotnet-experimental&package=Microsoft.DotNet.ILCompiler&protocolType=NuGet)). After adding the package reference, you may publish for win-arm64 as usual:
@@ -56,15 +56,18 @@ Note that it is important to use _the same version_ for both packages to avoid p
 ```
 ### WebAssembly
 
-Install and activate Emscripten. See [Install Emscripten](https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended).  Version 3.1.23 is known to work, later versions of Emscripten are known to fail.
+Compilation targeting WebAssembly is currently only supported on Windows x64. Contributions enabling the compiler on other platforms are welcome.
 
-For WebAssembly, it is always a cross-architecture scenario as the compiler runs on Windows/Linux/MacOS and the runtime is for WebAssembly.  WebAssembly is not integrated into the main ILCompiler so first remove (if you added it from above)
+Install and activate Emscripten. See [Install Emscripten](https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended). Version 3.1.23 is known to work, later versions of Emscripten are known to fail.
+
+If you are targeting WASI, download [the WASI SDK](https://github.com/WebAssembly/wasi-sdk/releases), extract it and set the `WASI_SDK_PATH` environment variable to the directory containing `share/wasi-sysroot`.
+
+For WebAssembly, it is always a cross-architecture scenario as the compiler runs on the host platform and the runtime is for WebAssembly. WebAssembly is not integrated into the main ILCompiler so first remove (if you added it from above)
 
 ```xml
 <PackageReference Include="Microsoft.DotNet.ILCompiler" Version="8.0.0-*" />
 ```
-
-Then, remove 
+Then, remove
 ```xml
 <PublishAot>true</PublishAot>
 ```
@@ -74,18 +77,16 @@ from any `PropertyGroup` tags if you have it. Instead, add
   <PublishTrimmed>true</PublishTrimmed>
 </PropertyGroup>
 ```
-The required package reference is
+The required package references are
 ```xml
 <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM; runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="8.0.0-*" />
 ```
-and the publish command (there is no Release build currently)
+and the publish command
 ```bash
-> dotnet publish -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false --self-contained
+> dotnet publish -r browser-wasm -c <Configuration> /p:MSBuildEnableWorkloadResolver=false --self-contained
 ```
 
-Publishing using `PublishAot=true` is not currently supported for WebAssembly.
-
-Note that the wasm-tools workload is identified as a dependency even though its not used, and this confuses the toolchain, hence `/p:MSBuildEnableWorkloadResolver=false`
+Note that the wasm-tools workload is identified as a dependency even though its not used, and this confuses the toolchain, hence `/p:MSBuildEnableWorkloadResolver=false`.
 
 #### WebAssembly native libraries
 To compile a WebAssembly native library that exports a function `Answer`:
@@ -97,7 +98,7 @@ public static int Answer()
 }
 ```
 ```bash
-> dotnet publish /p:NativeLib=Shared -r browser-wasm -c Debug /p:TargetArchitecture=wasm /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false /p:EmccExtraArgs="-s EXPORTED_FUNCTIONS=_Answer -s EXPORTED_RUNTIME_METHODS=cwrap --post-js=invokeLibraryFunction.js" --self-contained
+> dotnet publish -r browser-wasm -c Debug /p:NativeLib=Shared /p:MSBuildEnableWorkloadResolver=false /p:EmccExtraArgs="-s EXPORTED_RUNTIME_METHODS=cwrap --post-js=invokeLibraryFunction.js" --self-contained
 ```
 Where `invokeLibraryFunction.js` is a Javascript file with the callback to call `Answer`, e.g.
 ```js
@@ -114,10 +115,10 @@ Functions in other WebAssembly modules can be imported and invoked using `DllImp
 [DllImport("*")]
 static extern int random_get(byte* buf, uint size);
 ```
-Be default emscripten will create a WebAssembly import for this function, importing from the `env` module.  This can be controlled with `WasmImport` items in the project file.  For example
+By default emscripten will create a WebAssembly import for this function, importing from the `env` module. This can be controlled with `WasmImport` items in the project file. For example
 ```xml
 <ItemGroup>
-    <WasmImport Include="wasi_snapshot_preview1!random_get" />
+  <WasmImport Include="wasi_snapshot_preview1!random_get" />
 </ItemGroup>
 ```
 Will cause the above `random_get` to create this WebAssembly:
@@ -125,31 +126,31 @@ Will cause the above `random_get` to create this WebAssembly:
 (import "wasi_snapshot_preview1" "random_get" (func $random_get (type 3)))
 ```
 
-This can be used to import WASI functions that are in other modules, either as the above, in WASI, `wasi_snapshot_preview1`, or in other WebAssembly modules that may be linked with [WebAssembly module linking](https://github.com/WebAssembly/module-linking)
-
-# WASM applications configuration
-
-Currently NativeAOT-LLVM supports following additional properties
-- `WasmHtmlTemplate`: specifies path to the HTML template within which the WASM application will be embedded. An example of a minimal template can be found in the Emscripten repo: https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html
+This can be used to import WASI functions that are in other modules, either as the above, in WASI, `wasi_snapshot_preview1`, or in other WebAssembly modules that may be linked with [WebAssembly module linking](https://github.com/WebAssembly/module-linking).
 
 #### WASM with WASI
-Currently, many things do not work with the WASI publish, notable Exceptions, threads, and any Globalization.  It is also likely to crash when running anything but the simplest programs.  HelloWorld (i.e. `dotnet new console`) does work.
-Set up the project file as above.
+
+Currently, many things do not work with the WASI publish, notably Exceptions, threads, and any Globalization. It is also likely to crash when running anything but the simplest programs. HelloWorld (i.e. `dotnet new console`) does work. Set up the project file as above.
 
 Create the wasm with
 ```
-dotnet publish -r wasi-wasm -c Debug /p:PlatformTarget=AnyCPU /p:MSBuildEnableWorkloadResolver=false --self-contained
+dotnet publish -r wasi-wasm -c <Configuration> /p:MSBuildEnableWorkloadResolver=false /p:UseAppHost=false --self-contained
 ```
-`wasmer` is the only tested runtime.  An example invocation with wasmer:
+`wasmer` is the only tested runtime. An example invocation with wasmer:
 ```
 wasmer bin\Debug\net8.0\wasi-wasm\publish\console.wasm
 ```
 
-Note that while we are enabling threads, they do not work attempting to create a thread will most likely crash.
-`wasmtime` can also be used by passing the required flags:
+`wasmtime` can also be used:
 ```
-wasmtime --wasm-features=threads --wasi-modules=experimental-wasi-threads bin\Debug\net8.0\wasi-wasm\publish\console.wasm
+wasmtime bin\Debug\net8.0\wasi-wasm\publish\console.wasm
 ```
+
+#### WebAssembly application configuration
+
+Currently NativeAOT-LLVM supports following additional properties:
+- `WasmHtmlTemplate`: specifies path to the HTML template within which the WASM application will be embedded. An example of a minimal template can be found in the Emscripten repo: https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html
+
 ### Cross-compiling on Linux
 Similarly, to target linux-arm64 on a Linux x64 host, in addition to the `Microsoft.DotNet.ILCompiler` package reference, also add the `runtime.linux-x64.Microsoft.DotNet.ILCompiler` package reference to get the x64-hosted compiler:
 ```xml
