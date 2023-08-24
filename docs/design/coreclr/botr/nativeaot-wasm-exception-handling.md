@@ -185,7 +185,7 @@ For the storage location of the dispatch information, we choose managed thread-s
 - Between native and managed TLS, we need GC reporting, so we choose managed. This is reinforced by the desire to have dispatch code be managed.
 
 Virtual unwind stack maintainance is trickier. We observe the following:
-- `NOT_IN_TRY` frames must be unlinked "in advance" as control will not be reach their native counterparts.
+- `NOT_IN_TRY` frames must be unlinked "in advance" as control will not reach their native counterparts.
 - `NOT_IN_TRY_CATCH` frames **must not** be unlinked as the faults they transfer control to may yet use the unwind index, as in the following example:
 ```cs
 try
@@ -261,7 +261,7 @@ A given nested exception can cause abandonment of a dynamically determined numbe
 ```
 Indeed, even in the first example, the nested exception can itself be abandoned mid-flight via another nested throw.
 
-To correctly handle all of this, we must know when to unlink a given exception from the thread-local list of active ones. It turns out we can do so at the very end of the second pass, before transferring control to the catch handler. Consider that for an exception to not cause abandonment, its catch **must** lie below that of its predecessor's next one and that the oppossite is, crucially, also true:
+To correctly handle all of this, we must know when to unlink a given exception from the thread-local list of active ones. It turns out we can do so at the very end of the second pass, before transferring control to the catch handler. Consider that for an exception to not cause abandonment, its catch **must** lie below that of its predecessor's next one and that the opposite is, crucially, also true:
 ```
 ; Case 1: no abandonment
 ; If C0 lies below C1, then it must lie below F1, as otherwise C0 would have been the next catch for C1 due to the clause nesting rules

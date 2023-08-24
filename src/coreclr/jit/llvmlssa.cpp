@@ -512,7 +512,7 @@ private:
             }
 
             // Filters will be called by the first pass while live state still exists on shadow frames above (in the
-            // tradional sense, where stacks grow down) them. For this reason, filters will access state from the
+            // traditional sense, where stacks grow down) them. For this reason, filters will access state from the
             // original frame via a dedicated shadow stack pointer, and use the actual shadow stack for calls.
             unsigned shadowStackLclNum = m_llvm->isBlockInFilter(m_llvm->CurrentBlock())
                 ? m_llvm->_originalShadowStackLclNum
