@@ -99,12 +99,12 @@ public static class ManagedZLib
     ///    <code>int memLevel = 8;</code> <br />
     ///    <code>ZLibNative.CompressionStrategy strategy = ZLibNative.CompressionStrategy.DefaultStrategy;</code> </p>
     /// </summary>
-    public enum CompressionLevel : int
-    {
-        NoCompression = 0,
-        BestSpeed = 1,
-        DefaultCompression = -1,
-        BestCompression = 9
+    public enum CompressionLevel : int //This matches with the config table for deflate
+    { // This are the translations to the enum we show to the user (CompressionLevel class):
+        NoCompression = 0,        // CompressionLevel.NoCompression - 2 
+        BestSpeed = 1,            // CompressionLevel.Fastest - 1
+        DefaultCompression = -1,  // CompressionLevel.Optimal - 0
+        BestCompression = 9       // CompressionLevel.SmallestSize - 3
     }
 
     /// <summary>

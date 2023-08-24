@@ -33,6 +33,9 @@ internal class DeflateTrees
     public const int StaticTrees = 1;
     public const int DynamicTrees = 2;
 
+    // For debugging only - Not intended to remain here after review
+    int timesEntered;
+
     // Classification of possible data types - Not really used in the algorithm's functionality
                                               // But can be used for improvements later
     public const int Binary = 0; // TO-DO enum
@@ -98,6 +101,7 @@ internal class DeflateTrees
 
     internal DeflateTrees(Memory<byte> symBuffer, uint litBufferSize) 
     {
+        timesEntered = 0;
         //For tallying:
         _symBuffer = symBuffer;
         // We avoid equality with lit_bufsize*3 because of wraparound at 64K
@@ -563,6 +567,7 @@ internal class DeflateTrees
     // Send the block data compressed using the given Huffman trees
     public void CompressBlock(OutputWindow output, CtData[] LitTree, CtData[] DistTree)
     {
+        timesEntered++; // Every time it enters here - to now which time, it fails
         int dist;          // distance of matched string
         int lc;             // match length or unmatched char (if dist == 0)
         uint symIndex = 0;  // running index in sym_buf

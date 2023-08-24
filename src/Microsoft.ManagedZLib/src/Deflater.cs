@@ -28,7 +28,64 @@ internal class Deflater
     private const int MaxWindowBits = 31;   // zlib header, or 24..31 for a GZip header
     private int _windowBits;
     private uint _litBufferSize;
-    //private int _levelConfigTable;
+    /* Size of match buffer for literals/lengths.  There are 4 reasons for
+    * limiting lit_bufsize to 64K:
+    *   - frequencies can be kept in 16 bit counters
+    *   - if compression is not successful for the first block, all input
+    *     data is still in the window so we can still emit a stored block even
+    *     when input comes from standard input.  (This can also be done for
+    *     all blocks if lit_bufsize is not greater than 32K.)
+    *   - if compression is not successful for a file smaller than 64K, we can
+    *     even emit a stored file instead of a stored block (saving 5 bytes).
+    *     This is applicable only for zip (not gzip or zlib).
+    *   - creating new Huffman trees less frequently may not provide fast
+    *     adaptation to changes in the input data statistics. (Take for
+    *     example a binary file with poorly compressible code followed by
+    *     a highly compressible string table.) Smaller buffer sizes give
+    *     fast adaptation but have of course the overhead of transmitting
+    *     trees more frequently.
+    *   - I can't count above 4
+    */
+    // When determining the size of litBuffer:
+    /* We overlay pending_buf and sym_buf. This works since the average size
+     * for length/distance pairs over any compressed block is assured to be 31
+     * bits or less.
+     *
+     * Analysis: The longest fixed codes are a length code of 8 bits plus 5
+     * extra bits, for lengths 131 to 257. The longest fixed distance codes are
+     * 5 bits plus 13 extra bits, for distances 16385 to 32768. The longest
+     * possible fixed-codes length/distance pair is then 31 bits total.
+     *
+     * sym_buf starts one-fourth of the way into pending_buf. So there are
+     * three bytes in sym_buf for every four bytes in pending_buf. Each symbol
+     * in sym_buf is three bytes -- two for the distance and one for the
+     * literal/length. As each symbol is consumed, the pointer to the next
+     * sym_buf value to read moves forward three bytes. From that symbol, up to
+     * 31 bits are written to pending_buf. The closest the written pending_buf
+     * bits gets to the next sym_buf symbol to read is just before the last
+     * code is written. At that time, 31*(n - 2) bits have been written, just
+     * after 24*(n - 2) bits have been consumed from sym_buf. sym_buf starts at
+     * 8*n bits into pending_buf. (Note that the symbol buffer fills when n - 1
+     * symbols are written.) The closest the writing gets to what is unread is
+     * then n + 14 bits. Here n is lit_bufsize, which is 16384 by default, and
+     * can range from 128 to 32768.
+     *
+     * Therefore, at a minimum, there are 142 bits of space between what is
+     * written and what is read in the overlain buffers, so the symbols cannot
+     * be overwritten by the compressed data. That space is actually 139 bits,
+     * due to the three-bit fixed-code block header.
+     *
+     * That covers the case where either Z_FIXED is specified, forcing fixed
+     * codes, or when the use of fixed codes is chosen, because that choice
+     * results in a smaller compressed block than dynamic codes. That latter
+     * condition then assures that the above analysis also covers all dynamic
+     * blocks. A dynamic-code block will only be chosen to be emitted if it has
+     * fewer bits than a fixed-code block would for the same set of symbols.
+     * Therefore its average symbol length is assured to be less than 31. So
+     * the compressed data for a dynamic block also cannot overwrite the
+     * symbols from which it is being constructed.
+     */
+
 
     private int _wrap; //Default: Raw Deflate
     ZState _status;
@@ -699,12 +756,16 @@ internal class Deflater
 
         while (true)
         {
+            //if (_trees._symIndex == 49119 || _output._strStart > 32510)
+            //{
+            //    Debugger.Break();//for debugging huge iterations that would break the breakpoint -lol-
+            //}
             /* Make sure that we always have enough lookahead, except
              * at the end of the input file. We need MAX_MATCH bytes
              * for the next match, plus MIN_MATCH bytes to insert the
              * string following the next match.
              */
-            if (_output._lookahead < MinMatch) 
+            if (_output._lookahead < MinLookahead) 
             {
                 _output.FillWindow(_input); // ------------------------------------------------------------------Pending to implement
                 if (_output._lookahead < MinLookahead && flushCode == ZFlushCode.NoFlush)
@@ -729,18 +790,16 @@ internal class Deflater
                  */
                 _output._matchLength = _output.LongestMatch(hashHead);// Sets _output._matchStart and eventually the _lookahead
             }
+            
             if (_output._matchLength >= MinMatch)
             {
                 
                 blockFlush = _trees.TreeTallyDist(_output._strStart - _output._matchStart, _output._matchLength - MinMatch);
-                int x = 1;
-                if (_trees._symIndex == 49149)
-                {
-                    x = 0;
-                }if (x == 0)
-                {
-                    Console.WriteLine("khe");
-                }
+
+                //if (_trees._symIndex == 49146 || _output._strStart > 65200)
+                //{
+                //    //Debugger.Break();
+                //}
                 _output._lookahead -= _output._matchLength;
 
                 if (_output._matchLength <= _output.MaxInsertLength() && 
@@ -752,7 +811,7 @@ internal class Deflater
                         _output._strStart++;
                         // _strStart never exceeds _windowSize-MaxMatch, so there
                         // are always MinMatch bytes ahead.
-                        hashHead = _output.InsertString();
+                        _output.InsertString();
                     }
                     while (--_output._matchLength != 0);
                     _output._strStart++;
@@ -771,24 +830,29 @@ internal class Deflater
             }
             else
             {
+                //if (_trees._symIndex == 49146 || _output._strStart>32510)
+                //{
+                //    Debugger.Break();
+                //}
                 // Not match, output a literal byte
                 blockFlush = _trees.TreeTallyLit(_output.Window((int)_output._strStart));
-                int x = 1;
-                if (_trees._symIndex == 49149)
-                {
-                    x = 0;
-                }
-                if (x == 0)
-                {
-                    Console.WriteLine("khe");
-                }
+                
                 _output._lookahead--;
                 _output._strStart++;
+
+                //if (_trees._symIndex == 49146 || _output._strStart > 65200)
+                //{
+                //    //Debugger.Break();
+                //}
             }
 
             if (blockFlush)
             {
                 FlushBlock(last: false);
+                if (_output._availableOutput == 0)
+                {
+                    return ZBlockState.NeedMore;
+                }
             }
         }
         _output._insert = (_output._strStart < (MinMatch - 1))? 
@@ -799,7 +863,9 @@ internal class Deflater
             // DONE STATE
             FlushBlock(last: true);
             if (_output._availableOutput == 0)
+            {
                 return ZBlockState.FinishStarted;
+            }
             return ZBlockState.FinishDone; 
         }
 
@@ -807,9 +873,10 @@ internal class Deflater
         {
             FlushBlock(last : false);
             if (_output._availableOutput == 0)
+            {
                 return ZBlockState.NeedMore;
+            }       
         }
-
         return ZBlockState.BlockDone;
     }
     public ZBlockState DeflateSlow(ZFlushCode flushCode)
@@ -892,6 +959,10 @@ internal class Deflater
                 if (blockFlush)
                 {
                     FlushBlock(last: false);
+                    if (_output._availableOutput == 0)
+                    {
+                        return ZBlockState.NeedMore;
+                    }
                 }
             }
             else if (_output._matchAvailable)
@@ -902,7 +973,7 @@ internal class Deflater
                 blockFlush = _trees.TreeTallyLit(_output.Window((int)_output._strStart - 1));
                 if (blockFlush)
                 {
-                    FlushBlock(last: false);
+                    FlushBlock(last: false); //FlushBlockOnly - no return statements associated
                 }
                 _output._strStart++;
                 _output._lookahead--;
@@ -935,7 +1006,9 @@ internal class Deflater
             // DONE STATE
             FlushBlock(last: true);
             if (_output._availableOutput == 0)
+            {
                 return ZBlockState.FinishStarted;
+            }
             return ZBlockState.FinishDone;
         }
 
@@ -943,7 +1016,9 @@ internal class Deflater
         {
             FlushBlock(last: false);
             if (_output._availableOutput == 0)
+            {
                 return ZBlockState.NeedMore;
+            }
         }
 
         return ZBlockState.BlockDone;

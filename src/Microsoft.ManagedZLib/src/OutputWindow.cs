@@ -175,11 +175,12 @@ internal class OutputWindow
         Debug.Assert(_hashHead != null);
         Debug.Assert(_prev != null);
         Debug.Assert((int)_strStart >= 0); // Checking after casting it to int,
-                                          // it doesn't overflow to negative
-                                          // If so, we might need to chnge the type or
-                                          // re-think hashing function taking that
-                                          // possible overflow into account
-        UpdateHash(_window.Span[(int)_strStart + (MinMatch - 1)]);
+                                           // it doesn't overflow to negative
+                                           // If so, we might need to chnge the type or
+                                           // re-think hashing function taking that
+                                           // possible overflow into account
+        int index = (int)_strStart + (MinMatch - 1);
+        UpdateHash(_window.Span[index]);
         match_head = _prev[_strStart & _windowMask] = _hashHead[_strHashIndex];
         _hashHead[_strHashIndex] = (ushort)_strStart;
         return match_head;
@@ -203,10 +204,9 @@ internal class OutputWindow
             */
             if (_strStart >= wsize + MaxDistance())
             {
-                var upperHalf = _window.Slice(wsize);
-
-                var from = _window.Slice(wsize, (int)wsize - availSpaceEnd);
-                from.CopyTo(upperHalf);
+                var lowerHalf = _window;
+                var upperHalf = _window.Slice(wsize, (int)wsize - availSpaceEnd);
+                upperHalf.CopyTo(lowerHalf); // (from:upperHalf).CopyTo(to: lowerHalf)
                 _matchStart -= (uint)wsize;
                 _strStart -= (uint)wsize; /* we now have strstart >= MAX_DIST */
                 _blockStart -= (long)wsize;
@@ -218,9 +218,9 @@ internal class OutputWindow
 
             if (inputBuffer._availInput == 0) break;
 
-            Span <byte> WinBuffer= _window.Span.Slice((int)(_strStart + _lookahead));
-            // This return number of bytes read
-            bytes = ReadBuffer(inputBuffer, WinBuffer, (uint)availSpaceEnd);
+            Span <byte> winUpperHalf= _window.Span.Slice((int)(_strStart + _lookahead));
+            //Read more input and put it in the upper half of the window
+            bytes = ReadBuffer(inputBuffer, winUpperHalf, (uint)availSpaceEnd); // This return number of bytes read
             _lookahead += (uint)bytes;
 
             /* Initialize the hash value now that we have some input: */
@@ -366,6 +366,10 @@ internal class OutputWindow
         */
         uint limit = (_strStart > (uint)MaxDistance())? _strStart - (uint)MaxDistance(): 0;
         ushort[]? prev = _prev;
+        //if (_strStart > 32510)
+        //{
+        //    Debugger.Break();//for debugging huge iterations that would break the breakpoint -lol-
+        //}
         int wMask = _windowMask;
         // The code is optimized for HASH_BITS >= 8 and MAX_MATCH-2 multiple of 16.
         // It is easy to get rid of this optimization if necessary.
@@ -382,7 +386,12 @@ internal class OutputWindow
             niceMatch = (int)_lookahead; 
         }
 
-        Debug.Assert((ulong)_strStart <= (ulong)_actualWindowSize - MinLookahead, "need lookahead");
+        if (_strStart > _actualWindowSize - MinLookahead) // for debugging
+        {
+            Debugger.Break();
+        }
+
+        Debug.Assert(_strStart <= _actualWindowSize - MinLookahead, "need lookahead");
 
         do
         {

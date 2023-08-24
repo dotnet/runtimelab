@@ -29,6 +29,13 @@ public class DeflateStreamTests
             yield return new object[] { path };
         }
     }
+    public static IEnumerable<object[]> SizeTestFiles()
+    {
+        foreach (var path in Directory.EnumerateFiles("SizeTest", "*", SearchOption.AllDirectories))
+        {
+            yield return new object[] { path };
+        }
+    }
     public static IEnumerable<CompressionLevel> GetCompressionLevels()
     {
         yield return CompressionLevel.Optimal; 
@@ -225,6 +232,23 @@ public class DeflateStreamTests
     [Theory]
     [MemberData(nameof(UncompressedTestFilesBasic))] //Figure out how to also pass the compression level like the file names
     public void verifyCompression_Files_Fastest(string filepath)
+    {
+        CompressionLevel compressionLevel = CompressionLevel.Fastest;
+        UncompressedData = File.ReadAllBytes(filepath);
+        using MemoryStream originalData = new(UncompressedData); //Line maybe redundant since it was a fileStream already
+
+        MemoryStream CompressedDataStream = new(capacity: UncompressedData.Length);
+        DeflateStream compressionStream = new DeflateStream(CompressedDataStream, compressionLevel, leaveOpen: true);
+
+        compressionStream.Write(UncompressedData, 0, UncompressedData.Length);
+        compressionStream.Flush();
+        CompressedDataStream.Position = 0;
+
+        decompression_verification(originalData, CompressedDataStream);
+    }
+    [Theory]
+    [MemberData(nameof(SizeTestFiles))] //Figure out how to also pass the compression level like the file names
+    public void verifyCompression_Files_Fastest_Size(string filepath)
     {
         CompressionLevel compressionLevel = CompressionLevel.Fastest;
         UncompressedData = File.ReadAllBytes(filepath);
