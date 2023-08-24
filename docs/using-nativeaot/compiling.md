@@ -135,6 +135,8 @@ Will cause the above `random_get` to create this WebAssembly:
 
 This can be used to import WASI functions that are in other modules, either as the above, in WASI, `wasi_snapshot_preview1`, or in other WebAssembly modules that may be linked with [WebAssembly module linking](https://github.com/WebAssembly/module-linking).
 
+The use of explicit `WasmImport`s is currently mandatory for the `wasi-wasm` target, see https://github.com/dotnet/runtimelab/issues/2383.
+
 #### WASM with WASI
 
 Currently, many things do not work with the WASI publish, notably Exceptions, threads, and any Globalization. It is also likely to crash when running anything but the simplest programs. HelloWorld (i.e. `dotnet new console`) does work. Set up the project file as above.
