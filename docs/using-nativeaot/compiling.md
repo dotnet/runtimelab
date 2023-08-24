@@ -88,6 +88,8 @@ and the publish command
 
 Note that the wasm-tools workload is identified as a dependency even though its not used, and this confuses the toolchain, hence `/p:MSBuildEnableWorkloadResolver=false`.
 
+By default, the build will produce a binary with debug information, which is usually quite large. If you do not need it, add `/p:NativeDebugSymbols=false` to the command line. Note that this will disable the generation of _all_ debug info, including function names for stack traces.
+
 #### WebAssembly native libraries
 To compile a WebAssembly native library that exports a function `Answer`:
 ```cs
