@@ -109,6 +109,13 @@ Module['onRuntimeInitialized'] = function() {
 };
 ```
 
+Note that assemblies other than the one being published (e. g. those from referenced projects) need to be explicitly specified in the project file if you want their methods to be exported:
+```xml
+<ItemGroup>
+  <UnmanagedEntryPointsAssembly Include="DependencyAssembly" />
+</ItemGroup>
+```
+
 #### WebAssembly module imports
 Functions in other WebAssembly modules can be imported and invoked using `DllImport` e.g.
 ```cs
