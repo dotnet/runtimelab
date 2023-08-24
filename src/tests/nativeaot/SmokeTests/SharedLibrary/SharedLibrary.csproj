@@ -5,26 +5,36 @@
     <CLRTestPriority>0</CLRTestPriority>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NativeLib>Shared</NativeLib>
-  </PropertyGroup>
 
-  <PropertyGroup>
-    <CLRTestBatchPreCommands><![CDATA[
-$(CLRTestBatchPreCommands)
-mkdir native 2>nul
-copy /y SharedLibraryDriver.exe native\SharedLibrary.exe
-]]></CLRTestBatchPreCommands>
-
-    <CLRTestBashPreCommands><![CDATA[
-$(CLRTestBashPreCommands)
-mkdir -p native
-cp SharedLibraryDriver native/SharedLibrary
-]]></CLRTestBashPreCommands>
+    <WasiReactorTestUsingNodeJS Condition="'$(TargetOS)' == 'wasi'">true</WasiReactorTestUsingNodeJS>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="SharedLibrary.cs" />
   </ItemGroup>
-  <ItemGroup>
+
+  <PropertyGroup>
+    <NativeExtension Condition="'$(WasiReactorTestUsingNodeJS)' == 'true'">.mjs</NativeExtension>
+    <NativeExtension Condition="'$(TargetOS)' == 'windows'">.exe</NativeExtension>
+
+    <CLRTestBatchPreCommands><![CDATA[
+$(CLRTestBatchPreCommands)
+mkdir native 2>nul
+copy /y SharedLibraryDriver$(NativeExtension) native\SharedLibrary$(NativeExtension)
+]]></CLRTestBatchPreCommands>
+
+    <CLRTestBashPreCommands><![CDATA[
+$(CLRTestBashPreCommands)
+mkdir -p native
+cp SharedLibraryDriver$(NativeExtension) native/SharedLibrary$(NativeExtension)
+]]></CLRTestBashPreCommands>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(WasiReactorTestUsingNodeJS)' != 'true'">
     <CMakeProjectReference Include="CMakeLists.txt" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(WasiReactorTestUsingNodeJS)' == 'true'">
+    <Content Include="SharedLibraryDriver.mjs" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

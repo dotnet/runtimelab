@@ -1,5 +1,5 @@
 $InstallPath = $Args[0]
-$NodeJSVersion = "v18.16.0"
+$NodeJSVersion = "v20.2.0"
 $NodeJSInstallName = "node-$NodeJSVersion-win-x64"
 $NodeJSZipName = "$NodeJSInstallName.zip"
 
