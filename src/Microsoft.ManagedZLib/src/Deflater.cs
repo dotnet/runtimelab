@@ -7,6 +7,7 @@ using ZFlushCode = Microsoft.ManagedZLib.ManagedZLib.FlushCode;
 using ZState = Microsoft.ManagedZLib.ManagedZLib.DeflateStates;
 using ZBlockState = Microsoft.ManagedZLib.ManagedZLib.BlockState;
 using System.Collections.Generic;
+using static Microsoft.ManagedZLib.ManagedZLib;
 
 namespace Microsoft.ManagedZLib;
 
@@ -156,6 +157,23 @@ internal class Deflater
         //Might not be necessary - constructors do everything that DelfateInit2 used to do
         DeflateInit2(zlibCompressionLevel, ManagedZLib.CompressionMethod.Deflated, windowBits, memLevel, _output._strategy);
     }
+    
+    // For assigning priority to the flush codes. This is how it's done in madler/zlib.
+    // This is a direct port. Might change late because:
+    // I'd recommend just putting the enum in the desired order instead of this**
+    // because, at least for the methods consumed from the this API, we keep the same
+    // priority order that the order of theri int values, we would be just moving the
+    // flushCode Block to second instead of last and that's it.
+    private static int Rank(FlushCode flushCode)
+    {
+        if ((int)flushCode <= 4)
+        {
+            return (int)flushCode * 2;
+        }else
+        {
+            return (int)flushCode * 2 - 9;
+        }
+    }
     private int DeflateInit( int windowBits)
     {
         _wrap = 1; // To check which type of wrapper are we checking
@@ -259,7 +277,7 @@ internal class Deflater
 
     }
 
-    public int ReadDeflateOutput(byte[] outputBuffer, ZFlushCode flushCode, out bool finishCode) // It threw an error when doing the conversion from byte[] to Span<byte>
+    public int ReadDeflateOutput(byte[] outputBuffer, ZFlushCode flushCode, out ErrorCode finishCode) // It threw an error when doing the conversion from byte[] to Span<byte>
                                                                                   // So I'll change to Memory<byte>
     {
         Debug.Assert(outputBuffer.Length > 0); // This used to be nullable - Check behavior later
@@ -277,25 +295,27 @@ internal class Deflater
         }
     }
 
-    internal int Finish(byte[] outputBuffer, out bool finishCode)
+    internal bool Finish(byte[] outputBuffer, out int bytesRead)
     {
         Debug.Assert(null != outputBuffer, "Can't pass in a null output buffer!");
         Debug.Assert(outputBuffer.Length > 0, "Can't pass in an empty output buffer!");
-
-        int bytesRead = ReadDeflateOutput(outputBuffer, ZFlushCode.Finish, out finishCode); 
-        return bytesRead;
+        ErrorCode finishCode;
+        bytesRead = ReadDeflateOutput(outputBuffer, ZFlushCode.Finish, out finishCode); 
+        return finishCode == ErrorCode.StreamEnd;
     }
 
     /// <summary>
     /// Returns true if there was something to flush. Otherwise False.
     /// </summary>
-    internal int Flush(byte[] outputBuffer, out bool isFinished)
+    internal bool Flush(byte[] outputBuffer, out int bytesRead)
     {
         Debug.Assert(null != outputBuffer, "Can't pass in a null output buffer!");
         Debug.Assert(outputBuffer.Length > 0, "Can't pass in an empty output buffer!");
         Debug.Assert(NeedsInput(), "We have something left in previous input!");
-        
-        return ReadDeflateOutput(outputBuffer, ZFlushCode.SyncFlush, out isFinished);
+
+        ErrorCode finishCode;
+        bytesRead = ReadDeflateOutput(outputBuffer, ZFlushCode.SyncFlush, out finishCode);
+        return finishCode == ErrorCode.Ok;
     }
     // Checking is a valid state
     public bool DeflateStateCheck()
@@ -307,16 +327,14 @@ internal class Deflater
         return true;
     }
 
-    private int Deflate(ZFlushCode flushCode, out bool finishCode)
+    private int Deflate(ZFlushCode flushCode, out ErrorCode finishCode)
     {
         // C Zlib returning values porting interpretation:
         // ERR - Possible Debug.Assert statement
         // OK - return a substraction 
         // bytesRead = outputBuffer.Length - _output.AvailableBytes
 
-        ZFlushCode oldFlush = flushCode;
-
-        oldFlush = _output.lastFlush;
+        ZFlushCode oldFlush = _output.lastFlush;
         _output.lastFlush = flushCode;
 
         // Error checking:
@@ -333,9 +351,15 @@ internal class Deflater
                  * return OK instead of BUF_ERROR at next call of deflate:
                  */
                 _output.lastFlush = ZFlushCode.GenOutput;
-                finishCode = false;
+                finishCode = ErrorCode.Ok;
                 return _output._output.Length - _output._availableOutput; // OK
             }
+        }else if (_input.AvailableBytes == 0 && 
+                  Rank(flushCode)<=Rank(oldFlush) &&
+                  flushCode!= ZFlushCode.Finish)
+        {
+            finishCode = ErrorCode.StreamEnd;
+            return _output._output.Length - _output._availableOutput;
         }
 
         // User must not provide more input after the first FINISH:
@@ -388,7 +412,7 @@ internal class Deflater
             if (_output._pendingBufferBytes != 0)
             {
                 _output.lastFlush = ZFlushCode.GenOutput;
-                finishCode = false;
+                finishCode = ErrorCode.Ok;
                 return _output._output.Length - _output._availableOutput; // OK
             }
 
@@ -409,7 +433,7 @@ internal class Deflater
             if (_output._pendingBufferBytes != 0)
             {
                 _output.lastFlush = ZFlushCode.GenOutput;
-                finishCode = false;
+                finishCode = ErrorCode.Ok;
                 return _output._output.Length - _output._availableOutput; // OK
             }
         } // GZip: GZip header CRC
@@ -470,7 +494,7 @@ internal class Deflater
                 {
                     _output.lastFlush = ZFlushCode.GenOutput; /* avoid BUF_ERROR next call, see above */
                 }
-                finishCode = false;
+                finishCode = ErrorCode.Ok;
                 return _output._output.Length - _output._availableOutput; // OK
                 /* If flush != Z_NO_FLUSH && avail_out == 0, the next call
                  * of deflate should use the same flush parameter to make sure
@@ -490,7 +514,7 @@ internal class Deflater
                 if (_output._availableOutput == 0)
                 {
                     _output.lastFlush = ZFlushCode.GenOutput; /* avoid BUF_ERROR at next call, see above */
-                    finishCode = false;
+                    finishCode = ErrorCode.Ok;
                     return _output._output.Length - _output._availableOutput; // OK
                 }
             }
@@ -499,11 +523,11 @@ internal class Deflater
 
         if (flushCode != ZFlushCode.Finish)
         {
-            finishCode = false;
+            finishCode = ErrorCode.Ok;
             return _output._output.Length - _output._availableOutput; // OK
         }
         if (_wrap <= 0) {
-            finishCode = true;
+            finishCode = ErrorCode.StreamEnd;
             return _output._output.Length - _output._availableOutput; //STREAM END: GZip
         }
         if (_wrap == 2) 
@@ -520,16 +544,16 @@ internal class Deflater
         // write the trailer only once!
         if (_wrap > 0)
         {
-            _wrap = -_wrap;
+            _wrap = -_wrap; //Add assert for checking it's in bounds
         }
         if (_output._pendingBufferBytes != 0)
         {
             // Raw deflate bytesRead
-            finishCode = false;
+            finishCode = ErrorCode.Ok;
             return _output._output.Length - _output._availableOutput; // OK
         }
         // bytesRead + extra GZip operations
-        finishCode = true;
+        finishCode = ErrorCode.StreamEnd;
         return _output._output.Length - _output._availableOutput; // STREAM_END 
 
     }
@@ -1043,11 +1067,11 @@ internal class Deflater
         Memory<byte> source = _output._pendingOut.Slice((int)_output._pendingOutIndex, (int)len); // TO-DO extra check in case it overflows the int casting
         source.CopyTo(_output._output.Slice((int)_output._nextOut,(int)len)); // output = NextOut
 
-        _output._totalOutput += len;
-        _output._pendingOutIndex += len;
         _output._nextOut += len;
+        _output._pendingOutIndex += len;
+        _output._totalOutput += len;
         _output._availableOutput -= (int)len;
-        _output._pendingBufferBytes -= len;
+        _output._pendingBufferBytes -= len; //s->pending
 
         if (_output._pendingBufferBytes == 0)
         {
