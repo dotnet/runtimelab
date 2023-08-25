@@ -3,153 +3,308 @@
 
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 using Internal.Runtime;
 
 // Disable: Filter expression is a constant. We know. We just can't do an unfiltered catch.
 #pragma warning disable 7095
-#pragma warning disable 8500 // Cannot take the address of, get the size of, or declare a pointer to a managed type
 
 namespace System.Runtime
 {
-    // Due to the inability to perform manual unwind, WASM uses a customized exception handling scheme where unwinding
-    // is performed by throwing and catching native exceptions and EH-live state is maintained on the shadow stack.
-    //
-    // ; First pass
-    //
-    //   ; Shadow frames                            ; Native frames
-    //
-    //   [Filtering F0] (with C0 catch)             [Filtering F0]
-    //   [Finally   S0]                                            [Dispatcher]  ^ ; Progression of the native exception
-    //   [Filtering F1]                             [Filtering F1] [F0 frames]   | ; stops once we find a filter which
-    //   [Finally   S1]                                            [Dispatcher]  | ; accepts its managed counterpart.
-    //   [Filtering F2]                             [Filtering F2] [F1 frames]   |
-    //   [Finally   S2]                                            [Dispatcher]  |
-    //   [Throw]                                    [Throw]        [F2 frames]   |
-    //   [Dispatcher(s)]
-    //   [F2 frames] [F1 frames] ... ; Native exception carries the dispatcher's shadow stack
-    //
-    // ; Second pass
-    //
-    //   ; Shadow frames                            ; Native frames
-    //
-    //   [Filtering F0] <-------------------------| [Filtering F0] <---------------------------------------------|
-    //   [Finally   S0]                           |                [Dispatcher]  ; The handler was found         |
-    //   [Filtering F1]                           |                [S2 frames] [S1 frames] ... [C0 frames]-------|
-    //   [Finally   S1]                           |
-    //   [Filtering F2]                           |
-    //   [Finally   S2]                           |
-    //   [Throw]                                  |
-    //   [Dispatcher]                             |
-    //   [S2 frames] [S1 frames] ... [C0 frames]--| ; Normal "ret" from the dispatcher
-    //
+    // TODO-LLVM-EH: write and link a design document for this EH scheme. It is not terribly simple...
     internal static unsafe partial class EH
     {
-        private const int ContinueSearch = 0;
+        private const nuint UnwindIndexNotInTry = 0;
+        private const nuint UnwindIndexNotInTryCatch = 1;
+        private const nuint UnwindIndexBase = 2;
 
-        // The layout of this struct must match the native version in "wasm/ExceptionHandling.cpp" exactly.
-        private struct ExceptionDispatchData
+        [ThreadStatic]
+        private static ExceptionDispatchData? t_lastDispatchedException;
+
+        [RuntimeExport("RhpThrowEx")]
+        private static void RhpThrowEx(object exception)
         {
-            public void* DispatchShadowFrameAddress; // Shadow stack to use when calling managed dispatchers.
-            public object* ManagedExceptionAddress; // Address of the managed exception on the shadow stack.
-            public FaultNode* LastFault; // Half-circular linked list of fault funclets to run before calling catch.
+#if INPLACE_RUNTIME
+            // Turn "throw null" into "throw new NullReferenceException()".
+            exception ??= new NullReferenceException();
+#else
+#error Implement "throw null" in non-INPLACE_RUNTIME builds
+#endif
+            DispatchException(exception, 0);
         }
 
-        private struct FaultNode
+        [RuntimeExport("RhpRethrow")]
+        private static void RhpRethrow(object pException)
         {
-            public void* Funclet;
-            public void* ShadowFrameAddress;
-            public FaultNode* Next;
+            DispatchException(pException, RhEHFrameType.RH_EH_FIRST_RETHROW_FRAME);
         }
 
-        // These per-clause handlers are invoked by the native dispatcher code, using a shadow stack extracted from the thrown exception.
+        // Note that this method cannot have any catch handlers as it manipulates the virtual unwind frames directly
+        // and exits via native unwind (it would not pop the frame it would push). This is accomplished by calling
+        // all user code via separate noinline methods. It also cannot throw any exceptions as that would lead to
+        // infinite recursion.
         //
-        [RuntimeExport("RhpHandleExceptionWasmMutuallyProtectingCatches")]
-        private static int RhpHandleExceptionWasmMutuallyProtectingCatches(void* pOriginalShadowFrame, ExceptionDispatchData* pDispatchData, void** pEHTable)
+        private static void DispatchException(object exception, RhEHFrameType flags)
         {
-            WasmEHLogDispatcherEnter(RhEHClauseKind.RH_EH_CLAUSE_UNUSED, pEHTable, pOriginalShadowFrame);
+            WasmEHLogFirstPassEnter(exception, flags);
 
-            object exception = *pDispatchData->ManagedExceptionAddress;
-            EHClauseIteratorWasm clauseIter = new EHClauseIteratorWasm(pEHTable);
-            EHClauseWasm clause;
-            while (clauseIter.Next(&clause))
+            OnFirstChanceExceptionNoInline(exception);
+#if INPLACE_RUNTIME
+            Exception.InitializeExceptionStackFrameLLVM(exception, (int)flags);
+#else
+#error Make InitializeExceptionStackFrameLLVM into a classlib export
+#endif
+
+            // Find the handler for this exception by virtually unwinding the stack of active protected regions.
+            VirtualUnwindFrame** pLastFrameRef = (VirtualUnwindFrame**)InternalCalls.RhpGetRawLastVirtualUnwindFrameRef();
+            VirtualUnwindFrame* pLastFrame = *pLastFrameRef;
+            VirtualUnwindFrame* pFrame = pLastFrame;
+            nuint unwindCount = 0;
+            while (pFrame != null)
             {
-                WasmEHLogEHTableEntry(clause, pOriginalShadowFrame);
+                EHClause clause;
+                EHTable table = new EHTable(pFrame->UnwindTable);
+                nuint index = pFrame->UnwindIndex;
+                while (IsCatchUnwindIndex(index))
+                {
+                    nuint enclosingIndex = table.GetClauseInfo(index, &clause);
+                    WasmEHLogEHTableEntry(pFrame, index, &clause);
 
-                bool foundHandler = false;
-                if (clause.Filter != null)
-                {
-                    if (CallFilterFunclet(clause.Filter, exception, pOriginalShadowFrame))
+                    if (clause.Filter != null)
                     {
-                        foundHandler = true;
+                        // Codegen will always allocate "pFrame" on the shadow stack at a zero offset.
+                        if (CallFilterFunclet(clause.Filter, exception, pFrame))
+                        {
+                            goto FoundHandler;
+                        }
                     }
-                }
-                else
-                {
-                    if (ShouldTypedClauseCatchThisException(exception, clause.ClauseType))
+                    else
                     {
-                        foundHandler = true;
+                        if (ShouldTypedClauseCatchThisException(exception, clause.ClauseType))
+                        {
+                            goto FoundHandler;
+                        }
                     }
+
+                    index = enclosingIndex;
+                    unwindCount++;
                 }
 
-                if (foundHandler)
-                {
-                    return EndDispatchAndCallSecondPassHandlers(clause.Handler, pDispatchData, pOriginalShadowFrame);
-                }
+                Debug.Assert(pFrame != pFrame->Prev);
+                pFrame = pFrame->Prev;
             }
 
-            return ContinueSearch;
-        }
-
-        [RuntimeExport("RhpHandleExceptionWasmFilteredCatch")]
-        private static int RhpHandleExceptionWasmFilteredCatch(void* pOriginalShadowFrame, ExceptionDispatchData* pDispatchData, void* pHandler, void* pFilter)
-        {
-            WasmEHLogDispatcherEnter(RhEHClauseKind.RH_EH_CLAUSE_FILTER, pFilter, pOriginalShadowFrame);
-
-            if (CallFilterFunclet(pFilter, *pDispatchData->ManagedExceptionAddress, pOriginalShadowFrame))
+        FoundHandler:
+            // We currently install an unhandled exception handler for RPI frames in codegen and so will never fail to
+            // find one. We could handle unhandled exceptions here, with the caveat being that virtual unwinding would
+            // need to become aware of RPI. Notably, we still check for a null frame, to get reliable failure modes.
+            if (pFrame == null)
             {
-                return EndDispatchAndCallSecondPassHandlers(pHandler, pDispatchData, pOriginalShadowFrame);
+                FallbackFailFast(RhFailFastReason.InternalError, exception);
             }
+            WasmEHLogFirstPassExit(pFrame, unwindCount);
 
-            return ContinueSearch;
+            // Thread this exception onto the list of currently active exceptions. We need to keep the managed exception
+            // object alive during the second pass and using a thread static is the most straightforward way to achive
+            // this. Additionally, not having to inspect the native exception in the second pass is better for code size.
+            VirtualUnwindFrame* pNextCatchFrame = SkipNotInTryCatchFrames(pLastFrame);
+            t_lastDispatchedException = new()
+            {
+                Prev = t_lastDispatchedException,
+                ExceptionObject = exception,
+                RemainingUnwindCount = unwindCount,
+                NextCatchFrame = pNextCatchFrame,
+                NextCatchIndex = pNextCatchFrame->UnwindIndex
+            };
+
+            *pLastFrameRef = SkipNotInTryFrames(pLastFrame);
+
+            // Initiate the second pass by throwing a native exception.
+            WasmEHLog("Initiating the second pass via native throw", 2);
+            InternalCalls.RhpThrowNativeException();
         }
 
+        [MethodImpl(MethodImplOptions.NoInlining)] // We avoid modifying common code with this noinline wrapper.
+        private static void OnFirstChanceExceptionNoInline(object exception) => OnFirstChanceExceptionViaClassLib(exception);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static bool CallFilterFunclet(void* pFunclet, object exception, void* pShadowFrame)
+        {
+            WasmEHLogFilterEnter(pFunclet, RhEHClauseKind.RH_EH_CLAUSE_FILTER, pShadowFrame);
+            bool result;
+            try
+            {
+                result = ((delegate*<void*, object, int>)pFunclet)(pShadowFrame, exception) != 0;
+            }
+            catch when (true)
+            {
+                result = false; // A filter that throws is treated as if it returned "continue search".
+            }
+            WasmEHLogFilterExit(RhEHClauseKind.RH_EH_CLAUSE_FILTER, result, pShadowFrame);
+
+            return result;
+        }
+
+        // This helper is called by codegen at the beginning of catch handlers. It should return the exception object
+        // if control is to be transferred to the handler and null if unwinding should continue. Like the first pass
+        // method above, it cannot push/pop virtual unwind frames due to the manual chain manipulation.
+        //
+        [MethodImpl(MethodImplOptions.NoInlining)]
         [RuntimeExport("RhpHandleExceptionWasmCatch")]
-        private static int RhpHandleExceptionWasmCatch(void* pOriginalShadowFrame, ExceptionDispatchData* pDispatchData, void* pHandler, MethodTable* pClauseType)
+        private static object RhpHandleExceptionWasmCatch(nuint catchUnwindIndex)
         {
-            WasmEHLogDispatcherEnter(RhEHClauseKind.RH_EH_CLAUSE_TYPED, pClauseType, pOriginalShadowFrame);
+            Debug.Assert(IsCatchUnwindIndex(catchUnwindIndex));
+            ref ExceptionDispatchData? lastExceptionRef = ref t_lastDispatchedException;
+            ExceptionDispatchData? lastException = lastExceptionRef;
+            Debug.Assert(lastException != null);
 
-            if (ShouldTypedClauseCatchThisException(*pDispatchData->ManagedExceptionAddress, pClauseType))
+            VirtualUnwindFrame* pCatchFrame = lastException.NextCatchFrame;
+            Debug.Assert(pCatchFrame == *(VirtualUnwindFrame**)InternalCalls.RhpGetRawLastVirtualUnwindFrameRef());
+
+            // Have we reached the unwind destination of this exception?
+            if (lastException.RemainingUnwindCount == 0)
             {
-                return EndDispatchAndCallSecondPassHandlers(pHandler, pDispatchData, pOriginalShadowFrame);
+                WasmEHLog("Exception caught at [" + ToHex(pCatchFrame) + "][" + ToDec(catchUnwindIndex) + "]", 2);
+                object exceptionObject = lastException.ExceptionObject;
+
+                // Release the native and managed memory used for this dispatch.
+                InternalCalls.RhpReleaseNativeException();
+                lastException = lastException.Prev;
+
+                // In nested dispatch - when an exception is thrown inside the active fault handler's call stack,
+                // exceptions can go "abandoned", i. e. replaced by the nested one. This happens when the nested
+                // exception escapes from the fault handler of its upstream cousin:
+                //
+                // [try                        ][catch C1] ; Will catch the nested exception
+                // ...
+                // [try              ][catch C0]           ; Would have caught the original exception
+                // ...
+                // [try][active fault]                     ; Triggered by the original exception
+                // /|\
+                //  |       /|\ ; The nested exception is unwinding upwards
+                //  |        |
+                //           |
+                //      [nested throw]
+                //
+                // It is hence critical that we unlink all abandoned exceptions from the active exception list,
+                // so that upstream handlers do not catch them. To this end we maintan the "next catch" fields
+                // during the second pass: if the upstream exception is yet to unwind this catch handler, that
+                // means the nested one (which, recall, is being caught here) ended up replacing it. This works
+                // because all fault handlers that trigger nested dispatch always lie below the next catch and
+                // all catches that would **not** result in abandonment (thus "containing" the nested exception)
+                // lie below those faults.
+                //
+                while (lastException != null && IsBelowOrSame(lastException.NextCatchFrame, lastException.NextCatchIndex, pCatchFrame, catchUnwindIndex))
+                {
+                    WasmEHLog("Abandoning an exception (next catch was at " +
+                        "[" + ToHex(lastException.NextCatchFrame) + "][" + ToDec(lastException.NextCatchIndex) + "])", 2);
+                    InternalCalls.RhpReleaseNativeException();
+                    lastException = lastException.Prev;
+                }
+                lastExceptionRef = lastException;
+
+                return exceptionObject;
             }
 
-            return ContinueSearch;
-        }
-
-        [RuntimeExport("RhpHandleExceptionWasmFault")]
-        private static void RhpHandleExceptionWasmFault(void* pOriginalShadowFrame, ExceptionDispatchData* pDispatchData, void* pHandler)
-        {
-            WasmEHLogDispatcherEnter(RhEHClauseKind.RH_EH_CLAUSE_FAULT, null, pOriginalShadowFrame);
-
-            FaultNode* lastFault = pDispatchData->LastFault;
-            FaultNode* nextFault = (FaultNode*)NativeMemory.Alloc((nuint)sizeof(FaultNode));
-            nextFault->Funclet = pHandler;
-            nextFault->ShadowFrameAddress = pOriginalShadowFrame;
-
-            if (lastFault != null)
+            // Maintain the consistency of the virtual unwind stack if we are unwinding out of this frame.
+            nuint enclosingCatchIndex = new EHTable(pCatchFrame->UnwindTable).GetClauseInfo(catchUnwindIndex);
+            if (enclosingCatchIndex == UnwindIndexNotInTry)
             {
-                nextFault->Next = lastFault->Next; // The last "Next" entry always points to the first.
-                lastFault->Next = nextFault;
+                VirtualUnwindFrame** pLastFrameRef = (VirtualUnwindFrame**)InternalCalls.RhpGetRawLastVirtualUnwindFrameRef();
+                *pLastFrameRef = SkipUnwoundFrames(pCatchFrame);
+            }
+
+            if (!IsCatchUnwindIndex(enclosingCatchIndex))
+            {
+                // This next frame is yet to be unwound, hence its index represents the actual unwind destination.
+                VirtualUnwindFrame* pNextCatchFrame = SkipNotInTryCatchFrames(pCatchFrame->Prev);
+                lastException.NextCatchFrame = pNextCatchFrame;
+                lastException.NextCatchIndex = pNextCatchFrame->UnwindIndex;
             }
             else
             {
-                nextFault->Next = nextFault;
+                lastException.NextCatchIndex = enclosingCatchIndex;
             }
 
-            pDispatchData->LastFault = nextFault;
+            WasmEHLog("Continuing to unwind from [" + ToHex(pCatchFrame) + "][" + ToDec(catchUnwindIndex) + "] to " +
+                "[" + ToHex(lastException.NextCatchFrame) + "][" + ToDec(lastException.NextCatchIndex) + "]", 2);
+            lastException.RemainingUnwindCount--;
+            return null;
         }
+
+        private static bool IsBelowOrSame(VirtualUnwindFrame* pNextCatchFrame, nuint nextCatchIndex, VirtualUnwindFrame* pCurrentFrame, nuint currentIndex)
+        {
+            // Frames are allocated on the shadow stack, which grows upwards.
+            if (pNextCatchFrame > pCurrentFrame)
+            {
+                return true;
+            }
+
+            // The indices are constructed such that enclosed regions come before enclosing ones and this method does
+            // assume that a nesting relashionship exists between the two indices. Note that the "next catch" index,
+            // if it does refer to a mutually protecting region, will always refer to the "innermost" one, since they
+            // are unwound in an uninterrupted succession of each other. The current index, however, may be one from
+            // the same run of handlers but "outer". In such a case, our answer does not depend on which index from
+            // this run we pick - all will return "true". Hence, no special handling is needed.
+            if (pNextCatchFrame == pCurrentFrame)
+            {
+                return nextCatchIndex <= currentIndex;
+            }
+
+            return false;
+        }
+
+        [RuntimeExport("RhpPopUnwoundVirtualFrames")]
+        private static void RhpPopUnwoundVirtualFrames()
+        {
+            VirtualUnwindFrame** pLastFrameRef = (VirtualUnwindFrame**)InternalCalls.RhpGetRawLastVirtualUnwindFrameRef();
+            *pLastFrameRef = SkipUnwoundFrames(*pLastFrameRef);
+        }
+
+        private static VirtualUnwindFrame* SkipUnwoundFrames(VirtualUnwindFrame* pFrame)
+        {
+            Debug.Assert(pFrame == *(VirtualUnwindFrame**)InternalCalls.RhpGetRawLastVirtualUnwindFrameRef());
+            WasmEHLog("Unlinking [" + ToHex(pFrame) + "] - top-level unwind", 2);
+            pFrame = pFrame->Prev;
+            pFrame = SkipNotInTryFrames(pFrame);
+
+            return pFrame;
+        }
+
+        private static VirtualUnwindFrame* SkipNotInTryFrames(VirtualUnwindFrame* pFrame)
+        {
+            Debug.Assert(pFrame != null);
+            while (pFrame->UnwindIndex == UnwindIndexNotInTry)
+            {
+                WasmEHLog("Unlinking [" + ToHex(pFrame) + "] - NotInTry", 2);
+                pFrame = pFrame->Prev;
+            }
+
+            return pFrame;
+        }
+
+        private static VirtualUnwindFrame* SkipNotInTryCatchFrames(VirtualUnwindFrame* pFrame)
+        {
+            Debug.Assert(pFrame != null);
+            while (!IsCatchUnwindIndex(pFrame->UnwindIndex))
+            {
+                pFrame = pFrame->Prev;
+            }
+
+            return pFrame;
+        }
+
+        // There are two special unwind indices:
+        //  1. IndexNotInTry      (0) - the code is outside of any protected regions.
+        //  2. IndexNotInTryCatch (1) - the code is outside of a region protected by a catch handler, i. e. it is in
+        //                              a region protected by a fault or finally.
+        //
+        // For the purposes of finding handlers in the first pass, both can be taken to mean the same thing, however,
+        // while in the second pass, only "IndexNotInTry" virtual unwind frames can (and must) be popped eagerly, as
+        // the handlers in "IndexNotInTryCatch" frames may access the frame and are responsible for freeing it when
+        // exiting by calling "RhpPopUnwoundVirtualFrames".
+        //
+        private static bool IsCatchUnwindIndex(nuint unwindIndex) => unwindIndex >= UnwindIndexBase;
 
         // This handler is called by codegen for exceptions that escape from RPI methods (i. e. unhandled exceptions).
         //
@@ -180,103 +335,116 @@ namespace System.Runtime
             FallbackFailFast(RhFailFastReason.UnhandledException, exception);
         }
 
-        private static int EndDispatchAndCallSecondPassHandlers(void* pCatchFunclet, ExceptionDispatchData* pDispatchData, void* pCatchShadowFrame)
+        // These are pushed by codegen on the shadow stack for frames that have at least one region protected by a catch.
+        //
+        private struct VirtualUnwindFrame
         {
-            // Make sure to get the data we need before releasing the native exception.
-            FaultNode* lastFault = pDispatchData->LastFault;
-            object exception = *pDispatchData->ManagedExceptionAddress;
+            public VirtualUnwindFrame* Prev;
+            public void* UnwindTable;
+            public nuint UnwindIndex;
+        }
 
-            // Note that the first pass will never let exceptions escape out of the dispatcher, and so we can guarantee that no
-            // native exceptions will be leaked. This also depends on us not using native rethrow in the catch handler below.
-            InternalCalls.RhpReleaseNativeException(pDispatchData);
+        private sealed class ExceptionDispatchData
+        {
+            public ExceptionDispatchData? Prev;
+            public object ExceptionObject;
+            public nuint RemainingUnwindCount;
+            public VirtualUnwindFrame* NextCatchFrame;
+            public nuint NextCatchIndex;
+        }
 
-            if (lastFault != null)
+        private unsafe struct EHClause
+        {
+            public MethodTable* ClauseType;
+            public void* Filter;
+        }
+
+        private unsafe struct EHTable
+        {
+            private const nuint MetadataFilter = 1;
+            private const nuint MetadataClauseTypeFormat = 2;
+            private const int MetadataShift = 1;
+            private const nuint MetadataMask = ~(1u << MetadataShift);
+
+            private const nuint FormatClauseType = 0;
+            private const nuint FormatSmall = 1;
+            private const nuint FormatLarge = 2;
+            private const nuint FormatMask = 3;
+
+            private readonly void* _pEHTable;
+            private readonly nuint _format;
+
+            public EHTable(void* pUnwindTable)
             {
-                for (FaultNode* fault = lastFault->Next, nextFault; ; fault = nextFault)
+                _pEHTable = (void*)((nuint)pUnwindTable & ~FormatMask);
+                _format = (nuint)pUnwindTable & FormatMask;
+            }
+
+            public readonly nuint GetClauseInfo(nuint index, EHClause* pClause = null)
+            {
+                nuint metadata;
+                nuint enclosingIndex = GetMetadata(index, &metadata);
+                if (pClause != null)
                 {
-                    CallFinallyFunclet(fault->Funclet, fault->ShadowFrameAddress);
-
-                    nextFault = fault->Next;
-                    NativeMemory.Free(fault);
-
-                    if (fault == lastFault)
+                    if (metadata == MetadataClauseTypeFormat)
                     {
-                        break;
+                        pClause->Filter = null;
+                        pClause->ClauseType = (MethodTable*)_pEHTable;
+                    }
+                    else if ((metadata & MetadataFilter) != 0)
+                    {
+                        pClause->Filter = ((void**)_pEHTable)[index - UnwindIndexBase];
+                        pClause->ClauseType = null;
+                    }
+                    else
+                    {
+                        pClause->Filter = null;
+                        pClause->ClauseType = ((MethodTable**)_pEHTable)[index - UnwindIndexBase];
                     }
                 }
+
+                return enclosingIndex;
             }
 
-            WasmEHLogFunletEnter(pCatchFunclet, RhEHClauseKind.RH_EH_CLAUSE_TYPED, pCatchShadowFrame);
-            int catchRetIdx = InternalCalls.RhpCallCatchOrFilterFunclet(pCatchShadowFrame, exception, pCatchFunclet);
-            WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_TYPED, catchRetIdx, pCatchShadowFrame);
-
-            return catchRetIdx;
-        }
-
-        private static bool CallFilterFunclet(void* pFunclet, object exception, void* pShadowFrame)
-        {
-            WasmEHLogFunletEnter(pFunclet, RhEHClauseKind.RH_EH_CLAUSE_FILTER, pShadowFrame);
-            bool result;
-            try
+            private readonly nuint GetMetadata(nuint index, nuint* pMetadata)
             {
-                result = InternalCalls.RhpCallCatchOrFilterFunclet(pShadowFrame, exception, pFunclet) != 0;
+                Debug.Assert(IsCatchUnwindIndex(index));
+                nuint metadata;
+                switch (_format)
+                {
+                    case FormatClauseType:
+                        *pMetadata = MetadataClauseTypeFormat;
+                        return UnwindIndexNotInTry;
+                    case FormatSmall:
+                        metadata = ((byte*)_pEHTable)[-(nint)(index - UnwindIndexBase + 1)];
+                        break;
+                    default:
+                        Debug.Assert(_format == FormatLarge);
+                        metadata = ((uint*)_pEHTable)[-(nint)(index - UnwindIndexBase + 1)];
+                        break;
+                }
+
+                *pMetadata = metadata & MetadataMask;
+                return metadata >> MetadataShift;
             }
-            catch when (true)
-            {
-                result = false; // A filter that throws is treated as if it returned "continue search".
-            }
-            WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_FILTER, result ? 1 : 0, pShadowFrame);
-
-            return result;
-        }
-
-        private static void CallFinallyFunclet(void* pFunclet, void* pShadowFrame)
-        {
-            WasmEHLogFunletEnter(pFunclet, RhEHClauseKind.RH_EH_CLAUSE_FAULT, pShadowFrame);
-            ((delegate*<void*, void>)pFunclet)(pShadowFrame);
-            WasmEHLogFunletExit(RhEHClauseKind.RH_EH_CLAUSE_FAULT, 0, pShadowFrame);
-        }
-
-        [RuntimeExport("RhpThrowEx")]
-        private static void RhpThrowEx(object exception)
-        {
-#if INPLACE_RUNTIME
-            // Turn "throw null" into "throw new NullReferenceException()".
-            exception ??= new NullReferenceException();
-#endif
-            ThrowException(exception, 0);
-        }
-
-        [RuntimeExport("RhpRethrow")]
-        private static void RhpRethrow(object* pException)
-        {
-            ThrowException(*pException, RhEHFrameType.RH_EH_FIRST_RETHROW_FRAME);
-        }
-
-        private static void ThrowException(object exception, RhEHFrameType flags)
-        {
-            WasmEHLog("Throwing: [" + exception.GetType() + "]", &exception, "1");
-
-            OnFirstChanceExceptionViaClassLib(exception);
-
-#if INPLACE_RUNTIME
-            Exception.InitializeExceptionStackFrameLLVM(exception, (int)flags);
-#else
-#error Make InitializeExceptionStackFrameLLVM into a classlib export
-#endif
-
-            // We will pass around the managed exception address in the native exception to avoid having to report it
-            // explicitly to the GC (or having a hole, or using a GCHandle). This will work as intended as the shadow
-            // stack associated with this method will only be freed after the last (catch) handler returns.
-            InternalCalls.RhpThrowNativeException(&exception); // Implicitly pass the callee's shadow stack.
         }
 
         [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
-        private static void WasmEHLog(string message, void* pShadowFrame, string pass)
+        private static void WasmEHLog(string message, int pass, string prefix = "")
         {
-            string log = "WASM EH";
-            log += " [SF: " + ToHex(pShadowFrame) + "]";
-            log += " [" + pass + "]";
+            int dispatchIndex = 0;
+            for (ExceptionDispatchData? exception = t_lastDispatchedException; exception != null; exception = exception.Prev)
+            {
+                dispatchIndex++;
+            }
+            if (pass != 1)
+            {
+                dispatchIndex--;
+            }
+
+            string log = prefix + "WASM EH";
+            log += " [N: " + ToDec(dispatchIndex) + "]";
+            log += " [" + ToDec(pass) + "]";
             log += ": " + message + Environment.NewLineConst;
 
             byte[] bytes = new byte[log.Length + 1];
@@ -292,56 +460,40 @@ namespace System.Runtime
         }
 
         [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
-        private static void WasmEHLogDispatcherEnter(RhEHClauseKind kind, void* data, void* pShadowFrame)
+        private static void WasmEHLogFirstPassEnter(object exception, RhEHFrameType flags)
         {
-            string description = GetClauseDescription(kind, data);
-            string pass = kind == RhEHClauseKind.RH_EH_CLAUSE_FAULT ? "2" : "1";
-            WasmEHLog("Handling" + ": " + description, pShadowFrame, pass);
+            string kind = (flags & RhEHFrameType.RH_EH_FIRST_RETHROW_FRAME) != 0 ? "Rethrowing" : "Throwing";
+            WasmEHLog(kind + ": [" + exception.GetType() + "]", 1, "\n");
         }
 
         [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
-        private static void WasmEHLogEHTableEntry(EHClauseWasm clause, void* pShadowFrame)
+        private static void WasmEHLogEHTableEntry(VirtualUnwindFrame* pClauseFrame, nuint clauseUnwindIndex, EHClause* pClause)
         {
-            string description = clause.Filter != null ? GetClauseDescription(RhEHClauseKind.RH_EH_CLAUSE_FILTER, clause.Filter)
-                                                       : GetClauseDescription(RhEHClauseKind.RH_EH_CLAUSE_TYPED, clause.ClauseType);
-            WasmEHLog("Clause: " + description, pShadowFrame, "1");
-        }
+            string description = pClause->Filter != null
+                ? "filtered catch, filter at [" + ToHex(pClause->Filter) + "]"
+                : "catch, class [" + Type.GetTypeFromMethodTable(pClause->ClauseType) + "]";
 
-        private static string GetClauseDescription(RhEHClauseKind kind, void* data) => kind switch
-        {
-            RhEHClauseKind.RH_EH_CLAUSE_TYPED => "catch, class [" + Type.GetTypeFromMethodTable((MethodTable*)data) + "]",
-            RhEHClauseKind.RH_EH_CLAUSE_FILTER => "filtered catch",
-            RhEHClauseKind.RH_EH_CLAUSE_UNUSED => "mutually protecting catches, table at [" + ToHex(data) + "]",
-            _ => "fault",
-        };
-
-        [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
-        private static void WasmEHLogFunletEnter(void* pHandler, RhEHClauseKind kind, void* pShadowFrame)
-        {
-            (string name, string pass) = kind switch
-            {
-                RhEHClauseKind.RH_EH_CLAUSE_FILTER => ("filter", "1"),
-                RhEHClauseKind.RH_EH_CLAUSE_FAULT => ("fault", "2"),
-                _ => ("catch", "2")
-            };
-
-            WasmEHLog("Calling " + name + " funclet at [" + ToHex(pHandler) + "]", pShadowFrame, pass);
+            WasmEHLog("Candidate clause [" + ToHex(pClauseFrame) + "][" + ToDec(clauseUnwindIndex) + "]: " + description, 1);
         }
 
         [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
-        private static void WasmEHLogFunletExit(RhEHClauseKind kind, int result, void* pShadowFrame)
+        private static void WasmEHLogFilterEnter(void* pFilter, RhEHClauseKind kind, void* pShadowFrame)
         {
-            (string resultString, string pass) = kind switch
-            {
-                RhEHClauseKind.RH_EH_CLAUSE_FILTER => (result == 1 ? "true" : "false", "1"),
-                RhEHClauseKind.RH_EH_CLAUSE_FAULT => ("success", "2"),
-                _ => (ToHex(result), "2")
-            };
-
-            WasmEHLog("Funclet returned: " + resultString, pShadowFrame, pass);
+            WasmEHLog("Calling filter funclet at [" + ToHex(pFilter) + "] on SF [" + ToHex(pShadowFrame) + "]", 1);
         }
 
-        private static string ToHex(uint value) => ToHex((int)value);
+        [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
+        private static void WasmEHLogFilterExit(RhEHClauseKind kind, bool result, void* pShadowFrame)
+        {
+            WasmEHLog("Funclet returned: " + (result ? "true" : "false"), 1);
+        }
+
+        [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
+        private static void WasmEHLogFirstPassExit(VirtualUnwindFrame* pHandlingFrame, nuint unwindCount)
+        {
+            WasmEHLog("Handler found at [" + ToHex(pHandlingFrame) + "], unwind count: " + ToDec((nint)unwindCount), 1);
+        }
+
         private static string ToHex(void* value) => "0x" + ToHex((nint)value);
 
         private static string ToHex(nint value)
@@ -356,82 +508,23 @@ namespace System.Runtime
             return new string(chars, 0, length);
         }
 
-        // This iterator is used for EH tables produces by codegen for runs of mutually protecting catch handlers.
-        //
-        internal unsafe struct EHClauseWasm
+        private static string ToDec(nint value) => ToDec((nuint)value);
+
+        private static string ToDec(nuint value)
         {
-            public void* Handler;
-            public void* Filter;
-            public MethodTable* ClauseType;
-        }
+            const int MaxLength = 20; // $"{ulong.MaxValue}".Length.
+            char* chars = stackalloc char[MaxLength];
 
-        // See codegen code ("jit/llvmcodegen.cpp, generateEHDispatchTable") for details on the format of the table.
-        //
-        internal unsafe struct EHClauseIteratorWasm
-        {
-            private const nuint HeaderRecordSize = 1;
-            private const nuint ClauseRecordSize = 2;
-            private static nuint FirstSectionSize => HeaderRecordSize + (nuint)sizeof(nuint) / 2 * 8 * ClauseRecordSize;
-            private static nuint LargeSectionSize => HeaderRecordSize + (nuint)sizeof(nuint) * 8 * ClauseRecordSize;
-
-            private readonly void** _pTableEnd;
-            private void** _pCurrentSectionClauses;
-            private void** _pNextSection;
-            private nuint _currentIndex;
-            private nuint _clauseKindMask;
-
-            public EHClauseIteratorWasm(void** pEHTable)
+            char* pLast = &chars[MaxLength - 1];
+            char* pCurrent = pLast;
+            do
             {
-                _pCurrentSectionClauses = pEHTable + HeaderRecordSize;
-                _pNextSection = pEHTable + FirstSectionSize;
-                _currentIndex = 0;
-#if TARGET_32BIT
-                _clauseKindMask = ((ushort*)pEHTable)[1];
-                nuint tableSize = ((ushort*)pEHTable)[0];
-#else
-                _clauseKindMask = ((uint*)pEHTable)[1];
-                nuint tableSize = ((uint*)pEHTable)[0];
-#endif
-                _pTableEnd = pEHTable + tableSize;
+                *pCurrent-- = "0123456789"[(int)(value % 10)];
+                value /= 10;
             }
+            while (value != 0);
 
-            public bool Next(EHClauseWasm* pClause)
-            {
-                void** pCurrent = _pCurrentSectionClauses + _currentIndex * ClauseRecordSize;
-                if (pCurrent >= _pTableEnd)
-                {
-                    return false;
-                }
-
-                if ((_clauseKindMask & ((nuint)1 << (int)_currentIndex)) != 0)
-                {
-                    pClause->Filter = pCurrent[0];
-                    pClause->ClauseType = null;
-                }
-                else
-                {
-                    pClause->Filter = null;
-                    pClause->ClauseType = (MethodTable*)pCurrent[0];
-                }
-
-                pClause->Handler = pCurrent[1];
-
-                // Initialize the state for the next iteration.
-                void** pCurrentNext = pCurrent + ClauseRecordSize;
-                if ((pCurrentNext != _pTableEnd) && (pCurrentNext == _pNextSection))
-                {
-                    _pCurrentSectionClauses = pCurrentNext + HeaderRecordSize;
-                    _pNextSection += LargeSectionSize;
-                    _currentIndex = 0;
-                    _clauseKindMask = (nuint)pCurrentNext[0];
-                }
-                else
-                {
-                    _currentIndex++;
-                }
-
-                return true;
-            }
+            return new string(pCurrent + 1, 0, (int)(pLast - pCurrent));
         }
     }
 }

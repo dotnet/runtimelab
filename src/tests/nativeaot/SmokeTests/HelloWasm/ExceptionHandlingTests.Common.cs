@@ -6,6 +6,9 @@ using System.Threading;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+// Assignment in conditional expression is always constant; did you mean to use == instead of = ? (No we did not).
+#pragma warning disable CS0665
+
 internal unsafe partial class Program
 {
     internal static bool Success = true;
@@ -35,6 +38,8 @@ internal unsafe partial class Program
 
         TestUnconditionalThrowInCatch();
 
+        TestThrowInMutuallyProtectingHandlers();
+
         TestExceptionInGvmCall();
 
         TestCatchHandlerNeedsGenericContext();
@@ -49,11 +54,38 @@ internal unsafe partial class Program
 
         TestIntraFrameFilterOrderDeep();
 
-        TestDynamicStackAlloc();
-
         TestCatchAndThrow();
 
         TestRethrow();
+
+        TestCatchUnreachableViaFilter();
+
+        TestVirtualUnwindIndexSetForkedFlow();
+
+        TestVirtualUnwindStackPopOnThrow();
+        TestVirtualUnwindStackNoPopOnThrow();
+        TestVirtualUnwindStackPopSelfOnUnwindingCatch();
+        TestVirtualUnwindStackPopOnUnwindingCatch();
+        TestVirtualUnwindStackNoPopOnUnwindingCatch();
+        TestVirtualUnwindStackNoPopOnNestedUnwindingCatch();
+        TestVirtualUnwindStackNoPopOnMutuallyProtectingUnwindingCatch();
+        TestVirtualUnwindStackPopSelfOnUnwindingFault();
+        TestVirtualUnwindStackPopOnUnwindingFault();
+        TestVirtualUnwindStackNoPopOnUnwindingFault();
+        TestVirtualUnwindStackNoPopOnNestedUnwindingFault();
+
+        TestContainedNestedDispatchSingleFrame();
+        TestContainedNestedDispatchIntraFrame();
+        TestDeepContainedNestedDispatchSingleFrame();
+        TestDeepContainedNestedDispatchIntraFrame();
+        TestExactUncontainedNestedDispatchSingleFrame();
+        TestClippingUncontainedNestedDispatchSingleFrame();
+        TestExpandingUncontainedNestedDispatchSingleFrame();
+        TestExactUncontainedNestedDispatchIntraFrame();
+        TestClippingUncontainedNestedDispatchIntraFrame();
+        TestExpandingUncontainedNestedDispatchIntraFrame();
+        TestDeepUncontainedNestedDispatchSingleFrame();
+        TestDeepUncontainedNestedDispatchIntraFrame();
 
         return Success;
     }
@@ -351,6 +383,49 @@ internal unsafe partial class Program
         EndTest(pass);
     }
 
+    private static void TestThrowInMutuallyProtectingHandlers()
+    {
+        StartTest("Test throws in mutually protecting catch handlers");
+
+        Exception[] exceptions = new Exception[] { new ArgumentNullException(), new ArgumentException(), new Exception() };
+        for (int i = 0; i < exceptions.Length; i++)
+        {
+            int catchIndex = -1;
+            try
+            {
+                try
+                {
+                    throw exceptions[i];
+                }
+                catch (ArgumentNullException)
+                {
+                    catchIndex = 0;
+                    throw;
+                }
+                catch (ArgumentException)
+                {
+                    catchIndex = 1;
+                    throw;
+                }
+                catch (Exception)
+                {
+                    catchIndex = 2;
+                    throw;
+                }
+            }
+            catch
+            {
+                if (catchIndex != i)
+                {
+                    FailTest();
+                    return;
+                }
+            }
+        }
+
+        PassTest();
+    }
+
     private static void TestExceptionInGvmCall()
     {
         StartTest("TestExceptionInGvmCall");
@@ -610,341 +685,6 @@ internal unsafe partial class Program
         EndTest(counter == 7);
     }
 
-    private static void TestDynamicStackAlloc()
-    {
-        const int StkAllocSize = 999;
-        bool result = false;
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        static void DoAlloc(out byte* addr, int size = 0)
-        {
-            if (size == 0)
-            {
-                size = StkAllocSize;
-            }
-            byte* stk = stackalloc byte[size];
-            addr = stk;
-
-            try
-            {
-                Volatile.Write(ref stk[size - 1], 1);
-                if (Volatile.Read(ref stk[size - 1]) == 2)
-                {
-                    Volatile.Write(ref *(int*)null, 0);
-                }
-            }
-            catch (NullReferenceException)
-            {
-                Volatile.Read(ref stk[size - 1]);
-            }
-        }
-
-        StartTest("TestDynamicStackAlloc(release on return)");
-        {
-            DoAlloc(out byte* addrOne);
-            DoAlloc(out byte* addrTwo);
-            result = addrOne == addrTwo;
-        }
-        EndTest(result);
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        static void DoDoubleAlloc(bool* pReturnWithEH)
-        {
-            byte* stkOne = stackalloc byte[StkAllocSize];
-            byte* stkTwo = stackalloc byte[StkAllocSize];
-
-            try
-            {
-                Volatile.Write(ref stkOne[StkAllocSize - 1], 1);
-                Volatile.Write(ref stkTwo[StkAllocSize - 1], 1);
-                if (Volatile.Read(ref *pReturnWithEH))
-                {
-                    Volatile.Write(ref *(int*)null, 0);
-                }
-            }
-            catch when (!Volatile.Read(ref *pReturnWithEH))
-            {
-                Volatile.Read(ref stkOne[StkAllocSize - 1]);
-                Volatile.Read(ref stkTwo[StkAllocSize - 1]);
-            }
-        }
-
-        StartTest("TestDynamicStackAlloc(double release on return)");
-        {
-            bool doReturnWithEH = false;
-            DoAlloc(out byte* addrOne);
-            DoDoubleAlloc(&doReturnWithEH);
-            DoAlloc(out byte* addrTwo);
-            result = addrOne == addrTwo;
-        }
-        EndTest(result);
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        static void DoAllocAndThrow(out byte* addr)
-        {
-            byte* stk = stackalloc byte[StkAllocSize];
-            addr = stk;
-
-            try
-            {
-                Volatile.Write(ref stk[StkAllocSize - 1], 1);
-                Volatile.Write(ref *(int*)null, 0);
-            }
-            catch (DivideByZeroException)
-            {
-                Volatile.Read(ref stk[StkAllocSize - 1]);
-            }
-        }
-
-        StartTest("TestDynamicStackAlloc(release on EH return)");
-        {
-            byte stkByte;
-            byte* addrOne = null;
-            byte* addrTwo = &stkByte;
-            try
-            {
-                DoAllocAndThrow(out addrOne);
-            }
-            catch (NullReferenceException)
-            {
-            }
-            try
-            {
-                DoAllocAndThrow(out addrTwo);
-            }
-            catch (NullReferenceException)
-            {
-            }
-
-            result = addrOne == addrTwo;
-        }
-        EndTest(result);
-
-        StartTest("TestDynamicStackAlloc(double release on EH return)");
-        {
-            DoAlloc(out byte* addrOne);
-            try
-            {
-                bool doReturnWithEH = true;
-                DoDoubleAlloc(&doReturnWithEH);
-            }
-            catch (NullReferenceException)
-            {
-            }
-            DoAlloc(out byte* addrTwo);
-
-            result = addrOne == addrTwo;
-        }
-        EndTest(result);
-
-        StartTest("TestDynamicStackAlloc(release on EH return does not corrupt live state)");
-        {
-            byte* stkOne = stackalloc byte[StkAllocSize];
-            Volatile.Write(ref stkOne[StkAllocSize - 1], 2);
-
-            result = false;
-            byte* stkTwo = null;
-            byte* stkThree = null;
-            try
-            {
-                DoAllocAndThrow(out stkTwo);
-            }
-            catch (NullReferenceException)
-            {
-                Volatile.Read(ref stkOne[StkAllocSize - 1]);
-            }
-
-            try
-            {
-                DoAlloc(out stkThree);
-                Volatile.Write(ref stkThree[StkAllocSize - 1], 10);
-
-                result = stkTwo == stkThree && stkOne != stkThree && Volatile.Read(ref stkOne[StkAllocSize - 1]) == 2;
-                Volatile.Write(ref *(int*)null, 0);
-            }
-            catch (NullReferenceException)
-            {
-                Volatile.Read(ref stkThree[StkAllocSize - 1]);
-            }
-        }
-        EndTest(result);
-
-        StartTest("TestDynamicStackAlloc(release from an empty shadow frame does not release the parent's frame)");
-        {
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            void OuterMethodWithEmptyShadowStack(bool* pResult)
-            {
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                static void SideEffect(byte* pByte)
-                {
-                    if (Volatile.Read(ref *pByte) != 0)
-                    {
-                        throw new Exception();
-                    }
-                }
-
-                [MethodImpl(MethodImplOptions.NoInlining)]
-                static void InnerMethodWithEmptyShadowStack()
-                {
-                    try
-                    {
-                        byte* stk = stackalloc byte[StkAllocSize];
-                        SideEffect(stk);
-                    }
-                    catch (Exception)
-                    {
-                    }
-                }
-
-                try
-                {
-                    byte* stkOne = stackalloc byte[StkAllocSize];
-                    Volatile.Write(ref stkOne[StkAllocSize - 1], 1);
-
-                    InnerMethodWithEmptyShadowStack();
-
-                    byte* stkTwo = stackalloc byte[StkAllocSize];
-                    Volatile.Write(ref stkTwo[StkAllocSize - 1], 2);
-
-                    *pResult = stkOne != stkTwo;
-                }
-                catch (Exception)
-                {
-                }
-            }
-
-            result = false;
-            OuterMethodWithEmptyShadowStack(&result);
-        }
-        EndTest(result);
-
-        StartTest("TestDynamicStackAlloc(EH-live state)");
-        {
-            static void InnerFinallyHandler(out bool result)
-            {
-                byte* stk = stackalloc byte[StkAllocSize];
-
-                Volatile.Write(ref stk[0], 1);
-                Volatile.Write(ref stk[StkAllocSize / 2], 2);
-                Volatile.Write(ref stk[StkAllocSize - 1], 3);
-
-                try
-                {
-                    throw new Exception();
-                }
-                finally // A second-pass handler.
-                {
-                    result = stk[0] == 1 && stk[StkAllocSize / 2] == 2 && stk[StkAllocSize - 1] == 3;
-                }
-            }
-
-            static bool ClearNativeStack(byte* pFill)
-            {
-                byte* stk = stackalloc byte[StkAllocSize];
-
-                Unsafe.InitBlock(stk, Volatile.Read(ref *pFill), StkAllocSize);
-
-                return Volatile.Read(ref stk[0]) == Volatile.Read(ref *pFill) &&
-                       Volatile.Read(ref stk[StkAllocSize / 2]) == Volatile.Read(ref *pFill) &&
-                       Volatile.Read(ref stk[StkAllocSize - 1]) == Volatile.Read(ref *pFill);
-            }
-
-            result = false;
-            byte fill = 0x17;
-            try
-            {
-                InnerFinallyHandler(out result);
-            }
-            catch when (ClearNativeStack(&fill))
-            {
-            }
-
-        }
-        EndTest(result);
-
-        StartTest("TestDynamicStackAlloc(alignment)");
-        {
-            DoAlloc(out byte* addr, 1);
-            result = ((nuint)addr % 8) == 0;
-
-            DoAlloc(out addr, 3);
-            result &= ((nuint)addr % 8) == 0;
-
-            DoAlloc(out addr, 17);
-            result &= ((nuint)addr % 8) == 0;
-        }
-        EndTest(result);
-
-        StartTest("TestDynamicStackAlloc(allocation patterns)");
-        {
-            static bool TestAllocs(ref byte* lastAddr, params int[] allocs)
-            {
-                bool TestAlloc(int index, out byte* stkOut)
-                {
-                    int allocSize = allocs[index];
-                    byte* stk = stackalloc byte[allocSize];
-                    stkOut = stk;
-
-                    Volatile.Write(ref stk[allocSize - 1], 1);
-                    try
-                    {
-                        if (Volatile.Read(ref stk[allocSize - 1]) == 2)
-                        {
-                            throw new Exception();
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        Volatile.Read(ref stk[allocSize - 1]);
-                    }
-
-                    int nextIndex = index + 1;
-                    if (nextIndex < allocs.Length)
-                    {
-                        if (!TestAlloc(nextIndex, out byte* stkOne))
-                        {
-                            return false;
-                        }
-
-                        DoAlloc(out byte* stkTwo, allocs[nextIndex]);
-                        return stkOne == stkTwo;
-                    }
-
-                    return true;
-                }
-
-                if (!TestAlloc(0, out _))
-                {
-                    return false;
-                }
-
-                DoAlloc(out byte* addr, 1);
-                if (lastAddr != null && addr != lastAddr)
-                {
-                    return false;
-                }
-
-                lastAddr = addr;
-                return true;
-            }
-
-            const int PageSize = 64 * 1024;
-            const int LargeBlock = PageSize / 4;
-            const int AverageBlock = LargeBlock / 4;
-            const int SmallBlock = AverageBlock / 4;
-            const int AlmostPageSize = PageSize - SmallBlock;
-
-            int pageHeaderSize = 3 * sizeof(nint);
-            byte* lastAddr = null;
-            result = TestAllocs(ref lastAddr, SmallBlock / 2, AlmostPageSize, SmallBlock, PageSize);
-            result &= TestAllocs(ref lastAddr, SmallBlock, SmallBlock);
-            result &= TestAllocs(ref lastAddr, LargeBlock, LargeBlock, LargeBlock, LargeBlock - pageHeaderSize, SmallBlock);
-            result &= TestAllocs(ref lastAddr, PageSize, 2 * PageSize, 4 * PageSize, SmallBlock, LargeBlock - pageHeaderSize, 8 * PageSize);
-            result &= TestAllocs(ref lastAddr, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53);
-        }
-        EndTest(result);
-    }
-
     private static void TestCatchAndThrow()
     {
         StartTest("Test catch and throw different exception");
@@ -997,7 +737,1193 @@ internal unsafe partial class Program
         EndTest(caught == 2);
     }
 
+    private static void TestCatchUnreachableViaFilter()
+    {
+        StartTest("Test catch unreachable because of the filter");
+
+        int counter = 0;
+
+        // Make sure that even if the catch handler is statically unreachable, we pop the virtual unwind frame.
+        void TestCatchUnreachableViaFilter_Inner()
+        {
+            int one = 1;
+            try
+            {
+                ThrowException(new Exception());
+            }
+            catch when (++counter == 0 || one == 1 ? throw new Exception() : true)
+            {
+            }
+        }
+
+        try
+        {
+            TestCatchUnreachableViaFilter_Inner();
+        }
+        catch // An inconsistent virtual unwind stack here would result in the inner filter running twice.
+        {
+            try
+            {
+                throw new Exception();
+            }
+            catch { }
+        }
+
+        EndTest(counter == 1);
+    }
+
+    private static void TestVirtualUnwindIndexSetForkedFlow()
+    {
+        StartTest("Test the the virtual unwind index is set on forked flow");
+
+        // The flowgraph here is akin to the following:
+        // [ZR] --> [ZR] -> [T0] -> [ZR]
+        //      \-----------------/
+        // Make sure we do not fail to set the unwind index to NOT_IN_TRY (ZR) on exit.
+        //
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        void TestVirtualUnwindIndexSetForkedFlow_Test(bool doEnterTry, ref bool result)
+        {
+            DoNotThrowException();
+            if (doEnterTry)
+            {
+                DoNotThrowException();
+                try
+                {
+                    DoNotThrowException();
+                }
+                catch when (result = false)
+                {
+                }
+            }
+
+            ThrowNewException();
+        }
+
+        bool result = true;
+        try
+        {
+            TestVirtualUnwindIndexSetForkedFlow_Test(doEnterTry: true, ref result);
+        }
+        catch { }
+
+        EndTest(result);
+    }
+
+    private static void TestVirtualUnwindStackPopOnThrow()
+    {
+        StartTest("Test that the NOT_IN_TRY virtual unwind frames are unlinked on throw");
+
+        void TestVirtualUnwindStackPopOnThrow_NotInTry()
+        {
+            try { DoNotThrowException(); } catch { }
+            ThrowNewException();
+            try { DoNotThrowException(); } catch { }
+        }
+
+        try
+        {
+            TestVirtualUnwindStackPopOnThrow_NotInTry();
+        }
+        catch
+        {
+            VerifyVirtualUnwindStack();
+        }
+        PassTest();
+    }
+
+    private static void TestVirtualUnwindStackNoPopOnThrow()
+    {
+        StartTest("Test that the NOT_IN_TRY_CATCH virtual unwind frames are NOT unlinked on throw");
+
+        static void TestVirtualUnwindStackNoPopOnThrow_NotInTryCatch(ref bool result)
+        {
+            try { DoNotThrowException(); } catch { }
+            try
+            {
+                ThrowNewException();
+            }
+            finally
+            {
+                // Check that we haven't popped the frame corresponding to this function.
+                try
+                {
+                    ThrowNewException();
+                }
+                catch when (result = true) { }
+            }
+            try { DoNotThrowException(); } catch { }
+        }
+
+        bool result = false;
+        try
+        {
+            TestVirtualUnwindStackNoPopOnThrow_NotInTryCatch(ref result);
+        }
+        catch { }
+        EndTest(result);
+    }
+
+    private static void TestVirtualUnwindStackPopSelfOnUnwindingCatch()
+    {
+        StartTest("Test that the virtual unwind frame is unlinked by an unwinding catch");
+
+        void TestVirtualUnwindStackPopSelfOnUnwindingCatch_Catch()
+        {
+            try
+            {
+                ThrowNewException();
+            }
+            catch (NullReferenceException) { }
+        }
+
+        try
+        {
+            TestVirtualUnwindStackPopSelfOnUnwindingCatch_Catch();
+        }
+        catch
+        {
+            VerifyVirtualUnwindStack();
+        }
+
+        PassTest();
+    }
+
+    private static void TestVirtualUnwindStackPopOnUnwindingCatch()
+    {
+        StartTest("Test that the NOT_IN_TRY virtual unwind frames are unlinked by an unwinding catch");
+
+        void TestVirtualUnwindStackPopOnUnwindingCatch_Catch()
+        {
+            try
+            {
+                ThrowNewException();
+            }
+            catch (NullReferenceException) { }
+        }
+
+        void TestVirtualUnwindStackPopOnUnwindingCatch_NotInTry()
+        {
+            try { DoNotThrowException(); } catch { }
+            TestVirtualUnwindStackPopOnUnwindingCatch_Catch();
+            try { DoNotThrowException(); } catch { }
+        }
+
+        try
+        {
+            TestVirtualUnwindStackPopOnUnwindingCatch_NotInTry();
+        }
+        catch
+        {
+            VerifyVirtualUnwindStack();
+        }
+
+        PassTest();
+    }
+
+    private static void TestVirtualUnwindStackNoPopOnUnwindingCatch()
+    {
+        StartTest("Test that the NOT_IN_TRY_CATCH virtual unwind frames are NOT unlinked by an unwinding catch");
+
+        void TestVirtualUnwindStackNoPopOnUnwindingCatch_Catch()
+        {
+            try
+            {
+                ThrowNewException();
+            }
+            catch (NullReferenceException) { }
+        }
+
+        void TestVirtualUnwindStackNoPopOnUnwindingCatch_NotInTryCatch(ref bool result)
+        {
+            try
+            {
+                TestVirtualUnwindStackNoPopOnUnwindingCatch_Catch();
+            }
+            finally
+            {
+                // Check that we haven't popped the frame corresponding to this function.
+                try
+                {
+                    ThrowNewException();
+                }
+                catch when (result = true) { }
+            }
+        }
+
+        bool result = false;
+        try
+        {
+            TestVirtualUnwindStackNoPopOnUnwindingCatch_NotInTryCatch(ref result);
+        }
+        catch { }
+
+        EndTest(result);
+    }
+
+    private static void TestVirtualUnwindStackNoPopOnNestedUnwindingCatch()
+    {
+        StartTest("Test that the virtual unwind frame is not unlinked by a nested unwinding catch");
+
+        bool result = false;
+        try
+        {
+            try
+            {
+                try
+                {
+                    ThrowNewException();
+                }
+                catch (DivideByZeroException) { }
+            }
+            finally
+            {
+                // Check that we haven't popped the frame corresponding to this function.
+                try
+                {
+                    ThrowNewException();
+                }
+                catch when (result = true) { }
+            }
+        }
+        catch { }
+
+        EndTest(result);
+    }
+
+    private static void TestVirtualUnwindStackNoPopOnMutuallyProtectingUnwindingCatch()
+    {
+        StartTest("Test that the virtual unwind frame is not unlinked by a nested unwinding mutually protecting catch");
+
+        try
+        {
+            ThrowNewException();
+        }
+        catch (NullReferenceException) { }
+        catch
+        {
+            VerifyVirtualUnwindStack();
+        }
+
+        PassTest();
+    }
+
+    private static void TestVirtualUnwindStackPopSelfOnUnwindingFault()
+    {
+        StartTest("Test that the virtual unwind frame is unlinked by an unwinding fault");
+
+        void TestVirtualUnwindStackPopSelfOnUnwindingFault_Fault()
+        {
+            try
+            {
+                ThrowNewException();
+            }
+            finally
+            {
+                DoNotThrowException();
+            }
+        }
+
+        try
+        {
+            TestVirtualUnwindStackPopSelfOnUnwindingFault_Fault();
+        }
+        catch
+        {
+            VerifyVirtualUnwindStack();
+        }
+
+        PassTest();
+    }
+
+    private static void TestVirtualUnwindStackPopOnUnwindingFault()
+    {
+        StartTest("Test that the NOT_IN_TRY virtual unwind frames are unlinked by an unwinding fault");
+
+        void TestVirtualUnwindStackPopOnUnwindingFault_Fault()
+        {
+            try
+            {
+                ThrowNewException();
+            }
+            finally
+            {
+                DoNotThrowException();
+            }
+        }
+
+        void TestVirtualUnwindStackPopOnUnwindingFault_NotInTry()
+        {
+            try { DoNotThrowException(); } catch { }
+            TestVirtualUnwindStackPopOnUnwindingFault_Fault();
+            try { DoNotThrowException(); } catch { }
+        }
+
+        try
+        {
+            TestVirtualUnwindStackPopOnUnwindingFault_NotInTry();
+        }
+        catch
+        {
+            VerifyVirtualUnwindStack();
+        }
+
+        PassTest();
+    }
+
+    private static void TestVirtualUnwindStackNoPopOnUnwindingFault()
+    {
+        StartTest("Test that the NOT_IN_TRY_CATCH virtual unwind frames are NOT unlinked by an unwinding fault");
+
+        void TestVirtualUnwindStackNoPopOnUnwindingFault_Fault()
+        {
+            try
+            {
+                ThrowNewException();
+            }
+            finally
+            {
+                DoNotThrowException();
+            }
+        }
+
+        void TestVirtualUnwindStackNoPopOnUnwindingFault_NotInTryCatch(ref bool result)
+        {
+            try
+            {
+                TestVirtualUnwindStackNoPopOnUnwindingFault_Fault();
+            }
+            finally
+            {
+                // Check that we haven't popped the frame corresponding to this function.
+                try
+                {
+                    ThrowNewException();
+                }
+                catch when (result = true) { }
+            }
+        }
+
+        bool result = false;
+        try
+        {
+            TestVirtualUnwindStackNoPopOnUnwindingFault_NotInTryCatch(ref result);
+        }
+        catch { }
+
+        EndTest(result);
+    }
+
+    private static void TestVirtualUnwindStackNoPopOnNestedUnwindingFault()
+    {
+        StartTest("Test that the virtual unwind frame is not unlinked by a nested unwinding fault");
+
+        bool result = false;
+        try
+        {
+            try
+            {
+                try
+                {
+                    ThrowNewException();
+                }
+                finally
+                {
+                    DoNotThrowException();
+                }
+            }
+            finally
+            {
+                // Check that we haven't popped the frame corresponding to this function.
+                try
+                {
+                    ThrowNewException();
+                }
+                catch when (result = true) { }
+            }
+        }
+        catch { }
+
+        EndTest(result);
+    }
+
+    private static void TestContainedNestedDispatchSingleFrame()
+    {
+        int index = 0;
+        bool result = true;
+        void At(int expected) => result &= index++ == expected;
+
+        StartTest("Test contained nested dispatch in a single frame");
+
+        try
+        {
+            try
+            {
+                At(0);
+                ThrowNewException();
+            }
+            finally
+            {
+                try
+                {
+                    At(1);
+                    ThrowNewException();
+                }
+                catch
+                {
+                    At(2);
+                }
+            }
+        }
+        catch
+        {
+            try
+            {
+                At(3);
+                ThrowNewException();
+            }
+            catch
+            {
+                At(4);
+            }
+        }
+
+        EndTest(result);
+    }
+
+    private static void TestContainedNestedDispatchIntraFrame()
+    {
+        int index = 0;
+        bool result = true;
+        void At(int expected) => result &= index++ == expected;
+
+        StartTest("Test contained nested dispatch in nested frames");
+
+        void TestContainedNestedDispatchIntraFrame_ThrowAndCatch(int index)
+        {
+            try
+            {
+                At(index);
+                ThrowNewException();
+            }
+            catch
+            {
+                At(index + 1);
+            }
+        }
+
+        try
+        {
+            try
+            {
+                At(0);
+                ThrowNewException();
+            }
+            finally
+            {
+                TestContainedNestedDispatchIntraFrame_ThrowAndCatch(1);
+            }
+        }
+        catch
+        {
+            TestContainedNestedDispatchIntraFrame_ThrowAndCatch(3);
+        }
+
+        EndTest(result);
+    }
+
+    private static void TestDeepContainedNestedDispatchSingleFrame()
+    {
+        int index = 0;
+        bool result = true;
+        void At(int expected) => result &= index++ == expected;
+
+        StartTest("Test deep contained nested dispatch in a single frame");
+
+        try
+        {
+            try
+            {
+                At(0);
+                ThrowNewException();
+            }
+            finally
+            {
+                try
+                {
+                    try
+                    {
+                        try
+                        {
+                            At(1);
+                            ThrowException(new DivideByZeroException());
+                        }
+                        finally
+                        {
+                            At(2);
+                        }
+                    }
+                    finally
+                    {
+                        try
+                        {
+                            try
+                            {
+                                try
+                                {
+                                    At(3);
+                                    ThrowException(new ArgumentException());
+                                }
+                                finally
+                                {
+                                    At(4);
+                                }
+                            }
+                            catch (ArgumentNullException) { }
+                        }
+                        catch
+                        {
+                            At(5);
+                        }
+                    }
+                }
+                catch
+                {
+                    try
+                    {
+                        try
+                        {
+                            At(6);
+                            ThrowException(new IndexOutOfRangeException());
+                        }
+                        finally
+                        {
+                            At(7);
+                        }
+                    }
+                    catch
+                    {
+                        At(8);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            At(9);
+        }
+
+        EndTest(result);
+    }
+
+    private static void TestDeepContainedNestedDispatchIntraFrame()
+    {
+        int index = 0;
+        bool result = true;
+        void At(int expected) => result &= index++ == expected;
+
+        StartTest("Test deep contained nested dispatch in nested frames");
+
+        try
+        {
+            void TestDeepContainedNestedDispatchSingleFrame_TryOne()
+            {
+                try
+                {
+                    At(0);
+                    ThrowNewException();
+                }
+                finally
+                {
+                    void TestDeepContainedNestedDispatchSingleFrame_TryTwo()
+                    {
+                        try
+                        {
+                            void TestDeepContainedNestedDispatchSingleFrame_TryThree()
+                            {
+                                try
+                                {
+                                    void TestDeepContainedNestedDispatchSingleFrame_TryFive()
+                                    {
+                                        try
+                                        {
+                                            At(1);
+                                            ThrowException(new DivideByZeroException());
+                                        }
+                                        finally
+                                        {
+                                            At(2);
+                                        }
+                                    }
+
+                                    TestDeepContainedNestedDispatchSingleFrame_TryFive();
+                                }
+                                finally
+                                {
+                                    try
+                                    {
+                                        void TestDeepContainedNestedDispatchSingleFrame_TrySix()
+                                        {
+                                            try
+                                            {
+                                                try
+                                                {
+                                                    At(3);
+                                                    ThrowException(new ArgumentException());
+                                                }
+                                                finally
+                                                {
+                                                    At(4);
+                                                }
+                                            }
+                                            catch (ArgumentNullException) { }
+
+                                        }
+
+                                        TestDeepContainedNestedDispatchSingleFrame_TrySix();
+                                    }
+                                    catch
+                                    {
+                                        At(5);
+                                    }
+                                }
+                            }
+
+                            TestDeepContainedNestedDispatchSingleFrame_TryThree();
+                        }
+                        catch
+                        {
+                            void TestDeepContainedNestedDispatchSingleFrame_TryFour()
+                            {
+                                try
+                                {
+                                    try
+                                    {
+                                        At(6);
+                                        ThrowException(new IndexOutOfRangeException());
+                                    }
+                                    finally
+                                    {
+                                        At(7);
+                                    }
+                                }
+                                catch
+                                {
+                                    At(8);
+                                }
+                            }
+
+                            TestDeepContainedNestedDispatchSingleFrame_TryFour();
+                        }
+                    }
+
+                    TestDeepContainedNestedDispatchSingleFrame_TryTwo();
+                }
+            }
+
+            TestDeepContainedNestedDispatchSingleFrame_TryOne();
+        }
+        catch
+        {
+            At(9);
+        }
+
+        EndTest(result);
+    }
+
+    private static void TestExactUncontainedNestedDispatchSingleFrame()
+    {
+        StartTest("Test exact uncontained nested dispatch in a single frame");
+
+        Exception exception = null;
+        bool result = false;
+        try
+        {
+            try
+            {
+                try
+                {
+                    ThrowNewException();
+                }
+                catch (NullReferenceException)
+                {
+                    // Make sure second pass updates the next catch on the original exception correctly.
+                }
+            }
+            finally
+            {
+                try
+                {
+                    // The target for this nested exception is exactly the same as for the original.
+                    exception = new Exception();
+                    throw exception;
+                }
+                catch (NullReferenceException)
+                {
+                    // Make sure second pass updates the next catch on the original exception correctly.
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            result = exception == e;
+        }
+
+        EndTest(result);
+    }
+
+    private static void TestClippingUncontainedNestedDispatchSingleFrame()
+    {
+        StartTest("Test clipping uncontained nested dispatch in a single frame");
+
+        Exception exception = null;
+        bool result = false;
+        bool didReachNormalFlow = false;
+        try
+        {
+            try
+            {
+                try
+                {
+                    try
+                    {
+                        ThrowNewException();
+                    }
+                    catch (NullReferenceException)
+                    {
+                        // Make sure second pass updates the next catch on the original exception correctly.
+                    }
+                }
+                finally
+                {
+                    try
+                    {
+                        // The target for this nested exception is below that of the original.
+                        exception = new IndexOutOfRangeException();
+                        ThrowException(exception);
+                    }
+                    catch (NullReferenceException)
+                    {
+                        // Make sure second pass updates the next catch on the original exception correctly.
+                    }
+                }
+            }
+            catch (IndexOutOfRangeException e)
+            {
+                result = exception == e;
+            }
+
+            // This test demonstrates that nested exceptions allow EH flow to "return" below the original catch.
+            didReachNormalFlow = true;
+        }
+        catch
+        {
+            // We should not reach here.
+            result = false;
+        }
+
+        EndTest(didReachNormalFlow && result);
+    }
+
+    private static void TestExpandingUncontainedNestedDispatchSingleFrame()
+    {
+        StartTest("Test expanding uncontained nested dispatch in a single frame");
+
+        Exception exception = null;
+        bool result = false;
+        try
+        {
+            try
+            {
+                try
+                {
+                    try
+                    {
+                        ThrowException(new IndexOutOfRangeException());
+                    }
+                    catch (NullReferenceException)
+                    {
+                        // Make sure second pass updates the next catch on the original exception correctly.
+                    }
+                }
+                finally
+                {
+                    try
+                    {
+                        // The target for this nested exception is below that of the original.
+                        exception = new Exception();
+                        ThrowException(exception);
+                    }
+                    catch (NullReferenceException)
+                    {
+                        // Make sure second pass updates the next catch on the original exception correctly.
+                    }
+                }
+            }
+            catch (IndexOutOfRangeException e)
+            {
+                // We should not reach here.
+                result = false;
+            }
+        }
+        catch (Exception e)
+        {
+            result = exception == e;
+        }
+
+        EndTest(result);
+    }
+
+    private static void TestExactUncontainedNestedDispatchIntraFrame()
+    {
+        StartTest("Test exact uncontained nested dispatch in nested frames");
+
+        Exception exception = null;
+        bool result = false;
+        try
+        {
+            void TestExactUncontainedNestedDispatchIntraFrame_Throw()
+            {
+                try
+                {
+                    ThrowNewException();
+                }
+                catch (NullReferenceException)
+                {
+                    // Make sure second pass updates the next catch on the original exception correctly.
+                }
+            }
+
+            void TestExactUncontainedNestedDispatchIntraFrame_Fault()
+            {
+                try
+                {
+                    try
+                    {
+                        TestExactUncontainedNestedDispatchIntraFrame_Throw();
+                    }
+                    catch (NullReferenceException)
+                    {
+                        // Make sure second pass updates the next catch on the original exception correctly.
+                    }
+                }
+                finally
+                {
+                    void TestExactUncontainedNestedDispatchIntraFrame_NestedThrow()
+                    {
+                        // The target for this nested exception is exactly the same as for the original.
+                        exception = new Exception();
+                        throw exception;
+                    }
+
+                    try
+                    {
+                        TestExactUncontainedNestedDispatchIntraFrame_NestedThrow();
+                    }
+                    catch (NullReferenceException)
+                    {
+                        // Make sure second pass updates the next catch on the nested exception correctly.
+                    }
+                }
+            }
+
+            TestExactUncontainedNestedDispatchIntraFrame_Fault();
+        }
+        catch (Exception e)
+        {
+            result = exception == e;
+        }
+
+        EndTest(result);
+    }
+
+    private static void TestClippingUncontainedNestedDispatchIntraFrame()
+    {
+        StartTest("Test clipping uncontained nested dispatch in nested frames");
+
+        Exception exception = null;
+        bool result = false;
+        bool didReachNormalFlow = false;
+        try
+        {
+            void TestClippingUncontainedNestedDispatchIntrarame_NestedCatch()
+            {
+                try
+                {
+                    void TestClippingUncontainedNestedDispatchIntrarame_NestedThrow()
+                    {
+                        try
+                        {
+                            try
+                            {
+                                ThrowNewException();
+                            }
+                            catch (NullReferenceException)
+                            {
+                                // Make sure second pass updates the next catch on the original exception correctly.
+                            }
+                        }
+                        finally
+                        {
+                            try
+                            {
+                                // The target for this nested exception is below that of the original.
+                                exception = new IndexOutOfRangeException();
+                                ThrowException(exception);
+                            }
+                            catch (NullReferenceException)
+                            {
+                                // Make sure second pass updates the next catch on the original exception correctly.
+                            }
+                        }
+                    }
+
+                    TestClippingUncontainedNestedDispatchIntrarame_NestedThrow();
+                }
+                catch (IndexOutOfRangeException e)
+                {
+                    result = exception == e;
+                }
+
+                // This test demonstrates that nested exceptions allow EH flow to "return" below the original catch,
+                // even in a different frame. This means that even state which is not live in/out of handlers must be
+                // accessible in the second.
+                didReachNormalFlow = true;
+            }
+
+            TestClippingUncontainedNestedDispatchIntrarame_NestedCatch();
+        }
+        catch
+        {
+            // We should not reach here.
+            result = false;
+        }
+
+        EndTest(didReachNormalFlow && result);
+    }
+
+    private static void TestExpandingUncontainedNestedDispatchIntraFrame()
+    {
+        StartTest("Test expanding uncontained nested dispatch in nested frames");
+
+        Exception exception = null;
+        bool result = false;
+        try
+        {
+            void TestExpandingUncontainedNestedDispatchIntraFrame_OriginalCatch()
+            {
+                try
+                {
+                    void TestExpandingUncontainedNestedDispatchIntraFrame_NestedThrow()
+                    {
+                        try
+                        {
+                            try
+                            {
+                                ThrowException(new IndexOutOfRangeException());
+                            }
+                            catch (NullReferenceException)
+                            {
+                                // Make sure second pass updates the next catch on the original exception correctly.
+                            }
+                        }
+                        finally
+                        {
+                            try
+                            {
+                                // The target for this nested exception is below that of the original.
+                                exception = new Exception();
+                                ThrowException(exception);
+                            }
+                            catch (NullReferenceException)
+                            {
+                                // Make sure second pass updates the next catch on the original exception correctly.
+                            }
+                        }
+                    }
+
+                    TestExpandingUncontainedNestedDispatchIntraFrame_NestedThrow();
+                }
+                catch (IndexOutOfRangeException e)
+                {
+                    // We should not reach here.
+                    result = false;
+                }
+            }
+
+            TestExpandingUncontainedNestedDispatchIntraFrame_OriginalCatch();
+        }
+        catch (Exception e)
+        {
+            result = exception == e;
+        }
+
+        EndTest(result);
+    }
+
+    private static void TestDeepUncontainedNestedDispatchSingleFrame()
+    {
+        int index = 0;
+        bool result = true;
+        void At(int expected) => result &= index++ == expected;
+
+        try
+        {
+            try
+            {
+                At(0);
+                ThrowNewException();
+            }
+            finally
+            {
+                try
+                {
+                    try
+                    {
+                        try
+                        {
+                            At(1);
+                            ThrowException(new IndexOutOfRangeException());
+                        }
+                        finally
+                        {
+                            try
+                            {
+                                At(2);
+                                ThrowException(new Exception());
+                            }
+                            catch (ArgumentNullException)
+                            {
+                                result = false; // Unreachable.
+                            }
+                        }
+                    }
+                    catch (IndexOutOfRangeException)
+                    {
+                        result = false; // Unreachable.
+                    }
+                }
+                finally
+                {
+                    At(3);
+                }
+            }
+        }
+        catch
+        {
+            At(4);
+        }
+
+        EndTest(result);
+    }
+
+    private static void TestDeepUncontainedNestedDispatchIntraFrame()
+    {
+        int index = 0;
+        bool result = true;
+        void At(int expected) => result &= index++ == expected;
+
+        try
+        {
+            void TestDeepUncontainedNestedDispatchIntraFrame_TopCatch()
+            {
+                try
+                {
+                    At(0);
+                    ThrowNewException();
+                }
+                finally
+                {
+                    void TestDeepUncontainedNestedDispatchIntraFrame_TopFault()
+                    {
+                        try
+                        {
+                            void TestDeepUncontainedNestedDispatchIntraFrame_MiddleFault()
+                            {
+                                try
+                                {
+                                    void TestDeepUncontainedNestedDispatchIntraFrame_MiddleThrow()
+                                    {
+                                        try
+                                        {
+                                            At(1);
+                                            ThrowException(new IndexOutOfRangeException());
+                                        }
+                                        finally
+                                        {
+                                            void TestDeepUncontainedNestedDispatchIntraFrame_BottomThrow()
+                                            {
+                                                try
+                                                {
+                                                    At(2);
+                                                    ThrowException(new Exception());
+                                                }
+                                                catch (ArgumentNullException)
+                                                {
+                                                    result = false; // Unreachable.
+                                                }
+                                            }
+
+                                            TestDeepUncontainedNestedDispatchIntraFrame_BottomThrow();
+                                        }
+                                    }
+
+                                    TestDeepUncontainedNestedDispatchIntraFrame_MiddleThrow();
+                                }
+                                catch (IndexOutOfRangeException)
+                                {
+                                    result = false; // Unreachable.
+                                }
+                            }
+
+                            TestDeepUncontainedNestedDispatchIntraFrame_MiddleFault();
+                        }
+                        finally
+                        {
+                            At(3);
+                        }
+                    }
+
+                    TestDeepUncontainedNestedDispatchIntraFrame_TopFault();
+                }
+            }
+
+            TestDeepUncontainedNestedDispatchIntraFrame_TopCatch();
+        }
+        catch
+        {
+            At(4);
+        }
+
+        EndTest(result);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void ThrowException(Exception e) => throw e;
+
+    private static void ThrowNewException() => ThrowException(new Exception());
+
+    private static int s_alwaysZero = 0;
+
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+    private static void DoNotThrowException()
+    {
+        if (Volatile.Read(ref s_alwaysZero) == 1)
+        {
+            ThrowNewException();
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void VerifyVirtualUnwindStack()
+    {
+        // If the frame chain is corrupt, this new frame will link to itself, causing stack overflow in the first pass.
+        try
+        {
+            ThrowNewException();
+        }
+        catch { }
+    }
 
     public static void StartTest(string testDescription) => PrintString(testDescription + ": ");
 

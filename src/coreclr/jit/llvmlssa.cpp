@@ -311,11 +311,7 @@ private:
                 varDsc->lvLiveInOutOfHndlr = 1;
             }
 
-            // GC locals needs to go on the shadow stack for the scan to find them. Locals live-in/out of handlers
-            // need to be preserved after the native unwind for the funclets to be callable, thus, they too need to
-            // go on the shadow stack (except for parameters to funclets, naturally).
-            //
-            if (!m_llvm->isFuncletParameter(lclNum) && (varDsc->HasGCPtr() || varDsc->lvLiveInOutOfHndlr))
+            if (IsShadowFrameLocalCandidate(lclNum))
             {
                 if (varDsc->lvRefCnt() == 0)
                 {
@@ -356,22 +352,23 @@ private:
             }
         }
 
-        if ((shadowFrameLocals.size() == 0) && m_llvm->m_lclHeapUsed && m_llvm->doUseDynamicStackForLclHeap())
-        {
-            // The dynamic stack is tied to the shadow one. If we have an empty shadow frame with a non-empty dynamic
-            // one, an ambiguity in what state must be released on return arises - our caller might have an empty shadow
-            // frame as well, but of course we don't want to release its dynamic state accidentally. To solve this, pad
-            // out the shadow frame in methods that use the dynamic stack if it is empty. The need to do this should be
-            // pretty rare so it is ok to waste a shadow stack slot here.
-            unsigned padLclNum =
-                m_compiler->lvaGrabTempWithImplicitUse(true DEBUGARG("SS padding for the dynamic stack"));
-            m_compiler->lvaGetDesc(padLclNum)->lvType = TYP_REF;
-            InitializeLocalInProlog(padLclNum, m_compiler->gtNewIconNode(0, TYP_REF));
+        AssignShadowFrameOffsets(shadowFrameLocals);
+    }
 
-            shadowFrameLocals.push_back(padLclNum);
+    bool IsShadowFrameLocalCandidate(unsigned lclNum)
+    {
+        // The unwind frame MUST be allocated on the shadow stack. The runtime uses its value to invoke filters.
+        if (lclNum == m_llvm->m_unwindFrameLclNum)
+        {
+            return true;
         }
 
-        AssignShadowFrameOffsets(shadowFrameLocals);
+        // GC locals needs to go on the shadow stack for the scan to find them. Locals live-in/out of handlers
+        // need to be preserved after the native unwind for the funclets to be callable, thus, they too need to
+        // go on the shadow stack (except for parameters to funclets, naturally).
+        //
+        LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
+        return !m_llvm->isFuncletParameter(lclNum) && (varDsc->HasGCPtr() || varDsc->lvLiveInOutOfHndlr);
     }
 
     void AssignShadowFrameOffsets(std::vector<unsigned>& shadowFrameLocals)
@@ -398,11 +395,23 @@ private:
             varDsc->lvInSsa = 0;
         };
 
+        // The shadow frame must be allocated at a zero offset; the runtime uses its value as the original
+        // shadow frame parameter to filter funclets.
+        if (m_llvm->m_unwindFrameLclNum != BAD_VAR_NUM)
+        {
+            assignOffset(m_compiler->lvaGetDesc(m_llvm->m_unwindFrameLclNum), TARGET_POINTER_SIZE);
+        }
+
 #ifndef TARGET_64BIT
         // We assign offsets to the variables that require double alignment first to pack them together.
         for (unsigned i = 0; i < shadowFrameLocals.size(); i++)
         {
             LclVarDsc* varDsc = m_compiler->lvaGetDesc(shadowFrameLocals.at(i));
+            if (m_llvm->isShadowFrameLocal(varDsc))
+            {
+                continue;
+            }
+
             if (varDsc->lvStructDoubleAlign)
             {
                 assignOffset(varDsc, 8);
@@ -414,11 +423,12 @@ private:
         for (unsigned i = 0; i < shadowFrameLocals.size(); i++)
         {
             LclVarDsc* varDsc = m_compiler->lvaGetDesc(shadowFrameLocals.at(i));
-
-            if (!m_llvm->isShadowFrameLocal(varDsc))
+            if (m_llvm->isShadowFrameLocal(varDsc))
             {
-                assignOffset(varDsc, TARGET_POINTER_SIZE);
+                continue;
             }
+
+            assignOffset(varDsc, TARGET_POINTER_SIZE);
         }
 
         m_llvm->_shadowStackLocalsSize = AlignUp(offset, Llvm::DEFAULT_SHADOW_STACK_ALIGNMENT);
@@ -501,14 +511,14 @@ private:
                 return RemovePhiDef(lclNode->AsLclVar());
             }
 
-            // Funclets (especially filters) will be called by the dispatcher while live state still exists
-            // on shadow frames below (in the tradional sense, where stacks grow down) them. For this reason,
-            // funclets will access state from the original frame via a dedicated shadow stack pointer, and
-            // use the actual shadow stack for calls.
-            unsigned shadowStackLclNum =
-                m_llvm->CurrentBlock()->hasHndIndex() ? m_llvm->_originalShadowStackLclNum : m_llvm->_shadowStackLclNum;
-            GenTree* lclAddress =
-                m_llvm->insertShadowStackAddr(lclNode, varDsc->GetStackOffset() + lclNode->GetLclOffs(), shadowStackLclNum);
+            // Filters will be called by the first pass while live state still exists on shadow frames above (in the
+            // traditional sense, where stacks grow down) them. For this reason, filters will access state from the
+            // original frame via a dedicated shadow stack pointer, and use the actual shadow stack for calls.
+            unsigned shadowStackLclNum = m_llvm->isBlockInFilter(m_llvm->CurrentBlock())
+                ? m_llvm->_originalShadowStackLclNum
+                : m_llvm->_shadowStackLclNum;
+            unsigned lclOffset = varDsc->GetStackOffset() + lclNode->GetLclOffs();
+            GenTree* lclAddress = m_llvm->insertShadowStackAddr(lclNode, lclOffset, shadowStackLclNum);
 
             ClassLayout* layout = lclNode->TypeIs(TYP_STRUCT) ? lclNode->GetLayout(m_compiler) : nullptr;
             GenTree* storedValue = nullptr;
@@ -572,10 +582,9 @@ private:
         // Add in the shadow stack argument now that we know the shadow frame size.
         if (m_llvm->callHasManagedCallingConvention(call))
         {
-            unsigned hndIndex = m_llvm->CurrentBlock()->hasHndIndex() ? m_llvm->CurrentBlock()->getHndIndex()
-                                                                      : EHblkDsc::NO_ENCLOSING_INDEX;
+            unsigned funcIdx = m_llvm->getLlvmFunctionIndexForBlock(m_llvm->CurrentBlock());
             GenTree* calleeShadowStack =
-                m_llvm->insertShadowStackAddr(call, m_llvm->getShadowFrameSize(hndIndex), m_llvm->_shadowStackLclNum);
+                m_llvm->insertShadowStackAddr(call, m_llvm->getShadowFrameSize(funcIdx), m_llvm->_shadowStackLclNum);
             CallArg* calleeShadowStackArg =
                 call->gtArgs.PushFront(m_compiler, NewCallArg::Primitive(calleeShadowStack, CORINFO_TYPE_PTR));
 
@@ -634,32 +643,24 @@ void Llvm::Allocate()
 // getShadowFrameSize: What is the size of a function's shadow frame?
 //
 // Arguments:
-//    hndIndex - Handler index representing the function, NO_ENCLOSING_INDEX
-//               is used for the root
+//    funcIdx - Index representing the function
 //
 // Return Value:
 //    The size of the shadow frame for the given function. We term this
 //    the value by which the shadow stack pointer must be offset before
 //    calling managed code such that the caller will not clobber anything
-//    live on the frame. Note that funclets do not have any shadow state
-//    of their own and use the "original" frame from the parent function,
-//    with one exception: catch handlers and filters have one readonly
-//    pointer-sized argument representing the exception.
+//    live on the frame. Note that filters do not have any shadow state
+//    of their own and use the "original" frame from the parent function.
 //
-unsigned Llvm::getShadowFrameSize(unsigned hndIndex) const
+unsigned Llvm::getShadowFrameSize(unsigned funcIdx) const
 {
-    if (hndIndex == EHblkDsc::NO_ENCLOSING_INDEX)
+    if (_compiler->funGetFunc(funcIdx)->funKind == FUNC_FILTER)
     {
-        assert((_shadowStackLocalsSize % TARGET_POINTER_SIZE) == 0);
-        return _shadowStackLocalsSize;
-    }
-    if (_compiler->ehGetDsc(hndIndex)->HasCatchHandler())
-    {
-        // For the implicit (readonly) exception object argument.
-        return TARGET_POINTER_SIZE;
+        return 0;
     }
 
-    return 0;
+    assert((_shadowStackLocalsSize % TARGET_POINTER_SIZE) == 0);
+    return _shadowStackLocalsSize;
 }
 
 ValueInitKind Llvm::getInitKindForLocal(unsigned lclNum) const
@@ -751,14 +752,4 @@ bool Llvm::isShadowStackLocal(unsigned lclNum) const
 bool Llvm::isFuncletParameter(unsigned lclNum) const
 {
     return isShadowStackLocal(lclNum);
-}
-
-bool Llvm::doUseDynamicStackForLclHeap() const
-{
-    // TODO-LLVM: add a stress mode.
-    assert(m_lclHeapUsed);
-
-    // We assume LCLHEAPs in methods with EH escape into handlers and so
-    // have to use a special EH-aware allocator instead of the native stack.
-    return _compiler->ehAnyFunclets() || JitConfig.JitUseDynamicStackForLclHeap();
 }

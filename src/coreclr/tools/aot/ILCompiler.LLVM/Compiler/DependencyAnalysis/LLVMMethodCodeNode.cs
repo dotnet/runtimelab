@@ -15,7 +15,7 @@ using CombinedDependencyList = System.Collections.Generic.List<ILCompiler.Depend
 
 namespace ILCompiler.DependencyAnalysis
 {
-    internal sealed class LLVMMethodCodeNode : DependencyNodeCore<NodeFactory>, IMethodBodyNode, IMethodCodeNode, ISpecialUnboxThunkNode
+    internal sealed class LLVMMethodCodeNode : DependencyNodeCore<NodeFactory>, IMethodBodyNode, ILLVMMethodCodeNode, ISpecialUnboxThunkNode
     {
         private readonly MethodDesc _method;
         private DependencyList _dependencies;
@@ -71,13 +71,11 @@ namespace ILCompiler.DependencyAnalysis
 
         public void SetCode(ObjectNode.ObjectData data, bool isFoldable)
         {
-            DependencyListEntry[] entries = new DependencyListEntry[data.Relocs.Length];
-            for (int i = 0; i < data.Relocs.Length; i++)
+            _dependencies ??= new DependencyList();
+            foreach (ref Relocation reloc in data.Relocs.AsSpan())
             {
-                entries[i] = new DependencyListEntry(data.Relocs[i].Target, "ObjectData Reloc");
+                _dependencies.Add(reloc.Target, "Referenced by code");
             }
-
-            _dependencies = new DependencyList(entries);
         }
 
         public void InitializeFrameInfos(FrameInfo[] frameInfos)
@@ -120,6 +118,14 @@ namespace ILCompiler.DependencyAnalysis
 
         public void InitializeLocalTypes(TypeDesc[] localTypes)
         {
+        }
+
+        public ISymbolNode InitializeEHInfoLLVM(ObjectNode.ObjectData ehInfo, int symbolDefOffset)
+        {
+            MethodExceptionHandlingInfoNode ehInfoNode = new(_method, ehInfo, symbolDefOffset);
+            _dependencies ??= new DependencyList();
+            _dependencies.Add(ehInfoNode, "Exception handling information");
+            return ehInfoNode;
         }
 
         public bool IsSpecialUnboxingThunk => ((CompilerTypeSystemContext)Method.Context).IsSpecialUnboxingThunk(_method);

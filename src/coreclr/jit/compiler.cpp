@@ -5148,6 +5148,10 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
         });
     }
 
+    DoPhase(this, PHASE_ADD_VIRTUAL_UNWIND_FRAME, [this]() {
+        return m_llvm->AddVirtualUnwindFrame();
+    });
+
     DoPhase(this, PHASE_ALLOCATE_SHADOW_STACK, [this]() {
         m_llvm->Allocate();
     });

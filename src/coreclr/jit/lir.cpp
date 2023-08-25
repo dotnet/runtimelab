@@ -453,7 +453,7 @@ GenTree* LIR::Range::FirstNonPhiNode() const
 {
     for (GenTree* node : *this)
     {
-        if (node->IsPhiNode())
+        if (node->IsPhiNode() || node->OperIs(GT_IL_OFFSET))
         {
             continue;
         }
@@ -471,7 +471,7 @@ GenTree* LIR::Range::FirstNonCatchArgNode() const
 {
     for (GenTree* node : *this)
     {
-        if (node->OperIs(GT_CATCH_ARG))
+        if (node->OperIs(GT_CATCH_ARG) || node->OperIs(GT_IL_OFFSET))
         {
             continue;
         }
@@ -484,6 +484,20 @@ GenTree* LIR::Range::FirstNonCatchArgNode() const
     }
 
     return nullptr;
+}
+
+//------------------------------------------------------------------------
+// LIR::Range::FirstNonPhiOrCatchArgNode: Returns the first node after all phi and catch arg nodes in this range.
+//
+GenTree* LIR::Range::FirstNonPhiOrCatchArgNode() const
+{
+    GenTree* nonPhiNode = FirstNonPhiNode();
+    if (nonPhiNode == nullptr)
+    {
+        return nullptr;
+    }
+
+    return LIR::Range(nonPhiNode, LastNode()).FirstNonCatchArgNode();
 }
 
 //------------------------------------------------------------------------

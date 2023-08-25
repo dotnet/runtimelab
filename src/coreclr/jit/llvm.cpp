@@ -15,6 +15,7 @@ enum class EEApiId
 {
     GetMangledMethodName,
     GetSymbolMangledName,
+    GetMangledFilterFuncletName,
     GetSignatureForMethodSymbol,
     AddCodeReloc,
     IsRuntimeImport,
@@ -27,6 +28,7 @@ enum class EEApiId
     GetDebugInfoForCurrentMethod,
     GetSingleThreadedCompilationContext,
     GetExceptionHandlingModel,
+    GetExceptionHandlingTable,
     Count
 };
 
@@ -189,7 +191,7 @@ bool Llvm::helperCallRequiresShadowStackSave(CorInfoHelpFunc helperFunc) const
     // back into managed code or has special semantics. TODO-LLVM-CQ: mark (make, if required) more helpers
     // "HFIF_NO_RPI_OR_GC".
     unsigned helperFlags = getHelperFuncInfo(helperFunc).Flags;
-    return (helperFlags & (HFIF_SS_ARG | HFIF_NO_RPI_OR_GC | HFIF_NO_SS_SAVE)) == HFIF_NONE;
+    return (helperFlags & (HFIF_SS_ARG | HFIF_NO_RPI_OR_GC)) == HFIF_NONE;
 }
 
 bool Llvm::callHasShadowStackArg(const GenTreeCall* call) const
@@ -221,6 +223,13 @@ bool Llvm::callHasManagedCallingConvention(const GenTreeCall* call) const
 bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) const
 {
     return getHelperFuncInfo(helperFunc).HasFlags(HFIF_SS_ARG);
+}
+
+bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
+{
+    // Allocators can throw OOM.
+    HelperCallProperties& properties = Compiler::s_helperCallProperties;
+    return !properties.NoThrow(helperFunc) || properties.IsAllocator(helperFunc);
 }
 
 //------------------------------------------------------------------------
@@ -575,15 +584,12 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) con
 
         { FUNC(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP) CORINFO_TYPE_PTR, { }, HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
-
-        { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_CATCH) CORINFO_TYPE_INT, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_FILTER) CORINFO_TYPE_INT, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_FAULT) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_NO_SS_SAVE },
-        { FUNC(CORINFO_HELP_LLVM_EH_DISPATCHER_MUTUALLY_PROTECTING) CORINFO_TYPE_INT, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LLVM_EH_CATCH) CORINFO_TYPE_CLASS, { CORINFO_TYPE_NATIVEUINT }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_NATIVEUINT }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME) CORINFO_TYPE_VOID, { }, HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC) CORINFO_TYPE_PTR, { CORINFO_TYPE_INT, CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
-        { FUNC(CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
-        { FUNC(CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET) CORINFO_TYPE_PTR, { CORINFO_TYPE_CLASS, CORINFO_TYPE_PTR }, HFIF_SS_ARG }
+        { FUNC(CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET) CORINFO_TYPE_PTR, { CORINFO_TYPE_CLASS, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
     };
     // clang-format on
 
@@ -778,6 +784,11 @@ const char* Llvm::GetMangledSymbolName(void* symbol)
     return CallEEApi<EEApiId::GetSymbolMangledName, const char*>(m_pEECorInfo, symbol);
 }
 
+const char* Llvm::GetMangledFilterFuncletName(unsigned index)
+{
+    return CallEEApi<EEApiId::GetMangledFilterFuncletName, const char*>(m_pEECorInfo, index);
+}
+
 bool Llvm::GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig)
 {
     return CallEEApi<EEApiId::GetSignatureForMethodSymbol, int>(m_pEECorInfo, symbolHandle, pSig) != 0;
@@ -838,6 +849,11 @@ SingleThreadedCompilationContext* Llvm::GetSingleThreadedCompilationContext()
 CorInfoLlvmEHModel Llvm::GetExceptionHandlingModel()
 {
     return CallEEApi<EEApiId::GetExceptionHandlingModel, CorInfoLlvmEHModel>(m_pEECorInfo);
+}
+
+CORINFO_GENERIC_HANDLE Llvm::GetExceptionHandlingTable(CORINFO_LLVM_EH_CLAUSE* pClauses, int count)
+{
+    return CallEEApi<EEApiId::GetExceptionHandlingTable, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, pClauses, count);
 }
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExports)

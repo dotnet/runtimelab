@@ -28,6 +28,11 @@ namespace ILCompiler.DependencyAnalysis
         void InitializeNonRelocationDependencies(DependencyNodeCore<NodeFactory>.DependencyList additionalDependencies);
     }
 
+    public interface ILLVMMethodCodeNode : IMethodCodeNode
+    {
+        ISymbolNode InitializeEHInfoLLVM(ObjectNode.ObjectData ehInfo, int symbolDefOffset);
+    }
+
     [DebuggerTypeProxy(typeof(MethodCodeNodeDebugView))]
     public class MethodCodeNode : ObjectNode, IMethodBodyNode, INodeWithCodeInfo, INodeWithDebugInfo, ISymbolDefinitionNode, ISpecialUnboxThunkNode, IMethodCodeNode
     {
