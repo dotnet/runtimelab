@@ -20,19 +20,24 @@ namespace Microsoft.ManagedZLib;
 public  class InputBuffer
 {
     public ulong _totalInput; //Total input read so far
+    public uint _availInput; // Number of available bytes from _nextIN
+                             // When compressing, this should be 0 when
+                             // running out of input to compress and 
+                             // _nextIn is at the end of the input buffer
     public Memory<byte> _inputBuffer; // Input stream buffer
     private uint _bitBuffer;      // To quickly shift in this buffer
     private int _bitsInBuffer;    // #bits available in bitBuffer
     public int _wrap; //Default: Raw Deflate
-    public uint _nextIn; // Index for next input byte to be copied
+    public uint _nextIn; // Index for next input byte to be copied from
 
     /// <summary>Total bits available in the input buffer.</summary>
-    public int AvailableBits => _bitsInBuffer;
+    public int AvailableBits => _bitsInBuffer; //Used in getNextSymbol
     /// <summary>Total bytes available in the input buffer.</summary>
-    public uint _availInput; // inputBuffer.Length - next_in
-                             // (this will be moving forward while copying from it)
-    //_buffer length - it should be align with buffer being filled
-    public int AvailableBytes => _inputBuffer.Length + (_bitsInBuffer / 8);
+
+
+    //_totalInput, at the end of compression, should match this. It's going to be use
+    // just in inflate.
+    public int inputBufferSize => _inputBuffer.Length + (_bitsInBuffer / 8);
 
     /// <summary>Ensure that count bits are in the bit buffer.</summary>
     /// <param name="count">Can be up to 16.</param>

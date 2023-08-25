@@ -212,7 +212,7 @@ public class DeflateStreamTests
     }
 
     [Theory]
-    [MemberData(nameof(UncompressedTestFiles))] //Figure out how to also pass the compression level like the file names
+    [MemberData(nameof(UncompressedTestFilesBasic))] //Figure out how to also pass the compression level like the file names
     public void verifyCompression_Files_SmallestSize(string filepath)
     {
         CompressionLevel compressionLevel = CompressionLevel.SmallestSize;

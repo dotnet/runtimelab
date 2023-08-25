@@ -242,7 +242,7 @@ internal class OutputWindow
                         break;
                 }
             }
-        } while (_lookahead < MinLookahead && inputBuffer.AvailableBytes != 0);
+        } while (_lookahead < MinLookahead && inputBuffer._availInput != 0);
 
         if (_highWater < _actualWindowSize) //Migth change windowSize to ulong
         {
@@ -550,7 +550,7 @@ internal class OutputWindow
         /// It will lead us to either copy LEN bytes or just the amount available in the output window
         // taking into account the byte boundaries.
         /// </summary>
-        length = Math.Min(Math.Min(length, _windowSize - _bytesUsed), input.AvailableBytes);
+        length = Math.Min(Math.Min(length, _windowSize - _bytesUsed), input.inputBufferSize);
         int copied;
 
         // We might need wrap around to copy all bytes.

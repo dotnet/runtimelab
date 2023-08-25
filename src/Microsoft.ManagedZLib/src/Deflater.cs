@@ -94,6 +94,7 @@ internal class Deflater
     private readonly OutputWindow _output;
     private readonly InputBuffer _input;
     private readonly DeflateTrees _trees;
+    private int iterador;
     public bool NeedsInput() => _input.NeedsInput();
     public bool HasSymNext() => _trees._symIndex !=0;
     public int MaxDistance() => _output._windowSize - MinLookahead;
@@ -108,6 +109,7 @@ internal class Deflater
     // This compLevel parameter is just the version user friendly
     internal Deflater(CompressionLevel compressionLevel, int windowBits)
     {
+        iterador = 0;
         ManagedZLib.CompressionLevel zlibCompressionLevel; // This is the one actually used in all the processings
         int memLevel;
         _input = new InputBuffer();
@@ -354,7 +356,7 @@ internal class Deflater
                 finishCode = ErrorCode.Ok;
                 return _output._output.Length - _output._availableOutput; // OK
             }
-        }else if (_input.AvailableBytes == 0 && 
+        }else if (_input._availInput == 0 && 
                   Rank(flushCode)<=Rank(oldFlush) &&
                   flushCode!= ZFlushCode.Finish)
         {
@@ -363,12 +365,8 @@ internal class Deflater
         }
 
         // User must not provide more input after the first FINISH:
-        if (_input.AvailableBytes == 0)
-        {
-            Debug.Assert(flushCode != ZFlushCode.Finish);
-        }
-        //Debug.Assert(flushCode != ZFlushCode.Finish || _input.AvailableBytes != 0);
-
+        Debug.Assert(_status != ZState.FinishState || _input._availInput == 0);
+        
         //Write the header
         if (_status == ZState.InitState && _wrap == 0)
         {
@@ -444,7 +442,7 @@ internal class Deflater
         // Leading to here, after the error checking
 
         // Start a new block or continue the current one.
-        if (_input.AvailableBytes != 0 || _output._lookahead != 0 ||
+        if (_input._availInput != 0 || _output._lookahead != 0 ||
             (flushCode != ZFlushCode.NoFlush && _status != ZState.FinishState))
         {
             ZBlockState blockState;
@@ -775,11 +773,16 @@ internal class Deflater
     // matches. It is used only for the fast compression options.
     public ZBlockState DeflateFast(ZFlushCode flushCode) // TO-DO
     {
+        iterador++; //For debugging only. TODO: Take it away after
         uint hashHead; //Head of the hash chain - index
         bool blockFlush; //Set if current block must be flushed
 
         while (true)
         {
+            //if (_output._lookahead == 261)
+            //{
+            //    Debugger.Break();
+            //}
             //if (_trees._symIndex == 49119 || _output._strStart > 32510)
             //{
             //    Debugger.Break();//for debugging huge iterations that would break the breakpoint -lol-
@@ -808,6 +811,10 @@ internal class Deflater
             //At this point we have always match_length < MIN_MATCH
             if (hashHead != NIL && _output._strStart - hashHead <= MaxDistance())
             {
+                if (_trees._symIndex == 11157 || _output._lookahead == 28490)
+                {
+                    Debugger.Break(); //Exact case I'm trying to debug - Longest_match: Doesn't match native's
+                }
                 /* To simplify the code, we prevent matches with the string
                  * of window index 0 (in particular we have to avoid a match
                  * of the string with itself at the start of the input file).
@@ -819,11 +826,10 @@ internal class Deflater
             {
                 
                 blockFlush = _trees.TreeTallyDist(_output._strStart - _output._matchStart, _output._matchLength - MinMatch);
-
-                //if (_trees._symIndex == 49146 || _output._strStart > 65200)
-                //{
-                //    //Debugger.Break();
-                //}
+                if (_trees._symIndex == 11157) //Exact case I'm trying to debug
+                {
+                    //Debugger.Break();
+                }
                 _output._lookahead -= _output._matchLength;
 
                 if (_output._matchLength <= _output.MaxInsertLength() && 
@@ -854,20 +860,14 @@ internal class Deflater
             }
             else
             {
-                //if (_trees._symIndex == 49146 || _output._strStart>32510)
-                //{
-                //    Debugger.Break();
-                //}
                 // Not match, output a literal byte
-                blockFlush = _trees.TreeTallyLit(_output.Window((int)_output._strStart));
-                
+                blockFlush = _trees.TreeTallyLit(_output.Window((int)_output._strStart));          
                 _output._lookahead--;
                 _output._strStart++;
-
-                //if (_trees._symIndex == 49146 || _output._strStart > 65200)
-                //{
-                //    //Debugger.Break();
-                //}
+                if (_trees._symIndex == 11157) //Exact case I'm trying to debug
+                {
+                    //Debugger.Break();
+                }
             }
 
             if (blockFlush)
