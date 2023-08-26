@@ -23,7 +23,7 @@ namespace Microsoft.ManagedZLib;
 //   Comm. ACM, 33,4, April 1990, pp. 449-459.
 
 
-internal sealed class IHuffmanTree
+internal sealed class InflateHuffmanTree
 {
     internal const int MaxLiteralTreeElements = 288;
     internal const int MaxDistTreeElements = 32;
@@ -42,11 +42,11 @@ internal sealed class IHuffmanTree
     private readonly int _tableMask;
 
     // huffman tree for static block
-    public static IHuffmanTree StaticLiteralLengthTree { get; } = new IHuffmanTree(GetStaticLiteralTreeLength());
+    public static InflateHuffmanTree StaticLiteralLengthTree { get; } = new InflateHuffmanTree(GetStaticLiteralTreeLength());
 
-    public static IHuffmanTree StaticDistanceTree { get; } = new IHuffmanTree(GetStaticDistanceTreeLength());
+    public static InflateHuffmanTree StaticDistanceTree { get; } = new InflateHuffmanTree(GetStaticDistanceTreeLength());
 
-    public IHuffmanTree(byte[] codeLengths)
+    public InflateHuffmanTree(byte[] codeLengths)
     {
         Debug.Assert(
             codeLengths.Length == MaxLiteralTreeElements ||

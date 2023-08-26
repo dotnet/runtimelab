@@ -23,7 +23,7 @@ public class CompressedFile
         UncompressedData = File.ReadAllBytes(filePath);
         CompressedDataStream = new MemoryStream(capacity: UncompressedData.Length);
 
-        var compressionStream = new System.IO.Compression.DeflateStream(CompressedDataStream, compressionLevel);
+        var compressionStream = new System.IO.Compression.DeflateStream(CompressedDataStream, compressionLevel, leaveOpen: true);
         compressionStream.Write(UncompressedData, 0, UncompressedData.Length);
         compressionStream.Flush();
 
