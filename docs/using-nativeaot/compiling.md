@@ -88,6 +88,8 @@ and the publish command
 
 Note that the wasm-tools workload is identified as a dependency even though its not used, and this confuses the toolchain, hence `/p:MSBuildEnableWorkloadResolver=false`.
 
+By default, the build will produce a binary with debug information, which is usually quite large. If you do not need it, add `/p:NativeDebugSymbols=false` to the command line. Note that this will disable the generation of _all_ debug info, including function names for stack traces.
+
 #### WebAssembly native libraries
 To compile a WebAssembly native library that exports a function `Answer`:
 ```cs
@@ -109,6 +111,13 @@ Module['onRuntimeInitialized'] = function() {
 };
 ```
 
+Note that assemblies other than the one being published (e. g. those from referenced projects) need to be explicitly specified in the project file if you want their methods to be exported:
+```xml
+<ItemGroup>
+  <UnmanagedEntryPointsAssembly Include="DependencyAssembly" />
+</ItemGroup>
+```
+
 #### WebAssembly module imports
 Functions in other WebAssembly modules can be imported and invoked using `DllImport` e.g.
 ```cs
@@ -127,6 +136,8 @@ Will cause the above `random_get` to create this WebAssembly:
 ```
 
 This can be used to import WASI functions that are in other modules, either as the above, in WASI, `wasi_snapshot_preview1`, or in other WebAssembly modules that may be linked with [WebAssembly module linking](https://github.com/WebAssembly/module-linking).
+
+The use of explicit `WasmImport`s is currently mandatory for the `wasi-wasm` target, see https://github.com/dotnet/runtimelab/issues/2383.
 
 #### WASM with WASI
 

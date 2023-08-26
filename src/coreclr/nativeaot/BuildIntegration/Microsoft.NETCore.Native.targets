@@ -117,6 +117,8 @@ The .NET Foundation licenses this file to you under the MIT license.
     <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(OptimizationPreference) == 'Size'">-Oz</WasmOptimizationSetting>
 
     <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-unknown-wasi</IlcLlvmTarget>
+    <IlcWasmStackSize>1048576</IlcWasmStackSize> <!-- 1MB -->
+    <IlcWasmGlobalBase>1024</IlcWasmGlobalBase> <!-- This value is also hardcoded in the compiler -->
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(IlcCompileDependsOn)'=='' and '$(NativeCompilationDuringPublish)' != 'false'">
@@ -510,6 +512,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="@(NativeObjects->'&quot;%(Identity)&quot;'->Replace(&quot;\&quot;, &quot;/&quot;))" />
       <CustomLinkerArg Include="-o &quot;$(NativeBinary.Replace(&quot;\&quot;, &quot;/&quot;))&quot;" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
+      <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-Wl,--strip-all" />
+      <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-Wl,--compress-relocations" />
       <CustomLinkerArg Condition="'$(Optimize)' != 'true'" Include="$(WasmOptimizationSetting) -flto" />
       <CustomLinkerArg Condition="'$(IlcLlvmTarget)' != ''" Include="-target $(IlcLlvmTarget)" />
     </ItemGroup>
@@ -520,6 +524,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Condition="'$(ExportsFile)' != ''" Include="-s EXPORTED_FUNCTIONS=@&quot;$(ExportsFile)&quot;" />
       <CustomLinkerArg Include="-s ALLOW_MEMORY_GROWTH=1" />
       <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" />
+      <CustomLinkerArg Include="-s GLOBAL_BASE=$(IlcWasmGlobalBase)" />
+      <CustomLinkerArg Include="-s TOTAL_STACK=$(IlcWasmStackSize)" />
       <CustomLinkerArg Condition="'$(WasmEnableJSBigIntIntegration)' == 'true'" Include="-s WASM_BIGINT=1" />
       <CustomLinkerArg Condition="'$(WasmEnableExceptionHandling)' != 'true'" Include="-s DISABLE_EXCEPTION_CATCHING=0" />
       <CustomLinkerArg Condition="'$(WasmEnableExceptionHandling)' == 'true'" Include="-fwasm-exceptions" />
@@ -531,13 +537,15 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ReadLinesFromFile>
 
     <ItemGroup Condition ="'$(_targetOS)' == 'wasi'" >
-      <!-- Wasi has lots of undefined symbols currently, mostly globalization -->
-      <CustomLinkerArg Include="-Wl,--unresolved-symbols=ignore-all -lstdc++ -Wl,--error-limit=0" />
       <CustomLinkerArg Include="--sysroot=&quot;$(WASI_SDK_PATH.Replace(&quot;\&quot;, &quot;/&quot;))/share/wasi-sysroot&quot;" />
-      <CustomLinkerArg Include="-Wl,--max-memory=2147483648" />
-      <CustomLinkerArg Include="-lwasi-emulated-process-clocks -lwasi-emulated-signal -lwasi-emulated-mman -lwasi-emulated-getpid" />
-      <CustomLinkerArg Include="-mexec-model=reactor" Condition="'$(NativeLib)' == 'Shared'" />
       <CustomLinkerArg Include="@(CustomLinkerArgExport->'-Wl,--export=%(Identity)')" />
+      <!-- Wasi has lots of undefined symbols currently, mostly globalization -->
+      <CustomLinkerArg Include="-Wl,--unresolved-symbols=ignore-all -Wl,--error-limit=0" />
+      <CustomLinkerArg Include="-lstdc++ -lwasi-emulated-process-clocks -lwasi-emulated-signal -lwasi-emulated-mman -lwasi-emulated-getpid" />
+      <CustomLinkerArg Include="-Wl,--max-memory=2147483648" />
+      <CustomLinkerArg Include="-Wl,--global-base=$(IlcWasmGlobalBase)" />
+      <CustomLinkerArg Include="-Wl,-z,stack-size=$(IlcWasmStackSize)" />
+      <CustomLinkerArg Include="-mexec-model=reactor" Condition="'$(NativeLib)' == 'Shared'" />
     </ItemGroup>
 
     <ItemGroup>
