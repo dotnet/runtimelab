@@ -16,8 +16,6 @@ namespace Microsoft.ManagedZLib.Benchmarks;
 // BenchmarkDotNet creates a type which derives from type with benchmarks. 
 // So the type with benchmarks must not be sealed and it can NOT BE STATIC 
 // and it has to BE PUBLIC. It also has to be a class (no structs support).
-[GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
-[CategoriesColumn]
 public class ManagedZLibBenchmark
 {
     public static IEnumerable<string> UncompressedTestFileNames()
@@ -54,6 +52,7 @@ public class ManagedZLibBenchmark
         outputStream!.Position = 0;
         System.IO.Compression.DeflateStream decompressor = new System.IO.Compression.DeflateStream(CompressedFile.CompressedDataStream, System.IO.Compression.CompressionMode.Decompress, leaveOpen: true);
         decompressor?.CopyTo(outputStream);
+        decompressor?.Dispose();
     }
 
     [Benchmark]
@@ -63,7 +62,8 @@ public class ManagedZLibBenchmark
         outputStream!.Position = 0;
         DeflateStream decompressor = new DeflateStream(CompressedFile.CompressedDataStream, CompressionMode.Decompress, leaveOpen: true);
         decompressor?.CopyTo(outputStream);
-    } //It should dipose itself after this context
+        decompressor?.Dispose();
+    }
 
     
     [GlobalCleanup]
