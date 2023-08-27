@@ -1560,8 +1560,10 @@ void HelperCallProperties::init()
 
             case CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
             case CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP:
-            case CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC:
-            case CORINFO_HELP_LLVM_DYNAMIC_STACK_RELEASE:
+            case CORINFO_HELP_LLVM_EH_CATCH:
+            case CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES:
+            case CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME:
+            case CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME:
 
                 noThrow = true;
                 mutatesHeap = true;
@@ -1569,7 +1571,6 @@ void HelperCallProperties::init()
                 switch (helper)
                 {
                     case CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
-                    case CORINFO_HELP_LLVM_DYNAMIC_STACK_ALLOC:
                         nonNullReturn = true;
                         break;
 

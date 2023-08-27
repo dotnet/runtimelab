@@ -260,6 +260,7 @@ public:
 
         GenTree* FirstNonPhiNode() const;
         GenTree* FirstNonCatchArgNode() const;
+        GenTree* FirstNonPhiOrCatchArgNode() const;
 
         void InsertBefore(GenTree* insertionPoint, GenTree* node);
         void InsertAfter(GenTree* insertionPoint, GenTree* node);

@@ -671,7 +671,6 @@ CONFIG_INTEGER(JitDispIns, W("JitDispIns"), 0)
 #define DEBUG_ONLY_BY_DEFAULT 0
 #endif
 
-CONFIG_INTEGER(JitUseDynamicStackForLclHeap, W("JitUseDynamicStackForLclHeap"), 0)
 CONFIG_INTEGER(JitCheckLlvmIR, W("JitCheckLlvmIR"), DEBUG_ONLY_BY_DEFAULT)
 #endif // TARGET_WASM
 

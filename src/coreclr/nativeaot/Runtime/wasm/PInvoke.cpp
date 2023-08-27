@@ -3,11 +3,15 @@
 
 #include <stdlib.h>
 
+#include "common.h"
 #include "CommonTypes.h"
 #include "CommonMacros.h"
+#include "daccess.h"
+#include "PalRedhawkCommon.h"
+#include "PalRedhawk.h"
 
-extern "C" thread_local void* t_pShadowStackBottom = nullptr;
-extern "C" thread_local void* t_pShadowStackTop = nullptr;
+thread_local void* t_pShadowStackBottom = nullptr;
+thread_local void* t_pShadowStackTop = nullptr;
 
 COOP_PINVOKE_HELPER(void*, RhpGetOrInitShadowStackTop, ())
 {
@@ -15,6 +19,12 @@ COOP_PINVOKE_HELPER(void*, RhpGetOrInitShadowStackTop, ())
     if (pShadowStack == nullptr)
     {
         pShadowStack = malloc(1000000); // ~1MB.
+        if (pShadowStack == nullptr)
+        {
+            RhFailFast(); // Fatal OOM.
+        }
+
+        ASSERT(t_pShadowStackBottom == nullptr);
         t_pShadowStackBottom = pShadowStack;
     }
 

@@ -1,20 +1,14 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#include "ExceptionHandling.h"
+#include "CommonTypes.h"
+#include "CommonMacros.h"
 
-ExceptionDispatchData* BeginSingleFrameDispatch(void* pFrameDispatchData)
+COOP_PINVOKE_HELPER(void, RhpThrowNativeException, ())
 {
-    return static_cast<ExceptionDispatchData*>(pFrameDispatchData);
+    __builtin_wasm_throw(/* CPP_EXCEPTION_TAG */ 0, nullptr);
 }
 
-COOP_PINVOKE_HELPER(void, RhpThrowNativeException, (void* pDispatcherShadowFrame, Object** pManagedException))
+COOP_PINVOKE_HELPER(void, RhpReleaseNativeException, ())
 {
-    ExceptionDispatchData* pException = new ExceptionDispatchData(pDispatcherShadowFrame, pManagedException);
-    __builtin_wasm_throw(/* CPP_EXCEPTION_TAG */ 0, pException);
-}
-
-COOP_PINVOKE_HELPER(void, RhpReleaseNativeException, (ExceptionDispatchData* pDispatchData))
-{
-    delete pDispatchData;
 }

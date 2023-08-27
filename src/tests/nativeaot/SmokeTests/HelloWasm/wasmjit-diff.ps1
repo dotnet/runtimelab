@@ -11,7 +11,7 @@ Param(
     [switch]$Rebuild,
     [switch]$Analyze,
     [switch]$Summary,
-    [ValidateSet("Debug","Release")][string]$Config = "Release",
+    [ValidateSet("Debug","Checked","Release")][string]$Config = "Release",
     [ValidateSet("Debug","Checked","Release")][string]$IlcConfig = "Release",
     [Nullable[bool]]$DebugSymbols = $null,
     [uint]$NumberOfDiffsToShow = 20,

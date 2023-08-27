@@ -12,14 +12,16 @@ namespace ILCompiler.DependencyAnalysis
     {
         private readonly MethodDesc _owningMethod;
         private readonly ObjectData _data;
+        private readonly int _symbolDefOffset;
 
         public MethodDesc Method => _owningMethod;
 
-        public MethodExceptionHandlingInfoNode(MethodDesc owningMethod, ObjectData data)
+        public MethodExceptionHandlingInfoNode(MethodDesc owningMethod, ObjectData data, int symbolDefOffset = 0)
         {
             _owningMethod = owningMethod;
             Debug.Assert(data.DefinedSymbols == null || data.DefinedSymbols.Length == 0);
             _data = new ObjectData(data.Data, data.Relocs, data.Alignment, new ISymbolDefinitionNode[] { this });
+            _symbolDefOffset = symbolDefOffset;
         }
 
         public override ObjectNodeSection GetSection(NodeFactory factory) => _owningMethod.Context.Target.IsWindows
@@ -32,7 +34,9 @@ namespace ILCompiler.DependencyAnalysis
         {
             sb.Append("__ehinfo_" + nameMangler.GetMangledMethodName(_owningMethod));
         }
-        public int Offset => 0;
+
+        int ISymbolNode.Offset => 0;
+        int ISymbolDefinitionNode.Offset => _symbolDefOffset;
         public override bool IsShareable => true;
 
         public override ObjectData GetData(NodeFactory factory, bool relocsOnly = false)

@@ -650,7 +650,7 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartBackgroundWork(_In_ BackgroundCall
 {
 #ifdef HOST_WASM
     // No threads, so we can't start one
-    ASSERT(false);
+    RhFailFast();
 #endif // HOST_WASM
     pthread_attr_t attrs;
 
