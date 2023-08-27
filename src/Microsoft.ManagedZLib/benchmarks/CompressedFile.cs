@@ -34,5 +34,5 @@ public class CompressedFile
     public override string ToString() => Name;
 
     internal static string GetFilePath(string fileName)
-        => Path.Combine("UncompressedTestData", fileName);
+        => Path.Combine("UncompressedTestFiles", fileName);
 }
