@@ -4,6 +4,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Microsoft.ManagedZLib;
 
@@ -260,12 +262,10 @@ internal sealed class InflateHuffmanTree
         }
     }
 
-    //
     // This function will try to get enough bits from input and
     // try to decode the bits.
     // If there are no enought bits in the input, this function will return -1.
-    //
-    public int GetNextSymbol(InputBuffer input) //Vivi's notes> Still deciding how to treat in/output
+    public int GetNextSymbol(InputBuffer input)
     {
         // Try to load 16 bits into input buffer if possible and get the bitBuffer value.
         // If there aren't 16 bits available we will return all we have in the
@@ -277,20 +277,28 @@ internal sealed class InflateHuffmanTree
         }
 
         // decode an element
-        int symbol = _table[bitBuffer & _tableMask];
+        int symbol = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_table), (int)bitBuffer & _tableMask);
         if (symbol < 0)
-        {       //  this will be the start of the binary tree
+        {
+            //  this will be the start of the binary tree
             // navigate the tree
+            int res = symbol;
             uint mask = (uint)1 << _tableBits;
-            do
+            // uint index = bitBuffer & (uint)_tableMask;
+            // If it's negative and it's not in the dictionary, 
+            // process the symbol
+            // if (!_symDict.TryGetValue(index, out symbol))
             {
-                symbol = -symbol;
-                if ((bitBuffer & mask) == 0)
-                    symbol = _left[symbol];
-                else
-                    symbol = _right[symbol];
-                mask <<= 1;
-            } while (symbol < 0);
+                do
+                {// Most expensive operation
+                    res = -res;
+                    ref short traversal = ref MemoryMarshal.GetArrayDataReference((bitBuffer & mask) == 0 ? _left : _right);
+                    res = Unsafe.Add(ref traversal, res);
+                    mask <<= 1;
+                } while (res < 0);
+                // _symDict[index] = res;
+                symbol = res;
+            }
         }
 
         int codeLength = _codeLengthArray[symbol];
