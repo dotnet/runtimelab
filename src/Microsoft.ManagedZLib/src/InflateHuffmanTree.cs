@@ -32,7 +32,7 @@ internal sealed class InflateHuffmanTree
     internal const int EndOfBlockCode = 256; //Reserved for EndOfByte (RFC1951)
     internal const int NumberOfCodeLengthTreeElements = 19;
 
-    private readonly int _tableBits;
+    private readonly uint _tableBits;
     private readonly short[] _table;
     private readonly short[] _left;
     private readonly short[] _right;
@@ -41,7 +41,7 @@ internal sealed class InflateHuffmanTree
     private uint[]? _codeArrayDebug;
 #endif
 
-    private readonly int _tableMask;
+    private readonly uint _tableMask;
 
     // huffman tree for static block
     public static InflateHuffmanTree StaticLiteralLengthTree { get; } = new InflateHuffmanTree(GetStaticLiteralTreeLength());
@@ -67,9 +67,9 @@ internal sealed class InflateHuffmanTree
             // bits for distance tree table and code length tree table
             _tableBits = 7;
         }
-        _tableMask = (1 << _tableBits) - 1;
+        _tableMask = (uint)(1 << (int)_tableBits) - 1;
 
-        _table = new short[1 << _tableBits];
+        _table = new short[1 << (int)_tableBits];
 
         // I need to find proof that left and right array will always be
         // enough. I think they are.
@@ -162,11 +162,11 @@ internal sealed class InflateHuffmanTree
         for (int ch = 0; ch < _codeLengthArray.Length; ch++)
         {
             // length of this code
-            int len = _codeLengthArray[ch];
+            uint len = _codeLengthArray[ch];
             if (len > 0)
             {
                 // start value (bit reversed)
-                int start = (int)codeArray[ch];
+                uint start = codeArray[ch];
 
                 if (len <= _tableBits)
                 {
@@ -190,14 +190,14 @@ internal sealed class InflateHuffmanTree
                     //     initial_start_at + table_size - increment < table_size
                     // or: initial_start_at < increment
                     //
-                    int increment = 1 << len;
+                    uint increment = (uint)(1 << (int)len);
                     if (start >= increment)
                     {
                         throw new InvalidDataException("InvalidHuffmanData - Failed to construct a huffman tree using the length array. The stream might be corrupted.");
                     }
 
                     // Note the bits in the table are reverted.
-                    int locs = 1 << (_tableBits - len);
+                    int locs = 1 << (int)(_tableBits - len);
                     for (int j = 0; j < locs; j++)
                     {
                         _table[start] = (short)ch;
@@ -209,15 +209,15 @@ internal sealed class InflateHuffmanTree
                     // For any code which has length longer than num_elements,
                     // build a binary tree.
 
-                    int overflowBits = len - _tableBits; // the nodes we need to respent the data.
-                    int codeBitMask = 1 << _tableBits; // mask to get current bit (the bits can't fit in the table)
+                    uint overflowBits = len - _tableBits; // the nodes we need to respent the data.
+                    uint codeBitMask = (uint)(1 << (int)_tableBits); // mask to get current bit (the bits can't fit in the table)
 
                     // the left, right table is used to repesent the
                     // the rest bits. When we got the first part (number bits.) and look at
                     // tbe table, we will need to follow the tree to find the real character.
                     // This is in place to avoid bloating the table if there are
                     // a few ones with long code.
-                    int index = start & ((1 << _tableBits) - 1);
+                    uint index = start & ((uint)(1 << (int)_tableBits) - 1);
                     short[] array = _table;
 
                     do
@@ -250,7 +250,7 @@ internal sealed class InflateHuffmanTree
                             // if current bit is 1, set value in the right array
                             array = _right;
                         }
-                        index = -value; // go to next node
+                        index =  (uint)-value; // go to next node
 
                         codeBitMask <<= 1;
                         overflowBits--;
@@ -277,13 +277,13 @@ internal sealed class InflateHuffmanTree
         }
 
         // decode an element
-        int symbol = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_table), (int)bitBuffer & _tableMask);
+        int symbol = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_table), bitBuffer & _tableMask);
         if (symbol < 0)
         {
             //  this will be the start of the binary tree
             // navigate the tree
             int res = symbol;
-            uint mask = (uint)1 << _tableBits;
+            uint mask = 1U << (int)_tableBits;
             // uint index = bitBuffer & (uint)_tableMask;
             // If it's negative and it's not in the dictionary, 
             // process the symbol

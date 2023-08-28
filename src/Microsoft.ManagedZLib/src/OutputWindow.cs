@@ -118,7 +118,7 @@ internal sealed class OutputWindow
         /// It will lead us to either copy LEN bytes or just the amount available in the output window
         // taking into account the byte boundaries.
         /// </summary>
-        length = Math.Min(Math.Min(length, WindowSize - _bytesUsed), input.AvailableBytes);
+        length = Math.Min(Math.Min(length, WindowSize - _bytesUsed), (int)input.AvailableBytes);
         int copied;
 
         // We might need wrap around to copy all bytes.
