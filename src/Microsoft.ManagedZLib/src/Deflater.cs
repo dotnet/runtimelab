@@ -813,7 +813,7 @@ internal class Deflater
             {
                 if (_trees._symIndex == 11157 || _output._lookahead == 28490)
                 {
-                    Debugger.Break(); //Exact case I'm trying to debug - Longest_match: Doesn't match native's
+                    //Debugger.Break(); //Exact case I'm trying to debug - Longest_match: Doesn't match native's
                 }
                 /* To simplify the code, we prevent matches with the string
                  * of window index 0 (in particular we have to avoid a match
@@ -826,9 +826,13 @@ internal class Deflater
             {
                 
                 blockFlush = _trees.TreeTallyDist(_output._strStart - _output._matchStart, _output._matchLength - MinMatch);
-                if (_trees._symIndex == 11157) //Exact case I'm trying to debug
+                if (_trees._symIndex == 11157) //Exact case I'm trying to debug - sum case
                 {
                     //Debugger.Break();
+                }
+                if (_trees._symIndex > 49000) 
+                {
+                    Debugger.Break();
                 }
                 _output._lookahead -= _output._matchLength;
 
@@ -867,6 +871,10 @@ internal class Deflater
                 if (_trees._symIndex == 11157) //Exact case I'm trying to debug
                 {
                     //Debugger.Break();
+                }
+                if (_trees._symIndex > 49000)
+                {
+                    Debugger.Break();
                 }
             }
 
