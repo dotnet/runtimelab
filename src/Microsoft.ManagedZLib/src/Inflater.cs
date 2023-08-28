@@ -2,21 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Buffers;
-using System.Collections;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Metrics;
-using System.Drawing;
 using System.IO;
-using System.IO.Compression;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Security;
-using System.Text;
 using static Microsoft.ManagedZLib.ManagedZLib;
-using static Microsoft.ManagedZLib.ManagedZLib.ZLibStreamHandle;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Microsoft.ManagedZLib;
 
@@ -75,8 +63,6 @@ internal class Inflater
     private bool _couldDecode;
     private object SyncLock => this;                    // Used to make writing to unmanaged structures atomic
     public bool NeedsInput() => _input.NeedsInput(); //For filling up the reference in InputBuffer class to DeflateStream's underlying stream
-    public int AvailableOutput => _output.AvailableBytes;//This could be:  if we decide to make a struct instead of classes
-                                                         //public int AvailableOutput => (int)_zlibStream.AvailOut;
 
     //-------------------- Bellow const tables used in decoding:
     // The base length for length-code 257 - 285.
@@ -158,7 +144,7 @@ internal class Inflater
     /// <summary>
     /// Returns true if the end of the stream has been reached.
     /// </summary>
-    public bool Finished() =>  _state == InflaterState.Done || _state == InflaterState.VerifyingFooter;
+    public bool Finished() =>  _state == InflaterState.Done || _state == InflaterState.VerifyingFooter; // Verifying footer would be for future GZip/Zlib integration
 
     public int Inflate(Span<byte> buffer) 
     {
@@ -386,7 +372,7 @@ internal class Inflater
     {
         end_of_block_code_seen = false;
         // A little bit faster than frequently accessing the property
-        int freeBytes = _output.FreeBytes;
+        uint freeBytes = _output.FreeBytes;
         while (freeBytes > _decodeLimit)
         {
             int symbol;
@@ -510,8 +496,8 @@ internal class Inflater
                         offset = _distanceCode + 1;
                     }
 
-                    _output.WriteLengthDistance(_length, offset);
-                    freeBytes -= _length;
+                    _output.WriteLengthDistance((uint)_length, (uint)offset);
+                    freeBytes -= (uint)_length;
                     _state = InflaterState.DecodeTop;
                     break;
 

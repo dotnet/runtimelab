@@ -2,13 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Buffers;
 using System.Diagnostics;
-using System.IO;
-using System.Reflection.Emit;
-using System.Security;
-
-using ZErrorCode = Microsoft.ManagedZLib.ManagedZLib.ErrorCode;
 using ZFlushCode = Microsoft.ManagedZLib.ManagedZLib.FlushCode;
 
 namespace Microsoft.ManagedZLib
@@ -154,7 +148,7 @@ namespace Microsoft.ManagedZLib
                 // and deflate
 
                 count = Deflate(flushCode);
-                int bytesRead = outputBuffer.Length - _output.AvailableBytes;
+                int bytesRead = outputBuffer.Length - (int)_output.AvailableBytes;
 
                 return bytesRead;
             }

@@ -3,7 +3,6 @@
 
 using System;
 using System.Diagnostics;
-using static Microsoft.ManagedZLib.ManagedZLib.ZLibStreamHandle;
 
 namespace Microsoft.ManagedZLib;
 
@@ -16,11 +15,11 @@ namespace Microsoft.ManagedZLib;
 /// </summary>
 internal sealed class OutputWindow
 {
-    private int WindowSize;
-    private int WindowMask;
+    private uint WindowSize;
+    private uint WindowMask;
     private byte[] _window; // The window is 2^n bytes where n is number of bits
-    private int _lastIndex; // Position to where we should write next byte
-    private int _bytesUsed; // Number of bytes in the output window that haven't been consumed yet.
+    private uint _lastIndex; // Position to where we should write next byte
+    private uint _bytesUsed; // Number of bytes in the output window that haven't been consumed yet.
 
     /// <summary>
     /// The constructor will recieve the window bits and with that construct the 
@@ -35,7 +34,7 @@ internal sealed class OutputWindow
     /// </summary>
     internal OutputWindow(int windowBits)
     {
-        WindowSize = 1 << windowBits; //logaritmic base 2
+        WindowSize = (uint)(1 << (int)windowBits); //logaritmic base 2
         WindowMask = WindowSize - 1;
         _window = new byte[WindowSize];
     }
@@ -62,7 +61,7 @@ internal sealed class OutputWindow
     }
 
     //Important part of LZ77 algorithm
-    public void WriteLengthDistance(int length, int distance)
+    public void WriteLengthDistance(uint length, uint distance)
     {
         //Checking there's enough space for copying the output
         Debug.Assert((_bytesUsed + length) <= WindowSize, "No Enough space");
@@ -70,10 +69,10 @@ internal sealed class OutputWindow
         // Move backwards distance bytes in the output stream,
         // and copy length bytes from this position to the output stream.
         _bytesUsed += length;
-        int copyStart = (_lastIndex - distance) & WindowMask;
+        uint copyStart = (_lastIndex - distance) & WindowMask;
 
         // Total space that would be taken by copying the length bytes
-        int border = WindowSize - length;
+        uint border = WindowSize - length;
         if (copyStart <= border && _lastIndex < border)
         {
             if (length <= distance)
@@ -118,69 +117,69 @@ internal sealed class OutputWindow
         /// It will lead us to either copy LEN bytes or just the amount available in the output window
         // taking into account the byte boundaries.
         /// </summary>
-        length = Math.Min(Math.Min(length, WindowSize - _bytesUsed), (int)input.AvailableBytes);
-        int copied;
+        length = Math.Min(Math.Min(length, (int)(WindowSize - _bytesUsed)), (int)input.AvailableBytes);
+        uint copied;
 
         // We might need wrap around to copy all bytes.
-        int spaceLeft = WindowSize - _lastIndex;
+        int spaceLeft = (int)(WindowSize - _lastIndex);
         if (length > spaceLeft) //Checking is within the boundaries
         {
             // Copy the first part
-            copied = input.CopyTo(_window, _lastIndex, spaceLeft);
+            copied = (uint)input.CopyTo(_window, (int)_lastIndex, spaceLeft);
             if (copied == spaceLeft)
             {
                 // Only try to copy the second part if we have enough bytes in input
-                copied += input.CopyTo(_window, 0, length - spaceLeft);
+                copied += (uint)input.CopyTo(_window, 0, length - spaceLeft);
             }
         }
         else
         {
             // Only one copy is needed if there is no wrap around.
-            copied = input.CopyTo(_window, _lastIndex, length);
+            copied = (uint)input.CopyTo(_window, (int)_lastIndex, length);
         }
 
         _lastIndex = (_lastIndex + copied) & WindowMask;
         _bytesUsed += copied;
-        return copied; 
+        return (int)copied; 
     }
 
     /// <summary>Free space in output window.</summary>
-    public int FreeBytes => WindowSize - _bytesUsed;
+    public uint FreeBytes => WindowSize - (uint)_bytesUsed;
 
     /// <summary>Bytes not consumed in output window.</summary>
-    public int AvailableBytes => _bytesUsed;
+    public uint AvailableBytes => _bytesUsed;
 
     /// <summary>Copy the decompressed bytes to output buffer.</summary>
     public int CopyTo(Span<byte> usersOutput)
     {
-        int copy_lastIndex;
+        uint copy_lastIndex;
 
         if (usersOutput.Length > _bytesUsed)
         {
             // We can copy all the decompressed bytes out
             copy_lastIndex = _lastIndex; //Last index auxiliar
-            usersOutput = usersOutput.Slice(0,_bytesUsed);
+            usersOutput = usersOutput.Slice(0,(int)_bytesUsed);
         }
         else
         {
             // Copy length of bytes
-            copy_lastIndex = (_lastIndex - _bytesUsed + usersOutput.Length) & WindowMask;
+            copy_lastIndex = (_lastIndex - (uint)_bytesUsed + (uint)usersOutput.Length) & WindowMask;
         }
 
-        int copied = usersOutput.Length;
+        uint copied = (uint)usersOutput.Length;
 
-        int spaceLeft = usersOutput.Length - copy_lastIndex;
+        int spaceLeft = (int)((uint)usersOutput.Length - copy_lastIndex);
         if (spaceLeft > 0)
         {
             // this means we need to copy two parts separately
             // copy the spaceLeft-bytes from the end of the output window
-            _window.AsSpan(WindowSize - spaceLeft, spaceLeft).CopyTo(usersOutput);
-            usersOutput = usersOutput.Slice(spaceLeft, copy_lastIndex);
+            _window.AsSpan((int)WindowSize - spaceLeft, spaceLeft).CopyTo(usersOutput);
+            usersOutput = usersOutput.Slice(spaceLeft, (int)copy_lastIndex);
         }
-        _window.AsSpan(copy_lastIndex - usersOutput.Length, usersOutput.Length).CopyTo(usersOutput);
+        _window.AsSpan((int)(copy_lastIndex - (uint)usersOutput.Length), usersOutput.Length).CopyTo(usersOutput);
+        Debug.Assert((_bytesUsed- copied) >= 0, "check this function and find why we copied more bytes than we have");
         _bytesUsed -= copied;
-        Debug.Assert(_bytesUsed >= 0, "check this function and find why we copied more bytes than we have");
-        return copied;
+        return (int)copied;
     }
 }
 
