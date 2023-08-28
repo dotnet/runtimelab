@@ -74,22 +74,25 @@ internal sealed class InputBuffer
     {
         if (_bitsInBuffer < 8)
         {
-            if (_buffer.Length > 1)
+            if (_buffer.Length > 1) // 2+ bytes in input buffer - Load 2 bytes or 16 bits
             {
-                Span<byte> span = _buffer.Span;
-                _bitBuffer |= (uint)span[0] << _bitsInBuffer;
-                _bitBuffer |= (uint)span[1] << (_bitsInBuffer + 8);
-                _buffer = _buffer.Slice(2);
+                // Load the 16 bits
+                _bitBuffer |= (uint)_buffer.Span[1] << (_bitsInBuffer + 8); // Biggest bounds check first
+                _bitBuffer |= (uint)_buffer.Span[0] << _bitsInBuffer;
+                _buffer = _buffer.Slice(2); // Moves input buffer init position by 2 bytes
+
+                // Increment the counter of number of bits in buffer
                 _bitsInBuffer += 16;
             }
-            else if (_buffer.Length != 0)
+            else if (_buffer.Length != 0) // 1 byte in input buffer - Load 1 byte or 8 bits
             {
                 _bitBuffer |= (uint)_buffer.Span[0] << _bitsInBuffer;
-                _buffer = _buffer.Slice(1);
+                _buffer = Memory<byte>.Empty; // At this point, we've validated _buffer is empty
                 _bitsInBuffer += 8;
             }
         }
-        else if (_bitsInBuffer < 16)
+        else if (_bitsInBuffer < 16) // Here we know that bitBuffer has at least 8, but no 16
+                                     // So we ensure it has at least 16 bits by loading 8.
         {
             if (!_buffer.IsEmpty)
             {
