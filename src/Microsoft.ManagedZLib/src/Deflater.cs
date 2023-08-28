@@ -813,7 +813,7 @@ internal class Deflater
             {
                 if (_trees._symIndex == 11157 || _output._lookahead == 28490)
                 {
-                    //Debugger.Break(); //Exact case I'm trying to debug - Longest_match: Doesn't match native's
+                    Debugger.Break(); //Exact case I'm trying to debug - Longest_match: Doesn't match native's
                 }
                 /* To simplify the code, we prevent matches with the string
                  * of window index 0 (in particular we have to avoid a match

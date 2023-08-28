@@ -35,6 +35,8 @@ internal class OutputWindow
 
     public const int CodesMaxBit = 15; // All codes must not exceed MaxBit bits
     //Min&Max matching lengths.
+    // MaxMatch - MinMatch must be at most byte.MaxValue
+    // As we cast the "longest match" length to a byte.
     public const int MinMatch = 3;
     public const int MaxMatch = 258;
     public const int MinLookahead = MaxMatch + MinMatch + 1;
@@ -396,8 +398,9 @@ internal class OutputWindow
         do
         {
             Debug.Assert(currHashHead < _strStart, "no future");
-            match = _window.Slice((int)currHashHead).Span;         
-            len = scan.CommonPrefixLength(match);
+            match = _window.Slice((int)currHashHead).Span;
+            // Limit to max match length to ensure we don't go out of range later when building trees.
+            len = int.Min(MaxMatch, scan.CommonPrefixLength(match));
 
             if (len > bestLength)
             {
