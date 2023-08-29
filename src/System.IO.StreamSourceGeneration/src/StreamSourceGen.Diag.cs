@@ -6,12 +6,13 @@ using System.Diagnostics;
 
 namespace System.IO.StreamSourceGeneration
 {
+    // If/when this gets integrated into dotnet/runtime, this must be kept in sync with https://github.com/dotnet/runtime/blob/main/docs/project/list-of-diagnostics.md
     public partial class StreamSourceGen
     {
         // Stream does not support read or write
         private static readonly DiagnosticDescriptor s_TypeDoesNotImplementReadOrWrite =
             new DiagnosticDescriptor(
-                id: "FOOBAR001",
+                id: "SYSLIB1301",
                 title: "Type does not implement any Read or Write",
                 messageFormat: "'{0}' does not implement any Read or Write method",
                 category: "StreamSourceGen",
@@ -20,28 +21,28 @@ namespace System.IO.StreamSourceGeneration
         // Sync-over-async or async-over-sync
         private static readonly DiagnosticDescriptor s_ReadDoingAsyncOverSync =
             new DiagnosticDescriptor(
-                id: "FOOBAR002",
+                id: "SYSLIB1302",
                 title: "Stream does Read as sync-over-async",
                 messageFormat: "'{0}' does not implement any Read method and hence is doing sync-over-async",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
         private static readonly DiagnosticDescriptor s_ReadAsyncDoingSyncOverAsync =
             new DiagnosticDescriptor(
-                id: "FOOBAR003",
+                id: "SYSLIB1303",
                 title: "Stream does ReadAsync as async-over-sync",
                 messageFormat: "'{0}' does not implement any ReadAsync method and hence is doing async-over-sync",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
         private static readonly DiagnosticDescriptor s_WriteDoingAsyncOverSync =
             new DiagnosticDescriptor(
-                id: "FOOBAR004",
+                id: "SYSLIB1304",
                 title: "Stream does Write as sync-over-async",
                 messageFormat: "'{0}' does not implement any Write method and hence is doing sync-over-async",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
         private static readonly DiagnosticDescriptor s_WriteAsyncDoingSyncOverAsync =
             new DiagnosticDescriptor(
-                id: "FOOBAR005",
+                id: "SYSLIB1305",
                 title: "Stream does WriteAsync as async-over-sync",
                 messageFormat: "'{0}' does not implement any WriteAsync method and hence is doing async-over-sync",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
@@ -49,7 +50,7 @@ namespace System.IO.StreamSourceGeneration
         // Consider Span/Memory overloads for better performance
         private static readonly DiagnosticDescriptor s_ConsiderImplementingReadSpan =
             new DiagnosticDescriptor(
-                id: "FOOBAR006",
+                id: "SYSLIB1306",
                 title: "Consider implementing Span-based Read",
                 messageFormat: "'{0}' does not implement Read(Span<byte>), for better performance, consider providing an implementation for it",
                 category: "StreamSourceGen",
@@ -57,7 +58,7 @@ namespace System.IO.StreamSourceGeneration
 
         private static readonly DiagnosticDescriptor s_ConsiderImplementingWriteReadOnlySpan =
             new DiagnosticDescriptor(
-                id: "FOOBAR007",
+                id: "SYSLIB1307",
                 title: "Consider implementing Span-based Write",
                 messageFormat: "'{0}' does not implement Write(ReadOnlySpan<byte>), for better performance, consider providing an implementation for it",
                 category: "StreamSourceGen",
@@ -65,7 +66,7 @@ namespace System.IO.StreamSourceGeneration
 
         private static readonly DiagnosticDescriptor s_ConsiderImplementingReadAsyncMemory =
             new DiagnosticDescriptor(
-                id: "FOOBAR008",
+                id: "SYSLIB1308",
                 title: "Consider implementing Memory-based ReadAsync",
                 messageFormat: "'{0}' does not implement ReadAsync(Memory<byte>, CancellationToken), for better performance, consider providing an implementation for it",
                 category: "StreamSourceGen",
@@ -73,7 +74,7 @@ namespace System.IO.StreamSourceGeneration
 
         private static readonly DiagnosticDescriptor s_ConsiderImplementingWriteAsyncReadOnlyMemory =
             new DiagnosticDescriptor(
-                id: "FOOBAR009",
+                id: "SYSLIB1309",
                 title: "Consider implementing Memory-based WriteAsync",
                 messageFormat: "'{0}' does not implement WriteAsync(ReadOnlyMemory<byte>, CancellationToken), for better performance, consider providing an implementation for it",
                 category: "StreamSourceGen",
@@ -82,7 +83,7 @@ namespace System.IO.StreamSourceGeneration
         // Avoid implementing APM (Begin/End) methods
         private static readonly DiagnosticDescriptor s_AvoidBeginReadEndRead =
             new DiagnosticDescriptor(
-                id: "FOOBAR010",
+                id: "SYSLIB1310",
                 title: "Avoid BeingRead or EndRead",
                 messageFormat: "'{0}' implements BeginRead or EndRead, Task-based methods shoud be preferred when possible, consider removing them to allow the source generator to emit an implementation based on Task-based ReadAsync",
                 category: "StreamSourceGen",
@@ -90,7 +91,7 @@ namespace System.IO.StreamSourceGeneration
 
         private static readonly DiagnosticDescriptor s_AvoidBeginWriteEndWrite =
             new DiagnosticDescriptor(
-                id: "FOOBAR011",
+                id: "SYSLIB1311",
                 title: "Avoid BeingWrite or EndWrite",
                 messageFormat: "'{0}' implements BeingWrite or EndWrite, Task-based methods shoud be preferred when possible, consider removing them to allow the source generator to emit an implementation based on Task-based WriteAsync",
                 category: "StreamSourceGen",
@@ -98,7 +99,7 @@ namespace System.IO.StreamSourceGeneration
 
         private static readonly DiagnosticDescriptor s_ConsiderImplementingFlush =
             new DiagnosticDescriptor(
-                id: "FOOBAR012",
+                id: "SYSLIB1312",
                 title: "Consider implementing Flush() to move any buffered data to its destination",
                 messageFormat: "'{0}' does not implement Flush but it implements one or more Write method(s), Consider implementing Flush() to move any buffered data to its destination, clear the buffer, or both",
                 category: "StreamSourceGen",
@@ -107,7 +108,7 @@ namespace System.IO.StreamSourceGeneration
         // Consider removing array-based overloads if span-based are available
         private static readonly DiagnosticDescriptor s_ConsiderRemovingReadBytes =
             new DiagnosticDescriptor(
-                id: "FOOBAR013",
+                id: "SYSLIB1313",
                 title: "Consider removing array-based Read",
                 messageFormat: "'{0}' implements Read(Span<byte>), consider removing Read(byte[], int, int) to let the source generator handle it",
                 category: "StreamSourceGen",
@@ -115,7 +116,7 @@ namespace System.IO.StreamSourceGeneration
 
         private static readonly DiagnosticDescriptor s_ConsiderRemovingReadAsyncBytes =
             new DiagnosticDescriptor(
-                id: "FOOBAR014",
+                id: "SYSLIB1314",
                 title: "Consider removing array-based ReadAsync",
                 messageFormat: "'{0}' implements ReadAsync(Memory<byte>, CancellationToken), consider removing ReadAsync(byte[], int, int, CancellationToken) to let the source generator handle it",
                 category: "StreamSourceGen",
@@ -123,7 +124,7 @@ namespace System.IO.StreamSourceGeneration
 
         private static readonly DiagnosticDescriptor s_ConsiderRemovingWriteBytes =
             new DiagnosticDescriptor(
-                id: "FOOBAR015",
+                id: "SYSLIB1315",
                 title: "Consider removing array-based Write",
                 messageFormat: "'{0}' implements Write(ReadOnlySpan<byte>), consider removing Write(byte[], int, int) to let the source generator handle it",
                 category: "StreamSourceGen",
@@ -131,7 +132,7 @@ namespace System.IO.StreamSourceGeneration
 
         private static readonly DiagnosticDescriptor s_ConsiderRemovingWriteAsyncBytes =
             new DiagnosticDescriptor(
-                id: "FOOBAR016",
+                id: "SYSLIB1316",
                 title: "Consider removing array-based WriteAsync",
                 messageFormat: "'{0}' implements WriteAsync(ReadOnlyMemory<byte>, CancellationToken), consider removing WriteAsync(byte[], int, int, CancellationToken) to let the source generator handle it",
                 category: "StreamSourceGen",
