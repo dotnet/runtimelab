@@ -2,7 +2,10 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using Microsoft.CodeAnalysis;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 
 namespace System.IO.StreamSourceGeneration
 {
@@ -268,6 +271,27 @@ namespace System.IO.StreamSourceGeneration
         }
 
         private static Diagnostic CreateDiagnostic(DiagnosticDescriptor descriptor, StreamTypeInfo streamTypeInfo)
-            => Diagnostic.Create(descriptor, Location.None, streamTypeInfo.TypeSymbol.Name);
+        {
+            Location? location = null;
+            IEnumerable<Location>? additionalLocations = null;
+
+            // TODO: improve this to ensure that the First element
+            // is the definition with the attribute.
+            // S.T.Json does a similar thing, so verify how this works with multiple partial definitions.
+            ImmutableArray<Location> locations = streamTypeInfo.TypeSymbol.Locations;
+            if (locations.Length > 1)
+            {
+                location = locations[0];
+                additionalLocations = locations.Skip(1);
+            }
+            else if (locations.Length == 1)
+            {
+                location = locations[0];
+            }
+
+            Debug.Assert(location is not null);
+
+            return Diagnostic.Create(descriptor, location, additionalLocations, streamTypeInfo.TypeSymbol.Name);
+        }
     }
 }
