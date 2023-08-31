@@ -48,7 +48,7 @@ public class ManagedZLibBenchmark
 
     [Params(System.IO.Compression.CompressionLevel.SmallestSize,
             System.IO.Compression.CompressionLevel.Optimal,
-            System.IO.Compression.CompressionLevel.Fastest)] // we don't test the performance of CompressionLevel.NoCompression on purpose
+            System.IO.Compression.CompressionLevel.Fastest)]
     public System.IO.Compression.CompressionLevel Level { get; set; }
 
     [BenchmarkCategory("Creation"), Benchmark(Baseline = true)]
@@ -87,7 +87,6 @@ public class ManagedZLibBenchmark
         outputStream!.Position = 0;
         decompressorM?.CopyTo(outputStream);
     }
-
 
     [GlobalCleanup]
     public void Cleanup()
