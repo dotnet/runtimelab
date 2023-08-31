@@ -1,15 +1,18 @@
 # .NET Runtime - Managed Zlib
 
-This branch contains a template for standalone experiments, which means that experiments that are a library, which doesn't depend on runtime changes. This minimal template allows such experiments to avoid the overhead of having all the runtime, libraries and installer code.
+This is an experimental managed version of ZLib which follows the same cross-platform vision as .NET while having more consistent performance and compression characteristics. The project includes [Deflate algorithm](https://www.zlib.net/feldspar.html)'s implementation for raw inflate, based on [Deflate64](https://github.com/dotnet/runtime/tree/6387a9eb56098a889021190747d31f07246dd9f2/src/libraries/System.IO.Compression/src/System/IO/Compression/DeflateManaged), and raw deflate, based on [Zlib](https://github.com/madler/zlib), with a test harness for performance and functionality.
 
-This branch contains an experimental porting and comparison of the C Mark Adler's Zlib library used in System.IO.Compression to a C#. This is an exploration on whether we would benefit from switching our dependencies from madler/zlib to an own managed version. 
-The evaluation of this experiment will be based on performance information using dotnet benchmark and madler/zlib  as baseline,  to see the main areas of opportunity of performance improvement. Because the idea is to implement a managed version, porting madler/zlib, without losing functionality in the way, this experiment covers a set of unit tests. It is necessary to have enough of the design for the information gathered to be reliable. 
+Consuming an external dependency like [Zlib](https://github.com/madler/zlib) or [Zlib-intel](https://github.com/intel/zlib) in .NET is a high maintenance task, since it involves shipping different versions for Windows and Unix systems, as well as having to either wait for vulnerabilities to get fixed upstream when they become public, or having to fix them ourselves, causing our code to potentially diverge from the original sources.
 
-## Useful links
-• General expected functionality: [zlib 1.2.13 Manual](https://www.zlib.net/manual.html) 
-• Specifications for the algorithms: [RFC 1951](https://datatracker.ietf.org/doc/html/rfc1951) | [RFC150](https://datatracker.ietf.org/doc/html/rfc1950) | [RFC1952 ](https://datatracker.ietf.org/doc/html/rfc1952)
-                     RFC1951 for Deflate Algorithm in Deflate Stream. 
-                     RFC150 and RFC1952 for ZLibStream and GzipStream that work on top of DeflateStream.
+This library is being consumed by compression solutions like [DeflateStream](https://learn.microsoft.com/en-us/dotnet/api/system.io.compression.deflatestream?view=net-7.0), [GZipStream](https://learn.microsoft.com/en-us/dotnet/api/system.io.compression.gzipstream?view=net-7.0) , [ZLibStream](https://learn.microsoft.com/en-us/dotnet/api/system.io.compression.zlibstream?view=net-7.0) and [ZipArchive](https://learn.microsoft.com/en-us/dotnet/api/system.io.compression.ziparchive?view=net-7.0), among others.
+
+The ManagedZLib project's structure goes as following:
+
++ [Source](src/Microsoft.ManagedZLib/src/) - Implementations of raw inflate and deflate following the [(RFC151)](https://datatracker.ietf.org/doc/html/rfc1951) standard and [ZLib's manual](https://www.zlib.net/manual.html).
++ [Tests](src/Microsoft.ManagedZLib/tests/) - Unit tests for functionality coverage of DeflateStream's deflater and inflater on scenarios like: Text files, pdf (text heavy) and the binary files.
++ [Benchmarks](src/Microsoft.ManagedZLib/benchmarks/) - Uses BenchmarkDotNet for comparing the performance of this project, using [Zlib](https://github.com/madler/zlib) or [Zlib-intel](https://github.com/intel/zlib) as baseline.
++ [Profiling](src/Microsoft.ManagedZLib/) - Profiling console app for exploring areas of performance improvement, using VS Profiler.
+
 
 ## .NET Foundation
 
