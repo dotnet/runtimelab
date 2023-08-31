@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using BenchmarkDotNet.Attributes;
@@ -15,7 +15,7 @@ namespace Microsoft.ManagedZLib.Benchmarks;
 // Referring the dotnet/performance documentation (performance/docs/microbenchmark-design-guidelines.md)
 // BenchmarkDotNet creates a type which derives from type with benchmarks. 
 // So the type with benchmarks must not be sealed and it can NOT BE STATIC 
-// and it has to BE PUBLIC. It also has to be a class (no structs support).
+// and it has to be public. It also has to be a class (no structs support).
 [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
 [CategoriesColumn]
 public class ManagedZLibBenchmark

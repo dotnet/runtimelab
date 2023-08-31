@@ -3,6 +3,8 @@
 
 using System;
 using System.Diagnostics;
+using System.Dynamic;
+using System.IO;
 
 namespace Microsoft.ManagedZLib;
 
@@ -15,17 +17,27 @@ namespace Microsoft.ManagedZLib;
 // The byte array is not reused. We will go from 'start' to 'end'.
 // When we reach the end, most read operations will return -1,
 // which means we are running out of input.
-internal sealed class InputBuffer
+public  class InputBuffer
 {
-    private Memory<byte> _inputBuffer; // Input stream buffer
+    public ulong _totalInput; //Total input read so far
+    public uint _availInput; // Number of available bytes from _nextIN
+                             // When compressing, this should be 0 when
+                             // running out of input to compress and 
+                             // _nextIn is at the end of the input buffer
+    public Memory<byte> _inputBuffer; // Input stream buffer
     private uint _bitBuffer;      // To quickly shift in this buffer
-    private uint _bitsInBuffer;    // #bits available in bitBuffer
+    private int _bitsInBuffer;    // #bits available in bitBuffer
+    public int _wrap; //Default: Raw Deflate
+    public uint _nextIn; // Index for next input byte to be copied from
 
     /// <summary>Total bits available in the input buffer.</summary>
-    public uint AvailableBits => _bitsInBuffer;
-
+    public int AvailableBits => _bitsInBuffer; //Used in getNextSymbol
     /// <summary>Total bytes available in the input buffer.</summary>
-    public uint AvailableBytes => (_bitsInBuffer / 8) + (uint)_inputBuffer.Length;
+
+
+    //_totalInput, at the end of compression, should match this. It's going to be use
+    // just in inflate.
+    public int inputBufferSize => (_bitsInBuffer / 8) + (uint)_inputBuffer.Length;
 
     /// <summary>Ensure that count bits are in the bit buffer.</summary>
     /// <param name="count">Can be up to 16.</param>
@@ -126,6 +138,7 @@ internal sealed class InputBuffer
     /// <summary> 
     /// For copying the data on the Deflate blocks:
     /// Copies bytes from input buffer to output buffer.
+    /// (As a Span) Copies length bytes from input buffer to output buffer starting at output[offset].
     /// You have to make sure, that the buffer is byte aligned. If not enough bytes are
     /// available, copies fewer bytes.
     /// </summary>
@@ -174,24 +187,10 @@ internal sealed class InputBuffer
         if (NeedsInput())
         {
             _inputBuffer = buffer;
+            _availInput = (uint)buffer.Length;
+            _nextIn = 0;
+            //AvailableBytes() is _inputBuffer.Length - nextIn
         }
-    }
-
-    /// <summary>
-    /// Set the byte array to be processed.
-    /// All the bits remained in bitBuffer will be processed before the new bytes.
-    /// We don't clone the byte array here since it is expensive.
-    /// The caller should make sure after a buffer is passed in.
-    /// It will not be changed before calling this function again.
-    /// </summary>
-    public void SetInput(byte[] buffer, int offset, int length)
-    {
-        Debug.Assert(buffer != null);
-        Debug.Assert(offset >= 0);
-        Debug.Assert(length >= 0);
-        Debug.Assert(offset <= buffer.Length - length);
-
-        SetInput(buffer.AsMemory(offset, length));
     }
 
     /// <summary>Skip n bits in the buffer.</summary>

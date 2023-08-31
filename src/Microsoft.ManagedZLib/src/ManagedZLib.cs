@@ -1,14 +1,25 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Reflection.Metadata;
+using System;
+
 namespace Microsoft.ManagedZLib;
 
 //Vivi's notes: I'll keep this class until the bare basics are met, like Raw In/Deflate for handling Deflate Blocks (RFC1951).
 // So far it seems to not be needed anymore, since all is being handled by Inflator and Deflator.
 public static class ManagedZLib
 {
+    //Generate more output starting at next_out and update next_out and avail_out
+    //accordingly.This action is forced if the parameter flush is non zero.
+    //Forcing flush frequently degrades the compression ratio, so this parameter
+    //should be set only when necessary.Some output may be provided even if
+    //flush is zero.
     public enum FlushCode : int // For knowing how much and when to produce output. Mainly applicable to Deflater.
     {
+        // For error checking
+        GenOutput = -1,
+        // Actual flushes
         NoFlush = 0,
         SyncFlush = 2,
         Finish = 4,
@@ -26,12 +37,34 @@ public static class ManagedZLib
         VersionError = -6
     }
 
-    public enum BlockType // For inflate (RFC1951 deflate format)
+    // Stream status
+    public enum DeflateStates : int
+    {
+        InitState = 42,  // zlib header -> BUSY_STATE
+        GZipState = 57,  // gzip header -> BUSY_STATE | EXTRA_STATE
+        ExtraState = 69, // gzip extra block -> NAME_STATE
+        NameState = 73,  // zip file name -> COMMENT_STATE
+        CommentState = 91,  // gzip comment -> HCRC_STATE
+        HCRCState = 103,    // gzip header CRC -> BUSY_STATE
+        BusyState = 113,  // deflate -> FINISH_STATE
+        FinishState = 666  // stream complete
+    }
+
+    public enum BlockType
     {
         Uncompressed = 0,
-        Static = 1, //Fixed
-        Dynamic = 2
+        StaticTrees = 1, //Fixed
+        DynamicTrees = 2
     }
+
+    public enum BlockState : int
+    {
+        NeedMore, /* block not completed, need more input or more output */
+        BlockDone, /* block flush performed */
+        FinishStarted, /* finish started, need only more output at next deflate */
+        FinishDone /* finish done, accept no more input or output */
+    }
+
     /// <summary>
     /// <p>ZLib can accept any integer value between 0 and 9 (inclusive) as a valid compression level parameter:
     /// 1 gives best speed, 9 gives best compression, 0 gives no compression at all (the input data is simply copied a block at a time).
@@ -66,12 +99,12 @@ public static class ManagedZLib
     ///    <code>int memLevel = 8;</code> <br />
     ///    <code>ZLibNative.CompressionStrategy strategy = ZLibNative.CompressionStrategy.DefaultStrategy;</code> </p>
     /// </summary>
-    public enum CompressionLevel : int
-    {
-        NoCompression = 0,
-        BestSpeed = 1,
-        DefaultCompression = -1,
-        BestCompression = 9
+    public enum CompressionLevel : int //This matches with the config table for deflate
+    { // This are the translations to the enum we show to the user (CompressionLevel class):
+        NoCompression = 0,        // CompressionLevel.NoCompression - 2 
+        BestSpeed = 1,            // CompressionLevel.Fastest - 1
+        DefaultCompression = -1,  // CompressionLevel.Optimal - 0
+        BestCompression = 9       // CompressionLevel.SmallestSize - 3
     }
 
     /// <summary>
@@ -80,7 +113,8 @@ public static class ManagedZLib
     /// </summary>public enum CompressionStrategy : int
     public enum CompressionStrategy : int
     {
-        DefaultStrategy = 0
+        DefaultStrategy = 0, // The only one used really
+        Fixed = 4
     }
 
     /// <summary>
@@ -137,7 +171,11 @@ public static class ManagedZLib
 
     public const byte GZip_Header_ID1 = 31;
     public const byte GZip_Header_ID2 = 139;
-
+    public const int PresetDict = 0x20; /* preset dictionary flag in zlib header */
+    // Maximum stored block length in deflate format (not including header). 
+    public const uint MaxStored = 65535;
+    // Tail of hash chains
+    public const int NIL = 0;
     /**
      * Do not remove the nested typing of types inside of <code>System.IO.Compression.ZLibNative</code>.
      * This was done on purpose to:
