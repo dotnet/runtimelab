@@ -556,8 +556,8 @@ internal class DeflateTrees
         PutShort(output, unchecked((ushort)~storedLen));
         if (storedLen != 0)
         {
-            output._pendingBuffIndex += (uint)output._pendingBufferBytes;
-            //Amount to copy to pendingBuff is storedLen
+            //Amount/length to copy to pendingBuff is storedLen
+            //The offset to do so is _pendingBufferBytes 
             Span<byte> destBuffer = output._pendingBuffer.Span.Slice((int)output._pendingBufferBytes, (int)storedLen);
             buffer.Slice(0, (int)storedLen).CopyTo(destBuffer); 
         }
