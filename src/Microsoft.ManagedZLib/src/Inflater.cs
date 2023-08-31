@@ -12,6 +12,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics.X86;
 using System.Security;
 using System.Text;
 using static Microsoft.ManagedZLib.ManagedZLib;
@@ -28,9 +29,9 @@ internal class Inflater
     private readonly OutputWindow _output;
     private readonly InputBuffer _input;
 
-    private IHuffmanTree? _literalLengthTree;
-    private IHuffmanTree? _distanceTree; 
-    private IHuffmanTree? _codeLengthTree;
+    private InflateHuffmanTree? _literalLengthTree;
+    private InflateHuffmanTree? _distanceTree;
+    private InflateHuffmanTree? _codeLengthTree;
 
     private int _literalLengthCodeCount;
     private int _distanceCodeCount;
@@ -45,7 +46,7 @@ internal class Inflater
     // For decoding a compressed block
     // Alphabets used: Literals, length and distance
     // Extra bits for merging literal and length's alphabet
-    private int _length; 
+    private int _length;
     private int _distanceCode;
     private int _extraBits;
 
@@ -131,11 +132,13 @@ internal class Inflater
         _input = new InputBuffer();
         // Error checking
         _windowBits = InflateInit(windowBits);
+        // After the operations done to windowBits in InflateInit return.
+        Debug.Assert(windowBits >= MinWindowBits && windowBits <= MaxWindowBits);
         // Initializing window size according the type of deflate (window limits - 32k or 64k)
         // This has mainly: Output Window, Index last position (Where in window bytes array) and BytesUsed (As the quantity)
-        _output = _deflate64? new OutputWindow() : new OutputWindow(_windowBits);
-        _codeList = new byte[IHuffmanTree.MaxLiteralTreeElements + IHuffmanTree.MaxDistTreeElements];
-        _codeLengthTreeCodeLength = new byte[IHuffmanTree.NumberOfCodeLengthTreeElements];
+        _output = _deflate64 ? new OutputWindow() : new OutputWindow(_windowBits);
+        _codeList = new byte[InflateHuffmanTree.MaxLiteralTreeElements + InflateHuffmanTree.MaxDistTreeElements];
+        _codeLengthTreeCodeLength = new byte[InflateHuffmanTree.NumberOfCodeLengthTreeElements];
         _nonEmptyInput = false;
         _couldDecode = false; //After finishing decoding
         //Initial state of the state machine - Checking BFinal bit
@@ -148,7 +151,7 @@ internal class Inflater
     //{ Stored = 0x0, Deflate = 0x8, Deflate64 = 0x9, BZip2 = 0xC, LZMA = 0xE }
     internal Inflater(bool deflate64, int windowBits, long uncompressedSize = -1) : this(windowBits, uncompressedSize)
     {
-        _deflate64= deflate64;
+        _deflate64 = deflate64;
         _decodeLimit = 65536; //64K window
         // With Deflate64 we can have up to a 64kb length, so we ensure at least that much space is available
         // in the OutputWindow to avoid overwriting previous unflushed output data.
@@ -158,9 +161,9 @@ internal class Inflater
     /// <summary>
     /// Returns true if the end of the stream has been reached.
     /// </summary>
-    public bool Finished() =>  _state == InflaterState.Done || _state == InflaterState.VerifyingFooter;
+    public bool Finished() => _state == InflaterState.Done || _state == InflaterState.VerifyingFooter; // Verifying footer would be for future GZip/Zlib integration
 
-    public int Inflate(Span<byte> buffer) 
+    public int Inflate(Span<byte> buffer)
     {
         // If Inflate is called on an invalid or unready inflater, return 0 to indicate no bytes have been read.
         if (buffer.Length == 0)
@@ -179,7 +182,7 @@ internal class Inflater
         int bytesRead = 0;
         // This division of _uncompressedSize is for GZip
         // For Raw Inflate, it is not necessary to compare the inflate count (bytes read so far)
-        // with anything else, besides cheching is a valid number fr either finish the loop or
+        // with anything else, besides checking is a valid number fr either finish the loop or
         // refill the buffer that refers to the underlying deflate stream buffer. (Default size: 8192)
         do
         {
@@ -205,7 +208,7 @@ internal class Inflater
                     //Done reading input
                     _state = InflaterState.Done;
                     _output.ClearBytesUsed(); //The window end up being clean - _bytesUsed = 0
-                }  
+                }
             }
             // Before actually add the bytes read to the local variable, 
             // we check if the value is valid 
@@ -219,12 +222,13 @@ internal class Inflater
                 // filled in the bytes buffer - We reached the end
                 break;
             }
-        } while (!Finished()&& _couldDecode) ; //Will return 0 when more input is need
+        } while (!Finished() && _couldDecode); //Will return 0 when more input is need
 
         return bytesRead;
     }
-    
-    private int ReadOutput(Span<byte> outputBytes) {
+
+    private int ReadOutput(Span<byte> outputBytes)
+    {
         // Before the state machine of inflater starts, we need to check the type of inflation done (Raw, Gzip or Zlib)
         // To know if besides the first bits is the raw deflate block, any additional header processing is needed
         // or if at the end, we are doing additional error checkings.
@@ -234,7 +238,7 @@ internal class Inflater
 
         //Final copying of the uncompressed data
         // Keeps looping until the decom
-        
+
         //bytesRead
         return _output.CopyTo(outputBytes);
     }
@@ -274,11 +278,11 @@ internal class Inflater
     {
         bool EndOfBlock = false;
         bool result;
-        
+
         // For checking later, to add some extra checks here, the ones done by ReadOutput and ResetStreamForLeftoverInput() 
         // ResetStreamForLeftoverInput() for GZip and ZLib scenarios that behave differently than raw inflate.
         // ResetStreamForLeftoverInput() checks if it's a GZpin member
-        
+
         //* --- For GZip and ZLib, there are more checks needed for their headers and trailers.
         //* [Reference from Mark Adler's repo: inflate.h
         /* State transitions
@@ -305,7 +309,7 @@ internal class Inflater
         {
             return true;
         }
-        
+
         //Read header of deflate blocks (HEAD)
         if (_state == InflaterState.ReadingBFinal)
         {
@@ -316,7 +320,7 @@ internal class Inflater
             _state = InflaterState.ReadingBType; // Next state - next 2 bits in the header           
         }
         if (_state == InflaterState.ReadingBType)
-        { 
+        {
             if (!_input.EnsureBitsAvailable(2)) // Need 2 bits - Error check
             {
                 _state = InflaterState.ReadingBType; //Returns to first state - Error check
@@ -330,8 +334,8 @@ internal class Inflater
             }
             else if (_blockType == BlockType.Static) //Type = Fixed Huffman codes
             {
-                _literalLengthTree = IHuffmanTree.StaticLiteralLengthTree;
-                _distanceTree = IHuffmanTree.StaticDistanceTree;
+                _literalLengthTree = InflateHuffmanTree.StaticLiteralLengthTree;
+                _distanceTree = InflateHuffmanTree.StaticDistanceTree;
                 _state = InflaterState.DecodeTop;
             }
             else if (_blockType == BlockType.Uncompressed) //Type = Stored with no compression
@@ -492,26 +496,7 @@ internal class Inflater
                     goto case InflaterState.HaveDistCode;
 
                 case InflaterState.HaveDistCode:
-                    // To avoid a table lookup we note that for distanceCode > 3,
-                    // extra_bits = (distanceCode-2) >> 1
-                    int offset;
-                    if (_distanceCode > 3)
-                    {
-                        _extraBits = (_distanceCode - 2) >> 1;
-                        int bits = _input.GetBits(_extraBits);
-                        if (bits < 0)
-                        {
-                            return false;
-                        }
-                        offset = DistanceBasePosition[_distanceCode] + bits;
-                    }
-                    else
-                    {
-                        offset = _distanceCode + 1;
-                    }
-
-                    _output.WriteLengthDistance(_length, offset);
-                    freeBytes -= _length;
+                    if (!getDistancePair(ref freeBytes)) return false; // If not enough bits available
                     _state = InflaterState.DecodeTop;
                     break;
 
@@ -524,6 +509,27 @@ internal class Inflater
         return true;
     }
 
+    // The part that actually does the LZ77 pair conversion
+    private bool getDistancePair(ref int freeBytes)
+    {
+        // To avoid a table lookup we note that for distanceCode > 3,
+        // extra_bits = (distanceCode-2) >> 1
+        int offset = _distanceCode + 1; // Length from the distance for the pair
+        if (_distanceCode > 3)
+        {
+            _extraBits = (_distanceCode - 2) >> 1;
+            int bits = _input.GetBits(_extraBits);
+            if (bits < 0)
+            {
+                return false;
+            }
+            offset = DistanceBasePosition[_distanceCode] + bits;
+        }
+
+        _output.WriteLengthDistance(_length, offset);
+        freeBytes -= _length;
+        return true;
+    }
     // Format of Non-compressed blocks (BTYPE=00) - RFC1951 spec
     private bool DecodeUncompressedBlock(out bool end_of_block)
     {
@@ -649,7 +655,7 @@ internal class Inflater
                 }
 
                 // create huffman tree for code length
-                _codeLengthTree = new IHuffmanTree(_codeLengthTreeCodeLength);
+                _codeLengthTree = new InflateHuffmanTree(_codeLengthTreeCodeLength);
                 _codeArraySize = _literalLengthCodeCount + _distanceCodeCount;
                 _loopCounter = 0; // reset loop count
 
@@ -766,21 +772,21 @@ internal class Inflater
                 throw new InvalidDataException("UnknownState - Decoder is in some unknown state.This might be caused by corrupted data.");
         }
 
-        byte[] literalTreeCodeLength = new byte[IHuffmanTree.MaxLiteralTreeElements];
-        byte[] distanceTreeCodeLength = new byte[IHuffmanTree.MaxDistTreeElements];
+        byte[] literalTreeCodeLength = new byte[InflateHuffmanTree.MaxLiteralTreeElements];
+        byte[] distanceTreeCodeLength = new byte[InflateHuffmanTree.MaxDistTreeElements];
 
         // Create literal and distance tables
         Array.Copy(_codeList, literalTreeCodeLength, _literalLengthCodeCount);
         Array.Copy(_codeList, _literalLengthCodeCount, distanceTreeCodeLength, 0, _distanceCodeCount);
 
         // Make sure there is an end-of-block code, otherwise how could we ever end?
-        if (literalTreeCodeLength[IHuffmanTree.EndOfBlockCode] == 0)
+        if (literalTreeCodeLength[InflateHuffmanTree.EndOfBlockCode] == 0)
         {
             throw new InvalidDataException();
         }
 
-        _literalLengthTree = new IHuffmanTree(literalTreeCodeLength);
-        _distanceTree = new IHuffmanTree(distanceTreeCodeLength);
+        _literalLengthTree = new InflateHuffmanTree(literalTreeCodeLength);
+        _distanceTree = new InflateHuffmanTree(distanceTreeCodeLength);
         _state = InflaterState.DecodeTop;
         return true;
     }

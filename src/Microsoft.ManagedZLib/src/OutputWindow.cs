@@ -3,6 +3,9 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
 namespace Microsoft.ManagedZLib;
 
 /// <summary>
@@ -50,6 +53,7 @@ internal sealed class OutputWindow
     {
         _bytesUsed = 0;
     }
+
     /// <summary>Add a byte to output window.</summary>
     public void Write(byte b)
     {
@@ -118,7 +122,7 @@ internal sealed class OutputWindow
         /// It will lead us to either copy LEN bytes or just the amount available in the output window
         // taking into account the byte boundaries.
         /// </summary>
-        length = Math.Min(Math.Min(length, WindowSize - _bytesUsed), input.AvailableBytes);
+        length = Math.Min(Math.Min(length, WindowSize - _bytesUsed), (int)input.AvailableBytes);
         int copied;
 
         // We might need wrap around to copy all bytes.
@@ -131,13 +135,13 @@ internal sealed class OutputWindow
             Debug.Assert(_lastIndex >= 0);
             Debug.Assert(spaceLeft >= 0);
             Debug.Assert(_lastIndex <= _window.Length - spaceLeft);
-            copied = input.CopyTo(_window.Span.Slice(_lastIndex, spaceLeft));
+            copied = input.CopyTo(_window.Slice(_lastIndex, spaceLeft));
             if (copied == spaceLeft)
             {
                 // Only try to copy the second part if we have enough bytes in input
                 Debug.Assert((length - spaceLeft) >= 0);
                 Debug.Assert(0 <= _window.Length - (length - spaceLeft));
-                copied += input.CopyTo(_window.Span.Slice(0, length - spaceLeft));
+                copied += input.CopyTo(_window.Slice(0, length - spaceLeft));
             }
         }
         else
@@ -146,13 +150,13 @@ internal sealed class OutputWindow
             Debug.Assert(_lastIndex >= 0);
             Debug.Assert(length >= 0);
             Debug.Assert(_lastIndex <= _window.Length - length);
-            copied = input.CopyTo(_window.Span.Slice(_lastIndex, length));
+            copied = input.CopyTo(_window.Slice(_lastIndex, length));
 
         }
 
         _lastIndex = (_lastIndex + copied) & WindowMask;
         _bytesUsed += copied;
-        return copied; 
+        return copied;
     }
 
     /// <summary>Free space in output window.</summary>
@@ -170,7 +174,7 @@ internal sealed class OutputWindow
         {
             // We can copy all the decompressed bytes out
             copy_lastIndex = _lastIndex; //Last index auxiliar
-            usersOutput = usersOutput.Slice(0,_bytesUsed);
+            usersOutput = usersOutput.Slice(0, _bytesUsed);
         }
         else
         {
@@ -194,4 +198,3 @@ internal sealed class OutputWindow
         return copied;
     }
 }
-

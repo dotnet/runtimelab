@@ -11,8 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="BenchmarkDotNet" Version="0.13.5" />
-    <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.1" />
+    <PackageReference Include="BenchmarkDotNet" Version="0.13.7-nightly.20230717.35" />
+    <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.7-nightly.20230717.35" />
 	  <ProjectReference Include="..\src\Microsoft.ManagedZLib.csproj" />
     <PackageReference Include="System.IO.Compression.TestData" Version="8.0.0-beta.23326.1" />
   </ItemGroup>

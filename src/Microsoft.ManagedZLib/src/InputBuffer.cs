@@ -19,13 +19,13 @@ internal sealed class InputBuffer
 {
     private Memory<byte> _inputBuffer; // Input stream buffer
     private uint _bitBuffer;      // To quickly shift in this buffer
-    private int _bitsInBuffer;    // #bits available in bitBuffer
+    private uint _bitsInBuffer;    // #bits available in bitBuffer
 
     /// <summary>Total bits available in the input buffer.</summary>
-    public int AvailableBits => _bitsInBuffer;
+    public uint AvailableBits => _bitsInBuffer;
 
     /// <summary>Total bytes available in the input buffer.</summary>
-    public int AvailableBytes => _inputBuffer.Length + (_bitsInBuffer / 8);
+    public uint AvailableBytes => (_bitsInBuffer / 8) + (uint)_inputBuffer.Length;
 
     /// <summary>Ensure that count bits are in the bit buffer.</summary>
     /// <param name="count">Can be up to 16.</param>
@@ -43,7 +43,7 @@ internal sealed class InputBuffer
             }
 
             // Insert a byte to bitbuffer
-            _bitBuffer |= (uint)_inputBuffer.Span[0] << _bitsInBuffer;
+            _bitBuffer |= (uint)_inputBuffer.Span[0] << (int)_bitsInBuffer;
             _inputBuffer = _inputBuffer.Slice(1);
             _bitsInBuffer += 8;
 
@@ -54,7 +54,7 @@ internal sealed class InputBuffer
                     return false;
                 }
                 // Insert a byte to bitbuffer
-                _bitBuffer |= (uint)_inputBuffer.Span[0] << _bitsInBuffer;
+                _bitBuffer |= (uint)_inputBuffer.Span[0] << (int)_bitsInBuffer;
                 _inputBuffer = _inputBuffer.Slice(1);
                 _bitsInBuffer += 8;
             }
@@ -74,26 +74,29 @@ internal sealed class InputBuffer
     {
         if (_bitsInBuffer < 8)
         {
-            if (_inputBuffer.Length > 1)
+            if (_inputBuffer.Length > 1) // 2+ bytes in input buffer - Load 2 bytes/16 bits
             {
-                Span<byte> span = _inputBuffer.Span;
-                _bitBuffer |= (uint)span[1] << (_bitsInBuffer + 8);
-                _bitBuffer |= (uint)span[0] << _bitsInBuffer;
-                _inputBuffer = _inputBuffer.Slice(2);
+                // Load the 16 bits
+                _bitBuffer |= (uint)_inputBuffer.Span[1] << (int)(_bitsInBuffer + 8); // Biggest bounds check first
+                _bitBuffer |= (uint)_inputBuffer.Span[0] << (int)_bitsInBuffer;
+                _inputBuffer = _inputBuffer.Slice(2); // Moves input buffer init position by 2 bytes
+
+                // Increment the counter of number of bits in buffer
                 _bitsInBuffer += 16;
             }
-            else if (_inputBuffer.Length != 0)
+            else if (_inputBuffer.Length != 0) // 1 byte in input buffer - Load 1 byte/8 bits
             {
-                _bitBuffer |= (uint)_inputBuffer.Span[0] << _bitsInBuffer;
-                _inputBuffer = Memory<byte>.Empty;
+                _bitBuffer |= (uint)_inputBuffer.Span[0] << (int)_bitsInBuffer;
+                _inputBuffer = Memory<byte>.Empty; // At this point, we've validated _buffer is empty
                 _bitsInBuffer += 8;
             }
         }
-        else if (_bitsInBuffer < 16)
+        else if (_bitsInBuffer < 16) // Here we know that bitBuffer has at least 8, but no 16
+                                     // So we ensure it has at least 16 bits by loading 8.
         {
             if (!_inputBuffer.IsEmpty)
             {
-                _bitBuffer |= (uint)_inputBuffer.Span[0] << _bitsInBuffer;
+                _bitBuffer |= (uint)_inputBuffer.Span[0] << (int)_bitsInBuffer;
                 _inputBuffer = _inputBuffer.Slice(1);
                 _bitsInBuffer += 8;
             }
@@ -116,7 +119,7 @@ internal sealed class InputBuffer
 
         int result = (int)(_bitBuffer & GetBitMask(count));
         _bitBuffer >>= count;
-        _bitsInBuffer -= count;
+        _bitsInBuffer -= (uint)count;
         return result;
     }
 
@@ -148,7 +151,7 @@ internal sealed class InputBuffer
         }
 
         int length = Math.Min(output.Length, _inputBuffer.Length);
-        _inputBuffer.Slice(0, length).Span.CopyTo(output);
+        _inputBuffer.Slice(0, length).CopyTo(output);
         _inputBuffer = _inputBuffer.Slice(length);
         return bytesFromBitBuffer + length;
     }
@@ -174,19 +177,35 @@ internal sealed class InputBuffer
         }
     }
 
+    /// <summary>
+    /// Set the byte array to be processed.
+    /// All the bits remained in bitBuffer will be processed before the new bytes.
+    /// We don't clone the byte array here since it is expensive.
+    /// The caller should make sure after a buffer is passed in.
+    /// It will not be changed before calling this function again.
+    /// </summary>
+    public void SetInput(byte[] buffer, int offset, int length)
+    {
+        Debug.Assert(buffer != null);
+        Debug.Assert(offset >= 0);
+        Debug.Assert(length >= 0);
+        Debug.Assert(offset <= buffer.Length - length);
+
+        SetInput(buffer.AsMemory(offset, length));
+    }
+
     /// <summary>Skip n bits in the buffer.</summary>
     public void SkipBits(int n)
     {
         Debug.Assert(_bitsInBuffer >= n, "No enough bits in the buffer, Did you call EnsureBitsAvailable?");
         _bitBuffer >>= n;
-        _bitsInBuffer -= n;
+        _bitsInBuffer -= (uint)n;
     }
 
     /// <summary>Skips to the next byte boundary for byte alignment.</summary>
     public void SkipToByteBoundary()
     {
-        _bitBuffer >>= (_bitsInBuffer % 8);
-        _bitsInBuffer -= (_bitsInBuffer % 8);
+        _bitBuffer >>= (int)(_bitsInBuffer & 7);
+        _bitsInBuffer &= ~(uint)7;
     }
 }
-
