@@ -6,10 +6,10 @@ Consuming an external dependency, like madler/zlib or ZLib-intel, involves high-
 
 The ManagedZLib project's structure goes as following:
 
-+[Source](src/Microsoft.ManagedZLib/src/) - Implementations of raw inflate and deflate following the [(RFC151)](https://datatracker.ietf.org/doc/html/rfc1951) standard and [ZLib's manual](https://www.zlib.net/manual.html).
-+[Tests](src/Microsoft.ManagedZLib/tests/) - Unit tests for functionality coverage of DeflateStream's deflater (Write) and inflater(Read, CopyTo) on scenarios like: Text files, pdf (text heavy) and the binary files.
-+[Benchmarks](src/Microsoft.ManagedZLib/benchmarks/) - Uses BenchmarkDotNet for comparing the project's performance using madler/zlib's (or intel's, depending on the machine your running the application) as baseline.
-+[Profiling](src/Microsoft.ManagedZLib/) - Profiling console app for exploring areas of performance improvement, using VS Profiler.
++ [Source](src/Microsoft.ManagedZLib/src/) - Implementations of raw inflate and deflate following the [(RFC151)](https://datatracker.ietf.org/doc/html/rfc1951) standard and [ZLib's manual](https://www.zlib.net/manual.html).
++ [Tests](src/Microsoft.ManagedZLib/tests/) - Unit tests for functionality coverage of DeflateStream's deflater and inflater on scenarios like: Text files, pdf (text heavy) and the binary files.
++ [Benchmarks](src/Microsoft.ManagedZLib/benchmarks/) - Uses BenchmarkDotNet for comparing the performance of this project, using [Zlib](https://github.com/madler/zlib) or [Zlib-intel](https://github.com/intel/zlib) as baseline.
++ [Profiling](src/Microsoft.ManagedZLib/) - Profiling console app for exploring areas of performance improvement, using VS Profiler.
 
 
 ## .NET Foundation
