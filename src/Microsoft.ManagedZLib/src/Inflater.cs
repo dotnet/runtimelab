@@ -550,7 +550,7 @@ internal class Inflater
                         int blockLengthComplement = _blockLengthBuffer[2] + ((int)_blockLengthBuffer[3]) * 256;
 
                         // make sure complement matches
-                        if ((ushort)_blockLength != (ushort)(~blockLengthComplement))
+                        if (unchecked((ushort)_blockLength != (ushort)(~blockLengthComplement)))
                         {
                             throw new InvalidDataException("InvalidBlockLength - Block length does not match with its complement.");
                         }

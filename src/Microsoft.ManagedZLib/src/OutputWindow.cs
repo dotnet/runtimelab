@@ -651,7 +651,7 @@ internal class OutputWindow
     public void Adler32(Span<byte> buffer, uint Length) 
     {
         _adler = 0;
-        throw new NotImplementedException();
+        throw new NotImplementedException(); //This is for GZip,ZLib
     }
     public void CRC32(Span<byte> buffer, uint Length)
     {

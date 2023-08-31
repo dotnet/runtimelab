@@ -167,9 +167,9 @@ internal class DeflateTrees
         if (_bitsValid > (int)BitBufferSize - len)
         {
             int val = (int)value;
-            _bitBuffer |= (ushort)(val << _bitsValid);
+            _bitBuffer |= unchecked((ushort)((ushort)val << _bitsValid));
             PutShort(output, _bitBuffer);
-            _bitBuffer = (ushort)(val >> (BitBufferSize - _bitsValid));
+            _bitBuffer = (ushort)((ushort)val >> (BitBufferSize - _bitsValid));
             _bitsValid += len - BitBufferSize;
           }
         else
@@ -197,7 +197,7 @@ internal class DeflateTrees
         }
         else if (_bitsValid >= 8)
         {
-            PutByte(output, (Byte)_bitBuffer);
+            PutByte(output, unchecked((byte)_bitBuffer));
             _bitBuffer >>= 8;
             _bitsValid -= 8;
         }
@@ -256,7 +256,7 @@ internal class DeflateTrees
         byte len = (byte)length;
         ushort dist = (ushort)distance;
         Debug.Assert((int)_symIndex >= 0);
-        _symBuffer.Span[(int)_symIndex++] = (byte)dist;
+        _symBuffer.Span[(int)_symIndex++] = unchecked((byte)dist);
 
         Debug.Assert((int)_symIndex >= 0);
         _symBuffer.Span[(int)_symIndex++] = (byte)(dist>>8);
@@ -553,13 +553,13 @@ internal class DeflateTrees
         SendBits(output, (StoredBlock << 1) + (last ? 1 : 0), 3);  // send block type 
         BitWindUp(output);        /* align on byte boundary */
         PutShort(output, (ushort)storedLen);
-        PutShort(output, (ushort)~storedLen);
+        PutShort(output, unchecked((ushort)~storedLen));
         if (storedLen != 0)
         {
+            output._pendingBuffIndex += (uint)output._pendingBufferBytes;
             //Amount to copy to pendingBuff is storedLen
             Span<byte> destBuffer = output._pendingBuffer.Span.Slice((int)output._pendingBufferBytes, (int)storedLen);
-            buffer.Slice(0, (int)storedLen).CopyTo(destBuffer);
-            output._pendingBuffIndex += (uint)output._pendingBufferBytes;
+            buffer.Slice(0, (int)storedLen).CopyTo(destBuffer); 
         }
         output._pendingBufferBytes += storedLen;
     }

@@ -202,9 +202,9 @@ public class TreeDesc
             {
                 mIndex = Heap[--heapIndex];
                 if (mIndex > max_code) continue;
-                if ((uint)tree[mIndex].Len != (uint)bitLength)
+                if (tree[mIndex].Len != (uint)bitLength)
                 {
-                    _optLength += ((ulong)bitLength - tree[mIndex].Len) * tree[mIndex].Freq;
+                    unchecked { _optLength += ((ulong)bitLength - tree[mIndex].Len) * tree[mIndex].Freq; }
                     tree[mIndex].Len = (ushort)bitLength;
                 }
                 nIndex--;
