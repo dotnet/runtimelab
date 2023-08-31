@@ -13,7 +13,7 @@ namespace Microsoft.ManagedZLib;
 
 public partial class DeflateStream : Stream
 {
-    private const int DefaultBufferSize = 8192;
+    private const int DefaultBufferSize = 8192; // Default block size(8KB)
     private Stream _stream;
     private Inflater? _inflater;
     private Deflater? _deflater;
@@ -22,7 +22,6 @@ public partial class DeflateStream : Stream
     private CompressionMode _mode;
     private bool _leaveOpen;
     private bool _wroteBytes;
-
     internal DeflateStream(Stream stream, CompressionMode mode, long uncompressedSize) : this(stream, mode, leaveOpen: false, ManagedZLib.Deflate_DefaultWindowBits, uncompressedSize)
     {
     }
@@ -75,7 +74,7 @@ public partial class DeflateStream : Stream
         //For iflater having a buffer with the default size is enough for reading the input stream (compressed data)
         // For compressing this will vary depending on the Level of compression needed.
         // Reading more data at a time is more efficient
-        _buffer = new byte[DefaultBufferSize];
+        //_buffer = new byte[DefaultBufferSize];
     }
 
     /// <summary>
@@ -83,7 +82,7 @@ public partial class DeflateStream : Stream
     /// </summary>
     internal DeflateStream(Stream stream, CompressionLevel compressionLevel, bool leaveOpen, int windowBits)
     {
-        _buffer = new byte[DefaultBufferSize]; //Instead of using array pool in Read** When tests working check if it's possible a change back
+        //_buffer = new byte[DefaultBufferSize]; //Instead of using array pool in Read** When tests working check if it's possible a change back
         ArgumentNullException.ThrowIfNull(stream);
 
         InitializeDeflater(stream, leaveOpen, windowBits, compressionLevel);
@@ -100,7 +99,6 @@ public partial class DeflateStream : Stream
             throw new ArgumentException("NotSupported_UnwritableStream - Stream does not support writing.", nameof(stream));
 
         _deflater = new Deflater(compressionLevel, windowBits);
-
         _stream = stream;
         _mode = CompressionMode.Compress;
         _leaveOpen = leaveOpen;
@@ -358,7 +356,7 @@ public partial class DeflateStream : Stream
             WriteCore(buffer);
         }
     }
-
+    // This is also used by GZipStream and ZLibStream
     internal void WriteCore(ReadOnlySpan<byte> buffer)
     {
         EnsureCompressionMode();
@@ -368,10 +366,10 @@ public partial class DeflateStream : Stream
         // Write compressed the bytes we already passed to the deflater:
         WriteDeflaterOutput();
 
-        _deflater.SetInput(buffer);
+        // Pass new bytes through deflater and write them too:
+        _deflater.SetInput(buffer.ToArray());
         WriteDeflaterOutput();
         _wroteBytes = true;
-
     }
 
     private void WriteDeflaterOutput()
@@ -400,8 +398,8 @@ public partial class DeflateStream : Stream
             bool flushSuccessful;
             do
             {
-                int compressedBytes = _deflater.ReadDeflateOutput(_buffer, ManagedZLib.FlushCode.SyncFlush);
-                flushSuccessful = _deflater.Flush(_buffer);
+                int compressedBytes;
+                flushSuccessful = _deflater.Flush(_buffer, out compressedBytes);
                 if (flushSuccessful)
                 {
                     _stream.Write(_buffer, 0, compressedBytes);
@@ -441,9 +439,8 @@ public partial class DeflateStream : Stream
             bool finished;
             do
             {
-                int compressedBytes = _deflater.Finish(_buffer);
-                finished = compressedBytes != 0;
-
+                int compressedBytes;
+                finished = _deflater.Finish(_buffer, out compressedBytes);
                 if (compressedBytes > 0)
                     _stream.Write(_buffer, 0, compressedBytes);
             } while (!finished);
@@ -458,7 +455,7 @@ public partial class DeflateStream : Stream
             bool finished;
             do
             {
-                finished = _deflater.Finish(_buffer) !=0;
+                finished = _deflater.Finish(_buffer, out _);
             } while (!finished);
         }
     }
@@ -484,28 +481,17 @@ public partial class DeflateStream : Stream
             {
                 _stream = null!;
 
-                try
+                byte[]? buffer = _buffer;
+                if (buffer != null)
                 {
-                    _deflater?.Dispose();
-                    //_inflater?.Dispose(); - TBD
-                }
-                finally
-                {
-                    _deflater = null;
-                    _inflater = null;
-
-                    byte[]? buffer = _buffer;
-                    if (buffer != null)
+                    _buffer = null;
+                    if (!AsyncOperationIsActive)
                     {
-                        _buffer = null;
-                        if (!AsyncOperationIsActive)
-                        {
-                            ArrayPool<byte>.Shared.Return(buffer);
-                        }
+                        ArrayPool<byte>.Shared.Return(buffer);
                     }
-
-                    base.Dispose(disposing);
                 }
+
+                base.Dispose(disposing);
             }
         }
     }

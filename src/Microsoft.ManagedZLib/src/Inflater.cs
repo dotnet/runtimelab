@@ -92,7 +92,7 @@ internal class Inflater
     {
             0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3,
             3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 16
-    }; //Vivi's notes> This come from RFC1951 - Extra bits table
+    }; // RFC1951 - Extra bits table
 
     // The base distance for distance code 0 - 31
     // The real distance for a distance code is  distanceBasePosition[code] + (value stored in extraBits)
@@ -101,11 +101,6 @@ internal class Inflater
             1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513,
             769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 32769, 49153
     }; //Vivi's notes> This come from RFC1951
-    private static ReadOnlySpan<ushort> ExtraDistancePosotionBits => new ushort[]
-    {
-            1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513,
-            769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 32769, 49153
-    };
     // code lengths for code length alphabet is stored in following order
     private static ReadOnlySpan<byte> CodeOrder => new byte[] { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
 
@@ -197,7 +192,7 @@ internal class Inflater
                 {
                     int newLength = (int)Math.Min(bufferBytes.Length, _uncompressedSize - _currentInflatedCount);
                     bufferBytes = bufferBytes.Slice(newLength);
-                    copied = ReadOutput(bufferBytes); //Vivi's notes> Here you would pass a slice of the Span
+                    copied = ReadOutput(bufferBytes);
                     _currentInflatedCount += copied;
                 }
                 else
@@ -324,11 +319,11 @@ internal class Inflater
             }
             // Types (2 bits): 00-No compression, 01-Fixed Huff, 10-Dynamic, 11-Reserved. 
             _blockType = (BlockType)_input.GetBits(2);
-            if (_blockType == BlockType.Dynamic) //Type = Dynamic Huffman codes
+            if (_blockType == BlockType.DynamicTrees) //Type = Dynamic Huffman codes
             {
                 _state = InflaterState.ReadingNumLitCodes;
             }
-            else if (_blockType == BlockType.Static) //Type = Fixed Huffman codes
+            else if (_blockType == BlockType.StaticTrees) //Type = Fixed Huffman codes
             {
                 _literalLengthTree = InflateHuffmanTree.StaticLiteralLengthTree;
                 _distanceTree = InflateHuffmanTree.StaticDistanceTree;
@@ -344,7 +339,7 @@ internal class Inflater
             }
         }
         // Depending on the type, we will go to the methods for decoding each
-        if (_blockType == BlockType.Dynamic)
+        if (_blockType == BlockType.DynamicTrees)
         {
             if (_state < InflaterState.DecodeTop)
             {
@@ -356,7 +351,7 @@ internal class Inflater
                 result = DecodeBlock(out EndOfBlock); // this can returns true when output is full
             }
         }
-        else if (_blockType == BlockType.Static)
+        else if (_blockType == BlockType.StaticTrees)
         {
             result = DecodeBlock(out EndOfBlock);
         }
@@ -467,7 +462,7 @@ internal class Inflater
                     goto case InflaterState.HaveFullLength;
 
                 case InflaterState.HaveFullLength:
-                    if (_blockType == BlockType.Dynamic)
+                    if (_blockType == BlockType.DynamicTrees)
                     {
                         Debug.Assert(_distanceTree != null);
                         _distanceCode = _distanceTree.GetNextSymbol(_input);
@@ -555,7 +550,7 @@ internal class Inflater
                         int blockLengthComplement = _blockLengthBuffer[2] + ((int)_blockLengthBuffer[3]) * 256;
 
                         // make sure complement matches
-                        if ((ushort)_blockLength != (ushort)(~blockLengthComplement))
+                        if (unchecked((ushort)_blockLength != (ushort)(~blockLengthComplement)))
                         {
                             throw new InvalidDataException("InvalidBlockLength - Block length does not match with its complement.");
                         }
