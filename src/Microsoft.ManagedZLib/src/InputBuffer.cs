@@ -151,7 +151,7 @@ internal sealed class InputBuffer
         }
 
         int length = Math.Min(output.Length, _inputBuffer.Length);
-        _inputBuffer.Slice(0, length).CopyTo(output);
+        _inputBuffer.Span.Slice(0, length).CopyTo(output);
         _inputBuffer = _inputBuffer.Slice(length);
         return bytesFromBitBuffer + length;
     }

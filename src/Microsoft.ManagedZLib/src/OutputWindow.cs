@@ -135,13 +135,13 @@ internal sealed class OutputWindow
             Debug.Assert(_lastIndex >= 0);
             Debug.Assert(spaceLeft >= 0);
             Debug.Assert(_lastIndex <= _window.Length - spaceLeft);
-            copied = input.CopyTo(_window.Slice(_lastIndex, spaceLeft));
+            copied = input.CopyTo(_window.Span.Slice(_lastIndex, spaceLeft));
             if (copied == spaceLeft)
             {
                 // Only try to copy the second part if we have enough bytes in input
                 Debug.Assert((length - spaceLeft) >= 0);
                 Debug.Assert(0 <= _window.Length - (length - spaceLeft));
-                copied += input.CopyTo(_window.Slice(0, length - spaceLeft));
+                copied += input.CopyTo(_window.Span.Slice(0, length - spaceLeft));
             }
         }
         else
@@ -150,7 +150,7 @@ internal sealed class OutputWindow
             Debug.Assert(_lastIndex >= 0);
             Debug.Assert(length >= 0);
             Debug.Assert(_lastIndex <= _window.Length - length);
-            copied = input.CopyTo(_window.Slice(_lastIndex, length));
+            copied = input.CopyTo(_window.Span.Slice(_lastIndex, length));
 
         }
 
