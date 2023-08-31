@@ -27,31 +27,50 @@ public class ManagedZLibBenchmark
         yield return "sum"; // 37.3 KB, some binary content, an example of binary file
     }
 
-    public CompressedFile? CompressedFile;
-    private MemoryStream? outputStream;
-    System.IO.Compression.DeflateStream? decompressorN;
-    DeflateStream? decompressorM;
-
-    [GlobalSetup]
-    public void Setup()
-    {
-        Debug.Assert(File != null);
-        CompressedFile = new CompressedFile(File, Level);
-        outputStream = new MemoryStream(CompressedFile.UncompressedData.Length);
-        decompressorN = new System.IO.Compression.DeflateStream(CompressedFile.CompressedDataStream, System.IO.Compression.CompressionMode.Decompress, leaveOpen: true);
-        decompressorM = new DeflateStream(CompressedFile.CompressedDataStream, CompressionMode.Decompress, leaveOpen: true);
-    }
-
-
     [ParamsSource(nameof(UncompressedTestFileNames))]
-    public string? File { get; set; }
+    public string? Files { get; set; }
 
     [Params(System.IO.Compression.CompressionLevel.SmallestSize,
             System.IO.Compression.CompressionLevel.Optimal,
             System.IO.Compression.CompressionLevel.Fastest)]
     public System.IO.Compression.CompressionLevel Level { get; set; }
 
-    [BenchmarkCategory("Creation"), Benchmark(Baseline = true)]
+    // Decompression
+    public CompressedFile? CompressedFile;
+    private MemoryStream? outputStream;
+    System.IO.Compression.DeflateStream? decompressorN;
+    DeflateStream? decompressorM;
+
+    //Compression
+    public byte[]? UncompressedData { get; set; }
+    public byte[]? CompressedData { get; set; }
+    public MemoryStream? CompressedStrmN { get; set; }
+    public MemoryStream? CompressedStrmM { get; set; }
+
+    internal static string GetFilePath(string fileName)
+        => Path.Combine("UncompressedTestFiles", fileName);
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        Debug.Assert(Files != null);
+
+        //Compression
+        var filePath = GetFilePath(Files); // For compression
+        UncompressedData = File.ReadAllBytes(filePath);
+        //Managed
+        CompressedStrmM = new MemoryStream(capacity: UncompressedData.Length);
+        //Native
+        CompressedStrmN = new MemoryStream(capacity: UncompressedData.Length);
+
+        // Decompression
+        CompressedFile = new CompressedFile(Files, Level);
+        outputStream = new MemoryStream(CompressedFile.UncompressedData.Length);
+        decompressorN = new System.IO.Compression.DeflateStream(CompressedFile.CompressedDataStream, System.IO.Compression.CompressionMode.Decompress, leaveOpen: true);
+        decompressorM = new DeflateStream(CompressedFile.CompressedDataStream, CompressionMode.Decompress, leaveOpen: true);
+    }
+
+    [BenchmarkCategory("Init_Decompress"), Benchmark(Baseline = true)]
     public void Init_DecompressNative()
     {
         CompressedFile!.CompressedDataStream.Position = 0;
@@ -60,8 +79,7 @@ public class ManagedZLibBenchmark
         decompressor?.CopyTo(outputStream);
     }
 
-    //[Benchmark]
-    [BenchmarkCategory("Creation"), Benchmark]
+    [BenchmarkCategory("Init_Decompress"), Benchmark]
     public void Init_DecompressManaged()
     {
         CompressedFile!.CompressedDataStream.Position = 0;
@@ -70,8 +88,7 @@ public class ManagedZLibBenchmark
         decompressor?.CopyTo(outputStream);
     }
 
-    //[Benchmark(Baseline = true)]
-    [BenchmarkCategory("Decompression"), Benchmark(Baseline = true)]
+    [BenchmarkCategory("Algo_Decompression"), Benchmark(Baseline = true)]
     public void Alg_DecompressNative()
     {
         CompressedFile!.CompressedDataStream.Position = 0;
@@ -80,7 +97,7 @@ public class ManagedZLibBenchmark
     }
 
     //[Benchmark]
-    [BenchmarkCategory("Decompression"), Benchmark]
+    [BenchmarkCategory("Algo_Decompression"), Benchmark]
     public void Alg_DecompressManaged()
     {
         CompressedFile!.CompressedDataStream.Position = 0;
@@ -88,13 +105,80 @@ public class ManagedZLibBenchmark
         decompressorM?.CopyTo(outputStream);
     }
 
+    [BenchmarkCategory("Smallest"), Benchmark(Baseline = true)]
+    public void CompressNative_small() //with creation/disposal of stream
+    {
+        CompressedStrmN!.Position = 0;
+        System.IO.Compression.DeflateStream compressionStream = new(CompressedStrmN, System.IO.Compression.CompressionLevel.SmallestSize, leaveOpen: true);
+        compressionStream.Write(UncompressedData!, 0, UncompressedData!.Length);
+        compressionStream.Flush();
+        compressionStream.Dispose();
+    }
+
+    [BenchmarkCategory("Smallest"), Benchmark]
+    public void CompressManaged_small()
+    {
+        CompressedStrmM!.Position = 0;
+        DeflateStream compressionStream = new(CompressedStrmM, CompressionLevel.SmallestSize, leaveOpen: true);
+        compressionStream.Write(UncompressedData!, 0, UncompressedData!.Length);
+        compressionStream.Flush();
+        compressionStream.Dispose();
+    }
+
+    [BenchmarkCategory("Optimal"), Benchmark(Baseline = true)]
+    public void CompressNative_optimal() //with creation/disposal of stream
+    {
+        CompressedStrmN!.Position = 0;
+        System.IO.Compression.DeflateStream compressionStream = new(CompressedStrmN, System.IO.Compression.CompressionLevel.Optimal, leaveOpen: true);
+        compressionStream.Write(UncompressedData!, 0, UncompressedData!.Length);
+        compressionStream.Flush();
+        compressionStream.Dispose();
+    }
+
+    [BenchmarkCategory("Optimal"), Benchmark]
+    public void CompressManaged_optimal()
+    {
+        CompressedStrmM!.Position = 0;
+        DeflateStream compressionStream = new(CompressedStrmM, CompressionLevel.Optimal, leaveOpen: true);
+        compressionStream.Write(UncompressedData!, 0, UncompressedData!.Length);
+        compressionStream.Flush();
+        compressionStream.Dispose();
+    }
+
+    [BenchmarkCategory("Fastest"), Benchmark(Baseline = true)]
+    public void CompressNative_fastest() //with creation/disposal of stream
+    {
+        CompressedStrmN!.Position = 0;
+        System.IO.Compression.DeflateStream compressionStream = new(CompressedStrmN, System.IO.Compression.CompressionLevel.Fastest, leaveOpen: true);
+        compressionStream.Write(UncompressedData!, 0, UncompressedData!.Length);
+        compressionStream.Flush();
+        compressionStream.Dispose();
+    }
+
+    [BenchmarkCategory("Fastest"), Benchmark]
+    public void CompressManaged_fastest()
+    {
+        CompressedStrmM!.Position = 0;
+        DeflateStream compressionStream = new(CompressedStrmM, CompressionLevel.Fastest, leaveOpen: true);
+        compressionStream.Write(UncompressedData!, 0, UncompressedData!.Length);
+        compressionStream.Flush();
+        compressionStream.Dispose();
+    }
+
     [GlobalCleanup]
     public void Cleanup()
     {
+        // Decompression memory streams
         outputStream?.Dispose();
         CompressedFile?.CompressedDataStream.Dispose();
+
+        // Decompression System.IO.Compression/DeflateStream streams
         decompressorN?.Dispose();
         decompressorM?.Dispose();
+
+        // Compression memory streams
+        CompressedStrmN?.Dispose();
+        CompressedStrmM?.Dispose();
     }
 
     public class ProgramRun
