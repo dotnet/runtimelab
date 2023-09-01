@@ -11,8 +11,16 @@ The ManagedZLib project's structure goes as following:
 + [Source](src/Microsoft.ManagedZLib/src/) - Implementations of raw inflate and deflate following the [(RFC151)](https://datatracker.ietf.org/doc/html/rfc1951) standard and [ZLib's manual](https://www.zlib.net/manual.html).
 + [Tests](src/Microsoft.ManagedZLib/tests/) - Unit tests for functionality coverage of DeflateStream's deflater and inflater on scenarios like: Text files, pdf (text heavy) and the binary files.
 + [Benchmarks](src/Microsoft.ManagedZLib/benchmarks/) - Uses BenchmarkDotNet for comparing the performance of this project, using [Zlib](https://github.com/madler/zlib) or [Zlib-intel](https://github.com/intel/zlib) as baseline.
-+ [Profiling](src/Microsoft.ManagedZLib/) - Profiling console app for exploring areas of performance improvement, using VS Profiler.
++ [Profiling](src/Microsoft.ManagedZLib/profiling) - Profiling console app for exploring areas of performance improvement, using VS Profiler.
 
+Note:
++ The optimizations done to this port of inflate were tested in a Windows11,x64 machine.
+
+# Suggestions going forward
+
++ For improving performance, an optimization would be adding the same type of memorization during the construction of the lookup table, like done in [Zlib's](https://github.com/madler/zlib) `inftrees.c`.
+
++ Since this port is based on the original ZLib, porting zlib-intel's optimizations into this new version should improve performance. This can extend to more 3rd parties' optimizations, like [ZLib-NG](https://github.com/zlib-ng/zlib-ng) for ARM64 processors.
 
 ## .NET Foundation
 
