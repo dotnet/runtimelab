@@ -17,7 +17,7 @@ namespace Microsoft.ManagedZLib;
 // The byte array is not reused. We will go from 'start' to 'end'.
 // When we reach the end, most read operations will return -1,
 // which means we are running out of input.
-public  class InputBuffer
+public class InputBuffer
 {
     public ulong _totalInput; //Total input read so far
     public uint _availInput; // Number of available bytes from _nextIN
@@ -26,19 +26,22 @@ public  class InputBuffer
                              // _nextIn is at the end of the input buffer
     public Memory<byte> _inputBuffer; // Input stream buffer
     private uint _bitBuffer;      // To quickly shift in this buffer
-    private int _bitsInBuffer;    // #bits available in bitBuffer
+    private uint _bitsInBuffer;    // #bits available in bitBuffer
     public int _wrap; //Default: Raw Deflate
     public uint _nextIn; // Index for next input byte to be copied from
 
     /// <summary>Total bits available in the input buffer.</summary>
-    public int AvailableBits => _bitsInBuffer; //Used in getNextSymbol
+    public int AvailableBits => (int)_bitsInBuffer; //Used in getNextSymbol
     /// <summary>Total bytes available in the input buffer.</summary>
 
 
     //_totalInput, at the end of compression, should match this. It's going to be use
     // just in inflate.
-    public int inputBufferSize => _inputBuffer.Length + (_bitsInBuffer / 8);
+    public uint inputBufferSize => (_bitsInBuffer / 8) + (uint)_inputBuffer.Length;
 
+    /// <summary>Ensure that count bits are in the bit buffer.</summary>
+    /// <param name="count">Can be up to 16.</param>
+    /// <returns>Returns false if input is not sufficient to make this true.</returns>
     /// <summary>Ensure that count bits are in the bit buffer.</summary>
     /// <param name="count">Can be up to 16.</param>
     /// <returns>Returns false if input is not sufficient to make this true.</returns>
@@ -55,7 +58,7 @@ public  class InputBuffer
             }
 
             // Insert a byte to bitbuffer
-            _bitBuffer |= (uint)_inputBuffer.Span[0] << _bitsInBuffer;
+            _bitBuffer |= (uint)_inputBuffer.Span[0] << (int)_bitsInBuffer;
             _inputBuffer = _inputBuffer.Slice(1);
             _bitsInBuffer += 8;
 
@@ -66,7 +69,7 @@ public  class InputBuffer
                     return false;
                 }
                 // Insert a byte to bitbuffer
-                _bitBuffer |= (uint)_inputBuffer.Span[0] << _bitsInBuffer;
+                _bitBuffer |= (uint)_inputBuffer.Span[0] << (int)_bitsInBuffer;
                 _inputBuffer = _inputBuffer.Slice(1);
                 _bitsInBuffer += 8;
             }
@@ -86,26 +89,29 @@ public  class InputBuffer
     {
         if (_bitsInBuffer < 8)
         {
-            if (_inputBuffer.Length > 1)
+            if (_inputBuffer.Length > 1) // 2+ bytes in input buffer - Load 2 bytes/16 bits
             {
-                Span<byte> span = _inputBuffer.Span;
-                _bitBuffer |= (uint)span[1] << (_bitsInBuffer + 8);
-                _bitBuffer |= (uint)span[0] << _bitsInBuffer;
-                _inputBuffer = _inputBuffer.Slice(2);
+                // Load the 16 bits
+                _bitBuffer |= (uint)_inputBuffer.Span[1] << (int)(_bitsInBuffer + 8); // Biggest bounds check first
+                _bitBuffer |= (uint)_inputBuffer.Span[0] << (int)_bitsInBuffer;
+                _inputBuffer = _inputBuffer.Slice(2); // Moves input buffer init position by 2 bytes
+
+                // Increment the counter of number of bits in buffer
                 _bitsInBuffer += 16;
             }
-            else if (_inputBuffer.Length != 0)
+            else if (_inputBuffer.Length != 0) // 1 byte in input buffer - Load 1 byte/8 bits
             {
-                _bitBuffer |= (uint)_inputBuffer.Span[0] << _bitsInBuffer;
-                _inputBuffer = Memory<byte>.Empty;
+                _bitBuffer |= (uint)_inputBuffer.Span[0] << (int)_bitsInBuffer;
+                _inputBuffer = Memory<byte>.Empty; // At this point, we've validated _buffer is empty
                 _bitsInBuffer += 8;
             }
         }
-        else if (_bitsInBuffer < 16)
+        else if (_bitsInBuffer < 16) // Here we know that bitBuffer has at least 8, but no 16
+                                     // So we ensure it has at least 16 bits by loading 8.
         {
             if (!_inputBuffer.IsEmpty)
             {
-                _bitBuffer |= (uint)_inputBuffer.Span[0] << _bitsInBuffer;
+                _bitBuffer |= (uint)_inputBuffer.Span[0] << (int)_bitsInBuffer;
                 _inputBuffer = _inputBuffer.Slice(1);
                 _bitsInBuffer += 8;
             }
@@ -128,7 +134,7 @@ public  class InputBuffer
 
         int result = (int)(_bitBuffer & GetBitMask(count));
         _bitBuffer >>= count;
-        _bitsInBuffer -= count;
+        _bitsInBuffer -= (uint)count;
         return result;
     }
 
@@ -170,7 +176,7 @@ public  class InputBuffer
     /// Return true is all input bytes are used.
     /// This means the caller can call SetInput to add more input.
     /// </summary>
-    public bool NeedsInput() => _availInput==0;
+    public bool NeedsInput() => _availInput == 0;
 
     /// <summary>
     /// Set the byte buffer to be processed.
@@ -195,14 +201,14 @@ public  class InputBuffer
     {
         Debug.Assert(_bitsInBuffer >= n, "No enough bits in the buffer, Did you call EnsureBitsAvailable?");
         _bitBuffer >>= n;
-        _bitsInBuffer -= n;
+        _bitsInBuffer -= (uint)n;
     }
 
     /// <summary>Skips to the next byte boundary for byte alignment.</summary>
     public void SkipToByteBoundary()
     {
-        _bitBuffer >>= (_bitsInBuffer % 8);
-        _bitsInBuffer -= (_bitsInBuffer % 8);
+        _bitBuffer >>= (int)(_bitsInBuffer & 7);
+        _bitsInBuffer &= ~(uint)7;
     }
 }
 

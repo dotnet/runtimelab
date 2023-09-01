@@ -3,6 +3,7 @@
 
 namespace Microsoft.ManagedZLib;
 
+// For compression with fixed Huffman codes
 public class StaticTreeTables
 {
     public static readonly CtData[] StaticLengthTree = new CtData[DeflateTrees.LitLenCodes + 2]  { //My change to just an array

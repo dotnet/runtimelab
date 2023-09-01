@@ -20,7 +20,7 @@ internal class OutputWindow
     public uint _nextOut;
     public ulong _adler; //Adler-32 or CRC-32 value of the uncompressed data
     public ulong _totalOutput;
-    
+
     public ZFlushCode lastFlush; // value of flush param for previous deflate call
 
     public int _windowSize; // TO-DO: Change _windowSize from int to uint
@@ -56,11 +56,6 @@ internal class OutputWindow
     // max_insert_length is used only for compression levels <= 3.
     public uint MaxInsertLength() => MaxLazyMatch;
     public int WinInit() => MaxMatch;
-    public Memory<byte> Buffer
-    {
-        get { return _output; }
-        set { _output = value; }
-    }
     //Window position at the beginning of the current output block. Gets
     //negative when the window is moved backwards.
     public long _blockStart; //This might be AvailOut
@@ -135,7 +130,7 @@ internal class OutputWindow
     {
         _windowSize = 1 << windowBits; //logaritmic base 2
         _windowMask = _windowSize - 1;
-        _window = new byte[_windowSize*2];
+        _window = new byte[_windowSize * 2];
         _prev = new ushort[_windowSize];
 
         _hashBits = (uint)memLevel + 7;
@@ -186,7 +181,7 @@ internal class OutputWindow
         match_head = _prev[_strStart & _windowMask] = _hashHead[_strHashIndex];
         _hashHead[_strHashIndex] = (ushort)_strStart;
         return match_head;
-    }   
+    }
 
     // Fill the window when the lookahead becomes insufficient.
     // Updates strstart and lookahead.
@@ -220,7 +215,7 @@ internal class OutputWindow
 
             if (inputBuffer._availInput == 0) break;
 
-            Span <byte> winUpperHalf= _window.Span.Slice((int)(_strStart + _lookahead));
+            Span<byte> winUpperHalf = _window.Span.Slice((int)(_strStart + _lookahead));
             //Read more input and put it in the upper half of the window
             bytes = ReadBuffer(inputBuffer, winUpperHalf, (uint)availSpaceEnd); // This return number of bytes read
             _lookahead += (uint)bytes;
@@ -354,7 +349,7 @@ internal class OutputWindow
 
     }
 
-    public uint LongestMatch(uint currHashHead) 
+    public uint LongestMatch(uint currHashHead)
     {
         Debug.Assert(!_window.IsEmpty);
         uint chainLength = MaxChainLength;
@@ -366,7 +361,7 @@ internal class OutputWindow
         /* Stop when cur_match becomes <= limit. To simplify the code,
         * we prevent matches with the string of window index 0.
         */
-        uint limit = (_strStart > (uint)MaxDistance())? _strStart - (uint)MaxDistance(): 0;
+        uint limit = (_strStart > (uint)MaxDistance()) ? _strStart - (uint)MaxDistance() : 0;
         ushort[]? prev = _prev;
         //if (_strStart > 32510)
         //{
@@ -383,9 +378,9 @@ internal class OutputWindow
         }
         //Do not look for matches beyond the end of the input. This is necessary
         // to make deflate deterministic.
-        if ((uint)niceMatch > _lookahead) 
-        { 
-            niceMatch = (int)_lookahead; 
+        if ((uint)niceMatch > _lookahead)
+        {
+            niceMatch = (int)_lookahead;
         }
 
         if (_strStart > _actualWindowSize - MinLookahead) // for debugging
@@ -418,15 +413,15 @@ internal class OutputWindow
 
         return _lookahead;
     }
-    public uint ReadBuffer(InputBuffer input, Span<byte> buffer, uint sizeRequested) 
+    public uint ReadBuffer(InputBuffer input, Span<byte> buffer, uint sizeRequested)
     {
         uint Length = input._availInput;
-        if (Length > sizeRequested) 
+        if (Length > sizeRequested)
         {
             Length = sizeRequested; // All bytes requested, copied
         }
         if (Length < 0)
-        { 
+        {
             return 0;  // No available input - Nothing is copied
         }
 
@@ -545,7 +540,7 @@ internal class OutputWindow
     /// <summary>
     /// Copy up to length of bytes from input directly.
     /// </summary>
-    public int CopyFrom(InputBuffer input, int length) // I htink this is the as ReadBuffer - To check when refactoring
+    public int CopyFrom(InputBuffer input, int length) // I think this is the as ReadBuffer - To check when refactoring
     {
         /// <summary> 
         /// Either how much input is available or how much free space in the output buffer we have. 
@@ -553,7 +548,7 @@ internal class OutputWindow
         /// It will lead us to either copy LEN bytes or just the amount available in the output window
         // taking into account the byte boundaries.
         /// </summary>
-        length = Math.Min(Math.Min(length, _windowSize - _bytesUsed), input.inputBufferSize);
+        length = Math.Min(Math.Min(length, _windowSize - _bytesUsed), (int)input.inputBufferSize);
         int copied;
 
         // We might need wrap around to copy all bytes.
@@ -566,13 +561,19 @@ internal class OutputWindow
             Debug.Assert(spaceLeft >= 0);
             Debug.Assert(_lastIndex <= _window.Length - spaceLeft);
             // Copy the first part
-            copied = input.CopyTo(_window.Span.Slice(_lastIndex, spaceLeft));
+            Debug.Assert(_lastIndex >= 0);
+            Debug.Assert(spaceLeft >= 0);
+            Debug.Assert(_lastIndex <= _window.Length - spaceLeft);
 
+            copied = input.CopyTo(_window.Span.Slice(_lastIndex, spaceLeft));
             if (copied == spaceLeft)
             {
                 Debug.Assert((length - spaceLeft) >= 0);
                 Debug.Assert(0 <= _window.Length - (length - spaceLeft));
                 // Only try to copy the second part if we have enough bytes in input
+                Debug.Assert((length - spaceLeft) >= 0);
+                Debug.Assert(0 <= _window.Length - (length - spaceLeft));
+
                 copied += input.CopyTo(_window.Span.Slice(0, length - spaceLeft));
             }
         }
@@ -582,6 +583,10 @@ internal class OutputWindow
             Debug.Assert(length >= 0);
             Debug.Assert(_lastIndex <= _window.Length - length);
             // Only one copy is needed if there is no wrap around.
+            Debug.Assert(_lastIndex >= 0);
+            Debug.Assert(length >= 0);
+            Debug.Assert(_lastIndex <= _window.Length - length);
+
             copied = input.CopyTo(_window.Span.Slice(_lastIndex, length));
 
         }
@@ -606,7 +611,7 @@ internal class OutputWindow
         {
             // We can copy all the decompressed bytes out
             copy_lastIndex = _lastIndex; //Last index auxiliar
-            usersOutput = usersOutput.Slice(0,_bytesUsed); /// -----COPIA MASO ESTO
+            usersOutput = usersOutput.Slice(0, _bytesUsed); /// -----COPIA MASO ESTO
         }
         else
         {
@@ -648,7 +653,7 @@ internal class OutputWindow
          }
          if (adler != original_adler) error();
     */
-    public void Adler32(Span<byte> buffer, uint Length) 
+    public void Adler32(Span<byte> buffer, uint Length)
     {
         _adler = 0;
         throw new NotImplementedException(); //This is for GZip,ZLib
@@ -661,18 +666,18 @@ internal class OutputWindow
 
     // For initializing values needed in DeflateResetKeep
     // Migth be deleted later
-    public void Adler32() 
-    {
+    public void Adler32()
+    {// TODO: Add missing functinality for GZip/ZLibStream
         _adler = 0;
         throw new NotImplementedException();
     }
     public void CRC32()
-    {
+    {// TODO: Add missing functinality for GZip/ZLibStream
         _adler = 0;
         throw new NotImplementedException();
     }
     public void PutShortMSB(int header)
-    {
+    {// TODO: Add missing functinality for GZip/ZLibStream
         throw new NotImplementedException();
     }
 }

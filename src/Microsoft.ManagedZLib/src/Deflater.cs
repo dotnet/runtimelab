@@ -8,6 +8,7 @@ using ZState = Microsoft.ManagedZLib.ManagedZLib.DeflateStates;
 using ZBlockState = Microsoft.ManagedZLib.ManagedZLib.BlockState;
 using System.Collections.Generic;
 using static Microsoft.ManagedZLib.ManagedZLib;
+using System.IO.Compression;
 
 namespace Microsoft.ManagedZLib;
 
@@ -94,9 +95,8 @@ internal class Deflater
     private readonly OutputWindow _output;
     private readonly InputBuffer _input;
     private readonly DeflateTrees _trees;
-    private int iterador;
     public bool NeedsInput() => _input.NeedsInput();
-    public bool HasSymNext() => _trees._symIndex !=0;
+    public bool HasSymNext() => _trees._symIndex != 0;
     public int MaxDistance() => _output._windowSize - MinLookahead;
 
     // Note, DeflateStream or the deflater do not try to be thread safe.
@@ -109,7 +109,6 @@ internal class Deflater
     // This compLevel parameter is just the version user friendly
     internal Deflater(CompressionLevel compressionLevel, int windowBits)
     {
-        iterador = 0;
         ManagedZLib.CompressionLevel zlibCompressionLevel; // This is the one actually used in all the processings
         int memLevel;
         _input = new InputBuffer();
@@ -143,23 +142,20 @@ internal class Deflater
         //Checking format of compression> Raw, Gzip or ZLib 
         // For Window and wrap flag initial configuration
         _windowBits = DeflateInit(windowBits);
-        _output = new OutputWindow(_windowBits,memLevel, zlibCompressionLevel); //Setting window size and mask
+        _output = new OutputWindow(_windowBits, memLevel, zlibCompressionLevel); //Setting window size and mask
         _output._method = (int)ManagedZLib.CompressionMethod.Deflated; //Deflated - only option
         _litBufferSize = 1U << (memLevel + 6); //16K by default
-        _trees = new DeflateTrees(_output._pendingBuffer.Slice((int)_litBufferSize),_litBufferSize);
+        _trees = new DeflateTrees(_output._pendingBuffer.Slice((int)_litBufferSize), _litBufferSize);
         _status = ZState.InitState;
         // Optimal is DefaultCompression which translates to level 6 in the configuration table
         // used for the algorithm that goes from 0 to 9.
         // The rest matches the int value in the enum.
-        _output._level = (zlibCompressionLevel == ManagedZLib.CompressionLevel.DefaultCompression)? 6 : (int)zlibCompressionLevel;
+        _output._level = (zlibCompressionLevel == ManagedZLib.CompressionLevel.DefaultCompression) ? 6 : (int)zlibCompressionLevel;
         _output._strategy = (int)ManagedZLib.CompressionStrategy.DefaultStrategy; // Just the default
         // Setting variables for doing the matches
         DeflateReset();
-
-        //Might not be necessary - constructors do everything that DelfateInit2 used to do
-        DeflateInit2(zlibCompressionLevel, ManagedZLib.CompressionMethod.Deflated, windowBits, memLevel, _output._strategy);
     }
-    
+
     // For assigning priority to the flush codes. This is how it's done in madler/zlib.
     // This is a direct port. Might change late because:
     // I'd recommend just putting the enum in the desired order instead of this**
@@ -171,15 +167,16 @@ internal class Deflater
         if ((int)flushCode <= 4)
         {
             return (int)flushCode * 2;
-        }else
+        }
+        else
         {
             return (int)flushCode * 2 - 9;
         }
     }
-    private int DeflateInit( int windowBits)
+    private int DeflateInit(int windowBits)
     {
         _wrap = 1; // To check which type of wrapper are we checking
-                     // (0) No wrapper/Raw, (1) ZLib, (2)GZip
+                   // (0) No wrapper/Raw, (1) ZLib, (2)GZip
         Debug.Assert(windowBits >= MinWindowBits && windowBits <= MaxWindowBits);
         //Check input stream is not null
         ////-15 to -1 or 0 to 47
@@ -187,7 +184,9 @@ internal class Deflater
         {//Raw deflate - Suppress ZLib Wrapper
             _wrap = 0;
             windowBits = -windowBits;
-        } else if (windowBits > 15) {  //GZip
+        }
+        else if (windowBits > 15)
+        {  //GZip
             _wrap = 2;
             windowBits -= 16; //
         }                                      /// What's this (bellow):
@@ -195,15 +194,7 @@ internal class Deflater
         if (windowBits == 8) windowBits = 9;  /* until 256-byte window bug fixed */
         return (windowBits < 0) ? -windowBits : windowBits &= 15;
     }
-    //This will use asserts instead of the ZLibNative error checking
-    private void DeflateInit2(ManagedZLib.CompressionLevel level,
-        ManagedZLib.CompressionMethod method,
-        int windowBits,
-        int memLevel,
-        ManagedZLib.CompressionStrategy strategy) { 
 
-        //Set everything up + error checking if needed - Might merge with DeflateInit later.
-    }
     // DeflateReset(): Sets some initial values.
     // ATTENTION: This method to be reviewed/re-valuated in refactoring stage**
     // I moved some initializations to DeflateTrees and OutputWindow constructors
@@ -252,9 +243,10 @@ internal class Deflater
     {
         if (!_isDisposed)
         {
-            if (disposing) {
-               // Dispose(); //TBD
-               // Just in case ArrayPool is used (not likely so far).
+            if (disposing)
+            {
+                // Dispose(); //TBD
+                // Just in case ArrayPool is used (not likely so far).
             }
             _isDisposed = true;
         }
@@ -280,7 +272,7 @@ internal class Deflater
     }
 
     public int ReadDeflateOutput(byte[] outputBuffer, ZFlushCode flushCode, out ErrorCode finishCode) // It threw an error when doing the conversion from byte[] to Span<byte>
-                                                                                  // So I'll change to Memory<byte>
+                                                                                                      // So I'll change to Memory<byte>
     {
         Debug.Assert(outputBuffer.Length > 0); // This used to be nullable - Check behavior later
 
@@ -302,7 +294,7 @@ internal class Deflater
         Debug.Assert(null != outputBuffer, "Can't pass in a null output buffer!");
         Debug.Assert(outputBuffer.Length > 0, "Can't pass in an empty output buffer!");
         ErrorCode finishCode;
-        bytesRead = ReadDeflateOutput(outputBuffer, ZFlushCode.Finish, out finishCode); 
+        bytesRead = ReadDeflateOutput(outputBuffer, ZFlushCode.Finish, out finishCode);
         return finishCode == ErrorCode.StreamEnd;
     }
 
@@ -333,7 +325,7 @@ internal class Deflater
     {
         // C Zlib returning values porting interpretation:
         // ERR - Possible Debug.Assert statement
-        // OK - return a substraction 
+        // OK/STRM - return a substraction 
         // bytesRead = outputBuffer.Length - _output.AvailableBytes
 
         ZFlushCode oldFlush = _output.lastFlush;
@@ -356,9 +348,10 @@ internal class Deflater
                 finishCode = ErrorCode.Ok;
                 return _output._output.Length - _output._availableOutput; // OK
             }
-        }else if (_input._availInput == 0 && 
-                  Rank(flushCode)<=Rank(oldFlush) &&
-                  flushCode!= ZFlushCode.Finish)
+        }
+        else if (_input._availInput == 0 &&
+                  Rank(flushCode) <= Rank(oldFlush) &&
+                  flushCode != ZFlushCode.Finish)
         {
             finishCode = ErrorCode.StreamEnd;
             return _output._output.Length - _output._availableOutput;
@@ -366,7 +359,7 @@ internal class Deflater
 
         // User must not provide more input after the first FINISH:
         Debug.Assert(_status != ZState.FinishState || _input._availInput == 0);
-        
+
         //Write the header
         if (_status == ZState.InitState && _wrap == 0)
         {
@@ -378,7 +371,7 @@ internal class Deflater
             //ZLib header
             int header = ((int)ManagedZLib.CompressionMethod.Deflated + ((_windowBits - 8) << 4)) << 8;
             // Check the compression level and more
-            if (_output._level < 6) 
+            if (_output._level < 6)
             {
                 levelFlags = 1;
             }
@@ -390,7 +383,7 @@ internal class Deflater
             {
                 levelFlags = 3;
             }
-            header |= (int) (levelFlags << 6);
+            header |= (int)(levelFlags << 6);
             if (_output._strStart != 0) header |= ManagedZLib.PresetDict;
             header += 31 - (header % 31);
 
@@ -399,6 +392,8 @@ internal class Deflater
             /* Save the adler32 of the preset dictionary: */
             if (_output._strStart != 0)
             {
+                //TODO: Add missing functinality for GZip/ZLibStream
+                // Bellow are the wrapper of some missing implementation.
                 //putShortMSB(s, (uInt)(strm->adler >> 16));
                 //putShortMSB(s, (uInt)(strm->adler & 0xffff));
             }
@@ -415,7 +410,8 @@ internal class Deflater
             }
 
         }
-        if (_status == ZState.GZipState){ }//Gzip header
+        // TODO: Add missing functinality for GZip / ZLibStream
+        if (_status == ZState.GZipState) { }//Gzip header
 
         if (_status == ZState.ExtraState) { } //Gzip: Start of bytes to update crc
 
@@ -423,7 +419,8 @@ internal class Deflater
 
         if (_status == ZState.CommentState) { } // GZip: Gzip comment
 
-        if (_status == ZState.HCRCState) {
+        if (_status == ZState.HCRCState)
+        {
             //Process header [..]
             _status = ZState.BusyState;
             //  Compression must start with an empty pending buffer */
@@ -436,7 +433,7 @@ internal class Deflater
             }
         } // GZip: GZip header CRC
 
-        // --------- Most basic deflate operation starts here --------
+        // --------- Most core deflate operations starts here --------
         // For regular DeflateStream scenarios (Raw Deflate) all of the above should be ignore
         // and it should go from InitState to BusyState directly
         // Leading to here, after the error checking
@@ -469,7 +466,7 @@ internal class Deflater
                         blockState = DeflateFast(flushCode);
                         break;
 
-                    case CompressionLevel.NoCompression: 
+                    case CompressionLevel.NoCompression:
                         // _output.level = 0 --- DeflateStore() - Store only
                         blockState = DeflateStored(flushCode);
                         break;
@@ -524,11 +521,12 @@ internal class Deflater
             finishCode = ErrorCode.Ok;
             return _output._output.Length - _output._availableOutput; // OK
         }
-        if (_wrap <= 0) {
+        if (_wrap <= 0)
+        {
             finishCode = ErrorCode.StreamEnd;
             return _output._output.Length - _output._availableOutput; //STREAM END: GZip
         }
-        if (_wrap == 2) 
+        if (_wrap == 2)
         { } // Gzip: Write the trailer
         else
         {
@@ -585,7 +583,7 @@ internal class Deflater
             if (len > left + _input._availInput)
             {
                 len = left + _input._availInput;     /* limit len to the input */
-            }   
+            }
             if (len > have)
             {
                 len = have;                         /* limit len to the output */
@@ -627,7 +625,7 @@ internal class Deflater
                 }
 
                 Span<byte> source = _output._window.Span.Slice((int)_output._blockStart, (int)left);
-                Span<byte> dest = _output._output.Span.Slice((int)_output._nextOut,(int)left);
+                Span<byte> dest = _output._output.Span.Slice((int)_output._nextOut, (int)left);
                 source.CopyTo(dest);
 
                 _output._nextOut += left;
@@ -642,7 +640,7 @@ internal class Deflater
             {
                 Span<byte> dest = _output._output.Span.Slice((int)_output._nextOut, (int)len);
                 // ATTENTION: this returns uint - bytesRead
-                _output.ReadBuffer(_input,dest, len);
+                _output.ReadBuffer(_input, dest, len);
                 _output._nextOut += len;
                 _output._availableOutput -= (int)len;
                 _output._totalOutput += len;
@@ -663,7 +661,7 @@ internal class Deflater
             if (used >= _output._windowSize)
             {    /* supplant the previous history */
                 _trees._matchesInBlock = 2;         /* clear hash */
-                Span<byte> source = _input._inputBuffer.Span.Slice((int)(_input._nextIn-(uint)_output._windowSize),_output._windowSize);
+                Span<byte> source = _input._inputBuffer.Span.Slice((int)(_input._nextIn - (uint)_output._windowSize), _output._windowSize);
                 //source.CopyTo(_output._window.Span.Slice(0, _output._windowSize));
                 source.CopyTo(_output._window.Span);
                 _output._strStart = (uint)_output._windowSize;
@@ -715,7 +713,7 @@ internal class Deflater
             /* Slide the window down. */
             _output._blockStart -= _output._windowSize;
             _output._strStart -= (uint)_output._windowSize;
-            Memory<byte> temp = _output._window.Slice(_output._windowSize, 
+            Memory<byte> temp = _output._window.Slice(_output._windowSize,
                 (int)_output._strStart);
             temp.CopyTo(_output._window);
             if (_trees._matchesInBlock < 2)
@@ -750,7 +748,7 @@ internal class Deflater
         left = _output._strStart - (uint)_output._blockStart;
 
         if (left >= minBlock ||
-            ((left != 0 || flushCode == ZFlushCode.Finish) 
+            ((left != 0 || flushCode == ZFlushCode.Finish)
             && flushCode != ZFlushCode.NoFlush &&
              _input._availInput == 0 && left <= have))
         {
@@ -773,26 +771,17 @@ internal class Deflater
     // matches. It is used only for the fast compression options.
     public ZBlockState DeflateFast(ZFlushCode flushCode) // TO-DO
     {
-        iterador++; //For debugging only. TODO: Take it away after
         uint hashHead; //Head of the hash chain - index
         bool blockFlush; //Set if current block must be flushed
 
         while (true)
         {
-            //if (_output._lookahead == 261)
-            //{
-            //    Debugger.Break();
-            //}
-            //if (_trees._symIndex == 49119 || _output._strStart > 32510)
-            //{
-            //    Debugger.Break();//for debugging huge iterations that would break the breakpoint -lol-
-            //}
             /* Make sure that we always have enough lookahead, except
              * at the end of the input file. We need MAX_MATCH bytes
              * for the next match, plus MIN_MATCH bytes to insert the
              * string following the next match.
              */
-            if (_output._lookahead < MinLookahead) 
+            if (_output._lookahead < MinLookahead)
             {
                 _output.FillWindow(_input); // ------------------------------------------------------------------Pending to implement
                 if (_output._lookahead < MinLookahead && flushCode == ZFlushCode.NoFlush)
@@ -803,7 +792,8 @@ internal class Deflater
             }
 
             hashHead = NIL; //hash head starts with tail's value - empty hash
-            if (_output._lookahead >= MinMatch) {
+            if (_output._lookahead >= MinMatch)
+            {
                 hashHead = _output.InsertString();
             }
 
@@ -811,52 +801,20 @@ internal class Deflater
             //At this point we have always match_length < MIN_MATCH
             if (hashHead != NIL && _output._strStart - hashHead <= MaxDistance())
             {
-                if (_trees._symIndex == 11157 || _output._lookahead == 28490)
-                {
-                    //Debugger.Break(); //Exact case I'm trying to debug - Longest_match: Doesn't match native's
-                }
                 /* To simplify the code, we prevent matches with the string
                  * of window index 0 (in particular we have to avoid a match
                  * of the string with itself at the start of the input file).
                  */
                 _output._matchLength = _output.LongestMatch(hashHead);// Sets _output._matchStart and eventually the _lookahead
             }
-            
+
             if (_output._matchLength >= MinMatch)
             {
-                
+
                 blockFlush = _trees.TreeTallyDist(_output._strStart - _output._matchStart, _output._matchLength - MinMatch);
-                if (_trees._symIndex > 20000)
-                {
-                    // Debugger.Break();
-                }
-                if (_trees._symIndex > 25000)
-                {
-                    //Debugger.Break();
-                }
-                if (_trees._symIndex > 30000)
-                {
-                    //Debugger.Break();
-                }
-                if (_trees._symIndex > 39100)
-                {
-                    //Debugger.Break();
-                }
-                if (_trees._symIndex > 39600)
-                {
-                    //Debugger.Break();
-                }
-                if (_trees._symIndex > 49100)
-                {
-                    //Debugger.Break();
-                }
-                if (_trees._symIndex == 49149)
-                {
-                   // Debugger.Break();
-                }
                 _output._lookahead -= _output._matchLength;
 
-                if (_output._matchLength <= _output.MaxInsertLength() && 
+                if (_output._matchLength <= _output.MaxInsertLength() &&
                     _output._lookahead >= MinMatch)
                 {
                     _output._matchLength--;
@@ -870,7 +828,7 @@ internal class Deflater
                     while (--_output._matchLength != 0);
                     _output._strStart++;
                 }
-                else 
+                else
                 {
                     _output._strStart += _output._matchLength;
                     _output._matchLength = 0;
@@ -878,44 +836,16 @@ internal class Deflater
                     Debug.Assert(((int)_output._strStart) > 0); // Checking overflow due to the casting
                     _output._strHashIndex = _output.Window((int)_output._strStart);
 
-                    Debug.Assert(((int)_output._strStart+1) > 0);
-                    _output.UpdateHash(_output.Window((int)_output._strStart+1));
+                    Debug.Assert(((int)_output._strStart + 1) > 0);
+                    _output.UpdateHash(_output.Window((int)_output._strStart + 1));
                 }
             }
             else
             {
                 // Not match, output a literal byte
-                blockFlush = _trees.TreeTallyLit(_output.Window((int)_output._strStart));          
+                blockFlush = _trees.TreeTallyLit(_output.Window((int)_output._strStart));
                 _output._lookahead--;
                 _output._strStart++;
-                if (_trees._symIndex > 20000)
-                {
-                   // Debugger.Break();
-                }
-                if (_trees._symIndex > 25000)
-                {
-                    //Debugger.Break();
-                }
-                if (_trees._symIndex > 30000)
-                {
-                    //Debugger.Break();
-                }
-                if (_trees._symIndex > 39100)
-                {
-                    //Debugger.Break();
-                }
-                if (_trees._symIndex > 39600)
-                {
-                    //Debugger.Break();
-                }
-                if (_trees._symIndex > 49100)
-                {
-                    //Debugger.Break();
-                }
-                if (_trees._symIndex == 49149)
-                {
-                    //Debugger.Break();
-                }
             }
 
             if (blockFlush)
@@ -927,10 +857,10 @@ internal class Deflater
                 }
             }
         }
-        _output._insert = (_output._strStart < (MinMatch - 1))? 
+        _output._insert = (_output._strStart < (MinMatch - 1)) ?
             _output._strStart : MinMatch - 1;
 
-        if ( flushCode == ZFlushCode.Finish) 
+        if (flushCode == ZFlushCode.Finish)
         {
             // DONE STATE
             FlushBlock(last: true);
@@ -938,22 +868,21 @@ internal class Deflater
             {
                 return ZBlockState.FinishStarted;
             }
-            return ZBlockState.FinishDone; 
+            return ZBlockState.FinishDone;
         }
 
-        if (_trees._symIndex != 0) 
+        if (_trees._symIndex != 0)
         {
-            FlushBlock(last : false);
+            FlushBlock(last: false);
             if (_output._availableOutput == 0)
             {
                 return ZBlockState.NeedMore;
-            }       
+            }
         }
         return ZBlockState.BlockDone;
     }
     public ZBlockState DeflateSlow(ZFlushCode flushCode)
     {
-        //throw new NotImplementedException(); // TO-DO
         uint hashHead; //Head of the hash chain - index
         bool blockFlush; //Set if current block must be flushed
 
@@ -1011,7 +940,7 @@ internal class Deflater
                  * the hash table.
                  */
                 _output._lookahead -= _output._prevLength - 1;
-                _output._prevLength -= 2;                   
+                _output._prevLength -= 2;
                 do
                 {
                     if (++_output._strStart <= maxInsert)
@@ -1070,7 +999,7 @@ internal class Deflater
             _output._matchAvailable = false;
         }
 
-        _output._insert = (_output._strStart < MinMatch - 1) ? 
+        _output._insert = (_output._strStart < MinMatch - 1) ?
             _output._strStart : MinMatch - 1;
 
         if (flushCode == ZFlushCode.Finish)
@@ -1113,7 +1042,7 @@ internal class Deflater
 
         // s->pending_out  += len;
         Memory<byte> source = _output._pendingOut.Slice((int)_output._pendingOutIndex, (int)len); // TO-DO extra check in case it overflows the int casting
-        source.CopyTo(_output._output.Slice((int)_output._nextOut,(int)len)); // output = NextOut
+        source.CopyTo(_output._output.Slice((int)_output._nextOut, (int)len)); // output = NextOut
 
         _output._nextOut += len;
         _output._pendingOutIndex += len;

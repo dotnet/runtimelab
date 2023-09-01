@@ -2,21 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Buffers;
-using System.Collections;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Metrics;
-using System.Drawing;
 using System.IO;
-using System.IO.Compression;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Security;
-using System.Text;
 using static Microsoft.ManagedZLib.ManagedZLib;
-using static Microsoft.ManagedZLib.ManagedZLib.ZLibStreamHandle;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Microsoft.ManagedZLib;
 
@@ -29,7 +17,7 @@ internal class Inflater
     private readonly InputBuffer _input;
 
     private InflateHuffmanTree? _literalLengthTree;
-    private InflateHuffmanTree? _distanceTree; 
+    private InflateHuffmanTree? _distanceTree;
     private InflateHuffmanTree? _codeLengthTree;
 
     private int _literalLengthCodeCount;
@@ -45,7 +33,7 @@ internal class Inflater
     // For decoding a compressed block
     // Alphabets used: Literals, length and distance
     // Extra bits for merging literal and length's alphabet
-    private int _length; 
+    private int _length;
     private int _distanceCode;
     private int _extraBits;
 
@@ -128,7 +116,7 @@ internal class Inflater
         _windowBits = InflateInit(windowBits);
         // Initializing window size according the type of deflate (window limits - 32k or 64k)
         // This has mainly: Output Window, Index last position (Where in window bytes array) and BytesUsed (As the quantity)
-        _output = _deflate64? new OutputWindow() : new OutputWindow(_windowBits);
+        _output = _deflate64 ? new OutputWindow() : new OutputWindow(_windowBits);
         _codeList = new byte[InflateHuffmanTree.MaxLiteralTreeElements + InflateHuffmanTree.MaxDistTreeElements];
         _codeLengthTreeCodeLength = new byte[InflateHuffmanTree.NumberOfCodeLengthTreeElements];
         _nonEmptyInput = false;
@@ -143,7 +131,7 @@ internal class Inflater
     //{ Stored = 0x0, Deflate = 0x8, Deflate64 = 0x9, BZip2 = 0xC, LZMA = 0xE }
     internal Inflater(bool deflate64, int windowBits, long uncompressedSize = -1) : this(windowBits, uncompressedSize)
     {
-        _deflate64= deflate64;
+        _deflate64 = deflate64;
         _decodeLimit = 65536; //64K window
         // With Deflate64 we can have up to a 64kb length, so we ensure at least that much space is available
         // in the OutputWindow to avoid overwriting previous unflushed output data.
@@ -153,9 +141,9 @@ internal class Inflater
     /// <summary>
     /// Returns true if the end of the stream has been reached.
     /// </summary>
-    public bool Finished() =>  _state == InflaterState.Done || _state == InflaterState.VerifyingFooter;
+    public bool Finished() => _state == InflaterState.Done || _state == InflaterState.VerifyingFooter; // Verifying footer would be for future GZip/Zlib integration
 
-    public int Inflate(Span<byte> buffer) 
+    public int Inflate(Span<byte> buffer)
     {
         // If Inflate is called on an invalid or unready inflater, return 0 to indicate no bytes have been read.
         if (buffer.Length == 0)
@@ -200,7 +188,7 @@ internal class Inflater
                     //Done reading input
                     _state = InflaterState.Done;
                     _output.ClearBytesUsed(); //The window end up being clean - _bytesUsed = 0
-                }  
+                }
             }
             // Before actually add the bytes read to the local variable, 
             // we check if the value is valid 
@@ -214,12 +202,13 @@ internal class Inflater
                 // filled in the bytes buffer - We reached the end
                 break;
             }
-        } while (!Finished()&& _couldDecode) ; //Will return 0 when more input is need
+        } while (!Finished() && _couldDecode); //Will return 0 when more input is need
 
         return bytesRead;
     }
-    
-    private int ReadOutput(Span<byte> outputBytes) {
+
+    private int ReadOutput(Span<byte> outputBytes)
+    {
         // Before the state machine of inflater starts, we need to check the type of inflation done (Raw, Gzip or Zlib)
         // To know if besides the first bits is the raw deflate block, any additional header processing is needed
         // or if at the end, we are doing additional error checkings.
@@ -229,7 +218,7 @@ internal class Inflater
 
         //Final copying of the uncompressed data
         // Keeps looping until the decom
-        
+
         //bytesRead
         return _output.CopyTo(outputBytes);
     }
@@ -269,11 +258,11 @@ internal class Inflater
     {
         bool EndOfBlock = false;
         bool result;
-        
+
         // For checking later, to add some extra checks here, the ones done by ReadOutput and ResetStreamForLeftoverInput() 
         // ResetStreamForLeftoverInput() for GZip and ZLib scenarios that behave differently than raw inflate.
         // ResetStreamForLeftoverInput() checks if it's a GZpin member
-        
+
         //* --- For GZip and ZLib, there are more checks needed for their headers and trailers.
         //* [Reference from Mark Adler's repo: inflate.h
         /* State transitions
@@ -300,7 +289,7 @@ internal class Inflater
         {
             return true;
         }
-        
+
         //Read header of deflate blocks (HEAD)
         if (_state == InflaterState.ReadingBFinal)
         {
@@ -311,7 +300,7 @@ internal class Inflater
             _state = InflaterState.ReadingBType; // Next state - next 2 bits in the header           
         }
         if (_state == InflaterState.ReadingBType)
-        { 
+        {
             if (!_input.EnsureBitsAvailable(2)) // Need 2 bits - Error check
             {
                 _state = InflaterState.ReadingBType; //Returns to first state - Error check

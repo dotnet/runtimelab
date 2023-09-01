@@ -22,7 +22,6 @@ public class ManagedZLibBenchmark
 {
     public static IEnumerable<string> UncompressedTestFileNames()
     {
-        // The commented file is going to be added later on:
         yield return "TestDocument.pdf"; // 199 KB small test document with repeated paragraph, PDF are common
         yield return "alice29.txt"; // 145 KB, copy of "ALICE'S ADVENTURES IN WONDERLAND" book, an example of text file
         yield return "sum"; // 37.3 KB, some binary content, an example of binary file
@@ -31,9 +30,20 @@ public class ManagedZLibBenchmark
     [ParamsSource(nameof(UncompressedTestFileNames))]
     public string? Files { get; set; }
 
+    [Params(System.IO.Compression.CompressionLevel.SmallestSize,
+            System.IO.Compression.CompressionLevel.Optimal,
+            System.IO.Compression.CompressionLevel.Fastest)]
+    public System.IO.Compression.CompressionLevel Level { get; set; }
+
+    // Decompression
+    public CompressedFile? CompressedFile;
+    private MemoryStream? outputStream;
+    System.IO.Compression.DeflateStream? decompressorN;
+    DeflateStream? decompressorM;
+
+    //Compression
     public byte[]? UncompressedData { get; set; }
     public byte[]? CompressedData { get; set; }
-
     public MemoryStream? CompressedStrmN { get; set; }
     public MemoryStream? CompressedStrmM { get; set; }
 
@@ -45,15 +55,55 @@ public class ManagedZLibBenchmark
     {
         Debug.Assert(Files != null);
 
+        //Compression
         var filePath = GetFilePath(Files); // For compression
         UncompressedData = File.ReadAllBytes(filePath);
-
         //Managed
         CompressedStrmM = new MemoryStream(capacity: UncompressedData.Length);
         //Native
         CompressedStrmN = new MemoryStream(capacity: UncompressedData.Length);
+
+        // Decompression
+        CompressedFile = new CompressedFile(Files, Level);
+        outputStream = new MemoryStream(CompressedFile.UncompressedData.Length);
+        decompressorN = new System.IO.Compression.DeflateStream(CompressedFile.CompressedDataStream, System.IO.Compression.CompressionMode.Decompress, leaveOpen: true);
+        decompressorM = new DeflateStream(CompressedFile.CompressedDataStream, CompressionMode.Decompress, leaveOpen: true);
     }
 
+    [BenchmarkCategory("Init_Decompress"), Benchmark(Baseline = true)]
+    public void Init_DecompressNative()
+    {
+        CompressedFile!.CompressedDataStream.Position = 0;
+        outputStream!.Position = 0;
+        System.IO.Compression.DeflateStream decompressor = new System.IO.Compression.DeflateStream(CompressedFile.CompressedDataStream, System.IO.Compression.CompressionMode.Decompress, leaveOpen: true);
+        decompressor?.CopyTo(outputStream);
+    }
+
+    [BenchmarkCategory("Init_Decompress"), Benchmark]
+    public void Init_DecompressManaged()
+    {
+        CompressedFile!.CompressedDataStream.Position = 0;
+        outputStream!.Position = 0;
+        DeflateStream decompressor = new DeflateStream(CompressedFile.CompressedDataStream, CompressionMode.Decompress, leaveOpen: true);
+        decompressor?.CopyTo(outputStream);
+    }
+
+    [BenchmarkCategory("Algo_Decompression"), Benchmark(Baseline = true)]
+    public void Alg_DecompressNative()
+    {
+        CompressedFile!.CompressedDataStream.Position = 0;
+        outputStream!.Position = 0;
+        decompressorN?.CopyTo(outputStream);
+    }
+
+    //[Benchmark]
+    [BenchmarkCategory("Algo_Decompression"), Benchmark]
+    public void Alg_DecompressManaged()
+    {
+        CompressedFile!.CompressedDataStream.Position = 0;
+        outputStream!.Position = 0;
+        decompressorM?.CopyTo(outputStream);
+    }
 
     [BenchmarkCategory("Smallest"), Benchmark(Baseline = true)]
     public void CompressNative_small() //with creation/disposal of stream
@@ -118,7 +168,15 @@ public class ManagedZLibBenchmark
     [GlobalCleanup]
     public void Cleanup()
     {
-        // Compression underlying streams
+        // Decompression memory streams
+        outputStream?.Dispose();
+        CompressedFile?.CompressedDataStream.Dispose();
+
+        // Decompression System.IO.Compression/DeflateStream streams
+        decompressorN?.Dispose();
+        decompressorM?.Dispose();
+
+        // Compression memory streams
         CompressedStrmN?.Dispose();
         CompressedStrmM?.Dispose();
     }
@@ -139,4 +197,5 @@ public class ManagedZLibBenchmark
             BenchmarkSwitcher.FromAssembly(typeof(ProgramRun).Assembly).Run(args, config);
         }
     }
+
 }

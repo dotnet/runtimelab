@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.ManagedZLib.Tests
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.ManagedZLib.Benchmarks", "src\Microsoft.ManagedZLib\benchmarks\Microsoft.ManagedZLib.Benchmarks.csproj", "{56594674-14FE-4BCA-BFFE-F4FAFA4F2282}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProfilingApp", "src\Microsoft.ManagedZLib\profiling\ProfilingApp.csproj", "{2B29BFBA-77B3-4489-AC38-1486FA34C666}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,8 +57,23 @@ Global
 		{56594674-14FE-4BCA-BFFE-F4FAFA4F2282}.Release|x64.Build.0 = Release|Any CPU
 		{56594674-14FE-4BCA-BFFE-F4FAFA4F2282}.Release|x86.ActiveCfg = Release|Any CPU
 		{56594674-14FE-4BCA-BFFE-F4FAFA4F2282}.Release|x86.Build.0 = Release|Any CPU
+		{2B29BFBA-77B3-4489-AC38-1486FA34C666}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B29BFBA-77B3-4489-AC38-1486FA34C666}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B29BFBA-77B3-4489-AC38-1486FA34C666}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2B29BFBA-77B3-4489-AC38-1486FA34C666}.Debug|x64.Build.0 = Debug|Any CPU
+		{2B29BFBA-77B3-4489-AC38-1486FA34C666}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2B29BFBA-77B3-4489-AC38-1486FA34C666}.Debug|x86.Build.0 = Debug|Any CPU
+		{2B29BFBA-77B3-4489-AC38-1486FA34C666}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2B29BFBA-77B3-4489-AC38-1486FA34C666}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2B29BFBA-77B3-4489-AC38-1486FA34C666}.Release|x64.ActiveCfg = Release|Any CPU
+		{2B29BFBA-77B3-4489-AC38-1486FA34C666}.Release|x64.Build.0 = Release|Any CPU
+		{2B29BFBA-77B3-4489-AC38-1486FA34C666}.Release|x86.ActiveCfg = Release|Any CPU
+		{2B29BFBA-77B3-4489-AC38-1486FA34C666}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {568C601A-FD68-4699-B46C-D1C83BB5473E}
 	EndGlobalSection
 EndGlobal
