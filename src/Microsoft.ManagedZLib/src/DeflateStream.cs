@@ -209,7 +209,7 @@ public partial class DeflateStream : Stream
 
                 // If BytesRead (input available) < buffer.Length,
                 // the slice will be smaller thant the original.
-                buffer = buffer.Slice(bytesRead); 
+                buffer = buffer.Slice(bytesRead);
 
                 if (bytesRead != 0 && InflatorIsFinished)
                 {
@@ -260,7 +260,7 @@ public partial class DeflateStream : Stream
 
             }
 
-            return bytesRead; 
+            return bytesRead;
         }
     }
 
@@ -666,7 +666,7 @@ public partial class DeflateStream : Stream
         }
     }
 
-    private void AsyncOperationCompleting() =>_activeAsyncOperation = false;
+    private void AsyncOperationCompleting() => _activeAsyncOperation = false;
 
     private static void ThrowInvalidBeginCall() =>
         throw new InvalidOperationException("InvalidBeginCall - Only one asynchronous reader or writer is allowed time at one time.");

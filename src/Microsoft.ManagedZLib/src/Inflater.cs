@@ -2,22 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Buffers;
-using System.Collections;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Metrics;
-using System.Drawing;
 using System.IO;
-using System.IO.Compression;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics.X86;
-using System.Security;
-using System.Text;
 using static Microsoft.ManagedZLib.ManagedZLib;
-using static Microsoft.ManagedZLib.ManagedZLib.ZLibStreamHandle;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Microsoft.ManagedZLib;
 
@@ -127,8 +114,6 @@ internal class Inflater
         _input = new InputBuffer();
         // Error checking
         _windowBits = InflateInit(windowBits);
-        // After the operations done to windowBits in InflateInit return.
-        Debug.Assert(windowBits >= MinWindowBits && windowBits <= MaxWindowBits);
         // Initializing window size according the type of deflate (window limits - 32k or 64k)
         // This has mainly: Output Window, Index last position (Where in window bytes array) and BytesUsed (As the quantity)
         _output = _deflate64 ? new OutputWindow() : new OutputWindow(_windowBits);
@@ -177,7 +162,7 @@ internal class Inflater
         int bytesRead = 0;
         // This division of _uncompressedSize is for GZip
         // For Raw Inflate, it is not necessary to compare the inflate count (bytes read so far)
-        // with anything else, besides checking is a valid number fr either finish the loop or
+        // with anything else, besides cheching is a valid number fr either finish the loop or
         // refill the buffer that refers to the underlying deflate stream buffer. (Default size: 8192)
         do
         {
@@ -491,7 +476,26 @@ internal class Inflater
                     goto case InflaterState.HaveDistCode;
 
                 case InflaterState.HaveDistCode:
-                    if (!getDistancePair(ref freeBytes)) return false; // If not enough bits available
+                    // To avoid a table lookup we note that for distanceCode > 3,
+                    // extra_bits = (distanceCode-2) >> 1
+                    int offset;
+                    if (_distanceCode > 3)
+                    {
+                        _extraBits = (_distanceCode - 2) >> 1;
+                        int bits = _input.GetBits(_extraBits);
+                        if (bits < 0)
+                        {
+                            return false;
+                        }
+                        offset = DistanceBasePosition[_distanceCode] + bits;
+                    }
+                    else
+                    {
+                        offset = _distanceCode + 1;
+                    }
+
+                    _output.WriteLengthDistance(_length, offset);
+                    freeBytes -= _length;
                     _state = InflaterState.DecodeTop;
                     break;
 
@@ -504,27 +508,6 @@ internal class Inflater
         return true;
     }
 
-    // The part that actually does the LZ77 pair conversion
-    private bool getDistancePair(ref int freeBytes)
-    {
-        // To avoid a table lookup we note that for distanceCode > 3,
-        // extra_bits = (distanceCode-2) >> 1
-        int offset = _distanceCode + 1; // Length from the distance for the pair
-        if (_distanceCode > 3)
-        {
-            _extraBits = (_distanceCode - 2) >> 1;
-            int bits = _input.GetBits(_extraBits);
-            if (bits < 0)
-            {
-                return false;
-            }
-            offset = DistanceBasePosition[_distanceCode] + bits;
-        }
-
-        _output.WriteLengthDistance(_length, offset);
-        freeBytes -= _length;
-        return true;
-    }
     // Format of Non-compressed blocks (BTYPE=00) - RFC1951 spec
     private bool DecodeUncompressedBlock(out bool end_of_block)
     {

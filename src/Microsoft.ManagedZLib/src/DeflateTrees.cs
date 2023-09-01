@@ -37,7 +37,7 @@ internal class DeflateTrees
     int timesEntered;
 
     // Classification of possible data types - Not really used in the algorithm's functionality
-                                              // But can be used for improvements later
+    // But can be used for improvements later
     public const int Binary = 0; // TO-DO enum
     public const int Text = 1;
     public const int Ascii = Text;   /* for compatibility with 1.2.2 and earlier */
@@ -78,18 +78,18 @@ internal class DeflateTrees
                               // All bits above the last valid bit are always zero.
 
     static public ushort GetDistCode(ushort dist)
-        => (dist < 256) ? StaticTreeTables.DistanceCode[dist] : StaticTreeTables.DistanceCode[256 + (dist>>7)];
+        => (dist < 256) ? StaticTreeTables.DistanceCode[dist] : StaticTreeTables.DistanceCode[256 + (dist >> 7)];
     // Extra bits for each length code.
     private static ReadOnlySpan<int> ExtraLengthBits
         => new int[LengthCodes] { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0 };
-    private static ReadOnlySpan<int> ExtraDistanceBits 
-        => new int[DistanceCodes] { 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13 };    
+    private static ReadOnlySpan<int> ExtraDistanceBits
+        => new int[DistanceCodes] { 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13 };
     private static ReadOnlySpan<int> ExtraCodeBits
         => new int[BitLengthsCodes] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 7 };
     private static ReadOnlySpan<byte> CodeOrder //blOrder
         => new byte[BitLengthsCodes] { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
 
-    static StaticTreesDesc StaticLengthDesc = 
+    static StaticTreesDesc StaticLengthDesc =
         new(StaticTreeTables.StaticLengthTree, ExtraLengthBits, Literals + 1, LitLenCodes, MaxBits);
 
     static StaticTreesDesc StaticDistanceDesc =
@@ -97,9 +97,9 @@ internal class DeflateTrees
 
     const CtData[]? nullDataPtr = null;
     static StaticTreesDesc StaticCodeDesc =
-        new( nullDataPtr, ExtraCodeBits, 0, BitLengthsCodes, MaxCodeBits);
+        new(nullDataPtr, ExtraCodeBits, 0, BitLengthsCodes, MaxCodeBits);
 
-    internal DeflateTrees(Memory<byte> symBuffer, uint litBufferSize) 
+    internal DeflateTrees(Memory<byte> symBuffer, uint litBufferSize)
     {
         timesEntered = 0;
         //For tallying:
@@ -115,15 +115,15 @@ internal class DeflateTrees
         int n; /* iterates over tree elements */
 
         /* Initialize the trees. */
-        for (n = 0; n < _dynLitLenTree.Length; n++) 
-        { 
-            _dynLitLenTree[n] = new CtData() { Freq = 0, Len = 0 }; 
+        for (n = 0; n < _dynLitLenTree.Length; n++)
+        {
+            _dynLitLenTree[n] = new CtData() { Freq = 0, Len = 0 };
         }
         for (n = 0; n < _dynDistanceTree.Length; n++)
         {
             _dynDistanceTree[n] = new CtData() { Freq = 0, Len = 0 };
         }
-            
+
         for (n = 0; n < _codesTree.Length; n++)
         {
             _codesTree[n] = new CtData() { Freq = 0, Len = 0 };
@@ -132,7 +132,7 @@ internal class DeflateTrees
         _literalDesc = new TreeDesc(_dynLitLenTree, StaticLengthDesc);
         _distanceDesc = new TreeDesc(_dynDistanceTree, StaticDistanceDesc);
         _codeDesc = new TreeDesc(_codesTree, StaticCodeDesc);
-        
+
         _bitBuffer = 0;
         _bitsValid = 0;
 
@@ -171,7 +171,7 @@ internal class DeflateTrees
             PutShort(output, _bitBuffer);
             _bitBuffer = (ushort)((ushort)val >> (BitBufferSize - _bitsValid));
             _bitsValid += len - BitBufferSize;
-          }
+        }
         else
         {
             _bitBuffer |= (ushort)(value << _bitsValid);
@@ -179,11 +179,11 @@ internal class DeflateTrees
         }
     }
 
-    public void SendCode(OutputWindow output,CtData tree) 
+    public void SendCode(OutputWindow output, CtData tree)
         => SendBits(output, tree.Freq, tree.Len); //Freq is Code (In the C Zlib version
-                                                                        // a union struct is used for binding the 2
-                                                                        // For this first iteration, I wanted to make it as simple as possible
-                                                                        // Might change later to c# union implementation
+                                                  // a union struct is used for binding the 2
+                                                  // For this first iteration, I wanted to make it as simple as possible
+                                                  // Might change later to c# union implementation
 
     // Flush the bits in the bit buffer to pending output (leaves at most 7 bits)
     // Flush the bit buffer, keeping at most 7 bits in it.
@@ -216,7 +216,7 @@ internal class DeflateTrees
         _bitBuffer = 0;
         _bitsValid = 0;
     }
-    
+
 
     public void InitBlock()
     {
@@ -251,7 +251,7 @@ internal class DeflateTrees
         return (_symIndex == _symEnd);
     }
 
-    public bool TreeTallyDist(uint distance, uint length) 
+    public bool TreeTallyDist(uint distance, uint length)
     {
         byte len = (byte)length;
         ushort dist = (ushort)distance;
@@ -259,13 +259,13 @@ internal class DeflateTrees
         _symBuffer.Span[(int)_symIndex++] = unchecked((byte)dist);
 
         Debug.Assert((int)_symIndex >= 0);
-        _symBuffer.Span[(int)_symIndex++] = (byte)(dist>>8);
+        _symBuffer.Span[(int)_symIndex++] = (byte)(dist >> 8);
 
         Debug.Assert((int)_symIndex >= 0);
         _symBuffer.Span[(int)_symIndex++] = len;
 
         dist--;
-        _dynLitLenTree[StaticTreeTables.LengthCode[len]+Literals+1].Freq++;
+        _dynLitLenTree[StaticTreeTables.LengthCode[len] + Literals + 1].Freq++;
         _dynDistanceTree[GetDistCode(dist)].Freq++; //Distance frenquency count
 
         return (_symIndex == _symEnd);
@@ -275,7 +275,7 @@ internal class DeflateTrees
     // This takes 10 bits, of which 7 may remain in the bit buffer.
     public void TreeAlign(OutputWindow output)
     {
-        SendBits(output, (int)BlockType.StaticTrees << 1 , 3);
+        SendBits(output, (int)BlockType.StaticTrees << 1, 3);
         SendCode(output, StaticTreeTables.StaticLengthTree[EndOfBlock]);
         FlushBits(output);
     }
@@ -285,7 +285,7 @@ internal class DeflateTrees
     // buffer: Input block, or NULL if too old
     // storedLen: Length of input block
     // last: If this is the last block or no
-    public void FlushBlock(OutputWindow output, Memory<byte> buffer, ulong storedLen,ref bool last) //1:true - 0:false
+    public void FlushBlock(OutputWindow output, Memory<byte> buffer, ulong storedLen, ref bool last) //1:true - 0:false
     {
         // _optLength: bit length of current block with optimal trees
         // optLenBytes: _optLength in bytes
@@ -332,12 +332,12 @@ internal class DeflateTrees
         if (storedLen + 4 <= optLenBytes && buffer.Span != null)
         {
             /* 4: two words for the lengths */
-             // The test buf != NULL is only necessary if LIT_BUFSIZE > WSIZE.
-             // Otherwise we can't have processed more than WSIZE input bytes since
-             // the last block flush, because compression would have been
-             // successful. If LIT_BUFSIZE <= WSIZE, it is never too late to
-             // transform a block into a stored block.
-             
+            // The test buf != NULL is only necessary if LIT_BUFSIZE > WSIZE.
+            // Otherwise we can't have processed more than WSIZE input bytes since
+            // the last block flush, because compression would have been
+            // successful. If LIT_BUFSIZE <= WSIZE, it is never too late to
+            // transform a block into a stored block.
+
             TreeStoredBlock(output, buffer.Span, storedLen, last);
 
         }
@@ -375,11 +375,11 @@ internal class DeflateTrees
         int maxCount = 7;          // max repeat count 
         int minCount = 4;          // min repeat count 
 
-        if (nextlen == 0) 
+        if (nextlen == 0)
         {
             maxCount = 138;
             minCount = 3;
-        } 
+        }
         tree[maxCode + 1].Len = (ushort)0xffff; // guard 
 
         for (n = 0; n <= maxCode; n++)
@@ -443,10 +443,10 @@ internal class DeflateTrees
          * lengths of the bit lengths codes and the 5 + 5 + 4 bits for the counts.
          */
 
-         // Determine the number of bit length codes to send. The pkzip format
-         // requires that at least 4 bit length codes be sent. (appnote.txt says
-         // 3 but the actual value used is 4.)
-         
+        // Determine the number of bit length codes to send. The pkzip format
+        // requires that at least 4 bit length codes be sent. (appnote.txt says
+        // 3 but the actual value used is 4.)
+
         for (maxBLenIndex = BitLengthsCodes - 1; maxBLenIndex >= 3; maxBLenIndex--)
         {
             if (_codesTree[CodeOrder[maxBLenIndex]].Len != 0) break;
@@ -479,7 +479,7 @@ internal class DeflateTrees
         SendTree(output, _dynDistanceTree, DistCodes - 1);  /* distance tree */
     }
 
-    public void SendTree(OutputWindow output, CtData[]Tree, int maxCode)
+    public void SendTree(OutputWindow output, CtData[] Tree, int maxCode)
     {
         int n;                     // iterates over all tree elements 
         int prevlen = -1;          // last emitted length 
@@ -513,7 +513,7 @@ internal class DeflateTrees
                     SendCode(output, _codesTree[curlen]); count--;
                 }
                 Debug.Assert(count >= 3 && count <= 6, " 3_6?");
-                SendCode(output,_codesTree[Rep3To6]);
+                SendCode(output, _codesTree[Rep3To6]);
                 SendBits(output, count - 3, 2);
 
             }
@@ -559,7 +559,7 @@ internal class DeflateTrees
             //Amount/length to copy to pendingBuff is storedLen
             //The offset to do so is _pendingBufferBytes 
             Span<byte> destBuffer = output._pendingBuffer.Span.Slice((int)output._pendingBufferBytes, (int)storedLen);
-            buffer.Slice(0, (int)storedLen).CopyTo(destBuffer); 
+            buffer.Slice(0, (int)storedLen).CopyTo(destBuffer);
         }
         output._pendingBufferBytes += storedLen;
     }
@@ -640,7 +640,7 @@ internal class DeflateTrees
 
         /* Check for non-textual ("block-listed") bytes. */
         for (n = 0; n <= 31; n++, blockMask >>= 1)
-            if ((blockMask & 1)!=0 && (_dynLitLenTree[n].Freq != 0))
+            if ((blockMask & 1) != 0 && (_dynLitLenTree[n].Freq != 0))
                 return Binary;
 
         /* Check for textual ("allow-listed") bytes. */
@@ -656,5 +656,5 @@ internal class DeflateTrees
          */
         return Binary;
     }
-    
+
 }

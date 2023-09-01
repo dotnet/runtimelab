@@ -36,6 +36,7 @@ public class TreeDesc
         } while (--Len > 0);
         return res >> 1;
     }
+
     //Generate the codes for a given tree and bit counts (which need not be
     //optimal).
     //tree - the tree to decorate 
@@ -94,7 +95,7 @@ public class TreeDesc
     // (each father smaller than its two sons).
     // tree : The tree to restore 
     // node: Node to move down
-    public void PriorityQueueDownHeap(int node, int[] Heap, ref int heapLen,byte[] depth)
+    public void PriorityQueueDownHeap(int node, int[] Heap, ref int heapLen, byte[] depth)
     {
         int v = Heap[node];
         int j = node << 1;  /* left son of node */
@@ -167,9 +168,7 @@ public class TreeDesc
             if (nIndex >= Base) extraBits = Extra[nIndex - Base];
             frequency = tree[nIndex].Freq;
             _optLength += (ulong)frequency * (uint)(bitLength + extraBits);
-            //if (stree) s->static_len [...]
-            //Debug.Assert(STree != null);
-            if (STree!= null && STree.Length != 0)
+            if (STree != null && STree.Length != 0)
             {
                 _staticLen += (ulong)frequency * (uint)(STree[nIndex].Len + extraBits);
             }
@@ -243,7 +242,7 @@ public class TreeDesc
             else
             {
                 _dynamicTree[n].Len = 0; // I already set this to 0 in the ctor
-                                 // Check if it's really necessary. (Like for reseting the value or something)
+                                         // Check if it's really necessary. (Like for reseting the value or something)
             }
         }
         /* The pkzip format requires that at least one distance code exists,
@@ -280,11 +279,9 @@ public class TreeDesc
             PriorityQueueRemove(out n, Heap, ref _heapLen, _depth);  // n = node of least frequency
             m = Heap[Smallest];           // m = node of next least frequency
 
-            //Debug.Assert(_heapMax >= 1, "heapMax es <= 1, luego de esto se resta dos " +_heapMax);
             Heap[--_heapMax] = n;       // keep the nodes sorted by frequency
             Heap[--_heapMax] = m;
 
-            //Debug.Assert(node >= 0, "node < 0, antes de crear un nuevo padre" + node);
             // Create a new node father of n and m
             _dynamicTree[node].Freq = (ushort)(_dynamicTree[n].Freq + _dynamicTree[m].Freq);
             _depth[node] = (byte)((_depth[n] >= _depth[m] ?
@@ -300,11 +297,10 @@ public class TreeDesc
 
         // At this point, the fields freq and dad are set. We can now
         // generate the bit lengths.
-        GenBitLen(Heap, _codeCount,ref _optLength, ref _staticLen, ref _heapMax);
+        GenBitLen(Heap, _codeCount, ref _optLength, ref _staticLen, ref _heapMax);
 
         // The field len is now set, we can generate the bit codes
-        GenCodes(_codeCount); // I might have to change this Array 
-                                                       // to something that doesn't allocate memory
+        GenCodes(_codeCount);
     }
 }
 

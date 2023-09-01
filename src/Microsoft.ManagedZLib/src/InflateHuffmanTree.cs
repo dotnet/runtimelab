@@ -35,7 +35,6 @@ internal sealed class InflateHuffmanTree
 
     private readonly uint _tableBits;
     private readonly short[] _table;
-    Dictionary<uint, int> _symDict = new Dictionary<uint, int>(); // For caching the processing of symbols
     private readonly short[] _left;
     private readonly short[] _right;
     private readonly byte[] _codeLengthArray;
@@ -152,6 +151,8 @@ internal sealed class InflateHuffmanTree
         return code;
     }
 
+    // TODO: As an optimization, add memorization when constructing
+    // the table as in madler/zlib in inftrees.c
     private void CreateTable()
     {
         uint[] codeArray = CalculateHuffmanCode();
@@ -252,7 +253,7 @@ internal sealed class InflateHuffmanTree
                             // if current bit is 1, set value in the right array
                             array = _right;
                         }
-                        index =  (uint)-value; // go to next node
+                        index = (uint)-value; // go to next node
 
                         codeBitMask <<= 1;
                         overflowBits--;
@@ -286,21 +287,15 @@ internal sealed class InflateHuffmanTree
             // navigate the tree
             int res = symbol;
             uint mask = 1U << (int)_tableBits;
-            // uint index = bitBuffer & (uint)_tableMask;
-            // If it's negative and it's not in the dictionary, 
-            // process the symbol
-            // if (!_symDict.TryGetValue(index, out symbol))
-            {
-                do
-                {// Most expensive operation
-                    res = -res;
-                    ref short traversal = ref MemoryMarshal.GetArrayDataReference((bitBuffer & mask) == 0 ? _left : _right);
-                    res = Unsafe.Add(ref traversal, res);
-                    mask <<= 1;
-                } while (res < 0);
-                // _symDict[index] = res;
-                symbol = res;
-            }
+            do
+            {// Most expensive operation
+                res = -res;
+                ref short traversal = ref MemoryMarshal.GetArrayDataReference((bitBuffer & mask) == 0 ? _left : _right);
+                res = Unsafe.Add(ref traversal, res);
+                mask <<= 1;
+            } while (res < 0);
+            // _symDict[index] = res;
+            symbol = res;
         }
 
         int codeLength = _codeLengthArray[symbol];

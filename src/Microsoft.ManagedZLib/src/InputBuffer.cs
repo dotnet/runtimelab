@@ -17,7 +17,7 @@ namespace Microsoft.ManagedZLib;
 // The byte array is not reused. We will go from 'start' to 'end'.
 // When we reach the end, most read operations will return -1,
 // which means we are running out of input.
-public  class InputBuffer
+public class InputBuffer
 {
     public ulong _totalInput; //Total input read so far
     public uint _availInput; // Number of available bytes from _nextIN
@@ -26,19 +26,22 @@ public  class InputBuffer
                              // _nextIn is at the end of the input buffer
     public Memory<byte> _inputBuffer; // Input stream buffer
     private uint _bitBuffer;      // To quickly shift in this buffer
-    private int _bitsInBuffer;    // #bits available in bitBuffer
+    private uint _bitsInBuffer;    // #bits available in bitBuffer
     public int _wrap; //Default: Raw Deflate
     public uint _nextIn; // Index for next input byte to be copied from
 
     /// <summary>Total bits available in the input buffer.</summary>
-    public int AvailableBits => _bitsInBuffer; //Used in getNextSymbol
+    public int AvailableBits => (int)_bitsInBuffer; //Used in getNextSymbol
     /// <summary>Total bytes available in the input buffer.</summary>
 
 
     //_totalInput, at the end of compression, should match this. It's going to be use
     // just in inflate.
-    public int inputBufferSize => (_bitsInBuffer / 8) + (uint)_inputBuffer.Length;
+    public uint inputBufferSize => (_bitsInBuffer / 8) + (uint)_inputBuffer.Length;
 
+    /// <summary>Ensure that count bits are in the bit buffer.</summary>
+    /// <param name="count">Can be up to 16.</param>
+    /// <returns>Returns false if input is not sufficient to make this true.</returns>
     /// <summary>Ensure that count bits are in the bit buffer.</summary>
     /// <param name="count">Can be up to 16.</param>
     /// <returns>Returns false if input is not sufficient to make this true.</returns>
@@ -164,7 +167,7 @@ public  class InputBuffer
         }
 
         int length = Math.Min(output.Length, _inputBuffer.Length);
-        _inputBuffer.Span.Slice(0, length).CopyTo(output);
+        _inputBuffer.Slice(0, length).Span.CopyTo(output);
         _inputBuffer = _inputBuffer.Slice(length);
         return bytesFromBitBuffer + length;
     }
@@ -173,7 +176,7 @@ public  class InputBuffer
     /// Return true is all input bytes are used.
     /// This means the caller can call SetInput to add more input.
     /// </summary>
-    public bool NeedsInput() => _inputBuffer.IsEmpty;
+    public bool NeedsInput() => _availInput == 0;
 
     /// <summary>
     /// Set the byte buffer to be processed.
@@ -208,3 +211,4 @@ public  class InputBuffer
         _bitsInBuffer &= ~(uint)7;
     }
 }
+

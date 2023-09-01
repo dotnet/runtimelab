@@ -1,13 +1,13 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Reflection.Metadata;
-using System;
-
 namespace Microsoft.ManagedZLib;
 
-//Vivi's notes: I'll keep this class until the bare basics are met, like Raw In/Deflate for handling Deflate Blocks (RFC1951).
-// So far it seems to not be needed anymore, since all is being handled by Inflator and Deflator.
+// TODO: Make this the class for storing all the constants.
+// There are a lot of them that are sometimes redundantly 
+// repeated in different classes (like "MaxMatch" or "LitLenCodes").
+// This was the point were all the PInvoke took place. Not anymore
+// everything is handled by Deflater and Inflater.
 public static class ManagedZLib
 {
     //Generate more output starting at next_out and update next_out and avail_out
@@ -175,7 +175,7 @@ public static class ManagedZLib
     // Maximum stored block length in deflate format (not including header). 
     public const uint MaxStored = 65535;
     // Tail of hash chains
-    public const int NIL = 0;
+    public const int NIL = 0; // TODO: Removed this. Just put it for clarity when porting.
     /**
      * Do not remove the nested typing of types inside of <code>System.IO.Compression.ZLibNative</code>.
      * This was done on purpose to:
@@ -194,58 +194,4 @@ public static class ManagedZLib
      *   directories in order to PInvoke into them. This would preferably happen in the native interop/PInvoke
      *   layer; if not we can add a Framework level feature.
      */
-
-    /// <summary>
-    /// The <code>ZLibStreamHandle</code> could be a <code>CriticalFinalizerObject</code> rather than a
-    /// <code>SafeHandleMinusOneIsInvalid</code>. This would save an <code>IntPtr</code> field since
-    /// <code>ZLibStreamHandle</code> does not actually use its <code>handle</code> field.
-    /// Instead it uses a <code>private ZStream zStream</code> field which is the actual handle data
-    /// structure requiring critical finalization.
-    /// However, we would like to take advantage if the better debugability offered by the fact that a
-    /// <em>releaseHandleFailed MDA</em> is raised if the <code>ReleaseHandle</code> method returns
-    /// <code>false</code>, which can for instance happen if the underlying ZLib <code>XxxxEnd</code>
-    /// routines return an failure error code.
-    /// </summary>
-    public sealed class ZLibStreamHandle
-    {
-        public ErrorCode DeflateInit2_(CompressionLevel level, int windowBits, int memLevel, CompressionStrategy strategy)
-        {
-            //This would have gone to a PInvoke
-            return ErrorCode.Ok;
-        }
-
-
-        public ErrorCode Deflate(FlushCode flush)
-        {
-            // This would have gone to a PInvoke
-            return ErrorCode.Ok;
-        }
-
-
-        public ErrorCode DeflateEnd()
-        {
-            // This would have gone to a PInvoke
-            return ErrorCode.Ok;
-        }
-
-        public ErrorCode InflateInit2_(int windowBits)
-        {
-            // This would have gone to a PInvoke
-            return ErrorCode.Ok;
-        }
-
-
-        public ErrorCode Inflate(FlushCode flush)
-        {
-            // This would have gone to a PInvoke for the native version of ZLib inflate
-            return ErrorCode.Ok;
-        }
-
-
-        public ErrorCode InflateEnd()
-        {
-            return ErrorCode.Ok;
-        }
-        
-    }
 }
