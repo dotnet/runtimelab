@@ -18,7 +18,7 @@ Note:
 
 # Suggestions going forward
 
-+ For improving performance, an optimization would be adding the same type of memorization during the construction of the lookup table, like done in [Zlib's](https://github.com/madler/zlib) `inftrees.c`.
++ For improving performance, an optimization would be adding the same type of memoization during the construction of the lookup table, like done in [Zlib's](https://github.com/madler/zlib) `inftrees.c`.
 
 + Since this port is based on the original ZLib, porting zlib-intel's optimizations into this new version should improve performance. This can extend to more 3rd parties' optimizations, like [ZLib-NG](https://github.com/zlib-ng/zlib-ng) for ARM64 processors.
 
