@@ -8,7 +8,7 @@ using Xunit;
 
 namespace System.IO.StreamSourceGeneration.Tests
 {
-    public class GenerateStreamBoilerplateGeneratedCodeTests
+    public class GeneratedCodeFunctionalTests
     {
         [Fact]
         public void StreamThatImplementsNothingThrowsOnAllGeneratedMethods()

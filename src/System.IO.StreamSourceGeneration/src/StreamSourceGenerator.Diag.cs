@@ -10,7 +10,7 @@ using System.Linq;
 namespace System.IO.StreamSourceGeneration
 {
     // If/when this gets integrated into dotnet/runtime, this must be kept in sync with https://github.com/dotnet/runtime/blob/main/docs/project/list-of-diagnostics.md
-    public partial class StreamSourceGen
+    public partial class StreamSourceGenerator
     {
         // Stream does not support read or write
         private static readonly DiagnosticDescriptor s_TypeDoesNotImplementReadOrWrite =
@@ -22,28 +22,28 @@ namespace System.IO.StreamSourceGeneration
                 DiagnosticSeverity.Info, isEnabledByDefault: true);
 
         // Sync-over-async or async-over-sync
-        private static readonly DiagnosticDescriptor s_ReadDoingAsyncOverSync =
+        private static readonly DiagnosticDescriptor s_ReadDoingSyncOverAsync =
             new DiagnosticDescriptor(
                 id: "SYSLIB1302",
                 title: "Stream does Read as sync-over-async",
                 messageFormat: "'{0}' does not implement any Read method and hence is doing sync-over-async",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
-        private static readonly DiagnosticDescriptor s_ReadAsyncDoingSyncOverAsync =
+        private static readonly DiagnosticDescriptor s_ReadAsyncDoingAsyncOverSync =
             new DiagnosticDescriptor(
                 id: "SYSLIB1303",
                 title: "Stream does ReadAsync as async-over-sync",
                 messageFormat: "'{0}' does not implement any ReadAsync method and hence is doing async-over-sync",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
-        private static readonly DiagnosticDescriptor s_WriteDoingAsyncOverSync =
+        private static readonly DiagnosticDescriptor s_WriteDoingSyncOverAsync =
             new DiagnosticDescriptor(
                 id: "SYSLIB1304",
                 title: "Stream does Write as sync-over-async",
                 messageFormat: "'{0}' does not implement any Write method and hence is doing sync-over-async",
                 category: "StreamSourceGen", DiagnosticSeverity.Info, isEnabledByDefault: true);
 
-        private static readonly DiagnosticDescriptor s_WriteAsyncDoingSyncOverAsync =
+        private static readonly DiagnosticDescriptor s_WriteAsyncDoingAsyncOverSync =
             new DiagnosticDescriptor(
                 id: "SYSLIB1305",
                 title: "Stream does WriteAsync as async-over-sync",
@@ -59,7 +59,7 @@ namespace System.IO.StreamSourceGeneration
                 category: "StreamSourceGen",
                 DiagnosticSeverity.Info, isEnabledByDefault: true);
 
-        private static readonly DiagnosticDescriptor s_ConsiderImplementingWriteReadOnlySpan =
+        private static readonly DiagnosticDescriptor s_ConsiderImplementingWriteSpan =
             new DiagnosticDescriptor(
                 id: "SYSLIB1307",
                 title: "Consider implementing Span-based Write",
@@ -75,7 +75,7 @@ namespace System.IO.StreamSourceGeneration
                 category: "StreamSourceGen",
                 DiagnosticSeverity.Info, isEnabledByDefault: true);
 
-        private static readonly DiagnosticDescriptor s_ConsiderImplementingWriteAsyncReadOnlyMemory =
+        private static readonly DiagnosticDescriptor s_ConsiderImplementingWriteAsyncMemory =
             new DiagnosticDescriptor(
                 id: "SYSLIB1309",
                 title: "Consider implementing Memory-based WriteAsync",
@@ -88,7 +88,7 @@ namespace System.IO.StreamSourceGeneration
             new DiagnosticDescriptor(
                 id: "SYSLIB1310",
                 title: "Avoid BeingRead or EndRead",
-                messageFormat: "'{0}' implements BeginRead or EndRead, Task-based methods shoud be preferred when possible, consider removing them to allow the source generator to emit an implementation based on Task-based ReadAsync",
+                messageFormat: "'{0}' implements BeginRead or EndRead, Task-based methods should be preferred when possible, consider removing them to allow the source generator to emit an implementation based on Task-based ReadAsync",
                 category: "StreamSourceGen",
                 DiagnosticSeverity.Info, isEnabledByDefault: true);
 
@@ -96,7 +96,7 @@ namespace System.IO.StreamSourceGeneration
             new DiagnosticDescriptor(
                 id: "SYSLIB1311",
                 title: "Avoid BeingWrite or EndWrite",
-                messageFormat: "'{0}' implements BeingWrite or EndWrite, Task-based methods shoud be preferred when possible, consider removing them to allow the source generator to emit an implementation based on Task-based WriteAsync",
+                messageFormat: "'{0}' implements BeginWrite or EndWrite, Task-based methods should be preferred when possible, consider removing them to allow the source generator to emit an implementation based on Task-based WriteAsync",
                 category: "StreamSourceGen",
                 DiagnosticSeverity.Info, isEnabledByDefault: true);
 
@@ -179,43 +179,35 @@ namespace System.IO.StreamSourceGeneration
             Debug.Assert(streamTypeInfo.ReadInfo is not null);
             StreamCapabilityInfo readInfo = streamTypeInfo.ReadInfo!;
 
-            bool asyncOverSync = readInfo.GetSyncPreferredMember().IsAsync();
-            bool syncOverAsync = !readInfo.GetAsyncPreferredMember().IsAsync();
-            Debug.Assert(asyncOverSync != syncOverAsync || (!asyncOverSync && !syncOverAsync), 
+            bool syncOverAsync = readInfo.GetSyncPreferredMember().IsAsync();
+            bool asyncOverSync = !readInfo.GetAsyncPreferredMember().IsAsync();
+            Debug.Assert(syncOverAsync != asyncOverSync || (!syncOverAsync && !asyncOverSync), 
                 "We can have async-over-sync, sync-over-async, or none, but never both");
-
-            if (asyncOverSync)
-            {
-                context.ReportDiagnostic(CreateDiagnostic(s_ReadDoingAsyncOverSync, streamTypeInfo));
-            }
 
             if (syncOverAsync)
             {
-                context.ReportDiagnostic(CreateDiagnostic(s_ReadAsyncDoingSyncOverAsync, streamTypeInfo));
+                context.ReportDiagnostic(CreateDiagnostic(s_ReadDoingSyncOverAsync, streamTypeInfo));
+            }
+            else if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadSpan))
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingReadSpan, streamTypeInfo));
+            }
+            else if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadBytes))
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderRemovingReadBytes, streamTypeInfo));
             }
 
-            if (!asyncOverSync)
+            if (asyncOverSync)
             {
-                if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadSpan))
-                {
-                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingReadSpan, streamTypeInfo));
-                }
-                else if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadBytes))
-                {
-                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderRemovingReadBytes, streamTypeInfo));
-                }
+                context.ReportDiagnostic(CreateDiagnostic(s_ReadAsyncDoingAsyncOverSync, streamTypeInfo));
             }
-
-            if (!syncOverAsync)
+            else if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadAsyncMemory))
             {
-                if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadAsyncMemory))
-                {
-                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingReadAsyncMemory, streamTypeInfo));
-                }
-                else if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadAsyncBytes))
-                {
-                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderRemovingReadAsyncBytes, streamTypeInfo));
-                }
+                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingReadAsyncMemory, streamTypeInfo));
+            }
+            else if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.ReadAsyncBytes))
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderRemovingReadAsyncBytes, streamTypeInfo));
             }
         }
 
@@ -225,43 +217,35 @@ namespace System.IO.StreamSourceGeneration
             Debug.Assert(streamTypeInfo.WriteInfo is not null);
             StreamCapabilityInfo writeInfo = streamTypeInfo.WriteInfo!;
 
-            bool asyncOverSync = writeInfo.GetSyncPreferredMember().IsAsync();
-            bool syncOverAsync = !writeInfo.GetAsyncPreferredMember().IsAsync();
-            Debug.Assert(asyncOverSync != syncOverAsync || (!asyncOverSync && !syncOverAsync),
+            bool syncOverAsync = writeInfo.GetSyncPreferredMember().IsAsync();
+            bool asyncOverSync = !writeInfo.GetAsyncPreferredMember().IsAsync();
+            Debug.Assert(syncOverAsync != asyncOverSync || (!syncOverAsync && !asyncOverSync),
                 "We can have async-over-sync, sync-over-async, or none, but never both");
-
-            if (asyncOverSync)
-            {
-                context.ReportDiagnostic(CreateDiagnostic(s_WriteDoingAsyncOverSync, streamTypeInfo));
-            }
 
             if (syncOverAsync)
             {
-                context.ReportDiagnostic(CreateDiagnostic(s_WriteAsyncDoingSyncOverAsync, streamTypeInfo));
+                context.ReportDiagnostic(CreateDiagnostic(s_WriteDoingSyncOverAsync, streamTypeInfo));
+            }
+            else if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteSpan))
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingWriteSpan, streamTypeInfo));
+            }
+            else if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteBytes))
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderRemovingWriteBytes, streamTypeInfo));
             }
 
-            if (!asyncOverSync)
+            if (asyncOverSync)
             {
-                if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteSpan))
-                {
-                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingWriteReadOnlySpan, streamTypeInfo));
-                }
-                else if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteBytes))
-                {
-                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderRemovingWriteBytes, streamTypeInfo));
-                }
+                context.ReportDiagnostic(CreateDiagnostic(s_WriteAsyncDoingAsyncOverSync, streamTypeInfo));
             }
-
-            if (!syncOverAsync)
+            else if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteAsyncMemory))
             {
-                if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteAsyncMemory))
-                {
-                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingWriteAsyncReadOnlyMemory, streamTypeInfo));
-                }
-                else if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteAsyncBytes))
-                {
-                    context.ReportDiagnostic(CreateDiagnostic(s_ConsiderRemovingWriteAsyncBytes, streamTypeInfo));
-                }
+                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderImplementingWriteAsyncMemory, streamTypeInfo));
+            }
+            else if (streamTypeInfo.OverriddenMembers.Contains(StreamMember.WriteAsyncBytes))
+            {
+                context.ReportDiagnostic(CreateDiagnostic(s_ConsiderRemovingWriteAsyncBytes, streamTypeInfo));
             }
 
             if (!streamTypeInfo.OverriddenMembers.Contains(StreamMember.Flush))

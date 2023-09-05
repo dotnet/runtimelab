@@ -13,7 +13,7 @@ using System.Text;
 namespace System.IO.StreamSourceGeneration
 {
     [Generator]
-    public partial class StreamSourceGen : IIncrementalGenerator
+    public partial class StreamSourceGenerator : IIncrementalGenerator
     {
         internal const string StreamBoilerplateAttributeFullName = "System.IO.GenerateStreamBoilerplateAttribute";
         internal const string StreamFullName = "System.IO.Stream";

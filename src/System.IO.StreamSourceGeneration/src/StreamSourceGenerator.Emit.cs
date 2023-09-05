@@ -7,7 +7,7 @@ using System.Text;
 
 namespace System.IO.StreamSourceGeneration
 {
-    public partial class StreamSourceGen
+    public partial class StreamSourceGenerator
     {
         private static void Emit(StringBuilder sb, StreamTypeInfo streamTypeInfo)
         {

@@ -12,7 +12,7 @@ using System.Threading;
 
 namespace System.IO.StreamSourceGeneration
 {
-    public partial class StreamSourceGen
+    public partial class StreamSourceGenerator
     {
         internal static List<StreamTypeInfo>? Parse(
             Compilation compilation,
