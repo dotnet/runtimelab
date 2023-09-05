@@ -5,7 +5,6 @@
 #define	_WASI_H
 
 #include <sys/resource.h>
-#include <sys/mman.h>
 
 typedef unsigned long long rlim_t;
 
