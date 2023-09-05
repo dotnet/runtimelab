@@ -624,7 +624,7 @@ private:
             if (node->IsHelperCall())
             {
                 const HelperFuncInfo& info = m_llvm->getHelperFuncInfo(node->AsCall()->GetHelperNum());
-                if (info.HasFlag(HFIF_NO_RPI_OR_GC) || info.HasFlag(HFIF_NO_RPI_OR_GC_OR_THROW))
+                if (info.HasFlag(HFIF_NO_RPI_OR_GC) || info.HasFlag(HFIF_THROW_OR_NO_RPI_OR_GC))
                 {
                     return false;
                 }

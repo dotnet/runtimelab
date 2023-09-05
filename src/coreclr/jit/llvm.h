@@ -109,7 +109,7 @@ enum HelperFuncInfoFlags
     HFIF_SS_ARG = 1, // The helper has shadow stack arg.
     HFIF_VAR_ARG = 1 << 1, // The helper has a variable number of args and must be treated specially.
     HFIF_NO_RPI_OR_GC = 1 << 2, // The helper will not call (back) into managed code or trigger GC.
-    HFIF_NO_RPI_OR_GC_OR_THROW = 1 << 3, // The helper either throws or does not call into managed code / trigger GC.
+    HFIF_THROW_OR_NO_RPI_OR_GC = 1 << 3, // The helper either throws or does not call into managed code / trigger GC.
 };
 
 struct HelperFuncInfo
