@@ -160,12 +160,6 @@ if(CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_WASI)
     set_target_properties(System.Globalization.Native-Static PROPERTIES OUTPUT_NAME System.Globalization.Native  CLEAN_DIRECT_OUTPUT 1)
 endif()
 
-if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
-   add_custom_command(TARGET System.Globalization.Native-Static
-       POST_BUILD 
-       COMMAND ${CMAKE_AR} qL $<TARGET_FILE:System.Globalization.Native-Static> ${CMAKE_ICU_DIR}/lib/libicuuc.a ${CMAKE_ICU_DIR}/lib/libicui18n.a ${CMAKE_ICU_DIR}/lib/libicudata.a)
-endif()
-
 install (TARGETS System.Globalization.Native-Static DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
 
 if(NOT CLR_CMAKE_TARGET_APPLE AND NOT CLR_CMAKE_TARGET_ANDROID AND NOT CLR_CMAKE_TARGET_LINUX_MUSL AND NOT CLR_CMAKE_TARGET_HAIKU)
@@ -178,6 +172,14 @@ if(NOT CLR_CMAKE_TARGET_APPLE AND NOT CLR_CMAKE_TARGET_ANDROID AND NOT CLR_CMAKE
             VERBATIM
         )
     endif()
+endif()
+
+# Package the ICU data files as static libraries for consumption by NativeAOT targeting WASM.
+if (CLR_CMAKE_TARGET_ARCH_WASM)
+    add_library(System.Globalization.Native.Icudt STATIC icu_data_lib.c)
+    file(TO_CMAKE_PATH "${CMAKE_ICU_DIR}/lib/icudt.dat" icu_data_file)
+    target_compile_options(System.Globalization.Native.Icudt PRIVATE -DICU_DATA_FILE=${icu_data_file})
+    install(TARGETS System.Globalization.Native.Icudt DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
 endif()
 
 if(CLR_CMAKE_TARGET_WIN32)

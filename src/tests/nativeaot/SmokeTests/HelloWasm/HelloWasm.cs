@@ -13,6 +13,8 @@ using System.Reflection;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Specialized;
+using System.Globalization;
+
 using CpObj;
 using CkFinite;
 
@@ -398,6 +400,8 @@ internal unsafe partial class Program
         }
 
         TestPalRandom();
+
+        TestGlobalization();
 
         TestDefaultConstructorOf();
 
@@ -3961,6 +3965,27 @@ internal unsafe partial class Program
         StartTest("Test pal_random.lib.js integration");
 
         EndTest(Guid.NewGuid() != Guid.NewGuid());
+    }
+
+    static void TestGlobalization()
+    {
+        StartTest("Test simple globalization");
+
+        CultureInfo jp = CultureInfo.GetCultureInfo("jp");
+        if (jp.CompareInfo.Compare("さようなら", "サヨウナラ", CompareOptions.IgnoreKanaType) != 0)
+        {
+            FailTest("Kana-insensitive comparison failed");
+            return;
+        }
+
+        CultureInfo ru = CultureInfo.GetCultureInfo("ru");
+        if (ru.TextInfo.ToTitleCase("до свидания") != "До Свидания")
+        {
+            FailTest("ToTitleCase(ru) comparison failed");
+            return;
+        }
+
+        PassTest();
     }
 
     static void TestDefaultConstructorOf()
