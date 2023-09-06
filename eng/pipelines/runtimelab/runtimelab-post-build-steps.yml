@@ -46,16 +46,11 @@ steps:
       displayName: Build tests
 
   - ${{ if eq(parameters.runSingleFileTests, true) }}:
-    - ${{ if eq(parameters.platform, 'browser_wasm_win') }}:
+    - ${{ if in(parameters.platform, 'browser_wasm_win', 'wasi_wasm_win') }}:
       - script: |
           call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-          $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
-        displayName: Run WebAssembly Browser tests in single file mode
-    - ${{ elseif eq(parameters.platform, 'wasi_wasm_win') }}:
-      - script: |
-          call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-          $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} wasi
-        displayName: Run WebAssembly Wasi tests in single file mode
+          $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
+        displayName: Run WebAssembly tests in single file mode
     - ${{ elseif eq(parameters.osGroup, 'windows') }}:
       - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
         displayName: Run tests in single file mode
