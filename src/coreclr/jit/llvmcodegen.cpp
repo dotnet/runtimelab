@@ -426,7 +426,7 @@ void Llvm::generateEHDispatch()
     Type* ptrLlvmType = getPtrLlvmType();
     llvm::StructType* cppExcTupleLlvmType = llvm::StructType::get(ptrLlvmType, Type::getInt32Ty(m_context->Context));
 
-    CorInfoLlvmEHModel model = GetExceptionHandlingModel();
+    CorInfoLlvmEHModel model = m_ehModel;
     llvm::Constant* nullValue = llvm::Constant::getNullValue(ptrLlvmType);
     Function* personalityLlvmFunc = getOrCreatePersonalityLlvmFunction(model);
     Function* wasmRethrowLlvmFunc = nullptr;
@@ -466,7 +466,7 @@ void Llvm::generateEHDispatch()
 
         unsigned funcIdx = getLlvmFunctionIndexForProtectedRegion(ehIndex);
         Function* llvmFunc = getLlvmFunctionForIndex(funcIdx);
-        if (!llvmFunc->hasPersonalityFn())
+        if ((personalityLlvmFunc != nullptr) && !llvmFunc->hasPersonalityFn())
         {
             llvmFunc->setPersonalityFn(personalityLlvmFunc);
         }
@@ -527,8 +527,8 @@ void Llvm::generateEHDispatch()
             funcDispatchData.CppExcTupleAlloca = cppExcTupleAlloca;
         }
 
-        // Generate the per-funclet dispatch blocks. Resume block is needed in the C++ model, unreachable block is
-        // always needed.
+        // Generate the per-funclet dispatch blocks. Resume block is needed in the C++ and emulated models,
+        // unreachable block is always needed.
         //
         llvm::BasicBlock* unreachableLlvmBlock = funcDispatchData.UnreachableLlvmBlock;
         if (unreachableLlvmBlock == nullptr)
@@ -543,13 +543,26 @@ void Llvm::generateEHDispatch()
         }
 
         llvm::BasicBlock* resumeLlvmBlock = funcDispatchData.ResumeLlvmBlock;
-        if ((model == CorInfoLlvmEHModel::Cpp) && (resumeLlvmBlock == nullptr))
+        if ((resumeLlvmBlock == nullptr) &&
+            ((model == CorInfoLlvmEHModel::Cpp) || (model == CorInfoLlvmEHModel::Emulated)))
         {
             resumeLlvmBlock = llvm::BasicBlock::Create(m_context->Context, "BBRE", llvmFunc, unreachableLlvmBlock);
+            LlvmBlockRange resumeLlvmBlocks(resumeLlvmBlock);
+            setCurrentEmitContext(funcIdx, EHblkDsc::NO_ENCLOSING_INDEX, &resumeLlvmBlocks);
 
-            _builder.SetInsertPoint(resumeLlvmBlock); // No need for a full emit context.
-            Value* resumeOperandValue = _builder.CreateLoad(cppExcTupleLlvmType, cppExcTupleAlloca);
-            _builder.CreateResume(resumeOperandValue);
+            if (model == CorInfoLlvmEHModel::Cpp)
+            {
+                Value* resumeOperandValue = _builder.CreateLoad(cppExcTupleLlvmType, cppExcTupleAlloca);
+                _builder.CreateResume(resumeOperandValue);
+            }
+            else
+            {
+                _builder.CreateStore(_builder.getInt32(1), getOrCreateExceptionThrownAddressValue());
+
+                llvm::BasicBlock* exceptionReturnLlvmBlock = getOrCreateExceptionThrownReturnBlock();
+                exceptionReturnLlvmBlock->moveAfter(resumeLlvmBlock);
+                _builder.CreateBr(exceptionReturnLlvmBlock);
+            }
 
             funcDispatchData.ResumeLlvmBlock = resumeLlvmBlock;
             funcDispatchData.InsertBeforeLlvmBlock = resumeLlvmBlock;
@@ -567,14 +580,21 @@ void Llvm::generateEHDispatch()
         // Set up entry to the native "catch".
         llvm::CatchPadInst* catchPadInst = nullptr;
         std::vector<llvm::OperandBundleDef> catchPadOpBundle{}; // Empty if we're not using catchpads.
-        if (model == CorInfoLlvmEHModel::Cpp)
+        if ((model == CorInfoLlvmEHModel::Cpp) || (model == CorInfoLlvmEHModel::Emulated))
         {
-            llvm::LandingPadInst* landingPadInst = _builder.CreateLandingPad(cppExcTupleLlvmType, 1);
-            landingPadInst->addClause(nullValue); // Catch all C++ exceptions.
+            if (model == CorInfoLlvmEHModel::Cpp)
+            {
+                llvm::LandingPadInst* landingPadInst = _builder.CreateLandingPad(cppExcTupleLlvmType, 1);
+                landingPadInst->addClause(nullValue); // Catch all C++ exceptions.
 
-            Value* exceptionDataValue = _builder.CreateExtractValue(landingPadInst, 0);
-            _builder.CreateCall(cppBeginCatchFunc, exceptionDataValue);
-            _builder.CreateStore(landingPadInst, cppExcTupleAlloca);
+                Value* exceptionDataValue = _builder.CreateExtractValue(landingPadInst, 0);
+                _builder.CreateCall(cppBeginCatchFunc, exceptionDataValue);
+                _builder.CreateStore(landingPadInst, cppExcTupleAlloca);
+            }
+            else
+            {
+                _builder.CreateStore(_builder.getInt32(0), getOrCreateExceptionThrownAddressValue());
+            }
 
             // The "actual" dispatch block. Nested dispatches (if any) will branch to it.
             llvm::BasicBlock* dispatchLlvmBlock = createInlineLlvmBlock();
@@ -600,7 +620,8 @@ void Llvm::generateEHDispatch()
             _builder.CreateIntrinsic(llvm::Intrinsic::wasm_get_exception, {}, catchPadInst);
         }
 
-        if ((model == CorInfoLlvmEHModel::Cpp) && (outerDispatchLlvmBlock != nullptr))
+        if (((model == CorInfoLlvmEHModel::Cpp) || (model == CorInfoLlvmEHModel::Emulated)) &&
+            (outerDispatchLlvmBlock != nullptr))
         {
             // We have the "dispatch pad" block. Since we're generating dispatches from outer to inner, we already have
             // the "actual" dispatch block; it will be the next one.
@@ -2438,13 +2459,16 @@ void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind
     else
     {
         // The code to throw the exception will be generated inline; we will jump around it in the non-exception case.
-        llvm::BasicBlock* throwLlvmBlock = createInlineLlvmBlock();
-        llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
-        _builder.CreateCondBr(jumpCondValue, throwLlvmBlock, nextLlvmBlock);
+        llvm::BasicBlock* jumpCondLlvmBlock = _builder.GetInsertBlock();
 
+        llvm::BasicBlock* throwLlvmBlock = createInlineLlvmBlock();
         _builder.SetInsertPoint(throwLlvmBlock);
         emitHelperCall(static_cast<CorInfoHelpFunc>(_compiler->acdHelper(throwKind)));
         _builder.CreateUnreachable();
+
+        llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
+        _builder.SetInsertPoint(jumpCondLlvmBlock);
+        _builder.CreateCondBr(jumpCondValue, throwLlvmBlock, nextLlvmBlock);
 
         _builder.SetInsertPoint(nextLlvmBlock);
     }
@@ -2497,21 +2521,15 @@ llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpFunc                  helperFunc
 llvm::CallBase* Llvm::emitCallOrInvoke(
     llvm::FunctionCallee callee, ArrayRef<Value*> args, ArrayRef<llvm::OperandBundleDef> bundles)
 {
-    llvm::BasicBlock* catchLlvmBlock = getUnwindLlvmBlockForCurrentInvoke();
-    if ((catchLlvmBlock != nullptr) && llvm::isa<Function>(callee.getCallee()) &&
-        llvm::cast<Function>(callee.getCallee())->doesNotThrow())
-    {
-        // No need to invoke no-throw functions.
-        catchLlvmBlock = nullptr;
-    }
+    Function* llvmFunc = llvm::dyn_cast<Function>(callee.getCallee());
+    bool isThrowingCall = (llvmFunc == nullptr) || !llvmFunc->doesNotThrow();
+    llvm::BasicBlock* catchLlvmBlock = isThrowingCall ? getUnwindLlvmBlockForCurrentInvoke() : nullptr;
 
     llvm::CallBase* callInst;
-    if (catchLlvmBlock != nullptr)
+    if ((catchLlvmBlock != nullptr) && (m_ehModel != CorInfoLlvmEHModel::Emulated))
     {
         llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
-
         callInst = _builder.CreateInvoke(callee, nextLlvmBlock, catchLlvmBlock, args, bundles);
-
         _builder.SetInsertPoint(nextLlvmBlock);
     }
     else
@@ -2519,7 +2537,47 @@ llvm::CallBase* Llvm::emitCallOrInvoke(
         callInst = _builder.CreateCall(callee, args, bundles);
     }
 
+    if (isThrowingCall && (m_ehModel == CorInfoLlvmEHModel::Emulated))
+    {
+        // In the emulated EH model, top-level calls also need to return early if they throw.
+        if (catchLlvmBlock == nullptr)
+        {
+            catchLlvmBlock = getOrCreateExceptionThrownReturnBlock();
+        }
+
+        llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
+        Value* doUnwindValueAddr = getOrCreateExceptionThrownAddressValue();
+        Value* doUnwindValue = _builder.CreateLoad(Type::getInt32Ty(m_context->Context), doUnwindValueAddr);
+        Value* doUnwindValueRelop = _builder.CreateICmpNE(doUnwindValue, _builder.getInt32(0));
+        _builder.CreateCondBr(doUnwindValueRelop, catchLlvmBlock, nextLlvmBlock);
+        _builder.SetInsertPoint(nextLlvmBlock);
+    }
+
     return callInst;
+}
+
+llvm::BasicBlock* Llvm::getOrCreateExceptionThrownReturnBlock()
+{
+    assert(m_ehModel == CorInfoLlvmEHModel::Emulated);
+
+    FunctionInfo& funcInfo = getLlvmFunctionInfoForIndex(getCurrentLlvmFunctionIndex());
+    if (funcInfo.ExceptionThrownReturnLlvmBlock == nullptr)
+    {
+        llvm::BasicBlock* block = llvm::BasicBlock::Create(m_context->Context, "BBRE", funcInfo.LlvmFunction);
+        Type* llvmRetType = funcInfo.LlvmFunction->getReturnType();
+        if (!llvmRetType->isVoidTy())
+        {
+            Value* zeroValue = llvm::Constant::getNullValue(llvmRetType);
+            llvm::ReturnInst::Create(m_context->Context, zeroValue, block);
+        }
+        else
+        {
+            llvm::ReturnInst::Create(m_context->Context, block);
+        }
+        funcInfo.ExceptionThrownReturnLlvmBlock = block;
+    }
+
+    return funcInfo.ExceptionThrownReturnLlvmBlock;
 }
 
 FunctionType* Llvm::createFunctionType()
@@ -2693,18 +2751,24 @@ void Llvm::annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc
     }
 
     HelperCallProperties& properties = Compiler::s_helperCallProperties;
+    const bool isEmulatedEH = m_ehModel == CorInfoLlvmEHModel::Emulated;
+    const bool mayThrow = helperCallMayPhysicallyThrow(helperFunc);
 
-    if (!helperCallMayPhysicallyThrow(helperFunc))
+    if (!mayThrow)
     {
         llvmFunc->setDoesNotThrow();
     }
-    if (properties.AlwaysThrow(helperFunc))
+    if (properties.AlwaysThrow(helperFunc) && !isEmulatedEH)
     {
         llvmFunc->setDoesNotReturn();
     }
     if (properties.NonNullReturn(helperFunc) && llvmFunc->getReturnType()->isPointerTy())
     {
-        llvmFunc->addRetAttr(llvm::Attribute::NonNull);
+        // In the emulated EH model, "exceptional" returns may return zero.
+        if (!isEmulatedEH || !mayThrow)
+        {
+            llvmFunc->addRetAttr(llvm::Attribute::NonNull);
+        }
     }
     if (properties.IsAllocator(helperFunc))
     {
@@ -2754,12 +2818,25 @@ Function* Llvm::getOrCreatePersonalityLlvmFunction(CorInfoLlvmEHModel ehModel)
             return getOrCreateKnownLlvmFunction("__gxx_wasm_personality_v0", [this]() {
                 return FunctionType::get(Type::getInt32Ty(m_context->Context), /* isVarArg */ true);
             });
+        case CorInfoLlvmEHModel::Emulated:
+            return nullptr;
         default:
             unreached();
     }
 }
 
-llvm::GlobalVariable* Llvm::getOrCreateDataSymbol(StringRef symbolName)
+Value* Llvm::getOrCreateExceptionThrownAddressValue()
+{
+    assert(m_ehModel == CorInfoLlvmEHModel::Emulated);
+    if (m_exceptionThrownAddressValue == nullptr)
+    {
+        m_exceptionThrownAddressValue = getOrCreateSymbol(GetExceptionThrownVariable(), /* isThreadLocal */ true);
+    }
+
+    return m_exceptionThrownAddressValue;
+}
+
+llvm::GlobalVariable* Llvm::getOrCreateDataSymbol(StringRef symbolName, bool isThreadLocal)
 {
     llvm::GlobalVariable* symbol = m_context->Module.getGlobalVariable(symbolName);
     if (symbol == nullptr)
@@ -2768,11 +2845,12 @@ llvm::GlobalVariable* Llvm::getOrCreateDataSymbol(StringRef symbolName)
         Type* symbolLlvmType = getPtrLlvmType();
         symbol = new llvm::GlobalVariable(m_context->Module, symbolLlvmType, false, llvm::GlobalValue::ExternalLinkage,
                                           nullptr, symbolName);
+        symbol->setThreadLocal(isThreadLocal);
     }
     return symbol;
 }
 
-llvm::GlobalValue* Llvm::getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle)
+llvm::GlobalValue* Llvm::getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle, bool isThreadLocal)
 {
     StringRef symbolName = GetMangledSymbolName(symbolHandle);
     AddCodeReloc(symbolHandle);
@@ -2787,7 +2865,7 @@ llvm::GlobalValue* Llvm::getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle)
     }
     else
     {
-        symbol = getOrCreateDataSymbol(symbolName);
+        symbol = getOrCreateDataSymbol(symbolName, isThreadLocal);
     }
 
     return symbol;

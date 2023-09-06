@@ -52,11 +52,9 @@ endif()
 
 if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
     # NativeAOT-LLVM: only compile the smoke tests. We do not (currently) need more and 'more' doesn't all compile.
-    if (CLR_CMAKE_TARGET_BROWSER)
-        add_subdirectory(nativeaot/SmokeTests/PInvoke)
-    endif()
     add_subdirectory(nativeaot/CustomMain)
     add_subdirectory(nativeaot/SmokeTests/HelloWasm)
+    add_subdirectory(nativeaot/SmokeTests/PInvoke)
     return()
 endif()
 

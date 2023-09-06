@@ -64,6 +64,7 @@ enum class CorInfoLlvmEHModel
 {
     Cpp, // Landingpad-based LLVM IR; compatible with Itanium ABI.
     Wasm, // WinEH-based LLVM IR; custom WASM EH-based ABI.
+    Emulated, // Invoke-free LLVM IR; "unwinding" performed via explicit checks and returns
 };
 
 struct CORINFO_LLVM_EH_CLAUSE
@@ -108,6 +109,7 @@ enum HelperFuncInfoFlags
     HFIF_SS_ARG = 1, // The helper has shadow stack arg.
     HFIF_VAR_ARG = 1 << 1, // The helper has a variable number of args and must be treated specially.
     HFIF_NO_RPI_OR_GC = 1 << 2, // The helper will not call (back) into managed code or trigger GC.
+    HFIF_THROW_OR_NO_RPI_OR_GC = 1 << 3, // The helper either throws or does not call into managed code / trigger GC.
 };
 
 struct HelperFuncInfo
@@ -124,7 +126,7 @@ struct HelperFuncInfo
         return SigReturnType != CORINFO_TYPE_UNDEF;
     }
 
-    bool HasFlags(HelperFuncInfoFlags flags) const
+    bool HasFlag(HelperFuncInfoFlags flags) const
     {
         return (Flags & flags) == flags;
     }
@@ -170,6 +172,7 @@ struct FunctionInfo
         llvm::AllocaInst** Allocas; // Dense "lclNum -> Alloca*" mapping used for the main function.
         AllocaMap* AllocaMap; // Sparse "lclNum -> Alloca*" mapping used for funclets.
     };
+    llvm::BasicBlock* ExceptionThrownReturnLlvmBlock;
 };
 
 class SingleThreadedCompilationContext
@@ -216,7 +219,10 @@ private:
     JitHashTable<SSAName, SSAName, Value*> _localsMap;
     std::vector<PhiPair> _phiPairs;
     std::vector<FunctionInfo> m_functions;
+
+    CorInfoLlvmEHModel m_ehModel;
     std::vector<llvm::BasicBlock*> m_EHUnwindLlvmBlocks;
+    Value* m_exceptionThrownAddressValue = nullptr;
 
     Value* m_rootFunctionShadowStackValue = nullptr;
 
@@ -301,6 +307,7 @@ private:
     void GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
     SingleThreadedCompilationContext* GetSingleThreadedCompilationContext();
     CorInfoLlvmEHModel GetExceptionHandlingModel();
+    CORINFO_GENERIC_HANDLE GetExceptionThrownVariable();
     CORINFO_GENERIC_HANDLE GetExceptionHandlingTable(CORINFO_LLVM_EH_CLAUSE* pClauses, int count);
 
 public:
@@ -493,6 +500,7 @@ private:
                                    bool doTailCall = false);
     llvm::CallBase* emitCallOrInvoke(
         llvm::FunctionCallee callee, ArrayRef<Value*> args = {}, ArrayRef<llvm::OperandBundleDef> opBundles = {});
+    llvm::BasicBlock* getOrCreateExceptionThrownReturnBlock();
 
     FunctionType* createFunctionType();
     llvm::FunctionCallee consumeCallTarget(GenTreeCall* call);
@@ -505,9 +513,10 @@ private:
                                            std::function<void(Function*)> annotateFunction = [](Function*) { });
     Function* getOrCreateExternalLlvmFunctionAccessor(StringRef name);
     Function* getOrCreatePersonalityLlvmFunction(CorInfoLlvmEHModel ehModel);
+    Value* getOrCreateExceptionThrownAddressValue();
 
-    llvm::GlobalVariable* getOrCreateDataSymbol(StringRef symbolName);
-    llvm::GlobalValue* getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle);
+    llvm::GlobalVariable* getOrCreateDataSymbol(StringRef symbolName, bool isThreadLocal = false);
+    llvm::GlobalValue* getOrCreateSymbol(CORINFO_GENERIC_HANDLE symbolHandle, bool isThreadLocal = false);
 
     Value* gepOrAddr(Value* addr, unsigned offset);
     Value* gepOrAddrInBounds(Value* addr, unsigned offset);

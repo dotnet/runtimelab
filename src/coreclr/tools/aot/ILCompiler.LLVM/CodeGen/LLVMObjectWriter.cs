@@ -411,14 +411,14 @@ namespace ILCompiler.DependencyAnalysis
                     {
                         MetadataType target = (MetadataType)node.Target;
 
+                        LLVMValueRef nonGcStaticsBase = default;
                         if (TriggersLazyStaticConstructor(factory, target))
                         {
                             GenericLookupResult nonGcBaseLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
-                            LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, dictionary);
-                            OutputCodeForTriggerCctor(builder, nonGcStaticsBase);
+                            nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, dictionary);
                         }
 
-                        result = OutputCodeForGetThreadStaticBase(builder, result);
+                        result = OutputCodeForGetThreadStaticBase(builder, result, nonGcStaticsBase);
                     }
                     break;
 
@@ -503,14 +503,14 @@ namespace ILCompiler.DependencyAnalysis
                     {
                         MetadataType target = (MetadataType)node.Target;
 
+                        LLVMValueRef nonGcBase = default;
                         if (_compilation.HasLazyStaticConstructor(target))
                         {
-                            LLVMValueRef nonGcBase = GetSymbolReferenceValue(factory.TypeNonGCStaticsSymbol(target));
-                            OutputCodeForTriggerCctor(builder, nonGcBase);
+                            nonGcBase = GetSymbolReferenceValue(factory.TypeNonGCStaticsSymbol(target));
                         }
 
                         LLVMValueRef pModuleDataSlot = GetSymbolReferenceValue(factory.TypeThreadStaticIndex(target));
-                        result = OutputCodeForGetThreadStaticBase(builder, pModuleDataSlot);
+                        result = OutputCodeForGetThreadStaticBase(builder, pModuleDataSlot, nonGcBase);
                     }
                     break;
 
@@ -657,7 +657,7 @@ namespace ILCompiler.DependencyAnalysis
             builder.PositionAtEnd(block);
 
             CreateCall(builder, helperFunc, stackalloc[] { tentativeStub.GetParam(0) });
-            builder.BuildUnreachable();
+            CreateUnreachedAfterAlwaysThrowCall(builder);
         }
 
         private void GetCodeForUnboxThunkMethod(UnboxingStubNode node)
@@ -815,7 +815,7 @@ namespace ILCompiler.DependencyAnalysis
                 LLVMValueRef slotNotAvailableFunc = GetOrCreateLLVMFunction(ReadyToRunGenericHelperNode.GetBadSlotHelper(factory));
                 builder.PositionAtEnd(slotNotAvailableBlock);
                 CreateCall(builder, slotNotAvailableFunc, stackalloc[] { currentFunc.GetParam(0) });
-                builder.BuildUnreachable();
+                CreateUnreachedAfterAlwaysThrowCall(builder);
 
                 builder.PositionAtEnd(slotAvailableBlock);
             }
@@ -848,11 +848,17 @@ namespace ILCompiler.DependencyAnalysis
             return slotValue;
         }
 
-        private void OutputCodeForTriggerCctor(LLVMBuilderRef builder, LLVMValueRef nonGcStaticBaseValue)
+        private LLVMValueRef OutputCodeForGetCctorContext(LLVMBuilderRef builder, LLVMValueRef nonGcStaticBaseValue)
         {
             // We need to trigger the cctor before returning the base. It is stored at the beginning of the non-GC statics region.
             int pContextOffset = -NonGCStaticsNode.GetClassConstructorContextSize(_nodeFactory.Target);
             LLVMValueRef pContext = CreateAddOffset(builder, nonGcStaticBaseValue, pContextOffset, "pContext");
+            return pContext;
+        }
+
+        private void OutputCodeForTriggerCctor(LLVMBuilderRef builder, LLVMValueRef nonGcStaticBaseValue)
+        {
+            LLVMValueRef pContext = OutputCodeForGetCctorContext(builder, nonGcStaticBaseValue);
             LLVMValueRef initialized = builder.BuildLoad2(_intPtrType, pContext, "initialized");
             LLVMValueRef isInitialized = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, initialized, CreateConst(_intPtrType, 0), "isInitialized");
 
@@ -873,7 +879,7 @@ namespace ILCompiler.DependencyAnalysis
             builder.PositionAtEnd(returnBlock);
         }
 
-        private LLVMValueRef OutputCodeForGetThreadStaticBase(LLVMBuilderRef builder, LLVMValueRef pModuleDataSlot)
+        private LLVMValueRef OutputCodeForGetThreadStaticBase(LLVMBuilderRef builder, LLVMValueRef pModuleDataSlot, LLVMValueRef nonGcStaticBaseValue)
         {
             LLVMValueRef shadowStack = builder.InsertBlock.Parent.GetParam(0);
 
@@ -885,9 +891,22 @@ namespace ILCompiler.DependencyAnalysis
             LLVMValueRef pTypeTlsIndex = CreateAddOffset(builder, pModuleDataSlot, _nodeFactory.Target.PointerSize, "pTypeTlsIndex");
             LLVMValueRef typeTlsIndex = builder.BuildLoad2(LLVMTypeRef.Int32, pTypeTlsIndex, "typeTlsIndex");
 
-            IMethodNode getBaseHelperNode = (IMethodNode)_nodeFactory.HelperEntrypoint(HelperEntrypoint.GetThreadStaticBaseForType);
+            HelperEntrypoint helper;
+            scoped Span<LLVMValueRef> getBaseHelperArgs;
+            if (nonGcStaticBaseValue.Handle != IntPtr.Zero)
+            {
+                LLVMValueRef pContext = OutputCodeForGetCctorContext(builder, nonGcStaticBaseValue);
+
+                helper = HelperEntrypoint.EnsureClassConstructorRunAndReturnThreadStaticBase;
+                getBaseHelperArgs = stackalloc[] { shadowStack, pModuleData, typeTlsIndex, pContext };
+            }
+            else
+            {
+                helper = HelperEntrypoint.GetThreadStaticBaseForType;
+                getBaseHelperArgs = stackalloc[] { shadowStack, pModuleData, typeTlsIndex };
+            }
+            IMethodNode getBaseHelperNode = (IMethodNode)_nodeFactory.HelperEntrypoint(helper);
             LLVMValueRef getBaseHelperFunc = GetOrCreateLLVMFunction(getBaseHelperNode);
-            Span<LLVMValueRef> getBaseHelperArgs = stackalloc[] { shadowStack, pModuleData, typeTlsIndex };
             LLVMValueRef getBaseHelperCall = CreateCall(builder, getBaseHelperFunc, getBaseHelperArgs);
 
             return getBaseHelperCall;
@@ -998,6 +1017,26 @@ namespace ILCompiler.DependencyAnalysis
             int offset = builder.Length;
             builder.Append(name);
             return new(builder, offset);
+        }
+
+        private void CreateUnreachedAfterAlwaysThrowCall(LLVMBuilderRef builder)
+        {
+            if (_compilation.GetLlvmExceptionHandlingModel() == CorInfoLlvmEHModel.Emulated)
+            {
+                LLVMTypeRef type = builder.InsertBlock.Parent.GetValueType().ReturnType;
+                if (type == LLVMTypeRef.Void)
+                {
+                    builder.BuildRetVoid();
+                }
+                else
+                {
+                    builder.BuildRet(LLVMValueRef.CreateConstNull(type));
+                }
+            }
+            else
+            {
+                builder.BuildUnreachable();
+            }
         }
 
         private static LLVMValueRef CreateCall(LLVMBuilderRef builder, LLVMValueRef func, ReadOnlySpan<LLVMValueRef> args, string name = "")

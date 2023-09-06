@@ -31,8 +31,7 @@ instance.exports.EnsureManagedClassLoaders();
 if (instance.exports.CheckSimpleGCCollect() != 100)
     process.exit(4);
 
-// #if !CODEGEN_WASI - enable when we support exception handling
-// if (instance.exports.CheckSimpleExceptionHandling() != 100)
-//    process.exit(5);
+if (instance.exports.CheckSimpleExceptionHandling() != 100)
+   process.exit(5);
 
 process.exit(100);

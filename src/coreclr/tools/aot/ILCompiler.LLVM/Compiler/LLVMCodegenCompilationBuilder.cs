@@ -52,14 +52,20 @@ namespace ILCompiler
                     case "DataLayout":
                         DataLayout = value;
                         break;
-                    case "LlvmExceptionHandlingModel" when value is "wasm":
-                        ExceptionHandlingModel = CorInfoLlvmEHModel.Wasm;
+                    case "LlvmExceptionHandlingModel":
+                        ExceptionHandlingModel = value switch
+                        {
+                            "cpp" => CorInfoLlvmEHModel.Cpp,
+                            "wasm" => CorInfoLlvmEHModel.Wasm,
+                            "emulated" => CorInfoLlvmEHModel.Emulated,
+                            _ => throw new ArgumentException("Invalid LlvmExceptionHandlingModel value")
+                        };
                         break;
                     case "MaxLlvmModuleCount":
                         MaxLlvmModuleCount = int.Parse(value);
                         if (MaxLlvmModuleCount < 1)
                         {
-                            throw new InvalidOperationException("LLVM module count must be positive");
+                            throw new ArgumentException("LLVM module count must be positive");
                         }
                         break;
                     default:
@@ -77,7 +83,7 @@ namespace ILCompiler
         // S128 natural alignment of stack
         public string DataLayout { get; private set; } = "e-m:e-p:32:32-i64:64-n32:64-S128";
         public string Target { get; private set; } = "wasm32-unknown-emscripten";
-        public CorInfoLlvmEHModel ExceptionHandlingModel { get; private set; } = CorInfoLlvmEHModel.Cpp;
+        public CorInfoLlvmEHModel ExceptionHandlingModel { get; private set; } = CorInfoLlvmEHModel.Wasm;
 
         // Below options are debug-only and not supported.
         public int MaxLlvmModuleCount { get; private set; } = 8;
