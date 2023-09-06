@@ -692,6 +692,9 @@ endif (CLR_CMAKE_TARGET_ARCH_RISCV64)
 # Note as well that we need this "CLR_CMAKE_BUILD_LLVM_JIT", defined by the build scripts,
 # because there is no way in CMake to ask "what --target's' am I being asked to configure?".
 if (CLR_CMAKE_BUILD_LLVM_JIT)
+    # LLVM headers require C++17.
+    set(CMAKE_CXX_STANDARD 17)
+
     # The LLVM clrjit needs to be the last clrjit to use create_standalone_jit as it modifies some cmake variables.
     # LLVM clrjit has an extra export - registerLlvmCallbacks.
     set(CLRJIT_EXPORTS ${CMAKE_CURRENT_LIST_DIR}/ClrJit.Llvm.exports)
