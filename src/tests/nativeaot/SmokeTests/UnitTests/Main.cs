@@ -16,6 +16,7 @@ success &= RunTest(Interfaces.Run);
 success &= RunTest(Threading.Run);
 #endif
 success &= RunTest(Devirtualization.Run);
+success &= RunTest(StackTraces.Run);
 
 return success ? 100 : 1;
 

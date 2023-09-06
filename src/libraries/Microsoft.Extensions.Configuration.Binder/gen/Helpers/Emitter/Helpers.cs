@@ -1,7 +1,10 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace Microsoft.Extensions.Configuration.Binder.SourceGeneration
 {
@@ -9,6 +12,10 @@ namespace Microsoft.Extensions.Configuration.Binder.SourceGeneration
     {
         private sealed partial class Emitter
         {
+            private string? _emittedExtsTargetType;
+
+            internal static readonly AssemblyName s_assemblyName = typeof(ConfigurationBindingGenerator).Assembly.GetName();
+
             private enum InitializationKind
             {
                 None = 0,
@@ -18,38 +25,28 @@ namespace Microsoft.Extensions.Configuration.Binder.SourceGeneration
             }
             private static class Expression
             {
+                public const string configurationGetSection = "configuration.GetSection";
                 public const string sectionKey = "section.Key";
                 public const string sectionPath = "section.Path";
                 public const string sectionValue = "section.Value";
 
-                public const string GetBinderOptions = $"{FullyQualifiedDisplayString.CoreBindingHelper}.{Identifier.GetBinderOptions}";
+                public static string GeneratedCodeAnnotation = $@"[GeneratedCode(""{s_assemblyName.Name}"", ""{s_assemblyName.Version}"")]";
             }
 
-            private static class FullyQualifiedDisplayString
-            {
-                public const string ActionOfBinderOptions = $"global::System.Action<global::Microsoft.Extensions.Configuration.BinderOptions>";
-                public const string AddSingleton = $"{ServiceCollectionServiceExtensions}.AddSingleton";
-                public const string ConfigurationChangeTokenSource = "global::Microsoft.Extensions.Options.ConfigurationChangeTokenSource";
-                public const string CoreBindingHelper = $"global::{ConfigurationBindingGenerator.ProjectName}.{Identifier.CoreBindingHelper}";
-                public const string IConfiguration = "global::Microsoft.Extensions.Configuration.IConfiguration";
-                public const string IConfigurationSection = IConfiguration + "Section";
-                public const string IOptionsChangeTokenSource = "global::Microsoft.Extensions.Options.IOptionsChangeTokenSource";
-                public const string InvalidOperationException = "global::System.InvalidOperationException";
-                public const string IServiceCollection = "global::Microsoft.Extensions.DependencyInjection.IServiceCollection";
-                public const string NotSupportedException = "global::System.NotSupportedException";
-                public const string OptionsBuilderOfTOptions = $"global::Microsoft.Extensions.Options.OptionsBuilder<{Identifier.TOptions}>";
-                public const string ServiceCollectionServiceExtensions = "global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions";
-                public const string Type = $"global::System.Type";
-            }
-
-            private static class MinimalDisplayString
+            private static class TypeDisplayString
             {
                 public const string NullableActionOfBinderOptions = "Action<BinderOptions>?";
+                public const string OptionsBuilderOfTOptions = $"OptionsBuilder<{Identifier.TOptions}>";
+                public const string HashSetOfString = "HashSet<string>";
+                public const string LazyHashSetOfString = "Lazy<HashSet<string>>";
+                public const string ListOfString = "List<string>";
             }
 
             private static class Identifier
             {
                 public const string binderOptions = nameof(binderOptions);
+                public const string config = nameof(config);
+                public const string configureBinder = nameof(configureBinder);
                 public const string configureOptions = nameof(configureOptions);
                 public const string configuration = nameof(configuration);
                 public const string configSectionPath = nameof(configSectionPath);
@@ -60,52 +57,53 @@ namespace Microsoft.Extensions.Configuration.Binder.SourceGeneration
                 public const string getPath = nameof(getPath);
                 public const string key = nameof(key);
                 public const string name = nameof(name);
-                public const string obj = nameof(obj);
+                public const string instance = nameof(instance);
                 public const string optionsBuilder = nameof(optionsBuilder);
                 public const string originalCount = nameof(originalCount);
                 public const string section = nameof(section);
+                public const string sectionKey = nameof(sectionKey);
                 public const string services = nameof(services);
-                public const string stringValue = nameof(stringValue);
                 public const string temp = nameof(temp);
                 public const string type = nameof(type);
+                public const string typedObj = nameof(typedObj);
+                public const string validateKeys = nameof(validateKeys);
+                public const string value = nameof(value);
 
                 public const string Add = nameof(Add);
                 public const string AddSingleton = nameof(AddSingleton);
                 public const string Any = nameof(Any);
                 public const string Array = nameof(Array);
                 public const string Bind = nameof(Bind);
-                public const string BindCore = nameof(BindCore);
-                public const string BindCoreUntyped = nameof(BindCoreUntyped);
                 public const string BinderOptions = nameof(BinderOptions);
+                public const string BindingExtensions = nameof(BindingExtensions);
+                public const string ConfigurationChangeTokenSource = nameof(ConfigurationChangeTokenSource);
                 public const string Configure = nameof(Configure);
                 public const string CopyTo = nameof(CopyTo);
                 public const string ContainsKey = nameof(ContainsKey);
-                public const string CoreBindingHelper = nameof(CoreBindingHelper);
                 public const string Count = nameof(Count);
                 public const string CultureInfo = nameof(CultureInfo);
                 public const string CultureNotFoundException = nameof(CultureNotFoundException);
                 public const string Enum = nameof(Enum);
                 public const string ErrorOnUnknownConfiguration = nameof(ErrorOnUnknownConfiguration);
-                public const string GeneratedConfigurationBinder = nameof(GeneratedConfigurationBinder);
-                public const string GeneratedOptionsBuilderBinder = nameof(GeneratedOptionsBuilderBinder);
-                public const string GeneratedServiceCollectionBinder = nameof(GeneratedServiceCollectionBinder);
+                public const string Exception = nameof(Exception);
                 public const string Get = nameof(Get);
                 public const string GetBinderOptions = nameof(GetBinderOptions);
-                public const string GetCore = nameof(GetCore);
                 public const string GetChildren = nameof(GetChildren);
                 public const string GetSection = nameof(GetSection);
                 public const string GetValue = nameof(GetValue);
-                public const string GetValueCore = nameof(GetValueCore);
-                public const string HasChildren = nameof(HasChildren);
                 public const string HasConfig = nameof(HasConfig);
                 public const string HasValueOrChildren = nameof(HasValueOrChildren);
                 public const string HasValue = nameof(HasValue);
                 public const string IConfiguration = nameof(IConfiguration);
                 public const string IConfigurationSection = nameof(IConfigurationSection);
                 public const string Int32 = "int";
+                public const string InterceptsLocation = nameof(InterceptsLocation);
                 public const string InvalidOperationException = nameof(InvalidOperationException);
                 public const string InvariantCulture = nameof(InvariantCulture);
+                public const string IOptionsChangeTokenSource = nameof(IOptionsChangeTokenSource);
+                public const string IServiceCollection = nameof(IServiceCollection);
                 public const string Length = nameof(Length);
+                public const string NumberStyles = nameof(NumberStyles);
                 public const string Parse = nameof(Parse);
                 public const string Path = nameof(Path);
                 public const string Resize = nameof(Resize);
@@ -113,48 +111,122 @@ namespace Microsoft.Extensions.Configuration.Binder.SourceGeneration
                 public const string TOptions = nameof(TOptions);
                 public const string TryCreate = nameof(TryCreate);
                 public const string TryGetValue = nameof(TryGetValue);
-                public const string TryParse = nameof(TryParse);
+                public const string Type = nameof(Type);
                 public const string Uri = nameof(Uri);
+                public const string ValidateConfigurationKeys = nameof(ValidateConfigurationKeys);
                 public const string Value = nameof(Value);
             }
 
-            private bool ShouldEmitBinders() =>
+            private bool ShouldEmitBindingExtensions() =>
                 ShouldEmitMethods(MethodsToGen_ConfigurationBinder.Any) ||
                 ShouldEmitMethods(MethodsToGen_Extensions_OptionsBuilder.Any) ||
                 ShouldEmitMethods(MethodsToGen_Extensions_ServiceCollection.Any);
 
+            private void EmitInterceptsLocationAnnotations(Enum generatedBindingOverload)
+            {
+                // The only time a generated binding method won't have any locations to
+                // intercept is when either of these methods are used as helpers for
+                // other generated OptionsBuilder or ServiceCollection binding extensions.
+                bool interceptsCalls = _sourceGenSpec.InterceptionInfo.TryGetValue(generatedBindingOverload, out List<InterceptorLocationInfo>? infoList);
+                Debug.Assert(interceptsCalls ||
+                    generatedBindingOverload is MethodsToGen_Extensions_ServiceCollection.Configure_T_name_BinderOptions ||
+                    generatedBindingOverload is MethodsToGen_Extensions_OptionsBuilder.Bind_T_BinderOptions);
+
+                if (interceptsCalls)
+                {
+                    EmitInterceptsLocationAnnotations(infoList);
+                }
+            }
+
+            private void EmitInterceptsLocationAnnotations(List<InterceptorLocationInfo> infoList)
+            {
+                foreach (InterceptorLocationInfo info in infoList)
+                {
+                    _writer.WriteLine($@"[{Identifier.InterceptsLocation}(@""{info.FilePath}"", {info.LineNumber}, {info.CharacterNumber})]");
+                }
+            }
+
+            private void EmitBindingExtStartRegion(string targetType)
+            {
+                Debug.Assert(_emittedExtsTargetType is null);
+
+                EmitBlankLineIfRequired();
+                _emittedExtsTargetType = targetType;
+                EmitBindingExtRegionText(isStart: true);
+                _emitBlankLineBeforeNextStatement = false;
+            }
+
+            private void EmitBindingExtEndRegion()
+            {
+                Debug.Assert(_emittedExtsTargetType is not null);
+
+                EmitBindingExtRegionText(isStart: false);
+                _emittedExtsTargetType = null;
+                _emitBlankLineBeforeNextStatement = true;
+            }
+
+            private void EmitBindingExtRegionText(bool isStart)
+            {
+                string endSource = isStart ? string.Empty : "end";
+                _writer.WriteLine($"#{endSource}region {_emittedExtsTargetType} extensions.");
+            }
+
+            /// <summary>
+            /// Starts a block of source code.
+            /// </summary>
+            /// <param name="source">Source to write after the open brace.</param>
+            public void EmitStartBlock(string? source = null)
+            {
+                if (source is not null)
+                {
+                    _writer.WriteLine(source);
+                }
+
+                _writer.WriteLine("{");
+                _writer.Indentation++;
+            }
+
+            /// <summary>
+            /// Ends a block of source code.
+            /// </summary>
+            /// <param name="source">Source to write before the close brace.</param>
+            /// <param name="endBraceTrailingSource">Trailing source after the end brace, e.g. ";" to end an init statement.</param>
+            public void EmitEndBlock(string? source = null, string? endBraceTrailingSource = null)
+            {
+                if (source is not null)
+                {
+                    _writer.WriteLine(source);
+                }
+
+                string endBlockSource = endBraceTrailingSource is null ? "}" : $"}}{endBraceTrailingSource}";
+                _writer.Indentation--;
+                _writer.WriteLine(endBlockSource);
+            }
+
             private void EmitBlankLineIfRequired()
             {
-                if (_precedingBlockExists)
+                if (_emitBlankLineBeforeNextStatement)
                 {
-                    _writer.WriteBlankLine();
+                    _writer.WriteLine();
                 }
 
-                _precedingBlockExists = true;
+                _emitBlankLineBeforeNextStatement = true;
             }
 
-            private void EmitCheckForNullArgument_WithBlankLine_IfRequired(bool isValueType)
+            private void EmitCheckForNullArgument_WithBlankLine(string paramName, bool voidReturn = false)
             {
-                if (!isValueType)
-                {
-                    EmitCheckForNullArgument_WithBlankLine(Identifier.obj);
-                }
-            }
+                string returnExpr = voidReturn
+                    ? "return"
+                    : $"throw new ArgumentNullException(nameof({paramName}))";
 
-            private void EmitCheckForNullArgument_WithBlankLine(string paramName)
-            {
-                string exceptionTypeDisplayString = _useFullyQualifiedNames
-                    ? "global::System.ArgumentNullException"
-                    : "ArgumentNullException";
-
-                _writer.WriteBlock($$"""
+                _writer.WriteLine($$"""
                     if ({{paramName}} is null)
                     {
-                        throw new {{exceptionTypeDisplayString}}(nameof({{paramName}}));
+                        {{returnExpr}};
                     }
                     """);
 
-                _writer.WriteBlankLine();
+                _writer.WriteLine();
             }
 
             private bool EmitInitException(TypeSpec type)
@@ -163,30 +235,28 @@ namespace Microsoft.Extensions.Configuration.Binder.SourceGeneration
 
                 if (!type.CanInitialize)
                 {
-                    _writer.WriteLine(GetInitException(type.InitExceptionMessage) + ";");
+                    _writer.WriteLine($@"throw new {Identifier.InvalidOperationException}(""{type.InitExceptionMessage}"");");
                     return true;
                 }
 
                 return false;
             }
 
-            private string GetInitException(string message) => $@"throw new {GetInvalidOperationDisplayName()}(""{message}"")";
+            private string GetIncrementalIdentifier(string prefix) => $"{prefix}{_valueSuffixIndex++}";
 
-            private string GetIncrementalVarName(string prefix) => $"{prefix}{_parseValueCount++}";
-
-            private string GetTypeDisplayString(TypeSpec type) => _useFullyQualifiedNames ? type.FullyQualifiedDisplayString : type.MinimalDisplayString;
-
-            private string GetHelperMethodDisplayString(string methodName)
-            {
-                if (_useFullyQualifiedNames)
-                {
-                    methodName = FullyQualifiedDisplayString.CoreBindingHelper + "." + methodName;
-                }
-
-                return methodName;
-            }
-
-            private string GetInvalidOperationDisplayName() => _useFullyQualifiedNames ? FullyQualifiedDisplayString.InvalidOperationException : Identifier.InvalidOperationException;
+            private static string GetInitalizeMethodDisplayString(ObjectSpec type) =>
+                $"{nameof(MethodsToGen_CoreBindingHelper.Initialize)}{type.DisplayString.ToIdentifierSubstring()}";
         }
+    }
+
+    internal static class EmitterExtensions
+    {
+        public static string ToIdentifierSubstring(this string typeDisplayName) =>
+            typeDisplayName
+                .Replace("[]", nameof(Array))
+                .Replace(", ", string.Empty)
+                .Replace(".", string.Empty)
+                .Replace("<", string.Empty)
+                .Replace(">", string.Empty);
     }
 }
