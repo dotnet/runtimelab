@@ -175,6 +175,12 @@ struct FunctionInfo
     llvm::BasicBlock* ExceptionThrownReturnLlvmBlock;
 };
 
+struct EHRegionInfo
+{
+    llvm::BasicBlock* UnwindBlock;
+    Value* CatchArgValue;
+};
+
 class SingleThreadedCompilationContext
 {
 public:
@@ -220,7 +226,7 @@ private:
     std::vector<FunctionInfo> m_functions;
 
     CorInfoLlvmEHModel m_ehModel;
-    std::vector<llvm::BasicBlock*> m_EHUnwindLlvmBlocks;
+    std::vector<EHRegionInfo> m_EHRegionsInfo;
     Value* m_exceptionThrownAddressValue = nullptr;
 
     Value* m_rootFunctionShadowStackValue = nullptr;
@@ -228,6 +234,7 @@ private:
     // Codegen emit context.
     unsigned m_currentLlvmFunctionIndex = ROOT_FUNC_IDX;
     unsigned m_currentProtectedRegionIndex = EHblkDsc::NO_ENCLOSING_INDEX;
+    unsigned m_currentHandlerIndex = EHblkDsc::NO_ENCLOSING_INDEX;
     LlvmBlockRange* m_currentLlvmBlocks = nullptr;
 
     // DWARF debug info.
@@ -342,6 +349,7 @@ public:
     void Lower();
 
 private:
+    void initializeFunclets();
     void initializeLlvmArgInfo();
 
     void lowerBlocks();
@@ -432,9 +440,9 @@ private:
     void initializeShadowStack();
     void initializeLocals();
     void initializeBlocks();
+    void generateUnwindBlocks();
     void generateBlocks();
     void generateBlock(BasicBlock* block);
-    void generateEHDispatch();
     void fillPhis();
     void generateAuxiliaryArtifacts();
     void verifyGeneratedCode();
@@ -483,6 +491,7 @@ private:
     void buildKeepAlive(GenTreeUnOp* keepAliveNode);
     void buildILOffset(GenTreeILOffset* ilOffsetNode);
 
+    void buildCatchRet(BasicBlock* block);
     void buildCallFinally(BasicBlock* block);
 
     Value* consumeAddressAndEmitNullCheck(GenTreeIndir* indir);
@@ -494,13 +503,8 @@ private:
 
     void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
-    llvm::CallBase* emitHelperCall(CorInfoHelpFunc                  helperFunc,
-                                   ArrayRef<Value*>                 sigArgs = {},
-                                   ArrayRef<llvm::OperandBundleDef> opBundles = {},
-                                   bool doTailCall = false);
-    llvm::CallBase* emitCallOrInvoke(
-        llvm::FunctionCallee callee, ArrayRef<Value*> args = {}, ArrayRef<llvm::OperandBundleDef> opBundles = {});
-    llvm::BasicBlock* getOrCreateExceptionThrownReturnBlock();
+    llvm::CallBase* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = {});
+    llvm::CallBase* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args = {});
 
     FunctionType* createFunctionType();
     llvm::FunctionCallee consumeCallTarget(GenTreeCall* call);
@@ -512,7 +516,12 @@ private:
                                            std::function<FunctionType*()> createFunctionType,
                                            std::function<void(Function*)> annotateFunction = [](Function*) { });
     Function* getOrCreateExternalLlvmFunctionAccessor(StringRef name);
+
+    EHRegionInfo& getEHRegionInfo(unsigned ehIndex);
+    llvm::BasicBlock* getUnwindLlvmBlockForCurrentInvoke();
     Function* getOrCreatePersonalityLlvmFunction(CorInfoLlvmEHModel ehModel);
+    llvm::CatchPadInst* getCatchPadForHandler(unsigned hndIndex);
+    llvm::BasicBlock* getOrCreateExceptionThrownReturnBlock();
     Value* getOrCreateExceptionThrownAddressValue();
 
     llvm::GlobalVariable* getOrCreateDataSymbol(StringRef symbolName, bool isThreadLocal = false);
@@ -526,9 +535,10 @@ private:
     Value* getOriginalShadowStack();
 
     void setCurrentEmitContextForBlock(BasicBlock* block);
-    void setCurrentEmitContext(unsigned funcIdx, unsigned tryIndex, LlvmBlockRange* llvmBlock);
+    void setCurrentEmitContext(unsigned funcIdx, unsigned tryIndex, unsigned hndIndex, LlvmBlockRange* llvmBlock);
     unsigned getCurrentLlvmFunctionIndex() const;
     unsigned getCurrentProtectedRegionIndex() const;
+    unsigned getCurrentHandlerIndex() const;
     LlvmBlockRange* getCurrentLlvmBlocks() const;
 
     Function* getRootLlvmFunction();
@@ -544,7 +554,6 @@ private:
     llvm::BasicBlock* getFirstLlvmBlockForBlock(BasicBlock* block);
     llvm::BasicBlock* getLastLlvmBlockForBlock(BasicBlock* block);
     llvm::BasicBlock* getOrCreatePrologLlvmBlockForFunction(unsigned funcIdx);
-    llvm::BasicBlock* getUnwindLlvmBlockForCurrentInvoke();
 
     bool isReachable(BasicBlock* block) const;
     BasicBlock* getFirstBlockForFunction(unsigned funcIdx) const;

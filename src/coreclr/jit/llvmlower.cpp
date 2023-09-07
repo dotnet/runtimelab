@@ -110,10 +110,53 @@ void Llvm::AddUnhandledExceptionHandler()
 
 void Llvm::Lower()
 {
+    initializeFunclets();
     initializeLlvmArgInfo();
     lowerBlocks();
     lowerDissolveDependentlyPromotedLocals();
     lowerCanonicalizeFirstBlock();
+}
+
+void Llvm::initializeFunclets()
+{
+    if (!_compiler->ehAnyFunclets())
+    {
+        return;
+    }
+
+    // Our exception handling only needs a subset of handlers to be true funclets.
+    unsigned funcIdx = 1;
+    for (unsigned ehIndex = _compiler->compHndBBtabCount - 1; ehIndex != -1; ehIndex--)
+    {
+        EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
+        if (ehDsc->HasFilter())
+        {
+            ehDsc->endFilterFuncIndex = funcIdx++;
+            FuncInfoDsc* funcInfo = _compiler->funGetFunc(ehDsc->endFilterFuncIndex);
+            funcInfo->funKind = FUNC_FILTER;
+            funcInfo->funEHIndex = ehIndex;
+        }
+
+        if (ehDsc->HasFinallyOrFaultHandler())
+        {
+            ehDsc->ebdFuncIndex = funcIdx++;
+            FuncInfoDsc* funcInfo = _compiler->funGetFunc(ehDsc->ebdFuncIndex);
+            funcInfo->funKind = FUNC_HANDLER;
+            funcInfo->funEHIndex = ehIndex;
+        }
+        // It is up to us to decide what "ebdFuncIndex" should mean for handlers that
+        // are not funclets. It is convenient to make it refer to the enclosing funclet.
+        else if (ehDsc->ebdEnclosingHndIndex != EHblkDsc::NO_ENCLOSING_INDEX)
+        {
+            ehDsc->ebdFuncIndex = _compiler->ehGetDsc(ehDsc->ebdEnclosingHndIndex)->ebdFuncIndex;
+        }
+        else
+        {
+            ehDsc->ebdFuncIndex = ROOT_FUNC_IDX;
+        }
+    }
+
+    _compiler->compFuncInfoCount = funcIdx;
 }
 
 // LLVM Arg layout:
@@ -1231,7 +1274,7 @@ bool Llvm::isFirstBlockCanonical()
 //                         \-> BB04 (ZR) -/           \-> BB07 (ZR)
 //
 // We start with BB01. It has no predecessors and gets a new group (G0).
-// This is an entry block to this group. We contine with BB02. It has only
+// This is an entry block to this group. We continue with BB02. It has only
 // one predecessor - BB01, which has the same unwind index requirement so
 // we put it into the same group. Next up are BB03 and BB04. Both cannot
 // be placed into G0 as they need different unwind indices, and so will be
