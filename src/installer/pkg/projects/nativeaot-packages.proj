@@ -1,15 +1,9 @@
 <Project>
   <Import Sdk="Microsoft.Build.Traversal" Project="Sdk.props" />
 
-<<<<<<< HEAD
-  <ItemGroup>
-    <Project Include="Microsoft.DotNet.ILCompiler.LLVM\Microsoft.DotNet.ILCompiler.LLVM.pkgproj" />
-    <ProjectReference Condition="'$(BuildNativeAOTRuntimePack)' != 'true'" Include="@(Project)" />
-=======
   <ItemGroup Condition="'$(BuildNativeAOTRuntimePack)' != 'true'">
-    <Project Include="Microsoft.DotNet.ILCompiler\Microsoft.DotNet.ILCompiler.pkgproj" />
+    <Project Include="Microsoft.DotNet.ILCompiler.LLVM\Microsoft.DotNet.ILCompiler.LLVM.pkgproj" />
     <ProjectReference Include="@(Project)" />
->>>>>>> runtime/main
     <ProjectReference Include="@(Project)" AdditionalProperties="PackageTargetRuntime=$(OutputRID)" />
   </ItemGroup>
 

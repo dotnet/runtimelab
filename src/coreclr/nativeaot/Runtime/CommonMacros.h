@@ -160,12 +160,9 @@ inline bool IS_ALIGNED(T* val, uintptr_t alignment);
 #elif defined(HOST_WASM)
 
 #define DATA_ALIGNMENT  4
-<<<<<<< HEAD
 #ifndef OS_PAGE_SIZE
 #define OS_PAGE_SIZE    0x1000
 #endif
-=======
->>>>>>> runtime/main
 
 #else
 #error Unsupported target architecture

@@ -96,8 +96,5 @@
           IgnoreStandardErrorWarningFormat="true" />
   </Target>
 
-<<<<<<< HEAD
-=======
   <Import Project="$(RepositoryEngineeringDir)nativeSanitizers.targets" />
->>>>>>> runtime/main
 </Project>

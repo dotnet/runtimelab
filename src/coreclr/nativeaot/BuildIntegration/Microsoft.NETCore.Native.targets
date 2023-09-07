@@ -357,23 +357,6 @@ The .NET Foundation licenses this file to you under the MIT license.
       <Copy SourceFiles="@(NativeObjects)" DestinationFolder="$(NativeOutputPath)" />
   </Target>
 
-<<<<<<< HEAD
-  <PropertyGroup>
-    <_Win32ResFile>$(NativeIntermediateOutputPath)$(TargetName).res</_Win32ResFile>
-  </PropertyGroup>
-
-  <UsingTask TaskName="DumpNativeResources" AssemblyFile="$(IlcBuildTasksPath)" />
-  <Target Name="GenerateResFile"
-      Inputs="$(IntermediateOutputPath)$(TargetName)$(TargetExt)"
-      Outputs="$(_Win32ResFile)"
-      Condition="'$(_targetOS)' == 'win'">
-
-    <DumpNativeResources
-        MainAssembly="$(IntermediateOutputPath)$(TargetName)$(TargetExt)"
-        ResourceFile="$(_Win32ResFile)" />
-
-  </Target>
-
   <Target Name="InitializeTheListOfLlvmObjects"
       AfterTargets="IlcCompile"
       BeforeTargets="CompileWasmObjects;LinkNativeLlvm">
@@ -442,9 +425,6 @@ The .NET Foundation licenses this file to you under the MIT license.
   </Target>
 
   <Target Name="LinkNativeSingle" Condition="'$(_targetOS)' != 'browser' and '$(_targetOS)' != 'wasi'"
-=======
-  <Target Name="LinkNative"
->>>>>>> runtime/main
       Inputs="$(NativeObject);@(NativeLibrary)"
       Outputs="$(NativeBinary)"
       DependsOnTargets="$(LinkNativeDependsOn)">

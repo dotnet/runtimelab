@@ -269,16 +269,3 @@ int main(int argc, char* argv[])
 #endif // HAS_ADDRESS_SANITIZER
 
 #endif // !NATIVEAOT_DLL
-<<<<<<< HEAD
-=======
-
-#ifdef NATIVEAOT_DLL
-static struct InitializeRuntimePointerHelper
-{
-    InitializeRuntimePointerHelper()
-    {
-        RhSetRuntimeInitializationCallback(&InitializeRuntime);
-    }
-} initializeRuntimePointerHelper;
-#endif // NATIVEAOT_DLL
->>>>>>> runtime/main

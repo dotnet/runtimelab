@@ -74,17 +74,7 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFast, (MethodTable* pEEType))
         return pObject;
     }
 
-<<<<<<< HEAD
-    pObject = (Object *)RhpGcAlloc(pEEType, 0, 0, NULL);
-    if (pObject == nullptr)
-    {
-        ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
-    }
-
-    return pObject;
-=======
     return AllocateObject(pEEType, 0, 0);
->>>>>>> runtime/main
 }
 
 #define GC_ALLOC_FINALIZE    0x1 // TODO: Defined in gc.h
@@ -94,18 +84,7 @@ COOP_PINVOKE_HELPER(Object *, RhpNewFast, (MethodTable* pEEType))
 COOP_PINVOKE_HELPER(Object *, RhpNewFinalizable, (MethodTable* pEEType))
 {
     ASSERT(pEEType->HasFinalizer());
-<<<<<<< HEAD
-
-    Object * pObject = (Object *)RhpGcAlloc(pEEType, GC_ALLOC_FINALIZE, 0, NULL);
-    if (pObject == nullptr)
-    {
-        ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
-    }
-
-    return pObject;
-=======
     return AllocateObject(pEEType, GC_ALLOC_FINALIZE, 0);
->>>>>>> runtime/main
 }
 
 COOP_PINVOKE_HELPER(Array *, RhpNewArray, (MethodTable * pArrayEEType, int numElements))
@@ -142,17 +121,7 @@ COOP_PINVOKE_HELPER(Array *, RhpNewArray, (MethodTable * pArrayEEType, int numEl
         return pObject;
     }
 
-<<<<<<< HEAD
-    pObject = (Array *)RhpGcAlloc(pArrayEEType, 0, numElements, NULL);
-    if (pObject == nullptr)
-    {
-        ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
-    }
-
-    return pObject;
-=======
     return (Array*)AllocateObject(pArrayEEType, 0, numElements);
->>>>>>> runtime/main
 }
 
 COOP_PINVOKE_HELPER(String *, RhNewString, (MethodTable * pArrayEEType, int numElements))
@@ -167,16 +136,7 @@ GPTR_DECL(MethodTable, g_pFreeObjectEEType);
 
 COOP_PINVOKE_HELPER(Object *, RhpNewFinalizableAlign8, (MethodTable* pEEType))
 {
-<<<<<<< HEAD
-    Object* pObject = (Object*)RhpGcAlloc(pEEType, GC_ALLOC_FINALIZE | GC_ALLOC_ALIGN8, 0, NULL);
-    if (pObject == nullptr)
-    {
-        ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
-    }
-    return pObject;
-=======
     return AllocateObject(pEEType, GC_ALLOC_FINALIZE | GC_ALLOC_ALIGN8, 0);
->>>>>>> runtime/main
 }
 
 #ifndef HOST_64BIT
@@ -213,17 +173,7 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastAlign8, (MethodTable* pEEType))
         return pObject;
     }
 
-<<<<<<< HEAD
-    pObject = (Object*)RhpGcAlloc(pEEType, GC_ALLOC_ALIGN8, 0, NULL);
-    if (pObject == nullptr)
-    {
-        ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
-    }
-
-    return pObject;
-=======
     return AllocateObject(pEEType, GC_ALLOC_ALIGN8, 0);
->>>>>>> runtime/main
 }
 
 COOP_PINVOKE_HELPER(Object*, RhpNewFastMisalign, (MethodTable* pEEType))
@@ -256,17 +206,7 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastMisalign, (MethodTable* pEEType))
         return pObject;
     }
 
-<<<<<<< HEAD
-    pObject = (Object*)RhpGcAlloc(pEEType, GC_ALLOC_ALIGN8 | GC_ALLOC_ALIGN8_BIAS, 0, NULL);
-    if (pObject == nullptr)
-    {
-        ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
-    }
-
-    return pObject;
-=======
     return AllocateObject(pEEType, GC_ALLOC_ALIGN8 | GC_ALLOC_ALIGN8_BIAS, 0);
->>>>>>> runtime/main
 }
 
 COOP_PINVOKE_HELPER(Array*, RhpNewArrayAlign8, (MethodTable* pArrayEEType, int numElements))
@@ -315,17 +255,7 @@ COOP_PINVOKE_HELPER(Array*, RhpNewArrayAlign8, (MethodTable* pArrayEEType, int n
         return pObject;
     }
 
-<<<<<<< HEAD
-    pObject = (Array*)RhpGcAlloc(pArrayEEType, GC_ALLOC_ALIGN8, numElements, NULL);
-    if (pObject == nullptr)
-    {
-        ASSERT_UNCONDITIONALLY("NYI");  // TODO: Throw OOM
-    }
-
-    return pObject;
-=======
     return (Array*)AllocateObject(pArrayEEType, GC_ALLOC_ALIGN8, numElements);
->>>>>>> runtime/main
 }
 #endif // !HOST_64BIT
 #endif // FEATURE_64BIT_ALIGNMENT

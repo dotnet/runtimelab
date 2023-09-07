@@ -5,10 +5,9 @@
     <CLRTestPriority>0</CLRTestPriority>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NativeLib>Shared</NativeLib>
-<<<<<<< HEAD
 
     <WasiReactorTestUsingNodeJS Condition="'$(TargetOS)' == 'wasi'">true</WasiReactorTestUsingNodeJS>
-=======
+
     <!-- Unable to compile a project with the Library output type for apple mobile devices -->
     <CLRTestTargetUnsupported Condition="'$(TargetsAppleMobile)' == 'true'">true</CLRTestTargetUnsupported>
   </PropertyGroup>
@@ -27,7 +26,6 @@ mkdir -p native
 cp libclang_rt.* native/
 cp SharedLibraryDriver native/SharedLibrary
 ]]></CLRTestBashPreCommands>
->>>>>>> runtime/main
   </PropertyGroup>
 
   <ItemGroup>

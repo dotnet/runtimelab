@@ -46,7 +46,11 @@ public:
 class TargetArchitecture
 {
 public:
-<<<<<<< HEAD
+#ifdef TARGET_64BIT
+    static const bool Is64Bit = true;
+#else
+    static const bool Is64Bit = false;
+#endif
 #ifdef TARGET_WASM32
     static const bool IsWasm32 = true;
     static const bool IsWasm64 = false;
@@ -68,16 +72,6 @@ public:
     static const bool IsLoongArch64 = false;
     static const bool IsRiscv64 = false;
 #elif TARGET_ARM
-    static const bool IsWasm32 = false;
-    static const bool IsWasm64 = false;
-=======
-#ifdef TARGET_64BIT
-    static const bool Is64Bit = true;
-#else
-    static const bool Is64Bit = false;
-#endif
-#ifdef TARGET_ARM
->>>>>>> runtime/main
     static const bool IsX86 = false;
     static const bool IsX64 = false;
     static const bool IsArm64 = false;

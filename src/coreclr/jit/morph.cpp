@@ -295,9 +295,7 @@ GenTree* Compiler::fgMorphExpandCast(GenTreeCast* tree)
     var_types dstType = tree->CastToType();
     unsigned  dstSize = genTypeSize(dstType);
 
-<<<<<<< HEAD
 #if !defined(TARGET_WASM) // LLVM codegen supports all casts directly.
-=======
 #if defined(TARGET_AMD64)
     // If AVX512 is present, we have intrinsic available to convert
     // ulong directly to float. Hence, we need to combine the 2 nodes
@@ -329,7 +327,6 @@ GenTree* Compiler::fgMorphExpandCast(GenTreeCast* tree)
         }
     }
 #endif // TARGET_AMD64
->>>>>>> runtime/main
 
     // See if the cast has to be done in two steps.  R -> I
     if (varTypeIsFloating(srcType) && varTypeIsIntegral(dstType))
