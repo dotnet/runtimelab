@@ -284,3 +284,9 @@ endif()
 if(FEATURE_PERFTRACING)
   add_subdirectory(eventpipe)
 endif()
+
+set(FEATURE_MINT 1)
+
+if(FEATURE_MINT)
+    add_subdirectory(mint)
+endif()
