@@ -29,12 +29,6 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\WasmDebugging.csproj" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetOS)' == 'wasi'">
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DynamicGenerics\*.csproj" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Reflection\*.csproj" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\UnitTests\*.csproj" />
-    </ItemGroup>
-
     <ItemGroup>
       <BuildTestProjects Include="$(__BuildTestProject.Split(';'))" />
       <BuildTestDirs Include="$(__BuildTestDir.Split(';'))" />

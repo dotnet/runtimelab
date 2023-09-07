@@ -350,6 +350,12 @@ if (CLR_CMAKE_HOST_WIN32)
   set(STATIC_MT_CPP_LIB  "libcpmt$<$<OR:$<CONFIG:Debug>,$<CONFIG:Checked>>:d>.lib")
 endif(CLR_CMAKE_HOST_WIN32)
 
+if (CLR_CMAKE_HOST_WASI)
+  add_definitions(-DHOST_WASI)
+elseif (CLR_CMAKE_HOST_BROWSER)
+  add_definitions(-DHOST_BROWSER)
+endif()
+
 # Unconditionally define _FILE_OFFSET_BITS as 64 on all platforms.
 add_definitions(-D_FILE_OFFSET_BITS=64)
 
@@ -627,7 +633,7 @@ if(CLR_CMAKE_TARGET_UNIX)
 elseif(CLR_CMAKE_TARGET_WASI)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_OS>>>:TARGET_WASI>)
   if (CLR_CMAKE_TARGET_OS STREQUAL wasi)
-    add_definitions(-D_WASI_EMULATED_PROCESS_CLOCKS -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_GETPID -D_GNU_SOURCE)
+    add_definitions(-D_WASI_EMULATED_PROCESS_CLOCKS -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_GETPID -D_GNU_SOURCE)
     # no-unsafe-buffer-usage for pal_random.c
     # no-unused-macros for _version.c
     add_compile_options(-Wno-deprecated-declarations -Wno-unsafe-buffer-usage -Wno-unused-macros)

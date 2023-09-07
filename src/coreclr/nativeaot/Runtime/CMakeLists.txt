@@ -211,12 +211,6 @@ if (CLR_CMAKE_TARGET_ARCH_WASM)
     ${ARCH_SOURCES_DIR}/StubDispatch.cpp
     ${ARCH_SOURCES_DIR}/PInvoke.cpp
   )
-
-  if (CLR_CMAKE_TARGET_WASI)
-    list(APPEND COMMON_RUNTIME_SOURCES
-      wasm/wasi_mmap.cpp
-    )
-  endif()
 endif (CLR_CMAKE_TARGET_ARCH_WASM)
 
 list(APPEND RUNTIME_SOURCES_ARCH_ASM

@@ -141,9 +141,7 @@ The use of explicit `WasmImport`s is currently mandatory for the `wasi-wasm` tar
 
 #### WASM with WASI
 
-Currently, many things do not work with the WASI publish, notably Exceptions, threads, and any Globalization. It is also likely to crash when running anything but the simplest programs. HelloWorld (i.e. `dotnet new console`) does work. Set up the project file as above.
-
-Create the wasm with
+Set up the project file as above and create the wasm with
 ```
 dotnet publish -r wasi-wasm -c <Configuration> /p:MSBuildEnableWorkloadResolver=false /p:UseAppHost=false --self-contained
 ```

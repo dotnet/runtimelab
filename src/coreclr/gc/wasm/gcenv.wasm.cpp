@@ -105,3 +105,16 @@ bool GCToOSInterface::VirtualDecommit(void* address, size_t size)
     memset(address, 0, size);
     return TRUE;
 }
+
+// Reset virtual memory range. Indicates that data in the memory range specified by address and size is no
+// longer of interest, but it should not be decommitted.
+// Parameters:
+//  address - starting virtual address
+//  size    - size of the virtual memory range
+//  unlock  - true if the memory range should also be unlocked
+// Return:
+//  true if it has succeeded, false if it has failed
+bool GCToOSInterface::VirtualReset(void* address, size_t size, bool unlock)
+{
+    return false;
+}
