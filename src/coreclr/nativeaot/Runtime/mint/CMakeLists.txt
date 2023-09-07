@@ -8,9 +8,12 @@ set(MONO_INTERP_SOURCES_PATH "${MONO_BASEDIR_PATH}/mini/interp")
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_EXTENSIONS ON)
 
+# "${MONO_INTERP_SOURCES_PATH}/transform.c"
 set(MINT_SOURCES
-    "${MONO_INTERP_SOURCES_PATH}/transform.c")
+    mint.c)
 
 add_library(mint STATIC ${MINT_SOURCES})
+target_include_directories(mint PRIVATE inc)
+target_compile_definitions(mint PRIVATE -DNATIVEAOT_MINT)
 
 install_static_library(mint aotsdk nativeaot)

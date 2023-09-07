@@ -7,6 +7,7 @@
  * Copyright (c) 2004.
  */
 
+#ifndef NATIVEAOT_MINT
 #include "config.h"
 #include <string.h>
 #include <mono/metadata/appdomain.h>
@@ -28,6 +29,9 @@
 #include <mono/mini/mini.h>
 #include <mono/mini/mini-runtime.h>
 #include <mono/mini/aot-runtime.h>
+#else
+#include <monoshim/missing-symbols.h>
+#endif
 
 #include "mintops.h"
 #include "interp-internals.h"
