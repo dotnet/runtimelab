@@ -146,6 +146,9 @@
     <PlatformManifestFileEntry Include="System.Private.Reflection.Execution.dll" />
     <PlatformManifestFileEntry Include="System.Private.StackTraceMetadata.dll" />
     <PlatformManifestFileEntry Include="System.Private.TypeLoader.dll" />
+    <!-- NativeAOT Mint -->
+    <PlatformManifestFileEntry Include="libmint.a" IsNative="true" />
+    <PlatformManifestFileEntry Include="System.Private.Mint.dll" />
     <!-- Mono-specific files -->
     <PlatformManifestFileEntry Include="monosgen-2.0.lib" IsNative="true" />
     <PlatformManifestFileEntry Include="libmonosgen-2.0.a" IsNative="true" />
