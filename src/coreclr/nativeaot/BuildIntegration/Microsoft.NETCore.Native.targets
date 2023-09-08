@@ -112,6 +112,10 @@ The .NET Foundation licenses this file to you under the MIT license.
     <AutoInitializedAssemblies Include="System.Private.Mint" Condition="'$(UseInterpreter)' == 'true'" />
   </ItemGroup>
 
+  <ItemGroup>
+    <NativeLibrary Include="$(IlcSdkPath)libmint.a" Condition="'$(UseInterpreter)' == 'true'" />
+  </ItemGroup>
+
   <ItemDefinitionGroup>
     <ManagedBinary>
       <IlcRspFile>$(NativeIntermediateOutputPath)\%(Filename).ilc.rsp</IlcRspFile>
