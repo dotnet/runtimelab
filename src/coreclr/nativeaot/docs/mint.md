@@ -14,11 +14,20 @@ the project only builds on Apple M1 machines.
 
 ## Building
 
+You have to do at least one build with
+```
+./build.sh -rc Debug
+```
+
+In order to build the `Microsoft.DotNet.ILCompiler.9.0.0-dev.nupkg` BuildIntegration nuget.  (This has the support for adding the `UseInterpreter` property to user projects)
+
+After that if you're just changing the runtime, you can build:
+
 ```console
 ./build.sh clr.aot+libs+packs -rc Debug /p:BuildNativeAOTRuntimePack=true
 ```
 
-For fast iteration you can do
+For fast iteration just to validate that code is building, you can do
 
 ```
 ./build.sh clr.aot -rc Debug -b
@@ -28,5 +37,83 @@ but this will not update the runtime packs for trying it out.
 
 ## Running
 
+1. Install .NET 9 from [dotnet/installer](https://github.com/dotnet/installer)
+
+I recommend installing into a separate directory and setting `DOTNET_ROOT` to point to it and adding it to the path.
+
+2. Edit `sdk/9.0.100-alpha.1.23453.2/Microsoft.NETCoreSdk.BundledVersions.props`
+  - Set `KnownILCompilerPack`'s property `ILCompilerPackVersion="9.0.0-dev"`
+  - For `KnownRuntimePack` with `RuntimePackNamePatterns="Microsoft.NETCore.App.Runtime.NativeAOT.**RID**"`
+    set `LatestRuntimeFrameworkVersion="9.0.0-dev"`
+
 Set `/p:UseInterpreter=true` in the sample .csproj
 
+### Complete example
+
+#### nuget.config
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <!--To inherit the global NuGet package sources remove the <clear/> line below -->
+    <clear />
+    <add key="dotnet9" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet9/nuget/v3/index.json" />
+    <add key="dotnet8" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet8/nuget/v3/index.json" />
+    <!-- Change this to your git checkout of the runtime -->
+    <add key="local-build" value="/Users/alklig/work/dotnet-runtime/mint/artifacts/packages/Debug/Shipping/" />
+  </packageSources>
+  <config>
+    <add key="globalPackagesFolder" value="./nuget-packages" />
+  </config>
+</configuration>
+```
+
+#### hello.csproj
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PublishAot>true</PublishAot>
+
+    <!-- Mint specific -->
+    <UseInterpreter>true</UseInterpreter>
+  </PropertyGroup>
+
+  <!-- Use in-tree packages -->
+  <ItemGroup>
+    <FrameworkReference Update="Microsoft.NETCore.App" RuntimeFrameworkVersion="9.0.0-dev" />
+    <PackageReference Include="Microsoft.DotNet.ILCompiler" Version="9.0.0-dev" />
+  </ItemGroup>
+</Project>
+```
+
+#### Program.cs
+
+```csharp
+if (AppContext.TryGetSwitch("System.Private.Mint.Enable", out var enabled))
+{
+        Console.WriteLine ("Hello, Mint is {0}", enabled ? "enabled": "disabled");
+} else {
+        Console.WriteLine ($"Hello, System.Private.Mint.Enable is unset");
+}
+```
+
+### Build and run
+
+Using the hacked up dotnet install, publish the `hello.csproj`:
+
+```console
+$ dotnet publish hello.csproj
+...
+Generating native code
+...
+$ % ./bin/Release/net8.0/osx-arm64/publish/hello
+Hello, Mint is enabled
+```
