@@ -79,7 +79,7 @@ namespace System.IO.StreamSourceGeneration.Tests
                 }
                 """);
 
-        private void ImplementsReadAsyncButNotRead(string source)
+        private static void ImplementsReadAsyncButNotRead(string source)
         {
             Compilation compilation = CompilationHelper.CreateCompilation(source);
 
@@ -130,7 +130,7 @@ namespace System.IO.StreamSourceGeneration.Tests
                 }
                 """);
 
-        private void ImplementsReadButNotReadAsync(string source)
+        private static void ImplementsReadButNotReadAsync(string source)
         {
             Compilation compilation = CompilationHelper.CreateCompilation(source);
 
@@ -184,7 +184,7 @@ namespace System.IO.StreamSourceGeneration.Tests
                 }
                 """);
 
-        private void ImplementsWriteAsyncButNotWrite(string source)
+        private static void ImplementsWriteAsyncButNotWrite(string source)
         {
             Compilation compilation = CompilationHelper.CreateCompilation(source);
 
@@ -228,7 +228,7 @@ namespace System.IO.StreamSourceGeneration.Tests
                 }
                 """);
 
-        private void ImplementsWriteButNotWriteAsync(string source)
+        private static void ImplementsWriteButNotWriteAsync(string source)
         {
             Compilation compilation = CompilationHelper.CreateCompilation(source);
 
