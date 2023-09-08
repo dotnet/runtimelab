@@ -156,9 +156,9 @@ namespace ILCompiler
         public CliOption<string> MakeReproPath { get; } =
             new("--make-repro-path") { Description = "Path where to place a repro package" };
         public CliOption<string[]> WasmImport { get; } =
-            new("--wasmimport", { Description = "WebAssembly import module names for PInvoke functions"};
+            new("--wasmimport") { Description = "WebAssembly import module names for PInvoke functions"};
         public CliOption<string[]> WasmImportList { get; } =
-            new("--wasmimportlist", {Description = "File with list of WebAssembly import module names for PInvoke functions"};
+            new("--wasmimportlist") {Description = "File with list of WebAssembly import module names for PInvoke functions"};
         public CliOption<string[]> UnmanagedEntryPointsAssemblies { get; } =
             new("--generateunmanagedentrypoints") { DefaultValueFactory = _ => Array.Empty<string>(), Description = "Generate unmanaged entrypoints for a given assembly" };
 

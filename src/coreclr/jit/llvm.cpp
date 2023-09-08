@@ -557,6 +557,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
 
         // Not used in NativeAOT.
         { FUNC(CORINFO_HELP_THROW_AMBIGUOUS_RESOLUTION_EXCEPTION) },
+        { FUNC(CORINFO_HELP_THROW_ENTRYPOINT_NOT_FOUND_EXCEPTION) },
 
         // [R]PI helpers, implemented in "Runtime\thread.cpp".
         { FUNC(CORINFO_HELP_JIT_PINVOKE_BEGIN) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
@@ -666,8 +667,6 @@ CorInfoType Llvm::getLlvmReturnType(CorInfoType sigRetType, CORINFO_CLASS_HANDLE
 {
     switch (type)
     {
-        case TYP_BOOL:
-            return CORINFO_TYPE_BOOL;
         case TYP_BYREF:
             return CORINFO_TYPE_BYREF;
         case TYP_BYTE:

@@ -382,7 +382,7 @@ The .NET Foundation licenses this file to you under the MIT license.
   <Target Name="CompileWasmObjects"
       Inputs="@(LlvmObjects)"
       Outputs="@(LlvmObjects->'%(NativeObject)')"
-      DependsOnTargets="IlcCompile;GenerateResFile;CheckWasmSdks"
+      DependsOnTargets="IlcCompile;CheckWasmSdks"
       Condition="'$(NativeCodeGen)' == 'llvm'">
 
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
@@ -493,15 +493,15 @@ The .NET Foundation licenses this file to you under the MIT license.
   <Target Name="LinkNativeLlvm"
       Inputs="@(NativeObjects);@(NativeLibrary)"
       Outputs="$(NativeBinary)"
-      DependsOnTargets="$(LinkNativeDependsOn);GenerateResFile">
+      DependsOnTargets="$(LinkNativeDependsOn)">
 
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
 
     <ItemGroup>
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.a" />
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Globalization.Native.a" />
-      <NativeLibrary Condition="$(NativeLib) == '' and '$(CustomNativeMain)' != 'true'" Include="$(IlcSdkPath)libbootstrapper.a" />
-      <NativeLibrary Condition="$(NativeLib) != '' or '$(CustomNativeMain)' == 'true'" Include="$(IlcSdkPath)libbootstrapperdll.a" />
+      <NativeLibrary Condition="$(NativeLib) == '' and '$(CustomNativeMain)' != 'true'" Include="$(IlcSdkPath)libbootstrapper.o" />
+      <NativeLibrary Condition="$(NativeLib) != '' or '$(CustomNativeMain)' == 'true'" Include="$(IlcSdkPath)libbootstrapperdll.o" />
       <NativeLibrary Include="$(IlcSdkPath)libPortableRuntime.a" />
       <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="$(IlcSdkPath)libCppExceptionHandling.a" />
       <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'" Include="$(IlcSdkPath)libWasmExceptionHandling.a" />

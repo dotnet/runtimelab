@@ -713,8 +713,7 @@ if (CLR_CMAKE_BUILD_LLVM_JIT)
     list(FILTER JIT_SOURCES EXCLUDE REGEX regalloc\.cpp)
 
     # We'll be linking against LLVM built without /guard:ehcont, so disable it.
-    string(REPLACE "/guard:ehcont" "" CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS})
-    string(REPLACE "/guard:ehcont" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    set_property(GLOBAL PROPERTY CLR_EH_CONTINUATION OFF)
 
     create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32 DESTINATIONS .)
     install_clr(TARGETS clrjit_browser_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)

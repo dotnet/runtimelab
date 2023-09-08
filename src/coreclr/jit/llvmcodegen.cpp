@@ -1516,7 +1516,6 @@ void Llvm::buildCast(GenTreeCast* cast)
                     lowerBound = -129.0;
                     upperBound = 128.0;
                     break;
-                case TYP_BOOL:
                 case TYP_UBYTE:
                     lowerBound = -1.0;
                     upperBound = 256.0;
@@ -1614,7 +1613,6 @@ void Llvm::buildCast(GenTreeCast* cast)
         case TYP_LONG:
             switch (castToType)
             {
-                case TYP_BOOL:
                 case TYP_BYTE:
                 case TYP_UBYTE:
                 case TYP_SHORT:
@@ -1661,7 +1659,6 @@ void Llvm::buildCast(GenTreeCast* cast)
                     castValue = _builder.CreateFPToSI(castFromValue, castToLlvmType);
                     break;
 
-                case TYP_BOOL:
                 case TYP_UBYTE:
                 case TYP_USHORT:
                 case TYP_UINT:
