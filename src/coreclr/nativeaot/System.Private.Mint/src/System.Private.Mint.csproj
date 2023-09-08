@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);MINT_IMPLEMENTATION</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup>
+      <!-- we access a lot of internals of System.Private.CoreLib, disable compiling against the ref assembly for now so we don't need to update it -->
+    <CompileUsingReferenceAssemblies>false</CompileUsingReferenceAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\System.Private.CoreLib\src\System.Private.CoreLib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include=".\Internal\Mint\Mint.cs" />
+    <Compile Include=".\Internal\Runtime\CompilerHelpers\LibraryInitializer.cs" />
+  </ItemGroup>
+</Project>

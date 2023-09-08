@@ -52,6 +52,9 @@
     <FeatureCominterop Condition="'$(TargetsWindows)' == 'true'">true</FeatureCominterop>
   </PropertyGroup>
   <PropertyGroup>
+    <FeatureMint>true</FeatureMint>
+  </PropertyGroup>
+  <PropertyGroup>
     <DefineConstants Condition="'$(FeatureCominterop)' == 'true'">FEATURE_COMINTEROP;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>
@@ -72,6 +75,9 @@
     <DefineConstants Condition="'$(FeaturePerfTracing)' == 'true'">FEATURE_PERFTRACING;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <DefineConstants Condition="'$(FeatureMint)' == 'true'">FEATURE_MINT;$(DefineConstants)</DefineConstants>
+  </PropertyGroup>
 
   <!-- Platform specific properties -->
   <PropertyGroup Condition="'$(Platform)' == 'x64'">
