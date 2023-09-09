@@ -214,7 +214,6 @@ private:
 
     // Codegen members.
     llvm::IRBuilder<> _builder;
-    JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, LlvmBlockRange> _blkToLlvmBlksMap;
     JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, Value*> _sdsuMap;
     JitHashTable<SSAName, SSAName, Value*> _localsMap;
     std::vector<PhiPair> _phiPairs;
@@ -432,6 +431,7 @@ private:
     void generateProlog();
     void initializeShadowStack();
     void initializeLocals();
+    void initializeBlocks();
     void generateBlocks();
     void generateBlock(BasicBlock* block);
     void generateEHDispatch();
@@ -537,6 +537,7 @@ private:
     FunctionInfo& getLlvmFunctionInfoForIndex(unsigned funcIdx);
     unsigned getLlvmFunctionIndexForBlock(BasicBlock* block) const;
     unsigned getLlvmFunctionIndexForProtectedRegion(unsigned tryIndex) const;
+    bool isLlvmFunctionReachable(unsigned funcIdx) const;
 
     llvm::BasicBlock* createInlineLlvmBlock();
     LlvmBlockRange* getLlvmBlocksForBlock(BasicBlock* block);

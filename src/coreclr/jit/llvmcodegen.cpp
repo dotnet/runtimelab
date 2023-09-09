@@ -20,6 +20,7 @@ void Llvm::Compile()
     JITDUMPEXEC(_compiler->fgDispBasicBlocks());
     JITDUMPEXEC(_compiler->fgDispHandlerTab());
 
+    initializeBlocks();
     generateProlog();
     generateBlocks();
     generateEHDispatch();
@@ -168,6 +169,52 @@ void Llvm::initializeFunctions()
         }
 
         m_EHUnwindLlvmBlocks[ehIndex] = dispatchLlvmBlock;
+    }
+}
+
+void Llvm::initializeBlocks()
+{
+    _compiler->fgFirstBB->bbFlags |= BBF_MARKED;
+
+    for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
+    {
+        BasicBlock* block = add->acdDstBlk;
+        if (isLlvmFunctionReachable(getLlvmFunctionIndexForBlock(block)))
+        {
+            // Assume that all throw helper blocks will be reachable. We can be more precise but don't really need to.
+            block->bbFlags |= BBF_MARKED;
+        }
+    }
+
+    for (BasicBlock* block : _compiler->Blocks())
+    {
+        if (!isReachable(block) && ((block->bbFlags & BBF_MARKED) == 0))
+        {
+            block->bbEmitCookie = nullptr;
+            continue;
+        }
+
+        Function* llvmFunc = getLlvmFunctionForIndex(getLlvmFunctionIndexForBlock(block));
+        llvm::BasicBlock* llvmBlock =
+            llvm::BasicBlock::Create(m_context->Context, BBNAME("BB", block->bbNum), llvmFunc);
+        block->bbEmitCookie = new (_compiler->getAllocator(CMK_Codegen)) LlvmBlockRange(llvmBlock);
+        block->bbFlags &= ~BBF_MARKED;
+    }
+
+    // Mixing funclets and "inline" handlers can create situations where the first funclet block isn't the entry.
+    for (unsigned funcIdx = 1; funcIdx < _compiler->compFuncCount(); funcIdx++)
+    {
+        if (!isLlvmFunctionReachable(funcIdx))
+        {
+            continue;
+        }
+
+        Function* llvmFunc = getLlvmFunctionForIndex(funcIdx);
+        llvm::BasicBlock* firstLlvmBlock = getFirstLlvmBlockForBlock(getFirstBlockForFunction(funcIdx));
+        if (firstLlvmBlock != &llvmFunc->getEntryBlock())
+        {
+            firstLlvmBlock->moveBefore(&llvmFunc->getEntryBlock());
+        }
     }
 }
 
@@ -332,9 +379,7 @@ void Llvm::generateBlocks()
         // Walk all the exceptional code blocks and generate them since they don't appear in the normal flow graph.
         for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
         {
-            // if the LLVM function was not created due to the first block not being reachable
-            // then don't generate the exceptional code block
-            if ((add->acdDstBlk->bbFlags & BBF_MARKED) != 0)
+            if (add->acdDstBlk->bbEmitCookie != nullptr)
             {
                 generateBlock(add->acdDstBlk);
             }
@@ -2433,7 +2478,6 @@ void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind
         // For code with throw helper blocks, find and use the shared helper block for raising the exception.
         unsigned throwIndex = _compiler->bbThrowIndex(CurrentBlock());
         BasicBlock* throwBlock = _compiler->fgFindExcptnTarget(throwKind, throwIndex)->acdDstBlk;
-        throwBlock->bbFlags |= BBF_MARKED;
 
         // Jump to the exception-throwing block on error.
         llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
@@ -2987,10 +3031,8 @@ Function* Llvm::getLlvmFunctionForIndex(unsigned funcIdx)
 
 FunctionInfo& Llvm::getLlvmFunctionInfoForIndex(unsigned funcIdx)
 {
-    FunctionInfo& funcInfo = m_functions[funcIdx];
-    assert(funcInfo.LlvmFunction != nullptr);
-
-    return funcInfo;
+    assert(isLlvmFunctionReachable(funcIdx));
+    return m_functions[funcIdx];
 }
 
 unsigned Llvm::getLlvmFunctionIndexForBlock(BasicBlock* block) const
@@ -3030,6 +3072,12 @@ unsigned Llvm::getLlvmFunctionIndexForProtectedRegion(unsigned tryIndex) const
     return funcIdx;
 }
 
+bool Llvm::isLlvmFunctionReachable(unsigned funcIdx) const
+{
+    assert(m_functions.size() != 0);
+    return m_functions[funcIdx].LlvmFunction != nullptr;
+}
+
 llvm::BasicBlock* Llvm::createInlineLlvmBlock()
 {
     Function* llvmFunc = getCurrentLlvmFunction();
@@ -3058,19 +3106,8 @@ llvm::BasicBlock* Llvm::createInlineLlvmBlock()
 
 LlvmBlockRange* Llvm::getLlvmBlocksForBlock(BasicBlock* block)
 {
-    // We should never be asking for unreachable blocks here since we won't generate code for them.
-    assert(isReachable(block) || (block == _compiler->fgFirstBB) || _compiler->fgIsThrowHlpBlk(block));
-
-    LlvmBlockRange* llvmBlockRange = _blkToLlvmBlksMap.LookupPointer(block);
-    if (llvmBlockRange == nullptr)
-    {
-        Function* llvmFunc = getLlvmFunctionForIndex(getLlvmFunctionIndexForBlock(block));
-        llvm::BasicBlock* llvmBlock =
-            llvm::BasicBlock::Create(m_context->Context, BBNAME("BB", block->bbNum), llvmFunc);
-
-        llvmBlockRange = _blkToLlvmBlksMap.Emplace(block, llvmBlock);
-    }
-
+    LlvmBlockRange* llvmBlockRange = static_cast<LlvmBlockRange*>(block->bbEmitCookie);
+    assert(llvmBlockRange != nullptr);
     return llvmBlockRange;
 }
 
