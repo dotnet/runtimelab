@@ -2011,13 +2011,13 @@ void Llvm::buildShift(GenTreeOp* node)
     switch (node->OperGet())
     {
         case GT_LSH:
-            result = _builder.CreateShl(op1Value, numBitsToShift, "lsh");
+            result = _builder.CreateShl(op1Value, numBitsToShift);
             break;
         case GT_RSH:
-            result = _builder.CreateAShr(op1Value, numBitsToShift, "rsh");
+            result = _builder.CreateAShr(op1Value, numBitsToShift);
             break;
         case GT_RSZ:
-            result = _builder.CreateLShr(op1Value, numBitsToShift, "rsz");
+            result = _builder.CreateLShr(op1Value, numBitsToShift);
             break;
         default:
             unreached();
@@ -3076,17 +3076,19 @@ llvm::BasicBlock* Llvm::createInlineLlvmBlock()
 
 #ifdef DEBUG
     StringRef blocksName = llvmBlocks->FirstBlock->getName();
-    if (llvmBlocks->Count == 1)
-    {
-        llvmBlocks->FirstBlock->setName(blocksName + ".1");
-    }
-    else
+    if (llvmBlocks->Count != 1)
     {
         blocksName = blocksName.take_front(blocksName.find_last_of('.'));
     }
 
+    inlineLlvmBlock->setName(blocksName + "." + Twine(llvmBlocks->Count + 1));
+
+    if (llvmBlocks->Count == 1)
+    {
+        // Modifying the name will invalidate "blocksName" so do it last.
+        llvmBlocks->FirstBlock->setName(blocksName + ".1");
+    }
     llvmBlocks->Count++;
-    inlineLlvmBlock->setName(blocksName + "." + Twine(llvmBlocks->Count));
 #endif // DEBUG
 
     llvmBlocks->LastBlock = inlineLlvmBlock;
