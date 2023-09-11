@@ -5,7 +5,7 @@
 #define MINT_ITF(sym) sym
 #define MINT_TITF(type,sym) sym
 #define MINT_TI_ITF(type,self,sym) self->sym
-#define MINT_ITF_DEFAULT_BYVAL_TYPE(type) m_class_get_byval_arg (mono_defaults. type)
+#define MINT_ITF_DEFAULT_BYVAL_TYPE(type) m_class_get_byval_arg (mono_defaults. type ## _class)
 #define MINT_ITF_DEFAULT_CLASS(klass) mono_defaults. klass ## _class
 #else
 #define MINT_ITF(sym) mint_itf()->sym
