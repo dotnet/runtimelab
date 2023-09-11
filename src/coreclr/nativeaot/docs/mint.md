@@ -12,13 +12,52 @@ in `Runtime/mint/inc/monoshim` to make the C compiler happy.
 **FIXME** `config.h` - The Mono build auto-generates a `config.h` file based on some `autoconf`-style probing of the system.  In the interest of expediency, we will have a pre-generated `monoshim/config-osx-arm64.h` with the relevant defines, and as a consequence
 the project only builds on Apple M1 machines.
 
-## Building
+## HelloMint - the sample app
 
-You have to do at least one build with
-```
-./build.sh -rc Debug
+For the purpose of the project we will use a sample app: [HelloMint](../../sample/HelloMint/HelloMint.csproj) which is configured to use locally built tools and libraries.
+
+We use this approach to avoid having to build nuget packages for NativeAOT tools and framework libraries.
+
+## How to build
+
+1. Navigate to the sample project directory:
+```bash
+cd src/coreclr/sample/HelloMint
 ```
 
+2. Build the NativeAOT runtime and all required components (by default the runtime is build in `Debug` configuration)
+``` bash
+make runtime
+```
+
+3. Build the `HelloMint` sample app
+``` bash
+make publish
+```
+
+4. Run the sample
+``` bash
+make run
+```
+
+### Additional notes
+
+- A one shot command to build everything:
+``` bash
+make world
+```
+- You can also run the sample with Mint disabled with:
+``` bash
+make run USE_MINT=false
+```
+- You can build the runtime in `Release` configuration with:
+``` bash
+make run USE_MINT=false
+```
+
+NOTE: Please inspect `Makefile` to further configure the build as desired.
+
+## * Building the runtime packs
 In order to build the `Microsoft.DotNet.ILCompiler.9.0.0-dev.nupkg` BuildIntegration nuget.  (This has the support for adding the `UseInterpreter` property to user projects)
 
 After that if you're just changing the runtime, you can build:
@@ -35,7 +74,7 @@ For fast iteration just to validate that code is building, you can do
 
 but this will not update the runtime packs for trying it out.
 
-## Running
+## * Running with runtime packs
 
 1. Install .NET 9 from [dotnet/installer](https://github.com/dotnet/installer)
 
