@@ -44,13 +44,7 @@ namespace System.IO.StreamSourceGeneration
                 return;
             }
 
-#if LAUNCH_DEBUGGER
-            if (!Diagnostics.Debugger.IsAttached)
-            {
-                Diagnostics.Debugger.Launch();
-            }
-#endif
-            List<StreamTypeInfo>? classesWithGenerationOptions = Parse(compilation, classes, context.CancellationToken);
+            List<StreamTypeInfo>? classesWithGenerationOptions = Parse(compilation, classes, context);
 
             if (classesWithGenerationOptions == null)
             {

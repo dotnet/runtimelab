@@ -17,7 +17,7 @@ namespace System.IO.StreamSourceGeneration
         internal static List<StreamTypeInfo>? Parse(
             Compilation compilation,
             ImmutableArray<ClassDeclarationSyntax> classes,
-            CancellationToken cancellationToken)
+            SourceProductionContext context)
         {
             INamedTypeSymbol? streamBoilerplateAttributeSymbol = compilation.GetBestTypeByMetadataName(StreamBoilerplateAttributeFullName);
             INamedTypeSymbol? streamSymbol = compilation.GetBestTypeByMetadataName(StreamFullName);
@@ -27,6 +27,7 @@ namespace System.IO.StreamSourceGeneration
                 return null;
             }
 
+            CancellationToken cancellationToken = context.CancellationToken;
             List<StreamTypeInfo>? retVal = null;
 
             foreach (IGrouping<SyntaxTree, ClassDeclarationSyntax> group in classes.GroupBy(c => c.SyntaxTree))
@@ -37,13 +38,13 @@ namespace System.IO.StreamSourceGeneration
                 foreach (ClassDeclarationSyntax classNode in group)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    INamedTypeSymbol typeSymbol = compilationSemanticModel.GetDeclaredSymbol(classNode, cancellationToken)!;
 
-                    if (!DerivesFromStream(classNode, streamSymbol, compilationSemanticModel, cancellationToken))
+                    if (!streamSymbol.IsAssignableFrom(typeSymbol))
                     {
+                        context.ReportDiagnostic(CreateDiagnostic(s_boilerplateAttributeOnNonStreamType, typeSymbol));
                         continue;
                     }
-
-                    INamedTypeSymbol typeSymbol = compilationSemanticModel.GetDeclaredSymbol(classNode, cancellationToken)!;
 
                     foreach (AttributeListSyntax attributeListSyntax in classNode.AttributeLists)
                     {
@@ -65,35 +66,6 @@ namespace System.IO.StreamSourceGeneration
             }
 
             return retVal;
-        }
-
-        // TODO: merge this method with DerivesFromJsonSerializerContext.
-        // https://github.com/dotnet/runtime/blob/30cc26fae6439707097ebd07145e8600e99a416c/src/libraries/System.Text.Json/gen/JsonSourceGenerator.Parser.cs#L400
-        internal static bool DerivesFromStream(
-            ClassDeclarationSyntax classDeclarationSyntax,
-            INamedTypeSymbol streamSymbol,
-            SemanticModel compilationSemanticModel,
-            CancellationToken cancellationToken)
-        {
-            SeparatedSyntaxList<BaseTypeSyntax>? baseTypeSyntaxList = classDeclarationSyntax.BaseList?.Types;
-            if (baseTypeSyntaxList == null)
-            {
-                return false;
-            }
-
-            INamedTypeSymbol? match = null;
-
-            foreach (BaseTypeSyntax baseTypeSyntax in baseTypeSyntaxList)
-            {
-                INamedTypeSymbol? candidate = compilationSemanticModel.GetSymbolInfo(baseTypeSyntax.Type, cancellationToken).Symbol as INamedTypeSymbol;
-                if (candidate != null && streamSymbol.Equals(candidate, SymbolEqualityComparer.Default))
-                {
-                    match = candidate;
-                    break;
-                }
-            }
-
-            return match != null;
         }
     }
 }

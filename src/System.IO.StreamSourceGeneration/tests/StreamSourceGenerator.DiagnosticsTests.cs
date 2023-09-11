@@ -563,6 +563,58 @@ namespace System.IO.StreamSourceGeneration.Tests
             Assert.DoesNotContain(expectedDiagnostic, DiagnosticData.FromDiagnostics(diagnostics));
         }
 
+        [Fact]
+        public void PartialDefinitionWithAttributeDoesNotExtendStream()
+        {
+            string source = """
+                using System;
+                using System.IO;
+
+                namespace Test
+                {
+                    public partial class MyStream : Stream { }
+
+                    [GenerateStreamBoilerplate]
+                    partial class MyStream { }
+                }
+                """;
+
+            Compilation compilation = CompilationHelper.CreateCompilation(source);
+
+            DiagnosticData expectedDiagnostic = new(
+                severity: DiagnosticSeverity.Info,
+                location: compilation.GetSymbolsWithName("MyStream").First().Locations.First(),
+                message: "'MyStream' does not implement any Read or Write method");
+
+            ImmutableArray<Diagnostic> diagnostics = CompilationHelper.RunSourceGenerator(compilation);
+            Assert.Contains(expectedDiagnostic, DiagnosticData.FromDiagnostics(diagnostics));
+        }
+
+        [Fact]
+        public void TypeWithGenerateStreamBoilerplateAttributeDoesNotExtendStream()
+        {
+            string source = """
+                using System;
+                using System.IO;
+
+                namespace Test
+                {
+                    [GenerateStreamBoilerplate]
+                    public partial class MyStream { }
+                }
+                """;
+
+            Compilation compilation = CompilationHelper.CreateCompilation(source);
+
+            DiagnosticData expectedDiagnostic = new(
+                severity: DiagnosticSeverity.Info,
+                location: compilation.GetSymbolsWithName("MyStream").First().Locations.First(),
+                message: "'MyStream' has been annotated with GenerateStreamBoilerplate but does not derive from Stream. No source code will be generated.");
+
+            ImmutableArray<Diagnostic> diagnostics = CompilationHelper.RunSourceGenerator(compilation);
+            Assert.Contains(expectedDiagnostic, DiagnosticData.FromDiagnostics(diagnostics));
+        }
+
         private record struct DiagnosticData(DiagnosticSeverity Severity, string FilePath, LinePositionSpan LinePositionSpan, string Message)
         {
             public DiagnosticData(DiagnosticSeverity severity, Location location, string message)
