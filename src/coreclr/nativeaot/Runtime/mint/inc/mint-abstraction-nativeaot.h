@@ -32,6 +32,13 @@ typedef struct _MintAbstractionNativeAot {
     MonoClass * (*get_default_class_string_class) (void);
     MonoClass * (*get_default_class_int_class) (void);
     MonoClass * (*get_default_class_array_class) (void);
+    /* System.Type */
+    MonoClass * (*get_default_class_systemtype_class) (void);
+    /* System.RuntimeType - FIXME: audit what this is used for */
+    MonoClass * (*get_default_class_runtimetype_class) (void);
+    /* System.RutnimeTypeHandle - FIXME: seems to be used for passing data to the interp, rewrite */
+    MonoClass * (*get_default_class_typehandle_class) (void);
+
 
     /* opaque type instances */
     MonoTypeInstanceAbstractionNativeAot * (*get_MonoType_inst) (MonoType *self);

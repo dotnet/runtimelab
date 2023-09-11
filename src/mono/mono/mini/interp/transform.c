@@ -54,6 +54,7 @@ nativeaot_mint_todo(const char *extra, const char *msg, const char *file, int li
 #define NATIVEAOT_MINT_TODO(msg) nativeaot_mint_todo("", msg, __FILE__, __LINE__, __func__)
 #define NATIVEAOT_MINT_TODO_SOON(msg) nativeaot_mint_todo("(soon!)", msg, __FILE__, __LINE__, __func__)
 #define	NATIVEAOT_MINT_TODO_NOWARN() do { /* empty */ } while (0)
+#define NATIVEAOT_MINT_TODO_OPCODE(opcode) nativeaot_mint_todo("(opcode)", #opcode, __FILE__, __LINE__, __func__)
 #endif
 
 
@@ -7400,7 +7401,8 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			++td->ip;
 			break;
 		}
-		case CEE_MKREFANY:
+		case CEE_MKREFANY: {
+#ifndef NATIVEAOT_MINT
 			CHECK_STACK (td, 1);
 
 			token = read32 (td->ip + 1);
@@ -7416,6 +7418,11 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 
 			td->ip += 5;
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_MKREFANY);
+			break;
+#endif
+		}
 		case CEE_REFANYVAL: {
 			CHECK_STACK (td, 1);
 
@@ -7631,7 +7638,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			if (method->wrapper_type == MONO_WRAPPER_DYNAMIC_METHOD || method->wrapper_type == MONO_WRAPPER_SYNCHRONIZED) {
 				handle = mono_method_get_wrapper_data (method, token);
 				klass = (MonoClass *) mono_method_get_wrapper_data (method, token + 1);
-				if (klass == mono_defaults.typehandle_class)
+				if (klass == MINT_ITF_DEFAULT_CLASS(typehandle))
 					handle = m_class_get_byval_arg ((MonoClass *) handle);
 
 				if (generic_context) {
@@ -7654,7 +7661,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 					interp_ip_in_cbb (td, GPTRDIFF_TO_INT (next_ip - td->il_code)) &&
 					(*next_ip == CEE_CALL || *next_ip == CEE_CALLVIRT) &&
 					(cmethod = interp_get_method (method, read32 (next_ip + 1), image, generic_context, error)) &&
-					(cmethod->klass == mono_defaults.systemtype_class) &&
+					(cmethod->klass == MINT_ITF_DEFAULT_CLASS(systemtype)) &&
 					(strcmp (cmethod->name, "GetTypeFromHandle") == 0)) {
 				const unsigned char *next_next_ip = next_ip + 5;
 				MonoMethod *next_cmethod;
@@ -7664,7 +7671,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 						interp_ip_in_cbb (td, GPTRDIFF_TO_INT (next_next_ip - td->il_code)) &&
 						(*next_next_ip == CEE_CALL || *next_next_ip == CEE_CALLVIRT) &&
 						(next_cmethod = interp_get_method (method, read32 (next_next_ip + 1), image, generic_context, error)) &&
-						(next_cmethod->klass == mono_defaults.systemtype_class) &&
+						(next_cmethod->klass == MINT_ITF_DEFAULT_CLASS(systemtype)) &&
 						!strcmp (next_cmethod->name, "get_IsValueType")) {
 					g_assert (!mono_class_is_open_constructed_type (m_class_get_byval_arg (tclass)));
 					if (m_class_is_valuetype (tclass))
@@ -7680,7 +7687,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				interp_add_ins (td, MINT_LDPTR);
 				gpointer systype = mono_type_get_object_checked ((MonoType*)handle, error);
 				goto_if_nok (error, exit);
-				push_type (td, STACK_TYPE_O, mono_defaults.runtimetype_class);
+				push_type (td, STACK_TYPE_O, MINT_ITF_DEFAULT_CLASS(runtimetype));
 				interp_ins_set_dreg (td->last_ins, td->sp [-1].local);
 				td->last_ins->data [0] = get_data_item_index (td, systype);
 				td->ip = next_ip + 5;
@@ -7827,6 +7834,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 					break;
 				}
 				case CEE_MONO_ICALL: {
+#ifndef NATIVEAOT_MINT
 					int dreg = -1;
 					MonoJitICallId const jit_icall_id = (MonoJitICallId)read32 (td->ip + 1);
 					MonoJitICallInfo const * const info = mono_find_jit_icall_info (jit_icall_id);
@@ -7873,8 +7881,13 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 							td->last_ins->info.call_info->call_offset = param_offset;
 					}
 					break;
+#else
+					NATIVEAOT_MINT_TODO_OPCODE(CEE_MONO_ICALL);
+					break;
+#endif
 				}
 			case CEE_MONO_VTADDR: {
+#ifndef NATIVEAOT_MINT
 				int size;
 				CHECK_STACK (td, 1);
 				klass = td->sp [-1].klass;
@@ -7898,6 +7911,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 
 				++td->ip;
 				break;
+#else
+				NATIVEAOT_MINT_TODO_OPCODE(CEE_MONO_VTADDR);
+				break;
+#endif
 			}
 			case CEE_MONO_LDPTR:
 			case CEE_MONO_CLASSCONST:
@@ -7976,13 +7993,19 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			case CEE_MONO_NOT_TAKEN:
 				++td->ip;
 				break;
-			case CEE_MONO_LDPTR_INT_REQ_FLAG:
+			case CEE_MONO_LDPTR_INT_REQ_FLAG: {
+#ifndef NATIVEAOT_MINT
 				interp_add_ins (td, MINT_LDPTR);
 				push_type (td, STACK_TYPE_MP, NULL);
 				interp_ins_set_dreg (td->last_ins, td->sp [-1].local);
 				td->last_ins->data [0] = get_data_item_index (td, &mono_thread_interruption_request_flag);
 				++td->ip;
 				break;
+#else
+				NATIVEAOT_MINT_TODO_OPCODE(CEE_MONO_LDPTR_INT_REQ_FLAG);
+				break;
+#endif
+			}
 			case CEE_MONO_MEMORY_BARRIER:
 				interp_add_ins (td, MINT_MONO_MEMORY_BARRIER);
 				++td->ip;
@@ -7998,6 +8021,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				++td->ip;
 				break;
 			case CEE_MONO_GET_SP: {
+#ifndef NATIVEAOT_MINT
 				++td->ip;
 				g_assert (*td->ip == MONO_CUSTOM_PREFIX);
 				++td->ip;
@@ -8022,6 +8046,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				}
 				td->ip += 5;
 				break;
+#else
+				NATIVEAOT_MINT_TODO_OPCODE(CEE_MONO_GET_SP);
+				break;
+#endif
 			}
 			default:
 				g_error ("transform.c: Unimplemented opcode: 0xF0 %02x at 0x%x\n", *td->ip, td->ip-header->code);
@@ -8417,7 +8445,8 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				interp_ins_set_dreg (td->last_ins, td->sp [-1].local);
 				break;
 			}
-			case CEE_REFANYTYPE:
+			case CEE_REFANYTYPE: {
+#ifndef NATIVEAOT_MINT
 				interp_add_ins (td, MINT_REFANYTYPE);
 				td->sp--;
 				interp_ins_set_sreg (td->last_ins, td->sp [0].local);
@@ -8425,6 +8454,11 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				interp_ins_set_dreg (td->last_ins, td->sp [-1].local);
 				++td->ip;
 				break;
+#else
+				NATIVEAOT_MINT_TODO_OPCODE(CEE_REFANYTYPE);
+				break;
+#endif
+			}
 			default:
 				g_error ("transform.c: Unimplemented opcode: 0xFE %02x (%s) at 0x%x\n", *td->ip, mono_opcode_name (256 + *td->ip), td->ip-header->code);
 			}
@@ -8740,6 +8774,7 @@ emit_compacted_instruction (TransformData *td, guint16* start_ip, InterpInst *in
 			*ip++ = ins->data [2];
 
 	} else if (opcode == MINT_SDB_SEQ_POINT || opcode == MINT_IL_SEQ_POINT) {
+#ifndef NATIVEAOT_MINT
 		SeqPoint *seqp = (SeqPoint*)mono_mempool_alloc0 (td->mempool, sizeof (SeqPoint));
 		InterpBasicBlock *cbb;
 
@@ -8765,6 +8800,10 @@ emit_compacted_instruction (TransformData *td, guint16* start_ip, InterpInst *in
 		// IL_SEQ_POINT shouldn't exist in the emitted code, we undo the ip position
 		if (opcode == MINT_IL_SEQ_POINT)
 			return ip - 1;
+#else
+		NATIVEAOT_MINT_TODO_OPCODE(MINT_SDB_SEQ_POINT);
+		return ip;
+#endif
 	} else if (opcode == MINT_MOV_SRC_OFF || opcode == MINT_MOV_DST_OFF) {
 		guint16 foff = ins->data [0];
 		guint16 mt = ins->data [1];
@@ -11503,6 +11542,7 @@ retry:
 	/* Save debug info */
 	interp_save_debug_info (rtm, header, td, td->line_numbers);
 
+#ifndef NATIVEAOT_MINT
 	/* Create a MonoJitInfo for the interpreted method by creating the interpreter IR as the native code. */
 	int jinfo_len;
 	jinfo_len = mono_jit_info_size ((MonoJitInfoFlags)0, header->num_clauses, 0);
@@ -11533,6 +11573,11 @@ retry:
 #ifdef ENABLE_EXPERIMENT_TIERED
 	/* debugging aid, it makes `mono_pmip` work. */
 	mono_jit_info_table_add (jinfo);
+#endif
+#else
+	if (header->num_clauses > 0) {
+		NATIVEAOT_MINT_TODO("exception handling");
+	}
 #endif
 
 exit:
