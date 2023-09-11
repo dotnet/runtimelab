@@ -61,11 +61,12 @@ add_library(eglib_objects OBJECT "${eglib_sources}")
 if(NATIVEAOT_MINT)
     target_compile_definitions(eglib_api INTERFACE -DNATIVEAOT_MINT)
     target_compile_definitions(eglib_objects PRIVATE -DNATIVEAOT_MINT)
+    target_compile_definitions(eglib_objects PRIVATE -D_GNU_SOURCE)
     target_compile_options(eglib_objects PRIVATE -Wno-error=implicit-fallthrough)
 
     # BEFORE because we want to be ahead of CoreCLR's config.h
-    target_include_directories(eglib_api BEFORE INTERFACE ${NATIVEAOT_MINT_INC_PATH}/prebuilt/osx-arm64)
-    target_include_directories(eglib_objects BEFORE PRIVATE ${NATIVEAOT_MINT_INC_PATH}/prebuilt/osx-arm64)
+    target_include_directories(eglib_api BEFORE INTERFACE ${NATIVEAOT_MINT_INC_PATH}/prebuilt/${NATIVEAOT_MINT_PREBUILT_PATH})
+    target_include_directories(eglib_objects BEFORE PRIVATE ${NATIVEAOT_MINT_INC_PATH}/prebuilt/${NATIVEAOT_MINT_PREBUILT_PATH})
 else()
     target_include_directories(eglib_objects PRIVATE
         ${PROJECT_BINARY_DIR}/../..

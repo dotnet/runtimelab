@@ -15,12 +15,14 @@ set(CMAKE_C_EXTENSIONS ON)
 set(MINT_SOURCES
     mint.c)
 
+set (NATIVEAOT_MINT_PREBUILT_PATH "${CLR_CMAKE_TARGET_OS}-${CLR_CMAKE_TARGET_ARCH}")
+
 add_subdirectory(${CLR_SRC_NATIVE_DIR}/../mono/mono/eglib ${CMAKE_CURRENT_BINARY_DIR}/eglib)
 
 add_library(mint STATIC ${MINT_SOURCES})
 target_sources(mint PRIVATE $<TARGET_OBJECTS:eglib_objects>)
 target_link_libraries(mint PRIVATE eglib_api)
-target_include_directories(mint BEFORE PRIVATE ${NATIVEAOT_MINT_INC_PATH} ${NATIVEAOT_MINT_INC_PATH}/prebuilt/osx-arm64)
+target_include_directories(mint BEFORE PRIVATE ${NATIVEAOT_MINT_INC_PATH} ${NATIVEAOT_MINT_INC_PATH}/prebuilt/${NATIVEAOT_MINT_PREBUILT_PATH})
 target_compile_definitions(mint PRIVATE -DNATIVEAOT_MINT)
 
 install_static_library(mint aotsdk nativeaot)
