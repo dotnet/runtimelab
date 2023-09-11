@@ -52,7 +52,7 @@ make run USE_MINT=false
 ```
 - You can build the runtime in `Release` configuration with:
 ``` bash
-make run USE_MINT=false
+make runtime BUILD_CONFIG=Release
 ```
 
 NOTE: Please inspect `Makefile` to further configure the build as desired.
