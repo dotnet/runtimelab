@@ -1,4 +1,5 @@
-#include <stdio.h>
+#include <config.h>
+#include <glib.h>
 
 void
 mint_entrypoint(void);
@@ -6,5 +7,5 @@ mint_entrypoint(void);
 void
 mint_entrypoint(void)
 {
-    printf ("hello from mint_entrypoint\n");
+    g_warning("Hello from mint_entrypoint");
 }

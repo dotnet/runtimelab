@@ -58,7 +58,18 @@ target_include_directories(eglib_api INTERFACE ${PROJECT_BINARY_DIR} ${PROJECT_S
 
 add_library(eglib_objects OBJECT "${eglib_sources}")
 # to pick up config.h, and the eglib headers, respectively
-target_include_directories(eglib_objects PRIVATE
-  ${PROJECT_BINARY_DIR}/../..
-  ${PROJECT_SOURCE_DIR})
-target_link_libraries (eglib_objects PUBLIC eglib_api)
+if(NATIVEAOT_MINT)
+    target_compile_definitions(eglib_api INTERFACE -DNATIVEAOT_MINT)
+    target_compile_definitions(eglib_objects PRIVATE -DNATIVEAOT_MINT)
+    target_compile_options(eglib_objects PRIVATE -Wno-error=implicit-fallthrough)
+
+    # BEFORE because we want to be ahead of CoreCLR's config.h
+    target_include_directories(eglib_api BEFORE INTERFACE ${NATIVEAOT_MINT_INC_PATH}/prebuilt/osx-arm64)
+    target_include_directories(eglib_objects BEFORE PRIVATE ${NATIVEAOT_MINT_INC_PATH}/prebuilt/osx-arm64)
+else()
+    target_include_directories(eglib_objects PRIVATE
+        ${PROJECT_BINARY_DIR}/../..
+        ${PROJECT_SOURCE_DIR})
+endif()
+
+target_link_libraries(eglib_objects PUBLIC eglib_api)
