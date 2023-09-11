@@ -1,7 +1,11 @@
 #ifndef __MONO_MINI_INTERP_TRANSFORM_H__
 #define __MONO_MINI_INTERP_TRANSFORM_H__
+#ifndef NATIVEAOT_MINT
 #include <mono/mini/mini-runtime.h>
 #include <mono/metadata/seq-points-data.h>
+#else
+#include <monoshim/missing-symbols.h>
+#endif
 #include "interp-internals.h"
 
 #define INTERP_INST_FLAG_SEQ_POINT_NONEMPTY_STACK 1

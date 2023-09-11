@@ -14,7 +14,7 @@ USE_MINT?=true
 world: runtime publish
 
 runtime:
-	$(BUILD_SCRIPT) clr.aot+libs -c $(BUILD_CONFIG)
+	$(BUILD_SCRIPT) clr.aot+libs -c $(BUILD_CONFIG) $(MSBUILD_ARGS)
 
 publish: clean
 	$(DOTNET) publish -c $(BUILD_CONFIG) -r $(TARGET_OS)-$(TARGET_ARCH) -p:UseInterpreter=$(USE_MINT) /bl

@@ -4,7 +4,11 @@
 
 #ifndef __MONO_MINI_INTERPRETER_H__
 #define __MONO_MINI_INTERPRETER_H__
+#ifndef NATIVEAOT_MINT
 #include <mono/mini/mini-runtime.h>
+#else
+#include <monoshim/missing-symbols.h>
+#endif
 
 #ifdef TARGET_WASM
 #define INTERP_ICALL_TRAMP_IARGS 12

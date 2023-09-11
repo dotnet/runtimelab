@@ -5,14 +5,34 @@ set(NATIVEAOT_MINT_INC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 set(SHARED_CONTAINERS_SOURCE_PATH "${CLR_SRC_NATIVE_DIR}/containers")
 set(SHARED_MINIPAL_SOURCE_PATH "${CLR_SRC_NATIVE_DIR}/minipal")
-set(MONO_BASEDIR_PATH ${CLR_SRC_NATIVE_DIR}/../mono/mono)
+set(MONO_BASEDIR_PATH "${CLR_SRC_NATIVE_DIR}/../mono/mono")
 set(MONO_INTERP_SOURCES_PATH "${MONO_BASEDIR_PATH}/mini/interp")
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_EXTENSIONS ON)
 
+set(interp_files
+    mint-abstraction.h
+    mintops.h
+    interp-internals.h
+    interp.h
+    transform.h
+    tiering.h
+    mintops.c
+    transform.c
+)
+
+addprefix(interp_sources "${MONO_INTERP_SOURCES_PATH}" "${interp_files}")
+
 # "${MONO_INTERP_SOURCES_PATH}/transform.c"
 set(MINT_SOURCES
+    ${interp_sources}
+    inc/mint-abstraction-nativeaot.h
+    inc/monoshim/missing-symbols.h
+    inc/monoshim/utils/mono-publib.h
+    inc/monoshim/utils/mono-compiler.h
+    inc/prebuilt/osx-arm64/config.h
+    inc/prebuilt/osx-arm64/eglib-config.h
     mint.c)
 
 set(NATIVEAOT_MINT_PREBUILT_OS "${CLR_CMAKE_TARGET_OS}")

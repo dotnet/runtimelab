@@ -3,11 +3,15 @@
 
 #include <setjmp.h>
 #include <glib.h>
+#ifndef NATIVEAOT_MINT
 #include <mono/metadata/loader.h>
 #include <mono/metadata/object.h>
 #include <mono/metadata/domain-internals.h>
 #include <mono/metadata/class-internals.h>
 #include <mono/metadata/debug-internals.h>
+#else
+#include <monoshim/missing-symbols.h>
+#endif
 #include "interp.h"
 
 #define MINT_TYPE_I1 0
@@ -102,8 +106,11 @@ typedef enum {
 
 #define PROFILE_INTERP 0
 
+// FIXME: Hack for NativeAOT - disable SIMD for now
+#ifndef NATIVEAOT_MINT
 #if __GNUC__
 #define INTERP_ENABLE_SIMD
+#endif
 #endif
 
 #define INTERP_IMETHOD_TAG_1(im) ((gpointer)((mono_u)(im) | 1))
