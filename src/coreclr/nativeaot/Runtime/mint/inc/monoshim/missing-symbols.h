@@ -7,11 +7,14 @@
 
 typedef struct _MonoBitSet MonoBitSet;
 
+#include <monoshim/metadata/blob.h>
 #include <monoshim/metadata/opcodes-types.h>
 #include <monoshim/metadata/profiler-types.h>
 #include <monoshim/metadata/metadata-types.h>
 #include <monoshim/metadata/tabledefs.h>
 #include <monoshim/metadata/class-internals.h>
+
+#include <monoshim/metadata/mono-basic-block.h>
 
 // mini.h does this in Mono
 
@@ -59,6 +62,10 @@ typedef struct _MonoSimpleBasicBlock MonoSimpleBasicBlock;
 
 /* debug support */
 typedef struct _MonoDebugLineNumberEntry	MonoDebugLineNumberEntry;
+struct _MonoDebugLineNumberEntry {
+	uint32_t il_offset;
+	uint32_t native_offset;
+};
 
 
 /* mini runtime */
@@ -79,5 +86,7 @@ typedef struct _MonoString MonoString;
 #define MONO_PROFILER_RAISE(name,args) /* empty */
 
 static gpointer mono_jit_trace_calls = NULL; // FIXME: hack!
+
+static gpointer mono_stats_method_desc = NULL; // FIXME: hack!
 
 #endif/*_MONOSHIM_MISSING_SYMBOLS_H*/

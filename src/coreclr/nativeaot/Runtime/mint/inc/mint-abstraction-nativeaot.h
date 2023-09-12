@@ -2,7 +2,7 @@
 #define _MINT_ABSTRACTION_NATIVEAOT_H
 
 typedef struct _MonoTypeInstanceAbstractionNativeAot {
-    int type;
+    int32_t type_code;
 } MonoTypeInstanceAbstractionNativeAot;
 
 typedef struct _MonoMethodInstanceAbstractionNativeAot {
@@ -11,10 +11,29 @@ typedef struct _MonoMethodInstanceAbstractionNativeAot {
 } MonoMethodInstanceAbstractionNativeAot;
 
 typedef struct _MonoMethodHeaderInstanceAbstractionNativeAot {
-    int code_size;
+    int32_t code_size;
+    int32_t max_stack;
+    int32_t num_locals;
+    int32_t num_clauses;
+    int8_t init_locals;
+
+    MonoType * (*get_local_sig)(MonoMethodHeaderInstanceAbstractionNativeAot *self, int32_t i);
+    // TODO: this will likely pin something in managed.  Figure out a way to tell us when it's safe to unpin
+    uint8_t * (*get_code)(MonoMethodHeaderInstanceAbstractionNativeAot *self);
+    int32_t (*get_ip_offset)(MonoMethodHeaderInstanceAbstractionNativeAot *self, uint8_t *ip);
 } MonoMethodHeaderInstanceAbstractionNativeAot;
 
+typedef struct _MonoMethodSignatureInstanceAbstractionNativeAot {
+    int32_t param_count;
+    int8_t hasthis;
+
+    MonoType * (*ret_ult)(MonoMethodSignatureInstanceAbstractionNativeAot *self);
+} MonoMethodSignatureInstanceAbstractionNativeAot;
+
 typedef struct _MintAbstractionNativeAot {
+    /* FIXME: replace this by some actual MonoImage abstraction*/
+    MonoImage *placeholder_image;
+
     /* transform.c */
     MonoType * (*get_type_from_stack) (int type, MonoClass *klass);
     int (*mono_mint_type) (MonoType *type);
@@ -44,6 +63,8 @@ typedef struct _MintAbstractionNativeAot {
     MonoTypeInstanceAbstractionNativeAot * (*get_MonoType_inst) (MonoType *self);
     MonoMethodInstanceAbstractionNativeAot * (*get_MonoMethod_inst) (MonoMethod *self);
     MonoMethodHeaderInstanceAbstractionNativeAot * (*get_MonoMethodHeader_inst) (MonoMethodHeader *header);
+
+    MonoMethodSignatureInstanceAbstractionNativeAot * (*get_MonoMethodSignature_inst) (MonoMethodSignature *self);
 } MintAbstractionNativeAot;
 
 MintAbstractionNativeAot *mint_itf(void);

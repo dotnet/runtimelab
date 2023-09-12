@@ -89,6 +89,195 @@ static GENERATE_TRY_GET_CLASS_WITH_CACHE (doesnotreturn_klass, "System.Diagnosti
 
 static gboolean generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, MonoGenericContext *generic_context, MonoError *error);
 
+static inline MonoImage*
+interp_method_image(MonoMethod *method)
+{
+#ifndef NATIVEAOT_MINT
+	return m_class_get_image (method->klass);
+#else
+	return MINT_ITF(placeholder_image);
+#endif
+}
+
+static inline const char*
+interp_method_name (MonoMethod *method)
+{
+#ifndef NATIVEAOT_MINT
+	return method->name;
+#else
+	return MINT_TI_ITF(MonoMethod, method, name);
+#endif
+}
+
+static inline MonoClass *
+interp_method_class (MonoMethod *method)
+{
+#ifndef NATIVEAOT_MINT
+	return method->klass;
+#else
+	return MINT_TI_ITF(MonoMethod, method, klass);
+#endif
+}
+
+static inline MonoTypeEnum
+interp_type_get_code (MonoType *type)
+{
+#ifndef NATIVEAOT_MINT
+	return type->type;
+#else
+	return MINT_TI_ITF(MonoType, type, type_code);
+#endif
+}
+
+static gboolean
+interp_type_is_void (MonoType *type)
+{
+	return interp_type_get_code (type) == MONO_TYPE_VOID;
+}
+
+static gboolean
+interp_msig_hasthis (MonoMethodSignature *sig)
+{
+#ifndef NATIVEAOT_MINT
+	return sig->hasthis;
+#else
+	return !!MINT_TI_ITF(MonoMethodSignature, sig, hasthis);
+#endif
+}
+
+static int
+interp_msig_param_count (MonoMethodSignature *sig)
+{
+#ifndef NATIVEAOT_MINT
+	return sig->param_count;
+#else
+	return MINT_TI_ITF(MonoMethodSignature, sig, param_count);
+#endif
+}
+
+static MonoType*
+interp_msig_ret_ult (MonoMethodSignature *sig)
+{
+#ifndef NATIVEAOT_MINT
+	return mini_type_get_underlying_type (signature->ret)
+#else
+	return MINT_TI_ITF(MonoMethodSignature, sig, ret_ult)(sig);
+#endif
+}
+
+static int
+interp_mhead_code_size (MonoMethodHeader *header)
+{
+#ifndef NATIVEAOT_MINT
+	return header->code_size;
+#else
+	return MINT_TI_ITF(MonoMethodHeader, header, code_size);
+#endif
+}
+
+static uint8_t*
+interp_mhead_get_code (MonoMethodHeader *header)
+{
+#ifndef NATIVEAOT_MINT
+	return header->code;
+#else
+	return MINT_TI_ITF(MonoMethodHeader, header, get_code)(header);
+#endif
+}
+
+static int
+interp_mhead_max_stack (MonoMethodHeader *header)
+{
+#ifndef NATIVEAOT_MINT
+	return header->max_stack;
+#else
+	return MINT_TI_ITF(MonoMethodHeader, header, max_stack);
+#endif
+}
+
+static int
+interp_mhead_num_locals (MonoMethodHeader *header)
+{
+#ifndef NATIVEAOT_MINT
+	return header->num_locals;
+#else
+	return MINT_TI_ITF(MonoMethodHeader, header, num_locals);
+#endif
+}
+
+static MonoType*
+interp_mhead_get_local_sig(MonoMethodHeader *header, int i)
+{
+#ifndef NATIVEAOT_MINT
+	return header->locals [i];
+#else
+	return MINT_TI_ITF(MonoMethodHeader, header, get_local_sig)(header, i);
+#endif
+}
+
+static gboolean
+interp_mhead_init_locals (MonoMethodHeader *header)
+{
+#ifndef NATIVEAOT_MINT
+	return header->init_locals;
+#else
+	return !!MINT_TI_ITF(MonoMethodHeader, header, init_locals);
+#endif
+}
+
+
+static int
+interp_mhead_num_clauses (MonoMethodHeader *header)
+{
+#ifndef NATIVEAOT_MINT
+	return header->num_clauses;
+#else
+	return MINT_TI_ITF(MonoMethodHeader, header, num_clauses);
+#endif
+}
+
+static gboolean
+interp_method_is_intrins_span_ctor(MonoMethod *m)
+{
+#ifndef NATIVEAOT_MINT
+	MonoClass *klass = m->klass;
+	return m_class_get_image (klass) == mono_defaults.corlib &&
+		(!strcmp (m_class_get_name (m->klass), "Span`1") ||
+		!strcmp (m_class_get_name (m->klass), "ReadOnlySpan`1")) &&
+		interp_msig_param_count (csignature) == 2 &&
+		csignature->params [0]->type == MONO_TYPE_PTR &&
+		!type_has_references (mono_method_get_context (m)->class_inst->type_argv [0]);
+#else
+	NATIVEAOT_MINT_TODO_NOWARN();
+	return FALSE;
+#endif
+}
+
+static gboolean
+interp_field_is_bitconverter_islittleendian(MonoClassField *field, MonoClass *klass)
+{
+#ifndef NATIVEAOT_MINT
+	gboolean in_corlib = m_class_get_image (m_field_get_parent (field)) == mono_defaults.corlib;
+
+	return (in_corlib && !strcmp (field->name, "IsLittleEndian") &&
+		!strcmp (m_class_get_name (m_field_get_parent (field)), "BitConverter") &&
+		!strcmp (m_class_get_name_space (m_field_get_parent (field)), "System"));
+#else
+	NATIVEAOT_MINT_TODO_NOWARN();
+	return FALSE;
+#endif
+}
+
+static int
+interp_mhead_ip_offset(MonoMethodHeader *header, guint8 *ip)
+{
+#ifndef NATIVEAOT_MINT
+	return GPTRDIFF_TO_INT (ip - header->code);
+#else
+	return MINT_TI_ITF(MonoMethodHeader, header, get_ip_offset)(header, ip);
+#endif
+}
+
 static gboolean
 has_intrinsic_attribute (MonoMethod *method)
 {
@@ -597,7 +786,7 @@ mark_bb_as_dead (TransformData *td, InterpBasicBlock *bb, InterpBasicBlock *repl
 		else if (td->offset_to_bb [il_offset])
 			break;
 	}
-	for (guint32 il_offset = bb->il_offset + 1; il_offset < MINT_TI_ITF(MonoMethodHeader, td->header, code_size); il_offset++) {
+	for (guint32 il_offset = bb->il_offset + 1; il_offset < interp_mhead_code_size (td->header); il_offset++) {
 		if (td->offset_to_bb [il_offset] == bb)
 			td->offset_to_bb [il_offset] = replace_bb;
 		else if (td->offset_to_bb [il_offset])
@@ -945,7 +1134,7 @@ two_arg_branch(TransformData *td, int mint_op, int offset, int inst_size)
 		interp_add_conv (td, td->sp - 2, td->last_ins, STACK_TYPE_R8, MINT_CONV_R8_R4);
 	} else if (type1 != type2) {
 		g_warning("%s.%s: branch type mismatch %d %d",
-			m_class_get_name (MINT_TI_ITF(MonoMethod, td->method, klass)), MINT_TI_ITF(MonoMethod, td->method, name),
+			m_class_get_name (interp_method_class(td->method)), interp_method_name(td->method),
 			td->sp [-1].type, td->sp [-2].type);
 	}
 
@@ -5037,10 +5226,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 	MonoClass *constrained_class = NULL;
 	MonoClass *klass;
 	MonoClassField *field;
-	MonoImage *image = m_class_get_image (method->klass);
+	MonoImage *image = interp_method_image (method);
 	InterpMethod *rtm = td->rtm;
 	MonoMethodSignature *signature = mono_method_signature_internal (method);
-	int num_args = signature->hasthis + signature->param_count;
+	int num_args = interp_msig_hasthis(signature) + interp_msig_param_count(signature);
 	int arglist_local = -1;
 	int call_handler_count = 0;
 	gboolean ret = TRUE;
@@ -5057,9 +5246,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 	goto_if_nok (error, exit);
 	g_assert (bb);
 
-	td->il_code = header->code;
-	td->in_start = td->ip = header->code;
-	end = td->ip + header->code_size;
+	unsigned char *header_code = interp_mhead_get_code(header);
+	td->il_code = header_code;
+	td->in_start = td->ip = header_code;
+	end = td->ip + interp_mhead_code_size(header);
 
 	td->cbb = td->entry_bb = (InterpBasicBlock*)mono_mempool_alloc0 (td->mempool, sizeof (InterpBasicBlock));
 	if (td->gen_sdb_seq_points)
@@ -5077,8 +5267,8 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 	}
 
 	il_targets = mono_bitset_mem_new (
-		mono_mempool_alloc0 (td->mempool, mono_bitset_alloc_size (header->code_size, 0)),
-		header->code_size, 0);
+		mono_mempool_alloc0 (td->mempool, mono_bitset_alloc_size (interp_mhead_code_size(header), 0)),
+		interp_mhead_code_size(header), 0);
 	if (!get_basic_blocks (td, header, td->gen_sdb_seq_points, il_targets)) {
 		td->has_invalid_code = TRUE;
 		goto exit;
@@ -5175,7 +5365,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 		 * before use. We also don't need this instruction if the init locals flag
 		 * is not set and there are no locals holding references.
 		 */
-		if (header->num_locals) {
+		if (interp_mhead_num_locals(header)) {
 			interp_add_ins (td, MINT_INITLOCALS);
 			td->last_ins->data [0] = GUINT_TO_UINT16 (td->il_locals_offset);
 			td->last_ins->data [1] = GUINT_TO_UINT16 (td->il_locals_size);
@@ -5203,16 +5393,17 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 #endif
 	} else {
 		int local;
-		arg_locals = (guint32*) g_malloc ((!!signature->hasthis + signature->param_count) * sizeof (guint32));
+		gboolean hasthis = interp_msig_hasthis(signature);
+		arg_locals = (guint32*) g_malloc ((!!hasthis + interp_msig_param_count(signature)) * sizeof (guint32));
 		/* Allocate locals to store inlined method args from stack */
-		for (int i = signature->param_count - 1; i >= 0; i--) {
+		for (int i = interp_msig_param_count(signature) - 1; i >= 0; i--) {
 			MonoType *type = td->locals [td->sp [-1].local].type;
 			local = create_interp_local (td, type);
-			arg_locals [i + !!signature->hasthis] = local;
+			arg_locals [i + !!hasthis] = local;
 			store_local (td, local);
 		}
 
-		if (signature->hasthis) {
+		if (hasthis) {
 			/*
 			 * If this is value type, it is passed by address and not by value.
 			 * Valuetype this local gets integer type MINT_TYPE_I.
@@ -5223,10 +5414,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			store_local (td, local);
 		}
 
-		local_locals = (guint32*) g_malloc (header->num_locals * sizeof (guint32));
+		local_locals = (guint32*) g_malloc (interp_mhead_num_locals(header) * sizeof (guint32));
 		/* Allocate locals to store inlined method args from stack */
-		for (int i = 0; i < header->num_locals; i++)
-			local_locals [i] = create_interp_local (td, header->locals [i]);
+		for (int i = 0; i < interp_mhead_num_locals(header); i++)
+			local_locals [i] = create_interp_local (td, interp_mhead_get_local_sig (header, i));
 	}
 
 	td->dont_inline = g_list_prepend (td->dont_inline, method);
@@ -5234,7 +5425,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 		// Check here for every opcode to avoid code bloat
 		if (td->has_invalid_code)
 			goto exit;
-		in_offset = GPTRDIFF_TO_INT (td->ip - header->code);
+		in_offset = interp_mhead_ip_offset (header, td->ip);
 		if (!inlining)
 			td->current_il_offset = in_offset;
 
@@ -5264,6 +5455,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			// Unoptimized code cannot access exception object directly from the exvar, we need
 			// to push it explicitly on the execution stack
 			if (!td->optimized) {
+#ifndef NATIVEAOT_MINT
                                 int index = td->clause_indexes [in_offset];
                                 if (index != -1 && new_bb->stack_height == 1 && header->clauses [index].handler_offset == in_offset) {
 					int exvar = td->clause_vars [index];
@@ -5274,6 +5466,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 					interp_ins_set_sreg (td->last_ins, exvar);
 					interp_ins_set_dreg (td->last_ins, td->sp [-1].local);
                                 }
+#else
+				if (interp_mhead_num_clauses(header) > 0)
+					NATIVEAOT_MINT_TODO("exception handling");
+#endif
                         }
 		}
 		td->offset_to_bb [in_offset] = td->cbb;
@@ -5308,9 +5504,9 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				(td->sp > td->stack && (td->sp [-1].type == STACK_TYPE_O || td->sp [-1].type == STACK_TYPE_VT)) ? (td->sp [-1].klass == NULL ? "?" : m_class_get_name (td->sp [-1].klass)) : "");
 		}
 
-		if (td->gen_seq_points && ((!sym_seq_points && td->stack == td->sp) || (sym_seq_points && mono_bitset_test_fast (seq_point_locs, td->ip - header->code)))) {
+		if (td->gen_seq_points && ((!sym_seq_points && td->stack == td->sp) || (sym_seq_points && mono_bitset_test_fast (seq_point_locs, interp_mhead_ip_offset (header, td->ip))))) {
 			if (td->gen_sdb_seq_points) {
-				if (in_offset == 0 || (header->num_clauses && !td->cbb->last_ins))
+				if (in_offset == 0 || (interp_mheader_num_clauses (header) && !td->cbb->last_ins))
 					interp_add_ins (td, MINT_SDB_INTR_LOC);
 				last_seq_point = interp_add_ins (td, MINT_SDB_SEQ_POINT);
 			} else {
@@ -5319,7 +5515,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 		}
 
 		if (td->prof_coverage) {
-			ptrdiff_t cil_offset = td->ip - header->code;
+			ptrdiff_t cil_offset = interp_mhead_ip_offset(header, td->ip);
 			gpointer counter = &td->coverage_info->data [cil_offset].count;
 			td->coverage_info->data [cil_offset].cil_code = (unsigned char*)td->ip;
 
@@ -5586,11 +5782,12 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 		case CEE_CALLVIRT: /* Fall through */
 		case CEE_CALLI:    /* Fall through */
 		case CEE_CALL: {
+#ifndef NATIVEAOT_MINT
 			gboolean need_seq_point = FALSE;
 
 			td->cbb->contains_call_instruction = TRUE;
 
-			if (sym_seq_points && !mono_bitset_test_fast (seq_point_locs, td->ip + 5 - header->code))
+			if (sym_seq_points && !mono_bitset_test_fast (seq_point_locs, interp_mhead_ip_offset(header, td->ip + 5)))
 				need_seq_point = TRUE;
 
 			if (!interp_transform_call (td, method, NULL, generic_context, constrained_class, readonly, error, TRUE, save_last_error, tailcall))
@@ -5608,7 +5805,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				}
 				last_seq_point = interp_add_ins (td, MINT_SDB_SEQ_POINT);
 				// This seq point is actually associated with the instruction following the call
-				last_seq_point->il_offset = GPTRDIFF_TO_INT (td->ip - header->code);
+				last_seq_point->il_offset = interp_mhead_ip_offset (header, td->ip);
 				last_seq_point->flags = INTERP_INST_FLAG_SEQ_POINT_NONEMPTY_STACK;
 			}
 
@@ -5622,10 +5819,14 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			save_last_error = FALSE;
 			tailcall = FALSE;
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_CALLVIRT);
+			break;
+#endif
 		}
 		case CEE_RET: {
 			link_bblocks = FALSE;
-			MonoType *ult = mini_type_get_underlying_type (signature->ret);
+			MonoType *ult = interp_msig_ret_utl(signature);
 			mt = mono_mint_type (ult);
 			if (mt != MINT_TYPE_VOID) {
 				// Convert stack contents to return type if necessary
@@ -5642,7 +5843,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				interp_link_bblocks (td, td->cbb, exit_bb);
 				// If the next bblock didn't have its stack state yet initialized, we need to make
 				// sure we properly keep track of the stack height, even after ret.
-				if (ult->type != MONO_TYPE_VOID)
+				if (!interp_type_is_void (ult))
 					--td->sp;
 				break;
 			}
@@ -6340,6 +6541,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			break;
 		}
 		case CEE_LDOBJ: {
+#ifndef NATIVEAOT_MINT
 			CHECK_STACK (td, 1);
 
 			token = read32 (td->ip + 1);
@@ -6356,8 +6558,13 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			td->ip += 5;
 			BARRIER_IF_VOLATILE (td, MONO_MEMORY_BARRIER_ACQ);
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_LDOBJ);
+			break;
+#endif
 		}
 		case CEE_LDSTR: {
+#ifndef NATIVEAOT_MINT
 			token = mono_metadata_token_index (read32 (td->ip + 1));
 			push_type (td, STACK_TYPE_O, MINT_ITF_DEFAULT_CLASS(string));
 			if (method->wrapper_type == MONO_WRAPPER_NONE) {
@@ -6389,11 +6596,15 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			}
 			td->ip += 5;
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_LDSTR);
+#endif
 		}
 		case CEE_NEWOBJ: {
+#ifndef NATIVEAOT_MINT
 			MonoMethod *m;
 			MonoMethodSignature *csignature;
-			gboolean is_protected = is_ip_protected (header, GPTRDIFF_TO_INT (td->ip - header->code));
+			gboolean is_protected = is_ip_protected (header, interp_mhead_ip_offset(header, td->ip));
 
 			td->ip++;
 			token = read32 (td->ip);
@@ -6420,7 +6631,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			}
 
 			int ret_mt = mono_mint_type (m_class_get_byval_arg (klass));
-			if (klass == MINT_ITF_DEFAULT_CLASS(int) && csignature->param_count == 1) {
+			if (klass == MINT_ITF_DEFAULT_CLASS(int) && interp_msig_param_count(csignature) == 1) {
 #if SIZEOF_VOID_P == 8
 				if (td->sp [-1].type == STACK_TYPE_I4)
 					interp_add_conv (td, td->sp - 1, NULL, stack_type [ret_mt], MINT_CONV_I8_I4);
@@ -6429,16 +6640,17 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 					interp_add_conv (td, td->sp - 1, NULL, stack_type [ret_mt], MINT_CONV_OVF_I4_I8);
 #endif
 			} else if (m_class_get_parent (klass) == MINT_ITF_DEFAULT_CLASS(array)) {
-				int *call_args = (int*)mono_mempool_alloc (td->mempool, (csignature->param_count + 1) * sizeof (int));
-				td->sp -= csignature->param_count;
-				for (int i = 0; i < csignature->param_count; i++) {
+				int param_count = interp_msig_param_count(csignature);
+				int *call_args = (int*)mono_mempool_alloc (td->mempool, (param_count + 1) * sizeof (int));
+				td->sp -= param_count;
+				for (int i = 0; i < param_count; i++) {
 					call_args [i] = td->sp [i].local;
 				}
-				call_args [csignature->param_count] = -1;
+				call_args [param_count] = -1;
 
 				interp_add_ins (td, MINT_NEWOBJ_ARRAY);
 				td->last_ins->data [0] = get_data_item_index (td, m->klass);
-				td->last_ins->data [1] = csignature->param_count;
+				td->last_ins->data [1] = param_count;
 				init_last_ins_call (td);
 				if (!td->optimized)
 					td->last_ins->info.call_info->call_offset = get_tos_offset (td);
@@ -6447,9 +6659,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				interp_ins_set_sreg (td->last_ins, MINT_CALL_ARGS_SREG);
 				td->last_ins->info.call_info->call_args = call_args;
 			} else if (klass == MINT_ITF_DEFAULT_CLASS(string)) {
+				int param_count = interp_msig_param_count(csignature);
 				if (!td->optimized) {
 					int tos_offset = get_tos_offset (td);
-					td->sp -= csignature->param_count;
+					td->sp -= param_count;
 					guint32 params_stack_size = tos_offset - get_tos_offset (td);
 
 					td->cbb->contains_call_instruction = TRUE;
@@ -6459,15 +6672,15 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 					push_type (td, stack_type [ret_mt], klass);
 					interp_ins_set_dreg (td->last_ins, td->sp [-1].local);
 				} else {
-					int *call_args = (int*)mono_mempool_alloc (td->mempool, (csignature->param_count + 2) * sizeof (int));
-					td->sp -= csignature->param_count;
+					int *call_args = (int*)mono_mempool_alloc (td->mempool, (param_count + 2) * sizeof (int));
+					td->sp -= param_count;
 
 					// First arg is dummy var, it is null when passed to the ctor
 					call_args [0] = create_interp_local (td, get_type_from_stack (stack_type [ret_mt], NULL));
-					for (int i = 0; i < csignature->param_count; i++) {
+					for (int i = 0; i < param_count; i++) {
 						call_args [i + 1] = td->sp [i].local;
 					}
-					call_args [csignature->param_count + 1] = -1;
+					call_args [param_count + 1] = -1;
 
 					td->cbb->contains_call_instruction = TRUE;
 					interp_add_ins (td, MINT_NEWOBJ_STRING);
@@ -6479,12 +6692,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 					init_last_ins_call (td);
 					td->last_ins->info.call_info->call_args = call_args;
 				}
-			} else if (m_class_get_image (klass) == mono_defaults.corlib &&
-					(!strcmp (m_class_get_name (m->klass), "Span`1") ||
-					!strcmp (m_class_get_name (m->klass), "ReadOnlySpan`1")) &&
-					csignature->param_count == 2 &&
-					csignature->params [0]->type == MONO_TYPE_PTR &&
-					!type_has_references (mono_method_get_context (m)->class_inst->type_argv [0])) {
+			} else if (interp_method_is_intrins_span_ctor(m)) {
 				/* ctor frequently used with ReadOnlySpan over static arrays */
 				MONO_PROFILER_RAISE (inline_method, (td->rtm->method, m));
 				interp_add_ins (td, MINT_INTRINS_SPAN_CTOR);
@@ -6495,7 +6703,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			} else if (!td->optimized) {
 				int tos = get_tos_offset (td);
 				int param_offset, param_size;
-				int param_count = csignature->param_count;
+				int param_count = interp_msig_param_count(csignature);
 				if (param_count) {
 					td->sp -= param_count;
 					param_offset = td->sp [0].offset;
@@ -6577,11 +6785,12 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				if ((mono_interp_opt & INTERP_OPT_SIMD) && interp_emit_simd_intrinsics (td, m, csignature, TRUE))
 					break;
 #endif
-				td->sp -= csignature->param_count;
+				int param_count = interp_msig_param_count(csignature);
+				td->sp -= param_count;
 
 				// Move params types in temporary buffer
-				StackInfo *sp_params = (StackInfo*) mono_mempool_alloc (td->mempool, sizeof (StackInfo) * csignature->param_count);
-				memcpy (sp_params, td->sp, sizeof (StackInfo) * csignature->param_count);
+				StackInfo *sp_params = (StackInfo*) mono_mempool_alloc (td->mempool, sizeof (StackInfo) * param_count);
+				memcpy (sp_params, td->sp, sizeof (StackInfo) * param_count);
 
 				if (interp_inline_newobj (td, m, csignature, ret_mt, sp_params, is_protected))
 					break;
@@ -6607,9 +6816,9 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				int dreg = td->sp [-2].local;
 
 				// Push back the params to top of stack. The original vars are maintained.
-				ensure_stack (td, csignature->param_count);
-				memcpy (td->sp, sp_params, sizeof (StackInfo) * csignature->param_count);
-				td->sp += csignature->param_count;
+				ensure_stack (td, param_count);
+				memcpy (td->sp, sp_params, sizeof (StackInfo) * param_count);
+				td->sp += param_count;
 
 				if (!mono_class_has_finalizer (klass) &&
 						!m_class_has_weak_fields (klass)) {
@@ -6632,15 +6841,19 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				if (is_protected)
 					td->last_ins->flags |= INTERP_INST_FLAG_PROTECTED_NEWOBJ;
 				// Parameters and this pointer are popped of the stack. The return value remains
-				td->sp -= csignature->param_count + 1;
+				td->sp -= param_count + 1;
 				 // Save the arguments for the call
-				int *call_args = (int*) mono_mempool_alloc (td->mempool, (csignature->param_count + 2) * sizeof (int));
-				for (int i = 0; i < csignature->param_count + 1; i++)
+				int *call_args = (int*) mono_mempool_alloc (td->mempool, (param_count + 2) * sizeof (int));
+				for (int i = 0; i < param_count + 1; i++)
 					call_args [i] = td->sp [i].local;
-				call_args [csignature->param_count + 1] = -1;
+				call_args [param_count + 1] = -1;
 				td->last_ins->info.call_info->call_args = call_args;
 			}
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_NEWOBJ);
+			break;
+#endif
 		}
 		case CEE_CASTCLASS:
 		case CEE_ISINST: {
@@ -6670,7 +6883,8 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			}
 			++td->ip;
 			break;
-		case CEE_UNBOX:
+		case CEE_UNBOX: {
+#ifndef NATIVEAOT_MINT
 			CHECK_STACK (td, 1);
 			token = read32 (td->ip + 1);
 
@@ -6713,6 +6927,11 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				td->ip += 5;
 			}
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_UNBOX);
+			break;
+#endif
+		}
 		case CEE_UNBOX_ANY:
 			CHECK_STACK (td, 1);
 			token = read32 (td->ip + 1);
@@ -6777,6 +6996,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			++td->ip;
 			break;
 		case CEE_LDFLDA: {
+#ifndef NATIVEAOT_MINT
 			CHECK_STACK (td, 1);
 			token = read32 (td->ip + 1);
 			field = interp_field_from_token (method, token, &klass, generic_context, error);
@@ -6821,8 +7041,13 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				td->ip += 5;
 			}
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_LDFLDA);
+			break;
+#endif
 		}
 		case CEE_LDFLD: {
+#ifndef NATIVEAOT_MINT
 			CHECK_STACK (td, 1);
 			token = read32 (td->ip + 1);
 			field = interp_field_from_token (method, token, &klass, generic_context, error);
@@ -6902,8 +7127,13 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			td->ip += 5;
 			BARRIER_IF_VOLATILE (td, MONO_MEMORY_BARRIER_ACQ);
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_LDFLD);
+			break;
+#endif
 		}
 		case CEE_STFLD: {
+#ifndef NATIVEAOT_MINT
 			CHECK_STACK (td, 2);
 			token = read32 (td->ip + 1);
 			field = interp_field_from_token (method, token, &klass, generic_context, error);
@@ -6967,6 +7197,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			}
 			td->ip += 5;
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_STFLD);
+			break;
+#endif
 		}
 		case CEE_LDSFLDA: {
 			token = read32 (td->ip + 1);
@@ -6984,11 +7218,8 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			MonoType *ftype = mono_field_get_type_internal (field);
 			mt = mono_mint_type (ftype);
 			klass = mono_class_from_mono_type_internal (ftype);
-			gboolean in_corlib = m_class_get_image (m_field_get_parent (field)) == mono_defaults.corlib;
 
-			if (in_corlib && !strcmp (field->name, "IsLittleEndian") &&
-				!strcmp (m_class_get_name (m_field_get_parent (field)), "BitConverter") &&
-				!strcmp (m_class_get_name_space (m_field_get_parent (field)), "System"))
+			if (interp_field_is_bitconverter_islittleendian(field, klass))
 			{
 				interp_add_ins (td, (TARGET_BYTE_ORDER == G_LITTLE_ENDIAN) ? MINT_LDC_I4_1 : MINT_LDC_I4_0);
 				push_simple_type (td, STACK_TYPE_I4);
@@ -7025,6 +7256,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			break;
 		}
 		case CEE_STOBJ: {
+#ifndef NATIVEAOT_MINT
 			token = read32 (td->ip + 1);
 
 			if (method->wrapper_type != MONO_WRAPPER_NONE)
@@ -7039,6 +7271,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 
 			td->ip += 5;
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_STOBJ);
+			break;
+#endif
 		}
 #if SIZEOF_VOID_P == 8
 		case CEE_CONV_OVF_I_UN:
@@ -7088,6 +7324,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			++td->ip;
 			break;
 		case CEE_BOX: {
+	#ifndef NATIVEAOT_MINT
 			CHECK_STACK (td, 1);
 			token = read32 (td->ip + 1);
 			if (method->wrapper_type != MONO_WRAPPER_NONE)
@@ -7128,8 +7365,13 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			}
 
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_BOX);
+			break;
+#endif
 		}
 		case CEE_NEWARR: {
+#ifndef NATIVEAOT_MINT
 			CHECK_STACK (td, 1);
 			token = read32 (td->ip + 1);
 
@@ -7159,6 +7401,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			td->last_ins->data [0] = get_data_item_index (td, vtable);
 			td->ip += 5;
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_NEWARR);
+			break;
+#endif
 		}
 		case CEE_LDLEN:
 			CHECK_STACK (td, 1);
@@ -7170,6 +7416,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			++td->ip;
 			break;
 		case CEE_LDELEMA: {
+#ifndef NATIVEAOT_MINT
 			gint32 size;
 			CHECK_STACK (td, 2);
 			ENSURE_I4 (td, 1);
@@ -7218,6 +7465,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 
 			td->ip += 5;
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_LDELEMA);
+			break;
+#endif
 		}
 		case CEE_LDELEM_I1:
 			handle_ldelem (td, MINT_LDELEM_I1, STACK_TYPE_I4);
@@ -7633,6 +7884,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			++td->ip;
 			break;
 		case CEE_LDTOKEN: {
+#ifndef NATIVEAOT_MINT
 			int size;
 			gpointer handle;
 			token = read32 (td->ip + 1);
@@ -7673,7 +7925,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 						(*next_next_ip == CEE_CALL || *next_next_ip == CEE_CALLVIRT) &&
 						(next_cmethod = interp_get_method (method, read32 (next_next_ip + 1), image, generic_context, error)) &&
 						(next_cmethod->klass == MINT_ITF_DEFAULT_CLASS(systemtype)) &&
-						!strcmp (next_cmethod->name, "get_IsValueType")) {
+						!strcmp (interp_method_name (next_cmethod), "get_IsValueType")) {
 					g_assert (!mono_class_is_open_constructed_type (m_class_get_byval_arg (tclass)));
 					if (m_class_is_valuetype (tclass))
 						interp_add_ins (td, MINT_LDC_I4_1);
@@ -7701,6 +7953,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			}
 
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_LDTOKEN);
+			break;
+#endif
 		}
 		case CEE_ADD_OVF:
 			binary_arith_op(td, MINT_ADD_OVF_I4);
@@ -7727,6 +7983,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			++td->ip;
 			break;
 		case CEE_ENDFINALLY: {
+#ifndef NATIVEAOT_MINT
 			int clause_index = td->clause_indexes [in_offset];
 			MonoExceptionClause *clause = (clause_index != -1) ? (header->clauses + clause_index) : NULL;
 			if (!clause || (clause->flags != MONO_EXCEPTION_CLAUSE_FINALLY && clause->flags != MONO_EXCEPTION_CLAUSE_FAULT)) {
@@ -7739,9 +7996,14 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			link_bblocks = FALSE;
 			++td->ip;
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_ENDFINALLY);
+			break;
+#endif
 		}
 		case CEE_LEAVE:
 		case CEE_LEAVE_S: {
+#ifndef NATIVEAOT_MINT
 			int target_offset;
 
 			if (*td->ip == CEE_LEAVE)
@@ -7751,8 +8013,8 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 
 			td->sp = td->stack;
 
-			g_assert (header->num_clauses < G_MAXUINT16);
-			for (guint16 i = 0; i < header->num_clauses; ++i) {
+			g_assert (interp_mhead_num_clauses(header) < G_MAXUINT16);
+			for (guint16 i = 0; i < interp_mhead_num_clauses(header); ++i) {
 				MonoExceptionClause *clause = &header->clauses [i];
 				if (clause->flags != MONO_EXCEPTION_CLAUSE_FINALLY)
 					continue;
@@ -7788,6 +8050,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				td->ip += 2;
 			link_bblocks = FALSE;
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_LEAVE);
+			break;
+#endif
 		}
 		case MONO_CUSTOM_PREFIX:
 			++td->ip;
@@ -7824,6 +8090,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 					break;
 				}
 				case CEE_MONO_JIT_ICALL_ADDR: {
+#ifndef NATIVEAOT_MINT
 					const guint32 icall_id_token = read32 (td->ip + 1);
 					td->ip += 5;
 					const gconstpointer func = mono_find_jit_icall_info ((MonoJitICallId)icall_id_token)->func;
@@ -7833,6 +8100,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 					interp_ins_set_dreg (td->last_ins, td->sp [-1].local);
 					td->last_ins->data [0] = get_data_item_index (td, (gpointer)func);
 					break;
+#else
+					NATIVEAOT_MINT_TODO_OPCODE(CEE_MONO_JIT_ICALL_ADDR);
+					break;
+#endif
 				}
 				case CEE_MONO_ICALL: {
 #ifndef NATIVEAOT_MINT
@@ -7928,6 +8199,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				td->last_ins->data [0] = get_data_item_index (td, mono_method_get_wrapper_data (method, token));
 				break;
 			case CEE_MONO_PINVOKE_ADDR_CACHE: {
+#ifndef NATIVEAOT_MINT
 				token = read32 (td->ip + 1);
 				td->ip += 5;
 				interp_add_ins (td, MINT_LDPTR);
@@ -7938,6 +8210,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				gpointer addr = imethod_alloc0 (td, sizeof (gpointer));
 				td->last_ins->data [0] = get_data_item_index (td, addr);
 				break;
+#else
+				NATIVEAOT_MINT_TODO_OPCODE(CEE_MONO_PINVOKE_ADDR_CACHE);
+				break;
+#endif
 			}
 			case CEE_MONO_OBJADDR:
 				CHECK_STACK (td, 1);
@@ -8053,7 +8329,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 #endif
 			}
 			default:
-				g_error ("transform.c: Unimplemented opcode: 0xF0 %02x at 0x%x\n", *td->ip, td->ip-header->code);
+				g_error ("transform.c: Unimplemented opcode: 0xF0 %02x at 0x%x\n", *td->ip, interp_mhead_ip_offset(header, td->ip));
 			}
 			break;
 #if 0
@@ -8144,6 +8420,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				break;
 			case CEE_LDVIRTFTN: /* fallthrough */
 			case CEE_LDFTN: {
+#ifndef NATIVEAOT_MINT
 				MonoMethod *m;
 				token = read32 (td->ip + 1);
 				m = interp_get_method (method, token, image, generic_context, error);
@@ -8240,6 +8517,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 
 				td->ip += 5;
 				break;
+#else
+				NATIVEAOT_MINT_TODO_OPCODE(CEE_LDVIRTFTN);
+				break;
+#endif
 			}
 			case CEE_LDARG: {
 				int arg_n = read16 (td->ip + 1);
@@ -8422,6 +8703,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				break;
 			}
 			case CEE_SIZEOF: {
+#ifndef NATIVEAOT_MINT
 				gint32 size;
 				token = read32 (td->ip + 1);
 				td->ip += 5;
@@ -8445,6 +8727,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 				push_simple_type (td, STACK_TYPE_I4);
 				interp_ins_set_dreg (td->last_ins, td->sp [-1].local);
 				break;
+#else
+				NATIVEAOT_MINT_TODO_OPCODE(CEE_SIZEOF);
+				break;
+#endif
 			}
 			case CEE_REFANYTYPE: {
 #ifndef NATIVEAOT_MINT
@@ -8461,7 +8747,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 #endif
 			}
 			default:
-				g_error ("transform.c: Unimplemented opcode: 0xFE %02x (%s) at 0x%x\n", *td->ip, mono_opcode_name (256 + *td->ip), td->ip-header->code);
+				g_error ("transform.c: Unimplemented opcode: 0xFE %02x (%s) at 0x%x\n", *td->ip, mono_opcode_name (256 + *td->ip), interp_mhead_ip_offset(header, td->ip));
 			}
 			break;
 		default: {
@@ -8704,7 +8990,7 @@ emit_compacted_instruction (TransformData *td, guint16* start_ip, InterpInst *in
 	// We know what IL offset this instruction was created for. We can now map the IL offset
 	// to the IR offset. We use this array to resolve the relocations, which reference the IL.
 	if (ins->il_offset != -1 && !td->in_offsets [ins->il_offset]) {
-		g_assert (ins->il_offset >= 0 && GINT_TO_UINT32(ins->il_offset) < td->header->code_size);
+		g_assert (ins->il_offset >= 0 && GINT_TO_UINT32(ins->il_offset) < interp_mhead_code_size(td->header));
 		td->in_offsets [ins->il_offset] = GPTRDIFF_TO_INT (start_ip - td->new_code + 1);
 
 		MonoDebugLineNumberEntry lne;
@@ -8987,7 +9273,7 @@ generate_compacted_code (InterpMethod *rtm, TransformData *td)
 		}
 	}
 	td->new_code_end = ip;
-	td->in_offsets [td->header->code_size] = GPTRDIFF_TO_INT (td->new_code_end - td->new_code);
+	td->in_offsets [interp_mhead_code_size(td->header)] = GPTRDIFF_TO_INT (td->new_code_end - td->new_code);
 
 	// Patch all branches. This might be useless since we iterate once anyway to compute the size
 	// of the generated code. We could compute the native offset of each basic block then.
@@ -10654,7 +10940,11 @@ interp_super_instructions (TransformData *td)
 						local_ref_count [sreg_off]--;
 						mono_interp_stats.super_instructions++;
 						if (td->verbose_level) {
+#ifndef NATIVEAOT_MINT
 							g_print ("method %s:%s, superins: ", m_class_get_name (td->method->klass), td->method->name);
+#else
+							NATIVEAOT_MINT_TODO("verbose superins");
+#endif
 							dump_interp_inst (new_inst, td->data_items);
 						}
 					}
@@ -10698,7 +10988,7 @@ interp_super_instructions (TransformData *td)
 				if (def != NULL && def->opcode == MINT_CKNULL && interp_prev_ins (ins) == def &&
 						def->dreg == obj_sreg && local_ref_count [obj_sreg] == 1) {
 					if (td->verbose_level) {
-						g_print ("remove redundant cknull (%s): ", td->method->name);
+						g_print ("remove redundant cknull (%s): ", interp_method_name (td->method));
 						dump_interp_inst (def, td->data_items);
 					}
 					ins->sregs [0] = def->sregs [0];
@@ -11363,7 +11653,7 @@ get_native_offset (TransformData *td, int il_offset)
 {
 	// We can't access offset_to_bb for header->code_size IL offset. Also, offset_to_bb
 	// is not set for dead bblocks at method end.
-	if (GINT_TO_UINT32(il_offset) < td->header->code_size && td->offset_to_bb [il_offset]) {
+	if (GINT_TO_UINT32(il_offset) < interp_mhead_code_size(td->header) && td->offset_to_bb [il_offset]) {
 		InterpBasicBlock *bb = td->offset_to_bb [il_offset];
 		g_assert (!bb->dead);
 		return bb->native_offset;
@@ -11392,11 +11682,12 @@ retry:
 
 	td->method = method;
 	td->rtm = rtm;
-	td->code_size = header->code_size;
+	int header_code_size = interp_mhead_code_size(header);
+	td->code_size = header_code_size;
 	td->header = header;
 	td->max_code_size = td->code_size;
-	td->in_offsets = (int*)g_malloc0((header->code_size + 1) * sizeof(int));
-	td->clause_indexes = (int*)g_malloc (header->code_size * sizeof (int));
+	td->in_offsets = (int*)g_malloc0((header_code_size + 1) * sizeof(int));
+	td->clause_indexes = (int*)g_malloc (header_code_size * sizeof (int));
 	td->mempool = mono_mempool_new ();
 	td->mem_manager = m_method_get_mem_manager (method);
 	td->n_data_items = 0;
@@ -11407,8 +11698,12 @@ retry:
 #ifdef ENABLE_EXPERIMENT_TIERED
 	td->patchsite_hash = g_hash_table_new (NULL, NULL);
 #endif
+#ifndef NATIVEAOT_MINT
 	td->gen_seq_points = !mini_debug_options.no_seq_points_compact_data || mini_debug_options.gen_sdb_seq_points;
 	td->gen_sdb_seq_points = mini_debug_options.gen_sdb_seq_points;
+#else
+	NATIVEAOT_MINT_TODO_NOWARN(); // gen seq points and gen sdb seq points
+#endif
 	td->seq_points = g_ptr_array_new ();
 	td->verbose_level = mono_interp_traceopt;
 	td->prof_coverage = mono_profiler_coverage_instrumentation_enabled (method);
@@ -11419,9 +11714,10 @@ retry:
 	td->optimized = rtm->optimized;
 
 	if (td->prof_coverage)
-		td->coverage_info = mono_profiler_coverage_alloc (method, header->code_size);
+		td->coverage_info = mono_profiler_coverage_alloc (method, header_code_size);
 
 	if (verbose_method_name) {
+#ifndef NATIVEAOT_MINT
 		const char *name = verbose_method_name;
 
 		if ((strchr (name, '.') > name) || strchr (name, ':')) {
@@ -11436,13 +11732,17 @@ retry:
 			if (strcmp (method->name, name) == 0)
 				td->verbose_level = 4;
 		}
+#else
+		NATIVEAOT_MINT_TODO("verbose method name");
+#endif
 	}
 
 	interp_method_compute_offsets (td, rtm, mono_method_signature_internal (method), header, error);
 	goto_if_nok (error, exit);
 
-	td->stack = (StackInfo*)g_malloc0 ((header->max_stack + 1) * sizeof (td->stack [0]));
-	td->stack_capacity = header->max_stack + 1;
+	unsigned int header_max_stack = interp_mhead_max_stack(header);
+	td->stack = (StackInfo*)g_malloc0 ((header_max_stack + 1) * sizeof (td->stack [0]));
+	td->stack_capacity = header_max_stack + 1;
 	td->sp = td->stack;
 	td->max_stack_height = 0;
 	td->line_numbers = g_array_new (FALSE, TRUE, sizeof (MonoDebugLineNumberEntry));
@@ -11496,24 +11796,31 @@ retry:
 	if (td->verbose_level) {
 		g_print ("Runtime method: %s %p\n", mono_method_full_name (method, TRUE), rtm);
 		g_print ("Locals size %d\n", td->total_locals_size);
-		g_print ("Calculated stack height: %d, stated height: %d\n", td->max_stack_height, header->max_stack);
+		g_print ("Calculated stack height: %d, stated height: %d\n", td->max_stack_height, interp_mhead_max_stack(header));
 		dump_interp_code (td->new_code, td->new_code_end, td->data_items);
 	}
 
 	/* Check if we use excessive stack space */
-	if (td->max_stack_height > header->max_stack * 3u && header->max_stack > 16)
-		g_warning ("Excessive stack space usage for method %s, %d/%d", method->name, td->max_stack_height, header->max_stack);
+	if (td->max_stack_height > interp_mhead_max_stack(header) * 3u && interp_mhead_max_stack(header) > 16)
+		g_warning ("Excessive stack space usage for method %s, %d/%d", interp_method_name (method), td->max_stack_height, interp_mhead_max_stack(header));
 
 	guint32 code_len_u8, code_len_u16;
 	code_len_u8 = GPTRDIFF_TO_UINT32 ((guint8 *) td->new_code_end - (guint8 *) td->new_code);
 	code_len_u16 = GPTRDIFF_TO_UINT32 (td->new_code_end - td->new_code);
 
-	rtm->clauses = (MonoExceptionClause*)imethod_alloc0 (td, header->num_clauses * sizeof (MonoExceptionClause));
-	memcpy (rtm->clauses, header->clauses, header->num_clauses * sizeof(MonoExceptionClause));
+	int header_num_clauses = interp_mhead_num_clauses (header);
 	rtm->code = (gushort*)td->new_code;
-	rtm->init_locals = header->init_locals;
-	rtm->num_clauses = header->num_clauses;
-	for (guint i = 0; i < header->num_clauses; i++) {
+	rtm->init_locals = !!interp_mhead_init_locals (header);
+	rtm->num_clauses = header_num_clauses;
+#ifndef NATIVEAOT_MINT
+	rtm->clauses = (MonoExceptionClause*)imethod_alloc0 (td, header_num_clauses * sizeof (MonoExceptionClause));
+	memcpy (rtm->clauses, header->clauses, header_num_clauses * sizeof(MonoExceptionClause));
+#else
+	if (header_num_clauses)
+		NATIVEAOT_MINT_TODO ("exception handling");
+#endif
+	for (guint i = 0; i < header_num_clauses; i++) {
+#ifndef NATIVEAOT_MINT
 		MonoExceptionClause *c = rtm->clauses + i;
 		int end_off = c->try_offset + c->try_len;
 		c->try_offset = get_native_offset (td, c->try_offset);
@@ -11525,6 +11832,9 @@ retry:
 		g_assert (c->handler_len >= 0 && (c->handler_offset + c->handler_len) <= code_len_u16);
 		if (c->flags & MONO_EXCEPTION_CLAUSE_FILTER)
 			c->data.filter_offset = get_native_offset (td, c->data.filter_offset);
+#else
+		NATIVEAOT_MINT_TODO ("exception handling");
+#endif
 	}
 	// When optimized (using the var offset allocator), total_locals_size contains also the param area.
 	// When unoptimized, the param area is stored in the same order, within the IL execution stack.
@@ -11576,7 +11886,7 @@ retry:
 	mono_jit_info_table_add (jinfo);
 #endif
 #else
-	if (header->num_clauses > 0) {
+	if (header_num_clauses > 0) {
 		NATIVEAOT_MINT_TODO("exception handling");
 	}
 #endif
@@ -11644,7 +11954,6 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context, Mon
 {
 	MonoMethod *method = imethod->method;
 	MonoMethodHeader *header = NULL;
-	MonoVTable *method_class_vt;
 	MonoGenericContext *generic_context = NULL;
 	InterpMethod tmp_imethod;
 	InterpMethod *real_imethod;
@@ -11653,11 +11962,17 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context, Mon
 
 	mono_metadata_update_thread_expose_published ();
 
+#ifndef NATIVEAOT_MINT
 	if (mono_class_is_open_constructed_type (m_class_get_byval_arg (method->klass))) {
 		mono_error_set_invalid_operation (error, "%s", "Could not execute the method because the containing type is not fully instantiated.");
 		return;
 	}
+#else
+	NATIVEAOT_MINT_TODO_NOWARN(); // open constructed type
+#endif
 
+#ifndef NATIVEAOT_MINT
+	MonoVTable *method_class_vt;
 	// g_printerr ("TRANSFORM(0x%016lx): begin %s::%s\n", mono_thread_current (), method->klass->name, method->name);
 	method_class_vt = mono_class_vtable_checked (imethod->method->klass, error);
 	return_if_nok (error);
@@ -11666,9 +11981,13 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context, Mon
 		mono_runtime_class_init_full (method_class_vt, error);
 		return_if_nok (error);
 	}
+#else
+	NATIVEAOT_MINT_TODO_NOWARN(); // runtime class init
+#endif
 
 	MONO_PROFILER_RAISE (jit_begin, (method));
 
+#ifndef NATIVEAOT_MINT
 	if (mono_method_signature_internal (method)->is_inflated)
 		generic_context = mono_method_get_context (method);
 	else {
@@ -11676,7 +11995,11 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context, Mon
 		if (generic_container)
 			generic_context = &generic_container->context;
 	}
+#else
+	NATIVEAOT_MINT_TODO_NOWARN(); // generics
+#endif
 
+#ifndef NATIVEAOT_MINT
 	if (method->iflags & (METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL | METHOD_IMPL_ATTRIBUTE_RUNTIME)) {
 		MonoMethod *nm = NULL;
 		if (imethod->transformed) {
@@ -11733,6 +12056,9 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context, Mon
 		method = mono_marshal_get_unsafe_accessor_wrapper (method, (MonoUnsafeAccessorKind)accessor_kind, member_name);
 		g_assert (method);
 	}
+#else
+	NATIVEAOT_MINT_TODO_NOWARN(); // special runtime methods
+#endif
 
 	if (!header) {
 		header = mono_method_get_header_checked (method, error);
@@ -11763,13 +12089,21 @@ mono_interp_transform_method (InterpMethod *imethod, ThreadContext *context, Mon
 		mono_memory_barrier ();
 		imethod->transformed = TRUE;
 		mono_interp_stats.methods_transformed++;
+#ifndef NATIVEAOT_MINT
 		mono_atomic_fetch_add_i32 (&mono_jit_stats.methods_with_interp, 1);
+#else
+		NATIVEAOT_MINT_TODO_NOWARN (); // stats
+#endif
 
+#ifndef NATIVEAOT_MINT
 		// FIXME Publishing of seq points seems to be racy with tiereing. We can have both tiered and untiered method
 		// running at the same time. We could therefore get the optimized imethod seq points for the unoptimized method.
 		gpointer seq_points = g_hash_table_lookup (jit_mm->seq_points, imethod->method);
 		if (!seq_points || seq_points != imethod->jinfo->seq_points)
 			g_hash_table_replace (jit_mm->seq_points, imethod->method, imethod->jinfo->seq_points);
+#else
+		NATIVEAOT_MINT_TODO_NOWARN (); // seq points
+#endif
 	}
 	jit_mm_unlock (jit_mm);
 
