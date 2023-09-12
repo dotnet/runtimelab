@@ -1,6 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
@@ -129,7 +130,7 @@ namespace System.Reflection.Emit
         {
             get
             {
-                return default;
+                return _name;
             }
         }
 
@@ -153,7 +154,7 @@ namespace System.Reflection.Emit
         {
             get
             {
-                return default;
+                return _returnType;
             }
         }
 
@@ -238,7 +239,7 @@ namespace System.Reflection.Emit
 #if FEATURE_MINT
         [MemberNotNull(nameof(_parameterTypes))]
         [MemberNotNull(nameof(_returnType))]
-        [MemberNotNull(nameof(_module))]
+        // [MemberNotNull(nameof(_module))]
         [MemberNotNull(nameof(_name))]
         private void Init(string name,
                           MethodAttributes attributes,
@@ -252,7 +253,8 @@ namespace System.Reflection.Emit
         {
             ArgumentNullException.ThrowIfNull(name);
 
-            AssemblyBuilder.EnsureDynamicCodeSupported();
+            // FIXME: ivanpovazan - we lie here essentially:
+            // AssemblyBuilder.EnsureDynamicCodeSupported();
 
             if (attributes != (MethodAttributes.Static | MethodAttributes.Public) || callingConvention != CallingConventions.Standard)
                 throw new NotSupportedException(SR.NotSupported_DynamicMethodFlags);
@@ -280,49 +282,74 @@ namespace System.Reflection.Emit
                 (RuntimeType)typeof(void) :
                 (returnType.UnderlyingSystemType as RuntimeType) ?? throw new NotSupportedException(SR.Arg_InvalidTypeInRetType);
 
+            // FIXME: ivanpovazan - for start lets support only transparentMethod=false;
+            Debug.Assert(transparentMethod == false, "MINT: we only support non transparent methods - module has to be specified when creating a DynamicMethod");
+
             if (transparentMethod)
             {
-                Debug.Assert(owner == null && m == null, "owner and m cannot be set for transparent methods");
-                _module = GetDynamicMethodsModule();
-                _restrictedSkipVisibility = skipVisibility;
+                // FIXME: ivanpovazan
+                // Debug.Assert(owner == null && m == null, "owner and m cannot be set for transparent methods");
+                // _module = GetDynamicMethodsModule();
+                // _restrictedSkipVisibility = skipVisibility;
             }
             else
             {
                 Debug.Assert(m != null || owner != null, "Constructor should ensure that either m or owner is set");
-                Debug.Assert(m == null || !m.Equals(s_anonymouslyHostedDynamicMethodsModule), "The user cannot explicitly use this assembly");
+                // FIXME: ivanpovazan we omit s_anonymouslyHostedDynamicMethodsModule for now
+                // Debug.Assert(m == null || !m.Equals(s_anonymouslyHostedDynamicMethodsModule), "The user cannot explicitly use this assembly");
                 Debug.Assert(m == null || owner == null, "m and owner cannot both be set");
 
                 if (m != null)
                     _module = RuntimeModuleBuilder.GetRuntimeModuleFromModule(m); // this returns the underlying module for all RuntimeModule and ModuleBuilder objects.
                 else
                 {
-                    if (owner?.UnderlyingSystemType is RuntimeType rtOwner)
-                    {
-                        if (rtOwner.HasElementType || rtOwner.ContainsGenericParameters
-                            || rtOwner.IsGenericParameter || rtOwner.IsInterface)
-                            throw new ArgumentException(SR.Argument_InvalidTypeForDynamicMethod);
+                    // FIXME: ivanpovazan we don't care about the owning type atm
+                    // if (owner?.UnderlyingSystemType is RuntimeType rtOwner)
+                    // {
+                    //     if (rtOwner.HasElementType || rtOwner.ContainsGenericParameters
+                    //         || rtOwner.IsGenericParameter || rtOwner.IsInterface)
+                    //         throw new ArgumentException(SR.Argument_InvalidTypeForDynamicMethod);
 
-                        _typeOwner = rtOwner;
-                        _module = rtOwner.GetRuntimeModule();
-                    }
-                    else
-                    {
+                    //     _typeOwner = rtOwner;
+                    //     _module = rtOwner.GetRuntimeModule();
+                    // }
+                    // else
+                    // {
                         _module = null!;
-                    }
+                    // }
                 }
 
                 _skipVisibility = skipVisibility;
             }
 
             // initialize remaining fields
-            _ilGenerator = null;
-            _initLocals = true;
-            _methodHandle = null;
+            // _ilGenerator = null;
+            // _initLocals = true;
+            // _methodHandle = null;
             _name = name;
             _attributes = attributes;
             _callingConvention = callingConvention;
         }
+
+        // FIXME: Not an actual implementation just a workaround
+        static class RuntimeModuleBuilder
+        {
+            internal static Module GetRuntimeModuleFromModule(Module? m) => m as System.Reflection.Runtime.Modules.RuntimeModule;
+        }
 #endif
 
+#if FEATURE_MINT
+        private RuntimeType[] _parameterTypes;
+        // internal IRuntimeMethodInfo? _methodHandle;
+        private RuntimeType _returnType;
+        // private DynamicILGenerator? _ilGenerator;
+        // private bool _initLocals;
+        private Module _module;
+        internal bool _skipVisibility;
+        internal RuntimeType? _typeOwner;
+        private string _name;
+        private MethodAttributes _attributes;
+        private CallingConventions _callingConvention;
+#endif
     }
 }
