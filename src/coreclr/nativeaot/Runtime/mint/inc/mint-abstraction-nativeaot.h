@@ -8,27 +8,32 @@ typedef struct _MonoTypeInstanceAbstractionNativeAot {
 typedef struct _MonoMethodInstanceAbstractionNativeAot {
     const char *name;
     MonoClass *klass;
+
+    MonoMethodSignature *(*get_signature)(MonoMethod *self);
+    MonoMethodHeader *(*get_header)(MonoMethod *self);
 } MonoMethodInstanceAbstractionNativeAot;
 
-typedef struct _MonoMethodHeaderInstanceAbstractionNativeAot {
+typedef struct _MonoMethodHeaderInstanceAbstractionNativeAot MonoMethodHeaderInstanceAbstractionNativeAot;
+struct _MonoMethodHeaderInstanceAbstractionNativeAot {
     int32_t code_size;
     int32_t max_stack;
     int32_t num_locals;
     int32_t num_clauses;
     int8_t init_locals;
 
-    MonoType * (*get_local_sig)(MonoMethodHeaderInstanceAbstractionNativeAot *self, int32_t i);
+    MonoType * (*get_local_sig)(MonoMethodHeader *self, int32_t i);
     // TODO: this will likely pin something in managed.  Figure out a way to tell us when it's safe to unpin
-    uint8_t * (*get_code)(MonoMethodHeaderInstanceAbstractionNativeAot *self);
-    int32_t (*get_ip_offset)(MonoMethodHeaderInstanceAbstractionNativeAot *self, uint8_t *ip);
-} MonoMethodHeaderInstanceAbstractionNativeAot;
+    const uint8_t * (*get_code)(MonoMethodHeader *self);
+    int32_t (*get_ip_offset)(MonoMethodHeader *self, const uint8_t *ip);
+} ;
 
-typedef struct _MonoMethodSignatureInstanceAbstractionNativeAot {
+typedef struct _MonoMethodSignatureInstanceAbstractionNativeAot MonoMethodSignatureInstanceAbstractionNativeAot;
+struct _MonoMethodSignatureInstanceAbstractionNativeAot {
     int32_t param_count;
     int8_t hasthis;
 
-    MonoType * (*ret_ult)(MonoMethodSignatureInstanceAbstractionNativeAot *self);
-} MonoMethodSignatureInstanceAbstractionNativeAot;
+    MonoType * (*ret_ult)(MonoMethodSignature *self);
+};
 
 typedef struct _MintAbstractionNativeAot {
     /* FIXME: replace this by some actual MonoImage abstraction*/
@@ -37,7 +42,7 @@ typedef struct _MintAbstractionNativeAot {
     /* transform.c */
     MonoType * (*get_type_from_stack) (int type, MonoClass *klass);
     int (*mono_mint_type) (MonoType *type);
-    int (*get_arg_type_exact) (TransformData *td, int n, int *mt);
+    MonoType *(*get_arg_type_exact) (TransformData *td, int n, int *mt);
     gboolean (*type_has_references)(MonoType *type);
     gpointer (*imethod_alloc0) (TransformData *td, size_t size);
     void (*load_arg) (TransformData *td, int n);
