@@ -31,6 +31,7 @@
 #include <mono/mini/aot-runtime.h>
 #else
 #include <config.h>
+#include <glib.h>
 #include <monoshim/missing-symbols.h>
 #endif
 
