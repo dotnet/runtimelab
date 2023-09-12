@@ -13,6 +13,9 @@ USE_MINT?=true
 
 world: runtime publish
 
+naot:
+	$(BUILD_SCRIPT) clr.aot -c $(BUILD_CONFIG)
+
 runtime:
 	$(BUILD_SCRIPT) clr.aot+libs -c $(BUILD_CONFIG) $(MSBUILD_ARGS)
 
