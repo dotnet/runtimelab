@@ -15,12 +15,17 @@ internal static class Mint
     [DllImport(RuntimeLibrary)]
     private static extern void mint_entrypoint();
 
+    [DllImport(RuntimeLibrary)]
+    private static extern void mint_testing_transform_sample(IntPtr gcHandle);
+
     internal static void Initialize()
     {
         AppContext.SetSwitch("System.Private.Mint.Enable", true);
         InstallDynamicMethodCallbacks();
         mint_entrypoint();
     }
+
+
 
     internal static void InstallDynamicMethodCallbacks()
     {
@@ -31,7 +36,16 @@ internal static class Mint
     {
         public IntPtr GetFunctionPointer(DynamicMethod dm)
         {
-            throw new NotImplementedException("Mint.GetFunctionPointer  not implemented");
+            GCHandle gch = GCHandle.Alloc(dm);
+            try
+            {
+                mint_testing_transform_sample(GCHandle.ToIntPtr(gch));
+            }
+            finally
+            {
+                gch.Free();
+            }
+            return IntPtr.Zero;
         }
     }
 }

@@ -45,9 +45,11 @@ void
 mint_entrypoint(void);
 
 // for testing purposes only. transform a placeholder method
-static void
-mint_testing_transform_sample(void)
+void
+mint_testing_transform_sample(MonoGCHandle dynamic_method)
 {
+    g_warning ("mint_testing_transform_sample ignoring the input DynamicMethod");
+    g_warning ("mint_testing_transform_sample will probably crash");
     ThreadContext *thread_context = NULL; // transform_method actually doesn't use thread_context
     MonoMethod *method = (MonoMethod*)mint_method_abstraction_placeholder(); // FIXME
     InterpMethod *imethod = mono_interp_get_imethod (method);
@@ -62,7 +64,4 @@ mint_entrypoint(void)
 {
     g_warning("Hello from mint_entrypoint");
     g_warning("transform is %p", (void*)&mono_interp_transform_method);
-    if (g_hasenv("TRANSFORM_SAMPLE")) {
-        mint_testing_transform_sample();
-    }
 }
