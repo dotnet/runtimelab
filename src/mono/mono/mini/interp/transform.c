@@ -5830,6 +5830,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			++td->ip;
 			break;
 		case CEE_JMP: {
+#ifndef NATIVEAOT_MINT
 			MonoMethod *m;
 			INLINE_FAILURE;
 			if (td->sp > td->stack)
@@ -5841,6 +5842,10 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			td->last_ins->data [0] = get_data_item_index_imethod (td, mono_interp_get_imethod (m));
 			td->ip += 5;
 			break;
+#else
+			NATIVEAOT_MINT_TODO_OPCODE(CEE_JMP);
+			break;
+#endif
 		}
 		case CEE_CALLVIRT: /* Fall through */
 		case CEE_CALLI:    /* Fall through */
