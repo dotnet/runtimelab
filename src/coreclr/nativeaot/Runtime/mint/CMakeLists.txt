@@ -22,10 +22,17 @@ set(interp_files
     transform.c
 )
 
+set(mono_utils_files
+  monobitset.c
+)
+
 addprefix(interp_sources "${MONO_INTERP_SOURCES_PATH}" "${interp_files}")
+
+addprefix(mono_utils_sources "${MONO_BASEDIR_PATH}/utils" "${mono_utils_files}")
 
 # "${MONO_INTERP_SOURCES_PATH}/transform.c"
 set(MINT_SOURCES
+    ${mono_utils_sources}
     ${interp_sources}
     inc/mint-abstraction-nativeaot.h
     inc/monoshim/missing-symbols.h
@@ -50,8 +57,7 @@ message(WARNING "NATIVEAOT_MINT_PREBUILT_PATH: ${NATIVEAOT_MINT_PREBUILT_PATH}")
 
 add_subdirectory(${CLR_SRC_NATIVE_DIR}/../mono/mono/eglib ${CMAKE_CURRENT_BINARY_DIR}/eglib)
 
-add_library(mint STATIC ${MINT_SOURCES})
-target_sources(mint PRIVATE $<TARGET_OBJECTS:eglib_objects>)
+add_library(mint STATIC $<TARGET_OBJECTS:eglib_objects> ${MINT_SOURCES})
 target_link_libraries(mint PRIVATE eglib_api)
 target_include_directories(mint BEFORE PRIVATE ${NATIVEAOT_MINT_INC_PATH} ${NATIVEAOT_MINT_INC_PATH}/prebuilt/${NATIVEAOT_MINT_PREBUILT_PATH})
 target_compile_definitions(mint PRIVATE -DNATIVEAOT_MINT)

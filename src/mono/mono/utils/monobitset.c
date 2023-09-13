@@ -2,11 +2,23 @@
  * \file
  */
 
-#include <glib.h>
 #include <string.h>
+
+#ifndef NATIVEAOT_MINT
+
+#include <glib.h>
 
 #include "monobitset.h"
 #include "config.h"
+
+#else
+
+#include <config.h>
+#include <glib.h>
+
+#include <monoshim/utils/monobitset.h>
+
+#endif
 
 #define BITS_PER_CHUNK MONO_BITSET_BITS_PER_CHUNK
 
