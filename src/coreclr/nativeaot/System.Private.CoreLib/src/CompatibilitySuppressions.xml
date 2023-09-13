@@ -984,4 +984,12 @@
     <DiagnosticId>CP0015</DiagnosticId>
     <Target>M:System.Diagnostics.Tracing.EventSource.WriteEventWithRelatedActivityIdCore(System.Int32,System.Guid*,System.Int32,System.Diagnostics.Tracing.EventSource.EventData*):[T:System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute]</Target>
   </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:Internal.Reflection.Emit.IMintDynamicMethodCallbacks</Target>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:Internal.Reflection.Emit.DynamicMethodAugments</Target>
+  </Suppression>
 </Suppressions>

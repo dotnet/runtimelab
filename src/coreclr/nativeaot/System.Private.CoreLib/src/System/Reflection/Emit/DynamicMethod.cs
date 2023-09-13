@@ -168,6 +168,9 @@ namespace System.Reflection.Emit
 
         public sealed override Delegate CreateDelegate(Type delegateType)
         {
+#if FEATURE_MINT
+            Internal.Reflection.Emit.DynamicMethodAugments.MintCallbacks.GetFunctionPointer(this);
+#endif
             return default;
         }
 

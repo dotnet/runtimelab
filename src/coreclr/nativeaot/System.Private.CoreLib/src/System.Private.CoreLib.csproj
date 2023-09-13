@@ -133,6 +133,10 @@
     <Compile Include="Internal\Reflection\Extensions\NonPortable\CustomAttributeSearcher.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Internal\Reflection\Emit\IMintDynamicMethodCallbacks.cs" Condition="'$(FeatureMint)' == 'true'"/>
+    <Compile Include="Internal\Reflection\Emit\DynamicMethodAugments.cs" Condition="'$(FeatureMint)' == 'true'"/>
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="System\Reflection\RuntimeAssembly.cs" />
     <Compile Include="System\Reflection\RuntimeAssemblyName.cs" />
     <Compile Include="System\Reflection\AssemblyRuntimeNameHelpers.cs" />
@@ -215,7 +219,7 @@
     <Compile Include="System\Runtime\InteropServices\Marshal.NativeAot.cs" />
     <Compile Include="System\Runtime\InteropServices\Marshal.Com.cs" Condition="'$(FeatureCominterop)' == 'true'" />
     <Compile Include="System\Runtime\InteropServices\MemoryMarshal.NativeAot.cs" />
-    <Compile Include="System\Runtime\InteropServices\TrackerObjectManager.NativeAot.cs" Condition="'$(FeatureComWrappers)' == 'true'" />    
+    <Compile Include="System\Runtime\InteropServices\TrackerObjectManager.NativeAot.cs" Condition="'$(FeatureComWrappers)' == 'true'" />
     <Compile Include="System\Runtime\InteropServices\ObjectiveCMarshal.NativeAot.cs" Condition="'$(FeatureObjCMarshal)' == 'true'" />
     <Compile Include="System\Runtime\InteropServices\UnsafeGCHandle.cs" />
     <Compile Include="System\Runtime\Intrinsics\X86\X86Base.NativeAot.cs" Condition="'$(SupportsX86Intrinsics)' == 'true'" />
@@ -281,7 +285,7 @@
     </Compile>
     <Compile Include="$(CommonPath)\Interop\Windows\Ole32\Interop.CoGetContextToken.cs">
       <Link>Interop\Windows\Ole32\Interop.CoGetContextToken.cs</Link>
-    </Compile>    
+    </Compile>
     <Compile Include="$(CommonPath)\Interop\Windows\OleAut32\Interop.VariantClear.cs">
       <Link>Interop\Windows\OleAut32\Interop.VariantClear.cs</Link>
     </Compile>

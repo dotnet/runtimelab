@@ -2,6 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Reflection.Emit;
+using Internal.Reflection.Emit;
 using System.Runtime.InteropServices;
 
 namespace Internal.Mint;
@@ -16,6 +18,20 @@ internal static class Mint
     internal static void Initialize()
     {
         AppContext.SetSwitch("System.Private.Mint.Enable", true);
+        InstallDynamicMethodCallbacks();
         mint_entrypoint();
+    }
+
+    internal static void InstallDynamicMethodCallbacks()
+    {
+        DynamicMethodAugments.InstallMintCallbacks(new Callbacks());
+    }
+
+    internal class Callbacks : IMintDynamicMethodCallbacks
+    {
+        public IntPtr GetFunctionPointer(DynamicMethod dm)
+        {
+            throw new NotImplementedException("Mint.GetFunctionPointer  not implemented");
+        }
     }
 }
