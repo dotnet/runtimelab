@@ -12,7 +12,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_EXTENSIONS ON)
 
 set(interp_files
-    mint-abstraction.h
     mintops.h
     interp-internals.h
     interp.h
@@ -22,17 +21,25 @@ set(interp_files
     transform.c
 )
 
+set(mono_metadata_files
+  mint-abstraction.h
+  opcodes.c
+  mono-basic-block.c
+)
+
 set(mono_utils_files
   monobitset.c
 )
 
 addprefix(interp_sources "${MONO_INTERP_SOURCES_PATH}" "${interp_files}")
 
+addprefix(mono_metadata_sources "${MONO_BASEDIR_PATH}/metadata" "${mono_metadata_files}")
 addprefix(mono_utils_sources "${MONO_BASEDIR_PATH}/utils" "${mono_utils_files}")
 
 # "${MONO_INTERP_SOURCES_PATH}/transform.c"
 set(MINT_SOURCES
     ${mono_utils_sources}
+    ${mono_metadata_sources}
     ${interp_sources}
     inc/mint-abstraction-nativeaot.h
     inc/monoshim/missing-symbols.h

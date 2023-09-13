@@ -11,6 +11,7 @@
 
 #include <config.h>
 
+#ifndef NATIVEAOT_MINT
 #include <mono/metadata/debug-helpers.h>
 #include <mono/metadata/metadata-internals.h>
 #include <mono/metadata/mono-endian.h>
@@ -19,6 +20,66 @@
 
 #include <mono/utils/mono-error-internals.h>
 #include <mono/utils/mono-compiler.h>
+#else
+
+#include <stdint.h>
+#include <glib.h>
+#include <monoshim/missing-symbols.h>
+#include <mint-abstraction-nativeaot.h>
+
+/* in NATIVEAOT_MINT this function doesn't need to be called outside this file */
+static int
+mono_opcode_value_and_size (const unsigned char **ip, const unsigned char *end, MonoOpcodeEnum *value);
+
+#endif
+
+#ifndef NATIVEAOT_MINT
+#include <mono/metadata/mint-abstracition.h>
+#else
+#include <monoshim/metadata/mint-abstraction.h>
+#endif
+
+#ifdef NATIVEAOT_MINT
+static void
+nativeaot_mint_todo(const char *extra, const char *msg, const char *file, int lineno, const char *func)
+{
+	g_error("%s:%d: TODO%s: NativeAot Mint:%s not implmemented: %s", file, lineno, extra, func, msg);
+}
+#define NATIVEAOT_MINT_TODO(msg) nativeaot_mint_todo("", msg, __FILE__, __LINE__, __func__)
+#define NATIVEAOT_MINT_TODO_SOON(msg) nativeaot_mint_todo("(soon!)", msg, __FILE__, __LINE__, __func__)
+#define	NATIVEAOT_MINT_TODO_NOWARN() do { /* empty */ } while (0)
+#define NATIVEAOT_MINT_TODO_OPCODE(opcode) nativeaot_mint_todo("(opcode)", #opcode, __FILE__, __LINE__, __func__)
+#endif
+
+static const uint8_t*
+interp_mhead_get_code (MonoMethodHeader *header)
+{
+#ifndef NATIVEAOT_MINT
+	return header->code;
+#else
+	return MINT_TI_ITF(MonoMethodHeader, header, get_code)(header);
+#endif
+}
+
+static int
+interp_mhead_code_size (MonoMethodHeader *header)
+{
+#ifndef NATIVEAOT_MINT
+	return header->code_size;
+#else
+	return MINT_TI_ITF(MonoMethodHeader, header, code_size);
+#endif
+}
+
+static int
+interp_mhead_num_clauses (MonoMethodHeader *header)
+{
+#ifndef NATIVEAOT_MINT
+	return header->num_clauses;
+#else
+	return MINT_TI_ITF(MonoMethodHeader, header, num_clauses);
+#endif
+}
 
 #define CHECK_ADD4_OVERFLOW_UN(a, b) ((guint32)(0xFFFFFFFFU) - (guint32)(b) < (guint32)(a))
 #define CHECK_ADD8_OVERFLOW_UN(a, b) ((guint64)(0xFFFFFFFFFFFFFFFFUL) - (guint64)(b) < (guint64)(a))
@@ -469,12 +530,13 @@ bb_formation_il_pass (const unsigned char *start, const unsigned char *end, Mono
 static void
 bb_formation_eh_pass (MonoMethodHeader *header, MonoSimpleBasicBlock *bb, MonoSimpleBasicBlock **root, MonoMethod *method, MonoError *error)
 {
-	guint32 end = header->code_size;
+	guint32 end = interp_mhead_code_size (header);
 
 	error_init (error);
 
 	/*We must split at all points to verify for targets in the middle of an instruction*/
-	for (guint i = 0; i < header->num_clauses; ++i) {
+	for (guint i = 0; i < interp_mhead_num_clauses (header); ++i) {
+#ifndef NATIVEAOT_MINT
 		MonoExceptionClause *clause = header->clauses + i;
 		MonoSimpleBasicBlock *try_block, *handler;
 
@@ -498,6 +560,9 @@ bb_formation_eh_pass (MonoMethodHeader *header, MonoSimpleBasicBlock *bb, MonoSi
 
 		if (clause->handler_offset + clause->handler_len < end && !bb_split (bb, handler, root, clause->handler_offset + clause->handler_len, FALSE, method, error))
 			return;
+#else
+		NATIVEAOT_MINT_TODO("clauses");
+#endif
 	}
 }
 
@@ -531,8 +596,8 @@ mono_basic_block_split (MonoMethod *method, MonoError *error, MonoMethodHeader *
 
 	error_init (error);
 
-	start = header->code;
-	end = start + header->code_size;
+	start = interp_mhead_get_code (header);
+	end = start + interp_mhead_code_size (header);
 
 	bb = g_new0 (MonoSimpleBasicBlock, 1);
 	bb->start = 0;

@@ -9,9 +9,15 @@
  * Copyright 2004-2009 Novell, Inc (http://www.novell.com)
  * Licensed under the MIT license. See LICENSE file in the project root for full license information.
  */
+#ifndef NATIVEAOT_MINT
 #include <mono/metadata/opcodes.h>
 #include <stddef.h> /* for NULL */
 #include <config.h>
+#else
+#include <stddef.h>
+#include <config.h>
+#include <monoshim/metadata/opcodes-types.h>
+#endif
 
 #define MONO_PREFIX1_OFFSET MONO_CEE_ARGLIST
 #define MONO_CUSTOM_PREFIX_OFFSET MONO_CEE_MONO_ICALL
@@ -21,7 +27,11 @@
 
 const MonoOpcode
 mono_opcodes [MONO_CEE_LAST + 1] = {
+#ifndef NATIVEAOT_MINT
 #include "mono/cil/opcode.def"
+#else
+#include "monoshim/cil/opcode.def"
+#endif
 	{0}
 };
 
@@ -32,16 +42,28 @@ mono_opcodes [MONO_CEE_LAST + 1] = {
 #define MSGSTRFIELD1(line) str##line
 static const struct msgstr_t {
 #define OPDEF(a,b,c,d,e,f,g,h,i,j) char MSGSTRFIELD(__LINE__) [sizeof (b)];
+#ifndef NATIVEAOT_MINT
 #include "mono/cil/opcode.def"
+#else
+#include "monoshim/cil/opcode.def"
+#endif
 #undef OPDEF
 } opstr = {
 #define OPDEF(a,b,c,d,e,f,g,h,i,j) b,
+#ifndef NATIVEAOT_MINT
 #include "mono/cil/opcode.def"
+#else
+#include "monoshim/cil/opcode.def"
+#endif
 #undef OPDEF
 };
 static const int16_t opidx [] = {
 #define OPDEF(a,b,c,d,e,f,g,h,i,j) offsetof (struct msgstr_t, MSGSTRFIELD(__LINE__)),
+#ifndef NATIVEAOT_MINT
 #include "mono/cil/opcode.def"
+#else
+#include "monoshim/cil/opcode.def"
+#endif
 #undef OPDEF
 };
 

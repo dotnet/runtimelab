@@ -213,4 +213,6 @@ static inline void jit_mm_unlock(MonoJitMemoryManager *jit_mm) { }
 
 static inline void mono_memory_barrier(void) { }
 
+static inline void mono_error_set_not_verifiable (MonoError *error, MonoMethod *method, const char *fmt, ...) { abort(); }
+
 #endif/*_MONOSHIM_MISSING_SYMBOLS_H*/

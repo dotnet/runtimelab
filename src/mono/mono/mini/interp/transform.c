@@ -41,7 +41,11 @@
 #include "transform.h"
 #include "tiering.h"
 
-#include "mint-abstraction.h"
+#ifndef NATIVEAOT_MINT
+#include "mono/metadata/mint-abstraction.h"
+#else
+#include "monoshim/metadata/mint-abstraction.h"
+#endif
 #ifdef NATIVEAOT_MINT
 #include <mint-abstraction-nativeaot.h>
 #endif

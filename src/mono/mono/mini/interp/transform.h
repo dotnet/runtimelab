@@ -206,7 +206,7 @@ typedef struct {
 	};
 } InterpLocal;
 
-typedef struct
+typedef struct _TransformData
 {
 	MonoMethod *method;
 	MonoMethod *inlined_method;

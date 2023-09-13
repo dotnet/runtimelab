@@ -35,6 +35,8 @@ struct _MonoMethodSignatureInstanceAbstractionNativeAot {
     MonoType * (*ret_ult)(MonoMethodSignature *self);
 };
 
+typedef struct _TransformData TransformData; // FIXME: separate the interp-aware abstractions from the metadata ones
+
 typedef struct _MintAbstractionNativeAot {
     /* FIXME: replace this by some actual MonoImage abstraction*/
     MonoImage *placeholder_image;

@@ -1,12 +1,7 @@
 #ifndef _MONOSHIM_METADATA_OPCODES_TYPE_H
 #define _MONOSHIM_METADATA_OPCODES_TYPE_H
 
-// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
-//
-#ifndef _MONO_OPCODES_TYPES_H
-#define _MONO_OPCODES_TYPES_H
-
+#include <stdint.h>
 #include <monoshim/utils/mono-publib.h>
 
 MONO_BEGIN_DECLS
@@ -60,9 +55,13 @@ typedef struct {
 	unsigned short opval;
 } MonoOpcode;
 
-MONO_END_DECLS
+extern const MonoOpcode mono_opcodes [];
 
-#endif /* _MONO_OPCODES_TYPES_H */
+const char* mono_opcode_name (int opcode);
+
+MonoOpcodeEnum mono_opcode_value (const uint8_t **ip, const uint8_t *end);
+
+MONO_END_DECLS
 
 
 #endif /*_MONOSHIM_METADATA_OPCODES_TYPE_H*/
