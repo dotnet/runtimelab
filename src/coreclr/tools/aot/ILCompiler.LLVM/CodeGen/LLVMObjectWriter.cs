@@ -78,6 +78,8 @@ namespace ILCompiler.DependencyAnalysis
             LLVMObjectWriter objectWriter = new LLVMObjectWriter(objectFilePath, compilation);
             NodeFactory factory = compilation.NodeFactory;
 
+            var sw = new Stopwatch();
+            sw.Start();
             try
             {
                 foreach (DependencyNode depNode in nodes)
@@ -137,6 +139,8 @@ namespace ILCompiler.DependencyAnalysis
                     objectWriter.EmitObjectNode(node, nodeContents);
                 }
 
+                sw.Stop();
+                Console.WriteLine(sw.Elapsed);
                 objectWriter.FinishObjWriter();
 
                 // Make sure we have released all memory used for mangling names.
@@ -186,13 +190,9 @@ namespace ILCompiler.DependencyAnalysis
             ReadOnlySpan<byte> data = nodeContents.Data.AsSpan();
             for (int i = 0; i < dataElements.Length; i++)
             {
-                ref LLVMValueRef dataElementRef = ref dataElements[i];
-                ref LLVMTypeRef typeElementRef = ref typeElements[i];
-
                 if (relocIndex < relocLength && currOffset == nodeContents.Relocs[relocIndex].Offset)
                 {
                     Relocation reloc = nodeContents.Relocs[relocIndex];
-                    typeElementRef = _ptrType;
                     long delta;
                     fixed (void* location = &nodeContents.Data[reloc.Offset])
                     {
@@ -205,15 +205,16 @@ namespace ILCompiler.DependencyAnalysis
                         symbolRefNode = factory.ConstructedTypeSymbol(eeTypeNode.Type);
                     }
 
-                    dataElementRef = GetSymbolReferenceValue(symbolRefNode, checked((int)delta));
+                    typeElements[i] = _ptrType;
+                    dataElements[i] = GetSymbolReferenceValue(symbolRefNode, checked((int)delta));
 
                     currOffset += pointerSize;
                     relocIndex++;
                 }
                 else
                 {
-                    typeElementRef = LLVMTypeRef.Int8;
-                    dataElementRef = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, data[currOffset]);
+                    typeElements[i] = LLVMTypeRef.Int8;
+                    dataElements[i] = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, data[currOffset]);
                     currOffset++;
                 }
             }
