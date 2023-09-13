@@ -161,36 +161,87 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        private unsafe void EmitObjectNode(ObjectNode node, ObjectData nodeContents)
+        private void EmitObjectNode(ObjectNode node, ObjectData nodeContents)
         {
             NodeFactory factory = _nodeFactory;
             int pointerSize = factory.Target.PointerSize;
+            Span<LLVMTypeRef> typeElements = default;
 
             // All references to this symbol are through "ordinarily named" aliases. Thus, we need to suffix the real definition.
             ISymbolNode symbolNode = (ISymbolNode)node;
             using Utf8Name dataSymbolName = GetMangledUtf8Name(symbolNode, "__DATA");
 
             // Calculate the size of this object node.
-            int dataSizeInElements = nodeContents.Relocs.Length + nodeContents.Data.Length - (nodeContents.Relocs.Length * pointerSize);
+            int dataSizeInBytes = nodeContents.Data.Length;
+            int dataSizeInBytesAligned = dataSizeInBytes.AlignUp(pointerSize); // TODO-LLVM: do not pad out the data.
+            int dataSizeInElements = dataSizeInBytesAligned / pointerSize;
 
-            // Emit the value of this object node.
+            // If we need to create unaligned relocs then use a struct for the symbol.
+            // Start with the premise that most nodes will just contain aligned relocs.
+            bool useStruct = false;
+
             if (_currentObjectData.Length < dataSizeInElements)
             {
                 Array.Resize(ref _currentObjectData, Math.Max(_currentObjectData.Length * 2, dataSizeInElements));
-                Array.Resize(ref _currentObjectTypes, Math.Max(_currentObjectTypes.Length * 2, dataSizeInElements));
             }
 
             Span<LLVMValueRef> dataElements = _currentObjectData.AsSpan(0, dataSizeInElements);
-            Span<LLVMTypeRef> typeElements = _currentObjectTypes.AsSpan(0, dataSizeInElements);
+            ReadOnlySpan<byte> data = nodeContents.Data.AsSpan();
 
+            // Indicies to allow us to "zip" the binary data with the relocs
             int currOffset = 0;
             int relocIndex = 0;
-            int relocLength = nodeContents.Relocs.Length;
 
-            ReadOnlySpan<byte> data = nodeContents.Data.AsSpan();
-            for (int i = 0; i < dataElements.Length; i++)
+            int relocLength = nodeContents.Relocs.Length;
+            int nextRelocOffset = 0;
+            bool nextRelocValid = relocIndex < relocLength;
+            if (nextRelocValid)
             {
-                if (relocIndex < relocLength && currOffset == nodeContents.Relocs[relocIndex].Offset)
+                nextRelocOffset = nodeContents.Relocs[0].Offset;
+            }
+
+            while (currOffset < dataSizeInElements)
+            {
+                if (!useStruct && nextRelocValid && nextRelocOffset % pointerSize != 0)
+                {
+                    // Switch from array to struct.
+                    useStruct = true;
+                    dataSizeInElements = nodeContents.Relocs.Length + dataSizeInBytes - (nodeContents.Relocs.Length * pointerSize);
+
+                    if (_currentObjectData.Length < dataSizeInElements)
+                    {
+                        Array.Resize(ref _currentObjectData, Math.Max(_currentObjectData.Length * 2, dataSizeInElements));
+                        Array.Resize(ref _currentObjectTypes, Math.Max(_currentObjectTypes.Length * 2, dataSizeInElements));
+                    }
+
+                    typeElements = _currentObjectTypes.AsSpan(0, dataSizeInElements);
+
+                    // Restart zipping while loop.
+                    currOffset = 0;
+                    continue;
+                }
+
+                // Emit binary data until next reloc.  As some large nodes only contain binary data this is a small optimization.
+                while (currOffset < dataSizeInElements && (!nextRelocValid || currOffset < nextRelocOffset))
+                {
+                    if (useStruct)
+                    {
+                        typeElements[currOffset] = LLVMTypeRef.Int8;
+                        dataElements[currOffset] = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, data[currOffset]);
+                    }
+                    else
+                    {
+                        ulong value = 0;
+                        int offset = currOffset * pointerSize;
+                        int size = Math.Min(dataSizeInBytes - offset, pointerSize);
+                        data.Slice(offset, size).CopyTo(new Span<byte>(&value, size));
+                        dataElements[currOffset] = LLVMValueRef.CreateConstIntToPtr(LLVMValueRef.CreateConstInt(_intPtrType, value), _ptrType);
+                    }
+
+                    currOffset++;
+                }
+
+                if (nextRelocValid)
                 {
                     Relocation reloc = nodeContents.Relocs[relocIndex];
                     long delta;
@@ -205,16 +256,19 @@ namespace ILCompiler.DependencyAnalysis
                         symbolRefNode = factory.ConstructedTypeSymbol(eeTypeNode.Type);
                     }
 
-                    typeElements[i] = _ptrType;
-                    dataElements[i] = GetSymbolReferenceValue(symbolRefNode, checked((int)delta));
+                    dataElements[currOffset] = GetSymbolReferenceValue(symbolRefNode, checked((int)delta));
+                    if (useStruct)
+                    {
+                        typeElements[currOffset] = _ptrType;
+                    }
 
-                    currOffset += pointerSize;
                     relocIndex++;
-                }
-                else
-                {
-                    typeElements[i] = LLVMTypeRef.Int8;
-                    dataElements[i] = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, data[currOffset]);
+                    nextRelocValid = relocIndex < relocLength;
+                    if (nextRelocValid)
+                    {
+                        nextRelocOffset = nodeContents.Relocs[0].Offset;
+                    }
+
                     currOffset++;
                 }
             }
@@ -222,12 +276,17 @@ namespace ILCompiler.DependencyAnalysis
             Debug.Assert(relocIndex  == relocLength);
 
             // Create and initialize the LLVM global value.
-            LLVMTypeRef dataSymbolType = LLVMTypeRef.CreateStruct(typeElements, true);
+            LLVMTypeRef dataSymbolType = useStruct
+                ? LLVMTypeRef.CreateStruct(typeElements, true)
+                : LLVMTypeRef.CreateArray(_ptrType, (uint)dataSizeInElements);
+
             LLVMValueRef dataSymbol = _module.AddGlobal(dataSymbolName, dataSymbolType);
             dataSymbol.Section = node.GetSection(_nodeFactory).Name;
             dataSymbol.Alignment = (uint)nodeContents.Alignment;
 
-            dataSymbol.Initializer = LLVMValueRef.CreateConstStruct(dataElements, true);
+            dataSymbol.Initializer = useStruct
+                ? LLVMValueRef.CreateConstStruct(dataElements, true)
+                : LLVMValueRef.CreateConstArray(_ptrType, dataElements);
 
             foreach (ISymbolDefinitionNode definedSymbol in nodeContents.DefinedSymbols)
             {
