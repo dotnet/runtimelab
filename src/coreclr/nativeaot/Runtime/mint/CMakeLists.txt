@@ -47,6 +47,7 @@ set(MINT_SOURCES
     inc/monoshim/utils/mono-compiler.h
     inc/prebuilt/osx-arm64/config.h
     inc/prebuilt/osx-arm64/eglib-config.h
+    inc/mint-transform.h
     mint.c)
 
 set(NATIVEAOT_MINT_PREBUILT_OS "${CLR_CMAKE_TARGET_OS}")

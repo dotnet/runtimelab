@@ -214,4 +214,9 @@ static inline void mono_memory_barrier(void) { }
 
 static inline void mono_error_set_not_verifiable (MonoError *error, MonoMethod *method, const char *fmt, ...) { abort(); }
 
+static inline gboolean mono_interp_tiering_enabled (void) { return FALSE; }
+/* Note: in tiering.c this register function is a no-op if tiering is disabled */
+static inline void mono_interp_register_imethod_data_items (gpointer *data_items, GSList *indexes) { }
+
+
 #endif/*_MONOSHIM_MISSING_SYMBOLS_H*/

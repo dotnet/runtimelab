@@ -251,7 +251,7 @@ struct InterpFrame {
 
 #define frame_locals(frame) ((guchar*)(frame)->stack)
 
-typedef struct {
+typedef struct _ThreadContext {
 	/* Lets interpreter know it has to resume execution after EH */
 	gboolean has_resume_state;
 	/* Frame to resume execution at */
