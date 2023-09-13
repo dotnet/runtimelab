@@ -1898,9 +1898,18 @@ CORINFO_GENERIC_HANDLE Llvm::generateUnwindTable()
 //
 bool Llvm::mayPhysicallyThrow(GenTree* node)
 {
-    if (node->IsHelperCall())
+    if (node->IsCall())
     {
-        return helperCallMayPhysicallyThrow(node->AsCall()->GetHelperNum());
+        if (node->IsHelperCall())
+        {
+            return helperCallMayPhysicallyThrow(node->AsCall()->GetHelperNum());
+        }
+
+        // We do not support exceptions propagating through native<->managed boundaries.
+        if (node->AsCall()->IsUnmanaged())
+        {
+            return false;
+        }
     }
 
     return node->OperMayThrow(_compiler);

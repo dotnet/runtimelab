@@ -1765,19 +1765,7 @@ void Llvm::buildCall(GenTreeCall* call)
     }
 
     llvm::FunctionCallee llvmFuncCallee = consumeCallTarget(call);
-    Value* callValue;
-    if (call->IsUnmanaged())
-    {
-        // We do not support exceptions propagating through native<->managed boundaries.
-        llvm::CallInst* callInst = _builder.CreateCall(llvmFuncCallee, argVec);
-        callInst->addFnAttr(llvm::Attribute::NoUnwind);
-
-        callValue = callInst;
-    }
-    else
-    {
-        callValue = emitCallOrInvoke(llvmFuncCallee, argVec);
-    }
+    Value* callValue = emitCallOrInvoke(llvmFuncCallee, argVec, mayPhysicallyThrow(call));
 
     mapGenTreeToValue(call, callValue);
 }
@@ -2471,10 +2459,14 @@ llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*
     return call;
 }
 
-llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args)
+llvm::CallBase* Llvm::emitCallOrInvoke(llvm::Function* callee, ArrayRef<Value*> args)
+{
+    return emitCallOrInvoke(callee, args, !callee->doesNotThrow());
+}
+
+llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args, bool isThrowingCall)
 {
     Function* llvmFunc = llvm::dyn_cast<Function>(callee.getCallee());
-    bool isThrowingCall = (llvmFunc == nullptr) || !llvmFunc->doesNotThrow();
     llvm::BasicBlock* catchLlvmBlock = getUnwindLlvmBlockForCurrentInvoke();
 
     llvm::SmallVector<llvm::OperandBundleDef, 1> bundles{};
@@ -2497,6 +2489,11 @@ llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Val
     else
     {
         callInst = _builder.CreateCall(callee, args, bundles);
+
+        if (!isThrowingCall)
+        {
+            callInst->setDoesNotThrow();
+        }
     }
 
     if (isThrowingCall && (m_ehModel == CorInfoLlvmEHModel::Emulated))
@@ -2569,7 +2566,7 @@ llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)
         {
             FunctionType* callFuncType = createFunctionTypeForCall(call);
             Function* calleeAccessorFunc = getOrCreateExternalLlvmFunctionAccessor(symbolName);
-            Value* calleeValue = _builder.CreateCall(calleeAccessorFunc);
+            Value* calleeValue = emitCallOrInvoke(calleeAccessorFunc);
 
             callee = {callFuncType, calleeValue};
         }
