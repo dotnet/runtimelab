@@ -3,6 +3,7 @@
 #include <mint-transform.h>
 #include <monoshim/missing-symbols.h>
 #include <mint-abstraction-nativeaot.h>
+#include <mint-imethod.h>
 
 static void
 __attribute__((noreturn))
@@ -16,7 +17,6 @@ mint_missing (const char *func)
 int mono_interp_opt = 0; // FIXME
 int mono_interp_traceopt = 0; // FIXME
 
-MintAbstractionNativeAot *mint_itf(void) { MISSING_FUNC(); }
 void* mono_mempool_alloc0 (MonoMemPool *pool, unsigned int size) { MISSING_FUNC(); }
 
 MonoMemPool * mono_mempool_new (void) { MISSING_FUNC(); }
@@ -44,9 +44,25 @@ int mono_type_size(MonoType *type, int *alignment) { MISSING_FUNC(); }
 void
 mint_entrypoint(void);
 
+// for testing purposes only. transform a placeholder method
+static void
+mint_testing_transform_sample(void)
+{
+    ThreadContext *thread_context = NULL; // transform_method actually doesn't use thread_context
+    MonoMethod *method = (MonoMethod*)mint_method_abstraction_placeholder(); // FIXME
+    InterpMethod *imethod = mono_interp_get_imethod (method);
+    ERROR_DECL(error);
+    mono_interp_transform_method (imethod, thread_context, error);
+    g_warning ("returned from \'mono_interp_transform_method\'");
+    mint_interp_imethod_dump_code (imethod);
+}
+
 void
 mint_entrypoint(void)
 {
     g_warning("Hello from mint_entrypoint");
     g_warning("transform is %p", (void*)&mono_interp_transform_method);
+    if (g_hasenv("TRANSFORM_SAMPLE")) {
+        mint_testing_transform_sample();
+    }
 }

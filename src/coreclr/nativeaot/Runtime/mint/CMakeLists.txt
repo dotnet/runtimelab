@@ -19,6 +19,7 @@ set(interp_files
     tiering.h
     mintops.c
     transform.c
+    interp-imethod.c
 )
 
 set(mono_metadata_files
@@ -48,7 +49,9 @@ set(MINT_SOURCES
     inc/prebuilt/osx-arm64/config.h
     inc/prebuilt/osx-arm64/eglib-config.h
     inc/mint-transform.h
-    mint.c)
+    inc/mint-imethod.h
+    mint.c
+    mint-itf.c)
 
 set(NATIVEAOT_MINT_PREBUILT_OS "${CLR_CMAKE_TARGET_OS}")
 

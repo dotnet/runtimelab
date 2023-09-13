@@ -76,4 +76,7 @@ typedef struct _MintAbstractionNativeAot {
 
 MintAbstractionNativeAot *mint_itf(void);
 
+// FIXME: for testing purposes only
+MonoMethodInstanceAbstractionNativeAot *mint_method_abstraction_placeholder(void);
+
 #endif/*_MINT_ABSTRACTION_H*/
