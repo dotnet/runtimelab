@@ -36,7 +36,7 @@ namespace HelloMint
             {
                 Console.WriteLine ($"DynamicMethod: '{dMethod.Name}' with return type '{dMethod.ReturnType}' has been created");
 
-                ILGenerator il = dMethod.GetILGenerator(256);
+                ILGenerator il = dMethod.GetILGenerator();
                 if (il is null)
                     throw new Exception("ILGenerator is null");
 

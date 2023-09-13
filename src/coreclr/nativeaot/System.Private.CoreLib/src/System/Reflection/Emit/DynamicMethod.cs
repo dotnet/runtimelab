@@ -203,12 +203,17 @@ namespace System.Reflection.Emit
 
         public ILGenerator GetILGenerator()
         {
-            return default;
+            // use 64 as a default stream size, the parameterless method is actually defined in libs so we do the same here
+            return GetILGenerator(64);
         }
 
         public ILGenerator GetILGenerator(int streamSize)
         {
-            return default;
+            byte[] methodSignature = new byte[] { 0 };
+            // FIXME: ivanpovazan - leave out methodSignature for now
+            // byte[] methodSignature = SignatureHelper.GetMethodSigHelper(
+            //     null, CallingConvention, ReturnType, null, null, _parameterTypes, null, null).GetSignature(true);
+            return _ilGenerator ??= new DynamicILGenerator(this, methodSignature, streamSize);
         }
 
         public override MethodImplAttributes GetMethodImplementationFlags()
@@ -323,7 +328,7 @@ namespace System.Reflection.Emit
             }
 
             // initialize remaining fields
-            // _ilGenerator = null;
+            _ilGenerator = null;
             // _initLocals = true;
             // _methodHandle = null;
             _name = name;
@@ -337,7 +342,7 @@ namespace System.Reflection.Emit
         private RuntimeType[] _parameterTypes;
         // internal IRuntimeMethodInfo? _methodHandle;
         private RuntimeType _returnType;
-        // private DynamicILGenerator? _ilGenerator;
+        private DynamicILGenerator? _ilGenerator;
         // private bool _initLocals;
         private Module _module;
         internal bool _skipVisibility;
