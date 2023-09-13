@@ -147,6 +147,7 @@
     <Compile Include="System\Reflection\Emit\DynamicMethod.cs" />
     <Compile Include="System\Reflection\Emit\LocalBuilder.cs" />
     <Compile Include="System\Reflection\Emit\ReflectionEmitThrower.cs" />
+    <Compile Include="System\Reflection\Emit\RuntimeModuleBuilder.cs" Condition="'$(FeatureMint)' == 'true'" />
     <Compile Include="System\Reflection\Emit\SignatureHelper.cs" />
     <Compile Include="System\Reflection\EnumInfo.cs" />
     <Compile Include="System\Reflection\FieldInfo.NativeAot.cs" />

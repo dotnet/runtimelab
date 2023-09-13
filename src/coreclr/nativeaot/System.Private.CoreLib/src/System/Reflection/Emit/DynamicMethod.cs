@@ -331,11 +331,6 @@ namespace System.Reflection.Emit
             _callingConvention = callingConvention;
         }
 
-        // FIXME: Not an actual implementation just a workaround
-        static class RuntimeModuleBuilder
-        {
-            internal static Module GetRuntimeModuleFromModule(Module? m) => m as System.Reflection.Runtime.Modules.RuntimeModule;
-        }
 #endif
 
 #if FEATURE_MINT
