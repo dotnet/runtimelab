@@ -15,6 +15,10 @@
     <IlcCompileDependsOn>Compile;ComputeIlcCompileInputs;SetupOSSpecificProps;PrepareForILLink</IlcCompileDependsOn>
   </PropertyGroup>
 
+  <ItemGroup>
+    <RdXmlFile Include="rd.xml" />
+  </ItemGroup>
+
   <Import Project="$(RuntimeBinDir)/build/Microsoft.DotNet.ILCompiler.SingleEntry.targets" />
 
   <Target Name="_ConfigureIlcFrameworkPaths" BeforeTargets="SetupProperties">
@@ -22,5 +26,9 @@
       <IlcFrameworkPath>$(LibrariesAllBinArtifactsPath)</IlcFrameworkPath>
       <IlcFrameworkNativePath>$(LibrariesAllBinArtifactsPath)</IlcFrameworkNativePath>
     </PropertyGroup>
+  </Target>
+
+  <Target Name="PrintRspFileLocation" AfterTargets="Publish">
+    <Message Text="ILC rsp file is generated at: %(ManagedBinary.IlcRspFile)" Importance="High" />
   </Target>
 </Project>

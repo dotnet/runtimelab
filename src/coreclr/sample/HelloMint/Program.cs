@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Reflection;
 using System.Reflection.Emit;
 
 namespace HelloMint
@@ -36,12 +37,13 @@ namespace HelloMint
             {
                 Console.WriteLine ($"DynamicMethod: '{dMethod.Name}' with return type '{dMethod.ReturnType}' has been created");
 
-                ILGenerator il = dMethod.GetILGenerator();
-                if (il is null)
+                ILGenerator ilgen = dMethod.GetILGenerator();
+                if (ilgen is null)
                     throw new Exception("ILGenerator is null");
 
-                il.Emit(OpCodes.Ldc_I4, 42);
-                il.Emit(OpCodes.Ret);
+                ilgen.Emit(OpCodes.Ldc_I4, (byte)42);
+                ilgen.Emit(OpCodes.Ret);
+                DumpILBytes(ilgen);
 
                 MeaningOfLife answer = (MeaningOfLife) dMethod.CreateDelegate(typeof(MeaningOfLife));
                 if (answer is null)
@@ -54,6 +56,29 @@ namespace HelloMint
             {
                 Console.WriteLine ($"Failed to create a DynamicMethod");
             }
+        }
+
+        // Requires rooting DynamicILGenerator
+        static void DumpILBytes(ILGenerator ilgen)
+        {
+            var ilBufferAccessor = ilgen.GetType().GetField("m_ILStream", BindingFlags.Instance | BindingFlags.NonPublic);
+            var ilBufferLengthAccessor = ilgen.GetType().GetField("m_length", BindingFlags.Instance | BindingFlags.NonPublic);
+            byte[] ilBuffer = ilBufferAccessor.GetValue(ilgen) as byte[];
+            int ilBufferLength = (int)ilBufferLengthAccessor.GetValue(ilgen);
+
+            Console.WriteLine("--------------------------");
+            Console.WriteLine("ILBuffer contents: ");
+            int i = 0;
+            while (i < ilBufferLength)
+            {
+                if (i > 0 && i % 4 == 0)
+                    Console.WriteLine();
+                Console.Write(String.Format(" 0x{0:X}", ilBuffer[i]));
+                i ++;
+            }
+            if (i % 4 != 0)
+                Console.WriteLine();
+            Console.WriteLine("--------------------------");
         }
     }
 }
