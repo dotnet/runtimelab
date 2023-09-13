@@ -5,6 +5,8 @@
 #include <monoshim/missing-symbols.h>
 #include <mint-abstraction-nativeaot.h>
 
+#include "mint-itf.h"
+
 struct _MonoType {
     MonoGCHandle gchandle;
     MonoTypeEnum type;
@@ -230,7 +232,10 @@ mint_imethod_alloc0 (TransformData *td, size_t size)
     return g_malloc0 (size);
 }
 
+static MintAbstractionNativeAot * mint_itf_singleton;
+
 MintAbstractionNativeAot *mint_itf(void) {
+#if 0
     static _Atomic(MintAbstractionNativeAot *) stored_itf = NULL;
 
     MintAbstractionNativeAot *itf;
@@ -253,4 +258,27 @@ MintAbstractionNativeAot *mint_itf(void) {
         }
     }
     return itf;
+#else
+    return mint_itf_singleton;
+#endif
+}
+
+void
+mint_itf_initialize(MintAbstractionNativeAot* newitf)
+{
+    // TODO: these should all be set from managed
+
+    newitf->get_default_byval_type_void = mint_get_default_byval_type_void;
+    newitf->get_MonoMethod_inst = UNWRAP_FN_NAME(MonoMethod);
+    newitf->get_MonoMethodHeader_inst = UNWRAP_FN_NAME(MonoMethodHeader);
+    newitf->get_MonoMethodSignature_inst = UNWRAP_FN_NAME(MonoMethodSignature);
+
+    newitf->get_type_from_stack = &mint_get_type_from_stack;
+    newitf->mono_mint_type = &mint_get_mint_type_from_type;
+
+    newitf->imethod_alloc0 = &mint_imethod_alloc0;
+
+
+    mint_itf_singleton = newitf;
+
 }

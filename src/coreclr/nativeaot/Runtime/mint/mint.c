@@ -5,6 +5,8 @@
 #include <mint-abstraction-nativeaot.h>
 #include <mint-imethod.h>
 
+#include "mint-itf.h"
+
 static void
 __attribute__((noreturn))
 mint_missing (const char *func)
@@ -45,7 +47,7 @@ char *mono_method_full_name (MonoMethod *method, gboolean signature) { MISSING_F
 int mono_type_size(MonoType *type, int *alignment) { MISSING_FUNC(); }
 
 void
-mint_entrypoint(void);
+mint_entrypoint(MintAbstractionNativeAot *itf);
 
 // for testing purposes only. transform a placeholder method
 void
@@ -63,11 +65,14 @@ mint_testing_transform_sample(MonoGCHandle dynamic_method)
 }
 
 void
-mint_entrypoint(void)
+mint_entrypoint(MintAbstractionNativeAot *itf)
 {
+    mint_itf_initialize(itf);
     g_warning("Hello from mint_entrypoint");
     g_warning("transform is %p", (void*)&mono_interp_transform_method);
 }
+
+
 
 // mint mempool
 
