@@ -85,9 +85,9 @@ mono_interp_get_imethod (MonoMethod *method)
 	imethod->is_invoke = FALSE; // (m_class_get_parent (method->klass) == mono_defaults.multicastdelegate_class) && !strcmp(method->name, "Invoke");
 	// always optimize code if tiering is disabled
 	// always optimize wrappers
-	// FIXME(NativeAot): dynamic methods are "wrappers" do we need to optimize them?
 	//if (!mono_interp_tiering_enabled () || method->wrapper_type != MONO_WRAPPER_NONE)
 	//	imethod->optimized = TRUE;
+	imethod->optimized = TRUE; // NativeAot always optimize
 	imethod->rtype = mint_itf()->get_default_byval_type_void();
 	//if (imethod->method->string_ctor)
 	//	imethod->rtype = m_class_get_byval_arg (mono_defaults.string_class);

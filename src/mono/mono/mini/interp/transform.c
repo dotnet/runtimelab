@@ -5395,7 +5395,7 @@ generate_code (TransformData *td, MonoMethod *method, MonoMethodHeader *header, 
 			g_free (tmp);
 			g_free (name);
 #else
-			NATIVEAOT_MINT_TODO("generate_code verbose_level disasm_code");
+			NATIVEAOT_MINT_TODO_NOWARN(); // generate_code verbose_level disasm_code
 #endif
 		}
 
@@ -12006,12 +12006,12 @@ retry:
 	if (td->verbose_level) {
 #ifndef NATIVEAOT_MINT
 		g_print ("Runtime method: %s %p\n", mono_method_full_name (method, TRUE), rtm);
+#else
+		NATIVEAOT_MINT_TODO_NOWARN(); // verbose method name
+#endif
 		g_print ("Locals size %d\n", td->total_locals_size);
 		g_print ("Calculated stack height: %d, stated height: %d\n", td->max_stack_height, interp_mhead_max_stack(header));
 		dump_interp_code (td->new_code, td->new_code_end, td->data_items);
-#else
-		NATIVEAOT_MINT_TODO("verbose_level dump code");
-#endif
 	}
 
 	/* Check if we use excessive stack space */

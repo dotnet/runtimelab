@@ -14,8 +14,22 @@ mint_missing (const char *func)
 
 #define MISSING_FUNC() mint_missing(__func__)
 
-int mono_interp_opt = 0; // FIXME
-int mono_interp_traceopt = 0; // FIXME
+// FIXME: this doesn't belong here
+enum {
+	INTERP_OPT_NONE = 0,
+	INTERP_OPT_INLINE = 1,
+	INTERP_OPT_CPROP = 2,
+	INTERP_OPT_SUPER_INSTRUCTIONS = 4,
+	INTERP_OPT_BBLOCKS = 8,
+	INTERP_OPT_TIERING = 16,
+	INTERP_OPT_SIMD = 32,
+	INTERP_OPT_DEFAULT = INTERP_OPT_INLINE | INTERP_OPT_CPROP | INTERP_OPT_SUPER_INSTRUCTIONS | INTERP_OPT_BBLOCKS | INTERP_OPT_TIERING | INTERP_OPT_SIMD
+};
+
+
+int mono_interp_opt = INTERP_OPT_DEFAULT & ~INTERP_OPT_TIERING & ~INTERP_OPT_SIMD ; // FIXME
+
+int mono_interp_traceopt = 1; // FIXME
 
 
 gint32 mono_class_value_size (MonoClass *klass, guint32 *align) { MISSING_FUNC(); }
