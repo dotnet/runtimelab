@@ -4390,7 +4390,6 @@ get_bb (TransformData *td, unsigned char *ip, gboolean make_list)
 static gboolean
 get_basic_blocks (TransformData *td, MonoMethodHeader *header, gboolean make_list, MonoBitSet *il_targets)
 {
-#ifndef NATIVEAOT_MINT
 	guint8 *start = (guint8*)td->il_code;
 	guint8 *end = (guint8*)td->il_code + td->code_size;
 	guint8 *ip = start;
@@ -4401,7 +4400,9 @@ get_basic_blocks (TransformData *td, MonoMethodHeader *header, gboolean make_lis
 	td->offset_to_bb = (InterpBasicBlock**)mono_mempool_alloc0 (td->mempool, (unsigned int)(sizeof (InterpBasicBlock*) * (end - start + 1)));
 	get_bb (td, start, make_list);
 
-	for (guint i = 0; i < header->num_clauses; i++) {
+	int header_num_clauses = interp_mhead_num_clauses(header);
+	for (guint i = 0; i < header_num_clauses; i++) {
+#ifndef NATIVEAOT_MINT
 		MonoExceptionClause *c = header->clauses + i;
 		if (start + c->try_offset > end || start + c->try_offset + c->try_len > end)
 			return FALSE;
@@ -4419,6 +4420,9 @@ get_basic_blocks (TransformData *td, MonoMethodHeader *header, gboolean make_lis
 			get_bb (td, start + c->data.filter_offset, make_list);
 			mono_bitset_set (il_targets, c->data.filter_offset);
 		}
+#else
+		NATIVEAOT_MINT_TODO("exn clauses");
+#endif
 	}
 	while (ip < end) {
 		cli_addr = ip - start;
@@ -4501,11 +4505,6 @@ get_basic_blocks (TransformData *td, MonoMethodHeader *header, gboolean make_lis
 		td->basic_blocks = g_list_reverse (td->basic_blocks);
 
 	return TRUE;
-#else
-	// FIXME(NativeAot): implement get_basic_blocks
-	NATIVEAOT_MINT_TODO_SOON("");
-	return FALSE;
-#endif
 }
 
 static void
@@ -4783,10 +4782,9 @@ mono_interp_type_size (MonoType *type, int mt, int *align_p)
 static void
 interp_method_compute_offsets (TransformData *td, InterpMethod *imethod, MonoMethodSignature *sig, MonoMethodHeader *header, MonoError *error)
 {
-#ifndef NATIVEAOT_MINT
 	int offset, size, align;
-	int num_args = sig->hasthis + sig->param_count;
-	int num_il_locals = header->num_locals;
+	int num_args = !!interp_msig_hasthis(sig) + interp_msig_param_count(sig);
+	int num_il_locals = interp_mhead_num_locals (header);
 	int num_locals = num_args + num_il_locals;
 
 	imethod->local_offsets = (guint32*)g_malloc (num_il_locals * sizeof(guint32));
@@ -4801,6 +4799,7 @@ interp_method_compute_offsets (TransformData *td, InterpMethod *imethod, MonoMet
 	 * receive a pointer to the valuetype data rather than the data itself.
 	 */
 	for (int i = 0; i < num_args; i++) {
+#ifndef NATIVEAOT_MINT
 		MonoType *type;
 		if (sig->hasthis && i == 0)
 			type = m_class_is_valuetype (td->method->klass) ? m_class_get_this_arg (td->method->klass) : m_class_get_byval_arg (td->method->klass);
@@ -4817,11 +4816,15 @@ interp_method_compute_offsets (TransformData *td, InterpMethod *imethod, MonoMet
 		offset = ALIGN_TO (offset, align);
 		td->locals [i].offset = offset;
 		offset += size;
+#else
+		NATIVEAOT_MINT_TODO_SOON("arguments");
+#endif
 	}
 	offset = ALIGN_TO (offset, MINT_STACK_ALIGNMENT);
 
 	td->il_locals_offset = offset;
 	for (int i = 0; i < num_il_locals; ++i) {
+#ifndef NATIVEAOT_MINT
 		int index = num_args + i;
 		int mt = mono_mint_type (header->locals [i]);
 		size = mono_interp_type_size (header->locals [i], mt, &align);
@@ -4842,25 +4845,29 @@ interp_method_compute_offsets (TransformData *td, InterpMethod *imethod, MonoMet
 		td->locals [index].size = size;
 		// Every local takes a MINT_STACK_SLOT_SIZE so IL locals have same behavior as execution locals
 		offset += size;
+#else
+		NATIVEAOT_MINT_TODO_SOON("local vars");
+#endif
 	}
 	offset = ALIGN_TO (offset, MINT_STACK_ALIGNMENT);
 
 	td->il_locals_size = offset - td->il_locals_offset;
 	td->total_locals_size = offset;
 
-	imethod->clause_data_offsets = (guint32*)g_malloc (header->num_clauses * sizeof (guint32));
-	td->clause_vars = (int*)mono_mempool_alloc (td->mempool, sizeof (int) * header->num_clauses);
-	for (guint i = 0; i < header->num_clauses; i++) {
+	int header_num_clauses = interp_mhead_num_clauses(header);
+	imethod->clause_data_offsets = (guint32*)g_malloc (header_num_clauses * sizeof (guint32));
+	td->clause_vars = (int*)mono_mempool_alloc (td->mempool, sizeof (int) * header_num_clauses);
+	for (guint i = 0; i < header_num_clauses; i++) {
+#ifndef NATIVEAOT_MINT
 		int var = create_interp_local (td, mono_get_object_type ());
 		td->locals [var].flags |= INTERP_LOCAL_FLAG_GLOBAL;
 		alloc_global_var_offset (td, var);
 		imethod->clause_data_offsets [i] = td->locals [var].offset;
 		td->clause_vars [i] = var;
-	}
 #else
-	// FIXME(NativeAot): implement interp_method_compute_offsets
-	NATIVEAOT_MINT_TODO_SOON("");
+		NATIVEAOT_MINT_TODO("exn clause vars");
 #endif
+	}
 }
 
 void
@@ -5125,13 +5132,15 @@ interp_emit_sfld_access (TransformData *td, MonoClassField *field, MonoClass *fi
 static void
 initialize_clause_bblocks (TransformData *td)
 {
-#ifndef NATIVEAOT_MINT
 	MonoMethodHeader *header = td->header;
 
-	for (guint32 i = 0; i < header->code_size; i++)
+	int header_code_size = interp_mhead_code_size(header);
+	for (guint32 i = 0; i < header_code_size; i++)
 		td->clause_indexes [i] = -1;
 
-	for (guint i = 0; i < header->num_clauses; i++) {
+	int header_num_clauses = interp_mhead_num_clauses(header);
+	for (guint i = 0; i < header_num_clauses; i++) {
+#ifndef NATIVEAOT_MINT
 		MonoExceptionClause *c = header->clauses + i;
 		InterpBasicBlock *bb;
 
@@ -5178,11 +5187,10 @@ initialize_clause_bblocks (TransformData *td)
 			 */
 			interp_insert_ins_bb (td, bb, NULL, MINT_NOP);
 		}
-	}
 #else
-	//FIXME(NativeAot): implement initialize_clause_bblocks
-	NATIVEAOT_MINT_TODO_SOON("");
+		NATIVEAOT_MINT_TODO("exn clauses");
 #endif
+	}
 }
 
 static void

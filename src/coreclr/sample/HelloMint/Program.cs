@@ -41,7 +41,7 @@ namespace HelloMint
                 if (ilgen is null)
                     throw new Exception("ILGenerator is null");
 
-                ilgen.Emit(OpCodes.Ldc_I4, (byte)42);
+                ilgen.Emit(OpCodes.Ldc_I4_S, (byte)42);
                 ilgen.Emit(OpCodes.Ret);
                 DumpILBytes(ilgen);
 

@@ -17,22 +17,11 @@ mint_missing (const char *func)
 int mono_interp_opt = 0; // FIXME
 int mono_interp_traceopt = 0; // FIXME
 
-void* mono_mempool_alloc0 (MonoMemPool *pool, unsigned int size) { MISSING_FUNC(); }
-
-MonoMemPool * mono_mempool_new (void) { MISSING_FUNC(); }
-void mono_mempool_destroy (MonoMemPool *pool) { MISSING_FUNC(); }
-
-void * mono_mem_manager_alloc0 (MonoMemoryManager *memory_manager, guint size) { MISSING_FUNC(); }
-
-MonoMemoryManager * m_method_get_mem_manager (MonoMethod *method) { MISSING_FUNC(); }
-
 
 gint32 mono_class_value_size (MonoClass *klass, guint32 *align) { MISSING_FUNC(); }
 MonoMethod *
 mono_get_method_checked (MonoImage *image, guint32 token, MonoClass *klass, MonoGenericContext *context, MonoError *error) { MISSING_FUNC(); }
 MonoClass *mono_class_from_mono_type_internal (MonoType *type) { MISSING_FUNC(); }
-void mono_metadata_free_mh (MonoMethodHeader *header) { MISSING_FUNC(); }
-
 
 const char * m_class_get_name (MonoClass *klass) { MISSING_FUNC(); }
 const char * m_class_get_name_space (MonoClass *klass) { MISSING_FUNC(); }
@@ -65,3 +54,43 @@ mint_entrypoint(void)
     g_warning("Hello from mint_entrypoint");
     g_warning("transform is %p", (void*)&mono_interp_transform_method);
 }
+
+// mint mempool
+
+// FIXME: actually pool memory
+struct _MonoMemPool {
+    // empty
+};
+
+MonoMemPool *
+mono_mempool_new (void) {
+    return g_new0 (MonoMemPool, 1);
+}
+
+void
+mono_mempool_destroy (MonoMemPool *pool) {
+    g_free (pool);
+}
+void*
+mono_mempool_alloc0 (MonoMemPool *pool, unsigned int size) {
+    return g_malloc0(size);
+}
+
+// mint mem manager
+
+struct _MonoMemoryManager {
+    MonoMemPool *pool;
+};
+
+void *
+mono_mem_manager_alloc0 (MonoMemoryManager *memory_manager, guint size) {
+    return mono_mempool_alloc0 (memory_manager->pool, size);
+}
+
+// FIXME: actually tie to the lifetime of the dynamic method
+MonoMemoryManager * m_method_get_mem_manager (MonoMethod *method) {
+    static MonoMemPool placeholder_mempool;
+    static MonoMemoryManager placeholder_memory_manager = { &placeholder_mempool };
+    return &placeholder_memory_manager;
+}
+
