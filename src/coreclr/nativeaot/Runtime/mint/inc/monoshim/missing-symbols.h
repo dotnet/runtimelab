@@ -156,7 +156,7 @@ static inline gboolean mono_threads_are_safepoints_enabled(void) { return FALSE;
 
 char *mono_method_full_name (MonoMethod *method, gboolean signature);
 
-gboolean mono_method_has_no_body (MonoMethod *method) { return FALSE; } // FIXME(NativeAot): hack!
+static inline gboolean mono_method_has_no_body (MonoMethod *method) { return FALSE; } // FIXME(NativeAot): hack!
 
 MonoMethodHeader* mono_method_get_header_internal (MonoMethod *method, MonoError *error);
 
@@ -181,7 +181,6 @@ const char * m_class_get_name_space (MonoClass *klass);
 MonoMemoryManager * m_method_get_mem_manager (MonoMethod *method);
 
 
- // TODO(NativeAot): compile this from mono-basic-block.c
 MonoSimpleBasicBlock* mono_basic_block_split (MonoMethod *method, MonoError *error, MonoMethodHeader *header);
 void mono_basic_block_free (MonoSimpleBasicBlock *bb);
 // also in mono-basic-block.c

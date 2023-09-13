@@ -4,7 +4,7 @@
 //# if NO_UNALIGNED_ACCESS
 #if 1
 
-uint16_t
+static inline uint16_t
 mono_read16 (const unsigned char *x)
 {
     typedef union {
@@ -23,7 +23,7 @@ mono_read16 (const unsigned char *x)
 	return r.i;
 }
 
-uint32_t
+static inline uint32_t
 mono_read32 (const unsigned char *x)
 {
     typedef union {
@@ -46,7 +46,7 @@ mono_read32 (const unsigned char *x)
 	return r.i;
 }
 
-uint64_t
+static inline uint64_t
 mono_read64 (const unsigned char *x)
 {
     typedef union {
