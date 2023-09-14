@@ -3608,12 +3608,15 @@ interp_get_method (MonoMethod *method, guint32 token, MonoImage *image, MonoGene
 static void
 emit_convert (TransformData *td, StackInfo *sp, MonoType *target_type)
 {
-#ifndef NATIVEAOT_MINT
 	int stype = sp->type;
+#ifndef NATIVEAOT_MINT
 	target_type = mini_get_underlying_type (target_type);
+#else
+	NATIVEAOT_MINT_TODO_NOWARN(); // get underlying type
+#endif
 
 	// FIXME: Add more
-	switch (target_type->type) {
+	switch (interp_type_get_code(target_type)) {
 #if SIZEOF_VOID_P == 8
 	case MONO_TYPE_I:
 #endif
@@ -3656,15 +3659,12 @@ emit_convert (TransformData *td, StackInfo *sp, MonoType *target_type)
 		default:
 			break;
 		}
+		break;
 	}
 #endif
 	default:
 		break;
 	}
-#else
-	// FIXME(NativeAot): implement emit_convert
-	NATIVEAOT_MINT_TODO("");
-#endif
 }
 
 static void

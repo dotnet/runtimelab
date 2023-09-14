@@ -29,7 +29,7 @@ namespace HelloMint
             }
         }
 
-        private static bool voidVoidSample = true;
+        private static bool voidVoidSample = false;
 
         private static void GenerateSample(ILGenerator ilgen)
         {
