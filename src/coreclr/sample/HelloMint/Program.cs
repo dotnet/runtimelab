@@ -42,7 +42,9 @@ namespace HelloMint
             }
             else
             {
-                ilgen.Emit(OpCodes.Ldc_I4_S, (byte)42);
+                ilgen.Emit(OpCodes.Ldc_I4_S, (byte)40);
+                ilgen.Emit(OpCodes.Ldc_I4_S, (byte)2);
+                ilgen.Emit(OpCodes.Add);
                 ilgen.Emit(OpCodes.Ret);
             }
         }
