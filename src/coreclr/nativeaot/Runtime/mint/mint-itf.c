@@ -10,6 +10,7 @@
 void
 mono_metadata_free_mh (MonoMethodHeader *header) {
     // no-op
+    // FIXME: this should go through MintAbstractionNativeAot* in managed.
     // FIXME: this might dispose of somethign in managed,
     // but we should be careful that we're refcounting if we're giving the same
     // header to multiple callers
@@ -41,10 +42,6 @@ MintAbstractionNativeAot *mint_itf(void) {
 void
 mint_itf_initialize(MintAbstractionNativeAot* newitf)
 {
-    // TODO: these should all be set from managed
-
-    newitf->imethod_alloc0 = &mint_imethod_alloc0;
-
     mint_itf_singleton = newitf;
 
 }

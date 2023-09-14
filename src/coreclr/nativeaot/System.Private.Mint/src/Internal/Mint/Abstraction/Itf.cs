@@ -20,7 +20,7 @@ internal unsafe struct Itf
     public delegate* unmanaged<MonoTypeInstanceAbstractionNativeAot*, int> mono_mint_type; // int (*mono_mint_type) (MonoType *type);
     public IntPtr get_arg_type_exact; // MonoType *(*get_arg_type_exact) (TransformData *td, int n, int *mt);
     public IntPtr type_has_references; // gboolean (*type_has_references)(MonoType *type);
-    public IntPtr imethod_alloc; // gpointer (*imethod_alloc0) (TransformData *td, size_t size);
+    public delegate* unmanaged<IntPtr/*TransformData* */, UIntPtr, IntPtr> imethod_alloc; // gpointer (*imethod_alloc0) (TransformData *td, size_t size);
     public IntPtr load_arg; // void (*load_arg) (TransformData *td, int n);
     public IntPtr store_arg; // void (*store_arg) (TransformData *td, int n);
     public IntPtr interp_get_method; // MonoMethod* (*interp_get_method) (MonoMethod *method, guint32 token, MonoImage *image, MonoGenericContext *generic_context, MonoError *error);

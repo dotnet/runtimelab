@@ -54,6 +54,8 @@ internal static class Mint
         itf->mono_mint_type = &Abstraction.Itf.mintGetMintTypeFromMonoType;
         itf->get_default_byval_type_void = &mintGetDefaultByvalTypeVoid;
         itf->get_default_byval_type_int = &mintGetDefaultByvalTypeIntPtr;
+
+        itf->imethod_alloc = &mintIMethodAlloc;
         // TODO: initialize members of itf with function pointers that implement the stuff that
         // the interpreter needs.  See mint-itf.c for the native placeholder implementation
         return itf;
@@ -83,5 +85,15 @@ internal static class Mint
 
     [UnmanagedCallersOnly]
     internal static unsafe Abstraction.MonoTypeInstanceAbstractionNativeAot* mintGetDefaultByvalTypeIntPtr() => GlobalMintTypeSystem.GetMonoType((RuntimeType)typeof(IntPtr)).Value;
+
+#pragma warning disable IDE0060
+    [UnmanagedCallersOnly]
+    internal static unsafe IntPtr mintIMethodAlloc(IntPtr _transformData, UIntPtr size)
+    {
+        // FIXME: don't allocate from the global memory manager, get the memory manager from the transform data
+        // see imethod_alloc0 in transform.c
+        return globalMemoryManager.Allocate(checked((uint)size));
+    }
+#pragma warning restore IDE0060
 
 }
