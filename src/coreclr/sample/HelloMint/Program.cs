@@ -29,10 +29,30 @@ namespace HelloMint
             }
         }
 
+        private static bool voidVoidSample = true;
+
+        private static void GenerateSample(ILGenerator ilgen)
+        {
+            if (voidVoidSample)
+            {
+                ilgen.Emit(OpCodes.Ldc_I4_S, (byte)42);
+                ilgen.Emit(OpCodes.Pop);
+                ilgen.Emit(OpCodes.Ret);
+
+            }
+            else
+            {
+                ilgen.Emit(OpCodes.Ldc_I4_S, (byte)42);
+                ilgen.Emit(OpCodes.Ret);
+            }
+        }
+
+
         private delegate int MeaningOfLife();
         static void CreateDynamicMethod()
         {
-            DynamicMethod dMethod = new DynamicMethod("MeaningOfLife", typeof(int), Type.EmptyTypes, typeof(object).Module);
+            var returnType = voidVoidSample ? typeof(void) : typeof(int);
+            DynamicMethod dMethod = new DynamicMethod("MeaningOfLife", returnType, Type.EmptyTypes, typeof(object).Module);
             if (dMethod is not null)
             {
                 Console.WriteLine ($"DynamicMethod: '{dMethod.Name}' with return type '{dMethod.ReturnType}' has been created");
@@ -41,20 +61,36 @@ namespace HelloMint
                 if (ilgen is null)
                     throw new Exception("ILGenerator is null");
 
-                ilgen.Emit(OpCodes.Ldc_I4_S, (byte)42);
-                ilgen.Emit(OpCodes.Ret);
+                GenerateSample(ilgen);
                 DumpILBytes(ilgen);
 
-                MeaningOfLife answer = (MeaningOfLife) dMethod.CreateDelegate(typeof(MeaningOfLife));
+                RunSample(dMethod);
+            }
+            else
+            {
+                Console.WriteLine($"Failed to create a DynamicMethod");
+            }
+        }
+
+        private static void RunSample(DynamicMethod dMethod)
+        {
+            if (voidVoidSample)
+            {
+                Action answer = (Action)dMethod.CreateDelegate(typeof(Action));
+                if (answer is null)
+                    throw new Exception("Delegate for the dynamic method is null");
+
+                answer();
+                Console.WriteLine("delegate returned");
+            }
+            else
+            {
+                MeaningOfLife answer = (MeaningOfLife)dMethod.CreateDelegate(typeof(MeaningOfLife));
                 if (answer is null)
                     throw new Exception("Delegate for the dynamic method is null");
 
                 var retVal = answer();
                 Console.WriteLine($"The answer is: {retVal}");
-            }
-            else
-            {
-                Console.WriteLine ($"Failed to create a DynamicMethod");
             }
         }
 
@@ -76,7 +112,7 @@ namespace HelloMint
                 Console.Write(String.Format(" 0x{0:X}", ilBuffer[i]));
                 i ++;
             }
-            if (i % 4 != 0)
+            if (i % 4 != 1)
                 Console.WriteLine();
             Console.WriteLine("--------------------------");
         }
