@@ -26,8 +26,8 @@ internal unsafe struct Itf
     public IntPtr interp_get_method; // MonoMethod* (*interp_get_method) (MonoMethod *method, guint32 token, MonoImage *image, MonoGenericContext *generic_context, MonoError *error);
 
     /* mono_defaults */
-    public IntPtr get_default_byval_type_void; // MonoType * (*get_default_byval_type_void)(void);
-    public IntPtr get_default_byval_type_int; // MonoType * (*get_default_byval_type_int)(void);
+    public delegate* unmanaged<IntPtr/*MonoType**/> get_default_byval_type_void; // MonoType * (*get_default_byval_type_void)(void);
+    public delegate* unmanaged<IntPtr/*MonoType**/> get_default_byval_type_int; // MonoType * (*get_default_byval_type_int)(void);
 
     public IntPtr get_default_class_string_class; // MonoClass * (*get_default_class_string_class) (void);
     public IntPtr get_default_class_int_class; // MonoClass * (*get_default_class_int_class) (void);
@@ -41,10 +41,12 @@ internal unsafe struct Itf
 
 
     /* opaque type instances */
-    public IntPtr get_MonoType_inst; // MonoTypeInstanceAbstractionNativeAot * (*get_MonoType_inst) (MonoType *self);
-    public IntPtr get_MonoMethod_inst; // MonoMethodInstanceAbstractionNativeAot * (*get_MonoMethod_inst) (MonoMethod *self);
+    public delegate* unmanaged<IntPtr /* MonoType */, IntPtr/*MonoTypeInstanceAbstraction* */> get_MonoType_inst; // MonoTypeInstanceAbstractionNativeAot * (*get_MonoType_inst) (MonoType *self);
+    public delegate* unmanaged<IntPtr /* MonoMethod* */, IntPtr/*MonoMethodInstanceAbstractionNativeAot**/> get_MonoMethod_inst; // MonoMethodInstanceAbstractionNativeAot * (*get_MonoMethod_inst) (MonoMethod *self);
     public IntPtr get_MonoMethodHeader_inst; // MonoMethodHeaderInstanceAbstractionNativeAot * (*get_MonoMethodHeader_inst) (MonoMethodHeader *header);
 
     public IntPtr get_MonoMethodSignature_inst; // MonoMethodSignatureInstanceAbstractionNativeAot * (*get_MonoMethodSignature_inst) (MonoMethodSignature *self);
 
+    [UnmanagedCallersOnly]
+    internal static IntPtr unwrapTransparentAbstraction(IntPtr self) => self;
 }

@@ -269,7 +269,7 @@ mint_itf_initialize(MintAbstractionNativeAot* newitf)
     // TODO: these should all be set from managed
 
     newitf->get_default_byval_type_void = mint_get_default_byval_type_void;
-    newitf->get_MonoMethod_inst = UNWRAP_FN_NAME(MonoMethod);
+    // newitf->get_MonoMethod_inst = UNWRAP_FN_NAME(MonoMethod);
     newitf->get_MonoMethodHeader_inst = UNWRAP_FN_NAME(MonoMethodHeader);
     newitf->get_MonoMethodSignature_inst = UNWRAP_FN_NAME(MonoMethodSignature);
 

@@ -26,6 +26,8 @@ internal static class Mint
         unsafe
         {
             Internal.Mint.Abstraction.Itf* itf = globalMemoryManager.Allocate<Internal.Mint.Abstraction.Itf>();
+            itf->get_MonoType_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
+            itf->get_MonoMethod_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
             // TODO: initialize members of itf with function pointers that implement the stuff that
             // the interpreter needs.  See mint-itf.c for the native placeholder implementation
             mint_entrypoint(itf);
