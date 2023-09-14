@@ -131,14 +131,16 @@ void Llvm::initializeFunclets()
         EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
         if (ehDsc->HasFilter())
         {
-            ehDsc->endFilterFuncIndex = funcIdx++;
-            FuncInfoDsc* funcInfo = _compiler->funGetFunc(ehDsc->endFilterFuncIndex);
+            // Filters are funclets because they must be invokable by the first pass.
+            ehDsc->ebdFilterFuncIndex = funcIdx++;
+            FuncInfoDsc* funcInfo = _compiler->funGetFunc(ehDsc->ebdFilterFuncIndex);
             funcInfo->funKind = FUNC_FILTER;
             funcInfo->funEHIndex = ehIndex;
         }
 
-        if (ehDsc->HasFinallyOrFaultHandler())
+        if (ehDsc->HasFinallyHandler())
         {
+            // Finallys are funclets because they have multiple (EH and normal) entries and exits.
             ehDsc->ebdFuncIndex = funcIdx++;
             FuncInfoDsc* funcInfo = _compiler->funGetFunc(ehDsc->ebdFuncIndex);
             funcInfo->funKind = FUNC_HANDLER;
@@ -1816,7 +1818,6 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
 
     return PhaseStatus::MODIFIED_EVERYTHING;
 }
-
 
 void Llvm::computeBlocksInFilters()
 {

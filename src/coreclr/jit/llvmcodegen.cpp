@@ -108,11 +108,6 @@ void Llvm::initializeFunctions()
             llvmFunc = Function::Create(llvmFuncType, Function::InternalLinkage,
                                         mangledName + Twine("$F") + Twine(funcIdx) + "_" + kindName,
                                         &m_context->Module);
-            if (!ehDsc->HasFinallyHandler())
-            {
-                // Always inline funclets that will have exactly one callsite.
-                llvmFunc->addFnAttr(llvm::Attribute::AlwaysInline);
-            }
         }
         else
         {
@@ -316,7 +311,6 @@ void Llvm::generateUnwindBlocks()
 
     struct FunctionData
     {
-        llvm::BasicBlock* ResumeLlvmBlock;
         llvm::BasicBlock* InsertBeforeLlvmBlock;
         llvm::AllocaInst* CppExcTupleAlloca;
     };
@@ -328,11 +322,6 @@ void Llvm::generateUnwindBlocks()
     CorInfoLlvmEHModel model = m_ehModel;
     llvm::Constant* nullValue = llvm::Constant::getNullValue(ptrLlvmType);
     Function* personalityLlvmFunc = getOrCreatePersonalityLlvmFunction(m_ehModel);
-    Function* wasmRethrowLlvmFunc = nullptr;
-    if (model == CorInfoLlvmEHModel::Wasm)
-    {
-        wasmRethrowLlvmFunc = llvm::Intrinsic::getDeclaration(&m_context->Module, llvm::Intrinsic::wasm_rethrow);
-    }
     Function* cppBeginCatchFunc = nullptr;
     if (model == CorInfoLlvmEHModel::Cpp)
     {
@@ -418,6 +407,7 @@ void Llvm::generateUnwindBlocks()
         //   return 0; // Return "zero" of the appropriate type.
         //
         // Create the C++ exception data alloca, to store the active landing pad value.
+        FunctionInfo& funcInfo = getLlvmFunctionInfoForIndex(funcIdx);
         llvm::AllocaInst* cppExcTupleAlloca = funcData.CppExcTupleAlloca;
         if ((model == CorInfoLlvmEHModel::Cpp) && (cppExcTupleAlloca == nullptr))
         {
@@ -430,11 +420,10 @@ void Llvm::generateUnwindBlocks()
         }
 
         // Generate the resume block needed in the C++ and emulated models.
-        llvm::BasicBlock* resumeLlvmBlock = funcData.ResumeLlvmBlock;
-        if ((resumeLlvmBlock == nullptr) &&
+        if ((funcInfo.ResumeLlvmBlock == nullptr) &&
             ((model == CorInfoLlvmEHModel::Cpp) || (model == CorInfoLlvmEHModel::Emulated)))
         {
-            resumeLlvmBlock =
+            llvm::BasicBlock* resumeLlvmBlock =
                 llvm::BasicBlock::Create(m_context->Context, "BBRE", llvmFunc, funcData.InsertBeforeLlvmBlock);
             LlvmBlockRange resumeLlvmBlocks(resumeLlvmBlock);
             setCurrentEmitContext(
@@ -454,7 +443,7 @@ void Llvm::generateUnwindBlocks()
                 _builder.CreateBr(exceptionReturnLlvmBlock);
             }
 
-            funcData.ResumeLlvmBlock = resumeLlvmBlock;
+            funcInfo.ResumeLlvmBlock = resumeLlvmBlock;
             funcData.InsertBeforeLlvmBlock = resumeLlvmBlock;
         }
 
@@ -464,7 +453,6 @@ void Llvm::generateUnwindBlocks()
         _builder.SetCurrentDebugLocation(unwindBlocksDebugLoc);
 
         // Set up entry to the native "catch".
-        llvm::BasicBlock* outerUnwindLlvmBlock = getUnwindLlvmBlockForCurrentInvoke();
         if ((model == CorInfoLlvmEHModel::Cpp) || (model == CorInfoLlvmEHModel::Emulated))
         {
             if (model == CorInfoLlvmEHModel::Cpp)
@@ -498,6 +486,7 @@ void Llvm::generateUnwindBlocks()
             {
                 enclosingPad = llvm::ConstantTokenNone::get(m_context->Context);
             }
+            llvm::BasicBlock* outerUnwindLlvmBlock = getUnwindLlvmBlockForCurrentInvoke();
             llvm::CatchSwitchInst* catchSwitchInst = _builder.CreateCatchSwitch(enclosingPad, outerUnwindLlvmBlock, 1);
 
             llvm::BasicBlock* catchPadLlvmBlock = createInlineLlvmBlock();
@@ -511,34 +500,6 @@ void Llvm::generateUnwindBlocks()
             // the general case, "exit" C call and thus "Environment.Exit" use them and so are exempted.
             _builder.CreateIntrinsic(llvm::Intrinsic::wasm_get_exception, {}, catchPadInst);
         }
-
-        if (((model == CorInfoLlvmEHModel::Cpp) || (model == CorInfoLlvmEHModel::Emulated)) &&
-            (outerUnwindLlvmBlock != nullptr))
-        {
-            // We have the "unwind" block. Since we're generating things from outer to inner, we already have its
-            // "local" counterpart; it will be the next block.
-            outerUnwindLlvmBlock = outerUnwindLlvmBlock->getNextNode();
-            assert(outerUnwindLlvmBlock != nullptr);
-        }
-
-        // For inner dispatch, jump to the outer one if the handler returned "continue search". Faults / finallys cannot
-        // satisfy the first-pass search and so for them this jump is unconditional. In the Wasm model, the jump is done
-        // via rethrow and so the top-level dispatch does not have to be handled specially.
-        auto emitJmpToOuterDispatch = [=]() {
-            if (model == CorInfoLlvmEHModel::Wasm)
-            {
-                emitCallOrInvoke(wasmRethrowLlvmFunc, {});
-                _builder.CreateUnreachable();
-            }
-            else if (outerUnwindLlvmBlock != nullptr)
-            {
-                _builder.CreateBr(outerUnwindLlvmBlock);
-            }
-            else
-            {
-                _builder.CreateBr(resumeLlvmBlock);
-            }
-        };
 
         // Eagerly initialize the unwind block to emit calls below.
         getEHRegionInfo(ehIndex).UnwindBlock = unwindLlvmBlock;
@@ -578,7 +539,7 @@ void Llvm::generateUnwindBlocks()
 
                     continueUnwindLlvmBlock = createInlineLlvmBlock();
                     _builder.SetInsertPoint(continueUnwindLlvmBlock);
-                    emitJmpToOuterDispatch();
+                    emitUnwindToOuterHandler();
 
                     _builder.SetInsertPoint(currentLlvmBlock);
                 }
@@ -602,26 +563,15 @@ void Llvm::generateUnwindBlocks()
 
             ehIndex = innerEHIndex;
         }
+        else if (ehDsc->HasFinallyHandler())
+        {
+            emitCallOrInvoke(getLlvmFunctionForIndex(ehDsc->ebdFuncIndex), getShadowStack());
+            emitUnwindToOuterHandlerFromFault();
+        }
         else
         {
-            // Unlike catches, fault-like handlers can only be made unreachable together with their protected regions.
-            assert(ehDsc->HasFinallyOrFaultHandler() && isReachable(ehDsc->ebdHndBeg));
-
-            Function* hndLlvmFunc = getLlvmFunctionForIndex(ehDsc->ebdFuncIndex);
-            emitCallOrInvoke(hndLlvmFunc, getShadowStack());
-
-            // Pop the virtual unwind frame if this is the outermost fault that uses the unwind index.
-            if ((m_unwindIndexMap != nullptr) && (m_unwindIndexMap->Bottom(ehIndex) == UNWIND_INDEX_NOT_IN_TRY_CATCH))
-            {
-                if ((ehDsc->ebdEnclosingTryIndex == EHblkDsc::NO_ENCLOSING_INDEX) ||
-                    (m_unwindIndexMap->Bottom(ehDsc->ebdEnclosingTryIndex) != UNWIND_INDEX_NOT_IN_TRY_CATCH))
-                {
-                    assert((ehDsc->ebdEnclosingTryIndex == EHblkDsc::NO_ENCLOSING_INDEX) ||
-                           (m_unwindIndexMap->Bottom(ehDsc->ebdEnclosingTryIndex) == UNWIND_INDEX_NOT_IN_TRY));
-                    emitHelperCall(CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES);
-                }
-            }
-            emitJmpToOuterDispatch();
+            assert(ehDsc->HasFaultHandler());
+            _builder.CreateBr(getFirstLlvmBlockForBlock(ehDsc->ebdHndBeg));
         }
 
         funcData.InsertBeforeLlvmBlock = unwindLlvmBlocks.FirstBlock;
@@ -657,10 +607,7 @@ void Llvm::generateBlocks()
         // Walk all the exceptional code blocks and generate them since they don't appear in the normal flow graph.
         for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
         {
-            if (add->acdDstBlk->bbEmitCookie != nullptr)
-            {
-                generateBlock(add->acdDstBlk);
-            }
+            generateThrowHelperBlock(add->acdDstBlk);
         }
     }
     else
@@ -671,6 +618,25 @@ void Llvm::generateBlocks()
             generateBlock(block);
         }
     }
+}
+
+void Llvm::generateThrowHelperBlock(BasicBlock* block)
+{
+    if (block->bbEmitCookie == nullptr)
+    {
+        return;
+    }
+
+    LlvmBlockRange* llvmBlocks = getLlvmBlocksForBlock(block);
+    llvm::BasicBlock* llvmBlock = llvmBlocks->FirstBlock;
+    if (llvmBlock->hasNPredecessors(0))
+    {
+        assert(llvmBlock->empty() && (llvmBlocks->Count == 1));
+        llvmBlock->eraseFromParent();
+        return;
+    }
+
+    generateBlock(block);
 }
 
 void Llvm::generateBlock(BasicBlock* block)
@@ -696,13 +662,11 @@ void Llvm::generateBlock(BasicBlock* block)
         case BBJ_THROW:
             _builder.CreateUnreachable();
             break;
-        case BBJ_EHFINALLYRET:
         case BBJ_EHFAULTRET:
             // "fgCreateMonitorTree" forgets to insert RETFILT nodes for some faults. Compensate.
             if (!block->lastNode()->OperIs(GT_RETFILT))
             {
-                assert(block->bbCatchTyp == BBCT_FAULT);
-                _builder.CreateRetVoid();
+                emitUnwindToOuterHandlerFromFault();
             }
             break;
         case BBJ_EHCATCHRET:
@@ -2072,6 +2036,12 @@ void Llvm::buildReturn(GenTree* node)
 {
     assert(node->OperIs(GT_RETURN, GT_RETFILT));
 
+    if (node->OperIs(GT_RETFILT) && _compiler->ehGetBlockHndDsc(CurrentBlock())->HasFaultHandler())
+    {
+        emitUnwindToOuterHandlerFromFault();
+        return;
+    }
+
     if (node->OperIs(GT_RETURN) && _compiler->opts.IsReversePInvoke())
     {
         emitHelperCall(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP, getShadowStack());
@@ -2773,6 +2743,55 @@ llvm::BasicBlock* Llvm::getUnwindLlvmBlockForCurrentInvoke()
     return catchLlvmBlock;
 }
 
+void Llvm::emitUnwindToOuterHandler()
+{
+    if (m_ehModel == CorInfoLlvmEHModel::Wasm)
+    {
+        Function* wasmRethrowLlvmFunc =
+            llvm::Intrinsic::getDeclaration(&m_context->Module, llvm::Intrinsic::wasm_rethrow);
+        emitCallOrInvoke(wasmRethrowLlvmFunc);
+        _builder.CreateUnreachable();
+    }
+    else
+    {
+        llvm::BasicBlock* outerUnwindLlvmBlock = getUnwindLlvmBlockForCurrentInvoke();
+        if (outerUnwindLlvmBlock != nullptr)
+        {
+            // We have the "native" handler entry; use its immediate successor for "local" unwind.
+            outerUnwindLlvmBlock = outerUnwindLlvmBlock->getNextNode();
+            assert(outerUnwindLlvmBlock != nullptr);
+            _builder.CreateBr(outerUnwindLlvmBlock);
+        }
+        else
+        {
+            llvm::BasicBlock* resumeLlvmBlock =
+                getLlvmFunctionInfoForIndex(getCurrentLlvmFunctionIndex()).ResumeLlvmBlock;
+            assert(resumeLlvmBlock != nullptr);
+            _builder.CreateBr(resumeLlvmBlock);
+        }
+    }
+}
+
+void Llvm::emitUnwindToOuterHandlerFromFault()
+{
+    unsigned ehIndex = getCurrentHandlerIndex();
+    EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
+    assert(ehDsc->HasFinallyOrFaultHandler());
+
+    // Pop the virtual unwind frame if this is the outermost fault that uses the unwind index.
+    if ((m_unwindIndexMap != nullptr) && (m_unwindIndexMap->Bottom(ehIndex) == UNWIND_INDEX_NOT_IN_TRY_CATCH))
+    {
+        if ((ehDsc->ebdEnclosingTryIndex == EHblkDsc::NO_ENCLOSING_INDEX) ||
+            (m_unwindIndexMap->Bottom(ehDsc->ebdEnclosingTryIndex) != UNWIND_INDEX_NOT_IN_TRY_CATCH))
+        {
+            assert((ehDsc->ebdEnclosingTryIndex == EHblkDsc::NO_ENCLOSING_INDEX) ||
+                   (m_unwindIndexMap->Bottom(ehDsc->ebdEnclosingTryIndex) == UNWIND_INDEX_NOT_IN_TRY));
+            emitHelperCall(CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES);
+        }
+    }
+    emitUnwindToOuterHandler();
+}
+
 Function* Llvm::getOrCreatePersonalityLlvmFunction(CorInfoLlvmEHModel ehModel)
 {
     switch (ehModel)
@@ -3040,7 +3059,7 @@ unsigned Llvm::getLlvmFunctionIndexForBlock(BasicBlock* block) const
     if (block->hasHndIndex())
     {
         EHblkDsc* ehDsc = _compiler->ehGetDsc(block->getHndIndex());
-        funcIdx = isBlockInFilter(block) ? ehDsc->endFilterFuncIndex : ehDsc->ebdFuncIndex;
+        funcIdx = isBlockInFilter(block) ? ehDsc->ebdFilterFuncIndex : ehDsc->ebdFuncIndex;
     }
 
     return funcIdx;
