@@ -35,7 +35,7 @@ namespace HelloMint
         {
             if (voidVoidSample)
             {
-                ilgen.Emit(OpCodes.Ldc_I4_S, (byte)42);
+                ilgen.Emit(OpCodes.Ldc_I4_S, (byte)23);
                 ilgen.Emit(OpCodes.Pop);
                 ilgen.Emit(OpCodes.Ret);
 

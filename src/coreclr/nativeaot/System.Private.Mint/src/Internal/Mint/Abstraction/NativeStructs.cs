@@ -26,7 +26,7 @@ public unsafe struct MonoMethodSignatureInstanceAbstractionNativeAot
     public int param_count;
     public byte hasthis;
 
-    public IntPtr ret_ult; // MonoType * (*ret_ult)(MonoMethodSignature *self);
+    public delegate* unmanaged<MonoMethodSignatureInstanceAbstractionNativeAot*, MonoTypeInstanceAbstractionNativeAot*> ret_ult; // MonoType * (*ret_ult)(MonoMethodSignature *self);
 
     public IntPtr gcHandle;
 }
@@ -41,10 +41,17 @@ public unsafe struct MonoMethodHeaderInstanceAbstractionNativeAot
     public byte init_locals;
 
     public IntPtr get_local_sig; // MonoType * (*get_local_sig)(MonoMethodHeader *self, int32_t i);
-    // TODO: this will likely pin something in managed.  Figure out a way to tell us when it's safe to unpin
-    public IntPtr get_code; // const uint8_t * (*get_code)(MonoMethodHeader *self);
-    public IntPtr get_ip_offset; // int32_t (*get_ip_offset)(MonoMethodHeader *self, const uint8_t *ip);
+    public delegate* unmanaged<MonoMethodHeaderInstanceAbstractionNativeAot*, byte*> get_code; // const uint8_t * (*get_code)(MonoMethodHeader *self);
+    public delegate* unmanaged<MonoMethodHeaderInstanceAbstractionNativeAot*, byte*, int> get_ip_offset; // int32_t (*get_ip_offset)(MonoMethodHeader *self, const uint8_t *ip);
 
+
+    public IntPtr gcHandle;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public unsafe struct MonoTypeInstanceAbstractionNativeAot
+{
+    public int type_code; // FIXME this could be a byte. it's just CorElementType
 
     public IntPtr gcHandle;
 }

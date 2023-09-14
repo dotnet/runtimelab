@@ -7,21 +7,16 @@
 
 #include "mint-itf.h"
 
-struct _MonoType {
-    MonoGCHandle gchandle;
-    MonoTypeEnum type;
-};
-
 static MonoType*
 mint_get_default_byval_type_void(void)
 {
     static _Atomic(MonoType *) stored_type = NULL;
     MonoType *type;
     while (G_UNLIKELY(!(type = atomic_load(&stored_type)))) {
-        MonoType *newtype = g_new0(MonoType, 1);
-        newtype->type = MONO_TYPE_VOID;
+        MonoTypeInstanceAbstractionNativeAot *newtype = g_new0(MonoTypeInstanceAbstractionNativeAot, 1);
+        newtype->type_code = MONO_TYPE_VOID;
         MonoType *expected= NULL;
-        if (!atomic_compare_exchange_weak(&stored_type, &expected, newtype)) {
+        if (!atomic_compare_exchange_weak(&stored_type, &expected, (MonoType*)newtype)) {
             g_free (newtype);
         }
     }
@@ -34,84 +29,14 @@ mint_get_default_byval_type_int32(void)
     static _Atomic(MonoType *) stored_type = NULL;
     MonoType *type;
     while (G_UNLIKELY(!(type = atomic_load(&stored_type)))) {
-        MonoType *newtype = g_new0(MonoType, 1);
-        newtype->type = MONO_TYPE_I4;
+        MonoTypeInstanceAbstractionNativeAot *newtype = g_new0(MonoTypeInstanceAbstractionNativeAot, 1);
+        newtype->type_code = MONO_TYPE_I4;
         MonoType *expected= NULL;
-        if (!atomic_compare_exchange_weak(&stored_type, &expected, newtype)) {
+        if (!atomic_compare_exchange_weak(&stored_type, &expected, (MonoType*)newtype)) {
             g_free (newtype);
         }
     }
     return type;
-}
-
-static MonoType*
-mint_method_signature_abstraction_ret_ult(MonoMethodSignature *self)
-{
-    // TODO
-    return mint_get_default_byval_type_void();
-}
-
-
-
-static MonoMethodSignature *
-mint_method_abstraction_placeholder_get_signature (MonoMethod *self)
-{
-    static _Atomic(MonoMethodSignatureInstanceAbstractionNativeAot *) stored_signature = NULL;
-    MonoMethodSignatureInstanceAbstractionNativeAot *signature;
-    while (G_UNLIKELY(!(signature = atomic_load(&stored_signature)))) {
-        MonoMethodSignatureInstanceAbstractionNativeAot *newsignature = g_new0(MonoMethodSignatureInstanceAbstractionNativeAot, 1);
-        newsignature->param_count = 0;
-        newsignature->hasthis = 0;
-        newsignature->ret_ult = &mint_method_signature_abstraction_ret_ult;
-        MonoMethodSignatureInstanceAbstractionNativeAot *expected= NULL;
-        if (!atomic_compare_exchange_weak(&stored_signature, &expected, newsignature)) {
-            g_free (newsignature);
-        }
-    }
-    return (MonoMethodSignature*)signature;
-}
-
-static uint8_t placeholder_code_bytes[] = {
-    // the placeholder method is:
-    0x1F, 0x2A, // (ldc.i4.s 42)
-    0x26, // (pop)
-    0x2A, // (ret)
-};
-
-
-static const uint8_t *
-mint_method_abstraction_placeholder_get_code (MonoMethodHeader *self)
-{
-    return &placeholder_code_bytes[0];
-}
-
-static int32_t
-mint_method_abstraction_placeholder_get_ip_offset (MonoMethodHeader *self, const uint8_t *ip)
-{
-    return ip - &placeholder_code_bytes[0];
-}
-
-static MonoMethodHeader *
-mint_method_abstraction_placeholder_get_header(MonoMethod *self)
-{
-    static _Atomic(MonoMethodHeaderInstanceAbstractionNativeAot *) stored_header = NULL;
-    MonoMethodHeaderInstanceAbstractionNativeAot *header;
-    while (G_UNLIKELY(!(header = atomic_load(&stored_header)))) {
-        MonoMethodHeaderInstanceAbstractionNativeAot *newheader = g_new0(MonoMethodHeaderInstanceAbstractionNativeAot, 1);
-        newheader->code_size = 4; // see mint_method_abstraction_placeholder_get_code
-        newheader->max_stack = 8; // it's really 1, but pretend like we're a tiny ECMA335 header
-        newheader->num_locals = 0;
-        newheader->num_clauses = 0;
-        newheader->init_locals = 0;
-        newheader->get_local_sig = NULL;
-        newheader->get_code = &mint_method_abstraction_placeholder_get_code;
-        newheader->get_ip_offset = &mint_method_abstraction_placeholder_get_ip_offset;
-        MonoMethodHeaderInstanceAbstractionNativeAot *expected= NULL;
-        if (!atomic_compare_exchange_weak(&stored_header, &expected, newheader)) {
-            g_free (newheader);
-        }
-    }
-    return (MonoMethodHeader*)header;
 }
 
 void
@@ -122,24 +47,6 @@ mono_metadata_free_mh (MonoMethodHeader *header) {
     // header to multiple callers
  }
 
-
-MonoMethodInstanceAbstractionNativeAot *mint_method_abstraction_placeholder(void)
-{
-    static _Atomic(MonoMethodInstanceAbstractionNativeAot *) stored_method = NULL;
-    MonoMethodInstanceAbstractionNativeAot *method;
-    while (G_UNLIKELY(!(method = atomic_load(&stored_method)))) {
-        MonoMethodInstanceAbstractionNativeAot *newmethod = g_new0(MonoMethodInstanceAbstractionNativeAot, 1);
-        newmethod->name = "placeholder";
-        newmethod->klass = NULL;
-        newmethod->get_signature = &mint_method_abstraction_placeholder_get_signature;
-        newmethod->get_header = &mint_method_abstraction_placeholder_get_header;
-        MonoMethodInstanceAbstractionNativeAot *expected= NULL;
-        if (!atomic_compare_exchange_weak(&stored_method, &expected, newmethod)) {
-            g_free (newmethod);
-        }
-    }
-    return method;
-}
 
 // FIXME: this belongs in the transform abstraction
 #define STACK_TYPE_I4 0
@@ -176,33 +83,6 @@ mint_get_type_from_stack (int type, MonoClass *klass)
 		default:
             g_error ("can't handle stack type %d", type);
 	}
-}
-
-// FIXME: this doesn't belong here
-#define MINT_TYPE_I1 0
-#define MINT_TYPE_U1 1
-#define MINT_TYPE_I2 2
-#define MINT_TYPE_U2 3
-#define MINT_TYPE_I4 4
-#define MINT_TYPE_I8 5
-#define MINT_TYPE_R4 6
-#define MINT_TYPE_R8 7
-#define MINT_TYPE_O  8
-#define MINT_TYPE_VT 9
-#define MINT_TYPE_VOID 10
-
-
-static int
-mint_get_mint_type_from_type(MonoType *type)
-{
-    // see the mono mono_mint_get_type
-    // in particular, byref is a MONO_TYPE_I, not a MONO_TYPE_BYREF
-    switch (type->type) {
-        case MONO_TYPE_I4: return MINT_TYPE_I4;
-        case MONO_TYPE_VOID: return MINT_TYPE_VOID;
-        default:
-            g_error("can't handle MonoTypeEnum value %d", type->type);
-    }
 }
 
 gpointer
@@ -260,7 +140,6 @@ mint_itf_initialize(MintAbstractionNativeAot* newitf)
     newitf->get_default_byval_type_void = mint_get_default_byval_type_void;
 
     newitf->get_type_from_stack = &mint_get_type_from_stack;
-    newitf->mono_mint_type = &mint_get_mint_type_from_type;
 
     newitf->imethod_alloc0 = &mint_imethod_alloc0;
 

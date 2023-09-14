@@ -3,6 +3,7 @@
 
 typedef struct _MonoTypeInstanceAbstractionNativeAot {
     int32_t type_code;
+    MonoGCHandle gcHandle;
 } MonoTypeInstanceAbstractionNativeAot;
 
 typedef struct _MonoMethodInstanceAbstractionNativeAot {
@@ -11,6 +12,8 @@ typedef struct _MonoMethodInstanceAbstractionNativeAot {
 
     MonoMethodSignature *(*get_signature)(MonoMethod *self);
     MonoMethodHeader *(*get_header)(MonoMethod *self);
+
+    MonoGCHandle gcHandle;
 } MonoMethodInstanceAbstractionNativeAot;
 
 typedef struct _MonoMethodHeaderInstanceAbstractionNativeAot MonoMethodHeaderInstanceAbstractionNativeAot;
@@ -25,6 +28,8 @@ struct _MonoMethodHeaderInstanceAbstractionNativeAot {
     // TODO: this will likely pin something in managed.  Figure out a way to tell us when it's safe to unpin
     const uint8_t * (*get_code)(MonoMethodHeader *self);
     int32_t (*get_ip_offset)(MonoMethodHeader *self, const uint8_t *ip);
+
+    MonoGCHandle gcHandle;
 } ;
 
 typedef struct _MonoMethodSignatureInstanceAbstractionNativeAot MonoMethodSignatureInstanceAbstractionNativeAot;
@@ -33,6 +38,8 @@ struct _MonoMethodSignatureInstanceAbstractionNativeAot {
     int8_t hasthis;
 
     MonoType * (*ret_ult)(MonoMethodSignature *self);
+
+    MonoGCHandle gcHandle;
 };
 
 typedef struct _TransformData TransformData; // FIXME: separate the interp-aware abstractions from the metadata ones

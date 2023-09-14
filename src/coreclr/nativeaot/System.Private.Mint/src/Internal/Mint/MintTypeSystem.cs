@@ -16,9 +16,11 @@ public sealed class MintTypeSystem
 {
     private readonly MemoryManager _memoryMananger;
     private readonly object _lock = new();
+    private readonly Dictionary<RuntimeType, MonoTypePtr> _types = new();
     private readonly Dictionary<MethodBase, MonoMethodPtr> _methods = new();
     private readonly Dictionary<MethodBase, MonoMethodSignaturePtr> _signatures = new();
     private readonly Dictionary<MethodBase, MonoMethodHeaderPtr> _headers = new();
+    private readonly Dictionary<DynamicMethod, OwnedIL> _ilBytes = new();
 
     public MintTypeSystem(MemoryManager memoryManager)
     {
@@ -36,6 +38,18 @@ public sealed class MintTypeSystem
             method = CreateMonoMethodPointerDynMethodImpl(dynamicMethod);
             _methods.Add(dynamicMethod, method);
             return method;
+        }
+    }
+
+    internal MonoTypePtr GetMonoType(RuntimeType runtimeType)
+    {
+        lock (_lock)
+        {
+            if (_types.TryGetValue(runtimeType, out var type))
+                return type;
+            type = CreateMonoTypeRuntimeTypeImpl(runtimeType);
+            _types.Add(runtimeType, type);
+            return type;
         }
     }
 
@@ -63,6 +77,18 @@ public sealed class MintTypeSystem
         }
     }
 
+    private OwnedIL GetILBytes(OwnedDynamicMethod dynamicMethod)
+    {
+        lock (_lock)
+        {
+            if (_ilBytes.TryGetValue(dynamicMethod.DynamicMethod, out var ilBytes))
+                return ilBytes;
+            ilBytes = OwnedIL.CreateCopy(dynamicMethod.DynamicMethod.GetIL(), _memoryMananger);
+            _ilBytes.Add(dynamicMethod.DynamicMethod, ilBytes);
+            return ilBytes;
+        }
+    }
+
     private unsafe MonoMethodPtr CreateMonoMethodPointerDynMethodImpl(DynamicMethod dynamicMethod)
     {
         var s = new Internal.Mint.Abstraction.MonoMethodInstanceAbstractionNativeAot
@@ -84,9 +110,9 @@ public sealed class MintTypeSystem
         // as Mono can allocate and free signatures independently of the method
         var s = new Internal.Mint.Abstraction.MonoMethodSignatureInstanceAbstractionNativeAot
         {
-            param_count = dynamicMethod.DynamicMethod.GetParameters().Length,
-            hasthis = dynamicMethod.DynamicMethod.IsStatic ? (byte)0 : (byte)1,
-            ret_ult = IntPtr.Zero, // TODO
+            param_count = 0, // FIXME: dynamicMethod.DynamicMethod.GetParameters().Length,
+            hasthis = (byte)0, //FIXME: this doesn't work (returns 1): dynamicMethod.DynamicMethod.IsStatic ? (byte)0 : (byte)1,
+            ret_ult = &VTables.monoMethodSignatureGetReturnTypeUnderlyingTypeImpl,
             gcHandle = GCHandle.ToIntPtr(_memoryMananger.Own(dynamicMethod))
         };
         var ptr = _memoryMananger.Allocate<Internal.Mint.Abstraction.MonoMethodSignatureInstanceAbstractionNativeAot>();
@@ -98,14 +124,14 @@ public sealed class MintTypeSystem
     {
         var s = new Internal.Mint.Abstraction.MonoMethodHeaderInstanceAbstractionNativeAot
         {
-            code_size = 0, // TODO
+            code_size = ownedDynamicMethod.DynamicMethod.GetIL().Length,
             max_stack = 0, // TODO
             num_locals = 0, // TODO
             num_clauses = 0, // TODO
             init_locals = 0, // TODO
             get_local_sig = IntPtr.Zero, // TODO
-            get_code = IntPtr.Zero, // TODO
-            get_ip_offset = IntPtr.Zero, // TODO
+            get_code = &VTables.methodHeaderGetCodeImpl, // TODO
+            get_ip_offset = &VTables.methodHeaderGetIPOffset, // TODO
             gcHandle = GCHandle.ToIntPtr(_memoryMananger.Own(ownedDynamicMethod))
         };
         var ptr = _memoryMananger.Allocate<Internal.Mint.Abstraction.MonoMethodHeaderInstanceAbstractionNativeAot>();
@@ -113,8 +139,40 @@ public sealed class MintTypeSystem
         return new MonoMethodHeaderPtr(ptr);
     }
 
+    private unsafe MonoTypePtr CreateMonoTypeRuntimeTypeImpl(RuntimeType runtimeType)
+    {
+        var s = new Internal.Mint.Abstraction.MonoTypeInstanceAbstractionNativeAot
+        {
+            type_code = (int)runtimeType.GetCorElementType(),
+            gcHandle = GCHandle.ToIntPtr(_memoryMananger.Own(runtimeType))
+        };
+        var ptr = _memoryMananger.Allocate<Internal.Mint.Abstraction.MonoTypeInstanceAbstractionNativeAot>();
+        *ptr = s;
+        return new MonoTypePtr(ptr);
+    }
+
     private sealed record OwnedDynamicMethod(DynamicMethod DynamicMethod, MintTypeSystem Owner);
 
+    private sealed class OwnedIL
+    {
+        private unsafe OwnedIL(byte* pinnedILBytes, uint length, MemoryManager memoryManager)
+        {
+            PinnedILBytes = pinnedILBytes;
+            Length = length;
+            MemoryManager = memoryManager;
+        }
+
+        public static unsafe OwnedIL CreateCopy(ReadOnlySpan<byte> bytes, MemoryManager manager)
+        {
+            uint length = (uint)bytes.Length;
+            var pinnedILBytes = (byte*)manager.Allocate(length);
+            bytes.CopyTo(new Span<byte>(pinnedILBytes, bytes.Length));
+            return new OwnedIL(pinnedILBytes, length, manager);
+        }
+        public unsafe byte* PinnedILBytes { get; }
+        public uint Length { get; }
+        public MemoryManager MemoryManager { get; }
+    }
     private static T Unpack<T>(IntPtr ptr) where T : class
     {
         return GCHandle.FromIntPtr(ptr).Target as T;
@@ -134,6 +192,33 @@ public sealed class MintTypeSystem
         {
             var owned = Unpack<OwnedDynamicMethod>(method->gcHandle);
             return owned.Owner.GetMonoMethodHeader(owned).Value;
+        }
+
+        [UnmanagedCallersOnly]
+        public static unsafe byte* methodHeaderGetCodeImpl(MonoMethodHeaderInstanceAbstractionNativeAot* header)
+        {
+            var owned = Unpack<OwnedDynamicMethod>(header->gcHandle);
+            return owned.Owner.GetILBytes(owned).PinnedILBytes;
+        }
+
+        [UnmanagedCallersOnly]
+        public static unsafe int methodHeaderGetIPOffset(MonoMethodHeaderInstanceAbstractionNativeAot* header, byte* ip)
+        {
+            var owned = Unpack<OwnedDynamicMethod>(header->gcHandle);
+            var ilBytes = owned.Owner.GetILBytes(owned);
+            var offset = (int)(ip - ilBytes.PinnedILBytes);
+            return offset;
+        }
+
+        [UnmanagedCallersOnly]
+        public static unsafe MonoTypeInstanceAbstractionNativeAot* monoMethodSignatureGetReturnTypeUnderlyingTypeImpl(MonoMethodSignatureInstanceAbstractionNativeAot* signature)
+        {
+            var owned = Unpack<OwnedDynamicMethod>(signature->gcHandle);
+            var returnType = owned.DynamicMethod.ReturnType;
+            if (returnType.IsEnum)
+                returnType = Enum.GetUnderlyingType(returnType);
+            var type = owned.Owner.GetMonoType((RuntimeType)returnType);
+            return type.Value;
         }
     }
 }

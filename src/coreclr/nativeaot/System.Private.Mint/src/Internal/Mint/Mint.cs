@@ -38,6 +38,8 @@ internal static class Mint
         itf->get_MonoMethod_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
         itf->get_MonoMethodHeader_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
         itf->get_MonoMethodSignature_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
+
+        itf->mono_mint_type = &Internal.Mint.Abstraction.Itf.mintGetMintTypeFromMonoType;
         // TODO: initialize members of itf with function pointers that implement the stuff that
         // the interpreter needs.  See mint-itf.c for the native placeholder implementation
         return itf;
