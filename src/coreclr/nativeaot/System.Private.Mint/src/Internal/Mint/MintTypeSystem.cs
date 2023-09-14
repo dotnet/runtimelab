@@ -22,9 +22,17 @@ public sealed class MintTypeSystem
     private readonly Dictionary<MethodBase, MonoMethodHeaderPtr> _headers = new();
     private readonly Dictionary<DynamicMethod, OwnedIL> _ilBytes = new();
 
+    private readonly MintTypeSystem _parent;
+
     public MintTypeSystem(MemoryManager memoryManager)
     {
         _memoryMananger = memoryManager;
+    }
+
+    public MintTypeSystem(MemoryManager memoryManager, MintTypeSystem parent)
+    {
+        _memoryMananger = memoryManager;
+        _parent = parent;
     }
 
     internal MemoryManager MemoryManager => _memoryMananger;
@@ -43,9 +51,11 @@ public sealed class MintTypeSystem
 
     internal MonoTypePtr GetMonoType(RuntimeType runtimeType)
     {
+        if (_parent != null && _parent._types.TryGetValue(runtimeType, out var type))
+            return type;
         lock (_lock)
         {
-            if (_types.TryGetValue(runtimeType, out var type))
+            if (_types.TryGetValue(runtimeType, out type))
                 return type;
             type = CreateMonoTypeRuntimeTypeImpl(runtimeType);
             _types.Add(runtimeType, type);

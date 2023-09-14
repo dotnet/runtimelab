@@ -16,7 +16,7 @@ internal unsafe struct Itf
     public IntPtr /* MonoImage **/ placeholder_image;
 
     /* transform.c */
-    public IntPtr get_type_from_stack; //MonoType * (*get_type_from_stack) (int type, MonoClass *klass);
+    public delegate* unmanaged<int, IntPtr, MonoTypeInstanceAbstractionNativeAot*> get_type_from_stack; //MonoType * (*get_type_from_stack) (int type, MonoClass *klass);
     public delegate* unmanaged<MonoTypeInstanceAbstractionNativeAot*, int> mono_mint_type; // int (*mono_mint_type) (MonoType *type);
     public IntPtr get_arg_type_exact; // MonoType *(*get_arg_type_exact) (TransformData *td, int n, int *mt);
     public IntPtr type_has_references; // gboolean (*type_has_references)(MonoType *type);
@@ -26,8 +26,8 @@ internal unsafe struct Itf
     public IntPtr interp_get_method; // MonoMethod* (*interp_get_method) (MonoMethod *method, guint32 token, MonoImage *image, MonoGenericContext *generic_context, MonoError *error);
 
     /* mono_defaults */
-    public delegate* unmanaged<IntPtr/*MonoType**/> get_default_byval_type_void; // MonoType * (*get_default_byval_type_void)(void);
-    public delegate* unmanaged<IntPtr/*MonoType**/> get_default_byval_type_int; // MonoType * (*get_default_byval_type_int)(void);
+    public delegate* unmanaged<MonoTypeInstanceAbstractionNativeAot*> get_default_byval_type_void; // MonoType * (*get_default_byval_type_void)(void);
+    public delegate* unmanaged<MonoTypeInstanceAbstractionNativeAot*> get_default_byval_type_int; // MonoType * (*get_default_byval_type_int)(void);
 
     public IntPtr get_default_class_string_class; // MonoClass * (*get_default_class_string_class) (void);
     public IntPtr get_default_class_int_class; // MonoClass * (*get_default_class_int_class) (void);
@@ -123,4 +123,41 @@ internal unsafe struct Itf
                 throw new InvalidOperationException($"can't handle MonoTypeEnum value {(int)type->type_code}");
         }
     }
+
+    // keep in sync with transform.c
+    enum MintStackType : int
+    {
+        STACK_TYPE_I4 = 0,
+        STACK_TYPE_I8 = 1,
+        STACK_TYPE_R4 = 2,
+        STACK_TYPE_R8 = 3,
+        STACK_TYPE_O = 4,
+        STACK_TYPE_VT = 5,
+        STACK_TYPE_MP = 6,
+        STACK_TYPE_F = 7,
+    }
+
+    static MintStackType IntPtrStackType = IntPtr.Size == 4 ? MintStackType.STACK_TYPE_I4 : MintStackType.STACK_TYPE_I8;
+
+#pragma warning disable IDE0060 // unused parameter _klass
+    [UnmanagedCallersOnly]
+    internal static unsafe MonoTypeInstanceAbstractionNativeAot* mintGetTypeFromStack(int type, IntPtr /*MonoClass* */_klass)
+    {
+        // see the mono mint_get_type_from_stack
+        switch ((MintStackType)type)
+        {
+            case MintStackType.STACK_TYPE_I4: return Mint.GlobalMintTypeSystem.GetMonoType((RuntimeType)typeof(int)).Value;
+            case MintStackType.STACK_TYPE_I8: return Mint.GlobalMintTypeSystem.GetMonoType((RuntimeType)typeof(long)).Value;
+            case MintStackType.STACK_TYPE_R4: return Mint.GlobalMintTypeSystem.GetMonoType((RuntimeType)typeof(float)).Value;
+            case MintStackType.STACK_TYPE_R8: return Mint.GlobalMintTypeSystem.GetMonoType((RuntimeType)typeof(double)).Value;
+            // FIXME: STACK_TYPE_O and STACK_TYPE_VT need the MonoClass to do something
+            //case MintStackType.STACK_TYPE_O: return Mint.GlobalMintTypeSystem.GetMonoType(typeof(object));
+            //case MintStackType.STACK_TYPE_VT: return GlobalMintTypeSystem.GetMonoType(typeof(IntPtr));
+            case MintStackType.STACK_TYPE_MP: return Mint.GlobalMintTypeSystem.GetMonoType((RuntimeType)typeof(IntPtr)).Value;
+            case MintStackType.STACK_TYPE_F: return Mint.GlobalMintTypeSystem.GetMonoType((RuntimeType)typeof(IntPtr)).Value;
+            default:
+                throw new InvalidOperationException($"can't handle MintStackType value {type}");
+        }
+    }
+#pragma warning restore IDE0060
 }

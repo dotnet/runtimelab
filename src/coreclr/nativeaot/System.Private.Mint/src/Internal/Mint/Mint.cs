@@ -19,10 +19,14 @@ internal static class Mint
     internal static extern unsafe IntPtr mint_testing_transform_sample(Internal.Mint.Abstraction.MonoMethodInstanceAbstractionNativeAot* monoMethodPtr);
 
     static readonly MemoryManager globalMemoryManager = new MemoryManager();
+    static readonly MintTypeSystem globalMintTypeSystem = new MintTypeSystem(globalMemoryManager);
+
+    internal static MintTypeSystem GlobalMintTypeSystem => globalMintTypeSystem;
 
     internal static void Initialize()
     {
         AppContext.SetSwitch("System.Private.Mint.Enable", true);
+        InitializeGlobalTypeSystem();
         unsafe
         {
             var itf = CreateItf();
@@ -31,15 +35,25 @@ internal static class Mint
         InstallDynamicMethodCallbacks();
     }
 
-    internal static unsafe Internal.Mint.Abstraction.Itf* CreateItf()
+    internal static void InitializeGlobalTypeSystem()
     {
-        Internal.Mint.Abstraction.Itf* itf = globalMemoryManager.Allocate<Internal.Mint.Abstraction.Itf>();
-        itf->get_MonoType_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
-        itf->get_MonoMethod_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
-        itf->get_MonoMethodHeader_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
-        itf->get_MonoMethodSignature_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
+        globalMintTypeSystem.GetMonoType((RuntimeType)typeof(void));
+        globalMintTypeSystem.GetMonoType((RuntimeType)typeof(int));
+        globalMintTypeSystem.GetMonoType((RuntimeType)typeof(IntPtr));
+    }
 
-        itf->mono_mint_type = &Internal.Mint.Abstraction.Itf.mintGetMintTypeFromMonoType;
+    internal static unsafe Abstraction.Itf* CreateItf()
+    {
+        Abstraction.Itf* itf = globalMemoryManager.Allocate<Abstraction.Itf>();
+        itf->get_MonoType_inst = &Abstraction.Itf.unwrapTransparentAbstraction;
+        itf->get_MonoMethod_inst = &Abstraction.Itf.unwrapTransparentAbstraction;
+        itf->get_MonoMethodHeader_inst = &Abstraction.Itf.unwrapTransparentAbstraction;
+        itf->get_MonoMethodSignature_inst = &Abstraction.Itf.unwrapTransparentAbstraction;
+
+        itf->get_type_from_stack = &Abstraction.Itf.mintGetTypeFromStack;
+        itf->mono_mint_type = &Abstraction.Itf.mintGetMintTypeFromMonoType;
+        itf->get_default_byval_type_void = &mintGetDefaultByvalTypeVoid;
+        itf->get_default_byval_type_int = &mintGetDefaultByvalTypeIntPtr;
         // TODO: initialize members of itf with function pointers that implement the stuff that
         // the interpreter needs.  See mint-itf.c for the native placeholder implementation
         return itf;
@@ -63,4 +77,11 @@ internal static class Mint
             return compiledMethod.InterpMethod.Value;
         }
     }
+
+    [UnmanagedCallersOnly]
+    internal static unsafe Abstraction.MonoTypeInstanceAbstractionNativeAot* mintGetDefaultByvalTypeVoid() => GlobalMintTypeSystem.GetMonoType((RuntimeType)typeof(void)).Value;
+
+    [UnmanagedCallersOnly]
+    internal static unsafe Abstraction.MonoTypeInstanceAbstractionNativeAot* mintGetDefaultByvalTypeIntPtr() => GlobalMintTypeSystem.GetMonoType((RuntimeType)typeof(IntPtr)).Value;
+
 }

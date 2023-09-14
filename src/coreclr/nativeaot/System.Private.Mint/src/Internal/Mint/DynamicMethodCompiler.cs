@@ -18,7 +18,7 @@ public sealed class DynamicMethodCompiler : IDisposable
     public DynamicMethodCompiler(DynamicMethod dynamicMethod)
     {
         _dynamicMethod = dynamicMethod;
-        _mintTypeSystem = new MintTypeSystem(_compilationMemoryManager);
+        _mintTypeSystem = new MintTypeSystem(_compilationMemoryManager, Mint.GlobalMintTypeSystem);
     }
 
     internal MemoryManager CompilationMemoryManager => _compilationMemoryManager;
