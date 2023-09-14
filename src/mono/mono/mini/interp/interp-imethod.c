@@ -114,11 +114,4 @@ mono_interp_get_imethod (MonoMethod *method)
 	return imethod;
 }
 
-void
-mint_interp_imethod_dump_code (InterpMethod *imethod)
-{
-	g_warning ("mint_interp_imethod_dump_code");
-	g_warning ("imethod code is %p", imethod->code);
-}
-
 #endif /* NATIVEAOT_MINT */

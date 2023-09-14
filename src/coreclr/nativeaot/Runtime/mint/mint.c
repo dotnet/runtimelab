@@ -53,15 +53,10 @@ mint_entrypoint(MintAbstractionNativeAot *itf);
 InterpMethod*
 mint_testing_transform_sample(MonoMethod *monoMethodPtr)
 {
-    //g_warning ("mint_testing_transform_sample ignoring the input DynamicMethod");
-    g_warning ("mint_testing_transform_sample will probably crash");
     ThreadContext *thread_context = NULL; // transform_method actually doesn't use thread_context
-    //MonoMethod *method = (MonoMethod*)mint_method_abstraction_placeholder(); // FIXME
     InterpMethod *imethod = mono_interp_get_imethod (/*method*/ monoMethodPtr);
     ERROR_DECL(error);
     mono_interp_transform_method (imethod, thread_context, error);
-    g_warning ("returned from \'mono_interp_transform_method\'");
-    mint_interp_imethod_dump_code (imethod);
     return imethod;
 }
 
@@ -69,8 +64,6 @@ void
 mint_entrypoint(MintAbstractionNativeAot *itf)
 {
     mint_itf_initialize(itf);
-    g_warning("Hello from mint_entrypoint");
-    g_warning("transform is %p", (void*)&mono_interp_transform_method);
 }
 
 
