@@ -19,3 +19,23 @@ internal readonly unsafe struct MonoMethodPtr
         Value = value;
     }
 };
+
+internal readonly unsafe struct MonoMethodSignaturePtr
+{
+    public readonly MonoMethodSignatureInstanceAbstractionNativeAot* Value;
+
+    public MonoMethodSignaturePtr(MonoMethodSignatureInstanceAbstractionNativeAot* value)
+    {
+        Value = value;
+    }
+};
+
+internal readonly unsafe struct MonoMethodHeaderPtr
+{
+    public readonly MonoMethodHeaderInstanceAbstractionNativeAot* Value;
+
+    public MonoMethodHeaderPtr(MonoMethodHeaderInstanceAbstractionNativeAot* value)
+    {
+        Value = value;
+    }
+};

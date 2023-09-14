@@ -42,7 +42,7 @@ public sealed class DynamicMethodCompiler : IDisposable
         // the current method, otherwise we might associate the wrong dynamic memory manager with the InterpMethod.
 
         // using var _unsetMemoryManagers = Mint.SetThreadLocalMemoryManagers (CompilationMemoryManager, dynamicMemoryManager)
-        var monoMethodPtr = _mintTypeSystem.CreateMonoMethodPointer(_dynamicMethod);
+        var monoMethodPtr = _mintTypeSystem.GetMonoMethodPointer(_dynamicMethod);
         var method = new InterpMethodPtr(Mint.mint_testing_transform_sample(monoMethodPtr.Value));
         return new CompiledMethod
         {
