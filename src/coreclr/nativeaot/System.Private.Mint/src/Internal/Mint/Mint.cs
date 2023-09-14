@@ -18,13 +18,14 @@ internal static class Mint
     [DllImport(RuntimeLibrary)]
     internal static extern IntPtr mint_testing_transform_sample(IntPtr gcHandle);
 
+    static readonly MemoryManager globalMemoryManager = new MemoryManager();
 
     internal static void Initialize()
     {
         AppContext.SetSwitch("System.Private.Mint.Enable", true);
         unsafe
         {
-            Internal.Mint.Abstraction.Itf* itf = (Internal.Mint.Abstraction.Itf*)Marshal.AllocHGlobal(sizeof(Internal.Mint.Abstraction.Itf));
+            Internal.Mint.Abstraction.Itf* itf = globalMemoryManager.Allocate<Internal.Mint.Abstraction.Itf>();
             // TODO: initialize members of itf with function pointers that implement the stuff that
             // the interpreter needs.  See mint-itf.c for the native placeholder implementation
             mint_entrypoint(itf);
