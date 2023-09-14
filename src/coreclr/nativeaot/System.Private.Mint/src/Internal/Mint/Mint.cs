@@ -25,17 +25,23 @@ internal static class Mint
         AppContext.SetSwitch("System.Private.Mint.Enable", true);
         unsafe
         {
-            Internal.Mint.Abstraction.Itf* itf = globalMemoryManager.Allocate<Internal.Mint.Abstraction.Itf>();
-            itf->get_MonoType_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
-            itf->get_MonoMethod_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
-            // TODO: initialize members of itf with function pointers that implement the stuff that
-            // the interpreter needs.  See mint-itf.c for the native placeholder implementation
+            var itf = CreateItf();
             mint_entrypoint(itf);
         }
         InstallDynamicMethodCallbacks();
     }
 
-
+    internal static unsafe Internal.Mint.Abstraction.Itf* CreateItf()
+    {
+        Internal.Mint.Abstraction.Itf* itf = globalMemoryManager.Allocate<Internal.Mint.Abstraction.Itf>();
+        itf->get_MonoType_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
+        itf->get_MonoMethod_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
+        itf->get_MonoMethodHeader_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
+        itf->get_MonoMethodSignature_inst = &Internal.Mint.Abstraction.Itf.unwrapTransparentAbstraction;
+        // TODO: initialize members of itf with function pointers that implement the stuff that
+        // the interpreter needs.  See mint-itf.c for the native placeholder implementation
+        return itf;
+    }
 
     internal static void InstallDynamicMethodCallbacks()
     {

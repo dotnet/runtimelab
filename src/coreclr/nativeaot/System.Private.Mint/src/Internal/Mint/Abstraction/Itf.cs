@@ -43,9 +43,9 @@ internal unsafe struct Itf
     /* opaque type instances */
     public delegate* unmanaged<IntPtr /* MonoType */, IntPtr/*MonoTypeInstanceAbstraction* */> get_MonoType_inst; // MonoTypeInstanceAbstractionNativeAot * (*get_MonoType_inst) (MonoType *self);
     public delegate* unmanaged<IntPtr /* MonoMethod* */, IntPtr/*MonoMethodInstanceAbstractionNativeAot**/> get_MonoMethod_inst; // MonoMethodInstanceAbstractionNativeAot * (*get_MonoMethod_inst) (MonoMethod *self);
-    public IntPtr get_MonoMethodHeader_inst; // MonoMethodHeaderInstanceAbstractionNativeAot * (*get_MonoMethodHeader_inst) (MonoMethodHeader *header);
+    public delegate* unmanaged<IntPtr /* MonoMethodHeader* */, IntPtr /* MonoMethodHeaderInstanceAbstractionNativeAot* */> get_MonoMethodHeader_inst; // MonoMethodHeaderInstanceAbstractionNativeAot * (*get_MonoMethodHeader_inst) (MonoMethodHeader *header);
 
-    public IntPtr get_MonoMethodSignature_inst; // MonoMethodSignatureInstanceAbstractionNativeAot * (*get_MonoMethodSignature_inst) (MonoMethodSignature *self);
+    public delegate* unmanaged<IntPtr /* MonoMethodSignature* */, IntPtr /* MonoMethodSignatureInstanceAbstractionNativeAot* */> get_MonoMethodSignature_inst; // MonoMethodSignatureInstanceAbstractionNativeAot * (*get_MonoMethodSignature_inst) (MonoMethodSignature *self);
 
     [UnmanagedCallersOnly]
     internal static IntPtr unwrapTransparentAbstraction(IntPtr self) => self;

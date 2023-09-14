@@ -16,6 +16,9 @@ public sealed class MemoryManager : IDisposable
     private readonly List<Resource> _resources = new List<Resource>();
     private readonly List<PinnedObject> _pinnedObjects = new List<PinnedObject>();
 
+    // TODO: I think Mono also needs a way to allocate dependent mempools for scratch work
+    // during compilation.  We should probably have a way to allocate a child memory manager
+
     public MemoryManager()
     {
     }

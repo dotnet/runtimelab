@@ -141,17 +141,6 @@ MonoMethodInstanceAbstractionNativeAot *mint_method_abstraction_placeholder(void
     return method;
 }
 
-
-#define WRAP_TY(type) type##InstanceAbstractionNativeAot
-#define UNWRAP_FN_NAME(type) mint_get_##type##_inst
-#define UNWRAP_FN_DECL(type) WRAP_TY(type)* UNWRAP_FN_NAME(type)(type *self)
-#define UNWRAP_FN_IMPL(type) UNWRAP_FN_DECL(type) { return (WRAP_TY(type)*)self; }
-
-static UNWRAP_FN_IMPL(MonoMethod);
-static UNWRAP_FN_IMPL(MonoMethodHeader);
-static UNWRAP_FN_IMPL(MonoMethodSignature);
-
-
 // FIXME: this belongs in the transform abstraction
 #define STACK_TYPE_I4 0
 #define STACK_TYPE_I8 1
@@ -269,9 +258,6 @@ mint_itf_initialize(MintAbstractionNativeAot* newitf)
     // TODO: these should all be set from managed
 
     newitf->get_default_byval_type_void = mint_get_default_byval_type_void;
-    // newitf->get_MonoMethod_inst = UNWRAP_FN_NAME(MonoMethod);
-    newitf->get_MonoMethodHeader_inst = UNWRAP_FN_NAME(MonoMethodHeader);
-    newitf->get_MonoMethodSignature_inst = UNWRAP_FN_NAME(MonoMethodSignature);
 
     newitf->get_type_from_stack = &mint_get_type_from_stack;
     newitf->mono_mint_type = &mint_get_mint_type_from_type;
