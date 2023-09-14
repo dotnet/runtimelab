@@ -16,7 +16,8 @@ internal static class Mint
     private static extern unsafe void mint_entrypoint(Internal.Mint.Abstraction.Itf* nativeAotItf);
 
     [DllImport(RuntimeLibrary)]
-    private static extern void mint_testing_transform_sample(IntPtr gcHandle);
+    internal static extern IntPtr mint_testing_transform_sample(IntPtr gcHandle);
+
 
     internal static void Initialize()
     {
@@ -42,16 +43,13 @@ internal static class Mint
     {
         public IntPtr GetFunctionPointer(DynamicMethod dm)
         {
-            GCHandle gch = GCHandle.Alloc(dm);
-            try
-            {
-                mint_testing_transform_sample(GCHandle.ToIntPtr(gch));
-            }
-            finally
-            {
-                gch.Free();
-            }
-            return IntPtr.Zero;
+            // FIXME: GetFunctionPointer is not the right method.
+            // We probably want to return some kind of a CompiledDynamicMethodDelegate
+            // object that can be invoked with the right calling convention.
+            using var compiler = new DynamicMethodCompiler(dm);
+            var compiledMethod = compiler.Compile();
+            compiledMethod.ExecMemoryManager.Dispose();// FIXME: this is blatantly wrong
+            return compiledMethod.InterpMethod.Value;
         }
     }
 }

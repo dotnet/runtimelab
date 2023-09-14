@@ -50,7 +50,7 @@ void
 mint_entrypoint(MintAbstractionNativeAot *itf);
 
 // for testing purposes only. transform a placeholder method
-void
+InterpMethod*
 mint_testing_transform_sample(MonoGCHandle dynamic_method)
 {
     g_warning ("mint_testing_transform_sample ignoring the input DynamicMethod");
@@ -62,6 +62,7 @@ mint_testing_transform_sample(MonoGCHandle dynamic_method)
     mono_interp_transform_method (imethod, thread_context, error);
     g_warning ("returned from \'mono_interp_transform_method\'");
     mint_interp_imethod_dump_code (imethod);
+    return imethod;
 }
 
 void
