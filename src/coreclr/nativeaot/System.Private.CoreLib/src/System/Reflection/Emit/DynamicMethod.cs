@@ -354,5 +354,12 @@ namespace System.Reflection.Emit
         private MethodAttributes _attributes;
         private CallingConventions _callingConvention;
 #endif
+
+#if FEATURE_MINT
+        internal ReadOnlySpan<byte> GetILBytes()
+        {
+            return _ilGenerator!.GetILBytes();
+        }
+#endif
     }
 }

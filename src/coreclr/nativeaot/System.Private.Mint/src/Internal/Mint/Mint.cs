@@ -16,7 +16,7 @@ internal static class Mint
     private static extern unsafe void mint_entrypoint(Internal.Mint.Abstraction.Itf* nativeAotItf);
 
     [DllImport(RuntimeLibrary)]
-    internal static extern IntPtr mint_testing_transform_sample(IntPtr gcHandle);
+    internal static extern unsafe IntPtr mint_testing_transform_sample(Internal.Mint.Abstraction.MonoMethodInstanceAbstractionNativeAot* monoMethodPtr);
 
     static readonly MemoryManager globalMemoryManager = new MemoryManager();
 

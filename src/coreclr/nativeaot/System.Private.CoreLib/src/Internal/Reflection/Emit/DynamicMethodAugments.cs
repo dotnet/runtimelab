@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Reflection.Emit;
 
 namespace Internal.Reflection.Emit;
 
@@ -12,6 +13,8 @@ public static partial class DynamicMethodAugments {
     public static void InstallMintCallbacks(IMintDynamicMethodCallbacks callbacks) {
         s_mintCallbacks = callbacks;
     }
+
+    public static ReadOnlySpan<byte> GetIL(this DynamicMethod dynamicMethod) => dynamicMethod.GetILBytes();
 
     internal static IMintDynamicMethodCallbacks MintCallbacks => s_mintCallbacks;
 

@@ -15,8 +15,10 @@
   <ItemGroup>
     <Compile Include=".\Internal\Mint\Mint.cs" />
     <Compile Include=".\Internal\Mint\Abstraction\NativePointers.cs" />
+    <Compile Include=".\Internal\Mint\Abstraction\NativeStructs.cs" />
     <Compile Include=".\Internal\Mint\Abstraction\Itf.cs" />
     <Compile Include=".\Internal\Mint\MemoryManager.cs" />
+    <Compile Include=".\Internal\Mint\MintTypeSystem.cs" />
     <Compile Include=".\Internal\Mint\DynamicMethodCompiler.cs" />
     <Compile Include=".\Internal\Runtime\CompilerHelpers\LibraryInitializer.cs" />
   </ItemGroup>

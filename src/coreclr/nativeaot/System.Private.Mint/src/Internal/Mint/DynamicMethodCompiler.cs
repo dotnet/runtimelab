@@ -14,9 +14,11 @@ public sealed class DynamicMethodCompiler : IDisposable
 {
     private readonly DynamicMethod _dynamicMethod;
     private readonly MemoryManager _compilationMemoryManager = new MemoryManager();
+    private readonly MintTypeSystem _mintTypeSystem;
     public DynamicMethodCompiler(DynamicMethod dynamicMethod)
     {
         _dynamicMethod = dynamicMethod;
+        _mintTypeSystem = new MintTypeSystem(_compilationMemoryManager);
     }
 
     internal MemoryManager CompilationMemoryManager => _compilationMemoryManager;
@@ -29,32 +31,24 @@ public sealed class DynamicMethodCompiler : IDisposable
 
     internal readonly record struct CompiledMethod(InterpMethodPtr InterpMethod, MemoryManager ExecMemoryManager);
 
-    internal CompiledMethod Compile()
+    internal unsafe CompiledMethod Compile()
     {
-        GCHandle gch = GCHandle.Alloc(_dynamicMethod);
-        try
-        {
-            // FIXME: concurrency - we don't want to compile the same method twice
-            //
-            var execMemoryManager = new MemoryManager();
-            // We want to tell the current thread's transform.c to use this set of memory managers for allocations.
-            // We can do this by setting a thread local variable, but we need to make sure to unset it when we're done.
-            // Also we need to be sure that the current thread is the one that will end up compiling
-            // the current method, otherwise we might associate the wrong dynamic memory manager with the InterpMethod.
+        // FIXME: concurrency - we don't want to compile the same method twice
+        //
+        var execMemoryManager = new MemoryManager();
+        // We want to tell the current thread's transform.c to use this set of memory managers for allocations.
+        // We can do this by setting a thread local variable, but we need to make sure to unset it when we're done.
+        // Also we need to be sure that the current thread is the one that will end up compiling
+        // the current method, otherwise we might associate the wrong dynamic memory manager with the InterpMethod.
 
-            // using var _unsetMemoryManagers = Mint.SetThreadLocalMemoryManagers (CompilationMemoryManager, dynamicMemoryManager)
-
-            var method = new InterpMethodPtr(Mint.mint_testing_transform_sample(GCHandle.ToIntPtr(gch)));
-            return new CompiledMethod
-            {
-                InterpMethod = method,
-                ExecMemoryManager = execMemoryManager,
-            };
-        }
-        finally
+        // using var _unsetMemoryManagers = Mint.SetThreadLocalMemoryManagers (CompilationMemoryManager, dynamicMemoryManager)
+        var monoMethodPtr = _mintTypeSystem.CreateMonoMethodPointer(_dynamicMethod);
+        var method = new InterpMethodPtr(Mint.mint_testing_transform_sample(monoMethodPtr.Value));
+        return new CompiledMethod
         {
-            gch.Free();
-        }
+            InterpMethod = method,
+            ExecMemoryManager = execMemoryManager,
+        };
     }
 
 

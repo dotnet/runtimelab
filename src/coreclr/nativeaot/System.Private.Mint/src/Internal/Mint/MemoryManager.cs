@@ -15,6 +15,7 @@ public sealed class MemoryManager : IDisposable
 {
     private readonly List<Resource> _resources = new List<Resource>();
     private readonly List<PinnedObject> _pinnedObjects = new List<PinnedObject>();
+    private readonly List<GCHandle> _ownedObjects = new List<GCHandle>();
 
     // TODO: I think Mono also needs a way to allocate dependent mempools for scratch work
     // during compilation.  We should probably have a way to allocate a child memory manager
@@ -32,6 +33,10 @@ public sealed class MemoryManager : IDisposable
         foreach (var pinnedObject in _pinnedObjects)
         {
             pinnedObject.Dispose();
+        }
+        foreach (var ownedObject in _ownedObjects)
+        {
+            ownedObject.Free();
         }
     }
 
@@ -53,6 +58,12 @@ public sealed class MemoryManager : IDisposable
         }
     }
 
+    public unsafe IntPtr AllocateString(string s)
+    {
+        var resource = new Resource { Value = Marshal.StringToHGlobalAnsi(s) };
+        _resources.Add(resource);
+        return resource.Value;
+    }
     public IntPtr Allocate(uint size)
     {
         var resource = new Resource { Value = Marshal.AllocHGlobal((int)size) };
@@ -65,6 +76,12 @@ public sealed class MemoryManager : IDisposable
         return (T*)Allocate((uint)sizeof(T));
     }
 
+    public GCHandle Own(object o)
+    {
+        var gch = GCHandle.Alloc(o);
+        _ownedObjects.Add(gch);
+        return gch;
+    }
     public unsafe void* Pin(ref object o)
     {
         var pinnedObject = new PinnedObject { Value = GCHandle.Alloc(o, GCHandleType.Pinned) };

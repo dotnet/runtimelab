@@ -272,5 +272,7 @@ namespace System.Reflection.Emit
         // Adjustment to add to m_maxDepth for incorrect/invalid IL. For example, when branch instructions
         // with different stack depths target the same label.
         private long m_depthAdjustment;
+
+        internal ReadOnlySpan<byte> GetILBytes() => m_ILStream.AsSpan(0, m_length);
     }
 }

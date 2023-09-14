@@ -8,4 +8,14 @@ using System.Runtime.InteropServices;
 
 namespace Internal.Mint.Abstraction;
 
-public readonly record struct InterpMethodPtr(IntPtr Value);
+internal readonly record struct InterpMethodPtr(IntPtr Value);
+
+internal readonly unsafe struct MonoMethodPtr
+{
+    public readonly MonoMethodInstanceAbstractionNativeAot* Value;
+
+    public MonoMethodPtr(MonoMethodInstanceAbstractionNativeAot* value)
+    {
+        Value = value;
+    }
+};
