@@ -188,9 +188,10 @@ namespace ILCompiler.DependencyAnalysis
             Span<LLVMValueRef> dataElements = _currentObjectData.AsSpan(0, dataSizeInElements);
             ReadOnlySpan<byte> data = nodeContents.Data.AsSpan();
 
-            // Indicies to allow us to "zip" the binary data with the relocs
-            int currOffset = 0;
+            // Indicies in byte units to allow us to "zip" the binary data with the relocs
+            int dataOffset = 0;
             int relocIndex = 0;
+            int elementOffset = 0;
 
             int relocLength = nodeContents.Relocs.Length;
             int nextRelocOffset = 0;
@@ -200,7 +201,7 @@ namespace ILCompiler.DependencyAnalysis
                 nextRelocOffset = nodeContents.Relocs[0].Offset;
             }
 
-            while (currOffset < dataSizeInElements)
+            while (dataOffset < dataSizeInBytes)
             {
                 if (!useStruct && nextRelocValid && nextRelocOffset % pointerSize != 0)
                 {
@@ -214,38 +215,39 @@ namespace ILCompiler.DependencyAnalysis
                         Array.Resize(ref _currentObjectTypes, Math.Max(_currentObjectTypes.Length * 2, dataSizeInElements));
                     }
 
+                    dataElements = _currentObjectData.AsSpan(0, dataSizeInElements);
                     typeElements = _currentObjectTypes.AsSpan(0, dataSizeInElements);
 
                     // Restart zipping while loop.
-                    currOffset = 0;
+                    dataOffset = elementOffset = relocIndex = 0;
                     continue;
                 }
 
                 // Emit binary data until next reloc.  As some large nodes only contain binary data this is a small optimization.
-                while (currOffset < dataSizeInElements && (!nextRelocValid || currOffset < nextRelocOffset))
+                while (dataOffset < dataSizeInBytes && (!nextRelocValid || dataOffset < nextRelocOffset))
                 {
                     if (useStruct)
                     {
-                        typeElements[currOffset] = LLVMTypeRef.Int8;
-                        dataElements[currOffset] = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, data[currOffset]);
+                        typeElements[elementOffset] = LLVMTypeRef.Int8;
+                        dataElements[elementOffset] = LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, data[dataOffset]);
+                        dataOffset++;
                     }
                     else
                     {
                         ulong value = 0;
-                        int offset = currOffset * pointerSize;
-                        int size = Math.Min(dataSizeInBytes - offset, pointerSize);
-                        data.Slice(offset, size).CopyTo(new Span<byte>(&value, size));
-                        dataElements[currOffset] = LLVMValueRef.CreateConstIntToPtr(LLVMValueRef.CreateConstInt(_intPtrType, value), _ptrType);
+                        int size = Math.Min(dataSizeInBytes - dataOffset, pointerSize);
+                        data.Slice(dataOffset, size).CopyTo(new Span<byte>(&value, size));
+                        dataElements[elementOffset] = LLVMValueRef.CreateConstIntToPtr(LLVMValueRef.CreateConstInt(_intPtrType, value), _ptrType);
+                        dataOffset += pointerSize;
                     }
-
-                    currOffset++;
+                    elementOffset++;
                 }
 
                 if (nextRelocValid)
                 {
                     Relocation reloc = nodeContents.Relocs[relocIndex];
                     long delta;
-                    fixed (void* location = &nodeContents.Data[reloc.Offset])
+                    fixed (void* location = &data[reloc.Offset])
                     {
                         delta = Relocation.ReadValue(reloc.RelocType, location);
                     }
@@ -256,20 +258,21 @@ namespace ILCompiler.DependencyAnalysis
                         symbolRefNode = factory.ConstructedTypeSymbol(eeTypeNode.Type);
                     }
 
-                    dataElements[currOffset] = GetSymbolReferenceValue(symbolRefNode, checked((int)delta));
+                    dataElements[elementOffset] = GetSymbolReferenceValue(symbolRefNode, checked((int)delta));
                     if (useStruct)
                     {
-                        typeElements[currOffset] = _ptrType;
+                        typeElements[elementOffset] = _ptrType;
                     }
 
                     relocIndex++;
                     nextRelocValid = relocIndex < relocLength;
                     if (nextRelocValid)
                     {
-                        nextRelocOffset = nodeContents.Relocs[0].Offset;
+                        nextRelocOffset = nodeContents.Relocs[relocIndex].Offset;
                     }
 
-                    currOffset++;
+                    dataOffset += pointerSize;
+                    elementOffset++;
                 }
             }
 
