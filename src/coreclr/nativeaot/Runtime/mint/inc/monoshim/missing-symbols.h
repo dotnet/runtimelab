@@ -7,6 +7,7 @@
 #include <monoshim/utils/monobitset.h>
 #include <monoshim/utils/mono-error-internals.h>
 #include <monoshim/utils/mono-endian.h>
+#include <monoshim/utils/mono-threads-api.h>
 
 
 #include <monoshim/metadata/blob.h>
@@ -99,7 +100,7 @@ static gpointer mono_stats_method_desc = NULL; // FIXME: hack!
 typedef struct _MonoObject MonoObject;
 typedef struct _MonoString MonoString;
 
-typedef struct _MonoFtnDesc MonoFtnDesc;
+typedef gpointer MonoFtnDesc;
 
 typedef struct _MonoDelegateTrampInfo MonoDelegateTrampInfo;
 typedef struct _MonoJitExceptionInfo MonoJitExceptionInfo;

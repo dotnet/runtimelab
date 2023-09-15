@@ -2,7 +2,11 @@
 #define __MONO_MINI_INTERP_INTRINSICS_H__
 
 #include <glib.h>
+#ifndef NATIVEAOT_MINT
 #include <mono/metadata/object.h>
+#else
+#include <monoshim/missing-symbols.h>
+#endif
 
 #include "interp-internals.h"
 

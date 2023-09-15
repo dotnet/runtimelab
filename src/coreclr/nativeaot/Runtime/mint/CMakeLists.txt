@@ -20,6 +20,7 @@ set(interp_files
     mintops.c
     transform.c
     interp-imethod.c
+    interp.c
 )
 
 set(mono_metadata_files
