@@ -52,7 +52,9 @@ set(MINT_SOURCES
     inc/mint-transform.h
     inc/mint-imethod.h
     mint.c
-    mint-itf.c)
+    mint-itf.c
+    mint-ee-itf.c
+    mint-ee.c)
 
 set(NATIVEAOT_MINT_PREBUILT_OS "${CLR_CMAKE_TARGET_OS}")
 

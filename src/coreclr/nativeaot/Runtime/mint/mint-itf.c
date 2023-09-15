@@ -4,6 +4,7 @@
 
 #include <monoshim/missing-symbols.h>
 #include <mint-abstraction-nativeaot.h>
+#include <mint-ee-abstraction-nativeaot.h>
 
 #include "mint-itf.h"
 
@@ -45,3 +46,4 @@ mint_itf_initialize(MintAbstractionNativeAot* newitf)
     mint_itf_singleton = newitf;
 
 }
+

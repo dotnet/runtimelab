@@ -12159,6 +12159,10 @@ void
 mono_interp_transform_init (void)
 {
 #ifdef ENABLE_EXPERIMENT_TIERED
+#ifdef NATIVEAOT_MINT
+#error Tiering should not be enabled in NativeAot yet
+	g_assert_not_reached();
+#endif
 	mini_tiered_register_callsite_patcher (tiered_patcher, TIERED_PATCH_KIND_INTERP);
 #endif
 }

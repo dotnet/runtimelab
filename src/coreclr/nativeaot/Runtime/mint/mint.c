@@ -3,6 +3,7 @@
 #include <mint-transform.h>
 #include <monoshim/missing-symbols.h>
 #include <mint-abstraction-nativeaot.h>
+#include <mint-ee-abstraction-nativeaot.h>
 #include <mint-imethod.h>
 
 #include "mint-itf.h"
@@ -29,10 +30,9 @@ enum {
 };
 
 
-int mono_interp_opt = INTERP_OPT_DEFAULT & ~INTERP_OPT_TIERING & ~INTERP_OPT_SIMD ; // FIXME
+extern int mono_interp_opt;
 
-int mono_interp_traceopt = 1; // FIXME
-
+extern int mono_interp_traceopt;
 
 gint32 mono_class_value_size (MonoClass *klass, guint32 *align) { MISSING_FUNC(); }
 MonoMethod *
@@ -63,7 +63,10 @@ mint_testing_transform_sample(MonoMethod *monoMethodPtr)
 void
 mint_entrypoint(MintAbstractionNativeAot *itf)
 {
+    mono_interp_opt = INTERP_OPT_DEFAULT & ~INTERP_OPT_TIERING & ~INTERP_OPT_SIMD ; // FIXME
+    mono_interp_traceopt = 1; // FIXME
     mint_itf_initialize(itf);
+    mint_ee_itf_initialize(NULL);
 }
 
 

@@ -73,6 +73,11 @@
 #include <glib.h>
 #include <monoshim/missing-symbols.h>
 #include <monoshim/missing-symbols-ee.h>
+
+#include <monoshim/metadata/mint-abstraction.h>
+#include <monoshim/mini/mint-ee-abstraction.h>
+#include <mint-abstraction-nativeaot.h>
+#include <mint-ee-abstraction-nativeaot.h>
 #endif
 
 #include "interp.h"
@@ -8534,7 +8539,9 @@ interp_parse_options (const char *options)
 		}
 	}
 #else
-	NATIVEAOT_MINT_TODO_EE("");
+	if (options && *options) {
+		NATIVEAOT_MINT_TODO_EE("option parsing");
+	}
 #endif
 }
 
@@ -9360,7 +9367,7 @@ register_interp_stats (void)
 	mono_counters_register ("Methods inlined", MONO_COUNTER_INTERP | MONO_COUNTER_INT, &mono_interp_stats.inlined_methods);
 	mono_counters_register ("Inline failures", MONO_COUNTER_INTERP | MONO_COUNTER_INT, &mono_interp_stats.inline_failures);
 #else
-	NATIVEAOT_MINT_TODO_EE_NOWARN();
+	NATIVEAOT_MINT_TODO_EE_NOWARN(); // register_interp_stats
 #endif
 }
 
@@ -9374,32 +9381,44 @@ static const MonoEECallbacks mono_interp_callbacks = {
 void
 mono_ee_interp_init (const char *opts)
 {
-#ifndef NATIVEAOT_MINT
 	g_assert (mono_ee_api_version () == MONO_EE_API_VERSION);
 	g_assert (!interp_init_done);
 	interp_init_done = TRUE;
 
+#ifndef NATIVEAOT_MINT
 	mono_native_tls_alloc (&thread_context_id, NULL);
+#else
+	NATIVEAOT_MINT_TODO_EE("tls alloc");
+#endif
 	set_context (NULL);
 
 	interp_parse_options (opts);
+#ifndef NATIVEAOT_MINT
 	/* Don't do any optimizations if running under debugger */
 	if (mini_get_debug_options ()->mdb_optimizations)
 		mono_interp_opt = 0;
+#else
+	NATIVEAOT_MINT_TODO_EE_NOWARN(); // debug options
+#endif
 	mono_interp_transform_init ();
 
+#ifndef NATIVEAOT_MINT
 	if (mono_interp_opt & INTERP_OPT_TIERING)
 		mono_interp_tiering_init ();
+#else
+	NATIVEAOT_MINT_TODO_EE_NOWARN(); // tiering
+#endif
 
+#ifndef NATIVEAOT_MINT
 	mini_install_interp_callbacks (&mono_interp_callbacks);
+#else
+	NATIVEAOT_MINT_TODO_EE_NOWARN(); // install interp callbacks
+#endif
 
 	register_interp_stats ();
 
 #ifdef HOST_WASI
 	debugger_enabled = mini_get_debug_options ()->mdb_optimizations;
-#endif
-#else
-	NATIVEAOT_MINT_TODO_EE_SOON("");
 #endif
 }
 
