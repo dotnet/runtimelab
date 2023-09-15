@@ -201,7 +201,7 @@ namespace ILCompiler.DependencyAnalysis
             {
                 if (!useStruct && nextRelocValid && nextRelocOffset % pointerSize != 0)
                 {
-                    // Switch from array to struct.
+                    // Switch from array to struct. This will need more elements because binary data is output byte-by-byte.
                     useStruct = true;
                     dataSizeInElements = nodeContents.Relocs.Length + dataSizeInBytes - (nodeContents.Relocs.Length * pointerSize);
 
