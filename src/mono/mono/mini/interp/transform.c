@@ -182,11 +182,21 @@ interp_msig_param_count (MonoMethodSignature *sig)
 #endif
 }
 
+static MonoType**
+interp_msig_get_first_param (MonoMethodSignature *sig)
+{
+#ifndef NATIVEAOT_MINT
+	return sig->params[0];
+#else
+	return MINT_TI_ITF(MonoMethodSignature, sig, method_params)(sig);
+#endif
+}
+
 static MonoType*
 interp_msig_ret_ult (MonoMethodSignature *sig)
 {
 #ifndef NATIVEAOT_MINT
-	return mini_type_get_underlying_type (signature->ret)
+	return mini_type_get_underlying_type (sig->ret)
 #else
 	return MINT_TI_ITF(MonoMethodSignature, sig, ret_ult)(sig);
 #endif
@@ -4799,12 +4809,15 @@ interp_method_compute_offsets (TransformData *td, InterpMethod *imethod, MonoMet
 	 * receive a pointer to the valuetype data rather than the data itself.
 	 */
 	for (int i = 0; i < num_args; i++) {
-#ifndef NATIVEAOT_MINT
 		MonoType *type;
+#ifndef NATIVEAOT_MINT
 		if (sig->hasthis && i == 0)
 			type = m_class_is_valuetype (td->method->klass) ? m_class_get_this_arg (td->method->klass) : m_class_get_byval_arg (td->method->klass);
 		else
 			type = mono_method_signature_internal (td->method)->params [i - sig->hasthis];
+#else
+		type = interp_msig_get_first_param (sig)[i];
+#endif
 		int mt = mono_mint_type (type);
 		td->locals [i].type = type;
 		td->locals [i].flags = INTERP_LOCAL_FLAG_GLOBAL;
@@ -4816,9 +4829,6 @@ interp_method_compute_offsets (TransformData *td, InterpMethod *imethod, MonoMet
 		offset = ALIGN_TO (offset, align);
 		td->locals [i].offset = offset;
 		offset += size;
-#else
-		NATIVEAOT_MINT_TODO_SOON("arguments");
-#endif
 	}
 	offset = ALIGN_TO (offset, MINT_STACK_ALIGNMENT);
 

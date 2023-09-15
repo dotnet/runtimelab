@@ -49,12 +49,12 @@ namespace HelloMint
             }
         }
 
-
+        private static bool useSingleIntParam = true;
         private delegate int MeaningOfLife();
         static void CreateDynamicMethod()
         {
             var returnType = voidVoidSample ? typeof(void) : typeof(int);
-            var paramTypes = new Type [] { typeof(int)};
+            var paramTypes = useSingleIntParam ? new Type [] { typeof(int), typeof(double) } : Type.EmptyTypes;
             DynamicMethod dMethod = new DynamicMethod("MeaningOfLife", returnType, paramTypes, typeof(object).Module);
             if (dMethod is not null)
             {

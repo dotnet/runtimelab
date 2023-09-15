@@ -35,7 +35,10 @@ struct _MonoMethodHeaderInstanceAbstractionNativeAot {
 typedef struct _MonoMethodSignatureInstanceAbstractionNativeAot MonoMethodSignatureInstanceAbstractionNativeAot;
 struct _MonoMethodSignatureInstanceAbstractionNativeAot {
     int32_t param_count;
+
     int8_t hasthis;
+
+    MonoType ** (*method_params)(MonoMethodSignature *self);
 
     MonoType * (*ret_ult)(MonoMethodSignature *self);
 

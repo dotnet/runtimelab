@@ -118,6 +118,7 @@ internal unsafe struct Itf
         switch ((CorElementType)type->type_code)
         {
             case CorElementType.ELEMENT_TYPE_I4: return (int)MintType.MINT_TYPE_I4;
+            case CorElementType.ELEMENT_TYPE_R8: return (int)MintType.MINT_TYPE_R8;
             case CorElementType.ELEMENT_TYPE_VOID: return (int)MintType.MINT_TYPE_VOID;
             default:
                 throw new InvalidOperationException($"can't handle MonoTypeEnum value {(int)type->type_code}");
