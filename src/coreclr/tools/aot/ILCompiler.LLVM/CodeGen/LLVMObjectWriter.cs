@@ -78,8 +78,6 @@ namespace ILCompiler.DependencyAnalysis
             LLVMObjectWriter objectWriter = new LLVMObjectWriter(objectFilePath, compilation);
             NodeFactory factory = compilation.NodeFactory;
 
-            var sw = new Stopwatch();
-            sw.Start();
             try
             {
                 foreach (DependencyNode depNode in nodes)
@@ -139,8 +137,6 @@ namespace ILCompiler.DependencyAnalysis
                     objectWriter.EmitObjectNode(node, nodeContents);
                 }
 
-                sw.Stop();
-                Console.WriteLine(sw.Elapsed);
                 objectWriter.FinishObjWriter();
 
                 // Make sure we have released all memory used for mangling names.
@@ -219,7 +215,10 @@ namespace ILCompiler.DependencyAnalysis
                     typeElements = _currentObjectTypes.AsSpan(0, dataSizeInElements);
 
                     // Restart zipping while loop.
-                    dataOffset = elementOffset = relocIndex = 0;
+                    dataOffset = 0;
+                    elementOffset = 0;
+                    relocIndex = 0;
+
                     continue;
                 }
 
