@@ -7,11 +7,59 @@ typedef uint16_t mono_unichar2;
 
 #define g_assert_checked(expr) /* empty */
 
+#define return_val_if_nok(error,val) do { } while (0) // FIXME
+
 static inline void
-mono_compiler_barrier()
+mono_compiler_barrier(void)
 {
     mono_memory_barrier(); // FIXME: too strict
 }
+
+static inline void
+mono_memory_read_barrier(void)
+{
+    mono_memory_barrier(); // FIXME
+}
+
+static inline gboolean
+mono_isunordered (double a, double b) {
+    abort();
+    return FALSE; // FIXME
+}
+
+static inline gboolean
+mono_isfinite (double a) {
+    abort();
+    return TRUE; // FIXME
+}
+
+static inline gboolean
+mono_try_trunc_u64(double v, guint64 *res)
+{
+    abort();
+    return FALSE; // FIXME
+}
+
+static inline gboolean
+mono_try_trunc_i64(double v, gint64 *res)
+{
+    abort();
+    return FALSE; // FIXME
+}
+
+static inline gboolean
+mono_signbit (double a) {
+    abort();
+    return FALSE; // FIXME
+}
+
+static inline gboolean
+mono_isnan (double a) {
+    abort();
+    return FALSE; // FIXME
+}
+
+
 
 typedef struct _MonoException MonoException;
 typedef struct _MonoArray MonoArray;

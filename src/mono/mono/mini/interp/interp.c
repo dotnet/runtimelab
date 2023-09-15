@@ -398,12 +398,16 @@ int mono_interp_traceopt = 0;
 static void
 clear_resume_state (ThreadContext *context)
 {
+#ifndef NATIVEAOT_MINT
 	context->has_resume_state = 0;
 	context->handler_frame = NULL;
 	context->handler_ei = NULL;
 	g_assert (context->exc_gchandle);
 	mono_gchandle_free_internal (context->exc_gchandle);
 	context->exc_gchandle = 0;
+#else
+	NATIVEAOT_MINT_TODO_EE("");
+#endif
 }
 
 /*
@@ -3864,11 +3868,16 @@ mono_interp_leave (InterpFrame* parent_frame)
 static gint32
 mono_interp_enum_hasflag (stackval *sp1, stackval *sp2, MonoClass* klass)
 {
+#ifndef NATIVEAOT_MINT
 	guint64 a_val = 0, b_val = 0;
 
 	stackval_to_data (m_class_get_byval_arg (klass), sp1, &a_val, FALSE);
 	stackval_to_data (m_class_get_byval_arg (klass), sp2, &b_val, FALSE);
 	return (a_val & b_val) == b_val;
+#else
+	NATIVEAOT_MINT_TODO_EE_SOON("");
+	return FALSE;
+#endif
 }
 
 static void
@@ -4115,8 +4124,12 @@ mono_interp_exec_method (InterpFrame *frame, ThreadContext *context, FrameClause
 #endif
 	//g_print ("(%p) Call %s\n", mono_thread_internal_current (), mono_method_get_full_name (frame->imethod->method));
 
+#ifndef NATIVEAOT_MINT
 #if defined(ENABLE_HYBRID_SUSPEND) || defined(ENABLE_COOP_SUSPEND)
 	mono_threads_safepoint ();
+#endif
+#else
+	NATIVEAOT_MINT_TODO_EE_NOWARN(); // mono_threads_safepoint
 #endif
 main_loop:
 	/*
@@ -4617,6 +4630,7 @@ call:
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_JIT_CALL) {
+#ifndef NATIVEAOT_MINT
 			InterpMethod *rmethod = (InterpMethod*)frame->imethod->data_items [ip [3]];
 			error_init_reuse (error);
 			/* for calls, have ip pointing at the start of next instruction */
@@ -4629,6 +4643,9 @@ call:
 
 			CHECK_RESUME_STATE (context);
 			ip += 4;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_JIT_CALL);
+#endif
 
 			MINT_IN_BREAK;
 		}
@@ -5389,10 +5406,14 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 #endif
 			MINT_IN_BREAK;
 		MINT_IN_CASE(MINT_STIND_REF) {
+#ifndef NATIVEAOT_MINT
 			gpointer ptr = LOCAL_VAR (ip [1], gpointer);
 			NULL_CHECK (ptr);
 			mono_gc_wbarrier_generic_store_internal (ptr, LOCAL_VAR (ip [2], MonoObject*));
 			ip += 3;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_STIND_REF);
+#endif
 			MINT_IN_BREAK;
 		}
 #define STIND(datatype,unaligned) do { \
@@ -5909,18 +5930,26 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 			ip += 3;
 			MINT_IN_BREAK;
 		MINT_IN_CASE(MINT_CPOBJ) {
+#ifndef NATIVEAOT_MINT
 			MonoClass* const c = (MonoClass*)frame->imethod->data_items[ip [3]];
 			g_assert (m_class_is_valuetype (c));
 			/* if this assertion fails, we need to add a write barrier */
 			g_assert (!MONO_TYPE_IS_REFERENCE (m_class_get_byval_arg (c)));
 			stackval_from_data (m_class_get_byval_arg (c), (stackval*)LOCAL_VAR (ip [1], gpointer), LOCAL_VAR (ip [2], gpointer), FALSE);
 			ip += 4;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_CPOBJ);
+#endif
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_CPOBJ_VT) {
+#ifndef NATIVEAOT_MINT
 			MonoClass* const c = (MonoClass*)frame->imethod->data_items[ip [3]];
 			mono_value_copy_internal (LOCAL_VAR (ip [1], gpointer), LOCAL_VAR (ip [2], gpointer), c);
 			ip += 4;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_CPOBJ_VT);
+#endif
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_CPOBJ_VT_NOREF) {
@@ -6230,10 +6259,14 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_INTRINS_CLEAR_WITH_REFERENCES) {
+#ifndef NATIVEAOT_MINT
 			gpointer p = LOCAL_VAR (ip [1], gpointer);
 			size_t size = LOCAL_VAR (ip [2], mono_u) * sizeof (gpointer);
 			mono_gc_bzero_aligned (p, size);
 			ip += 3;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_INTRINS_CLEAR_WITH_REFERENCES);
+#endif
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_INTRINS_MARVIN_BLOCK) {
@@ -6485,10 +6518,14 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 		MINT_IN_CASE(MINT_STFLD_R4) STFLD(float, float); MINT_IN_BREAK;
 		MINT_IN_CASE(MINT_STFLD_R8) STFLD(double, double); MINT_IN_BREAK;
 		MINT_IN_CASE(MINT_STFLD_O) {
+#ifndef NATIVEAOT_MINT
 			MonoObject *o = LOCAL_VAR (ip [1], MonoObject*);
 			NULL_CHECK (o);
 			mono_gc_wbarrier_set_field_internal (o, (char*)o + ip [3], LOCAL_VAR (ip [2], MonoObject*));
 			ip += 4;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_STFLD_O);
+#endif
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_STFLD_I8_UNALIGNED) STFLD_UNALIGNED(gint64, gint64, TRUE); MINT_IN_BREAK;
@@ -6503,11 +6540,15 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 		}
 
 		MINT_IN_CASE(MINT_STFLD_VT) {
+#ifndef NATIVEAOT_MINT
 			MonoClass *klass = (MonoClass*)frame->imethod->data_items [ip [4]];
 			MonoObject *o = LOCAL_VAR (ip [1], MonoObject*);
 			NULL_CHECK (o);
 			mono_value_copy_internal ((char*)o + ip [3], locals + ip [2], klass);
 			ip += 5;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_STFLD_VT);
+#endif
 			MINT_IN_BREAK;
 		}
 
@@ -6545,7 +6586,7 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 	}
 #else
 #define LDSFLD(datatype, fieldtype) \
-	NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_LDSFLD ## #fieldtype)
+	NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_LDSFLD ## fieldtype)
 #endif
 
 		MINT_IN_CASE(MINT_LDSFLD_I1) LDSFLD(gint32, gint8); MINT_IN_BREAK;
@@ -6597,7 +6638,7 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 	}
 #else
 #define STSFLD(datatype, fieldtype) \
-	NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_STSFLD ## #fieldtype)
+	NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_STSFLD ## fieldtype)
 #endif
 
 		MINT_IN_CASE(MINT_STSFLD_I1) STSFLD(gint32, gint8); MINT_IN_BREAK;
@@ -6638,9 +6679,13 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 		}
 
 		MINT_IN_CASE(MINT_STOBJ_VT) {
+#ifndef NATIVEAOT_MINT
 			MonoClass *c = (MonoClass*)frame->imethod->data_items [ip [3]];
 			mono_value_copy_internal (LOCAL_VAR (ip [1], gpointer), locals + ip [2], c);
 			ip += 4;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_STOBJ_VT);
+#endif
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_STOBJ_VT_NOREF) {
@@ -7578,6 +7623,7 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_MONO_EXCHANGE_I8) {
+#ifndef NATIVEAOT_MINT
 			gboolean flag = FALSE;
 			gint64 *dest = LOCAL_VAR (ip [2], gint64*);
 			gint64 exch = LOCAL_VAR (ip [3], gint64);
@@ -7596,9 +7642,13 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 			if (!flag)
 				LOCAL_VAR (ip [1], gint64) = mono_atomic_xchg_i64 (dest, exch);
 			ip += 4;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_MONO_EXCHANGE_I8);
+#endif
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_MONO_CMPXCHG_I4) {
+#ifndef NATIVEAOT_MINT
 			gint32 *dest = LOCAL_VAR(ip[2], gint32*);
 			gint32 value = LOCAL_VAR(ip[3], gint32);
 			gint32 comparand = LOCAL_VAR(ip[4], gint32);
@@ -7606,9 +7656,13 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 
 			LOCAL_VAR(ip[1], gint32) = mono_atomic_cas_i32(dest, value, comparand);
 			ip += 5;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_MONO_CMPXCHG_I4);
+#endif
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_MONO_CMPXCHG_I8) {
+#ifndef NATIVEAOT_MINT
 			gboolean flag = FALSE;
 			gint64 *dest = LOCAL_VAR(ip[2], gint64*);
 			gint64 value = LOCAL_VAR(ip[3], gint64);
@@ -7631,17 +7685,25 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 			if (!flag)
 				LOCAL_VAR(ip[1], gint64) = mono_atomic_cas_i64(dest, value, comparand);
 			ip += 5;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_MONO_CMPXCHG_I8);
+#endif
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_MONO_LDDOMAIN)
+#ifndef NATIVEAOT_MINT
 			LOCAL_VAR (ip [1], gpointer) = mono_domain_get ();
 			ip += 2;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_MONO_LDDOMAIN);
+#endif
 			MINT_IN_BREAK;
 		MINT_IN_CASE(MINT_MONO_ENABLE_GCTRANS)
 			gc_transitions = TRUE;
 			ip++;
 			MINT_IN_BREAK;
 		MINT_IN_CASE(MINT_SDB_INTR_LOC)
+#ifndef NATIVEAOT_MINT
 			if (G_UNLIKELY (ss_enabled)) {
 				typedef void (*T) (void);
 				static T ss_tramp;
@@ -7670,6 +7732,9 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 				CHECK_RESUME_STATE (context);
 			}
 			++ip;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_SDB_INTR_LOC);
+#endif
 			MINT_IN_BREAK;
 		MINT_IN_CASE(MINT_SDB_SEQ_POINT)
 			/* Just a placeholder for a breakpoint */
@@ -7680,6 +7745,7 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 			++ip;
 			MINT_IN_BREAK;
 		MINT_IN_CASE(MINT_SDB_BREAKPOINT) {
+#ifndef NATIVEAOT_MINT
 			typedef void (*T) (void);
 			static T bp_tramp;
 			if (!bp_tramp) {
@@ -7698,6 +7764,9 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 			CHECK_RESUME_STATE (context);
 
 			++ip;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_SDB_BREAKPOINT);
+#endif
 			MINT_IN_BREAK;
 		}
 
@@ -8211,12 +8280,20 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_INTRINS_GET_HASHCODE) {
+#ifndef NATIVEAOT_MINT
 			LOCAL_VAR (ip [1], gint32) = mono_object_hash_internal (LOCAL_VAR (ip [2], MonoObject*));
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_INTRINS_GET_HASHCODE);
+#endif
 			ip += 3;
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_INTRINS_TRY_GET_HASHCODE) {
+#ifndef NATIVEAOT_MINT
 			LOCAL_VAR (ip [1], gint32) = mono_object_try_get_hash_internal (LOCAL_VAR (ip [2], MonoObject*));
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_INTRINS_TRY_GET_HASHCODE);
+#endif
 			ip += 3;
 			MINT_IN_BREAK;
 		}
@@ -8558,6 +8635,7 @@ interp_run_finally (StackFrameInfo *frame, int clause_index)
 	}
 #else
 	NATIVEAOT_MINT_TODO_EE("");
+	return FALSE;
 #endif
 }
 
@@ -8612,6 +8690,7 @@ interp_run_filter (StackFrameInfo *frame, MonoException *ex, int clause_index, g
 	return retval.data.i ? TRUE : FALSE;
 #else
 	NATIVEAOT_MINT_TODO_EE("");
+	return FALSE;
 #endif
 }
 
@@ -8759,6 +8838,7 @@ interp_run_clause_with_il_state (gpointer il_state_ptr, int clause_index, MonoOb
 	return context->has_resume_state;
 #else
 	NATIVEAOT_MINT_TODO_EE("");
+	return FALSE;
 #endif
 }
 
@@ -8835,6 +8915,7 @@ interp_frame_iter_next (MonoInterpStackIter *iter, StackFrameInfo *frame)
 	return TRUE;
 #else
 	NATIVEAOT_MINT_TODO_EE("");
+	return FALSE;
 #endif
 }
 
@@ -9243,6 +9324,7 @@ interp_jit_call_can_be_supported (MonoMethod *method, MonoMethodSignature *sig, 
 	return TRUE;
 #else
 	NATIVEAOT_MINT_TODO_EE("");
+	return FALSE;
 #endif
 }
 
