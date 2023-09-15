@@ -18,6 +18,9 @@ internal static class Mint
     [DllImport(RuntimeLibrary)]
     internal static extern unsafe IntPtr mint_testing_transform_sample(Internal.Mint.Abstraction.MonoMethodInstanceAbstractionNativeAot* monoMethodPtr);
 
+    [DllImport(RuntimeLibrary)]
+    internal static extern unsafe void mint_testing_ee_interp_entry_static_ret_0(IntPtr res, IntPtr interpMethodPtr);
+
     static readonly MemoryManager globalMemoryManager = new MemoryManager();
     static readonly MintTypeSystem globalMintTypeSystem = new MintTypeSystem(globalMemoryManager);
 
@@ -77,7 +80,18 @@ internal static class Mint
             // object that can be invoked with the right calling convention.
             using var compiler = new DynamicMethodCompiler(dm);
             var compiledMethod = compiler.Compile();
-            compiledMethod.ExecMemoryManager.Dispose();// FIXME: this is blatantly wrong
+            Internal.Console.Write($"Compiled method: {compiledMethod.InterpMethod.Value}{Environment.NewLine}");
+            var result = compiledMethod.ExecMemoryManager.Allocate(8);
+            mint_testing_ee_interp_entry_static_ret_0(result, compiledMethod.InterpMethod.Value);
+            Internal.Console.Write($"Compiled method returned{Environment.NewLine}");
+            int resultVal;
+            unsafe
+            {
+                resultVal = *(int*)result;
+            }
+            Internal.Console.Write($"Compiled method returned {resultVal}{Environment.NewLine}");
+            compiledMethod.ExecMemoryManager.Dispose();
+            //compiledMethod.ExecMemoryManager.Dispose();// FIXME: this is blatantly wrong
             return compiledMethod.InterpMethod.Value;
         }
     }

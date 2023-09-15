@@ -9782,3 +9782,10 @@ mono_jiterp_get_interp_entry_func (int table)
 }
 
 #endif
+
+#ifdef NATIVEAOT_MINT
+void mint_testing_ee_interp_entry_static_ret_0(gpointer ret, InterpMethod *rmethod)
+{
+	interp_entry_static_ret_0(ret, rmethod);
+}
+#endif
