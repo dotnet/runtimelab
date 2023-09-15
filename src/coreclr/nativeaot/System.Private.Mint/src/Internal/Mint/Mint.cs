@@ -13,7 +13,7 @@ internal static class Mint
     const string RuntimeLibrary = "*";
 
     [DllImport(RuntimeLibrary)]
-    private static extern unsafe void mint_entrypoint(Internal.Mint.Abstraction.Itf* nativeAotItf);
+    private static extern unsafe void mint_entrypoint(Abstraction.Itf* nativeAotItf, Abstraction.EEItf* eeItf);
 
     [DllImport(RuntimeLibrary)]
     internal static extern unsafe IntPtr mint_testing_transform_sample(Internal.Mint.Abstraction.MonoMethodInstanceAbstractionNativeAot* monoMethodPtr);
@@ -22,6 +22,7 @@ internal static class Mint
     static readonly MintTypeSystem globalMintTypeSystem = new MintTypeSystem(globalMemoryManager);
 
     internal static MintTypeSystem GlobalMintTypeSystem => globalMintTypeSystem;
+    internal static MemoryManager GlobalMemoryManager => globalMemoryManager;
 
     internal static void Initialize()
     {
@@ -30,7 +31,8 @@ internal static class Mint
         unsafe
         {
             var itf = CreateItf();
-            mint_entrypoint(itf);
+            var eeItf = EE.MintRuntime.CreateItf();
+            mint_entrypoint(itf, eeItf);
         }
         InstallDynamicMethodCallbacks();
     }

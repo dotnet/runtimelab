@@ -150,4 +150,6 @@ typedef struct _MonoEECallbacks {
 
 void mono_ee_interp_init (const char *); // not missing.  this is in interp.h
 
+typedef struct _ThreadContext ThreadContext;
+
 #endif /*_MONOSHIM_MISSING_SYMBOLS_EE_H*/

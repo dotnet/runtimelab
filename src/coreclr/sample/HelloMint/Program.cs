@@ -29,7 +29,7 @@ namespace HelloMint
             }
         }
 
-        private static bool voidVoidSample = false;
+        private static bool voidVoidSample = true;
 
         private static void GenerateSample(ILGenerator ilgen)
         {
@@ -54,7 +54,11 @@ namespace HelloMint
         static void CreateDynamicMethod()
         {
             var returnType = voidVoidSample ? typeof(void) : typeof(int);
-            var paramTypes = new Type [] { typeof(int)};
+            Type[] paramTypes;
+            if (voidVoidSample)
+                paramTypes = new Type[] { };
+            else
+                paramTypes = new Type[] { typeof(int) };
             DynamicMethod dMethod = new DynamicMethod("MeaningOfLife", returnType, paramTypes, typeof(object).Module);
             if (dMethod is not null)
             {

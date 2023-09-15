@@ -7,6 +7,7 @@
 #include <mint-imethod.h>
 
 #include "mint-itf.h"
+#include "mint.h"
 
 static void
 __attribute__((noreturn))
@@ -46,10 +47,6 @@ char *mono_method_full_name (MonoMethod *method, gboolean signature) { MISSING_F
 
 int mono_type_size(MonoType *type, int *alignment) { MISSING_FUNC(); }
 
-void
-mint_entrypoint(MintAbstractionNativeAot *itf);
-
-// for testing purposes only. transform a placeholder method
 InterpMethod*
 mint_testing_transform_sample(MonoMethod *monoMethodPtr)
 {
@@ -61,12 +58,12 @@ mint_testing_transform_sample(MonoMethod *monoMethodPtr)
 }
 
 void
-mint_entrypoint(MintAbstractionNativeAot *itf)
+mint_entrypoint(MintAbstractionNativeAot *itf, MintEEAbstractionNativeAot* eeItf)
 {
     mono_interp_opt = INTERP_OPT_DEFAULT & ~INTERP_OPT_TIERING & ~INTERP_OPT_SIMD ; // FIXME
     mono_interp_traceopt = 1; // FIXME
     mint_itf_initialize(itf);
-    mint_ee_itf_initialize(NULL);
+    mint_ee_itf_initialize(eeItf); // FIXME: get it from managed
 }
 
 

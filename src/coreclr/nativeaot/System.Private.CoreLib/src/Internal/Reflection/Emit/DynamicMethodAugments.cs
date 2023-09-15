@@ -3,6 +3,8 @@
 
 using System;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Internal.Reflection.Emit;
 
@@ -35,6 +37,21 @@ public static partial class DynamicMethodAugments {
         }
         return (byte)eeType.CorElementType;
     }
+
+    /// THIS IS A VERY BAD THING
+    public static GCHandle UnsafeGCHandleAlloc(object o, GCHandleType type)
+    {
+        if (type != GCHandleType.Pinned)
+            return GCHandle.Alloc(o, type);
+        else
+        {
+            // FIXME: I'm doing a very very bad thing
+            IntPtr handle = GCHandle.InternalAlloc(o, type);
+            handle = (IntPtr)((nint)handle | 1); // see GCHandle.Alloc in src/libraries
+            return GCHandle.FromIntPtr(handle);
+        }
+    }
+
 }
 
 #endif

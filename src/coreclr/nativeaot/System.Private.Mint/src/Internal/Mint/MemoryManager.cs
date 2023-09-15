@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-
+using Internal.Mint.Abstraction;
 using Internal.Reflection.Emit;
 
 namespace Internal.Mint;
@@ -24,20 +24,33 @@ public sealed class MemoryManager : IDisposable
     {
     }
 
+    ~MemoryManager()
+    {
+        Dispose(false);
+    }
+
     public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+    public void Dispose(bool disposing)
     {
         foreach (var resource in _resources)
         {
             resource.Dispose();
         }
+        _resources?.Clear();
         foreach (var pinnedObject in _pinnedObjects)
         {
             pinnedObject.Dispose();
         }
+        _pinnedObjects?.Clear();
         foreach (var ownedObject in _ownedObjects)
         {
             ownedObject.Free();
         }
+        _ownedObjects?.Clear();
     }
 
     internal struct Resource
@@ -88,5 +101,28 @@ public sealed class MemoryManager : IDisposable
         _pinnedObjects.Add(pinnedObject);
         // FIXME: is this the right thing?
         return *(void**)Unsafe.AsPointer(ref o);
+    }
+
+    private unsafe void* PinUnsafeWithRefs(ref object o)
+    {
+        var pinnedObject = new PinnedObject { Value = DynamicMethodAugments.UnsafeGCHandleAlloc(o, GCHandleType.Pinned) };
+        _pinnedObjects.Add(pinnedObject);
+        return Unsafe.AsPointer(ref o);
+    }
+
+    public unsafe byte* AllocateStack(out uint stackSize, out uint redZoneSize, out uint initAlignment)
+    {
+        const uint INTERP_STACK_SIZE = 1024 * 1024;
+        const uint INTERP_REDZONE_SIZE = 8 * 1024;
+        uint MINT_STACK_ALIGNMENT = (uint)(2 * sizeof(Abstraction.EEstackval));
+        stackSize = INTERP_STACK_SIZE;
+        redZoneSize = INTERP_REDZONE_SIZE;
+        initAlignment = MINT_STACK_ALIGNMENT;
+        var stack = new Abstraction.EEstackvalVisible[INTERP_STACK_SIZE];
+        var obj = (object)stack;
+        PinUnsafeWithRefs(ref obj);
+        var dataRef = MemoryMarshal.GetArrayDataReference(stack);
+        var stackStart = (byte*)Unsafe.AsPointer(ref dataRef);
+        return stackStart;
     }
 }

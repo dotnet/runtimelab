@@ -69,6 +69,7 @@ typedef gint64  mono_i;
  * Value types are represented on the eval stack as pointers to the
  * actual storage. A value type cannot be larger than 16 MB.
  */
+#ifndef NATIVEAOT_MINT
 typedef struct {
 	union {
 		gint32 i;
@@ -91,6 +92,26 @@ typedef struct {
 		gpointer vt;
 	} data;
 } stackval;
+#else
+/* Be honest with the NativeAOT GC: don't overlap ref and non-ref data*/
+typedef struct {
+	MonoObject* data_o;
+	union {
+		gint32 i;
+		gint64 l;
+		struct {
+			gint32 lo;
+			gint32 hi;
+		} pair;
+		float f_r4;
+		double f;
+		/* native size integer and pointer types */
+		gpointer p;
+		mono_u nati;
+		gpointer vt;
+	} data;
+} stackval;
+#endif
 
 typedef struct InterpFrame InterpFrame;
 
@@ -251,6 +272,7 @@ struct InterpFrame {
 
 #define frame_locals(frame) ((guchar*)(frame)->stack)
 
+#ifndef NATIVEAOT_MINT
 typedef struct _ThreadContext {
 	/* Lets interpreter know it has to resume execution after EH */
 	gboolean has_resume_state;
@@ -278,6 +300,10 @@ typedef struct _ThreadContext {
 	/* Used for allocation of localloc regions */
 	FrameDataAllocator data_stack;
 } ThreadContext;
+#else
+// keep it opaque - access through NativeAOT abstraction
+typedef struct _ThreadContext ThreadContext;
+#endif
 
 typedef struct {
 	gint64 transform_time;

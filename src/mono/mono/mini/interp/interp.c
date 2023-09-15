@@ -126,6 +126,54 @@ nativeaot_mint_todo_ee(const char *extra, const char *msg, const char *file, int
 #define NATIVEAOT_MINT_TODO_EE_OPCODE(opcode) nativeaot_mint_todo_ee("(opcode)", #opcode, __FILE__, __LINE__, __func__)
 #endif
 
+static void
+frame_data_allocator_pop (FrameDataAllocator *stack, InterpFrame *frame);
+
+static inline MONO_ALWAYS_INLINE
+uint8_t*
+interp_ee_stack_pointer(ThreadContext *context)
+{
+#ifndef NATIVEAOT_MINT
+	return context->stack_pointer;
+#else
+	return MINT_EE_TI_ITF(ThreadContext, context, stack_pointer);
+#endif
+}
+
+static inline MONO_ALWAYS_INLINE
+uint8_t*
+interp_ee_stack_end(ThreadContext *context)
+{
+#ifndef NATIVEAOT_MINT
+	return context->stack_end;
+#else
+	return MINT_EE_TI_ITF(ThreadContext, context, stack_end);
+#endif
+}
+
+static inline MONO_ALWAYS_INLINE
+void
+interp_ee_set_stack_pointer(ThreadContext *context, uint8_t *sp)
+{
+#ifndef NATIVEAOT_MINT
+	context->stack_pointer = sp;
+	g_assert (context->stack_pointer < context->stack_end);
+#else
+	MINT_EE_TI_ITF(ThreadContext, context, set_stack_pointer)(context, sp);
+#endif
+}
+
+static inline MONO_ALWAYS_INLINE
+void
+interp_ee_frame_data_allocator_pop(ThreadContext *context, InterpFrame *frame)
+{
+#ifndef NATIVEAOT_MINT
+	frame_data_allocator_pop (&context->data_stack, frame);
+#else
+	NATIVEAOT_MINT_TODO_EE("");
+#endif
+}
+
 /* Arguments that are passed when invoking only a finally/filter clause from the frame */
 struct FrameClauseArgs {
 	/* Where we start the frame execution from */
@@ -421,10 +469,15 @@ clear_resume_state (ThreadContext *context)
  * unwound all the JITted frames below us. mono_interp_set_resume_state ()
  * has set the fields in context to indicate where we have to resume execution.
  */
+#ifndef NATIVEAOT_MINT
 #define CHECK_RESUME_STATE(context) do { \
 		if ((context)->has_resume_state)	\
 			goto resume;			\
 	} while (0)
+#else
+#define CHECK_RESUME_STATE(context) \
+	NATIVEAOT_MINT_TODO_EE("check_resume_state");
+#endif
 
 static void
 set_context (ThreadContext *context)
@@ -442,6 +495,17 @@ set_context (ThreadContext *context)
 	jit_tls->interp_context = context;
 #else
 	NATIVEAOT_MINT_TODO_EE("");
+#endif
+}
+
+static void
+interp_ee_tls_initialize (void)
+{
+#ifndef NATIVEAOT_MINT
+	mono_native_tls_alloc (&thread_context_id, NULL);
+	set_context (NULL);
+#else
+	MINT_EE_ITF(tls_initialize) ();
 #endif
 }
 
@@ -465,8 +529,7 @@ get_context (void)
 	}
 	return context;
 #else
-	NATIVEAOT_MINT_TODO_EE_SOON("allocate interp stack");
-	return NULL;
+	return MINT_EE_ITF(get_context)();
 #endif
 }
 
@@ -3948,7 +4011,7 @@ method_entry (ThreadContext *context, InterpFrame *frame,
 			 * Initialize the stack base pointer here, in the uncommon branch, so we don't
 			 * need to check for it everytime when exitting a frame.
 			 */
-			frame->stack = (stackval*)context->stack_pointer;
+			frame->stack = (stackval*)interp_ee_stack_pointer(context);
 			return slow;
 		}
 	} else {
@@ -4109,8 +4172,7 @@ mono_interp_exec_method (InterpFrame *frame, ThreadContext *context, FrameClause
 	}
 
 	if (!clause_args) {
-		context->stack_pointer = (guchar*)frame->stack + frame->imethod->alloca_size;
-		g_assert (context->stack_pointer < context->stack_end);
+		interp_ee_set_stack_pointer (context, (guchar*)frame->stack + frame->imethod->alloca_size);
 		/* Make sure the stack pointer is bumped before we store any references on the stack */
 		mono_compiler_barrier ();
 	}
@@ -4616,11 +4678,11 @@ call:
 				EXCEPTION_CHECKPOINT;
 			}
 
-			context->stack_pointer = (guchar*)frame->stack + cmethod->alloca_size;
+			interp_ee_set_stack_pointer(context, (guchar*)frame->stack + cmethod->alloca_size);
 
-			if (G_UNLIKELY (context->stack_pointer >= context->stack_end)) {
-				context->stack_end = context->stack_real_end;
+			if (G_UNLIKELY (interp_ee_stack_pointer(context) >= interp_ee_stack_end(context))) {
 #ifndef NATIVEAOT_MINT
+				context->stack_end = context->stack_real_end;
 				THROW_EX (mono_domain_get ()->stack_overflow_ex, ip);
 #else
 				NATIVEAOT_MINT_TODO_EE ("stack overflow in call");
@@ -4704,14 +4766,14 @@ call:
 		}
 		MINT_IN_CASE(MINT_RET_LOCALLOC)
 			frame->retval [0] = LOCAL_VAR (ip [1], stackval);
-			frame_data_allocator_pop (&context->data_stack, frame);
+			interp_ee_frame_data_allocator_pop (context, frame);
 			goto exit_frame;
 		MINT_IN_CASE(MINT_RET_VOID_LOCALLOC)
-			frame_data_allocator_pop (&context->data_stack, frame);
+			interp_ee_frame_data_allocator_pop (context, frame);
 			goto exit_frame;
 		MINT_IN_CASE(MINT_RET_VT_LOCALLOC) {
 			memmove (frame->retval, locals + ip [1], ip [2]);
-			frame_data_allocator_pop (&context->data_stack, frame);
+			interp_ee_frame_data_allocator_pop (context, frame);
 			goto exit_frame;
 		}
 
@@ -8109,6 +8171,7 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 			MINT_IN_BREAK;
 
 		MINT_IN_CASE(MINT_LOCALLOC) {
+#ifndef NATIVEAOT_MINT
 			int len = LOCAL_VAR (ip [2], gint32);
 			gpointer mem;
 			if (len > 0) {
@@ -8122,6 +8185,9 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 			}
 			LOCAL_VAR (ip [1], gpointer) = mem;
 			ip += 3;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_LOCALLOC);
+#endif
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_ENDFILTER)
@@ -8420,6 +8486,7 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 	g_assert_not_reached ();
 
 resume:
+#ifndef NATIVEAOT_MINT
 	g_assert (context->has_resume_state);
 	g_assert (frame->imethod);
 
@@ -8454,6 +8521,9 @@ resume:
 	// Because we are resuming in another frame, bypassing a normal ret opcode,
 	// we need to make sure to reset the localloc stack
 	frame_data_allocator_pop (&context->data_stack, frame);
+#else
+	NATIVEAOT_MINT_TODO_EE("resume");
+#endif
 	// fall through
 exit_frame:
 	g_assert_checked (frame->imethod);
@@ -8467,7 +8537,7 @@ exit_frame:
 		 * FIXME We should be able to avoid dereferencing imethod here, if we will have
 		 * a param_area and all calls would inherit the same sp, or if we are full coop.
 		 */
-		context->stack_pointer = (guchar*)frame->stack + frame->imethod->alloca_size;
+		interp_ee_set_stack_pointer(context, (guchar*)frame->stack + frame->imethod->alloca_size);
 		LOAD_INTERP_STATE (frame);
 
 		CHECK_RESUME_STATE (context);
@@ -8475,10 +8545,14 @@ exit_frame:
 		goto main_loop;
 	}
 exit_clause:
+#ifndef NATIVEAOT_MINT
 	if (!clause_args)
 		context->stack_pointer = (guchar*)frame->stack;
 
 	DEBUG_LEAVE ();
+#else
+	NATIVEAOT_MINT_TODO_EE("exit_clause");
+#endif
 }
 
 #undef SET_TEMP_POINTER
@@ -9301,8 +9375,12 @@ static gboolean
 interp_sufficient_stack (gsize size)
 {
 	ThreadContext *context = get_context ();
+#ifndef NATIVEAOT_MINT
 
 	return (context->stack_pointer + size) < (context->stack_start + INTERP_STACK_SIZE);
+#else
+	return !!MINT_EE_TI_ITF(ThreadContext, context, check_sufficient_stack)(context, size);
+#endif
 }
 
 gboolean
@@ -9385,12 +9463,7 @@ mono_ee_interp_init (const char *opts)
 	g_assert (!interp_init_done);
 	interp_init_done = TRUE;
 
-#ifndef NATIVEAOT_MINT
-	mono_native_tls_alloc (&thread_context_id, NULL);
-#else
-	NATIVEAOT_MINT_TODO_EE("tls alloc");
-#endif
-	set_context (NULL);
+	interp_ee_tls_initialize ();
 
 	interp_parse_options (opts);
 #ifndef NATIVEAOT_MINT
