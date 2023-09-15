@@ -120,7 +120,7 @@ public sealed class MintTypeSystem
         // as Mono can allocate and free signatures independently of the method
         var s = new Internal.Mint.Abstraction.MonoMethodSignatureInstanceAbstractionNativeAot
         {
-            param_count = 0, // FIXME: dynamicMethod.DynamicMethod.GetParameters().Length,
+            param_count = dynamicMethod.DynamicMethod.GetParameters().Length,
             hasthis = (byte)0, //FIXME: this doesn't work (returns 1): dynamicMethod.DynamicMethod.IsStatic ? (byte)0 : (byte)1,
             ret_ult = &VTables.monoMethodSignatureGetReturnTypeUnderlyingTypeImpl,
             gcHandle = GCHandle.ToIntPtr(_memoryMananger.Own(dynamicMethod))

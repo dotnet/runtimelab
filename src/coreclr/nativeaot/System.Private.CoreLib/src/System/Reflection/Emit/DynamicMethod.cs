@@ -4,6 +4,10 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+#if FEATURE_MINT
+using System.Reflection.Runtime.General;
+using System.Reflection.Runtime.ParameterInfos;
+#endif
 
 namespace System.Reflection.Emit
 {
@@ -179,6 +183,25 @@ namespace System.Reflection.Emit
             return default;
         }
 
+#if FEATURE_MINT
+        private RuntimeParameterInfo[] LoadParameters()
+        {
+            if (_parameters == null)
+            {
+                Type[] parameterTypes = _parameterTypes;
+                RuntimeParameterInfo[] parameters = new RuntimeParameterInfo[parameterTypes.Length];
+                for (int i = 0; i < parameterTypes.Length; i++)
+                {
+                    parameters[i] = RuntimeSyntheticParameterInfo.GetRuntimeSyntheticParameterInfo(this, i, parameterTypes[i].CastToRuntimeTypeInfo());
+                }
+
+                _parameters ??= parameters; // should we Interlocked.CompareExchange?
+            }
+
+            return _parameters;
+        }
+#endif
+
         public ParameterBuilder DefineParameter(int position, ParameterAttributes attributes, string parameterName)
         {
             return default;
@@ -226,7 +249,14 @@ namespace System.Reflection.Emit
 
         public override ParameterInfo[] GetParameters()
         {
+#if FEATURE_MINT
+            ParameterInfo[] privateParameters = LoadParameters();
+            ParameterInfo[] parameters = new ParameterInfo[privateParameters.Length];
+            Array.Copy(privateParameters, parameters, privateParameters.Length);
+            return parameters;
+#else
             return default;
+#endif
         }
 
         public override object? Invoke(object? obj, BindingFlags invokeAttr, Binder? binder, object?[]? parameters, CultureInfo? culture)
@@ -353,6 +383,7 @@ namespace System.Reflection.Emit
         private string _name;
         private MethodAttributes _attributes;
         private CallingConventions _callingConvention;
+        private RuntimeParameterInfo[]? _parameters;
 #endif
 
 #if FEATURE_MINT

@@ -54,10 +54,20 @@ namespace HelloMint
         static void CreateDynamicMethod()
         {
             var returnType = voidVoidSample ? typeof(void) : typeof(int);
-            DynamicMethod dMethod = new DynamicMethod("MeaningOfLife", returnType, Type.EmptyTypes, typeof(object).Module);
+            var paramTypes = new Type [] { typeof(int)};
+            DynamicMethod dMethod = new DynamicMethod("MeaningOfLife", returnType, paramTypes, typeof(object).Module);
             if (dMethod is not null)
             {
-                Console.WriteLine ($"DynamicMethod: '{dMethod.Name}' with return type '{dMethod.ReturnType}' has been created");
+                var mName = dMethod.Name;
+                var mReturnType = dMethod.ReturnType;
+                var mParams = dMethod.GetParameters();
+
+                Console.WriteLine ($"DynamicMethod: '{dMethod.Name}'");
+                Console.WriteLine ($"Return type: '{dMethod.ReturnType}'");
+                Console.WriteLine ($"Has {mParams.Length} params:");
+                int paramCnt = 0;
+                foreach (var param in mParams)
+                    Console.WriteLine ($"\tparam[{paramCnt++}] type: {param.ParameterType}");
 
                 ILGenerator ilgen = dMethod.GetILGenerator();
                 if (ilgen is null)
