@@ -389,15 +389,21 @@ public:
     PhaseStatus AddVirtualUnwindFrame();
 
 private:
+    static const unsigned UNWIND_INDEX_NONE = -1;
     static const unsigned UNWIND_INDEX_NOT_IN_TRY = 0;
     static const unsigned UNWIND_INDEX_NOT_IN_TRY_CATCH = 1;
     static const unsigned UNWIND_INDEX_BASE = 2;
 
     void computeBlocksInFilters();
+    ArrayStack<unsigned>* computeUnwindIndexMap();
     CORINFO_GENERIC_HANDLE generateUnwindTable();
 
     bool mayPhysicallyThrow(GenTree* node);
     bool isBlockInFilter(BasicBlock* block) const;
+
+#ifdef DEBUG
+    void printUnwindIndex(ArrayStack<unsigned>* indexMap, unsigned index);
+#endif // DEBUG
 
     // ================================================================================================================
     // |                                           Shadow stack allocation                                            |
