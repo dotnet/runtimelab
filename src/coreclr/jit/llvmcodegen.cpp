@@ -14,11 +14,7 @@
 //
 void Llvm::Compile()
 {
-    if (initializeFunctions())
-    {
-        return;
-    }
-
+    initializeFunctions();
     initializeDebugInfo();
 
     JITDUMPEXEC(_compiler->fgDispBasicBlocks());
@@ -41,7 +37,7 @@ void Llvm::Compile()
     verifyGeneratedCode();
 }
 
-bool Llvm::initializeFunctions()
+void Llvm::initializeFunctions()
 {
     const char* mangledName = GetMangledMethodName(m_info->compMethodHnd);
     Function* rootLlvmFunction = getOrCreateKnownLlvmFunction(mangledName, [=]() { return createFunctionType(); });
@@ -58,15 +54,6 @@ bool Llvm::initializeFunctions()
     if ((_compiler->info.compFlags & CORINFO_FLG_DONT_INLINE) != 0)
     {
         rootLlvmFunction->addFnAttr(llvm::Attribute::NoInline);
-    }
-
-    // TODO-LLVM: investigate.
-    if (!strcmp(mangledName, "S_P_CoreLib_System_Globalization_CalendarData__EnumCalendarInfo"))
-    {
-        llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(m_context->Context, "", rootLlvmFunction);
-        _builder.SetInsertPoint(llvmBlock);
-        _builder.CreateRet(_builder.getInt8(0));
-        return true;
     }
 
     // First function is always the root.
@@ -182,8 +169,6 @@ bool Llvm::initializeFunctions()
 
         m_EHUnwindLlvmBlocks[ehIndex] = dispatchLlvmBlock;
     }
-
-    return false;
 }
 
 void Llvm::generateProlog()
