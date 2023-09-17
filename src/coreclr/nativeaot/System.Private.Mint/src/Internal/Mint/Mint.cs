@@ -103,6 +103,11 @@ internal static class Mint
     private static void BigHackyExecCompiledMethod(DynamicMethod dm, DynamicMethodCompiler.CompiledMethod compiledMethod)
     {
         Internal.Console.Write($"Compiled method: {compiledMethod.InterpMethod.Value}{Environment.NewLine}");
+        if (dm.GetParameters().Length != 0)
+        {
+            Internal.Console.Write("Can't run a method with parameters yet");
+            return;
+        }
         var result = compiledMethod.ExecMemoryManager.Allocate(8);
         mint_testing_ee_interp_entry_static_ret_0(result, compiledMethod.InterpMethod.Value);
         Internal.Console.Write($"Compiled method returned{Environment.NewLine}");

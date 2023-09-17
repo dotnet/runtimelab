@@ -108,6 +108,30 @@ interp_msig_ret_ult (MonoMethodSignature *sig)
 #endif
 }
 
+static MonoType**
+interp_msig_get_first_param (MonoMethodSignature *sig)
+{
+#ifndef NATIVEAOT_MINT
+	return sig->params[0];
+#else
+	return MINT_TI_ITF(MonoMethodSignature, sig, method_params)(sig);
+#endif
+}
+
+
+static gpointer
+imethod_alloc0 (InterpMethod *imethod, size_t size)
+{
+#ifndef NATIVEAOT_MINT
+	if (td->rtm->method->dynamic)
+		return mono_dyn_method_alloc0 (td->rtm->method, (guint)size);
+	else
+		return mono_mem_manager_alloc0 (td->mem_manager, (guint)size);
+#else
+	return MINT_ITF(imethod_alloc0) (imethod, size);
+#endif
+}
+
 
 InterpMethod*
 mono_interp_get_imethod (MonoMethod *method)
@@ -134,12 +158,14 @@ mono_interp_get_imethod (MonoMethod *method)
 	imethod->optimized = TRUE; // NativeAot always optimize
 	imethod->rtype = interp_msig_ret_ult (sig);
 
-	if (interp_msig_param_count (sig) > 0) 
-		g_error ("FIXME: interp_msig_param_count > 0");
 	//if (imethod->method->string_ctor)
 	//	imethod->rtype = m_class_get_byval_arg (mono_defaults.string_class);
 	//else
 //		imethod->rtype = mini_get_underlying_type (sig->ret);
+	int sig_param_count = interp_msig_param_count (sig);
+	imethod->param_types = (MonoType**)imethod_alloc0 (imethod, sizeof (MonoType*) * sig_param_count);
+	for (int i = 0; i < sig_param_count; ++i)
+		imethod->param_types [i] = interp_msig_get_first_param (sig) [i];
 	// if (method->dynamic)
 	// 	imethod->param_types = (MonoType**)mono_dyn_method_alloc0 (method, sizeof (MonoType*) * sig->param_count);
 	// else
