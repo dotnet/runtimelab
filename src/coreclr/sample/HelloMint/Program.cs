@@ -42,9 +42,23 @@ namespace HelloMint
             }
             else
             {
-                ilgen.Emit(OpCodes.Ldc_I4_S, (byte)40);
+                if (useSingleIntParam)
+                {
+                    ilgen.Emit(OpCodes.Ldarg_0);
+                }
+                else
+                {
+                    ilgen.Emit(OpCodes.Ldc_I4_S, (byte)40);
+                }
                 ilgen.Emit(OpCodes.Ldc_I4_S, (byte)2);
                 ilgen.Emit(OpCodes.Add);
+                if (useSingleIntParam)
+                {
+                    // this is redundant, but it will exercise the code path;
+                    // and the Mint optimizer should eliminate all this code
+                    ilgen.Emit(OpCodes.Starg_S, (byte)0);
+                    ilgen.Emit(OpCodes.Ldarg_0);
+                }
                 ilgen.Emit(OpCodes.Ret);
             }
         }
