@@ -44,8 +44,18 @@ internal static class Mint
     internal static void InitializeGlobalTypeSystem()
     {
         globalMintTypeSystem.GetMonoType((RuntimeType)typeof(void));
+        globalMintTypeSystem.GetMonoType((RuntimeType)typeof(sbyte));
+        globalMintTypeSystem.GetMonoType((RuntimeType)typeof(byte));
+        globalMintTypeSystem.GetMonoType((RuntimeType)typeof(char));
+        globalMintTypeSystem.GetMonoType((RuntimeType)typeof(short));
+        globalMintTypeSystem.GetMonoType((RuntimeType)typeof(ushort));
         globalMintTypeSystem.GetMonoType((RuntimeType)typeof(int));
+        globalMintTypeSystem.GetMonoType((RuntimeType)typeof(uint));
         globalMintTypeSystem.GetMonoType((RuntimeType)typeof(IntPtr));
+        globalMintTypeSystem.GetMonoType((RuntimeType)typeof(UIntPtr));
+        globalMintTypeSystem.GetMonoType((RuntimeType)typeof(float));
+        globalMintTypeSystem.GetMonoType((RuntimeType)typeof(double));
+        globalMintTypeSystem.GetMonoType((RuntimeType)typeof(string));
     }
 
     internal static unsafe Abstraction.Itf* CreateItf()

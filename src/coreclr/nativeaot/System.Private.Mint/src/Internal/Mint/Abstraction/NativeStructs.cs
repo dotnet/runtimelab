@@ -26,9 +26,11 @@ public unsafe struct MonoMethodSignatureInstanceAbstractionNativeAot
     public int param_count;
     public byte hasthis;
 
+    public delegate* unmanaged<MonoMethodSignatureInstanceAbstractionNativeAot*, MonoTypeInstanceAbstractionNativeAot**> method_params; // MonoType ** (*method_params)(MonoMethodSignature *self);
     public delegate* unmanaged<MonoMethodSignatureInstanceAbstractionNativeAot*, MonoTypeInstanceAbstractionNativeAot*> ret_ult; // MonoType * (*ret_ult)(MonoMethodSignature *self);
 
     public IntPtr gcHandle;
+    public MonoTypeInstanceAbstractionNativeAot** MethodParamsTypes;
 }
 
 [StructLayout(LayoutKind.Sequential)]

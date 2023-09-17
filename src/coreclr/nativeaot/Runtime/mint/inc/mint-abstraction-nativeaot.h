@@ -35,11 +35,15 @@ struct _MonoMethodHeaderInstanceAbstractionNativeAot {
 typedef struct _MonoMethodSignatureInstanceAbstractionNativeAot MonoMethodSignatureInstanceAbstractionNativeAot;
 struct _MonoMethodSignatureInstanceAbstractionNativeAot {
     int32_t param_count;
+
     int8_t hasthis;
+
+    MonoType ** (*method_params)(MonoMethodSignature *self);
 
     MonoType * (*ret_ult)(MonoMethodSignature *self);
 
     MonoGCHandle gcHandle;
+    MonoType** MethodParamsTypes;
 };
 
 typedef struct _TransformData TransformData; // FIXME: separate the interp-aware abstractions from the metadata ones
@@ -52,11 +56,8 @@ typedef struct _MintAbstractionNativeAot {
     /* transform.c */
     MonoType * (*get_type_from_stack) (int type, MonoClass *klass);
     int (*mono_mint_type) (MonoType *type);
-    MonoType *(*get_arg_type_exact) (TransformData *td, int n, int *mt);
     gboolean (*type_has_references)(MonoType *type);
     gpointer (*imethod_alloc0) (InterpMethod *td, size_t size);
-    void (*load_arg) (TransformData *td, int n);
-    void (*store_arg) (TransformData *td, int n);
     MonoMethod* (*interp_get_method) (MonoMethod *method, guint32 token, MonoImage *image, MonoGenericContext *generic_context, MonoError *error);
 
     /* mono_defaults */

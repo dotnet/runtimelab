@@ -18,11 +18,8 @@ internal unsafe struct Itf
     /* transform.c */
     public delegate* unmanaged<int, IntPtr, MonoTypeInstanceAbstractionNativeAot*> get_type_from_stack; //MonoType * (*get_type_from_stack) (int type, MonoClass *klass);
     public delegate* unmanaged<MonoTypeInstanceAbstractionNativeAot*, int> mono_mint_type; // int (*mono_mint_type) (MonoType *type);
-    public IntPtr get_arg_type_exact; // MonoType *(*get_arg_type_exact) (TransformData *td, int n, int *mt);
     public IntPtr type_has_references; // gboolean (*type_has_references)(MonoType *type);
     public delegate* unmanaged<IntPtr/*InterpMethod* */, UIntPtr, IntPtr> imethod_alloc; // gpointer (*imethod_alloc0) (TransformData *td, size_t size);
-    public IntPtr load_arg; // void (*load_arg) (TransformData *td, int n);
-    public IntPtr store_arg; // void (*store_arg) (TransformData *td, int n);
     public IntPtr interp_get_method; // MonoMethod* (*interp_get_method) (MonoMethod *method, guint32 token, MonoImage *image, MonoGenericContext *generic_context, MonoError *error);
 
     /* mono_defaults */
@@ -113,11 +110,14 @@ internal unsafe struct Itf
 
     internal static unsafe int mintGetMintTypeFromMonoType(MonoTypeInstanceAbstractionNativeAot* type)
     {
+        if (type == null)
+            throw new InvalidOperationException("type is null");
         // see the mono mono_mint_get_type
         // in particular, byref is a MONO_TYPE_I, not a MONO_TYPE_BYREF
         switch ((CorElementType)type->type_code)
         {
             case CorElementType.ELEMENT_TYPE_I4: return (int)MintType.MINT_TYPE_I4;
+            case CorElementType.ELEMENT_TYPE_R8: return (int)MintType.MINT_TYPE_R8;
             case CorElementType.ELEMENT_TYPE_VOID: return (int)MintType.MINT_TYPE_VOID;
             default:
                 throw new InvalidOperationException($"can't handle MonoTypeEnum value {(int)type->type_code}");

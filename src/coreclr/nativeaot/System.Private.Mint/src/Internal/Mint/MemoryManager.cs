@@ -89,6 +89,11 @@ public sealed class MemoryManager : IDisposable
         return (T*)Allocate((uint)sizeof(T));
     }
 
+    public unsafe T** AllocateArray<T>(int size) where T : unmanaged
+    {
+        return (T**)Allocate((uint)((uint)sizeof(T*) * size));
+    }
+
     public GCHandle Own(object o)
     {
         var gch = GCHandle.Alloc(o);

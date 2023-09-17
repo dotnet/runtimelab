@@ -114,19 +114,42 @@ public sealed class MintTypeSystem
         return new MonoMethodPtr(ptr);
     }
 
+    private unsafe Internal.Mint.Abstraction.MonoTypeInstanceAbstractionNativeAot** CreateParameterTypes(ParameterInfo[] methodParameterInfos)
+    {
+        if (methodParameterInfos.Length > 0)
+        {
+            int i = 0;
+            var methodParamTypes = _memoryMananger.AllocateArray<Internal.Mint.Abstraction.MonoTypeInstanceAbstractionNativeAot>(methodParameterInfos.Length);
+            foreach (var methodParamInfo in methodParameterInfos)
+            {
+                methodParamTypes[i] = GetMonoType(methodParamInfo.ParameterType as RuntimeType).Value;
+                i++;
+            }
+            return methodParamTypes;
+        }
+        else
+        {
+            return null;
+        }
+    }
+
     private unsafe MonoMethodSignaturePtr CreateMonoMethodSignatureDynMethodImpl(OwnedDynamicMethod dynamicMethod)
     {
         // N.B: the signature doesn't have the same lifetime as the MonoMethodPtr
         // as Mono can allocate and free signatures independently of the method
+        ParameterInfo[] methodParameterInfos = dynamicMethod.DynamicMethod.GetParameters();
         var s = new Internal.Mint.Abstraction.MonoMethodSignatureInstanceAbstractionNativeAot
         {
-            param_count = dynamicMethod.DynamicMethod.GetParameters().Length,
+            param_count = methodParameterInfos.Length,
             hasthis = (byte)0, //FIXME: this doesn't work (returns 1): dynamicMethod.DynamicMethod.IsStatic ? (byte)0 : (byte)1,
+            method_params = &VTables.monoMethodSignatureGetParameterTypesUnderlyingTypeImpl,
             ret_ult = &VTables.monoMethodSignatureGetReturnTypeUnderlyingTypeImpl,
-            gcHandle = GCHandle.ToIntPtr(_memoryMananger.Own(dynamicMethod))
+            gcHandle = GCHandle.ToIntPtr(_memoryMananger.Own(dynamicMethod)),
+            MethodParamsTypes = CreateParameterTypes(methodParameterInfos),
         };
         var ptr = _memoryMananger.Allocate<Internal.Mint.Abstraction.MonoMethodSignatureInstanceAbstractionNativeAot>();
         *ptr = s;
+
         return new MonoMethodSignaturePtr(ptr);
     }
 
@@ -229,6 +252,14 @@ public sealed class MintTypeSystem
                 returnType = Enum.GetUnderlyingType(returnType);
             var type = owned.Owner.GetMonoType((RuntimeType)returnType);
             return type.Value;
+        }
+
+        [UnmanagedCallersOnly]
+        public static unsafe MonoTypeInstanceAbstractionNativeAot** monoMethodSignatureGetParameterTypesUnderlyingTypeImpl(MonoMethodSignatureInstanceAbstractionNativeAot* signature)
+        {
+            var owned = Unpack<OwnedDynamicMethod>(signature->gcHandle);
+            var monoMethodSignaturePtr = owned.Owner.GetMonoMethodSignature(owned);
+            return monoMethodSignaturePtr.Value->MethodParamsTypes;
         }
     }
 }

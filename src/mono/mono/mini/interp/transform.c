@@ -182,11 +182,21 @@ interp_msig_param_count (MonoMethodSignature *sig)
 #endif
 }
 
+static MonoType**
+interp_msig_get_first_param (MonoMethodSignature *sig)
+{
+#ifndef NATIVEAOT_MINT
+	return sig->params[0];
+#else
+	return MINT_TI_ITF(MonoMethodSignature, sig, method_params)(sig);
+#endif
+}
+
 static MonoType*
 interp_msig_ret_ult (MonoMethodSignature *sig)
 {
 #ifndef NATIVEAOT_MINT
-	return mini_type_get_underlying_type (signature->ret)
+	return mini_type_get_underlying_type (sig->ret)
 #else
 	return MINT_TI_ITF(MonoMethodSignature, sig, ret_ult)(sig);
 #endif
@@ -1259,39 +1269,43 @@ can_store (int st_value, int vt_value)
 static MonoType*
 get_arg_type_exact (TransformData *td, int n, int *mt)
 {
-#ifndef NATIVEAOT_MINT
 	MonoType *type;
-	gboolean hasthis = mono_method_signature_internal (td->method)->hasthis;
+	MonoMethodSignature *sig = interp_method_signature(td->method);
+	gboolean hasthis = interp_msig_hasthis (sig);
 
-	if (hasthis && n == 0)
+	if (hasthis && n == 0) {
+#ifndef NATIVEAOT_MINT
 		type = m_class_get_byval_arg (td->method->klass);
-	else
-		type = mono_method_signature_internal (td->method)->params [n - !!hasthis];
+#else
+		NATIVEAOT_MINT_TODO("get_arg_type_exact this");
+		g_assert_not_reached();
+#endif
+	} else
+		type = interp_msig_get_first_param(sig)[n - !!hasthis];
 
 	if (mt)
 		*mt = mono_mint_type (type);
 
 	return type;
-#else
-	return MINT_ITF(get_arg_type_exact) (td, n, mt);
-#endif
 }
 
 static void
 load_arg(TransformData *td, int n)
 {
-#ifndef NATIVEAOT_MINT
 	gint32 size = 0;
 	int mt;
 	MonoClass *klass = NULL;
 	MonoType *type;
-	gboolean hasthis = mono_method_signature_internal (td->method)->hasthis;
+	MonoMethodSignature *sig = interp_method_signature(td->method);
+	gboolean hasthis = interp_msig_hasthis(sig);
+	
 
 	type = get_arg_type_exact (td, n, &mt);
 
 	if (mt == MINT_TYPE_VT) {
+#ifndef NATIVEAOT_MINT
 		klass = mono_class_from_mono_type_internal (type);
-		if (mono_method_signature_internal (td->method)->pinvoke && !mono_method_signature_internal (td->method)->marshalling_disabled)
+		if (sig->pinvoke && !sig->marshalling_disabled)
 			size = mono_class_native_size (klass, NULL);
 		else
 			size = mono_class_value_size (klass, NULL);
@@ -1304,6 +1318,9 @@ load_arg(TransformData *td, int n)
 			g_assert (size < G_MAXUINT16);
 			push_type_vt (td, klass, size);
 		}
+#else
+		NATIVEAOT_MINT_TODO("load_arg vt");
+#endif
 	} else {
 		if ((hasthis || mt == MINT_TYPE_I) && n == 0) {
 			// Special case loading of the first ptr sized argument
@@ -1320,15 +1337,11 @@ load_arg(TransformData *td, int n)
 	interp_ins_set_dreg (td->last_ins, td->sp [-1].local);
 	if (mt == MINT_TYPE_VT)
 		td->last_ins->data [0] = GINT32_TO_UINT16 (size);
-#else
-	return MINT_ITF(load_arg) (td, n);
-#endif
 }
 
 static void
 store_arg(TransformData *td, int n)
 {
-#ifndef NATIVEAOT_MINT
 	gint32 size = 0;
 	int mt;
 	CHECK_STACK_RET_VOID (td, 1);
@@ -1337,12 +1350,16 @@ store_arg(TransformData *td, int n)
 	type = get_arg_type_exact (td, n, &mt);
 
 	if (mt == MINT_TYPE_VT) {
+#ifndef NATIVEAOT_MINT
 		MonoClass *klass = mono_class_from_mono_type_internal (type);
 		if (mono_method_signature_internal (td->method)->pinvoke && !mono_method_signature_internal (td->method)->marshalling_disabled)
 			size = mono_class_native_size (klass, NULL);
 		else
 			size = mono_class_value_size (klass, NULL);
 		g_assert (size < G_MAXUINT16);
+#else
+		NATIVEAOT_MINT_TODO("store_arg vt");
+#endif
 	}
 	--td->sp;
 	interp_add_ins (td, get_mov_for_type (mt, FALSE));
@@ -1350,9 +1367,6 @@ store_arg(TransformData *td, int n)
 	interp_ins_set_dreg (td->last_ins, n);
 	if (mt == MINT_TYPE_VT)
 		td->last_ins->data [0] = GINT32_TO_UINT16 (size);
-#else
-	return MINT_ITF(store_arg) (td, n);
-#endif
 }
 
 static void
@@ -4799,12 +4813,16 @@ interp_method_compute_offsets (TransformData *td, InterpMethod *imethod, MonoMet
 	 * receive a pointer to the valuetype data rather than the data itself.
 	 */
 	for (int i = 0; i < num_args; i++) {
-#ifndef NATIVEAOT_MINT
 		MonoType *type;
+#ifndef NATIVEAOT_MINT
 		if (sig->hasthis && i == 0)
 			type = m_class_is_valuetype (td->method->klass) ? m_class_get_this_arg (td->method->klass) : m_class_get_byval_arg (td->method->klass);
 		else
 			type = mono_method_signature_internal (td->method)->params [i - sig->hasthis];
+#else
+		g_assert (!interp_msig_hasthis(sig));
+		type = interp_msig_get_first_param (sig)[i];
+#endif
 		int mt = mono_mint_type (type);
 		td->locals [i].type = type;
 		td->locals [i].flags = INTERP_LOCAL_FLAG_GLOBAL;
@@ -4816,9 +4834,6 @@ interp_method_compute_offsets (TransformData *td, InterpMethod *imethod, MonoMet
 		offset = ALIGN_TO (offset, align);
 		td->locals [i].offset = offset;
 		offset += size;
-#else
-		NATIVEAOT_MINT_TODO_SOON("arguments");
-#endif
 	}
 	offset = ALIGN_TO (offset, MINT_STACK_ALIGNMENT);
 

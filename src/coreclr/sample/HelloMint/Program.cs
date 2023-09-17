@@ -42,23 +42,33 @@ namespace HelloMint
             }
             else
             {
-                ilgen.Emit(OpCodes.Ldc_I4_S, (byte)40);
+                if (useSingleIntParam)
+                {
+                    ilgen.Emit(OpCodes.Ldarg_0);
+                }
+                else
+                {
+                    ilgen.Emit(OpCodes.Ldc_I4_S, (byte)40);
+                }
                 ilgen.Emit(OpCodes.Ldc_I4_S, (byte)2);
                 ilgen.Emit(OpCodes.Add);
+                if (useSingleIntParam)
+                {
+                    // this is redundant, but it will exercise the code path;
+                    // and the Mint optimizer should eliminate all this code
+                    ilgen.Emit(OpCodes.Starg_S, (byte)0);
+                    ilgen.Emit(OpCodes.Ldarg_0);
+                }
                 ilgen.Emit(OpCodes.Ret);
             }
         }
 
-
+        private static bool useSingleIntParam = true;
         private delegate int MeaningOfLife();
         static void CreateDynamicMethod()
         {
             var returnType = voidVoidSample ? typeof(void) : typeof(int);
-            Type[] paramTypes;
-            if (voidVoidSample)
-                paramTypes = new Type[] { };
-            else
-                paramTypes = new Type[] { typeof(int) };
+            var paramTypes = useSingleIntParam ? new Type [] { typeof(int), typeof(double) } : Type.EmptyTypes;
             DynamicMethod dMethod = new DynamicMethod("MeaningOfLife", returnType, paramTypes, typeof(object).Module);
             if (dMethod is not null)
             {
