@@ -4816,6 +4816,7 @@ interp_method_compute_offsets (TransformData *td, InterpMethod *imethod, MonoMet
 		else
 			type = mono_method_signature_internal (td->method)->params [i - sig->hasthis];
 #else
+		g_assert (!interp_msig_hasthis(sig));
 		type = interp_msig_get_first_param (sig)[i];
 #endif
 		int mt = mono_mint_type (type);

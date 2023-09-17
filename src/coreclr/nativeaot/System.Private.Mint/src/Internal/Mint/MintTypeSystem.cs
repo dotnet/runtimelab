@@ -123,6 +123,7 @@ public sealed class MintTypeSystem
             foreach (var methodParamInfo in methodParameterInfos)
             {
                 methodParamTypes[i] = GetMonoType(methodParamInfo.ParameterType as RuntimeType).Value;
+                i++;
             }
             return methodParamTypes;
         }
@@ -143,12 +144,13 @@ public sealed class MintTypeSystem
             hasthis = (byte)0, //FIXME: this doesn't work (returns 1): dynamicMethod.DynamicMethod.IsStatic ? (byte)0 : (byte)1,
             method_params = &VTables.monoMethodSignatureGetParameterTypesUnderlyingTypeImpl,
             ret_ult = &VTables.monoMethodSignatureGetReturnTypeUnderlyingTypeImpl,
-            gcHandle = GCHandle.ToIntPtr(_memoryMananger.Own(dynamicMethod))
+            gcHandle = GCHandle.ToIntPtr(_memoryMananger.Own(dynamicMethod)),
+            MethodParamsTypes = CreateParameterTypes(methodParameterInfos),
         };
         var ptr = _memoryMananger.Allocate<Internal.Mint.Abstraction.MonoMethodSignatureInstanceAbstractionNativeAot>();
         *ptr = s;
 
-        return new MonoMethodSignaturePtr(ptr, CreateParameterTypes(methodParameterInfos));
+        return new MonoMethodSignaturePtr(ptr);
     }
 
     private unsafe MonoMethodHeaderPtr CreateMonoMethodHeaderDynMethodImpl(OwnedDynamicMethod ownedDynamicMethod)
@@ -257,7 +259,7 @@ public sealed class MintTypeSystem
         {
             var owned = Unpack<OwnedDynamicMethod>(signature->gcHandle);
             var monoMethodSignaturePtr = owned.Owner.GetMonoMethodSignature(owned);
-            return monoMethodSignaturePtr.MethodParamsTypes;
+            return monoMethodSignaturePtr.Value->MethodParamsTypes;
         }
     }
 }

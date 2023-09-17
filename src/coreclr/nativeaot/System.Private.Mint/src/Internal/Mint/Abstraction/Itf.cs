@@ -113,6 +113,8 @@ internal unsafe struct Itf
 
     internal static unsafe int mintGetMintTypeFromMonoType(MonoTypeInstanceAbstractionNativeAot* type)
     {
+        if (type == null)
+            throw new InvalidOperationException("type is null");
         // see the mono mono_mint_get_type
         // in particular, byref is a MONO_TYPE_I, not a MONO_TYPE_BYREF
         switch ((CorElementType)type->type_code)

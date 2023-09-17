@@ -43,6 +43,7 @@ struct _MonoMethodSignatureInstanceAbstractionNativeAot {
     MonoType * (*ret_ult)(MonoMethodSignature *self);
 
     MonoGCHandle gcHandle;
+    MonoType** MethodParamsTypes;
 };
 
 typedef struct _TransformData TransformData; // FIXME: separate the interp-aware abstractions from the metadata ones

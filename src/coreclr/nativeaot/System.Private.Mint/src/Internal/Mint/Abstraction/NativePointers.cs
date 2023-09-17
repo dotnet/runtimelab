@@ -23,11 +23,10 @@ internal readonly unsafe struct MonoMethodPtr
 internal readonly unsafe struct MonoMethodSignaturePtr
 {
     public readonly MonoMethodSignatureInstanceAbstractionNativeAot* Value;
-    public readonly MonoTypeInstanceAbstractionNativeAot** MethodParamsTypes;
-    public MonoMethodSignaturePtr(MonoMethodSignatureInstanceAbstractionNativeAot* value, MonoTypeInstanceAbstractionNativeAot** methodParamsTypes)
+
+    public MonoMethodSignaturePtr(MonoMethodSignatureInstanceAbstractionNativeAot* value)
     {
         Value = value;
-        MethodParamsTypes = methodParamsTypes;
     }
 }
 
