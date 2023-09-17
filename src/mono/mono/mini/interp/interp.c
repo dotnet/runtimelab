@@ -129,6 +129,53 @@ nativeaot_mint_todo_ee(const char *extra, const char *msg, const char *file, int
 static void
 frame_data_allocator_pop (FrameDataAllocator *stack, InterpFrame *frame);
 
+static inline MonoMethodSignature*
+interp_method_signature (MonoMethod *method)
+{
+#ifndef NATIVEAOT_MINT
+	return mono_method_signature_internal (method);
+#else
+	return MINT_TI_ITF(MonoMethod, method, get_signature)(method);
+#endif
+}
+
+static gboolean
+interp_msig_hasthis (MonoMethodSignature *sig)
+{
+#ifndef NATIVEAOT_MINT
+	return sig->hasthis;
+#else
+	return !!MINT_TI_ITF(MonoMethodSignature, sig, hasthis);
+#endif
+}
+
+static int
+interp_msig_param_count (MonoMethodSignature *sig)
+{
+#ifndef NATIVEAOT_MINT
+	return sig->param_count;
+#else
+	return MINT_TI_ITF(MonoMethodSignature, sig, param_count);
+#endif
+}
+
+static inline MonoTypeEnum
+interp_type_get_code (MonoType *type)
+{
+#ifndef NATIVEAOT_MINT
+	return type->type;
+#else
+	return MINT_TI_ITF(MonoType, type, type_code);
+#endif
+}
+
+static gboolean
+interp_type_is_void (MonoType *type)
+{
+	return interp_type_get_code (type) == MONO_TYPE_VOID;
+}
+
+
 static inline MONO_ALWAYS_INLINE
 uint8_t*
 interp_ee_stack_pointer(ThreadContext *context)
@@ -566,7 +613,7 @@ check_pending_unwind (ThreadContext *context)
 	if (context->has_resume_state && !context->handler_frame)
 		mono_llvm_cpp_throw_exception ();
 #else
-	NATIVEAOT_MINT_TODO_EE("");
+	NATIVEAOT_MINT_TODO_EE_NOWARN(); // check_pending_unwind
 #endif
 }
 
@@ -1482,17 +1529,13 @@ imethod_alloc0 (InterpMethod *imethod, guint size)
 	else
 		return m_method_alloc0 (imethod->method, size);
 #else
-	NATIVEAOT_MINT_TODO_EE_SOON("same as transform.c?");
-	// should this allocate from a different memory manager in managed?
-	// return MINT_ITF(imethod_alloc0) (td, size);
-	return NULL;
+	return MINT_ITF(imethod_alloc0) (imethod, size);
 #endif
 }
 
 static guint32*
 initialize_arg_offsets (InterpMethod *imethod, MonoMethodSignature *csig)
 {
-#ifndef NATIVEAOT_MINT
 	if (imethod->arg_offsets)
 		return imethod->arg_offsets;
 
@@ -1500,17 +1543,20 @@ initialize_arg_offsets (InterpMethod *imethod, MonoMethodSignature *csig)
 	// marshalled signature was not provided, we use the managed signature of the method.
 	MonoMethodSignature *sig = csig;
 	if (!sig)
-		sig = mono_method_signature_internal (imethod->method);
-	int arg_count = sig->hasthis + sig->param_count;
+		sig = interp_method_signature (imethod->method);
+	gboolean sig_hasthis = interp_msig_hasthis (sig);
+	int sig_param_count = interp_msig_param_count (sig);
+	int arg_count = !!sig_hasthis + sig_param_count;
 	guint32 *arg_offsets = (guint32*)imethod_alloc0 (imethod, (arg_count + 1) * sizeof (int));
 	int index = 0, offset = 0;
 
-	if (sig->hasthis) {
+	if (sig_hasthis) {
 		arg_offsets [index++] = 0;
 		offset = MINT_STACK_SLOT_SIZE;
 	}
 
-	for (int i = 0; i < sig->param_count; i++) {
+	for (int i = 0; i < sig_param_count; i++) {
+#ifndef NATIVEAOT_MINT
 		MonoType *type = sig->params [i];
 		int size, align;
 		size = mono_interp_type_size (type, mono_mint_type (type), &align);
@@ -1518,25 +1564,28 @@ initialize_arg_offsets (InterpMethod *imethod, MonoMethodSignature *csig)
 		offset = ALIGN_TO (offset, align);
 		arg_offsets [index++] = offset;
 		offset += size;
+#else
+		NATIVEAOT_MINT_TODO_EE_SOON("params");
+#endif
 	}
 	// This index is not associated with an actual argument, we just store the offset
 	// for convenience in order to easily determine the size of the param area used
 	arg_offsets [index] = ALIGN_TO (offset, MINT_STACK_SLOT_SIZE);
 
+#ifndef NATIVEAOT_MINT
 	mono_memory_write_barrier ();
 	/* If this fails, the new one is leaked in the mem manager */
 	mono_atomic_cas_ptr ((gpointer*)&imethod->arg_offsets, arg_offsets, NULL);
-	return imethod->arg_offsets;
 #else
-	NATIVEAOT_MINT_TODO_EE_SOON("");
-	return NULL;
+	NATIVEAOT_MINT_TODO_EE_NOWARN (); // write barrier, atomic CAS
+	imethod->arg_offsets = arg_offsets;
 #endif
+	return imethod->arg_offsets;
 }
 
 static guint32
 get_arg_offset_fast (InterpMethod *imethod, MonoMethodSignature *sig, int index)
 {
-#ifndef NATIVEAOT_MINT
 	guint32 *arg_offsets = imethod->arg_offsets;
 	if (arg_offsets)
 		return arg_offsets [index];
@@ -1544,10 +1593,6 @@ get_arg_offset_fast (InterpMethod *imethod, MonoMethodSignature *sig, int index)
 	arg_offsets = initialize_arg_offsets (imethod, sig);
 	g_assert (arg_offsets);
 	return arg_offsets [index];
-#else
-	NATIVEAOT_MINT_TODO_EE_SOON("");
-	return 0;
-#endif
 }
 
 static guint32
@@ -2402,7 +2447,6 @@ typedef struct {
 static MONO_NEVER_INLINE void
 interp_entry (InterpEntryData *data)
 {
-#ifndef NATIVEAOT_MINT
 	InterpMethod *rmethod;
 	ThreadContext *context;
 	stackval *sp;
@@ -2414,21 +2458,31 @@ interp_entry (InterpEntryData *data)
 	int i;
 
 	if ((gsize)data->rmethod & 1) {
+#ifndef NATIVEAOT_MINT
 		/* Unbox */
 		data->this_arg = mono_object_unbox_internal ((MonoObject*)data->this_arg);
 		data->rmethod = (InterpMethod*)(gpointer)((gsize)data->rmethod & ~1);
+#else
+		NATIVEAOT_MINT_TODO_EE("interp_entry unbox");
+#endif
 	}
 	rmethod = data->rmethod;
 
-	if (rmethod->needs_thread_attach)
+	if (rmethod->needs_thread_attach) {
+#ifndef NATIVEAOT_MINT
 		orig_domain = mono_threads_attach_coop (mono_domain_get (), &attach_cookie);
+#else
+		NATIVEAOT_MINT_TODO_EE("interp_entry needs_thread_attach");
+#endif
+	}
 
 	context = get_context ();
-	sp = (stackval*)context->stack_pointer;
+	sp = (stackval*)interp_ee_stack_pointer(context);
 
 	method = rmethod->method;
 
 	if (rmethod->is_invoke) {
+#ifndef NATIVEAOT_MINT
 		/*
 		 * This happens when AOT code for the invoke wrapper is not found.
 		 * Have to replace the method with the wrapper here, since the wrapper depends on the delegate.
@@ -2437,15 +2491,22 @@ interp_entry (InterpEntryData *data)
 		// FIXME: This is slow
 		method = mono_marshal_get_delegate_invoke (method, del);
 		data->rmethod = mono_interp_get_imethod (method);
+#else
+		NATIVEAOT_MINT_TODO_EE("interp_entry is_invoke");
+#endif
 	}
 
-	sig = mono_method_signature_internal (method);
+	sig = interp_method_signature (method);
 
 	// FIXME: Optimize this
 
-	if (sig->hasthis) {
+	if (interp_msig_hasthis (sig)) {
+#ifndef NATIVEAOT_MINT
 		sp->data.p = data->this_arg;
 		stack_index = 1;
+#else
+		NATIVEAOT_MINT_TODO_EE("interp_entry interp_msig_hasthis");
+#endif
 	}
 
 	gpointer *params;
@@ -2453,7 +2514,9 @@ interp_entry (InterpEntryData *data)
 		params = data->many_args;
 	else
 		params = data->args;
-	for (i = 0; i < sig->param_count; ++i) {
+	int sig_param_count = interp_msig_param_count (sig);
+	for (i = 0; i < sig_param_count; ++i) {
+#ifndef NATIVEAOT_MINT
 		int arg_offset = get_arg_offset_fast (rmethod, NULL, stack_index + i);
 		stackval *sval = STACK_ADD_ALIGNED_BYTES (sp, arg_offset);
 
@@ -2461,6 +2524,9 @@ interp_entry (InterpEntryData *data)
 			sval->data.p = params [i];
 		else
 			stackval_from_data (sig->params [i], sval, params [i], FALSE);
+#else
+		NATIVEAOT_MINT_TODO_EE("interp_entry interp_msig_param_count");
+#endif
 	}
 
 	InterpFrame frame = {0};
@@ -2468,36 +2534,50 @@ interp_entry (InterpEntryData *data)
 	frame.stack = sp;
 	frame.retval = sp;
 
-	int params_size = get_arg_offset_fast (rmethod, NULL, stack_index + sig->param_count);
-	context->stack_pointer = (guchar*)ALIGN_TO ((guchar*)sp + params_size, MINT_STACK_ALIGNMENT);
+	int params_size = get_arg_offset_fast (rmethod, NULL, stack_index + sig_param_count);
+	interp_ee_set_stack_pointer (context, (guchar*)ALIGN_TO ((guchar*)sp + params_size, MINT_STACK_ALIGNMENT));
+#ifndef NATIVEAOT_MINT
 	g_assert (context->stack_pointer < context->stack_end);
+#else
+	NATIVEAOT_MINT_TODO_EE_NOWARN (); // stack bound check
+#endif
 
 	MONO_ENTER_GC_UNSAFE;
 	mono_interp_exec_method (&frame, context, NULL);
 	MONO_EXIT_GC_UNSAFE;
 
-	context->stack_pointer = (guchar*)sp;
+	interp_ee_set_stack_pointer (context, (guchar*)sp);
 
-	if (rmethod->needs_thread_attach)
+	if (rmethod->needs_thread_attach) {
+#ifndef NATIVEAOT_MINT
 		mono_threads_detach_coop (orig_domain, &attach_cookie);
+#else
+		NATIVEAOT_MINT_TODO_EE("interp_entry needs thread detach");
+#endif
+	}
 
 	check_pending_unwind (context);
 
 	if (mono_llvm_only) {
+#ifndef NATIVEAOT_MINT
 		if (context->has_resume_state)
 			/* The exception will be handled in a frame above us */
 			mono_llvm_cpp_throw_exception ();
+#else
+		NATIVEAOT_MINT_TODO_EE("interp_entry llvm only");
+#endif
 	} else {
+#ifndef NATIVEAOT_MINT
 		g_assert (!context->has_resume_state);
+#else
+		NATIVEAOT_MINT_TODO_EE_NOWARN(); // assert no resume state
+#endif
 	}
 
 	// The return value is at the bottom of the stack, after the locals space
 	type = rmethod->rtype;
-	if (type->type != MONO_TYPE_VOID)
+	if (!interp_type_is_void (type))
 		stackval_to_data (type, frame.stack, data->res, FALSE);
-#else
-	NATIVEAOT_MINT_TODO_EE_SOON("");
-#endif
 }
 
 static void
@@ -6337,13 +6417,21 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_INTRINS_MARVIN_BLOCK) {
+#ifndef NATIVEAOT_MINT
 			interp_intrins_marvin_block ((guint32*)(locals + ip [1]), (guint32*)(locals + ip [2]));
 			ip += 3;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_INTRINS_MARVIN_BLOCK);
+#endif
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_INTRINS_ASCII_CHARS_TO_UPPERCASE) {
+#ifndef NATIVEAOT_MINT
 			LOCAL_VAR (ip [1], gint32) = interp_intrins_ascii_chars_to_uppercase (LOCAL_VAR (ip [2], guint32));
 			ip += 3;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_INTRINS_ASCII_CHARS_TO_UPPERCASE);
+#endif
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_INTRINS_MEMORYMARSHAL_GETARRAYDATAREF) {
@@ -6358,13 +6446,21 @@ MINT_IN_CASE(MINT_BRTRUE_I8_SP) ZEROP_SP(gint64, !=); MINT_IN_BREAK;
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_INTRINS_ORDINAL_IGNORE_CASE_ASCII) {
+#ifndef NATIVEAOT_MINT
 			LOCAL_VAR (ip [1], gint32) = interp_intrins_ordinal_ignore_case_ascii (LOCAL_VAR (ip [2], guint32), LOCAL_VAR (ip [3], guint32));
 			ip += 4;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_INTRINS_ORDINAL_IGNORE_CASE_ASCII);
+#endif
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_INTRINS_64ORDINAL_IGNORE_CASE_ASCII) {
+#ifndef NATIVEAOT_MINT
 			LOCAL_VAR (ip [1], gint32) = interp_intrins_64ordinal_ignore_case_ascii (LOCAL_VAR (ip [2], guint64), LOCAL_VAR (ip [3], guint64));
 			ip += 4;
+#else
+			NATIVEAOT_MINT_TODO_EE_OPCODE(MINT_INTRINS_64ORDINAL_IGNORE_CASE_ASCII);
+#endif
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_INTRINS_WIDEN_ASCII_TO_UTF16) {
@@ -8545,14 +8641,10 @@ exit_frame:
 		goto main_loop;
 	}
 exit_clause:
-#ifndef NATIVEAOT_MINT
 	if (!clause_args)
-		context->stack_pointer = (guchar*)frame->stack;
+		interp_ee_set_stack_pointer(context, (guchar*)frame->stack);
 
 	DEBUG_LEAVE ();
-#else
-	NATIVEAOT_MINT_TODO_EE("exit_clause");
-#endif
 }
 
 #undef SET_TEMP_POINTER

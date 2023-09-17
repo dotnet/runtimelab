@@ -11,4 +11,9 @@ namespace Internal.Mint.Abstraction;
 internal unsafe struct EEItf
 {
     public delegate* unmanaged<void> tls_initialize;
+
+    public delegate* unmanaged<ThreadContextInstanceAbstractionNativeAot*> get_context;
+
+    public delegate* unmanaged<IntPtr /* MintEEThreadContextInstanceAbstractionNativeAot* */, IntPtr /* MintEEThreadContextInstanceAbstractionNativeAot* */> get_ThreadContext_inst;
+
 }

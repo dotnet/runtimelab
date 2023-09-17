@@ -104,10 +104,10 @@ internal static class Mint
 
 #pragma warning disable IDE0060
     [UnmanagedCallersOnly]
-    internal static unsafe IntPtr mintIMethodAlloc(IntPtr _transformData, UIntPtr size)
+    internal static unsafe IntPtr mintIMethodAlloc(IntPtr _interpMethod, UIntPtr size)
     {
-        // FIXME: don't allocate from the global memory manager, get the memory manager from the transform data
-        // see imethod_alloc0 in transform.c
+        // FIXME: don't allocate from the global memory manager, get the memory manager from the interpMethod
+        // see imethod_alloc0 in transform.c and interp.c
         return globalMemoryManager.Allocate(checked((uint)size));
     }
 #pragma warning restore IDE0060

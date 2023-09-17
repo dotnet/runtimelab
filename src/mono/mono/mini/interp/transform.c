@@ -1556,7 +1556,7 @@ imethod_alloc0 (TransformData *td, size_t size)
 	else
 		return mono_mem_manager_alloc0 (td->mem_manager, (guint)size);
 #else
-	return MINT_ITF(imethod_alloc0) (td, size);
+	return MINT_ITF(imethod_alloc0) (td->rtm, size);
 #endif
 }
 

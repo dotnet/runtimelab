@@ -126,6 +126,8 @@ public class MintRuntime
     {
         Abstraction.EEItf* itf = Mint.GlobalMemoryManager.Allocate<Abstraction.EEItf>();
         itf->tls_initialize = &TlsInitialize;
+        itf->get_context = &GetCurrentThreadContext;
+        itf->get_ThreadContext_inst = &Abstraction.Itf.unwrapTransparentAbstraction;
         return itf;
     }
 
