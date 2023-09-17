@@ -105,7 +105,7 @@ internal static class Mint
         Internal.Console.Write($"Compiled method: {compiledMethod.InterpMethod.Value}{Environment.NewLine}");
         if (dm.GetParameters().Length != 0)
         {
-            Internal.Console.Write("Can't run a method with parameters yet");
+            Internal.Console.Write($"Can't run a method with parameters yet{Environment.NewLine}");
             return;
         }
         var result = compiledMethod.ExecMemoryManager.Allocate(8);
