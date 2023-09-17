@@ -1048,8 +1048,12 @@ stackval_to_data (MonoType *type, stackval *val, void *data, gboolean pinvoke)
 		*p = val->data.p;
 		return MINT_STACK_SLOT_SIZE;
 	}
+#else
+	g_warning ("stackval_to_data: byref not handled");
+	NATIVEAOT_MINT_TODO_EE_NOWARN(); // byref
+#endif
 	/* printf ("TODAT0 %p\n", data); */
-	switch (type->type) {
+	switch (interp_type_get_code (type)) {
 	case MONO_TYPE_BOOLEAN:
 	case MONO_TYPE_I1:
 	case MONO_TYPE_U1: {
@@ -1104,9 +1108,14 @@ stackval_to_data (MonoType *type, stackval *val, void *data, gboolean pinvoke)
 	case MONO_TYPE_CLASS:
 	case MONO_TYPE_OBJECT:
 	case MONO_TYPE_ARRAY: {
+#ifndef NATIVEAOT_MINT
 		gpointer *p = (gpointer *) data;
 		mono_gc_wbarrier_generic_store_internal (p, val->data.o);
 		return MINT_STACK_SLOT_SIZE;
+#else
+		NATIVEAOT_MINT_TODO_EE("object");
+		g_assert_not_reached();
+#endif
 	}
 	case MONO_TYPE_PTR:
 	case MONO_TYPE_FNPTR: {
@@ -1114,7 +1123,8 @@ stackval_to_data (MonoType *type, stackval *val, void *data, gboolean pinvoke)
 		*p = val->data.p;
 		return MINT_STACK_SLOT_SIZE;
 	}
-	case MONO_TYPE_VALUETYPE:
+	case MONO_TYPE_VALUETYPE: {
+#ifndef NATIVEAOT_MINT
 		if (m_class_is_enumtype (type->data.klass)) {
 			return stackval_to_data (mono_class_enum_basetype_internal (type->data.klass), val, data, pinvoke);
 		} else {
@@ -1128,7 +1138,13 @@ stackval_to_data (MonoType *type, stackval *val, void *data, gboolean pinvoke)
 			}
 			return ALIGN_TO (size, MINT_STACK_SLOT_SIZE);
 		}
+#else
+		NATIVEAOT_MINT_TODO_EE("valuetype");
+		g_assert_not_reached();
+#endif
+	}
 	case MONO_TYPE_GENERICINST: {
+#ifndef NATIVEAOT_MINT
 		MonoClass *container_class = type->data.generic_class->container_class;
 
 		if (m_class_is_valuetype (container_class) && !m_class_is_enumtype (container_class)) {
@@ -1144,14 +1160,14 @@ stackval_to_data (MonoType *type, stackval *val, void *data, gboolean pinvoke)
 			return ALIGN_TO (size, MINT_STACK_SLOT_SIZE);
 		}
 		return stackval_to_data (m_class_get_byval_arg (type->data.generic_class->container_class), val, data, pinvoke);
+#else
+		NATIVEAOT_MINT_TODO_EE("generic inst");
+		g_assert_not_reached();
+#endif
 	}
 	default:
-		g_error ("got type %x", type->type);
+		g_error ("got type %x", interp_type_get_code(type));
 	}
-#else
-	NATIVEAOT_MINT_TODO_EE_SOON("");
-	return 0;
-#endif
 }
 
 typedef struct {

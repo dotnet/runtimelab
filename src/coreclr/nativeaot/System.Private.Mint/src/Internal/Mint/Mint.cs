@@ -21,6 +21,7 @@ internal static class Mint
     [DllImport(RuntimeLibrary)]
     internal static extern unsafe void mint_testing_ee_interp_entry_static_ret_0(IntPtr res, IntPtr interpMethodPtr);
 
+
     static readonly MemoryManager globalMemoryManager = new MemoryManager();
     static readonly MintTypeSystem globalMintTypeSystem = new MintTypeSystem(globalMemoryManager);
 
@@ -80,20 +81,40 @@ internal static class Mint
             // object that can be invoked with the right calling convention.
             using var compiler = new DynamicMethodCompiler(dm);
             var compiledMethod = compiler.Compile();
-            Internal.Console.Write($"Compiled method: {compiledMethod.InterpMethod.Value}{Environment.NewLine}");
-            var result = compiledMethod.ExecMemoryManager.Allocate(8);
-            mint_testing_ee_interp_entry_static_ret_0(result, compiledMethod.InterpMethod.Value);
-            Internal.Console.Write($"Compiled method returned{Environment.NewLine}");
-            int resultVal;
-            unsafe
-            {
-                resultVal = *(int*)result;
-            }
-            Internal.Console.Write($"Compiled method returned {resultVal}{Environment.NewLine}");
+            BigHackyExecCompiledMethod(dm, compiledMethod);
             compiledMethod.ExecMemoryManager.Dispose();
             //compiledMethod.ExecMemoryManager.Dispose();// FIXME: this is blatantly wrong
             return compiledMethod.InterpMethod.Value;
         }
+    }
+
+
+    // just run the method assuming it takes no arguments and returns void or an int
+    private static void BigHackyExecCompiledMethod(DynamicMethod dm, DynamicMethodCompiler.CompiledMethod compiledMethod)
+    {
+        Internal.Console.Write($"Compiled method: {compiledMethod.InterpMethod.Value}{Environment.NewLine}");
+        var result = compiledMethod.ExecMemoryManager.Allocate(8);
+        mint_testing_ee_interp_entry_static_ret_0(result, compiledMethod.InterpMethod.Value);
+        Internal.Console.Write($"Compiled method returned{Environment.NewLine}");
+        int resultVal;
+        unsafe
+        {
+            // FIXME: how would this ever work with a managed object?
+            // we will need to pass a gchandle or something
+            if (dm.ReturnType == typeof(int))
+            {
+                resultVal = *(int*)result;
+            }
+            else if (dm.ReturnType == typeof(void))
+            {
+                resultVal = 0;
+            }
+            else
+            {
+                throw new Exception("Unsupported return type");
+            }
+        }
+        Internal.Console.Write($"Compiled method returned {resultVal}{Environment.NewLine}");
     }
 
     [UnmanagedCallersOnly]

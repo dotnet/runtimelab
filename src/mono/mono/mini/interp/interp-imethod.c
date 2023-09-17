@@ -68,6 +68,47 @@ mono_interp_get_imethod (MonoMethod *method)
 #include <mint-imethod.h>
 #include "interp-internals.h"
 
+static inline MonoMethodSignature*
+interp_method_signature (MonoMethod *method)
+{
+#ifndef NATIVEAOT_MINT
+	return mono_method_signature_internal (method);
+#else
+	return MINT_TI_ITF(MonoMethod, method, get_signature)(method);
+#endif
+}
+
+static gboolean
+interp_msig_hasthis (MonoMethodSignature *sig)
+{
+#ifndef NATIVEAOT_MINT
+	return sig->hasthis;
+#else
+	return !!MINT_TI_ITF(MonoMethodSignature, sig, hasthis);
+#endif
+}
+
+static int
+interp_msig_param_count (MonoMethodSignature *sig)
+{
+#ifndef NATIVEAOT_MINT
+	return sig->param_count;
+#else
+	return MINT_TI_ITF(MonoMethodSignature, sig, param_count);
+#endif
+}
+
+static MonoType*
+interp_msig_ret_ult (MonoMethodSignature *sig)
+{
+#ifndef NATIVEAOT_MINT
+	return mini_type_get_underlying_type (signature->ret)
+#else
+	return MINT_TI_ITF(MonoMethodSignature, sig, ret_ult)(sig);
+#endif
+}
+
+
 InterpMethod*
 mono_interp_get_imethod (MonoMethod *method)
 {
@@ -76,9 +117,12 @@ mono_interp_get_imethod (MonoMethod *method)
 
 	imethod = g_malloc0 (sizeof (InterpMethod));
 
+	MonoMethodSignature *sig = interp_method_signature (method);
+
+
 	imethod->method = method;
-	imethod->param_count = 0; // FIXME: sig->param_count;
-	imethod->hasthis = FALSE; // sig->hasthis;
+	imethod->param_count = interp_msig_param_count (sig);
+	imethod->hasthis = interp_msig_hasthis (sig); // sig->hasthis;
 	imethod->vararg = FALSE; // sig->call_convention == MONO_CALL_VARARG;
 	imethod->code_type = IMETHOD_CODE_UNKNOWN;
 	// This flag allows us to optimize out the interp_entry 'is this a delegate invoke' checks
@@ -88,7 +132,10 @@ mono_interp_get_imethod (MonoMethod *method)
 	//if (!mono_interp_tiering_enabled () || method->wrapper_type != MONO_WRAPPER_NONE)
 	//	imethod->optimized = TRUE;
 	imethod->optimized = TRUE; // NativeAot always optimize
-	imethod->rtype = mint_itf()->get_default_byval_type_void();
+	imethod->rtype = interp_msig_ret_ult (sig);
+
+	if (interp_msig_param_count (sig) > 0) 
+		g_error ("FIXME: interp_msig_param_count > 0");
 	//if (imethod->method->string_ctor)
 	//	imethod->rtype = m_class_get_byval_arg (mono_defaults.string_class);
 	//else
