@@ -90,7 +90,8 @@ namespace HelloMint
         private static void GenerateIntDoubleParamsIntReturnSample(ILGenerator ilgen)
         {
             ilgen.Emit(OpCodes.Ldarg_0);
-            ilgen.Emit(OpCodes.Ldc_I4_S, (byte)2);
+            ilgen.Emit(OpCodes.Ldarg_1);
+            ilgen.Emit(OpCodes.Conv_I4);
             ilgen.Emit(OpCodes.Add);
             // this is redundant, but it will exercise the code path;
             // and the Mint optimizer should eliminate all this code
