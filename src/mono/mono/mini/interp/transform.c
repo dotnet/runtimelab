@@ -4778,6 +4778,7 @@ mono_interp_type_size (MonoType *type, int mt, int *align_p)
 {
 	int size, align;
 	if (mt == MINT_TYPE_VT) {
+#ifndef NATIVEAOT_MINT
 		size = mono_type_size (type, &align);
 		MonoClass *klass = mono_class_from_mono_type_internal (type);
 		if (m_class_is_simd_type (klass)) // mono_type_size should report the alignment
@@ -4785,6 +4786,10 @@ mono_interp_type_size (MonoType *type, int mt, int *align_p)
 		else
 			align = MINT_STACK_SLOT_SIZE;
 		g_assert (align <= MINT_STACK_ALIGNMENT);
+#else
+		NATIVEAOT_MINT_TODO_SOON("vt size");
+		g_assert_not_reached();
+#endif
 	} else {
 		size = MINT_STACK_SLOT_SIZE; // not really
 		align = MINT_STACK_SLOT_SIZE;

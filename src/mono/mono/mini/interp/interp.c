@@ -159,6 +159,17 @@ interp_msig_param_count (MonoMethodSignature *sig)
 #endif
 }
 
+static MonoType**
+interp_msig_get_first_param (MonoMethodSignature *sig)
+{
+#ifndef NATIVEAOT_MINT
+	return sig->params[0];
+#else
+	return MINT_TI_ITF(MonoMethodSignature, sig, method_params)(sig);
+#endif
+}
+
+
 static inline MonoTypeEnum
 interp_type_get_code (MonoType *type)
 {
@@ -955,7 +966,11 @@ stackval_from_data (MonoType *type, stackval *result, const void *data, gboolean
 		result->data.p = *(gpointer*)data;
 		return;
 	}
-	switch (type->type) {
+#else
+		g_warning("stackval_from_data ignoring byref");
+		NATIVEAOT_MINT_TODO_EE_NOWARN(); // m_type_is_byref
+#endif
+	switch (interp_type_get_code (type)) {
 	case MONO_TYPE_VOID:
 		break;;
 	case MONO_TYPE_I1:
@@ -1002,9 +1017,14 @@ stackval_from_data (MonoType *type, stackval *result, const void *data, gboolean
 	case MONO_TYPE_CLASS:
 	case MONO_TYPE_OBJECT:
 	case MONO_TYPE_ARRAY:
+#ifndef NATIVEAOT_MINT
 		result->data.p = *(gpointer*)data;
+#else
+		NATIVEAOT_MINT_TODO_EE("class types");
+#endif
 		break;
-	case MONO_TYPE_VALUETYPE:
+	case MONO_TYPE_VALUETYPE: {
+#ifndef NATIVEAOT_MINT
 		if (m_class_is_enumtype (type->data.klass)) {
 			stackval_from_data (mono_class_enum_basetype_internal (type->data.klass), result, data, pinvoke);
 			break;
@@ -1017,7 +1037,13 @@ stackval_from_data (MonoType *type, stackval *result, const void *data, gboolean
 			memcpy (result, data, size);
 			break;
 		}
+#else
+		NATIVEAOT_MINT_TODO_EE("valuetype");
+		g_assert_not_reached();
+#endif
+	}
 	case MONO_TYPE_GENERICINST: {
+#ifndef NATIVEAOT_MINT
 		if (mono_type_generic_inst_is_valuetype (type)) {
 			MonoClass *klass = mono_class_from_mono_type_internal (type);
 			int size;
@@ -1029,14 +1055,14 @@ stackval_from_data (MonoType *type, stackval *result, const void *data, gboolean
 			break;
 		}
 		stackval_from_data (m_class_get_byval_arg (type->data.generic_class->container_class), result, data, pinvoke);
+#else
+		NATIVEAOT_MINT_TODO_EE("genericinst");
+#endif
 		break;
 	}
 	default:
-		g_error ("got type 0x%02x", type->type);
+		g_error ("got type 0x%02x", interp_type_get_code (type));
 	}
-#else
-	NATIVEAOT_MINT_TODO_EE_SOON("");
-#endif
 }
 
 static int
@@ -1511,29 +1537,25 @@ ves_array_element_address (InterpFrame *frame, MonoClass *required_type, MonoArr
 static guint32
 compute_arg_offset (MonoMethodSignature *sig, int index)
 {
-#ifndef NATIVEAOT_MINT
 	if (index == 0)
 		return 0;
 
 	guint32 offset = 0;
 	int size, align;
 	MonoType *type;
+	MonoType **sig_params = interp_msig_get_first_param (sig);
 	for (int i = 0; i < index; i++) {
-		type = sig->params [i];
+		type = sig_params [i];
 		size = mono_interp_type_size (type, mono_mint_type (type), &align);
 
 		offset = ALIGN_TO (offset, align);
 		offset += size;
 	}
-	type = sig->params [index];
+	type = sig_params [index];
 	mono_interp_type_size (type, mono_mint_type (type), &align);
 
 	offset = ALIGN_TO (offset, align);
 	return offset;
-#else
-	NATIVEAOT_MINT_TODO_EE_SOON("");
-	return 0;
-#endif
 }
 
 static gpointer
@@ -1571,18 +1593,16 @@ initialize_arg_offsets (InterpMethod *imethod, MonoMethodSignature *csig)
 		offset = MINT_STACK_SLOT_SIZE;
 	}
 
+	MonoType **sig_params = interp_msig_get_first_param (sig);
+
 	for (int i = 0; i < sig_param_count; i++) {
-#ifndef NATIVEAOT_MINT
-		MonoType *type = sig->params [i];
+		MonoType *type = sig_params [i];
 		int size, align;
 		size = mono_interp_type_size (type, mono_mint_type (type), &align);
 
 		offset = ALIGN_TO (offset, align);
 		arg_offsets [index++] = offset;
 		offset += size;
-#else
-		NATIVEAOT_MINT_TODO_EE_SOON("params");
-#endif
 	}
 	// This index is not associated with an actual argument, we just store the offset
 	// for convenience in order to easily determine the size of the param area used
@@ -2531,18 +2551,19 @@ interp_entry (InterpEntryData *data)
 	else
 		params = data->args;
 	int sig_param_count = interp_msig_param_count (sig);
+	MonoType **sig_params = interp_msig_get_first_param (sig);
 	for (i = 0; i < sig_param_count; ++i) {
-#ifndef NATIVEAOT_MINT
 		int arg_offset = get_arg_offset_fast (rmethod, NULL, stack_index + i);
 		stackval *sval = STACK_ADD_ALIGNED_BYTES (sp, arg_offset);
 
-		if (m_type_is_byref (sig->params [i]))
+#ifndef NATIVEAOT_MINT
+		if (m_type_is_byref (sig_params [i]))
 			sval->data.p = params [i];
 		else
-			stackval_from_data (sig->params [i], sval, params [i], FALSE);
 #else
-		NATIVEAOT_MINT_TODO_EE("interp_entry interp_msig_param_count");
+		NATIVEAOT_MINT_TODO_EE_NOWARN(); // m_type_is_byref
 #endif
+			stackval_from_data (sig_params [i], sval, params [i], FALSE);
 	}
 
 	InterpFrame frame = {0};
