@@ -9902,14 +9902,14 @@ void mint_testing_ee_interp_entry_static_ret_0(gpointer ret, InterpMethod *rmeth
 	interp_entry_static_ret_0(ret, rmethod);
 }
 
-void mint_testing_ee_interp_entry_static_ret_1(gpointer ret, InterpMethod *rmethod, gpointer arg1)
+void mint_testing_ee_interp_entry_static_ret_1(gpointer ret, gpointer arg1, InterpMethod *rmethod)
 {
-	interp_entry_static_ret_1(ret, rmethod, arg1);
+	interp_entry_static_ret_1(ret, arg1, rmethod);
 }
 
-void mint_testing_ee_interp_entry_static_ret_2(gpointer ret, InterpMethod *rmethod, gpointer arg1, gpointer arg2)
+void mint_testing_ee_interp_entry_static_ret_2(gpointer ret, gpointer arg1, gpointer arg2, InterpMethod *rmethod)
 {
-	interp_entry_static_ret_2(ret, rmethod, arg1, arg2);
+	interp_entry_static_ret_2(ret, arg1, arg2, rmethod);
 }
 
 #endif

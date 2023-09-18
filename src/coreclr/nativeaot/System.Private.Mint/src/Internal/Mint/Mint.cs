@@ -26,10 +26,10 @@ internal static class Mint
     internal static extern unsafe void mint_testing_ee_interp_entry_static_ret_0(IntPtr res, IntPtr interpMethodPtr);
 
     [DllImport(RuntimeLibrary)]
-    internal static extern unsafe void mint_testing_ee_interp_entry_static_ret_1(IntPtr res, IntPtr interpMethodPtr, IntPtr arg1);
+    internal static extern unsafe void mint_testing_ee_interp_entry_static_ret_1(IntPtr res, IntPtr arg1, IntPtr interpMethodPtr);
 
     [DllImport(RuntimeLibrary)]
-    internal static extern unsafe void mint_testing_ee_interp_entry_static_ret_2(IntPtr res, IntPtr interpMethodPtr, IntPtr arg1, IntPtr arg2);
+    internal static extern unsafe void mint_testing_ee_interp_entry_static_ret_2(IntPtr res, IntPtr arg1, IntPtr arg2, IntPtr interpMethodPtr);
 
 
     static readonly MemoryManager globalMemoryManager = new MemoryManager();
@@ -205,7 +205,7 @@ internal static class Mint
                 {
                     result = compiledMethod.ExecMemoryManager.Allocate(8);
                     var arg1 = (IntPtr)40; // FIXME: pass arg from caller
-                    mint_testing_ee_interp_entry_static_ret_1(result, compiledMethod.InterpMethod.Value, arg1);
+                    mint_testing_ee_interp_entry_static_ret_1(result, arg1, compiledMethod.InterpMethod.Value);
                     break;
                 }
             case KnownInvokeShape.IntDoubleParamsIntReturn:
@@ -214,7 +214,7 @@ internal static class Mint
                     var arg1 = (IntPtr)40; // FIXME: pass args from caller
                     double d = 2.0;
                     IntPtr arg2 = Unsafe.As<double, IntPtr>(ref d);
-                    mint_testing_ee_interp_entry_static_ret_2(result, compiledMethod.InterpMethod.Value, arg1, arg2);
+                    mint_testing_ee_interp_entry_static_ret_2(result, arg1, arg2, compiledMethod.InterpMethod.Value);
                     break;
                 }
             default:
