@@ -23,7 +23,7 @@ publish: clean
 	$(DOTNET) publish -c $(BUILD_CONFIG) -r $(TARGET_OS)-$(TARGET_ARCH) -p:UseInterpreter=$(USE_MINT) /bl
 
 run: publish
-	$(TOP)artifacts/bin/HelloMint/$(TARGET_ARCH)/$(BUILD_CONFIG)/$(TARGET_OS)-$(TARGET_ARCH)/publish/HelloMint
+	$(TOP)artifacts/bin/HelloMint/$(TARGET_ARCH)/$(BUILD_CONFIG)/$(TARGET_OS)-$(TARGET_ARCH)/publish/HelloMint $(SAMPLE)
 
 clean:
 	rm -rf msbuild.binlog $(TOP)artifacts/bin/HelloMint/ $(TOP)artifacts/obj/coreclr/HelloMint/
