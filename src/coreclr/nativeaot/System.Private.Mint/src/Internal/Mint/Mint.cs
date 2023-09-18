@@ -5,6 +5,7 @@ using System;
 using System.Reflection.Emit;
 using Internal.Reflection.Emit;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace Internal.Mint;
 
@@ -19,7 +20,16 @@ internal static class Mint
     internal static extern unsafe IntPtr mint_testing_transform_sample(Internal.Mint.Abstraction.MonoMethodInstanceAbstractionNativeAot* monoMethodPtr);
 
     [DllImport(RuntimeLibrary)]
+    internal static extern unsafe void mint_testing_ee_interp_entry_static_0(IntPtr interpMethodPtr);
+
+    [DllImport(RuntimeLibrary)]
     internal static extern unsafe void mint_testing_ee_interp_entry_static_ret_0(IntPtr res, IntPtr interpMethodPtr);
+
+    [DllImport(RuntimeLibrary)]
+    internal static extern unsafe void mint_testing_ee_interp_entry_static_ret_1(IntPtr res, IntPtr interpMethodPtr, IntPtr arg1);
+
+    [DllImport(RuntimeLibrary)]
+    internal static extern unsafe void mint_testing_ee_interp_entry_static_ret_2(IntPtr res, IntPtr interpMethodPtr, IntPtr arg1, IntPtr arg2);
 
 
     static readonly MemoryManager globalMemoryManager = new MemoryManager();
@@ -92,8 +102,7 @@ internal static class Mint
             using var compiler = new DynamicMethodCompiler(dm);
             var compiledMethod = compiler.Compile();
             BigHackyExecCompiledMethod(dm, compiledMethod);
-            compiledMethod.ExecMemoryManager.Dispose();
-            //compiledMethod.ExecMemoryManager.Dispose();// FIXME: this is blatantly wrong
+            compiledMethod.ExecMemoryManager.Dispose();  // FIXME: in general this lives as long as the DynamicMethod delegate
             return compiledMethod.InterpMethod.Value;
         }
     }
@@ -103,33 +112,115 @@ internal static class Mint
     private static void BigHackyExecCompiledMethod(DynamicMethod dm, DynamicMethodCompiler.CompiledMethod compiledMethod)
     {
         Internal.Console.Write($"Compiled method: {compiledMethod.InterpMethod.Value}{Environment.NewLine}");
-        if (dm.GetParameters().Length != 0)
+        if (!TryGetKnownInvokeShape(dm, out var invokeShape))
         {
-            Internal.Console.Write($"Can't run a method with parameters yet{Environment.NewLine}");
+            Internal.Console.Write($"Can't invoke this kind of Delegate ({dm.GetType()}) yet{Environment.NewLine}");
             return;
         }
-        var result = compiledMethod.ExecMemoryManager.Allocate(8);
-        mint_testing_ee_interp_entry_static_ret_0(result, compiledMethod.InterpMethod.Value);
-        Internal.Console.Write($"Compiled method returned{Environment.NewLine}");
-        int resultVal;
-        unsafe
+        InvokeWithKnownShape(invokeShape, compiledMethod, out var result);
+        switch (invokeShape)
         {
-            // FIXME: how would this ever work with a managed object?
-            // we will need to pass a gchandle or something
-            if (dm.ReturnType == typeof(int))
+            case KnownInvokeShape.VoidVoid:
+                break;
+            case KnownInvokeShape.IntReturn:
+            case KnownInvokeShape.IntParamIntReturn:
+            case KnownInvokeShape.IntDoubleParamsIntReturn:
+                int resultVal;
+                unsafe
+                {
+                    resultVal = *(int*)result;
+                }
+                Internal.Console.Write($"Result: {resultVal}{Environment.NewLine}");
+                break;
+            default:
+                throw new InvalidOperationException("Unknown invoke shape");
+        }
+    }
+
+    enum KnownInvokeShape
+    {
+        VoidVoid,
+        IntReturn,
+        IntParamIntReturn,
+        IntDoubleParamsIntReturn,
+    }
+
+    private static bool TryGetKnownInvokeShape(DynamicMethod dm, out KnownInvokeShape invokeShape)
+    {
+        invokeShape = default;
+        if (dm.ReturnType == typeof(void))
+        {
+            if (dm.GetParameters().Length == 0)
             {
-                resultVal = *(int*)result;
-            }
-            else if (dm.ReturnType == typeof(void))
-            {
-                resultVal = 0;
-            }
-            else
-            {
-                throw new Exception("Unsupported return type");
+                invokeShape = KnownInvokeShape.VoidVoid;
+                return true;
             }
         }
-        Internal.Console.Write($"Compiled method returned {resultVal}{Environment.NewLine}");
+        else if (dm.ReturnType == typeof(int))
+        {
+            var parameters = dm.GetParameters();
+            if (parameters.Length == 0)
+            {
+                invokeShape = KnownInvokeShape.IntReturn;
+                return true;
+            }
+            else if (parameters.Length == 1)
+            {
+                if (parameters[0].ParameterType == typeof(int))
+                {
+                    invokeShape = KnownInvokeShape.IntParamIntReturn;
+                    return true;
+                }
+            }
+            else if (parameters.Length == 2)
+            {
+                if (parameters[0].ParameterType == typeof(int) &&
+                    parameters[1].ParameterType == typeof(double))
+                {
+                    invokeShape = KnownInvokeShape.IntDoubleParamsIntReturn;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static void InvokeWithKnownShape(KnownInvokeShape invokeShape, DynamicMethodCompiler.CompiledMethod compiledMethod, out IntPtr result)
+    {
+        switch (invokeShape)
+        {
+            case KnownInvokeShape.VoidVoid:
+                {
+                    result = IntPtr.Zero;
+                    mint_testing_ee_interp_entry_static_0(compiledMethod.InterpMethod.Value);
+                    break;
+                }
+            case KnownInvokeShape.IntReturn:
+                {
+                    result = compiledMethod.ExecMemoryManager.Allocate(8);
+                    mint_testing_ee_interp_entry_static_ret_0(result, compiledMethod.InterpMethod.Value);
+                    break;
+                }
+            case KnownInvokeShape.IntParamIntReturn:
+                {
+                    result = compiledMethod.ExecMemoryManager.Allocate(8);
+                    var arg1 = (IntPtr)40; // FIXME: pass arg from caller
+                    mint_testing_ee_interp_entry_static_ret_1(result, compiledMethod.InterpMethod.Value, arg1);
+                    break;
+                }
+            case KnownInvokeShape.IntDoubleParamsIntReturn:
+                {
+                    result = compiledMethod.ExecMemoryManager.Allocate(8);
+                    var arg1 = (IntPtr)40; // FIXME: pass args from caller
+                    double d = 2.0;
+                    IntPtr arg2 = Unsafe.As<double, IntPtr>(ref d);
+                    mint_testing_ee_interp_entry_static_ret_2(result, compiledMethod.InterpMethod.Value, arg1, arg2);
+                    break;
+                }
+            default:
+                throw new InvalidOperationException("Unknown invoke shape");
+        }
+        Internal.Console.Write($"Compiled method returned{Environment.NewLine}");
     }
 
     [UnmanagedCallersOnly]
