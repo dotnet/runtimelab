@@ -428,7 +428,7 @@ public:
 private:
     const unsigned ROOT_FUNC_IDX = 0;
 
-    bool initializeFunctions();
+    void initializeFunctions();
     void generateProlog();
     void initializeShadowStack();
     void initializeLocals();
