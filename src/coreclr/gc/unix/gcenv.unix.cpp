@@ -47,10 +47,12 @@
  #error "sys/time.h required by GC PAL for the time being"
 #endif
 
+#ifndef TARGET_WASM
 #if HAVE_SYS_MMAN_H
  #include <sys/mman.h>
 #else
  #error "sys/mman.h required by GC PAL"
+#endif
 #endif
 
 #if HAVE_SYSCTLBYNAME
@@ -314,12 +316,14 @@ bool GCToOSInterface::Initialize()
 // Shutdown the interface implementation
 void GCToOSInterface::Shutdown()
 {
+#ifndef TARGET_WASM
     int ret = munlock(g_helperPage, OS_PAGE_SIZE);
     assert(ret == 0);
     ret = pthread_mutex_destroy(&g_flushProcessWriteBuffersMutex);
     assert(ret == 0);
 
     munmap(g_helperPage, OS_PAGE_SIZE);
+#endif // !TARGET_WASM
 
     CleanupCGroup();
 }
@@ -506,7 +510,7 @@ void GCToOSInterface::YieldThread(uint32_t switchCount)
     assert(ret == 0);
 }
 
-#if !TARGET_WASM
+#ifndef TARGET_WASM
 // Reserve virtual memory range.
 // Parameters:
 //  size      - size of the virtual memory range
@@ -669,7 +673,6 @@ bool GCToOSInterface::VirtualDecommit(void* address, size_t size)
 
     return  bRetVal;
 }
-#endif // TARGET_WASM
 
 // Reset virtual memory range. Indicates that data in the memory range specified by address and size is no
 // longer of interest, but it should not be decommitted.
@@ -709,6 +712,7 @@ bool GCToOSInterface::VirtualReset(void * address, size_t size, bool unlock)
 
     return (st == 0);
 }
+#endif // !TARGET_WASM
 
 // Check if the OS supports write watching
 bool GCToOSInterface::SupportsWriteWatch()

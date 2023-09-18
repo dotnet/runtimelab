@@ -205,7 +205,11 @@ namespace ILCompiler.DependencyAnalysis
             {
                 if (!useStruct && nextRelocValid && nextRelocOffset % pointerSize != 0)
                 {
+<<<<<<< HEAD
                     // Switch from array to struct.
+=======
+                    // Switch from array to struct. This will need more elements because binary data is output byte-by-byte.
+>>>>>>> origin/feature/NativeAOT-LLVM
                     useStruct = true;
                     dataSizeInElements = nodeContents.Relocs.Length + dataSizeInBytes - (nodeContents.Relocs.Length * pointerSize);
 
@@ -219,7 +223,14 @@ namespace ILCompiler.DependencyAnalysis
                     typeElements = _currentObjectTypes.AsSpan(0, dataSizeInElements);
 
                     // Restart zipping while loop.
+<<<<<<< HEAD
                     dataOffset = elementOffset = relocIndex = 0;
+=======
+                    dataOffset = 0;
+                    elementOffset = 0;
+                    relocIndex = 0;
+
+>>>>>>> origin/feature/NativeAOT-LLVM
                     continue;
                 }
 
@@ -247,7 +258,11 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     Relocation reloc = nodeContents.Relocs[relocIndex];
                     long delta;
+<<<<<<< HEAD
                     fixed (void* location = &nodeContents.Data[reloc.Offset])
+=======
+                    fixed (void* location = &data[reloc.Offset])
+>>>>>>> origin/feature/NativeAOT-LLVM
                     {
                         delta = Relocation.ReadValue(reloc.RelocType, location);
                     }
@@ -268,7 +283,11 @@ namespace ILCompiler.DependencyAnalysis
                     nextRelocValid = relocIndex < relocLength;
                     if (nextRelocValid)
                     {
+<<<<<<< HEAD
                         nextRelocOffset = nodeContents.Relocs[0].Offset;
+=======
+                        nextRelocOffset = nodeContents.Relocs[relocIndex].Offset;
+>>>>>>> origin/feature/NativeAOT-LLVM
                     }
 
                     dataOffset += pointerSize;

@@ -541,7 +541,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="@(CustomLinkerArgExport->'-Wl,--export=%(Identity)')" />
       <!-- Wasi has lots of undefined symbols currently, mostly globalization -->
       <CustomLinkerArg Include="-Wl,--unresolved-symbols=ignore-all -Wl,--error-limit=0" />
-      <CustomLinkerArg Include="-lstdc++ -lwasi-emulated-process-clocks -lwasi-emulated-signal -lwasi-emulated-mman -lwasi-emulated-getpid" />
+      <CustomLinkerArg Include="-lstdc++ -lwasi-emulated-process-clocks -lwasi-emulated-signal -lwasi-emulated-getpid" />
       <CustomLinkerArg Include="-Wl,--max-memory=2147483648" />
       <CustomLinkerArg Include="-Wl,--global-base=$(IlcWasmGlobalBase)" />
       <CustomLinkerArg Include="-Wl,-z,stack-size=$(IlcWasmStackSize)" />
