@@ -204,17 +204,25 @@ internal static class Mint
             case KnownInvokeShape.IntParamIntReturn:
                 {
                     result = compiledMethod.ExecMemoryManager.Allocate(8);
-                    var arg1 = (IntPtr)40; // FIXME: pass arg from caller
-                    mint_testing_ee_interp_entry_static_ret_1(result, arg1, compiledMethod.InterpMethod.Value);
+                    int arg1 = 40; // FIXME: pass arg from caller
+                    unsafe
+                    {
+                        IntPtr arg1Ptr = (IntPtr)(void*)&arg1;
+                        mint_testing_ee_interp_entry_static_ret_1(result, arg1Ptr, compiledMethod.InterpMethod.Value);
+                    }
                     break;
                 }
             case KnownInvokeShape.IntDoubleParamsIntReturn:
                 {
                     result = compiledMethod.ExecMemoryManager.Allocate(8);
-                    var arg1 = (IntPtr)40; // FIXME: pass args from caller
-                    double d = 2.0;
-                    IntPtr arg2 = Unsafe.As<double, IntPtr>(ref d);
-                    mint_testing_ee_interp_entry_static_ret_2(result, arg1, arg2, compiledMethod.InterpMethod.Value);
+                    int arg1 = 40; // FIXME: pass args from caller
+                    double arg2 = 2.0;
+                    unsafe
+                    {
+                        IntPtr arg1Ptr = (IntPtr)(void*)&arg1;
+                        IntPtr arg2Ptr = (IntPtr)(void*)&arg2;
+                        mint_testing_ee_interp_entry_static_ret_2(result, arg1Ptr, arg2Ptr, compiledMethod.InterpMethod.Value);
+                    }
                     break;
                 }
             default:
