@@ -4160,7 +4160,20 @@ method_entry (ThreadContext *context, InterpFrame *frame,
 static long total_executed_opcodes;
 #endif
 
+#ifndef NATIVEAOT_MINT
 #define LOCAL_VAR(offset,type) (*(type*)(locals + (offset)))
+#define LOCAL_VAR_SV(offset,type) (*(type*)(locals + (offset)))
+#else
+static inline stackval* local_var_stackval(unsigned char* locals, int offset) {
+	NATIVEAOT_MINT_TODO_EE_NOWARN(); // FIXME: HACK!!! this doesn't work with reference types
+	// FIXME: we need to audit every use of LOCAL_VAR and replace it by an access
+	// to either the managed or the unmanaged portion of the stack value.
+	// (can we do it based on the type passed to the LOCAL_VAR macro somehow?)
+	return (stackval*)(locals + offset);
+}
+#define LOCAL_VAR(offset,type) (*(type*)&local_var_stackval(locals, (offset))->data)
+#define LOCAL_VAR_SV(offset,type) (*(type*)(locals + (offset)))
+#endif
 
 // The start of the stack has a reserved slot for a GC visible temp object pointer
 #ifdef TARGET_WASM
@@ -4855,7 +4868,7 @@ call:
 			MINT_IN_BREAK;
 		}
 		MINT_IN_CASE(MINT_RET)
-			frame->retval [0] = LOCAL_VAR (ip [1], stackval);
+			frame->retval [0] = LOCAL_VAR_SV (ip [1], stackval);
 			goto exit_frame;
 		MINT_IN_CASE(MINT_RET_I1)
 			frame->retval [0].data.i = (gint8) LOCAL_VAR (ip [1], gint32);
