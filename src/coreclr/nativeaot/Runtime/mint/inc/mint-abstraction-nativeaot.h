@@ -50,6 +50,13 @@ struct _MonoMethodSignatureInstanceAbstractionNativeAot {
 typedef struct _TransformData TransformData; // FIXME: separate the interp-aware abstractions from the metadata ones
 typedef struct InterpMethod InterpMethod; // FIXME: separate the interp-aware abstractions from the metadata ones
 
+typedef struct _MonoMemPoolInsaanceAbstractionNativeAot {
+    MonoGCHandle gcHandle;
+
+    void (*destroy)(MonoMemPool *self);
+    void* (*alloc0)(MonoMemPool *self, uint32_t size);
+} MonoMemPoolInstanceAbstractionNativeAot;
+
 typedef struct _MintAbstractionNativeAot {
     /* FIXME: replace this by some actual MonoImage abstraction*/
     MonoImage *placeholder_image;
@@ -74,6 +81,8 @@ typedef struct _MintAbstractionNativeAot {
     /* System.RutnimeTypeHandle - FIXME: seems to be used for passing data to the interp, rewrite */
     MonoClass * (*get_default_class_typehandle_class) (void);
 
+    MonoMemPool * (*create_mem_pool) (void);
+
 
     /* opaque type instances */
     MonoTypeInstanceAbstractionNativeAot * (*get_MonoType_inst) (MonoType *self);
@@ -81,6 +90,8 @@ typedef struct _MintAbstractionNativeAot {
     MonoMethodHeaderInstanceAbstractionNativeAot * (*get_MonoMethodHeader_inst) (MonoMethodHeader *header);
 
     MonoMethodSignatureInstanceAbstractionNativeAot * (*get_MonoMethodSignature_inst) (MonoMethodSignature *self);
+
+    MonoMemPoolInstanceAbstractionNativeAot * (*get_MonoMemPool_inst) (MonoMemPool *self);
 } MintAbstractionNativeAot;
 
 MintAbstractionNativeAot *mint_itf(void);

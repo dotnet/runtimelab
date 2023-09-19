@@ -7,6 +7,7 @@ using System.Reflection.Emit;
 using Internal.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
+using Internal.Mint.Abstraction;
 
 namespace Internal.Mint;
 
@@ -82,6 +83,7 @@ internal static class Mint
         itf->get_MonoMethod_inst = &Abstraction.Itf.unwrapTransparentAbstraction;
         itf->get_MonoMethodHeader_inst = &Abstraction.Itf.unwrapTransparentAbstraction;
         itf->get_MonoMethodSignature_inst = &Abstraction.Itf.unwrapTransparentAbstraction;
+        itf->get_MonoMemPool_inst = &Abstraction.Itf.unwrapTransparentAbstraction;
 
         itf->get_type_from_stack = &Abstraction.Itf.mintGetTypeFromStack;
         itf->get_default_byval_type_void = &mintGetDefaultByvalTypeVoid;
@@ -90,6 +92,8 @@ internal static class Mint
         itf->imethod_alloc = &mintIMethodAlloc;
         // TODO: initialize members of itf with function pointers that implement the stuff that
         // the interpreter needs.  See mint-itf.c for the native placeholder implementation
+
+        itf->create_mem_pool = &CreateMemPool;
         return itf;
     }
 
@@ -129,4 +133,31 @@ internal static class Mint
     }
 #pragma warning restore IDE0060
 
+    [UnmanagedCallersOnly]
+    internal static unsafe MonoMemPoolInstanceAbstraction* CreateMemPool()
+    {
+        var memoryManager = new MemoryManager();
+
+        var ptr = memoryManager.Allocate<MonoMemPoolInstanceAbstraction>();
+        ptr->gcHandle = GCHandle.ToIntPtr(memoryManager.Own(memoryManager));
+        ptr->destroy = &DestroyMemPool;
+        ptr->alloc0 = &MemPoolAlloc0;
+        return ptr;
+    }
+
+    [UnmanagedCallersOnly]
+    private static unsafe void DestroyMemPool(MonoMemPoolInstanceAbstraction* ptr)
+    {
+        var gcHandle = GCHandle.FromIntPtr(ptr->gcHandle);
+        var memoryManager = (MemoryManager)gcHandle.Target;
+        memoryManager.Dispose();
+    }
+
+    [UnmanagedCallersOnly]
+    private static unsafe IntPtr MemPoolAlloc0(MonoMemPoolInstanceAbstraction* ptr, uint size)
+    {
+        var gcHandle = GCHandle.FromIntPtr(ptr->gcHandle);
+        var memoryManager = (MemoryManager)gcHandle.Target;
+        return memoryManager.Allocate(size);
+    }
 }

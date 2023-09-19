@@ -70,40 +70,34 @@ mint_entrypoint(MintAbstractionNativeAot *itf, MintEEAbstractionNativeAot* eeItf
 
 // mint mempool
 
-// FIXME: actually pool memory
-struct _MonoMemPool {
-    // empty
-};
-
 MonoMemPool *
 mono_mempool_new (void) {
-    return g_new0 (MonoMemPool, 1);
+    return mint_itf()->create_mem_pool();
 }
 
 void
 mono_mempool_destroy (MonoMemPool *pool) {
-    g_free (pool);
+    mint_itf()->get_MonoMemPool_inst(pool)->destroy(pool);
 }
 void*
 mono_mempool_alloc0 (MonoMemPool *pool, unsigned int size) {
-    return g_malloc0(size);
+    return mint_itf()->get_MonoMemPool_inst(pool)->alloc0(pool, size);
 }
 
 // mint mem manager
 
 struct _MonoMemoryManager {
-    MonoMemPool *pool;
+    //MonoMemPool *pool;
 };
 
 void *
 mono_mem_manager_alloc0 (MonoMemoryManager *memory_manager, guint size) {
-    return mono_mempool_alloc0 (memory_manager->pool, size);
+    return g_malloc0 (size); // FIXME: use a mempool from the memory manager
 }
 
 // FIXME: actually tie to the lifetime of the dynamic method
 MonoMemoryManager * m_method_get_mem_manager (MonoMethod *method) {
-    static MonoMemPool placeholder_mempool;
-    static MonoMemoryManager placeholder_memory_manager = { &placeholder_mempool };
+    static MonoMemoryManager placeholder_memory_manager = { };
     return &placeholder_memory_manager;
 }
 

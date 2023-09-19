@@ -58,3 +58,12 @@ public unsafe struct MonoTypeInstanceAbstractionNativeAot
 
     public IntPtr gcHandle;
 }
+
+[StructLayout(LayoutKind.Sequential)]
+public unsafe struct MonoMemPoolInstanceAbstraction
+{
+    public IntPtr gcHandle;
+
+    public delegate* unmanaged<MonoMemPoolInstanceAbstraction*, void> destroy; // void (*destroy)(MonoMemPool *self);
+    public delegate* unmanaged<MonoMemPoolInstanceAbstraction*, uint, IntPtr> alloc0; // void* (*alloc0)(MonoMemPool *self, uint32_t size);
+}

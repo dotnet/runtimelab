@@ -34,6 +34,7 @@ internal unsafe struct Itf
     public IntPtr get_default_class_runtimetype_class; // MonoClass * (*get_default_class_runtimetype_class) (void);
     /* System.RutnimeTypeHandle - FIXME: seems to be used for passing data to the interp, rewrite */
     public IntPtr get_default_class_typehandle_class; // MonoClass * (*get_default_class_typehandle_class) (void);
+    public delegate* unmanaged<MonoMemPoolInstanceAbstraction*> create_mem_pool; // MonoMemPool * (*create_mem_pool) (void);
 
 
     /* opaque type instances */
@@ -42,6 +43,8 @@ internal unsafe struct Itf
     public delegate* unmanaged<IntPtr /* MonoMethodHeader* */, IntPtr /* MonoMethodHeaderInstanceAbstractionNativeAot* */> get_MonoMethodHeader_inst; // MonoMethodHeaderInstanceAbstractionNativeAot * (*get_MonoMethodHeader_inst) (MonoMethodHeader *header);
 
     public delegate* unmanaged<IntPtr /* MonoMethodSignature* */, IntPtr /* MonoMethodSignatureInstanceAbstractionNativeAot* */> get_MonoMethodSignature_inst; // MonoMethodSignatureInstanceAbstractionNativeAot * (*get_MonoMethodSignature_inst) (MonoMethodSignature *self);
+
+    public delegate* unmanaged<IntPtr, IntPtr> get_MonoMemPool_inst; // MonoMemPoolInstanceAbstraction * (*get_MonoMemPool_inst) (MonoMemPool *self);
 
     [UnmanagedCallersOnly]
     internal static IntPtr unwrapTransparentAbstraction(IntPtr self) => self;
