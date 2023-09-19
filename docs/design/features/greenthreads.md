@@ -7,7 +7,7 @@ In this experiment, we sought to explore green threads on .NET and discover
 We want to investigate the behavior of green threads in .NET. The goal here isn’t really to show that green threads are faster/slower than async/await, but really to investigate the programming model that would appear with green threads. The performance numbers that we gathered were done with the goal of proving that we CAN implement a reasonable green threads implementation in the current .NET Runtime, not because we expect to see major performance benefits from this approach.
 
 ##  Implementation constraints and details
-As part of the experiment, we developed an implementation of green threads in the runtimelab repo. See dotnet/runtimelab at feature/green-threads (github.com) and Commits · dotnet/aspnetcore (github.com)
+As part of the experiment, we developed an implementation of green threads in the runtimelab repo. See https://github.com/dotnet/runtimelab/tree/feature/green-threads and https://github.com/dotnet/aspnetcore/tree/feature/green-threads
 The general outcome was a version of green threads that uses the segmented stack model, and provides a small number of new low level apis to work with green threads, and a fairly small number of higher level apis were changed to take advantage of green threads.
 ### Fundamental api changes
 -	`Thread.IsGreenThread` – Used to identify if the current thread is a green thread
