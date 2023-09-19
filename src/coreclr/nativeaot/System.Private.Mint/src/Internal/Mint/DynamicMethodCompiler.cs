@@ -40,7 +40,8 @@ public sealed class DynamicMethodCompiler : IDisposable
         //
         var monoMethodPtr = _mintTypeSystem.GetMonoMethodPointer(_dynamicMethod);
         var method = new InterpMethodPtr(Mint.mint_testing_transform_sample(monoMethodPtr.Value));
-        return new CompiledMethod(_dynamicMethod, method, _execMemoryManager);
+        var invokeShape = CompiledMethod.GetKnownInvokeShape(_dynamicMethod);
+        return new CompiledMethod(invokeShape, method, _execMemoryManager);
     }
 
 

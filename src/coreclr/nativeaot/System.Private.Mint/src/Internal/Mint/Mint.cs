@@ -33,11 +33,17 @@ internal static class Mint
     internal static extern unsafe void mint_testing_ee_interp_entry_static_ret_2(IntPtr res, IntPtr arg1, IntPtr arg2, IntPtr interpMethodPtr);
 
 
-    static readonly MemoryManager globalMemoryManager = new MemoryManager();
-    static readonly MintTypeSystem globalMintTypeSystem = new MintTypeSystem(globalMemoryManager);
+    static readonly MemoryManager globalMemoryManager;
+    static readonly MintTypeSystem globalMintTypeSystem;
 
     internal static MintTypeSystem GlobalMintTypeSystem => globalMintTypeSystem;
     internal static MemoryManager GlobalMemoryManager => globalMemoryManager;
+
+    static Mint()
+    {
+        globalMemoryManager = new MemoryManager();
+        globalMintTypeSystem = new MintTypeSystem(globalMemoryManager);
+    }
 
     internal static void Initialize()
     {
@@ -94,7 +100,7 @@ internal static class Mint
 
     internal class Callbacks : IMintDynamicMethodCallbacks
     {
-        public IMintCompiledMethod GetFunctionPointer(DynamicMethod dm)
+        public IMintCompiledMethod CompileDynamicMethod(DynamicMethod dm)
         {
             // FIXME: GetFunctionPointer is not the right method.
             // We probably want to return some kind of a CompiledDynamicMethodDelegate
@@ -106,126 +112,6 @@ internal static class Mint
     }
 
 
-    // just run the method assuming it takes no arguments and returns void or an int
-    internal static object BigHackyExecCompiledMethod(MethodInfo dm, CompiledMethod compiledMethod, object[] args)
-    {
-        Internal.Console.Write($"Compiled method: {compiledMethod.InterpMethod.Value}{Environment.NewLine}");
-        if (!TryGetKnownInvokeShape(dm, out var invokeShape))
-        {
-            throw new InvalidOperationException($"Can't invoke this kind of Delegate ({dm.GetType()} yet");
-        }
-        InvokeWithKnownShape(invokeShape, compiledMethod, args, out var result);
-        switch (invokeShape)
-        {
-            case KnownInvokeShape.VoidVoid:
-                return null;
-            case KnownInvokeShape.IntReturn:
-            case KnownInvokeShape.IntParamIntReturn:
-            case KnownInvokeShape.IntDoubleParamsIntReturn:
-                int resultVal;
-                unsafe
-                {
-                    resultVal = *(int*)result;
-                }
-                return resultVal;
-            default:
-                throw new InvalidOperationException("Unknown invoke shape");
-        }
-    }
-
-    internal enum KnownInvokeShape
-    {
-        VoidVoid,
-        IntReturn,
-        IntParamIntReturn,
-        IntDoubleParamsIntReturn,
-    }
-
-    internal static bool TryGetKnownInvokeShape(MethodInfo dm, out KnownInvokeShape invokeShape)
-    {
-        invokeShape = default;
-        if (dm.ReturnType == typeof(void))
-        {
-            if (dm.GetParameters().Length == 0)
-            {
-                invokeShape = KnownInvokeShape.VoidVoid;
-                return true;
-            }
-        }
-        else if (dm.ReturnType == typeof(int))
-        {
-            var parameters = dm.GetParameters();
-            if (parameters.Length == 0)
-            {
-                invokeShape = KnownInvokeShape.IntReturn;
-                return true;
-            }
-            else if (parameters.Length == 1)
-            {
-                if (parameters[0].ParameterType == typeof(int))
-                {
-                    invokeShape = KnownInvokeShape.IntParamIntReturn;
-                    return true;
-                }
-            }
-            else if (parameters.Length == 2)
-            {
-                if (parameters[0].ParameterType == typeof(int) &&
-                    parameters[1].ParameterType == typeof(double))
-                {
-                    invokeShape = KnownInvokeShape.IntDoubleParamsIntReturn;
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    internal static void InvokeWithKnownShape(KnownInvokeShape invokeShape, CompiledMethod compiledMethod, object[] args, out IntPtr result)
-    {
-        switch (invokeShape)
-        {
-            case KnownInvokeShape.VoidVoid:
-                {
-                    result = IntPtr.Zero;
-                    mint_testing_ee_interp_entry_static_0(compiledMethod.InterpMethod.Value);
-                    break;
-                }
-            case KnownInvokeShape.IntReturn:
-                {
-                    result = compiledMethod.ExecMemoryManager.Allocate(8);
-                    mint_testing_ee_interp_entry_static_ret_0(result, compiledMethod.InterpMethod.Value);
-                    break;
-                }
-            case KnownInvokeShape.IntParamIntReturn:
-                {
-                    result = compiledMethod.ExecMemoryManager.Allocate(8);
-                    int arg1 = (int)args[0];
-                    unsafe
-                    {
-                        IntPtr arg1Ptr = (IntPtr)(void*)&arg1;
-                        mint_testing_ee_interp_entry_static_ret_1(result, arg1Ptr, compiledMethod.InterpMethod.Value);
-                    }
-                    break;
-                }
-            case KnownInvokeShape.IntDoubleParamsIntReturn:
-                {
-                    result = compiledMethod.ExecMemoryManager.Allocate(8);
-                    int arg1 = (int)args[0];
-                    double arg2 = (double)args[1];
-                    unsafe
-                    {
-                        IntPtr arg1Ptr = (IntPtr)(void*)&arg1;
-                        IntPtr arg2Ptr = (IntPtr)(void*)&arg2;
-                        mint_testing_ee_interp_entry_static_ret_2(result, arg1Ptr, arg2Ptr, compiledMethod.InterpMethod.Value);
-                    }
-                    break;
-                }
-            default:
-                throw new InvalidOperationException("Unknown invoke shape");
-        }
-        Internal.Console.Write($"Compiled method returned{Environment.NewLine}");
-    }
 
     [UnmanagedCallersOnly]
     internal static unsafe Abstraction.MonoTypeInstanceAbstractionNativeAot* mintGetDefaultByvalTypeVoid() => GlobalMintTypeSystem.GetMonoType((RuntimeType)typeof(void)).Value;

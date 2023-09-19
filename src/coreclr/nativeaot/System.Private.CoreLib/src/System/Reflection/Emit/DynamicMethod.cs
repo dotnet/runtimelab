@@ -173,12 +173,8 @@ namespace System.Reflection.Emit
         public sealed override Delegate CreateDelegate(Type delegateType)
         {
 #if FEATURE_MINT
-            var compiledMethod = Internal.Reflection.Emit.DynamicMethodAugments.MintCallbacks.GetFunctionPointer(this);
-            return Delegate.CreateObjectArrayDelegate(delegateType, Handler);
-            object? Handler(object?[] args)
-            {
-                return compiledMethod.Invoke(args);
-            }
+            var compiledMethod = Internal.Reflection.Emit.DynamicMethodAugments.MintCallbacks.CompileDynamicMethod(this);
+            return Delegate.CreateObjectArrayDelegate(delegateType, compiledMethod.Invoke);
 #else
             return default;
 #endif
