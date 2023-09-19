@@ -171,7 +171,7 @@ response.ContentLength = payload.Length;
 return response.Body.WriteAsync(payload).AsTask();
 ```
 After
-```
+```csharp
 var response = context.Response;
 response.StatusCode = 200;
 response.ContentType = "text/plain";
