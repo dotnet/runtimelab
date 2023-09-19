@@ -10,7 +10,7 @@ We want to investigate the behavior of green threads in .NET. The goal here isn�
 As part of the experiment, we developed an implementation of green threads in the runtimelab repo. See dotnet/runtimelab at feature/green-threads (github.com) and Commits · dotnet/aspnetcore (github.com)
 The general outcome was a version of green threads that uses the segmented stack model, and provides a small number of new low level apis to work with green threads, and a fairly small number of higher level apis were changed to take advantage of green threads.
 ### Fundamental api changes
--	Thread.IsGreenThread – Used to identify if the current thread is a green thread
+-	`Thread.IsGreenThread` – Used to identify if the current thread is a green thread
 -	Task.RunAsGreenThread(Action) – Similar to Task.Run, but runs code on a green thread, using the green thread threadpool.
 -	Task.Wait() – When called on a green thread, will yield the green thread until the task waited on is complete, then will schedule the green thread to continue
 ### Higher level api changes
