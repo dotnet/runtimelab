@@ -3,6 +3,7 @@
 
 typedef struct _MonoTypeInstanceAbstractionNativeAot {
     int32_t type_code;
+    uint8_t is_byref;
     MonoGCHandle gcHandle;
 } MonoTypeInstanceAbstractionNativeAot;
 
@@ -55,7 +56,6 @@ typedef struct _MintAbstractionNativeAot {
 
     /* transform.c */
     MonoType * (*get_type_from_stack) (int type, MonoClass *klass);
-    int (*mono_mint_type) (MonoType *type);
     gboolean (*type_has_references)(MonoType *type);
     gpointer (*imethod_alloc0) (InterpMethod *td, size_t size);
     MonoMethod* (*interp_get_method) (MonoMethod *method, guint32 token, MonoImage *image, MonoGenericContext *generic_context, MonoError *error);

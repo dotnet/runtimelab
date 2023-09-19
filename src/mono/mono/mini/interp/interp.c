@@ -169,6 +169,15 @@ interp_msig_get_first_param (MonoMethodSignature *sig)
 #endif
 }
 
+static inline gboolean
+interp_type_is_byref (MonoType *type)
+{
+#ifndef NATIVEAOT_MINT
+	return m_type_is_byref (type);
+#else
+	return MINT_TI_ITF(MonoType, type, is_byref);
+#endif
+}
 
 static inline MonoTypeEnum
 interp_type_get_code (MonoType *type)
@@ -961,15 +970,10 @@ get_virtual_method_fast (InterpMethod *imethod, MonoVTable *vtable, int offset)
 static void
 stackval_from_data (MonoType *type, stackval *result, const void *data, gboolean pinvoke)
 {
-#ifndef NATIVEAOT_MINT
-	if (m_type_is_byref (type)) {
+	if (interp_type_is_byref (type)) {
 		result->data.p = *(gpointer*)data;
 		return;
 	}
-#else
-		g_warning("stackval_from_data ignoring byref");
-		NATIVEAOT_MINT_TODO_EE_NOWARN(); // m_type_is_byref
-#endif
 	switch (interp_type_get_code (type)) {
 	case MONO_TYPE_VOID:
 		break;;
@@ -1068,16 +1072,11 @@ stackval_from_data (MonoType *type, stackval *result, const void *data, gboolean
 static int
 stackval_to_data (MonoType *type, stackval *val, void *data, gboolean pinvoke)
 {
-#ifndef NATIVEAOT_MINT
-	if (m_type_is_byref (type)) {
+	if (interp_type_is_byref (type)) {
 		gpointer *p = (gpointer*)data;
 		*p = val->data.p;
 		return MINT_STACK_SLOT_SIZE;
 	}
-#else
-	g_warning ("stackval_to_data: byref not handled");
-	NATIVEAOT_MINT_TODO_EE_NOWARN(); // byref
-#endif
 	/* printf ("TODAT0 %p\n", data); */
 	switch (interp_type_get_code (type)) {
 	case MONO_TYPE_BOOLEAN:
@@ -2556,13 +2555,9 @@ interp_entry (InterpEntryData *data)
 		int arg_offset = get_arg_offset_fast (rmethod, NULL, stack_index + i);
 		stackval *sval = STACK_ADD_ALIGNED_BYTES (sp, arg_offset);
 
-#ifndef NATIVEAOT_MINT
-		if (m_type_is_byref (sig_params [i]))
+		if (interp_type_is_byref (sig_params [i]))
 			sval->data.p = params [i];
 		else
-#else
-		NATIVEAOT_MINT_TODO_EE_NOWARN(); // m_type_is_byref
-#endif
 			stackval_from_data (sig_params [i], sval, params [i], FALSE);
 	}
 

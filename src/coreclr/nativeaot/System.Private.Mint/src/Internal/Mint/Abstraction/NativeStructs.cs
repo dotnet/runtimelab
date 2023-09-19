@@ -54,6 +54,7 @@ public unsafe struct MonoMethodHeaderInstanceAbstractionNativeAot
 public unsafe struct MonoTypeInstanceAbstractionNativeAot
 {
     public int type_code; // FIXME this could be a byte. it's just CorElementType
+    public byte is_byref;
 
     public IntPtr gcHandle;
 }

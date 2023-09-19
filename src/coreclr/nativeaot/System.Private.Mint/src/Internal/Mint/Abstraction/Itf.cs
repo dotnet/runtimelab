@@ -17,7 +17,6 @@ internal unsafe struct Itf
 
     /* transform.c */
     public delegate* unmanaged<int, IntPtr, MonoTypeInstanceAbstractionNativeAot*> get_type_from_stack; //MonoType * (*get_type_from_stack) (int type, MonoClass *klass);
-    public delegate* unmanaged<MonoTypeInstanceAbstractionNativeAot*, int> mono_mint_type; // int (*mono_mint_type) (MonoType *type);
     public IntPtr type_has_references; // gboolean (*type_has_references)(MonoType *type);
     public delegate* unmanaged<IntPtr/*InterpMethod* */, UIntPtr, IntPtr> imethod_alloc; // gpointer (*imethod_alloc0) (TransformData *td, size_t size);
     public IntPtr interp_get_method; // MonoMethod* (*interp_get_method) (MonoMethod *method, guint32 token, MonoImage *image, MonoGenericContext *generic_context, MonoError *error);
@@ -46,83 +45,6 @@ internal unsafe struct Itf
 
     [UnmanagedCallersOnly]
     internal static IntPtr unwrapTransparentAbstraction(IntPtr self) => self;
-
-
-    // keep in sync with interp-internals.h
-    internal enum MintType : int
-    {
-        MINT_TYPE_I1 = 0,
-        MINT_TYPE_U1 = 1,
-        MINT_TYPE_I2 = 2,
-        MINT_TYPE_U2 = 3,
-        MINT_TYPE_I4 = 4,
-        MINT_TYPE_I8 = 5,
-        MINT_TYPE_R4 = 6,
-        MINT_TYPE_R8 = 7,
-        MINT_TYPE_O = 8,
-        MINT_TYPE_VT = 9,
-        MINT_TYPE_VOID = 10,
-    }
-
-    // FIXME: don't copy this
-    private enum CorElementType : byte
-    {
-        ELEMENT_TYPE_END = 0x00,
-        ELEMENT_TYPE_VOID = 0x01,
-        ELEMENT_TYPE_BOOLEAN = 0x02,
-        ELEMENT_TYPE_CHAR = 0x03,
-        ELEMENT_TYPE_I1 = 0x04,
-        ELEMENT_TYPE_U1 = 0x05,
-        ELEMENT_TYPE_I2 = 0x06,
-        ELEMENT_TYPE_U2 = 0x07,
-        ELEMENT_TYPE_I4 = 0x08,
-        ELEMENT_TYPE_U4 = 0x09,
-        ELEMENT_TYPE_I8 = 0x0A,
-        ELEMENT_TYPE_U8 = 0x0B,
-        ELEMENT_TYPE_R4 = 0x0C,
-        ELEMENT_TYPE_R8 = 0x0D,
-        ELEMENT_TYPE_STRING = 0x0E,
-        ELEMENT_TYPE_PTR = 0x0F,
-        ELEMENT_TYPE_BYREF = 0x10,
-        ELEMENT_TYPE_VALUETYPE = 0x11,
-        ELEMENT_TYPE_CLASS = 0x12,
-        ELEMENT_TYPE_VAR = 0x13,
-        ELEMENT_TYPE_ARRAY = 0x14,
-        ELEMENT_TYPE_GENERICINST = 0x15,
-        ELEMENT_TYPE_TYPEDBYREF = 0x16,
-        ELEMENT_TYPE_I = 0x18,
-        ELEMENT_TYPE_U = 0x19,
-        ELEMENT_TYPE_FNPTR = 0x1B,
-        ELEMENT_TYPE_OBJECT = 0x1C,
-        ELEMENT_TYPE_SZARRAY = 0x1D,
-        ELEMENT_TYPE_MVAR = 0x1E,
-        ELEMENT_TYPE_CMOD_REQD = 0x1F,
-        ELEMENT_TYPE_CMOD_OPT = 0x20,
-        ELEMENT_TYPE_INTERNAL = 0x21,
-        ELEMENT_TYPE_MAX = 0x22,
-        ELEMENT_TYPE_MODIFIER = 0x40,
-        ELEMENT_TYPE_SENTINEL = 0x41,
-        ELEMENT_TYPE_PINNED = 0x45,
-
-    }
-
-    [UnmanagedCallersOnly]
-
-    internal static unsafe int mintGetMintTypeFromMonoType(MonoTypeInstanceAbstractionNativeAot* type)
-    {
-        if (type == null)
-            throw new InvalidOperationException("type is null");
-        // see the mono mono_mint_get_type
-        // in particular, byref is a MONO_TYPE_I, not a MONO_TYPE_BYREF
-        switch ((CorElementType)type->type_code)
-        {
-            case CorElementType.ELEMENT_TYPE_I4: return (int)MintType.MINT_TYPE_I4;
-            case CorElementType.ELEMENT_TYPE_R8: return (int)MintType.MINT_TYPE_R8;
-            case CorElementType.ELEMENT_TYPE_VOID: return (int)MintType.MINT_TYPE_VOID;
-            default:
-                throw new InvalidOperationException($"can't handle MonoTypeEnum value {(int)type->type_code}");
-        }
-    }
 
     // keep in sync with transform.c
     enum MintStackType : int

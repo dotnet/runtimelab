@@ -146,6 +146,16 @@ interp_itf_method_get_header (MonoMethod *method, MonoError *error)
 #endif
 }
 
+static inline gboolean
+interp_type_is_byref (MonoType *type)
+{
+#ifndef NATIVEAOT_MINT
+	return m_type_is_byref (type);
+#else
+	return MINT_TI_ITF(MonoType, type, is_byref);
+#endif
+}
+
 static inline MonoTypeEnum
 interp_type_get_code (MonoType *type)
 {
@@ -577,11 +587,10 @@ get_type_from_stack (int type, MonoClass *klass)
 int
 mono_mint_type (MonoType *type)
 {
-#ifndef NATIVEAOT_MINT
-	if (m_type_is_byref (type))
+	if (interp_type_is_byref (type))
 		return MINT_TYPE_I;
 enum_type:
-	switch (type->type) {
+	switch (interp_type_get_code (type)) {
 	case MONO_TYPE_I1:
 		return MINT_TYPE_I1;
 	case MONO_TYPE_U1:
@@ -613,27 +622,35 @@ enum_type:
 	case MONO_TYPE_OBJECT:
 	case MONO_TYPE_ARRAY:
 		return MINT_TYPE_O;
-	case MONO_TYPE_VALUETYPE:
+	case MONO_TYPE_VALUETYPE: {
+#ifndef NATIVEAOT_MINT
 		if (m_class_is_enumtype (type->data.klass)) {
 			type = mono_class_enum_basetype_internal (type->data.klass);
 			goto enum_type;
 		} else
 			return MINT_TYPE_VT;
+#else
+		NATIVEAOT_MINT_TODO("valuetype");
+		g_assert_not_reached ();
+#endif
+	}
 	case MONO_TYPE_TYPEDBYREF:
 		return MINT_TYPE_VT;
-	case MONO_TYPE_GENERICINST:
+	case MONO_TYPE_GENERICINST: {
+#ifndef NATIVEAOT_MINT
 		type = m_class_get_byval_arg (type->data.generic_class->container_class);
+#else
+		NATIVEAOT_MINT_TODO("genericinst");
+#endif
 		goto enum_type;
+	}
 	case MONO_TYPE_VOID:
 		return MINT_TYPE_VOID;
 	default:
-		g_warning ("got type 0x%02x", type->type);
+		g_warning ("got type 0x%02x", interp_type_get_code (type));
 		g_assert_not_reached ();
 	}
 	return -1;
-#else
-	return MINT_ITF(mono_mint_type)(type);
-#endif
 }
 
 

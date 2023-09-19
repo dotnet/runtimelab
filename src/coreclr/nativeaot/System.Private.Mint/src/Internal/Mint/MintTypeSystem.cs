@@ -177,6 +177,7 @@ public sealed class MintTypeSystem
         var s = new Internal.Mint.Abstraction.MonoTypeInstanceAbstractionNativeAot
         {
             type_code = (int)runtimeType.GetCorElementType(),
+            is_byref = (byte)(runtimeType.IsByRef ? 1 : 0),
             gcHandle = GCHandle.ToIntPtr(_memoryMananger.Own(runtimeType))
         };
         var ptr = _memoryMananger.Allocate<Internal.Mint.Abstraction.MonoTypeInstanceAbstractionNativeAot>();

@@ -78,7 +78,6 @@ internal static class Mint
         itf->get_MonoMethodSignature_inst = &Abstraction.Itf.unwrapTransparentAbstraction;
 
         itf->get_type_from_stack = &Abstraction.Itf.mintGetTypeFromStack;
-        itf->mono_mint_type = &Abstraction.Itf.mintGetMintTypeFromMonoType;
         itf->get_default_byval_type_void = &mintGetDefaultByvalTypeVoid;
         itf->get_default_byval_type_int = &mintGetDefaultByvalTypeIntPtr;
 
