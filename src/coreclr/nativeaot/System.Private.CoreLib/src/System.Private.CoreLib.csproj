@@ -133,6 +133,7 @@
     <Compile Include="Internal\Reflection\Extensions\NonPortable\CustomAttributeSearcher.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Internal\Reflection\Emit\IMintCompiledMethod.cs" Condition="'$(FeatureMint)' == 'true'"/>
     <Compile Include="Internal\Reflection\Emit\IMintDynamicMethodCallbacks.cs" Condition="'$(FeatureMint)' == 'true'"/>
     <Compile Include="Internal\Reflection\Emit\DynamicMethodAugments.cs" Condition="'$(FeatureMint)' == 'true'"/>
   </ItemGroup>

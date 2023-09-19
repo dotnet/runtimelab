@@ -9,6 +9,6 @@ namespace Internal.Reflection.Emit;
 #if FEATURE_MINT
 public interface IMintDynamicMethodCallbacks
 {
-    IntPtr GetFunctionPointer(DynamicMethod dm); // FIXME just a placeholder
+    IMintCompiledMethod GetFunctionPointer(DynamicMethod dm); // FIXME just a placeholder
 }
 #endif

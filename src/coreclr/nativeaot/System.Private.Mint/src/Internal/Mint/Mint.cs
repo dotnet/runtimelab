@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Reflection;
 using System.Reflection.Emit;
 using Internal.Reflection.Emit;
 using System.Runtime.InteropServices;
@@ -94,34 +95,31 @@ internal static class Mint
 
     internal class Callbacks : IMintDynamicMethodCallbacks
     {
-        public IntPtr GetFunctionPointer(DynamicMethod dm)
+        public IMintCompiledMethod GetFunctionPointer(DynamicMethod dm)
         {
             // FIXME: GetFunctionPointer is not the right method.
             // We probably want to return some kind of a CompiledDynamicMethodDelegate
             // object that can be invoked with the right calling convention.
-            using var compiler = new DynamicMethodCompiler(dm);
-            var compiledMethod = compiler.Compile();
-            BigHackyExecCompiledMethod(dm, compiledMethod);
-            compiledMethod.ExecMemoryManager.Dispose();  // FIXME: in general this lives as long as the DynamicMethod delegate
-            return compiledMethod.InterpMethod.Value;
+            var execMemoryManager = new MemoryManager();
+            using var compiler = new DynamicMethodCompiler(dm, execMemoryManager);
+            return compiler.Compile();
         }
     }
 
 
     // just run the method assuming it takes no arguments and returns void or an int
-    private static void BigHackyExecCompiledMethod(DynamicMethod dm, DynamicMethodCompiler.CompiledMethod compiledMethod)
+    internal static object BigHackyExecCompiledMethod(MethodInfo dm, CompiledMethod compiledMethod, object[] args)
     {
         Internal.Console.Write($"Compiled method: {compiledMethod.InterpMethod.Value}{Environment.NewLine}");
         if (!TryGetKnownInvokeShape(dm, out var invokeShape))
         {
-            Internal.Console.Write($"Can't invoke this kind of Delegate ({dm.GetType()}) yet{Environment.NewLine}");
-            return;
+            throw new InvalidOperationException($"Can't invoke this kind of Delegate ({dm.GetType()} yet");
         }
-        InvokeWithKnownShape(invokeShape, compiledMethod, out var result);
+        InvokeWithKnownShape(invokeShape, compiledMethod, args, out var result);
         switch (invokeShape)
         {
             case KnownInvokeShape.VoidVoid:
-                break;
+                return null;
             case KnownInvokeShape.IntReturn:
             case KnownInvokeShape.IntParamIntReturn:
             case KnownInvokeShape.IntDoubleParamsIntReturn:
@@ -130,14 +128,13 @@ internal static class Mint
                 {
                     resultVal = *(int*)result;
                 }
-                Internal.Console.Write($"Result: {resultVal}{Environment.NewLine}");
-                break;
+                return resultVal;
             default:
                 throw new InvalidOperationException("Unknown invoke shape");
         }
     }
 
-    enum KnownInvokeShape
+    internal enum KnownInvokeShape
     {
         VoidVoid,
         IntReturn,
@@ -145,7 +142,7 @@ internal static class Mint
         IntDoubleParamsIntReturn,
     }
 
-    private static bool TryGetKnownInvokeShape(DynamicMethod dm, out KnownInvokeShape invokeShape)
+    internal static bool TryGetKnownInvokeShape(MethodInfo dm, out KnownInvokeShape invokeShape)
     {
         invokeShape = default;
         if (dm.ReturnType == typeof(void))
@@ -185,7 +182,7 @@ internal static class Mint
         return false;
     }
 
-    private static void InvokeWithKnownShape(KnownInvokeShape invokeShape, DynamicMethodCompiler.CompiledMethod compiledMethod, out IntPtr result)
+    internal static void InvokeWithKnownShape(KnownInvokeShape invokeShape, CompiledMethod compiledMethod, object[] args, out IntPtr result)
     {
         switch (invokeShape)
         {
@@ -204,7 +201,7 @@ internal static class Mint
             case KnownInvokeShape.IntParamIntReturn:
                 {
                     result = compiledMethod.ExecMemoryManager.Allocate(8);
-                    int arg1 = 40; // FIXME: pass arg from caller
+                    int arg1 = (int)args[0];
                     unsafe
                     {
                         IntPtr arg1Ptr = (IntPtr)(void*)&arg1;
@@ -215,8 +212,8 @@ internal static class Mint
             case KnownInvokeShape.IntDoubleParamsIntReturn:
                 {
                     result = compiledMethod.ExecMemoryManager.Allocate(8);
-                    int arg1 = 40; // FIXME: pass args from caller
-                    double arg2 = 2.0;
+                    int arg1 = (int)args[0];
+                    double arg2 = (double)args[1];
                     unsafe
                     {
                         IntPtr arg1Ptr = (IntPtr)(void*)&arg1;
