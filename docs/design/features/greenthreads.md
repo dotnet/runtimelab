@@ -11,7 +11,7 @@ As part of the experiment, we developed an implementation of green threads in th
 The general outcome was a version of green threads that uses the segmented stack model, and provides a small number of new low level apis to work with green threads, and a fairly small number of higher level apis were changed to take advantage of green threads.
 ### Fundamental api changes
 -	`Thread.IsGreenThread` – Used to identify if the current thread is a green thread
--	Task.RunAsGreenThread(Action) – Similar to Task.Run, but runs code on a green thread, using the green thread threadpool.
+-	`Task.RunAsGreenThread(Action)` – Similar to `Task.Run`, but runs code on a green thread, using the green thread threadpool.
 -	Task.Wait() – When called on a green thread, will yield the green thread until the task waited on is complete, then will schedule the green thread to continue
 ### Higher level api changes
 -	Socket and file apis were changed to support green threads by transitioning synchronous apis to async apis when called on a green thread.
