@@ -141,7 +141,7 @@ The green threads prototype has several implications on public API surface area.
 public int Receive(byte[] buffer, int offset, int size, SocketFlags socketFlags)
 ```
 method gets this bit of boilerplate added to the beginning of its implementation:
-```
+```csharp
 if (Thread.IsGreenThread)
 {
     ValueTask<int> vt = ReceiveAsync(buffer.AsMemory(offset, size), socketFlags);
