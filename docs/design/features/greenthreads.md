@@ -163,7 +163,7 @@ There are a number of details about the green thread design with are “leaky”
 ### Example of change to plaintext demo app
 
 Before
-```
+```csharp
 var response = context.Response;
 response.StatusCode = 200;
 response.ContentType = "text/plain";
