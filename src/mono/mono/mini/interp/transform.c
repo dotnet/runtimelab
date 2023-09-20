@@ -132,7 +132,7 @@ interp_method_signature (MonoMethod *method)
 #ifndef NATIVEAOT_MINT
 	return mono_method_signature_internal (method);
 #else
-	return MINT_TI_ITF(MonoMethod, method, get_signature)(method);
+	return MINT_VTI_ITF(MonoMethod, method, get_signature)(method);
 #endif
 }
 
@@ -152,7 +152,7 @@ interp_itf_method_get_header (MonoMethod *method, MonoError *error)
 #ifndef NATIVEAOT_MINT
 	return mono_method_get_header_checked (method, error);
 #else
-	return MINT_TI_ITF(MonoMethod, method, get_header)(method);
+	return MINT_VTI_ITF(MonoMethod, method, get_header)(method);
 #endif
 }
 

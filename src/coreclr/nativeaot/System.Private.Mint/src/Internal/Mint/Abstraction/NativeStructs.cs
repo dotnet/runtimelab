@@ -9,15 +9,20 @@ using System.Runtime.InteropServices;
 namespace Internal.Mint.Abstraction;
 
 [StructLayout(LayoutKind.Sequential)]
+public unsafe struct MonoMethodInstanceAbstractionVTable
+{
+    public delegate* unmanaged<MonoMethodInstanceAbstractionNativeAot*, MonoMethodSignatureInstanceAbstractionNativeAot*> get_signature; // MonoMethodSignature* (* get_signature) (MonoMethod* self);
+    public delegate* unmanaged<MonoMethodInstanceAbstractionNativeAot*, MonoMethodHeaderInstanceAbstractionNativeAot*> get_header; // MonoMethodHeader* (* get_header) (MonoMethod* self);
+}
+
+[StructLayout(LayoutKind.Sequential)]
 public unsafe struct MonoMethodInstanceAbstractionNativeAot
 {
+    public MonoMethodInstanceAbstractionVTable* vtable;
     public byte* name;
     public IntPtr /*MonoClass* */ klass;
 
     public byte is_dynamic; // this is a DynamicMethod
-
-    public delegate* unmanaged<MonoMethodInstanceAbstractionNativeAot*, MonoMethodSignatureInstanceAbstractionNativeAot*> get_signature; // MonoMethodSignature* (* get_signature) (MonoMethod* self);
-    public delegate* unmanaged<MonoMethodInstanceAbstractionNativeAot*, MonoMethodHeaderInstanceAbstractionNativeAot*> get_header; // MonoMethodHeader* (* get_header) (MonoMethod* self);
 
     public IntPtr gcHandle; // FIXME
 }

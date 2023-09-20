@@ -2,18 +2,22 @@
 #define _MINT_ABSTRACTION_NATIVEAOT_H
 
 typedef struct _MonoTypeInstanceAbstractionNativeAot {
+
     int32_t type_code;
     uint8_t is_byref;
     MonoGCHandle gcHandle;
 } MonoTypeInstanceAbstractionNativeAot;
 
+typedef struct _MonoMethodInstanceAbstractionVTable {
+    MonoMethodSignature *(*get_signature)(MonoMethod *self);
+    MonoMethodHeader *(*get_header)(MonoMethod *self);
+} MonoMethodInstanceAbstractionVTable;
+
 typedef struct _MonoMethodInstanceAbstractionNativeAot {
+    MonoMethodInstanceAbstractionVTable *vtable;
     const char *name;
     MonoClass *klass;
     int8_t is_dynamic;
-
-    MonoMethodSignature *(*get_signature)(MonoMethod *self);
-    MonoMethodHeader *(*get_header)(MonoMethod *self);
 
     MonoGCHandle gcHandle;
 } MonoMethodInstanceAbstractionNativeAot;

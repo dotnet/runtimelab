@@ -14,6 +14,7 @@ namespace Internal.Mint;
 
 public sealed class MintDynamicMethodTypeSystem : MintTypeSystem
 {
+    private static DynamicMethodVTableProvider s_VTableProvider = new();
     private readonly Dictionary<MethodBase, MonoMethodPtr> _methods = new();
     private readonly Dictionary<MethodBase, MonoMethodSignaturePtr> _signatures = new();
     private readonly Dictionary<MethodBase, MonoMethodHeaderPtr> _headers = new();
@@ -74,13 +75,13 @@ public sealed class MintDynamicMethodTypeSystem : MintTypeSystem
 
     private unsafe MonoMethodPtr CreateMonoMethodPointerDynMethodImpl(DynamicMethod dynamicMethod)
     {
+        var vtable = s_VTableProvider.MonoMethodInstanceAbstractionVTable;
         var s = new MonoMethodInstanceAbstractionNativeAot
         {
+            vtable = vtable,
             name = (byte*)Allocator.AllocateString(dynamicMethod.Name),
             klass = IntPtr.Zero, // TODO
             is_dynamic = (byte)1,
-            get_signature = &VTables.methodGetSignatureImpl,
-            get_header = &VTables.methodGetHeaderImpl, // TODO
             gcHandle = GCHandle.ToIntPtr(Allocator.Own(new OwnedDynamicMethod(dynamicMethod, this)))
         };
         var ptr = Allocator.Allocate<MonoMethodInstanceAbstractionNativeAot>();
@@ -181,6 +182,31 @@ public sealed class MintDynamicMethodTypeSystem : MintTypeSystem
     private static T Unpack<T>(IntPtr ptr) where T : class
     {
         return GCHandle.FromIntPtr(ptr).Target as T;
+    }
+
+    private unsafe class DynamicMethodVTableProvider : VTableProvider, IDisposable
+    {
+        public DynamicMethodVTableProvider() : base() { }
+        ~DynamicMethodVTableProvider()
+        {
+            Dispose(false);
+            GC.SuppressFinalize(this);
+        }
+        private MonoMethodInstanceAbstractionVTable* _monoMethodInstanceAbstractionVTable;
+        internal MonoMethodInstanceAbstractionVTable* MonoMethodInstanceAbstractionVTable
+        {
+            get
+            {
+                return GetOrAddVTable(ref _monoMethodInstanceAbstractionVTable, static (vtable) =>
+                {
+                    vtable->get_signature = &VTables.methodGetSignatureImpl;
+                    vtable->get_header = &VTables.methodGetHeaderImpl;
+                });
+            }
+        }
+
+
+
     }
 
     private static class VTables

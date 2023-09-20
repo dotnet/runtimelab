@@ -74,7 +74,7 @@ interp_method_signature (MonoMethod *method)
 #ifndef NATIVEAOT_MINT
 	return mono_method_signature_internal (method);
 #else
-	return MINT_TI_ITF(MonoMethod, method, get_signature)(method);
+	return MINT_VTI_ITF(MonoMethod, method, get_signature)(method);
 #endif
 }
 
