@@ -16,14 +16,14 @@ public sealed class DynamicMethodCompiler : IDisposable
     private readonly DynamicMethod _dynamicMethod;
     private readonly MemoryManager _compilationMemoryManager = new MemoryManager();
     private readonly MemoryManager _execMemoryManager;
-    private readonly MintTypeSystem _mintTypeSystem;
+    private readonly MintDynamicMethodTypeSystem _mintTypeSystem;
     public DynamicMethodCompiler(DynamicMethod dynamicMethod, MemoryManager execMemoryManager)
     {
         _dynamicMethod = dynamicMethod;
         _execMemoryManager = execMemoryManager;
         // N.B. for dynamic methods, transform.c generally allocates everything from
         // a mempool that lives as long as the dynamic method itself
-        _mintTypeSystem = new MintTypeSystem(_execMemoryManager, Mint.GlobalMintTypeSystem);
+        _mintTypeSystem = new MintDynamicMethodTypeSystem(_execMemoryManager, Mint.GlobalMintTypeSystem);
     }
 
     internal MemoryManager CompilationMemoryManager => _compilationMemoryManager;

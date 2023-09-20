@@ -22,6 +22,7 @@
     <Compile Include=".\Internal\Mint\CompiledMethod.cs" />
     <Compile Include=".\Internal\Mint\MemoryManager.cs" />
     <Compile Include=".\Internal\Mint\MintTypeSystem.cs" />
+    <Compile Include=".\Internal\Mint\MintDynamicMethodTypeSystem.cs" />
     <Compile Include=".\Internal\Mint\DynamicMethodCompiler.cs" />
     <Compile Include=".\Internal\Mint\EE\MintRuntime.cs" />
     <Compile Include=".\Internal\Runtime\CompilerHelpers\LibraryInitializer.cs" />
