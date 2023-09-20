@@ -94,6 +94,7 @@ internal static class Mint
         // the interpreter needs.  See mint-itf.c for the native placeholder implementation
 
         itf->create_mem_pool = &CreateMemPool;
+        itf->m_method_get_mem_manager = &MonoMethodGetMemManager;
         return itf;
     }
 
@@ -115,7 +116,10 @@ internal static class Mint
         }
     }
 
-
+    private static T Unpack<T>(IntPtr ptr) where T : class
+    {
+        return GCHandle.FromIntPtr(ptr).Target as T;
+    }
 
     [UnmanagedCallersOnly]
     internal static unsafe Abstraction.MonoTypeInstanceAbstractionNativeAot* mintGetDefaultByvalTypeVoid() => GlobalMintTypeSystem.GetMonoType((RuntimeType)typeof(void)).Value;
@@ -133,16 +137,19 @@ internal static class Mint
     }
 #pragma warning restore IDE0060
 
-    [UnmanagedCallersOnly]
-    internal static unsafe MonoMemPoolInstanceAbstraction* CreateMemPool()
+    internal static unsafe MonoMemPoolInstanceAbstraction* CreateMemPoolFor(MemoryManager memoryManager)
     {
-        var memoryManager = new MemoryManager();
-
         var ptr = memoryManager.Allocate<MonoMemPoolInstanceAbstraction>();
         ptr->gcHandle = GCHandle.ToIntPtr(memoryManager.Own(memoryManager));
         ptr->destroy = &DestroyMemPool;
         ptr->alloc0 = &MemPoolAlloc0;
         return ptr;
+    }
+
+    [UnmanagedCallersOnly]
+    private static unsafe MonoMemPoolInstanceAbstraction* CreateMemPool()
+    {
+        return CreateMemPoolFor(new MemoryManager());
     }
 
     [UnmanagedCallersOnly]
@@ -159,5 +166,18 @@ internal static class Mint
         var gcHandle = GCHandle.FromIntPtr(ptr->gcHandle);
         var memoryManager = (MemoryManager)gcHandle.Target;
         return memoryManager.Allocate(size);
+    }
+
+    [UnmanagedCallersOnly]
+    internal static unsafe MonoMemManagerInstanceAbstraction* MonoMethodGetMemManager(MonoMethodInstanceAbstractionNativeAot* method)
+    {
+        // mint mem manager
+        // - for dynamic methods, route to the memory manager of the dynamic method
+        // - for SRE it would route to the memory manager of the AssemblyBuilder
+        // - for general interpretation it would route to the memory manager of the containing assembly
+        // - for generics it would be a mempool co-owned by all the assemblies that are mentioned in a generic type
+        //   instance.  (ie: List<MyType> would be co-owned by CoreLib and MyAssembly)
+        var owned = Unpack<IOwnedMethod>(method->gcHandle);
+        return owned.GetOwnerTypeSystem().GetMemManagerAbstraction().Value;
     }
 }

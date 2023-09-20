@@ -83,6 +83,7 @@ typedef struct _MintAbstractionNativeAot {
     MonoClass * (*get_default_class_typehandle_class) (void);
 
     MonoMemPool * (*create_mem_pool) (void);
+    MonoMemoryManager * (* m_method_get_mem_manager) (MonoMethod *method);
 
 
     /* opaque type instances */

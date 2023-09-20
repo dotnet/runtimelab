@@ -20,6 +20,7 @@
     <Compile Include=".\Internal\Mint\Abstraction\Itf.cs" />
     <Compile Include=".\Internal\Mint\Abstraction\EEItf.cs" />
     <Compile Include=".\Internal\Mint\CompiledMethod.cs" />
+    <Compile Include=".\Internal\Mint\IOwnedMethod.cs" />
     <Compile Include=".\Internal\Mint\MemoryManager.cs" />
     <Compile Include=".\Internal\Mint\MintTypeSystem.cs" />
     <Compile Include=".\Internal\Mint\MintDynamicMethodTypeSystem.cs" />

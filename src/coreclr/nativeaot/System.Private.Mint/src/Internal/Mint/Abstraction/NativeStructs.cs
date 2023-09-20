@@ -69,3 +69,10 @@ public unsafe struct MonoMemPoolInstanceAbstraction
     public delegate* unmanaged<MonoMemPoolInstanceAbstraction*, void> destroy; // void (*destroy)(MonoMemPool *self);
     public delegate* unmanaged<MonoMemPoolInstanceAbstraction*, uint, IntPtr> alloc0; // void* (*alloc0)(MonoMemPool *self, uint32_t size);
 }
+
+[StructLayout(LayoutKind.Sequential)]
+public unsafe struct MonoMemManagerInstanceAbstraction
+{
+    // for nativeaot, a mem manager _is_ just a mempool. don't make a distinction here
+    public MonoMemPoolInstanceAbstraction mempool;
+}

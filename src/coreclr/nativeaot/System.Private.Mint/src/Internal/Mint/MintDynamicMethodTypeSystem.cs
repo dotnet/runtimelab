@@ -146,7 +146,17 @@ public sealed class MintDynamicMethodTypeSystem : MintTypeSystem
         return new MonoMethodHeaderPtr(ptr);
     }
 
-    private sealed record OwnedDynamicMethod(DynamicMethod DynamicMethod, MintDynamicMethodTypeSystem Owner);
+    private sealed class OwnedDynamicMethod : IOwnedMethod
+    {
+        public DynamicMethod DynamicMethod { get; }
+        public MintDynamicMethodTypeSystem Owner { get; }
+        public OwnedDynamicMethod(DynamicMethod dynamicMethod, MintDynamicMethodTypeSystem owner)
+        {
+            DynamicMethod = dynamicMethod;
+            Owner = owner;
+        }
+        public MintTypeSystem GetOwnerTypeSystem() => Owner;
+    };
 
     private sealed class OwnedIL
     {

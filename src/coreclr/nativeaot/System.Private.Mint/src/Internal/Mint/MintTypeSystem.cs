@@ -18,6 +18,8 @@ public class MintTypeSystem
     private readonly object _lock = new();
     private readonly Dictionary<RuntimeType, MonoTypePtr> _types = new();
 
+    private MonoMemManagerPtr _memManagerPtr;
+
     private readonly MintTypeSystem _parent;
 
     public MintTypeSystem(MemoryManager memoryManager)
@@ -62,6 +64,18 @@ public class MintTypeSystem
         var ptr = _memoryMananger.Allocate<Internal.Mint.Abstraction.MonoTypeInstanceAbstractionNativeAot>();
         *ptr = s;
         return new MonoTypePtr(ptr);
+    }
+
+    internal unsafe MonoMemManagerPtr GetMemManagerAbstraction()
+    {
+        if (_memManagerPtr.Value != null)
+            return _memManagerPtr;
+        lock (Lock)
+        {
+            var pool = Mint.CreateMemPoolFor(_memoryMananger);
+            _memManagerPtr = new MonoMemManagerPtr((MonoMemManagerInstanceAbstraction*)pool);
+            return _memManagerPtr;
+        }
     }
 
 }

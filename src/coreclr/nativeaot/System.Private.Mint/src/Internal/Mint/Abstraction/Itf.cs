@@ -35,6 +35,7 @@ internal unsafe struct Itf
     /* System.RutnimeTypeHandle - FIXME: seems to be used for passing data to the interp, rewrite */
     public IntPtr get_default_class_typehandle_class; // MonoClass * (*get_default_class_typehandle_class) (void);
     public delegate* unmanaged<MonoMemPoolInstanceAbstraction*> create_mem_pool; // MonoMemPool * (*create_mem_pool) (void);
+    public delegate* unmanaged<MonoMethodInstanceAbstractionNativeAot*, MonoMemManagerInstanceAbstraction*> m_method_get_mem_manager;
 
 
     /* opaque type instances */

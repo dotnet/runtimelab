@@ -49,3 +49,13 @@ internal readonly unsafe struct MonoTypePtr
         Value = value;
     }
 }
+
+internal readonly unsafe struct MonoMemManagerPtr
+{
+    public readonly MonoMemManagerInstanceAbstraction* Value;
+
+    public MonoMemManagerPtr(MonoMemManagerInstanceAbstraction* value)
+    {
+        Value = value;
+    }
+}

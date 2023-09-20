@@ -88,20 +88,21 @@ mono_mempool_alloc0 (MonoMemPool *pool, unsigned int size) {
     return mint_itf()->get_MonoMemPool_inst(pool)->alloc0(pool, size);
 }
 
-// mint mem manager
+// mint memory manger
 
+// for the NativeAOT shim, a mem manager _is_ a mempool - don't make a distinction
 struct _MonoMemoryManager {
-    //MonoMemPool *pool;
+    MonoMemPoolInstanceAbstractionNativeAot mempool;
 };
 
 void *
 mono_mem_manager_alloc0 (MonoMemoryManager *memory_manager, guint size) {
-    return g_malloc0 (size); // FIXME: use a mempool from the memory manager
+    // FIXME: abstraction discipline...
+    return mono_mempool_alloc0((MonoMemPool*)&memory_manager->mempool, size);
 }
 
 // FIXME: actually tie to the lifetime of the dynamic method
 MonoMemoryManager * m_method_get_mem_manager (MonoMethod *method) {
-    static MonoMemoryManager placeholder_memory_manager = { };
-    return &placeholder_memory_manager;
+    return mint_itf()->m_method_get_mem_manager(method);
 }
 
