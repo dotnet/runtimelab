@@ -104,7 +104,7 @@ interp_msig_ret_ult (MonoMethodSignature *sig)
 #ifndef NATIVEAOT_MINT
 	return mini_type_get_underlying_type (signature->ret)
 #else
-	return MINT_TI_ITF(MonoMethodSignature, sig, ret_ult)(sig);
+	return MINT_VTI_ITF(MonoMethodSignature, sig, ret_ult)(sig);
 #endif
 }
 
@@ -114,7 +114,7 @@ interp_msig_get_first_param (MonoMethodSignature *sig)
 #ifndef NATIVEAOT_MINT
 	return sig->params[0];
 #else
-	return MINT_TI_ITF(MonoMethodSignature, sig, method_params)(sig);
+	return MINT_VTI_ITF(MonoMethodSignature, sig, method_params)(sig);
 #endif
 }
 

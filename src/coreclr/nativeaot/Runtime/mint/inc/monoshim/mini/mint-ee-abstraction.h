@@ -9,6 +9,7 @@
 #define MINT_EE_ITF(sym) mint_ee_itf()->sym
 #define MINT_EE_TITF(type,sym) mint_ee_itf()->get_ ##type () -> sym
 #define MINT_EE_TI_ITF(type,self,sym) mint_ee_itf()->get_ ## type ## _inst (self) -> sym
+#define MINT_EE_VTI_ITF(type,self,sym) mint_ee_itf()->get_ ## type ## _inst (self) -> vtable -> sym
 #endif
 
 #endif/*_MINT_EE_ABSTRACTION_H*/

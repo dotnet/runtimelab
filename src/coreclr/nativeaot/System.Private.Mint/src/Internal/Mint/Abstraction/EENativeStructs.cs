@@ -8,17 +8,21 @@ using System.Runtime.InteropServices;
 
 namespace Internal.Mint.Abstraction;
 
+internal unsafe struct ThreadContextInstanceAbstractionVTable
+{
+    public delegate* unmanaged<ThreadContextInstanceAbstractionNativeAot*, byte*, void> set_stack_pointer;
+    public delegate* unmanaged<ThreadContextInstanceAbstractionNativeAot*, UIntPtr, int> check_sufficient_stack;
+}
+
 internal unsafe struct ThreadContextInstanceAbstractionNativeAot
 {
+    public ThreadContextInstanceAbstractionVTable* vtable;
     public byte* stack_pointer;
     public byte* stack_start;
     public byte* stack_end;
     public byte* stack_real_end;
 
     public FrameDataAllocatorNativeAot data_stack;
-
-    public delegate* unmanaged<ThreadContextInstanceAbstractionNativeAot*, byte*, void> set_stack_pointer;
-    public delegate* unmanaged<ThreadContextInstanceAbstractionNativeAot*, UIntPtr, int> check_sufficient_stack;
 }
 
 internal unsafe struct FrameDataAllocatorNativeAot

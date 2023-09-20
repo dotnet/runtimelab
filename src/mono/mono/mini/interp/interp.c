@@ -176,7 +176,7 @@ interp_msig_get_first_param (MonoMethodSignature *sig)
 #ifndef NATIVEAOT_MINT
 	return sig->params[0];
 #else
-	return MINT_TI_ITF(MonoMethodSignature, sig, method_params)(sig);
+	return MINT_VTI_ITF(MonoMethodSignature, sig, method_params)(sig);
 #endif
 }
 
@@ -237,7 +237,7 @@ interp_ee_set_stack_pointer(ThreadContext *context, uint8_t *sp)
 	context->stack_pointer = sp;
 	g_assert (context->stack_pointer < context->stack_end);
 #else
-	MINT_EE_TI_ITF(ThreadContext, context, set_stack_pointer)(context, sp);
+	MINT_EE_VTI_ITF(ThreadContext, context, set_stack_pointer)(context, sp);
 #endif
 }
 
@@ -9527,7 +9527,7 @@ interp_sufficient_stack (gsize size)
 
 	return (context->stack_pointer + size) < (context->stack_start + INTERP_STACK_SIZE);
 #else
-	return !!MINT_EE_TI_ITF(ThreadContext, context, check_sufficient_stack)(context, size);
+	return !!MINT_EE_VTI_ITF(ThreadContext, context, check_sufficient_stack)(context, size);
 #endif
 }
 

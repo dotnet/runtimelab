@@ -14,16 +14,19 @@ typedef struct _MintEEFrameDataAllocatorNativeAot {
     int32_t inited;
 } MintEEFrameDataAllocatorNativeAot;
 
+typedef struct _MintEEThreadContextInstanceAbstractionVTable {
+    void (*set_stack_pointer)(ThreadContext* context, uint8_t *stack_pointer);
+    int32_t (*check_sufficient_stack)(ThreadContext* context, uintptr_t size);
+} MintEEThreadContextInstanceAbstractionVTable;
+
 typedef struct _MintEEThreadContextInstanceAbstractionNativeAot {
+    MintEEThreadContextInstanceAbstractionVTable* vtable;
     uint8_t *stack_pointer;
     uint8_t* stack_start;
     uint8_t* stack_end;
     uint8_t* stack_real_end;
 
     MintEEFrameDataAllocatorNativeAot data_stack;
-
-    void (*set_stack_pointer)(ThreadContext* context, uint8_t *stack_pointer);
-    int32_t (*check_sufficient_stack)(ThreadContext* context, uintptr_t size);
 } MintEEThreadContextInstanceAbstractionNativeAot;
 
 typedef struct _MintEEAbstractionNativeAot {

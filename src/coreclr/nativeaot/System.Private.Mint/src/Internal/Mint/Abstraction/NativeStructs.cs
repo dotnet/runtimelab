@@ -28,31 +28,40 @@ public unsafe struct MonoMethodInstanceAbstractionNativeAot
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public unsafe struct MonoMethodSignatureInstanceAbstractionNativeAot
+public unsafe struct MonoMethodSignatureInstanceAbstractionVTable
 {
-    public int param_count;
-    public byte hasthis;
-
     public delegate* unmanaged<MonoMethodSignatureInstanceAbstractionNativeAot*, MonoTypeInstanceAbstractionNativeAot**> method_params; // MonoType ** (*method_params)(MonoMethodSignature *self);
     public delegate* unmanaged<MonoMethodSignatureInstanceAbstractionNativeAot*, MonoTypeInstanceAbstractionNativeAot*> ret_ult; // MonoType * (*ret_ult)(MonoMethodSignature *self);
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public unsafe struct MonoMethodSignatureInstanceAbstractionNativeAot
+{
+    public MonoMethodSignatureInstanceAbstractionVTable* vtable;
+    public int param_count;
+    public byte hasthis;
 
     public IntPtr gcHandle;
     public MonoTypeInstanceAbstractionNativeAot** MethodParamsTypes;
 }
 
 [StructLayout(LayoutKind.Sequential)]
+public unsafe struct MonoMethodHeaderInstanceAbstractionVTable
+{
+    public IntPtr get_local_sig; // MonoType * (*get_local_sig)(MonoMethodHeader *self, int32_t i);
+    public delegate* unmanaged<MonoMethodHeaderInstanceAbstractionNativeAot*, byte*> get_code; // const uint8_t * (*get_code)(MonoMethodHeader *self);
+    public delegate* unmanaged<MonoMethodHeaderInstanceAbstractionNativeAot*, byte*, int> get_ip_offset; // int32_t (*get_ip_offset)(MonoMethodHeader *self, const uint8_t *ip);
+}
+
+[StructLayout(LayoutKind.Sequential)]
 public unsafe struct MonoMethodHeaderInstanceAbstractionNativeAot
 {
+    public MonoMethodHeaderInstanceAbstractionVTable* vtable;
     public int code_size;
     public int max_stack;
     public int num_locals;
     public int num_clauses;
     public byte init_locals;
-
-    public IntPtr get_local_sig; // MonoType * (*get_local_sig)(MonoMethodHeader *self, int32_t i);
-    public delegate* unmanaged<MonoMethodHeaderInstanceAbstractionNativeAot*, byte*> get_code; // const uint8_t * (*get_code)(MonoMethodHeader *self);
-    public delegate* unmanaged<MonoMethodHeaderInstanceAbstractionNativeAot*, byte*, int> get_ip_offset; // int32_t (*get_ip_offset)(MonoMethodHeader *self, const uint8_t *ip);
-
 
     public IntPtr gcHandle;
 }
@@ -67,12 +76,17 @@ public unsafe struct MonoTypeInstanceAbstractionNativeAot
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public unsafe struct MonoMemPoolInstanceAbstraction
+public unsafe struct MonoMemPoolInstanceAbstractionVTable
 {
-    public IntPtr gcHandle;
-
     public delegate* unmanaged<MonoMemPoolInstanceAbstraction*, void> destroy; // void (*destroy)(MonoMemPool *self);
     public delegate* unmanaged<MonoMemPoolInstanceAbstraction*, uint, IntPtr> alloc0; // void* (*alloc0)(MonoMemPool *self, uint32_t size);
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public unsafe struct MonoMemPoolInstanceAbstraction
+{
+    public MonoMemPoolInstanceAbstractionVTable* vtable;
+    public IntPtr gcHandle;
 }
 
 [StructLayout(LayoutKind.Sequential)]

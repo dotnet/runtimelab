@@ -115,10 +115,9 @@ public sealed class MintDynamicMethodTypeSystem : MintTypeSystem
         ParameterInfo[] methodParameterInfos = dynamicMethod.DynamicMethod.GetParameters();
         var s = new Internal.Mint.Abstraction.MonoMethodSignatureInstanceAbstractionNativeAot
         {
+            vtable = s_VTableProvider.MonoMethodSignatureInstanceAbstractionVTable,
             param_count = methodParameterInfos.Length,
             hasthis = (byte)0, //FIXME: this doesn't work (returns 1): dynamicMethod.DynamicMethod.IsStatic ? (byte)0 : (byte)1,
-            method_params = &VTables.monoMethodSignatureGetParameterTypesUnderlyingTypeImpl,
-            ret_ult = &VTables.monoMethodSignatureGetReturnTypeUnderlyingTypeImpl,
             gcHandle = GCHandle.ToIntPtr(Allocator.Own(dynamicMethod)),
             MethodParamsTypes = CreateParameterTypes(methodParameterInfos),
         };
@@ -132,14 +131,12 @@ public sealed class MintDynamicMethodTypeSystem : MintTypeSystem
     {
         var s = new MonoMethodHeaderInstanceAbstractionNativeAot
         {
+            vtable = s_VTableProvider.MonoMethodHeaderInstanceAbstractionVTable,
             code_size = ownedDynamicMethod.DynamicMethod.GetIL().Length,
             max_stack = 0, // TODO
             num_locals = 0, // TODO
             num_clauses = 0, // TODO
             init_locals = 0, // TODO
-            get_local_sig = IntPtr.Zero, // TODO
-            get_code = &VTables.methodHeaderGetCodeImpl, // TODO
-            get_ip_offset = &VTables.methodHeaderGetIPOffset, // TODO
             gcHandle = GCHandle.ToIntPtr(Allocator.Own(ownedDynamicMethod))
         };
         var ptr = Allocator.Allocate<MonoMethodHeaderInstanceAbstractionNativeAot>();
@@ -195,18 +192,33 @@ public sealed class MintDynamicMethodTypeSystem : MintTypeSystem
         private MonoMethodInstanceAbstractionVTable* _monoMethodInstanceAbstractionVTable;
         internal MonoMethodInstanceAbstractionVTable* MonoMethodInstanceAbstractionVTable
         {
-            get
+            get => GetOrAddVTable(ref _monoMethodInstanceAbstractionVTable, static (vtable) =>
             {
-                return GetOrAddVTable(ref _monoMethodInstanceAbstractionVTable, static (vtable) =>
-                {
-                    vtable->get_signature = &VTables.methodGetSignatureImpl;
-                    vtable->get_header = &VTables.methodGetHeaderImpl;
-                });
-            }
+                vtable->get_signature = &VTables.methodGetSignatureImpl;
+                vtable->get_header = &VTables.methodGetHeaderImpl;
+            });
         }
 
+        private MonoMethodSignatureInstanceAbstractionVTable* _monoMethodSignatureInstanceAbstractionVTable;
+        internal MonoMethodSignatureInstanceAbstractionVTable* MonoMethodSignatureInstanceAbstractionVTable
+        {
+            get => GetOrAddVTable(ref _monoMethodSignatureInstanceAbstractionVTable, static (vtable) =>
+            {
+                vtable->method_params = &VTables.monoMethodSignatureGetParameterTypesUnderlyingTypeImpl;
+                vtable->ret_ult = &VTables.monoMethodSignatureGetReturnTypeUnderlyingTypeImpl;
+            });
+        }
 
-
+        private MonoMethodHeaderInstanceAbstractionVTable* _monoMethodHeaderInstanceAbstractionVTable;
+        internal MonoMethodHeaderInstanceAbstractionVTable* MonoMethodHeaderInstanceAbstractionVTable
+        {
+            get => GetOrAddVTable(ref _monoMethodHeaderInstanceAbstractionVTable, static (vtable) =>
+            {
+                vtable->get_local_sig = IntPtr.Zero; // TODO
+                vtable->get_code = &VTables.methodHeaderGetCodeImpl;
+                vtable->get_ip_offset = &VTables.methodHeaderGetIPOffset;
+            });
+        }
     }
 
     private static class VTables

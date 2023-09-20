@@ -208,7 +208,7 @@ interp_msig_get_first_param (MonoMethodSignature *sig)
 #ifndef NATIVEAOT_MINT
 	return sig->params[0];
 #else
-	return MINT_TI_ITF(MonoMethodSignature, sig, method_params)(sig);
+	return MINT_VTI_ITF(MonoMethodSignature, sig, method_params)(sig);
 #endif
 }
 
@@ -218,7 +218,7 @@ interp_msig_ret_ult (MonoMethodSignature *sig)
 #ifndef NATIVEAOT_MINT
 	return mini_type_get_underlying_type (sig->ret)
 #else
-	return MINT_TI_ITF(MonoMethodSignature, sig, ret_ult)(sig);
+	return MINT_VTI_ITF(MonoMethodSignature, sig, ret_ult)(sig);
 #endif
 }
 
@@ -238,7 +238,7 @@ interp_mhead_get_code (MonoMethodHeader *header)
 #ifndef NATIVEAOT_MINT
 	return header->code;
 #else
-	return MINT_TI_ITF(MonoMethodHeader, header, get_code)(header);
+	return MINT_VTI_ITF(MonoMethodHeader, header, get_code)(header);
 #endif
 }
 
@@ -268,7 +268,7 @@ interp_mhead_get_local_sig(MonoMethodHeader *header, int i)
 #ifndef NATIVEAOT_MINT
 	return header->locals [i];
 #else
-	return MINT_TI_ITF(MonoMethodHeader, header, get_local_sig)(header, i);
+	return MINT_VTI_ITF(MonoMethodHeader, header, get_local_sig)(header, i);
 #endif
 }
 
@@ -331,7 +331,7 @@ interp_mhead_ip_offset(MonoMethodHeader *header, const guint8 *ip)
 #ifndef NATIVEAOT_MINT
 	return GPTRDIFF_TO_INT (ip - header->code);
 #else
-	return MINT_TI_ITF(MonoMethodHeader, header, get_ip_offset)(header, ip);
+	return MINT_VTI_ITF(MonoMethodHeader, header, get_ip_offset)(header, ip);
 #endif
 }
 

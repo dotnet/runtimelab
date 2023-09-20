@@ -81,11 +81,11 @@ mono_mempool_new (void) {
 
 void
 mono_mempool_destroy (MonoMemPool *pool) {
-    mint_itf()->get_MonoMemPool_inst(pool)->destroy(pool);
+    mint_itf()->get_MonoMemPool_inst(pool)->vtable->destroy(pool);
 }
 void*
 mono_mempool_alloc0 (MonoMemPool *pool, unsigned int size) {
-    return mint_itf()->get_MonoMemPool_inst(pool)->alloc0(pool, size);
+    return mint_itf()->get_MonoMemPool_inst(pool)->vtable->alloc0(pool, size);
 }
 
 // mint memory manger

@@ -57,7 +57,7 @@ interp_mhead_get_code (MonoMethodHeader *header)
 #ifndef NATIVEAOT_MINT
 	return header->code;
 #else
-	return MINT_TI_ITF(MonoMethodHeader, header, get_code)(header);
+	return MINT_VTI_ITF(MonoMethodHeader, header, get_code)(header);
 #endif
 }
 

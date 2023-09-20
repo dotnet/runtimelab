@@ -36,6 +36,7 @@ internal static class Mint
 
     static readonly MemoryManager globalMemoryManager;
     static readonly MintTypeSystem globalMintTypeSystem;
+    static readonly MintVTableProvider s_mintVTableProvider;
 
     internal static MintTypeSystem GlobalMintTypeSystem => globalMintTypeSystem;
     internal static MemoryManager GlobalMemoryManager => globalMemoryManager;
@@ -44,6 +45,7 @@ internal static class Mint
     {
         globalMemoryManager = new MemoryManager();
         globalMintTypeSystem = new MintTypeSystem(globalMemoryManager);
+        s_mintVTableProvider = new MintVTableProvider();
     }
 
     internal static void Initialize()
@@ -116,6 +118,26 @@ internal static class Mint
         }
     }
 
+    private sealed unsafe class MintVTableProvider : VTableProvider
+    {
+        public MintVTableProvider() : base() { }
+        ~MintVTableProvider()
+        {
+            Dispose(false);
+            GC.SuppressFinalize(this);
+        }
+
+        private MonoMemPoolInstanceAbstractionVTable* _monoMemPoolInstanceAbstractionVTable;
+        internal MonoMemPoolInstanceAbstractionVTable* MonoMemPoolInstanceAbstractionVTable
+        {
+            get => GetOrAddVTable(ref _monoMemPoolInstanceAbstractionVTable, static (vtable) =>
+            {
+                vtable->destroy = &DestroyMemPool;
+                vtable->alloc0 = &MemPoolAlloc0;
+            });
+        }
+    }
+
     private static T Unpack<T>(IntPtr ptr) where T : class
     {
         return GCHandle.FromIntPtr(ptr).Target as T;
@@ -140,9 +162,8 @@ internal static class Mint
     internal static unsafe MonoMemPoolInstanceAbstraction* CreateMemPoolFor(MemoryManager memoryManager)
     {
         var ptr = memoryManager.Allocate<MonoMemPoolInstanceAbstraction>();
+        ptr->vtable = s_mintVTableProvider.MonoMemPoolInstanceAbstractionVTable;
         ptr->gcHandle = GCHandle.ToIntPtr(memoryManager.Own(memoryManager));
-        ptr->destroy = &DestroyMemPool;
-        ptr->alloc0 = &MemPoolAlloc0;
         return ptr;
     }
 

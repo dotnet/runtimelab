@@ -22,31 +22,36 @@ typedef struct _MonoMethodInstanceAbstractionNativeAot {
     MonoGCHandle gcHandle;
 } MonoMethodInstanceAbstractionNativeAot;
 
+typedef struct _MonoMethodHeaderInstanceAbstractionVTable {
+    MonoType * (*get_local_sig)(MonoMethodHeader *self, int32_t i);
+    // TODO: this will likely pin something in managed.  Figure out a way to tell us when it's safe to unpin
+    const uint8_t * (*get_code)(MonoMethodHeader *self);
+    int32_t (*get_ip_offset)(MonoMethodHeader *self, const uint8_t *ip);
+} MonoMethodHeaderInstanceAbstractionVTable;
+
 typedef struct _MonoMethodHeaderInstanceAbstractionNativeAot MonoMethodHeaderInstanceAbstractionNativeAot;
 struct _MonoMethodHeaderInstanceAbstractionNativeAot {
+    MonoMethodHeaderInstanceAbstractionVTable *vtable;
     int32_t code_size;
     int32_t max_stack;
     int32_t num_locals;
     int32_t num_clauses;
     int8_t init_locals;
 
-    MonoType * (*get_local_sig)(MonoMethodHeader *self, int32_t i);
-    // TODO: this will likely pin something in managed.  Figure out a way to tell us when it's safe to unpin
-    const uint8_t * (*get_code)(MonoMethodHeader *self);
-    int32_t (*get_ip_offset)(MonoMethodHeader *self, const uint8_t *ip);
-
     MonoGCHandle gcHandle;
 } ;
 
+typedef struct _MonoMethodSignatureInstanceAbstractionVTable {
+    MonoType ** (*method_params)(MonoMethodSignature *self);
+    MonoType * (*ret_ult)(MonoMethodSignature *self);
+} MonoMethodSignatureInstanceAbstractionVTable;
+
 typedef struct _MonoMethodSignatureInstanceAbstractionNativeAot MonoMethodSignatureInstanceAbstractionNativeAot;
 struct _MonoMethodSignatureInstanceAbstractionNativeAot {
+    MonoMethodSignatureInstanceAbstractionVTable *vtable;
     int32_t param_count;
 
     int8_t hasthis;
-
-    MonoType ** (*method_params)(MonoMethodSignature *self);
-
-    MonoType * (*ret_ult)(MonoMethodSignature *self);
 
     MonoGCHandle gcHandle;
     MonoType** MethodParamsTypes;
@@ -55,11 +60,14 @@ struct _MonoMethodSignatureInstanceAbstractionNativeAot {
 typedef struct _TransformData TransformData; // FIXME: separate the interp-aware abstractions from the metadata ones
 typedef struct InterpMethod InterpMethod; // FIXME: separate the interp-aware abstractions from the metadata ones
 
-typedef struct _MonoMemPoolInsaanceAbstractionNativeAot {
-    MonoGCHandle gcHandle;
-
+typedef struct _MonoMemPoolInstanceAbstractionVTable {
     void (*destroy)(MonoMemPool *self);
     void* (*alloc0)(MonoMemPool *self, uint32_t size);
+} MonoMemPoolInstanceAbstractionVTable;
+
+typedef struct _MonoMemPoolInsaanceAbstractionNativeAot {
+    MonoMemPoolInstanceAbstractionVTable *vtable;
+    MonoGCHandle gcHandle;
 } MonoMemPoolInstanceAbstractionNativeAot;
 
 typedef struct _MintAbstractionNativeAot {

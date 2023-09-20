@@ -6,6 +6,7 @@ using System.Threading;
 using System.Reflection.Emit;
 using Internal.Reflection.Emit;
 using System.Runtime.InteropServices;
+using Internal.Mint.Abstraction;
 
 namespace Internal.Mint.EE;
 
@@ -13,6 +14,8 @@ public class MintRuntime
 {
     internal sealed unsafe class ExecutionContext : IDisposable
     {
+        private static EEVtableProvider s_eeVTableProvder = new();
+
         [ThreadStatic]
         private static ExecutionContext? _current;
 
@@ -53,18 +56,37 @@ public class MintRuntime
         {
             Abstraction.ThreadContextInstanceAbstractionNativeAot* context = memoryManager.Allocate<Abstraction.ThreadContextInstanceAbstractionNativeAot>();
             byte* stack = memoryManager.AllocateStack(out var stackSize, out var redZoneSize, out var initAlignment);
+            context->vtable = s_eeVTableProvder.ThreadContextInstanceAbstractionVTable;
             context->stack_start = stack;
             context->stack_end = context->stack_start + stackSize - redZoneSize;
             context->stack_real_end = context->stack_start + stackSize;
             /* We reserve a stack slot at the top of the interp stack to make temp objects visible to GC */
             context->stack_pointer = context->stack_start + initAlignment; ;
             // context->gcHandle = memoryManager.Own(this);
-            context->set_stack_pointer = &SetStackPointer;
-            context->check_sufficient_stack = &CheckSufficientStack;
 
             FrameDataAllocatorInit(memoryManager, &context->data_stack);
 
             return context;
+        }
+
+        private sealed unsafe class EEVtableProvider : VTableProvider
+        {
+            public EEVtableProvider() : base() { }
+            ~EEVtableProvider()
+            {
+                Dispose(false);
+                GC.SuppressFinalize(this);
+            }
+
+            private ThreadContextInstanceAbstractionVTable* _threadContextInstanceAbstractionVTable;
+            internal ThreadContextInstanceAbstractionVTable* ThreadContextInstanceAbstractionVTable
+            {
+                get => GetOrAddVTable(ref _threadContextInstanceAbstractionVTable, static (vtable) =>
+                {
+                    vtable->set_stack_pointer = &SetStackPointer;
+                    vtable->check_sufficient_stack = &CheckSufficientStack;
+                });
+            }
         }
 
         [UnmanagedCallersOnly]
