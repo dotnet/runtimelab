@@ -14,6 +14,8 @@ public unsafe struct MonoMethodInstanceAbstractionNativeAot
     public byte* name;
     public IntPtr /*MonoClass* */ klass;
 
+    public byte is_dynamic; // this is a DynamicMethod
+
     public delegate* unmanaged<MonoMethodInstanceAbstractionNativeAot*, MonoMethodSignatureInstanceAbstractionNativeAot*> get_signature; // MonoMethodSignature* (* get_signature) (MonoMethod* self);
     public delegate* unmanaged<MonoMethodInstanceAbstractionNativeAot*, MonoMethodHeaderInstanceAbstractionNativeAot*> get_header; // MonoMethodHeader* (* get_header) (MonoMethod* self);
 

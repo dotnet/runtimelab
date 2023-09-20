@@ -139,6 +139,17 @@ interp_method_signature (MonoMethod *method)
 #endif
 }
 
+static inline gboolean
+interp_method_is_dynamic (MonoMethod *method)
+{
+#ifndef NATIVEAOT_MINT
+	return method->dynamic;
+#else
+	return !!MINT_TI_ITF(MonoMethod, method, is_dynamic);
+#endif
+}
+
+
 static gboolean
 interp_msig_hasthis (MonoMethodSignature *sig)
 {
@@ -1560,14 +1571,14 @@ compute_arg_offset (MonoMethodSignature *sig, int index)
 static gpointer
 imethod_alloc0 (InterpMethod *imethod, guint size)
 {
+	if (interp_method_is_dynamic (imethod->method)) {
 #ifndef NATIVEAOT_MINT
-	if (imethod->method->dynamic)
 		return mono_dyn_method_alloc0 (imethod->method, size);
-	else
-		return m_method_alloc0 (imethod->method, size);
 #else
-	return MINT_ITF(imethod_alloc0) (imethod, size);
+		return MINT_ITF(imethod_alloc0) (imethod, size);
 #endif
+	} else
+		return m_method_alloc0 (imethod->method, size);
 }
 
 static guint32*

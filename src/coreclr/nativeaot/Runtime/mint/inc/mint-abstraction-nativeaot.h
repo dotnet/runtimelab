@@ -10,6 +10,7 @@ typedef struct _MonoTypeInstanceAbstractionNativeAot {
 typedef struct _MonoMethodInstanceAbstractionNativeAot {
     const char *name;
     MonoClass *klass;
+    int8_t is_dynamic;
 
     MonoMethodSignature *(*get_signature)(MonoMethod *self);
     MonoMethodHeader *(*get_header)(MonoMethod *self);

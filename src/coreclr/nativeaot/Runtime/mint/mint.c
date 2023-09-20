@@ -47,6 +47,10 @@ char *mono_method_full_name (MonoMethod *method, gboolean signature) { MISSING_F
 
 int mono_type_size(MonoType *type, int *alignment) { MISSING_FUNC(); }
 
+void*
+m_method_alloc0 (MonoMethod *method, guint size) { MISSING_FUNC(); }
+
+
 InterpMethod*
 mint_testing_transform_sample(MonoMethod *monoMethodPtr)
 {

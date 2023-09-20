@@ -136,6 +136,16 @@ interp_method_signature (MonoMethod *method)
 #endif
 }
 
+static inline gboolean
+interp_method_is_dynamic (MonoMethod *method)
+{
+#ifndef NATIVEAOT_MINT
+	return method->dynamic;
+#else
+	return !!MINT_TI_ITF(MonoMethod, method, is_dynamic);
+#endif
+}
+
 static inline MonoMethodHeader *
 interp_itf_method_get_header (MonoMethod *method, MonoError *error)
 {
@@ -1581,14 +1591,14 @@ interp_get_icall_sig (MonoMethodSignature *sig);
 static gpointer
 imethod_alloc0 (TransformData *td, size_t size)
 {
+	if (interp_method_is_dynamic (td->rtm->method)) {
 #ifndef NATIVEAOT_MINT
-	if (td->rtm->method->dynamic)
 		return mono_dyn_method_alloc0 (td->rtm->method, (guint)size);
-	else
-		return mono_mem_manager_alloc0 (td->mem_manager, (guint)size);
 #else
-	return MINT_ITF(imethod_alloc0) (td->rtm, size);
+		return MINT_ITF(imethod_alloc0) (td->rtm, size);
 #endif
+	} else
+		return mono_mem_manager_alloc0 (td->mem_manager, (guint)size);
 }
 
 static void

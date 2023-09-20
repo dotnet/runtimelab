@@ -78,6 +78,7 @@ public sealed class MintDynamicMethodTypeSystem : MintTypeSystem
         {
             name = (byte*)Allocator.AllocateString(dynamicMethod.Name),
             klass = IntPtr.Zero, // TODO
+            is_dynamic = (byte)1,
             get_signature = &VTables.methodGetSignatureImpl,
             get_header = &VTables.methodGetHeaderImpl, // TODO
             gcHandle = GCHandle.ToIntPtr(Allocator.Own(new OwnedDynamicMethod(dynamicMethod, this)))
