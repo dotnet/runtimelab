@@ -1,9 +1,9 @@
 # Green Threads Technical Report
 
 In this experiment, we sought to explore green threads on .NET and discover
-1.	Implementation constraints and details that should be considered should we decide to implement this for actual production scenarios
-2.	Investigate the usage of green threads in .NET and investigate what customer and class library code would change to use the feature
-3.	Measure the performance of the product with green threads to evaluate if this is feasible from a performance standpoint
+1.	Implementation constraints and details that should be considered for a production implementation.
+2.	Investigate the usage of green threads in .NET, with a focus on customer and class library code that would need to adapt.
+3.	Measure the performance of the product with green threads to evaluate if this is feasible from a performance standpoint.
 The primary goal of the experiment was to investigate and prototype the programming model for .NET green threads. Performance information was collected with the goal of proving that we CAN implement a reasonable green threads implementation in the current .NET Runtime. Any additional findings were considered as secondary, such as performance wins or whether green threads are faster/slower than async/await, per the prototype implementation.
 
 The report provides a detailed description of our findings. At the current time, there is no plan to move forward with the prototype, per [dotnet/runtimelab #2398](https://github.com/dotnet/runtimelab/issues/2398).
