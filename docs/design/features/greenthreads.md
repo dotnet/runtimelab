@@ -29,22 +29,22 @@ A general principle of the green thread effort was that normal, already existing
   - This complicates the design of a green thread system, as it cannot use a contiguous stack for green threads, as it would need to be prohibitively large
   - Other systems that have successfully transitioned to green threads such as Go/Java do not have this capability, and are able to implement green thread approach which do not have the Hot-Split problem
 3. Support for function pointers
-   - Given the presence of function pointers, it is more difficult to implement a scheme where code that executes on a green thread is distinct from code which executes on normal threads.
-   - This will make it more difficult to specialize jitted code for green threads.
+  - Given the presence of function pointers, it is more difficult to implement a scheme where code that executes on a green thread is distinct from code which executes on normal threads.
+  - This will make it more difficult to specialize jitted code for green threads.
 4. P/Invoke
-   - P/Invoked code must execute on the normal OS stack as it is not specialized to work with green threads.
-   - In addition, P/Invoke is an opportunity for extremely problematic faults. In particular, if a p/invoke exposes OS thread specific state to the green thread, it may not behave correctly, as future calls to native code on the same green thread may not occur on the same OS thread.
+  - P/Invoked code must execute on the normal OS stack as it is not specialized to work with green threads.
+  - In addition, P/Invoke is an opportunity for extremely problematic faults. In particular, if a p/invoke exposes OS thread specific state to the green thread, it may not behave correctly, as future calls to native code on the same green thread may not occur on the same OS thread.
 5. OS Security features
-   - In particular, shadow stack features, such as Intel CET are not simple to make compatible with green threads.
-   - The current Windows implementation of CET is not capable of working with green threads; however, it may be possible to change the Windows Kernel/API surface to make it compatible.
+  - In particular, shadow stack features, such as Intel CET are not simple to make compatible with green threads.
+  - The current Windows implementation of CET is not capable of working with green threads; however, it may be possible to change the Windows Kernel/API surface to make it compatible.
 6. OS injection of code to the thread
-   - Under some circumstances, Windows will run code on the thread stack. Notably, user APCs and hardware exceptions will trigger running arbitrary code on the thread stack. As this code was not built for running on a condensed stack, there are potential problems here.
+  - Under some circumstances, Windows will run code on the thread stack. Notably, user APCs and hardware exceptions will trigger running arbitrary code on the thread stack. As this code was not built for running on a condensed stack, there are potential problems here.
 7. The existing Async/Await pattern
-   - The existing async/await pattern is both ubiquitous throughout the libraries and not entirely compatible with the green threading model. While it isn’t technically an implementation problem, it provides significant opportunity for customer confusion.
-   - We chose to integrate the api for these two constructs which ended up working out.
+  - The existing async/await pattern is both ubiquitous throughout the libraries and not entirely compatible with the green threading model. While it isn’t technically an implementation problem, it provides significant opportunity for customer confusion.
+  - We chose to integrate the api for these two constructs which ended up working out.
 8. Support for thread static variables
-   - Thread statics are commonly used within the BCL to achieve great performance. However, the green thread model in many languages assumes that each green thread has a unique set of thread statics.
-   - In .NET we have more usage of these variables, so we implemented a re-use model for thread statics. This mirrors how our ThreadPool gets the best performance.
+  - Thread statics are commonly used within the BCL to achieve great performance. However, the green thread model in many languages assumes that each green thread has a unique set of thread statics.
+  - In .NET we have more usage of these variables, so we implemented a re-use model for thread statics. This mirrors how our ThreadPool gets the best performance.
 
 ### Implementation Challenges
 During the implementation, we encountered numerous challenges.
