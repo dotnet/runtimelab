@@ -1,6 +1,6 @@
 # Green Threads Technical Report
 
-In this experiment, we sought to explore green threads on .NET and discover
+In this experiment, we sought to explore green threads on .NET to discover:
 1.	Implementation constraints and details that should be considered for a production implementation.
 2.	Investigate the usage of green threads in .NET, with a focus on customer and class library code that would need to adapt.
 3.	Measure the performance of the product with green threads to evaluate if this is feasible from a performance standpoint.
