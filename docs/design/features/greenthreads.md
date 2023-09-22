@@ -49,7 +49,7 @@ A general principle of the green thread effort was that normal, already existing
 ### Implementation Challenges
 During the implementation, we encountered numerous challenges.
 - The Windows OS is not designed to allow green threads. Making this work relies on somewhat undocumented behavior
-- Various diagnostic tools fail to work reliably (ETW, windbg, IDNA)
+- Various diagnostic tools fail to work reliably (ETW, windbg, TTD)
 - SEH exception handling does not safely handle cross stack segments
 - Diagnosing implementation issues has been very slow and difficult, as they tend to cause memory corruption across multiple threads
 - Every OS/Architecture pair needs quite a bit of custom hand-written assembly. While not yet known it is possible that MUSL based Linux may need different logic than glibc based Linux
