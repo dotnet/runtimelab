@@ -55,7 +55,7 @@ During the implementation, we encountered numerous challenges.
 - Every OS/Architecture pair needs quite a bit of custom hand-written assembly. It is possible that MUSL-based Linux may need different logic than glibc-based Linux.
 -	The prototype implementation was built on Windows due to team member familiarity with the platform, and therefore implementation challenges discovered were focused on the problems encountered in development on Windows. However, there are non-Windows issues that were discovered
   - Thread local storage access on Unix platforms may utilize an unbounded amount of stack as it requires a call to a libc provided function in some cases.
-  - Integration of Linux Perf with split stack is not supported as far as research has shown
+  - Integration of Linux Perf with split stack is not supported as far as research has shown.
 
 ### Design of underlying runtime changes
 The underlying runtime was changed to support allocating stack segments and transitioning onto those segments when running on the thread pool. The implementation chosen was a fairly simple segmented stack approach, which is known to have various hot-split problems, but is generally considered the most straightforward way to implement a custom thread stack system.
