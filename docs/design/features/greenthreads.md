@@ -52,7 +52,7 @@ During the implementation, we encountered numerous challenges.
 - Various diagnostic tools fail to work reliably (ETW, windbg, TTD)
 - SEH exception handling does not safely handle cross stack segments
 - Diagnosing implementation issues has been very slow and difficult, as they tend to cause memory corruption across multiple threads
-- Every OS/Architecture pair needs quite a bit of custom hand-written assembly. While not yet known it is possible that MUSL based Linux may need different logic than glibc based Linux
+- Every OS/Architecture pair needs quite a bit of custom hand-written assembly. It is possible that MUSL-based Linux may need different logic than glibc-based Linux.
 -	The prototype implementation was built on Windows due to team member familiarity with the platform, and therefore implementation challenges discovered were focused on the problems encountered in development on Windows. However, there are non-Windows issues that were discovered
   - Thread local storage access on non-Windows platforms may utilize an unbounded amount of stack as it requires a call to a libc provided function in some cases
   - Integration of Linux Perf with split stack is not supported as far as research has shown
