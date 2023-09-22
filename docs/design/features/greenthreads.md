@@ -22,7 +22,7 @@ The general outcome is a targeted implementation based on the segmented stack mo
 ### Implementation constraints discovered during research
 A general principle of the green thread effort was that normal, already existing .NET code should be able to work when run on a green thread. There are a number of specific features of .NET which complicate implementation of green threads, and this document will attempt to describe the .NET features which are known to be problematic, and why.
 1. Support for byref parameters
-  - Known to be problematic, as they cannot simply be copied to the GC heap, and can currently only be reported to the GC as part of the stack walking logic
+  - Known to be problematic, as they cannot simply be copied to the GC heap, and can currently only be reported to the GC as part of the stack walking logic.
 2. Support for conversion of byrefs to pointers
   - Certain byrefs, if they are known to point to the stack can safely be converted into pointers.
   - As pointers are not trackable by the runtime (and this is not fixable, as it is legal to export pointers to a non-process visible location, and then bring them back), it is not possible to safely implement a scheme which allows stacks to be moved during GC in all circumstances.
