@@ -9,7 +9,7 @@ The primary goal of the experiment was to investigate and prototype the programm
 The report provides a detailed description of our findings. At the current time, there is no plan to move forward with the prototype, per [dotnet/runtimelab #2398](https://github.com/dotnet/runtimelab/issues/2398).
 
 ##  Implementation constraints and details
-As part of the experiment, we developed an implementation of green threads in the runtimelab repo. See https://github.com/dotnet/runtimelab/tree/feature/green-threads and https://github.com/dotnet/aspnetcore/tree/feature/green-threads
+As part of the experiment, we developed an implementation of green threads in [dotnet/runtimelab:feature/green-threads](https://github.com/dotnet/runtimelab/tree/feature/green-threads) and [dotnet/aspnetcore:feature/green-threads](https://github.com/dotnet/aspnetcore/tree/feature/green-threads) repos/branches.
 The general outcome was a version of green threads that uses the segmented stack model, and provides a small number of new low level apis to work with green threads, and a fairly small number of higher level apis were changed to take advantage of green threads.
 ### Fundamental api changes
 -	`Thread.IsGreenThread` – Used to identify if the current thread is a green thread
