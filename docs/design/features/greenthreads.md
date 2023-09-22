@@ -35,7 +35,7 @@ A general principle of the green thread effort was that normal, already existing
   - P/Invoked code must execute on the normal OS stack as it is not specialized to work with green threads.
   - In addition, P/Invoke is an opportunity for extremely problematic faults. In particular, if a p/invoke exposes OS thread specific state to the green thread, it may not behave correctly, as future calls to native code on the same green thread may not occur on the same OS thread.
 5. OS Security features
-  - In particular, shadow stack features, such as Intel CET are not simple to make compatible with green threads.
+  - In particular, shadow stack features, such as [Intel CET](https://github.com/dotnet/designs/blob/main/accepted/2021/runtime-security-mitigations.md#intel-control-flow-enforcement-technology-cet) are not simple to make compatible with green threads.
   - The current Windows implementation of CET is not capable of working with green threads; however, it may be possible to change the Windows Kernel/API surface to make it compatible.
 6. OS injection of code to the thread
   - Under some circumstances, Windows will run code on the thread stack. Notably, user APCs and hardware exceptions will trigger running arbitrary code on the thread stack. As this code was not built for running on a condensed stack, there are potential problems here.
