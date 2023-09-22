@@ -10,7 +10,7 @@ The report provides a detailed description of our findings. At the current time,
 
 ##  Implementation constraints and details
 As part of the experiment, we developed an implementation of green threads in [dotnet/runtimelab:feature/green-threads](https://github.com/dotnet/runtimelab/tree/feature/green-threads) and [dotnet/aspnetcore:feature/green-threads](https://github.com/dotnet/aspnetcore/tree/feature/green-threads) repos/branches.
-The general outcome was a version of green threads that uses the segmented stack model, and provides a small number of new low level apis to work with green threads, and a fairly small number of higher level apis were changed to take advantage of green threads.
+The general outcome is a targeted implementation based on the segmented stack model. It required a small number of new low level apis to work with green threads and to adapt a small number of higher level apis to take advantage of the new functionality and to provide expected behavior with green threads. 
 ### Fundamental api changes
 -	`Thread.IsGreenThread` – Used to identify if the current thread is a green thread
 -	`Task.RunAsGreenThread(Action)` – Similar to `Task.Run`, but runs code on a green thread, using the green thread threadpool.
