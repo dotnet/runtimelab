@@ -78,8 +78,6 @@ namespace ILCompiler.DependencyAnalysis
             LLVMObjectWriter objectWriter = new LLVMObjectWriter(objectFilePath, compilation);
             NodeFactory factory = compilation.NodeFactory;
 
-            var sw = new Stopwatch();
-            sw.Start();
             try
             {
                 foreach (DependencyNode depNode in nodes)
@@ -139,8 +137,6 @@ namespace ILCompiler.DependencyAnalysis
                     objectWriter.EmitObjectNode(node, nodeContents);
                 }
 
-                sw.Stop();
-                Console.WriteLine(sw.Elapsed);
                 objectWriter.FinishObjWriter();
 
                 // Make sure we have released all memory used for mangling names.
@@ -212,6 +208,9 @@ namespace ILCompiler.DependencyAnalysis
                     if (_currentObjectData.Length < dataSizeInElements)
                     {
                         Array.Resize(ref _currentObjectData, Math.Max(_currentObjectData.Length * 2, dataSizeInElements));
+                    }
+                    if (_currentObjectTypes.Length < dataSizeInElements)
+                    {
                         Array.Resize(ref _currentObjectTypes, Math.Max(_currentObjectTypes.Length * 2, dataSizeInElements));
                     }
 
@@ -250,7 +249,7 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     Relocation reloc = nodeContents.Relocs[relocIndex];
                     long delta;
-                    fixed (void* location = &nodeContents.Data[reloc.Offset])
+                    fixed (void* location = &data[reloc.Offset])
                     {
                         delta = Relocation.ReadValue(reloc.RelocType, location);
                     }
@@ -271,7 +270,7 @@ namespace ILCompiler.DependencyAnalysis
                     nextRelocValid = relocIndex < relocLength;
                     if (nextRelocValid)
                     {
-                        nextRelocOffset = nodeContents.Relocs[0].Offset;
+                        nextRelocOffset = nodeContents.Relocs[relocIndex].Offset;
                     }
 
                     dataOffset += pointerSize;
