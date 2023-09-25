@@ -142,7 +142,16 @@ Diagram of after yield:
  
 
 ## Impact on the programming model
-The green threads prototype has several implications on public API surface area.  Our approach has involved adding a minimal set of APIs directly related to green threads: a property to check whether you’re currently running on a green thread (Thread.IsGreenThread) and a method that queues work to run on a green thread and gives you back a Task to represent that work (Task.RunOnGreenThread).  All other details are handled by the implementation. A critical detail then is how do synchronous APIs participate in being handled asynchronously under the covers.  Any synchronous API that wants to be implemented in terms of a counterpart asynchronous API requires a small amount of stub code to be included.  For example, the synchronous:
+The green threads prototype has several implications on public API surface area.
+
+The following APIs were added:
+
+- `Thread.IsGreenThread` -- A property to check whether you’re currently running on a green thread.
+- `Task.RunOnGreenThread` -- A method that queues work to run on a green thread and gives you back a Task to represent that work.  
+
+All other details are handled by the implementation. A critical detail then is how do synchronous APIs participate in being handled asynchronously under the covers.  Any synchronous API that wants to be implemented in terms of a counterpart asynchronous API requires a small amount of stub code to be included.  
+
+For example, the synchronous:
 
 ```
 public int Receive(byte[] buffer, int offset, int size, SocketFlags socketFlags)
