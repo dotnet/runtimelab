@@ -126,13 +126,18 @@ call    qword ptr [0xba67f0]                    ; PINVOKE_END (HELPER)
 ```
 
 #### Stack layout diagrams
-##### Diagram of what the stack may look like when using multiple stack segments and a pinvoke.
+
+Diagram of what the stack may look like when using multiple stack segments and a p/invoke:
+
 ![ExperimentalStackLayout](greenthreads_diagrams/ExperimentalStackLayout.svg)
  
 
-##### Before yield/after yield
+Diagram of before yield:
 
 ![YieldOperation](greenthreads_diagrams/YieldOperation.svg)
+
+Diagram of after yield:
+
 ![YieldOperation2](greenthreads_diagrams/YieldOperation2.svg)
  
 
