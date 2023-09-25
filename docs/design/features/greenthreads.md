@@ -234,7 +234,7 @@ This project only scratched the surface of details to measure, and prototypes to
 -	Work with Windows kernel team to develop a model that would allow .NET to manage its own thread stacks without abandoning the security posture that Windows provides
 -	Enable non-conservative stack scanning of green thread stack segments, and measure performance
 -	Evaluate scalability of green thread system, and evaluate reasonable performant limits
--	Investigate where to put IsGreenThread checks. Should they be scattered through code, or only in I/O?
+-	Investigate where to put `IsGreenThread` checks. Should they be scattered through code, or only in I/O?
 -	Investigate the performance impact of the “Hot Split” stack segment problem, and brainstorm possible solutions
 -	Fix ETW in Windows to allow it to work with the green threads
 -	Fix stability problems in implementation, to allow for greater ease and reliability of experimentation
