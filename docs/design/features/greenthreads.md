@@ -175,7 +175,7 @@ The inverse is also relevant to consider.  While the majority of our functionali
 ### Ways in which green threads are a leaky abstraction
 There are a number of details about the green thread design with are “leaky” abstractions
 -	If a green thread calls into native code and then back into managed, we cannot yield the thread, and any attempts will simply fall back to a standard thread blocking wait
--	Interaction with native code which has thread static state is risky. If a bit of interop exposes native thread state to managed code, and then the thread changes out underneath that code interesting behaviors may occur
+-	Interaction with native code which has thread static state is risky. If a bit of interop exposes native thread state to managed code, and then the thread changes out underneath that code and interesting behaviors may occur
 
 ### Example of change to plaintext demo app
 
