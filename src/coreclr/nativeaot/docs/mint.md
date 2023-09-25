@@ -9,8 +9,10 @@ The managed build defines `FEATURE_MINT` (for example to build CoreLib with the 
 The native build defines `NATIVEAOT_MINT` which can be used to conditionally compile Mono/NativeAOT code.  There are Mono shims
 in `Runtime/mint/inc/monoshim` to make the C compiler happy.
 
-**FIXME** `config.h` - The Mono build auto-generates a `config.h` file based on some `autoconf`-style probing of the system.  In the interest of expediency, we will have a pre-generated `monoshim/config-osx-arm64.h` with the relevant defines, and as a consequence
-the project only builds on Apple M1 machines.
+**FIXME** `config.h` - The Mono build auto-generates a `config.h` file based on some
+`autoconf`-style probing of the system.  In the interest of expediency, we have pre-generated
+`prebuilt/osx-arm64/config.h` (and also for `linux-x64`) with the relevant defines, and as a
+consequence the project only builds on Apple M1 or Linux x64 machines.
 
 ## HelloMint - the sample app
 

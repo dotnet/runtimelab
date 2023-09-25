@@ -1,3 +1,12 @@
+# NativeAOT-Mint 🍃 - Mono Interpreter in NativeAOT
+
+This experiment extends NativeAOT with support for dynamic code generation using the Mono Interpreter.
+
+See [src/coreclr/nativeaot/docs/mint.md](src/coreclr/nativeaot/docs/mint.md) for building and running instructions.
+
+Sample app in [src/coreclr/sample/HelloMint](src/coreclr/sample/HelloMint).
+
+
 # .NET Runtime
 
 [![Build Status](https://dev.azure.com/dnceng-public/public/_apis/build/status/dotnet/runtime/runtime?branchName=main)](https://dev.azure.com/dnceng-public/public/_build/latest?definitionId=129&branchName=main)
