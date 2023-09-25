@@ -59,7 +59,7 @@ During the implementation, we encountered numerous challenges.
 
 ### Design of underlying runtime changes
 The underlying runtime was changed to support allocating stack segments and transitioning onto those segments when running on the thread pool. The implementation chosen was a fairly simple segmented stack approach, which is known to have various hot-split problems, but is generally considered the most straightforward way to implement a custom thread stack system.
-In the implementation, we chose to implement a unified stack with both local variables and the control stack together. This was chosen as it is somewhat simple to implement and did not violate any of the implementation constraints found. In order to support injected OS code onto the stack, as well as FCalls/HCalls, a Red Zone of about 4KB was added to each stack segment, bringing the minimum stack allocation to 12KB for a stack segment.
+In the implementation, we chose to implement a unified stack with both local variables and the control stack together. This was chosen as it is somewhat simple to implement and did not violate any of the implementation constraints found. In order to support injected OS code onto the stack, as well as [FCalls/HCalls](https://github.com/dotnet/runtime/blob/main/docs/design/coreclr/botr/corelib.md#calling-from-managed-to-native-code), a Red Zone of about 4KB was added to each stack segment, bringing the minimum stack allocation to 12KB for a stack segment.
 Yield and resume are implemented via patching return addresses of certain well known stack frames.
 All green threads were run on the thread pool, and allocation of green threads themselves was done from a pool of green threads.
 
