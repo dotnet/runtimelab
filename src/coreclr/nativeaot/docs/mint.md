@@ -57,6 +57,21 @@ make runtime BUILD_CONFIG=Release
 
 NOTE: Please inspect `Makefile` to further configure the build as desired.
 
+## Size measurements
+
+The following table display preliminary size measurements for the relevant artifacts:
+
+| File                                 | Path                                                                                 | Size - debug (b) | Size - debug (Mb) | Size - release (b) | Size - release (Mb) |
+|--------------------------------------|--------------------------------------------------------------------------------------|------------------|-------------------|--------------------|---------------------|
+| libmint.a                            | ./artifacts/bin/coreclr/osx.arm64.$(Configuration)/aotsdk/libmint.a                  | 999800           | 1,00              | 1267832            | 1,27                |
+| System.Private.Mint.dll              | ./artifacts/bin/coreclr/osx.arm64.$(Configuration)/aotsdk/System.Private.Mint.dll    | 29184            | 0,03              | 28160              | 0,03                |
+| System.Private.CoreLib.dll           | ./artifacts/bin/coreclr/osx.arm64.$(Configuration)/aotsdk/System.Private.CoreLib.dll | 5634560          | 5,63              | 4956672            | 4,96                |
+| [no-mint] System.Private.CoreLib.dll | ./artifacts/bin/coreclr/osx.arm64.$(Configuration)/aotsdk/System.Private.CoreLib.dll | 5629440          | 5,63              | 4952576            | 4,95                |
+| HelloMint                            | ./artifacts/bin/HelloMint/arm64/$(Configuration)/osx-arm64/publish/HelloMint         | 7623048          | 7,62              | 1987976            | 1,99                |
+
+- NOTE: For the measurements displayed in the table HelloMint was built with `DUMP_IL_BYTES=false`
+- TODO: We should investigate why `libmint.a` is larger in Release mode.
+
 ## * Building the runtime packs
 In order to build the `Microsoft.DotNet.ILCompiler.9.0.0-dev.nupkg` BuildIntegration nuget.  (This has the support for adding the `UseInterpreter` property to user projects)
 
