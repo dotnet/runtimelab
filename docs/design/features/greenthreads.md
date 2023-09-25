@@ -185,6 +185,7 @@ var response = context.Response;
 response.StatusCode = 200;
 response.ContentType = "text/plain";
 response.ContentLength = payload.Length;
+// Call async method for I/O explicitly
 return response.Body.WriteAsync(payload).AsTask();
 ```
 After
