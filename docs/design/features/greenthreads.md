@@ -74,7 +74,7 @@ As the implementation utilizes stack segments which cannot be used to run signif
   -	The presence of this linked list creates the Hot Split problem. The Hot Split problem is when an application has a need to grow to a new stack segment on each iteration of a hot loop. This can cause extremely significant unexpected performance degradation. This experiment does not attempt to work around the problem.
 
 #### Pre-prolog
-To support growing the stack, a pre-prolog was added to each managed function. While the prototype adds this to all functions, in a more production implementation, the pre-prolog would only be needed for non-leaf functions which do not use more the X bytes of stack space. (X chose empirically to provide best performance). The X bytes would be allowed to allocate within the red zone of the stack segment.
+To support growing the stack, a pre-prolog was added to each managed function. While the prototype adds this to all functions, in a more production implementation, the pre-prolog would only be needed for non-leaf functions which do not use more the X bytes of stack space. (X was chosen empirically to provide best performance). The X bytes would be allowed to allocate within the red zone of the stack segment.
 The following is an example of a pre-prolog.
 ```
 lea    rax, [rsp - 4352]   // Compute address of Stack pointer – (neededstack + red zone size)
