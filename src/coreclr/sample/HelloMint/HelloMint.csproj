@@ -3,6 +3,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <TargetName>HelloMint</TargetName>
+    <DefineConstants Condition="'$(DumpIlBytes)' == 'true'">$(DefineConstants);DUMP_IL_BYTES</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -16,7 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <RdXmlFile Include="rd.xml" />
+    <RdXmlFile Condition="'$(DumpIlBytes)' == 'true'" Include="rd.xml" />
   </ItemGroup>
 
   <Import Project="$(RuntimeBinDir)/build/Microsoft.DotNet.ILCompiler.SingleEntry.targets" />

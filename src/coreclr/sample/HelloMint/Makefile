@@ -10,6 +10,7 @@ BUILD_CONFIG?=Debug
 TARGET_ARCH?=$(shell . $(TOP)eng/native/init-os-and-arch.sh && echo $${arch})
 TARGET_OS?=$(shell . $(TOP)eng/native/init-os-and-arch.sh && echo $${os})
 USE_MINT?=true
+DUMP_IL_BYTES?=true
 
 world: runtime publish
 
@@ -20,7 +21,7 @@ runtime:
 	$(BUILD_SCRIPT) clr.aot+libs -c $(BUILD_CONFIG) $(MSBUILD_ARGS)
 
 publish: clean
-	$(DOTNET) publish -c $(BUILD_CONFIG) -r $(TARGET_OS)-$(TARGET_ARCH) -p:UseInterpreter=$(USE_MINT) /bl
+	$(DOTNET) publish -c $(BUILD_CONFIG) -r $(TARGET_OS)-$(TARGET_ARCH) -p:UseInterpreter=$(USE_MINT) -p:DumpIlBytes=$(DUMP_IL_BYTES) /bl
 
 run: publish
 	$(TOP)artifacts/bin/HelloMint/$(TARGET_ARCH)/$(BUILD_CONFIG)/$(TARGET_OS)-$(TARGET_ARCH)/publish/HelloMint $(SAMPLE)

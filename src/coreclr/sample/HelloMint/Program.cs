@@ -136,7 +136,9 @@ namespace HelloMint
                     throw new Exception("ILGenerator is null");
 
                 GenerateSample(ilgen);
+#if DUMP_IL_BYTES
                 DumpILBytes(ilgen);
+#endif
 
                 RunSample(dMethod);
             }
@@ -205,6 +207,7 @@ namespace HelloMint
             Console.WriteLine($"The answer is: {retVal}");
         }
 
+#if DUMP_IL_BYTES
         // Requires rooting DynamicILGenerator
         static void DumpILBytes(ILGenerator ilgen)
         {
@@ -227,5 +230,6 @@ namespace HelloMint
                 Console.WriteLine();
             Console.WriteLine("--------------------------");
         }
+#endif
     }
 }
