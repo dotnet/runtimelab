@@ -48,7 +48,7 @@ A general principle of the green thread effort was that normal, already existing
 
 ### Implementation Challenges
 During the implementation, we encountered numerous challenges.
-- The Windows OS is not designed to allow green threads. Making this work relies on somewhat undocumented behavior
+- The Windows OS is not designed to allow green threads
 - Various diagnostic tools fail to work reliably (ETW, windbg, TTD)
 - SEH exception handling does not safely handle cross stack segments
 - Diagnosing implementation issues has been very slow and difficult, as they tend to cause memory corruption across multiple threads
