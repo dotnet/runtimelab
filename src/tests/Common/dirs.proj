@@ -23,6 +23,7 @@
 
     <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetArchitecture)' == 'wasm'">
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\SharedLibrary\SharedLibrary.csproj" Condition="'$(TargetOS)' == 'browser'" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\StackTraceMetadata\StackTraceMetadata.csproj" Condition="'$(TargetOS)' == 'wasi'" />
       <DisabledProjects Include="$(TestRoot)nativeaot\GenerateUnmanagedEntryPoints\GenerateUnmanagedEntryPoints.csproj" />
 
       <!-- Manual test. -->

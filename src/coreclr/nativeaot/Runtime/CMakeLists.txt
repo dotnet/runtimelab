@@ -154,10 +154,6 @@ else()
       ${GC_DIR}/wasm/gcenv.wasm.cpp
       unix/cgroupcpu.cpp
     )
-
-    list(REMOVE_ITEM COMMON_RUNTIME_SOURCES
-      unix/PalCreateDump.cpp
-    )
   endif()
 
   list(APPEND FULL_RUNTIME_SOURCES
