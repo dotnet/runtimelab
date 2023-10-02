@@ -87,6 +87,9 @@ function(create_standalone_jit)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE USE_STL)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE PAL_STDCPP_COMPAT)
 
+    # We'll be linking against LLVM built without /guard:ehcont, so disable it.
+    set_target_properties(${TARGETDETAILS_TARGET} PROPERTIES CLR_EH_CONTINUATION OFF)
+
     find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG})
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_INCLUDE_DIRS})
     separate_arguments(LLVM_DEFINITIONS)
@@ -711,9 +714,6 @@ if (CLR_CMAKE_BUILD_LLVM_JIT)
     list(FILTER JIT_SOURCES EXCLUDE REGEX lsra\.cpp)
     list(FILTER JIT_SOURCES EXCLUDE REGEX lsrabuild\.cpp)
     list(FILTER JIT_SOURCES EXCLUDE REGEX regalloc\.cpp)
-
-    # We'll be linking against LLVM built without /guard:ehcont, so disable it.
-    set_property(GLOBAL PROPERTY CLR_EH_CONTINUATION OFF)
 
     create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32 DESTINATIONS .)
     install_clr(TARGETS clrjit_browser_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
