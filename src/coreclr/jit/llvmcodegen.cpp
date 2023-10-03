@@ -609,9 +609,17 @@ void Llvm::generateUnwindBlocks()
 
             Function* hndLlvmFunc = getLlvmFunctionForIndex(ehDsc->ebdFuncIndex);
             emitCallOrInvoke(hndLlvmFunc, getShadowStack());
-            if ((ehDsc->ebdEnclosingTryIndex == EHblkDsc::NO_ENCLOSING_INDEX) && (m_unwindFrameLclNum != BAD_VAR_NUM))
+
+            // Pop the virtual unwind frame if this is the outermost fault that uses the unwind index.
+            if ((m_unwindIndexMap != nullptr) && (m_unwindIndexMap->Bottom(ehIndex) == UNWIND_INDEX_NOT_IN_TRY_CATCH))
             {
-                emitHelperCall(CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES);
+                if ((ehDsc->ebdEnclosingTryIndex == EHblkDsc::NO_ENCLOSING_INDEX) ||
+                    (m_unwindIndexMap->Bottom(ehDsc->ebdEnclosingTryIndex) != UNWIND_INDEX_NOT_IN_TRY_CATCH))
+                {
+                    assert((ehDsc->ebdEnclosingTryIndex == EHblkDsc::NO_ENCLOSING_INDEX) ||
+                           (m_unwindIndexMap->Bottom(ehDsc->ebdEnclosingTryIndex) == UNWIND_INDEX_NOT_IN_TRY));
+                    emitHelperCall(CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES);
+                }
             }
             emitJmpToOuterDispatch();
         }

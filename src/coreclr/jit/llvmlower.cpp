@@ -1298,51 +1298,14 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
 
     // TODO-LLVM: make a distinct flag; using this alias avoids conflicts.
     static const BasicBlockFlags BBF_MAY_THROW = BBF_HAS_CALL;
-    static const unsigned UNWIND_INDEX_NONE = -1;
     static const unsigned UNWIND_INDEX_GROUP_NONE = -1;
 
     // Build the mapping of EH table indices to unwind indices.
-    unsigned lastUnwindIndex = UNWIND_INDEX_BASE;
-    CompAllocator alloc = _compiler->getAllocator(CMK_Codegen);
-    ArrayStack<unsigned>* indexMap = new (alloc) ArrayStack<unsigned>(alloc, _compiler->compHndBBtabCount);
-    for (EHblkDsc* ehDsc : EHClauses(_compiler))
-    {
-        if (ehDsc->HasCatchHandler())
-        {
-            indexMap->Push(lastUnwindIndex++);
-        }
-        else
-        {
-            indexMap->Push(UNWIND_INDEX_NOT_IN_TRY_CATCH);
-        }
-    }
-
-    if (lastUnwindIndex == UNWIND_INDEX_BASE)
+    ArrayStack<unsigned>* indexMap = computeUnwindIndexMap();
+    if (indexMap == nullptr)
     {
         // No catch handlers; no need for virtual unwinding.
         return PhaseStatus::MODIFIED_NOTHING;
-    }
-
-    // Now assign indices to potentially nested regions protected by fault/finally handlers.
-    for (unsigned ehIndex = 0; ehIndex < _compiler->compHndBBtabCount; ehIndex++)
-    {
-        EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
-        if (ehDsc->HasCatchHandler())
-        {
-            continue;
-        }
-
-        while (ehDsc->ebdEnclosingTryIndex != EHblkDsc::NO_ENCLOSING_INDEX)
-        {
-            unsigned index = indexMap->Bottom(ehDsc->ebdEnclosingTryIndex);
-            if (index != UNWIND_INDEX_NOT_IN_TRY_CATCH)
-            {
-                indexMap->BottomRef(ehIndex) = index;
-                break;
-            }
-
-            ehDsc = _compiler->ehGetDsc(ehDsc->ebdEnclosingTryIndex);
-        }
     }
 
     // Compute which blocks may throw and thus need an up-to-date unwind index.
@@ -1716,31 +1679,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
 #ifdef DEBUG
         void PrintUnwindIndex(unsigned index)
         {
-            printf(" (");
-            switch (index)
-            {
-                case UNWIND_INDEX_NONE:
-                    printf("NO");
-                    break;
-                case UNWIND_INDEX_NOT_IN_TRY:
-                    printf("ZR");
-                    break;
-                case UNWIND_INDEX_NOT_IN_TRY_CATCH:
-                    printf("ZF");
-                    break;
-                default:
-                    for (unsigned ehIndex = 0; ehIndex < m_compiler->compHndBBtabCount; ehIndex++)
-                    {
-                        EHblkDsc* ehDsc = m_compiler->ehGetDsc(ehIndex);
-                        if (ehDsc->HasCatchHandler() && (m_indexMap->Bottom(ehIndex) == index))
-                        {
-                            printf("T%u", ehIndex);
-                            break;
-                        }
-                    }
-                    break;
-            }
-            printf(")");
+            m_llvm->printUnwindIndex(m_indexMap, index);
         }
 
         void PrintUnwindIndexGroup(unsigned groupIndex)
@@ -1823,6 +1762,78 @@ void Llvm::computeBlocksInFilters()
             }
         }
     }
+}
+
+ArrayStack<unsigned>* Llvm::computeUnwindIndexMap()
+{
+    unsigned lastUnwindIndex = UNWIND_INDEX_BASE;
+    CompAllocator alloc = _compiler->getAllocator(CMK_Codegen);
+    ArrayStack<unsigned>* indexMap = new (alloc) ArrayStack<unsigned>(alloc, _compiler->compHndBBtabCount);
+    for (EHblkDsc* ehDsc : EHClauses(_compiler))
+    {
+        if (ehDsc->HasCatchHandler())
+        {
+            indexMap->Push(lastUnwindIndex++);
+        }
+        else
+        {
+            // Assume for a start that this fault will not use the unwind index.
+            indexMap->Push(UNWIND_INDEX_NOT_IN_TRY);
+        }
+    }
+
+    if (lastUnwindIndex == UNWIND_INDEX_BASE)
+    {
+        return nullptr;
+    }
+
+    // Now revisit our assumption about faults with this inner-to-outer loop.
+    for (unsigned ehIndex = 0; ehIndex < _compiler->compHndBBtabCount; ehIndex++)
+    {
+        EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
+        if ((indexMap->Bottom(ehIndex) != UNWIND_INDEX_NOT_IN_TRY) &&
+            (ehDsc->ebdEnclosingHndIndex != EHblkDsc::NO_ENCLOSING_INDEX) &&
+            (indexMap->Bottom(ehDsc->ebdEnclosingHndIndex) == UNWIND_INDEX_NOT_IN_TRY))
+        {
+            // The enclosing fault may use the unwind index. Make sure not to pop the frame too early.
+            indexMap->BottomRef(ehDsc->ebdEnclosingHndIndex) = UNWIND_INDEX_NOT_IN_TRY_CATCH;
+        }
+    }
+
+    // Now assign indices to potentially nested regions protected by fault/finally handlers.
+    for (unsigned ehIndex = _compiler->compHndBBtabCount - 1; ehIndex != -1; ehIndex--)
+    {
+        EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
+        if (ehDsc->HasCatchHandler())
+        {
+            continue;
+        }
+
+        // Since we're iterating outer-to-inner, all enclosing unwind indices are already correct.
+        if (ehDsc->ebdEnclosingTryIndex != EHblkDsc::NO_ENCLOSING_INDEX)
+        {
+            unsigned enclosingUnwindIndex = indexMap->Bottom(ehDsc->ebdEnclosingTryIndex);
+            if (enclosingUnwindIndex != UNWIND_INDEX_NOT_IN_TRY)
+            {
+                indexMap->BottomRef(ehIndex) = enclosingUnwindIndex;
+            }
+        }
+    }
+
+#ifdef DEBUG
+    if (_compiler->verbose)
+    {
+        printf("Unwind index map:\n");
+        for (unsigned ehIndex = 0; ehIndex < _compiler->compHndBBtabCount; ehIndex++)
+        {
+            printf("EH#%u:", ehIndex);
+            printUnwindIndex(indexMap, indexMap->Bottom(ehIndex));
+            printf("\n");
+        }
+    }
+#endif // DEBUG
+
+    return indexMap;
 }
 
 CORINFO_GENERIC_HANDLE Llvm::generateUnwindTable()
@@ -1937,3 +1948,34 @@ bool Llvm::isBlockInFilter(BasicBlock* block) const
     // Ideally, this would be a flag (BBF_*), but we make do with a bitset for now to avoid modifying the frontend.
     return BlockSetOps::IsMember(_compiler, m_blocksInFilters, block->bbNum);
 }
+
+#ifdef DEBUG
+void Llvm::printUnwindIndex(ArrayStack<unsigned>* indexMap, unsigned index)
+{
+    printf(" (");
+    switch (index)
+    {
+        case UNWIND_INDEX_NONE:
+            printf("NO");
+            break;
+        case UNWIND_INDEX_NOT_IN_TRY:
+            printf("ZR");
+            break;
+        case UNWIND_INDEX_NOT_IN_TRY_CATCH:
+            printf("ZF");
+            break;
+        default:
+            for (unsigned ehIndex = 0; ehIndex < _compiler->compHndBBtabCount; ehIndex++)
+            {
+                EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
+                if (ehDsc->HasCatchHandler() && (indexMap->Bottom(ehIndex) == index))
+                {
+                    printf("T%u", ehIndex);
+                    break;
+                }
+            }
+            break;
+    }
+    printf(")");
+}
+#endif // DEBUG
