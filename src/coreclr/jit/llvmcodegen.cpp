@@ -2799,7 +2799,7 @@ llvm::CatchPadInst* Llvm::getCatchPadForHandler(unsigned hndIndex)
         return nullptr;
     }
 
-    // We need the second block since the first contains the catchswich.
+    // We need the second block since the first contains the catchswitch.
     llvm::BasicBlock* catchSwitchLlvmBlock = getEHRegionInfo(hndIndex).UnwindBlock;
     llvm::BasicBlock* catchPadLlvmBlock = catchSwitchLlvmBlock->getNextNode();
     llvm::CatchPadInst* catchPadInst = llvm::cast<llvm::CatchPadInst>(catchPadLlvmBlock->getFirstNonPHI());
