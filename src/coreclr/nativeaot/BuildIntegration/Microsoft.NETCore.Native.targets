@@ -517,7 +517,6 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Condition="'$(Optimize)' != 'true'" Include="$(WasmOptimizationSetting) -flto" />
       <CustomLinkerArg Condition="'$(IlcLlvmTarget)' != ''" Include="-target $(IlcLlvmTarget)" />
       <CustomLinkerArg Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'" Include="-fwasm-exceptions" />
-      <CustomLinkerArg Condition="'$(StackTraceSupport)' == 'false'" Include="-Wl,--strip-all" />
     </ItemGroup>
 
     <ItemGroup Condition = "'$(_targetOS)' == 'browser'" >

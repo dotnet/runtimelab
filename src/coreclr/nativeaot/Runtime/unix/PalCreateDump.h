@@ -8,7 +8,5 @@
 extern bool PalCreateDumpInitialize();
 extern void PalCreateCrashDumpIfEnabled();
 
-#if !defined(HOST_WASM)
 extern void PalCreateCrashDumpIfEnabled(int signal, siginfo_t* siginfo = nullptr, void* exceptionRecord = nullptr);
-#endif // !defined(HOST_WASM)
 extern void PalCreateCrashDumpIfEnabled(void* pExceptionRecord, void* pExContext);

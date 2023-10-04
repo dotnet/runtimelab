@@ -152,8 +152,10 @@ else()
   if (CLR_CMAKE_TARGET_ARCH_WASM)
     list(APPEND COMMON_RUNTIME_SOURCES
       ${GC_DIR}/wasm/gcenv.wasm.cpp
+      wasm/PalCreateDump.cpp
       unix/cgroupcpu.cpp
     )
+    list(REMOVE_ITEM COMMON_RUNTIME_SOURCES unix/PalCreateDump.cpp)
   endif()
 
   list(APPEND FULL_RUNTIME_SOURCES
