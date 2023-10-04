@@ -47,7 +47,7 @@ namespace ILCompiler.DependencyAnalysis
             return _runtimeExports.TryGetValue(name, out EcmaMethod export) ? MethodEntrypoint(export) : null;
         }
 
-        internal ExternMethodAccessorNode ExternSymbolWithAccessor(string name, MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
+        internal ExternMethodAccessorNode ExternSymbolWithAccessor(string name, MethodDesc method, ReadOnlySpan<TargetAbiType> sig, string wasmModuleName)
         {
             Dictionary<string, ExternMethodAccessorNode> map = _externSymbolsWithAccessors;
 
@@ -59,7 +59,7 @@ namespace ILCompiler.DependencyAnalysis
 
                 if (!exists)
                 {
-                    node = new ExternMethodAccessorNode(name);
+                    node = new ExternMethodAccessorNode(name, wasmModuleName);
                     node.Signature = sig.ToArray();
                 }
                 else if (!node.Signature.AsSpan().SequenceEqual(sig))

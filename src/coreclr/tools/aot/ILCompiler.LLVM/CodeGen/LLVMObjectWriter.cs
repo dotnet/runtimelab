@@ -766,7 +766,7 @@ namespace ILCompiler.DependencyAnalysis
         private void GetCodeForExternMethodAccessor(ExternMethodAccessorNode node)
         {
             // TODO-LLVM: use the Utf8 string directly here.
-            string externFuncName = node.ExternMethodName.ToString();
+            string externFuncName = node.ExternFuncName.ToString();
             LLVMTypeRef externFuncType;
 
             if (node.Signature != null)
@@ -811,10 +811,10 @@ namespace ILCompiler.DependencyAnalysis
             LLVMValueRef externFunc = externFuncModule.AddFunction(externFuncName, externFuncType);
 
             // Add import attributes if specified.
-            if (_compilation.ConfigurableWasmImportPolicy.TryGetWasmModule(externFuncName, out string wasmModuleName))
+            if (node.WasmModuleName != null)
             {
-                externFunc.AddFunctionAttribute("wasm-import-name", externFuncName);
-                externFunc.AddFunctionAttribute("wasm-import-module", wasmModuleName);
+                externFunc.AddFunctionAttribute("wasm-import-name", node.WasmImportFuncName);
+                externFunc.AddFunctionAttribute("wasm-import-module", node.WasmModuleName);
             }
 
             // Define the accessor function.

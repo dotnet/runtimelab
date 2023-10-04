@@ -34,8 +34,9 @@ namespace ILCompiler
         {
             Debug.Assert(!sig.IsEmpty);
             string name = PInvokeILProvider.GetDirectCallExternName(method);
+            ConfigurableWasmImportPolicy.TryGetWasmModule(name, out string wasmModuleName);
 
-            return NodeFactory.ExternSymbolWithAccessor(name, method, sig);
+            return NodeFactory.ExternSymbolWithAccessor(name, method, sig, wasmModuleName);
         }
 
         public override CorInfoLlvmEHModel GetLlvmExceptionHandlingModel() => Options.ExceptionHandlingModel;

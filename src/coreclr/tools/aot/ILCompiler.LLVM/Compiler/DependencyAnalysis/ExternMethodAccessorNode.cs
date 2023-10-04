@@ -20,16 +20,28 @@ namespace ILCompiler.DependencyAnalysis
 {
     internal sealed class ExternMethodAccessorNode : AssemblyStubNode
     {
-        private readonly Utf8String _externMethodName;
+        private readonly Utf8String _externFuncName;
+        private readonly string _wasmModuleName;
+        private readonly string _wasmImportFuncName;
         private TargetAbiType[] _signature;
         private object _methods;
 
-        public ExternMethodAccessorNode(string externMethodName)
+        public ExternMethodAccessorNode(string wasmImportFuncName, string wasmModuleName)
         {
-            _externMethodName = externMethodName;
+            _wasmImportFuncName = wasmImportFuncName;
+            _wasmModuleName = wasmModuleName;
+
+            // If the function has a Wasm Import, construct a name that differentiates this function from a possible export
+            // of the same name.
+            _externFuncName = wasmModuleName == null ? wasmImportFuncName : wasmModuleName + "_" + wasmImportFuncName;
         }
 
-        public ref readonly Utf8String ExternMethodName => ref _externMethodName;
+        // Name of the LLVM extern function
+        public ref readonly Utf8String ExternFuncName => ref _externFuncName;
+
+        public string WasmModuleName => _wasmModuleName;
+        public string WasmImportFuncName => _wasmImportFuncName;
+
         public ref TargetAbiType[] Signature => ref _signature;
 
         public void AddMethod(MethodDesc method)
@@ -69,14 +81,14 @@ namespace ILCompiler.DependencyAnalysis
         public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
         {
             sb.Append("get.");
-            sb.Append(ExternMethodName);
+            sb.Append(WasmImportFuncName);
         }
 
         public override int ClassCode => 935251149;
 
         public override int CompareToImpl(ISortableNode other, CompilerComparer comparer)
         {
-            return ExternMethodName.CompareTo(((ExternMethodAccessorNode)other).ExternMethodName);
+            return WasmImportFuncName.CompareTo(((ExternMethodAccessorNode)other).WasmImportFuncName);
         }
 
         protected override void EmitCode(NodeFactory factory, ref X64Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
@@ -86,6 +98,6 @@ namespace ILCompiler.DependencyAnalysis
         protected override void EmitCode(NodeFactory factory, ref LoongArch64Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
         protected override void EmitCode(NodeFactory factory, ref WasmEmitter instructionEncoder, bool relocsOnly) { }
 
-        protected override string GetName(NodeFactory context) => $"ExternMethodAccessor {ExternMethodName}";
+        protected override string GetName(NodeFactory context) => $"ExternMethodAccessor {WasmImportFuncName}";
     }
 }
