@@ -437,7 +437,6 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
     {
         return false;
     }
-#endif
 
     GCConfig::Initialize();
 
