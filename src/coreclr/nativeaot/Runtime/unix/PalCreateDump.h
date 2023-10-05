@@ -13,6 +13,5 @@ typedef struct siginfo_s siginfo_t;
 
 extern bool PalCreateDumpInitialize();
 extern void PalCreateCrashDumpIfEnabled();
-
 extern void PalCreateCrashDumpIfEnabled(int signal, siginfo_t* siginfo = nullptr, void* exceptionRecord = nullptr);
 extern void PalCreateCrashDumpIfEnabled(void* pExceptionRecord, void* pExContext);
