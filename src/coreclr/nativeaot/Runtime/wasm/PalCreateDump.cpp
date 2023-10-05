@@ -3,6 +3,8 @@
 
 // We do not support crash dumps in Wasm yet, so just stub.
 
+#include "../unix/PalCreateDump.h"
+
 /*++
 Function:
   PalCreateCrashDumpIfEnabled
