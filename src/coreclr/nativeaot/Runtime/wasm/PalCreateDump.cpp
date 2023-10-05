@@ -3,10 +3,6 @@
 
 // We do not support crash dumps in Wasm yet, so just stub.
 
-// Wasm does not define signals
-typedef struct {
-} siginfo_t;
-
 /*++
 Function:
   PalCreateCrashDumpIfEnabled
