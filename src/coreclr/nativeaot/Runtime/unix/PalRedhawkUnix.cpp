@@ -432,7 +432,6 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalInit()
 
     ConfigureSignals();
 
-#ifndef HOST_WASM
     if (!PalCreateDumpInitialize())
     {
         return false;
