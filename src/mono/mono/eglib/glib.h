@@ -362,7 +362,6 @@ gchar       *g_strchug        (gchar *str);
 gchar       *g_strchomp       (gchar *str);
 gchar       *g_strnfill       (gsize length, gchar fill_char);
 gsize        g_strnlen        (const char*, gsize);
-char        *g_str_from_file_region (int fd, guint64 offset, gsize size);
 
 void	     g_strdelimit     (char *string, char delimiter, char new_delimiter);
 
@@ -828,10 +827,13 @@ gpointer g_convert_error_quark(void);
 #define g_assert(x) (G_LIKELY((x)) ? 1 : (mono_assertion_message (__FILE__, __LINE__, #x), 0))
 #endif
 
-#ifdef __cplusplus
+#if defined(__cplusplus) || (defined (__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
 #define g_static_assert(x) static_assert (x, "")
+#elif (defined (__STDC_VERSION__) && __STDC_VERSION__ >= 201112L)
+#define g_static_assert(x) _Static_assert (x, "")
 #else
-#define g_static_assert(x) g_assert (x)
+#error Mono requires static_assert (C11 or newer)
+/* #define g_static_assert(x) g_assert (x)*/
 #endif
 
 #define  g_assert_not_reached() G_STMT_START { mono_assertion_message_unreachable (__FILE__, __LINE__); eg_unreachable(); } G_STMT_END
@@ -1636,6 +1638,7 @@ __CAST_UTYPE_TO_STYPE(gunichar, gchar, CHAR_MIN, CHAR_MAX)
 
 #define GLONG_TO_ULONG(v)        G_CAST_TYPE_TO_TYPE(glong, gulong, v)
 #define GULONG_TO_LONG(v)        G_CAST_TYPE_TO_TYPE(gulong, glong, v)
+#define GLONG_TO_UINT32(v)       G_CAST_TYPE_TO_TYPE(glong, guint32, v)
 
 #define GDOUBLE_TO_INT64(v)      G_CAST_TYPE_TO_TYPE(gdouble, gint64, v)
 #define GDOUBLE_TO_UINT64(v)     G_CAST_TYPE_TO_TYPE(gdouble, guint64, v)

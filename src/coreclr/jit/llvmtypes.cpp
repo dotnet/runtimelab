@@ -169,7 +169,6 @@ Type* Llvm::getLlvmTypeForVarType(var_types type)
     {
         case TYP_VOID:
             return Type::getVoidTy(m_context->Context);
-        case TYP_BOOL:
         case TYP_BYTE:
         case TYP_UBYTE:
             return Type::getInt8Ty(m_context->Context);

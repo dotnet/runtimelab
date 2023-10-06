@@ -815,10 +815,9 @@ void CodeGen::genPutArgStk(GenTreePutArgStk* treeNode)
             assert(compMacOsArm64Abi() || treeNode->GetStackByteSize() % TARGET_POINTER_SIZE == 0);
 
 #ifdef TARGET_ARM64
-            if (compMacOsArm64Abi() && (treeNode->GetStackByteSize() == 12))
+            if (treeNode->GetStackByteSize() == 12)
             {
-                regNumber tmpReg = treeNode->GetSingleTempReg();
-                GetEmitter()->emitStoreSimd12ToLclOffset(varNumOut, argOffsetOut, srcReg, tmpReg);
+                GetEmitter()->emitStoreSimd12ToLclOffset(varNumOut, argOffsetOut, srcReg, treeNode);
                 argOffsetOut += 12;
             }
             else
@@ -1762,9 +1761,34 @@ void CodeGen::genCodeForIndir(GenTreeIndir* tree)
         bool addrIsInReg   = tree->Addr()->isUsedFromReg();
         bool addrIsAligned = ((tree->gtFlags & GTF_IND_UNALIGNED) == 0);
 
-        // on arm64-v8.3+ we can use ldap* instructions with acquire/release semantics to avoid
+        // On arm64-v8.3+ we can use ldap* instructions with acquire/release semantics to avoid
         // full memory barriers if mixed with STLR
         bool hasRcpc = compiler->compOpportunisticallyDependsOn(InstructionSet_Rcpc);
+
+        // On arm64-v8.4+ we can use ldapur* instructions with acquire/release semantics to
+        // avoid full memory barriers if address is contained and unscaled
+        bool hasRcpc2 = compiler->compOpportunisticallyDependsOn(InstructionSet_Rcpc2);
+
+        bool handledWithLdapur = false;
+        if (hasRcpc2 && !addrIsInReg && tree->Addr()->OperIs(GT_LEA) && !tree->HasIndex() && (tree->Scale() == 1) &&
+            emitter::emitIns_valid_imm_for_unscaled_ldst_offset(tree->Offset()))
+        {
+            if (ins == INS_ldrb)
+            {
+                ins               = INS_ldapurb;
+                handledWithLdapur = true;
+            }
+            else if ((ins == INS_ldrh) && addrIsAligned)
+            {
+                ins               = INS_ldapurh;
+                handledWithLdapur = true;
+            }
+            else if ((ins == INS_ldr) && addrIsAligned && genIsValidIntReg(targetReg))
+            {
+                ins               = INS_ldapur;
+                handledWithLdapur = true;
+            }
+        }
 
         if ((ins == INS_ldrb) && addrIsInReg)
         {
@@ -1778,7 +1802,7 @@ void CodeGen::genCodeForIndir(GenTreeIndir* tree)
         {
             ins = hasRcpc ? INS_ldapr : INS_ldar;
         }
-        else
+        else if (!handledWithLdapur)
 #endif // TARGET_ARM64
         {
             emitBarrier = true;

@@ -74,6 +74,15 @@ namespace System.Net.Quic.Tests
             await Assert.ThrowsAnyAsync<ArgumentException>(async () => await listener.AcceptConnectionAsync());
         }
 
+        [Fact]
+        public void ListenAsync_MissingAlpn_Throws()
+        {
+            QuicListenerOptions listenerOptions = CreateQuicListenerOptions();
+            listenerOptions.ApplicationProtocols = null;
+
+            Assert.Throws<ArgumentNullException>(() => QuicListener.ListenAsync(listenerOptions));
+        }
+
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -87,8 +96,42 @@ namespace System.Net.Quic.Tests
             await using QuicListener listener = await CreateQuicListener(listenerOptions);
 
             ValueTask<QuicConnection> connectTask = CreateQuicConnection(listener.LocalEndPoint);
-            Exception exception = await Assert.ThrowsAsync<Exception>(async () => await listener.AcceptConnectionAsync());
-            Assert.Equal(expectedMessage, exception.Message);
+
+            Exception exception = await AssertThrowsQuicExceptionAsync(QuicError.CallbackError, async () => await listener.AcceptConnectionAsync());
+            Assert.NotNull(exception.InnerException);
+            Assert.Equal(expectedMessage, exception.InnerException.Message);
+            await Assert.ThrowsAsync<AuthenticationException>(() => connectTask.AsTask());
+        }
+
+        [Fact]
+        public async Task AcceptConnectionAsync_ThrowingCallbackOde_KeepRunning()
+        {
+            bool firstRun = true;
+
+            QuicListenerOptions listenerOptions = CreateQuicListenerOptions();
+            // Throw an exception, which should throw the same from accept.
+            listenerOptions.ConnectionOptionsCallback = (_, _, _) =>
+            {
+                if (firstRun)
+                {
+                    firstRun = false;
+                    throw new ObjectDisposedException("failed");
+                }
+
+                return ValueTask.FromResult(CreateQuicServerOptions());
+            };
+            await using QuicListener listener = await CreateQuicListener(listenerOptions);
+
+            ValueTask<QuicConnection> connectTask = CreateQuicConnection(listener.LocalEndPoint);
+
+            Exception exception = await AssertThrowsQuicExceptionAsync(QuicError.CallbackError, async () => await listener.AcceptConnectionAsync());
+            Assert.True(exception.InnerException is ObjectDisposedException);
+            await Assert.ThrowsAsync<AuthenticationException>(() => connectTask.AsTask());
+
+            // Throwing ODE in callback should keep Listener running
+            connectTask = CreateQuicConnection(listener.LocalEndPoint);
+            await using QuicConnection serverConnection = await listener.AcceptConnectionAsync();
+            await using QuicConnection clientConnection = await connectTask;
         }
 
         [Theory]
@@ -310,7 +353,8 @@ namespace System.Net.Quic.Tests
             s.Bind(new IPEndPoint(IPAddress.Any, 0));
 
             // Try to create a listener on the same port.
-            await AssertThrowsQuicExceptionAsync(QuicError.AddressInUse, async () => await CreateQuicListener((IPEndPoint)s.LocalEndPoint));
+            SocketException ex = await Assert.ThrowsAsync<SocketException>(() => CreateQuicListener((IPEndPoint)s.LocalEndPoint).AsTask());
+            Assert.Equal(SocketError.AddressAlreadyInUse, ((SocketException)ex).SocketErrorCode );
         }
 
         [Fact]
@@ -429,7 +473,6 @@ namespace System.Net.Quic.Tests
             Assert.Equal(new SslApplicationProtocol("test"), clientConnection2.NegotiatedApplicationProtocol);
         }
 
-        [ActiveIssue("https://github.com/dotnet/runtime/issues/86701")]
         [Theory]
         [InlineData("foo")]
         [InlineData("not_existing")]
@@ -459,15 +502,18 @@ namespace System.Net.Quic.Tests
                     return ValueTask.FromResult(options);
                 }
             };
+            bool isAlpnPresentOnInitialAlpnList = listenerOptions.ApplicationProtocols.Contains(new SslApplicationProtocol(alpn)); // If the ALPN is not present on initial list, AcceptConnectionAsync will not throw AuthenticationException.
             await using QuicListener listener = await CreateQuicListener(listenerOptions);
-
             QuicClientConnectionOptions clientOptions = CreateQuicClientOptions(listener.LocalEndPoint);
             clientOptions.ClientAuthenticationOptions.ApplicationProtocols = new()
             {
                 new SslApplicationProtocol(alpn),
             };
             ValueTask<QuicConnection> connectTask = CreateQuicConnection(clientOptions);
-            await Assert.ThrowsAsync<AuthenticationException>(() => listener.AcceptConnectionAsync().AsTask().WaitAsync(timeoutToken));
+            if (isAlpnPresentOnInitialAlpnList)
+            {
+                await Assert.ThrowsAsync<AuthenticationException>(() => listener.AcceptConnectionAsync().AsTask().WaitAsync(timeoutToken));
+            }
             await Assert.ThrowsAsync<AuthenticationException>(() => connectTask.AsTask().WaitAsync(timeoutToken));
         }
     }
