@@ -75,6 +75,7 @@ struct Tasklet
     uintptr_t restoreIPAddress;
     StackDataInfo* pStackDataInfo;
     TaskletReturnType taskletReturnType;
+    uint8_t  generation;
 };
 
 struct RuntimeAsyncReturnValue
@@ -611,12 +612,15 @@ void UnregisterTasklet(Tasklet* pTasklet)
     pTasklet->pTaskletNextInLiveList->pTaskletPrevInLiveList = pTasklet->pTaskletPrevInLiveList;
 }
 
-void IterateTaskletsForGC(promote_func* pCallback, ScanContext* sc)
+void IterateTaskletsForGC(promote_func* pCallback, int condemned, ScanContext* sc)
 {
     CrstHolder crstHolder(&g_taskletCrst);
     Tasklet *pCurTasklet = g_pTaskletSentinel->pTaskletNextInLiveList;
     while (pCurTasklet != g_pTaskletSentinel)
     {
+        if (pCurTasklet->generation > condemned)
+            continue;
+
         // Report GC pointers
         auto pStackDataInfo = pCurTasklet->pStackDataInfo;
         uint8_t *pLogicalRSP = pCurTasklet->pStackData - pStackDataInfo->UnrecordedDataSize;
