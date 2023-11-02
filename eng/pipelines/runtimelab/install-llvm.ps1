@@ -7,18 +7,18 @@ Invoke-WebRequest -Uri https://tukaani.org/xz/xz-5.2.5-windows.zip -OutFile xz.z
 Expand-Archive -LiteralPath xz.zip -DestinationPath .
 copy bin_i686\xz.exe . # get it in the path for tar
 
-Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.6/llvm-15.0.6.src.tar.xz -OutFile llvm-15.0.6.src.tar.xz
+Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.4/llvm-17.0.4.src.tar.xz -OutFile llvm-17.0.4.src.tar.xz
 
-./xz -d --force llvm-15.0.6.src.tar.xz
-tar -xf llvm-15.0.6.src.tar
+./xz -d --force llvm-17.0.4.src.tar.xz
+tar -xf llvm-17.0.4.src.tar
 
-Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.6/cmake-15.0.6.src.tar.xz -OutFile cmake-15.0.6.src.tar.xz
+Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.4/cmake-17.0.4.src.tar.xz -OutFile cmake-17.0.4.src.tar.xz
 
-./xz -d --force cmake-15.0.6.src.tar.xz
-tar -xf cmake-15.0.6.src.tar
-mv cmake-15.0.6.src cmake
+./xz -d --force cmake-17.0.4.src.tar.xz
+tar -xf cmake-17.0.4.src.tar
+mv cmake-17.0.4.src cmake
 
-cd llvm-15.0.6.src
+cd llvm-17.0.4.src
 mkdir build
 cd build
 
