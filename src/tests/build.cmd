@@ -71,8 +71,9 @@ if /i "%1" == "--"                       (set processedArgs=!processedArgs! %1&s
 if /i "%1" == "x64"                      (set __BuildArch=x64&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "x86"                      (set __BuildArch=x86&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "arm64"                    (set __BuildArch=arm64&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
-if /i "%1" == "wasm"                     (set __BuildArch=wasm&set __TargetOS=browser&set __DistroRid=browser-wasm&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
-if /i "%1" == "wasi"                     (set __TargetOS=wasi&set __DistroRid=wasi-wasm&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
+if /i "%1" == "wasm"                     (set __BuildArch=wasm&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
+if /i "%1" == "wasi"                     (set __TargetOS=wasi&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
+if /i "%1" == "browser"                  (set __TargetOS=browser&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 
 if /i "%1" == "debug"                    (set __BuildType=Debug&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "release"                  (set __BuildType=Release&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
@@ -183,6 +184,14 @@ if defined __TestArgParsing (
 @if defined _echo @echo on
 
 echo %__MsgPrefix%Commencing CoreCLR test build
+
+if "%__BuildArch%" == "wasm" (
+    if "%__TargetOS%" == "windows" (
+        set __TargetOS=browser
+    )
+
+    set __DistroRid=%__TargetOS%-%__BuildArch%
+)
 
 set "__OSPlatformConfig=%__TargetOS%.%__BuildArch%.%__BuildType%"
 set "__BinDir=%__RootBinDir%\bin\coreclr\%__OSPlatformConfig%"

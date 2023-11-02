@@ -196,6 +196,14 @@ namespace Internal.JitInterface
             return GetThis(thisHandle)._compilation.GetLlvmExceptionHandlingModel();
         }
 
+        [UnmanagedCallersOnly]
+        private static IntPtr getExceptionThrownVariable(IntPtr thisHandle)
+        {
+            CorInfoImpl _this = GetThis(thisHandle);
+            ISymbolNode node = _this._compilation.NodeFactory.ExternSymbol("RhpExceptionThrown");
+            return _this.ObjectToHandle(node);
+        }
+
         public struct CORINFO_LLVM_EH_CLAUSE
         {
             public CORINFO_EH_CLAUSE_FLAGS Flags;
@@ -376,6 +384,7 @@ namespace Internal.JitInterface
             GetDebugInfoForCurrentMethod,
             GetSingleThreadedCompilationContext,
             GetExceptionHandlingModel,
+            GetExceptionThrownVariable,
             GetExceptionHandlingTable,
             Count
         }
@@ -408,6 +417,7 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.GetDebugInfoForCurrentMethod] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_METHOD_DEBUG_INFO*, void>)&getDebugInfoForCurrentMethod;
             jitImports[(int)EEApiId.GetSingleThreadedCompilationContext] = (delegate* unmanaged<IntPtr, void*>)&getSingleThreadedCompilationContext;
             jitImports[(int)EEApiId.GetExceptionHandlingModel] = (delegate* unmanaged<IntPtr, CorInfoLlvmEHModel>)&getExceptionHandlingModel;
+            jitImports[(int)EEApiId.GetExceptionThrownVariable] = (delegate* unmanaged<IntPtr, IntPtr>)&getExceptionThrownVariable;
             jitImports[(int)EEApiId.GetExceptionHandlingTable] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_EH_CLAUSE*, int, IntPtr>)&getExceptionHandlingTable;
             jitImports[(int)EEApiId.Count] = (void*)0x1234;
 
@@ -452,6 +462,7 @@ namespace Internal.JitInterface
     public enum CorInfoLlvmEHModel
     {
         Cpp,
-        Wasm
+        Wasm,
+        Emulated
     };
 }

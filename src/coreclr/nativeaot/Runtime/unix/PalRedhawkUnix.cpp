@@ -29,7 +29,6 @@
 
 #include <unistd.h>
 #include <sched.h>
-#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
 #ifndef TARGET_WASI // no dynamic linking in Wasi
@@ -43,13 +42,6 @@
 #include <sys/time.h>
 #include <cstdarg>
 #include <signal.h>
-
-#ifdef TARGET_WASI
-#include "../wasm/wasi.h"
-// aligning version of mmap, but will fail badly if munmap is called for a partial unmap
-#define mmap(addr, length, prot, flags, fd, offset) mmap_wasi(addr, length, prot, flags, fd, offset)
-#define munmap(addr, length) munmap_wasi(addr, length)
-#endif
 
 #if HAVE_PTHREAD_GETTHREADID_NP
 #include <pthread_np.h>
@@ -66,6 +58,10 @@
 #ifdef TARGET_APPLE
 #include <minipal/getexepath.h>
 #include <mach-o/getsect.h>
+#endif
+
+#ifndef HOST_WASM
+#include <sys/mman.h>
 #endif
 
 #ifdef HOST_WASM
@@ -561,7 +557,6 @@ REDHAWK_PALEXPORT UInt32_BOOL REDHAWK_PALAPI PalFreeThunksFromTemplate(void *pBa
     PORTABILITY_ASSERT("UNIXTODO: Implement this function");
 #endif
 }
-#endif // !USE_PORTABLE_HELPERS && !FEATURE_RX_THUNKS
 
 REDHAWK_PALEXPORT UInt32_BOOL REDHAWK_PALAPI PalMarkThunksAsValidCallTargets(
     void *virtualAddress,
@@ -576,6 +571,7 @@ REDHAWK_PALEXPORT UInt32_BOOL REDHAWK_PALAPI PalMarkThunksAsValidCallTargets(
         PROT_READ | PROT_WRITE);
     return ret == 0 ? UInt32_TRUE : UInt32_FALSE;
 }
+#endif // !USE_PORTABLE_HELPERS && !FEATURE_RX_THUNKS
 
 REDHAWK_PALEXPORT void REDHAWK_PALAPI PalSleep(uint32_t milliseconds)
 {
@@ -753,6 +749,7 @@ REDHAWK_PALEXPORT char* PalCopyTCharAsChar(const TCHAR* toCopy)
     return copy.Extract();
 }
 
+#ifndef HOST_WASM
 static int W32toUnixAccessControl(uint32_t flProtect)
 {
     int prot = 0;
@@ -866,6 +863,7 @@ REDHAWK_PALEXPORT UInt32_BOOL REDHAWK_PALAPI PalVirtualProtect(_In_ void* pAddre
 
     return mprotect(pPageStart, memSize, unixProtect) == 0;
 }
+#endif // !HOST_WASM
 
 #if (defined(HOST_MACCATALYST) || defined(HOST_IOS) || defined(HOST_TVOS)) && defined(HOST_ARM64)
 extern "C" void sys_icache_invalidate(const void* start, size_t len);

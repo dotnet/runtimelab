@@ -162,11 +162,18 @@ inline bool IS_ALIGNED(T* val, uintptr_t alignment);
 #endif
 #endif
 
-#elif defined(HOST_WASM)
+#elif defined(HOST_BROWSER)
 
 #define DATA_ALIGNMENT  4
 #ifndef OS_PAGE_SIZE
-#define OS_PAGE_SIZE    0x1000
+#define OS_PAGE_SIZE    0x1000 // Matches Emscripten sysconf emulation.
+#endif
+
+#elif defined(HOST_WASI)
+
+#define DATA_ALIGNMENT  4
+#ifndef OS_PAGE_SIZE
+#define OS_PAGE_SIZE    0x10000
 #endif
 
 #else

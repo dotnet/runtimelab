@@ -12,6 +12,13 @@
 #include "PalRedhawkCommon.h"
 #include "PalRedhawk.h"
 
+#include <stdlib.h>
+#include <string.h>
+
+#define PAGE_READWRITE 0x04
+#define MEM_COMMIT     0x1000
+#define MEM_RELEASE    0x8000
+
 #ifndef FEATURE_WASM_THREADS
 //
 // Note that we return the native stack bounds here, not shadow stack ones. Currently this functionality is mainly
@@ -186,9 +193,53 @@ extern "C" int __cxa_thread_atexit(Dtor dtor, void* obj, void*)
 #endif // TARGET_WASI
 #endif // !FEATURE_WASM_THREADS
 
-#ifdef TARGET_WASI
-extern "C" int mprotect(void*, size_t, int)
+// Recall that WASM's model is extremely simple: we have one linear memory, which can only be grown, in chunks
+// of 64K pages. Thus, "mmap"/"munmap" fundamentally cannot be faithfully recreated and the Unix emulators we
+// layer on top of (Emscripten/WASI libc) reflect this by not supporting the scenario. Fortunately, the current
+// runtime does not require this functionality either, and so we can implement this function in terms of simple
+// "malloc".
+//
+REDHAWK_PALEXPORT _Ret_maybenull_ _Post_writable_byte_size_(size) void* REDHAWK_PALAPI PalVirtualAlloc(_In_opt_ void* pAddress, size_t size, uint32_t allocationType, uint32_t protect)
 {
-    return 0;
+    if ((pAddress != nullptr) || (allocationType != MEM_COMMIT) || (protect != PAGE_READWRITE))
+    {
+        RhFailFast(); // Not supported per the above.
+    }
+
+    // The Unix version of this function allocates memory with 64K alignment, even as nothing needs such large
+    // alignments as of the writing of this comment. We do have to return something at least page-aligned.
+    const unsigned Alignment = 64 * 1024;
+    ASSERT(OS_PAGE_SIZE <= Alignment);
+
+    void* pRetVal;
+    if (posix_memalign(&pRetVal, Alignment, size) != 0)
+    {
+        return nullptr;
+    }
+
+    memset(pRetVal, 0, size);
+    return pRetVal;
 }
-#endif // TARGET_WASI
+
+REDHAWK_PALEXPORT UInt32_BOOL REDHAWK_PALAPI PalVirtualFree(_In_ void* pAddress, size_t size, uint32_t freeType)
+{
+    if ((freeType & MEM_RELEASE) != 0)
+    {
+        free(pAddress);
+    }
+
+    // Nothing to do on decommit as all memory is always "commited".
+    return UInt32_TRUE;
+}
+
+REDHAWK_PALEXPORT UInt32_BOOL REDHAWK_PALAPI PalVirtualProtect(_In_ void* pAddress, size_t size, uint32_t protect)
+{
+    if (protect == PAGE_READWRITE)
+    {
+        return UInt32_TRUE;
+    }
+
+    // WASM does not support page protection. All memory is always readable and writeable.
+    RhFailFast();
+    return UInt32_FALSE;
+}

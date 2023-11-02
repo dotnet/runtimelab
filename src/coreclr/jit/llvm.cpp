@@ -28,6 +28,7 @@ enum class EEApiId
     GetDebugInfoForCurrentMethod,
     GetSingleThreadedCompilationContext,
     GetExceptionHandlingModel,
+    GetExceptionThrownVariable,
     GetExceptionHandlingTable,
     Count
 };
@@ -72,7 +73,7 @@ CORINFO_CLASS_HANDLE HelperFuncInfo::GetSigArgClass(Compiler* compiler, size_t i
 
 size_t HelperFuncInfo::GetSigArgCount(unsigned* callArgCount) const
 {
-    if (HasFlags(HFIF_VAR_ARG))
+    if (HasFlag(HFIF_VAR_ARG))
     {
         // TODO-LLVM: it would be nice to get rid of this case once/if we integrate into
         // upstream by using distinct helpers for the two flavors of READYTORUN_DELEGATE_CTOR.
@@ -103,6 +104,7 @@ Llvm::Llvm(Compiler* compiler)
     , _blkToLlvmBlksMap(compiler->getAllocator(CMK_Codegen))
     , _sdsuMap(compiler->getAllocator(CMK_Codegen))
     , _localsMap(compiler->getAllocator(CMK_Codegen))
+    , m_ehModel(GetExceptionHandlingModel())
     , m_debugVariablesMap(compiler->getAllocator(CMK_Codegen))
 {
 }
@@ -222,7 +224,7 @@ bool Llvm::callHasManagedCallingConvention(const GenTreeCall* call) const
 
 bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) const
 {
-    return getHelperFuncInfo(helperFunc).HasFlags(HFIF_SS_ARG);
+    return getHelperFuncInfo(helperFunc).HasFlag(HFIF_SS_ARG);
 }
 
 bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
@@ -518,7 +520,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_READYTORUN_THREADSTATIC_BASE) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_NONGCTHREADSTATIC_BASE) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_VIRTUAL_FUNC_PTR) CORINFO_TYPE_PTR, { CORINFO_TYPE_CLASS } },
-        { FUNC(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG | HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG | HFIF_THROW_OR_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_READYTORUN_DELEGATE_CTOR) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS, CORINFO_TYPE_CLASS, CORINFO_TYPE_PTR }, HFIF_SS_ARG | HFIF_VAR_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
 
@@ -849,6 +851,11 @@ SingleThreadedCompilationContext* Llvm::GetSingleThreadedCompilationContext()
 CorInfoLlvmEHModel Llvm::GetExceptionHandlingModel()
 {
     return CallEEApi<EEApiId::GetExceptionHandlingModel, CorInfoLlvmEHModel>(m_pEECorInfo);
+}
+
+CORINFO_GENERIC_HANDLE Llvm::GetExceptionThrownVariable()
+{
+    return CallEEApi<EEApiId::GetExceptionThrownVariable, CORINFO_GENERIC_HANDLE>(m_pEECorInfo);
 }
 
 CORINFO_GENERIC_HANDLE Llvm::GetExceptionHandlingTable(CORINFO_LLVM_EH_CLAUSE* pClauses, int count)

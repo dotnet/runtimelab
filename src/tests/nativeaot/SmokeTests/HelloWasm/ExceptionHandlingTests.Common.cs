@@ -70,6 +70,7 @@ internal unsafe partial class Program
         TestVirtualUnwindStackNoPopOnNestedUnwindingCatch();
         TestVirtualUnwindStackNoPopOnMutuallyProtectingUnwindingCatch();
         TestVirtualUnwindStackPopSelfOnUnwindingFault();
+        TestVirtualUnwindStackPopSelfOnNestedUnwindingFault();
         TestVirtualUnwindStackPopOnUnwindingFault();
         TestVirtualUnwindStackNoPopOnUnwindingFault();
         TestVirtualUnwindStackNoPopOnNestedUnwindingFault();
@@ -1062,6 +1063,49 @@ internal unsafe partial class Program
         try
         {
             TestVirtualUnwindStackPopOnUnwindingFault_NotInTry();
+        }
+        catch
+        {
+            VerifyVirtualUnwindStack();
+        }
+
+        PassTest();
+    }
+
+    private static void TestVirtualUnwindStackPopSelfOnNestedUnwindingFault()
+    {
+        StartTest("Test that the virtual unwind frame is unlinked by a nested unwinding fault");
+
+        void TestVirtualUnwindStackPopSelfOnNestedUnwindingFault_Faults()
+        {
+            try
+            {
+                try
+                {
+                    ThrowNewException();
+                }
+                finally
+                {
+                    // This fault should release the virtual unwind frame.
+                    try
+                    {
+                        ThrowNewException();
+                    }
+                    catch
+                    {
+                        DoNotThrowException();
+                    }
+                }
+            }
+            finally
+            {
+                DoNotThrowException();
+            }
+        }
+
+        try
+        {
+            TestVirtualUnwindStackPopSelfOnNestedUnwindingFault_Faults();
         }
         catch
         {
