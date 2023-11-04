@@ -517,6 +517,9 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-Wl,--strip-all" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-Wl,--compress-relocations" />
+      <!-- see https://github.com/emscripten-core/emscripten/issues/16836 for the issue that means we have to force the linker to include these symbols before LTO -->
+      <CustomLinkerArg Condition="'$(Optimize)' != 'true'" Include="-Wl,-u,htons" />
+      <CustomLinkerArg Condition="'$(Optimize)' != 'true'" Include="-Wl,-u,ntohs" />
       <CustomLinkerArg Condition="'$(Optimize)' != 'true'" Include="$(WasmOptimizationSetting) -flto" />
       <CustomLinkerArg Condition="'$(IlcLlvmTarget)' != ''" Include="-target $(IlcLlvmTarget)" />
       <CustomLinkerArg Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'" Include="-fwasm-exceptions" />

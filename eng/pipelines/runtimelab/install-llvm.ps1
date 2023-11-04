@@ -18,6 +18,12 @@ Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/ll
 tar -xf cmake-17.0.4.src.tar
 mv cmake-17.0.4.src cmake
 
+Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.4/third-party-17.0.4.src.tar.xz -OutFile third-party-17.0.4.src.tar.xz
+
+./xz -d --force third-party-17.0.4.src.tar.xz
+tar -xf third-party-17.0.4.src.tar
+mv third-party-17.0.4.src third-party
+
 cd llvm-17.0.4.src
 mkdir build
 cd build
