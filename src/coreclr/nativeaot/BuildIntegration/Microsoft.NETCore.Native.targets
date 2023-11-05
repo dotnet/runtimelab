@@ -535,8 +535,6 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s TOTAL_STACK=$(IlcWasmStackSize)" />
       <CustomLinkerArg Condition="'$(WasmEnableJSBigIntIntegration)' == 'true'" Include="-s WASM_BIGINT=1" />
       <CustomLinkerArg Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="-s DISABLE_EXCEPTION_CATCHING=0" />
-      <CustomLinkerArg Include="-s GLOBAL_BASE=1024" />
-      <CustomLinkerArg Include="-s STACK_SIZE=1MB" />
     </ItemGroup>
 
     <!-- wasm-ld only supports listing exports on the command line -->
