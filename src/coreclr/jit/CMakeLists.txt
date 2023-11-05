@@ -17,7 +17,7 @@ endif()
 
 function(create_standalone_jit)
 
-  set(oneValueArgs TARGET OS ARCH)
+  set(oneValueArgs TARGET OS ARCH CMAKE_CXX_STANDARD)
   set(multiValueArgs DESTINATIONS)
   cmake_parse_arguments(TARGETDETAILS "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -70,6 +70,10 @@ function(create_standalone_jit)
     add_jit(${TARGETDETAILS_TARGET})
   else()
     add_jit(${TARGETDETAILS_TARGET} DESTINATIONS "${TARGETDETAILS_DESTINATIONS}")
+  endif()
+
+  if(DEFINED TARGETDETAILS_CMAKE_CXX_STANDARD)
+    set_target_properties(${TARGETDETAILS_TARGET} PROPERTIES CXX_STANDARD ${TARGETDETAILS_CMAKE_CXX_STANDARD})
   endif()
 
   set_target_definitions_to_custom_os_and_arch(${ARGN})
@@ -692,9 +696,6 @@ endif (CLR_CMAKE_TARGET_ARCH_RISCV64)
 # Note as well that we need this "CLR_CMAKE_BUILD_LLVM_JIT", defined by the build scripts,
 # because there is no way in CMake to ask "what --target's' am I being asked to configure?".
 if (CLR_CMAKE_BUILD_LLVM_JIT)
-    # LLVM headers require C++17.
-    set(CMAKE_CXX_STANDARD 17)
-
     # The LLVM clrjit needs to be the last clrjit to use create_standalone_jit as it modifies some cmake variables.
     # LLVM clrjit has an extra export - registerLlvmCallbacks.
     set(CLRJIT_EXPORTS ${CMAKE_CURRENT_LIST_DIR}/ClrJit.Llvm.exports)
@@ -719,7 +720,8 @@ if (CLR_CMAKE_BUILD_LLVM_JIT)
     string(REPLACE "/guard:ehcont" "" CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS})
     string(REPLACE "/guard:ehcont" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 
-    create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32 DESTINATIONS .)
+    # LLVM headers require C++17.
+    create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32 CMAKE_CXX_STANDARD 17  DESTINATIONS .)
     install_clr(TARGETS clrjit_browser_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
 
     # Uncomment to enable 8 byte pointer size version of the wasm clrjit.dll.
