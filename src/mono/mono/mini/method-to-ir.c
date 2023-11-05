@@ -1070,10 +1070,15 @@ type_from_op (MonoCompile *cfg, MonoInst *ins, MonoInst *src1, MonoInst *src2)
 		ins->type = STACK_R8;
 		switch (src1->type) {
 		case STACK_I4:
+#if TARGET_SIZEOF_VOID_P == 4
 		case STACK_PTR:
+#endif
 			ins->opcode = OP_ICONV_TO_R_UN;
 			break;
 		case STACK_I8:
+#if TARGET_SIZEOF_VOID_P == 8
+		case STACK_PTR:
+#endif
 			ins->opcode = OP_LCONV_TO_R_UN;
 			break;
 		case STACK_R4:
@@ -3040,7 +3045,7 @@ emit_seq_point (MonoCompile *cfg, MonoMethod *method, guint8* ip, gboolean intr_
 	MonoInst *ins;
 
 	if (cfg->gen_seq_points && cfg->method == method) {
-		NEW_SEQ_POINT (cfg, ins, ip - cfg->header->code, intr_loc);
+		NEW_SEQ_POINT (cfg, ins, GPTRDIFF_TO_TMREG (ip - cfg->header->code), intr_loc);
 		if (nonempty_stack)
 			ins->flags |= MONO_INST_NONEMPTY_STACK;
 		MONO_ADD_INS (cfg->cbb, ins);
@@ -3207,7 +3212,7 @@ mini_handle_unbox (MonoCompile *cfg, MonoClass *klass, MonoInst *val, int contex
 	MONO_EMIT_NEW_COND_EXC (cfg, NE_UN, "InvalidCastException");
 
 	MONO_EMIT_NEW_LOAD_MEMBASE (cfg, klass_reg, vtable_reg, MONO_STRUCT_OFFSET (MonoVTable, klass));
-	MONO_EMIT_NEW_LOAD_MEMBASE (cfg, eclass_reg, klass_reg, m_class_offsetof_element_class ());
+	MONO_EMIT_NEW_LOAD_MEMBASE (cfg, eclass_reg, klass_reg, GINTPTR_TO_TMREG (m_class_offsetof_element_class ()));
 
 	if (context_used) {
 		MonoInst *element_class;
@@ -6447,8 +6452,18 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 		generic_context = &generic_container->context;
 	cfg->generic_context = generic_context;
 
-	if (!cfg->gshared)
-		g_assert (!sig->has_type_parameters);
+	if (!cfg->gshared) {
+		gboolean check_type_parameter = TRUE;
+		if (method->wrapper_type == MONO_WRAPPER_OTHER) {
+			WrapperInfo *info = mono_marshal_get_wrapper_info (method);
+			g_assert (info);
+			if (info->subtype == WRAPPER_SUBTYPE_UNSAFE_ACCESSOR)
+				check_type_parameter = FALSE;
+		}
+
+		if (check_type_parameter)
+			g_assert (!sig->has_type_parameters);
+	}
 
 	if (sig->generic_param_count && method->wrapper_type == MONO_WRAPPER_NONE) {
 		g_assert (method->is_inflated);
@@ -6999,7 +7014,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 			/* Avoid sequence points on empty IL like .volatile */
 			// FIXME: Enable this
 			//if (!(cfg->cbb->last_ins && cfg->cbb->last_ins->opcode == OP_SEQ_POINT)) {
-			NEW_SEQ_POINT (cfg, ins, ip - header->code, intr_loc);
+			NEW_SEQ_POINT (cfg, ins, GPTRDIFF_TO_TMREG (ip - header->code), intr_loc);
 			if ((sp != stack_start) && !sym_seq_point)
 				ins->flags |= MONO_INST_NONEMPTY_STACK;
 			MONO_ADD_INS (cfg->cbb, ins);
@@ -7086,7 +7101,7 @@ mono_method_to_ir (MonoCompile *cfg, MonoMethod *method, MonoBasicBlock *start_b
 				 * The C# compiler uses these nops to notify the JIT that it should
 				 * insert seq points.
 				 */
-				NEW_SEQ_POINT (cfg, ins, ip - header->code, FALSE);
+				NEW_SEQ_POINT (cfg, ins, GPTRDIFF_TO_TMREG (ip - header->code), FALSE);
 				MONO_ADD_INS (cfg->cbb, ins);
 			}
 			if (cfg->keep_cil_nops)
@@ -8505,7 +8520,7 @@ calli_end:
 						 * ret
 						 * will work correctly.
 						 */
-						NEW_SEQ_POINT (cfg, ins, ip - header->code, TRUE);
+						NEW_SEQ_POINT (cfg, ins, GPTRDIFF_TO_TMREG (ip - header->code), TRUE);
 						MONO_ADD_INS (cfg->cbb, ins);
 					}
 
@@ -10835,12 +10850,15 @@ field_access_end:
 					EMIT_NEW_TEMPLOADA (cfg, addr, vtvar->inst_c0);
 					MONO_EMIT_NEW_STORE_MEMBASE (cfg, OP_STORE_MEMBASE_REG, addr->dreg, 0, ins->dreg);
 					EMIT_NEW_TEMPLOAD (cfg, ins, vtvar->inst_c0);
-					ins->opcode = OP_LDTOKEN_FIELD;
-					ins->inst_c0 = n;
-					ins->inst_p1 = handle;
+					if (handle_class == mono_defaults.fieldhandle_class) {
+						ins->opcode = OP_LDTOKEN_FIELD;
+						ins->inst_c0 = n;
+						ins->inst_p1 = handle;
 
-					cfg->flags |= MONO_CFG_NEEDS_DECOMPOSE;
-					cfg->cbb->needs_decompose = TRUE;
+						cfg->flags |= MONO_CFG_NEEDS_DECOMPOSE;
+						cfg->cbb->needs_decompose = TRUE;
+					}
+
 				}
 			}
 

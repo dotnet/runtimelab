@@ -357,7 +357,7 @@ collect_field_info_nested (MonoClass *klass, GArray *fields_array, int offset, g
 		g_assert(info);
 		for (guint32 i = 0; i < info->num_fields; ++i) {
 			if (MONO_TYPE_ISSTRUCT (info->fields [i].field->type)) {
-				collect_field_info_nested (mono_class_from_mono_type_internal (info->fields [i].field->type), fields_array, info->fields [i].offset, pinvoke, unicode);
+				collect_field_info_nested (mono_class_from_mono_type_internal (info->fields [i].field->type), fields_array, (offset + info->fields [i].offset), pinvoke, unicode);
 			} else {
 				guint32 align;
 				StructFieldInfo f;
@@ -367,7 +367,7 @@ collect_field_info_nested (MonoClass *klass, GArray *fields_array, int offset, g
 															   info->fields [i].mspec,
 															   &align, TRUE, unicode);
 				f.offset = offset + info->fields [i].offset;
-				if (i == info->num_fields - 1 && f.size + f.offset < info->native_size) {
+				if ((i == info->num_fields - 1) && ((f.size + f.offset) < info->native_size)) {
 					/* This can happen with .pack directives eg. 'fixed' arrays */
 					if (MONO_TYPE_IS_PRIMITIVE (f.type)) {
 						/* Replicate the last field to fill out the remaining place, since the code in add_valuetype () needs type information */
@@ -840,6 +840,14 @@ add_valuetype (MonoMethodSignature *sig, ArgInfo *ainfo, MonoType *type,
 #endif /* !TARGET_WIN32 */
 }
 
+static int
+call_info_size (MonoMethodSignature *sig)
+{
+	int n = sig->hasthis + sig->param_count;
+
+	return sizeof (CallInfo) + (sizeof (ArgInfo) * n);
+}
+
 /*
  * get_call_info:
  *
@@ -859,10 +867,11 @@ get_call_info (MonoMemPool *mp, MonoMethodSignature *sig)
 	CallInfo *cinfo;
 	gboolean is_pinvoke = sig->pinvoke;
 
+	int size = call_info_size (sig);
 	if (mp)
-		cinfo = (CallInfo *)mono_mempool_alloc0 (mp, sizeof (CallInfo) + (sizeof (ArgInfo) * n));
+		cinfo = (CallInfo *)mono_mempool_alloc0 (mp, size);
 	else
-		cinfo = (CallInfo *)g_malloc0 (sizeof (CallInfo) + (sizeof (ArgInfo) * n));
+		cinfo = (CallInfo *)g_malloc0 (size);
 
 	cinfo->nargs = n;
 	cinfo->gsharedvt = mini_is_gsharedvt_variable_signature (sig);
@@ -1178,11 +1187,33 @@ arg_set_val (CallContext *ccontext, ArgInfo *ainfo, gpointer src)
 	}
 }
 
-void
-mono_arch_set_native_call_context_args (CallContext *ccontext, gpointer frame, MonoMethodSignature *sig)
+gpointer
+mono_arch_get_interp_native_call_info (MonoMemoryManager *mem_manager, MonoMethodSignature *sig)
 {
 	CallInfo *cinfo = get_call_info (NULL, sig);
+	if (mem_manager) {
+		int size = call_info_size (sig);
+		gpointer res = mono_mem_manager_alloc0 (mem_manager, size);
+		memcpy (res, cinfo, size);
+		g_free (cinfo);
+		return res;
+	} else {
+		return cinfo;
+	}
+}
+
+void
+mono_arch_free_interp_native_call_info (gpointer call_info)
+{
+	/* Allocated by get_call_info () */
+	g_free (call_info);
+}
+
+void
+mono_arch_set_native_call_context_args (CallContext *ccontext, gpointer frame, MonoMethodSignature *sig, gpointer call_info)
+{
 	const MonoEECallbacks *interp_cb = mini_get_interp_callbacks ();
+	CallInfo *cinfo = (CallInfo*)call_info;
 	gpointer storage;
 	ArgInfo *ainfo;
 
@@ -1222,15 +1253,13 @@ mono_arch_set_native_call_context_args (CallContext *ccontext, gpointer frame, M
 		if (temp_size)
 			arg_set_val (ccontext, ainfo, storage);
 	}
-
-	g_free (cinfo);
 }
 
 void
-mono_arch_set_native_call_context_ret (CallContext *ccontext, gpointer frame, MonoMethodSignature *sig, gpointer retp)
+mono_arch_set_native_call_context_ret (CallContext *ccontext, gpointer frame, MonoMethodSignature *sig, gpointer call_info, gpointer retp)
 {
 	const MonoEECallbacks *interp_cb;
-	CallInfo *cinfo;
+	CallInfo *cinfo = (CallInfo*)call_info;
 	gpointer storage;
 	ArgInfo *ainfo;
 
@@ -1238,7 +1267,6 @@ mono_arch_set_native_call_context_ret (CallContext *ccontext, gpointer frame, Mo
 		return;
 
 	interp_cb = mini_get_interp_callbacks ();
-	cinfo = get_call_info (NULL, sig);
 	ainfo = &cinfo->ret;
 
 	if (retp) {
@@ -1263,15 +1291,13 @@ mono_arch_set_native_call_context_ret (CallContext *ccontext, gpointer frame, Mo
 		if (temp_size)
 			arg_set_val (ccontext, ainfo, storage);
 	}
-
-	g_free (cinfo);
 }
 
 gpointer
-mono_arch_get_native_call_context_args (CallContext *ccontext, gpointer frame, MonoMethodSignature *sig)
+mono_arch_get_native_call_context_args (CallContext *ccontext, gpointer frame, MonoMethodSignature *sig, gpointer call_info)
 {
 	const MonoEECallbacks *interp_cb = mini_get_interp_callbacks ();
-	CallInfo *cinfo = get_call_info (NULL, sig);
+	CallInfo *cinfo = (CallInfo*)call_info;
 	gpointer storage;
 	ArgInfo *ainfo;
 
@@ -1302,15 +1328,14 @@ mono_arch_get_native_call_context_args (CallContext *ccontext, gpointer frame, M
 		if (ainfo->storage == ArgValuetypeAddrInIReg)
 			storage = (gpointer) ccontext->gregs [cinfo->ret.reg];
 	}
-	g_free (cinfo);
 	return storage;
 }
 
 void
-mono_arch_get_native_call_context_ret (CallContext *ccontext, gpointer frame, MonoMethodSignature *sig)
+mono_arch_get_native_call_context_ret (CallContext *ccontext, gpointer frame, MonoMethodSignature *sig, gpointer call_info)
 {
 	const MonoEECallbacks *interp_cb;
-	CallInfo *cinfo;
+	CallInfo *cinfo = (CallInfo*)call_info;
 	ArgInfo *ainfo;
 	gpointer storage;
 
@@ -1319,7 +1344,6 @@ mono_arch_get_native_call_context_ret (CallContext *ccontext, gpointer frame, Mo
 		return;
 
 	interp_cb = mini_get_interp_callbacks ();
-	cinfo = get_call_info (NULL, sig);
 	ainfo = &cinfo->ret;
 
 	/* The return values were stored directly at address passed in reg */
@@ -1334,8 +1358,6 @@ mono_arch_get_native_call_context_ret (CallContext *ccontext, gpointer frame, Mo
 		}
 		interp_cb->data_to_frame_arg ((MonoInterpFrameHandle)frame, sig, -1, storage);
 	}
-
-	g_free (cinfo);
 }
 
 /*
@@ -1407,6 +1429,7 @@ void
 mono_arch_cpu_init (void)
 {
 #ifndef _MSC_VER
+#if !defined(MONO_CROSS_COMPILE)
 	guint16 fpcw;
 
 	/* spec compliance requires running with double precision */
@@ -1415,6 +1438,7 @@ mono_arch_cpu_init (void)
 	fpcw |= X86_FPCW_PREC_DOUBLE;
 	__asm__  __volatile__ ("fldcw %0\n": : "m" (fpcw));
 	__asm__  __volatile__ ("fnstcw %0\n": "=m" (fpcw));
+#endif
 #else
 	/* TODO: This is crashing on Win64 right now.
 	* _control87 (_PC_53, MCW_PC);
@@ -7281,7 +7305,7 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			if (ins->inst_c0 == 0) {
 				amd64_sse_movss_reg_reg (code, ins->dreg, ins->sreg1);
 			} else {
-				int imm = ins->inst_c0;
+				int imm = GTMREG_TO_INT (ins->inst_c0);
 				amd64_sse_movaps_reg_reg (code, SIMD_TEMP_REG, ins->sreg1);
 				amd64_sse_shufps_reg_reg_imm (code, SIMD_TEMP_REG, ins->sreg1, imm);
 				amd64_sse_pxor_reg_reg (code, ins->dreg, ins->dreg);
@@ -7302,7 +7326,7 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 			amd64_sse_pinsrq_reg_reg_imm (code, ins->sreg1, ins->sreg2, ins->inst_c0);
 			break;
 		case OP_INSERT_R4: {
-			guint8 imm = (0 << 6) | (ins->inst_c0 << 4);
+			guint8 imm = (0 << 6) | (GTMREG_TO_UINT8 (ins->inst_c0 << 4));
 			amd64_sse_insertps_reg_reg (code, ins->sreg1, ins->sreg2, imm);
 			break;
 		}
@@ -7496,6 +7520,23 @@ mono_arch_output_basic_block (MonoCompile *cfg, MonoBasicBlock *bb)
 		case OP_EXPAND_R8:
 			amd64_sse_movsd_reg_reg (code, ins->dreg, ins->sreg1);
 			amd64_sse_pshufd_reg_reg_imm (code, ins->dreg, ins->dreg, 0x44);
+			break;
+		case OP_SSE_MOVMSK: {
+			switch (ins->inst_c1) {
+			case MONO_TYPE_R4:
+				amd64_sse_movmskps_reg_reg (code, ins->dreg, ins->sreg1);
+				break;
+			case MONO_TYPE_R8:
+				amd64_sse_movmskpd_reg_reg (code, ins->dreg, ins->sreg1);
+				break;
+			default:
+				amd64_sse_pmovmskb_reg_reg (code, ins->dreg, ins->sreg1);
+				break;
+			}
+			break;
+		}
+		case OP_SSSE3_SHUFFLE:
+			amd64_sse_pshufb_reg_reg (code, ins->dreg, ins->sreg2);
 			break;
 		case OP_SSE41_ROUNDP: {
 			if (ins->inst_c1 == MONO_TYPE_R8)

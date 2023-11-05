@@ -79,13 +79,13 @@ const signed char       opcodeSizes[] =
 // clang-format on
 
 const BYTE varTypeClassification[] = {
-#define DEF_TP(tn, nm, jitType, sz, sze, asze, st, al, regTyp, regFld, tf) tf,
+#define DEF_TP(tn, nm, jitType, sz, sze, asze, st, al, regTyp, regFld, csr, ctr, tf) tf,
 #include "typelist.h"
 #undef DEF_TP
 };
 
 const BYTE varTypeRegister[] = {
-#define DEF_TP(tn, nm, jitType, sz, sze, asze, st, al, regTyp, regFld, tf) regTyp,
+#define DEF_TP(tn, nm, jitType, sz, sze, asze, st, al, regTyp, regFld, csr, ctr, tf) regTyp,
 #include "typelist.h"
 #undef DEF_TP
 };
@@ -111,7 +111,7 @@ extern const BYTE opcodeArgKinds[] = {
 const char* varTypeName(var_types vt)
 {
     static const char* const varTypeNames[] = {
-#define DEF_TP(tn, nm, jitType, sz, sze, asze, st, al, regTyp, regFld, tf) nm,
+#define DEF_TP(tn, nm, jitType, sz, sze, asze, st, al, regTyp, regFld, csr, ctr, tf) nm,
 #include "typelist.h"
 #undef DEF_TP
     };
@@ -2077,6 +2077,70 @@ unsigned __int64 FloatingPointUtils::convertDoubleToUInt64(double d)
     return u64;
 }
 
+//------------------------------------------------------------------------
+// convertToDouble: Convert a single to a double with platform independent
+// preservation of payload bits.
+//
+// Arguments:
+//   f - the single
+//
+// Return Value:
+//   A double.
+//
+// Remarks:
+//   All our host platforms except for RISCV-64 will preserve payload bits of
+//   NaNs. This function implements the conversion in software for RISCV-64 to
+//   mimic other platforms.
+//
+double FloatingPointUtils::convertToDouble(float f)
+{
+#ifdef HOST_RISCV64
+    if (f == f)
+    {
+        return f;
+    }
+
+    uint32_t bits    = BitOperations::SingleToUInt32Bits(f);
+    uint32_t payload = bits & ((1u << 23) - 1);
+    uint64_t newBits = ((uint64_t)(bits >> 31) << 63) | 0x7FF8000000000000ul | ((uint64_t)payload << 29);
+    return BitOperations::UInt64BitsToDouble(newBits);
+#else
+    return f;
+#endif
+}
+
+//------------------------------------------------------------------------
+// convertToSingle: Convert a double to a single with platform independent
+// preservation of payload bits.
+//
+// Arguments:
+//   d - the double
+//
+// Return Value:
+//   A float.
+//
+// Remarks:
+//   All our host platforms except for RISCV-64 will preserve payload bits of
+//   NaNs. This function implements the conversion in software for RISCV-64 to
+//   mimic other platforms.
+//
+float FloatingPointUtils::convertToSingle(double d)
+{
+#ifdef HOST_RISCV64
+    if (d == d)
+    {
+        return (float)d;
+    }
+
+    uint64_t bits       = BitOperations::DoubleToUInt64Bits(d);
+    uint32_t newPayload = (uint32_t)((bits >> 29) & ((1u << 23) - 1));
+    uint32_t newBits    = ((uint32_t)(bits >> 63) << 31) | 0x7F800000u | newPayload;
+    return BitOperations::UInt32BitsToSingle(newBits);
+#else
+    return (float)d;
+#endif
+}
+
 // Rounds a double-precision floating-point value to the nearest integer,
 // and rounds midpoint values to the nearest even number.
 double FloatingPointUtils::round(double x)
@@ -3817,7 +3881,6 @@ bool CastFromIntOverflows(int32_t fromValue, var_types toType, bool fromUnsigned
 {
     switch (toType)
     {
-        case TYP_BOOL:
         case TYP_BYTE:
         case TYP_UBYTE:
         case TYP_SHORT:
@@ -3841,7 +3904,6 @@ bool CastFromLongOverflows(int64_t fromValue, var_types toType, bool fromUnsigne
 {
     switch (toType)
     {
-        case TYP_BOOL:
         case TYP_BYTE:
         case TYP_UBYTE:
         case TYP_SHORT:
@@ -3956,7 +4018,6 @@ bool CastFromFloatOverflows(float fromValue, var_types toType)
     {
         case TYP_BYTE:
             return !(-129.0f < fromValue && fromValue < 128.0f);
-        case TYP_BOOL:
         case TYP_UBYTE:
             return !(-1.0f < fromValue && fromValue < 256.0f);
         case TYP_SHORT:
@@ -3985,7 +4046,6 @@ bool CastFromDoubleOverflows(double fromValue, var_types toType)
     {
         case TYP_BYTE:
             return !(-129.0 < fromValue && fromValue < 128.0);
-        case TYP_BOOL:
         case TYP_UBYTE:
             return !(-1.0 < fromValue && fromValue < 256.0);
         case TYP_SHORT:

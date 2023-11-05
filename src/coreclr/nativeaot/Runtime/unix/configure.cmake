@@ -15,6 +15,8 @@ endif()
 
 list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_FILE_OFFSET_BITS=64)
 
+check_include_files("sys/prctl.h" HAVE_PRCTL_H)
+check_include_files("sys/ptrace.h" HAVE_SYS_PTRACE_H)
 check_include_files("sys/auxv.h;asm/hwcap.h" HAVE_AUXV_HWCAP_H)
 
 check_library_exists(pthread pthread_create "" HAVE_LIBPTHREAD)
@@ -34,7 +36,6 @@ if (NOT(CLR_CMAKE_TARGET_WASI))
 endif()
 
 check_function_exists(clock_nanosleep HAVE_CLOCK_NANOSLEEP)
-check_function_exists(sysctlbyname HAVE_SYSCTLBYNAME)
 
 check_struct_has_member ("ucontext_t" uc_mcontext.gregs[0] ucontext.h HAVE_GREGSET_T)
 check_struct_has_member ("ucontext_t" uc_mcontext.__gregs[0] ucontext.h HAVE___GREGSET_T)
@@ -79,6 +80,15 @@ int main()
 
   exit(ret);
 }" HAVE_CLOCK_MONOTONIC_COARSE)
+
+check_cxx_source_compiles("
+#include <sys/prctl.h>
+
+int main(int argc, char **argv)
+{
+    int flag = (int)PR_SET_PTRACER;
+    return 0;
+}" HAVE_PR_SET_PTRACER)
 
 check_symbol_exists(
     clock_gettime_nsec_np

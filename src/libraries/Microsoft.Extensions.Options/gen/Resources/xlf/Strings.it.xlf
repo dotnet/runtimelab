@@ -32,6 +32,16 @@
         <target state="new">Can't use 'ValidateObjectMembersAttribute' or 'ValidateEnumeratedItemsAttribute' on fields or properties with open generic types.</target>
         <note />
       </trans-unit>
+      <trans-unit id="CantValidateStaticOrConstMemberMessage">
+        <source>Can't apply validation attributes to constant or static member {0}.</source>
+        <target state="new">Can't apply validation attributes to constant or static member {0}.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CantValidateStaticOrConstMemberTitle">
+        <source>Can't validate constants, static fields or properties.</source>
+        <target state="new">Can't validate constants, static fields or properties.</target>
+        <note />
+      </trans-unit>
       <trans-unit id="CircularTypeReferencesMessage">
         <source>There is a circular type reference involving type {0} preventing it from being used for static validation.</source>
         <target state="new">There is a circular type reference involving type {0} preventing it from being used for static validation.</target>
@@ -50,6 +60,16 @@
       <trans-unit id="DoesntImplementIValidateOptionsTitle">
         <source>A type annotated with 'OptionsValidatorAttribute' doesn't implement the necessary interface.</source>
         <target state="new">A type annotated with 'OptionsValidatorAttribute' doesn't implement the necessary interface.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InaccessibleValidationAttributeMessage">
+        <source>Validation attribute '{0}' on the member '{1}' is inaccessible from the validator type '{2}'.</source>
+        <target state="new">Validation attribute '{0}' on the member '{1}' is inaccessible from the validator type '{2}'.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InaccessibleValidationAttributeTitle">
+        <source>Validation attribute on the member is inaccessible from the validator type..</source>
+        <target state="new">Validation attribute on the member is inaccessible from the validator type..</target>
         <note />
       </trans-unit>
       <trans-unit id="MemberIsInaccessibleMessage">
@@ -100,6 +120,16 @@
       <trans-unit id="NullValidatorTypeTitle">
         <source>Null validator type specified for the 'ValidateObjectMembersAttribute' or 'ValidateEnumeratedItemsAttribute' attributes.</source>
         <target state="new">Null validator type specified for the 'ValidateObjectMembersAttribute' or 'ValidateEnumeratedItemsAttribute' attributes.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OptionsUnsupportedLanguageVersionMessage">
+        <source>The options validation source generator is not available in C# {0}. Please use language version {1} or greater.</source>
+        <target state="new">The options validation source generator is not available in C# {0}. Please use language version {1} or greater.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OptionsUnsupportedLanguageVersionTitle">
+        <source>C# language version not supported by the source generator.</source>
+        <target state="new">C# language version not supported by the source generator.</target>
         <note />
       </trans-unit>
       <trans-unit id="PotentiallyMissingEnumerableValidationMessage">

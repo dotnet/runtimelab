@@ -93,7 +93,14 @@ else()
 endif()
 
 if (CLR_CMAKE_TARGET_APPLE)
-    set(NATIVEGLOBALIZATION_SOURCES ${NATIVEGLOBALIZATION_SOURCES} pal_locale.m pal_collation.m)
+    set(NATIVEGLOBALIZATION_SOURCES_OBJC
+        pal_locale.m
+        pal_collation.m
+        pal_casing.m
+        pal_calendarData.m
+        pal_normalization.m)
+    set_source_files_properties(${NATIVEGLOBALIZATION_SOURCES_OBJC} PROPERTIES COMPILE_FLAGS "-fobjc-arc ${CLR_CMAKE_COMMON_OBJC_FLAGS}")
+    set(NATIVEGLOBALIZATION_SOURCES ${NATIVEGLOBALIZATION_SOURCES} ${NATIVEGLOBALIZATION_SOURCES_OBJC})
 endif()
 
 # time zone names are filtered out of icu data for the browser and associated functionality is disabled
@@ -164,8 +171,8 @@ if(CLR_CMAKE_TARGET_WIN32)
             STATIC
             ${NATIVEGLOBALIZATION_SOURCES}
         )
-        target_compile_options(System.Globalization.Native.Aot PRIVATE /guard:cf-)
-        target_compile_options(System.Globalization.Native.Aot PRIVATE /GL-)
+        set_target_properties(System.Globalization.Native.Aot PROPERTIES CLR_CONTROL_FLOW_GUARD OFF)
+        set_target_properties(System.Globalization.Native.Aot PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
 
         add_library(System.Globalization.Native.Aot.GuardCF
             STATIC

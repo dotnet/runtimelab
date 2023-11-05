@@ -208,6 +208,9 @@ namespace ILCompiler.DependencyAnalysis
                     if (_currentObjectData.Length < dataSizeInElements)
                     {
                         Array.Resize(ref _currentObjectData, Math.Max(_currentObjectData.Length * 2, dataSizeInElements));
+                    }
+                    if (_currentObjectTypes.Length < dataSizeInElements)
+                    {
                         Array.Resize(ref _currentObjectTypes, Math.Max(_currentObjectTypes.Length * 2, dataSizeInElements));
                     }
 

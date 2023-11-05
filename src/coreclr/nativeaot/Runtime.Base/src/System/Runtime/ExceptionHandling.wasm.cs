@@ -80,7 +80,7 @@ namespace System.Runtime
                     }
                     else
                     {
-                        if (ShouldTypedClauseCatchThisException(exception, clause.ClauseType))
+                        if (ShouldTypedClauseCatchThisException(exception, clause.ClauseType, false /* tryUnwrapException, not used for NATIVEAOT */))
                         {
                             goto FoundHandler;
                         }

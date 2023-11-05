@@ -6,7 +6,7 @@
 [CmdletBinding()]
 Param(
     [Parameter(Position=0)]$TestProject = "HelloWasm.csproj",
-    [ValidateSet("browser,wasi")][string]$OS = "browser",
+    [ValidateSet("browser","wasi")][string]$OS = "browser",
     [switch]$Build,
     [switch]$Rebuild,
     [switch]$Analyze,
