@@ -521,10 +521,16 @@ namespace System.Runtime.CompilerServices
                 maintainedData._nextTasklet->pTaskletPrevInStack = lastTasklet;
                 lastTasklet->pTaskletNextInStack = maintainedData._nextTasklet;
 
-                // we are suspending, so existing tasklets can now have min age
+                // we are suspending, so change the age of tasklets from -1 (active) to 0 (very young)
+                // NOTE: this is only needed as long as we allow cross-frame byrefs as
+                // that forces us to make age of active tasklets undefined (see comment in PlatformIndependentRestore)
+                // without such byrefs old tasklets could stay old as nothing could change locals of a captured frame.
                 for (Tasklet* current = maintainedData._nextTasklet; current != null; current = current->pTaskletNextInStack)
                 {
-                    current->minGeneration = 0;
+                    if (current->minGeneration == -1)
+                    {
+                        current->minGeneration = 0;
+                    }
                 }
             }
 

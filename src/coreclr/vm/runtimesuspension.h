@@ -21,21 +21,3 @@ void UnregisterTasklet(Tasklet* pTasklet);
 void IterateTaskletsForGC(promote_func* pCallback, int condemned, ScanContext* sc);
 void AgeTasklets(int condemned, int max_gen, ScanContext* sc);
 void RejuvenateTasklets(int condemned, int max_gen, ScanContext* sc);
-
-template <typename F>
-void ForEachTasklet(F lambda)
-{
-    CrstHolder crstHolder(&g_taskletCrst);
-    Tasklet* pCurStack = g_pTaskletSentinel->pTaskletNextInLiveList;
-    while (pCurStack != g_pTaskletSentinel)
-    {
-        Tasklet* pCurTasklet = pCurStack;
-        do
-        {
-            lambda(pCurTasklet);
-            pCurTasklet = pCurTasklet->pTaskletPrevInStack;
-        } while (pCurTasklet != NULL);
-
-        pCurStack = pCurStack->pTaskletNextInLiveList;
-    }
-}
