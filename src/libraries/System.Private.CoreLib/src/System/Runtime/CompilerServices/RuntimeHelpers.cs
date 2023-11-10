@@ -243,7 +243,6 @@ namespace System.Runtime.CompilerServices
             public byte _dummy;
 
             public unsafe Tasklet* _nextTasklet;
-            public unsafe Tasklet* _oldTaskletNext;
 
             public RuntimeAsyncReturnValue _retValue;
             public virtual ref byte GetReturnPointer() { return ref _dummy; }
@@ -452,6 +451,7 @@ namespace System.Runtime.CompilerServices
             public StackDataInfo* pStackDataInfo;
             public TaskletReturnType taskletReturnType;
             public int minGeneration;
+            public Tasklet* pTaskletPrevInStack;
 
             public int GetMaxStackNeeded() { return pStackDataInfo->StackRequirement; }
         }
@@ -492,6 +492,9 @@ namespace System.Runtime.CompilerServices
         [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "RuntimeSuspension_DeleteTasklet")]
         private static unsafe partial void DeleteTasklet(Tasklet* tasklet);
 
+        [LibraryImport(RuntimeHelpers.QCall, EntryPoint = "RuntimeSuspension_RegisterTasklet")]
+        private static unsafe partial void RegisterTasklet(Tasklet* tasklet);
+
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void UnwindToFunctionWithAsyncFrame(Tasklet* topTasklet, nint framesToUnwind);
 
@@ -509,14 +512,22 @@ namespace System.Runtime.CompilerServices
             if (nextTaskletInStack == null)
                 throw new OutOfMemoryException();
 
-            // we are suspending, so existing tasklets can now have min age
-            for (Tasklet* current = maintainedData._nextTasklet; current != null; current = current->pTaskletNextInStack)
+            if (maintainedData._nextTasklet == null)
             {
-                current->minGeneration = 0;
+                RegisterTasklet(lastTasklet);
+            }
+            else
+            {
+                maintainedData._nextTasklet->pTaskletPrevInStack = lastTasklet;
+                lastTasklet->pTaskletNextInStack = maintainedData._nextTasklet;
+
+                // we are suspending, so existing tasklets can now have min age
+                for (Tasklet* current = maintainedData._nextTasklet; current != null; current = current->pTaskletNextInStack)
+                {
+                    current->minGeneration = 0;
+                }
             }
 
-            maintainedData._oldTaskletNext = maintainedData._nextTasklet;
-            lastTasklet->pTaskletNextInStack = maintainedData._nextTasklet;
             maintainedData._nextTasklet = nextTaskletInStack;
             maintainedData._retValue = default(RuntimeAsyncReturnValue);
 

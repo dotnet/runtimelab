@@ -78,6 +78,7 @@ struct Tasklet
     // min generation of all managed objects referred from this frame.
     // -1 means the frame is a part of actiely executing stack and may have byrefs pointing to it
     int32_t  minGeneration;
+    Tasklet* pTaskletPrevInStack;
 };
 
 struct RuntimeAsyncReturnValue
@@ -543,7 +544,6 @@ PORTABILIT_ASSERT()
     pTasklet->restoreIPAddress = (uintptr_t)GetControlPC(pCf->GetRegisterSet());
     pTasklet->pStackDataInfo = pStackDataInfo;
     pTasklet->taskletReturnType = taskletReturnType;
-    RegisterTasklet(pTasklet);
 
     if (taskletCaptureData->firstTasklet == NULL)
     {
@@ -553,6 +553,7 @@ PORTABILIT_ASSERT()
     else
     {
         taskletCaptureData->lastTasklet->pTaskletNextInStack = pTasklet;
+        pTasklet->pTaskletPrevInStack = taskletCaptureData->lastTasklet;
         taskletCaptureData->lastTasklet = pTasklet;
     }
     taskletCaptureData->framesCaptured++;
@@ -587,11 +588,27 @@ extern "C" Tasklet* QCALLTYPE RuntimeSuspension_CaptureTasklets(QCall::StackCraw
 
 extern "C" void QCALLTYPE RuntimeSuspension_DeleteTasklet(Tasklet* tasklet)
 {
-    UnregisterTasklet(tasklet);
+    if (tasklet->pTaskletNextInStack == NULL)
+    {
+        UnregisterTasklet(tasklet);
+    }
+    else
+    {
+        tasklet->pTaskletNextInStack->pTaskletPrevInStack = NULL;
+    }
+
     tasklet->pStackDataInfo->CleanupStackDataInfo();
     free(tasklet->pStackData);
     free(tasklet->pStackDataInfo);
     free(tasklet);
+}
+
+extern "C" void QCALLTYPE RuntimeSuspension_RegisterTasklet(Tasklet * tasklet)
+{
+    // only heads of stack chains are registered.
+    _ASSERTE(tasklet->pTaskletNextInStack == NULL);
+
+    RegisterTasklet(tasklet);
 }
 
 void RegisterTasklet(Tasklet* pTasklet);
