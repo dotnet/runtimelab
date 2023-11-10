@@ -225,11 +225,10 @@ void GCScan::GcDemote (int condemned, int max_gen, ScanContext* sc)
     {
         GCToEEInterface::SyncBlockCacheDemote(max_gen);
 
-        // TODO: this does not need to run on a single thread.
-        //       we should partition tasklet lists by the core number on server GC
+        // TODO: we should partition tasklet lists by the core number on server GC
         //       and do this on multiple threads.
         //       then "sc" argument will be used.
-        //GCToEEInterface::TaskletDemote(condemned, max_gen, sc);
+        GCToEEInterface::TaskletDemote(condemned, max_gen, sc);
     }
 }
 
@@ -240,14 +239,12 @@ void GCScan::GcPromotionsGranted (int condemned, int max_gen, ScanContext* sc)
     {
         GCToEEInterface::SyncBlockCachePromotionsGranted(max_gen);
 
-        // TODO: this does not need to run on a single thread.
-        //       we should partition tasklet lists by the core number on server GC
+        // TODO: we should partition tasklet lists by the core number on server GC
         //       and do this on multiple threads.
         //       then "sc" argument will be used.
-        //GCToEEInterface::TaskletPromotionsGranted(condemned, max_gen, sc);
+        GCToEEInterface::TaskletPromotionsGranted(condemned, max_gen, sc);
     }
 }
-
 
 size_t GCScan::AskForMoreReservedMemory (size_t old_size, size_t need_size)
 {

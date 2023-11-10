@@ -435,6 +435,7 @@ void GCToEEInterface::TaskletPromotionsGranted(int condemned, int max_gen, ScanC
     }
     CONTRACTL_END;
 
+    AgeTasklets(condemned, max_gen, sc);
 }
 
 void GCToEEInterface::TaskletDemote(int condemned, int max_gen, ScanContext* sc)
@@ -446,6 +447,7 @@ void GCToEEInterface::TaskletDemote(int condemned, int max_gen, ScanContext* sc)
     }
     CONTRACTL_END;
 
+    RejuvenateTasklets(condemned, max_gen, sc);
 }
 
 uint32_t GCToEEInterface::GetActiveSyncBlockCount()

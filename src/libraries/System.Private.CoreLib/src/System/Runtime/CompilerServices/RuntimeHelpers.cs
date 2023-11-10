@@ -451,6 +451,7 @@ namespace System.Runtime.CompilerServices
             public IntPtr restoreIPAddress;
             public StackDataInfo* pStackDataInfo;
             public TaskletReturnType taskletReturnType;
+            public int minGeneration;
 
             public int GetMaxStackNeeded() { return pStackDataInfo->StackRequirement; }
         }
@@ -507,6 +508,12 @@ namespace System.Runtime.CompilerServices
             Tasklet* nextTaskletInStack = CaptureCurrentStackIntoTasklets(new StackCrawlMarkHandle(ref stackMark), ref maintainedData.GetReturnPointer(), maintainedData._initialTaskEntry, t_asyncData, out lastTasklet, out var framesCaptured);
             if (nextTaskletInStack == null)
                 throw new OutOfMemoryException();
+
+            // we are suspending, so existing tasklets can now have min age
+            for (Tasklet* current = maintainedData._nextTasklet; current != null; current = current->pTaskletNextInStack)
+            {
+                current->minGeneration = 0;
+            }
 
             maintainedData._oldTaskletNext = maintainedData._nextTasklet;
             lastTasklet->pTaskletNextInStack = maintainedData._nextTasklet;

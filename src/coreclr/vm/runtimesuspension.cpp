@@ -75,7 +75,9 @@ struct Tasklet
     uintptr_t restoreIPAddress;
     StackDataInfo* pStackDataInfo;
     TaskletReturnType taskletReturnType;
-    uint8_t  generation;
+    // min generation of all managed objects referred from this frame.
+    // -1 means the frame is a part of actiely executing stack and may have byrefs pointing to it
+    int32_t  minGeneration;
 };
 
 struct RuntimeAsyncReturnValue
@@ -137,20 +139,35 @@ extern "C" RegRestore* PlatformIndependentRestore(Tasklet* tasklet, RuntimeAsync
     uint8_t* pNewLocation = restoreLocals->GetFutureRSPLocation() + tasklet->pStackDataInfo->UnrecordedDataSize;
     adjustment.Adjustment = ((uintptr_t)pNewLocation) - ((uintptr_t)adjustment.pOldLocation);
 
-    // Adjust all pointers to the stack data that we are about to move, both in this frame, and in the caller frames
+    // Adjust all pointers to the stack data that we are about to move.
+    // NB: We only check refs from the current frame.
+    //     If we have references from the caller frames, something has gone horribly bad already.
     Tasklet *pTaskletToAdjustByrefsOn = tasklet;
-    do
+    uint32_t cByRefs = pTaskletToAdjustByrefsOn->pStackDataInfo->cByRefs;
+    uint32_t* byRefOffsets = (uint32_t*)pTaskletToAdjustByrefsOn->pStackDataInfo->ByRefOffsets;
+    uint8_t* taskletData = pTaskletToAdjustByrefsOn->pStackData;
+    for (uint32_t iByRef = 0; iByRef < cByRefs; iByRef++)
     {
-        uint32_t cByRefs = pTaskletToAdjustByrefsOn->pStackDataInfo->cByRefs;
-        uint32_t* byRefOffsets = (uint32_t*)pTaskletToAdjustByrefsOn->pStackDataInfo->ByRefOffsets;
-        uint8_t* taskletData = pTaskletToAdjustByrefsOn->pStackData;
-        for (uint32_t iByRef = 0; iByRef < cByRefs; iByRef++)
+        RelocAtAddress(&adjustment, taskletData + byRefOffsets[iByRef]);
+    }
+
+    // Mark stacklets as "active" so thay no longer age.
+    // NOTE: this whole thing can be optimized by:
+    //     - not activating anything if all our byrefs point to the heap or the current frame.
+    //     - only "activating" frames to which we have byrefs
+    // 
+    // for simplicity, once we activate something with byrefs we will activate all the callers.
+    if (tasklet->minGeneration >= 0 && tasklet->pStackDataInfo->cByRefs > 0)
+    {
+        // perhaps could start with next, this is about to be destroyed.
+        Tasklet* pTaskletToMarkActive = tasklet;
+        do
         {
-            RelocAtAddress(&adjustment, taskletData + byRefOffsets[iByRef]);
-        }
-        pTaskletToAdjustByrefsOn = pTaskletToAdjustByrefsOn->pTaskletNextInStack;
-    } while (pTaskletToAdjustByrefsOn != NULL);
-    
+            pTaskletToMarkActive->minGeneration = -1;
+            pTaskletToMarkActive = pTaskletToMarkActive->pTaskletNextInStack;
+        } while (pTaskletToMarkActive != NULL);
+    }
+
     StackDataInfo *pStackDataInfo = tasklet->pStackDataInfo;
 
     // Copy most of the memory
@@ -614,37 +631,161 @@ void UnregisterTasklet(Tasklet* pTasklet)
 
 void IterateTaskletsForGC(promote_func* pCallback, int condemned, ScanContext* sc)
 {
-    CrstHolder crstHolder(&g_taskletCrst);
-    Tasklet *pCurTasklet = g_pTaskletSentinel->pTaskletNextInLiveList;
-    while (pCurTasklet != g_pTaskletSentinel)
-    {
-        if (pCurTasklet->generation > condemned)
-            continue;
-
-        // Report GC pointers
-        auto pStackDataInfo = pCurTasklet->pStackDataInfo;
-        uint8_t *pLogicalRSP = pCurTasklet->pStackData - pStackDataInfo->UnrecordedDataSize;
-        uint32_t iRef;
-        for (iRef = 0; iRef < pStackDataInfo->cObjectRefs; iRef++)
+    ForEachTasklet(
+        [&](Tasklet* pCurTasklet)
         {
-            pCallback((PTR_PTR_Object)(pLogicalRSP + pStackDataInfo->ObjectRefOffsets[iRef]), sc, 0);
-        }
-        
-        for (iRef = 0; iRef < pStackDataInfo->cByRefs; iRef++)
-        {
-            int32_t offset = pStackDataInfo->ByRefOffsets[iRef];
-            uint32_t flags = GC_CALL_INTERIOR;
-            if (offset < 0)
+            if (pCurTasklet->minGeneration > condemned)
             {
-                offset = -offset;
-                flags |= GC_CALL_PINNED;
+                // this tasklet is too old to be interesting in this GC
+                return;
+            };
+
+            // Report GC pointers
+            auto pStackDataInfo = pCurTasklet->pStackDataInfo;
+            uint8_t *pLogicalRSP = pCurTasklet->pStackData - pStackDataInfo->UnrecordedDataSize;
+            uint32_t iRef;
+            for (iRef = 0; iRef < pStackDataInfo->cObjectRefs; iRef++)
+            {
+                pCallback((PTR_PTR_Object)(pLogicalRSP + pStackDataInfo->ObjectRefOffsets[iRef]), sc, 0);
             }
 
-            pCallback((PTR_PTR_Object)(pLogicalRSP + offset), sc, flags);
-        }
+            for (iRef = 0; iRef < pStackDataInfo->cByRefs; iRef++)
+            {
+                int32_t offset = pStackDataInfo->ByRefOffsets[iRef];
+                uint32_t flags = GC_CALL_INTERIOR;
+                if (offset < 0)
+                {
+                    offset = -offset;
+                    flags |= GC_CALL_PINNED;
+                }
 
-        pCurTasklet = pCurTasklet->pTaskletNextInLiveList;
+                pCallback((PTR_PTR_Object)(pLogicalRSP + offset), sc, flags);
+            }
+        }
+    );
+}
+
+void AgeTasklets(int condemned, int max_gen, ScanContext* sc)
+{
+    if (!g_pConfig->TaskletAging())
+    {
+        return;
     }
+
+    ForEachTasklet(
+        [&](Tasklet* pCurTasklet)
+        {
+            if (pCurTasklet->minGeneration > condemned)
+            {
+                // this tasklet is too old to be interesting in this GC
+                return;
+            };
+
+            if (pCurTasklet->minGeneration < 0)
+            {
+                // this tasklet belongs to an active stack, do not age it
+                return;
+            };
+
+            // actually age the tasklet
+            pCurTasklet->minGeneration = min(pCurTasklet->minGeneration + 1, max_gen);
+
+#ifdef _DEBUG
+            // sanity check that the min generation is really min
+            auto pStackDataInfo = pCurTasklet->pStackDataInfo;
+            uint8_t* pLogicalRSP = pCurTasklet->pStackData - pStackDataInfo->UnrecordedDataSize;
+            uint32_t iRef;
+            for (iRef = 0; iRef < pStackDataInfo->cObjectRefs; iRef++)
+            {
+                auto ppObj = (PTR_PTR_Object)(pLogicalRSP + pStackDataInfo->ObjectRefOffsets[iRef]);
+                int objGen = (INT32)GCHeapUtilities::GetGCHeap()->WhichGeneration(*ppObj);
+                _ASSERTE(objGen >= pCurTasklet->minGeneration);
+            }
+
+            for (iRef = 0; iRef < pStackDataInfo->cByRefs; iRef++)
+            {
+                int32_t offset = pStackDataInfo->ByRefOffsets[iRef];
+                if (offset < 0)
+                {
+                    offset = -offset;
+                }
+
+                auto ppObj = (PTR_PTR_Object)(pLogicalRSP + offset);
+                int objGen = (INT32)GCHeapUtilities::GetGCHeap()->WhichGeneration(*ppObj);
+                _ASSERTE(objGen >= pCurTasklet->minGeneration);
+            }
+#endif
+        }
+    );
+}
+
+void RejuvenateTasklets(int condemned, int max_gen, ScanContext* sc)
+{
+    if (!g_pConfig->TaskletAging())
+    {
+        return;
+    }
+
+    ForEachTasklet(
+        [&](Tasklet* pCurTasklet)
+        {
+            if (pCurTasklet->minGeneration <= 0)
+            {
+                // this tasklet is as young as it can be
+                return;
+            };
+
+            if (pCurTasklet->minGeneration > condemned)
+            {
+                // this tasklet is too old to be interesting in this GC
+                return;
+            };
+
+            // update the minGeneration
+            auto pStackDataInfo = pCurTasklet->pStackDataInfo;
+            uint8_t* pLogicalRSP = pCurTasklet->pStackData - pStackDataInfo->UnrecordedDataSize;
+            uint32_t iRef;
+            for (iRef = 0; iRef < pStackDataInfo->cObjectRefs; iRef++)
+            {
+                auto ppObj = (PTR_PTR_Object)(pLogicalRSP + pStackDataInfo->ObjectRefOffsets[iRef]);
+                if (*ppObj != NULL)
+                {
+                    int objGen = (INT32)GCHeapUtilities::GetGCHeap()->WhichGeneration(*ppObj);
+                    if (objGen < pCurTasklet->minGeneration)
+                    {
+                        pCurTasklet->minGeneration = objGen;
+                        if (objGen == 0)
+                        {
+                            return;
+                        }
+                    }
+                }
+            }
+
+            for (iRef = 0; iRef < pStackDataInfo->cByRefs; iRef++)
+            {
+                int32_t offset = pStackDataInfo->ByRefOffsets[iRef];
+                if (offset < 0)
+                {
+                    offset = -offset;
+                }
+
+                auto ppObj = (PTR_PTR_Object)(pLogicalRSP + offset);
+                int objGen = (INT32)GCHeapUtilities::GetGCHeap()->WhichGeneration(*ppObj);
+                if (*ppObj != NULL)
+                {
+                    if (objGen < pCurTasklet->minGeneration)
+                    {
+                        pCurTasklet->minGeneration = objGen;
+                        if (objGen == 0)
+                        {
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    );
 }
 
 extern "C" void ForceThisThreadHasNoHijackForUnwind()

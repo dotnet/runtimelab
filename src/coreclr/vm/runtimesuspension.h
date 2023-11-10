@@ -16,4 +16,20 @@ EXTERN_C FCDECL2(Object*, RuntimeSuspension_ResumeTaskletIntegerRegisterReturn, 
 void RegisterTasklet(Tasklet* pTasklet);
 void InitializeTasklets();
 void UnregisterTasklet(Tasklet* pTasklet);
+
 void IterateTaskletsForGC(promote_func* pCallback, int condemned, ScanContext* sc);
+void AgeTasklets(int condemned, int max_gen, ScanContext* sc);
+void RejuvenateTasklets(int condemned, int max_gen, ScanContext* sc);
+
+template <typename F>
+void ForEachTasklet(F lambda)
+{
+    CrstHolder crstHolder(&g_taskletCrst);
+    Tasklet* pCurTasklet = g_pTaskletSentinel->pTaskletNextInLiveList;
+    while (pCurTasklet != g_pTaskletSentinel)
+    {
+        lambda(pCurTasklet);
+
+        pCurTasklet = pCurTasklet->pTaskletNextInLiveList;
+    }
+}
