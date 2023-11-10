@@ -30,8 +30,6 @@ extern "C" unsigned char __stack_high;
 void PalGetMaximumStackBounds_SingleThreadedWasm(void** ppStackLowOut, void** ppStackHighOut)
 {
     // See https://github.com/emscripten-core/emscripten/pull/18057 and https://reviews.llvm.org/D135910.
-    // TODO-LLVM: update to use "__stack_low" and "__stack_high" when a recent enough linker becomes
-    // available (which should be Emscripten 3.1.26, TBD WASI SDK).
     unsigned char* pStackLow = &__stack_low;
     unsigned char* pStackHigh = &__stack_high;
 
