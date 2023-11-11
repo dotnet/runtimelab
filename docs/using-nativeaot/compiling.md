@@ -58,7 +58,7 @@ Note that it is important to use _the same version_ for both packages to avoid p
 
 Compilation targeting WebAssembly is currently only supported on Windows x64. Contributions enabling the compiler on other platforms are welcome.
 
-Install and activate Emscripten. See [Install Emscripten](https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended). Version 3.1.23 is known to work, later versions of Emscripten are known to fail.
+Install and activate Emscripten. See [Install Emscripten](https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended).
 
 If you are targeting WASI, download [the WASI SDK](https://github.com/WebAssembly/wasi-sdk/releases), extract it and set the `WASI_SDK_PATH` environment variable to the directory containing `share/wasi-sysroot`.
 

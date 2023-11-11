@@ -25,15 +25,13 @@
 // used for RuntimeHelpers.TryEnsureSufficientExecutionStack, and we do use the native stack in codegen, so this
 // is an acceptable approximation.
 //
-extern "C" unsigned char __data_end;
-extern "C" unsigned char __heap_base;
+extern "C" unsigned char __stack_low;
+extern "C" unsigned char __stack_high;
 void PalGetMaximumStackBounds_SingleThreadedWasm(void** ppStackLowOut, void** ppStackHighOut)
 {
     // See https://github.com/emscripten-core/emscripten/pull/18057 and https://reviews.llvm.org/D135910.
-    // TODO-LLVM: update to use "__stack_low" and "__stack_high" when a recent enough linker becomes
-    // available (which should be Emscripten 3.1.26, TBD WASI SDK).
-    unsigned char* pStackLow = &__data_end;
-    unsigned char* pStackHigh = &__heap_base;
+    unsigned char* pStackLow = &__stack_low;
+    unsigned char* pStackHigh = &__stack_high;
 
     // Sanity check that we have the expected memory layout.
     ASSERT((pStackHigh - pStackLow) >= 64 * 1024);

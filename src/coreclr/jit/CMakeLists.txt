@@ -17,7 +17,7 @@ endif()
 
 function(create_standalone_jit)
 
-  set(oneValueArgs TARGET OS ARCH)
+  set(oneValueArgs TARGET OS ARCH CMAKE_CXX_STANDARD)
   set(multiValueArgs DESTINATIONS)
   cmake_parse_arguments(TARGETDETAILS "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -70,6 +70,10 @@ function(create_standalone_jit)
     add_jit(${TARGETDETAILS_TARGET})
   else()
     add_jit(${TARGETDETAILS_TARGET} DESTINATIONS "${TARGETDETAILS_DESTINATIONS}")
+  endif()
+
+  if(DEFINED TARGETDETAILS_CMAKE_CXX_STANDARD)
+    set_target_properties(${TARGETDETAILS_TARGET} PROPERTIES CXX_STANDARD ${TARGETDETAILS_CMAKE_CXX_STANDARD})
   endif()
 
   set_target_definitions_to_custom_os_and_arch(${ARGN})
@@ -715,7 +719,8 @@ if (CLR_CMAKE_BUILD_LLVM_JIT)
     list(FILTER JIT_SOURCES EXCLUDE REGEX lsrabuild\.cpp)
     list(FILTER JIT_SOURCES EXCLUDE REGEX regalloc\.cpp)
 
-    create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32 DESTINATIONS .)
+    # LLVM headers require C++17.
+    create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32 CMAKE_CXX_STANDARD 17  DESTINATIONS .)
     install_clr(TARGETS clrjit_browser_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
 
     # Uncomment to enable 8 byte pointer size version of the wasm clrjit.dll.
