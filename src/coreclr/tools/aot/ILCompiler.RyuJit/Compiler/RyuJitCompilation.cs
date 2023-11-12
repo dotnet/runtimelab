@@ -22,11 +22,15 @@ namespace ILCompiler
     {
         private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new ConditionalWeakTable<Thread, CorInfoImpl>();
         internal readonly RyuJitCompilationOptions _compilationOptions;
-        private readonly ExternSymbolMappedField _hardwareIntrinsicFlags;
-        private readonly Dictionary<string, InstructionSet> _instructionSetMap;
         private readonly ProfileDataManager _profileDataManager;
+<<<<<<< HEAD
         protected readonly MethodImportationErrorProvider _methodImportationErrorProvider;
         protected readonly int _parallelism;
+=======
+        private readonly MethodImportationErrorProvider _methodImportationErrorProvider;
+        private readonly ReadOnlyFieldPolicy _readOnlyFieldPolicy;
+        private readonly int _parallelism;
+>>>>>>> origin/runtime-main
 
         public InstructionSetSupport InstructionSetSupport { get; }
 
@@ -42,29 +46,26 @@ namespace ILCompiler
             InstructionSetSupport instructionSetSupport,
             ProfileDataManager profileDataManager,
             MethodImportationErrorProvider errorProvider,
+            ReadOnlyFieldPolicy readOnlyFieldPolicy,
             RyuJitCompilationOptions options,
             int parallelism)
             : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, devirtualizationManager, inliningPolicy, logger)
         {
             _compilationOptions = options;
-            _hardwareIntrinsicFlags = new ExternSymbolMappedField(nodeFactory.TypeSystemContext.GetWellKnownType(WellKnownType.Int32), "g_cpuFeatures");
             InstructionSetSupport = instructionSetSupport;
-
-            _instructionSetMap = new Dictionary<string, InstructionSet>();
-            foreach (var instructionSetInfo in InstructionSetFlags.ArchitectureToValidInstructionSets(TypeSystemContext.Target.Architecture))
-            {
-                if (instructionSetInfo.ManagedName != "")
-                    _instructionSetMap.Add(instructionSetInfo.ManagedName, instructionSetInfo.InstructionSet);
-            }
 
             _profileDataManager = profileDataManager;
 
             _methodImportationErrorProvider = errorProvider;
 
+            _readOnlyFieldPolicy = readOnlyFieldPolicy;
+
             _parallelism = parallelism;
         }
 
         public ProfileDataManager ProfileData => _profileDataManager;
+
+        public bool IsInitOnly(FieldDesc field) => _readOnlyFieldPolicy.IsReadOnly(field);
 
         public override IEETypeNode NecessaryTypeSymbolIfPossible(TypeDesc type)
         {
@@ -81,6 +82,16 @@ namespace ILCompiler
                 return _nodeFactory.MaximallyConstructableType(type);
 
             return _nodeFactory.NecessaryTypeSymbol(type);
+        }
+
+        public FrozenRuntimeTypeNode NecessaryRuntimeTypeIfPossible(TypeDesc type)
+        {
+            bool canPotentiallyConstruct = _devirtualizationManager == null
+                ? true : _devirtualizationManager.CanConstructType(type);
+            if (canPotentiallyConstruct && ConstructedEETypeNode.CreationAllowed(type))
+                return _nodeFactory.SerializedConstructedRuntimeTypeObject(type);
+
+            return _nodeFactory.SerializedNecessaryRuntimeTypeObject(type);
         }
 
         protected override void CompileInternal(string outputFile, ObjectDumper dumper)
@@ -213,6 +224,7 @@ namespace ILCompiler
                     Logger.LogError($"Method will always throw because: {exception.Message}", 1005, method, MessageSubCategory.AotAnalysis);
             }
         }
+<<<<<<< HEAD
 
         public override MethodIL GetMethodIL(MethodDesc method)
         {
@@ -241,6 +253,8 @@ namespace ILCompiler
         public virtual string GetRuntimeExportManagedEntrypointName(MethodDesc method) => throw new NotImplementedException();
         public virtual ISymbolNode GetExternalMethodAccessor(MethodDesc method, ReadOnlySpan<TargetAbiType> signature) => throw new NotImplementedException();
         public virtual CorInfoLlvmEHModel GetLlvmExceptionHandlingModel() => throw new NotImplementedException();
+=======
+>>>>>>> origin/runtime-main
     }
 
     [Flags]
