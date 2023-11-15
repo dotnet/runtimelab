@@ -887,19 +887,6 @@ namespace ILCompiler.DependencyAnalysis
                 builder.PositionAtEnd(slotAvailableBlock);
             }
 
-            switch (lookup.LookupResultReferenceType(factory))
-            {
-                case GenericLookupResultReferenceType.Indirect:
-                    lookupResult = builder.BuildLoad2(_ptrType, lookupResult, "actualSlotValue");
-                    break;
-
-                case GenericLookupResultReferenceType.ConditionalIndirect:
-                    throw new NotImplementedException();
-
-                default:
-                    break;
-            }
-
             return lookupResult;
         }
 

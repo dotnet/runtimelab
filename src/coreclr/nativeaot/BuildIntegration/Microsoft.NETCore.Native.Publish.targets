@@ -99,17 +99,14 @@
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)" DestinationFolder="$(PublishDir)" />
   </Target>
 
-<<<<<<< HEAD
+  <Target Name="_CopyAotSymbols" AfterTargets="Publish"
+          Condition="'$(CopyOutputSymbolsToPublishDirectory)' == 'true'">
     <Delete Files="$(PublishDir)\$(TargetName).js" Condition="'$(_targetOS)' == 'browser'"/>
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName).js" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser'"/>
 
     <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(_targetOS)' == 'browser'"/>
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser'"/>
 
-=======
-  <Target Name="_CopyAotSymbols" AfterTargets="Publish"
-          Condition="'$(CopyOutputSymbolsToPublishDirectory)' == 'true'">
->>>>>>> origin/runtime-main
     <!-- dotnet CLI produces managed debug symbols, which we will delete and copy native symbols instead -->
     <Delete Files="$(PublishDir)\$(TargetName).pdb" />
 

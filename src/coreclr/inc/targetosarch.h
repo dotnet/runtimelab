@@ -60,7 +60,7 @@ public:
     static const bool IsArm32 = false;
     static const bool IsArmArch = false;
     static const bool IsLoongArch64 = false;
-    static const bool IsRiscv64 = false;
+    static const bool IsRiscV64 = false;
 #elif TARGET_WASM64
     static const bool IsWasm32 = false;
     static const bool IsWasm64 = true;
@@ -70,7 +70,7 @@ public:
     static const bool IsArm32 = false;
     static const bool IsArmArch = false;
     static const bool IsLoongArch64 = false;
-    static const bool IsRiscv64 = false;
+    static const bool IsRiscV64 = false;
 #elif TARGET_ARM
     static const bool IsX86 = false;
     static const bool IsX64 = false;

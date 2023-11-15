@@ -93,12 +93,8 @@ static char& __unbox_z = __stop___unbox;
 
 #endif // _MSC_VER
 
-<<<<<<< HEAD
-extern "C" bool RhInitialize();
-=======
 extern "C" bool RhInitialize(bool isDll);
 extern "C" void RhSetRuntimeInitializationCallback(int (*fPtr)());
->>>>>>> origin/runtime-main
 
 extern "C" bool RhRegisterOSModule(void * pModule,
     void * pvManagedCodeStartRange, uint32_t cbManagedCodeRange,
@@ -107,7 +103,6 @@ extern "C" bool RhRegisterOSModule(void * pModule,
 
 extern "C" void* PalGetModuleHandleFromPointer(void* pointer);
 
-<<<<<<< HEAD
 // The runtime assumes classlib exports have a managed calling convention.
 // For WASM, however, they are exported with the native calling convention
 // by default so we must explicitly use the managed entrypoint here.
@@ -118,23 +113,13 @@ extern "C" void* PalGetModuleHandleFromPointer(void* pointer);
 #endif
 
 extern "C" void MANAGED_RUNTIME_EXPORT(GetRuntimeException)();
-extern "C" void MANAGED_RUNTIME_EXPORT(FailFast)();
+extern "C" void MANAGED_RUNTIME_EXPORT(RuntimeFailFast)();
 extern "C" void MANAGED_RUNTIME_EXPORT(AppendExceptionStackFrame)();
 extern "C" void MANAGED_RUNTIME_EXPORT(GetSystemArrayEEType)();
 extern "C" void MANAGED_RUNTIME_EXPORT(OnFirstChanceException)();
 extern "C" void MANAGED_RUNTIME_EXPORT(OnUnhandledException)();
 extern "C" void MANAGED_RUNTIME_EXPORT(IDynamicCastableIsInterfaceImplemented)();
 extern "C" void MANAGED_RUNTIME_EXPORT(IDynamicCastableGetInterfaceImplementation)();
-=======
-extern "C" void GetRuntimeException();
-extern "C" void RuntimeFailFast();
-extern "C" void AppendExceptionStackFrame();
-extern "C" void GetSystemArrayEEType();
-extern "C" void OnFirstChanceException();
-extern "C" void OnUnhandledException();
-extern "C" void IDynamicCastableIsInterfaceImplemented();
-extern "C" void IDynamicCastableGetInterfaceImplementation();
->>>>>>> origin/runtime-main
 #ifdef FEATURE_OBJCMARSHAL
 extern "C" void ObjectiveCMarshalTryGetTaggedMemory();
 extern "C" void ObjectiveCMarshalGetIsTrackedReferenceCallback();
@@ -145,13 +130,8 @@ extern "C" void ObjectiveCMarshalGetUnhandledExceptionPropagationHandler();
 typedef void(*pfn)();
 
 static const pfn c_classlibFunctions[] = {
-<<<<<<< HEAD
     &MANAGED_RUNTIME_EXPORT(GetRuntimeException),
-    &MANAGED_RUNTIME_EXPORT(FailFast),
-=======
-    &GetRuntimeException,
-    &RuntimeFailFast,
->>>>>>> origin/runtime-main
+    &MANAGED_RUNTIME_EXPORT(RuntimeFailFast),
     nullptr, // &UnhandledExceptionHandler,
     &MANAGED_RUNTIME_EXPORT(AppendExceptionStackFrame),
     nullptr, // &CheckStaticClassConstruction,
@@ -212,7 +192,6 @@ WasiInitializationFlag g_WasiInitializationFlag;
 
 static int InitializeRuntime()
 {
-<<<<<<< HEAD
 #if defined(NATIVEAOT_DLL) && defined(TARGET_WASI)
     if (!g_CalledInitialize)
     {
@@ -220,8 +199,6 @@ static int InitializeRuntime()
     }
 #endif
 
-    if (!RhInitialize())
-=======
     if (!RhInitialize(
 #ifdef NATIVEAOT_DLL
         /* isDll */ true
@@ -229,7 +206,6 @@ static int InitializeRuntime()
         /* isDll */ false
 #endif
         ))
->>>>>>> origin/runtime-main
         return -1;
 
     void * osModule = PalGetModuleHandleFromPointer((void*)&NATIVEAOT_ENTRYPOINT);

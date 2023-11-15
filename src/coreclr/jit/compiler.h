@@ -6146,21 +6146,14 @@ private:
     bool        fgRngChkThrowAdded;
     AddCodeDsc* fgExcptnTargetCache[SCK_COUNT];
 
-<<<<<<< HEAD
-    BasicBlock* fgRngChkTarget(BasicBlock* block, SpecialCodeKind kind);
+    PhaseStatus fgCreateThrowHelperBlocks();
 
 public:
     static unsigned acdHelper(SpecialCodeKind codeKind);
 
-    BasicBlock* fgAddCodeRef(BasicBlock* srcBlk, unsigned refData, SpecialCodeKind kind);
-=======
     void fgAddCodeRef(BasicBlock* srcBlk, SpecialCodeKind kind);
-    PhaseStatus fgCreateThrowHelperBlocks();
->>>>>>> origin/runtime-main
 
     AddCodeDsc* fgFindExcptnTarget(SpecialCodeKind kind, unsigned refData);
-
-    bool fgIsThrowHlpBlk(BasicBlock* block);
 
     bool fgUseThrowHelperBlocks();
 
@@ -6170,11 +6163,7 @@ public:
     }
 
 private:
-<<<<<<< HEAD
-    bool fgIsCodeAdded();
-=======
     bool fgIsThrowHlpBlk(BasicBlock* block);
->>>>>>> origin/runtime-main
 
 #if !FEATURE_FIXED_OUT_ARGS
     unsigned fgThrowHlpBlkStkLevel(BasicBlock* block);

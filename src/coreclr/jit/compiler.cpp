@@ -1349,15 +1349,11 @@ void Compiler::compStartup()
     // Static vars of ValueNumStore
     ValueNumStore::ValidateValueNumStoreStatics();
 
-<<<<<<< HEAD
-    compDisplayStaticSizes(jitstdout);
+    compDisplayStaticSizes();
 
 #ifdef TARGET_WASM
     Llvm::ConfigureDiagnosticOutput();
 #endif // TARGET_WASM
-=======
-    compDisplayStaticSizes();
->>>>>>> origin/runtime-main
 }
 
 /*****************************************************************************

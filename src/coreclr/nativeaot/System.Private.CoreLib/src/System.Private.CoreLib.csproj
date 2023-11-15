@@ -25,12 +25,8 @@
   </ItemGroup>
 
   <PropertyGroup>
-<<<<<<< HEAD
-    <DefineConstants>SYSTEM_PRIVATE_CORELIB;FEATURE_MANAGED_ETW_CHANNELS;FEATURE_MANAGED_ETW;$(DefineConstants)</DefineConstants>
-    <DefineConstants Condition="'$(DebugWasmEH)' == 'true'">ENABLE_NOISY_WASM_EH_LOG;$(DefineConstants)</DefineConstants>
-=======
     <DefineConstants>SYSTEM_PRIVATE_CORELIB;$(DefineConstants)</DefineConstants>
->>>>>>> origin/runtime-main
+    <DefineConstants Condition="'$(DebugWasmEH)' == 'true'">ENABLE_NOISY_WASM_EH_LOG;$(DefineConstants)</DefineConstants>
     <SkipCommonResourcesIncludes>true</SkipCommonResourcesIncludes>
     <FeatureNativeAot>true</FeatureNativeAot>
     <RuntimeBasePath>..\..\Runtime.Base\src\</RuntimeBasePath>

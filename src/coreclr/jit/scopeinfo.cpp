@@ -1817,9 +1817,6 @@ void CodeGen::psiEndProlog()
     assert(compiler->compGeneratingProlog);
     varLiveKeeper->psiClosePrologVariableRanges();
 }
-<<<<<<< HEAD
-#endif // !TARGET_WASM
-=======
 
 /*****************************************************************************
  *                          genSetScopeInfo
@@ -2131,4 +2128,4 @@ const char* CodeGen::siStackVarName(size_t offs, size_t size, unsigned reg, unsi
 /*****************************************************************************/
 #endif // defined(DEBUG)
 #endif // LATE_DISASM
->>>>>>> origin/runtime-main
+#endif // TARGET_WASM

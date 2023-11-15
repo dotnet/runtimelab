@@ -57,15 +57,6 @@ steps:
       - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
         displayName: Run tests in single file mode
 
-# Upload unsigned artifacts
-- ${{ if eq(parameters.isOfficialBuild, true) }}:
-  - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
-    parameters:
-<<<<<<< HEAD
-      name: ${{ parameters.platform }}
-=======
-      isOfficialBuild: ${{ parameters.isOfficialBuild }}
-
   # Zip CoreCLR Build Output
   - template: /eng/pipelines/common/upload-artifact-step.yml
     parameters:
@@ -117,4 +108,3 @@ steps:
     - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
       parameters:
         name: ${{ parameters.platform }}${{ parameters.nameSuffix }}
->>>>>>> origin/runtime-main

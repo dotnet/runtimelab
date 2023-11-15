@@ -2807,147 +2807,6 @@ PhaseStatus Compiler::fgFindOperOrder()
 }
 
 //------------------------------------------------------------------------
-<<<<<<< HEAD
-// fgSimpleLowering: do full walk of all IR, lowering selected operations
-// and computing lvaOutgoingArgSpaceSize.
-//
-// Returns:
-//    Suitable phase status
-//
-// Notes:
-//    Lowers GT_ARR_LENGTH, GT_MDARR_LENGTH, GT_MDARR_LOWER_BOUND, GT_BOUNDS_CHECK.
-//
-PhaseStatus Compiler::fgSimpleLowering()
-{
-    bool madeChanges = false;
-
-#if FEATURE_FIXED_OUT_ARGS
-    unsigned outgoingArgSpaceSize = 0;
-#endif // FEATURE_FIXED_OUT_ARGS
-
-    for (BasicBlock* const block : Blocks())
-    {
-        // Walk the statement trees in this basic block.
-        compCurBB = block; // Used in fgRngChkTarget.
-
-        LIR::Range& range = LIR::AsRange(block);
-        for (GenTree* tree : range)
-        {
-            switch (tree->OperGet())
-            {
-                case GT_ARR_LENGTH:
-                case GT_MDARR_LENGTH:
-                case GT_MDARR_LOWER_BOUND:
-                {
-                    GenTree* arr       = tree->AsArrCommon()->ArrRef();
-                    int      lenOffset = 0;
-
-                    switch (tree->OperGet())
-                    {
-                        case GT_ARR_LENGTH:
-                        {
-                            lenOffset = tree->AsArrLen()->ArrLenOffset();
-                            noway_assert(lenOffset == OFFSETOF__CORINFO_Array__length ||
-                                         lenOffset == OFFSETOF__CORINFO_String__stringLen);
-                            break;
-                        }
-
-                        case GT_MDARR_LENGTH:
-                            lenOffset = (int)eeGetMDArrayLengthOffset(tree->AsMDArr()->Rank(), tree->AsMDArr()->Dim());
-                            break;
-
-                        case GT_MDARR_LOWER_BOUND:
-                            lenOffset =
-                                (int)eeGetMDArrayLowerBoundOffset(tree->AsMDArr()->Rank(), tree->AsMDArr()->Dim());
-                            break;
-
-                        default:
-                            unreached();
-                    }
-
-                    // Create the expression `*(array_addr + lenOffset)`
-
-                    GenTree* addr;
-
-                    noway_assert(arr->gtNext == tree);
-
-                    JITDUMP("Lower %s:\n", GenTree::OpName(tree->OperGet()));
-                    DISPRANGE(LIR::ReadOnlyRange(arr, tree));
-
-                    if ((arr->gtOper == GT_CNS_INT) && (arr->AsIntCon()->gtIconVal == 0))
-                    {
-                        // If the array is NULL, then we should get a NULL reference
-                        // exception when computing its length.  We need to maintain
-                        // an invariant where there is no sum of two constants node, so
-                        // let's simply return an indirection of NULL.
-
-                        addr = arr;
-                    }
-                    else
-                    {
-                        GenTree* con = gtNewIconNode(lenOffset, TYP_I_IMPL);
-                        addr         = gtNewOperNode(GT_ADD, TYP_BYREF, arr, con);
-                        range.InsertAfter(arr, con, addr);
-                    }
-
-                    // Change to a GT_IND.
-                    tree->ChangeOper(GT_IND);
-                    tree->AsIndir()->Addr() = addr;
-
-                    JITDUMP("After Lower %s:\n", GenTree::OpName(tree->OperGet()));
-                    DISPRANGE(LIR::ReadOnlyRange(arr, tree));
-                    madeChanges = true;
-                    break;
-                }
-
-                case GT_BOUNDS_CHECK:
-                {
-                    // Add in a call to an error routine.
-                    fgSetRngChkTarget(tree, false);
-                    madeChanges = true;
-                    break;
-                }
-
-                case GT_CAST:
-                {
-                    if (tree->AsCast()->CastOp()->OperIsSimple() && fgSimpleLowerCastOfSmpOp(range, tree->AsCast()))
-                    {
-                        madeChanges = true;
-                    }
-                    break;
-                }
-
-#ifdef TARGET_WASM
-                case GT_RETURN:
-                    // LLVM lowering needs to know whether the struct is dependently promoted or not in all cases.
-                    // Morph will sometimes miss this one. TODO-LLVM: delete once upstream improves morph's logic
-                    // for returns to not miss things.
-                    if (!tree->TypeIs(TYP_VOID) && tree->gtGetOp1()->OperIs(GT_LCL_VAR))
-                    {
-                        unsigned lclNum = tree->gtGetOp1()->AsLclVar()->GetLclNum();
-                        if (lvaGetPromotionType(lclNum) == PROMOTION_TYPE_INDEPENDENT)
-                        {
-                            lvaSetVarDoNotEnregister(lclNum DEBUGARG(DoNotEnregisterReason::BlockOpRet));
-                        }
-                    }
-                    break;
-#endif // TARGET_WASM
-
-                default:
-                {
-                    // No other operators need processing.
-                    break;
-                }
-            } // switch on oper
-        }     // foreach tree
-    }         // foreach BB
-
-    return madeChanges ? PhaseStatus::MODIFIED_EVERYTHING : PhaseStatus::MODIFIED_NOTHING;
-}
-
-//------------------------------------------------------------------------
-=======
->>>>>>> origin/runtime-main
 // fgSimpleLowerCastOfSmpOp: Optimization to remove CAST nodes from operands of some simple ops that are safe to do so
 // since the upper bits do not affect the lower bits, and result of the simple op is zero/sign-extended via a CAST.
 // Example:
@@ -3636,13 +3495,10 @@ unsigned Compiler::acdHelper(SpecialCodeKind codeKind)
             return CORINFO_HELP_THROWDIVZERO;
         case SCK_ARITH_EXCPN:
             return CORINFO_HELP_OVERFLOW;
-<<<<<<< HEAD
         case SCK_NULL_REF_EXCPN:
             return CORINFO_HELP_THROWNULLREF;
-=======
         case SCK_FAIL_FAST:
             return CORINFO_HELP_FAIL_FAST;
->>>>>>> origin/runtime-main
         default:
             assert(!"Bad codeKind");
             return 0;
@@ -3708,19 +3564,7 @@ void Compiler::fgAddCodeRef(BasicBlock* srcBlk, SpecialCodeKind kind)
         return;
     }
 
-<<<<<<< HEAD
-    const static BBjumpKinds jumpKinds[] = {
-        BBJ_NONE,  // SCK_NONE
-        BBJ_THROW, // SCK_RNGCHK_FAIL
-        BBJ_THROW, // SCK_DIV_BY_ZERO
-        BBJ_THROW, // SCK_ARITH_EXCP, SCK_OVERFLOW
-        BBJ_THROW, // SCK_ARG_EXCPN
-        BBJ_THROW, // SCK_ARG_RNG_EXCPN
-        BBJ_THROW, // SCK_NULL_REF_EXCPN
-    };
-=======
     JITDUMP(FMT_BB " requires throw helper block for %s\n", srcBlk->bbNum, sckName(kind));
->>>>>>> origin/runtime-main
 
     unsigned const refData = (kind == SCK_FAIL_FAST) ? 0 : bbThrowIndex(srcBlk);
 
@@ -3919,71 +3763,11 @@ PhaseStatus Compiler::fgCreateThrowHelperBlocks()
         {
             LIR::AsRange(newBlk).InsertAtEnd(LIR::SeqTree(this, tree));
         }
-<<<<<<< HEAD
-
-        const char* msg;
-        switch (kind)
-        {
-            case SCK_RNGCHK_FAIL:
-                msg = " for RNGCHK_FAIL";
-                break;
-            case SCK_DIV_BY_ZERO:
-                msg = " for DIV_BY_ZERO";
-                break;
-            case SCK_OVERFLOW:
-                msg = " for OVERFLOW";
-                break;
-            case SCK_ARG_EXCPN:
-                msg = " for ARG_EXCPN";
-                break;
-            case SCK_ARG_RNG_EXCPN:
-                msg = " for ARG_RNG_EXCPN";
-                break;
-            case SCK_NULL_REF_EXCPN:
-                msg = " for NULL_REF_EXCPN";
-                break;
-            default:
-                msg = " for ??";
-                break;
-        }
-
-        printf("\nfgAddCodeRef - Add BB in %s%s, new block %s\n", msgWhere, msg, add->acdDstBlk->dspToString());
-=======
->>>>>>> origin/runtime-main
     }
 
     fgRngChkThrowAdded = true;
 
-<<<<<<< HEAD
-    /* Now figure out what code to insert */
-
-    GenTreeCall* tree;
-    int          helper = acdHelper(kind);
-    noway_assert(helper != CORINFO_HELP_UNDEF);
-
-    // Add the appropriate helper call.
-    tree = gtNewHelperCallNode(helper, TYP_VOID);
-
-    // There are no args here but fgMorphArgs has side effects
-    // such as setting the outgoing arg area (which is necessary
-    // on AMD if there are any calls).
-    tree = fgMorphArgs(tree);
-
-    // Store the tree in the new basic block.
-    assert(!srcBlk->isEmpty());
-    if (!srcBlk->IsLIR())
-    {
-        fgInsertStmtAtEnd(newBlk, fgNewStmtFromTree(tree));
-    }
-    else
-    {
-        LIR::AsRange(newBlk).InsertAtEnd(LIR::SeqTree(this, tree));
-    }
-
-    return add->acdDstBlk;
-=======
     return PhaseStatus::MODIFIED_EVERYTHING;
->>>>>>> origin/runtime-main
 }
 
 //------------------------------------------------------------------------

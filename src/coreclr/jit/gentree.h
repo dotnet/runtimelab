@@ -62,11 +62,8 @@ enum SpecialCodeKind
     SCK_OVERFLOW = SCK_ARITH_EXCPN, // target on overflow
     SCK_ARG_EXCPN,                  // target on ArgumentException (currently used only for SIMD intrinsics)
     SCK_ARG_RNG_EXCPN,              // target on ArgumentOutOfRangeException (currently used only for SIMD intrinsics)
-<<<<<<< HEAD
-    SCK_NULL_REF_EXCPN,             // target on NullReferenceException (only used when targeting LLVM)
-=======
     SCK_FAIL_FAST,                  // target for fail fast exception
->>>>>>> origin/runtime-main
+    SCK_NULL_REF_EXCPN,             // target on NullReferenceException (only used when targeting LLVM)
     SCK_COUNT
 };
 

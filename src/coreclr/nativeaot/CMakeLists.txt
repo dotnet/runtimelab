@@ -30,13 +30,6 @@ if(CLR_CMAKE_HOST_UNIX)
   endif(CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_I386)
 endif (CLR_CMAKE_HOST_UNIX)
 
-<<<<<<< HEAD
-if(CLR_CMAKE_TARGET_LINUX_MUSL)
-    # Fix up the main thread stack size for MUSL to more reasonable size.
-    # TODO: https://github.com/dotnet/runtimelab/issues/791
-    add_definitions(-DENSURE_PRIMARY_STACK_SIZE)
-endif()
-
 if(CLR_CMAKE_TARGET_ARCH_WASM)
   add_definitions(-DFEATURE_64BIT_ALIGNMENT)
 endif(CLR_CMAKE_TARGET_ARCH_WASM)
@@ -45,8 +38,6 @@ if(CLR_CMAKE_TARGET_OS STREQUAL wasi)
   add_definitions(-DTARGET_UNIX)
 endif(CLR_CMAKE_TARGET_OS STREQUAL wasi)
 
-=======
->>>>>>> origin/runtime-main
 if(CLR_CMAKE_TARGET_ANDROID)
     add_definitions(-DFEATURE_EMULATED_TLS)
 endif()

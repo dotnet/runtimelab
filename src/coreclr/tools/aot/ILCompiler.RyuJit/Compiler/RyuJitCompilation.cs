@@ -23,14 +23,9 @@ namespace ILCompiler
         private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new ConditionalWeakTable<Thread, CorInfoImpl>();
         internal readonly RyuJitCompilationOptions _compilationOptions;
         private readonly ProfileDataManager _profileDataManager;
-<<<<<<< HEAD
         protected readonly MethodImportationErrorProvider _methodImportationErrorProvider;
-        protected readonly int _parallelism;
-=======
-        private readonly MethodImportationErrorProvider _methodImportationErrorProvider;
         private readonly ReadOnlyFieldPolicy _readOnlyFieldPolicy;
-        private readonly int _parallelism;
->>>>>>> origin/runtime-main
+        protected int _parallelism;
 
         public InstructionSetSupport InstructionSetSupport { get; }
 
@@ -224,37 +219,12 @@ namespace ILCompiler
                     Logger.LogError($"Method will always throw because: {exception.Message}", 1005, method, MessageSubCategory.AotAnalysis);
             }
         }
-<<<<<<< HEAD
-
-        public override MethodIL GetMethodIL(MethodDesc method)
-        {
-            TypeDesc owningType = method.OwningType;
-            string intrinsicId = InstructionSetSupport.GetHardwareIntrinsicId(TypeSystemContext.Target.Architecture, owningType);
-            if (!string.IsNullOrEmpty(intrinsicId)
-                && HardwareIntrinsicHelpers.IsIsSupportedMethod(method))
-            {
-                InstructionSet instructionSet = _instructionSetMap[intrinsicId];
-
-                // If this is an instruction set that is optimistically supported, but is not one of the
-                // intrinsics that are known to be always available, emit IL that checks the support level
-                // at runtime.
-                if (!InstructionSetSupport.IsInstructionSetSupported(instructionSet)
-                    && InstructionSetSupport.OptimisticFlags.HasInstructionSet(instructionSet))
-                {
-                    return HardwareIntrinsicHelpers.EmitIsSupportedIL(method, _hardwareIntrinsicFlags, instructionSet);
-                }
-            }
-
-            return base.GetMethodIL(method);
-        }
 
         public virtual TypeDesc GetPrimitiveTypeForTrivialWasmStruct(TypeDesc type) => throw new NotImplementedException();
         public virtual int PadOffset(TypeDesc type, int atOffset) => throw new NotImplementedException();
         public virtual string GetRuntimeExportManagedEntrypointName(MethodDesc method) => throw new NotImplementedException();
         public virtual ISymbolNode GetExternalMethodAccessor(MethodDesc method, ReadOnlySpan<TargetAbiType> signature) => throw new NotImplementedException();
         public virtual CorInfoLlvmEHModel GetLlvmExceptionHandlingModel() => throw new NotImplementedException();
-=======
->>>>>>> origin/runtime-main
     }
 
     [Flags]

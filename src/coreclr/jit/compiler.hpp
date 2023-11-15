@@ -3117,12 +3117,7 @@ inline bool Compiler::fgIsThrowHlpBlk(BasicBlock* block)
         if (block == add->acdDstBlk)
         {
             return add->acdKind == SCK_RNGCHK_FAIL || add->acdKind == SCK_DIV_BY_ZERO || add->acdKind == SCK_OVERFLOW ||
-<<<<<<< HEAD
-                   add->acdKind == SCK_ARG_EXCPN || add->acdKind == SCK_ARG_RNG_EXCPN ||
-                   add->acdKind == SCK_NULL_REF_EXCPN;
-=======
                    add->acdKind == SCK_ARG_EXCPN || add->acdKind == SCK_ARG_RNG_EXCPN || add->acdKind == SCK_FAIL_FAST;
->>>>>>> origin/runtime-main
         }
     }
 

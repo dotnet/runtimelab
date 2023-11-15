@@ -86,17 +86,11 @@ extends:
               timeoutInMinutes: 100
               testGroup: innerloop
               buildArgs: -s clr+libs+host+packs -c debug -runtimeConfiguration Checked
-<<<<<<< HEAD
-              extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-              extraStepsParameters:
-                uploadRuntimeTests: true
-                librariesConfiguration: Debug
-=======
               postBuildSteps:
                 - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
                   parameters:
                     uploadRuntimeTests: true
->>>>>>> origin/runtime-main
+                    librariesConfiguration: Debug
 
       #
       # Build with Release libraries and Release runtime (used for official builds) - Wasm
@@ -120,14 +114,11 @@ extends:
             timeoutInMinutes: 300
             isOfficialBuild: ${{ variables.isOfficialBuild }}
             testGroup: innerloop
-<<<<<<< HEAD
             buildArgs: -s clr.aot+libs+nativeaot.packages -c Release
-            extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-            extraStepsParameters:
-=======
             postBuildSteps:
               - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
                 parameters:
+                  isOfficialBuild: ${{ variables.isOfficialBuild }}
                   uploadLibrariesTests: ${{ eq(variables.isOfficialBuild, false) }}
                   uploadIntermediateArtifacts: false
             ${{ if eq(variables.isOfficialBuild, false) }}:
@@ -165,9 +156,6 @@ extends:
             jobParameters:
               liveRuntimeBuildConfig: Release
               liveLibrariesBuildConfig: Release
->>>>>>> origin/runtime-main
-              isOfficialBuild: ${{ variables.isOfficialBuild }}
-              librariesConfiguration: Release
 
     - ${{ if eq(variables.isOfficialBuild, true) }}:
       - template: /eng/pipelines/official/stages/publish.yml
