@@ -14,10 +14,11 @@ jobs:
       timeoutInMinutes: 720
       testGroup: innerloop
       buildArgs: -s nativeaot+libs+nativeaot.packages -lc release -rc checked
-      extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-      extraStepsParameters:
-        testFilter: ''
-        runSingleFileTests: false
+      postBuildSteps:
+        - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+          parameters:
+          testFilter: ''
+          runSingleFileTests: false
 
 
 #
@@ -33,7 +34,8 @@ jobs:
       timeoutInMinutes: 720
       testGroup: innerloop
       buildArgs: -s nativeaot+libs+nativeaot.packages -c $(_BuildConfig) /p:ArchiveTests=true
-      extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-      extraStepsParameters:
-        testFilter: ''
-        runSingleFileTests: false
+      postBuildSteps:
+        - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+          parameters:
+          testFilter: ''
+          runSingleFileTests: false

@@ -67,9 +67,10 @@ extends:
               timeoutInMinutes: 300
               testGroup: innerloop
               buildArgs: -s clr.aot+libs+nativeaot.packages -lc Release -rc Debug
-              extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-              extraStepsParameters:
-                librariesConfiguration: Release
+              postBuildSteps:
+                - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+                  parameters:
+                    librariesConfiguration: Release
 
       #
       # Build with Debug libraries and Checked runtime
