@@ -365,6 +365,7 @@ private:
     void lowerStoreBlk(GenTreeBlk* storeBlkNode);
     void lowerStoreDynBlk(GenTreeStoreDynBlk* storeDynBlkNode);
     void lowerDivMod(GenTreeOp* divModNode);
+    void LowerArrLength(GenTreeArrCommon* node);
     void lowerReturn(GenTreeUnOp* retNode);
 
     void lowerVirtualStubCall(GenTreeCall* callNode);

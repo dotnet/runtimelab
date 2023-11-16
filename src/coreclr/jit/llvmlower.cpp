@@ -52,7 +52,7 @@ void Llvm::AddUnhandledExceptionHandler()
     // Set some flags on the new region. This is the same as when we set up
     // EH regions in fgFindBasicBlocks(). Note that the try has no enclosing
     // handler, and the filter with filter handler have no enclosing try.
-    firstTryBlock->bbFlags |= BBF_DONT_REMOVE | BBF_TRY_BEG | BBF_IMPORTED;
+    firstTryBlock->bbFlags |= BBF_DONT_REMOVE | BBF_IMPORTED;
     firstTryBlock->setTryIndex(newEhIndex);
     firstTryBlock->clearHndIndex();
 
@@ -309,6 +309,12 @@ void Llvm::lowerNode(GenTree* node)
             lowerDivMod(node->AsOp());
             break;
 
+        case GT_ARR_LENGTH:
+        case GT_MDARR_LENGTH:
+        case GT_MDARR_LOWER_BOUND:
+            LowerArrLength(node->AsArrCommon());
+            break;
+
         case GT_RETURN:
             lowerReturn(node->AsUnOp());
             break;
@@ -553,7 +559,7 @@ void Llvm::lowerIndir(GenTreeIndir* indirNode)
 {
     if ((indirNode->gtFlags & GTF_IND_NONFAULTING) == 0)
     {
-        _compiler->fgAddCodeRef(CurrentBlock(), _compiler->bbThrowIndex(CurrentBlock()), SCK_NULL_REF_EXCPN);
+        _compiler->fgAddCodeRef(CurrentBlock(), SCK_NULL_REF_EXCPN);
     }
 
     lowerAddressToAddressMode(indirNode);
@@ -590,13 +596,78 @@ void Llvm::lowerDivMod(GenTreeOp* divModNode)
     ExceptionSetFlags exceptions = divModNode->OperExceptions(_compiler);
     if ((exceptions & ExceptionSetFlags::DivideByZeroException) != ExceptionSetFlags::None)
     {
-        _compiler->fgAddCodeRef(CurrentBlock(), _compiler->bbThrowIndex(CurrentBlock()), SCK_DIV_BY_ZERO);
+        _compiler->fgAddCodeRef(CurrentBlock(), SCK_DIV_BY_ZERO);
     }
     if ((exceptions & ExceptionSetFlags::ArithmeticException) != ExceptionSetFlags::None)
     {
-        _compiler->fgAddCodeRef(CurrentBlock(), _compiler->bbThrowIndex(CurrentBlock()), SCK_OVERFLOW);
+        _compiler->fgAddCodeRef(CurrentBlock(), SCK_OVERFLOW);
     }
 }
+
+// TODO-LLVM: Almost a direct copy from lower.cpp which is not included for Wasm.
+//------------------------------------------------------------------------
+// LowerArrLength: lower an array length
+//
+// Arguments:
+//    node - the array length node we are lowering.
+//
+// Notes:
+//    If base array is nullptr, this effectively
+//    turns into a nullcheck.
+//
+void Llvm::LowerArrLength(GenTreeArrCommon* node)
+{
+    GenTree* const arr       = node->ArrRef();
+    int            lenOffset = 0;
+
+    switch (node->OperGet())
+    {
+        case GT_ARR_LENGTH:
+        {
+            lenOffset = node->AsArrLen()->ArrLenOffset();
+            noway_assert(lenOffset == OFFSETOF__CORINFO_Array__length ||
+                         lenOffset == OFFSETOF__CORINFO_String__stringLen);
+            break;
+        }
+
+        case GT_MDARR_LENGTH:
+            lenOffset = (int)_compiler->eeGetMDArrayLengthOffset(node->AsMDArr()->Rank(), node->AsMDArr()->Dim());
+            break;
+
+        case GT_MDARR_LOWER_BOUND:
+            lenOffset = (int)_compiler->eeGetMDArrayLowerBoundOffset(node->AsMDArr()->Rank(), node->AsMDArr()->Dim());
+            break;
+
+        default:
+            unreached();
+    }
+
+    // Create the expression `*(array_addr + lenOffset)`
+
+    GenTree* addr;
+    noway_assert(arr->gtNext == node);
+
+    if ((arr->gtOper == GT_CNS_INT) && (arr->AsIntCon()->gtIconVal == 0))
+    {
+        // If the array is NULL, then we should get a NULL reference
+        // exception when computing its length.  We need to maintain
+        // an invariant where there is no sum of two constants node, so
+        // let's simply return an indirection of NULL.
+
+        addr = arr;
+    }
+    else
+    {
+        GenTree* con = _compiler->gtNewIconNode(lenOffset, TYP_I_IMPL);
+        addr         = _compiler->gtNewOperNode(GT_ADD, TYP_BYREF, arr, con);
+        CurrentRange().InsertAfter(arr, con, addr);
+    }
+
+    // Change to a GT_IND.
+    node->ChangeOper(GT_IND);
+    node->AsIndir()->Addr() = addr;
+}
+
 
 void Llvm::lowerReturn(GenTreeUnOp* retNode)
 {
@@ -1493,7 +1564,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
             BitVecTraits blockListTraits(m_compiler->fgBBNumMax + 1, m_compiler);
             BitVec blockListSet = BitVecOps::MakeEmpty(&blockListTraits);
 
-            for (BasicBlock* block = m_compiler->fgLastBB; block != nullptr; block = block->bbPrev)
+            for (BasicBlock* block = m_compiler->fgLastBB; block != nullptr; block = block->Prev())
             {
                 if (BlockUsesUnwindIndex(block))
                 {
