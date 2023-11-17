@@ -57,8 +57,6 @@ extends:
           inputs:
             PathtoPublish: 'roslynpackages'
             ArtifactName: 'roslynpackages'
-          
-- script
       #
       # Build with Debug config and Checked runtimeConfiguration
       #
