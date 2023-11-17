@@ -11,7 +11,7 @@ public class Async2RootReporting
     private static TaskCompletionSource<int> cs;
 
     // static async Task<int> Recursive(int n)
-    static async2 int Recursive(int n)
+    static async2 Task<int> Recursive(int n)
     {
         Task<int> cTask = cs.Task;
 
