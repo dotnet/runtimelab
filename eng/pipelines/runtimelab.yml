@@ -47,7 +47,7 @@ extends:
   template:  /eng/pipelines/common/templates/pipeline-with-resources.yml
   parameters:
     stages:
-    - stage: Build
+    - stage: PreBuild
       jobs:
       - job: RoslynNugets
         displayName: Build Roslyn Nugets
@@ -57,6 +57,8 @@ extends:
           inputs:
             PathtoPublish: 'roslynpackages'
             ArtifactName: 'roslynpackages'
+    - stage: Build
+      jobs:
       #
       # Build with Debug config and Checked runtimeConfiguration
       #

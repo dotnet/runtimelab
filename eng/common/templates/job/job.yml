@@ -54,9 +54,7 @@ jobs:
     continueOnError: ${{ parameters.continueOnError }}
 
   ${{ if ne(parameters.dependsOn, '') }}:
-    dependsOn: ${{ parameters.dependsOn }}
-
-  dependsOn: RoslynNugets
+    dependsOn: ${{ parameters.dependsOn }} 'RoslynNugets'
 
   ${{ if ne(parameters.displayName, '') }}:
     displayName: ${{ parameters.displayName }}
