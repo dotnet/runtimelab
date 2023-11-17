@@ -43,6 +43,18 @@ variables:
     - name: TeamName
       value: dotnet-core
 
+stages:
+- stage: PreBuild
+  jobs:
+  - job: RoslynNugets
+    displayName: Build Roslyn Nugets
+    steps:
+    - script: buildroslynnugets.cmd
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: 'roslynpackages'
+        ArtifactName: 'roslynpackages'
+
 extends:
   template:  /eng/pipelines/common/templates/pipeline-with-resources.yml
   parameters:
@@ -57,6 +69,7 @@ extends:
           inputs:
             PathtoPublish: 'roslynpackages'
             ArtifactName: 'roslynpackages'
+
     - stage: Build
       jobs:
       #
