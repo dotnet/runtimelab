@@ -9,11 +9,12 @@ Currently, this repo contains the following experimental projects:
 - [Utf8String](https://github.com/dotnet/runtimelab/tree/feature/Utf8String) - A new UTF-8 String data type in the runtime.
 - [FreeBSD](https://github.com/dotnet/runtimelab/tree/feature/FreeBSD) - Port of .NET runtime to FreeBSD
 - [NativeAOT-LLVM](https://github.com/dotnet/runtimelab/tree/feature/NativeAOT-LLVM) - LLVM generation for Native AOT compilation (including Web Assembly)
+- [NativeAOT-Mint](https://github.com/dotnet/runtimelab/tree/feature/NativeAOT-Mint) - Mono interpreter ported to Native AOT for dynamic execution support
 - [ManagedQuic](https://github.com/dotnet/runtimelab/tree/feature/ManagedQuic) - Fully managed implementation of QUIC protocol
 - [LLHTTP](https://github.com/dotnet/runtimelab/tree/feature/LLHTTP2) - a  set of flexible, lower-level HTTP APIs.
 - [CompatibilityPackages](https://github.com/dotnet/runtimelab/tree/feature/CompatibilityPackages) - a set of packages which help satisfy binary dependencies of .NETFramework assemblies on .NET.
-- [AssemblyBuilder.Save()](https://github.com/dotnet/runtimelab/tree/feature/assembly-builder-save) - Prototyping the implementation of AssemblyBuilder.Save() functionality.
 - [Hot-Cold Splitting](https://github.com/dotnet/runtimelab/tree/feature/hot-cold-splitting) - Support the hot-cold splitting optimization in crossgen2.
+- [ManagedZLib](https://github.com/dotnet/runtimelab/tree/feature/ManagedZLib) - Fully managed implementation of DEFLATE algorithm and GZip/ZLib envelope formats.
 - [Async](https://github.com/dotnet/runtimelab/tree/feature/async2-experiment) - Move support for async state machine generation from the C# compiler to the runtime.
 
 You can create your own experiment, learn more [here](CreateAnExperiment.md)!
@@ -24,6 +25,8 @@ You can create your own experiment, learn more [here](CreateAnExperiment.md)!
 - [DllImportGenerator](https://github.com/dotnet/runtimelab/tree/feature/DllImportGenerator) - Roslyn Source Generator used for generating P/Invoke IL stubs.
 - [NativeAOT](https://github.com/dotnet/runtimelab/tree/feature/NativeAOT) - .NET runtime optimized for ahead of time compilation.
 - [JsonCodeGen](https://github.com/dotnet/runtimelab/tree/feature/JsonCodeGen) - Code generation for JSON.
+- [AssemblyBuilder.Save()](https://github.com/dotnet/runtimelab/tree/feature/assembly-builder-save) - Prototyping the implementation of AssemblyBuilder.Save() functionality.
+- [Green Threads](https://github.com/dotnet/runtimelab/tree/feature/green-threads) - Prototyping the implementation of green threads.
 
 ## Filing issues
 
