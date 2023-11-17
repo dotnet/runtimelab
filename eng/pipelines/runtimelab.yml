@@ -49,7 +49,16 @@ extends:
     stages:
     - stage: Build
       jobs:
-
+      - job: RoslynNugets
+        displayName: Build Roslyn Nugets
+        steps:
+        - script: buildroslynnugets.cmd
+        - task: PublishBuildArtifacts@1
+          inputs:
+            PathtoPublish: 'roslynpackages'
+            ArtifactName: 'roslynpackages'
+          
+- script
       #
       # Build with Debug config and Checked runtimeConfiguration
       #

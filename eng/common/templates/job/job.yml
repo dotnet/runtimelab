@@ -56,6 +56,8 @@ jobs:
   ${{ if ne(parameters.dependsOn, '') }}:
     dependsOn: ${{ parameters.dependsOn }}
 
+  dependsOn: RoslynNugets
+
   ${{ if ne(parameters.displayName, '') }}:
     displayName: ${{ parameters.displayName }}
 
@@ -118,6 +120,11 @@ jobs:
     workspace: ${{ parameters.workspace }}
 
   steps:
+  - task: DownloadPipelineArtifact@2
+    inputs:
+      artifactName: 'roslynpackages'
+      targetPath: 'roslynpackages'
+
   - ${{ if ne(parameters.preSteps, '') }}:
     - ${{ each preStep in parameters.preSteps }}:
       - ${{ preStep }}
