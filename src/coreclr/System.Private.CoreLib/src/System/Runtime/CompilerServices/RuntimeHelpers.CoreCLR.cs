@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Runtime.Versioning;
@@ -434,9 +435,14 @@ namespace System.Runtime.CompilerServices
         [Intrinsic]
         private static void SuspendAsync2(Continuation continuation) => throw new UnreachableException();
 
-        private sealed class AwaitableProxy : ICriticalNotifyCompletion
+        private struct AwaitableProxy : ICriticalNotifyCompletion
         {
-            public INotifyCompletion? _notifier;
+            private readonly INotifyCompletion _notifier;
+
+            public AwaitableProxy(INotifyCompletion notifier)
+            {
+                _notifier = notifier;
+            }
 
             public bool IsCompleted => false;
 
@@ -462,10 +468,12 @@ namespace System.Runtime.CompilerServices
             public void GetResult() {}
         }
 
-        private static Continuation UnlinkHeadContinuation(AwaitableProxy awaitableProxy)
+        private static Continuation UnlinkHeadContinuation(out AwaitableProxy awaitableProxy)
         {
             ref RuntimeAsyncAwaitState state = ref t_runtimeAsyncAwaitState;
-            awaitableProxy._notifier = state.Notifier;
+            awaitableProxy = new AwaitableProxy(state.Notifier!);
+            state.Notifier = null;
+
             Continuation sentinelContinuation = state.SentinelContinuation!;
             Continuation head = sentinelContinuation.Next!;
             sentinelContinuation.Next = null;
@@ -492,18 +500,16 @@ namespace System.Runtime.CompilerServices
 
             continuation.Next = finalContinuation;
 
-            AwaitableProxy awaitableProxy = new AwaitableProxy();
-
             while (true)
             {
-                Continuation headContinuation = UnlinkHeadContinuation(awaitableProxy);
+                Continuation headContinuation = UnlinkHeadContinuation(out var awaitableProxy);
                 await awaitableProxy;
                 Continuation? finalResult = DispatchContinuations(headContinuation, out Exception? ex);
                 if (finalResult != null)
                 {
                     Debug.Assert(finalResult == finalContinuation);
                     if (ex != null)
-                        throw ex;
+                        ExceptionDispatchInfo.Capture(ex).Throw();
 
                     if (IsReferenceOrContainsReferences<T>())
                     {
@@ -525,18 +531,16 @@ namespace System.Runtime.CompilerServices
             };
             continuation.Next = finalContinuation;
 
-            AwaitableProxy awaitableProxy = new AwaitableProxy();
-
             while (true)
             {
-                Continuation headContinuation = UnlinkHeadContinuation(awaitableProxy);
+                Continuation headContinuation = UnlinkHeadContinuation(out var awaitableProxy);
                 await awaitableProxy;
                 Continuation? finalResult = DispatchContinuations(headContinuation, out Exception? ex);
                 if (finalResult != null)
                 {
                     Debug.Assert(finalResult == finalContinuation);
                     if (ex != null)
-                        throw ex;
+                        ExceptionDispatchInfo.Capture(ex!).Throw();
                     return;
                 }
             }
@@ -562,18 +566,16 @@ namespace System.Runtime.CompilerServices
 
             continuation.Next = finalContinuation;
 
-            AwaitableProxy awaitableProxy = new AwaitableProxy();
-
             while (true)
             {
-                Continuation headContinuation = UnlinkHeadContinuation(awaitableProxy);
+                Continuation headContinuation = UnlinkHeadContinuation(out var awaitableProxy);
                 await awaitableProxy;
                 Continuation? finalResult = DispatchContinuations(headContinuation, out Exception? ex);
                 if (finalResult != null)
                 {
                     Debug.Assert(finalResult == finalContinuation);
                     if (ex != null)
-                        throw ex;
+                        ExceptionDispatchInfo.Capture(ex).Throw();
 
                     if (IsReferenceOrContainsReferences<T>())
                     {
@@ -595,18 +597,16 @@ namespace System.Runtime.CompilerServices
             };
             continuation.Next = finalContinuation;
 
-            AwaitableProxy awaitableProxy = new AwaitableProxy();
-
             while (true)
             {
-                Continuation headContinuation = UnlinkHeadContinuation(awaitableProxy);
+                Continuation headContinuation = UnlinkHeadContinuation(out var awaitableProxy);
                 await awaitableProxy;
                 Continuation? finalResult = DispatchContinuations(headContinuation, out Exception? ex);
                 if (finalResult != null)
                 {
                     Debug.Assert(finalResult == finalContinuation);
                     if (ex != null)
-                        throw ex;
+                        ExceptionDispatchInfo.Capture(ex!).Throw();
                     return;
                 }
             }
