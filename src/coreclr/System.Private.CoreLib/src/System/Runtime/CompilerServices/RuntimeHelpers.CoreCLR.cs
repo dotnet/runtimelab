@@ -504,13 +504,10 @@ namespace System.Runtime.CompilerServices
             {
                 Continuation headContinuation = UnlinkHeadContinuation(out var awaitableProxy);
                 await awaitableProxy;
-                Continuation? finalResult = DispatchContinuations(headContinuation, out Exception? ex);
+                Continuation? finalResult = DispatchContinuations(headContinuation);
                 if (finalResult != null)
                 {
                     Debug.Assert(finalResult == finalContinuation);
-                    if (ex != null)
-                        ExceptionDispatchInfo.Capture(ex).Throw();
-
                     if (IsReferenceOrContainsReferences<T>())
                     {
                         return (T)finalResult.GCData![0];
@@ -535,12 +532,10 @@ namespace System.Runtime.CompilerServices
             {
                 Continuation headContinuation = UnlinkHeadContinuation(out var awaitableProxy);
                 await awaitableProxy;
-                Continuation? finalResult = DispatchContinuations(headContinuation, out Exception? ex);
+                Continuation? finalResult = DispatchContinuations(headContinuation);
                 if (finalResult != null)
                 {
                     Debug.Assert(finalResult == finalContinuation);
-                    if (ex != null)
-                        ExceptionDispatchInfo.Capture(ex!).Throw();
                     return;
                 }
             }
@@ -570,13 +565,10 @@ namespace System.Runtime.CompilerServices
             {
                 Continuation headContinuation = UnlinkHeadContinuation(out var awaitableProxy);
                 await awaitableProxy;
-                Continuation? finalResult = DispatchContinuations(headContinuation, out Exception? ex);
+                Continuation? finalResult = DispatchContinuations(headContinuation);
                 if (finalResult != null)
                 {
                     Debug.Assert(finalResult == finalContinuation);
-                    if (ex != null)
-                        ExceptionDispatchInfo.Capture(ex).Throw();
-
                     if (IsReferenceOrContainsReferences<T>())
                     {
                         return (T)finalResult.GCData![0];
@@ -601,27 +593,24 @@ namespace System.Runtime.CompilerServices
             {
                 Continuation headContinuation = UnlinkHeadContinuation(out var awaitableProxy);
                 await awaitableProxy;
-                Continuation? finalResult = DispatchContinuations(headContinuation, out Exception? ex);
+                Continuation? finalResult = DispatchContinuations(headContinuation);
                 if (finalResult != null)
                 {
                     Debug.Assert(finalResult == finalContinuation);
-                    if (ex != null)
-                        ExceptionDispatchInfo.Capture(ex!).Throw();
                     return;
                 }
             }
         }
 
         // Return a continuation object if that is the one which has the final
-        // result of the Task, in this case exceptionResult MAY be set to an
-        // exception, which is the real output of the series of continuations
+        // result of the Task, if the real output of the series of continuations was
+        // an exception, it is allowed to propagate out.
         // OR
         // return NULL to indicate that this isn't yet done.
-        private static unsafe Continuation? DispatchContinuations(Continuation? continuation, out Exception? exceptionResult)
+        private static unsafe Continuation? DispatchContinuations(Continuation? continuation)
         {
             Debug.Assert(continuation != null);
 
-            exceptionResult = null;
             while (true)
             {
                 Continuation? newContinuation;
@@ -634,8 +623,7 @@ namespace System.Runtime.CompilerServices
                     continuation = UnwindToPossibleHandler(continuation);
                     if (continuation.Resume == null)
                     {
-                        exceptionResult = ex;
-                        return continuation;
+                        throw;
                     }
 
                     continuation.GCData![(continuation.Flags & CorInfoContinuationFlags.CORINFO_CONTINUATION_RESULT_IN_GCDATA) != 0 ? 1 : 0] = ex;
