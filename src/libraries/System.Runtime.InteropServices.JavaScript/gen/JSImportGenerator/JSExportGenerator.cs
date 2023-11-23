@@ -335,7 +335,7 @@ namespace Microsoft.Interop.JavaScript
                                     AttributeArgument(
                                         LiteralExpression(
                                             SyntaxKind.StringLiteralExpression,
-                                            Literal(assemblyName + initializerClass + initializerName)
+                                            Literal(FixupSymbolName(assemblyName + initializerClass + initializerName))
                                         )
                                     )
                                     .WithNameEquals(
