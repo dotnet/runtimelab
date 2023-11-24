@@ -347,6 +347,7 @@ private:
 public:
     void AddUnhandledExceptionHandler();
     void Lower();
+    void lowerRange(BasicBlock* block, LIR::Range& range);
 
 private:
     void initializeFunclets();
@@ -354,7 +355,6 @@ private:
 
     void lowerBlocks();
     void lowerBlock(BasicBlock* block);
-    void lowerRange(BasicBlock* block, LIR::Range& range);
     void lowerNode(GenTree* node);
     void lowerLocal(GenTreeLclVarCommon* node);
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);

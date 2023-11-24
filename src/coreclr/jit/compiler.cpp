@@ -5083,9 +5083,12 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     // Insert GC Polls
     DoPhase(this, PHASE_INSERT_GC_POLLS, &Compiler::fgInsertGCPolls);
 
+    // For WASM we will do this after lowering.
+#if !defined(TARGET_WASM)
     // Create any throw helper blocks that might be needed
     //
     DoPhase(this, PHASE_CREATE_THROW_HELPERS, &Compiler::fgCreateThrowHelperBlocks);
+#endif // !TARGET_WASM
 
     if (opts.OptimizationEnabled())
     {
@@ -5142,6 +5145,10 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     DoPhase(this, PHASE_LOWER_LLVM, [this]() {
         m_llvm->Lower();
     });
+
+    // Create any throw helper blocks that might be needed
+    //
+    DoPhase(this, PHASE_CREATE_THROW_HELPERS, &Compiler::fgCreateThrowHelperBlocks);
 
     fgSsaDomTree = nullptr;
     if (opts.OptimizationEnabled())

@@ -12,6 +12,10 @@
 #include "holder.h"
 #include "RhConfig.h"
 
+#if defined(TARGET_WASM)
+#define BYTE unsigned char
+#endif // TARGET_WASM
+
 #include "gctoeeinterface.standalone.inl"
 
 enum GC_LOAD_STATUS {

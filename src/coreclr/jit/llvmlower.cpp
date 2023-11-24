@@ -660,14 +660,16 @@ void Llvm::LowerArrLength(GenTreeArrCommon* node)
     {
         GenTree* con = _compiler->gtNewIconNode(lenOffset, TYP_I_IMPL);
         addr         = _compiler->gtNewOperNode(GT_ADD, TYP_BYREF, arr, con);
+
         CurrentRange().InsertAfter(arr, con, addr);
     }
+
+    _compiler->fgAddCodeRef(CurrentBlock(), SCK_NULL_REF_EXCPN);
 
     // Change to a GT_IND.
     node->ChangeOper(GT_IND);
     node->AsIndir()->Addr() = addr;
 }
-
 
 void Llvm::lowerReturn(GenTreeUnOp* retNode)
 {

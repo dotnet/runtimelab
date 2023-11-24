@@ -7,6 +7,9 @@ add_definitions(-DUSE_PORTABLE_HELPERS)
 
 add_library(PortableRuntime STATIC ${COMMON_RUNTIME_SOURCES} ${PORTABLE_RUNTIME_SOURCES})
 
+add_library(standalonegc-disabled STATIC ${STANDALONEGC_DISABLED_SOURCES})
+add_library(standalonegc-enabled STATIC ${STANDALONEGC_ENABLED_SOURCES})
+
 # Get the current list of definitions
 get_compile_definitions(DEFINITIONS)
 set(ASM_OFFSETS_CSPP ${RUNTIME_DIR}/../Runtime.Base/src/AsmOffsets.cspp)
@@ -29,3 +32,6 @@ add_custom_command(
 )
 
 install_static_library(PortableRuntime aotsdk nativeaot)
+install_static_library(standalonegc-disabled aotsdk nativeaot)
+install_static_library(standalonegc-enabled aotsdk nativeaot)
+

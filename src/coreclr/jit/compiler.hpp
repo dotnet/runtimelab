@@ -1404,6 +1404,46 @@ inline GenTree* Compiler::gtNewIconEmbFldHndNode(CORINFO_FIELD_HANDLE fldHnd)
 
 /*****************************************************************************/
 
+// TODO-LLVM: what is the right way to do this, as this is a cut/paste.
+inline CorInfoType toCorInfoType(var_types type)
+{
+    switch (type)
+    {
+        case TYP_BYREF:
+            return CORINFO_TYPE_BYREF;
+        case TYP_BYTE:
+            return CORINFO_TYPE_BYTE;
+        case TYP_UBYTE:
+            return CORINFO_TYPE_UBYTE;
+        case TYP_DOUBLE:
+            return CORINFO_TYPE_DOUBLE;
+        case TYP_FLOAT:
+            return CORINFO_TYPE_FLOAT;
+        case TYP_INT:
+            return CORINFO_TYPE_INT;
+        case TYP_UINT:
+            return CORINFO_TYPE_UINT;
+        case TYP_LONG:
+            return CORINFO_TYPE_LONG;
+        case TYP_ULONG:
+            return CORINFO_TYPE_ULONG;
+        case TYP_REF:
+            return CORINFO_TYPE_CLASS;
+        case TYP_SHORT:
+            return CORINFO_TYPE_SHORT;
+        case TYP_USHORT:
+            return CORINFO_TYPE_USHORT;
+        case TYP_STRUCT:
+            return CORINFO_TYPE_VALUECLASS;
+        case TYP_UNDEF:
+            return CORINFO_TYPE_UNDEF;
+        case TYP_VOID:
+            return CORINFO_TYPE_VOID;
+        default:
+            unreached();
+    }
+}
+
 //------------------------------------------------------------------------------
 // gtNewHelperCallNode : Helper to create a call helper node.
 //
@@ -1446,6 +1486,10 @@ inline GenTreeCall* Compiler::gtNewHelperCallNode(
         result->gtArgs.PushFront(this, NewCallArg::Primitive(arg1));
         result->gtFlags |= arg1->gtFlags & GTF_ALL_EFFECT;
     }
+
+#ifdef TARGET_WASM
+    result->gtCorInfoType = toCorInfoType(type);
+#endif // TARGET_WASM
 
     return result;
 }
