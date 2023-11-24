@@ -189,6 +189,9 @@
     </NetTraceToMibcConverter>
   </Target>
 
+  <Target Name="_AndroidNativeAotCompile"
+        DependsOnTargets="SetupProperties;ComputeIlcCompileInputs;IlcCompile" />
+
   <Target Name="_AndroidAotCompile"
           Condition="'$(RunAOTCompilation)' == 'true'"
           DependsOnTargets="_AndroidBeforeAotCompile">
@@ -255,8 +258,17 @@
       <_NativeDependencies Include="$(LibraryOutputPath)" />
     </ItemGroup>
 
+    <ItemGroup Condition="'$(UseNativeAOTRuntime)' == 'true'">
+      <_NativeDependencies Condition="$(NativeDependencies) == ''" Include="%(ManagedBinary.IlcOutputFile)" />
+      <_LinkerFlagsToDrop Include="@(NativeFramework->'-framework %(Identity)')" />
+      <LinkerArg Remove="@(_LinkerFlagsToDrop)" />
+      <ExtraAppLinkerArgs Include="@(LinkerArg)" />
+      <ExtraAppLinkerArgs Include="-Wl,&#45;&#45;version-script=$(RepoRoot)/src/mono/sample/Android-NativeAOT/symbols.exports" />
+    </ItemGroup>
+
     <AndroidAppBuilderTask
         AppDir="$(AndroidBuildDir)"
+        ResourceDir="$(RepoRoot)/src/mono/sample/Android-NativeAOT/Resources"
         Assemblies="@(_AssembliesToBundleInternal)"
         DiagnosticPorts="$(DiagnosticPorts)"
         EnvironmentVariables="@(AndroidEnv)"
@@ -272,7 +284,8 @@
         ProjectName="$(AssemblyName)"
         RuntimeComponents="@(RuntimeComponents)"
         RuntimeIdentifier="$(RuntimeIdentifier)"
-        StripDebugSymbols="False">
+        StripDebugSymbols="False"
+        UseNativeAOTRuntime="$(UseNativeAOTRuntime)">
         <Output TaskParameter="ApkBundlePath" PropertyName="ApkBundlePath" />
         <Output TaskParameter="ApkPackageId"  PropertyName="ApkPackageId" />
     </AndroidAppBuilderTask>

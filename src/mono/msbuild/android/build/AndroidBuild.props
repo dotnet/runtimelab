@@ -10,6 +10,9 @@
 
     <_IsLibraryMode Condition="'$(UseNativeAOTRuntime)' != 'true' and '$(NativeLib)' != ''">true</_IsLibraryMode>
     <_ReadRuntimeComponentsManifestTargetName Condition="'$(UseNativeAOTRuntime)' != 'true'">_MonoReadAvailableComponentsManifest</_ReadRuntimeComponentsManifestTargetName>
+    <_AotCompileTargetName Condition="'$(UseNativeAOTRuntime)' == 'true'">_AndroidNativeAotCompile</_AotCompileTargetName>
+    <_AotCompileTargetName Condition="'$(UseNativeAOTRuntime)' != 'true'">_AndroidAotCompile</_AotCompileTargetName>
+    <IlcCompileDependsOn>ComputeIlcCompileInputs;SetupOSSpecificProps;PrepareForILLink</IlcCompileDependsOn>
 
     <AndroidBuildAfterThisTarget Condition="'$(AndroidBuildAfterThisTarget)' == ''">Publish</AndroidBuildAfterThisTarget>
     <AndroidBuildDependsOn>
@@ -18,7 +21,7 @@
         _BeforeAndroidBuild;
         _AndroidResolveReferences;
         _AndroidPrepareProfiledAot;
-        _AndroidAotCompile;
+        $(_AotCompileTargetName);
         _BuildNativeLibrary;
         _AndroidGenerateAppBundle;
         _AfterAndroidBuild

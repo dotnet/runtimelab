@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TargetFramework>$(NetCoreAppCurrent)</TargetFramework>
+    <RuntimeIdentifier>android-$(TargetArchitecture)</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>Link</TrimMode>
+    <UseNativeAOTRuntime Condition="'$(UseNativeAOTRuntime)' == ''">true</UseNativeAOTRuntime>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <NativeLib>static</NativeLib>
+    <CustomNativeMain>true</CustomNativeMain>
+    <!-- Escape NativeAOT bundling targets -->
+    <NativeCompilationDuringPublish>false</NativeCompilationDuringPublish>
+    <StripSymbols>false</StripSymbols>
+    <UseAppHost>false</UseAppHost>
+  </PropertyGroup>
+
+  <Import Project="$(MonoProjectRoot)\msbuild\android\build\AndroidBuild.props" />
+  <Import Project="$(MonoProjectRoot)\msbuild\android\build\AndroidBuild.InTree.targets" />
+  <Import Condition="'$(PublishAotUsingRuntimePack)' != 'true'" Project="$(CoreClrProjectRoot)nativeaot\BuildIntegration\Microsoft.DotNet.ILCompiler.SingleEntry.targets" />
+
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.Resources.UseSystemResourceKeys" Value="true" Trim="true" />
+    <!-- Copy JNIEnvironment/Java.Interop.dll to the coreroot directory so the ILCompiler can find it. -->
+    <Reference Include="Java.Interop.dll" >
+      <HintPath>JNIEnvironment/Java.Interop.dll</HintPath>
+    </Reference>
+
+    <Compile Include="Program.cs" Link="Program.cs" />
+    <Compile Include="JNIEnvironment/AndroidRuntime.cs" Link="AndroidRuntime.cs" />
+    <Compile Include="JNIEnvironment/JreTypeManager.cs" Link="JreTypeManager.cs" />
+    <Compile Include="JNIEnvironment/ManagedObjectReferenceManager.cs" Link="ManagedObjectReferenceManager.cs" />
+    <Compile Include="JNIEnvironment/ManagedValueManager.cs" Link="ManagedValueManager.cs" />
+    <Compile Include="JNIEnvironment/MonoRuntimeObjectReferenceManager.cs" Link="MonoRuntimeObjectReferenceManager.cs" />
+    <Compile Include="JNIEnvironment/MonoRuntimeValueManager.cs" Link="MonoRuntimeValueManager.cs" />
+    <Compile Include="JNIEnvironment/JniMethodSignatureAttribute.cs" Link="JniMethodSignatureAttribute.cs" />
+    <Compile Include="JNIEnvironment/JniMemberSignatureAttribute.cs" Link="JniMemberSignatureAttribute.cs" />
+
+    <DirectPInvoke Include="__Internal" />
+    <!-- The libbootstrapper and libbootstrapperdll get copied over to the AppDir, and since their extension is *.o both get included in the app build which results with an error.
+         This was not a problem before when these libraries were shipped as archives. -->
+    <_ExcludeFromAppDir Condition="'$(PublishAotUsingRuntimePack)' == 'true'"
+                        Include="libbootstrapper.o" />
+  </ItemGroup>
+
+  <!-- Run before ILC setup  -->
+  <Target Name="ConfigureIlcPathsForiOSCrossCompilation" Condition="'$(PublishAotUsingRuntimePack)' != 'true'"
+    BeforeTargets="SetupProperties">
+      <PropertyGroup>
+        <IlcToolsPath>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(TargetArchitecture).$(CoreCLRConfiguration)', 'ilc-published'))</IlcToolsPath>
+        <IlcSdkPath>$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', 'linux.$(TargetArchitecture).$(CoreCLRConfiguration)', 'aotsdk'))</IlcSdkPath>
+        <IlcFrameworkPath>$(LibrariesAllBinArtifactsPath)</IlcFrameworkPath>
+        <IlcFrameworkNativePath>$(LibrariesAllBinArtifactsPath)</IlcFrameworkNativePath>
+    </PropertyGroup>
+  </Target>
+</Project>

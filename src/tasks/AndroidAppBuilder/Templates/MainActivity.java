@@ -9,44 +9,48 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Button;
 import android.graphics.Color;
+import android.view.View;
+import net.dot.AndroidSampleApp.R;
 
 public class MainActivity extends Activity
 {
+    private static TextView textView;
+    private static Button button;
+
+    public static long startTime;
+    public static long endTime;    
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
 
-        final String entryPointLibName = "%EntryPointLibName%";
-        final TextView textView = new TextView(this);
-        textView.setTextSize(20);
+        setContentView(R.layout.activity_main);
+        button = (Button) findViewById(R.id.button1);
 
-        RelativeLayout rootLayout = new RelativeLayout(this);
-        RelativeLayout.LayoutParams tvLayout =
-                new RelativeLayout.LayoutParams(
-                        RelativeLayout.LayoutParams.WRAP_CONTENT,
-                        RelativeLayout.LayoutParams.WRAP_CONTENT);
-
-        tvLayout.addRule(RelativeLayout.CENTER_HORIZONTAL);
-        tvLayout.addRule(RelativeLayout.CENTER_VERTICAL);
-        rootLayout.addView(textView, tvLayout);
-        setContentView(rootLayout);
-
-        if (entryPointLibName == "" || entryPointLibName.startsWith("%")) {
-            textView.setText("ERROR: EntryPointLibName was not set.");
-            return;
-        } else {
-            textView.setText("Running " + entryPointLibName + "...");
-        }
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                MonoRunner.onClick();
+            }
+        });
 
         final Activity ctx = this;
         new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
             @Override
             public void run() {
-                int retcode = MonoRunner.initialize(entryPointLibName, new String[0], ctx);
-                textView.setText("Mono Runtime returned: " + retcode);
+                startTime = System.nanoTime();
+                int retcode = MonoRunner.initialize(new String[0], ctx);
+                endTime = System.nanoTime();
+                System.out.println ("Runtime startup time: "+ ((endTime - startTime) / 1000 / 1000) + " ms");
             }
         }, 1000);
+    }
+
+    public static void setText (String text) {
+        button.setText (text);
     }
 }

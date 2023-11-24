@@ -21,7 +21,9 @@ add_library(
 
 %Defines%
 
-include_directories("%MonoInclude%")
+if(NOT %UseNativeAOTRuntime%)
+    include_directories("%MonoInclude%")
+endif()
 
 target_link_libraries(
     monodroid

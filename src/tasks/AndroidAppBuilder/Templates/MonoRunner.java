@@ -32,15 +32,10 @@ import java.time.ZoneOffset;
 
 public class MonoRunner extends Instrumentation
 {
-    static {
-        // loadLibrary triggers JNI_OnLoad in these libs
-        System.loadLibrary("%JNI_LIBRARY_NAME%");
-        System.loadLibrary("monodroid");
-    }
 
-    static String testResultsDir;
     static String entryPointLibName = "%EntryPointLibName%";
     static Bundle result = new Bundle();
+    static Context activityContext;
 
     private String[] argsToForward;
 
@@ -74,95 +69,40 @@ public class MonoRunner extends Instrumentation
         start();
     }
 
-    public static int initialize(String entryPointLibName, String[] args, Context context) {
-        String filesDir = context.getFilesDir().getAbsolutePath();
-        String cacheDir = context.getCacheDir().getAbsolutePath();
+    public static int initialize(String[] args, Context context) {
+        System.loadLibrary("monodroid");
+        Log.i("DOTNET", "MonoRunner initialize");
+        activityContext = context;
+        int retcode = initRuntime();
 
-        File docsPath = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);
-
-        // on Android API 30 there are "adb pull" permission issues with getExternalFilesDir() paths on emulators, see https://github.com/dotnet/xharness/issues/385
-        if (docsPath == null || android.os.Build.VERSION.SDK_INT == 30) {
-            testResultsDir = context.getCacheDir().getAbsolutePath();
-        } else {
-            testResultsDir = docsPath.getAbsolutePath();
-        }
-
-        // unzip libs and test files to filesDir
-        unzipAssets(context, filesDir, "assets.zip");
-
-        Log.i("DOTNET", "MonoRunner initialize,, entryPointLibName=" + entryPointLibName);
-        int localDateTimeOffset = getLocalDateTimeOffset();
-        return initRuntime(filesDir, cacheDir, testResultsDir, entryPointLibName, args, localDateTimeOffset);
+        return retcode;
     }
 
     @Override
     public void onStart() {
         Looper.prepare();
-
-        if (entryPointLibName == "") {
-            Log.e("DOTNET", "Missing entrypoint argument, pass '-e entrypoint:libname <name.dll>' to adb to specify which program to run.");
-            finish(1, null);
-            return;
-        }
-        int retcode = initialize(entryPointLibName, argsToForward, getContext());
+        int retcode = initialize(argsToForward, getContext());
 
         Log.i("DOTNET", "MonoRunner finished, return-code=" + retcode);
         result.putInt("return-code", retcode);
 
-        // Xharness cli expects "test-results-path" with test results
-        File testResults = new File(testResultsDir + "/testResults.xml");
-        if (testResults.exists()) {
-            Log.i("DOTNET", "MonoRunner finished, test-results-path=" + testResults.getAbsolutePath());
-            result.putString("test-results-path", testResults.getAbsolutePath());
-        }
-
         finish(retcode, result);
     }
 
-    static void unzipAssets(Context context, String toPath, String zipName) {
-        AssetManager assetManager = context.getAssets();
-        try {
-            InputStream inputStream = assetManager.open(zipName);
-            ZipInputStream zipInputStream = new ZipInputStream(new BufferedInputStream(inputStream));
-            ZipEntry zipEntry;
-            byte[] buffer = new byte[4096];
-            while ((zipEntry = zipInputStream.getNextEntry()) != null) {
-                String fileOrDirectory = zipEntry.getName();
-                Uri.Builder builder = new Uri.Builder();
-                builder.scheme("file");
-                builder.appendPath(toPath);
-                builder.appendPath(fileOrDirectory);
-                String fullToPath = builder.build().getPath();
-                if (zipEntry.isDirectory()) {
-                    File directory = new File(fullToPath);
-                    directory.mkdirs();
-                    continue;
-                }
-                Log.i("DOTNET", "Extracting asset to " + fullToPath);
-                int count = 0;
-                FileOutputStream fileOutputStream = new FileOutputStream(fullToPath);
-                while ((count = zipInputStream.read(buffer)) != -1) {
-                    fileOutputStream.write(buffer, 0, count);
-                }
-                fileOutputStream.close();
-                zipInputStream.closeEntry();
-            }
-            zipInputStream.close();
-        } catch (IOException e) {
-            Log.e("DOTNET", e.getLocalizedMessage());
+    public static void onClick() {
+        OnButtonClick();
+    }
+
+    public static void setText(String text) {
+        if (activityContext instanceof MainActivity) {
+            MainActivity mainActivity = (MainActivity) activityContext;
+            mainActivity.setText (text);
         }
     }
 
-    static int getLocalDateTimeOffset() {
-        if (android.os.Build.VERSION.SDK_INT >= 26) {
-            return OffsetDateTime.now().getOffset().getTotalSeconds();
-        } else {
-            int offsetInMillis = Calendar.getInstance().getTimeZone().getRawOffset();
-            return offsetInMillis / 1000;
-        }
-    }
+    static native int initRuntime();
 
-    static native int initRuntime(String libsDir, String cacheDir, String testResultsDir, String entryPointLibName, String[] args, int local_date_time_offset);
+    static native void OnButtonClick();
 
     static native int setEnv(String key, String value);
 }

@@ -18,6 +18,8 @@ public class AndroidAppBuilderTask : Task
     [Required]
     public string AppDir { get; set; } = ""!;
 
+    public string ResourceDir { get; set; } = ""!;
+
     /// <summary>
     /// This library will be used as an entry-point (e.g. TestRunner.dll)
     /// </summary>
@@ -66,7 +68,7 @@ public class AndroidAppBuilderTask : Task
     /// <summary>
     /// List of enabled runtime components
     /// </summary>
-    public string[] RuntimeComponents { get; set; } = Array.Empty<string>();
+    public string? RuntimeComponents { get; set; } = ""!;
 
     /// <summary>
     /// Diagnostic ports configuration string
@@ -106,6 +108,11 @@ public class AndroidAppBuilderTask : Task
 
     public bool ForceInterpreter { get; set; }
 
+    /// <summary>
+    /// Bundles the application for NativeAOT runtime. Default runtime is Mono.
+    /// </summary>
+    public bool UseNativeAOTRuntime { get; set; }
+
     [Output]
     public string ApkBundlePath { get; set; } = ""!;
 
@@ -117,6 +124,7 @@ public class AndroidAppBuilderTask : Task
         var apkBuilder = new ApkBuilder(Log);
         apkBuilder.ProjectName = ProjectName;
         apkBuilder.AppDir = AppDir;
+        apkBuilder.ResourceDir = ResourceDir;
         apkBuilder.OutputDir = OutputDir;
         apkBuilder.AndroidSdk = AndroidSdk;
         apkBuilder.AndroidNdk = AndroidNdk;
@@ -138,6 +146,7 @@ public class AndroidAppBuilderTask : Task
         apkBuilder.IsLibraryMode = IsLibraryMode;
         apkBuilder.NativeDependencies = NativeDependencies;
         apkBuilder.ExtraLinkerArguments = ExtraLinkerArguments;
+        apkBuilder.UseNativeAOTRuntime = UseNativeAOTRuntime;
         (ApkBundlePath, ApkPackageId) = apkBuilder.BuildApk(RuntimeIdentifier, MainLibraryFileName, MonoRuntimeHeaders);
 
         return true;

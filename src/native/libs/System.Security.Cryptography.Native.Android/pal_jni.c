@@ -1093,8 +1093,9 @@ JNI_OnLoad(JavaVM *vm, void *reserved)
 
     g_TrustManager = GetClassGRef(env, "javax/net/ssl/TrustManager");
 
-    g_DotnetProxyTrustManager =     GetClassGRef(env, "net/dot/android/crypto/DotnetProxyTrustManager");
-    g_DotnetProxyTrustManagerCtor = GetMethod(env, false, g_DotnetProxyTrustManager, "<init>", "(J)V");
+    // The manager cannot be found during the startup, further investigation is needed
+    // g_DotnetProxyTrustManager =     GetClassGRef(env, "net/dot/android/crypto/DotnetProxyTrustManager");
+    // g_DotnetProxyTrustManagerCtor = GetMethod(env, false, g_DotnetProxyTrustManager, "<init>", "(J)V");
 
     return JNI_VERSION_1_6;
 }

@@ -1,0 +1,4 @@
+V1.0 {
+    global: _init; _fini; __managed__Main; Java_net_dot_MonoRunner_setEnv; Java_net_dot_MonoRunner_initRuntime; Java_net_dot_MonoRunner_OnButtonClick; Java_net_dot_MonoRunner_intFromJNI; Java_net_dot_MonoRunner_onClickNative; register_button_click; JNI_OnLoad;
+    local: *;
+};

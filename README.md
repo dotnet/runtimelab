@@ -1,3 +1,13 @@
+# .NET Runtime - Native AOT for Android
+
+This branch contains experimental fork of [.NET runtime](http://github.com/dotnet/runtime) focused on enabling Native AOT for Android apps to achieve a smaller app size and faster app startup time. Native AOT offers features that can be beneficial for Android development. It includes the ILCompiler, which performs full program optimization and managed code trimming based on code generation information for more precise removal of unused types and unreachable methods. Additionally, it uses direct addressing without runtime relocations. The Native AOT runtime also contains essential functionalities like garbage collection, exception handling, type casting, and stack walking.
+
+## Samples
+
+The sample application `samples/Android-NativeAOT` serves as a functional test that should prototype Native AOT support for Android emulators and devices. Java interoperability enables Android app developers to be able to call Java APIs on Android to create an app with a more native experience. Thus, adding Java interaction support to Native AOT is crucial to support Native AOT for Xamarin/Maui Android framework. This enables the use of Java APIs for drawing and interacting with Java-native components and widgets. The `README.md` file in the sample directory will guide you through the process on how to build and run the app step by step.
+
+---
+
 # .NET Runtime
 
 [![Build Status](https://dev.azure.com/dnceng-public/public/_apis/build/status/dotnet/runtime/runtime?branchName=main)](https://dev.azure.com/dnceng-public/public/_build/latest?definitionId=129&branchName=main)

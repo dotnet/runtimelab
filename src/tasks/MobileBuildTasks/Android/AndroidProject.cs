@@ -156,6 +156,7 @@ namespace Microsoft.Android.Build
                 "android-x64" => "x86_64",
                 "android-arm" => "armeabi-v7a",
                 "android-arm64" => "arm64-v8a",
+                "linux-bionic-arm64" => "arm64-v8a",
                 _ => throw new ArgumentException($"{runtimeIdentifier} is not supported for Android"),
             };
     }
