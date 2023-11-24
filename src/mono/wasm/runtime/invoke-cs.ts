@@ -11,45 +11,36 @@ import {
     get_arg, get_sig, get_signature_argument_count, is_args_exception,
     bound_cs_function_symbol, get_signature_version, alloc_stack_frame, get_signature_type,
 } from "./marshal";
-import { mono_wasm_new_external_root, mono_wasm_new_root } from "./roots";
+import { mono_wasm_new_root } from "./roots";
 import { monoStringToString } from "./strings";
-import { MonoObjectRef, MonoStringRef, MonoString, MonoObject, MonoMethod, JSMarshalerArguments, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, VoidPtrNull, MonoObjectRefNull, MonoObjectNull, MarshalerType } from "./types/internal";
-import { Int32Ptr } from "./types/emscripten";
+import { MonoString, MonoMethod, JSMarshalerArguments, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, VoidPtrNull, MonoObjectRefNull, MonoObjectNull, MarshalerType } from "./types/internal";
+import { CharPtr, Int32Ptr } from "./types/emscripten";
 import cwraps from "./cwraps";
 import { assembly_load } from "./class-loader";
-import { assert_bindings, wrap_error_root, wrap_no_error_root } from "./invoke-js";
+import { assert_bindings, wrap_error, wrap_no_error } from "./invoke-js";
 import { startMeasure, MeasuredBlock, endMeasure } from "./profiler";
 import { mono_log_debug } from "./logging";
 import { assert_synchronization_context } from "./pthreads/shared";
 
-export function mono_wasm_bind_cs_function(fully_qualified_name: MonoStringRef, signature_hash: number, signature: JSFunctionSignature, is_exception: Int32Ptr, result_address: MonoObjectRef): void {
+export function mono_wasm_bind_cs_function(fully_qualified_name: CharPtr, fully_qualified_name_length: number, signature_hash: number, signature: JSFunctionSignature, is_exception: Int32Ptr): void {
     assert_bindings();
-    const fqn_root = mono_wasm_new_external_root<MonoString>(fully_qualified_name), resultRoot = mono_wasm_new_external_root<MonoObject>(result_address);
     const mark = startMeasure();
     try {
         const version = get_signature_version(signature);
         mono_assert(version === 2, () => `Signature version ${version} mismatch.`);
 
         const args_count = get_signature_argument_count(signature);
-        const js_fqn = monoStringToString(fqn_root)!;
+        const js_fqn = Module.UTF8ToString(fully_qualified_name, fully_qualified_name_length);
         mono_assert(js_fqn, "fully_qualified_name must be string");
 
         mono_log_debug(`Binding [JSExport] ${js_fqn}`);
 
         const { assembly, namespace, classname, methodname } = parseFQN(js_fqn);
-
-        const asm = assembly_load(assembly);
-        if (!asm)
-            throw new Error("Could not find assembly: " + assembly);
-
-        const klass = cwraps.mono_wasm_assembly_find_class(asm, namespace, classname);
-        if (!klass)
-            throw new Error("Could not find class: " + namespace + ":" + classname + " in assembly " + assembly);
-
-        const wrapper_name = `__Wrapper_${methodname}_${signature_hash}`;
-        const method = cwraps.mono_wasm_assembly_find_method(klass, wrapper_name, -1);
+        
+        const wrapper_name = fixupSymbolName(`${js_fqn}_${signature_hash}`);
+        const method = (Module as any)["_" + wrapper_name];
         if (!method)
-            throw new Error(`Could not find method: ${wrapper_name} in ${klass} [${assembly}]`);
+            throw new Error(`Could not find method: ${wrapper_name} in ${js_fqn}`);
 
         const arg_marshalers: (BoundMarshalerToCs)[] = new Array(args_count);
         for (let index = 0; index < args_count; index++) {
@@ -111,15 +102,34 @@ export function mono_wasm_bind_cs_function(fully_qualified_name: MonoStringRef, 
 
         _walk_exports_to_set_function(assembly, namespace, classname, methodname, signature_hash, bound_fn);
         endMeasure(mark, MeasuredBlock.bindCsFunction, js_fqn);
-        wrap_no_error_root(is_exception, resultRoot);
+        wrap_no_error(is_exception);
     }
     catch (ex: any) {
         Module.err(ex.toString());
-        wrap_error_root(is_exception, ex, resultRoot);
-    } finally {
-        resultRoot.release();
-        fqn_root.release();
+        wrap_error(is_exception, ex);
     }
+}
+
+const s_charsToReplace = [".", "-", "+"];
+
+function fixupSymbolName(name: string) {
+    // Sync with JSExportGenerator.FixupSymbolName
+    let result = "";
+    for (let index = 0; index < name.length; index++) {
+        const b = name[index];
+        if ((b >= "0" && b <= "9") ||
+            (b >= "a" && b <= "z") ||
+            (b >= "A" && b <= "Z") ||
+            (b == "_")) {
+            result += b;
+        } else if( s_charsToReplace.includes(b)) {
+            result += "_";
+        } else {
+            result += `_${b.charCodeAt(0).toString(16).toUpperCase()}_`;
+        }
+    }
+
+    return result;
 }
 
 function bind_fn_0V(closure: BindingClosure) {
@@ -134,7 +144,7 @@ function bind_fn_0V(closure: BindingClosure) {
         try {
             const args = alloc_stack_frame(2);
             // call C# side
-            invoke_method_and_handle_exception(method, args);
+            method(args); // TODO MF: handle exception
         } finally {
             Module.stackRestore(sp);
             endMeasure(mark, MeasuredBlock.callCsFunction, fqn);
@@ -157,7 +167,7 @@ function bind_fn_1V(closure: BindingClosure) {
             marshaler1(args, arg1);
 
             // call C# side
-            invoke_method_and_handle_exception(method, args);
+            method(args); // TODO MF: handle exception
         } finally {
             Module.stackRestore(sp);
             endMeasure(mark, MeasuredBlock.callCsFunction, fqn);
@@ -181,7 +191,7 @@ function bind_fn_1R(closure: BindingClosure) {
             marshaler1(args, arg1);
 
             // call C# side
-            invoke_method_and_handle_exception(method, args);
+            method(args); // TODO MF: handle exception
 
             const js_result = res_converter(args);
             return js_result;
@@ -210,7 +220,7 @@ function bind_fn_2R(closure: BindingClosure) {
             marshaler2(args, arg2);
 
             // call C# side
-            invoke_method_and_handle_exception(method, args);
+            method(args); // TODO MF: handle exception
 
             const js_result = res_converter(args);
             return js_result;
@@ -244,7 +254,7 @@ function bind_fn(closure: BindingClosure) {
             }
 
             // call C# side
-            invoke_method_and_handle_exception(method, args);
+            method(args); // TODO MF: handle exception
 
             if (res_converter) {
                 const js_result = res_converter(args);
@@ -260,7 +270,7 @@ function bind_fn(closure: BindingClosure) {
 type BindingClosure = {
     fqn: string,
     args_count: number,
-    method: MonoMethod,
+    method: Function,
     arg_marshalers: (BoundMarshalerToCs)[],
     res_converter: BoundMarshalerToJs | undefined,
     isDisposed: boolean,
@@ -317,34 +327,10 @@ export async function mono_wasm_get_assembly_exports(assembly: string): Promise<
     const result = exportsByAssembly.get(assembly);
     if (!result) {
         const mark = startMeasure();
-        const asm = assembly_load(assembly);
-        if (!asm)
-            throw new Error("Could not find assembly: " + assembly);
+        
+        const register = (Module as any)["_" + assembly + "__GeneratedInitializer" + "__Register_"];
+        mono_assert(register, `Missing wasm export for JSExport registration function in assembly ${assembly}`);
 
-        const klass = cwraps.mono_wasm_assembly_find_class(asm, runtimeHelpers.runtime_interop_namespace, "__GeneratedInitializer");
-        if (klass) {
-            const method = cwraps.mono_wasm_assembly_find_method(klass, "__Register_", -1);
-            if (method) {
-                const outException = mono_wasm_new_root();
-                const outResult = mono_wasm_new_root<MonoString>();
-                try {
-                    cwraps.mono_wasm_invoke_method_ref(method, MonoObjectRefNull, VoidPtrNull, outException.address, outResult.address);
-                    if (outException.value !== MonoObjectNull) {
-                        const msg = monoStringToString(outResult)!;
-                        throw new Error(msg);
-                    }
-                }
-                finally {
-                    outException.release();
-                    outResult.release();
-                }
-            }
-        } else {
-            mono_assert(!MonoWasmThreads, () => `JSExport with multi-threading enabled is not supported with assembly ${assembly} as it was generated with the .NET 7 SDK`);
-            // this needs to stay here for compatibility with assemblies generated in Net7
-            // it doesn't have the __GeneratedInitializer class
-            cwraps.mono_wasm_runtime_run_module_cctor(asm);
-        }
         endMeasure(mark, MeasuredBlock.getAssemblyExports, assembly);
     }
 

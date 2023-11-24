@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 internal static partial class Interop
 {
@@ -11,16 +12,17 @@ internal static partial class Interop
     // otherwise out parameters could stay un-initialized, when the method is used in inlined context
     internal static unsafe partial class Runtime
     {
+#pragma warning disable SYSLIB1054
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal static extern void ReleaseCSOwnedObject(IntPtr jsHandle);
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern unsafe void BindJSFunction(in string function_name, in string module_name, void* signature, out IntPtr bound_function_js_handle, out int is_exception, out object result);
+        [DllImport("*", EntryPoint = "mono_wasm_bind_js_function")]
+        public static extern unsafe void BindJSFunction(string function_name, int function_name_length, string module_name, int module_name_length, void* signature, out IntPtr bound_function_js_handle, out int is_exception);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern void InvokeJSFunction(IntPtr bound_function_js_handle, void* data);
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern void InvokeImport(IntPtr fn_handle, void* data);
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern unsafe void BindCSFunction(in string fully_qualified_name, int signature_hash, void* signature, out int is_exception, out object result);
+        [DllImport("*", EntryPoint = "mono_wasm_invoke_import")]
+        public static extern unsafe void InvokeImport(IntPtr fn_handle, void* data);
+        [DllImport("*", EntryPoint = "mono_wasm_bind_cs_function")]
+        public static extern unsafe void BindCSFunction(string fully_qualified_name, int fully_qualified_name_length, int signature_hash, void* signature, out int is_exception);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern void ResolveOrRejectPromise(void* data);
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -59,5 +61,6 @@ internal static partial class Interop
 
         #endregion
 
+#pragma warning restore SYSLIB1054
     }
 }

@@ -7,12 +7,11 @@ import BuildConfiguration from "consts:configuration";
 import { marshal_exception_to_cs, bind_arg_marshal_to_cs } from "./marshal-to-cs";
 import { get_signature_argument_count, bound_js_function_symbol, get_sig, get_signature_version, get_signature_type, imported_js_function_symbol } from "./marshal";
 import { setI32, setI32_unchecked, receiveWorkerHeapViews } from "./memory";
-import { monoStringToString, stringToMonoStringRoot } from "./strings";
-import { MonoObject, MonoObjectRef, MonoString, MonoStringRef, JSFunctionSignature, JSMarshalerArguments, WasmRoot, BoundMarshalerToJs, JSFnHandle, BoundMarshalerToCs, JSHandle, MarshalerType } from "./types/internal";
-import { Int32Ptr } from "./types/emscripten";
+import { stringToMonoStringRoot } from "./strings";
+import { MonoObject, JSFunctionSignature, JSMarshalerArguments, WasmRoot, BoundMarshalerToJs, JSFnHandle, BoundMarshalerToCs, JSHandle, MarshalerType } from "./types/internal";
+import { CharPtr, Int32Ptr } from "./types/emscripten";
 import { INTERNAL, Module, loaderHelpers, mono_assert, runtimeHelpers } from "./globals";
 import { bind_arg_marshal_to_js } from "./marshal-to-js";
-import { mono_wasm_new_external_root } from "./roots";
 import { mono_log_debug, mono_wasm_symbolicate_string } from "./logging";
 import { mono_wasm_get_jsobj_from_js_handle } from "./gc-handles";
 import { endMeasure, MeasuredBlock, startMeasure } from "./profiler";
@@ -21,18 +20,15 @@ import { assert_synchronization_context } from "./pthreads/shared";
 
 export const fn_wrapper_by_fn_handle: Function[] = <any>[null];// 0th slot is dummy, main thread we free them on shutdown. On web worker thread we free them when worker is detached.
 
-export function mono_wasm_bind_js_function(function_name: MonoStringRef, module_name: MonoStringRef, signature: JSFunctionSignature, function_js_handle: Int32Ptr, is_exception: Int32Ptr, result_address: MonoObjectRef): void {
+export function mono_wasm_bind_js_function(function_name: CharPtr, function_name_length: number, module_name: CharPtr, module_name_length: number, signature: JSFunctionSignature, function_js_handle: Int32Ptr, is_exception: Int32Ptr): void {
     assert_bindings();
-    const function_name_root = mono_wasm_new_external_root<MonoString>(function_name),
-        module_name_root = mono_wasm_new_external_root<MonoString>(module_name),
-        resultRoot = mono_wasm_new_external_root<MonoObject>(result_address);
     try {
         const version = get_signature_version(signature);
         mono_assert(version === 2, () => `Signature version ${version} mismatch.`);
 
-        const js_function_name = monoStringToString(function_name_root)!;
+        const js_function_name = Module.UTF8ToString(function_name, function_name_length);
         const mark = startMeasure();
-        const js_module_name = monoStringToString(module_name_root)!;
+        const js_module_name = Module.UTF8ToString(module_name, module_name_length);
         mono_log_debug(`Binding [JSImport] ${js_function_name} from ${js_module_name} module`);
 
         const fn = mono_wasm_lookup_function(js_function_name, js_module_name);
@@ -109,15 +105,12 @@ export function mono_wasm_bind_js_function(function_name: MonoStringRef, module_
         const fn_handle = fn_wrapper_by_fn_handle.length;
         fn_wrapper_by_fn_handle.push(bound_fn);
         setI32(function_js_handle, <any>fn_handle);
-        wrap_no_error_root(is_exception, resultRoot);
+        wrap_no_error(is_exception);
         endMeasure(mark, MeasuredBlock.bindJsFunction, js_function_name);
     } catch (ex: any) {
         setI32(function_js_handle, 0);
         Module.err(ex.toString());
-        wrap_error_root(is_exception, ex, resultRoot);
-    } finally {
-        resultRoot.release();
-        function_name_root.release();
+        wrap_error(is_exception, ex);
     }
 }
 
@@ -391,6 +384,9 @@ export function wrap_error_root(is_exception: Int32Ptr | null, ex: any, result: 
     const res = _wrap_error_flag(is_exception, ex);
     stringToMonoStringRoot(res, <any>result);
 }
+export function wrap_error(is_exception: Int32Ptr | null, ex: any): void {
+    _wrap_error_flag(is_exception, ex);
+}
 
 // to set out parameters of icalls
 export function wrap_no_error_root(is_exception: Int32Ptr | null, result?: WasmRoot<MonoObject>): void {
@@ -400,6 +396,13 @@ export function wrap_no_error_root(is_exception: Int32Ptr | null, result?: WasmR
     }
     if (result) {
         result.clear();
+    }
+}
+
+export function wrap_no_error(is_exception: Int32Ptr | null): void {
+    if (is_exception) {
+        receiveWorkerHeapViews();
+        setI32_unchecked(is_exception, 0);
     }
 }
 

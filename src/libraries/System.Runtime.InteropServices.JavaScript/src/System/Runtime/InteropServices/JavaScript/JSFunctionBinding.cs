@@ -226,9 +226,9 @@ namespace System.Runtime.InteropServices.JavaScript
 
             var signature = JSHostImplementation.GetMethodSignature(signatures);
 
-            Interop.Runtime.BindJSFunction(functionName, moduleName, signature.Header, out IntPtr jsFunctionHandle, out int isException, out object exceptionMessage);
+            Interop.Runtime.BindJSFunction(functionName, functionName.Length, moduleName, moduleName.Length, signature.Header, out IntPtr jsFunctionHandle, out int isException);
             if (isException != 0)
-                throw new JSException((string)exceptionMessage);
+                throw new JSException("Runtime.BindJSFunction failed");
 
             signature.FnHandle = jsFunctionHandle;
 
@@ -241,10 +241,10 @@ namespace System.Runtime.InteropServices.JavaScript
         {
             var signature = JSHostImplementation.GetMethodSignature(signatures);
 
-            Interop.Runtime.BindCSFunction(fullyQualifiedName, signatureHash, signature.Header, out int isException, out object exceptionMessage);
+            Interop.Runtime.BindCSFunction(fullyQualifiedName, fullyQualifiedName.Length, signatureHash, signature.Header, out int isException);
             if (isException != 0)
             {
-                throw new JSException((string)exceptionMessage);
+                throw new JSException("Runtime.BindCSFunction failed");
             }
 
             JSHostImplementation.FreeMethodSignatureBuffer(signature);
