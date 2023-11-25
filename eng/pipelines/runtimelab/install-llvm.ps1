@@ -1,42 +1,92 @@
-param (
-    [string]$buildConfig
+[CmdletBinding(PositionalBinding=$false)]
+param(
+    [ValidateSet("Debug","Release")][string[]]$Configs = @("Debug","Release"),
+    [switch]$CI,
+    [switch]$NoClone,
+    [switch]$NoBuild
 )
 
-# LLVM is supplied in a xz file which Windows doesn't natively understand, so we need gz to unpack it - TODO this is liable to fail randomly when a new version comes out and the version number changes
-Invoke-WebRequest -Uri https://tukaani.org/xz/xz-5.2.5-windows.zip -OutFile xz.zip
-Expand-Archive -LiteralPath xz.zip -DestinationPath .
-copy bin_i686\xz.exe . # get it in the path for tar
+$ErrorActionPreference="Stop"
 
-Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.4/llvm-17.0.4.src.tar.xz -OutFile llvm-17.0.4.src.tar.xz
-
-./xz -d --force llvm-17.0.4.src.tar.xz
-tar -xf llvm-17.0.4.src.tar
-
-Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.4/cmake-17.0.4.src.tar.xz -OutFile cmake-17.0.4.src.tar.xz
-
-./xz -d --force cmake-17.0.4.src.tar.xz
-tar -xf cmake-17.0.4.src.tar
-mv cmake-17.0.4.src cmake
-
-Invoke-WebRequest -Uri https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.4/third-party-17.0.4.src.tar.xz -OutFile third-party-17.0.4.src.tar.xz
-
-./xz -d --force third-party-17.0.4.src.tar.xz
-tar -xf third-party-17.0.4.src.tar
-mv third-party-17.0.4.src third-party
-
-cd llvm-17.0.4.src
-mkdir build
-cd build
-
-if($buildConfig -eq "Release")
+if (!(gcm git -ErrorAction SilentlyContinue))
 {
-    & "$env:CMakePath" -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release -DLLVM_USE_CRT_RELEASE=MT -DLLVM_INCLUDE_BENCHMARKS=OFF -Thost=x64 ..
+   Write-Error "Unable to find 'git' in PATH"
+   exit 1
 }
-else
+if (!(gcm cmake -ErrorAction SilentlyContinue))
 {
-    & "$env:CMakePath" -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Debug -DLLVM_USE_CRT_DEBUG=MTd -DLLVM_INCLUDE_BENCHMARKS=OFF -Thost=x64 ..
+   Write-Error "Unable to find 'cmake' in PATH"
+   exit 1
 }
 
-& "$env:CMakePath" --build . --config $buildConfig --target LLVMCore
-& "$env:CMakePath" --build . --config $buildConfig --target LLVMBitWriter
-#& "$env:CMakePath" --build . --target LLVMDebugInfoDwarf
+if (!$NoClone)
+{
+    $LlvmProjectTag = "llvmorg-17.0.4"
+    $DepthOption = if ($CI) {"--depth","1"} {}
+    git clone https://github.com/llvm/llvm-project --branch $LlvmProjectTag $DepthOption
+}
+elseif (!(Test-Path llvm-project))
+{
+    Write-Error "llvm-project repository not present in the current directory"
+    exit 1
+}
+
+foreach ($Config in $Configs)
+{
+    pushd llvm-project
+    $BuildDirName = "build-$($Config.ToLower())"
+    mkdir $BuildDirName -Force
+
+    $BuildDirPath = "$pwd/$BuildDirName"
+    $SourceDirName = "$pwd/llvm"
+    popd
+
+    $CmakeConfigureCommandLine = "-G", "Visual Studio 17 2022", "-DLLVM_INCLUDE_BENCHMARKS=OFF", "-Thost=x64"
+    $CmakeConfigureCommandLine += "-S", $SourceDirName, "-B", $BuildDirPath
+    if ($Config -eq "Release")
+    {
+        $LlvmConfig = "Release"
+        $CmakeConfigureCommandLine += "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"
+    }
+    else
+    {
+        $LlvmConfig = "Debug"
+        $CmakeConfigureCommandLine += "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDebug"
+    }
+    $CmakeConfigureCommandLine += "-DCMAKE_BUILD_TYPE=$LlvmConfig"
+
+    Write-Host "Invoking CMake configure: 'cmake $CmakeConfigureCommandLine'"
+    cmake @CmakeConfigureCommandLine
+
+    if (!$NoBuild)
+    {
+        Write-Host "Invoking CMake --build"
+        cmake --build $BuildDirPath --config $LlvmConfig --target LLVMCore
+        cmake --build $BuildDirPath --config $LlvmConfig --target LLVMBitWriter
+    }
+
+    $LlvmCmakeConfigPath = "$BuildDirPath/lib/cmake/llvm"
+    if ($CI)
+    {
+        $LlvmCmakeConfigEnvVarName = "LLVM_CMAKE_CONFIG"
+    }
+    else
+    {
+        $LlvmCmakeConfigEnvVarName = if ($Config -eq "Release") {"LLVM_CMAKE_CONFIG_RELEASE"} {"LLVM_CMAKE_CONFIG_DEBUG"}
+    }
+
+    Write-Host "Setting $LlvmCmakeConfigEnvVarName to '$LlvmCmakeConfigPath'"
+    if ($CI)
+    {
+        Write-Output "##vso[task.setvariable variable=$LlvmCmakeConfigEnvVarName]$LlvmCmakeConfigPath"
+    }
+    else
+    {
+        [Environment]::SetEnvironmentVariable($LlvmCmakeConfigEnvVarName, $LlvmCmakeConfigPath, "Process")
+        if (![Environment]::GetEnvironmentVariable($LlvmCmakeConfigEnvVarName, "User"))
+        {
+            Write-Host "Also setting $LlvmCmakeConfigEnvVarName to '$LlvmCmakeConfigPath' for the user"
+            [Environment]::SetEnvironmentVariable($LlvmCmakeConfigEnvVarName, $LlvmCmakeConfigPath, "User")
+        }
+    }
+}
