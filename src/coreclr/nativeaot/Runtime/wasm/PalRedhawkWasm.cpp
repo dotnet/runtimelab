@@ -199,7 +199,7 @@ extern "C" int __cxa_thread_atexit(Dtor dtor, void* obj, void*)
 //
 REDHAWK_PALEXPORT _Ret_maybenull_ _Post_writable_byte_size_(size) void* REDHAWK_PALAPI PalVirtualAlloc(uintptr_t size, uint32_t protect)
 {
-    if ((protect != PAGE_READWRITE))
+    if (protect != PAGE_READWRITE)
     {
         RhFailFast(); // Not supported per the above.
     }
