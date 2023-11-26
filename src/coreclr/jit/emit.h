@@ -1,12 +1,9 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 /*****************************************************************************/
+#ifndef TARGET_WASM
 #ifndef _EMIT_H_
 #define _EMIT_H_
-
-#ifdef TARGET_WASM
-#define BITS_IN_BYTE (8) // TODO-LLVM: required for switchrecoginition.cpp SWITCH_MAX_DISTANCE
-#else
 
 #include "instr.h"
 

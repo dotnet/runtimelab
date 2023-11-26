@@ -27,7 +27,7 @@ namespace System.Globalization
         // This allows for the whole Settings nested class to be trimmed when Invariant=true, and allows for the Settings
         // static cctor (on Unix) to be preserved when Invariant=false.
         internal static bool Invariant => Settings.Invariant;
-#if TARGET_MACCATALYST || TARGET_IOS || TARGET_TVOS || TARGET_BROWSER || TARGET_WASI
+#if TARGET_MACCATALYST || TARGET_IOS || TARGET_TVOS || TARGET_BROWSER
         internal static bool Hybrid => Settings.Hybrid;
 #endif
         internal static bool PredefinedCulturesOnly => Settings.PredefinedCulturesOnly;
