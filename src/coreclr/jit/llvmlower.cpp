@@ -658,6 +658,7 @@ void Llvm::LowerArrLength(GenTreeArrCommon* node)
     }
     else
     {
+        // TODO-LLVM-CQ: use LEAs here.
         GenTree* con = _compiler->gtNewIconNode(lenOffset, TYP_I_IMPL);
         addr         = _compiler->gtNewOperNode(GT_ADD, TYP_BYREF, arr, con);
 
