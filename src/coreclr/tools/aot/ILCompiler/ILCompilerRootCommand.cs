@@ -155,10 +155,6 @@ namespace ILCompiler
             new("--singlemethodgenericarg") { Description = "Single method compilation: generic arguments to the method" };
         public CliOption<string> MakeReproPath { get; } =
             new("--make-repro-path") { Description = "Path where to place a repro package" };
-        public CliOption<string[]> WasmImport { get; } =
-            new("--wasmimport") { Description = "WebAssembly import module names for PInvoke functions"};
-        public CliOption<string[]> WasmImportList { get; } =
-            new("--wasmimportlist") {Description = "File with list of WebAssembly import module names for PInvoke functions"};
         public CliOption<string[]> UnmanagedEntryPointsAssemblies { get; } =
             new("--generateunmanagedentrypoints") { DefaultValueFactory = _ => Array.Empty<string>(), Description = "Generate unmanaged entrypoints for a given assembly" };
 
@@ -238,8 +234,6 @@ namespace ILCompiler
             Options.Add(SingleMethodName);
             Options.Add(SingleMethodGenericArgs);
             Options.Add(MakeReproPath);
-            Options.Add(WasmImport);
-            Options.Add(WasmImportList);
             Options.Add(UnmanagedEntryPointsAssemblies);
 
             this.SetAction(result =>

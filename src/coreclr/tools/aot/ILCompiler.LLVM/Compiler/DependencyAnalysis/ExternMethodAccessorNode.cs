@@ -35,7 +35,6 @@ namespace ILCompiler.DependencyAnalysis
         public void AddMethod(MethodDesc method)
         {
             method = method is PInvokeTargetNativeMethod nativeMethod ? nativeMethod.Target : method;
-
             switch (_methods)
             {
                 case null:
