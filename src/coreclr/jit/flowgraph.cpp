@@ -3777,7 +3777,7 @@ PhaseStatus Compiler::fgCreateThrowHelperBlocks()
 #if defined(TARGET_WASM)
         // Llvm has already run it's lower phase so these new blocks need to be lowered here.
         //
-        m_llvm->lowerRange(newBlk, LIR::AsRange(newBlk));
+        m_llvm->LowerRange(newBlk, LIR::AsRange(newBlk));
 #endif
     }
 
