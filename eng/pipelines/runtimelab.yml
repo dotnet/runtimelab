@@ -67,9 +67,10 @@ extends:
               timeoutInMinutes: 300
               testGroup: innerloop
               buildArgs: -s clr.aot+libs+nativeaot.packages -lc Release -rc Debug
-              extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-              extraStepsParameters:
-                librariesConfiguration: Release
+              postBuildSteps:
+                - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+                  parameters:
+                    librariesConfiguration: Release
 
       #
       # Build with Debug libraries and Checked runtime
@@ -86,10 +87,11 @@ extends:
               timeoutInMinutes: 100
               testGroup: innerloop
               buildArgs: -s clr+libs+host+packs -c debug -runtimeConfiguration Checked
-              extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-              extraStepsParameters:
-                uploadRuntimeTests: true
-                librariesConfiguration: Debug
+              postBuildSteps:
+                - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+                  parameters:
+                    uploadRuntimeTests: true
+                    librariesConfiguration: Debug
 
       #
       # Build with Release libraries and Release runtime (used for official builds) - Wasm
@@ -113,11 +115,48 @@ extends:
             timeoutInMinutes: 300
             isOfficialBuild: ${{ variables.isOfficialBuild }}
             testGroup: innerloop
-            buildArgs: -s clr.aot+libs+nativeaot.packages -c Release
-            extraStepsTemplate: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-            extraStepsParameters:
-              isOfficialBuild: ${{ variables.isOfficialBuild }}
-              librariesConfiguration: Release
+            postBuildSteps:
+              - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+                parameters:
+                  isOfficialBuild: ${{ variables.isOfficialBuild }}
+                  uploadLibrariesTests: ${{ eq(variables.isOfficialBuild, false) }}
+                  uploadIntermediateArtifacts: false
+                  librariesConfiguration: Release
+            ${{ if eq(variables.isOfficialBuild, false) }}:
+              buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig) /p:ArchiveTests=true
+            ${{ if eq(variables.isOfficialBuild, true) }}:
+              buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig)
+
+      #
+      # Build with Release allConfigurations to produce packages
+      #
+      - template: /eng/pipelines/common/platform-matrix.yml
+        parameters:
+          jobTemplate: /eng/pipelines/common/global-build-job.yml
+          buildConfig: Release
+          platforms:
+          - windows_x64
+          jobParameters:
+            isOfficialBuild: ${{ variables.isOfficialBuild }}
+            testGroup: innerloop
+            nameSuffix: AllConfigurations
+            buildArgs: -s libs -c $(_BuildConfig) -allConfigurations
+            ${{ if eq(variables.isOfficialBuild, true) }}:
+              postBuildSteps:
+                - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+                  parameters:
+                    uploadIntermediateArtifacts: true
+                    isOfficialBuild: true
+                    librariesBinArtifactName: libraries_bin_official_allconfigurations
+
+      # Installer official builds need to build installers and need the libraries all configurations build
+      - ${{ if eq(variables.isOfficialBuild, true) }}:
+        - template: /eng/pipelines/common/platform-matrix.yml
+          parameters:
+            jobTemplate: /eng/pipelines/installer/jobs/build-job.yml
+            jobParameters:
+              liveRuntimeBuildConfig: Release
+              liveLibrariesBuildConfig: Release
 
     - ${{ if eq(variables.isOfficialBuild, true) }}:
       - template: /eng/pipelines/official/stages/publish.yml

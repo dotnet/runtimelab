@@ -4,7 +4,6 @@ parameters:
   osGroup: ''
   osSubgroup: ''
   platform: ''
-  pgoType: ''
   runtimeVariant: ''
   uploadTests: false
   testFilter: tree nativeaot
@@ -59,7 +58,7 @@ steps:
         displayName: Run tests in single file mode
 
 # Upload unsigned artifacts
-- ${{ if eq(parameters.isOfficialBuild, true) }}:
+- ${{ if eq(parameters.uploadIntermediateArtifacts, true) }}:
   - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
     parameters:
-      name: ${{ parameters.platform }}
+      name: ${{ parameters.platform }}${{ parameters.nameSuffix }}

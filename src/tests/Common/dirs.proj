@@ -26,9 +26,12 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\StackTraceMetadata\StackTraceMetadata.csproj" Condition="'$(TargetOS)' == 'wasi'" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\StackTraceMetadata\StackTraceMetadata_Stripped.csproj" Condition="'$(TargetOS)' == 'browser'" />
       <DisabledProjects Include="$(TestRoot)nativeaot\GenerateUnmanagedEntryPoints\GenerateUnmanagedEntryPoints.csproj" />
+      <!--Determinism uses File.Open read which Wasm can't support without Wasi or Emscripten file system support which we don't enable by default. -->
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Determinism\Determinism.csproj" />
 
       <!-- Manual test. -->
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\WasmDebugging.csproj" />
+      <DisabledProjects Include="$(TestRoot)readytorun\**\*.csproj" Condition="'$(TestBuildMode)' == 'nativeaot'" />
     </ItemGroup>
 
     <ItemGroup>

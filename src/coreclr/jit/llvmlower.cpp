@@ -52,7 +52,7 @@ void Llvm::AddUnhandledExceptionHandler()
     // Set some flags on the new region. This is the same as when we set up
     // EH regions in fgFindBasicBlocks(). Note that the try has no enclosing
     // handler, and the filter with filter handler have no enclosing try.
-    firstTryBlock->bbFlags |= BBF_DONT_REMOVE | BBF_TRY_BEG | BBF_IMPORTED;
+    firstTryBlock->bbFlags |= BBF_DONT_REMOVE | BBF_IMPORTED;
     firstTryBlock->setTryIndex(newEhIndex);
     firstTryBlock->clearHndIndex();
 
@@ -251,11 +251,11 @@ void Llvm::lowerBlocks()
 
 void Llvm::lowerBlock(BasicBlock* block)
 {
-    lowerRange(block, LIR::AsRange(block));
+    LowerRange(block, LIR::AsRange(block));
     block->bbFlags |= BBF_MARKED;
 }
 
-void Llvm::lowerRange(BasicBlock* block, LIR::Range& range)
+void Llvm::LowerRange(BasicBlock* block, LIR::Range& range)
 {
     m_currentBlock = block;
     m_currentRange = &range;
@@ -307,6 +307,12 @@ void Llvm::lowerNode(GenTree* node)
         case GT_UDIV:
         case GT_UMOD:
             lowerDivMod(node->AsOp());
+            break;
+
+        case GT_ARR_LENGTH:
+        case GT_MDARR_LENGTH:
+        case GT_MDARR_LOWER_BOUND:
+            lowerArrLength(node->AsArrCommon());
             break;
 
         case GT_RETURN:
@@ -553,7 +559,7 @@ void Llvm::lowerIndir(GenTreeIndir* indirNode)
 {
     if ((indirNode->gtFlags & GTF_IND_NONFAULTING) == 0)
     {
-        _compiler->fgAddCodeRef(CurrentBlock(), _compiler->bbThrowIndex(CurrentBlock()), SCK_NULL_REF_EXCPN);
+        _compiler->fgAddCodeRef(CurrentBlock(), SCK_NULL_REF_EXCPN);
     }
 
     lowerAddressToAddressMode(indirNode);
@@ -590,12 +596,80 @@ void Llvm::lowerDivMod(GenTreeOp* divModNode)
     ExceptionSetFlags exceptions = divModNode->OperExceptions(_compiler);
     if ((exceptions & ExceptionSetFlags::DivideByZeroException) != ExceptionSetFlags::None)
     {
-        _compiler->fgAddCodeRef(CurrentBlock(), _compiler->bbThrowIndex(CurrentBlock()), SCK_DIV_BY_ZERO);
+        _compiler->fgAddCodeRef(CurrentBlock(), SCK_DIV_BY_ZERO);
     }
     if ((exceptions & ExceptionSetFlags::ArithmeticException) != ExceptionSetFlags::None)
     {
-        _compiler->fgAddCodeRef(CurrentBlock(), _compiler->bbThrowIndex(CurrentBlock()), SCK_OVERFLOW);
+        _compiler->fgAddCodeRef(CurrentBlock(), SCK_OVERFLOW);
     }
+}
+
+// TODO-LLVM: Almost a direct copy from lower.cpp which is not included for Wasm.
+//------------------------------------------------------------------------
+// LowerArrLength: lower an array length
+//
+// Arguments:
+//    node - the array length node we are lowering.
+//
+// Notes:
+//    If base array is nullptr, this effectively
+//    turns into a nullcheck.
+//
+void Llvm::lowerArrLength(GenTreeArrCommon* node)
+{
+    GenTree* const arr       = node->ArrRef();
+    int            lenOffset = 0;
+
+    switch (node->OperGet())
+    {
+        case GT_ARR_LENGTH:
+        {
+            lenOffset = node->AsArrLen()->ArrLenOffset();
+            noway_assert(lenOffset == OFFSETOF__CORINFO_Array__length ||
+                         lenOffset == OFFSETOF__CORINFO_String__stringLen);
+            break;
+        }
+
+        case GT_MDARR_LENGTH:
+            lenOffset = (int)_compiler->eeGetMDArrayLengthOffset(node->AsMDArr()->Rank(), node->AsMDArr()->Dim());
+            break;
+
+        case GT_MDARR_LOWER_BOUND:
+            lenOffset = (int)_compiler->eeGetMDArrayLowerBoundOffset(node->AsMDArr()->Rank(), node->AsMDArr()->Dim());
+            break;
+
+        default:
+            unreached();
+    }
+
+    // Create the expression `*(array_addr + lenOffset)`
+
+    GenTree* addr;
+    noway_assert(arr->gtNext == node);
+
+    if ((arr->gtOper == GT_CNS_INT) && (arr->AsIntCon()->gtIconVal == 0))
+    {
+        // If the array is NULL, then we should get a NULL reference
+        // exception when computing its length.  We need to maintain
+        // an invariant where there is no sum of two constants node, so
+        // let's simply return an indirection of NULL.
+
+        addr = arr;
+    }
+    else
+    {
+        // TODO-LLVM-CQ: use LEAs here.
+        GenTree* con = _compiler->gtNewIconNode(lenOffset, TYP_I_IMPL);
+        addr         = _compiler->gtNewOperNode(GT_ADD, TYP_BYREF, arr, con);
+
+        CurrentRange().InsertAfter(arr, con, addr);
+    }
+
+    // Change to a GT_IND.
+    node->ChangeOper(GT_IND);
+    GenTreeIndir* indirNode = node->AsIndir();
+    indirNode->Addr()       = addr;
+    lowerIndir(indirNode);
 }
 
 void Llvm::lowerReturn(GenTreeUnOp* retNode)
@@ -1450,7 +1524,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
             initRange.InsertAtEnd(initializeCall);
 
             assert(m_llvm->isFirstBlockCanonical());
-            m_llvm->lowerRange(m_compiler->fgFirstBB, initRange);
+            m_llvm->LowerRange(m_compiler->fgFirstBB, initRange);
             LIR::AsRange(m_compiler->fgFirstBB).InsertAtBeginning(std::move(initRange));
 
             for (int i = 0; i < m_definedIndices.Height(); i++)
@@ -1479,7 +1553,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
                         m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME, TYP_VOID);
                     LIR::Range popCallRange;
                     popCallRange.InsertAtBeginning(popCall);
-                    m_llvm->lowerRange(block, popCallRange);
+                    m_llvm->LowerRange(block, popCallRange);
                     LIR::AsRange(block).InsertBefore(lastNode, std::move(popCallRange));
                 }
             }
@@ -1493,7 +1567,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
             BitVecTraits blockListTraits(m_compiler->fgBBNumMax + 1, m_compiler);
             BitVec blockListSet = BitVecOps::MakeEmpty(&blockListTraits);
 
-            for (BasicBlock* block = m_compiler->fgLastBB; block != nullptr; block = block->bbPrev)
+            for (BasicBlock* block = m_compiler->fgLastBB; block != nullptr; block = block->Prev())
             {
                 if (BlockUsesUnwindIndex(block))
                 {

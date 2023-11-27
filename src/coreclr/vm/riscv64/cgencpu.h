@@ -144,7 +144,7 @@ struct PROFILE_PLATFORM_SPECIFIC_DATA
     void*                  profiledSp;
     void*                  hiddenArg;
     UINT64                 flags;
-    // Scratch space to reconstruct struct passed in registers
+    // Scratch space to reconstruct struct passed in two registers
     BYTE                   buffer[sizeof(ArgumentRegisters) + sizeof(FloatArgumentRegisters)];
 };
 #endif  // PROFILING_SUPPORTED
@@ -365,7 +365,6 @@ public:
     void EmitComputedInstantiatingMethodStub(MethodDesc* pSharedMD, struct ShuffleEntry *pShuffleEntryArray, void* extraArg);
 #endif // FEATURE_SHARE_GENERIC_CODE
 
-private:
     void EmitMovConstant(IntReg target, UINT64 constant);
     void EmitJumpRegister(IntReg regTarget);
     void EmitMovReg(IntReg dest, IntReg source);
@@ -380,6 +379,9 @@ private:
     void EmitLoad(FloatReg dest, IntReg srcAddr, int offset = 0);
     void EmitStore(IntReg src, IntReg destAddr, int offset = 0);
     void EmitStore(FloatReg src, IntReg destAddr, int offset = 0);
+
+    void EmitProlog(unsigned short cIntRegArgs, unsigned short cFpRegArgs, unsigned short cbStackSpace = 0);
+    void EmitEpilog();
 };
 
 extern "C" void SinglecastDelegateInvokeStub();

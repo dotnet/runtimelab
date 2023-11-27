@@ -347,6 +347,7 @@ private:
 public:
     void AddUnhandledExceptionHandler();
     void Lower();
+    void LowerRange(BasicBlock* block, LIR::Range& range);
 
 private:
     void initializeFunclets();
@@ -354,7 +355,6 @@ private:
 
     void lowerBlocks();
     void lowerBlock(BasicBlock* block);
-    void lowerRange(BasicBlock* block, LIR::Range& range);
     void lowerNode(GenTree* node);
     void lowerLocal(GenTreeLclVarCommon* node);
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
@@ -365,6 +365,7 @@ private:
     void lowerStoreBlk(GenTreeBlk* storeBlkNode);
     void lowerStoreDynBlk(GenTreeStoreDynBlk* storeDynBlkNode);
     void lowerDivMod(GenTreeOp* divModNode);
+    void lowerArrLength(GenTreeArrCommon* node);
     void lowerReturn(GenTreeUnOp* retNode);
 
     void lowerVirtualStubCall(GenTreeCall* callNode);

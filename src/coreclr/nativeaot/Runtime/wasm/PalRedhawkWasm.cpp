@@ -197,9 +197,9 @@ extern "C" int __cxa_thread_atexit(Dtor dtor, void* obj, void*)
 // runtime does not require this functionality either, and so we can implement this function in terms of simple
 // "malloc".
 //
-REDHAWK_PALEXPORT _Ret_maybenull_ _Post_writable_byte_size_(size) void* REDHAWK_PALAPI PalVirtualAlloc(_In_opt_ void* pAddress, size_t size, uint32_t allocationType, uint32_t protect)
+REDHAWK_PALEXPORT _Ret_maybenull_ _Post_writable_byte_size_(size) void* REDHAWK_PALAPI PalVirtualAlloc(uintptr_t size, uint32_t protect)
 {
-    if ((pAddress != nullptr) || (allocationType != MEM_COMMIT) || (protect != PAGE_READWRITE))
+    if (protect != PAGE_READWRITE)
     {
         RhFailFast(); // Not supported per the above.
     }
@@ -219,15 +219,9 @@ REDHAWK_PALEXPORT _Ret_maybenull_ _Post_writable_byte_size_(size) void* REDHAWK_
     return pRetVal;
 }
 
-REDHAWK_PALEXPORT UInt32_BOOL REDHAWK_PALAPI PalVirtualFree(_In_ void* pAddress, size_t size, uint32_t freeType)
+REDHAWK_PALEXPORT void REDHAWK_PALAPI PalVirtualFree(_In_ void* pAddress, uintptr_t size)
 {
-    if ((freeType & MEM_RELEASE) != 0)
-    {
-        free(pAddress);
-    }
-
-    // Nothing to do on decommit as all memory is always "commited".
-    return UInt32_TRUE;
+    free(pAddress);
 }
 
 REDHAWK_PALEXPORT UInt32_BOOL REDHAWK_PALAPI PalVirtualProtect(_In_ void* pAddress, size_t size, uint32_t protect)

@@ -30,7 +30,7 @@ COOP_PINVOKE_HELPER(void*, RhpResolveInterfaceDispatch, (void* pShadowStack, Obj
     InterfaceDispatchCache* pCache = (InterfaceDispatchCache*)pCell->GetCache();
     if (pCache != nullptr)
     {
-        MethodTable* pObjectType = pObject->get_EEType();
+        MethodTable* pObjectType = pObject->GetMethodTable();
         for (size_t i = 0; i < pCache->m_cEntries; i++)
         {
             InterfaceDispatchCacheEntry* pEntry = &pCache->m_rgEntries[i];
@@ -57,7 +57,7 @@ extern "C" void* RhpInterfaceDispatch64(void*, Object*, InterfaceDispatchCell*) 
 // Stub dispatch routine for dispatch to a vtable slot.
 COOP_PINVOKE_HELPER(void*, RhpVTableOffsetDispatch, (void* pShadowStack, Object* pObject, InterfaceDispatchCell* pCell))
 {
-    uintptr_t pVTable = reinterpret_cast<uintptr_t>(pObject->get_EEType());
+    uintptr_t pVTable = reinterpret_cast<uintptr_t>(pObject->GetMethodTable());
     uintptr_t offset = pCell->m_pCache;
 
     return *(void**)(pVTable + offset);

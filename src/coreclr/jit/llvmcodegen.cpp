@@ -685,13 +685,13 @@ void Llvm::generateBlock(BasicBlock* block)
         visitNode(node);
     }
 
-    switch (block->bbJumpKind)
+    switch (block->GetJumpKind())
     {
         case BBJ_NONE:
-            _builder.CreateBr(getFirstLlvmBlockForBlock(block->bbNext));
+            _builder.CreateBr(getFirstLlvmBlockForBlock(block->Next()));
             break;
         case BBJ_ALWAYS:
-            _builder.CreateBr(getFirstLlvmBlockForBlock(block->bbJumpDest));
+            _builder.CreateBr(getFirstLlvmBlockForBlock(block->GetJumpDest()));
             break;
         case BBJ_THROW:
             _builder.CreateUnreachable();
@@ -748,7 +748,7 @@ void Llvm::fillPhis()
 
     SmallHashTable<PredEdge, unsigned, 8, PredEdge> predCountMap(_compiler->getAllocator(CMK_Codegen));
     auto getPhiPredCount = [&](BasicBlock* predBlock, BasicBlock* phiBlock) -> unsigned {
-        if (predBlock->bbJumpKind != BBJ_SWITCH)
+        if (predBlock->GetJumpKind() != BBJ_SWITCH)
         {
             return 1;
         }
@@ -760,7 +760,7 @@ void Llvm::fillPhis()
             for (FlowEdge* edge : phiBlock->PredEdges())
             {
                 BasicBlock* edgePredBlock = edge->getSourceBlock();
-                if (edgePredBlock->bbJumpKind == BBJ_SWITCH)
+                if (edgePredBlock->GetJumpKind() == BBJ_SWITCH)
                 {
                     predCountMap.AddOrUpdate({edgePredBlock, phiBlock}, edge->getDupCount());
 
@@ -2106,8 +2106,8 @@ void Llvm::buildJTrue(GenTree* node)
     assert(condValue->getType() == Type::getInt1Ty(m_context->Context)); // Only relops expected.
 
     BasicBlock* srcBlock = CurrentBlock();
-    llvm::BasicBlock* jmpLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->bbJumpDest);
-    llvm::BasicBlock* nextLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->bbNext);
+    llvm::BasicBlock* jmpLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->GetJumpDest());
+    llvm::BasicBlock* nextLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->Next());
 
     // Handle the degenerate case specially. PHI code depends on us not generating duplicate outgoing edges here.
     if (jmpLlvmBlock == nextLlvmBlock)
@@ -2129,9 +2129,9 @@ void Llvm::buildSwitch(GenTreeUnOp* switchNode)
     Value* destValue = consumeValue(destOp, switchLlvmType);
 
     BasicBlock* srcBlock = CurrentBlock();
-    assert(srcBlock->bbJumpKind == BBJ_SWITCH);
+    assert(srcBlock->GetJumpKind() == BBJ_SWITCH);
 
-    BBswtDesc* switchDesc = srcBlock->bbJumpSwt;
+    BBswtDesc* switchDesc = srcBlock->GetJumpSwt();
     unsigned casesCount = switchDesc->bbsCount - 1;
     noway_assert(switchDesc->bbsHasDefault);
 
@@ -2215,9 +2215,9 @@ void Llvm::buildILOffset(GenTreeILOffset* ilOffsetNode)
 
 void Llvm::buildCatchRet(BasicBlock* block)
 {
-    assert(block->bbJumpKind == BBJ_EHCATCHRET);
+    assert(block->GetJumpKind() == BBJ_EHCATCHRET);
 
-    llvm::BasicBlock* destLlvmBlock = getFirstLlvmBlockForBlock(block->bbJumpDest);
+    llvm::BasicBlock* destLlvmBlock = getFirstLlvmBlockForBlock(block->GetJumpDest());
     switch (m_ehModel)
     {
         case CorInfoLlvmEHModel::Cpp:
@@ -2234,27 +2234,27 @@ void Llvm::buildCatchRet(BasicBlock* block)
 
 void Llvm::buildCallFinally(BasicBlock* block)
 {
-    assert(block->bbJumpKind == BBJ_CALLFINALLY);
+    assert(block->GetJumpKind() == BBJ_CALLFINALLY);
 
     // Callfinally blocks always come in pairs, where the first block (BBJ_CALLFINALLY itself)
     // calls the finally (its "bbJumpDest") while the second block (BBJ_ALWAYS) provides in its
     // "bbJumpDest" the target to which the finally call (if not "retless") should return.
     // Other backends will simply skip generating the second block, while we will branch to it.
     //
-    Function* finallyLlvmFunc = getLlvmFunctionForIndex(getLlvmFunctionIndexForBlock(block->bbJumpDest));
+    Function* finallyLlvmFunc = getLlvmFunctionForIndex(getLlvmFunctionIndexForBlock(block->GetJumpDest()));
     emitCallOrInvoke(finallyLlvmFunc, getShadowStack());
 
     // Some tricky EH flow configurations can make the ALWAYS part of the pair unreachable without
     // marking "block" "BBF_RETLESS_CALL". Detect this case by checking if the next block is reachable
     // at all.
-    if (((block->bbFlags & BBF_RETLESS_CALL) != 0) || !isReachable(block->bbNext))
+    if (((block->bbFlags & BBF_RETLESS_CALL) != 0) || !isReachable(block->Next()))
     {
         _builder.CreateUnreachable();
     }
     else
     {
         assert(block->isBBCallAlwaysPair());
-        _builder.CreateBr(getFirstLlvmBlockForBlock(block->bbNext));
+        _builder.CreateBr(getFirstLlvmBlockForBlock(block->Next()));
     }
 }
 

@@ -93,7 +93,8 @@ static char& __unbox_z = __stop___unbox;
 
 #endif // _MSC_VER
 
-extern "C" bool RhInitialize();
+extern "C" bool RhInitialize(bool isDll);
+extern "C" void RhSetRuntimeInitializationCallback(int (*fPtr)());
 
 extern "C" bool RhRegisterOSModule(void * pModule,
     void * pvManagedCodeStartRange, uint32_t cbManagedCodeRange,
@@ -112,7 +113,7 @@ extern "C" void* PalGetModuleHandleFromPointer(void* pointer);
 #endif
 
 extern "C" void MANAGED_RUNTIME_EXPORT(GetRuntimeException)();
-extern "C" void MANAGED_RUNTIME_EXPORT(FailFast)();
+extern "C" void MANAGED_RUNTIME_EXPORT(RuntimeFailFast)();
 extern "C" void MANAGED_RUNTIME_EXPORT(AppendExceptionStackFrame)();
 extern "C" void MANAGED_RUNTIME_EXPORT(GetSystemArrayEEType)();
 extern "C" void MANAGED_RUNTIME_EXPORT(OnFirstChanceException)();
@@ -130,7 +131,7 @@ typedef void(*pfn)();
 
 static const pfn c_classlibFunctions[] = {
     &MANAGED_RUNTIME_EXPORT(GetRuntimeException),
-    &MANAGED_RUNTIME_EXPORT(FailFast),
+    &MANAGED_RUNTIME_EXPORT(RuntimeFailFast),
     nullptr, // &UnhandledExceptionHandler,
     &MANAGED_RUNTIME_EXPORT(AppendExceptionStackFrame),
     nullptr, // &CheckStaticClassConstruction,
@@ -198,7 +199,13 @@ static int InitializeRuntime()
     }
 #endif
 
-    if (!RhInitialize())
+    if (!RhInitialize(
+#ifdef NATIVEAOT_DLL
+        /* isDll */ true
+#else
+        /* isDll */ false
+#endif
+        ))
         return -1;
 
     void * osModule = PalGetModuleHandleFromPointer((void*)&NATIVEAOT_ENTRYPOINT);
@@ -233,26 +240,12 @@ int (*g_RuntimeInitializationCallback)() = nullptr;
 
 #ifndef NATIVEAOT_DLL
 
-#ifdef ENSURE_PRIMARY_STACK_SIZE
-__attribute__((noinline, optnone))
-static void EnsureStackSize(int stackSize)
-{
-    volatile char* s = (char*)_alloca(stackSize);
-    *s = 0;
-}
-#endif // ENSURE_PRIMARY_STACK_SIZE
-
 #if defined(_WIN32)
 int __cdecl wmain(int argc, wchar_t* argv[])
 #else
 int main(int argc, char* argv[])
 #endif
 {
-#ifdef ENSURE_PRIMARY_STACK_SIZE
-    // TODO: https://github.com/dotnet/runtimelab/issues/791
-    EnsureStackSize(1536 * 1024);
-#endif
-
     int initval = InitializeRuntime();
     if (initval != 0)
         return initval;

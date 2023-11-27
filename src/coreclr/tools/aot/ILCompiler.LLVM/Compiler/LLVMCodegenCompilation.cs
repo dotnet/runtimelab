@@ -40,10 +40,11 @@ namespace ILCompiler
             InstructionSetSupport instructionSetSupport,
             ConfigurableWasmImportPolicy configurableWasmImportPolicy,
             MethodImportationErrorProvider errorProvider,
+            ReadOnlyFieldPolicy readOnlyFieldPolicy,
             RyuJitCompilationOptions baseOptions,
             int parallelism)
             : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy, instructionSetSupport,
-                null /* ProfileDataManager */, errorProvider, baseOptions, parallelism)
+                null /* ProfileDataManager */, errorProvider, readOnlyFieldPolicy, baseOptions, parallelism)
         {
             NodeFactory = nodeFactory;
             Options = options;

@@ -28,13 +28,17 @@ const DotNetEntropyLib = {
             }
         }
     },
-    dotnet_browser_entropy: function (buffer, bufferLength) {
+
+    // TODO-LLVM: Mono uses a typescript file for mono_wasm_browser_entropy and we probably  don't want to introduce typescript as a dependency
+    // so we stay with the plain Javascript implementation but rename to avoid changing random.c
+    // Revist if and when the Wasi HTTP or CLI proposal progresses (which contain a secure RNG in wasi-random)
+    // See https://github.com/WebAssembly/wasi-http and https://github.com/WebAssembly/wasi-random/blob/main/wit/random.wit
+    mono_wasm_browser_entropy: function (buffer, bufferLength) {
         // check that we have crypto available
         let cryptoAvailable = typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function';
 
         // TODO-LLVM: Can we upstream this? Mono has this code in "polyfills.ts", part of the runtime startup.
-        if (ENVIRONMENT_IS_NODE && !cryptoAvailable)
-        {
+        if (ENVIRONMENT_IS_NODE && !cryptoAvailable) {
             if (!globalThis.crypto) {
                 globalThis.crypto = {};
             }
