@@ -34,6 +34,8 @@ namespace Microsoft.Interop.JavaScript
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
+            var assemblyName = context.CompilationProvider.Select(static (c, _) => c.AssemblyName);
+
             // Collect all methods adorned with JSExportAttribute
             var attributedMethods = context.SyntaxProvider
                 .ForAttributeWithMetadataName(Constants.JSExportAttribute,
@@ -96,7 +98,8 @@ namespace Microsoft.Interop.JavaScript
                 .Collect();
 
             IncrementalValueProvider<string> registration = regSyntax
-                .Select(static (data, ct) => GenerateRegSource(data))
+                .Combine(assemblyName)
+                .Select(static (data, ct) => GenerateRegSource(data.Left, data.Right))
                 .Select(static (data, ct) => data.NormalizeWhitespace().ToFullString());
 
             IncrementalValueProvider<ImmutableArray<(string, string)>> generated = generateSingleStub
@@ -132,21 +135,85 @@ namespace Microsoft.Interop.JavaScript
         }
 
         private static MemberDeclarationSyntax PrintGeneratedSource(
-            ContainingSyntaxContext containingSyntaxContext,
+            IncrementalStubGenerationContext context,
             BlockSyntax wrapperStatements, string wrapperName)
         {
 
             MemberDeclarationSyntax wrappperMethod = MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier(wrapperName))
                 .WithModifiers(TokenList(new[] { Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword), Token(SyntaxKind.UnsafeKeyword) }))
-                .WithAttributeLists(SingletonList(AttributeList(SingletonSeparatedList(
-                    Attribute(IdentifierName(Constants.DebuggerNonUserCodeAttribute))))))
+                .WithAttributeLists(List(
+                    new[] {
+                        AttributeList(
+                            SingletonSeparatedList(
+                                Attribute(
+                                    IdentifierName(Constants.DebuggerNonUserCodeAttribute)
+                                )
+                            )
+                        ),
+                        AttributeList(
+                            SingletonSeparatedList(
+                                Attribute(
+                                    IdentifierName(Constants.UnmanagedCallersOnlyAttributeGlobal)
+                                )
+                                .WithArgumentList(
+                                    AttributeArgumentList(
+                                        SingletonSeparatedList(
+                                            AttributeArgument(
+                                                LiteralExpression(
+                                                    SyntaxKind.StringLiteralExpression,
+                                                    Literal(FixupSymbolName(context.SignatureContext.QualifiedMethodName + "_" + context.SignatureContext.TypesHash))
+                                                )
+                                            )
+                                            .WithNameEquals(
+                                                NameEquals(
+                                                    IdentifierName("EntryPoint")
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    })
+                )
                 .WithParameterList(ParameterList(SingletonSeparatedList(
                     Parameter(Identifier("__arguments_buffer")).WithType(PointerType(ParseTypeName(Constants.JSMarshalerArgumentGlobal))))))
                 .WithBody(wrapperStatements);
 
-            MemberDeclarationSyntax toPrint = containingSyntaxContext.WrapMembersInContainingSyntaxWithUnsafeModifier(wrappperMethod);
+            MemberDeclarationSyntax toPrint = context.ContainingSyntaxContext.WrapMembersInContainingSyntaxWithUnsafeModifier(wrappperMethod);
 
             return toPrint;
+        }
+
+        private static readonly char[] s_charsToReplace = new[] { '.', '-', '+' };
+
+        private static string FixupSymbolName(string name)
+        {
+            UTF8Encoding utf8 = new();
+            byte[] bytes = utf8.GetBytes(name);
+            StringBuilder sb = new();
+
+            foreach (byte b in bytes)
+            {
+                if ((b >= (byte)'0' && b <= (byte)'9') ||
+                    (b >= (byte)'a' && b <= (byte)'z') ||
+                    (b >= (byte)'A' && b <= (byte)'Z') ||
+                    (b == (byte)'_'))
+                {
+                    sb.Append((char)b);
+                }
+                else if (s_charsToReplace.Contains((char)b))
+                {
+                    sb.Append('_');
+                }
+                else
+                {
+                    sb.Append($"_{b:X}_");
+                }
+            }
+
+            var fixedName = sb.ToString();
+            return fixedName;
         }
 
         private static JSExportData? ProcessJSExportAttribute(AttributeData attrData)
@@ -210,7 +277,7 @@ namespace Microsoft.Interop.JavaScript
         }
 
         private static NamespaceDeclarationSyntax GenerateRegSource(
-            ImmutableArray<(StatementSyntax Registration, AttributeListSyntax Attribute)> methods)
+            ImmutableArray<(StatementSyntax Registration, AttributeListSyntax Attribute)> methods, string assemblyName)
         {
             const string generatedNamespace = "System.Runtime.InteropServices.JavaScript";
             const string initializerClass = "__GeneratedInitializer";
@@ -241,6 +308,41 @@ namespace Microsoft.Interop.JavaScript
                             .WithModifiers(TokenList(new[] { Token(SyntaxKind.StaticKeyword) }))
                             .WithBody(Block(registerStatements));
 
+            MemberDeclarationSyntax method_uco = MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier(initializerName + "_Export"))
+                .WithAttributeLists(SingletonList(AttributeList(
+                    SingletonSeparatedList(
+                        Attribute(
+                            IdentifierName(Constants.UnmanagedCallersOnlyAttributeGlobal)
+                        )
+                        .WithArgumentList(
+                            AttributeArgumentList(
+                                SingletonSeparatedList(
+                                    AttributeArgument(
+                                        LiteralExpression(
+                                            SyntaxKind.StringLiteralExpression,
+                                            Literal(FixupSymbolName(assemblyName + initializerClass + initializerName))
+                                        )
+                                    )
+                                    .WithNameEquals(
+                                        NameEquals(
+                                            IdentifierName("EntryPoint")
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )))
+                .WithModifiers(TokenList(new[] { Token(SyntaxKind.StaticKeyword) }))
+                .WithBody(Block(
+                    ExpressionStatement(
+                        InvocationExpression(
+                            IdentifierName(initializerName)
+                        )
+                    )
+                )
+            );
+
             // when we are running code generated by .NET8 on .NET7 runtime we need to auto initialize the assembly, because .NET7 doesn't call the registration from JS
             // this also keeps the code protected from trimming
             MemberDeclarationSyntax initializerMethod = MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier(selfInitName))
@@ -264,7 +366,7 @@ namespace Microsoft.Interop.JavaScript
                                 ClassDeclaration(initializerClass)
                                 .WithModifiers(TokenList(new SyntaxToken[]{
                                     Token(SyntaxKind.UnsafeKeyword)}))
-                                .WithMembers(List(new[] { field, initializerMethod, method }))
+                                .WithMembers(List(new[] { field, initializerMethod, method, method_uco }))
                                 .WithAttributeLists(SingletonList(AttributeList(SingletonSeparatedList(
                                     Attribute(IdentifierName(Constants.CompilerGeneratedAttributeGlobal)))
                                 )))));
@@ -297,7 +399,7 @@ namespace Microsoft.Interop.JavaScript
                     }
                     )))));
 
-            return (PrintGeneratedSource(incrementalContext.ContainingSyntaxContext, wrapper, wrapperName),
+            return (PrintGeneratedSource(incrementalContext, wrapper, wrapperName),
                 registration, registrationAttribute,
                 incrementalContext.Diagnostics.Array.AddRange(diagnostics.Diagnostics));
         }

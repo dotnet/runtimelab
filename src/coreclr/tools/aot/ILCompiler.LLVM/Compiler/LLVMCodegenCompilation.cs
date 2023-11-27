@@ -137,7 +137,6 @@ namespace ILCompiler
                 }
             }
 
-            _parallelism = 1;
             Parallel.For(0, moduleCount, new() { MaxDegreeOfParallelism = _parallelism }, index =>
             {
                 CorInfoImpl corInfo = _compilationContexts[index];

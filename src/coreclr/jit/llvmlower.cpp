@@ -251,11 +251,11 @@ void Llvm::lowerBlocks()
 
 void Llvm::lowerBlock(BasicBlock* block)
 {
-    lowerRange(block, LIR::AsRange(block));
+    LowerRange(block, LIR::AsRange(block));
     block->bbFlags |= BBF_MARKED;
 }
 
-void Llvm::lowerRange(BasicBlock* block, LIR::Range& range)
+void Llvm::LowerRange(BasicBlock* block, LIR::Range& range)
 {
     m_currentBlock = block;
     m_currentRange = &range;
@@ -312,7 +312,7 @@ void Llvm::lowerNode(GenTree* node)
         case GT_ARR_LENGTH:
         case GT_MDARR_LENGTH:
         case GT_MDARR_LOWER_BOUND:
-            LowerArrLength(node->AsArrCommon());
+            lowerArrLength(node->AsArrCommon());
             break;
 
         case GT_RETURN:
@@ -615,7 +615,7 @@ void Llvm::lowerDivMod(GenTreeOp* divModNode)
 //    If base array is nullptr, this effectively
 //    turns into a nullcheck.
 //
-void Llvm::LowerArrLength(GenTreeArrCommon* node)
+void Llvm::lowerArrLength(GenTreeArrCommon* node)
 {
     GenTree* const arr       = node->ArrRef();
     int            lenOffset = 0;
@@ -658,17 +658,18 @@ void Llvm::LowerArrLength(GenTreeArrCommon* node)
     }
     else
     {
+        // TODO-LLVM-CQ: use LEAs here.
         GenTree* con = _compiler->gtNewIconNode(lenOffset, TYP_I_IMPL);
         addr         = _compiler->gtNewOperNode(GT_ADD, TYP_BYREF, arr, con);
 
         CurrentRange().InsertAfter(arr, con, addr);
     }
 
-    _compiler->fgAddCodeRef(CurrentBlock(), SCK_NULL_REF_EXCPN);
-
     // Change to a GT_IND.
     node->ChangeOper(GT_IND);
-    node->AsIndir()->Addr() = addr;
+    GenTreeIndir* indirNode = node->AsIndir();
+    indirNode->Addr()       = addr;
+    lowerIndir(indirNode);
 }
 
 void Llvm::lowerReturn(GenTreeUnOp* retNode)
@@ -1523,7 +1524,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
             initRange.InsertAtEnd(initializeCall);
 
             assert(m_llvm->isFirstBlockCanonical());
-            m_llvm->lowerRange(m_compiler->fgFirstBB, initRange);
+            m_llvm->LowerRange(m_compiler->fgFirstBB, initRange);
             LIR::AsRange(m_compiler->fgFirstBB).InsertAtBeginning(std::move(initRange));
 
             for (int i = 0; i < m_definedIndices.Height(); i++)
@@ -1552,7 +1553,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
                         m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME, TYP_VOID);
                     LIR::Range popCallRange;
                     popCallRange.InsertAtBeginning(popCall);
-                    m_llvm->lowerRange(block, popCallRange);
+                    m_llvm->LowerRange(block, popCallRange);
                     LIR::AsRange(block).InsertBefore(lastNode, std::move(popCallRange));
                 }
             }
