@@ -74,21 +74,14 @@ For the runtime libraries:
 - Run `build clr.aot+libs -c [Debug|Release] -a wasm -os [browser|wasi]`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
 
 For the compilers:
-- Download the LLVM 17.0.4 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.4/llvm-17.0.4.src.tar.xz
-- Extract it and create a subdirectory in the `llvm-17.0.4.src` folder. Do not create at the root of a drive.
-- Download the CMake 17.0.4 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.4/cmake-17.0.4.src.tar.xz
-- Extract it to a folder called cmake at the same level as `llvm-17.0.4.src`.
-- Download the third-party 17.0.4 source from https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.4/third-party-17.0.4.src.tar.xz
-- Extract it to a folder called third-party at the same level as `llvm-17.0.4.src`.
-  - Sample layout:
-    - `f:\llvm-project`
-    - `f:\llvm-project\llvm-17.0.4.src`
-    - `f:\llvm-project\llvm-17.0.4.src\build` - the subdirectory you created
-    - `f:\llvm-project\cmake`
-    - `f:\llvm-project\third-party`
-- Configure the LLVM source to use the same runtime as the Jit: `cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Debug -D LLVM_USE_CRT_DEBUG=MTd -DLLVM_INCLUDE_BENCHMARKS=OFF -S f:\llvm-project\llvm-17.0.4.src -B f:\llvm-project\llvm-17.0.4.src\build` or if building for the Release configuration `cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release -D LLVM_USE_CRT_RELEASE=MT -DLLVM_INCLUDE_BENCHMARKS=OFF -S f:\llvm-project\llvm-17.0.4.src -B f:\llvm-project\llvm-17.0.4.src\build`.
-- Build LLVM either from the command line (`cmake --build f:\llvm-project\llvm-17.0.4.src\build --target LLVMCore LLVMBitWriter`) or from VS 2022. Currently the Jit depends only on the output of LLVMCore and LLVMBitWriter projects.  For the Release configuration, `cmake --build f:\llvm-project\llvm-17.0.4.src\build --config Release --target LLVMCore LLVMBitWriter`
-- Set the enviroment variable `LLVM_CMAKE_CONFIG` to locate the LLVM config: `set LLVM_CMAKE_CONFIG=f:/llvm-project/llvm-17.0.4.src/build/lib/cmake/llvm`. This location should contain the file `LLVMConfig.cmake`. `LLVM_CMAKE_CONFIG_DEBUG` and `LLVM_CMAKE_CONFIG_RELEASE` can be used instead of `LLVM_CMAKE_CONFIG` to allow the build to select the config file based on the configuration. If set, these variables take precedence over `LLVM_CMAKE_CONFIG`.
+- Run the `llvm-install.ps1` script from `eng\pipelines\runtimelab\install-llvm.ps1`. The script:
+  - Clones the `llvm-project` repository (note this will take a long time). You can skip this with `-noclone`.
+  - Runs CMake configuration, with VS 2022 as the generator.
+  - Builds the projects needed by RyuJit. You can skip this with `-nobuild`.
+  - Sets enviroment variables that the runtime build will later use to find LLVM sources: `LLVM_CMAKE_CONFIG_DEBUG` and `LLVM_CMAKE_CONFIG_RELEASE`.
+    For convenience, the script does this in scope of the current user, so you don't need to run it more than once (unless the LLVM version changes).
+    You can manually set these variables too, to use `Release` LLVM with a `Checked` Jit, or use a different checkout of `llvm-project`.
+  - You can alter the configurations the script builds with `-configs`. By default, LLVM is built in `Debug` and `Release`.
 - Build the Jits and the ILC: `build clr.wasmjit+clr.aot -c [Debug|Release]`. Add the `libs` subset if you want the packages for publishing, e.g. `build clr.wasmjit+clr.aot+libs -c Debug`.
 - You can use the `-msbuild` option, `build clr.wasmjit -msbuild`, to generate a Visual Studio solution for the Jit, to be found in `artifacts/obj/coreclr/windows.x64.Debug/ide/jit`.
 
