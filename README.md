@@ -27,6 +27,7 @@ You can create your own experiment, learn more [here](CreateAnExperiment.md)!
 - [JsonCodeGen](https://github.com/dotnet/runtimelab/tree/feature/JsonCodeGen) - Code generation for JSON.
 - [AssemblyBuilder.Save()](https://github.com/dotnet/runtimelab/tree/feature/assembly-builder-save) - Prototyping the implementation of AssemblyBuilder.Save() functionality.
 - [Green Threads](https://github.com/dotnet/runtimelab/tree/feature/green-threads) - Prototyping the implementation of green threads.
+- [NativeAOT for Android](https://github.com/dotnet/runtimelab/tree/feature/nativeaot-android) - Prototyping the Native AOT for Android apps and Java interop layer.
 
 ## Filing issues
 
