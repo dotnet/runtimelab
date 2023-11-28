@@ -136,6 +136,8 @@ void Llvm::initializeFunclets()
             FuncInfoDsc* funcInfo = _compiler->funGetFunc(ehDsc->ebdFilterFuncIndex);
             funcInfo->funKind = FUNC_FILTER;
             funcInfo->funEHIndex = ehIndex;
+
+            m_anyFilterFunclets = true;
         }
 
         if (ehDsc->HasFinallyHandler())
@@ -170,7 +172,7 @@ void Llvm::initializeFunclets()
 //
 void Llvm::initializeLlvmArgInfo()
 {
-    if (_compiler->ehAnyFunclets())
+    if (m_anyFilterFunclets)
     {
         _originalShadowStackLclNum = _compiler->lvaGrabTemp(true DEBUGARG("original shadowstack"));
         LclVarDsc* originalShadowStackVarDsc = _compiler->lvaGetDesc(_originalShadowStackLclNum);
@@ -2016,11 +2018,13 @@ bool Llvm::isBlockInFilter(BasicBlock* block) const
 {
     if (m_blocksInFilters == BlockSetOps::UninitVal())
     {
+        assert(!m_anyFilterFunclets);
         assert(!block->hasHndIndex() || !_compiler->ehGetBlockHndDsc(block)->InFilterRegionBBRange(block));
         return false;
     }
 
     // Ideally, this would be a flag (BBF_*), but we make do with a bitset for now to avoid modifying the frontend.
+    assert(m_anyFilterFunclets);
     return BlockSetOps::IsMember(_compiler, m_blocksInFilters, block->bbNum);
 }
 

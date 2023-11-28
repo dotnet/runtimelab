@@ -3205,7 +3205,7 @@ Value* Llvm::getLocalAddr(unsigned lclNum)
         addrValue = getOrCreateAllocaForLocalInFunclet(lclNum);
     }
 
-    assert(addrValue != nullptr);
+    assert(!IsUninitialized(addrValue) && (addrValue != nullptr));
     return addrValue;
 }
 

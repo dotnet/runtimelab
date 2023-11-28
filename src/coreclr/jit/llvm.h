@@ -214,6 +214,7 @@ private:
     // Lowering members.
     LIR::Range* m_currentRange = nullptr;
     SideEffectSet m_scratchSideEffects; // Used for IsInvariantInRange.
+    bool m_anyFilterFunclets = false;
 
     // Shared between unwind index insertion and EH codegen.
     ArrayStack<unsigned>* m_unwindIndexMap = nullptr;
