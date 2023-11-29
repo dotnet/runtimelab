@@ -303,6 +303,10 @@ internal unsafe partial class Program
 
         TestNativeCallback();
 
+#if !CODEGEN_WASI // Easier to test with Javascript/Emscripten.
+        TestNamedModuleCall();
+#endif
+
         TestNativeCallsWithMismatchedSignatures();
 
         TestArgsWithMixedTypesAndExceptionRegions();
@@ -1540,7 +1544,7 @@ internal unsafe partial class Program
     }
 
     private static bool callbackResult;
-    private static unsafe void TestNativeCallback()
+    private static void TestNativeCallback()
     {
         StartTest("Native callback test");
         CallMe(123);
@@ -1555,6 +1559,18 @@ internal unsafe partial class Program
             callbackResult = true;
         }
     }
+
+#if !CODEGEN_WASI // Easier to test with Javascript/Emscripten.
+    private static void TestNamedModuleCall()
+    {
+        StartTest("Wasm import from named module test");
+        EndTest(CallFunctionInModule(456) == 456);
+    }
+
+    [WasmImportLinkage]
+    [DllImport("ModuleName", EntryPoint = "FunctionInModule")]
+    private static extern int CallFunctionInModule(int x);
+#endif
 
     [System.Runtime.InteropServices.DllImport("*")]
     private static extern void CallMe(int x);

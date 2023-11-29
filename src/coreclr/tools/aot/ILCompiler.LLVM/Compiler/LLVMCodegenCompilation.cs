@@ -25,7 +25,6 @@ namespace ILCompiler
         private string _outputFile;
 
         internal LLVMCodegenConfigProvider Options { get; }
-        internal ConfigurableWasmImportPolicy ConfigurableWasmImportPolicy { get; }
         public new LLVMCodegenNodeFactory NodeFactory { get; }
 
         internal LLVMCodegenCompilation(DependencyAnalyzerBase<NodeFactory> dependencyGraph,
@@ -38,7 +37,6 @@ namespace ILCompiler
             IInliningPolicy inliningPolicy,
             DevirtualizationManager devirtualizationManager,
             InstructionSetSupport instructionSetSupport,
-            ConfigurableWasmImportPolicy configurableWasmImportPolicy,
             MethodImportationErrorProvider errorProvider,
             ReadOnlyFieldPolicy readOnlyFieldPolicy,
             RyuJitCompilationOptions baseOptions,
@@ -48,7 +46,6 @@ namespace ILCompiler
         {
             NodeFactory = nodeFactory;
             Options = options;
-            ConfigurableWasmImportPolicy = configurableWasmImportPolicy;
         }
 
         protected override void CompileInternal(string outputFile, ObjectDumper dumper)
