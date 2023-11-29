@@ -119,18 +119,13 @@ Note that assemblies other than the one being published (e. g. those from refere
 ```
 
 #### WebAssembly module imports
-Functions in other WebAssembly modules can be imported and invoked using `DllImport` e.g.
+Functions in other WebAssembly modules can be imported and invoked using `DllImport` and `WasmImportLinkage` e.g.
 ```cs
-[DllImport("*")]
-static extern int random_get(byte* buf, uint size);
+[WasmImportLinkage]
+[DllImport("wasi_snapshot_preview1", EntryPoint = "random_get")]
+static extern int GetRandom(byte* buf, uint size);
 ```
-By default emscripten will create a WebAssembly import for this function, importing from the `env` module. This can be controlled with `WasmImport` items in the project file. For example
-```xml
-<ItemGroup>
-  <WasmImport Include="wasi_snapshot_preview1!random_get" />
-</ItemGroup>
-```
-Will cause the above `random_get` to create this WebAssembly:
+This will create an import from the `wasi_snapshot_preview1` module with the function name `random_get`.  The `import` in the WAT would look like this:
 ```
 (import "wasi_snapshot_preview1" "random_get" (func $random_get (type 3)))
 ```
