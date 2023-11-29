@@ -131,14 +131,18 @@ void Llvm::initializeFunclets()
         EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
         if (ehDsc->HasFilter())
         {
-            ehDsc->endFilterFuncIndex = funcIdx++;
-            FuncInfoDsc* funcInfo = _compiler->funGetFunc(ehDsc->endFilterFuncIndex);
+            // Filters are funclets because they must be invokable by the first pass.
+            ehDsc->ebdFilterFuncIndex = funcIdx++;
+            FuncInfoDsc* funcInfo = _compiler->funGetFunc(ehDsc->ebdFilterFuncIndex);
             funcInfo->funKind = FUNC_FILTER;
             funcInfo->funEHIndex = ehIndex;
+
+            m_anyFilterFunclets = true;
         }
 
-        if (ehDsc->HasFinallyOrFaultHandler())
+        if (ehDsc->HasFinallyHandler())
         {
+            // Finallys are funclets because they have multiple (EH and normal) entries and exits.
             ehDsc->ebdFuncIndex = funcIdx++;
             FuncInfoDsc* funcInfo = _compiler->funGetFunc(ehDsc->ebdFuncIndex);
             funcInfo->funKind = FUNC_HANDLER;
@@ -168,7 +172,7 @@ void Llvm::initializeFunclets()
 //
 void Llvm::initializeLlvmArgInfo()
 {
-    if (_compiler->ehAnyFunclets())
+    if (m_anyFilterFunclets)
     {
         _originalShadowStackLclNum = _compiler->lvaGrabTemp(true DEBUGARG("original shadowstack"));
         LclVarDsc* originalShadowStackVarDsc = _compiler->lvaGetDesc(_originalShadowStackLclNum);
@@ -1817,7 +1821,6 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
     return PhaseStatus::MODIFIED_EVERYTHING;
 }
 
-
 void Llvm::computeBlocksInFilters()
 {
     for (EHblkDsc* ehDsc : EHClauses(_compiler))
@@ -2015,11 +2018,13 @@ bool Llvm::isBlockInFilter(BasicBlock* block) const
 {
     if (m_blocksInFilters == BlockSetOps::UninitVal())
     {
+        assert(!m_anyFilterFunclets);
         assert(!block->hasHndIndex() || !_compiler->ehGetBlockHndDsc(block)->InFilterRegionBBRange(block));
         return false;
     }
 
     // Ideally, this would be a flag (BBF_*), but we make do with a bitset for now to avoid modifying the frontend.
+    assert(m_anyFilterFunclets);
     return BlockSetOps::IsMember(_compiler, m_blocksInFilters, block->bbNum);
 }
 

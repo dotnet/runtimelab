@@ -305,12 +305,6 @@ private:
                 continue;
             }
 
-            // We don't know if untracked locals are live-in/out of handlers and have to assume the worst.
-            if (!varDsc->lvTracked && m_compiler->ehAnyFunclets())
-            {
-                varDsc->lvLiveInOutOfHndlr = 1;
-            }
-
             if (IsShadowFrameLocalCandidate(lclNum))
             {
                 if (varDsc->lvRefCnt() == 0)
@@ -357,18 +351,37 @@ private:
 
     bool IsShadowFrameLocalCandidate(unsigned lclNum)
     {
+        if (m_llvm->isFuncletParameter(lclNum))
+        {
+            return false;
+        }
+
         // The unwind frame MUST be allocated on the shadow stack. The runtime uses its value to invoke filters.
         if (lclNum == m_llvm->m_unwindFrameLclNum)
         {
             return true;
         }
 
-        // GC locals needs to go on the shadow stack for the scan to find them. Locals live-in/out of handlers
-        // need to be preserved after the native unwind for the funclets to be callable, thus, they too need to
-        // go on the shadow stack (except for parameters to funclets, naturally).
-        //
+        // GC locals needs to go on the shadow stack for the scan to find them.
         LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
-        return !m_llvm->isFuncletParameter(lclNum) && (varDsc->HasGCPtr() || varDsc->lvLiveInOutOfHndlr);
+        if (varDsc->HasGCPtr())
+        {
+            return true;
+        }
+
+        // Locals live-in/out of funclets need to be accessible throughout the whole logical method and using the
+        // shadow stack is a simple way to achieve this. Another would be to implement LLVM intrinsics that allow
+        // accessing the root method's native frame (effectively) and use them in codegen. Note: we overapproximate
+        // the set of locals live cross-funclet by using "lvLiveInOutOfHndlr" here as a CQ quirk. Currently, LLVM
+        // is not able to enregister locals that are live across EH pads, and our codegen is not able to produce
+        // the correct PHIs anyway.
+        //
+        if (m_compiler->ehHasCallableHandlers() && (!varDsc->lvTracked || varDsc->lvLiveInOutOfHndlr))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     void AssignShadowFrameOffsets(std::vector<unsigned>& shadowFrameLocals)

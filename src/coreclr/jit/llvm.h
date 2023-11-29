@@ -172,6 +172,7 @@ struct FunctionInfo
         llvm::AllocaInst** Allocas; // Dense "lclNum -> Alloca*" mapping used for the main function.
         AllocaMap* AllocaMap; // Sparse "lclNum -> Alloca*" mapping used for funclets.
     };
+    llvm::BasicBlock* ResumeLlvmBlock;
     llvm::BasicBlock* ExceptionThrownReturnLlvmBlock;
 };
 
@@ -213,6 +214,7 @@ private:
     // Lowering members.
     LIR::Range* m_currentRange = nullptr;
     SideEffectSet m_scratchSideEffects; // Used for IsInvariantInRange.
+    bool m_anyFilterFunclets = false;
 
     // Shared between unwind index insertion and EH codegen.
     ArrayStack<unsigned>* m_unwindIndexMap = nullptr;
@@ -449,6 +451,7 @@ private:
     void initializeBlocks();
     void generateUnwindBlocks();
     void generateBlocks();
+    void generateThrowHelperBlock(BasicBlock* block);
     void generateBlock(BasicBlock* block);
     void fillPhis();
     void generateAuxiliaryArtifacts();
@@ -527,6 +530,8 @@ private:
 
     EHRegionInfo& getEHRegionInfo(unsigned ehIndex);
     llvm::BasicBlock* getUnwindLlvmBlockForCurrentInvoke();
+    void emitUnwindToOuterHandler();
+    void emitUnwindToOuterHandlerFromFault();
     Function* getOrCreatePersonalityLlvmFunction(CorInfoLlvmEHModel ehModel);
     llvm::CatchPadInst* getCatchPadForHandler(unsigned hndIndex);
     llvm::BasicBlock* getOrCreateExceptionThrownReturnBlock();
