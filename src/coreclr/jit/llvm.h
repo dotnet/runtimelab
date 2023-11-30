@@ -146,6 +146,22 @@ enum class ValueInitKind
     Uninit
 };
 
+struct ThrowHelperKey
+{
+    unsigned ThrowIndex;
+    CorInfoHelpFunc HelperFunc;
+
+    static unsigned GetHashCode(ThrowHelperKey key)
+    {
+        return key.ThrowIndex + static_cast<unsigned>(key.HelperFunc);
+    }
+
+    static bool Equals(ThrowHelperKey keyOne, ThrowHelperKey keyTwo)
+    {
+        return (keyOne.ThrowIndex == keyTwo.ThrowIndex) && (keyOne.HelperFunc == keyTwo.HelperFunc);
+    }
+};
+
 struct PhiPair
 {
     GenTreeLclVar* StoreNode;
@@ -224,6 +240,7 @@ private:
     llvm::IRBuilder<> _builder;
     JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, Value*> _sdsuMap;
     JitHashTable<SSAName, SSAName, Value*> _localsMap;
+    JitHashTable<ThrowHelperKey, ThrowHelperKey, llvm::BasicBlock*> m_throwHelperBlocksMap;
     std::vector<PhiPair> _phiPairs;
     std::vector<FunctionInfo> m_functions;
 
@@ -349,7 +366,6 @@ private:
 public:
     void AddUnhandledExceptionHandler();
     void Lower();
-    void LowerRange(BasicBlock* block, LIR::Range& range);
 
 private:
     void initializeFunclets();
@@ -357,6 +373,7 @@ private:
 
     void lowerBlocks();
     void lowerBlock(BasicBlock* block);
+    void lowerRange(BasicBlock* block, LIR::Range& range);
     void lowerNode(GenTree* node);
     void lowerLocal(GenTreeLclVarCommon* node);
     void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
@@ -366,7 +383,6 @@ private:
     void lowerIndir(GenTreeIndir* indirNode);
     void lowerStoreBlk(GenTreeBlk* storeBlkNode);
     void lowerStoreDynBlk(GenTreeStoreDynBlk* storeDynBlkNode);
-    void lowerDivMod(GenTreeOp* divModNode);
     void lowerArrLength(GenTreeArrCommon* node);
     void lowerReturn(GenTreeUnOp* retNode);
 
@@ -451,7 +467,6 @@ private:
     void initializeBlocks();
     void generateUnwindBlocks();
     void generateBlocks();
-    void generateThrowHelperBlock(BasicBlock* block);
     void generateBlock(BasicBlock* block);
     void fillPhis();
     void generateAuxiliaryArtifacts();
@@ -511,7 +526,7 @@ private:
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
 
-    void emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind);
+    void emitJumpToThrowHelper(Value* jumpCondValue, CorInfoHelpFunc helperFunc);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
     llvm::CallBase* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = {});
     llvm::CallBase* emitCallOrInvoke(llvm::Function* callee, ArrayRef<Value*> args = {});
@@ -548,6 +563,7 @@ private:
     Value* getOriginalShadowStack();
 
     void setCurrentEmitContextForBlock(BasicBlock* block);
+    void setCurrentEmitContextBlocks(LlvmBlockRange* llvmBlocks);
     void setCurrentEmitContext(unsigned funcIdx, unsigned tryIndex, unsigned hndIndex, LlvmBlockRange* llvmBlock);
     unsigned getCurrentLlvmFunctionIndex() const;
     unsigned getCurrentProtectedRegionIndex() const;

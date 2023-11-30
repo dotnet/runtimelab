@@ -4936,11 +4936,7 @@ public:
 
     bool backendRequiresLocalVarLifetimes()
     {
-#if defined(TARGET_WASM)
-        return true;
-#else
         return !opts.MinOpts() || m_pLinearScan->willEnregisterLocalVars();
-#endif
     }
 
     void fgLocalVarLiveness();
@@ -6146,12 +6142,11 @@ private:
     bool        fgRngChkThrowAdded;
     AddCodeDsc* fgExcptnTargetCache[SCK_COUNT];
 
+    void fgAddCodeRef(BasicBlock* srcBlk, SpecialCodeKind kind);
     PhaseStatus fgCreateThrowHelperBlocks();
 
 public:
     static unsigned acdHelper(SpecialCodeKind codeKind);
-
-    void fgAddCodeRef(BasicBlock* srcBlk, SpecialCodeKind kind);
 
     AddCodeDsc* fgFindExcptnTarget(SpecialCodeKind kind, unsigned refData);
 
