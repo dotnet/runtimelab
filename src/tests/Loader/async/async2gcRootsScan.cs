@@ -91,12 +91,55 @@ public class Async2RootReporting
         return result;
     }
 
+    static System.Collections.Generic.List<object> d = new System.Collections.Generic.List<object>();
+
     [Fact]
     public static void Test()
     {
         int numStacks = 10000;
         int stackDepth = 100;
-        int numGCs = 100;
+#if DEBUG
+        int numGCs = 30;
+#else
+        int numGCs = 500;
+#endif
+
+        void Warmup()
+        {
+            for (int k = 0; k < 10000; k++)
+                d.Add(new int[k % 100]);
+
+            d = null;
+
+            for (int k = 0; k < 10; k++)
+            {
+                cs = new TaskCompletionSource<int>();
+                Task[] tasks = new Task[numStacks];
+                for (int i = 0; i < tasks.Length; i++)
+                {
+                    tasks[i] = Recursive1(stackDepth);
+                }
+
+                GC.Collect();
+                cs.SetResult(100);
+                Task.WaitAll(tasks);
+            }
+
+            {
+                cs = new TaskCompletionSource<int>();
+                Task[] tasks = new Task[numStacks];
+                for (int i = 0; i < tasks.Length; i++)
+                {
+                    tasks[i] = Recursive2(stackDepth);
+                }
+
+                GC.Collect();
+                cs.SetResult(100);
+                Task.WaitAll(tasks);
+            }
+        }
+
+        Warmup();
 
         Console.WriteLine("async-1 ===================== ");
         var ticks = Environment.TickCount;
@@ -111,6 +154,8 @@ public class Async2RootReporting
                 tasks[i] = Recursive1(stackDepth);
             }
 
+            GC.Collect(0);
+
             var ticksStart = Stopwatch.GetTimestamp();
 
             for (int i = 0; i < numGCs; i++)
@@ -121,6 +166,8 @@ public class Async2RootReporting
                 GC.Collect(0);
             }
 
+            var info = GC.GetGCMemoryInfo();
+            Console.Write("memory Mbytes:" + info.HeapSizeBytes / 1000000 + "  ");
             System.Console.WriteLine("Time per Gen0 GC (microseconds): " + (Stopwatch.GetTimestamp() - ticksStart) * 1000000 / numGCs / Stopwatch.Frequency);
 
             cs.SetResult(100);
@@ -140,6 +187,8 @@ public class Async2RootReporting
                 tasks[i] = Recursive2(stackDepth);
             }
 
+            GC.Collect(0);
+
             var ticksStart = Stopwatch.GetTimestamp();
 
             for (int i = 0; i < numGCs; i++)
@@ -149,6 +198,9 @@ public class Async2RootReporting
 
                 GC.Collect(0);
             }
+
+            var info = GC.GetGCMemoryInfo();
+            Console.Write("memory Mbytes:" + info.HeapSizeBytes / 1000000 + "  ");
 
             System.Console.WriteLine("Time per Gen0 GC (microseconds): " + (Stopwatch.GetTimestamp() - ticksStart) * 1000000 / numGCs / Stopwatch.Frequency);
 
