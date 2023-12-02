@@ -130,7 +130,7 @@ This will create an import from the `wasi_snapshot_preview1` module with the fun
 (import "wasi_snapshot_preview1" "random_get" (func $random_get (type 3)))
 ```
 Note: `WasmImportLinkageAttribute` is currently only available in the nightly SDK.  You can either build against the nightly SDK or you can defined this attribute in your code;
-```
+```cs
 namespace System.Runtime.InteropServices
 {
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
