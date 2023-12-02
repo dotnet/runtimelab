@@ -23,12 +23,8 @@ function(create_standalone_jit)
 
   if(TARGETDETAILS_OS STREQUAL "unix_osx" OR TARGETDETAILS_OS STREQUAL "unix_anyos")
     set(JIT_ARCH_LINK_LIBRARIES gcinfo_unix_${TARGETDETAILS_ARCH})
-  else()
-    if(TARGETDETAILS_OS STREQUAL "browser")
-      set(JIT_ARCH_LINK_LIBRARIES gcinfo_win_x64) # TODO: Wasm
-    else()
-      set(JIT_ARCH_LINK_LIBRARIES gcinfo_${TARGETDETAILS_OS}_${TARGETDETAILS_ARCH})
-    endif()
+  elseif(NOT (TARGETDETAILS_ARCH STREQUAL "wasm32" OR TARGETDETAILS_ARCH STREQUAL "wasm64"))
+    set(JIT_ARCH_LINK_LIBRARIES gcinfo_${TARGETDETAILS_OS}_${TARGETDETAILS_ARCH})
   endif()
 
   if(TARGETDETAILS_ARCH STREQUAL "x64")
@@ -721,12 +717,12 @@ if (CLR_CMAKE_BUILD_LLVM_JIT)
     list(FILTER JIT_SOURCES EXCLUDE REGEX regalloc\.cpp)
 
     # LLVM headers require C++17.
-    create_standalone_jit(TARGET clrjit_browser_wasm32_${ARCH_HOST_NAME} OS browser ARCH wasm32 CMAKE_CXX_STANDARD 17  DESTINATIONS .)
-    install_clr(TARGETS clrjit_browser_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
+    create_standalone_jit(TARGET clrjit_universal_wasm32_${ARCH_HOST_NAME} OS universal ARCH wasm32 CMAKE_CXX_STANDARD 17 DESTINATIONS .)
+    install_clr(TARGETS clrjit_universal_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
 
     # Uncomment to enable 8 byte pointer size version of the wasm clrjit.dll.
-    # create_standalone_jit(TARGET clrjit_browser_wasm64_${ARCH_HOST_NAME} OS browser ARCH wasm64 DESTINATIONS .)
-    # install_clr(TARGETS clrjit_browser_wasm64_${ARCH_HOST_NAME} DESTINATIONS . ilc COMPONENT wasmjit)
+    # create_standalone_jit(TARGET clrjit_universal_wasm32_${ARCH_HOST_NAME} OS universal ARCH wasm64 DESTINATIONS .)
+    # install_clr(TARGETS clrjit_universal_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
 endif (CLR_CMAKE_BUILD_LLVM_JIT)
 
 if (CLR_CMAKE_TARGET_ARCH_I386 AND CLR_CMAKE_TARGET_UNIX)

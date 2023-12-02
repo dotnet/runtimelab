@@ -18,7 +18,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ILCompiler.LLVM", "ILCompil
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "repro", "ILCompiler\repro\repro.csproj", "{CBDE0470-E0C9-4693-9A11-ACC117522F3F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clrjit_browser_wasm32_x64", "..\..\..\..\artifacts\obj\coreclr\windows.x64.Debug\ide\jit\clrjit_browser_wasm32_x64.vcxproj", "{D24E2045-B535-3592-911C-9A43AF824048}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clrjit_universal_wasm32_x64", "..\..\..\..\artifacts\obj\coreclr\windows.x64.Debug\ide\jit\clrjit_universal_wasm32_x64.vcxproj", "{D24E2045-B535-3592-911C-9A43AF824048}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clrjit_win_x64_x64", "..\..\..\..\artifacts\obj\coreclr\windows.x64.Debug\ide\jit\clrjit_win_x64_x64.vcxproj", "{8A189216-D635-3531-861A-C34679A4E081}"
 EndProject
