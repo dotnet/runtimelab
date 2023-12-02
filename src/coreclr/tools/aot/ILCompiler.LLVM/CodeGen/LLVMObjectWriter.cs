@@ -823,6 +823,8 @@ namespace ILCompiler.DependencyAnalysis
                 if (_wasmImportLinkages.TryGetValue(wasmImportKey, out LLVMValueRef funcValueRef))
                 {
                     // Warn no imports will be generate for this import and remove previous Wasm import.
+                    _compilation.Logger.LogMessage($"Duplicate Wasm Import removed for external function {externFuncName}");
+
                     funcValueRef.RemoveFunctionAttribute("wasm-import-name");
                     funcValueRef.RemoveFunctionAttribute("wasm-import-module");
                 }
