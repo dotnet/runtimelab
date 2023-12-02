@@ -3497,8 +3497,6 @@ unsigned Compiler::acdHelper(SpecialCodeKind codeKind)
             return CORINFO_HELP_OVERFLOW;
         case SCK_FAIL_FAST:
             return CORINFO_HELP_FAIL_FAST;
-        case SCK_NULL_REF_EXCPN:
-            return CORINFO_HELP_THROWNULLREF;
         default:
             assert(!"Bad codeKind");
             return 0;
@@ -3531,8 +3529,6 @@ const char* sckName(SpecialCodeKind codeKind)
             return "SCK_ARITH_EXCPN";
         case SCK_FAIL_FAST:
             return "SCK_FAIL_FAST";
-        case SCK_NULL_REF_EXCPN:
-            return "SCK_NULL_REF_EXCPN";
         default:
             return "SCK_UNKNOWN";
     }
@@ -3624,7 +3620,6 @@ PhaseStatus Compiler::fgCreateThrowHelperBlocks()
         BBJ_THROW, // SCK_ARG_EXCPN
         BBJ_THROW, // SCK_ARG_RNG_EXCPN
         BBJ_THROW, // SCK_FAIL_FAST
-        BBJ_THROW, // SCK_NULL_REF_EXCPN
     };
 
     noway_assert(sizeof(jumpKinds) == SCK_COUNT); // sanity check
@@ -3693,9 +3688,6 @@ PhaseStatus Compiler::fgCreateThrowHelperBlocks()
                 case SCK_FAIL_FAST:
                     msg = " for FAIL_FAST";
                     break;
-                case SCK_NULL_REF_EXCPN:
-                    msg = " for NULL_REF_EXCPN";
-                    break;
                 default:
                     msg = " for ??";
                     break;
@@ -3743,10 +3735,6 @@ PhaseStatus Compiler::fgCreateThrowHelperBlocks()
                 helper = CORINFO_HELP_FAIL_FAST;
                 break;
 
-            case SCK_NULL_REF_EXCPN:
-                helper = CORINFO_HELP_THROWNULLREF;
-                break;
-
             default:
                 noway_assert(!"unexpected code addition kind");
         }
@@ -3773,12 +3761,6 @@ PhaseStatus Compiler::fgCreateThrowHelperBlocks()
         {
             LIR::AsRange(newBlk).InsertAtEnd(LIR::SeqTree(this, tree));
         }
-
-#if defined(TARGET_WASM)
-        // Llvm has already run it's lower phase so these new blocks need to be lowered here.
-        //
-        m_llvm->LowerRange(newBlk, LIR::AsRange(newBlk));
-#endif
     }
 
     fgRngChkThrowAdded = true;

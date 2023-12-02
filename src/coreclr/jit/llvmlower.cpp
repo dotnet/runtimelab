@@ -237,29 +237,14 @@ void Llvm::lowerBlocks()
     {
         lowerBlock(block);
     }
-
-    // Lowering may insert out-of-line throw helper blocks that must themselves be lowered. We do not
-    // need a more complex "to a fixed point" loop here because lowering these throw helpers will not
-    // create new blocks.
-    //
-    for (BasicBlock* block : _compiler->Blocks())
-    {
-        if ((block->bbFlags & BBF_MARKED) == 0)
-        {
-            lowerBlock(block);
-        }
-
-        block->bbFlags &= ~BBF_MARKED;
-    }
 }
 
 void Llvm::lowerBlock(BasicBlock* block)
 {
-    LowerRange(block, LIR::AsRange(block));
-    block->bbFlags |= BBF_MARKED;
+    lowerRange(block, LIR::AsRange(block));
 }
 
-void Llvm::LowerRange(BasicBlock* block, LIR::Range& range)
+void Llvm::lowerRange(BasicBlock* block, LIR::Range& range)
 {
     m_currentBlock = block;
     m_currentRange = &range;
@@ -304,13 +289,6 @@ void Llvm::lowerNode(GenTree* node)
 
         case GT_STORE_DYN_BLK:
             lowerStoreDynBlk(node->AsStoreDynBlk());
-            break;
-
-        case GT_DIV:
-        case GT_MOD:
-        case GT_UDIV:
-        case GT_UMOD:
-            lowerDivMod(node->AsOp());
             break;
 
         case GT_ARR_LENGTH:
@@ -561,11 +539,6 @@ void Llvm::lowerRethrow(GenTreeCall* callNode)
 
 void Llvm::lowerIndir(GenTreeIndir* indirNode)
 {
-    if ((indirNode->gtFlags & GTF_IND_NONFAULTING) == 0)
-    {
-        _compiler->fgAddCodeRef(CurrentBlock(), SCK_NULL_REF_EXCPN);
-    }
-
     lowerAddressToAddressMode(indirNode);
 }
 
@@ -591,21 +564,6 @@ void Llvm::lowerStoreDynBlk(GenTreeStoreDynBlk* storeDynBlkNode)
 {
     storeDynBlkNode->Data()->SetContained();
     lowerIndir(storeDynBlkNode);
-}
-
-void Llvm::lowerDivMod(GenTreeOp* divModNode)
-{
-    assert(divModNode->OperIs(GT_DIV, GT_MOD, GT_UDIV, GT_UMOD));
-
-    ExceptionSetFlags exceptions = divModNode->OperExceptions(_compiler);
-    if ((exceptions & ExceptionSetFlags::DivideByZeroException) != ExceptionSetFlags::None)
-    {
-        _compiler->fgAddCodeRef(CurrentBlock(), SCK_DIV_BY_ZERO);
-    }
-    if ((exceptions & ExceptionSetFlags::ArithmeticException) != ExceptionSetFlags::None)
-    {
-        _compiler->fgAddCodeRef(CurrentBlock(), SCK_OVERFLOW);
-    }
 }
 
 // TODO-LLVM: Almost a direct copy from lower.cpp which is not included for Wasm.
@@ -1402,12 +1360,6 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
         }
     }
 
-    // The exceptional requirements of throw helper blocks are captured by their "source" blocks.
-    for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
-    {
-        add->acdDstBlk->bbFlags &= ~BBF_MAY_THROW;
-    }
-
     class Inserter
     {
         struct IndexDef
@@ -1528,7 +1480,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
             initRange.InsertAtEnd(initializeCall);
 
             assert(m_llvm->isFirstBlockCanonical());
-            m_llvm->LowerRange(m_compiler->fgFirstBB, initRange);
+            m_llvm->lowerRange(m_compiler->fgFirstBB, initRange);
             LIR::AsRange(m_compiler->fgFirstBB).InsertAtBeginning(std::move(initRange));
 
             for (int i = 0; i < m_definedIndices.Height(); i++)
@@ -1557,7 +1509,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
                         m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME, TYP_VOID);
                     LIR::Range popCallRange;
                     popCallRange.InsertAtBeginning(popCall);
-                    m_llvm->LowerRange(block, popCallRange);
+                    m_llvm->lowerRange(block, popCallRange);
                     LIR::AsRange(block).InsertBefore(lastNode, std::move(popCallRange));
                 }
             }

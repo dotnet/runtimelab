@@ -121,21 +121,9 @@ void Llvm::initializeFunctions()
 
 void Llvm::initializeBlocks()
 {
-    _compiler->fgFirstBB->bbFlags |= BBF_MARKED;
-
-    for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
-    {
-        BasicBlock* block = add->acdDstBlk;
-        if (isLlvmFunctionReachable(getLlvmFunctionIndexForBlock(block)))
-        {
-            // Assume that all throw helper blocks will be reachable. We can be more precise but don't really need to.
-            block->bbFlags |= BBF_MARKED;
-        }
-    }
-
     for (BasicBlock* block : _compiler->Blocks())
     {
-        if (!isReachable(block) && ((block->bbFlags & BBF_MARKED) == 0))
+        if (!isReachable(block) && (block != _compiler->fgFirstBB))
         {
             block->bbEmitCookie = nullptr;
             continue;
@@ -145,7 +133,6 @@ void Llvm::initializeBlocks()
         llvm::BasicBlock* llvmBlock =
             llvm::BasicBlock::Create(m_context->Context, BBNAME("BB", block->bbNum), llvmFunc);
         block->bbEmitCookie = new (_compiler->getAllocator(CMK_Codegen)) LlvmBlockRange(llvmBlock);
-        block->bbFlags &= ~BBF_MARKED;
     }
 
     // Mixing funclets and "inline" handlers can create situations where the first funclet block isn't the entry.
@@ -603,12 +590,6 @@ void Llvm::generateBlocks()
 
         LlvmCompileDomTreeVisitor visitor(_compiler, this);
         visitor.WalkTree();
-
-        // Walk all the exceptional code blocks and generate them since they don't appear in the normal flow graph.
-        for (Compiler::AddCodeDsc* add = _compiler->fgGetAdditionalCodeDescriptors(); add != nullptr; add = add->acdNext)
-        {
-            generateThrowHelperBlock(add->acdDstBlk);
-        }
     }
     else
     {
@@ -618,25 +599,6 @@ void Llvm::generateBlocks()
             generateBlock(block);
         }
     }
-}
-
-void Llvm::generateThrowHelperBlock(BasicBlock* block)
-{
-    if (block->bbEmitCookie == nullptr)
-    {
-        return;
-    }
-
-    LlvmBlockRange* llvmBlocks = getLlvmBlocksForBlock(block);
-    llvm::BasicBlock* llvmBlock = llvmBlocks->FirstBlock;
-    if (llvmBlock->hasNPredecessors(0))
-    {
-        assert(llvmBlock->empty() && (llvmBlocks->Count == 1));
-        llvmBlock->eraseFromParent();
-        return;
-    }
-
-    generateBlock(block);
 }
 
 void Llvm::generateBlock(BasicBlock* block)
@@ -1337,7 +1299,7 @@ void Llvm::buildDivMod(GenTree* node)
     if ((exceptions & ExceptionSetFlags::DivideByZeroException) != ExceptionSetFlags::None)
     {
         Value* isDivisorZeroValue = _builder.CreateICmpEQ(divisorValue, llvm::ConstantInt::get(llvmType, 0));
-        emitJumpToThrowHelper(isDivisorZeroValue, SCK_DIV_BY_ZERO);
+        emitJumpToThrowHelper(isDivisorZeroValue, CORINFO_HELP_THROWDIVZERO);
     }
     if ((exceptions & ExceptionSetFlags::ArithmeticException) != ExceptionSetFlags::None)
     {
@@ -1346,7 +1308,7 @@ void Llvm::buildDivMod(GenTree* node)
         Value* isDivisorMinusOneValue = _builder.CreateICmpEQ(divisorValue, llvm::ConstantInt::get(llvmType, -1));
         Value* isDividendMinValue = _builder.CreateICmpEQ(dividendValue, llvm::ConstantInt::get(llvmType, minDividend));
         Value* isOverflowValue = _builder.CreateAnd(isDivisorMinusOneValue, isDividendMinValue);
-        emitJumpToThrowHelper(isOverflowValue, SCK_ARITH_EXCPN);
+        emitJumpToThrowHelper(isOverflowValue, CORINFO_HELP_OVERFLOW);
     }
 
     switch (node->OperGet())
@@ -1495,7 +1457,7 @@ void Llvm::buildCast(GenTreeCast* cast)
             isOverflowValue = _builder.CreateCmp(llvm::CmpInst::ICMP_UGT, checkedValue, upperBoundValue);
         }
 
-        emitJumpToThrowHelper(isOverflowValue, SCK_OVERFLOW);
+        emitJumpToThrowHelper(isOverflowValue, CORINFO_HELP_OVERFLOW);
     }
 
     switch (castFromType)
@@ -2130,7 +2092,8 @@ void Llvm::buildBoundsCheck(GenTreeBoundsChk* boundsCheckNode)
     Value* lengthValue = consumeValue(boundsCheckNode->GetArrayLength(), checkLlvmType);
 
     Value* indexOutOfRangeValue = _builder.CreateCmp(llvm::CmpInst::ICMP_UGE, indexValue, lengthValue);
-    emitJumpToThrowHelper(indexOutOfRangeValue, boundsCheckNode->gtThrowKind);
+    CorInfoHelpFunc helperFunc = static_cast<CorInfoHelpFunc>(_compiler->acdHelper(boundsCheckNode->gtThrowKind));
+    emitJumpToThrowHelper(indexOutOfRangeValue, helperFunc);
 }
 
 void Llvm::buildCkFinite(GenTreeUnOp* ckNode)
@@ -2142,7 +2105,7 @@ void Llvm::buildCkFinite(GenTreeUnOp* ckNode)
     // Taken from IR Clang generates for "isfinite".
     Value* absOpValue = _builder.CreateIntrinsic(llvm::Intrinsic::fabs, fpLlvmType, opValue);
     Value* isNotFiniteValue = _builder.CreateFCmpUEQ(absOpValue, llvm::ConstantFP::get(fpLlvmType, INFINITY));
-    emitJumpToThrowHelper(isNotFiniteValue, SCK_ARITH_EXCPN);;
+    emitJumpToThrowHelper(isNotFiniteValue, CORINFO_HELP_OVERFLOW);;
 
     mapGenTreeToValue(ckNode, opValue);
 }
@@ -2268,7 +2231,7 @@ void Llvm::emitNullCheckForAddress(GenTree* addr, Value* addrValue)
         isNullValue = _builder.CreateICmpULT(addrValue, checkValue);
     }
 
-    emitJumpToThrowHelper(isNullValue, SCK_NULL_REF_EXCPN);
+    emitJumpToThrowHelper(isNullValue, CORINFO_HELP_THROWNULLREF);
 }
 
 Value* Llvm::consumeInitVal(GenTree* initVal)
@@ -2359,19 +2322,32 @@ unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned en
     return size;
 }
 
-void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind)
+void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, CorInfoHelpFunc helperFunc)
 {
     if (_compiler->fgUseThrowHelperBlocks())
     {
         assert(CurrentBlock() != nullptr);
 
-        // For code with throw helper blocks, find and use the shared helper block for raising the exception.
-        unsigned throwIndex = _compiler->bbThrowIndex(CurrentBlock());
-        BasicBlock* throwBlock = _compiler->fgFindExcptnTarget(throwKind, throwIndex)->acdDstBlk;
+        // For code with throw helper blocks, create and use the shared helper block for raising the exception.
+        llvm::BasicBlock* throwLlvmBlock;
+        ThrowHelperKey throwBlockKey{_compiler->bbThrowIndex(CurrentBlock()), helperFunc};
+        if (!m_throwHelperBlocksMap.Lookup(throwBlockKey, &throwLlvmBlock))
+        {
+            LlvmBlockRange* currentLlvmBlocks = getCurrentLlvmBlocks();
+
+            throwLlvmBlock = llvm::BasicBlock::Create(m_context->Context, "BBTH", getCurrentLlvmFunction());
+            LlvmBlockRange throwLlvmBlocks(throwLlvmBlock);
+
+            setCurrentEmitContextBlocks(&throwLlvmBlocks);
+            emitHelperCall(helperFunc);
+            _builder.CreateUnreachable();
+            m_throwHelperBlocksMap.Set(throwBlockKey, throwLlvmBlock);
+
+            setCurrentEmitContextBlocks(currentLlvmBlocks);
+        }
 
         // Jump to the exception-throwing block on error.
         llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
-        llvm::BasicBlock* throwLlvmBlock = getFirstLlvmBlockForBlock(throwBlock);
         _builder.CreateCondBr(jumpCondValue, throwLlvmBlock, nextLlvmBlock);
         _builder.SetInsertPoint(nextLlvmBlock);
     }
@@ -2382,7 +2358,7 @@ void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, SpecialCodeKind throwKind
 
         llvm::BasicBlock* throwLlvmBlock = createInlineLlvmBlock();
         _builder.SetInsertPoint(throwLlvmBlock);
-        emitHelperCall(static_cast<CorInfoHelpFunc>(_compiler->acdHelper(throwKind)));
+        emitHelperCall(helperFunc);
         _builder.CreateUnreachable();
 
         llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
@@ -2399,7 +2375,7 @@ Value* Llvm::emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Val
 
     Value* checkedValue = _builder.CreateIntrinsic(intrinsicId, op1Value->getType(), {op1Value, op2Value});
     Value* isOverflowValue = _builder.CreateExtractValue(checkedValue, 1);
-    emitJumpToThrowHelper(isOverflowValue, SCK_OVERFLOW);
+    emitJumpToThrowHelper(isOverflowValue, CORINFO_HELP_OVERFLOW);
 
     return _builder.CreateExtractValue(checkedValue, 0);
 }
@@ -2975,10 +2951,8 @@ void Llvm::setCurrentEmitContextForBlock(BasicBlock* block)
     m_currentBlock = block;
 }
 
-void Llvm::setCurrentEmitContext(unsigned funcIdx, unsigned tryIndex, unsigned hndIndex, LlvmBlockRange* llvmBlocks)
+void Llvm::setCurrentEmitContextBlocks(LlvmBlockRange* llvmBlocks)
 {
-    assert(getLlvmFunctionForIndex(funcIdx) == llvmBlocks->LastBlock->getParent());
-
     llvm::BasicBlock* insertLlvmBlock = llvmBlocks->LastBlock;
     if (insertLlvmBlock->getTerminator() != nullptr)
     {
@@ -2988,10 +2962,17 @@ void Llvm::setCurrentEmitContext(unsigned funcIdx, unsigned tryIndex, unsigned h
     {
         _builder.SetInsertPoint(insertLlvmBlock);
     }
+    m_currentLlvmBlocks = llvmBlocks;
+}
+
+void Llvm::setCurrentEmitContext(unsigned funcIdx, unsigned tryIndex, unsigned hndIndex, LlvmBlockRange* llvmBlocks)
+{
+    assert(getLlvmFunctionForIndex(funcIdx) == llvmBlocks->LastBlock->getParent());
+
     m_currentLlvmFunctionIndex = funcIdx;
     m_currentProtectedRegionIndex = tryIndex;
     m_currentHandlerIndex = hndIndex;
-    m_currentLlvmBlocks = llvmBlocks;
+    setCurrentEmitContextBlocks(llvmBlocks);
 
     // "Raw" emission contexts do not have a current IR block.
     m_currentBlock = nullptr;
@@ -3173,8 +3154,8 @@ llvm::BasicBlock* Llvm::getOrCreatePrologLlvmBlockForFunction(unsigned funcIdx)
 //
 // Return Value:
 //    Whether "block" has an immediate dominator, i. e. is statically
-//    reachable, not the first block, and not a throw helper block. If
-//    we do not have dominators built, all blocks are assumed reachable.
+//    reachable and not the first block. If we do not have dominators
+//    built, all blocks are assumed to be reachable.
 //
 bool Llvm::isReachable(BasicBlock* block) const
 {

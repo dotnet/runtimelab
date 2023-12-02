@@ -465,7 +465,7 @@ private:
         m_prologRange.InsertAtEnd(zeroILOffsetNode);
 
         assert(m_llvm->isFirstBlockCanonical());
-        m_llvm->LowerRange(m_compiler->fgFirstBB, m_prologRange);
+        m_llvm->lowerRange(m_compiler->fgFirstBB, m_prologRange);
         LIR::AsRange(m_compiler->fgFirstBB).InsertAtBeginning(std::move(m_prologRange));
     }
 
