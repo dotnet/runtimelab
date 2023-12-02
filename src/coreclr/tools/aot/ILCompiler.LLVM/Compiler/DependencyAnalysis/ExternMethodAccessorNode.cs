@@ -27,7 +27,13 @@ namespace ILCompiler.DependencyAnalysis
         public ExternMethodAccessorNode(ExternSymbolKey externSymbolKey)
         {
             _externSymbolKey = externSymbolKey;
+            // Must also be a valid Javascript identifier
+            QualifiedName = externSymbolKey.WasmImport
+                ? externSymbolKey.ExternModuleName + "_" + externSymbolKey.ExternMethodName.ToString()
+                : externSymbolKey.ExternMethodName.ToString();
         }
+
+        public string QualifiedName { get; }
 
         public ExternSymbolKey ExternSymbolKey => _externSymbolKey;
 
@@ -69,7 +75,7 @@ namespace ILCompiler.DependencyAnalysis
         public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
         {
             sb.Append("get.");
-            sb.Append(ExternSymbolKey.ExternMethodName);
+            sb.Append(QualifiedName);
         }
 
         public override int ClassCode => 935251149;

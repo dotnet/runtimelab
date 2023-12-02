@@ -772,7 +772,7 @@ namespace ILCompiler.DependencyAnalysis
         private void GetCodeForExternMethodAccessor(ExternMethodAccessorNode node)
         {
             // TODO-LLVM: use the Utf8 string directly here.
-            string externFuncName = node.ExternSymbolKey.ExternMethodName.ToString();
+            string externFuncName = node.QualifiedName;
             LLVMTypeRef externFuncType;
 
             if (node.Signature != null)
@@ -813,7 +813,8 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             LLVMModuleRef externFuncModule = _moduleWithExternalFunctions;
-            Debug.Assert(externFuncModule.GetNamedFunction(externFuncName).Handle == IntPtr.Zero);
+            // Wasm Imports can appear with the same name when overloaded and are handled below.
+            Debug.Assert(node.ExternSymbolKey.WasmImport || externFuncModule.GetNamedFunction(externFuncName).Handle == IntPtr.Zero);
             LLVMValueRef externFunc = externFuncModule.AddFunction(externFuncName, externFuncType);
 
             // Add import attributes if specified.
@@ -830,7 +831,7 @@ namespace ILCompiler.DependencyAnalysis
                 }
                 else
                 {
-                    externFunc.AddFunctionAttribute("wasm-import-name", externFuncName);
+                    externFunc.AddFunctionAttribute("wasm-import-name", node.ExternSymbolKey.ExternMethodName.ToString());
                     externFunc.AddFunctionAttribute("wasm-import-module", node.ExternSymbolKey.ExternModuleName);
 
                     _wasmImportLinkages.Add(wasmImportKey, externFunc);

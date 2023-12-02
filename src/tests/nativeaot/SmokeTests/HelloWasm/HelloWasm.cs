@@ -305,6 +305,8 @@ internal unsafe partial class Program
 
 #if !CODEGEN_WASI // Easier to test with Javascript/Emscripten.
         TestNamedModuleCall();
+
+        TestSameFunctionNameInDifferentModules();
 #endif
 
         TestNativeCallsWithMismatchedSignatures();
@@ -1574,6 +1576,9 @@ internal unsafe partial class Program
     [DllImport("ModuleName", EntryPoint = "DupImportTest"), WasmImportLinkage]
     private static extern int FuncDup1(int arg);
 
+    [DllImport("ModuleName", EntryPoint = "DupImportTest"), WasmImportLinkage]
+    private static extern int FuncDup2();
+
     [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "JustForRooting")]
     private static void RootFuncDup(int x)
     {
@@ -1581,8 +1586,18 @@ internal unsafe partial class Program
         FuncDup2();
     }
 
-    [DllImport("ModuleName", EntryPoint = "DupImportTest"), WasmImportLinkage]
-    private static extern int FuncDup2();
+    [DllImport("ModuleName1", EntryPoint = "CommonFunctionName"), WasmImportLinkage]
+    private static extern int CallFunctionInModule1(int arg);
+
+    [DllImport("ModuleName2", EntryPoint = "CommonFunctionName"), WasmImportLinkage]
+    private static extern int CallFunctionInModule2(int arg);
+
+    private static void TestSameFunctionNameInDifferentModules()
+    {
+        StartTest("Wasm import same function name from different modules test");
+        EndTest(CallFunctionInModule1(456) == 456 && CallFunctionInModule2(789) == 790);
+    }
+
 #endif
 
     [System.Runtime.InteropServices.DllImport("*")]

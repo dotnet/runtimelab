@@ -32,7 +32,15 @@ var Module = {
 
         // Provide the import from a module named "ModuleName".
         info['ModuleName'] = {
-            FunctionInModule: functionInModule
+            FunctionInModule: functionInModule,
+        };
+
+        // Same function in different modules
+        info['ModuleName1'] = {
+            CommonFunctionName: functionInModule,
+        };
+        info['ModuleName2'] = {
+            CommonFunctionName: functionInModule2,
         };
 
         instantiateAsync(wasmBinary, wasmBinaryFile, info, receiveInstantiationResult);
@@ -42,4 +50,9 @@ var Module = {
 
 function functionInModule(p) {
     return p;
+}
+
+// Do something different to functionInModule so we can test we have called the correct function.
+function functionInModule2(p) {
+    return p + 1;
 }
