@@ -26,6 +26,12 @@ namespace Internal.IL
             LLVM.AddAttributeAtIndex(function, LLVMAttributeIndex.LLVMAttributeFunctionIndex, attribute);
         }
 
+        internal static void RemoveFunctionAttribute(this LLVMValueRef function, string name)
+        {
+            using var marshaledName = new MarshaledString(name);
+            LLVM.RemoveStringAttributeAtIndex(function, LLVMAttributeIndex.LLVMAttributeFunctionIndex, marshaledName.Value, (uint)marshaledName.Length);
+        }
+
         internal static LLVMValueRef GetNamedAlias(this LLVMModuleRef module, ReadOnlySpan<byte> name)
         {
             fixed (byte* pName = name)

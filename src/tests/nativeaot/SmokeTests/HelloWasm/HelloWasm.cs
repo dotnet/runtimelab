@@ -1570,6 +1570,19 @@ internal unsafe partial class Program
     [WasmImportLinkage]
     [DllImport("ModuleName", EntryPoint = "FunctionInModule")]
     private static extern int CallFunctionInModule(int x);
+
+    [DllImport("ModuleName", EntryPoint = "DupImportTest"), WasmImportLinkage]
+    private static extern int FuncDup1(int arg);
+
+    [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "JustForRooting")]
+    private static void RootFuncDup(int x)
+    {
+        FuncDup1(0);
+        FuncDup2();
+    }
+
+    [DllImport("ModuleName", EntryPoint = "DupImportTest"), WasmImportLinkage]
+    private static extern int FuncDup2();
 #endif
 
     [System.Runtime.InteropServices.DllImport("*")]

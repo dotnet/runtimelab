@@ -20,16 +20,17 @@ namespace ILCompiler.DependencyAnalysis
 {
     internal sealed class ExternMethodAccessorNode : AssemblyStubNode
     {
-        private readonly Utf8String _externMethodName;
+        private readonly ExternSymbolKey _externSymbolKey;
         private TargetAbiType[] _signature;
         private object _methods;
 
-        public ExternMethodAccessorNode(string externMethodName)
+        public ExternMethodAccessorNode(ExternSymbolKey externSymbolKey)
         {
-            _externMethodName = externMethodName;
+            _externSymbolKey = externSymbolKey;
         }
 
-        public ref readonly Utf8String ExternMethodName => ref _externMethodName;
+        public ExternSymbolKey ExternSymbolKey => _externSymbolKey;
+
         public ref TargetAbiType[] Signature => ref _signature;
 
         public void AddMethod(MethodDesc method)
@@ -68,14 +69,14 @@ namespace ILCompiler.DependencyAnalysis
         public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
         {
             sb.Append("get.");
-            sb.Append(ExternMethodName);
+            sb.Append(ExternSymbolKey.ExternMethodName);
         }
 
         public override int ClassCode => 935251149;
 
         public override int CompareToImpl(ISortableNode other, CompilerComparer comparer)
         {
-            return ExternMethodName.CompareTo(((ExternMethodAccessorNode)other).ExternMethodName);
+            return ExternSymbolKey.CompareTo(((ExternMethodAccessorNode)other).ExternSymbolKey, comparer);
         }
 
         protected override void EmitCode(NodeFactory factory, ref X64Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
@@ -85,6 +86,63 @@ namespace ILCompiler.DependencyAnalysis
         protected override void EmitCode(NodeFactory factory, ref LoongArch64Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
         protected override void EmitCode(NodeFactory factory, ref WasmEmitter instructionEncoder, bool relocsOnly) { }
 
-        protected override string GetName(NodeFactory context) => $"ExternMethodAccessor {ExternMethodName}";
+        protected override string GetName(NodeFactory context) => $"ExternMethodAccessor {ExternSymbolKey.ExternMethodName}";
+    }
+
+    internal sealed class ExternSymbolKey  : IEquatable<ExternSymbolKey>
+    {
+        private readonly MethodSignature _methodSignature;
+
+        public ExternSymbolKey(string externModuleName, string externMethodName, bool wasmImport,
+            MethodSignature methodSignature)
+        {
+            _methodSignature = methodSignature;
+
+            ExternModuleName = externModuleName;
+            ExternMethodName = externMethodName;
+            WasmImport = wasmImport;
+        }
+
+        public string ExternModuleName { get; }
+        public readonly Utf8String ExternMethodName;
+        public bool WasmImport { get; }
+
+        public override bool Equals(object obj) => obj is ExternSymbolKey wasmImportKey && Equals(wasmImportKey);
+
+        // Only compare the signature for Wasm Imports.  `memset` is an example that appears with different signatures
+        public bool Equals(ExternSymbolKey other) => ExternModuleName == other.ExternModuleName
+                                                     && ExternMethodName.Equals(other.ExternMethodName)
+                                                     && WasmImport == other.WasmImport
+                                                     && (!WasmImport || _methodSignature.EquivalentTo(other._methodSignature));
+
+        public override int GetHashCode()
+        {
+            return WasmImport
+                ? HashCode.Combine(ExternModuleName, ExternMethodName, WasmImport, _methodSignature)
+                : HashCode.Combine(ExternModuleName, ExternMethodName, WasmImport);
+        }
+
+        public int CompareTo(ExternSymbolKey other, CompilerComparer comparer)
+        {
+            int result = ExternMethodName.CompareTo(other.ExternMethodName);
+            if (result != 0)
+            {
+                return result;
+            }
+
+            result = ExternModuleName.CompareTo(other.ExternModuleName);
+            if (result != 0)
+            {
+                return result;
+            }
+
+            result = WasmImport.CompareTo(other.WasmImport);
+            if (result != 0)
+            {
+                return result;
+            }
+
+            return comparer.Compare(_methodSignature, other._methodSignature);
+        }
     }
 }

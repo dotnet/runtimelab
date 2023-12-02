@@ -51,6 +51,9 @@ namespace ILCompiler.DependencyAnalysis
         private LLVMValueRef[] _currentObjectData = new LLVMValueRef[100_000];
         private LLVMTypeRef[] _currentObjectTypes = new LLVMTypeRef[100_000];
 
+        private readonly Dictionary<WasmImportKey, LLVMValueRef> _wasmImportLinkages = new Dictionary<WasmImportKey, LLVMValueRef>();
+
+
 #if DEBUG
         private static readonly Dictionary<string, ISymbolNode> _previouslyWrittenNodeNames = new();
 #endif
@@ -769,7 +772,7 @@ namespace ILCompiler.DependencyAnalysis
         private void GetCodeForExternMethodAccessor(ExternMethodAccessorNode node)
         {
             // TODO-LLVM: use the Utf8 string directly here.
-            string externFuncName = node.ExternMethodName.ToString();
+            string externFuncName = node.ExternSymbolKey.ExternMethodName.ToString();
             LLVMTypeRef externFuncType;
 
             if (node.Signature != null)
@@ -814,12 +817,21 @@ namespace ILCompiler.DependencyAnalysis
             LLVMValueRef externFunc = externFuncModule.AddFunction(externFuncName, externFuncType);
 
             // Add import attributes if specified.
-            foreach (MethodDesc methodDesc in node.EnumerateMethods())
+            if (node.ExternSymbolKey.WasmImport)
             {
-                if (methodDesc.HasCustomAttribute("System.Runtime.InteropServices", "WasmImportLinkageAttribute"))
+                WasmImportKey wasmImportKey = new WasmImportKey(node.ExternSymbolKey);
+                if (_wasmImportLinkages.TryGetValue(wasmImportKey, out LLVMValueRef funcValueRef))
+                {
+                    // Warn no imports will be generate for this import and remove previous Wasm import.
+                    funcValueRef.RemoveFunctionAttribute("wasm-import-name");
+                    funcValueRef.RemoveFunctionAttribute("wasm-import-module");
+                }
+                else
                 {
                     externFunc.AddFunctionAttribute("wasm-import-name", externFuncName);
-                    externFunc.AddFunctionAttribute("wasm-import-module", methodDesc.GetPInvokeMethodMetadata().Module);
+                    externFunc.AddFunctionAttribute("wasm-import-module", node.ExternSymbolKey.ExternModuleName);
+
+                    _wasmImportLinkages.Add(wasmImportKey, externFunc);
                 }
             }
 
@@ -1144,6 +1156,24 @@ namespace ILCompiler.DependencyAnalysis
 
             public static implicit operator ReadOnlySpan<byte>(in Utf8Name name) =>
                 name._builder.UnderlyingArray.AsSpan(name._offset, name._length);
+        }
+
+        private sealed class WasmImportKey
+        {
+            private readonly string _moduleName;
+            private readonly Utf8String _functionName;
+
+            public WasmImportKey(ExternSymbolKey externSymbolKey)
+            {
+                _moduleName = externSymbolKey.ExternModuleName;
+                _functionName = externSymbolKey.ExternMethodName;
+            }
+
+            public override bool Equals(object obj) => Equals((WasmImportKey)obj);
+
+            private bool Equals(WasmImportKey other) => _moduleName == other._moduleName && _functionName.Equals(other._functionName);
+
+            public override int GetHashCode() => HashCode.Combine(_moduleName, _functionName);
         }
     }
 }

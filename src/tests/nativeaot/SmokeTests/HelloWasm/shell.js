@@ -11,6 +11,12 @@ var wasmBinaryFile = 'HelloWasm.wasm';
 function receiveInstantiationResult(result) {
     wasmExports = result['instance'].exports;
 
+    const wasmImports = WebAssembly.Module.imports(result['module']);
+    const dupImport = (element) => element.module == 'ModuleName' && element.name == 'DupImportTest' && element.kind == 'function';
+    if (wasmImports.some(dupImport)) {
+        throw 'DupImportTest was imported when it should have been removed as a duplicate.';
+    }
+
     wasmMemory = wasmExports['memory'];
 
     updateMemoryViews();

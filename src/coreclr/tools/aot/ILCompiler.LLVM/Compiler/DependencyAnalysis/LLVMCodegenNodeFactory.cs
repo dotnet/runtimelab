@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-
+using Internal.IL.Stubs;
 using Internal.JitInterface;
 using Internal.TypeSystem;
 using Internal.TypeSystem.Ecma;
@@ -13,7 +13,7 @@ namespace ILCompiler.DependencyAnalysis
 {
     public sealed class LLVMCodegenNodeFactory : NodeFactory
     {
-        private readonly Dictionary<string, ExternMethodAccessorNode> _externSymbolsWithAccessors = new();
+        private readonly Dictionary<ExternSymbolKey, ExternMethodAccessorNode> _externSymbolsWithAccessors = new();
         private readonly Dictionary<string, EcmaMethod> _runtimeExports = new();
 
         public LLVMCodegenNodeFactory(
@@ -49,17 +49,21 @@ namespace ILCompiler.DependencyAnalysis
 
         internal ExternMethodAccessorNode ExternSymbolWithAccessor(string name, MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
         {
-            Dictionary<string, ExternMethodAccessorNode> map = _externSymbolsWithAccessors;
+            Dictionary<ExternSymbolKey, ExternMethodAccessorNode> map = _externSymbolsWithAccessors;
+            ExternSymbolKey key = new(method.GetPInvokeMethodMetadata().Module, name,
+                ((PInvokeTargetNativeMethod)method).Target.HasCustomAttribute("System.Runtime.InteropServices", "WasmImportLinkageAttribute"),
+                method.Signature);
+
 
             // Not lockless since we mutate the node. Contention on this path is not expected.
             //
             lock (map)
             {
-                ref ExternMethodAccessorNode node = ref CollectionsMarshal.GetValueRefOrAddDefault(map, name, out bool exists);
+                ref ExternMethodAccessorNode node = ref CollectionsMarshal.GetValueRefOrAddDefault(map, key, out bool exists);
 
                 if (!exists)
                 {
-                    node = new ExternMethodAccessorNode(name);
+                    node = new ExternMethodAccessorNode(key);
                     node.Signature = sig.ToArray();
                 }
                 else if (!node.Signature.AsSpan().SequenceEqual(sig))
