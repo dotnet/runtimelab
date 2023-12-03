@@ -505,6 +505,8 @@ private:
     void buildBinaryOperation(GenTree* node);
     void buildShift(GenTreeOp* node);
     void buildIntrinsic(GenTreeIntrinsic* intrinsicNode);
+    void buildAtomicOp(GenTreeIndir* atomicOpNode);
+    void buildCmpXchg(GenTreeCmpXchg* cmpXchgNode);
     void buildMemoryBarrier(GenTree* node);
     void buildCatchArg(GenTree* catchArg);
     void buildReturn(GenTree* node);
@@ -521,6 +523,8 @@ private:
 
     Value* consumeAddressAndEmitNullCheck(GenTreeIndir* indir);
     void emitNullCheckForAddress(GenTree* addr, Value* addrValue);
+    void emitAlignmentCheckForAddress(GenTree* addr, Value* addrValue, unsigned alignment);
+    bool isAddressAligned(GenTree* addr, unsigned alignment);
 
     Value* consumeInitVal(GenTree* initVal);
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);

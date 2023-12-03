@@ -384,6 +384,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_OVERFLOW) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_THROWDIVZERO) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_THROWNULLREF) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_THROWMISALIGN) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
 
         // Verification is in the process of being deleted from RyuJit.
         { FUNC(CORINFO_HELP_VERIFICATION) },

@@ -102,6 +102,7 @@ namespace Internal.JitInterface
         CORINFO_HELP_OVERFLOW,          // throw an overflow exception
         CORINFO_HELP_THROWDIVZERO,      // throw a divide by zero exception
         CORINFO_HELP_THROWNULLREF,      // throw a null reference exception
+        CORINFO_HELP_THROWMISALIGN,     // throw a data misaligned exception
 
         CORINFO_HELP_VERIFICATION,      // Throw a VerificationException
         CORINFO_HELP_FAIL_FAST,         // Kill the process avoiding any exceptions or stack and data dependencies (use for GuardStack unsafe buffer checks)

@@ -276,6 +276,11 @@ void Llvm::lowerNode(GenTree* node)
             lowerCall(node->AsCall());
             break;
 
+        case GT_XAND:
+        case GT_XORR:
+        case GT_XADD:
+        case GT_XCHG:
+        case GT_CMPXCHG:
         case GT_IND:
         case GT_BLK:
         case GT_NULLCHECK:

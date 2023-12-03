@@ -353,7 +353,7 @@ internal unsafe partial class Program
 
         TestReverseDelegateInvoke();
 
-        TestInterlockedExchange();
+        TestInterlocked();
 
         TestThrowIfNull();
 
@@ -431,9 +431,9 @@ internal unsafe partial class Program
     private unsafe static void TestJitUseStruct()
     {
         StartTest("TestJitUseStruct (Jit compilation struct test)");
-        StructWithIndex structWithIndex = new StructWithIndex() { Index = 1, Value = 2};
+        StructWithIndex structWithIndex = new StructWithIndex() { Index = 1, Value = 2 };
         StructWithStructWithIndex structWithStruct =
-            new StructWithStructWithIndex() { StructWithIndex = structWithIndex, AnotherIndex = 3};
+            new StructWithStructWithIndex() { StructWithIndex = structWithIndex, AnotherIndex = 3 };
 
         var res = JitUseStructProblem(&structWithStruct, structWithIndex);
 
@@ -467,7 +467,7 @@ internal unsafe partial class Program
 
         if (Unsafe.IsNullRef(ref data))
         {
-            
+
         }
 
         something();
@@ -525,7 +525,7 @@ internal unsafe partial class Program
         int* ptrStruct2 = (int*)&copy1;
         ptrStruct2 = ptrStruct2 + 1;
 
-        if(*ptrStruct2 != 2)
+        if (*ptrStruct2 != 2)
         {
             FailTest("Explicit store failed");
         }
@@ -557,7 +557,7 @@ internal unsafe partial class Program
     private static void TestLclVarAddr(LlvmStruct s)
     {
         StartTest("Test passing struct arg");
-        
+
         EndTest(FuncWithStructArg(s) == 2);
     }
 
@@ -2381,15 +2381,273 @@ internal unsafe partial class Program
         }
     }
 
-    static void TestInterlockedExchange()
+    static void TestInterlocked()
     {
-        StartTest("InterlockedExchange");
-        int exInt1 = 1;
-        Interlocked.Exchange(ref exInt1, 2);
+        static int InterlockedAnd(ref int location, int value) => Interlocked.And(ref location, value);
+        static int InterlockedOr(ref int location, int value) => Interlocked.Or(ref location, value);
+        static int InterlockedAdd(ref int location, int value) => Interlocked.Add(ref location, value);
+        static int InterlockedExchange(ref int location, int value) => Interlocked.Exchange(ref location, value);
+        static object InterlockedExchangeObj(ref object location, object value) => Interlocked.Exchange(ref location, value);
+        static int InterlockedCompareExchange(ref int location, int value, int comparand) => Interlocked.CompareExchange(ref location, value, comparand);
+        static object InterlockedCompareExchangeObj(ref object location, object value, object comparand) => Interlocked.CompareExchange(ref location, value, comparand);
 
-        long exLong1 = 1;
-        Interlocked.Exchange(ref exLong1, 3);
-        EndTest(exInt1 == 2 && exLong1 == 3);
+        TestInterlockedImpl(
+            &InterlockedAnd,
+            &InterlockedOr,
+            &InterlockedAdd,
+            &InterlockedExchange,
+            &InterlockedExchangeObj,
+            &InterlockedCompareExchange,
+            &InterlockedCompareExchangeObj,
+            "");
+
+        TestInterlockedImpl(
+            (delegate*<ref int, int, int>)&Interlocked.And,
+            (delegate*<ref int, int, int>)&Interlocked.Or,
+            (delegate*<ref int, int, int>)&Interlocked.Add,
+            (delegate*<ref int, int, int>)&Interlocked.Exchange,
+            (delegate*<ref object, object, object>)&Interlocked.Exchange,
+            (delegate*<ref int, int, int, int>)&Interlocked.CompareExchange,
+            (delegate*<ref object, object, object, object>)&Interlocked.CompareExchange,
+            " (indirect)");
+    }
+
+    static void TestInterlockedImpl(
+        delegate*<ref int, int, int> interlockedAnd,
+        delegate*<ref int, int, int> interlockedOr,
+        delegate*<ref int, int, int> interlockedAdd,
+        delegate*<ref int, int, int> interlockedExchange,
+        delegate*<ref object, object, object> interlockedExchangeObj,
+        delegate*<ref int, int, int, int> interlockedCompareExchange,
+        delegate*<ref object, object, object, object> interlockedCompareExchangeObj,
+        string postfix)
+    {
+        const long LongLocationValue = 0x1010101010101010;
+        long longLocation = LongLocationValue;
+        byte* alignedLongAddress = (byte*)&longLocation;
+
+        StartTest($"Test Interlocked.And" + postfix);
+        {
+            int initValue = 1;
+            if (interlockedAnd(ref initValue, 0) != 1)
+            {
+                FailTest("Interlocked.And - old value");
+                return;
+            }
+            if (initValue != 0)
+            {
+                FailTest("Interlocked.And - new value");
+                return;
+            }
+            try
+            {
+                interlockedAnd(ref *(int*)null, 0);
+                FailTest("Interlocked.And - null location");
+                return;
+            }
+            catch (NullReferenceException) { }
+            try
+            {
+                interlockedAnd(ref *(int*)(alignedLongAddress + 1), 0);
+                FailTest("Interlocked.And - unaligned location");
+                return;
+            }
+            catch (DataMisalignedException) { }
+            if (longLocation != LongLocationValue)
+            {
+                FailTest("Interlocked.And - unaligned store observed");
+                return;
+            }
+        }
+        PassTest();
+
+        StartTest("Test Interlocked.Or" + postfix);
+        {
+            int initValue = 0;
+            if (interlockedOr(ref initValue, 1) != 0)
+            {
+                FailTest("Interlocked.Or - old value");
+                return;
+            }
+            if (initValue != 1)
+            {
+                FailTest("Interlocked.Or - new value");
+                return;
+            }
+            try
+            {
+                interlockedOr(ref *(int*)null, 0);
+                FailTest("Interlocked.Or - null location");
+                return;
+            }
+            catch (NullReferenceException) { }
+            try
+            {
+                interlockedOr(ref *(int*)(alignedLongAddress + 1), 1);
+                FailTest("Interlocked.Or - unaligned location");
+                return;
+            }
+            catch (DataMisalignedException) { }
+            if (longLocation != LongLocationValue)
+            {
+                FailTest("Interlocked.Or - unaligned store observed");
+                return;
+            }
+        }
+        PassTest();
+
+        StartTest("Test Interlocked.Add" + postfix);
+        {
+            int initValue = 0;
+            if (interlockedAdd(ref initValue, 1) != 1)
+            {
+                FailTest("Interlocked.Add - old value");
+                return;
+            }
+            if (initValue != 1)
+            {
+                FailTest("Interlocked.Add - new value");
+                return;
+            }
+            try
+            {
+                interlockedAdd(ref *(int*)null, 0);
+                FailTest("Interlocked.Add - null location");
+                return;
+            }
+            catch (NullReferenceException) { }
+            try
+            {
+                interlockedAdd(ref *(int*)(alignedLongAddress + 1), 1);
+                FailTest("Interlocked.Add - unaligned location");
+                return;
+            }
+            catch (DataMisalignedException) { }
+            if (longLocation != LongLocationValue)
+            {
+                FailTest("Interlocked.Add - unaligned store observed");
+                return;
+            }
+        }
+        PassTest();
+
+        StartTest("Test Interlocked.Exchange" + postfix);
+        {
+            int initValue = 0;
+            if (interlockedExchange(ref initValue, 1) != 0)
+            {
+                FailTest("Interlocked.Exchange - old value");
+                return;
+            }
+            if (initValue != 1)
+            {
+                FailTest("Interlocked.Exchange - new value");
+                return;
+            }
+            try
+            {
+                interlockedExchange(ref *(int*)null, 0);
+                FailTest("Interlocked.Exchange - null location");
+                return;
+            }
+            catch (NullReferenceException) { }
+            try
+            {
+                interlockedExchange(ref *(int*)(alignedLongAddress + 1), 0);
+                FailTest("Interlocked.Exchange - unaligned location");
+                return;
+            }
+            catch (DataMisalignedException) { }
+            if (longLocation != LongLocationValue)
+            {
+                FailTest("Interlocked.Exchange - unaligned store observed");
+                return;
+            }
+        }
+        PassTest();
+
+        StartTest("Test Interlocked.Exchange<object>" + postfix);
+        {
+            object initValue = null;
+            object newValue = new object();
+            if (interlockedExchangeObj(ref initValue, newValue) != null)
+            {
+                FailTest("Interlocked.Exchange<object> - old value");
+                return;
+            }
+            if (initValue != newValue)
+            {
+                FailTest("Interlocked.Exchange<object> - new value");
+                return;
+            }
+            try
+            {
+                interlockedExchangeObj(ref *(object*)null, null);
+                FailTest("Interlocked.Exchange<object> - null location");
+                return;
+            }
+            catch (NullReferenceException) { }
+        }
+        PassTest();
+
+        StartTest("Test Interlocked.CompareExchange" + postfix);
+        {
+            int initValue = 0;
+            if (interlockedCompareExchange(ref initValue, 1, 0) != 0)
+            {
+                FailTest("Interlocked.CompareExchange - old value");
+                return;
+            }
+            if (initValue != 1)
+            {
+                FailTest("Interlocked.CompareExchange - new value");
+                return;
+            }
+            try
+            {
+                interlockedCompareExchange(ref *(int*)null, 0, 0);
+                FailTest("Interlocked.CompareExchange - null location");
+                return;
+            }
+            catch (NullReferenceException) { }
+            try
+            {
+                interlockedCompareExchange(ref *(int*)(alignedLongAddress + 1), 0, 0);
+                FailTest("Interlocked.CompareExchange - unaligned location");
+                return;
+            }
+            catch (DataMisalignedException) { }
+            if (longLocation != LongLocationValue)
+            {
+                FailTest("Interlocked.CompareExchange - unaligned store observed");
+                return;
+            }
+        }
+        PassTest();
+
+        StartTest("Test Interlocked.CompareExchange<object>" + postfix);
+        {
+            object initValue = null;
+            object newValue = new object();
+            if (interlockedCompareExchangeObj(ref initValue, newValue, null) != null)
+            {
+                FailTest("Interlocked.CompareExchange<object> - old value");
+                return;
+            }
+            if (initValue != newValue)
+            {
+                FailTest("Interlocked.CompareExchange<object> - new value");
+                return;
+            }
+            try
+            {
+                interlockedCompareExchangeObj(ref *(object*)null, null, null);
+                FailTest("Interlocked.CompareExchange<object> - null location");
+                return;
+            }
+            catch (NullReferenceException) { }
+        }
+        PassTest();
     }
 
     static void TestThrowIfNull()
@@ -2481,7 +2739,7 @@ internal unsafe partial class Program
 
     private static unsafe bool CkFinite32(uint value)
     {
-        return CkFiniteTest.CkFinite32 (* (float*)(&value));
+        return CkFiniteTest.CkFinite32(*(float*)(&value));
     }
 
     private static unsafe bool CkFinite64(ulong value)
@@ -3613,7 +3871,7 @@ internal unsafe partial class Program
 
         var col = new List<ValueTuple<char, char>>() { new ValueTuple<char, char>('a', 'b') };
 
-        var contains = col.Contains(new ValueTuple<char,char>('a', 'b'));
+        var contains = col.Contains(new ValueTuple<char, char>('a', 'b'));
 
         EndTest(contains);
     }

@@ -2194,8 +2194,7 @@ namespace Internal.JitInterface
                 }
             }
 
-            if (type.Context.Target.Architecture == TargetArchitecture.ARM &&
-                alignment < 8 && type.RequiresAlign8())
+            if (alignment < 8 && type.RequiresAlign8())
             {
                 // If the structure contains 64-bit primitive fields and the platform requires 8-byte alignment for
                 // such fields then make sure we return at least 8-byte alignment. Note that it's technically possible
