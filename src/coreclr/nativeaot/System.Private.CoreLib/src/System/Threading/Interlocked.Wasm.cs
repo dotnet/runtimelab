@@ -41,12 +41,6 @@ namespace System.Threading
             {
                 ThrowHelpers.ThrowNullReferenceException();
             }
-            if (((nint)Unsafe.AsPointer(ref location1) & (sizeof(nint) - 1)) != 0)
-            {
-                // Note that because the GC moves on multiples of words size, this alignment check will always
-                // be in sync with the intruction below, even if "location1" moves in-between.
-                ThrowHelpers.ThrowDataMisalignedException();
-            }
             return RuntimeImports.InterlockedCompareExchange(ref location1, value, comparand);
         }
 
@@ -71,12 +65,6 @@ namespace System.Threading
             if (Unsafe.IsNullRef(ref location1))
             {
                 ThrowHelpers.ThrowNullReferenceException();
-            }
-            if (((nint)Unsafe.AsPointer(ref location1) & (sizeof(nint) - 1)) != 0)
-            {
-                // Note that because the GC moves on multiples of words size, this alignment check will always
-                // be in sync with the intruction below, even if "location1" moves in-between.
-                ThrowHelpers.ThrowDataMisalignedException();
             }
             return RuntimeImports.InterlockedExchange(ref location1, value);
         }

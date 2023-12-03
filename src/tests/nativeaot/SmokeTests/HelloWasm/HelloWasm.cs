@@ -2587,18 +2587,6 @@ internal unsafe partial class Program
                 return;
             }
             catch (NullReferenceException) { }
-            try
-            {
-                interlockedExchangeObj(ref *(object*)(alignedLongAddress + 1), null);
-                FailTest("Interlocked.Exchange<object> - unaligned location");
-                return;
-            }
-            catch (DataMisalignedException) { }
-            if (longLocation != LongLocationValue)
-            {
-                FailTest("Interlocked.Exchange<object> - unaligned store observed");
-                return;
-            }
         }
         PassTest();
 
@@ -2658,18 +2646,6 @@ internal unsafe partial class Program
                 return;
             }
             catch (NullReferenceException) { }
-            try
-            {
-                interlockedCompareExchangeObj(ref *(object*)(alignedLongAddress + 1), null, null);
-                FailTest("Interlocked.CompareExchange<object> - unaligned location");
-                return;
-            }
-            catch (DataMisalignedException) { }
-            if (longLocation != LongLocationValue)
-            {
-                FailTest("Interlocked.CompareExchange<object> - unaligned store observed");
-                return;
-            }
         }
         PassTest();
     }
