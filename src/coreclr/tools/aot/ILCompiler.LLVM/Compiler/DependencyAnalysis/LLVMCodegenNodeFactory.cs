@@ -50,8 +50,11 @@ namespace ILCompiler.DependencyAnalysis
         internal ExternMethodAccessorNode ExternSymbolWithAccessor(string name, MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
         {
             Dictionary<ExternSymbolKey, ExternMethodAccessorNode> map = _externSymbolsWithAccessors;
+            MethodDesc targetMethod = method is PInvokeTargetNativeMethod pInvokeTargetNativeMethod
+                ? pInvokeTargetNativeMethod.Target
+                : method;
             ExternSymbolKey key = new(method.GetPInvokeMethodMetadata().Module, name,
-                ((PInvokeTargetNativeMethod)method).Target.HasCustomAttribute("System.Runtime.InteropServices", "WasmImportLinkageAttribute"),
+                targetMethod.HasCustomAttribute("System.Runtime.InteropServices", "WasmImportLinkageAttribute"),
                 method.Signature);
 
 
