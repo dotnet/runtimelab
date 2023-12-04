@@ -82,7 +82,7 @@ namespace ILCompiler.DependencyAnalysis
 
         public override int CompareToImpl(ISortableNode other, CompilerComparer comparer)
         {
-            return ExternSymbolKey.CompareTo(((ExternMethodAccessorNode)other).ExternSymbolKey, comparer);
+            return ExternSymbolKey.CompareTo(((ExternMethodAccessorNode)other).ExternSymbolKey);
         }
 
         protected override void EmitCode(NodeFactory factory, ref X64Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
@@ -95,14 +95,16 @@ namespace ILCompiler.DependencyAnalysis
         protected override string GetName(NodeFactory context) => $"ExternMethodAccessor {ExternSymbolKey.ExternMethodName}";
     }
 
+    // Wasm imports are different if any of module name, function name, ABI signature are different.
+    // Direct externs are different if the extern function name is different.
     internal sealed class ExternSymbolKey  : IEquatable<ExternSymbolKey>
     {
-        private readonly MethodSignature _methodSignature;
+        private readonly TargetAbiType[] _abiSignature;
 
         public ExternSymbolKey(string externModuleName, string externMethodName, bool wasmImport,
-            MethodSignature methodSignature)
+            ReadOnlySpan<TargetAbiType> abiSignature)
         {
-            _methodSignature = methodSignature;
+            _abiSignature = abiSignature.ToArray();
 
             ExternModuleName = externModuleName;
             ExternMethodName = externMethodName;
@@ -115,28 +117,21 @@ namespace ILCompiler.DependencyAnalysis
 
         public override bool Equals(object obj) => obj is ExternSymbolKey wasmImportKey && Equals(wasmImportKey);
 
-        // Only compare the signature for Wasm Imports.  `memset` is an example that appears with different signatures
-        public bool Equals(ExternSymbolKey other) => ExternModuleName == other.ExternModuleName
-                                                     && ExternMethodName.Equals(other.ExternMethodName)
+        // Only compare the module name signature for Wasm Imports.
+        public bool Equals(ExternSymbolKey other) => ExternMethodName.Equals(other.ExternMethodName)
                                                      && WasmImport == other.WasmImport
-                                                     && (!WasmImport || _methodSignature.EquivalentTo(other._methodSignature));
+                                                     && (!WasmImport || (ExternModuleName == other.ExternModuleName && _abiSignature.AsSpan().SequenceEqual(other._abiSignature)));
 
         public override int GetHashCode()
         {
             return WasmImport
-                ? HashCode.Combine(ExternModuleName, ExternMethodName, WasmImport, _methodSignature)
-                : HashCode.Combine(ExternModuleName, ExternMethodName, WasmImport);
+                ? HashCode.Combine(ExternModuleName, ExternMethodName, WasmImport, _abiSignature)
+                : HashCode.Combine(ExternMethodName, WasmImport);
         }
 
-        public int CompareTo(ExternSymbolKey other, CompilerComparer comparer)
+        public int CompareTo(ExternSymbolKey other)
         {
             int result = ExternMethodName.CompareTo(other.ExternMethodName);
-            if (result != 0)
-            {
-                return result;
-            }
-
-            result = ExternModuleName.CompareTo(other.ExternModuleName);
             if (result != 0)
             {
                 return result;
@@ -148,7 +143,37 @@ namespace ILCompiler.DependencyAnalysis
                 return result;
             }
 
-            return comparer.Compare(_methodSignature, other._methodSignature);
+            if (!WasmImport)
+            {
+                return 0;
+            }
+
+            result = ExternModuleName.CompareTo(other.ExternModuleName);
+            if (result != 0)
+            {
+                return result;
+            }
+
+            return CompareAbiSignatures(_abiSignature, other._abiSignature);
+        }
+
+        private static int CompareAbiSignatures(TargetAbiType[] abiSignature, TargetAbiType[] otherAbiSignature)
+        {
+            if (abiSignature.Length != otherAbiSignature.Length)
+            {
+                return abiSignature.Length < otherAbiSignature.Length ? 1 : -1;
+            }
+
+            for (int i = 0; i < abiSignature.Length; i++)
+            {
+                var argCompare = abiSignature[i].CompareTo(otherAbiSignature[i]);
+                if (argCompare != 0)
+                {
+                    return argCompare;
+                }
+            }
+
+            return 0;
         }
     }
 }

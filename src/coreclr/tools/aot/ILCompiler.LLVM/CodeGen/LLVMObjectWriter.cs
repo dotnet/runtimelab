@@ -15,6 +15,7 @@ using Internal.JitInterface;
 using Internal.Text;
 using Internal.TypeSystem;
 using LLVMSharp.Interop;
+using static System.Net.Mime.MediaTypeNames;
 using ObjectData = ILCompiler.DependencyAnalysis.ObjectNode.ObjectData;
 
 namespace ILCompiler.DependencyAnalysis
@@ -813,28 +814,29 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             LLVMModuleRef externFuncModule = _moduleWithExternalFunctions;
-            // Wasm Imports can appear with the same name when overloaded and are handled below.
-            Debug.Assert(node.ExternSymbolKey.WasmImport || externFuncModule.GetNamedFunction(externFuncName).Handle == IntPtr.Zero);
-            LLVMValueRef externFunc = externFuncModule.AddFunction(externFuncName, externFuncType);
+            WasmImportKey wasmImportKey = new WasmImportKey(node.ExternSymbolKey);
+            bool externExists = _wasmImportLinkages.TryGetValue(wasmImportKey, out LLVMValueRef externFunc);
+            if (!externExists)
+            {
+                externFunc = externFuncModule.AddFunction(externFuncName, externFuncType);
+                _wasmImportLinkages.Add(wasmImportKey, externFunc);
+            }
 
             // Add import attributes if specified.
             if (node.ExternSymbolKey.WasmImport)
             {
-                WasmImportKey wasmImportKey = new WasmImportKey(node.ExternSymbolKey);
-                if (_wasmImportLinkages.TryGetValue(wasmImportKey, out LLVMValueRef funcValueRef))
+                if (externExists)
                 {
                     // Warn no imports will be generate for this import and remove previous Wasm import.
-                    _compilation.Logger.LogMessage($"Duplicate Wasm Import removed for external function {externFuncName}");
+                    _compilation.Logger.LogWarning($"Duplicate Wasm Import removed for external function {externFuncName}", 3049, Path.GetFileNameWithoutExtension(_objectFilePath));
 
-                    funcValueRef.RemoveFunctionAttribute("wasm-import-name");
-                    funcValueRef.RemoveFunctionAttribute("wasm-import-module");
+                    externFunc.RemoveFunctionAttribute("wasm-import-name");
+                    externFunc.RemoveFunctionAttribute("wasm-import-module");
                 }
                 else
                 {
                     externFunc.AddFunctionAttribute("wasm-import-name", node.ExternSymbolKey.ExternMethodName.ToString());
                     externFunc.AddFunctionAttribute("wasm-import-module", node.ExternSymbolKey.ExternModuleName);
-
-                    _wasmImportLinkages.Add(wasmImportKey, externFunc);
                 }
             }
 
@@ -1168,7 +1170,7 @@ namespace ILCompiler.DependencyAnalysis
 
             public WasmImportKey(ExternSymbolKey externSymbolKey)
             {
-                _moduleName = externSymbolKey.ExternModuleName;
+                _moduleName = externSymbolKey.WasmImport ? externSymbolKey.ExternModuleName : null;
                 _functionName = externSymbolKey.ExternMethodName;
             }
 

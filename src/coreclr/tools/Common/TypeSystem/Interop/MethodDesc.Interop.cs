@@ -104,6 +104,7 @@ namespace Internal.TypeSystem
         // MethodImportAttributes is limited to `short`. This enum is based on int
         // and we have 16 spare bytes.
         PreserveSig = 0x10000,
+        WasmImportLinkage = 0x20000,
     }
 
     public struct PInvokeFlags : IEquatable<PInvokeFlags>, IComparable<PInvokeFlags>
@@ -300,6 +301,14 @@ namespace Internal.TypeSystem
                 {
                     _attributes &= ~PInvokeAttributes.PreserveSig;
                 }
+            }
+        }
+
+        public bool WasmImportLinkage
+        {
+            get
+            {
+                return (_attributes & PInvokeAttributes.WasmImportLinkage) != 0;
             }
         }
 

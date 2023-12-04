@@ -138,7 +138,7 @@ namespace ILCompiler
 
             foreach (var moduleName in ModuleNameVariations(pInvokeMetadata.Module))
             {
-                if (_directPInvokes.TryGetValue(moduleName, out HashSet<string> entrypoints))
+                if (_directPInvokes.TryGetValue(moduleName, out HashSet<string> entrypoints) || pInvokeMetadata.Flags.WasmImportLinkage)
                 {
                     string entryPointMetadataName = pInvokeMetadata.Name ?? method.Name;
 

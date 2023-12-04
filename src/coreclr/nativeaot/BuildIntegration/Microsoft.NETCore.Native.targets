@@ -127,6 +127,11 @@ The .NET Foundation licenses this file to you under the MIT license.
     <IlcLlvmExceptionHandlingModel Condition="'$(IlcLlvmExceptionHandlingModel)' == ''">emulated</IlcLlvmExceptionHandlingModel>
   </PropertyGroup>
 
+  <ItemGroup Condition="'$(NativeCodeGen)' == 'llvm'">
+    <DirectPInvoke Include="libSystem.Globalization.Native" />
+    <DirectPInvoke Include="libSystem.Native" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(IlcCompileDependsOn)'=='' and '$(NativeCompilationDuringPublish)' != 'false'">
     <IlcCompileDependsOn Condition="'$(BuildingFrameworkLibrary)' != 'true'">Compile;ComputeIlcCompileInputs</IlcCompileDependsOn>
     <IlcCompileDependsOn Condition="'$(IlcMultiModule)' == 'true' and '$(BuildingFrameworkLibrary)' != 'true'">$(IlcCompileDependsOn);BuildFrameworkLib</IlcCompileDependsOn>

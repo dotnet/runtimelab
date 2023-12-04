@@ -21,3 +21,9 @@ DLL_EXPORT int GetMemCpyLength()
 {
     return 255;
 }
+
+// Also used for the common ABI test.
+DLL_EXPORT int CommonStaticFunctionName(int a)
+{
+    return a;
+}
