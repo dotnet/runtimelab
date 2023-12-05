@@ -7,7 +7,8 @@
     <RuntimeIdentifier>$(OutputRID)</RuntimeIdentifier>
 
     <RunScriptCommand Condition="'$(TargetOS)' == 'windows'">$(AssemblyName).exe</RunScriptCommand>
-    <RunScriptCommand Condition="'$(TargetOS)' != 'windows'">chmod +rwx $(AssemblyName) &amp;&amp; ./$(AssemblyName)</RunScriptCommand>
+    <RunScriptCommand Condition="'$(TargetsBrowser)' == 'true'">node $(AssemblyName).js</RunScriptCommand>
+    <RunScriptCommand Condition="'$(RunScriptCommand)' == ''">chmod +rwx $(AssemblyName) &amp;&amp; ./$(AssemblyName)</RunScriptCommand>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TestNativeAot)' != 'true'">
