@@ -18,7 +18,7 @@
 
     <ItemGroup Condition="'$(PackageTargetRuntime)' != ''">
       <File Include="@(LibrariesRuntimeFiles)">
-        <TargetPath>framework</TargetPath>
+        <TargetPath>framework/%(LibrariesRuntimeFiles.NativeSubDirectory)</TargetPath>
       </File>
       <File Include="$(CoreCLRILCompilerDir)*">
         <TargetPath>tools</TargetPath>
