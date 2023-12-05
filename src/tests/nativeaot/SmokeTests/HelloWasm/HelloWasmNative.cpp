@@ -22,6 +22,12 @@ DLL_EXPORT int GetMemCpyLength()
     return 255;
 }
 
+// Marked as DIrectPInvoke.
+DLL_EXPORT int SimpleDirectPInvokeTestFunc(int a)
+{
+    return a;
+}
+
 // Also used for the common ABI test.
 DLL_EXPORT int CommonStaticFunctionName(int a)
 {

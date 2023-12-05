@@ -498,9 +498,6 @@ namespace Internal.TypeSystem.Ecma
             if ((ImplAttributes & MethodImplAttributes.PreserveSig) != 0)
                 attributes |= PInvokeAttributes.PreserveSig;
 
-            if(HasCustomAttribute("System.Runtime.InteropServices", "WasmImportLinkageAttribute"))
-                attributes |= PInvokeAttributes.WasmImportLinkage;
-
             return new PInvokeMetadata(moduleName, name, attributes);
         }
 

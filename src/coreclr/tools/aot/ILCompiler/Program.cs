@@ -347,8 +347,17 @@ namespace ILCompiler
             if (!string.IsNullOrEmpty(jitPath))
                 ((RyuJitCompilationBuilder)builder).UseJitPath(jitPath);
 
-            PInvokeILEmitterConfiguration pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target,
-                Get(_command.DirectPInvokes), Get(_command.DirectPInvokeLists));
+            PInvokeILEmitterConfiguration pinvokePolicy;
+            if (isLlvmCodegen)
+            {
+                pinvokePolicy = new WasmConfigurablePInvokePolicy(typeSystemContext.Target,
+                    Get(_command.DirectPInvokes), Get(_command.DirectPInvokeLists));
+            }
+            else
+            {
+                pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target,
+                    Get(_command.DirectPInvokes), Get(_command.DirectPInvokeLists));
+            }
 
             var featureSwitches = new Dictionary<string, bool>();
             foreach (var switchPair in Get(_command.FeatureSwitches))

@@ -127,11 +127,6 @@ The .NET Foundation licenses this file to you under the MIT license.
     <IlcLlvmExceptionHandlingModel Condition="'$(IlcLlvmExceptionHandlingModel)' == ''">emulated</IlcLlvmExceptionHandlingModel>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(NativeCodeGen)' == 'llvm'">
-    <DirectPInvoke Include="libSystem.Globalization.Native" />
-    <DirectPInvoke Include="libSystem.Native" />
-  </ItemGroup>
-
   <PropertyGroup Condition="'$(IlcCompileDependsOn)'=='' and '$(NativeCompilationDuringPublish)' != 'false'">
     <IlcCompileDependsOn Condition="'$(BuildingFrameworkLibrary)' != 'true'">Compile;ComputeIlcCompileInputs</IlcCompileDependsOn>
     <IlcCompileDependsOn Condition="'$(IlcMultiModule)' == 'true' and '$(BuildingFrameworkLibrary)' != 'true'">$(IlcCompileDependsOn);BuildFrameworkLib</IlcCompileDependsOn>
@@ -353,7 +348,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Windows.targets" Condition="'$(_targetOS)' == 'win'" />
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Unix.targets" Condition="'$(_targetOS)' != 'win' and '$(_targetOS)' != 'browser' and '$(_targetOS)' != 'wasi'" />
-  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Wasm.props" Condition="'$(_targetArchitecture)' == 'wasm'" />
+  <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Wasm.targets" Condition="'$(_targetArchitecture)' == 'wasm'" />
 
   <Target Name="MultiFileCopyNative"
       Inputs="@(NativeObjects)"

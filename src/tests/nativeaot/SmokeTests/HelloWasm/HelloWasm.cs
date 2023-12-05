@@ -303,6 +303,8 @@ internal unsafe partial class Program
 
         TestNativeCallback();
 
+        TestDirectPInvoke();
+
 #if !CODEGEN_WASI // Easier to test with Javascript/Emscripten.
         // TODO-LLVM: throwing the PNSE is not currently implemented and this will fail fast in Javascript and we cannot catch it.
         // LazyDllImportThrows();
@@ -314,6 +316,12 @@ internal unsafe partial class Program
         TestStaticPInvokeOverloadedInDifferentModules();
 
         TestStaticAbiCompatibleSignatures();
+
+
+#if false // TODO-LLVM: Should throw a PNSE, but not implemented yet.
+        LazyDllImportThrows();
+#endif
+
 #endif
 
         TestNativeCallsWithMismatchedSignatures();
@@ -1589,14 +1597,22 @@ internal unsafe partial class Program
         }
     }
 
+    [DllImport("xyz", EntryPoint = "SimpleDirectPInvokeTestFunc")]
+    private static extern int SimpleDirectPInvokeTest(int x);
+
+    private static void TestDirectPInvoke()
+    {
+        StartTest("DirectPInvoke test");
+        EndTest(SimpleDirectPInvokeTest(234) == 234);
+    }
+
     private static void TestNamedModuleCall()
     {
         StartTest("Wasm import from named module test");
         EndTest(CallFunctionInModule(456) == 456);
     }
 
-    [WasmImportLinkage]
-    [DllImport("ModuleName", EntryPoint = "FunctionInModule")]
+    [DllImport("ModuleName", EntryPoint = "ModuleFunc"), WasmImportLinkage]
     private static extern int CallFunctionInModule(int x);
 
     [DllImport("ModuleName", EntryPoint = "DupImportTest"), WasmImportLinkage]

@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <DirectPInvoke Include="Program!CallMe" />
+    <DirectPInvoke Include="xyz!SimpleDirectPInvokeTestFunc" />
     <DirectPInvoke Include="StaticModule1" />
     <DirectPInvoke Include="StaticModule2" />
   </ItemGroup>

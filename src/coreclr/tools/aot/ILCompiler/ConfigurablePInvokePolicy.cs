@@ -11,7 +11,7 @@ using Internal.TypeSystem;
 
 namespace ILCompiler
 {
-    internal sealed class ConfigurablePInvokePolicy : PInvokeILEmitterConfiguration
+    internal class ConfigurablePInvokePolicy : PInvokeILEmitterConfiguration
     {
         private readonly TargetDetails _target;
         private readonly Dictionary<string, HashSet<string>> _directPInvokes;
@@ -138,7 +138,7 @@ namespace ILCompiler
 
             foreach (var moduleName in ModuleNameVariations(pInvokeMetadata.Module))
             {
-                if (_directPInvokes.TryGetValue(moduleName, out HashSet<string> entrypoints) || pInvokeMetadata.Flags.WasmImportLinkage)
+                if (_directPInvokes.TryGetValue(moduleName, out HashSet<string> entrypoints))
                 {
                     string entryPointMetadataName = pInvokeMetadata.Name ?? method.Name;
 

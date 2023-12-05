@@ -15,7 +15,6 @@ using Internal.JitInterface;
 using Internal.Text;
 using Internal.TypeSystem;
 using LLVMSharp.Interop;
-using static System.Net.Mime.MediaTypeNames;
 using ObjectData = ILCompiler.DependencyAnalysis.ObjectNode.ObjectData;
 
 namespace ILCompiler.DependencyAnalysis
@@ -51,9 +50,6 @@ namespace ILCompiler.DependencyAnalysis
         // Data emitted for the current object node. Initial capacity chosen to be the size of the largest node in a small program.
         private LLVMValueRef[] _currentObjectData = new LLVMValueRef[100_000];
         private LLVMTypeRef[] _currentObjectTypes = new LLVMTypeRef[100_000];
-
-        private readonly Dictionary<WasmImportKey, LLVMValueRef> _wasmImportLinkages = new Dictionary<WasmImportKey, LLVMValueRef>();
-
 
 #if DEBUG
         private static readonly Dictionary<string, ISymbolNode> _previouslyWrittenNodeNames = new();
@@ -773,7 +769,7 @@ namespace ILCompiler.DependencyAnalysis
         private void GetCodeForExternMethodAccessor(ExternMethodAccessorNode node)
         {
             // TODO-LLVM: use the Utf8 string directly here.
-            string externFuncName = node.QualifiedName;
+            string externFuncName = node.ExternMethodName.ToString();
             LLVMTypeRef externFuncType;
 
             if (node.Signature != null)
@@ -814,29 +810,19 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             LLVMModuleRef externFuncModule = _moduleWithExternalFunctions;
-            WasmImportKey wasmImportKey = new WasmImportKey(node.ExternSymbolKey);
-            bool externExists = _wasmImportLinkages.TryGetValue(wasmImportKey, out LLVMValueRef externFunc);
-            if (!externExists)
-            {
-                externFunc = externFuncModule.AddFunction(externFuncName, externFuncType);
-                _wasmImportLinkages.Add(wasmImportKey, externFunc);
-            }
+            LLVMValueRef externFunc = externFuncModule.AddFunction(externFuncName, externFuncType);
 
             // Add import attributes if specified.
-            if (node.ExternSymbolKey.WasmImport)
+            // Copy the prefix from WasmConfigurablePInvokePolicy here to avoid making the policy classes public.
+            if (node.Signature != null && externFuncName.StartsWith("__wasm_import_"))
             {
-                if (externExists)
+                foreach (MethodDesc method in node.EnumerateMethods())
                 {
-                    // Warn no imports will be generate for this import and remove previous Wasm import.
-                    _compilation.Logger.LogWarning($"Duplicate Wasm Import removed for external function {externFuncName}", 3049, Path.GetFileNameWithoutExtension(_objectFilePath));
+                    PInvokeMetadata pInvokeMetadata = method.GetPInvokeMethodMetadata();
+                    externFunc.AddFunctionAttribute("wasm-import-module", pInvokeMetadata.Module);
+                    externFunc.AddFunctionAttribute("wasm-import-name", pInvokeMetadata.Name);
 
-                    externFunc.RemoveFunctionAttribute("wasm-import-name");
-                    externFunc.RemoveFunctionAttribute("wasm-import-module");
-                }
-                else
-                {
-                    externFunc.AddFunctionAttribute("wasm-import-name", node.ExternSymbolKey.ExternMethodName.ToString());
-                    externFunc.AddFunctionAttribute("wasm-import-module", node.ExternSymbolKey.ExternModuleName);
+                    break;
                 }
             }
 
@@ -1161,24 +1147,6 @@ namespace ILCompiler.DependencyAnalysis
 
             public static implicit operator ReadOnlySpan<byte>(in Utf8Name name) =>
                 name._builder.UnderlyingArray.AsSpan(name._offset, name._length);
-        }
-
-        private sealed class WasmImportKey
-        {
-            private readonly string _moduleName;
-            private readonly Utf8String _functionName;
-
-            public WasmImportKey(ExternSymbolKey externSymbolKey)
-            {
-                _moduleName = externSymbolKey.WasmImport ? externSymbolKey.ExternModuleName : null;
-                _functionName = externSymbolKey.ExternMethodName;
-            }
-
-            public override bool Equals(object obj) => Equals((WasmImportKey)obj);
-
-            private bool Equals(WasmImportKey other) => _moduleName == other._moduleName && _functionName.Equals(other._functionName);
-
-            public override int GetHashCode() => HashCode.Combine(_moduleName, _functionName);
         }
     }
 }

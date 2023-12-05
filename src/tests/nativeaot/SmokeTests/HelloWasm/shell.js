@@ -32,7 +32,7 @@ var Module = {
 
         // Provide the import from a module named "ModuleName".
         info['ModuleName'] = {
-            FunctionInModule: functionInModule,
+            ModuleFunc: functionInModule,
         };
 
         // Same function in different modules
