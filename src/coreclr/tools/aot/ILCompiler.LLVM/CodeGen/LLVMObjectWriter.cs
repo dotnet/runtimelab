@@ -15,7 +15,6 @@ using Internal.JitInterface;
 using Internal.Text;
 using Internal.TypeSystem;
 using LLVMSharp.Interop;
-using static System.Net.Mime.MediaTypeNames;
 using ObjectData = ILCompiler.DependencyAnalysis.ObjectNode.ObjectData;
 
 namespace ILCompiler.DependencyAnalysis

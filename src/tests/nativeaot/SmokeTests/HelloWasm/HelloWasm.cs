@@ -1583,7 +1583,7 @@ internal unsafe partial class Program
             LazyMethod();
             FailTest("Lazy linked DllImport did not throw");
         }
-        catch(PlatformNotSupportedException)
+        catch (PlatformNotSupportedException)
         {
             PassTest();
         }
@@ -1651,10 +1651,8 @@ internal unsafe partial class Program
     [DllImport("StaticModule1", EntryPoint = "StaticIncompatFunctionName")]
     private static extern int CallAbiIncompatFunctionWithInt(int arg);
 
-
     [DllImport("StaticModule2", EntryPoint = "StaticIncompatFunctionName")]
     private static extern void CallAbiIncompatFunctionWithFloat(float arg);
-
 
     // Compilation should produce a warning for CallAbiIncompatFunctionWithInt and CallAbiIncompatFunctionWithFloat.
     [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "JustForRooting2")]
