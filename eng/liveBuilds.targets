@@ -214,6 +214,16 @@
         $(LibrariesNativeArtifactsPath)dotnet.native.js.symbols;
         $(LibrariesNativeArtifactsPath)*.dat;"
         IsNative="true" />
+      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
+                             Include="
+        $(LibrariesNativeArtifactsPath)dotnet.js;
+        $(LibrariesNativeArtifactsPath)dotnet.js.map;
+        $(LibrariesNativeArtifactsPath)dotnet.runtime.js;
+        $(LibrariesNativeArtifactsPath)dotnet.runtime.js.map;
+        $(LibrariesNativeArtifactsPath)dotnet.d.ts;
+        $(LibrariesNativeArtifactsPath)dotnet-legacy.d.ts;
+        $(LibrariesNativeArtifactsPath)package.json;"
+        IsNative="true" />
       <!-- for threaded wasm -->
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'Mono' and Exists('$(LibrariesNativeArtifactsPath)dotnet.native.worker.js')"
                              Include="

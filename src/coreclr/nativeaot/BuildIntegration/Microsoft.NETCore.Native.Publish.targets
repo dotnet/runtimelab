@@ -103,6 +103,11 @@
 
     <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(_targetOS)' == 'browser'"/>
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser'"/>
+    
+    <ItemGroup>
+      <_FrameworkNativeFiles Include="$(IlcFrameworkPath)\dotnet.*.js" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_FrameworkNativeFiles)" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser'"/>
   </Target>
 
   <Target Name="_CopyAotSymbols" AfterTargets="Publish"

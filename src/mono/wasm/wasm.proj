@@ -3,6 +3,8 @@
   <UsingTask TaskName="Microsoft.WebAssembly.Build.Tasks.RunWithEmSdkEnv" AssemblyFile="$(WasmAppBuilderTasksAssemblyPath)" />
 
   <PropertyGroup>
+    <EMSDK_PATH Condition="'$(EMSDK_PATH)' == ''">$(EMSDK)</EMSDK_PATH>
+
     <!-- FIXME: clean up the duplication with libraries Directory.Build.props -->
     <PackageRID>browser-wasm</PackageRID>
     <NativeBinDir>$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'native', '$(NetCoreAppCurrent)-$(TargetOS)-$(Configuration)-$(TargetArchitecture)'))</NativeBinDir>
@@ -354,7 +356,7 @@
   <!-- This is a documented target that is invoked by developers in their innerloop work. -->
   <Target Name="BuildWasmRuntimes"
           AfterTargets="Build"
-          DependsOnTargets="GenerateEmccPropsAndRspFiles;GenerateManagedToNative;GenerateTimezonesArchive;InstallNpmPackages;BuildWithRollup">
+          DependsOnTargets="InstallNpmPackages;BuildWithRollup">
 
     <ItemGroup>
       <ICULibNativeFiles Include="$(ICULibDir)/libicuuc.a;
@@ -414,17 +416,7 @@
       <_CmakeEnvironmentVariable Include="RUN_AOT_COMPILATION=0" Condition="'$(RunAOTCompilation)' != 'true'" />
     </ItemGroup>
 
-    <Copy SourceFiles="$(PInvokeTableFile)"
-          DestinationFolder="$(MonoObjDir)"
-          SkipUnchangedFiles="true" />
-
-    <Copy SourceFiles="$(InterpToNativeTableFile)"
-          DestinationFolder="$(MonoObjDir)"
-          SkipUnchangedFiles="true" />
-
-    <Copy SourceFiles="runtime/driver.c;
-                       runtime/pinvoke.c;
-                       runtime/corebindings.c;"
+    <Copy SourceFiles="$(SharedNativeRoot)libs\System.Native\pal_random.lib.js;"
           DestinationFolder="$(NativeBinDir)src"
           SkipUnchangedFiles="true" />
 
@@ -442,29 +434,21 @@
                       Lines="@(_WasmImportedMethodNames)"
                       Overwrite="false" />
 
-    <Copy SourceFiles="runtime\pinvoke.h;runtime\gc-common.h"
-          DestinationFolder="$(NativeBinDir)include\wasm"
-          SkipUnchangedFiles="true" />
-
     <Copy SourceFiles="@(ICULibFiles);
                        @(ICULibNativeFiles);
                        @(_WasmArchivedTimezones);"
           DestinationFolder="$(NativeBinDir)"
           SkipUnchangedFiles="true" />
 
-    <Exec Command="$(CMakeBuildRuntimeConfigureCmd)" WorkingDirectory="$(NativeBinDir)"
+    <!-- <Exec Command="$(CMakeBuildRuntimeConfigureCmd)" WorkingDirectory="$(NativeBinDir)"
           EnvironmentVariables="@(_CmakeEnvironmentVariable)" />
     <Exec Command="$(CMakeBuildRuntimeCmd)"  WorkingDirectory="$(NativeBinDir)"
-          EnvironmentVariables="@(_CmakeEnvironmentVariable)" />
+          EnvironmentVariables="@(_CmakeEnvironmentVariable)" /> -->
 
     <ItemGroup>
       <IcuDataFiles Include="$(NativeBinDir)*.dat" />
       <WasmSrcFiles Include="$(NativeBinDir)src\*.c;
-                             $(NativeBinDir)src\*.js;
-                             $(_EmccDefaultsRspPath);
-                             $(_EmccCompileRspPath);
-                             $(_EmccLinkRspPath);
-                             $(NativeBinDir)src\emcc-props.json" />
+                             $(NativeBinDir)src\*.js" />
       <WasmSrcFilesEs6 Include="$(NativeBinDir)src\es6\*.js;" />
       <WasmHeaderFiles Include="$(NativeBinDir)include\wasm\*.h" />
     </ItemGroup>
@@ -473,20 +457,9 @@
                        $(NativeBinDir)dotnet.js.map;
                        $(NativeBinDir)dotnet.runtime.js;
                        $(NativeBinDir)dotnet.runtime.js.map;
-                       $(NativeBinDir)dotnet.native.js;
                        $(NativeBinDir)dotnet.d.ts;
                        $(NativeBinDir)dotnet-legacy.d.ts;
-                       $(NativeBinDir)package.json;
-                       $(NativeBinDir)dotnet.native.wasm"
-          DestinationFolder="$(MicrosoftNetCoreAppRuntimePackNativeDir)"
-          SkipUnchangedFiles="true" />
-
-    <Copy SourceFiles="$(NativeBinDir)dotnet.native.worker.js"
-          DestinationFolder="$(MicrosoftNetCoreAppRuntimePackNativeDir)"
-	  Condition="Exists('$(NativeBinDir)dotnet.native.worker.js')"
-          SkipUnchangedFiles="true" />
-
-    <Copy SourceFiles="$(NativeBinDir)dotnet.native.js.symbols"
+                       $(NativeBinDir)package.json"
           DestinationFolder="$(MicrosoftNetCoreAppRuntimePackNativeDir)"
           SkipUnchangedFiles="true" />
 
