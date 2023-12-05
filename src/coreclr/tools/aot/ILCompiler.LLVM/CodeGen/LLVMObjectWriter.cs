@@ -810,6 +810,7 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             LLVMModuleRef externFuncModule = _moduleWithExternalFunctions;
+            Debug.Assert(externFuncModule.GetNamedFunction(externFuncName).Handle == IntPtr.Zero);
             LLVMValueRef externFunc = externFuncModule.AddFunction(externFuncName, externFuncType);
 
             // Add import attributes if specified.

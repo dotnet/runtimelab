@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <DirectPInvoke Include="xyz!SimpleDirectPInvokeTestFunc" />
+    <DirectPInvoke Include="ModuleName1!CommonWasmImportFunctionName" />
     <DirectPInvoke Include="StaticModule1" />
     <DirectPInvoke Include="StaticModule2" />
   </ItemGroup>

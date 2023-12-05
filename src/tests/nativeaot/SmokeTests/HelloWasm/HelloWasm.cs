@@ -305,6 +305,12 @@ internal unsafe partial class Program
 
         TestDirectPInvoke();
 
+#if false // TODO-LLVM: Should throw an EntryPointNotFoundException, but fails in the Wasm runtime (RuntimeError: null function or function signature mismatch)
+        TestEntryPointNotFoundForWasmImport();
+#endif
+
+        TestStaticAbiCompatibleSignatures();
+
 #if !CODEGEN_WASI // Easier to test with Javascript/Emscripten.
         // TODO-LLVM: throwing the PNSE is not currently implemented and this will fail fast in Javascript and we cannot catch it.
         // LazyDllImportThrows();
@@ -315,13 +321,11 @@ internal unsafe partial class Program
 
         TestStaticPInvokeOverloadedInDifferentModules();
 
-        TestStaticAbiCompatibleSignatures();
-
+        TestWasmImportAbiCompatibleSignatures();
 
 #if false // TODO-LLVM: Should throw a PNSE, but not implemented yet.
         LazyDllImportThrows();
 #endif
-
 #endif
 
         TestNativeCallsWithMismatchedSignatures();
@@ -1621,11 +1625,26 @@ internal unsafe partial class Program
     [DllImport("ModuleName", EntryPoint = "DupImportTest"), WasmImportLinkage]
     private static extern int WasmImportFuncDup2();
 
-    [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "JustForRooting")]
-    private static void RootFuncDup(int x)
+    private static void TestEntryPointNotFoundForWasmImport()
     {
-        WasmImportFuncDup1(0);
-        WasmImportFuncDup2();
+        try
+        {
+            WasmImportFuncDup1(0);
+        }
+        catch (EntryPointNotFoundException)
+        {
+            try
+            {
+                WasmImportFuncDup2();
+            }
+            catch (EntryPointNotFoundException)
+            {
+                PassTest();
+                return;
+            }
+        }
+
+        FailTest("EntryPointNotFoundException not thrown");
     }
 
     [DllImport("ModuleName1", EntryPoint = "CommonFunctionName"), WasmImportLinkage]
@@ -1638,6 +1657,18 @@ internal unsafe partial class Program
     {
         StartTest("Wasm import same function name from different modules test");
         EndTest(CallFunctionInModule1(456) == 456 && CallFunctionInModule2(789) == 790);
+    }
+
+    [DllImport("ModuleName1", EntryPoint = "CommonWasmImportFunctionName"), WasmImportLinkage]
+    private static extern int CallWasmImportAbiCompatFunctionWithInt(int arg);
+
+    [DllImport("ModuleName1", EntryPoint = "CommonWasmImportFunctionName"), WasmImportLinkage]
+    private static extern uint CallWasmImportAbiCompatFunctionWitUint(uint arg);
+
+    private static void TestWasmImportAbiCompatibleSignatures()
+    {
+        StartTest("Wasm imports with ABI compatible signatures");
+        EndTest(CallWasmImportAbiCompatFunctionWithInt(456) == 456 && CallWasmImportAbiCompatFunctionWitUint(789) == 789);
     }
 
     [DllImport("StaticModule1", EntryPoint = "CommonStaticFunctionName")]

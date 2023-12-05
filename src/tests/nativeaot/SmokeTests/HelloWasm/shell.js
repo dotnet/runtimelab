@@ -38,6 +38,7 @@ var Module = {
         // Same function in different modules
         info['ModuleName1'] = {
             CommonFunctionName: functionInModule,
+            CommonWasmImportFunctionName: functionInModule,
         };
         info['ModuleName2'] = {
             CommonFunctionName: functionInModule2,
