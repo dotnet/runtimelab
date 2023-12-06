@@ -4,7 +4,7 @@ This branch contains experimental fork of [.NET runtime](http://github.com/dotne
 
 ## Samples
 
-The sample application `samples/Android-NativeAOT` serves as a functional test that should prototype Native AOT support for Android emulators and devices. Java interoperability enables Android app developers to be able to call Java APIs on Android to create an app with a more native experience. Thus, adding Java interaction support to Native AOT is crucial to support Native AOT for Xamarin/Maui Android framework. This enables the use of Java APIs for drawing and interacting with Java-native components and widgets. The `README.md` file in the sample directory will guide you through the process on how to build and run the app step by step.
+The sample application `samples/Android-NativeAOT` serves as a functional test that should prototype Native AOT support for Android emulators and devices. Java interoperability enables Android app developers to be able to call Java APIs on Android to create an app with a more native experience. Thus, adding Java interaction support to Native AOT is crucial to support Native AOT for Xamarin/Maui Android framework. This enables the use of Java APIs for drawing and interacting with Java-native components and widgets. The [README.md](https://github.com/dotnet/runtimelab/tree/feature/nativeaot-android/src/mono/sample/Android-NativeAOT) file in the sample directory will guide you through the process on how to build and run the app step by step.
 
 ---
 
