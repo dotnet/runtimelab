@@ -32,7 +32,7 @@
     <ItemGroup>
       <_NativeIntermediateAssembly Include="@(IntermediateAssembly->'$(NativeOutputPath)%(Filename)$(NativeBinaryExt)')" />
       <IntermediateAssembly Remove="@(IntermediateAssembly)" />
-      <IntermediateAssembly Include="@(_NativeIntermediateAssembly)" />
+      <IntermediateAssembly Include="@(_NativeIntermediateAssembly)" Condition="'$(DotNetJsApi)' != 'true'" />
     </ItemGroup>
   </Target>
 
@@ -96,18 +96,21 @@
   <Target Name="CopyNativeBinary" AfterTargets="Publish">
     <!-- replace apphost with binary we generated during native compilation -->
     <Delete Files="$(PublishDir)\$(TargetName)$(NativeBinaryExt)" />
-    <Copy SourceFiles="$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)" DestinationFolder="$(PublishDir)" Condition="'$(DotNetJsApi)' != 'true'" />
 
-    <Delete Files="$(PublishDir)\$(TargetName).js" Condition="'$(_targetOS)' == 'browser'"/>
-    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).js" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser'"/>
+    <Delete Files="$(PublishDir)\$(TargetName).js" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
+    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).js" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
 
-    <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(_targetOS)' == 'browser'"/>
-    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser'"/>
+    <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
+    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
     
     <ItemGroup>
-      <_FrameworkNativeFiles Include="$(IlcFrameworkPath)\dotnet.*.js" />
+      <_FilesToPublish Include="$(IlcFrameworkPath)\dotnet*.js" />
+      <_FilesToPublish Include="$(IlcFrameworkPath)\dotnet*.map" />
+      <_FilesToPublish Include="$(_WasmIntermediateOutputPath)dotnet.native.js" />
+      <_FilesToPublish Include="$(_WasmIntermediateOutputPath)dotnet.native.wasm" />
     </ItemGroup>
-    <Copy SourceFiles="@(_FrameworkNativeFiles)" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser'"/>
+    <Copy SourceFiles="@(_FilesToPublish)" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotnetJsApi)' == 'true'"/>
   </Target>
 
   <Target Name="_CopyAotSymbols" AfterTargets="Publish"
