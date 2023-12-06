@@ -1581,6 +1581,27 @@ internal unsafe partial class Program
         }
     }
 
+    [DllImport("xyz", EntryPoint = "SimpleDirectPInvokeTestFunc")]
+    private static extern int SimpleDirectPInvokeTest(int x);
+
+    private static void TestDirectPInvoke()
+    {
+        StartTest("DirectPInvoke test");
+        EndTest(SimpleDirectPInvokeTest(234) == 234);
+    }
+
+    [DllImport("StaticModule1", EntryPoint = "CommonStaticFunctionName")]
+    private static extern int CallAbiCompatFunctionWithInt(int arg);
+
+    [DllImport("StaticModule2", EntryPoint = "CommonStaticFunctionName")]
+    private static extern uint CallAbiCompatFunctionWitUint(uint arg);
+
+    private static void TestStaticAbiCompatibleSignatures()
+    {
+        StartTest("Static imports with ABI compatible signatures");
+        EndTest(CallAbiCompatFunctionWithInt(456) == 456 && CallAbiCompatFunctionWitUint(789) == 789);
+    }
+
 #if !CODEGEN_WASI // Easier to test with Javascript/Emscripten
 
     // All "*" imports are implicitly DirectPInvoke so name a module
@@ -1599,15 +1620,6 @@ internal unsafe partial class Program
         {
             PassTest();
         }
-    }
-
-    [DllImport("xyz", EntryPoint = "SimpleDirectPInvokeTestFunc")]
-    private static extern int SimpleDirectPInvokeTest(int x);
-
-    private static void TestDirectPInvoke()
-    {
-        StartTest("DirectPInvoke test");
-        EndTest(SimpleDirectPInvokeTest(234) == 234);
     }
 
     private static void TestNamedModuleCall()
@@ -1681,18 +1693,6 @@ internal unsafe partial class Program
     {
         StartTest("Static PInvoke of overloaded function in different modules test");
         EndTest(CommonFunctionNameInModule1(12) == 12 && CommonFunctionNameInModule2(34) == 34);
-    }
-
-    [DllImport("StaticModule1", EntryPoint = "CommonStaticFunctionName")]
-    private static extern int CallAbiCompatFunctionWithInt(int arg);
-
-    [DllImport("StaticModule2", EntryPoint = "CommonStaticFunctionName")]
-    private static extern uint CallAbiCompatFunctionWitUint(uint arg);
-
-    private static void TestStaticAbiCompatibleSignatures()
-    {
-        StartTest("Static imports with ABI compatible signatures");
-        EndTest(CallAbiCompatFunctionWithInt(456) == 456 && CallAbiCompatFunctionWitUint(789) == 789);
     }
 
     [DllImport("StaticModule1", EntryPoint = "StaticIncompatFunctionName")]
