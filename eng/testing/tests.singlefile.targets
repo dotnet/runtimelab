@@ -6,8 +6,12 @@
     <RunScriptOutputPath>$([MSBuild]::NormalizePath('$(BundleDir)', '$(RunScriptOutputName)'))</RunScriptOutputPath>
     <RuntimeIdentifier>$(OutputRID)</RuntimeIdentifier>
 
+    <_OutputExeExt Condition="'$(TargetsBrowser)' == 'true'">.js</_OutputExeExt>
+    <_OutputExeExt Condition="'$(TargetsWasi)' == 'true'">.wasm</_OutputExeExt>
+    <_RunScriptExt>$([System.IO.Path]::GetExtension('$(RunScriptOutputName)'))</_RunScriptExt>
+
     <RunScriptCommand Condition="'$(TargetOS)' == 'windows'">$(AssemblyName).exe</RunScriptCommand>
-    <RunScriptCommand Condition="'$(TargetsBrowser)' == 'true'">node $(AssemblyName).js</RunScriptCommand>
+    <RunScriptCommand Condition="'$(TargetsWasm)' == 'true'">$(MSBuildThisFileDirectory)FindWasmHostExecutableAndRun$(_RunScriptExt) $(AssemblyName)$(_OutputExeExt)</RunScriptCommand>
     <RunScriptCommand Condition="'$(RunScriptCommand)' == ''">chmod +rwx $(AssemblyName) &amp;&amp; ./$(AssemblyName)</RunScriptCommand>
   </PropertyGroup>
 

@@ -8,38 +8,14 @@
 @rem 2. Filename of the test executable
 @rem 3. - n. Additional arguments that were passed to the test .cmd
 
+call %~dp0..\..\..\..\eng\testing\FindWasmHostExecutable.cmd %1\native\%2 || exit /b
+if defined WASM_HOST_EXECUTABLE (
+  !WASM_HOST_EXECUTABLE! !WASM_BINARY_TO_EXECUTE! %3 %4 %5 %6 %7 %8 %9
+  exit /b
+)
+
 @rem File name of the test executable is the original assembly, so swap .dll for .exe
 set __ExeFileName=%2
 set __ExeFileName=%__ExeFileName:~0,-4%.exe
 
-set __JsFileName=%2
-set __JsFileName=%__JsFileName:~0,-4%.js
-set __JsFilePath=%1\native\%__JsFileName%
-
-REM also probe for .mjs
-if not exist %__JsFilePath% (
-  set __JsFilePath=%__JsFilePath:~0,-3%.mjs
-)
-
-set __WasmFileName=%2
-set __WasmFileName=%__WasmFileName:~0,-4%.wasm
-set __WasmFilePath=%1native\%__WasmFileName%
-
-if exist %__JsFilePath% (
-  if "%NODEJS_EXECUTABLE%" == "" (
-    REM when running tests locally, assume NodeJS is in PATH
-    set NODEJS_EXECUTABLE=node
-  )
-
-  %_DebuggerFullPath% !NODEJS_EXECUTABLE! --stack-trace-limit=100 %__JsFilePath% %3 %4 %5 %6 %7 %8 %9
-) else if exist %__WasmFilePath% (
-  if "%WASMER_EXECUTABLE%" == "" (
-    REM when running tests locally, assume wasmer is in PATH
-    set WASMER_EXECUTABLE=wasmer
-  )
-
-  %_DebuggerFullPath% !WASMER_EXECUTABLE! %__WasmFilePath% %3 %4 %5 %6 %7 %8 %9
-) else (
-  %_DebuggerFullPath% %1\native\%__ExeFileName% %3 %4 %5 %6 %7 %8 %9
-)
-
+%_DebuggerFullPath% %1\native\%__ExeFileName% %3 %4 %5 %6 %7 %8 %9
