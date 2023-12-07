@@ -99,6 +99,9 @@
         <RegisteredName>/usr/share/zoneinfo/$([MSBuild]::MakeRelative($(_WasmTimezonesPath), %(_WasmTimezonesInternal.Identity)).Replace('\','/'))</RegisteredName>
       </_WasmTimezonesInternal>
     </ItemGroup>
+
+    <MakeDir Directories="$(WasmObjDir)" Condition="!Exists('$(WasmObjDir)')" />
+    
     <!-- TODO make this incremental compilation -->
     <EmitBundleSourceFiles
       FilesToBundle="@(_WasmTimezonesInternal)"
