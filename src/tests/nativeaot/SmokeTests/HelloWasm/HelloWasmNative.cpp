@@ -22,7 +22,7 @@ DLL_EXPORT int GetMemCpyLength()
     return 255;
 }
 
-// Marked as DIrectPInvoke.
+// Marked as DirectPInvoke.
 DLL_EXPORT int SimpleDirectPInvokeTestFunc(int a)
 {
     return a;

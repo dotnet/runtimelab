@@ -317,6 +317,8 @@ internal unsafe partial class Program
 
         TestNamedModuleCall();
 
+        TestNamedModuleCallWithoutEntryPoint();
+
         TestSameFunctionNameInDifferentModules();
 
         TestStaticPInvokeOverloadedInDifferentModules();
@@ -1628,8 +1630,17 @@ internal unsafe partial class Program
         EndTest(CallFunctionInModule(456) == 456);
     }
 
+    private static void TestNamedModuleCallWithoutEntryPoint()
+    {
+        StartTest("Wasm import from named module test");
+        EndTest(ModuleFunc(77) == 77);
+    }
+
     [DllImport("ModuleName", EntryPoint = "ModuleFunc"), WasmImportLinkage]
     private static extern int CallFunctionInModule(int x);
+
+    [DllImport("ModuleName"), WasmImportLinkage]
+    private static extern int ModuleFunc(int x);
 
     [DllImport("ModuleName", EntryPoint = "DupImportTest"), WasmImportLinkage]
     private static extern int WasmImportFuncDup1(int arg);

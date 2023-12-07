@@ -25,6 +25,21 @@ namespace ILCompiler
             return base.GenerateDirectCall(method, out externName);
         }
 
+        public override bool GenerateWasmImportCall(MethodDesc method, out string funcName, out string moduleName)
+        {
+            if (IsWasmImport(method, out PInvokeMetadata pInvokeMetadata))
+            {
+                moduleName = pInvokeMetadata.Module;
+                funcName = pInvokeMetadata.Name;
+                return true;
+            }
+
+            funcName = null;
+            moduleName = null;
+
+            return false;
+        }
+
         private static bool IsWasmImport(MethodDesc method, out PInvokeMetadata pInvokeMetadata)
         {
             if (method is PInvokeTargetNativeMethod pInvokeTargetNativeMethod)
