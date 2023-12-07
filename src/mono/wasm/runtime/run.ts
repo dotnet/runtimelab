@@ -1,7 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-import { ENVIRONMENT_IS_NODE, Module, loaderHelpers, runtimeHelpers } from "./globals";
+import { Module, loaderHelpers, runtimeHelpers } from "./globals";
 import cwraps from "./cwraps";
 import { assembly_load } from "./class-loader";
 import { assert_bindings } from "./invoke-js";
