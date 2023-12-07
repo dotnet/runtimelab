@@ -1,0 +1,146 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <LinkNativeDependsOn Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' == 'true'">$(LinkNativeDependsOn);PrepareDotNetJsApiForLinking</LinkNativeDependsOn>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmccExportedFunction Include="_free" />
+    <EmccExportedFunction Include="_htons" />
+    <EmccExportedFunction Include="_malloc" />
+    <EmccExportedFunction Include="_memalign" />
+    <EmccExportedFunction Include="_memset" />
+    <EmccExportedFunction Include="_ntohs" />
+    <EmccExportedFunction Include="stackAlloc" />
+    <EmccExportedFunction Include="stackRestore" />
+    <EmccExportedFunction Include="stackSave" />
+    <EmccExportedFunction Include="_fmod" />
+    <EmccExportedFunction Include="_atan2" />
+    <EmccExportedFunction Include="_fma" />
+    <EmccExportedFunction Include="_pow" />
+    <EmccExportedFunction Include="_fmodf" />
+    <EmccExportedFunction Include="_atan2f" />
+    <EmccExportedFunction Include="_fmaf" />
+    <EmccExportedFunction Include="_powf" />
+    <EmccExportedFunction Include="_asin" />
+    <EmccExportedFunction Include="_asinh" />
+    <EmccExportedFunction Include="_acos" />
+    <EmccExportedFunction Include="_acosh" />
+    <EmccExportedFunction Include="_atan" />
+    <EmccExportedFunction Include="_atanh" />
+    <EmccExportedFunction Include="_cbrt" />
+    <EmccExportedFunction Include="_cos" />
+    <EmccExportedFunction Include="_cosh" />
+    <EmccExportedFunction Include="_exp" />
+    <EmccExportedFunction Include="_log" />
+    <EmccExportedFunction Include="_log2" />
+    <EmccExportedFunction Include="_log10" />
+    <EmccExportedFunction Include="_sin" />
+    <EmccExportedFunction Include="_sinh" />
+    <EmccExportedFunction Include="_tan" />
+    <EmccExportedFunction Include="_tanh" />
+    <EmccExportedFunction Include="_asinf" />
+    <EmccExportedFunction Include="_asinhf" />
+    <EmccExportedFunction Include="_acosf" />
+    <EmccExportedFunction Include="_acoshf" />
+    <EmccExportedFunction Include="_atanf" />
+    <EmccExportedFunction Include="_atanhf" />
+    <EmccExportedFunction Include="_cbrtf" />
+    <EmccExportedFunction Include="_cosf" />
+    <EmccExportedFunction Include="_coshf" />
+    <EmccExportedFunction Include="_expf" />
+    <EmccExportedFunction Include="_logf" />
+    <EmccExportedFunction Include="_log2f" />
+    <EmccExportedFunction Include="_log10f" />
+    <EmccExportedFunction Include="_sinf" />
+    <EmccExportedFunction Include="_sinhf" />
+    <EmccExportedFunction Include="_tanf" />
+    <EmccExportedFunction Include="_tanhf" />
+    <EmccExportedRuntimeMethod Include="FS" />
+    <EmccExportedRuntimeMethod Include="out" />
+    <EmccExportedRuntimeMethod Include="err" />
+    <EmccExportedRuntimeMethod Include="ccall" />
+    <EmccExportedRuntimeMethod Include="cwrap" />
+    <EmccExportedRuntimeMethod Include="setValue" />
+    <EmccExportedRuntimeMethod Include="getValue" />
+    <EmccExportedRuntimeMethod Include="addRunDependency" />
+    <EmccExportedRuntimeMethod Include="addFunction" />
+    <EmccExportedRuntimeMethod Include="UTF8ToString" />
+    <EmccExportedRuntimeMethod Include="UTF8ArrayToString" />
+    <EmccExportedRuntimeMethod Include="stringToUTF8Array" />
+    <EmccExportedRuntimeMethod Include="FS_createPath" />
+    <EmccExportedRuntimeMethod Include="FS_createDataFile" />
+    <EmccExportedRuntimeMethod Include="removeRunDependency" />
+    <EmccExportedRuntimeMethod Include="safeSetTimeout" />
+    <EmccExportedRuntimeMethod Include="runtimeKeepalivePush" />
+    <EmccExportedRuntimeMethod Include="runtimeKeepalivePop" />
+    <EmccExportedRuntimeMethod Include="callMain" />
+  </ItemGroup>
+
+  <Target Name="PrepareDotNetJsApiForLinking">
+    <PropertyGroup>
+      <_WasmIntermediateOutputPath Condition="'$(WasmBuildingForNestedPublish)' == ''">$([MSBuild]::NormalizeDirectory($(IntermediateOutputPath), 'wasm'))</_WasmIntermediateOutputPath>
+      <_EmccDefaultFlagsRsp>$([MSBuild]::NormalizePath($(IlcFrameworkNativePath), 'src', 'emcc-default.rsp'))</_EmccDefaultFlagsRsp>
+      <_EmccDefaultLinkFlagsRsp>$([MSBuild]::NormalizePath($(IlcFrameworkNativePath), 'src', 'emcc-link.rsp'))</_EmccDefaultLinkFlagsRsp>
+      <_EmccLinkRsp>$(_WasmIntermediateOutputPath)emcc-link.rsp</_EmccLinkRsp>
+    </PropertyGroup>
+    <PropertyGroup>
+      <_EmccExportedLibraryFunction>&quot;[@(EmccExportedLibraryFunction -> '%27%(Identity)%27', ',')]&quot;</_EmccExportedLibraryFunction>
+      <_EmccExportedRuntimeMethods>&quot;[@(EmccExportedRuntimeMethod -> '%27%(Identity)%27', ',')]&quot;</_EmccExportedRuntimeMethods>
+      <_EmccExportedFunctions>@(EmccExportedFunction -> '%(Identity)',',')</_EmccExportedFunctions>
+      <_EmccDefaultFlags Condition="'$(WasmEnableSIMD)' == 'true'">-msimd128</_EmccDefaultFlags>
+      <EmccStackSize Condition="'$(EmccStackSize)' == ''">5MB</EmccStackSize>
+      <EmccInitialHeapSize Condition="'$(EmccInitialHeapSize)' == '' and '$(_WasmCalculatedInitialHeapSize)' != '' and $(_WasmCalculatedInitialHeapSize) > 16777216">$(_WasmCalculatedInitialHeapSize)</EmccInitialHeapSize>
+      <EmccInitialHeapSize Condition="'$(EmccInitialHeapSize)' == ''">16777216</EmccInitialHeapSize>
+    </PropertyGroup>
+    <ItemGroup>
+      <EmscriptenEnvVars Include="DISABLE_LEGACY_JS_INTEROP=1" Condition="'$(WasmEnableLegacyJsInterop)' == 'false'" />
+      <EmscriptenEnvVars Include="DISABLE_LEGACY_JS_INTEROP=0" Condition="'$(WasmEnableLegacyJsInterop)' != 'false'" />
+      <EmscriptenEnvVars Include="WASM_ENABLE_SIMD=1" Condition="'$(WasmEnableSIMD)' != 'false'" />
+      <EmscriptenEnvVars Include="WASM_ENABLE_SIMD=0" Condition="'$(WasmEnableSIMD)' == 'false'" />
+      <EmscriptenEnvVars Include="WASM_ENABLE_EH=1" Condition="'$(WasmEnableExceptionHandling)' != 'false'" />
+      <EmscriptenEnvVars Include="WASM_ENABLE_EH=0" Condition="'$(WasmEnableExceptionHandling)' == 'false'" />
+      <EmscriptenEnvVars Include="ENABLE_AOT_PROFILER=$([System.Convert]::ToInt32($(WasmProfilers.Contains('aot'))))" />
+      <EmscriptenEnvVars Include="ENABLE_BROWSER_PROFILER=$([System.Convert]::ToInt32($(WasmProfilers.Contains('browser'))))" />
+      <EmscriptenEnvVars Include="RUN_AOT_COMPILATION=1" Condition="'$(RunAOTCompilation)' == 'true'" />
+      <EmscriptenEnvVars Include="RUN_AOT_COMPILATION=0" Condition="'$(RunAOTCompilation)' != 'true'" />
+      <_EmccCommonFlags Include="$(_DefaultEmccFlags)" />
+      <_EmccCommonFlags Include="$(EmccFlags)" />
+      <_EmccCommonFlags Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
+      <_EmccLDFlags Include="-s EXPORT_ES6=1" />
+      <_EmccLDFlags Include="-s INVOKE_RUN=0" />
+      <_EmccLDFlags Include="-s ALLOW_TABLE_GROWTH=1" />
+      <_EmccLDFlags Include="-s FORCE_FILESYSTEM=1" />
+      <_EmccLDFlags Include="-s EXPORT_NAME=&quot;'createDotnetRuntime'&quot;" />
+      <_EmccLDFlags Include="-s ENVIRONMENT=&quot;'web,webview,worker,node,shell'&quot;" />
+      <_EmccLDFlags Include="-s MODULARIZE=1" />
+      <_EmccLinkStepArgs Include="@(_EmccLDFlags)" />
+      <_EmccLDFlags Include="$(EmccLinkOptimizationFlag)" />
+      <_EmccLDFlags Include="@(_EmccCommonFlags)" />
+      <_EmccLDSFlags Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" />
+      <_EmccLDSFlags Include="-s STACK_SIZE=$(EmccStackSize)" />
+      <_EmccLDSFlags Condition="'$(EmccEnvironment)' != ''" Include="-s ENVIRONMENT=&quot;$(EmccEnvironment)&quot;" />
+      <_EmccLDSFlags Condition="'$(EmccEnableAssertions)' == 'true'" Include="-s ASSERTIONS=1" />
+      <_EmccLinkStepArgs Include="@(_EmccLDSFlags)" />
+      <_EmccLinkStepArgs Include="--emit-symbol-map" Condition="'$(WasmEmitSymbolMap)' == 'true'" />
+      <JSFileType Include="extpre.js"  Kind="extern-pre-js" />
+      <JSFileType Include="iffe.js"    Kind="extern-pre-js" />
+      <JSFileType Include="pre.js"     Kind="pre-js" />
+      <JSFileType Include="lib.js"     Kind="js-library" />
+      <JSFileType Include="post.js"    Kind="post-js" />
+      <JSFileType Include="extpost.js" Kind="extern-post-js" />
+      <_WasmExtraJSFile Include="$(IlcFrameworkNativePath)src\*.%(JSFileType.Identity)"     Kind="%(JSFileType.Kind)" />
+      <_WasmExtraJSFile Include="$(IlcFrameworkNativePath)src\es6\*.%(JSFileType.Identity)" Kind="%(JSFileType.Kind)" />
+      <_EmccLinkStepArgs Include="--%(_WasmExtraJSFile.Kind) &quot;%(_WasmExtraJSFile.Identity)&quot;" Condition="'%(_WasmExtraJSFile.Kind)' != ''" />
+      <_EmccLinkStepArgs Include="-o &quot;$(_WasmIntermediateOutputPath)dotnet.native.js&quot;" />
+      <_EmccLinkStepArgs Include="-s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$(_EmccExportedLibraryFunction)" Condition="'$(_EmccExportedLibraryFunction)' != ''" />
+      <_EmccLinkStepArgs Include="-s EXPORTED_RUNTIME_METHODS=$(_EmccExportedRuntimeMethods)" />
+      <_EmccLinkStepArgs Include="-s EXPORTED_FUNCTIONS=$(_EmccExportedFunctions)" />
+      <_EmccLinkStepArgs Include="--source-map-base http://example.com" />
+      <_EmccLinkStepArgs Include="-Wno-limited-postlink-optimizations" />
+      <_EmccLinkStepArgs Include="$(EmccExtraLDFlags)" />
+    </ItemGroup>
+    <WriteLinesToFile Lines="@(_EmccLinkStepArgs)" File="$(_EmccLinkRsp)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <PropertyGroup>
+      <EmccExtraArgs>$(EmccExtraArgs) $(_EmccDefaultFlags) "@$(_EmccLinkRsp)"</EmccExtraArgs>
+    </PropertyGroup>
+  </Target>
+</Project>
