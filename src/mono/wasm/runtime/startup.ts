@@ -14,7 +14,6 @@ import { initialize_marshalers_to_cs } from "./marshal-to-cs";
 import { initialize_marshalers_to_js } from "./marshal-to-js";
 import { init_polyfills_async } from "./polyfills";
 import { strings_init, utf8ToString } from "./strings";
-import { init_managed_exports } from "./managed-exports";
 import { cwraps_internal } from "./exports-internal";
 import { CharPtr, InstantiateWasmCallBack, InstantiateWasmSuccessCallback } from "./types/emscripten";
 import { wait_for_all_assets } from "./assets";
@@ -29,7 +28,6 @@ import { mono_log_debug, mono_log_error, mono_log_warn, mono_set_thread_id } fro
 import { preAllocatePThreadWorkerPool, instantiateWasmPThreadWorkerPool } from "./pthreads/browser";
 import { currentWorkerThreadEvents, dotnetPthreadCreated, initWorkerThreadEvents } from "./pthreads/worker";
 import { getBrowserThreadID } from "./pthreads/shared";
-import { jiterpreter_allocate_tables } from "./jiterpreter-support";
 
 // legacy
 import { init_legacy_exports } from "./net6-legacy/corebindings";
@@ -281,7 +279,8 @@ async function onRuntimeInitializedAsync(userOnRuntimeInitialized: () => void) {
         }
 
         bindings_init();
-        jiterpreter_allocate_tables(Module);
+        // TODO MF: Fix jiterpreter_allocate_tables
+        // jiterpreter_allocate_tables(Module);
 
         if (MonoWasmThreads) {
             runtimeHelpers.javaScriptExports.install_synchronization_context();
@@ -526,15 +525,17 @@ async function mono_wasm_before_memory_snapshot() {
         return;
     }
 
-    for (const k in runtimeHelpers.config.environmentVariables) {
-        const v = runtimeHelpers.config.environmentVariables![k];
-        if (typeof (v) === "string")
-            mono_wasm_setenv(k, v);
-        else
-            throw new Error(`Expected environment variable '${k}' to be a string but it was ${typeof v}: '${v}'`);
-    }
-    if (runtimeHelpers.config.runtimeOptions)
-        mono_wasm_set_runtime_options(runtimeHelpers.config.runtimeOptions);
+    // TODO MF: Fix environment variables
+    // for (const k in runtimeHelpers.config.environmentVariables) {
+    //     const v = runtimeHelpers.config.environmentVariables![k];
+    //     if (typeof (v) === "string")
+    //         mono_wasm_setenv(k, v);
+    //     else
+    //         throw new Error(`Expected environment variable '${k}' to be a string but it was ${typeof v}: '${v}'`);
+    // }
+    // TODO MF: Fix mono_wasm_set_runtime_options
+    // if (runtimeHelpers.config.runtimeOptions)
+    //     mono_wasm_set_runtime_options(runtimeHelpers.config.runtimeOptions);
 
     if (runtimeHelpers.config.aotProfilerOptions)
         mono_wasm_init_aot_profiler(runtimeHelpers.config.aotProfilerOptions);
@@ -542,7 +543,8 @@ async function mono_wasm_before_memory_snapshot() {
     if (runtimeHelpers.config.browserProfilerOptions)
         mono_wasm_init_browser_profiler(runtimeHelpers.config.browserProfilerOptions);
 
-    mono_wasm_load_runtime("unused", runtimeHelpers.config.debugLevel);
+    // TODO MF: Fix mono_wasm_set_runtime_options
+    // mono_wasm_load_runtime("unused", runtimeHelpers.config.debugLevel);
 
     // we didn't have snapshot yet and the feature is enabled. Take snapshot now.
     if (runtimeHelpers.config.startupMemoryCache) {
@@ -596,7 +598,8 @@ export function bindings_init(): void {
     try {
         const mark = startMeasure();
         strings_init();
-        init_managed_exports();
+        // TODO MF: Fix init_managed_exports
+        // init_managed_exports();
         if (WasmEnableLegacyJsInterop && !linkerDisableLegacyJsInterop && !ENVIRONMENT_IS_PTHREAD) {
             init_legacy_exports();
         }
