@@ -303,6 +303,33 @@ internal unsafe partial class Program
 
         TestNativeCallback();
 
+        TestDirectPInvoke();
+
+#if false // TODO-LLVM: Should throw an EntryPointNotFoundException, but fails in the Wasm runtime (RuntimeError: null function or function signature mismatch)
+        TestEntryPointNotFoundForWasmImport();
+#endif
+
+        TestStaticAbiCompatibleSignatures();
+
+#if !CODEGEN_WASI // Easier to test with Javascript/Emscripten.
+        // TODO-LLVM: throwing the PNSE is not currently implemented and this will fail fast in Javascript and we cannot catch it.
+        // LazyDllImportThrows();
+
+        TestNamedModuleCall();
+
+        TestNamedModuleCallWithoutEntryPoint();
+
+        TestSameFunctionNameInDifferentModules();
+
+        TestStaticPInvokeOverloadedInDifferentModules();
+
+        TestWasmImportAbiCompatibleSignatures();
+
+#if false // TODO-LLVM: Should throw a PNSE, but not implemented yet.
+        LazyDllImportThrows();
+#endif
+#endif
+
         TestNativeCallsWithMismatchedSignatures();
 
         TestArgsWithMixedTypesAndExceptionRegions();
@@ -1540,7 +1567,7 @@ internal unsafe partial class Program
     }
 
     private static bool callbackResult;
-    private static unsafe void TestNativeCallback()
+    private static void TestNativeCallback()
     {
         StartTest("Native callback test");
         CallMe(123);
@@ -1555,6 +1582,144 @@ internal unsafe partial class Program
             callbackResult = true;
         }
     }
+
+    [DllImport("xyz", EntryPoint = "SimpleDirectPInvokeTestFunc")]
+    private static extern int SimpleDirectPInvokeTest(int x);
+
+    private static void TestDirectPInvoke()
+    {
+        StartTest("DirectPInvoke test");
+        EndTest(SimpleDirectPInvokeTest(234) == 234);
+    }
+
+    [DllImport("StaticModule1", EntryPoint = "CommonStaticFunctionName")]
+    private static extern int CallAbiCompatFunctionWithInt(int arg);
+
+    [DllImport("StaticModule2", EntryPoint = "CommonStaticFunctionName")]
+    private static extern uint CallAbiCompatFunctionWitUint(uint arg);
+
+    private static void TestStaticAbiCompatibleSignatures()
+    {
+        StartTest("Static imports with ABI compatible signatures");
+        EndTest(CallAbiCompatFunctionWithInt(456) == 456 && CallAbiCompatFunctionWitUint(789) == 789);
+    }
+
+#if !CODEGEN_WASI // Easier to test with Javascript/Emscripten
+
+    // All "*" imports are implicitly DirectPInvoke so name a module
+    [DllImport("Foo", EntryPoint = "NonExistantMethod")]
+    private static extern int LazyMethod();
+
+    private static void LazyDllImportThrows()
+    {
+        StartTest("Lazy DllImport fails");
+        try
+        {
+            LazyMethod();
+            FailTest("Lazy linked DllImport did not throw");
+        }
+        catch (PlatformNotSupportedException)
+        {
+            PassTest();
+        }
+    }
+
+    private static void TestNamedModuleCall()
+    {
+        StartTest("Wasm import from named module test");
+        EndTest(CallFunctionInModule(456) == 456);
+    }
+
+    private static void TestNamedModuleCallWithoutEntryPoint()
+    {
+        StartTest("Wasm import from named module test");
+        EndTest(ModuleFunc(77) == 77);
+    }
+
+    [DllImport("ModuleName", EntryPoint = "ModuleFunc"), WasmImportLinkage]
+    private static extern int CallFunctionInModule(int x);
+
+    [DllImport("ModuleName"), WasmImportLinkage]
+    private static extern int ModuleFunc(int x);
+
+    [DllImport("ModuleName", EntryPoint = "DupImportTest"), WasmImportLinkage]
+    private static extern int WasmImportFuncDup1(int arg);
+
+    [DllImport("ModuleName", EntryPoint = "DupImportTest"), WasmImportLinkage]
+    private static extern int WasmImportFuncDup2();
+
+    private static void TestEntryPointNotFoundForWasmImport()
+    {
+        try
+        {
+            WasmImportFuncDup1(0);
+        }
+        catch (EntryPointNotFoundException)
+        {
+            try
+            {
+                WasmImportFuncDup2();
+            }
+            catch (EntryPointNotFoundException)
+            {
+                PassTest();
+                return;
+            }
+        }
+
+        FailTest("EntryPointNotFoundException not thrown");
+    }
+
+    [DllImport("ModuleName1", EntryPoint = "CommonFunctionName"), WasmImportLinkage]
+    private static extern int CallFunctionInModule1(int arg);
+
+    [DllImport("ModuleName2", EntryPoint = "CommonFunctionName"), WasmImportLinkage]
+    private static extern int CallFunctionInModule2(int arg);
+
+    private static void TestSameFunctionNameInDifferentModules()
+    {
+        StartTest("Wasm import same function name from different modules test");
+        EndTest(CallFunctionInModule1(456) == 456 && CallFunctionInModule2(789) == 790);
+    }
+
+    [DllImport("ModuleName1", EntryPoint = "CommonWasmImportFunctionName"), WasmImportLinkage]
+    private static extern int CallWasmImportAbiCompatFunctionWithInt(int arg);
+
+    [DllImport("ModuleName1", EntryPoint = "CommonWasmImportFunctionName"), WasmImportLinkage]
+    private static extern uint CallWasmImportAbiCompatFunctionWitUint(uint arg);
+
+    private static void TestWasmImportAbiCompatibleSignatures()
+    {
+        StartTest("Wasm imports with ABI compatible signatures");
+        EndTest(CallWasmImportAbiCompatFunctionWithInt(456) == 456 && CallWasmImportAbiCompatFunctionWitUint(789) == 789);
+    }
+
+    [DllImport("StaticModule1", EntryPoint = "CommonStaticFunctionName")]
+    private static extern int CommonFunctionNameInModule1(int arg);
+
+    [DllImport("StaticModule2", EntryPoint = "CommonStaticFunctionName")]
+    private static extern int CommonFunctionNameInModule2(int arg);
+
+    private static void TestStaticPInvokeOverloadedInDifferentModules()
+    {
+        StartTest("Static PInvoke of overloaded function in different modules test");
+        EndTest(CommonFunctionNameInModule1(12) == 12 && CommonFunctionNameInModule2(34) == 34);
+    }
+
+    [DllImport("StaticModule1", EntryPoint = "StaticIncompatFunctionName")]
+    private static extern int CallAbiIncompatFunctionWithInt(int arg);
+
+    [DllImport("StaticModule2", EntryPoint = "StaticIncompatFunctionName")]
+    private static extern void CallAbiIncompatFunctionWithFloat(float arg);
+
+    // Compilation should produce a warning for CallAbiIncompatFunctionWithInt and CallAbiIncompatFunctionWithFloat.
+    [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "JustForRooting2")]
+    private static void RootFuncDup()
+    {
+        CallAbiIncompatFunctionWithInt(0);
+        CallAbiIncompatFunctionWithFloat(1);
+    }
+#endif
 
     [System.Runtime.InteropServices.DllImport("*")]
     private static extern void CallMe(int x);

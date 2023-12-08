@@ -24,7 +24,6 @@ namespace ILCompiler
         protected bool _methodBodyFolding;
         protected InstructionSetSupport _instructionSetSupport;
         protected SecurityMitigationOptions _mitigationOptions;
-        protected ConfigurableWasmImportPolicy _wasmImportPolicy;
         protected bool _dehydrate;
         protected bool _useDwarf5;
 
@@ -103,12 +102,6 @@ namespace ILCompiler
         public CompilationBuilder UsePreinitializationManager(PreinitializationManager manager)
         {
             _preinitializationManager = manager;
-            return this;
-        }
-
-        public CompilationBuilder UseWasmImportPolicy(ConfigurableWasmImportPolicy wasmImportPolicy)
-        {
-            _wasmImportPolicy = wasmImportPolicy;
             return this;
         }
 

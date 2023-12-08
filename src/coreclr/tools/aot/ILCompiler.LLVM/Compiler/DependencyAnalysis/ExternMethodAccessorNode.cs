@@ -87,5 +87,22 @@ namespace ILCompiler.DependencyAnalysis
         protected override void EmitCode(NodeFactory factory, ref WasmEmitter instructionEncoder, bool relocsOnly) { }
 
         protected override string GetName(NodeFactory context) => $"ExternMethodAccessor {ExternMethodName}";
+
+        public MethodDesc GetSingleMethod()
+        {
+            switch (_methods)
+            {
+                case MethodDesc oneMethod:
+                    return oneMethod;
+
+                default:
+                    foreach (MethodDesc method in (HashSet<MethodDesc>)_methods)
+                    {
+                        return method;
+                    }
+
+                    return null;
+            }
+        }
     }
 }

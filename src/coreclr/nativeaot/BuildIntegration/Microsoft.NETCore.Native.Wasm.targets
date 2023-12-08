@@ -16,4 +16,9 @@ The .NET Foundation licenses this file to you under the MIT license.
   <!-- Part of workaround for lack of secondary build artifact import - https://github.com/Microsoft/msbuild/issues/2807 -->
   <!-- required Target, but nothing to do for Wasm -->
   <Target Name="SetupOSSpecificProps" />
+
+  <ItemGroup>
+    <DirectPInvoke Include="libSystem.Globalization.Native" />
+    <DirectPInvoke Include="libSystem.Native" />
+  </ItemGroup>
 </Project>

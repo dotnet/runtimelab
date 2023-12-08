@@ -11,7 +11,6 @@ using System.CommandLine.Parsing;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Xml;
 
@@ -351,14 +350,14 @@ namespace ILCompiler
             PInvokeILEmitterConfiguration pinvokePolicy;
             if (isLlvmCodegen)
             {
-                pinvokePolicy = new DirectPInvokePolicy();
+                pinvokePolicy = new WasmConfigurablePInvokePolicy(typeSystemContext.Target,
+                    Get(_command.DirectPInvokes), Get(_command.DirectPInvokeLists));
             }
             else
             {
                 pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target,
                     Get(_command.DirectPInvokes), Get(_command.DirectPInvokeLists));
             }
-            ConfigurableWasmImportPolicy wasmImportPolicy = new ConfigurableWasmImportPolicy(Get(_command.WasmImport), Get(_command.WasmImportList));
 
             var featureSwitches = new Dictionary<string, bool>();
             foreach (var switchPair in Get(_command.FeatureSwitches))
@@ -572,7 +571,6 @@ namespace ILCompiler
                 .UseOptimizationMode(_command.OptimizationMode)
                 .UseSecurityMitigationOptions(securityMitigationOptions)
                 .UseDebugInfoProvider(debugInfoProvider)
-                .UseWasmImportPolicy(wasmImportPolicy)
                 .UseDwarf5(Get(_command.UseDwarf5))
                 .UseResilience(resilient);
 
