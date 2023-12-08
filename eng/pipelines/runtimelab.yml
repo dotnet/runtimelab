@@ -66,7 +66,7 @@ extends:
             jobParameters:
               timeoutInMinutes: 300
               testGroup: innerloop
-              buildArgs: -s clr.aot+mono.wasmruntime+libs+nativeaot.packages -lc Release -rc Debug
+              buildArgs: -s clr.aot+libs+nativeaot.packages -lc Release -rc Debug
               postBuildSteps:
                 - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
                   parameters:
@@ -123,9 +123,9 @@ extends:
                   uploadIntermediateArtifacts: false
                   librariesConfiguration: Release
             ${{ if eq(variables.isOfficialBuild, false) }}:
-              buildArgs: -s clr.aot+mono.wasmruntime+libs+nativeaot.packages -c $(_BuildConfig) /p:ArchiveTests=true
+              buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig) /p:ArchiveTests=true
             ${{ if eq(variables.isOfficialBuild, true) }}:
-              buildArgs: -s clr.aot+mono.wasmruntime+libs+nativeaot.packages -c $(_BuildConfig)
+              buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig)
 
       #
       # Build with Release allConfigurations to produce packages
