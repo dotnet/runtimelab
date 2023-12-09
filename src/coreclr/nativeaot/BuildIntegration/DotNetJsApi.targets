@@ -97,7 +97,6 @@
       <EmscriptenEnvVars Include="ENABLE_AOT_PROFILER=0" />
       <EmscriptenEnvVars Include="ENABLE_BROWSER_PROFILER=0" />
       <EmscriptenEnvVars Include="RUN_AOT_COMPILATION=0" Condition="'$(RunAOTCompilation)' != 'true'" />
-      <_EmccCommonFlags Include="$(_DefaultEmccFlags)" />
       <_EmccCommonFlags Include="$(EmccFlags)" />
       <_EmccCommonFlags Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
       <_EmccLDFlags Include="-s EXPORT_ES6=1" />
@@ -130,7 +129,6 @@
       <_EmccLinkStepArgs Include="-s EXPORTED_RUNTIME_METHODS=$(_EmccExportedRuntimeMethods)" />
       <_EmccLinkStepArgs Include="-s EXPORTED_FUNCTIONS=$(_EmccExportedFunctions)" />
       <_EmccLinkStepArgs Include="--source-map-base http://example.com" />
-      <_EmccLinkStepArgs Include="-Wno-limited-postlink-optimizations" />
       <_EmccLinkStepArgs Include="$(EmccExtraLDFlags)" />
     </ItemGroup>
     <WriteLinesToFile Lines="@(_EmccLinkStepArgs)" File="$(_EmccLinkRsp)" Overwrite="true" WriteOnlyWhenDifferent="true" />
