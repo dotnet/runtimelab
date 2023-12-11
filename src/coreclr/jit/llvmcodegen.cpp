@@ -1690,10 +1690,10 @@ void Llvm::buildCall(GenTreeCall* call)
         argVec.push_back(argValue);
     }
 
-    // We may come back into managed from the unmanaged call so store the shadow stack.
-    if (callRequiresShadowStackSave(call))
+    // We may come back into managed from the unmanaged call so store the shadow stack. Note that for regular unmanaged
+    // calls, we fold the shadow stack save into the transition helper call, and so don't need to do anything here.
+    if (!call->IsUnmanaged() && callRequiresShadowStackSave(call))
     {
-        // TODO-LLVM-CQ: fold it into the PI helper call when possible.
         emitHelperCall(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP, getShadowStackForCallee());
     }
 
