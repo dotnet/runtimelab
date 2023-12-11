@@ -1,7 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-// import MonoWasmThreads from "consts:monoWasmThreads";
+import NativeAOT from "consts:nativeAOT";
+import MonoWasmThreads from "consts:monoWasmThreads";
 import WasmEnableLegacyJsInterop from "consts:wasmEnableLegacyJsInterop";
 
 import type {
@@ -10,7 +11,7 @@ import type {
     MonoType, MonoObjectRef, MonoStringRef, JSMarshalerArguments
 } from "./types/internal";
 import type { VoidPtr, CharPtrPtr, Int32Ptr, CharPtr, ManagedPointer } from "./types/emscripten";
-import { linkerDisableLegacyJsInterop, Module } from "./globals";
+import { linkerDisableLegacyJsInterop, linkerEnableAotProfiler, linkerEnableBrowserProfiler, Module } from "./globals";
 import { mono_log_error } from "./logging";
 import { mono_assert } from "./globals";
 
@@ -32,127 +33,127 @@ const legacy_interop_cwraps: SigLine[] = WasmEnableLegacyJsInterop ? [
     [true, "mono_wasm_array_length_ref", "number", ["number"]],
 ] : [];
 
-// const threading_cwraps: SigLine[] = MonoWasmThreads ? [
-//     // MONO.diagnostics
-//     [true, "mono_wasm_event_pipe_enable", "bool", ["string", "number", "number", "string", "bool", "number"]],
-//     [true, "mono_wasm_event_pipe_session_start_streaming", "bool", ["number"]],
-//     [true, "mono_wasm_event_pipe_session_disable", "bool", ["number"]],
-//     [true, "mono_wasm_diagnostic_server_create_thread", "bool", ["string", "number"]],
-//     [true, "mono_wasm_diagnostic_server_thread_attach_to_runtime", "void", []],
-//     [true, "mono_wasm_diagnostic_server_post_resume_runtime", "void", []],
-//     [true, "mono_wasm_diagnostic_server_create_stream", "number", []],
-// ] : [];
+const threading_cwraps: SigLine[] = MonoWasmThreads ? [
+    // MONO.diagnostics
+    [true, "mono_wasm_event_pipe_enable", "bool", ["string", "number", "number", "string", "bool", "number"]],
+    [true, "mono_wasm_event_pipe_session_start_streaming", "bool", ["number"]],
+    [true, "mono_wasm_event_pipe_session_disable", "bool", ["number"]],
+    [true, "mono_wasm_diagnostic_server_create_thread", "bool", ["string", "number"]],
+    [true, "mono_wasm_diagnostic_server_thread_attach_to_runtime", "void", []],
+    [true, "mono_wasm_diagnostic_server_post_resume_runtime", "void", []],
+    [true, "mono_wasm_diagnostic_server_create_stream", "number", []],
+] : [];
 
 // when the method is assigned/cached at usage, instead of being invoked directly from cwraps, it can't be marked lazy, because it would be re-bound on each call
 const fn_signatures: SigLine[] = [
-    // // MONO
-    // [true, "mono_wasm_register_root", "number", ["number", "number", "string"]],
-    // [true, "mono_wasm_deregister_root", null, ["number"]],
-    // [true, "mono_wasm_string_get_data_ref", null, ["number", "number", "number", "number"]],
-    // [true, "mono_wasm_set_is_debugger_attached", "void", ["bool"]],
-    // [true, "mono_wasm_send_dbg_command", "bool", ["number", "number", "number", "number", "number"]],
-    // [true, "mono_wasm_send_dbg_command_with_parms", "bool", ["number", "number", "number", "number", "number", "number", "string"]],
-    // [true, "mono_wasm_setenv", null, ["string", "string"]],
-    // [true, "mono_wasm_parse_runtime_options", null, ["number", "number"]],
-    // [true, "mono_wasm_strdup", "number", ["string"]],
-    // [true, "mono_background_exec", null, []],
-    // [true, "mono_wasm_execute_timer", null, []],
-    // [true, "mono_wasm_load_icu_data", "number", ["number"]],
-    // [false, "mono_wasm_add_assembly", "number", ["string", "number", "number"]],
-    // [true, "mono_wasm_add_satellite_assembly", "void", ["string", "string", "number", "number"]],
-    // [false, "mono_wasm_load_runtime", null, ["string", "number"]],
-    // [true, "mono_wasm_change_debugger_log_level", "void", ["number"]],
+    // MONO
+    [true, "mono_wasm_register_root", "number", ["number", "number", "string"]],
+    [true, "mono_wasm_deregister_root", null, ["number"]],
+    [true, "mono_wasm_string_get_data_ref", null, ["number", "number", "number", "number"]],
+    [true, "mono_wasm_set_is_debugger_attached", "void", ["bool"]],
+    [true, "mono_wasm_send_dbg_command", "bool", ["number", "number", "number", "number", "number"]],
+    [true, "mono_wasm_send_dbg_command_with_parms", "bool", ["number", "number", "number", "number", "number", "number", "string"]],
+    [true, "mono_wasm_setenv", null, ["string", "string"]],
+    [true, "mono_wasm_parse_runtime_options", null, ["number", "number"]],
+    [true, "mono_wasm_strdup", "number", ["string"]],
+    [true, "mono_background_exec", null, []],
+    [true, "mono_wasm_execute_timer", null, []],
+    [true, "mono_wasm_load_icu_data", "number", ["number"]],
+    [false, "mono_wasm_add_assembly", "number", ["string", "number", "number"]],
+    [true, "mono_wasm_add_satellite_assembly", "void", ["string", "string", "number", "number"]],
+    [false, "mono_wasm_load_runtime", null, ["string", "number"]],
+    [true, "mono_wasm_change_debugger_log_level", "void", ["number"]],
 
-    // // BINDING
-    // [true, "mono_wasm_get_corlib", "number", []],
-    // [true, "mono_wasm_assembly_load", "number", ["string"]],
-    // [true, "mono_wasm_assembly_find_class", "number", ["number", "string", "string"]],
-    // [true, "mono_wasm_runtime_run_module_cctor", "void", ["number"]],
-    // [true, "mono_wasm_assembly_find_method", "number", ["number", "string", "number"]],
-    // [false, "mono_wasm_invoke_method_ref", "void", ["number", "number", "number", "number", "number"]],
-    // [true, "mono_wasm_string_from_utf16_ref", "void", ["number", "number", "number"]],
-    // [true, "mono_wasm_intern_string_ref", "void", ["number"]],
-    // [true, "mono_wasm_assembly_get_entry_point", "number", ["number", "number"]],
-    // [true, "mono_wasm_class_get_type", "number", ["number"]],
+    // BINDING
+    [true, "mono_wasm_get_corlib", "number", []],
+    [true, "mono_wasm_assembly_load", "number", ["string"]],
+    [true, "mono_wasm_assembly_find_class", "number", ["number", "string", "string"]],
+    [true, "mono_wasm_runtime_run_module_cctor", "void", ["number"]],
+    [true, "mono_wasm_assembly_find_method", "number", ["number", "string", "number"]],
+    [false, "mono_wasm_invoke_method_ref", "void", ["number", "number", "number", "number", "number"]],
+    [true, "mono_wasm_string_from_utf16_ref", "void", ["number", "number", "number"]],
+    [true, "mono_wasm_intern_string_ref", "void", ["number"]],
+    [true, "mono_wasm_assembly_get_entry_point", "number", ["number", "number"]],
+    [true, "mono_wasm_class_get_type", "number", ["number"]],
 
-    // //INTERNAL
-    // [false, "mono_wasm_exit", "void", ["number"]],
-    // [false, "mono_wasm_abort", "void", []],
-    // [true, "mono_wasm_getenv", "number", ["string"]],
-    // [true, "mono_wasm_set_main_args", "void", ["number", "number"]],
-    // [false, "mono_wasm_enable_on_demand_gc", "void", ["number"]],
-    // // These two need to be lazy because they may be missing
-    // [() => !linkerEnableAotProfiler, "mono_wasm_profiler_init_aot", "void", ["string"]],
-    // [() => !linkerEnableBrowserProfiler, "mono_wasm_profiler_init_aot", "void", ["string"]],
-    // [true, "mono_wasm_profiler_init_browser", "void", ["number"]],
-    // [false, "mono_wasm_exec_regression", "number", ["number", "string"]],
-    // [false, "mono_wasm_invoke_method_bound", "number", ["number", "number", "number"]],
-    // [true, "mono_wasm_write_managed_pointer_unsafe", "void", ["number", "number"]],
-    // [true, "mono_wasm_copy_managed_pointer", "void", ["number", "number"]],
-    // [true, "mono_wasm_i52_to_f64", "number", ["number", "number"]],
-    // [true, "mono_wasm_u52_to_f64", "number", ["number", "number"]],
-    // [true, "mono_wasm_f64_to_i52", "number", ["number", "number"]],
-    // [true, "mono_wasm_f64_to_u52", "number", ["number", "number"]],
-    // [true, "mono_wasm_method_get_name", "number", ["number"]],
-    // [true, "mono_wasm_method_get_full_name", "number", ["number"]],
-    // [true, "mono_wasm_gc_lock", "void", []],
-    // [true, "mono_wasm_gc_unlock", "void", []],
-    // [true, "mono_wasm_get_i32_unaligned", "number", ["number"]],
-    // [true, "mono_wasm_get_f32_unaligned", "number", ["number"]],
-    // [true, "mono_wasm_get_f64_unaligned", "number", ["number"]],
+    //INTERNAL
+    [false, "mono_wasm_exit", "void", ["number"]],
+    [false, "mono_wasm_abort", "void", []],
+    [true, "mono_wasm_getenv", "number", ["string"]],
+    [true, "mono_wasm_set_main_args", "void", ["number", "number"]],
+    [false, "mono_wasm_enable_on_demand_gc", "void", ["number"]],
+    // These two need to be lazy because they may be missing
+    [() => !linkerEnableAotProfiler, "mono_wasm_profiler_init_aot", "void", ["string"]],
+    [() => !linkerEnableBrowserProfiler, "mono_wasm_profiler_init_aot", "void", ["string"]],
+    [true, "mono_wasm_profiler_init_browser", "void", ["number"]],
+    [false, "mono_wasm_exec_regression", "number", ["number", "string"]],
+    [false, "mono_wasm_invoke_method_bound", "number", ["number", "number", "number"]],
+    [true, "mono_wasm_write_managed_pointer_unsafe", "void", ["number", "number"]],
+    [true, "mono_wasm_copy_managed_pointer", "void", ["number", "number"]],
+    [true, "mono_wasm_i52_to_f64", "number", ["number", "number"]],
+    [true, "mono_wasm_u52_to_f64", "number", ["number", "number"]],
+    [true, "mono_wasm_f64_to_i52", "number", ["number", "number"]],
+    [true, "mono_wasm_f64_to_u52", "number", ["number", "number"]],
+    [true, "mono_wasm_method_get_name", "number", ["number"]],
+    [true, "mono_wasm_method_get_full_name", "number", ["number"]],
+    [true, "mono_wasm_gc_lock", "void", []],
+    [true, "mono_wasm_gc_unlock", "void", []],
+    [true, "mono_wasm_get_i32_unaligned", "number", ["number"]],
+    [true, "mono_wasm_get_f32_unaligned", "number", ["number"]],
+    [true, "mono_wasm_get_f64_unaligned", "number", ["number"]],
 
-    // // jiterpreter
-    // [true, "mono_jiterp_trace_bailout", "void", ["number"]],
-    // [true, "mono_jiterp_get_trace_bailout_count", "number", ["number"]],
-    // [true, "mono_jiterp_value_copy", "void", ["number", "number", "number"]],
-    // [true, "mono_jiterp_get_member_offset", "number", ["number"]],
-    // [true, "mono_jiterp_encode_leb52", "number", ["number", "number", "number"]],
-    // [true, "mono_jiterp_encode_leb64_ref", "number", ["number", "number", "number"]],
-    // [true, "mono_jiterp_encode_leb_signed_boundary", "number", ["number", "number", "number"]],
-    // [true, "mono_jiterp_write_number_unaligned", "void", ["number", "number", "number"]],
-    // [true, "mono_jiterp_type_is_byref", "number", ["number"]],
-    // [true, "mono_jiterp_get_size_of_stackval", "number", []],
-    // [true, "mono_jiterp_parse_option", "number", ["string"]],
-    // [true, "mono_jiterp_get_options_as_json", "number", []],
-    // [true, "mono_jiterp_get_options_version", "number", []],
-    // [true, "mono_jiterp_adjust_abort_count", "number", ["number", "number"]],
-    // [true, "mono_jiterp_register_jit_call_thunk", "void", ["number", "number"]],
-    // [true, "mono_jiterp_type_get_raw_value_size", "number", ["number"]],
-    // [true, "mono_jiterp_get_signature_has_this", "number", ["number"]],
-    // [true, "mono_jiterp_get_signature_return_type", "number", ["number"]],
-    // [true, "mono_jiterp_get_signature_param_count", "number", ["number"]],
-    // [true, "mono_jiterp_get_signature_params", "number", ["number"]],
-    // [true, "mono_jiterp_type_to_ldind", "number", ["number"]],
-    // [true, "mono_jiterp_type_to_stind", "number", ["number"]],
-    // [true, "mono_jiterp_imethod_to_ftnptr", "number", ["number"]],
-    // [true, "mono_jiterp_debug_count", "number", []],
-    // [true, "mono_jiterp_get_trace_hit_count", "number", ["number"]],
-    // [true, "mono_jiterp_get_polling_required_address", "number", []],
-    // [true, "mono_jiterp_get_rejected_trace_count", "number", []],
-    // [true, "mono_jiterp_boost_back_branch_target", "void", ["number"]],
-    // [true, "mono_jiterp_is_imethod_var_address_taken", "number", ["number", "number"]],
-    // [true, "mono_jiterp_get_opcode_value_table_entry", "number", ["number"]],
-    // [true, "mono_jiterp_get_simd_intrinsic", "number", ["number", "number"]],
-    // [true, "mono_jiterp_get_simd_opcode", "number", ["number", "number"]],
-    // [true, "mono_jiterp_get_arg_offset", "number", ["number", "number", "number"]],
-    // [true, "mono_jiterp_get_opcode_info", "number", ["number", "number"]],
-    // [true, "mono_wasm_is_zero_page_reserved", "number", []],
-    // [true, "mono_jiterp_is_special_interface", "number", ["number"]],
-    // [true, "mono_jiterp_initialize_table", "void", ["number", "number", "number"]],
-    // [true, "mono_jiterp_allocate_table_entry", "number", ["number"]],
-    // [true, "mono_jiterp_get_interp_entry_func", "number", ["number"]],
-    // [true, "mono_jiterp_get_counter", "number", ["number"]],
-    // [true, "mono_jiterp_modify_counter", "number", ["number", "number"]],
-    // [true, "mono_jiterp_tlqueue_next", "number", ["number"]],
-    // [true, "mono_jiterp_tlqueue_add", "number", ["number", "number"]],
-    // [true, "mono_jiterp_tlqueue_clear", "void", ["number"]],
-    // [true, "mono_jiterp_begin_catch", "void", ["number"]],
-    // [true, "mono_jiterp_end_catch", "void", []],
-    // [true, "mono_interp_pgo_load_table", "number", ["number", "number"]],
-    // [true, "mono_interp_pgo_save_table", "number", ["number", "number"]],
+    // jiterpreter
+    [true, "mono_jiterp_trace_bailout", "void", ["number"]],
+    [true, "mono_jiterp_get_trace_bailout_count", "number", ["number"]],
+    [true, "mono_jiterp_value_copy", "void", ["number", "number", "number"]],
+    [true, "mono_jiterp_get_member_offset", "number", ["number"]],
+    [true, "mono_jiterp_encode_leb52", "number", ["number", "number", "number"]],
+    [true, "mono_jiterp_encode_leb64_ref", "number", ["number", "number", "number"]],
+    [true, "mono_jiterp_encode_leb_signed_boundary", "number", ["number", "number", "number"]],
+    [true, "mono_jiterp_write_number_unaligned", "void", ["number", "number", "number"]],
+    [true, "mono_jiterp_type_is_byref", "number", ["number"]],
+    [true, "mono_jiterp_get_size_of_stackval", "number", []],
+    [true, "mono_jiterp_parse_option", "number", ["string"]],
+    [true, "mono_jiterp_get_options_as_json", "number", []],
+    [true, "mono_jiterp_get_options_version", "number", []],
+    [true, "mono_jiterp_adjust_abort_count", "number", ["number", "number"]],
+    [true, "mono_jiterp_register_jit_call_thunk", "void", ["number", "number"]],
+    [true, "mono_jiterp_type_get_raw_value_size", "number", ["number"]],
+    [true, "mono_jiterp_get_signature_has_this", "number", ["number"]],
+    [true, "mono_jiterp_get_signature_return_type", "number", ["number"]],
+    [true, "mono_jiterp_get_signature_param_count", "number", ["number"]],
+    [true, "mono_jiterp_get_signature_params", "number", ["number"]],
+    [true, "mono_jiterp_type_to_ldind", "number", ["number"]],
+    [true, "mono_jiterp_type_to_stind", "number", ["number"]],
+    [true, "mono_jiterp_imethod_to_ftnptr", "number", ["number"]],
+    [true, "mono_jiterp_debug_count", "number", []],
+    [true, "mono_jiterp_get_trace_hit_count", "number", ["number"]],
+    [true, "mono_jiterp_get_polling_required_address", "number", []],
+    [true, "mono_jiterp_get_rejected_trace_count", "number", []],
+    [true, "mono_jiterp_boost_back_branch_target", "void", ["number"]],
+    [true, "mono_jiterp_is_imethod_var_address_taken", "number", ["number", "number"]],
+    [true, "mono_jiterp_get_opcode_value_table_entry", "number", ["number"]],
+    [true, "mono_jiterp_get_simd_intrinsic", "number", ["number", "number"]],
+    [true, "mono_jiterp_get_simd_opcode", "number", ["number", "number"]],
+    [true, "mono_jiterp_get_arg_offset", "number", ["number", "number", "number"]],
+    [true, "mono_jiterp_get_opcode_info", "number", ["number", "number"]],
+    [true, "mono_wasm_is_zero_page_reserved", "number", []],
+    [true, "mono_jiterp_is_special_interface", "number", ["number"]],
+    [true, "mono_jiterp_initialize_table", "void", ["number", "number", "number"]],
+    [true, "mono_jiterp_allocate_table_entry", "number", ["number"]],
+    [true, "mono_jiterp_get_interp_entry_func", "number", ["number"]],
+    [true, "mono_jiterp_get_counter", "number", ["number"]],
+    [true, "mono_jiterp_modify_counter", "number", ["number", "number"]],
+    [true, "mono_jiterp_tlqueue_next", "number", ["number"]],
+    [true, "mono_jiterp_tlqueue_add", "number", ["number", "number"]],
+    [true, "mono_jiterp_tlqueue_clear", "void", ["number"]],
+    [true, "mono_jiterp_begin_catch", "void", ["number"]],
+    [true, "mono_jiterp_end_catch", "void", []],
+    [true, "mono_interp_pgo_load_table", "number", ["number", "number"]],
+    [true, "mono_interp_pgo_save_table", "number", ["number", "number"]],
 
-    // ...threading_cwraps,
-    // ...legacy_interop_cwraps,
+    ...threading_cwraps,
+    ...legacy_interop_cwraps,
 ];
 
 export interface t_LegacyCwraps {
@@ -348,7 +349,8 @@ function cwrap(name: string, returnType: string | null, argTypes: string[] | und
 
 export function init_c_exports(): void {
     const lfns = WasmEnableLegacyJsInterop && !linkerDisableLegacyJsInterop ? legacy_interop_cwraps : [];
-    const fns = [...fn_signatures, ...lfns];
+    const fns = NativeAOT ? [] : [...fn_signatures, ...lfns];
+
     for (const sig of fns) {
         const wf: any = wrapped_c_functions;
         const [lazyOrSkip, name, returnType, argTypes, opts] = sig;
