@@ -9,6 +9,7 @@
     <!-- Honor the RuntimeArtifactsPath property. -->
     <CoreCLRArtifactsPath Condition="'$(CoreCLRArtifactsPath)' == '' and '$(RuntimeArtifactsPath)' != ''">$([MSBuild]::NormalizeDirectory('$(RuntimeArtifactsPath)'))</CoreCLRArtifactsPath>
     <MonoArtifactsPath Condition="'$(MonoArtifactsPath)' == '' and '$(RuntimeArtifactsPath)' != ''">$([MSBuild]::NormalizeDirectory('$(RuntimeArtifactsPath)'))</MonoArtifactsPath>
+    <CoreCLRTargetOSConfigurationArchitecture Condition="'$(CoreCLRTargetOSConfigurationArchitecture)' == ''">$(TargetOS)-$(CoreCLRConfiguration)-$(TargetArchitecture)</CoreCLRTargetOSConfigurationArchitecture>
     <LibrariesTargetOSConfigurationArchitecture Condition="'$(LibrariesTargetOSConfigurationArchitecture)' == ''">$(TargetOS)-$(LibrariesConfiguration)-$(TargetArchitecture)</LibrariesTargetOSConfigurationArchitecture>
   </PropertyGroup>
 
@@ -27,6 +28,7 @@
     <CoreCLRCrossILCompilerDir Condition="'$(CrossBuild)' == 'true' or '$(BuildArchitecture)' != '$(TargetArchitecture)' or '$(HostOS)' != '$(TargetOS)' or '$(EnableNativeSanitizers)' != ''">$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', '$(BuildArchitecture)', 'ilc'))</CoreCLRCrossILCompilerDir>
     <CoreCLRAotSdkDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'aotsdk'))</CoreCLRAotSdkDir>
     <CoreCLRBuildIntegrationDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'build'))</CoreCLRBuildIntegrationDir>
+    <CoreCLRNativeArtifactsPath Condition="'$(CoreCLRNativeArtifactsPath)' == ''">$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'bin', 'native', '$(NetCoreAppCurrent)-$(CoreCLRTargetOSConfigurationArchitecture)'))</CoreCLRNativeArtifactsPath>
 
     <Crossgen2Dir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', '$(BuildArchitecture)', 'crossgen2'))</Crossgen2Dir>
 
@@ -217,16 +219,16 @@
       
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
                              Include="
-        $(LibrariesNativeArtifactsPath)dotnet.js;
-        $(LibrariesNativeArtifactsPath)dotnet.js.map;
-        $(LibrariesNativeArtifactsPath)dotnet.runtime.js;
-        $(LibrariesNativeArtifactsPath)dotnet.runtime.js.map;
-        $(LibrariesNativeArtifactsPath)dotnet.d.ts;
-        $(LibrariesNativeArtifactsPath)dotnet-legacy.d.ts;
-        $(LibrariesNativeArtifactsPath)package.json;"
+        $(CoreCLRNativeArtifactsPath)dotnet.js;
+        $(CoreCLRNativeArtifactsPath)dotnet.js.map;
+        $(CoreCLRNativeArtifactsPath)dotnet.runtime.js;
+        $(CoreCLRNativeArtifactsPath)dotnet.runtime.js.map;
+        $(CoreCLRNativeArtifactsPath)dotnet.d.ts;
+        $(CoreCLRNativeArtifactsPath)dotnet-legacy.d.ts;
+        $(CoreCLRNativeArtifactsPath)package.json;"
         IsNative="true" />
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
-                             Include="$(LibrariesNativeArtifactsPath)src\es6\*.js"
+                             Include="$(CoreCLRNativeArtifactsPath)src\es6\*.js"
                              NativeSubDirectory="src\es6"
                              IsNative="true" />
 
