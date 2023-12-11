@@ -241,7 +241,16 @@ void Llvm::lowerBlocks()
 
 void Llvm::lowerBlock(BasicBlock* block)
 {
-    lowerRange(block, LIR::AsRange(block));
+    LIR::Range& blockRange = LIR::AsRange(block);
+
+    // Explicit void-returning tailcalls omit the importation of GT_RETURN. Compensate for this quirk.
+    if (block->KindIs(BBJ_RETURN) && (blockRange.IsEmpty() || !blockRange.LastNode()->OperIs(GT_RETURN)))
+    {
+        noway_assert(_compiler->info.compRetType == TYP_VOID);
+        blockRange.InsertAtEnd(new (_compiler, GT_RETURN) GenTreeOp(GT_RETURN, TYP_VOID));
+    }
+
+    lowerRange(block, blockRange);
 }
 
 void Llvm::lowerRange(BasicBlock* block, LIR::Range& range)

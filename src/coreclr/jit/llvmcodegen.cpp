@@ -626,7 +626,7 @@ void Llvm::generateBlock(BasicBlock* block)
             break;
         case BBJ_EHFAULTRET:
             // "fgCreateMonitorTree" forgets to insert RETFILT nodes for some faults. Compensate.
-            if (!block->lastNode()->OperIs(GT_RETFILT))
+            if (_builder.GetInsertBlock()->getTerminator() == nullptr)
             {
                 emitUnwindToOuterHandlerFromFault();
             }
