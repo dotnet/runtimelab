@@ -22,7 +22,7 @@ internal unsafe partial class Program
 
     static int finallyCounter = 0;
 
-    public static int Main()
+    public static void Main()
     {
         if (string.Empty.Length > 0)
         {
@@ -32,7 +32,7 @@ internal unsafe partial class Program
 
         if (!TestTryCatch())
         {
-            return 101;
+            return;
         }
 
         TestGenericExceptions();
@@ -49,7 +49,7 @@ internal unsafe partial class Program
             catch (OutOfMemoryException)
             {
                 Console.WriteLine("Unexpected exception caught");
-                return Fail;
+                return;
             }
         }
         catch (Exception e)
@@ -58,14 +58,14 @@ internal unsafe partial class Program
             if (e.Message != "My exception")
             {
                 Console.WriteLine("Unexpected exception message!");
-                return Fail;
+                return;
             }
 
             string stackTrace = e.StackTrace;
             if (!stackTrace.Contains("Program.Main"))
             {
                 Console.WriteLine("Unexpected stack trace: " + stackTrace);
-                return Fail;
+                return;
             }
             counter++;
         }
@@ -107,7 +107,7 @@ internal unsafe partial class Program
             if (e.Message != "Testing filter")
             {
                 Console.WriteLine("Unexpected exception message!");
-                return Fail;
+                return;
             }
             counter++;
         }
@@ -123,12 +123,12 @@ internal unsafe partial class Program
             if (e.Message != "ThrowExcThroughMethodsWithFinalizers2")
             {
                 Console.WriteLine("Unexpected exception message!");
-                return Fail;
+                return;
             }
             if (finallyCounter != 2)
             {
                 Console.WriteLine("Finalizers didn't execute!");
-                return Fail;
+                return;
             }
             counter++;
         }
@@ -148,14 +148,14 @@ internal unsafe partial class Program
         catch (Exception ex)
         {
             if (ex.Message != "Hello")
-                return Fail;
+                return;
             counter++;
         }
 
         if (counter != 10)
         {
             Console.WriteLine("Unexpected counter value");
-            return Fail;
+            return;
         }
 
         throw new Exception("UnhandledException");
