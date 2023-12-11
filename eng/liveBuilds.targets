@@ -28,7 +28,7 @@
     <CoreCLRCrossILCompilerDir Condition="'$(CrossBuild)' == 'true' or '$(BuildArchitecture)' != '$(TargetArchitecture)' or '$(HostOS)' != '$(TargetOS)' or '$(EnableNativeSanitizers)' != ''">$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', '$(BuildArchitecture)', 'ilc'))</CoreCLRCrossILCompilerDir>
     <CoreCLRAotSdkDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'aotsdk'))</CoreCLRAotSdkDir>
     <CoreCLRBuildIntegrationDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'build'))</CoreCLRBuildIntegrationDir>
-    <CoreCLRNativeArtifactsPath Condition="'$(CoreCLRNativeArtifactsPath)' == ''">$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'bin', 'native', '$(NetCoreAppCurrent)-$(CoreCLRTargetOSConfigurationArchitecture)'))</CoreCLRNativeArtifactsPath>
+    <CoreCLRNativeArtifactsPath Condition="'$(CoreCLRNativeArtifactsPath)' == ''">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'native', '$(NetCoreAppCurrent)-$(CoreCLRTargetOSConfigurationArchitecture)'))</CoreCLRNativeArtifactsPath>
 
     <Crossgen2Dir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', '$(BuildArchitecture)', 'crossgen2'))</Crossgen2Dir>
 
