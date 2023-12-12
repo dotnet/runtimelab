@@ -1,6 +1,7 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <LinkNativeDependsOn Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' == 'true'">$(LinkNativeDependsOn);PrepareDotNetJsApiForLinking</LinkNativeDependsOn>
+    <LinkNativeLlvmDependsOn>$(LinkNativeLlvmDependsOn);PrepareDotNetJsApiForLinking</LinkNativeLlvmDependsOn>
+    <NativeBinary>$(NativeOutputPath)dotnet.native.js</NativeBinary>
   </PropertyGroup>
   <ItemGroup>
     <EmccExportedFunction Include="_free" />
@@ -42,8 +43,6 @@
       <_EmccExportedLibraryFunction>&quot;[@(EmccExportedLibraryFunction -> '%27%(Identity)%27', ',')]&quot;</_EmccExportedLibraryFunction>
       <_EmccExportedRuntimeMethods>&quot;[@(EmccExportedRuntimeMethod -> '%27%(Identity)%27', ',')]&quot;</_EmccExportedRuntimeMethods>
       <_EmccExportedFunctions>@(EmccExportedFunction -> '%(Identity)',',')</_EmccExportedFunctions>
-      
-      <NativeBinary>$(NativeOutputPath)dotnet.native.js</NativeBinary>
     </PropertyGroup>
     <ItemGroup>
       <!-- Default values for flags passed from emscripten to dotnet/runtime.js. Left here only to minimize changes to typescript -->
@@ -80,10 +79,9 @@
       <_DotNetJsLinkerFlag Include="-s EXPORTED_FUNCTIONS=$(_EmccExportedFunctions)" />
       <_DotNetJsLinkerFlag Include="$(EmccExtraLDFlags)" />
     </ItemGroup>
-    <WriteLinesToFile Lines="@(_DotNetJsLinkerFlag)" File="$(_EmccLinkRsp)" Overwrite="true" WriteOnlyWhenDifferent="true" />
-    <PropertyGroup>
-      <EmccExtraArgs>$(EmccExtraArgs) "@$(_EmccLinkRsp)"</EmccExtraArgs>
-    </PropertyGroup>
+    <ItemGroup>
+      <CustomLinkerArg Include="@(_DotNetJsLinkerFlag)" />
+    </ItemGroup>
   </Target>
   <Target Name="CopyDotnetJsAfterLinking" AfterTargets="LinkNativeLlvm">
     <ItemGroup>
