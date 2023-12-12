@@ -78,8 +78,6 @@
   <Target Name="PrepareDotNetJsApiForLinking">
     <PropertyGroup>
       <_WasmIntermediateOutputPath Condition="'$(WasmBuildingForNestedPublish)' == ''">$([MSBuild]::NormalizeDirectory($(IntermediateOutputPath), 'wasm'))</_WasmIntermediateOutputPath>
-      <_EmccDefaultFlagsRsp>$([MSBuild]::NormalizePath($(IlcFrameworkNativePath), 'src', 'emcc-default.rsp'))</_EmccDefaultFlagsRsp>
-      <_EmccDefaultLinkFlagsRsp>$([MSBuild]::NormalizePath($(IlcFrameworkNativePath), 'src', 'emcc-link.rsp'))</_EmccDefaultLinkFlagsRsp>
       <_EmccLinkRsp>$(_WasmIntermediateOutputPath)emcc-link.rsp</_EmccLinkRsp>
     </PropertyGroup>
     <PropertyGroup>
@@ -100,25 +98,21 @@
       <EmscriptenEnvVars Include="ENABLE_BROWSER_PROFILER=0" />
       <EmscriptenEnvVars Include="RUN_AOT_COMPILATION=0" />
 
-      <_EmccCommonFlags Include="$(EmccFlags)" />
-      <_EmccCommonFlags Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
-      <_EmccLDFlags Include="-Wl,--export,__main_argc_argv" /><!-- Export main, a temporal solution until we have a way to export async main -->
-      <_EmccLDFlags Include="-s EXPORT_ES6=1" /><!-- Produce ES6 module as expented by hosting API -->
-      <_EmccLDFlags Include="-s MODULARIZE=1" /><!-- Produce ES6 module as expented by hosting API -->
-      <_EmccLDFlags Include="-s INVOKE_RUN=0" /><!-- Don't automatically run main, it is called explicitly by ser -->
-      <_EmccLDFlags Include="-s EXPORT_NAME=&quot;'createDotnetRuntime'&quot;" /><!-- Export emscripten factory as 'createDotnetRuntime', as expented by hosting API -->
-      <_EmccLDFlags Include="-s ENVIRONMENT=&quot;'web,webview,worker,node,shell'&quot;" /><!-- Add support for all enviroments (default list is smaller) -->
-      <_EmccLDFlags Include="-s ALLOW_TABLE_GROWTH=1" />
-      <_EmccLDFlags Include="-s FORCE_FILESYSTEM=1" />
-      <_EmccLinkStepArgs Include="@(_EmccLDFlags)" />
-      <_EmccLDFlags Include="$(EmccLinkOptimizationFlag)" />
-      <_EmccLDFlags Include="@(_EmccCommonFlags)" />
-      <_EmccLDSFlags Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" />
-      <_EmccLDSFlags Include="-s STACK_SIZE=$(EmccStackSize)" />
-      <_EmccLDSFlags Condition="'$(EmccEnvironment)' != ''" Include="-s ENVIRONMENT=&quot;$(EmccEnvironment)&quot;" />
-      <_EmccLDSFlags Condition="'$(EmccEnableAssertions)' == 'true'" Include="-s ASSERTIONS=1" />
-      <_EmccLinkStepArgs Include="@(_EmccLDSFlags)" />
-      <_EmccLinkStepArgs Include="--emit-symbol-map" Condition="'$(WasmEmitSymbolMap)' == 'true'" />
+      <_DotNetJsLinkerFlag Include="$(EmccFlags)" />
+      <_DotNetJsLinkerFlag Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
+      <_DotNetJsLinkerFlag Include="-Wl,--export,__main_argc_argv" /><!-- Export main, a temporal solution until we have a way to export async main -->
+      <_DotNetJsLinkerFlag Include="-s EXPORT_ES6=1" /><!-- Produce ES6 module as expented by hosting API -->
+      <_DotNetJsLinkerFlag Include="-s MODULARIZE=1" /><!-- Produce ES6 module as expented by hosting API -->
+      <_DotNetJsLinkerFlag Include="-s INVOKE_RUN=0" /><!-- Don't automatically run main, it is called explicitly by ser -->
+      <_DotNetJsLinkerFlag Include="-s EXPORT_NAME=&quot;'createDotnetRuntime'&quot;" /><!-- Export emscripten factory as 'createDotnetRuntime', as expented by hosting API -->
+      <_DotNetJsLinkerFlag Include="-s ENVIRONMENT=&quot;'web,webview,worker,node,shell'&quot;" /><!-- Add support for all enviroments (default list is smaller) -->
+      <_DotNetJsLinkerFlag Condition="'$(EmccEnvironment)' != ''" Include="-s ENVIRONMENT=&quot;$(EmccEnvironment)&quot;" />
+      <_DotNetJsLinkerFlag Include="-s FORCE_FILESYSTEM=1" /><!-- We are using JS API for accessing FS -->
+      <_DotNetJsLinkerFlag Include="$(EmccLinkOptimizationFlag)" />
+      <_DotNetJsLinkerFlag Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" />
+      <_DotNetJsLinkerFlag Include="-s STACK_SIZE=$(EmccStackSize)" />
+      <_DotNetJsLinkerFlag Condition="'$(EmccEnableAssertions)' == 'true'" Include="-s ASSERTIONS=1" />
+      <_DotNetJsLinkerFlag Include="--emit-symbol-map" Condition="'$(WasmEmitSymbolMap)' == 'true'" />
 
       <!-- JavaScript modifications to javascript produced by emscripten -->
       <JSFileType Include="extpre.js"  Kind="extern-pre-js" />
@@ -128,15 +122,15 @@
       <JSFileType Include="post.js"    Kind="post-js" />
       <JSFileType Include="extpost.js" Kind="extern-post-js" />
       <_WasmExtraJSFile Include="$(IlcFrameworkNativePath)src\es6\*.%(JSFileType.Identity)" Kind="%(JSFileType.Kind)" />
-      <_EmccLinkStepArgs Include="--%(_WasmExtraJSFile.Kind) &quot;%(_WasmExtraJSFile.Identity)&quot;" Condition="'%(_WasmExtraJSFile.Kind)' != ''" />
+      <_DotNetJsLinkerFlag Include="--%(_WasmExtraJSFile.Kind) &quot;%(_WasmExtraJSFile.Identity)&quot;" Condition="'%(_WasmExtraJSFile.Kind)' != ''" />
 
       <!-- Exported functions required by user or runtime API -->
-      <_EmccLinkStepArgs Include="-s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$(_EmccExportedLibraryFunction)" Condition="'$(_EmccExportedLibraryFunction)' != ''" />
-      <_EmccLinkStepArgs Include="-s EXPORTED_RUNTIME_METHODS=$(_EmccExportedRuntimeMethods)" />
-      <_EmccLinkStepArgs Include="-s EXPORTED_FUNCTIONS=$(_EmccExportedFunctions)" />
-      <_EmccLinkStepArgs Include="$(EmccExtraLDFlags)" />
+      <_DotNetJsLinkerFlag Include="-s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$(_EmccExportedLibraryFunction)" Condition="'$(_EmccExportedLibraryFunction)' != ''" />
+      <_DotNetJsLinkerFlag Include="-s EXPORTED_RUNTIME_METHODS=$(_EmccExportedRuntimeMethods)" />
+      <_DotNetJsLinkerFlag Include="-s EXPORTED_FUNCTIONS=$(_EmccExportedFunctions)" />
+      <_DotNetJsLinkerFlag Include="$(EmccExtraLDFlags)" />
     </ItemGroup>
-    <WriteLinesToFile Lines="@(_EmccLinkStepArgs)" File="$(_EmccLinkRsp)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <WriteLinesToFile Lines="@(_DotNetJsLinkerFlag)" File="$(_EmccLinkRsp)" Overwrite="true" WriteOnlyWhenDifferent="true" />
     <PropertyGroup>
       <EmccExtraArgs>$(EmccExtraArgs) "@$(_EmccLinkRsp)"</EmccExtraArgs>
     </PropertyGroup>
@@ -144,8 +138,8 @@
   <Target Name="CopyDotnetJsAfterLinking" AfterTargets="LinkNativeLlvm">
     <ItemGroup>
       <_FilesToCopyToNative Include="$(IlcFrameworkNativePath)\dotnet*.js" />
-      <_FilesToCopyToNative Include="$(IlcFrameworkNativePath)\dotnet*.map" />
-      <_FilesToCopyToNative Include="@(WasmExtraFilesToDeploy)" />
+      <_FilesToCopyToNative Include="$(IlcFrameworkNativePath)\dotnet*.map" Condition="'$(WasmEmitSourceMap)' == 'true'" />
+      <_FilesToCopyToNative Include="@(WasmExtraFilesToDeploy)" /><!-- Use defined extra files to be included in the build output -->
     </ItemGroup>
     <Copy SourceFiles="@(_FilesToCopyToNative)" DestinationFolder="$(NativeOutputPath)" />
   </Target>
