@@ -89,6 +89,7 @@
       <EmccStackSize Condition="'$(EmccStackSize)' == ''">5MB</EmccStackSize>
       <EmccInitialHeapSize Condition="'$(EmccInitialHeapSize)' == '' and '$(_WasmCalculatedInitialHeapSize)' != '' and $(_WasmCalculatedInitialHeapSize) > 16777216">$(_WasmCalculatedInitialHeapSize)</EmccInitialHeapSize>
       <EmccInitialHeapSize Condition="'$(EmccInitialHeapSize)' == ''">16777216</EmccInitialHeapSize>
+      <NativeBinary>$(NativeOutputPath)dotnet.native.js</NativeBinary>
     </PropertyGroup>
     <ItemGroup>
       <EmscriptenEnvVars Include="DISABLE_LEGACY_JS_INTEROP=1" />
@@ -123,7 +124,6 @@
       <JSFileType Include="extpost.js" Kind="extern-post-js" />
       <_WasmExtraJSFile Include="$(IlcFrameworkNativePath)src\es6\*.%(JSFileType.Identity)" Kind="%(JSFileType.Kind)" />
       <_EmccLinkStepArgs Include="--%(_WasmExtraJSFile.Kind) &quot;%(_WasmExtraJSFile.Identity)&quot;" Condition="'%(_WasmExtraJSFile.Kind)' != ''" />
-      <_EmccLinkStepArgs Include="-o &quot;$(_WasmIntermediateOutputPath)dotnet.native.js&quot;" />
       <_EmccLinkStepArgs Include="-s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$(_EmccExportedLibraryFunction)" Condition="'$(_EmccExportedLibraryFunction)' != ''" />
       <_EmccLinkStepArgs Include="-s EXPORTED_RUNTIME_METHODS=$(_EmccExportedRuntimeMethods)" />
       <_EmccLinkStepArgs Include="-s EXPORTED_FUNCTIONS=$(_EmccExportedFunctions)" />
@@ -134,5 +134,12 @@
     <PropertyGroup>
       <EmccExtraArgs>$(EmccExtraArgs) "@$(_EmccLinkRsp)"</EmccExtraArgs>
     </PropertyGroup>
+  </Target>
+  <Target Name="CopyDotnetJsAfterLinking" AfterTargets="LinkNativeLlvm">
+    <ItemGroup>
+      <_FilesToPublish Include="$(IlcFrameworkNativePath)\dotnet*.js" />
+      <_FilesToPublish Include="$(IlcFrameworkNativePath)\dotnet*.map" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_FilesToPublish)" DestinationFolder="$(NativeOutputPath)" />
   </Target>
 </Project>

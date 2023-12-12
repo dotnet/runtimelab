@@ -105,10 +105,8 @@
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
     
     <ItemGroup>
-      <_FilesToPublish Include="$(IlcFrameworkPath)\dotnet*.js" />
-      <_FilesToPublish Include="$(IlcFrameworkPath)\dotnet*.map" />
-      <_FilesToPublish Include="$(_WasmIntermediateOutputPath)dotnet.native.js" />
-      <_FilesToPublish Include="$(_WasmIntermediateOutputPath)dotnet.native.wasm" />
+      <_FilesToPublish Include="$(IlcFrameworkNativePath)\dotnet*.js" />
+      <_FilesToPublish Include="$(IlcFrameworkNativePath)\dotnet*.map" />
     </ItemGroup>
     <Copy SourceFiles="@(_FilesToPublish)" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotnetJsApi)' == 'true'"/>
   </Target>
