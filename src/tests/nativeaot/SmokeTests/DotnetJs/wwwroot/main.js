@@ -3,15 +3,9 @@
 
 import { dotnet } from './dotnet.js'
 
-dotnet.withConfig({
-    resources: {
-        jsModuleRuntime: { "dotnet.runtime.js": "" },
-        jsModuleNative: { "dotnet.native.js": "" },
-        wasmNative: { "dotnet.native.wasm": "" }
-    }
-}).withApplicationArguments("A", "B", "C");
-
-const { runMain } = await dotnet.create();
+const { runMain } = await dotnet
+    .withApplicationArguments("A", "B", "C")
+    .create();
 
 var result = await runMain();
 console.log(`Exit code ${result}`);

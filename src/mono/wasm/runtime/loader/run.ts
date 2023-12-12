@@ -1,13 +1,14 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+import NativeAOT from "consts:nativeAOT";
 import BuildConfiguration from "consts:configuration";
 
 import type { MonoConfig, DotnetHostBuilder, DotnetModuleConfig, RuntimeAPI, LoadBootResourceCallback } from "../types";
 import type { MonoConfigInternal, EmscriptenModuleInternal, RuntimeModuleExportsInternal, NativeModuleExportsInternal, } from "../types/internal";
 
 import { ENVIRONMENT_IS_WEB, emscriptenModule, exportedRuntimeAPI, globalObjectsRoot, monoConfig, mono_assert } from "./globals";
-import { deep_merge_config, deep_merge_module, mono_wasm_load_config } from "./config";
+import { deep_merge_config, deep_merge_module, mono_wasm_load_config, normalizeConfig } from "./config";
 import { mono_exit, register_exit_handlers } from "./exit";
 import { setup_proxy_console, mono_log_info, mono_log_debug } from "./logging";
 import { mono_download_assets, prepareAssets, prepareAssetsWorker, resolve_single_asset_path, streamingCompileWasm } from "./assets";
@@ -477,9 +478,13 @@ async function initializeModules(es6Modules: [RuntimeModuleExportsInternal, Nati
 }
 
 async function createEmscriptenMain(): Promise<RuntimeAPI> {
-    if (!emscriptenModule.configSrc && (!loaderHelpers.config || Object.keys(loaderHelpers.config).length === 0 || (!loaderHelpers.config.assets && !loaderHelpers.config.resources))) {
-        // if config file location nor assets are provided
-        emscriptenModule.configSrc = "./blazor.boot.json";
+    if (NativeAOT) {
+        normalizeConfig();
+    } else {
+        if (!emscriptenModule.configSrc && (!loaderHelpers.config || Object.keys(loaderHelpers.config).length === 0 || (!loaderHelpers.config.assets && !loaderHelpers.config.resources))) {
+            // if config file location nor assets are provided
+            emscriptenModule.configSrc = "./blazor.boot.json";
+        }
     }
 
     // download config
