@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <CLRTestKind>BuildAndRun</CLRTestKind>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- IL3049 warns about mismatched signatures; we are intentionally testing they are handled correctly
+         when the definition is statically linked -->
+    <NoWarn>$(NoWarn);IL3049</NoWarn>
+
+    <DotNetJsApi>true</DotNetJsApi>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <WasmExtraFilesToDeploy Include="wwwroot\*" />
+  </ItemGroup>
+</Project>
