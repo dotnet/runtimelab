@@ -137,9 +137,10 @@
   </Target>
   <Target Name="CopyDotnetJsAfterLinking" AfterTargets="LinkNativeLlvm">
     <ItemGroup>
-      <_FilesToPublish Include="$(IlcFrameworkNativePath)\dotnet*.js" />
-      <_FilesToPublish Include="$(IlcFrameworkNativePath)\dotnet*.map" />
+      <_FilesToCopyToNative Include="$(IlcFrameworkNativePath)\dotnet*.js" />
+      <_FilesToCopyToNative Include="$(IlcFrameworkNativePath)\dotnet*.map" />
+      <_FilesToCopyToNative Include="@(WasmExtraFilesToDeploy)" />
     </ItemGroup>
-    <Copy SourceFiles="@(_FilesToPublish)" DestinationFolder="$(NativeOutputPath)" />
+    <Copy SourceFiles="@(_FilesToCopyToNative)" DestinationFolder="$(NativeOutputPath)" />
   </Target>
 </Project>

@@ -107,6 +107,7 @@
     <ItemGroup>
       <_FilesToPublish Include="$(IlcFrameworkNativePath)\dotnet*.js" />
       <_FilesToPublish Include="$(IlcFrameworkNativePath)\dotnet*.map" />
+      <_FilesToPublish Include="@(WasmExtraFilesToDeploy)" />
     </ItemGroup>
     <Copy SourceFiles="@(_FilesToPublish)" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotnetJsApi)' == 'true'"/>
   </Target>
