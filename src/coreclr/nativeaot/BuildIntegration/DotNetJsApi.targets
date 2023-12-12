@@ -92,21 +92,24 @@
       <NativeBinary>$(NativeOutputPath)dotnet.native.js</NativeBinary>
     </PropertyGroup>
     <ItemGroup>
+      <!-- Default values for flags passed from emscripten to dotnet/runtime.js. Left here only to minimize changes to typescript -->
       <EmscriptenEnvVars Include="DISABLE_LEGACY_JS_INTEROP=1" />
       <EmscriptenEnvVars Include="WASM_ENABLE_SIMD=0" />
       <EmscriptenEnvVars Include="WASM_ENABLE_EH=1" />
       <EmscriptenEnvVars Include="ENABLE_AOT_PROFILER=0" />
       <EmscriptenEnvVars Include="ENABLE_BROWSER_PROFILER=0" />
-      <EmscriptenEnvVars Include="RUN_AOT_COMPILATION=0" Condition="'$(RunAOTCompilation)' != 'true'" />
+      <EmscriptenEnvVars Include="RUN_AOT_COMPILATION=0" />
+
       <_EmccCommonFlags Include="$(EmccFlags)" />
       <_EmccCommonFlags Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
-      <_EmccLDFlags Include="-s EXPORT_ES6=1" />
-      <_EmccLDFlags Include="-s INVOKE_RUN=0" />
+      <_EmccLDFlags Include="-Wl,--export,__main_argc_argv" /><!-- Export main, a temporal solution until we have a way to export async main -->
+      <_EmccLDFlags Include="-s EXPORT_ES6=1" /><!-- Produce ES6 module as expented by hosting API -->
+      <_EmccLDFlags Include="-s MODULARIZE=1" /><!-- Produce ES6 module as expented by hosting API -->
+      <_EmccLDFlags Include="-s INVOKE_RUN=0" /><!-- Don't automatically run main, it is called explicitly by ser -->
+      <_EmccLDFlags Include="-s EXPORT_NAME=&quot;'createDotnetRuntime'&quot;" /><!-- Export emscripten factory as 'createDotnetRuntime', as expented by hosting API -->
+      <_EmccLDFlags Include="-s ENVIRONMENT=&quot;'web,webview,worker,node,shell'&quot;" /><!-- Add support for all enviroments (default list is smaller) -->
       <_EmccLDFlags Include="-s ALLOW_TABLE_GROWTH=1" />
       <_EmccLDFlags Include="-s FORCE_FILESYSTEM=1" />
-      <_EmccLDFlags Include="-s EXPORT_NAME=&quot;'createDotnetRuntime'&quot;" />
-      <_EmccLDFlags Include="-s ENVIRONMENT=&quot;'web,webview,worker,node,shell'&quot;" />
-      <_EmccLDFlags Include="-s MODULARIZE=1" />
       <_EmccLinkStepArgs Include="@(_EmccLDFlags)" />
       <_EmccLDFlags Include="$(EmccLinkOptimizationFlag)" />
       <_EmccLDFlags Include="@(_EmccCommonFlags)" />
@@ -116,6 +119,8 @@
       <_EmccLDSFlags Condition="'$(EmccEnableAssertions)' == 'true'" Include="-s ASSERTIONS=1" />
       <_EmccLinkStepArgs Include="@(_EmccLDSFlags)" />
       <_EmccLinkStepArgs Include="--emit-symbol-map" Condition="'$(WasmEmitSymbolMap)' == 'true'" />
+
+      <!-- JavaScript modifications to javascript produced by emscripten -->
       <JSFileType Include="extpre.js"  Kind="extern-pre-js" />
       <JSFileType Include="iffe.js"    Kind="extern-pre-js" />
       <JSFileType Include="pre.js"     Kind="pre-js" />
@@ -124,10 +129,11 @@
       <JSFileType Include="extpost.js" Kind="extern-post-js" />
       <_WasmExtraJSFile Include="$(IlcFrameworkNativePath)src\es6\*.%(JSFileType.Identity)" Kind="%(JSFileType.Kind)" />
       <_EmccLinkStepArgs Include="--%(_WasmExtraJSFile.Kind) &quot;%(_WasmExtraJSFile.Identity)&quot;" Condition="'%(_WasmExtraJSFile.Kind)' != ''" />
+
+      <!-- Exported functions required by user or runtime API -->
       <_EmccLinkStepArgs Include="-s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$(_EmccExportedLibraryFunction)" Condition="'$(_EmccExportedLibraryFunction)' != ''" />
       <_EmccLinkStepArgs Include="-s EXPORTED_RUNTIME_METHODS=$(_EmccExportedRuntimeMethods)" />
       <_EmccLinkStepArgs Include="-s EXPORTED_FUNCTIONS=$(_EmccExportedFunctions)" />
-      <_EmccLinkStepArgs Include="--source-map-base http://example.com" />
       <_EmccLinkStepArgs Include="$(EmccExtraLDFlags)" />
     </ItemGroup>
     <WriteLinesToFile Lines="@(_EmccLinkStepArgs)" File="$(_EmccLinkRsp)" Overwrite="true" WriteOnlyWhenDifferent="true" />
