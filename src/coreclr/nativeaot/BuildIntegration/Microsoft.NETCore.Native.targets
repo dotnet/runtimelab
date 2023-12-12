@@ -501,6 +501,12 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
 
+    <PropertyGroup>
+      <EmccStackSize Condition="'$(EmccStackSize)' == ''">5MB</EmccStackSize>
+      <EmccInitialHeapSize Condition="'$(EmccInitialHeapSize)' == '' and '$(_WasmCalculatedInitialHeapSize)' != '' and $(_WasmCalculatedInitialHeapSize) > 16777216">$(_WasmCalculatedInitialHeapSize)</EmccInitialHeapSize>
+      <EmccInitialHeapSize Condition="'$(EmccInitialHeapSize)' == ''">16777216</EmccInitialHeapSize>
+    </PropertyGroup>
+
     <ItemGroup>
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.a" />
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Globalization.Native.a" />
@@ -535,6 +541,13 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s TOTAL_STACK=$(IlcWasmStackSize)" />
       <CustomLinkerArg Condition="'$(WasmEnableJSBigIntIntegration)' == 'true'" Include="-s WASM_BIGINT=1" />
       <CustomLinkerArg Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="-s DISABLE_EXCEPTION_CATCHING=0" />
+      
+      <CustomLinkerArg Include="$(EmccFlags)" />
+      <CustomLinkerArg Include="$(EmccLinkOptimizationFlag)" />
+      <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
+      <CustomLinkerArg Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" />
+      <CustomLinkerArg Include="-s STACK_SIZE=$(EmccStackSize)" />
+      <CustomLinkerArg Condition="'$(EmccEnableAssertions)' == 'true'" Include="-s ASSERTIONS=1" />
     </ItemGroup>
 
     <!-- wasm-ld only supports listing exports on the command line -->

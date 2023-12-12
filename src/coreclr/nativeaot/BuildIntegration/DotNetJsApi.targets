@@ -42,9 +42,7 @@
       <_EmccExportedLibraryFunction>&quot;[@(EmccExportedLibraryFunction -> '%27%(Identity)%27', ',')]&quot;</_EmccExportedLibraryFunction>
       <_EmccExportedRuntimeMethods>&quot;[@(EmccExportedRuntimeMethod -> '%27%(Identity)%27', ',')]&quot;</_EmccExportedRuntimeMethods>
       <_EmccExportedFunctions>@(EmccExportedFunction -> '%(Identity)',',')</_EmccExportedFunctions>
-      <EmccStackSize Condition="'$(EmccStackSize)' == ''">5MB</EmccStackSize>
-      <EmccInitialHeapSize Condition="'$(EmccInitialHeapSize)' == '' and '$(_WasmCalculatedInitialHeapSize)' != '' and $(_WasmCalculatedInitialHeapSize) > 16777216">$(_WasmCalculatedInitialHeapSize)</EmccInitialHeapSize>
-      <EmccInitialHeapSize Condition="'$(EmccInitialHeapSize)' == ''">16777216</EmccInitialHeapSize>
+      
       <NativeBinary>$(NativeOutputPath)dotnet.native.js</NativeBinary>
     </PropertyGroup>
     <ItemGroup>
@@ -56,8 +54,6 @@
       <EmscriptenEnvVars Include="ENABLE_BROWSER_PROFILER=0" />
       <EmscriptenEnvVars Include="RUN_AOT_COMPILATION=0" />
 
-      <_DotNetJsLinkerFlag Include="$(EmccFlags)" />
-      <_DotNetJsLinkerFlag Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
       <_DotNetJsLinkerFlag Include="-Wl,--export,__main_argc_argv" /><!-- Export main, a temporal solution until we have a way to export async main -->
       <_DotNetJsLinkerFlag Include="-s EXPORT_ES6=1" /><!-- Produce ES6 module as expented by hosting API -->
       <_DotNetJsLinkerFlag Include="-s MODULARIZE=1" /><!-- Produce ES6 module as expented by hosting API -->
@@ -66,10 +62,6 @@
       <_DotNetJsLinkerFlag Include="-s ENVIRONMENT=&quot;'web,webview,worker,node,shell'&quot;" /><!-- Add support for all enviroments (default list is smaller) -->
       <_DotNetJsLinkerFlag Condition="'$(EmccEnvironment)' != ''" Include="-s ENVIRONMENT=&quot;$(EmccEnvironment)&quot;" />
       <_DotNetJsLinkerFlag Include="-s FORCE_FILESYSTEM=1" /><!-- We are using JS API for accessing FS -->
-      <_DotNetJsLinkerFlag Include="$(EmccLinkOptimizationFlag)" />
-      <_DotNetJsLinkerFlag Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" />
-      <_DotNetJsLinkerFlag Include="-s STACK_SIZE=$(EmccStackSize)" />
-      <_DotNetJsLinkerFlag Condition="'$(EmccEnableAssertions)' == 'true'" Include="-s ASSERTIONS=1" />
       <_DotNetJsLinkerFlag Include="--emit-symbol-map" Condition="'$(WasmEmitSymbolMap)' == 'true'" />
 
       <!-- JavaScript modifications to javascript produced by emscripten -->
