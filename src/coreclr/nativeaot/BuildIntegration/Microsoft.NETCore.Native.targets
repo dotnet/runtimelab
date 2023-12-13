@@ -600,4 +600,5 @@ The .NET Foundation licenses this file to you under the MIT license.
   </Target>
 
   <Import Project="$(MSBuildThisFileDirectory)Microsoft.NETCore.Native.Publish.targets" Condition="'$(NativeCompilationDuringPublish)' != 'false'" />
+
 </Project>
