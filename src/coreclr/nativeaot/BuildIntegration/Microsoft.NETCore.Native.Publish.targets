@@ -105,11 +105,10 @@
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
     
     <ItemGroup>
-      <_FilesToPublish Include="$(IlcFrameworkNativePath)\dotnet*.js" />
-      <_FilesToPublish Include="$(IlcFrameworkNativePath)\dotnet*.map" Condition="'$(WasmEmitSourceMap)' == 'true'" />
-      <_FilesToPublish Include="@(WasmExtraFilesToDeploy)" /><!-- Use defined extra files to be included in the build output -->
+      <_FilesToCopyToNative Include="$(NativeOutputPath)\dotnet.native.js" />
+      <_FilesToCopyToNative Include="$(NativeOutputPath)\dotnet.native.wasm" />
     </ItemGroup>
-    <Copy SourceFiles="@(_FilesToPublish)" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotnetJsApi)' == 'true'"/>
+    <Copy SourceFiles="@(_FilesToCopyToNative)" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotnetJsApi)' == 'true'"/>
   </Target>
 
   <Target Name="_CopyAotSymbols" AfterTargets="Publish"
