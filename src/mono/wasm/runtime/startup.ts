@@ -443,6 +443,10 @@ export function mono_wasm_setenv(name: string, value: string): void {
 }
 
 export function mono_wasm_set_runtime_options(options: string[]): void {
+    if (NativeAOT) {
+        return;
+    }
+
     if (!Array.isArray(options))
         throw new Error("Expected runtimeOptions to be an array of strings");
 
