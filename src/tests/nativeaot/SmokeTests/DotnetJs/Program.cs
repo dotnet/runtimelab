@@ -6,6 +6,10 @@ class Program
     {
         Console.WriteLine("Hello, DotnetJs!");
         Console.WriteLine($"Args {String.Join(", ", args)}");
-        return 42;
+
+        if (args.Length != 3 || args[0] != "A" || args[1] != "B" || args[2] != "C")
+            return 1;
+
+        return 100;
     }
 }

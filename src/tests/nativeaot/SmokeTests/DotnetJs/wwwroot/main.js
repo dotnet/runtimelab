@@ -9,4 +9,4 @@ const { runMain } = await dotnet
 
 var result = await runMain();
 console.log(`Exit code ${result}`);
-exit(result == 42 ? 100 : 1);
+exit(result);
