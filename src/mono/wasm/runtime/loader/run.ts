@@ -8,7 +8,7 @@ import type { MonoConfig, DotnetHostBuilder, DotnetModuleConfig, RuntimeAPI, Loa
 import type { MonoConfigInternal, EmscriptenModuleInternal, RuntimeModuleExportsInternal, NativeModuleExportsInternal, } from "../types/internal";
 
 import { ENVIRONMENT_IS_WEB, emscriptenModule, exportedRuntimeAPI, globalObjectsRoot, monoConfig, mono_assert } from "./globals";
-import { deep_merge_config, deep_merge_module, mono_wasm_load_config, normalizeConfig } from "./config";
+import { deep_merge_config, deep_merge_module, mono_wasm_load_config } from "./config";
 import { mono_exit, register_exit_handlers } from "./exit";
 import { setup_proxy_console, mono_log_info, mono_log_debug } from "./logging";
 import { mono_download_assets, prepareAssets, prepareAssetsWorker, resolve_single_asset_path, streamingCompileWasm } from "./assets";

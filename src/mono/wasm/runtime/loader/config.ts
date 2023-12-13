@@ -1,7 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-import NativeAOT from "consts:nativeAOT";
 import BuildConfiguration from "consts:configuration";
 import MonoWasmThreads from "consts:monoWasmThreads";
 
@@ -120,7 +119,6 @@ export function normalizeConfig() {
 
     config.environmentVariables = config.environmentVariables || {};
     config.runtimeOptions = config.runtimeOptions || [];
-
     config.resources = config.resources || {
         assembly: {},
         jsModuleNative: {},
