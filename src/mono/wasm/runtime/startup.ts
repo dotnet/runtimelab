@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+import NativeAOT from "consts:nativeAOT";
 import MonoWasmThreads from "consts:monoWasmThreads";
 import WasmEnableLegacyJsInterop from "consts:wasmEnableLegacyJsInterop";
 
@@ -35,6 +36,8 @@ import { cwraps_binding_api, cwraps_mono_api } from "./net6-legacy/exports-legac
 import { BINDING, MONO } from "./net6-legacy/globals";
 import { localHeapViewU8 } from "./memory";
 import { assertNoProxies } from "./gc-handles";
+import { jiterpreter_allocate_tables } from "./jiterpreter-support";
+import { init_managed_exports } from "./managed-exports";
 
 export async function configureRuntimeStartup(): Promise<void> {
     await init_polyfills_async();
@@ -279,8 +282,9 @@ async function onRuntimeInitializedAsync(userOnRuntimeInitialized: () => void) {
         }
 
         bindings_init();
-        // TODO MF: Fix jiterpreter_allocate_tables
-        // jiterpreter_allocate_tables(Module);
+        if (!NativeAOT) {
+            jiterpreter_allocate_tables(Module);
+        }
 
         if (MonoWasmThreads) {
             runtimeHelpers.javaScriptExports.install_synchronization_context();
@@ -525,17 +529,17 @@ async function mono_wasm_before_memory_snapshot() {
         return;
     }
 
-    // TODO MF: Fix environment variables
-    // for (const k in runtimeHelpers.config.environmentVariables) {
-    //     const v = runtimeHelpers.config.environmentVariables![k];
-    //     if (typeof (v) === "string")
-    //         mono_wasm_setenv(k, v);
-    //     else
-    //         throw new Error(`Expected environment variable '${k}' to be a string but it was ${typeof v}: '${v}'`);
-    // }
-    // TODO MF: Fix mono_wasm_set_runtime_options
-    // if (runtimeHelpers.config.runtimeOptions)
-    //     mono_wasm_set_runtime_options(runtimeHelpers.config.runtimeOptions);
+    if (!NativeAOT) {
+        for (const k in runtimeHelpers.config.environmentVariables) {
+            const v = runtimeHelpers.config.environmentVariables![k];
+            if (typeof (v) === "string")
+                mono_wasm_setenv(k, v);
+            else
+                throw new Error(`Expected environment variable '${k}' to be a string but it was ${typeof v}: '${v}'`);
+        }
+        if (runtimeHelpers.config.runtimeOptions)
+            mono_wasm_set_runtime_options(runtimeHelpers.config.runtimeOptions);
+    }
 
     if (runtimeHelpers.config.aotProfilerOptions)
         mono_wasm_init_aot_profiler(runtimeHelpers.config.aotProfilerOptions);
@@ -543,8 +547,9 @@ async function mono_wasm_before_memory_snapshot() {
     if (runtimeHelpers.config.browserProfilerOptions)
         mono_wasm_init_browser_profiler(runtimeHelpers.config.browserProfilerOptions);
 
-    // TODO MF: Fix mono_wasm_set_runtime_options
-    // mono_wasm_load_runtime("unused", runtimeHelpers.config.debugLevel);
+    if (!NativeAOT) {
+        mono_wasm_load_runtime("unused", runtimeHelpers.config.debugLevel);
+    }
 
     // we didn't have snapshot yet and the feature is enabled. Take snapshot now.
     if (runtimeHelpers.config.startupMemoryCache) {
@@ -598,8 +603,9 @@ export function bindings_init(): void {
     try {
         const mark = startMeasure();
         strings_init();
-        // TODO MF: Fix init_managed_exports
-        // init_managed_exports();
+        if (!NativeAOT) {
+            init_managed_exports();
+        }
         if (WasmEnableLegacyJsInterop && !linkerDisableLegacyJsInterop && !ENVIRONMENT_IS_PTHREAD) {
             init_legacy_exports();
         }

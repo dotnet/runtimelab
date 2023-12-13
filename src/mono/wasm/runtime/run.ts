@@ -1,9 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-import { ENVIRONMENT_IS_NODE, Module, loaderHelpers, runtimeHelpers } from "./globals";
+import { ENVIRONMENT_IS_NODE, loaderHelpers, runtimeHelpers } from "./globals";
+import { mono_wasm_wait_for_debugger } from "./debug";
+import { mono_wasm_set_main_args } from "./startup";
 import cwraps from "./cwraps";
 import { assembly_load } from "./class-loader";
+import { mono_log_info } from "./logging";
 import { assert_bindings } from "./invoke-js";
 
 /**
@@ -46,21 +49,23 @@ export async function mono_run_main(main_assembly_name: string, args?: string[])
         }
     }
     
-    // TODO MF: Fix mono_run_main
-    // mono_wasm_set_main_args(main_assembly_name, args);
-    // if (runtimeHelpers.waitForDebugger == -1) {
-    //     mono_log_info("waiting for debugger...");
-    //     await mono_wasm_wait_for_debugger();
-    // }
-    // const method = find_entry_point(main_assembly_name);
+    if (NativeAOT) {
+        return (Module as any)["callMain"](args);
+    }
+    
+    mono_wasm_set_main_args(main_assembly_name, args);
+    if (runtimeHelpers.waitForDebugger == -1) {
+        mono_log_info("waiting for debugger...");
+        await mono_wasm_wait_for_debugger();
+    }
+    const method = find_entry_point(main_assembly_name);
 
-    // const res = await runtimeHelpers.javaScriptExports.call_entry_point(method, args);
+    const res = await runtimeHelpers.javaScriptExports.call_entry_point(method, args);
 
-    // // one more timer loop before we return, so that any remaining queued calls could run
-    // await new Promise(resolve => globalThis.setTimeout(resolve, 0));
+    // one more timer loop before we return, so that any remaining queued calls could run
+    await new Promise(resolve => globalThis.setTimeout(resolve, 0));
 
-    // return res;
-    return (Module as any)["callMain"](args);
+    return res;
 }
 
 export function find_entry_point(assembly: string) {
