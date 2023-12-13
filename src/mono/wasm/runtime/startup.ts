@@ -15,6 +15,7 @@ import { initialize_marshalers_to_cs } from "./marshal-to-cs";
 import { initialize_marshalers_to_js } from "./marshal-to-js";
 import { init_polyfills_async } from "./polyfills";
 import { strings_init, utf8ToString } from "./strings";
+import { init_managed_exports } from "./managed-exports";
 import { cwraps_internal } from "./exports-internal";
 import { CharPtr, InstantiateWasmCallBack, InstantiateWasmSuccessCallback } from "./types/emscripten";
 import { wait_for_all_assets } from "./assets";
@@ -29,6 +30,7 @@ import { mono_log_debug, mono_log_error, mono_log_warn, mono_set_thread_id } fro
 import { preAllocatePThreadWorkerPool, instantiateWasmPThreadWorkerPool } from "./pthreads/browser";
 import { currentWorkerThreadEvents, dotnetPthreadCreated, initWorkerThreadEvents } from "./pthreads/worker";
 import { getBrowserThreadID } from "./pthreads/shared";
+import { jiterpreter_allocate_tables } from "./jiterpreter-support";
 
 // legacy
 import { init_legacy_exports } from "./net6-legacy/corebindings";
@@ -36,8 +38,6 @@ import { cwraps_binding_api, cwraps_mono_api } from "./net6-legacy/exports-legac
 import { BINDING, MONO } from "./net6-legacy/globals";
 import { localHeapViewU8 } from "./memory";
 import { assertNoProxies } from "./gc-handles";
-import { jiterpreter_allocate_tables } from "./jiterpreter-support";
-import { init_managed_exports } from "./managed-exports";
 
 export async function configureRuntimeStartup(): Promise<void> {
     await init_polyfills_async();
