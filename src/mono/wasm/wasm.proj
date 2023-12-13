@@ -28,7 +28,8 @@
     <ICULibDir Condition="'$(MonoWasmThreads)' == 'true'">$([MSBuild]::NormalizeDirectory('$(PkgMicrosoft_NETCore_Runtime_ICU_Transport)', 'runtimes', 'browser-wasm-threads', 'native', 'lib'))</ICULibDir>
     <WasmEnableSIMD Condition="'$(WasmEnableSIMD)' == ''">true</WasmEnableSIMD>
     <WasmEnableExceptionHandling Condition="'$(WasmEnableExceptionHandling)' == ''">true</WasmEnableExceptionHandling>
-    <WasmEnableLegacyJsInterop Condition="'$(WasmEnableLegacyJsInterop)' == ''">false</WasmEnableLegacyJsInterop>
+    <WasmEnableLegacyJsInterop Condition="'$(PrimaryRuntimeFlavor)' == 'CoreCLR'">false</WasmEnableLegacyJsInterop>
+    <WasmEnableLegacyJsInterop Condition="'$(WasmEnableLegacyJsInterop)' == ''">true</WasmEnableLegacyJsInterop>
     <FilterSystemTimeZones Condition="'$(FilterSystemTimeZones)' == ''">false</FilterSystemTimeZones>
     <EmccCmd>emcc</EmccCmd>
     <WasmObjDir>$(ArtifactsObjDir)wasm</WasmObjDir>
@@ -52,7 +53,7 @@
   </ItemGroup>
 
   <UsingTask TaskName="ManagedToNativeGenerator" AssemblyFile="$(WasmAppBuilderTasksAssemblyPath)" />
-  <Target Name="GenerateManagedToNative" DependsOnTargets="CheckEnv;ResolveLibrariesFromLocalBuild">
+  <Target Name="GenerateManagedToNative" DependsOnTargets="CheckEnv;ResolveLibrariesFromLocalBuild" Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'">
     <PropertyGroup>
       <WasmPInvokeTablePath>$(WasmObjDir)\pinvoke-table.h</WasmPInvokeTablePath>
       <WasmInterpToNativeTablePath>$(WasmObjDir)\wasm_m2n_invoke.g.h</WasmInterpToNativeTablePath>
@@ -359,7 +360,7 @@
   <!-- This is a documented target that is invoked by developers in their innerloop work. -->
   <Target Name="BuildWasmRuntimes"
           AfterTargets="Build"
-          DependsOnTargets="GenerateEmccPropsAndRspFiles;GenerateTimezonesArchive;InstallNpmPackages;BuildWithRollup">
+          DependsOnTargets="GenerateEmccPropsAndRspFiles;GenerateManagedToNative;GenerateTimezonesArchive;InstallNpmPackages;BuildWithRollup">
 
     <ItemGroup>
       <ICULibNativeFiles Include="$(ICULibDir)/libicuuc.a;
@@ -419,7 +420,20 @@
       <_CmakeEnvironmentVariable Include="RUN_AOT_COMPILATION=0" Condition="'$(RunAOTCompilation)' != 'true'" />
     </ItemGroup>
 
-    <Copy SourceFiles="$(SharedNativeRoot)libs\System.Native\pal_random.lib.js;"
+    <Copy SourceFiles="$(PInvokeTableFile)"
+          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
+          DestinationFolder="$(MonoObjDir)"
+          SkipUnchangedFiles="true" />
+
+    <Copy SourceFiles="$(InterpToNativeTableFile)"
+          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
+          DestinationFolder="$(MonoObjDir)"
+          SkipUnchangedFiles="true" />
+
+    <Copy SourceFiles="runtime/driver.c;
+                       runtime/pinvoke.c;
+                       runtime/corebindings.c;"
+          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
           DestinationFolder="$(NativeBinDir)src"
           SkipUnchangedFiles="true" />
 
@@ -437,16 +451,23 @@
                       Lines="@(_WasmImportedMethodNames)"
                       Overwrite="false" />
 
+    <Copy SourceFiles="runtime\pinvoke.h;runtime\gc-common.h"
+          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
+          DestinationFolder="$(NativeBinDir)include\wasm"
+          SkipUnchangedFiles="true" />
+
     <Copy SourceFiles="@(ICULibFiles);
                        @(ICULibNativeFiles);
                        @(_WasmArchivedTimezones);"
           DestinationFolder="$(NativeBinDir)"
           SkipUnchangedFiles="true" />
 
-    <!-- <Exec Command="$(CMakeBuildRuntimeConfigureCmd)" WorkingDirectory="$(NativeBinDir)"
+    <Exec Command="$(CMakeBuildRuntimeConfigureCmd)" WorkingDirectory="$(NativeBinDir)"
+          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
           EnvironmentVariables="@(_CmakeEnvironmentVariable)" />
     <Exec Command="$(CMakeBuildRuntimeCmd)"  WorkingDirectory="$(NativeBinDir)"
-          EnvironmentVariables="@(_CmakeEnvironmentVariable)" /> -->
+          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
+          EnvironmentVariables="@(_CmakeEnvironmentVariable)" />
 
     <ItemGroup>
       <IcuDataFiles Include="$(NativeBinDir)*.dat" />
@@ -467,6 +488,22 @@
                        $(NativeBinDir)dotnet.d.ts;
                        $(NativeBinDir)dotnet-legacy.d.ts;
                        $(NativeBinDir)package.json"
+          DestinationFolder="$(MicrosoftNetCoreAppRuntimePackNativeDir)"
+          SkipUnchangedFiles="true" />
+
+    <Copy SourceFiles="$(NativeBinDir)dotnet.native.js;
+                       $(NativeBinDir)dotnet.native.wasm"
+          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
+          DestinationFolder="$(MicrosoftNetCoreAppRuntimePackNativeDir)"
+          SkipUnchangedFiles="true" />
+
+    <Copy SourceFiles="$(NativeBinDir)dotnet.native.worker.js"
+          DestinationFolder="$(MicrosoftNetCoreAppRuntimePackNativeDir)"
+	  Condition="Exists('$(NativeBinDir)dotnet.native.worker.js')"
+          SkipUnchangedFiles="true" />
+
+    <Copy SourceFiles="$(NativeBinDir)dotnet.native.js.symbols"
+          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
           DestinationFolder="$(MicrosoftNetCoreAppRuntimePackNativeDir)"
           SkipUnchangedFiles="true" />
 
@@ -526,7 +563,8 @@
       <_MonoRollupEnvironmentVariable Include="WASM_ENABLE_EH:0" Condition="'$(WasmEnableExceptionHandling)' == 'false'" />
       <_MonoRollupEnvironmentVariable Include="DISABLE_LEGACY_JS_INTEROP:1" Condition="'$(WasmEnableLegacyJsInterop)' == 'false'" />
       <_MonoRollupEnvironmentVariable Include="DISABLE_LEGACY_JS_INTEROP:0" Condition="'$(WasmEnableLegacyJsInterop)' != 'false'" />
-      <_MonoRollupEnvironmentVariable Include="NATIVE_AOT:1" />
+      <_MonoRollupEnvironmentVariable Include="NATIVE_AOT:0" Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'" />
+      <_MonoRollupEnvironmentVariable Include="NATIVE_AOT:1" Condition="'$(PrimaryRuntimeFlavor)' == 'CoreCLR'" />
       <_MonoRollupEnvironmentVariable Include="MonoDiagnosticsMock:$(MonoDiagnosticsMock)" />
       <_MonoRollupEnvironmentVariable Include="ContinuousIntegrationBuild:$(ContinuousIntegrationBuild)" />
     </ItemGroup>
