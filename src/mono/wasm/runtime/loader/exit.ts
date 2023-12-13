@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+import NativeAOT from "consts:nativeAOT";
 import { ENVIRONMENT_IS_NODE, ENVIRONMENT_IS_WEB, ENVIRONMENT_IS_WORKER, INTERNAL, emscriptenModule, loaderHelpers, mono_assert, runtimeHelpers } from "./globals";
 import { mono_log_debug, mono_log_error, mono_log_info_no_prefix, mono_log_warn, teardown_proxy_console } from "./logging";
 
@@ -77,7 +78,7 @@ export function mono_exit(exit_code: number, reason?: any): void {
                 mono_log_debug("abort_startup, reason: " + reason);
                 abort_promises(reason);
             } else {
-                if (runtimeHelpers.jiterpreter_dump_stats) {
+                if (!NativeAOT && runtimeHelpers.jiterpreter_dump_stats) {
                     runtimeHelpers.jiterpreter_dump_stats(false);
                 }
                 if (exit_code === 0 && loaderHelpers.config?.interopCleanupOnExit) {
