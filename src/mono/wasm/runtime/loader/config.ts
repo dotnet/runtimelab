@@ -120,19 +120,7 @@ export function normalizeConfig() {
 
     config.environmentVariables = config.environmentVariables || {};
     config.runtimeOptions = config.runtimeOptions || [];
-    
-    if (NativeAOT && !config.resources) {
-        config.resources = config.resources || {
-            assembly: {},
-            jsModuleNative: { "dotnet.native.js": "" },
-            jsModuleWorker: {},
-            jsModuleRuntime: { "dotnet.runtime.js": "" },
-            wasmNative: { "dotnet.native.wasm": "" },
-            vfs: {},
-            satelliteResources: {},
-        };
-    }
-    
+
     config.resources = config.resources || {
         assembly: {},
         jsModuleNative: {},

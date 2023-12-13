@@ -478,13 +478,25 @@ async function initializeModules(es6Modules: [RuntimeModuleExportsInternal, Nati
 }
 
 async function createEmscriptenMain(): Promise<RuntimeAPI> {
-    if (NativeAOT) {
-        normalizeConfig();
-    } else {
-        if (!emscriptenModule.configSrc && (!loaderHelpers.config || Object.keys(loaderHelpers.config).length === 0 || (!loaderHelpers.config.assets && !loaderHelpers.config.resources))) {
-            // if config file location nor assets are provided
-            emscriptenModule.configSrc = "./blazor.boot.json";
+    if (NativeAOT && !loaderHelpers.config?.resources) {
+        if (!loaderHelpers.config) {
+            loaderHelpers.config = {};
         }
+
+        loaderHelpers.config.resources = {
+            assembly: {},
+            jsModuleNative: { "dotnet.native.js": "" },
+            jsModuleWorker: {},
+            jsModuleRuntime: { "dotnet.runtime.js": "" },
+            wasmNative: { "dotnet.native.wasm": "" },
+            vfs: {},
+            satelliteResources: {},
+        };
+    }
+
+    if (!emscriptenModule.configSrc && (!loaderHelpers.config || Object.keys(loaderHelpers.config).length === 0 || (!loaderHelpers.config.assets && !loaderHelpers.config.resources))) {
+        // if config file location nor assets are provided
+        emscriptenModule.configSrc = "./blazor.boot.json";
     }
 
     // download config

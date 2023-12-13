@@ -282,9 +282,7 @@ async function onRuntimeInitializedAsync(userOnRuntimeInitialized: () => void) {
         }
 
         bindings_init();
-        if (!NativeAOT) {
-            jiterpreter_allocate_tables(Module);
-        }
+        jiterpreter_allocate_tables(Module);
 
         if (MonoWasmThreads) {
             runtimeHelpers.javaScriptExports.install_synchronization_context();
@@ -529,17 +527,19 @@ async function mono_wasm_before_memory_snapshot() {
         return;
     }
 
-    if (!NativeAOT) {
-        for (const k in runtimeHelpers.config.environmentVariables) {
-            const v = runtimeHelpers.config.environmentVariables![k];
-            if (typeof (v) === "string")
-                mono_wasm_setenv(k, v);
-            else
-                throw new Error(`Expected environment variable '${k}' to be a string but it was ${typeof v}: '${v}'`);
-        }
-        if (runtimeHelpers.config.runtimeOptions)
-            mono_wasm_set_runtime_options(runtimeHelpers.config.runtimeOptions);
+    if (NativeAOT) {
+        runtimeHelpers.config.environmentVariables = {};
     }
+
+    for (const k in runtimeHelpers.config.environmentVariables) {
+        const v = runtimeHelpers.config.environmentVariables![k];
+        if (typeof (v) === "string")
+            mono_wasm_setenv(k, v);
+        else
+            throw new Error(`Expected environment variable '${k}' to be a string but it was ${typeof v}: '${v}'`);
+    }
+    if (runtimeHelpers.config.runtimeOptions)
+        mono_wasm_set_runtime_options(runtimeHelpers.config.runtimeOptions);
 
     if (runtimeHelpers.config.aotProfilerOptions)
         mono_wasm_init_aot_profiler(runtimeHelpers.config.aotProfilerOptions);
@@ -547,9 +547,7 @@ async function mono_wasm_before_memory_snapshot() {
     if (runtimeHelpers.config.browserProfilerOptions)
         mono_wasm_init_browser_profiler(runtimeHelpers.config.browserProfilerOptions);
 
-    if (!NativeAOT) {
-        mono_wasm_load_runtime("unused", runtimeHelpers.config.debugLevel);
-    }
+    mono_wasm_load_runtime("unused", runtimeHelpers.config.debugLevel);
 
     // we didn't have snapshot yet and the feature is enabled. Take snapshot now.
     if (runtimeHelpers.config.startupMemoryCache) {
@@ -575,6 +573,9 @@ async function maybeSaveInterpPgoTable () {
 }
 
 export function mono_wasm_load_runtime(unused?: string, debugLevel?: number): void {
+    if (NativeAOT) {
+        return;
+    }
     mono_log_debug("mono_wasm_load_runtime");
     try {
         const mark = startMeasure();
@@ -603,9 +604,7 @@ export function bindings_init(): void {
     try {
         const mark = startMeasure();
         strings_init();
-        if (!NativeAOT) {
-            init_managed_exports();
-        }
+        init_managed_exports();
         if (WasmEnableLegacyJsInterop && !linkerDisableLegacyJsInterop && !ENVIRONMENT_IS_PTHREAD) {
             init_legacy_exports();
         }
