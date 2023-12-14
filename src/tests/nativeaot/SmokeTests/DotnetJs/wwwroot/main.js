@@ -3,9 +3,15 @@
 
 import { dotnet, exit } from './dotnet.js'
 
-const { runMain } = await dotnet
+const { runMain, setModuleImports } = await dotnet
     .withApplicationArguments("A", "B", "C")
     .create();
+
+setModuleImports('main.js', {
+    interop: {
+        math: (a, b, c) => a + b * c,
+    }
+});
 
 var result = await runMain();
 console.log(`Exit code ${result}`);
