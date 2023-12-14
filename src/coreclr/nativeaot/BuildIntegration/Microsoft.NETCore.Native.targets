@@ -122,6 +122,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-unknown-wasi</IlcLlvmTarget>
     <IlcWasmStackSize>1048576</IlcWasmStackSize> <!-- 1MB -->
+    <IlcWasmStackSize Condition="'$(EmccStackSize)' != ''">$(EmccStackSize)</IlcWasmStackSize>
     <IlcWasmGlobalBase>1024</IlcWasmGlobalBase> <!-- This value is also hardcoded in the compiler -->
     <IlcLlvmExceptionHandlingModel Condition="'$(WasmEnableExceptionHandling)' == 'true'">wasm</IlcLlvmExceptionHandlingModel>
     <IlcLlvmExceptionHandlingModel Condition="'$(IlcLlvmExceptionHandlingModel)' == '' and '$(targetOS)' == 'browser'">cpp</IlcLlvmExceptionHandlingModel>
@@ -497,10 +498,6 @@ The .NET Foundation licenses this file to you under the MIT license.
   <Target Name="SetupLlvmLinker">
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
 
-    <PropertyGroup>
-      <EmccStackSize Condition="'$(EmccStackSize)' == ''">5MB</EmccStackSize>
-    </PropertyGroup>
-
     <ItemGroup>
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.a" />
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Globalization.Native.a" />
@@ -539,7 +536,6 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="$(EmccFlags)" />
       <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
       <CustomLinkerArg Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" Condition="'$(EmccInitialHeapSize)' != ''" />
-      <CustomLinkerArg Include="-s STACK_SIZE=$(EmccStackSize)" />
       <CustomLinkerArg Condition="'$(EmccEnableAssertions)' == 'true'" Include="-s ASSERTIONS=1" />
     </ItemGroup>
 
