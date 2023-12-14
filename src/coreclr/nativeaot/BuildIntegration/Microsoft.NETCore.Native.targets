@@ -499,8 +499,6 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <PropertyGroup>
       <EmccStackSize Condition="'$(EmccStackSize)' == ''">5MB</EmccStackSize>
-      <EmccInitialHeapSize Condition="'$(EmccInitialHeapSize)' == '' and '$(_WasmCalculatedInitialHeapSize)' != '' and $(_WasmCalculatedInitialHeapSize) > 16777216">$(_WasmCalculatedInitialHeapSize)</EmccInitialHeapSize>
-      <EmccInitialHeapSize Condition="'$(EmccInitialHeapSize)' == ''">16777216</EmccInitialHeapSize>
     </PropertyGroup>
 
     <ItemGroup>
@@ -539,9 +537,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="-s DISABLE_EXCEPTION_CATCHING=0" />
       
       <CustomLinkerArg Include="$(EmccFlags)" />
-      <CustomLinkerArg Include="$(EmccLinkOptimizationFlag)" />
       <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
-      <CustomLinkerArg Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" />
+      <CustomLinkerArg Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" Condition="'$(EmccInitialHeapSize)' != ''" />
       <CustomLinkerArg Include="-s STACK_SIZE=$(EmccStackSize)" />
       <CustomLinkerArg Condition="'$(EmccEnableAssertions)' == 'true'" Include="-s ASSERTIONS=1" />
     </ItemGroup>
