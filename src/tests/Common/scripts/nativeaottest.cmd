@@ -21,6 +21,10 @@ if not exist %__JsFilePath% (
   set __JsFilePath=%__JsFilePath:~0,-3%.mjs
 )
 
+if not exist %__JsFilePath% (
+  set __JsFilePath=%1\native\main.js
+)
+
 set __WasmFileName=%2
 set __WasmFileName=%__WasmFileName:~0,-4%.wasm
 set __WasmFilePath=%1native\%__WasmFileName%

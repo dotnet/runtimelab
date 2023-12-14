@@ -121,6 +121,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-unknown-wasi</IlcLlvmTarget>
     <IlcWasmStackSize>1048576</IlcWasmStackSize> <!-- 1MB -->
+    <IlcWasmStackSize Condition="'$(EmccStackSize)' != ''">$(EmccStackSize)</IlcWasmStackSize>
     <IlcWasmGlobalBase>1024</IlcWasmGlobalBase> <!-- This value is also hardcoded in the compiler -->
     <IlcLlvmExceptionHandlingModel Condition="'$(WasmEnableExceptionHandling)' == 'true'">wasm</IlcLlvmExceptionHandlingModel>
     <IlcLlvmExceptionHandlingModel Condition="'$(IlcLlvmExceptionHandlingModel)' == '' and '$(targetOS)' == 'browser'">cpp</IlcLlvmExceptionHandlingModel>
@@ -491,6 +492,8 @@ The .NET Foundation licenses this file to you under the MIT license.
         strip -no_code_signature_warning $(_StripFlag) &quot;$(NativeBinary)&quot;" />
   </Target>
 
+  <Import Project="$(MSBuildThisFileDirectory)DotNetJsApi.targets" Condition="'$(_targetArchitecture)' == 'wasm' and '$(DotNetJsApi)' == 'true'" />
+
   <!-- NativeAOT-LLVM: separate target to reduce conflicts -->
   <Target Name="LinkNativeLlvm"
       Inputs="@(NativeObjects);@(NativeLibrary)"
@@ -524,7 +527,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
 
     <ItemGroup Condition = "'$(_targetOS)' == 'browser'" >
-      <CustomLinkerArg Include="--js-library &quot;$(IlcFrameworkNativePath)pal_random.lib.js&quot;" />
+      <CustomLinkerArg Include="--js-library &quot;$(IlcFrameworkNativePath)pal_random.lib.js&quot;" Condition="'$(DotNetJsApi)' != 'true'" />
       <CustomLinkerArg Condition="'$(WasmHtmlTemplate)' != ''" Include="--shell-file &quot;$(WasmHtmlTemplate)&quot;" />
       <CustomLinkerArg Condition="'$(ExportsFile)' != ''" Include="-s EXPORTED_FUNCTIONS=@&quot;$(ExportsFile)&quot;" />
       <CustomLinkerArg Include="-s ALLOW_MEMORY_GROWTH=1" />
@@ -533,6 +536,11 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s TOTAL_STACK=$(IlcWasmStackSize)" />
       <CustomLinkerArg Condition="'$(WasmEnableJSBigIntIntegration)' == 'true'" Include="-s WASM_BIGINT=1" />
       <CustomLinkerArg Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="-s DISABLE_EXCEPTION_CATCHING=0" />
+      
+      <CustomLinkerArg Include="$(EmccFlags)" />
+      <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
+      <CustomLinkerArg Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" Condition="'$(EmccInitialHeapSize)' != ''" />
+      <CustomLinkerArg Condition="'$(EmccEnableAssertions)' == 'true'" Include="-s ASSERTIONS=1" />
     </ItemGroup>
 
     <!-- wasm-ld only supports listing exports on the command line -->
@@ -557,7 +565,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
 
     <WriteLinesToFile File="$(NativeIntermediateOutputPath)link.rsp" Lines="@(CustomLinkerArg)" Overwrite="true" Encoding="utf-8" />
-    <Exec Command="$(WasmLinkerPath) @$(NativeIntermediateOutputPath)link.rsp $(EmccExtraArgs)" />
+    <Exec Command="$(WasmLinkerPath) @$(NativeIntermediateOutputPath)link.rsp $(EmccExtraArgs)" EnvironmentVariables="@(EmscriptenEnvVars)" />
   </Target>
 
   <Target Name="LinkNative"

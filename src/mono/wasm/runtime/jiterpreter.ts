@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+import NativeAOT from "consts:nativeAOT";
 import { MonoMethod } from "./types/internal";
 import { NativePointer } from "./types/emscripten";
 import { Module, mono_assert, runtimeHelpers } from "./globals";
@@ -1088,6 +1089,9 @@ export function mono_jiterp_free_method_data_js(
 }
 
 export function jiterpreter_dump_stats(b?: boolean, concise?: boolean) {
+    if (NativeAOT) {
+        return;
+    }
     if (!runtimeHelpers.runtimeReady) {
         return;
     }

@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+import NativeAOT from "consts:nativeAOT";
 import MonoWasmThreads from "consts:monoWasmThreads";
 
 import { GCHandle, MarshalerToCs, MarshalerToJs, MarshalerType, MonoMethod } from "./types/internal";
@@ -13,6 +14,9 @@ import { marshal_int32_to_js, marshal_string_to_js, marshal_task_to_js } from ".
 import { do_not_force_dispose } from "./gc-handles";
 
 export function init_managed_exports(): void {
+    if (NativeAOT) {
+        return;
+    }
     const exports_fqn_asm = "System.Runtime.InteropServices.JavaScript";
     runtimeHelpers.runtime_interop_module = cwraps.mono_wasm_assembly_load(exports_fqn_asm);
     if (!runtimeHelpers.runtime_interop_module)

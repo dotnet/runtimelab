@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <CLRTestKind>BuildAndRun</CLRTestKind>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CLRTestTargetUnsupported Condition="'$(TargetsBrowser)' != 'true'">true</CLRTestTargetUnsupported>
+    <DotNetJsApi>true</DotNetJsApi>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <WasmExtraFilesToDeploy Include="wwwroot\*" />
+  </ItemGroup>
+</Project>

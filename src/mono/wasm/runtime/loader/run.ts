@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+import NativeAOT from "consts:nativeAOT";
 import BuildConfiguration from "consts:configuration";
 
 import type { MonoConfig, DotnetHostBuilder, DotnetModuleConfig, RuntimeAPI, LoadBootResourceCallback } from "../types";
@@ -477,6 +478,22 @@ async function initializeModules(es6Modules: [RuntimeModuleExportsInternal, Nati
 }
 
 async function createEmscriptenMain(): Promise<RuntimeAPI> {
+    if (NativeAOT && !loaderHelpers.config?.resources) {
+        if (!loaderHelpers.config) {
+            loaderHelpers.config = {};
+        }
+
+        loaderHelpers.config.resources = {
+            assembly: {},
+            jsModuleNative: { "dotnet.native.js": "" },
+            jsModuleWorker: {},
+            jsModuleRuntime: { "dotnet.runtime.js": "" },
+            wasmNative: { "dotnet.native.wasm": "" },
+            vfs: {},
+            satelliteResources: {},
+        };
+    }
+
     if (!emscriptenModule.configSrc && (!loaderHelpers.config || Object.keys(loaderHelpers.config).length === 0 || (!loaderHelpers.config.assets && !loaderHelpers.config.resources))) {
         // if config file location nor assets are provided
         emscriptenModule.configSrc = "./blazor.boot.json";
