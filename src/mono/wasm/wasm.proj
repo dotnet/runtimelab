@@ -28,7 +28,7 @@
     <ICULibDir Condition="'$(MonoWasmThreads)' == 'true'">$([MSBuild]::NormalizeDirectory('$(PkgMicrosoft_NETCore_Runtime_ICU_Transport)', 'runtimes', 'browser-wasm-threads', 'native', 'lib'))</ICULibDir>
     <WasmEnableSIMD Condition="'$(WasmEnableSIMD)' == ''">true</WasmEnableSIMD>
     <WasmEnableExceptionHandling Condition="'$(WasmEnableExceptionHandling)' == ''">true</WasmEnableExceptionHandling>
-    <WasmEnableLegacyJsInterop Condition="'$(PrimaryRuntimeFlavor)' == 'CoreCLR'">false</WasmEnableLegacyJsInterop>
+    <WasmEnableLegacyJsInterop Condition="'$(RuntimeFlavor)' == 'CoreCLR'">false</WasmEnableLegacyJsInterop>
     <WasmEnableLegacyJsInterop Condition="'$(WasmEnableLegacyJsInterop)' == ''">true</WasmEnableLegacyJsInterop>
     <FilterSystemTimeZones Condition="'$(FilterSystemTimeZones)' == ''">false</FilterSystemTimeZones>
     <EmccCmd>emcc</EmccCmd>
@@ -53,7 +53,7 @@
   </ItemGroup>
 
   <UsingTask TaskName="ManagedToNativeGenerator" AssemblyFile="$(WasmAppBuilderTasksAssemblyPath)" />
-  <Target Name="GenerateManagedToNative" DependsOnTargets="CheckEnv;ResolveLibrariesFromLocalBuild" Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'">
+  <Target Name="GenerateManagedToNative" DependsOnTargets="CheckEnv;ResolveLibrariesFromLocalBuild" Condition="'$(RuntimeFlavor)' != 'CoreCLR'">
     <PropertyGroup>
       <WasmPInvokeTablePath>$(WasmObjDir)\pinvoke-table.h</WasmPInvokeTablePath>
       <WasmInterpToNativeTablePath>$(WasmObjDir)\wasm_m2n_invoke.g.h</WasmInterpToNativeTablePath>
@@ -421,19 +421,19 @@
     </ItemGroup>
 
     <Copy SourceFiles="$(PInvokeTableFile)"
-          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
+          Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
           DestinationFolder="$(MonoObjDir)"
           SkipUnchangedFiles="true" />
 
     <Copy SourceFiles="$(InterpToNativeTableFile)"
-          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
+          Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
           DestinationFolder="$(MonoObjDir)"
           SkipUnchangedFiles="true" />
 
     <Copy SourceFiles="runtime/driver.c;
                        runtime/pinvoke.c;
                        runtime/corebindings.c;"
-          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
+          Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
           DestinationFolder="$(NativeBinDir)src"
           SkipUnchangedFiles="true" />
 
@@ -452,7 +452,7 @@
                       Overwrite="false" />
 
     <Copy SourceFiles="runtime\pinvoke.h;runtime\gc-common.h"
-          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
+          Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
           DestinationFolder="$(NativeBinDir)include\wasm"
           SkipUnchangedFiles="true" />
 
@@ -463,10 +463,10 @@
           SkipUnchangedFiles="true" />
 
     <Exec Command="$(CMakeBuildRuntimeConfigureCmd)" WorkingDirectory="$(NativeBinDir)"
-          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
+          Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
           EnvironmentVariables="@(_CmakeEnvironmentVariable)" />
     <Exec Command="$(CMakeBuildRuntimeCmd)"  WorkingDirectory="$(NativeBinDir)"
-          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
+          Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
           EnvironmentVariables="@(_CmakeEnvironmentVariable)" />
 
     <ItemGroup>
@@ -493,7 +493,7 @@
 
     <Copy SourceFiles="$(NativeBinDir)dotnet.native.js;
                        $(NativeBinDir)dotnet.native.wasm"
-          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
+          Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
           DestinationFolder="$(MicrosoftNetCoreAppRuntimePackNativeDir)"
           SkipUnchangedFiles="true" />
 
@@ -503,7 +503,7 @@
           SkipUnchangedFiles="true" />
 
     <Copy SourceFiles="$(NativeBinDir)dotnet.native.js.symbols"
-          Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'"
+          Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
           DestinationFolder="$(MicrosoftNetCoreAppRuntimePackNativeDir)"
           SkipUnchangedFiles="true" />
 
@@ -563,8 +563,8 @@
       <_MonoRollupEnvironmentVariable Include="WASM_ENABLE_EH:0" Condition="'$(WasmEnableExceptionHandling)' == 'false'" />
       <_MonoRollupEnvironmentVariable Include="DISABLE_LEGACY_JS_INTEROP:1" Condition="'$(WasmEnableLegacyJsInterop)' == 'false'" />
       <_MonoRollupEnvironmentVariable Include="DISABLE_LEGACY_JS_INTEROP:0" Condition="'$(WasmEnableLegacyJsInterop)' != 'false'" />
-      <_MonoRollupEnvironmentVariable Include="NATIVE_AOT:0" Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'" />
-      <_MonoRollupEnvironmentVariable Include="NATIVE_AOT:1" Condition="'$(PrimaryRuntimeFlavor)' == 'CoreCLR'" />
+      <_MonoRollupEnvironmentVariable Include="NATIVE_AOT:0" Condition="'$(RuntimeFlavor)' != 'CoreCLR'" />
+      <_MonoRollupEnvironmentVariable Include="NATIVE_AOT:1" Condition="'$(RuntimeFlavor)' == 'CoreCLR'" />
       <_MonoRollupEnvironmentVariable Include="MonoDiagnosticsMock:$(MonoDiagnosticsMock)" />
       <_MonoRollupEnvironmentVariable Include="ContinuousIntegrationBuild:$(ContinuousIntegrationBuild)" />
     </ItemGroup>
