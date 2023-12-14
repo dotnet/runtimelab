@@ -1,4 +1,4 @@
-# NativeAOT Android sample app
+![image](https://github.com/dotnet/runtimelab/assets/11523312/a40d1e79-bcf6-4eac-ae3c-2824bf84c50d)# NativeAOT Android sample app
 
 This experiment was focused on enabling Native AOT for Android apps to achieve a smaller app size and faster app startup time. The experiment was concluded at the end .NET 8 release, with no additional efforts planned beyond that period. Its goal was to explore the possibilities and limitations of running Android apps with Native AOT, particularly in terms of size and startup time.
 
@@ -65,7 +65,7 @@ The following tables show the size measurements for the Xamarin sample applicati
 
 SOD | Mono | Native AOT | Diff (%)
 -|-|-|-
-Xamarin sample app | 3.2M | 5.9M | 84.375%
+Xamarin sample app | 3.2M | 4.1M | 84.375%
 
 As expected, the Mono SOD is significantly smaller due to JIT compilation. The Native AOT SDK, bootstrap, GC, and Java.Interop library contribute to the increased SOD.
 
@@ -75,7 +75,7 @@ The following table shows the build time for the Xamarin sample application.
 
 Build | Mono | Native AOT | Diff (%)
 -|-|-|-
-Xamarin sample app | 15.79s | 24.67s | 56.14%
+Xamarin sample app | 15.79s | 24.67s | 28.13%
 
 As expected, Native AOT is more intensive due to full program analysis and ahead of time compilation. It is important to note that different build approaches are used, and the comparison is not one-to-one but confirms the general assumption.
 
