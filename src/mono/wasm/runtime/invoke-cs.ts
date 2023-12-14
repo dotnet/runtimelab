@@ -13,14 +13,14 @@ import {
 } from "./marshal";
 import { mono_wasm_new_external_root, mono_wasm_new_root } from "./roots";
 import { monoStringToString } from "./strings";
-import { MonoString, MonoMethod, JSMarshalerArguments, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, MarshalerType, MonoStringRef, MonoObject, MonoObjectRef, MonoObjectRefNull, VoidPtrNull, MonoObjectNull } from "./types/internal";
+import { MonoObjectRef, MonoStringRef, MonoString, MonoObject, MonoMethod, JSMarshalerArguments, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, VoidPtrNull, MonoObjectRefNull, MonoObjectNull, MarshalerType } from "./types/internal";
 import { Int32Ptr } from "./types/emscripten";
 import cwraps from "./cwraps";
+import { assembly_load } from "./class-loader";
 import { assert_bindings, wrap_error_root, wrap_no_error_root } from "./invoke-js";
 import { startMeasure, MeasuredBlock, endMeasure } from "./profiler";
 import { mono_log_debug } from "./logging";
 import { assert_synchronization_context } from "./pthreads/shared";
-import { assembly_load } from "./class-loader";
 
 export function mono_wasm_bind_cs_function(fully_qualified_name: MonoStringRef, signature_hash: number, signature: JSFunctionSignature, is_exception: Int32Ptr, result_address: MonoObjectRef): void {
     assert_bindings();
