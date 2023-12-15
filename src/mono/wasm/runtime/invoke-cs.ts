@@ -13,10 +13,9 @@ import {
 } from "./marshal";
 import { mono_wasm_new_root } from "./roots";
 import { monoStringToString } from "./strings";
-import { MonoString, MonoMethod, JSMarshalerArguments, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, VoidPtrNull, MonoObjectRefNull, MonoObjectNull, MarshalerType } from "./types/internal";
+import { MonoString, MonoMethod, JSMarshalerArguments, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, MarshalerType } from "./types/internal";
 import { CharPtr, Int32Ptr } from "./types/emscripten";
 import cwraps from "./cwraps";
-import { assembly_load } from "./class-loader";
 import { assert_bindings, wrap_error, wrap_no_error } from "./invoke-js";
 import { startMeasure, MeasuredBlock, endMeasure } from "./profiler";
 import { mono_log_debug } from "./logging";
