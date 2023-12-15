@@ -565,6 +565,12 @@
     <SmokeTestProject Include="$(MSBuildThisFileDirectory)System.Runtime.InteropServices\tests\System.Runtime.InteropServices.UnitTests\System.Runtime.InteropServices.Tests.csproj" />
   </ItemGroup>
 
+  <!-- NativeAOT-LLVM: Just a few test suites that pass -->
+  <ItemGroup Condition="'$(TestNativeAot)' == 'true' and '$(TargetsWasm)' == 'true'">
+    <SmokeTestProject Remove="@(SmokeTestProject)" />
+    <SmokeTestProject Include="$(MSBuildThisFileDirectory)System.Collections.Specialized\tests\System.Collections.Specialized.Tests.csproj" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(TargetOS)' == 'browser' and '$(MonoWasmBuildVariant)' == 'multithread'">
     <!-- Don't want the default smoke tests - just verify that threading works -->
     <SmokeTestProject Remove="@(SmokeTestProject)" />
