@@ -17,4 +17,9 @@
   <ItemGroup>
     <CMakeProjectReference Include="CMakeLists.txt" />
   </ItemGroup>
+
+  <!--Wasm only supports direct PInvokes -->
+  <ItemGroup Condition="$(TargetArchitecture) == 'wasm'">
+    <DirectPInvoke Include="PInvokeNative" />
+  </ItemGroup>
 </Project>

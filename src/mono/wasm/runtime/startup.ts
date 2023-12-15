@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+import NativeAOT from "consts:nativeAOT";
 import MonoWasmThreads from "consts:monoWasmThreads";
 import WasmEnableLegacyJsInterop from "consts:wasmEnableLegacyJsInterop";
 
@@ -442,6 +443,10 @@ export function mono_wasm_setenv(name: string, value: string): void {
 }
 
 export function mono_wasm_set_runtime_options(options: string[]): void {
+    if (NativeAOT) {
+        return;
+    }
+
     if (!Array.isArray(options))
         throw new Error("Expected runtimeOptions to be an array of strings");
 
@@ -526,6 +531,10 @@ async function mono_wasm_before_memory_snapshot() {
         return;
     }
 
+    if (NativeAOT) {
+        runtimeHelpers.config.environmentVariables = {};
+    }
+
     for (const k in runtimeHelpers.config.environmentVariables) {
         const v = runtimeHelpers.config.environmentVariables![k];
         if (typeof (v) === "string")
@@ -568,6 +577,9 @@ async function maybeSaveInterpPgoTable () {
 }
 
 export function mono_wasm_load_runtime(unused?: string, debugLevel?: number): void {
+    if (NativeAOT) {
+        return;
+    }
     mono_log_debug("mono_wasm_load_runtime");
     try {
         const mark = startMeasure();

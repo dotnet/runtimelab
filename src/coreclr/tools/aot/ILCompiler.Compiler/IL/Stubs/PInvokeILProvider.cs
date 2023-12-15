@@ -40,5 +40,10 @@ namespace Internal.IL
             Debug.Assert(externName != null);
             return externName;
         }
+
+        public bool GetWasmImportCallInfo(MethodDesc method, out string externName, out string moduleName)
+        {
+            return _pInvokeILEmitterConfiguration.GenerateWasmImportCall(method, out externName, out moduleName);
+        }
     }
 }

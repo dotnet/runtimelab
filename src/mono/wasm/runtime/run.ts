@@ -1,7 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-import { ENVIRONMENT_IS_NODE, loaderHelpers, runtimeHelpers } from "./globals";
+import NativeAOT from "consts:nativeAOT";
+import { ENVIRONMENT_IS_NODE, Module, loaderHelpers, runtimeHelpers } from "./globals";
 import { mono_wasm_wait_for_debugger } from "./debug";
 import { mono_wasm_set_main_args } from "./startup";
 import cwraps from "./cwraps";
@@ -48,7 +49,11 @@ export async function mono_run_main(main_assembly_name: string, args?: string[])
             args = [];
         }
     }
-
+    
+    if (NativeAOT) {
+        return (Module as any)["callMain"](args);
+    }
+    
     mono_wasm_set_main_args(main_assembly_name, args);
     if (runtimeHelpers.waitForDebugger == -1) {
         mono_log_info("waiting for debugger...");

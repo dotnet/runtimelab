@@ -814,10 +814,10 @@ namespace ILCompiler.DependencyAnalysis
             LLVMValueRef externFunc = externFuncModule.AddFunction(externFuncName, externFuncType);
 
             // Add import attributes if specified.
-            if (_compilation.ConfigurableWasmImportPolicy.TryGetWasmModule(externFuncName, out string wasmModuleName))
+            if (node.Signature != null && _compilation.PInvokeILProvider.GetWasmImportCallInfo(node.GetSingleMethod(), out string externName, out string moduleName))
             {
-                externFunc.AddFunctionAttribute("wasm-import-name", externFuncName);
-                externFunc.AddFunctionAttribute("wasm-import-module", wasmModuleName);
+                externFunc.AddFunctionAttribute("wasm-import-module", moduleName);
+                externFunc.AddFunctionAttribute("wasm-import-name", externName);
             }
 
             // Define the accessor function.

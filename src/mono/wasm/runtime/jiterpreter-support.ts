@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+import NativeAOT from "consts:nativeAOT";
 import MonoWasmThreads from "consts:monoWasmThreads";
 import { NativePointer, ManagedPointer, VoidPtr } from "./types/emscripten";
 import { Module, mono_assert, runtimeHelpers, linkerRunAOTCompilation } from "./globals";
@@ -2010,6 +2011,8 @@ function jiterpreter_allocate_table(type: JiterpreterTable, base: number, size: 
 let jiterpreter_tables_allocated = false;
 
 export function jiterpreter_allocate_tables(module: any) {
+    if (NativeAOT)
+        return;
     if (jiterpreter_tables_allocated)
         return;
     jiterpreter_tables_allocated = true;

@@ -62,7 +62,7 @@
     <DefaultCoreClrSubsets Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'">clr.iltools+clr.packages</DefaultCoreClrSubsets>
 
     <DefaultNativeAotSubsets>clr.alljits+clr.tools+clr.nativeaotlibs+clr.nativeaotruntime</DefaultNativeAotSubsets>
-    <DefaultNativeAotSubsets Condition="'$(TargetArchitecture)' == 'wasm'">clr.nativeaotlibs+clr.nativeaotruntime+nativeaot.build</DefaultNativeAotSubsets>
+    <DefaultNativeAotSubsets Condition="'$(TargetArchitecture)' == 'wasm'">clr.nativeaotlibs+clr.nativeaotruntime+nativeaot.build+mono.wasmruntime</DefaultNativeAotSubsets>
 
     <DefaultMonoSubsets Condition="'$(MonoEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
     <DefaultMonoSubsets Condition="'$(MonoAOTEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
