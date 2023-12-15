@@ -1630,6 +1630,7 @@ void HelperCallProperties::init()
 
             // This is a debugging aid; it simply returns a constant address.
             case CORINFO_HELP_LOOP_CLONE_CHOICE_ADDR:
+            case CORINFO_HELP_LLVM_GET_EXTERNAL_CALL_TARGET:
                 isPure  = true;
                 noThrow = true;
                 break;
