@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices.JavaScript;
 
-class Program
+partial class Program
 {
     static int Main(string[] args)
     {
@@ -16,7 +16,7 @@ class Program
         return 100;
     }
 
-    partial static class Interop
+    static partial class Interop
     {
         [JSImport("interop.math", "main.js")]
         internal static partial int Math(int a, int b, int c);
