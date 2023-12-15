@@ -413,7 +413,7 @@
 
   <!-- Mono sets -->
   <ItemGroup Condition="$(_subset.Contains('+mono.llvm+')) or $(_subset.Contains('+mono.aotcross+')) or '$(TargetOS)' == 'ios' or '$(TargetOS)' == 'iossimulator' or '$(TargetOS)' == 'tvos' or '$(TargetOS)' == 'tvossimulator' or '$(TargetOS)' == 'maccatalyst' or '$(TargetOS)' == 'android' or '$(TargetOS)' == 'browser' or '$(TargetOS)' == 'wasi' or '$(TargetsLinuxBionic)' == 'true'">
-    <ProjectToBuild Include="$(MonoProjectRoot)llvm\llvm-init.proj" Category="mono" />
+    <ProjectToBuild Include="$(MonoProjectRoot)llvm\llvm-init.proj" Category="mono" Condition="'$(RuntimeFlavor)' == 'mono'" />
   </ItemGroup>
 
   <ItemGroup Condition="$(_subset.Contains('+mono.manifests+'))">

@@ -1722,6 +1722,13 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
                 return false;
             }
 
+            // The compiler requires that blocks representing targets of finally returns remain empty.
+            if (predBlock->isBBCallAlwaysPairTail())
+            {
+                INDEBUG("finret target");
+                return false;
+            }
+
             // TODO-LLVM-CQ: design CQ-driven heuristics for group expansion.
             return true;
         }
