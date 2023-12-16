@@ -148,6 +148,7 @@ extends:
                     uploadIntermediateArtifacts: true
                     isOfficialBuild: true
                     librariesBinArtifactName: libraries_bin_official_allconfigurations
+                    runSingleFileTests: false
 
       # Installer official builds need to build installers and need the libraries all configurations build
       - ${{ if eq(variables.isOfficialBuild, true) }}:
