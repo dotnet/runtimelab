@@ -127,38 +127,6 @@ extends:
             ${{ if eq(variables.isOfficialBuild, true) }}:
               buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig)
 
-      #
-      # Build with Release allConfigurations to produce packages
-      #
-      - template: /eng/pipelines/common/platform-matrix.yml
-        parameters:
-          jobTemplate: /eng/pipelines/common/global-build-job.yml
-          buildConfig: Release
-          platforms:
-          - windows_x64
-          jobParameters:
-            isOfficialBuild: ${{ variables.isOfficialBuild }}
-            testGroup: innerloop
-            nameSuffix: AllConfigurations
-            buildArgs: -s libs -c $(_BuildConfig) -allConfigurations
-            ${{ if eq(variables.isOfficialBuild, true) }}:
-              postBuildSteps:
-                - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-                  parameters:
-                    uploadIntermediateArtifacts: true
-                    isOfficialBuild: true
-                    librariesBinArtifactName: libraries_bin_official_allconfigurations
-                    runSingleFileTests: false
-
-      # Installer official builds need to build installers and need the libraries all configurations build
-      - ${{ if eq(variables.isOfficialBuild, true) }}:
-        - template: /eng/pipelines/common/platform-matrix.yml
-          parameters:
-            jobTemplate: /eng/pipelines/installer/jobs/build-job.yml
-            jobParameters:
-              liveRuntimeBuildConfig: Release
-              liveLibrariesBuildConfig: Release
-
     - ${{ if eq(variables.isOfficialBuild, true) }}:
       - template: /eng/pipelines/official/stages/publish.yml
         parameters:
