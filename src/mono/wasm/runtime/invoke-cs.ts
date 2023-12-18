@@ -212,6 +212,7 @@ function mono_wasm_bind_cs_function_naot(fully_qualified_name: CharPtr, fully_qu
 }
 
 export const mono_wasm_bind_cs_function = NativeAOT ? mono_wasm_bind_cs_function_naot : mono_wasm_bind_cs_function_mono;
+(mono_wasm_bind_cs_function as any).originalName = "mono_wasm_bind_cs_function";
 
 const s_charsToReplace = [".", "-", "+"];
 

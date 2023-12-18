@@ -12,7 +12,7 @@ export function export_linker_indexes_as_code(): string {
     };
     let idx = 0;
     for (const wi of mono_wasm_imports) {
-        indexByName.mono_wasm_imports[wi.name] = idx;
+        indexByName.mono_wasm_imports[(wi as any).originalName ?? wi.name] = idx;
         idx++;
     }
     for (const wi of mono_wasm_threads_imports) {

@@ -217,6 +217,7 @@ function mono_wasm_bind_js_function_naot(function_name: CharPtr, function_name_l
 }
 
 export const mono_wasm_bind_js_function = NativeAOT ? mono_wasm_bind_js_function_naot : mono_wasm_bind_js_function_mono;
+(mono_wasm_bind_js_function as any).originalName = "mono_wasm_bind_js_function";
 
 function bind_fn_0V(closure: BindingClosure) {
     const fn = closure.fn;
