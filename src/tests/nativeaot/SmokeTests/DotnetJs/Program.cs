@@ -11,7 +11,10 @@ partial class Program
         if (args.Length != 3 || args[0] != "A" || args[1] != "B" || args[2] != "C")
             return 1;
             
-        Console.WriteLine($"Math result is '{Interop.Math(1, 2, 3)}'");
+        var mathResult = Interop.Math(1, 2, 3);
+        Console.WriteLine($"Math result is '{mathResult}'");
+        if (mathResult != 7)
+            return 2;
 
         return 100;
     }
