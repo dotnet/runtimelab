@@ -11,12 +11,12 @@ partial class Program
         Console.WriteLine($"Args {String.Join(", ", args)}");
 
         if (args.Length != 3 || args[0] != "A" || args[1] != "B" || args[2] != "C")
-            return 1;
+            return 11;
             
         var mathResult = Interop.Math(1, 2, 3);
         Console.WriteLine($"Math result is '{mathResult}'");
         if (mathResult != 7)
-            return 2;
+            return 12;
 
         return 100;
     }
@@ -29,7 +29,7 @@ partial class Program
         [JSExport]
         internal static int Square(int x)
         {
-            Console.WriteLine($"Compting square of {x}");
+            Console.WriteLine($"Computing square of {x}");
             return x^2;
         }
     }

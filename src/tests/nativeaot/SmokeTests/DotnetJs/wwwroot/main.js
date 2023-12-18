@@ -18,7 +18,7 @@ let result = await runMain();
 const exports = getAssemblyExports("DotnetJs.dll");
 const square = exports.DotnetJsApp.Interop.Square(5);
 if (square != 25) {
-    result = 3;
+    result = 13;
 }
 
 console.log(`Exit code ${result}`);
