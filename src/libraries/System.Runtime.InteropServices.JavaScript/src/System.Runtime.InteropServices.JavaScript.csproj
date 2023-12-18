@@ -22,7 +22,8 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'browser'">
-    <Compile Include="$(CommonPath)Interop\Browser\Interop.Runtime.cs" Link="System\Runtime\InteropServices\JavaScript\Interop\Interop.Runtime.cs" />
+    <Compile Include="$(CommonPath)Interop\Browser\Interop.Runtime.cs" Link="System\Runtime\InteropServices\JavaScript\Interop\Interop.Runtime.cs" Condition="'$(RuntimeFlavor)' != 'CoreCLR'" />
+    <Compile Include="$(CommonPath)Interop\Browser\Interop.Runtime.NativeAOT.cs" Link="System\Runtime\InteropServices\JavaScript\Interop\Interop.Runtime.NativeAOT.cs" Condition="'$(RuntimeFlavor)' == 'CoreCLR'" />
     <Compile Include="System\Runtime\InteropServices\JavaScript\Interop\JavaScriptImports.Generated.cs" />
     <Compile Include="System\Runtime\InteropServices\JavaScript\Interop\JavaScriptExports.cs" />
     <Compile Include="System\Runtime\InteropServices\JavaScript\Interop\JavaScriptImports.cs" />
