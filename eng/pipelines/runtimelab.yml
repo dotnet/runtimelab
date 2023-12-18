@@ -120,7 +120,7 @@ extends:
                 parameters:
                   isOfficialBuild: ${{ variables.isOfficialBuild }}
                   uploadLibrariesTests: ${{ eq(variables.isOfficialBuild, false) }}
-                  uploadIntermediateArtifacts: false
+                  uploadIntermediateArtifacts: ${{ variables.isOfficialBuild }}
                   librariesConfiguration: Release
             ${{ if eq(variables.isOfficialBuild, false) }}:
               buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig) /p:ArchiveTests=true
