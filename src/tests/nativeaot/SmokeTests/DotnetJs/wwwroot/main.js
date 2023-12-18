@@ -13,6 +13,13 @@ setModuleImports('main.js', {
     }
 });
 
-var result = await runMain();
+let result = await runMain();
+
+const exports = getAssemblyExports("DotnetJs.dll");
+const square = exports.DotnetJsApp.Interop.Square(5);
+if (square != 25) {
+    result = 3;
+}
+
 console.log(`Exit code ${result}`);
 exit(result);

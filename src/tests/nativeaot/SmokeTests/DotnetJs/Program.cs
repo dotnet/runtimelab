@@ -1,6 +1,8 @@
 using System;
 using System.Runtime.InteropServices.JavaScript;
 
+namespace DotnetJsApp;
+
 partial class Program
 {
     static int Main(string[] args)
@@ -23,5 +25,12 @@ partial class Program
     {
         [JSImport("interop.math", "main.js")]
         internal static partial int Math(int a, int b, int c);
+
+        [JSExport]
+        internal static int Square(int x)
+        {
+            Console.WriteLine($"Compting square of {x}");
+            return x^2;
+        }
     }
 }
