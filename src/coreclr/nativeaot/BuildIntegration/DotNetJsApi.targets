@@ -1,7 +1,8 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <LinkNativeDependsOn Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' == 'true'">$(LinkNativeDependsOn);PrepareDotNetJsApiForLinking</LinkNativeDependsOn>
+    <LinkNativeDependsOn>$(LinkNativeDependsOn);PrepareDotNetJsApiForLinking</LinkNativeDependsOn>
     <NativeBinary>$(NativeOutputPath)dotnet.native.js</NativeBinary>
+    <IlcExportUnmanagedEntrypoints>true</IlcExportUnmanagedEntrypoints>
   </PropertyGroup>
   <ItemGroup>
     <EmccExportedFunction Include="_free" />
@@ -72,12 +73,13 @@
       <!-- Exported functions required by user or runtime API -->
       <_DotNetJsLinkerFlag Include="-s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$(_EmccExportedLibraryFunction)" Condition="'$(_EmccExportedLibraryFunction)' != ''" />
       <_DotNetJsLinkerFlag Include="-s EXPORTED_RUNTIME_METHODS=$(_EmccExportedRuntimeMethods)" />
-      <_DotNetJsLinkerFlag Include="-s EXPORTED_FUNCTIONS=$(_EmccExportedFunctions)" />
+      <_DotNetJsLinkerFlag Include="-s EXPORTED_FUNCTIONS=$(_EmccExportedFunctions)" Condition="'$(ExportsFile)' == ''" /><!-- Multiple args in the same rsp file is not support, add functions to app exports -->
       <_DotNetJsLinkerFlag Include="$(EmccExtraLDFlags)" />
     </ItemGroup>
     <ItemGroup>
       <CustomLinkerArg Include="@(_DotNetJsLinkerFlag)" />
     </ItemGroup>
+    <WriteLinesToFile File="$(ExportsFile)" Lines="@(EmccExportedFunction)" Overwrite="false" Encoding="utf-8" Condition="'$(ExportsFile)' != ''" />
   </Target>
   <Target Name="CopyDotnetJsAfterLinking" AfterTargets="LinkNativeLlvm">
     <ItemGroup>

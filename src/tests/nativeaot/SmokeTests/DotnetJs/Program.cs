@@ -29,8 +29,9 @@ partial class Program
         [JSExport]
         internal static int Square(int x)
         {
-            Console.WriteLine($"Computing square of {x}");
-            return x^2;
+            var result = x * x;
+            Console.WriteLine($"Computing square of {x} with result {result}");
+            return result;
         }
     }
 }
