@@ -3,7 +3,7 @@
 
 import { dotnet, exit } from './dotnet.js'
 
-const { runMain, setModuleImports } = await dotnet
+const { runMain, setModuleImports, getAssemblyExports } = await dotnet
     .withApplicationArguments("A", "B", "C")
     .create();
 
@@ -15,10 +15,10 @@ setModuleImports('main.js', {
 
 let result = await runMain();
 
-const exports = getAssemblyExports("DotnetJs.dll");
 const square = exports.DotnetJsApp.Interop.Square(5);
 if (square != 25) {
     result = 13;
+const exports = await getAssemblyExports("DotnetJs.dll");
 }
 
 console.log(`Exit code ${result}`);
