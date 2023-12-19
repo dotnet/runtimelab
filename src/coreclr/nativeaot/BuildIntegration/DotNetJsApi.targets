@@ -2,7 +2,7 @@
   <PropertyGroup>
     <LinkNativeDependsOn>$(LinkNativeDependsOn);PrepareDotNetJsApiForLinking</LinkNativeDependsOn>
     <NativeBinary>$(NativeOutputPath)dotnet.native.js</NativeBinary>
-    <IlcExportUnmanagedEntrypoints>true</IlcExportUnmanagedEntrypoints>
+    <IlcExportUnmanagedEntrypoints>true</IlcExportUnmanagedEntrypoints><!-- For JSExports -->
   </PropertyGroup>
   <ItemGroup>
     <EmccExportedFunction Include="_free" />
@@ -85,7 +85,7 @@
     <ItemGroup>
       <_FilesToCopyToNative Include="$(IlcFrameworkNativePath)\dotnet*.js" />
       <_FilesToCopyToNative Include="$(IlcFrameworkNativePath)\dotnet*.map" Condition="'$(WasmEmitSourceMap)' == 'true'" />
-      <_FilesToCopyToNative Include="@(WasmExtraFilesToDeploy)" /><!-- Use defined extra files to be included in the build output -->
+      <_FilesToCopyToNative Include="@(WasmExtraFilesToDeploy)" /><!-- User defined extra files to be included in the build output -->
     </ItemGroup>
     <Copy SourceFiles="@(_FilesToCopyToNative)" DestinationFolder="$(NativeOutputPath)" />
   </Target>
