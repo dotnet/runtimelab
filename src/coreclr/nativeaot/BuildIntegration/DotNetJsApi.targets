@@ -79,7 +79,14 @@
     <ItemGroup>
       <CustomLinkerArg Include="@(_DotNetJsLinkerFlag)" />
     </ItemGroup>
-    <WriteLinesToFile File="$(ExportsFile)" Lines="@(EmccExportedFunction)" Overwrite="false" Encoding="utf-8" Condition="'$(ExportsFile)' != ''" />
+    <ReadLinesFromFile File="$(ExportsFile)" Condition="'$(ExportsFile)' != ''">
+      <Output TaskParameter="Lines" ItemName="_ExistingExports" />
+    </ReadLinesFromFile>
+    <ItemGroup Condition="'$(ExportsFile)' != ''">
+      <_ExportsToAddToExportsFile Include="@(EmccExportedFunction)" />
+      <_ExportsToAddToExportsFile Remove="@(_ExistingExports)" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(ExportsFile)" Lines="@(_ExportsToAddToExportsFile)" Overwrite="false" Encoding="utf-8" Condition="'@(_ExportsToAddToExportsFile->Count())' != '0'" />
   </Target>
   <Target Name="CopyDotnetJsAfterLinking" AfterTargets="LinkNativeLlvm">
     <ItemGroup>
