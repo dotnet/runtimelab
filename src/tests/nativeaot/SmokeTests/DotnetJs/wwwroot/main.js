@@ -15,15 +15,17 @@ setModuleImports('main.js', {
 
 let result = await runMain();
 
+const exports = await getAssemblyExports("DotnetJs.dll");
+const square = exports.DotnetJsApp.Program.Interop.Square(5);
+if (square != 25) {
+    result = 13;
+}
+
 try {
-    const exports = await getAssemblyExports("DotnetJs.dll");
-    const square = exports.DotnetJsApp.Program.Interop.Square(5);
-    if (square != 25) {
-        result = 13;
-    }
-} catch (e) {
-    console.log(`Square thrown ${e}`);
+    exports.DotnetJsApp.Program.Interop.Throw();
     result = 14;
+} catch (e) {
+    console.log(`Thrown expected exception: ${e}`);
 }
 
 console.log(`Exit code ${result}`);

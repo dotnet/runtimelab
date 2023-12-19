@@ -33,5 +33,8 @@ partial class Program
             Console.WriteLine($"Computing square of {x} with result {result}");
             return result;
         }
+
+        [JSExport]
+        internal static void Throw() => throw new Exception("This is a test exception");
     }
 }
