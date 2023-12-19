@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+/* eslint-disable prefer-rest-params */
 
 import NativeAOT from "consts:nativeAOT";
 import MonoWasmThreads from "consts:monoWasmThreads";
@@ -11,7 +12,6 @@ import { setI32, setI32_unchecked, receiveWorkerHeapViews } from "./memory";
 import { monoStringToString, stringToMonoStringRoot } from "./strings";
 import { MonoObject, MonoObjectRef, MonoString, MonoStringRef, JSFunctionSignature, JSMarshalerArguments, WasmRoot, BoundMarshalerToJs, JSFnHandle, BoundMarshalerToCs, JSHandle, MarshalerType } from "./types/internal";
 import { Int32Ptr } from "./types/emscripten";
-import { CharPtr } from "./types/emscripten";
 import { INTERNAL, Module, loaderHelpers, mono_assert, runtimeHelpers } from "./globals";
 import { bind_arg_marshal_to_js } from "./marshal-to-js";
 import { mono_wasm_new_external_root } from "./roots";
@@ -23,18 +23,25 @@ import { assert_synchronization_context } from "./pthreads/shared";
 
 export const fn_wrapper_by_fn_handle: Function[] = <any>[null];// 0th slot is dummy, main thread we free them on shutdown. On web worker thread we free them when worker is detached.
 
-function mono_wasm_bind_js_function_mono(function_name: MonoStringRef, module_name: MonoStringRef, signature: JSFunctionSignature, function_js_handle: Int32Ptr, is_exception: Int32Ptr, result_address: MonoObjectRef): void {
+// function mono_wasm_bind_js_function_naot(function_name: CharPtr, function_name_length: number, module_name: CharPtr, module_name_length: number, signature: JSFunctionSignature, function_js_handle: Int32Ptr, is_exception: Int32Ptr): void
+export function mono_wasm_bind_js_function(function_name: MonoStringRef, module_name: MonoStringRef, signature: JSFunctionSignature, function_js_handle: Int32Ptr, is_exception: Int32Ptr, result_address: MonoObjectRef): void {
     assert_bindings();
     const function_name_root = mono_wasm_new_external_root<MonoString>(function_name),
         module_name_root = mono_wasm_new_external_root<MonoString>(module_name),
         resultRoot = mono_wasm_new_external_root<MonoObject>(result_address);
     try {
+        if (NativeAOT) {
+            signature = arguments[4];
+            function_js_handle = arguments[5];
+            is_exception = arguments[6];
+        }
+
         const version = get_signature_version(signature);
         mono_assert(version === 2, () => `Signature version ${version} mismatch.`);
 
-        const js_function_name = monoStringToString(function_name_root)!;
+        const js_function_name = NativeAOT ? Module.UTF8ToString(arguments[0], arguments[1]) : monoStringToString(function_name_root)!;
         const mark = startMeasure();
-        const js_module_name = monoStringToString(module_name_root)!;
+        const js_module_name = NativeAOT ? Module.UTF8ToString(arguments[2], arguments[3]) : monoStringToString(module_name_root)!;
         mono_log_debug(`Binding [JSImport] ${js_function_name} from ${js_module_name} module`);
 
         const fn = mono_wasm_lookup_function(js_function_name, js_module_name);
@@ -122,103 +129,6 @@ function mono_wasm_bind_js_function_mono(function_name: MonoStringRef, module_na
         function_name_root.release();
     }
 }
-
-function mono_wasm_bind_js_function_naot(function_name: CharPtr, function_name_length: number, module_name: CharPtr, module_name_length: number, signature: JSFunctionSignature, function_js_handle: Int32Ptr, is_exception: Int32Ptr): void {
-    assert_bindings();
-    try {
-        const version = get_signature_version(signature);
-        mono_assert(version === 2, () => `Signature version ${version} mismatch.`);
-
-        const js_function_name = Module.UTF8ToString(function_name, function_name_length);
-        const mark = startMeasure();
-        const js_module_name = Module.UTF8ToString(module_name, module_name_length);
-        mono_log_debug(`Binding [JSImport] ${js_function_name} from ${js_module_name} module`);
-
-        const fn = mono_wasm_lookup_function(js_function_name, js_module_name);
-        const args_count = get_signature_argument_count(signature);
-
-        const arg_marshalers: (BoundMarshalerToJs)[] = new Array(args_count);
-        const arg_cleanup: (Function | undefined)[] = new Array(args_count);
-        let has_cleanup = false;
-        for (let index = 0; index < args_count; index++) {
-            const sig = get_sig(signature, index + 2);
-            const marshaler_type = get_signature_type(sig);
-            const arg_marshaler = bind_arg_marshal_to_js(sig, marshaler_type, index + 2);
-            mono_assert(arg_marshaler, "ERR42: argument marshaler must be resolved");
-            arg_marshalers[index] = arg_marshaler;
-            if (marshaler_type === MarshalerType.Span) {
-                arg_cleanup[index] = (js_arg: any) => {
-                    if (js_arg) {
-                        js_arg.dispose();
-                    }
-                };
-                has_cleanup = true;
-            }
-            else if (marshaler_type == MarshalerType.Task) {
-                assert_synchronization_context();
-            }
-        }
-        const res_sig = get_sig(signature, 1);
-        const res_marshaler_type = get_signature_type(res_sig);
-        if (res_marshaler_type == MarshalerType.Task) {
-            assert_synchronization_context();
-        }
-        const res_converter = bind_arg_marshal_to_cs(res_sig, res_marshaler_type, 1);
-
-        const closure: BindingClosure = {
-            fn,
-            fqn: js_module_name + ":" + js_function_name,
-            args_count,
-            arg_marshalers,
-            res_converter,
-            has_cleanup,
-            arg_cleanup,
-            isDisposed: false,
-        };
-        let bound_fn: Function;
-        if (args_count == 0 && !res_converter) {
-            bound_fn = bind_fn_0V(closure);
-        }
-        else if (args_count == 1 && !has_cleanup && !res_converter) {
-            bound_fn = bind_fn_1V(closure);
-        }
-        else if (args_count == 1 && !has_cleanup && res_converter) {
-            bound_fn = bind_fn_1R(closure);
-        }
-        else if (args_count == 2 && !has_cleanup && res_converter) {
-            bound_fn = bind_fn_2R(closure);
-        }
-        else {
-            bound_fn = bind_fn(closure);
-        }
-
-        // this is just to make debugging easier. 
-        // It's not CSP compliant and possibly not performant, that's why it's only enabled in debug builds
-        // in Release configuration, it would be a trimmed by rollup
-        if (BuildConfiguration === "Debug" && !runtimeHelpers.cspPolicy) {
-            try {
-                bound_fn = new Function("fn", "return (function JSImport_" + js_function_name.replaceAll(".", "_") + "(){ return fn.apply(this, arguments)});")(bound_fn);
-            }
-            catch (ex) {
-                runtimeHelpers.cspPolicy = true;
-            }
-        }
-
-        (<any>bound_fn)[imported_js_function_symbol] = closure;
-        const fn_handle = fn_wrapper_by_fn_handle.length;
-        fn_wrapper_by_fn_handle.push(bound_fn);
-        setI32(function_js_handle, <any>fn_handle);
-        wrap_no_error(is_exception);
-        endMeasure(mark, MeasuredBlock.bindJsFunction, js_function_name);
-    } catch (ex: any) {
-        setI32(function_js_handle, 0);
-        Module.err(ex.toString());
-        wrap_error(is_exception, ex);
-    }
-}
-
-export const mono_wasm_bind_js_function = NativeAOT ? mono_wasm_bind_js_function_naot : mono_wasm_bind_js_function_mono;
-(mono_wasm_bind_js_function as any).originalName = "mono_wasm_bind_js_function";
 
 function bind_fn_0V(closure: BindingClosure) {
     const fn = closure.fn;
@@ -488,10 +398,11 @@ function _wrap_error_flag(is_exception: Int32Ptr | null, ex: any): string {
 
 export function wrap_error_root(is_exception: Int32Ptr | null, ex: any, result: WasmRoot<MonoObject>): void {
     const res = _wrap_error_flag(is_exception, ex);
+    if (NativeAOT) {
+        return;
+    }
+
     stringToMonoStringRoot(res, <any>result);
-}
-export function wrap_error(is_exception: Int32Ptr | null, ex: any): void {
-    _wrap_error_flag(is_exception, ex);
 }
 
 // to set out parameters of icalls
@@ -502,13 +413,6 @@ export function wrap_no_error_root(is_exception: Int32Ptr | null, result?: WasmR
     }
     if (result) {
         result.clear();
-    }
-}
-
-export function wrap_no_error(is_exception: Int32Ptr | null): void {
-    if (is_exception) {
-        receiveWorkerHeapViews();
-        setI32_unchecked(is_exception, 0);
     }
 }
 
