@@ -431,7 +431,6 @@ async function mono_wasm_get_assembly_exports_mono(assembly: string): Promise<an
             // it doesn't have the __GeneratedInitializer class
             cwraps.mono_wasm_runtime_run_module_cctor(asm);
         }
-
         endMeasure(mark, MeasuredBlock.getAssemblyExports, assembly);
     }
 
