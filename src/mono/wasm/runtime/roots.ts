@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+import NativeAOT from "consts:nativeAOT";
 import cwraps from "./cwraps";
 import { Module } from "./globals";
 import { VoidPtr, ManagedPointer, NativePointer } from "./types/emscripten";
@@ -60,6 +61,15 @@ export function mono_wasm_new_root_buffer_from_pointer(offset: VoidPtr, capacity
  * Releasing this root will not de-allocate the root space. You still need to call .release().
  */
 export function mono_wasm_new_external_root<T extends MonoObject>(address: VoidPtr | MonoObjectRef): WasmRoot<T> {
+    if (NativeAOT) {
+        return {
+            // eslint-disable-next-line @typescript-eslint/no-empty-function
+            release: () => {},
+            // eslint-disable-next-line @typescript-eslint/no-empty-function
+            clear: () => {}
+        } as unknown as WasmRoot<T>;
+    }
+
     let result: WasmExternalRoot<T>;
 
     if (!address)

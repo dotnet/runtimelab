@@ -1,7 +1,8 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <LinkNativeDependsOn Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' == 'true'">$(LinkNativeDependsOn);PrepareDotNetJsApiForLinking</LinkNativeDependsOn>
+    <LinkNativeDependsOn>$(LinkNativeDependsOn);PrepareDotNetJsApiForLinking</LinkNativeDependsOn>
     <NativeBinary>$(NativeOutputPath)dotnet.native.js</NativeBinary>
+    <IlcExportUnmanagedEntrypoints>true</IlcExportUnmanagedEntrypoints><!-- For JSExports -->
   </PropertyGroup>
   <ItemGroup>
     <EmccExportedFunction Include="_free" />
@@ -52,7 +53,7 @@
       <_DotNetJsLinkerFlag Include="-Wl,--export,__main_argc_argv" /><!-- Export main, a temporal solution until we have a way to export async main -->
       <_DotNetJsLinkerFlag Include="-s EXPORT_ES6=1" /><!-- Produce ES6 module as expented by hosting API -->
       <_DotNetJsLinkerFlag Include="-s MODULARIZE=1" /><!-- Produce ES6 module as expented by hosting API -->
-      <_DotNetJsLinkerFlag Include="-s INVOKE_RUN=0" /><!-- Don't automatically run main, it is called explicitly by ser -->
+      <_DotNetJsLinkerFlag Include="-s INVOKE_RUN=0" /><!-- Don't automatically run main, it is called explicitly by user -->
       <_DotNetJsLinkerFlag Include="-s EXPORT_NAME=&quot;'createDotnetRuntime'&quot;" /><!-- Export emscripten factory as 'createDotnetRuntime', as expented by hosting API -->
       <_DotNetJsLinkerFlag Include="-s ENVIRONMENT=&quot;'web,webview,worker,node,shell'&quot;" /><!-- Add support for all enviroments (default list is smaller) -->
       <_DotNetJsLinkerFlag Condition="'$(EmccEnvironment)' != ''" Include="-s ENVIRONMENT=&quot;$(EmccEnvironment)&quot;" />
@@ -72,18 +73,26 @@
       <!-- Exported functions required by user or runtime API -->
       <_DotNetJsLinkerFlag Include="-s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$(_EmccExportedLibraryFunction)" Condition="'$(_EmccExportedLibraryFunction)' != ''" />
       <_DotNetJsLinkerFlag Include="-s EXPORTED_RUNTIME_METHODS=$(_EmccExportedRuntimeMethods)" />
-      <_DotNetJsLinkerFlag Include="-s EXPORTED_FUNCTIONS=$(_EmccExportedFunctions)" />
+      <_DotNetJsLinkerFlag Include="-s EXPORTED_FUNCTIONS=$(_EmccExportedFunctions)" Condition="'$(ExportsFile)' == ''" /><!-- Multiple args in the same rsp file is not support, add functions to app exports -->
       <_DotNetJsLinkerFlag Include="$(EmccExtraLDFlags)" />
     </ItemGroup>
     <ItemGroup>
       <CustomLinkerArg Include="@(_DotNetJsLinkerFlag)" />
     </ItemGroup>
+    <ReadLinesFromFile File="$(ExportsFile)" Condition="'$(ExportsFile)' != ''">
+      <Output TaskParameter="Lines" ItemName="_ExistingExports" />
+    </ReadLinesFromFile>
+    <ItemGroup Condition="'$(ExportsFile)' != ''">
+      <_ExportsToAddToExportsFile Include="@(EmccExportedFunction)" />
+      <_ExportsToAddToExportsFile Remove="@(_ExistingExports)" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(ExportsFile)" Lines="@(_ExportsToAddToExportsFile)" Overwrite="false" Encoding="utf-8" Condition="'@(_ExportsToAddToExportsFile->Count())' != '0'" />
   </Target>
   <Target Name="CopyDotnetJsAfterLinking" AfterTargets="LinkNativeLlvm">
     <ItemGroup>
       <_FilesToCopyToNative Include="$(IlcFrameworkNativePath)\dotnet*.js" />
       <_FilesToCopyToNative Include="$(IlcFrameworkNativePath)\dotnet*.map" Condition="'$(WasmEmitSourceMap)' == 'true'" />
-      <_FilesToCopyToNative Include="@(WasmExtraFilesToDeploy)" /><!-- Use defined extra files to be included in the build output -->
+      <_FilesToCopyToNative Include="@(WasmExtraFilesToDeploy)" /><!-- User defined extra files to be included in the build output -->
     </ItemGroup>
     <Copy SourceFiles="@(_FilesToCopyToNative)" DestinationFolder="$(NativeOutputPath)" />
   </Target>

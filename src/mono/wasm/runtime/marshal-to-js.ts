@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+import NativeAOT from "consts:nativeAOT";
 import MonoWasmThreads from "consts:monoWasmThreads";
 import BuildConfiguration from "consts:configuration";
 
@@ -323,6 +324,9 @@ export function marshal_exception_to_js(arg: JSMarshalerArgument): Error | null 
     const type = get_arg_type(arg);
     if (type == MarshalerType.None) {
         return null;
+    }
+    if (NativeAOT) {
+        return new Error("C# exception from NativeAOT"); // TODO-LLVM-JSInterop: Marshal exception message
     }
     if (type == MarshalerType.JSException) {
         // this is JSException roundtrip

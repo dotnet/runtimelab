@@ -3,10 +3,30 @@
 
 import { dotnet, exit } from './dotnet.js'
 
-const { runMain } = await dotnet
+const { runMain, setModuleImports, getAssemblyExports } = await dotnet
     .withApplicationArguments("A", "B", "C")
     .create();
 
-var result = await runMain();
+setModuleImports('main.js', {
+    interop: {
+        math: (a, b, c) => a + b * c,
+    }
+});
+
+let result = await runMain();
+
+const exports = await getAssemblyExports("DotnetJs.dll");
+const square = exports.DotnetJsApp.Program.Interop.Square(5);
+if (square != 25) {
+    result = 13;
+}
+
+try {
+    exports.DotnetJsApp.Program.Interop.Throw();
+    result = 14;
+} catch (e) {
+    console.log(`Thrown expected exception: ${e}`);
+}
+
 console.log(`Exit code ${result}`);
 exit(result);

@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+/* eslint-disable prefer-rest-params */
 
+import NativeAOT from "consts:nativeAOT";
 import BuildConfiguration from "consts:configuration";
 
 import MonoWasmThreads from "consts:monoWasmThreads";
@@ -13,6 +15,7 @@ import {
 } from "./marshal";
 import { mono_wasm_new_external_root, mono_wasm_new_root } from "./roots";
 import { monoStringToString } from "./strings";
+import { utf16ToString } from "./strings";
 import { MonoObjectRef, MonoStringRef, MonoString, MonoObject, MonoMethod, JSMarshalerArguments, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, VoidPtrNull, MonoObjectRefNull, MonoObjectNull, MarshalerType } from "./types/internal";
 import { Int32Ptr } from "./types/emscripten";
 import cwraps from "./cwraps";
@@ -22,34 +25,48 @@ import { startMeasure, MeasuredBlock, endMeasure } from "./profiler";
 import { mono_log_debug } from "./logging";
 import { assert_synchronization_context } from "./pthreads/shared";
 
+// function mono_wasm_bind_cs_function_naot(fully_qualified_name: CharPtr, fully_qualified_name_length: number, signature_hash: number, signature: JSFunctionSignature, is_exception: Int32Ptr): void
 export function mono_wasm_bind_cs_function(fully_qualified_name: MonoStringRef, signature_hash: number, signature: JSFunctionSignature, is_exception: Int32Ptr, result_address: MonoObjectRef): void {
     assert_bindings();
     const fqn_root = mono_wasm_new_external_root<MonoString>(fully_qualified_name), resultRoot = mono_wasm_new_external_root<MonoObject>(result_address);
     const mark = startMeasure();
     try {
+        if (NativeAOT) {
+            signature_hash = arguments[2];
+            signature = arguments[3];
+            is_exception = arguments[4];
+        }
         const version = get_signature_version(signature);
         mono_assert(version === 2, () => `Signature version ${version} mismatch.`);
 
         const args_count = get_signature_argument_count(signature);
-        const js_fqn = monoStringToString(fqn_root)!;
+        const js_fqn = NativeAOT ? utf16ToString(arguments[0], arguments[0] + 2 * arguments[1]) : monoStringToString(fqn_root)!;
         mono_assert(js_fqn, "fully_qualified_name must be string");
 
         mono_log_debug(`Binding [JSExport] ${js_fqn}`);
 
         const { assembly, namespace, classname, methodname } = parseFQN(js_fqn);
 
-        const asm = assembly_load(assembly);
-        if (!asm)
-            throw new Error("Could not find assembly: " + assembly);
+        let method = null;
+        if (NativeAOT) {
+            const wrapper_name = fixupSymbolName(`${js_fqn}_${signature_hash}`);
+            method = (Module as any)["_" + wrapper_name];
+            if (!method)
+                throw new Error(`Could not find method: ${wrapper_name} in ${js_fqn}`);
+        } else {
+            const asm = assembly_load(assembly);
+            if (!asm)
+                throw new Error("Could not find assembly: " + assembly);
 
-        const klass = cwraps.mono_wasm_assembly_find_class(asm, namespace, classname);
-        if (!klass)
-            throw new Error("Could not find class: " + namespace + ":" + classname + " in assembly " + assembly);
+            const klass = cwraps.mono_wasm_assembly_find_class(asm, namespace, classname);
+            if (!klass)
+                throw new Error("Could not find class: " + namespace + ":" + classname + " in assembly " + assembly);
 
-        const wrapper_name = `__Wrapper_${methodname}_${signature_hash}`;
-        const method = cwraps.mono_wasm_assembly_find_method(klass, wrapper_name, -1);
-        if (!method)
-            throw new Error(`Could not find method: ${wrapper_name} in ${klass} [${assembly}]`);
+            const wrapper_name = `__Wrapper_${methodname}_${signature_hash}`;
+            method = cwraps.mono_wasm_assembly_find_method(klass, wrapper_name, -1);
+            if (!method)
+                throw new Error(`Could not find method: ${wrapper_name} in ${klass} [${assembly}]`);
+        }
 
         const arg_marshalers: (BoundMarshalerToCs)[] = new Array(args_count);
         for (let index = 0; index < args_count; index++) {
@@ -120,6 +137,28 @@ export function mono_wasm_bind_cs_function(fully_qualified_name: MonoStringRef, 
         resultRoot.release();
         fqn_root.release();
     }
+}
+
+const s_charsToReplace = [".", "-", "+"];
+
+function fixupSymbolName(name: string) {
+    // Sync with JSExportGenerator.FixupSymbolName
+    let result = "";
+    for (let index = 0; index < name.length; index++) {
+        const b = name[index];
+        if ((b >= "0" && b <= "9") ||
+            (b >= "a" && b <= "z") ||
+            (b >= "A" && b <= "Z") ||
+            (b == "_")) {
+            result += b;
+        } else if( s_charsToReplace.includes(b)) {
+            result += "_";
+        } else {
+            result += `_${b.charCodeAt(0).toString(16).toUpperCase()}_`;
+        }
+    }
+
+    return result;
 }
 
 function bind_fn_0V(closure: BindingClosure) {
@@ -266,7 +305,7 @@ type BindingClosure = {
     isDisposed: boolean,
 }
 
-export function invoke_method_and_handle_exception(method: MonoMethod, args: JSMarshalerArguments): void {
+function invoke_method_and_handle_exception_mono(method: MonoMethod, args: JSMarshalerArguments): void {
     assert_bindings();
     const fail_root = mono_wasm_new_root<MonoString>();
     try {
@@ -281,6 +320,16 @@ export function invoke_method_and_handle_exception(method: MonoMethod, args: JSM
         fail_root.release();
     }
 }
+
+function invoke_method_and_handle_exception_naot(method: Function, args: JSMarshalerArguments): void {
+    method(args);
+    if (is_args_exception(args)) {
+        const exc = get_arg(args, 0);
+        throw marshal_exception_to_js(exc);
+    }
+}
+
+export const invoke_method_and_handle_exception: (method: any, args: JSMarshalerArguments) => void = NativeAOT ? invoke_method_and_handle_exception_naot : invoke_method_and_handle_exception_mono;
 
 export const exportsByAssembly: Map<string, any> = new Map();
 function _walk_exports_to_set_function(assembly: string, namespace: string, classname: string, methodname: string, signature_hash: number, fn: Function): void {
@@ -312,7 +361,7 @@ function _walk_exports_to_set_function(assembly: string, namespace: string, clas
     scope[`${methodname}.${signature_hash}`] = fn;
 }
 
-export async function mono_wasm_get_assembly_exports(assembly: string): Promise<any> {
+async function mono_wasm_get_assembly_exports_mono(assembly: string): Promise<any> {
     assert_bindings();
     const result = exportsByAssembly.get(assembly);
     if (!result) {
@@ -350,6 +399,28 @@ export async function mono_wasm_get_assembly_exports(assembly: string): Promise<
 
     return exportsByAssembly.get(assembly) || {};
 }
+
+async function mono_wasm_get_assembly_exports_naot(assembly: string): Promise<any> {
+    assert_bindings();
+    const result = exportsByAssembly.get(assembly);
+    if (!result) {
+        const mark = startMeasure();
+        
+        let assemblyWithoutExtension = assembly;
+        if (assemblyWithoutExtension.endsWith(".dll")) {
+            assemblyWithoutExtension = assemblyWithoutExtension.substring(0, assembly.length - 4);
+        }
+        const register = (Module as any)["_" + assemblyWithoutExtension + "__GeneratedInitializer" + "__Register_"];
+        mono_assert(register, `Missing wasm export for JSExport registration function in assembly ${assembly}`);
+        register();
+
+        endMeasure(mark, MeasuredBlock.getAssemblyExports, assembly);
+    }
+
+    return exportsByAssembly.get(assembly) || {};
+}
+
+export const mono_wasm_get_assembly_exports = NativeAOT ? mono_wasm_get_assembly_exports_naot : mono_wasm_get_assembly_exports_mono;
 
 export function parseFQN(fqn: string)
     : { assembly: string, namespace: string, classname: string, methodname: string } {

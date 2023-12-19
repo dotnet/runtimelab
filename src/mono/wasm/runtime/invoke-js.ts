@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+/* eslint-disable prefer-rest-params */
 
+import NativeAOT from "consts:nativeAOT";
 import MonoWasmThreads from "consts:monoWasmThreads";
 import BuildConfiguration from "consts:configuration";
 
@@ -8,6 +10,7 @@ import { marshal_exception_to_cs, bind_arg_marshal_to_cs } from "./marshal-to-cs
 import { get_signature_argument_count, bound_js_function_symbol, get_sig, get_signature_version, get_signature_type, imported_js_function_symbol } from "./marshal";
 import { setI32, setI32_unchecked, receiveWorkerHeapViews } from "./memory";
 import { monoStringToString, stringToMonoStringRoot } from "./strings";
+import { utf16ToString } from "./strings";
 import { MonoObject, MonoObjectRef, MonoString, MonoStringRef, JSFunctionSignature, JSMarshalerArguments, WasmRoot, BoundMarshalerToJs, JSFnHandle, BoundMarshalerToCs, JSHandle, MarshalerType } from "./types/internal";
 import { Int32Ptr } from "./types/emscripten";
 import { INTERNAL, Module, loaderHelpers, mono_assert, runtimeHelpers } from "./globals";
@@ -21,18 +24,25 @@ import { assert_synchronization_context } from "./pthreads/shared";
 
 export const fn_wrapper_by_fn_handle: Function[] = <any>[null];// 0th slot is dummy, main thread we free them on shutdown. On web worker thread we free them when worker is detached.
 
+// function mono_wasm_bind_js_function_naot(function_name: CharPtr, function_name_length: number, module_name: CharPtr, module_name_length: number, signature: JSFunctionSignature, function_js_handle: Int32Ptr, is_exception: Int32Ptr): void
 export function mono_wasm_bind_js_function(function_name: MonoStringRef, module_name: MonoStringRef, signature: JSFunctionSignature, function_js_handle: Int32Ptr, is_exception: Int32Ptr, result_address: MonoObjectRef): void {
     assert_bindings();
     const function_name_root = mono_wasm_new_external_root<MonoString>(function_name),
         module_name_root = mono_wasm_new_external_root<MonoString>(module_name),
         resultRoot = mono_wasm_new_external_root<MonoObject>(result_address);
     try {
+        if (NativeAOT) {
+            signature = arguments[4];
+            function_js_handle = arguments[5];
+            is_exception = arguments[6];
+        }
+
         const version = get_signature_version(signature);
         mono_assert(version === 2, () => `Signature version ${version} mismatch.`);
 
-        const js_function_name = monoStringToString(function_name_root)!;
+        const js_function_name = NativeAOT ? utf16ToString(arguments[0], arguments[0] + 2 * arguments[1]) : monoStringToString(function_name_root)!;
         const mark = startMeasure();
-        const js_module_name = monoStringToString(module_name_root)!;
+        const js_module_name = NativeAOT ? utf16ToString(arguments[2], arguments[2] + 2 * arguments[3]) : monoStringToString(module_name_root)!;
         mono_log_debug(`Binding [JSImport] ${js_function_name} from ${js_module_name} module`);
 
         const fn = mono_wasm_lookup_function(js_function_name, js_module_name);
@@ -389,6 +399,10 @@ function _wrap_error_flag(is_exception: Int32Ptr | null, ex: any): string {
 
 export function wrap_error_root(is_exception: Int32Ptr | null, ex: any, result: WasmRoot<MonoObject>): void {
     const res = _wrap_error_flag(is_exception, ex);
+    if (NativeAOT) {
+        return;
+    }
+
     stringToMonoStringRoot(res, <any>result);
 }
 
