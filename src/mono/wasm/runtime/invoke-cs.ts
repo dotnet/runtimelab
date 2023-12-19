@@ -39,7 +39,7 @@ export function mono_wasm_bind_cs_function(fully_qualified_name: MonoStringRef, 
         mono_assert(version === 2, () => `Signature version ${version} mismatch.`);
 
         const args_count = get_signature_argument_count(signature);
-        const js_fqn = NativeAOT ? Module.UTF8ToString(arguments[0], arguments[1]) : monoStringToString(fqn_root)!;
+        const js_fqn = NativeAOT ? Module.UTF16ToString(arguments[0], arguments[1]) : monoStringToString(fqn_root)!;
         mono_assert(js_fqn, "fully_qualified_name must be string");
 
         mono_log_debug(`Binding [JSExport] ${js_fqn}`);

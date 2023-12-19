@@ -25,6 +25,7 @@
     <EmccExportedRuntimeMethod Include="addFunction" />
     <EmccExportedRuntimeMethod Include="UTF8ToString" />
     <EmccExportedRuntimeMethod Include="UTF8ArrayToString" />
+    <EmccExportedRuntimeMethod Include="UTF16ToString" />
     <EmccExportedRuntimeMethod Include="stringToUTF8Array" />
     <EmccExportedRuntimeMethod Include="FS_createPath" />
     <EmccExportedRuntimeMethod Include="FS_createDataFile" />
@@ -53,7 +54,7 @@
       <_DotNetJsLinkerFlag Include="-Wl,--export,__main_argc_argv" /><!-- Export main, a temporal solution until we have a way to export async main -->
       <_DotNetJsLinkerFlag Include="-s EXPORT_ES6=1" /><!-- Produce ES6 module as expented by hosting API -->
       <_DotNetJsLinkerFlag Include="-s MODULARIZE=1" /><!-- Produce ES6 module as expented by hosting API -->
-      <_DotNetJsLinkerFlag Include="-s INVOKE_RUN=0" /><!-- Don't automatically run main, it is called explicitly by ser -->
+      <_DotNetJsLinkerFlag Include="-s INVOKE_RUN=0" /><!-- Don't automatically run main, it is called explicitly by user -->
       <_DotNetJsLinkerFlag Include="-s EXPORT_NAME=&quot;'createDotnetRuntime'&quot;" /><!-- Export emscripten factory as 'createDotnetRuntime', as expented by hosting API -->
       <_DotNetJsLinkerFlag Include="-s ENVIRONMENT=&quot;'web,webview,worker,node,shell'&quot;" /><!-- Add support for all enviroments (default list is smaller) -->
       <_DotNetJsLinkerFlag Condition="'$(EmccEnvironment)' != ''" Include="-s ENVIRONMENT=&quot;$(EmccEnvironment)&quot;" />

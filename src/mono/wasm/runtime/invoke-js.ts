@@ -39,9 +39,9 @@ export function mono_wasm_bind_js_function(function_name: MonoStringRef, module_
         const version = get_signature_version(signature);
         mono_assert(version === 2, () => `Signature version ${version} mismatch.`);
 
-        const js_function_name = NativeAOT ? Module.UTF8ToString(arguments[0], arguments[1]) : monoStringToString(function_name_root)!;
+        const js_function_name = NativeAOT ? Module.UTF16ToString(arguments[0], arguments[1]) : monoStringToString(function_name_root)!;
         const mark = startMeasure();
-        const js_module_name = NativeAOT ? Module.UTF8ToString(arguments[2], arguments[3]) : monoStringToString(module_name_root)!;
+        const js_module_name = NativeAOT ? Module.UTF16ToString(arguments[2], arguments[3]) : monoStringToString(module_name_root)!;
         mono_log_debug(`Binding [JSImport] ${js_function_name} from ${js_module_name} module`);
 
         const fn = mono_wasm_lookup_function(js_function_name, js_module_name);

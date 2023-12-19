@@ -10,30 +10,28 @@ internal static partial class Interop
 {
     internal static unsafe partial class Runtime
     {
-#pragma warning disable SYSLIB1054
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal static extern void ReleaseCSOwnedObject(IntPtr jsHandle);
-        [DllImport("*", EntryPoint = "mono_wasm_bind_js_function")]
-        public static extern unsafe void BindJSFunction(string function_name, int function_name_length, string module_name, int module_name_length, void* signature, out IntPtr bound_function_js_handle, out int is_exception);
+        [LibraryImport("*", EntryPoint = "mono_wasm_bind_js_function", StringMarshalling = StringMarshalling.Utf16)]
+        public static unsafe partial void BindJSFunction(string function_name, int function_name_length, string module_name, int module_name_length, void* signature, out IntPtr bound_function_js_handle, out int is_exception);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern void InvokeJSFunction(IntPtr bound_function_js_handle, void* data);
-        [DllImport("*", EntryPoint = "mono_wasm_invoke_import")]
-        public static extern unsafe void InvokeImport(IntPtr fn_handle, void* data);
-        [DllImport("*", EntryPoint = "mono_wasm_bind_cs_function")]
-        public static extern unsafe void BindCSFunction(string fully_qualified_name, int fully_qualified_name_length, int signature_hash, void* signature, out int is_exception);
+        [LibraryImport("*", EntryPoint = "mono_wasm_invoke_import", StringMarshalling = StringMarshalling.Utf16)]
+        public static unsafe partial void InvokeImport(IntPtr fn_handle, void* data);
+        [LibraryImport("*", EntryPoint = "mono_wasm_bind_cs_function", StringMarshalling = StringMarshalling.Utf16)]
+        public static unsafe partial void BindCSFunction(string fully_qualified_name, int fully_qualified_name_length, int signature_hash, void* signature, out int is_exception);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern void ResolveOrRejectPromise(void* data);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern IntPtr RegisterGCRoot(IntPtr start, int bytesSize, IntPtr name);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern void DeregisterGCRoot(IntPtr handle);
-#pragma warning restore SYSLIB1054
 
         public static unsafe void BindJSFunction(string function_name, string module_name, void* signature, out IntPtr bound_function_js_handle, out int is_exception, out object result)
         {
             BindJSFunction(function_name, function_name.Length, module_name, module_name.Length, signature, out bound_function_js_handle, out is_exception);
             if (is_exception != 0)
-                result = "Runtime.BindJSFunction failed";
+                result = "Runtime.BindJSFunction failed"; // TODO-LLVM-JSInterop: Marshal exception message
             else
                 result = "";
         }
@@ -42,7 +40,7 @@ internal static partial class Interop
         {
             BindCSFunction(fully_qualified_name, fully_qualified_name.Length, signature_hash, signature, out is_exception);
             if (is_exception != 0)
-                result = "Runtime.BindCSFunction failed";
+                result = "Runtime.BindCSFunction failed"; // TODO-LLVM-JSInterop: Marshal exception message
             else
                 result = "";
         }
