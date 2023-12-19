@@ -173,10 +173,6 @@ function bind_fn_0V(closure: BindingClosure) {
         try {
             const args = alloc_stack_frame(2);
             // call C# side
-            if (NativeAOT) {
-                invoke_method_and_handle_exception_naot(method as any, args);
-                return;
-            }
             invoke_method_and_handle_exception(method, args);
         } finally {
             Module.stackRestore(sp);
@@ -200,10 +196,6 @@ function bind_fn_1V(closure: BindingClosure) {
             marshaler1(args, arg1);
 
             // call C# side
-            if (NativeAOT) {
-                invoke_method_and_handle_exception_naot(method as any, args);
-                return;
-            }
             invoke_method_and_handle_exception(method, args);
         } finally {
             Module.stackRestore(sp);
@@ -228,11 +220,6 @@ function bind_fn_1R(closure: BindingClosure) {
             marshaler1(args, arg1);
 
             // call C# side
-            if (NativeAOT) {
-                invoke_method_and_handle_exception_naot(method as any, args);
-                const js_result = res_converter(args);
-                return js_result;
-            }
             invoke_method_and_handle_exception(method, args);
 
             const js_result = res_converter(args);
@@ -262,11 +249,6 @@ function bind_fn_2R(closure: BindingClosure) {
             marshaler2(args, arg2);
 
             // call C# side
-            if (NativeAOT) {
-                invoke_method_and_handle_exception_naot(method as any, args);
-                const js_result = res_converter(args);
-                return js_result;
-            }
             invoke_method_and_handle_exception(method, args);
 
             const js_result = res_converter(args);
@@ -301,14 +283,6 @@ function bind_fn(closure: BindingClosure) {
             }
 
             // call C# side
-            if (NativeAOT) {
-                invoke_method_and_handle_exception_naot(method as any, args);
-                if (res_converter) {
-                    const js_result = res_converter(args);
-                    return js_result;
-                }
-                return;
-            }
             invoke_method_and_handle_exception(method, args);
 
             if (res_converter) {
@@ -331,7 +305,7 @@ type BindingClosure = {
     isDisposed: boolean,
 }
 
-export function invoke_method_and_handle_exception(method: MonoMethod, args: JSMarshalerArguments): void {
+function invoke_method_and_handle_exception_mono(method: MonoMethod, args: JSMarshalerArguments): void {
     assert_bindings();
     const fail_root = mono_wasm_new_root<MonoString>();
     try {
@@ -347,13 +321,15 @@ export function invoke_method_and_handle_exception(method: MonoMethod, args: JSM
     }
 }
 
-export function invoke_method_and_handle_exception_naot(method: Function, args: JSMarshalerArguments): void {
+function invoke_method_and_handle_exception_naot(method: Function, args: JSMarshalerArguments): void {
     method(args);
     if (is_args_exception(args)) {
         const exc = get_arg(args, 0);
         throw marshal_exception_to_js(exc);
     }
 }
+
+export const invoke_method_and_handle_exception: (method: any, args: JSMarshalerArguments) => void = NativeAOT ? invoke_method_and_handle_exception_naot : invoke_method_and_handle_exception_mono;
 
 export const exportsByAssembly: Map<string, any> = new Map();
 function _walk_exports_to_set_function(assembly: string, namespace: string, classname: string, methodname: string, signature_hash: number, fn: Function): void {
