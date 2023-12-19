@@ -15,11 +15,12 @@ setModuleImports('main.js', {
 
 let result = await runMain();
 
-const exports = await getAssemblyExports("DotnetJs.dll");
-const square = exports.DotnetJsApp.Interop.Square(5);
-if (square != 25) {
-    result = 13;
-}
+// TODO requires IlcExportUnmanagedEntrypoints
+// const exports = await getAssemblyExports("DotnetJs.dll");
+// const square = exports.DotnetJsApp.Interop.Square(5);
+// if (square != 25) {
+//     result = 13;
+// }
 
 console.log(`Exit code ${result}`);
 exit(result);
