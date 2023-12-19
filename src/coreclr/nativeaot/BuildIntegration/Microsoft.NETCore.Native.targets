@@ -57,6 +57,17 @@ The .NET Foundation licenses this file to you under the MIT license.
   </PropertyGroup>
 
   <PropertyGroup>
+    <!-- Keep these before DotNetJsApi.targets -->
+    <LinkNativeDependsOn>IlcCompile</LinkNativeDependsOn>
+    <LinkNativeDependsOn Condition="$(NativeCodeGen) == 'llvm'">CompileWasmObjects</LinkNativeDependsOn>
+
+    <LinkNativeDependsOnSingleOrLlvm>LinkNativeSingle</LinkNativeDependsOnSingleOrLlvm>
+    <LinkNativeDependsOnSingleOrLlvm Condition="$(NativeCodeGen) == 'llvm'">LinkNativeLlvm</LinkNativeDependsOnSingleOrLlvm>
+  </PropertyGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)DotNetJsApi.targets" Condition="'$(_targetArchitecture)' == 'wasm' and '$(DotNetJsApi)' == 'true'" />
+
+  <PropertyGroup>
     <NativeObjectExt Condition="'$(_targetOS)' == 'win'">.obj</NativeObjectExt>
     <NativeObjectExt Condition="'$(_targetOS)' != 'win'">.o</NativeObjectExt>
     <LlvmObjectExt Condition="'$(NativeCodeGen)' == 'llvm'">.bc</LlvmObjectExt>
@@ -87,17 +98,11 @@ The .NET Foundation licenses this file to you under the MIT license.
     <ExportsFileExt Condition="'$(_targetOS)' != 'win'">.exports</ExportsFileExt>
 
     <NativeObject>$(NativeIntermediateOutputPath)$(TargetName)$(NativeObjectExt)</NativeObject>
-    <NativeBinary>$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)</NativeBinary>
+    <NativeBinary Condition="'$(NativeBinary)' == ''">$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)</NativeBinary>
     <IlcExportUnmanagedEntrypoints Condition="'$(IlcExportUnmanagedEntrypoints)' == '' and '$(NativeLib)' == 'Shared'">true</IlcExportUnmanagedEntrypoints>
     <ExportsFile Condition="$(IlcExportUnmanagedEntrypoints) == 'true' and $(ExportsFile) == ''">$(NativeIntermediateOutputPath)$(TargetName)$(ExportsFileExt)</ExportsFile>
 
     <IlcCompileOutput>$(NativeObject)</IlcCompileOutput>
-
-    <LinkNativeDependsOn>IlcCompile</LinkNativeDependsOn>
-    <LinkNativeDependsOn Condition="$(NativeCodeGen) == 'llvm'">CompileWasmObjects</LinkNativeDependsOn>
-
-    <LinkNativeDependsOnSingleOrLlvm>LinkNativeSingle</LinkNativeDependsOnSingleOrLlvm>
-    <LinkNativeDependsOnSingleOrLlvm Condition="$(NativeCodeGen) == 'llvm'">LinkNativeLlvm</LinkNativeDependsOnSingleOrLlvm>
 
     <FrameworkLibPath Condition="'$(FrameworkLibPath)' == ''">$(NativeOutputPath)</FrameworkLibPath>
     <FrameworkObjPath Condition="'$(FrameworkObjPath)' == ''">$(NativeIntermediateOutputPath)</FrameworkObjPath>
@@ -491,8 +496,6 @@ The .NET Foundation licenses this file to you under the MIT license.
         dsymutil $(DsymUtilOptions) &quot;$(NativeBinary)&quot; &amp;&amp;
         strip -no_code_signature_warning $(_StripFlag) &quot;$(NativeBinary)&quot;" />
   </Target>
-
-  <Import Project="$(MSBuildThisFileDirectory)DotNetJsApi.targets" Condition="'$(_targetArchitecture)' == 'wasm' and '$(DotNetJsApi)' == 'true'" />
 
   <!-- NativeAOT-LLVM: separate target to reduce conflicts -->
   <Target Name="LinkNativeLlvm"
