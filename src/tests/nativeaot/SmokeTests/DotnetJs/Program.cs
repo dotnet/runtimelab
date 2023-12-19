@@ -30,7 +30,7 @@ partial class Program
         internal static int Square(int x)
         {
             var result = x * x;
-            Console.WriteLine($"Computing square of {x} with result {result}");
+            Console.WriteLine($"Computing square of '{x}' with result '{result}'");
             return result;
         }
 
