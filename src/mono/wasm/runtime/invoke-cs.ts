@@ -174,11 +174,7 @@ function bind_fn_0V(closure: BindingClosure) {
             const args = alloc_stack_frame(2);
             // call C# side
             if (NativeAOT) {
-                (method as any)(args);
-                if (is_args_exception(args)) {
-                    const exc = get_arg(args, 0);
-                    throw marshal_exception_to_js(exc);
-                }
+                invoke_method_and_handle_exception_naot(method as any, args);
                 return;
             }
             invoke_method_and_handle_exception(method, args);
@@ -205,11 +201,7 @@ function bind_fn_1V(closure: BindingClosure) {
 
             // call C# side
             if (NativeAOT) {
-                (method as any)(args);
-                if (is_args_exception(args)) {
-                    const exc = get_arg(args, 0);
-                    throw marshal_exception_to_js(exc);
-                }
+                invoke_method_and_handle_exception_naot(method as any, args);
                 return;
             }
             invoke_method_and_handle_exception(method, args);
@@ -237,11 +229,7 @@ function bind_fn_1R(closure: BindingClosure) {
 
             // call C# side
             if (NativeAOT) {
-                (method as any)(args);
-                if (is_args_exception(args)) {
-                    const exc = get_arg(args, 0);
-                    throw marshal_exception_to_js(exc);
-                }
+                invoke_method_and_handle_exception_naot(method as any, args);
                 const js_result = res_converter(args);
                 return js_result;
             }
@@ -275,12 +263,7 @@ function bind_fn_2R(closure: BindingClosure) {
 
             // call C# side
             if (NativeAOT) {
-                (method as any)(args);
-                if (is_args_exception(args)) {
-                    const exc = get_arg(args, 0);
-                    throw marshal_exception_to_js(exc);
-                }
-                
+                invoke_method_and_handle_exception_naot(method as any, args);
                 const js_result = res_converter(args);
                 return js_result;
             }
@@ -319,12 +302,7 @@ function bind_fn(closure: BindingClosure) {
 
             // call C# side
             if (NativeAOT) {
-                (method as any)(args);
-                if (is_args_exception(args)) {
-                    const exc = get_arg(args, 0);
-                    throw marshal_exception_to_js(exc);
-                }
-                
+                invoke_method_and_handle_exception_naot(method as any, args);
                 if (res_converter) {
                     const js_result = res_converter(args);
                     return js_result;
@@ -366,6 +344,14 @@ export function invoke_method_and_handle_exception(method: MonoMethod, args: JSM
     }
     finally {
         fail_root.release();
+    }
+}
+
+export function invoke_method_and_handle_exception_naot(method: Function, args: JSMarshalerArguments): void {
+    method(args);
+    if (is_args_exception(args)) {
+        const exc = get_arg(args, 0);
+        throw marshal_exception_to_js(exc);
     }
 }
 
