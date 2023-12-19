@@ -10,6 +10,7 @@ import { marshal_exception_to_cs, bind_arg_marshal_to_cs } from "./marshal-to-cs
 import { get_signature_argument_count, bound_js_function_symbol, get_sig, get_signature_version, get_signature_type, imported_js_function_symbol } from "./marshal";
 import { setI32, setI32_unchecked, receiveWorkerHeapViews } from "./memory";
 import { monoStringToString, stringToMonoStringRoot } from "./strings";
+import { utf16ToString } from "./strings";
 import { MonoObject, MonoObjectRef, MonoString, MonoStringRef, JSFunctionSignature, JSMarshalerArguments, WasmRoot, BoundMarshalerToJs, JSFnHandle, BoundMarshalerToCs, JSHandle, MarshalerType } from "./types/internal";
 import { Int32Ptr } from "./types/emscripten";
 import { INTERNAL, Module, loaderHelpers, mono_assert, runtimeHelpers } from "./globals";
@@ -39,9 +40,9 @@ export function mono_wasm_bind_js_function(function_name: MonoStringRef, module_
         const version = get_signature_version(signature);
         mono_assert(version === 2, () => `Signature version ${version} mismatch.`);
 
-        const js_function_name = NativeAOT ? Module.UTF16ToString(arguments[0], arguments[1]) : monoStringToString(function_name_root)!;
+        const js_function_name = NativeAOT ? utf16ToString(arguments[0], arguments[0] + 2 * arguments[1]) : monoStringToString(function_name_root)!;
         const mark = startMeasure();
-        const js_module_name = NativeAOT ? Module.UTF16ToString(arguments[2], arguments[3]) : monoStringToString(module_name_root)!;
+        const js_module_name = NativeAOT ? utf16ToString(arguments[2], arguments[2] + 2 * arguments[3]) : monoStringToString(module_name_root)!;
         mono_log_debug(`Binding [JSImport] ${js_function_name} from ${js_module_name} module`);
 
         const fn = mono_wasm_lookup_function(js_function_name, js_module_name);
