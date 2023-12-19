@@ -15,10 +15,12 @@ import {
 import { mono_wasm_new_external_root, mono_wasm_new_root } from "./roots";
 import { monoStringToString } from "./strings";
 import { MonoObjectRef, MonoStringRef, MonoString, MonoObject, MonoMethod, JSMarshalerArguments, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, VoidPtrNull, MonoObjectRefNull, MonoObjectNull, MarshalerType } from "./types/internal";
-import { CharPtr, Int32Ptr } from "./types/emscripten";
+import { Int32Ptr } from "./types/emscripten";
+import { CharPtr } from "./types/emscripten";
 import cwraps from "./cwraps";
 import { assembly_load } from "./class-loader";
-import { assert_bindings, wrap_error, wrap_error_root, wrap_no_error, wrap_no_error_root } from "./invoke-js";
+import { assert_bindings, wrap_error_root, wrap_no_error_root } from "./invoke-js";
+import { wrap_error, wrap_no_error } from "./invoke-js";
 import { startMeasure, MeasuredBlock, endMeasure } from "./profiler";
 import { mono_log_debug } from "./logging";
 import { assert_synchronization_context } from "./pthreads/shared";

@@ -10,7 +10,8 @@ import { get_signature_argument_count, bound_js_function_symbol, get_sig, get_si
 import { setI32, setI32_unchecked, receiveWorkerHeapViews } from "./memory";
 import { monoStringToString, stringToMonoStringRoot } from "./strings";
 import { MonoObject, MonoObjectRef, MonoString, MonoStringRef, JSFunctionSignature, JSMarshalerArguments, WasmRoot, BoundMarshalerToJs, JSFnHandle, BoundMarshalerToCs, JSHandle, MarshalerType } from "./types/internal";
-import { CharPtr, Int32Ptr } from "./types/emscripten";
+import { Int32Ptr } from "./types/emscripten";
+import { CharPtr } from "./types/emscripten";
 import { INTERNAL, Module, loaderHelpers, mono_assert, runtimeHelpers } from "./globals";
 import { bind_arg_marshal_to_js } from "./marshal-to-js";
 import { mono_wasm_new_external_root } from "./roots";
