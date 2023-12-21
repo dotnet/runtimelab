@@ -134,7 +134,7 @@ namespace System.CommandLine
             return command;
         }
 
-        public static CliRootCommand UseExtendedHelp(this CliRootCommand command, Func<HelpContext, IEnumerable<Action<HelpContext>>> customizer)
+        public static CliRootCommand UseExtendedHelp(this CliRootCommand command, Func<HelpContext, IEnumerable<Func<HelpContext, bool>>> customizer)
         {
             foreach (CliOption option in command.Options)
             {

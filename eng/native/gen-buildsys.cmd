@@ -42,9 +42,19 @@ if /i "%__Arch%" == "wasm" (
         exit /B 1
     )
     if /i "%__Os%" == "browser" (
+<<<<<<< HEAD
         if "%EMSDK%" == "" (
             echo Error: Should set EMSDK environment variable pointing to emsdk root.
             exit /B 1
+=======
+        if "%EMSDK_PATH%" == "" (
+            if not exist "%__repoRoot%\src\mono\browser\emsdk" (
+                echo Error: Should set EMSDK_PATH environment variable pointing to emsdk root.
+                exit /B 1
+            )
+
+            set "EMSDK_PATH=%__repoRoot%\src\mono\browser\emsdk"
+>>>>>>> origin/runtime-main
         )
 
         set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
