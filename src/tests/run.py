@@ -551,17 +551,7 @@ def call_msbuild(args):
 
     command += common_msbuild_arguments
 
-<<<<<<< HEAD
-    if args.il_link:
-        command += ["/p:RunTestsViaIllink=true"]
-
-    if args.limited_core_dumps:
-        command += ["/p:LimitedCoreDumps=true"]
-
-    log_path = os.path.join(args.logs_dir, "TestRunResults_%s_%s_%s" % (args.target_os, args.arch, args.build_type))
-=======
     log_path = os.path.join(args.logs_dir, "TestRunResults_%s_%s_%s" % (args.host_os, args.arch, args.build_type))
->>>>>>> origin/runtime-main
     build_log = log_path + ".log"
     wrn_log = log_path + ".wrn"
     err_log = log_path + ".err"

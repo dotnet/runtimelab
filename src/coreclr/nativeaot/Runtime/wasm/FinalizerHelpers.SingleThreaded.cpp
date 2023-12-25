@@ -8,7 +8,6 @@
 #include "common.h"
 #include "gcenv.h"
 #include "gcheaputilities.h"
-#include "gcrhinterface.h"
 
 #include "thread.h"
 #include "threadstore.h"

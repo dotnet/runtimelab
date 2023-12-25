@@ -82,15 +82,12 @@ public class SimpleWasmTestRunner : WasmApplicationEntryPoint
         {
             await Task.Yield();
         }
-<<<<<<< HEAD
 #endif
 
-=======
         if (backgroundExec)
         {
             return await Task.Run(() => runner.Run());
         }
->>>>>>> origin/runtime-main
         return await runner.Run();
     }
 

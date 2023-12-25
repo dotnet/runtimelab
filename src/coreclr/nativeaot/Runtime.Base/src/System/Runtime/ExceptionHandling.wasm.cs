@@ -15,7 +15,6 @@ namespace System.Runtime
     internal static unsafe partial class EH
     {
         private const nuint UnwindIndexNotInTry = 0;
-        private const nuint UnwindIndexNotInTryCatch = 1;
         private const nuint UnwindIndexBase = 2;
 
         [ThreadStatic]

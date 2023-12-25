@@ -2007,13 +2007,10 @@ function jiterpreter_allocate_table(type: JiterpreterTable, base: number, size: 
 // we need to ensure we only ever initialize tables once on each js worker.
 let jiterpreter_tables_allocated = false;
 
-<<<<<<< HEAD:src/mono/wasm/runtime/jiterpreter-support.ts
-export function jiterpreter_allocate_tables(module: any) {
+
+export function jiterpreter_allocate_tables() {
     if (NativeAOT)
         return;
-=======
-export function jiterpreter_allocate_tables() {
->>>>>>> origin/runtime-main:src/mono/browser/runtime/jiterpreter-support.ts
     if (jiterpreter_tables_allocated)
         return;
     jiterpreter_tables_allocated = true;

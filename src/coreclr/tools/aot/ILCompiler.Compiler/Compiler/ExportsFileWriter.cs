@@ -41,11 +41,7 @@ namespace ILCompiler
                     foreach (var method in _methods)
                         streamWriter.WriteLine($"   {method.GetUnmanagedCallersOnlyExportName()}");
                 }
-<<<<<<< HEAD
-                else if (_context.Target.IsOSXLike || _context.Target.OperatingSystem == TargetOS.Browser)
-=======
-                else if(_context.Target.IsApplePlatform)
->>>>>>> origin/runtime-main
+                else if (_context.Target.IsApplePlatform || _context.Target.OperatingSystem == TargetOS.Browser)
                 {
                     foreach (string symbol in _exportSymbols)
                         streamWriter.WriteLine($"_{symbol}");

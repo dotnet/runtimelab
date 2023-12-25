@@ -6421,13 +6421,8 @@ private:
 #endif
 
     bool fgIsCommaThrow(GenTree* tree, bool forFolding = false);
-<<<<<<< HEAD
-=======
-
-    bool fgIsThrow(GenTree* tree);
 
 public:
->>>>>>> origin/runtime-main
     bool fgInDifferentRegions(BasicBlock* blk1, BasicBlock* blk2);
 
 private:

@@ -392,22 +392,13 @@ void Thread::Destroy()
 }
 
 #ifdef HOST_WASM
-<<<<<<< HEAD
-extern RtuObjectRef* GetShadowStackBottom();
-extern RtuObjectRef* GetShadowStackTop();
-=======
 extern OBJECTREF * t_pShadowStackTop;
 extern OBJECTREF * t_pShadowStackBottom;
->>>>>>> origin/runtime-main
 
-void GcScanWasmShadowStack(void * pfnEnumCallback, void * pvCallbackData)
+void GcScanWasmShadowStack(ScanFunc * pfnEnumCallback, ScanContext * pvCallbackData)
 {
     // Wasm does not permit iteration of stack frames so is uses a shadow stack instead
-<<<<<<< HEAD
-    RedhawkGCInterface::EnumGcRefsInRegionConservatively(GetShadowStackBottom(), GetShadowStackTop(), pfnEnumCallback, pvCallbackData);
-=======
     EnumGcRefsInRegionConservatively(t_pShadowStackBottom, t_pShadowStackTop, pfnEnumCallback, pvCallbackData);
->>>>>>> origin/runtime-main
 }
 #endif
 
@@ -460,12 +451,8 @@ bool Thread::GcScanRoots(GcScanRootsCallbackFunc * pfnEnumCallback, void * token
 }
 #endif //DACCESS_COMPILE
 
-<<<<<<< HEAD
 #ifndef TARGET_WASM
-void Thread::GcScanRootsWorker(void * pfnEnumCallback, void * pvCallbackData, StackFrameIterator & frameIterator)
-=======
 void Thread::GcScanRootsWorker(ScanFunc * pfnEnumCallback, ScanContext * pvCallbackData, StackFrameIterator & frameIterator)
->>>>>>> origin/runtime-main
 {
     PTR_OBJECTREF    pHijackedReturnValue = NULL;
     GCRefKind        returnValueKind      = GCRK_Unknown;
@@ -1160,53 +1147,10 @@ EXTERN_C NATIVEAOT_API uint32_t __cdecl RhCompatibleReentrantWaitAny(UInt32_BOOL
 }
 #endif // TARGET_UNIX
 
-<<<<<<< HEAD
-FORCEINLINE bool Thread::InlineTryFastReversePInvoke(ReversePInvokeFrame * pFrame)
-{
-    // remember the current transition frame, so it will be restored when we return from reverse pinvoke
-    pFrame->m_savedPInvokeTransitionFrame = m_pTransitionFrame;
 
-    // If the thread is already in cooperative mode, this is a bad transition that will be a fail fast unless we are in
-    // a do not trigger mode.  The exception to the rule allows us to have [UnmanagedCallersOnly] methods that are called via
-    // the "restricted GC callouts" as well as from native, which is necessary because the methods are CCW vtable
-    // methods on interfaces passed to native.
-    // We will allow threads in DoNotTriggerGc mode to do reverse PInvoke regardless of their coop state.
-    if (IsDoNotTriggerGcSet())
-    {
-        // We expect this scenario only when EE is stopped.
-        ASSERT(ThreadStore::IsTrapThreadsRequested());
-        // no need to do anything
-        return true;
-    }
-
-    // Do we need to attach the thread?
-    if (!IsStateSet(TSF_Attached))
-        return false; // thread is not attached
-
-    if (IsCurrentThreadInCooperativeMode())
-        return false; // bad transition
-
-    // this is an ordinary transition to managed code
-    // GC threads should not do that
-    ASSERT(!IsGCSpecial());
-
-    // must be in cooperative mode when checking the trap flag
-    VolatileStoreWithoutBarrier(&m_pTransitionFrame, NULL);
-
-    // now check if we need to trap the thread
-    if (ThreadStore::IsTrapThreadsRequested())
-    {
-        // put the previous frame back (sets us back to preemptive mode)
-        m_pTransitionFrame = pFrame->m_savedPInvokeTransitionFrame;
-        return false; // need to trap the thread
-    }
-
-    return true;
-=======
 EXTERN_C void RhSetRuntimeInitializationCallback(int (*fPtr)())
 {
     g_RuntimeInitializationCallback = fPtr;
->>>>>>> origin/runtime-main
 }
 
 void Thread::ReversePInvokeAttachOrTrapThread(ReversePInvokeFrame * pFrame)

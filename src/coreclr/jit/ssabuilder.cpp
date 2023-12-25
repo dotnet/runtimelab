@@ -860,95 +860,65 @@ void SsaBuilder::AddDefToEHSuccessorPhis(BasicBlock* block, unsigned lclNum, uns
 #ifdef DEBUG
         bool phiFound = false;
 #endif
-<<<<<<< HEAD
 
 #if defined(TARGET_WASM)
-                if (handler->IsLIR())
-                {
-                    for (GenTree* tree : LIR::AsRange(handler))
-                    {
-                        if (!tree->IsPhiNode())
-                        {
-                            break;
-                        }
-
-                        // skip the phi node to get to the GT_STORE_LCL_VAR
-                        if (tree->OperIs(GT_PHI_ARG, GT_PHI))
-                        {
-                            continue;
-                        }
-
-                        assert(tree->OperIs(GT_STORE_LCL_VAR));
-                        if (tree->AsLclVarCommon()->GetLclNum() == lclNum)
-                        {
-                            AddPhiArg(handler, nullptr, tree->gtGetOp1()->AsPhi(), lclNum, ssaNum, block);
-#ifdef DEBUG
-                            phiFound = true;
-#endif
-                        }
-                    }
-                }
-                else
-                {
-#endif
-                    // A prefix of blocks statements will be SSA definitions.  Search those for "lclNum".
-                    for (Statement* const stmt : handler->Statements())
-                    {
-                        // If the tree is not an SSA def, break out of the loop: we're done.
-                        if (!stmt->IsPhiDefnStmt())
-                        {
-                            break;
-                        }
-
-                        GenTreeLclVar* phiDef = stmt->GetRootNode()->AsLclVar();
-                        assert(phiDef->IsPhiDefn());
-
-                        if (phiDef->GetLclNum() == lclNum)
-                        {
-                            // It's the definition for the right local.  Add "ssaNum" to the RHS.
-                            AddPhiArg(handler, stmt, phiDef->Data()->AsPhi(), lclNum, ssaNum, block);
-#ifdef DEBUG
-                            phiFound = true;
-#endif
-                            break;
-                        }
-                    }
-#if defined(TARGET_WASM)
-                }
-#endif
-                assert(phiFound);
-            }
-
-            unsigned nextTryIndex = tryBlk->ebdEnclosingTryIndex;
-            if (nextTryIndex == EHblkDsc::NO_ENCLOSING_INDEX)
-=======
-        // A prefix of blocks statements will be SSA definitions.  Search those for "lclNum".
-        for (Statement* const stmt : succ->Statements())
+        if (succ->IsLIR())
         {
-            // If the tree is not an SSA def, break out of the loop: we're done.
-            if (!stmt->IsPhiDefnStmt())
->>>>>>> origin/runtime-main
+            for (GenTree* tree : LIR::AsRange(succ))
             {
-                break;
-            }
+                if (!tree->IsPhiNode())
+                {
+                    break;
+                }
 
-            GenTreeLclVar* phiDef = stmt->GetRootNode()->AsLclVar();
-            assert(phiDef->IsPhiDefn());
+                // skip the phi node to get to the GT_STORE_LCL_VAR
+                if (tree->OperIs(GT_PHI_ARG, GT_PHI))
+                {
+                    continue;
+                }
 
-            if (phiDef->GetLclNum() == lclNum)
-            {
-                // It's the definition for the right local.  Add "ssaNum" to the RHS.
-                AddPhiArg(succ, stmt, phiDef->Data()->AsPhi(), lclNum, ssaNum, block);
+                assert(tree->OperIs(GT_STORE_LCL_VAR));
+                if (tree->AsLclVarCommon()->GetLclNum() == lclNum)
+                {
+                    AddPhiArg(succ, nullptr, tree->gtGetOp1()->AsPhi(), lclNum, ssaNum, block);
 #ifdef DEBUG
-                phiFound = true;
+                    phiFound = true;
 #endif
-                break;
+                }
             }
         }
+        else
+        {
+#endif
+            // A prefix of blocks statements will be SSA definitions.  Search those for "lclNum".
+            for (Statement* const stmt : succ->Statements())
+            {
+                // If the tree is not an SSA def, break out of the loop: we're done.
+                if (!stmt->IsPhiDefnStmt())
+                {
+                    break;
+                }
+
+                GenTreeLclVar* phiDef = stmt->GetRootNode()->AsLclVar();
+                assert(phiDef->IsPhiDefn());
+
+                if (phiDef->GetLclNum() == lclNum)
+                {
+                    // It's the definition for the right local.  Add "ssaNum" to the RHS.
+                    AddPhiArg(succ, stmt, phiDef->Data()->AsPhi(), lclNum, ssaNum, block);
+#ifdef DEBUG
+                    phiFound = true;
+#endif
+                    break;
+                }
+            }
+#if defined(TARGET_WASM)
+        }
+#endif
+#ifdef DEBUG
         assert(phiFound);
-
+#endif
         return BasicBlockVisit::Continue;
-
     });
 }
 
@@ -1315,70 +1285,12 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
                     break;
                 }
 
-<<<<<<< HEAD
-                // succ is the first block of this try.  Look at phi defs in the handler.
-                // For a filter, we consider the filter to be the "real" handler.
-                BasicBlock* handlerStart = succTry->ExFlowBlock();
-
-                for (Statement* const stmt : handlerStart->Statements()) // TODO: EH LIR
-=======
                 if (succTry->HasFilter())
->>>>>>> origin/runtime-main
                 {
                     AddPhiArgsToNewlyEnteredHandler(block, succ, succTry->ebdFilter);
                 }
 
-<<<<<<< HEAD
-                // Now handle memory.
-                for (MemoryKind memoryKind : allMemoryKinds())
-                {
-#ifdef TARGET_WASM
-                    // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
-                    if (block->IsLIR())
-                    {
-                        break;
-                    }
-#endif // TARGET_WASM
-
-                    BasicBlock::MemoryPhiArg*& handlerMemoryPhi = handlerStart->bbMemorySsaPhiFunc[memoryKind];
-                    if (handlerMemoryPhi != nullptr)
-                    {
-                        if ((memoryKind == GcHeap) && m_pCompiler->byrefStatesMatchGcHeapStates)
-                        {
-                            // We've already added the arg to the phi shared with ByrefExposed if needed,
-                            // but still need to update bbMemorySsaPhiFunc to stay in sync.
-                            assert(memoryKind > ByrefExposed);
-                            assert(block->bbMemorySsaNumOut[memoryKind] == block->bbMemorySsaNumOut[ByrefExposed]);
-                            assert(handlerStart->bbMemorySsaPhiFunc[ByrefExposed]->m_ssaNum ==
-                                   block->bbMemorySsaNumOut[memoryKind]);
-                            handlerMemoryPhi = handlerStart->bbMemorySsaPhiFunc[ByrefExposed];
-
-                            continue;
-                        }
-
-                        if (handlerMemoryPhi == BasicBlock::EmptyMemoryPhiDef)
-                        {
-                            handlerMemoryPhi =
-                                new (m_pCompiler) BasicBlock::MemoryPhiArg(block->bbMemorySsaNumOut[memoryKind]);
-                        }
-                        else
-                        {
-                            // This path has a potential to introduce redundant phi args, due to multiple
-                            // preds of the same try-begin block having the same live-out memory def, and/or
-                            // due to nested try-begins each having preds with the same live-out memory def.
-                            // Avoid doing quadratic processing on handler phis, and instead live with the
-                            // occasional redundancy.
-                            handlerMemoryPhi = new (m_pCompiler)
-                                BasicBlock::MemoryPhiArg(block->bbMemorySsaNumOut[memoryKind], handlerMemoryPhi);
-                        }
-                        DBG_SSA_JITDUMP("  Added phi arg for %s u:%d from " FMT_BB " in " FMT_BB ".\n",
-                                        memoryKindNames[memoryKind], block->bbMemorySsaNumOut[memoryKind], block->bbNum,
-                                        handlerStart->bbNum);
-                    }
-                }
-=======
                 AddPhiArgsToNewlyEnteredHandler(block, succ, succTry->ebdHndBeg);
->>>>>>> origin/runtime-main
 
                 tryInd = succTry->ebdEnclosingTryIndex;
             }
@@ -1431,6 +1343,14 @@ void SsaBuilder::AddPhiArgsToNewlyEnteredHandler(BasicBlock* predEnterBlock,
     // Now handle memory.
     for (MemoryKind memoryKind : allMemoryKinds())
     {
+#ifdef TARGET_WASM
+        // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
+        if (handlerStart->IsLIR())
+        {
+            break;
+        }
+#endif // TARGET_WASM
+
         BasicBlock::MemoryPhiArg*& handlerMemoryPhi = handlerStart->bbMemorySsaPhiFunc[memoryKind];
         if (handlerMemoryPhi != nullptr)
         {

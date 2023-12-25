@@ -5157,7 +5157,7 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
         m_llvm->Lower();
     });
 
-    fgSsaDomTree = nullptr;
+    m_domTree = nullptr;
     if (opts.OptimizationEnabled())
     {
         DoPhase(this, PHASE_BUILD_SSA, [this]() {

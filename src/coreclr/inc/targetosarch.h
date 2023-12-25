@@ -32,6 +32,7 @@ public:
     static const bool IsWindows = false;
     static const bool IsUnix = false;
     static const bool IsMacOS = false;
+    static const bool IsApplePlatform = false;
 #else
 #define TARGET_WINDOWS_POSSIBLY_SUPPORTED
 #define TARGET_UNIX_POSSIBLY_SUPPORTED

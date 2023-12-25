@@ -306,12 +306,8 @@
   <ItemGroup Condition="'$(TargetsWindows)'=='true'">
     <Compile Include="System\Threading\ThreadPoolCallbackWrapper.NativeAot.cs" />
   </ItemGroup>
-<<<<<<< HEAD
   <ItemGroup Condition="'$(TargetsUnix)'=='true' or '$(TargetsBrowser)'=='true' or '$(TargetsWasi)'=='true'">
-=======
-  <ItemGroup Condition="'$(TargetsUnix)'=='true'">
     <Compile Include="Internal\Runtime\FrozenObjectHeapManager.Unix.cs" />
->>>>>>> origin/runtime-main
     <Compile Include="System\Environment.NativeAot.Unix.cs" />
     <Compile Include="System\Runtime\InteropServices\NativeLibrary.NativeAot.Unix.cs" />
     <Compile Include="System\Runtime\InteropServices\PInvokeMarshal.Unix.cs" />

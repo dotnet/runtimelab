@@ -408,7 +408,6 @@ function invoke_method_and_handle_exception_mono(method: MonoMethod, args: JSMar
     }
 }
 
-<<<<<<< HEAD:src/mono/wasm/runtime/invoke-cs.ts
 function invoke_method_and_handle_exception_naot(method: Function, args: JSMarshalerArguments): void {
     method(args);
     if (is_args_exception(args)) {
@@ -419,7 +418,6 @@ function invoke_method_and_handle_exception_naot(method: Function, args: JSMarsh
 
 export const invoke_method_and_handle_exception: (method: any, args: JSMarshalerArguments) => void = NativeAOT ? invoke_method_and_handle_exception_naot : invoke_method_and_handle_exception_mono;
 
-=======
 export function invoke_method_raw(method: MonoMethod): void {
     assert_bindings();
     const fail_root = mono_wasm_new_root<MonoString>();
@@ -432,7 +430,6 @@ export function invoke_method_raw(method: MonoMethod): void {
     }
 }
 
->>>>>>> origin/runtime-main:src/mono/browser/runtime/invoke-cs.ts
 export const exportsByAssembly: Map<string, any> = new Map();
 function _walk_exports_to_set_function(assembly: string, namespace: string, classname: string, methodname: string, signature_hash: number, fn: Function): void {
     const parts = `${namespace}.${classname}`.replace(/\//g, ".").split(".");

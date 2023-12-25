@@ -1145,11 +1145,13 @@ static size_t GetCurrentVirtualMemorySize()
 //  non zero if it has succeeded, GetVirtualMemoryMaxAddress() if not available
 size_t GCToOSInterface::GetVirtualMemoryLimit()
 {
+#ifndef TARGET_WASM
     rlimit addressSpaceLimit;
     if ((getrlimit(RLIMIT_AS, &addressSpaceLimit) == 0) && (addressSpaceLimit.rlim_cur != RLIM_INFINITY))
     {
         return addressSpaceLimit.rlim_cur;
     }
+#endif
 
     // No virtual memory limit
     return GetVirtualMemoryMaxAddress();
@@ -1398,6 +1400,7 @@ void GCToOSInterface::GetMemoryStatus(uint64_t restricted_limit, uint32_t* memor
                 load = (uint32_t)(((float)used * 100) / (float)total);
             }
 
+#ifndef TARGET_WASM
 #if HAVE_PROCFS_STATM
             rlimit addressSpaceLimit;
             if ((getrlimit(RLIMIT_AS, &addressSpaceLimit) == 0) && (addressSpaceLimit.rlim_cur != RLIM_INFINITY))
@@ -1415,6 +1418,7 @@ void GCToOSInterface::GetMemoryStatus(uint64_t restricted_limit, uint32_t* memor
                 }
             }
 #endif // HAVE_PROCFS_STATM
+#endif // !TARGET_WASM
         }
     }
 

@@ -52,16 +52,16 @@ void Llvm::AddUnhandledExceptionHandler()
     // Set some flags on the new region. This is the same as when we set up
     // EH regions in fgFindBasicBlocks(). Note that the try has no enclosing
     // handler, and the filter with filter handler have no enclosing try.
-    firstTryBlock->bbFlags |= BBF_DONT_REMOVE | BBF_IMPORTED;
+    firstTryBlock->SetFlags(BBF_DONT_REMOVE | BBF_IMPORTED);
     firstTryBlock->setTryIndex(newEhIndex);
     firstTryBlock->clearHndIndex();
 
-    filterBlock->bbFlags |= BBF_DONT_REMOVE | BBF_IMPORTED;
+    filterBlock->SetFlags(BBF_DONT_REMOVE | BBF_IMPORTED);
     filterBlock->bbCatchTyp = BBCT_FILTER;
     filterBlock->clearTryIndex();
     filterBlock->setHndIndex(newEhIndex);
 
-    handlerBlock->bbFlags |= BBF_DONT_REMOVE | BBF_IMPORTED;
+    handlerBlock->SetFlags(BBF_DONT_REMOVE | BBF_IMPORTED);
     handlerBlock->bbCatchTyp = BBCT_FILTER_HANDLER;
     handlerBlock->clearTryIndex();
     handlerBlock->setHndIndex(newEhIndex);
@@ -1368,13 +1368,13 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
     for (BasicBlock* block : _compiler->Blocks())
     {
         // BBF_MAY_THROW overlaps with BBF_HAS_CALL.
-        block->bbFlags &= ~BBF_MAY_THROW;
+        block->RemoveFlags(BBF_MAY_THROW);
 
         for (GenTree* node : LIR::AsRange(block))
         {
             if (mayPhysicallyThrow(node))
             {
-                block->bbFlags |= BBF_MAY_THROW;
+                block->SetFlags(BBF_MAY_THROW);
                 break;
             }
         }
@@ -1419,7 +1419,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
         {
             // Exceptions thrown in filters do not unwind to their enclosing protected region and are
             // instead always caught by the dispatcher. Thus, filter blocks do not need the unwind index.
-            return (block->bbFlags & BBF_MAY_THROW) != 0 && !m_llvm->isBlockInFilter(block);
+            return block->HasFlag(BBF_MAY_THROW) && !m_llvm->isBlockInFilter(block);
         }
 
         unsigned GetUnwindIndexForBlock(BasicBlock* block)
@@ -1663,7 +1663,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
                 if (!allPredsDefineTheSameUnwindIndex || (allPredEdges == nullptr))
                 {
                     // This will be an entry block to this unwind index group.
-                    block->bbFlags |= BBF_MARKED;
+                    block->SetFlags(BBF_MARKED);
                 }
 
                 JITDUMP("\n");
@@ -1673,10 +1673,10 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
 
             for (BasicBlock* block : m_compiler->Blocks())
             {
-                if ((block->bbFlags & BBF_MARKED) != 0)
+                if (block->HasFlag(BBF_MARKED))
                 {
                     DefineIndex(block, GetGroupUnwindIndex(GetGroup(block)));
-                    block->bbFlags &= ~BBF_MARKED;
+                    block->RemoveFlags(BBF_MARKED);
                 }
             }
         }
@@ -1723,7 +1723,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
             }
 
             // The compiler requires that blocks representing targets of finally returns remain empty.
-            if (predBlock->isBBCallAlwaysPairTail())
+            if (predBlock->isBBCallFinallyPairTail())
             {
                 INDEBUG("finret target");
                 return false;
@@ -1762,7 +1762,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
                 if (groupIndex != UNWIND_INDEX_GROUP_NONE)
                 {
                     PrintUnwindIndex(GetGroupUnwindIndex(groupIndex));
-                    if ((block->bbFlags & BBF_MARKED) != 0)
+                    if (block->HasFlag(BBF_MARKED))
                     {
                         printf(" ENTRY");
                     }
@@ -1776,7 +1776,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
     Inserter inserter(this, indexMap);
 
     // We will use the more precise algorithm when optimizing.
-    if (_compiler->fgSsaDomTree != nullptr)
+    if (_compiler->m_domTree != nullptr)
     {
         inserter.InsertDefinitionsBasedOnUnwindIndexGroups();
     }
