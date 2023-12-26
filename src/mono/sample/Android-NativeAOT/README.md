@@ -1,4 +1,4 @@
-![image](https://github.com/dotnet/runtimelab/assets/11523312/a40d1e79-bcf6-4eac-ae3c-2824bf84c50d)# NativeAOT Android sample app
+![image](https://github.com/dotnet/runtimelab/assets/11523312/beb922d5-e33f-4416-8b9e-8e4789e74f66)![image](https://github.com/dotnet/runtimelab/assets/11523312/0bffae88-be70-4779-b7db-b3f9a1fd3113)![image](https://github.com/dotnet/runtimelab/assets/11523312/a40d1e79-bcf6-4eac-ae3c-2824bf84c50d)# NativeAOT Android sample app
 
 This experiment was focused on enabling Native AOT for Android apps to achieve a smaller app size and faster app startup time. The experiment was concluded at the end .NET 8 release, with no additional efforts planned beyond that period. Its goal was to explore the possibilities and limitations of running Android apps with Native AOT, particularly in terms of size and startup time.
 
@@ -39,9 +39,10 @@ The Mono app is a simple .NET (Xamarin) Android application with a single page. 
 
 ## Testing methodology
 When developing an Android application, two critical aspects to consider are startup time and size on disk (SOD). To compare the Mono AOT and Native AOT apps, the following measurements were conducted, prioritized by their significance:
-1.	Performance startup: Hot startup time was measured using a dotnet performance script that measures time until the display is presented to the user. The average time of 10 consecutive startups was recorded.
-2.	Size on disk: Measurements were taken for both unzipped and zipped bundles. It is important to note that .NET Android JITed apps are not trimmed.
-3.	Build times: The duration of the msbuild build process when building applications for a device.
+1.	Startup time: Hot startup time was measured using a dotnet performance script that measures time until the display is presented to the user. The average time of 10 consecutive startups was recorded.
+2.	Runtime initialization time: Time from the start of MainActivity.onCreate method to the completion of runtime initialization.
+3.	Size on disk: The applications are built in Release mode without debug symbols (objcopy --strip-unneeded). It is important to note that .NET Android JITed apps are not trimmed.
+4.	Build times: The duration of the msbuild build process when building applications for a device.
 
 Another measurement that hasn't been considered in this experiment is the application's overall performance. Since the Mono AOT compiler compiles only the startup path ahead of time, it's possible that the overall performance of the app could be slower when compared to the Native AOT compiler. However, due to lack of complete Native AOT support, this measure isn't included in the experiment.
 
@@ -55,19 +56,27 @@ Startup	| Mono | Native AOT | Diff (%)
 Xamarin sample app (Samsung Galaxy S10 Lite) | 206ms | 242ms | 17.48%
 Xamarin sample app (Samsung Galaxy S23) | 161.8ms | 158.2ms | -2.23%
 Xamarin sample app (Pixel 5) | 204.4ms | 182ms | -10.98%
-Xamarin sample app (Pixel 7) | 151.6ms | 146ms | -3.69%
-Emulator | 190ms | 179ms | -5.79%
+Xamarin sample app (Pixel 7a) | 151.6ms | 146ms | -3.69%
+Xamarin sample app (Emulator) | 190ms | 179ms | -5.79%
+
+Initialization	| Mono | Native AOT | Diff (%)
+-|-|-|-
+Xamarin sample app (Pixel 7a) | N/A | 1104ms | N/A
 
 The startup time demonstrates inconsistency across various devices and a simulator. In the case of a Mono Xamarin application, the startup path is AOT compiled with profiling, which narrows the performance gap compared to the Native AOT. Furthermore, the startup time includes both the application's performance and the compositor's performance. The rendering of the application includes GPU access for initializing Vulkan or OpenGL surfaces. It's important to note that the displayed results can be influenced by factors such as the Android version and device configuration. Even on the same device, having different Android versions installed can lead to varying results. Additionally, there is a standard deviation of about 15ms in all measurements.
+
+The Native AOT runtime initialization results indicate a performance regression compared to the runtime sample app, likely due to JNI_OnLoad and Java Interop initialization. The runtime initialization time of the Mono Xamarin application was not measured due to differences in its application structure.
+
+While it can be assumed that Native AOT may provide better performance in certain scenarios compared to Mono, its consistency is affected by external factors. It's worth mentioning that the difference in startup times tends to be smaller on newer devices.
 
 ### Size measurements
 The following tables show the size measurements for the Xamarin sample application with size information for each file contained in the bundle, and the sizes of zipped archives by using Mono and Native AOT compilers.
 
 SOD | Mono | Native AOT | Diff (%)
 -|-|-|-
-Xamarin sample app | 3.2M | 4.1M | 84.375%
+Xamarin sample app | 3.2M | 1.4M | -56.25%
 
-As expected, the Mono SOD is significantly smaller due to JIT compilation. The Native AOT SDK, bootstrap, GC, and Java.Interop library contribute to the increased SOD.
+The main difference between the runtime and Xamarin samples is Java.Interop library. Native AOT details are available in the table below. The Mono application is a built as Xamarin sample application and has a different structure.
 
 ### Build time
 
