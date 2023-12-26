@@ -1,4 +1,4 @@
-![image](https://github.com/dotnet/runtimelab/assets/11523312/beb922d5-e33f-4416-8b9e-8e4789e74f66)![image](https://github.com/dotnet/runtimelab/assets/11523312/0bffae88-be70-4779-b7db-b3f9a1fd3113)![image](https://github.com/dotnet/runtimelab/assets/11523312/a40d1e79-bcf6-4eac-ae3c-2824bf84c50d)# NativeAOT Android sample app
+# NativeAOT Android sample app
 
 This experiment was focused on enabling Native AOT for Android apps to achieve a smaller app size and faster app startup time. The experiment was concluded at the end .NET 8 release, with no additional efforts planned beyond that period. Its goal was to explore the possibilities and limitations of running Android apps with Native AOT, particularly in terms of size and startup time.
 
