@@ -48,8 +48,8 @@ Another measurement that hasn't been considered in this experiment is the applic
 
 ## Performance measurements
 
-### Startup time
-The following table shows the startup measurements for the Xamarin sample application from starting the app until the display is presented to the user.
+### Startup time and runtime intialization
+The following tables show the startup measurements for the Xamarin sample application from starting the app until the display is presented to the user and the runtime initialization time, from the start of _MainActivity.onCreate_ method to the completion of runtime initialization.
 
 Startup	| Mono | Native AOT | Diff (%)
 -|-|-|-
