@@ -325,6 +325,8 @@ namespace ILCompiler
                                 Value value = stack.PopIntoLocation(field.FieldType);
                                 if (value is IInternalModelingOnlyValue)
                                     return Status.Fail(methodIL.OwningMethod, opcode, "Value with no external representation");
+                                if (value is { TargetSupportsWritingFieldData: false })
+                                    return Status.Fail(methodIL.OwningMethod, opcode, "Value cannot be written to target as it does not support SupportsRelativePointers and hence FrozenRuntimeTypeNode");
                                 _fieldValues[field] = value;
                             }
                         }
@@ -2216,6 +2218,8 @@ namespace ILCompiler
             public virtual float AsSingle() => ThrowInvalidProgram<float>();
             public virtual double AsDouble() => ThrowInvalidProgram<double>();
             public virtual Value Clone() => ThrowInvalidProgram<Value>();
+
+            public virtual bool TargetSupportsWritingFieldData => true;
         }
 
         private abstract class BaseValueTypeValue : Value
@@ -2398,8 +2402,14 @@ namespace ILCompiler
 
             public override bool GetRawData(NodeFactory factory, out object data)
             {
-                data = factory.SerializedMaximallyConstructableRuntimeTypeObject(TypeRepresented);
-                return true;
+                if (TypeRepresented.Context.Target.SupportsRelativePointers)
+                {
+                    data = factory.SerializedMaximallyConstructableRuntimeTypeObject(TypeRepresented);
+                    return true;
+                }
+
+                data = null;
+                return false;
             }
             public override ReferenceTypeValue ToForeignInstance(int baseInstructionCounter, TypePreinit preinitContext)
             {
@@ -2413,6 +2423,8 @@ namespace ILCompiler
             {
                 builder.EmitPointerReloc(factory.SerializedMaximallyConstructableRuntimeTypeObject(TypeRepresented));
             }
+
+            public override bool TargetSupportsWritingFieldData => Type.Context.Target.SupportsRelativePointers;
         }
 
         private sealed class ReadOnlySpanValue : BaseValueTypeValue, IInternalModelingOnlyValue

@@ -2514,27 +2514,27 @@ void Compiler::fgDumpBlock(BasicBlock* block)
     printf("\n------------ ");
     block->dspBlockHeader(this);
 
-    if (fgSsaValid)
-    {
-        fgDumpBlockMemorySsaIn(block);
-    }
-
     if (!block->IsLIR())
     {
+        if (fgSsaValid)
+        {
+            fgDumpBlockMemorySsaIn(block);
+        }
+
         for (Statement* const stmt : block->Statements())
         {
             fgDumpStmtTree(stmt, block->bbNum);
+        }
+
+        if (fgSsaValid)
+        {
+            printf("\n");
+            fgDumpBlockMemorySsaOut(block);
         }
     }
     else
     {
         gtDispRange(LIR::AsRange(block));
-    }
-
-    if (fgSsaValid)
-    {
-        printf("\n");
-        fgDumpBlockMemorySsaOut(block);
     }
 }
 

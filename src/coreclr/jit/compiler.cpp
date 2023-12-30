@@ -5157,12 +5157,22 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
         m_llvm->Lower();
     });
 
-    m_domTree = nullptr;
     if (opts.OptimizationEnabled())
     {
+        DoPhase(this, PHASE_DFS_BLOCKS, &Compiler::fgDfsBlocksAndRemove);
+
+        // Clear the immediate dominators so that we process the scratch block.
+        for (BasicBlock* const block : Blocks())
+        {
+            block->bbIDom         = nullptr;
+            block->bbPostorderNum = 0;
+        }
+
+        DoPhase(this, PHASE_COMPUTE_DOMINATORS, &Compiler::fgComputeDominators);
+
         DoPhase(this, PHASE_BUILD_SSA, [this]() {
             lvaComputeRefCounts(/* isRecompute */ true, /* setSlotNumbers */ false);
-            fgResetForSsa();
+
             fgSsaBuild();
         });
     }

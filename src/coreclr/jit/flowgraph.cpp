@@ -5622,6 +5622,7 @@ FlowGraphDominatorTree* FlowGraphDominatorTree::Build(const FlowGraphDfsTree* df
 
     // Reset BlockPredsWithEH cache.
     comp->m_blockToEHPreds = nullptr;
+    comp->m_dominancePreds = nullptr;
 
     assert((comp->fgFirstBB->bbPreds == nullptr) && !comp->fgFirstBB->hasTryIndex());
     assert(postOrder[count - 1] == comp->fgFirstBB);
