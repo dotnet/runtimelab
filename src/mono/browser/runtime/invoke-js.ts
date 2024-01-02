@@ -27,11 +27,6 @@ export function mono_wasm_bind_js_import(signature: JSFunctionSignature, is_exce
     assert_bindings();
     const resultRoot = mono_wasm_new_external_root<MonoObject>(result_address);
     try {
-        //if (NativeAOT) {
-        //    signature = arguments[4];
-        //    is_exception = arguments[6];
-        //}
-
         bind_js_import(signature);
         wrap_no_error_root(is_exception, resultRoot);
     } catch (ex: any) {
