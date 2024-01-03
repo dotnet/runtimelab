@@ -61,11 +61,12 @@ Xamarin sample app (Emulator) | 190ms | 179ms | -5.79%
 
 Initialization	| Mono | Native AOT | Diff (%)
 -|-|-|-
-Xamarin sample app (Pixel 7a) | N/A | 1104ms | N/A
+Runtime sample app (Pixel 7a) | 249ms |	36ms |-85.54%
+Xamarin sample app (Pixel 7a) | N/A | 104ms | N/A
 
 The startup time demonstrates inconsistency across various devices and a simulator. In the case of a Mono Xamarin application, the startup path is AOT compiled with profiling, which narrows the performance gap compared to the Native AOT. Furthermore, the startup time includes both the application's performance and the compositor's performance. The rendering of the application includes GPU access for initializing Vulkan or OpenGL surfaces. It's important to note that the displayed results can be influenced by factors such as the Android version and device configuration. Even on the same device, having different Android versions installed can lead to varying results. Additionally, there is a standard deviation of about 15ms in all measurements.
 
-The Native AOT runtime initialization results indicate a performance regression compared to the runtime sample app, likely due to JNI_OnLoad and Java Interop initialization. The runtime initialization time of the Mono Xamarin application was not measured due to differences in its application structure.
+Native AOT runtime initialization is faster because Mono has overhead with unzipping and loading assemblies, and C wrapper for calls into managed code, while the Native AOT can directly call into the managed code. This number was calculated by capturing nanoTime in onCreate, then scheduling a completion 1000ms later, and then capturing another nanoTime after MonoRunner.initialize. The real numbers with the artificial 1000ms delay removed are around ~249ms for Mono and ~36ms for Native AOT, indicating that the Native AOT is ~85% faster instead of ~20% faster (with the artificial 1000ms delay). However, it is not 1-on-1 comparison. It would be beneficial to measure the runtime initialization path for Xamarin apps, but we lack full Native AOT support and don't have events within Mono Xamarin app that would indicate precise runtime initialization without Java components. The measurements show a standard deviation of approximately 20ms. In Xamarin sample app, the Native AOT runtime initialization results indicate a performance regression compared to the runtime sample app, likely due to JNI_OnLoad and Java Interop initialization. The runtime initialization time of the Mono Xamarin application was not measured due to differences in application structure.
 
 While it can be assumed that Native AOT may provide better performance in certain scenarios compared to Mono, its consistency is affected by external factors. It's worth mentioning that the difference in startup times tends to be smaller on newer devices.
 
