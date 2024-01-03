@@ -2402,7 +2402,7 @@ namespace ILCompiler
 
             public override bool GetRawData(NodeFactory factory, out object data)
             {
-                if (TypeRepresented.Context.Target.SupportsRelativePointers)
+                if (TargetSupportsWritingFieldData)
                 {
                     data = factory.SerializedMaximallyConstructableRuntimeTypeObject(TypeRepresented);
                     return true;
@@ -2424,7 +2424,7 @@ namespace ILCompiler
                 builder.EmitPointerReloc(factory.SerializedMaximallyConstructableRuntimeTypeObject(TypeRepresented));
             }
 
-            public override bool TargetSupportsWritingFieldData => Type.Context.Target.SupportsRelativePointers;
+            public override bool TargetSupportsWritingFieldData => EETypeNode.SupportsFrozenRuntimeTypeInstances(Type.Context.Target);
         }
 
         private sealed class ReadOnlySpanValue : BaseValueTypeValue, IInternalModelingOnlyValue
