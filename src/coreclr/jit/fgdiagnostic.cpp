@@ -2514,27 +2514,27 @@ void Compiler::fgDumpBlock(BasicBlock* block)
     printf("\n------------ ");
     block->dspBlockHeader(this);
 
+    if (fgSsaValid)
+    {
+        fgDumpBlockMemorySsaIn(block);
+    }
+
     if (!block->IsLIR())
     {
-        if (fgSsaValid)
-        {
-            fgDumpBlockMemorySsaIn(block);
-        }
-
         for (Statement* const stmt : block->Statements())
         {
             fgDumpStmtTree(stmt, block->bbNum);
-        }
-
-        if (fgSsaValid)
-        {
-            printf("\n");
-            fgDumpBlockMemorySsaOut(block);
         }
     }
     else
     {
         gtDispRange(LIR::AsRange(block));
+    }
+
+    if (fgSsaValid)
+    {
+        printf("\n");
+        fgDumpBlockMemorySsaOut(block);
     }
 }
 
@@ -2570,6 +2570,14 @@ void Compiler::fgDumpTrees(BasicBlock* firstBlock, BasicBlock* lastBlock)
 //
 void Compiler::fgDumpBlockMemorySsaIn(BasicBlock* block)
 {
+#ifdef TARGET_WASM
+    // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
+    if (block->IsLIR())
+    {
+        return;
+    }
+#endif // TARGET_WASM
+
     for (MemoryKind memoryKind : allMemoryKinds())
     {
         if (byrefStatesMatchGcHeapStates)
