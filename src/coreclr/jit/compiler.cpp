@@ -5161,11 +5161,10 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     {
         DoPhase(this, PHASE_DFS_BLOCKS, &Compiler::fgDfsBlocksAndRemove);
 
-        // Clear the immediate dominators so that we process the scratch block.
+        // Clear immediate dominators left over from the optimization phases.
         for (BasicBlock* const block : Blocks())
         {
             block->bbIDom         = nullptr;
-            block->bbPostorderNum = 0;
         }
 
         DoPhase(this, PHASE_COMPUTE_DOMINATORS, &Compiler::fgComputeDominators);

@@ -888,8 +888,8 @@ void SsaBuilder::AddDefToEHSuccessorPhis(BasicBlock* block, unsigned lclNum, uns
             }
         }
         else
-        {
 #endif
+        {
             // A prefix of blocks statements will be SSA definitions.  Search those for "lclNum".
             for (Statement* const stmt : succ->Statements())
             {
@@ -912,9 +912,7 @@ void SsaBuilder::AddDefToEHSuccessorPhis(BasicBlock* block, unsigned lclNum, uns
                     break;
                 }
             }
-#if defined(TARGET_WASM)
         }
-#endif
 #ifdef DEBUG
         assert(phiFound);
 #endif

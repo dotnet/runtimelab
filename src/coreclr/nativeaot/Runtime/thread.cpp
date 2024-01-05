@@ -392,13 +392,13 @@ void Thread::Destroy()
 }
 
 #ifdef HOST_WASM
-extern OBJECTREF * t_pShadowStackTop;
-extern OBJECTREF * t_pShadowStackBottom;
+extern OBJECTREF * GetShadowStackBottom();
+extern OBJECTREF * GetShadowStackTop();
 
 void GcScanWasmShadowStack(ScanFunc * pfnEnumCallback, ScanContext * pvCallbackData)
 {
     // Wasm does not permit iteration of stack frames so is uses a shadow stack instead
-    EnumGcRefsInRegionConservatively(t_pShadowStackBottom, t_pShadowStackTop, pfnEnumCallback, pvCallbackData);
+    EnumGcRefsInRegionConservatively(GetShadowStackBottom(), GetShadowStackTop(), pfnEnumCallback, pvCallbackData);
 }
 #endif
 

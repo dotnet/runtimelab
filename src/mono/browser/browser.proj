@@ -456,11 +456,11 @@
                       Overwrite="false" />
 
     <Copy SourceFiles="runtime\runtime.h;runtime\pinvoke.h;runtime\gc-common.h"
-      Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
-      DestinationFolder="$(NativeBinDir)include\wasm"
-      SkipUnchangedFiles="true" />
+          Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
+          DestinationFolder="$(NativeBinDir)include\wasm"
+          SkipUnchangedFiles="true" />
 
-      <Copy SourceFiles="@(ICULibFiles);
+    <Copy SourceFiles="@(ICULibFiles);
                        @(ICULibNativeFiles);
                        @(_WasmArchivedTimezones);"
           DestinationFolder="$(NativeBinDir)"
