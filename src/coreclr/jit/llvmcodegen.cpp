@@ -569,15 +569,15 @@ void Llvm::generateBlocks()
 {
     // When optimizing, we'll have built SSA and so have to process the blocks in the dominator pre-order
     // for SSA uses to be available at the point we request them.
-    if (_compiler->fgSsaDomTree != nullptr)
+    if (_compiler->m_domTree != nullptr)
     {
-        class LlvmCompileDomTreeVisitor : public DomTreeVisitor<LlvmCompileDomTreeVisitor>
+        class LlvmCompileDomTreeVisitor : public NewDomTreeVisitor<LlvmCompileDomTreeVisitor>
         {
             Llvm* m_llvm;
 
         public:
             LlvmCompileDomTreeVisitor(Compiler* compiler, Llvm* llvm)
-                : DomTreeVisitor(compiler, compiler->fgSsaDomTree)
+                : NewDomTreeVisitor(compiler)
                 , m_llvm(llvm)
             {
             }
@@ -589,7 +589,7 @@ void Llvm::generateBlocks()
         };
 
         LlvmCompileDomTreeVisitor visitor(_compiler, this);
-        visitor.WalkTree();
+        visitor.WalkTree(_compiler->m_domTree);
     }
     else
     {
@@ -613,13 +613,11 @@ void Llvm::generateBlock(BasicBlock* block)
         visitNode(node);
     }
 
-    switch (block->GetJumpKind())
+    switch (block->GetKind())
     {
-        case BBJ_NONE:
-            _builder.CreateBr(getFirstLlvmBlockForBlock(block->Next()));
-            break;
         case BBJ_ALWAYS:
-            _builder.CreateBr(getFirstLlvmBlockForBlock(block->GetJumpDest()));
+        case BBJ_CALLFINALLYRET:
+            _builder.CreateBr(getFirstLlvmBlockForBlock(block->GetTarget()));
             break;
         case BBJ_THROW:
             _builder.CreateUnreachable();
@@ -674,7 +672,7 @@ void Llvm::fillPhis()
 
     SmallHashTable<PredEdge, unsigned, 8, PredEdge> predCountMap(_compiler->getAllocator(CMK_Codegen));
     auto getPhiPredCount = [&](BasicBlock* predBlock, BasicBlock* phiBlock) -> unsigned {
-        if (predBlock->GetJumpKind() != BBJ_SWITCH)
+        if (predBlock->GetKind() != BBJ_SWITCH)
         {
             return 1;
         }
@@ -686,7 +684,7 @@ void Llvm::fillPhis()
             for (FlowEdge* edge : phiBlock->PredEdges())
             {
                 BasicBlock* edgePredBlock = edge->getSourceBlock();
-                if (edgePredBlock->GetJumpKind() == BBJ_SWITCH)
+                if (edgePredBlock->GetKind() == BBJ_SWITCH)
                 {
                     predCountMap.AddOrUpdate({edgePredBlock, phiBlock}, edge->getDupCount());
 
@@ -2091,17 +2089,17 @@ void Llvm::buildJTrue(GenTree* node)
     assert(condValue->getType() == Type::getInt1Ty(m_context->Context)); // Only relops expected.
 
     BasicBlock* srcBlock = CurrentBlock();
-    llvm::BasicBlock* jmpLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->GetJumpDest());
-    llvm::BasicBlock* nextLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->Next());
+    llvm::BasicBlock* trueLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->GetTrueTarget());
+    llvm::BasicBlock* falseLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->GetFalseTarget());
 
     // Handle the degenerate case specially. PHI code depends on us not generating duplicate outgoing edges here.
-    if (jmpLlvmBlock == nextLlvmBlock)
+    if (trueLlvmBlock == falseLlvmBlock)
     {
-        _builder.CreateBr(nextLlvmBlock);
+        _builder.CreateBr(falseLlvmBlock);
     }
     else
     {
-        _builder.CreateCondBr(condValue, jmpLlvmBlock, nextLlvmBlock);
+        _builder.CreateCondBr(condValue, trueLlvmBlock, falseLlvmBlock);
     }
 }
 
@@ -2114,9 +2112,9 @@ void Llvm::buildSwitch(GenTreeUnOp* switchNode)
     Value* destValue = consumeValue(destOp, switchLlvmType);
 
     BasicBlock* srcBlock = CurrentBlock();
-    assert(srcBlock->GetJumpKind() == BBJ_SWITCH);
+    assert(srcBlock->GetKind() == BBJ_SWITCH);
 
-    BBswtDesc* switchDesc = srcBlock->GetJumpSwt();
+    BBswtDesc* switchDesc = srcBlock->GetSwitchTargets();
     unsigned casesCount = switchDesc->bbsCount - 1;
     noway_assert(switchDesc->bbsHasDefault);
 
@@ -2201,9 +2199,9 @@ void Llvm::buildILOffset(GenTreeILOffset* ilOffsetNode)
 
 void Llvm::buildCatchRet(BasicBlock* block)
 {
-    assert(block->GetJumpKind() == BBJ_EHCATCHRET);
+    assert(block->GetKind() == BBJ_EHCATCHRET);
 
-    llvm::BasicBlock* destLlvmBlock = getFirstLlvmBlockForBlock(block->GetJumpDest());
+    llvm::BasicBlock* destLlvmBlock = getFirstLlvmBlockForBlock(block->GetTarget());
     switch (m_ehModel)
     {
         case CorInfoLlvmEHModel::Cpp:
@@ -2220,26 +2218,26 @@ void Llvm::buildCatchRet(BasicBlock* block)
 
 void Llvm::buildCallFinally(BasicBlock* block)
 {
-    assert(block->GetJumpKind() == BBJ_CALLFINALLY);
+    assert(block->GetKind() == BBJ_CALLFINALLY);
 
     // Callfinally blocks always come in pairs, where the first block (BBJ_CALLFINALLY itself)
     // calls the finally (its "bbJumpDest") while the second block (BBJ_ALWAYS) provides in its
     // "bbJumpDest" the target to which the finally call (if not "retless") should return.
     // Other backends will simply skip generating the second block, while we will branch to it.
     //
-    Function* finallyLlvmFunc = getLlvmFunctionForIndex(getLlvmFunctionIndexForBlock(block->GetJumpDest()));
+    Function* finallyLlvmFunc = getLlvmFunctionForIndex(getLlvmFunctionIndexForBlock(block->GetTarget()));
     emitCallOrInvoke(finallyLlvmFunc, getShadowStack());
 
     // Some tricky EH flow configurations can make the ALWAYS part of the pair unreachable without
     // marking "block" "BBF_RETLESS_CALL". Detect this case by checking if the next block is reachable
     // at all.
-    if (((block->bbFlags & BBF_RETLESS_CALL) != 0) || !isReachable(block->Next()))
+    if (block->HasFlag(BBF_RETLESS_CALL) || !isReachable(block->Next()))
     {
         _builder.CreateUnreachable();
     }
     else
     {
-        assert(block->isBBCallAlwaysPair());
+        assert(block->isBBCallFinallyPair());
         _builder.CreateBr(getFirstLlvmBlockForBlock(block->Next()));
     }
 }
@@ -3231,7 +3229,7 @@ llvm::BasicBlock* Llvm::getOrCreatePrologLlvmBlockForFunction(unsigned funcIdx)
 //
 bool Llvm::isReachable(BasicBlock* block) const
 {
-    return (_compiler->fgSsaDomTree != nullptr) ? (block->bbIDom != nullptr) : true;
+    return (_compiler->m_domTree != nullptr) ? (block->bbIDom != nullptr) : true;
 }
 
 BasicBlock* Llvm::getFirstBlockForFunction(unsigned funcIdx) const

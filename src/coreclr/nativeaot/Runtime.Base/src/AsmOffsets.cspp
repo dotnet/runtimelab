@@ -5,7 +5,7 @@
 #define PLAT_ASM_SIZEOF(offset, cls) internal const int SIZEOF__##cls = 0x##offset;
 #define PLAT_ASM_CONST(constant, expr) internal const int expr = 0x##constant;
 
-static class AsmOffsets
+internal static class AsmOffsets
 {
 #include "../../Runtime/AsmOffsets.h"
 }

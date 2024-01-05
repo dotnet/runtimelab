@@ -325,6 +325,8 @@ namespace ILCompiler
                                 Value value = stack.PopIntoLocation(field.FieldType);
                                 if (value is IInternalModelingOnlyValue)
                                     return Status.Fail(methodIL.OwningMethod, opcode, "Value with no external representation");
+                                if (value is { TargetSupportsWritingFieldData: false })
+                                    return Status.Fail(methodIL.OwningMethod, opcode, "Value cannot be written to target as it does not support SupportsRelativePointers and hence FrozenRuntimeTypeNode");
                                 _fieldValues[field] = value;
                             }
                         }
@@ -375,7 +377,7 @@ namespace ILCompiler
                                 if (value is ValueTypeValue)
                                     stack.PushFromLocation(field.FieldType, value);
                                 else if (value is ReferenceTypeValue referenceType)
-                                    stack.PushFromLocation(field.FieldType, referenceType.ToForeignInstance(baseInstructionCounter));
+                                    stack.PushFromLocation(field.FieldType, referenceType.ToForeignInstance(baseInstructionCounter, this));
                                 else
                                     return Status.Fail(methodIL.OwningMethod, opcode);
                             }
@@ -2216,6 +2218,8 @@ namespace ILCompiler
             public virtual float AsSingle() => ThrowInvalidProgram<float>();
             public virtual double AsDouble() => ThrowInvalidProgram<double>();
             public virtual Value Clone() => ThrowInvalidProgram<Value>();
+
+            public virtual bool TargetSupportsWritingFieldData => true;
         }
 
         private abstract class BaseValueTypeValue : Value
@@ -2386,7 +2390,7 @@ namespace ILCompiler
             }
         }
 
-        private sealed class RuntimeTypeValue : ReferenceTypeValue, IInternalModelingOnlyValue
+        private sealed class RuntimeTypeValue : ReferenceTypeValue
         {
             public TypeDesc TypeRepresented { get; }
 
@@ -2398,11 +2402,29 @@ namespace ILCompiler
 
             public override bool GetRawData(NodeFactory factory, out object data)
             {
+                if (TargetSupportsWritingFieldData)
+                {
+                    data = factory.SerializedMaximallyConstructableRuntimeTypeObject(TypeRepresented);
+                    return true;
+                }
+
                 data = null;
                 return false;
             }
-            public override ReferenceTypeValue ToForeignInstance(int baseInstructionCounter) => this;
-            public override void WriteFieldData(ref ObjectDataBuilder builder, NodeFactory factory) => throw new NotImplementedException();
+            public override ReferenceTypeValue ToForeignInstance(int baseInstructionCounter, TypePreinit preinitContext)
+            {
+                if (!preinitContext._internedTypes.TryGetValue(TypeRepresented, out RuntimeTypeValue result))
+                {
+                    preinitContext._internedTypes.Add(TypeRepresented, result = new RuntimeTypeValue(TypeRepresented));
+                }
+                return result;
+            }
+            public override void WriteFieldData(ref ObjectDataBuilder builder, NodeFactory factory)
+            {
+                builder.EmitPointerReloc(factory.SerializedMaximallyConstructableRuntimeTypeObject(TypeRepresented));
+            }
+
+            public override bool TargetSupportsWritingFieldData => EETypeNode.SupportsFrozenRuntimeTypeInstances(Type.Context.Target);
         }
 
         private sealed class ReadOnlySpanValue : BaseValueTypeValue, IInternalModelingOnlyValue
@@ -2639,7 +2661,7 @@ namespace ILCompiler
                 return this == value;
             }
 
-            public abstract ReferenceTypeValue ToForeignInstance(int baseInstructionCounter);
+            public abstract ReferenceTypeValue ToForeignInstance(int baseInstructionCounter, TypePreinit preinitContext);
         }
 
         private struct AllocationSite
@@ -2667,7 +2689,7 @@ namespace ILCompiler
                 AllocationSite = allocationSite;
             }
 
-            public override ReferenceTypeValue ToForeignInstance(int baseInstructionCounter) =>
+            public override ReferenceTypeValue ToForeignInstance(int baseInstructionCounter, TypePreinit preinitContext) =>
                 new ForeignTypeInstance(
                     Type,
                     new AllocationSite(AllocationSite.OwningType, AllocationSite.InstructionCounter - baseInstructionCounter),
@@ -2887,7 +2909,7 @@ namespace ILCompiler
                 }
             }
 
-            public override ReferenceTypeValue ToForeignInstance(int baseInstructionCounter) => this;
+            public override ReferenceTypeValue ToForeignInstance(int baseInstructionCounter, TypePreinit preinitContext) => this;
         }
 
         private sealed class StringInstance : ReferenceTypeValue, IHasInstanceFields
@@ -2946,7 +2968,15 @@ namespace ILCompiler
                 return true;
             }
 
-            public override ReferenceTypeValue ToForeignInstance(int baseInstructionCounter) => this;
+            public override ReferenceTypeValue ToForeignInstance(int baseInstructionCounter, TypePreinit preinitContext)
+            {
+                string value = ValueAsString;
+                if (!preinitContext._internedStrings.TryGetValue(value, out StringInstance result))
+                {
+                    preinitContext._internedStrings.Add(value, result = new StringInstance(Type, value));
+                }
+                return result;
+            }
             Value IHasInstanceFields.GetField(FieldDesc field) => new FieldAccessor(_value).GetField(field);
             bool IHasInstanceFields.TrySetField(FieldDesc field, Value value) => false;
             ByRefValue IHasInstanceFields.GetFieldAddress(FieldDesc field) => new FieldAccessor(_value).GetFieldAddress(field);

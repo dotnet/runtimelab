@@ -55,7 +55,9 @@ internal class Program
         TestReadOnlySpan.Run();
         TestStaticInterfaceMethod.Run();
         TestConstrainedCall.Run();
+#if !CODEGEN_WASM
         TestTypeHandles.Run();
+#endif
         TestIsValueType.Run();
         TestIndirectLoads.Run();
         TestInitBlock.Run();
@@ -657,6 +659,7 @@ class TestInitFromOtherClass
     static int s_intValue = OtherClass.IntValue;
     static string s_stringValue = OtherClass.StringValue;
     static object s_objectValue = OtherClass.ObjectValue;
+    static bool s_areStringsSame = Object.ReferenceEquals(OtherClass.StringValue, "Hello");
 
     public static void Run()
     {
@@ -664,6 +667,7 @@ class TestInitFromOtherClass
         Assert.AreEqual(OtherClass.IntValue, s_intValue);
         Assert.AreSame(OtherClass.StringValue, s_stringValue);
         Assert.AreSame(OtherClass.ObjectValue, s_objectValue);
+        Assert.True(s_areStringsSame);
     }
 }
 
@@ -1282,8 +1286,8 @@ class TestTypeHandles
         Assert.True(!Foo<bool>.IsChar);
         Assert.True(Foo<bool>.IsBool);
 
-        Assert.IsLazyInitialized(typeof(CharHolder));
-        Assert.IsLazyInitialized(typeof(IsChar));
+        Assert.IsPreinitialized(typeof(CharHolder));
+        Assert.IsPreinitialized(typeof(IsChar));
         Assert.True(IsChar.Is);
     }
 }

@@ -26,7 +26,14 @@
     <ProjectReference Include="$(MonoProjectRoot)wasm\symbolicator\WasmSymbolicator.csproj" Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'mono'" />
 
     <!-- needed to test workloads for wasm -->
-    <ProjectReference Include="$(InstallerProjectRoot)pkg\sfx\Microsoft.NETCore.App\Microsoft.NETCore.App.Runtime.sfxproj" Pack="true" Condition="('$(TargetOS)' == 'browser' or '$(TargetOS)' == 'wasi') and '$(RuntimeFlavor)' == 'mono'" />
+    <ProjectReference Include="$(InstallerProjectRoot)pkg\sfx\Microsoft.NETCore.App\Microsoft.NETCore.App.Runtime.sfxproj"
+                      Pack="true"
+                      Condition="('$(TargetOS)' == 'browser' or '$(TargetOS)' == 'wasi') and '$(RuntimeFlavor)' == 'mono'" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TestReadyToRun)' == 'true'">
+    <ProjectReference Include="$(InstallerProjectRoot)pkg/sfx/Microsoft.NETCore.App/Microsoft.NETCore.App.Runtime.sfxproj" />
+    <ProjectReference Include="$(InstallerProjectRoot)pkg/sfx/bundle/Microsoft.NETCore.App.Bundle.bundleproj" />
   </ItemGroup>
 
   <Import Project="$(RepositoryEngineeringDir)testing\wasm-provisioning.targets"

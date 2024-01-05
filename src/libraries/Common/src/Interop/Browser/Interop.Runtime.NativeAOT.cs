@@ -12,12 +12,12 @@ internal static partial class Interop
     {
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal static extern void ReleaseCSOwnedObject(IntPtr jsHandle);
-        [LibraryImport("*", EntryPoint = "mono_wasm_bind_js_function", StringMarshalling = StringMarshalling.Utf16)]
-        public static unsafe partial void BindJSFunction(string function_name, int function_name_length, string module_name, int module_name_length, void* signature, out IntPtr bound_function_js_handle, out int is_exception);
+        [LibraryImport("*", EntryPoint = "mono_wasm_bind_js_import", StringMarshalling = StringMarshalling.Utf16)]
+        public static unsafe partial void BindJSImport(void* signature, out int is_exception, out IntPtr result);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern void InvokeJSFunction(IntPtr bound_function_js_handle, void* data);
-        [LibraryImport("*", EntryPoint = "mono_wasm_invoke_import", StringMarshalling = StringMarshalling.Utf16)]
-        public static unsafe partial void InvokeImport(IntPtr fn_handle, void* data);
+        [LibraryImport("*", EntryPoint = "mono_wasm_invoke_js_import", StringMarshalling = StringMarshalling.Utf16)]
+        public static unsafe partial void InvokeJSImport(IntPtr fn_handle, void* data);
         [LibraryImport("*", EntryPoint = "mono_wasm_bind_cs_function", StringMarshalling = StringMarshalling.Utf16)]
         public static unsafe partial void BindCSFunction(string fully_qualified_name, int fully_qualified_name_length, int signature_hash, void* signature, out int is_exception);
         [MethodImpl(MethodImplOptions.InternalCall)]
@@ -27,9 +27,9 @@ internal static partial class Interop
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern void DeregisterGCRoot(IntPtr handle);
 
-        public static unsafe void BindJSFunction(string function_name, string module_name, void* signature, out IntPtr bound_function_js_handle, out int is_exception, out object result)
+        public static unsafe void BindJSImport(void* signature, out int is_exception, out object result)
         {
-            BindJSFunction(function_name, function_name.Length, module_name, module_name.Length, signature, out bound_function_js_handle, out is_exception);
+            BindJSImport(signature, out is_exception, out IntPtr _);
             if (is_exception != 0)
                 result = "Runtime.BindJSFunction failed"; // TODO-LLVM-JSInterop: Marshal exception message
             else
