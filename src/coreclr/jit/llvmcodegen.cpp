@@ -2089,17 +2089,17 @@ void Llvm::buildJTrue(GenTree* node)
     assert(condValue->getType() == Type::getInt1Ty(m_context->Context)); // Only relops expected.
 
     BasicBlock* srcBlock = CurrentBlock();
-    llvm::BasicBlock* jmpLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->GetTrueTarget());
-    llvm::BasicBlock* nextLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->Next());
+    llvm::BasicBlock* trueLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->GetTrueTarget());
+    llvm::BasicBlock* falseLlvmBlock = getFirstLlvmBlockForBlock(srcBlock->GetFalseTarget());
 
     // Handle the degenerate case specially. PHI code depends on us not generating duplicate outgoing edges here.
-    if (jmpLlvmBlock == nextLlvmBlock)
+    if (trueLlvmBlock == falseLlvmBlock)
     {
-        _builder.CreateBr(nextLlvmBlock);
+        _builder.CreateBr(falseLlvmBlock);
     }
     else
     {
-        _builder.CreateCondBr(condValue, jmpLlvmBlock, nextLlvmBlock);
+        _builder.CreateCondBr(condValue, trueLlvmBlock, falseLlvmBlock);
     }
 }
 
