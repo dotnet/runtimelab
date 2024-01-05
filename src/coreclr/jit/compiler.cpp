@@ -5164,7 +5164,7 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
         // Clear immediate dominators left over from the optimization phases.
         for (BasicBlock* const block : Blocks())
         {
-            block->bbIDom         = nullptr;
+            block->bbIDom = nullptr;
         }
 
         DoPhase(this, PHASE_COMPUTE_DOMINATORS, &Compiler::fgComputeDominators);
