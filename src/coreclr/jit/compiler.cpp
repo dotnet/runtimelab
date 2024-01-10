@@ -5160,18 +5160,10 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     if (opts.OptimizationEnabled())
     {
         DoPhase(this, PHASE_DFS_BLOCKS, &Compiler::fgDfsBlocksAndRemove);
-
-        // Clear immediate dominators left over from the optimization phases.
-        for (BasicBlock* const block : Blocks())
-        {
-            block->bbIDom = nullptr;
-        }
-
         DoPhase(this, PHASE_COMPUTE_DOMINATORS, &Compiler::fgComputeDominators);
 
         DoPhase(this, PHASE_BUILD_SSA, [this]() {
             lvaComputeRefCounts(/* isRecompute */ true, /* setSlotNumbers */ false);
-
             fgSsaBuild();
         });
     }
