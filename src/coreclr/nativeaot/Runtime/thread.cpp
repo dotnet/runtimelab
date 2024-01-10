@@ -1297,17 +1297,7 @@ COOP_PINVOKE_HELPER(void, RhpReversePInvokeReturn, (ReversePInvokeFrame * pFrame
 
 #ifdef USE_PORTABLE_HELPERS
 
-#ifdef HOST_WASM
-extern "C" void RhpSetShadowStackTop(void*);
-COOP_PINVOKE_HELPER(void, RhpPInvoke, (void* pShadowStack, PInvokeTransitionFrame* pFrame))
-{
-    // The implementation has to live in this file because of "FORCEINLINE" on "Thread::InlinePInvoke".
-    // Ideally, "InlinePInvoke" would be in "thread.inl", and this function - in "wasm/PInvoke.cpp".
-    RhpSetShadowStackTop(pShadowStack);
-    Thread* pCurThread = ThreadStore::RawGetCurrentThread();
-    pCurThread->InlinePInvoke(pFrame);
-}
-#else // !HOST_WASM
+#ifndef HOST_WASM
 COOP_PINVOKE_HELPER(void, RhpPInvoke, (PInvokeTransitionFrame* pFrame))
 {
     Thread * pCurThread = ThreadStore::RawGetCurrentThread();
