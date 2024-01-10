@@ -14076,7 +14076,7 @@ HRESULT gc_heap::initialize_gc (size_t soh_segment_size,
 
 #ifdef WRITE_WATCH
     hardware_write_watch_api_supported();
-#ifdef BACKGROUND_GC_SUPPORTED
+#ifdef BACKGROUND_GC
     if (can_use_write_watch_for_gc_heap() && GCConfig::GetConcurrentGC())
     {
         gc_can_use_concurrent = true;
