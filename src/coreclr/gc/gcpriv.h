@@ -185,7 +185,7 @@ inline void FATAL_GC_ERROR()
 #define FEATURE_PREMORTEM_FINALIZATION
 #define GC_HISTORY
 
-#ifndef TARGET_WASM
+#if !defined(TARGET_WASM) || defined(FEATURE_WASM_THREADS)
 #define BACKGROUND_GC   //concurrent background GC (requires WRITE_WATCH)
 #endif
 
