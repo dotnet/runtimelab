@@ -543,6 +543,7 @@ public partial class ApkBuilder
             // NOTE: we can run android-strip tool from NDK to shrink native binaries here even more.
 
             File.Copy(dynamicLib, Path.Combine(OutputDir, destRelative), true);
+            Utils.RunProcess(logger, "llvm-objcopy", $"--strip-unneeded {destRelative}", workingDir: OutputDir);
             Utils.RunProcess(logger, aapt, $"add {apkFile} {destRelative}", workingDir: OutputDir);
         }
         Utils.RunProcess(logger, aapt, $"add {apkFile} classes.dex", workingDir: OutputDir);
