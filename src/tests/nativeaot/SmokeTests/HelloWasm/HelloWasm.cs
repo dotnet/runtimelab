@@ -4058,7 +4058,7 @@ namespace JSInterop
 {
     internal static class InternalCalls
     {
-        [DllImport("*", EntryPoint = "corert_wasm_invoke_js_unmarshalled")]
+        [DllImport("js", EntryPoint = "corert_wasm_invoke_js_unmarshalled")]
         private static extern IntPtr InvokeJSUnmarshalledInternal(string js, int length, IntPtr p1, IntPtr p2, IntPtr p3, out string exception);
 
         public static IntPtr InvokeJSUnmarshalled(out string exception, string js, IntPtr p1, IntPtr p2, IntPtr p3)
