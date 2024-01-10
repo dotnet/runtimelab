@@ -3229,7 +3229,7 @@ llvm::BasicBlock* Llvm::getOrCreatePrologLlvmBlockForFunction(unsigned funcIdx)
 //
 bool Llvm::isReachable(BasicBlock* block) const
 {
-    return (_compiler->m_domTree != nullptr) ? (block->bbIDom != nullptr) : true;
+    return (_compiler->m_domTree != nullptr) ? _compiler->m_dfsTree->Contains(block) : true;
 }
 
 BasicBlock* Llvm::getFirstBlockForFunction(unsigned funcIdx) const
