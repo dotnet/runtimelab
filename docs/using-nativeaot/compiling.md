@@ -79,7 +79,7 @@ from any `PropertyGroup` tags if you have it. Instead, add
 ```
 The required package references are
 ```xml
-<PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM; runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="8.0.0-*" />
+<PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM; runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
 ```
 and the publish command
 ```bash
