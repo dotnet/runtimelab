@@ -402,6 +402,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'">$(CompileWasmArgs) -s DISABLE_EXCEPTION_CATCHING=0</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'">$(CompileWasmArgs) -fwasm-exceptions</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileWasmArgs) -g3</CompileWasmArgs>
+      <CompileWasmArgs>$(CompileWasmArgs) $(WasmOptimizationSetting)</CompileWasmArgs>
 
       <ScriptExt Condition="'$(OS)' == 'Windows_NT'">.bat</ScriptExt>
       <WasmCompilerPath>&quot;$(EMSDK)/upstream/emscripten/emcc$(ScriptExt)&quot;</WasmCompilerPath>
