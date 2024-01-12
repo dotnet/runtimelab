@@ -538,6 +538,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" />
       <CustomLinkerArg Include="-s GLOBAL_BASE=$(IlcWasmGlobalBase)" />
       <CustomLinkerArg Include="-s TOTAL_STACK=$(IlcWasmStackSize)" />
+      <CustomLinkerArg Include="-s WASM_BIGINT=1" />
       <CustomLinkerArg Condition="'$(WasmEnableJSBigIntIntegration)' == 'true'" Include="-s WASM_BIGINT=1" />
       <CustomLinkerArg Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="-s DISABLE_EXCEPTION_CATCHING=0" />
       
