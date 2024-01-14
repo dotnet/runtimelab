@@ -15,8 +15,9 @@ namespace System
         // the full trace upfront, still, it is better than nothing.
         private bool _dispatchStateRestored;
 
+        // TODO-LLVM: unify with "AppendExceptionStackFrame"; this is a partial copy.
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void InitializeExceptionStackFrameLLVM(object exception, int flags)
+        internal static unsafe void InitializeExceptionStackFrameLLVM(object exception, int flags)
         {
             // This method is called by the runtime's EH dispatch code and is not allowed to leak exceptions
             // back into the dispatcher.
@@ -39,15 +40,22 @@ namespace System
                 // 1. Don't clear if we're rethrowing with `throw;`.
                 // 2. Don't clear if we're throwing through ExceptionDispatchInfo.
                 //    This is done through invoking RestoreDispatchState which sets "_dispatchStateRestored" followed by throwing normally using `throw ex;`.
-                if (isFirstRethrowFrame || ex._dispatchStateRestored)
-                    return;
+                bool doSetTheStackTrace = !isFirstRethrowFrame && !ex._dispatchStateRestored;
 
                 // If out of memory, avoid any calls that may allocate.  Otherwise, they may fail
                 // with another OutOfMemoryException, which may lead to infinite recursion.
-                if (ex == PreallocatedOutOfMemoryException.Instance)
-                    return;
+                bool fatalOutOfMemory = ex == PreallocatedOutOfMemoryException.Instance;
 
-                ex._stackTraceString = new StackTrace(1).ToString().Replace("__", ".").Replace("_", ".");
+                if (doSetTheStackTrace && !fatalOutOfMemory)
+                    ex._stackTraceString = new StackTrace(1).ToString().Replace("__", ".").Replace("_", ".");
+
+#if FEATURE_PERFTRACING
+                string typeName = !fatalOutOfMemory ? ex.GetType().ToString() : "System.OutOfMemoryException";
+                string message = !fatalOutOfMemory ? ex.Message : "Insufficient memory to continue the execution of the program.";
+
+                fixed (char* exceptionTypeName = typeName, exceptionMessage = message)
+                    Runtime.RuntimeImports.NativeRuntimeEventSource_LogExceptionThrown(exceptionTypeName, exceptionMessage, 0, ex.HResult);
+#endif
             }
             catch
             {

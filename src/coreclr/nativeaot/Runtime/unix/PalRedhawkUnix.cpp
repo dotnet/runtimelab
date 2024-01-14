@@ -673,7 +673,8 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartBackgroundWork(_In_ BackgroundCall
 #ifdef HOST_WASM
     // No threads, so we can't start one
     RhFailFast();
-#endif // HOST_WASM
+    return false;
+#else // !HOST_WASM
     pthread_attr_t attrs;
 
     int st = pthread_attr_init(&attrs);
@@ -705,6 +706,7 @@ REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartBackgroundWork(_In_ BackgroundCall
     ASSERT(st2 == 0);
 
     return st == 0;
+#endif // !HOST_WASM
 }
 
 REDHAWK_PALEXPORT bool REDHAWK_PALAPI PalStartBackgroundGCThread(_In_ BackgroundCallback callback, _In_opt_ void* pCallbackContext)
