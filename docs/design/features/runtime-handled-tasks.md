@@ -529,7 +529,7 @@ To the runtime these would look like delegates with async2 `Invoke` method and m
 1. It looks like there might be a need for async2 flavors of method pointers - to represent async2 methods. 
 In the runtime this is representable via the modopt on the return type and, again, might "just work", so this is mostly a matter of picking C# syntax/semantics.
 1. Is there any impact on async enumerable/iterator?  
-While async2 is interoperable with regular async and these interfaces could be used or even implemented by the means of async2 methods, there could be opprtunities to employ async2 implementations in the lowering. It is not clear if that could be beneficial without defining/deriving async2 versions of `IAsyncEnumerable`/`IAsyncEnumerator`/`IAsyncDisposable`.
+While async2 is interoperable with regular async and these interfaces could be used or even implemented by the means of async2 methods, there could be opportunities to employ async2 implementations in the lowering. It is not clear if that could be beneficial without defining/deriving async2 versions of `IAsyncEnumerable`/`IAsyncEnumerator`/`IAsyncDisposable`.
 
 #### ==== Syntax v1 (abandoned)
 
