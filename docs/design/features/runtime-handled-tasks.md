@@ -515,7 +515,7 @@ public int32 modopt([System.Runtime]System.Threading.Tasks.Task`1) M1()
 }
 ```
 
-Operations that are not affected by `async2`, such as generic substitution or Overriding/Hiding/Implementing end up naturally working with async2 methods. Note that these areas are some of the most complex parts of the compiler. It was very benefitial to not having to specialcase async2 in these areas.
+Operations that are not affected by `async2`, such as generic substitution or Overriding/Hiding/Implementing end up naturally working with async2 methods. Note that these areas are some of the most complex parts of the compiler. It was very beneficial to not having to specialcase async2 in these areas.
 
 One thing to observe is that unlike regular `async`, which is a source-only concept, the async2 survives serialization/deserialization via metadata. 
 Effectively we treat the `int32 modopt([System.Runtime]System.Threading.Tasks.Task'1)` as just a special encoding of `Task<int>` return type with additional property of making the method `async2`.
