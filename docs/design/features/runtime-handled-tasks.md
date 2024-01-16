@@ -525,7 +525,7 @@ None of the following appears to be unresolvable or blocking, we just did not ge
 
 1. There is an existing concept for `async void` methods. Does that model need to exist in the new system?
 1. It looks like there might be a need for async2 flavors of delegates. 
-To the runtime these would look like delegates with async2 `Invoke` method and may "just work". They would need some kind of sintax in C#.
+To the runtime these would look like delegates with async2 `Invoke` method and may "just work". They would need some kind of syntax in C#.
 1. It looks like there might be a need for async2 flavors of method pointers - to represent async2 methods. 
 In the runtime this is representable via the modopt on the return type and, again, might "just work", so this is mostly a matter of picking C# syntax/semantics.
 1. Is there any impact on async enumerable/iterator?  
