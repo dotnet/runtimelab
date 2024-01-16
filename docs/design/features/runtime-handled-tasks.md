@@ -533,7 +533,7 @@ While async2 is interoperable with regular async and these interfaces could be u
 
 #### ==== Syntax v1 (abandoned)
 
-Initialy we assumed a different syntax for async2 methods. It ended up not working well beyond simple scenarios. We will still describe that here for future reference as something that appear to be a syntactical dead-end.
+Initially we assumed a different syntax for async2 methods. It ended up not working well beyond simple scenarios. We will still describe that here for future reference as something that appear to be a syntactical dead-end.
 
 The initial version of the syntax looked like:
 
@@ -544,7 +544,7 @@ async2 int M1(int arg) {}
 int int32 modopt([System.Runtime]System.Threading.Tasks.Task`1) M1(int arg)
 ```
 
-While intially favored for being close to the IL representation, it was eventually abandoned due to major problems and inconsistencies.
+While initially favored for being close to the IL representation, it was eventually abandoned due to major problems and inconsistencies.
 - When the method above is called from regular code without awaiting, user gets `Task<int>` result. That is not what it looks in the signature.
 - For the purposes of overriding/hiding/inheriting the method above is equivalent to `Task<int> M1(int arg)`, which is easily observable.
 For example it is illegal to add such method in the same class as invoking `Task<int> M1(int arg)` would become ambiguous. On the other hand overloading a method like `int M1(int arg)` is completely non-conflicting.  
