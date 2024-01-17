@@ -303,6 +303,8 @@ internal unsafe partial class Program
 
         TestNativeCallback();
 
+        LazyDllImportThrows();
+
         TestDirectPInvoke();
 
 #if false // TODO-LLVM: Should throw an EntryPointNotFoundException, but fails in the Wasm runtime (RuntimeError: null function or function signature mismatch)
@@ -312,8 +314,6 @@ internal unsafe partial class Program
         TestStaticAbiCompatibleSignatures();
 
 #if !CODEGEN_WASI // Easier to test with Javascript/Emscripten.
-        // TODO-LLVM: throwing the PNSE is not currently implemented and this will fail fast in Javascript and we cannot catch it.
-        // LazyDllImportThrows();
 
         TestNamedModuleCall();
 
@@ -324,10 +324,6 @@ internal unsafe partial class Program
         TestStaticPInvokeOverloadedInDifferentModules();
 
         TestWasmImportAbiCompatibleSignatures();
-
-#if false // TODO-LLVM: Should throw a PNSE, but not implemented yet.
-        LazyDllImportThrows();
-#endif
 #endif
 
         TestNativeCallsWithMismatchedSignatures();
@@ -1583,6 +1579,24 @@ internal unsafe partial class Program
         }
     }
 
+    // All "*" imports are implicitly DirectPInvoke so name a module.
+    [DllImport("NonExistentModule", EntryPoint = "NonExistentMethod")]
+    private static extern void LazyMethod([MarshalAs(UnmanagedType.LPStr)] string str);
+
+    private static void LazyDllImportThrows()
+    {
+        StartTest("Lazy DllImport fails");
+        try
+        {
+            LazyMethod("some string");
+            FailTest("Lazy linked DllImport did not throw");
+        }
+        catch (PlatformNotSupportedException)
+        {
+            PassTest();
+        }
+    }
+
     [DllImport("xyz", EntryPoint = "SimpleDirectPInvokeTestFunc")]
     private static extern int SimpleDirectPInvokeTest(int x);
 
@@ -1605,25 +1619,6 @@ internal unsafe partial class Program
     }
 
 #if !CODEGEN_WASI // Easier to test with Javascript/Emscripten
-
-    // All "*" imports are implicitly DirectPInvoke so name a module
-    [DllImport("Foo", EntryPoint = "NonExistantMethod")]
-    private static extern int LazyMethod();
-
-    private static void LazyDllImportThrows()
-    {
-        StartTest("Lazy DllImport fails");
-        try
-        {
-            LazyMethod();
-            FailTest("Lazy linked DllImport did not throw");
-        }
-        catch (PlatformNotSupportedException)
-        {
-            PassTest();
-        }
-    }
-
     private static void TestNamedModuleCall()
     {
         StartTest("Wasm import from named module test");
@@ -1704,20 +1699,6 @@ internal unsafe partial class Program
     {
         StartTest("Static PInvoke of overloaded function in different modules test");
         EndTest(CommonFunctionNameInModule1(12) == 12 && CommonFunctionNameInModule2(34) == 34);
-    }
-
-    [DllImport("StaticModule1", EntryPoint = "StaticIncompatFunctionName")]
-    private static extern int CallAbiIncompatFunctionWithInt(int arg);
-
-    [DllImport("StaticModule2", EntryPoint = "StaticIncompatFunctionName")]
-    private static extern void CallAbiIncompatFunctionWithFloat(float arg);
-
-    // Compilation should produce a warning for CallAbiIncompatFunctionWithInt and CallAbiIncompatFunctionWithFloat.
-    [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "JustForRooting2")]
-    private static void RootFuncDup()
-    {
-        CallAbiIncompatFunctionWithInt(0);
-        CallAbiIncompatFunctionWithFloat(1);
     }
 #endif
 
