@@ -22,7 +22,7 @@ namespace Internal.Runtime.CompilerHelpers
     /// <summary>
     /// These methods are used to throw exceptions from generated code.
     /// </summary>
-    internal static class InteropHelpers
+    internal static partial class InteropHelpers
     {
         internal static unsafe byte* StringToAnsiString(string str, bool bestFit, bool throwOnUnmappableChar)
         {
@@ -245,6 +245,7 @@ namespace Internal.Runtime.CompilerHelpers
             return Marshal.PtrToStringAnsi((IntPtr)buffer, (int)Marshal.SysStringByteLen((IntPtr)buffer));
         }
 
+#if !TARGET_WASM
         internal static unsafe IntPtr ResolvePInvoke(MethodFixupCell* pCell)
         {
             if (pCell->Target != IntPtr.Zero)
@@ -409,6 +410,7 @@ namespace Internal.Runtime.CompilerHelpers
 
             return Interop.Kernel32.GetProcAddress(hModule, probedMethodName);
         }
+#endif
 #endif
 
         internal static unsafe void* CoTaskMemAllocAndZeroMemory(int size)
