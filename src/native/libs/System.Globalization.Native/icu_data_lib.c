@@ -9,10 +9,10 @@
 __asm(
     "  .section .data,\"\",@\n"
     "  .global static_icu_data\n"
-    "  .align 16\n" // https://unicode-org.github.io/icu/userguide/icu_data/#alignment
+    "  .balign 16\n" // https://unicode-org.github.io/icu/userguide/icu_data/#alignment
     "static_icu_data:\n"
     "  .incbin \"" STR(ICU_DATA_FILE) "\"\n"
     "static_icu_data_end:\n"
     "  .size static_icu_data, static_icu_data_end - static_icu_data\n"
-    "  .size static_icu_data_end, 1\n"
+    "  .size static_icu_data_end, 0\n"
 );
