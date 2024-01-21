@@ -19,8 +19,13 @@ namespace Internal.Runtime
         private readonly LowLevelLock m_Crst = new LowLevelLock();
         private FrozenObjectSegment m_CurrentSegment;
 
+#if TARGET_WASM
+        // WASM doesn't support reserving memory so we use a smaller size.
+        private const nuint FOH_SEGMENT_DEFAULT_SIZE = 64 * 1024;
+#else
         // Default size to reserve for a frozen segment
         private const nuint FOH_SEGMENT_DEFAULT_SIZE = 4 * 1024 * 1024;
+#endif
         // Size to commit on demand in that reserved space
         private const nuint FOH_COMMIT_SIZE = 64 * 1024;
 
@@ -119,7 +124,7 @@ namespace Internal.Runtime
             {
                 m_Size = sizeHint;
 
-                Debug.Assert(m_Size > FOH_COMMIT_SIZE);
+                Debug.Assert(m_Size >= FOH_COMMIT_SIZE);
                 Debug.Assert(m_Size % FOH_COMMIT_SIZE == 0);
 
                 void* alloc = ClrVirtualReserve(m_Size);
