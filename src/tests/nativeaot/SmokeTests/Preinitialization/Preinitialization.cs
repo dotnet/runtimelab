@@ -55,9 +55,7 @@ internal class Program
         TestReadOnlySpan.Run();
         TestStaticInterfaceMethod.Run();
         TestConstrainedCall.Run();
-#if !CODEGEN_WASM
         TestTypeHandles.Run();
-#endif
         TestIsValueType.Run();
         TestIndirectLoads.Run();
         TestInitBlock.Run();

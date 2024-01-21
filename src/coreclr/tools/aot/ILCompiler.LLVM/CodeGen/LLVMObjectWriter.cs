@@ -248,6 +248,8 @@ namespace ILCompiler.DependencyAnalysis
                 if (nextRelocValid)
                 {
                     Relocation reloc = nodeContents.Relocs[relocIndex];
+                    Debug.Assert(IsSupportedRelocType(node, reloc.RelocType), $"{reloc.RelocType} in {node} not supported");
+
                     long delta;
                     fixed (void* location = &data[reloc.Offset])
                     {
@@ -311,6 +313,16 @@ namespace ILCompiler.DependencyAnalysis
             {
                 _keepAliveList.Add(dataSymbol);
             }
+        }
+
+        private static bool IsSupportedRelocType(ObjectNode node, RelocType type)
+        {
+            if (node is StackTraceMethodMappingNode)
+            {
+                // Stack trace metadata uses relative pointers, but is currently unused.
+                return true;
+            }
+            return type is RelocType.IMAGE_REL_BASED_HIGHLOW;
         }
 
         private void EmitSymbolDef(LLVMValueRef baseSymbol, ReadOnlySpan<byte> symbolIdentifier, int offsetFromBaseSymbol)
