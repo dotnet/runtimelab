@@ -1349,7 +1349,7 @@
     <Compile Include="$(CommonPath)Interop\Interop.ICU.cs">
       <Link>Common\Interop\Interop.ICU.cs</Link>
     </Compile>
-    <Compile Include="$(CommonPath)Interop\Interop.ICU.iOS.cs" Condition="'$(IsiOSLike)' == 'true'">
+    <Compile Include="$(CommonPath)Interop\Interop.ICU.iOS.cs" Condition="'$(IsiOSLike)' == 'true' or ('$(TargetsWasm)' == 'true' and '$(FeatureNativeAot)' == 'true')">
       <Link>Common\Interop\Interop.ICU.iOS.cs</Link>
     </Compile>
     <Compile Include="$(CommonPath)Interop\Interop.Idna.cs">
@@ -2468,8 +2468,8 @@
     <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\CultureData.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\CultureInfo.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\GlobalizationMode.Unix.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\GlobalizationMode.LoadICU.Unix.cs" Condition="'$(IsiOSLike)' != 'true'" />
-    <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\GlobalizationMode.LoadICU.iOS.cs" Condition="'$(IsiOSLike)' == 'true'" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\GlobalizationMode.LoadICU.Unix.cs" Condition="'$(IsiOSLike)' != 'true' and ('$(TargetsWasm)' != 'true' or '$(FeatureNativeAot)' != 'true')" />
+    <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\GlobalizationMode.LoadICU.iOS.cs" Condition="'$(IsiOSLike)' == 'true' or ('$(TargetsWasm)' == 'true' and '$(FeatureNativeAot)' == 'true')" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Globalization\HijriCalendar.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\Guid.Unix.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)System\IO\Directory.Unix.cs" />

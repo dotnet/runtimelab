@@ -30,8 +30,21 @@
     <PackageReference Include="Microsoft.NETCore.Runtime.ICU.Transport" PrivateAssets="all" Version="$(MicrosoftNETCoreRuntimeICUTransportVersion)" GeneratePathProperty="true" />
   </ItemGroup>
 
+  <Target Name="BuildNativeCommon"
+          DependsOnTargets="GenerateNativeVersionFile">
+    <ItemGroup>
+      <_IcuArtifacts Condition="'$(_IcuDir)' != '' and '$(TargetsAppleMobile)' != 'true'"
+                     Include="$(_IcuDir)/lib/libicuuc.a;
+                              $(_IcuDir)/lib/libicui18n.a;
+                              $(_IcuDir)/lib/libicudata.a;
+                              $(_IcuDir)/lib/*.dat" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(_IcuArtifacts)" DestinationFolder="$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'native', '$(_BuildNativeOutConfig)'))" SkipUnchangedFiles="true" />
+  </Target>
+
   <Target Name="BuildNativeUnix"
-          DependsOnTargets="GenerateNativeVersionFile"
+          DependsOnTargets="BuildNativeCommon"
           BeforeTargets="Build"
           Condition="!$([MSBuild]::IsOsPlatform(Windows))">
     <PropertyGroup>
@@ -54,21 +67,12 @@
       <_BuildNativeUnixArgs>$(_BuildNativeArgs)$(_ProcessorCountArg)$(_PortableBuildArg)$(_CrossBuildArg)$(_BuildNativeCompilerArg)$(_KeepNativeSymbolsBuildArg)$(_CMakeArgs) $(Compiler)</_BuildNativeUnixArgs>
     </PropertyGroup>
 
-    <ItemGroup>
-      <_IcuArtifacts Condition="'$(_IcuDir)' != '' and '$(TargetsAppleMobile)' != 'true'"
-                     Include="$(_IcuDir)/lib/libicuuc.a;
-                              $(_IcuDir)/lib/libicui18n.a;
-                              $(_IcuDir)/lib/libicudata.a;
-                              $(_IcuDir)/lib/*.dat" />
-    </ItemGroup>
-
-    <Copy SourceFiles="@(_IcuArtifacts)" DestinationFolder="$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'native', '$(_BuildNativeOutConfig)'))" SkipUnchangedFiles="true" />
     <Message Text="$(MSBuildThisFileDirectory)build-native.sh $(_BuildNativeUnixArgs)" Importance="High"/>
     <Exec Command="&quot;$(MSBuildThisFileDirectory)build-native.sh&quot; $(_BuildNativeUnixArgs)" />
   </Target>
 
   <Target Name="BuildNativeWindows"
-          DependsOnTargets="GenerateNativeVersionFile"
+          DependsOnTargets="BuildNativeCommon"
           BeforeTargets="Build"
           Condition="$([MSBuild]::IsOsPlatform(Windows))">
     <PropertyGroup>
