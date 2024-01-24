@@ -18,8 +18,11 @@
 
     <_IcuDir Condition="'$(TargetsAppleMobile)' != 'true' and '$(PkgMicrosoft_NETCore_Runtime_ICU_Transport)' != ''">$(PkgMicrosoft_NETCore_Runtime_ICU_Transport)/runtimes/$(TargetOS)-$(TargetArchitecture)$(_RuntimeVariant)/native</_IcuDir>
     <_IcuDirArg Condition="'$(_IcuDir)' != ''"> icudir "$(_IcuDir)"</_IcuDirArg>
-
     <_BuildNativeArgs>$(_BuildNativeArgs)$(_IcuDirArg)$(_UsePThreads)</_BuildNativeArgs>
+
+    <_TzdDir Condition="'$(PkgSystem_Runtime_TimeZoneData)' != ''">$([MSBuild]::NormalizePath('$(PkgSystem_Runtime_TimeZoneData)', 'contentFiles', 'any', 'any', 'data'))</_TzdDir>
+    <_TzdDirArg Condition="'$(_TzdDir)' != ''"> tzddir "$(_TzdDir)"</_TzdDirArg>
+    <_BuildNativeArgs>$(_BuildNativeArgs)$(_TzdDirArg)</_BuildNativeArgs>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,6 +31,7 @@
 
   <ItemGroup Condition="'$(TargetsAppleMobile)' == 'true' or '$(TargetOS)' == 'browser' or '$(TargetOS)' == 'wasi'">
     <PackageReference Include="Microsoft.NETCore.Runtime.ICU.Transport" PrivateAssets="all" Version="$(MicrosoftNETCoreRuntimeICUTransportVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Runtime.TimeZoneData" PrivateAssets="all" Version="$(SystemRuntimeTimeZoneDataVersion)" GeneratePathProperty="true" Condition="'$(TargetsWasm)' == 'true'" />
   </ItemGroup>
 
   <Target Name="BuildNativeCommon"

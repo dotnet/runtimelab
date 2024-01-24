@@ -516,6 +516,8 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ItemGroup>
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.a" />
+      <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.TimeZoneData.a" Condition="'$(InvariantTimezone)' != 'true'" />
+      <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.TimeZoneData.Disabled.a" Condition="'$(InvariantTimezone)' == 'true'" />
       <NativeLibrary Condition="$(NativeLib) == '' and '$(CustomNativeMain)' != 'true'" Include="$(IlcSdkPath)libbootstrapper.o" />
       <NativeLibrary Condition="$(NativeLib) != '' or '$(CustomNativeMain)' == 'true'" Include="$(IlcSdkPath)libbootstrapperdll.o" />
       <NativeLibrary Include="$(IlcSdkPath)libPortableRuntime.a" />

@@ -3966,6 +3966,13 @@ internal unsafe partial class Program
             return;
         }
 
+        TimeZoneInfo tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Moscow");
+        if (tz.BaseUtcOffset != TimeSpan.FromHours(3))
+        {
+            FailTest("Moscow time not UTC+3");
+            return;
+        }
+
         PassTest();
     }
 
