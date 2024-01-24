@@ -14,6 +14,19 @@
 #define STR_IMPL(...) #__VA_ARGS__
 #define STR(...) STR_IMPL(__VA_ARGS__)
 
+// Generate both the index and data in one macro loop, switching
+// between their respective sections:
+//
+// foreach (data_id in TZ_FILES)
+//   switch to the 'data' section
+//     data_id_i:
+//       .incbin TZ_FILES_DIR/data_id
+//   switch to the 'index' section
+//       g_dataIndex[i] = data_id_i
+//
+// Also add the end location of data to the index, so that when
+// searching, the last entry doesn't need to be special-cased.
+//
 __asm(
 #ifdef TARGET_64BIT
 #define POINTER_SIZE  "8"
