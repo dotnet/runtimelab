@@ -132,7 +132,7 @@ private:
                 // Locals are handled by the general shadow stack lowering (already "spilled" so to speak).
                 // Local address nodes always point to the stack (native or shadow). Constant handles will
                 // only point to immortal and immovable (frozen) objects.
-                return !node->OperIsLocal() && !node->OperIs(GT_LCL_ADDR) && !node->IsIconHandle();
+                return !node->OperIsAnyLocal() && !node->IsIconHandle() && !node->IsIntegralConst(0);
             }
 
             return false;
