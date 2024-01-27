@@ -12,6 +12,8 @@ class ShadowStackAllocator
     Compiler* const m_compiler;
     Llvm* const m_llvm;
 
+    unsigned m_prologZeroingOffset = 0;
+    unsigned m_prologZeroingSize = 0;
     LIR::Range m_prologRange = LIR::Range();
 
 public:
@@ -313,30 +315,14 @@ private:
                     continue;
                 }
 
-                GenTree* initValue;
                 ValueInitKind initValueKind = m_llvm->getInitKindForLocal(lclNum);
-                switch (initValueKind)
+                if (initValueKind == ValueInitKind::Param)
                 {
-                    case ValueInitKind::None:
-                    case ValueInitKind::Uninit:
-                        initValue = nullptr;
-                        break;
-                    case ValueInitKind::Param:
-                        initValue = m_compiler->gtNewLclvNode(lclNum, varDsc->TypeGet());
-                        initValue->SetRegNum(REG_LLVM);
-                        break;
-                    case ValueInitKind::Zero:
-                        initValue = m_compiler->gtNewZeroConNode(
-                            (varDsc->TypeGet() == TYP_STRUCT) ? TYP_INT : genActualType(varDsc));
-                        break;
-                    default:
-                        unreached();
-                }
-
-                if (initValue != nullptr)
-                {
+                    GenTree* initValue = m_compiler->gtNewLclvNode(lclNum, varDsc->TypeGet());
+                    initValue->SetRegNum(REG_LLVM);
                     InitializeLocalInProlog(lclNum, initValue);
                 }
+                varDsc->lvMustInit = initValueKind == ValueInitKind::Zero;
 
                 shadowFrameLocals.push_back(lclNum);
             }
@@ -398,7 +384,16 @@ private:
         }
 
         unsigned offset = 0;
-        auto assignOffset = [this, &offset](LclVarDsc* varDsc, unsigned alignment) {
+        auto assignOffset = [this, &offset](LclVarDsc* varDsc) {
+            unsigned alignment = TARGET_POINTER_SIZE;
+#ifndef TARGET_64BIT
+            if (varDsc->lvStructDoubleAlign)
+            {
+                alignment = 8;
+                m_llvm->m_shadowFrameAlignment = alignment;
+            }
+#endif // !TARGET_64BIT
+
             offset = AlignUp(offset, alignment);
             varDsc->SetStackOffset(offset);
             offset += m_compiler->lvaLclSize(m_compiler->lvaGetLclNum(varDsc));
@@ -412,11 +407,26 @@ private:
         // shadow frame parameter to filter funclets.
         if (m_llvm->m_unwindFrameLclNum != BAD_VAR_NUM)
         {
-            assignOffset(m_compiler->lvaGetDesc(m_llvm->m_unwindFrameLclNum), TARGET_POINTER_SIZE);
+            assignOffset(m_compiler->lvaGetDesc(m_llvm->m_unwindFrameLclNum));
         }
 
-#ifndef TARGET_64BIT
-        // We assign offsets to the variables that require double alignment first to pack them together.
+        // Assigns offsets such that locals which need to be zeroed come first. This will allow us to zero them all
+        // using a single memset in the prolog.
+        m_prologZeroingOffset = offset;
+
+        for (unsigned i = 0; i < shadowFrameLocals.size(); i++)
+        {
+            LclVarDsc* varDsc = m_compiler->lvaGetDesc(shadowFrameLocals.at(i));
+            if (m_llvm->isShadowFrameLocal(varDsc) || !varDsc->lvMustInit)
+            {
+                continue;
+            }
+
+            assignOffset(varDsc);
+        }
+
+        m_prologZeroingSize = offset - m_prologZeroingOffset;
+
         for (unsigned i = 0; i < shadowFrameLocals.size(); i++)
         {
             LclVarDsc* varDsc = m_compiler->lvaGetDesc(shadowFrameLocals.at(i));
@@ -425,23 +435,7 @@ private:
                 continue;
             }
 
-            if (varDsc->lvStructDoubleAlign)
-            {
-                assignOffset(varDsc, 8);
-                m_llvm->m_shadowFrameAlignment = 8;
-            }
-        }
-#endif // !TARGET_64BIT
-
-        for (unsigned i = 0; i < shadowFrameLocals.size(); i++)
-        {
-            LclVarDsc* varDsc = m_compiler->lvaGetDesc(shadowFrameLocals.at(i));
-            if (m_llvm->isShadowFrameLocal(varDsc))
-            {
-                continue;
-            }
-
-            assignOffset(varDsc, TARGET_POINTER_SIZE);
+            assignOffset(varDsc);
         }
 
         m_llvm->_shadowStackLocalsSize = AlignUp(offset, Llvm::DEFAULT_SHADOW_STACK_ALIGNMENT);
@@ -458,15 +452,32 @@ private:
 
     void LowerAndInsertProlog()
     {
+        LIR::Range& range = m_prologRange;
+        m_llvm->m_currentRange = &range;
+
+        unsigned zeroingSize = m_prologZeroingSize;
+        if (zeroingSize != 0)
+        {
+            unsigned offset = m_prologZeroingOffset;
+            GenTree* addr = m_llvm->insertShadowStackAddr(nullptr, offset, m_llvm->_shadowStackLclNum);
+            GenTree* zero = m_compiler->gtNewIconNode(0);
+            ClassLayout* layout = m_compiler->typGetBlkLayout(zeroingSize);
+            GenTree* store = m_compiler->gtNewStoreBlkNode(layout, addr, zero, GTF_IND_NONFAULTING);
+            range.InsertAfter(addr, zero, store);
+
+            JITDUMP("Added zero-initialization for shadow locals at: [%i, %i]:\n", offset, offset + zeroingSize);
+            DISPTREERANGE(range, store);
+        }
+
         // Insert a zero-offset ILOffset to notify codegen this is the start of user code.
         DebugInfo zeroILOffsetDi =
             DebugInfo(m_compiler->compInlineContext, ILLocation(0, /* isStackEmpty */ true, /* isCall */ false));
         GenTree* zeroILOffsetNode = new (m_compiler, GT_IL_OFFSET) GenTreeILOffset(zeroILOffsetDi);
-        m_prologRange.InsertAtEnd(zeroILOffsetNode);
+        range.InsertAtEnd(zeroILOffsetNode);
 
         assert(m_llvm->isFirstBlockCanonical());
-        m_llvm->lowerRange(m_compiler->fgFirstBB, m_prologRange);
-        LIR::AsRange(m_compiler->fgFirstBB).InsertAtBeginning(std::move(m_prologRange));
+        m_llvm->lowerRange(m_compiler->fgFirstBB, range);
+        LIR::AsRange(m_compiler->fgFirstBB).InsertAtBeginning(std::move(range));
     }
 
     GenTreeLclVar* InitializeLocalInProlog(unsigned lclNum, GenTree* value)
