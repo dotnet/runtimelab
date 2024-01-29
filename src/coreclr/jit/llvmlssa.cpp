@@ -403,9 +403,7 @@ private:
             varDsc->SetStackOffset(offset);
             offset += m_compiler->lvaLclSize(m_compiler->lvaGetLclNum(varDsc));
 
-            // We will use this as the indication that the local has a home on the shadow stack.
-            varDsc->SetRegNum(REG_STK);
-            varDsc->lvInSsa = 0;
+            AssignLocalToShadowStack(varDsc);
         };
 
         // The shadow frame must be allocated at a zero offset; the runtime uses its value as the original
@@ -454,6 +452,19 @@ private:
         JITDUMP("\n");
 
         m_compiler->lvaDoneFrameLayout = Compiler::INITIAL_FRAME_LAYOUT;
+    }
+
+    void AssignLocalToShadowStack(LclVarDsc* varDsc)
+    {
+        // We will use this as the indication that the local has a home on the shadow stack.
+        varDsc->SetRegNum(REG_STK);
+        varDsc->lvInSsa = 0;
+
+        // All shadow locals must be referenced explicitly by this point. Assume for a start
+        // that this local will be live only on the shadow stack. The loop replacing uses and
+        // defs will increment the count back if there are any non-shadow references.
+        varDsc->lvImplicitlyReferenced = 0;
+        varDsc->setLvRefCnt(0);
     }
 
     void LowerAndInsertProlog()
@@ -517,8 +528,16 @@ private:
     {
         LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNode->GetLclNum());
 
-        if (m_llvm->isShadowFrameLocal(varDsc) && (lclNode->GetRegNum() != REG_LLVM))
+        if (m_llvm->isShadowFrameLocal(varDsc))
         {
+            if (lclNode->GetRegNum() == REG_LLVM)
+            {
+                // We previously set reference counts of all shadow locals to zero, anticipating that all references
+                // will be shadow ones. This one isn't - re-up the count.
+                varDsc->incLvRefCntSaturating(1);
+                return lclNode->gtNext;
+            }
+
             if (lclNode->IsPhiDefn())
             {
                 return RemovePhiDef(lclNode->AsLclVar());
@@ -613,7 +632,7 @@ private:
     }
 
     //------------------------------------------------------------------------
-    // isPotentialGcSafePoint: Can this node be a GC safe point?
+    // IsPotentialGcSafePoint: Can this node be a GC safe point?
     //
     // Arguments:
     //    node - The node

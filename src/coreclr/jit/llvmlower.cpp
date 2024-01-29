@@ -1479,7 +1479,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
             }
 
             ClassLayout* unwindFrameLayout = m_compiler->typGetBlkLayout(3 * TARGET_POINTER_SIZE);
-            unsigned unwindFrameLclNum = m_compiler->lvaGrabTempWithImplicitUse(false DEBUGARG("virtual unwind frame"));
+            unsigned unwindFrameLclNum = m_compiler->lvaGrabTemp(false DEBUGARG("virtual unwind frame"));
             m_compiler->lvaSetStruct(unwindFrameLclNum, unwindFrameLayout, /* unsafeValueClsCheck */ false);
             m_compiler->lvaSetVarAddrExposed(unwindFrameLclNum DEBUGARG(AddressExposedReason::ESCAPE_ADDRESS));
             m_compiler->lvaGetDesc(unwindFrameLclNum)->lvHasExplicitInit = true;
