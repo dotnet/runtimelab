@@ -88,6 +88,11 @@ $TestProjectBaseNativeOutputDirectory = "$TestProjectNativeOutputDirectory.base"
 $TestProjectWasmOutput = "$TestProjectNativeOutputDirectory/$TestProjectName.wasm"
 $TestProjectBaseWasmOutput = "$TestProjectBaseNativeOutputDirectory/$TestProjectName.wasm"
 
+if ($Rebuild -and (Test-Path $TestProjectBaseNativeObjDirectory))
+{
+    Remove-Item $TestProjectBaseNativeObjDirectory -Recurse -Force
+}
+
 $TestProjectBaseNativeOutputDirectoryExists = Test-Path $TestProjectBaseNativeOutputDirectory
 if ($Rebuild -and $TestProjectBaseNativeOutputDirectoryExists)
 {
