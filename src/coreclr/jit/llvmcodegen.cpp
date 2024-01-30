@@ -2274,7 +2274,18 @@ void Llvm::emitNullCheckForAddress(GenTree* addr, Value* addrValue)
     Value* isNullValue;
     if (addr->TypeIs(TYP_REF))
     {
-        isNullValue = _builder.CreateIsNull(addrValue);
+        // LLVM's FastISel, used for unoptimized code, is not able to generate sensible WASM unless we do
+        // a comparison using an integer zero here. This workaround saves 2.2% on debug code size.
+        // TODO-LLVM: file a bug on LLVM and fix this.
+        if (_compiler->opts.OptimizationDisabled())
+        {
+            Value* addrValueAsIntPtr = _builder.CreatePtrToInt(addrValue, getIntPtrLlvmType());
+            isNullValue = _builder.CreateICmpEQ(addrValueAsIntPtr, getIntPtrConst(0));
+        }
+        else
+        {
+            isNullValue = _builder.CreateIsNull(addrValue);
+        }
     }
     else
     {
