@@ -2275,8 +2275,8 @@ void Llvm::emitNullCheckForAddress(GenTree* addr, Value* addrValue)
     if (addr->TypeIs(TYP_REF))
     {
         // LLVM's FastISel, used for unoptimized code, is not able to generate sensible WASM unless we do
-        // a comparison using an integer zero here. This workaround saves 2.2% on debug code size.
-        // TODO-LLVM: file a bug on LLVM and fix this.
+        // a comparison using an integer zero here. This workaround saves 5+% on debug code size.
+        // TODO-LLVM: remove once https://github.com/llvm/llvm-project/issues/80053 is fixed.
         if (_compiler->opts.OptimizationDisabled())
         {
             Value* addrValueAsIntPtr = _builder.CreatePtrToInt(addrValue, getIntPtrLlvmType());
