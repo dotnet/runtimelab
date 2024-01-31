@@ -2490,8 +2490,9 @@ llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*
     llvm::CallBase* call;
     if (helperCallHasShadowStackArg(helperFunc))
     {
+        Value* shadowStackArg = getShadowStackForCallee(canEmitHelperCallAsShadowTailCall(helperFunc));
         std::vector<Value*> args = sigArgs.vec();
-        args.insert(args.begin(), getShadowStackForCallee());
+        args.insert(args.begin(), shadowStackArg);
 
         call = emitCallOrInvoke(helperLlvmFunc, args);
     }
@@ -2501,6 +2502,21 @@ llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*
     }
 
     return call;
+}
+
+bool Llvm::canEmitHelperCallAsShadowTailCall(CorInfoHelpFunc helperFunc)
+{
+    assert(helperCallHasShadowStackArg(helperFunc));
+
+    // Right now the check on whether the call is in a "tail" position is simply that it won't return.
+    if (Compiler::s_helperCallProperties.AlwaysThrow(helperFunc) &&
+        canEmitCallAsShadowTailCall(getCurrentProtectedRegionIndex() != EHblkDsc::NO_ENCLOSING_INDEX,
+                                    isCurrentContextInFilter()))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 llvm::CallBase* Llvm::emitCallOrInvoke(llvm::Function* callee, ArrayRef<Value*> args)
@@ -2871,6 +2887,12 @@ llvm::CatchPadInst* Llvm::getCatchPadForHandler(unsigned hndIndex)
 
     // We need the second block since the first contains the catchswitch.
     llvm::BasicBlock* catchSwitchLlvmBlock = getEHRegionInfo(hndIndex).UnwindBlock;
+    if (catchSwitchLlvmBlock == nullptr)
+    {
+        assert(!isReachable(_compiler->ehGetDsc(hndIndex)->ExFlowBlock()));
+        return nullptr;
+    }
+
     llvm::BasicBlock* catchPadLlvmBlock = catchSwitchLlvmBlock->getNextNode();
     llvm::CatchPadInst* catchPadInst = llvm::cast<llvm::CatchPadInst>(catchPadLlvmBlock->getFirstNonPHI());
     return catchPadInst;
@@ -2989,15 +3011,15 @@ Value* Llvm::getShadowStack()
 }
 
 // Shadow stack moved up to avoid overwriting anything on the stack in the compiling method
-Value* Llvm::getShadowStackForCallee()
+Value* Llvm::getShadowStackForCallee(bool isTailCall)
 {
-    unsigned shadowFrameSize = getShadowFrameSize(getCurrentLlvmFunctionIndex());
-    return gepOrAddrInBounds(getShadowStack(), shadowFrameSize);
+    unsigned calleeShadowStackOffset = getCalleeShadowStackOffset(getCurrentLlvmFunctionIndex(), isTailCall);
+    return gepOrAddrInBounds(getShadowStack(), calleeShadowStackOffset);
 }
 
 Value* Llvm::getOriginalShadowStack()
 {
-    if (_compiler->funGetFunc(getCurrentLlvmFunctionIndex())->funKind == FUNC_FILTER)
+    if (isCurrentContextInFilter())
     {
         // The original shadow stack pointer is the second filter parameter.
         return getCurrentLlvmFunction()->getArg(1);
@@ -3010,11 +3032,7 @@ void Llvm::setCurrentEmitContextForBlock(BasicBlock* block)
 {
     unsigned funcIdx = getLlvmFunctionIndexForBlock(block);
     unsigned tryIndex = block->hasTryIndex() ? block->getTryIndex() : EHblkDsc::NO_ENCLOSING_INDEX;
-    // There is only one EH table index for both filters and handlers, so disambiguating them would require adding
-    // an additional bit of information to the emit context. Currently we don't need that and can treat filter code
-    // as not nested in any handler.
-    unsigned hndIndex = (block->hasHndIndex() && !isBlockInFilter(block)) ? block->getHndIndex()
-                                                                          : EHblkDsc::NO_ENCLOSING_INDEX;
+    unsigned hndIndex = block->hasHndIndex() ? block->getHndIndex() : EHblkDsc::NO_ENCLOSING_INDEX;
     LlvmBlockRange* llvmBlocks = getLlvmBlocksForBlock(block);
 
     setCurrentEmitContext(funcIdx, tryIndex, hndIndex, llvmBlocks);
@@ -3081,6 +3099,11 @@ LlvmBlockRange* Llvm::getCurrentLlvmBlocks() const
 {
     assert(m_currentLlvmBlocks != nullptr);
     return m_currentLlvmBlocks;
+}
+
+bool Llvm::isCurrentContextInFilter() const
+{
+    return _compiler->funGetFunc(getCurrentLlvmFunctionIndex())->funKind == FUNC_FILTER;
 }
 
 Function* Llvm::getRootLlvmFunction()

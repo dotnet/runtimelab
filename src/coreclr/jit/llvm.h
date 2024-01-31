@@ -236,6 +236,9 @@ private:
     ArrayStack<unsigned>* m_unwindIndexMap = nullptr;
     BlockSet m_blocksInFilters = BlockSetOps::UninitVal();
 
+    // Shared between LSSA and codegen.
+    bool m_anyAddressExposedShadowLocals = false;
+
     // Codegen members.
     llvm::IRBuilder<> _builder;
     JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, Value*> _sdsuMap;
@@ -446,6 +449,8 @@ private:
 #endif // DEBUG
 
     unsigned getShadowFrameSize(unsigned funcIdx) const;
+    unsigned getCalleeShadowStackOffset(unsigned funcIdx, bool isTailCall) const;
+    bool canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter) const;
     bool isShadowFrameLocal(LclVarDsc* varDsc) const;
     bool isShadowStackLocal(unsigned lclNum) const;
     bool isFuncletParameter(unsigned lclNum) const;
@@ -533,6 +538,7 @@ private:
     void emitJumpToThrowHelper(Value* jumpCondValue, CorInfoHelpFunc helperFunc);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
     llvm::CallBase* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = {});
+    bool canEmitHelperCallAsShadowTailCall(CorInfoHelpFunc helperFunc);
     llvm::CallBase* emitCallOrInvoke(llvm::Function* callee, ArrayRef<Value*> args = {});
     llvm::CallBase* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args, bool isThrowingCall);
 
@@ -562,7 +568,7 @@ private:
     Value* gepOrAddrInBounds(Value* addr, unsigned offset);
     llvm::Constant* getIntPtrConst(target_size_t value, Type* llvmType = nullptr);
     Value* getShadowStack();
-    Value* getShadowStackForCallee();
+    Value* getShadowStackForCallee(bool isTailCall = false);
     Value* getOriginalShadowStack();
 
     void setCurrentEmitContextForBlock(BasicBlock* block);
@@ -572,6 +578,8 @@ private:
     unsigned getCurrentProtectedRegionIndex() const;
     unsigned getCurrentHandlerIndex() const;
     LlvmBlockRange* getCurrentLlvmBlocks() const;
+
+    bool isCurrentContextInFilter() const;
 
     Function* getRootLlvmFunction();
     Function* getCurrentLlvmFunction();
