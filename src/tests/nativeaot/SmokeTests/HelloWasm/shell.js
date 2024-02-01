@@ -5,28 +5,6 @@
 
 var wasmBinaryFile = 'HelloWasm.wasm';
 
-//// Load the wasm module and create an instance of using native support in the JS engine.
-//// handle a generated wasm instance, receiving its exports and
-//// performing other necessary setup
-function receiveInstantiationResult(result) {
-    wasmExports = result['instance'].exports;
-
-    const wasmImports = WebAssembly.Module.imports(result['module']);
-    const dupImport = (element) => element.module == 'ModuleName' && element.name == 'DupImportTest' && element.kind == 'function';
-    if (wasmImports.some(dupImport)) {
-        throw 'DupImportTest was imported when it should have been removed as a duplicate.';
-    }
-
-    wasmMemory = wasmExports['memory'];
-
-    updateMemoryViews();
-
-    addOnInit(wasmExports['__wasm_call_ctors']);
-
-    removeRunDependency('wasm-instantiate');
-    return wasmExports;
-}
-
 var Module = {
     'instantiateWasm': function (info, successCallback) {
 
@@ -43,6 +21,17 @@ var Module = {
         info['ModuleName2'] = {
             CommonFunctionName: functionInModule2,
         };
+
+        // Check that we have the right imports after having instantiated the module.
+        function receiveInstantiationResult(result) {
+            const wasmImports = WebAssembly.Module.imports(result['module']);
+            const dupImport = (element) => element.module == 'ModuleName' && element.name == 'DupImportTest' && element.kind == 'function';
+            if (wasmImports.some(dupImport)) {
+                throw 'DupImportTest was imported when it should have been removed as a duplicate.';
+            }
+
+            return successCallback(result['instance']);
+        }
 
         instantiateAsync(wasmBinary, wasmBinaryFile, info, receiveInstantiationResult);
         return {};

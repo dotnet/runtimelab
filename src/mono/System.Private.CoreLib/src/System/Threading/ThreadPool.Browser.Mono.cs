@@ -115,8 +115,17 @@ namespace System.Threading
             throw new PlatformNotSupportedException();
         }
 
+#if NATIVEAOT
+        internal static unsafe void MainThreadScheduleBackgroundJob(void* callback)
+        {
+            [DllImport("*")]
+            static extern void emscripten_async_call(void* func, void* arg, int millis);
+            emscripten_async_call(callback, null, 0);
+        }
+#else
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal static extern unsafe void MainThreadScheduleBackgroundJob(void* callback);
+#endif
 
 #pragma warning disable CS3016 // Arrays as attribute arguments is not CLS-compliant
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
