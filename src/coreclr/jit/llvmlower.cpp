@@ -935,12 +935,6 @@ void Llvm::lowerCallReturn(GenTreeCall* callNode)
 
 void Llvm::lowerAddressToAddressMode(GenTreeIndir* indir)
 {
-    // Only perform this transformation when optimizing. The analysis below is not cheap.
-    if (_compiler->opts.OptimizationDisabled())
-    {
-        return;
-    }
-
     GenTree* addr = indir->Addr();
     if (!addr->OperIs(GT_ADD))
     {
