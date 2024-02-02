@@ -7458,8 +7458,16 @@ void Compiler::lvaDumpEntry(unsigned lclNum, FrameLayoutState curState, size_t r
             printf(" ->  ");
         }
 
+        bool isZeroRef = (varDsc->lvRefCnt(lvaRefCountState) == 0) && !varDsc->lvImplicitlyReferenced;
+#ifdef TARGET_WASM
+        if (varDsc->GetRegNum() == REG_STK)
+        {
+            isZeroRef = false; // This could be a shadow local without physical references.
+        }
+#endif // TARGET_WASM
+
         // The register or stack location field is 11 characters wide.
-        if ((varDsc->lvRefCnt(lvaRefCountState) == 0) && !varDsc->lvImplicitlyReferenced)
+        if (isZeroRef)
         {
             printf("zero-ref   ");
         }
