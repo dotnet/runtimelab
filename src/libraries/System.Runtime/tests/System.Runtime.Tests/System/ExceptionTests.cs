@@ -12,6 +12,7 @@ using Xunit;
 
 namespace System.Tests
 {
+    [ActiveIssue("https://github.com/dotnet/runtimelab/issues/2404", typeof(PlatformDetection), nameof(PlatformDetection.IsNativeAot), nameof(PlatformDetection.IsWasm))]
     public static class ExceptionTests
     {
         private const int COR_E_EXCEPTION = unchecked((int)0x80131500);
