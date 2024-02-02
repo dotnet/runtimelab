@@ -3339,7 +3339,7 @@ llvm::Intrinsic::ID Llvm::getLlvmIntrinsic(NamedIntrinsic intrinsicName) const
         case NI_System_Math_Pow:
             return llvm::Intrinsic::pow;
         case NI_System_Math_Round:
-            return llvm::Intrinsic::round;
+            return llvm::Intrinsic::roundeven;
         case NI_System_Math_Sin:
             return llvm::Intrinsic::sin;
         case NI_System_Math_Sqrt:
