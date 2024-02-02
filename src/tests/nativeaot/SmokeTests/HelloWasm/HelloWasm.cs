@@ -3973,6 +3973,12 @@ internal unsafe partial class Program
             return;
         }
 
+        if (TimeZoneInfo.GetSystemTimeZones().Count == 0)
+        {
+            FailTest("System time zones missing");
+            return;
+        }
+
         PassTest();
     }
 
