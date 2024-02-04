@@ -459,6 +459,8 @@ private:
         // defs will increment the count back if there are any non-shadow references.
         varDsc->lvImplicitlyReferenced = 0;
         varDsc->setLvRefCnt(0);
+
+        m_llvm->m_anyAddressExposedShadowLocals |= varDsc->IsAddressExposed();
     }
 
     void LowerAndInsertProlog()
@@ -626,8 +628,11 @@ private:
         if (m_llvm->callHasManagedCallingConvention(call))
         {
             unsigned funcIdx = m_llvm->getLlvmFunctionIndexForBlock(m_llvm->CurrentBlock());
+            bool isTailCall = CanShadowTailCall(call);
+            unsigned calleeShadowStackOffset = m_llvm->getCalleeShadowStackOffset(funcIdx, isTailCall);
+
             GenTree* calleeShadowStack =
-                m_llvm->insertShadowStackAddr(call, m_llvm->getShadowFrameSize(funcIdx), m_llvm->_shadowStackLclNum);
+                m_llvm->insertShadowStackAddr(call, calleeShadowStackOffset, m_llvm->_shadowStackLclNum);
             CallArg* calleeShadowStackArg =
                 call->gtArgs.PushFront(m_compiler, NewCallArg::Primitive(calleeShadowStack, CORINFO_TYPE_PTR));
 
@@ -640,6 +645,23 @@ private:
             // We may have lost track of a shadow local defined by this call. Clear the flag if so.
             call->gtCallMoreFlags &= ~GTF_CALL_M_RETBUFFARG_LCLOPT;
         }
+    }
+
+    bool CanShadowTailCall(GenTreeCall* call)
+    {
+        BasicBlock* block = m_llvm->CurrentBlock();
+        if (!m_llvm->canEmitCallAsShadowTailCall(block->hasTryIndex(), m_llvm->isBlockInFilter(block)))
+        {
+            return false;
+        }
+
+        // We support only the simplest cases for now.
+        if (call->IsNoReturn() || ((call->gtNext != nullptr) && call->gtNext->OperIs(GT_RETURN)))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     //------------------------------------------------------------------------
@@ -684,30 +706,6 @@ private:
 void Llvm::Allocate()
 {
     ShadowStackAllocator(this).Allocate();
-}
-
-//------------------------------------------------------------------------
-// getShadowFrameSize: What is the size of a function's shadow frame?
-//
-// Arguments:
-//    funcIdx - Index representing the function
-//
-// Return Value:
-//    The size of the shadow frame for the given function. We term this
-//    the value by which the shadow stack pointer must be offset before
-//    calling managed code such that the caller will not clobber anything
-//    live on the frame. Note that filters do not have any shadow state
-//    of their own and use the "original" frame from the parent function.
-//
-unsigned Llvm::getShadowFrameSize(unsigned funcIdx) const
-{
-    if (_compiler->funGetFunc(funcIdx)->funKind == FUNC_FILTER)
-    {
-        return 0;
-    }
-
-    assert((_shadowStackLocalsSize % TARGET_POINTER_SIZE) == 0);
-    return _shadowStackLocalsSize;
 }
 
 ValueInitKind Llvm::getInitKindForLocal(unsigned lclNum) const
@@ -771,6 +769,69 @@ void Llvm::displayInitKindForLocal(unsigned lclNum, ValueInitKind initKind)
     }
 }
 #endif // DEBUG
+
+//------------------------------------------------------------------------
+// getShadowFrameSize: What is the size of a function's shadow frame?
+//
+// Arguments:
+//    funcIdx - Index representing the function
+//
+// Return Value:
+//    The size of the shadow frame for the given function. We term this
+//    the value by which the shadow stack pointer must be offset before
+//    calling managed code such that the caller will not clobber anything
+//    live on the frame. Note that filters do not have any shadow state
+//    of their own and use the "original" frame from the parent function.
+//
+unsigned Llvm::getShadowFrameSize(unsigned funcIdx) const
+{
+    if (_compiler->funGetFunc(funcIdx)->funKind == FUNC_FILTER)
+    {
+        return 0;
+    }
+
+    assert((_shadowStackLocalsSize % TARGET_POINTER_SIZE) == 0);
+    return _shadowStackLocalsSize;
+}
+
+unsigned Llvm::getCalleeShadowStackOffset(unsigned funcIdx, bool isTailCall) const
+{
+    if (isTailCall)
+    {
+        return 0;
+    }
+
+    return getShadowFrameSize(funcIdx);
+}
+
+//------------------------------------------------------------------------
+// canEmitCallAsShadowTailCall: Can a call be made into a shadow tail call?
+//
+// Arguments:
+//    callIsInTry    - Is the call in a protected region
+//    callIsInFilter - Is the call in a filter
+//
+// Return Value:
+//    Whether a call can be made without preserving the current shadow frame.
+//
+bool Llvm::canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter) const
+{
+    // We don't want to tail call anything in debug code, as it leads to a confusing debugging experience where
+    // calls down the stack may modify (corrupt) shadow variables from their callers.
+    if (_compiler->opts.compDbgCode)
+    {
+        return false;
+    }
+
+    // Address-exposed shadow state may be observed by the callee or filters that run in the first pass of EH.
+    if (m_anyAddressExposedShadowLocals)
+    {
+        return false;
+    }
+
+    // Both protected regions and filters induce exceptional flow that may return back to this method.
+    return !callIsInTry && !callIsInFilter;
+}
 
 //------------------------------------------------------------------------
 // isShadowFrameLocal: Does the given local have a home on the shadow frame?
