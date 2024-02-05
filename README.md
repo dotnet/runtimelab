@@ -16,7 +16,7 @@ Currently, this repo contains the following experimental projects:
 - [Hot-Cold Splitting](https://github.com/dotnet/runtimelab/tree/feature/hot-cold-splitting) - Support the hot-cold splitting optimization in crossgen2.
 - [ManagedZLib](https://github.com/dotnet/runtimelab/tree/feature/ManagedZLib) - Fully managed implementation of DEFLATE algorithm and GZip/ZLib envelope formats.
 - [Async](https://github.com/dotnet/runtimelab/tree/feature/async2-experiment) - Move support for async state machine generation from the C# compiler to the runtime.
-- [SwiftBindings](https://github.com/dotnet/runtimelab/tree/feature/swift-bindings) - Swift bindings for .NET written in C#.
+- [SwiftBindings](https://github.com/dotnet/runtimelab/tree/feature/swift-bindings) - Swift bindings for .NET.
 
 You can create your own experiment, learn more [here](CreateAnExperiment.md)!
 
