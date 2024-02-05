@@ -1,7 +1,7 @@
 using System;
 using Xunit;
 
-namespace Experiment.Tests
+namespace SwiftBindings.Tests
 {
     public class MyClassTests
     {
