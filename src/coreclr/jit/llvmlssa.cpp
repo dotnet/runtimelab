@@ -96,7 +96,7 @@ private:
             // The unwind frame MUST be allocated on the shadow stack. The runtime uses its value to invoke filters.
             if (lclNum == m_llvm->m_unwindFrameLclNum)
             {
-                varDsc->SetRegNum(REG_STK);
+                varDsc->SetRegNum(REG_STK_CANDIDATE_UNCONDITIONAL);
                 continue;
             }
 
@@ -109,7 +109,7 @@ private:
             //
             if (m_compiler->ehHasCallableHandlers() && (!varDsc->lvTracked || varDsc->lvLiveInOutOfHndlr))
             {
-                varDsc->SetRegNum(REG_STK);
+                varDsc->SetRegNum(REG_STK_CANDIDATE_UNCONDITIONAL);
                 continue;
             }
 
@@ -117,7 +117,9 @@ private:
             // able to prove that they are not alive across any safe point and so designate them as "candidates".
             if (varDsc->HasGCPtr())
             {
-                varDsc->SetRegNum(m_compiler->lvaInSsa(lclNum) ? REG_STK_CANDIDATE_TENTATIVE : REG_STK);
+                // TODO-LLVM-LSSA:
+                // varDsc->SetRegNum(m_compiler->lvaInSsa(lclNum) ? REG_STK_CANDIDATE_TENTATIVE : REG_STK_CANDIDATE_UNCONDITIONAL);
+                varDsc->SetRegNum(REG_STK_CANDIDATE_UNCONDITIONAL);
             }
         }
     }
@@ -139,22 +141,19 @@ private:
         };
 
         ShadowStackAllocator* m_lssa;
-        SmallHashTable<GenTree*, unsigned, 8, DeterministicNodeHashInfo> liveSdsuGcDefs;
-        ArrayStack<unsigned> spillLclsRef;
-        ArrayStack<unsigned> spillLclsByref;
-        ArrayStack<GenTree*> containedOperands;
-
-        bool hasLiveGcLocals;
-        VARSET_TP liveGcLocals = VarSetOps::UninitVal();
+        SmallHashTable<GenTree*, unsigned, 8, DeterministicNodeHashInfo> m_liveSdsuGcDefs;
+        ArrayStack<unsigned> m_spillLclsRef;
+        ArrayStack<unsigned> m_spillLclsByref;
+        ArrayStack<GenTree*> m_containedOperands;
 
     public:
         LssaDomTreeVisitor(ShadowStackAllocator* lssa)
             : NewDomTreeVisitor(lssa->m_compiler)
             , m_lssa(lssa)
-            , liveSdsuGcDefs(m_compiler->getAllocator(CMK_Codegen))
-            , spillLclsRef(m_compiler->getAllocator(CMK_Codegen))
-            , spillLclsByref(m_compiler->getAllocator(CMK_Codegen))
-            , containedOperands(m_compiler->getAllocator(CMK_Codegen))
+            , m_liveSdsuGcDefs(m_compiler->getAllocator(CMK_Codegen))
+            , m_spillLclsRef(m_compiler->getAllocator(CMK_Codegen))
+            , m_spillLclsByref(m_compiler->getAllocator(CMK_Codegen))
+            , m_containedOperands(m_compiler->getAllocator(CMK_Codegen))
         {
         }
 
@@ -165,13 +164,8 @@ private:
 
         void ProcessBlock(BasicBlock* block)
         {
-            assert(liveSdsuGcDefs.Count() == 0);
+            assert(m_liveSdsuGcDefs.Count() == 0);
             LIR::Range& blockRange = LIR::AsRange(block);
-
-            if (hasLiveGcLocals)
-            {
-                VarSetOps::Assign(m_compiler, liveGcLocals, block->bbLiveIn);
-            }
 
             for (GenTree* node = blockRange.FirstNode(); node != nullptr; node = node->gtNext)
             {
@@ -189,9 +183,9 @@ private:
                     {
                         // TODO-LLVM-LSSA: also need to pin locals used here.
                         unsigned spillLclNum;
-                        liveSdsuGcDefs.TryGetValue(retBufNode, &spillLclNum);
+                        m_liveSdsuGcDefs.TryGetValue(retBufNode, &spillLclNum);
                         SpillSdsuValue(blockRange, retBufNode, &spillLclNum);
-                        liveSdsuGcDefs.AddOrUpdate(retBufNode, spillLclNum);
+                        m_liveSdsuGcDefs.AddOrUpdate(retBufNode, spillLclNum);
                     }
                 }
 
@@ -205,14 +199,14 @@ private:
                         {
                             // Operands of contained nodes are used by the containing nodes. Note this algorithm will
                             // process contained operands in an out-of-order fashion; that is ok.
-                            containedOperands.Push(operand);
+                            m_containedOperands.Push(operand);
                             continue;
                         }
 
                         if ((operand->gtLIRFlags & LIR::Flags::Mark) != 0)
                         {
                             unsigned spillLclNum = BAD_VAR_NUM;
-                            bool operandWasRemoved = liveSdsuGcDefs.TryRemove(operand, &spillLclNum);
+                            bool operandWasRemoved = m_liveSdsuGcDefs.TryRemove(operand, &spillLclNum);
                             assert(operandWasRemoved);
 
                             if (spillLclNum != BAD_VAR_NUM)
@@ -221,7 +215,7 @@ private:
 
                                 *use = lclVarNode;
                                 blockRange.InsertBefore(user, lclVarNode);
-                                ReleaseSpillLcl(spillLclNum);
+                                ReleaseSpillLocal(spillLclNum);
 
                                 JITDUMP("Spilled [%06u] used by [%06u] replaced with V%02u:\n",
                                     Compiler::dspTreeID(operand), Compiler::dspTreeID(user), spillLclNum);
@@ -232,99 +226,40 @@ private:
                         }
                     }
 
-                    if (containedOperands.Empty())
+                    if (m_containedOperands.Empty())
                     {
                         break;
                     }
 
-                    user = containedOperands.Pop();
+                    user = m_containedOperands.Pop();
                 }
 
                 // Find out if we need to spill anything.
                 if (m_lssa->IsPotentialGcSafePoint(node))
                 {
-                    if (hasLiveGcLocals)
-                    {
-                        unsigned lclVarIndex;
-                        VarSetOps::Iter iter(m_compiler, liveGcLocals);
-                        while (iter.NextElem(&lclVarIndex))
-                        {
-                            unsigned lclNum = m_compiler->lvaTrackedIndexToLclNum(lclVarIndex);
-                            LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
-                            if (varDsc->GetRegNum() == REG_STK_CANDIDATE_TENTATIVE)
-                            {
-                                assert(m_compiler->lvaInSsa(lclNum));
-
-                                // Spill at all defs. TODO-LLVM-LSSA: this is a hack for the prototype.
-                                for (unsigned defIndex = 0; defIndex < varDsc->lvPerSsaData.GetCount(); defIndex++)
-                                {
-                                    LclSsaVarDsc* ssaDsc = varDsc->lvPerSsaData.GetSsaDefByIndex(defIndex);
-                                    GenTreeLclVarCommon* defNode = ssaDsc->GetDefNode();
-                                    if (defNode == nullptr)
-                                    {
-                                        continue;
-                                    }
-
-                                    // TODO-LLVM-LSSA: support more optimal spilling for local fields.
-                                    GenTreeLclVar* value = m_compiler->gtNewLclVarNode(lclNum);
-                                    value->SetSsaNum(defNode->GetSsaNum());
-                                    value->SetRegNum(REG_LLVM);
-                                    GenTree* store = m_compiler->gtNewStoreLclVarNode(lclNum, value);
-                                    store->SetRegNum(REG_STK);
-
-                                    LIR::Range& defBlockRange = LIR::AsRange(ssaDsc->GetBlock());
-                                    if (defNode->IsPhiDefn())
-                                    {
-                                        defBlockRange.InsertBefore(
-                                            defBlockRange.FirstNonPhiOrCatchArgNode(), value, store);
-                                    }
-                                    else
-                                    {
-                                        defBlockRange.InsertAfter(defNode, value, store);
-                                    }
-                                }
-
-                                varDsc->SetRegNum(REG_STK_CANDIDATE);
-                            }
-                        }
-                    }
-                    if (liveSdsuGcDefs.Count() != 0)
+                    if (m_liveSdsuGcDefs.Count() != 0)
                     {
                         JITDUMP("\nFound a safe point with GC SDSUs live across it:\n", Compiler::dspTreeID(node));
                         DISPNODE(node);
 
-                        for (auto def : liveSdsuGcDefs)
+                        for (auto def : m_liveSdsuGcDefs)
                         {
                             SpillSdsuValue(blockRange, def.Key(), &def.Value());
                         }
                     }
                 }
 
-                if (node->OperIsLocal())
-                {
-                    // Check that this is not the spill node we've added above.
-                    if (node->GetRegNum() != REG_STK)
-                    {
-                        LclVarDsc* varDsc = m_compiler->lvaGetDesc(node->AsLclVarCommon());
-                        if ((varDsc->GetRegNum() == REG_STK_CANDIDATE_TENTATIVE) ||
-                            (varDsc->GetRegNum() == REG_STK_CANDIDATE))
-                        {
-                            // We depend here on the conservativeness of GC in not reloading after a safepoint.
-                            assert(m_lssa->IsGcConservative());
-                            node->SetRegNum(REG_LLVM);
-                        }
-                    }
-                }
                 // Add the value defined by this node.
-                else if (node->IsValue() && !node->IsUnusedValue() && m_lssa->IsGcValue(node))
+                if (node->IsValue() && !node->IsUnusedValue() && !node->OperIsLocal() && m_lssa->IsGcValue(node))
                 {
                     node->gtLIRFlags |= LIR::Flags::Mark;
-                    liveSdsuGcDefs.AddOrUpdate(node, BAD_VAR_NUM);
+                    m_liveSdsuGcDefs.AddOrUpdate(node, BAD_VAR_NUM);
                 }
             }
         }
 
-        unsigned GetSpillLcl(GenTree* node)
+    private:
+        unsigned GetSpillLocal(GenTree* node)
         {
             var_types type = node->TypeGet();
             ClassLayout* layout = nullptr;
@@ -332,15 +267,15 @@ private:
             switch (type)
             {
             case TYP_REF:
-                if (!spillLclsRef.Empty())
+                if (!m_spillLclsRef.Empty())
                 {
-                    lclNum = spillLclsRef.Pop();
+                    lclNum = m_spillLclsRef.Pop();
                 }
                 break;
             case TYP_BYREF:
-                if (!spillLclsByref.Empty())
+                if (!m_spillLclsByref.Empty())
                 {
-                    lclNum = spillLclsByref.Pop();
+                    lclNum = m_spillLclsByref.Pop();
                 }
                 break;
             case TYP_STRUCT:
@@ -356,7 +291,7 @@ private:
                 lclNum = m_compiler->lvaGrabTemp(true DEBUGARG("GC SDSU live across a safepoint"));
                 LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
                 varDsc->lvType = type;
-                varDsc->SetRegNum(REG_STK);
+                varDsc->SetRegNum(REG_STK_CANDIDATE_UNCONDITIONAL);
                 if (type == TYP_STRUCT)
                 {
                     m_compiler->lvaSetStruct(lclNum, layout, false);
@@ -366,16 +301,16 @@ private:
             return lclNum;
         }
 
-        void ReleaseSpillLcl(unsigned lclNum)
+        void ReleaseSpillLocal(unsigned lclNum)
         {
             LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
             if (varDsc->TypeGet() == TYP_REF)
             {
-                spillLclsRef.Push(lclNum);
+                m_spillLclsRef.Push(lclNum);
             }
             else if (varDsc->TypeGet() == TYP_BYREF)
             {
-                spillLclsByref.Push(lclNum);
+                m_spillLclsByref.Push(lclNum);
             }
         }
 
@@ -387,7 +322,7 @@ private:
                 return;
             }
 
-            unsigned spillLclNum = GetSpillLcl(defNode);
+            unsigned spillLclNum = GetSpillLocal(defNode);
             JITDUMP("Spilling as V%02u:\n", spillLclNum);
             DISPNODE(defNode);
 
@@ -435,7 +370,8 @@ private:
                 varDsc->SetRegNum(REG_LLVM);
             }
 
-            if ((varDsc->GetRegNum() == REG_STK_CANDIDATE) || (varDsc->GetRegNum() == REG_STK))
+            if ((varDsc->GetRegNum() == REG_STK_CANDIDATE_UNCONDITIONAL) ||
+                (varDsc->GetRegNum() == REG_STK_CANDIDATE_COMMITED))
             {
                 // TODO-LLVM-LSSA: do not spill this implicit definition to the SS if it's not live across a safepoint
                 // (same logic as for other definitions).
@@ -466,7 +402,7 @@ private:
 
     void AssignLocalToShadowStack(LclVarDsc* varDsc)
     {
-        if (varDsc->GetRegNum() == REG_STK)
+        if (varDsc->GetRegNum() == REG_STK_CANDIDATE_UNCONDITIONAL)
         {
             varDsc->lvInSsa = 0;
         }
@@ -478,9 +414,6 @@ private:
         varDsc->setLvRefCnt(0);
 
         m_llvm->m_anyAddressExposedShadowLocals |= varDsc->IsAddressExposed();
-
-        // Temporarily reset the register so that "AssignShadowFrameOffsets" can use it.
-        varDsc->SetRegNum(REG_NA);
     }
 
     void AssignShadowFrameOffsets(std::vector<unsigned>& shadowFrameLocals)
@@ -830,7 +763,7 @@ private:
 
             // Local address nodes always point to the stack (native or shadow). Constant handles will
             // only point to immortal and immovable (frozen) objects.
-            return !node->IsIconHandle() && !node->IsIntegralConst(0);
+            return !node->OperIs(GT_LCL_ADDR) && !node->IsIconHandle() && !node->IsIntegralConst(0);
         }
 
         return false;
