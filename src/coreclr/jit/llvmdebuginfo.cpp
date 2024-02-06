@@ -239,6 +239,11 @@ void Llvm::declareDebugVariables()
     {
         unsigned lclNum = lcl->GetKey();
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+        if (_compiler->lvaInSsa(lclNum))
+        {
+            // Managed with "assignDebugVariable".
+            continue;
+        }
 
         Value* addressValue;
         DIExpression* debugExpression;
@@ -258,7 +263,7 @@ void Llvm::declareDebugVariables()
             unsigned offset = static_cast<unsigned>(varDsc->GetStackOffset());
             debugExpression = m_diBuilder->createExpression({DW_OP_deref, DW_OP_plus_uconst, offset});
         }
-        else if (!_compiler->lvaInSsa(lclNum) && (varDsc->lvRefCnt() != 0))
+        else if (varDsc->lvRefCnt() != 0)
         {
             addressValue = getLocalAddr(lclNum);
             debugExpression = m_diBuilder->createExpression();
