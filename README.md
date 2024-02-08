@@ -1,4 +1,4 @@
-# Swift Bindings
+# .NET Swift interop tooling
 
 This is a collection of tools designed to consume a compiled Apple Swift library and generate bindings and wrappers that enable it to be used as a .NET library.
 
