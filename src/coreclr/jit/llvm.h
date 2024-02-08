@@ -138,6 +138,12 @@ struct HelperFuncInfo
     size_t GetSigArgCount(unsigned* callArgCount = nullptr) const;
 };
 
+enum class ValueInitOpts
+{
+    None,
+    IncludeImplicitGcUse
+};
+
 enum class ValueInitKind
 {
     None,
@@ -443,7 +449,7 @@ public:
 private:
     friend class ShadowStackAllocator;
 
-    ValueInitKind getInitKindForLocal(unsigned lclNum) const;
+    ValueInitKind getInitKindForLocal(unsigned lclNum, ValueInitOpts opts = ValueInitOpts::None) const;
 #ifdef DEBUG
     void displayInitKindForLocal(unsigned lclNum, ValueInitKind initKind);
 #endif // DEBUG
