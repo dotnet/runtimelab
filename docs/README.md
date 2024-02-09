@@ -188,7 +188,7 @@ The general workflow for generating C# bindings from Swift code is as follows:
 
 1. Process the Swift library interface (`.swiftinterface`) with the SwiftReflector and generate `TLDefinition` with mappings between entry points and mangled names.
 2. Aggregate a public API based on `.swiftinterface` with the SwiftReflector.
-3. Generate surce code for C# bindings with Dynamo and compile the code into a managed library.
+3. Generate source code for C# bindings with Dynamo and compile the code into a managed library.
 
 ### Shipping
 
