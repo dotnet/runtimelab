@@ -198,7 +198,7 @@ The general workflow for generating C# bindings from Swift code is as follows:
 
 This subsection will be expanded during the design review process.
 
-### User expirience
+### User experience
 
 The tooling perhaps doesn't need to surface all APIs, but only those that are used. Users should be able to indicate a subset of APIs that should be bound.
 
