@@ -41,7 +41,7 @@ namespace SwiftRuntimeLibrary {
 		byte [] SwiftData { get; set; }
 	}
 
-    public interface ISwiftObject : IDisposable {
+	public interface ISwiftObject : IDisposable {
 		IntPtr SwiftObject { get; }
 	}
 
