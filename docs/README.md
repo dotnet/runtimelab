@@ -142,10 +142,10 @@ public class FooECTIA : ISwiftEnum
     ~FooECTIA()
     {
     }
-    public static FooECTIA NewA(nint value0)
+    public static FooECTIA CreateA(nint value0)
     {
     }
-    public static FooECTIA NewB(double value0)
+    public static FooECTIA CreateB(double value0)
     {
     }
     public byte[] SwiftData
