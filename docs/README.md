@@ -31,9 +31,33 @@ The table below lists the Swift types and their corresponding C# types.
 
 All C# types mentioned are blittable except for `bool`. To facilitate `P/Invoke`, a lightweight wrapper is required to convert `bool` to `byte`. Swift primitive types are implemented as frozen structs that conform to Swift-specific lowering processes handled by the runtime. However, such mapping can fit within the underlying calling convention as these types are below the size limit for being passed by reference.
 
+### Swift runtime library
+
+The tooling provides an implementation of runtime Swift types in C#. The code snippet below illustrates the general mechanism by which the types are projected.
+
+```csharp
+namespace SwiftRuntimeLibrary {
+	public interface ISwiftValueType : IDisposable {
+		byte [] SwiftData { get; set; }
+	}
+
+    public interface ISwiftObject : IDisposable {
+		IntPtr SwiftObject { get; }
+	}
+
+	public interface ISwiftEnum : ISwiftValueType {
+	}
+
+	public interface ISwiftStruct : ISwiftValueType {
+	}
+}
+```
+
+This subsection will be expanded during the design review process.
+
 ### Structs
 
-Swift structs are projected into C# as `IDisposable` classes, implementing `ISwiftStruct`, which inherit from `ISwiftNominalType` and `ISwiftDisposable`. This approach is chosen due to the semantic differences in lifecycle management between Swift and C# types. Bindings are generated with `SwiftStructAttribute` that inherits `SwiftNominalTypeAttribute`. This attribute contains information about the Swift type.
+Swift structs are projected into C# as `IDisposable` classes, implementing `ISwiftStruct`, which inherit from `ISwiftValueType` and `ISwiftDisposable`. This approach is chosen due to the semantic differences in lifecycle management between Swift and C# types. Bindings are generated with `SwiftStructAttribute` that inherits `SwiftValueTypeAttribute`. This attribute contains information about the Swift type.
 
 Given the following Swift struct declaration:
 ```swift
