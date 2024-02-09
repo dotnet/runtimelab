@@ -28,7 +28,7 @@ The table below lists the Swift types and their corresponding C# types.
 | `Float`                         | `float`  |
 | `Double`                        | `double` |
 
-Swift primitive types are implemented as frozen structs that conform to Swift-specific lowering processes handled by the runtime. However, such mappingcan fit within the underlying calling convention as these types are below the size limit for being passed by reference. 
+Swift primitive types are implemented as frozen structs that conform to Swift-specific lowering processes handled by the runtime. However, such mapping can fit within the underlying calling convention as these types are below the size limit for being passed by reference. 
 
 ### Structs
 
