@@ -1,6 +1,6 @@
 # .NET Swift interop tooling documentation
 
-This document provides a detailed overview of the .NET Swift interop tooling, focusing on the projections between Swift and .NET, and the functional design of the tooling.
+This document provides a detailed overview of the .NET Swift interop tooling, focusing on the projections between Swift and .NET, and the functional design of the tooling. The projection tooling is intended for use with C# and any other .NET language is beyond its scope.
 
 ## Projections
 
@@ -20,15 +20,16 @@ The table below lists the Swift types and their corresponding C# types.
 | `Swift.UInt16`                  | `ushort` |
 | `Swift.Int8`                    | `sbyte`  |
 | `Swift.UInt8`                   | `byte`   |
-| `Swift.UnsafeRawPointer`        | `IntPtr` |
-| `Swift.UnsafeMutableRawPointer` | `IntPtr` |
+| `Swift.UnsafeRawPointer`        | `void*`  |
+| `Swift.UnsafeMutableRawPointer` | `void*`  |
 | `Int`                           | `nint`   |
 | `UInt`                          | `nuint`  |
 | `Bool`                          | `bool`   |
 | `Float`                         | `float`  |
 | `Double`                        | `double` |
 
-Swift primitive types are implemented as frozen structs that conform to Swift-specific lowering processes handled by the runtime. However, such mapping can fit within the underlying calling convention as these types are below the size limit for being passed by reference. 
+
+All C# types mentioned are blittable except for `bool`. To facilitate `P/Invoke`, a lightweight wrapper is required to convert `bool` to `byte`. Swift primitive types are implemented as frozen structs that conform to Swift-specific lowering processes handled by the runtime. However, such mapping can fit within the underlying calling convention as these types are below the size limit for being passed by reference.
 
 ### Structs
 
@@ -46,47 +47,39 @@ Given the following Swift struct declaration:
 
 The projection tooling will generate the following C#, with function bodies left empty for simplicity:
 ```csharp
-    using System;
-    using System.Runtime.InteropServices;
-    using SwiftRuntimeLibrary;
-    using SwiftRuntimeLibrary.SwiftMarshal;
-    
-    namespace NewClassCompilerTests
+[SwiftStruct("libNewClassCompilerTests.dylib",
+    "$s21NewClassCompilerTests6BarIntVMn",
+    "$s21NewClassCompilerTests6BarIntVN", "")]
+public class BarInt : ISwiftStruct
+{
+    public BarInt(nint x)
     {
-        [SwiftStruct("libNewClassCompilerTests.dylib",
-            "$s21NewClassCompilerTests6BarIntVMn", 
-            "$s21NewClassCompilerTests6BarIntVN", "")]
-        public class BarInt : ISwiftStruct
-        {
-            public BarInt(nint x)
-            {
-            }
-            internal BarInt(SwiftNominalCtorArgument unused)
-            {
-            }
-            public static SwiftMetatype GetSwiftMetatype()
-            {
-            }
-            public void Dispose()
-            {
-            }
-            void Dispose(bool disposing)
-            {
-            }
-            ~BarInt()
-            {
-            }
-            public byte[] SwiftData
-            {
-                get; set;
-            }
-            public nint X
-            {
-                get { }
-                set { }
-            }
-        }
     }
+    internal BarInt(SwiftNominalCtorArgument unused)
+    {
+    }
+    public static SwiftMetatype GetSwiftMetatype()
+    {
+    }
+    public void Dispose()
+    {
+    }
+    void Dispose(bool disposing)
+    {
+    }
+    ~BarInt()
+    {
+    }
+    public byte[] SwiftData
+    {
+        get; set;
+    }
+    public nint X
+    {
+        get { }
+        set { }
+    }
+}
 ```
 
 There is a payload `SwiftData` along with two constructors. The first maps onto the `init` method inside the swift class. The second is an internal constructor that gets used to define an uninitialized type. This constructor gets used by the marshaler when a type needs to be allocated before it gets used, for example, as a return value because Swift semantics don’t allow to explicitly have variables in an uninitialized state. 
@@ -107,55 +100,47 @@ Given this Swift enum:
 
 The projection tooling will generate the following C#, with function bodies left empty for simplicity:
 ```csharp
-    using System;
-    using System.Runtime.InteropServices;
-    using SwiftRuntimeLibrary;
-    using SwiftRuntimeLibrary.SwiftMarshal;
-    
-    namespace NewClassCompilerTests
+public enum FooECTIACases
+{
+    A, B
+}
+[SwiftEnumType("libNewClassCompilerTests.dylib",
+    "$s21NewClassCompilerTests8FooECTIAOMn",
+    "$s21NewClassCompilerTests8FooECTIAON", "")]
+public class FooECTIA : ISwiftEnum
+{
+    public void Dispose()
     {
-        public enum FooECTIACases
-        {
-            A, B
-        }
-        [SwiftEnumType("libNewClassCompilerTests.dylib",
-            "$s21NewClassCompilerTests8FooECTIAOMn", 
-            "$s21NewClassCompilerTests8FooECTIAON", "")]
-        public class FooECTIA : ISwiftEnum
-        {
-            public void Dispose()
-            {
-            }
-            void Dispose(bool disposing)
-            {
-            }
-            ~FooECTIA()
-            {
-            }
-            public static FooECTIA NewA(nint value0)
-            {
-            }
-            public static FooECTIA NewB(double value0)
-            {
-            }
-            public byte[] SwiftData
-            {
-                get; set;
-            }
-            public nint ValueA
-            {
-                get { }
-            }
-            public double ValueB
-            {
-                get { }
-            }
-            public FooECTIACases Case
-            {
-                get { }
-            }
-        }
     }
+    void Dispose(bool disposing)
+    {
+    }
+    ~FooECTIA()
+    {
+    }
+    public static FooECTIA NewA(nint value0)
+    {
+    }
+    public static FooECTIA NewB(double value0)
+    {
+    }
+    public byte[] SwiftData
+    {
+        get; set;
+    }
+    public nint ValueA
+    {
+        get { }
+    }
+    public double ValueB
+    {
+        get { }
+    }
+    public FooECTIACases Case
+    {
+        get { }
+    }
+}
 ```
 
 ### Scaling and trimming
