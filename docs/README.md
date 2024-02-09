@@ -71,9 +71,6 @@ Given the following Swift struct declaration:
 
 The projection tooling will generate the following C#, with function bodies left empty for simplicity:
 ```csharp
-[SwiftStruct("libNewClassCompilerTests.dylib",
-    "$s21NewClassCompilerTests6BarIntVMn",
-    "$s21NewClassCompilerTests6BarIntVN", "")]
 public class BarInt : ISwiftStruct
 {
     public BarInt(nint x)
@@ -128,9 +125,7 @@ public enum FooECTIACases
 {
     A, B
 }
-[SwiftEnumType("libNewClassCompilerTests.dylib",
-    "$s21NewClassCompilerTests8FooECTIAOMn",
-    "$s21NewClassCompilerTests8FooECTIAON", "")]
+
 public class FooECTIA : ISwiftEnum
 {
     public void Dispose()
