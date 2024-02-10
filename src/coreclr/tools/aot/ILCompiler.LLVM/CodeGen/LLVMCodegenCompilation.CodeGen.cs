@@ -77,8 +77,6 @@ namespace ILCompiler
 
         public override TypeDesc GetPrimitiveTypeForTrivialWasmStruct(TypeDesc type)
         {
-            Debug.Assert(IsStruct(type));
-
             int size = type.GetElementSize().AsInt;
             if (size <= sizeof(double) && BitOperations.IsPow2(size))
             {
