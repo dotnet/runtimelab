@@ -95,8 +95,12 @@ struct ThreadBuffer
 #ifdef FEATURE_HIJACK
     void **                 m_ppvHijackedReturnAddressLocation;
     void *                  m_pvHijackedReturnAddress;
+<<<<<<< HEAD
     uintptr_t               m_uHijackedReturnValueFlags;            
 #endif // FEATURE_HIJACK
+=======
+    uintptr_t               m_uHijackedReturnValueFlags;
+>>>>>>> runtime/main
     PTR_ExInfo              m_pExInfoStackHead;
     Object*                 m_threadAbortException;                 // ThreadAbortException instance -set only during thread abort
     Object*                 m_pThreadLocalStatics;
@@ -173,7 +177,7 @@ private:
     // Hijack funcs are not called, they are "returned to". And when done, they return to the actual caller.
     // Thus they cannot have any parameters or return anything.
     //
-    typedef void HijackFunc();
+    typedef void FASTCALL HijackFunc();
 
     void HijackReturnAddress(PAL_LIMITED_CONTEXT* pSuspendCtx, HijackFunc* pfnHijackFunction);
     void HijackReturnAddress(NATIVE_CONTEXT* pSuspendCtx, HijackFunc* pfnHijackFunction);

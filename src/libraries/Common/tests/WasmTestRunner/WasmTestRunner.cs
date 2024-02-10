@@ -33,6 +33,7 @@ public class SimpleWasmTestRunner : WasmApplicationEntryPoint
         var includedClasses = new List<string>();
         var includedMethods = new List<string>();
         var backgroundExec = false;
+        var untilFailed = false;
 
         for (int i = index; i < args.Length; i++)
         {
@@ -62,6 +63,9 @@ public class SimpleWasmTestRunner : WasmApplicationEntryPoint
                 case "-backgroundExec":
                     backgroundExec = true;
                     break;
+                case "-untilFailed":
+                    untilFailed = true;
+                    break;
                 default:
                     throw new ArgumentException($"Invalid argument '{option}'.");
             }
@@ -82,13 +86,28 @@ public class SimpleWasmTestRunner : WasmApplicationEntryPoint
         {
             await Task.Yield();
         }
+<<<<<<< HEAD
 #endif
 
         if (backgroundExec)
+=======
+
+        var res = 0;
+        do
+>>>>>>> runtime/main
         {
-            return await Task.Run(() => runner.Run());
+            if (backgroundExec)
+            {
+                res = await Task.Run(() => runner.Run());
+            }
+            else
+            {
+                res = await runner.Run();
+            }
         }
-        return await runner.Run();
+        while(res == 0 && untilFailed);
+
+        return res;
     }
 
 #if SINGLE_FILE_TEST_RUNNER

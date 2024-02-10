@@ -88,14 +88,14 @@ private:
     void ContainCheckLclHeap(GenTreeOp* node);
     void ContainCheckRet(GenTreeUnOp* ret);
 #ifdef TARGET_ARM64
-    GenTree* TryLowerAndOrToCCMP(GenTreeOp* tree);
+    bool TryLowerAndOrToCCMP(GenTreeOp* tree, GenTree** next);
     insCflags TruthifyingFlags(GenCondition cond);
     void ContainCheckConditionalCompare(GenTreeCCMP* ccmp);
     void ContainCheckNeg(GenTreeOp* neg);
     void TryLowerCnsIntCselToCinc(GenTreeOp* select, GenTree* cond);
     void TryLowerCselToCSOp(GenTreeOp* select, GenTree* cond);
-    GenTree* TryLowerAddSubToMulLongOp(GenTreeOp* op);
-    GenTree* TryLowerNegToMulLongOp(GenTreeOp* op);
+    bool TryLowerAddSubToMulLongOp(GenTreeOp* op, GenTree** next);
+    bool TryLowerNegToMulLongOp(GenTreeOp* op, GenTree** next);
 #endif
     void ContainCheckSelect(GenTreeOp* select);
     void ContainCheckBitCast(GenTree* node);
@@ -260,8 +260,13 @@ private:
     // return true if this call target is within range of a pc-rel call on the machine
     bool IsCallTargetInRange(void* addr);
 
+<<<<<<< HEAD
 #if defined(TARGET_XARCH) || defined(TARGET_WASM)
     GenTree* PreferredRegOptionalOperand(GenTree* tree);
+=======
+#if defined(TARGET_XARCH)
+    GenTree* PreferredRegOptionalOperand(GenTree* op1, GenTree* op2);
+>>>>>>> runtime/main
 
     // ------------------------------------------------------------------
     // SetRegOptionalBinOp - Indicates which of the operands of a bin-op
@@ -299,7 +304,7 @@ private:
 
         if (op1Legal)
         {
-            regOptionalOperand = op2Legal ? PreferredRegOptionalOperand(tree) : op1;
+            regOptionalOperand = op2Legal ? PreferredRegOptionalOperand(op1, op2) : op1;
         }
         else if (op2Legal)
         {
@@ -376,6 +381,7 @@ private:
     GenTree* LowerHWIntrinsicToScalar(GenTreeHWIntrinsic* node);
     GenTree* LowerHWIntrinsicGetElement(GenTreeHWIntrinsic* node);
     GenTree* LowerHWIntrinsicCndSel(GenTreeHWIntrinsic* node);
+    GenTree* LowerHWIntrinsicTernaryLogic(GenTreeHWIntrinsic* node);
     GenTree* LowerHWIntrinsicWithElement(GenTreeHWIntrinsic* node);
     GenTree* TryLowerAndOpToResetLowestSetBit(GenTreeOp* andNode);
     GenTree* TryLowerAndOpToExtractLowestSetBit(GenTreeOp* andNode);
@@ -386,7 +392,7 @@ private:
     bool IsValidConstForMovImm(GenTreeHWIntrinsic* node);
     void LowerHWIntrinsicFusedMultiplyAddScalar(GenTreeHWIntrinsic* node);
     void LowerModPow2(GenTree* node);
-    GenTree* LowerAddForPossibleContainment(GenTreeOp* node);
+    bool TryLowerAddForPossibleContainment(GenTreeOp* node, GenTree** next);
 #endif // !TARGET_XARCH && !TARGET_ARM64
     GenTree* InsertNewSimdCreateScalarUnsafeNode(var_types   type,
                                                  GenTree*    op1,

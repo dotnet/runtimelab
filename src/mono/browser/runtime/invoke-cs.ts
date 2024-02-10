@@ -4,8 +4,8 @@
 
 import NativeAOT from "consts:nativeAOT";
 import BuildConfiguration from "consts:configuration";
+import WasmEnableThreads from "consts:wasmEnableThreads";
 
-import MonoWasmThreads from "consts:monoWasmThreads";
 import { Module, loaderHelpers, mono_assert, runtimeHelpers } from "./globals";
 import { bind_arg_marshal_to_cs } from "./marshal-to-cs";
 import { marshal_exception_to_js, bind_arg_marshal_to_js, end_marshal_task_to_js } from "./marshal-to-js";
@@ -15,19 +15,23 @@ import {
 } from "./marshal";
 import { mono_wasm_new_external_root, mono_wasm_new_root } from "./roots";
 import { monoStringToString } from "./strings";
+<<<<<<< HEAD
 import { utf16ToString } from "./strings";
 import { MonoObjectRef, MonoStringRef, MonoString, MonoObject, MonoMethod, JSMarshalerArguments, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, VoidPtrNull, MonoObjectRefNull, MonoObjectNull, MarshalerType } from "./types/internal";
+=======
+import { MonoObjectRef, MonoStringRef, MonoString, MonoObject, MonoMethod, JSMarshalerArguments, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, VoidPtrNull, MonoObjectRefNull, MonoObjectNull, MarshalerType, MonoAssembly } from "./types/internal";
+>>>>>>> runtime/main
 import { Int32Ptr } from "./types/emscripten";
 import cwraps from "./cwraps";
-import { assembly_load } from "./class-loader";
-import { assert_bindings, wrap_error_root, wrap_no_error_root } from "./invoke-js";
+import { assert_c_interop, assert_js_interop, wrap_error_root, wrap_no_error_root } from "./invoke-js";
 import { startMeasure, MeasuredBlock, endMeasure } from "./profiler";
 import { mono_log_debug } from "./logging";
-import { assert_synchronization_context } from "./pthreads/shared";
+
+const _assembly_cache_by_name = new Map<string, MonoAssembly>();
 
 // function mono_wasm_bind_cs_function_naot(fully_qualified_name: CharPtr, fully_qualified_name_length: number, signature_hash: number, signature: JSFunctionSignature, is_exception: Int32Ptr): void
 export function mono_wasm_bind_cs_function(fully_qualified_name: MonoStringRef, signature_hash: number, signature: JSFunctionSignature, is_exception: Int32Ptr, result_address: MonoObjectRef): void {
-    assert_bindings();
+    assert_js_interop();
     const fqn_root = mono_wasm_new_external_root<MonoString>(fully_qualified_name), resultRoot = mono_wasm_new_external_root<MonoObject>(result_address);
     const mark = startMeasure();
     try {
@@ -72,9 +76,6 @@ export function mono_wasm_bind_cs_function(fully_qualified_name: MonoStringRef, 
         for (let index = 0; index < args_count; index++) {
             const sig = get_sig(signature, index + 2);
             const marshaler_type = get_signature_type(sig);
-            if (marshaler_type == MarshalerType.Task) {
-                assert_synchronization_context();
-            }
             const arg_marshaler = bind_arg_marshal_to_cs(sig, marshaler_type, index + 2);
             mono_assert(arg_marshaler, "ERR43: argument marshaler must be resolved");
             arg_marshalers[index] = arg_marshaler;
@@ -84,7 +85,6 @@ export function mono_wasm_bind_cs_function(fully_qualified_name: MonoStringRef, 
         let res_marshaler_type = get_signature_type(res_sig);
         const is_async = res_marshaler_type == MarshalerType.Task;
         if (is_async) {
-            assert_synchronization_context();
             res_marshaler_type = MarshalerType.TaskPreCreated;
         }
         const res_converter = bind_arg_marshal_to_js(res_sig, res_marshaler_type, 1);
@@ -174,11 +174,11 @@ function fixupSymbolName(name: string) {
 function bind_fn_0V(closure: BindingClosure) {
     const method = closure.method;
     const fqn = closure.fqn;
-    if (!MonoWasmThreads) (<any>closure) = null;
+    if (!WasmEnableThreads) (<any>closure) = null;
     return function bound_fn_0V() {
         const mark = startMeasure();
         loaderHelpers.assert_runtime_running();
-        mono_assert(!MonoWasmThreads || !closure.isDisposed, "The function was already disposed");
+        mono_assert(!WasmEnableThreads || !closure.isDisposed, "The function was already disposed");
         const sp = Module.stackSave();
         try {
             const args = alloc_stack_frame(2);
@@ -195,11 +195,11 @@ function bind_fn_1V(closure: BindingClosure) {
     const method = closure.method;
     const marshaler1 = closure.arg_marshalers[0]!;
     const fqn = closure.fqn;
-    if (!MonoWasmThreads) (<any>closure) = null;
+    if (!WasmEnableThreads) (<any>closure) = null;
     return function bound_fn_1V(arg1: any) {
         const mark = startMeasure();
         loaderHelpers.assert_runtime_running();
-        mono_assert(!MonoWasmThreads || !closure.isDisposed, "The function was already disposed");
+        mono_assert(!WasmEnableThreads || !closure.isDisposed, "The function was already disposed");
         const sp = Module.stackSave();
         try {
             const args = alloc_stack_frame(3);
@@ -219,11 +219,11 @@ function bind_fn_1R(closure: BindingClosure) {
     const marshaler1 = closure.arg_marshalers[0]!;
     const res_converter = closure.res_converter!;
     const fqn = closure.fqn;
-    if (!MonoWasmThreads) (<any>closure) = null;
+    if (!WasmEnableThreads) (<any>closure) = null;
     return function bound_fn_1R(arg1: any) {
         const mark = startMeasure();
         loaderHelpers.assert_runtime_running();
-        mono_assert(!MonoWasmThreads || !closure.isDisposed, "The function was already disposed");
+        mono_assert(!WasmEnableThreads || !closure.isDisposed, "The function was already disposed");
         const sp = Module.stackSave();
         try {
             const args = alloc_stack_frame(3);
@@ -246,11 +246,11 @@ function bind_fn_1RA(closure: BindingClosure) {
     const marshaler1 = closure.arg_marshalers[0]!;
     const res_converter = closure.res_converter!;
     const fqn = closure.fqn;
-    if (!MonoWasmThreads) (<any>closure) = null;
+    if (!WasmEnableThreads) (<any>closure) = null;
     return function bound_fn_1R(arg1: any) {
         const mark = startMeasure();
         loaderHelpers.assert_runtime_running();
-        mono_assert(!MonoWasmThreads || !closure.isDisposed, "The function was already disposed");
+        mono_assert(!WasmEnableThreads || !closure.isDisposed, "The function was already disposed");
         const sp = Module.stackSave();
         try {
             const args = alloc_stack_frame(3);
@@ -279,11 +279,11 @@ function bind_fn_2R(closure: BindingClosure) {
     const marshaler2 = closure.arg_marshalers[1]!;
     const res_converter = closure.res_converter!;
     const fqn = closure.fqn;
-    if (!MonoWasmThreads) (<any>closure) = null;
+    if (!WasmEnableThreads) (<any>closure) = null;
     return function bound_fn_2R(arg1: any, arg2: any) {
         const mark = startMeasure();
         loaderHelpers.assert_runtime_running();
-        mono_assert(!MonoWasmThreads || !closure.isDisposed, "The function was already disposed");
+        mono_assert(!WasmEnableThreads || !closure.isDisposed, "The function was already disposed");
         const sp = Module.stackSave();
         try {
             const args = alloc_stack_frame(4);
@@ -308,11 +308,11 @@ function bind_fn_2RA(closure: BindingClosure) {
     const marshaler2 = closure.arg_marshalers[1]!;
     const res_converter = closure.res_converter!;
     const fqn = closure.fqn;
-    if (!MonoWasmThreads) (<any>closure) = null;
+    if (!WasmEnableThreads) (<any>closure) = null;
     return function bound_fn_2R(arg1: any, arg2: any) {
         const mark = startMeasure();
         loaderHelpers.assert_runtime_running();
-        mono_assert(!MonoWasmThreads || !closure.isDisposed, "The function was already disposed");
+        mono_assert(!WasmEnableThreads || !closure.isDisposed, "The function was already disposed");
         const sp = Module.stackSave();
         try {
             const args = alloc_stack_frame(4);
@@ -343,11 +343,11 @@ function bind_fn(closure: BindingClosure) {
     const method = closure.method;
     const fqn = closure.fqn;
     const is_async = closure.is_async;
-    if (!MonoWasmThreads) (<any>closure) = null;
+    if (!WasmEnableThreads) (<any>closure) = null;
     return function bound_fn(...js_args: any[]) {
         const mark = startMeasure();
         loaderHelpers.assert_runtime_running();
-        mono_assert(!MonoWasmThreads || !closure.isDisposed, "The function was already disposed");
+        mono_assert(!WasmEnableThreads || !closure.isDisposed, "The function was already disposed");
         const sp = Module.stackSave();
         try {
             const args = alloc_stack_frame(2 + args_count);
@@ -391,13 +391,18 @@ type BindingClosure = {
     isDisposed: boolean,
 }
 
+<<<<<<< HEAD
 function invoke_method_and_handle_exception_mono(method: MonoMethod, args: JSMarshalerArguments): void {
     assert_bindings();
+=======
+export function invoke_method_and_handle_exception(method: MonoMethod, args: JSMarshalerArguments): void {
+    assert_js_interop();
+>>>>>>> runtime/main
     const fail_root = mono_wasm_new_root<MonoString>();
     try {
         set_args_context(args);
         const fail = cwraps.mono_wasm_invoke_method_bound(method, args, fail_root.address);
-        if (fail) runtimeHelpers.abort("ERR24: Unexpected error: " + monoStringToString(fail_root));
+        if (fail) runtimeHelpers.nativeAbort("ERR24: Unexpected error: " + monoStringToString(fail_root));
         if (is_args_exception(args)) {
             const exc = get_arg(args, 0);
             throw marshal_exception_to_js(exc);
@@ -419,11 +424,11 @@ function invoke_method_and_handle_exception_naot(method: Function, args: JSMarsh
 export const invoke_method_and_handle_exception: (method: any, args: JSMarshalerArguments) => void = NativeAOT ? invoke_method_and_handle_exception_naot : invoke_method_and_handle_exception_mono;
 
 export function invoke_method_raw(method: MonoMethod): void {
-    assert_bindings();
+    assert_c_interop();
     const fail_root = mono_wasm_new_root<MonoString>();
     try {
         const fail = cwraps.mono_wasm_invoke_method_raw(method, fail_root.address);
-        if (fail) runtimeHelpers.abort("ERR24: Unexpected error: " + monoStringToString(fail_root));
+        if (fail) runtimeHelpers.nativeAbort("ERR24: Unexpected error: " + monoStringToString(fail_root));
     }
     finally {
         fail_root.release();
@@ -460,8 +465,13 @@ function _walk_exports_to_set_function(assembly: string, namespace: string, clas
     scope[`${methodname}.${signature_hash}`] = fn;
 }
 
+<<<<<<< HEAD
 async function mono_wasm_get_assembly_exports_mono(assembly: string): Promise<any> {
     assert_bindings();
+=======
+export async function mono_wasm_get_assembly_exports(assembly: string): Promise<any> {
+    assert_js_interop();
+>>>>>>> runtime/main
     const result = exportsByAssembly.get(assembly);
     if (!result) {
         const mark = startMeasure();
@@ -488,7 +498,7 @@ async function mono_wasm_get_assembly_exports_mono(assembly: string): Promise<an
                 }
             }
         } else {
-            mono_assert(!MonoWasmThreads, () => `JSExport with multi-threading enabled is not supported with assembly ${assembly} as it was generated with the .NET 7 SDK`);
+            mono_assert(!WasmEnableThreads, () => `JSExport with multi-threading enabled is not supported with assembly ${assembly} as it was generated with the .NET 7 SDK`);
             // this needs to stay here for compatibility with assemblies generated in Net7
             // it doesn't have the __GeneratedInitializer class
             cwraps.mono_wasm_runtime_run_module_cctor(asm);
@@ -544,4 +554,13 @@ export function parseFQN(fqn: string)
     if (!methodname.trim())
         throw new Error("No method name specified " + fqn);
     return { assembly, namespace, classname, methodname };
+}
+
+export function assembly_load(name: string): MonoAssembly {
+    if (_assembly_cache_by_name.has(name))
+        return <MonoAssembly>_assembly_cache_by_name.get(name);
+
+    const result = cwraps.mono_wasm_assembly_load(name);
+    _assembly_cache_by_name.set(name, result);
+    return result;
 }

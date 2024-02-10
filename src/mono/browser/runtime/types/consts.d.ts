@@ -7,12 +7,16 @@ declare module "consts:*" {
     export default constant;
 }
 
+<<<<<<< HEAD
 declare module "consts:nativeAOT" {
     const constant: boolean;
     export default constant;
 }
 
 declare module "consts:monoWasmThreads" {
+=======
+declare module "consts:wasmEnableThreads" {
+>>>>>>> runtime/main
     const constant: boolean;
     export default constant;
 }
@@ -24,6 +28,6 @@ declare module "consts:monoDiagnosticsMock" {
 }
 
 // this will throw exception if the condition is false
-// see src\mono\wasm\runtime\rollup.config.js
+// see src\mono\browser\runtime\rollup.config.js
 // inline this, because the lambda could allocate closure on hot path otherwise
 declare function mono_check(condition: unknown, messageFactory: string | (() => string)): asserts condition;

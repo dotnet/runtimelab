@@ -1,8 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+<<<<<<< HEAD
 import NativeAOT from "consts:nativeAOT";
 import MonoWasmThreads from "consts:monoWasmThreads";
+=======
+import WasmEnableThreads from "consts:wasmEnableThreads";
+>>>>>>> runtime/main
 
 import { GCHandle, MarshalerToCs, MarshalerToJs, MarshalerType, MonoMethod } from "./types/internal";
 import cwraps from "./cwraps";
@@ -28,8 +32,8 @@ export function init_managed_exports(): void {
     if (!runtimeHelpers.runtime_interop_exports_class)
         throw "Can't find " + runtimeHelpers.runtime_interop_namespace + "." + runtimeHelpers.runtime_interop_exports_classname + " class";
 
-    const install_main_synchronization_context = MonoWasmThreads ? get_method("InstallMainSynchronizationContext") : undefined;
-    mono_assert(!MonoWasmThreads || install_main_synchronization_context, "Can't find InstallMainSynchronizationContext method");
+    const install_main_synchronization_context = WasmEnableThreads ? get_method("InstallMainSynchronizationContext") : undefined;
+    mono_assert(!WasmEnableThreads || install_main_synchronization_context, "Can't find InstallMainSynchronizationContext method");
     const call_entry_point = get_method("CallEntrypoint");
     mono_assert(call_entry_point, "Can't find CallEntrypoint method");
     const release_js_owned_object_by_gc_handle_method = get_method("ReleaseJSOwnedObjectByGCHandle");
@@ -63,6 +67,7 @@ export function init_managed_exports(): void {
             // because this is async, we could pre-allocate the promise
             let promise = begin_marshal_task_to_js(res, MarshalerType.TaskPreCreated, marshal_int32_to_js);
 
+            // NOTE: at the moment this is synchronous call on the same thread and therefore we could marshal (null) result synchronously
             invoke_method_and_handle_exception(call_entry_point, args);
 
             // in case the C# side returned synchronously
@@ -119,17 +124,21 @@ export function init_managed_exports(): void {
             Module.stackRestore(sp);
         }
     };
-    runtimeHelpers.javaScriptExports.complete_task = (holder_gc_handle: GCHandle, error?: any, data?: any, res_converter?: MarshalerToCs) => {
+    runtimeHelpers.javaScriptExports.complete_task = (holder_gc_handle: GCHandle, isCanceling: boolean, error?: any, data?: any, res_converter?: MarshalerToCs) => {
         loaderHelpers.assert_runtime_running();
         const sp = Module.stackSave();
         try {
             const args = alloc_stack_frame(5);
+            const res = get_arg(args, 1);
             const arg1 = get_arg(args, 2);
             set_arg_type(arg1, MarshalerType.Object);
             set_gc_handle(arg1, holder_gc_handle);
             const arg2 = get_arg(args, 3);
             if (error) {
                 marshal_exception_to_cs(arg2, error);
+                if (isCanceling) {
+                    set_arg_type(res, MarshalerType.Discard);
+                }
             } else {
                 set_arg_type(arg2, MarshalerType.None);
                 const arg3 = get_arg(args, 4);
@@ -192,7 +201,7 @@ export function init_managed_exports(): void {
             Module.stackRestore(sp);
         }
     };
-    if (MonoWasmThreads && install_main_synchronization_context) {
+    if (WasmEnableThreads && install_main_synchronization_context) {
         runtimeHelpers.javaScriptExports.install_main_synchronization_context = () => invoke_method_raw(install_main_synchronization_context);
     }
 }

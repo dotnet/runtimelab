@@ -19,15 +19,18 @@ const isContinuousIntegrationBuild = process.env.ContinuousIntegrationBuild === 
 const productVersion = process.env.ProductVersion || "8.0.0-dev";
 const nativeBinDir = process.env.NativeBinDir ? process.env.NativeBinDir.replace(/"/g, "") : "bin";
 const wasmObjDir = process.env.WasmObjDir ? process.env.WasmObjDir.replace(/"/g, "") : "obj";
+<<<<<<< HEAD
 const nativeAOT = process.env.NATIVE_AOT === "1" ? true : false;
 const monoWasmThreads = process.env.MonoWasmThreads === "true" ? true : false;
+=======
+const wasmEnableThreads = process.env.WasmEnableThreads === "true" ? true : false;
+>>>>>>> runtime/main
 const wasmEnableSIMD = process.env.WASM_ENABLE_SIMD === "1" ? true : false;
 const wasmEnableExceptionHandling = process.env.WASM_ENABLE_EH === "1" ? true : false;
-const wasmEnableLegacyJsInterop = process.env.DISABLE_LEGACY_JS_INTEROP !== "1" ? true : false;
 const wasmEnableJsInteropByValue = process.env.ENABLE_JS_INTEROP_BY_VALUE == "1" ? true : false;
 const monoDiagnosticsMock = process.env.MonoDiagnosticsMock === "true" ? true : false;
 // because of stack walk at src/mono/wasm/debugger/BrowserDebugProxy/MonoProxy.cs
-// and unit test at src\libraries\System.Runtime.InteropServices.JavaScript\tests\System.Runtime.InteropServices.JavaScript.Legacy.UnitTests\timers.mjs
+// and unit test at with timers.mjs
 const keep_fnames = /(mono_wasm_runtime_ready|mono_wasm_fire_debugger_agent_message_with_data|mono_wasm_fire_debugger_agent_message_with_data_to_pause|mono_wasm_schedule_timer_tick)/;
 const keep_classnames = /(ManagedObject|ManagedError|Span|ArraySegment|WasmRootBuffer|SessionOptionsBuilder)/;
 const terserConfig = {
@@ -99,13 +102,16 @@ try {
 const envConstants = {
     productVersion,
     configuration,
+<<<<<<< HEAD
     nativeAOT,
     monoWasmThreads,
+=======
+    wasmEnableThreads,
+>>>>>>> runtime/main
     wasmEnableSIMD,
     wasmEnableExceptionHandling,
     monoDiagnosticsMock,
     gitHash,
-    wasmEnableLegacyJsInterop,
     wasmEnableJsInteropByValue,
     isContinuousIntegrationBuild,
 };
@@ -216,21 +222,8 @@ const typesConfig = {
     ],
     external: externalDependencies,
     plugins: [dts()],
+    onwarn: onwarn
 };
-const legacyTypesConfig = {
-    input: "./net6-legacy/export-types.ts",
-    output: [
-        {
-            format: "es",
-            file: nativeBinDir + "/dotnet-legacy.d.ts",
-            banner: banner_dts,
-            plugins: [writeOnChangePlugin()],
-        }
-    ],
-    external: externalDependencies,
-    plugins: [dts()],
-};
-
 
 let diagnosticMockTypesConfig = undefined;
 
@@ -240,12 +233,6 @@ if (isDebug) {
     typesConfig.output.push({
         format: "es",
         file: "./dotnet.d.ts",
-        banner: banner_dts,
-        plugins: [alwaysLF(), writeOnChangePlugin()],
-    });
-    legacyTypesConfig.output.push({
-        format: "es",
-        file: "./dotnet-legacy.d.ts",
         banner: banner_dts,
         plugins: [alwaysLF(), writeOnChangePlugin()],
     });
@@ -263,6 +250,7 @@ if (isDebug) {
         ],
         external: externalDependencies,
         plugins: [dts()],
+        onwarn: onwarn
     };
 }
 
@@ -291,7 +279,6 @@ const allConfigs = [
     runtimeConfig,
     wasmImportsConfig,
     typesConfig,
-    legacyTypesConfig,
 ].concat(workerConfigs)
     .concat(diagnosticMockTypesConfig ? [diagnosticMockTypesConfig] : []);
 export default defineConfig(allConfigs);
