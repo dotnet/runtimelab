@@ -5,6 +5,7 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Collections.Generic;
@@ -423,9 +424,10 @@ internal unsafe partial class Program
 
         TestGenStructContains();
 
-        // This test should remain last to get other results before stopping the debugger
-        PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
-        System.Diagnostics.Debugger.Break();
+        if (OperatingSystem.IsBrowser())
+        {
+            EventLoopTestClass.TestEventLoopIntegration();
+        }
 
         PrintLine("Done");
         return Success ? 100 : -1;
@@ -4071,6 +4073,36 @@ internal unsafe partial class Program
     internal static extern bool SomeExternalUmanagedFunction(DelegateToCallFromUnmanaged callback);
 
     unsafe internal delegate bool DelegateToCallFromUnmanaged(char* charPtr);
+}
+
+// Separate class since you can't mix async with unsafe.
+class EventLoopTestClass
+{
+    public static void TestEventLoopIntegration()
+    {
+        async Task SumToTen()
+        {
+            const int Count = 10;
+
+            int counter = 0;
+            Task head = new Task(() => { });
+            Task tail = head;
+            for (int i = 0; i < Count; i++)
+            {
+                tail = tail.ContinueWith((_) => counter++);
+            }
+
+            head.Start();
+            await tail;
+            if (counter != Count)
+            {
+                // We have already returned the exit code by now, so indicate failure with a fail fast.
+                Environment.FailFast("TestEventLoopIntegration failed");
+            }
+        }
+
+        Task.Run(SumToTen);
+    }
 }
 
 namespace JSInterop

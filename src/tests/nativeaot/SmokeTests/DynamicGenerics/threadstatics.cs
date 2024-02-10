@@ -485,16 +485,14 @@ namespace ThreadLocalStatics
                 GC.Collect();
             }
 
+#if !CODEGEN_WASM
 #if DEBUG
             const int numTasks = 15;
 #else
             const int numTasks = 20;
 #endif
-            try
-            {
-                MultiThreaded_Test(TypeOf.TLS_T4, TypeOf.TLS_T5, numTasks, 20);
-            }
-            catch (TaskSchedulerException e) when (e.InnerException is PlatformNotSupportedException) { }
+            MultiThreaded_Test(TypeOf.TLS_T4, TypeOf.TLS_T5, numTasks, 20);
+#endif
         }
     }
 }

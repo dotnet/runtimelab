@@ -12,7 +12,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <DefineConstants Condition="$(TargetArchitecture) == 'wasm'">$(DefineConstants);CODEGEN_WASM</DefineConstants>
+    <DefineConstants Condition="'$(TargetsWasm)' == 'true'">$(DefineConstants);CODEGEN_WASM</DefineConstants>
     <DefineConstants Condition="$(TargetOS) == 'wasi'">$(DefineConstants);CODEGEN_WASI</DefineConstants>
   </PropertyGroup>
 </Project>
