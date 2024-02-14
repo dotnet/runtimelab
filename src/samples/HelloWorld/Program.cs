@@ -6,7 +6,7 @@ using HelloLibrary;
 
 namespace HelloWorld
 {
-    public class Progrma
+    public class Program
     {
         public static void Main(string[] args)
         {
