@@ -13,7 +13,7 @@
     <UsingToolXliff>false</UsingToolXliff>
     <!-- Libs -->
     <MicrosoftNETTestSdkVersion>16.7.1</MicrosoftNETTestSdkVersion>
-    <XUnitVersion>2.4.1</XUnitVersion>
+    <XUnitVersion>2.4.2</XUnitVersion>
     <XUnitRunnerVisualStudioVersion>2.4.3</XUnitRunnerVisualStudioVersion>
     <!-- Set the custom NETCoreApp version -->
     <MicrosoftNETCoreAppVersion>7.0.0-preview.7.22375.6</MicrosoftNETCoreAppVersion>

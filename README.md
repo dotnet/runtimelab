@@ -2,9 +2,18 @@
 
 This is a collection of tools designed to consume a compiled Apple Swift library and generate bindings and wrappers that enable it to be used as a .NET library.
 
-## Current Status
+## Installation and usage
 
-The components are currently undergoing iterative reviews and will be moved from https://github.com/xamarin/binding-tools-for-swift.
+The tool will be available as a NuGet CLI package in the [`dotnet-experimental`](https://dev.azure.com/dnceng/public/_packaging?_a=feed&feed=dotnet-experimental) feed.
+
+Options:
+```
+  -d, --dylibs             Required. Paths to the dynamic libraries (dylibs), separated by commas.
+  -s, --swiftinterfaces    Required. Paths to the Swift interface files, separated by commas.
+  -o, --output             Required. Output directory for generated bindings.
+  -h, --help               Display this help message.
+  --version                Display version information.
+```
 
 ## .NET Foundation
 
