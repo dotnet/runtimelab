@@ -11,7 +11,7 @@ Options:
   -d, --dylib             Required. Path to the dynamic library.
   -s, --swiftinterface    Required. Path to the Swift interface file.
   -o, --output            Required. Output directory for generated bindings.
-  -v, --verbosity         Information about work in process.
+  -v, --verbose           Information about work in process.
   -h, --help              Display this help message.
 ```
 

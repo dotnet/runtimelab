@@ -15,7 +15,7 @@ namespace SwiftBindings
             Option<IEnumerable<string>> dylibOption = new(aliases: new [] {"-d", "--dylib"}, description: "Path to the dynamic library.") {AllowMultipleArgumentsPerToken = true, IsRequired = true};
             Option<IEnumerable<string>> swiftinterfaceOption = new(aliases: new [] {"-s", "--swiftinterface"}, "Path to the Swift interface file.") {AllowMultipleArgumentsPerToken = true, IsRequired = true};
             Option<string> outputDirectoryOption = new(aliases: new [] {"-o", "--output"}, "Output directory for generated bindings.") {IsRequired = true};
-            Option<int> verbosityOption = new(aliases: new [] {"-v", "--verbosity"}, "Prints information about work in process.");
+            Option<int> verboseOption = new(aliases: new [] {"-v", "--verbose"}, "Prints information about work in process.");
             Option<bool> helpOption = new(aliases: new [] {"-h", "--help"}, "Display a help message.");
 
             RootCommand rootCommand = new(description: "Swift bindings generator.")
@@ -23,10 +23,10 @@ namespace SwiftBindings
                 dylibOption,
                 swiftinterfaceOption,
                 outputDirectoryOption,
-                verbosityOption,
+                verboseOption,
                 helpOption,
             };
-            rootCommand.SetHandler((IEnumerable<string> dylibPaths, IEnumerable<string> swiftinterfacePaths, string outputDirectory, int verbosity, bool help) =>
+            rootCommand.SetHandler((IEnumerable<string> dylibPaths, IEnumerable<string> swiftinterfacePaths, string outputDirectory, int verbose, bool help) =>
                 {
                     if (help)
                     {
@@ -34,7 +34,7 @@ namespace SwiftBindings
                         Console.WriteLine("  -d, --dylib             Required. Path to the dynamic library.");
                         Console.WriteLine("  -s, --swiftinterface    Required. Path to the Swift interface file.");
                         Console.WriteLine("  -o, --output            Required. Output directory for generated bindings.");
-                        Console.WriteLine("  -v, --verbosity         Information about work in process.");
+                        Console.WriteLine("  -v, --verbose           Information about work in process.");
                         return;
                     }
                     
@@ -57,7 +57,7 @@ namespace SwiftBindings
                                 return;
                             }
 
-                            GenerateBindings(dylibPath, swiftInterfacePath, outputDirectory, verbosity);
+                            GenerateBindings(dylibPath, swiftInterfacePath, outputDirectory, verbose);
                         }
                     }
 
@@ -65,7 +65,7 @@ namespace SwiftBindings
                 dylibOption,
                 swiftinterfaceOption,
                 outputDirectoryOption,
-                verbosityOption,
+                verboseOption,
                 helpOption
             );
 
@@ -95,7 +95,7 @@ namespace SwiftBindings
             return true;
         }
 
-        public static void GenerateBindings(string dylibPath, string swiftInterfacePath, string outputDirectory, int verbositry = 0)
+        public static void GenerateBindings(string dylibPath, string swiftInterfacePath, string outputDirectory, int verbose = 0)
         {
             BindingsCompiler bindingsCompiler = new BindingsCompiler();
             var errors = new ErrorHandling ();
