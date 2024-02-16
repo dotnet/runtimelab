@@ -1,82 +1,101 @@
-﻿// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-
-using CommandLine;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.CommandLine;
+using System.CommandLine.Invocation;
+using System.Linq;
 using SwiftReflector;
 
 namespace SwiftBindings
 {
-    public class Options
-    {
-        [Option('d', "dylibs", Required = true, Separator = ',', HelpText = "Paths to the dynamic libraries (dylibs), separated by commas.")]
-        public IEnumerable<string> DylibPaths { get; set; }
-
-        [Option('s', "swiftinterfaces", Required = true, Separator = ',', HelpText = "Paths to the Swift interface files, separated by commas.")]
-        public IEnumerable<string> SwiftInterfacePaths { get; set; }
-
-        [Option('o', "output", Required = true, HelpText = "Output directory for generated bindings.")]
-        public string OutputDirectory { get; set; }
-
-        [Option('h', "help", HelpText = "Display this help message.")]
-        public bool Help { get; set; }
-    }
-
     public class BindingsTool
     {
         public static void Main(string[] args)
         {
-            Parser.Default.ParseArguments<Options>(args).WithParsed(options =>
+            Option<IEnumerable<string>> dylibOption = new(aliases: new [] {"-d", "--dylib"}, description: "Path to the dynamic library.") {AllowMultipleArgumentsPerToken = true, IsRequired = true};
+            Option<IEnumerable<string>> swiftinterfaceOption = new(aliases: new [] {"-s", "--swiftinterface"}, "Path to the Swift interface file.") {AllowMultipleArgumentsPerToken = true, IsRequired = true};
+            Option<string> outputDirectoryOption = new(aliases: new [] {"-o", "--output"}, "Output directory for generated bindings.") {IsRequired = true};
+            Option<int> verbosityOption = new(aliases: new [] {"-v", "--verbosity"}, "Prints information about work in process.");
+            Option<bool> helpOption = new(aliases: new [] {"-h", "--help"}, "Display a help message.");
+
+            RootCommand rootCommand = new(description: "Swift bindings generator.")
             {
-                if (options.Help)
+                dylibOption,
+                swiftinterfaceOption,
+                outputDirectoryOption,
+                verbosityOption,
+                helpOption,
+            };
+            rootCommand.SetHandler((IEnumerable<string> dylibPaths, IEnumerable<string> swiftinterfacePaths, string outputDirectory, int verbosity, bool help) =>
                 {
-                    Console.WriteLine("Usage:");
-                    Console.WriteLine("  -d, --dylibs            Paths to the dynamic libraries (dylibs), separated by commas.");
-                    Console.WriteLine("  -s, --swiftinterfaces   Paths to the Swift interface files, separated by commas.");
-                    Console.WriteLine("  -o, --output            Output directory for generated bindings.");
-                    return;
-                }
-
-                if (options.DylibPaths == null || options.SwiftInterfacePaths == null || options.OutputDirectory == null)
-                {
-                    Console.WriteLine("Error: Missing required argument(s).");
-                    return;
-                }
-
-                if (options.DylibPaths.Count() != options.SwiftInterfacePaths.Count())
-                {
-                    Console.WriteLine("Error: Number of dylibs, interface files, and modules must match.");
-                    return;
-                }
-
-                if (!Directory.Exists(options.OutputDirectory))
-                {
-                    Console.WriteLine($"Error: Directory '{options.OutputDirectory}' doesn't exist.");
-                    return;
-                }
-
-                for (int i = 0; i < options.DylibPaths.Count(); i++)
-                {
-                    string dylibPath = options.DylibPaths.ElementAt(i);
-                    string swiftInterfacePath = options.SwiftInterfacePaths.ElementAt(i);
-
-                    if (!File.Exists(dylibPath))
+                    if (help)
                     {
-                        Console.WriteLine($"Error: Dynamic library not found at path '{dylibPath}'.");
+                        Console.WriteLine("Usage:");
+                        Console.WriteLine("  -d, --dylib             Path to the dynamic library.");
+                        Console.WriteLine("  -s, --swiftinterfaces   Path to the Swift interface file.");
+                        Console.WriteLine("  -o, --output            Output directory for generated bindings.");
+                        Console.WriteLine("  -v, --verbosity         Information about work in process.");
                         return;
                     }
-
-                    if (!File.Exists(swiftInterfacePath))
+                    
+                    if (ValidateOptions(dylibPaths, swiftinterfacePaths, outputDirectory))
                     {
-                        Console.WriteLine($"Error: Swift interface file not found at path '{swiftInterfacePath}'.");
-                        return;
+                        for (int i = 0; i < dylibPaths.Count(); i++)
+                        {
+                            string dylibPath = dylibPaths.ElementAt(i);
+                            string swiftInterfacePath = swiftinterfacePaths.ElementAt(i);
+
+                            if (!File.Exists(dylibPath))
+                            {
+                                Console.Error.WriteLine($"Error: Dynamic library not found at path '{dylibPath}'.");
+                                return;
+                            }
+
+                            if (!File.Exists(swiftInterfacePath))
+                            {
+                                Console.Error.WriteLine($"Error: Swift interface file not found at path '{swiftInterfacePath}'.");
+                                return;
+                            }
+
+                            GenerateBindings(dylibPath, swiftInterfacePath, outputDirectory, verbosity);
+                        }
                     }
 
-                    GenerateBindings(dylibPath, swiftInterfacePath, options.OutputDirectory);
-                }
-            });
+                },
+                dylibOption,
+                swiftinterfaceOption,
+                outputDirectoryOption,
+                verbosityOption,
+                helpOption
+            );
+
+            rootCommand.Invoke(args);
         }
 
-        public static void GenerateBindings(string dylibPath, string swiftInterfacePath, string outputDirectory)
+        private static bool ValidateOptions(IEnumerable<string> dylibPaths, IEnumerable<string> swiftinterfacePaths, string outputDirectory)
+        {
+            if (dylibPaths == null || swiftinterfacePaths == null || outputDirectory == string.Empty)
+            {
+                Console.Error.WriteLine("Error: Missing required argument(s).");
+                return false;
+            }
+
+            if (dylibPaths.Count() != swiftinterfacePaths.Count())
+            {
+                Console.Error.WriteLine("Error: Number of dylib and interface files must match.");
+                return false;
+            }
+
+            if (!Directory.Exists(outputDirectory))
+            {
+                Console.Error.WriteLine($"Error: Directory '{outputDirectory}' doesn't exist.");
+                return false;
+            }
+
+            return true;
+        }
+
+        public static void GenerateBindings(string dylibPath, string swiftInterfacePath, string outputDirectory, int verbositry = 0)
         {
             BindingsCompiler bindingsCompiler = new BindingsCompiler();
             var errors = new ErrorHandling ();
