@@ -10,7 +10,6 @@ using System.Text;
 namespace SwiftReflector.Demangling {
 	public class Decomposer {
 		const string kSwiftID = "__T";
-		public const string kSwift4ID = "__T0";
 		public const string kSwift4xID = "_$s";
 		public const string kSwift5ID = "_$S";
 		public static SwiftName kSwiftAllocatingConstructorName = new SwiftName (".ctor", false);
