@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
-    <NativeLibsCommand>cd $(OutputPath)$(TargetFramework) &amp;&amp; cmake $(MSBuildThisFileDirectory) &amp;&amp; make</NativeLibsCommand>
+    <NativeLibsCommand>cd $(OutputPath)$(TargetFramework) &amp;&amp; cmake -G Ninja $(MSBuildThisFileDirectory) &amp;&amp; ninja</NativeLibsCommand>
   </PropertyGroup>
 
   <ItemGroup>
