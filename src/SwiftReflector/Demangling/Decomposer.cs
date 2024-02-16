@@ -74,23 +74,10 @@ namespace SwiftReflector.Demangling {
 				swiftIdentifier.StartsWith (kSwift5ID, StringComparison.Ordinal)) {
 				var demangler5 = new Swift5Demangler (swiftIdentifier, offset);
 				return demangler5.Run ();
-			}
-			if (swiftIdentifier.StartsWith (kSwift4ID, StringComparison.Ordinal)) {
-				var demangler = new Swift4Demangler (swiftIdentifier, offset);
-				return demangler.Run ();
 			} else {
 				Decomposer decomp = new Decomposer (swiftIdentifier, isOldVersion, offset);
 				return decomp.Run ();
 			}
-		}
-
-		public static string ExplodedView (string swiftIdentifier)
-		{
-			if (swiftIdentifier.StartsWith (kSwift4ID, StringComparison.Ordinal)) {
-				var demangler = new Swift4Demangler (swiftIdentifier, 0);
-				return demangler.ExplodedView ();
-			}
-			return null;
 		}
 
 		public TLDefinition Run ()

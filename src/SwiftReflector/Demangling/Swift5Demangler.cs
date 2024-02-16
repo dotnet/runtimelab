@@ -677,8 +677,6 @@ namespace SwiftReflector.Demangling {
 		{
 			if (substIdx >= substitutions.Count)
 				return null;
-			if (repeatCount > Swift4Demangler.kMaxRepeatCount)
-				return null;
 			var nd = substitutions [substIdx];
 			while (repeatCount-- > 1) {
 				PushNode (nd);
@@ -708,10 +706,8 @@ namespace SwiftReflector.Demangling {
 				}
 			default:
 				PushBack ();
-				var repeatCount = DemangleNatural ();
-				if (repeatCount > Swift4Demangler.kMaxRepeatCount)
-					return null;
 				Node nd;
+				var repeatCount = DemangleNatural ();
 				if ((nd = CreateStandardSubstitution (NextChar ())) != null) {
 					while (repeatCount-- > 1) {
 						PushNode (nd);
