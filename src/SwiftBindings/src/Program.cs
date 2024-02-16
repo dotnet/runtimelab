@@ -31,9 +31,9 @@ namespace SwiftBindings
                     if (help)
                     {
                         Console.WriteLine("Usage:");
-                        Console.WriteLine("  -d, --dylib             Path to the dynamic library.");
-                        Console.WriteLine("  -s, --swiftinterfaces   Path to the Swift interface file.");
-                        Console.WriteLine("  -o, --output            Output directory for generated bindings.");
+                        Console.WriteLine("  -d, --dylib             Required. Path to the dynamic library.");
+                        Console.WriteLine("  -s, --swiftinterface    Required. Path to the Swift interface file.");
+                        Console.WriteLine("  -o, --output            Required. Output directory for generated bindings.");
                         Console.WriteLine("  -v, --verbosity         Information about work in process.");
                         return;
                     }

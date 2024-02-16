@@ -8,11 +8,11 @@ The tool will be available as a NuGet CLI package in the [`dotnet-experimental`]
 
 Options:
 ```
-  -d, --dylibs             Required. Paths to the dynamic libraries (dylibs), separated by commas.
-  -s, --swiftinterfaces    Required. Paths to the Swift interface files, separated by commas.
-  -o, --output             Required. Output directory for generated bindings.
-  -h, --help               Display this help message.
-  --version                Display version information.
+  -d, --dylib             Required. Path to the dynamic library.
+  -s, --swiftinterface    Required. Path to the Swift interface file.
+  -o, --output            Required. Output directory for generated bindings.
+  -v, --verbosity         Information about work in process.
+  -h, --help              Display this help message.
 ```
 
 ## .NET Foundation
