@@ -1,18 +1,20 @@
 ﻿using System;
-namespace SwiftReflector.SwiftInterfaceReflector {
-	public class ParseException : Exception {
-		public ParseException ()
-		{
-		}
+namespace SwiftReflector.SwiftInterfaceReflector
+{
+    public class ParseException : Exception
+    {
+        public ParseException()
+        {
+        }
 
-		public ParseException (string message)
-		    : base (message)
-		{
-		}
+        public ParseException(string message)
+            : base(message)
+        {
+        }
 
-		public ParseException (string message, Exception inner)
-		    : base (message, inner)
-		{
-		}
-	}
+        public ParseException(string message, Exception inner)
+            : base(message, inner)
+        {
+        }
+    }
 }

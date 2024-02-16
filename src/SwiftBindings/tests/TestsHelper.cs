@@ -54,7 +54,7 @@ namespace SwiftBindings.Tests
             }
 
             Assembly compiledAssembly = Assembly.LoadFile(assemblyPath);
-            
+
             MethodInfo entryPoint = compiledAssembly.EntryPoint;
             object[] args = entryPoint.GetParameters().Length == 0 ? null : new object[] { new string[0] };
             int result = (int)entryPoint.Invoke(null, args);

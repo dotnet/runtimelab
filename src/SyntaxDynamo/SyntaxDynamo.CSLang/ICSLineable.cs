@@ -3,8 +3,10 @@
 
 using System;
 
-namespace SyntaxDynamo.CSLang {
-	public interface ICSLineable {
-	}
+namespace SyntaxDynamo.CSLang
+{
+    public interface ICSLineable
+    {
+    }
 }
 

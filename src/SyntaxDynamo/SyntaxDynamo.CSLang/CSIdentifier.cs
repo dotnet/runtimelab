@@ -4,36 +4,38 @@
 using System;
 using SyntaxDynamo;
 
-namespace SyntaxDynamo.CSLang {
-	public class CSIdentifier : CSBaseExpression {
-		public CSIdentifier (string name)
-		{
-			Name = Exceptions.ThrowOnNull (name, "name");
-		}
+namespace SyntaxDynamo.CSLang
+{
+    public class CSIdentifier : CSBaseExpression
+    {
+        public CSIdentifier(string name)
+        {
+            Name = Exceptions.ThrowOnNull(name, "name");
+        }
 
-		public static explicit operator CSIdentifier (string name)
-		{
-			return new CSIdentifier (name);
-		}
+        public static explicit operator CSIdentifier(string name)
+        {
+            return new CSIdentifier(name);
+        }
 
-		protected override void LLWrite (ICodeWriter writer, object o)
-		{
-			writer.Write (Name, false);
-		}
+        protected override void LLWrite(ICodeWriter writer, object o)
+        {
+            writer.Write(Name, false);
+        }
 
-		public string Name { get; private set; }
+        public string Name { get; private set; }
 
-		public override string ToString ()
-		{
-			return Name;
-		}
+        public override string ToString()
+        {
+            return Name;
+        }
 
-		public static CSIdentifier Create (string name) => new CSIdentifier (name);
+        public static CSIdentifier Create(string name) => new CSIdentifier(name);
 
-		static CSIdentifier thisID = new CSIdentifier ("this");
-		public static CSIdentifier This { get { return thisID; } }
-		static CSIdentifier baseID = new CSIdentifier ("base");
-		public static CSIdentifier Base { get { return baseID; } }
-	}
+        static CSIdentifier thisID = new CSIdentifier("this");
+        public static CSIdentifier This { get { return thisID; } }
+        static CSIdentifier baseID = new CSIdentifier("base");
+        public static CSIdentifier Base { get { return baseID; } }
+    }
 }
 

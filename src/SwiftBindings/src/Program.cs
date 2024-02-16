@@ -12,11 +12,11 @@ namespace SwiftBindings
     {
         public static void Main(string[] args)
         {
-            Option<IEnumerable<string>> dylibOption = new(aliases: new [] {"-d", "--dylib"}, description: "Path to the dynamic library.") {AllowMultipleArgumentsPerToken = true, IsRequired = true};
-            Option<IEnumerable<string>> swiftinterfaceOption = new(aliases: new [] {"-s", "--swiftinterface"}, "Path to the Swift interface file.") {AllowMultipleArgumentsPerToken = true, IsRequired = true};
-            Option<string> outputDirectoryOption = new(aliases: new [] {"-o", "--output"}, "Output directory for generated bindings.") {IsRequired = true};
-            Option<int> verboseOption = new(aliases: new [] {"-v", "--verbose"}, "Prints information about work in process.");
-            Option<bool> helpOption = new(aliases: new [] {"-h", "--help"}, "Display a help message.");
+            Option<IEnumerable<string>> dylibOption = new(aliases: new[] { "-d", "--dylib" }, description: "Path to the dynamic library.") { AllowMultipleArgumentsPerToken = true, IsRequired = true };
+            Option<IEnumerable<string>> swiftinterfaceOption = new(aliases: new[] { "-s", "--swiftinterface" }, "Path to the Swift interface file.") { AllowMultipleArgumentsPerToken = true, IsRequired = true };
+            Option<string> outputDirectoryOption = new(aliases: new[] { "-o", "--output" }, "Output directory for generated bindings.") { IsRequired = true };
+            Option<int> verboseOption = new(aliases: new[] { "-v", "--verbose" }, "Prints information about work in process.");
+            Option<bool> helpOption = new(aliases: new[] { "-h", "--help" }, "Display a help message.");
 
             RootCommand rootCommand = new(description: "Swift bindings generator.")
             {
@@ -37,7 +37,7 @@ namespace SwiftBindings
                         Console.WriteLine("  -v, --verbose           Information about work in process.");
                         return;
                     }
-                    
+
                     if (ValidateOptions(dylibPaths, swiftinterfacePaths, outputDirectory))
                     {
                         for (int i = 0; i < dylibPaths.Count(); i++)
@@ -98,10 +98,10 @@ namespace SwiftBindings
         public static void GenerateBindings(string dylibPath, string swiftInterfacePath, string outputDirectory, int verbose = 0)
         {
             BindingsCompiler bindingsCompiler = new BindingsCompiler();
-            var errors = new ErrorHandling ();
-			var moduleInventory = bindingsCompiler.GetModuleInventory(dylibPath, errors);
-			var moduleDeclarations = bindingsCompiler.GetModuleDeclarations(swiftInterfacePath);
-			bindingsCompiler.CompileModules(moduleDeclarations, moduleInventory, dylibPath, outputDirectory, errors);
+            var errors = new ErrorHandling();
+            var moduleInventory = bindingsCompiler.GetModuleInventory(dylibPath, errors);
+            var moduleDeclarations = bindingsCompiler.GetModuleDeclarations(swiftInterfacePath);
+            bindingsCompiler.CompileModules(moduleDeclarations, moduleInventory, dylibPath, outputDirectory, errors);
         }
     }
 }
