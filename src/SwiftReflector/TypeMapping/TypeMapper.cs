@@ -16,8 +16,6 @@ using SwiftRuntimeLibrary;
 namespace SwiftReflector.TypeMapping {
 	public class TypeMapper {
 		public TypeDatabase TypeDatabase { get; private set; }
-		TypeSpecToSLType specMapper, overrideSpecMapper;
-		SwiftTypeToSLType swiftTypeMapper;
 		UnicodeMapper unicodeMapper;
 		HashSet<string> loadedFiles = new HashSet<string> ();
 
@@ -25,20 +23,6 @@ namespace SwiftReflector.TypeMapping {
 		{
 			TypeDatabase = new TypeDatabase ();
 			this.unicodeMapper = unicodeMapper;
-
-			// We check 'SwiftyOptions' for errors so each 'typeDatabasePath' at this point should be a valid directory.
-			// foreach (var typeDatabasePath in typeDatabasePaths) {
-			// 	if (Directory.Exists (typeDatabasePath)) {
-			// 		foreach (string fileName in Directory.GetFiles (typeDatabasePath))
-			// 			AddTypeDatabase (fileName);
-			// 	} else if (File.Exists (typeDatabasePath)) {
-			// 		AddTypeDatabase (typeDatabasePath);
-			// 	}
-			// }
-
-			specMapper = new TypeSpecToSLType (this, false);
-			overrideSpecMapper = new TypeSpecToSLType (this, true);
-			swiftTypeMapper = new SwiftTypeToSLType (this);
 		}
 
 		public void AddTypeDatabase (string fileName)
@@ -1093,10 +1077,6 @@ namespace SwiftReflector.TypeMapping {
 				return en.EntityType != EntityType.Class;
 			return MustForcePassByReference (en);
 		}
-
-		public TypeSpecToSLType TypeSpecMapper { get { return specMapper; } }
-		public TypeSpecToSLType OverrideTypeSpecMapper { get { return overrideSpecMapper; } }
-		public SwiftTypeToSLType SwiftTypeMapper { get { return swiftTypeMapper; } }
 
 		public static bool IsSwiftPointerType (string fullTypeName)
 		{
