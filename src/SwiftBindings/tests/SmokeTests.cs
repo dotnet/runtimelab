@@ -17,20 +17,20 @@ namespace SwiftBindings.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using SmokeTests;
+                using SmokeTestsBindings;
 
                 namespace Hello {
                     class MainClass {
                         public static int Main(string[] args)
                         {
-                            TopLevelEntities.SimplePinvokeVoidVoid();
+                            SmokeTests.SimplePinvokeVoidVoid();
                             return 42;
                         }
                     }
                 }
                 """;
 
-            int result = TestsHelper.CompileAndExecuteFromFileAndString("TopLevelEntitiesSmokeTests.cs", sourceCode);
+            int result = TestsHelper.CompileAndExecuteFromFileAndString("SmokeTestsBindings.cs", sourceCode);
             Assert.Equal(42, result);
         }
     }

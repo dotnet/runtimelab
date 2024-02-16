@@ -81,7 +81,7 @@ namespace SwiftReflector
         {
             var use = new CSUsingPackages("System", "System.Runtime.InteropServices");
 
-            var picl = new CSClass(CSVisibility.Internal, PIClassName(module.Name + "." + "TopLevelEntities"));
+            var picl = new CSClass(CSVisibility.Public, PIClassName(module.Name+"Bindings."+module.Name));
             var usedPinvokes = new List<string>();
 
             var cl = CompileTLFuncs(module.TopLevelFunctions, module, moduleInventory,
@@ -91,15 +91,15 @@ namespace SwiftReflector
                          swiftLibPath, outputDirectory, errors, use, cl, picl, usedPinvokes);
 
 
-            if (cl != null)
+            if (picl != null)
             {
-                string nameSpace = TypeMapper.MapModuleToNamespace(module.Name);
+                string nameSpace = TypeMapper.MapModuleToNamespace(module.Name+"Bindings");
                 var nm = new CSNamespace(nameSpace);
 
                 var csfile = new CSFile(use, new CSNamespace[] { nm });
-                nm.Block.Add(cl);
+                // nm.Block.Add(cl);
                 nm.Block.Add(picl);
-                string csOutputFileName = string.Format("{1}{0}.cs", nameSpace, cl.Name.Name);
+                string csOutputFileName = string.Format("{0}.cs", nameSpace);
                 string csOutputPath = Path.Combine(outputDirectory, csOutputFileName);
 
                 CodeWriter.WriteToFile(csOutputPath, csfile);
@@ -131,7 +131,7 @@ namespace SwiftReflector
                         continue;
 
                     var tlf = XmlToTLFunctionMapper.ToTLFunction(func, moduleInventory, TypeMapper);
-                    CompileToDirectFunction(func, tlf, "", func.Parent, use, swiftLibPath, methods, picl, usedPinvokeNames);
+                    CompileToDirectFunction(func, tlf, "", func.Parent, use, swiftLibPath, methods, picl, usedPinvokeNames, module);
                 }
                 catch (Exception e)
                 {
@@ -141,15 +141,15 @@ namespace SwiftReflector
 
             if (methods.Count > 0)
             {
-                cl = cl ?? new CSClass(CSVisibility.Public, "TopLevelEntities");
-                cl.Methods.AddRange(methods);
+                // cl = cl ?? new CSClass(CSVisibility.Public, module.Name);
+                picl.Methods.AddRange(methods);
             }
             return cl;
         }
 
         void CompileToDirectFunction(FunctionDeclaration func, TLFunction tlf, string homonymSuffix, BaseDeclaration context,
                           CSUsingPackages use, string swiftLibPath, List<CSMethod> methods, CSClass picl,
-                                      List<string> usedPinvokeNames)
+                                      List<string> usedPinvokeNames, ModuleDeclaration module)
         {
             // FIXME - need to do operators
             if (tlf.Operator != OperatorType.None)
@@ -160,7 +160,7 @@ namespace SwiftReflector
             pinvokeMethodName = Uniqueify(pinvokeMethodName, usedPinvokeNames);
             usedPinvokeNames.Add(pinvokeMethodName);
 
-            var pinvokeMethodRef = PIClassName($"{func.Module.Name}.TopLevelEntities") + "." + pinvokeMethodName;
+            var pinvokeMethodRef = PIClassName($"{func.Module.Name}.{module.Name}") + "." + pinvokeMethodName;
 
             var piMethod = TLFCompiler.CompileMethod(func, use, PInvokeName(swiftLibPath),
                 tlf.MangledName, pinvokeMethodName, true, true, false);
@@ -204,7 +204,7 @@ namespace SwiftReflector
                     continue;
                 try
                 {
-                    cl = cl ?? new CSClass(CSVisibility.Public, "TopLevelEntities");
+                    cl = cl ?? new CSClass(CSVisibility.Public, module.Name);
 
                     // Calculated properties have a matching __method
                     string backingMethodName = ("__" + prop.Name);
@@ -228,7 +228,7 @@ namespace SwiftReflector
             if (!fullClassName.Contains('.'))
                 throw new ArgumentOutOfRangeException(nameof(fullClassName), String.Format("Class name {0} should be a full class name.", fullClassName));
             fullClassName = fullClassName.Substring(fullClassName.IndexOf('.') + 1).Replace('.', '_');
-            return "NativeMethodsFor" + fullClassName;
+            return fullClassName;
         }
 
         string PIClassName(DotNetName fullClassName)

@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 using System;
-using HelloLibrary;
+using HelloLibraryBindings;
 
 namespace HelloWorld
 {
@@ -10,7 +10,7 @@ namespace HelloWorld
     {
         public static void Main(string[] args)
         {
-            TopLevelEntities.SayHello();
+            HelloLibrary.SayHello();
         }
     }
 }
