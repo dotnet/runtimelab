@@ -198,3 +198,6 @@ launchSettings.json
 *.abi*
 *.swiftsourceinfo*
 *.dylib
+
+# Testing artifacts
+testing/
