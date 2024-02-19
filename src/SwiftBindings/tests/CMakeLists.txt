@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(SmokeTests Swift)
+project(SmokeTests)
 
 set(SOURCE SmokeTests)
 
