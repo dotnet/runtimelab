@@ -53,8 +53,6 @@ stages:
     parameters:
       osGroup: OSX
       archType: x64
-      # ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
-        # isOfficialBuild: true
       runTests: true
       pool:
         vmImage: 'macOS-latest'
