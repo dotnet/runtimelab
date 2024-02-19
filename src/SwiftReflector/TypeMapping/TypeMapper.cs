@@ -25,6 +25,10 @@ namespace SwiftReflector.TypeMapping
         {
             TypeDatabase = new TypeDatabase();
             this.unicodeMapper = unicodeMapper;
+
+            string basePath = AppDomain.CurrentDomain.BaseDirectory;
+            string xmlFilePath = Path.Combine(basePath, "SwiftCore.xml");
+            AddTypeDatabase(xmlFilePath);
         }
 
         public void AddTypeDatabase(string fileName)

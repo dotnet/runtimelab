@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xamtypedatabase version="1.0">
+    <entities>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftString" entityType="Struct" blitable="Blitable" size="24" stride="24">
+            <typedeclaration kind="struct" name="Swift.String" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftCharacter" entityType="Struct" blitable="Blitable" size="16" stride="16">
+            <typedeclaration kind="struct" name="Swift.Character" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="sbyte" entityType="Scalar" blitable="Blitable" size="1" stride="1">
+            <typedeclaration kind="struct" name="Swift.Int8" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="byte" entityType="Scalar" blitable="Blitable" size="1" stride="1">
+            <typedeclaration kind="struct" name="Swift.UInt8" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="short" entityType="Scalar" blitable="Blitable" size="2" stride="2">
+            <typedeclaration kind="struct" name="Swift.Int16" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="ushort" entityType="Scalar" blitable="Blitable" size="2" stride="2">
+            <typedeclaration kind="struct" name="Swift.UInt16" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="int" entityType="Scalar" blitable="Blitable" size="4" stride="4">
+            <typedeclaration kind="struct" name="Swift.Int32" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="uint" entityType="Scalar" blitable="Blitable" size="4" stride="4">
+            <typedeclaration kind="struct" name="Swift.UInt32" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="long" entityType="Scalar" blitable="Blitable" size="8" stride="8">
+            <typedeclaration kind="struct" name="Swift.Int64" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="ulong" entityType="Scalar" blitable="Blitable" size="8" stride="8">
+            <typedeclaration kind="struct" name="Swift.UInt64" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="nint" entityType="Scalar" blitable="Blitable" size="8" stride="8">
+            <typedeclaration kind="struct" name="Swift.Int" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="nuint" entityType="Scalar" blitable="Blitable" size="8" stride="8">
+            <typedeclaration kind="struct" name="Swift.UInt" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="float" entityType="Scalar" blitable="Blitable" size="4" stride="4">
+            <typedeclaration kind="struct" name="Swift.Float" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="double" entityType="Scalar" blitable="Blitable" size="8" stride="8">
+            <typedeclaration kind="struct" name="Swift.Double" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="bool" entityType="Scalar" blitable="Blitable" size="4" stride="4">
+            <typedeclaration kind="struct" name="Swift.Bool" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftError" entityType="Error" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="class" name="Swift.Error" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftArray" entityType="Struct" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="class" name="Swift.Array" module="Swift" accessibility="Public" isObjC="false" isFinal="true" >
+                <genericparameters>
+                    <param name="Element" />
+                </genericparameters>
+            </typedeclaration>
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftDictionary" entityType="Struct" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="struct" name="Swift.Dictionary" module="Swift" accessibility="Public" isObjC="false" isFinal="true" >
+                <genericparameters>
+                    <param name="Key" />
+                    <param name="Value" />
+                    <where name="Key" relationship="inherits" from="Swift.Hashable" />
+                </genericparameters>
+            </typedeclaration>
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftSet" entityType="Struct" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="struct" name="Swift.Set" module="Swift" accessibility="Public" isObjC="false" isFinal="true" >
+                <genericparameters>
+                    <param name="Element" />
+                    <where name="Element" relationship="inherits" from="Swift.Hashable" />
+                </genericparameters>
+            </typedeclaration>
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftOptional" entityType="Enum" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="enum" name="Swift.Optional" module="Swift" accessibility="Public" isObjC="false" isFinal="true" >
+                <genericparameters>
+                    <param name="Wrapped" />
+                </genericparameters>
+                <elements>
+                    <element name="Some" intValue="1"/>
+                    <element name="None" intValue="0"/>
+                </elements>
+            </typedeclaration>
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftImplicitlyUnwrappedOptional" entityType="Enum" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="enum" name="Swift.ImplicitlyUnwrappedOptional" module="Swift" accessibility="Public" isObjC="false" isFinal="true" >
+                <elements>
+                    <element name="Some" intValue="1"/>
+                    <element name="None" intValue="0"/>
+                </elements>
+            </typedeclaration>
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="UnsafeMutablePointer" entityType="Struct" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="struct" name="Swift.UnsafeMutablePointer" module="Swift" accessibility="Public" isObjC="false" isFinal="true" >
+                <genericparameters>
+                    <param name="T" />
+                </genericparameters>
+            </typedeclaration>
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="UnsafePointer" entityType="Struct" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="struct" name="Swift.UnsafePointer" module="Swift" accessibility="Public" isObjC="false" isFinal="true" >
+                <genericparameters>
+                    <param name="T" />
+                </genericparameters>
+            </typedeclaration>
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="OpaquePointer" entityType="Scalar" blitable="Blitable" size="0" stride="0">
+            <typedeclaration kind="struct" name="Swift.OpaquePointer" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="UnsafeRawBufferPointer" entityType="Struct" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="struct" name="Swift.UnsafeRawBufferPointer" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="UnsafeMutableRawBufferPointer" entityType="Struct" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="struct" name="Swift.UnsafeMutableRawBufferPointer" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="void*" entityType="Scalar" blitable="Blitable" size="8" stride="8">
+            <typedeclaration kind="struct" name="Swift.UnsafeRawPointer" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="UnsafeMutableRawPointer" entityType="Scalar" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="struct" name="Swift.UnsafeMutableRawPointer" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="ICustomStringConvertible" entityType="Protocol" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="protocol" name="Swift.CustomStringConvertible" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftAnyObject" entityType="Class" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="class" name="Swift.AnyObject" module="Swift" accessibility="Public" isObjC="false" isFinal="true"  />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftExistentialContainer0" entityType="Protocol" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="protocol" name="Swift.Any" module = "Swift" accessitibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="ISwiftHashable" entityType="Protocol" discretionaryConstraint="true" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="protocol" name="Swift.Hashable" module = "Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="ISwiftEquatable" entityType="Protocol" discretionaryConstraint="true" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="protocol" name="Swift.Equatable" module = "Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="ISwiftComparable" entityType="Protocol" discretionaryConstraint="true" blitable="NonBlitable" size="0" stride="0">
+            <typedeclaration kind="protocol" name="Swift.Comparable" module = "Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="nfloat" entityType="Scalar" blitable="Blitable" size="0" stride="0">
+            <typedeclaration kind="struct" name="CoreGraphics.CGFloat" module="CoreGraphics" accessibility="Public" isObjC="true" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftHasher" entityType="Struct" blitable="NonBlitable" size="0" stride="0">
+        	<typedeclaration kind="struct" name="Swift.Hasher" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftDate" entityType="Struct" blitable="NonBlitable" size="0" stride="0">
+        	<typedeclaration kind="struct" name="Foundation.Date" module="Foundation" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftMetatype" entityType="Scalar" blitable="Blitable" size="8" stride="8">
+            <typedeclaration kind="struct" name="Any.Type" module="Any" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="ISwiftIteratorProtocol" entityType="Protocol" discretionaryConstraint="false" blitable="NonBlitable" size="0" stride="0">
+        	<typedeclaration kind="protocol" name="Swift.IteratorProtocol" module="Swift" accessibility="Public" isObjC="false" isFinal="true">
+			<associatedtypes>
+				<associatedtype name="Element" />
+			</associatedtypes>
+		</typedeclaration>
+        </entity>
+        <!-- Taken from https://developer.apple.com/documentation/swift/swift_standard_library/operator_declarations -->
+        <!-- prefix -->
+        <operator name="!" operatorKind="Prefix" moduleName="Swift" />
+        <operator name="~" operatorKind="Prefix" moduleName="Swift" />
+        <operator name="+" operatorKind="Prefix" moduleName="Swift" />
+        <operator name="-" operatorKind="Prefix" moduleName="Swift" />
+        <operator name="..&lt;" operatorKind="Prefix" moduleName="Swift" />
+        <operator name="..." operatorKind="Prefix" moduleName="Swift" />
+        <!-- postfix -->
+        <operator name="..." operatorKind="Postfix" moduleName="Swift" />
+        <!-- infix -->
+        <operator name="&lt;&lt;" operatorKind="Infix" precedenceGroup="BitWiseShiftPrecedence" moduleName="Swift" />
+        <operator name="&gt;&gt;" operatorKind="Infix" precedenceGroup="BitWiseShiftPrecedence" moduleName="Swift" />
+        <operator name="*" operatorKind="Infix" precedenceGroup="MultiplicationPrecedence" moduleName="Swift" />
+        <operator name="/" operatorKind="Infix" precedenceGroup="MultiplicationPrecedence" moduleName="Swift" />
+        <operator name="%" operatorKind="Infix" precedenceGroup="MultiplicationPrecedence" moduleName="Swift" />
+        <operator name="&amp;*" operatorKind="Infix" precedenceGroup="MultiplicationPrecedence" moduleName="Swift" />
+        <operator name="&amp;" operatorKind="Infix" precedenceGroup="MultiplicationPrecedence" moduleName="Swift" />
+        <operator name="+" operatorKind="Infix" precedenceGroup="AdditionPrecedence" moduleName="Swift" />
+        <operator name="-" operatorKind="Infix" precedenceGroup="AdditionPrecedence" moduleName="Swift" />
+        <operator name="&amp;+" operatorKind="Infix" precedenceGroup="AdditionPrecedence" moduleName="Swift" />
+        <operator name="&amp;-" operatorKind="Infix" precedenceGroup="AdditionPrecedence" moduleName="Swift" />
+        <operator name="|" operatorKind="Infix" precedenceGroup="AdditionPrecedence" moduleName="Swift" />
+        <operator name="^" operatorKind="Infix" precedenceGroup="AdditionPrecedence" moduleName="Swift" />
+        <operator name="..&lt;" operatorKind="Infix" precedenceGroup="RangeFormationPrecedence" moduleName="Swift" />
+        <operator name="..." operatorKind="Infix" precedenceGroup="RangeFormationPrecedence" moduleName="Swift" />
+        <operator name="is" operatorKind="Infix" precedenceGroup="CastingPrecedence" moduleName="Swift" />
+        <operator name="as" operatorKind="Infix" precedenceGroup="CastingPrecedence" moduleName="Swift" />
+        <operator name="as?" operatorKind="Infix" precedenceGroup="CastingPrecedence" moduleName="Swift" />
+        <operator name="as!" operatorKind="Infix" precedenceGroup="CastingPrecedence" moduleName="Swift" />
+        <operator name="??" operatorKind="Infix" precedenceGroup="NilCoalescingPrecedence" moduleName="Swift" />
+        <operator name="&lt;" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name="&lt;=" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name="&gt;" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name="&gt;=" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name="==" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name="!=" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name="===" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name="!==" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name="~=" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name=".==" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name=".!=" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name=".&lt;" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name=".&lt;=" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name=".&gt;" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name=".&gt;=" operatorKind="Infix" precedenceGroup="ComparisonPrecedence" moduleName="Swift" />
+        <operator name="&amp;&amp;" operatorKind="Infix" precedenceGroup="LogicalConjunctionPrecedence" moduleName="Swift" />
+        <operator name="||" operatorKind="Infix" precedenceGroup="LogicalConjunctionPrecedence" moduleName="Swift" />
+        <operator name="?:" operatorKind="Infix" precedenceGroup="TernaryPrecedence" moduleName="Swift" />
+        <operator name="=" operatorKind="Infix" precedenceGroup="AssignmentPrecedence" moduleName="Swift" />
+        <operator name="*=" operatorKind="Infix" precedenceGroup="AssignmentPrecedence" moduleName="Swift" />
+        <operator name="/=" operatorKind="Infix" precedenceGroup="AssignmentPrecedence" moduleName="Swift" />
+        <operator name="%=" operatorKind="Infix" precedenceGroup="AssignmentPrecedence" moduleName="Swift" />
+        <operator name="+=" operatorKind="Infix" precedenceGroup="AssignmentPrecedence" moduleName="Swift" />
+        <operator name="-=" operatorKind="Infix" precedenceGroup="AssignmentPrecedence" moduleName="Swift" />
+        <operator name="&lt;&lt;=" operatorKind="Infix" precedenceGroup="AssignmentPrecedence" moduleName="Swift" />
+        <operator name="&gt;&gt;=" operatorKind="Infix" precedenceGroup="AssignmentPrecedence" moduleName="Swift" />
+        <operator name="&amp;=" operatorKind="Infix" precedenceGroup="AssignmentPrecedence" moduleName="Swift" />
+        <operator name="|=" operatorKind="Infix" precedenceGroup="AssignmentPrecedence" moduleName="Swift" />
+        <operator name="^=" operatorKind="Infix" precedenceGroup="AssignmentPrecedence" moduleName="Swift" />
+	<typealias name="Foundation.NSRect" type="CoreGraphics.CGRect" />
+    </entities>
+</xamtypedatabase>

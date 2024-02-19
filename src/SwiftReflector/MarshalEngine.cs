@@ -265,6 +265,7 @@ namespace SwiftReflector
             switch (entityType)
             {
                 case EntityType.Scalar:
+                    return MarshalScalar (p);
                 case EntityType.Tuple:
                 case EntityType.None:
                     // Add more types
@@ -272,6 +273,32 @@ namespace SwiftReflector
             }
             throw new NotImplementedException($"Uh-oh - not ready for {swiftType.ToString()}, a {entityType}.");
         }
+
+        CSBaseExpression MarshalScalar (CSParameter p)
+		{
+			return ParmName (p);
+		}
+
+        static CSIdentifier ParmName (CSParameter parm)
+		{
+			return ParmName (parm.Name.Name, parm.ParameterKind);
+		}
+
+		static CSIdentifier ParmName (string ident, CSParameterKind parmKind)
+		{
+			string prefix = "";
+			switch (parmKind) {
+			case CSParameterKind.Out:
+				prefix = "out ";
+				break;
+			case CSParameterKind.Ref:
+				prefix = "ref ";
+				break;
+			default:
+				break;
+			}
+			return new CSIdentifier (String.Format ("{0}{1}", prefix, ident));
+		}
 
         public static string Uniqueify(string name, IEnumerable<string> names)
         {
