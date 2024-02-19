@@ -53,11 +53,11 @@ stages:
     parameters:
       osGroup: OSX
       archType: x64
-      ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
-        isOfficialBuild: true
-        runTests: false
-        pool:
-          vmImage: 'macOS-latest'
+      # ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
+        # isOfficialBuild: true
+      runTests: true
+      pool:
+        vmImage: 'macOS-latest'
 
 # Publish and validation steps. Only run in official builds
 - ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
