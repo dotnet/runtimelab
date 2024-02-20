@@ -7,6 +7,10 @@
 
 #include "llvm.h"
 #include "ssarenamestate.h"
+
+// TODO-LLVM-LSSA: only enable this in Debug - test using a Checked compiler in CI.
+#define FEATURE_LSSA_ALLOCATION_RESULT
+
 //
 // LSSA - the shadow stack allocator.
 //
@@ -44,6 +48,13 @@ class ShadowStackAllocator
     unsigned m_prologZeroingSize = 0;
     GenTree* m_lastPrologNode = nullptr;
 
+#ifdef FEATURE_LSSA_ALLOCATION_RESULT
+    class LssaAllocationResult;
+
+    LssaAllocationResult* m_allocationResult = nullptr;
+    const char* m_expectedAllocation = nullptr;
+#endif // FEATURE_LSSA_ALLOCATION_RESULT
+
 public:
     ShadowStackAllocator(Llvm* llvm) : m_compiler(llvm->_compiler), m_llvm(llvm)
     {
@@ -54,8 +65,10 @@ public:
         IdentifyCandidatesAndInitializeLocals();
         SpillValuesLiveAcrossSafePoints();
         AllocateAndInitializeLocals();
+        InitializeAllocationResult();
         FinalizeProlog();
         RewriteShadowFrameReferences();
+        ReportAllocationResult();
     }
 
 private:
@@ -1010,6 +1023,7 @@ private:
 
             JITDUMP("Added zero-initialization for shadow locals at: [%i, %i]:\n", offset, offset + zeroingSize);
             DISPTREERANGE(range, store);
+            RecordAllocationActionZeroInit(m_compiler->fgFirstBB, zeroingSize);
         }
 
         // Insert a zero-offset ILOffset to notify codegen this is the start of user code.
@@ -1097,13 +1111,16 @@ private:
                 return lclNode->gtNext;
             }
 
+            unsigned lclBaseOffset = varDsc->GetStackOffset();
+            RecordAllocationActionLoadStore(m_llvm->CurrentBlock(), lclBaseOffset, lclNode);
+
             // Filters will be called by the first pass while live state still exists on shadow frames above (in the
             // traditional sense, where stacks grow down) them. For this reason, filters will access state from the
             // original frame via a dedicated shadow stack pointer, and use the actual shadow stack for calls.
             unsigned shadowStackLclNum = m_llvm->isBlockInFilter(m_llvm->CurrentBlock())
                 ? m_llvm->_originalShadowStackLclNum
                 : m_llvm->_shadowStackLclNum;
-            unsigned lclOffset = varDsc->GetStackOffset() + lclNode->GetLclOffs();
+            unsigned lclOffset = lclBaseOffset + lclNode->GetLclOffs();
             GenTree* lclAddress = m_llvm->insertShadowStackAddr(lclNode, lclOffset, shadowStackLclNum);
 
             ClassLayout* layout = lclNode->TypeIs(TYP_STRUCT) ? lclNode->GetLayout(m_compiler) : nullptr;
@@ -1247,6 +1264,592 @@ private:
     {
         return true;
     }
+
+#ifdef FEATURE_LSSA_ALLOCATION_RESULT
+    void InitializeAllocationResult()
+    {
+        const char* expectedAllocation = nullptr;
+        if (JitConfig.JitRunLssaTests())
+        {
+            CORINFO_LLVM_JIT_TEST_INFO info;
+            m_llvm->GetJitTestInfo(CORINFO_JIT_TEST_LSSA, &info);
+            expectedAllocation = info.ExpectedLssaAllocation;
+        }
+
+        if ((expectedAllocation == nullptr) && !VERBOSE)
+        {
+            return;
+        }
+
+        CompAllocator alloc = m_compiler->getAllocator(CMK_DebugOnly);
+        m_allocationResult = new (alloc) LssaAllocationResult(m_compiler, alloc);
+        m_expectedAllocation = expectedAllocation;
+    }
+
+    void ReportAllocationResult()
+    {
+        if (!RecordAllocationResult())
+        {
+            return;
+        }
+
+        if (VERBOSE)
+        {
+            printf("\nFinal allocation:\n");
+            m_allocationResult->Print();
+            printf("\n");
+        }
+
+        if (m_expectedAllocation != nullptr)
+        {
+            if (!m_allocationResult->Compare(m_expectedAllocation))
+            {
+                printf("LSSA test '%s' failed.\n", m_compiler->eeGetMethodFullName(m_llvm->m_info->compMethodHnd));
+                printf("Expected allocation:\n%s\n", m_expectedAllocation);
+                printf("Actual allocation:\n");
+                m_allocationResult->Print();
+                printf("\n");
+
+                assert(!"LSSA test failed");
+                BADCODE("LSSA test failed");
+            }
+
+            JITDUMP("Ran [LSSATest(...)] - succeeded!\n");
+        }
+    }
+
+    bool RecordAllocationResult() const
+    {
+        return m_allocationResult != nullptr;
+    }
+
+    void RecordAllocationActionZeroInit(BasicBlock* initialBlock, unsigned size)
+    {
+        if (RecordAllocationResult())
+        {
+            m_allocationResult->SelectBlock(initialBlock);
+            m_allocationResult->RecordZeroInit(size);
+        }
+    }
+
+    void RecordAllocationActionLoadStore(BasicBlock* block, unsigned offset, GenTreeLclVarCommon* lclNode)
+    {
+        if (RecordAllocationResult())
+        {
+            if (lclNode->OperIs(GT_LCL_ADDR))
+            {
+                // We don't record LCL_ADDR transformations.
+                return;
+            }
+
+            m_allocationResult->SelectBlock(block);
+            m_allocationResult->RecordLoadStore(offset, lclNode);
+        }
+    }
+
+    class LssaAllocationResult
+    {
+        enum class AllocationActionKind : unsigned
+        {
+            Block,      // BB<index>:
+            ZeroInit,   // ZEROINIT <size>
+            Store,      // STORE <slot> <local> <value>
+            Load,       // LOAD  <slot> <local>
+            StoreField, // STORE_FIELD[<start>..<end>] <slot> <local> <value>
+            LoadField,  // LOAD_FIELD[<start>..<end>]  <slot> <local> <value>
+            Count
+        };
+
+        enum class IRValueKind : unsigned
+        {
+            Sdsu,
+            ArgLocal,
+            UserLocal,
+            TempLocal,
+            Count
+        };
+
+        struct IRValue
+        {
+            IRValueKind Kind : 2;
+            unsigned Num : 30;
+            unsigned SsaNum;
+        };
+
+        struct AllocationAction
+        {
+            AllocationActionKind Kind;
+            union
+            {
+                unsigned BlockIndex;
+                unsigned ZeroInitSize;
+                struct
+                {
+                    unsigned Slot;
+                    unsigned short FieldOffset;
+                    unsigned short FieldEndOffset;
+                    IRValue Local;
+                    IRValue Value;
+                };
+            };
+
+            // This part of the struct is for comments only.
+            GenTree* CommentNode = nullptr;
+        };
+
+        Compiler* m_compiler;
+        CompAllocator m_alloc;
+        ArrayStack<AllocationAction> m_actions;
+
+        BasicBlock* m_currentBlock = nullptr;
+        unsigned m_currentBlockIndex = 1;
+
+        // Shadow stack offsets are relabeled via "slots" to avoid offset allocation differences affecting the output.
+        JitHashTable<unsigned, JitSmallPrimitiveKeyFuncs<unsigned>, unsigned> m_slotMap;
+        unsigned m_currentSlot = 0;
+
+        // Compiler temporaries are relabled to avoid small differences in numbering affecting the output.
+        JitHashTable<unsigned, JitSmallPrimitiveKeyFuncs<unsigned>, unsigned> m_tempLocalsMap;
+        unsigned m_currentTempLocalNum = 0;
+
+    public:
+        LssaAllocationResult(Compiler* compiler, CompAllocator alloc)
+            : m_compiler(compiler)
+            , m_alloc(alloc)
+            , m_actions(alloc)
+            , m_slotMap(alloc)
+            , m_tempLocalsMap(alloc)
+        {
+        }
+
+        void SelectBlock(BasicBlock* block)
+        {
+            if (block != m_currentBlock)
+            {
+                m_actions.Push({AllocationActionKind::Block, m_currentBlockIndex++});
+                m_currentBlock = block;
+            }
+        }
+
+        void RecordZeroInit(unsigned size)
+        {
+            m_actions.Push({AllocationActionKind::ZeroInit, size});
+        }
+
+        void RecordLoadStore(unsigned offset, GenTreeLclVarCommon* lclNode)
+        {
+            AllocationActionKind kind;
+            switch (lclNode->OperGet())
+            {
+                case GT_STORE_LCL_VAR:
+                    kind = AllocationActionKind::Store;
+                    break;
+                case GT_LCL_VAR:
+                    kind = AllocationActionKind::Load;
+                    break;
+                case GT_STORE_LCL_FLD:
+                    kind = AllocationActionKind::StoreField;
+                    break;
+                case GT_LCL_FLD:
+                    kind = AllocationActionKind::LoadField;
+                    break;
+                default:
+                    unreached();
+            }
+
+            AllocationAction action{kind};
+            action.Slot = GetSlot(offset);
+            if (lclNode->OperIsLocalField())
+            {
+                unsigned storeSize =
+                    lclNode->TypeIs(TYP_STRUCT) ? lclNode->GetLayout(m_compiler)->GetSize() : genTypeSize(lclNode);
+                action.FieldOffset = lclNode->GetLclOffs();
+                action.FieldEndOffset = action.FieldOffset + storeSize;
+            }
+            action.Local = GetLocalValue(lclNode->GetLclNum(), lclNode->GetSsaNum());
+
+            if (lclNode->OperIsLocalStore())
+            {
+                GenTree* value = lclNode->Data();
+                if (value->OperIsLocalRead())
+                {
+                    action.Value =
+                        GetLocalValue(value->AsLclVarCommon()->GetLclNum(), value->AsLclVarCommon()->GetSsaNum());
+                }
+                else
+                {
+                    action.Value = {IRValueKind::Sdsu};
+                }
+            }
+
+            action.CommentNode = lclNode;
+            m_actions.Push(action);
+        }
+
+        void Print()
+        {
+            for (int i = 0; i < m_actions.Height(); i++)
+            {
+                AllocationAction& action = m_actions.BottomRef(i);
+                if (action.Kind != AllocationActionKind::Block)
+                {
+                    printf("  ");
+                }
+                PrintAction(action);
+                printf("\n");
+            }
+        }
+
+        bool Compare(const char* expected)
+        {
+            ArrayStack<AllocationAction> expectedResult(m_alloc);
+            ParseAllocationResult(expected, expectedResult);
+            ArrayStack<AllocationAction>& actualResult = m_actions;
+            if (actualResult.Height() != expectedResult.Height())
+            {
+                return false;
+            }
+
+            for (int i = 0; i < actualResult.Height(); i++)
+            {
+                AllocationAction& actualAction = actualResult.BottomRef(i);
+                AllocationAction& expectedAction = expectedResult.BottomRef(i);
+                if (memcmp(&actualAction, &expectedAction, offsetof(AllocationAction, CommentNode)) != 0)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+    private:
+        unsigned GetSlot(unsigned offset)
+        {
+            unsigned slot;
+            if (!m_slotMap.Lookup(offset, &slot))
+            {
+                slot = m_currentSlot++;
+                m_slotMap.Set(offset, slot);
+            }
+
+            return slot;
+        }
+
+        IRValue GetLocalValue(unsigned lclNum, unsigned ssaNum)
+        {
+            IRValue value;
+            LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
+            if (lclNum < m_compiler->info.compLocalsCount)
+            {
+                value.Kind = varDsc->lvIsParam ? IRValueKind::ArgLocal : IRValueKind::UserLocal;
+                value.Num = lclNum;
+            }
+            else
+            {
+                unsigned num;
+                if (!m_tempLocalsMap.Lookup(lclNum, &num))
+                {
+                    num = m_currentTempLocalNum++;
+                    m_tempLocalsMap.Set(lclNum, num);
+                }
+
+                value.Kind = IRValueKind::TempLocal;
+                value.Num = num;
+            }
+
+            value.SsaNum = ssaNum;
+            return value;
+        }
+
+        enum FmtOptions
+        {
+            FMT_PREFIX = 1,
+            FMT_ARGS = 2,
+            FMT_FULL = FMT_PREFIX | FMT_ARGS,
+            FMT_SCAN = 4
+        };
+
+        void PrintAction(const AllocationAction& action)
+        {
+            const char* format = GetActionKindFormat(action.Kind, FMT_FULL);
+            switch (action.Kind)
+            {
+                case AllocationActionKind::Block:
+                    printf(format, action.BlockIndex);
+                    break;
+                case AllocationActionKind::ZeroInit:
+                    printf(format, action.ZeroInitSize);
+                    break;
+                case AllocationActionKind::Store:
+                case AllocationActionKind::Load:
+                case AllocationActionKind::StoreField:
+                case AllocationActionKind::LoadField:
+                    if ((action.Kind == AllocationActionKind::StoreField) ||
+                        (action.Kind == AllocationActionKind::LoadField))
+                    {
+                        printf(format, action.FieldOffset, action.FieldEndOffset, action.Slot);
+                    }
+                    else
+                    {
+                        printf(format, action.Slot);
+                    }
+                    printf(" ");
+                    PrintIRValue(action.Local);
+
+                    if ((action.Kind == AllocationActionKind::Store) ||
+                        (action.Kind == AllocationActionKind::StoreField))
+                    {
+                        printf(" ");
+                        PrintIRValue(action.Value);
+                    }
+
+                    if (action.CommentNode != nullptr)
+                    {
+                        JITDUMP(" # ");
+                        JITDUMPEXEC(m_compiler->printTreeID(action.CommentNode));
+                    }
+                    break;
+                default:
+                    unreached();
+            }
+        }
+
+        void PrintIRValue(const IRValue& value)
+        {
+            const char* format = GetIRValueKindFormat(value.Kind, FMT_FULL);
+            printf(format, value.Num);
+            if ((value.Kind != IRValueKind::Sdsu) && (value.SsaNum != SsaConfig::RESERVED_SSA_NUM))
+            {
+                printf(GetSsaLocalFormat(), value.SsaNum);
+            }
+        }
+
+        void ParseAllocationResult(const char* result, ArrayStack<AllocationAction>& parsedResult)
+        {
+            AllocationAction action{};
+            while (ParseAllocationAction(&result, &action))
+            {
+                parsedResult.Push(action);
+            }
+        }
+
+        bool ParseAllocationAction(const char** pCurrent, AllocationAction* pAction)
+        {
+            const char* current = *pCurrent;
+            for (unsigned kindIdx = 0; kindIdx < static_cast<unsigned>(AllocationActionKind::Count); kindIdx++)
+            {
+                AllocationActionKind kind = static_cast<AllocationActionKind>(kindIdx);
+
+                unsigned consumed = 0;
+                sscanf(current, GetActionKindFormat(kind, FMT_PREFIX | FMT_SCAN), &consumed);
+                if (consumed != 0)
+                {
+                    current += consumed;
+
+                    unsigned op1 = 0, op2 = 0, op3 = 0, op4 = 0;
+                    sscanf(current, GetActionKindFormat(kind, FMT_ARGS | FMT_SCAN), &op1, &op2, &op3, &op4);
+                    switch (kind)
+                    {
+                        case AllocationActionKind::Block:
+                            if (op2 != 0)
+                            {
+                                current += op2;
+                                pAction->BlockIndex = op1;
+                                break;
+                            }
+                            return false;
+
+                        case AllocationActionKind::ZeroInit:
+                            if (op2 != 0)
+                            {
+                                current += op2;
+                                pAction->ZeroInitSize = op1;
+                                break;
+                            }
+                            return false;
+
+                        case AllocationActionKind::Store:
+                        case AllocationActionKind::Load:
+                            if (op2 != 0)
+                            {
+                                current += op2;
+                                if (ParseLocalAndValue(&current, pAction, kind == AllocationActionKind::Store))
+                                {
+                                    pAction->Slot = op1;
+                                    break;
+                                }
+                            }
+                            return false;
+
+                        case AllocationActionKind::StoreField:
+                        case AllocationActionKind::LoadField:
+                            if (op4 != 0)
+                            {
+                                current += op4;
+                                if (ParseLocalAndValue(&current, pAction, kind == AllocationActionKind::StoreField))
+                                {
+                                    pAction->Slot = op3;
+                                    pAction->FieldOffset = op1;
+                                    pAction->FieldEndOffset = op2;
+                                    break;
+                                }
+                            }
+                            return false;
+
+                        default:
+                            unreached();
+                    }
+
+                    pAction->Kind = kind;
+                    *pCurrent = current;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        bool ParseLocalAndValue(const char** pCurrent, AllocationAction* pAction, bool hasValue)
+        {
+            const char* current = *pCurrent;
+
+            IRValue local;
+            if (!ParseIRValue(&current, &local))
+            {
+                return false;
+            }
+
+            if (hasValue)
+            {
+                IRValue value;
+                if (!ParseIRValue(&current, &value))
+                {
+                    return false;
+                }
+
+                pAction->Value = value;
+            }
+
+            pAction->Local = local;
+            *pCurrent = current;
+            return true;
+        }
+
+        bool ParseIRValue(const char** pCurrent, IRValue* pValue)
+        {
+            const char* current = *pCurrent;
+            for (unsigned kindIdx = 0; kindIdx < static_cast<unsigned>(IRValueKind::Count); kindIdx++)
+            {
+                IRValueKind kind = static_cast<IRValueKind>(kindIdx);
+
+                unsigned consumed = 0;
+                sscanf(current, GetIRValueKindFormat(kind, FMT_PREFIX | FMT_SCAN), &consumed);
+                if (consumed != 0)
+                {
+                    current += consumed;
+
+                    switch (kind)
+                    {
+                        case IRValueKind::Sdsu:
+                            // SDSUs currently have no arguments.
+                            break;
+
+                        case IRValueKind::ArgLocal:
+                        case IRValueKind::UserLocal:
+                        case IRValueKind::TempLocal:
+                            consumed = 0;
+                            unsigned num;
+                            sscanf(current, GetIRValueKindFormat(kind, FMT_ARGS | FMT_SCAN), &num, &consumed);
+                            if (consumed != 0)
+                            {
+                                current += consumed;
+                                pValue->Num = num;
+
+                                consumed = 0;
+                                sscanf(current, GetSsaLocalFormat(FMT_SCAN), &num, &consumed);
+                                if (consumed != 0)
+                                {
+                                    current += consumed;
+                                    pValue->SsaNum = num;
+                                }
+                                else
+                                {
+                                    pValue->SsaNum = SsaConfig::RESERVED_SSA_NUM;
+                                }
+                                break;
+                            }
+                            return false;
+
+                        default:
+                            unreached();
+                    }
+
+                    pValue->Kind = kind;
+                    *pCurrent = current;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+#define FMT_WITH_SCAN(fmt) ((opts & FMT_SCAN) ? (" " fmt "%n") : fmt)
+#define SEPARATED_FMT(prefix, args) \
+        ((opts & FMT_FULL) == FMT_FULL) ? FMT_WITH_SCAN(prefix args) : \
+        (opts & FMT_PREFIX) ? FMT_WITH_SCAN(prefix) : \
+        (opts & FMT_ARGS) ? FMT_WITH_SCAN(args) : ""
+
+        static const char* GetActionKindFormat(AllocationActionKind kind, int opts)
+        {
+            switch (kind)
+            {
+                case AllocationActionKind::Block:
+                    return SEPARATED_FMT("BB", "%02u:");
+                case AllocationActionKind::ZeroInit:
+                    return SEPARATED_FMT("ZEROINIT", " %u");
+                case AllocationActionKind::Store:
+                    return SEPARATED_FMT("STORE", " SS%02u");
+                case AllocationActionKind::Load:
+                    return SEPARATED_FMT("LOAD", "  SS%02u");
+                case AllocationActionKind::StoreField:
+                    return SEPARATED_FMT("STORE_FIELD", " [%u..%u] SS%02u");
+                case AllocationActionKind::LoadField:
+                    return SEPARATED_FMT("LOAD_FIELD", "  [%u..%u]  SS%02u");
+                default:
+                    unreached();
+            }
+        }
+
+        static const char* GetIRValueKindFormat(IRValueKind kind, int opts)
+        {
+            switch (kind)
+            {
+                case IRValueKind::Sdsu:
+                    return SEPARATED_FMT("SDSU", "");
+                case IRValueKind::ArgLocal:
+                    return SEPARATED_FMT("ARG", "%02u");
+                case IRValueKind::UserLocal:
+                    return SEPARATED_FMT("USR", "%02u");
+                case IRValueKind::TempLocal:
+                    return SEPARATED_FMT("TMP", "%02u");
+                default:
+                    unreached();
+            }
+        }
+
+        static const char* GetSsaLocalFormat(int opts = 0)
+        {
+            return FMT_WITH_SCAN("/%u");
+        }
+    };
+#else // !FEATURE_LSSA_ALLOCATION_RESULT
+    void InitializeAllocationResult() { }
+    void ReportAllocationResult() { }
+    bool RecordAllocationResult() const { return false; }
+    void RecordAllocationActionZeroInit(BasicBlock* initialBlock, unsigned size) { }
+    void RecordAllocationActionLoadStore(BasicBlock* block, unsigned offset, GenTreeLclVarCommon* lclNode) { }
+#endif // !FEATURE_LSSA_ALLOCATION_RESULT
 };
 
 void Llvm::Allocate()
