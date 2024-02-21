@@ -31,7 +31,8 @@ namespace SyntaxDynamo.CSLang
 
         public CSCommentBlock(params string[] text)
         {
-            AddRange(Sanitize(Exceptions.ThrowOnNull(text, "text")));
+            ArgumentNullException.ThrowIfNull(text, nameof(text));
+            AddRange(Sanitize(text));
         }
 
         static IEnumerable<CSComment> Sanitize(string[] text)
@@ -52,7 +53,8 @@ namespace SyntaxDynamo.CSLang
 
         public CSCommentBlock And(CSComment comment)
         {
-            Add(Exceptions.ThrowOnNull(comment, "comment"));
+            ArgumentNullException.ThrowIfNull(comment, nameof(comment));
+            Add(comment);
             return this;
         }
     }

@@ -232,7 +232,7 @@ namespace SwiftReflector.SwiftXmlReflection
 
         TypeSpec ParseProtocolList(NamedTypeSpec first)
         {
-            Exceptions.ThrowOnNull(first, nameof(first));
+            ArgumentNullException.ThrowIfNull(first, nameof(first));
             var protocols = new List<NamedTypeSpec>();
             protocols.Add(first);
             while (true)

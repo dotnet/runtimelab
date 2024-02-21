@@ -38,7 +38,8 @@ namespace SwiftReflector.SwiftXmlReflection
             }
             set
             {
-                typeName = Exceptions.ThrowOnNull(value, nameof(value));
+                ArgumentNullException.ThrowIfNull(value, nameof(value));
+                typeName = value;
                 try
                 {
                     TypeSpec = TypeSpecParser.Parse(typeName);

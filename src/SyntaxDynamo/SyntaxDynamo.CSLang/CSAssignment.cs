@@ -10,13 +10,15 @@ namespace SyntaxDynamo.CSLang
     {
         public CSAssignment(CSBaseExpression lhs, CSAssignmentOperator op, CSBaseExpression rhs)
         {
-            Target = Exceptions.ThrowOnNull(lhs, "lhs");
-            Value = Exceptions.ThrowOnNull(rhs, "rhs");
+            ArgumentNullException.ThrowIfNull(lhs, nameof(lhs));
+            ArgumentNullException.ThrowIfNull(rhs, nameof(rhs));
+            Target = lhs;
+            Value = rhs;
             Operation = op;
         }
 
         public CSAssignment(string lhs, CSAssignmentOperator op, CSBaseExpression rhs)
-            : this(new CSIdentifier(Exceptions.ThrowOnNull(lhs, "lhs")), op, rhs)
+            : this(new CSIdentifier(lhs), op, rhs)
         {
         }
 

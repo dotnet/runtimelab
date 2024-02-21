@@ -10,9 +10,11 @@ namespace SyntaxDynamo.CSLang
     {
         public CSBinaryExpression(CSBinaryOperator op, ICSExpression lhs, ICSExpression rhs)
         {
+            ArgumentNullException.ThrowIfNull(lhs, nameof(lhs));
+            ArgumentNullException.ThrowIfNull(rhs, nameof(rhs));
             Operation = op;
-            Left = Exceptions.ThrowOnNull(lhs, "lhs");
-            Right = Exceptions.ThrowOnNull(rhs, "rhs");
+            Left = lhs;
+            Right = rhs;
         }
 
         protected override void LLWrite(ICodeWriter writer, object o)

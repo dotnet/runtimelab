@@ -12,8 +12,9 @@ namespace SyntaxDynamo.CSLang
         public CSInterface(CSVisibility vis, CSIdentifier name,
             IEnumerable<CSMethod> methods = null)
         {
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
             Visibility = vis;
-            Name = Exceptions.ThrowOnNull(name, "name");
+            Name = name;
             Inheritance = new CSInheritance();
             Methods = new List<CSMethod>();
             Properties = new List<CSProperty>();

@@ -16,13 +16,14 @@ namespace SyntaxDynamo
         const int kWrapPoint = 60;
 
         public CodeWriter(Stream stm)
-            : this(new StreamWriter(Exceptions.ThrowOnNull(stm, "stm")))
+            : this(new StreamWriter(stm))
         {
         }
 
         public CodeWriter(TextWriter tw)
         {
-            TextWriter = Exceptions.ThrowOnNull(tw, "tw");
+            ArgumentNullException.ThrowIfNull(tw, nameof(tw));
+            TextWriter = tw;
             charsWrittenThisLine = 0;
             IndentLevel = 0;
             IsAtLineStart = true;

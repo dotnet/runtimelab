@@ -45,9 +45,11 @@ namespace SyntaxDynamo.CSLang
 
         public CSForEach(CSType type, CSIdentifier ident, CSBaseExpression expr, CSCodeBlock body)
         {
+            ArgumentNullException.ThrowIfNull(ident, nameof(ident));
+            ArgumentNullException.ThrowIfNull(expr, nameof(expr));
             Type = type;
-            Ident = Exceptions.ThrowOnNull(ident, nameof(ident));
-            Expr = Exceptions.ThrowOnNull(expr, nameof(expr));
+            Ident = ident;
+            Expr = expr;
             Body = body ?? new CSCodeBlock();
             Add(new ForElement(type, ident, expr));
             Add(Body);

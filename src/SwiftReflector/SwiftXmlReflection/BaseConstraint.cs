@@ -87,7 +87,8 @@ namespace SwiftReflector.SwiftXmlReflection
         public InheritanceConstraint(string name, string inheritsTypeSpecString, TypeAliasFolder folder = null)
             : base(ConstraintKind.Inherits)
         {
-            Name = Exceptions.ThrowOnNull(name, nameof(name));
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
+            Name = name;
             Inherits = inheritsTypeSpecString;
             if (folder != null)
                 InheritsTypeSpec = folder.FoldAlias(null, InheritsTypeSpec);

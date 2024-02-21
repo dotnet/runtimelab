@@ -32,7 +32,7 @@ namespace SyntaxDynamo.CSLang
             CSVisibility getVis, CSCodeBlock getter,
             CSVisibility setVis, CSCodeBlock setter, CSParameterList parms)
             : this(type, kind, new CSIdentifier("this"), getVis, getter, setVis, setter,
-                Exceptions.ThrowOnNull(parms, nameof(parms)))
+                parms)
         {
         }
 
@@ -40,6 +40,8 @@ namespace SyntaxDynamo.CSLang
             CSVisibility getVis, CSCodeBlock getter,
             CSVisibility setVis, CSCodeBlock setter, CSParameterList parms)
         {
+            ArgumentNullException.ThrowIfNull(type, nameof(type));
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
             bool unifiedVis = getVis == setVis;
             IndexerParameters = parms;
 
@@ -55,8 +57,8 @@ namespace SyntaxDynamo.CSLang
             PropType = type;
             Name = name;
 
-            decl.And(Exceptions.ThrowOnNull(type, "type")).And(SimpleElement.Spacer)
-                .And(Exceptions.ThrowOnNull(name, nameof(name)));
+            decl.And(type).And(SimpleElement.Spacer)
+                .And(name);
             if (parms != null)
             {
                 decl.And(new SimpleElement("[", true)).And(parms).And(new SimpleElement("]"));
@@ -130,9 +132,10 @@ namespace SyntaxDynamo.CSLang
 
         static CSProperty PublicGetPubPrivSetBacking(CSType type, string name, bool declareField, bool setIsPublic, string backingFieldName = null)
         {
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
             if (!declareField && backingFieldName == null)
                 throw new ArgumentException("declareField must be true if there is no supplied field name", nameof(declareField));
-            backingFieldName = backingFieldName ?? MassageName(Exceptions.ThrowOnNull(name, nameof(name)));
+            backingFieldName = backingFieldName ?? MassageName(name);
 
 
             CSIdentifier backingIdent = new CSIdentifier(backingFieldName);
@@ -165,12 +168,14 @@ namespace SyntaxDynamo.CSLang
         public static CSProperty PublicGetBacking(CSType type, CSIdentifier name, CSIdentifier backingFieldName,
             bool includeBackingFieldDeclaration = false, CSMethodKind methodKind = CSMethodKind.None)
         {
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
+            ArgumentNullException.ThrowIfNull(backingFieldName, nameof(backingFieldName));
             LineCodeElementCollection<ICodeElement> getCode =
                 new LineCodeElementCollection<ICodeElement>(
                     new ICodeElement[] {
-                        CSReturn.ReturnLine (Exceptions.ThrowOnNull(backingFieldName, nameof(backingFieldName)))
+                        CSReturn.ReturnLine (backingFieldName)
                     }, false, true);
-            CSProperty prop = new CSProperty(type, methodKind, Exceptions.ThrowOnNull(name, nameof(name)),
+            CSProperty prop = new CSProperty(type, methodKind, name,
                 CSVisibility.Public, new CSCodeBlock(getCode),
                 CSVisibility.Public, null);
             if (includeBackingFieldDeclaration)
@@ -181,9 +186,11 @@ namespace SyntaxDynamo.CSLang
 
         public static CSProperty PublicGetBacking(CSType type, string name, string backingFieldName, bool includeBackingFieldDeclaration = false)
         {
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
+            ArgumentNullException.ThrowIfNull(backingFieldName, nameof(backingFieldName));
             return PublicGetBacking(type,
-                         new CSIdentifier(Exceptions.ThrowOnNull(name, nameof(name))),
-                         new CSIdentifier(Exceptions.ThrowOnNull(backingFieldName, nameof(backingFieldName))),
+                         new CSIdentifier(name),
+                         new CSIdentifier(backingFieldName),
                          includeBackingFieldDeclaration);
         }
 

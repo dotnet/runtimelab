@@ -16,11 +16,13 @@ namespace SwiftReflector.SwiftXmlReflection
         public string Value { get; private set; }
         public static TypeSpecToken LabelFromString(string value)
         {
-            return new TypeSpecToken(TypeTokenKind.TypeLabel, Exceptions.ThrowOnNull(value, "value"));
+            ArgumentNullException.ThrowIfNull(value, nameof(value));
+            return new TypeSpecToken(TypeTokenKind.TypeLabel, value);
         }
         public static TypeSpecToken FromString(string value)
         {
-            return new TypeSpecToken(TypeTokenKind.TypeName, Exceptions.ThrowOnNull(value, "value"));
+            ArgumentNullException.ThrowIfNull(value, nameof(value));
+            return new TypeSpecToken(TypeTokenKind.TypeName, value);
         }
         static TypeSpecToken leftparenthesis = new TypeSpecToken(TypeTokenKind.LeftParenthesis, "(");
         static TypeSpecToken rightparenthesis = new TypeSpecToken(TypeTokenKind.RightParenthesis, ")");

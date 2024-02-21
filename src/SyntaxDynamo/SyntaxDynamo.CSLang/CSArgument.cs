@@ -7,7 +7,8 @@ namespace SyntaxDynamo.CSLang
     {
         public CSArgument(ICSExpression expr)
         {
-            Value = Exceptions.ThrowOnNull(expr, nameof(expr));
+            ArgumentNullException.ThrowIfNull(expr, nameof(expr));
+            Value = expr;
         }
 
         public ICSExpression Value { get; private set; }

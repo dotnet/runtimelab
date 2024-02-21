@@ -10,8 +10,10 @@ namespace SyntaxDynamo.CSLang
     {
         public CSArray1D(CSIdentifier name, CommaListElementCollection<CSBaseExpression> paramList)
         {
-            Name = Exceptions.ThrowOnNull(name, "name");
-            Parameters = Exceptions.ThrowOnNull(paramList, "paramList");
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
+            ArgumentNullException.ThrowIfNull(paramList, nameof(paramList));
+            Name = name;
+            Parameters = paramList;
         }
 
         public CSArray1D(string name, params CSBaseExpression[] parameters)
@@ -41,8 +43,10 @@ namespace SyntaxDynamo.CSLang
     {
         public CSArray1DInitialized(CSType type, CommaListElementCollection<CSBaseExpression> initializers)
         {
-            Type = Exceptions.ThrowOnNull(type, "type");
-            Parameters = Exceptions.ThrowOnNull(initializers, "initializers");
+            ArgumentNullException.ThrowIfNull(type, nameof(type));
+            ArgumentNullException.ThrowIfNull(initializers, nameof(initializers));
+            Type = type;
+            Parameters = initializers;
         }
 
         public CSArray1DInitialized(CSType type, params CSBaseExpression[] parameters)
@@ -79,8 +83,10 @@ namespace SyntaxDynamo.CSLang
     {
         public CSListInitialized(CSType type, CommaListElementCollection<CSBaseExpression> initializers)
         {
-            Type = Exceptions.ThrowOnNull(type, "type");
-            Parameters = Exceptions.ThrowOnNull(initializers, "initializers");
+            ArgumentNullException.ThrowIfNull(type, nameof(type));
+            ArgumentNullException.ThrowIfNull(initializers, nameof(initializers));
+            Type = type;
+            Parameters = initializers;
         }
 
         public CSListInitialized(CSType type, params CSBaseExpression[] parameters)

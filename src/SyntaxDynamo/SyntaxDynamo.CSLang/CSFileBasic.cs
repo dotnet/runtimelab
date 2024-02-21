@@ -11,7 +11,8 @@ namespace SyntaxDynamo.CSLang
 
         public CSFileBasic(string nameSpace)
         {
-            this.nameSpace = Exceptions.ThrowOnNull(nameSpace, "nameSpace");
+            ArgumentNullException.ThrowIfNull(nameSpace, nameof(nameSpace));
+            this.nameSpace = nameSpace;
             Using = new CSUsingPackages();
             Classes = new CSClasses();
         }

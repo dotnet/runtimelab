@@ -9,8 +9,9 @@ namespace SyntaxDynamo.CSLang
     {
         public CSUnaryExpression(CSUnaryOperator op, ICSExpression expr)
         {
+            ArgumentNullException.ThrowIfNull(expr, nameof(expr));
             Operation = op;
-            Expr = Exceptions.ThrowOnNull(expr, nameof(expr));
+            Expr = expr;
         }
         protected override void LLWrite(ICodeWriter writer, object o)
         {

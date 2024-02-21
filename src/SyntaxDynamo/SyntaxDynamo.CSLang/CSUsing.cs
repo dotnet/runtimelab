@@ -11,7 +11,7 @@ namespace SyntaxDynamo.CSLang
     public class CSUsing : SimpleLineElement
     {
         public CSUsing(string package)
-            : base(string.Format("using {0};", Exceptions.ThrowOnNull(package, nameof(package))), false, false, false)
+            : base(string.Format("using {0};", package), false, false, false)
         {
             Package = package;
         }

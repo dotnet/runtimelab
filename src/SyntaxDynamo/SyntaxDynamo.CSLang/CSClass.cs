@@ -13,10 +13,11 @@ namespace SyntaxDynamo.CSLang
         public CSClass(CSVisibility vis, CSIdentifier name, IEnumerable<CSMethod> methods = null,
             bool isStatic = false, bool isSealed = false)
         {
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
             Visibility = vis;
             IsStatic = isStatic;
             IsSealed = isSealed;
-            Name = Exceptions.ThrowOnNull(name, "name");
+            Name = name;
             Inheritance = new CSInheritance();
             Delegates = new List<CSDelegateTypeDecl>();
             Fields = new List<ICodeElement>();

@@ -9,7 +9,8 @@ namespace SyntaxDynamo.CSLang
     {
         public CSThrow(CSBaseExpression expr)
         {
-            Expr = Exceptions.ThrowOnNull(expr, "expr");
+            ArgumentNullException.ThrowIfNull(expr, nameof(expr));
+            Expr = expr;
         }
 
         public CSBaseExpression Expr { get; private set; }
@@ -39,8 +40,9 @@ namespace SyntaxDynamo.CSLang
 
         public static CSLine ThrowLine<T>(T exType, CSBaseExpression expr) where T : Exception
         {
+            ArgumentNullException.ThrowIfNull(expr, nameof(expr));
             CommaListElementCollection<CSBaseExpression> args = new CommaListElementCollection<CSBaseExpression>();
-            args.Add(Exceptions.ThrowOnNull(expr, nameof(expr)));
+            args.Add(expr);
             return ThrowLine(exType, args);
         }
     }

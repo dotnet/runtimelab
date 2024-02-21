@@ -22,7 +22,8 @@ namespace SwiftReflector.SwiftXmlReflection
             get { return typeName; }
             set
             {
-                typeName = Exceptions.ThrowOnNull(value, nameof(value));
+                ArgumentNullException.ThrowIfNull(value, nameof(value));
+                typeName = value;
                 if (typeName.IndexOf(':') >= 0)
                     throw ErrorHelper.CreateError(ReflectorError.kReflectionErrorBase + 12, $"typealias {value} has a generic constraint which is not supported");
                 try
@@ -42,7 +43,7 @@ namespace SwiftReflector.SwiftXmlReflection
             get { return typeSpec; }
             set
             {
-                Exceptions.ThrowOnNull(value, nameof(value));
+                ArgumentNullException.ThrowIfNull(value, nameof(value));
                 typeSpec = value;
                 typeName = value.ToString();
             }
@@ -54,7 +55,8 @@ namespace SwiftReflector.SwiftXmlReflection
             get { return targetTypeName; }
             set
             {
-                targetTypeName = Exceptions.ThrowOnNull(value, nameof(value));
+                ArgumentNullException.ThrowIfNull(value, nameof(value));
+                targetTypeName = value;
                 try
                 {
                     targetTypeSpec = TypeSpecParser.Parse(targetTypeName);
@@ -72,7 +74,7 @@ namespace SwiftReflector.SwiftXmlReflection
             get { return targetTypeSpec; }
             set
             {
-                Exceptions.ThrowOnNull(value, nameof(value));
+                ArgumentNullException.ThrowIfNull(value, nameof(value));
                 targetTypeSpec = value;
                 targetTypeName = value.ToString();
             }
@@ -98,7 +100,7 @@ namespace SwiftReflector.SwiftXmlReflection
             var aliasName = element.Attribute("name").Value;
             if (!aliasName.Contains("."))
             {
-                Exceptions.ThrowOnNull(moduleName, nameof(moduleName));
+                ArgumentNullException.ThrowIfNull(moduleName, nameof(moduleName));
                 aliasName = $"{moduleName}.{aliasName}";
             }
             return new TypeAliasDeclaration()

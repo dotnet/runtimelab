@@ -11,10 +11,11 @@ namespace SyntaxDynamo.CSLang
         public CSAttribute(CSIdentifier name, CSArgumentList args, bool isSingleLine = false, bool isReturn = false)
             : base(isSingleLine, false, isSingleLine)
         {
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
             Add(new SimpleElement("["));
             if (isReturn)
                 Add(new SimpleElement("return:"));
-            Add(Exceptions.ThrowOnNull(name, nameof(name)));
+            Add(name);
             if (args != null)
             {
                 Add(new SimpleElement("("));
@@ -81,7 +82,7 @@ namespace SyntaxDynamo.CSLang
 
         public static CSAttribute FromAttr(Type attribute, CSArgumentList args, bool isSingleLine = false, bool isReturn = false)
         {
-            Exceptions.ThrowOnNull(attribute, nameof(attribute));
+            ArgumentNullException.ThrowIfNull(attribute, nameof(attribute));
             if (!attribute.IsSubclassOf(typeof(Attribute)))
                 throw new ArgumentException(String.Format("Type {0} is not an Attribute type.", attribute.Name), nameof(attribute));
             var name = attribute.Name.EndsWith("Attribute") ?

@@ -11,9 +11,12 @@ namespace SyntaxDynamo.CSLang
         public CSFixedCodeBlock(CSType type, CSIdentifier ident, CSBaseExpression expr, IEnumerable<ICodeElement> body)
             : base(body)
         {
-            Type = Exceptions.ThrowOnNull(type, "type");
-            Identifier = Exceptions.ThrowOnNull(ident, "ident");
-            Expr = Exceptions.ThrowOnNull(expr, "expr");
+            ArgumentNullException.ThrowIfNull(type, nameof(type));
+            ArgumentNullException.ThrowIfNull(ident, nameof(ident));
+            ArgumentNullException.ThrowIfNull(expr, nameof(expr));
+            Type = type;
+            Identifier = ident;
+            Expr = expr;
         }
 
         public override void Write(ICodeWriter writer, object o)

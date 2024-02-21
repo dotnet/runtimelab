@@ -12,7 +12,8 @@ namespace SwiftReflector.SwiftXmlReflection
     {
         public EnumElement(string name, string typeName, long? value)
         {
-            Name = Exceptions.ThrowOnNull(name, nameof(name));
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
+            Name = name;
             TypeName = typeName;
             Value = value;
         }

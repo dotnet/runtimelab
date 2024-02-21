@@ -10,8 +10,10 @@ namespace SyntaxDynamo
     {
         public LabeledCodeElementCollection(SimpleLineElement label, CodeElementCollection<T> block)
         {
-            Label = Exceptions.ThrowOnNull(label, nameof(label));
-            Block = Exceptions.ThrowOnNull(block, nameof(block));
+            ArgumentNullException.ThrowIfNull(label, nameof(label));
+            ArgumentNullException.ThrowIfNull(block, nameof(block));
+            Label = label;
+            Block = block;
         }
 
         public SimpleLineElement Label { get; private set; }

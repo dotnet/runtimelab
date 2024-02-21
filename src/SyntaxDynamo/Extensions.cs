@@ -54,7 +54,7 @@ namespace SyntaxDynamo
 
         public static T AttachBefore<T>(this T attacher, ICodeElement attachTo) where T : ICodeElement
         {
-            Exceptions.ThrowOnNull(attachTo, nameof(attachTo));
+            ArgumentNullException.ThrowIfNull(attachTo, nameof(attachTo));
             attachTo.Begin += (s, eventArgs) =>
             {
                 attacher.WriteAll(eventArgs.Writer);
@@ -64,7 +64,7 @@ namespace SyntaxDynamo
 
         public static T AttachAfter<T>(this T attacher, ICodeElement attachTo) where T : ICodeElement
         {
-            Exceptions.ThrowOnNull(attachTo, nameof(attachTo));
+            ArgumentNullException.ThrowIfNull(attachTo, nameof(attachTo));
             attachTo.End += (s, eventArgs) =>
             {
                 attacher.WriteAll(eventArgs.Writer);

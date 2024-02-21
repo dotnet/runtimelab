@@ -11,8 +11,9 @@ namespace SyntaxDynamo.CSLang
     {
         public CSLambda(CSParameterList parameters, ICSExpression value)
         {
+            ArgumentNullException.ThrowIfNull(value, nameof(value));
             Parameters = parameters ?? new CSParameterList();
-            Value = Exceptions.ThrowOnNull(value, "value");
+            Value = value;
             Body = null;
         }
 

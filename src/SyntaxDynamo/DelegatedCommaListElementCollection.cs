@@ -12,14 +12,17 @@ namespace SyntaxDynamo
         public DelegatedCommaListElemCollection(Action<ICodeWriter, int, T> elementWriter)
             : base()
         {
-            this.elementWriter = Exceptions.ThrowOnNull(elementWriter, nameof(elementWriter));
+            ArgumentNullException.ThrowIfNull(elementWriter, nameof(elementWriter));
+            this.elementWriter = elementWriter;
         }
 
         public DelegatedCommaListElemCollection(Action<ICodeWriter, int, T> elementWriter, IEnumerable<T> objs)
             : base()
         {
-            this.elementWriter = Exceptions.ThrowOnNull(elementWriter, nameof(elementWriter));
-            AddRange(Exceptions.ThrowOnNull(objs, nameof(objs)));
+            ArgumentNullException.ThrowIfNull(elementWriter, nameof(elementWriter));
+            ArgumentNullException.ThrowIfNull(objs, nameof(objs));
+            this.elementWriter = elementWriter;
+            AddRange(objs);
         }
 
         public event EventHandler<WriteEventArgs> Begin = (s, e) => { };

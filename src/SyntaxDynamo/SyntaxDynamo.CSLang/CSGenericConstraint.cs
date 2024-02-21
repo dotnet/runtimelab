@@ -10,14 +10,17 @@ namespace SyntaxDynamo.CSLang
     {
         public CSGenericConstraint(CSIdentifier name, CSIdentifier isA)
         {
-            Name = Exceptions.ThrowOnNull(name, nameof(name));
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
+            ArgumentNullException.ThrowIfNull(isA, nameof(isA));
+            Name = name;
             IsA = new CommaListElementCollection<CSIdentifier>();
-            IsA.Add(Exceptions.ThrowOnNull(isA, nameof(isA)));
+            IsA.Add(isA);
         }
 
         public CSGenericConstraint(CSIdentifier name, IEnumerable<CSIdentifier> multiIs)
         {
-            Name = Exceptions.ThrowOnNull(name, nameof(name));
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
+            Name = name;
             IsA = new CommaListElementCollection<CSIdentifier>();
             if (multiIs != null)
                 IsA.AddRange(multiIs);

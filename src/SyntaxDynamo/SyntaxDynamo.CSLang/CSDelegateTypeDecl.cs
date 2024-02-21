@@ -9,9 +9,10 @@ namespace SyntaxDynamo.CSLang
     {
         public CSDelegateTypeDecl(CSVisibility vis, CSType type, CSIdentifier name, CSParameterList parms, bool isUnsafe = false)
         {
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
             Visibility = vis;
             Type = type != null ? type : CSSimpleType.Void;
-            Name = Exceptions.ThrowOnNull(name, "name");
+            Name = name;
             Parameters = parms;
             IsUnsafe = isUnsafe;
         }

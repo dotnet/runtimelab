@@ -11,8 +11,9 @@ namespace SyntaxDynamo.CSLang
     {
         public CSEnum(CSVisibility vis, CSIdentifier name, CSType optionalType)
         {
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
             Values = new List<CSBinding>();
-            Name = Exceptions.ThrowOnNull(name, "name");
+            Name = name;
             OptionalType = optionalType;
             Visibility = vis;
         }

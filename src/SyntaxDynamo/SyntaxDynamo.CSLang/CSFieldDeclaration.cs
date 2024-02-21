@@ -13,9 +13,11 @@ namespace SyntaxDynamo.CSLang
         public CSVariableDeclaration(CSType type, IEnumerable<CSBinding> bindings)
             : base(null, false, true)
         {
-            Type = Exceptions.ThrowOnNull(type, "type");
+            ArgumentNullException.ThrowIfNull(type, nameof(type));
+            ArgumentNullException.ThrowIfNull(bindings, nameof(bindings));
+            Type = type;
             And(Type).And(SimpleElement.Spacer);
-            Bindings = new CommaListElementCollection<CSBinding>(Exceptions.ThrowOnNull(bindings, "bindings"));
+            Bindings = new CommaListElementCollection<CSBinding>(bindings);
             Add(Bindings);
         }
 

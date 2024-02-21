@@ -27,8 +27,10 @@ namespace SyntaxDynamo.CSLang
     {
         public CSInitializedType(CSFunctionCall call, CSInitializer initializer)
         {
-            Call = Exceptions.ThrowOnNull(call, nameof(call));
-            Initializer = Exceptions.ThrowOnNull(initializer, nameof(initializer));
+            ArgumentNullException.ThrowIfNull(call, nameof(call));
+            ArgumentNullException.ThrowIfNull(initializer, nameof(initializer));
+            Call = call;
+            Initializer = initializer;
         }
 
         public CSInitializedType(CSFunctionCall call, IEnumerable<CSBaseExpression> parameters, bool appendNewlineAfterEach)

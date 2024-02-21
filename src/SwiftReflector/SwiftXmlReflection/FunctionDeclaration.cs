@@ -67,7 +67,8 @@ namespace SwiftReflector.SwiftXmlReflection
             get { return returnTypeName; }
             set
             {
-                returnTypeName = Exceptions.ThrowOnNull(value, "value");
+                ArgumentNullException.ThrowIfNull(value, nameof(value));
+                returnTypeName = value;
                 try
                 {
                     ReturnTypeSpec = TypeSpecParser.Parse(returnTypeName);
@@ -254,13 +255,14 @@ namespace SwiftReflector.SwiftXmlReflection
 
         public static FunctionDeclaration FuncFromXElement(TypeAliasFolder folder, XElement elem, ModuleDeclaration module, BaseDeclaration parent)
         {
+            ArgumentNullException.ThrowIfNull((string)elem.Attribute("returnType"), "returnType");
             FunctionDeclaration decl = new FunctionDeclaration
             {
                 Name = (string)elem.Attribute("name"),
                 Module = module,
                 Parent = parent,
                 Access = TypeDeclaration.AccessibilityFromString((string)elem.Attribute("accessibility")),
-                ReturnTypeName = Exceptions.ThrowOnNull((string)elem.Attribute("returnType"), "returnType"),
+                ReturnTypeName = (string)elem.Attribute("returnType"),
                 IsAsync = elem.BoolAttribute("isAsync"),
                 IsProperty = elem.BoolAttribute("isProperty"),
                 IsStatic = elem.BoolAttribute("isStatic"),

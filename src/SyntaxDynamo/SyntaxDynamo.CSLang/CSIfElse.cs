@@ -31,8 +31,10 @@ namespace SyntaxDynamo.CSLang
         public CSIfElse(CSBaseExpression condition, CSCodeBlock ifClause, CSCodeBlock elseClause = null)
             : base()
         {
-            Condition = new CSIfElement(Exceptions.ThrowOnNull(condition, "condition"));
-            IfClause = Exceptions.ThrowOnNull(ifClause, "ifClause");
+            ArgumentNullException.ThrowIfNull(condition, nameof(condition));
+            ArgumentNullException.ThrowIfNull(ifClause, nameof(ifClause));
+            Condition = new CSIfElement(condition);
+            IfClause = ifClause;
             ElseClause = elseClause;
 
             Add(Condition);

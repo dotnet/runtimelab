@@ -9,7 +9,8 @@ namespace SyntaxDynamo.CSLang
     {
         public CSParenthesisExpression(ICSExpression within)
         {
-            Within = Exceptions.ThrowOnNull(within, "within");
+            ArgumentNullException.ThrowIfNull(within, nameof(within));
+            Within = within;
         }
 
         public ICSExpression Within { get; private set; }
@@ -31,8 +32,10 @@ namespace SyntaxDynamo.CSLang
 
         public CSCastExpression(CSType type, ICSExpression toCast)
         {
-            Type = Exceptions.ThrowOnNull(type, "type");
-            ToCast = Exceptions.ThrowOnNull(toCast, "toCast");
+            ArgumentNullException.ThrowIfNull(type, nameof(type));
+            ArgumentNullException.ThrowIfNull(toCast, nameof(toCast));
+            Type = type;
+            ToCast = toCast;
         }
 
         public CSType Type { get; private set; }

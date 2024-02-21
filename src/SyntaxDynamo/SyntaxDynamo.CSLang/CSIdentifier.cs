@@ -10,7 +10,8 @@ namespace SyntaxDynamo.CSLang
     {
         public CSIdentifier(string name)
         {
-            Name = Exceptions.ThrowOnNull(name, "name");
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
+            Name = name;
         }
 
         public static explicit operator CSIdentifier(string name)

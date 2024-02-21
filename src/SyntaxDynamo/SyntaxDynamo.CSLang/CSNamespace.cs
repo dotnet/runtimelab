@@ -17,7 +17,7 @@ namespace SyntaxDynamo.CSLang
         }
 
         public CSNamespace(string nameSpace)
-            : base(new SimpleLineElement(string.Format("namespace {0}", Exceptions.ThrowOnNull(nameSpace, nameof(nameSpace))),
+            : base(new SimpleLineElement(string.Format("namespace {0}", nameSpace),
                                            false, true, false),
                 new DecoratedCodeElementCollection<ICSTopLevelDeclaration>("{", "}", true, true, true))
         {
@@ -46,7 +46,8 @@ namespace SyntaxDynamo.CSLang
 
         public CSNamespaceBlock And(CSNamespace ns)
         {
-            Add(Exceptions.ThrowOnNull(ns, "ns"));
+            ArgumentNullException.ThrowIfNull(ns, nameof(ns));
+            Add(ns);
             return this;
         }
     }

@@ -9,7 +9,8 @@ namespace SwiftReflector.TypeMapping
     {
         public NetParam(string name, NetTypeBundle bundle)
         {
-            Name = Exceptions.ThrowOnNull(name, "name");
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
+            Name = name;
             Type = bundle;
         }
         public string Name { get; private set; }

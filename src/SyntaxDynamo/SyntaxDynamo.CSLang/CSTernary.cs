@@ -9,9 +9,12 @@ namespace SyntaxDynamo.CSLang
     {
         public CSTernary(CSBaseExpression predicate, CSBaseExpression onTrue, CSBaseExpression onFalse, bool addParentheses)
         {
-            Predicate = Exceptions.ThrowOnNull(predicate, "predicate");
-            OnTrue = Exceptions.ThrowOnNull(onTrue, "onTrue");
-            OnFalse = Exceptions.ThrowOnNull(onFalse, "onFalse");
+            ArgumentNullException.ThrowIfNull(predicate, nameof(predicate));
+            ArgumentNullException.ThrowIfNull(onTrue, nameof(onTrue));
+            ArgumentNullException.ThrowIfNull(onFalse, nameof(onFalse));
+            Predicate = predicate;
+            OnTrue = onTrue;
+            OnFalse = onFalse;
             AddParentheses = addParentheses;
         }
         public CSBaseExpression Predicate { get; private set; }

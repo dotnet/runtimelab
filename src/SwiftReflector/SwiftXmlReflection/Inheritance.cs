@@ -26,7 +26,8 @@ namespace SwiftReflector.SwiftXmlReflection
             get { return inheritedTypeName; }
             set
             {
-                inheritedTypeName = Exceptions.ThrowOnNull(value, nameof(value));
+                ArgumentNullException.ThrowIfNull(value, nameof(value));
+                inheritedTypeName = value;
                 try
                 {
                     InheritedTypeSpec = TypeSpecParser.Parse(inheritedTypeName);
@@ -70,7 +71,7 @@ namespace SwiftReflector.SwiftXmlReflection
 
         static InheritanceKind ToInheritanceKind(string kindStr)
         {
-            Exceptions.ThrowOnNull(kindStr, nameof(kindStr));
+            ArgumentNullException.ThrowIfNull(kindStr, nameof(kindStr));
             switch (kindStr)
             {
                 case "protocol":

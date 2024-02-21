@@ -19,13 +19,15 @@ namespace SyntaxDynamo.CSLang
                  CSParameterList parms, CSBaseExpression[] baseOrThisCallParms, bool callsBase, CSCodeBlock body, bool isSealed = false,
                  bool isAsync = false)
         {
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
+            ArgumentNullException.ThrowIfNull(parms, nameof(parms));
             GenericParameters = new CSGenericTypeDeclarationCollection();
             GenericConstraints = new CSGenericConstraintCollection();
             Visibility = vis;
             Kind = kind;
             Type = type; // no throw on null - could be constructor
-            Name = Exceptions.ThrowOnNull(name, nameof(name));
-            Parameters = Exceptions.ThrowOnNull(parms, nameof(parms));
+            Name = name;
+            Parameters = parms;
             CallsBase = callsBase;
             BaseOrThisCallParameters = baseOrThisCallParms;
 
@@ -170,39 +172,46 @@ namespace SyntaxDynamo.CSLang
 
         public static CSMethod PublicMethod(CSType type, string name, CSParameterList parms, CSCodeBlock body)
         {
-            return new CSMethod(CSVisibility.Public, CSMethodKind.None, type, new CSIdentifier(name), parms, Exceptions.ThrowOnNull(body, "body"));
+            ArgumentNullException.ThrowIfNull(body, nameof(body));
+            return new CSMethod(CSVisibility.Public, CSMethodKind.None, type, new CSIdentifier(name), parms, body);
         }
 
         public static CSMethod PublicMethod(CSMethodKind kind, CSType type, string name, CSParameterList parms, CSCodeBlock body)
         {
-            return new CSMethod(CSVisibility.Public, kind, type, new CSIdentifier(name), parms, Exceptions.ThrowOnNull(body, "body"));
+            ArgumentNullException.ThrowIfNull(body, nameof(body));
+            return new CSMethod(CSVisibility.Public, kind, type, new CSIdentifier(name), parms, body);
         }
 
         public static CSMethod PublicConstructor(string name, CSParameterList parms, CSCodeBlock body)
         {
-            return new CSMethod(CSVisibility.Public, CSMethodKind.None, null, new CSIdentifier(name), parms, Exceptions.ThrowOnNull(body, "body"));
+            ArgumentNullException.ThrowIfNull(body, nameof(body));
+            return new CSMethod(CSVisibility.Public, CSMethodKind.None, null, new CSIdentifier(name), parms, body);
         }
 
         public static CSMethod PublicConstructor(string name, CSParameterList parms, CSCodeBlock body, params CSBaseExpression[] baseParams)
         {
+            ArgumentNullException.ThrowIfNull(body, nameof(body));
             return new CSMethod(CSVisibility.Public, CSMethodKind.None, null, new CSIdentifier(name), parms,
-                         baseParams, true, Exceptions.ThrowOnNull(body, "body"));
+                         baseParams, true, body);
         }
 
         public static CSMethod PrivateConstructor(string name, CSParameterList parms, CSCodeBlock body)
         {
-            return new CSMethod(CSVisibility.None, CSMethodKind.None, null, new CSIdentifier(name), parms, Exceptions.ThrowOnNull(body, "body"));
+            ArgumentNullException.ThrowIfNull(body, nameof(body));
+            return new CSMethod(CSVisibility.None, CSMethodKind.None, null, new CSIdentifier(name), parms, body);
         }
 
         public static CSMethod PrivateConstructor(string name, CSParameterList parms, CSCodeBlock body, params CSBaseExpression[] baseParams)
         {
+            ArgumentNullException.ThrowIfNull(body, nameof(body));
             return new CSMethod(CSVisibility.None, CSMethodKind.None, null, new CSIdentifier(name), parms,
-                         baseParams, true, Exceptions.ThrowOnNull(body, "body"));
+                         baseParams, true, body);
         }
 
         public static CSMethod PInvoke(CSVisibility vis, CSType type, string name, string dllName, string externName, CSParameterList parms)
         {
-            CSMethod method = new CSMethod(vis, CSMethodKind.StaticExtern, Exceptions.ThrowOnNull(type, "type"),
+            ArgumentNullException.ThrowIfNull(type, nameof(type));
+            CSMethod method = new CSMethod(vis, CSMethodKind.StaticExtern, type,
                 new CSIdentifier(name), parms, null);
 
             CSAttribute.DllImport(dllName, externName).AttachBefore(method);
@@ -212,7 +221,8 @@ namespace SyntaxDynamo.CSLang
 
         public static CSMethod PInvoke(CSVisibility vis, CSType type, string name, CSBaseExpression dllName, string externName, CSParameterList parms)
         {
-            CSMethod method = new CSMethod(vis, CSMethodKind.StaticExtern, Exceptions.ThrowOnNull(type, "type"),
+            ArgumentNullException.ThrowIfNull(type, nameof(type));
+            CSMethod method = new CSMethod(vis, CSMethodKind.StaticExtern, type,
                 new CSIdentifier(name), parms, null);
 
             CSAttribute.DllImport(dllName, externName).AttachBefore(method);

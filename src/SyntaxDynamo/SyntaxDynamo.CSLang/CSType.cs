@@ -58,7 +58,8 @@ namespace SyntaxDynamo.CSLang
 
         public CSSimpleType(string name, bool isArray)
         {
-            hiddenName = Exceptions.ThrowOnNull(name, "name") + (isArray ? "[]" : "");
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
+            hiddenName = name + (isArray ? "[]" : "");
         }
 
         public static explicit operator CSSimpleType(string name)
@@ -73,9 +74,10 @@ namespace SyntaxDynamo.CSLang
 
         public CSSimpleType(string name, bool isArray, params CSType[] genericSpecialization)
         {
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
             IsGeneric = genericSpecialization != null && genericSpecialization.Length > 0;
             GenericTypes = genericSpecialization;
-            GenericTypeName = Exceptions.ThrowOnNull(name, nameof(name));
+            GenericTypeName = name;
             IsArray = isArray;
         }
 

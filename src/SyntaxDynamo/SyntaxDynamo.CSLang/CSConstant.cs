@@ -13,7 +13,8 @@ namespace SyntaxDynamo.CSLang
     {
         public CSConstant(string val)
         {
-            Value = Exceptions.ThrowOnNull(val, "val");
+            ArgumentNullException.ThrowIfNull(val, nameof(val));
+            Value = val;
         }
 
         public static explicit operator CSConstant(string val)

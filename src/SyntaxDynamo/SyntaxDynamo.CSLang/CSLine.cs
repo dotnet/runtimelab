@@ -10,7 +10,8 @@ namespace SyntaxDynamo.CSLang
     {
         public CSLine(ICodeElement contents, bool addSemicolon = true)
         {
-            Contents = Exceptions.ThrowOnNull(contents, nameof(contents));
+            ArgumentNullException.ThrowIfNull(contents, nameof(contents));
+            Contents = contents;
             if (!(contents is ICSLineable) && addSemicolon)
                 throw new ArgumentException("contents must be ILineable", nameof(contents));
             AddSemicolon = addSemicolon;

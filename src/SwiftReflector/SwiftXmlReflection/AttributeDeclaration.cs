@@ -13,7 +13,8 @@ namespace SwiftReflector.SwiftXmlReflection
     {
         public AttributeDeclaration(string typeName)
         {
-            Name = Exceptions.ThrowOnNull(typeName, nameof(typeName));
+            ArgumentNullException.ThrowIfNull(typeName, nameof(typeName));
+            Name = typeName;
             Parameters = new List<AttributeParameter>();
         }
 
@@ -69,7 +70,7 @@ namespace SwiftReflector.SwiftXmlReflection
             }
             private set
             {
-                Exceptions.ThrowOnNull(value, nameof(value));
+                ArgumentNullException.ThrowIfNull(value, nameof(value));
                 var ts = TypeSpecParser.Parse(value);
                 if (ts is NamedTypeSpec named)
                     AttributeType = named;
@@ -104,7 +105,9 @@ namespace SwiftReflector.SwiftXmlReflection
     {
         public AttributeParameterLabel(string label)
         {
-            Label = Exceptions.ThrowOnNull(label, nameof(label));
+
+            ArgumentNullException.ThrowIfNull(label, nameof(label));
+            Label = label;
         }
 
         public AttributeParameterLabel(AttributeParameterLabel other)
@@ -120,7 +123,8 @@ namespace SwiftReflector.SwiftXmlReflection
     {
         public AttributeParameterLiteral(string literal)
         {
-            Literal = Exceptions.ThrowOnNull(literal, nameof(literal));
+            ArgumentNullException.ThrowIfNull(literal, nameof(literal));
+            Literal = literal;
         }
 
         public AttributeParameterLiteral(AttributeParameterLiteral other)

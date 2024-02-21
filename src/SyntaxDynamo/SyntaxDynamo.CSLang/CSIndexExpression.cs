@@ -9,9 +9,11 @@ namespace SyntaxDynamo.CSLang
     {
         public CSIndexExpression(CSBaseExpression aggregate, CommaListElementCollection<CSBaseExpression> paramList, bool addParensAroundAggregate)
         {
+            ArgumentNullException.ThrowIfNull(aggregate, nameof(aggregate));
+            ArgumentNullException.ThrowIfNull(paramList, nameof(paramList));
             AddParensAroundAggregate = addParensAroundAggregate;
-            Aggregate = Exceptions.ThrowOnNull(aggregate, "aggregate");
-            Parameters = Exceptions.ThrowOnNull(paramList, "paramList");
+            Aggregate = aggregate;
+            Parameters = paramList;
         }
 
         public CSIndexExpression(string identifier, bool addParensAroundAggregate, params CSBaseExpression[] parameters)

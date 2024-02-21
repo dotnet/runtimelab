@@ -10,7 +10,8 @@ namespace SyntaxDynamo.CSLang
     {
         public CSGenericTypeDeclaration(CSIdentifier name)
         {
-            Name = Exceptions.ThrowOnNull(name, nameof(name));
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
+            Name = name;
         }
 
         public CSIdentifier Name { get; private set; }

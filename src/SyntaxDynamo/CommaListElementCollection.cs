@@ -22,14 +22,17 @@ namespace SyntaxDynamo
         public CommaListElementCollection(string prefix, string suffix)
             : base()
         {
-            Prefix = Exceptions.ThrowOnNull(prefix, nameof(prefix));
-            Suffix = Exceptions.ThrowOnNull(suffix, nameof(suffix));
+            ArgumentNullException.ThrowIfNull(prefix, nameof(prefix));
+            ArgumentNullException.ThrowIfNull(suffix, nameof(suffix));
+            Prefix = prefix;
+            Suffix = suffix;
         }
 
         public CommaListElementCollection(string prefix, string suffix, IEnumerable<T> objs, bool newlineAfterEach = false)
             : this(prefix, suffix)
         {
-            AddRange(Exceptions.ThrowOnNull(objs, nameof(objs)));
+            ArgumentNullException.ThrowIfNull(objs, nameof(objs));
+            AddRange(objs);
             NewlineAfterEach = newlineAfterEach;
         }
 

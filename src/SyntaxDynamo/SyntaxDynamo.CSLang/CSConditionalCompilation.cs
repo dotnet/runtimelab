@@ -27,7 +27,8 @@ namespace SyntaxDynamo.CSLang
 
         public static CSConditionalCompilation If(CSIdentifier condition)
         {
-            return new CSConditionalCompilation(new CSIdentifier("#if"), Exceptions.ThrowOnNull(condition, nameof(condition)));
+            ArgumentNullException.ThrowIfNull(condition, nameof(condition));
+            return new CSConditionalCompilation(new CSIdentifier("#if"), condition);
         }
 
         public static void ProtectWithIfEndif(CSIdentifier condition, ICodeElement elem)

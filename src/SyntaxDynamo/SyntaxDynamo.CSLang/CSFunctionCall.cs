@@ -9,8 +9,10 @@ namespace SyntaxDynamo.CSLang
     {
         public CSFunctionCall(CSIdentifier ident, CommaListElementCollection<CSBaseExpression> paramList, bool isConstructor = false)
         {
-            Name = Exceptions.ThrowOnNull(ident, "ident");
-            Parameters = Exceptions.ThrowOnNull(paramList, "paramList");
+            ArgumentNullException.ThrowIfNull(ident, nameof(ident));
+            ArgumentNullException.ThrowIfNull(paramList, nameof(paramList));
+            Name = ident;
+            Parameters = paramList;
             IsConstructor = isConstructor;
         }
 
@@ -65,7 +67,8 @@ namespace SyntaxDynamo.CSLang
 
         public static CSLine FunctionCallLine(string identifier, bool isConstructor, params CSBaseExpression[] parameters)
         {
-            return new CSLine(new CSFunctionCall(new CSIdentifier(Exceptions.ThrowOnNull(identifier, "identifier")),
+            ArgumentNullException.ThrowIfNull(identifier, nameof(identifier));
+            return new CSLine(new CSFunctionCall(new CSIdentifier(identifier),
                 new CommaListElementCollection<CSBaseExpression>(parameters), isConstructor));
         }
 

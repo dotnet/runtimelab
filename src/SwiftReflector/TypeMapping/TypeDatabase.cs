@@ -65,19 +65,22 @@ namespace SwiftReflector.TypeMapping
         public DotNetName DotNetNameForSwiftName(string swiftName)
         {
             DotNetName netName = null;
-            swiftNamesToNetNames.TryGetValue(Exceptions.ThrowOnNull(swiftName, "swiftName"), out netName);
+            ArgumentNullException.ThrowIfNull(swiftName, nameof(swiftName));
+            swiftNamesToNetNames.TryGetValue(swiftName, out netName);
             return netName; // may be null
         }
 
         public DotNetName DotNetNameForSwiftName(SwiftClassName swiftName)
         {
-            return DotNetNameForSwiftName(Exceptions.ThrowOnNull(swiftName, "swiftName").ToFullyQualifiedName(true));
+            ArgumentNullException.ThrowIfNull(swiftName, nameof(swiftName));
+            return DotNetNameForSwiftName(swiftName.ToFullyQualifiedName(true));
         }
 
         public string SwiftNameForDotNetName(DotNetName netName)
         {
             string swiftName = null;
-            netNamesToSwiftNames.TryGetValue(Exceptions.ThrowOnNull(netName, "netName"), out swiftName);
+            ArgumentNullException.ThrowIfNull(netName, nameof(netName));
+            netNamesToSwiftNames.TryGetValue(netName, out swiftName);
             return swiftName;
         }
 
@@ -131,7 +134,8 @@ namespace SwiftReflector.TypeMapping
         ModuleDatabase EntityCollection(string moduleName)
         {
             ModuleDatabase module = null;
-            modules.TryGetValue(Exceptions.ThrowOnNull(moduleName, nameof(moduleName)), out module);
+            ArgumentNullException.ThrowIfNull(moduleName, nameof(moduleName));
+            modules.TryGetValue(moduleName, out module);
             return module;
         }
 
@@ -365,7 +369,8 @@ namespace SwiftReflector.TypeMapping
 
         static EntityType ToEntityType(string s)
         {
-            switch (Exceptions.ThrowOnNull(s, "s").ToLower())
+            ArgumentNullException.ThrowIfNull(s, nameof(s));
+            switch (s.ToLower())
             {
                 case "scalar":
                     return EntityType.Scalar;

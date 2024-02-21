@@ -23,7 +23,7 @@ namespace SyntaxDynamo.CSLang
 
         public void Add(Type t)
         {
-            Exceptions.ThrowOnNull(t, "t");
+            ArgumentNullException.ThrowIfNull(t, "t");
             Add(new CSIdentifier(t.Name));
         }
     }

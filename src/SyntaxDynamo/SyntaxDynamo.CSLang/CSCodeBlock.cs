@@ -25,7 +25,7 @@ namespace SyntaxDynamo.CSLang
         }
 
         public CSCodeBlock(string start, string end, IEnumerable<ICodeElement> statements)
-            : base(Exceptions.ThrowOnNull(start, "start"), Exceptions.ThrowOnNull(end, "end"), true, true, true)
+            : base(start, end, true, true, true)
         {
             if (statements != null)
             {

@@ -45,7 +45,7 @@ namespace SwiftReflector.TypeMapping
 
         public static bool IsKeyword(string s)
         {
-            Exceptions.ThrowOnNull(s, "s");
+            ArgumentNullException.ThrowIfNull(s, nameof(s));
             return keyWords.Contains(s);
         }
     }
@@ -348,7 +348,8 @@ namespace SwiftReflector.TypeMapping
 
         public static bool IsScalar(string builtIn)
         {
-            return ScalarIndex(Exceptions.ThrowOnNull(builtIn, "builtIn")) >= 0;
+            ArgumentNullException.ThrowIfNull(builtIn, nameof(builtIn));
+            return ScalarIndex(builtIn) >= 0;
         }
 
         public static bool IsScalar(TypeSpec spec)

@@ -39,7 +39,8 @@ namespace SwiftReflector.SwiftXmlReflection
             }
             set
             {
-                extensionOnTypeName = Exceptions.ThrowOnNull(value, "value");
+                ArgumentNullException.ThrowIfNull(value, nameof(value));
+                extensionOnTypeName = value;
                 try
                 {
                     ExtensionOnType = TypeSpecParser.Parse(extensionOnTypeName);

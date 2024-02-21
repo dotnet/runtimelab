@@ -300,7 +300,8 @@ namespace SwiftReflector
         public SwiftBoundGenericType(SwiftType baseType, List<SwiftType> boundTypes, bool isReference, SwiftName name = null)
             : base(CoreCompoundType.BoundGeneric, isReference, name)
         {
-            BaseType = Exceptions.ThrowOnNull(baseType, "baseType");
+            ArgumentNullException.ThrowIfNull(baseType, nameof(baseType));
+            BaseType = baseType;
             BoundTypes = new List<SwiftType>();
             if (boundTypes != null)
                 BoundTypes.AddRange(boundTypes);

@@ -12,7 +12,8 @@ namespace SyntaxDynamo.CSLang
         public CSTopLevelDeclations(params ICSTopLevelDeclaration[] decls)
             : base()
         {
-            AddRange(Exceptions.ThrowOnNull(decls, "decls"));
+            ArgumentNullException.ThrowIfNull(decls, nameof(decls));
+            AddRange(decls);
         }
 
 

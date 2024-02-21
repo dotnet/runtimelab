@@ -15,8 +15,10 @@ namespace SyntaxDynamo.CSLang
                             CSParameterKind parameterKind = CSParameterKind.None,
                             CSConstant defaultValue = null)
         {
-            CSType = Exceptions.ThrowOnNull(type, nameof(type));
-            Name = Exceptions.ThrowOnNull(name, nameof(name));
+            ArgumentNullException.ThrowIfNull(type, nameof(type));
+            ArgumentNullException.ThrowIfNull(name, nameof(name));
+            CSType = type;
+            Name = name;
             ParameterKind = parameterKind;
             DefaultValue = defaultValue;
         }
@@ -99,7 +101,8 @@ namespace SyntaxDynamo.CSLang
 
         public CSParameterList And(CSParameter parameter)
         {
-            Add(Exceptions.ThrowOnNull(parameter, nameof(parameter)));
+            ArgumentNullException.ThrowIfNull(parameter, nameof(parameter));
+            Add(parameter);
             return this;
         }
 
@@ -107,8 +110,10 @@ namespace SyntaxDynamo.CSLang
                                     CSParameterKind parameterKind = CSParameterKind.None,
                                     CSConstant defaultValue = null)
         {
-            return And(new CSParameter(new CSSimpleType(Exceptions.ThrowOnNull(type, nameof(type))),
-                new CSIdentifier(Exceptions.ThrowOnNull(identifier, nameof(identifier))), parameterKind, defaultValue));
+            ArgumentNullException.ThrowIfNull(type, nameof(type));
+            ArgumentNullException.ThrowIfNull(identifier, nameof(identifier));
+            return And(new CSParameter(new CSSimpleType(type),
+                new CSIdentifier(identifier), parameterKind, defaultValue));
         }
     }
 }

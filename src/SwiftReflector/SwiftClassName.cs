@@ -13,9 +13,12 @@ namespace SwiftReflector
     {
         public SwiftClassName(SwiftName module, IList<MemberNesting> nesting, IList<SwiftName> nestingNames, OperatorType oper = OperatorType.None)
         {
-            Module = Exceptions.ThrowOnNull(module, "module");
-            Nesting = Exceptions.ThrowOnNull(nesting, "nesting");
-            NestingNames = Exceptions.ThrowOnNull(nestingNames, "nestingNames");
+            ArgumentNullException.ThrowIfNull(module, nameof(module));
+            ArgumentNullException.ThrowIfNull(nesting, nameof(nesting));
+            ArgumentNullException.ThrowIfNull(nestingNames, nameof(nestingNames));
+            Module = module;
+            Nesting = nesting;
+            NestingNames = nestingNames;
             Terminus = NestingNames.Count > 0 ? NestingNames[NestingNames.Count - 1] : null;
             Operator = oper;
         }
