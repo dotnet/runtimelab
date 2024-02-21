@@ -7,9 +7,9 @@
     <Nullable>disable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../SwiftReflector/SwiftReflector.csproj" />
-    <ProjectReference Include="../../SyntaxDynamo/SyntaxDynamo.csproj" />
-    <ProjectReference Include="../../SwiftRuntimeLibrary/SwiftRuntimeLibrary.csproj" />
+    <ProjectReference Include="../../SwiftReflector/src/SwiftReflector.csproj" />
+    <ProjectReference Include="../../SyntaxDynamo/src/SyntaxDynamo.csproj" />
+    <ProjectReference Include="../../SwiftRuntimeLibrary/src/SwiftRuntimeLibrary.csproj" />
 
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
   </ItemGroup>

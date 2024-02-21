@@ -8,7 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <ProjectReference Include="../SyntaxDynamo/SyntaxDynamo.csproj" />
-    <ProjectReference Include="../SwiftRuntimeLibrary/SwiftRuntimeLibrary.csproj" />
+    <ProjectReference Include="../../SyntaxDynamo/src/SyntaxDynamo.csproj" />
+    <ProjectReference Include="../../SwiftRuntimeLibrary/src/SwiftRuntimeLibrary.csproj" />
   </ItemGroup>
 </Project>
