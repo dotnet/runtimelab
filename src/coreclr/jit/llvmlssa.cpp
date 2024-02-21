@@ -1502,22 +1502,32 @@ private:
 
         bool Compare(const char* expected)
         {
-            ArrayStack<AllocationAction> expectedResult(m_alloc);
-            ParseAllocationResult(expected, expectedResult);
-            ArrayStack<AllocationAction>& actualResult = m_actions;
-            if (actualResult.Height() != expectedResult.Height())
-            {
-                return false;
-            }
+            // Make sure we don't need to escape 'expected' for "sscanf" below.
+            assert(strstr(expected, "%") == nullptr);
 
-            for (int i = 0; i < actualResult.Height(); i++)
+            char actualActionBuffer[512];
+            for (int i = 0; i < m_actions.Height(); i++)
             {
-                AllocationAction& actualAction = actualResult.BottomRef(i);
-                AllocationAction& expectedAction = expectedResult.BottomRef(i);
-                if (memcmp(&actualAction, &expectedAction, offsetof(AllocationAction, CommentNode)) != 0)
+                char* actualActionBufferEnd = actualActionBuffer;
+                PrintFormatted(&actualActionBufferEnd, " ");
+                PrintAction(m_actions.BottomRef(i), &actualActionBufferEnd);
+                PrintFormatted(&actualActionBufferEnd, " %%n");
+
+                // Use "sscanf" to do what is effectively a whitespace-ignoring comparison.
+                int consumed = 0;
+                sscanf(expected, actualActionBuffer, &consumed);
+                if (consumed == 0)
                 {
                     return false;
                 }
+
+                expected += consumed;
+            }
+
+            // The loop above must consume the input exactly.
+            if (strlen(expected) != 0)
+            {
+                return false;
             }
 
             return true;
@@ -1562,24 +1572,29 @@ private:
             return value;
         }
 
-        enum FmtOptions
+        template <typename... TArgs>
+        void PrintFormatted(char** pBuffer, const char* format, TArgs... args)
         {
-            FMT_PREFIX = 1,
-            FMT_ARGS = 2,
-            FMT_FULL = FMT_PREFIX | FMT_ARGS,
-            FMT_SCAN = 4
-        };
+            if (pBuffer == nullptr)
+            {
+                printf(format, args...);
+            }
+            else
+            {
+                *pBuffer += sprintf(*pBuffer, format, args...);
+            }
+        }
 
-        void PrintAction(const AllocationAction& action)
+        void PrintAction(const AllocationAction& action, char** pBuffer = nullptr)
         {
-            const char* format = GetActionKindFormat(action.Kind, FMT_FULL);
+            const char* format = GetActionKindFormat(action.Kind);
             switch (action.Kind)
             {
                 case AllocationActionKind::Block:
-                    printf(format, action.BlockIndex);
+                    PrintFormatted(pBuffer, format, action.BlockIndex);
                     break;
                 case AllocationActionKind::ZeroInit:
-                    printf(format, action.ZeroInitSize);
+                    PrintFormatted(pBuffer, format, action.ZeroInitSize);
                     break;
                 case AllocationActionKind::Store:
                 case AllocationActionKind::Load:
@@ -1588,259 +1603,80 @@ private:
                     if ((action.Kind == AllocationActionKind::StoreField) ||
                         (action.Kind == AllocationActionKind::LoadField))
                     {
-                        printf(format, action.FieldOffset, action.FieldEndOffset, action.Slot);
+                        PrintFormatted(pBuffer, format, action.FieldOffset, action.FieldEndOffset, action.Slot);
                     }
                     else
                     {
-                        printf(format, action.Slot);
+                        PrintFormatted(pBuffer, format, action.Slot);
                     }
-                    printf(" ");
-                    PrintIRValue(action.Local);
+                    PrintFormatted(pBuffer, " ");
+                    PrintIRValue(action.Local, pBuffer);
 
                     if ((action.Kind == AllocationActionKind::Store) ||
                         (action.Kind == AllocationActionKind::StoreField))
                     {
-                        printf(" ");
-                        PrintIRValue(action.Value);
+                        PrintFormatted(pBuffer, " ");
+                        PrintIRValue(action.Value, pBuffer);
                     }
 
-                    if (action.CommentNode != nullptr)
+                    if ((pBuffer == nullptr) && (action.CommentNode != nullptr))
                     {
                         JITDUMP(" # ");
                         JITDUMPEXEC(m_compiler->printTreeID(action.CommentNode));
                     }
                     break;
+
                 default:
                     unreached();
             }
         }
 
-        void PrintIRValue(const IRValue& value)
+        void PrintIRValue(const IRValue& value, char** pBuffer)
         {
-            const char* format = GetIRValueKindFormat(value.Kind, FMT_FULL);
-            printf(format, value.Num);
+            const char* format = GetIRValueKindFormat(value.Kind);
+            PrintFormatted(pBuffer, format, value.Num);
             if ((value.Kind != IRValueKind::Sdsu) && (value.SsaNum != SsaConfig::RESERVED_SSA_NUM))
             {
-                printf(GetSsaLocalFormat(), value.SsaNum);
+                PrintFormatted(pBuffer, "/%u", value.SsaNum);
             }
         }
 
-        void ParseAllocationResult(const char* result, ArrayStack<AllocationAction>& parsedResult)
-        {
-            AllocationAction action{};
-            while (ParseAllocationAction(&result, &action))
-            {
-                parsedResult.Push(action);
-            }
-        }
-
-        bool ParseAllocationAction(const char** pCurrent, AllocationAction* pAction)
-        {
-            const char* current = *pCurrent;
-            for (unsigned kindIdx = 0; kindIdx < static_cast<unsigned>(AllocationActionKind::Count); kindIdx++)
-            {
-                AllocationActionKind kind = static_cast<AllocationActionKind>(kindIdx);
-
-                unsigned consumed = 0;
-                sscanf(current, GetActionKindFormat(kind, FMT_PREFIX | FMT_SCAN), &consumed);
-                if (consumed != 0)
-                {
-                    current += consumed;
-
-                    unsigned op1 = 0, op2 = 0, op3 = 0, op4 = 0;
-                    sscanf(current, GetActionKindFormat(kind, FMT_ARGS | FMT_SCAN), &op1, &op2, &op3, &op4);
-                    switch (kind)
-                    {
-                        case AllocationActionKind::Block:
-                            if (op2 != 0)
-                            {
-                                current += op2;
-                                pAction->BlockIndex = op1;
-                                break;
-                            }
-                            return false;
-
-                        case AllocationActionKind::ZeroInit:
-                            if (op2 != 0)
-                            {
-                                current += op2;
-                                pAction->ZeroInitSize = op1;
-                                break;
-                            }
-                            return false;
-
-                        case AllocationActionKind::Store:
-                        case AllocationActionKind::Load:
-                            if (op2 != 0)
-                            {
-                                current += op2;
-                                if (ParseLocalAndValue(&current, pAction, kind == AllocationActionKind::Store))
-                                {
-                                    pAction->Slot = op1;
-                                    break;
-                                }
-                            }
-                            return false;
-
-                        case AllocationActionKind::StoreField:
-                        case AllocationActionKind::LoadField:
-                            if (op4 != 0)
-                            {
-                                current += op4;
-                                if (ParseLocalAndValue(&current, pAction, kind == AllocationActionKind::StoreField))
-                                {
-                                    pAction->Slot = op3;
-                                    pAction->FieldOffset = op1;
-                                    pAction->FieldEndOffset = op2;
-                                    break;
-                                }
-                            }
-                            return false;
-
-                        default:
-                            unreached();
-                    }
-
-                    pAction->Kind = kind;
-                    *pCurrent = current;
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        bool ParseLocalAndValue(const char** pCurrent, AllocationAction* pAction, bool hasValue)
-        {
-            const char* current = *pCurrent;
-
-            IRValue local;
-            if (!ParseIRValue(&current, &local))
-            {
-                return false;
-            }
-
-            if (hasValue)
-            {
-                IRValue value;
-                if (!ParseIRValue(&current, &value))
-                {
-                    return false;
-                }
-
-                pAction->Value = value;
-            }
-
-            pAction->Local = local;
-            *pCurrent = current;
-            return true;
-        }
-
-        bool ParseIRValue(const char** pCurrent, IRValue* pValue)
-        {
-            const char* current = *pCurrent;
-            for (unsigned kindIdx = 0; kindIdx < static_cast<unsigned>(IRValueKind::Count); kindIdx++)
-            {
-                IRValueKind kind = static_cast<IRValueKind>(kindIdx);
-
-                unsigned consumed = 0;
-                sscanf(current, GetIRValueKindFormat(kind, FMT_PREFIX | FMT_SCAN), &consumed);
-                if (consumed != 0)
-                {
-                    current += consumed;
-
-                    switch (kind)
-                    {
-                        case IRValueKind::Sdsu:
-                            // SDSUs currently have no arguments.
-                            break;
-
-                        case IRValueKind::ArgLocal:
-                        case IRValueKind::UserLocal:
-                        case IRValueKind::TempLocal:
-                            consumed = 0;
-                            unsigned num;
-                            sscanf(current, GetIRValueKindFormat(kind, FMT_ARGS | FMT_SCAN), &num, &consumed);
-                            if (consumed != 0)
-                            {
-                                current += consumed;
-                                pValue->Num = num;
-
-                                consumed = 0;
-                                sscanf(current, GetSsaLocalFormat(FMT_SCAN), &num, &consumed);
-                                if (consumed != 0)
-                                {
-                                    current += consumed;
-                                    pValue->SsaNum = num;
-                                }
-                                else
-                                {
-                                    pValue->SsaNum = SsaConfig::RESERVED_SSA_NUM;
-                                }
-                                break;
-                            }
-                            return false;
-
-                        default:
-                            unreached();
-                    }
-
-                    pValue->Kind = kind;
-                    *pCurrent = current;
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-#define FMT_WITH_SCAN(fmt) ((opts & FMT_SCAN) ? (" " fmt "%n") : fmt)
-#define SEPARATED_FMT(prefix, args) \
-        ((opts & FMT_FULL) == FMT_FULL) ? FMT_WITH_SCAN(prefix args) : \
-        (opts & FMT_PREFIX) ? FMT_WITH_SCAN(prefix) : \
-        (opts & FMT_ARGS) ? FMT_WITH_SCAN(args) : ""
-
-        static const char* GetActionKindFormat(AllocationActionKind kind, int opts)
+        static const char* GetActionKindFormat(AllocationActionKind kind)
         {
             switch (kind)
             {
                 case AllocationActionKind::Block:
-                    return SEPARATED_FMT("BB", "%02u:");
+                    return "BB%02u:";
                 case AllocationActionKind::ZeroInit:
-                    return SEPARATED_FMT("ZEROINIT", " %u");
+                    return "ZEROINIT %u";
                 case AllocationActionKind::Store:
-                    return SEPARATED_FMT("STORE", " SS%02u");
+                    return "STORE SS%02u";
                 case AllocationActionKind::Load:
-                    return SEPARATED_FMT("LOAD", "  SS%02u");
+                    return "LOAD  SS%02u";
                 case AllocationActionKind::StoreField:
-                    return SEPARATED_FMT("STORE_FIELD", " [%u..%u] SS%02u");
+                    return "STORE_FIELD[%u..%u] SS%02u";
                 case AllocationActionKind::LoadField:
-                    return SEPARATED_FMT("LOAD_FIELD", "  [%u..%u]  SS%02u");
+                    return "LOAD_FIELD[%u..%u]  SS%02u";
                 default:
                     unreached();
             }
         }
 
-        static const char* GetIRValueKindFormat(IRValueKind kind, int opts)
+        static const char* GetIRValueKindFormat(IRValueKind kind)
         {
             switch (kind)
             {
                 case IRValueKind::Sdsu:
-                    return SEPARATED_FMT("SDSU", "");
+                    return "SDSU";
                 case IRValueKind::ArgLocal:
-                    return SEPARATED_FMT("ARG", "%02u");
+                    return "ARG%02u";
                 case IRValueKind::UserLocal:
-                    return SEPARATED_FMT("USR", "%02u");
+                    return "USR%02u";
                 case IRValueKind::TempLocal:
-                    return SEPARATED_FMT("TMP", "%02u");
+                    return "TMP%02u";
                 default:
                     unreached();
             }
-        }
-
-        static const char* GetSsaLocalFormat(int opts = 0)
-        {
-            return FMT_WITH_SCAN("/%u");
         }
     };
 #else // !FEATURE_LSSA_ALLOCATION_RESULT
