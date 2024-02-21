@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -10,7 +10,5 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <ProjectReference Include="../SyntaxDynamo/SyntaxDynamo.csproj" />
     <ProjectReference Include="../SwiftRuntimeLibrary/SwiftRuntimeLibrary.csproj" />
-
-    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.9.1" />
   </ItemGroup>
 </Project>
