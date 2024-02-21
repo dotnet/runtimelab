@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-//#define CRASH_ON_EXCEPTION
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -63,11 +61,7 @@ namespace SwiftReflector
         {
             lock (messagesLock)
             {
-#if CRASH_ON_EXCEPTION
-			ExceptionDispatchInfo.Capture (exception).Throw ();
-#else
                 messages.Add(new ReflectorError(exception));
-#endif
             }
         }
 

@@ -10,7 +10,7 @@ namespace HelloWorld
     {
         public static void Main(string[] args)
         {
-            HelloLibrary.SayHello();
+            HelloLibrary.sayHello();
         }
     }
 }

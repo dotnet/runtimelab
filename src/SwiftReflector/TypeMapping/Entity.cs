@@ -3,7 +3,6 @@
 
 using System;
 using SwiftReflector.SwiftXmlReflection;
-using SwiftReflector.IOUtils;
 using System.Xml.Linq;
 
 namespace SwiftReflector.TypeMapping

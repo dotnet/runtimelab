@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using SwiftReflector.Demangling;
 using SwiftRuntimeLibrary;
 
 namespace SwiftReflector
@@ -19,26 +18,6 @@ namespace SwiftReflector
             NestingNames = Exceptions.ThrowOnNull(nestingNames, "nestingNames");
             Terminus = NestingNames.Count > 0 ? NestingNames[NestingNames.Count - 1] : null;
             Operator = oper;
-        }
-
-        public static SwiftClassName FromFullyQualifiedName(string fullyQualifiedName, OperatorType oper, params char[] nesting)
-        {
-            string[] parts = Exceptions.ThrowOnNull(fullyQualifiedName, "fullyQualifiedName").Split('.');
-            if (parts.Length < 2)
-                throw new ArgumentException(String.Format("Fully qualified name '{0}' requires at least a module and one name.",
-                    fullyQualifiedName));
-            if (nesting.Length != parts.Length - 1)
-                throw new ArgumentException(String.Format("Nesting should have {0} elements, but has {1}.",
-                    parts.Length - 1, nesting.Length), "nesting");
-            SwiftName module = new SwiftName(parts[0], false);
-            List<SwiftName> nestingNames = parts.Skip(1).Select(name => new SwiftName(name, false)).ToList();
-            List<MemberNesting> actualNesting = nesting.Select(c => Decomposer.ToMaybeMemberNesting(c, true).Value).ToList();
-            return new SwiftClassName(module, actualNesting, nestingNames, oper);
-        }
-
-        public static SwiftClassName FromFullyQualifiedName(string fullyQualifiedName, OperatorType oper, string nesting)
-        {
-            return FromFullyQualifiedName(fullyQualifiedName, oper, nesting.ToArray());
         }
 
         public SwiftName Module { get; private set; }

@@ -38,7 +38,7 @@ namespace SwiftReflector.SwiftXmlReflection
             return unrooted;
         }
 
-        public List<BaseDeclaration> Declarations { get; private set; }
+        public List<BaseDeclaration> Declarations { get; set; }
         public List<TypeAliasDeclaration> TypeAliases { get; private set; }
 
         public static ModuleDeclaration FromXElement(XElement elem, TypeDatabase typeDatabase)

@@ -5,9 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
-using SwiftReflector.IOUtils;
 using SwiftReflector.ExceptionTools;
-using SwiftReflector.Demangling;
 using SwiftReflector.TypeMapping;
 using System.Text;
 

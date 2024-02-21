@@ -3,11 +3,10 @@
 
 using System.Xml.Linq;
 
-namespace SwiftReflector.IOUtils
+namespace SwiftReflector
 {
     public interface IXElementConvertible
     {
         XElement ToXElement();
     }
 }
-

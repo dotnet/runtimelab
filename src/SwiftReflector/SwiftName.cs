@@ -12,7 +12,8 @@ namespace SwiftReflector
             if (name == null)
                 throw new ArgumentNullException("name");
             PunyName = name;
-            Name = isPunyCode ? name.DePunyCode() : name;
+            // Name = isPunyCode ? name.DePunyCode() : name;
+            Name = name;
         }
 
         public string Name { get; private set; }

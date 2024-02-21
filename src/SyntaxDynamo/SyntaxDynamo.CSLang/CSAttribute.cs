@@ -53,6 +53,14 @@ namespace SyntaxDynamo.CSLang
             return new CSAttribute(new CSIdentifier("DllImport"), args, true);
         }
 
+        public static CSAttribute UnmanagedCallConv(string callconv)
+        {
+            CSArgumentList args = new CSArgumentList();
+
+            args.Add(new CSAssignment("CallConvs", CSAssignmentOperator.Assign, new CSIdentifier("new Type[] { typeof("+callconv+") }")));
+            return new CSAttribute(new CSIdentifier("UnmanagedCallConv"), args, true);
+        }
+
         static CSAttribute returnMarshalAsI1 = new CSAttribute("return: MarshalAs", new CSIdentifier("UnmanagedType.I1"));
 
         public static CSAttribute ReturnMarshalAsI1 => returnMarshalAsI1;

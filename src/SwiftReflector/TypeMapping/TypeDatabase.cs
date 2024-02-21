@@ -48,11 +48,19 @@ namespace SwiftReflector.TypeMapping
         Dictionary<string, DotNetName> swiftNamesToNetNames = new Dictionary<string, DotNetName>();
 
         Dictionary<string, ModuleDatabase> modules = new Dictionary<string, ModuleDatabase>();
+        public IEnumerable<string> ModuleNames { get { return modules.Keys; } }
+
+        public int Count
+        {
+            get
+            {
+                return modules.Select(m => m.Value.Count).Sum();
+            }
+        }
 
         public TypeDatabase()
         {
         }
-
 
         public DotNetName DotNetNameForSwiftName(string swiftName)
         {
@@ -110,47 +118,6 @@ namespace SwiftReflector.TypeMapping
             }
         }
 
-        public int Count
-        {
-            get
-            {
-                return modules.Select(m => m.Value.Count).Sum();
-            }
-        }
-
-        public bool Contains(string swiftClassName)
-        {
-            return EntityForSwiftName(swiftClassName) != null;
-        }
-
-        public bool Contains(SwiftClassName swiftClassName)
-        {
-            return Contains(swiftClassName.ToFullyQualifiedName(true));
-        }
-
-        public bool Contains(DotNetName name)
-        {
-            return netNamesToSwiftNames.ContainsKey(name);
-        }
-
-        public IEnumerable<string> ModuleNames { get { return modules.Keys; } }
-
-        public void Update(Entity e)
-        {
-            var old = EntityForSwiftName(e.Type.ToFullyQualifiedName(true));
-            if (old == null)
-            {
-                Add(e);
-            }
-            else
-            {
-                old.EntityType = e.EntityType;
-                old.SharpNamespace = e.SharpNamespace;
-                old.SharpTypeName = e.SharpTypeName;
-                old.Type = e.Type;
-            }
-        }
-
         public void Add(Entity e)
         {
             if (e.Type != null && !e.Type.IsUnrooted)
@@ -191,81 +158,6 @@ namespace SwiftReflector.TypeMapping
                 return module.TypeAliases;
             return Enumerable.Empty<TypeAliasDeclaration>();
         }
-
-        public void Write(string file, IEnumerable<string> modules)
-        {
-            using (FileStream stm = new FileStream(Exceptions.ThrowOnNull(file, nameof(file)), FileMode.Create))
-            {
-                Write(stm, modules);
-            }
-        }
-
-        public void Write(Stream stm, IEnumerable<string> modules)
-        {
-            Write(stm, modules.Select(s => EntitiesForModule(s)).SelectMany(x => x).Select(entity => entity.ToXElement()));
-        }
-
-        IEnumerable<XElement> GatherXElements(IEnumerable<string> modules)
-        {
-            foreach (var modName in modules)
-            {
-                foreach (var entity in EntitiesForModule(modName))
-                {
-                    yield return entity.ToXElement();
-                }
-                foreach (var op in OperatorsForModule(modName))
-                {
-                    yield return op.ToXElement();
-                }
-                foreach (var alias in TypeAliasesForModule(modName))
-                {
-                    yield return alias.ToXElement();
-                }
-            }
-        }
-
-        public void Write(string file, string module)
-        {
-            using (FileStream stm = new FileStream(Exceptions.ThrowOnNull(file, "file"), FileMode.Create))
-            {
-                Write(stm, module);
-            }
-        }
-
-        public void Write(Stream stm, string module)
-        {
-            Write(stm, EntitiesForModule(module).Select(entity => entity.ToXElement()));
-        }
-
-        void Write(Stream stm, IEnumerable<XElement> entities)
-        {
-            var entityList = new XElement("entities", entities);
-            var db = new XElement("xamtypedatabase",
-                                   new XAttribute("version", 1.0),
-                                   entityList);
-            var doc = new XDocument(
-                new XDeclaration("1.0", "utf-8", "yes"),
-                db);
-            doc.Save(stm);
-        }
-
-        public bool Merge(TypeDatabase other, ErrorHandling errors)
-        {
-            var initialErrorCount = errors.ErrorCount;
-            foreach (var mod in other.modules.Values)
-            {
-                foreach (var entity in mod.Values)
-                {
-                    AddEntity(entity, errors);
-                }
-                foreach (var op in mod.Operators)
-                {
-                    AddOperator(op);
-                }
-            }
-            return initialErrorCount != errors.ErrorCount;
-        }
-
 
         public ErrorHandling Read(List<string> files)
         {

@@ -11,7 +11,7 @@ namespace SwiftBindings.Tests
         [Fact]
         public void DirectPInvokeVoidVoid()
         {
-            BindingsTool.GenerateBindings("libSmokeTests.dylib", "SmokeTests.swiftinterface", "");
+            BindingsTool.GenerateBindings("SmokeTests.abi.json", "");
             var sourceCode = """
                 // Copyright (c) Microsoft Corporation.
                 // Licensed under the MIT License.

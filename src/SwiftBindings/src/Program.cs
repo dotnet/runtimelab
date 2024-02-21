@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+using System;
 using System.CommandLine;
-using System.CommandLine.Invocation;
-using System.Linq;
 using SwiftReflector;
+using SwiftReflector.Parser;
 
 namespace SwiftBindings
 {
@@ -12,96 +12,77 @@ namespace SwiftBindings
     {
         public static void Main(string[] args)
         {
-            Option<IEnumerable<string>> dylibOption = new(aliases: new[] { "-d", "--dylib" }, description: "Path to the dynamic library.") { AllowMultipleArgumentsPerToken = true, IsRequired = true };
-            Option<IEnumerable<string>> swiftinterfaceOption = new(aliases: new[] { "-s", "--swiftinterface" }, "Path to the Swift interface file.") { AllowMultipleArgumentsPerToken = true, IsRequired = true };
+            Option<IEnumerable<string>> swiftAbiOption = new(aliases: new[] { "-a", "--swiftabi" }, "Path to the Swift ABI file.") { AllowMultipleArgumentsPerToken = true, IsRequired = true };
             Option<string> outputDirectoryOption = new(aliases: new[] { "-o", "--output" }, "Output directory for generated bindings.") { IsRequired = true };
             Option<int> verboseOption = new(aliases: new[] { "-v", "--verbose" }, "Prints information about work in process.");
             Option<bool> helpOption = new(aliases: new[] { "-h", "--help" }, "Display a help message.");
 
             RootCommand rootCommand = new(description: "Swift bindings generator.")
             {
-                dylibOption,
-                swiftinterfaceOption,
+                swiftAbiOption,
                 outputDirectoryOption,
                 verboseOption,
                 helpOption,
             };
-            rootCommand.SetHandler((IEnumerable<string> dylibPaths, IEnumerable<string> swiftinterfacePaths, string outputDirectory, int verbose, bool help) =>
+            rootCommand.SetHandler((IEnumerable<string> swiftAbiPaths, string outputDirectory, int verbose, bool help) =>
+            {
+                if (help)
                 {
-                    if (help)
+                    Console.WriteLine("Usage:");
+                    Console.WriteLine("  -a, --swiftabi     Required. Path to the Swift ABI file.");
+                    Console.WriteLine("  -o, --output       Required. Output directory for generated bindings.");
+                    Console.WriteLine("  -v, --verbose      nformation about work in process.");
+                    return;
+                }
+
+                if (outputDirectory == string.Empty)
+                {
+                    Console.Error.WriteLine("Error: Missing required argument(s).");
+                    return;
+                }
+
+                for (int i = 0; i < swiftAbiPaths.Count(); i++)
+                {
+                    string swiftAbiPath = swiftAbiPaths.ElementAt(i);
+
+                    if (!File.Exists(swiftAbiPath))
                     {
-                        Console.WriteLine("Usage:");
-                        Console.WriteLine("  -d, --dylib             Required. Path to the dynamic library.");
-                        Console.WriteLine("  -s, --swiftinterface    Required. Path to the Swift interface file.");
-                        Console.WriteLine("  -o, --output            Required. Output directory for generated bindings.");
-                        Console.WriteLine("  -v, --verbose           Information about work in process.");
+                        Console.Error.WriteLine($"Error: Swift ABI file not found at path '{swiftAbiPath}'.");
                         return;
                     }
 
-                    if (ValidateOptions(dylibPaths, swiftinterfacePaths, outputDirectory))
-                    {
-                        for (int i = 0; i < dylibPaths.Count(); i++)
-                        {
-                            string dylibPath = dylibPaths.ElementAt(i);
-                            string swiftInterfacePath = swiftinterfacePaths.ElementAt(i);
+                    if (verbose > 0)
+                        Console.WriteLine($"Processing Swift ABI file: {swiftAbiPath}");
 
-                            if (!File.Exists(dylibPath))
-                            {
-                                Console.Error.WriteLine($"Error: Dynamic library not found at path '{dylibPath}'.");
-                                return;
-                            }
-
-                            if (!File.Exists(swiftInterfacePath))
-                            {
-                                Console.Error.WriteLine($"Error: Swift interface file not found at path '{swiftInterfacePath}'.");
-                                return;
-                            }
-
-                            GenerateBindings(dylibPath, swiftInterfacePath, outputDirectory, verbose);
-                        }
-                    }
-
-                },
-                dylibOption,
-                swiftinterfaceOption,
-                outputDirectoryOption,
-                verboseOption,
-                helpOption
+                    GenerateBindings(swiftAbiPath, outputDirectory, verbose);
+                }
+            },
+            swiftAbiOption,
+            outputDirectoryOption,
+            verboseOption,
+            helpOption
             );
 
             rootCommand.Invoke(args);
         }
 
-        private static bool ValidateOptions(IEnumerable<string> dylibPaths, IEnumerable<string> swiftinterfacePaths, string outputDirectory)
+        public static void GenerateBindings(string swiftAbiPath, string outputDirectory, int verbose = 0)
         {
-            if (dylibPaths == null || swiftinterfacePaths == null || outputDirectory == string.Empty)
-            {
-                Console.Error.WriteLine("Error: Missing required argument(s).");
-                return false;
-            }
+            if (verbose > 0)
+                Console.WriteLine("Starting bindings generation...");
 
-            if (dylibPaths.Count() != swiftinterfacePaths.Count())
-            {
-                Console.Error.WriteLine("Error: Number of dylib and interface files must match.");
-                return false;
-            }
-
-            if (!Directory.Exists(outputDirectory))
-            {
-                Console.Error.WriteLine($"Error: Directory '{outputDirectory}' doesn't exist.");
-                return false;
-            }
-
-            return true;
-        }
-
-        public static void GenerateBindings(string dylibPath, string swiftInterfacePath, string outputDirectory, int verbose = 0)
-        {
             BindingsCompiler bindingsCompiler = new BindingsCompiler();
+            ISwiftParser swiftParser = new SwiftABIParser();
             var errors = new ErrorHandling();
-            var moduleInventory = bindingsCompiler.GetModuleInventory(dylibPath, errors);
-            var moduleDeclarations = bindingsCompiler.GetModuleDeclarations(swiftInterfacePath);
-            bindingsCompiler.CompileModules(moduleDeclarations, moduleInventory, dylibPath, outputDirectory, errors);
+            var decl = swiftParser.GetModuleDeclaration(swiftAbiPath, errors);
+
+            if (verbose > 1)
+                Console.WriteLine("Parsed Swift ABI file successfully.");
+
+            bindingsCompiler.CompileModule(decl, outputDirectory, errors);
+
+            if (verbose > 0)
+                Console.WriteLine("Bindings generation completed.");
         }
     }
 }

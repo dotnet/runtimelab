@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
 using SwiftReflector.ExceptionTools;
-using SwiftReflector.IOUtils;
 using SwiftRuntimeLibrary;
 
 namespace SwiftReflector.SwiftXmlReflection

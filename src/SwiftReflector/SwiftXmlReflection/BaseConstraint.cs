@@ -3,7 +3,6 @@
 
 using System;
 using System.Xml.Linq;
-using SwiftReflector.IOUtils;
 using SwiftRuntimeLibrary;
 
 namespace SwiftReflector.SwiftXmlReflection

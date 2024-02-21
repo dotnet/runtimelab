@@ -3,7 +3,6 @@
 
 using System;
 using SwiftReflector.ExceptionTools;
-using SwiftReflector.IOUtils;
 using System.Xml.Linq;
 using SwiftRuntimeLibrary;
 

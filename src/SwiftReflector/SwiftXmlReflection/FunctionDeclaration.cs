@@ -85,7 +85,7 @@ namespace SwiftReflector.SwiftXmlReflection
         public FunctionDeclaration OverrideSurrogateFunction { get; set; }
 
 
-        public TypeSpec ReturnTypeSpec { get; private set; }
+        public TypeSpec ReturnTypeSpec { get; set; }
 
         public bool IsRequired { get; set; }
         public string ObjCSelector { get; set; }
@@ -101,6 +101,7 @@ namespace SwiftReflector.SwiftXmlReflection
         public bool IsUnavailable { get; set; }
         public bool IsConvenienceInit { get; set; }
         public bool IsVirtualClassMethod { get { return IsStatic && Access == Accessibility.Open; } }
+        public string MangledName { get; set; }
         public bool IsSubscript
         {
             get
@@ -145,7 +146,7 @@ namespace SwiftReflector.SwiftXmlReflection
             }
         }
 
-        public List<List<ParameterItem>> ParameterLists { get; private set; }
+        public List<List<ParameterItem>> ParameterLists { get; set; }
 
         public bool IsTypeSpecGeneric(ParameterItem item)
         {
