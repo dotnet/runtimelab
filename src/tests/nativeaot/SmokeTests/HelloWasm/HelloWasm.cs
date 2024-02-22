@@ -1,13 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
-
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
+using System.Runtime.JitTesting;
 using System.Collections.Generic;
 using System.Collections;
 using System.Reflection;
@@ -423,6 +422,8 @@ internal unsafe partial class Program
         TestDoublePrint();
 
         TestGenStructContains();
+
+        LSSATests.Run();
 
         if (OperatingSystem.IsBrowser())
         {
