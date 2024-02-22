@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(SmokeTests)
+project(PInvokeTests)
 
-set(SOURCE SmokeTests)
+set(SOURCE PInvokeTests)
 
 if (NOT SWIFT_COMPILER_TARGET)
     set(SWIFT_PLATFORM "macosx")

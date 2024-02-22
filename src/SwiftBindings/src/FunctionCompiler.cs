@@ -28,8 +28,8 @@ namespace SwiftReflector
             CSType csReturnType = returnType.IsVoid ? CSSimpleType.Void : returnType.ToCSType(packs);
             
             var csParams = new CSParameterList();
-            if (func.ParameterLists.Count > 0){
-                 var args = typeMap.MapParameterList(func, func.ParameterLists.Last(), isPinvoke, false, null, null, packs);
+            if (func.ParameterLists.FirstOrDefault().Count > 0){
+                 var args = typeMap.MapParameterList(func, func.ParameterLists.FirstOrDefault(), isPinvoke, false, null, null, packs);
                 foreach (var arg in args)
                 {
                     var csType = arg.Type.ToCSType(packs);

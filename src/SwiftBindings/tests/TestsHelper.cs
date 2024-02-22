@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Loader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
@@ -13,22 +14,24 @@ namespace SwiftBindings.Tests
 {
     public static class TestsHelper
     {
-        public static int CompileAndExecuteFromFileAndString(string filePath, string sourceCode)
+        public static object CompileAndExecute(string filePath, string sourceCode, string typeName, string methodName)
         {
             string fileSourceCode = File.ReadAllText(filePath);
             var sourceCodes = new[] { fileSourceCode, sourceCode };
-            return CompileAndExecute(sourceCodes);
+            return CompileAndExecute(sourceCodes, typeName, methodName);
         }
 
-        private static int CompileAndExecute(string[] sourceCodes)
+        private static object CompileAndExecute(string[] sourceCodes, string typeName, string methodName)
         {
             var options = new CSharpCompilationOptions(OutputKind.ConsoleApplication);
             var syntaxTrees = sourceCodes.Select(code => CSharpSyntaxTree.ParseText(code)).ToArray();
+            var systemRuntimeAssemblyPath = Assembly.Load("System.Runtime").Location;
 
             var references = new[]
             {
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
+                MetadataReference.CreateFromFile(systemRuntimeAssemblyPath),
             };
 
 
@@ -53,12 +56,20 @@ namespace SwiftBindings.Tests
                 }
             }
 
-            Assembly compiledAssembly = Assembly.LoadFile(assemblyPath);
+            AssemblyLoadContext context = new AssemblyLoadContext("", true);
+            object result = null;
+            try
+            {
+            Assembly compiledAssembly = context.LoadFromAssemblyPath(assemblyPath);
 
-            MethodInfo entryPoint = compiledAssembly.EntryPoint;
-            object[] args = entryPoint.GetParameters().Length == 0 ? null : new object[] { new string[0] };
-            int result = (int)entryPoint.Invoke(null, args);
-
+            Type targetType = compiledAssembly.GetType("Test.MainClass");
+            MethodInfo customMethod = targetType.GetMethod(methodName);
+            result = customMethod.Invoke(null, new object[] { });
+            }
+            finally
+            {
+                context.Unload();
+            }
             return result;
         }
     }

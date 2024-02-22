@@ -96,19 +96,16 @@ namespace SwiftReflector.Parser
                     break;
             }
 
-            if (decl.Children.Count == 0)
-                functionDeclaration.ParameterLists.Add(new List<ParameterItem>());
-            else {
-                var funcSignature = decl.PrintedName.Split("(")[1].Split(")")[0].Split(":", StringSplitOptions.RemoveEmptyEntries);
-                for (int i = 1; i < decl.Children.Count; i++)
-                {
-                    var param = decl.Children[i];
-                    ParameterItem parameterItem = new ParameterItem();
-                    parameterItem.TypeSpec = new NamedTypeSpec(param.PrintedName);
-                    if (funcSignature.Length > i - 1)
-                        parameterItem.PublicName = funcSignature[i - 1];
-                    functionDeclaration.ParameterLists.Add(new List<ParameterItem> { parameterItem });
-                }
+            functionDeclaration.ParameterLists.Add(new List<ParameterItem>());
+            var funcSignature = decl.PrintedName.Split("(")[1].Split(")")[0].Split(":", StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 1; i < decl.Children.Count; i++)
+            {
+                var param = decl.Children[i];
+                ParameterItem parameterItem = new ParameterItem();
+                parameterItem.TypeSpec = new NamedTypeSpec(param.PrintedName);
+                if (funcSignature.Length > i - 1)
+                    parameterItem.PublicName = funcSignature[i - 1];
+                functionDeclaration.ParameterLists.FirstOrDefault().Add(parameterItem);
             }
             return functionDeclaration;
         }

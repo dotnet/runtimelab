@@ -1,17 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <xamtypedatabase version="1.0">
     <entities>
-        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftString" entityType="Struct" blitable="Blitable" size="24" stride="24">
-            <typedeclaration kind="struct" name="Swift.String" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
-        </entity>
-        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftCharacter" entityType="Struct" blitable="Blitable" size="16" stride="16">
-            <typedeclaration kind="struct" name="Swift.Character" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        <!-- Blittable types -->
+        <entity sharpNameSpace="System" sharpTypeName="byte" entityType="Scalar" blitable="Blitable" size="1" stride="1">
+            <typedeclaration kind="struct" name="Swift.UInt8" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
         </entity>
         <entity sharpNameSpace="System" sharpTypeName="sbyte" entityType="Scalar" blitable="Blitable" size="1" stride="1">
             <typedeclaration kind="struct" name="Swift.Int8" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
-        </entity>
-        <entity sharpNameSpace="System" sharpTypeName="byte" entityType="Scalar" blitable="Blitable" size="1" stride="1">
-            <typedeclaration kind="struct" name="Swift.UInt8" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
         </entity>
         <entity sharpNameSpace="System" sharpTypeName="short" entityType="Scalar" blitable="Blitable" size="2" stride="2">
             <typedeclaration kind="struct" name="Swift.Int16" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
@@ -31,20 +26,28 @@
         <entity sharpNameSpace="System" sharpTypeName="ulong" entityType="Scalar" blitable="Blitable" size="8" stride="8">
             <typedeclaration kind="struct" name="Swift.UInt64" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
         </entity>
-        <entity sharpNameSpace="System" sharpTypeName="nint" entityType="Scalar" blitable="Blitable" size="8" stride="8">
-            <typedeclaration kind="struct" name="Swift.Int" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
-        </entity>
-        <entity sharpNameSpace="System" sharpTypeName="nuint" entityType="Scalar" blitable="Blitable" size="8" stride="8">
-            <typedeclaration kind="struct" name="Swift.UInt" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
-        </entity>
         <entity sharpNameSpace="System" sharpTypeName="float" entityType="Scalar" blitable="Blitable" size="4" stride="4">
             <typedeclaration kind="struct" name="Swift.Float" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
         </entity>
         <entity sharpNameSpace="System" sharpTypeName="double" entityType="Scalar" blitable="Blitable" size="8" stride="8">
             <typedeclaration kind="struct" name="Swift.Double" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
         </entity>
+        <entity sharpNameSpace="System" sharpTypeName="nint" entityType="Scalar" blitable="Blitable" size="8" stride="8">
+            <typedeclaration kind="struct" name="Swift.Int" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="nuint" entityType="Scalar" blitable="Blitable" size="8" stride="8">
+            <typedeclaration kind="struct" name="Swift.UInt" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
         <entity sharpNameSpace="System" sharpTypeName="bool" entityType="Scalar" blitable="Blitable" size="4" stride="4">
             <typedeclaration kind="struct" name="Swift.Bool" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+
+        <!-- Non-blittable types -->
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftString" entityType="Struct" blitable="Blitable" size="24" stride="24">
+            <typedeclaration kind="struct" name="Swift.String" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftCharacter" entityType="Struct" blitable="Blitable" size="16" stride="16">
+            <typedeclaration kind="struct" name="Swift.Character" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
         </entity>
         <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="SwiftError" entityType="Error" blitable="NonBlitable" size="0" stride="0">
             <typedeclaration kind="class" name="Swift.Error" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
@@ -115,7 +118,7 @@
         <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="UnsafeMutableRawBufferPointer" entityType="Struct" blitable="NonBlitable" size="0" stride="0">
             <typedeclaration kind="struct" name="Swift.UnsafeMutableRawBufferPointer" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
         </entity>
-        <entity sharpNameSpace="System" sharpTypeName="void*" entityType="Scalar" blitable="Blitable" size="8" stride="8">
+        <entity sharpNameSpace="System" sharpTypeName="UnsafeRawPointer" entityType="Scalar" blitable="Blitable" size="0" stride="0">
             <typedeclaration kind="struct" name="Swift.UnsafeRawPointer" module="Swift" accessibility="Public" isObjC="false" isFinal="true" />
         </entity>
         <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="UnsafeMutableRawPointer" entityType="Scalar" blitable="NonBlitable" size="0" stride="0">
