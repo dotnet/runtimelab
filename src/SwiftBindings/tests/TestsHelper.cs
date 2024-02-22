@@ -14,6 +14,7 @@ namespace SwiftBindings.Tests
 {
     public static class TestsHelper
     {
+        private static int uniqueId = 0;
         public static object CompileAndExecute(string filePath, string sourceCode, string typeName, string methodName)
         {
             string fileSourceCode = File.ReadAllText(filePath);
@@ -35,12 +36,12 @@ namespace SwiftBindings.Tests
             };
 
 
-            var compilation = CSharpCompilation.Create("CompiledAssembly",
+            var compilation = CSharpCompilation.Create($"CompiledAssembly{uniqueId}",
                                                         syntaxTrees: syntaxTrees,
                                                         references: references,
                                                         options: options);
 
-            string assemblyPath = Path.Combine(Path.GetTempPath(), "CompiledAssembly.dll");
+            string assemblyPath = Path.Combine(Path.GetTempPath(), $"CompiledAssembly{uniqueId++}.dll");
             using (var stream = new FileStream(assemblyPath, FileMode.Create))
             {
                 EmitResult emitResult = compilation.Emit(stream);
@@ -56,21 +57,10 @@ namespace SwiftBindings.Tests
                 }
             }
 
-            AssemblyLoadContext context = new AssemblyLoadContext("", true);
-            object result = null;
-            try
-            {
-            Assembly compiledAssembly = context.LoadFromAssemblyPath(assemblyPath);
-
+            Assembly compiledAssembly = Assembly.LoadFile(assemblyPath);
             Type targetType = compiledAssembly.GetType("Test.MainClass");
             MethodInfo customMethod = targetType.GetMethod(methodName);
-            result = customMethod.Invoke(null, new object[] { });
-            }
-            finally
-            {
-                context.Unload();
-            }
-            return result;
+            return customMethod.Invoke(null, new object[] { });
         }
     }
 }
