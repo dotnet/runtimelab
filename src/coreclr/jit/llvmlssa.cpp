@@ -1023,7 +1023,7 @@ private:
 
             JITDUMP("Added zero-initialization for shadow locals at: [%i, %i]:\n", offset, offset + zeroingSize);
             DISPTREERANGE(range, store);
-            RecordAllocationActionZeroInit(m_compiler->fgFirstBB, zeroingSize);
+            RecordAllocationActionZeroInit(m_compiler->fgFirstBB, offset, zeroingSize);
         }
 
         // Insert a zero-offset ILOffset to notify codegen this is the start of user code.
@@ -1323,12 +1323,12 @@ private:
         return m_allocationResult != nullptr;
     }
 
-    void RecordAllocationActionZeroInit(BasicBlock* initialBlock, unsigned size)
+    void RecordAllocationActionZeroInit(BasicBlock* initialBlock, unsigned offset, unsigned size)
     {
         if (RecordAllocationResult())
         {
             m_allocationResult->SelectBlock(initialBlock);
-            m_allocationResult->RecordZeroInit(size);
+            m_allocationResult->RecordZeroInit(offset, size);
         }
     }
 
@@ -1352,7 +1352,7 @@ private:
         enum class AllocationActionKind : unsigned
         {
             Block,      // BB<index>:
-            ZeroInit,   // ZEROINIT <size>
+            ZeroInit,   // ZEROINIT <slots...>
             Store,      // STORE <slot> <local> <value>
             Load,       // LOAD  <slot> <local>
             StoreField, // STORE_FIELD[<start>..<end>] <slot> <local> <value>
@@ -1382,7 +1382,11 @@ private:
             union
             {
                 unsigned BlockIndex;
-                unsigned ZeroInitSize;
+                struct
+                {
+                    unsigned ZeroInitOffset;
+                    unsigned ZeroInitOffsetEnd;
+                };
                 struct
                 {
                     unsigned Slot;
@@ -1431,9 +1435,12 @@ private:
             }
         }
 
-        void RecordZeroInit(unsigned size)
+        void RecordZeroInit(unsigned offset, unsigned size)
         {
-            m_actions.Push({AllocationActionKind::ZeroInit, size});
+            AllocationAction action{AllocationActionKind::ZeroInit};
+            action.ZeroInitOffset = offset;
+            action.ZeroInitOffsetEnd = offset + size;
+            m_actions.Push(action);
         }
 
         void RecordLoadStore(unsigned offset, GenTreeLclVarCommon* lclNode)
@@ -1572,6 +1579,8 @@ private:
             return value;
         }
 
+#define FMT_SS_SLOT "SS%02u"
+
         template <typename... TArgs>
         void PrintFormatted(char** pBuffer, const char* format, TArgs... args)
         {
@@ -1593,9 +1602,20 @@ private:
                 case AllocationActionKind::Block:
                     PrintFormatted(pBuffer, format, action.BlockIndex);
                     break;
+
                 case AllocationActionKind::ZeroInit:
-                    PrintFormatted(pBuffer, format, action.ZeroInitSize);
+                    PrintFormatted(pBuffer, format);
+                    for (unsigned offset = action.ZeroInitOffset; offset < action.ZeroInitOffsetEnd;
+                         offset += TARGET_POINTER_SIZE)
+                    {
+                        unsigned slot;
+                        if (m_slotMap.Lookup(offset, &slot))
+                        {
+                            PrintFormatted(pBuffer, " " FMT_SS_SLOT, slot);
+                        }
+                    }
                     break;
+
                 case AllocationActionKind::Store:
                 case AllocationActionKind::Load:
                 case AllocationActionKind::StoreField:
@@ -1648,15 +1668,15 @@ private:
                 case AllocationActionKind::Block:
                     return "BB%02u:";
                 case AllocationActionKind::ZeroInit:
-                    return "ZEROINIT %u";
+                    return "ZEROINIT";
                 case AllocationActionKind::Store:
-                    return "STORE SS%02u";
+                    return "STORE " FMT_SS_SLOT;
                 case AllocationActionKind::Load:
-                    return "LOAD  SS%02u";
+                    return "LOAD  " FMT_SS_SLOT;
                 case AllocationActionKind::StoreField:
-                    return "STORE_FIELD[%u..%u] SS%02u";
+                    return "STORE_FIELD[%u..%u] " FMT_SS_SLOT;
                 case AllocationActionKind::LoadField:
-                    return "LOAD_FIELD[%u..%u]  SS%02u";
+                    return "LOAD_FIELD[%u..%u]  " FMT_SS_SLOT;
                 default:
                     unreached();
             }
@@ -1683,7 +1703,7 @@ private:
     void InitializeAllocationResult() { }
     void ReportAllocationResult() { }
     bool RecordAllocationResult() const { return false; }
-    void RecordAllocationActionZeroInit(BasicBlock* initialBlock, unsigned size) { }
+    void RecordAllocationActionZeroInit(BasicBlock* initialBlock, unsigned offset, unsigned size) { }
     void RecordAllocationActionLoadStore(BasicBlock* block, unsigned offset, GenTreeLclVarCommon* lclNode) { }
 #endif // !FEATURE_LSSA_ALLOCATION_RESULT
 };
