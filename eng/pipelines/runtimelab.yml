@@ -70,7 +70,7 @@ stages:
 
     - template: /eng/pipelines/templates/build-job.yml
       parameters:
-        osGroup: Linux
+        osGroup: OSX
         archType: x64
         runTests: true
         pool:
