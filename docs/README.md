@@ -57,7 +57,7 @@ All C# types mentioned are blittable except for `bool`. To facilitate `P/Invoke`
 
 ### Static and P/Invoke functions
 
-Each provided module is projected into a separate assembly. The assembly contains a namespace named "<ModuleName>Bindings" and includes a class named "<ModuleName>". For each public function, a `P/Invoke` signature and a corresponding method are generated. Below is an example to illustrate this process.
+Each provided module is projected into a separate assembly. The assembly contains a namespace named `<ModuleName>Bindings` and includes a class named `<ModuleName>`. For each public function, a `P/Invoke` signature and a corresponding method are generated. Below is an example to illustrate this process.
 
 Swift library example:
 ```swift
