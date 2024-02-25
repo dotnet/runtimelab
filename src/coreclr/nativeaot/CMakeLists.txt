@@ -14,9 +14,7 @@ if(MSVC)
 endif (MSVC)
 
 if(CLR_CMAKE_HOST_UNIX)
-  if (NOT CLR_CMAKE_TARGET_ARCH_WASM)     # Native AOT runtime targeting WASM uses C++ exception handling to implement managed exceptions
-    add_compile_options(-fno-exceptions)  # Regular Native AOT runtime doesn't use C++ exception handling
-  endif()
+  add_compile_options(-fno-exceptions)    # Native AOT runtime doesn't use C++ exception handling
   add_compile_options(-nostdlib)
 
   if(CLR_CMAKE_TARGET_APPLE)
