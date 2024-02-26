@@ -534,7 +534,6 @@ The .NET Foundation licenses this file to you under the MIT license.
       <!-- see https://github.com/emscripten-core/emscripten/issues/16836 for the issue that means we have to force the linker to include these symbols before LTO -->
       <!--<CustomLinkerArg Condition="'$(Optimize)' != 'true'" Include="$(WasmOptimizationSetting) -flto" /> -->
       <CustomLinkerArg Condition="'$(IlcLlvmTarget)' != ''" Include="-target $(IlcLlvmTarget)" />
-      <CustomLinkerArg Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'" Include="-fwasm-exceptions" />
     </ItemGroup>
 
     <ItemGroup Condition = "'$(_targetOS)' == 'browser'" >
@@ -547,7 +546,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s TOTAL_STACK=$(IlcWasmStackSize)" />
       <CustomLinkerArg Condition="'$(WasmEnableJSBigIntIntegration)' == 'true'" Include="-s WASM_BIGINT=1" />
       <CustomLinkerArg Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="-s DISABLE_EXCEPTION_CATCHING=0" />
-      
+
       <CustomLinkerArg Include="$(EmccFlags)" />
       <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
       <CustomLinkerArg Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" Condition="'$(EmccInitialHeapSize)' != ''" />
