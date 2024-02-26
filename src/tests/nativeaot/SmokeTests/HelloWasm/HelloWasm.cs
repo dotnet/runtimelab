@@ -4080,28 +4080,56 @@ class EventLoopTestClass
 {
     public static void TestEventLoopIntegration()
     {
-        async Task SumToTen()
+        Task.Run(async () =>
         {
-            const int Count = 10;
-
-            int counter = 0;
-            Task head = new Task(() => { });
-            Task tail = head;
-            for (int i = 0; i < Count; i++)
+            try
             {
-                tail = tail.ContinueWith((_) => counter++);
+                await TestEventLoopIntegrationImpl();
             }
-
-            head.Start();
-            await tail;
-            if (counter != Count)
+            catch (Exception e)
             {
-                // We have already returned the exit code by now, so indicate failure with a fail fast.
-                Environment.FailFast("TestEventLoopIntegration failed");
+                Environment.FailFast($"Unhandled exception: {e}");
             }
+        });
+    }
+
+    private static async Task TestEventLoopIntegrationImpl()
+    {
+        const int Count = 10;
+
+        int counter = 0;
+        Task head = new Task(() => { });
+        Task tail = head;
+        for (int i = 0; i < Count; i++)
+        {
+            tail = tail.ContinueWith((_) => counter++);
         }
 
-        Task.Run(SumToTen);
+        head.Start();
+        await tail;
+        EndEventLoopTest(counter == Count, "Event loop integration (thread pool)");
+
+        TimeSpan delay = TimeSpan.FromMilliseconds(25);
+        long startTime = Stopwatch.GetTimestamp();
+        using (PeriodicTimer timer = new PeriodicTimer(delay))
+        {
+            await timer.WaitForNextTickAsync();
+        }
+        TimeSpan elapsed = Stopwatch.GetElapsedTime(startTime);
+        EndEventLoopTest(elapsed >= delay, "Event loop integration (timers)");
+    }
+
+    private static void EndEventLoopTest(bool success, string test)
+    {
+        if (success)
+        {
+            Program.PrintLine($"{test}: ok");
+        }
+        else
+        {
+            // We have already returned the exit code by now, so indicate failure with a fail fast.
+            Environment.FailFast($"{test} failed");
+        }
     }
 }
 
