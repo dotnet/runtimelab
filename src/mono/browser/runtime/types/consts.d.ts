@@ -7,16 +7,12 @@ declare module "consts:*" {
     export default constant;
 }
 
-<<<<<<< HEAD
 declare module "consts:nativeAOT" {
     const constant: boolean;
     export default constant;
 }
 
-declare module "consts:monoWasmThreads" {
-=======
 declare module "consts:wasmEnableThreads" {
->>>>>>> runtime/main
     const constant: boolean;
     export default constant;
 }

@@ -571,13 +571,13 @@ void Llvm::generateBlocks()
     // for SSA uses to be available at the point we request them.
     if (_compiler->m_domTree != nullptr)
     {
-        class LlvmCompileDomTreeVisitor : public NewDomTreeVisitor<LlvmCompileDomTreeVisitor>
+        class LlvmCompileDomTreeVisitor : public DomTreeVisitor<LlvmCompileDomTreeVisitor>
         {
             Llvm* m_llvm;
 
         public:
             LlvmCompileDomTreeVisitor(Compiler* compiler, Llvm* llvm)
-                : NewDomTreeVisitor(compiler)
+                : DomTreeVisitor(compiler)
                 , m_llvm(llvm)
             {
             }

@@ -121,7 +121,6 @@ struct UNIX_CONTEXT
         lambda((size_t*)&R14());
         lambda((size_t*)&R15());
     }
-<<<<<<< HEAD
 
 #elif defined(HOST_WASM)
     // no registers/IP/SP for WASM
@@ -130,7 +129,6 @@ struct UNIX_CONTEXT
     {
     }
     
-=======
 #elif defined(TARGET_ARM)
     uint64_t& Pc();
     uint64_t& Sp();
@@ -169,7 +167,6 @@ struct UNIX_CONTEXT
         lambda((size_t*)&R11());
         lambda((size_t*)&R12());
     }
->>>>>>> runtime/main
 #else
     PORTABILITY_ASSERT("UNIX_CONTEXT");
 #endif // TARGET_ARM

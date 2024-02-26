@@ -26,12 +26,6 @@ class Dataflow
         TestDynamicDependencyWithGenerics.Run();
         TestObjectGetTypeDataflow.Run();
         TestMarshalIntrinsics.Run();
-<<<<<<< HEAD
-#if !CODEGEN_WASM // TODO-LLVM: uses threads in Task.Delay - throws PlatformNotSupportedException
-        TestCompilerGeneratedCode.Run();
-#endif
-=======
->>>>>>> runtime/main
 
         return 100;
     }

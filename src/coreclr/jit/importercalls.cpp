@@ -3424,13 +3424,7 @@ GenTree* Compiler::impIntrinsic(GenTree*                newobjThis,
                 break;
             }
 
-<<<<<<< HEAD
-#if defined(TARGET_ARM64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
-            // Intrinsify Interlocked.Or and Interlocked.And only for arm64-v8.1 (and newer) and for RV64A
-            // TODO-CQ: Implement for XArch (https://github.com/dotnet/runtime/issues/32239).
-=======
-#if defined(TARGET_ARM64) || defined(TARGET_RISCV64) || defined(TARGET_XARCH)
->>>>>>> runtime/main
+#if defined(TARGET_ARM64) || defined(TARGET_RISCV64) || defined(TARGET_XARCH) || defined(TARGET_WASM)
             case NI_System_Threading_Interlocked_Or:
             case NI_System_Threading_Interlocked_And:
             {
@@ -3459,25 +3453,18 @@ GenTree* Compiler::impIntrinsic(GenTree*                newobjThis,
             case NI_System_Threading_Interlocked_CompareExchange:
             {
                 var_types retType = JITtype2varType(sig->retType);
-<<<<<<< HEAD
 #ifndef TARGET_WASM
-=======
-
->>>>>>> runtime/main
                 if (genTypeSize(retType) > TARGET_POINTER_SIZE)
                 {
                     break;
                 }
-<<<<<<< HEAD
-#endif // !TARGET_WASM
-=======
 #if !defined(TARGET_XARCH) && !defined(TARGET_ARM64)
                 else if (genTypeSize(retType) < 4)
                 {
                     break;
                 }
 #endif // !defined(TARGET_XARCH) && !defined(TARGET_ARM64)
->>>>>>> runtime/main
+#endif // !TARGET_WASM
 
                 if ((retType == TYP_REF) &&
                     (impStackTop(1).val->IsIntegralConst(0) || impStackTop(1).val->IsIconHandle(GTF_ICON_OBJ_HDL)))
@@ -3507,26 +3494,20 @@ GenTree* Compiler::impIntrinsic(GenTree*                newobjThis,
                 assert(sig->numArgs == 2);
 
                 var_types retType = JITtype2varType(sig->retType);
-<<<<<<< HEAD
 #ifndef TARGET_WASM
-=======
                 assert((genTypeSize(retType) >= 4) || (ni == NI_System_Threading_Interlocked_Exchange));
 
->>>>>>> runtime/main
                 if (genTypeSize(retType) > TARGET_POINTER_SIZE)
                 {
                     break;
                 }
-<<<<<<< HEAD
-#endif // !TARGET_WASM
-=======
 #if !defined(TARGET_XARCH) && !defined(TARGET_ARM64)
                 else if (genTypeSize(retType) < 4)
                 {
                     break;
                 }
 #endif // !defined(TARGET_XARCH) && !defined(TARGET_ARM64)
->>>>>>> runtime/main
+#endif // !TARGET_WASM
 
                 if ((retType == TYP_REF) &&
                     (impStackTop().val->IsIntegralConst(0) || impStackTop().val->IsIconHandle(GTF_ICON_OBJ_HDL)))

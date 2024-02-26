@@ -19,12 +19,8 @@ const isContinuousIntegrationBuild = process.env.ContinuousIntegrationBuild === 
 const productVersion = process.env.ProductVersion || "8.0.0-dev";
 const nativeBinDir = process.env.NativeBinDir ? process.env.NativeBinDir.replace(/"/g, "") : "bin";
 const wasmObjDir = process.env.WasmObjDir ? process.env.WasmObjDir.replace(/"/g, "") : "obj";
-<<<<<<< HEAD
 const nativeAOT = process.env.NATIVE_AOT === "1" ? true : false;
-const monoWasmThreads = process.env.MonoWasmThreads === "true" ? true : false;
-=======
 const wasmEnableThreads = process.env.WasmEnableThreads === "true" ? true : false;
->>>>>>> runtime/main
 const wasmEnableSIMD = process.env.WASM_ENABLE_SIMD === "1" ? true : false;
 const wasmEnableExceptionHandling = process.env.WASM_ENABLE_EH === "1" ? true : false;
 const wasmEnableJsInteropByValue = process.env.ENABLE_JS_INTEROP_BY_VALUE == "1" ? true : false;
@@ -102,12 +98,8 @@ try {
 const envConstants = {
     productVersion,
     configuration,
-<<<<<<< HEAD
     nativeAOT,
-    monoWasmThreads,
-=======
     wasmEnableThreads,
->>>>>>> runtime/main
     wasmEnableSIMD,
     wasmEnableExceptionHandling,
     monoDiagnosticsMock,

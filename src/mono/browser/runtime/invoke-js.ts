@@ -2,12 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 /* eslint-disable prefer-rest-params */
 
-<<<<<<< HEAD
 import NativeAOT from "consts:nativeAOT";
-import MonoWasmThreads from "consts:monoWasmThreads";
-=======
 import WasmEnableThreads from "consts:wasmEnableThreads";
->>>>>>> runtime/main
 import BuildConfiguration from "consts:configuration";
 
 import { marshal_exception_to_cs, bind_arg_marshal_to_cs } from "./marshal-to-cs";

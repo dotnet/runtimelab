@@ -327,32 +327,8 @@ const char* dspRegRange(regMaskTP regMask, size_t& minSiz, const char* sep, regN
 
                 if (genIsValidIntReg(regNum))
                 {
-<<<<<<< HEAD
-                    regHead    = regNum;
-                    inRegRange = true;
-                    sep        = "-";
-                }
-#elif defined(TARGET_ARM64)
-                // R17 and R28 can't be the start of a range, since the range would include TEB or FP
-                if ((regNum < REG_R17) || ((REG_R19 <= regNum) && (regNum < REG_R28)))
-                {
-                    regHead    = regNum;
-                    inRegRange = true;
-                    sep        = "-";
-                }
-#elif defined(TARGET_ARM)
-                if (regNum < REG_R12)
-                {
-                    regHead    = regNum;
-                    inRegRange = true;
-                    sep        = "-";
-                }
-#elif defined(TARGET_X86) || defined(TARGET_WASM)
-// No register ranges
-=======
                     // By default, we're not starting a potential register range.
                     sep = " ";
->>>>>>> runtime/main
 
 #if defined(TARGET_AMD64)
                     // For AMD64, create ranges for int registers R8 through R15, but not the "old" registers.
@@ -377,7 +353,7 @@ const char* dspRegRange(regMaskTP regMask, size_t& minSiz, const char* sep, regN
                         inRegRange = true;
                         sep        = "-";
                     }
-#elif defined(TARGET_X86)
+#elif defined(TARGET_X86) || defined(TARGET_WASM)
                     // No register ranges
                     CLANG_FORMAT_COMMENT_ANCHOR;
 #elif defined(TARGET_LOONGARCH64)

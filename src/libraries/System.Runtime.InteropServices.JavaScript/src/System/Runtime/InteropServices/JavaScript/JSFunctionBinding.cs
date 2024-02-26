@@ -228,7 +228,7 @@ namespace System.Runtime.InteropServices.JavaScript
             var functionHandle = (int)jsFunction.JSHandle;
             fixed (JSMarshalerArgument* ptr = arguments)
             {
-                Interop.Runtime.InvokeJSFunction(functionHandle, (nint)ptr);
+                Interop.Runtime.InvokeJSFunction(functionHandle, (void*)ptr);
                 ref JSMarshalerArgument exceptionArg = ref arguments[0];
                 if (exceptionArg.slot.Type != MarshalerType.None)
                 {
@@ -333,7 +333,7 @@ namespace System.Runtime.InteropServices.JavaScript
 #if FEATURE_WASM_MANAGED_THREADS
                 Interop.Runtime.InvokeJSImportSync((nint)args, (nint)signature.Header);
 #else
-                Interop.Runtime.InvokeJSImport(signature.ImportHandle, (nint)args);
+                Interop.Runtime.InvokeJSImport(signature.ImportHandle, (void*)args);
 #endif
             }
 
@@ -433,7 +433,7 @@ namespace System.Runtime.InteropServices.JavaScript
             {
                 fixed (JSMarshalerArgument* ptr = arguments)
                 {
-                    Interop.Runtime.ResolveOrRejectPromise((nint)ptr);
+                    Interop.Runtime.ResolveOrRejectPromise((void*)ptr);
                     ref JSMarshalerArgument exceptionArg = ref arguments[0];
                     if (exceptionArg.slot.Type != MarshalerType.None)
                     {

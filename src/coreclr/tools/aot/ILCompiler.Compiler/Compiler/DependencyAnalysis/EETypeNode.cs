@@ -103,14 +103,11 @@ namespace ILCompiler.DependencyAnalysis
             factory.TypeSystemContext.EnsureLoadableType(type);
         }
 
-<<<<<<< HEAD
         public static bool SupportsWritableData(TargetDetails target) => true;
 
         public static bool SupportsFrozenRuntimeTypeInstances(TargetDetails target)
             => SupportsWritableData(target);
 
-=======
->>>>>>> runtime/main
         private static VirtualMethodAnalysisFlags AnalyzeVirtualMethods(TypeDesc type)
         {
             var result = VirtualMethodAnalysisFlags.None;

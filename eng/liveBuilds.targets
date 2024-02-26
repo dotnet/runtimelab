@@ -230,7 +230,6 @@
         $(CoreCLRNativeArtifactsPath)dotnet.runtime.js;
         $(CoreCLRNativeArtifactsPath)dotnet.runtime.js.map;
         $(CoreCLRNativeArtifactsPath)dotnet.d.ts;
-        $(CoreCLRNativeArtifactsPath)dotnet-legacy.d.ts;
         $(CoreCLRNativeArtifactsPath)package.json;"
         IsNative="true" />
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"

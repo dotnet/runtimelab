@@ -1,12 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-<<<<<<< HEAD
 import NativeAOT from "consts:nativeAOT";
-import MonoWasmThreads from "consts:monoWasmThreads";
-=======
 import WasmEnableThreads from "consts:wasmEnableThreads";
->>>>>>> runtime/main
 import { NativePointer, ManagedPointer, VoidPtr } from "./types/emscripten";
 import { Module, mono_assert, runtimeHelpers } from "./globals";
 import { WasmOpcode, WasmSimdOpcode, WasmValtype } from "./jiterpreter-opcodes";

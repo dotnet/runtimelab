@@ -143,12 +143,7 @@ struct REGDISPLAY
     uintptr_t   SP;
     PCODE        IP;
 
-<<<<<<< HEAD
-    inline PCODE GetIP() { return 0; }
-    inline PTR_PCODE GetAddrOfIP() { return NULL; }
-=======
     inline PCODE GetIP() { return NULL; }
->>>>>>> runtime/main
     inline uintptr_t GetSP() { return 0; }
     inline uintptr_t GetFP() { return 0; }
 

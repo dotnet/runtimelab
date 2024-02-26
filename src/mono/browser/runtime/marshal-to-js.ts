@@ -1,12 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-<<<<<<< HEAD
 import NativeAOT from "consts:nativeAOT";
-import MonoWasmThreads from "consts:monoWasmThreads";
-=======
 import WasmEnableThreads from "consts:wasmEnableThreads";
->>>>>>> runtime/main
 import BuildConfiguration from "consts:configuration";
 import WasmEnableJsInteropByValue from "consts:wasmEnableJsInteropByValue";
 

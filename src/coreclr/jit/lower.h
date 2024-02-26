@@ -260,13 +260,8 @@ private:
     // return true if this call target is within range of a pc-rel call on the machine
     bool IsCallTargetInRange(void* addr);
 
-<<<<<<< HEAD
 #if defined(TARGET_XARCH) || defined(TARGET_WASM)
-    GenTree* PreferredRegOptionalOperand(GenTree* tree);
-=======
-#if defined(TARGET_XARCH)
     GenTree* PreferredRegOptionalOperand(GenTree* op1, GenTree* op2);
->>>>>>> runtime/main
 
     // ------------------------------------------------------------------
     // SetRegOptionalBinOp - Indicates which of the operands of a bin-op

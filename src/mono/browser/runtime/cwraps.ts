@@ -1,13 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-<<<<<<< HEAD
 import NativeAOT from "consts:nativeAOT";
-import MonoWasmThreads from "consts:monoWasmThreads";
-import WasmEnableLegacyJsInterop from "consts:wasmEnableLegacyJsInterop";
-=======
 import WasmEnableThreads from "consts:wasmEnableThreads";
->>>>>>> runtime/main
 
 import type {
     MonoAssembly, MonoClass,
@@ -311,13 +306,8 @@ function cwrap(name: string, returnType: string | null, argTypes: string[] | und
 }
 
 export function init_c_exports(): void {
-<<<<<<< HEAD
-    const lfns = WasmEnableLegacyJsInterop && !linkerDisableLegacyJsInterop ? legacy_interop_cwraps : [];
-    const fns = NativeAOT ? [] : [...fn_signatures, ...lfns];
+    const fns = NativeAOT ? [] : [...fn_signatures];
 
-=======
-    const fns = [...fn_signatures];
->>>>>>> runtime/main
     for (const sig of fns) {
         const wf: any = wrapped_c_functions;
         const [lazyOrSkip, name, returnType, argTypes, opts] = sig;

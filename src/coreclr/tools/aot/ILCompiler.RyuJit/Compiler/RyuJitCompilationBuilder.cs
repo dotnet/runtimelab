@@ -22,17 +22,13 @@ namespace ILCompiler
         private string _jitPath;
 
         protected RyuJitCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group, NodeMangler mangler)
-            : base(context, group, new NativeAotNameMangler(mangler, false))
+            : base(context, group, new NativeAotNameMangler(mangler))
         {
         }
 
         public RyuJitCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group)
-<<<<<<< HEAD
-            : this(context, group, context.Target.IsWindows ? new WindowsNodeMangler() : new UnixNodeMangler())
-=======
             : base(context, group,
                   new NativeAotNameMangler(context.Target.IsWindows ? (NodeMangler)new WindowsNodeMangler() : (NodeMangler)new UnixNodeMangler()))
->>>>>>> runtime/main
         {
         }
 
@@ -134,17 +130,13 @@ namespace ILCompiler
             if (_resilient)
                 options |= RyuJitCompilationOptions.UseResilience;
 
-<<<<<<< HEAD
             JitConfigProvider.Initialize(_context.Target, jitFlagBuilder.ToArray(), _ryujitOptions, _jitPath);
             return CreateCompilation(options);
         }
 
         protected virtual RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options)
         {
-            var factory = new RyuJitNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager());
-=======
             var factory = new RyuJitNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager);
->>>>>>> runtime/main
 
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(CompilerComparer.Instance));
             return new RyuJitCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _inliningPolicy ?? _compilationGroup, _instructionSetSupport, _profileDataManager, _methodImportationErrorProvider, _readOnlyFieldPolicy, options, _parallelism);

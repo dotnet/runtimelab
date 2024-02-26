@@ -331,7 +331,6 @@ $env:DOTNETSDK_ALLOW_TARGETING_PACK_CACHING=0
 
 $failedBuilds = @()
 
-<<<<<<< HEAD
 if ($os -eq "browser") {
   # override default arch for Browser, we only support wasm
   $arch = "wasm"
@@ -352,8 +351,6 @@ if ($os -eq "wasi") {
   }
 }
 
-=======
->>>>>>> runtime/main
 foreach ($config in $configuration) {
   $argumentsWithConfig = $arguments + " -configuration $((Get-Culture).TextInfo.ToTitleCase($config))";
   foreach ($singleArch in $arch) {

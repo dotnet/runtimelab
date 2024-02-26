@@ -86,15 +86,10 @@ public class SimpleWasmTestRunner : WasmApplicationEntryPoint
         {
             await Task.Yield();
         }
-<<<<<<< HEAD
 #endif
-
-        if (backgroundExec)
-=======
 
         var res = 0;
         do
->>>>>>> runtime/main
         {
             if (backgroundExec)
             {

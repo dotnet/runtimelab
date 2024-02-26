@@ -15,12 +15,8 @@ import {
 } from "./marshal";
 import { mono_wasm_new_external_root, mono_wasm_new_root } from "./roots";
 import { monoStringToString } from "./strings";
-<<<<<<< HEAD
 import { utf16ToString } from "./strings";
-import { MonoObjectRef, MonoStringRef, MonoString, MonoObject, MonoMethod, JSMarshalerArguments, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, VoidPtrNull, MonoObjectRefNull, MonoObjectNull, MarshalerType } from "./types/internal";
-=======
 import { MonoObjectRef, MonoStringRef, MonoString, MonoObject, MonoMethod, JSMarshalerArguments, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, VoidPtrNull, MonoObjectRefNull, MonoObjectNull, MarshalerType, MonoAssembly } from "./types/internal";
->>>>>>> runtime/main
 import { Int32Ptr } from "./types/emscripten";
 import cwraps from "./cwraps";
 import { assert_c_interop, assert_js_interop, wrap_error_root, wrap_no_error_root } from "./invoke-js";
@@ -391,13 +387,8 @@ type BindingClosure = {
     isDisposed: boolean,
 }
 
-<<<<<<< HEAD
-function invoke_method_and_handle_exception_mono(method: MonoMethod, args: JSMarshalerArguments): void {
-    assert_bindings();
-=======
-export function invoke_method_and_handle_exception(method: MonoMethod, args: JSMarshalerArguments): void {
+export function invoke_method_and_handle_exception_mono(method: MonoMethod, args: JSMarshalerArguments): void {
     assert_js_interop();
->>>>>>> runtime/main
     const fail_root = mono_wasm_new_root<MonoString>();
     try {
         set_args_context(args);
@@ -465,13 +456,8 @@ function _walk_exports_to_set_function(assembly: string, namespace: string, clas
     scope[`${methodname}.${signature_hash}`] = fn;
 }
 
-<<<<<<< HEAD
 async function mono_wasm_get_assembly_exports_mono(assembly: string): Promise<any> {
-    assert_bindings();
-=======
-export async function mono_wasm_get_assembly_exports(assembly: string): Promise<any> {
     assert_js_interop();
->>>>>>> runtime/main
     const result = exportsByAssembly.get(assembly);
     if (!result) {
         const mark = startMeasure();
@@ -510,7 +496,7 @@ export async function mono_wasm_get_assembly_exports(assembly: string): Promise<
 }
 
 async function mono_wasm_get_assembly_exports_naot(assembly: string): Promise<any> {
-    assert_bindings();
+    assert_js_interop();
     const result = exportsByAssembly.get(assembly);
     if (!result) {
         const mark = startMeasure();

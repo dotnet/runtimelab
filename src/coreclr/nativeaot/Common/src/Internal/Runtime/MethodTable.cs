@@ -183,20 +183,6 @@ namespace Internal.Runtime
             }
         }
 
-<<<<<<< HEAD
-        /// <summary>
-        /// Gets a value indicating whether writable data is supported.
-        /// </summary>
-        internal static bool SupportsWritableData
-        {
-            get
-            {
-                return true;
-            }
-        }
-
-=======
->>>>>>> runtime/main
         [Intrinsic]
         internal static extern MethodTable* Of<T>();
 

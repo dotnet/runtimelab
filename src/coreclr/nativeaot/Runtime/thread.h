@@ -95,12 +95,8 @@ struct ThreadBuffer
 #ifdef FEATURE_HIJACK
     void **                 m_ppvHijackedReturnAddressLocation;
     void *                  m_pvHijackedReturnAddress;
-<<<<<<< HEAD
-    uintptr_t               m_uHijackedReturnValueFlags;            
-#endif // FEATURE_HIJACK
-=======
     uintptr_t               m_uHijackedReturnValueFlags;
->>>>>>> runtime/main
+#endif // FEATURE_HIJACK
     PTR_ExInfo              m_pExInfoStackHead;
     Object*                 m_threadAbortException;                 // ThreadAbortException instance -set only during thread abort
     Object*                 m_pThreadLocalStatics;

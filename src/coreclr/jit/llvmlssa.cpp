@@ -124,7 +124,7 @@ private:
         }
     }
 
-    class LssaDomTreeVisitor : public NewDomTreeVisitor<LssaDomTreeVisitor>
+    class LssaDomTreeVisitor : public DomTreeVisitor<LssaDomTreeVisitor>
     {
         // Cannot use raw node pointers as their values influence hash table iteration order.
         struct DeterministicNodeHashInfo : public HashTableInfo<DeterministicNodeHashInfo>
@@ -148,7 +148,7 @@ private:
 
     public:
         LssaDomTreeVisitor(ShadowStackAllocator* lssa)
-            : NewDomTreeVisitor(lssa->m_compiler)
+            : DomTreeVisitor(lssa->m_compiler)
             , m_lssa(lssa)
             , m_liveSdsuGcDefs(m_compiler->getAllocator(CMK_Codegen))
             , m_spillLclsRef(m_compiler->getAllocator(CMK_Codegen))

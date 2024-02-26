@@ -4589,13 +4589,15 @@ bool Compiler::gtCanSwapOrder(GenTree* firstNode, GenTree* secondNode)
 }
 
 #ifdef TARGET_WASM
-bool genCreateAddrMode(Compiler* compiler, GenTree* addr,
-    bool      fold,
-    bool* revPtr,
-    GenTree** rv1Ptr,
-    GenTree** rv2Ptr,
-    unsigned* mulPtr,
-    ssize_t* cnsPtr)
+bool genCreateAddrMode(Compiler* compiler,
+                       GenTree*  addr,
+                       bool      fold,
+                       unsigned  naturalMul,
+                       bool*     revPtr,
+                       GenTree** rv1Ptr,
+                       GenTree** rv2Ptr,
+                       unsigned* mulPtr,
+                       ssize_t*  cnsPtr)
 {
     /*
         The following indirections are valid address modes on x86/x64:
@@ -5056,14 +5058,6 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
     GenTree* base; // This is the base of the address.
     GenTree* idx;  // This is the index.
 
-<<<<<<< HEAD
-#ifdef TARGET_WASM
-    if (genCreateAddrMode(this, addr, false /*fold*/, &rev, &base, &idx, &mul, &cns))
-#else
-    if (codeGen->genCreateAddrMode(addr, false /*fold*/, &rev, &base, &idx, &mul, &cns))
-#endif
-    {
-=======
     unsigned naturalMul = 0;
 #ifdef TARGET_ARM64
     // Multiplier should be a "natural-scale" power of two number which is equal to target's width.
@@ -5074,9 +5068,12 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
     //
     naturalMul = genTypeSize(type);
 #endif
->>>>>>> runtime/main
 
+#ifdef TARGET_WASM
+    if (genCreateAddrMode(this, addr, false /*fold*/, naturalMul, &rev, &base, &idx, &mul, &cns))
+#else
     if (codeGen->genCreateAddrMode(addr, false /*fold*/, naturalMul, &rev, &base, &idx, &mul, &cns))
+#endif
     {
 #ifdef TARGET_ARM64
         assert((mul == 0) || (mul == 1) || (mul == naturalMul));

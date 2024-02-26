@@ -25,9 +25,11 @@ internal static partial class Interop
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern void ResolveOrRejectPromise(void* data);
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern IntPtr RegisterGCRoot(IntPtr start, int bytesSize, IntPtr name);
+        public static extern IntPtr RegisterGCRoot(void* start, int bytesSize, IntPtr name);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern void DeregisterGCRoot(IntPtr handle);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public static extern void CancelPromise(IntPtr gcHandle);
 
         public static unsafe void BindJSImport(void* signature, out int is_exception, out object result)
         {
