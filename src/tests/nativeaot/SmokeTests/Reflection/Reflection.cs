@@ -2594,10 +2594,14 @@ internal static class ReflectionTest
 
         public static void Run()
         {
+            // Thread.Start not supported for Wasm.
             ReflectionInLambda();
             ReflectionInLocalFunction();
+            // Thread.Start not supported for Wasm.
+#if !CODEGEN_WASM
             ReflectionInAsync();
             ReflectionInLambdaAsync();
+#endif
         }
     }
 

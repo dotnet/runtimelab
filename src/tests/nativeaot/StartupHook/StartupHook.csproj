@@ -12,5 +12,6 @@
 
   <ItemGroup>
     <CLRTestEnvironmentVariable Include="DOTNET_STARTUP_HOOKS" Value="StartupHook" />
+    <CLRTestTargetUnsupported Condition="'$(TargetsWasm)' == 'true'">true</CLRTestTargetUnsupported>
   </ItemGroup>
 </Project>
