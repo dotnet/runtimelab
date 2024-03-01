@@ -29,7 +29,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'browser'">
-    <!-- TODO-LLVM: delete once we upgarde to Emscripten with https://github.com/emscripten-core/emscripten/pull/21071 -->
+    <!-- TODO-LLVM: delete once we upgrade to Emscripten with https://github.com/emscripten-core/emscripten/pull/21071 -->
     <!-- https://github.com/dotnet/runtimelab/issues/2455 -->
     <LinkerArg Include="-sINITIAL_MEMORY=32MB" />
   </ItemGroup>
