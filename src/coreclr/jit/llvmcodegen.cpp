@@ -46,15 +46,7 @@ void Llvm::initializeFunctions()
         BADCODE("Duplicate definition");
     }
 
-    if (_compiler->opts.jitFlags->IsSet(JitFlags::JIT_FLAG_MIN_OPT))
-    {
-        rootLlvmFunction->addFnAttr(llvm::Attribute::NoInline);
-        rootLlvmFunction->addFnAttr(llvm::Attribute::OptimizeNone);
-    }
-    if ((_compiler->info.compFlags & CORINFO_FLG_DONT_INLINE) != 0)
-    {
-        rootLlvmFunction->addFnAttr(llvm::Attribute::NoInline);
-    }
+    annotateRootFunction(rootLlvmFunction);
 
     // First function is always the root.
     m_functions = std::vector<FunctionInfo>(_compiler->compFuncCount());
@@ -116,6 +108,25 @@ void Llvm::initializeFunctions()
         }
 
         m_functions[funcIdx] = {llvmFunc};
+    }
+}
+
+void Llvm::annotateRootFunction(Function* llvmFunc)
+{
+    if (_compiler->opts.jitFlags->IsSet(JitFlags::JIT_FLAG_MIN_OPT))
+    {
+        llvmFunc->addFnAttr(llvm::Attribute::NoInline);
+        llvmFunc->addFnAttr(llvm::Attribute::OptimizeNone);
+    }
+    if ((_compiler->info.compFlags & CORINFO_FLG_DONT_INLINE) != 0)
+    {
+        llvmFunc->addFnAttr(llvm::Attribute::NoInline);
+    }
+
+    if (!llvmFunc->hasFnAttribute(llvm::Attribute::OptimizeNone) &&
+        (!m_anyReturns || (_compiler->opts.compCodeOpt == Compiler::SMALL_CODE)))
+    {
+        llvmFunc->addFnAttr(llvm::Attribute::OptimizeForSize);
     }
 }
 

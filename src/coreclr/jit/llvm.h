@@ -238,6 +238,9 @@ private:
     SideEffectSet m_scratchSideEffects; // Used for IsInvariantInRange.
     bool m_anyFilterFunclets = false;
 
+    // Shared between lowering and codegen.
+    bool m_anyReturns = false;
+
     // Shared between unwind index insertion and EH codegen.
     ArrayStack<unsigned>* m_unwindIndexMap = nullptr;
     BlockSet m_blocksInFilters = BlockSetOps::UninitVal();
@@ -472,6 +475,7 @@ private:
     const unsigned ROOT_FUNC_IDX = 0;
 
     void initializeFunctions();
+    void annotateRootFunction(Function* llvmFunc);
     void generateProlog();
     void initializeShadowStack();
     void initializeLocals();

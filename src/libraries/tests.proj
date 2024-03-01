@@ -608,10 +608,12 @@
     <SmokeTestProject Include="$(MSBuildThisFileDirectory)System.Threading\tests\System.Threading.Tests.csproj" />
   </ItemGroup>
 
-  <!-- NativeAOT-LLVM: Just a few test suites that pass -->
+  <!-- NativeAOT-LLVM: Just a few test suites. -->
   <ItemGroup Condition="'$(TestNativeAot)' == 'true' and '$(TargetsWasm)' == 'true'">
     <SmokeTestProject Remove="@(SmokeTestProject)" />
     <SmokeTestProject Include="$(MSBuildThisFileDirectory)System.Collections.Specialized\tests\System.Collections.Specialized.Tests.csproj" />
+    <!-- S.R.Tests aren't yet passing upstream on WASI. -->
+    <SmokeTestProject Include="$(MSBuildThisFileDirectory)System.Runtime\tests\System.Runtime.Tests\System.Runtime.Tests.csproj" Condition="'$(TargetsBrowser)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetOS)' == 'browser' and '$(WasmEnableThreads)' == 'true'">

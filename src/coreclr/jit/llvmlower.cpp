@@ -650,6 +650,8 @@ void Llvm::lowerArrLength(GenTreeArrCommon* node)
 
 void Llvm::lowerReturn(GenTreeUnOp* retNode)
 {
+    m_anyReturns = true;
+
     if (retNode->TypeIs(TYP_VOID))
     {
         // Nothing to do.

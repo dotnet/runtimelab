@@ -31,10 +31,8 @@
     <RuntimeBasePath>..\..\Runtime.Base\src\</RuntimeBasePath>
   </PropertyGroup>
 
-  <PropertyGroup>
+  <PropertyGroup Condition="'$(TargetsSingleThreadedWasm)' != 'true'">
     <FeaturePortableThreadPool>true</FeaturePortableThreadPool>
-  </PropertyGroup>
-  <PropertyGroup>
     <FeaturePortableTimer>true</FeaturePortableTimer>
   </PropertyGroup>
   <PropertyGroup>
@@ -305,13 +303,13 @@
   <ItemGroup Condition="'$(TargetsWindows)'=='true'">
     <Compile Include="System\Threading\ThreadPoolCallbackWrapper.NativeAot.cs" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetsUnix)'=='true' or '$(TargetsBrowser)'=='true' or '$(TargetsWasi)'=='true'">
+  <ItemGroup Condition="'$(TargetsUnix)'=='true' or '$(TargetsWasm)'=='true'">
     <Compile Include="Internal\Runtime\FrozenObjectHeapManager.Unix.cs" Condition="'$(TargetsWasm)' != 'true'" />
     <Compile Include="Internal\Runtime\FrozenObjectHeapManager.Wasm.cs" Condition="'$(TargetsWasm)' == 'true'" />
     <Compile Include="System\Environment.NativeAot.Unix.cs" />
     <Compile Include="System\Runtime\InteropServices\NativeLibrary.NativeAot.Unix.cs" />
     <Compile Include="System\Runtime\InteropServices\PInvokeMarshal.Unix.cs" />
-    <Compile Include="System\Threading\LowLevelLifoSemaphore.Unix.cs" />
+    <Compile Include="System\Threading\LowLevelLifoSemaphore.Unix.cs" Condition="'$(TargetsSingleThreadedWasm)' != 'true'" />
     <Compile Include="System\Threading\Thread.NativeAot.Unix.cs" />
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.Abort.cs">
       <Link>Interop\Unix\System.Native\Interop.Abort.cs</Link>
@@ -329,12 +327,25 @@
       <Link>Interop\Unix\System.Native\Interop.MUnmap.cs</Link>
     </Compile>
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetsBrowser)'=='true' and '$(FeatureWasmThreads)' != 'true'">
-    <Compile Include="System\Threading\PreAllocatedOverlapped.NativeAot.Wasm.cs" />
+
+  <!-- WASM-specific threading things. Keep in sync with Mono. -->
+  <PropertyGroup>
+    <MonoBclSourcesRoot>$([MSBuild]::NormalizePath('$(MonoProjectRoot)', 'System.Private.CoreLib', 'src'))</MonoBclSourcesRoot>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(TargetsBrowser)' == 'true' and '$(FeatureWasmThreads)' != 'true'">
+    <Compile Include="$(MonoBclSourcesRoot)\System\Threading\ThreadPoolBoundHandle.Browser.Mono.cs" />
+    <Compile Include="$(MonoBclSourcesRoot)\System\Threading\PreAllocatedOverlapped.Browser.Mono.cs" />
+    <Compile Include="$(MonoBclSourcesRoot)\System\Threading\ThreadPool.Browser.Mono.cs" />
+    <!-- TODO-LLVM: the timer queue is a little more dependent on TS, take the PNSE version for now. -->
+    <Compile Include="$(MonoBclSourcesRoot)\System\Threading\TimerQueue.Wasi.Mono.cs" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetsWasi)'=='true'">
-    <Compile Include="System\Threading\ThreadApiCompat.Wasi.cs" />
+  <ItemGroup Condition="'$(TargetsWasi)' == 'true' and '$(FeatureWasmThreads)' != 'true'">
+    <Compile Include="$(MonoBclSourcesRoot)\System\Threading\ThreadPoolBoundHandle.Browser.Mono.cs" />
+    <Compile Include="$(MonoBclSourcesRoot)\System\Threading\PreAllocatedOverlapped.Browser.Mono.cs" />
+    <Compile Include="$(MonoBclSourcesRoot)\System\Threading\ThreadPool.Wasi.Mono.cs" />
+    <Compile Include="$(MonoBclSourcesRoot)\System\Threading\TimerQueue.Wasi.Mono.cs" />
   </ItemGroup>
+
   <ItemGroup>
     <Compile Include="$(CompilerCommonPath)\System\Collections\Generic\ArrayBuilder.cs">
       <Link>ArrayBuilder.cs</Link>
