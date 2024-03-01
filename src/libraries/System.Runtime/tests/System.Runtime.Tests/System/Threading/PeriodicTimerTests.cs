@@ -7,7 +7,6 @@ using Xunit;
 
 namespace System.Threading.Tests
 {
-    [ActiveIssue("https://github.com/dotnet/runtimelab/issues/2505", typeof(PlatformDetection), nameof(PlatformDetection.IsNativeAot), nameof(PlatformDetection.IsWasm))]
     public class PeriodicTimerTests
     {
         [Fact]
