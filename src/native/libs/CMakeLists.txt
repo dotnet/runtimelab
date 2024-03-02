@@ -37,7 +37,7 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
 
     if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         # NativeAOT-LLVM enables -Weverything but these will cause failures so disable individually
-	add_compile_options(-Wno-unused-parameter -Wno-declaration-after-statement -Wno-switch-default)
+        add_compile_options(-Wno-unused-parameter -Wno-declaration-after-statement)
         set(GEN_SHARED_LIB 0)
         set(STATIC_LIB_DESTINATION .)
     endif ()

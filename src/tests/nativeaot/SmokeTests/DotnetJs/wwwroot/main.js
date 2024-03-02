@@ -5,6 +5,7 @@ import { dotnet, exit } from './dotnet.js'
 
 const { runMain, setModuleImports, getAssemblyExports } = await dotnet
     .withApplicationArguments("A", "B", "C")
+    .withMainAssembly("DotnetJs")
     .create();
 
 setModuleImports('main.js', {
