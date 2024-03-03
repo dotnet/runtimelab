@@ -23,8 +23,8 @@
 //    - "Tentative", where we know the precise lifetimes. These locals may not end up on the shadow stack at
 //      all, as we may determine that they don't cross any safe point, or only some of their defs may end up
 //      there.
-//    - "Unconditional" cases, where the local will fully commited to the shadow stack and stored on each def,
-//      and reloaded on each use. This may be becaus the local was address-exposed, and we don't know its exact
+//    - "Unconditional" cases, where the local will be fully commited to the shadow stack and stored on each def,
+//      and reloaded on each use. This may be because the local was address-exposed, and we don't know its exact
 //      live range, or due to implementation constraints.
 //
 // 2) We walk over the totality of IR, in dominator pre-order, maintaining the stack of currently active SSA
@@ -714,7 +714,7 @@ private:
                         PushActiveLocalDef(block, varDsc, ssaNum);
                         UpdateLiveLocalDefs(varDsc, node->AsLclVarCommon()->HasLastUse(), /* isBorn */ true);
                     }
-                    // Increment the "active" use count used for accurate last use detection. Note that us skipping
+                    // Increment the "active" use count used for accurate last use detection. Note that skipping
                     // unused locals here means that we could technically extend the their live range unnecessarily
                     // (if this was the last 'use'), but all such cases should have been DCEd by this point, and
                     // it's not a correctness problem to skip them.
@@ -834,7 +834,7 @@ private:
                     for (unsigned defIndex = 0; defIndex < defCount; defIndex++)
                     {
                         // We should have seen the exact totality of all uses in the IR walk. Make an exemption
-                        // for an unused implicit definition, of which the use count we do not uninitialize.
+                        // for an unused implicit definition, for which we do not uninitialize the use count .
                         LclSsaVarDsc* ssaDsc = varDsc->lvPerSsaData.GetSsaDefByIndex(defIndex);
                         if ((ssaDsc->GetDefNode() != nullptr) || (ssaDsc->GetNumUses() != 0))
                         {
