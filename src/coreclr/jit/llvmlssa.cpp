@@ -226,7 +226,7 @@ private:
             }
         };
 
-        static const unsigned GC_EXPOSED_NOT = 0;
+        static const unsigned GC_EXPOSED_NO = 0;
         static const unsigned GC_EXPOSED_YES = 1;
         static const unsigned GC_EXPOSED_UNKNOWN = ValueNumStore::NoVN;
         static const unsigned LAST_ACTIVE_USE_IS_LAST_USE_BIT = 1 << 31;
@@ -652,7 +652,7 @@ private:
                 if ((defNode != nullptr) && defNode->OperIs(GT_STORE_LCL_VAR) && !IsGcExposedValue(defNode->Data()))
                 {
                     INDEBUG(reason = "value not exposed");
-                    status = GC_EXPOSED_NOT;
+                    status = GC_EXPOSED_NO;
                 }
                 else
                 {
@@ -671,7 +671,7 @@ private:
         void SetGcExposedStatus(LclSsaVarDsc* ssaDsc, unsigned status DEBUGARG(const char* reason))
         {
             unsigned* pStatus = GetRawGcExposedStatusRef(ssaDsc);
-            assert((*pStatus == GC_EXPOSED_UNKNOWN) || ((*pStatus == GC_EXPOSED_YES) && (status == GC_EXPOSED_NOT)));
+            assert((*pStatus == GC_EXPOSED_UNKNOWN) || ((*pStatus == GC_EXPOSED_YES) && (status == GC_EXPOSED_NO)));
             assert(status != GC_EXPOSED_UNKNOWN);
 
             DBEXEC(reason != nullptr, m_gcExposedStatusReasonMap.Set(ssaDsc, reason));
@@ -693,7 +693,7 @@ private:
         void MarkLocalSpilled(LclVarDsc* varDsc, LclSsaVarDsc* ssaDsc)
         {
             varDsc->SetRegNum(REG_STK_CANDIDATE_COMMITED);
-            SetGcExposedStatus(ssaDsc, GC_EXPOSED_NOT DEBUGARG("already spilled"));
+            SetGcExposedStatus(ssaDsc, GC_EXPOSED_NO DEBUGARG("already spilled"));
         }
 
         void ProcessDef(BasicBlock* block, GenTree* node)
@@ -715,7 +715,7 @@ private:
                         UpdateLiveLocalDefs(varDsc, node->AsLclVarCommon()->HasLastUse(), /* isBorn */ true);
                     }
                     // Increment the "active" use count used for accurate last use detection. Note that skipping
-                    // unused locals here means that we could technically extend the their live range unnecessarily
+                    // unused locals here means that we could technically extend their live ranges unnecessarily
                     // (if this was the last 'use'), but all such cases should have been DCEd by this point, and
                     // it's not a correctness problem to skip them.
                     else if (!node->OperIs(GT_PHI_ARG) && !node->IsUnusedValue())
@@ -834,7 +834,7 @@ private:
                     for (unsigned defIndex = 0; defIndex < defCount; defIndex++)
                     {
                         // We should have seen the exact totality of all uses in the IR walk. Make an exemption
-                        // for an unused implicit definition, for which we do not uninitialize the use count .
+                        // for an unused implicit definition, for which we do not initialize the use counts.
                         LclSsaVarDsc* ssaDsc = varDsc->lvPerSsaData.GetSsaDefByIndex(defIndex);
                         if ((ssaDsc->GetDefNode() != nullptr) || (ssaDsc->GetNumUses() != 0))
                         {

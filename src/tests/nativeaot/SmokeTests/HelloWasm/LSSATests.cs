@@ -274,7 +274,7 @@ public unsafe class LSSATests
     {
         SafePoint(null);
 
-        // Test that we only spill "y", thus also rooting "x".
+        // Test that we only spill "x", thus also rooting "y".
         object y = x;
         ForceILLocal(&y);
         SafePoint(y, y);
