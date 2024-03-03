@@ -7377,8 +7377,9 @@ void Compiler::lvaDumpFrameLocation(unsigned lclNum)
     regNumber baseReg;
 
 #ifdef TARGET_WASM
-    offset  = lvaGetDesc(lclNum)->GetStackOffset();
-    baseReg = REG_STK;
+    LclVarDsc* varDsc = lvaGetDesc(lclNum);
+    offset  = varDsc->GetStackOffset();
+    baseReg = varDsc->GetRegNum();
 #elif TARGET_ARM
     offset = lvaFrameAddress(lclNum, compLocallocUsed, &baseReg, 0, /* isFloatUsage */ false);
 #else

@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -300,6 +301,40 @@ namespace Internal.JitInterface
             return _this.ObjectToHandle(ehInfoNode);
         }
 
+        public enum CorInfoLlvmJitTestKind
+        {
+            CORINFO_JIT_TEST_LSSA = 1
+        }
+
+        public struct CORINFO_LLVM_JIT_TEST_INFO
+        {
+            public byte* ExpectedLssaAllocation;
+        }
+
+        [UnmanagedCallersOnly]
+        private static void getJitTestInfo(IntPtr thisHandle, CorInfoLlvmJitTestKind kind, CORINFO_LLVM_JIT_TEST_INFO* pInfo)
+        {
+            *pInfo = default;
+
+            CorInfoImpl _this = GetThis(thisHandle);
+            if (_this._isFallbackBodyCompilation)
+            {
+                // The tests indicate failure by throwing BADCODE. Don't attempt to test anything "on the way out".
+                return;
+            }
+
+            if ((kind & CorInfoLlvmJitTestKind.CORINFO_JIT_TEST_LSSA) != 0)
+            {
+                string expectedAllocation = null;
+                if (_this._methodCodeNode.Method is EcmaMethod ecmaMethod &&
+                    ecmaMethod.GetDecodedCustomAttribute("System.Runtime.JitTesting", "LSSATestAttribute") is { } attribute)
+                {
+                    expectedAllocation = (string)attribute.FixedArguments[0].Value;
+                    pInfo->ExpectedLssaAllocation = (byte*)_this.GetPin(StringToUTF8(expectedAllocation));
+                }
+            }
+        }
+
         public struct TypeDescriptor
         {
             public uint Size;
@@ -386,6 +421,7 @@ namespace Internal.JitInterface
             GetExceptionHandlingModel,
             GetExceptionThrownVariable,
             GetExceptionHandlingTable,
+            GetJitTestInfo,
             Count
         }
 
@@ -419,6 +455,7 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.GetExceptionHandlingModel] = (delegate* unmanaged<IntPtr, CorInfoLlvmEHModel>)&getExceptionHandlingModel;
             jitImports[(int)EEApiId.GetExceptionThrownVariable] = (delegate* unmanaged<IntPtr, IntPtr>)&getExceptionThrownVariable;
             jitImports[(int)EEApiId.GetExceptionHandlingTable] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_EH_CLAUSE*, int, IntPtr>)&getExceptionHandlingTable;
+            jitImports[(int)EEApiId.GetJitTestInfo] = (delegate* unmanaged<IntPtr, CorInfoLlvmJitTestKind, CORINFO_LLVM_JIT_TEST_INFO*, void>)&getJitTestInfo;
             jitImports[(int)EEApiId.Count] = (void*)0x1234;
 
 #if DEBUG

@@ -75,6 +75,16 @@ struct CORINFO_LLVM_EH_CLAUSE
     unsigned FilterIndex;
 };
 
+enum CorInfoLlvmJitTestKind
+{
+    CORINFO_JIT_TEST_LSSA = 1
+};
+
+struct CORINFO_LLVM_JIT_TEST_INFO
+{
+    const char* ExpectedLssaAllocation;
+};
+
 typedef unsigned CORINFO_LLVM_DEBUG_TYPE_HANDLE;
 
 const CORINFO_LLVM_DEBUG_TYPE_HANDLE NO_DEBUG_TYPE = 0;
@@ -346,6 +356,7 @@ private:
     CorInfoLlvmEHModel GetExceptionHandlingModel();
     CORINFO_GENERIC_HANDLE GetExceptionThrownVariable();
     CORINFO_GENERIC_HANDLE GetExceptionHandlingTable(CORINFO_LLVM_EH_CLAUSE* pClauses, int count);
+    void GetJitTestInfo(CorInfoLlvmJitTestKind kind, CORINFO_LLVM_JIT_TEST_INFO* pInfo);
 
 public:
     static SingleThreadedCompilationContext* StartSingleThreadedCompilation(
