@@ -329,7 +329,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_NEWSFAST_ALIGN8_FINALIZE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\ArrayHelpers.cs".
-        { FUNC(CORINFO_HELP_NEW_MDARR) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT, CORINFO_TYPE_PTR }, HFIF_SS_ARG }, // Oddity: IntPtr used for MethodTable*.
+        { FUNC(CORINFO_HELP_NEW_MDARR) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_NEW_MDARR_RARE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_NATIVEINT, CORINFO_TYPE_INT, CORINFO_TYPE_PTR }, HFIF_SS_ARG }, // Oddity: IntPtr used for MethodTable*.
 
         // Runtime export, implemented in "Runtime.Base\src\System\Runtime\RuntimeExports.cs".
