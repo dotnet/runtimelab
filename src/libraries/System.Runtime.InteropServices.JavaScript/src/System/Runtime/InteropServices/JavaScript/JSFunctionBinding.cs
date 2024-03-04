@@ -228,7 +228,7 @@ namespace System.Runtime.InteropServices.JavaScript
             var functionHandle = (int)jsFunction.JSHandle;
             fixed (JSMarshalerArgument* ptr = arguments)
             {
-                Interop.Runtime.InvokeJSFunction(functionHandle, (void*)ptr);
+                Interop.Runtime.InvokeJSFunction(functionHandle, (nint)ptr);
                 ref JSMarshalerArgument exceptionArg = ref arguments[0];
                 if (exceptionArg.slot.Type != MarshalerType.None)
                 {

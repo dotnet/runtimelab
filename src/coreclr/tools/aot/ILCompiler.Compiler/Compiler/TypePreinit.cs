@@ -2424,8 +2424,6 @@ namespace ILCompiler
             {
                 builder.EmitPointerReloc(factory.SerializedMaximallyConstructableRuntimeTypeObject(TypeRepresented));
             }
-
-            public override bool TargetSupportsWritingFieldData => EETypeNode.SupportsFrozenRuntimeTypeInstances(Type.Context.Target);
         }
 
         private sealed class ReadOnlySpanValue : BaseValueTypeValue, IInternalModelingOnlyValue

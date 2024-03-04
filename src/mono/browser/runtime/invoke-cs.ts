@@ -3,6 +3,8 @@
 /* eslint-disable prefer-rest-params */
 
 import NativeAOT from "consts:nativeAOT";
+import { utf16ToString } from "./strings";
+
 import BuildConfiguration from "consts:configuration";
 import WasmEnableThreads from "consts:wasmEnableThreads";
 
@@ -15,7 +17,6 @@ import {
 } from "./marshal";
 import { mono_wasm_new_external_root, mono_wasm_new_root } from "./roots";
 import { monoStringToString } from "./strings";
-import { utf16ToString } from "./strings";
 import { MonoObjectRef, MonoStringRef, MonoString, MonoObject, MonoMethod, JSMarshalerArguments, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, VoidPtrNull, MonoObjectRefNull, MonoObjectNull, MarshalerType, MonoAssembly } from "./types/internal";
 import { Int32Ptr } from "./types/emscripten";
 import cwraps from "./cwraps";

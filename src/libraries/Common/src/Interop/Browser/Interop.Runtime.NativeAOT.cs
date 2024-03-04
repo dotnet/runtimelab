@@ -17,7 +17,7 @@ internal static partial class Interop
         [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_bind_js_import", StringMarshalling = StringMarshalling.Utf16)]
         public static unsafe partial void BindJSImport(void* signature, out int is_exception, out IntPtr result);
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern void InvokeJSFunction(IntPtr bound_function_js_handle, void* data);
+        public static extern void InvokeJSFunction(IntPtr bound_function_js_handle, nint data);
         [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_invoke_js_import", StringMarshalling = StringMarshalling.Utf16)]
         public static unsafe partial void InvokeJSImport(IntPtr fn_handle, void* data);
         [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_bind_cs_function", StringMarshalling = StringMarshalling.Utf16)]

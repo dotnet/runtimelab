@@ -331,26 +331,6 @@ $env:DOTNETSDK_ALLOW_TARGETING_PACK_CACHING=0
 
 $failedBuilds = @()
 
-if ($os -eq "browser") {
-  # override default arch for Browser, we only support wasm
-  $arch = "wasm"
-
-  if ($msbuild -eq $True -and $runtimeFlavor -ne "CoreCLR") {
-    Write-Error "Using the -msbuild option isn't supported when building for Browser on Windows, we need need ninja for Emscripten."
-    exit 1
-  }
-}
-
-if ($os -eq "wasi") {
-  # override default arch for wasi, we only support wasm
-  $arch = "wasm"
-
-  if ($msbuild -eq $True) {
-    Write-Error "Using the -msbuild option isn't supported when building for WASI on Windows, we need ninja for WASI-SDK."
-    exit 1
-  }
-}
-
 foreach ($config in $configuration) {
   $argumentsWithConfig = $arguments + " -configuration $((Get-Culture).TextInfo.ToTitleCase($config))";
   foreach ($singleArch in $arch) {

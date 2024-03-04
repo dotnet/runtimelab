@@ -2,9 +2,11 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 import NativeAOT from "consts:nativeAOT";
+import { Module } from "./globals";
+
 import WasmEnableThreads from "consts:wasmEnableThreads";
 
-import { ENVIRONMENT_IS_NODE, Module, loaderHelpers, mono_assert, runtimeHelpers } from "./globals";
+import { ENVIRONMENT_IS_NODE, loaderHelpers, mono_assert, runtimeHelpers } from "./globals";
 import { mono_wasm_wait_for_debugger } from "./debug";
 import { mono_wasm_set_main_args } from "./startup";
 import cwraps from "./cwraps";
