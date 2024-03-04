@@ -30,6 +30,7 @@ enum class EEApiId
     GetExceptionHandlingModel,
     GetExceptionThrownVariable,
     GetExceptionHandlingTable,
+    GetJitTestInfo,
     Count
 };
 
@@ -865,6 +866,11 @@ CORINFO_GENERIC_HANDLE Llvm::GetExceptionThrownVariable()
 CORINFO_GENERIC_HANDLE Llvm::GetExceptionHandlingTable(CORINFO_LLVM_EH_CLAUSE* pClauses, int count)
 {
     return CallEEApi<EEApiId::GetExceptionHandlingTable, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, pClauses, count);
+}
+
+void Llvm::GetJitTestInfo(CorInfoLlvmJitTestKind kind, CORINFO_LLVM_JIT_TEST_INFO* pInfo)
+{
+    CallEEApi<EEApiId::GetJitTestInfo, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, kind, pInfo);
 }
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExports)

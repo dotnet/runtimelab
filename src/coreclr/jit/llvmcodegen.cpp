@@ -2776,9 +2776,23 @@ void Llvm::annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc
             llvmFunc->addRetAttr(llvm::Attribute::NonNull);
         }
     }
+
     if (properties.IsAllocator(helperFunc))
     {
-        llvmFunc->addRetAttr(llvm::Attribute::NoAlias);
+        switch (helperFunc)
+        {
+            // TODO-LLVM-Upstream: figure out how to avoid hardcoding the knowledge of which helpers can run finalizers.
+            // E. g.: remove "has side effects" from "getNewHelper" and simply have this be part of the Jit/EE contract.
+            // Or have it be part of some new "get helper properties" API.
+            case CORINFO_HELP_NEWFAST:
+            case CORINFO_HELP_NEWSFAST_FINALIZE:
+            case CORINFO_HELP_NEWSFAST_ALIGN8_FINALIZE:
+                break;
+
+            default:
+                llvmFunc->addRetAttr(llvm::Attribute::NoAlias);
+                break;
+        }
     }
 }
 
