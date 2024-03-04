@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 import NativeAOT from "consts:nativeAOT";
+
 import WasmEnableThreads from "consts:wasmEnableThreads";
 import { NativePointer, ManagedPointer, VoidPtr } from "./types/emscripten";
 import { Module, mono_assert, runtimeHelpers } from "./globals";
