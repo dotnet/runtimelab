@@ -3,6 +3,7 @@
 /* eslint-disable prefer-rest-params */
 
 import NativeAOT from "consts:nativeAOT";
+
 import WasmEnableThreads from "consts:wasmEnableThreads";
 import BuildConfiguration from "consts:configuration";
 
