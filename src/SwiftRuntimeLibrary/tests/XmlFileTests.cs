@@ -23,13 +23,13 @@ public class XmlFileTests
         if (xmlDoc == null)
             return false;
 
-        if (xmlDoc.DocumentElement.Name != "xamtypedatabase")
+        if (xmlDoc?.DocumentElement?.Name != "swifttypedatabase")
             return false;
 
         if (xmlDoc.DocumentElement.Attributes["version"]?.Value != "1.0")
             return false;
 
-        XmlNode entitiesNode = xmlDoc.SelectSingleNode("//xamtypedatabase/entities");
+        XmlNode? entitiesNode = xmlDoc?.SelectSingleNode("//swifttypedatabase/entities");
         if (entitiesNode == null)
             return false;
 
@@ -41,7 +41,7 @@ public class XmlFileTests
             if (entityNode.Name != "entity")
                 return false;
 
-            XmlNode typeDeclarationNode = entityNode?.SelectSingleNode("typedeclaration");
+            XmlNode? typeDeclarationNode = entityNode?.SelectSingleNode("typedeclaration");
             if (typeDeclarationNode == null)
                 return false;
         }
