@@ -36,12 +36,12 @@ namespace SyntaxDynamo.CSLang
         }
 
         public CSParameterList Parameters { get; private set; }
-        public ICSExpression Value { get; private set; }
-        public CSCodeBlock Body { get; private set; }
+        public ICSExpression? Value { get; private set; }
+        public CSCodeBlock? Body { get; private set; }
 
         #region implemented abstract members of DelegatedSimpleElem
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             // hack - Parameters really want types. If you set them to void, we'll consider them to be
             // typeless.
@@ -72,7 +72,7 @@ namespace SyntaxDynamo.CSLang
             }
             else
             {
-                Body.WriteAll(writer);
+                Body?.WriteAll(writer);
             }
         }
 

@@ -14,7 +14,7 @@ namespace SyntaxDynamo.CSLang
 
         }
 
-        public CSCodeBlock(IEnumerable<ICodeElement> statements)
+        public CSCodeBlock(IEnumerable<ICodeElement>? statements)
             : this("{", "}", statements)
         {
         }
@@ -24,7 +24,7 @@ namespace SyntaxDynamo.CSLang
             return new CSCodeBlock(statements);
         }
 
-        public CSCodeBlock(string start, string end, IEnumerable<ICodeElement> statements)
+        public CSCodeBlock(string start, string end, IEnumerable<ICodeElement>? statements)
             : base(start, end, true, true, true)
         {
             if (statements != null)

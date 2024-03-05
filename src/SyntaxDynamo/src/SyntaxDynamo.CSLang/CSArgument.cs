@@ -13,7 +13,7 @@ namespace SyntaxDynamo.CSLang
 
         public ICSExpression Value { get; private set; }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             Value.WriteAll(writer);
         }

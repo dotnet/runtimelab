@@ -26,16 +26,16 @@ namespace SyntaxDynamo.CSLang
         public CSClasses Classes { get; private set; }
         public CSUsingPackages Using { get; private set; }
 
-        public object BeginWrite(ICodeWriter writer)
+        public object? BeginWrite(ICodeWriter writer)
         {
             return null;
         }
 
-        public void Write(ICodeWriter writer, object o)
+        public void Write(ICodeWriter writer, object? o)
         {
         }
 
-        public void EndWrite(ICodeWriter writer, object o)
+        public void EndWrite(ICodeWriter writer, object? o)
         {
         }
 

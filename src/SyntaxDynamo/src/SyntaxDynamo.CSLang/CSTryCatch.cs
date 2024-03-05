@@ -6,7 +6,7 @@ namespace SyntaxDynamo.CSLang
 {
     public class CSCatch : DelegatedSimpleElement, ICSStatement
     {
-        public CSCatch(CSType catchType, CSIdentifier name, CSCodeBlock body)
+        public CSCatch(CSType? catchType, CSIdentifier? name, CSCodeBlock body)
         {
             CatchType = catchType;
             Name = name;
@@ -24,26 +24,26 @@ namespace SyntaxDynamo.CSLang
         }
 
         public CSCatch(CSCodeBlock body)
-            : this((CSType)null, null, body)
+            : this((CSType?)null, null, body)
         {
         }
 
-        public CSType CatchType { get; private set; }
-        public CSIdentifier Name { get; private set; }
+        public CSType? CatchType { get; private set; }
+        public CSIdentifier? Name { get; private set; }
         public CSCodeBlock Body { get; private set; }
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
 
             writer.BeginNewLine(true);
             writer.Write("catch ", false);
-            if ((object)CatchType != null)
+            if (CatchType != null)
             {
                 writer.Write("(", false);
                 CatchType.WriteAll(writer);
-                if ((object)Name != null)
+                if ((object?)Name != null)
                 {
                     SimpleElement.Spacer.WriteAll(writer);
-                    Name.WriteAll(writer);
+                    Name?.WriteAll(writer);
                 }
                 writer.Write(")", false);
             }
@@ -71,7 +71,7 @@ namespace SyntaxDynamo.CSLang
         {
         }
 
-        public override void Write(ICodeWriter writer, object o)
+        public override void Write(ICodeWriter writer, object? o)
         {
             writer.BeginNewLine(true);
             base.Write(writer, o);

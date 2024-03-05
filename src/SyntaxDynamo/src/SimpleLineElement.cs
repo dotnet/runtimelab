@@ -25,7 +25,7 @@ namespace SyntaxDynamo
 
         public event EventHandler<WriteEventArgs> End = (s, e) => { };
 
-        public object BeginWrite(ICodeWriter writer)
+        public object? BeginWrite(ICodeWriter writer)
         {
             OnBegin(new WriteEventArgs(writer));
             return null;
@@ -36,7 +36,7 @@ namespace SyntaxDynamo
             Begin(this, args);
         }
 
-        public void Write(ICodeWriter writer, object o)
+        public void Write(ICodeWriter writer, object? o)
         {
             if (indent)
                 writer.Indent();
@@ -45,7 +45,7 @@ namespace SyntaxDynamo
             writer.EndLine();
         }
 
-        public void EndWrite(ICodeWriter writer, object o)
+        public void EndWrite(ICodeWriter writer, object? o)
         {
             OnEnd(new WriteEventArgs(writer));
         }

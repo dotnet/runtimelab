@@ -41,14 +41,14 @@ namespace SyntaxDynamo.CSLang
 
         public CSUsingPackages And(string package) { return And(new CSUsing(package)); }
 
-        public void AddIfNotPresent(string package, CSIdentifier protectedBy = null)
+        public void AddIfNotPresent(string? package, CSIdentifier? protectedBy = null)
         {
             if (String.IsNullOrEmpty(package))
                 return;
             CSUsing target = new CSUsing(package);
             if (!this.Exists(use => use.Contents == target.Contents))
             {
-                if ((object)protectedBy != null)
+                if ((object?)protectedBy != null)
                 {
                     CSConditionalCompilation.ProtectWithIfEndif(protectedBy, target);
                 }
@@ -56,7 +56,7 @@ namespace SyntaxDynamo.CSLang
             }
         }
 
-        public void AddIfNotPresent(Type t, CSIdentifier protectedBy = null)
+        public void AddIfNotPresent(Type t, CSIdentifier? protectedBy = null)
         {
             AddIfNotPresent(t.Namespace, protectedBy);
         }

@@ -12,7 +12,7 @@ namespace SyntaxDynamo.CSLang
     {
         public CSParameter(CSType type, CSIdentifier name,
                             CSParameterKind parameterKind = CSParameterKind.None,
-                            CSConstant defaultValue = null)
+                            CSConstant? defaultValue = null)
         {
             ArgumentNullException.ThrowIfNull(type, nameof(type));
             ArgumentNullException.ThrowIfNull(name, nameof(name));
@@ -24,19 +24,19 @@ namespace SyntaxDynamo.CSLang
 
         public CSParameter(CSType type, string name,
                             CSParameterKind parameterKind = CSParameterKind.None,
-                            CSConstant defaultValue = null)
+                            CSConstant? defaultValue = null)
             : this(type, new CSIdentifier(name), parameterKind, defaultValue)
         {
         }
 
         public CSParameter(string type, string name,
                             CSParameterKind parameterKind = CSParameterKind.None,
-                            CSConstant defaultValue = null)
+                            CSConstant? defaultValue = null)
             : this(new CSSimpleType(type), new CSIdentifier(name), parameterKind, defaultValue)
         {
         }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             if (this.ParameterKind != CSParameterKind.None)
             {
@@ -46,7 +46,7 @@ namespace SyntaxDynamo.CSLang
             this.CSType.WriteAll(writer);
             writer.Write(' ', true);
             Name.WriteAll(writer);
-            if ((Object)DefaultValue != null)
+            if ((object?)DefaultValue != null)
             {
                 writer.Write(" = ", true);
                 DefaultValue.WriteAll(writer);
@@ -74,13 +74,13 @@ namespace SyntaxDynamo.CSLang
 
         public CSType CSType { get; private set; }
         public CSIdentifier Name { get; private set; }
-        public CSConstant DefaultValue { get; private set; }
+        public CSConstant? DefaultValue { get; private set; }
         public CSParameterKind ParameterKind { get; private set; }
     }
 
     public class CSParameterList : CommaListElementCollection<CSParameter>
     {
-        public CSParameterList(IEnumerable<CSParameter> parameters)
+        public CSParameterList(IEnumerable<CSParameter>? parameters)
             : base()
         {
             if (parameters != null)
@@ -93,7 +93,7 @@ namespace SyntaxDynamo.CSLang
                 AddRange(parameters);
         }
 
-        public CSParameterList() : this((IEnumerable<CSParameter>)null) { }
+        public CSParameterList() : this((IEnumerable<CSParameter>?)null) { }
 
         public CSParameterList(CSParameter parameter) : this(new CSParameter[] { parameter }) { }
 
@@ -106,7 +106,7 @@ namespace SyntaxDynamo.CSLang
 
         public CSParameterList And(string type, string identifier,
                                     CSParameterKind parameterKind = CSParameterKind.None,
-                                    CSConstant defaultValue = null)
+                                    CSConstant? defaultValue = null)
         {
             ArgumentNullException.ThrowIfNull(type, nameof(type));
             ArgumentNullException.ThrowIfNull(identifier, nameof(identifier));

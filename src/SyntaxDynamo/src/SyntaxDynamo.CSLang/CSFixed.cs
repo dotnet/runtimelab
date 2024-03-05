@@ -19,7 +19,7 @@ namespace SyntaxDynamo.CSLang
             Expr = expr;
         }
 
-        public override void Write(ICodeWriter writer, object o)
+        public override void Write(ICodeWriter writer, object? o)
         {
             writer.BeginNewLine(true);
             writer.Write("fixed (", true);

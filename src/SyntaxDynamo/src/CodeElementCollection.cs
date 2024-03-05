@@ -19,7 +19,7 @@ namespace SyntaxDynamo
 
         public event EventHandler<WriteEventArgs> End = (s, e) => { };
 
-        public virtual object BeginWrite(ICodeWriter writer)
+        public virtual object? BeginWrite(ICodeWriter writer)
         {
             OnBeginWrite(new WriteEventArgs(writer));
             return null;
@@ -30,11 +30,11 @@ namespace SyntaxDynamo
             Begin(this, args);
         }
 
-        public virtual void Write(ICodeWriter writer, object o)
+        public virtual void Write(ICodeWriter writer, object? o)
         {
         }
 
-        public virtual void EndWrite(ICodeWriter writer, object o)
+        public virtual void EndWrite(ICodeWriter writer, object? o)
         {
             OnEndWrite(new WriteEventArgs(writer));
         }

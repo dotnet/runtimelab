@@ -24,7 +24,7 @@ namespace SyntaxDynamo.CSLang
 
         #region implemented abstract members of DelegatedSimpleElem
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             if (AddParentheses)
             {

@@ -13,7 +13,7 @@ namespace SyntaxDynamo.CSLang
             Operation = op;
             Expr = expr;
         }
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             if (IsPostfix(Operation))
             {

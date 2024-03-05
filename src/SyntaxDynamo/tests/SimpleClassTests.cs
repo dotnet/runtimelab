@@ -13,7 +13,7 @@ public class SimpleClassTests
 	public delegate CSClass ClassMutator(CSClass cl);
 	public delegate CSUsingPackages UsingMutator(CSUsingPackages pkg);
 
-	public static Stream BasicClass(string nameSpace, string className, CSMethod m, ClassMutator mutator, UsingMutator useMutator = null)
+	public static Stream BasicClass(string nameSpace, string className, CSMethod? m, ClassMutator? mutator, UsingMutator? useMutator = null)
 	{
 		CSUsingPackages use = new CSUsingPackages("System");
 		if(useMutator != null)
@@ -92,7 +92,7 @@ public class SimpleClassTests
     {
         foreach(MethodInfo mi in typeof(CSType).GetMethods().Where(mii => mii.IsStatic && mii.IsPublic &&
                 mii.ReturnType == typeof(CSType) && mii.Name != "Copy")) {
-            CSType cs = mi.Invoke(null, null) as CSType;
+            CSType? cs = mi.Invoke(null, null) as CSType;
             if(cs != null)
                 DeclType(cs);
         }

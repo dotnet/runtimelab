@@ -36,7 +36,7 @@ namespace SyntaxDynamo.CSLang
         }
 
         // DllImport("msvcrt.dll", EntryPoint="puts")
-        public static CSAttribute DllImport(string dllName, string entryPoint = null)
+        public static CSAttribute DllImport(string dllName, string? entryPoint = null)
         {
             CSArgumentList args = new CSArgumentList();
             args.Add(CSConstant.Val(dllName));
@@ -45,7 +45,7 @@ namespace SyntaxDynamo.CSLang
             return new CSAttribute(new CSIdentifier("DllImport"), args, true);
         }
 
-        public static CSAttribute DllImport(CSBaseExpression dllName, string entryPoint = null)
+        public static CSAttribute DllImport(CSBaseExpression dllName, string? entryPoint = null)
         {
             CSArgumentList args = new CSArgumentList();
             args.Add(dllName);

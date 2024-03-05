@@ -86,7 +86,7 @@ namespace SyntaxDynamo.CSLang
         {
         }
 
-        string hiddenName;
+        string? hiddenName;
         public string Name
         {
             get
@@ -95,8 +95,8 @@ namespace SyntaxDynamo.CSLang
             }
         }
         public bool IsGeneric { get; private set; }
-        public string GenericTypeName { get; private set; }
-        public CSType[] GenericTypes { get; private set; }
+        public string? GenericTypeName { get; private set; }
+        public CSType[]? GenericTypes { get; private set; }
         public bool IsArray { get; private set; }
         public bool IsPointer { get; private set; }
 
@@ -122,7 +122,7 @@ namespace SyntaxDynamo.CSLang
             return sb.ToString();
         }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             writer.Write(Name, false);
         }
@@ -232,9 +232,9 @@ namespace SyntaxDynamo.CSLang
 
         public int Depth { get; private set; }
         public int Index { get; private set; }
-        public Func<int, int, string> ReferenceNamer { get; set; }
+        public Func<int, int, string>? ReferenceNamer { get; set; }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             writer.Write(Name, true);
         }

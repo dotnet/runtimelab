@@ -10,7 +10,7 @@ namespace SyntaxDynamo.CSLang
     public class CSInterface : ICodeElementSet, ICSTopLevelDeclaration
     {
         public CSInterface(CSVisibility vis, CSIdentifier name,
-            IEnumerable<CSMethod> methods = null)
+            IEnumerable<CSMethod>? methods = null)
         {
             ArgumentNullException.ThrowIfNull(name, nameof(name));
             Visibility = vis;
@@ -24,7 +24,7 @@ namespace SyntaxDynamo.CSLang
                 Methods.AddRange(methods);
         }
 
-        public CSInterface(CSVisibility vis, string name, IEnumerable<CSMethod> methods = null)
+        public CSInterface(CSVisibility vis, string name, IEnumerable<CSMethod>? methods = null)
             : this(vis, new CSIdentifier(name), methods)
         {
         }
@@ -57,7 +57,7 @@ namespace SyntaxDynamo.CSLang
 
         public event EventHandler<WriteEventArgs> End = (s, e) => { };
 
-        public virtual object BeginWrite(ICodeWriter writer)
+        public virtual object? BeginWrite(ICodeWriter writer)
         {
             OnBeginWrite(new WriteEventArgs(writer));
             return null;
@@ -68,11 +68,11 @@ namespace SyntaxDynamo.CSLang
             Begin(this, args);
         }
 
-        public virtual void Write(ICodeWriter writer, object o)
+        public virtual void Write(ICodeWriter writer, object? o)
         {
         }
 
-        public virtual void EndWrite(ICodeWriter writer, object o)
+        public virtual void EndWrite(ICodeWriter writer, object? o)
         {
             OnEndWrite(new WriteEventArgs(writer));
         }

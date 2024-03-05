@@ -16,7 +16,7 @@ namespace SyntaxDynamo.CSLang
             Right = rhs;
         }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             Left.WriteAll(writer);
             writer.Write(string.Format(Operation == CSBinaryOperator.Dot ? "{0}" : " {0} ", OpToString(Operation)), true);

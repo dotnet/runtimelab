@@ -35,7 +35,7 @@ namespace SyntaxDynamo.CSLang
 
         public static CSLine ConsoleWriteLine(params CSBaseExpression[] parameters) => FunctionLine("Console.WriteLine", parameters);
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             if (IsConstructor)
                 writer.Write("new ", false);

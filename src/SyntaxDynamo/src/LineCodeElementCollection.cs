@@ -8,7 +8,7 @@ namespace SyntaxDynamo
     public class LineCodeElementCollection<T> : CodeElementCollection<T> where T : ICodeElement
     {
         bool indent, prependIndents, isSingleLine;
-        public LineCodeElementCollection(IEnumerable<T> elems, bool indent, bool prependIndents)
+        public LineCodeElementCollection(IEnumerable<T>? elems, bool indent, bool prependIndents)
             : this(elems, true, indent, prependIndents)
         {
         }
@@ -18,7 +18,7 @@ namespace SyntaxDynamo
         {
         }
 
-        public LineCodeElementCollection(IEnumerable<T> elems, bool isSingleLine, bool indent, bool prependIndents)
+        public LineCodeElementCollection(IEnumerable<T>? elems, bool isSingleLine, bool indent, bool prependIndents)
         {
             this.isSingleLine = isSingleLine;
             this.indent = indent;
@@ -27,7 +27,7 @@ namespace SyntaxDynamo
                 AddRange(elems);
         }
 
-        public override void Write(ICodeWriter writer, object o)
+        public override void Write(ICodeWriter writer, object? o)
         {
             if (isSingleLine)
             {

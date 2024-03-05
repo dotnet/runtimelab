@@ -10,7 +10,7 @@ namespace SyntaxDynamo.CSLang
 {
     public class CSClass : ICodeElementSet, ICSTopLevelDeclaration
     {
-        public CSClass(CSVisibility vis, CSIdentifier name, IEnumerable<CSMethod> methods = null,
+        public CSClass(CSVisibility vis, CSIdentifier name, IEnumerable<CSMethod>? methods = null,
             bool isStatic = false, bool isSealed = false)
         {
             ArgumentNullException.ThrowIfNull(name, nameof(name));
@@ -35,7 +35,7 @@ namespace SyntaxDynamo.CSLang
         }
 
         public CSClass(CSVisibility vis, string name,
-            IEnumerable<CSMethod> members = null, bool isStatic = false, bool isSealed = false)
+            IEnumerable<CSMethod>? members = null, bool isStatic = false, bool isSealed = false)
             : this(vis, new CSIdentifier(name), members, isStatic, isSealed)
         {
         }
@@ -80,7 +80,7 @@ namespace SyntaxDynamo.CSLang
 
         public event EventHandler<WriteEventArgs> End = (s, e) => { };
 
-        public virtual object BeginWrite(ICodeWriter writer)
+        public virtual object? BeginWrite(ICodeWriter writer)
         {
             OnBeginWrite(new WriteEventArgs(writer));
             return null;
@@ -91,11 +91,11 @@ namespace SyntaxDynamo.CSLang
             Begin(this, args);
         }
 
-        public virtual void Write(ICodeWriter writer, object o)
+        public virtual void Write(ICodeWriter writer, object? o)
         {
         }
 
-        public virtual void EndWrite(ICodeWriter writer, object o)
+        public virtual void EndWrite(ICodeWriter writer, object? o)
         {
             OnEndWrite(new WriteEventArgs(writer));
         }
@@ -163,7 +163,7 @@ namespace SyntaxDynamo.CSLang
 
     public class CSClasses : CodeElementCollection<CSClass>
     {
-        public CSClasses(IEnumerable<CSClass> classes = null)
+        public CSClasses(IEnumerable<CSClass>? classes = null)
             : base()
         {
             if (classes != null)
@@ -179,14 +179,14 @@ namespace SyntaxDynamo.CSLang
 
     public class CSStruct : CSClass
     {
-        public CSStruct(CSVisibility vis, CSIdentifier name, IEnumerable<CSMethod> methods = null,
+        public CSStruct(CSVisibility vis, CSIdentifier name, IEnumerable<CSMethod>? methods = null,
             bool isStatic = false, bool isSealed = false)
             : base(vis, name, methods, isStatic, isSealed)
         {
         }
 
         public CSStruct(CSVisibility vis, string name,
-            IEnumerable<CSMethod> members = null, bool isStatic = false, bool isSealed = false)
+            IEnumerable<CSMethod>? members = null, bool isStatic = false, bool isSealed = false)
             : this(vis, new CSIdentifier(name), members, isStatic, isSealed)
         {
         }
@@ -202,7 +202,7 @@ namespace SyntaxDynamo.CSLang
 
     public class CSStructs : CodeElementCollection<CSStruct>
     {
-        public CSStructs(IEnumerable<CSStruct> structs = null)
+        public CSStructs(IEnumerable<CSStruct>? structs = null)
             : base()
         {
             if (structs != null)

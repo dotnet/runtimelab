@@ -10,7 +10,7 @@ namespace SyntaxDynamo.CSLang
 
         public CSShortCircuitKind Kind { get; private set; }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             var keyword = Kind == CSShortCircuitKind.Break ? "break" : "continue";
             writer.Write(keyword, false);

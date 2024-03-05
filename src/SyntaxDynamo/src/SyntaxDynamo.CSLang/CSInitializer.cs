@@ -15,7 +15,7 @@ namespace SyntaxDynamo.CSLang
 
         public CommaListElementCollection<CSBaseExpression> Parameters { get; private set; }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             writer.Write("{ ", false);
             Parameters.WriteAll(writer);
@@ -41,7 +41,7 @@ namespace SyntaxDynamo.CSLang
         public CSFunctionCall Call { get; private set; }
         public CSInitializer Initializer { get; private set; }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             Call.WriteAll(writer);
             SimpleElement.Spacer.WriteAll(writer);

@@ -8,11 +8,11 @@ namespace SyntaxDynamo.CSLang
 {
     public class CSConditionalCompilation : LineCodeElementCollection<ICodeElement>
     {
-        CSConditionalCompilation(CSIdentifier tag, CSIdentifier condition)
+        CSConditionalCompilation(CSIdentifier tag, CSIdentifier? condition)
             : base(true, false, false)
         {
             Add(tag);
-            if ((object)condition != null)
+            if ((object?)condition != null)
             {
                 Add(SimpleElement.Spacer);
                 Add(condition);

@@ -21,7 +21,7 @@ namespace SyntaxDynamo.CSLang
             public CSIdentifier Ident { get; private set; }
             public CSBaseExpression Expr { get; private set; }
 
-            protected override void LLWrite(ICodeWriter writer, object o)
+            protected override void LLWrite(ICodeWriter writer, object? o)
             {
                 writer.BeginNewLine(true);
                 writer.Write("foreach (", false);

@@ -9,9 +9,9 @@ namespace SyntaxDynamo
     {
         // these three methods represent the memento pattern. The object returned is only ever used by
         // the ICodeElem.
-        object BeginWrite(ICodeWriter writer);
-        void Write(ICodeWriter writer, object o);
-        void EndWrite(ICodeWriter writer, object o);
+        object? BeginWrite(ICodeWriter writer);
+        void Write(ICodeWriter writer, object? o);
+        void EndWrite(ICodeWriter writer, object? o);
 
         // These events seem redundant, but they are intended for use for non-structural code elements
         // such as block comments or #region or #if/#else/#endif

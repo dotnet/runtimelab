@@ -15,7 +15,7 @@ namespace SyntaxDynamo.CSLang
 
         public ICSExpression Within { get; private set; }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             writer.Write('(', true);
             Within.WriteAll(writer);
@@ -41,7 +41,7 @@ namespace SyntaxDynamo.CSLang
         public CSType Type { get; private set; }
         public ICSExpression ToCast { get; private set; }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             writer.Write("(", true);
             Type.WriteAll(writer);

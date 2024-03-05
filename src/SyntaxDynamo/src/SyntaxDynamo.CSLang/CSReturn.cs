@@ -10,7 +10,7 @@ namespace SyntaxDynamo.CSLang
             Value = expr;
         }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             writer.Write("return ", true);
             if (Value != null)

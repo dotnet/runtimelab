@@ -21,7 +21,7 @@ namespace SyntaxDynamo.CSLang
         {
         }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             Name.WriteAll(writer);
             writer.Write("[", false);
@@ -66,7 +66,7 @@ namespace SyntaxDynamo.CSLang
 
         public CSType Type { get; private set; }
         public CommaListElementCollection<CSBaseExpression> Parameters { get; private set; }
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             writer.Write("new ", true);
             Type.WriteAll(writer);
@@ -106,7 +106,7 @@ namespace SyntaxDynamo.CSLang
 
         public CSType Type { get; private set; }
         public CommaListElementCollection<CSBaseExpression> Parameters { get; private set; }
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             writer.Write("new List<", true);
             Type.WriteAll(writer);

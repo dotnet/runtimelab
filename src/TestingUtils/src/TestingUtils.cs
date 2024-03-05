@@ -16,7 +16,7 @@ namespace TestingUtils
     {
         private static int uniqueId = 0;
 
-        public static object CompileAndExecute(Stream stream, string typeName, string methodName)
+        public static object? CompileAndExecute(Stream stream, string typeName, string methodName)
         {
             using (StreamReader reader = new StreamReader(stream))
             {
@@ -26,14 +26,14 @@ namespace TestingUtils
             }
         }
 
-        public static object CompileAndExecute(string filePath, string sourceCode, string typeName, string methodName)
+        public static object? CompileAndExecute(string filePath, string sourceCode, string typeName, string methodName)
         {
             string fileSourceCode = File.ReadAllText(filePath);
             var sourceCodes = new[] { fileSourceCode, sourceCode };
             return CompileAndExecute(sourceCodes, typeName, methodName);
         }
 
-        private static object CompileAndExecute(string[] sourceCodes, string typeName, string methodName)
+        private static object? CompileAndExecute(string[] sourceCodes, string typeName, string methodName)
         {
             OutputKind outputKind = OutputKind.ConsoleApplication;
             if (typeName == string.Empty || methodName == string.Empty)
@@ -75,9 +75,9 @@ namespace TestingUtils
             if (outputKind == OutputKind.ConsoleApplication)
             {
                 Assembly compiledAssembly = Assembly.LoadFile(assemblyPath);
-                Type targetType = compiledAssembly.GetType(typeName);
-                MethodInfo customMethod = targetType.GetMethod(methodName);
-                return customMethod.Invoke(null, new object[] { });
+                Type? targetType = compiledAssembly?.GetType(typeName);
+                MethodInfo? customMethod = targetType?.GetMethod(methodName);
+                return customMethod?.Invoke(null, new object[] { });
             }
             
             return null;

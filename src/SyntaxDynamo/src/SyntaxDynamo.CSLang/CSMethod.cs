@@ -10,13 +10,13 @@ namespace SyntaxDynamo.CSLang
 {
     public class CSMethod : CodeElementCollection<ICodeElement>
     {
-        public CSMethod(CSVisibility vis, CSMethodKind kind, CSType type, CSIdentifier name, CSParameterList parms, CSCodeBlock body)
+        public CSMethod(CSVisibility vis, CSMethodKind kind, CSType? type, CSIdentifier name, CSParameterList parms, CSCodeBlock? body)
             : this(vis, kind, type, name, parms, null, false, body)
         {
 
         }
-        public CSMethod(CSVisibility vis, CSMethodKind kind, CSType type, CSIdentifier name,
-                 CSParameterList parms, CSBaseExpression[] baseOrThisCallParms, bool callsBase, CSCodeBlock body, bool isSealed = false,
+        public CSMethod(CSVisibility vis, CSMethodKind kind, CSType? type, CSIdentifier name,
+                 CSParameterList parms, CSBaseExpression[]? baseOrThisCallParms, bool callsBase, CSCodeBlock? body, bool isSealed = false,
                  bool isAsync = false)
         {
             ArgumentNullException.ThrowIfNull(name, nameof(name));
@@ -77,12 +77,12 @@ namespace SyntaxDynamo.CSLang
 
         public CSVisibility Visibility { get; private set; }
         public CSMethodKind Kind { get; private set; }
-        public CSType Type { get; private set; }
+        public CSType? Type { get; private set; }
         public CSIdentifier Name { get; private set; }
         public CSParameterList Parameters { get; private set; }
         public bool CallsBase { get; private set; }
-        public CSBaseExpression[] BaseOrThisCallParameters { get; private set; }
-        public CSCodeBlock Body { get; private set; }
+        public CSBaseExpression[]? BaseOrThisCallParameters { get; private set; }
+        public CSCodeBlock? Body { get; private set; }
         public CSGenericTypeDeclarationCollection GenericParameters { get; private set; }
         public CSGenericConstraintCollection GenericConstraints { get; private set; }
         public bool IsSealed { get; private set; }

@@ -21,8 +21,8 @@ namespace SyntaxDynamo.CSLang
         }
 
         public CSProperty(CSType type, CSMethodKind kind, CSIdentifier name,
-            CSVisibility getVis, CSCodeBlock getter,
-            CSVisibility setVis, CSCodeBlock setter)
+            CSVisibility getVis, CSCodeBlock? getter,
+            CSVisibility setVis, CSCodeBlock? setter)
             : this(type, kind, name, getVis, getter, setVis, setter, null)
         {
         }
@@ -36,8 +36,8 @@ namespace SyntaxDynamo.CSLang
         }
 
         CSProperty(CSType type, CSMethodKind kind, CSIdentifier name,
-            CSVisibility getVis, CSCodeBlock getter,
-            CSVisibility setVis, CSCodeBlock setter, CSParameterList parms)
+            CSVisibility getVis, CSCodeBlock? getter,
+            CSVisibility setVis, CSCodeBlock? setter, CSParameterList? parms)
         {
             ArgumentNullException.ThrowIfNull(type, nameof(type));
             ArgumentNullException.ThrowIfNull(name, nameof(name));
@@ -99,13 +99,13 @@ namespace SyntaxDynamo.CSLang
         }
         public CSType PropType { get; private set; }
         public CSIdentifier Name { get; private set; }
-        public CSParameterList IndexerParameters { get; private set; }
-        public CSVisibility GetterVisibility { get; private set; }
-        public CSVisibility SetterVisibility { get; private set; }
+        public CSParameterList? IndexerParameters { get; private set; }
+        public CSVisibility? GetterVisibility { get; private set; }
+        public CSVisibility? SetterVisibility { get; private set; }
 
-        public CSCodeBlock Getter { get; private set; }
+        public CSCodeBlock? Getter { get; private set; }
 
-        public CSCodeBlock Setter { get; private set; }
+        public CSCodeBlock? Setter { get; private set; }
 
         static LineCodeElementCollection<ICodeElement> MakeEtter(CSVisibility vis, string getset,
             bool unifiedVis, bool moreRestrictiveVis)
@@ -128,7 +128,7 @@ namespace SyntaxDynamo.CSLang
                 CSVisibility.Public, new CSCodeBlock(), CSVisibility.Private, new CSCodeBlock());
         }
 
-        static CSProperty PublicGetPubPrivSetBacking(CSType type, string name, bool declareField, bool setIsPublic, string backingFieldName = null)
+        static CSProperty PublicGetPubPrivSetBacking(CSType type, string name, bool declareField, bool setIsPublic, string? backingFieldName = null)
         {
             ArgumentNullException.ThrowIfNull(name, nameof(name));
             if (!declareField && backingFieldName == null)
@@ -151,12 +151,12 @@ namespace SyntaxDynamo.CSLang
             return prop;
         }
 
-        public static CSProperty PublicGetSetBacking(CSType type, string name, bool declareField, string backingFieldName = null)
+        public static CSProperty PublicGetSetBacking(CSType type, string name, bool declareField, string? backingFieldName = null)
         {
             return PublicGetPubPrivSetBacking(type, name, true, declareField, backingFieldName);
         }
 
-        public static CSProperty PublicGetPrivateSetBacking(CSType type, string name, bool declareField, string backingFieldName = null)
+        public static CSProperty PublicGetPrivateSetBacking(CSType type, string name, bool declareField, string? backingFieldName = null)
         {
             return PublicGetPubPrivSetBacking(type, name, false, declareField, backingFieldName);
         }

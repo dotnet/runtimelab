@@ -21,12 +21,12 @@ namespace SyntaxDynamo.CSLang
             Add(Bindings);
         }
 
-        public CSVariableDeclaration(CSType type, string name, ICSExpression value = null)
+        public CSVariableDeclaration(CSType type, string name, ICSExpression? value = null)
             : this(type, new CSIdentifier(name), value)
         {
         }
 
-        public CSVariableDeclaration(CSType type, CSIdentifier name, ICSExpression value = null)
+        public CSVariableDeclaration(CSType type, CSIdentifier name, ICSExpression? value = null)
             : this(type, new CSBinding[] { new CSBinding(name, value) })
         {
         }
@@ -34,12 +34,12 @@ namespace SyntaxDynamo.CSLang
         public CSType Type { get; private set; }
         public CommaListElementCollection<CSBinding> Bindings { get; private set; }
 
-        public static CSLine VarLine(CSType type, CSIdentifier name, ICSExpression value = null)
+        public static CSLine VarLine(CSType type, CSIdentifier name, ICSExpression? value = null)
         {
             return new CSLine(new CSVariableDeclaration(type, name, value));
         }
 
-        public static CSLine VarLine(CSType type, string name, ICSExpression value = null)
+        public static CSLine VarLine(CSType type, string name, ICSExpression? value = null)
         {
             return new CSLine(new CSVariableDeclaration(type, name, value));
         }
@@ -85,12 +85,12 @@ namespace SyntaxDynamo.CSLang
             }
         }
 
-        public CSFieldDeclaration(CSType type, string name, ICSExpression value = null, CSVisibility vis = CSVisibility.None, bool isStatic = false, bool isReadonly = false, bool isUnsafe = false)
+        public CSFieldDeclaration(CSType type, string name, ICSExpression? value = null, CSVisibility vis = CSVisibility.None, bool isStatic = false, bool isReadonly = false, bool isUnsafe = false)
             : this(type, new CSIdentifier(name), value, vis, isStatic, isReadonly, isUnsafe)
         {
         }
 
-        public CSFieldDeclaration(CSType type, CSIdentifier name, ICSExpression value = null, CSVisibility vis = CSVisibility.None, bool isStatic = false, bool isReadOnly = false, bool isUnsafe = false)
+        public CSFieldDeclaration(CSType type, CSIdentifier name, ICSExpression? value = null, CSVisibility vis = CSVisibility.None, bool isStatic = false, bool isReadOnly = false, bool isUnsafe = false)
             : this(type, new CSBinding[] { new CSBinding(name, value) }, vis, isStatic, isReadOnly, isUnsafe)
         {
         }
@@ -99,12 +99,12 @@ namespace SyntaxDynamo.CSLang
         public bool IsStatic { get; private set; }
         public bool IsUnsafe { get; private set; }
 
-        public static CSLine FieldLine(CSType type, CSIdentifier name, ICSExpression value = null, CSVisibility vis = CSVisibility.None, bool isStatic = false)
+        public static CSLine FieldLine(CSType type, CSIdentifier name, ICSExpression? value = null, CSVisibility vis = CSVisibility.None, bool isStatic = false)
         {
             return new CSLine(new CSFieldDeclaration(type, name, value, vis, isStatic));
         }
 
-        public static CSLine FieldLine(CSType type, string name, ICSExpression value = null, CSVisibility vis = CSVisibility.None, bool isStatic = false)
+        public static CSLine FieldLine(CSType type, string name, ICSExpression? value = null, CSVisibility vis = CSVisibility.None, bool isStatic = false)
         {
             return new CSLine(new CSFieldDeclaration(type, name, value, vis, isStatic));
         }

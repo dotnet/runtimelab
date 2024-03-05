@@ -23,7 +23,7 @@ namespace SyntaxDynamo.CSLang
         public CSParameterList Parameters { get; private set; }
         public bool IsUnsafe { get; private set; }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             writer.BeginNewLine(true);
             writer.Write(CSMethod.VisibilityToString(Visibility), false);

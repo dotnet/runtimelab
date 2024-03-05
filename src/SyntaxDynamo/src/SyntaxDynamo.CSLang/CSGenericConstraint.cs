@@ -29,7 +29,7 @@ namespace SyntaxDynamo.CSLang
         public CSIdentifier Name { get; private set; }
         public CommaListElementCollection<CSIdentifier> IsA { get; private set; }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             writer.Write("where ", true);
             Name.Write(writer, o);
@@ -61,7 +61,7 @@ namespace SyntaxDynamo.CSLang
 
         public event EventHandler<WriteEventArgs> End = (s, e) => { };
 
-        public virtual object BeginWrite(ICodeWriter writer)
+        public virtual object? BeginWrite(ICodeWriter writer)
         {
             OnBeginWrite(new WriteEventArgs(writer));
             return null;
@@ -72,11 +72,11 @@ namespace SyntaxDynamo.CSLang
             Begin(this, args);
         }
 
-        public virtual void Write(ICodeWriter writer, object o)
+        public virtual void Write(ICodeWriter writer, object? o)
         {
         }
 
-        public virtual void EndWrite(ICodeWriter writer, object o)
+        public virtual void EndWrite(ICodeWriter writer, object? o)
         {
             OnEndWrite(new WriteEventArgs(writer));
         }

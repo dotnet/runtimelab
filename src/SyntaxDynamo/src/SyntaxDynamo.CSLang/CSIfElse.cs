@@ -16,7 +16,7 @@ namespace SyntaxDynamo.CSLang
                 Condition = condition;
             }
 
-            protected override void LLWrite(ICodeWriter writer, object o)
+            protected override void LLWrite(ICodeWriter writer, object? o)
             {
                 writer.BeginNewLine(true);
                 writer.Write("if (", false);
@@ -28,7 +28,7 @@ namespace SyntaxDynamo.CSLang
             public CSBaseExpression Condition { get; private set; }
         }
 
-        public CSIfElse(CSBaseExpression condition, CSCodeBlock ifClause, CSCodeBlock elseClause = null)
+        public CSIfElse(CSBaseExpression condition, CSCodeBlock ifClause, CSCodeBlock? elseClause = null)
             : base()
         {
             ArgumentNullException.ThrowIfNull(condition, nameof(condition));
@@ -56,7 +56,7 @@ namespace SyntaxDynamo.CSLang
 
         public DelegatedSimpleElement Condition { get; private set; }
         public CSCodeBlock IfClause { get; private set; }
-        public CSCodeBlock ElseClause { get; private set; }
+        public CSCodeBlock? ElseClause { get; private set; }
 
     }
 }

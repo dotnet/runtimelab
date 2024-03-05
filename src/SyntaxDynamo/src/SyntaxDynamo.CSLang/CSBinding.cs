@@ -9,20 +9,20 @@ namespace SyntaxDynamo.CSLang
 {
     public class CSBinding : ICodeElementSet
     {
-        public CSBinding(CSIdentifier name, ICSExpression val = null, bool onOwnLine = false)
+        public CSBinding(CSIdentifier name, ICSExpression? val = null, bool onOwnLine = false)
         {
             Name = name;
             Value = val;
             OnOwnLine = onOwnLine;
         }
 
-        public CSBinding(string name, ICSExpression val = null, bool onOwnLine = false)
+        public CSBinding(string name, ICSExpression? val = null, bool onOwnLine = false)
             : this(new CSIdentifier(name), val, onOwnLine)
         {
         }
 
         public CSIdentifier Name { get; private set; }
-        public ICSExpression Value { get; private set; }
+        public ICSExpression? Value { get; private set; }
         public bool OnOwnLine { get; private set; }
 
         public override string ToString()
@@ -36,7 +36,7 @@ namespace SyntaxDynamo.CSLang
 
         public event EventHandler<WriteEventArgs> End = (s, e) => { };
 
-        public object BeginWrite(ICodeWriter writer)
+        public object? BeginWrite(ICodeWriter writer)
         {
             OnBegin(new WriteEventArgs(writer));
             return null;
@@ -49,11 +49,11 @@ namespace SyntaxDynamo.CSLang
                 args.Writer.BeginNewLine(true);
         }
 
-        public void Write(ICodeWriter writer, object o)
+        public void Write(ICodeWriter writer, object? o)
         {
         }
 
-        public void EndWrite(ICodeWriter writer, object o)
+        public void EndWrite(ICodeWriter writer, object? o)
         {
             OnEnd(new WriteEventArgs(writer));
         }

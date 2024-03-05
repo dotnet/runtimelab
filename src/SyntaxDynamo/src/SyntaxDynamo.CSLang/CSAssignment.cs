@@ -22,7 +22,7 @@ namespace SyntaxDynamo.CSLang
         {
         }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             Target.WriteAll(writer);
             writer.Write(string.Format(" {0} ", ToAssignmentOpString(Operation)), true);

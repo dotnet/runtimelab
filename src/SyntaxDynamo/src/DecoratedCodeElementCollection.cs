@@ -11,7 +11,7 @@ namespace SyntaxDynamo
 
         public DecoratedCodeElementCollection(string startDecoration, string endDecoration,
                                             bool startOnOwnLine, bool endOnOwnLine, bool indent,
-                                            IEnumerable<T> elems)
+                                            IEnumerable<T>? elems)
             : base()
         {
             StartDecoration = startDecoration;
@@ -32,7 +32,7 @@ namespace SyntaxDynamo
         public string StartDecoration { get; private set; }
         public string EndDecoration { get; private set; }
 
-        public override void Write(ICodeWriter writer, object o)
+        public override void Write(ICodeWriter writer, object? o)
         {
             if (StartDecoration != null)
             {
@@ -46,7 +46,7 @@ namespace SyntaxDynamo
                 writer.Indent();
         }
 
-        public override void EndWrite(ICodeWriter writer, object o)
+        public override void EndWrite(ICodeWriter writer, object? o)
         {
             if (indent)
                 writer.Exdent();

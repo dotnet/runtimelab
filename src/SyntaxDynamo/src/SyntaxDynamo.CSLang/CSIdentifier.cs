@@ -19,7 +19,7 @@ namespace SyntaxDynamo.CSLang
             return new CSIdentifier(name);
         }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             writer.Write(Name, false);
         }

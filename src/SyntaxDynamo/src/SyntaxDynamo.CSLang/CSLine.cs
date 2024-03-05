@@ -17,7 +17,7 @@ namespace SyntaxDynamo.CSLang
             AddSemicolon = addSemicolon;
         }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             writer.BeginNewLine(true);
             Contents.WriteAll(writer);

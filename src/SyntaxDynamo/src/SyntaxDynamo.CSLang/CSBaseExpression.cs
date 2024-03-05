@@ -76,7 +76,7 @@ namespace SyntaxDynamo.CSLang
         {
             return new CSBinaryExpression(CSBinaryOperator.RightShift, lhs, CSConstant.Val(bits));
         }
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null || GetType() != obj.GetType())
             {

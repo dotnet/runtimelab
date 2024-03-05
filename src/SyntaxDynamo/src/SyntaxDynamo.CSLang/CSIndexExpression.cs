@@ -26,7 +26,7 @@ namespace SyntaxDynamo.CSLang
         {
         }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             if (AddParensAroundAggregate)
                 writer.Write('(', false);

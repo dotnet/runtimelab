@@ -10,9 +10,9 @@ namespace SyntaxDynamo
     {
         public static void WriteAll(this ICodeElement elem, ICodeWriter writer)
         {
-            object memento = elem.BeginWrite(writer);
+            object? memento = elem.BeginWrite(writer);
             elem.Write(writer, memento);
-            ICodeElementSet set = elem as ICodeElementSet;
+            ICodeElementSet? set = elem as ICodeElementSet;
             if (set != null)
             {
                 foreach (ICodeElement sub in set.Elements)

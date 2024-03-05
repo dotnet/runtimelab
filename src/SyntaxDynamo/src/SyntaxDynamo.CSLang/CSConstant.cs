@@ -24,7 +24,7 @@ namespace SyntaxDynamo.CSLang
 
         public string Value { get; private set; }
 
-        protected override void LLWrite(ICodeWriter writer, object o)
+        protected override void LLWrite(ICodeWriter writer, object? o)
         {
             writer.Write(Value, false);
         }
@@ -57,7 +57,7 @@ namespace SyntaxDynamo.CSLang
             {
                 using (var provider = CodeDomProvider.CreateProvider("CSharp"))
                 {
-                    provider.GenerateCodeFromExpression(new CodePrimitiveExpression(c), writer, null);
+                    provider.GenerateCodeFromExpression(new CodePrimitiveExpression(c), writer, new CodeGeneratorOptions());
                     return writer.ToString();
                 }
             }
@@ -69,7 +69,7 @@ namespace SyntaxDynamo.CSLang
             {
                 using (var provider = CodeDomProvider.CreateProvider("CSharp"))
                 {
-                    provider.GenerateCodeFromExpression(new CodePrimitiveExpression(s), writer, null);
+                    provider.GenerateCodeFromExpression(new CodePrimitiveExpression(s), writer, new CodeGeneratorOptions());
                     return writer.ToString();
                 }
             }
