@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xamtypedatabase version="1.0">
+    <entities>
+        <entity sharpNameSpace="System" sharpTypeName="byte" entityType="Scalar" blitable="true" size="1" stride="1">
+            <typedeclaration kind="struct" name="Swift.UInt8" module="Swift" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="sbyte" entityType="Scalar" blitable="true" size="1" stride="1">
+            <typedeclaration kind="struct" name="Swift.Int8" module="Swift" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="short" entityType="Scalar" blitable="true" size="2" stride="2">
+            <typedeclaration kind="struct" name="Swift.Int16" module="Swift" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="ushort" entityType="Scalar" blitable="true" size="2" stride="2">
+            <typedeclaration kind="struct" name="Swift.UInt16" module="Swift" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="int" entityType="Scalar" blitable="true" size="4" stride="4">
+            <typedeclaration kind="struct" name="Swift.Int32" module="Swift" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="uint" entityType="Scalar" blitable="true" size="4" stride="4">
+            <typedeclaration kind="struct" name="Swift.UInt32" module="Swift" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="long" entityType="Scalar" blitable="true" size="8" stride="8">
+            <typedeclaration kind="struct" name="Swift.Int64" module="Swift" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="ulong" entityType="Scalar" blitable="true" size="8" stride="8">
+            <typedeclaration kind="struct" name="Swift.UInt64" module="Swift" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="float" entityType="Scalar" blitable="true" size="4" stride="4">
+            <typedeclaration kind="struct" name="Swift.Float" module="Swift" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="double" entityType="Scalar" blitable="true" size="8" stride="8">
+            <typedeclaration kind="struct" name="Swift.Double" module="Swift" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="nint" entityType="Scalar" blitable="true" size="8" stride="8">
+            <typedeclaration kind="struct" name="Swift.Int" module="Swift" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="nuint" entityType="Scalar" blitable="true" size="8" stride="8">
+            <typedeclaration kind="struct" name="Swift.UInt" module="Swift" />
+        </entity>
+        <entity sharpNameSpace="System" sharpTypeName="bool" entityType="Scalar" blitable="false" size="4" stride="4">
+            <typedeclaration kind="struct" name="Swift.Bool" module="Swift" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="UnsafeRawPointer" entityType="Scalar" blitable="false" size="0" stride="0">
+            <typedeclaration kind="struct" name="Swift.UnsafeRawPointer" module="Swift" />
+        </entity>
+        <entity sharpNameSpace="SwiftRuntimeLibrary" sharpTypeName="UnsafeMutableRawPointer" entityType="Scalar" blitable="false" size="0" stride="0">
+            <typedeclaration kind="struct" name="Swift.UnsafeMutableRawPointer" module="Swift" />
+        </entity>
+    </entities>
+</xamtypedatabase>
