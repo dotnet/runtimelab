@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using SyntaxDynamo;
 
-
 namespace SyntaxDynamo.CSLang
 {
     public class CSParameter : DelegatedSimpleElement
@@ -36,7 +35,6 @@ namespace SyntaxDynamo.CSLang
             : this(new CSSimpleType(type), new CSIdentifier(name), parameterKind, defaultValue)
         {
         }
-
 
         protected override void LLWrite(ICodeWriter writer, object o)
         {
@@ -117,4 +115,3 @@ namespace SyntaxDynamo.CSLang
         }
     }
 }
-

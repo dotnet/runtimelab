@@ -3,7 +3,6 @@
 
 using System;
 
-
 namespace SyntaxDynamo.CSLang
 {
     public class CSBinaryExpression : CSBaseExpression
@@ -82,4 +81,3 @@ namespace SyntaxDynamo.CSLang
         }
     }
 }
-

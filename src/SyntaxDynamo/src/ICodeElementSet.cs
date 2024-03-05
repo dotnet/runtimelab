@@ -10,4 +10,3 @@ namespace SyntaxDynamo
         IEnumerable<ICodeElement> Elements { get; }
     }
 }
-

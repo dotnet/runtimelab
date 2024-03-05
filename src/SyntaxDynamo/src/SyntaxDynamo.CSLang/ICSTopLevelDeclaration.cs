@@ -16,7 +16,5 @@ namespace SyntaxDynamo.CSLang
             AddRange(decls);
         }
 
-
     }
 }
-

@@ -70,7 +70,6 @@ namespace SyntaxDynamo
                 EndDecoration ?? "");
         }
 
-
         public static DecoratedCodeElementCollection<T> CBlock(IEnumerable<T> elems)
         {
             var col = new DecoratedCodeElementCollection<T>("{", "}", true, true, true);
@@ -80,4 +79,3 @@ namespace SyntaxDynamo
         }
     }
 }
-

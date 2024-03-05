@@ -20,7 +20,6 @@ namespace SyntaxDynamo.CSLang
         {
         }
 
-
         public CSProperty(CSType type, CSMethodKind kind, CSIdentifier name,
             CSVisibility getVis, CSCodeBlock getter,
             CSVisibility setVis, CSCodeBlock setter)
@@ -64,7 +63,6 @@ namespace SyntaxDynamo.CSLang
                 decl.And(new SimpleElement("[", true)).And(parms).And(new SimpleElement("]"));
             }
             Add(decl);
-
 
             CSCodeBlock cb = new CSCodeBlock(null);
 
@@ -137,7 +135,6 @@ namespace SyntaxDynamo.CSLang
                 throw new ArgumentException("declareField must be true if there is no supplied field name", nameof(declareField));
             backingFieldName = backingFieldName ?? MassageName(name);
 
-
             CSIdentifier backingIdent = new CSIdentifier(backingFieldName);
             LineCodeElementCollection<ICodeElement> getCode =
                 new LineCodeElementCollection<ICodeElement>(new ICodeElement[] { CSReturn.ReturnLine(backingIdent) }, false, true);
@@ -153,7 +150,6 @@ namespace SyntaxDynamo.CSLang
                 prop.Insert(0, CSFieldDeclaration.FieldLine(type, backingFieldName));
             return prop;
         }
-
 
         public static CSProperty PublicGetSetBacking(CSType type, string name, bool declareField, string backingFieldName = null)
         {
@@ -183,7 +179,6 @@ namespace SyntaxDynamo.CSLang
             return prop;
         }
 
-
         public static CSProperty PublicGetBacking(CSType type, string name, string backingFieldName, bool includeBackingFieldDeclaration = false)
         {
             ArgumentNullException.ThrowIfNull(name, nameof(name));
@@ -205,4 +200,3 @@ namespace SyntaxDynamo.CSLang
         }
     }
 }
-

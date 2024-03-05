@@ -42,7 +42,6 @@ namespace SyntaxDynamo.CSLang
             }
         }
 
-
         public CSForEach(CSType type, CSIdentifier ident, CSBaseExpression expr, CSCodeBlock body)
         {
             ArgumentNullException.ThrowIfNull(ident, nameof(ident));

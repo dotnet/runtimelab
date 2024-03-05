@@ -47,4 +47,3 @@ namespace SyntaxDynamo.CSLang
         }
     }
 }
-

@@ -245,7 +245,5 @@ namespace SyntaxDynamo.CSLang
             return PInvoke(CSVisibility.Internal, type, name, dllName, externName, parms);
         }
 
-
     }
 }
-

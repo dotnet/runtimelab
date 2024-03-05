@@ -51,7 +51,6 @@ namespace TestingUtils
                 MetadataReference.CreateFromFile(systemRuntimeAssemblyPath),
             };
 
-
             var compilation = CSharpCompilation.Create($"CompiledAssembly{uniqueId}",
                                                         syntaxTrees: syntaxTrees,
                                                         references: references,

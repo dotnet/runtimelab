@@ -27,7 +27,6 @@ namespace SyntaxDynamo
                 AddRange(elems);
         }
 
-
         public override void Write(ICodeWriter writer, object o)
         {
             if (isSingleLine)
@@ -53,4 +52,3 @@ namespace SyntaxDynamo
 
     }
 }
-

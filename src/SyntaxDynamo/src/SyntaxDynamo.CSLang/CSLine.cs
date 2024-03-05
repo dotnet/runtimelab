@@ -30,4 +30,3 @@ namespace SyntaxDynamo.CSLang
         public bool AddSemicolon { get; set; }
     }
 }
-

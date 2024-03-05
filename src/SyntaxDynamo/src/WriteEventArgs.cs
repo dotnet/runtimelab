@@ -17,4 +17,3 @@ namespace SyntaxDynamo
         public ICodeWriter Writer { get; private set; }
     }
 }
-

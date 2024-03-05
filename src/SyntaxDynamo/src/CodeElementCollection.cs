@@ -44,7 +44,6 @@ namespace SyntaxDynamo
             End.FireInReverse(this, args);
         }
 
-
         #endregion
 
         #region ICodeElemSet implementation
@@ -61,4 +60,3 @@ namespace SyntaxDynamo
 
     }
 }
-

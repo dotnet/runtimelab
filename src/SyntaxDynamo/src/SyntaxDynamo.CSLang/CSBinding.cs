@@ -31,7 +31,6 @@ namespace SyntaxDynamo.CSLang
                 Name.Name, Value == null ? "" : " = ", Value == null ? "" : Value.ToString());
         }
 
-
         #region ICodeElem implementation
         public event EventHandler<WriteEventArgs> Begin = (s, e) => { };
 
@@ -81,4 +80,3 @@ namespace SyntaxDynamo.CSLang
         #endregion
     }
 }
-

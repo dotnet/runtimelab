@@ -55,11 +55,9 @@ namespace SyntaxDynamo
             OnEnd(new WriteEventArgs(writer));
         }
 
-
         protected virtual void OnEnd(WriteEventArgs args)
         {
             End.FireInReverse(this, args);
         }
     }
 }
-

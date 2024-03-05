@@ -35,7 +35,6 @@ namespace SyntaxDynamo
             NewlineAfterEach = newlineAfterEach;
         }
 
-
         public string Prefix { get; private set; }
         public string Suffix { get; private set; }
         public bool NewlineAfterEach { get; private set; }
@@ -78,7 +77,6 @@ namespace SyntaxDynamo
             OnEnd(new WriteEventArgs(writer));
         }
 
-
         protected virtual void OnEnd(WriteEventArgs args)
         {
             End.FireInReverse(this, args);
@@ -87,4 +85,3 @@ namespace SyntaxDynamo
         #endregion
     }
 }
-

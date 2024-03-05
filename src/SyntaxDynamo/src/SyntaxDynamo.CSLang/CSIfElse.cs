@@ -58,7 +58,5 @@ namespace SyntaxDynamo.CSLang
         public CSCodeBlock IfClause { get; private set; }
         public CSCodeBlock ElseClause { get; private set; }
 
-
     }
 }
-

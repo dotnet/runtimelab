@@ -34,7 +34,6 @@ namespace SyntaxDynamo.CSLang
         public CSType Type { get; private set; }
         public CommaListElementCollection<CSBinding> Bindings { get; private set; }
 
-
         public static CSLine VarLine(CSType type, CSIdentifier name, ICSExpression value = null)
         {
             return new CSLine(new CSVariableDeclaration(type, name, value));
@@ -96,7 +95,6 @@ namespace SyntaxDynamo.CSLang
         {
         }
 
-
         public CSVisibility Visibilty { get; private set; }
         public bool IsStatic { get; private set; }
         public bool IsUnsafe { get; private set; }
@@ -112,4 +110,3 @@ namespace SyntaxDynamo.CSLang
         }
     }
 }
-

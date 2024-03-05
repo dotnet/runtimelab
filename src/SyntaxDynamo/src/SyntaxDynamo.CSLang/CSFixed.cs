@@ -37,4 +37,3 @@ namespace SyntaxDynamo.CSLang
         public CSBaseExpression Expr { get; private set; }
     }
 }
-

@@ -29,7 +29,6 @@ namespace SyntaxDynamo.CSLang
         {
         }
 
-
         public CSType ToCSType(IEnumerable<CSType> genericReplacements)
         {
             var replacements = genericReplacements.ToList();
@@ -124,4 +123,3 @@ namespace SyntaxDynamo.CSLang
         #endregion
     }
 }
-

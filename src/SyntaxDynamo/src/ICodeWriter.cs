@@ -17,4 +17,3 @@ namespace SyntaxDynamo
         bool IsAtLineStart { get; }
     }
 }
-

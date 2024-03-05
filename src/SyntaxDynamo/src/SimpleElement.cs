@@ -58,4 +58,3 @@ namespace SyntaxDynamo
         public static SimpleElement Spacer { get { return spacer; } }
     }
 }
-

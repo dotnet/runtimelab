@@ -23,4 +23,3 @@ namespace SyntaxDynamo
         event EventHandler<WriteEventArgs> End;
     }
 }
-

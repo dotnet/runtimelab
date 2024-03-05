@@ -98,4 +98,3 @@ namespace SyntaxDynamo.CSLang
         Continue,
     }
 }
-

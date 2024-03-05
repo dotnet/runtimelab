@@ -35,7 +35,6 @@ namespace SyntaxDynamo.CSLang
         {
         }
 
-
         public CSParameterList Parameters { get; private set; }
         public ICSExpression Value { get; private set; }
         public CSCodeBlock Body { get; private set; }
@@ -80,4 +79,3 @@ namespace SyntaxDynamo.CSLang
         #endregion
     }
 }
-

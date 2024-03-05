@@ -39,4 +39,3 @@ namespace SyntaxDynamo.CSLang
         public static CSIdentifier Base { get { return baseID; } }
     }
 }
-

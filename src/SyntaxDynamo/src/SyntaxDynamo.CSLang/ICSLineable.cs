@@ -9,4 +9,3 @@ namespace SyntaxDynamo.CSLang
     {
     }
 }
-
