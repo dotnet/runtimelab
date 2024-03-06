@@ -8,9 +8,7 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="../src/SwiftCore.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <ProjectReference Include="../src/SwiftRuntimeLibrary.csproj" />
   </ItemGroup>
 
 </Project>
