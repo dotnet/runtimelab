@@ -52,8 +52,39 @@ The table below lists the Swift types and their corresponding C# types.
 | `Float`                         | `float`  |
 | `Double`                        | `double` |
 
-
 All C# types mentioned are blittable except for `bool`. To facilitate `P/Invoke`, a lightweight wrapper is required to convert `bool` to `byte`. Swift primitive types are implemented as frozen structs that conform to Swift-specific lowering processes handled by the runtime. However, such mapping can fit within the underlying calling convention as these types are below the size limit for being passed by reference.
+
+<details>
+The Swift type database is an XML-based file format used for describing primitive data types with the following structure:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<swifttypedatabase version="1.0">
+    <entities>
+        <!-- Individual entities describing Swift data types with C# projections -->
+    </entities>
+</swifttypedatabase>
+```
+#### Elements
+
+##### `entities`
+- **Description:** Container for individual data type entities.
+- **Child Elements:**
+    - `entity`: Represents a specific data type in Swift.
+        - **Attributes:**
+        - `managedNameSpace`: Specifies the managed namespace of the data type.
+        - `managedTypeName`: Specifies the managed type name of the data type.
+        - `entityType`: Specifies the type of entity.
+        - `blittable`: Specifies whether the data type is blittable (`true` or `false`).
+        - `size`: Specifies the size of the data type in bytes.
+        - `stride`: Specifies the stride of the data type in bytes.
+        - **Child Elements:**
+        - `typedeclaration`: Represents the declaration of the Swift type.
+            - **Attributes:**
+            - `kind`: Specifies the kind of type declaration.
+            - `name`: Specifies the name of the Swift type.
+            - `module`: Specifies the module of the Swift type.
+</details>
 
 ### Static and P/Invoke functions
 

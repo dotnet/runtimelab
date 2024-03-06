@@ -3,8 +3,14 @@
 
 namespace Swift.Runtime
 {
+    /// <summary>
+    /// Represents an instance of a Swift class object.
+    /// </summary>
     public unsafe interface ISwiftObject : IDisposable
     {
+        /// <summary>
+        /// Gets the handle to the Swift object instance.
+        /// </summary>
         void* SwiftObject { get; }
     }
 }
