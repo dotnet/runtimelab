@@ -11,6 +11,6 @@ namespace Swift.Runtime
         /// <summary>
         /// Gets the handle to the Swift object instance.
         /// </summary>
-        void* SwiftObject { get; }
+        public void* SwiftObject { get; }
     }
 }
