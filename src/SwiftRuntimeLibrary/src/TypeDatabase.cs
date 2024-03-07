@@ -21,7 +21,7 @@ namespace SwiftRuntimeLibrary
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.Load(file);
             if (!ValidateXmlSchema(xmlDoc))
-                throw new Exception("Invalid XML schema.");
+                throw new Exception("Invalid XML schema in {0}.", file);
 
             var version = xmlDoc.DocumentElement?.Attributes?["version"]?.Value;
             switch (version)
