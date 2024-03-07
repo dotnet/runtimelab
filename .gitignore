@@ -190,3 +190,15 @@ Session.vim
 
 # VS debug support files
 launchSettings.json
+
+# Swift output files
+*.swiftinterface*
+*.swiftdoc*
+*.swiftmodule*
+*.abi*
+*.swiftsourceinfo*
+*.dylib
+
+# Testing artifacts
+testing/
+src/samples/**/*Bindings.cs
