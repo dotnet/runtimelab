@@ -149,7 +149,7 @@ The general workflow for generating C# bindings from Swift code is as follows:
 
 ### Parser
 
-The aggregation of the public ABI is done through the `ISwiftParser` interface. This interface defines the layout for concrete implementations responsible for parsing and collecting ABI information. Two implementations exist: Swift ABI parser and Swift interface parser. The Swift ABI parser aggregates ABI information based on an ABI json file. The Swift interface parser is designed to handle `.swiftinterface` files. The `.swiftinterface` file doesn't contain mangled names, and the parser should consumes the dynamic library (`.dylib`) to generate declarations. Currently, the tooling only implements the Swift ABI parser.
+The aggregation of the public ABI is done through the `ISwiftParser` interface. This interface defines the layout for concrete implementations responsible for parsing and collecting ABI information. Two implementations exist: Swift ABI parser and Swift interface parser. The Swift ABI parser aggregates ABI information based on an ABI json file. The Swift interface parser is designed to handle `.swiftinterface` files. The `.swiftinterface` file doesn't contain mangled names, and the parser should consume the dynamic library (`.dylib`) to generate declarations. Currently, the tooling only implements the Swift ABI parser.
 
 ### Marshaller
 
