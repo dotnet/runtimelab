@@ -21,7 +21,7 @@ namespace SwiftRuntimeLibrary
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.Load(file);
             if (!ValidateXmlSchema(xmlDoc))
-                throw new Exception("Invalid XML schema in {0}.", file);
+                throw new Exception(string.Format($"Invalid XML schema in {0}.", file));
 
             var version = xmlDoc.DocumentElement?.Attributes?["version"]?.Value;
             switch (version)
@@ -30,7 +30,7 @@ namespace SwiftRuntimeLibrary
                     ReadVersion1_0(xmlDoc);
                     break;
                 default:
-                    throw new Exception("Unsupported database version {0} in {1}.", version, file);
+                    throw new Exception(string.Format($"Unsupported database version {0} in {1}.", version, file));
             }
         }
 
