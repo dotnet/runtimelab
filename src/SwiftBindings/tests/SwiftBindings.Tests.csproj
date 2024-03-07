@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <NativeLibsCommand>cd $(OutputPath)$(TargetFramework) &amp;&amp; cmake $(MSBuildThisFileDirectory) &amp;&amp; make</NativeLibsCommand>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../src/SwiftBindings.csproj" />
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="4.8.0" />
+  </ItemGroup>
+
+  <Target Name="CompileNativeLibs" AfterTargets="Build">
+    <Exec Command="$(NativeLibsCommand)" />
+  </Target>
+</Project>
+
