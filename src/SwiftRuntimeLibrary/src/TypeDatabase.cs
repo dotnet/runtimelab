@@ -77,25 +77,21 @@ namespace SwiftRuntimeLibrary
         {
             XmlNode? entitiesNode = xmlDoc.SelectSingleNode("//swifttypedatabase/entities");
 
-            if (entitiesNode != null)
-            {
-                foreach (XmlNode? entityNode in entitiesNode.ChildNodes)
-                {
-                    XmlNode? typeDeclarationNode = entityNode?.SelectSingleNode("typedeclaration");
-                    if (typeDeclarationNode == null)
-                        throw new Exception("Invalid XML structure: 'typedeclaration' node not found.");
-                    
-                    string? swiftName = typeDeclarationNode?.Attributes?["name"]?.Value;
-                    string? csharpName = entityNode?.Attributes?["managedTypeName"]?.Value;
-                    if (swiftName == null || csharpName == null)
-                        throw new Exception("Invalid XML structure: Missing attributes.");
+            if (entitiesNode == null)
+            	throw new Exception("Invalid XML structure: 'entities' node not found.");
 
-                    _swiftToCSharpMapping.Add(swiftName, csharpName);
-                }
-            }
-            else
+            foreach (XmlNode? entityNode in entitiesNode.ChildNodes)
             {
-                throw new Exception("Invalid XML structure: 'entities' node not found.");
+                XmlNode? typeDeclarationNode = entityNode?.SelectSingleNode("typedeclaration");
+                if (typeDeclarationNode == null)
+                    throw new Exception("Invalid XML structure: 'typedeclaration' node not found.");
+                    
+                string? swiftName = typeDeclarationNode?.Attributes?["name"]?.Value;
+                string? csharpName = entityNode?.Attributes?["managedTypeName"]?.Value;
+                if (swiftName == null || csharpName == null)
+                    throw new Exception("Invalid XML structure: Missing attributes.");
+
+                _swiftToCSharpMapping.Add(swiftName, csharpName);
             }
         }
 
