@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../src/SwiftBindings.csproj" />
+    <ProjectReference Include="../src/Swift.Bindings.csproj" />
     <PackageReference Include="Microsoft.CodeAnalysis" Version="4.8.0" />
   </ItemGroup>
 

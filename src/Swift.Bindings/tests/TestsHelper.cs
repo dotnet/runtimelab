@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
 
-namespace SwiftBindings.Tests
+namespace BindingsGeneration.Tests
 {
     public static class TestsHelper
     {

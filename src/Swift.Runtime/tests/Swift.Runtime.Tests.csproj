@@ -8,7 +8,7 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../src/SwiftRuntimeLibrary.csproj" />
+    <ProjectReference Include="../src/Swift.Runtime.csproj" />
   </ItemGroup>
 
 </Project>

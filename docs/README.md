@@ -138,7 +138,7 @@ The tooling comprises the following components:
         - `parser`: Parses a Swift library using ABI or Swiftinterface parser.
         - `marshaller`: Marshals types between C# and Swift.
         - `emitter`: Emits a C# bindings library using string-based or object model-based emitter.
-- **SwiftRuntimeLibrary**: Library providing projections of common Swift types. It contains a type database for common Swift types and implements Swift runtime constructs in C#.
+- **SwiftRuntime**: Library providing projections of common Swift types. It contains a type database for common Swift types and implements Swift runtime constructs in C#.
 
 The general workflow for generating C# bindings from Swift code is as follows:
 1. Consume the Swift ABI file (`.abi.json`) and aggregate the public ABI using a parser that generates module declarations.

@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwiftBindings", "src\SwiftBindings\src\SwiftBindings.csproj", "{B7977360-6671-4707-9A1C-1C29D5BE2674}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwiftBindings", "src\Swift.Bindings\src\Swift.Bindings.csproj", "{B7977360-6671-4707-9A1C-1C29D5BE2674}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwiftBindings.Tests", "src\SwiftBindings\tests\SwiftBindings.Tests.csproj", "{CE81B6BD-CCCC-4223-9069-B28435A4A5C1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwiftBindings.Tests", "src\Swift.Bindings\tests\Swift.Bindings.Tests.csproj", "{CE81B6BD-CCCC-4223-9069-B28435A4A5C1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwiftRuntimeLibrary", "src\SwiftRuntimeLibrary\src\SwiftRuntimeLibrary.csproj", "{8E9013BE-01BD-4F4C-8BF7-E8C71FA6608E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwiftRuntime", "src\Swift.Runtime\src\Swift.Runtime.csproj", "{8E9013BE-01BD-4F4C-8BF7-E8C71FA6608E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwiftRuntimeLibrary.Tests", "src\SwiftRuntimeLibrary\tests\SwiftRuntimeLibrary.Tests.csproj", "{61F74BC6-1CCA-49FA-B5B8-6C9EABC1D0AB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwiftRuntime.Tests", "src\Swift.Runtime\tests\Swift.Runtime.Tests.csproj", "{61F74BC6-1CCA-49FA-B5B8-6C9EABC1D0AB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

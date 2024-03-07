@@ -4,7 +4,7 @@
 using Xunit;
 using BindingsGeneration;
 
-namespace SwiftBindings.Tests
+namespace BindingsGeneration.Tests
 {
     public class PInvokeTests
     {
