@@ -3,7 +3,7 @@
 
 using System.Xml;
 
-namespace SwiftRuntimeLibrary
+namespace Swift.Runtime
 {
     /// <summary>
     /// Represents a database for mapping Swift type names to C# type names.

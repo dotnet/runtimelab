@@ -4,7 +4,7 @@
 using Xunit;
 using System.Xml;
 
-namespace SwiftRuntimeLibrary.Tests;
+namespace Swift.Runtime.Tests;
 
 public class XmlFileTests
 {

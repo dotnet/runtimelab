@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 using System.CommandLine;
-using SwiftRuntimeLibrary;
+using Swift.Runtime;
 
 namespace BindingsGeneration
 {
