@@ -715,6 +715,7 @@ CONFIG_INTEGER(JitDispIns, W("JitDispIns"), 0)
 
 CONFIG_INTEGER(JitCheckLlvmIR, W("JitCheckLlvmIR"), DEBUG_ONLY_BY_DEFAULT)
 CONFIG_INTEGER(JitRunLssaTests, W("JitRunLssaTests"), 0)
+CONFIG_INTEGER(JitGcStress, W("JitGcStress"), 0)
 #endif // TARGET_WASM
 
 CONFIG_INTEGER(JitEnregStructLocals, W("JitEnregStructLocals"), 1) // Allow to enregister locals with struct type.

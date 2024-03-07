@@ -194,6 +194,10 @@ private:
     //
     PInvokeTransitionFrame* GetTransitionFrame();
 
+#ifdef HOST_WASM
+    void GcScanWasmShadowStack(ScanFunc* pfnEnumCallback, ScanContext* pvCallbackData);
+#endif
+
     void GcScanRootsWorker(ScanFunc* pfnEnumCallback, ScanContext* pvCallbackData, StackFrameIterator & sfIter);
 
     // Tracks the amount of bytes that were reserved for threads in their gc_alloc_context and went unused when they died.
