@@ -29,7 +29,7 @@ namespace SwiftRuntimeLibrary
                     ReadVersion1_0(xmlDoc);
                     break;
                 default:
-                    throw new Exception("Unsupported XML version.");
+                    throw new Exception("Unsupported database version {0} in {1}.", version, file);
             }
         }
 
