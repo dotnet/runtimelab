@@ -122,6 +122,14 @@ private:
             }
         }
 
+#ifdef DEBUG
+        static ConfigMethodRange JitEnableLssaRange;
+        JitEnableLssaRange.EnsureInit(JitConfig.JitEnableLssaRange());
+        const bool lssaEnabled = JitEnableLssaRange.Contains(m_llvm->m_info->compMethodHash());
+#else // !DEBUG
+        const bool lssaEnabled = true;
+#endif // DEBUG
+
         // Identify locals eligible for precise allocation and those that must (or must not) be on the shadow stack.
         for (unsigned lclNum = 0; lclNum < m_compiler->lvaCount; lclNum++)
         {
@@ -165,7 +173,17 @@ private:
             // able to prove that they are not alive across any safe point and so designate them as "candidates".
             else if (varDsc->HasGCPtr())
             {
-                if (m_compiler->lvaInSsa(lclNum))
+                if (!lssaEnabled)
+                {
+                    allocLocation = REG_STK_CANDIDATE_UNCONDITIONAL;
+                    INDEBUG(reason = "gc, LSSA disabled");
+                }
+                else if (!m_compiler->lvaInSsa(lclNum))
+                {
+                    allocLocation = REG_STK_CANDIDATE_UNCONDITIONAL;
+                    INDEBUG(reason = "gc, not in SSA");
+                }
+                else
                 {
                     if (varDsc->lvVarIndex >= m_largestCandidateVarIndexPlusOne)
                     {
@@ -174,11 +192,6 @@ private:
 
                     allocLocation = REG_STK_CANDIDATE_TENTATIVE;
                     INDEBUG(reason = "gc");
-                }
-                else
-                {
-                    allocLocation = REG_STK_CANDIDATE_UNCONDITIONAL;
-                    INDEBUG(reason = "gc, not in SSA");
                 }
             }
 
