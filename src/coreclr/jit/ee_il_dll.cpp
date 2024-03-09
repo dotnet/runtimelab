@@ -1137,9 +1137,10 @@ void Compiler::eeAllocMem(AllocMemArgs* args, const UNATIVE_OFFSET roDataSection
 
 #endif // DEBUG
 
-#if defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64)
+#if defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
 
-    // For arm64/LoongArch64, we want to allocate JIT data always adjacent to code similar to what native compiler does.
+    // For arm64/LoongArch64/RISCV64, we want to allocate JIT data always adjacent to code similar to what native
+    // compiler does.
     // This way allows us to use a single `ldr` to access such data like float constant/jmp table.
     // For LoongArch64 using `pcaddi + ld` to access such data.
 
@@ -1153,7 +1154,7 @@ void Compiler::eeAllocMem(AllocMemArgs* args, const UNATIVE_OFFSET roDataSection
     args->hotCodeSize                 = roDataOffset + args->roDataSize;
     args->roDataSize                  = 0;
 
-#endif // defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64)
+#endif // defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
 
     info.compCompHnd->allocMem(args);
 
@@ -1170,7 +1171,7 @@ void Compiler::eeAllocMem(AllocMemArgs* args, const UNATIVE_OFFSET roDataSection
 
 #endif // DEBUG
 
-#if defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64)
+#if defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
 
     // Fix up data section pointers.
     assert(args->roDataBlock == nullptr);
@@ -1178,7 +1179,7 @@ void Compiler::eeAllocMem(AllocMemArgs* args, const UNATIVE_OFFSET roDataSection
     args->roDataBlock   = ((BYTE*)args->hotCodeBlock) + roDataOffset;
     args->roDataBlockRW = ((BYTE*)args->hotCodeBlockRW) + roDataOffset;
 
-#endif // defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64)
+#endif // defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
 }
 
 void Compiler::eeReserveUnwindInfo(bool isFunclet, bool isColdCode, ULONG unwindSize)

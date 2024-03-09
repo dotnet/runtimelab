@@ -87,6 +87,7 @@ namespace Internal.TypeSystem
                     case TargetArchitecture.ARM64:
                     case TargetArchitecture.X64:
                     case TargetArchitecture.LoongArch64:
+                    case TargetArchitecture.RiscV64:
                         return 8;
                     case TargetArchitecture.ARM:
                     case TargetArchitecture.X86:
@@ -124,6 +125,10 @@ namespace Internal.TypeSystem
                     return 16;
                 }
                 else if (Architecture == TargetArchitecture.LoongArch64)
+                {
+                    return 16;
+                }
+                else if (Architecture == TargetArchitecture.RiscV64)
                 {
                     return 16;
                 }
@@ -184,6 +189,7 @@ namespace Internal.TypeSystem
                         return 2;
                     case TargetArchitecture.ARM64:
                     case TargetArchitecture.LoongArch64:
+                    case TargetArchitecture.RiscV64:
                         return 4;
                     default:
                         return 1;
@@ -289,6 +295,7 @@ namespace Internal.TypeSystem
                 case TargetArchitecture.X64:
                 case TargetArchitecture.ARM64:
                 case TargetArchitecture.LoongArch64:
+                case TargetArchitecture.RiscV64:
                     return new LayoutInt(8);
                 case TargetArchitecture.X86:
                     return new LayoutInt(4);
@@ -349,6 +356,7 @@ namespace Internal.TypeSystem
                 Debug.Assert(Architecture == TargetArchitecture.ARM ||
                     Architecture == TargetArchitecture.ARM64 ||
                     Architecture == TargetArchitecture.LoongArch64 ||
+                    Architecture == TargetArchitecture.RiscV64 ||
                     Architecture == TargetArchitecture.X64 ||
                     Architecture == TargetArchitecture.X86);
 

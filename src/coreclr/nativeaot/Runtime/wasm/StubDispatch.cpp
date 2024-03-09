@@ -22,9 +22,9 @@
 //
 
 // Cache miss case, call the runtime to resolve the target and update the cache.
-extern "C" void* RhpCidResolveWasm_Managed(void* pShadowStack, Object* pObject, void* pCell);
+extern "C" PCODE RhpCidResolveWasm_Managed(void* pShadowStack, Object* pObject, void* pCell);
 
-COOP_PINVOKE_HELPER(void*, RhpResolveInterfaceDispatch, (void* pShadowStack, Object* pObject, InterfaceDispatchCell* pCell))
+COOP_PINVOKE_HELPER(PCODE, RhpResolveInterfaceDispatch, (void* pShadowStack, Object* pObject, InterfaceDispatchCell* pCell))
 {
     ASSERT(pObject != nullptr);
     InterfaceDispatchCache* pCache = (InterfaceDispatchCache*)pCell->GetCache();

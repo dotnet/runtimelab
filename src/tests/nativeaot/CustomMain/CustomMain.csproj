@@ -3,6 +3,9 @@
     <OutputType>Exe</OutputType>
     <CustomNativeMain>true</CustomNativeMain>
     <StaticLibraryPrefix Condition="'$(TargetOS)' != 'windows'">lib</StaticLibraryPrefix>
+
+    <!-- TODO-LLVM: Remove when https://github.com/WebAssembly/wasi-sdk/issues/367 is resolved -->
+    <EmccExtraArgs Condition="'$(TargetOS)' == 'wasi'">-Xlinker -export-if-defined=__main_argc_argv</EmccExtraArgs>
   </PropertyGroup>
 
   <ItemGroup>

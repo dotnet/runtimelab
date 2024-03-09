@@ -93,6 +93,10 @@ namespace ILCompiler
             {
                 return ""; // No "hardware" for Wasm at all.
             }
+            else if (architecture == TargetArchitecture.RiscV64)
+            {
+                return "";
+            }
             else
             {
                 throw new InternalCompilerErrorException("Unknown architecture");
@@ -146,6 +150,10 @@ namespace ILCompiler
                 return SimdVectorLength.None;
             }
             else if (_targetArchitecture == TargetArchitecture.LoongArch64)
+            {
+                return SimdVectorLength.None;
+            }
+            else if (_targetArchitecture == TargetArchitecture.RiscV64)
             {
                 return SimdVectorLength.None;
             }

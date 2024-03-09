@@ -145,20 +145,12 @@ namespace Internal.Runtime.TypeLoader
         }
 
         // To keep the synchronization simple, we execute all type loading under a global lock
-        private Lock _typeLoaderLock = new Lock();
+        private Lock _typeLoaderLock = new Lock(useTrivialWaits: true);
 
         public void VerifyTypeLoaderLockHeld()
         {
             if (!_typeLoaderLock.IsHeldByCurrentThread)
                 Environment.FailFast("TypeLoaderLock not held");
-        }
-
-        public void RunUnderTypeLoaderLock(Action action)
-        {
-            using (_typeLoaderLock.EnterScope())
-            {
-                action();
-            }
         }
 
         public IntPtr GenericLookupFromContextAndSignature(IntPtr context, IntPtr signature, out IntPtr auxResult)
@@ -218,18 +210,6 @@ namespace Internal.Runtime.TypeLoader
             return !type.RuntimeTypeHandle.IsNull();
         }
 
-        internal TypeDesc GetConstructedTypeFromParserAndNativeLayoutContext(ref NativeParser parser, NativeLayoutInfoLoadContext nativeLayoutContext)
-        {
-            TypeDesc parsedType = nativeLayoutContext.GetType(ref parser);
-            if (parsedType == null)
-                return null;
-
-            if (!EnsureTypeHandleForType(parsedType))
-                return null;
-
-            return parsedType;
-        }
-
         //
         // Parse a native layout signature pointed to by "signature" in the executable image, optionally using
         // "typeArgs" and "methodArgs" for generic type parameter substitution.  The first field in "signature"
@@ -285,14 +265,6 @@ namespace Internal.Runtime.TypeLoader
         //
         // Returns the native layout info reader
         //
-        internal static unsafe NativeReader GetNativeLayoutInfoReader(NativeFormatModuleInfo module)
-        {
-            return GetNativeLayoutInfoReader(module.Handle);
-        }
-
-        //
-        // Returns the native layout info reader
-        //
         internal static unsafe NativeReader GetNativeLayoutInfoReader(RuntimeSignature signature)
         {
             Debug.Assert(signature.IsNativeLayoutSignature);
@@ -327,15 +299,6 @@ namespace Internal.Runtime.TypeLoader
             RuntimeTypeHandle[] result = new RuntimeTypeHandle[count];
             for (uint i = 0; i < count; i++)
                 result[i] = extRefs.GetRuntimeTypeHandleFromIndex(parser.GetUnsigned());
-
-            return result;
-        }
-
-        private static RuntimeTypeHandle[] TypeDescsToRuntimeHandles(Instantiation types)
-        {
-            var result = new RuntimeTypeHandle[types.Length];
-            for (int i = 0; i < types.Length; i++)
-                result[i] = types[i].RuntimeTypeHandle;
 
             return result;
         }
@@ -566,21 +529,6 @@ namespace Internal.Runtime.TypeLoader
             TypeSystemContextFactory.Recycle(context);
 
             return match;
-        }
-
-        public bool ConversionToCanonFormIsAChange(RuntimeTypeHandle[] genericArgHandles, CanonicalFormKind kind)
-        {
-            // Todo: support for universal canon type?
-
-            TypeSystemContext context = TypeSystemContextFactory.Create();
-
-            Instantiation genericArgs = context.ResolveRuntimeTypeHandles(genericArgHandles);
-            bool result;
-            context.ConvertInstantiationToCanonForm(genericArgs, kind, out result);
-
-            TypeSystemContextFactory.Recycle(context);
-
-            return result;
         }
 
         // get the generics hash table and external references table for a module
