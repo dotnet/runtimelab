@@ -1703,11 +1703,17 @@ void Llvm::buildCall(GenTreeCall* call)
     // calls, we fold the shadow stack save into the transition helper call, and so don't need to do anything here.
     if (!call->IsUnmanaged() && callRequiresShadowStackSave(call))
     {
+        // TODO-LLVM: set the correct shadow stack for shadow tail calls here.
         emitHelperCall(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP, getShadowStackForCallee());
     }
 
     llvm::FunctionCallee llvmFuncCallee = consumeCallTarget(call);
-    Value* callValue = emitCallOrInvoke(llvmFuncCallee, argVec, mayPhysicallyThrow(call));
+    llvm::CallBase* callValue = emitCallOrInvoke(llvmFuncCallee, argVec, mayPhysicallyThrow(call));
+
+    if (JitConfig.JitGcStress())
+    {
+        callValue = emitGcStressCall(call, callValue);
+    }
 
     mapGenTreeToValue(call, callValue);
 }
@@ -2495,11 +2501,51 @@ Value* Llvm::emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Val
     return _builder.CreateExtractValue(checkedValue, 0);
 }
 
+llvm::CallBase* Llvm::emitGcStressCall(GenTreeCall* call, llvm::CallBase* callValue)
+{
+    assert(JitConfig.JitGcStress());
+    if (callValue->getType()->isAggregateType())
+    {
+        // The helper can only keep alive one GC value.
+        return callValue;
+    }
+
+    if (!isPotentialGcSafePoint(call))
+    {
+        // Not a safe point...
+        return callValue;
+    }
+
+    Value* objValue;
+    if (varTypeIsGC(call) || (call->TypeIs(TYP_STRUCT) && call->GetLayout(_compiler)->HasGCPtr()))
+    {
+        assert(callValue->getType()->isPointerTy());
+        objValue = callValue;
+    }
+    else
+    {
+        objValue = llvm::Constant::getNullValue(getPtrLlvmType());
+    }
+
+    // The 'flag' will be unique to each callsite.
+    Type* llvmType = Type::getInt8Ty(m_context->Context);
+    llvm::GlobalValue::LinkageTypes linkage = llvm::GlobalValue::InternalLinkage;
+    llvm::Constant* initValue = _builder.getInt8(0);
+    Value* flagValue =
+        new llvm::GlobalVariable(m_context->Module, llvmType, false, linkage, initValue, "RhpGcStressOnceFlag");
+
+    llvm::CallBase* helperCallValue = emitHelperCall(CORINFO_HELP_STRESS_GC, {objValue, flagValue});
+    if (objValue == callValue)
+    {
+        callValue = helperCallValue;
+    }
+
+    return callValue;
+}
+
 llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs)
 {
-    assert(!helperCallRequiresShadowStackSave(helperFunc));
-
-    void* handle = getSymbolHandleForHelperFunc(helperFunc);
+    CORINFO_GENERIC_HANDLE handle = getSymbolHandleForHelperFunc(helperFunc);
     const char* symbolName = GetMangledSymbolName(handle);
     AddCodeReloc(handle);
 
@@ -2508,6 +2554,12 @@ llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*
     }, [this, helperFunc](Function* llvmFunc) {
         annotateHelperFunction(helperFunc, llvmFunc);
     });
+
+    if (helperCallRequiresShadowStackSave(helperFunc))
+    {
+        // TODO-LLVM: set the correct shadow stack for shadow tail calls here.
+        emitHelperCall(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP, getShadowStackForCallee());
+    }
 
     llvm::CallBase* call;
     if (helperCallHasShadowStackArg(helperFunc))

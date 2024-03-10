@@ -5184,7 +5184,7 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     DoPhase(this, PHASE_BUILD_LLVM, [this]() {
         m_llvm->Compile();
     });
-#else
+#else // !TARGET_WASM
 
 #ifdef TARGET_ARM
     if (compLocallocUsed)
@@ -5259,6 +5259,7 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
 
     // Generate PatchpointInfo
     generatePatchpointInfo();
+#endif // !TARGET_WASM
 
     RecordStateAtEndOfCompilation();
 
@@ -5312,8 +5313,6 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
         fprintf(compJitFuncInfoFile, ""); // in our logic this causes a flush
     }
 #endif // FUNC_INFO_LOGGING
-#endif // TARGET_WASM
-
 }
 
 #if FEATURE_LOOP_ALIGN

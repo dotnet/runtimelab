@@ -174,14 +174,10 @@ bool Llvm::callRequiresShadowStackSave(const GenTreeCall* call) const
     // back into managed code, we need to save the shadow stack pointer, so that the RPI frame can pick it up.
     // Another case where the save/restore is required is when calling into native runtime code that can trigger
     // a GC (canonical example: allocators), to communicate shadow stack bounds to the roots scan.
-    // TODO-LLVM-CQ: optimize the GC case by using specialized helpers which would sink the save/restore to the
-    // unlikely path of a GC actually happening.
-    // TODO-LLVM-CQ: we should skip the managed -> native -> managed transition for runtime imports implemented
-    // in managed code as runtime exports.
     //
     if (call->IsHelperCall())
     {
-        return helperCallRequiresShadowStackSave(_compiler->eeGetHelperNum(call->gtCallMethHnd));
+        return helperCallRequiresShadowStackSave(call->GetHelperNum());
     }
 
     // SPGCT calls are assumed to never RPI by contract.
@@ -415,9 +411,9 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         // (Not) implemented in "Runtime\portable.cpp".
         { FUNC(CORINFO_HELP_POLL_GC) CORINFO_TYPE_VOID, { } },
 
-        // Debug-only helpers NYI in NativeAOT.
-        { FUNC(CORINFO_HELP_STRESS_GC) },
-        { FUNC(CORINFO_HELP_CHECK_OBJ) },
+        // Debug-only helpers, implemented in "Runtime\wasm\GcStress.cpp".
+        { FUNC(CORINFO_HELP_STRESS_GC) CORINFO_TYPE_BYREF, { CORINFO_TYPE_BYREF, CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_CHECK_OBJ) CORINFO_TYPE_CLASS, { CORINFO_TYPE_CLASS }, HFIF_NO_RPI_OR_GC },
 
         // Write barriers, implemented in "Runtime\portable.cpp".
         { FUNC(CORINFO_HELP_ASSIGN_REF) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS }, HFIF_NO_RPI_OR_GC },

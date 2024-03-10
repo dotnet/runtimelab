@@ -122,6 +122,14 @@ private:
             }
         }
 
+#ifdef DEBUG
+        static ConfigMethodRange JitEnableLssaRange;
+        JitEnableLssaRange.EnsureInit(JitConfig.JitEnableLssaRange());
+        const bool lssaEnabled = JitEnableLssaRange.Contains(m_llvm->m_info->compMethodHash());
+#else // !DEBUG
+        const bool lssaEnabled = true;
+#endif // DEBUG
+
         // Identify locals eligible for precise allocation and those that must (or must not) be on the shadow stack.
         for (unsigned lclNum = 0; lclNum < m_compiler->lvaCount; lclNum++)
         {
@@ -165,7 +173,17 @@ private:
             // able to prove that they are not alive across any safe point and so designate them as "candidates".
             else if (varDsc->HasGCPtr())
             {
-                if (m_compiler->lvaInSsa(lclNum))
+                if (!lssaEnabled)
+                {
+                    allocLocation = REG_STK_CANDIDATE_UNCONDITIONAL;
+                    INDEBUG(reason = "gc, LSSA disabled");
+                }
+                else if (!m_compiler->lvaInSsa(lclNum))
+                {
+                    allocLocation = REG_STK_CANDIDATE_UNCONDITIONAL;
+                    INDEBUG(reason = "gc, not in SSA");
+                }
+                else
                 {
                     if (varDsc->lvVarIndex >= m_largestCandidateVarIndexPlusOne)
                     {
@@ -174,11 +192,6 @@ private:
 
                     allocLocation = REG_STK_CANDIDATE_TENTATIVE;
                     INDEBUG(reason = "gc");
-                }
-                else
-                {
-                    allocLocation = REG_STK_CANDIDATE_UNCONDITIONAL;
-                    INDEBUG(reason = "gc, not in SSA");
                 }
             }
 
@@ -231,6 +244,7 @@ private:
         static const unsigned GC_EXPOSED_UNKNOWN = ValueNumStore::NoVN;
         static const unsigned LAST_ACTIVE_USE_IS_LAST_USE_BIT = 1 << 31;
 
+        Llvm* m_llvm;
         ShadowStackAllocator* m_lssa;
         SmallHashTable<GenTree*, unsigned, 8, DeterministicNodeHashInfo> m_liveSdsuGcDefs;
         ArrayStack<unsigned> m_spillLclsRef;
@@ -248,6 +262,7 @@ private:
     public:
         LssaDomTreeVisitor(ShadowStackAllocator* lssa)
             : NewDomTreeVisitor(lssa->m_compiler)
+            , m_llvm(lssa->m_llvm)
             , m_lssa(lssa)
             , m_liveSdsuGcDefs(m_compiler->getAllocator(CMK_LSRA))
             , m_spillLclsRef(m_compiler->getAllocator(CMK_LSRA))
@@ -321,7 +336,7 @@ private:
             {
                 if (node->isContained())
                 {
-                    assert(!m_lssa->IsPotentialGcSafePoint(node));
+                    assert(!m_llvm->isPotentialGcSafePoint(node));
                     continue;
                 }
 
@@ -376,7 +391,7 @@ private:
                 }
 
                 // Find out if we need to spill anything.
-                if (m_lssa->IsPotentialGcSafePoint(node))
+                if (m_llvm->isPotentialGcSafePoint(node))
                 {
                     ProcessSafePoint(block, node);
                 }
@@ -1222,44 +1237,6 @@ private:
         return false;
     }
 
-    //------------------------------------------------------------------------
-    // IsPotentialGcSafePoint: Can this node be a GC safe point?
-    //
-    // Arguments:
-    //    node - The node
-    //
-    // Return Value:
-    //    Whether "node" can trigger GC.
-    //
-    // Notes:
-    //    Similar to "Compiler::IsGcSafePoint", with the difference being that
-    //    the "conservative" return value for this method is "true". Does not
-    //    consider nodes safe points only because they may throw.
-    //
-    bool IsPotentialGcSafePoint(GenTree* node)
-    {
-        if (node->IsCall())
-        {
-            if (node->AsCall()->IsUnmanaged() && node->AsCall()->IsSuppressGCTransition())
-            {
-                return false;
-            }
-            if (node->IsHelperCall())
-            {
-                const HelperFuncInfo& info = m_llvm->getHelperFuncInfo(node->AsCall()->GetHelperNum());
-                if (info.HasFlag(HFIF_NO_RPI_OR_GC) || info.HasFlag(HFIF_THROW_OR_NO_RPI_OR_GC))
-                {
-                    return false;
-                }
-            }
-
-            // All other calls are assumed to be possible safe points.
-            return true;
-        }
-
-        return false;
-    }
-
     bool IsGcConservative() const
     {
         return true;
@@ -1809,6 +1786,44 @@ unsigned Llvm::getCalleeShadowStackOffset(unsigned funcIdx, bool isTailCall) con
     }
 
     return getShadowFrameSize(funcIdx);
+}
+
+//------------------------------------------------------------------------
+// isPotentialGcSafePoint: Can this node be a GC safe point?
+//
+// Arguments:
+//    node - The node
+//
+// Return Value:
+//    Whether "node" can trigger GC.
+//
+// Notes:
+//    Similar to "Compiler::IsGcSafePoint", with the difference being that
+//    the "conservative" return value for this method is "true". Does not
+//    consider nodes safe points only because they may throw.
+//
+bool Llvm::isPotentialGcSafePoint(GenTree* node) const
+{
+    if (node->IsCall())
+    {
+        if (node->AsCall()->IsUnmanaged() && node->AsCall()->IsSuppressGCTransition())
+        {
+            return false;
+        }
+        if (node->IsHelperCall())
+        {
+            const HelperFuncInfo& info = getHelperFuncInfo(node->AsCall()->GetHelperNum());
+            if (info.HasFlag(HFIF_NO_RPI_OR_GC) || info.HasFlag(HFIF_THROW_OR_NO_RPI_OR_GC))
+            {
+                return false;
+            }
+        }
+
+        // All other calls are assumed to be possible safe points.
+        return true;
+    }
+
+    return false;
 }
 
 //------------------------------------------------------------------------
