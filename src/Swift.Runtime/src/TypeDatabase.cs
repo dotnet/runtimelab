@@ -109,5 +109,15 @@ namespace Swift.Runtime
             }
             throw new Exception($"No mapping for {swiftName} found in the type database.");
         }
+
+        /// <summary>
+        /// Checks if a Swift type name corresponds to a known C# value type.
+        /// </summary>
+        /// <param name="swiftName">The Swift type name.</param>
+        /// <returns><c>true</c> if the Swift type name maps to a C# value type; otherwise <c>false</c>.</returns>
+        public bool IsValueType(string swiftName)
+        {
+            return _swiftToCSharpMapping.TryGetValue(swiftName, out string? csharpName);
+        }
     }
 }

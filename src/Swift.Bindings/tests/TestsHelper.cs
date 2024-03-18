@@ -11,24 +11,26 @@ namespace BindingsGeneration.Tests
     public static class TestsHelper
     {
         private static int uniqueId = 0;
-        public static object CompileAndExecute(string filePath, string sourceCode, string typeName, string methodName)
+        public static object CompileAndExecute(string filePath, string sourceCode, string typeName, string methodName, object[] args)
         {
             string fileSourceCode = File.ReadAllText(filePath);
             var sourceCodes = new[] { fileSourceCode, sourceCode };
-            return CompileAndExecute(sourceCodes, typeName, methodName);
+            return CompileAndExecute(sourceCodes, typeName, methodName, args);
         }
 
-        private static object CompileAndExecute(string[] sourceCodes, string typeName, string methodName)
+        private static object CompileAndExecute(string[] sourceCodes, string typeName, string methodName, object[] args)
         {
-            var options = new CSharpCompilationOptions(OutputKind.ConsoleApplication);
+            var options = new CSharpCompilationOptions(OutputKind.ConsoleApplication, allowUnsafe: true);
             var syntaxTrees = sourceCodes.Select(code => CSharpSyntaxTree.ParseText(code)).ToArray();
             var systemRuntimeAssemblyPath = Assembly.Load("System.Runtime").Location;
+            var systemSecurityCryptographyAssemblyPath = Assembly.Load("System.Security.Cryptography").Location;
 
             var references = new[]
             {
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
                 MetadataReference.CreateFromFile(systemRuntimeAssemblyPath),
+                MetadataReference.CreateFromFile(systemSecurityCryptographyAssemblyPath),
             };
 
 
@@ -54,9 +56,9 @@ namespace BindingsGeneration.Tests
             }
 
             Assembly compiledAssembly = Assembly.LoadFile(assemblyPath);
-            Type targetType = compiledAssembly.GetType("Test.MainClass");
+            Type targetType = compiledAssembly.GetType(typeName);
             MethodInfo customMethod = targetType.GetMethod(methodName);
-            return customMethod.Invoke(null, new object[] { });
+            return customMethod.Invoke(null, args);
         }
     }
 }

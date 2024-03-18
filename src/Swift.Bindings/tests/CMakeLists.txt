@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(PInvokeTests)
+project(SwiftTests)
 
-set(SOURCE PInvokeTests)
+# Find all Swift source files in the directory
+file(GLOB SOURCES "*.swift")
 
 if (NOT SWIFT_COMPILER_TARGET)
     set(SWIFT_PLATFORM "macosx")
@@ -16,12 +17,14 @@ if (NOT SWIFT_COMPILER_TARGET)
     set(SWIFT_COMPILER_TARGET "${CMAKE_OSX_ARCHITECTURES}-apple-${SWIFT_PLATFORM}${SWIFT_DEPLOYMENT_TARGET}")
 endif()
 
-add_custom_target(${SOURCE} ALL
-    COMMAND xcrun swiftc -target ${SWIFT_COMPILER_TARGET} -emit-module -emit-library -enable-library-evolution -emit-module-interface ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE}.swift  -o ${CMAKE_CURRENT_BINARY_DIR}/lib${SOURCE}.dylib
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE}.swift
-    COMMENT "Generating ${SOURCE} library"
-)
-
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/lib${SOURCE}.dylib
-    DESTINATION bin
-)
+foreach(SOURCE_FILE ${SOURCES})
+    get_filename_component(SOURCE_BASE_NAME ${SOURCE_FILE} NAME_WE)
+    add_custom_target(${SOURCE_BASE_NAME} ALL
+        COMMAND xcrun swiftc -target ${SWIFT_COMPILER_TARGET} -emit-module -emit-library -enable-library-evolution -emit-module-interface ${SOURCE_FILE} -o ${CMAKE_CURRENT_BINARY_DIR}/lib${SOURCE_BASE_NAME}.dylib
+        DEPENDS ${SOURCE_FILE}
+        COMMENT "Generating ${SOURCE_BASE_NAME} library"
+    )
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/lib${SOURCE_BASE_NAME}.dylib
+        DESTINATION bin
+    )
+endforeach()

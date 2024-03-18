@@ -46,7 +46,7 @@ namespace BindingsGeneration
             writer.WriteLine($"{{");
 
             writer.Indent++;
-            writer.WriteLine($"public class {moduleDecl.Name} {{");
+            writer.WriteLine($"public unsafe class {moduleDecl.Name} {{");
 
             writer.Indent++;
             foreach (MethodDecl methodDecl in moduleDecl.Methods)

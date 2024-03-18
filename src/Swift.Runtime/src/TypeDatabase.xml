@@ -2,49 +2,55 @@
 <swifttypedatabase version="1.0">
     <entities>
         <entity managedNameSpace="System" managedTypeName="Byte">
-            <typedeclaration kind="struct" name="Swift.UInt8" module="Swift" />
+            <typedeclaration kind="struct" name="UInt8" module="Swift" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="SByte">
-            <typedeclaration kind="struct" name="Swift.Int8" module="Swift" />
+            <typedeclaration kind="struct" name="Int8" module="Swift" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="Int16">
-            <typedeclaration kind="struct" name="Swift.Int16" module="Swift" />
+            <typedeclaration kind="struct" name="Int16" module="Swift" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="UInt16">
-            <typedeclaration kind="struct" name="Swift.UInt16" module="Swift" />
+            <typedeclaration kind="struct" name="UInt16" module="Swift" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="Int32">
-            <typedeclaration kind="struct" name="Swift.Int32" module="Swift" />
+            <typedeclaration kind="struct" name="Int32" module="Swift" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="UInt32">
-            <typedeclaration kind="struct" name="Swift.UInt32" module="Swift" />
+            <typedeclaration kind="struct" name="UInt32" module="Swift" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="Int64">
-            <typedeclaration kind="struct" name="Swift.Int64" module="Swift" />
+            <typedeclaration kind="struct" name="Int64" module="Swift" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="UInt64">
-            <typedeclaration kind="struct" name="Swift.UInt64" module="Swift" />
+            <typedeclaration kind="struct" name="UInt64" module="Swift" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="Single">
-            <typedeclaration kind="struct" name="Swift.Float" module="Swift" />
+            <typedeclaration kind="struct" name="Float" module="Swift" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="Double">
-            <typedeclaration kind="struct" name="Swift.Double" module="Swift" />
+            <typedeclaration kind="struct" name="Double" module="Swift" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="IntPtr">
-            <typedeclaration kind="struct" name="Swift.Int" module="Swift" />
+            <typedeclaration kind="struct" name="Int" module="Swift" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="UIntPtr">
-            <typedeclaration kind="struct" name="Swift.UInt" module="Swift" />
+            <typedeclaration kind="struct" name="UInt" module="Swift" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="bool">
-            <typedeclaration kind="struct" name="Swift.Bool" module="Swift" />
+            <typedeclaration kind="struct" name="Bool" module="Swift" />
         </entity>
-        <entity managedNameSpace="Swift.Runtime" managedTypeName="UnsafeRawPointer">
-            <typedeclaration kind="struct" name="Swift.UnsafeRawPointer" module="Swift" />
+        <entity managedNameSpace="System" managedTypeName="void*">
+            <typedeclaration kind="struct" name="UnsafePointer" module="Swift" />
         </entity>
-        <entity managedNameSpace="Swift.Runtime" managedTypeName="UnsafeMutableRawPointer">
-            <typedeclaration kind="struct" name="Swift.UnsafeMutableRawPointer" module="Swift" />
+        <entity managedNameSpace="System" managedTypeName="void*">
+            <typedeclaration kind="struct" name="UnsafeMutablePointer" module="Swift" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="void*">
+            <typedeclaration kind="struct" name="UnsafeRawPointer" module="Swift" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="void*">
+            <typedeclaration kind="struct" name="UnsafeMutableRawPointer" module="Swift" />
         </entity>
     </entities>
 </swifttypedatabase>

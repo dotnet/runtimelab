@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using Xunit;
-using BindingsGeneration;
 
 namespace BindingsGeneration.Tests
 {
@@ -35,7 +34,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            int result = (int)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            int result = (int)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(42, result);
             Console.WriteLine("OK");
         }
@@ -67,7 +66,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-7706330218351441791, result);
             Console.WriteLine("OK");
         }
@@ -99,7 +98,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-3202601456867082324, result);
             Console.WriteLine("OK");
         }
@@ -131,7 +130,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(911474180935535301, result);
             Console.WriteLine("OK");
         }
@@ -163,7 +162,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-6350065034291914241, result);
             Console.WriteLine("OK");
         }
@@ -195,7 +194,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-9091922861563963282, result);
             Console.WriteLine("OK");
         }
@@ -227,7 +226,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-3357359150345247842, result);
             Console.WriteLine("OK");
         }
@@ -259,7 +258,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-581969692498632062, result);
             Console.WriteLine("OK");
         }
@@ -291,7 +290,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(4054341816496194551, result);
             Console.WriteLine("OK");
         }
@@ -323,7 +322,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-2147505143518021575, result);
             Console.WriteLine("OK");
         }
@@ -355,7 +354,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(3533238385513656508, result);
             Console.WriteLine("OK");
         }
@@ -387,7 +386,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(8515181823957334780, result);
             Console.WriteLine("OK");
         }
@@ -419,7 +418,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-5125817077505710853, result);
             Console.WriteLine("OK");
         }
@@ -451,7 +450,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(4774074602111830179, result);
             Console.WriteLine("OK");
         }
@@ -483,7 +482,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(8686515529117439727, result);
             Console.WriteLine("OK");
         }
@@ -515,7 +514,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(1430703777921650146, result);
             Console.WriteLine("OK");
         }
@@ -547,7 +546,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(7324810059718518437, result);
             Console.WriteLine("OK");
         }
@@ -579,7 +578,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-2322427926688559587, result);
             Console.WriteLine("OK");
         }
@@ -611,7 +610,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-5704419938581148490, result);
             Console.WriteLine("OK");
         }
@@ -643,7 +642,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-7333181440701096551, result);
             Console.WriteLine("OK");
         }
@@ -675,7 +674,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-7514368921355633465, result);
             Console.WriteLine("OK");
         }
@@ -707,7 +706,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(4347999520285809529, result);
             Console.WriteLine("OK");
         }
@@ -739,7 +738,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(9056719667499044372, result);
             Console.WriteLine("OK");
         }
@@ -771,7 +770,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(2450837469650376012, result);
             Console.WriteLine("OK");
         }
@@ -803,7 +802,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-6077835106866375633, result);
             Console.WriteLine("OK");
         }
@@ -835,7 +834,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-7246961535839287248, result);
             Console.WriteLine("OK");
         }
@@ -867,7 +866,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(4681650148273269479, result);
             Console.WriteLine("OK");
         }
@@ -899,7 +898,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-7896710633380101536, result);
             Console.WriteLine("OK");
         }
@@ -931,7 +930,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-2413801917489038945, result);
             Console.WriteLine("OK");
         }
@@ -963,7 +962,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-5115695744450024635, result);
             Console.WriteLine("OK");
         }
@@ -995,7 +994,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(7218188220935660367, result);
             Console.WriteLine("OK");
         }
@@ -1027,7 +1026,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(3303407505715961682, result);
             Console.WriteLine("OK");
         }
@@ -1059,7 +1058,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(6926745355509484660, result);
             Console.WriteLine("OK");
         }
@@ -1091,7 +1090,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-8134759728697468421, result);
             Console.WriteLine("OK");
         }
@@ -1123,7 +1122,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-8926062754575499112, result);
             Console.WriteLine("OK");
         }
@@ -1155,7 +1154,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(3916199453627741495, result);
             Console.WriteLine("OK");
         }
@@ -1187,7 +1186,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(4225631615746848021, result);
             Console.WriteLine("OK");
         }
@@ -1219,7 +1218,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(9029057458451328084, result);
             Console.WriteLine("OK");
         }
@@ -1251,7 +1250,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(9091326884382848930, result);
             Console.WriteLine("OK");
         }
@@ -1283,7 +1282,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(2966780901945169708, result);
             Console.WriteLine("OK");
         }
@@ -1315,7 +1314,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-7464446680392812994, result);
             Console.WriteLine("OK");
         }
@@ -1347,7 +1346,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-3563617050423332895, result);
             Console.WriteLine("OK");
         }
@@ -1379,7 +1378,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-2569382956498289470, result);
             Console.WriteLine("OK");
         }
@@ -1411,7 +1410,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-1108582741386924293, result);
             Console.WriteLine("OK");
         }
@@ -1443,7 +1442,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-5808479907339934850, result);
             Console.WriteLine("OK");
         }
@@ -1475,7 +1474,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-234686925954875908, result);
             Console.WriteLine("OK");
         }
@@ -1507,7 +1506,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-9083497234002976264, result);
             Console.WriteLine("OK");
         }
@@ -1539,7 +1538,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-7467754277704703568, result);
             Console.WriteLine("OK");
         }
@@ -1571,7 +1570,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(7149358155385248658, result);
             Console.WriteLine("OK");
         }
@@ -1603,7 +1602,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-8590814201057560160, result);
             Console.WriteLine("OK");
         }
@@ -1635,7 +1634,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(739011484971652047, result);
             Console.WriteLine("OK");
         }
@@ -1667,7 +1666,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(3055246540243887734, result);
             Console.WriteLine("OK");
         }
@@ -1699,7 +1698,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(7917142179400080853, result);
             Console.WriteLine("OK");
         }
@@ -1731,7 +1730,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-8118257769004209257, result);
             Console.WriteLine("OK");
         }
@@ -1763,7 +1762,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(9075957082830800153, result);
             Console.WriteLine("OK");
         }
@@ -1795,7 +1794,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(715458900514912094, result);
             Console.WriteLine("OK");
         }
@@ -1827,7 +1826,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-7812796314477300904, result);
             Console.WriteLine("OK");
         }
@@ -1859,7 +1858,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-3660123537755587162, result);
             Console.WriteLine("OK");
         }
@@ -1891,7 +1890,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-8830493546874923270, result);
             Console.WriteLine("OK");
         }
@@ -1923,7 +1922,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(6514055640091085387, result);
             Console.WriteLine("OK");
         }
@@ -1955,7 +1954,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(5046324847209516867, result);
             Console.WriteLine("OK");
         }
@@ -1987,7 +1986,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-8176066941526010601, result);
             Console.WriteLine("OK");
         }
@@ -2019,7 +2018,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-8047185703659702100, result);
             Console.WriteLine("OK");
         }
@@ -2051,7 +2050,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(6758416630263865563, result);
             Console.WriteLine("OK");
         }
@@ -2083,7 +2082,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-24765264996518815, result);
             Console.WriteLine("OK");
         }
@@ -2115,7 +2114,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(4496411701938139124, result);
             Console.WriteLine("OK");
         }
@@ -2147,7 +2146,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(7620356050748244213, result);
             Console.WriteLine("OK");
         }
@@ -2179,7 +2178,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-6837183037573462724, result);
             Console.WriteLine("OK");
         }
@@ -2211,7 +2210,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(3965211134150981679, result);
             Console.WriteLine("OK");
         }
@@ -2243,7 +2242,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(8645187640386338150, result);
             Console.WriteLine("OK");
         }
@@ -2275,7 +2274,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-2766546132850174765, result);
             Console.WriteLine("OK");
         }
@@ -2307,7 +2306,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-6730251310408327023, result);
             Console.WriteLine("OK");
         }
@@ -2339,7 +2338,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-4761426221194945322, result);
             Console.WriteLine("OK");
         }
@@ -2371,7 +2370,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(8722701469163367659, result);
             Console.WriteLine("OK");
         }
@@ -2403,7 +2402,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(9091436234605144348, result);
             Console.WriteLine("OK");
         }
@@ -2435,7 +2434,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-4564195959279673945, result);
             Console.WriteLine("OK");
         }
@@ -2467,7 +2466,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-3369734987080453648, result);
             Console.WriteLine("OK");
         }
@@ -2499,7 +2498,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-8920640767423704440, result);
             Console.WriteLine("OK");
         }
@@ -2531,7 +2530,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(6960169366615671879, result);
             Console.WriteLine("OK");
         }
@@ -2563,7 +2562,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(4812301631028745377, result);
             Console.WriteLine("OK");
         }
@@ -2595,7 +2594,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(693619259694162127, result);
             Console.WriteLine("OK");
         }
@@ -2627,7 +2626,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-4631030647197364647, result);
             Console.WriteLine("OK");
         }
@@ -2659,7 +2658,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-8908581242517107527, result);
             Console.WriteLine("OK");
         }
@@ -2691,7 +2690,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-1543576629977717704, result);
             Console.WriteLine("OK");
         }
@@ -2723,7 +2722,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-4161389211393419243, result);
             Console.WriteLine("OK");
         }
@@ -2755,7 +2754,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(8984640578940854556, result);
             Console.WriteLine("OK");
         }
@@ -2787,7 +2786,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-5603269280984392717, result);
             Console.WriteLine("OK");
         }
@@ -2819,7 +2818,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-756030944410084256, result);
             Console.WriteLine("OK");
         }
@@ -2851,7 +2850,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(3151224756940080953, result);
             Console.WriteLine("OK");
         }
@@ -2883,7 +2882,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(3274371447309987255, result);
             Console.WriteLine("OK");
         }
@@ -2915,7 +2914,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-737269134554333880, result);
             Console.WriteLine("OK");
         }
@@ -2947,7 +2946,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(3441802633846719073, result);
             Console.WriteLine("OK");
         }
@@ -2979,7 +2978,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(711186144202003795, result);
             Console.WriteLine("OK");
         }
@@ -3011,7 +3010,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(9206890599465525240, result);
             Console.WriteLine("OK");
         }
@@ -3043,7 +3042,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(7367909694938381646, result);
             Console.WriteLine("OK");
         }
@@ -3075,7 +3074,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(7957085466204676840, result);
             Console.WriteLine("OK");
         }
@@ -3107,7 +3106,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-8941275780625427292, result);
             Console.WriteLine("OK");
         }
@@ -3139,7 +3138,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(2083246537822351760, result);
             Console.WriteLine("OK");
         }
@@ -3171,7 +3170,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(8647824177212049859, result);
             Console.WriteLine("OK");
         }
@@ -3203,7 +3202,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(7040925530630314472, result);
             Console.WriteLine("OK");
         }
@@ -3235,7 +3234,7 @@ namespace BindingsGeneration.Tests
                 }
                 """;
 
-            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult");
+            long result = (long)TestsHelper.CompileAndExecute("PInvokeTestsBindings.cs", sourceCode, "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-7883825139759684683, result);
             Console.WriteLine("OK");
         }

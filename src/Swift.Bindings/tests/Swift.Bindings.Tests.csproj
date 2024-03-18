@@ -11,6 +11,9 @@
   <ItemGroup>
     <ProjectReference Include="../src/Swift.Bindings.csproj" />
     <PackageReference Include="Microsoft.CodeAnalysis" Version="4.8.0" />
+    <Content Include="*.cs.template">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <Target Name="CompileNativeLibs" AfterTargets="Build">

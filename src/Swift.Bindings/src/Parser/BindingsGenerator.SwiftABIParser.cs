@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Newtonsoft.Json;
+using Swift.Runtime;
 
 namespace BindingsGeneration
 {
@@ -45,11 +46,13 @@ namespace BindingsGeneration
     {
         private readonly string _filePath;
         private readonly int _verbose;
+        private readonly TypeDatabase _typeDatabase;
 
-        public SwiftABIParser(string filePath, int verbose = 0)
+        public SwiftABIParser(string filePath, TypeDatabase typeDatabase, int verbose = 0)
         {
             _filePath = filePath;
             _verbose = verbose;
+            _typeDatabase = typeDatabase;
         }
 
         /// <summary>
@@ -115,8 +118,8 @@ namespace BindingsGeneration
                     new TypeDecl
                     {
                         Name = paramNames[i],
-                        FullyQualifiedName = child.PrintedName == "()" ? "Void" : child.PrintedName,
-                        IsValueType = true,
+                        FullyQualifiedName = child.Name,
+                        IsValueType = _typeDatabase.IsValueType(child.Name),
                         TypeKind = TypeKind.Named
                     }).ToList() ?? new List<TypeDecl>()
             };
