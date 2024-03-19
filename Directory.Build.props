@@ -12,7 +12,7 @@
 
     <!-- Set this property to false if you don't want to use the runtime
           framework version defined in Versions.props -->
-    <UseCustomRuntimeVersion>false</UseCustomRuntimeVersion>
+    <UseCustomRuntimeVersion>true</UseCustomRuntimeVersion>
     <RuntimeFrameworkVersion Condition="$(UseCustomRuntimeVersion)">$(MicrosoftNETCoreAppVersion)</RuntimeFrameworkVersion>
   </PropertyGroup>
 
