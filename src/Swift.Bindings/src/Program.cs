@@ -3,6 +3,7 @@
 
 using System.CommandLine;
 using Swift.Runtime;
+using System.IO;
 
 namespace BindingsGeneration
 {
@@ -92,6 +93,15 @@ namespace BindingsGeneration
 
             ICSharpEmitter csharpEmitter = new StringCSharpEmitter(outputDirectory, typeDatabase, verbose);
             csharpEmitter.EmitModule(decl);
+
+            // Copy the Swift.Runtime types to the output directory
+            string[] fileEntries = Directory.GetFiles(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Library"));
+            foreach (string filePath in fileEntries)
+            {
+                string fileName = Path.GetFileName(filePath);
+                string destFilePath = Path.Combine(outputDirectory, fileName);
+                File.Copy(filePath, destFilePath, true);
+            }
 
             if (verbose > 0)
                 Console.WriteLine("Bindings generation completed.");

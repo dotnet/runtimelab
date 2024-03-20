@@ -2,9 +2,10 @@
 // Licensed under the MIT License.
 
 using System;
-using UnsafeRawPointerTestsBindings;
+using UnsafeBufferPointerTestsBindings;
 using System.Diagnostics;
 using System.Security.Cryptography;
+using Swift.Runtime;
 
 namespace Test
 {
@@ -65,13 +66,20 @@ namespace Test
             {
                 const int Success = 1;
 
-                int result = UnsafeRawPointerTests.AppleCryptoNative_ChaCha20Poly1305Encrypt(
-                                    keyPtr, key.Length,
-                                    noncePtr, nonce.Length,
-                                    plaintextPtr, plaintext.Length,
-                                    ciphertextPtr, ciphertext.Length,
-                                    tagPtr, tag.Length,
-                                    aadPtr, aad.Length);
+                UnsafeRawBufferPointer keyBuffer = new UnsafeRawBufferPointer(keyPtr, key.Length);
+                UnsafeRawBufferPointer nonceBuffer = new UnsafeRawBufferPointer(noncePtr, nonce.Length);
+                UnsafeRawBufferPointer plaintextBuffer = new UnsafeRawBufferPointer(plaintextPtr, plaintext.Length);
+                UnsafeMutableBufferPointer ciphertextBuffer = new UnsafeMutableBufferPointer(ciphertextPtr, ciphertext.Length);
+                UnsafeMutableBufferPointer tagBuffer = new UnsafeMutableBufferPointer(tagPtr, tag.Length);
+                UnsafeRawBufferPointer aadBuffer = new UnsafeRawBufferPointer(aadPtr, aad.Length);
+
+                int result = UnsafeBufferPointerTests.AppleCryptoNative_ChaCha20Poly1305Encrypt(
+                                    keyBuffer,
+                                    nonceBuffer,
+                                    plaintextBuffer,
+                                    ciphertextBuffer,
+                                    tagBuffer,
+                                    aadBuffer);
 
                 if (result != Success)
                 {
@@ -99,13 +107,20 @@ namespace Test
                 const int Success = 1;
                 const int AuthTagMismatch = -1;
 
-                int result = UnsafeRawPointerTests.AppleCryptoNative_ChaCha20Poly1305Decrypt(
-                    keyPtr, key.Length,
-                    noncePtr, nonce.Length,
-                    ciphertextPtr, ciphertext.Length,
-                    tagPtr, tag.Length,
-                    plaintextPtr, plaintext.Length,
-                    aadPtr, aad.Length);
+                UnsafeRawBufferPointer keyBuffer = new UnsafeRawBufferPointer(keyPtr, key.Length);
+                UnsafeRawBufferPointer nonceBuffer = new UnsafeRawBufferPointer(noncePtr, nonce.Length);
+                UnsafeRawBufferPointer ciphertextBuffer = new UnsafeRawBufferPointer(ciphertextPtr, ciphertext.Length);
+                UnsafeRawBufferPointer tagBuffer = new UnsafeRawBufferPointer (tagPtr, tag.Length);
+                UnsafeMutableBufferPointer plaintextBuffer = new UnsafeMutableBufferPointer(plaintextPtr, plaintext.Length);
+                UnsafeRawBufferPointer aadBuffer = new UnsafeRawBufferPointer(aadPtr, aad.Length);
+
+                int result = UnsafeBufferPointerTests.AppleCryptoNative_ChaCha20Poly1305Decrypt(
+                    keyBuffer,
+                    nonceBuffer,
+                    ciphertextBuffer,
+                    tagBuffer,
+                    plaintextBuffer,
+                    aadBuffer);
 
                 if (result != Success)
                 {

@@ -103,11 +103,17 @@ namespace Swift.Runtime
         /// <returns>The corresponding C# type name.</returns>
         public string GetCSharpName(string swiftName)
         {
+            // Try to find a known mapping
             if (_swiftToCSharpMapping.TryGetValue(swiftName, out string? csharpName))
             {
                 return csharpName;
             }
-            throw new Exception($"No mapping for {swiftName} found in the type database.");
+            // Try to find a type in Swift.Runtime
+            Type? swiftType = Type.GetType($"Swift.Runtime.{swiftName}");
+            if (swiftType != null)
+                return swiftType.Name;
+            
+            throw new Exception($"No mapping for {swiftName} type found.");
         }
 
         /// <summary>

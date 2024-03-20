@@ -41,6 +41,8 @@ namespace BindingsGeneration
             var generatedNamespace = $"{moduleDecl.Name}Bindings";
             writer.WriteLine($"using global::System;");
             writer.WriteLine($"using global::System.Runtime.InteropServices;");
+            writer.WriteLine($"using global::System.Runtime.CompilerServices;");
+            writer.WriteLine($"using global::Swift.Runtime;");
             writer.WriteLine();
             writer.WriteLine($"namespace {generatedNamespace}");
             writer.WriteLine($"{{");
@@ -74,6 +76,7 @@ namespace BindingsGeneration
         /// <param name="methodDecl">The method declaration.</param>
         public void EmitPInvoke(IndentedTextWriter writer, ModuleDecl moduleDecl, MethodDecl methodDecl)
         {
+            writer.WriteLine("[UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]");
             writer.WriteLine($"[DllImport(\"lib{moduleDecl.Name}.dylib\", EntryPoint = \"{methodDecl.MangledName}\")]");
             writer.Write($"internal static extern");
             EmitReturnType(writer, methodDecl.Signature);

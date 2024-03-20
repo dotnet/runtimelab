@@ -11,28 +11,30 @@ namespace BindingsGeneration.Tests
     public static class TestsHelper
     {
         private static int uniqueId = 0;
-        public static object CompileAndExecute(string filePath, string sourceCode, string typeName, string methodName, object[] args)
-        {
-            string fileSourceCode = File.ReadAllText(filePath);
-            var sourceCodes = new[] { fileSourceCode, sourceCode };
-            return CompileAndExecute(sourceCodes, typeName, methodName, args);
-        }
 
-        private static object CompileAndExecute(string[] sourceCodes, string typeName, string methodName, object[] args)
+
+        public static object CompileAndExecute(string[] filePaths, string[] sourceCodes, string[] dependencies, string typeName, string methodName, object[] args)
         {
+            var expandedFilePaths = ExpandFilePaths(filePaths);
+            Console.WriteLine($"Expanded file paths: {string.Join(", ", expandedFilePaths)}");
+            var fileSourceCodes = expandedFilePaths.Select(File.ReadAllText).ToArray();
+            var allSourceCodes = fileSourceCodes.Concat(sourceCodes).ToArray();
+
             var options = new CSharpCompilationOptions(OutputKind.ConsoleApplication, allowUnsafe: true);
-            var syntaxTrees = sourceCodes.Select(code => CSharpSyntaxTree.ParseText(code)).ToArray();
-            var systemRuntimeAssemblyPath = Assembly.Load("System.Runtime").Location;
-            var systemSecurityCryptographyAssemblyPath = Assembly.Load("System.Security.Cryptography").Location;
+            var syntaxTrees = allSourceCodes.Select(code => CSharpSyntaxTree.ParseText(code)).ToArray();
 
-            var references = new[]
+            var references = new List<MetadataReference>
             {
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
-                MetadataReference.CreateFromFile(systemRuntimeAssemblyPath),
-                MetadataReference.CreateFromFile(systemSecurityCryptographyAssemblyPath),
+                MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
+                MetadataReference.CreateFromFile(Assembly.Load("System.Runtime.InteropServices").Location),
             };
 
+            foreach (string dependency in dependencies) 
+            {
+                references.Add(MetadataReference.CreateFromFile(Assembly.Load(dependency).Location));
+            }
 
             var compilation = CSharpCompilation.Create($"CompiledAssembly{uniqueId}",
                                                         syntaxTrees: syntaxTrees,
@@ -59,6 +61,26 @@ namespace BindingsGeneration.Tests
             Type targetType = compiledAssembly.GetType(typeName);
             MethodInfo customMethod = targetType.GetMethod(methodName);
             return customMethod.Invoke(null, args);
+        }
+
+        private static IEnumerable<string> ExpandFilePaths(IEnumerable<string> filePaths)
+        {
+            foreach (var path in filePaths)
+            {
+                if (path.Contains("*"))
+                {
+                    var dirPath = Path.GetDirectoryName(path);
+                    var searchPattern = Path.GetFileName(path);
+                    foreach (var expandedPath in Directory.GetFiles(dirPath, searchPattern))
+                    {
+                        yield return expandedPath;
+                    }
+                }
+                else
+                {
+                    yield return path;
+                }
+            }
         }
     }
 }
