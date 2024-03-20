@@ -44,6 +44,8 @@ The table below lists the Swift types and their corresponding C# types.
 | `Swift.UInt16`                  | `ushort` |
 | `Swift.Int8`                    | `sbyte`  |
 | `Swift.UInt8`                   | `byte`   |
+| `Swift.UnsafePointer`           | `void*`  |
+| `Swift.UnsafeMutablePointer`    | `void*`  |
 | `Swift.UnsafeRawPointer`        | `void*`  |
 | `Swift.UnsafeMutableRawPointer` | `void*`  |
 | `Int`                           | `nint`   |
@@ -81,6 +83,10 @@ The Swift type database is an XML-based file format used for describing primitiv
             - `name`: Specifies the name of the Swift type.
             - `module`: Specifies the module of the Swift type.
 </details>
+
+### Buffer pointers
+
+Swift provides buffer pointer types as non-owning views into memory: `UnsafeRawBufferPointer`, `UnsafeMutableRawBufferPointer`, `UnsafeBufferPointer`, and `UnsafeMutableBufferPointer`. They are implemented as frozen structs within Swift and are projected as structs into C#. The runtime implements Swift structure lowering algorithm, enabling these structs to be passed correctly. Typed buffer pointers are defined with `_Position` and `Count` properties, while raw buffer pointers are defined with `_Position` and `_End`. Surfaced fields on C# side are `BaseAddress` and `Count`. Since these buffer pointers do not allocate or own the memory they point to, memory management is not encapsulated within the structs.
 
 ### Static and P/Invoke functions
 
@@ -128,7 +134,7 @@ namespace HelloLibraryBindings
 }
 ```
 
-In the example, the user's code references the `HelloLibraryBindings` namespace and invokes a static method that has the same name as the Swift function. When the Swift function returns a type, the C# wrapper method also returns type, with additional processing if required.
+In the example, the user's code references the `HelloLibraryBindings` namespace and invokes a static method that has the same name as the Swift function. When the Swift function returns a type, the C# wrapper method also returns type, with additional processing if required. The C# wrapper method is generated only when marshalling is required. If marshalling is not needed, only a P/Invoke declaration is generated.
 
 ## Functional outline
 
