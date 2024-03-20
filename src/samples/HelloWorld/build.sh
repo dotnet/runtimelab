@@ -6,7 +6,7 @@ dotnet build ../../Swift.Bindings/src/Swift.Bindings.csproj
 
 if [ $? -eq 0 ]; then
     echo "Build successful. Running the BindingsTool..."
-    dotnet ../../../artifacts/bin/Swift.Bindings/Debug/net8.0/Swift.Bindings.dll -a "./HelloLibrary.abi.json" -o "./"
+    dotnet ../../../artifacts/bin/Swift.Bindings/Debug/net9.0/Swift.Bindings.dll -a "./HelloLibrary.abi.json" -o "./"
     dotnet run
 else
     echo "Build failed. Exiting..."

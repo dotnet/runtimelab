@@ -67,7 +67,8 @@ namespace BindingsGeneration
             var moduleDecl = new ModuleDecl
             {
                 Name = Path.GetFileNameWithoutExtension(_filePath).Replace(".abi", ""),
-                Methods = new List<MethodDecl>()
+                Methods = new List<MethodDecl>(),
+                Dependencies = new List<string>() { "System", "System.Runtime.InteropServices", "System.Runtime.CompilerServices" }
             };
 
             if (abiRoot?.ABIRoot?.Children == null) return moduleDecl;
@@ -80,7 +81,15 @@ namespace BindingsGeneration
                 switch (node.Kind)
                 {
                     case "Function":
-                        moduleDecl.Methods = moduleDecl.Methods.Concat(new[] { CreateMethodDecl(node) });
+                        try
+                        {
+                            moduleDecl.Methods.Add(CreateMethodDecl(node, moduleDecl.Dependencies));
+                        }
+                        catch (Exception e)
+                        {
+                            if (_verbose > 1)
+                                Console.WriteLine($"Warning: Unsupported Swift type: {e.Message}");
+                        }
                         break;
                     case "TypeNominal":
                         break;
@@ -107,22 +116,35 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="node">The node representing the method declaration.</param>
         /// <returns>The method declaration.</returns>
-        public MethodDecl CreateMethodDecl(Node node)
+        public MethodDecl CreateMethodDecl(Node node, List<string> dependencies)
         {
+            // Read the parameter names from the signature
             var paramNames = new string[] { "" }.Concat(node.PrintedName.Split("(")[1].Split(")")[0].Split(":", StringSplitOptions.RemoveEmptyEntries)).ToList();
             var methodDecl = new MethodDecl
             {
                 Name = node.Name,
                 MangledName = node.MangledName,
-                Signature = node.Children?.Select((child, i) =>
-                    new TypeDecl
+                Signature = new List<TypeDecl>(),
+                RequireMarshalling = false
+            };
+
+            if (node.Children != null)
+            {
+                for (int i = 0; i < node.Children.Count(); i++)
+                {
+                    var child = node.Children.ElementAt(i);
+                    string[] csharpTypeName = _typeDatabase.GetCSharpTypeName(child.Name);
+                    if (!dependencies.Contains(csharpTypeName[0]))
+                        dependencies.Add(csharpTypeName[0]);
+
+                    methodDecl.Signature.Add(new TypeDecl
                     {
                         Name = paramNames[i],
-                        FullyQualifiedName = child.Name,
-                        IsValueType = _typeDatabase.IsValueType(child.Name),
+                        FullyQualifiedName = csharpTypeName[1],
                         TypeKind = TypeKind.Named
-                    }).ToList() ?? new List<TypeDecl>()
-            };
+                    });
+                }
+            }
 
             return methodDecl;
         }

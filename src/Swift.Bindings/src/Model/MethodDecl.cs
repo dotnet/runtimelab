@@ -19,8 +19,14 @@ namespace BindingsGeneration
         public required string MangledName { get; init; }
         
         /// <summary>
+        /// Indicates if the method requires marshalling.
+        /// </summary>
+        public required bool RequireMarshalling { get; init; }
+
+        /// <summary>
         /// Signature of the method.
         /// </summary>
-        public required IEnumerable<TypeDecl> Signature { get; set; }
+        public required List<TypeDecl> Signature { get; set; }
+
     }
 }

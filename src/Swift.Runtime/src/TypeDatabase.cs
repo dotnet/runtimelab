@@ -97,33 +97,25 @@ namespace Swift.Runtime
         }
 
         /// <summary>
-        /// Gets the C# type name corresponding to the specified Swift type name.
+        /// Gets the C# type name corresponding to the specified Swift type name. 
+        /// The method first tries to find a known mapping, and if that fails, it looks for a type in Swift.Runtime.
         /// </summary>
-        /// <param name="swiftName">The Swift type name.</param>
+        /// <param name="swiftTypeName">The Swift type name.</param>
         /// <returns>The corresponding C# type name.</returns>
-        public string GetCSharpName(string swiftName)
+        public string[] GetCSharpTypeName(string swiftTypeName)
         {
             // Try to find a known mapping
-            if (_swiftToCSharpMapping.TryGetValue(swiftName, out string? csharpName))
+            if (_swiftToCSharpMapping.TryGetValue(swiftTypeName, out string? csharpTypeName))
             {
-                return csharpName;
+                return new string [] { "System", csharpTypeName };
             }
-            // Try to find a type in Swift.Runtime
-            Type? swiftType = Type.GetType($"Swift.Runtime.{swiftName}");
-            if (swiftType != null)
-                return swiftType.Name;
-            
-            throw new Exception($"No mapping for {swiftName} type found.");
-        }
 
-        /// <summary>
-        /// Checks if a Swift type name corresponds to a known C# value type.
-        /// </summary>
-        /// <param name="swiftName">The Swift type name.</param>
-        /// <returns><c>true</c> if the Swift type name maps to a C# value type; otherwise <c>false</c>.</returns>
-        public bool IsValueType(string swiftName)
-        {
-            return _swiftToCSharpMapping.TryGetValue(swiftName, out string? csharpName);
+            // Try to find a type in Swift.Runtime
+            Type? swiftRuntimeType = Type.GetType($"Swift.Runtime.{swiftTypeName}");
+            if (swiftRuntimeType != null)
+                return new string [] { "Swift.Runtime", swiftRuntimeType.Name };
+            
+            throw new Exception($"No mapping for {swiftTypeName} type found.");
         }
     }
 }

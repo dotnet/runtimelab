@@ -17,12 +17,7 @@ namespace BindingsGeneration
         /// Fully qualified name of the type.
         /// </summary>
         public required string FullyQualifiedName { get; init; }
-        
-        /// <summary>
-        /// Value indicating whether the type is a value type.
-        /// </summary>
-        public required bool IsValueType { get; init; }
-        
+
         /// <summary>
         /// Kind of the type.
         /// </summary>
