@@ -36,21 +36,21 @@ The table below lists the Swift types and their corresponding C# types.
 
 | Swift Type                      | C# Type  |
 | ------------------------------- | -------- |
-| `Swift.Int64`                   | `long`   |
-| `Swift.UInt64`                  | `ulong`  |
-| `Swift.Int32`                   | `int`    |
-| `Swift.UInt32`                  | `uint`   |
-| `Swift.Int16`                   | `short`  |
-| `Swift.UInt16`                  | `ushort` |
-| `Swift.Int8`                    | `sbyte`  |
-| `Swift.UInt8`                   | `byte`   |
-| `Int`                           | `nint`   |
-| `UInt`                          | `nuint`  |
+| `Swift.Int64`                   | `Int64`  |
+| `Swift.UInt64`                  | `UInt64` |
+| `Swift.Int32`                   | `Int32`  |
+| `Swift.UInt32`                  | `UInt32` |
+| `Swift.Int16`                   | `Int16`  |
+| `Swift.UInt16`                  | `UInt16` |
+| `Swift.Int8`                    | `SByte`  |
+| `Swift.UInt8`                   | `Byte`   |
+| `Int`                           | `IntPtr` |
+| `UInt`                          | `UIntPtr`|
 | `Bool`                          | `bool`   |
-| `Float`                         | `float`  |
-| `Double`                        | `double` |
+| `Float`                         | `Single` |
+| `Double`                        | `Double` |
 
-All C# types mentioned are blittable except for `bool`. To facilitate `P/Invoke`, a lightweight wrapper is required to convert `bool` to `byte`. Swift primitive types are implemented as frozen structs that conform to Swift-specific lowering processes handled by the runtime. However, such mapping can fit within the underlying calling convention as these types are below the size limit for being passed by reference.
+All C# types mentioned are blittable except for `bool`. To facilitate `P/Invoke`, a lightweight wrapper might be required to convert `bool` to `byte`. Swift primitive types are implemented as frozen structs that conform to Swift-specific lowering processes handled by the runtime. However, such mapping can fit within the underlying calling convention as these types are below the size limit for being passed by reference.
 
 <details>
 The Swift type database is an XML-based file format used for describing primitive data types with the following structure:

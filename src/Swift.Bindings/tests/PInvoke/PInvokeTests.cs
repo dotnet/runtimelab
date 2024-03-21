@@ -26,9 +26,9 @@ namespace BindingsGeneration.Tests
                         }
                         public static int getResult()
                         {
-                             Console.Write("Running HelloWorld: ");
-                             PInvokeTests.helloWorld();
-                             return 42;
+                            Console.Write("Running HelloWorld: ");
+                            PInvokeTests.helloWorld();
+                            return 42;
                         }
                     }
                 }
@@ -40,6 +40,40 @@ namespace BindingsGeneration.Tests
                 new string [] { },
                 "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(42, result);
+            Console.WriteLine("OK");
+        }
+
+        [Fact]
+        public static void TestSwiftBool()
+        {
+            BindingsGenerator.GenerateBindings("PInvoke/PInvokeTests.abi.json", "PInvoke/");
+            var sourceCode = """
+                // Copyright (c) Microsoft Corporation.
+                // Licensed under the MIT License.
+
+                using System;
+                using PInvokeTestsBindings;
+
+                namespace Test {
+                    public class MainClass {
+                        public static int Main(string[] args)
+                        {
+                            return 0;
+                        }
+                        public static bool getResult()
+                        {
+                            return PInvokeTests.swiftFuncBool(true);
+                        }
+                    }
+                }
+                """;
+
+            bool result = (bool)TestsHelper.CompileAndExecute(
+                new string [] { "PInvoke/*.cs" }, 
+                new string [] { sourceCode },
+                new string [] { },
+                "Test.MainClass", "getResult", new object[] { });
+            Assert.True(result);
             Console.WriteLine("OK");
         }
 

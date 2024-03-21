@@ -7,6 +7,10 @@ public func helloWorld() {
     print("Hello, World!")
 }
 
+public func swiftFuncBool(dummy : Bool) -> Bool {
+    return dummy
+}
+
 struct HasherFNV1a {
 
     private var hash: UInt = 14_695_981_039_346_656_037
