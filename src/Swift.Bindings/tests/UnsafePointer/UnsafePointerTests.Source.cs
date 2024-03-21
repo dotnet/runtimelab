@@ -60,8 +60,8 @@ namespace Test
             fixed (void* keyPtr = key)
             fixed (void* noncePtr = nonce)
             fixed (void* plaintextPtr = plaintext)
-            fixed (void* ciphertextPtr = ciphertext)
-            fixed (void* tagPtr = tag)
+            fixed (byte* ciphertextPtr = ciphertext)
+            fixed (byte* tagPtr = tag)
             fixed (void* aadPtr = aad)
             {
                 const int Success = 1;
@@ -101,7 +101,7 @@ namespace Test
             fixed (void* noncePtr = nonce)
             fixed (void* ciphertextPtr = ciphertext)
             fixed (void* tagPtr = tag)
-            fixed (void* plaintextPtr = plaintext)
+            fixed (byte* plaintextPtr = plaintext)
             fixed (void* aadPtr = aad)
             {
                 const int Success = 1;

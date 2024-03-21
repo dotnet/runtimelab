@@ -60,8 +60,8 @@ namespace Test
             fixed (void* keyPtr = key)
             fixed (void* noncePtr = nonce)
             fixed (void* plaintextPtr = plaintext)
-            fixed (void* ciphertextPtr = ciphertext)
-            fixed (void* tagPtr = tag)
+            fixed (byte* ciphertextPtr = ciphertext)
+            fixed (byte* tagPtr = tag)
             fixed (void* aadPtr = aad)
             {
                 const int Success = 1;
@@ -97,12 +97,12 @@ namespace Test
             Span<byte> plaintext,
             ReadOnlySpan<byte> aad)
         {
-            fixed (byte* keyPtr = key)
-            fixed (byte* noncePtr = nonce)
-            fixed (byte* ciphertextPtr = ciphertext)
-            fixed (byte* tagPtr = tag)
+            fixed (void* keyPtr = key)
+            fixed (void* noncePtr = nonce)
+            fixed (void* ciphertextPtr = ciphertext)
+            fixed (void* tagPtr = tag)
             fixed (byte* plaintextPtr = plaintext)
-            fixed (byte* aadPtr = aad)
+            fixed (void* aadPtr = aad)
             {
                 const int Success = 1;
                 const int AuthTagMismatch = -1;
