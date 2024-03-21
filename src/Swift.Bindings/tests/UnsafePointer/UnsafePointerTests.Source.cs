@@ -5,6 +5,7 @@ using System;
 using UnsafePointerTestsBindings;
 using System.Diagnostics;
 using System.Security.Cryptography;
+using Swift.Runtime;
 
 namespace Test
 {
@@ -65,13 +66,20 @@ namespace Test
             {
                 const int Success = 1;
 
+                UnsafeMutableRawPointer _keyPtr = new UnsafeMutableRawPointer(keyPtr);
+                UnsafeMutableRawPointer _noncePtr = new UnsafeMutableRawPointer(noncePtr);
+                UnsafeMutableRawPointer _plaintextPtr = new UnsafeMutableRawPointer(plaintextPtr);
+                UnsafeMutablePointer<Byte> _ciphertextPtr = new UnsafeMutablePointer<Byte>(ciphertextPtr);
+                UnsafeMutablePointer<Byte> _tagPtr = new UnsafeMutablePointer<Byte>(tagPtr);
+                UnsafeMutableRawPointer _aadPtr = new UnsafeMutableRawPointer(aadPtr);
+
                 int result = UnsafePointerTests.AppleCryptoNative_ChaCha20Poly1305Encrypt(
-                                    keyPtr, key.Length,
-                                    noncePtr, nonce.Length,
-                                    plaintextPtr, plaintext.Length,
-                                    ciphertextPtr, ciphertext.Length,
-                                    tagPtr, tag.Length,
-                                    aadPtr, aad.Length);
+                                    _keyPtr, key.Length,
+                                    _noncePtr, nonce.Length,
+                                    _plaintextPtr, plaintext.Length,
+                                    _ciphertextPtr, ciphertext.Length,
+                                    _tagPtr, tag.Length,
+                                    _aadPtr, aad.Length);
 
                 if (result != Success)
                 {
@@ -89,23 +97,30 @@ namespace Test
             Span<byte> plaintext,
             ReadOnlySpan<byte> aad)
         {
-            fixed (byte* keyPtr = key)
-            fixed (byte* noncePtr = nonce)
-            fixed (byte* ciphertextPtr = ciphertext)
-            fixed (byte* tagPtr = tag)
-            fixed (byte* plaintextPtr = plaintext)
-            fixed (byte* aadPtr = aad)
+            fixed (void* keyPtr = key)
+            fixed (void* noncePtr = nonce)
+            fixed (void* ciphertextPtr = ciphertext)
+            fixed (void* tagPtr = tag)
+            fixed (void* plaintextPtr = plaintext)
+            fixed (void* aadPtr = aad)
             {
                 const int Success = 1;
                 const int AuthTagMismatch = -1;
 
+                UnsafeMutableRawPointer _keyPtr = new UnsafeMutableRawPointer(keyPtr);
+                UnsafeMutableRawPointer _noncePtr = new UnsafeMutableRawPointer(noncePtr);
+                UnsafeMutableRawPointer _ciphertextPtr = new UnsafeMutableRawPointer(ciphertextPtr);
+                UnsafeMutableRawPointer _tagPtr = new UnsafeMutableRawPointer (tagPtr);
+                UnsafeMutablePointer<Byte> _plaintextPtr = new UnsafeMutablePointer<Byte>(plaintextPtr);
+                UnsafeMutableRawPointer _aadPtr = new UnsafeMutableRawPointer(aadPtr);
+
                 int result = UnsafePointerTests.AppleCryptoNative_ChaCha20Poly1305Decrypt(
-                    keyPtr, key.Length,
-                    noncePtr, nonce.Length,
-                    ciphertextPtr, ciphertext.Length,
-                    tagPtr, tag.Length,
-                    plaintextPtr, plaintext.Length,
-                    aadPtr, aad.Length);
+                    _keyPtr, key.Length,
+                    _noncePtr, nonce.Length,
+                    _ciphertextPtr, ciphertext.Length,
+                    _tagPtr, tag.Length,
+                    _plaintextPtr, plaintext.Length,
+                    _aadPtr, aad.Length);
 
                 if (result != Success)
                 {

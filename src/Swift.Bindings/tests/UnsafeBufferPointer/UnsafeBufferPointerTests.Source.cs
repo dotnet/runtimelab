@@ -69,8 +69,8 @@ namespace Test
                 UnsafeRawBufferPointer keyBuffer = new UnsafeRawBufferPointer(keyPtr, key.Length);
                 UnsafeRawBufferPointer nonceBuffer = new UnsafeRawBufferPointer(noncePtr, nonce.Length);
                 UnsafeRawBufferPointer plaintextBuffer = new UnsafeRawBufferPointer(plaintextPtr, plaintext.Length);
-                UnsafeMutableBufferPointer ciphertextBuffer = new UnsafeMutableBufferPointer(ciphertextPtr, ciphertext.Length);
-                UnsafeMutableBufferPointer tagBuffer = new UnsafeMutableBufferPointer(tagPtr, tag.Length);
+                UnsafeMutableBufferPointer<Byte> ciphertextBuffer = new UnsafeMutableBufferPointer<Byte>(ciphertextPtr, ciphertext.Length);
+                UnsafeMutableBufferPointer<Byte> tagBuffer = new UnsafeMutableBufferPointer<Byte>(tagPtr, tag.Length);
                 UnsafeRawBufferPointer aadBuffer = new UnsafeRawBufferPointer(aadPtr, aad.Length);
 
                 int result = UnsafeBufferPointerTests.AppleCryptoNative_ChaCha20Poly1305Encrypt(
@@ -111,7 +111,7 @@ namespace Test
                 UnsafeRawBufferPointer nonceBuffer = new UnsafeRawBufferPointer(noncePtr, nonce.Length);
                 UnsafeRawBufferPointer ciphertextBuffer = new UnsafeRawBufferPointer(ciphertextPtr, ciphertext.Length);
                 UnsafeRawBufferPointer tagBuffer = new UnsafeRawBufferPointer (tagPtr, tag.Length);
-                UnsafeMutableBufferPointer plaintextBuffer = new UnsafeMutableBufferPointer(plaintextPtr, plaintext.Length);
+                UnsafeMutableBufferPointer<Byte> plaintextBuffer = new UnsafeMutableBufferPointer<Byte>(plaintextPtr, plaintext.Length);
                 UnsafeRawBufferPointer aadBuffer = new UnsafeRawBufferPointer(aadPtr, aad.Length);
 
                 int result = UnsafeBufferPointerTests.AppleCryptoNative_ChaCha20Poly1305Decrypt(

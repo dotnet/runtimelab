@@ -44,10 +44,6 @@ The table below lists the Swift types and their corresponding C# types.
 | `Swift.UInt16`                  | `ushort` |
 | `Swift.Int8`                    | `sbyte`  |
 | `Swift.UInt8`                   | `byte`   |
-| `Swift.UnsafePointer`           | `void*`  |
-| `Swift.UnsafeMutablePointer`    | `void*`  |
-| `Swift.UnsafeRawPointer`        | `void*`  |
-| `Swift.UnsafeMutableRawPointer` | `void*`  |
 | `Int`                           | `nint`   |
 | `UInt`                          | `nuint`  |
 | `Bool`                          | `bool`   |
@@ -84,9 +80,13 @@ The Swift type database is an XML-based file format used for describing primitiv
             - `module`: Specifies the module of the Swift type.
 </details>
 
+### Pointers
+
+Swift provides unsafe pointer types as non-owning views into memory: `UnsafePointer`, `UnsafeMutablePointer`, `UnsafeRawPointer`, and `UnsafeMutableRawPointer`. They are implemented as frozen structs in Swift and are projected as structs into C#. The runtime implements Swift structure lowering algorithm, enabling these structs to be passed correctly. They are defined with `_rawValue` property with surfaced `Pointee` property. Mutable pointers are projected as generic types to address method overload issues.
+
 ### Buffer pointers
 
-Swift provides buffer pointer types as non-owning views into memory: `UnsafeRawBufferPointer`, `UnsafeMutableRawBufferPointer`, `UnsafeBufferPointer`, and `UnsafeMutableBufferPointer`. They are implemented as frozen structs within Swift and are projected as structs into C#. The runtime implements Swift structure lowering algorithm, enabling these structs to be passed correctly. Typed buffer pointers are defined with `_Position` and `Count` properties, while raw buffer pointers are defined with `_Position` and `_End`. Surfaced fields on C# side are `BaseAddress` and `Count`. Since these buffer pointers do not allocate or own the memory they point to, memory management is not encapsulated within the structs.
+Swift provides buffer pointer types as non-owning views into memory: `UnsafeBufferPointer`, `UnsafeMutableBufferPointer`, `UnsafeRawBufferPointer`, and `UnsafeMutableRawBufferPointer`. They are implemented as frozen structs in Swift and are projected as structs into C#. The runtime implements Swift structure lowering algorithm, enabling these structs to be passed correctly. Typed buffer pointers are defined with `_position` and `_count` properties, while raw buffer pointers are defined with `_position` and `_end`. Surfaced properties on C# side are `BaseAddress` and `Count`. Mutable buffer pointers are projected as generic types to address method overload issues.. Since these buffer pointers do not allocate or own the memory they point to, memory management is not encapsulated within the structs.
 
 ### Static and P/Invoke functions
 
@@ -151,7 +151,7 @@ The general workflow for generating C# bindings from Swift code is as follows:
 2. If needed, generate marshalling information for collected ABI.
 3. Generate C# source code using an emitter and generated declarations.
 
-![Functional outline](functional-outline.png)
+![Functional outline](functional-outline.svg)
 
 ### Parser
 

@@ -114,7 +114,7 @@ namespace Swift.Runtime
             Type? swiftRuntimeType = Type.GetType($"Swift.Runtime.{swiftTypeName}");
             if (swiftRuntimeType != null)
                 return new string [] { "Swift.Runtime", swiftRuntimeType.Name };
-            
+
             throw new Exception($"No mapping for {swiftTypeName} type found.");
         }
     }

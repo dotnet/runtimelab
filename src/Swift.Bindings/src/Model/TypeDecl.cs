@@ -11,17 +11,22 @@ namespace BindingsGeneration
         /// <summary>
         /// Name of the type.
         /// </summary>
-        public required string Name { get; init; }
+        public required string Name { get; set; }
         
         /// <summary>
         /// Fully qualified name of the type.
         /// </summary>
-        public required string FullyQualifiedName { get; init; }
+        public required string FullyQualifiedName { get; set; }
 
         /// <summary>
         /// Kind of the type.
         /// </summary>
         public required TypeKind TypeKind { get; init; }
+
+        /// <summary>
+        /// Generics of the type.
+        /// </summary>
+        public required List<TypeDecl> Generics { get; set; }
         
         /// <summary>
         /// Determines whether the specified object is equal to the current object.

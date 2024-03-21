@@ -43,17 +43,5 @@
         <entity managedNameSpace="System" managedTypeName="bool">
             <typedeclaration kind="struct" name="Bool" module="Swift" />
         </entity>
-        <entity managedNameSpace="System" managedTypeName="void*">
-            <typedeclaration kind="struct" name="UnsafePointer" module="Swift" />
-        </entity>
-        <entity managedNameSpace="System" managedTypeName="void*">
-            <typedeclaration kind="struct" name="UnsafeMutablePointer" module="Swift" />
-        </entity>
-        <entity managedNameSpace="System" managedTypeName="void*">
-            <typedeclaration kind="struct" name="UnsafeRawPointer" module="Swift" />
-        </entity>
-        <entity managedNameSpace="System" managedTypeName="void*">
-            <typedeclaration kind="struct" name="UnsafeMutableRawPointer" module="Swift" />
-        </entity>
     </entities>
 </swifttypedatabase>
