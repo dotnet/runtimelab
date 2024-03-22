@@ -32,6 +32,8 @@ public unsafe class LSSATests
         Optimized_AlreadySpilled(NewObject());
         Optimized_AlreadySpilled_AddressExposed(NewObject());
         Optimized_AlreadySpilled_DerivedAddress(flag: true, new ClassWithField(), new int[1]);
+
+        LSSATestsIL.Optimized_Run();
 #endif
     }
 
@@ -267,6 +269,31 @@ public unsafe class LSSATests
             // Make constant propagation look unprofitable with this loop.
             SafePoint(x, x);
         }
+
+        // Test that we don't lose track of the fact the initial def was non-GC,
+        // even if the local from which this was derived is redefined.
+        ref int valueRefSource = ref value;
+        ref int valueRefActual = ref valueRefSource;
+        if (flag)
+        {
+            // Make the join a GC value (but don't expose it).
+            valueRefSource = ref NewObject().Field;
+        }
+        SafePoint(ref valueRefSource); // Prevent dead-code opts.
+        SafePoint(ref valueRefActual);
+        SafePoint(ref valueRefActual);
+
+        // Same as above, but now with a derived value.
+        valueRefSource = ref value;
+        valueRefActual = ref Unsafe.AddByteOffset(ref valueRefSource, 1);
+        if (flag)
+        {
+            // Make the join a GC value (but don't expose it).
+            valueRefSource = ref NewObject().Field;
+        }
+        SafePoint(ref valueRefSource); // Prevent dead-code opts.
+        SafePoint(ref valueRefActual);
+        SafePoint(ref valueRefActual);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining), LSSATest("BB01: STORE SS00 ARG00 ARG00/1")]
@@ -345,7 +372,7 @@ public unsafe class LSSATests
     private static void AnotherSafePoint(object x) { }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static object NewObject() => new object();
+    private static ClassWithField NewObject() => new();
 
     // Roslyn likes to eliminate locals we write. Force it to abstain with this function.
     private static void ForceILLocal(void* x) { }
@@ -354,9 +381,4 @@ public unsafe class LSSATests
     {
         public int Field;
     }
-}
-
-public sealed class LSSATestAttribute(string allocation) : System.Attribute
-{
-    public string Allocation { get; } = allocation;
 }
