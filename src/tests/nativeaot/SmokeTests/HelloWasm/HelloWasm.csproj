@@ -28,6 +28,7 @@
     <ProjectReference Include="CpObj.ilproj" />
     <ProjectReference Include="CkFinite.ilproj" />
     <ProjectReference Include="ILHelpers.ilproj" />
+    <ProjectReference Include="LSSATests.IL.ilproj" />
   </ItemGroup>
 
   <PropertyGroup Condition="$(TargetOS) != 'wasi'">
