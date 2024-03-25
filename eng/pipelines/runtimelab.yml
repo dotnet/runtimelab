@@ -49,15 +49,17 @@ stages:
 - stage: build
   displayName: Build
   jobs:
+  # Official build job needs to run on Windows_NT due to VS dependencies
   - ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
     - template: /eng/pipelines/templates/build-job.yml
       parameters:
-        osGroup: OSX
+        osGroup: Windows_NT
         archType: x64
         isOfficialBuild: true
         runTests: false
         pool:
-          vmImage: 'macOS-latest'
+          name: NetCore1ESPool-Internal
+          demands: ImageOverride -equals windows.vs2022preview.amd64
 
   - ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
     - template: /eng/pipelines/templates/build-job.yml
