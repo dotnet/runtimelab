@@ -20,7 +20,7 @@
     </Content>
   </ItemGroup>
 
-  <Target Name="CompileNativeLibs" AfterTargets="Build">
+  <Target Name="CompileNativeLibs" AfterTargets="Build" Condition="'$(OS)' != 'Windows_NT'">
     <Exec Command="$(NativeLibsCommand)" />
   </Target>
 </Project>
