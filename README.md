@@ -1,8 +1,10 @@
 [![Build Status](https://dev.azure.com/dnceng-public/public/_apis/build/status%2Fdotnet%2Fruntimelab%2Fruntimelab?branchName=feature%2Fswift-bindings)](https://dev.azure.com/dnceng-public/public/_build/latest?definitionId=163&branchName=feature%2Fswift-bindings)
 
-# .NET Swift interop tooling
+# Swift bindings  (Experimental)
 
-This project provides .NET Swift interop tooling, focusing on the projections between Swift and .NET. The projection tooling is intended for use with C# and any other .NET language is beyond its scope.
+**WARNING**: This package is currently in an experimental phase.
+
+This is a set of tools that can consume a compiled Apple Swift library and generates C# bindings that allow it to be surfaced as a .NET library. The projection tooling is intended for use with C# and any other .NET language is beyond its scope.
 
 ## Usage
 
@@ -25,10 +27,6 @@ Options:
 ```
 
 It is possible to specify multiple Swift ABI files for processing. If a unsupported type is encountered, the tooling will ignore it and generate C# source code for known syntax.
-
-## Current Status
-
-The components are currently undergoing iterative reviews based on work in https://github.com/xamarin/binding-tools-for-swift.
 
 ## .NET Foundation
 
