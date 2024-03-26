@@ -2,7 +2,6 @@
 
 **WARNING**: This package is currently in an experimental phase.
 
-
 This is a set of tools that can consume a compiled Apple Swift library and generates C# bindings that allow it to be surfaced as a .NET library.
 
 ## Usage
