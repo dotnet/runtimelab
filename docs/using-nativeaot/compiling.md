@@ -1,10 +1,12 @@
-# Compiling with Native AOT
+# Compiling with NativeAOT-LLVM
 
-This document explains how to compile and publish your project using Native AOT toolchain. First, please _ensure that [pre-requisites](prerequisites.md) are installed_. If you are starting a new project, you may find the [HelloWorld sample](../../samples/HelloWorld/README.md) directions useful.
+Compilation using NativeAOT-LLVM is currently only supported on Windows x64. Contributions enabling the compiler on other platforms are welcome.
+
+This document explains how to compile and publish your project using NativeAOT-LLVM toolchain. First, please _ensure that [pre-requisites](prerequisites.md) are installed_. If you are starting a new project, you may find the [HelloWorld sample](../../samples/HelloWorld/README.md) directions useful.
 
 ## Add ILCompiler package reference
 
-To use Native AOT with your project, you need to add a reference to the ILCompiler NuGet package containing the Native AOT compiler and runtime. Make sure the `nuget.config` file for your project contains the following package sources under the `<packageSources>` element:
+To use NativeAOT-LLVM with your project, you need to add a reference to the ILCompiler NuGet packages containing the Native AOT compiler and runtime. Make sure the `nuget.config` file for your project contains the following package sources under the `<packageSources>` element:
 ```xml
 <add key="dotnet-experimental" value="https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-experimental/nuget/v3/index.json" />
 <add key="nuget" value="https://api.nuget.org/v3/index.json" />
@@ -17,17 +19,38 @@ If your project has no `nuget.config` file, it may be created by running
 
 from the project's root directory. New package sources must be added after the `<clear />` element if you decide to keep it.
 
-Once you have added the package sources, add a reference to the ILCompiler package either by running
+Once you have added the package sources, add a reference to the ILCompiler packages either by running
 ```bash
-> dotnet add package Microsoft.DotNet.ILCompiler -v 8.0.0-*
+> dotnet add package Microsoft.DotNet.ILCompiler.LLVM -v 9.0.0-*
+> dotnet add package runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM -v 9.0.0-*
 ```
 
-or by adding the following element to the project file:
+or by adding the following elements to the project file:
 ```xml
-  <ItemGroup>
-    <PackageReference Include="Microsoft.DotNet.ILCompiler" Version="8.0.0-*" />
-  </ItemGroup>
+<ItemGroup>
+  <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
+  <PackageReference Include="runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
+</ItemGroup>
 ```
+
+Note that it is important to use _the same version_ for both packages to avoid potential hard-to-debug issues (use the latest version from the [dotnet-experimental feed](https://dev.azure.com/dnceng/public/_artifacts/feed/dotnet-experimental/NuGet/Microsoft.DotNet.ILCompiler.LLVM)).
+
+## Adjust the project configuration
+
+NativeAOT-LLVM is not integrated into the SDK, so first remove
+```xml
+<PublishAot>true</PublishAot>
+```
+from any `PropertyGroup` tags if you have it. Instead, add
+```xml
+<PropertyGroup>
+  <PublishTrimmed>true</PublishTrimmed>
+  <SelfContained>true</SelfContained>
+  <MSBuildEnableWorkloadResolver>false</MSBuildEnableWorkloadResolver>
+</PropertyGroup>
+```
+
+Note that the wasm-tools workload is identified as a dependency even though its not used, and this confuses the toolchain, hence `MSBuildEnableWorkloadResolver=false`.
 
 ## Compile and publish your app
 
@@ -36,61 +59,27 @@ Use the `dotnet publish` command to compile and publish your app:
 > dotnet publish -r <RID> -c <Configuration>
 ```
 
-where `<Configuration>` is your project configuration (such as Debug or Release) and `<RID>` is the runtime identifier reflecting your host OS and architecture (one of win-x64, linux-x64, osx-x64). For example, to publish the Release build of your app for Windows x64, run the following command:
+where `<Configuration>` is your project configuration (such as Debug or Release) and `<RID>` is the runtime identifier reflecting your target (`browser-wasm` or `wasi-wasm`). For example, to publish the Release build of your app for `browser-wasm`, run the following command:
 ```bash
-> dotnet publish -r win-x64 -c Release
+> dotnet publish -r browser-wasm -c Release
 ```
 
-If the compilation succeeds, the native executable will be placed under the `bin/<Configuration>/net5.0/<RID>/publish/` path relative to your project's root directory.
+If the compilation succeeds, the native artifacts will be placed under the `bin/<Configuration>/net9.0/<RID>/publish/` path relative to your project's root directory.
 
-## Cross-architecture compilation
+* For `browser-wasm`, the output can be run via NodeJS: `node <..>/publish/YourProject.js`, or opened in a browser: `emrun <..>/publish/YourProject.html`.
+* For `wasi-wasm`, the output can be run via any WASM runtime that supports WASI, e. g. `wasmtime`: `wasmtime publish/YourProject.wasm`.
 
-Native AOT toolchain allows targeting ARM64 on an x64 host and vice versa for both Windows and Linux. Cross-OS compilation, such as targeting Linux on a Windows host, is not supported. To target win-arm64 on a Windows x64 host, in addition to the `Microsoft.DotNet.ILCompiler` package reference, also add the `runtime.win-x64.Microsoft.DotNet.ILCompiler` package reference to get the x64-hosted compiler:
-```xml
-<PackageReference Include="Microsoft.DotNet.ILCompiler; runtime.win-x64.Microsoft.DotNet.ILCompiler" Version="7.0.0-alpha.1.21423.2" />
-```
+## WebAssembly application configuration
 
-Note that it is important to use _the same version_ for both packages to avoid potential hard-to-debug issues (use the latest version from the [dotnet-experimental feed](https://dev.azure.com/dnceng/public/_packaging?_a=package&feed=dotnet-experimental&package=Microsoft.DotNet.ILCompiler&protocolType=NuGet)). After adding the package reference, you may publish for win-arm64 as usual:
-```bash
-> dotnet publish -r win-arm64 -c Release
-```
-### WebAssembly
+By default, the build will produce a binary with debug information, which is usually quite large. If you do not need it, add `/p:NativeDebugSymbols=false` to the publish command line. Note that this will disable the generation of _all_ debug info, including function names for stack traces.
 
-Compilation targeting WebAssembly is currently only supported on Windows x64. Contributions enabling the compiler on other platforms are welcome.
+Another large contributor to the size is globalization support (ICU data and code). You can opt out by setting the [`InvariantGlobalization`](https://learn.microsoft.com/en-us/dotnet/core/runtime-config/globalization) MSBuild property to `true`.
 
-Install and activate Emscripten. See [Install Emscripten](https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended).
+Additionally, NativeAOT-LLVM supports the following properties:
+- `WasmHtmlTemplate`: specifies path to the HTML template within which the WASM application will be embedded. An example of a minimal template can be found in the Emscripten repo: https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html
 
-If you are targeting WASI, download [the WASI SDK](https://github.com/WebAssembly/wasi-sdk/releases), extract it and set the `WASI_SDK_PATH` environment variable to the directory containing `share/wasi-sysroot`.
+## WebAssembly native libraries
 
-For WebAssembly, it is always a cross-architecture scenario as the compiler runs on the host platform and the runtime is for WebAssembly. WebAssembly is not integrated into the main ILCompiler so first remove (if you added it from above)
-
-```xml
-<PackageReference Include="Microsoft.DotNet.ILCompiler" Version="8.0.0-*" />
-```
-Then, remove
-```xml
-<PublishAot>true</PublishAot>
-```
-from any `PropertyGroup` tags if you have it. Instead, add
-```xml
-<PropertyGroup>
-  <PublishTrimmed>true</PublishTrimmed>
-</PropertyGroup>
-```
-The required package references are
-```xml
-<PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM; runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
-```
-and the publish command
-```bash
-> dotnet publish -r browser-wasm -c <Configuration> /p:MSBuildEnableWorkloadResolver=false --self-contained
-```
-
-Note that the wasm-tools workload is identified as a dependency even though its not used, and this confuses the toolchain, hence `/p:MSBuildEnableWorkloadResolver=false`.
-
-By default, the build will produce a binary with debug information, which is usually quite large. If you do not need it, add `/p:NativeDebugSymbols=false` to the command line. Note that this will disable the generation of _all_ debug info, including function names for stack traces.
-
-#### WebAssembly native libraries
 To compile a WebAssembly native library that exports a function `Answer`:
 ```cs
 [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "Answer")]
@@ -99,8 +88,18 @@ public static int Answer()
     return 42;
 }
 ```
+```xml
+<PropertyGroup>
+  <OutputType>library</OutputType> <!-- In addition to the other properties. -->
+</PropertyGroup>
+
+<ItemGroup>
+  <LinkerArg Include="-sEXPORTED_RUNTIME_METHODS=cwrap" />
+  <LinkerArg Include="--post-js=invokeLibraryFunction.js" />
+</ItemGroup>
+```
 ```bash
-> dotnet publish -r browser-wasm -c Debug /p:NativeLib=Shared /p:MSBuildEnableWorkloadResolver=false /p:EmccExtraArgs="-s EXPORTED_RUNTIME_METHODS=cwrap --post-js=invokeLibraryFunction.js" --self-contained
+> dotnet publish -r browser-wasm
 ```
 Where `invokeLibraryFunction.js` is a Javascript file with the callback to call `Answer`, e.g.
 ```js
@@ -118,7 +117,8 @@ Note that assemblies other than the one being published (e. g. those from refere
 </ItemGroup>
 ```
 
-#### WebAssembly module imports
+## WebAssembly module imports
+
 Functions in other WebAssembly modules can be imported and invoked using `DllImport` and `WasmImportLinkage` e.g.
 ```cs
 [WasmImportLinkage]
@@ -129,7 +129,7 @@ This will create an import from the `wasi_snapshot_preview1` module with the fun
 ```
 (import "wasi_snapshot_preview1" "random_get" (func $random_get (type 3)))
 ```
-Note: `WasmImportLinkageAttribute` is currently only available in the nightly SDK.  You can either build against the nightly SDK or you can define this attribute in your code:
+Note: `WasmImportLinkageAttribute` is currently only available in the nightly SDK. You can either build against the nightly SDK or you can define this attribute in your code:
 ```cs
 namespace System.Runtime.InteropServices
 {
@@ -142,39 +142,3 @@ namespace System.Runtime.InteropServices
 ```
 
 This can be used to import WASI functions that are in other modules, either as the above, in WASI, `wasi_snapshot_preview1`, or in other WebAssembly modules that may be linked with [WebAssembly module linking](https://github.com/WebAssembly/module-linking).
-
-The use of explicit `WasmImport`s is currently mandatory for the `wasi-wasm` target, see https://github.com/dotnet/runtimelab/issues/2383.
-
-#### WASM with WASI
-
-Set up the project file as above and create the wasm with
-```
-dotnet publish -r wasi-wasm -c <Configuration> /p:MSBuildEnableWorkloadResolver=false /p:UseAppHost=false --self-contained
-```
-`wasmer` is the only tested runtime. An example invocation with wasmer:
-```
-wasmer bin\Debug\net8.0\wasi-wasm\publish\console.wasm
-```
-
-`wasmtime` can also be used:
-```
-wasmtime bin\Debug\net8.0\wasi-wasm\publish\console.wasm
-```
-
-#### WebAssembly application configuration
-
-Currently NativeAOT-LLVM supports following additional properties:
-- `WasmHtmlTemplate`: specifies path to the HTML template within which the WASM application will be embedded. An example of a minimal template can be found in the Emscripten repo: https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html
-
-### Cross-compiling on Linux
-Similarly, to target linux-arm64 on a Linux x64 host, in addition to the `Microsoft.DotNet.ILCompiler` package reference, also add the `runtime.linux-x64.Microsoft.DotNet.ILCompiler` package reference to get the x64-hosted compiler:
-```xml
-<PackageReference Include="Microsoft.DotNet.ILCompiler; runtime.linux-x64.Microsoft.DotNet.ILCompiler" Version="7.0.0-alpha.1.21423.2" />
-```
-
-You also need to specify the sysroot directory for Clang using the `SysRoot` property. For example, assuming you are using one of ARM64-targeting [Docker images](../workflow/building/coreclr/linux-instructions.md#Docker-Images) employed for cross-compilation by this repo, you may publish for linux-arm64 with the following command:
-```bash
-> dotnet publish -r linux-arm64 -c Release -p:CppCompilerAndLinker=clang-9 -p:SysRoot=/crossrootfs/arm64
-```
-
-You may also follow [cross-building instructions](../workflow/building/coreclr/cross-building.md) to create your own sysroot directory.
