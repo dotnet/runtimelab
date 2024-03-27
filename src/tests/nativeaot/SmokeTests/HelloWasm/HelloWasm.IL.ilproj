@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="HelloWasm.IL.il" />
     <Compile Include="LSSATests.IL.il" />
   </ItemGroup>
 </Project>
