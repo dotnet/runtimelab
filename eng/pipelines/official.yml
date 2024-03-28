@@ -1,0 +1,74 @@
+# This Yaml Document has been converted by ESAI Yaml Pipeline Conversion Tool.
+# Please make sure to check all the converted content, it is your team's responsibility to make sure that the pipeline is still valid and functions as expected.
+trigger:
+  batch: true
+  branches:
+    include:
+    - feature/*
+  paths:
+    include:
+    - '*'
+    exclude:
+    - '**.md'
+    - eng/Version.Details.xml
+    - .devcontainer/*
+    - .github/*
+    - docs/*
+    - LICENSE.TXT
+    - PATENTS.TXT
+    - THIRD-PARTY-NOTICES.TXT
+pr:
+  branches:
+    include:
+    - feature/*
+  paths:
+    include:
+    - '*'
+    exclude:
+    - '**.md'
+    - eng/Version.Details.xml
+    - .devcontainer/*
+    - .github/*
+    - docs/*
+    - LICENSE.TXT
+    - PATENTS.TXT
+    - THIRD-PARTY-NOTICES.TXT
+variables:
+- template: /eng/pipelines/common/variables.yml@self
+- ${{ if and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}:
+  - name: TeamName
+    value: dotnet-core
+extends:
+  template: /eng/pipelines/common/templates/pipeline-with-resources.yml@self
+  parameters:
+    isOfficialBuild: true
+    stages:
+    - stage: Build
+      jobs:
+      - template: /eng/pipelines/common/platform-matrix.yml
+        parameters:
+          templatePath: 'templates-official'
+          jobTemplate: /eng/pipelines/common/global-build-job.yml
+          buildConfig: Release
+          platforms:
+          - windows_arm64
+          - OSX_x64
+          - Browser_wasm_win
+          - wasi_wasm_win
+          jobParameters:
+            templatePath: 'templates-official'
+            timeoutInMinutes: 300
+            isOfficialBuild: ${{ variables.isOfficialBuild }}
+            testGroup: innerloop
+            postBuildSteps:
+            - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+              parameters:
+                isOfficialBuild: ${{ variables.isOfficialBuild }}
+                uploadLibrariesTests: ${{ eq(variables.isOfficialBuild, false) }}
+                uploadIntermediateArtifacts: ${{ variables.isOfficialBuild }}
+                librariesConfiguration: Release
+            ${{ if eq(variables.isOfficialBuild, true) }}:
+              buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig)
+    - template: /eng/pipelines/official/stages/publish.yml
+      parameters:
+        isOfficialBuild: ${{ variables.isOfficialBuild }}
