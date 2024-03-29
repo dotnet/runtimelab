@@ -2,7 +2,7 @@
 
 Compilation using NativeAOT-LLVM is currently only supported on Windows x64. Contributions enabling the compiler on other platforms are welcome.
 
-This document explains how to compile and publish your project using NativeAOT-LLVM toolchain. First, please _ensure that [pre-requisites](prerequisites.md) are installed_. If you are starting a new project, you may find the [HelloWorld sample](../../samples/HelloWorld/README.md) directions useful.
+This document explains how to compile and publish your project using NativeAOT-LLVM toolchain. First, please _ensure that [pre-requisites](prerequisites.md) are installed_. If you are starting a new project, you may find the [samples](../../samples) useful.
 
 ## Add ILCompiler package reference
 
@@ -116,6 +116,8 @@ Note that assemblies other than the one being published (e. g. those from refere
   <UnmanagedEntryPointsAssembly Include="DependencyAssembly" />
 </ItemGroup>
 ```
+
+See also the [NativeLibrary sample](../../samples/NativeLibrary).
 
 ## WebAssembly module imports
 

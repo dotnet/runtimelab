@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en-us">
+  <style>
+    button {
+      font-size: 4vw;
+      width: 10vw;
+      height: 10vw;
+    }
+    #output {
+      font-size: 4vw;
+      grid-column-start: 1;
+      grid-column-end: 5;
+    }
+    #main-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 10vw);
+      gap: 1px
+    }
+  </style>
+  <head>
+    <title>NativeAOT-LLVM native library sample (calculator)</title>
+  </head>
+  <body>
+    <div id="main-grid">
+      <input id="output" />
+      <button>1</button><button>2</button><button>3</button><button>+</button>
+      <button>4</button><button>5</button><button>6</button><button>-</button>
+      <button>7</button><button>8</button><button>9</button><button>=</button>
+    </div>
+    <script type='text/javascript'>
+      // A simple way to interfact with the Emscripten-generated code is to define
+      // Module and attach handlers depending on it after the runtime has been initialized.
+      // Another option is using "-sMODULARIZE". See Emscripten documentation:
+      // https://emscripten.org/docs/getting_started/FAQ.html?highlight=modularize#how-can-i-tell-when-the-page-is-fully-loaded-and-it-is-safe-to-call-compiled-functions.
+      var Module = {
+        onRuntimeInitialized: () => {
+          // Add the event handlers for our UI.
+          const grid = document.getElementById('main-grid');
+          const outputTextBox = document.getElementById('output');
+          let lastAction = '';
+
+          grid.addEventListener('click', (event) => {
+            const element = event.target;
+
+            if (element.nodeName === 'BUTTON') {
+              const action = element.textContent;
+
+              if (action === '=') {
+                const input = outputTextBox.value;
+
+                // Turn empty inputs into no-ops.
+                if (input !== '') {
+                  const inputAsUtf8 = stringToNewUTF8(input);
+
+                  // Call the exported function from our library to calculate the result.
+                  const output = _NativeLibrary_ComputeArithmeticExpression(inputAsUtf8);
+                  if (isNaN(output)) {
+                    // Invalid input. Red-out the output for a bit and don't modify the text.
+                    outputTextBox.style['border-color'] = 'red';
+                    setTimeout(() => outputTextBox.style['border-color'] = '', 100);
+                  } else {
+                    // Success! Display the result.
+                    outputTextBox.value = output;
+                  }
+
+                  // Free the strings used for marshalling. This sample uses UTF8 strings across
+                  // the interop boundary for simplicity, however, using UTF16 strings would be
+                  // more performant as that's the representation both JS and .NET use internally.
+                  _NativeLibrary_Free(inputAsUtf8);
+                }
+              } else {
+                // Do not allow adding multiple operators one after another from the button UI.
+                const lastActionIsNotOp = ('0' <= lastAction && lastAction <= '9') || (lastAction === '=');
+                const thisActionIsNotOp = '0' <= action && action <= '9';
+
+                if (lastActionIsNotOp || thisActionIsNotOp)
+                {
+                  outputTextBox.value += action;
+                }
+              }
+
+              lastAction = action;
+            }
+          })
+        }
+      };
+    </script>
+    <script type="text/javascript" src="bin/Release/net9.0/browser-wasm/publish/NativeLibrary.js"></script>
+  </body>
+</html>
