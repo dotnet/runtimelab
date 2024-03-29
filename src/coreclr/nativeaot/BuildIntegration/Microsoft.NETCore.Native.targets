@@ -88,6 +88,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(_targetOS)' == 'win' and '$(NativeLib)' == 'Static'">.lib</NativeBinaryExt>
     <NativeBinaryExt Condition="'$(IsNativeExecutable)' != 'true' and '$(_targetOS)' != 'win' and '$(NativeLib)' == 'Static'">.a</NativeBinaryExt>
     <NativeBinaryExt Condition="'$(_targetOS)' == 'browser'">.html</NativeBinaryExt>
+    <NativeBinaryExt Condition="'$(_targetOS)' == 'browser' and '$(NativeLib)' == 'Shared'">.js</NativeBinaryExt>
     <NativeBinaryExt Condition="'$(_targetOS)' == 'wasi'">.wasm</NativeBinaryExt>
 
     <NativeSymbolExt Condition="'$(NativeSymbolExt)' == '' and '$(_IsApplePlatform)' == 'true'">.dsym</NativeSymbolExt>
@@ -418,17 +419,20 @@ The .NET Foundation licenses this file to you under the MIT license.
       <WasmLinkerPath>&quot;$(WASI_SDK_PATH)/bin/clang&quot;</WasmLinkerPath>
     </PropertyGroup>
 
-    <!-- We use a wrapper project to invoke the compilers in parallel. -->
+    <!-- Invoke the compilers in parallel. -->
     <ItemGroup>
-      <ExecProjects Include="$(MSBuildThisFileDirectory)ExecWrapper.proj">
+      <ExecProjects Include="$(MSBuildProjectFullPath)">
         <AdditionalProperties>
-          ExecCommand=$(WasmCompilerPath) &quot;%(LlvmObjects.Identity)&quot; -o &quot;%(LlvmObjects.NativeObject)&quot; $(CompileWasmArgs);
-          ExecWorkingDirectory=$(MSBuildProjectDirectory)
+          ExecCommand=$(WasmCompilerPath) &quot;%(LlvmObjects.Identity)&quot; -o &quot;%(LlvmObjects.NativeObject)&quot; $(CompileWasmArgs)
         </AdditionalProperties>
       </ExecProjects>
     </ItemGroup>
 
-    <MSBuild Projects="@(ExecProjects)" BuildInParallel="true" />
+    <MSBuild Projects="@(ExecProjects)" Targets="CompileSingleWasmObject" BuildInParallel="true" />
+  </Target>
+
+  <Target Name="CompileSingleWasmObject">
+    <Exec Command="$(ExecCommand)" />
   </Target>
 
   <Target Name="LinkNativeSingle" Condition="'$(_targetOS)' != 'browser' and '$(_targetOS)' != 'wasi'"
