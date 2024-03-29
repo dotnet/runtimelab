@@ -28,9 +28,33 @@ namespace System.Threading
         {
         }
 
+#if NATIVEAOT
+        private static nuint s_lastScheduledHandlerId;
+
+        [UnmanagedCallersOnly]
+        private static unsafe void TimerHandlerWithId(void* arg)
+        {
+            // Turn all handlers scheduled before the last one into no-ops.
+            if ((nuint)arg != s_lastScheduledHandlerId)
+            {
+                return;
+            }
+
+            // TODO-LLVM-Upstream: remove this double thunking by modifying "TimerHandler" directly.
+            ((delegate* unmanaged[Cdecl]<void>)&TimerHandler)();
+        }
+
+        private static unsafe void MainThreadScheduleTimer(void* _, int shortestDueTimeMs)
+        {
+            [DllImport("*")]
+            static extern void emscripten_async_call(delegate* unmanaged<void*, void> func, void* arg, int millis);
+            emscripten_async_call(&TimerHandlerWithId, (void*)++s_lastScheduledHandlerId, shortestDueTimeMs);
+        }
+#else
         // This replaces the current pending setTimeout with shorter one
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         private static extern unsafe void MainThreadScheduleTimer(void* callback, int shortestDueTimeMs);
+#endif
 
 #pragma warning disable CS3016 // Arrays as attribute arguments is not CLS-compliant
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]

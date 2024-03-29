@@ -122,6 +122,14 @@ private:
             }
         }
 
+#ifdef DEBUG
+        static ConfigMethodRange JitEnableLssaRange;
+        JitEnableLssaRange.EnsureInit(JitConfig.JitEnableLssaRange());
+        const bool lssaEnabled = JitEnableLssaRange.Contains(m_llvm->m_info->compMethodHash());
+#else // !DEBUG
+        const bool lssaEnabled = true;
+#endif // DEBUG
+
         // Identify locals eligible for precise allocation and those that must (or must not) be on the shadow stack.
         for (unsigned lclNum = 0; lclNum < m_compiler->lvaCount; lclNum++)
         {
@@ -165,7 +173,17 @@ private:
             // able to prove that they are not alive across any safe point and so designate them as "candidates".
             else if (varDsc->HasGCPtr())
             {
-                if (m_compiler->lvaInSsa(lclNum))
+                if (!lssaEnabled)
+                {
+                    allocLocation = REG_STK_CANDIDATE_UNCONDITIONAL;
+                    INDEBUG(reason = "gc, LSSA disabled");
+                }
+                else if (!m_compiler->lvaInSsa(lclNum))
+                {
+                    allocLocation = REG_STK_CANDIDATE_UNCONDITIONAL;
+                    INDEBUG(reason = "gc, not in SSA");
+                }
+                else
                 {
                     if (varDsc->lvVarIndex >= m_largestCandidateVarIndexPlusOne)
                     {
@@ -174,11 +192,6 @@ private:
 
                     allocLocation = REG_STK_CANDIDATE_TENTATIVE;
                     INDEBUG(reason = "gc");
-                }
-                else
-                {
-                    allocLocation = REG_STK_CANDIDATE_UNCONDITIONAL;
-                    INDEBUG(reason = "gc, not in SSA");
                 }
             }
 
@@ -226,11 +239,25 @@ private:
             }
         };
 
+        // We perform queries on whether a given value is GC-exposed in the context of a 'current' node.
+        // If the current value is derived from one already spilled and still live on the shadow stack,
+        // we can skip re-spilling it. To pass the context of whether that latter condition is true, we
+        // use this enum. In general, we can only ascertain with precision 'active'-ness of candidate
+        // locals and so treat the rest quite conservatively.
+        //
+        enum class DefStatus
+        {
+            Unknown, // The stack slot (if any) associated with the def may have been overwritten.
+            Active // The stack slot (if any) associated with the def contains its value.
+        };
+
         static const unsigned GC_EXPOSED_NO = 0;
-        static const unsigned GC_EXPOSED_YES = 1;
+        static const unsigned GC_EXPOSED_SPILL = 1;
+        static const unsigned GC_EXPOSED_YES = 2;
         static const unsigned GC_EXPOSED_UNKNOWN = ValueNumStore::NoVN;
         static const unsigned LAST_ACTIVE_USE_IS_LAST_USE_BIT = 1 << 31;
 
+        Llvm* m_llvm;
         ShadowStackAllocator* m_lssa;
         SmallHashTable<GenTree*, unsigned, 8, DeterministicNodeHashInfo> m_liveSdsuGcDefs;
         ArrayStack<unsigned> m_spillLclsRef;
@@ -248,6 +275,7 @@ private:
     public:
         LssaDomTreeVisitor(ShadowStackAllocator* lssa)
             : DomTreeVisitor(lssa->m_compiler)
+            , m_llvm(lssa->m_llvm)
             , m_lssa(lssa)
             , m_liveSdsuGcDefs(m_compiler->getAllocator(CMK_LSRA))
             , m_spillLclsRef(m_compiler->getAllocator(CMK_LSRA))
@@ -321,7 +349,7 @@ private:
             {
                 if (node->isContained())
                 {
-                    assert(!m_lssa->IsPotentialGcSafePoint(node));
+                    assert(!m_llvm->isPotentialGcSafePoint(node));
                     continue;
                 }
 
@@ -338,15 +366,11 @@ private:
                         SpillSdsuValue(blockRange, retBufNode, &spillLclNum);
                         m_liveSdsuGcDefs.AddOrUpdate(retBufNode, spillLclNum);
                     }
-                    else if (retBufNode->OperIsLocalRead())
+                    else if (varTypeIsGC(retBufNode) && IsCandidateLocalNode(retBufNode))
                     {
                         unsigned lclNum = retBufNode->AsLclVarCommon()->GetLclNum();
-                        LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
-                        if (IsCandidateLocal(varDsc))
-                        {
-                            SpillLocalValue(lclNum, retBufNode->AsLclVarCommon()->GetSsaNum()
-                                            DEBUGARG("is used as a return buffer"));
-                        }
+                        unsigned ssaNum = retBufNode->AsLclVarCommon()->GetSsaNum();
+                        SpillLocalValue(lclNum, ssaNum DEBUGARG("is used as a return buffer"));
                     }
                 }
 
@@ -376,7 +400,7 @@ private:
                 }
 
                 // Find out if we need to spill anything.
-                if (m_lssa->IsPotentialGcSafePoint(node))
+                if (m_llvm->isPotentialGcSafePoint(node))
                 {
                     ProcessSafePoint(block, node);
                 }
@@ -563,7 +587,7 @@ private:
             GenTreeLclVarCommon* defNode = ssaDsc->GetDefNode();
 
             INDEBUG(const char* reason);
-            if (!IsGcExposedLocalValue(ssaDsc DEBUGARG(&reason)))
+            if (!IsGcExposedLocalValue(varDsc, ssaNum, DefStatus::Active DEBUGARG(&reason)))
             {
                 JITDUMP("V%02u/%d %s, but did not insert a spill: %s\n", lclNum, ssaNum, spillReason, reason);
                 return;
@@ -605,51 +629,73 @@ private:
             MarkLocalSpilled(varDsc, ssaDsc);
         }
 
-        bool IsGcExposedValue(GenTree* node)
+        bool IsGcExposedValue(GenTree* node, DefStatus defStatus)
         {
             // TODO-LLVM-LSSA-CQ: add handling for PHIs here. Take note to handle cycles properly.
             assert(node->IsValue());
-            if (node->OperIsLocalRead())
+            LclVarDsc* varDsc;
+            if (IsCandidateLocalNode(node, &varDsc))
             {
-                LclVarDsc* varDsc = m_compiler->lvaGetDesc(node->AsLclVarCommon());
-                if (IsCandidateLocal(varDsc))
-                {
-                    LclSsaVarDsc* ssaDsc = varDsc->GetPerSsaData(node->AsLclVarCommon()->GetSsaNum());
-                    return IsGcExposedLocalValue(ssaDsc);
-                }
-
-                // Non-candidate locals are always on the shadow stack and so not exposed.
-                return false;
+                return IsGcExposedLocalValue(varDsc, node->AsLclVarCommon()->GetSsaNum(), defStatus);
             }
 
-            return IsGcExposedSdsuValue(node);
+            return IsGcExposedSdsuValue(node, defStatus);
         }
 
-        bool IsGcExposedSdsuValue(GenTree* node)
+        bool IsGcExposedSdsuValue(GenTree* node, DefStatus defStatus)
         {
-            assert(node->IsValue() && !node->OperIsLocal());
+            assert(node->IsValue() && !IsCandidateLocalNode(node));
 
             // Addition and subtraction of byrefs follows convenient rules that allow us to consider only
             // whether the "base" is exposed or not. Namely, byref arithmetic must stay within the bounds
             // of the underlying object, or be performed on pinned values only.
             if (node->OperIs(GT_ADD, GT_SUB) && node->gtGetOp2()->TypeIs(TYP_I_IMPL))
             {
-                return IsGcExposedValue(node->gtGetOp1());
+                return IsGcExposedValue(node->gtGetOp1(), DefStatus::Unknown);
+            }
+
+            if (node->OperIsLocalRead())
+            {
+                // For non-candidate locals, all definitions are spilled to the shadow stack. Thus, the only
+                // way for a value to get exposed is if something modifies the backing location. This can
+                // happen while the SDSU is still live. E. g.:
+                // t1 = LCL_VAR V00
+                //      CALL(&V00) ; A safe point, does V00 = null
+                //      USE(t1)
+                // Thanks to IR invariants, the above can only occur with address-exposed locals. However,
+                // even a 'normal' untracked local may be redefined via a local store; we handle this via
+                // the check on 'defStatus'.
+                //
+                if ((defStatus == DefStatus::Unknown) ||
+                    m_compiler->lvaGetDesc(node->AsLclVarCommon())->IsAddressExposed())
+                {
+                    return true;
+                }
+
+                return false;
             }
 
             // Local address nodes always point to the stack (native or shadow). Constant handles will
-            // only point to immortal and immovable (frozen) objects.
-            return !node->OperIs(GT_LCL_ADDR) && !node->IsIconHandle() && !node->IsIntegralConst(0);
+            // only point to immortal and immovable (frozen) objects. TODO-LLVM-LSSA-CQ: add LCLHEAP here.
+            if (node->OperIs(GT_LCL_ADDR) || node->IsIconHandle() || node->IsIntegralConst(0))
+            {
+                return false;
+            }
+
+            return true;
         }
 
-        bool IsGcExposedLocalValue(LclSsaVarDsc* ssaDsc DEBUGARG(const char** pReason = nullptr))
+        bool IsGcExposedLocalValue(
+            LclVarDsc* varDsc, unsigned ssaNum, DefStatus defStatus DEBUGARG(const char** pReason = nullptr))
         {
+            LclSsaVarDsc* ssaDsc = varDsc->GetPerSsaData(ssaNum);
             unsigned status = GetGcExposedStatus(ssaDsc DEBUGARG(pReason));
             if (status == GC_EXPOSED_UNKNOWN)
             {
                 INDEBUG(const char* reason = nullptr);
                 GenTreeLclVarCommon* defNode = ssaDsc->GetDefNode();
-                if ((defNode != nullptr) && defNode->OperIs(GT_STORE_LCL_VAR) && !IsGcExposedValue(defNode->Data()))
+                if ((defNode != nullptr) && defNode->OperIs(GT_STORE_LCL_VAR) &&
+                    !IsGcExposedValue(defNode->Data(), DefStatus::Unknown))
                 {
                     INDEBUG(reason = "value not exposed");
                     status = GC_EXPOSED_NO;
@@ -663,6 +709,26 @@ private:
                 SetGcExposedStatus(ssaDsc, status DEBUGARG(reason));
                 DBEXEC(pReason != nullptr, *pReason = reason);
             }
+            // Take care not to depend on potentially stale information. Consider:
+            //
+            //   V00/1 = X
+            //   SAFE_POINT(...) ; V00/1 is spilled
+            //   V01/1 = V00/1
+            //
+            //   V00/2 = Y
+            //   SAFE_POINT(...) ; V00/2 is also spilled, to the same stack slot.
+            //
+            //   USE(V01/1) ; We have to spill V01/1, since its equal to 'X', not 'Y'
+            //                that is the active value of the spilled V00.
+            //
+            // TODO-LLVM-LSSA-CQ: we can be more intelligent here be allocating separate
+            // shadow stack slots to distinct SSA definitions of the same local.
+            //
+            else if ((status == GC_EXPOSED_SPILL) && (defStatus == DefStatus::Unknown) &&
+                     (m_activeDefs.Top(varDsc->lvVarIndex) != ssaNum))
+            {
+                status = GC_EXPOSED_YES;
+            }
 
             assert(status != GC_EXPOSED_UNKNOWN);
             return status == GC_EXPOSED_YES;
@@ -671,7 +737,7 @@ private:
         void SetGcExposedStatus(LclSsaVarDsc* ssaDsc, unsigned status DEBUGARG(const char* reason))
         {
             unsigned* pStatus = GetRawGcExposedStatusRef(ssaDsc);
-            assert((*pStatus == GC_EXPOSED_UNKNOWN) || ((*pStatus == GC_EXPOSED_YES) && (status == GC_EXPOSED_NO)));
+            assert((*pStatus == GC_EXPOSED_UNKNOWN) || ((*pStatus == GC_EXPOSED_YES) && (status == GC_EXPOSED_SPILL)));
             assert(status != GC_EXPOSED_UNKNOWN);
 
             DBEXEC(reason != nullptr, m_gcExposedStatusReasonMap.Set(ssaDsc, reason));
@@ -693,38 +759,42 @@ private:
         void MarkLocalSpilled(LclVarDsc* varDsc, LclSsaVarDsc* ssaDsc)
         {
             varDsc->SetRegNum(REG_STK_CANDIDATE_COMMITED);
-            SetGcExposedStatus(ssaDsc, GC_EXPOSED_NO DEBUGARG("already spilled"));
+            SetGcExposedStatus(ssaDsc, GC_EXPOSED_SPILL DEBUGARG("already spilled"));
         }
 
         void ProcessDef(BasicBlock* block, GenTree* node)
         {
-            if (node->OperIsLocal())
+            if (node->OperIs(GT_PHI, GT_PHI_ARG))
             {
-                LclVarDsc* varDsc = m_compiler->lvaGetDesc(node->AsLclVarCommon());
-                if (IsCandidateLocal(varDsc))
-                {
-                    // We depend here on the conservativeness of GC in not reloading after a safepoint.
-                    assert(m_lssa->IsGcConservative());
-                    node->SetRegNum(REG_LLVM);
+                // These are never exposed and do not participate in our use counting.
+                return;
+            }
 
-                    // If this is a definition, add it to the stack of currently active ones and update liveness.
-                    unsigned ssaNum = node->AsLclVarCommon()->GetSsaNum();
-                    if (node->OperIsLocalStore())
-                    {
-                        PushActiveLocalDef(block, varDsc, ssaNum);
-                        UpdateLiveLocalDefs(varDsc, node->AsLclVarCommon()->HasLastUse(), /* isBorn */ true);
-                    }
-                    // Increment the "active" use count used for accurate last use detection. Note that skipping
-                    // unused locals here means that we could technically extend their live ranges unnecessarily
-                    // (if this was the last 'use'), but all such cases should have been DCEd by this point, and
-                    // it's not a correctness problem to skip them.
-                    else if (!node->OperIs(GT_PHI_ARG) && !node->IsUnusedValue())
-                    {
-                        IncrementActiveUseCount(varDsc->GetPerSsaData(ssaNum));
-                    }
+            LclVarDsc* varDsc;
+            if (IsCandidateLocalNode(node, &varDsc))
+            {
+                // We depend here on the conservativeness of GC in not reloading after a safepoint.
+                assert(m_lssa->IsGcConservative());
+                node->SetRegNum(REG_LLVM);
+
+                // If this is a definition, add it to the stack of currently active ones and update liveness.
+                unsigned ssaNum = node->AsLclVarCommon()->GetSsaNum();
+                if (node->OperIsLocalStore())
+                {
+                    PushActiveLocalDef(block, varDsc, ssaNum);
+                    UpdateLiveLocalDefs(varDsc, node->AsLclVarCommon()->HasLastUse(), /* isBorn */ true);
+                }
+                // Increment the "active" use count used for accurate last use detection. Note that skipping
+                // unused locals here means that we could technically extend their live ranges unnecessarily
+                // (if this was the last 'use'), but all such cases should have been DCEd by this point, and
+                // it's not a correctness problem to skip them.
+                else if (!node->IsUnusedValue())
+                {
+                    IncrementActiveUseCount(varDsc->GetPerSsaData(ssaNum));
                 }
             }
-            else if (node->IsValue() && !node->IsUnusedValue() && IsGcExposedType(node) && IsGcExposedSdsuValue(node))
+            else if (node->IsValue() && !node->IsUnusedValue() && IsGcExposedType(node) &&
+                     IsGcExposedSdsuValue(node, DefStatus::Active))
             {
                 node->gtLIRFlags |= LIR::Flags::Mark;
                 m_liveSdsuGcDefs.AddOrUpdate(node, BAD_VAR_NUM);
@@ -739,7 +809,8 @@ private:
             }
             if (node->TypeIs(TYP_STRUCT))
             {
-                if (node->OperIs(GT_IND, GT_PHI))
+                // TODO-LLVM: delete this once we're up to date with upstream deleting "STORE_DYN_BLK".
+                if (node->OperIs(GT_IND))
                 {
                     return false;
                 }
@@ -820,6 +891,24 @@ private:
         {
             return (varDsc->GetRegNum() == REG_STK_CANDIDATE_TENTATIVE) ||
                    (varDsc->GetRegNum() == REG_STK_CANDIDATE_COMMITED);
+        }
+
+        bool IsCandidateLocalNode(GenTree* node, LclVarDsc** pVarDsc = nullptr)
+        {
+            if (node->OperIsLocal())
+            {
+                LclVarDsc* varDsc = m_compiler->lvaGetDesc(node->AsLclVarCommon());
+                if (IsCandidateLocal(varDsc))
+                {
+                    if (pVarDsc != nullptr)
+                    {
+                        *pVarDsc = varDsc;
+                    }
+                    return true;
+                }
+            }
+
+            return false;
         }
 
 #ifdef DEBUG
@@ -1216,44 +1305,6 @@ private:
         // We support only the simplest cases for now.
         if (call->IsNoReturn() || ((call->gtNext != nullptr) && call->gtNext->OperIs(GT_RETURN)))
         {
-            return true;
-        }
-
-        return false;
-    }
-
-    //------------------------------------------------------------------------
-    // IsPotentialGcSafePoint: Can this node be a GC safe point?
-    //
-    // Arguments:
-    //    node - The node
-    //
-    // Return Value:
-    //    Whether "node" can trigger GC.
-    //
-    // Notes:
-    //    Similar to "Compiler::IsGcSafePoint", with the difference being that
-    //    the "conservative" return value for this method is "true". Does not
-    //    consider nodes safe points only because they may throw.
-    //
-    bool IsPotentialGcSafePoint(GenTree* node)
-    {
-        if (node->IsCall())
-        {
-            if (node->AsCall()->IsUnmanaged() && node->AsCall()->IsSuppressGCTransition())
-            {
-                return false;
-            }
-            if (node->IsHelperCall())
-            {
-                const HelperFuncInfo& info = m_llvm->getHelperFuncInfo(node->AsCall()->GetHelperNum());
-                if (info.HasFlag(HFIF_NO_RPI_OR_GC) || info.HasFlag(HFIF_THROW_OR_NO_RPI_OR_GC))
-                {
-                    return false;
-                }
-            }
-
-            // All other calls are assumed to be possible safe points.
             return true;
         }
 
@@ -1809,6 +1860,44 @@ unsigned Llvm::getCalleeShadowStackOffset(unsigned funcIdx, bool isTailCall) con
     }
 
     return getShadowFrameSize(funcIdx);
+}
+
+//------------------------------------------------------------------------
+// isPotentialGcSafePoint: Can this node be a GC safe point?
+//
+// Arguments:
+//    node - The node
+//
+// Return Value:
+//    Whether "node" can trigger GC.
+//
+// Notes:
+//    Similar to "Compiler::IsGcSafePoint", with the difference being that
+//    the "conservative" return value for this method is "true". Does not
+//    consider nodes safe points only because they may throw.
+//
+bool Llvm::isPotentialGcSafePoint(GenTree* node) const
+{
+    if (node->IsCall())
+    {
+        if (node->AsCall()->IsUnmanaged() && node->AsCall()->IsSuppressGCTransition())
+        {
+            return false;
+        }
+        if (node->IsHelperCall())
+        {
+            const HelperFuncInfo& info = getHelperFuncInfo(node->AsCall()->GetHelperNum());
+            if (info.HasFlag(HFIF_NO_RPI_OR_GC) || info.HasFlag(HFIF_THROW_OR_NO_RPI_OR_GC))
+            {
+                return false;
+            }
+        }
+
+        // All other calls are assumed to be possible safe points.
+        return true;
+    }
+
+    return false;
 }
 
 //------------------------------------------------------------------------

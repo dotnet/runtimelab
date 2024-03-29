@@ -757,6 +757,13 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_GETCLASSFROMMETHODPARAM:
                     return _compilation.NodeFactory.MethodEntrypoint(_compilation.NodeFactory.TypeSystemContext.GetHelperEntryPoint("SynchronizedMethodHelpers", "GetClassFromMethodParam"));
 
+                case CorInfoHelpFunc.CORINFO_HELP_STRESS_GC:
+                    mangledName = "RhpGcStressOnce";
+                    break;
+                case CorInfoHelpFunc.CORINFO_HELP_CHECK_OBJ:
+                    mangledName = "RhpCheckObj";
+                    break;
+
                 case CorInfoHelpFunc.CORINFO_HELP_GVMLOOKUP_FOR_SLOT:
                     id = ReadyToRunHelper.GVMLookupForSlot;
                     break;

@@ -72,10 +72,10 @@ namespace ILCompiler
 
         private void FinishCompilation()
         {
-            foreach ((int _, CorInfoImpl corInfo) in _compilationContexts)
+            Parallel.ForEach(_compilationContexts, new() { MaxDegreeOfParallelism = _parallelism }, context =>
             {
-                corInfo.JitFinishSingleThreadedCompilation();
-            }
+                context.Value.JitFinishSingleThreadedCompilation();
+            });
 
             _compilationContexts = null;
         }

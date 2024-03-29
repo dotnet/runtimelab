@@ -471,6 +471,7 @@ private:
     unsigned getShadowFrameSize(unsigned funcIdx) const;
     unsigned getCalleeShadowStackOffset(unsigned funcIdx, bool isTailCall) const;
     bool canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter) const;
+    bool isPotentialGcSafePoint(GenTree* node) const;
     bool isShadowFrameLocal(LclVarDsc* varDsc) const;
     bool isShadowStackLocal(unsigned lclNum) const;
     bool isFuncletParameter(unsigned lclNum) const;
@@ -558,6 +559,8 @@ private:
 
     void emitJumpToThrowHelper(Value* jumpCondValue, CorInfoHelpFunc helperFunc);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
+
+    llvm::CallBase* emitGcStressCall(GenTreeCall* call, llvm::CallBase* callValue);
     llvm::CallBase* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = {});
     bool canEmitHelperCallAsShadowTailCall(CorInfoHelpFunc helperFunc);
     llvm::CallBase* emitCallOrInvoke(llvm::Function* callee, ArrayRef<Value*> args = {});

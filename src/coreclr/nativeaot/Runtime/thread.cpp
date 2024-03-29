@@ -392,13 +392,26 @@ void Thread::Destroy()
 }
 
 #ifdef HOST_WASM
-extern OBJECTREF * GetShadowStackBottom();
-extern OBJECTREF * GetShadowStackTop();
+// TODO-LLVM-Bug: the shadow stack stuff needs to be moved to Thread for multi-threading to work properly.
+extern OBJECTREF* GetShadowStackBottom();
+extern OBJECTREF* GetShadowStackTop();
 
-void GcScanWasmShadowStack(ScanFunc * pfnEnumCallback, ScanContext * pvCallbackData)
+void Thread::GcScanWasmShadowStack(ScanFunc * pfnEnumCallback, ScanContext * pvCallbackData)
 {
     // Wasm does not permit iteration of stack frames so is uses a shadow stack instead
     EnumGcRefsInRegionConservatively(GetShadowStackBottom(), GetShadowStackTop(), pfnEnumCallback, pvCallbackData);
+
+    // TODO-LLVM-Upstream: unify this method with the general "GcScanRootsWorker" below.
+    for (GCFrameRegistration* pCurGCFrame = m_pGCFrameRegistrations; pCurGCFrame != NULL; pCurGCFrame = pCurGCFrame->m_pNext)
+    {
+        ASSERT(pCurGCFrame->m_pThread == this);
+
+        for (uint32_t i = 0; i < pCurGCFrame->m_numObjRefs; i++)
+        {
+            EnumGcRef(dac_cast<PTR_OBJECTREF>(pCurGCFrame->m_pObjRefs + i),
+                pCurGCFrame->m_MaybeInterior ? GCRK_Byref : GCRK_Object, pfnEnumCallback, pvCallbackData);
+        }
+    }
 }
 #endif
 
