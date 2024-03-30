@@ -26,9 +26,6 @@ class Dataflow
         TestDynamicDependencyWithGenerics.Run();
         TestObjectGetTypeDataflow.Run();
         TestMarshalIntrinsics.Run();
-#if !CODEGEN_WASM // TODO-LLVM: uses threads in Task.Delay - throws PlatformNotSupportedException
-        TestCompilerGeneratedCode.Run();
-#endif
 
         return 100;
     }
@@ -632,57 +629,6 @@ class Dataflow
                 if (!thrown)
                     throw new Exception();
             }
-        }
-    }
-
-    class TestCompilerGeneratedCode
-    {
-        private static void ReflectionInLambda()
-        {
-            var func = () => {
-                Type helpersType = Type.GetType(nameof(Helpers));
-                Assert.NotNull(helpersType);
-            };
-
-            func();
-        }
-
-        private static void ReflectionInLocalFunction()
-        {
-            func();
-
-            void func()
-            {
-                Type helpersType = Type.GetType(nameof(Helpers));
-                Assert.NotNull(helpersType);
-            };
-        }
-
-        private static async void ReflectionInAsync()
-        {
-            await System.Threading.Tasks.Task.Delay(100);
-            Type helpersType = Type.GetType(nameof(Helpers));
-            Assert.NotNull(helpersType);
-        }
-
-        private static async void ReflectionInLambdaAsync()
-        {
-            await System.Threading.Tasks.Task.Delay(100);
-
-            var func = () => {
-                Type helpersType = Type.GetType(nameof(Helpers));
-                Assert.NotNull(helpersType);
-            };
-
-            func();
-        }
-
-        public static void Run()
-        {
-            ReflectionInLambda();
-            ReflectionInLocalFunction();
-            ReflectionInAsync();
-            ReflectionInLambdaAsync();
         }
     }
 }

@@ -216,11 +216,11 @@
         $(LibrariesNativeArtifactsPath)dotnet.runtime.js;
         $(LibrariesNativeArtifactsPath)dotnet.runtime.js.map;
         $(LibrariesNativeArtifactsPath)dotnet.d.ts;
-        $(LibrariesNativeArtifactsPath)dotnet-legacy.d.ts;
         $(LibrariesNativeArtifactsPath)package.json;
         $(LibrariesNativeArtifactsPath)dotnet.native.wasm;
         $(LibrariesNativeArtifactsPath)dotnet.native.js.symbols;
-        $(LibrariesNativeArtifactsPath)*.dat;"
+        $(LibrariesNativeArtifactsPath)*.dat;
+        $(LibrariesNativeArtifactsPath)segmentation-rules.json;"
         IsNative="true" />
       
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
@@ -230,7 +230,6 @@
         $(CoreCLRNativeArtifactsPath)dotnet.runtime.js;
         $(CoreCLRNativeArtifactsPath)dotnet.runtime.js.map;
         $(CoreCLRNativeArtifactsPath)dotnet.d.ts;
-        $(CoreCLRNativeArtifactsPath)dotnet-legacy.d.ts;
         $(CoreCLRNativeArtifactsPath)package.json;"
         IsNative="true" />
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"

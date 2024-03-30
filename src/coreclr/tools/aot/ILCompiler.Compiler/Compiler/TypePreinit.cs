@@ -11,7 +11,7 @@ using ILCompiler.DependencyAnalysis;
 using Internal.IL;
 using Internal.TypeSystem;
 
-using DependencyList = ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.DependencyList;
+using CombinedDependencyList = System.Collections.Generic.List<ILCompiler.DependencyAnalysisFramework.DependencyNodeCore<ILCompiler.DependencyAnalysis.NodeFactory>.CombinedDependencyListEntry>;
 
 namespace ILCompiler
 {
@@ -1860,9 +1860,7 @@ namespace ILCompiler
                         return spanRef.TryAccessElement(spanIndex.AsInt32(), out retVal);
                     }
                     return false;
-                case "GetTypeFromHandle" when method.OwningType is MetadataType typeType
-                        && typeType.Name == "Type" && typeType.Namespace == "System"
-                        && typeType.Module == typeType.Context.SystemModule
+                case "GetTypeFromHandle" when IsSystemType(method.OwningType)
                         && parameters[0] is RuntimeTypeHandleValue typeHandle:
                     {
                         if (!_internedTypes.TryGetValue(typeHandle.Type, out RuntimeTypeValue runtimeType))
@@ -1872,23 +1870,24 @@ namespace ILCompiler
                         retVal = runtimeType;
                         return true;
                     }
-                case "get_IsValueType" when method.OwningType is MetadataType typeType
-                        && typeType.Name == "Type" && typeType.Namespace == "System"
-                        && typeType.Module == typeType.Context.SystemModule
+                case "get_IsValueType" when IsSystemType(method.OwningType)
                         && parameters[0] is RuntimeTypeValue typeToCheckForValueType:
                     {
                         retVal = ValueTypeValue.FromSByte(typeToCheckForValueType.TypeRepresented.IsValueType ? (sbyte)1 : (sbyte)0);
                         return true;
                     }
-                case "op_Equality" when method.OwningType is MetadataType typeType
-                        && typeType.Name == "Type" && typeType.Namespace == "System"
-                        && typeType.Module == typeType.Context.SystemModule
+                case "op_Equality" when IsSystemType(method.OwningType)
                         && (parameters[0] is RuntimeTypeValue || parameters[1] is RuntimeTypeValue):
                     {
                         retVal = ValueTypeValue.FromSByte(parameters[0] == parameters[1] ? (sbyte)1 : (sbyte)0);
                         return true;
                     }
             }
+
+            static bool IsSystemType(TypeDesc type)
+                => type is MetadataType typeType
+                        && typeType.Name == "Type" && typeType.Namespace == "System"
+                        && typeType.Module == typeType.Context.SystemModule;
 
             return false;
         }
@@ -2146,7 +2145,8 @@ namespace ILCompiler
         {
             TypeDesc Type { get; }
             void WriteContent(ref ObjectDataBuilder builder, ISymbolNode thisNode, NodeFactory factory);
-            void GetNonRelocationDependencies(ref DependencyList dependencies, NodeFactory factory);
+            bool HasConditionalDependencies { get; }
+            void GetConditionalDependencies(ref CombinedDependencyList dependencies, NodeFactory factory);
             bool IsKnownImmutable { get; }
             int ArrayLength { get; }
         }
@@ -2411,6 +2411,7 @@ namespace ILCompiler
                 data = null;
                 return false;
             }
+
             public override ReferenceTypeValue ToForeignInstance(int baseInstructionCounter, TypePreinit preinitContext)
             {
                 if (!preinitContext._internedTypes.TryGetValue(TypeRepresented, out RuntimeTypeValue result))
@@ -2423,8 +2424,6 @@ namespace ILCompiler
             {
                 builder.EmitPointerReloc(factory.SerializedMaximallyConstructableRuntimeTypeObject(TypeRepresented));
             }
-
-            public override bool TargetSupportsWritingFieldData => EETypeNode.SupportsFrozenRuntimeTypeInstances(Type.Context.Target);
         }
 
         private sealed class ReadOnlySpanValue : BaseValueTypeValue, IInternalModelingOnlyValue
@@ -2706,7 +2705,9 @@ namespace ILCompiler
                 return false;
             }
 
-            public virtual void GetNonRelocationDependencies(ref DependencyList dependencies, NodeFactory factory)
+            public virtual bool HasConditionalDependencies => false;
+
+            public virtual void GetConditionalDependencies(ref CombinedDependencyList dependencies, NodeFactory factory)
             {
             }
         }
@@ -2731,12 +2732,16 @@ namespace ILCompiler
                     factory,
                     followVirtualDispatch: false);
 
-            public override void GetNonRelocationDependencies(ref DependencyList dependencies, NodeFactory factory)
+            public override bool HasConditionalDependencies => true;
+
+            public override void GetConditionalDependencies(ref CombinedDependencyList dependencies, NodeFactory factory)
             {
+                dependencies ??= new CombinedDependencyList();
+
                 DelegateCreationInfo creationInfo = GetDelegateCreationInfo(factory);
 
                 MethodDesc targetMethod = creationInfo.PossiblyUnresolvedTargetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
-                factory.MetadataManager.GetDependenciesDueToDelegateCreation(ref dependencies, factory, targetMethod);
+                factory.MetadataManager.GetDependenciesDueToDelegateCreation(ref dependencies, factory, creationInfo.DelegateType, targetMethod);
             }
 
             public void WriteContent(ref ObjectDataBuilder builder, ISymbolNode thisNode, NodeFactory factory)

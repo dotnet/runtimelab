@@ -31,10 +31,10 @@ namespace ILCompiler
 
         protected override RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options)
         {
-            var factory = new LLVMCodegenNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _compilationRoots);
+            var factory = new LLVMCodegenNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, _compilationRoots);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
 
-            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, GetILProvider(), _debugInformationProvider, _logger, _config, _inliningPolicy, _devirtualizationManager, _instructionSetSupport, _methodImportationErrorProvider, _readOnlyFieldPolicy, options, _parallelism);
+            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, GetILProvider(), _debugInformationProvider, _logger, _config, _inliningPolicy, _instructionSetSupport, _methodImportationErrorProvider, _readOnlyFieldPolicy, options, _parallelism);
         }
     }
 

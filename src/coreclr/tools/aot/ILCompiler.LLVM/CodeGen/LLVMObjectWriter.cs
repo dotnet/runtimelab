@@ -530,7 +530,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             if (node.Id == ReadyToRunHelperId.VirtualCall)
             {
-                GetCodeForVirtualCallHelper(node);
+                GetCodeForVirtualCallHelper(node, factory);
                 return;
             }
             if (node.Id == ReadyToRunHelperId.DelegateCtor)
@@ -611,7 +611,7 @@ namespace ILCompiler.DependencyAnalysis
                         }
                         else
                         {
-                            Debug.Assert(!targetMethod.CanMethodBeInSealedVTable());
+                            Debug.Assert(!targetMethod.CanMethodBeInSealedVTable(factory));
                             result = OutputCodeForVTableLookup(builder, helperFunc.GetParam(0), targetMethod);
                         }
                     }
@@ -624,11 +624,11 @@ namespace ILCompiler.DependencyAnalysis
             builder.BuildRet(result);
         }
 
-        private void GetCodeForVirtualCallHelper(ReadyToRunHelperNode node)
+        private void GetCodeForVirtualCallHelper(ReadyToRunHelperNode node, NodeFactory factory)
         {
             MethodDesc targetMethod = (MethodDesc)node.Target;
             Debug.Assert(!targetMethod.OwningType.IsInterface);
-            Debug.Assert(!targetMethod.CanMethodBeInSealedVTable());
+            Debug.Assert(!targetMethod.CanMethodBeInSealedVTable(factory));
             Debug.Assert(!targetMethod.RequiresInstArg());
 
             using Utf8Name helperFuncName = GetMangledUtf8Name(node);

@@ -38,12 +38,13 @@ typedef uint32_t            UInt32_BOOL;    // windows 4-byte BOOL, 0 -> false, 
 #define UInt32_FALSE        0
 #define UInt32_TRUE         1
 
-#if defined(FEATURE_EVENT_TRACE) && !defined(_INC_WINDOWS)
+#if (defined(FEATURE_EVENT_TRACE) && !defined(_INC_WINDOWS)) || defined(TARGET_WASM)
 typedef int BOOL;
 typedef void* LPVOID;
 typedef uint32_t UINT;
 typedef void* PVOID;
 typedef uint64_t ULONGLONG;
+typedef uintptr_t ULONG_PTR;
 #ifdef _MSC_VER
 typedef unsigned long ULONG;
 #else
