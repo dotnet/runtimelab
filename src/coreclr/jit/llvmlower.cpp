@@ -1107,7 +1107,7 @@ unsigned Llvm::getObjectSizeBound(GenTree* obj)
     assert(obj->TypeIs(TYP_REF));
 
     // TODO-LLVM-CQ: improve this estimate using "gtGetClassHandle".
-    return TARGET_POINTER_SIZE * 2;
+    return MIN_HEAP_OBJ_SIZE;
 }
 
 //------------------------------------------------------------------------
