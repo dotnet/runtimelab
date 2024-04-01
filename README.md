@@ -1,30 +1,25 @@
-# READ FIRST
+# .NET Runtime - NativeAOT-LLVM
 
-This branch contains just the experimental LLVM backend.  This is only tested for WebAssembly and should not be used for any platforms served by the main NativeAOT branch.  In the future other targets not served by the main NativeAOT branch, but that are possible with LLVM may work, but there is no work in those areas currently.
+This branch contains an experimental fork of the [Native AOT](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/) toolchain that uses LLVM.
 
-The rest of this README is just a fork from the NativeAOT branch and should be read with the above in mind.
-
-# .NET Runtime - Native AOT
-
-This branch contains experimental fork of CoreCLR [.NET runtime](http://github.com/dotnet/runtime) optimized for the [Native AOT Form factor](https://github.com/dotnet/designs/blob/main/accepted/2020/form-factors.md#native-aot-form-factors). The ahead-of-time (AOT) toolchain can compile .NET application into a native (architecture specific) single-file executable. It can also produce standalone dynamic or static libraries that can be consumed by applications written in other programming languages.  This branch contains the experimental feature of compiling to LLVM to target Web Assembly at present and other LLVM targets in the future.
-
-## Samples
-
-The packages for Linux, macOS and Windows x64 are published to a dedicated NuGet feed after each pull request. Using this AOT compiler and runtime is as simple as adding a new package reference to your .NET project and publishing it. Check out one of our samples: a "[Hello World](samples/HelloWorld)" console app or a [native library](samples/NativeLibrary). The `README.md` file in each sample's directory will guide you through the process step by step.
+Currenly, the only supported target is [WebAssembly](https://webassembly.org/). Other targets may be enabled in the future, but we are not investing work into them at present.
 
 ## Documentation
 
 - [Using Native AOT](docs/using-nativeaot/README.md) explains how to debug, optimize and troubleshoot applications published using the native AOT toolchain. This documentation is for people who are interested in using the toolchain.
 - [Developer workflow](docs/workflow/building/coreclr/nativeaot.md) explains how to build the repo, run tests and work on the Native AOT toolchain. This documentation is for people who are interested in making changes in the toolchain.
 
+## Samples
+
+The packages for are published to a dedicated NuGet feed after each pull request. Using this AOT compiler and runtime is as simple as adding a new package reference to your .NET project and publishing it. Check out one of our samples: a "[Hello World](samples/HelloWorld)" console app or a [native library](samples/NativeLibrary). The `README.md` file in each sample's directory will guide you through the process step by step.
+
 ## How to Engage, Contribute and Provide Feedback
+
 Some of the best ways to contribute are to try things out, file bugs, and join in design conversations.
 
-Looking for something to work on? The [_help wanted_](https://github.com/dotnet/runtimelab/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22++label%3Aarea-NativeAOT+) issues are a great place to start.
+Looking for something to work on? The [_help wanted_](https://github.com/dotnet/runtimelab/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22++label%3Aarea-NativeAOT-LLVM+) issues are a great place to start.
 
-[![Join the chat at https://gitter.im/dotnet/corert](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/dotnet/corert?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
-This project is successor of RyuJIT CodeGen from [CoreRT](https://github.com/dotnet/corert) where you can find more samples and older documentation.
+Join the chat at the [CSharp discord](https://aka.ms/csharp-discord): `#allow-unsafe-blocks` channel, `NativeAOT-LLVM` thread.
 
 ---
 
