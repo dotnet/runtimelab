@@ -1015,7 +1015,7 @@ private:
         varDsc->lvImplicitlyReferenced = 0;
         varDsc->setLvRefCnt(0);
 
-        m_llvm->m_anyAddressExposedShadowLocals |= varDsc->IsAddressExposed();
+        m_llvm->m_anyAddressExposedOrPinnedShadowLocals |= (varDsc->IsAddressExposed() || varDsc->lvPinned);
     }
 
     void AssignShadowFrameOffsets(std::vector<unsigned>& shadowFrameLocals)
@@ -1920,7 +1920,8 @@ bool Llvm::canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter) co
     }
 
     // Address-exposed shadow state may be observed by the callee or filters that run in the first pass of EH.
-    if (m_anyAddressExposedShadowLocals)
+    // Likewise with pinning.
+    if (m_anyAddressExposedOrPinnedShadowLocals)
     {
         return false;
     }
