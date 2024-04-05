@@ -2352,7 +2352,7 @@ bool Llvm::isAddressAligned(GenTree* addr, unsigned alignment)
 
     // TODO-LLVM-CQ: support array elements here using ARR_ADDR.
     // TODO-LLVM-CQ: support static fields (using field sequences). Likewise with larger than pointer size fields.
-    return false;
+    return alignment == 1; // Any address is aligned to one byte.
 }
 
 Value* Llvm::consumeInitVal(GenTree* initVal)
