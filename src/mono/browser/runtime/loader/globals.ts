@@ -15,7 +15,7 @@ import { assertIsControllablePromise, createPromiseController, getPromiseControl
 import { mono_download_assets, resolve_single_asset_path, retrieve_asset_download } from "./assets";
 import { mono_log_error, set_thread_prefix, setup_proxy_console } from "./logging";
 import { invokeLibraryInitializers } from "./libraryInitializers";
-import { deep_merge_config, hasDebuggingEnabled } from "./config";
+import { deep_merge_config, isDebuggingSupported } from "./config";
 import { logDownloadStatsToConsole, purgeUnusedCacheEntriesAsync } from "./assetsCache";
 
 // if we are the first script loaded in the web worker, we are expected to become the sidecar
@@ -53,7 +53,7 @@ export const globalObjectsRoot: GlobalObjects = {
 
 setLoaderGlobals(globalObjectsRoot);
 
-export function setLoaderGlobals(
+export function setLoaderGlobals (
     globalObjects: GlobalObjects,
 ) {
     if (_loaderModuleLoaded) {
@@ -74,11 +74,14 @@ export function setLoaderGlobals(
     });
     const rh: Partial<RuntimeHelpers> = {
         mono_wasm_bindings_is_ready: false,
-        javaScriptExports: {} as any,
         config: globalObjects.module.config,
         diagnosticTracing: false,
-        nativeAbort: (reason: any) => { throw reason; },
-        nativeExit: (code: number) => { throw new Error("exit:" + code); }
+        nativeAbort: (reason: any) => {
+            throw reason || new Error("abort");
+        },
+        nativeExit: (code: number) => {
+            throw new Error("exit:" + code);
+        }
     };
     const lh: Partial<LoaderHelpers> = {
         gitHash,
@@ -87,12 +90,13 @@ export function setLoaderGlobals(
 
         maxParallelDownloads: 16,
         enableDownloadRetry: true,
-        assertAfterExit: !ENVIRONMENT_IS_WEB,
 
         _loaded_files: [],
         loadedFiles: [],
         loadedAssemblies: [],
         libraryInitializers: [],
+        loadingWorkers: [],
+        workerNextNumber: 1,
         actual_downloaded_assets_count: 0,
         actual_instantiated_assets_count: 0,
         expected_downloaded_assets_count: 0,
@@ -118,9 +122,9 @@ export function setLoaderGlobals(
         purgeUnusedCacheEntriesAsync,
         installUnhandledErrorHandler,
 
-        hasDebuggingEnabled,
         retrieve_asset_download,
         invokeLibraryInitializers,
+        isDebuggingSupported,
 
         // from wasm-feature-detect npm package
         exceptions,
@@ -133,7 +137,7 @@ export function setLoaderGlobals(
 // this will abort the program if the condition is false
 // see src\mono\browser\runtime\rollup.config.js
 // we inline the condition, because the lambda could allocate closure on hot path otherwise
-export function mono_assert(condition: unknown, messageFactory: string | (() => string)): asserts condition {
+export function mono_assert (condition: unknown, messageFactory: string | (() => string)): asserts condition {
     if (condition) return;
     const message = "Assert failed: " + (typeof messageFactory === "function"
         ? messageFactory()

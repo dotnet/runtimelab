@@ -103,6 +103,7 @@ extern "C" bool RhRegisterOSModule(void * pModule,
 
 extern "C" void* PalGetModuleHandleFromPointer(void* pointer);
 
+<<<<<<< HEAD
 // The runtime assumes classlib exports have a managed calling convention.
 // For WASM, however, they are exported with the native calling convention
 // by default so we must explicitly use the managed entrypoint here.
@@ -125,11 +126,42 @@ extern "C" void ObjectiveCMarshalTryGetTaggedMemory();
 extern "C" void ObjectiveCMarshalGetIsTrackedReferenceCallback();
 extern "C" void ObjectiveCMarshalGetOnEnteredFinalizerQueueCallback();
 extern "C" void ObjectiveCMarshalGetUnhandledExceptionPropagationHandler();
+=======
+#if defined(HOST_X86) && defined(HOST_WINDOWS)
+#define STRINGIFY(s) #s
+#define MANAGED_RUNTIME_EXPORT_ALTNAME(_method) STRINGIFY(/alternatename:_##_method=_method)
+#define MANAGED_RUNTIME_EXPORT(_name) \
+    __pragma(comment (linker, MANAGED_RUNTIME_EXPORT_ALTNAME(_name))) \
+    extern "C" void __cdecl _name();
+#define MANAGED_RUNTIME_EXPORT_NAME(_name) _name
+#define CDECL __cdecl
+#else
+#define MANAGED_RUNTIME_EXPORT(_name) \
+    extern "C" void _name();
+#define MANAGED_RUNTIME_EXPORT_NAME(_name) _name
+#define CDECL
+>>>>>>> runtime/main
 #endif
 
-typedef void(*pfn)();
+MANAGED_RUNTIME_EXPORT(GetRuntimeException)
+MANAGED_RUNTIME_EXPORT(RuntimeFailFast)
+MANAGED_RUNTIME_EXPORT(AppendExceptionStackFrame)
+MANAGED_RUNTIME_EXPORT(GetSystemArrayEEType)
+MANAGED_RUNTIME_EXPORT(OnFirstChanceException)
+MANAGED_RUNTIME_EXPORT(OnUnhandledException)
+MANAGED_RUNTIME_EXPORT(IDynamicCastableIsInterfaceImplemented)
+MANAGED_RUNTIME_EXPORT(IDynamicCastableGetInterfaceImplementation)
+#ifdef FEATURE_OBJCMARSHAL
+MANAGED_RUNTIME_EXPORT(ObjectiveCMarshalTryGetTaggedMemory)
+MANAGED_RUNTIME_EXPORT(ObjectiveCMarshalGetIsTrackedReferenceCallback)
+MANAGED_RUNTIME_EXPORT(ObjectiveCMarshalGetOnEnteredFinalizerQueueCallback)
+MANAGED_RUNTIME_EXPORT(ObjectiveCMarshalGetUnhandledExceptionPropagationHandler)
+#endif
+
+typedef void (CDECL *pfn)();
 
 static const pfn c_classlibFunctions[] = {
+<<<<<<< HEAD
     &MANAGED_RUNTIME_EXPORT(GetRuntimeException),
     &MANAGED_RUNTIME_EXPORT(RuntimeFailFast),
     nullptr, // &UnhandledExceptionHandler,
@@ -140,11 +172,23 @@ static const pfn c_classlibFunctions[] = {
     &MANAGED_RUNTIME_EXPORT(OnUnhandledException),
     &MANAGED_RUNTIME_EXPORT(IDynamicCastableIsInterfaceImplemented),
     &MANAGED_RUNTIME_EXPORT(IDynamicCastableGetInterfaceImplementation),
+=======
+    &MANAGED_RUNTIME_EXPORT_NAME(GetRuntimeException),
+    &MANAGED_RUNTIME_EXPORT_NAME(RuntimeFailFast),
+    nullptr, // &UnhandledExceptionHandler,
+    &MANAGED_RUNTIME_EXPORT_NAME(AppendExceptionStackFrame),
+    nullptr, // &CheckStaticClassConstruction,
+    &MANAGED_RUNTIME_EXPORT_NAME(GetSystemArrayEEType),
+    &MANAGED_RUNTIME_EXPORT_NAME(OnFirstChanceException),
+    &MANAGED_RUNTIME_EXPORT_NAME(OnUnhandledException),
+    &MANAGED_RUNTIME_EXPORT_NAME(IDynamicCastableIsInterfaceImplemented),
+    &MANAGED_RUNTIME_EXPORT_NAME(IDynamicCastableGetInterfaceImplementation),
+>>>>>>> runtime/main
 #ifdef FEATURE_OBJCMARSHAL
-    &ObjectiveCMarshalTryGetTaggedMemory,
-    &ObjectiveCMarshalGetIsTrackedReferenceCallback,
-    &ObjectiveCMarshalGetOnEnteredFinalizerQueueCallback,
-    &ObjectiveCMarshalGetUnhandledExceptionPropagationHandler,
+    &MANAGED_RUNTIME_EXPORT_NAME(ObjectiveCMarshalTryGetTaggedMemory),
+    &MANAGED_RUNTIME_EXPORT_NAME(ObjectiveCMarshalGetIsTrackedReferenceCallback),
+    &MANAGED_RUNTIME_EXPORT_NAME(ObjectiveCMarshalGetOnEnteredFinalizerQueueCallback),
+    &MANAGED_RUNTIME_EXPORT_NAME(ObjectiveCMarshalGetUnhandledExceptionPropagationHandler),
 #else
     nullptr,
     nullptr,
@@ -241,7 +285,7 @@ int (*g_RuntimeInitializationCallback)() = nullptr;
 #ifndef NATIVEAOT_DLL
 
 #if defined(_WIN32)
-int __cdecl wmain(int argc, wchar_t* argv[])
+int CDECL wmain(int argc, wchar_t* argv[])
 #else
 int main(int argc, char* argv[])
 #endif

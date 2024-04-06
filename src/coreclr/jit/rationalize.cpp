@@ -399,7 +399,8 @@ PhaseStatus Rationalizer::DoPhase()
         };
 
         RationalizeVisitor(Rationalizer& rationalizer)
-            : GenTreeVisitor<RationalizeVisitor>(rationalizer.comp), m_rationalizer(rationalizer)
+            : GenTreeVisitor<RationalizeVisitor>(rationalizer.comp)
+            , m_rationalizer(rationalizer)
         {
         }
 

@@ -83,20 +83,28 @@ struct Limit
         keUnknown,   // The limit could not be determined.
     };
 
-    Limit() : type(keUndef)
+    Limit()
+        : type(keUndef)
     {
     }
 
-    Limit(LimitType type) : type(type)
+    Limit(LimitType type)
+        : type(type)
     {
     }
 
-    Limit(LimitType type, int cns) : cns(cns), vn(ValueNumStore::NoVN), type(type)
+    Limit(LimitType type, int cns)
+        : cns(cns)
+        , vn(ValueNumStore::NoVN)
+        , type(type)
     {
         assert(type == keConstant);
     }
 
-    Limit(LimitType type, ValueNum vn, int cns) : cns(cns), vn(vn), type(type)
+    Limit(LimitType type, ValueNum vn, int cns)
+        : cns(cns)
+        , vn(vn)
+        , type(type)
     {
         assert(type == keBinOpArray);
     }
@@ -209,10 +217,8 @@ struct Limit
         return false;
     }
 #ifdef DEBUG
-    const char* ToString(CompAllocator alloc)
+    const char* ToString(Compiler* comp)
     {
-        unsigned size = 64;
-        char*    buf  = alloc.allocate<char>(size);
         switch (type)
         {
             case keUndef:
@@ -225,12 +231,10 @@ struct Limit
                 return "Dependent";
 
             case keBinOpArray:
-                sprintf_s(buf, size, FMT_VN " + %d", vn, cns);
-                return buf;
+                return comp->printfAlloc(FMT_VN " + %d", vn, cns);
 
             case keConstant:
-                sprintf_s(buf, size, "%d", cns);
-                return buf;
+                return comp->printfAlloc("%d", cns);
         }
         unreached();
     }
@@ -246,11 +250,15 @@ struct Range
     Limit uLimit;
     Limit lLimit;
 
-    Range(const Limit& limit) : uLimit(limit), lLimit(limit)
+    Range(const Limit& limit)
+        : uLimit(limit)
+        , lLimit(limit)
     {
     }
 
-    Range(const Limit& lLimit, const Limit& uLimit) : uLimit(uLimit), lLimit(lLimit)
+    Range(const Limit& lLimit, const Limit& uLimit)
+        : uLimit(uLimit)
+        , lLimit(lLimit)
     {
     }
 
@@ -265,12 +273,9 @@ struct Range
     }
 
 #ifdef DEBUG
-    char* ToString(CompAllocator alloc)
+    const char* ToString(Compiler* comp)
     {
-        size_t size = 64;
-        char*  buf  = alloc.allocate<char>(size);
-        sprintf_s(buf, size, "<%s, %s>", lLimit.ToString(alloc), uLimit.ToString(alloc));
-        return buf;
+        return comp->printfAlloc("<%s, %s>", lLimit.ToString(comp), uLimit.ToString(comp));
     }
 #endif
 };
@@ -593,7 +598,10 @@ public:
         BasicBlock*          block;
         Statement*           stmt;
         GenTreeLclVarCommon* tree;
-        Location(BasicBlock* block, Statement* stmt, GenTreeLclVarCommon* tree) : block(block), stmt(stmt), tree(tree)
+        Location(BasicBlock* block, Statement* stmt, GenTreeLclVarCommon* tree)
+            : block(block)
+            , stmt(stmt)
+            , tree(tree)
         {
         }
 
@@ -683,7 +691,7 @@ public:
     // Does the binary operation between the operands overflow? Check recursively.
     bool DoesBinOpOverflow(BasicBlock* block, GenTreeOp* binop);
 
-    // Does the phi operands involve an assignment that could overflow?
+    // Do the phi operands involve a definition that could overflow?
     bool DoesPhiOverflow(BasicBlock* block, GenTree* expr);
 
     // Find the def of the "expr" local and recurse on the arguments if any of them involve a
@@ -702,9 +710,7 @@ public:
     // Is the binary operation increasing the value.
     bool IsBinOpMonotonicallyIncreasing(GenTreeOp* binop);
 
-    // Given an "expr" trace its rhs and their definitions to check if all the assignments
-    // are monotonically increasing.
-    //
+    // Given an expression trace its value to check if it is monotonically increasing.
     bool IsMonotonicallyIncreasing(GenTree* tree, bool rejectNegativeConst);
 
     // We allocate a budget to avoid walking long UD chains. When traversing each link in the UD

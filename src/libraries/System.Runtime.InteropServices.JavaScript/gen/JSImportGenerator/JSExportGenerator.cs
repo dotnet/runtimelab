@@ -282,7 +282,7 @@ namespace Microsoft.Interop.JavaScript
             const string generatedNamespace = "System.Runtime.InteropServices.JavaScript";
             const string initializerClass = "__GeneratedInitializer";
             const string initializerName = "__Register_";
-            const string selfInitName = "__Net7SelfInit_";
+            const string trimmingPreserveName = "__TrimmingPreserve_";
 
             if (methods.IsEmpty) return NamespaceDeclaration(IdentifierName(generatedNamespace));
 
@@ -308,6 +308,7 @@ namespace Microsoft.Interop.JavaScript
                             .WithModifiers(TokenList(new[] { Token(SyntaxKind.StaticKeyword) }))
                             .WithBody(Block(registerStatements));
 
+<<<<<<< HEAD
             MemberDeclarationSyntax method_uco = MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier(initializerName + "_Export"))
                 .WithAttributeLists(SingletonList(AttributeList(
                     SingletonSeparatedList(
@@ -349,16 +350,44 @@ namespace Microsoft.Interop.JavaScript
                             .WithAttributeLists(List(new[]{
                                     AttributeList(SingletonSeparatedList(Attribute(IdentifierName(Constants.ModuleInitializerAttributeGlobal)))),
                                 }))
+=======
+            // HACK: protect the code from trimming with DynamicDependency attached to a ModuleInitializer
+            MemberDeclarationSyntax initializerMethod = MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier(trimmingPreserveName))
+                            .WithAttributeLists(
+                                SingletonList<AttributeListSyntax>(
+                                    AttributeList(
+                                        SeparatedList<AttributeSyntax>(
+                                            new SyntaxNodeOrToken[]{
+                                                Attribute(
+                                                    IdentifierName(Constants.ModuleInitializerAttributeGlobal)),
+                                                Token(SyntaxKind.CommaToken),
+                                                Attribute(
+                                                    IdentifierName(Constants.DynamicDependencyAttributeGlobal))
+                                                .WithArgumentList(
+                                                    AttributeArgumentList(
+                                                        SeparatedList<AttributeArgumentSyntax>(
+                                                            new SyntaxNodeOrToken[]{
+                                                                AttributeArgument(
+                                                                    BinaryExpression(
+                                                                        SyntaxKind.BitwiseOrExpression,
+                                                                        MemberAccessExpression(
+                                                                            SyntaxKind.SimpleMemberAccessExpression,
+                                                                            IdentifierName(Constants.DynamicallyAccessedMemberTypesGlobal),
+                                                                            IdentifierName("PublicMethods")),
+                                                                        MemberAccessExpression(
+                                                                            SyntaxKind.SimpleMemberAccessExpression,
+                                                                            IdentifierName(Constants.DynamicallyAccessedMemberTypesGlobal),
+                                                                            IdentifierName("NonPublicMethods")))),
+                                                                Token(SyntaxKind.CommaToken),
+                                                                AttributeArgument(
+                                                                    TypeOfExpression(
+                                                                        IdentifierName(initializerClass)))})))}))))
+>>>>>>> runtime/main
                             .WithModifiers(TokenList(new[] {
                                 Token(SyntaxKind.StaticKeyword),
                                 Token(SyntaxKind.InternalKeyword)
                             }))
-                            .WithBody(Block(
-                                IfStatement(BinaryExpression(SyntaxKind.EqualsExpression,
-                                    IdentifierName("Environment.Version.Major"),
-                                    LiteralExpression(SyntaxKind.NumericLiteralExpression, Literal(7))),
-                                    Block(SingletonList<StatementSyntax>(
-                                        ExpressionStatement(InvocationExpression(IdentifierName(initializerName))))))));
+                            .WithBody(Block());
 
             var ns = NamespaceDeclaration(IdentifierName(generatedNamespace))
                         .WithMembers(
