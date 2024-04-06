@@ -256,7 +256,7 @@ private:
     BlockSet m_blocksInFilters = BlockSetOps::UninitVal();
 
     // Shared between LSSA and codegen.
-    bool m_anyAddressExposedShadowLocals = false;
+    bool m_anyAddressExposedOrPinnedShadowLocals = false;
 
     // Codegen members.
     llvm::IRBuilder<> _builder;
