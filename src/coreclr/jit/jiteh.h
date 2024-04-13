@@ -118,17 +118,12 @@ struct EHblkDsc
     //   funclet index, just subtract 1.
     unsigned short ebdFuncIndex;
 
-<<<<<<< HEAD
 #ifdef TARGET_WASM
     // WASM backend rewrites the funclet table in a way that makes the above algorithm
     // insufficient and so uses this auxiliary field for filter funclet indices.
     unsigned short ebdFilterFuncIndex;
 #endif // TARGET_WASM
 
-#endif // FEATURE_EH_FUNCLETS
-
-=======
->>>>>>> runtime/main
     IL_OFFSET ebdTryBegOffset; // IL offsets of EH try/end regions as they are imported
     IL_OFFSET ebdTryEndOffset;
     IL_OFFSET ebdFilterBegOffset; // only set if HasFilter()

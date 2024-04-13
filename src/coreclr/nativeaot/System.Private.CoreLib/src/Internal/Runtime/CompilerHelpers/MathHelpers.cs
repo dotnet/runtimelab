@@ -303,11 +303,10 @@ namespace Internal.Runtime.CompilerHelpers
 
         public static long UMod(uint dividend, uint divisor)
         {
-<<<<<<< HEAD
-            if (j == 0)
+            if (divisor == 0)
                 return ThrowUIntDivByZero();
             else
-                return RhpUMod(i, j);
+                return RhpUMod(dividend, divisor);
         }
 #endif // TARGET_ARM || TARGET_WASM
 
@@ -359,14 +358,6 @@ namespace Internal.Runtime.CompilerHelpers
             throw new ArithmeticException();
         }
 #endif // TARGET_ARM || TARGET_WASM
-=======
-            if (divisor == 0)
-                ThrowHelper.ThrowDivideByZeroException();
-
-            return RhpUMod(dividend, divisor);
-        }
-#endif // TARGET_ARM
 #endif // TARGET_64BIT
->>>>>>> runtime/main
     }
 }

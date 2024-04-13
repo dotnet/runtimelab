@@ -1025,9 +1025,6 @@ void Llvm::visitNode(GenTree* node)
         case GT_STORE_BLK:
             buildStoreBlk(node->AsBlk());
             break;
-        case GT_STORE_DYN_BLK:
-            buildStoreDynBlk(node->AsStoreDynBlk());
-            break;
         case GT_MUL:
         case GT_AND:
         case GT_OR:
@@ -1790,72 +1787,6 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     }
 }
 
-void Llvm::buildStoreDynBlk(GenTreeStoreDynBlk* blockOp)
-{
-    bool isCopyBlock = blockOp->OperIsCopyBlkOp();
-    GenTree* srcNode = blockOp->Data();
-    GenTree* sizeNode = blockOp->gtDynamicSize;
-
-    // STORE_DYN_BLK accepts native-sized size operands.
-    Type* sizeLlvmType = getIntPtrLlvmType();
-    Value* sizeValue = consumeValue(sizeNode, sizeLlvmType);
-
-    // STORE_DYN_BLK's contract is that it must not throw any exceptions in case the dynamic size is zero and must throw
-    // NRE otherwise.
-    bool dstAddrMayBeNull = (blockOp->gtFlags & GTF_IND_NONFAULTING) == 0;
-    bool srcAddrMayBeNull = isCopyBlock && ((srcNode->gtFlags & GTF_IND_NONFAULTING) == 0);
-    llvm::BasicBlock* checkSizeLlvmBlock = nullptr;
-    llvm::BasicBlock* nullChecksLlvmBlock = nullptr;
-
-    // TODO-LLVM-CQ: we should use CORINFO_HELP_MEMCPY/CORINFO_HELP_MEMSET here if we need to do the size check (it will
-    // result in smaller code). But currently we cannot because ILC maps these to native "memcpy/memset", which do not
-    // have the right semantics (don't throw NREs).
-    if (dstAddrMayBeNull || srcAddrMayBeNull)
-    {
-        //
-        // if (sizeIsZeroValue) goto PASSED; else goto CHECK_DST; (we'll add this below)
-        // CHECK_DST:
-        //   if (dst is null) Throw();
-        // CHECK_SRC:
-        //   if (src is null) Throw();
-        // COPY:
-        //   memcpy/memset
-        // PASSED:
-        //
-        checkSizeLlvmBlock = _builder.GetInsertBlock();
-        nullChecksLlvmBlock = createInlineLlvmBlock();
-        _builder.SetInsertPoint(nullChecksLlvmBlock);
-    }
-
-    // Technically cpblk/initblk specify that they expect their sources/destinations to be aligned, but in
-    // practice these instructions are used like memcpy/memset, which do not require this. So we do not try
-    // to be more precise with the alignment specification here as well.
-    // TODO-LLVM: volatile STORE_DYN_BLK.
-    Value* dstAddrValue = consumeAddressAndEmitNullCheck(blockOp);
-    if (isCopyBlock)
-    {
-        Value* srcAddrValue = consumeAddressAndEmitNullCheck(srcNode->AsIndir());
-        _builder.CreateMemCpy(dstAddrValue, llvm::MaybeAlign(), srcAddrValue, llvm::MaybeAlign(), sizeValue);
-    }
-    else
-    {
-        Value* initValue = consumeInitVal(srcNode);
-        _builder.CreateMemSet(dstAddrValue, initValue, sizeValue, llvm::MaybeAlign());
-    }
-
-    if (checkSizeLlvmBlock != nullptr)
-    {
-        llvm::BasicBlock* skipOperationLlvmBlock = createInlineLlvmBlock();
-        _builder.CreateBr(skipOperationLlvmBlock);
-
-        _builder.SetInsertPoint(checkSizeLlvmBlock);
-        Value* sizeIsZeroValue = _builder.CreateICmpEQ(sizeValue, llvm::ConstantInt::getNullValue(sizeLlvmType));
-        _builder.CreateCondBr(sizeIsZeroValue, skipOperationLlvmBlock, nullChecksLlvmBlock);
-
-        _builder.SetInsertPoint(skipOperationLlvmBlock);
-    }
-}
-
 void Llvm::buildUnaryOperation(GenTree* node)
 {
     GenTree* op1 = node->gtGetOp1();
@@ -2135,14 +2066,14 @@ void Llvm::buildSwitch(GenTreeUnOp* switchNode)
     unsigned casesCount = switchDesc->bbsCount - 1;
     noway_assert(switchDesc->bbsHasDefault);
 
-    BasicBlock* defaultDestBlock = switchDesc->getDefault();
+    BasicBlock* defaultDestBlock = switchDesc->getDefault()->getDestinationBlock();
     llvm::BasicBlock* defaultDestLlvmBlock = getFirstLlvmBlockForBlock(defaultDestBlock);
     llvm::SwitchInst* switchInst = _builder.CreateSwitch(destValue, defaultDestLlvmBlock, casesCount);
 
     for (unsigned destIndex = 0; destIndex < casesCount; destIndex++)
     {
         llvm::ConstantInt* destIndexValue = llvm::ConstantInt::get(switchLlvmType, destIndex);
-        llvm::BasicBlock* destLlvmBlock = getFirstLlvmBlockForBlock(switchDesc->bbsDstTab[destIndex]);
+        llvm::BasicBlock* destLlvmBlock = getFirstLlvmBlockForBlock(switchDesc->bbsDstTab[destIndex]->getDestinationBlock());
 
         switchInst->addCase(destIndexValue, destLlvmBlock);
     }

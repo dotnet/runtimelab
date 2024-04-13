@@ -1074,14 +1074,10 @@ export function mono_jiterp_free_method_data_js (
     mono_jiterp_free_method_data_jit_call(method);
 }
 
-<<<<<<< HEAD
-export function jiterpreter_dump_stats(b?: boolean, concise?: boolean) {
+export function jiterpreter_dump_stats (concise?: boolean): void {
     if (NativeAOT) {
         return;
     }
-=======
-export function jiterpreter_dump_stats (concise?: boolean): void {
->>>>>>> runtime/main
     if (!runtimeHelpers.runtimeReady) {
         return;
     }

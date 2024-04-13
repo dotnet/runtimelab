@@ -42,7 +42,7 @@ void RhEnableFinalization()
     // here as it will deadlock the GC.
 }
 
-EXTERN_C NATIVEAOT_API void __cdecl RhWaitForPendingFinalizers(UInt32_BOOL allowReentrantWait)
+EXTERN_C void __cdecl RhWaitForPendingFinalizers(UInt32_BOOL allowReentrantWait)
 {
     // Must be called in preemptive mode as "ProcessFinalizersAndReturn" RPIs back into managed.
     ASSERT(!ThreadStore::GetCurrentThread()->IsCurrentThreadInCooperativeMode());
@@ -51,7 +51,7 @@ EXTERN_C NATIVEAOT_API void __cdecl RhWaitForPendingFinalizers(UInt32_BOOL allow
 }
 
 // Fetch next object which needs finalization or return null if we've reached the end of the list.
-COOP_PINVOKE_HELPER(OBJECTREF, RhpGetNextFinalizableObject, ())
+FCIMPL0 (OBJECTREF, RhpGetNextFinalizableObject)
 {
     while (true)
     {
@@ -73,3 +73,4 @@ COOP_PINVOKE_HELPER(OBJECTREF, RhpGetNextFinalizableObject, ())
         return refNext;
     }
 }
+FCIMPLEND

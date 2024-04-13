@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 import NativeAOT from "consts:nativeAOT";
-import { Module } from "./globals";
 
 import WasmEnableThreads from "consts:wasmEnableThreads";
 
@@ -56,11 +55,11 @@ export async function mono_run_main (main_assembly_name?: string, args?: string[
             args = [];
         }
     }
-    
+
     if (NativeAOT) {
         return (Module as any)["callMain"](args);
     }
-    
+
     mono_wasm_set_main_args(main_assembly_name, args);
     loaderHelpers.config.mainAssemblyName = main_assembly_name;
 

@@ -2354,14 +2354,10 @@ PhaseStatus Compiler::fgAddInternal()
     // Merge return points if required or beneficial
     MergedReturns merger(this);
 
-<<<<<<< HEAD
 #ifdef TARGET_WASM
     m_llvm->AddUnhandledExceptionHandler();
 #endif // TARGET_WASM
 
-#if defined(FEATURE_EH_FUNCLETS)
-=======
->>>>>>> runtime/main
     // Add the synchronized method enter/exit calls and try/finally protection. Note
     // that this must happen before the one BBJ_RETURN block is created below, so the
     // BBJ_RETURN block gets placed at the top-level, not within an EH region. (Otherwise,

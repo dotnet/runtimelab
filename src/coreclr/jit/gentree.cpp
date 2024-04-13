@@ -2081,7 +2081,6 @@ void CallArgs::Remove(CallArg* arg)
     assert(!"Did not find arg to remove in CallArgs::Remove");
 }
 
-<<<<<<< HEAD
 #if TARGET_WASM
 //------------------------------------------------------------------------
 // MoveLateToEarly: Sets all late nodes as the early nodes
@@ -2103,7 +2102,6 @@ void CallArgs::MoveLateToEarly()
     m_lateHead = nullptr;
 }
 #endif
-=======
 #ifdef TARGET_XARCH
 //---------------------------------------------------------------
 // NeedsVzeroupper: Determines if the call needs a vzeroupper emitted before it is invoked
@@ -2172,7 +2170,6 @@ bool GenTreeCall::NeedsVzeroupper(Compiler* comp)
     return needsVzeroupper;
 }
 #endif // TARGET_XARCH
->>>>>>> runtime/main
 
 //---------------------------------------------------------------
 // GetOtherRegMask: Get the reg mask of gtOtherRegs of call node
@@ -4744,8 +4741,6 @@ AGAIN:
        constant, or we have gone through a GT_NOP or GT_COMMA node. We never come back
        here if we find a scaled index.
     */
-    CLANG_FORMAT_COMMENT_ANCHOR;
-
     assert(mul == 0);
 
     /* Special case: keep constants as 'op2' */

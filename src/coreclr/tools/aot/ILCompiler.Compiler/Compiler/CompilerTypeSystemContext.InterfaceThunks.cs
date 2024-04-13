@@ -305,11 +305,6 @@ namespace ILCompiler
 
                         // Shared instance methods on generic interfaces have a hidden parameter with the generic context.
                         // We add it to the signature so that we can refer to it from IL.
-<<<<<<< HEAD
-                        parameters[0] = Context.GetWellKnownType(WellKnownType.Void).MakePointerType();
-                        for (int i = 0; i < _methodRepresented.Signature.Length; i++)
-                            parameters[i + 1] = _methodRepresented.Signature[i];
-=======
                         if (Context.Target.Architecture == TargetArchitecture.X86)
                         {
                             for (int i = 0; i < _methodRepresented.Signature.Length; i++)
@@ -322,7 +317,6 @@ namespace ILCompiler
                             for (int i = 0; i < _methodRepresented.Signature.Length; i++)
                                 parameters[i + 1] = _methodRepresented.Signature[i];
                         }
->>>>>>> runtime/main
 
                         _signature = new MethodSignature(_methodRepresented.Signature.Flags,
                             _methodRepresented.Signature.GenericParameterCount,

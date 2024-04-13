@@ -4884,16 +4884,11 @@ public:
     CallArg* InsertAfterUnchecked(Compiler* comp, CallArg* after, const NewCallArg& arg);
     CallArg* InsertInstParam(Compiler* comp, GenTree* node);
     CallArg* InsertAfterThisOrFirst(Compiler* comp, const NewCallArg& arg);
-<<<<<<< HEAD
-    void PushLateBack(CallArg* arg);
-    void Remove(CallArg* arg);
-#if TARGET_WASM
-    void MoveLateToEarly();
-#endif
-=======
     void     PushLateBack(CallArg* arg);
     void     Remove(CallArg* arg);
->>>>>>> runtime/main
+#if TARGET_WASM
+    void     MoveLateToEarly();
+#endif
 
     template <typename CopyNodeFunc>
     void InternalCopyFrom(Compiler* comp, CallArgs* other, CopyNodeFunc copyFunc);
@@ -5689,15 +5684,11 @@ struct GenTreeCall final : public GenTree
     uint8_t gtInlineInfoCount; // number of inline candidates for the given call
 
     CORINFO_CLASS_HANDLE gtRetClsHnd; // The return type handle of the call if it is a struct; always available
-<<<<<<< HEAD
 #if defined(TARGET_WASM)
     CorInfoType gtCorInfoType = CORINFO_TYPE_UNDEF; // the precise return type used to construct the signature
 #endif                                              // defined(TARGET_WASM)
-    union {
-=======
     union
     {
->>>>>>> runtime/main
         void*                gtStubCallStubAddr;   // GTF_CALL_VIRT_STUB - these are never inlined
         CORINFO_CLASS_HANDLE gtInitClsHnd;         // Used by static init helpers, represents a class they init
         IL_OFFSET            gtCastHelperILOffset; // Used by cast helpers to save corresponding IL offset
@@ -7518,6 +7509,14 @@ public:
         assert(m_layout != nullptr);
         return m_layout;
     }
+
+#if TARGET_WASM
+    void SetLayout(ClassLayout* layout)
+    {
+        assert((layout != nullptr));
+        m_layout = layout;
+    }
+#endif // TARGET_WASM
 
     // The data to be stored (null for GT_BLK)
     GenTree*& Data()

@@ -2053,14 +2053,10 @@ function jiterpreter_allocate_table (type: JiterpreterTable, base: number, size:
 // we need to ensure we only ever initialize tables once on each js worker.
 let jiterpreter_tables_allocated = false;
 
-<<<<<<< HEAD
-
-export function jiterpreter_allocate_tables() {
+export function jiterpreter_allocate_tables () {
     if (NativeAOT)
         return;
-=======
-export function jiterpreter_allocate_tables () {
->>>>>>> runtime/main
+
     if (jiterpreter_tables_allocated)
         return;
     jiterpreter_tables_allocated = true;

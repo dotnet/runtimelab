@@ -442,15 +442,10 @@ export function mono_wasm_setenv (name: string, value: string): void {
     cwraps.mono_wasm_setenv(name, value);
 }
 
-<<<<<<< HEAD
-export function mono_wasm_set_runtime_options(options: string[]): void {
+export function mono_wasm_set_runtime_options (options: string[]): void {
     if (NativeAOT) {
         return;
     }
-
-=======
-export function mono_wasm_set_runtime_options (options: string[]): void {
->>>>>>> runtime/main
     if (!Array.isArray(options))
         throw new Error("Expected runtimeOptions to be an array of strings");
 
@@ -511,6 +506,10 @@ export async function start_runtime () {
     try {
         const mark = startMeasure();
         mono_log_debug("Initializing mono runtime");
+        if (NativeAOT) {
+            runtimeHelpers.config.environmentVariables = {};
+        }
+
         for (const k in runtimeHelpers.config.environmentVariables) {
             const v = runtimeHelpers.config.environmentVariables![k];
             if (typeof (v) === "string")
@@ -521,18 +520,6 @@ export async function start_runtime () {
         if (runtimeHelpers.config.runtimeOptions)
             mono_wasm_set_runtime_options(runtimeHelpers.config.runtimeOptions);
 
-<<<<<<< HEAD
-    if (NativeAOT) {
-        runtimeHelpers.config.environmentVariables = {};
-    }
-
-    for (const k in runtimeHelpers.config.environmentVariables) {
-        const v = runtimeHelpers.config.environmentVariables![k];
-        if (typeof (v) === "string")
-            mono_wasm_setenv(k, v);
-        else
-            throw new Error(`Expected environment variable '${k}' to be a string but it was ${typeof v}: '${v}'`);
-=======
         if (runtimeHelpers.config.aotProfilerOptions)
             mono_wasm_init_aot_profiler(runtimeHelpers.config.aotProfilerOptions);
 
@@ -577,7 +564,6 @@ export async function start_runtime () {
         mono_log_error("start_runtime() failed", err);
         loaderHelpers.mono_exit(1, err);
         throw err;
->>>>>>> runtime/main
     }
 }
 
@@ -592,14 +578,10 @@ async function maybeSaveInterpPgoTable () {
     await interp_pgo_save_data();
 }
 
-<<<<<<< HEAD
-export function mono_wasm_load_runtime(unused?: string, debugLevel?: number): void {
+export function mono_wasm_load_runtime (): void {
     if (NativeAOT) {
         return;
     }
-=======
-export function mono_wasm_load_runtime (): void {
->>>>>>> runtime/main
     mono_log_debug("mono_wasm_load_runtime");
     try {
         const mark = startMeasure();

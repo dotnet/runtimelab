@@ -318,14 +318,9 @@ function cwrap (name: string, returnType: string | null, argTypes: string[] | un
     return fce;
 }
 
-<<<<<<< HEAD
-export function init_c_exports(): void {
+export function init_c_exports (): void {
     const fns = NativeAOT ? [] : [...fn_signatures];
 
-=======
-export function init_c_exports (): void {
-    const fns = [...fn_signatures];
->>>>>>> runtime/main
     for (const sig of fns) {
         const wf: any = wrapped_c_functions;
         const [lazyOrSkip, name, returnType, argTypes, opts] = sig;

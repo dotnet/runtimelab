@@ -2,8 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 /* eslint-disable prefer-rest-params */
 
-import NativeAOT from "consts:nativeAOT";
-
 import WasmEnableThreads from "consts:wasmEnableThreads";
 import BuildConfiguration from "consts:configuration";
 
@@ -483,31 +481,7 @@ export function normalize_exception (ex: any) {
     return res;
 }
 
-<<<<<<< HEAD
-export function wrap_error_root(is_exception: Int32Ptr | null, ex: any, result: WasmRoot<MonoObject>): void {
-    const res = _wrap_error_flag(is_exception, ex);
-    if (NativeAOT) {
-        return;
-    }
-
-    stringToMonoStringRoot(res, <any>result);
-}
-
-// to set out parameters of icalls
-export function wrap_no_error_root(is_exception: Int32Ptr | null, result?: WasmRoot<MonoObject>): void {
-    if (is_exception) {
-        receiveWorkerHeapViews();
-        setI32_unchecked(is_exception, 0);
-    }
-    if (result) {
-        result.clear();
-    }
-}
-
-export function assert_js_interop(): void {
-=======
 export function assert_js_interop (): void {
->>>>>>> runtime/main
     loaderHelpers.assert_runtime_running();
     if (WasmEnableThreads) {
         mono_assert(runtimeHelpers.mono_wasm_bindings_is_ready && runtimeHelpers.proxyGCHandle, "Please use dedicated worker for working with JavaScript interop. See https://github.com/dotnet/runtime/blob/main/src/mono/wasm/threads.md#JS-interop-on-dedicated-threads");

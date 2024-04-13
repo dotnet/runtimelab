@@ -1890,12 +1890,8 @@ void Compiler::fgComputeLifeLIR(VARSET_TP& life, BasicBlock* block, VARSET_VALAR
                     GenTree* value = lclVarNode->Data();
                     value->SetUnusedValue();
 
-<<<<<<< HEAD
 #ifndef TARGET_WASM
-                    if (data->isIndir())
-=======
                     if (value->isIndir())
->>>>>>> runtime/main
                     {
                         Lowering::TransformUnusedIndirection(value->AsIndir(), this, block);
                     }

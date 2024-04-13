@@ -7621,11 +7621,7 @@ void Compiler::compInitVarScopeMap()
     compVarScopeMap = new (getAllocator()) VarNumToScopeDscMap(getAllocator());
 
     // 599 prime to limit huge allocations; for ex: duplicated scopes on single var.
-<<<<<<< HEAD
-    compVarScopeMap->Reallocate(min(info.compVarScopesCount, 599U));
-=======
     compVarScopeMap->Reallocate(min(info.compVarScopesCount, 599u));
->>>>>>> runtime/main
 
     for (unsigned i = 0; i < info.compVarScopesCount; ++i)
     {

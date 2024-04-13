@@ -553,15 +553,11 @@ inline regMaskTP fullIntArgRegMask(CorInfoCallConvExtension callConv)
 //
 inline bool isValidIntArgReg(regNumber reg, CorInfoCallConvExtension callConv)
 {
-<<<<<<< HEAD
 #if defined(TARGET_WASM)
     return true;
 #else
-    return (genRegMask(reg) & fullIntArgRegMask()) != 0;
-#endif
-=======
     return (genRegMask(reg) & fullIntArgRegMask(callConv)) != 0;
->>>>>>> runtime/main
+#endif
 }
 
 //-------------------------------------------------------------------------------------------

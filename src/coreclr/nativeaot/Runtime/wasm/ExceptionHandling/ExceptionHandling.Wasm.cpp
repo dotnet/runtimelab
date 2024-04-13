@@ -4,11 +4,13 @@
 #include "CommonTypes.h"
 #include "CommonMacros.h"
 
-COOP_PINVOKE_HELPER(void, RhpThrowNativeException, ())
+FCIMPL0(void, RhpThrowNativeException)
 {
     __builtin_wasm_throw(/* CPP_EXCEPTION_TAG */ 0, nullptr);
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(void, RhpReleaseNativeException, ())
+FCIMPL0(void, RhpReleaseNativeException)
 {
 }
+FCIMPLEND

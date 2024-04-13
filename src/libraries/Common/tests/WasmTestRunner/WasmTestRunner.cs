@@ -4,10 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-<<<<<<< HEAD
-
-=======
->>>>>>> runtime/main
 using Microsoft.DotNet.XHarness.TestRunners.Common;
 using Microsoft.DotNet.XHarness.TestRunners.Xunit;
 
@@ -20,24 +16,19 @@ public class WasmTestRunner : WasmApplicationEntryPoint
     {
         int index = 0;
 
+        var runner = new WasmTestRunner();
 #if SINGLE_FILE_TEST_RUNNER
         // This runner is also used for NativeAOT testing, which defines SINGLE_FILE_TEST_RUNNER.
-        var testAssembly = typeof(SimpleWasmTestRunner).Assembly.GetName().Name;
+        runner.TestAssembly = typeof(SimpleWasmTestRunner).Assembly.GetName().Name;
 #else
-        if (args.Length == 0)
+	if (args.Length == 0)
         {
             Console.WriteLine($"No args given");
             return -1;
         }
 
-<<<<<<< HEAD
-        var testAssembly = args[index++];
-#endif
-=======
-        var runner = new WasmTestRunner();
-
         runner.TestAssembly = args[0];
->>>>>>> runtime/main
+#endif
 
         var excludedTraits = new List<string>();
         var includedTraits = new List<string>();

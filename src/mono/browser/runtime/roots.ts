@@ -1,12 +1,9 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-<<<<<<< HEAD
 import NativeAOT from "consts:nativeAOT";
-=======
 import WasmEnableThreads from "consts:wasmEnableThreads";
 
->>>>>>> runtime/main
 import cwraps from "./cwraps";
 import { Module, mono_assert, runtimeHelpers } from "./globals";
 import { VoidPtr, ManagedPointer, NativePointer } from "./types/emscripten";
@@ -48,8 +45,7 @@ export function mono_wasm_new_root_buffer (capacity: number, name?: string): Was
  * Allocates a WasmRoot pointing to a root provided and controlled by external code. Typicaly on managed stack.
  * Releasing this root will not de-allocate the root space. You still need to call .release().
  */
-<<<<<<< HEAD
-export function mono_wasm_new_external_root<T extends MonoObject>(address: VoidPtr | MonoObjectRef): WasmRoot<T> {
+export function mono_wasm_new_external_root<T extends MonoObject> (address: VoidPtr | MonoObjectRef): WasmRoot<T> {
     if (NativeAOT) {
         return {
             // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -59,10 +55,7 @@ export function mono_wasm_new_external_root<T extends MonoObject>(address: VoidP
         } as unknown as WasmRoot<T>;
     }
 
-=======
-export function mono_wasm_new_external_root<T extends MonoObject> (address: VoidPtr | MonoObjectRef): WasmRoot<T> {
     if (WasmEnableThreads && runtimeHelpers.disableManagedTransition) throw new Error("External roots are not supported in multithreaded mode");
->>>>>>> runtime/main
     let result: WasmExternalRoot<T>;
 
     if (!address)

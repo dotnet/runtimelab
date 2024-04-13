@@ -499,8 +499,6 @@ public:
     // The constructor. Most things can just be zero'ed.
     //
     // Initialize the ArgRegs to REG_STK.
-<<<<<<< HEAD
-    // Morph will update if this local is passed in a register.
     LclVarDsc() :
 #if defined(TARGET_WASM)
         lvLlvmArgNum(BAD_LLVM_ARG_NUM),
@@ -508,10 +506,6 @@ public:
         lvHasLocalAddr(0),
 #endif // TARGET_WASM
         _lvArgReg(REG_STK)
-=======
-    LclVarDsc()
-        : _lvArgReg(REG_STK)
->>>>>>> runtime/main
 #if FEATURE_MULTIREG_ARGS
         , _lvOtherArgReg(REG_STK)
 #endif // FEATURE_MULTIREG_ARGS

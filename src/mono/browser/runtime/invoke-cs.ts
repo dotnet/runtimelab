@@ -3,7 +3,6 @@
 /* eslint-disable prefer-rest-params */
 
 import NativeAOT from "consts:nativeAOT";
-import { utf16ToString } from "./strings";
 
 import BuildConfiguration from "consts:configuration";
 import WasmEnableThreads from "consts:wasmEnableThreads";
@@ -21,35 +20,16 @@ import { startMeasure, MeasuredBlock, endMeasure } from "./profiler";
 import { bind_assembly_exports, invoke_async_jsexport, invoke_sync_jsexport } from "./managed-exports";
 import { mono_log_debug } from "./logging";
 
-<<<<<<< HEAD
-const _assembly_cache_by_name = new Map<string, MonoAssembly>();
-
-// function mono_wasm_bind_cs_function_naot(fully_qualified_name: CharPtr, fully_qualified_name_length: number, signature_hash: number, signature: JSFunctionSignature, is_exception: Int32Ptr): void
-export function mono_wasm_bind_cs_function(fully_qualified_name: MonoStringRef, signature_hash: number, signature: JSFunctionSignature, is_exception: Int32Ptr, result_address: MonoObjectRef): void {
-    assert_js_interop();
-    const fqn_root = mono_wasm_new_external_root<MonoString>(fully_qualified_name), resultRoot = mono_wasm_new_external_root<MonoObject>(result_address);
-    const mark = startMeasure();
-    try {
-        if (NativeAOT) {
-            signature_hash = arguments[2];
-            signature = arguments[3];
-            is_exception = arguments[4];
-        }
-        const version = get_signature_version(signature);
-        mono_assert(version === 2, () => `Signature version ${version} mismatch.`);
-
-        const args_count = get_signature_argument_count(signature);
-        const js_fqn = NativeAOT ? utf16ToString(arguments[0], arguments[0] + 2 * arguments[1]) : monoStringToString(fqn_root)!;
-        mono_assert(js_fqn, "fully_qualified_name must be string");
-=======
 export function mono_wasm_bind_cs_function (method: MonoMethod, assemblyName: string, namespaceName: string, shortClassName: string, methodName: string, signatureHash: number, signature: JSFunctionSignature): void {
     const fullyQualifiedName = `[${assemblyName}] ${namespaceName}.${shortClassName}:${methodName}`;
     const mark = startMeasure();
     mono_log_debug(`Binding [JSExport] ${namespaceName}.${shortClassName}:${methodName} from ${assemblyName} assembly`);
+    if (NativeAOT) {
+        signatureHash = arguments[2];
+        signature = arguments[3];
+    }
     const version = get_signature_version(signature);
     mono_assert(version === 2, () => `Signature version ${version} mismatch.`);
-
->>>>>>> runtime/main
 
     const args_count = get_signature_argument_count(signature);
 
@@ -62,28 +42,6 @@ export function mono_wasm_bind_cs_function (method: MonoMethod, assemblyName: st
         arg_marshalers[index] = arg_marshaler;
     }
 
-<<<<<<< HEAD
-        let method = null;
-        if (NativeAOT) {
-            const wrapper_name = fixupSymbolName(`${js_fqn}_${signature_hash}`);
-            method = (Module as any)["_" + wrapper_name];
-            if (!method)
-                throw new Error(`Could not find method: ${wrapper_name} in ${js_fqn}`);
-        } else {
-            const asm = assembly_load(assembly);
-            if (!asm)
-                throw new Error("Could not find assembly: " + assembly);
-
-            const klass = cwraps.mono_wasm_assembly_find_class(asm, namespace, classname);
-            if (!klass)
-                throw new Error("Could not find class: " + namespace + ":" + classname + " in assembly " + assembly);
-
-            const wrapper_name = `__Wrapper_${methodname}_${signature_hash}`;
-            method = cwraps.mono_wasm_assembly_find_method(klass, wrapper_name, -1);
-            if (!method)
-                throw new Error(`Could not find method: ${wrapper_name} in ${klass} [${assembly}]`);
-        }
-=======
     const res_sig = get_sig(signature, 1);
     let res_marshaler_type = get_signature_type(res_sig);
 
@@ -100,7 +58,6 @@ export function mono_wasm_bind_cs_function (method: MonoMethod, assemblyName: st
         res_marshaler_type = MarshalerType.TaskPreCreated;
     }
     const res_converter = bind_arg_marshal_to_js(res_sig, res_marshaler_type, 1);
->>>>>>> runtime/main
 
     const closure: BindingClosure = {
         method,
@@ -157,33 +114,7 @@ export function mono_wasm_bind_cs_function (method: MonoMethod, assemblyName: st
     endMeasure(mark, MeasuredBlock.bindCsFunction, fullyQualifiedName);
 }
 
-<<<<<<< HEAD
-const s_charsToReplace = [".", "-", "+"];
-
-function fixupSymbolName(name: string) {
-    // Sync with JSExportGenerator.FixupSymbolName
-    let result = "";
-    for (let index = 0; index < name.length; index++) {
-        const b = name[index];
-        if ((b >= "0" && b <= "9") ||
-            (b >= "a" && b <= "z") ||
-            (b >= "A" && b <= "Z") ||
-            (b == "_")) {
-            result += b;
-        } else if( s_charsToReplace.includes(b)) {
-            result += "_";
-        } else {
-            result += `_${b.charCodeAt(0).toString(16).toUpperCase()}_`;
-        }
-    }
-
-    return result;
-}
-
-function bind_fn_0V(closure: BindingClosure) {
-=======
 function bind_fn_0V (closure: BindingClosure) {
->>>>>>> runtime/main
     const method = closure.method;
     const fqn = closure.fullyQualifiedName;
     if (!WasmEnableThreads) (<any>closure) = null;
@@ -417,48 +348,6 @@ type BindingClosure = {
     isDisposed: boolean,
 }
 
-<<<<<<< HEAD
-export function invoke_method_and_handle_exception_mono(method: MonoMethod, args: JSMarshalerArguments): void {
-    assert_js_interop();
-    const fail_root = mono_wasm_new_root<MonoString>();
-    try {
-        set_args_context(args);
-        const fail = cwraps.mono_wasm_invoke_method_bound(method, args, fail_root.address);
-        if (fail) runtimeHelpers.nativeAbort("ERR24: Unexpected error: " + monoStringToString(fail_root));
-        if (is_args_exception(args)) {
-            const exc = get_arg(args, 0);
-            throw marshal_exception_to_js(exc);
-        }
-    }
-    finally {
-        fail_root.release();
-    }
-}
-
-function invoke_method_and_handle_exception_naot(method: Function, args: JSMarshalerArguments): void {
-    method(args);
-    if (is_args_exception(args)) {
-        const exc = get_arg(args, 0);
-        throw marshal_exception_to_js(exc);
-    }
-}
-
-export const invoke_method_and_handle_exception: (method: any, args: JSMarshalerArguments) => void = NativeAOT ? invoke_method_and_handle_exception_naot : invoke_method_and_handle_exception_mono;
-
-export function invoke_method_raw(method: MonoMethod): void {
-    assert_c_interop();
-    const fail_root = mono_wasm_new_root<MonoString>();
-    try {
-        const fail = cwraps.mono_wasm_invoke_method_raw(method, fail_root.address);
-        if (fail) runtimeHelpers.nativeAbort("ERR24: Unexpected error: " + monoStringToString(fail_root));
-    }
-    finally {
-        fail_root.release();
-    }
-}
-
-=======
->>>>>>> runtime/main
 export const exportsByAssembly: Map<string, any> = new Map();
 function _walk_exports_to_set_function (assembly: string, namespace: string, classname: string, methodname: string, signature_hash: number, fn: Function): void {
     const parts = `${namespace}.${classname}`.replace(/\//g, ".").split(".");
@@ -489,11 +378,7 @@ function _walk_exports_to_set_function (assembly: string, namespace: string, cla
     scope[`${methodname}.${signature_hash}`] = fn;
 }
 
-<<<<<<< HEAD
-async function mono_wasm_get_assembly_exports_mono(assembly: string): Promise<any> {
-=======
 export async function mono_wasm_get_assembly_exports (assembly: string): Promise<any> {
->>>>>>> runtime/main
     assert_js_interop();
     const result = exportsByAssembly.get(assembly);
     if (!result) {
@@ -502,62 +387,3 @@ export async function mono_wasm_get_assembly_exports (assembly: string): Promise
 
     return exportsByAssembly.get(assembly) || {};
 }
-<<<<<<< HEAD
-
-async function mono_wasm_get_assembly_exports_naot(assembly: string): Promise<any> {
-    assert_js_interop();
-    const result = exportsByAssembly.get(assembly);
-    if (!result) {
-        const mark = startMeasure();
-        
-        let assemblyWithoutExtension = assembly;
-        if (assemblyWithoutExtension.endsWith(".dll")) {
-            assemblyWithoutExtension = assemblyWithoutExtension.substring(0, assembly.length - 4);
-        }
-        const register = (Module as any)["_" + assemblyWithoutExtension + "__GeneratedInitializer" + "__Register_"];
-        mono_assert(register, `Missing wasm export for JSExport registration function in assembly ${assembly}`);
-        register();
-
-        endMeasure(mark, MeasuredBlock.getAssemblyExports, assembly);
-    }
-
-    return exportsByAssembly.get(assembly) || {};
-}
-
-export const mono_wasm_get_assembly_exports = NativeAOT ? mono_wasm_get_assembly_exports_naot : mono_wasm_get_assembly_exports_mono;
-
-export function parseFQN(fqn: string)
-    : { assembly: string, namespace: string, classname: string, methodname: string } {
-    const assembly = fqn.substring(fqn.indexOf("[") + 1, fqn.indexOf("]")).trim();
-    fqn = fqn.substring(fqn.indexOf("]") + 1).trim();
-
-    const methodname = fqn.substring(fqn.indexOf(":") + 1);
-    fqn = fqn.substring(0, fqn.indexOf(":")).trim();
-
-    let namespace = "";
-    let classname = fqn;
-    if (fqn.indexOf(".") != -1) {
-        const idx = fqn.lastIndexOf(".");
-        namespace = fqn.substring(0, idx);
-        classname = fqn.substring(idx + 1);
-    }
-
-    if (!assembly.trim())
-        throw new Error("No assembly name specified " + fqn);
-    if (!classname.trim())
-        throw new Error("No class name specified " + fqn);
-    if (!methodname.trim())
-        throw new Error("No method name specified " + fqn);
-    return { assembly, namespace, classname, methodname };
-}
-
-export function assembly_load(name: string): MonoAssembly {
-    if (_assembly_cache_by_name.has(name))
-        return <MonoAssembly>_assembly_cache_by_name.get(name);
-
-    const result = cwraps.mono_wasm_assembly_load(name);
-    _assembly_cache_by_name.set(name, result);
-    return result;
-}
-=======
->>>>>>> runtime/main

@@ -18,16 +18,12 @@ import { _zero_region, copyBytes } from "./memory";
 import { stringToUTF8Ptr } from "./strings";
 import { mono_log_debug } from "./logging";
 
-<<<<<<< HEAD
-export function init_managed_exports(): void {
-    if (NativeAOT) {
-        return;
-    }
-=======
 const managedExports: ManagedExports = {} as any;
 
 export function init_managed_exports (): void {
->>>>>>> runtime/main
+    if (NativeAOT) {
+        return;
+    }
     const exports_fqn_asm = "System.Runtime.InteropServices.JavaScript";
     // TODO https://github.com/dotnet/runtime/issues/98366
     runtimeHelpers.runtime_interop_module = cwraps.mono_wasm_assembly_load(exports_fqn_asm);

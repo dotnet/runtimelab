@@ -21,15 +21,11 @@
     <_targetArchitecture>$(RuntimeIdentifier.SubString($([MSBuild]::Add($(RuntimeIdentifier.LastIndexOf('-')), 1))))</_targetArchitecture>
 
     <_hostPackageName>runtime.$(_hostOS)-$(_hostArchitecture).Microsoft.DotNet.ILCompiler</_hostPackageName>
-<<<<<<< HEAD
+    <_hostPackageName Condition="'$(_targetsNonPortableSdkRid)' == 'true'">runtime.$(RuntimeIdentifier).Microsoft.DotNet.ILCompiler</_hostPackageName>
     <_hostPackageName Condition="'$(_targetArchitecture)' == 'wasm'">$(_hostPackageName).LLVM</_hostPackageName>
     <_targetPackageName>runtime.$(_originalTargetOS)-$(_targetArchitecture).Microsoft.DotNet.ILCompiler</_targetPackageName>
-    <_targetPackageName Condition="'$(_targetArchitecture)' == 'wasm'">$(_targetPackageName).LLVM</_targetPackageName>
-=======
-    <_hostPackageName Condition="'$(_targetsNonPortableSdkRid)' == 'true'">runtime.$(RuntimeIdentifier).Microsoft.DotNet.ILCompiler</_hostPackageName>
-    <_targetPackageName>runtime.$(_originalTargetOS)-$(_targetArchitecture).Microsoft.DotNet.ILCompiler</_targetPackageName>
     <_targetPackageName Condition="'$(_targetsNonPortableSdkRid)' == 'true'">runtime.$(RuntimeIdentifier).Microsoft.DotNet.ILCompiler</_targetPackageName>
->>>>>>> runtime/main
+    <_targetPackageName Condition="'$(_targetArchitecture)' == 'wasm'">$(_targetPackageName).LLVM</_targetPackageName>
 
     <!-- Treat linux-musl and linux-bionic etc. as linux -->
     <_targetOS>$(_originalTargetOS)</_targetOS>

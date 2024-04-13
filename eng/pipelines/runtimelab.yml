@@ -49,85 +49,7 @@ extends:
     stages:
     - stage: Build
       jobs:
-<<<<<<< HEAD
-      #
-      # Build with Release libraries and Debug runtime
-      #
-      - ${{ if ne(variables.isOfficialBuild, true) }}:
-        - template: /eng/pipelines/common/platform-matrix.yml
-          parameters:
-            jobTemplate: /eng/pipelines/common/global-build-job.yml
-            buildConfig: Debug
-            platforms:
-          # - Linux_x64
-            - windows_x64
-            - OSX_x64
-            - Browser_wasm_win
-            - wasi_wasm_win
-            jobParameters:
-              timeoutInMinutes: 300
-              testGroup: innerloop
-              buildArgs: -s clr.aot+libs+nativeaot.packages -lc Release -rc Debug
-              postBuildSteps:
-                - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-                  parameters:
-                    librariesConfiguration: Release
 
-      #
-      # Build with Debug libraries and Checked runtime
-      #
-      - ${{ if ne(variables.isOfficialBuild, true) }}:
-        - template: /eng/pipelines/common/platform-matrix.yml
-          parameters:
-            jobTemplate: /eng/pipelines/common/global-build-job.yml
-            buildConfig: Checked
-            platforms:
-          # - linux_x64
-            - windows_x64
-            jobParameters:
-              timeoutInMinutes: 100
-              testGroup: innerloop
-              buildArgs: -s clr+libs+host+packs -c debug -runtimeConfiguration Checked
-              postBuildSteps:
-                - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-                  parameters:
-                    uploadRuntimeTests: true
-                    librariesConfiguration: Debug
-
-      #
-      # Build with Release libraries and Release runtime (used for official builds) - Wasm
-      #
-      - template: /eng/pipelines/common/platform-matrix.yml
-        parameters:
-          jobTemplate: /eng/pipelines/common/global-build-job.yml
-          buildConfig: Release
-          platforms:
-    #     - linux_x64        # Tests fail with a few errors, e.g. System.BadImageFormatException: Read out of bounds.  TODO-LLVM try to reinstate when more merged
-    #     - linux_musl_x64
-    #     - linux_arm64      # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
-    #     - linux_arm        # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
-    #     - linux_musl_arm64 # ILCompiler for LLVM depends on libLLVM.runtime.linux-arm64 with version (>= 11.0.0) which is missing https://github.com/microsoft/LLVMSharp/issues/177. TODO: reinstate when we remove LLVMSharp dependency
-    #     - windows_x64      # Part of the combined (target + host) WASM build below
-          - windows_arm64
-          - OSX_x64
-          - Browser_wasm_win
-          - wasi_wasm_win
-          jobParameters:
-            timeoutInMinutes: 300
-            isOfficialBuild: ${{ variables.isOfficialBuild }}
-            testGroup: innerloop
-            postBuildSteps:
-              - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-                parameters:
-                  isOfficialBuild: ${{ variables.isOfficialBuild }}
-                  uploadLibrariesTests: ${{ eq(variables.isOfficialBuild, false) }}
-                  uploadIntermediateArtifacts: ${{ variables.isOfficialBuild }}
-                  librariesConfiguration: Release
-            ${{ if eq(variables.isOfficialBuild, false) }}:
-              buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig) /p:ArchiveTests=true
-            ${{ if eq(variables.isOfficialBuild, true) }}:
-              buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig)
-=======
         - ${{ if ne(variables.isOfficialBuild, true) }}:
           #
           # Build the whole product with Checked CoreCLR and run runtime tests
@@ -140,15 +62,15 @@ extends:
               platforms:
               - linux_x64
               - windows_x64
+              - Browser_wasm_win
+              - wasi_wasm_win
               jobParameters:
-                timeoutInMinutes: 200
-                buildArgs: -s clr+libs+hosts+packs -c debug -rc $(_BuildConfig)
+                timeoutInMinutes: 300
+                buildArgs: -s clr.aot+libs+nativeaot.packages -c debug -rc $(_BuildConfig)
                 postBuildSteps:
-                  - template: /eng/pipelines/common/templates/runtimes/build-runtime-tests-and-send-to-helix.yml
+                  - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
                     parameters:
-                      creator: dotnet-bot
-                      testRunNamePrefixSuffix: CoreCLR_$(_BuildConfig)
-
+                      librariesConfiguration: Debug
           #
           # Build the whole product with Release CoreCLR and run libraries tests
           #
@@ -160,28 +82,15 @@ extends:
               platforms:
               - linux_x64
               - windows_x64
+              - Browser_wasm_win
+              - wasi_wasm_win
               jobParameters:
-                timeoutInMinutes: 180
-                buildArgs: -s clr+libs+libs.tests+hosts+packs -c $(_BuildConfig) /p:ArchiveTests=true
+                timeoutInMinutes: 300
+                buildArgs: -s  clr.aot+libs+nativeaot.packages -c $(_BuildConfig) /p:ArchiveTests=true
                 postBuildSteps:
-                  - template: /eng/pipelines/libraries/helix.yml
+                  - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
                     parameters:
-                      creator: dotnet-bot
-                      testRunNamePrefixSuffix: Libraries_$(_BuildConfig)
-
-          #
-          # Build and test libraries AllConfigurations
-          #
-          - template: /eng/pipelines/common/platform-matrix.yml
-            parameters:
-              jobTemplate: /eng/pipelines/common/global-build-job.yml
-              buildConfig: ${{ variables.debugOnPrReleaseOnRolling }}
-              platforms:
-              - windows_x64
-              jobParameters:
-                buildArgs: -test -s tools+libs+libs.tests -allConfigurations -c $(_BuildConfig) /p:TestAssemblies=false /p:TestPackages=true
-                nameSuffix: Libraries_AllConfigurations
-                timeoutInMinutes: 150
+                      librariesConfiguration: Release
 
         - ${{ else }}:
           #
@@ -223,7 +132,6 @@ extends:
                     parameters:
                       name: Libraries_AllConfigurations
                 timeoutInMinutes: 95
->>>>>>> runtime/main
 
     - ${{ if eq(variables.isOfficialBuild, true) }}:
       - template: /eng/pipelines/official/stages/publish.yml

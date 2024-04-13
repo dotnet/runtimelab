@@ -15,12 +15,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #pragma hdrstop
 #endif
 
-<<<<<<< HEAD
 #ifndef TARGET_WASM
-#if defined(FEATURE_EH_FUNCLETS)
-
-=======
->>>>>>> runtime/main
 //------------------------------------------------------------------------
 // Compiler::unwindGetFuncLocations: Get the start/end emitter locations for this
 // function or funclet. If 'getHotSectionData' is true, get the start/end locations
@@ -139,13 +134,8 @@ void Compiler::unwindGetFuncLocations(FuncInfoDsc*             func,
         }
     }
 }
-
-<<<<<<< HEAD
-#endif // FEATURE_EH_FUNCLETS
 #endif // !TARGET_WASM
 
-=======
->>>>>>> runtime/main
 #if defined(FEATURE_CFI_SUPPORT)
 
 void Compiler::createCfiCode(FuncInfoDsc* func, UNATIVE_OFFSET codeOffset, UCHAR cfiOpcode, short dwarfReg, INT offset)

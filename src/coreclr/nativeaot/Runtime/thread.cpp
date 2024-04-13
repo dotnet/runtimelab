@@ -30,15 +30,7 @@
 
 #ifndef DACCESS_COMPILE
 
-<<<<<<< HEAD
-EXTERN_C NATIVEAOT_API void* REDHAWK_CALLCONV RhpHandleAlloc(void* pObject, int type);
-EXTERN_C NATIVEAOT_API void REDHAWK_CALLCONV RhHandleSet(void* handle, void* pObject);
-EXTERN_C NATIVEAOT_API void REDHAWK_CALLCONV RhHandleFree(void* handle);
-
-extern int (*g_RuntimeInitializationCallback)();
-=======
 static int (*g_RuntimeInitializationCallback)();
->>>>>>> runtime/main
 static Thread* g_RuntimeInitializingThread;
 
 #endif //!DACCESS_COMPILE
@@ -1357,25 +1349,14 @@ FCIMPLEND
 
 #ifdef USE_PORTABLE_HELPERS
 
-<<<<<<< HEAD
-#ifndef HOST_WASM
-COOP_PINVOKE_HELPER(void, RhpPInvoke, (PInvokeTransitionFrame* pFrame))
-=======
 FCIMPL1(void, RhpPInvoke2, PInvokeTransitionFrame* pFrame)
->>>>>>> runtime/main
 {
     Thread * pCurThread = ThreadStore::RawGetCurrentThread();
     pCurThread->InlinePInvoke(pFrame);
 }
-<<<<<<< HEAD
-#endif // !HOST_WASM
-
-COOP_PINVOKE_HELPER(void, RhpPInvokeReturn, (PInvokeTransitionFrame* pFrame))
-=======
 FCIMPLEND
 
 FCIMPL1(void, RhpPInvokeReturn2, PInvokeTransitionFrame* pFrame)
->>>>>>> runtime/main
 {
     //reenter cooperative mode
     pFrame->m_pThread->InlinePInvokeReturn(pFrame);

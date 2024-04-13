@@ -45,13 +45,9 @@ struct FloatTraits
 #if defined(TARGET_XARCH)
         unsigned bits = 0xFFC00000u;
 #elif defined(TARGET_ARMARCH) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
-<<<<<<< HEAD
-        unsigned           bits = 0x7FC00000u;
-#elif defined(TARGET_WASM)
-        unsigned           bits = 0x7FC00000u;
-=======
         unsigned bits = 0x7FC00000u;
->>>>>>> runtime/main
+#elif defined(TARGET_WASM)
+        unsigned bits = 0x7FC00000u;
 #else
 #error Unsupported or unset target architecture
 #endif
