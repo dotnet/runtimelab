@@ -332,13 +332,13 @@
   <PropertyGroup>
     <MonoBclSourcesRoot>$([MSBuild]::NormalizePath('$(MonoProjectRoot)', 'System.Private.CoreLib', 'src'))</MonoBclSourcesRoot>
   </PropertyGroup>
-  <ItemGroup Condition="'$(TargetsBrowser)' == 'true' and '$(FeatureWasmThreads)' != 'true'">
+  <ItemGroup Condition="'$(TargetsBrowser)' == 'true' and '$(TargetsSingleThreadedWasm)' == 'true'">
     <Compile Include="$(MonoBclSourcesRoot)\System\Threading\ThreadPoolBoundHandle.Browser.Mono.cs" />
     <Compile Include="$(MonoBclSourcesRoot)\System\Threading\PreAllocatedOverlapped.Browser.Mono.cs" />
     <Compile Include="$(MonoBclSourcesRoot)\System\Threading\ThreadPool.Browser.Mono.cs" />
     <Compile Include="$(MonoBclSourcesRoot)\System\Threading\TimerQueue.Browser.Mono.cs" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetsWasi)' == 'true' and '$(FeatureWasmThreads)' != 'true'">
+  <ItemGroup Condition="'$(TargetsWasi)' == 'true' and '$(TargetsSingleThreadedWasm)' == 'true'">
     <Compile Include="$(MonoBclSourcesRoot)\System\Threading\ThreadPoolBoundHandle.Browser.Mono.cs" />
     <Compile Include="$(MonoBclSourcesRoot)\System\Threading\PreAllocatedOverlapped.Browser.Mono.cs" />
     <Compile Include="$(MonoBclSourcesRoot)\System\Threading\ThreadPool.Wasi.Mono.cs" />
@@ -554,10 +554,10 @@
     <Compile Include="$(RuntimeBasePath)System\Runtime\GCStress.cs">
       <Link>Runtime.Base\src\System\Runtime\GCStress.cs</Link>
     </Compile>
-    <Compile Include="$(RuntimeBasePath)System\Runtime\__Finalizer.cs" Condition="'$(WasmAbi)' != 'true' or '$(FeatureWasmThreads)' == 'true'">
+    <Compile Include="$(RuntimeBasePath)System\Runtime\__Finalizer.cs" Condition="'$(TargetsSingleThreadedWasm)' != 'true'">
       <Link>Runtime.Base\src\System\Runtime\__Finalizer.cs</Link>
     </Compile>
-    <Compile Include="$(RuntimeBasePath)System\Runtime\__Finalizer.SingleThreaded.cs" Condition="'$(WasmAbi)' == 'true' and '$(FeatureWasmThreads)' != 'true'">
+    <Compile Include="$(RuntimeBasePath)System\Runtime\__Finalizer.SingleThreaded.cs" Condition="'$(TargetsSingleThreadedWasm)' == 'true'">
       <Link>Runtime.Base\src\System\Runtime\__Finalizer.SingleThreaded.cs</Link>
     </Compile>
     <Compile Include="$(RuntimeBasePath)System\Runtime\MethodTable.Runtime.cs">
