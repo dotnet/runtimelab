@@ -60,7 +60,7 @@ extends:
               helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
               buildConfig: checked
               platforms:
-              - linux_x64
+#              - linux_x64
               - windows_x64
               - Browser_wasm_win
               - wasi_wasm_win
@@ -80,7 +80,7 @@ extends:
               helixQueuesTemplate: /eng/pipelines/libraries/helix-queues-setup.yml
               buildConfig: release
               platforms:
-              - linux_x64
+#              - linux_x64
               - windows_x64
               - Browser_wasm_win
               - wasi_wasm_win
@@ -102,7 +102,7 @@ extends:
               helixQueuesTemplate: /eng/pipelines/libraries/helix-queues-setup.yml
               buildConfig: release
               platforms:
-              - linux_x64
+#              - linux_x64
               - windows_x64
               jobParameters:
                 isOfficialBuild: true
