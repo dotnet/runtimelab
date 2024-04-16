@@ -115,7 +115,9 @@ namespace Swift.Runtime
             if (swiftRuntimeType != null)
                 return new string [] { "Swift.Runtime", swiftRuntimeType.Name };
 
-            throw new Exception($"No mapping for {swiftTypeName} type found.");
+            // Throw an exception if no mapping is found
+            // The ABI parser should search for the type within this and imported modules and lazy-load it
+            throw new Exception($"No mapping found for type '{swiftTypeName}'.");
         }
     }
 }
