@@ -56,7 +56,7 @@ namespace ILCompiler
                 else
                 {
                     streamWriter.WriteLine("V1.0 {");
-                    streamWriter.WriteLine("    global: _init; _fini;");
+                    streamWriter.WriteLine("    global:");
                     foreach (string symbol in _exportSymbols)
                         streamWriter.WriteLine($"        {symbol};");
                     foreach (var method in _methods)
