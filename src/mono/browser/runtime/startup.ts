@@ -613,8 +613,10 @@ export function bindings_init (): void {
     runtimeHelpers.mono_wasm_bindings_is_ready = true;
     try {
         const mark = startMeasure();
-        strings_init();
-        init_managed_exports();
+        if (!NativeAOT) {
+            strings_init();
+            init_managed_exports();
+        }
         initialize_marshalers_to_js();
         initialize_marshalers_to_cs();
         runtimeHelpers._i52_error_scratch_buffer = <any>Module._malloc(4);
