@@ -2782,6 +2782,11 @@ void Llvm::annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc
 Function* Llvm::getOrCreateKnownLlvmFunction(
     StringRef name, std::function<FunctionType*()> createFunctionType, std::function<void(Function*)> annotateFunction)
 {
+    if (strstr(name.data(), "Reflection_ReflectionTest_TestDefaultInterfaceInvoke_IFoo_1<System___Canon>__Format") !=
+        nullptr)
+    {
+        int i = 1;
+    }
     Function* llvmFunc = m_context->Module.getFunction(name);
     if (llvmFunc == nullptr)
     {
@@ -3246,7 +3251,7 @@ llvm::BasicBlock* Llvm::getOrCreatePrologLlvmBlockForFunction(unsigned funcIdx)
     BasicBlock* firstUserBlock = getFirstBlockForFunction(funcIdx);
     llvm::BasicBlock* firstLlvmUserBlock = getFirstLlvmBlockForBlock(firstUserBlock);
     llvm::BasicBlock* prologLlvmBlock = firstLlvmUserBlock->getPrevNode();
-    if ((prologLlvmBlock == nullptr) || !prologLlvmBlock->getName().startswith(PROLOG_BLOCK_NAME))
+    if ((prologLlvmBlock == nullptr) || !prologLlvmBlock->getName().starts_with(PROLOG_BLOCK_NAME))
     {
         Function* llvmFunc = firstLlvmUserBlock->getParent();
         prologLlvmBlock = llvm::BasicBlock::Create(m_context->Context, PROLOG_BLOCK_NAME, llvmFunc, firstLlvmUserBlock);

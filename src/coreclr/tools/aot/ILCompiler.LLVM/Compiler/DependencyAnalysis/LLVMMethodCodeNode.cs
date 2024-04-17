@@ -38,7 +38,7 @@ namespace ILCompiler.DependencyAnalysis
         public int Offset => 0;
         public bool RepresentsIndirectionCell => false;
 
-        public override bool InterestingForDynamicDependencyAnalysis => false;
+        public override bool InterestingForDynamicDependencyAnalysis => _method.HasInstantiation || _method.OwningType.HasInstantiation;
         public override bool HasDynamicDependencies => false;
         public override IEnumerable<CombinedDependencyListEntry> SearchDynamicDependencies(List<DependencyNodeCore<NodeFactory>> markedNodes, int firstNode, NodeFactory factory) => null;
 

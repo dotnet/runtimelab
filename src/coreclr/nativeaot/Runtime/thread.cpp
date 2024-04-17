@@ -1356,6 +1356,13 @@ FCIMPL1(void, RhpPInvoke2, PInvokeTransitionFrame* pFrame)
 }
 FCIMPLEND
 
+FCIMPL1(void, RhpPInvokeReturn, PInvokeTransitionFrame* pFrame)
+{
+    //reenter cooperative mode
+    pFrame->m_pThread->InlinePInvokeReturn(pFrame);
+}
+FCIMPLEND
+
 FCIMPL1(void, RhpPInvokeReturn2, PInvokeTransitionFrame* pFrame)
 {
     //reenter cooperative mode
