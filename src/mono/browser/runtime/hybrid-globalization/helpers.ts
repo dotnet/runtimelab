@@ -60,7 +60,7 @@ function _wrap_error_flag (is_exception: Int32Ptr | null, ex: any): string {
     return res;
 }
 
-export function wrap_error_root(is_exception: Int32Ptr | null, ex: any, result: WasmRoot<MonoObject>): void {
+export function wrap_error_root (is_exception: Int32Ptr | null, ex: any, result: WasmRoot<MonoObject>): void {
     const res = _wrap_error_flag(is_exception, ex);
     if (NativeAOT) {
         return;
