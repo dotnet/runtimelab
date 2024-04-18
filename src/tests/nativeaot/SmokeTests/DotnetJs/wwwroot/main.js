@@ -29,5 +29,10 @@ try {
     console.log(`Thrown expected exception: ${e}`);
 }
 
+const concat = exports.DotnetJsApp.Program.Interop.Concat("Aaa", "Bbb");
+if (concat != "AaaBbb") {
+    result = 15;
+}
+
 console.log(`Exit code ${result}`);
 exit(result);
