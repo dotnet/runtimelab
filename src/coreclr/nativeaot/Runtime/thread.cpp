@@ -30,7 +30,7 @@
 
 #ifndef DACCESS_COMPILE
 
-static int (*g_RuntimeInitializationCallback)();
+extern int (*g_RuntimeInitializationCallback)();
 static Thread* g_RuntimeInitializingThread;
 
 #endif //!DACCESS_COMPILE
