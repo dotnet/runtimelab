@@ -78,7 +78,7 @@ namespace BindingsGeneration
         /// <param name="outputDirectory">Output directory for generated bindings.</param>
         /// <param name="verbose">Verbosity level for logging information.</param>
         public static void GenerateBindings(string swiftAbiPath, string outputDirectory, int verbose = 0)
-        {            
+        {
             TypeDatabase typeDatabase = new TypeDatabase(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TypeDatabase.xml"));
             if (verbose > 0)
                 Console.WriteLine("Starting bindings generation...");
@@ -88,8 +88,6 @@ namespace BindingsGeneration
 
             if (verbose > 1)
                 Console.WriteLine("Parsed Swift ABI file successfully.");
-
-
 
             ICSharpEmitter csharpEmitter = new StringCSharpEmitter(outputDirectory, typeDatabase, verbose);
             csharpEmitter.EmitModule(decl);
