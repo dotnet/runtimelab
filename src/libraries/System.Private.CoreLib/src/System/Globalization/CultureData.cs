@@ -821,8 +821,8 @@ namespace System.Globalization
             if (GlobalizationMode.Hybrid && !string.IsNullOrEmpty(culture._sName))
             {
                 culture = JSLoadCultureInfoFromBrowser(culture._sName, culture);
+                culture.JSInitLocaleInfo();
             }
-            culture.JSInitLocaleInfo();
 #endif
 
             // We need _sWindowsName to be initialized to know if we're using overrides.
