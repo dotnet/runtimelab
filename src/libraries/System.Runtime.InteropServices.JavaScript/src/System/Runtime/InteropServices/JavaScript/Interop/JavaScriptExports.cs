@@ -206,6 +206,7 @@ namespace System.Runtime.InteropServices.JavaScript
 
         // the marshaled signature is:
         // void CompleteTask<T>(GCHandle holder, Exception? exceptionResult, T? result)
+        [UnmanagedCallersOnly(EntryPoint = "System_Runtime_InteropServices_JavaScript_JavaScriptExports_CompleteTask")]
         public static void CompleteTask(JSMarshalerArgument* arguments_buffer)
         {
             ref JSMarshalerArgument arg_exc = ref arguments_buffer[0]; // initialized by caller in alloc_stack_frame()

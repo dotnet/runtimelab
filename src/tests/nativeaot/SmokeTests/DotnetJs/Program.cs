@@ -1,5 +1,8 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
+using System.Threading.Tasks;
 
 namespace DotnetJsApp;
 
@@ -44,5 +47,20 @@ partial class Program
 
         [JSExport]
         internal static void Throw() => throw new Exception("This is a test exception");
+
+        [JSExport]
+        internal static async Task Async(Task task)
+        {
+            Console.WriteLine($"Async method started (task {task})");
+            await task;
+            Console.WriteLine("Async method completed");
+        }
+
+        [UnmanagedCallersOnly(EntryPoint = "FinishPromise")]
+        public unsafe static void FinishPromise(JSMarshalerArgument* arguments_buffer)
+        {
+            Console.WriteLine("FinishPromise");
+            Type.GetType("System.Runtime.InteropServices.JavaScript.JavaScriptExports, System.Runtime.InteropServices.JavaScript").GetMethod("CompleteTask").Invoke(null, new object[] { null });
+        }
     }
 }

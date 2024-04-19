@@ -34,5 +34,12 @@ if (concat != "AaaBbb") {
     result = 15;
 }
 
+let isPromiseResolved = false;
+const promise = new Promise(resolve => setTimeout(() => { console.log("Promise resolved"); isPromiseResolved = true; resolve(); }, 2000));
+await exports.DotnetJsApp.Program.Interop.Async(promise);
+if (!isPromiseResolved) {
+    result = 16;
+}
+
 console.log(`Exit code ${result}`);
 exit(result);

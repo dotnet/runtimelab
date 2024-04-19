@@ -36,6 +36,7 @@
 
     <!-- Pseudo-namespace for the JS interop symbols. -->
     <DirectPInvoke Include="System.Runtime.InteropServices.JavaScript" />
+    <UnmanagedEntryPointsAssembly Include="System.Runtime.InteropServices.JavaScript" />
   </ItemGroup>
 
   <Target Name="PrepareDotNetJsApiForLinking">
