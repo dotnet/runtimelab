@@ -15,9 +15,6 @@ import { marshal_int32_to_js, end_marshal_task_to_js, marshal_string_to_js, begi
 import { do_not_force_dispose } from "./gc-handles";
 
 export function init_managed_exports(): void {
-    if (NativeAOT) {
-        return;
-    }
     const exports_fqn_asm = "System.Runtime.InteropServices.JavaScript";
     runtimeHelpers.runtime_interop_module = cwraps.mono_wasm_assembly_load(exports_fqn_asm);
     if (!runtimeHelpers.runtime_interop_module)
@@ -204,6 +201,13 @@ export function init_managed_exports(): void {
 }
 
 export function get_method(method_name: string): MonoMethod {
+    if (NativeAOT) {
+        const fqn = runtimeHelpers.runtime_interop_namespace + "." + runtimeHelpers.runtime_interop_exports_classname + "." + method_name;
+        const exportName = `_${fqn.replace(/\./g, "_")}`;
+        const exportFunc = (Module as any)[exportName];
+        return exportFunc ?? (() => { throw new Error(`Wasm export ${fqn} not found`); });
+    }
+
     const res = cwraps.mono_wasm_assembly_find_method(runtimeHelpers.runtime_interop_exports_class, method_name, -1);
     if (!res)
         throw "Can't find method " + runtimeHelpers.runtime_interop_namespace + "." + runtimeHelpers.runtime_interop_exports_classname + "." + method_name;
