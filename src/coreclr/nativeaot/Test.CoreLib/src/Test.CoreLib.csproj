@@ -41,10 +41,10 @@
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\GCStress.cs">
       <Link>Runtime.Base\src\System\Runtime\GCStress.cs</Link>
     </Compile>
-    <Compile Include="..\..\Runtime.Base\src\System\Runtime\__Finalizer.cs" Condition="'$(WasmAbi)' != 'true' or '$(FeatureWasmThreads)' == 'true'">
+    <Compile Include="..\..\Runtime.Base\src\System\Runtime\__Finalizer.cs" Condition="'$(TargetsSingleThreadedWasm)' != 'true'">
       <Link>Runtime.Base\src\System\Runtime\__Finalizer.cs</Link>
     </Compile>
-    <Compile Include="..\..\Runtime.Base\src\System\Runtime\__Finalizer.SingleThreaded.cs" Condition="'$(WasmAbi)' == 'true' and '$(FeatureWasmThreads)' != 'true'">
+    <Compile Include="..\..\Runtime.Base\src\System\Runtime\__Finalizer.SingleThreaded.cs" Condition="'$(TargetsSingleThreadedWasm)' == 'true'">
       <Link>Runtime.Base\src\System\Runtime\__Finalizer.SingleThreaded.cs</Link>
     </Compile>
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\MethodTable.Runtime.cs">

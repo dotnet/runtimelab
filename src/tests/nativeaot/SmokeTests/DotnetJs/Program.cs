@@ -35,6 +35,14 @@ partial class Program
         }
 
         [JSExport]
+        internal static string Concat(string a, string b)
+        {
+            var result = a + b;
+            Console.WriteLine($"Concatenating '{a}' and '{b}' with result '{result}'");
+            return result;
+        }
+
+        [JSExport]
         internal static void Throw() => throw new Exception("This is a test exception");
     }
 }

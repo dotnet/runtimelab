@@ -232,7 +232,9 @@ public:
 class Llvm
 {
 private:
+    static const unsigned SHADOW_STACK_ARG_INDEX = 0;
     static const unsigned DEFAULT_SHADOW_STACK_ALIGNMENT = TARGET_POINTER_SIZE;
+    static const unsigned MIN_HEAP_OBJ_SIZE = TARGET_POINTER_SIZE * 2;
 
     void* const m_pEECorInfo; // TODO-LLVM: workaround for not changing the JIT/EE interface.
     SingleThreadedCompilationContext* const m_context;
@@ -256,7 +258,7 @@ private:
     BlockSet m_blocksInFilters = BlockSetOps::UninitVal();
 
     // Shared between LSSA and codegen.
-    bool m_anyAddressExposedShadowLocals = false;
+    bool m_anyAddressExposedOrPinnedShadowLocals = false;
 
     // Codegen members.
     llvm::IRBuilder<> _builder;
@@ -483,10 +485,10 @@ public:
     void Compile();
 
 private:
-    const unsigned ROOT_FUNC_IDX = 0;
+    static const unsigned ROOT_FUNC_IDX = 0;
 
     void initializeFunctions();
-    void annotateRootFunction(Function* llvmFunc);
+    void annotateFunctions();
     void generateProlog();
     void initializeShadowStack();
     void initializeLocals();

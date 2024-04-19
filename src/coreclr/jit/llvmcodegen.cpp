@@ -46,8 +46,6 @@ void Llvm::initializeFunctions()
         BADCODE("Duplicate definition");
     }
 
-    annotateRootFunction(rootLlvmFunction);
-
     // First function is always the root.
     m_functions = std::vector<FunctionInfo>(_compiler->compFuncCount());
     m_functions[ROOT_FUNC_IDX] = {rootLlvmFunction};
@@ -109,24 +107,81 @@ void Llvm::initializeFunctions()
 
         m_functions[funcIdx] = {llvmFunc};
     }
+
+    annotateFunctions();
 }
 
-void Llvm::annotateRootFunction(Function* llvmFunc)
+void Llvm::annotateFunctions()
 {
-    if (_compiler->opts.jitFlags->IsSet(JitFlags::JIT_FLAG_MIN_OPT))
-    {
-        llvmFunc->addFnAttr(llvm::Attribute::NoInline);
-        llvmFunc->addFnAttr(llvm::Attribute::OptimizeNone);
-    }
-    if ((_compiler->info.compFlags & CORINFO_FLG_DONT_INLINE) != 0)
-    {
-        llvmFunc->addFnAttr(llvm::Attribute::NoInline);
-    }
+    auto addDerefAttr = [this](Function* llvmFunc, unsigned argNum, unsigned derefSize, bool mayBeNull = false) {
+        llvm::Attribute derefAttr = mayBeNull
+            ? llvm::Attribute::getWithDereferenceableOrNullBytes(m_context->Context, derefSize)
+            : llvm::Attribute::getWithDereferenceableBytes(m_context->Context, derefSize);
+        llvmFunc->addParamAttr(argNum, derefAttr);
+    };
 
-    if (!llvmFunc->hasFnAttribute(llvm::Attribute::OptimizeNone) &&
-        (!m_anyReturns || (_compiler->opts.compCodeOpt == Compiler::SMALL_CODE)))
+    for (unsigned funcIdx = 0; funcIdx < _compiler->compFuncCount(); funcIdx++)
     {
-        llvmFunc->addFnAttr(llvm::Attribute::OptimizeForSize);
+        Function* llvmFunc = m_functions[funcIdx].LlvmFunction;
+        if (llvmFunc == nullptr)
+        {
+            continue;
+        }
+
+        if (_compiler->opts.jitFlags->IsSet(JitFlags::JIT_FLAG_MIN_OPT))
+        {
+            llvmFunc->addFnAttr(llvm::Attribute::NoInline);
+            llvmFunc->addFnAttr(llvm::Attribute::OptimizeNone);
+        }
+
+        if (funcIdx == ROOT_FUNC_IDX)
+        {
+            if ((_compiler->info.compFlags & CORINFO_FLG_DONT_INLINE) != 0)
+            {
+                llvmFunc->addFnAttr(llvm::Attribute::NoInline);
+            }
+        }
+
+        if (_compiler->opts.OptimizationEnabled())
+        {
+            if (!m_anyReturns || (_compiler->opts.compCodeOpt == Compiler::SMALL_CODE))
+            {
+                assert(!llvmFunc->hasFnAttribute(llvm::Attribute::OptimizeNone));
+                llvmFunc->addFnAttr(llvm::Attribute::OptimizeForSize);
+            }
+
+            // Mark the shadow stack dereferenceable.
+            if ((funcIdx != ROOT_FUNC_IDX) || _compiler->lvaGetDesc(_shadowStackLclNum)->lvIsParam)
+            {
+                unsigned derefSize = getShadowFrameSize(funcIdx);
+                if (derefSize != 0)
+                {
+                    addDerefAttr(llvmFunc, SHADOW_STACK_ARG_INDEX, derefSize);
+                }
+            }
+
+            if (funcIdx == ROOT_FUNC_IDX)
+            {
+                // Mark the return buffer dereferenceable.
+                if (m_info->compRetBuffArg != BAD_VAR_NUM)
+                {
+                    unsigned argNum = _compiler->lvaGetDesc(m_info->compRetBuffArg)->lvLlvmArgNum;
+                    unsigned derefSize = m_info->compCompHnd->getClassSize(m_info->compMethodInfo->args.retTypeClass);
+                    addDerefAttr(llvmFunc, argNum, derefSize, /* mayBeNull */ true);
+                }
+
+                // Mark implicit byrefs dereferenceable.
+                for (unsigned lclNum = 0; lclNum < m_info->compArgsCount; lclNum++)
+                {
+                    if (_compiler->lvaIsImplicitByRefLocal(lclNum))
+                    {
+                        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+                        assert(varDsc->lvIsParam);
+                        addDerefAttr(llvmFunc, varDsc->lvLlvmArgNum, varDsc->GetLayout()->GetSize());
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -2283,7 +2338,7 @@ bool Llvm::isAddressAligned(GenTree* addr, unsigned alignment)
 
     // TODO-LLVM-CQ: support array elements here using ARR_ADDR.
     // TODO-LLVM-CQ: support static fields (using field sequences). Likewise with larger than pointer size fields.
-    return false;
+    return alignment == 1; // Any address is aligned to one byte.
 }
 
 Value* Llvm::consumeInitVal(GenTree* initVal)
@@ -3031,7 +3086,7 @@ Value* Llvm::getShadowStack()
     }
 
     // Note that funclets have the shadow stack arg in the 0th position.
-    return getCurrentLlvmFunction()->getArg(0);
+    return getCurrentLlvmFunction()->getArg(SHADOW_STACK_ARG_INDEX);
 }
 
 // Shadow stack moved up to avoid overwriting anything on the stack in the compiling method

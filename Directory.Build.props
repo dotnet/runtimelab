@@ -271,7 +271,7 @@
   <PropertyGroup Label="CalculateTargetAuxiliary">
     <!-- Will include wasm64 once we support it -->
     <TargetsWasm Condition="'$(TargetArchitecture)' == 'wasm'">true</TargetsWasm>
-    <TargetsSingleThreadedWasm Condition="'$(TargetsWasm)' == 'true' and '$(FeatureWasmThreads)' != 'true'">true</TargetsSingleThreadedWasm>
+    <TargetsSingleThreadedWasm Condition="'$(TargetsWasm)' == 'true' and '$(WasmEnableThreads)' != 'true'">true</TargetsSingleThreadedWasm>
   </PropertyGroup>
 
   <PropertyGroup Label="CalculateTargetOSName">
