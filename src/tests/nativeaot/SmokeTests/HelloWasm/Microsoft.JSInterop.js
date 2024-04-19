@@ -233,8 +233,4 @@ var DotNet;
         return value instanceof DotNetObject ? value.serializeAsArg() : value;
     }
 })(DotNet || (DotNet = {}));
-//
-//# sourceMappingURL=Microsoft.JSInterop.js.map
-//
-//
 
