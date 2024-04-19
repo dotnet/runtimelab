@@ -49,11 +49,15 @@ partial class Program
         internal static void Throw() => throw new Exception("This is a test exception");
 
         [JSExport]
-        internal static async Task Async(Task task)
+        internal static async Task Async(Task task, bool throwAfterAwait)
         {
             Console.WriteLine($"Async method started (task {task})");
             await task;
+            if (throwAfterAwait)
+                throw new Exception("Async throwAfterAwait");
+
             Console.WriteLine("Async method completed");
+            return 87;
         }
 
         [UnmanagedCallersOnly(EntryPoint = "FinishPromise")]

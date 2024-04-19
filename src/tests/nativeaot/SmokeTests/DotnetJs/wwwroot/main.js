@@ -35,11 +35,26 @@ if (concat != "AaaBbb") {
 }
 
 let isPromiseResolved = false;
-const promise = new Promise(resolve => setTimeout(() => { console.log("Promise resolved"); isPromiseResolved = true; resolve(); }, 2000));
-await exports.DotnetJsApp.Program.Interop.Async(promise);
+let promise = new Promise(resolve => setTimeout(() => { console.log("Promise resolved"); isPromiseResolved = true; resolve(); }, 2000));
+const asyncResult = await exports.DotnetJsApp.Program.Interop.Async(promise);
 if (!isPromiseResolved) {
     result = 16;
 }
+if (asyncResult != 87) {
+    result = 17;
+}
+
+try {
+    isPromiseResolved = false;
+    promise = new Promise(resolve => setTimeout(() => { console.log("Promise resolved"); isPromiseResolved = true; resolve(); }, 2000));
+    await exports.DotnetJsApp.Program.Interop.Async(promise);
+    if (!isPromiseResolved) {
+        result = 18;
+    }
+    result = 19;
+} catch (e) {
+    console.log(`Thrown expected exception: ${e}`);
+} 
 
 console.log(`Exit code ${result}`);
 exit(result);
