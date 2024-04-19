@@ -19,9 +19,9 @@ public class WasmTestRunner : WasmApplicationEntryPoint
         var runner = new WasmTestRunner();
 #if SINGLE_FILE_TEST_RUNNER
         // This runner is also used for NativeAOT testing, which defines SINGLE_FILE_TEST_RUNNER.
-        runner.TestAssembly = typeof(SimpleWasmTestRunner).Assembly.GetName().Name;
+        runner.TestAssembly = typeof(WasmTestRunner).Assembly.GetName().Name;
 #else
-	if (args.Length == 0)
+        if (args.Length == 0)
         {
             Console.WriteLine($"No args given");
             return -1;
@@ -116,12 +116,11 @@ public class WasmTestRunner : WasmApplicationEntryPoint
         return res;
     }
 
-<<<<<<< HEAD
 #if SINGLE_FILE_TEST_RUNNER
     protected override IEnumerable<TestAssemblyInfo> GetTestAssemblies()
-        => new[] { new TestAssemblyInfo(typeof(SimpleWasmTestRunner).Assembly, typeof(SimpleWasmTestRunner).Assembly.GetName().Name) };
+        => new[] { new TestAssemblyInfo(typeof(WasmTestRunner).Assembly, typeof(WasmTestRunner).Assembly.GetName().Name) };
 #endif
-=======
+
     public override Task RunAsync()
     {
         if (RunInParallel)
@@ -129,5 +128,4 @@ public class WasmTestRunner : WasmApplicationEntryPoint
 
         return base.RunAsync();
     }
->>>>>>> runtime/main
 }
