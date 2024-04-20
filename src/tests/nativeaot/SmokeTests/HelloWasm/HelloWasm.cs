@@ -384,6 +384,8 @@ internal unsafe partial class Program
 
         TestCkFinite();
 
+        TestFloatToIntConversions();
+
         TestIntOverflows();
 
 #if !CODEGEN_WASI // TODO-LLVM: stack traces on WASI.
@@ -2898,6 +2900,35 @@ internal unsafe partial class Program
     private static unsafe bool CkFinite64(ulong value)
     {
         return CkFiniteTest.CkFinite64(*(double*)(&value));
+    }
+
+    private static void TestFloatToIntConversions()
+    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static T HideFromOptimizations<T>(T value) => value;
+
+        StartTest("Test float to int conversions");
+        if ((int)HideFromOptimizations(1245.6789d) != 1245)
+        {
+            FailTest("(int)1245.6789d not equal to 1245");
+            return;
+        }
+        if ((int)HideFromOptimizations(double.NaN) != 0)
+        {
+            FailTest("(int)double.NaN not equal to 0");
+            return;
+        }
+        if ((int)HideFromOptimizations(double.PositiveInfinity) != int.MaxValue)
+        {
+            FailTest("(int)double.PositiveInfinity not equal to int.MaxValue");
+            return;
+        }
+        if ((int)HideFromOptimizations(double.NegativeInfinity) != int.MinValue)
+        {
+            FailTest("(int)double.NegativeInfinity not equal to int.MinValue");
+            return;
+        }
+        PassTest();
     }
 
     static void TestIntOverflows()
