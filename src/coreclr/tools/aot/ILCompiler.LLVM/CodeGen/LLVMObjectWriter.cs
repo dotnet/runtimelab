@@ -288,8 +288,11 @@ namespace ILCompiler.DependencyAnalysis
                 : LLVMTypeRef.CreateArray(_ptrType, (uint)dataSizeInElements);
 
             LLVMValueRef dataSymbol = _module.AddGlobal(dataSymbolName, dataSymbolType);
-            dataSymbol.Section = node.GetSection(_nodeFactory).Name;
             dataSymbol.Alignment = (uint)nodeContents.Alignment;
+            if (GetObjectNodeSection(node) is string section)
+            {
+                dataSymbol.Section = section;
+            }
 
             dataSymbol.Initializer = useStruct
                 ? LLVMValueRef.CreateConstStruct(dataElements, true)
@@ -315,16 +318,6 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        private static bool IsSupportedRelocType(ObjectNode node, RelocType type)
-        {
-            if (node is StackTraceMethodMappingNode)
-            {
-                // Stack trace metadata uses relative pointers, but is currently unused.
-                return true;
-            }
-            return type is RelocType.IMAGE_REL_BASED_HIGHLOW;
-        }
-
         private void EmitSymbolDef(LLVMValueRef baseSymbol, ReadOnlySpan<byte> symbolIdentifier, int offsetFromBaseSymbol)
         {
             LLVMValueRef symbolAddress = baseSymbol;
@@ -344,6 +337,29 @@ namespace ILCompiler.DependencyAnalysis
                 // Set the aliasee.
                 LLVM.AliasSetAliasee(symbolDef, symbolAddress);
             }
+        }
+
+        private string GetObjectNodeSection(ObjectNode node)
+        {
+            ObjectNodeSection section = node.GetSection(_nodeFactory);
+
+            // We do not want to just "return section.Name" because it forces LLVM to:
+            // 1. Lay out symbols such that there must not be alignment holes between them.
+            // 2. Put everything into the (few) specified sections, making linker GC effectively useless.
+            // At the same time, the semantics of which section directions are correctness-bearing are not well-defined.
+            // For now, "IsStandardSection" is sufficient...
+            //
+            return section.IsStandardSection ? null : section.Name;
+        }
+
+        private static bool IsSupportedRelocType(ObjectNode node, RelocType type)
+        {
+            if (node is StackTraceMethodMappingNode)
+            {
+                // Stack trace metadata uses relative pointers, but is currently unused.
+                return true;
+            }
+            return type is RelocType.IMAGE_REL_BASED_HIGHLOW;
         }
 
         private static bool ObjectNodeMustBeArtificiallyKeptAlive(ObjectNode node)
