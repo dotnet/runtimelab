@@ -3,7 +3,68 @@
 
 .assembly extern mscorlib { }
 
-.assembly ILHelpers { }
+.assembly HelloWasm.IL { }
+
+.class public CpObj.CpObjTest
+{
+  .method public hidebysig static void CpObj(valuetype CpObj.TestValue& dest, valuetype CpObj.TestValue& src)
+  {
+    ldarg.0
+    ldarg.1
+    cpobj CpObj.TestValue
+    ret
+  }
+}
+
+.class public value sealed CpObj.TestValue
+{
+  .field public int32 Field;
+}
+
+.class public abstract sealed CkFinite.CkFiniteTest
+{
+  .method public static bool CkFinite32(float32)
+  {
+    .maxstack 5
+    try_start:
+      ldarg 0
+      ckfinite
+      pop   //remove the value from the stack
+      leave try_end
+    try_end:
+      ldc.i4 0x00000001
+      ret
+    handler_start:
+      pop //remove the exception ref from the stack
+      leave done
+    handler_end:
+    done:
+      ldc.i4 0x00000000
+      ret
+    .try try_start to try_end catch [mscorlib]System.OverflowException handler handler_start to handler_end
+  }
+
+  .method public static bool CkFinite64(float64)
+  {
+    .maxstack 5
+    try_start:
+      ldarg 0
+      ckfinite
+      pop //remove the value from the stack
+      leave try_end
+    try_end:
+      ldc.i4 0x00000001
+      ret
+    handler_start:
+      pop //remove the exception ref from the stack
+      leave done
+    handler_end:
+    done:
+      ldc.i4 0x00000000
+      ret
+    .try try_start to try_end catch [mscorlib]System.OverflowException handler handler_start to handler_end
+  }
+}
 
 .typedef [mscorlib]System.ICloneable as ICloneable
 
@@ -22,9 +83,8 @@
   {
     ret
   }
-  //this is copied from the test case for https://github.com/dotnet/runtime/issues/9210
-  //its been adapted to remove the requirement for Console.WriteLine because thats not supported in WASM
-  //it can be removed once we have support for Console.WriteLine and can run the CoreCLR tests
+
+  // This is copied from the test case for https://github.com/dotnet/runtime/issues/9210.
   .method public static int32 InlineAssignByte()
   {
     .locals init (

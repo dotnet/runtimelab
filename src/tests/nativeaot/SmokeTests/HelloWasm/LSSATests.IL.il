@@ -3,8 +3,6 @@
 
 .assembly extern mscorlib { }
 
-.assembly LSSATests.IL { }
-
 .class public System.Runtime.JitTesting.LSSATestsIL
 {
   .field private static void* s_addr;
