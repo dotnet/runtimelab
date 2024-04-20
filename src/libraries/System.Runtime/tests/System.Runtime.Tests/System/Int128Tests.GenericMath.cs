@@ -1732,6 +1732,8 @@ namespace System.Tests
             }
         }
 
+        // TODO-LLVM, not currently implemented.  
+#if !TARGET_BROWSER
         [Fact]
         public static void CreateSaturatingFromNFloatTest()
         {
@@ -1773,6 +1775,7 @@ namespace System.Tests
 
             Assert.Equal(Zero, NumberBaseHelper<Int128>.CreateSaturating<NFloat>(NFloat.NaN));
         }
+#endif // !TARGET_BROWSER
 
         [Fact]
         public static void CreateSaturatingFromSByteTest()
@@ -2009,6 +2012,8 @@ namespace System.Tests
             }
         }
 
+        // TODO-LLVM, not currently implemented.  
+#if !TARGET_BROWSER
         [Fact]
         public static void CreateTruncatingFromNFloatTest()
         {
@@ -2050,6 +2055,7 @@ namespace System.Tests
 
             Assert.Equal(Zero, NumberBaseHelper<Int128>.CreateTruncating<NFloat>(NFloat.NaN));
         }
+#endif // !TARGET_BROWSER
 
         [Fact]
         public static void CreateTruncatingFromSByteTest()

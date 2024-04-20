@@ -3,7 +3,7 @@
     <OutputType>Exe</OutputType>
     <CLRTestKind>BuildAndRun</CLRTestKind>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <CLRTestTargetUnsupported>true</CLRTestTargetUnsupported>
+    <CLRTestTargetUnsupported Condition="'$(TargetsBrowser)' != 'true'">true</CLRTestTargetUnsupported>
     <DotNetJsApi>true</DotNetJsApi>
   </PropertyGroup>
   <ItemGroup>

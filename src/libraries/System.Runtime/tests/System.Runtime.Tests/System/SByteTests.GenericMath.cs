@@ -1667,6 +1667,8 @@ namespace System.Tests
             }
         }
 
+        // TODO-LLVM, not currently implemented.  
+#if !TARGET_BROWSER
         [Fact]
         public static void CreateSaturatingFromNFloatTest()
         {
@@ -1691,6 +1693,7 @@ namespace System.Tests
             Assert.Equal(unchecked((sbyte)0x7F), NumberBaseHelper<sbyte>.CreateSaturating<NFloat>(NFloat.PositiveInfinity));
             Assert.Equal(unchecked((sbyte)0x80), NumberBaseHelper<sbyte>.CreateSaturating<NFloat>(NFloat.NegativeInfinity));
         }
+#endif // !TARGET_BROWSER
 
         [Fact]
         public static void CreateSaturatingFromSByteTest()
@@ -1932,6 +1935,8 @@ namespace System.Tests
             }
         }
 
+        // TODO-LLVM, not currently implemented.  
+#if !TARGET_BROWSER
         [Fact]
         public static void CreateTruncatingFromNFloatTest()
         {
@@ -1956,6 +1961,7 @@ namespace System.Tests
             Assert.Equal(unchecked((sbyte)0x7F), NumberBaseHelper<sbyte>.CreateTruncating<NFloat>(NFloat.PositiveInfinity));
             Assert.Equal(unchecked((sbyte)0x80), NumberBaseHelper<sbyte>.CreateTruncating<NFloat>(NFloat.NegativeInfinity));
         }
+#endif // !TARGET_BROWSER
 
         [Fact]
         public static void CreateTruncatingFromSByteTest()

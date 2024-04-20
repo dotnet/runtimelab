@@ -52,7 +52,7 @@ extends:
 
         - ${{ if ne(variables.isOfficialBuild, true) }}:
           #
-          # Build the whole product with Checked CoreCLR and run runtime tests
+          # Build the whole product with Debug CoreCLR and run runtime tests
           #
           - template: /eng/pipelines/common/platform-matrix.yml
             parameters:
@@ -61,6 +61,7 @@ extends:
               buildConfig: debug
               platforms:
 #              - linux_x64
+              - osx_x64
               - windows_x64
               - Browser_wasm_win
               - wasi_wasm_win
@@ -71,6 +72,27 @@ extends:
                   - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
                     parameters:
                       librariesConfiguration: Debug
+
+          #
+          # Build with Debug libraries and Checked runtime
+          #
+          - template: /eng/pipelines/common/platform-matrix.yml
+            parameters:
+              jobTemplate: /eng/pipelines/common/global-build-job.yml
+              helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
+              buildConfig: Checked
+              platforms:
+#              - linux_x64
+              - windows_x64
+              jobParameters:
+                timeoutInMinutes: 300
+                buildArgs: -s clr.aot+libs+nativeaot.packages -c debug -rc $(_BuildConfig)
+                postBuildSteps:
+                  - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+                    parameters:
+                      uploadRuntimeTests: true
+                      librariesConfiguration: Debug
+
           #
           # Build the whole product with Release CoreCLR and run libraries tests
           #
@@ -81,6 +103,7 @@ extends:
               buildConfig: release
               platforms:
 #              - linux_x64
+              - osx_x64
               - windows_x64
               - Browser_wasm_win
               - wasi_wasm_win
