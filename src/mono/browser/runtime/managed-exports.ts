@@ -296,8 +296,9 @@ function invoke_async_jsexport_mono (managedTID: PThreadPtr, method: MonoMethod,
     }
 }
 
-// eslint-disable-line @typescript-eslint/no-unused-vars
+/* eslint-disable */
 export function invoke_async_jsexport_naot (_managedTID: PThreadPtr, method: MonoMethod, args: JSMarshalerArguments, _size: number): void {
+/* eslint-enable */
     if (!WasmEnableThreads || runtimeHelpers.isManagedRunningOnCurrentThread) {
         (<Function>(<unknown>method))(args);
         if (is_args_exception(args)) {
