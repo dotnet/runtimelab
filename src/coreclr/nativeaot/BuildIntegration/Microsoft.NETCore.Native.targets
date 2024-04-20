@@ -400,12 +400,14 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
 
-    <PropertyGroup Condition="'$(_targetOS)' == 'browser'">
-      <CompileWasmArgs>-c</CompileWasmArgs>
-      <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'">$(CompileWasmArgs) -s DISABLE_EXCEPTION_CATCHING=0</CompileWasmArgs>
-      <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'">$(CompileWasmArgs) -fwasm-exceptions</CompileWasmArgs>
+    <PropertyGroup>
+      <CompileWasmArgs>-c $(WasmOptimizationSetting)</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileWasmArgs) -g3</CompileWasmArgs>
-      <CompileWasmArgs>$(CompileWasmArgs) $(WasmOptimizationSetting)</CompileWasmArgs>
+      <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'">$(CompileWasmArgs) -fwasm-exceptions</CompileWasmArgs>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(_targetOS)' == 'browser'">
+      <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'">$(CompileWasmArgs) -s DISABLE_EXCEPTION_CATCHING=0</CompileWasmArgs>
 
       <ScriptExt Condition="'$(OS)' == 'Windows_NT'">.bat</ScriptExt>
       <WasmCompilerPath>&quot;$(EMSDK)/upstream/emscripten/emcc$(ScriptExt)&quot;</WasmCompilerPath>
@@ -413,9 +415,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     </PropertyGroup>
 
    <PropertyGroup Condition="'$(_targetOS)' == 'wasi'">
-      <CompileWasmArgs>-fvisibility=default -mllvm -combiner-global-alias-analysis=false -mllvm -disable-lsr --sysroot=&quot;$(WASI_SDK_PATH)/share/wasi-sysroot&quot; -target $(IlcLlvmTarget) -c</CompileWasmArgs>
-      <CompileWasmArgs>$(CompileWasmArgs) $(WasmOptimizationSetting)</CompileWasmArgs>
-      <CompileWasmArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileWasmArgs) -g3</CompileWasmArgs>
+      <CompileWasmArgs>$(CompileWasmArgs) -fvisibility=default -mllvm -combiner-global-alias-analysis=false -mllvm -disable-lsr --sysroot=&quot;$(WASI_SDK_PATH)/share/wasi-sysroot&quot; -target $(IlcLlvmTarget)</CompileWasmArgs>
 
       <ExeExt Condition="'$(OS)' == 'Windows_NT'">.exe</ExeExt>
       <!-- using Emscripten's clang++ because of a crash in wasi-sdk's clang++ (https://github.com/WebAssembly/wasi-sdk/issues/326) -->
