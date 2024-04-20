@@ -447,13 +447,6 @@ FCIMPL0(void *, RhGetCommonStubAddress)
 }
 FCIMPLEND
 
-FCIMPL0(void *, RhGetCurrentThunkContext)
-{
-    ASSERT_UNCONDITIONALLY("NYI");
-    return NULL;
-}
-FCIMPLEND
-
 FCIMPL0(void, RhpGcPoll)
 {
     // TODO: implement

@@ -14,11 +14,34 @@ import {
     get_sig, get_signature_argument_count,
     bound_cs_function_symbol, get_signature_version, alloc_stack_frame, get_signature_type,
 } from "./marshal";
+import { utf16ToString } from "./strings";
 import { MonoMethod, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, MarshalerType } from "./types/internal";
 import { assert_js_interop } from "./invoke-js";
 import { startMeasure, MeasuredBlock, endMeasure } from "./profiler";
 import { bind_assembly_exports, invoke_async_jsexport, invoke_sync_jsexport } from "./managed-exports";
 import { mono_log_debug } from "./logging";
+
+const s_charsToReplace = [".", "-", "+"];
+
+function fixupSymbolName (name: string) {
+    // Sync with JSExportGenerator.FixupSymbolName
+    let result = "";
+    for (let index = 0; index < name.length; index++) {
+        const b = name[index];
+        if ((b >= "0" && b <= "9") ||
+            (b >= "a" && b <= "z") ||
+            (b >= "A" && b <= "Z") ||
+            (b == "_")) {
+            result += b;
+        } else if (s_charsToReplace.includes(b)) {
+            result += "_";
+        } else {
+            result += `_${b.charCodeAt(0).toString(16).toUpperCase()}_`;
+        }
+    }
+
+    return result;
+}
 
 export function mono_wasm_bind_cs_function (method: MonoMethod, assemblyName: string, namespaceName: string, shortClassName: string, methodName: string, signatureHash: number, signature: JSFunctionSignature): void {
     const fullyQualifiedName = `[${assemblyName}] ${namespaceName}.${shortClassName}:${methodName}`;
@@ -27,6 +50,12 @@ export function mono_wasm_bind_cs_function (method: MonoMethod, assemblyName: st
     if (NativeAOT) {
         signatureHash = arguments[2];
         signature = arguments[3];
+
+        const js_fqn = utf16ToString(arguments[0], arguments[0] + 2 * arguments[1]);
+        const wrapper_name = fixupSymbolName(`${js_fqn}_${signatureHash}`);
+        method = (Module as any)["_" + wrapper_name];
+        if (!method)
+            throw new Error(`Could not find method: ${wrapper_name} in ${js_fqn}`);
     }
     const version = get_signature_version(signature);
     mono_assert(version === 2, () => `Signature version ${version} mismatch.`);
