@@ -279,7 +279,7 @@ export function install_main_synchronization_context (jsThreadBlockingMode: JSTh
     }
 }
 
-export function invoke_async_jsexport (managedTID: PThreadPtr, method: MonoMethod, args: JSMarshalerArguments, size: number): void {
+function invoke_async_jsexport_mono (managedTID: PThreadPtr, method: MonoMethod, args: JSMarshalerArguments, size: number): void {
     assert_js_interop();
     if (!WasmEnableThreads || runtimeHelpers.isManagedRunningOnCurrentThread) {
         cwraps.mono_wasm_invoke_jsexport(method, args as any);
@@ -293,6 +293,19 @@ export function invoke_async_jsexport (managedTID: PThreadPtr, method: MonoMetho
         const cpy = Module._malloc(bytes) as any;
         copyBytes(args as any, cpy, bytes);
         twraps.mono_wasm_invoke_jsexport_async_post(managedTID, method, cpy);
+    }
+}
+
+// eslint-disable-line @typescript-eslint/no-unused-vars
+export function invoke_async_jsexport_naot (_managedTID: PThreadPtr, method: MonoMethod, args: JSMarshalerArguments, _size: number): void {
+    if (!WasmEnableThreads || runtimeHelpers.isManagedRunningOnCurrentThread) {
+        (<Function>(<unknown>method))(args);
+        if (is_args_exception(args)) {
+            const exc = get_arg(args, 0);
+            throw marshal_exception_to_js(exc);
+        }
+    } else {
+        throw new Error("Not supported in NAOT");
     }
 }
 
@@ -321,6 +334,8 @@ export function invoke_sync_jsexport (method: MonoMethod, args: JSMarshalerArgum
         throw marshal_exception_to_js(exc);
     }
 }
+
+export const invoke_async_jsexport: (managedTID: PThreadPtr, method: MonoMethod, args: JSMarshalerArguments, size: number) => void = NativeAOT ? invoke_async_jsexport_naot : invoke_async_jsexport_mono;
 
 // the marshaled signature is: Task BindAssemblyExports(string assemblyName)
 export function bind_assembly_exports (assemblyName: string): Promise<void> {
