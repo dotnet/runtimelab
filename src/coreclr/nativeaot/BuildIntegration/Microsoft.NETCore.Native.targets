@@ -117,6 +117,7 @@ The .NET Foundation licenses this file to you under the MIT license.
   <PropertyGroup Condition="'$(NativeCodeGen)' == 'llvm'">
     <!-- These LLVM options are public and supported. -->
     <WasmEnableJSBigIntIntegration Condition="'$(WasmEnableJSBigIntIntegration)' == ''">true</WasmEnableJSBigIntIntegration>
+    <WasmEnableNonTrappingFloatToIntConversions Condition="'$(WasmEnableNonTrappingFloatToIntConversions)' == ''">true</WasmEnableNonTrappingFloatToIntConversions>
     <!-- Most browsers support WASM EH, so we enable it by default. This is aligned with the upstream behavior. -->
     <WasmEnableExceptionHandling Condition="'$(WasmEnableExceptionHandling)' == '' and '$(_targetOS)' == 'browser'">true</WasmEnableExceptionHandling>
 
@@ -403,6 +404,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <PropertyGroup>
       <CompileWasmArgs>-c $(WasmOptimizationSetting)</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileWasmArgs) -g3</CompileWasmArgs>
+      <CompileWasmArgs Condition="'$(WasmEnableNonTrappingFloatToIntConversions)' == 'true'">$(CompileWasmArgs) -mnontrapping-fptoint</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'">$(CompileWasmArgs) -fwasm-exceptions</CompileWasmArgs>
     </PropertyGroup>
 
