@@ -415,6 +415,8 @@ internal unsafe partial class Program
 
         TestJitUseStruct();
 
+        TestMismatchedStructLocalFieldStore();
+
         TestUnsafe();
 
         TestReadByteArray();
@@ -468,6 +470,27 @@ internal unsafe partial class Program
         var res = JitUseStructProblem(&structWithStruct, structWithIndex);
 
         EndTest(res.Index == structWithIndex.Index && res.Value == structWithIndex.Value);
+    }
+
+    public struct StructWrapper
+    {
+        public readonly Guid WrappedStruct;
+        public StructWrapper(Guid value) => WrappedStruct = value;
+    }
+
+    private static void TestMismatchedStructLocalFieldStore()
+    {
+        const string GuidValue = "0c733a1e-2a1c-11ce-ade5-00aa0044773d";
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        bool ExposeAndVerify(ref StructWrapper? x)
+        {
+            return x.HasValue && x.Value.WrappedStruct.ToString() == GuidValue;
+        }
+
+        StartTest("TestMismatchedStructLocalFieldStore");
+        StructWrapper? x = new StructWrapper(Guid.Parse(GuidValue));
+        EndTest(ExposeAndVerify(ref x));
     }
 
     [StructLayout(LayoutKind.Sequential)]
