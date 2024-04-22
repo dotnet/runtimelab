@@ -1583,14 +1583,14 @@ void Llvm::buildCast(GenTreeCast* cast)
                 case TYP_SHORT:
                 case TYP_INT:
                 case TYP_LONG:
-                    castValue = _builder.CreateFPToSI(castFromValue, castToLlvmType);
+                    castValue = _builder.CreateIntrinsic(castToLlvmType, llvm::Intrinsic::fptosi_sat, castFromValue);
                     break;
 
                 case TYP_UBYTE:
                 case TYP_USHORT:
                 case TYP_UINT:
                 case TYP_ULONG:
-                    castValue = _builder.CreateFPToUI(castFromValue, castToLlvmType);
+                    castValue = _builder.CreateIntrinsic(castToLlvmType, llvm::Intrinsic::fptoui_sat, castFromValue);
                     break;
 
                 default:
