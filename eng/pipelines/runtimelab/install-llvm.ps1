@@ -21,7 +21,7 @@ if (!(gcm cmake -ErrorAction SilentlyContinue))
 
 if (!$NoClone)
 {
-    $LlvmProjectTag = "llvmorg-18.1.3"
+    $LlvmProjectTag = "llvmorg-17.0.4"
     $DepthOption = if ($CI) {"--depth","1"} {}
     git clone https://github.com/llvm/llvm-project --branch $LlvmProjectTag $DepthOption
 }
