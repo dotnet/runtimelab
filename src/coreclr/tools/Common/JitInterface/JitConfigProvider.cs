@@ -130,7 +130,6 @@ namespace Internal.JitInterface
 
         private static string GetTargetSpec(TargetDetails target)
         {
-            // Use the same Jit for browser and wasi
             string targetArchComponent = target.Architecture switch
             {
                 TargetArchitecture.X86 => "x86",

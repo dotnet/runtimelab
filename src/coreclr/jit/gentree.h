@@ -4886,7 +4886,7 @@ public:
     CallArg* InsertAfterThisOrFirst(Compiler* comp, const NewCallArg& arg);
     void     PushLateBack(CallArg* arg);
     void     Remove(CallArg* arg);
-#if TARGET_WASM
+#ifdef TARGET_WASM
     void     MoveLateToEarly();
 #endif
 
@@ -7510,7 +7510,7 @@ public:
         return m_layout;
     }
 
-#if TARGET_WASM
+#ifdef TARGET_WASM
     void SetLayout(ClassLayout* layout)
     {
         assert((layout != nullptr));

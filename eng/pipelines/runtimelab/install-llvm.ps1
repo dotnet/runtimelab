@@ -22,7 +22,7 @@ if (!(gcm cmake -ErrorAction SilentlyContinue))
 if (!$NoClone)
 {
     $LlvmProjectTag = "llvmorg-17.0.4"
-    $DepthOption = if ($CI) {"--depth","1"} {}
+    $DepthOption = if ($CI) {"--depth","1"} else {}
     git clone https://github.com/llvm/llvm-project --branch $LlvmProjectTag $DepthOption
 }
 elseif (!(Test-Path llvm-project))

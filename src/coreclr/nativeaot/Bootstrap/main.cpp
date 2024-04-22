@@ -119,11 +119,11 @@ extern "C" void* PalGetModuleHandleFromPointer(void* pointer);
 #define MANAGED_RUNTIME_EXPORT(_name) \
     extern "C" void _name##_Managed();
 #define MANAGED_RUNTIME_EXPORT_NAME(_name) _name##_Managed
-#else
+#else // !HOST_WASM
 #define MANAGED_RUNTIME_EXPORT(_name) \
     extern "C" void _name();
 #define MANAGED_RUNTIME_EXPORT_NAME(_name) _name
-#endif // HOST_WASM
+#endif // !HOST_WASM
 #define CDECL
 #endif
 

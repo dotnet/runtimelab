@@ -119,4 +119,7 @@
 
   #define RBM_ARG_REGS             RBM_R0
   #define RBM_FLTARG_REGS          RBM_F0
-// clang-format on
+
+  #define RBM_INT_CALLEE_SAVED     RBM_NONE;
+
+  // clang-format on

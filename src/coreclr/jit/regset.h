@@ -78,10 +78,8 @@ private:
     regMaskTP rsAllCalleeSavedMask;
     regMaskTP rsIntCalleeSavedMask;
 #else  // !SWIFT_SUPPORT
-#ifndef TARGET_WASM
     static constexpr regMaskTP rsAllCalleeSavedMask = RBM_CALLEE_SAVED;
     static constexpr regMaskTP rsIntCalleeSavedMask = RBM_INT_CALLEE_SAVED;
-#endif // !TARGET_WASM
 #endif // !SWIFT_SUPPORT
 
 public:

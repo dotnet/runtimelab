@@ -367,7 +367,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
 
         // Implemented in "Runtime.Base\src\System\Runtime\TypeCast.cs".
         { FUNC(CORINFO_HELP_ARRADDR_ST) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS, CORINFO_TYPE_NATIVEINT, CORINFO_TYPE_CLASS }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_LDELEMA_REF) CORINFO_TYPE_BYREF, { CORINFO_TYPE_CLASS, CORINFO_TYPE_NATIVEINT, CORINFO_TYPE_CLASS }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LDELEMA_REF) CORINFO_TYPE_BYREF, { CORINFO_TYPE_CLASS, CORINFO_TYPE_NATIVEINT, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
 
         // Runtime exports implemented in "Runtime.Base\src\System\Runtime\ExceptionHandling.wasm.cs".
         { FUNC(CORINFO_HELP_THROW) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS }, HFIF_SS_ARG },

@@ -950,7 +950,7 @@ private:
                 LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
                 if (IsCandidateLocal(varDsc))
                 {
-                    //printf("V%02u/%d ", lclNum, m_activeDefs.Top(lclVarIndex));
+                    printf("V%02u/%d ", lclNum, m_activeDefs.Top(lclVarIndex));
                 }
             }
             printf("}\n");

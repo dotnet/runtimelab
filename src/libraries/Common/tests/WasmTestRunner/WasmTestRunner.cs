@@ -27,7 +27,7 @@ public class WasmTestRunner : WasmApplicationEntryPoint
             return -1;
         }
 
-        runner.TestAssembly = args[0];
+        runner.TestAssembly = args[index++];
 #endif
 
         var excludedTraits = new List<string>();

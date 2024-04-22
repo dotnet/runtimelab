@@ -2081,7 +2081,7 @@ void CallArgs::Remove(CallArg* arg)
     assert(!"Did not find arg to remove in CallArgs::Remove");
 }
 
-#if TARGET_WASM
+#ifdef TARGET_WASM
 //------------------------------------------------------------------------
 // MoveLateToEarly: Sets all late nodes as the early nodes
 //

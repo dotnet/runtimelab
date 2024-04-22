@@ -15,7 +15,7 @@
 #include "thread.inl"
 
 // Finalizer method implemented by the managed runtime.
-extern "C" __cdecl void RhpProcessFinalizersAndReturn();
+extern "C" QCALLTYPE void RhpProcessFinalizersAndReturn();
 
 static void ProcessFinalizersAndReturn()
 {
@@ -42,7 +42,7 @@ void RhEnableFinalization()
     // here as it will deadlock the GC.
 }
 
-EXTERN_C void __cdecl RhWaitForPendingFinalizers(UInt32_BOOL allowReentrantWait)
+EXTERN_C void QCALLTYPE RhWaitForPendingFinalizers(UInt32_BOOL allowReentrantWait)
 {
     // Must be called in preemptive mode as "ProcessFinalizersAndReturn" RPIs back into managed.
     ASSERT(!ThreadStore::GetCurrentThread()->IsCurrentThreadInCooperativeMode());
