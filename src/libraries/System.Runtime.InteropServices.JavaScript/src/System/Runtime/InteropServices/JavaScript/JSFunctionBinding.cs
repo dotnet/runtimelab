@@ -431,7 +431,7 @@ namespace System.Runtime.InteropServices.JavaScript
 
 #if !FEATURE_WASM_MANAGED_THREADS
 
-            nint exceptionPtr = Interop.Runtime.BindJSImport(signature.Header);
+            nint exceptionPtr = Interop.Runtime.BindJSImportST(signature.Header);
             if (exceptionPtr != IntPtr.Zero)
             {
                 var message = Marshal.PtrToStringUni(exceptionPtr)!;
