@@ -281,6 +281,16 @@ namespace System.Runtime.InteropServices.JavaScript
 
         public static unsafe JSFunctionBinding BindManagedFunction(string fullyQualifiedName, int signatureHash, ReadOnlySpan<JSMarshalerType> signatures)
         {
+#if NATIVE_AOT
+            var signature = GetMethodSignature(signatures, null, null);
+            Interop.Runtime.BindCSFunction(fullyQualifiedName, signatureHash, signature.Header, out int isException, out object exceptionMessage);
+            if (isException != 0)
+            {
+                throw new JSException((string)exceptionMessage);
+            }
+            FreeMethodSignatureBuffer(signature);
+            return signature;
+#else
             var (assemblyName, nameSpace, shortClassName, methodName) = ParseFQN(fullyQualifiedName);
             var wrapper_name = $"__Wrapper_{methodName}_{signatureHash}";
             var dllName = assemblyName + ".dll";
@@ -306,6 +316,7 @@ namespace System.Runtime.InteropServices.JavaScript
             FreeMethodSignatureBuffer(signature);
 
             return signature;
+#endif
         }
 
 #if FEATURE_WASM_MANAGED_THREADS

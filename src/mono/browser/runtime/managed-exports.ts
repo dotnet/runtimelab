@@ -296,11 +296,9 @@ function invoke_async_jsexport_mono (managedTID: PThreadPtr, method: MonoMethod,
     }
 }
 
-/* eslint-disable */
-export function invoke_async_jsexport_naot (_managedTID: PThreadPtr, method: MonoMethod, args: JSMarshalerArguments, _size: number): void {
-/* eslint-enable */
+function invoke_async_jsexport_naot (_managedTID: PThreadPtr, method: Function, args: JSMarshalerArguments): void {
     if (!WasmEnableThreads || runtimeHelpers.isManagedRunningOnCurrentThread) {
-        (<Function>(<unknown>method))(args);
+        method(args);
         if (is_args_exception(args)) {
             const exc = get_arg(args, 0);
             throw marshal_exception_to_js(exc);
@@ -310,7 +308,9 @@ export function invoke_async_jsexport_naot (_managedTID: PThreadPtr, method: Mon
     }
 }
 
-export function invoke_sync_jsexport (method: MonoMethod, args: JSMarshalerArguments): void {
+export const invoke_async_jsexport: (managedTID: PThreadPtr, method: any, args: JSMarshalerArguments, size: number) => void = NativeAOT ? invoke_async_jsexport_naot : invoke_async_jsexport_mono;
+
+function invoke_sync_jsexport_mono (method: MonoMethod, args: JSMarshalerArguments): void {
     assert_js_interop();
     if (!WasmEnableThreads) {
         cwraps.mono_wasm_invoke_jsexport(method, args as any);
@@ -336,10 +336,18 @@ export function invoke_sync_jsexport (method: MonoMethod, args: JSMarshalerArgum
     }
 }
 
-export const invoke_async_jsexport: (managedTID: PThreadPtr, method: MonoMethod, args: JSMarshalerArguments, size: number) => void = NativeAOT ? invoke_async_jsexport_naot : invoke_async_jsexport_mono;
+function invoke_sync_jsexport_naot (method: Function, args: JSMarshalerArguments): void {
+    method(args);
+    if (is_args_exception(args)) {
+        const exc = get_arg(args, 0);
+        throw marshal_exception_to_js(exc);
+    }
+}
+
+export const invoke_sync_jsexport: (method: any, args: JSMarshalerArguments) => void = NativeAOT ? invoke_sync_jsexport_naot : invoke_sync_jsexport_mono;
 
 // the marshaled signature is: Task BindAssemblyExports(string assemblyName)
-export function bind_assembly_exports (assemblyName: string): Promise<void> {
+function bind_assembly_exports_mono (assemblyName: string): Promise<void> {
     loaderHelpers.assert_runtime_running();
     const sp = Module.stackSave();
     try {
@@ -366,6 +374,24 @@ export function bind_assembly_exports (assemblyName: string): Promise<void> {
     }
 }
 
+export const exportsByAssembly: Map<string, any> = new Map();
+function bind_assembly_exports_naot (assembly: string) {
+    assert_js_interop();
+    const result = exportsByAssembly.get(assembly);
+    if (!result) {
+        let assemblyWithoutExtension = assembly;
+        if (assemblyWithoutExtension.endsWith(".dll")) {
+            assemblyWithoutExtension = assemblyWithoutExtension.substring(0, assembly.length - 4);
+        }
+        const register = (Module as any)["_" + assemblyWithoutExtension + "__GeneratedInitializer" + "__Register_"];
+        mono_assert(register, `Missing wasm export for JSExport registration function in assembly ${assembly}`);
+        register();
+    }
+
+    return exportsByAssembly.get(assembly) || {};
+}
+
+export const bind_assembly_exports: (assemblyName: string) => Promise<void> = NativeAOT ? bind_assembly_exports_naot : bind_assembly_exports_mono;
 
 function get_method (method_name: string): MonoMethod {
     // TODO https://github.com/dotnet/runtime/issues/98366
