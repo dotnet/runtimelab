@@ -481,10 +481,12 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         // Part of the inlined PInvoke frame construction feature which is NYI in NativeAOT.
         { FUNC(CORINFO_HELP_INIT_PINVOKE_FRAME) },
 
+        // Runtime exports implemented in "src/libraries/System.Private.CoreLib/src/System/SpanHelpers.ByteMemOps.cs".
         { FUNC(CORINFO_HELP_MEMSET) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_BYTE, CORINFO_TYPE_NATIVEUINT }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_MEMZERO) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_NATIVEUINT }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_MEMCPY) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_NATIVEUINT }, HFIF_SS_ARG },
-        // Implemented as plain "memset"
+
+        // Implemented as plain "memset".
         { FUNC(CORINFO_HELP_NATIVE_MEMSET) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT, CORINFO_TYPE_NATIVEUINT } },
 
         // Not used in NativeAOT.
