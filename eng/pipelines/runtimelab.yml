@@ -94,7 +94,7 @@ extends:
                       librariesConfiguration: Debug
 
           #
-          # Build the whole product with Release CoreCLR and run libraries tests
+          # Build and test with Release libraries and Release runtime
           #
           - template: /eng/pipelines/common/platform-matrix.yml
             parameters:
