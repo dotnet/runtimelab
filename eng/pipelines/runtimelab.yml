@@ -74,7 +74,7 @@ extends:
                       librariesConfiguration: Debug
 
           #
-          # Build with Debug libraries and Checked runtime
+          # Build and test with Debug libraries and Checked runtime
           #
           - template: /eng/pipelines/common/platform-matrix.yml
             parameters:
