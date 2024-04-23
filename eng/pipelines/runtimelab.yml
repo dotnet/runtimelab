@@ -52,7 +52,7 @@ extends:
 
         - ${{ if ne(variables.isOfficialBuild, true) }}:
           #
-          # Build the whole product with Debug CoreCLR and run runtime tests
+          # Build and test with Debug libraries and Debug runtime
           #
           - template: /eng/pipelines/common/platform-matrix.yml
             parameters:
@@ -74,13 +74,13 @@ extends:
                       librariesConfiguration: Debug
 
           #
-          # Build with Debug libraries and Checked runtime
+          # Build and test with Debug libraries and Checked runtime
           #
           - template: /eng/pipelines/common/platform-matrix.yml
             parameters:
               jobTemplate: /eng/pipelines/common/global-build-job.yml
               helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
-              buildConfig: Checked
+              buildConfig: checked
               platforms:
 #              - linux_x64
               - windows_x64
@@ -94,7 +94,7 @@ extends:
                       librariesConfiguration: Debug
 
           #
-          # Build the whole product with Release CoreCLR and run libraries tests
+          # Build and test with Release libraries and Release runtime
           #
           - template: /eng/pipelines/common/platform-matrix.yml
             parameters:

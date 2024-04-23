@@ -2837,11 +2837,6 @@ void Llvm::annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc
 Function* Llvm::getOrCreateKnownLlvmFunction(
     StringRef name, std::function<FunctionType*()> createFunctionType, std::function<void(Function*)> annotateFunction)
 {
-    if (strstr(name.data(), "Reflection_ReflectionTest_TestDefaultInterfaceInvoke_IFoo_1<System___Canon>__Format") !=
-        nullptr)
-    {
-        int i = 1;
-    }
     Function* llvmFunc = m_context->Module.getFunction(name);
     if (llvmFunc == nullptr)
     {
