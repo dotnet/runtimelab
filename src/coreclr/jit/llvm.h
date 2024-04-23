@@ -19,13 +19,19 @@
 // this breaks StringMap.h
 #undef NumItems
 
-#pragma warning (disable: 4702)
+// Remove these disables where possible and convert to push/pop elsewhere.
+// See https://github.com/dotnet/runtimelab/issues/2554
+#pragma warning(disable : 4146)
+#pragma warning(disable : 4242)
+#pragma warning(disable : 4244)
+#pragma warning(disable : 4267)
+#pragma warning(disable : 4459)
+#pragma warning(disable : 4702)
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IntrinsicsWebAssembly.h"
-#pragma warning (error: 4702)
 
 #include <unordered_map>
 
@@ -407,7 +413,6 @@ private:
     void lowerRethrow(GenTreeCall* callNode);
     void lowerIndir(GenTreeIndir* indirNode);
     void lowerStoreBlk(GenTreeBlk* storeBlkNode);
-    void lowerStoreDynBlk(GenTreeStoreDynBlk* storeDynBlkNode);
     void lowerArrLength(GenTreeArrCommon* node);
     void lowerReturn(GenTreeUnOp* retNode);
 
@@ -529,7 +534,6 @@ private:
     void buildBlk(GenTreeBlk* blkNode);
     void buildStoreInd(GenTreeStoreInd* storeIndOp);
     void buildStoreBlk(GenTreeBlk* blockOp);
-    void buildStoreDynBlk(GenTreeStoreDynBlk* blockOp);
     void buildUnaryOperation(GenTree* node);
     void buildBinaryOperation(GenTree* node);
     void buildShift(GenTreeOp* node);

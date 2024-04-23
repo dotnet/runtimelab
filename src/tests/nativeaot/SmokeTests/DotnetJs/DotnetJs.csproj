@@ -3,8 +3,9 @@
     <OutputType>Exe</OutputType>
     <CLRTestKind>BuildAndRun</CLRTestKind>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <CLRTestTargetUnsupported Condition="'$(TargetsBrowser)' != 'true'">true</CLRTestTargetUnsupported>
+    <CLRTestTargetUnsupported>true</CLRTestTargetUnsupported>
     <DotNetJsApi>true</DotNetJsApi>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
   <ItemGroup>
     <!-- Needed because of DisableImplicitFrameworkReferences=true in src\tests\Directory.Build.targets -->

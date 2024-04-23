@@ -64,6 +64,9 @@
   #define STACK_ALIGN              16      // stack alignment requirement
   #define STACK_ALIGN_SHIFT        4       // Shift-right amount to convert size in bytes to size in STACK_ALIGN units == log2(STACK_ALIGN)
 
+  #define RBM_INT_CALLEE_SAVED     RBM_NONE
+  #define RBM_FLT_CALLEE_SAVED     RBM_NONE
+
   #define RBM_CALLEE_SAVED         RBM_R0
   #define RBM_CALLEE_TRASH         RBM_NONE
 
@@ -119,4 +122,5 @@
 
   #define RBM_ARG_REGS             RBM_R0
   #define RBM_FLTARG_REGS          RBM_F0
-// clang-format on
+
+  // clang-format on

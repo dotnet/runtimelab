@@ -6,12 +6,14 @@
 
 extern "C" thread_local int RhpExceptionThrown = 0;
 
-COOP_PINVOKE_HELPER(void, RhpThrowNativeException, ())
+FCIMPL0(void, RhpThrowNativeException)
 {
     RhpExceptionThrown = 1;
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(void, RhpReleaseNativeException, ())
+FCIMPL0(void, RhpReleaseNativeException)
 {
     ASSERT(RhpExceptionThrown == 0);
 }
+FCIMPLEND

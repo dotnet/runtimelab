@@ -14,7 +14,7 @@
 #include "threadstore.inl"
 #include "thread.inl"
 
-COOP_PINVOKE_HELPER(void*, RhpGcStressOnce, (void* obj, uint8_t* pFlag))
+FCIMPL2(void*, RhpGcStressOnce, void* obj, uint8_t* pFlag)
 {
     if (*pFlag)
     {
@@ -53,8 +53,9 @@ COOP_PINVOKE_HELPER(void*, RhpGcStressOnce, (void* obj, uint8_t* pFlag))
     PalSetLastError(lastErrorOnEntry);
     return obj;
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(Object*, RhpCheckObj, (Object* obj))
+FCIMPL1(Object*, RhpCheckObj, Object* obj)
 {
     if (obj != nullptr)
     {
@@ -68,3 +69,4 @@ COOP_PINVOKE_HELPER(Object*, RhpCheckObj, (Object* obj))
 
     return obj;
 }
+FCIMPLEND

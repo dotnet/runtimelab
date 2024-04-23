@@ -20,6 +20,10 @@
     <EmitCompilerGeneratedFiles Condition="'$(Configuration)' == 'Debug' and '$(TargetPlatformIdentifier)' == 'browser'">true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
 
+  <!-- TODO-LLVM: This is not upstreamable because it makes the build runtime-specific. -->
+  <PropertyGroup>
+    <DefineConstants Condition="'$(RuntimeFlavor)' == 'CoreCLR'">$(DefineConstants);NATIVE_AOT</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="System.Runtime.InteropServices.JavaScript.SupportedOSPlatform.cs" />
   </ItemGroup>
@@ -71,6 +75,7 @@
   <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'browser' and '$(FeatureWasmManagedThreads)' == 'true'">
     <Compile Include="System\Runtime\InteropServices\JavaScript\JSWebWorker.cs" />
     <Compile Include="System\Runtime\InteropServices\JavaScript\JSSynchronizationContext.cs" />
+    <Compile Include="System\Runtime\InteropServices\JavaScript\JSAsyncTaskScheduler.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(WasmEnableThreads)' == 'true'">
     <ApiCompatSuppressionFile Include="CompatibilitySuppressions.xml;CompatibilitySuppressions.WasmThreads.xml" />

@@ -38,14 +38,6 @@ namespace Internal.TypeSystem
         /// model for armel execution model
         /// </summary>
         NativeAotArmel,
-        /// <summary>
-        /// Jit runtime ABI
-        /// </summary>
-        Jit,
-        /// <summary>
-        /// Cross-platform portable C++ codegen
-        /// </summary>
-        CppCodegen,
     }
 
     /// <summary>
@@ -103,7 +95,7 @@ namespace Internal.TypeSystem
         {
             get
             {
-                return (Abi != TargetAbi.CppCodegen) && (Architecture != TargetArchitecture.Wasm32);
+                return Architecture != TargetArchitecture.Wasm32;
             }
         }
 

@@ -27,7 +27,7 @@ void* GetShadowStackTop()
     return t_pShadowStackTop;
 }
 
-COOP_PINVOKE_HELPER(void*, RhpGetOrInitShadowStackTop, ())
+FCIMPL0(void*, RhpGetOrInitShadowStackTop)
 {
     void* pShadowStack = t_pShadowStackTop;
     if (pShadowStack == nullptr)
@@ -44,20 +44,24 @@ COOP_PINVOKE_HELPER(void*, RhpGetOrInitShadowStackTop, ())
 
     return pShadowStack;
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(void*, RhpGetShadowStackTop, ())
+FCIMPL0(void*, RhpGetShadowStackTop)
 {
     return t_pShadowStackTop;
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(void, RhpSetShadowStackTop, (void* pShadowStack))
+FCIMPL1(void, RhpSetShadowStackTop, void* pShadowStack)
 {
     t_pShadowStackTop = pShadowStack;
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(void, RhpPInvoke, (void* pShadowStack, PInvokeTransitionFrame* pFrame))
+FCIMPL2(void, RhpPInvoke, void* pShadowStack, PInvokeTransitionFrame* pFrame)
 {
     RhpSetShadowStackTop(pShadowStack);
     Thread* pCurThread = ThreadStore::RawGetCurrentThread();
     pCurThread->InlinePInvoke(pFrame);
 }
+FCIMPLEND

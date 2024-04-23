@@ -301,10 +301,6 @@ void Llvm::lowerNode(GenTree* node)
             lowerStoreBlk(node->AsBlk());
             break;
 
-        case GT_STORE_DYN_BLK:
-            lowerStoreDynBlk(node->AsStoreDynBlk());
-            break;
-
         case GT_ARR_LENGTH:
         case GT_MDARR_LENGTH:
         case GT_MDARR_LOWER_BOUND:
@@ -572,12 +568,6 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
     }
 
     lowerIndir(storeBlkNode);
-}
-
-void Llvm::lowerStoreDynBlk(GenTreeStoreDynBlk* storeDynBlkNode)
-{
-    storeDynBlkNode->Data()->SetContained();
-    lowerIndir(storeDynBlkNode);
 }
 
 // TODO-LLVM: Almost a direct copy from lower.cpp which is not included for Wasm.
@@ -1573,7 +1563,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
 
                 bool allPredsUseTheSameUnwindIndex = true;
                 unsigned selectedUnwindIndexGroup = blockUnwindIndexGroup;
-                for (BasicBlock* predBlock : PredBlockList(allPredEdges))
+                for (BasicBlock* predBlock : PredBlockList<false>(allPredEdges))
                 {
                     unsigned predBlockUnwindIndex = GetUnwindIndexForBlock(predBlock);
                     unsigned predBlockUnwindIndexGroup = GetGroup(predBlock);
@@ -1628,7 +1618,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
                 bool allPredsDefineTheSameUnwindIndex = allPredsUseTheSameUnwindIndex;
                 if (allPredsUseTheSameUnwindIndex)
                 {
-                    for (BasicBlock* predBlock : PredBlockList(allPredEdges))
+                    for (BasicBlock* predBlock : PredBlockList<false>(allPredEdges))
                     {
                         unsigned predBlockUnwindIndexGroup = GetGroup(predBlock);
                         if (predBlockUnwindIndexGroup != UNWIND_INDEX_GROUP_NONE)
