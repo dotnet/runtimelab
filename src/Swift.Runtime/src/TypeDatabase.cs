@@ -2,15 +2,26 @@
 // Licensed under the MIT License.
 
 using System.Xml;
+using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace Swift.Runtime
 {
     /// <summary>
     /// Represents a database for mapping Swift type names to C# type names.
     /// </summary>
-    public class TypeDatabase
+    public unsafe class TypeDatabase
     {
+        // TODO: Encapsulate _swiftToCSharpMapping and _swiftTypeInfo in a class/struct
+        /// <summary>
+        /// The mapping from Swift type names to C# type names.
+        /// </summary>
         private readonly Dictionary<string, string> _swiftToCSharpMapping = new Dictionary<string, string>();
+
+        /// <summary>
+        /// The mapping from Swift type names to Swift type information.
+        /// </summary>
+        private readonly Dictionary<string, SwiftTypeInfo> _swiftTypeInfo = new Dictionary<string, SwiftTypeInfo>();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TypeDatabase"/> class.
@@ -115,9 +126,32 @@ namespace Swift.Runtime
             if (swiftRuntimeType != null)
                 return new string [] { "Swift.Runtime", swiftRuntimeType.Name };
 
-            // Throw an exception if no mapping is found
-            // The ABI parser should search for the type within this and imported modules and lazy-load it
-            throw new Exception($"No mapping found for type '{swiftTypeName}'.");
+            // TODO: The ABI parser should search for the type within this and imported modules and lazy-load it
+            return new string [] { "System", swiftTypeName };
+        }
+
+        /// <summary>
+        /// Gets the Swift type information from the specified library.
+        /// </summary>
+        /// <param name="swiftTypeName">The Swift type name.</param>
+        /// <param name="libraryPath">The path to the library containing the type information.</param>
+        /// <param name="functionName">The name of the function to call to get the type information.</param>
+        /// <returns>The Swift type information.</returns>
+        public SwiftTypeInfo GetSwiftTypeInfo(string swiftTypeName, string? libraryPath = null, string? functionName = null)
+        {
+            if (_swiftTypeInfo.TryGetValue(swiftTypeName, out SwiftTypeInfo typeInfo))
+                return typeInfo;
+
+            if (libraryPath != null && functionName != null)
+            {
+                IntPtr metadataPtr = DynamicLibraryLoader.execute(libraryPath, functionName);
+                typeInfo = new SwiftTypeInfo { MetadataPtr = metadataPtr };
+
+                _swiftTypeInfo.Add(swiftTypeName, typeInfo);
+                return typeInfo;
+            }
+
+            throw new Exception($"No metadata found for type '{swiftTypeName}'.");
         }
     }
 }

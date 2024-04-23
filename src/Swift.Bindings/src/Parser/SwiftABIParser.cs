@@ -46,7 +46,7 @@ namespace BindingsGeneration
     /// <summary>
     /// Represents a parser for Swift ABI.
     /// </summary>
-    public sealed class SwiftABIParser : ISwiftParser
+    public sealed unsafe class SwiftABIParser : ISwiftParser
     {
         private static readonly HashSet<string> _operators = new HashSet<string>
         {
@@ -139,8 +139,12 @@ namespace BindingsGeneration
                         result = HandleTypeDecl(node, dependencies);
                         break;
                     case "Function":
+                    case "Constructor":
                         // TODO: Implement operator overloading
                         result = IsOperator(node.Name) ? null : CreateMethodDecl(node, dependencies);
+                        break;
+                    case "Var":
+                        // TODO: Add Debug.Assert to check the type layout against the ABI file
                         break;
                     default:
                         if (_verbose > 1)
@@ -167,10 +171,15 @@ namespace BindingsGeneration
             {
                 case "Struct":
                 case "Enum":
-                    if (Array.IndexOf(node.DeclAttributes, "Frozen") != -1) 
+                    // TODO: Encapsulate metadata accessor naming logic in a helper method
+                    SwiftTypeInfo typeInfo = _typeDatabase.GetSwiftTypeInfo(node.Name, $"{Path.GetDirectoryName(_filePath)}/lib{node.ModuleName}.dylib", $"{node.MangledName}Ma");
+                    if (Array.IndexOf(node.DeclAttributes, "Frozen") != -1 && 
+                        (!typeInfo.ValueWitnessTable->IsNonPOD || !typeInfo.ValueWitnessTable->IsNonBitwiseTakable))
                     {
                         decl = CreateStructDecl(node, dependencies);
-                    } else {
+                    }
+                    else
+                    {
                         decl = CreateClassDecl(node, dependencies);
                     }
 
@@ -181,7 +190,7 @@ namespace BindingsGeneration
                     }
                     break;
                 case "Class":
-                    decl = CreateStructDecl(node, dependencies);
+                    decl = CreateClassDecl(node, dependencies);
 
                     if (node.Children != null)
                     {
@@ -244,9 +253,12 @@ namespace BindingsGeneration
             var methodDecl = new MethodDecl
             {
                 Name = ExtractUniqueName(node.Name),
-                MangledName = node.MangledName,
-                RequireMarshalling = false,
+                // Constructors for structs are named with a trailing 'C' instead of 'c'
+                // because a constructor wrapper is missing in the library
+                // TODO: Encapsulate constructor naming logic in a helper method
+                MangledName = node.Kind == "Constructor" && node.MangledName.Last() == 'c' ? node.MangledName.Substring(0, node.MangledName.Length - 1) + "C" : node.MangledName,
                 IsStatic = node.@static ?? false,
+                IsConstructor = node.Kind == "Constructor",
                 Signature = new List<TypeDecl>(),
                 Declarations = new List<BaseDecl>()
             };

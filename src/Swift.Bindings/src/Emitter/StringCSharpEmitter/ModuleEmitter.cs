@@ -47,7 +47,7 @@ namespace BindingsGeneration
             writer.WriteLine("{");
             writer.Indent++;
 
-            // Emit top-level methods
+            // Emit top-level methods and pinvokes
             if (moduleDecl.Declarations.OfType<MethodDecl>().Any())
             {
                 writer.WriteLine($"public class {moduleDecl.Name}");
@@ -55,7 +55,7 @@ namespace BindingsGeneration
                 writer.Indent++;
                 foreach(MethodDecl methodDecl in moduleDecl.Declarations.OfType<MethodDecl>())
                 {
-                    EmitMethod(writer, moduleDecl, methodDecl);
+                    EmitMethod(writer, moduleDecl, moduleDecl, methodDecl);
                     writer.WriteLine();
                 }
                 writer.Indent--;
@@ -66,7 +66,7 @@ namespace BindingsGeneration
             // Emit top-level types
             foreach (BaseDecl baseDecl in moduleDecl.Declarations.Where(d => !(d is MethodDecl)))
             {
-                EmitBaseDecl(writer, moduleDecl, baseDecl);
+                EmitBaseDecl(writer, moduleDecl, moduleDecl, baseDecl);
                 writer.WriteLine();
             }
 
@@ -85,17 +85,18 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="writer">The IndentedTextWriter instance.</param>
         /// <param name="moduleDecl">The module declaration.</param>
+        /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="decl">The base declaration.</param>
-        private void EmitBaseDecl(IndentedTextWriter writer, ModuleDecl moduleDecl, BaseDecl decl)
+        private void EmitBaseDecl(IndentedTextWriter writer, ModuleDecl moduleDecl, BaseDecl parentDecl, BaseDecl baseDecl)
         {
-            if (decl is StructDecl structDecl)
-                EmitStruct(writer, moduleDecl, structDecl);
-            else if (decl is ClassDecl classDecl)
-                EmitClass(writer, moduleDecl, classDecl);
-            else if (decl is MethodDecl methodDecl)
-                EmitMethod(writer, moduleDecl, methodDecl);
+            if (baseDecl is StructDecl structDecl)
+                EmitStruct(writer, moduleDecl, parentDecl, structDecl);
+            else if (baseDecl is ClassDecl classDecl)
+                EmitClass(writer, moduleDecl, parentDecl, classDecl);
+            else if (baseDecl is MethodDecl methodDecl)
+                EmitMethod(writer, moduleDecl, parentDecl, methodDecl);
             else
-                throw new NotImplementedException($"Unsupported declaration type: {decl.GetType().Name}");
+                throw new NotImplementedException($"Unsupported declaration type: {baseDecl.GetType().Name}");
         }
     }
 }

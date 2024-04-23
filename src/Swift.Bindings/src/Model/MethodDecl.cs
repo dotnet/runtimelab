@@ -14,14 +14,14 @@ namespace BindingsGeneration
         public required string MangledName { get; set; }
 
         /// <summary>
-        /// Indicates if the method requires marshalling.
-        /// </summary>
-        public required bool RequireMarshalling { get; set; }
-
-        /// <summary>
         /// Indicates if the method is a static method.
         /// </summary>
         public required bool IsStatic { get; set; }
+
+        /// <summary>
+        /// Indicates if the method is a constructor.
+        /// </summary>
+        public required bool IsConstructor { get; set; }
 
         /// <summary>
         /// Signature of the method.
