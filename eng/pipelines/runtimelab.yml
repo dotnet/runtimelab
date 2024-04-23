@@ -132,19 +132,11 @@ extends:
                 timeoutInMinutes: 380
                 buildArgs: -s clr+libs+hosts+packs -c $(_BuildConfig)
                 postBuildSteps:
-                  # Upload the results.
-                  - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
-                    parameters:
-                      name: $(osGroup)$(osSubgroup)_$(archType)
                   - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
                     parameters:
                       isOfficialBuild: true
                       uploadIntermediateArtifacts: true
                       librariesConfiguration: Release
-                ${{ if eq(variables.isOfficialBuild, false) }}:
-                  buildArgs: -s clr.aot+libs+nativeaot.packages -c release /p:ArchiveTests=true
-                ${{ if eq(variables.isOfficialBuild, true) }}:
-                  buildArgs: -s clr.aot+libs+nativeaot.packages -c release
 
     - ${{ if eq(variables.isOfficialBuild, true) }}:
       - template: /eng/pipelines/official/stages/publish.yml
