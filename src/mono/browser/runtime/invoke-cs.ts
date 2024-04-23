@@ -3,6 +3,7 @@
 /* eslint-disable prefer-rest-params */
 
 import NativeAOT from "consts:nativeAOT";
+import { utf16ToString } from "./strings";
 
 import BuildConfiguration from "consts:configuration";
 import WasmEnableThreads from "consts:wasmEnableThreads";
@@ -14,7 +15,6 @@ import {
     get_sig, get_signature_argument_count,
     bound_cs_function_symbol, get_signature_version, alloc_stack_frame, get_signature_type,
 } from "./marshal";
-import { utf16ToString } from "./strings";
 import { MonoMethod, JSFunctionSignature, BoundMarshalerToCs, BoundMarshalerToJs, MarshalerType } from "./types/internal";
 import { assert_js_interop } from "./invoke-js";
 import { startMeasure, MeasuredBlock, endMeasure } from "./profiler";

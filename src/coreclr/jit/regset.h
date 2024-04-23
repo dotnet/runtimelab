@@ -83,7 +83,6 @@ private:
 #endif // !SWIFT_SUPPORT
 
 public:
-#ifndef TARGET_WASM
     regMaskTP rsGetModifiedRegsMask() const
     {
         assert(rsModifiedRegsMaskInitialized);
@@ -115,7 +114,6 @@ public:
         assert(rsModifiedRegsMaskInitialized);
         return (rsModifiedRegsMask & RBM_FLT_CALLEE_SAVED);
     }
-#endif // !TARGET_WASM
 
     void rsClearRegsModified();
 
