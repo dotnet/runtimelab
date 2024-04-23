@@ -15,7 +15,7 @@
 #include "thread.inl"
 
 // Finalizer method implemented by the managed runtime.
-extern "C" QCALLTYPE void RhpProcessFinalizersAndReturn();
+extern "C" void RhpProcessFinalizersAndReturn();
 
 static void ProcessFinalizersAndReturn()
 {
