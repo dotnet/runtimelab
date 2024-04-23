@@ -228,12 +228,12 @@
       
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
                              Include="
-        $(LibrariesNativeArtifactsPath)dotnet.js;
-        $(LibrariesNativeArtifactsPath)dotnet.js.map;
-        $(LibrariesNativeArtifactsPath)dotnet.runtime.js;
-        $(LibrariesNativeArtifactsPath)dotnet.runtime.js.map;
-        $(LibrariesNativeArtifactsPath)dotnet.d.ts;
-        $(LibrariesNativeArtifactsPath)package.json;"
+        $(CoreCLRNativeArtifactsPath)dotnet.js;
+        $(CoreCLRNativeArtifactsPath)dotnet.js.map;
+        $(CoreCLRNativeArtifactsPath)dotnet.runtime.js;
+        $(CoreCLRNativeArtifactsPath)dotnet.runtime.js.map;
+        $(CoreCLRNativeArtifactsPath)dotnet.d.ts;
+        $(CoreCLRNativeArtifactsPath)package.json;"
         IsNative="true" />
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
                              Include="$(CoreCLRNativeArtifactsPath)src\es6\*.js"
