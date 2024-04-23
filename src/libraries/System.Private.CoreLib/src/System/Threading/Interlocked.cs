@@ -61,7 +61,6 @@ namespace System.Threading
         public static sbyte Exchange(ref sbyte location1, sbyte value) =>
             (sbyte)Exchange(ref Unsafe.As<sbyte, byte>(ref location1), (byte)value);
 
-#if !TARGET_WASM
         /// <summary>Sets a 16-bit unsigned integer to a specified value and returns the original value, as an atomic operation.</summary>
         /// <param name="location1">The variable to set to the specified value.</param>
         /// <param name="value">The value to which the <paramref name="location1"/> parameter is set.</param>
@@ -81,7 +80,7 @@ namespace System.Threading
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe byte Exchange(ref byte location1, byte value)
         {
-#if !MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64)
+#if !MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64 || TARGET_WASM)
             return Exchange(ref location1, value); // Must expand intrinsic
 #else
             // this relies on GC keeping 4B alignment for refs and on subtracting to such alignment being in the same object
@@ -109,7 +108,6 @@ namespace System.Threading
             return (byte)(originalValue >> bitOffset);
 #endif
         }
-#endif // !TARGET_WASM
 
         /// <summary>Sets a 16-bit signed integer to a specified value and returns the original value, as an atomic operation.</summary>
         /// <param name="location1">The variable to set to the specified value.</param>
@@ -250,7 +248,6 @@ namespace System.Threading
         public static short CompareExchange(ref short location1, short value, short comparand) =>
             (short)CompareExchange(ref Unsafe.As<short, ushort>(ref location1), (ushort)value, (ushort)comparand);
 
-#if !TARGET_WASM
         /// <summary>Compares two 8-bit unsigned integers for equality and, if they are equal, replaces the first value.</summary>
         /// <param name="location1">The destination, whose value is compared with <paramref name="comparand"/> and possibly replaced.</param>
         /// <param name="value">The value that replaces the destination value if the comparison results in equality.</param>
@@ -261,7 +258,7 @@ namespace System.Threading
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe byte CompareExchange(ref byte location1, byte value, byte comparand)
         {
-#if !MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64)
+#if !MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64 || TARGET_WASM)
             return CompareExchange(ref location1, value, comparand); // Must expand intrinsic
 #else
             // this relies on GC keeping 4B alignment for refs and on subtracting to such alignment being in the same object
@@ -292,7 +289,6 @@ namespace System.Threading
             return (byte)(originalValue >> bitOffset);
 #endif
         }
-#endif // !TARGET_WASM
 
         /// <summary>Compares two 16-bit signed integers for equality and, if they are equal, replaces the first value.</summary>
         /// <param name="location1">The destination, whose value is compared with <paramref name="comparand"/> and possibly replaced.</param>

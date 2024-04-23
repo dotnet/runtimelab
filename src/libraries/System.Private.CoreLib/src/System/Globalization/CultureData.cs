@@ -821,8 +821,10 @@ namespace System.Globalization
             if (GlobalizationMode.Hybrid && !string.IsNullOrEmpty(culture._sName))
             {
                 culture = JSLoadCultureInfoFromBrowser(culture._sName, culture);
-                culture.JSInitLocaleInfo();
             }
+#if !NATIVEAOT // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2557
+            culture.JSInitLocaleInfo();
+#endif
 #endif
 
             // We need _sWindowsName to be initialized to know if we're using overrides.

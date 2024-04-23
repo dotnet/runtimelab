@@ -20,9 +20,6 @@ namespace System.Threading
     public static partial class Interlocked
     {
         [Intrinsic]
-        public static unsafe byte CompareExchange(ref byte location1, byte value, byte comparand) => CompareExchange(ref location1, value, comparand);
-
-        [Intrinsic]
         public static unsafe int CompareExchange(ref int location1, int value, int comparand) => CompareExchange(ref location1, value, comparand);
 
         [Intrinsic]
@@ -46,12 +43,6 @@ namespace System.Threading
             }
             return RuntimeImports.InterlockedCompareExchange(ref location1, value, comparand);
         }
-
-        [Intrinsic]
-        public static byte Exchange(ref byte location1, byte value) => Exchange(ref location1, value);
-
-        [Intrinsic]
-        public static short Exchange(ref short location1, short value) => Exchange(ref location1, value);
 
         [Intrinsic]
         public static int Exchange(ref int location1, int value) => Exchange(ref location1, value);
