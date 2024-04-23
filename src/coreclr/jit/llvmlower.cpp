@@ -325,9 +325,18 @@ void Llvm::lowerLocal(GenTreeLclVarCommon* node)
         lowerStoreLcl(node->AsLclVarCommon());
     }
 
-    if (node->OperIsLocalStore() && node->TypeIs(TYP_STRUCT) && genActualTypeIsInt(node->gtGetOp1()))
+    if (node->TypeIs(TYP_STRUCT) && node->OperIsLocalStore())
     {
-        node->gtGetOp1()->SetContained();
+        GenTree* value = node->Data();
+        if (genActualTypeIsInt(value))
+        {
+            value->SetContained();
+        }
+        else if (node->OperIs(GT_STORE_LCL_FLD))
+        {
+            // "STORE_LCL_VAR"s already normalized by "lowerStoreLcl".
+            node->AsLclFld()->SetLayout(value->GetLayout(_compiler));
+        }
     }
 
     if (node->OperIsLocalField() || node->OperIs(GT_LCL_ADDR))
