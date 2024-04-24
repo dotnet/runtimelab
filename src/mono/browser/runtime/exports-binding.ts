@@ -1,7 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-import NativeAOT from "consts:nativeAOT";
 import WasmEnableThreads from "consts:wasmEnableThreads";
 
 import { mono_wasm_debugger_log, mono_wasm_add_dbg_command_received, mono_wasm_set_entrypoint_breakpoint, mono_wasm_fire_debugger_agent_message_with_data, mono_wasm_fire_debugger_agent_message_with_data_to_pause } from "./debug";
@@ -115,10 +114,6 @@ export const mono_wasm_imports = [
     mono_wasm_get_first_day_of_week,
     mono_wasm_get_first_week_of_year,
 ];
-
-if (NativeAOT) {
-    mono_wasm_imports.push(mono_wasm_bind_cs_function as any);
-}
 
 const wasmImports: Function[] = [
     ...mono_wasm_imports,
