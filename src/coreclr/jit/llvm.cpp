@@ -110,6 +110,7 @@ Llvm::Llvm(Compiler* compiler)
     , _sdsuMap(compiler->getAllocator(CMK_Codegen))
     , _localsMap(compiler->getAllocator(CMK_Codegen))
     , m_throwHelperBlocksMap(compiler->getAllocator(CMK_Codegen))
+    , m_phiPairs(compiler->getAllocator(CMK_Codegen))
     , m_ehModel(GetExceptionHandlingModel())
     , m_debugVariablesMap(compiler->getAllocator(CMK_Codegen))
 {

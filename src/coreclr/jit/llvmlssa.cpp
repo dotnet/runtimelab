@@ -962,7 +962,7 @@ private:
     {
         JITDUMP("\nIn Lssa::AllocateAndInitializeLocals\n");
 
-        std::vector<unsigned> shadowFrameLocals;
+        jitstd::vector<unsigned> shadowFrameLocals(m_compiler->getAllocator(CMK_LSRA));
         for (unsigned lclNum = 0; lclNum < m_compiler->lvaCount; lclNum++)
         {
             LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
@@ -1018,11 +1018,11 @@ private:
         m_llvm->m_anyAddressExposedOrPinnedShadowLocals |= (varDsc->IsAddressExposed() || varDsc->lvPinned);
     }
 
-    void AssignShadowFrameOffsets(std::vector<unsigned>& shadowFrameLocals)
+    void AssignShadowFrameOffsets(jitstd::vector<unsigned>& shadowFrameLocals)
     {
         if (m_compiler->opts.OptimizationEnabled())
         {
-            std::sort(shadowFrameLocals.begin(), shadowFrameLocals.end(),
+            std::sort(&*shadowFrameLocals.begin(), &*shadowFrameLocals.end(),
                       [compiler = m_compiler](unsigned lhsLclNum, unsigned rhsLclNum)
             {
                 LclVarDsc* lhsVarDsc = compiler->lvaGetDesc(lhsLclNum);
