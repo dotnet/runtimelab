@@ -117,7 +117,7 @@ Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
         else
         {
             StructDesc* structDesc = getStructDesc(structHandle);
-            unsigned fieldCount = structDesc->getFieldCount();
+            size_t fieldCount = structDesc->getFieldCount();
 
             unsigned lastOffset = 0;
             unsigned totalSize = 0;

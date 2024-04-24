@@ -579,7 +579,7 @@ DISubroutineType* Llvm::createDebugTypeForFunctionType(CORINFO_LLVM_FUNCTION_TYP
 
 DIType* Llvm::createFixedArrayDebugType(DIType* elementDebugType, unsigned size)
 {
-    unsigned sizeInBits = elementDebugType->getSizeInBits() * size;
+    uint64_t sizeInBits = elementDebugType->getSizeInBits() * size;
     llvm::DISubrange* boundsRange = m_diBuilder->getOrCreateSubrange(0, size);
     DINodeArray boundsArray = m_diBuilder->getOrCreateArray(boundsRange);
     DIType* debugType =

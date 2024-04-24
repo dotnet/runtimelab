@@ -1442,7 +1442,7 @@ private:
                 {
                     unsigned Slot;
                     unsigned short FieldOffset;
-                    unsigned short FieldEndOffset;
+                    unsigned short StoreSize;
                     IRValue Local;
                     IRValue Value;
                 };
@@ -1522,7 +1522,7 @@ private:
                 unsigned storeSize =
                     lclNode->TypeIs(TYP_STRUCT) ? lclNode->GetLayout(m_compiler)->GetSize() : genTypeSize(lclNode);
                 action.FieldOffset = lclNode->GetLclOffs();
-                action.FieldEndOffset = action.FieldOffset + storeSize;
+                action.StoreSize = static_cast<unsigned short>(storeSize);
             }
             action.Local = GetLocalValue(lclNode->GetLclNum(), lclNode->GetSsaNum());
 
@@ -1674,7 +1674,8 @@ private:
                     if ((action.Kind == AllocationActionKind::StoreField) ||
                         (action.Kind == AllocationActionKind::LoadField))
                     {
-                        PrintFormatted(pBuffer, format, action.FieldOffset, action.FieldEndOffset, action.Slot);
+                        PrintFormatted(
+                            pBuffer, format, action.FieldOffset, action.FieldOffset + action.StoreSize, action.Slot);
                     }
                     else
                     {

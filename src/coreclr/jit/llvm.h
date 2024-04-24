@@ -14,13 +14,13 @@
 #include <new>
 
 // these break std::min/max in LLVM's headers
-#undef min
-#undef max
+#undef min // TODO-LLVM: delete.
+#undef max // TODO-LLVM: delete.
 // this breaks StringMap.h
 #undef NumItems
 
-// Remove these disables where possible and convert to push/pop elsewhere.
-// See https://github.com/dotnet/runtimelab/issues/2554
+// TODO-LLVM-Upstream: figure out how to fix these warnings in LLVM headers.
+#pragma warning(push)
 #pragma warning(disable : 4146)
 #pragma warning(disable : 4242)
 #pragma warning(disable : 4244)
@@ -32,6 +32,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IntrinsicsWebAssembly.h"
+#pragma warning(pop)
 
 #include <unordered_map>
 

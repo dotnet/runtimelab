@@ -4,10 +4,15 @@
 #include "jitpch.h"
 #include "llvm.h"
 
-#pragma warning (disable: 4459)
+// TODO-LLVM-Upstream: figure out how to fix these warnings in LLVM headers.
+#pragma warning(push)
+#pragma warning (disable : 4242)
+#pragma warning (disable : 4244)
+#pragma warning (disable : 4459)
+#pragma warning (disable : 4267)
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/Signals.h"
-#pragma warning (error: 4459)
+#pragma warning(pop)
 
 // Must be kept in sync with the managed version in "CorInfoImpl.Llvm.cs".
 //

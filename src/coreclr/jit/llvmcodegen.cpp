@@ -2292,7 +2292,8 @@ void Llvm::emitNullCheckForAddress(GenTree* addr, Value* addrValue)
     }
     else
     {
-        Value* checkValue = getIntPtrConst(_compiler->compMaxUncheckedOffsetForNullObject + 1, addrValue->getType());
+        target_size_t checkOffset = static_cast<target_size_t>(_compiler->compMaxUncheckedOffsetForNullObject + 1);
+        Value* checkValue = getIntPtrConst(checkOffset, addrValue->getType());
         isNullValue = _builder.CreateICmpULT(addrValue, checkValue);
     }
 
@@ -2356,7 +2357,7 @@ Value* Llvm::consumeInitVal(GenTree* initVal)
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
 {
-    unsigned fieldCount = structDesc->getFieldCount();
+    size_t fieldCount = structDesc->getFieldCount();
     unsigned bytesStored = 0;
 
     for (unsigned i = 0; i < fieldCount; i++)
@@ -2390,8 +2391,6 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
 
             // recurse into struct
             storeObjAtAddress(address, fieldData, getStructDesc(fieldDesc->getClassHandle()));
-
-            bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
         }
         else
         {
@@ -2399,17 +2398,17 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
             {
                 // We can't be sure the address is on the heap, it could be the result of pointer arithmetic on a local var.
                 emitHelperCall(CORINFO_HELP_CHECKED_ASSIGN_REF, {address, fieldData});
-                bytesStored += TARGET_POINTER_SIZE;
             }
             else
             {
                 _builder.CreateStore(fieldData, address);
-                bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
             }
         }
+
+        bytesStored += static_cast<unsigned>(fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE);
     }
 
-    unsigned llvmStructSize = data->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
+    unsigned llvmStructSize = static_cast<unsigned>(data->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE);
     if (structDesc->hasSignificantPadding() && llvmStructSize > bytesStored)
     {
         Value* srcAddress = gepOrAddr(baseAddress, bytesStored);
