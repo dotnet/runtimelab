@@ -13,9 +13,6 @@
 #include "llvmtypes.h"
 #include <new>
 
-// these break std::min/max in LLVM's headers
-#undef min // TODO-LLVM: delete.
-#undef max // TODO-LLVM: delete.
 // this breaks StringMap.h
 #undef NumItems
 
