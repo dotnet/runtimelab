@@ -7,6 +7,7 @@
 
 #include "llvm.h"
 #include "ssarenamestate.h"
+#include "jitstd/algorithm.h"
 
 // TODO-LLVM-LSSA: only enable this in Debug - test using a Checked compiler in CI.
 #define FEATURE_LSSA_ALLOCATION_RESULT
@@ -1022,8 +1023,8 @@ private:
     {
         if (m_compiler->opts.OptimizationEnabled())
         {
-            std::sort(&*shadowFrameLocals.begin(), &*shadowFrameLocals.end(),
-                      [compiler = m_compiler](unsigned lhsLclNum, unsigned rhsLclNum)
+            jitstd::sort(shadowFrameLocals.begin(), shadowFrameLocals.end(),
+                         [compiler = m_compiler](unsigned lhsLclNum, unsigned rhsLclNum)
             {
                 LclVarDsc* lhsVarDsc = compiler->lvaGetDesc(lhsLclNum);
                 LclVarDsc* rhsVarDsc = compiler->lvaGetDesc(rhsLclNum);
