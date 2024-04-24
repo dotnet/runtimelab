@@ -3,7 +3,6 @@
 /* eslint-disable prefer-rest-params */
 
 import NativeAOT from "consts:nativeAOT";
-import { utf16ToString } from "./strings";
 
 import BuildConfiguration from "consts:configuration";
 import WasmEnableThreads from "consts:wasmEnableThreads";
