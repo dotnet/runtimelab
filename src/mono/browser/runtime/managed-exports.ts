@@ -374,21 +374,16 @@ function bind_assembly_exports_mono (assemblyName: string): Promise<void> {
     }
 }
 
-export const exportsByAssembly: Map<string, any> = new Map();
 function bind_assembly_exports_naot (assembly: string) {
-    assert_js_interop();
-    const result = exportsByAssembly.get(assembly);
-    if (!result) {
-        let assemblyWithoutExtension = assembly;
-        if (assemblyWithoutExtension.endsWith(".dll")) {
-            assemblyWithoutExtension = assemblyWithoutExtension.substring(0, assembly.length - 4);
-        }
-        const register = (Module as any)["_" + assemblyWithoutExtension + "__GeneratedInitializer" + "__Register_"];
-        mono_assert(register, `Missing wasm export for JSExport registration function in assembly ${assembly}`);
-        register();
+    loaderHelpers.assert_runtime_running();
+    let assemblyWithoutExtension = assembly;
+    if (assemblyWithoutExtension.endsWith(".dll")) {
+        assemblyWithoutExtension = assemblyWithoutExtension.substring(0, assembly.length - 4);
     }
-
-    return exportsByAssembly.get(assembly) || {};
+    const register = (Module as any)["_" + assemblyWithoutExtension + "__GeneratedInitializer" + "__Register_"];
+    mono_assert(register, `Missing wasm export for JSExport registration function in assembly ${assembly}`);
+    register();
+    return Promise.resolve();
 }
 
 export const bind_assembly_exports: (assemblyName: string) => Promise<void> = NativeAOT ? bind_assembly_exports_naot : bind_assembly_exports_mono;
