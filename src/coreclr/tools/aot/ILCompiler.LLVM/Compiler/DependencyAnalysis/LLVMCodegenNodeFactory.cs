@@ -98,7 +98,7 @@ namespace ILCompiler.DependencyAnalysis
                         return methodNode;
                     }
 
-                    return new RuntimeImportMethodNode(method);
+                    return new RuntimeImportMethodNode(method, NameMangler);
                 }
             }
             if (CompilationModuleGroup.ContainsMethodBody(method, false))

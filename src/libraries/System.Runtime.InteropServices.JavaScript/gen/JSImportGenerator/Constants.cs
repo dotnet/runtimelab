@@ -18,6 +18,7 @@ namespace Microsoft.Interop.JavaScript
         public const string CompilerGeneratedAttributeGlobal = "global::System.Runtime.CompilerServices.CompilerGeneratedAttribute";
         public const string DynamicDependencyAttributeGlobal = "global::System.Diagnostics.CodeAnalysis.DynamicDependencyAttribute";
         public const string UnmanagedCallersOnlyAttributeGlobal = "global::System.Runtime.InteropServices.UnmanagedCallersOnlyAttribute";
+        public const string DynamicallyAccessedMemberTypesGlobal = "global::System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes";
         public const string ThreadStaticGlobal = "global::System.ThreadStaticAttribute";
         public const string TaskGlobal = "global::System.Threading.Tasks.Task";
         public const string SpanGlobal = "global::System.Span";

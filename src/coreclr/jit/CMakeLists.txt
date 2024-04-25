@@ -81,6 +81,7 @@ function(create_standalone_jit)
   if ((TARGETDETAILS_ARCH STREQUAL "x64") OR (TARGETDETAILS_ARCH STREQUAL "arm64") OR ((TARGETDETAILS_ARCH STREQUAL "x86") AND NOT (TARGETDETAILS_OS STREQUAL "unix")))
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE FEATURE_SIMD)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE FEATURE_HW_INTRINSICS)
+    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE FEATURE_MASKED_HW_INTRINSICS)
   endif ()
 
   if ((TARGETDETAILS_ARCH STREQUAL "wasm64") OR (TARGETDETAILS_ARCH STREQUAL "wasm32"))
@@ -103,6 +104,7 @@ endfunction()
 if (CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_ARM64 OR (CLR_CMAKE_TARGET_ARCH_I386 AND NOT CLR_CMAKE_HOST_UNIX))
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_ARCH>>>:FEATURE_SIMD>)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_ARCH>>>:FEATURE_HW_INTRINSICS>)
+  add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_ARCH>>>:FEATURE_MASKED_HW_INTRINSICS>)
 endif ()
 
 # JIT_BUILD disables certain PAL_TRY debugging features
@@ -113,12 +115,12 @@ if(CLR_CMAKE_TARGET_WIN32)
 endif(CLR_CMAKE_TARGET_WIN32)
 
 set( JIT_SOURCES
+  abi.cpp
   alloc.cpp
   assertionprop.cpp
   bitset.cpp
   block.cpp
   buildstring.cpp
-  layout.cpp
   codegencommon.cpp
   codegenlinear.cpp
   compiler.cpp
@@ -147,20 +149,23 @@ set( JIT_SOURCES
   gentree.cpp
   gschecks.cpp
   hashbv.cpp
-  hwintrinsic.cpp
-  hostallocator.cpp
-  ifconversion.cpp
   helperexpansion.cpp
-  indirectcalltransformer.cpp
-  importercalls.cpp
+  hostallocator.cpp
+  hwintrinsic.cpp
+  ifconversion.cpp
   importer.cpp
+  importercalls.cpp
   importervectorization.cpp
+  indirectcalltransformer.cpp
+  inductionvariableopts.cpp
   inline.cpp
   inlinepolicy.cpp
   instr.cpp
   jitconfig.cpp
   jiteh.cpp
   jithashtable.cpp
+  jitmetadata.cpp
+  layout.cpp
   lclmorph.cpp
   lclvars.cpp
   likelyclass.cpp
@@ -175,7 +180,6 @@ set( JIT_SOURCES
   objectalloc.cpp
   optcse.cpp
   optimizebools.cpp
-  switchrecognition.cpp
   optimizer.cpp
   patchpoint.cpp
   phase.cpp
@@ -188,6 +192,7 @@ set( JIT_SOURCES
   regalloc.cpp
   registerargconvention.cpp
   regset.cpp
+  scev.cpp
   scopeinfo.cpp
   sideeffects.cpp
   sm.cpp
@@ -196,6 +201,7 @@ set( JIT_SOURCES
   ssabuilder.cpp
   ssarenamestate.cpp
   stacklevelsetter.cpp
+  switchrecognition.cpp
   treelifeupdater.cpp
   unwind.cpp
   utils.cpp
@@ -275,6 +281,7 @@ set( JIT_ARM64_SOURCES
   codegenarm64.cpp
   codegenarm64test.cpp
   emitarm64.cpp
+  emitarm64sve.cpp
   lowerarmarch.cpp
   lsraarmarch.cpp
   lsraarm64.cpp
@@ -324,6 +331,7 @@ set( JIT_HEADERS
   ../inc/corjitflags.h
   ../inc/corjithost.h
   _typeinfo.h
+  abi.h
   alloc.h
   arraystack.h
   bitset.h
@@ -377,6 +385,8 @@ set( JIT_HEADERS
   jitexpandarray.h
   jitgcinfo.h
   jithashtable.h
+  jitmetadata.h
+  jitmetadatalist.h
   jitpch.h
   jitstd.h
   lir.h
@@ -401,6 +411,7 @@ set( JIT_HEADERS
   registerargconvention.h
   register.h
   regset.h
+  scev.h
   sideeffects.h
   simd.h
   simdashwintrinsic.h
@@ -417,7 +428,6 @@ set( JIT_HEADERS
   targetamd64.h
   targetarm.h
   targetarm64.h
-  tinyarray.h
   treelifeupdater.h
   typelist.h
   unwind.h

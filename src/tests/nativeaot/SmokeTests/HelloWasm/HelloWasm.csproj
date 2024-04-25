@@ -8,6 +8,7 @@
          when the definition is statically linked -->
     <NoWarn>$(NoWarn);IL3049;CS8500</NoWarn>
   </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="HelloWasm.cs" />
     <Compile Include="LSSATests.cs" />
@@ -25,13 +26,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="CpObj.ilproj" />
-    <ProjectReference Include="CkFinite.ilproj" />
-    <ProjectReference Include="ILHelpers.ilproj" />
-    <ProjectReference Include="LSSATests.IL.ilproj" />
+    <ProjectReference Include="HelloWasm.IL.ilproj" />
   </ItemGroup>
 
-  <PropertyGroup Condition="$(TargetOS) != 'wasi'">
+  <PropertyGroup Condition="'$(TargetsBrowser)' == 'true'">
     <EmccExtraArgs>--js-library $(MSBuildProjectDirectory)\dotnet_support.js --pre-js $(MSBuildProjectDirectory)\Microsoft.JSInterop.js --pre-js $(MSBuildProjectDirectory)\shell.js --post-js $(MSBuildProjectDirectory)\HelloWasm.js</EmccExtraArgs>
   </PropertyGroup>
 

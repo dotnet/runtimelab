@@ -1846,7 +1846,7 @@ void Interpreter::JitMethodIfAppropriate(InterpreterMethodInfo* interpMethInfo, 
             else
             {
                 COR_ILMETHOD_DECODER::DecoderStatus status;
-                pDecoder = new COR_ILMETHOD_DECODER(md->GetILHeader(TRUE),
+                pDecoder = new COR_ILMETHOD_DECODER(md->GetILHeader(),
                                                     md->GetMDImport(),
                                                     &status);
             }
@@ -6506,7 +6506,7 @@ void Interpreter::CkFinite()
         break;
     }
 
-    if (!_finite(val))
+    if (!isfinite(val))
         ThrowSysArithException();
 }
 
@@ -6828,6 +6828,16 @@ void Interpreter::SetILInstrCategories()
 }
 #endif // INTERP_ILINSTR_PROFILE
 
+#ifndef TARGET_WINDOWS
+namespace
+{
+    bool isnan(float val)
+    {
+        UINT32 bits = *reinterpret_cast<UINT32*>(&val);
+        return (bits & 0x7FFFFFFFU) > 0x7F800000U;
+    }
+}
+#endif
 
 template<int op>
 void Interpreter::CompareOp()
@@ -7135,7 +7145,7 @@ INT32 Interpreter::CompareOpRes(unsigned op1idx)
                 else if (op == CO_GT_UN)
                 {
                     // Check for NAN's here: if either is a NAN, they're unordered, so this comparison returns true.
-                    if (_isnan(val1) || _isnan(val2)) res = 1;
+                    if (isnan(val1) || isnan(val2)) res = 1;
                     else if (val1 > val2) res = 1;
                 }
                 else if (op == CO_LT)
@@ -7146,7 +7156,7 @@ INT32 Interpreter::CompareOpRes(unsigned op1idx)
                 {
                     _ASSERTE(op == CO_LT_UN);
                     // Check for NAN's here: if either is a NAN, they're unordered, so this comparison returns true.
-                    if (_isnan(val1) || _isnan(val2)) res = 1;
+                    if (isnan(val1) || isnan(val2)) res = 1;
                     else if (val1 < val2) res = 1;
                 }
             }
@@ -7177,7 +7187,7 @@ INT32 Interpreter::CompareOpRes(unsigned op1idx)
                 else if (op == CO_GT_UN)
                 {
                     // Check for NAN's here: if either is a NAN, they're unordered, so this comparison returns true.
-                    if (_isnan(val1) || _isnan(val2)) res = 1;
+                    if (isnan(val1) || isnan(val2)) res = 1;
                     else if (val1 > val2) res = 1;
                 }
                 else if (op == CO_LT)
@@ -7188,7 +7198,7 @@ INT32 Interpreter::CompareOpRes(unsigned op1idx)
                 {
                     _ASSERTE(op == CO_LT_UN);
                     // Check for NAN's here: if either is a NAN, they're unordered, so this comparison returns true.
-                    if (_isnan(val1) || _isnan(val2)) res = 1;
+                    if (isnan(val1) || isnan(val2)) res = 1;
                     else if (val1 < val2) res = 1;
                 }
             }
@@ -9259,19 +9269,6 @@ void Interpreter::DoCallWork(bool virtualCall, void* thisArg, CORINFO_RESOLVED_T
             InterlockedIncrement(&s_totalInterpCallsToIntrinsicsUnhandled);
 #endif // INTERP_TRACING
             break;
-        }
-
-        // Plus some other calls that we're going to treat "like" intrinsics...
-        if (methToCall == CoreLibBinder::GetMethod(METHOD__STUBHELPERS__SET_LAST_ERROR))
-        {
-            // If we're interpreting a method that calls "SetLastError", it's very likely that the call(i) whose
-            // error we're trying to capture was performed with MethodDescCallSite machinery that itself trashes
-            // the last error.  We solve this by saving the last error in a special interpreter-specific field of
-            // "Thread" in that case, and essentially implement SetLastError here, taking that field as the
-            // source for the last error.
-            Thread* thrd = GetThread();
-            thrd->m_dwLastError = thrd->m_dwLastErrorInterp;
-            didIntrinsic = true;
         }
 
         // TODO: The following check for hardware intrinsics is not a production-level

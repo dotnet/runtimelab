@@ -17,7 +17,7 @@ struct VirtualUnwindFrame
 //
 thread_local VirtualUnwindFrame* t_pLastVirtualUnwindFrame = nullptr;
 
-COOP_PINVOKE_HELPER(void, RhpPushVirtualUnwindFrame, (VirtualUnwindFrame* pFrame, void* pUnwindTable, size_t unwindIndex))
+FCIMPL3(void, RhpPushVirtualUnwindFrame, VirtualUnwindFrame* pFrame, void* pUnwindTable, size_t unwindIndex)
 {
     ASSERT(t_pLastVirtualUnwindFrame < pFrame);
     pFrame->Prev = t_pLastVirtualUnwindFrame;
@@ -26,19 +26,21 @@ COOP_PINVOKE_HELPER(void, RhpPushVirtualUnwindFrame, (VirtualUnwindFrame* pFrame
 
     t_pLastVirtualUnwindFrame = pFrame;
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(void, RhpPopVirtualUnwindFrame, ())
+FCIMPL0(void, RhpPopVirtualUnwindFrame)
 {
     ASSERT(t_pLastVirtualUnwindFrame != nullptr);
     t_pLastVirtualUnwindFrame = t_pLastVirtualUnwindFrame->Prev;
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(void*, RhpGetRawLastVirtualUnwindFrameRef, ())
+FCIMPL0(void*, RhpGetRawLastVirtualUnwindFrameRef)
 {
     return &t_pLastVirtualUnwindFrame;
 }
-
+FCIMPLEND
 // We do not use these helpers. TODO-LLVM: exclude them from the WASM build.
-COOP_PINVOKE_HELPER(void*, RhpCallCatchFunclet, (void*, void*, void*, void*)) { abort(); }
-COOP_PINVOKE_HELPER(bool, RhpCallFilterFunclet, (void*, void*, void*)) { abort(); }
-COOP_PINVOKE_HELPER(void, RhpCallFinallyFunclet, (void*, void*)) { abort(); }
+FCIMPL4(void*, RhpCallCatchFunclet, void*, void*, void*, void*) { abort(); } FCIMPLEND
+FCIMPL3(bool, RhpCallFilterFunclet, void*, void*, void*) { abort(); } FCIMPLEND
+FCIMPL2(void, RhpCallFinallyFunclet, void*, void*) { abort(); } FCIMPLEND

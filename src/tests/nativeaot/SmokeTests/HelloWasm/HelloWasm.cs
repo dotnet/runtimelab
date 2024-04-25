@@ -384,6 +384,8 @@ internal unsafe partial class Program
 
         TestCkFinite();
 
+        TestFloatToIntConversions();
+
         TestIntOverflows();
 
 #if !CODEGEN_WASI // TODO-LLVM: stack traces on WASI.
@@ -414,6 +416,8 @@ internal unsafe partial class Program
         TestLclVarAddr(new LlvmStruct { i1 = 1, i2 = 2 });
 
         TestJitUseStruct();
+
+        TestMismatchedStructLocalFieldStore();
 
         TestUnsafe();
 
@@ -468,6 +472,27 @@ internal unsafe partial class Program
         var res = JitUseStructProblem(&structWithStruct, structWithIndex);
 
         EndTest(res.Index == structWithIndex.Index && res.Value == structWithIndex.Value);
+    }
+
+    public struct StructWrapper
+    {
+        public readonly Guid WrappedStruct;
+        public StructWrapper(Guid value) => WrappedStruct = value;
+    }
+
+    private static void TestMismatchedStructLocalFieldStore()
+    {
+        const string GuidValue = "0c733a1e-2a1c-11ce-ade5-00aa0044773d";
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        bool ExposeAndVerify(ref StructWrapper? x)
+        {
+            return x.HasValue && x.Value.WrappedStruct.ToString() == GuidValue;
+        }
+
+        StartTest("TestMismatchedStructLocalFieldStore");
+        StructWrapper? x = new StructWrapper(Guid.Parse(GuidValue));
+        EndTest(ExposeAndVerify(ref x));
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -3032,6 +3057,35 @@ internal unsafe partial class Program
     private static unsafe bool CkFinite64(ulong value)
     {
         return CkFiniteTest.CkFinite64(*(double*)(&value));
+    }
+
+    private static void TestFloatToIntConversions()
+    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static T HideFromOptimizations<T>(T value) => value;
+
+        StartTest("Test float to int conversions");
+        if ((int)HideFromOptimizations(1245.6789d) != 1245)
+        {
+            FailTest("(int)1245.6789d not equal to 1245");
+            return;
+        }
+        if ((int)HideFromOptimizations(double.NaN) != 0)
+        {
+            FailTest("(int)double.NaN not equal to 0");
+            return;
+        }
+        if ((int)HideFromOptimizations(double.PositiveInfinity) != int.MaxValue)
+        {
+            FailTest("(int)double.PositiveInfinity not equal to int.MaxValue");
+            return;
+        }
+        if ((int)HideFromOptimizations(double.NegativeInfinity) != int.MinValue)
+        {
+            FailTest("(int)double.NegativeInfinity not equal to int.MinValue");
+            return;
+        }
+        PassTest();
     }
 
     static void TestIntOverflows()

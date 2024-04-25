@@ -67,7 +67,7 @@ struct gc_alloc_context
 //
 // Allocations
 //
-COOP_PINVOKE_HELPER(Object*, RhpNewFast, (void* pShadowStack, MethodTable* pEEType))
+FCIMPL2(Object*, RhpNewFast, void* pShadowStack, MethodTable* pEEType)
 {
     ASSERT(!pEEType->HasFinalizer());
 
@@ -87,14 +87,16 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFast, (void* pShadowStack, MethodTable* pEETy
 
     return AllocateObject(pShadowStack, pEEType, 0, 0);
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(Object*, RhpNewFinalizable, (void* pShadowStack, MethodTable* pEEType))
+FCIMPL2(Object*, RhpNewFinalizable, void* pShadowStack, MethodTable* pEEType)
 {
     ASSERT(pEEType->HasFinalizer());
     return AllocateObject(pShadowStack, pEEType, GC_ALLOC_FINALIZE, 0);
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(Array*, RhpNewArray, (void* pShadowStack, MethodTable* pArrayEEType, int numElements))
+FCIMPL3(Array*, RhpNewArray, void* pShadowStack, MethodTable* pArrayEEType, int numElements)
 {
     Thread* pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context* acontext = pCurThread->GetAllocContext();
@@ -131,23 +133,26 @@ COOP_PINVOKE_HELPER(Array*, RhpNewArray, (void* pShadowStack, MethodTable* pArra
 
     return (Array*)AllocateObject(pShadowStack, pArrayEEType, 0, numElements);
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(String*, RhNewString, (MethodTable* pArrayEEType, int numElements))
+FCIMPL2(String*, RhNewString, MethodTable* pArrayEEType, int numElements)
 {
     // TODO: Implement. We call RhpNewArray for now since there's a bunch of TODOs in the places that matter anyway.
     void* pShadowStack = RhpGetShadowStackTop();
     return (String*)RhpNewArray(pShadowStack, pArrayEEType, numElements);
 }
+FCIMPLEND
 
 #if defined(FEATURE_64BIT_ALIGNMENT)
 GPTR_DECL(MethodTable, g_pFreeObjectEEType);
 
-COOP_PINVOKE_HELPER(Object*, RhpNewFinalizableAlign8, (void* pShadowStack, MethodTable* pEEType))
+FCIMPL2(Object*, RhpNewFinalizableAlign8, void* pShadowStack, MethodTable* pEEType)
 {
     return AllocateObject(pShadowStack, pEEType, GC_ALLOC_FINALIZE | GC_ALLOC_ALIGN8, 0);
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(Object*, RhpNewFastAlign8, (void* pShadowStack, MethodTable* pEEType))
+FCIMPL2(Object*, RhpNewFastAlign8, void* pShadowStack, MethodTable* pEEType)
 {
     ASSERT(!pEEType->HasFinalizer());
 
@@ -182,8 +187,9 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastAlign8, (void* pShadowStack, MethodTable*
 
     return AllocateObject(pShadowStack, pEEType, GC_ALLOC_ALIGN8, 0);
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(Object*, RhpNewFastMisalign, (void* pShadowStack, MethodTable* pEEType))
+FCIMPL2(Object*, RhpNewFastMisalign, void* pShadowStack, MethodTable* pEEType)
 {
     Thread* pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context* acontext = pCurThread->GetAllocContext();
@@ -215,8 +221,9 @@ COOP_PINVOKE_HELPER(Object*, RhpNewFastMisalign, (void* pShadowStack, MethodTabl
 
     return AllocateObject(pShadowStack, pEEType, GC_ALLOC_ALIGN8 | GC_ALLOC_ALIGN8_BIAS, 0);
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(Array*, RhpNewArrayAlign8, (void* pShadowStack, MethodTable* pArrayEEType, int numElements))
+FCIMPL3(Array*, RhpNewArrayAlign8, void* pShadowStack, MethodTable* pArrayEEType, int numElements)
 {
     Thread* pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context* acontext = pCurThread->GetAllocContext();
@@ -265,4 +272,5 @@ COOP_PINVOKE_HELPER(Array*, RhpNewArrayAlign8, (void* pShadowStack, MethodTable*
 
     return (Array*)AllocateObject(pShadowStack, pArrayEEType, GC_ALLOC_ALIGN8, numElements);
 }
+FCIMPLEND
 #endif // FEATURE_64BIT_ALIGNMENT

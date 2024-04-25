@@ -117,6 +117,7 @@ The .NET Foundation licenses this file to you under the MIT license.
   <PropertyGroup Condition="'$(NativeCodeGen)' == 'llvm'">
     <!-- These LLVM options are public and supported. -->
     <WasmEnableJSBigIntIntegration Condition="'$(WasmEnableJSBigIntIntegration)' == ''">true</WasmEnableJSBigIntIntegration>
+    <WasmEnableNonTrappingFloatToIntConversions Condition="'$(WasmEnableNonTrappingFloatToIntConversions)' == ''">true</WasmEnableNonTrappingFloatToIntConversions>
     <!-- Most browsers support WASM EH, so we enable it by default. This is aligned with the upstream behavior. -->
     <WasmEnableExceptionHandling Condition="'$(WasmEnableExceptionHandling)' == '' and '$(_targetOS)' == 'browser'">true</WasmEnableExceptionHandling>
 
@@ -207,7 +208,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
   <Target Name="ComputeIlcCompileInputs" DependsOnTargets="$(IlcDynamicBuildPropertyDependencies)" BeforeTargets="Publish">
     <ItemGroup>
-      <ManagedBinary Condition="$(BuildingFrameworkLibrary) != 'true'" Include="$(IntermediateOutputPath)$(TargetName)$(TargetExt)" />
+      <ManagedBinary Condition="$(BuildingFrameworkLibrary) != 'true'" Include="@(IntermediateAssembly)" />
       <IlcCompileInput Include="@(ManagedBinary)" />
       <IlcReference Include="@(DefaultFrameworkAssemblies)" />
     </ItemGroup>
@@ -266,7 +267,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Include="@(MibcFile->'--mibc:%(Identity)')" />
       <IlcArg Condition="$(IlcGenerateMetadataLog) == 'true'" Include="--metadatalog:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).metadata.csv" />
       <IlcArg Condition="$(_targetOS) != ''" Include="--targetos:$(_targetOS)" />
-      <IlcArg Condition="$(_targetArchitecture) != ''" Include="--targetarch:$(_targetArchitecture)" />
+      <IlcArg Condition="$(_targetArchitectureWithAbi) != ''" Include="--targetarch:$(_targetArchitectureWithAbi)" />
       <IlcArg Condition="$(IlcMultiModule) == 'true'" Include="--multifile" />
       <IlcArg Condition="$(IlcMultiModule) != 'true' and '$(IlcDehydrate)' != 'false' and '$(ControlFlowGuard)' != 'Guard' and '$(_targetArchitecture)' != 'wasm'" Include="--dehydrate" />
       <IlcArg Condition="$(Optimize) == 'true'" Include="-O" />
@@ -400,12 +401,15 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
 
-    <PropertyGroup Condition="'$(_targetOS)' == 'browser'">
-      <CompileWasmArgs>-c</CompileWasmArgs>
-      <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'">$(CompileWasmArgs) -s DISABLE_EXCEPTION_CATCHING=0</CompileWasmArgs>
-      <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'">$(CompileWasmArgs) -fwasm-exceptions</CompileWasmArgs>
+    <PropertyGroup>
+      <CompileWasmArgs>-c $(WasmOptimizationSetting)</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileWasmArgs) -g3</CompileWasmArgs>
-      <CompileWasmArgs>$(CompileWasmArgs) $(WasmOptimizationSetting)</CompileWasmArgs>
+      <CompileWasmArgs Condition="'$(WasmEnableNonTrappingFloatToIntConversions)' == 'true'">$(CompileWasmArgs) -mnontrapping-fptoint</CompileWasmArgs>
+      <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'">$(CompileWasmArgs) -fwasm-exceptions</CompileWasmArgs>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(_targetOS)' == 'browser'">
+      <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'">$(CompileWasmArgs) -s DISABLE_EXCEPTION_CATCHING=0</CompileWasmArgs>
 
       <ScriptExt Condition="'$(OS)' == 'Windows_NT'">.bat</ScriptExt>
       <WasmCompilerPath>&quot;$(EMSDK)/upstream/emscripten/emcc$(ScriptExt)&quot;</WasmCompilerPath>
@@ -413,9 +417,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     </PropertyGroup>
 
    <PropertyGroup Condition="'$(_targetOS)' == 'wasi'">
-      <CompileWasmArgs>-fvisibility=default -mllvm -combiner-global-alias-analysis=false -mllvm -disable-lsr --sysroot=&quot;$(WASI_SDK_PATH)/share/wasi-sysroot&quot; -target $(IlcLlvmTarget) -c</CompileWasmArgs>
-      <CompileWasmArgs>$(CompileWasmArgs) $(WasmOptimizationSetting)</CompileWasmArgs>
-      <CompileWasmArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileWasmArgs) -g3</CompileWasmArgs>
+      <CompileWasmArgs>$(CompileWasmArgs) -fvisibility=default -mllvm -combiner-global-alias-analysis=false -mllvm -disable-lsr --sysroot=&quot;$(WASI_SDK_PATH)/share/wasi-sysroot&quot; -target $(IlcLlvmTarget)</CompileWasmArgs>
 
       <ExeExt Condition="'$(OS)' == 'Windows_NT'">.exe</ExeExt>
       <!-- using Emscripten's clang++ because of a crash in wasi-sdk's clang++ (https://github.com/WebAssembly/wasi-sdk/issues/326) -->
@@ -473,7 +475,6 @@ The .NET Foundation licenses this file to you under the MIT license.
     <PropertyGroup>
       <_IgnoreLinkerWarnings>false</_IgnoreLinkerWarnings>
       <_IgnoreLinkerWarnings Condition="'$(_IsApplePlatform)' == 'true'">true</_IgnoreLinkerWarnings>
-      <_StripFlag Condition="'$(_IsApplePlatform)' == 'true' and '$(IlcExportUnmanagedEntrypoints)' == 'true'">-x</_StripFlag> <!-- keep only global symbols -->
     </PropertyGroup>
 
     <!-- write linker script for lld (13+) to retain the __modules section -->
@@ -501,7 +502,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <Exec Condition="'$(StripSymbols)' == 'true' and '$(_IsApplePlatform)' == 'true' and '$(NativeLib)' != 'Static'"
       Command="
         dsymutil $(DsymUtilOptions) &quot;$(NativeBinary)&quot; &amp;&amp;
-        strip -no_code_signature_warning $(_StripFlag) &quot;$(NativeBinary)&quot;" />
+        strip -no_code_signature_warning -x &quot;$(NativeBinary)&quot;" />
   </Target>
 
   <!-- NativeAOT-LLVM: separate target to reduce conflicts -->
