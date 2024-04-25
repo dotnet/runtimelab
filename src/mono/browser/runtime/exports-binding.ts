@@ -33,7 +33,6 @@ import {
 } from "./pthreads";
 import { mono_wasm_dump_threads } from "./pthreads/ui-thread";
 import { mono_wasm_schedule_synchronization_context } from "./pthreads/shared";
-import { mono_wasm_bind_cs_function } from "./invoke-cs";
 
 // the JS methods would be visible to EMCC linker and become imports of the WASM module
 
