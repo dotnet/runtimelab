@@ -1,5 +1,5 @@
 parameters:
-  - name: tamplatePath
+  - name: templatePath
     type: string
     default: 'templates'
 
