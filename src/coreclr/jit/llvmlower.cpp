@@ -125,7 +125,7 @@ void Llvm::initializeFunclets()
     }
 
     // Our exception handling only needs a subset of handlers to be true funclets.
-    unsigned funcIdx = 1;
+    unsigned short funcIdx = 1;
     for (unsigned ehIndex = _compiler->compHndBBtabCount - 1; ehIndex != -1; ehIndex--)
     {
         EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
@@ -135,7 +135,7 @@ void Llvm::initializeFunclets()
             ehDsc->ebdFilterFuncIndex = funcIdx++;
             FuncInfoDsc* funcInfo = _compiler->funGetFunc(ehDsc->ebdFilterFuncIndex);
             funcInfo->funKind = FUNC_FILTER;
-            funcInfo->funEHIndex = ehIndex;
+            funcInfo->funEHIndex = static_cast<unsigned short>(ehIndex);
 
             m_anyFilterFunclets = true;
         }
@@ -146,7 +146,7 @@ void Llvm::initializeFunclets()
             ehDsc->ebdFuncIndex = funcIdx++;
             FuncInfoDsc* funcInfo = _compiler->funGetFunc(ehDsc->ebdFuncIndex);
             funcInfo->funKind = FUNC_HANDLER;
-            funcInfo->funEHIndex = ehIndex;
+            funcInfo->funEHIndex = static_cast<unsigned short>(ehIndex);
         }
         // It is up to us to decide what "ebdFuncIndex" should mean for handlers that
         // are not funclets. It is convenient to make it refer to the enclosing funclet.

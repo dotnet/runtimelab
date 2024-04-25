@@ -7,6 +7,7 @@
 
 #include "llvm.h"
 #include "ssarenamestate.h"
+#include "jitstd/algorithm.h"
 
 // TODO-LLVM-LSSA: only enable this in Debug - test using a Checked compiler in CI.
 #define FEATURE_LSSA_ALLOCATION_RESULT
@@ -962,7 +963,7 @@ private:
     {
         JITDUMP("\nIn Lssa::AllocateAndInitializeLocals\n");
 
-        std::vector<unsigned> shadowFrameLocals;
+        jitstd::vector<unsigned> shadowFrameLocals(m_compiler->getAllocator(CMK_LSRA));
         for (unsigned lclNum = 0; lclNum < m_compiler->lvaCount; lclNum++)
         {
             LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
@@ -1018,12 +1019,12 @@ private:
         m_llvm->m_anyAddressExposedOrPinnedShadowLocals |= (varDsc->IsAddressExposed() || varDsc->lvPinned);
     }
 
-    void AssignShadowFrameOffsets(std::vector<unsigned>& shadowFrameLocals)
+    void AssignShadowFrameOffsets(jitstd::vector<unsigned>& shadowFrameLocals)
     {
         if (m_compiler->opts.OptimizationEnabled())
         {
-            std::sort(shadowFrameLocals.begin(), shadowFrameLocals.end(),
-                      [compiler = m_compiler](unsigned lhsLclNum, unsigned rhsLclNum)
+            jitstd::sort(shadowFrameLocals.begin(), shadowFrameLocals.end(),
+                         [compiler = m_compiler](unsigned lhsLclNum, unsigned rhsLclNum)
             {
                 LclVarDsc* lhsVarDsc = compiler->lvaGetDesc(lhsLclNum);
                 LclVarDsc* rhsVarDsc = compiler->lvaGetDesc(rhsLclNum);
@@ -1442,7 +1443,7 @@ private:
                 {
                     unsigned Slot;
                     unsigned short FieldOffset;
-                    unsigned short FieldEndOffset;
+                    unsigned short StoreSize;
                     IRValue Local;
                     IRValue Value;
                 };
@@ -1522,7 +1523,7 @@ private:
                 unsigned storeSize =
                     lclNode->TypeIs(TYP_STRUCT) ? lclNode->GetLayout(m_compiler)->GetSize() : genTypeSize(lclNode);
                 action.FieldOffset = lclNode->GetLclOffs();
-                action.FieldEndOffset = action.FieldOffset + storeSize;
+                action.StoreSize = static_cast<unsigned short>(storeSize);
             }
             action.Local = GetLocalValue(lclNode->GetLclNum(), lclNode->GetSsaNum());
 
@@ -1674,7 +1675,8 @@ private:
                     if ((action.Kind == AllocationActionKind::StoreField) ||
                         (action.Kind == AllocationActionKind::LoadField))
                     {
-                        PrintFormatted(pBuffer, format, action.FieldOffset, action.FieldEndOffset, action.Slot);
+                        PrintFormatted(
+                            pBuffer, format, action.FieldOffset, action.FieldOffset + action.StoreSize, action.Slot);
                     }
                     else
                     {

@@ -9,19 +9,16 @@
 
 StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
 {
-    auto& map = m_context->StructDescMap;
-
-    if (map.find(structHandle) == map.end())
+    StructDesc* structDesc;
+    if (!m_context->StructDescMap.Lookup(structHandle, &structDesc))
     {
         TypeDescriptor structTypeDescriptor;
         GetTypeDescriptor(structHandle, &structTypeDescriptor);
 
         unsigned structSize = structTypeDescriptor.Size;
-        std::vector<CORINFO_FIELD_HANDLE> sparseFields = std::vector<CORINFO_FIELD_HANDLE>(structSize);
-        std::vector<unsigned> sparseFieldSizes = std::vector<unsigned>(structSize);
-
-        for (unsigned i = 0; i < structSize; i++)
-            sparseFields[i] = nullptr;
+        jitstd::vector<CORINFO_FIELD_HANDLE> sparseFields(
+            structSize, NO_FIELD_HANDLE, _compiler->getAllocator(CMK_Codegen));
+        jitstd::vector<unsigned> sparseFieldSizes(structSize, 0, _compiler->getAllocator(CMK_Codegen));
 
         // determine the largest field for unions, and get fields in order of offset
         for (unsigned i = 0; i < structTypeDescriptor.FieldCount; i++)
@@ -65,8 +62,8 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
             }
         }
 
-        FieldDesc*  fields     = new FieldDesc[fieldCount];
-        StructDesc* structDesc = new StructDesc(fieldCount, fields, structTypeDescriptor.HasSignificantPadding);
+        FieldDesc* fields = new FieldDesc[fieldCount];
+        structDesc = new StructDesc(fieldCount, fields, structTypeDescriptor.HasSignificantPadding);
 
         unsigned fieldIx = 0;
         for (unsigned fldOffset = 0; fldOffset < structSize; fldOffset++)
@@ -84,10 +81,10 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
             fieldIx++;
         }
 
-        map.insert({structHandle, structDesc});
+        m_context->StructDescMap.Set(structHandle, structDesc);
     }
 
-    return map.at(structHandle);
+    return structDesc;
 }
 
 Type* Llvm::getLlvmTypeForStruct(ClassLayout* classLayout)
@@ -102,12 +99,9 @@ Type* Llvm::getLlvmTypeForStruct(ClassLayout* classLayout)
 
 Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
 {
-    auto& map = m_context->LlvmStructTypesMap;
-
-    if (map.find(structHandle) == map.end())
+    Type* llvmStructType;
+    if (!m_context->LlvmStructTypesMap.Lookup(structHandle, &llvmStructType))
     {
-        Type* llvmStructType;
-
         // We treat trivial structs like their underlying types for compatibility with the native ABI.
         CorInfoType primitiveType = GetPrimitiveTypeForTrivialWasmStruct(structHandle);
         if (primitiveType != CORINFO_TYPE_UNDEF)
@@ -117,13 +111,13 @@ Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
         else
         {
             StructDesc* structDesc = getStructDesc(structHandle);
-            unsigned fieldCount = structDesc->getFieldCount();
+            size_t fieldCount = structDesc->getFieldCount();
 
             unsigned lastOffset = 0;
             unsigned totalSize = 0;
-            std::vector<Type*> llvmFields = std::vector<Type*>();
-            unsigned prevElementSize = 0;
+            ArrayStack<Type*> llvmFields(_compiler->getAllocator(CMK_Codegen));
 
+            unsigned prevElementSize = 0;
             for (unsigned fieldIx = 0; fieldIx < fieldCount; fieldIx++)
             {
                 FieldDesc* fieldDesc = structDesc->getFieldDesc(fieldIx);
@@ -139,8 +133,8 @@ Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
                 CorInfoType fieldCorType = fieldDesc->getCorType();
 
                 unsigned fieldSize = getElementSize(fieldDesc->getClassHandle(), fieldCorType);
-
-                llvmFields.push_back(getLlvmTypeForCorInfoType(fieldCorType, fieldDesc->getClassHandle()));
+                Type* fieldLlvmType = getLlvmTypeForCorInfoType(fieldCorType, fieldDesc->getClassHandle());
+                llvmFields.Push(fieldLlvmType);
 
                 totalSize += fieldSize;
                 lastOffset = fieldDesc->getFieldOffset();
@@ -154,13 +148,13 @@ Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
                 addPaddingFields(structSize - totalSize, llvmFields);
             }
 
-            llvmStructType = llvm::StructType::get(m_context->Context, llvmFields, /* isPacked */ true);
+            llvmStructType = llvm::StructType::get(m_context->Context, AsRef(llvmFields), /* isPacked */ true);
         }
 
-        map.insert({structHandle, llvmStructType});
+        m_context->LlvmStructTypesMap.Set(structHandle, llvmStructType);
     }
 
-    return map.at(structHandle);
+    return llvmStructType;
 }
 
 Type* Llvm::getLlvmTypeForVarType(var_types type)
@@ -232,17 +226,17 @@ unsigned Llvm::getElementSize(CORINFO_CLASS_HANDLE classHandle, CorInfoType corI
     return genTypeSize(JITtype2varType(corInfoType));
 }
 
-void Llvm::addPaddingFields(unsigned paddingSize, std::vector<Type*>& llvmFields)
+void Llvm::addPaddingFields(unsigned paddingSize, ArrayStack<Type*>& llvmFields)
 {
     unsigned numInts = paddingSize / 4;
     unsigned numBytes = paddingSize - numInts * 4;
     for (unsigned i = 0; i < numInts; i++)
     {
-        llvmFields.push_back(Type::getInt32Ty(m_context->Context));
+        llvmFields.Push(Type::getInt32Ty(m_context->Context));
     }
     for (unsigned i = 0; i < numBytes; i++)
     {
-        llvmFields.push_back(Type::getInt8Ty(m_context->Context));
+        llvmFields.Push(Type::getInt8Ty(m_context->Context));
     }
 }
 

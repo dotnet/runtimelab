@@ -13,14 +13,11 @@
 #include "llvmtypes.h"
 #include <new>
 
-// these break std::min/max in LLVM's headers
-#undef min
-#undef max
 // this breaks StringMap.h
 #undef NumItems
 
-// Remove these disables where possible and convert to push/pop elsewhere.
-// See https://github.com/dotnet/runtimelab/issues/2554
+// TODO-LLVM-Upstream: figure out how to fix these warnings in LLVM headers.
+#pragma warning(push)
 #pragma warning(disable : 4146)
 #pragma warning(disable : 4242)
 #pragma warning(disable : 4244)
@@ -32,8 +29,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IntrinsicsWebAssembly.h"
-
-#include <unordered_map>
+#pragma warning(pop)
 
 using llvm::LLVMContext;
 using llvm::Module;
@@ -110,7 +106,12 @@ struct MallocAllocator
     template <typename T>
     T* allocate(size_t count)
     {
-        return static_cast<T*>(malloc(count * sizeof(T)));
+        void* p = malloc(count * sizeof(T));
+        if (p == nullptr)
+        {
+            NOMEM();
+        }
+        return static_cast<T*>(p);
     }
 
     void deallocate(void* p)
@@ -118,6 +119,18 @@ struct MallocAllocator
         free(p);
     }
 };
+
+template <typename T>
+inline ArrayRef<T> AsRef(ArrayStack<T>& stack)
+{
+    return stack.Empty() ? ArrayRef<T>() : ArrayRef<T>(&stack.BottomRef(0), static_cast<size_t>(stack.Height()));
+}
+
+template <typename T>
+inline ArrayRef<T> AsRef(const jitstd::vector<T>& vec)
+{
+    return vec.empty() ? ArrayRef<T>() : ArrayRef<T>(&vec[0], vec.size());
+}
 
 enum HelperFuncInfoFlags
 {
@@ -225,12 +238,17 @@ class SingleThreadedCompilationContext
 public:
     LLVMContext Context;
     Module Module;
-    std::unordered_map<CORINFO_CLASS_HANDLE, Type*> LlvmStructTypesMap;
-    std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*> StructDescMap;
+    JitHashTable<CORINFO_CLASS_HANDLE, JitPtrKeyFuncs<CORINFO_CLASS_STRUCT_>, Type*, MallocAllocator> LlvmStructTypesMap;
+    JitHashTable<CORINFO_CLASS_HANDLE, JitPtrKeyFuncs<CORINFO_CLASS_STRUCT_>, StructDesc*, MallocAllocator> StructDescMap;
     JitHashTable<CORINFO_LLVM_DEBUG_TYPE_HANDLE, JitSmallPrimitiveKeyFuncs<CORINFO_LLVM_DEBUG_TYPE_HANDLE>, llvm::DIType*, MallocAllocator> DebugTypesMap;
     JitHashTable<llvm::DIFile*, JitPtrKeyFuncs<llvm::DIFile>, llvm::DICompileUnit*, MallocAllocator> DebugCompileUnitsMap;
 
-    SingleThreadedCompilationContext(StringRef name) : Module(name, Context), DebugTypesMap({}), DebugCompileUnitsMap({})
+    SingleThreadedCompilationContext(StringRef name)
+        : Module(name, Context)
+        , LlvmStructTypesMap({})
+        , StructDescMap({})
+        , DebugTypesMap({})
+        , DebugCompileUnitsMap({})
     {
     }
 };
@@ -271,11 +289,11 @@ private:
     JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, Value*> _sdsuMap;
     JitHashTable<SSAName, SSAName, Value*> _localsMap;
     JitHashTable<ThrowHelperKey, ThrowHelperKey, llvm::BasicBlock*> m_throwHelperBlocksMap;
-    std::vector<PhiPair> _phiPairs;
-    std::vector<FunctionInfo> m_functions;
+    jitstd::vector<PhiPair> m_phiPairs;
+    FunctionInfo* m_functions;
 
     CorInfoLlvmEHModel m_ehModel;
-    std::vector<EHRegionInfo> m_EHRegionsInfo;
+    EHRegionInfo* m_EHRegionsInfo;
     Value* m_exceptionThrownAddressValue = nullptr;
 
     Value* m_rootFunctionShadowStackValue = nullptr;
@@ -385,7 +403,7 @@ private:
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
     unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType);
-    void addPaddingFields(unsigned paddingSize, std::vector<Type*>& llvmFields);
+    void addPaddingFields(unsigned paddingSize, ArrayStack<Type*>& llvmFields);
 
     Type* getPtrLlvmType();
     Type* getIntPtrLlvmType();

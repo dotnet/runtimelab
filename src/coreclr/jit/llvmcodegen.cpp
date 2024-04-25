@@ -47,7 +47,7 @@ void Llvm::initializeFunctions()
     }
 
     // First function is always the root.
-    m_functions = std::vector<FunctionInfo>(_compiler->compFuncCount());
+    m_functions = new (_compiler->getAllocator(CMK_Codegen)) FunctionInfo[_compiler->compFuncCount()]();
     m_functions[ROOT_FUNC_IDX] = {rootLlvmFunction};
 
     for (unsigned funcIdx = 1; funcIdx < _compiler->compFuncCount(); funcIdx++)
@@ -360,7 +360,7 @@ void Llvm::generateUnwindBlocks()
     // Generate the unwind blocks used to catch native exceptions during the second pass.
     // We generate these before the rest of the code because throwing calls need a certain
     // amount of pieces filled in (in particular, "catchswitch"es in the Wasm EH model).
-    m_EHRegionsInfo = std::vector<EHRegionInfo>(_compiler->compHndBBtabCount);
+    m_EHRegionsInfo = new (_compiler->getAllocator(CMK_Codegen)) EHRegionInfo[_compiler->compHndBBtabCount]();
 
     struct FunctionData
     {
@@ -385,7 +385,8 @@ void Llvm::generateUnwindBlocks()
 
     // There is no meaningful source location we can attach to the unwind blocks. None of them are "user" code.
     llvm::DILocation* unwindBlocksDebugLoc = getArtificialDebugLocation();
-    std::vector<FunctionData> functionData(_compiler->compFuncCount());
+    jitstd::vector<FunctionData> functionData(
+        _compiler->compFuncCount(), FunctionData{}, _compiler->getAllocator(CMK_Codegen));
 
     // Note the iteration order: outer -> inner.
     for (unsigned ehIndex = _compiler->compHndBBtabCount - 1; ehIndex != -1; ehIndex--)
@@ -766,7 +767,7 @@ void Llvm::fillPhis()
         return predCount;
     };
 
-    for (PhiPair phiPair : _phiPairs)
+    for (PhiPair phiPair : m_phiPairs)
     {
         llvm::PHINode* llvmPhiNode = phiPair.LlvmPhiNode;
         GenTreeLclVar* phiStore = phiPair.StoreNode;
@@ -803,9 +804,9 @@ void Llvm::generateAuxiliaryArtifacts()
 void Llvm::verifyGeneratedCode()
 {
 #ifdef DEBUG
-    for (FunctionInfo& funcInfo : m_functions)
+    for (unsigned funcIdx = 0; funcIdx < _compiler->compFuncCount(); funcIdx++)
     {
-        Function* llvmFunc = funcInfo.LlvmFunction;
+        Function* llvmFunc = m_functions[funcIdx].LlvmFunction;
         if (llvmFunc != nullptr)
         {
             assert(!llvm::verifyFunction(*llvmFunc, &llvm::errs()));
@@ -822,9 +823,9 @@ void Llvm::displayGeneratedCode()
         JITDUMP("LLVM IR for %s after codegen:\n", _compiler->info.compFullName);
         JITDUMP("-------------------------------------------------------------------------------------------------------------------\n\n");
 
-        for (FunctionInfo& funcInfo : m_functions)
+        for (unsigned funcIdx = 0; funcIdx < _compiler->compFuncCount(); funcIdx++)
         {
-            Function* llvmFunc = funcInfo.LlvmFunction;
+            Function* llvmFunc = m_functions[funcIdx].LlvmFunction;
             if (llvmFunc != nullptr)
             {
                 displayValue(llvmFunc);
@@ -1178,7 +1179,7 @@ void Llvm::buildStoreLocalVar(GenTreeLclVar* lclVar)
     {
         if (lclVar->Data()->OperIs(GT_PHI))
         {
-            _phiPairs.push_back({lclVar, llvm::cast<llvm::PHINode>(localValue)});
+            m_phiPairs.push_back({lclVar, llvm::cast<llvm::PHINode>(localValue)});
         }
 
         _localsMap.Set({lclNum, lclVar->GetSsaNum()}, localValue);
@@ -1742,13 +1743,13 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
 
 void Llvm::buildCall(GenTreeCall* call)
 {
-    std::vector<Value*> argVec = std::vector<Value*>();
+    ArrayStack<Value*> argVec(_compiler->getAllocator(CMK_Codegen));
     for (CallArg& arg : call->gtArgs.Args())
     {
         Type* argLlvmType = getLlvmTypeForCorInfoType(getLlvmArgTypeForCallArg(&arg), arg.GetSignatureClassHandle());
         Value* argValue = consumeValue(arg.GetNode(), argLlvmType);
 
-        argVec.push_back(argValue);
+        argVec.Push(argValue);
     }
 
     // We may come back into managed from the unmanaged call so store the shadow stack. Note that for regular unmanaged
@@ -1760,7 +1761,7 @@ void Llvm::buildCall(GenTreeCall* call)
     }
 
     llvm::FunctionCallee llvmFuncCallee = consumeCallTarget(call);
-    llvm::CallBase* callValue = emitCallOrInvoke(llvmFuncCallee, argVec, mayPhysicallyThrow(call));
+    llvm::CallBase* callValue = emitCallOrInvoke(llvmFuncCallee, AsRef(argVec), mayPhysicallyThrow(call));
 
     if (JitConfig.JitGcStress())
     {
@@ -2292,7 +2293,8 @@ void Llvm::emitNullCheckForAddress(GenTree* addr, Value* addrValue)
     }
     else
     {
-        Value* checkValue = getIntPtrConst(_compiler->compMaxUncheckedOffsetForNullObject + 1, addrValue->getType());
+        target_size_t checkOffset = static_cast<target_size_t>(_compiler->compMaxUncheckedOffsetForNullObject + 1);
+        Value* checkValue = getIntPtrConst(checkOffset, addrValue->getType());
         isNullValue = _builder.CreateICmpULT(addrValue, checkValue);
     }
 
@@ -2356,7 +2358,7 @@ Value* Llvm::consumeInitVal(GenTree* initVal)
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
 {
-    unsigned fieldCount = structDesc->getFieldCount();
+    size_t fieldCount = structDesc->getFieldCount();
     unsigned bytesStored = 0;
 
     for (unsigned i = 0; i < fieldCount; i++)
@@ -2390,8 +2392,6 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
 
             // recurse into struct
             storeObjAtAddress(address, fieldData, getStructDesc(fieldDesc->getClassHandle()));
-
-            bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
         }
         else
         {
@@ -2399,17 +2399,17 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
             {
                 // We can't be sure the address is on the heap, it could be the result of pointer arithmetic on a local var.
                 emitHelperCall(CORINFO_HELP_CHECKED_ASSIGN_REF, {address, fieldData});
-                bytesStored += TARGET_POINTER_SIZE;
             }
             else
             {
                 _builder.CreateStore(fieldData, address);
-                bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
             }
         }
+
+        bytesStored += static_cast<unsigned>(fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE);
     }
 
-    unsigned llvmStructSize = data->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
+    unsigned llvmStructSize = static_cast<unsigned>(data->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE);
     if (structDesc->hasSignificantPadding() && llvmStructSize > bytesStored)
     {
         Value* srcAddress = gepOrAddr(baseAddress, bytesStored);
@@ -2551,10 +2551,14 @@ llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*
     if (helperCallHasShadowStackArg(helperFunc))
     {
         Value* shadowStackArg = getShadowStackForCallee(canEmitHelperCallAsShadowTailCall(helperFunc));
-        std::vector<Value*> args = sigArgs.vec();
-        args.insert(args.begin(), shadowStackArg);
+        ArrayStack<Value*> args(_compiler->getAllocator(CMK_Codegen), static_cast<int>(sigArgs.size() + 1));
+        args.Push(shadowStackArg);
+        for (Value* sigArg : sigArgs)
+        {
+            args.Push(sigArg);
+        }
 
-        call = emitCallOrInvoke(helperLlvmFunc, args);
+        call = emitCallOrInvoke(helperLlvmFunc, AsRef(args));
     }
     else
     {
@@ -2637,7 +2641,7 @@ llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Val
 
 FunctionType* Llvm::createFunctionType()
 {
-    std::vector<Type*> argVec(_llvmArgCount);
+    jitstd::vector<Type*> argVec(_llvmArgCount, nullptr, _compiler->getAllocator(CMK_Codegen));
     for (unsigned i = 0; i < _compiler->lvaCount; i++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(i);
@@ -2652,7 +2656,7 @@ FunctionType* Llvm::createFunctionType()
     CorInfoType retType = getLlvmReturnType(sig->retType, sig->retTypeClass);
     Type* retLlvmType = getLlvmTypeForCorInfoType(retType, sig->retTypeClass);
 
-    return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
+    return FunctionType::get(retLlvmType, AsRef(argVec), /* isVarArg */ false);
 }
 
 llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)
@@ -2704,25 +2708,25 @@ FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)
     CorInfoType retType = getLlvmReturnType(pSig->retType, pSig->retTypeClass, &isReturnByRef);
     Type* retLlvmType = getLlvmTypeForCorInfoType(retType, pSig->retTypeClass);
 
-    std::vector<Type*> llvmParamTypes{};
+    ArrayStack<Type*> llvmParamTypes(_compiler->getAllocator(CMK_Codegen));
     if (isManagedCallConv)
     {
-        llvmParamTypes.push_back(getPtrLlvmType()); // The shadow stack.
+        llvmParamTypes.Push(getPtrLlvmType()); // The shadow stack.
     }
 
     if (pSig->hasImplicitThis())
     {
-        llvmParamTypes.push_back(getPtrLlvmType());
+        llvmParamTypes.Push(getPtrLlvmType());
     }
 
     if (isReturnByRef)
     {
-        llvmParamTypes.push_back(getPtrLlvmType());
+        llvmParamTypes.Push(getPtrLlvmType());
     }
 
     if (pSig->hasTypeArg())
     {
-        llvmParamTypes.push_back(getPtrLlvmType());
+        llvmParamTypes.Push(getPtrLlvmType());
     }
 
     CORINFO_ARG_LIST_HANDLE sigArgs = pSig->args;
@@ -2732,34 +2736,34 @@ FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)
         CorInfoType argSigType = strip(m_info->compCompHnd->getArgType(pSig, sigArgs, &argSigClass));
         CorInfoType argType = getLlvmArgTypeForArg(argSigType, argSigClass);
 
-        llvmParamTypes.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
+        llvmParamTypes.Push(getLlvmTypeForCorInfoType(argType, argSigClass));
     }
 
-    return FunctionType::get(retLlvmType, llvmParamTypes, /* isVarArg */ false);
+    return FunctionType::get(retLlvmType, AsRef(llvmParamTypes), /* isVarArg */ false);
 }
 
 FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
 {
     llvm::Type* retLlvmType = getLlvmTypeForCorInfoType(call->gtCorInfoType, call->gtRetClsHnd);
 
-    std::vector<llvm::Type*> argVec = std::vector<llvm::Type*>();
+    ArrayStack<Type*> argVec(_compiler->getAllocator(CMK_Codegen));
     for (CallArg& arg : call->gtArgs.Args())
     {
-        argVec.push_back(getLlvmTypeForCorInfoType(getLlvmArgTypeForCallArg(&arg), arg.GetSignatureClassHandle()));
+        argVec.Push(getLlvmTypeForCorInfoType(getLlvmArgTypeForCallArg(&arg), arg.GetSignatureClassHandle()));
     }
 
-    return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
+    return FunctionType::get(retLlvmType, AsRef(argVec), /* isVarArg */ false);
 }
 
 FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
 {
     const bool isManagedHelper = helperCallHasManagedCallingConvention(helperFunc);
     const HelperFuncInfo& helperInfo = getHelperFuncInfo(helperFunc);
-    std::vector<Type*> argVec = std::vector<Type*>();
 
+    ArrayStack<Type*> argVec(_compiler->getAllocator(CMK_Codegen));
     if (helperCallHasShadowStackArg(helperFunc))
     {
-        argVec.push_back(getPtrLlvmType());
+        argVec.Push(getPtrLlvmType());
     }
 
     size_t sigArgCount = helperInfo.GetSigArgCount();
@@ -2772,7 +2776,7 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
         CorInfoType argType = getLlvmArgTypeForArg(argSigType, argSigClass, &isArgPassedByRef);
         assert(!isArgPassedByRef);
 
-        argVec.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
+        argVec.Push(getLlvmTypeForCorInfoType(argType, argSigClass));
     }
 
     bool isReturnByRef;
@@ -2781,7 +2785,7 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
     assert(!isReturnByRef);
 
     Type* retLlvmType = getLlvmTypeForCorInfoType(retType, sigRetClass);
-    FunctionType* llvmFuncType = FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
+    FunctionType* llvmFuncType = FunctionType::get(retLlvmType, AsRef(argVec), /* isVarArg */ false);
 
     return llvmFuncType;
 }
@@ -2850,6 +2854,7 @@ Function* Llvm::getOrCreateKnownLlvmFunction(
 
 EHRegionInfo& Llvm::getEHRegionInfo(unsigned ehIndex)
 {
+    assert(ehIndex < _compiler->compHndBBtabCount);
     return m_EHRegionsInfo[ehIndex];
 }
 
@@ -3232,7 +3237,6 @@ unsigned Llvm::getLlvmFunctionIndexForProtectedRegion(unsigned tryIndex) const
 
 bool Llvm::isLlvmFunctionReachable(unsigned funcIdx) const
 {
-    assert(m_functions.size() != 0);
     return m_functions[funcIdx].LlvmFunction != nullptr;
 }
 
