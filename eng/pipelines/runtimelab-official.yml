@@ -37,6 +37,7 @@ extends:
           jobTemplate: /eng/pipelines/common/global-build-job.yml
           buildConfig: Release
           platforms:
+          - windows_x64
           - windows_arm64
           - OSX_x64
           - Browser_wasm_win
