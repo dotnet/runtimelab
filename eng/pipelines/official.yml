@@ -34,7 +34,7 @@ pr:
     - PATENTS.TXT
     - THIRD-PARTY-NOTICES.TXT
 variables:
-- template: /eng/pipelines/common/variables.yml@self
+- template: /eng/pipelines/common/variables.yml
   parameters:
     templatePath: 'templates-official'
 
