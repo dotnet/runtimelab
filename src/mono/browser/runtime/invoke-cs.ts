@@ -3,7 +3,6 @@
 /* eslint-disable prefer-rest-params */
 
 import NativeAOT from "consts:nativeAOT";
-import { utf16ToString } from "./strings";
 
 import BuildConfiguration from "consts:configuration";
 import WasmEnableThreads from "consts:wasmEnableThreads";
@@ -48,10 +47,7 @@ export function mono_wasm_bind_cs_function (method: MonoMethod, assemblyName: st
     const mark = startMeasure();
     mono_log_debug(`Binding [JSExport] ${namespaceName}.${shortClassName}:${methodName} from ${assemblyName} assembly`);
     if (NativeAOT) {
-        signatureHash = arguments[2];
-        signature = arguments[3];
-
-        const js_fqn = utf16ToString(arguments[0], arguments[0] + 2 * arguments[1]);
+        const js_fqn = `[${assemblyName}]${namespaceName}.${shortClassName}:${methodName}`;
         const wrapper_name = fixupSymbolName(`${js_fqn}_${signatureHash}`);
         method = (Module as any)["_" + wrapper_name];
         if (!method)
