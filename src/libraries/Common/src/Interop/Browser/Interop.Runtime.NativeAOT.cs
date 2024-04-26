@@ -47,29 +47,5 @@ internal static partial class Interop
             else
                 result = "";
         }
-
-        #region Legacy
-
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal static extern void InvokeJSWithArgsRef(IntPtr jsHandle, in string method, in object?[] parms, out int exceptionalResult, out object result);
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal static extern void GetObjectPropertyRef(IntPtr jsHandle, in string propertyName, out int exceptionalResult, out object result);
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal static extern void SetObjectPropertyRef(IntPtr jsHandle, in string propertyName, in object? value, bool createIfNotExists, bool hasOwnProperty, out int exceptionalResult, out object result);
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal static extern void GetByIndexRef(IntPtr jsHandle, int index, out int exceptionalResult, out object result);
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal static extern void SetByIndexRef(IntPtr jsHandle, int index, in object? value, out int exceptionalResult, out object result);
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal static extern void GetGlobalObjectRef(in string? globalName, out int exceptionalResult, out object result);
-
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal static extern void TypedArrayToArrayRef(IntPtr jsHandle, out int exceptionalResult, out object result);
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal static extern void CreateCSOwnedObjectRef(in string className, in object[] parms, out int exceptionalResult, out object result);
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal static extern void TypedArrayFromRef(int arrayPtr, int begin, int end, int bytesPerElement, int type, out int exceptionalResult, out object result);
-
-        #endregion
     }
 }
