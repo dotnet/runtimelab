@@ -47,6 +47,7 @@ extends:
             timeoutInMinutes: 300
             isOfficialBuild: true
             testGroup: innerloop
+            buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig)
             postBuildSteps:
             - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
               parameters:
