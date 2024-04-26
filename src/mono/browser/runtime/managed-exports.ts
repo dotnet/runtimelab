@@ -390,7 +390,9 @@ function get_method (method_name: string): MonoMethod {
         const fqn = runtimeHelpers.runtime_interop_namespace + "." + runtimeHelpers.runtime_interop_exports_classname + "." + method_name;
         const exportName = `_${fqn.replace(/\./g, "_")}`;
         const exportFunc = (Module as any)[exportName];
-        return exportFunc ?? (() => { throw new Error(`Wasm export ${fqn} not found`); });
+        return exportFunc ?? (() => {
+            throw new Error(`Wasm export ${fqn} not found`);
+        });
     }
 
     // TODO https://github.com/dotnet/runtime/issues/98366
