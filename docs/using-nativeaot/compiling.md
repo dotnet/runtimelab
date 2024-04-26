@@ -46,11 +46,12 @@ from any `PropertyGroup` tags if you have it. Instead, add
 <PropertyGroup>
   <PublishTrimmed>true</PublishTrimmed>
   <SelfContained>true</SelfContained>
-  <MSBuildEnableWorkloadResolver>false</MSBuildEnableWorkloadResolver>
+  <UsingBrowserRuntimeWorkload>false</UsingBrowserRuntimeWorkload>
+  <UsingWasiRuntimeWorkload>false</UsingWasiRuntimeWorkload>
 </PropertyGroup>
 ```
 
-Note that the wasm-tools workload is identified as a dependency even though its not used, and this confuses the toolchain, hence `MSBuildEnableWorkloadResolver=false`.
+Note that the wasm-tools workload is identified as a dependency even though its not used, and this confuses the toolchain, hence `UsingBrowserRuntimeWorkload=false` and `UsingWasiRuntimeWorkload=false`.
 
 ## Compile and publish your app
 

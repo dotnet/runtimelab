@@ -67,7 +67,7 @@ and the following two references to the project file itself:
   <PackageReference Include="runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="8.0.0-dev" />
 </ItemGroup>
 ```
-You should now be able to publish the project for Wasm: `dotnet publish --self-contained -r browser-wasm /p:MSBuildEnableWorkloadResolver=false`. This produces `YourApp.html` and `YourApp.js` files under `bin\<Config>\<TFM>\browser-wasm\native`. The former can be opened in the browser, the latter - run via NodeJS.
+You should now be able to publish the project for Wasm: `dotnet publish --self-contained -r browser-wasm /p:UsingBrowserRuntimeWorkload=false`. This produces `YourApp.html` and `YourApp.js` files under `bin\<Config>\<TFM>\browser-wasm\native`. The former can be opened in the browser, the latter - run via NodeJS.
 
 ## Building
 
