@@ -57,4 +57,4 @@ extends:
               buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig)
     - template: /eng/pipelines/official/stages/publish.yml
       parameters:
-        isOfficialBuild: ${{ variables.isOfficialBuild }}
+        isOfficialBuild: true
