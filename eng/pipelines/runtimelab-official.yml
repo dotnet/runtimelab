@@ -38,7 +38,6 @@ extends:
           buildConfig: Release
           platforms:
           - windows_x64
-          - windows_arm64
           - OSX_x64
           - Browser_wasm_win
           - wasi_wasm_win
