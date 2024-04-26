@@ -45,7 +45,7 @@ extends:
           jobParameters:
             templatePath: 'templates-official'
             timeoutInMinutes: 300
-            isOfficialBuild: ${{ variables.isOfficialBuild }}
+            isOfficialBuild: true
             testGroup: innerloop
             postBuildSteps:
             - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
