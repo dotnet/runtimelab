@@ -7,6 +7,7 @@
   <ItemGroup>
     <EmccExportedFunction Include="_free" />
     <EmccExportedFunction Include="_htons" />
+    <EmccExportedFunction Include="_main" />
     <EmccExportedFunction Include="_malloc" />
     <EmccExportedFunction Include="_memalign" />
     <EmccExportedFunction Include="_memset" />
