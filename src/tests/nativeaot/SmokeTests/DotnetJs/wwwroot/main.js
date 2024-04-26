@@ -36,7 +36,8 @@ if (concat != "AaaBbb") {
 
 let isPromiseResolved = false;
 let promise = new Promise(resolve => setTimeout(() => { console.log("Promise resolved"); isPromiseResolved = true; resolve(); }, 2000));
-const asyncResult = await exports.DotnetJsApp.Program.Interop.Async(promise);
+let asyncResult = await exports.DotnetJsApp.Program.Interop.Async(promise);
+console.log(`Async result: ${asyncResult}`);
 if (!isPromiseResolved) {
     result = 16;
 }
@@ -47,7 +48,8 @@ if (asyncResult != 87) {
 try {
     isPromiseResolved = false;
     promise = new Promise(resolve => setTimeout(() => { console.log("Promise resolved"); isPromiseResolved = true; resolve(); }, 2000));
-    await exports.DotnetJsApp.Program.Interop.Async(promise);
+    asyncResult = await exports.DotnetJsApp.Program.Interop.Async(promise, true);
+    console.log(`Async result: ${asyncResult}`);
     if (!isPromiseResolved) {
         result = 18;
     }
