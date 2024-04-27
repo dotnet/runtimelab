@@ -38,15 +38,12 @@ extends:
           buildConfig: Release
           platforms:
           - windows_x64
-          - OSX_x64
-          - Browser_wasm_win
-          - wasi_wasm_win
           jobParameters:
             templatePath: 'templates-official'
             timeoutInMinutes: 300
             isOfficialBuild: true
             testGroup: innerloop
-            buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig)
+            buildArgs: -s clr+libs+hosts+packs -c $(_BuildConfig)
             postBuildSteps:
             - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
               parameters:
