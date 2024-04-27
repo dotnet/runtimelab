@@ -426,7 +426,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <WasmCompilerPath>&quot;$(EMSDK)/upstream/bin/clang++$(ExeExt)&quot;</WasmCompilerPath>
       <WasmLinkerPath>&quot;$(WASI_SDK_PATH)/bin/clang&quot;</WasmLinkerPath>
       <!--llvm-dwp is not currently part of the WASI SDK. -->
-      <WasmDwarfKInkerPath>&quot;$(EMSDK)/upstream/bin/llvm-dwp$(ExeExt)&quot;</WasmDwarfKInkerPath>
+      <WasmDwarfLinkerPath>&quot;$(EMSDK)/upstream/bin/llvm-dwp$(ExeExt)&quot;</WasmDwarfLinkerPath>
     </PropertyGroup>
 
     <!-- We use a wrapper project to invoke the compilers in parallel. -->
