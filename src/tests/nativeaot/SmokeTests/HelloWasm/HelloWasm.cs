@@ -1,18 +1,20 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
-
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
+using System.Runtime.JitTesting;
 using System.Collections.Generic;
 using System.Collections;
 using System.Reflection;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Specialized;
+using System.Globalization;
+
 using CpObj;
 using CkFinite;
 
@@ -303,6 +305,8 @@ internal unsafe partial class Program
 
         TestNativeCallback();
 
+        LazyDllImportThrows();
+
         TestDirectPInvoke();
 
 #if false // TODO-LLVM: Should throw an EntryPointNotFoundException, but fails in the Wasm runtime (RuntimeError: null function or function signature mismatch)
@@ -312,8 +316,6 @@ internal unsafe partial class Program
         TestStaticAbiCompatibleSignatures();
 
 #if !CODEGEN_WASI // Easier to test with Javascript/Emscripten.
-        // TODO-LLVM: throwing the PNSE is not currently implemented and this will fail fast in Javascript and we cannot catch it.
-        // LazyDllImportThrows();
 
         TestNamedModuleCall();
 
@@ -324,10 +326,6 @@ internal unsafe partial class Program
         TestStaticPInvokeOverloadedInDifferentModules();
 
         TestWasmImportAbiCompatibleSignatures();
-
-#if false // TODO-LLVM: Should throw a PNSE, but not implemented yet.
-        LazyDllImportThrows();
-#endif
 #endif
 
         TestNativeCallsWithMismatchedSignatures();
@@ -386,6 +384,8 @@ internal unsafe partial class Program
 
         TestCkFinite();
 
+        TestFloatToIntConversions();
+
         TestIntOverflows();
 
 #if !CODEGEN_WASI // TODO-LLVM: stack traces on WASI.
@@ -398,6 +398,8 @@ internal unsafe partial class Program
         }
 
         TestPalRandom();
+
+        TestGlobalization();
 
         TestDefaultConstructorOf();
 
@@ -415,6 +417,8 @@ internal unsafe partial class Program
 
         TestJitUseStruct();
 
+        TestMismatchedStructLocalFieldStore();
+
         TestUnsafe();
 
         TestReadByteArray();
@@ -423,9 +427,12 @@ internal unsafe partial class Program
 
         TestGenStructContains();
 
-        // This test should remain last to get other results before stopping the debugger
-        PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
-        System.Diagnostics.Debugger.Break();
+        LSSATests.Run();
+
+        if (OperatingSystem.IsBrowser())
+        {
+            EventLoopTestClass.TestEventLoopIntegration();
+        }
 
         PrintLine("Done");
         return Success ? 100 : -1;
@@ -465,6 +472,27 @@ internal unsafe partial class Program
         var res = JitUseStructProblem(&structWithStruct, structWithIndex);
 
         EndTest(res.Index == structWithIndex.Index && res.Value == structWithIndex.Value);
+    }
+
+    public struct StructWrapper
+    {
+        public readonly Guid WrappedStruct;
+        public StructWrapper(Guid value) => WrappedStruct = value;
+    }
+
+    private static void TestMismatchedStructLocalFieldStore()
+    {
+        const string GuidValue = "0c733a1e-2a1c-11ce-ade5-00aa0044773d";
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        bool ExposeAndVerify(ref StructWrapper? x)
+        {
+            return x.HasValue && x.Value.WrappedStruct.ToString() == GuidValue;
+        }
+
+        StartTest("TestMismatchedStructLocalFieldStore");
+        StructWrapper? x = new StructWrapper(Guid.Parse(GuidValue));
+        EndTest(ExposeAndVerify(ref x));
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -1583,6 +1611,24 @@ internal unsafe partial class Program
         }
     }
 
+    // All "*" imports are implicitly DirectPInvoke so name a module.
+    [DllImport("NonExistentModule", EntryPoint = "NonExistentMethod")]
+    private static extern void LazyMethod([MarshalAs(UnmanagedType.LPStr)] string str);
+
+    private static void LazyDllImportThrows()
+    {
+        StartTest("Lazy DllImport fails");
+        try
+        {
+            LazyMethod("some string");
+            FailTest("Lazy linked DllImport did not throw");
+        }
+        catch (PlatformNotSupportedException)
+        {
+            PassTest();
+        }
+    }
+
     [DllImport("xyz", EntryPoint = "SimpleDirectPInvokeTestFunc")]
     private static extern int SimpleDirectPInvokeTest(int x);
 
@@ -1605,25 +1651,6 @@ internal unsafe partial class Program
     }
 
 #if !CODEGEN_WASI // Easier to test with Javascript/Emscripten
-
-    // All "*" imports are implicitly DirectPInvoke so name a module
-    [DllImport("Foo", EntryPoint = "NonExistantMethod")]
-    private static extern int LazyMethod();
-
-    private static void LazyDllImportThrows()
-    {
-        StartTest("Lazy DllImport fails");
-        try
-        {
-            LazyMethod();
-            FailTest("Lazy linked DllImport did not throw");
-        }
-        catch (PlatformNotSupportedException)
-        {
-            PassTest();
-        }
-    }
-
     private static void TestNamedModuleCall()
     {
         StartTest("Wasm import from named module test");
@@ -1704,20 +1731,6 @@ internal unsafe partial class Program
     {
         StartTest("Static PInvoke of overloaded function in different modules test");
         EndTest(CommonFunctionNameInModule1(12) == 12 && CommonFunctionNameInModule2(34) == 34);
-    }
-
-    [DllImport("StaticModule1", EntryPoint = "StaticIncompatFunctionName")]
-    private static extern int CallAbiIncompatFunctionWithInt(int arg);
-
-    [DllImport("StaticModule2", EntryPoint = "StaticIncompatFunctionName")]
-    private static extern void CallAbiIncompatFunctionWithFloat(float arg);
-
-    // Compilation should produce a warning for CallAbiIncompatFunctionWithInt and CallAbiIncompatFunctionWithFloat.
-    [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "JustForRooting2")]
-    private static void RootFuncDup()
-    {
-        CallAbiIncompatFunctionWithInt(0);
-        CallAbiIncompatFunctionWithFloat(1);
     }
 #endif
 
@@ -2551,27 +2564,41 @@ internal unsafe partial class Program
         static int InterlockedAnd(ref int location, int value) => Interlocked.And(ref location, value);
         static int InterlockedOr(ref int location, int value) => Interlocked.Or(ref location, value);
         static int InterlockedAdd(ref int location, int value) => Interlocked.Add(ref location, value);
-        static int InterlockedExchange(ref int location, int value) => Interlocked.Exchange(ref location, value);
+        static byte InterlockedExchangeByte(ref byte location, byte value) => Interlocked.Exchange(ref location, value);
+        static short InterlockedExchangeInt16(ref short location, short value) => Interlocked.Exchange(ref location, value);
+        static int InterlockedExchangeInt32(ref int location, int value) => Interlocked.Exchange(ref location, value);
         static object InterlockedExchangeObj(ref object location, object value) => Interlocked.Exchange(ref location, value);
-        static int InterlockedCompareExchange(ref int location, int value, int comparand) => Interlocked.CompareExchange(ref location, value, comparand);
+        static byte InterlockedCompareExchangeByte(ref byte location, byte value, byte comparand) => Interlocked.CompareExchange(ref location, value, comparand);
+        static short InterlockedCompareExchangeInt16(ref short location, short value, short comparand) => Interlocked.CompareExchange(ref location, value, comparand);
+        static int InterlockedCompareExchangeInt32(ref int location, int value, int comparand) => Interlocked.CompareExchange(ref location, value, comparand);
         static object InterlockedCompareExchangeObj(ref object location, object value, object comparand) => Interlocked.CompareExchange(ref location, value, comparand);
 
+        // Test statically direct (in the wrapper) calls to the atomics.
         TestInterlockedImpl(
             &InterlockedAnd,
             &InterlockedOr,
             &InterlockedAdd,
-            &InterlockedExchange,
+            &InterlockedExchangeByte,
+            &InterlockedExchangeInt16,
+            &InterlockedExchangeInt32,
             &InterlockedExchangeObj,
-            &InterlockedCompareExchange,
+            &InterlockedCompareExchangeByte,
+            &InterlockedCompareExchangeInt16,
+            &InterlockedCompareExchangeInt32,
             &InterlockedCompareExchangeObj,
             "");
 
+        // Test indirect calls to the atomics.
         TestInterlockedImpl(
             (delegate*<ref int, int, int>)&Interlocked.And,
             (delegate*<ref int, int, int>)&Interlocked.Or,
             (delegate*<ref int, int, int>)&Interlocked.Add,
+            (delegate*<ref byte, byte, byte>)&Interlocked.Exchange,
+            (delegate*<ref short, short, short>)&Interlocked.Exchange,
             (delegate*<ref int, int, int>)&Interlocked.Exchange,
             (delegate*<ref object, object, object>)&Interlocked.Exchange,
+            (delegate*<ref byte, byte, byte, byte>)&Interlocked.CompareExchange,
+            (delegate*<ref short, short, short, short>)&Interlocked.CompareExchange,
             (delegate*<ref int, int, int, int>)&Interlocked.CompareExchange,
             (delegate*<ref object, object, object, object>)&Interlocked.CompareExchange,
             " (indirect)");
@@ -2581,9 +2608,13 @@ internal unsafe partial class Program
         delegate*<ref int, int, int> interlockedAnd,
         delegate*<ref int, int, int> interlockedOr,
         delegate*<ref int, int, int> interlockedAdd,
-        delegate*<ref int, int, int> interlockedExchange,
+        delegate*<ref byte, byte, byte> interlockedExchangeByte,
+        delegate*<ref short, short, short> interlockedExchangeInt16,
+        delegate*<ref int, int, int> interlockedExchangeInt32,
         delegate*<ref object, object, object> interlockedExchangeObj,
-        delegate*<ref int, int, int, int> interlockedCompareExchange,
+        delegate*<ref byte, byte, byte, byte> interlockedCompareExchangeByte,
+        delegate*<ref short, short, short, short> interlockedCompareExchangeInt16,
+        delegate*<ref int, int, int, int> interlockedCompareExchangeInt32,
         delegate*<ref object, object, object, object> interlockedCompareExchangeObj,
         string postfix)
     {
@@ -2696,36 +2727,94 @@ internal unsafe partial class Program
         }
         PassTest();
 
-        StartTest("Test Interlocked.Exchange" + postfix);
+        StartTest("Test Interlocked.Exchange<byte>" + postfix);
         {
-            int initValue = 0;
-            if (interlockedExchange(ref initValue, 1) != 0)
+            byte initValue = 0;
+            if (interlockedExchangeByte(ref initValue, 1) != 0)
             {
-                FailTest("Interlocked.Exchange - old value");
+                FailTest("Interlocked.Exchange<byte> - old value");
                 return;
             }
             if (initValue != 1)
             {
-                FailTest("Interlocked.Exchange - new value");
+                FailTest("Interlocked.Exchange<byte> - new value");
                 return;
             }
             try
             {
-                interlockedExchange(ref *(int*)null, 0);
-                FailTest("Interlocked.Exchange - null location");
+                interlockedExchangeByte(ref *(byte*)null, 0);
+                FailTest("Interlocked.Exchange<byte> - null location");
+                return;
+            }
+            catch (NullReferenceException) { }
+        }
+        PassTest();
+
+        StartTest("Test Interlocked.Exchange<int16>" + postfix);
+        {
+            short initValue = 0;
+            if (interlockedExchangeInt16(ref initValue, 1) != 0)
+            {
+                FailTest("Interlocked.Exchange<int16> - old value");
+                return;
+            }
+            if (initValue != 1)
+            {
+                FailTest("Interlocked.Exchange<int16> - new value");
+                return;
+            }
+            try
+            {
+                interlockedExchangeInt16(ref *(short*)null, 0);
+                FailTest("Interlocked.Exchange<int16> - null location");
                 return;
             }
             catch (NullReferenceException) { }
             try
             {
-                interlockedExchange(ref *(int*)(alignedLongAddress + 1), 0);
-                FailTest("Interlocked.Exchange - unaligned location");
+                interlockedExchangeInt16(ref *(short*)(alignedLongAddress + 1), 0);
+                FailTest("Interlocked.Exchange<int16> - unaligned location");
                 return;
             }
             catch (DataMisalignedException) { }
             if (longLocation != LongLocationValue)
             {
-                FailTest("Interlocked.Exchange - unaligned store observed");
+                FailTest("Interlocked.Exchange<int16> - unaligned store observed");
+                return;
+            }
+        }
+        PassTest();
+
+        StartTest("Test Interlocked.Exchange<int32>" + postfix);
+        {
+            int initValue = 0;
+            if (interlockedExchangeInt32(ref initValue, 1) != 0)
+            {
+                FailTest("Interlocked.Exchange<int32> - old value");
+                return;
+            }
+            if (initValue != 1)
+            {
+                FailTest("Interlocked.Exchange<int32> - new value");
+                return;
+            }
+            try
+            {
+                interlockedExchangeInt32(ref *(int*)null, 0);
+                FailTest("Interlocked.Exchange<int32> - null location");
+                return;
+            }
+            catch (NullReferenceException) { }
+            try
+            {
+                interlockedExchangeInt32(ref *(int*)(alignedLongAddress + 1), 0);
+                FailTest("Interlocked.Exchange<int32> - unaligned location");
+                return;
+            }
+            catch (DataMisalignedException) { }
+            if (longLocation != LongLocationValue)
+            {
+                FailTest("Interlocked.Exchange<int32> - unaligned store observed");
                 return;
             }
         }
@@ -2755,36 +2844,94 @@ internal unsafe partial class Program
         }
         PassTest();
 
-        StartTest("Test Interlocked.CompareExchange" + postfix);
+        StartTest("Test Interlocked.CompareExchange<byte>" + postfix);
         {
-            int initValue = 0;
-            if (interlockedCompareExchange(ref initValue, 1, 0) != 0)
+            byte initValue = 0;
+            if (interlockedCompareExchangeByte(ref initValue, 1, 0) != 0)
             {
-                FailTest("Interlocked.CompareExchange - old value");
+                FailTest("Interlocked.CompareExchange<byte> - old value");
                 return;
             }
             if (initValue != 1)
             {
-                FailTest("Interlocked.CompareExchange - new value");
+                FailTest("Interlocked.CompareExchange<byte> - new value");
                 return;
             }
             try
             {
-                interlockedCompareExchange(ref *(int*)null, 0, 0);
-                FailTest("Interlocked.CompareExchange - null location");
+                interlockedCompareExchangeByte(ref *(byte*)null, 0, 0);
+                FailTest("Interlocked.CompareExchange<byte> - null location");
+                return;
+            }
+            catch (NullReferenceException) { }
+        }
+        PassTest();
+
+        StartTest("Test Interlocked.CompareExchange<int16>" + postfix);
+        {
+            short initValue = 0;
+            if (interlockedCompareExchangeInt16(ref initValue, 1, 0) != 0)
+            {
+                FailTest("Interlocked.CompareExchange<int16> - old value");
+                return;
+            }
+            if (initValue != 1)
+            {
+                FailTest("Interlocked.CompareExchange<int16> - new value");
+                return;
+            }
+            try
+            {
+                interlockedCompareExchangeInt16(ref *(short*)null, 0, 0);
+                FailTest("Interlocked.CompareExchange<int16> - null location");
                 return;
             }
             catch (NullReferenceException) { }
             try
             {
-                interlockedCompareExchange(ref *(int*)(alignedLongAddress + 1), 0, 0);
-                FailTest("Interlocked.CompareExchange - unaligned location");
+                interlockedCompareExchangeInt16(ref *(short*)(alignedLongAddress + 1), 0, 0);
+                FailTest("Interlocked.CompareExchange<int16> - unaligned location");
                 return;
             }
             catch (DataMisalignedException) { }
             if (longLocation != LongLocationValue)
             {
-                FailTest("Interlocked.CompareExchange - unaligned store observed");
+                FailTest("Interlocked.CompareExchange<int16> - unaligned store observed");
+                return;
+            }
+        }
+        PassTest();
+
+        StartTest("Test Interlocked.CompareExchange<int32>" + postfix);
+        {
+            int initValue = 0;
+            if (interlockedCompareExchangeInt32(ref initValue, 1, 0) != 0)
+            {
+                FailTest("Interlocked.CompareExchange<int32> - old value");
+                return;
+            }
+            if (initValue != 1)
+            {
+                FailTest("Interlocked.CompareExchange<int32> - new value");
+                return;
+            }
+            try
+            {
+                interlockedCompareExchangeInt32(ref *(int*)null, 0, 0);
+                FailTest("Interlocked.CompareExchange<int32> - null location");
+                return;
+            }
+            catch (NullReferenceException) { }
+            try
+            {
+                interlockedCompareExchangeInt32(ref *(int*)(alignedLongAddress + 1), 0, 0);
+                FailTest("Interlocked.CompareExchange<int32> - unaligned location");
+                return;
+            }
+            catch (DataMisalignedException) { }
+            if (longLocation != LongLocationValue)
+            {
+                FailTest("Interlocked.CompareExchange<int32> - unaligned store observed");
                 return;
             }
         }
@@ -2910,6 +3057,35 @@ internal unsafe partial class Program
     private static unsafe bool CkFinite64(ulong value)
     {
         return CkFiniteTest.CkFinite64(*(double*)(&value));
+    }
+
+    private static void TestFloatToIntConversions()
+    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static T HideFromOptimizations<T>(T value) => value;
+
+        StartTest("Test float to int conversions");
+        if ((int)HideFromOptimizations(1245.6789d) != 1245)
+        {
+            FailTest("(int)1245.6789d not equal to 1245");
+            return;
+        }
+        if ((int)HideFromOptimizations(double.NaN) != 0)
+        {
+            FailTest("(int)double.NaN not equal to 0");
+            return;
+        }
+        if ((int)HideFromOptimizations(double.PositiveInfinity) != int.MaxValue)
+        {
+            FailTest("(int)double.PositiveInfinity not equal to int.MaxValue");
+            return;
+        }
+        if ((int)HideFromOptimizations(double.NegativeInfinity) != int.MinValue)
+        {
+            FailTest("(int)double.NegativeInfinity not equal to int.MinValue");
+            return;
+        }
+        PassTest();
     }
 
     static void TestIntOverflows()
@@ -3963,6 +4139,40 @@ internal unsafe partial class Program
         EndTest(Guid.NewGuid() != Guid.NewGuid());
     }
 
+    static void TestGlobalization()
+    {
+        StartTest("Test simple globalization");
+
+        CultureInfo jp = CultureInfo.GetCultureInfo("jp");
+        if (jp.CompareInfo.Compare("さようなら", "サヨウナラ", CompareOptions.IgnoreKanaType) != 0)
+        {
+            FailTest("Kana-insensitive comparison failed");
+            return;
+        }
+
+        CultureInfo ru = CultureInfo.GetCultureInfo("ru");
+        if (ru.TextInfo.ToTitleCase("до свидания") != "До Свидания")
+        {
+            FailTest("ToTitleCase(ru) comparison failed");
+            return;
+        }
+
+        TimeZoneInfo tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Moscow");
+        if (tz.BaseUtcOffset != TimeSpan.FromHours(3))
+        {
+            FailTest("Moscow time not UTC+3");
+            return;
+        }
+
+        if (TimeZoneInfo.GetSystemTimeZones().Count == 0)
+        {
+            FailTest("System time zones missing");
+            return;
+        }
+
+        PassTest();
+    }
+
     static void TestDefaultConstructorOf()
     {
         StartTest("Test DefaultConstructorOf");
@@ -4054,11 +4264,69 @@ internal unsafe partial class Program
     unsafe internal delegate bool DelegateToCallFromUnmanaged(char* charPtr);
 }
 
+// Separate class since you can't mix async with unsafe.
+class EventLoopTestClass
+{
+    public static void TestEventLoopIntegration()
+    {
+        Task.Run(async () =>
+        {
+            try
+            {
+                await TestEventLoopIntegrationImpl();
+            }
+            catch (Exception e)
+            {
+                Environment.FailFast($"Unhandled exception: {e}");
+            }
+        });
+    }
+
+    private static async Task TestEventLoopIntegrationImpl()
+    {
+        const int Count = 10;
+
+        int counter = 0;
+        Task head = new Task(() => { });
+        Task tail = head;
+        for (int i = 0; i < Count; i++)
+        {
+            tail = tail.ContinueWith((_) => counter++);
+        }
+
+        head.Start();
+        await tail;
+        EndEventLoopTest(counter == Count, "Event loop integration (thread pool)");
+
+        TimeSpan delay = TimeSpan.FromMilliseconds(25);
+        long startTime = Stopwatch.GetTimestamp();
+        using (PeriodicTimer timer = new PeriodicTimer(delay))
+        {
+            await timer.WaitForNextTickAsync();
+        }
+        TimeSpan elapsed = Stopwatch.GetElapsedTime(startTime);
+        EndEventLoopTest(elapsed >= delay, "Event loop integration (timers)");
+    }
+
+    private static void EndEventLoopTest(bool success, string test)
+    {
+        if (success)
+        {
+            Program.PrintLine($"{test}: ok");
+        }
+        else
+        {
+            // We have already returned the exit code by now, so indicate failure with a fail fast.
+            Environment.FailFast($"{test} failed");
+        }
+    }
+}
+
 namespace JSInterop
 {
     internal static class InternalCalls
     {
-        [DllImport("*", EntryPoint = "corert_wasm_invoke_js_unmarshalled")]
+        [DllImport("js", EntryPoint = "corert_wasm_invoke_js_unmarshalled")]
         private static extern IntPtr InvokeJSUnmarshalledInternal(string js, int length, IntPtr p1, IntPtr p2, IntPtr p3, out string exception);
 
         public static IntPtr InvokeJSUnmarshalled(out string exception, string js, IntPtr p1, IntPtr p2, IntPtr p3)

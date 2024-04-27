@@ -125,7 +125,7 @@ void Llvm::initializeFunclets()
     }
 
     // Our exception handling only needs a subset of handlers to be true funclets.
-    unsigned funcIdx = 1;
+    unsigned short funcIdx = 1;
     for (unsigned ehIndex = _compiler->compHndBBtabCount - 1; ehIndex != -1; ehIndex--)
     {
         EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
@@ -135,7 +135,7 @@ void Llvm::initializeFunclets()
             ehDsc->ebdFilterFuncIndex = funcIdx++;
             FuncInfoDsc* funcInfo = _compiler->funGetFunc(ehDsc->ebdFilterFuncIndex);
             funcInfo->funKind = FUNC_FILTER;
-            funcInfo->funEHIndex = ehIndex;
+            funcInfo->funEHIndex = static_cast<unsigned short>(ehIndex);
 
             m_anyFilterFunclets = true;
         }
@@ -146,7 +146,7 @@ void Llvm::initializeFunclets()
             ehDsc->ebdFuncIndex = funcIdx++;
             FuncInfoDsc* funcInfo = _compiler->funGetFunc(ehDsc->ebdFuncIndex);
             funcInfo->funKind = FUNC_HANDLER;
-            funcInfo->funEHIndex = ehIndex;
+            funcInfo->funEHIndex = static_cast<unsigned short>(ehIndex);
         }
         // It is up to us to decide what "ebdFuncIndex" should mean for handlers that
         // are not funclets. It is convenient to make it refer to the enclosing funclet.
@@ -301,10 +301,6 @@ void Llvm::lowerNode(GenTree* node)
             lowerStoreBlk(node->AsBlk());
             break;
 
-        case GT_STORE_DYN_BLK:
-            lowerStoreDynBlk(node->AsStoreDynBlk());
-            break;
-
         case GT_ARR_LENGTH:
         case GT_MDARR_LENGTH:
         case GT_MDARR_LOWER_BOUND:
@@ -329,9 +325,18 @@ void Llvm::lowerLocal(GenTreeLclVarCommon* node)
         lowerStoreLcl(node->AsLclVarCommon());
     }
 
-    if (node->OperIsLocalStore() && node->TypeIs(TYP_STRUCT) && genActualTypeIsInt(node->gtGetOp1()))
+    if (node->TypeIs(TYP_STRUCT) && node->OperIsLocalStore())
     {
-        node->gtGetOp1()->SetContained();
+        GenTree* value = node->Data();
+        if (genActualTypeIsInt(value))
+        {
+            value->SetContained();
+        }
+        else if (node->OperIs(GT_STORE_LCL_FLD))
+        {
+            // "STORE_LCL_VAR"s already normalized by "lowerStoreLcl".
+            node->AsLclFld()->SetLayout(value->GetLayout(_compiler));
+        }
     }
 
     if (node->OperIsLocalField() || node->OperIs(GT_LCL_ADDR))
@@ -574,12 +579,6 @@ void Llvm::lowerStoreBlk(GenTreeBlk* storeBlkNode)
     lowerIndir(storeBlkNode);
 }
 
-void Llvm::lowerStoreDynBlk(GenTreeStoreDynBlk* storeDynBlkNode)
-{
-    storeDynBlkNode->Data()->SetContained();
-    lowerIndir(storeDynBlkNode);
-}
-
 // TODO-LLVM: Almost a direct copy from lower.cpp which is not included for Wasm.
 //------------------------------------------------------------------------
 // LowerArrLength: lower an array length
@@ -650,6 +649,8 @@ void Llvm::lowerArrLength(GenTreeArrCommon* node)
 
 void Llvm::lowerReturn(GenTreeUnOp* retNode)
 {
+    m_anyReturns = true;
+
     if (retNode->TypeIs(TYP_VOID))
     {
         // Nothing to do.
@@ -935,12 +936,6 @@ void Llvm::lowerCallReturn(GenTreeCall* callNode)
 
 void Llvm::lowerAddressToAddressMode(GenTreeIndir* indir)
 {
-    // Only perform this transformation when optimizing. The analysis below is not cheap.
-    if (_compiler->opts.OptimizationDisabled())
-    {
-        return;
-    }
-
     GenTree* addr = indir->Addr();
     if (!addr->OperIs(GT_ADD))
     {
@@ -1111,7 +1106,7 @@ unsigned Llvm::getObjectSizeBound(GenTree* obj)
     assert(obj->TypeIs(TYP_REF));
 
     // TODO-LLVM-CQ: improve this estimate using "gtGetClassHandle".
-    return TARGET_POINTER_SIZE * 2;
+    return MIN_HEAP_OBJ_SIZE;
 }
 
 //------------------------------------------------------------------------
@@ -1479,7 +1474,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
             }
 
             ClassLayout* unwindFrameLayout = m_compiler->typGetBlkLayout(3 * TARGET_POINTER_SIZE);
-            unsigned unwindFrameLclNum = m_compiler->lvaGrabTempWithImplicitUse(false DEBUGARG("virtual unwind frame"));
+            unsigned unwindFrameLclNum = m_compiler->lvaGrabTemp(false DEBUGARG("virtual unwind frame"));
             m_compiler->lvaSetStruct(unwindFrameLclNum, unwindFrameLayout, /* unsafeValueClsCheck */ false);
             m_compiler->lvaSetVarAddrExposed(unwindFrameLclNum DEBUGARG(AddressExposedReason::ESCAPE_ADDRESS));
             m_compiler->lvaGetDesc(unwindFrameLclNum)->lvHasExplicitInit = true;
@@ -1577,7 +1572,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
 
                 bool allPredsUseTheSameUnwindIndex = true;
                 unsigned selectedUnwindIndexGroup = blockUnwindIndexGroup;
-                for (BasicBlock* predBlock : PredBlockList(allPredEdges))
+                for (BasicBlock* predBlock : PredBlockList<false>(allPredEdges))
                 {
                     unsigned predBlockUnwindIndex = GetUnwindIndexForBlock(predBlock);
                     unsigned predBlockUnwindIndexGroup = GetGroup(predBlock);
@@ -1632,7 +1627,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
                 bool allPredsDefineTheSameUnwindIndex = allPredsUseTheSameUnwindIndex;
                 if (allPredsUseTheSameUnwindIndex)
                 {
-                    for (BasicBlock* predBlock : PredBlockList(allPredEdges))
+                    for (BasicBlock* predBlock : PredBlockList<false>(allPredEdges))
                     {
                         unsigned predBlockUnwindIndexGroup = GetGroup(predBlock);
                         if (predBlockUnwindIndexGroup != UNWIND_INDEX_GROUP_NONE)

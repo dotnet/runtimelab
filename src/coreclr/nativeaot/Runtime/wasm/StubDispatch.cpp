@@ -22,9 +22,9 @@
 //
 
 // Cache miss case, call the runtime to resolve the target and update the cache.
-extern "C" void* RhpCidResolveWasm_Managed(void* pShadowStack, Object* pObject, void* pCell);
+extern "C" PCODE RhpCidResolveWasm_Managed(void* pShadowStack, Object* pObject, void* pCell);
 
-COOP_PINVOKE_HELPER(void*, RhpResolveInterfaceDispatch, (void* pShadowStack, Object* pObject, InterfaceDispatchCell* pCell))
+FCIMPL3(PCODE, RhpResolveInterfaceDispatch, void* pShadowStack, Object* pObject, InterfaceDispatchCell* pCell)
 {
     ASSERT(pObject != nullptr);
     InterfaceDispatchCache* pCache = (InterfaceDispatchCache*)pCell->GetCache();
@@ -43,6 +43,7 @@ COOP_PINVOKE_HELPER(void*, RhpResolveInterfaceDispatch, (void* pShadowStack, Obj
 
     return RhpCidResolveWasm_Managed(pShadowStack, pObject, pCell);
 }
+FCIMPLEND
 
 extern "C" void* RhpInitialInterfaceDispatch(void*, Object*, InterfaceDispatchCell*) __attribute__((alias ("RhpResolveInterfaceDispatch")));
 extern "C" void* RhpInitialDynamicInterfaceDispatch(void*, Object*, InterfaceDispatchCell*) __attribute__((alias ("RhpResolveInterfaceDispatch")));
@@ -55,11 +56,13 @@ extern "C" void* RhpInterfaceDispatch32(void*, Object*, InterfaceDispatchCell*) 
 extern "C" void* RhpInterfaceDispatch64(void*, Object*, InterfaceDispatchCell*) __attribute__((alias ("RhpResolveInterfaceDispatch")));
 
 // Stub dispatch routine for dispatch to a vtable slot.
-COOP_PINVOKE_HELPER(void*, RhpVTableOffsetDispatch, (void* pShadowStack, Object* pObject, InterfaceDispatchCell* pCell))
+FCIMPL3(void*, RhpVTableOffsetDispatch, void* pShadowStack, Object* pObject, InterfaceDispatchCell* pCell)
 {
     uintptr_t pVTable = reinterpret_cast<uintptr_t>(pObject->GetMethodTable());
     uintptr_t offset = pCell->m_pCache;
 
     return *(void**)(pVTable + offset);
 }
+FCIMPLEND
+
 #endif // FEATURE_CACHED_INTERFACE_DISPATCH

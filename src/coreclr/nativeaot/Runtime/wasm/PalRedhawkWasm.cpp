@@ -204,13 +204,8 @@ REDHAWK_PALEXPORT _Ret_maybenull_ _Post_writable_byte_size_(size) void* REDHAWK_
         RhFailFast(); // Not supported per the above.
     }
 
-    // The Unix version of this function allocates memory with 64K alignment, even as nothing needs such large
-    // alignments as of the writing of this comment. We do have to return something at least page-aligned.
-    const unsigned Alignment = 64 * 1024;
-    ASSERT(OS_PAGE_SIZE <= Alignment);
-
     void* pRetVal;
-    if (posix_memalign(&pRetVal, Alignment, size) != 0)
+    if (posix_memalign(&pRetVal, OS_PAGE_SIZE, size) != 0)
     {
         return nullptr;
     }

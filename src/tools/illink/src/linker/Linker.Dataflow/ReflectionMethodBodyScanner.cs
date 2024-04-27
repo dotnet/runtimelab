@@ -263,6 +263,7 @@ namespace Mono.Linker.Dataflow
 				}
 				break;
 
+			case IntrinsicId.Array_CreateInstance:
 			case IntrinsicId.Enum_GetValues:
 			case IntrinsicId.Marshal_SizeOf:
 			case IntrinsicId.Marshal_OffsetOf:
@@ -274,6 +275,8 @@ namespace Mono.Linker.Dataflow
 			case IntrinsicId.Assembly_GetFiles:
 			case IntrinsicId.AssemblyName_get_CodeBase:
 			case IntrinsicId.AssemblyName_get_EscapedCodeBase:
+			case IntrinsicId.RuntimeReflectionExtensions_GetMethodInfo:
+			case IntrinsicId.Delegate_get_Method:
 				// These intrinsics are not interesting for trimmer (they are interesting for AOT and that's why they are recognized)
 				break;
 

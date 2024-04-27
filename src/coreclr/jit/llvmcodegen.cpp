@@ -46,18 +46,8 @@ void Llvm::initializeFunctions()
         BADCODE("Duplicate definition");
     }
 
-    if (_compiler->opts.jitFlags->IsSet(JitFlags::JIT_FLAG_MIN_OPT))
-    {
-        rootLlvmFunction->addFnAttr(llvm::Attribute::NoInline);
-        rootLlvmFunction->addFnAttr(llvm::Attribute::OptimizeNone);
-    }
-    if ((_compiler->info.compFlags & CORINFO_FLG_DONT_INLINE) != 0)
-    {
-        rootLlvmFunction->addFnAttr(llvm::Attribute::NoInline);
-    }
-
     // First function is always the root.
-    m_functions = std::vector<FunctionInfo>(_compiler->compFuncCount());
+    m_functions = new (_compiler->getAllocator(CMK_Codegen)) FunctionInfo[_compiler->compFuncCount()]();
     m_functions[ROOT_FUNC_IDX] = {rootLlvmFunction};
 
     for (unsigned funcIdx = 1; funcIdx < _compiler->compFuncCount(); funcIdx++)
@@ -116,6 +106,82 @@ void Llvm::initializeFunctions()
         }
 
         m_functions[funcIdx] = {llvmFunc};
+    }
+
+    annotateFunctions();
+}
+
+void Llvm::annotateFunctions()
+{
+    auto addDerefAttr = [this](Function* llvmFunc, unsigned argNum, unsigned derefSize, bool mayBeNull = false) {
+        llvm::Attribute derefAttr = mayBeNull
+            ? llvm::Attribute::getWithDereferenceableOrNullBytes(m_context->Context, derefSize)
+            : llvm::Attribute::getWithDereferenceableBytes(m_context->Context, derefSize);
+        llvmFunc->addParamAttr(argNum, derefAttr);
+    };
+
+    for (unsigned funcIdx = 0; funcIdx < _compiler->compFuncCount(); funcIdx++)
+    {
+        Function* llvmFunc = m_functions[funcIdx].LlvmFunction;
+        if (llvmFunc == nullptr)
+        {
+            continue;
+        }
+
+        if (_compiler->opts.jitFlags->IsSet(JitFlags::JIT_FLAG_MIN_OPT))
+        {
+            llvmFunc->addFnAttr(llvm::Attribute::NoInline);
+            llvmFunc->addFnAttr(llvm::Attribute::OptimizeNone);
+        }
+
+        if (funcIdx == ROOT_FUNC_IDX)
+        {
+            if ((_compiler->info.compFlags & CORINFO_FLG_DONT_INLINE) != 0)
+            {
+                llvmFunc->addFnAttr(llvm::Attribute::NoInline);
+            }
+        }
+
+        if (_compiler->opts.OptimizationEnabled())
+        {
+            if (!m_anyReturns || (_compiler->opts.compCodeOpt == Compiler::SMALL_CODE))
+            {
+                assert(!llvmFunc->hasFnAttribute(llvm::Attribute::OptimizeNone));
+                llvmFunc->addFnAttr(llvm::Attribute::OptimizeForSize);
+            }
+
+            // Mark the shadow stack dereferenceable.
+            if ((funcIdx != ROOT_FUNC_IDX) || _compiler->lvaGetDesc(_shadowStackLclNum)->lvIsParam)
+            {
+                unsigned derefSize = getShadowFrameSize(funcIdx);
+                if (derefSize != 0)
+                {
+                    addDerefAttr(llvmFunc, SHADOW_STACK_ARG_INDEX, derefSize);
+                }
+            }
+
+            if (funcIdx == ROOT_FUNC_IDX)
+            {
+                // Mark the return buffer dereferenceable.
+                if (m_info->compRetBuffArg != BAD_VAR_NUM)
+                {
+                    unsigned argNum = _compiler->lvaGetDesc(m_info->compRetBuffArg)->lvLlvmArgNum;
+                    unsigned derefSize = m_info->compCompHnd->getClassSize(m_info->compMethodInfo->args.retTypeClass);
+                    addDerefAttr(llvmFunc, argNum, derefSize, /* mayBeNull */ true);
+                }
+
+                // Mark implicit byrefs dereferenceable.
+                for (unsigned lclNum = 0; lclNum < m_info->compArgsCount; lclNum++)
+                {
+                    if (_compiler->lvaIsImplicitByRefLocal(lclNum))
+                    {
+                        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+                        assert(varDsc->lvIsParam);
+                        addDerefAttr(llvmFunc, varDsc->lvLlvmArgNum, varDsc->GetLayout()->GetSize());
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -294,7 +360,7 @@ void Llvm::generateUnwindBlocks()
     // Generate the unwind blocks used to catch native exceptions during the second pass.
     // We generate these before the rest of the code because throwing calls need a certain
     // amount of pieces filled in (in particular, "catchswitch"es in the Wasm EH model).
-    m_EHRegionsInfo = std::vector<EHRegionInfo>(_compiler->compHndBBtabCount);
+    m_EHRegionsInfo = new (_compiler->getAllocator(CMK_Codegen)) EHRegionInfo[_compiler->compHndBBtabCount]();
 
     struct FunctionData
     {
@@ -319,7 +385,8 @@ void Llvm::generateUnwindBlocks()
 
     // There is no meaningful source location we can attach to the unwind blocks. None of them are "user" code.
     llvm::DILocation* unwindBlocksDebugLoc = getArtificialDebugLocation();
-    std::vector<FunctionData> functionData(_compiler->compFuncCount());
+    jitstd::vector<FunctionData> functionData(
+        _compiler->compFuncCount(), FunctionData{}, _compiler->getAllocator(CMK_Codegen));
 
     // Note the iteration order: outer -> inner.
     for (unsigned ehIndex = _compiler->compHndBBtabCount - 1; ehIndex != -1; ehIndex--)
@@ -571,13 +638,13 @@ void Llvm::generateBlocks()
     // for SSA uses to be available at the point we request them.
     if (_compiler->m_domTree != nullptr)
     {
-        class LlvmCompileDomTreeVisitor : public NewDomTreeVisitor<LlvmCompileDomTreeVisitor>
+        class LlvmCompileDomTreeVisitor : public DomTreeVisitor<LlvmCompileDomTreeVisitor>
         {
             Llvm* m_llvm;
 
         public:
             LlvmCompileDomTreeVisitor(Compiler* compiler, Llvm* llvm)
-                : NewDomTreeVisitor(compiler)
+                : DomTreeVisitor(compiler)
                 , m_llvm(llvm)
             {
             }
@@ -700,7 +767,7 @@ void Llvm::fillPhis()
         return predCount;
     };
 
-    for (PhiPair phiPair : _phiPairs)
+    for (PhiPair phiPair : m_phiPairs)
     {
         llvm::PHINode* llvmPhiNode = phiPair.LlvmPhiNode;
         GenTreeLclVar* phiStore = phiPair.StoreNode;
@@ -737,9 +804,9 @@ void Llvm::generateAuxiliaryArtifacts()
 void Llvm::verifyGeneratedCode()
 {
 #ifdef DEBUG
-    for (FunctionInfo& funcInfo : m_functions)
+    for (unsigned funcIdx = 0; funcIdx < _compiler->compFuncCount(); funcIdx++)
     {
-        Function* llvmFunc = funcInfo.LlvmFunction;
+        Function* llvmFunc = m_functions[funcIdx].LlvmFunction;
         if (llvmFunc != nullptr)
         {
             assert(!llvm::verifyFunction(*llvmFunc, &llvm::errs()));
@@ -756,9 +823,9 @@ void Llvm::displayGeneratedCode()
         JITDUMP("LLVM IR for %s after codegen:\n", _compiler->info.compFullName);
         JITDUMP("-------------------------------------------------------------------------------------------------------------------\n\n");
 
-        for (FunctionInfo& funcInfo : m_functions)
+        for (unsigned funcIdx = 0; funcIdx < _compiler->compFuncCount(); funcIdx++)
         {
-            Function* llvmFunc = funcInfo.LlvmFunction;
+            Function* llvmFunc = m_functions[funcIdx].LlvmFunction;
             if (llvmFunc != nullptr)
             {
                 displayValue(llvmFunc);
@@ -1014,9 +1081,6 @@ void Llvm::visitNode(GenTree* node)
         case GT_STORE_BLK:
             buildStoreBlk(node->AsBlk());
             break;
-        case GT_STORE_DYN_BLK:
-            buildStoreDynBlk(node->AsStoreDynBlk());
-            break;
         case GT_MUL:
         case GT_AND:
         case GT_OR:
@@ -1115,7 +1179,7 @@ void Llvm::buildStoreLocalVar(GenTreeLclVar* lclVar)
     {
         if (lclVar->Data()->OperIs(GT_PHI))
         {
-            _phiPairs.push_back({lclVar, llvm::cast<llvm::PHINode>(localValue)});
+            m_phiPairs.push_back({lclVar, llvm::cast<llvm::PHINode>(localValue)});
         }
 
         _localsMap.Set({lclNum, lclVar->GetSsaNum()}, localValue);
@@ -1520,14 +1584,14 @@ void Llvm::buildCast(GenTreeCast* cast)
                 case TYP_SHORT:
                 case TYP_INT:
                 case TYP_LONG:
-                    castValue = _builder.CreateFPToSI(castFromValue, castToLlvmType);
+                    castValue = _builder.CreateIntrinsic(castToLlvmType, llvm::Intrinsic::fptosi_sat, castFromValue);
                     break;
 
                 case TYP_UBYTE:
                 case TYP_USHORT:
                 case TYP_UINT:
                 case TYP_ULONG:
-                    castValue = _builder.CreateFPToUI(castFromValue, castToLlvmType);
+                    castValue = _builder.CreateIntrinsic(castToLlvmType, llvm::Intrinsic::fptoui_sat, castFromValue);
                     break;
 
                 default:
@@ -1679,24 +1743,30 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
 
 void Llvm::buildCall(GenTreeCall* call)
 {
-    std::vector<Value*> argVec = std::vector<Value*>();
+    ArrayStack<Value*> argVec(_compiler->getAllocator(CMK_Codegen));
     for (CallArg& arg : call->gtArgs.Args())
     {
         Type* argLlvmType = getLlvmTypeForCorInfoType(getLlvmArgTypeForCallArg(&arg), arg.GetSignatureClassHandle());
         Value* argValue = consumeValue(arg.GetNode(), argLlvmType);
 
-        argVec.push_back(argValue);
+        argVec.Push(argValue);
     }
 
     // We may come back into managed from the unmanaged call so store the shadow stack. Note that for regular unmanaged
     // calls, we fold the shadow stack save into the transition helper call, and so don't need to do anything here.
     if (!call->IsUnmanaged() && callRequiresShadowStackSave(call))
     {
+        // TODO-LLVM: set the correct shadow stack for shadow tail calls here.
         emitHelperCall(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP, getShadowStackForCallee());
     }
 
     llvm::FunctionCallee llvmFuncCallee = consumeCallTarget(call);
-    Value* callValue = emitCallOrInvoke(llvmFuncCallee, argVec, mayPhysicallyThrow(call));
+    llvm::CallBase* callValue = emitCallOrInvoke(llvmFuncCallee, AsRef(argVec), mayPhysicallyThrow(call));
+
+    if (JitConfig.JitGcStress())
+    {
+        callValue = emitGcStressCall(call, callValue);
+    }
 
     mapGenTreeToValue(call, callValue);
 }
@@ -1770,72 +1840,6 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     else
     {
         _builder.CreateStore(dataValue, addrValue);
-    }
-}
-
-void Llvm::buildStoreDynBlk(GenTreeStoreDynBlk* blockOp)
-{
-    bool isCopyBlock = blockOp->OperIsCopyBlkOp();
-    GenTree* srcNode = blockOp->Data();
-    GenTree* sizeNode = blockOp->gtDynamicSize;
-
-    // STORE_DYN_BLK accepts native-sized size operands.
-    Type* sizeLlvmType = getIntPtrLlvmType();
-    Value* sizeValue = consumeValue(sizeNode, sizeLlvmType);
-
-    // STORE_DYN_BLK's contract is that it must not throw any exceptions in case the dynamic size is zero and must throw
-    // NRE otherwise.
-    bool dstAddrMayBeNull = (blockOp->gtFlags & GTF_IND_NONFAULTING) == 0;
-    bool srcAddrMayBeNull = isCopyBlock && ((srcNode->gtFlags & GTF_IND_NONFAULTING) == 0);
-    llvm::BasicBlock* checkSizeLlvmBlock = nullptr;
-    llvm::BasicBlock* nullChecksLlvmBlock = nullptr;
-
-    // TODO-LLVM-CQ: we should use CORINFO_HELP_MEMCPY/CORINFO_HELP_MEMSET here if we need to do the size check (it will
-    // result in smaller code). But currently we cannot because ILC maps these to native "memcpy/memset", which do not
-    // have the right semantics (don't throw NREs).
-    if (dstAddrMayBeNull || srcAddrMayBeNull)
-    {
-        //
-        // if (sizeIsZeroValue) goto PASSED; else goto CHECK_DST; (we'll add this below)
-        // CHECK_DST:
-        //   if (dst is null) Throw();
-        // CHECK_SRC:
-        //   if (src is null) Throw();
-        // COPY:
-        //   memcpy/memset
-        // PASSED:
-        //
-        checkSizeLlvmBlock = _builder.GetInsertBlock();
-        nullChecksLlvmBlock = createInlineLlvmBlock();
-        _builder.SetInsertPoint(nullChecksLlvmBlock);
-    }
-
-    // Technically cpblk/initblk specify that they expect their sources/destinations to be aligned, but in
-    // practice these instructions are used like memcpy/memset, which do not require this. So we do not try
-    // to be more precise with the alignment specification here as well.
-    // TODO-LLVM: volatile STORE_DYN_BLK.
-    Value* dstAddrValue = consumeAddressAndEmitNullCheck(blockOp);
-    if (isCopyBlock)
-    {
-        Value* srcAddrValue = consumeAddressAndEmitNullCheck(srcNode->AsIndir());
-        _builder.CreateMemCpy(dstAddrValue, llvm::MaybeAlign(), srcAddrValue, llvm::MaybeAlign(), sizeValue);
-    }
-    else
-    {
-        Value* initValue = consumeInitVal(srcNode);
-        _builder.CreateMemSet(dstAddrValue, initValue, sizeValue, llvm::MaybeAlign());
-    }
-
-    if (checkSizeLlvmBlock != nullptr)
-    {
-        llvm::BasicBlock* skipOperationLlvmBlock = createInlineLlvmBlock();
-        _builder.CreateBr(skipOperationLlvmBlock);
-
-        _builder.SetInsertPoint(checkSizeLlvmBlock);
-        Value* sizeIsZeroValue = _builder.CreateICmpEQ(sizeValue, llvm::ConstantInt::getNullValue(sizeLlvmType));
-        _builder.CreateCondBr(sizeIsZeroValue, skipOperationLlvmBlock, nullChecksLlvmBlock);
-
-        _builder.SetInsertPoint(skipOperationLlvmBlock);
     }
 }
 
@@ -2118,14 +2122,14 @@ void Llvm::buildSwitch(GenTreeUnOp* switchNode)
     unsigned casesCount = switchDesc->bbsCount - 1;
     noway_assert(switchDesc->bbsHasDefault);
 
-    BasicBlock* defaultDestBlock = switchDesc->getDefault();
+    BasicBlock* defaultDestBlock = switchDesc->getDefault()->getDestinationBlock();
     llvm::BasicBlock* defaultDestLlvmBlock = getFirstLlvmBlockForBlock(defaultDestBlock);
     llvm::SwitchInst* switchInst = _builder.CreateSwitch(destValue, defaultDestLlvmBlock, casesCount);
 
     for (unsigned destIndex = 0; destIndex < casesCount; destIndex++)
     {
         llvm::ConstantInt* destIndexValue = llvm::ConstantInt::get(switchLlvmType, destIndex);
-        llvm::BasicBlock* destLlvmBlock = getFirstLlvmBlockForBlock(switchDesc->bbsDstTab[destIndex]);
+        llvm::BasicBlock* destLlvmBlock = getFirstLlvmBlockForBlock(switchDesc->bbsDstTab[destIndex]->getDestinationBlock());
 
         switchInst->addCase(destIndexValue, destLlvmBlock);
     }
@@ -2274,11 +2278,23 @@ void Llvm::emitNullCheckForAddress(GenTree* addr, Value* addrValue)
     Value* isNullValue;
     if (addr->TypeIs(TYP_REF))
     {
-        isNullValue = _builder.CreateIsNull(addrValue);
+        // LLVM's FastISel, used for unoptimized code, is not able to generate sensible WASM unless we do
+        // a comparison using an integer zero here. This workaround saves 5+% on debug code size.
+        // TODO-LLVM: remove once https://github.com/llvm/llvm-project/issues/80053 is fixed.
+        if (_compiler->opts.OptimizationDisabled())
+        {
+            Value* addrValueAsIntPtr = _builder.CreatePtrToInt(addrValue, getIntPtrLlvmType());
+            isNullValue = _builder.CreateICmpEQ(addrValueAsIntPtr, getIntPtrConst(0));
+        }
+        else
+        {
+            isNullValue = _builder.CreateIsNull(addrValue);
+        }
     }
     else
     {
-        Value* checkValue = getIntPtrConst(_compiler->compMaxUncheckedOffsetForNullObject + 1, addrValue->getType());
+        target_size_t checkOffset = static_cast<target_size_t>(_compiler->compMaxUncheckedOffsetForNullObject + 1);
+        Value* checkValue = getIntPtrConst(checkOffset, addrValue->getType());
         isNullValue = _builder.CreateICmpULT(addrValue, checkValue);
     }
 
@@ -2324,7 +2340,7 @@ bool Llvm::isAddressAligned(GenTree* addr, unsigned alignment)
 
     // TODO-LLVM-CQ: support array elements here using ARR_ADDR.
     // TODO-LLVM-CQ: support static fields (using field sequences). Likewise with larger than pointer size fields.
-    return false;
+    return alignment == 1; // Any address is aligned to one byte.
 }
 
 Value* Llvm::consumeInitVal(GenTree* initVal)
@@ -2342,7 +2358,7 @@ Value* Llvm::consumeInitVal(GenTree* initVal)
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
 {
-    unsigned fieldCount = structDesc->getFieldCount();
+    size_t fieldCount = structDesc->getFieldCount();
     unsigned bytesStored = 0;
 
     for (unsigned i = 0; i < fieldCount; i++)
@@ -2376,8 +2392,6 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
 
             // recurse into struct
             storeObjAtAddress(address, fieldData, getStructDesc(fieldDesc->getClassHandle()));
-
-            bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
         }
         else
         {
@@ -2385,17 +2399,17 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
             {
                 // We can't be sure the address is on the heap, it could be the result of pointer arithmetic on a local var.
                 emitHelperCall(CORINFO_HELP_CHECKED_ASSIGN_REF, {address, fieldData});
-                bytesStored += TARGET_POINTER_SIZE;
             }
             else
             {
                 _builder.CreateStore(fieldData, address);
-                bytesStored += fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
             }
         }
+
+        bytesStored += static_cast<unsigned>(fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE);
     }
 
-    unsigned llvmStructSize = data->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE;
+    unsigned llvmStructSize = static_cast<unsigned>(data->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE);
     if (structDesc->hasSignificantPadding() && llvmStructSize > bytesStored)
     {
         Value* srcAddress = gepOrAddr(baseAddress, bytesStored);
@@ -2473,11 +2487,51 @@ Value* Llvm::emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Val
     return _builder.CreateExtractValue(checkedValue, 0);
 }
 
+llvm::CallBase* Llvm::emitGcStressCall(GenTreeCall* call, llvm::CallBase* callValue)
+{
+    assert(JitConfig.JitGcStress());
+    if (callValue->getType()->isAggregateType())
+    {
+        // The helper can only keep alive one GC value.
+        return callValue;
+    }
+
+    if (!isPotentialGcSafePoint(call))
+    {
+        // Not a safe point...
+        return callValue;
+    }
+
+    Value* objValue;
+    if (varTypeIsGC(call) || (call->TypeIs(TYP_STRUCT) && call->GetLayout(_compiler)->HasGCPtr()))
+    {
+        assert(callValue->getType()->isPointerTy());
+        objValue = callValue;
+    }
+    else
+    {
+        objValue = llvm::Constant::getNullValue(getPtrLlvmType());
+    }
+
+    // The 'flag' will be unique to each callsite.
+    Type* llvmType = Type::getInt8Ty(m_context->Context);
+    llvm::GlobalValue::LinkageTypes linkage = llvm::GlobalValue::InternalLinkage;
+    llvm::Constant* initValue = _builder.getInt8(0);
+    Value* flagValue =
+        new llvm::GlobalVariable(m_context->Module, llvmType, false, linkage, initValue, "RhpGcStressOnceFlag");
+
+    llvm::CallBase* helperCallValue = emitHelperCall(CORINFO_HELP_STRESS_GC, {objValue, flagValue});
+    if (objValue == callValue)
+    {
+        callValue = helperCallValue;
+    }
+
+    return callValue;
+}
+
 llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs)
 {
-    assert(!helperCallRequiresShadowStackSave(helperFunc));
-
-    void* handle = getSymbolHandleForHelperFunc(helperFunc);
+    CORINFO_GENERIC_HANDLE handle = getSymbolHandleForHelperFunc(helperFunc);
     const char* symbolName = GetMangledSymbolName(handle);
     AddCodeReloc(handle);
 
@@ -2487,13 +2541,24 @@ llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*
         annotateHelperFunction(helperFunc, llvmFunc);
     });
 
+    if (helperCallRequiresShadowStackSave(helperFunc))
+    {
+        // TODO-LLVM: set the correct shadow stack for shadow tail calls here.
+        emitHelperCall(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP, getShadowStackForCallee());
+    }
+
     llvm::CallBase* call;
     if (helperCallHasShadowStackArg(helperFunc))
     {
-        std::vector<Value*> args = sigArgs.vec();
-        args.insert(args.begin(), getShadowStackForCallee());
+        Value* shadowStackArg = getShadowStackForCallee(canEmitHelperCallAsShadowTailCall(helperFunc));
+        ArrayStack<Value*> args(_compiler->getAllocator(CMK_Codegen), static_cast<int>(sigArgs.size() + 1));
+        args.Push(shadowStackArg);
+        for (Value* sigArg : sigArgs)
+        {
+            args.Push(sigArg);
+        }
 
-        call = emitCallOrInvoke(helperLlvmFunc, args);
+        call = emitCallOrInvoke(helperLlvmFunc, AsRef(args));
     }
     else
     {
@@ -2501,6 +2566,21 @@ llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*
     }
 
     return call;
+}
+
+bool Llvm::canEmitHelperCallAsShadowTailCall(CorInfoHelpFunc helperFunc)
+{
+    assert(helperCallHasShadowStackArg(helperFunc));
+
+    // Right now the check on whether the call is in a "tail" position is simply that it won't return.
+    if (Compiler::s_helperCallProperties.AlwaysThrow(helperFunc) &&
+        canEmitCallAsShadowTailCall(getCurrentProtectedRegionIndex() != EHblkDsc::NO_ENCLOSING_INDEX,
+                                    isCurrentContextInFilter()))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 llvm::CallBase* Llvm::emitCallOrInvoke(llvm::Function* callee, ArrayRef<Value*> args)
@@ -2561,7 +2641,7 @@ llvm::CallBase* Llvm::emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Val
 
 FunctionType* Llvm::createFunctionType()
 {
-    std::vector<Type*> argVec(_llvmArgCount);
+    jitstd::vector<Type*> argVec(_llvmArgCount, nullptr, _compiler->getAllocator(CMK_Codegen));
     for (unsigned i = 0; i < _compiler->lvaCount; i++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(i);
@@ -2576,7 +2656,7 @@ FunctionType* Llvm::createFunctionType()
     CorInfoType retType = getLlvmReturnType(sig->retType, sig->retTypeClass);
     Type* retLlvmType = getLlvmTypeForCorInfoType(retType, sig->retTypeClass);
 
-    return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
+    return FunctionType::get(retLlvmType, AsRef(argVec), /* isVarArg */ false);
 }
 
 llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)
@@ -2628,25 +2708,25 @@ FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)
     CorInfoType retType = getLlvmReturnType(pSig->retType, pSig->retTypeClass, &isReturnByRef);
     Type* retLlvmType = getLlvmTypeForCorInfoType(retType, pSig->retTypeClass);
 
-    std::vector<Type*> llvmParamTypes{};
+    ArrayStack<Type*> llvmParamTypes(_compiler->getAllocator(CMK_Codegen));
     if (isManagedCallConv)
     {
-        llvmParamTypes.push_back(getPtrLlvmType()); // The shadow stack.
+        llvmParamTypes.Push(getPtrLlvmType()); // The shadow stack.
     }
 
     if (pSig->hasImplicitThis())
     {
-        llvmParamTypes.push_back(getPtrLlvmType());
+        llvmParamTypes.Push(getPtrLlvmType());
     }
 
     if (isReturnByRef)
     {
-        llvmParamTypes.push_back(getPtrLlvmType());
+        llvmParamTypes.Push(getPtrLlvmType());
     }
 
     if (pSig->hasTypeArg())
     {
-        llvmParamTypes.push_back(getPtrLlvmType());
+        llvmParamTypes.Push(getPtrLlvmType());
     }
 
     CORINFO_ARG_LIST_HANDLE sigArgs = pSig->args;
@@ -2656,34 +2736,34 @@ FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)
         CorInfoType argSigType = strip(m_info->compCompHnd->getArgType(pSig, sigArgs, &argSigClass));
         CorInfoType argType = getLlvmArgTypeForArg(argSigType, argSigClass);
 
-        llvmParamTypes.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
+        llvmParamTypes.Push(getLlvmTypeForCorInfoType(argType, argSigClass));
     }
 
-    return FunctionType::get(retLlvmType, llvmParamTypes, /* isVarArg */ false);
+    return FunctionType::get(retLlvmType, AsRef(llvmParamTypes), /* isVarArg */ false);
 }
 
 FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
 {
     llvm::Type* retLlvmType = getLlvmTypeForCorInfoType(call->gtCorInfoType, call->gtRetClsHnd);
 
-    std::vector<llvm::Type*> argVec = std::vector<llvm::Type*>();
+    ArrayStack<Type*> argVec(_compiler->getAllocator(CMK_Codegen));
     for (CallArg& arg : call->gtArgs.Args())
     {
-        argVec.push_back(getLlvmTypeForCorInfoType(getLlvmArgTypeForCallArg(&arg), arg.GetSignatureClassHandle()));
+        argVec.Push(getLlvmTypeForCorInfoType(getLlvmArgTypeForCallArg(&arg), arg.GetSignatureClassHandle()));
     }
 
-    return FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
+    return FunctionType::get(retLlvmType, AsRef(argVec), /* isVarArg */ false);
 }
 
 FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
 {
     const bool isManagedHelper = helperCallHasManagedCallingConvention(helperFunc);
     const HelperFuncInfo& helperInfo = getHelperFuncInfo(helperFunc);
-    std::vector<Type*> argVec = std::vector<Type*>();
 
+    ArrayStack<Type*> argVec(_compiler->getAllocator(CMK_Codegen));
     if (helperCallHasShadowStackArg(helperFunc))
     {
-        argVec.push_back(getPtrLlvmType());
+        argVec.Push(getPtrLlvmType());
     }
 
     size_t sigArgCount = helperInfo.GetSigArgCount();
@@ -2696,7 +2776,7 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
         CorInfoType argType = getLlvmArgTypeForArg(argSigType, argSigClass, &isArgPassedByRef);
         assert(!isArgPassedByRef);
 
-        argVec.push_back(getLlvmTypeForCorInfoType(argType, argSigClass));
+        argVec.Push(getLlvmTypeForCorInfoType(argType, argSigClass));
     }
 
     bool isReturnByRef;
@@ -2705,7 +2785,7 @@ FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
     assert(!isReturnByRef);
 
     Type* retLlvmType = getLlvmTypeForCorInfoType(retType, sigRetClass);
-    FunctionType* llvmFuncType = FunctionType::get(retLlvmType, argVec, /* isVarArg */ false);
+    FunctionType* llvmFuncType = FunctionType::get(retLlvmType, AsRef(argVec), /* isVarArg */ false);
 
     return llvmFuncType;
 }
@@ -2738,9 +2818,23 @@ void Llvm::annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc
             llvmFunc->addRetAttr(llvm::Attribute::NonNull);
         }
     }
+
     if (properties.IsAllocator(helperFunc))
     {
-        llvmFunc->addRetAttr(llvm::Attribute::NoAlias);
+        switch (helperFunc)
+        {
+            // TODO-LLVM-Upstream: figure out how to avoid hardcoding the knowledge of which helpers can run finalizers.
+            // E. g.: remove "has side effects" from "getNewHelper" and simply have this be part of the Jit/EE contract.
+            // Or have it be part of some new "get helper properties" API.
+            case CORINFO_HELP_NEWFAST:
+            case CORINFO_HELP_NEWSFAST_FINALIZE:
+            case CORINFO_HELP_NEWSFAST_ALIGN8_FINALIZE:
+                break;
+
+            default:
+                llvmFunc->addRetAttr(llvm::Attribute::NoAlias);
+                break;
+        }
     }
 }
 
@@ -2760,6 +2854,7 @@ Function* Llvm::getOrCreateKnownLlvmFunction(
 
 EHRegionInfo& Llvm::getEHRegionInfo(unsigned ehIndex)
 {
+    assert(ehIndex < _compiler->compHndBBtabCount);
     return m_EHRegionsInfo[ehIndex];
 }
 
@@ -2871,6 +2966,12 @@ llvm::CatchPadInst* Llvm::getCatchPadForHandler(unsigned hndIndex)
 
     // We need the second block since the first contains the catchswitch.
     llvm::BasicBlock* catchSwitchLlvmBlock = getEHRegionInfo(hndIndex).UnwindBlock;
+    if (catchSwitchLlvmBlock == nullptr)
+    {
+        assert(!isReachable(_compiler->ehGetDsc(hndIndex)->ExFlowBlock()));
+        return nullptr;
+    }
+
     llvm::BasicBlock* catchPadLlvmBlock = catchSwitchLlvmBlock->getNextNode();
     llvm::CatchPadInst* catchPadInst = llvm::cast<llvm::CatchPadInst>(catchPadLlvmBlock->getFirstNonPHI());
     return catchPadInst;
@@ -2985,19 +3086,19 @@ Value* Llvm::getShadowStack()
     }
 
     // Note that funclets have the shadow stack arg in the 0th position.
-    return getCurrentLlvmFunction()->getArg(0);
+    return getCurrentLlvmFunction()->getArg(SHADOW_STACK_ARG_INDEX);
 }
 
 // Shadow stack moved up to avoid overwriting anything on the stack in the compiling method
-Value* Llvm::getShadowStackForCallee()
+Value* Llvm::getShadowStackForCallee(bool isTailCall)
 {
-    unsigned shadowFrameSize = getShadowFrameSize(getCurrentLlvmFunctionIndex());
-    return gepOrAddrInBounds(getShadowStack(), shadowFrameSize);
+    unsigned calleeShadowStackOffset = getCalleeShadowStackOffset(getCurrentLlvmFunctionIndex(), isTailCall);
+    return gepOrAddrInBounds(getShadowStack(), calleeShadowStackOffset);
 }
 
 Value* Llvm::getOriginalShadowStack()
 {
-    if (_compiler->funGetFunc(getCurrentLlvmFunctionIndex())->funKind == FUNC_FILTER)
+    if (isCurrentContextInFilter())
     {
         // The original shadow stack pointer is the second filter parameter.
         return getCurrentLlvmFunction()->getArg(1);
@@ -3010,11 +3111,7 @@ void Llvm::setCurrentEmitContextForBlock(BasicBlock* block)
 {
     unsigned funcIdx = getLlvmFunctionIndexForBlock(block);
     unsigned tryIndex = block->hasTryIndex() ? block->getTryIndex() : EHblkDsc::NO_ENCLOSING_INDEX;
-    // There is only one EH table index for both filters and handlers, so disambiguating them would require adding
-    // an additional bit of information to the emit context. Currently we don't need that and can treat filter code
-    // as not nested in any handler.
-    unsigned hndIndex = (block->hasHndIndex() && !isBlockInFilter(block)) ? block->getHndIndex()
-                                                                          : EHblkDsc::NO_ENCLOSING_INDEX;
+    unsigned hndIndex = block->hasHndIndex() ? block->getHndIndex() : EHblkDsc::NO_ENCLOSING_INDEX;
     LlvmBlockRange* llvmBlocks = getLlvmBlocksForBlock(block);
 
     setCurrentEmitContext(funcIdx, tryIndex, hndIndex, llvmBlocks);
@@ -3083,6 +3180,11 @@ LlvmBlockRange* Llvm::getCurrentLlvmBlocks() const
     return m_currentLlvmBlocks;
 }
 
+bool Llvm::isCurrentContextInFilter() const
+{
+    return _compiler->funGetFunc(getCurrentLlvmFunctionIndex())->funKind == FUNC_FILTER;
+}
+
 Function* Llvm::getRootLlvmFunction()
 {
     return getLlvmFunctionForIndex(ROOT_FUNC_IDX);
@@ -3135,7 +3237,6 @@ unsigned Llvm::getLlvmFunctionIndexForProtectedRegion(unsigned tryIndex) const
 
 bool Llvm::isLlvmFunctionReachable(unsigned funcIdx) const
 {
-    assert(m_functions.size() != 0);
     return m_functions[funcIdx].LlvmFunction != nullptr;
 }
 
@@ -3204,7 +3305,7 @@ llvm::BasicBlock* Llvm::getOrCreatePrologLlvmBlockForFunction(unsigned funcIdx)
     BasicBlock* firstUserBlock = getFirstBlockForFunction(funcIdx);
     llvm::BasicBlock* firstLlvmUserBlock = getFirstLlvmBlockForBlock(firstUserBlock);
     llvm::BasicBlock* prologLlvmBlock = firstLlvmUserBlock->getPrevNode();
-    if ((prologLlvmBlock == nullptr) || !prologLlvmBlock->getName().startswith(PROLOG_BLOCK_NAME))
+    if ((prologLlvmBlock == nullptr) || !prologLlvmBlock->getName().starts_with(PROLOG_BLOCK_NAME))
     {
         Function* llvmFunc = firstLlvmUserBlock->getParent();
         prologLlvmBlock = llvm::BasicBlock::Create(m_context->Context, PROLOG_BLOCK_NAME, llvmFunc, firstLlvmUserBlock);
@@ -3339,7 +3440,7 @@ llvm::Intrinsic::ID Llvm::getLlvmIntrinsic(NamedIntrinsic intrinsicName) const
         case NI_System_Math_Pow:
             return llvm::Intrinsic::pow;
         case NI_System_Math_Round:
-            return llvm::Intrinsic::round;
+            return llvm::Intrinsic::roundeven;
         case NI_System_Math_Sin:
             return llvm::Intrinsic::sin;
         case NI_System_Math_Sqrt:

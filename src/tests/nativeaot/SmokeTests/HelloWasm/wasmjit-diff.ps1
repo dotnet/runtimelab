@@ -11,6 +11,7 @@ Param(
     [switch]$Rebuild,
     [switch]$Analyze,
     [switch]$Summary,
+    [switch]$Llvm,
     [ValidateSet("Debug","Checked","Release")][string]$Config = "Release",
     [ValidateSet("Debug","Checked","Release")][string]$IlcConfig = "Release",
     [Nullable[bool]]$DebugSymbols = $null,
@@ -36,6 +37,7 @@ if ($ShowHelp)
     Write-Host "  -Rebuild             : Force-build the 'base' to diff against"
     Write-Host "  -Analyze             : Analyze the results from two project builds"
     Write-Host "  -Summary             : Analyze the results and only print the summary"
+    Write-Host "  -Llvm                : Analyze LLVM bitcode output instead of WASM"
     Write-Host "  -Config              : Test configuration (Debug/Release). Default is Release"
     Write-Host "  -IlcConfig           : ILC configuration (Debug/Checked/Release). Default is Release"
     Write-Host "  -DebugSymbols        : Whether to build with debug symbols. Default is yes"
@@ -47,7 +49,8 @@ if ($ShowHelp)
     Write-Host " of the diffs as well as disassembly files under the ./wasmjit-diff/ directory, which can be"
     Write-Host " further inspected using tools like git-diff."
     Write-Host ""
-    Write-Host " Note: -Analyze depends on https://github.com/WebAssembly/wabt tools being available in PATH."
+    Write-Host " -Analyze depends on https://github.com/WebAssembly/wabt tools being available in PATH."
+    Write-Host " -Llvm depends on llvm-dis being available in PATH."
     Write-Host ""
     return
 }
@@ -78,10 +81,17 @@ $TestProjectDirectory = [IO.Path]::GetDirectoryName($TestProjectPath)
 $RuntimeTestsDirectory = "$RuntimelabDirectory/src/tests"
 $TestProjectDirectoryRelativePath = [System.IO.Path]::GetRelativePath($RuntimeTestsDirectory, $TestProjectDirectory)
 
+$TestProjectNativeObjDirectory = "$RuntimelabDirectory/artifacts/tests/coreclr/obj/$OS.$Arch.$Config/Managed/$TestProjectDirectoryRelativePath/$TestProjectName/native"
+$TestProjectBaseNativeObjDirectory = "$TestProjectNativeObjDirectory.base"
 $TestProjectNativeOutputDirectory = "$RuntimelabDirectory/artifacts/tests/coreclr/$OS.$Arch.$Config/$TestProjectDirectoryRelativePath/$TestProjectName/native"
 $TestProjectBaseNativeOutputDirectory = "$TestProjectNativeOutputDirectory.base"
 $TestProjectWasmOutput = "$TestProjectNativeOutputDirectory/$TestProjectName.wasm"
 $TestProjectBaseWasmOutput = "$TestProjectBaseNativeOutputDirectory/$TestProjectName.wasm"
+
+if ($Rebuild -and (Test-Path $TestProjectBaseNativeObjDirectory))
+{
+    Remove-Item $TestProjectBaseNativeObjDirectory -Recurse -Force
+}
 
 $TestProjectBaseNativeOutputDirectoryExists = Test-Path $TestProjectBaseNativeOutputDirectory
 if ($Rebuild -and $TestProjectBaseNativeOutputDirectoryExists)
@@ -118,6 +128,7 @@ if ($Build -or $Rebuild)
 
     if ($BuildingBase)
     {
+        Rename-Item $TestProjectNativeObjDirectory $TestProjectBaseNativeObjDirectory
         Rename-Item $TestProjectNativeOutputDirectory $TestProjectBaseNativeOutputDirectory
     }
 }
@@ -130,51 +141,114 @@ if ($Analyze -or $Summary)
         exit
     }
 
-    $SummaryLineRegex = [Regex]::New(" - func\[(\d+)\] size=(\d+) <(.*)>", "Compiled")
-    function ParseSummary($RawSummary, $SummaryName)
+    if ($Llvm)
     {
-        Write-Host -NoNewLine "Analysing ${SummaryName}"
-
-        $TotalCodeSize = 0
-        $SummaryList = [Collections.Generic.Dictionary[string, object]]::new()
-        $LineIndex = 0
-        $OutputProgressInterval = [int]($RawSummary.Length / 10)
-        foreach ($Line in $RawSummary)
+        $LlvmSummaryLineRegex = [Regex]::New('define.*@"?([^"]*)"?\(.*\).*{', "Compiled")
+        function ParseLlvmSummary($ObjDirectory, $SummaryName)
         {
-            $Matches = $SummaryLineRegex.Matches($Line).Groups
-            if ($Matches.Count -eq 0)
+            Write-Host -NoNewLine "Analysing ${SummaryName}"
+
+            # Use the results file to be resilient against stale bitcode files.
+            $SummaryList = [Collections.Generic.Dictionary[string, object]]::new()
+            $BitcodeFiles = Get-Content "$ObjDirectory/$TestProjectName.results.txt"
+
+            # The results file in the 'base' directory will refer to the original ('diff') files. Fix this up.
+            for ($i = 0; $i -lt $BitcodeFiles.Length; $i++)
             {
-                continue
+                $FileName = [IO.Path]::GetFileName($BitcodeFiles[$i])
+                $BitcodeFiles[$i] = "$ObjDirectory/$FileName"
             }
 
-            $Index = [int]$Matches[1].Value
-            $Size = [int]$Matches[2].Value
-            $Name = [string]$Matches[3].Value
-
-            $TotalCodeSize += $Size
-            while ($SummaryList.ContainsKey($Name))
+            $BitcodeFileIndex = 0
+            $OutputProgressInterval = [Math]::Max([int]($BitcodeFiles.Length / 10), 1)
+            foreach ($BitcodeFile in $BitcodeFiles)
             {
-                # Sometimes we get duplicates with demangled names that wasm-objdump produces. Tolerate them.
-                $Name += "*"
-            }
-            $SummaryList.Add($Name, @{ Index = $Index; Size = $Size })
+                $LlvmAssembly = llvm-dis $BitcodeFile -o -
 
-            if ($LineIndex % $OutputProgressInterval -eq 0)
-            {
-                Write-Host -NoNewLine "."
+                $LineIndex = -1
+                $CurrentFuncName = $null
+                foreach ($Line in $LlvmAssembly)
+                {
+                    $LineIndex++
+
+                    if ($Line -eq "}")
+                    {
+                        $Size = $LineIndex - $CurrentFuncStartLineIndex
+                        $TotalCodeSize += $Size
+                        $SummaryList.Add($CurrentFuncName, @{ Content = $LlvmAssembly; StartLineIndex = $CurrentFuncStartLineIndex; Size = $Size })
+                        continue;
+                    }
+
+                    $Matches = $LlvmSummaryLineRegex.Matches($Line).Groups
+                    if ($Matches.Count -ne 0)
+                    {
+                        $CurrentFuncName = $Matches[1]
+                        $CurrentFuncStartLineIndex = $LineIndex
+                    }
+                }
+
+                if ($BitcodeFileIndex % $OutputProgressInterval -eq 0)
+                {
+                    Write-Host -NoNewLine "."
+                }
+                $BitcodeFileIndex++
             }
-            $LineIndex++
+            Write-Host ""
+
+            return $SummaryList, $TotalCodeSize
         }
-        Write-Host ""
 
-        return $SummaryList, $TotalCodeSize
+        $BaseSummary, $TotalBaseCodeSize = ParseLlvmSummary $TestProjectBaseNativeObjDirectory "base"
+        $DiffSummary, $TotalDiffCodeSize = ParseLlvmSummary $TestProjectNativeObjDirectory "diff"
     }
+    else
+    {
+        $WasmSummaryLineRegex = [Regex]::New(" - func\[(\d+)\] size=(\d+) <(.*)>", "Compiled")
+        function ParseWasmSummary($RawSummary, $SummaryName)
+        {
+            Write-Host -NoNewLine "Analysing ${SummaryName}"
 
-    $BaseSummaryRaw = wasm-objdump -x -j Code $TestProjectBaseWasmOutput
-    $DiffSummaryRaw = wasm-objdump -x -j Code $TestProjectWasmOutput
+            $TotalCodeSize = 0
+            $SummaryList = [Collections.Generic.Dictionary[string, object]]::new()
+            $LineIndex = 0
+            $OutputProgressInterval = [int]($RawSummary.Length / 10)
+            foreach ($Line in $RawSummary)
+            {
+                $Matches = $WasmSummaryLineRegex.Matches($Line).Groups
+                if ($Matches.Count -eq 0)
+                {
+                    continue
+                }
 
-    $BaseSummary, $TotalBaseCodeSize = ParseSummary $BaseSummaryRaw "base"
-    $DiffSummary, $TotalDiffCodeSize = ParseSummary $DiffSummaryRaw "diff"
+                $Index = [int]$Matches[1].Value
+                $Size = [int]$Matches[2].Value
+                $Name = [string]$Matches[3].Value
+
+                $TotalCodeSize += $Size
+                while ($SummaryList.ContainsKey($Name))
+                {
+                    # Sometimes we get duplicates with demangled names that wasm-objdump produces. Tolerate them.
+                    $Name += "*"
+                }
+                $SummaryList.Add($Name, @{ Index = $Index; Size = $Size })
+
+                if ($LineIndex % $OutputProgressInterval -eq 0)
+                {
+                    Write-Host -NoNewLine "."
+                }
+                $LineIndex++
+            }
+            Write-Host ""
+
+            return $SummaryList, $TotalCodeSize
+        }
+
+        $BaseSummaryRaw = wasm-objdump -x -j Code $TestProjectBaseWasmOutput
+        $DiffSummaryRaw = wasm-objdump -x -j Code $TestProjectWasmOutput
+
+        $BaseSummary, $TotalBaseCodeSize = ParseWasmSummary $BaseSummaryRaw "base"
+        $DiffSummary, $TotalDiffCodeSize = ParseWasmSummary $DiffSummaryRaw "diff"
+    }
 
     $NullFunc = @{ Index = -1; Size = 0 }
     $Diffs = [Collections.Generic.List[object]]::new()
@@ -227,43 +301,14 @@ if ($Analyze -or $Summary)
             {
                 mkdir $AnalysisDirectory | Write-Verbose
             }
+
             # Only one analysis at a time is currently supported (i. e. subsequent runs will overwrite this directory).
-            $ProjectAnalysisDirectory = "$AnalysisDirectory/$TestProjectName"
+            $DiffKind = $Llvm ? "-LLVM" : ""
+            $ProjectAnalysisDirectory = "$AnalysisDirectory/$TestProjectName$DiffKind"
             if (!(Test-Path $ProjectAnalysisDirectory))
             {
                 mkdir $ProjectAnalysisDirectory | Write-Verbose
             }
-
-            Write-Host "Collecting full disassembly for the base..."
-            $BaseWat = wasm-objdump -d $TestProjectBaseWasmOutput
-            Write-Host "Collecting full disassembly for the diff..."
-            $DiffWat = wasm-objdump -d $TestProjectWasmOutput
-
-            function CreateWatIndex($Wat)
-            {
-                $WatSummary = [Collections.Generic.List[int]]::new()
-                $DefFuncIdx = 0
-                for ($Idx = 0; $Idx -lt $Wat.Length; $Idx++)
-                {
-                    $Line = $Wat[$Idx]
-                    if ($Line.Contains("func["))
-                    {
-                        if ($WatSummary.Count -eq 0)
-                        {
-                            $FuncIdxStart = $Line.IndexOf("[") + 1
-                            $FuncIdxLength = $Line.IndexOf("]") - $FuncIdxStart
-                            $DefFuncIdx = [int]$Line.Substring($FuncIdxStart, $FuncIdxLength)
-                        }
-
-                        $WatSummary.Add($Idx)
-                    }
-                }
-
-                return $DefFuncIdx, $WatSummary
-            }
-
-            $BaseDefFuncIndex, $BaseWatSummary = CreateWatIndex($BaseWat)
-            $DiffDefFuncIndex, $DiffWatSumary = CreateWatIndex($DiffWat)
 
             $BaseProjectAnalysisDirectory = "$ProjectAnalysisDirectory/base"
             if (Test-Path $BaseProjectAnalysisDirectory)
@@ -277,54 +322,114 @@ if ($Analyze -or $Summary)
             $DiffProjectAnalysisDirectory = "$ProjectAnalysisDirectory/diff"
             if (Test-Path $DiffProjectAnalysisDirectory)
             {
-                Remove-Item $DiffProjectAnalysisDirectory/* -Recurse            
+                Remove-Item $DiffProjectAnalysisDirectory/* -Recurse
             }
             else
             {
                 mkdir $DiffProjectAnalysisDirectory | Write-Verbose
             }
 
-            function CreateDiffFile($DiffFileName, $FuncIndex, $IsBase)
+            if ($Llvm)
             {
-                if ($IsBase)
+                function CreateDiffFileLlvm($DiffFileName, $Func, $IsBase)
                 {
-                    $DefFuncIndex = $BaseDefFuncIndex
-                    $Wat = $BaseWat
-                    $WatSummary = $BaseWatSummary
-                    $DiffFileDirectory = $BaseProjectAnalysisDirectory
-                }
-                else
-                {
-                    $DefFuncIndex = $DiffDefFuncIndex
-                    $Wat = $DiffWat
-                    $WatSummary = $DiffWatSumary
-                    $DiffFileDirectory = $DiffProjectAnalysisDirectory
-                }
+                    $DiffFileDirectory = $IsBase ? $BaseProjectAnalysisDirectory : $DiffProjectAnalysisDirectory
+                    $FuncContent = $Func.Content
+                    $StartTextIndex = $Func.StartLineIndex
+                    $EndTextIndex = $StartTextIndex + $Func.Size + 1
 
-                Write-Verbose "$DefFuncIndex, $FuncIndex"
-                $WatSummaryIndex = $FuncIndex - $DefFuncIndex
-                $StartTextIndex = $WatSummary[$WatSummaryIndex]
-                $EndTextIndex = ($WatSummaryIndex + 1) -eq $WatSummary.Count ? $Wat.Length : $WatSummary[$WatSummaryIndex + 1]
-                Write-Verbose "$StartTextIndex, $EndTextIndex"
-
-                $StreamWriter = [IO.StreamWriter]::New("$DiffFileDirectory/$DiffFileName")
-                for ($Idx = $StartTextIndex; $Idx -lt $EndTextIndex; $Idx++)
-                {
-                    $Line = $Wat[$Idx]
-
-                    # Trim the leading offsets to get clean diffs.
-                    if ($Idx -eq $StartTextIndex)
+                    $StreamWriter = [IO.StreamWriter]::New("$DiffFileDirectory/$DiffFileName")
+                    for ($Idx = $StartTextIndex; $Idx -lt $EndTextIndex; $Idx++)
                     {
-                        $StartLineOffset = $Line.IndexOf("func")
+                        $Line = $FuncContent[$Idx]
+                        # Strip !dbg directives to make the diff more readable.
+                        $IndexOfDbg = $Line.IndexOf(", !dbg")
+                        if ($IndexOfDbg -ne -1)
+                        {
+                            $Line = $Line.Substring(0, $IndexOfDbg)
+                        }
+
+                        $StreamWriter.WriteLine($Line)
+                    }
+                    $StreamWriter.Close()
+                }
+            }
+            else
+            {
+                Write-Host "Collecting full disassembly for the base..."
+                $BaseWat = wasm-objdump -d $TestProjectBaseWasmOutput
+                Write-Host "Collecting full disassembly for the diff..."
+                $DiffWat = wasm-objdump -d $TestProjectWasmOutput
+
+                function CreateWatIndex($Wat)
+                {
+                    $WatSummary = [Collections.Generic.List[int]]::new()
+                    $DefFuncIdx = 0
+                    for ($Idx = 0; $Idx -lt $Wat.Length; $Idx++)
+                    {
+                        $Line = $Wat[$Idx]
+                        if ($Line.Contains("func["))
+                        {
+                            if ($WatSummary.Count -eq 0)
+                            {
+                                $FuncIdxStart = $Line.IndexOf("[") + 1
+                                $FuncIdxLength = $Line.IndexOf("]") - $FuncIdxStart
+                                $DefFuncIdx = [int]$Line.Substring($FuncIdxStart, $FuncIdxLength)
+                            }
+
+                            $WatSummary.Add($Idx)
+                        }
+                    }
+
+                    return $DefFuncIdx, $WatSummary
+                }
+
+                $BaseDefFuncIndex, $BaseWatSummary = CreateWatIndex($BaseWat)
+                $DiffDefFuncIndex, $DiffWatSumary = CreateWatIndex($DiffWat)
+
+                function CreateDiffFileWasm($DiffFileName, $Func, $IsBase)
+                {
+                    $FuncIndex = $Func.Index
+                    if ($IsBase)
+                    {
+                        $DefFuncIndex = $BaseDefFuncIndex
+                        $Wat = $BaseWat
+                        $WatSummary = $BaseWatSummary
+                        $DiffFileDirectory = $BaseProjectAnalysisDirectory
                     }
                     else
                     {
-                        $StartLineOffset = $Line.IndexOf(":") + 1
+                        $DefFuncIndex = $DiffDefFuncIndex
+                        $Wat = $DiffWat
+                        $WatSummary = $DiffWatSumary
+                        $DiffFileDirectory = $DiffProjectAnalysisDirectory
                     }
 
-                    $StreamWriter.WriteLine($Line.Substring($StartLineOffset))
+                    Write-Verbose "$DefFuncIndex, $FuncIndex"
+                    $WatSummaryIndex = $FuncIndex - $DefFuncIndex
+                    $StartTextIndex = $WatSummary[$WatSummaryIndex]
+                    $EndTextIndex = ($WatSummaryIndex + 1) -eq $WatSummary.Count ? $Wat.Length : $WatSummary[$WatSummaryIndex + 1]
+                    Write-Verbose "$StartTextIndex, $EndTextIndex"
+
+                    $StreamWriter = [IO.StreamWriter]::New("$DiffFileDirectory/$DiffFileName")
+                    for ($Idx = $StartTextIndex; $Idx -lt $EndTextIndex; $Idx++)
+                    {
+                        $Line = $Wat[$Idx]
+
+                        # Trim the leading offsets to get clean diffs.
+                        if ($Idx -eq $StartTextIndex)
+                        {
+                            $StartLineOffset = $Line.IndexOf("func")
+                        }
+                        else
+                        {
+                            $StartLineOffset = $Line.IndexOf(":") + 1
+                        }
+
+                        $StreamWriter.WriteLine($Line.Substring($StartLineOffset))
+                    }
+                    $StreamWriter.Close()
                 }
-                $StreamWriter.Close()
             }
 
             $OutputProgressIndex = 0
@@ -336,11 +441,25 @@ if ($Analyze -or $Summary)
                 # Create files on disk for this diff.
                 if ($Diff.Base.Size -ne 0)
                 {
-                    CreateDiffFile $Diff.DiffFileName $Diff.Base.Index -IsBase $true
+                    if ($Llvm)
+                    {
+                        CreateDiffFileLlvm $Diff.DiffFileName $Diff.Base -IsBase $true
+                    }
+                    else
+                    {
+                        CreateDiffFileWasm $Diff.DiffFileName $Diff.Base -IsBase $true
+                    }
                 }
                 if ($Diff.Diff.Size -ne 0)
                 {
-                    CreateDiffFile $Diff.DiffFileName $Diff.Diff.Index -IsBase $false
+                    if ($Llvm)
+                    {
+                        CreateDiffFileLlvm $Diff.DiffFileName $Diff.Diff -IsBase $false
+                    }
+                    else
+                    {
+                        CreateDiffFileWasm $Diff.DiffFileName $Diff.Diff -IsBase $false
+                    }
                 }
                 if ($OutputProgressIndex % $OutputProgressInterval -eq 0)
                 {

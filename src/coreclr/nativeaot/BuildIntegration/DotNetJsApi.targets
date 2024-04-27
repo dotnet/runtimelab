@@ -33,6 +33,9 @@
     <EmccExportedRuntimeMethod Include="runtimeKeepalivePush" />
     <EmccExportedRuntimeMethod Include="runtimeKeepalivePop" />
     <EmccExportedRuntimeMethod Include="callMain" />
+
+    <!-- Pseudo-namespace for the JS interop symbols. -->
+    <DirectPInvoke Include="System.Runtime.InteropServices.JavaScript" />
   </ItemGroup>
 
   <Target Name="PrepareDotNetJsApiForLinking">

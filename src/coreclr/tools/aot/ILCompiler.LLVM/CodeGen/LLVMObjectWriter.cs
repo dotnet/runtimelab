@@ -248,6 +248,8 @@ namespace ILCompiler.DependencyAnalysis
                 if (nextRelocValid)
                 {
                     Relocation reloc = nodeContents.Relocs[relocIndex];
+                    Debug.Assert(IsSupportedRelocType(node, reloc.RelocType), $"{reloc.RelocType} in {node} not supported");
+
                     long delta;
                     fixed (void* location = &data[reloc.Offset])
                     {
@@ -286,8 +288,11 @@ namespace ILCompiler.DependencyAnalysis
                 : LLVMTypeRef.CreateArray(_ptrType, (uint)dataSizeInElements);
 
             LLVMValueRef dataSymbol = _module.AddGlobal(dataSymbolName, dataSymbolType);
-            dataSymbol.Section = node.GetSection(_nodeFactory).Name;
             dataSymbol.Alignment = (uint)nodeContents.Alignment;
+            if (GetObjectNodeSection(node) is string section)
+            {
+                dataSymbol.Section = section;
+            }
 
             dataSymbol.Initializer = useStruct
                 ? LLVMValueRef.CreateConstStruct(dataElements, true)
@@ -332,6 +337,29 @@ namespace ILCompiler.DependencyAnalysis
                 // Set the aliasee.
                 LLVM.AliasSetAliasee(symbolDef, symbolAddress);
             }
+        }
+
+        private string GetObjectNodeSection(ObjectNode node)
+        {
+            ObjectNodeSection section = node.GetSection(_nodeFactory);
+
+            // We do not want to just "return section.Name" because it forces LLVM to:
+            // 1. Lay out symbols such that there must not be alignment holes between them.
+            // 2. Put everything into the (few) specified sections, making linker GC effectively useless.
+            // At the same time, the semantics of which section directions are correctness-bearing are not well-defined.
+            // For now, "IsStandardSection" is sufficient...
+            //
+            return section.IsStandardSection ? null : section.Name;
+        }
+
+        private static bool IsSupportedRelocType(ObjectNode node, RelocType type)
+        {
+            if (node is StackTraceMethodMappingNode)
+            {
+                // Stack trace metadata uses relative pointers, but is currently unused.
+                return true;
+            }
+            return type is RelocType.IMAGE_REL_BASED_HIGHLOW;
         }
 
         private static bool ObjectNodeMustBeArtificiallyKeptAlive(ObjectNode node)
@@ -518,7 +546,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             if (node.Id == ReadyToRunHelperId.VirtualCall)
             {
-                GetCodeForVirtualCallHelper(node);
+                GetCodeForVirtualCallHelper(node, factory);
                 return;
             }
             if (node.Id == ReadyToRunHelperId.DelegateCtor)
@@ -599,7 +627,7 @@ namespace ILCompiler.DependencyAnalysis
                         }
                         else
                         {
-                            Debug.Assert(!targetMethod.CanMethodBeInSealedVTable());
+                            Debug.Assert(!targetMethod.CanMethodBeInSealedVTable(factory));
                             result = OutputCodeForVTableLookup(builder, helperFunc.GetParam(0), targetMethod);
                         }
                     }
@@ -612,11 +640,11 @@ namespace ILCompiler.DependencyAnalysis
             builder.BuildRet(result);
         }
 
-        private void GetCodeForVirtualCallHelper(ReadyToRunHelperNode node)
+        private void GetCodeForVirtualCallHelper(ReadyToRunHelperNode node, NodeFactory factory)
         {
             MethodDesc targetMethod = (MethodDesc)node.Target;
             Debug.Assert(!targetMethod.OwningType.IsInterface);
-            Debug.Assert(!targetMethod.CanMethodBeInSealedVTable());
+            Debug.Assert(!targetMethod.CanMethodBeInSealedVTable(factory));
             Debug.Assert(!targetMethod.RequiresInstArg());
 
             using Utf8Name helperFuncName = GetMangledUtf8Name(node);

@@ -74,8 +74,18 @@ namespace ILCompiler
 
             ILProvider ilProvider = new NativeAotILProvider();
 
+            Dictionary<int, bool> warningsAsErrors = new Dictionary<int, bool>();
+            foreach (int warning in ProcessWarningCodes(Get(_command.WarningsAsErrorsEnable)))
+            {
+                warningsAsErrors[warning] = true;
+            }
+            foreach (int warning in ProcessWarningCodes(Get(_command.WarningsAsErrorsDisable)))
+            {
+                warningsAsErrors[warning] = false;
+            }
             var logger = new Logger(Console.Out, ilProvider, Get(_command.IsVerbose), ProcessWarningCodes(Get(_command.SuppressedWarnings)),
-                Get(_command.SingleWarn), Get(_command.SingleWarnEnabledAssemblies), Get(_command.SingleWarnDisabledAssemblies), suppressedWarningCategories);
+                Get(_command.SingleWarn), Get(_command.SingleWarnEnabledAssemblies), Get(_command.SingleWarnDisabledAssemblies), suppressedWarningCategories,
+                Get(_command.TreatWarningsAsErrors), warningsAsErrors);
 
             // NativeAOT is full AOT and its pre-compiled methods can not be
             // thrown away at runtime if they mismatch in required ISAs or
@@ -102,7 +112,7 @@ namespace ILCompiler
             SharedGenericsMode genericsMode = SharedGenericsMode.CanonicalReferenceTypes;
 
             var simdVectorLength = instructionSetSupport.GetVectorTSimdVector();
-            var targetAbi = TargetAbi.NativeAot;
+            var targetAbi = ILCompilerRootCommand.IsArmel ? TargetAbi.NativeAotArmel : TargetAbi.NativeAot;
             var targetDetails = new TargetDetails(targetArchitecture, targetOS, targetAbi, simdVectorLength);
             CompilerTypeSystemContext typeSystemContext =
                 new CompilerTypeSystemContext(targetDetails, genericsMode, supportsReflection ? DelegateFeature.All : 0,
@@ -384,7 +394,8 @@ namespace ILCompiler
                         logger, typeSystemContext, XmlReader.Create(fs), substitutionFilePath, featureSwitches));
             }
 
-            ilProvider = new FeatureSwitchManager(ilProvider, logger, featureSwitches, substitutions);
+            SubstitutionProvider substitutionProvider = new SubstitutionProvider(logger, featureSwitches, substitutions);
+            ilProvider = new SubstitutedILProvider(ilProvider, substitutionProvider);
 
             CompilerGeneratedState compilerGeneratedState = new CompilerGeneratedState(ilProvider, logger);
 
@@ -453,7 +464,7 @@ namespace ILCompiler
             TypePreinit.TypePreinitializationPolicy preinitPolicy = preinitStatics ?
                 new TypePreinit.TypeLoaderAwarePreinitializationPolicy() : new TypePreinit.DisabledPreinitializationPolicy();
 
-            var preinitManager = new PreinitializationManager(typeSystemContext, compilationGroup, ilProvider, preinitPolicy, new StaticReadOnlyFieldPolicy());
+            var preinitManager = new PreinitializationManager(typeSystemContext, compilationGroup, ilProvider, preinitPolicy, new StaticReadOnlyFieldPolicy(), flowAnnotations);
             builder
                 .UseILProvider(ilProvider)
                 .UsePreinitializationManager(preinitManager);
@@ -532,14 +543,15 @@ namespace ILCompiler
                 {
                     var readOnlyFieldPolicy = scanResults.GetReadOnlyFieldPolicy();
                     preinitManager = new PreinitializationManager(typeSystemContext, compilationGroup, ilProvider, scanResults.GetPreinitializationPolicy(),
-                        readOnlyFieldPolicy);
+                        readOnlyFieldPolicy, flowAnnotations);
                     builder.UsePreinitializationManager(preinitManager)
                         .UseReadOnlyFieldPolicy(readOnlyFieldPolicy);
                 }
 
                 // If we have a scanner, we can inline threadstatics storage using the information we collected at scanning time.
                 if (!Get(_command.NoInlineTls) &&
-                    (targetOS == TargetOS.Linux || (targetArchitecture == TargetArchitecture.X64 && targetOS == TargetOS.Windows)))
+                    ((targetOS == TargetOS.Linux && targetArchitecture is TargetArchitecture.X64 or TargetArchitecture.ARM64) ||
+                     (targetOS == TargetOS.Windows && targetArchitecture is TargetArchitecture.X64)))
                 {
                     builder.UseInlinedThreadStatics(scanResults.GetInlinedThreadStatics());
                 }

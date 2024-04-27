@@ -46,7 +46,7 @@ namespace System.Runtime.CompilerServices.Tests
             }
         }
 
-        [Fact]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotNativeAot))]
         [PlatformSpecific(TestPlatforms.Browser)]
         public static void DynamicCode_Browser()
         {

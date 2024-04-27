@@ -5,6 +5,7 @@ import { dotnet, exit } from './dotnet.js'
 
 const { runMain, setModuleImports, getAssemblyExports } = await dotnet
     .withApplicationArguments("A", "B", "C")
+    .withMainAssembly("DotnetJs")
     .create();
 
 setModuleImports('main.js', {
@@ -26,6 +27,11 @@ try {
     result = 14;
 } catch (e) {
     console.log(`Thrown expected exception: ${e}`);
+}
+
+const concat = exports.DotnetJsApp.Program.Interop.Concat("Aaa", "Bbb");
+if (concat != "AaaBbb") {
+    result = 15;
 }
 
 console.log(`Exit code ${result}`);

@@ -12,11 +12,7 @@ namespace System.Globalization
         // validate this implementation detail.
         private static partial class Settings
         {
-#if TARGET_WASM
-            internal static bool Invariant { get; } = true;
-#else
             internal static bool Invariant { get; } = AppContextConfigHelper.GetBooleanConfig("System.Globalization.Invariant", "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT");
-#endif
 #if TARGET_MACCATALYST || TARGET_IOS || TARGET_TVOS
             internal static bool Hybrid { get; } = true;
 #elif TARGET_BROWSER

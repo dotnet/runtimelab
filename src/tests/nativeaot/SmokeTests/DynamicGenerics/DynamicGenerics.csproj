@@ -16,6 +16,11 @@
     <RdXmlFile Include="rd.xml" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetsWasm)' == 'true'">
+    <!-- NativeAOT-LLVM: make this relatively involved test our GC stress victim. -->
+    <IlcArg Include="--codegenopt:JitGcStress=1" />
+  </ItemGroup>
+
   <ItemGroup>
     <Compile Include="*.cs" />
     <Compile Include="Internal\*.cs" />

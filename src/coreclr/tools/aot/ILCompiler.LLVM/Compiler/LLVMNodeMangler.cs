@@ -52,5 +52,9 @@ namespace ILCompiler
         {
             return GenericDictionaryNamePrefix + NameMangler.GetMangledMethodName(method);
         }
+
+        public override string ExternMethod(string unmangledName, MethodDesc method) => unmangledName;
+
+        public override string ExternVariable(string unmangledName) => unmangledName;
     }
 }

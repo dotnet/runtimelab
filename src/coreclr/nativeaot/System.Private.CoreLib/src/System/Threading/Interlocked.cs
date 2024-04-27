@@ -9,19 +9,31 @@ namespace System.Threading
 {
     public static partial class Interlocked
     {
-#if !TARGET_WASM
         #region CompareExchange
 
         [Intrinsic]
         public static int CompareExchange(ref int location1, int value, int comparand)
         {
+#if TARGET_X86 || TARGET_AMD64 || TARGET_ARM64 || TARGET_RISCV64 || TARGET_WASM
+            return CompareExchange(ref location1, value, comparand); // Must expand intrinsic
+#else
+            if (Unsafe.IsNullRef(ref location1))
+                ThrowHelper.ThrowNullReferenceException();
             return RuntimeImports.InterlockedCompareExchange(ref location1, value, comparand);
+#endif
         }
 
         [Intrinsic]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static long CompareExchange(ref long location1, long value, long comparand)
         {
+#if TARGET_AMD64 || TARGET_ARM64 || TARGET_RISCV64 || TARGET_WASM
+            return CompareExchange(ref location1, value, comparand); // Must expand intrinsic
+#else
+            if (Unsafe.IsNullRef(ref location1))
+                ThrowHelper.ThrowNullReferenceException();
             return RuntimeImports.InterlockedCompareExchange(ref location1, value, comparand);
+#endif
         }
 
         [Intrinsic]
@@ -29,13 +41,16 @@ namespace System.Threading
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static T CompareExchange<T>(ref T location1, T value, T comparand) where T : class?
         {
-            return Unsafe.As<T>(RuntimeImports.InterlockedCompareExchange(ref Unsafe.As<T, object?>(ref location1), value, comparand));
+            return Unsafe.As<T>(CompareExchange(ref Unsafe.As<T, object?>(ref location1), value, comparand));
         }
 
         [Intrinsic]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NotNullIfNotNull(nameof(location1))]
         public static object? CompareExchange(ref object? location1, object? value, object? comparand)
         {
+            if (Unsafe.IsNullRef(ref location1))
+                ThrowHelper.ThrowNullReferenceException();
             return RuntimeImports.InterlockedCompareExchange(ref location1, value, comparand);
         }
 
@@ -46,6 +61,9 @@ namespace System.Threading
         [Intrinsic]
         public static int Exchange(ref int location1, int value)
         {
+#if TARGET_X86 || TARGET_AMD64 || TARGET_ARM64 || TARGET_RISCV64 || TARGET_WASM
+            return Exchange(ref location1, value); // Must expand intrinsic
+#else
             int oldValue;
 
             do
@@ -54,11 +72,15 @@ namespace System.Threading
             } while (CompareExchange(ref location1, value, oldValue) != oldValue);
 
             return oldValue;
+#endif
         }
 
         [Intrinsic]
         public static long Exchange(ref long location1, long value)
         {
+#if TARGET_AMD64 || TARGET_ARM64 || TARGET_RISCV64 || TARGET_WASM
+            return Exchange(ref location1, value); // Must expand intrinsic
+#else
             long oldValue;
 
             do
@@ -67,25 +89,30 @@ namespace System.Threading
             } while (CompareExchange(ref location1, value, oldValue) != oldValue);
 
             return oldValue;
+#endif
         }
 
         [Intrinsic]
-        [return: NotNullIfNotNull(nameof(location1))]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [return: NotNullIfNotNull(nameof(location1))]
         public static T Exchange<T>([NotNullIfNotNull(nameof(value))] ref T location1, T value) where T : class?
         {
+            if (Unsafe.IsNullRef(ref location1))
+                ThrowHelper.ThrowNullReferenceException();
             return Unsafe.As<T>(RuntimeImports.InterlockedExchange(ref Unsafe.As<T, object?>(ref location1), value));
         }
 
         [Intrinsic]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [return: NotNullIfNotNull(nameof(location1))]
         public static object? Exchange([NotNullIfNotNull(nameof(value))] ref object? location1, object? value)
         {
+            if (Unsafe.IsNullRef(ref location1))
+                ThrowHelper.ThrowNullReferenceException();
             return RuntimeImports.InterlockedExchange(ref location1, value);
         }
 
         #endregion
-#endif
 
         #region Increment
 
@@ -133,7 +160,6 @@ namespace System.Threading
             return ExchangeAdd(ref location1, value) + value;
         }
 
-#if !TARGET_WASM
         [Intrinsic]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int ExchangeAdd(ref int location1, int value)
@@ -161,7 +187,6 @@ namespace System.Threading
 
             return oldValue;
         }
-#endif
 
         #endregion
 

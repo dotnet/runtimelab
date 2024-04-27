@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.IL">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <CLRTestKind>BuildOnly</CLRTestKind>
+    <GenerateRunScript>false</GenerateRunScript>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="HelloWasm.IL.il" />
+    <Compile Include="LSSATests.IL.il" />
+  </ItemGroup>
+</Project>

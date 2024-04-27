@@ -35,13 +35,12 @@ namespace ILCompiler
             Logger logger,
             LLVMCodegenConfigProvider options,
             IInliningPolicy inliningPolicy,
-            DevirtualizationManager devirtualizationManager,
             InstructionSetSupport instructionSetSupport,
             MethodImportationErrorProvider errorProvider,
             ReadOnlyFieldPolicy readOnlyFieldPolicy,
             RyuJitCompilationOptions baseOptions,
             int parallelism)
-            : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, logger, devirtualizationManager, inliningPolicy, instructionSetSupport,
+            : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, logger, inliningPolicy, instructionSetSupport,
                 null /* ProfileDataManager */, errorProvider, readOnlyFieldPolicy, baseOptions, parallelism)
         {
             NodeFactory = nodeFactory;
@@ -73,10 +72,10 @@ namespace ILCompiler
 
         private void FinishCompilation()
         {
-            foreach ((int _, CorInfoImpl corInfo) in _compilationContexts)
+            Parallel.ForEach(_compilationContexts, new() { MaxDegreeOfParallelism = _parallelism }, context =>
             {
-                corInfo.JitFinishSingleThreadedCompilation();
-            }
+                context.Value.JitFinishSingleThreadedCompilation();
+            });
 
             _compilationContexts = null;
         }

@@ -13,21 +13,23 @@
 #include "llvmtypes.h"
 #include <new>
 
-// these break std::min/max in LLVM's headers
-#undef min
-#undef max
 // this breaks StringMap.h
 #undef NumItems
 
-#pragma warning (disable: 4702)
+// TODO-LLVM-Upstream: figure out how to fix these warnings in LLVM headers.
+#pragma warning(push)
+#pragma warning(disable : 4146)
+#pragma warning(disable : 4242)
+#pragma warning(disable : 4244)
+#pragma warning(disable : 4267)
+#pragma warning(disable : 4459)
+#pragma warning(disable : 4702)
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/IntrinsicsWebAssembly.h"
-#pragma warning (error: 4702)
-
-#include <unordered_map>
+#pragma warning(pop)
 
 using llvm::LLVMContext;
 using llvm::Module;
@@ -75,6 +77,16 @@ struct CORINFO_LLVM_EH_CLAUSE
     unsigned FilterIndex;
 };
 
+enum CorInfoLlvmJitTestKind
+{
+    CORINFO_JIT_TEST_LSSA = 1
+};
+
+struct CORINFO_LLVM_JIT_TEST_INFO
+{
+    const char* ExpectedLssaAllocation;
+};
+
 typedef unsigned CORINFO_LLVM_DEBUG_TYPE_HANDLE;
 
 const CORINFO_LLVM_DEBUG_TYPE_HANDLE NO_DEBUG_TYPE = 0;
@@ -94,7 +106,12 @@ struct MallocAllocator
     template <typename T>
     T* allocate(size_t count)
     {
-        return static_cast<T*>(malloc(count * sizeof(T)));
+        void* p = malloc(count * sizeof(T));
+        if (p == nullptr)
+        {
+            NOMEM();
+        }
+        return static_cast<T*>(p);
     }
 
     void deallocate(void* p)
@@ -102,6 +119,18 @@ struct MallocAllocator
         free(p);
     }
 };
+
+template <typename T>
+inline ArrayRef<T> AsRef(ArrayStack<T>& stack)
+{
+    return stack.Empty() ? ArrayRef<T>() : ArrayRef<T>(&stack.BottomRef(0), static_cast<size_t>(stack.Height()));
+}
+
+template <typename T>
+inline ArrayRef<T> AsRef(const jitstd::vector<T>& vec)
+{
+    return vec.empty() ? ArrayRef<T>() : ArrayRef<T>(&vec[0], vec.size());
+}
 
 enum HelperFuncInfoFlags
 {
@@ -136,6 +165,12 @@ struct HelperFuncInfo
     CorInfoType GetSigArgType(size_t index) const;
     CORINFO_CLASS_HANDLE GetSigArgClass(Compiler* compiler, size_t index) const;
     size_t GetSigArgCount(unsigned* callArgCount = nullptr) const;
+};
+
+enum class ValueInitOpts
+{
+    None,
+    IncludeImplicitGcUse
 };
 
 enum class ValueInitKind
@@ -203,12 +238,17 @@ class SingleThreadedCompilationContext
 public:
     LLVMContext Context;
     Module Module;
-    std::unordered_map<CORINFO_CLASS_HANDLE, Type*> LlvmStructTypesMap;
-    std::unordered_map<CORINFO_CLASS_HANDLE, StructDesc*> StructDescMap;
+    JitHashTable<CORINFO_CLASS_HANDLE, JitPtrKeyFuncs<CORINFO_CLASS_STRUCT_>, Type*, MallocAllocator> LlvmStructTypesMap;
+    JitHashTable<CORINFO_CLASS_HANDLE, JitPtrKeyFuncs<CORINFO_CLASS_STRUCT_>, StructDesc*, MallocAllocator> StructDescMap;
     JitHashTable<CORINFO_LLVM_DEBUG_TYPE_HANDLE, JitSmallPrimitiveKeyFuncs<CORINFO_LLVM_DEBUG_TYPE_HANDLE>, llvm::DIType*, MallocAllocator> DebugTypesMap;
     JitHashTable<llvm::DIFile*, JitPtrKeyFuncs<llvm::DIFile>, llvm::DICompileUnit*, MallocAllocator> DebugCompileUnitsMap;
 
-    SingleThreadedCompilationContext(StringRef name) : Module(name, Context), DebugTypesMap({}), DebugCompileUnitsMap({})
+    SingleThreadedCompilationContext(StringRef name)
+        : Module(name, Context)
+        , LlvmStructTypesMap({})
+        , StructDescMap({})
+        , DebugTypesMap({})
+        , DebugCompileUnitsMap({})
     {
     }
 };
@@ -216,7 +256,9 @@ public:
 class Llvm
 {
 private:
+    static const unsigned SHADOW_STACK_ARG_INDEX = 0;
     static const unsigned DEFAULT_SHADOW_STACK_ALIGNMENT = TARGET_POINTER_SIZE;
+    static const unsigned MIN_HEAP_OBJ_SIZE = TARGET_POINTER_SIZE * 2;
 
     void* const m_pEECorInfo; // TODO-LLVM: workaround for not changing the JIT/EE interface.
     SingleThreadedCompilationContext* const m_context;
@@ -232,20 +274,26 @@ private:
     SideEffectSet m_scratchSideEffects; // Used for IsInvariantInRange.
     bool m_anyFilterFunclets = false;
 
+    // Shared between lowering and codegen.
+    bool m_anyReturns = false;
+
     // Shared between unwind index insertion and EH codegen.
     ArrayStack<unsigned>* m_unwindIndexMap = nullptr;
     BlockSet m_blocksInFilters = BlockSetOps::UninitVal();
+
+    // Shared between LSSA and codegen.
+    bool m_anyAddressExposedOrPinnedShadowLocals = false;
 
     // Codegen members.
     llvm::IRBuilder<> _builder;
     JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, Value*> _sdsuMap;
     JitHashTable<SSAName, SSAName, Value*> _localsMap;
     JitHashTable<ThrowHelperKey, ThrowHelperKey, llvm::BasicBlock*> m_throwHelperBlocksMap;
-    std::vector<PhiPair> _phiPairs;
-    std::vector<FunctionInfo> m_functions;
+    jitstd::vector<PhiPair> m_phiPairs;
+    FunctionInfo* m_functions;
 
     CorInfoLlvmEHModel m_ehModel;
-    std::vector<EHRegionInfo> m_EHRegionsInfo;
+    EHRegionInfo* m_EHRegionsInfo;
     Value* m_exceptionThrownAddressValue = nullptr;
 
     Value* m_rootFunctionShadowStackValue = nullptr;
@@ -334,6 +382,7 @@ private:
     CorInfoLlvmEHModel GetExceptionHandlingModel();
     CORINFO_GENERIC_HANDLE GetExceptionThrownVariable();
     CORINFO_GENERIC_HANDLE GetExceptionHandlingTable(CORINFO_LLVM_EH_CLAUSE* pClauses, int count);
+    void GetJitTestInfo(CorInfoLlvmJitTestKind kind, CORINFO_LLVM_JIT_TEST_INFO* pInfo);
 
 public:
     static SingleThreadedCompilationContext* StartSingleThreadedCompilation(
@@ -354,7 +403,7 @@ private:
     Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
 
     unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType);
-    void addPaddingFields(unsigned paddingSize, std::vector<Type*>& llvmFields);
+    void addPaddingFields(unsigned paddingSize, ArrayStack<Type*>& llvmFields);
 
     Type* getPtrLlvmType();
     Type* getIntPtrLlvmType();
@@ -382,7 +431,6 @@ private:
     void lowerRethrow(GenTreeCall* callNode);
     void lowerIndir(GenTreeIndir* indirNode);
     void lowerStoreBlk(GenTreeBlk* storeBlkNode);
-    void lowerStoreDynBlk(GenTreeStoreDynBlk* storeDynBlkNode);
     void lowerArrLength(GenTreeArrCommon* node);
     void lowerReturn(GenTreeUnOp* retNode);
 
@@ -440,12 +488,15 @@ public:
 private:
     friend class ShadowStackAllocator;
 
-    ValueInitKind getInitKindForLocal(unsigned lclNum) const;
+    ValueInitKind getInitKindForLocal(unsigned lclNum, ValueInitOpts opts = ValueInitOpts::None) const;
 #ifdef DEBUG
     void displayInitKindForLocal(unsigned lclNum, ValueInitKind initKind);
 #endif // DEBUG
 
     unsigned getShadowFrameSize(unsigned funcIdx) const;
+    unsigned getCalleeShadowStackOffset(unsigned funcIdx, bool isTailCall) const;
+    bool canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter) const;
+    bool isPotentialGcSafePoint(GenTree* node) const;
     bool isShadowFrameLocal(LclVarDsc* varDsc) const;
     bool isShadowStackLocal(unsigned lclNum) const;
     bool isFuncletParameter(unsigned lclNum) const;
@@ -458,9 +509,10 @@ public:
     void Compile();
 
 private:
-    const unsigned ROOT_FUNC_IDX = 0;
+    static const unsigned ROOT_FUNC_IDX = 0;
 
     void initializeFunctions();
+    void annotateFunctions();
     void generateProlog();
     void initializeShadowStack();
     void initializeLocals();
@@ -500,7 +552,6 @@ private:
     void buildBlk(GenTreeBlk* blkNode);
     void buildStoreInd(GenTreeStoreInd* storeIndOp);
     void buildStoreBlk(GenTreeBlk* blockOp);
-    void buildStoreDynBlk(GenTreeStoreDynBlk* blockOp);
     void buildUnaryOperation(GenTree* node);
     void buildBinaryOperation(GenTree* node);
     void buildShift(GenTreeOp* node);
@@ -532,7 +583,10 @@ private:
 
     void emitJumpToThrowHelper(Value* jumpCondValue, CorInfoHelpFunc helperFunc);
     Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
+
+    llvm::CallBase* emitGcStressCall(GenTreeCall* call, llvm::CallBase* callValue);
     llvm::CallBase* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = {});
+    bool canEmitHelperCallAsShadowTailCall(CorInfoHelpFunc helperFunc);
     llvm::CallBase* emitCallOrInvoke(llvm::Function* callee, ArrayRef<Value*> args = {});
     llvm::CallBase* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args, bool isThrowingCall);
 
@@ -562,7 +616,7 @@ private:
     Value* gepOrAddrInBounds(Value* addr, unsigned offset);
     llvm::Constant* getIntPtrConst(target_size_t value, Type* llvmType = nullptr);
     Value* getShadowStack();
-    Value* getShadowStackForCallee();
+    Value* getShadowStackForCallee(bool isTailCall = false);
     Value* getOriginalShadowStack();
 
     void setCurrentEmitContextForBlock(BasicBlock* block);
@@ -572,6 +626,8 @@ private:
     unsigned getCurrentProtectedRegionIndex() const;
     unsigned getCurrentHandlerIndex() const;
     LlvmBlockRange* getCurrentLlvmBlocks() const;
+
+    bool isCurrentContextInFilter() const;
 
     Function* getRootLlvmFunction();
     Function* getCurrentLlvmFunction();

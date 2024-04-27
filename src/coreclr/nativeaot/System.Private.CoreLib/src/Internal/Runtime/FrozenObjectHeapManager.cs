@@ -16,11 +16,16 @@ namespace Internal.Runtime
     {
         public static readonly FrozenObjectHeapManager Instance = new FrozenObjectHeapManager();
 
-        private readonly LowLevelLock m_Crst = new LowLevelLock();
+        private readonly Lock m_Crst = new Lock(useTrivialWaits: true);
         private FrozenObjectSegment m_CurrentSegment;
 
+#if TARGET_WASM
+        // WASM doesn't support reserving memory so we use a smaller size.
+        private const nuint FOH_SEGMENT_DEFAULT_SIZE = 64 * 1024;
+#else
         // Default size to reserve for a frozen segment
         private const nuint FOH_SEGMENT_DEFAULT_SIZE = 4 * 1024 * 1024;
+#endif
         // Size to commit on demand in that reserved space
         private const nuint FOH_COMMIT_SIZE = 64 * 1024;
 
@@ -34,9 +39,7 @@ namespace Internal.Runtime
         {
             HalfBakedObject* obj = null;
 
-            m_Crst.Acquire();
-
-            try
+            using (m_Crst.EnterScope())
             {
                 Debug.Assert(type != null);
                 // _ASSERT(FOH_COMMIT_SIZE >= MIN_OBJECT_SIZE);
@@ -84,10 +87,6 @@ namespace Internal.Runtime
                     Debug.Assert(obj != null);
                 }
             } // end of m_Crst lock
-            finally
-            {
-                m_Crst.Release();
-            }
 
             IntPtr result = (IntPtr)obj;
 
@@ -119,7 +118,7 @@ namespace Internal.Runtime
             {
                 m_Size = sizeHint;
 
-                Debug.Assert(m_Size > FOH_COMMIT_SIZE);
+                Debug.Assert(m_Size >= FOH_COMMIT_SIZE);
                 Debug.Assert(m_Size % FOH_COMMIT_SIZE == 0);
 
                 void* alloc = ClrVirtualReserve(m_Size);

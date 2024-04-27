@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 using Internal.Reflection.Augments;
+using Internal.Runtime;
 using Internal.Runtime.CompilerServices;
 
 namespace System
@@ -47,25 +48,20 @@ namespace System
             return value._typeHandle;
         }
 
-        public static object ToObject(TypedReference value)
+        public static unsafe object ToObject(TypedReference value)
         {
-            RuntimeTypeHandle typeHandle = value._typeHandle;
-            if (typeHandle.IsNull)
+            RuntimeTypeHandle handle = RawTargetTypeToken(value);
+
+            if (handle.IsNull)
                 ThrowHelper.ThrowArgumentException_ArgumentNull_TypedRefType();
 
-            EETypePtr eeType = typeHandle.ToEETypePtr();
-            if (eeType.IsValueType)
+            MethodTable* mt = handle.ToMethodTable();
+            if (mt->IsPointer || mt->IsFunctionPointer)
             {
-                return RuntimeImports.RhBox(eeType, ref value.Value);
+                handle = typeof(UIntPtr).TypeHandle;
             }
-            else if (eeType.IsPointer || eeType.IsFunctionPointer)
-            {
-                return RuntimeImports.RhBox(EETypePtr.EETypePtrOf<UIntPtr>(), ref value.Value);
-            }
-            else
-            {
-                return Unsafe.As<byte, object>(ref value.Value);
-            }
+
+            return RuntimeHelpers.Box(ref value.Value, handle);
         }
 
         public static void SetTypedReference(TypedReference target, object? value) { throw new NotSupportedException(); }

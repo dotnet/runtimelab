@@ -6,10 +6,12 @@
 
     <!-- IL3049 warns about mismatched signatures; we are intentionally testing they are handled correctly
          when the definition is statically linked -->
-    <NoWarn>$(NoWarn);IL3049</NoWarn>
+    <NoWarn>$(NoWarn);IL3049;CS8500</NoWarn>
   </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="HelloWasm.cs" />
+    <Compile Include="LSSATests.cs" />
     <Compile Include="ExceptionHandlingTests.Common.cs" />
 
     <CMakeProjectReference Include="CMakeLists.txt" />
@@ -20,15 +22,18 @@
     <DirectPInvoke Include="ModuleName1!CommonWasmImportFunctionName" />
     <DirectPInvoke Include="StaticModule1" />
     <DirectPInvoke Include="StaticModule2" />
+    <DirectPInvoke Condition="'$(TargetsBrowser)' == 'true'" Include="js" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="CpObj.ilproj" />
-    <ProjectReference Include="CkFinite.ilproj" />
-    <ProjectReference Include="ILHelpers.ilproj" />
+    <ProjectReference Include="HelloWasm.IL.ilproj" />
   </ItemGroup>
 
-  <PropertyGroup Condition="$(TargetOS) != 'wasi'">
+  <PropertyGroup Condition="'$(TargetsBrowser)' == 'true'">
     <EmccExtraArgs>--js-library $(MSBuildProjectDirectory)\dotnet_support.js --pre-js $(MSBuildProjectDirectory)\Microsoft.JSInterop.js --pre-js $(MSBuildProjectDirectory)\shell.js --post-js $(MSBuildProjectDirectory)\HelloWasm.js</EmccExtraArgs>
   </PropertyGroup>
+
+  <ItemGroup>
+    <IlcArg Include="--codegenopt:JitRunLssaTests=1" />
+  </ItemGroup>
 </Project>

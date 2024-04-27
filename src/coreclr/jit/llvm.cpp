@@ -4,10 +4,15 @@
 #include "jitpch.h"
 #include "llvm.h"
 
-#pragma warning (disable: 4459)
+// TODO-LLVM-Upstream: figure out how to fix these warnings in LLVM headers.
+#pragma warning(push)
+#pragma warning (disable : 4242)
+#pragma warning (disable : 4244)
+#pragma warning (disable : 4459)
+#pragma warning (disable : 4267)
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/Signals.h"
-#pragma warning (error: 4459)
+#pragma warning(pop)
 
 // Must be kept in sync with the managed version in "CorInfoImpl.Llvm.cs".
 //
@@ -30,6 +35,7 @@ enum class EEApiId
     GetExceptionHandlingModel,
     GetExceptionThrownVariable,
     GetExceptionHandlingTable,
+    GetJitTestInfo,
     Count
 };
 
@@ -104,6 +110,7 @@ Llvm::Llvm(Compiler* compiler)
     , _sdsuMap(compiler->getAllocator(CMK_Codegen))
     , _localsMap(compiler->getAllocator(CMK_Codegen))
     , m_throwHelperBlocksMap(compiler->getAllocator(CMK_Codegen))
+    , m_phiPairs(compiler->getAllocator(CMK_Codegen))
     , m_ehModel(GetExceptionHandlingModel())
     , m_debugVariablesMap(compiler->getAllocator(CMK_Codegen))
 {
@@ -173,14 +180,10 @@ bool Llvm::callRequiresShadowStackSave(const GenTreeCall* call) const
     // back into managed code, we need to save the shadow stack pointer, so that the RPI frame can pick it up.
     // Another case where the save/restore is required is when calling into native runtime code that can trigger
     // a GC (canonical example: allocators), to communicate shadow stack bounds to the roots scan.
-    // TODO-LLVM-CQ: optimize the GC case by using specialized helpers which would sink the save/restore to the
-    // unlikely path of a GC actually happening.
-    // TODO-LLVM-CQ: we should skip the managed -> native -> managed transition for runtime imports implemented
-    // in managed code as runtime exports.
     //
     if (call->IsHelperCall())
     {
-        return helperCallRequiresShadowStackSave(_compiler->eeGetHelperNum(call->gtCallMethHnd));
+        return helperCallRequiresShadowStackSave(call->GetHelperNum());
     }
 
     // SPGCT calls are assumed to never RPI by contract.
@@ -329,8 +332,8 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_NEWSFAST_ALIGN8_FINALIZE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\ArrayHelpers.cs".
-        { FUNC(CORINFO_HELP_NEW_MDARR) CORINFO_TYPE_CLASS, { CORINFO_TYPE_NATIVEINT, CORINFO_TYPE_INT, CORINFO_TYPE_PTR }, HFIF_SS_ARG }, // Oddity: IntPtr used for MethodTable*.
-        { FUNC(CORINFO_HELP_NEW_MDARR_RARE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_NATIVEINT, CORINFO_TYPE_INT, CORINFO_TYPE_PTR }, HFIF_SS_ARG }, // Oddity: IntPtr used for MethodTable*.
+        { FUNC(CORINFO_HELP_NEW_MDARR) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_NEW_MDARR_RARE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
 
         // Runtime export, implemented in "Runtime.Base\src\System\Runtime\RuntimeExports.cs".
         { FUNC(CORINFO_HELP_NEWARR_1_DIRECT) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT }, HFIF_SS_ARG },
@@ -370,9 +373,9 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
 
         // Implemented in "Runtime.Base\src\System\Runtime\TypeCast.cs".
         { FUNC(CORINFO_HELP_ARRADDR_ST) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS, CORINFO_TYPE_NATIVEINT, CORINFO_TYPE_CLASS }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_LDELEMA_REF) CORINFO_TYPE_BYREF, { CORINFO_TYPE_CLASS, CORINFO_TYPE_NATIVEINT, CORINFO_TYPE_NATIVEINT }, HFIF_SS_ARG }, // Oddity: IntPtr used for MethodTable*.
+        { FUNC(CORINFO_HELP_LDELEMA_REF) CORINFO_TYPE_BYREF, { CORINFO_TYPE_CLASS, CORINFO_TYPE_NATIVEINT, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
 
-        // Runtime exports implemented in "Runtime.Base\src\System\Runtime\ExcetionHandling.wasm.cs".
+        // Runtime exports implemented in "Runtime.Base\src\System\Runtime\ExceptionHandling.wasm.cs".
         { FUNC(CORINFO_HELP_THROW) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_RETHROW) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
 
@@ -414,9 +417,9 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         // (Not) implemented in "Runtime\portable.cpp".
         { FUNC(CORINFO_HELP_POLL_GC) CORINFO_TYPE_VOID, { } },
 
-        // Debug-only helpers NYI in NativeAOT.
-        { FUNC(CORINFO_HELP_STRESS_GC) },
-        { FUNC(CORINFO_HELP_CHECK_OBJ) },
+        // Debug-only helpers, implemented in "Runtime\wasm\GcStress.cpp".
+        { FUNC(CORINFO_HELP_STRESS_GC) CORINFO_TYPE_BYREF, { CORINFO_TYPE_BYREF, CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_CHECK_OBJ) CORINFO_TYPE_CLASS, { CORINFO_TYPE_CLASS }, HFIF_NO_RPI_OR_GC },
 
         // Write barriers, implemented in "Runtime\portable.cpp".
         { FUNC(CORINFO_HELP_ASSIGN_REF) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS }, HFIF_NO_RPI_OR_GC },
@@ -484,9 +487,13 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         // Part of the inlined PInvoke frame construction feature which is NYI in NativeAOT.
         { FUNC(CORINFO_HELP_INIT_PINVOKE_FRAME) },
 
-        // Implemented as plain "memset"/"memcpy".
-        { FUNC(CORINFO_HELP_MEMSET) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT, CORINFO_TYPE_NATIVEUINT } },
-        { FUNC(CORINFO_HELP_MEMCPY) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_NATIVEUINT } },
+        // Runtime exports implemented in "src/libraries/System.Private.CoreLib/src/System/SpanHelpers.ByteMemOps.cs".
+        { FUNC(CORINFO_HELP_MEMSET) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_BYTE, CORINFO_TYPE_NATIVEUINT }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_MEMZERO) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_NATIVEUINT }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_MEMCPY) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_NATIVEUINT }, HFIF_SS_ARG },
+
+        // Implemented as plain "memset".
+        { FUNC(CORINFO_HELP_NATIVE_MEMSET) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT, CORINFO_TYPE_NATIVEUINT } },
 
         // Not used in NativeAOT.
         { FUNC(CORINFO_HELP_RUNTIMEHANDLE_METHOD) },
@@ -501,7 +508,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\LdTokenHelpers.cs".
         { FUNC(CORINFO_HELP_METHODDESC_TO_STUBRUNTIMEMETHOD) CORINFO_TYPE_VALUECLASS, { CORINFO_TYPE_NATIVEINT }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_FIELDDESC_TO_STUBRUNTIMEFIELD) CORINFO_TYPE_VALUECLASS, { CORINFO_TYPE_NATIVEINT }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE) CORINFO_TYPE_VALUECLASS, { CORINFO_TYPE_NATIVEINT }, HFIF_SS_ARG }, // Oddity: IntPtr used for MethodTable*.
+        { FUNC(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE) CORINFO_TYPE_VALUECLASS, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs".
         { FUNC(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPEHANDLE_MAYBENULL) CORINFO_TYPE_VALUECLASS, { CORINFO_TYPE_RT_HANDLE }, HFIF_SS_ARG },
@@ -519,6 +526,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_READYTORUN_GCSTATIC_BASE) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_NONGCSTATIC_BASE) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_THREADSTATIC_BASE) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_READYTORUN_THREADSTATIC_BASE_NOCTOR) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_NONGCTHREADSTATIC_BASE) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_VIRTUAL_FUNC_PTR) CORINFO_TYPE_PTR, { CORINFO_TYPE_CLASS } },
         { FUNC(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG | HFIF_THROW_OR_NO_RPI_OR_GC },
@@ -582,6 +590,8 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_VTABLEPROFILE64) },
         { FUNC(CORINFO_HELP_COUNTPROFILE32) },
         { FUNC(CORINFO_HELP_COUNTPROFILE64) },
+        { FUNC(CORINFO_HELP_VALUEPROFILE32) },
+        { FUNC(CORINFO_HELP_VALUEPROFILE64) },
         { FUNC(CORINFO_HELP_PARTIAL_COMPILATION_PATCHPOINT) },
         { FUNC(CORINFO_HELP_VALIDATE_INDIRECT_CALL) },
         { FUNC(CORINFO_HELP_DISPATCH_INDIRECT_CALL) },
@@ -862,6 +872,11 @@ CORINFO_GENERIC_HANDLE Llvm::GetExceptionThrownVariable()
 CORINFO_GENERIC_HANDLE Llvm::GetExceptionHandlingTable(CORINFO_LLVM_EH_CLAUSE* pClauses, int count)
 {
     return CallEEApi<EEApiId::GetExceptionHandlingTable, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, pClauses, count);
+}
+
+void Llvm::GetJitTestInfo(CorInfoLlvmJitTestKind kind, CORINFO_LLVM_JIT_TEST_INFO* pInfo)
+{
+    CallEEApi<EEApiId::GetJitTestInfo, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, kind, pInfo);
 }
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExports)

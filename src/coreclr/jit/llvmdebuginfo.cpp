@@ -239,6 +239,11 @@ void Llvm::declareDebugVariables()
     {
         unsigned lclNum = lcl->GetKey();
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+        if (_compiler->lvaInSsa(lclNum))
+        {
+            // Managed with "assignDebugVariable".
+            continue;
+        }
 
         Value* addressValue;
         DIExpression* debugExpression;
@@ -258,7 +263,7 @@ void Llvm::declareDebugVariables()
             unsigned offset = static_cast<unsigned>(varDsc->GetStackOffset());
             debugExpression = m_diBuilder->createExpression({DW_OP_deref, DW_OP_plus_uconst, offset});
         }
-        else if (!_compiler->lvaInSsa(lclNum) && (varDsc->lvRefCnt() != 0))
+        else if (varDsc->lvRefCnt() != 0)
         {
             addressValue = getLocalAddr(lclNum);
             debugExpression = m_diBuilder->createExpression();
@@ -452,22 +457,23 @@ DIType* Llvm::createDebugTypeForCompositeType(
         m_diBuilder->createReplaceableCompositeType(DW_TAG_structure_type, name, nullptr, debugFile, 0));
     m_context->DebugTypesMap.Set(debugTypeHandle, declType.get());
 
-    unsigned index = 0;
-    std::vector<Metadata*> debugElements((pInfo->BaseClass != NO_DEBUG_TYPE) + pInfo->InstanceFieldCount);
+    unsigned debugElementsCount = (pInfo->BaseClass != NO_DEBUG_TYPE) + pInfo->InstanceFieldCount;
+    ArrayStack<Metadata*> debugElements(_compiler->getAllocator(CMK_DebugInfo), debugElementsCount);
     if (pInfo->BaseClass != NO_DEBUG_TYPE)
     {
         DIType* baseDebugType = getOrCreateDebugType(pInfo->BaseClass);
-        debugElements[index++] = m_diBuilder->createInheritance(declType.get(), baseDebugType, 0, 0, DINode::FlagZero);
+        debugElements.Push(m_diBuilder->createInheritance(declType.get(), baseDebugType, 0, 0, DINode::FlagZero));
     }
 
     for (size_t i = 0; i < pInfo->InstanceFieldCount; i++)
     {
         CORINFO_LLVM_INSTANCE_FIELD_DEBUG_INFO* pFieldInfo = &pInfo->InstanceFields[i];
         DIType* fieldDebugType = getOrCreateDebugType(pFieldInfo->Type);
-        debugElements[index++] = createDebugMember(pFieldInfo->Name, fieldDebugType, pFieldInfo->Offset);
+        DIDerivedType* debugField = createDebugMember(pFieldInfo->Name, fieldDebugType, pFieldInfo->Offset);
+        debugElements.Push(debugField);
     }
 
-    DIType* debugType = createClassDebugType(name, pInfo->Size, debugElements);
+    DIType* debugType = createClassDebugType(name, pInfo->Size, AsRef(debugElements));
     m_diBuilder->replaceTemporary(std::move(declType), debugType);
 
     // TODO-LLVM-DI: static fields.
@@ -476,16 +482,15 @@ DIType* Llvm::createDebugTypeForCompositeType(
 
 DIType* Llvm::createDebugTypeForEnumType(CORINFO_LLVM_ENUM_TYPE_DEBUG_INFO* pInfo)
 {
-    std::vector<Metadata*> elements(pInfo->ElementCount);
+    ArrayStack<Metadata*> elements(_compiler->getAllocator(CMK_DebugInfo), static_cast<unsigned>(pInfo->ElementCount));
     for (size_t i = 0; i < pInfo->ElementCount; i++)
     {
         CORINFO_LLVM_ENUM_ELEMENT_DEBUG_INFO* pElementInfo = &pInfo->Elements[i];
         llvm::DIEnumerator* element = m_diBuilder->createEnumerator(pElementInfo->Name, pElementInfo->Value);
-
-        elements[i] = element;
+        elements.Push(element);
     }
 
-    DINodeArray elementsArray = m_diBuilder->getOrCreateArray(elements);
+    DINodeArray elementsArray = m_diBuilder->getOrCreateArray(AsRef(elements));
     DIType* underlyingDebugType = getOrCreateDebugType(pInfo->ElementType);
     DIType* enumDebugType =
         m_diBuilder->createEnumerationType(nullptr, pInfo->Name, getUnknownDebugFile(), 0,
@@ -501,31 +506,31 @@ DIType* Llvm::createDebugTypeForArrayType(CORINFO_LLVM_ARRAY_TYPE_DEBUG_INFO* pI
     // Where <bounds> (for an MD array) is an array of [LowerBound..., Length...].
     unsigned rank = pInfo->Rank;
     bool isMDArray = pInfo->IsMultiDimensional != 0;
-    std::vector<Metadata*> members = std::vector<Metadata*>();
+    ArrayStack<Metadata*> members(_compiler->getAllocator(CMK_DebugInfo));
 
     DIType* lengthDebugType = createDebugTypeForPrimitive(CORINFO_TYPE_INT);
     DIDerivedType* lengthDebugField = createDebugMember("Length", lengthDebugType, OFFSETOF__CORINFO_Array__length);
-    members.push_back(lengthDebugField);
+    members.Push(lengthDebugField);
 
     if (isMDArray)
     {
         unsigned lowerBoundsOffset = _compiler->eeGetMDArrayLowerBoundOffset(rank, 0);
         DIType* boundsDebugType = createFixedArrayDebugType(lengthDebugType, rank);
         DIDerivedType* lowerBoundsDebugField = createDebugMember("LowerBounds", boundsDebugType, lowerBoundsOffset);
-        members.push_back(lowerBoundsDebugField);
+        members.Push(lowerBoundsDebugField);
 
         unsigned lengthsOffset = _compiler->eeGetMDArrayLengthOffset(rank, 0);
         DIDerivedType* lengthsDebugField = createDebugMember("Lengths", boundsDebugType, lengthsOffset);
-        members.push_back(lengthsDebugField);
+        members.Push(lengthsDebugField);
     }
 
     unsigned dataOffset = isMDArray ? _compiler->eeGetMDArrayDataOffset(rank) : _compiler->eeGetArrayDataOffset();
     DIType* elementDebugType = getOrCreateDebugType(pInfo->ElementType);
     DIType* dataDebugType = createFixedArrayDebugType(elementDebugType, 0);
     DIDerivedType* dataDebugField = createDebugMember("Data", dataDebugType, dataOffset);
-    members.push_back(dataDebugField);
+    members.Push(dataDebugField);
 
-    DIType* debugType = createClassDebugType(pInfo->Name, dataOffset, members);
+    DIType* debugType = createClassDebugType(pInfo->Name, dataOffset, AsRef(members));
     return debugType;
 }
 
@@ -555,26 +560,26 @@ DIType* Llvm::createDebugTypeForPointerType(CORINFO_LLVM_POINTER_TYPE_DEBUG_INFO
 
 DISubroutineType* Llvm::createDebugTypeForFunctionType(CORINFO_LLVM_FUNCTION_TYPE_DEBUG_INFO* pInfo)
 {
-    std::vector<Metadata*> debugParameters = std::vector<Metadata*>();
-    debugParameters.push_back(getOrCreateDebugType(pInfo->ReturnType));
+    ArrayStack<Metadata*> debugParameters(_compiler->getAllocator(CMK_DebugInfo));
+    debugParameters.Push(getOrCreateDebugType(pInfo->ReturnType));
 
     if (pInfo->TypeOfThisPointer != NO_DEBUG_TYPE)
     {
-        debugParameters.push_back(getOrCreateDebugType(pInfo->TypeOfThisPointer));
+        debugParameters.Push(getOrCreateDebugType(pInfo->TypeOfThisPointer));
     }
 
     for (size_t i = 0; i < pInfo->NumberOfArguments; i++)
     {
-        debugParameters.push_back(getOrCreateDebugType(pInfo->ArgumentTypes[i]));
+        debugParameters.Push(getOrCreateDebugType(pInfo->ArgumentTypes[i]));
     }
 
-    llvm::DITypeRefArray debugParametersArray = m_diBuilder->getOrCreateTypeArray(debugParameters);
+    llvm::DITypeRefArray debugParametersArray = m_diBuilder->getOrCreateTypeArray(AsRef(debugParameters));
     return m_diBuilder->createSubroutineType(debugParametersArray);
 }
 
 DIType* Llvm::createFixedArrayDebugType(DIType* elementDebugType, unsigned size)
 {
-    unsigned sizeInBits = elementDebugType->getSizeInBits() * size;
+    uint64_t sizeInBits = elementDebugType->getSizeInBits() * size;
     llvm::DISubrange* boundsRange = m_diBuilder->getOrCreateSubrange(0, size);
     DINodeArray boundsArray = m_diBuilder->getOrCreateArray(boundsRange);
     DIType* debugType =

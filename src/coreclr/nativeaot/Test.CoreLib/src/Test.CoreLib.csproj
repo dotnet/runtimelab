@@ -41,10 +41,10 @@
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\GCStress.cs">
       <Link>Runtime.Base\src\System\Runtime\GCStress.cs</Link>
     </Compile>
-    <Compile Include="..\..\Runtime.Base\src\System\Runtime\__Finalizer.cs" Condition="'$(WasmAbi)' != 'true' or '$(FeatureWasmThreads)' == 'true'">
+    <Compile Include="..\..\Runtime.Base\src\System\Runtime\__Finalizer.cs" Condition="'$(TargetsSingleThreadedWasm)' != 'true'">
       <Link>Runtime.Base\src\System\Runtime\__Finalizer.cs</Link>
     </Compile>
-    <Compile Include="..\..\Runtime.Base\src\System\Runtime\__Finalizer.SingleThreaded.cs" Condition="'$(WasmAbi)' == 'true' and '$(FeatureWasmThreads)' != 'true'">
+    <Compile Include="..\..\Runtime.Base\src\System\Runtime\__Finalizer.SingleThreaded.cs" Condition="'$(TargetsSingleThreadedWasm)' == 'true'">
       <Link>Runtime.Base\src\System\Runtime\__Finalizer.SingleThreaded.cs</Link>
     </Compile>
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\MethodTable.Runtime.cs">
@@ -167,9 +167,6 @@
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\CompilerServices\IsByRefLikeAttribute.cs">
       <Link>Runtime.Base\src\System\Runtime\CompilerServices\IsByRefLikeAttribute.cs</Link>
     </Compile>
-    <Compile Include="..\..\Runtime.Base\src\System\Runtime\EETypePtr.cs">
-      <Link>System\EETypePtr.cs</Link>
-    </Compile>
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\ExceptionIDs.cs">
       <Link>System\Runtime\ExceptionIDs.cs</Link>
     </Compile>
@@ -228,10 +225,14 @@
     <Compile Include="Internal\Runtime\MethodTable.Runtime.cs" />
     <Compile Include="System\Runtime\CompilerServices\CastCache.cs" />
     <Compile Include="System\Runtime\CompilerServices\ClassConstructorRunner.cs" />
+    <Compile Include="System\Runtime\CompilerServices\InlineArrayAttribute.cs" />
     <Compile Include="System\Runtime\CompilerServices\StaticClassConstructionContext.cs" />
     <Compile Include="System\Runtime\InteropServices\InAttribute.cs" />
+    <Compile Include="System\Diagnostics\DebuggerStepThroughAttribute.cs" />
+    <Compile Include="System\Diagnostics\StackTraceHiddenAttribute.cs" />
     <Compile Include="System\Diagnostics\CodeAnalysis\DoesNotReturnIfAttribute.cs" />
     <Compile Include="System\Diagnostics\Debug.cs" />
+    <Compile Include="System\Runtime\InteropServices\MemoryMarshal.cs" />
     <Compile Include="System\Runtime\RuntimeImports.cs" />
     <Compile Include="System\Runtime\RuntimeHelpers.cs" />
     <Compile Include="System\Runtime\InitializeFinalizerThread.cs" />

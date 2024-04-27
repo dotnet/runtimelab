@@ -21,6 +21,11 @@ handle_arguments() {
             __ShiftArgs=1
             ;;
 
+        tzddir|-tzddir)
+            __tzdDir="$2"
+            __ShiftArgs=1
+            ;;
+
         usepthreads|-usepthreads)
             __usePThreads=1
             ;;
@@ -48,6 +53,7 @@ __StaticLibLink=0
 __UnprocessedBuildArgs=
 __VerboseBuild=false
 __icuDir=""
+__tzdDir=""
 __usePThreads=0
 
 source "$__RepoRootDir"/eng/native/build-commons.sh
@@ -55,7 +61,7 @@ source "$__RepoRootDir"/eng/native/build-commons.sh
 # Set cross build
 if [[ "$__TargetOS" == browser ]]; then
     if [[ -z "$EMSDK_PATH" ]]; then
-        if [[ -d "$__RepoRootDir"/src/mono/wasm/emsdk/ ]]; then
+        if [[ -d "$__RepoRootDir"/src/mono/browser/emsdk/ ]]; then
             export EMSDK_PATH="$__RepoRootDir"/src/mono/browser/emsdk/
         else
             echo "Error: You need to set the EMSDK_PATH environment variable pointing to the emscripten SDK root."
@@ -154,6 +160,9 @@ fi
 
 if [[ -n "$__icuDir" ]]; then
     __CMakeArgs="-DCMAKE_ICU_DIR=\"$__icuDir\" $__CMakeArgs"
+fi
+if [[ -n "$__tzdDir" ]]; then
+    __CMakeArgs="-DCMAKE_TZD_DIR=\"$__tzdDir\" $__CMakeArgs"
 fi
 __CMakeArgs="-DCMAKE_USE_PTHREADS=$__usePThreads $__CMakeArgs"
 

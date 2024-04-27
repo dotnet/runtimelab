@@ -12,14 +12,17 @@
     <_BuildNativeArgs Condition="'$(OfficialBuildId)' != ''">$(_BuildNativeArgs) /p:OfficialBuildId="$(OfficialBuildId)"</_BuildNativeArgs>
 
     <_RuntimeVariant />
-    <_RuntimeVariant Condition="'$(MonoWasmBuildVariant)' == 'multithread'">-threads</_RuntimeVariant>
+    <_RuntimeVariant Condition="'$(WasmEnableThreads)' == 'true'">-threads</_RuntimeVariant>
     <_UsePThreads />
-    <_UsePThreads Condition="'$(MonoWasmBuildVariant)' == 'multithread'"> usepthreads</_UsePThreads>
+    <_UsePThreads Condition="'$(WasmEnableThreads)' == 'true'"> usepthreads</_UsePThreads>
 
     <_IcuDir Condition="'$(TargetsAppleMobile)' != 'true' and '$(PkgMicrosoft_NETCore_Runtime_ICU_Transport)' != ''">$(PkgMicrosoft_NETCore_Runtime_ICU_Transport)/runtimes/$(TargetOS)-$(TargetArchitecture)$(_RuntimeVariant)/native</_IcuDir>
     <_IcuDirArg Condition="'$(_IcuDir)' != ''"> icudir "$(_IcuDir)"</_IcuDirArg>
-
     <_BuildNativeArgs>$(_BuildNativeArgs)$(_IcuDirArg)$(_UsePThreads)</_BuildNativeArgs>
+
+    <_TzdDir Condition="'$(PkgSystem_Runtime_TimeZoneData)' != ''">$([MSBuild]::NormalizePath('$(PkgSystem_Runtime_TimeZoneData)', 'contentFiles', 'any', 'any', 'data'))</_TzdDir>
+    <_TzdDirArg Condition="'$(_TzdDir)' != ''"> tzddir "$(_TzdDir)"</_TzdDirArg>
+    <_BuildNativeArgs>$(_BuildNativeArgs)$(_TzdDirArg)</_BuildNativeArgs>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,10 +31,24 @@
 
   <ItemGroup Condition="'$(TargetsAppleMobile)' == 'true' or '$(TargetOS)' == 'browser' or '$(TargetOS)' == 'wasi'">
     <PackageReference Include="Microsoft.NETCore.Runtime.ICU.Transport" PrivateAssets="all" Version="$(MicrosoftNETCoreRuntimeICUTransportVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="System.Runtime.TimeZoneData" PrivateAssets="all" Version="$(SystemRuntimeTimeZoneDataVersion)" GeneratePathProperty="true" Condition="'$(TargetsWasm)' == 'true'" />
   </ItemGroup>
 
+  <Target Name="BuildNativeCommon"
+          DependsOnTargets="GenerateNativeVersionFile">
+    <ItemGroup>
+      <_IcuArtifacts Condition="'$(_IcuDir)' != '' and '$(TargetsAppleMobile)' != 'true'"
+                     Include="$(_IcuDir)/lib/libicuuc.a;
+                              $(_IcuDir)/lib/libicui18n.a;
+                              $(_IcuDir)/lib/libicudata.a;
+                              $(_IcuDir)/lib/*.dat" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(_IcuArtifacts)" DestinationFolder="$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'native', '$(_BuildNativeOutConfig)'))" SkipUnchangedFiles="true" />
+  </Target>
+
   <Target Name="BuildNativeUnix"
-          DependsOnTargets="GenerateNativeVersionFile"
+          DependsOnTargets="BuildNativeCommon"
           BeforeTargets="Build"
           Condition="!$([MSBuild]::IsOsPlatform(Windows))">
     <PropertyGroup>
@@ -54,21 +71,12 @@
       <_BuildNativeUnixArgs>$(_BuildNativeArgs)$(_ProcessorCountArg)$(_PortableBuildArg)$(_CrossBuildArg)$(_BuildNativeCompilerArg)$(_KeepNativeSymbolsBuildArg)$(_CMakeArgs) $(Compiler)</_BuildNativeUnixArgs>
     </PropertyGroup>
 
-    <ItemGroup>
-      <_IcuArtifacts Condition="'$(_IcuDir)' != '' and '$(TargetsAppleMobile)' != 'true'"
-                     Include="$(_IcuDir)/lib/libicuuc.a;
-                              $(_IcuDir)/lib/libicui18n.a;
-                              $(_IcuDir)/lib/libicudata.a;
-                              $(_IcuDir)/lib/*.dat" />
-    </ItemGroup>
-
-    <Copy SourceFiles="@(_IcuArtifacts)" DestinationFolder="$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'native', '$(_BuildNativeOutConfig)'))" SkipUnchangedFiles="true" />
     <Message Text="$(MSBuildThisFileDirectory)build-native.sh $(_BuildNativeUnixArgs)" Importance="High"/>
     <Exec Command="&quot;$(MSBuildThisFileDirectory)build-native.sh&quot; $(_BuildNativeUnixArgs)" />
   </Target>
 
   <Target Name="BuildNativeWindows"
-          DependsOnTargets="GenerateNativeVersionFile"
+          DependsOnTargets="BuildNativeCommon"
           BeforeTargets="Build"
           Condition="$([MSBuild]::IsOsPlatform(Windows))">
     <PropertyGroup>

@@ -130,8 +130,6 @@ namespace Internal.JitInterface
 
         private static string GetTargetSpec(TargetDetails target)
         {
-            // Use the same Jir for browser and wasi
-            string targetOSComponent = (target.OperatingSystem == TargetOS.Windows ? "win" : "unix");
             string targetArchComponent = target.Architecture switch
             {
                 TargetArchitecture.X86 => "x86",
@@ -141,12 +139,18 @@ namespace Internal.JitInterface
                 TargetArchitecture.Wasm32 => "wasm32",
                 TargetArchitecture.Wasm64 => "wasm64",
                 TargetArchitecture.LoongArch64 => "loongarch64",
+                TargetArchitecture.RiscV64 => "riscv64",
                 _ => throw new NotImplementedException(target.Architecture.ToString())
             };
 
-            if (target.IsWasm || (target.Architecture == TargetArchitecture.ARM64) || (target.Architecture == TargetArchitecture.ARM))
+            string targetOSComponent;
+            if (target.Architecture is TargetArchitecture.ARM64 or TargetArchitecture.ARM || target.IsWasm)
             {
                 targetOSComponent = "universal";
+            }
+            else
+            {
+                targetOSComponent = target.OperatingSystem == TargetOS.Windows ? "win" : "unix";
             }
 
             return targetOSComponent + '_' + targetArchComponent + "_" + RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant();

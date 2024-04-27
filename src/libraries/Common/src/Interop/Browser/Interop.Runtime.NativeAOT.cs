@@ -10,31 +10,34 @@ internal static partial class Interop
 {
     internal static unsafe partial class Runtime
     {
+        private const string JSLibrary = "System.Runtime.InteropServices.JavaScript";
+
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal static extern void ReleaseCSOwnedObject(IntPtr jsHandle);
-        [LibraryImport("*", EntryPoint = "mono_wasm_bind_js_import", StringMarshalling = StringMarshalling.Utf16)]
-        public static unsafe partial void BindJSImport(void* signature, out int is_exception, out IntPtr result);
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_bind_js_import_ST", StringMarshalling = StringMarshalling.Utf16)]
+        public static unsafe partial IntPtr BindJSImportST(void* signature);
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_invoke_jsimport_ST")]
+        public static unsafe partial IntPtr InvokeJSImportST(int importHandle, nint args);
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern void InvokeJSFunction(IntPtr bound_function_js_handle, void* data);
-        [LibraryImport("*", EntryPoint = "mono_wasm_invoke_js_import", StringMarshalling = StringMarshalling.Utf16)]
-        public static unsafe partial void InvokeJSImport(IntPtr fn_handle, void* data);
-        [LibraryImport("*", EntryPoint = "mono_wasm_bind_cs_function", StringMarshalling = StringMarshalling.Utf16)]
+        public static extern void InvokeJSFunction(IntPtr bound_function_js_handle, nint data);
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_invoke_js_import", StringMarshalling = StringMarshalling.Utf16)]
+        public static unsafe partial void InvokeJSImport(IntPtr fn_handle, nint data);
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_bind_cs_function", StringMarshalling = StringMarshalling.Utf16)]
         public static unsafe partial void BindCSFunction(string fully_qualified_name, int fully_qualified_name_length, int signature_hash, void* signature, out int is_exception);
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern void ResolveOrRejectPromise(void* data);
+        public static extern void ResolveOrRejectPromise(nint data);
         [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern IntPtr RegisterGCRoot(IntPtr start, int bytesSize, IntPtr name);
+        public static extern IntPtr RegisterGCRoot(void* start, int bytesSize, IntPtr name);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern void DeregisterGCRoot(IntPtr handle);
-
-        public static unsafe void BindJSImport(void* signature, out int is_exception, out object result)
-        {
-            BindJSImport(signature, out is_exception, out IntPtr _);
-            if (is_exception != 0)
-                result = "Runtime.BindJSFunction failed"; // TODO-LLVM-JSInterop: Marshal exception message
-            else
-                result = "";
-        }
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public static extern void CancelPromise(IntPtr gcHandle);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public static extern void AssemblyGetEntryPoint(IntPtr assemblyNamePtr, int auto_insert_breakpoint, void** monoMethodPtrPtr);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public static extern void BindAssemblyExports(IntPtr assemblyNamePtr);
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        public static extern void GetAssemblyExport(IntPtr assemblyNamePtr, IntPtr namespacePtr, IntPtr classnamePtr, IntPtr methodNamePtr, IntPtr* monoMethodPtrPtr);
 
         public static unsafe void BindCSFunction(in string fully_qualified_name, int signature_hash, void* signature, out int is_exception, out object result)
         {

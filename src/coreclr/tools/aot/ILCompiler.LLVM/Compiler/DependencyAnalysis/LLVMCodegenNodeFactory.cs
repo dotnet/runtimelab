@@ -26,6 +26,7 @@ namespace ILCompiler.DependencyAnalysis
             DictionaryLayoutProvider dictionaryLayoutProvider,
             InlinedThreadStatics inlinedThreadStatics,
             PreinitializationManager preinitializationManager,
+            DevirtualizationManager devirtualizationManager,
             IEnumerable<ICompilationRootProvider> roots)
             : base(context,
                   compilationModuleGroup,
@@ -37,7 +38,8 @@ namespace ILCompiler.DependencyAnalysis
                   dictionaryLayoutProvider,
                   inlinedThreadStatics,
                   new ImportedNodeProviderThrowing(),
-                  preinitializationManager)
+                  preinitializationManager,
+                  devirtualizationManager)
         {
             InitializeRuntimeExportsMap(roots);
         }
@@ -96,7 +98,7 @@ namespace ILCompiler.DependencyAnalysis
                         return methodNode;
                     }
 
-                    return new RuntimeImportMethodNode(method);
+                    return new RuntimeImportMethodNode(method, NameMangler);
                 }
             }
             if (CompilationModuleGroup.ContainsMethodBody(method, false))

@@ -11,7 +11,7 @@
 #include <unicode/uversion.h>
 #include <unicode/localpointer.h>
 
-#if !defined(TARGET_MACCATALYST) && !defined(TARGET_IOS) && !defined(TARGET_TVOS)
+#if !defined(APPLE_HYBRID_GLOBALIZATION)
 #include <unicode/utrace.h>
 #endif
 
@@ -186,6 +186,11 @@ GlobalizationNative_LoadICUData(const char* path)
     }
 #endif
 
+#ifdef TARGET_WASM
+    extern char static_icu_data; // Linked-in data packaged via "icu_data_lib".
+    const char *icu_data = &static_icu_data;
+#else // !TARGET_WASM
+
     const char *icu_data = cstdlib_load_icu_data(path);
 
     if (icu_data == NULL)
@@ -193,6 +198,7 @@ GlobalizationNative_LoadICUData(const char* path)
         log_shim_error("Failed to load ICU data.");
         return 0;
     }
+#endif // !TARGET_WASM
 
     if (load_icu_data(icu_data) == 0)
     {

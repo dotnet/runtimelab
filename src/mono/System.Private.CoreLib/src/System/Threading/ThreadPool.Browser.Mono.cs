@@ -13,8 +13,8 @@ using Microsoft.Win32.SafeHandles;
 
 namespace System.Threading
 {
-#if FEATURE_WASM_THREADS
-#error when compiled with FEATURE_WASM_THREADS, we use PortableThreadPool.WorkerThread.Browser.Threads.Mono.cs
+#if FEATURE_WASM_MANAGED_THREADS
+#error when compiled with FEATURE_WASM_MANAGED_THREADS, we use PortableThreadPool.WorkerThread.Browser.Threads.Mono.cs
 #endif
     [System.Runtime.Versioning.UnsupportedOSPlatformAttribute("browser")]
     public sealed class RegisteredWaitHandle : MarshalByRefObject
@@ -115,8 +115,17 @@ namespace System.Threading
             throw new PlatformNotSupportedException();
         }
 
+#if NATIVEAOT
+        internal static unsafe void MainThreadScheduleBackgroundJob(void* callback)
+        {
+            [DllImport("*")]
+            static extern void emscripten_async_call(void* func, void* arg, int millis);
+            emscripten_async_call(callback, null, 0);
+        }
+#else
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal static extern unsafe void MainThreadScheduleBackgroundJob(void* callback);
+#endif
 
 #pragma warning disable CS3016 // Arrays as attribute arguments is not CLS-compliant
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]

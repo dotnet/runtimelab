@@ -6,12 +6,14 @@
 
 extern "C" void __cxa_end_catch();
 
-COOP_PINVOKE_HELPER(void, RhpThrowNativeException, ())
+FCIMPL0(void, RhpThrowNativeException)
 {
     throw 0;
 }
+FCIMPLEND
 
-COOP_PINVOKE_HELPER(void, RhpReleaseNativeException, ())
+FCIMPL0(void, RhpReleaseNativeException)
 {
     __cxa_end_catch();
 }
+FCIMPLEND

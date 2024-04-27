@@ -157,7 +157,8 @@ void CodeGen::genCodeForBBlist()
     genMarkLabelsForCodegen();
 
     assert(!compiler->fgFirstBBScratch ||
-           compiler->fgFirstBB == compiler->fgFirstBBScratch); // compiler->fgFirstBBScratch has to be first.
+           compiler->fgFirstBB == compiler->fgFirstBBScratch); // compiler->fgFirstBBScratch
+                                                               // has to be first.
 
     /* Initialize structures used in the block list iteration */
     genInitialize();
@@ -314,8 +315,8 @@ void CodeGen::genCodeForBBlist()
                 printf("\nThis is the start of the cold region of the method\n");
             }
 #endif
-            // We should never have a block that falls through into the Cold section
-            noway_assert(!block->Prev()->bbFallsThrough());
+            // We should never split call/finally pairs between hot/cold sections
+            noway_assert(!block->isBBCallFinallyPairTail());
 
             needLabel = true;
         }
@@ -375,16 +376,25 @@ void CodeGen::genCodeForBBlist()
 
         bool firstMapping = true;
 
-#if defined(FEATURE_EH_FUNCLETS)
         if (block->HasFlag(BBF_FUNCLET_BEG))
         {
+            assert(compiler->UsesFunclets());
             genReserveFuncletProlog(block);
         }
-#endif // FEATURE_EH_FUNCLETS
 
         // Clear compCurStmt and compCurLifeTree.
         compiler->compCurStmt     = nullptr;
         compiler->compCurLifeTree = nullptr;
+
+#ifdef SWIFT_SUPPORT
+        // Reassemble Swift struct parameters on the local stack frame in the
+        // scratch BB right after the prolog. There can be arbitrary amounts of
+        // codegen related to doing this, so it cannot be done in the prolog.
+        if (compiler->fgBBisScratch(block) && compiler->lvaHasAnySwiftStackParamToReassemble())
+        {
+            genHomeSwiftStructParameters(/* handleStack */ true);
+        }
+#endif
 
         // Emit poisoning into scratch BB that comes right after prolog.
         // We cannot emit this code in the prolog as it might make the prolog too large.
@@ -395,7 +405,6 @@ void CodeGen::genCodeForBBlist()
 
         // Traverse the block in linear order, generating code for each node as we
         // as we encounter it.
-        CLANG_FORMAT_COMMENT_ANCHOR;
 
 #ifdef DEBUG
         // Set the use-order numbers for each node.
@@ -622,7 +631,7 @@ void CodeGen::genCodeForBBlist()
                     case BBJ_THROW:
                     case BBJ_CALLFINALLY:
                     case BBJ_EHCATCHRET:
-                    // We're going to generate more code below anyway, so no need for the NOP.
+                        // We're going to generate more code below anyway, so no need for the NOP.
 
                     case BBJ_RETURN:
                     case BBJ_EHFINALLYRET:
@@ -633,7 +642,7 @@ void CodeGen::genCodeForBBlist()
 
                     case BBJ_COND:
                     case BBJ_SWITCH:
-                    // These can't have a call as the last instruction!
+                        // These can't have a call as the last instruction!
 
                     default:
                         noway_assert(!"Unexpected bbKind");
@@ -643,8 +652,41 @@ void CodeGen::genCodeForBBlist()
         }
 #endif // TARGET_AMD64
 
+#if FEATURE_LOOP_ALIGN
+        auto SetLoopAlignBackEdge = [=](const BasicBlock* block, const BasicBlock* target) {
+            // This is the last place where we operate on blocks and after this, we operate
+            // on IG. Hence, if we know that the destination of "block" is the first block
+            // of a loop and that loop needs alignment (it has BBF_LOOP_ALIGN), then "block"
+            // might represent the lexical end of the loop. Propagate that information on the
+            // IG through "igLoopBackEdge".
+            //
+            // During emitter, this information will be used to calculate the loop size.
+            // Depending on the loop size, the decision of whether to align a loop or not will be taken.
+            // (Loop size is calculated by walking the instruction groups; see emitter::getLoopSize()).
+            // If `igLoopBackEdge` is set, then mark the next BasicBlock as a label. This will cause
+            // the emitter to create a new IG for the next block. Otherwise, if the next block
+            // did not have a label, additional instructions might be added to the current IG. This
+            // would make the "back edge" IG larger, possibly causing the size of the loop computed
+            // by `getLoopSize()` to be larger than actual, which could push the loop size over the
+            // threshold of loop size that can be aligned.
+
+            if (target->isLoopAlign())
+            {
+                if (GetEmitter()->emitSetLoopBackEdge(target))
+                {
+                    if (!block->IsLast())
+                    {
+                        JITDUMP("Mark " FMT_BB " as label: alignment end-of-loop\n", block->Next()->bbNum);
+                        block->Next()->SetFlags(BBF_HAS_LABEL);
+                    }
+                }
+            }
+        };
+#endif // FEATURE_LOOP_ALIGN
+
         /* Do we need to generate a jump or return? */
 
+        bool removedJmp = false;
         switch (block->GetKind())
         {
             case BBJ_RETURN:
@@ -679,7 +721,9 @@ void CodeGen::genCodeForBBlist()
 
                     if ((call != nullptr) && (call->gtOper == GT_CALL))
                     {
-                        if ((call->AsCall()->gtCallMoreFlags & GTF_CALL_M_DOES_NOT_RETURN) != 0)
+                        if ((call->AsCall()->gtCallMoreFlags & GTF_CALL_M_DOES_NOT_RETURN) != 0 ||
+                            ((call->AsCall()->gtCallType == CT_HELPER) &&
+                             Compiler::s_helperCallProperties.AlwaysThrow(call->AsCall()->GetHelperNum())))
                         {
                             instGen(INS_BREAKPOINT); // This should never get executed
                         }
@@ -692,37 +736,45 @@ void CodeGen::genCodeForBBlist()
                 block = genCallFinally(block);
                 break;
 
-#if defined(FEATURE_EH_FUNCLETS)
-
             case BBJ_EHCATCHRET:
+                assert(compiler->UsesFunclets());
                 genEHCatchRet(block);
                 FALLTHROUGH;
 
             case BBJ_EHFINALLYRET:
             case BBJ_EHFAULTRET:
             case BBJ_EHFILTERRET:
-                genReserveFuncletEpilog(block);
+                if (compiler->UsesFunclets())
+                {
+                    genReserveFuncletEpilog(block);
+                }
+#if defined(FEATURE_EH_WINDOWS_X86)
+                else
+                {
+                    genEHFinallyOrFilterRet(block);
+                }
+#endif // FEATURE_EH_WINDOWS_X86
                 break;
-
-#else // !FEATURE_EH_FUNCLETS
-
-            case BBJ_EHCATCHRET:
-                noway_assert(!"Unexpected BBJ_EHCATCHRET"); // not used on x86
-                break;
-
-            case BBJ_EHFINALLYRET:
-            case BBJ_EHFAULTRET:
-            case BBJ_EHFILTERRET:
-                genEHFinallyOrFilterRet(block);
-                break;
-
-#endif // !FEATURE_EH_FUNCLETS
 
             case BBJ_SWITCH:
                 break;
 
             case BBJ_ALWAYS:
             {
+                GenTree* call = block->lastNode();
+                if ((call != nullptr) && (call->gtOper == GT_CALL))
+                {
+                    if ((call->AsCall()->gtCallMoreFlags & GTF_CALL_M_DOES_NOT_RETURN) != 0 ||
+                        ((call->AsCall()->gtCallType == CT_HELPER) &&
+                         Compiler::s_helperCallProperties.AlwaysThrow(call->AsCall()->GetHelperNum())))
+                    {
+                        // NOTE: We should probably never see a BBJ_ALWAYS block ending with a throw in a first place.
+                        //       If that is fixed, this condition can be just an assert.
+                        //       For the reasons why we insert a BP, see the similar code in "case BBJ_THROW:" above.
+                        instGen(INS_BREAKPOINT); // This should never get executed
+                    }
+                }
+
                 // If this block jumps to the next one, we might be able to skip emitting the jump
                 if (block->CanRemoveJumpToNext(compiler))
                 {
@@ -733,6 +785,7 @@ void CodeGen::genCodeForBBlist()
                     }
 #endif // TARGET_AMD64
 
+                    removedJmp = true;
                     break;
                 }
 #ifdef TARGET_XARCH
@@ -746,45 +799,16 @@ void CodeGen::genCodeForBBlist()
             }
 
 #if FEATURE_LOOP_ALIGN
-                // This is the last place where we operate on blocks and after this, we operate
-                // on IG. Hence, if we know that the destination of "block" is the first block
-                // of a loop and needs alignment (it has BBF_LOOP_ALIGN), then "block" represents
-                // end of the loop. Propagate that information on the IG through "igLoopBackEdge".
-                //
-                // During emitter, this information will be used to calculate the loop size.
-                // Depending on the loop size, decision of whether to align a loop or not will be taken.
-                //
-                // In the emitter, we need to calculate the loop size from `block->bbTarget` through
-                // `block` (inclusive). Thus, we need to ensure there is a label on the lexical fall-through
-                // block, even if one is not otherwise needed, to be able to calculate the size of this
-                // loop (loop size is calculated by walking the instruction groups; see emitter::getLoopSize()).
-
-                if (block->GetTarget()->isLoopAlign())
-                {
-                    GetEmitter()->emitSetLoopBackEdge(block->GetTarget());
-
-                    if (!block->IsLast())
-                    {
-                        JITDUMP("Mark " FMT_BB " as label: alignment end-of-loop\n", block->Next()->bbNum);
-                        block->Next()->SetFlags(BBF_HAS_LABEL);
-                    }
-                }
+                SetLoopAlignBackEdge(block, block->GetTarget());
 #endif // FEATURE_LOOP_ALIGN
                 break;
 
             case BBJ_COND:
 
 #if FEATURE_LOOP_ALIGN
-                if (block->GetTrueTarget()->isLoopAlign())
-                {
-                    GetEmitter()->emitSetLoopBackEdge(block->GetTrueTarget());
-
-                    if (!block->IsLast())
-                    {
-                        JITDUMP("Mark " FMT_BB " as label: alignment end-of-loop\n", block->Next()->bbNum);
-                        block->Next()->SetFlags(BBF_HAS_LABEL);
-                    }
-                }
+                // Either true or false target of BBJ_COND can induce a loop.
+                SetLoopAlignBackEdge(block, block->GetTrueTarget());
+                SetLoopAlignBackEdge(block, block->GetFalseTarget());
 #endif // FEATURE_LOOP_ALIGN
 
                 break;
@@ -807,11 +831,9 @@ void CodeGen::genCodeForBBlist()
 
             assert(ShouldAlignLoops());
             assert(!block->isBBCallFinallyPairTail());
-#if FEATURE_EH_CALLFINALLY_THUNKS
             assert(!block->KindIs(BBJ_CALLFINALLY));
-#endif // FEATURE_EH_CALLFINALLY_THUNKS
 
-            GetEmitter()->emitLoopAlignment(DEBUG_ARG1(block->KindIs(BBJ_ALWAYS)));
+            GetEmitter()->emitLoopAlignment(DEBUG_ARG1(block->KindIs(BBJ_ALWAYS) && !removedJmp));
         }
 
         if (!block->IsLast() && block->Next()->isLoopAlign())
@@ -824,7 +846,7 @@ void CodeGen::genCodeForBBlist()
                 GetEmitter()->emitConnectAlignInstrWithCurIG();
             }
         }
-#endif
+#endif // FEATURE_LOOP_ALIGN
 
 #ifdef DEBUG
         if (compiler->verbose)
@@ -834,6 +856,26 @@ void CodeGen::genCodeForBBlist()
         compiler->compCurBB = nullptr;
 #endif // DEBUG
     }  //------------------ END-FOR each block of the method -------------------
+
+#if defined(FEATURE_EH_WINDOWS_X86)
+    // If this is a synchronized method on x86, and we generated all the code without
+    // generating the "exit monitor" call, then we must have deleted the single return block
+    // with that call because it was dead code. We still need to report the monitor range
+    // to the VM in the GC info, so create a label at the very end so we have a marker for
+    // the monitor end range.
+    //
+    // Do this before cleaning the GC refs below; we don't want to create an IG that clears
+    // the `this` pointer for lvaKeepAliveAndReportThis.
+
+    if (!compiler->UsesFunclets() && (compiler->info.compFlags & CORINFO_FLG_SYNCH) &&
+        (compiler->syncEndEmitCookie == nullptr))
+    {
+        JITDUMP("Synchronized method with missing exit monitor call; adding final label\n");
+        compiler->syncEndEmitCookie =
+            GetEmitter()->emitAddLabel(gcInfo.gcVarPtrSetCur, gcInfo.gcRegGCrefSetCur, gcInfo.gcRegByrefSetCur);
+        noway_assert(compiler->syncEndEmitCookie != nullptr);
+    }
+#endif
 
     // There could be variables alive at this point. For example see lvaKeepAliveAndReportThis.
     // This call is for cleaning the GC refs
@@ -986,45 +1028,6 @@ void CodeGenInterface::genUpdateVarReg(LclVarDsc* varDsc, GenTree* tree)
     // This should not be called for multireg lclVars.
     assert((tree->OperIsScalarLocal() && !tree->IsMultiRegLclVar()) || (tree->gtOper == GT_COPY));
     varDsc->SetRegNum(tree->GetRegNum());
-}
-
-//------------------------------------------------------------------------
-// sameRegAsDst: Return the child that has the same reg as the dst (if any)
-//
-// Arguments:
-//    tree  - the node of interest
-//    other - an out parameter to return the other child
-//
-// Notes:
-//    If 'tree' has a child with the same assigned register as its target reg,
-//    that child will be returned, and 'other' will contain the non-matching child.
-//    Otherwise, both other and the return value will be nullptr.
-//
-GenTree* sameRegAsDst(GenTree* tree, GenTree*& other /*out*/)
-{
-    if (tree->GetRegNum() == REG_NA)
-    {
-        other = nullptr;
-        return nullptr;
-    }
-
-    GenTree* op1 = tree->AsOp()->gtOp1;
-    GenTree* op2 = tree->AsOp()->gtOp2;
-    if (op1->GetRegNum() == tree->GetRegNum())
-    {
-        other = op2;
-        return op1;
-    }
-    if (op2->GetRegNum() == tree->GetRegNum())
-    {
-        other = op1;
-        return op2;
-    }
-    else
-    {
-        other = nullptr;
-        return nullptr;
-    }
 }
 
 //------------------------------------------------------------------------
@@ -1238,13 +1241,6 @@ void CodeGen::genUnspillRegIfNeeded(GenTree* tree)
             {
                 unspillType = lcl->TypeGet();
             }
-
-#if defined(TARGET_LOONGARCH64)
-            if (varTypeIsFloating(unspillType) && emitter::isGeneralRegister(tree->GetRegNum()))
-            {
-                unspillType = unspillType == TYP_FLOAT ? TYP_INT : TYP_LONG;
-            }
-#endif
 
             bool reSpill   = ((unspillTree->gtFlags & GTF_SPILL) != 0);
             bool isLastUse = lcl->IsLastUse(0);
@@ -1785,7 +1781,6 @@ void CodeGen::genConsumePutStructArgStk(GenTreePutArgStk* putArgNode,
 
     // If the op1 is already in the dstReg - nothing to do.
     // Otherwise load the op1 (the address) into the dstReg to copy the struct on the stack by value.
-    CLANG_FORMAT_COMMENT_ANCHOR;
 
 #ifdef TARGET_X86
     assert(dstReg != REG_SPBASE);
@@ -1874,8 +1869,8 @@ void CodeGen::genPutArgStkFieldList(GenTreePutArgStk* putArgStk, unsigned outArg
         var_types type            = use.GetType();
         unsigned  thisFieldOffset = argOffset + use.GetOffset();
 
-// Emit store instructions to store the registers produced by the GT_FIELD_LIST into the outgoing
-// argument area.
+        // Emit store instructions to store the registers produced by the GT_FIELD_LIST into the outgoing
+        // argument area.
 
 #if defined(FEATURE_SIMD)
         if (type == TYP_SIMD12)
@@ -1918,18 +1913,9 @@ void CodeGen::genSetBlockSize(GenTreeBlk* blkNode, regNumber sizeReg)
 {
     if (sizeReg != REG_NA)
     {
-        unsigned blockSize = blkNode->Size();
-        if (!blkNode->OperIs(GT_STORE_DYN_BLK))
-        {
-            assert((blkNode->gtRsvdRegs & genRegMask(sizeReg)) != 0);
-            // This can go via helper which takes the size as a native uint.
-            instGen_Set_Reg_To_Imm(EA_PTRSIZE, sizeReg, blockSize);
-        }
-        else
-        {
-            GenTree* sizeNode = blkNode->AsStoreDynBlk()->gtDynamicSize;
-            inst_Mov(sizeNode->TypeGet(), sizeReg, sizeNode->GetRegNum(), /* canSkip */ true);
-        }
+        assert((blkNode->gtRsvdRegs & genRegMask(sizeReg)) != 0);
+        // This can go via helper which takes the size as a native uint.
+        instGen_Set_Reg_To_Imm(EA_PTRSIZE, sizeReg, blkNode->Size());
     }
 }
 
@@ -2035,12 +2021,6 @@ void CodeGen::genConsumeBlockOp(GenTreeBlk* blkNode, regNumber dstReg, regNumber
     genConsumeReg(dstAddr);
     // The source may be a local or in a register; 'genConsumeBlockSrc' will check that.
     genConsumeBlockSrc(blkNode);
-    // 'genSetBlockSize' (called below) will ensure that a register has been reserved as needed
-    // in the case where the size is a constant (i.e. it is not GT_STORE_DYN_BLK).
-    if (blkNode->OperGet() == GT_STORE_DYN_BLK)
-    {
-        genConsumeReg(blkNode->AsStoreDynBlk()->gtDynamicSize);
-    }
 
     // Next, perform any necessary moves.
     genCopyRegIfNeeded(dstAddr, dstReg);
@@ -2619,6 +2599,13 @@ void CodeGen::genCodeForJcc(GenTreeCC* jcc)
     assert(jcc->OperIs(GT_JCC));
 
     inst_JCC(jcc->gtCondition, compiler->compCurBB->GetTrueTarget());
+
+    // If we cannot fall into the false target, emit a jump to it
+    BasicBlock* falseTarget = compiler->compCurBB->GetFalseTarget();
+    if (!compiler->compCurBB->CanRemoveJumpToTarget(falseTarget, compiler))
+    {
+        inst_JMP(EJ_jmp, falseTarget);
+    }
 }
 
 //------------------------------------------------------------------------
@@ -2666,12 +2653,13 @@ void CodeGen::genCodeForSetcc(GenTreeCC* setcc)
 #endif // !TARGET_LOONGARCH64 && !TARGET_RISCV64
 
 /*****************************************************************************
- * Unit testing of the emitter: If JitDumpEmitUnitTests is set, generate
- * a bunch of instructions, then:
- * Use DOTNET_JitLateDisasm=* to see if the late disassembler thinks the instructions as the same as we do.
- * Or, use DOTNET_JitRawHexCode and DOTNET_JitRawHexCodeFile and dissassemble the output file.
+ * Unit testing of the emitter: If JitEmitUnitTests is set for this function, generate
+ * a bunch of instructions, then either:
+ * 1. Use DOTNET_JitLateDisasm=* to see if the late disassembler thinks the instructions are the same as we do. Or,
+ * 2. Use DOTNET_JitRawHexCode and DOTNET_JitRawHexCodeFile and disassemble the output file with an external
+ * disassembler.
  *
- * Possible values for JitDumpEmitUnitTests:
+ * Possible values for JitEmitUnitTestsSections:
  * Amd64: all, sse2
  * Arm64: all, general, advsimd, sve
  */
@@ -2680,9 +2668,15 @@ void CodeGen::genCodeForSetcc(GenTreeCC* setcc)
 
 void CodeGen::genEmitterUnitTests()
 {
-    const WCHAR* unitTestSection = JitConfig.JitDumpEmitUnitTests();
+    if (!JitConfig.JitEmitUnitTests().contains(compiler->info.compMethodHnd, compiler->info.compClassHnd,
+                                               &compiler->info.compMethodInfo->args))
+    {
+        return;
+    }
 
-    if ((!verbose) || (unitTestSection == nullptr))
+    const WCHAR* unitTestSection = JitConfig.JitEmitUnitTestsSections();
+
+    if (unitTestSection == nullptr)
     {
         return;
     }
