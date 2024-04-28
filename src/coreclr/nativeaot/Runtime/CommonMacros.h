@@ -143,11 +143,7 @@ inline bool IS_ALIGNED(T* val, uintptr_t alignment);
 
 #define DATA_ALIGNMENT  8
 
-#elif defined(HOST_BROWSER)
-
-#define DATA_ALIGNMENT  4
-
-#elif defined(HOST_WASI)
+#elif defined(HOST_WASM)
 
 #define DATA_ALIGNMENT  4
 
