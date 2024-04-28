@@ -429,6 +429,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <ExeExt Condition="'$(OS)' == 'Windows_NT'">.exe</ExeExt>
       <!-- using Emscripten's clang++ because of a crash in wasi-sdk's clang++ (https://github.com/WebAssembly/wasi-sdk/issues/326) -->
       <WasmCompilerPath>&quot;$(EMSDK)/upstream/bin/clang++$(ExeExt)&quot;</WasmCompilerPath>
+      <CompileWasmArgs Condition="'$(WasmSplitDwarf)' == 'true'">$(CompileWasmArgs) -gdwarf-5 -gsplit-dwarf -gpubnames</CompileWasmArgs>
       <WasmLinkerPath>&quot;$(WASI_SDK_PATH)/bin/clang&quot;</WasmLinkerPath>
       <!--llvm-dwp is not currently part of the WASI SDK. -->
       <WasmDwarfLinkerPath>&quot;$(EMSDK)/upstream/bin/llvm-dwp$(ExeExt)&quot;</WasmDwarfLinkerPath>
