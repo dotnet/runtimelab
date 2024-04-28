@@ -108,7 +108,7 @@ extends:
             - wasi_wasm_win
             jobParameters:
               timeoutInMinutes: 300
-              buildArgs: -s  clr.aot+libs+nativeaot.packages -c $(_BuildConfig) /p:ArchiveTests=true
+              buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig) /p:ArchiveTests=true
               postBuildSteps:
                 - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
                   parameters:

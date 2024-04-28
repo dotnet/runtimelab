@@ -33,7 +33,6 @@ extends:
       jobs:
       - template: /eng/pipelines/common/platform-matrix.yml
         parameters:
-          templatePath: 'templates-official'
           jobTemplate: /eng/pipelines/common/global-build-job.yml
           buildConfig: Release
           platforms:
