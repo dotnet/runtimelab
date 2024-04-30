@@ -7,6 +7,8 @@
 // WASM has no thread state contexts.
 #ifndef HOST_WASM
 
+#include <ucontext.h>
+
 // Convert Unix native context to PAL_LIMITED_CONTEXT
 void NativeContextToPalContext(const void* context, PAL_LIMITED_CONTEXT* palContext);
 // Redirect Unix native context to the PAL_LIMITED_CONTEXT and also set the first two argument registers
