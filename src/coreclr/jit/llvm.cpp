@@ -784,7 +784,7 @@ CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForClassToken(mdToken token)
 template <EEApiId Func, typename TReturn, typename... TArgs>
 TReturn CallEEApi(TArgs... args)
 {
-    return static_cast<TReturn (*)(TArgs...)>(g_callbacks[static_cast<int>(Func)])(args...);
+    return reinterpret_cast<TReturn (*)(TArgs...)>(g_callbacks[static_cast<int>(Func)])(args...);
 }
 
 const char* Llvm::GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle)
@@ -885,8 +885,8 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExp
     assert(jitExports != nullptr);
 
     memcpy(g_callbacks, jitImports, static_cast<int>(EEApiId::Count) * sizeof(void*));
-    jitExports[static_cast<int>(JitApiId::StartSingleThreadedCompilation)] = &Llvm::StartSingleThreadedCompilation;
-    jitExports[static_cast<int>(JitApiId::FinishSingleThreadedCompilation)] = &Llvm::FinishSingleThreadedCompilation;
+    jitExports[static_cast<int>(JitApiId::StartSingleThreadedCompilation)] = (void*)&Llvm::StartSingleThreadedCompilation;
+    jitExports[static_cast<int>(JitApiId::FinishSingleThreadedCompilation)] = (void*)&Llvm::FinishSingleThreadedCompilation;
     jitExports[static_cast<int>(JitApiId::Count)] = (void*)0x1234;
 }
 

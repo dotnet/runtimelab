@@ -1482,7 +1482,7 @@ private:
         {
             if (block != m_currentBlock)
             {
-                m_actions.Push({AllocationActionKind::Block, m_currentBlockIndex++});
+                m_actions.Push({AllocationActionKind::Block, {m_currentBlockIndex++}});
                 m_currentBlock = block;
             }
         }

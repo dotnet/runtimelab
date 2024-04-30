@@ -1100,6 +1100,7 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_JMP:
             NYI("LLVM/GT_JMP"); // Requires support for explicit tailcalls.
+        LLVM_FALLTHROUGH;
         default:
             unreached();
     }

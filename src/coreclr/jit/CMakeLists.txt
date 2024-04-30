@@ -91,8 +91,11 @@ function(create_standalone_jit)
     # We'll be linking against LLVM built without /guard:ehcont, so disable it.
     set_target_properties(${TARGETDETAILS_TARGET} PROPERTIES CLR_EH_CONTINUATION OFF)
 
-    find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG})
+    message("find_package")
+    message($ENV{LLVM_CMAKE_CONFIG})
+    find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG} NO_DEFAULT_PATH)
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_INCLUDE_DIRS})
+    message(${LLVM_INCLUDE_DIRS})
     separate_arguments(LLVM_DEFINITIONS)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_DEFINITIONS})
     llvm_map_components_to_libnames(llvm_libs core bitwriter)
@@ -711,6 +714,8 @@ endif (CLR_CMAKE_TARGET_ARCH_RISCV64)
 if (CLR_CMAKE_BUILD_LLVM_JIT)
     # The LLVM clrjit needs to be the last clrjit to use create_standalone_jit as it modifies some cmake variables.
     # LLVM clrjit has an extra export - registerLlvmCallbacks.
+    add_compile_options(-Wno-switch)
+    add_compile_options(-Wno-format)
     set(CLRJIT_EXPORTS ${CMAKE_CURRENT_LIST_DIR}/ClrJit.Llvm.exports)
     set(JIT_EXPORTS_FILE ${CMAKE_CURRENT_BINARY_DIR}/ClrJit.Llvm.exports.def)
     preprocess_file (${CLRJIT_EXPORTS} ${JIT_EXPORTS_FILE})
