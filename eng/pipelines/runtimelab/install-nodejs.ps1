@@ -1,7 +1,16 @@
 $InstallPath = $Args[0]
 $NodeJSVersion = "v20.2.0"
-$NodeJSInstallName = "node-$NodeJSVersion-win-x64"
-$NodeJSZipName = "$NodeJSInstallName.zip"
+#$IsWindows=[environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+if ($IsWIndows)
+{
+    $NodeJSInstallName = "node-$NodeJSVersion-win-x64"
+    $NodeJSZipName = "$NodeJSInstallName.zip"
+}
+else
+{
+    $NodeJSInstallName = "node-$NodeJSVersion-linux-x64"
+    $NodeJSZipName = "$NodeJSInstallName.tar.xz"
+}
 
 if (!(Test-Path $InstallPath))
 {
@@ -33,9 +42,17 @@ if ($RetryCount -le 0)
     exit 1
 }
 
-Expand-Archive -LiteralPath "$InstallPath\$NodeJSInstallName.zip" -DestinationPath $InstallPath -Force
+if ($IsWindows)
+{
+    Expand-Archive -LiteralPath "$InstallPath\$NodeJSZipName" -DestinationPath $InstallPath -Force
+    $NodeJSExePath = "$InstallPath\$NodeJSInstallName\node.exe"
+}
+else
+{
+    tar xJf $InstallPath/$NodeJSZipName -C $InstallPath
+    $NodeJSExePath = "$InstallPath/$NodeJSInstallName/bin/node"
+}
 
-$NodeJSExePath = "$InstallPath\$NodeJSInstallName\node.exe"
 if (!(Test-Path $NodeJSExePath))
 {
     Write-Error "Did not find NodeJS at: '$NodeJSExePath'"
