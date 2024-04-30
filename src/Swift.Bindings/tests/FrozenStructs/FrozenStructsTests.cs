@@ -87,7 +87,7 @@ namespace BindingsGeneration.Tests
                 new string [] { sourceCode },
                 new string [] { },
                 "Test.MainClass", "getResult", new object[] { });
-            Assert.Equal(3878160365749027301, result[0]);
+            Assert.Equal(-8001373452266497130, result[0]);
             Assert.Equal(-5808561271200422464, result[1]);
             Assert.Equal(619381321311063739, result[2]);
             Assert.Equal(-5789188411070459345, result[3]);
@@ -133,7 +133,7 @@ namespace BindingsGeneration.Tests
                 new string [] { },
                 "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-2644299808654375646, result[0]);
-            Assert.Equal(1535413247428584611, result[1]);
+            Assert.Equal(-5946857472632060272, result[1]);
             Assert.Equal(-2996592682669871081, result[2]);
             Assert.Equal(-5808559072177166042, result[3]);
             Assert.Equal(8741931523650439060, result[4]);
@@ -185,7 +185,7 @@ namespace BindingsGeneration.Tests
                 new string [] { },
                 "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(2183680504548519170, result[0]);
-            Assert.Equal(3798126955843056962, result[1]);
+            Assert.Equal(6464181192521079681, result[1]);
             Assert.Equal(-3914014010231380795, result[2]);
             Assert.Equal(5367593114012495226, result[3]);
             Assert.Equal(-5127890789322606739, result[4]);
@@ -322,7 +322,7 @@ namespace BindingsGeneration.Tests
                 new string [] { sourceCode },
                 new string [] { },
                 "Test.MainClass", "getResult", new object[] { });
-            Assert.Equal(7946753566736866078, result[0]);
+            Assert.Equal(1692306587549742161, result[0]);
             Assert.Equal(-1484226257450236447, result[1]);
             Assert.Equal(-6229230135174619697, result[2]);
             Assert.Equal(-3202371936141214966, result[3]);
@@ -489,7 +489,7 @@ namespace BindingsGeneration.Tests
                 new string [] { },
                 "Test.MainClass", "getResult", new object[] { });
             Assert.Equal(-1058509415045616378, result[0]);
-            Assert.Equal(-966587697224424890, result[1]);
+            Assert.Equal(6725059428863802130, result[1]);
             Assert.Equal(716752888238966276, result[2]);
             Assert.Equal(5451770624740049375, result[3]);
             Assert.Equal(4635659444355057900, result[4]);
