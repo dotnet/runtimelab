@@ -1192,7 +1192,6 @@ EXTERN_C uint32_t QCALLTYPE RhCompatibleReentrantWaitAny(UInt32_BOOL alertable, 
 }
 #endif // TARGET_UNIX
 
-
 EXTERN_C void RhSetRuntimeInitializationCallback(int (*fPtr)())
 {
     g_RuntimeInitializationCallback = fPtr;

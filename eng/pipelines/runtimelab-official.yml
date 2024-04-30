@@ -33,12 +33,9 @@ extends:
       jobs:
       - template: /eng/pipelines/common/platform-matrix.yml
         parameters:
-          templatePath: 'templates-official'
           jobTemplate: /eng/pipelines/common/global-build-job.yml
           buildConfig: Release
           platforms:
-          - windows_x64
-          - OSX_x64
           - Browser_wasm_win
           - wasi_wasm_win
           jobParameters:
