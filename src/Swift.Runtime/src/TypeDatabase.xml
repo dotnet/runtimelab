@@ -2,7 +2,7 @@
 <swifttypedatabase version="1.0">
     <entities>
         <entity managedNameSpace="System" managedTypeName="void">
-            <typedeclaration kind="typealias" name="Void" module="Swift" />
+            <typedeclaration kind="typealias" name="()" module="" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="Byte">
             <typedeclaration kind="struct" name="UInt8" module="Swift" />

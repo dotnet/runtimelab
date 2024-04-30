@@ -12,7 +12,6 @@ namespace BindingsGeneration
 {
     public partial class StringCSharpEmitter : ICSharpEmitter
     {
-        // TODO: Update this method to support non-frozen structs
         /// <summary>
         /// Emits a struct declaration.
         /// </summary>
@@ -22,44 +21,64 @@ namespace BindingsGeneration
         /// <param name="decl">The struct declaration.</param>
         private unsafe void EmitStruct(IndentedTextWriter writer, ModuleDecl moduleDecl, BaseDecl parentDecl, StructDecl structDecl)
         {
-            SwiftTypeInfo swiftTypeInfo = _typeDatabase.GetSwiftTypeInfo(structDecl.Name);
+            // Retrieve type info from the type database
+            var typeRecord = _typeDatabase.Registrar.GetType(moduleDecl.Name, structDecl.Name);
+            SwiftTypeInfo? swiftTypeInfo = typeRecord?.SwiftTypeInfo;
 
-            writer.WriteLine($"[StructLayout(LayoutKind.Sequential, Size = {swiftTypeInfo.ValueWitnessTable->Size})]");
+            if (swiftTypeInfo.HasValue)
+            {
+                // Apply struct layout attributes
+                writer.WriteLine($"[StructLayout(LayoutKind.Sequential, Size = {swiftTypeInfo.Value.ValueWitnessTable->Size})]");
+            }
             writer.WriteLine($"public unsafe struct {structDecl.Name} {{");
             writer.Indent++;
 
-            // Project fields for frozen structs
-            FieldDescriptor* desc = (FieldDescriptor*)IntPtr.Add((IntPtr)(((StructDescriptor*)swiftTypeInfo.Metadata->TypeDescriptor))->NominalType.FieldsPtr.Target, IntPtr.Size);
-            for (int i = 0; i < desc->NumFields; i++)
+            // Emit each field in the struct
+            foreach (var fieldDecl in structDecl.Fields)
             {
-                FieldRecord* fieldRecord = desc->GetFieldRecord(i);
-                string fieldName = Marshal.PtrToStringAnsi((IntPtr)fieldRecord->Name.Target) ?? string.Empty;
-                string fieldType = string.Empty;
+                string accessModifier = fieldDecl.Visibility == Visibility.Public ? "public" : "private";
+                writer.WriteLine($"{accessModifier} {fieldDecl.TypeIdentifier.Name} {fieldDecl.Name};");
 
-                IntPtr typeContextDescriptor = fieldRecord->GetContextDescriptorAddress();
-                if (typeContextDescriptor != IntPtr.Zero)
+                // Verify field against Swift type information
+                if (swiftTypeInfo.HasValue && !VerifyFieldRecord(swiftTypeInfo.Value, structDecl.Fields.IndexOf(fieldDecl), fieldDecl))
                 {
-                    string swiftTypeName = ((StructDescriptor*)typeContextDescriptor)->NominalType.Name ?? string.Empty;
-                    string [] csharpType = _typeDatabase.GetCSharpTypeName(swiftTypeName);
-                    fieldType = csharpType[1];
-                } else {
-                    string mangledName = fieldRecord->GetMangledNameSymbol();
-                    Console.WriteLine("Mangled name: " + mangledName);
-                    // TODO: Resolve metadata and get the type name
+                    Debug.WriteLine("Field record does not match the field declaration");
                 }
-
-                Debug.Assert(!string.IsNullOrEmpty(fieldType), $"Field type is empty in {structDecl.Name} declaration");
-                Debug.Assert(!string.IsNullOrEmpty(fieldName), $"Field name is empty in {structDecl.Name} declaration");
-
-                writer.WriteLine($"public {fieldType} {fieldName};");
             }
-
             writer.WriteLine();
 
             foreach (BaseDecl baseDecl in structDecl.Declarations)
                 EmitBaseDecl(writer, moduleDecl, structDecl, baseDecl);
             writer.Indent--;
             writer.WriteLine("}");
+        }
+
+        /// <summary>
+        /// Verify field record with the Swift type information.
+        /// </summary>
+        private unsafe bool VerifyFieldRecord(SwiftTypeInfo swiftTypeInfo, int fieldIndex, FieldDecl fieldDecl)
+        {
+            // Access the field descriptor using pointer arithmetic
+            FieldDescriptor* desc = (FieldDescriptor*)IntPtr.Add(
+                (IntPtr)(((StructDescriptor*)swiftTypeInfo.Metadata->TypeDescriptor))->NominalType.FieldsPtr.Target,
+                IntPtr.Size * fieldIndex
+            );
+
+            // Ensure the field number is within bounds
+            if (desc->NumFields <= fieldIndex)
+            {
+                return false;
+            }
+
+            FieldRecord* fieldRecord = desc->GetFieldRecord(fieldIndex);
+
+            // Check field name
+            if ((Marshal.PtrToStringAnsi((IntPtr)fieldRecord->Name.Target) ?? string.Empty) != fieldDecl.Name)
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }

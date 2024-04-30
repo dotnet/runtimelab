@@ -6,11 +6,7 @@ namespace BindingsGeneration
     /// <summary>
     /// Represents a struct declaration.
     /// </summary>
-    public sealed record ClassDecl : BaseDecl
+    public sealed record ClassDecl : TypeDecl
     {
-        /// <summary>
-        /// Mangled name of the class.
-        /// </summary>
-        public required string MangledName { get; set; }
     }
 }

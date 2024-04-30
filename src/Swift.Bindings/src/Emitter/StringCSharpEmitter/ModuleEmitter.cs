@@ -37,23 +37,34 @@ namespace BindingsGeneration
         {
             var sw = new StringWriter();
             IndentedTextWriter writer = new(sw);
-            var generatedNamespace = $"{moduleDecl.Name}Bindings";
+            var generatedNamespace = $"Swift.{moduleDecl.Name}";
 
+            writer.WriteLine($"using System;");
+            writer.WriteLine($"using System.Runtime.CompilerServices;");
+            writer.WriteLine($"using System.Runtime.InteropServices;");
+            writer.WriteLine($"using System.Runtime.InteropServices.Swift;");
             foreach (var dependency in moduleDecl.Dependencies)
-                writer.WriteLine($"using {dependency};");
+                writer.WriteLine(dependency.Contains("Swift.") ? $"using {dependency};" : $"using Swift.{dependency};");
+
 
             writer.WriteLine();
             writer.WriteLine($"namespace {generatedNamespace}");
             writer.WriteLine("{");
             writer.Indent++;
 
-            // Emit top-level methods and pinvokes
-            if (moduleDecl.Declarations.OfType<MethodDecl>().Any())
+            // Emit top-level fields and pinvokes
+            if (moduleDecl.Methods.Any() || moduleDecl.Fields.Any())
             {
                 writer.WriteLine($"public class {moduleDecl.Name}");
                 writer.WriteLine("{");
                 writer.Indent++;
-                foreach(MethodDecl methodDecl in moduleDecl.Declarations.OfType<MethodDecl>())
+                foreach(FieldDecl fieldDecl in moduleDecl.Fields)
+                {
+                    string accessModifier = fieldDecl.Visibility == Visibility.Public ? "public" : "private";
+                    writer.WriteLine($"{accessModifier} {fieldDecl.TypeIdentifier.Name} {fieldDecl.Name};");
+                }
+                writer.WriteLine();
+                foreach(MethodDecl methodDecl in moduleDecl.Methods)
                 {
                     EmitMethod(writer, moduleDecl, moduleDecl, methodDecl);
                     writer.WriteLine();
@@ -64,7 +75,7 @@ namespace BindingsGeneration
             }
 
             // Emit top-level types
-            foreach (BaseDecl baseDecl in moduleDecl.Declarations.Where(d => !(d is MethodDecl)))
+            foreach (BaseDecl baseDecl in moduleDecl.Declarations)
             {
                 EmitBaseDecl(writer, moduleDecl, moduleDecl, baseDecl);
                 writer.WriteLine();

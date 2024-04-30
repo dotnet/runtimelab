@@ -47,11 +47,12 @@ namespace BindingsGeneration
         private void EmitPInvoke(IndentedTextWriter writer, ModuleDecl moduleDecl, BaseDecl parentDecl, MethodDecl methodDecl)
         {
             string accessModifier = parentDecl == moduleDecl ? "public" : "internal";
-            string methodType = methodDecl.IsConstructor ? parentDecl.Name : methodDecl.Signature.First().TypeIdentifier;
+            string methodType = methodDecl.IsConstructor ? parentDecl.Name : methodDecl.Signature.First().TypeIdentifier.Name;
             string methodName = parentDecl == moduleDecl ? methodDecl.Name : $"{PInvokePrefix}{methodDecl.Name}";
-            
+            string libPath = _typeDatabase.GetLibraryName(moduleDecl.Name);
+
             writer.WriteLine("[UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]");
-            writer.WriteLine($"[DllImport(\"lib{moduleDecl.Name}.dylib\", EntryPoint = \"{methodDecl.MangledName}\")]");
+            writer.WriteLine($"[DllImport(\"{libPath}\", EntryPoint = \"{methodDecl.MangledName}\")]");
             writer.WriteLine($"{accessModifier} static extern {methodType} {methodName}({GetInternalMethodSignature(parentDecl, methodDecl)});");
         }
 
@@ -72,11 +73,7 @@ namespace BindingsGeneration
 
             string methodArgs = string.Join(", ", methodDecl.Signature.Skip(1).Select(p => p.Name));
             writer.WriteLine($"this = {methodName}({GetMethodArgs(parentDecl, methodDecl)});");
-            if (methodDecl.IsStatic)
-            {
-                writer.Indent--;
-                writer.WriteLine("}");
-            }
+
             writer.Indent--;
             writer.WriteLine("}");
         }
@@ -92,15 +89,15 @@ namespace BindingsGeneration
         {
             string methodName = $"{PInvokePrefix}{methodDecl.Name}";
 
-            writer.WriteLine($"public {(methodDecl.IsStatic ? "static " : "")}{methodDecl.Signature.First().TypeIdentifier} {methodDecl.Name}({GetPublicMethodSignature(parentDecl, methodDecl)})");
+            writer.WriteLine($"public {(methodDecl.MethodType == MethodType.Static ? "static " : "")}{methodDecl.Signature.First().TypeIdentifier.Name} {methodDecl.Name}({GetPublicMethodSignature(parentDecl, methodDecl)})");
             writer.WriteLine("{");
             writer.Indent++;
 
-            if (!methodDecl.IsStatic)
+            if (methodDecl.MethodType == MethodType.Instance)
             {
                 writer.WriteLine($"{parentDecl.Name} self = this;");
             }
-            string returnPrefix = methodDecl.Signature.First().TypeIdentifier == "void" ? "" : "return";
+            string returnPrefix = methodDecl.Signature.First().TypeIdentifier.Name == "void" ? "" : "return";
             string methodArgs = string.Join(", ", methodDecl.Signature.Skip(1).Select(p => p.Name));
             writer.WriteLine($"{returnPrefix} {methodName}({GetMethodArgs(parentDecl, methodDecl)});");
             writer.Indent--;
@@ -113,17 +110,21 @@ namespace BindingsGeneration
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The list of method parameters.</returns>
-        private List<TypeDecl> GetMethodParams(BaseDecl parentDecl, MethodDecl methodDecl)
+        private List<FieldDecl> GetMethodParams(BaseDecl parentDecl, MethodDecl methodDecl)
         {
-            List<TypeDecl> tempDecl = new List<TypeDecl>(methodDecl.Signature);
+            List<FieldDecl> tempDecl = new List<FieldDecl>(methodDecl.Signature);
 
             // If this is a type method, add the marshalling for the self parameter
             if (parentDecl is StructDecl || parentDecl is ClassDecl)
             {
-                if (!methodDecl.IsConstructor && !methodDecl.IsStatic)
+                if (!methodDecl.IsConstructor && methodDecl.MethodType != MethodType.Static)
                 {
                     // Add self as the first parameter (after the return type)
-                    tempDecl.Insert(1, new TypeDecl { TypeIdentifier = parentDecl.Name, Name = "self", Generics = new List<TypeDecl>(), Declarations = new List<BaseDecl>() });
+                    tempDecl.Insert(1, new FieldDecl { 
+                        TypeIdentifier = new TypeDecl { Name = parentDecl.Name, MangledName = string.Empty, Fields = new List<FieldDecl>(), Declarations = new List<BaseDecl>()},
+                        Name = "self",
+                        Visibility = Visibility.Public
+                    });
                 }
             }
 
@@ -138,8 +139,8 @@ namespace BindingsGeneration
         /// <returns>The internal method signature.</returns>
         private string GetInternalMethodSignature(BaseDecl parentDecl, MethodDecl methodDecl)
         {
-            List<TypeDecl> parameters = GetMethodParams(parentDecl, methodDecl);
-            return string.Join(", ", parameters.Select(p => $"{p.TypeIdentifier} {p.Name}").ToList());
+            List<FieldDecl> parameters = GetMethodParams(parentDecl, methodDecl);
+            return string.Join(", ", parameters.Select(p => $"{p.TypeIdentifier.Name} {p.Name}").ToList());
         }
 
         /// <summary>
@@ -150,8 +151,8 @@ namespace BindingsGeneration
         /// <returns>The public method signature.</returns>
         private string GetPublicMethodSignature(BaseDecl parentDecl, MethodDecl methodDecl)
         {
-            List<TypeDecl> parameters = methodDecl.Signature.Skip(1).ToList();
-            return string.Join(", ", parameters.Select(p => $"{p.TypeIdentifier} {p.Name}").ToList());
+            List<FieldDecl> parameters = methodDecl.Signature.Skip(1).ToList();
+            return string.Join(", ", parameters.Select(p => $"{p.TypeIdentifier.Name} {p.Name}").ToList());
         }
 
         /// <summary>
@@ -162,8 +163,8 @@ namespace BindingsGeneration
         /// <returns>The public method arguments.</returns>
         private string GetMethodArgs(BaseDecl parentDecl, MethodDecl methodDecl)
         {
-            List<TypeDecl> parameters = GetMethodParams(parentDecl, methodDecl);
-            return string.Join(", ", parameters.Select(p => $"{p.Name}").ToList());
+            List<FieldDecl> parameters = GetMethodParams(parentDecl, methodDecl);
+            return string.Join(", ", parameters.Select(p => p.Name).ToList());
         }
     }
 }

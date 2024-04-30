@@ -26,19 +26,19 @@ namespace Swift.Runtime
     /// <summary>
     /// Represents a dynamic library loader.
     /// </summary>
-    public class DynamicLibraryLoader
+    public static class DynamicLibraryLoader
     {
         delegate IntPtr MyFunctionDelegate();
 
         /// <summary>
         /// Executes a function from a dynamic library.
         /// </summary>
-        public static IntPtr execute(string libraryPath, string functionName)
+        public static IntPtr invoke(string libraryPath, string functionName)
         {
             IntPtr libHandle = NativeMethods.dlopen(libraryPath, NativeMethods.RTLD_NOW);
             if (libHandle == IntPtr.Zero)
             {
-                throw new Exception("Unable to load library.");
+                throw new DllNotFoundException($"Unable to load library `{libraryPath}`.");
             }
 
             try
@@ -46,7 +46,7 @@ namespace Swift.Runtime
                 IntPtr funcPtr = NativeMethods.dlsym(libHandle, functionName);
                 if (funcPtr == IntPtr.Zero)
                 {
-                    throw new Exception("Unable to find function.");
+                    throw new EntryPointNotFoundException($"Unable to find function {functionName} in library {libraryPath}");
                 }
 
                 // Convert the IntPtr to a delegate

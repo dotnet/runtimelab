@@ -11,7 +11,7 @@ namespace BindingsGeneration
     /// <summary>
     /// Represents the root node of the ABI.
     /// </summary>
-    public sealed class ABIRootNode
+    public record ABIRootNode
     {
         public required RootNode ABIRoot { get; set; }
     }
@@ -19,7 +19,7 @@ namespace BindingsGeneration
     /// <summary>
     /// Represents the root node of a module.
     /// </summary>
-    public sealed class RootNode
+    public record RootNode
     {
         public required string Kind { get; set; }
         public required string Name { get; set; }
@@ -30,7 +30,7 @@ namespace BindingsGeneration
     /// <summary>
     /// Represents a node.
     /// </summary>
-    public sealed class Node
+    public record Node
     {
         public required string Kind { get; set; }
         public required string DeclKind { get; set; }
@@ -40,6 +40,8 @@ namespace BindingsGeneration
         public required string ModuleName { get; set; }
         public required string [] DeclAttributes { get; set; }
         public required bool? @static { get; set; }
+        public required bool? IsInternal { get; set; }
+        public required string? GenericSig { get; set; }
         public required IEnumerable<Node> Children { get; set; }
     }
 
@@ -48,6 +50,9 @@ namespace BindingsGeneration
     /// </summary>
     public sealed unsafe class SwiftABIParser : ISwiftParser
     {
+        /// <summary>
+        /// The set of operators.
+        /// </summary>
         private static readonly HashSet<string> _operators = new HashSet<string>
         {
             // Arithmetic
@@ -63,15 +68,65 @@ namespace BindingsGeneration
             // Other
             "??", "?.", "=>"
         };
+
+        /// <summary>
+        /// The ABI file path.
+        /// </summary>
         private readonly string _filePath;
-        private readonly int _verbose;
+
+        /// <summary>
+        /// The dylib path.
+        /// </summary>
+        private readonly string _dylibPath;
+
+        /// <summary>
+        /// The type database.
+        /// </summary>
         private readonly TypeDatabase _typeDatabase;
 
-        public SwiftABIParser(string filePath, TypeDatabase typeDatabase, int verbose = 0)
+        /// <summary>
+        /// The verbosity level.
+        /// </summary>
+        private readonly int _verbose;
+
+        /// <summary>
+        /// The list of filters for the parser.
+        /// Currently, only name filtering is supported.
+        /// </summary>
+        private List<string> _filters;
+
+        /// <summary>
+        /// The module root node.
+        /// </summary>
+        private readonly ABIRootNode _moduleRoot;
+
+        public SwiftABIParser(string filePath, string dylibPath, TypeDatabase typeDatabase, int verbose = 0)
         {
             _filePath = filePath;
-            _verbose = verbose;
+            _dylibPath = dylibPath;
             _typeDatabase = typeDatabase;
+            _verbose = verbose;
+            _filters = new List<string>();
+
+            string jsonContent = File.ReadAllText(_filePath);
+            _moduleRoot = JsonConvert.DeserializeObject<ABIRootNode>(jsonContent) ?? throw new InvalidOperationException("Invalid ABI structure.");
+        }
+
+        /// <summary>
+        /// Sets the filter for the parser.
+        /// </summary>
+        public void SetFilter(List<string> filter)
+        {
+            _filters = filter;
+        }
+
+        /// <summary>
+        /// Gets the module name.
+        /// </summary>
+        /// <returns>The module name.</returns>
+        public string GetModuleName()
+        {
+            return _moduleRoot.ABIRoot.Children.FirstOrDefault()?.ModuleName ?? string.Empty;
         }
 
         /// <summary>
@@ -80,28 +135,19 @@ namespace BindingsGeneration
         /// <returns>The module declaration.</returns>
         public ModuleDecl GetModuleDecl()
         {
-            string jsonContent = File.ReadAllText(_filePath);
-            var abiRoot = JsonConvert.DeserializeObject<ABIRootNode>(jsonContent);
-            if (abiRoot?.ABIRoot?.Children == null)
-            {
-                throw new InvalidOperationException("Invalid ABI structure.");
-            }
+            var decls = CollectDeclarations(_moduleRoot.ABIRoot.Children, _filters.Count == 0);
 
-            var moduleName = abiRoot.ABIRoot.Children.FirstOrDefault()?.ModuleName ?? string.Empty;
-            var dependencies = new List<string>
-            {
-                "System",
-                "System.Runtime.InteropServices",
-                "System.Runtime.CompilerServices",
-                "System.Runtime.InteropServices.Swift"
-            };
-
-            var declarations = CollectDeclarations(abiRoot.ABIRoot.Children, dependencies);
+            var dependencies = new List<string>();
+            var moduleName = GetModuleName();
+            dependencies.AddRange(_typeDatabase.Registrar.GetDependencies(moduleName));
+            dependencies.Remove(moduleName);
 
             return new ModuleDecl
             {
                 Name = ExtractUniqueName(moduleName),
-                Declarations = declarations,
+                Fields = decls.OfType<FieldDecl>().ToList(),
+                Methods = decls.OfType<MethodDecl>().ToList(),
+                Declarations = decls.Where(d => !(d is MethodDecl) && !(d is FieldDecl)).ToList(),
                 Dependencies = dependencies
             };
         }
@@ -110,15 +156,32 @@ namespace BindingsGeneration
         /// Collects declarations from a list of nodes.
         /// </summary>
         /// <param name="node">The node representing a declaration.</param>
-        /// <param name="dependencies">A list of dependencies for the declaration.</param>
-        private List<BaseDecl> CollectDeclarations(IEnumerable<Node> nodes, List<string> dependencies)
+        /// <param name="collect">A flag indicating whether to collect declarations.</param>
+        /// <returns>A list of declarations.</returns>
+        private List<BaseDecl> CollectDeclarations(IEnumerable<Node> nodes, bool collect)
         {
             var declarations = new List<BaseDecl>();
             foreach (var node in nodes)
             {
-                var nodeDeclaration = HandleNode(node, dependencies);
+                // Skip generic types
+                if (node.GenericSig != null)
+                {
+                    if (_verbose > 1)
+                        Console.WriteLine($"Generic type '{node.Name}' encountered. Skipping.");
+                    continue;
+                }
+
+                if (!collect && _filters.Contains(node.Name))
+                    collect = true;
+
+                var nodeDeclaration = HandleNode(node, collect);
                 if (nodeDeclaration != null)
                     declarations.Add(nodeDeclaration);
+
+                // Reset collect to false if it was set true for a specific node only
+                // TODO: Implement recursive filtering
+                if (collect && _filters.Contains(node.Name))
+                    collect = false;
             }
             return declarations;
         }
@@ -127,33 +190,46 @@ namespace BindingsGeneration
         /// Handles an ABI node and returns the corresponding declaration.
         /// </summary>
         /// <param name="node">The node representing a declaration.</param>
-        /// <param name="dependencies">A list of dependencies for the declaration.</param>
-        private BaseDecl? HandleNode(Node node, List<string> dependencies)
+        /// <param name="collect">A flag indicating whether to collect declarations.</param>
+        /// <returns>The declaration.</returns>
+        private BaseDecl? HandleNode(Node node, bool collect)
         {
+            if (!collect && !_filters.Contains(node.Name))
+                return null;
+
             BaseDecl? result = null;
-            try 
+            try
             {
                 switch (node.Kind)
                 {
                     case "TypeDecl":
-                        result = HandleTypeDecl(node, dependencies);
+                        result = HandleTypeDecl(node, collect);
                         break;
                     case "Function":
                     case "Constructor":
                         // TODO: Implement operator overloading
-                        result = IsOperator(node.Name) ? null : CreateMethodDecl(node, dependencies);
+                        result = IsOperator(node.Name) ? null : CreateMethodDecl(node);
                         break;
                     case "Var":
-                        // TODO: Add Debug.Assert to check the type layout against the ABI file
+                        result = CreateFieldDecl(node);
+                        break;
+                    case "Import":
                         break;
                     default:
                         if (_verbose > 1)
                             Console.WriteLine($"Unsupported declaration '{node.DeclKind} {node.Name}' encountered.");
                         break;
                 }
-            } catch (Exception e) 
+            }
+            catch (NotImplementedException e)
             {
-                Console.WriteLine($"Error while processing node '{node.Name}': {e.Message}");
+                if (_verbose > 1)
+                    Console.WriteLine($"Not implemented '{node.Name}': {e.Message}"); 
+            }
+            catch (Exception e) 
+            {
+                if (_verbose > 0)
+                    Console.WriteLine($"Error while processing node '{node.Name}': {e.Message}");
             }
 
             return result;
@@ -163,45 +239,58 @@ namespace BindingsGeneration
         /// Handles a type declaration node and returns the corresponding declaration.
         /// </summary>
         /// <param name="node">The node representing a type declaration.</param>
-        /// <param name="dependencies">A list of dependencies for the declaration.</param>
-        private BaseDecl? HandleTypeDecl(Node node, List<string> dependencies)
+        /// <param name="collect">A flag indicating whether to collect declarations.</param>
+        /// <returns>The type declaration.</returns>
+        private TypeDecl? HandleTypeDecl(Node node, bool collect)
         {
-            BaseDecl? decl = null;
+            if (_typeDatabase.IsTypeProcessed(node.ModuleName, node.Name))
+            {
+                if (_verbose > 1)
+                    Console.WriteLine($"Type '{node.Name}' already processed. Skipping.");
+                return null;
+            }
+
+            TypeDecl? decl = null;
+            TypeRecord typeRecord = _typeDatabase.Registrar.RegisterType(node.ModuleName, node.Name);
+            IntPtr metadataPtr;
+
             switch (node.DeclKind)
             {
                 case "Struct":
                 case "Enum":
-                    // TODO: Encapsulate metadata accessor naming logic in a helper method
-                    SwiftTypeInfo typeInfo = _typeDatabase.GetSwiftTypeInfo(node.Name, $"{Path.GetDirectoryName(_filePath)}/lib{node.ModuleName}.dylib", $"{node.MangledName}Ma");
-                    if (Array.IndexOf(node.DeclAttributes, "Frozen") != -1 && 
-                        (!typeInfo.ValueWitnessTable->IsNonPOD || !typeInfo.ValueWitnessTable->IsNonBitwiseTakable))
+                    metadataPtr = DynamicLibraryLoader.invoke(_dylibPath, GetMetadataAccessor(node));
+                    var swiftTypeInfo = new SwiftTypeInfo { MetadataPtr = metadataPtr };
+
+                    if (node.DeclAttributes != null && Array.IndexOf(node.DeclAttributes, "Frozen") != -1 && 
+                        (!swiftTypeInfo.ValueWitnessTable->IsNonPOD || !swiftTypeInfo.ValueWitnessTable->IsNonBitwiseTakable))
                     {
-                        decl = CreateStructDecl(node, dependencies);
+                        decl = CreateStructDecl(node);
                     }
                     else
                     {
-                        decl = CreateClassDecl(node, dependencies);
+                        decl = CreateClassDecl(node);
                     }
 
-                    if (node.Children != null)
-                    {
-                        var childDeclarations = CollectDeclarations(node.Children, dependencies);
-                        decl.Declarations.AddRange(childDeclarations);
-                    }
+                    typeRecord.SwiftTypeInfo = swiftTypeInfo;
                     break;
+
                 case "Class":
-                    decl = CreateClassDecl(node, dependencies);
-
-                    if (node.Children != null)
-                    {
-                        var childDeclarations = CollectDeclarations(node.Children, dependencies);
-                        decl.Declarations.AddRange(childDeclarations);
-                    }
+                    decl = CreateClassDecl(node);
                     break;
+
                 default:
                     if (_verbose > 1)
                         Console.WriteLine($"Unsupported declaration type '{node.DeclKind} {node.Name}' encountered.");
-                    break;
+                    return null;
+            }
+
+            typeRecord.IsProcessed = true;
+
+            if (node.Children != null && decl != null)
+            {
+                var childDecls = CollectDeclarations(node.Children, collect);
+                decl.Fields.AddRange(childDecls.OfType<FieldDecl>());
+                decl.Declarations.AddRange(childDecls.Where(d => !(d is FieldDecl)));
             }
 
             return decl;
@@ -211,14 +300,14 @@ namespace BindingsGeneration
         /// Creates a struct declaration from a node.
         /// </summary>
         /// <param name="node">The node representing the struct declaration.</param>
-        /// <param name="dependencies">A list of dependencies for the struct declaration.</param>
         /// <returns>The struct declaration.</returns>
-        private StructDecl CreateStructDecl(Node node, List<string> dependencies)
+        private StructDecl CreateStructDecl(Node node)
         {
             return new StructDecl
             {
                 Name = ExtractUniqueName(node.Name),
                 MangledName = node.MangledName,
+                Fields = new List<FieldDecl>(),
                 Declarations = new List<BaseDecl>()
             };
         }
@@ -227,14 +316,14 @@ namespace BindingsGeneration
         /// Creates a class declaration from a node.
         /// </summary>
         /// <param name="node">The node representing the class declaration.</param>
-        /// <param name="dependencies">A list of dependencies for the class declaration.</param>
         /// <returns>The class declaration.</returns>
-        private ClassDecl CreateClassDecl(Node node, List<string> dependencies)
+        private ClassDecl CreateClassDecl(Node node)
         {
             return new ClassDecl
             {
                 Name = ExtractUniqueName(node.Name),
                 MangledName = node.MangledName,
+                Fields = new List<FieldDecl>(),
                 Declarations = new List<BaseDecl>()
             };
         }
@@ -243,9 +332,8 @@ namespace BindingsGeneration
         /// Creates a method declaration from a node.
         /// </summary>
         /// <param name="node">The node representing the method declaration.</param>
-        /// <param name="dependencies">A list of dependencies for the method declaration.</param>
         /// <returns>The method declaration.</returns>
-        private MethodDecl CreateMethodDecl(Node node, List<string> dependencies)
+        private MethodDecl CreateMethodDecl(Node node)
         {
             // Extract parameter names from the signature
             var paramNames = ExtractParameterNames(node.PrintedName);
@@ -254,22 +342,23 @@ namespace BindingsGeneration
             {
                 Name = ExtractUniqueName(node.Name),
                 // Constructors for structs are named with a trailing 'C' instead of 'c'
-                // because a constructor wrapper is missing in the library
-                // TODO: Encapsulate constructor naming logic in a helper method
-                MangledName = node.Kind == "Constructor" && node.MangledName.Last() == 'c' ? node.MangledName.Substring(0, node.MangledName.Length - 1) + "C" : node.MangledName,
-                IsStatic = node.@static ?? false,
+                // because a constructor wrapper is missing in the library.
+                MangledName = node.Kind == "Constructor" ? PatchMangledName(node.MangledName) : node.MangledName,
+                MethodType = node.@static ?? false ? MethodType.Static : MethodType.Instance,
                 IsConstructor = node.Kind == "Constructor",
-                Signature = new List<TypeDecl>(),
-                Declarations = new List<BaseDecl>()
+                Signature = new List<FieldDecl>(),
             };
 
             if (node.Children != null)
             {
                 for (int i = 0; i < node.Children.Count(); i++)
                 {
-                    var typeDecl = CreateTypeDecl(node.Children.ElementAt(i), dependencies);
-                    typeDecl.Name = paramNames[i];
-                    methodDecl.Signature.Add(typeDecl);
+                    methodDecl.Signature.Add(new FieldDecl
+                    {
+                        TypeIdentifier = CreateTypeDecl(node.Children.ElementAt(i)),
+                        Name = paramNames[i],
+                        Visibility = Visibility.Public
+                    });
                 }
             }
 
@@ -277,51 +366,85 @@ namespace BindingsGeneration
         }
 
         /// <summary>
+        /// Creates a field declaration from a given node.
+        /// </summary>
+        /// <param name="node">The node representing the field declaration.</param>
+        /// <returns>The field declaration.</returns>
+        private FieldDecl CreateFieldDecl(Node node)
+        {
+            return new FieldDecl
+            {
+                TypeIdentifier = CreateTypeDecl(node.Children.ElementAt(0)),
+                Name = node.Name,
+                Visibility = node.IsInternal ?? false ? Visibility.Private : Visibility.Public
+            };
+        }
+
+        /// <summary>
         /// Creates a type declaration from a given node.
         /// </summary>
         /// <param name="node">The node representing the type declaration.</param>
-        /// <param name="dependencies">A list of dependencies for the type declaration.</param>
         /// <returns>The type declaration.</returns>
-        private TypeDecl CreateTypeDecl(Node node, List<string> dependencies)
+        private TypeDecl CreateTypeDecl(Node node)
         {
+            // Handle not supported types with a switch statement
+            switch (node.Kind)
+            {
+                case "TypeNominal":
+                    switch (node.Name)
+                    {
+                        case "Optional":
+                        case "Dictionary":
+                        case "Tuple":
+                        case "Array":
+                            throw new NotImplementedException($"{node.Name} types are not supported yet.");
+                        default:
+                            if (node.PrintedName.StartsWith("any ", StringComparison.InvariantCultureIgnoreCase))
+                            {
+                                throw new NotImplementedException("Protocols are not supported yet.");
+                            }
+                            break;
+                    }
+                    break;
+                case "TypeFunc":
+                    throw new NotImplementedException("Function types are not supported yet.");
+            }
+
             var typeDecl = new TypeDecl
             {
                 Name = string.Empty,
-                TypeIdentifier = string.Empty,
-                Generics = new List<TypeDecl>(),
-                Declarations = new List<BaseDecl>()
+                MangledName = node.MangledName,
+                Fields = new List<FieldDecl>(),
+                Declarations = new List<BaseDecl>(),
             };
 
-            string[] csharpTypeName;
+            TypeRecord typeRecord;
+            string moduleName = node.PrintedName.IndexOf('.') > -1 ? node.PrintedName.Substring(0, node.PrintedName.IndexOf('.')) : string.Empty;
             // If the node has children, it is a generic type
-            if (node.Children != null && node.Children.Count() > 0)
+            if (node.Children != null && node.Children.Any())
             {
-                string baseTypeName = $"{node.Name}`{node.Children.Count()}";
-                csharpTypeName = _typeDatabase.GetCSharpTypeName(baseTypeName);
-                typeDecl.TypeIdentifier = csharpTypeName[1].Replace($"`{node.Children.Count()}", "") + "<";
+                typeRecord = _typeDatabase.GetTypeMapping(moduleName, $"{node.Name}`{node.Children.Count()}");
+                typeDecl.Name = typeRecord.TypeIdentifier.Replace($"`{node.Children.Count()}", "") + "<";
 
                 for (int i = 0; i < node.Children.Count(); i++)
                 {
-                    var child = CreateTypeDecl(node.Children.ElementAt(i), dependencies);
-                    typeDecl.Generics.Add(child);
+                    var child = CreateTypeDecl(node.Children.ElementAt(i));
+                    typeDecl.Declarations.Add(child);
                     if (i > 0)
-                        typeDecl.TypeIdentifier += ", ";
-                    typeDecl.TypeIdentifier += child.TypeIdentifier;
+                        typeDecl.Name += ", ";
+                    typeDecl.Name += child.Name;
                 }
 
-                typeDecl.TypeIdentifier += ">";
+                typeDecl.Name += ">";
             }
             // If the node has no children, it is a non-generic type
             else
             {
-                csharpTypeName = _typeDatabase.GetCSharpTypeName(node.Name);
-                typeDecl.TypeIdentifier = csharpTypeName[1];
+                var typeIdentifier = node.PrintedName.IndexOf('.') > -1 ? node.PrintedName.Substring(node.PrintedName.IndexOf('.') + 1) : node.PrintedName;
+                typeRecord = _typeDatabase.GetTypeMapping(moduleName, typeIdentifier);
+                typeDecl.Name = typeRecord.TypeIdentifier;
             }
-
-            if (!dependencies.Contains(csharpTypeName[0]))
-            {
-                dependencies.Add(csharpTypeName[0]);
-            }
+            _typeDatabase.Registrar.UpdateDependencies(GetModuleName(), typeRecord.Namespace);
 
             return typeDecl;
         }
@@ -357,6 +480,8 @@ namespace BindingsGeneration
         /// <summary>
         /// Check if the name is a keyword and prefix it with "_".
         /// </summary>
+        /// <param name="name">The name to check.</param>
+        /// <returns>The processed name.</returns>
         private static string ExtractUniqueName(string name)
         {
             if (SyntaxFacts.GetKeywordKind(name) != SyntaxKind.None)
@@ -370,9 +495,38 @@ namespace BindingsGeneration
         /// <summary>
         /// Check if the name is an operator.
         /// </summary>
+        /// <param name="name">The name to check.</param>
+        /// <returns>True if the name is an operator, false otherwise.</returns>
         private static bool IsOperator(string name)
         {
             return _operators.Contains(name);
+        }
+
+        /// <summary>
+        /// Patches the mangled name of a constructor.
+        /// </summary>
+        /// <param name="mangledName">The mangled name to patch.</param>
+        /// <returns>The patched mangled name.</returns>
+        private string PatchMangledName(string mangledName)
+        {
+            if (mangledName.Last() == 'c')
+            {
+                return mangledName.Substring(0, mangledName.Length - 1) + "C";
+            }
+            return mangledName;
+        }
+
+        /// <summary>
+        /// Gets the metadata accessor for a given node.
+        /// </summary>
+        /// <param name="node">The node to get the metadata accessor for.</param>
+        /// <returns>The metadata accessor.</returns>
+        private string GetMetadataAccessor(Node node)
+        {
+            if (node.GenericSig == null)
+                return $"{node.MangledName}Ma";
+            else
+                return node.MangledName;
         }
     }
 }

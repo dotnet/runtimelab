@@ -6,11 +6,7 @@ namespace BindingsGeneration
     /// <summary>
     /// Represents an enum declaration.
     /// </summary>
-    public sealed record EnumDecl : BaseDecl
+    public sealed record EnumDecl : TypeDecl
     {
-        /// <summary>
-        /// Mangled name of the enum.
-        /// </summary>
-        public required string MangledName { get; set; }
     }
 }

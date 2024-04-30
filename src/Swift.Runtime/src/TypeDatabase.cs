@@ -4,24 +4,19 @@
 using System.Xml;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 
 namespace Swift.Runtime
 {
     /// <summary>
-    /// Represents a database for mapping Swift type names to C# type names.
+    /// Manages a mapping database between Swift types and C# types.
     /// </summary>
     public unsafe class TypeDatabase
     {
-        // TODO: Encapsulate _swiftToCSharpMapping and _swiftTypeInfo in a class/struct
         /// <summary>
-        /// The mapping from Swift type names to C# type names.
+        /// The module and type records associated with the database.
         /// </summary>
-        private readonly Dictionary<string, string> _swiftToCSharpMapping = new Dictionary<string, string>();
-
-        /// <summary>
-        /// The mapping from Swift type names to Swift type information.
-        /// </summary>
-        private readonly Dictionary<string, SwiftTypeInfo> _swiftTypeInfo = new Dictionary<string, SwiftTypeInfo>();
+        public readonly TypeRegistrar Registrar = new TypeRegistrar();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TypeDatabase"/> class.
@@ -97,61 +92,115 @@ namespace Swift.Runtime
                 XmlNode? typeDeclarationNode = entityNode?.SelectSingleNode("typedeclaration");
                 if (typeDeclarationNode == null)
                     throw new Exception("Invalid XML structure: 'typedeclaration' node not found.");
-                    
-                string? swiftName = typeDeclarationNode?.Attributes?["name"]?.Value;
-                string? csharpName = entityNode?.Attributes?["managedTypeName"]?.Value;
-                if (swiftName == null || csharpName == null)
+
+                string moduleName = typeDeclarationNode?.Attributes?["module"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'module' attribute.");
+                string swiftTypeIdentifier = typeDeclarationNode?.Attributes?["name"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'name' attribute.");
+                string csharpTypeIdentifier = entityNode?.Attributes?["managedTypeName"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'managedTypeName' attribute.");
+                string @namespace = entityNode?.Attributes?["managedNameSpace"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'managedNameSpace' attribute.");
+                if (swiftTypeIdentifier == null || csharpTypeIdentifier == null)
                     throw new Exception("Invalid XML structure: Missing attributes.");
 
-                _swiftToCSharpMapping.Add(swiftName, csharpName);
+                var typeRecord = Registrar.RegisterType(moduleName, swiftTypeIdentifier);
+                typeRecord.TypeIdentifier = csharpTypeIdentifier;
+                typeRecord.IsProcessed = true;
             }
         }
 
         /// <summary>
-        /// Gets the C# type name corresponding to the specified Swift type name. 
+        /// Gets the C# type for the specified Swift type.
         /// The method first tries to find a known mapping, and if that fails, it looks for a type in Swift.Runtime.
         /// </summary>
-        /// <param name="swiftTypeName">The Swift type name.</param>
-        /// <returns>The corresponding C# type name.</returns>
-        public string[] GetCSharpTypeName(string swiftTypeName)
+        /// <param name="moduleName">The Swift module name.</param>
+        /// <param name="typeIdentifier">The Swift type identifier.</param>
+        /// <returns>The corresponding C# type record.</returns>
+        public TypeRecord GetTypeMapping(string moduleName, string typeIdentifier)
         {
-            // Try to find a known mapping
-            if (_swiftToCSharpMapping.TryGetValue(swiftTypeName, out string? csharpTypeName))
+            // Try to find a mapping in the database
+            var typeRecord = Registrar.GetType(moduleName, typeIdentifier);
+            if (typeRecord != null)
+                return typeRecord;
+
+            // Try to find a type within Swift.Runtime namespace
+            var swiftRuntimeType = Type.GetType($"Swift.Runtime.{typeIdentifier}");
+            if (swiftRuntimeType != null)
             {
-                return new string [] { "System", csharpTypeName };
+                // Add the type to the database
+                typeRecord = Registrar.RegisterType(moduleName, typeIdentifier);
+                typeRecord.Namespace = "Swift.Runtime";
+                typeRecord.TypeIdentifier = swiftRuntimeType.Name;
+                typeRecord.IsProcessed = true;
+
+                return typeRecord;
             }
 
-            // Try to find a type in Swift.Runtime
-            Type? swiftRuntimeType = Type.GetType($"Swift.Runtime.{swiftTypeName}");
-            if (swiftRuntimeType != null)
-                return new string [] { "Swift.Runtime", swiftRuntimeType.Name };
+            // Type not found; register it for lazy-loading
+            typeRecord = Registrar.RegisterType(moduleName, typeIdentifier);
+            typeRecord.IsProcessed = false;
 
-            // TODO: The ABI parser should search for the type within this and imported modules and lazy-load it
-            return new string [] { "System", swiftTypeName };
+            return typeRecord;
         }
 
         /// <summary>
-        /// Gets the Swift type information from the specified library.
+        /// Determines whether the specified module has been processed.
         /// </summary>
-        /// <param name="swiftTypeName">The Swift type name.</param>
-        /// <param name="libraryPath">The path to the library containing the type information.</param>
-        /// <param name="functionName">The name of the function to call to get the type information.</param>
-        /// <returns>The Swift type information.</returns>
-        public SwiftTypeInfo GetSwiftTypeInfo(string swiftTypeName, string? libraryPath = null, string? functionName = null)
+        /// <param name="moduleName">The Swift module name.</param>
+        /// <returns>True if the module has been processed; otherwise, false.</returns>
+        public bool IsModuleProcessed(string moduleName)
         {
-            if (_swiftTypeInfo.TryGetValue(swiftTypeName, out SwiftTypeInfo typeInfo))
-                return typeInfo;
+            var moduleRecord = Registrar.GetModule(moduleName);
+            if (moduleRecord != null)
+                return moduleRecord.IsProcessed;
 
-            if (libraryPath != null && functionName != null)
-            {
-                IntPtr metadataPtr = DynamicLibraryLoader.execute(libraryPath, functionName);
-                typeInfo = new SwiftTypeInfo { MetadataPtr = metadataPtr };
+            return false;
+        }
 
-                _swiftTypeInfo.Add(swiftTypeName, typeInfo);
-                return typeInfo;
-            }
+        /// <summary>
+        /// Determines whether the specified module has been processed.
+        /// </summary>
+        /// <param name="moduleName">The Swift module name.</param>
+        /// <param name="typeIdentifier">The Swift type identifier.</param>
+        /// <returns>True if the module has been processed; otherwise, false.</returns>
+        public bool IsTypeProcessed(string moduleName, string typeIdentifier)
+        {
+            var typeRecord = Registrar.GetType(moduleName, typeIdentifier);
+            if (typeRecord != null)
+                return typeRecord.IsProcessed;
+            
+            return false;
+        }
 
-            throw new Exception($"No metadata found for type '{swiftTypeName}'.");
+        /// <summary>
+        /// Gets the Swift type information for the specified Swift type name.
+        /// </summary>
+        /// <returns>The list of unprocessed modules.</returns>
+        public List<string> GetUnprocessedModules()
+        {
+            // Exclude built-in modules and processed modules
+            var modules = Registrar.GetModules();
+            return modules.Where(x => !x.IsProcessed && x.Name != "" && x.Name != "Swift").Select(x => x.Name).ToList();
+        }
+
+        /// <summary>
+        /// Gets the unprocessed type records for the specified module.
+        /// </summary>
+        /// <param name="moduleName">The Swift module name.</param>
+        /// <returns>The list of unprocessed type records.</returns>
+        public List<string> GetUnprocessedTypes(string moduleName)
+        {
+            // Exclude processed types
+            var types = Registrar.GetTypes(moduleName);
+            return types.Where(x => !x.IsProcessed).Select(x => x.TypeIdentifier).ToList();
+        }
+
+        /// <summary>
+        /// Gets the library name for the specified module.
+        /// </summary>
+        /// <param name="moduleName">The Swift module name.</param>
+        /// <returns>The library name.</returns>
+        public string GetLibraryName(string moduleName)
+        {
+            var moduleRecord = Registrar.GetModule(moduleName);
+            return moduleRecord?.Path ?? "";
         }
     }
 }

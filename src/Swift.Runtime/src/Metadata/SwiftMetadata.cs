@@ -8,8 +8,7 @@ using System.Text;
 
 namespace Swift.Runtime
 {
-	// TODO: Verify and document all implemented types
-	// Some implementations are from https://github.com/chkn/Xamarin.SwiftUI and https://github.com/xamarin/binding-tools-for-swift/
+	// Implementations are partially taken from https://github.com/chkn/Xamarin.SwiftUI and https://github.com/xamarin/binding-tools-for-swift/
     using static MetadataFlags;
 
 	/// <summary>
