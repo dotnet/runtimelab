@@ -13,7 +13,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -47,7 +47,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -80,7 +80,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -113,7 +113,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -146,7 +146,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -179,7 +179,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -212,7 +212,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -245,7 +245,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -278,7 +278,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -311,7 +311,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -344,7 +344,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -377,7 +377,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -410,7 +410,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -443,7 +443,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -476,7 +476,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -509,7 +509,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -542,7 +542,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -575,7 +575,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -608,7 +608,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -641,7 +641,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -674,7 +674,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -707,7 +707,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -740,7 +740,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -773,7 +773,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -806,7 +806,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -839,7 +839,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -872,7 +872,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -905,7 +905,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -938,7 +938,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -971,7 +971,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1004,7 +1004,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1037,7 +1037,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1070,7 +1070,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1103,7 +1103,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1136,7 +1136,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1169,7 +1169,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1202,7 +1202,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1235,7 +1235,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1268,7 +1268,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1301,7 +1301,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1334,7 +1334,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1367,7 +1367,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1400,7 +1400,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1433,7 +1433,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1466,7 +1466,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1499,7 +1499,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1532,7 +1532,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1565,7 +1565,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1598,7 +1598,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1631,7 +1631,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1664,7 +1664,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1697,7 +1697,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1730,7 +1730,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1763,7 +1763,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1796,7 +1796,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1829,7 +1829,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1862,7 +1862,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1895,7 +1895,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1928,7 +1928,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1961,7 +1961,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1994,7 +1994,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2027,7 +2027,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2060,7 +2060,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2093,7 +2093,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2126,7 +2126,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2159,7 +2159,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2192,7 +2192,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2225,7 +2225,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2258,7 +2258,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2291,7 +2291,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2324,7 +2324,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2357,7 +2357,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2390,7 +2390,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2423,7 +2423,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2456,7 +2456,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2489,7 +2489,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2522,7 +2522,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2555,7 +2555,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2588,7 +2588,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2621,7 +2621,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2654,7 +2654,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2687,7 +2687,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2720,7 +2720,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2753,7 +2753,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2786,7 +2786,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2819,7 +2819,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2852,7 +2852,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2885,7 +2885,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2918,7 +2918,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2951,7 +2951,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2984,7 +2984,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3017,7 +3017,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3050,7 +3050,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3083,7 +3083,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3116,7 +3116,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3149,7 +3149,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3182,7 +3182,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3215,7 +3215,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3248,7 +3248,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3281,7 +3281,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3314,7 +3314,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3347,7 +3347,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3380,7 +3380,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3413,7 +3413,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3446,7 +3446,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3479,7 +3479,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3512,7 +3512,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3545,7 +3545,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3578,7 +3578,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3611,7 +3611,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3644,7 +3644,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3677,7 +3677,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3710,7 +3710,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3743,7 +3743,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3776,7 +3776,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3809,7 +3809,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3842,7 +3842,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3875,7 +3875,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3908,7 +3908,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3941,7 +3941,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3974,7 +3974,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4007,7 +4007,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4040,7 +4040,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4073,7 +4073,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4106,7 +4106,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4139,7 +4139,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4172,7 +4172,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4205,7 +4205,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4238,7 +4238,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4271,7 +4271,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4304,7 +4304,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4337,7 +4337,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4370,7 +4370,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4403,7 +4403,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4436,7 +4436,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4469,7 +4469,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4502,7 +4502,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4535,7 +4535,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4568,7 +4568,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4601,7 +4601,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4634,7 +4634,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4667,7 +4667,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4700,7 +4700,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4733,7 +4733,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4766,7 +4766,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4799,7 +4799,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4832,7 +4832,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4865,7 +4865,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4898,7 +4898,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4931,7 +4931,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4964,7 +4964,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -4997,7 +4997,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5030,7 +5030,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5063,7 +5063,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5096,7 +5096,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5129,7 +5129,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5162,7 +5162,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5195,7 +5195,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5228,7 +5228,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5261,7 +5261,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5294,7 +5294,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5327,7 +5327,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5360,7 +5360,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5393,7 +5393,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5426,7 +5426,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5459,7 +5459,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5492,7 +5492,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5525,7 +5525,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5558,7 +5558,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5591,7 +5591,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5624,7 +5624,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5657,7 +5657,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5690,7 +5690,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5723,7 +5723,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5756,7 +5756,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5789,7 +5789,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5822,7 +5822,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5855,7 +5855,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5888,7 +5888,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5921,7 +5921,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5954,7 +5954,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -5987,7 +5987,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6020,7 +6020,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6053,7 +6053,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6086,7 +6086,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6119,7 +6119,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6152,7 +6152,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6185,7 +6185,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6218,7 +6218,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6251,7 +6251,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6284,7 +6284,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6317,7 +6317,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6350,7 +6350,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6383,7 +6383,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6416,7 +6416,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6449,7 +6449,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6482,7 +6482,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6515,7 +6515,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6548,7 +6548,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6581,7 +6581,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6614,7 +6614,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6647,7 +6647,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6680,7 +6680,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6713,7 +6713,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6746,7 +6746,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6779,7 +6779,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6812,7 +6812,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6845,7 +6845,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6878,7 +6878,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6911,7 +6911,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6944,7 +6944,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -6977,7 +6977,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7010,7 +7010,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7043,7 +7043,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7076,7 +7076,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7109,7 +7109,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7142,7 +7142,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7175,7 +7175,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7208,7 +7208,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7241,7 +7241,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7274,7 +7274,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7307,7 +7307,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7340,7 +7340,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7373,7 +7373,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7406,7 +7406,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7439,7 +7439,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7472,7 +7472,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7505,7 +7505,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7538,7 +7538,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7571,7 +7571,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7604,7 +7604,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7637,7 +7637,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7670,7 +7670,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7703,7 +7703,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7736,7 +7736,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7769,7 +7769,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7802,7 +7802,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7835,7 +7835,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7868,7 +7868,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7901,7 +7901,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7934,7 +7934,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -7967,7 +7967,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8000,7 +8000,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8033,7 +8033,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8066,7 +8066,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8099,7 +8099,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8132,7 +8132,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8165,7 +8165,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8198,7 +8198,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8231,7 +8231,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8264,7 +8264,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8297,7 +8297,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8330,7 +8330,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8363,7 +8363,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8396,7 +8396,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8429,7 +8429,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8462,7 +8462,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8495,7 +8495,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8528,7 +8528,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8561,7 +8561,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8594,7 +8594,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8627,7 +8627,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8660,7 +8660,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8693,7 +8693,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8726,7 +8726,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8759,7 +8759,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8792,7 +8792,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8825,7 +8825,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8858,7 +8858,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8891,7 +8891,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8924,7 +8924,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8957,7 +8957,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -8990,7 +8990,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9023,7 +9023,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9056,7 +9056,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9089,7 +9089,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9122,7 +9122,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9155,7 +9155,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9188,7 +9188,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9221,7 +9221,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9254,7 +9254,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9287,7 +9287,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9320,7 +9320,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9353,7 +9353,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9386,7 +9386,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9419,7 +9419,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9452,7 +9452,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9485,7 +9485,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9518,7 +9518,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9551,7 +9551,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9584,7 +9584,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9617,7 +9617,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9650,7 +9650,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9683,7 +9683,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9716,7 +9716,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9749,7 +9749,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9782,7 +9782,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9815,7 +9815,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9848,7 +9848,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9881,7 +9881,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9914,7 +9914,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9947,7 +9947,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -9980,7 +9980,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10013,7 +10013,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10046,7 +10046,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10079,7 +10079,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10112,7 +10112,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10145,7 +10145,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10178,7 +10178,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10211,7 +10211,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10244,7 +10244,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10277,7 +10277,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10310,7 +10310,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10343,7 +10343,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10376,7 +10376,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10409,7 +10409,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10442,7 +10442,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10475,7 +10475,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10508,7 +10508,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10541,7 +10541,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10574,7 +10574,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10607,7 +10607,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10640,7 +10640,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10673,7 +10673,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10706,7 +10706,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10739,7 +10739,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10772,7 +10772,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10805,7 +10805,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10838,7 +10838,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10871,7 +10871,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10904,7 +10904,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10937,7 +10937,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -10970,7 +10970,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11003,7 +11003,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11036,7 +11036,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11069,7 +11069,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11102,7 +11102,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11135,7 +11135,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11168,7 +11168,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11201,7 +11201,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11234,7 +11234,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11267,7 +11267,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11300,7 +11300,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11333,7 +11333,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11366,7 +11366,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11399,7 +11399,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11432,7 +11432,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11465,7 +11465,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11498,7 +11498,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11531,7 +11531,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11564,7 +11564,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11597,7 +11597,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11630,7 +11630,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11663,7 +11663,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11696,7 +11696,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11729,7 +11729,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11762,7 +11762,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11795,7 +11795,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11828,7 +11828,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11861,7 +11861,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11894,7 +11894,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11927,7 +11927,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11960,7 +11960,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -11993,7 +11993,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12026,7 +12026,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12059,7 +12059,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12092,7 +12092,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12125,7 +12125,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12158,7 +12158,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12191,7 +12191,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12224,7 +12224,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12257,7 +12257,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12290,7 +12290,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12323,7 +12323,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12356,7 +12356,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12389,7 +12389,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12422,7 +12422,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12455,7 +12455,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12488,7 +12488,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12521,7 +12521,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12554,7 +12554,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12587,7 +12587,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12620,7 +12620,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12653,7 +12653,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12686,7 +12686,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12719,7 +12719,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12752,7 +12752,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12785,7 +12785,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12818,7 +12818,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12851,7 +12851,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12884,7 +12884,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12917,7 +12917,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12950,7 +12950,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -12983,7 +12983,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13016,7 +13016,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13049,7 +13049,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13082,7 +13082,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13115,7 +13115,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13148,7 +13148,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13181,7 +13181,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13214,7 +13214,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13247,7 +13247,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13280,7 +13280,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13313,7 +13313,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13346,7 +13346,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13379,7 +13379,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13412,7 +13412,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13445,7 +13445,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13478,7 +13478,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13511,7 +13511,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13544,7 +13544,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13577,7 +13577,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13610,7 +13610,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13643,7 +13643,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13676,7 +13676,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13709,7 +13709,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13742,7 +13742,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13775,7 +13775,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13808,7 +13808,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13841,7 +13841,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13874,7 +13874,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13907,7 +13907,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13940,7 +13940,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -13973,7 +13973,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14006,7 +14006,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14039,7 +14039,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14072,7 +14072,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14105,7 +14105,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14138,7 +14138,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14171,7 +14171,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14204,7 +14204,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14237,7 +14237,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14270,7 +14270,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14303,7 +14303,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14336,7 +14336,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14369,7 +14369,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14402,7 +14402,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14435,7 +14435,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14468,7 +14468,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14501,7 +14501,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14534,7 +14534,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14567,7 +14567,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14600,7 +14600,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14633,7 +14633,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14666,7 +14666,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14699,7 +14699,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14732,7 +14732,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14765,7 +14765,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14798,7 +14798,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14831,7 +14831,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14864,7 +14864,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14897,7 +14897,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14930,7 +14930,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14963,7 +14963,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -14996,7 +14996,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -15029,7 +15029,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -15062,7 +15062,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -15095,7 +15095,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -15128,7 +15128,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -15161,7 +15161,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -15194,7 +15194,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -15227,7 +15227,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -15260,7 +15260,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {
@@ -15293,7 +15293,7 @@ namespace BindingsGeneration.Tests
             BindingsGenerator.GenerateBindings("StaticMethods/StaticMethodsTests.abi.json", "StaticMethods/");
             var sourceCode = """
                 using System;
-                using StaticMethodsTestsBindings;
+                using Swift.StaticMethodsTests;
 
                 namespace Test {
                     public class MainClass {

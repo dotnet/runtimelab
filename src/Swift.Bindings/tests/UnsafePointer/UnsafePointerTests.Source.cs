@@ -2,10 +2,10 @@
 // Licensed under the MIT License.
 
 using System;
-using UnsafePointerTestsBindings;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using Swift.Runtime;
+using Swift.UnsafePointerTests;
 
 namespace Test
 {

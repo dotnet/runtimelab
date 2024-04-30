@@ -16,7 +16,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -52,7 +52,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -86,7 +86,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -122,7 +122,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -158,7 +158,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -194,7 +194,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -230,7 +230,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -266,7 +266,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -302,7 +302,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -338,7 +338,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -374,7 +374,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -410,7 +410,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -446,7 +446,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -482,7 +482,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -518,7 +518,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -554,7 +554,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -590,7 +590,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -626,7 +626,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -662,7 +662,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -698,7 +698,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -734,7 +734,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -770,7 +770,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -806,7 +806,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -842,7 +842,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -878,7 +878,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -914,7 +914,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -950,7 +950,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -986,7 +986,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1022,7 +1022,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1058,7 +1058,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1094,7 +1094,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1130,7 +1130,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1166,7 +1166,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1202,7 +1202,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1238,7 +1238,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1274,7 +1274,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1310,7 +1310,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1346,7 +1346,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1382,7 +1382,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1418,7 +1418,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1454,7 +1454,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1490,7 +1490,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1526,7 +1526,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1562,7 +1562,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1598,7 +1598,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1634,7 +1634,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1670,7 +1670,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1706,7 +1706,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1742,7 +1742,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1778,7 +1778,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1814,7 +1814,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1850,7 +1850,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1886,7 +1886,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1922,7 +1922,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1958,7 +1958,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -1994,7 +1994,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2030,7 +2030,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2066,7 +2066,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2102,7 +2102,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2138,7 +2138,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2174,7 +2174,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2210,7 +2210,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2246,7 +2246,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2282,7 +2282,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2318,7 +2318,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2354,7 +2354,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2390,7 +2390,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2426,7 +2426,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2462,7 +2462,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2498,7 +2498,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2534,7 +2534,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2570,7 +2570,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2606,7 +2606,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2642,7 +2642,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2678,7 +2678,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2714,7 +2714,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2750,7 +2750,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2786,7 +2786,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2822,7 +2822,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2858,7 +2858,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2894,7 +2894,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2930,7 +2930,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -2966,7 +2966,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3002,7 +3002,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3038,7 +3038,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3074,7 +3074,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3110,7 +3110,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3146,7 +3146,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3182,7 +3182,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3218,7 +3218,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3254,7 +3254,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3290,7 +3290,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3326,7 +3326,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3362,7 +3362,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3398,7 +3398,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3434,7 +3434,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3470,7 +3470,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3506,7 +3506,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3542,7 +3542,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3578,7 +3578,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3614,7 +3614,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
@@ -3650,7 +3650,7 @@ namespace BindingsGeneration.Tests
                 // Licensed under the MIT License.
 
                 using System;
-                using PInvokeTestsBindings;
+                using Swift.PInvokeTests;
 
                 namespace Test {
                     public class MainClass {
