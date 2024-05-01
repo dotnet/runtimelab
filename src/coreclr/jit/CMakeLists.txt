@@ -712,8 +712,10 @@ endif (CLR_CMAKE_TARGET_ARCH_RISCV64)
 if (CLR_CMAKE_BUILD_LLVM_JIT)
     # The LLVM clrjit needs to be the last clrjit to use create_standalone_jit as it modifies some cmake variables.
     # LLVM clrjit has an extra export - registerLlvmCallbacks.
-    add_compile_options(-Wno-switch)
-    add_compile_options(-Wno-format)
+    if (CLR_CMAKE_TARGET_LINUX)
+      add_compile_options(-Wno-switch)
+      add_compile_options(-Wno-format)
+    endif (CLR_CMAKE_TARGET_LINUX)
     set(CLRJIT_EXPORTS ${CMAKE_CURRENT_LIST_DIR}/ClrJit.Llvm.exports)
     set(JIT_EXPORTS_FILE ${CMAKE_CURRENT_BINARY_DIR}/ClrJit.Llvm.exports.def)
     preprocess_file (${CLRJIT_EXPORTS} ${JIT_EXPORTS_FILE})
