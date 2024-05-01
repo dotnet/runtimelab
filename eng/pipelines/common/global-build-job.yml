@@ -207,7 +207,7 @@ jobs:
         displayName: Disk Usage before Build
 
       # Install Wasm dependencies on Windows: emscripten, LLVM, NodeJS
-    - ${{ if and(eq(parameters.osGroup, 'windows'), and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.archType, 'wasm'))) }}:
+    - ${{ if and(eq(parameters.hostedOs, 'windows'), and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.archType, 'wasm'))) }}:
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.cmd $(Build.SourcesDirectory)\wasm-tools
         displayName: Install/activate emscripten
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.cmd $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory) ${{ parameters.buildConfig }}
@@ -216,7 +216,7 @@ jobs:
         displayName: Install NodeJS
 
       # Install Wasm dependencies on Linux: emscripten, LLVM, NodeJS.
-    - ${{ if and(eq(parameters.osGroup, 'linux'), and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.archType, 'wasm'))) }}:
+    - ${{ if and(eq(parameters.hostedOs, 'linux'), and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.archType, 'wasm'))) }}:
       - script: $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.sh $(Build.SourcesDirectory)\wasm-tools
         displayName: Install/activate emscripten
       - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.ps1 $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory) ${{ parameters.buildConfig }}
