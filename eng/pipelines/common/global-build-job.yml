@@ -215,8 +215,8 @@ jobs:
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-nodejs.cmd $(Build.SourcesDirectory)\wasm-tools
         displayName: Install NodeJS
 
-      # Install Wasm dependencies on Linux: emscripten, LLVM, NodeJS
-    - ${{ if and(eq(parameters.osGroup, "windows"), and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.archType, 'wasm'))) }}:
+      # Install Wasm dependencies on Linux: emscripten, LLVM, NodeJS.
+    - ${{ if and(eq(parameters.osGroup, "linux"), and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.archType, 'wasm'))) }}:
       - script: $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.sh $(Build.SourcesDirectory)\wasm-tools
         displayName: Install/activate emscripten
       - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.ps1 $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory) ${{ parameters.buildConfig }}
