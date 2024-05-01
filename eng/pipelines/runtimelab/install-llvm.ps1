@@ -31,7 +31,6 @@ elseif (!(Test-Path llvm-project))
     exit 1
 }
 
-$IsWindows=[environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
 foreach ($Config in $Configs)
 {
     pushd llvm-project
