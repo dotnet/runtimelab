@@ -54,7 +54,7 @@ foreach ($Config in $Configs)
     }
     else
     {
-        $generator="Ninja"
+        $generator="Unix Makefiles"
     }
 
     $CmakeConfigureCommandLine = "-G", "$generator", "-DLLVM_INCLUDE_BENCHMARKS=OFF"
