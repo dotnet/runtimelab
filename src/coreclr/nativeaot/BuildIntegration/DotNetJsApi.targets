@@ -88,7 +88,7 @@
       <_ExportsToAddToExportsFile Include="@(EmccExportedFunction)" />
       <_ExportsToAddToExportsFile Remove="@(_ExistingExports)" />
     </ItemGroup>
-    <WriteLinesToFile File="$(ExportsFile)" Lines="@(_ExportsToAddToExportsFile)" Overwrite="false" Encoding="utf-8" Condition="'@(_ExportsToAddToExportsFile->Count())' != '0'" />
+    <WriteLinesToFile File="$(ExportsFile)" Lines="@(_ExportsToAddToExportsFile)" Overwrite="false" Condition="'@(_ExportsToAddToExportsFile->Count())' != '0'" />
   </Target>
   <Target Name="CopyDotnetJsAfterLinking" AfterTargets="LinkNativeLlvm">
     <ItemGroup>
