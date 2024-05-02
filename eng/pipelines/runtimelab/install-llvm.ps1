@@ -6,6 +6,12 @@ param(
     [switch]$NoBuild
 )
 
+# Set IsWindows if the version of Powershell does not already have it.
+if (!(Test-Path variable:global:IsWindows)) 
+{
+    $IsWindows=[environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+}
+
 $ErrorActionPreference="Stop"
 
 if (!(gcm git -ErrorAction SilentlyContinue))
