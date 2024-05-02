@@ -1,6 +1,11 @@
 $InstallPath = $Args[0]
 $NodeJSVersion = "v20.2.0"
 #$IsWindows=[environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+if (!(TestPath variable:global:IsWindows))
+{
+    $IsWindows=[environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+}
+
 if ($IsWIndows)
 {
     $NodeJSInstallName = "node-$NodeJSVersion-win-x64"
