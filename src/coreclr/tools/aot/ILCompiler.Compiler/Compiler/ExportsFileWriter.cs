@@ -50,6 +50,8 @@ namespace ILCompiler
                 }
                 else if (_context.Target.OperatingSystem == TargetOS.Wasi)
                 {
+                    foreach (string symbol in _exportSymbols)
+                        streamWriter.WriteLine(symbol);
                     foreach (var method in _methods)
                         streamWriter.WriteLine(method.GetUnmanagedCallersOnlyExportName());
                 }
