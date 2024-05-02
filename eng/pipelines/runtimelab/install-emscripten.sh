@@ -16,4 +16,4 @@ python emsdk.py install 3.1.47 || exit 1
 
 # We key off of this variable in the common/build.ps1 script.
 echo Setting NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH to $PWD
-echo ##vso[task.setvariable variable=NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH]$PWD
+echo "##vso[task.setvariable variable=NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH]$PWD"
