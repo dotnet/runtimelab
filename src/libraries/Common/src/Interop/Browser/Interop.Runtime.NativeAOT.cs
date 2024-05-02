@@ -12,8 +12,8 @@ internal static partial class Interop
     {
         private const string JSLibrary = "System.Runtime.InteropServices.JavaScript";
 
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal static extern void ReleaseCSOwnedObject(IntPtr jsHandle);
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_release_cs_owned_object", StringMarshalling = StringMarshalling.Utf16)]
+        internal static unsafe partial void ReleaseCSOwnedObject(IntPtr jsHandle);
         [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_bind_js_import_ST", StringMarshalling = StringMarshalling.Utf16)]
         public static unsafe partial IntPtr BindJSImportST(void* signature);
         [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_invoke_jsimport_ST")]
@@ -30,8 +30,8 @@ internal static partial class Interop
         public static extern IntPtr RegisterGCRoot(void* start, int bytesSize, IntPtr name);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern void DeregisterGCRoot(IntPtr handle);
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern void CancelPromise(IntPtr gcHandle);
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_cancel_promise", StringMarshalling = StringMarshalling.Utf16)]
+        public static unsafe partial void CancelPromise(IntPtr gcHandle);
         [MethodImpl(MethodImplOptions.InternalCall)]
         public static extern void AssemblyGetEntryPoint(IntPtr assemblyNamePtr, int auto_insert_breakpoint, void** monoMethodPtrPtr);
         [MethodImpl(MethodImplOptions.InternalCall)]
