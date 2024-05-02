@@ -5,14 +5,12 @@
     <IlcExportUnmanagedEntrypoints>true</IlcExportUnmanagedEntrypoints><!-- For JSExports -->
   </PropertyGroup>
   <ItemGroup>
-    <EmccNativeExportedFunction Include="free" />
-    <EmccNativeExportedFunction Include="htons" />
-    <EmccNativeExportedFunction Include="main" />
-    <EmccNativeExportedFunction Include="malloc" />
-    <EmccNativeExportedFunction Include="memalign" />
-    <EmccNativeExportedFunction Include="memset" />
-    <EmccNativeExportedFunction Include="ntohs" />
-    <EmccExportedFunction Include="_%(EmccNativeExportedFunction)" />
+    <EmccExportedFunction Include="_free" />
+    <EmccExportedFunction Include="_htons" />
+    <EmccExportedFunction Include="_malloc" />
+    <EmccExportedFunction Include="_memalign" />
+    <EmccExportedFunction Include="_memset" />
+    <EmccExportedFunction Include="_ntohs" />
     <EmccExportedFunction Include="stackAlloc" />
     <EmccExportedFunction Include="stackRestore" />
     <EmccExportedFunction Include="stackSave" />
@@ -38,14 +36,7 @@
 
     <!-- Pseudo-namespace for the JS interop symbols. -->
     <DirectPInvoke Include="System.Runtime.InteropServices.JavaScript" />
-    <UnmanagedEntryPointsAssembly Include="System.Runtime.InteropServices.JavaScript" />
   </ItemGroup>
-
-  <Target Name="PrepareDotNetJsApiForIlcRspFile" BeforeTargets="WriteIlcRspFileForCompilation">
-    <ItemGroup>
-      <IlcArg Include="--export-dynamic-symbol:%(EmccNativeExportedFunction.Identity)" />
-    </ItemGroup>
-  </Target>
 
   <Target Name="PrepareDotNetJsApiForLinking">
     <PropertyGroup>
@@ -91,6 +82,14 @@
     <ItemGroup>
       <CustomLinkerArg Include="@(_DotNetJsLinkerFlag)" />
     </ItemGroup>
+    <ReadLinesFromFile File="$(ExportsFile)" Condition="'$(ExportsFile)' != ''">
+      <Output TaskParameter="Lines" ItemName="_ExistingExports" />
+    </ReadLinesFromFile>
+    <ItemGroup Condition="'$(ExportsFile)' != ''">
+      <_ExportsToAddToExportsFile Include="@(EmccExportedFunction)" />
+      <_ExportsToAddToExportsFile Remove="@(_ExistingExports)" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(ExportsFile)" Lines="@(_ExportsToAddToExportsFile)" Overwrite="false" Encoding="utf-8" Condition="'@(_ExportsToAddToExportsFile->Count())' != '0'" />
   </Target>
   <Target Name="CopyDotnetJsAfterLinking" AfterTargets="LinkNativeLlvm">
     <ItemGroup>
