@@ -94,10 +94,14 @@ if [[ "$scan_build" == "ON" && -n "$SCAN_BUILD_COMMAND" ]]; then
 fi
 
 if [[ "$host_arch" == "wasm" ]]; then
+     echo "host arch wasm"
     if [[ "$target_os" == "browser" ]]; then
+	    echo target os browser
         if [[ -n "$NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH" ]]; then
              source $NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH/emsdk_env.sh
         fi
+	echo emsdk path
+	echo $NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH
         cmake_command="emcmake $cmake_command"
     elif [[ "$target_os" == "wasi" ]]; then
         true
