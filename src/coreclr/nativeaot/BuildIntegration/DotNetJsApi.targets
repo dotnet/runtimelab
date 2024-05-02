@@ -76,16 +76,15 @@
       <!-- Exported functions required by user or runtime API -->
       <_DotNetJsLinkerFlag Include="-s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$(_EmccExportedLibraryFunction)" Condition="'$(_EmccExportedLibraryFunction)' != ''" />
       <_DotNetJsLinkerFlag Include="-s EXPORTED_RUNTIME_METHODS=$(_EmccExportedRuntimeMethods)" />
-      <_DotNetJsLinkerFlag Include="-s EXPORTED_FUNCTIONS=$(_EmccExportedFunctions)" Condition="'$(ExportsFile)' == ''" /><!-- Multiple args in the same rsp file is not support, add functions to app exports -->
       <_DotNetJsLinkerFlag Include="$(EmccExtraLDFlags)" />
     </ItemGroup>
     <ItemGroup>
       <CustomLinkerArg Include="@(_DotNetJsLinkerFlag)" />
     </ItemGroup>
-    <ReadLinesFromFile File="$(ExportsFile)" Condition="'$(ExportsFile)' != ''">
+    <ReadLinesFromFile File="$(ExportsFile)">
       <Output TaskParameter="Lines" ItemName="_ExistingExports" />
     </ReadLinesFromFile>
-    <ItemGroup Condition="'$(ExportsFile)' != ''">
+    <ItemGroup>
       <_ExportsToAddToExportsFile Include="@(EmccExportedFunction)" />
       <_ExportsToAddToExportsFile Remove="@(_ExistingExports)" />
     </ItemGroup>
