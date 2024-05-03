@@ -56,7 +56,13 @@ try {
     result = 19;
 } catch (e) {
     console.log(`Thrown expected exception: ${e}`);
-} 
+}
+
+const cancelResult = await exports.DotnetJsApp.Program.Interop.AsyncWithCancel();
+if (cancelResult !== 0) {
+    console.log(`Unexpected result from AsyncWithCancel: ${cancelResult}`);
+    result = 20;
+}
 
 console.log(`Exit code ${result}`);
 exit(result);
