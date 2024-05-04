@@ -167,6 +167,7 @@ usage_list+=("-test:xxx - Only build the specified test project ^(relative or ab
 usage_list+=("-dir:xxx - Build all test projects in the given directory ^(relative or absolute directory under src\tests^).");
 usage_list+=("-tree:xxx - Build all test projects in the given subtree ^(relative or absolute directory under src\tests^).");
 usage_list+=("-log:xxx - Base file name to use for log files (used in lab pipelines that build tests in multiple steps to retain logs for each step).")
+usage_list+=("-arch:xxx - Build for the specified architecture, e.g. wasm.")
 usage_list+=("")
 usage_list+=("Any unrecognized arguments will be passed directly to MSBuild.")
 
@@ -312,6 +313,28 @@ handle_arguments_local() {
             fi
             ;;
 
+        arch*|-arch*)
+            local arg="$1"
+            local parts=(${arg//:/ })
+            if [[ ${#parts[@]} -eq 1 ]]; then
+                __TargetArch="$2"
+                __ShiftArgs=1
+            else
+                __TargetArch="${parts[1]}"
+            fi
+            ;;
+        
+        target_os*|-target_os*)
+            local arg="$1"
+            local parts=(${arg//:/ })
+            if [[ ${#parts[@]} -eq 1 ]]; then
+                __TargetOS="$2"
+                __ShiftArgs=1
+            else
+                __TargetOS="${parts[1]}"
+            fi
+            ;;
+        
         *)
             __UnprocessedBuildArgs+=("$1")
             ;;
