@@ -99,4 +99,10 @@
     </ItemGroup>
     <Copy SourceFiles="@(_FilesToCopyToNative)" DestinationFolder="$(NativeOutputPath)" />
   </Target>
+  <Target Name="ReplaceJSImportGenerator" AfterTargets="ResolveTargetingPackAssets">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)" Condition="'%(Analyzer.AssemblyName)' == 'Microsoft.Interop.JavaScript.JSImportGenerator' or '%(Analyzer.AssemblyName)' == 'Microsoft.Interop.SourceGeneration'" />
+      <Analyzer Include="$(MSBuildThisFileDirectory)..\analyzers\**\*.dll" />
+    </ItemGroup>
+  </Target>
 </Project>

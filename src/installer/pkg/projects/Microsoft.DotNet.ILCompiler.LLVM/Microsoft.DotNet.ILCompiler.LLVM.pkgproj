@@ -39,6 +39,15 @@
         <TargetPath>tools/netstandard</TargetPath>
       </File>
     </ItemGroup>
+
+    <ItemGroup Condition="'$(PackageTargetRuntime)' == ''">
+      <File Include="$(ArtifactsBinDir)Microsoft.Interop.SourceGeneration\$(Configuration)\netstandard2.0\*">
+        <TargetPath>analyzers/dotnet/cs</TargetPath>
+      </File>
+      <File Include="$(ArtifactsBinDir)JSImportGenerator\$(Configuration)\netstandard2.0\*">
+        <TargetPath>analyzers/dotnet/cs</TargetPath>
+      </File>
+    </ItemGroup>
   </Target>
 
 </Project>
