@@ -1,5 +1,7 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
-  <Import Project="../Directory.Build.props" />
+<Project Sdk="Microsoft.Build.Traversal">
+  <PropertyGroup>
+    <RestoreUseStaticGraphEvaluation>false</RestoreUseStaticGraphEvaluation>
+  </PropertyGroup>
 
   <PropertyGroup>
     <OutputPath>$(RuntimeBinDir)/build/</OutputPath>
@@ -14,7 +16,7 @@
     <ProjectReference Include="$(LibrariesProjectRoot)\System.Runtime.InteropServices.JavaScript\gen\JSImportGenerator\JSImportGenerator.csproj" OutputItemType="Analyzer" />
   </ItemGroup>
 
-  <Target Name="Build">
+  <Target Name="CopyAfterBuild" AfterTargets="Build">
     <Copy SourceFiles="@(Content)" DestinationFolder="$(OutputPath)" />
 
     <!-- Create breadcrumb to disable dynamic linking of release crt for debug runtime -->
@@ -42,6 +44,4 @@
     </ItemGroup>
     <Copy SourceFiles="@(AnalyzerFile)" DestinationFolder="$(RuntimeBinDir)/%(TargetPath)" />
   </Target>
-
-  <Target Name="Restore" />
 </Project>
