@@ -87,6 +87,8 @@ prepare_machine=false
 verbosity='minimal'
 runtime_source_feed=''
 runtime_source_feed_key=''
+host_arch=''
+target_os=''
 
 properties=''
 while [[ $# > 0 ]]; do
@@ -185,7 +187,15 @@ while [[ $# > 0 ]]; do
       runtime_source_feed=$2
       shift
       ;;
-     -runtimesourcefeedkey)
+     -arch)
+      host_arch=$2
+      shift
+      ;;
+     -os)
+      target_os=$2
+      shift
+      ;;
+     -runtimesourceyeedkey)
       runtime_source_feed_key=$2
       shift
       ;;
@@ -210,7 +220,7 @@ if [[ "$ci" == true ]]; then
 
   # This is a bit of a workaround for the fact that the pipelines do not have a great
   # way of preserving the environment between scripts. Set by install-emscripten.sh.
-  if [[ "$host_arch" == "wasm" ]]; then
+  if [[ "$host_arch" == "wasm" && "$target_os" == "browser" ]]; then
     if [[ -n "$NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH" ]]; then
        source $NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH/emsdk_env.sh
     fi
@@ -233,6 +243,12 @@ function Build {
 
   if [[ ! -z "$projects" ]]; then
     properties="$properties /p:Projects=$projects"
+  fi
+  if [[ ! -z "$host_arch" ]]; then
+    properties="$properties -arch $host_arch"
+  fi
+  if [[ ! -z "$target_os" ]]; then
+    properties="$properties -os $target_os"
   fi
 
   local bl=""

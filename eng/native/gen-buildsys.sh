@@ -95,9 +95,6 @@ fi
 
 if [[ "$host_arch" == "wasm" ]]; then
     if [[ "$target_os" == "browser" ]]; then
-        if [[ -n "$NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH" ]]; then
-             source $NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH/emsdk_env.sh
-        fi
         cmake_command="emcmake $cmake_command"
     elif [[ "$target_os" == "wasi" ]]; then
         true
