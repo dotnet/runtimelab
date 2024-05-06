@@ -38,7 +38,7 @@ elseif (!(Test-Path llvm-project))
 }
 
 # There is no [C/c]hecked LLVM config, so change to Debug
-foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ } } | Select-Object -Unique
+foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ } } | Select-Object -Unique)
 {
     pushd llvm-project
     $BuildDirName = "build-$($Config.ToLower())"
