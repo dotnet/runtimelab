@@ -29,7 +29,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'browser'">
-    <!-- TODO LLVM: This is not upstreamable. The proper way to do this would be to come up with a scheme that works for all runtime flavors and/or move any runtime specific parts into CoreLib. -->
+    <!-- TODO-LLVM: This is not upstreamable. The proper way to do this would be to come up with a scheme that works for all runtime flavors and/or move any runtime specific parts into CoreLib. -->
     <Compile Include="$(CommonPath)Interop\Browser\Interop.Runtime.cs" Link="System\Runtime\InteropServices\JavaScript\Interop\Interop.Runtime.cs" Condition="'$(RuntimeFlavor)' != 'CoreCLR'" />
     <Compile Include="$(CommonPath)Interop\Browser\Interop.Runtime.NativeAOT.cs" Link="System\Runtime\InteropServices\JavaScript\Interop\Interop.Runtime.NativeAOT.cs" Condition="'$(RuntimeFlavor)' == 'CoreCLR'" />
     <Compile Include="System\Runtime\InteropServices\JavaScript\Interop\JavaScriptImports.Generated.cs" />

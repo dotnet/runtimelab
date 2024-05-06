@@ -11,6 +11,7 @@
     <Content Include="*.*" Exclude="$(MSBuildProjectFile)" />
   </ItemGroup>
 
+  <!-- TODO-LLVM: This is needed only until we ship Microsoft.NETCore.App.Ref containing the right version of generator -->
   <ItemGroup>
     <ProjectReference Include="$(LibrariesProjectRoot)\System.Runtime.InteropServices.JavaScript\gen\JSImportGenerator\JSImportGenerator.csproj" OutputItemType="Analyzer" />
   </ItemGroup>
@@ -33,6 +34,7 @@
       Files="$(RuntimeBinDir)/aotsdk/nonportable.txt"
       Condition="'$(TargetsWindows)'=='true' or '$(PortableBuild)' == 'true'" />
 
+    <!-- TODO-LLVM: This is needed only until we ship Microsoft.NETCore.App.Ref containing the right version of generator -->
     <ItemGroup>
       <AnalyzerFile Include="$(ArtifactsBinDir)Microsoft.Interop.SourceGeneration\$(Configuration)\netstandard2.0\*" />
       <AnalyzerFile Include="$(ArtifactsBinDir)JSImportGenerator\$(Configuration)\netstandard2.0\*" />
