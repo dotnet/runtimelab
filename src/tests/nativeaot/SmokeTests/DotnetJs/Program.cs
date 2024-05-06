@@ -71,20 +71,23 @@ partial class Program
             var responseTask = http.GetStringAsync("https://github.com", cts.Token);
 
             Console.WriteLine("Wait");
-            await Task.Delay(100);
+            await Task.Delay(10);
             Console.WriteLine("Cancel");
             cts.Cancel();
 
             try
             {
-                Console.WriteLine($"Task {responseTask.IsCompleted} {responseTask.IsCanceled} {responseTask.IsFaulted}");
-
                 await responseTask;
             }
-            catch (JSException e)
+            catch (OperationCanceledException e)
             {
-                Console.WriteLine($"Expected JSException with message '{e.Message}'");
-                return "Error: OperationCanceledException" == e.Message ? 0 : 1;
+                Console.WriteLine($"Expected Exception with message '{e.Message}'");
+                return 0;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Unexpected Exception of type '{e.GetType().FullName}' with message '{e.Message}'");
+                return 1;
             }
 
             return 2;
