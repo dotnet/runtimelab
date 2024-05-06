@@ -10,9 +10,6 @@ call "%RepoRoot%eng\native\init-vs-env.cmd" wasm || exit /b 1
 echo Using CMake at "%CMakePath%"
 set PATH=%PATH%;%CMakePath%
 
-:: There is no [C/c]hecked LLVM config, so change to Debug
-if /I %LlvmBuildConfig% EQU checked set LlvmBuildConfig=Debug
-
 powershell -NoProfile -NoLogo -ExecutionPolicy ByPass -File "%~dp0install-llvm.ps1" -Configs %LlvmBuildConfig% -CI
 if %errorlevel% NEQ 0 goto fail
 exit /b 0

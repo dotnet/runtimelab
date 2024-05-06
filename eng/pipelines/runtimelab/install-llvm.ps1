@@ -1,6 +1,6 @@
 [CmdletBinding(PositionalBinding=$false)]
 param(
-    [ValidateSet("Debug","Release")][string[]]$Configs = @("Debug","Release"),
+    [ValidateSet("Debug","Release","Checked")][string[]]$Configs = @("Debug","Release"),
     [switch]$CI,
     [switch]$NoClone,
     [switch]$NoBuild
@@ -9,7 +9,7 @@ param(
 # Set IsWindows if the version of Powershell does not already have it.
 if (!(Test-Path variable:global:IsWindows)) 
 {
-    $IsWindows=[environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+    $IsWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
 }
 
 $ErrorActionPreference="Stop"
@@ -37,7 +37,8 @@ elseif (!(Test-Path llvm-project))
     exit 1
 }
 
-foreach ($Config in $Configs)
+# There is no [C/c]hecked LLVM config, so change to Debug
+foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ } } | Select-Object -Unique
 {
     pushd llvm-project
     $BuildDirName = "build-$($Config.ToLower())"
