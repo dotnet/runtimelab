@@ -207,6 +207,14 @@ if [[ "$ci" == true ]]; then
   if [[ "$exclude_ci_binary_log" == false ]]; then
     binary_log=true
   fi
+
+  # This is a bit of a workaround for the fact that the pipelines do not have a great
+  # way of preserving the environment between scripts. Set by install-emscripten.sh.
+  if [[ "$host_arch" == "wasm" ]]; then
+    if [[ -n "$NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH" ]]; then
+       source $NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH/emsdk_env.sh
+    fi
+  fi
 fi
 
 . "$scriptroot/tools.sh"
