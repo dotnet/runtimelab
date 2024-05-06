@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="$(LibrariesProjectRoot)\System.Runtime.InteropServices\gen\Microsoft.Interop.SourceGeneration\Microsoft.Interop.SourceGeneration.csproj" OutputItemType="Analyzer" />
     <ProjectReference Include="$(LibrariesProjectRoot)\System.Runtime.InteropServices.JavaScript\gen\JSImportGenerator\JSImportGenerator.csproj" OutputItemType="Analyzer" />
   </ItemGroup>
 
@@ -35,13 +34,9 @@
       Condition="'$(TargetsWindows)'=='true' or '$(PortableBuild)' == 'true'" />
 
     <ItemGroup>
-      <AnalyzerFile Include="$(ArtifactsBinDir)Microsoft.Interop.SourceGeneration\$(Configuration)\netstandard2.0\*">
-        <TargetPath>analyzers/dotnet/cs</TargetPath>
-      </AnalyzerFile>
-      <AnalyzerFile Include="$(ArtifactsBinDir)JSImportGenerator\$(Configuration)\netstandard2.0\*">
-        <TargetPath>analyzers/dotnet/cs</TargetPath>
-      </AnalyzerFile>
+      <AnalyzerFile Include="$(ArtifactsBinDir)Microsoft.Interop.SourceGeneration\$(Configuration)\netstandard2.0\*" />
+      <AnalyzerFile Include="$(ArtifactsBinDir)JSImportGenerator\$(Configuration)\netstandard2.0\*" />
     </ItemGroup>
-    <Copy SourceFiles="@(AnalyzerFile)" DestinationFolder="$(RuntimeBinDir)/%(TargetPath)" />
+    <Copy SourceFiles="@(AnalyzerFile)" DestinationFolder="$(RuntimeBinDir)\analyzers\dotnet\cs" />
   </Target>
 </Project>
