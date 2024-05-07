@@ -53,7 +53,7 @@ partial class Program
         [JSExport]
         internal static async Task<int> Async(Task task, bool throwAfterAwait)
         {
-            Console.WriteLine($"Async method started (task {task})");
+            Console.WriteLine($"Async method started");
             await task;
             if (throwAfterAwait)
                 throw new Exception("Async throwAfterAwait");
@@ -91,13 +91,6 @@ partial class Program
             }
 
             return 2;
-        }
-
-        [UnmanagedCallersOnly(EntryPoint = "FinishPromise")]
-        public unsafe static void FinishPromise(JSMarshalerArgument* arguments_buffer)
-        {
-            Console.WriteLine("FinishPromise");
-            Type.GetType("System.Runtime.InteropServices.JavaScript.JavaScriptExports, System.Runtime.InteropServices.JavaScript").GetMethod("CompleteTask").Invoke(null, new object[] { null });
         }
     }
 }
