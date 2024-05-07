@@ -81,10 +81,16 @@ if (jsObject.y != jsObject.x + 1) {
 }
 
 const msgs = [];
-exports.DotnetJsApp.Program.Interop.DelegateMarshalling(() => "String from JavaScript", msg => { msgs.push(msg); console.log(`Message from C# '${msg}'`); });
+const csharpFunc = exports.DotnetJsApp.Program.Interop.DelegateMarshalling(() => "String from JavaScript", msg => { msgs.push(msg); console.log(`Message from C# '${msg}'`); });
 if (msgs.length !== 1 || msgs[0] !== "Wrapping value in C# 'String from JavaScript'") {
     console.log(`Unexpected number of messages from Func: ${JSON.stringify(msgs)}`);
     result = 24;
+}
+
+const csharpFuncResult = csharpFunc();
+if (csharpFuncResult !== 42) {
+    console.log(`Unexpected result from Func returned from DelegateMarshalling: ${csharpFuncResult}`);
+    result = 25;
 }
 
 console.log(`Exit code ${result}`);

@@ -115,6 +115,7 @@ namespace System.Runtime.InteropServices.JavaScript
         }
 
         // the marshaled signature is: TRes? CallDelegate<T1,T2,T3TRes>(GCHandle callback, T1? arg1, T2? arg2, T3? arg3)
+        [UnmanagedCallersOnly(EntryPoint = "System_Runtime_InteropServices_JavaScript_JavaScriptExports_CallDelegate")]
         public static void CallDelegate(JSMarshalerArgument* arguments_buffer)
         {
             ref JSMarshalerArgument arg_exc = ref arguments_buffer[0]; // initialized by JS caller in alloc_stack_frame()
