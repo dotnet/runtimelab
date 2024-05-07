@@ -92,5 +92,15 @@ partial class Program
 
             return 2;
         }
+        
+        [JSExport]
+        internal static bool JSObject(JSObject jsObject)
+        {
+            Console.WriteLine($"Got JSObject '{jsObject}'");
+            var x = jsObject.GetPropertyAsInt32("x");
+            Console.WriteLine($"Property x is '{x}'");
+            jsObject.SetProperty("y", x + 1);
+            return x == 42;
+        }
     }
 }

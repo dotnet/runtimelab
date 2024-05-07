@@ -17,6 +17,7 @@ setModuleImports('main.js', {
 let result = await runMain();
 
 const exports = await getAssemblyExports("DotnetJs.dll");
+
 const square = exports.DotnetJsApp.Program.Interop.Square(5);
 if (square != 25) {
     result = 13;
@@ -62,6 +63,17 @@ const cancelResult = await exports.DotnetJsApp.Program.Interop.AsyncWithCancel()
 if (cancelResult !== 0) {
     console.log(`Unexpected result from AsyncWithCancel: ${cancelResult}`);
     result = 20;
+}
+
+var jsObject = { x: 42 };
+var jsObjectResult = exports.DotnetJsApp.Program.Interop.JSObject(jsObject);
+if (!jsObjectResult) {
+    console.log(`Unexpected result from JSObject: ${jsObjectResult}`);
+    result = 21;
+}
+
+if (jsObject.y != jsObject.x + 1) {
+    console.log(`Unexpected y value on JSObject: ${jsObject.y}`);
 }
 
 console.log(`Exit code ${result}`);
