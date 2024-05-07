@@ -104,10 +104,10 @@ partial class Program
         }
         
         [JSExport]
-        internal static void Func([JSMarshalAs<JSType.Function<JSType.String>>()] Func<string> getLocation, [JSMarshalAs<JSType.Function<JSType.String>>()] Action<string> log)
+        internal static void DelegateMarshalling([JSMarshalAs<JSType.Function<JSType.String>>()] Func<string> getLocation, [JSMarshalAs<JSType.Function<JSType.String>>()] Action<string> log)
         {
             Console.WriteLine($"Got Func '{getLocation}' and '{log}'");
-            log($"Running at '{getLocation()}'");
+            log($"Wrapping value in C# '{getLocation()}'");
         }
     }
 }
