@@ -85,6 +85,7 @@
   </PropertyGroup>
 
   <!-- NativeAOT-LLVM: override ImportRuntimeIlcPackageTarget to not depend on the SDK-provided ResolvedILCompilerPack item -->
+  <!-- TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2577. Remove once we upgrade to the .NET 10 SDK. -->
   <PropertyGroup>
     <OverrideImportRuntimeIlcPackageTarget Condition="'$(OverrideImportRuntimeIlcPackageTarget)' == ''">true</OverrideImportRuntimeIlcPackageTarget>
   </PropertyGroup>
