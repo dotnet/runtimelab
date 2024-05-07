@@ -68,7 +68,7 @@ partial class Program
             Console.WriteLine("Fire HTTP");
             using var cts = new CancellationTokenSource();
             using var http = new HttpClient();
-            var responseTask = http.GetStringAsync("https://github.com", cts.Token);
+            var responseTask = http.GetStringAsync("https://httpbin.org/delay/600", cts.Token); // HTTP server with 10 minutes delay
 
             Console.WriteLine("Wait");
             await Task.Delay(10);
