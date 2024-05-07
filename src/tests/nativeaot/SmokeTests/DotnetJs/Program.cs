@@ -102,5 +102,12 @@ partial class Program
             jsObject.SetProperty("y", x + 1);
             return x == 42;
         }
+        
+        [JSExport]
+        internal static void Func([JSMarshalAs<JSType.Function<JSType.String>>()] Func<string> getLocation, [JSMarshalAs<JSType.Function<JSType.String>>()] Action<string> log)
+        {
+            Console.WriteLine($"Got Func '{getLocation}' and '{log}'");
+            log($"Running at '{getLocation()}'");
+        }
     }
 }

@@ -74,6 +74,14 @@ if (!jsObjectResult) {
 
 if (jsObject.y != jsObject.x + 1) {
     console.log(`Unexpected y value on JSObject: ${jsObject.y}`);
+    result = 22;
+}
+
+const msgs = [];
+exports.DotnetJsApp.Program.Interop.Func(() => window.location.href, msg => { msgs.push(msg); console.log(`Message from C# '${msg}'`); });
+if (msgs.length !== 1) {
+    console.log(`Unexpected number of messages from Func: ${JSON.stringify(msgs)}`);
+    result = 23;
 }
 
 console.log(`Exit code ${result}`);
