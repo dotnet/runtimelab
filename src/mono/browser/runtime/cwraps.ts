@@ -325,7 +325,10 @@ export function init_c_exports (): void {
         const [lazyOrSkip, name, returnType, argTypes, opts] = sig;
         const maybeSkip = typeof lazyOrSkip === "function";
         if (NativeAOT) {
-            wf[name] = () => name;
+            // NativeAOT-LLVM: Allow for cwraps to get called and return something. Makes diff in other places nicer
+            wf[name] = () => {
+                return {};
+            };
             continue;
         }
         if (lazyOrSkip === true || maybeSkip) {
