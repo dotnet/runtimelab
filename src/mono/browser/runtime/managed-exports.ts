@@ -21,9 +21,6 @@ import { mono_log_debug } from "./logging";
 const managedExports: ManagedExports = {} as any;
 
 export function init_managed_exports (): void {
-    if (NativeAOT) {
-        return;
-    }
     const exports_fqn_asm = "System.Runtime.InteropServices.JavaScript";
     // TODO https://github.com/dotnet/runtime/issues/98366
     runtimeHelpers.runtime_interop_module = cwraps.mono_wasm_assembly_load(exports_fqn_asm);
@@ -389,6 +386,15 @@ function bind_assembly_exports_naot (assembly: string) {
 export const bind_assembly_exports: (assemblyName: string) => Promise<void> = NativeAOT ? bind_assembly_exports_naot : bind_assembly_exports_mono;
 
 function get_method (method_name: string): MonoMethod {
+    if (NativeAOT) {
+        const fqn = runtimeHelpers.runtime_interop_namespace + "." + runtimeHelpers.runtime_interop_exports_classname + "." + method_name;
+        const exportName = `_${fqn.replace(/\./g, "_")}`;
+        const exportFunc = (Module as any)[exportName];
+        return exportFunc ?? (() => {
+            throw new Error(`Wasm export ${fqn} not found`);
+        });
+    }
+
     // TODO https://github.com/dotnet/runtime/issues/98366
     const res = cwraps.mono_wasm_assembly_find_method(runtimeHelpers.runtime_interop_exports_class, method_name, -1);
     if (!res)

@@ -319,12 +319,18 @@ function cwrap (name: string, returnType: string | null, argTypes: string[] | un
 }
 
 export function init_c_exports (): void {
-    const fns = NativeAOT ? [] : [...fn_signatures];
-
+    const fns = [...fn_signatures];
     for (const sig of fns) {
         const wf: any = wrapped_c_functions;
         const [lazyOrSkip, name, returnType, argTypes, opts] = sig;
         const maybeSkip = typeof lazyOrSkip === "function";
+        if (NativeAOT) {
+            // NativeAOT-LLVM: Allow for cwraps to get called and return something. Makes diff in other places nicer
+            wf[name] = () => {
+                return {};
+            };
+            continue;
+        }
         if (lazyOrSkip === true || maybeSkip) {
             // lazy init on first run
             wf[name] = function (...args: any[]) {

@@ -7,6 +7,7 @@
   <ItemGroup>
     <EmccExportedFunction Include="_free" />
     <EmccExportedFunction Include="_htons" />
+    <EmccExportedFunction Include="_main" />
     <EmccExportedFunction Include="_malloc" />
     <EmccExportedFunction Include="_memalign" />
     <EmccExportedFunction Include="_memset" />
@@ -36,6 +37,7 @@
 
     <!-- Pseudo-namespace for the JS interop symbols. -->
     <DirectPInvoke Include="System.Runtime.InteropServices.JavaScript" />
+    <UnmanagedEntryPointsAssembly Include="System.Runtime.InteropServices.JavaScript" />
   </ItemGroup>
 
   <Target Name="PrepareDotNetJsApiForLinking">

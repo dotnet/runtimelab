@@ -47,7 +47,8 @@ export function mono_wasm_bind_cs_function (method: MonoMethod, assemblyName: st
     const mark = startMeasure();
     mono_log_debug(`Binding [JSExport] ${namespaceName}.${shortClassName}:${methodName} from ${assemblyName} assembly`);
     if (NativeAOT) {
-        const js_fqn = `[${assemblyName}]${namespaceName}.${shortClassName}:${methodName}`;
+        const namespaceNameWithDot = namespaceName ? `${namespaceName}.` : "";
+        const js_fqn = `[${assemblyName}]${namespaceNameWithDot}${shortClassName}:${methodName}`;
         const wrapper_name = fixupSymbolName(`${js_fqn}_${signatureHash}`);
         method = (Module as any)["_" + wrapper_name];
         if (!method)

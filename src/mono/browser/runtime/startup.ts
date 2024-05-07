@@ -615,8 +615,8 @@ export function bindings_init (): void {
         const mark = startMeasure();
         if (!NativeAOT) {
             strings_init();
-            init_managed_exports();
         }
+        init_managed_exports();
         initialize_marshalers_to_js();
         initialize_marshalers_to_cs();
         runtimeHelpers._i52_error_scratch_buffer = <any>Module._malloc(4);

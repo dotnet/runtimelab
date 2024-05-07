@@ -1,5 +1,10 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DotnetJsApp;
 
@@ -44,5 +49,67 @@ partial class Program
 
         [JSExport]
         internal static void Throw() => throw new Exception("This is a test exception");
+
+        [JSExport]
+        internal static async Task<int> Async(Task task, bool throwAfterAwait)
+        {
+            Console.WriteLine($"Async method started");
+            await task;
+            if (throwAfterAwait)
+                throw new Exception("Async throwAfterAwait");
+
+            Console.WriteLine("Async method completed");
+            return 87;
+        }
+
+        [JSExport]
+        internal static async Task<int> AsyncWithCancel()
+        {
+            Console.WriteLine("Fire HTTP");
+            using var cts = new CancellationTokenSource();
+            using var http = new HttpClient();
+            var responseTask = http.GetStringAsync("https://httpbin.org/delay/10", cts.Token); // HTTP server with 10 seconds delay
+
+            Console.WriteLine("Wait");
+            await Task.Delay(10);
+            Console.WriteLine("Cancel");
+            cts.Cancel();
+
+            try
+            {
+                await responseTask;
+            }
+            catch (OperationCanceledException e)
+            {
+                Console.WriteLine($"Expected Exception with message '{e.Message}'");
+                return 0;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Unexpected Exception of type '{e.GetType().FullName}' with message '{e.Message}'");
+                return 1;
+            }
+
+            return 2;
+        }
+        
+        [JSExport]
+        internal static bool JSObject(JSObject jsObject)
+        {
+            Console.WriteLine($"Got JSObject '{jsObject}'");
+            var x = jsObject.GetPropertyAsInt32("x");
+            Console.WriteLine($"Property x is '{x}'");
+            jsObject.SetProperty("y", x + 1);
+            return x == 42;
+        }
+        
+        [JSExport]
+        [return: JSMarshalAs<JSType.Function<JSType.Number>>()]
+        internal static Func<int> DelegateMarshalling([JSMarshalAs<JSType.Function<JSType.String>>()] Func<string> getLocation, [JSMarshalAs<JSType.Function<JSType.String>>()] Action<string> log)
+        {
+            Console.WriteLine($"Got Func '{getLocation}' and '{log}'");
+            log($"Wrapping value in C# '{getLocation()}'");
+            return () => 42;
+        }
     }
 }
