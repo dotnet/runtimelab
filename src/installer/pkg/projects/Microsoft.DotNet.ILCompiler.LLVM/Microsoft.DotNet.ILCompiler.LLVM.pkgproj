@@ -40,7 +40,7 @@
       </File>
     </ItemGroup>
 
-    <!-- TODO-LLVM: This is needed only until we ship Microsoft.NETCore.App.Ref containing the right version of generator -->
+    <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
     <ItemGroup Condition="'$(PackageTargetRuntime)' == ''">
       <File Include="$(ArtifactsBinDir)Microsoft.Interop.SourceGeneration\$(Configuration)\netstandard2.0\*">
         <TargetPath>analyzers/dotnet/cs</TargetPath>
