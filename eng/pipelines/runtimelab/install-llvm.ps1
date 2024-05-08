@@ -42,14 +42,7 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
 {
     pushd llvm-project
     $BuildDirName = "build-$($Config.ToLower())"
-    if ($IsWindows)
-    {
-        mkdir $BuildDirName -Force
-    }
-    else
-    {
-        mkdir $BuildDirName --parents
-    }
+    New-Item -ItemType Directory $BuildDirName -Force
 
     $BuildDirPath = "$pwd/$BuildDirName"
     $SourceDirName = "$pwd/llvm"
@@ -57,14 +50,14 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
 
     if ($IsWindows)
     {
-        $generator="Visual Studio 17 2022"
+        $CmakeGenerator = "Visual Studio 17 2022"
     }
     else
     {
-        $generator="Unix Makefiles"
+        $CmakeGenerator = "Unix Makefiles"
     }
 
-    $CmakeConfigureCommandLine = "-G", "$generator", "-DLLVM_INCLUDE_BENCHMARKS=OFF"
+    $CmakeConfigureCommandLine = "-G", "$CmakeGenerator", "-DLLVM_INCLUDE_BENCHMARKS=OFF"
     $CmakeConfigureCommandLine += "-S", $SourceDirName, "-B", $BuildDirPath
     if ($Config -eq "Release")
     {
