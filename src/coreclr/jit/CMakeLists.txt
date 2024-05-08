@@ -93,7 +93,6 @@ function(create_standalone_jit)
 
     # Prefer the version specified in LLVM_CMAKE_CONFIG over the "system" installed version
     find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG} NO_DEFAULT_PATH)
-    find_package(LLVM REQUIRED CONFIG)
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_INCLUDE_DIRS})
     separate_arguments(LLVM_DEFINITIONS)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_DEFINITIONS})
