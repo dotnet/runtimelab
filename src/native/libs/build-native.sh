@@ -59,16 +59,17 @@ __usePThreads=0
 source "$__RepoRootDir"/eng/native/build-commons.sh
 
 # Set cross build
+EMSDK_PATH=$EMSDK
 if [[ "$__TargetOS" == browser ]]; then
-    if [[ -z "$EMSDK" ]]; then
+    if [[ -z "$EMSDK_PATH" ]]; then
         if [[ -d "$__RepoRootDir"/src/mono/browser/emsdk/ ]]; then
-            export EMSDK="$__RepoRootDir"/src/mono/browser/emsdk/
+            export EMSDK_PATH="$__RepoRootDir"/src/mono/browser/emsdk/
         else
             echo "Error: You need to set the EMSDK_PATH environment variable pointing to the emscripten SDK root."
             exit 1
         fi
     fi
-    source "$EMSDK"/emsdk_env.sh
+    source "$EMSDK_PATH"/emsdk_env.sh
     export CLR_CC=$(which emcc)
 elif [[ "$__TargetOS" == wasi ]]; then
     if [[ -z "$WASI_SDK_PATH" ]]; then
