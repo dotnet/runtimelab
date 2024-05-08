@@ -2,11 +2,11 @@ param(
     [string]$InstallDir
 )
 
-New-Item -ItemType Directory -Force -ErrorAction SilentlyContinue -Name "$InstallDir"
+New-Item -ItemType Directory -Force -ErrorAction SilentlyContinue -Path (Split-Path -Path $InstallDir -Parent) -Name (Split-Path -Path $InstallDir -Leaf)
 
 $ErrorActionPreference="Stop"
 
-Set-Location -Path "$InstallDir"
+Set-Location -Path $InstallDir
 
 git clone https://github.com/emscripten-core/emsdk.git
 
