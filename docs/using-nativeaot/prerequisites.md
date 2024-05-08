@@ -5,7 +5,7 @@ The following pre-requisites need to be installed for building .NET projects wit
 ## Emscripten SDK
 
 * Install and activate Emscripten. See [Install Emscripten](https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended).
-* We strongly recommend using the same version that we test against. Look for it here: [install-emscripten.cmd](https://github.com/dotnet/runtimelab/blob/feature/NativeAOT-LLVM/eng/pipelines/runtimelab/install-emscripten.cmd).
+* We strongly recommend using the same version that we test against. Look for it here: [install-emscripten.ps1](https://github.com/dotnet/runtimelab/blob/feature/NativeAOT-LLVM/eng/pipelines/runtimelab/install-emscripten.ps1).
 ```
 ./emsdk install <version>
 ./emsdk activate <version>

@@ -2,7 +2,7 @@ param(
     [string]$InstallDir
 )
 
-New-Item -ItemType Directory -Force -ErrorAction SilentlyContinue -Path (Split-Path -Path $InstallDir -Parent) -Name (Split-Path -Path $InstallDir -Leaf)
+New-Item -ItemType Directory -Force -ErrorAction SilentlyContinue -Name $InstallDir
 
 $ErrorActionPreference="Stop"
 
@@ -15,7 +15,7 @@ Set-Location -Path emsdk
 # Checkout a specific commit to avoid unexpected issues
 git checkout 37b85e9
 
-python ./emsdk.py install 3.1.47
+./emsdk install 3.1.47
 
 ./emsdk activate 3.1.47
 
