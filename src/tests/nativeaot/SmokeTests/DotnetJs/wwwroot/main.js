@@ -18,26 +18,26 @@ let result = await runMain();
 
 const exports = await getAssemblyExports("DotnetJs.dll");
 
-const square = exports.DotnetJsApp.Program.Interop.Square(5);
+const square = exports.DotnetJs.App.Program.Interop.Square(5);
 if (square != 25) {
     result = 13;
 }
 
 try {
-    exports.DotnetJsApp.Program.Interop.Throw();
+    exports.DotnetJs.App.Program.Interop.Throw();
     result = 14;
 } catch (e) {
     console.log(`Thrown expected exception: ${e}`);
 }
 
-const concat = exports.DotnetJsApp.Program.Interop.Concat("Aaa", "Bbb");
+const concat = exports.DotnetJs.App.Program.Interop.Concat("Aaa", "Bbb");
 if (concat != "AaaBbb") {
     result = 15;
 }
 
 let isPromiseResolved = false;
 let promise = new Promise(resolve => setTimeout(() => { console.log("Promise resolved"); isPromiseResolved = true; resolve(); }, 100));
-let asyncResult = await exports.DotnetJsApp.Program.Interop.Async(promise);
+let asyncResult = await exports.DotnetJs.App.Program.Interop.Async(promise);
 console.log(`Async result: ${asyncResult}`);
 if (!isPromiseResolved) {
     result = 16;
@@ -49,7 +49,7 @@ if (asyncResult != 87) {
 try {
     isPromiseResolved = false;
     promise = new Promise(resolve => setTimeout(() => { console.log("Promise resolved"); isPromiseResolved = true; resolve(); }, 100));
-    asyncResult = await exports.DotnetJsApp.Program.Interop.Async(promise, true);
+    asyncResult = await exports.DotnetJs.App.Program.Interop.Async(promise, true);
     if (asyncResult != 87) {
         console.log(`Unexpected async result: ${asyncResult}`);
         result = 18;
@@ -62,14 +62,14 @@ try {
     console.log(`Thrown expected exception: ${e}`);
 }
 
-const cancelResult = await exports.DotnetJsApp.Program.Interop.AsyncWithCancel();
+const cancelResult = await exports.DotnetJs.App.Program.Interop.AsyncWithCancel();
 if (cancelResult !== 0) {
     console.log(`Unexpected result from AsyncWithCancel: ${cancelResult}`);
     result = 21;
 }
 
 var jsObject = { x: 42 };
-var jsObjectResult = exports.DotnetJsApp.Program.Interop.JSObject(jsObject);
+var jsObjectResult = exports.DotnetJs.App.Program.Interop.JSObject(jsObject);
 if (!jsObjectResult) {
     console.log(`Unexpected result from JSObject: ${jsObjectResult}`);
     result = 22;
@@ -81,7 +81,7 @@ if (jsObject.y != jsObject.x + 1) {
 }
 
 const msgs = [];
-const csharpFunc = exports.DotnetJsApp.Program.Interop.DelegateMarshalling(() => "String from JavaScript", msg => { msgs.push(msg); console.log(`Message from C# '${msg}'`); });
+const csharpFunc = exports.DotnetJs.App.Program.Interop.DelegateMarshalling(() => "String from JavaScript", msg => { msgs.push(msg); console.log(`Message from C# '${msg}'`); });
 if (msgs.length !== 1 || msgs[0] !== "Wrapping value in C# 'String from JavaScript'") {
     console.log(`Unexpected number of messages from Func: ${JSON.stringify(msgs)}`);
     result = 24;

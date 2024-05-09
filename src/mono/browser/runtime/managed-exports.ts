@@ -377,7 +377,7 @@ function bind_assembly_exports_naot (assembly: string) {
     if (assemblyWithoutExtension.endsWith(".dll")) {
         assemblyWithoutExtension = assemblyWithoutExtension.substring(0, assembly.length - 4);
     }
-    const register = (Module as any)["_" + assemblyWithoutExtension + "__GeneratedInitializer" + "__Register_"];
+    const register = (Module as any)[fixup_method_name("_" + assemblyWithoutExtension + "__GeneratedInitializer" + "__Register_")];
     mono_assert(register, `Missing wasm export for JSExport registration function in assembly ${assembly}`);
     register();
     return Promise.resolve();
@@ -388,7 +388,7 @@ export const bind_assembly_exports: (assemblyName: string) => Promise<void> = Na
 function get_method (method_name: string): MonoMethod {
     if (NativeAOT) {
         const fqn = runtimeHelpers.runtime_interop_namespace + "." + runtimeHelpers.runtime_interop_exports_classname + "." + method_name;
-        const exportName = `_${fqn.replace(/\./g, "_")}`;
+        const exportName = fixup_method_name(fqn);
         const exportFunc = (Module as any)[exportName];
         return exportFunc ?? (() => {
             throw new Error(`Wasm export ${fqn} not found`);
@@ -400,6 +400,10 @@ function get_method (method_name: string): MonoMethod {
     if (!res)
         throw "Can't find method " + runtimeHelpers.runtime_interop_namespace + "." + runtimeHelpers.runtime_interop_exports_classname + "." + method_name;
     return res;
+}
+
+function fixup_method_name (method_name: string): string {
+    return method_name.replace(/\./g, "_");
 }
 
 type ManagedExports = {
