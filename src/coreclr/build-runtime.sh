@@ -205,7 +205,7 @@ fi
 
 eval "$__RepoRootDir/eng/native/version/copy_version_files.sh"
 
-build_native "$__HostOS" "$__HostArch" "$__ProjectRoot" "$__IntermediatesDir" "$__CMakeTarget" "$__CMakeArgs $__ExtraCmakeArgs" "CoreCLR component"
+build_native "$__HostOS" "$__HostArch" "$__ProjectRoot" "$__IntermediatesDir" "$__CMakeTarget" "$__CMakeArgs" "CoreCLR component"
 
 # Build complete
 
