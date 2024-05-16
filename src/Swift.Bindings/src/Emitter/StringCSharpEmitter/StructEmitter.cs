@@ -39,11 +39,13 @@ namespace BindingsGeneration
                 string accessModifier = fieldDecl.Visibility == Visibility.Public ? "public" : "private";
                 writer.WriteLine($"{accessModifier} {fieldDecl.TypeIdentifier.Name} {fieldDecl.Name};");
 
+#if DEBUG
                 // Verify field against Swift type information
                 if (swiftTypeInfo.HasValue && !VerifyFieldRecord(swiftTypeInfo.Value, structDecl.Fields.IndexOf(fieldDecl), fieldDecl))
                 {
-                    Debug.WriteLine("Field record does not match the field declaration");
+                    Console.WriteLine("Field record does not match the field declaration");
                 }
+#endif
             }
             writer.WriteLine();
 
