@@ -95,13 +95,18 @@ namespace Swift.Runtime
 
                 string moduleName = typeDeclarationNode?.Attributes?["module"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'module' attribute.");
                 string swiftTypeIdentifier = typeDeclarationNode?.Attributes?["name"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'name' attribute.");
+                string swiftMetadataAccessor = typeDeclarationNode?.Attributes?["metadataaccessor"]?.Value ?? string.Empty;
                 string csharpTypeIdentifier = entityNode?.Attributes?["managedTypeName"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'managedTypeName' attribute.");
                 string @namespace = entityNode?.Attributes?["managedNameSpace"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'managedNameSpace' attribute.");
                 if (swiftTypeIdentifier == null || csharpTypeIdentifier == null)
                     throw new Exception("Invalid XML structure: Missing attributes.");
 
+                var moduleRecord = Registrar.RegisterModule(moduleName);
+                moduleRecord.Path = "/System/Library/Frameworks/Foundation.framework/Foundation";
+
                 var typeRecord = Registrar.RegisterType(moduleName, swiftTypeIdentifier);
                 typeRecord.TypeIdentifier = csharpTypeIdentifier;
+                typeRecord.MetadataAccessor = $"{swiftMetadataAccessor}Ma";
                 typeRecord.IsProcessed = true;
             }
         }

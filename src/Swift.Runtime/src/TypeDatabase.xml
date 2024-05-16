@@ -5,43 +5,43 @@
             <typedeclaration kind="typealias" name="()" module="" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="Byte">
-            <typedeclaration kind="struct" name="UInt8" module="Swift" />
+            <typedeclaration kind="struct" name="UInt8" module="Swift" metadataAccessor="$ss5UInt8V" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="SByte">
-            <typedeclaration kind="struct" name="Int8" module="Swift" />
+            <typedeclaration kind="struct" name="Int8" module="Swift" metadataAccessor="$ss4Int8V" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="Int16">
-            <typedeclaration kind="struct" name="Int16" module="Swift" />
+            <typedeclaration kind="struct" name="Int16" module="Swift" metadataAccessor="$ss5Int16V" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="UInt16">
-            <typedeclaration kind="struct" name="UInt16" module="Swift" />
+            <typedeclaration kind="struct" name="UInt16" module="Swift" metadataAccessor="$ss6UInt16V" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="Int32">
-            <typedeclaration kind="struct" name="Int32" module="Swift" />
+            <typedeclaration kind="struct" name="Int32" module="Swift" metadataAccessor="$ss5Int32V" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="UInt32">
-            <typedeclaration kind="struct" name="UInt32" module="Swift" />
+            <typedeclaration kind="struct" name="UInt32" module="Swift" metadataAccessor="$ss6UInt32V" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="Int64">
-            <typedeclaration kind="struct" name="Int64" module="Swift" />
+            <typedeclaration kind="struct" name="Int64" module="Swift" metadataAccessor="$ss5Int64V" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="UInt64">
-            <typedeclaration kind="struct" name="UInt64" module="Swift" />
+            <typedeclaration kind="struct" name="UInt64" module="Swift" metadataAccessor="$ss6UInt64V" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="Single">
-            <typedeclaration kind="struct" name="Float" module="Swift" />
+            <typedeclaration kind="struct" name="Float" module="Swift" metadataAccessor="$sSf" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="Double">
-            <typedeclaration kind="struct" name="Double" module="Swift" />
+            <typedeclaration kind="struct" name="Double" module="Swift" metadataAccessor="$sSd" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="IntPtr">
-            <typedeclaration kind="struct" name="Int" module="Swift" />
+            <typedeclaration kind="struct" name="Int" module="Swift" metadataAccessor="$sSi" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="UIntPtr">
-            <typedeclaration kind="struct" name="UInt" module="Swift" />
+            <typedeclaration kind="struct" name="UInt" module="Swift" metadataAccessor="$sSu" />
         </entity>
         <entity managedNameSpace="System" managedTypeName="bool">
-            <typedeclaration kind="struct" name="Bool" module="Swift" />
+            <typedeclaration kind="struct" name="Bool" module="Swift" metadataAccessor="$sSb" />
         </entity>
     </entities>
 </swifttypedatabase>

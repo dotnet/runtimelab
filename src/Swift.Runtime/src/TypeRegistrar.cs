@@ -53,6 +53,11 @@ namespace Swift.Runtime
         /// The C# type identifier.
         /// </summary>
         public required string TypeIdentifier { get; set; }
+    
+        /// <summary>
+        /// The Swift metadata accessor.
+        /// </summary>
+        public required string MetadataAccessor { get; set; }
 
         /// <summary>
         /// The Swift runtime type information.
@@ -103,7 +108,8 @@ namespace Swift.Runtime
                 Namespace = moduleName,
                 TypeIdentifier = typeIdentifier,
                 SwiftTypeInfo = null,
-                IsProcessed = false
+                IsProcessed = false,
+                MetadataAccessor = string.Empty
             });
         }
 

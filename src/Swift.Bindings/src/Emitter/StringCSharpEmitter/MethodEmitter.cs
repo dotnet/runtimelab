@@ -97,9 +97,9 @@ namespace BindingsGeneration
             {
                 writer.WriteLine($"{parentDecl.Name} self = this;");
             }
-            string returnPrefix = methodDecl.Signature.First().TypeIdentifier.Name == "void" ? "" : "return";
+            string returnPrefix = methodDecl.Signature.First().TypeIdentifier.Name == "void" ? "" : "return ";
             string methodArgs = string.Join(", ", methodDecl.Signature.Skip(1).Select(p => p.Name));
-            writer.WriteLine($"{returnPrefix} {methodName}({GetMethodArgs(parentDecl, methodDecl)});");
+            writer.WriteLine($"{returnPrefix}{methodName}({GetMethodArgs(parentDecl, methodDecl)});");
             writer.Indent--;
             writer.WriteLine("}");
         }

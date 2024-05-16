@@ -83,25 +83,14 @@ namespace BindingsGeneration
                 if (!string.IsNullOrEmpty(platform))
                     BindingsGenerator.platform = platform;
 
-                if (string.IsNullOrEmpty(sdk))
+                if (!string.IsNullOrEmpty(sdk))
                     BindingsGenerator.sdk = sdk;
 
-                if (string.IsNullOrEmpty(arch))
+                if (!string.IsNullOrEmpty(arch))
                     BindingsGenerator.arch = arch;
 
-                if (string.IsNullOrEmpty(target))
+                if (!string.IsNullOrEmpty(target))
                     BindingsGenerator.target = target;
-
-                for (int i = 0; i < swiftAbiPaths.Count(); i++)
-                {
-                    string swiftAbiPath = swiftAbiPaths.ElementAt(i);
-
-                    if (!File.Exists(swiftAbiPath))
-                    {
-                        Console.Error.WriteLine($"Error: Swift ABI file not found at path '{swiftAbiPath}'.");
-                        return;
-                    }
-                }
 
                 Queue<string> queueList = new Queue<string>(swiftAbiPaths);
                 GenerateBindings(queueList, outputDirectory, verbose);
@@ -223,7 +212,7 @@ namespace BindingsGeneration
             string outputPath = Path.Combine(outputDirectory, $"{framework}.abi.json");
             string sdkPathCommand = $"xcrun -sdk {platform.ToLower()} --show-sdk-path";
             string swiftInterfacePath = $"/Applications/Xcode.app/Contents/Developer/Platforms/{platform}.platform/Developer/SDKs/{platform}{sdk}.sdk/System/Library/Frameworks/{framework}.framework/Versions/Current/Modules/{framework}.swiftmodule/{arch}-{target}.swiftinterface";
-            string command = $"xcrun swift-frontend -compile-module-from-interface {swiftInterfacePath} -module-name {framework} -sdk `$({sdkPathCommand})` -emit-abi-descriptor-path {outputPath}";
+            string command = $"xcrun swift-frontend -compile-module-from-interface {swiftInterfacePath} -module-name {framework} -sdk `{sdkPathCommand}` -emit-abi-descriptor-path {outputPath}";
             
             ProcessStartInfo startInfo = new ProcessStartInfo()
             {
@@ -234,6 +223,14 @@ namespace BindingsGeneration
                 UseShellExecute = false,
                 CreateNoWindow = true,
             };
+
+            using (Process? process = Process.Start(startInfo))
+            {
+                if (process == null)
+                {
+                    Console.Error.WriteLine("Error: Failed to start process. Command: " + command);
+                }
+            }
 
             return outputPath;
         }

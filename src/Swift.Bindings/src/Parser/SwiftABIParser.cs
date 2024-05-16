@@ -42,6 +42,7 @@ namespace BindingsGeneration
         public required bool? @static { get; set; }
         public required bool? IsInternal { get; set; }
         public required string? GenericSig { get; set; }
+        public required string? sugared_genericSig { get; set; }
         public required IEnumerable<Node> Children { get; set; }
     }
 
@@ -211,7 +212,9 @@ namespace BindingsGeneration
                         result = IsOperator(node.Name) ? null : CreateMethodDecl(node);
                         break;
                     case "Var":
-                        result = CreateFieldDecl(node);
+                        // TODO: Implement computed properties
+                        if (node.DeclAttributes != null && Array.IndexOf(node.DeclAttributes, "HasStorage") != -1)
+                            result = CreateFieldDecl(node);
                         break;
                     case "Import":
                         break;
