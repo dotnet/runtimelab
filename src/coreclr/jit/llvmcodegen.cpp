@@ -41,10 +41,7 @@ void Llvm::initializeFunctions()
 {
     const char* mangledName = GetMangledMethodName(m_info->compMethodHnd);
     Function* rootLlvmFunction = getOrCreateKnownLlvmFunction(mangledName, [=]() { return createFunctionType(); });
-    if (!rootLlvmFunction->isDeclaration())
-    {
-        BADCODE("Duplicate definition");
-    }
+    assert(rootLlvmFunction->isDeclaration());
 
     // First function is always the root.
     m_functions = new (_compiler->getAllocator(CMK_Codegen)) FunctionInfo[_compiler->compFuncCount()]();
@@ -794,10 +791,31 @@ void Llvm::fillPhis()
 void Llvm::generateAuxiliaryArtifacts()
 {
     // Currently, the only auxiliary artifact we may need is an alternative exported name for the compiled function.
-    const char* alternativeName = GetAlternativeFunctionName();
-    if (alternativeName != nullptr)
+    StringRef alternativeName = GetAlternativeFunctionName();
+    if (!alternativeName.empty())
     {
-        llvm::GlobalAlias::create(alternativeName, getRootLlvmFunction());
+        Function* llvmFuncDef = getRootLlvmFunction();
+        llvm::GlobalValue* existingDecl = m_context->Module.getNamedValue(alternativeName);
+        if (existingDecl != nullptr)
+        {
+            // We already have something under this name. Currenly, this can only be a function declaration, e. g.
+            // if something referenced a helper using this alternative name, which is usually the unmangled one,
+            // so it's pretty common. We need to replace the declaration with the defined function to avoid double
+            // definition problems.
+            assert(llvm::isa<Function>(existingDecl));
+            if (!existingDecl->isDeclaration())
+            {
+                // E. g. two different UCOs exported under the same name. This BADCODE is not very deterministic,
+                // since it depends on whether we happen to have the two offending functions in the same module
+                // or not. Ideally, we would devise a more robust scheme for dealing with this error.
+                BADCODE("Double definition");
+            }
+
+            existingDecl->replaceAllUsesWith(llvmFuncDef);
+            existingDecl->eraseFromParent();
+        }
+
+        llvm::GlobalAlias::create(alternativeName, llvmFuncDef);
     }
 }
 
@@ -1752,14 +1770,6 @@ void Llvm::buildCall(GenTreeCall* call)
         argVec.Push(argValue);
     }
 
-    // We may come back into managed from the unmanaged call so store the shadow stack. Note that for regular unmanaged
-    // calls, we fold the shadow stack save into the transition helper call, and so don't need to do anything here.
-    if (!call->IsUnmanaged() && callRequiresShadowStackSave(call))
-    {
-        // TODO-LLVM: set the correct shadow stack for shadow tail calls here.
-        emitHelperCall(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP, getShadowStackForCallee());
-    }
-
     llvm::FunctionCallee llvmFuncCallee = consumeCallTarget(call);
     llvm::CallBase* callValue = emitCallOrInvoke(llvmFuncCallee, AsRef(argVec), mayPhysicallyThrow(call));
 
@@ -2541,12 +2551,6 @@ llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*
         annotateHelperFunction(helperFunc, llvmFunc);
     });
 
-    if (helperCallRequiresShadowStackSave(helperFunc))
-    {
-        // TODO-LLVM: set the correct shadow stack for shadow tail calls here.
-        emitHelperCall(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP, getShadowStackForCallee());
-    }
-
     llvm::CallBase* call;
     if (helperCallHasShadowStackArg(helperFunc))
     {
@@ -2757,7 +2761,6 @@ FunctionType* Llvm::createFunctionTypeForCall(GenTreeCall* call)
 
 FunctionType* Llvm::createFunctionTypeForHelper(CorInfoHelpFunc helperFunc)
 {
-    const bool isManagedHelper = helperCallHasManagedCallingConvention(helperFunc);
     const HelperFuncInfo& helperInfo = getHelperFuncInfo(helperFunc);
 
     ArrayStack<Type*> argVec(_compiler->getAllocator(CMK_Codegen));
@@ -2841,14 +2844,21 @@ void Llvm::annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc
 Function* Llvm::getOrCreateKnownLlvmFunction(
     StringRef name, std::function<FunctionType*()> createFunctionType, std::function<void(Function*)> annotateFunction)
 {
-    Function* llvmFunc = m_context->Module.getFunction(name);
-    if (llvmFunc == nullptr)
+    llvm::Constant* llvmFuncOrAlias = m_context->Module.getNamedValue(name);
+    if (llvmFuncOrAlias != nullptr)
     {
-        assert(m_context->Module.getNamedValue(name) == nullptr); // No duplicate symbols!
-        llvmFunc = Function::Create(createFunctionType(), Function::ExternalLinkage, name, m_context->Module);
-        annotateFunction(llvmFunc);
+        // TODO-LLVM: we will miss annotating helpers that come through this path.
+        if (llvm::isa<llvm::GlobalAlias>(llvmFuncOrAlias))
+        {
+            // This must be the alias created by "generateAuxiliaryArtifacts".
+            llvmFuncOrAlias = llvm::cast<llvm::GlobalAlias>(llvmFuncOrAlias)->getAliasee();
+        }
+
+        return llvm::cast<Function>(llvmFuncOrAlias);
     }
 
+    Function* llvmFunc = Function::Create(createFunctionType(), Function::ExternalLinkage, name, m_context->Module);
+    annotateFunction(llvmFunc);
     return llvmFunc;
 }
 

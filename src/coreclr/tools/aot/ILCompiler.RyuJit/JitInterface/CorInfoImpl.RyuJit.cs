@@ -832,8 +832,7 @@ namespace Internal.JitInterface
             ISymbolNode entryPoint;
             if (mangledName != null)
             {
-                entryPoint = _compilation.NodeFactory.RuntimeExportManagedEntrypoint(mangledName);
-                entryPoint ??= _compilation.NodeFactory.ExternSymbol(mangledName);
+                entryPoint = _compilation.NodeFactory.ExternSymbol(mangledName);
             }
             else
             {

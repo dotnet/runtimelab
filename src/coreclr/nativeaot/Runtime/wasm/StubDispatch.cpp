@@ -22,9 +22,9 @@
 //
 
 // Cache miss case, call the runtime to resolve the target and update the cache.
-extern "C" PCODE RhpCidResolveWasm_Managed(void* pShadowStack, Object* pObject, void* pCell);
+extern "C" PCODE RhpCidResolveWasm(void* pShadowStack, Object* pObject, void* pCell);
 
-FCIMPL3(PCODE, RhpResolveInterfaceDispatch, void* pShadowStack, Object* pObject, InterfaceDispatchCell* pCell)
+FCIMPL2(PCODE, RhpResolveInterfaceDispatch, Object* pObject, InterfaceDispatchCell* pCell)
 {
     ASSERT(pObject != nullptr);
     InterfaceDispatchCache* pCache = (InterfaceDispatchCache*)pCell->GetCache();
@@ -41,7 +41,7 @@ FCIMPL3(PCODE, RhpResolveInterfaceDispatch, void* pShadowStack, Object* pObject,
         }
     }
 
-    return RhpCidResolveWasm_Managed(pShadowStack, pObject, pCell);
+    return RhpCidResolveWasm(pShadowStack, pObject, pCell);
 }
 FCIMPLEND
 
@@ -56,7 +56,7 @@ extern "C" void* RhpInterfaceDispatch32(void*, Object*, InterfaceDispatchCell*) 
 extern "C" void* RhpInterfaceDispatch64(void*, Object*, InterfaceDispatchCell*) __attribute__((alias ("RhpResolveInterfaceDispatch")));
 
 // Stub dispatch routine for dispatch to a vtable slot.
-FCIMPL3(void*, RhpVTableOffsetDispatch, void* pShadowStack, Object* pObject, InterfaceDispatchCell* pCell)
+FCIMPL2(void*, RhpVTableOffsetDispatch, Object* pObject, InterfaceDispatchCell* pCell)
 {
     uintptr_t pVTable = reinterpret_cast<uintptr_t>(pObject->GetMethodTable());
     uintptr_t offset = pCell->m_pCache;

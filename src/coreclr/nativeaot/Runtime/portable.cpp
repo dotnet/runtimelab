@@ -351,6 +351,7 @@ FCIMPLEND
 
 #if defined(USE_PORTABLE_HELPERS)
 
+#ifndef HOST_WASM
 #if !defined (HOST_ARM64)
 FCIMPL2(void, RhpAssignRef, Object ** dst, Object * ref)
 {
@@ -368,6 +369,7 @@ FCIMPL2(void, RhpCheckedAssignRef, Object ** dst, Object * ref)
 }
 FCIMPLEND
 #endif
+#endif // !HOST_WASM
 
 FCIMPL3(Object *, RhpCheckedLockCmpXchg, Object ** location, Object * value, Object * comparand)
 {

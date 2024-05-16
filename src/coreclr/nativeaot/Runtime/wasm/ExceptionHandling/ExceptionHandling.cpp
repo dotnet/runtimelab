@@ -4,6 +4,8 @@
 #include "CommonTypes.h"
 #include "CommonMacros.h"
 
+#include "../wasm.h"
+
 struct VirtualUnwindFrame
 {
     VirtualUnwindFrame* Prev;
@@ -17,7 +19,7 @@ struct VirtualUnwindFrame
 //
 thread_local VirtualUnwindFrame* t_pLastVirtualUnwindFrame = nullptr;
 
-FCIMPL3(void, RhpPushVirtualUnwindFrame, VirtualUnwindFrame* pFrame, void* pUnwindTable, size_t unwindIndex)
+FCIMPL_NO_SS(void, RhpPushVirtualUnwindFrame, VirtualUnwindFrame* pFrame, void* pUnwindTable, size_t unwindIndex)
 {
     ASSERT(t_pLastVirtualUnwindFrame < pFrame);
     pFrame->Prev = t_pLastVirtualUnwindFrame;
@@ -28,7 +30,7 @@ FCIMPL3(void, RhpPushVirtualUnwindFrame, VirtualUnwindFrame* pFrame, void* pUnwi
 }
 FCIMPLEND
 
-FCIMPL0(void, RhpPopVirtualUnwindFrame)
+FCIMPL_NO_SS(void, RhpPopVirtualUnwindFrame)
 {
     ASSERT(t_pLastVirtualUnwindFrame != nullptr);
     t_pLastVirtualUnwindFrame = t_pLastVirtualUnwindFrame->Prev;
@@ -40,6 +42,7 @@ FCIMPL0(void*, RhpGetRawLastVirtualUnwindFrameRef)
     return &t_pLastVirtualUnwindFrame;
 }
 FCIMPLEND
+
 // We do not use these helpers. TODO-LLVM: exclude them from the WASM build.
 FCIMPL4(void*, RhpCallCatchFunclet, void*, void*, void*, void*) { abort(); } FCIMPLEND
 FCIMPL3(bool, RhpCallFilterFunclet, void*, void*, void*) { abort(); } FCIMPLEND

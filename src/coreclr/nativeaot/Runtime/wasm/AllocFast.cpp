@@ -28,12 +28,11 @@
 // WASM-specific allocators: we define them to use a shadow stack argument to avoid saving it on the fast path.
 //
 extern "C" void* RhpGcAlloc(MethodTable* pEEType, uint32_t uFlags, uintptr_t numElements, void* pTransitionFrame);
-extern "C" void* RhpGetShadowStackTop();
 extern "C" void RhpSetShadowStackTop(void* pShadowStack);
 
 // Note that the emulated exception handling model requires us to call all managed methods that may/will throw
 // only in the tail-like position so that control can immediately return to the caller in case of an exception.
-extern "C" void RhExceptionHandling_FailedAllocation_Managed(void* pShadowStack, MethodTable* pEEType, bool isOverflow);
+extern "C" void RhExceptionHandling_FailedAllocation(void* pShadowStack, MethodTable* pEEType, bool isOverflow);
 
 static Object* AllocateObject(void* pShadowStack, MethodTable* pEEType, uint32_t uFlags, uintptr_t numElements)
 {
@@ -43,7 +42,7 @@ static Object* AllocateObject(void* pShadowStack, MethodTable* pEEType, uint32_t
     Object* pObject = (Object*)RhpGcAlloc(pEEType, uFlags, numElements, nullptr);
     if (pObject == nullptr)
     {
-        RhExceptionHandling_FailedAllocation_Managed(pShadowStack, pEEType, /* isOverflow */ false);
+        RhExceptionHandling_FailedAllocation(pShadowStack, pEEType, /* isOverflow */ false);
     }
 
     return pObject;
@@ -51,7 +50,7 @@ static Object* AllocateObject(void* pShadowStack, MethodTable* pEEType, uint32_t
 
 static void ThrowOverflowException(void* pShadowStack, MethodTable* pEEType)
 {
-    RhExceptionHandling_FailedAllocation_Managed(pShadowStack, pEEType, /* isOverflow */ true);
+    RhExceptionHandling_FailedAllocation(pShadowStack, pEEType, /* isOverflow */ true);
 }
 
 struct gc_alloc_context
@@ -67,7 +66,7 @@ struct gc_alloc_context
 //
 // Allocations
 //
-FCIMPL2(Object*, RhpNewFast, void* pShadowStack, MethodTable* pEEType)
+FCIMPL1(Object*, RhpNewFast, MethodTable* pEEType)
 {
     ASSERT(!pEEType->HasFinalizer());
 
@@ -89,14 +88,14 @@ FCIMPL2(Object*, RhpNewFast, void* pShadowStack, MethodTable* pEEType)
 }
 FCIMPLEND
 
-FCIMPL2(Object*, RhpNewFinalizable, void* pShadowStack, MethodTable* pEEType)
+FCIMPL1(Object*, RhpNewFinalizable, MethodTable* pEEType)
 {
     ASSERT(pEEType->HasFinalizer());
     return AllocateObject(pShadowStack, pEEType, GC_ALLOC_FINALIZE, 0);
 }
 FCIMPLEND
 
-FCIMPL3(Array*, RhpNewArray, void* pShadowStack, MethodTable* pArrayEEType, int numElements)
+FCIMPL2(Array*, RhpNewArray, MethodTable* pArrayEEType, int numElements)
 {
     Thread* pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context* acontext = pCurThread->GetAllocContext();
@@ -138,7 +137,6 @@ FCIMPLEND
 FCIMPL2(String*, RhNewString, MethodTable* pArrayEEType, int numElements)
 {
     // TODO: Implement. We call RhpNewArray for now since there's a bunch of TODOs in the places that matter anyway.
-    void* pShadowStack = RhpGetShadowStackTop();
     return (String*)RhpNewArray(pShadowStack, pArrayEEType, numElements);
 }
 FCIMPLEND
@@ -146,13 +144,13 @@ FCIMPLEND
 #if defined(FEATURE_64BIT_ALIGNMENT)
 GPTR_DECL(MethodTable, g_pFreeObjectEEType);
 
-FCIMPL2(Object*, RhpNewFinalizableAlign8, void* pShadowStack, MethodTable* pEEType)
+FCIMPL1(Object*, RhpNewFinalizableAlign8, MethodTable* pEEType)
 {
     return AllocateObject(pShadowStack, pEEType, GC_ALLOC_FINALIZE | GC_ALLOC_ALIGN8, 0);
 }
 FCIMPLEND
 
-FCIMPL2(Object*, RhpNewFastAlign8, void* pShadowStack, MethodTable* pEEType)
+FCIMPL1(Object*, RhpNewFastAlign8, MethodTable* pEEType)
 {
     ASSERT(!pEEType->HasFinalizer());
 
@@ -189,7 +187,7 @@ FCIMPL2(Object*, RhpNewFastAlign8, void* pShadowStack, MethodTable* pEEType)
 }
 FCIMPLEND
 
-FCIMPL2(Object*, RhpNewFastMisalign, void* pShadowStack, MethodTable* pEEType)
+FCIMPL1(Object*, RhpNewFastMisalign, MethodTable* pEEType)
 {
     Thread* pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context* acontext = pCurThread->GetAllocContext();
@@ -223,7 +221,7 @@ FCIMPL2(Object*, RhpNewFastMisalign, void* pShadowStack, MethodTable* pEEType)
 }
 FCIMPLEND
 
-FCIMPL3(Array*, RhpNewArrayAlign8, void* pShadowStack, MethodTable* pArrayEEType, int numElements)
+FCIMPL2(Array*, RhpNewArrayAlign8, MethodTable* pArrayEEType, int numElements)
 {
     Thread* pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context* acontext = pCurThread->GetAllocContext();

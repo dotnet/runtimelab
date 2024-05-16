@@ -661,6 +661,7 @@ namespace System.Runtime
         [RuntimeImport(RuntimeLibrary, "RhpCheckedXchg")]
         internal static extern object InterlockedExchange([NotNullIfNotNull(nameof(value))] ref object? location1, object? value);
 
+#if !TARGET_WASM
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "acos")]
         internal static extern double acos(double x);
@@ -860,6 +861,7 @@ namespace System.Runtime
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(RuntimeLibrary, "modff")]
         internal static extern unsafe float modff(float x, float* intptr);
+#endif
 
         [LibraryImport(RuntimeImports.RuntimeLibrary)]
         [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]

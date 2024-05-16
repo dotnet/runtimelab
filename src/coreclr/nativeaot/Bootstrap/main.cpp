@@ -112,18 +112,9 @@ extern "C" void* PalGetModuleHandleFromPointer(void* pointer);
 #define MANAGED_RUNTIME_EXPORT_NAME(_name) _name
 #define CDECL __cdecl
 #else
-// The runtime assumes classlib exports have a managed calling convention.
-// For WASM, however, they are exported with the native calling convention
-// by default so we must explicitly use the managed entrypoint here.
-#ifdef HOST_WASM
-#define MANAGED_RUNTIME_EXPORT(_name) \
-    extern "C" void _name##_Managed();
-#define MANAGED_RUNTIME_EXPORT_NAME(_name) _name##_Managed
-#else // !HOST_WASM
 #define MANAGED_RUNTIME_EXPORT(_name) \
     extern "C" void _name();
 #define MANAGED_RUNTIME_EXPORT_NAME(_name) _name
-#endif // !HOST_WASM
 #define CDECL
 #endif
 
