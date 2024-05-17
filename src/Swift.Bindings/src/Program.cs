@@ -17,22 +17,22 @@ namespace BindingsGeneration
         /// <summary>
         /// Platform for the bindings generator tool.
         /// </summary>
-        public static string platform = "MacOSX";
+        private static string platform = "MacOSX";
 
         /// <summary>
         /// SDK version for the bindings generator tool.
         /// </summary>
-        public static string sdk = "14.4";
+        private static string sdk = "14.4";
 
         /// <summary>
         /// Architecture for the bindings generator tool.
         /// </summary>
-        public static string arch = "arm64e";
+        private static string arch = "arm64e";
 
         /// <summary>
         /// Target for the bindings generator tool.
         /// </summary>
-        public static string target = "apple-macos";
+        private static string target = "apple-macos";
 
         /// <summary>
         /// Main entry point of the bindings generator tool.
@@ -92,7 +92,7 @@ namespace BindingsGeneration
                 if (!string.IsNullOrEmpty(target))
                     BindingsGenerator.target = target;
 
-                Queue<string> queueList = new Queue<string>(swiftAbiPaths);
+                Queue<string> queueList = new(swiftAbiPaths);
                 GenerateBindings(queueList, outputDirectory, verbose);
             },
             swiftAbiOption,
@@ -115,7 +115,7 @@ namespace BindingsGeneration
         /// <param name="outputDirectory">Output directory for generated bindings.</param>
         public static void GenerateBindings(string path, string outputDirectory)
         {
-            GenerateBindings(new Queue<string>(new string[] { path }), outputDirectory);    
+            GenerateBindings(new Queue<string>([path]), outputDirectory);    
         }
 
         /// <summary>
@@ -126,7 +126,7 @@ namespace BindingsGeneration
         /// <param name="verbose">Verbosity level for logging information.</param>
         public static void GenerateBindings(Queue<string> paths, string outputDirectory, int verbose = 2)
         {
-            TypeDatabase typeDatabase = new TypeDatabase(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TypeDatabase.xml"));
+            TypeDatabase typeDatabase = new(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TypeDatabase.xml"));
 
             while (paths.Count > 0)
             {
@@ -179,7 +179,7 @@ namespace BindingsGeneration
                     Console.WriteLine("Parsed Swift ABI file successfully.");
 
                 // Emit the C# bindings
-                ICSharpEmitter csharpEmitter = new StringCSharpEmitter(outputDirectory, typeDatabase, verbose);
+                var csharpEmitter = new StringCSharpEmitter(outputDirectory, typeDatabase, verbose);
                 csharpEmitter.EmitModule(decl);
 
                 moduleRecord.IsProcessed = true;
@@ -214,7 +214,7 @@ namespace BindingsGeneration
             string swiftInterfacePath = $"/Applications/Xcode.app/Contents/Developer/Platforms/{platform}.platform/Developer/SDKs/{platform}{sdk}.sdk/System/Library/Frameworks/{framework}.framework/Versions/Current/Modules/{framework}.swiftmodule/{arch}-{target}.swiftinterface";
             string command = $"xcrun swift-frontend -compile-module-from-interface {swiftInterfacePath} -module-name {framework} -sdk `{sdkPathCommand}` -emit-abi-descriptor-path {outputPath}";
             
-            ProcessStartInfo startInfo = new ProcessStartInfo()
+            ProcessStartInfo startInfo = new()
             {
                 FileName = "/bin/bash",
                 Arguments = $"-c \"{command}\"",

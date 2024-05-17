@@ -14,7 +14,7 @@ namespace BindingsGeneration
         public required string MangledName { get; set; }
 
         /// <summary>
-        /// Struct fields.
+        /// Type fields.
         /// </summary>
         public required List<FieldDecl> Fields { get; set; }
 

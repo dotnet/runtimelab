@@ -12,5 +12,9 @@ namespace BindingsGeneration
         /// Name of the declaration.
         /// </summary>
         public required string Name { get; set; }
+
+        public required BaseDecl? ParentDecl { get; set; }
+
+        public required BaseDecl? ModuleDecl { get; set; }
     }
 }

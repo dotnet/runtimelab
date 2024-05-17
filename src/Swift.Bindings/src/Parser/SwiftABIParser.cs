@@ -54,7 +54,7 @@ namespace BindingsGeneration
         /// <summary>
         /// The set of operators.
         /// </summary>
-        private static readonly HashSet<string> _operators = new HashSet<string>
+        private static readonly HashSet<string> _operators = new()
         {
             // Arithmetic
             "+", "-", "*", "/", "%",
@@ -136,30 +136,41 @@ namespace BindingsGeneration
         /// <returns>The module declaration.</returns>
         public ModuleDecl GetModuleDecl()
         {
-            var decls = CollectDeclarations(_moduleRoot.ABIRoot.Children, _filters.Count == 0);
-
             var dependencies = new List<string>();
             var moduleName = GetModuleName();
+            var moduleDecl = new ModuleDecl
+            {
+                Name = ExtractUniqueName(moduleName),
+                Fields = new List<FieldDecl>(),
+                Methods = new List<MethodDecl>(),
+                Declarations = new List<BaseDecl>(),
+                Dependencies = dependencies,
+                ParentDecl = null,
+                ModuleDecl = null
+            };
+
+            var decls = CollectDeclarations(_moduleRoot.ABIRoot.Children, moduleDecl, moduleDecl, _filters.Count == 0);
+
             dependencies.AddRange(_typeDatabase.Registrar.GetDependencies(moduleName));
             dependencies.Remove(moduleName);
 
-            return new ModuleDecl
-            {
-                Name = ExtractUniqueName(moduleName),
-                Fields = decls.OfType<FieldDecl>().ToList(),
-                Methods = decls.OfType<MethodDecl>().ToList(),
-                Declarations = decls.Where(d => !(d is MethodDecl) && !(d is FieldDecl)).ToList(),
-                Dependencies = dependencies
-            };
+            moduleDecl.Fields = decls.OfType<FieldDecl>().ToList();
+            moduleDecl.Methods = decls.OfType<MethodDecl>().ToList();
+            moduleDecl.Declarations = decls.Where(d => !(d is MethodDecl) && !(d is FieldDecl)).ToList();
+            moduleDecl.Dependencies = dependencies;
+
+            return moduleDecl;
         }
 
         /// <summary>
         /// Collects declarations from a list of nodes.
         /// </summary>
-        /// <param name="node">The node representing a declaration.</param>
+        /// <param name="nodes">The list of nodes to collect declarations from.</param>
+        /// <param name="parentDecl">The parent declaration.</param>
+        /// <param name="moduleDecl">The module declaration.</param>
         /// <param name="collect">A flag indicating whether to collect declarations.</param>
-        /// <returns>A list of declarations.</returns>
-        private List<BaseDecl> CollectDeclarations(IEnumerable<Node> nodes, bool collect)
+        /// <returns>The list of collected declarations.</returns>
+        private List<BaseDecl> CollectDeclarations(IEnumerable<Node> nodes, BaseDecl parentDecl, BaseDecl moduleDecl, bool collect)
         {
             var declarations = new List<BaseDecl>();
             foreach (var node in nodes)
@@ -175,7 +186,7 @@ namespace BindingsGeneration
                 if (!collect && _filters.Contains(node.Name))
                     collect = true;
 
-                var nodeDeclaration = HandleNode(node, collect);
+                var nodeDeclaration = HandleNode(node, parentDecl, moduleDecl, collect);
                 if (nodeDeclaration != null)
                     declarations.Add(nodeDeclaration);
 
@@ -191,9 +202,11 @@ namespace BindingsGeneration
         /// Handles an ABI node and returns the corresponding declaration.
         /// </summary>
         /// <param name="node">The node representing a declaration.</param>
+        /// <param name="parentDecl">The parent declaration.</param>
+        /// <param name="moduleDecl">The module declaration.</param>
         /// <param name="collect">A flag indicating whether to collect declarations.</param>
         /// <returns>The declaration.</returns>
-        private BaseDecl? HandleNode(Node node, bool collect)
+        private BaseDecl? HandleNode(Node node, BaseDecl parentDecl, BaseDecl moduleDecl, bool collect)
         {
             if (!collect && !_filters.Contains(node.Name))
                 return null;
@@ -204,17 +217,17 @@ namespace BindingsGeneration
                 switch (node.Kind)
                 {
                     case "TypeDecl":
-                        result = HandleTypeDecl(node, collect);
+                        result = HandleTypeDecl(node, parentDecl, moduleDecl, collect);
                         break;
                     case "Function":
                     case "Constructor":
                         // TODO: Implement operator overloading
-                        result = IsOperator(node.Name) ? null : CreateMethodDecl(node);
+                        result = IsOperator(node.Name) ? null : CreateMethodDecl(node, parentDecl, moduleDecl);
                         break;
                     case "Var":
                         // TODO: Implement computed properties
                         if (node.DeclAttributes != null && Array.IndexOf(node.DeclAttributes, "HasStorage") != -1)
-                            result = CreateFieldDecl(node);
+                            result = CreateFieldDecl(node, parentDecl, moduleDecl);
                         break;
                     case "Import":
                         break;
@@ -242,9 +255,11 @@ namespace BindingsGeneration
         /// Handles a type declaration node and returns the corresponding declaration.
         /// </summary>
         /// <param name="node">The node representing a type declaration.</param>
+        /// <param name="parentDecl">The parent declaration.</param>
+        /// <param name="moduleDecl">The module declaration.</param>
         /// <param name="collect">A flag indicating whether to collect declarations.</param>
         /// <returns>The type declaration.</returns>
-        private TypeDecl? HandleTypeDecl(Node node, bool collect)
+        private TypeDecl? HandleTypeDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl, bool collect)
         {
             if (_typeDatabase.IsTypeProcessed(node.ModuleName, node.Name))
             {
@@ -267,18 +282,17 @@ namespace BindingsGeneration
                     if (node.DeclAttributes != null && Array.IndexOf(node.DeclAttributes, "Frozen") != -1 && 
                         (!swiftTypeInfo.ValueWitnessTable->IsNonPOD || !swiftTypeInfo.ValueWitnessTable->IsNonBitwiseTakable))
                     {
-                        decl = CreateStructDecl(node);
+                        decl = CreateStructDecl(node, parentDecl, moduleDecl);
                     }
                     else
                     {
-                        decl = CreateClassDecl(node);
+                        decl = CreateClassDecl(node, parentDecl, moduleDecl);
                     }
-
                     typeRecord.SwiftTypeInfo = swiftTypeInfo;
                     break;
 
                 case "Class":
-                    decl = CreateClassDecl(node);
+                    decl = CreateClassDecl(node, parentDecl, moduleDecl);
                     break;
 
                 default:
@@ -291,7 +305,7 @@ namespace BindingsGeneration
 
             if (node.Children != null && decl != null)
             {
-                var childDecls = CollectDeclarations(node.Children, collect);
+                var childDecls = CollectDeclarations(node.Children, decl, moduleDecl, collect);
                 decl.Fields.AddRange(childDecls.OfType<FieldDecl>());
                 decl.Declarations.AddRange(childDecls.Where(d => !(d is FieldDecl)));
             }
@@ -303,15 +317,19 @@ namespace BindingsGeneration
         /// Creates a struct declaration from a node.
         /// </summary>
         /// <param name="node">The node representing the struct declaration.</param>
+        /// <param name="parentDecl">The parent declaration.</param>
+        /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The struct declaration.</returns>
-        private StructDecl CreateStructDecl(Node node)
+        private StructDecl CreateStructDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
         {
             return new StructDecl
             {
                 Name = ExtractUniqueName(node.Name),
                 MangledName = node.MangledName,
                 Fields = new List<FieldDecl>(),
-                Declarations = new List<BaseDecl>()
+                Declarations = new List<BaseDecl>(),
+                ParentDecl = parentDecl,
+                ModuleDecl = moduleDecl
             };
         }
 
@@ -319,15 +337,19 @@ namespace BindingsGeneration
         /// Creates a class declaration from a node.
         /// </summary>
         /// <param name="node">The node representing the class declaration.</param>
+        /// <param name="parentDecl">The parent declaration.</param>
+        /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The class declaration.</returns>
-        private ClassDecl CreateClassDecl(Node node)
+        private ClassDecl CreateClassDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
         {
             return new ClassDecl
             {
                 Name = ExtractUniqueName(node.Name),
                 MangledName = node.MangledName,
                 Fields = new List<FieldDecl>(),
-                Declarations = new List<BaseDecl>()
+                Declarations = new List<BaseDecl>(),
+                ParentDecl = parentDecl,
+                ModuleDecl = moduleDecl
             };
         }
 
@@ -335,8 +357,10 @@ namespace BindingsGeneration
         /// Creates a method declaration from a node.
         /// </summary>
         /// <param name="node">The node representing the method declaration.</param>
+        /// <param name="parentDecl">The parent declaration.</param>
+        /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The method declaration.</returns>
-        private MethodDecl CreateMethodDecl(Node node)
+        private MethodDecl CreateMethodDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
         {
             // Extract parameter names from the signature
             var paramNames = ExtractParameterNames(node.PrintedName);
@@ -350,6 +374,8 @@ namespace BindingsGeneration
                 MethodType = node.@static ?? false ? MethodType.Static : MethodType.Instance,
                 IsConstructor = node.Kind == "Constructor",
                 Signature = new List<ArgumentDecl>(),
+                ParentDecl = parentDecl,
+                ModuleDecl = moduleDecl
             };
 
             if (node.Children != null)
@@ -358,10 +384,12 @@ namespace BindingsGeneration
                 {
                     methodDecl.Signature.Add(new ArgumentDecl
                     {
-                        TypeIdentifier = CreateTypeDecl(node.Children.ElementAt(i)),
+                        TypeIdentifier = CreateTypeDecl(node.Children.ElementAt(i), methodDecl, moduleDecl),
                         Name = paramNames[i],
                         PrivateName = string.Empty,
-                        IsInOut = false
+                        IsInOut = false,
+                        ParentDecl = methodDecl,
+                        ModuleDecl = moduleDecl
                     });
                 }
             }
@@ -373,23 +401,32 @@ namespace BindingsGeneration
         /// Creates a field declaration from a given node.
         /// </summary>
         /// <param name="node">The node representing the field declaration.</param>
+        /// <param name="parentDecl">The parent declaration.</param>
+        /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The field declaration.</returns>
-        private FieldDecl CreateFieldDecl(Node node)
+        private FieldDecl CreateFieldDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
         {
-            return new FieldDecl
+            var typeDecl = CreateTypeDecl(node.Children.ElementAt(0), parentDecl, moduleDecl);
+            var fieldDecl = new FieldDecl
             {
-                TypeIdentifier = CreateTypeDecl(node.Children.ElementAt(0)),
+                TypeIdentifier = typeDecl,
                 Name = node.Name,
-                Visibility = node.IsInternal ?? false ? Visibility.Private : Visibility.Public
+                Visibility = node.IsInternal ?? false ? Visibility.Private : Visibility.Public,
+                ParentDecl = parentDecl,
+                ModuleDecl = moduleDecl
             };
+            typeDecl.ParentDecl = fieldDecl;
+            return fieldDecl;
         }
 
         /// <summary>
         /// Creates a type declaration from a given node.
         /// </summary>
         /// <param name="node">The node representing the type declaration.</param>
+        /// <param name="parentDecl">The parent declaration.</param>
+        /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The type declaration.</returns>
-        private TypeDecl CreateTypeDecl(Node node)
+        private TypeDecl CreateTypeDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
         {
             // Handle not supported types with a switch statement
             switch (node.Kind)
@@ -420,6 +457,8 @@ namespace BindingsGeneration
                 MangledName = node.MangledName,
                 Fields = new List<FieldDecl>(),
                 Declarations = new List<BaseDecl>(),
+                ParentDecl = parentDecl,
+                ModuleDecl = moduleDecl
             };
 
             TypeRecord typeRecord;
@@ -432,7 +471,7 @@ namespace BindingsGeneration
 
                 for (int i = 0; i < node.Children.Count(); i++)
                 {
-                    var child = CreateTypeDecl(node.Children.ElementAt(i));
+                    var child = CreateTypeDecl(node.Children.ElementAt(i), typeDecl, moduleDecl);
                     typeDecl.Declarations.Add(child);
                     if (i > 0)
                         typeDecl.Name += ", ";

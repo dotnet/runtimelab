@@ -11,7 +11,7 @@ public class XmlFileTests
     [Fact]
     public void TestXmlFormat()
     {
-        XmlDocument xmlDoc = new XmlDocument();
+        XmlDocument xmlDoc = new();
         xmlDoc.Load("TypeDatabase.xml");
         bool isValidXml = TypeDatabase.ValidateXmlSchema(xmlDoc);
         Assert.True(isValidXml);

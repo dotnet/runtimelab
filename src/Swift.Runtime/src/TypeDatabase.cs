@@ -2,9 +2,6 @@
 // Licensed under the MIT License.
 
 using System.Xml;
-using System.Runtime.InteropServices;
-using System.Runtime.CompilerServices;
-using System.Diagnostics;
 
 namespace Swift.Runtime
 {
@@ -16,7 +13,7 @@ namespace Swift.Runtime
         /// <summary>
         /// The module and type records associated with the database.
         /// </summary>
-        public readonly TypeRegistrar Registrar = new TypeRegistrar();
+        public readonly TypeRegistrar Registrar = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TypeDatabase"/> class.
@@ -24,7 +21,7 @@ namespace Swift.Runtime
         /// <param name="file">The path to the XML file containing the type mappings.</param>
         public TypeDatabase(string file)
         {
-            XmlDocument xmlDoc = new XmlDocument();
+            XmlDocument xmlDoc = new();
             xmlDoc.Load(file);
             if (!ValidateXmlSchema(xmlDoc))
                 throw new Exception(string.Format($"Invalid XML schema in {0}.", file));

@@ -335,7 +335,7 @@ namespace Swift.Runtime
 			byte[] data = new byte[GetSymbolLength(ptr)];
 			Marshal.Copy(ptr, data, 0, data.Length);
 
-			StringBuilder symbolBuilder = new StringBuilder();
+			StringBuilder symbolBuilder = new();
 
 			int index = 0;
 			while (index < data.Length)
