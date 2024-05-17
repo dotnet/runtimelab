@@ -17,7 +17,7 @@ namespace BindingsGeneration
         /// <param name="decl">The base declaration.</param>
         public bool Handles(BaseDecl decl)
         {
-            return decl is TypeDecl && decl is StructDecl;
+            return decl is StructDecl;
         }
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace BindingsGeneration
         /// <param name="decl">The base declaration.</param>
         public bool Handles(BaseDecl decl)
         {
-            return decl is TypeDecl && decl is ClassDecl;
+            return decl is ClassDecl;
         }
 
         /// <summary>
