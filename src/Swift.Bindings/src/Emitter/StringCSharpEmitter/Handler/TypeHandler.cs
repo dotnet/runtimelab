@@ -90,8 +90,8 @@ namespace BindingsGeneration
             }
             writer.WriteLine();
 
-            foreach (BaseDecl baseDecl in structDecl.Declarations)
-                base.HandleBaseDecl(writer, baseDecl, conductor, typeDatabase);
+            base.HandleBaseDecl(writer, structDecl.Declarations, conductor, typeDatabase);
+
             writer.Indent--;
             writer.WriteLine("}");
         }
@@ -180,8 +180,9 @@ namespace BindingsGeneration
             
             writer.WriteLine($"public unsafe class {classDecl.Name} {{");
             writer.Indent++;
-            foreach (BaseDecl baseDecl in classDecl.Declarations)
-                base.HandleBaseDecl(writer, baseDecl, conductor, typeDatabase);
+
+            base.HandleBaseDecl(writer, classDecl.Declarations, conductor, typeDatabase);
+
             writer.Indent--;
             writer.WriteLine("}");
         }

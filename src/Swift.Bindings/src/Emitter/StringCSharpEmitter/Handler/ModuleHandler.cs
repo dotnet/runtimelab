@@ -106,12 +106,7 @@ namespace BindingsGeneration
             }
 
             // Emit top-level types
-            foreach (BaseDecl baseDecl in moduleDecl.Declarations)
-            {
-                // call method from abstract class
-                base.HandleBaseDecl(writer, baseDecl, conductor, typeDatabase);
-                writer.WriteLine();
-            }
+            base.HandleBaseDecl(writer, moduleDecl.Declarations, conductor, typeDatabase);
 
             writer.Indent--;
             writer.WriteLine("}");
