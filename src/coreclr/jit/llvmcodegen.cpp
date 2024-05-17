@@ -2069,11 +2069,6 @@ void Llvm::buildReturn(GenTree* node)
         return;
     }
 
-    if (node->OperIs(GT_RETURN) && _compiler->opts.IsReversePInvoke())
-    {
-        emitHelperCall(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP, getShadowStack());
-    }
-
     if (node->TypeIs(TYP_VOID))
     {
         _builder.CreateRetVoid();

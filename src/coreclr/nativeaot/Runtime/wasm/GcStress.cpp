@@ -16,7 +16,7 @@
 
 #include "wasm.h"
 
-extern "C" void RhpSetShadowStackTop(void* pShadowStack);
+void SetShadowStackTop(void* pShadowStack);
 
 FCIMPL2(void*, RhpGcStressOnce, void* obj, uint8_t* pFlag)
 {
@@ -44,7 +44,7 @@ FCIMPL2(void*, RhpGcStressOnce, void* obj, uint8_t* pFlag)
             pThread->PushGCFrameRegistration(&gc);
         }
 
-        RhpSetShadowStackTop(pShadowStack);
+        SetShadowStackTop(pShadowStack);
         GCHeapUtilities::GetGCHeap()->GarbageCollect();
 
         if (obj != nullptr)

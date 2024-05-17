@@ -434,6 +434,7 @@ private:
     void lowerVirtualStubCall(GenTreeCall* callNode);
     void insertNullCheckForCall(GenTreeCall* callNode);
     void lowerDelegateInvoke(GenTreeCall* callNode);
+    void lowerReversePInvokeExit(GenTreeCall* callNode);
     void lowerUnmanagedCall(GenTreeCall* callNode);
     void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerCallReturn(GenTreeCall* callNode);

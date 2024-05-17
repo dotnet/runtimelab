@@ -29,6 +29,11 @@ void* GetShadowStackTop()
     return t_pShadowStackTop;
 }
 
+void SetShadowStackTop(void* pShadowStack)
+{
+    t_pShadowStackTop = pShadowStack;
+}
+
 FCIMPL_NO_SS(void*, RhpGetOrInitShadowStackTop)
 {
     void* pShadowStack = t_pShadowStackTop;
@@ -48,12 +53,6 @@ FCIMPL_NO_SS(void*, RhpGetOrInitShadowStackTop)
 }
 FCIMPLEND
 
-FCIMPL0(void, RhpSetShadowStackTop)
-{
-    t_pShadowStackTop = pShadowStack;
-}
-FCIMPLEND
-
 EXTERN_C NOINLINE void FASTCALL RhpReversePInvokeAttachOrTrapThread2(ReversePInvokeFrame* pFrame);
 
 FCIMPL1(void, RhpReversePInvoke, ReversePInvokeFrame* pFrame)
@@ -64,21 +63,21 @@ FCIMPL1(void, RhpReversePInvoke, ReversePInvokeFrame* pFrame)
         return;
 
     // The slow path may invoke runtime initialization, which runs managed code.
-    RhpSetShadowStackTop(pShadowStack);
+    SetShadowStackTop(pShadowStack);
     RhpReversePInvokeAttachOrTrapThread2(pFrame);
 }
 FCIMPLEND
 
-FCIMPL_NO_SS(void, RhpReversePInvokeReturn, ReversePInvokeFrame* pFrame)
+FCIMPL_NO_SS(void, RhpReversePInvokeReturn, void* pPreviousShadowStackTop, ReversePInvokeFrame* pFrame)
 {
-    // TODO-LLVM-CQ: move the restore of shadow stack top from codegen to here.
     pFrame->m_savedThread->InlineReversePInvokeReturn(pFrame);
+    SetShadowStackTop(pPreviousShadowStackTop);
 }
 FCIMPLEND
 
 FCIMPL1(void, RhpPInvoke, PInvokeTransitionFrame* pFrame)
 {
-    RhpSetShadowStackTop(pShadowStack);
+    SetShadowStackTop(pShadowStack);
     Thread* pCurThread = ThreadStore::RawGetCurrentThread();
     pCurThread->InlinePInvoke(pFrame);
 }

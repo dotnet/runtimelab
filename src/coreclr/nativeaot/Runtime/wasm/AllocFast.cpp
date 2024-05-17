@@ -28,7 +28,7 @@
 // WASM-specific allocators: we define them to use a shadow stack argument to avoid saving it on the fast path.
 //
 extern "C" void* RhpGcAlloc(MethodTable* pEEType, uint32_t uFlags, uintptr_t numElements, void* pTransitionFrame);
-extern "C" void RhpSetShadowStackTop(void* pShadowStack);
+void SetShadowStackTop(void* pShadowStack);
 
 // Note that the emulated exception handling model requires us to call all managed methods that may/will throw
 // only in the tail-like position so that control can immediately return to the caller in case of an exception.
@@ -37,7 +37,7 @@ extern "C" void RhExceptionHandling_FailedAllocation(void* pShadowStack, MethodT
 static Object* AllocateObject(void* pShadowStack, MethodTable* pEEType, uint32_t uFlags, uintptr_t numElements)
 {
     // Save the current shadow stack before calling into GC; we may need to scan it for live references.
-    RhpSetShadowStackTop(pShadowStack);
+    SetShadowStackTop(pShadowStack);
 
     Object* pObject = (Object*)RhpGcAlloc(pEEType, uFlags, numElements, nullptr);
     if (pObject == nullptr)
