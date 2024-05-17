@@ -110,9 +110,9 @@ namespace BindingsGeneration
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The list of method parameters.</returns>
-        private List<FieldDecl> GetMethodParams(BaseDecl parentDecl, MethodDecl methodDecl)
+        private List<ArgumentDecl> GetMethodParams(BaseDecl parentDecl, MethodDecl methodDecl)
         {
-            List<FieldDecl> tempDecl = new List<FieldDecl>(methodDecl.Signature);
+            List<ArgumentDecl> tempDecl = new List<ArgumentDecl>(methodDecl.Signature);
 
             // If this is a type method, add the marshalling for the self parameter
             if (parentDecl is StructDecl || parentDecl is ClassDecl)
@@ -120,10 +120,11 @@ namespace BindingsGeneration
                 if (!methodDecl.IsConstructor && methodDecl.MethodType != MethodType.Static)
                 {
                     // Add self as the first parameter (after the return type)
-                    tempDecl.Insert(1, new FieldDecl { 
+                    tempDecl.Insert(1, new ArgumentDecl { 
                         TypeIdentifier = new TypeDecl { Name = parentDecl.Name, MangledName = string.Empty, Fields = new List<FieldDecl>(), Declarations = new List<BaseDecl>()},
                         Name = "self",
-                        Visibility = Visibility.Public
+                        PrivateName = string.Empty,
+                        IsInOut = false
                     });
                 }
             }
@@ -139,7 +140,7 @@ namespace BindingsGeneration
         /// <returns>The internal method signature.</returns>
         private string GetInternalMethodSignature(BaseDecl parentDecl, MethodDecl methodDecl)
         {
-            List<FieldDecl> parameters = GetMethodParams(parentDecl, methodDecl);
+            List<ArgumentDecl> parameters = GetMethodParams(parentDecl, methodDecl);
             return string.Join(", ", parameters.Select(p => $"{p.TypeIdentifier.Name} {p.Name}").ToList());
         }
 
@@ -151,7 +152,7 @@ namespace BindingsGeneration
         /// <returns>The public method signature.</returns>
         private string GetPublicMethodSignature(BaseDecl parentDecl, MethodDecl methodDecl)
         {
-            List<FieldDecl> parameters = methodDecl.Signature.Skip(1).ToList();
+            List<ArgumentDecl> parameters = methodDecl.Signature.Skip(1).ToList();
             return string.Join(", ", parameters.Select(p => $"{p.TypeIdentifier.Name} {p.Name}").ToList());
         }
 
@@ -163,7 +164,7 @@ namespace BindingsGeneration
         /// <returns>The public method arguments.</returns>
         private string GetMethodArgs(BaseDecl parentDecl, MethodDecl methodDecl)
         {
-            List<FieldDecl> parameters = GetMethodParams(parentDecl, methodDecl);
+            List<ArgumentDecl> parameters = GetMethodParams(parentDecl, methodDecl);
             return string.Join(", ", parameters.Select(p => p.Name).ToList());
         }
     }

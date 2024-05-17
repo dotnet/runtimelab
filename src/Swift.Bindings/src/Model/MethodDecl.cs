@@ -27,7 +27,7 @@ namespace BindingsGeneration
         /// <summary>
         /// Signature of the method.
         /// </summary>
-        public required List<FieldDecl> Signature { get; set; }
+        public required List<ArgumentDecl> Signature { get; set; }
     }
 
     /// <summary>

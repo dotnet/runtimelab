@@ -349,18 +349,19 @@ namespace BindingsGeneration
                 MangledName = node.Kind == "Constructor" ? PatchMangledName(node.MangledName) : node.MangledName,
                 MethodType = node.@static ?? false ? MethodType.Static : MethodType.Instance,
                 IsConstructor = node.Kind == "Constructor",
-                Signature = new List<FieldDecl>(),
+                Signature = new List<ArgumentDecl>(),
             };
 
             if (node.Children != null)
             {
                 for (int i = 0; i < node.Children.Count(); i++)
                 {
-                    methodDecl.Signature.Add(new FieldDecl
+                    methodDecl.Signature.Add(new ArgumentDecl
                     {
                         TypeIdentifier = CreateTypeDecl(node.Children.ElementAt(i)),
                         Name = paramNames[i],
-                        Visibility = Visibility.Public
+                        PrivateName = string.Empty,
+                        IsInOut = false
                     });
                 }
             }
