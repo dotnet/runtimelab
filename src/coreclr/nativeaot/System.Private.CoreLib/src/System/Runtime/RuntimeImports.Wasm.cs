@@ -1,9 +1,10 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-// Runtime imports specific to WASM. Currently these are just SPGCT redefinitions
-// of the math-related functions, as the runtime import mechanism assumes a managed
-// calling convention (with a shadow stack), while these functions are native.
+// Runtime imports specific to WASM. Currently these are mostly PInvoke-based
+// redefinitions of the math-related methods, as the runtime import mechanism
+// assumes a managed calling convention (with a shadow stack), while those
+// functions are native.
 
 using System.Runtime.InteropServices;
 
