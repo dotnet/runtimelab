@@ -14,6 +14,10 @@
 #include "threadstore.inl"
 #include "thread.inl"
 
+#include "wasm.h"
+
+void SetShadowStackTop(void* pShadowStack);
+
 FCIMPL2(void*, RhpGcStressOnce, void* obj, uint8_t* pFlag)
 {
     if (*pFlag)
@@ -40,6 +44,7 @@ FCIMPL2(void*, RhpGcStressOnce, void* obj, uint8_t* pFlag)
             pThread->PushGCFrameRegistration(&gc);
         }
 
+        SetShadowStackTop(pShadowStack);
         GCHeapUtilities::GetGCHeap()->GarbageCollect();
 
         if (obj != nullptr)
@@ -55,7 +60,7 @@ FCIMPL2(void*, RhpGcStressOnce, void* obj, uint8_t* pFlag)
 }
 FCIMPLEND
 
-FCIMPL1(Object*, RhpCheckObj, Object* obj)
+FCIMPL_NO_SS(Object*, RhpCheckObj, Object* obj)
 {
     if (obj != nullptr)
     {

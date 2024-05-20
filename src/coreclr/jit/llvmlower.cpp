@@ -434,6 +434,10 @@ void Llvm::lowerCall(GenTreeCall* callNode)
     {
         lowerRethrow(callNode);
     }
+    else if (callNode->IsHelperCall(_compiler, CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT))
+    {
+        lowerReversePInvokeExit(callNode);
+    }
     // "gtFoldExprConst" can attach a superflous argument to the overflow helper. Remove it.
     else if (callNode->IsHelperCall(_compiler, CORINFO_HELP_OVERFLOW) && !callNode->gtArgs.IsEmpty())
     {
@@ -792,6 +796,13 @@ void Llvm::lowerDelegateInvoke(GenTreeCall* callNode)
     callNode->gtControlExpr = callTarget;
 
     lowerIndir(callTarget->AsIndir());
+}
+
+void Llvm::lowerReversePInvokeExit(GenTreeCall* callNode)
+{
+    // The RPI exit call has an additional argument - the shadow stack top on entry to this RPI method.
+    GenTree* previousShadowStackTop = insertShadowStackAddr(callNode, 0, _shadowStackLclNum);
+    callNode->gtArgs.PushFront(_compiler, NewCallArg::Primitive(previousShadowStackTop, CORINFO_TYPE_PTR));
 }
 
 void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)

@@ -115,7 +115,6 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern IntPtr RhHandleSet(IntPtr handle, object value);
 
-#if !TARGET_WASM
         //
         // internal calls for allocation
         //
@@ -148,11 +147,12 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe object RhpNewFastMisalign(MethodTable * pEEType);
 #endif // FEATURE_64BIT_ALIGNMENT
-#endif // !TARGET_WASM
 
+#if !TARGET_WASM
         [RuntimeImport(Redhawk.BaseName, "RhpAssignRef")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpAssignRef(ref object? address, object? obj);
+#endif
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         [RuntimeImport(Redhawk.BaseName, "RhpGcSafeZeroMemory")]

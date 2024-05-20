@@ -14,6 +14,8 @@
 #include "thread.inl"
 #include "threadstore.inl"
 
+#include "wasm.h"
+
 thread_local void* t_pShadowStackBottom = nullptr;
 thread_local void* t_pShadowStackTop = nullptr;
 
@@ -27,7 +29,12 @@ void* GetShadowStackTop()
     return t_pShadowStackTop;
 }
 
-FCIMPL0(void*, RhpGetOrInitShadowStackTop)
+void SetShadowStackTop(void* pShadowStack)
+{
+    t_pShadowStackTop = pShadowStack;
+}
+
+FCIMPL_NO_SS(void*, RhpGetOrInitShadowStackTop)
 {
     void* pShadowStack = t_pShadowStackTop;
     if (pShadowStack == nullptr)
@@ -46,22 +53,39 @@ FCIMPL0(void*, RhpGetOrInitShadowStackTop)
 }
 FCIMPLEND
 
-FCIMPL0(void*, RhpGetShadowStackTop)
+EXTERN_C NOINLINE void FASTCALL RhpReversePInvokeAttachOrTrapThread2(ReversePInvokeFrame* pFrame);
+
+FCIMPL1(void, RhpReversePInvoke, ReversePInvokeFrame* pFrame)
 {
-    return t_pShadowStackTop;
+    Thread* pCurThread = ThreadStore::RawGetCurrentThread();
+    pFrame->m_savedThread = pCurThread;
+    if (pCurThread->InlineTryFastReversePInvoke(pFrame))
+        return;
+
+    // The slow path may invoke runtime initialization, which runs managed code.
+    SetShadowStackTop(pShadowStack);
+    RhpReversePInvokeAttachOrTrapThread2(pFrame);
 }
 FCIMPLEND
 
-FCIMPL1(void, RhpSetShadowStackTop, void* pShadowStack)
+FCIMPL_NO_SS(void, RhpReversePInvokeReturn, void* pPreviousShadowStackTop, ReversePInvokeFrame* pFrame)
 {
-    t_pShadowStackTop = pShadowStack;
+    pFrame->m_savedThread->InlineReversePInvokeReturn(pFrame);
+    SetShadowStackTop(pPreviousShadowStackTop);
 }
 FCIMPLEND
 
-FCIMPL2(void, RhpPInvoke, void* pShadowStack, PInvokeTransitionFrame* pFrame)
+FCIMPL1(void, RhpPInvoke, PInvokeTransitionFrame* pFrame)
 {
-    RhpSetShadowStackTop(pShadowStack);
+    SetShadowStackTop(pShadowStack);
     Thread* pCurThread = ThreadStore::RawGetCurrentThread();
     pCurThread->InlinePInvoke(pFrame);
+}
+FCIMPLEND
+
+FCIMPL_NO_SS(void, RhpPInvokeReturn, PInvokeTransitionFrame* pFrame)
+{
+    //reenter cooperative mode
+    pFrame->m_pThread->InlinePInvokeReturn(pFrame);
 }
 FCIMPLEND
