@@ -82,6 +82,7 @@ The Swift type database is an XML-based file format used for describing primitiv
             - `kind`: Specifies the kind of type declaration.
             - `name`: Specifies the name of the Swift type.
             - `module`: Specifies the module of the Swift type.
+            - `metadataAccessor`: Metadata accessor mangled name.
 </details>
 
 ### Pointers
@@ -184,8 +185,8 @@ The tooling comprises the following components:
 - **SwiftBindings**: Command-line interface that orchestrates the tooling workflow.
     - **Components:**
         - `parser`: Parses a Swift library using ABI or Swiftinterface parser.
-        - `marshaller`: Marshals types between C# and Swift.
-        - `emitter`: Emits a C# bindings library using string-based or object model-based emitter.
+        - `marshaler`: Marshals types between C# and Swift.
+        - `emitter`: Emits a C# bindings library using string-based emitter.
 - **SwiftRuntime**: Library providing projections of common Swift types. It contains a type database for common Swift types and implements Swift runtime constructs in C#.
 
 The general workflow for generating C# bindings from Swift code involves the following steps:
@@ -202,10 +203,10 @@ The general workflow for generating C# bindings from Swift code involves the fol
 
 The aggregation of the public ABI is done through the `ISwiftParser` interface. This interface defines the layout for concrete implementations responsible for parsing and collecting ABI information. Two implementations exist: Swift ABI parser and Swift interface parser. The Swift ABI parser aggregates ABI information based on an ABI json file. The Swift interface parser is designed to handle `.swiftinterface` files. The `.swiftinterface` file doesn't contain mangled names, and the parser should consume the dynamic library (`.dylib`) to generate declarations. Currently, the tooling only implements the Swift ABI parser.
 
-### Marshaller
+### Marshaler and Emitter
 
-Ideally, marshalling logic should be done between parsing and emitting if possible. The `ModuleDecl`, `MethodDecl`, and `TypeDecl` represents model definition of collected and marshalled Swift ABI that should be projectable into C#.
+Ideally, marshalling logic should be done between parsing and emitting if possible. The `ModuleDecl`, `MethodDecl`, and `TypeDecl` represents model definition of collected and marshalled Swift ABI that should be projectable into C#. The tooling includes a `Conductor` that obtains the corresponding handler factory for a declaration. The handler factory creates a handler that marshals and emits the C# code. The handlers, Conductor, and type database should be static and async, while the `IEnvironment` should contain all necessary information specific to handlers for generating C# source code.
 
-### Emitter
+![Conductor UML outline](conductor-uml-outline.svg)
 
 Two different strategies are available for emitting: using an object model or a string-based approach. The object model, like Roslyn API, represents a full set of C# language. Currently, the tooling only implements the string-based emitter.
