@@ -20,6 +20,8 @@ variables:
 - template: /eng/pipelines/common/variables.yml
   parameters:
     templatePath: 'templates-official'
+- name: CodeQL.Enabled
+  value: 'true'
 
 - ${{ if and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}:
   - name: TeamName
