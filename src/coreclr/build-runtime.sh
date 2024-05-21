@@ -171,6 +171,26 @@ if [[ -n "$__RequestedBuildComponents" ]]; then
     __CMakeTarget=" $__RequestedBuildComponents "
     __CMakeTarget="${__CMakeTarget// paltests / paltests_install }"
 fi
+
+if [[ "$__CMakeTarget" == *"wasmjit"* ]]; then
+  __CMakeArgs="$__CMakeArgs -DCLR_CMAKE_BUILD_LLVM_JIT=1"
+
+  if [[ "$__BuildType" == "Release" ]]; then
+    if [[ -n $LLVM_CMAKE_CONFIG_RELEASE ]]; then
+      LLVM_CMAKE_CONFIG="$LLVM_CMAKE_CONFIG_RELEASE"
+    fi
+  else
+    if [[ -n $LLVM_CMAKE_CONFIG_DEBUG ]]; then
+      LLVM_CMAKE_CONFIG="$LLVM_CMAKE_CONFIG_DEBUG"
+    fi
+  fi
+
+  if [[ -z "$LLVM_CMAKE_CONFIG" ]]; then
+    echo The LLVM_CMAKE_CONFIG environment variable pointing to llvm-build-dir/lib/cmake/llvm must be set. 1>&2
+    exit 1
+  fi
+fi
+
 if [[ -z "$__CMakeTarget" ]]; then
     __CMakeTarget="install"
 fi

@@ -1,12 +1,23 @@
 [CmdletBinding(PositionalBinding=$false)]
 param(
-    [ValidateSet("Debug","Release")][string[]]$Configs = @("Debug","Release"),
+    $InstallDir,
+    [ValidateSet("Debug","Release","Checked")][string[]]$Configs = @("Debug","Release"),
     [switch]$CI,
     [switch]$NoClone,
     [switch]$NoBuild
 )
 
+
 $ErrorActionPreference="Stop"
+
+New-Item -ItemType Directory -Path $InstallDir -Force
+Set-Location -Path $InstallDir
+
+# Set IsWindows if the version of Powershell does not already have it.
+if (!(Test-Path variable:global:IsWindows)) 
+{
+    $IsWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+}
 
 if (!(gcm git -ErrorAction SilentlyContinue))
 {
@@ -31,27 +42,43 @@ elseif (!(Test-Path llvm-project))
     exit 1
 }
 
-foreach ($Config in $Configs)
+# There is no [C/c]hecked LLVM config, so change to Debug
+foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ } } | Select-Object -Unique)
 {
     pushd llvm-project
     $BuildDirName = "build-$($Config.ToLower())"
-    mkdir $BuildDirName -Force
+    New-Item -ItemType Directory $BuildDirName -Force
 
     $BuildDirPath = "$pwd/$BuildDirName"
     $SourceDirName = "$pwd/llvm"
     popd
 
-    $CmakeConfigureCommandLine = "-G", "Visual Studio 17 2022", "-DLLVM_INCLUDE_BENCHMARKS=OFF", "-Thost=x64"
+    if ($IsWindows)
+    {
+        $CmakeGenerator = "Visual Studio 17 2022"
+    }
+    else
+    {
+        $CmakeGenerator = "Unix Makefiles"
+    }
+
+    $CmakeConfigureCommandLine = "-G", "$CmakeGenerator", "-DLLVM_INCLUDE_BENCHMARKS=OFF"
     $CmakeConfigureCommandLine += "-S", $SourceDirName, "-B", $BuildDirPath
     if ($Config -eq "Release")
     {
         $LlvmConfig = "Release"
-        $CmakeConfigureCommandLine += "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"
+        if ($IsWindows)
+        {
+            $CmakeConfigureCommandLine += "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded", "-Thost=x64"
+        }
     }
     else
     {
         $LlvmConfig = "Debug"
-        $CmakeConfigureCommandLine += "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDebug"
+        if ($IsWindows)
+        {
+            $CmakeConfigureCommandLine += "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDebug", "-Thost=x64"
+        }
     }
     $CmakeConfigureCommandLine += "-DCMAKE_BUILD_TYPE=$LlvmConfig"
 

@@ -59,6 +59,7 @@ __usePThreads=0
 source "$__RepoRootDir"/eng/native/build-commons.sh
 
 # Set cross build
+EMSDK_PATH=$EMSDK
 if [[ "$__TargetOS" == browser ]]; then
     if [[ -z "$EMSDK_PATH" ]]; then
         if [[ -d "$__RepoRootDir"/src/mono/browser/emsdk/ ]]; then
