@@ -206,11 +206,13 @@ jobs:
           df -h
         displayName: Disk Usage before Build
 
-      # Install Wasm dependencies on Windows: emscripten, LLVM, NodeJS
+      # Install Wasm dependencies: emscripten, LLVM, NodeJS
     - ${{ if and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.archType, 'wasm')) }}:
       - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.ps1 $(Build.SourcesDirectory)/wasm-tools
         displayName: Install/activate emscripten
-      - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.ps1 $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory) ${{ parameters.buildConfig }}
+      - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/set-cmake-path.cmd
+        displayName: Set CMake path
+      - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.ps1 -CI -InstallDir $(Build.SourcesDirectory)\wasm-tools -Configs ${{ parameters.buildConfig }}
         displayName: Install/build LLVM
       - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-nodejs.ps1 $(Build.SourcesDirectory)\wasm-tools
         displayName: Install NodeJS
@@ -222,10 +224,18 @@ jobs:
       - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-wasmer.cmd $(Build.SourcesDirectory)\wasm-tools
         displayName: Install wasmer
 
-    - ${{ if and(eq(parameters.osGroup, 'windows'), eq(parameters.archType, 'x64')) }}:
-      # Install LLVM for the win-x64 build as it will build the clrjit for browser_wasm cross compilation
-      - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.ps1 $(Build.SourcesDirectory)\wasm-tools $(Build.SourcesDirectory) ${{ parameters.buildConfig }}
-        displayName: Install/build LLVM
+    - ${{ if eq(parameters.archType, 'x64') }}:
+      - ${{ if eq(parameters.osGroup, 'windows') }}:
+        - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/set-cmake-path.cmd
+          displayName: Set CMake path
+        - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.ps1 -CI -InstallDir $(Build.SourcesDirectory)/wasm-tools -Configs ${{ parameters.buildConfig }}
+          displayName: Install/build LLVM
+      - ${{ if eq(parameters.osGroup, 'linux') }}:
+        - script: $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-pwsh.sh $(Build.SourcesDirectory)/wasm-tools
+          displayName: Install Powershell 7
+        # Install LLVM for the win-x64 and linux-x64 build as it will build the clrjit for browser_wasm cross compilation
+        - script: $(Build.SourcesDirectory)/wasm-tools/powershell7/pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.ps1 -CI -InstallDir $(Build.SourcesDirectory)/wasm-tools -Configs ${{ parameters.buildConfig }}
+          displayName: Install/build LLVM
 
     - ${{ if or(eq(parameters.platform, 'browser_wasm_win'), and(eq(parameters.platform, 'wasi_wasm_win'), not(eq(parameters.runtimeFlavor, 'coreclr')))) }}:
       # Update machine certs

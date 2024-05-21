@@ -1,10 +1,10 @@
 param(
-    [string]$InstallDir
+    $InstallDir
 )
 
-New-Item -ItemType Directory -Force -ErrorAction SilentlyContinue -Path (Split-Path -Path $InstallDir -Parent) -Name (Split-Path -Path $InstallDir -Leaf)
-
 $ErrorActionPreference="Stop"
+
+New-Item -ItemType Directory -Force -Path $InstallDir
 
 Set-Location -Path $InstallDir
 

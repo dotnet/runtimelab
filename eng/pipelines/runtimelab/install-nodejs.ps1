@@ -3,7 +3,7 @@ $NodeJSVersion = "v20.2.0"
 
 if (!(Test-Path variable:global:IsWindows))
 {
-    $IsWindows=[environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+    $IsWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
 }
 
 if ($IsWIndows)

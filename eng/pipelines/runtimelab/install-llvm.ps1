@@ -1,18 +1,23 @@
 [CmdletBinding(PositionalBinding=$false)]
 param(
+    $InstallDir,
     [ValidateSet("Debug","Release","Checked")][string[]]$Configs = @("Debug","Release"),
     [switch]$CI,
     [switch]$NoClone,
     [switch]$NoBuild
 )
 
+
+$ErrorActionPreference="Stop"
+
+New-Item -ItemType Directory -Path $InstallDir -Force
+Set-Location -Path $InstallDir
+
 # Set IsWindows if the version of Powershell does not already have it.
 if (!(Test-Path variable:global:IsWindows)) 
 {
     $IsWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
 }
-
-$ErrorActionPreference="Stop"
 
 if (!(gcm git -ErrorAction SilentlyContinue))
 {
