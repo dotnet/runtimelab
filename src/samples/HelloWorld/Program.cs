@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 using System;
-using HelloLibraryBindings;
+using Swift.HelloLibrary;
 
 namespace HelloWorld
 {

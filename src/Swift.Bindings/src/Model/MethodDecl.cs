@@ -8,24 +8,41 @@ namespace BindingsGeneration
     /// </summary>
     public sealed record MethodDecl : BaseDecl
     {
+ 
         /// <summary>
-        /// Mangled name of the method.
+        /// Mangled name of the declaration.
         /// </summary>
         public required string MangledName { get; set; }
 
         /// <summary>
-        /// Indicates if the method requires marshalling.
-        /// </summary>
-        public required bool RequireMarshalling { get; set; }
-
-        /// <summary>
         /// Indicates if the method is a static method.
         /// </summary>
-        public required bool IsStatic { get; set; }
+        public required MethodType MethodType { get; set; }
+
+        /// <summary>
+        /// Indicates if the method is a constructor.
+        /// </summary>
+        public required bool IsConstructor { get; set; }
 
         /// <summary>
         /// Signature of the method.
         /// </summary>
-        public required List<TypeDecl> Signature { get; set; }
+        public required List<ArgumentDecl> Signature { get; set; }
+    }
+
+    /// <summary>
+    /// Represents a method type.
+    /// </summary>
+    public enum MethodType
+    {
+        /// <summary>
+        /// Indicates that the method is an instance method.
+        /// </summary>
+        Instance,
+
+        /// <summary>
+        /// Indicates that the method is a static method.
+        /// </summary>
+        Static
     }
 }

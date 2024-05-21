@@ -9,13 +9,12 @@ namespace BindingsGeneration
     public record BaseDecl
     {
         /// <summary>
-        /// Name of the struct.
+        /// Name of the declaration.
         /// </summary>
         public required string Name { get; set; }
 
-        /// <summary>
-        /// Declarations within the base declaration.
-        /// </summary>
-        public required List<BaseDecl> Declarations { get; set; }
+        public required BaseDecl? ParentDecl { get; set; }
+
+        public required BaseDecl? ModuleDecl { get; set; }
     }
 }

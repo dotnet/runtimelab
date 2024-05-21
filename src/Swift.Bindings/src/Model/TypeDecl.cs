@@ -6,16 +6,21 @@ namespace BindingsGeneration
     /// <summary>
     /// Represents a type declaration.
     /// </summary>
-    public sealed record TypeDecl : BaseDecl
+    public record TypeDecl : BaseDecl
     {
         /// <summary>
-        /// Type identifier.
+        /// Mangled name of the declaration.
         /// </summary>
-        public required string TypeIdentifier { get; set; }
+        public required string MangledName { get; set; }
 
         /// <summary>
-        /// Generics of the type.
+        /// Type fields.
         /// </summary>
-        public required List<TypeDecl> Generics { get; set; }
+        public required List<FieldDecl> Fields { get; set; }
+
+        /// <summary>
+        /// Declarations within the base declaration.
+        /// </summary>
+        public required List<BaseDecl> Declarations { get; set; }
     }
 }

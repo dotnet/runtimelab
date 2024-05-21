@@ -11,13 +11,11 @@ namespace BindingsGeneration
     /// </summary>
     public partial class StringCSharpEmitter : ICSharpEmitter
     {
-        // Literals in generated source
-        private const string PInvokePrefix = "PIfunc_";
-
         // Private properties
         private readonly string _outputDirectory;
         private readonly TypeDatabase _typeDatabase;
         private readonly int _verbose;
+        private readonly Conductor _conductor;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="StringCSharpEmitter"/> class.
@@ -27,6 +25,7 @@ namespace BindingsGeneration
             _outputDirectory = outputDirectory;
             _typeDatabase = typeDatabase;
             _verbose = verbose;
+            _conductor = new Conductor();
         }
 
         /// <summary>
@@ -35,67 +34,26 @@ namespace BindingsGeneration
         /// <param name="moduleDecl">The module declaration.</param>
         public void EmitModule(ModuleDecl moduleDecl)
         {
-            var sw = new StringWriter();
-            IndentedTextWriter writer = new(sw);
-            var generatedNamespace = $"{moduleDecl.Name}Bindings";
-
-            foreach (var dependency in moduleDecl.Dependencies)
-                writer.WriteLine($"using {dependency};");
-
-            writer.WriteLine();
-            writer.WriteLine($"namespace {generatedNamespace}");
-            writer.WriteLine("{");
-            writer.Indent++;
-
-            // Emit top-level methods
-            if (moduleDecl.Declarations.OfType<MethodDecl>().Any())
+            if (_conductor.TryGetModuleHandler(moduleDecl, out var moduleHandler))
             {
-                writer.WriteLine($"public class {moduleDecl.Name}");
-                writer.WriteLine("{");
-                writer.Indent++;
-                foreach(MethodDecl methodDecl in moduleDecl.Declarations.OfType<MethodDecl>())
+                var sw = new StringWriter();
+                IndentedTextWriter writer = new(sw);
+                var @namespace = $"Swift.{moduleDecl.Name}";
+
+                var env = moduleHandler.Marshal(moduleDecl);
+                moduleHandler.Emit(writer, env, _conductor, _typeDatabase);
+
+                string csOutputPath = Path.Combine(_outputDirectory, $"{@namespace}.cs");
+                using (StreamWriter outputFile = new(csOutputPath))
                 {
-                    EmitMethod(writer, moduleDecl, methodDecl);
-                    writer.WriteLine();
+                    outputFile.Write(sw.ToString());
                 }
-                writer.Indent--;
-                writer.WriteLine("}");
-                writer.WriteLine();
             }
-
-            // Emit top-level types
-            foreach (BaseDecl baseDecl in moduleDecl.Declarations.Where(d => !(d is MethodDecl)))
-            {
-                EmitBaseDecl(writer, moduleDecl, baseDecl);
-                writer.WriteLine();
-            }
-
-            writer.Indent--;
-            writer.WriteLine("}");
-
-            string csOutputPath = Path.Combine(_outputDirectory, $"{generatedNamespace}.cs");
-            using (StreamWriter outputFile = new StreamWriter(csOutputPath))
-            {
-                outputFile.Write(sw.ToString());
-            }
-        }
-
-        /// <summary>
-        /// Emits a base declaration.
-        /// </summary>
-        /// <param name="writer">The IndentedTextWriter instance.</param>
-        /// <param name="moduleDecl">The module declaration.</param>
-        /// <param name="decl">The base declaration.</param>
-        private void EmitBaseDecl(IndentedTextWriter writer, ModuleDecl moduleDecl, BaseDecl decl)
-        {
-            if (decl is StructDecl structDecl)
-                EmitStruct(writer, moduleDecl, structDecl);
-            else if (decl is ClassDecl classDecl)
-                EmitClass(writer, moduleDecl, classDecl);
-            else if (decl is MethodDecl methodDecl)
-                EmitMethod(writer, moduleDecl, methodDecl);
             else
-                throw new NotImplementedException($"Unsupported declaration type: {decl.GetType().Name}");
+            {
+                if (_verbose > 0)
+                    Console.WriteLine($"No module handler found for {moduleDecl.Name}");
+            }
         }
     }
 }

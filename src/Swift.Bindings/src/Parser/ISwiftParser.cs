@@ -9,8 +9,19 @@ namespace BindingsGeneration
     public interface ISwiftParser
     {
         /// <summary>
+        /// Sets parser filter.
+        /// </summary>
+        public void SetFilter(List<string> filters);
+
+        /// <summary>
+        /// Gets the module name.
+        /// </summary>
+        public string GetModuleName();
+
+        /// <summary>
         /// Gets the module declaration.
         /// </summary>
         public ModuleDecl GetModuleDecl();
+
     }
 }

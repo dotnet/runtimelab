@@ -18,7 +18,7 @@ namespace Swift.Runtime
 
         public static implicit operator T*(UnsafePointer<T> pointer) => pointer.Pointee;
 
-        public static implicit operator UnsafePointer<T>(T* pointee) => new UnsafePointer<T>(pointee);
+        public static implicit operator UnsafePointer<T>(T* pointee) => new(pointee);
     }
 
     // <summary>
@@ -36,7 +36,7 @@ namespace Swift.Runtime
 
         public static implicit operator T*(UnsafeMutablePointer<T> pointer) => pointer.Pointee;
 
-        public static implicit operator UnsafeMutablePointer<T>(T* pointee) => new UnsafeMutablePointer<T>(pointee);
+        public static implicit operator UnsafeMutablePointer<T>(T* pointee) => new(pointee);
     }
 
     // <summary>
@@ -54,7 +54,7 @@ namespace Swift.Runtime
 
         public static implicit operator void*(UnsafeRawPointer pointer) => pointer.Pointee;
 
-        public static implicit operator UnsafeRawPointer(void* pointee) => new UnsafeRawPointer(pointee);
+        public static implicit operator UnsafeRawPointer(void* pointee) => new(pointee);
     }
 
     // <summary>
@@ -72,6 +72,6 @@ namespace Swift.Runtime
 
         public static implicit operator void*(UnsafeMutableRawPointer pointer) => pointer.Pointee;
 
-        public static implicit operator UnsafeMutableRawPointer(void* pointee) => new UnsafeMutableRawPointer(pointee);
+        public static implicit operator UnsafeMutableRawPointer(void* pointee) => new(pointee);
     }
 }

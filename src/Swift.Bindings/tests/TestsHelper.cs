@@ -12,8 +12,7 @@ namespace BindingsGeneration.Tests
     {
         private static int uniqueId = 0;
 
-
-        public static object CompileAndExecute(string[] filePaths, string[] sourceCodes, string[] dependencies, string typeName, string methodName, object[] args)
+        public static string Compile(string[] filePaths, string[] sourceCodes, string[] dependencies)
         {
             var expandedFilePaths = ExpandFilePaths(filePaths);
             Console.WriteLine($"Expanded file paths: {string.Join(", ", expandedFilePaths)}");
@@ -31,7 +30,7 @@ namespace BindingsGeneration.Tests
                 MetadataReference.CreateFromFile(Assembly.Load("System.Runtime.InteropServices").Location),
             };
 
-            foreach (string dependency in dependencies) 
+            foreach (string dependency in dependencies)
             {
                 references.Add(MetadataReference.CreateFromFile(Assembly.Load(dependency).Location));
             }
@@ -55,8 +54,13 @@ namespace BindingsGeneration.Tests
                     }
                     throw new InvalidOperationException(errorMessage);
                 }
-            }
 
+                return assemblyPath;
+            }
+        }
+
+        public static object Execute(string assemblyPath, string typeName, string methodName, object[] args)
+        {
             Assembly compiledAssembly = Assembly.LoadFile(assemblyPath);
             Type targetType = compiledAssembly.GetType(typeName);
             MethodInfo customMethod = targetType.GetMethod(methodName);

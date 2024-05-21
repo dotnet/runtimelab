@@ -201,4 +201,5 @@ launchSettings.json
 
 # Testing artifacts
 testing/
-src/samples/**/*Bindings.cs
+src/samples/**/Unsafe*.cs
+src/samples/**/Swift.*.cs
