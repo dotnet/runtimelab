@@ -49,18 +49,19 @@ stages:
 - stage: build
   displayName: Build
   jobs:
-  - template: /eng/pipelines/templates/build-job.yml
-    parameters:
-      osGroup: OSX
-      archType: arm64
-      runTests: true
-      pool:
-        vmImage: 'macOS-latest'
+  - ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
+    - template: /eng/pipelines/templates/build-job.yml
+      parameters:
+        osGroup: OSX
+        archType: arm64
+        runTests: true
+        pool:
+          vmImage: 'macOS-latest'
 
-  - template: /eng/pipelines/templates/build-job.yml
-    parameters:
-      osGroup: OSX
-      archType: x64
-      runTests: true
-      pool:
-        vmImage: 'macOS-latest'
+    - template: /eng/pipelines/templates/build-job.yml
+      parameters:
+        osGroup: OSX
+        archType: x64
+        runTests: true
+        pool:
+          vmImage: 'macOS-latest'
