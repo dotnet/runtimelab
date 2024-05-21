@@ -61,10 +61,11 @@ stages:
           name: NetCore1ESPool-Internal
           demands: ImageOverride -equals windows.vs2022preview.amd64
 
-    # Publish and validation steps. Only run in official builds
-    - template: \eng\common\templates\post-build\post-build.yml
-      parameters:
-        publishingInfraVersion: 3
-        validateDependsOn:
-          - build
-        enableSourceLinkValidation: true
+# Publish and validation steps. Only run in official builds
+- ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
+  - template: \eng\common\templates\post-build\post-build.yml
+    parameters:
+      publishingInfraVersion: 3
+      validateDependsOn:
+        - build
+      enableSourceLinkValidation: true
