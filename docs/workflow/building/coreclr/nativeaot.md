@@ -24,7 +24,7 @@ The Native AOT toolchain can be currently built for Linux (x64/arm64), macOS (x6
 There are two kinds of binary artifacts produced by the build and needed for development: the runtime libraries and the cross-targeting compilers, ILC and RyuJit. They are built differently and separately.
 
 For the runtime libraries:
-- Clone the [emsdk](https://github.com/emscripten-core/emsdk) repository and use the `emsdk.bat` script it comes with to [install](https://emscripten.org/docs/getting_started/downloads.html) (and optionally "activate", i. e. set the relevant environment variables permanently) the Emscripten SDK, which will be used by the native build as a sort of "virtualized" build environment. It is recommended to use the same Emscripten version that [the CI](https://github.com/dotnet/runtimelab/blob/feature/NativeAOT-LLVM/eng/pipelines/runtimelab/install-emscripten.cmd#L14-L18) uses.
+- Clone the [emsdk](https://github.com/emscripten-core/emsdk) repository and use the `emsdk.bat` script it comes with to [install](https://emscripten.org/docs/getting_started/downloads.html) (and optionally "activate", i. e. set the relevant environment variables permanently) the Emscripten SDK, which will be used by the native build as a sort of "virtualized" build environment. It is recommended to use the same Emscripten version that [the CI](https://github.com/dotnet/runtimelab/blob/feature/NativeAOT-LLVM/eng/pipelines/runtimelab/install-emscripten.ps1#L16-L20) uses.
   ```
   git clone https://github.com/emscripten-core/emsdk
   cd emsdk

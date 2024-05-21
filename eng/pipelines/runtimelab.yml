@@ -50,29 +50,26 @@ extends:
     - stage: Build
       jobs:
 
-        - ${{ if ne(variables.isOfficialBuild, true) }}:
-          #
-          # Build and test with Debug libraries and Debug runtime
-          #
-          - template: /eng/pipelines/common/platform-matrix.yml
-            parameters:
-              jobTemplate: /eng/pipelines/common/global-build-job.yml
-              helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
-              buildConfig: debug
-              platforms:
-              - linux_x64
-              - osx_x64
-              - windows_x64
-              - Browser_wasm_win
-              - Browser_wasm_linux
-              - wasi_wasm_win
-              jobParameters:
-                timeoutInMinutes: 300
-                buildArgs: -s clr.aot+libs+nativeaot.packages -c debug -rc $(_BuildConfig)
-                postBuildSteps:
-                  - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-                    parameters:
-                      librariesConfiguration: Debug
+        #
+        # Build and test with Debug libraries and Debug runtime
+        #
+        - template: /eng/pipelines/common/platform-matrix.yml
+          parameters:
+            jobTemplate: /eng/pipelines/common/global-build-job.yml
+            helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
+            buildConfig: debug
+            platforms:
+            - osx_x64
+            - windows_x64
+            - Browser_wasm_win
+            - wasi_wasm_win
+            jobParameters:
+              timeoutInMinutes: 300
+              buildArgs: -s clr.aot+libs+nativeaot.packages -c debug -rc $(_BuildConfig)
+              postBuildSteps:
+                - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+                  parameters:
+                    librariesConfiguration: Debug
 
         #
         # Build and test with Debug libraries and Checked runtime
@@ -83,7 +80,6 @@ extends:
             helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
             buildConfig: checked
             platforms:
-#            - linux_x64
             - windows_x64
             jobParameters:
               timeoutInMinutes: 300
@@ -103,7 +99,7 @@ extends:
             helixQueuesTemplate: /eng/pipelines/libraries/helix-queues-setup.yml
             buildConfig: release
             platforms:
-#            - linux_x64
+            - linux_x64
             - osx_x64
             - windows_x64
             - Browser_wasm_win

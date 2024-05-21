@@ -14,7 +14,6 @@ namespace ILCompiler.DependencyAnalysis
     public sealed class LLVMCodegenNodeFactory : NodeFactory
     {
         private readonly Dictionary<string, ExternMethodAccessorNode> _externSymbolsWithAccessors = new();
-        private readonly Dictionary<string, EcmaMethod> _runtimeExports = new();
 
         public LLVMCodegenNodeFactory(
             CompilerTypeSystemContext context,
@@ -41,12 +40,6 @@ namespace ILCompiler.DependencyAnalysis
                   preinitializationManager,
                   devirtualizationManager)
         {
-            InitializeRuntimeExportsMap(roots);
-        }
-
-        public override IMethodNode RuntimeExportManagedEntrypoint(string name)
-        {
-            return _runtimeExports.TryGetValue(name, out EcmaMethod export) ? MethodEntrypoint(export) : null;
         }
 
         internal ExternMethodAccessorNode ExternSymbolWithAccessor(string name, MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
@@ -93,11 +86,6 @@ namespace ILCompiler.DependencyAnalysis
                 }
                 else if (method.HasCustomAttribute("System.Runtime", "RuntimeImportAttribute"))
                 {
-                    if (RuntimeExportManagedEntrypoint(((EcmaMethod)method).GetRuntimeImportName()) is IMethodNode methodNode)
-                    {
-                        return methodNode;
-                    }
-
                     return new RuntimeImportMethodNode(method, NameMangler);
                 }
             }
@@ -131,26 +119,6 @@ namespace ILCompiler.DependencyAnalysis
         protected override ISymbolNode CreateReadyToRunHelperNode(ReadyToRunHelperKey helperCall)
         {
             return new ReadyToRunHelperNode(helperCall.HelperId, helperCall.Target);
-        }
-
-        private void InitializeRuntimeExportsMap(IEnumerable<ICompilationRootProvider> roots)
-        {
-            foreach (ICompilationRootProvider root in roots)
-            {
-                if (root is UnmanagedEntryPointsRootProvider unmanagedRoot)
-                {
-                    foreach (EcmaMethod export in unmanagedRoot.ExportedMethods)
-                    {
-                        if (CompilationModuleGroup.ContainsMethodBody(export, unboxingStub: false))
-                        {
-                            if (export.GetRuntimeExportName() is string name)
-                            {
-                                _runtimeExports.Add(name, export);
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }

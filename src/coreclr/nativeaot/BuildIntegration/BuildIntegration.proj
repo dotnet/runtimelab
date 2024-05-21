@@ -1,5 +1,7 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
-  <Import Project="../Directory.Build.props" />
+<Project Sdk="Microsoft.Build.Traversal">
+  <PropertyGroup>
+    <RestoreUseStaticGraphEvaluation>false</RestoreUseStaticGraphEvaluation>
+  </PropertyGroup>
 
   <PropertyGroup>
     <OutputPath>$(RuntimeBinDir)/build/</OutputPath>
@@ -9,7 +11,12 @@
     <Content Include="*.*" Exclude="$(MSBuildProjectFile)" />
   </ItemGroup>
 
-  <Target Name="Build">
+  <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
+  <ItemGroup>
+    <ProjectReference Include="$(LibrariesProjectRoot)\System.Runtime.InteropServices.JavaScript\gen\JSImportGenerator\JSImportGenerator.csproj" OutputItemType="Analyzer" />
+  </ItemGroup>
+
+  <Target Name="CopyAfterBuild" AfterTargets="Build">
     <Copy SourceFiles="@(Content)" DestinationFolder="$(OutputPath)" />
 
     <!-- Create breadcrumb to disable dynamic linking of release crt for debug runtime -->
@@ -27,7 +34,11 @@
       Files="$(RuntimeBinDir)/aotsdk/nonportable.txt"
       Condition="'$(TargetsWindows)'=='true' or '$(PortableBuild)' == 'true'" />
 
+    <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
+    <ItemGroup>
+      <AnalyzerFile Include="$(ArtifactsBinDir)Microsoft.Interop.SourceGeneration\$(Configuration)\netstandard2.0\*" />
+      <AnalyzerFile Include="$(ArtifactsBinDir)JSImportGenerator\$(Configuration)\netstandard2.0\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(AnalyzerFile)" DestinationFolder="$(RuntimeBinDir)\analyzers\dotnet\cs" />
   </Target>
-
-  <Target Name="Restore" />
 </Project>

@@ -105,11 +105,10 @@ namespace Internal.JitInterface
             if (method != null)
             {
                 _this.Get_CORINFO_SIG_INFO(method, pSig, scope: null);
-                if (method.IsUnmanagedCallersOnly || node is RuntimeImportMethodNode)
+                if (method.IsUnmanagedCallersOnly)
                 {
                     pSig->callConv = CorInfoCallConv.CORINFO_CALLCONV_UNMANAGED;
                 }
-
                 return 1;
             }
 
@@ -141,14 +140,6 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        public static uint isRuntimeImport(IntPtr thisHandle, CORINFO_METHOD_STRUCT_* ftn)
-        {
-            CorInfoImpl _this = GetThis(thisHandle);
-            MethodDesc method = _this.HandleToObject(ftn);
-            return method.IsInternalCall && _this._compilation.NodeFactory.MethodEntrypoint(method) is RuntimeImportMethodNode ? 1u : 0u;
-        }
-
-        [UnmanagedCallersOnly]
         public static CorInfoType getPrimitiveTypeForTrivialWasmStruct(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd)
         {
             var _this = GetThis(thisHandle);
@@ -168,10 +159,7 @@ namespace Internal.JitInterface
             IMethodNode methodNode = _this._methodCodeNode;
             RyuJitCompilation compilation = _this._compilation;
 
-            string alternativeName =
-                compilation.GetRuntimeExportManagedEntrypointName(methodNode.Method) ??
-                compilation.NodeFactory.GetSymbolAlternateName(methodNode);
-
+            string alternativeName = compilation.NodeFactory.GetSymbolAlternateName(methodNode);
             return (alternativeName != null) ? (byte*)_this.GetPin(StringToUTF8(alternativeName)) : null;
         }
 
@@ -409,7 +397,6 @@ namespace Internal.JitInterface
             GetMangledFilterFuncletName,
             GetSignatureForMethodSymbol,
             AddCodeReloc,
-            IsRuntimeImport,
             GetPrimitiveTypeForTrivialWasmStruct,
             GetTypeDescriptor,
             GetAlternativeFunctionName,
@@ -443,7 +430,6 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.GetMangledFilterFuncletName] = (delegate* unmanaged<IntPtr, uint, byte*>)&getMangledFilterFuncletName;
             jitImports[(int)EEApiId.GetSignatureForMethodSymbol] = (delegate* unmanaged<IntPtr, void*, CORINFO_SIG_INFO*, int>)&getSignatureForMethodSymbol;
             jitImports[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
-            jitImports[(int)EEApiId.IsRuntimeImport] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint>)&isRuntimeImport;
             jitImports[(int)EEApiId.GetPrimitiveTypeForTrivialWasmStruct] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType>)&getPrimitiveTypeForTrivialWasmStruct;
             jitImports[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor*, void>)&getTypeDescriptor;
             jitImports[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;

@@ -82,12 +82,6 @@ namespace ILCompiler.DependencyAnalysis
             {
                 foreach (DependencyNode depNode in nodes)
                 {
-                    if (depNode is LLVMMethodCodeNode runtimeExportNode && runtimeExportNode.Method.HasCustomAttribute("System.Runtime", "RuntimeExportAttribute"))
-                    {
-                        objectWriter.EmitRuntimeExportThunk(runtimeExportNode);
-                        continue;
-                    }
-
                     ObjectNode node = depNode as ObjectNode;
                     if (node == null)
                         continue;
@@ -407,54 +401,6 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        private void EmitRuntimeExportThunk(LLVMMethodCodeNode methodNode)
-        {
-            MethodDesc method = methodNode.Method;
-            Debug.Assert(method.HasCustomAttribute("System.Runtime", "RuntimeExportAttribute") && methodNode.CompilationCompleted);
-
-            LLVMValueRef managedFunc = GetOrCreateLLVMFunction(methodNode);
-            LLVMTypeRef managedFuncType = managedFunc.GetValueType();
-
-            // Native signature: managed minus the shadow stack.
-            LLVMTypeRef[] managedFuncParamTypes = managedFuncType.ParamTypes;
-            LLVMTypeRef[] nativeFuncParamTypes = new LLVMTypeRef[managedFuncParamTypes.Length - 1];
-            Array.Copy(managedFuncParamTypes, 1, nativeFuncParamTypes, 0, nativeFuncParamTypes.Length);
-
-            LLVMTypeRef nativeFuncType = LLVMTypeRef.CreateFunction(managedFuncType.ReturnType, nativeFuncParamTypes, false);
-            using Utf8Name nativeFuncName = GetUtf8Name(_compilation.NodeFactory.GetSymbolAlternateName(methodNode));
-            LLVMValueRef nativeFunc = GetOrCreateLLVMFunction(nativeFuncName, nativeFuncType);
-
-            using LLVMBuilderRef builder = _module.Context.CreateBuilder();
-            LLVMBasicBlockRef block = nativeFunc.AppendBasicBlock("ManagedCallBlock");
-            builder.PositionAtEnd(block);
-
-            // Get the shadow stack. Since we are wrapping a runtime export, the caller is (by definition) managed, so we must have set up the shadow
-            // stack already and can bypass the init check.
-            LLVMTypeRef getShadowStackFuncSig = LLVMTypeRef.CreateFunction(_ptrType, Array.Empty<LLVMTypeRef>());
-            LLVMValueRef getShadowStackFunc = GetOrCreateLLVMFunction("RhpGetShadowStackTop"u8, getShadowStackFuncSig);
-            LLVMValueRef shadowStack = builder.BuildCall2(getShadowStackFuncSig, getShadowStackFunc, Array.Empty<LLVMValueRef>());
-
-            int argsCount = managedFuncParamTypes.Length;
-            Span<LLVMValueRef> args = argsCount > 100 ? new LLVMValueRef[argsCount] : stackalloc LLVMValueRef[argsCount];
-            args[0] = shadowStack;
-
-            for (int i = 0; i < nativeFuncParamTypes.Length; i++)
-            {
-                args[i + 1] = nativeFunc.GetParam((uint)i);
-            }
-
-            LLVMValueRef returnValue = CreateCall(builder, managedFunc, args, "");
-
-            if (method.Signature.ReturnType.IsVoid)
-            {
-                builder.BuildRetVoid();
-            }
-            else
-            {
-                builder.BuildRet(returnValue);
-            }
-        }
-
         private void GetCodeForReadyToRunGenericHelper(ReadyToRunGenericHelperNode node, NodeFactory factory)
         {
             if (node.Id == ReadyToRunHelperId.DelegateCtor)
@@ -555,9 +501,10 @@ namespace ILCompiler.DependencyAnalysis
                 return;
             }
 
+            LLVMTypeRef helperFuncType = node.Id == ReadyToRunHelperId.ResolveVirtualFunction
+                ? LLVMTypeRef.CreateFunction(_ptrType, [_ptrType, /* this */ _ptrType], IsVarArg: false)
+                : LLVMTypeRef.CreateFunction(_ptrType, [_ptrType], IsVarArg: false);
             using Utf8Name helperFuncName = GetMangledUtf8Name(node);
-            LLVMTypeRef helperFuncType = LLVMTypeRef.CreateFunction(
-                _ptrType, stackalloc[] { _ptrType /* shadow stack or "this" */ }, IsVarArg: false);
             LLVMValueRef helperFunc = GetOrCreateLLVMFunction(helperFuncName, helperFuncType);
 
             using LLVMBuilderRef builder = _module.Context.CreateBuilder();
@@ -612,23 +559,24 @@ namespace ILCompiler.DependencyAnalysis
                 case ReadyToRunHelperId.ResolveVirtualFunction:
                     {
                         MethodDesc targetMethod = (MethodDesc)node.Target;
+                        LLVMValueRef objThis = helperFunc.GetParam(1);
 
                         if (targetMethod.OwningType.IsInterface)
                         {
                             // TODO-LLVM: would be nice to use pointers instead of IntPtr in "RhpResolveInterfaceMethod".
                             LLVMTypeRef resolveFuncType = LLVMTypeRef.CreateFunction(
-                                _intPtrType, stackalloc[] { _ptrType, _intPtrType }, IsVarArg: false);
+                                _intPtrType, [_ptrType, _ptrType, _intPtrType], IsVarArg: false);
                             LLVMValueRef resolveFunc = GetOrCreateLLVMFunction("RhpResolveInterfaceMethod"u8, resolveFuncType);
 
                             LLVMValueRef cell = GetSymbolReferenceValue(factory.InterfaceDispatchCell(targetMethod));
                             LLVMValueRef cellArg = builder.BuildPtrToInt(cell, _intPtrType, "cellArg");
-                            result = builder.BuildCall2(resolveFuncType, resolveFunc, stackalloc[] { helperFunc.GetParam(0), cellArg }, "");
+                            result = CreateCall(builder, resolveFunc, [helperFunc.GetParam(0), objThis, cellArg]);
                             result = builder.BuildIntToPtr(result, _ptrType, "pInterfaceFunc");
                         }
                         else
                         {
                             Debug.Assert(!targetMethod.CanMethodBeInSealedVTable(factory));
-                            result = OutputCodeForVTableLookup(builder, helperFunc.GetParam(0), targetMethod);
+                            result = OutputCodeForVTableLookup(builder, objThis, targetMethod);
                         }
                     }
                     break;

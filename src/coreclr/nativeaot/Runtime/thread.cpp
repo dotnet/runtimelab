@@ -1329,6 +1329,7 @@ EXTERN_C NOINLINE void FASTCALL RhpReversePInvokeAttachOrTrapThread2(ReversePInv
 // PInvoke
 //
 
+#ifndef HOST_WASM
 FCIMPL1(void, RhpReversePInvoke, ReversePInvokeFrame * pFrame)
 {
     Thread * pCurThread = ThreadStore::RawGetCurrentThread();
@@ -1348,14 +1349,12 @@ FCIMPLEND
 
 #ifdef USE_PORTABLE_HELPERS
 
-#ifndef HOST_WASM
 FCIMPL1(void, RhpPInvoke, PInvokeTransitionFrame* pFrame)
 {
     Thread * pCurThread = ThreadStore::RawGetCurrentThread();
     pCurThread->InlinePInvoke(pFrame);
 }
 FCIMPLEND
-#endif // !HOST_WASM
 
 FCIMPL1(void, RhpPInvokeReturn, PInvokeTransitionFrame* pFrame)
 {
@@ -1365,5 +1364,6 @@ FCIMPL1(void, RhpPInvokeReturn, PInvokeTransitionFrame* pFrame)
 FCIMPLEND
 
 #endif //USE_PORTABLE_HELPERS
+#endif // !HOST_WASM
 
 #endif // !DACCESS_COMPILE

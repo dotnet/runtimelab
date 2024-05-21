@@ -23,7 +23,6 @@ enum class EEApiId
     GetMangledFilterFuncletName,
     GetSignatureForMethodSymbol,
     AddCodeReloc,
-    IsRuntimeImport,
     GetPrimitiveTypeForTrivialWasmStruct,
     GetTypeDescriptor,
     GetAlternativeFunctionName,
@@ -174,31 +173,6 @@ GCInfo* Llvm::getGCInfo()
     return _gcInfo;
 }
 
-bool Llvm::callRequiresShadowStackSave(const GenTreeCall* call) const
-{
-    // In general, if the call is itself not managed (does not have a shadow stack argument) **and** may call
-    // back into managed code, we need to save the shadow stack pointer, so that the RPI frame can pick it up.
-    // Another case where the save/restore is required is when calling into native runtime code that can trigger
-    // a GC (canonical example: allocators), to communicate shadow stack bounds to the roots scan.
-    //
-    if (call->IsHelperCall())
-    {
-        return helperCallRequiresShadowStackSave(call->GetHelperNum());
-    }
-
-    // SPGCT calls are assumed to never RPI by contract.
-    return !callHasShadowStackArg(call) && !call->IsSuppressGCTransition();
-}
-
-bool Llvm::helperCallRequiresShadowStackSave(CorInfoHelpFunc helperFunc) const
-{
-    // Save/restore is needed if the helper doesn't have a shadow stack argument, unless we know it won't call
-    // back into managed code or has special semantics. TODO-LLVM-CQ: mark (make, if required) more helpers
-    // "HFIF_NO_RPI_OR_GC".
-    unsigned helperFlags = getHelperFuncInfo(helperFunc).Flags;
-    return (helperFlags & (HFIF_SS_ARG | HFIF_NO_RPI_OR_GC)) == HFIF_NONE;
-}
-
 bool Llvm::callHasShadowStackArg(const GenTreeCall* call) const
 {
     return callHasManagedCallingConvention(call);
@@ -214,12 +188,6 @@ bool Llvm::callHasManagedCallingConvention(const GenTreeCall* call) const
     if (call->IsHelperCall())
     {
         return helperCallHasManagedCallingConvention(call->GetHelperNum());
-    }
-
-    // Runtime imports are effectively unmanaged but are not tracked as such.
-    if ((call->gtCallType == CT_USER_FUNC) && IsRuntimeImport(call->gtCallMethHnd))
-    {
-        return false;
     }
 
     return !call->IsUnmanaged();
@@ -275,10 +243,10 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_UMOD) CORINFO_TYPE_UINT, { CORINFO_TYPE_UINT, CORINFO_TYPE_UINT }, HFIF_SS_ARG },
 
         // Implemented in "Runtime\MathHelpers.cpp".
-        { FUNC(CORINFO_HELP_LLSH) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_INT } },
-        { FUNC(CORINFO_HELP_LRSH) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_INT } },
-        { FUNC(CORINFO_HELP_LRSZ) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_INT } },
-        { FUNC(CORINFO_HELP_LMUL) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_LONG } },
+        { FUNC(CORINFO_HELP_LLSH) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_INT }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LRSH) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_INT }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LRSZ) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_INT }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_LMUL) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_LONG }, HFIF_SS_ARG },
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
         { FUNC(CORINFO_HELP_LMUL_OVF) CORINFO_TYPE_LONG, { CORINFO_TYPE_LONG, CORINFO_TYPE_LONG }, HFIF_SS_ARG },
@@ -289,36 +257,36 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_ULMOD) CORINFO_TYPE_ULONG, { CORINFO_TYPE_ULONG, CORINFO_TYPE_ULONG }, HFIF_SS_ARG },
 
         // Implemented in "Runtime\MathHelpers.cpp".
-        { FUNC(CORINFO_HELP_LNG2DBL) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_LONG } },
-        { FUNC(CORINFO_HELP_ULNG2DBL) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_ULONG } },
-        { FUNC(CORINFO_HELP_DBL2INT) CORINFO_TYPE_INT, { CORINFO_TYPE_DOUBLE } },
+        { FUNC(CORINFO_HELP_LNG2DBL) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_LONG }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_ULNG2DBL) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_ULONG }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_DBL2INT) CORINFO_TYPE_INT, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
         { FUNC(CORINFO_HELP_DBL2INT_OVF) CORINFO_TYPE_INT, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
 
         // Implemented in "Runtime\MathHelpers.cpp".
-        { FUNC(CORINFO_HELP_DBL2LNG) CORINFO_TYPE_LONG, { CORINFO_TYPE_DOUBLE } },
+        { FUNC(CORINFO_HELP_DBL2LNG) CORINFO_TYPE_LONG, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
         { FUNC(CORINFO_HELP_DBL2LNG_OVF) CORINFO_TYPE_LONG, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
 
         // Implemented in "Runtime\MathHelpers.cpp".
-        { FUNC(CORINFO_HELP_DBL2UINT) CORINFO_TYPE_UINT, { CORINFO_TYPE_DOUBLE } },
+        { FUNC(CORINFO_HELP_DBL2UINT) CORINFO_TYPE_UINT, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
         { FUNC(CORINFO_HELP_DBL2UINT_OVF) CORINFO_TYPE_UINT, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
 
         // Implemented in "Runtime\MathHelpers.cpp".
-        { FUNC(CORINFO_HELP_DBL2ULNG) CORINFO_TYPE_ULONG, { CORINFO_TYPE_DOUBLE } },
+        { FUNC(CORINFO_HELP_DBL2ULNG) CORINFO_TYPE_ULONG, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
         { FUNC(CORINFO_HELP_DBL2ULNG_OVF) CORINFO_TYPE_ULONG, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
 
-        // Implemented in "Runtime\MathHelpers.cpp".
-        { FUNC(CORINFO_HELP_FLTREM) CORINFO_TYPE_FLOAT, { CORINFO_TYPE_FLOAT, CORINFO_TYPE_FLOAT } },
-        { FUNC(CORINFO_HELP_DBLREM) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_DOUBLE, CORINFO_TYPE_DOUBLE } },
-        { FUNC(CORINFO_HELP_FLTROUND) CORINFO_TYPE_FLOAT, { CORINFO_TYPE_FLOAT } },
-        { FUNC(CORINFO_HELP_DBLROUND) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_DOUBLE } },
+        // Implemented as "fmodf"/"fmod".
+        { FUNC(CORINFO_HELP_FLTREM) CORINFO_TYPE_FLOAT, { CORINFO_TYPE_FLOAT, CORINFO_TYPE_FLOAT }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_DBLREM) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_DOUBLE, CORINFO_TYPE_DOUBLE }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_FLTROUND) },
+        { FUNC(CORINFO_HELP_DBLROUND) },
 
         // Runtime export, implemented in "Runtime.Base\src\System\Runtime\RuntimeExports.cs".
         { FUNC(CORINFO_HELP_NEWFAST) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
@@ -380,7 +348,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_RETHROW) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
 
         // Implemented in "Runtime\MiscHelpers.cpp".
-        { FUNC(CORINFO_HELP_USER_BREAKPOINT) CORINFO_TYPE_VOID, { } },
+        { FUNC(CORINFO_HELP_USER_BREAKPOINT) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG},
 
         // Implemented in "Runtime.Base\src\System\ThrowHelpers.cs".
         { FUNC(CORINFO_HELP_RNGCHKFAIL) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
@@ -393,7 +361,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_VERIFICATION) },
 
         // Implemented in "Runtime\EHHelpers.cpp".
-        { FUNC(CORINFO_HELP_FAIL_FAST) CORINFO_TYPE_VOID, { }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_FAIL_FAST) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG | HFIF_NO_RPI_OR_GC },
 
         // NYI in NativeAOT.
         { FUNC(CORINFO_HELP_METHOD_ACCESS_EXCEPTION) },
@@ -415,10 +383,10 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_STOP_FOR_GC) },
 
         // (Not) implemented in "Runtime\portable.cpp".
-        { FUNC(CORINFO_HELP_POLL_GC) CORINFO_TYPE_VOID, { } },
+        { FUNC(CORINFO_HELP_POLL_GC) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG},
 
         // Debug-only helpers, implemented in "Runtime\wasm\GcStress.cpp".
-        { FUNC(CORINFO_HELP_STRESS_GC) CORINFO_TYPE_BYREF, { CORINFO_TYPE_BYREF, CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_STRESS_GC) CORINFO_TYPE_BYREF, { CORINFO_TYPE_BYREF, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_CHECK_OBJ) CORINFO_TYPE_CLASS, { CORINFO_TYPE_CLASS }, HFIF_NO_RPI_OR_GC },
 
         // Write barriers, implemented in "Runtime\portable.cpp".
@@ -493,7 +461,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_MEMCPY) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_NATIVEUINT }, HFIF_SS_ARG },
 
         // Implemented as plain "memset".
-        { FUNC(CORINFO_HELP_NATIVE_MEMSET) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT, CORINFO_TYPE_NATIVEUINT } },
+        { FUNC(CORINFO_HELP_NATIVE_MEMSET) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT, CORINFO_TYPE_NATIVEUINT }, HFIF_NO_RPI_OR_GC },
 
         // Not used in NativeAOT.
         { FUNC(CORINFO_HELP_RUNTIMEHANDLE_METHOD) },
@@ -528,7 +496,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_READYTORUN_THREADSTATIC_BASE) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_THREADSTATIC_BASE_NOCTOR) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_NONGCTHREADSTATIC_BASE) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_READYTORUN_VIRTUAL_FUNC_PTR) CORINFO_TYPE_PTR, { CORINFO_TYPE_CLASS } },
+        { FUNC(CORINFO_HELP_READYTORUN_VIRTUAL_FUNC_PTR) CORINFO_TYPE_PTR, { CORINFO_TYPE_CLASS }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG | HFIF_THROW_OR_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_READYTORUN_DELEGATE_CTOR) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS, CORINFO_TYPE_CLASS, CORINFO_TYPE_PTR }, HFIF_SS_ARG | HFIF_VAR_ARG },
         { FUNC(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) CORINFO_TYPE_PTR, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
@@ -571,10 +539,10 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         // [R]PI helpers, implemented in "Runtime\thread.cpp".
         { FUNC(CORINFO_HELP_JIT_PINVOKE_BEGIN) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_SS_ARG | HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_JIT_PINVOKE_END) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
-        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
-        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER_TRACK_TRANSITIONS) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
-        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
-        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT_TRACK_TRANSITIONS) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR } },
+        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER_TRACK_TRANSITIONS) },
+        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT_TRACK_TRANSITIONS) },
 
         // Implemented in "CoreLib\src\System\Runtime\TypeLoaderExports.cs".
         { FUNC(CORINFO_HELP_GVMLOOKUP_FOR_SLOT) CORINFO_TYPE_NATIVEINT, { CORINFO_TYPE_CLASS, CORINFO_TYPE_RT_HANDLE }, HFIF_SS_ARG }, // Oddity: IntPtr used for a pointer.
@@ -597,7 +565,6 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_DISPATCH_INDIRECT_CALL) },
 
         { FUNC(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP) CORINFO_TYPE_PTR, { }, HFIF_NO_RPI_OR_GC },
-        { FUNC(CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_LLVM_EH_CATCH) CORINFO_TYPE_CLASS, { CORINFO_TYPE_NATIVEUINT }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_NATIVEUINT }, HFIF_NO_RPI_OR_GC },
@@ -610,6 +577,25 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
 
     // Make sure our array is up-to-date.
     static_assert_no_msg(ArrLen(s_infos) == CORINFO_HELP_COUNT);
+
+#ifdef DEBUG
+    static bool s_infosVerified = false;
+    if (!s_infosVerified)
+    {
+        for (const HelperFuncInfo& info : s_infos)
+        {
+            if (info.IsInitialized())
+            {
+                unsigned flags = info.Flags;
+
+                // Only helpers that will never call managed code are allowed to not have the shadow stack argument.
+                assert(((flags & HFIF_SS_ARG) != 0) || ((flags & HFIF_NO_RPI_OR_GC) != 0));
+            }
+        }
+
+        s_infosVerified = true;
+    }
+#endif // DEBUG
 
     assert(helperFunc < CORINFO_HELP_COUNT);
     const HelperFuncInfo& info = s_infos[helperFunc];
@@ -810,11 +796,6 @@ bool Llvm::GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORI
 void Llvm::AddCodeReloc(void* handle)
 {
     CallEEApi<EEApiId::AddCodeReloc, void>(m_pEECorInfo, handle);
-}
-
-bool Llvm::IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle) const
-{
-    return CallEEApi<EEApiId::IsRuntimeImport, uint32_t>(m_pEECorInfo, methodHandle) != 0;
 }
 
 CorInfoType Llvm::GetPrimitiveTypeForTrivialWasmStruct(CORINFO_CLASS_HANDLE structHandle)

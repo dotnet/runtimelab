@@ -173,8 +173,7 @@ if [[ -n "$__RequestedBuildComponents" ]]; then
 fi
 
 if [[ "$__CMakeTarget" == *"wasmjit"* ]]; then
-  echo wasmjit
-  __ExtraCmakeArgs="$__ExtraCmakeArgs -DCLR_CMAKE_BUILD_LLVM_JIT=1"
+  __CMakeArgs="$__CMakeArgs -DCLR_CMAKE_BUILD_LLVM_JIT=1"
 
   if [[ "$__BuildType" == "Release" ]]; then
     if [[ -n $LLVM_CMAKE_CONFIG_RELEASE ]]; then
@@ -191,6 +190,7 @@ if [[ "$__CMakeTarget" == *"wasmjit"* ]]; then
     exit 1
   fi
 fi
+
 
 if [[ -z "$__CMakeTarget" ]]; then
     __CMakeTarget="install"

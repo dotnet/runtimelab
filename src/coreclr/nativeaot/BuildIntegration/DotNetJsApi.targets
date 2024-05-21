@@ -7,6 +7,7 @@
   <ItemGroup>
     <EmccExportedFunction Include="_free" />
     <EmccExportedFunction Include="_htons" />
+    <EmccExportedFunction Include="_main" />
     <EmccExportedFunction Include="_malloc" />
     <EmccExportedFunction Include="_memalign" />
     <EmccExportedFunction Include="_memset" />
@@ -36,13 +37,13 @@
 
     <!-- Pseudo-namespace for the JS interop symbols. -->
     <DirectPInvoke Include="System.Runtime.InteropServices.JavaScript" />
+    <UnmanagedEntryPointsAssembly Include="System.Runtime.InteropServices.JavaScript" />
   </ItemGroup>
 
   <Target Name="PrepareDotNetJsApiForLinking">
     <PropertyGroup>
       <_EmccExportedLibraryFunction>&quot;[@(EmccExportedLibraryFunction -> '%27%(Identity)%27', ',')]&quot;</_EmccExportedLibraryFunction>
       <_EmccExportedRuntimeMethods>&quot;[@(EmccExportedRuntimeMethod -> '%27%(Identity)%27', ',')]&quot;</_EmccExportedRuntimeMethods>
-      <_EmccExportedFunctions>@(EmccExportedFunction -> '%(Identity)',',')</_EmccExportedFunctions>
     </PropertyGroup>
     <ItemGroup>
       <!-- Default values for flags passed from emscripten to dotnet/runtime.js. Left here only to minimize changes to typescript -->
@@ -76,20 +77,19 @@
       <!-- Exported functions required by user or runtime API -->
       <_DotNetJsLinkerFlag Include="-s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$(_EmccExportedLibraryFunction)" Condition="'$(_EmccExportedLibraryFunction)' != ''" />
       <_DotNetJsLinkerFlag Include="-s EXPORTED_RUNTIME_METHODS=$(_EmccExportedRuntimeMethods)" />
-      <_DotNetJsLinkerFlag Include="-s EXPORTED_FUNCTIONS=$(_EmccExportedFunctions)" Condition="'$(ExportsFile)' == ''" /><!-- Multiple args in the same rsp file is not support, add functions to app exports -->
       <_DotNetJsLinkerFlag Include="$(EmccExtraLDFlags)" />
     </ItemGroup>
     <ItemGroup>
       <CustomLinkerArg Include="@(_DotNetJsLinkerFlag)" />
     </ItemGroup>
-    <ReadLinesFromFile File="$(ExportsFile)" Condition="'$(ExportsFile)' != ''">
+    <ReadLinesFromFile File="$(ExportsFile)">
       <Output TaskParameter="Lines" ItemName="_ExistingExports" />
     </ReadLinesFromFile>
-    <ItemGroup Condition="'$(ExportsFile)' != ''">
+    <ItemGroup>
       <_ExportsToAddToExportsFile Include="@(EmccExportedFunction)" />
       <_ExportsToAddToExportsFile Remove="@(_ExistingExports)" />
     </ItemGroup>
-    <WriteLinesToFile File="$(ExportsFile)" Lines="@(_ExportsToAddToExportsFile)" Overwrite="false" Encoding="utf-8" Condition="'@(_ExportsToAddToExportsFile->Count())' != '0'" />
+    <WriteLinesToFile File="$(ExportsFile)" Lines="@(_ExportsToAddToExportsFile)" Overwrite="false" Condition="'@(_ExportsToAddToExportsFile->Count())' != '0'" />
   </Target>
   <Target Name="CopyDotnetJsAfterLinking" AfterTargets="LinkNativeLlvm">
     <ItemGroup>
@@ -98,5 +98,12 @@
       <_FilesToCopyToNative Include="@(WasmExtraFilesToDeploy)" /><!-- User defined extra files to be included in the build output -->
     </ItemGroup>
     <Copy SourceFiles="@(_FilesToCopyToNative)" DestinationFolder="$(NativeOutputPath)" />
+  </Target>
+  <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
+  <Target Name="ReplaceJSImportGenerator" AfterTargets="ResolveTargetingPackAssets">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)" Condition="'%(Analyzer.AssemblyName)' == 'Microsoft.Interop.JavaScript.JSImportGenerator' or '%(Analyzer.AssemblyName)' == 'Microsoft.Interop.SourceGeneration'" />
+      <Analyzer Include="$(MSBuildThisFileDirectory)..\analyzers\**\*.dll" />
+    </ItemGroup>
   </Target>
 </Project>

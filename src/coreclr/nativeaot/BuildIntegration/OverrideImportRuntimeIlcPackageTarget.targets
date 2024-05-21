@@ -1,0 +1,12 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- NativeAOT-LLVM: override ImportRuntimeIlcPackageTarget to not depend on the SDK-provided ResolvedILCompilerPack item -->
+  <Target Name="ImportRuntimeIlcPackageTarget" Condition="'$(BuildingFrameworkLibrary)' != 'true' and '$(_targetArchitecture)' == 'wasm'" DependsOnTargets="$(ImportRuntimeIlcPackageTargetDependsOn)" BeforeTargets="Publish">
+    <Error Condition="'@(PackageDefinitions)' == ''" Text="The PackageDefinitions ItemGroup is required for target ImportRuntimeIlcPackageTarget" />
+
+    <PropertyGroup>
+      <IlcHostPackagePath Condition="'%(PackageDefinitions.Name)' == '$(_hostPackageName)'">%(PackageDefinitions.ResolvedPath)</IlcHostPackagePath>
+      <RuntimePackagePath Condition="'%(PackageDefinitions.Name)' == '$(_targetPackageName)'">%(PackageDefinitions.ResolvedPath)</RuntimePackagePath>
+    </PropertyGroup>
+
+  </Target>
+</Project>

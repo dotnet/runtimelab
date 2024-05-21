@@ -219,8 +219,9 @@ if (CLR_CMAKE_TARGET_ARCH_WASM)
     ${ARCH_SOURCES_DIR}/AllocFast.cpp
     ${ARCH_SOURCES_DIR}/ExceptionHandling/ExceptionHandling.cpp
     ${ARCH_SOURCES_DIR}/GcStress.cpp
-    ${ARCH_SOURCES_DIR}/StubDispatch.cpp
     ${ARCH_SOURCES_DIR}/PInvoke.cpp
+    ${ARCH_SOURCES_DIR}/StubDispatch.cpp
+    ${ARCH_SOURCES_DIR}/WriteBarriers.cpp
   )
 endif (CLR_CMAKE_TARGET_ARCH_WASM)
 

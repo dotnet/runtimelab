@@ -91,8 +91,8 @@ function(create_standalone_jit)
     # We'll be linking against LLVM built without /guard:ehcont, so disable it.
     set_target_properties(${TARGETDETAILS_TARGET} PROPERTIES CLR_EH_CONTINUATION OFF)
 
+    # Only look at "our" LLVM with LLVM_CMAKE_CONFIG.
     find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG} NO_DEFAULT_PATH)
-    find_package(LLVM REQUIRED CONFIG)
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_INCLUDE_DIRS})
     separate_arguments(LLVM_DEFINITIONS)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_DEFINITIONS})

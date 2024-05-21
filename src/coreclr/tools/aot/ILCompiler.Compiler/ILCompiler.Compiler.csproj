@@ -441,7 +441,6 @@
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmReadyToRunHelperNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmTentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmUnboxingStubNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmNodeFactory.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_LoongArch64\LoongArch64TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_RiscV64\RiscV64TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_X64\X64TentativeMethodNode.cs" />

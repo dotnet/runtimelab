@@ -342,8 +342,6 @@ private:
 
     GCInfo* getGCInfo();
 
-    bool callRequiresShadowStackSave(const GenTreeCall* call) const;
-    bool helperCallRequiresShadowStackSave(CorInfoHelpFunc helperFunc) const;
     bool callHasShadowStackArg(const GenTreeCall* call) const;
     bool helperCallHasShadowStackArg(CorInfoHelpFunc helperFunc) const;
     bool callHasManagedCallingConvention(const GenTreeCall* call) const;
@@ -369,7 +367,6 @@ private:
     const char* GetMangledFilterFuncletName(unsigned index);
     bool GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig);
     void AddCodeReloc(void* handle);
-    bool IsRuntimeImport(CORINFO_METHOD_HANDLE methodHandle) const;
     CorInfoType GetPrimitiveTypeForTrivialWasmStruct(CORINFO_CLASS_HANDLE structHandle);
     void GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle, TypeDescriptor* pTypeDescriptor);
     const char* GetAlternativeFunctionName();
@@ -437,6 +434,7 @@ private:
     void lowerVirtualStubCall(GenTreeCall* callNode);
     void insertNullCheckForCall(GenTreeCall* callNode);
     void lowerDelegateInvoke(GenTreeCall* callNode);
+    void lowerReversePInvokeExit(GenTreeCall* callNode);
     void lowerUnmanagedCall(GenTreeCall* callNode);
     void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerCallReturn(GenTreeCall* callNode);

@@ -795,9 +795,6 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
                     mangledName = "RhpGetOrInitShadowStackTop";
                     break;
-                case CorInfoHelpFunc.CORINFO_HELP_LLVM_SET_SHADOW_STACK_TOP:
-                    mangledName = "RhpSetShadowStackTop";
-                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_CATCH:
                     mangledName = "RhpHandleExceptionWasmCatch";
                     break;
@@ -832,8 +829,7 @@ namespace Internal.JitInterface
             ISymbolNode entryPoint;
             if (mangledName != null)
             {
-                entryPoint = _compilation.NodeFactory.RuntimeExportManagedEntrypoint(mangledName);
-                entryPoint ??= _compilation.NodeFactory.ExternSymbol(mangledName);
+                entryPoint = _compilation.NodeFactory.ExternSymbol(mangledName);
             }
             else
             {
