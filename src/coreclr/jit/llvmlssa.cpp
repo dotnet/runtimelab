@@ -1482,7 +1482,7 @@ private:
         {
             if (block != m_currentBlock)
             {
-                m_actions.Push({AllocationActionKind::Block, m_currentBlockIndex++});
+                m_actions.Push({AllocationActionKind::Block, {m_currentBlockIndex++}});
                 m_currentBlock = block;
             }
         }
@@ -1636,6 +1636,10 @@ private:
         template <typename... TArgs>
         void PrintFormatted(char** pBuffer, const char* format, TArgs... args)
         {
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-security"
+#endif // __clang__
             if (pBuffer == nullptr)
             {
                 printf(format, args...);
@@ -1644,6 +1648,9 @@ private:
             {
                 *pBuffer += sprintf(*pBuffer, format, args...);
             }
+#ifdef __clang__
+#pragma clang diagnostic pop            
+#endif // __clang__
         }
 
         void PrintAction(const AllocationAction& action, char** pBuffer = nullptr)
