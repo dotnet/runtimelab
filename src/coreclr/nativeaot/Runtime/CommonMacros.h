@@ -127,29 +127,6 @@ inline bool IS_ALIGNED(T* val, uintptr_t alignment);
 
 #define OS_PAGE_SIZE    PalOsPageSize()
 
-#if defined(HOST_AMD64)
-
-#define DATA_ALIGNMENT  8
-
-#elif defined(HOST_X86)
-
-#define DATA_ALIGNMENT  4
-
-#elif defined(HOST_ARM)
-
-#define DATA_ALIGNMENT  4
-
-#elif defined(HOST_ARM64)
-
-#define DATA_ALIGNMENT  8
-
-#elif defined(HOST_WASM)
-
-#define DATA_ALIGNMENT  4
-
-#else
-#error Unsupported target architecture
-#endif
 #endif // __GCENV_BASE_INCLUDED__
 
 #if defined(TARGET_ARM)
@@ -350,7 +327,7 @@ enum STARTUP_TIMELINE_EVENT_ID
 };
 
 #ifdef PROFILE_STARTUP
-extern unsigned __int64 g_startupTimelineEvents[NUM_STARTUP_TIMELINE_EVENTS];
+extern uint64_t g_startupTimelineEvents[NUM_STARTUP_TIMELINE_EVENTS];
 #define STARTUP_TIMELINE_EVENT(eventid) g_startupTimelineEvents[eventid] = PalQueryPerformanceCounter();
 #else // PROFILE_STARTUP
 #define STARTUP_TIMELINE_EVENT(eventid)

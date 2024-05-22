@@ -45,6 +45,7 @@ function fixupSymbolName (name: string) {
 export function mono_wasm_bind_cs_function (method: MonoMethod, assemblyName: string, namespaceName: string, shortClassName: string, methodName: string, signatureHash: number, signature: JSFunctionSignature): void {
     const fullyQualifiedName = `[${assemblyName}] ${namespaceName}.${shortClassName}:${methodName}`;
     const mark = startMeasure();
+<<<<<<< HEAD
     mono_log_debug(`Binding [JSExport] ${namespaceName}.${shortClassName}:${methodName} from ${assemblyName} assembly`);
     if (NativeAOT) {
         const namespaceNameWithDot = namespaceName ? `${namespaceName}.` : "";
@@ -54,6 +55,9 @@ export function mono_wasm_bind_cs_function (method: MonoMethod, assemblyName: st
         if (!method)
             throw new Error(`Could not find method: ${wrapper_name} in ${js_fqn}`);
     }
+=======
+    mono_log_debug(() => `Binding [JSExport] ${namespaceName}.${shortClassName}:${methodName} from ${assemblyName} assembly`);
+>>>>>>> main
     const version = get_signature_version(signature);
     mono_assert(version === 2, () => `Signature version ${version} mismatch.`);
 

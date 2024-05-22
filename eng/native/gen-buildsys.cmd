@@ -47,13 +47,21 @@ if /i "%__Arch%" == "wasm" (
             exit /B 1
         )
 
+<<<<<<< HEAD
         set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+=======
+        set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TOOLCHAIN_FILE=!EMSDK_PATH!/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+>>>>>>> main
         set __UseEmcmake=1
     )
     if /i "%__Os%" == "wasi" (
         if "%WASI_SDK_PATH%" == "" (
             if not exist "%__repoRoot%\src\mono\wasi\wasi-sdk" (
+<<<<<<< HEAD
                 echo Error: Should set WASI_SDK_PATH environment variable pointing to wasi-sdk root.
+=======
+                echo Error: Should set WASI_SDK_PATH environment variable pointing to WASI SDK root.
+>>>>>>> main
                 exit /B 1
             )
 
@@ -99,6 +107,7 @@ if not "%__ConfigureOnly%" == "1" (
 
 
 if /i "%__UseEmcmake%" == "1" (
+<<<<<<< HEAD
     REM workaround for https://github.com/emscripten-core/emscripten/issues/15440 - emscripten cache lock problems
     REM build the ports for ZLIB upfront
     embuilder build zlib
@@ -107,6 +116,9 @@ if /i "%__UseEmcmake%" == "1" (
     REM delayed expansion is getting turned off. TODO: remove this and see if CI is ok and hence its just my machine.
     call emcmake "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir% 
 setlocal EnableDelayedExpansion EnableExtensions
+=======
+    call "!EMSDK_PATH!/emsdk_env.cmd" > nul 2>&1 && emcmake "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir%
+>>>>>>> main
 ) else (
     "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir%
 )

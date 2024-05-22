@@ -77,6 +77,7 @@ namespace System.Runtime.CompilerServices
         }
 
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        [return: NotNullIfNotNull(nameof(obj))]
         public static extern object? GetObjectValue(object? obj);
 
         [RequiresUnreferencedCode("Trimmer can't guarantee existence of class constructor")]
@@ -257,6 +258,30 @@ namespace System.Runtime.CompilerServices
             object? result = null;
             InternalBox(new QCallTypeHandle(ref rtType), ref target, ObjectHandleOnStack.Create(ref result));
             return result;
+        }
+
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        private static extern int SizeOf(QCallTypeHandle handle);
+
+        /// <summary>
+        /// Get the size of an object of the given type.
+        /// </summary>
+        /// <param name="type">The type to get the size of.</param>
+        /// <returns>The size of instances of the type.</returns>
+        /// <exception cref="ArgumentException">The passed-in type is not a valid type to get the size of.</exception>
+        /// <remarks>
+        /// This API returns the same value as <see cref="Unsafe.SizeOf{T}"/> for the type that <paramref name="type"/> represents.
+        /// </remarks>
+        public static int SizeOf(RuntimeTypeHandle type)
+        {
+            if (type.Value == IntPtr.Zero)
+                ThrowHelper.ThrowArgumentNullException(ExceptionArgument.type);
+
+            Type typeObj = Type.GetTypeFromHandle(type)!;
+            if (typeObj.ContainsGenericParameters || typeObj.IsGenericParameter || typeObj == typeof(void))
+                throw new ArgumentException(SR.Arg_TypeNotSupported);
+
+            return SizeOf(new QCallTypeHandle(ref type));
         }
     }
 }

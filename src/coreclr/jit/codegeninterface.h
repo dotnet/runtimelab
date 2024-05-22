@@ -47,6 +47,21 @@ struct RegState
 
 CodeGenInterface* getCodeGenerator(Compiler* comp);
 
+class NodeInternalRegisters
+{
+    typedef JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, regMaskTP> NodeInternalRegistersTable;
+    NodeInternalRegistersTable                                         m_table;
+
+public:
+    NodeInternalRegisters(Compiler* comp);
+
+    void      Add(GenTree* tree, regMaskTP reg);
+    regNumber Extract(GenTree* tree, regMaskTP mask = static_cast<regMaskTP>(-1));
+    regNumber GetSingle(GenTree* tree, regMaskTP mask = static_cast<regMaskTP>(-1));
+    regMaskTP GetAll(GenTree* tree);
+    unsigned  Count(GenTree* tree, regMaskTP mask = static_cast<regMaskTP>(-1));
+};
+
 class CodeGenInterface
 {
     friend class emitter;
@@ -123,9 +138,10 @@ public:
 
     GCInfo gcInfo;
 
-    RegSet   regSet;
-    RegState intRegState;
-    RegState floatRegState;
+    RegSet                regSet;
+    RegState              intRegState;
+    RegState              floatRegState;
+    NodeInternalRegisters internalRegisters;
 
 protected:
     Compiler* compiler;

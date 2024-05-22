@@ -329,6 +329,7 @@ void * ReturnFromUniversalTransition;
 EXTERN_C void * ReturnFromUniversalTransition_DebugStepTailCall;
 void * ReturnFromUniversalTransition_DebugStepTailCall;
 
+<<<<<<< HEAD
 #endif // defined(USE_PORTABLE_HELPERS) && !defined(HOST_WASM)
 
 #if defined(USE_PORTABLE_HELPERS)
@@ -352,6 +353,8 @@ FCIMPLEND
 #if defined(USE_PORTABLE_HELPERS)
 
 #ifndef HOST_WASM
+=======
+>>>>>>> main
 #if !defined (HOST_ARM64)
 FCIMPL2(void, RhpAssignRef, Object ** dst, Object * ref)
 {

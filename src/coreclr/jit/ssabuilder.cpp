@@ -1149,7 +1149,13 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
 #ifdef TARGET_WASM
         if (block->IsLIR())
         {
+<<<<<<< HEAD
             for (GenTree* tree : LIR::AsRange(succ))
+=======
+            // A prefix of the statements of the block are phi definition nodes. If we complete
+            // processing that prefix, exit.
+            if (!stmt->IsPhiDefnStmt())
+>>>>>>> main
             {
                 if (!tree->IsPhiNode())
                 {
@@ -1206,8 +1212,9 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
             {
                 if ((memoryKind == GcHeap) && m_pCompiler->byrefStatesMatchGcHeapStates)
                 {
-                    // We've already propagated the "out" number to the phi shared with ByrefExposed,
-                    // but still need to update bbMemorySsaPhiFunc to be in sync between GcHeap and ByrefExposed.
+                    // We've already propagated the "out" number to the phi shared with
+                    // ByrefExposed, but still need to update bbMemorySsaPhiFunc to be in sync
+                    // between GcHeap and ByrefExposed.
                     assert(memoryKind > ByrefExposed);
                     assert(block->bbMemorySsaNumOut[memoryKind] == block->bbMemorySsaNumOut[ByrefExposed]);
 #if !defined(TARGET_WASM)
@@ -1229,8 +1236,9 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
                     BasicBlock::MemoryPhiArg* curArg = succMemoryPhi;
                     unsigned                  ssaNum = block->bbMemorySsaNumOut[memoryKind];
                     bool                      found  = false;
-                    // This is a quadratic algorithm.  We might need to consider some switch over to a hash table
-                    // representation for the arguments of a phi node, to make this linear.
+                    // This is a quadratic algorithm.  We might need to consider some switch over
+                    // to a hash table representation for the arguments of a phi node, to make this
+                    // linear.
                     while (curArg != nullptr)
                     {
                         if (curArg->m_ssaNum == ssaNum)

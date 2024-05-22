@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+<<<<<<< HEAD
 import NativeAOT from "consts:nativeAOT";
 
 import { normalize_exception } from "../invoke-js";
@@ -9,6 +10,8 @@ import { stringToMonoStringRoot } from "../strings";
 import { Int32Ptr } from "../types/emscripten";
 import { MonoObject, WasmRoot } from "../types/internal";
 
+=======
+>>>>>>> main
 const SURROGATE_HIGHER_START = "\uD800";
 const SURROGATE_HIGHER_END = "\uDBFF";
 const SURROGATE_LOWER_START = "\uDC00";
@@ -50,6 +53,7 @@ export function isSurrogate (str: string, startIdx: number): boolean {
         SURROGATE_LOWER_START <= str[startIdx + 1] &&
         str[startIdx + 1] <= SURROGATE_LOWER_END;
 }
+<<<<<<< HEAD
 
 function _wrap_error_flag (is_exception: Int32Ptr | null, ex: any): string {
     const res = normalize_exception(ex);
@@ -79,3 +83,5 @@ export function wrap_no_error_root (is_exception: Int32Ptr | null, result?: Wasm
         result.clear();
     }
 }
+=======
+>>>>>>> main

@@ -49,13 +49,39 @@ extends:
     stages:
     - stage: Build
       jobs:
+<<<<<<< HEAD
 
         #
         # Build and test with Debug libraries and Debug runtime
+=======
+        #
+        # Build the whole product with Checked CoreCLR and run runtime tests
         #
         - template: /eng/pipelines/common/platform-matrix.yml
           parameters:
             jobTemplate: /eng/pipelines/common/global-build-job.yml
+            helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
+            buildConfig: checked
+            platforms:
+            - linux_x64
+            - windows_x64
+            jobParameters:
+              timeoutInMinutes: 200
+              buildArgs: -s clr+libs+hosts+packs -c debug -rc $(_BuildConfig)
+              postBuildSteps:
+                - template: /eng/pipelines/common/templates/runtimes/build-runtime-tests-and-send-to-helix.yml
+                  parameters:
+                    creator: dotnet-bot
+                    testRunNamePrefixSuffix: CoreCLR_$(_BuildConfig)
+
+        #
+        # Build the whole product with Release CoreCLR and run libraries tests
+>>>>>>> main
+        #
+        - template: /eng/pipelines/common/platform-matrix.yml
+          parameters:
+            jobTemplate: /eng/pipelines/common/global-build-job.yml
+<<<<<<< HEAD
             helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
             buildConfig: debug
             platforms:
@@ -73,10 +99,29 @@ extends:
 
         #
         # Build and test with Debug libraries and Checked runtime
+=======
+            helixQueuesTemplate: /eng/pipelines/libraries/helix-queues-setup.yml
+            buildConfig: release
+            platforms:
+            - linux_x64
+            - windows_x64
+            jobParameters:
+              timeoutInMinutes: 180
+              buildArgs: -s clr+libs+libs.tests+hosts+packs -c $(_BuildConfig) /p:ArchiveTests=true
+              postBuildSteps:
+                - template: /eng/pipelines/libraries/helix.yml
+                  parameters:
+                    creator: dotnet-bot
+                    testRunNamePrefixSuffix: Libraries_$(_BuildConfig)
+
+        #
+        # Build and test libraries AllConfigurations
+>>>>>>> main
         #
         - template: /eng/pipelines/common/platform-matrix.yml
           parameters:
             jobTemplate: /eng/pipelines/common/global-build-job.yml
+<<<<<<< HEAD
             helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
             buildConfig: checked
             platforms:
@@ -111,3 +156,12 @@ extends:
                 - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
                   parameters:
                     librariesConfiguration: Release
+=======
+            buildConfig: ${{ variables.debugOnPrReleaseOnRolling }}
+            platforms:
+            - windows_x64
+            jobParameters:
+              buildArgs: -test -s tools+libs+libs.tests -allConfigurations -c $(_BuildConfig) /p:TestAssemblies=false /p:TestPackages=true
+              nameSuffix: Libraries_AllConfigurations
+              timeoutInMinutes: 150
+>>>>>>> main
