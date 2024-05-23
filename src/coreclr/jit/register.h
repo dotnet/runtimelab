@@ -149,8 +149,6 @@ REGDEF(STK,    8+KBASE,    0x0000,       "STK"  )
 // (in particular, fixing the assumption that "this" is always enregistered), we will
 // pretend we have one register (both integer and FP, for simplicity).
 //
-//REGDEF(R0,                          0, 0x01, "R0")
-//REGDEF(F0,                          1, 0x02, "F0")
 REGDEF(STK,                         2, 0x04, "SS")
 REGDEF(STK_CANDIDATE_UNCONDITIONAL, 3, 0x08, "SS_UNCONDITIONAL")
 REGDEF(STK_CANDIDATE_TENTATIVE,     4, 0x10, "SS_TENTATIVE")
