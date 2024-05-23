@@ -811,9 +811,9 @@ CONFIG_INTEGER(JitDispIns, W("JitDispIns"), 0)
 #endif // defined(TARGET_LOONGARCH64)
 
 #ifdef TARGET_WASM
-CONFIG_INTEGER(JitCheckLlvmIR, W("JitCheckLlvmIR"), 0)
-CONFIG_INTEGER(JitRunLssaTests, W("JitRunLssaTests"), 0)
-CONFIG_INTEGER(JitGcStress, W("JitGcStress"), 0)
+RELEASE_CONFIG_INTEGER(JitCheckLlvmIR, W("JitCheckLlvmIR"), 0)
+RELEASE_CONFIG_INTEGER(JitRunLssaTests, W("JitRunLssaTests"), 0)
+RELEASE_CONFIG_INTEGER(JitGcStress, W("JitGcStress"), 0)
 
 #ifdef DEBUG
 CONFIG_STRING(JitEnableLssaRange, W("JitEnableLssaRange"))
