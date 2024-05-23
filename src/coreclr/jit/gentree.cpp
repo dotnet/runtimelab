@@ -12131,12 +12131,14 @@ void Compiler::gtDispNode(GenTree* tree, IndentStack* indentStack, _In_ _In_opt_
 
         // for tracking down problems in reguse prediction or liveness tracking
 
+#if !defined(TARGET_WASM)
         if (verbose && 0)
         {
             printf(" RR=");
             dspRegMask(JitTls::GetCompiler()->codeGen->internalRegisters.GetAll(tree));
             printf("\n");
         }
+#endif //!TARGET_WASM
     }
 }
 

@@ -602,7 +602,6 @@ bool Thread::IsHijackTarget(void* address)
     return false;
 }
 
-#ifdef FEATURE_HIJACK
 void Thread::Hijack()
 {
     ASSERT(ThreadStore::GetCurrentThread() == ThreadStore::GetSuspendingThread());

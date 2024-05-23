@@ -292,7 +292,7 @@ public:
     }
 #endif
 
-#ifndef TARGET_X86
+#if !defined(TARGET_X86) && !defined(TARGET_WASM32) 
     explicit operator unsigned int() const
     {
         return (unsigned int)low;

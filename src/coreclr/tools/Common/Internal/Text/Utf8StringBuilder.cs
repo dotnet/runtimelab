@@ -41,11 +41,7 @@ namespace Internal.Text
         public Utf8StringBuilder Append(ReadOnlySpan<byte> value)
         {
             Ensure(value.Length);
-<<<<<<< HEAD
-            value.CopyTo(_buffer.AsSpan(_length, value.Length));
-=======
             value.CopyTo(_buffer.AsSpan(_length));
->>>>>>> main
             _length += value.Length;
             return this;
         }

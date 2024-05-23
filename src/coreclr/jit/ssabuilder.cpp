@@ -1149,13 +1149,7 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
 #ifdef TARGET_WASM
         if (block->IsLIR())
         {
-<<<<<<< HEAD
             for (GenTree* tree : LIR::AsRange(succ))
-=======
-            // A prefix of the statements of the block are phi definition nodes. If we complete
-            // processing that prefix, exit.
-            if (!stmt->IsPhiDefnStmt())
->>>>>>> main
             {
                 if (!tree->IsPhiNode())
                 {
@@ -1180,8 +1174,8 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
             // Walk the statements for phi nodes.
             for (Statement* const stmt : succ->Statements())
             {
-                // A prefix of the statements of the block are phi definition nodes. If we complete processing
-                // that prefix, exit.
+                // A prefix of the statements of the block are phi definition nodes. If we complete
+                // processing that prefix, exit.
                 if (!stmt->IsPhiDefnStmt())
                 {
                     break;

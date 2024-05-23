@@ -18431,6 +18431,7 @@ bool gc_heap::should_retry_other_heap (int gen_number, size_t size)
     }
 }
 
+#ifdef BACKGROUND_GC
 void gc_heap::bgc_record_uoh_allocation(int gen_number, size_t size)
 {
     assert((gen_number >= uoh_start_generation) && (gen_number < total_generation_count));
@@ -18453,6 +18454,7 @@ void gc_heap::bgc_record_uoh_allocation(int gen_number, size_t size)
         uoh_a_no_bgc[gen_number - uoh_start_generation] += size;
     }
 }
+#endif //BACKGROUND_GC
 
 allocation_state gc_heap::allocate_uoh (int gen_number,
                                           size_t size,
@@ -50040,6 +50042,7 @@ void gc_heap::check_and_adjust_bgc_tuning (int gen_number, size_t physical_size,
 }
 #endif //BGC_SERVO_TUNING
 
+#ifdef BACKGROUND_GC
 void gc_heap::get_and_reset_uoh_alloc_info()
 {
     total_uoh_a_last_bgc = 0;
@@ -50081,6 +50084,7 @@ void gc_heap::get_and_reset_uoh_alloc_info()
 
     total_uoh_a_last_bgc = total_uoh_a_no_bgc + total_uoh_a_bgc_marking + total_uoh_a_bgc_planning;
 }
+#endif //BACKGROUND_GC
 
 bool gc_heap::is_pm_ratio_exceeded()
 {

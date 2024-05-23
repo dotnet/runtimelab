@@ -396,7 +396,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_ASSIGN_BYREF) }, // Not used on WASM.
 
         // Not used in NativeAOT (or at all in some cases).
-        { FUNC(CORINFO_HELP_ASSIGN_STRUCT) },
+        { FUNC(CORINFO_HELP_BULK_WRITEBARRIER) },
         { FUNC(CORINFO_HELP_GETFIELD8) },
         { FUNC(CORINFO_HELP_SETFIELD8) },
         { FUNC(CORINFO_HELP_GETFIELD16) },
@@ -615,7 +615,7 @@ CorInfoType Llvm::getLlvmArgTypeForArg(CorInfoType argSigType, CORINFO_CLASS_HAN
     }
     //
     // WASM C ABI is documented here: https://github.com/WebAssembly/tool-conventions/blob/main/BasicCABI.md.
-    // In essense, structs are passed by reference except if they are trivial wrappers of a primitive (scalar).
+    // In essence, structs are passed by reference except if they are trivial wrappers of a primitive (scalar).
     // We follow this rule for the native calling convention as well as the managed one.
     //
     bool isByRef = false;

@@ -1116,7 +1116,7 @@ namespace ILCompiler.DependencyAnalysis
             public override string ToString() => Encoding.UTF8.GetString(this);
 
             public static implicit operator ReadOnlySpan<byte>(in Utf8Name name) =>
-                name._builder.UnderlyingArray.AsSpan(name._offset, name._length);
+                name._builder.AsSpan().Slice(name._offset, name._length);
         }
     }
 }

@@ -35,12 +35,12 @@ namespace Internal.JitInterface
         }
 
         // So the char* in cpp is terminated.
-        private static byte[] AppendNullByte(byte[] inputArray)
+        private static byte[] AppendNullByte(ReadOnlySpan<byte> inputArray)
         {
-            byte[] nullTerminated = new byte[inputArray.Length + 1];
-            inputArray.CopyTo(nullTerminated, 0);
+            Span<byte> nullTerminated = new Span<byte>(new byte[inputArray.Length + 1]);
+            inputArray.CopyTo(nullTerminated);
             nullTerminated[inputArray.Length] = 0;
-            return nullTerminated;
+            return nullTerminated.ToArray();
         }
 
         [UnmanagedCallersOnly]
@@ -50,7 +50,7 @@ namespace Internal.JitInterface
             MethodDesc method = _this.HandleToObject(ftn);
             Utf8String mangledName = _this._compilation.NameMangler.GetMangledMethodName(method);
 
-            return (byte*)_this.GetPin(AppendNullByte(mangledName.UnderlyingArray));
+            return (byte*)_this.GetPin(AppendNullByte(mangledName.AsSpan()));
         }
 
         [UnmanagedCallersOnly]
@@ -63,7 +63,7 @@ namespace Internal.JitInterface
             node.AppendMangledName(_this._compilation.NameMangler, sb);
 
             sb.Append("\0");
-            return (byte*)_this.GetPin(sb.UnderlyingArray);
+            return (byte*)_this.GetPin(sb.AsSpan().ToArray());
         }
 
         [UnmanagedCallersOnly]
@@ -74,7 +74,7 @@ namespace Internal.JitInterface
             _this.GetMangledFilterFuncletName(sb, index);
 
             sb.Append("\0");
-            return (byte*)_this.GetPin(sb.UnderlyingArray);
+            return (byte*)_this.GetPin(sb.AsSpan().ToArray());
         }
 
         public void GetMangledFilterFuncletName(Utf8StringBuilder builder, uint index)
@@ -116,7 +116,7 @@ namespace Internal.JitInterface
             // to specify whether it represents a function or data symbol (and what its signature is if the former).
             if (node is ExternSymbolNode externSymbolNode)
             {
-                ReadOnlySpan<byte> name = externSymbolNode.Utf8Name.UnderlyingArray;
+                ReadOnlySpan<byte> name = externSymbolNode.Utf8Name.AsSpan();
                 if (name.StartsWith("RhpNew"u8))
                 {
                     if (name.SequenceEqual("RhpNewFast"u8) ||

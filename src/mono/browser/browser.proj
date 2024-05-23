@@ -37,6 +37,8 @@
     <_EmccCompileRspPath>$(NativeBinDir)src\emcc-compile.rsp</_EmccCompileRspPath>
     <_EmccLinkRspPath>$(NativeBinDir)src\emcc-link.rsp</_EmccLinkRspPath>
     <EmSdkLLVMAr>$(EMSDK_PATH)\bin\llvm-ar</EmSdkLLVMAr>
+    <!-- NativeAOT-LLMVM does not use Emscripten tools built from source. -->
+    <EmSdkLLVMAr Condition="'$(RuntimeFlavor)' == 'CoreCLR'">$(EMSDK_PATH)\upstream\bin\llvm-ar</EmSdkLLVMAr>
     <EmSdkLLVMAr Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(EmSdkLLVMAr).exe</EmSdkLLVMAr>
   </PropertyGroup>
 
@@ -496,13 +498,9 @@
 
     <Copy SourceFiles="$(NativeBinDir)dotnet.native.js;
                        $(NativeBinDir)package.json;
-<<<<<<< HEAD
-                       $(NativeBinDir)dotnet.native.wasm"
-          Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
-=======
-                       $(NativeBinDir)dotnet.native.wasm;
+                       $(NativeBinDir)dotnet.native.wasm
                        $(NativeBinDir)dotnet.globalization.js"
->>>>>>> main
+          Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
           DestinationFolder="$(MicrosoftNetCoreAppRuntimePackNativeDir)"
           SkipUnchangedFiles="true" />
 

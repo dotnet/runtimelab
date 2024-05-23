@@ -44,12 +44,12 @@
   #define FEATURE_EH_CALLFINALLY_THUNKS 1  // Generate call-to-finally code in "thunks" in the enclosing EH region, protected by "cloned finally" clauses.
   #define CSE_CONSTS               1       // Enable if we want to CSE constants
 
-  #define RBM_ALLFLOAT             RBM_F0
+  #define RBM_ALLFLOAT             REG_STK
   #define RBM_ALLDOUBLE            RBM_ALLFLOAT
-  #define REG_FP_FIRST             REG_F0
-  #define REG_FP_LAST              REG_F0
-  #define FIRST_FP_ARGREG          REG_F0
-  #define LAST_FP_ARGREG           REG_F0
+  #define REG_FP_FIRST             REG_STK
+  #define REG_FP_LAST              REG_STK
+  #define FIRST_FP_ARGREG          REG_STK
+  #define LAST_FP_ARGREG           REG_STK
 
   #define REGNUM_BITS              6       // number of bits in a REG_*
   #define REGMASK_BITS             32      // number of bits in a REGNUM_MASK
@@ -67,10 +67,12 @@
   #define RBM_INT_CALLEE_SAVED     RBM_NONE
   #define RBM_FLT_CALLEE_SAVED     RBM_NONE
 
-  #define RBM_CALLEE_SAVED         RBM_R0
+  #define RBM_CALLEE_SAVED         REG_STK
   #define RBM_CALLEE_TRASH         RBM_NONE
 
-  #define RBM_ALLINT               RBM_R0
+  #define RBM_ALLINT               REG_STK
+
+  #define RBM_CALL_GC_REGS_ORDER   RBM_NONE
 
   #define CNT_CALLEE_SAVED         1
   #define CNT_CALLEE_TRASH         0 // This and below are only used for CSE heuristics; thus an optimistic estimate for an "average" target.
@@ -78,20 +80,21 @@
 
   #define CNT_CALLEE_SAVED_FLOAT   8
   #define CNT_CALLEE_TRASH_FLOAT   4
+  #define CNT_CALL_GC_REGS         (CNT_CALLEE_SAVED) // This is how targetx86 is defined.
 
-  #define REG_CALLEE_SAVED_ORDER   REG_R0
-  #define RBM_CALLEE_SAVED_ORDER   RBM_R0
+  #define REG_CALLEE_SAVED_ORDER   REG_STK
+  #define RBM_CALLEE_SAVED_ORDER   REG_STK
 
   // GenericPInvokeCalliHelper VASigCookie Parameter
-  #define REG_PINVOKE_COOKIE_PARAM REG_R0
+  #define REG_PINVOKE_COOKIE_PARAM REG_STK
 
   // GenericPInvokeCalliHelper unmanaged target Parameter
-  #define REG_PINVOKE_TARGET_PARAM REG_R0
+  #define REG_PINVOKE_TARGET_PARAM REG_STK
 
   // The following defines are useful for iterating a regNumber
-  #define REG_FIRST                REG_R0
-  #define REG_INT_FIRST            REG_R0
-  #define REG_INT_LAST             REG_R0
+  #define REG_FIRST                REG_STK
+  #define REG_INT_FIRST            REG_STK
+  #define REG_INT_LAST             REG_STK
   #define REG_INT_COUNT            0
   #define REG_NEXT(reg)           ((regNumber)((unsigned)(reg) + 1))
   #define REG_PREV(reg)           ((regNumber)((unsigned)(reg) - 1))
@@ -107,20 +110,20 @@
 
   #define MAX_REG_ARG              1
   #define MAX_FLOAT_REG_ARG        1
-  #define REG_ARG_FIRST            REG_R0
-  #define REG_ARG_LAST             REG_R0
+  #define REG_ARG_FIRST            REG_STK
+  #define REG_ARG_LAST             REG_STK
   #define INIT_ARG_STACK_SLOT      0
 
-  #define REG_ARG_0                REG_R0
+  #define REG_ARG_0                REG_STK
 
   extern const regNumber intArgRegs [MAX_REG_ARG];
   extern const regMaskTP intArgMasks[MAX_REG_ARG];
   extern const regNumber fltArgRegs [MAX_FLOAT_REG_ARG];
   extern const regMaskTP fltArgMasks[MAX_FLOAT_REG_ARG];
 
-  #define REG_FLTARG_0             REG_F0
+  #define REG_FLTARG_0             REG_STK
 
-  #define RBM_ARG_REGS             RBM_R0
-  #define RBM_FLTARG_REGS          RBM_F0
+  #define RBM_ARG_REGS             REG_STK
+  #define RBM_FLTARG_REGS          REG_STK
 
   // clang-format on

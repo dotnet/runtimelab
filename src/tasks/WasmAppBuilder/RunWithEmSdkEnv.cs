@@ -25,7 +25,12 @@ namespace Microsoft.WebAssembly.Build.Tasks
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
+                // TODO-LLVM: The .cmd version does not exists in the version of Emscripten NAOT-LLVM uses, so check for both.
                 string envScriptPath = Path.Combine(EmSdkPath, "emsdk_env.cmd");
+                if (!File.Exists(envScriptPath))
+                {
+                    envScriptPath = Path.Combine(EmSdkPath, "emsdk_env.bat");
+                }
                 if (!CheckEnvScript(envScriptPath))
                     return false;
 

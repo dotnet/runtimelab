@@ -1889,7 +1889,9 @@ void Compiler::lvaClassifyParameterABI()
 // first stack arg is not considered to be at offset 0.
 // TODO-Cleanup: Unify things so that x86 is consistent with other platforms
 // here and change fgMorphExpandStackArgForVarArgs to account for that.
-#ifndef TARGET_X86
+// LLVM: staock offsets are not aligned in the classifier, if they are then this passes and
+// assert(segment.Offset + segment.Size <= lvaLclExactSize(lclNum)) below fails.
+#if !defined(TARGET_X86) && !defined(TARGET_WASM)
                     assert(dscStackOffset == expected.GetStackOffset());
 #endif
                 }
@@ -5947,6 +5949,7 @@ void Compiler::lvaUpdateArgsWithInitialReg()
     }
 }
 
+#if !defined(TARGET_WASM)
 //-----------------------------------------------------------------------------
 // lvaAssignVirtualFrameOffsetsToArgs:
 //   Assign virtual frame offsets to the incoming parameters.
@@ -5970,25 +5973,12 @@ void Compiler::lvaAssignVirtualFrameOffsetsToArgs()
     relativeZero = genCountBits(prespilled) * TARGET_POINTER_SIZE;
 #endif
 
-<<<<<<< HEAD
-#if defined(TARGET_X86)
-        argOffs += TARGET_POINTER_SIZE;
-#elif defined(TARGET_AMD64) || defined(TARGET_WASM) // TODO Wasm
-        // Register arguments on AMD64 also takes stack space. (in the backing store)
-        varDsc->SetStackOffset(argOffs);
-        argOffs += TARGET_POINTER_SIZE;
-#elif defined(TARGET_ARM64)
-        // Register arguments on ARM64 only take stack space when they have a frame home.
-        // Unless on windows and in a vararg method.
-        if (compFeatureArgSplit() && this->info.compIsVarArgs)
-=======
     for (unsigned lclNum = 0; lclNum < info.compArgsCount; lclNum++)
     {
         LclVarDsc* dsc = lvaGetDesc(lclNum);
 
         int startOffset;
         if (lvaGetRelativeOffsetToCallerAllocatedSpaceForParameter(lclNum, &startOffset))
->>>>>>> main
         {
             dsc->SetStackOffset(startOffset + relativeZero);
             JITDUMP("Set V%02u to offset %d\n", lclNum, startOffset);
@@ -6006,6 +5996,7 @@ void Compiler::lvaAssignVirtualFrameOffsetsToArgs()
         }
     }
 }
+#endif // !TARGET_WASM
 
 //-----------------------------------------------------------------------------
 // lvaGetRelativeOffsetToCallerAllocatedSpaceForParameter:
