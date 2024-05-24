@@ -59,7 +59,7 @@ extends:
             helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
             buildConfig: debug
             platforms:
-            - osx_x64
+            # - osx_x64 # Upstream break.
             - windows_x64
             - Browser_wasm_win
             - wasi_wasm_win
