@@ -7545,6 +7545,20 @@ bool Compiler::IsTargetIntrinsic(NamedIntrinsic intrinsicName)
 
 bool Compiler::IsIntrinsicImplementedByUserCall(NamedIntrinsic intrinsicName)
 {
+#if defined(TARGET_WASM)
+    // TODO-LLVM: Revisit when SIMD is enabled.
+    // We want the fallback LIR expansions for these.
+    switch(intrinsicName)
+    {
+        case NI_System_Math_MultiplyAddEstimate:
+        case NI_System_Math_ReciprocalEstimate:
+        case NI_System_Math_ReciprocalSqrtEstimate:
+            return false;
+        default:
+            break;
+    }
+#endif //TARGET_WASM
+
     // Currently, if a math intrinsic is not implemented by target-specific
     // instructions, it will be implemented by a System.Math call. In the
     // future, if we turn to implementing some of them with helper calls,
