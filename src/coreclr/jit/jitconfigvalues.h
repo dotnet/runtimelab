@@ -815,9 +815,7 @@ RELEASE_CONFIG_INTEGER(JitCheckLlvmIR, W("JitCheckLlvmIR"), 0)
 RELEASE_CONFIG_INTEGER(JitRunLssaTests, W("JitRunLssaTests"), 0)
 RELEASE_CONFIG_INTEGER(JitGcStress, W("JitGcStress"), 0)
 
-#ifdef DEBUG
 CONFIG_STRING(JitEnableLssaRange, W("JitEnableLssaRange"))
-#endif // DEBUG
 #endif // TARGET_WASM
 
 // Allow to enregister locals with struct type.
