@@ -37,7 +37,7 @@
     <_EmccCompileRspPath>$(NativeBinDir)src\emcc-compile.rsp</_EmccCompileRspPath>
     <_EmccLinkRspPath>$(NativeBinDir)src\emcc-link.rsp</_EmccLinkRspPath>
     <EmSdkLLVMAr>$(EMSDK_PATH)\bin\llvm-ar</EmSdkLLVMAr>
-    <!-- NativeAOT-LLMVM does not use Emscripten tools built from source. -->
+    <!-- NativeAOT-LLVM does not use the dotnet/emsdk EMSDK, which differs in layout from EMSDK proper. -->
     <EmSdkLLVMAr Condition="'$(RuntimeFlavor)' == 'CoreCLR'">$(EMSDK_PATH)\upstream\bin\llvm-ar</EmSdkLLVMAr>
     <EmSdkLLVMAr Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(EmSdkLLVMAr).exe</EmSdkLLVMAr>
   </PropertyGroup>
