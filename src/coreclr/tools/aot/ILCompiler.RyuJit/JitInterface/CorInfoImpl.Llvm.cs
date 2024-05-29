@@ -75,7 +75,7 @@ namespace Internal.JitInterface
             _this.GetMangledFilterFuncletName(sb, index);
 
             sb.Append("\0");
-            return (byte*)_this.GetPin(sb.AsSpan().ToArray());
+            return (byte*)_this.GetPin(sb.UnderlyingArray);
         }
 
         public void GetMangledFilterFuncletName(Utf8StringBuilder builder, uint index)
