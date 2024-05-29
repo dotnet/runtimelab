@@ -394,9 +394,9 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_CHECKED_ASSIGN_REF) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS }, HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_ASSIGN_REF_ENSURE_NONHEAP) }, // NYI in NativeAOT.
         { FUNC(CORINFO_HELP_ASSIGN_BYREF) }, // Not used on WASM.
+        { FUNC(CORINFO_HELP_BULK_WRITEBARRIER) },
 
         // Not used in NativeAOT (or at all in some cases).
-        { FUNC(CORINFO_HELP_BULK_WRITEBARRIER) },
         { FUNC(CORINFO_HELP_GETFIELD8) },
         { FUNC(CORINFO_HELP_SETFIELD8) },
         { FUNC(CORINFO_HELP_GETFIELD16) },

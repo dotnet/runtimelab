@@ -155,7 +155,9 @@ var_types ABIPassingSegment::GetRegisterType() const
 //
 ABIPassingSegment ABIPassingSegment::InRegister(regNumber reg, unsigned offset, unsigned size)
 {
+#if !defined(TARGET_WASM)
     assert(reg != REG_NA);
+#endif //!TARGET_WASM - TODO-LLVM: Delete when old classifer has gone.
     ABIPassingSegment segment;
     segment.m_register    = reg;
     segment.m_stackOffset = 0;

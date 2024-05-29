@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -37,10 +38,10 @@ namespace Internal.JitInterface
         // So the char* in cpp is terminated.
         private static byte[] AppendNullByte(ReadOnlySpan<byte> inputArray)
         {
-            Span<byte> nullTerminated = new Span<byte>(new byte[inputArray.Length + 1]);
-            inputArray.CopyTo(nullTerminated);
+            byte[] nullTerminated = new byte[inputArray.Length + 1];
+            inputArray.CopyTo(new Span<byte>(nullTerminated));
             nullTerminated[inputArray.Length] = 0;
-            return nullTerminated.ToArray();
+            return nullTerminated;
         }
 
         [UnmanagedCallersOnly]
@@ -63,7 +64,7 @@ namespace Internal.JitInterface
             node.AppendMangledName(_this._compilation.NameMangler, sb);
 
             sb.Append("\0");
-            return (byte*)_this.GetPin(sb.AsSpan().ToArray());
+            return (byte*)_this.GetPin(sb.UnderlyingArray);
         }
 
         [UnmanagedCallersOnly]

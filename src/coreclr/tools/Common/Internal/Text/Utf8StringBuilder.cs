@@ -16,6 +16,7 @@ namespace Internal.Text
         {
         }
 
+        public byte[] UnderlyingArray => _buffer;
         public int Length => _length;
 
         public ReadOnlySpan<byte> AsSpan() => _buffer.AsSpan(0, _length);

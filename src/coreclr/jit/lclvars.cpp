@@ -1710,6 +1710,12 @@ void Compiler::lvaClassifyParameterABI(Classifier& classifier)
         {
             wellKnownArg = WellKnownArg::RetBuffer;
         }
+#ifdef TARGET_WASM
+        else if (i == info.compThisArg)
+        {
+            wellKnownArg = WellKnownArg::ThisPointer;
+        }
+#endif //TARGET_WASM
 #ifdef SWIFT_SUPPORT
         else if (i == lvaSwiftSelfArg)
         {
