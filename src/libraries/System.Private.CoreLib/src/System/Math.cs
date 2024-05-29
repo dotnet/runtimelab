@@ -1217,7 +1217,7 @@ namespace System
         [Intrinsic]
         public static double ReciprocalSqrtEstimate(double d)
         {
-#if MONO || TARGET_RISCV64 || TARGET_LOONGARCH64
+#if MONO || TARGET_RISCV64 || TARGET_LOONGARCH64 || TARGET_WASM
             return 1.0 / Sqrt(d);
 #else
             return ReciprocalSqrtEstimate(d);
