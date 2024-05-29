@@ -44,13 +44,12 @@ pr:
 variables:
   - name: _TeamName
     value: dotnet-core
-
 stages:
 - stage: build
   displayName: Build
   jobs:
   - ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
-    - template: /eng/pipelines/templates/build-job.yml
+    - template: /eng/pipelines/common/templates/build-job.yml
       parameters:
         osGroup: OSX
         archType: arm64
@@ -58,7 +57,7 @@ stages:
         pool:
           vmImage: 'macOS-latest'
 
-    - template: /eng/pipelines/templates/build-job.yml
+    - template: /eng/pipelines/common/templates/build-job.yml
       parameters:
         osGroup: OSX
         archType: x64

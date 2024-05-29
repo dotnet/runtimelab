@@ -22,50 +22,33 @@ trigger:
     - SECURITY.md
     - THIRD-PARTY-NOTICES.TXT
 
-pr:
-  branches:
-    include:
-    - feature/*
-    - standalone-template
-  paths:
-    include:
-    - '*'
-    exclude:
-    - eng/Version.Details.xml
-    - .github/*
-    - docs/*
-    - CODE-OF-CONDUCT.md
-    - LICENSE.TXT
-    - PATENTS.TXT
-    - README.md
-    - SECURITY.md
-    - THIRD-PARTY-NOTICES.TXT
-
 variables:
-  - name: _TeamName
+- template: /eng/pipelines/common/variables.yml@self
+  parameters:
+    templatePath: 'templates-official'
+
+- ${{ if and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}:
+  - name: TeamName
     value: dotnet-core
+extends:
+  template: /eng/pipelines/common/templates/template1es.yml@self
+  parameters:
+    stages:
+    - stage: Build
+      jobs:
+      - template: /eng/pipelines/common/templates/build-job.yml
+        parameters:
+          osGroup: Windows_NT
+          archType: x64
+          isOfficialBuild: true
+          runTests: false
+          pool:
+            name: $(DncEngInternalBuildPool)
+            image: 1es-windows-2022
+            os: windows
 
-stages:
-- stage: build
-  displayName: Build
-  jobs:
-  # Official build job needs to run on Windows_NT due to VS dependencies
-  - ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
-    - template: /eng/pipelines/templates/build-job.yml
-      parameters:
-        osGroup: Windows_NT
-        archType: x64
-        isOfficialBuild: true
-        runTests: false
-        pool:
-          name: NetCore1ESPool-Internal
-          demands: ImageOverride -equals windows.vs2022preview.amd64
-
-# Publish and validation steps. Only run in official builds
-- ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
-  - template: \eng\common\templates\post-build\post-build.yml
-    parameters:
-      publishingInfraVersion: 3
-      validateDependsOn:
-        - build
-      enableSourceLinkValidation: true
+    - ${{ if eq(variables.isOfficialBuild, true) }}:
+      - template: /eng/pipelines/common/templates/publish.yml
+        parameters:
+          isOfficialBuild: true
+          enableSourceLinkValidation: true
