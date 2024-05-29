@@ -45,7 +45,6 @@ jobs:
 
       steps:
       - script: $(_buildScript)
-                -ci
                 -pack
                 -c $(_BuildConfig)
                 $(_testBuildArg)
