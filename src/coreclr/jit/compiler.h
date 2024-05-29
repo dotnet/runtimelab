@@ -8280,8 +8280,8 @@ public:
             reg     = REG_R11;
             regMask = RBM_R11;
 #elif defined(TARGET_WASM)
-            reg     = REG_STK;
-            regMask = RBM_STK;
+            reg     = REG_R0;
+            regMask = RBM_R0;
 #elif defined(TARGET_LOONGARCH64)
             reg     = REG_T8;
             regMask = RBM_T8;

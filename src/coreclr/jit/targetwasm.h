@@ -44,11 +44,7 @@
   #define FEATURE_EH_CALLFINALLY_THUNKS 1  // Generate call-to-finally code in "thunks" in the enclosing EH region, protected by "cloned finally" clauses.
   #define CSE_CONSTS               1       // Enable if we want to CSE constants
 
-  #define RBM_R0                   REG_NA
-  #define RBM_F0                   REG_NA
-  #define REG_F0                   REG_NA
-
-  #define RBM_ALLFLOAT             REG_F0
+  #define RBM_ALLFLOAT             RBM_F0
   #define RBM_ALLDOUBLE            RBM_ALLFLOAT
   #define REG_FP_FIRST             REG_F0
   #define REG_FP_LAST              REG_F0
@@ -86,19 +82,19 @@
   #define CNT_CALLEE_TRASH_FLOAT   4
   #define CNT_CALL_GC_REGS         (CNT_CALLEE_SAVED) // This is how targetx86 is defined.
 
-  #define REG_CALLEE_SAVED_ORDER   RBM_R0
+  #define REG_CALLEE_SAVED_ORDER   REG_R0
   #define RBM_CALLEE_SAVED_ORDER   RBM_R0
 
   // GenericPInvokeCalliHelper VASigCookie Parameter
-  #define REG_PINVOKE_COOKIE_PARAM RBM_R0
+  #define REG_PINVOKE_COOKIE_PARAM REG_R0
 
   // GenericPInvokeCalliHelper unmanaged target Parameter
-  #define REG_PINVOKE_TARGET_PARAM RBM_R0
+  #define REG_PINVOKE_TARGET_PARAM REG_R0
 
   // The following defines are useful for iterating a regNumber
-  #define REG_FIRST                REG_LLVM
-  #define REG_INT_FIRST            RBM_R0
-  #define REG_INT_LAST             RBM_R0
+  #define REG_FIRST                REG_R0
+  #define REG_INT_FIRST            REG_R0
+  #define REG_INT_LAST             REG_R0
   #define REG_INT_COUNT            0
   #define REG_NEXT(reg)           ((regNumber)((unsigned)(reg) + 1))
   #define REG_PREV(reg)           ((regNumber)((unsigned)(reg) - 1))
@@ -114,11 +110,11 @@
 
   #define MAX_REG_ARG              1
   #define MAX_FLOAT_REG_ARG        1
-  #define REG_ARG_FIRST            RBM_R0
-  #define REG_ARG_LAST             RBM_R0
+  #define REG_ARG_FIRST            REG_R0
+  #define REG_ARG_LAST             REG_R0
   #define INIT_ARG_STACK_SLOT      0
 
-  #define REG_ARG_0                RBM_R0
+  #define REG_ARG_0                REG_R0
 
   extern const regNumber intArgRegs [MAX_REG_ARG];
   extern const regMaskTP intArgMasks[MAX_REG_ARG];
