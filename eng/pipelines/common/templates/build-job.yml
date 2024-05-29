@@ -14,9 +14,6 @@ jobs:
     enableTelemetry: true
     helixRepo: dotnet/runtimelab
     pool: ${{ parameters.pool }}
-    enablePublishBuildArtifacts: true
-    enablePublishBuildAssets: true
-    enablePublishUsingPipelines: true
     enableMicrobuild: true
     graphFileGeneration:
       enabled: false
@@ -37,15 +34,8 @@ jobs:
         testResultsFormat: vstest
         testRunTitle: ${{ parameters.osGroup }}_${{ parameters.archType }}_$(_BuildConfig)
 
-      ${{ if ne(parameters.container, '') }}:
-        ${{ if eq(parameters.container.registry, 'mcr') }}:
-          container: ${{ format('{0}:{1}', 'mcr.microsoft.com/dotnet-buildtools/prereqs', parameters.container.image) }}
-        ${{ if ne(parameters.container.registry, 'mcr') }}:
-          container: ${{ format('{0}:{1}', parameters.container.registry, parameters.container.image) }}
-
       variables:
         - _buildScript: build.cmd
-
         - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
           - _buildScript: ./build.sh
         
@@ -53,25 +43,17 @@ jobs:
         - ${{ if eq(parameters.runTests, true) }}:
           - _testBuildArg: -test
 
-        - _officialBuildArgs: ''
-        - ${{ if eq(parameters.isOfficialBuild, true) }}:
-          - group: DotNet-Symbol-Server-Pats
-          - _SignType: real
-          - _officialBuildArgs: -sign
-                                -publish
-                                /p:DotNetSignType=$(_SignType)
-                                /p:TeamName=$(_TeamName)
-                                /p:OfficialBuildId=$(Build.BuildNumber)
-                                /p:DotNetPublishUsingPipelines=true
-                                /p:DotNetSymbolServerTokenMsdl=$(microsoft-symbol-server-pat)
-                                /p:DotNetSymbolServerTokenSymWeb=$(symweb-symbol-server-pat)
-
       steps:
       - script: $(_buildScript)
                 -ci
                 -pack
                 -c $(_BuildConfig)
                 $(_testBuildArg)
-                $(_officialBuildArgs)
                 /p:TargetPlatform=${{ parameters.archType }}
         displayName: Build and Test
+
+      - ${{ if eq(parameters.isOfficialBuild, true) }}:
+        - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
+          parameters:
+            name: ${{ parameters.osGroup }}${{ parameters.archType }}
+            isOfficialBuild: ${{ parameters.isOfficialBuild }}

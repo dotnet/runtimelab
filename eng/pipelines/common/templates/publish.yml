@@ -1,0 +1,59 @@
+parameters:
+  publishingInfraVersion: 3
+  enableSigningValidation: false
+  enableNugetValidation: false
+  enableSourceLinkValidation: false
+
+stages:
+
+- stage: PrepareForPublish
+  displayName: Prepare for Publish
+  variables:
+  - template: /eng/common/templates-official/variables/pool-providers.yml
+  jobs:
+  # Prep artifacts: sign them and upload pipeline artifacts expected by stages-based publishing.
+  - template: /eng/pipelines/common/jobs/prepare-signed-artifacts.yml
+
+  # Publish to Build Asset Registry in order to generate the ReleaseConfigs artifact.
+  - template: /eng/common/templates-official/job/publish-build-assets.yml
+    parameters:
+      publishUsingPipelines: true
+      publishAssetsImmediately: true
+      dependsOn: PrepareSignedArtifacts
+      pool:
+        name: $(DncEngInternalBuildPool)
+        demands: ImageOverride -equals 1es-windows-2022
+      symbolPublishingAdditionalParameters: '/p:PublishSpecialClrFiles=true'
+
+# Stages-based publishing entry point
+- template: /eng/common/templates-official/post-build/post-build.yml
+  parameters:
+    publishingInfraVersion: ${{ parameters.publishingInfraVersion }}
+    validateDependsOn:
+    - PrepareForPublish
+    # The following checks are run after the build in the validation and release pipelines
+    # And thus are not enabled here. They can be enabled for dev builds for spot testing if desired
+    enableSymbolValidation: false
+    enableSigningValidation: ${{ parameters.enableSigningValidation }}
+    enableNugetValidation: ${{ parameters.enableNugetValidation }}
+    enableSourceLinkValidation: ${{ parameters.enableSourceLinkValidation }}
+    publishAssetsImmediately: true
+    SDLValidationParameters:
+      enable: false
+      artifactNames:
+      - PackageArtifacts
+      - BlobArtifacts
+      params: >-
+        -SourceToolsList @("policheck","credscan")
+        -TsaInstanceURL "$(TsaInstanceURL)"
+        -TsaProjectName "$(TsaProjectName)"
+        -TsaNotificationEmail "$(TsaNotificationEmail)"
+        -TsaCodebaseAdmin "$(TsaCodebaseAdmin)"
+        -TsaBugAreaPath "$(TsaBugAreaPath)"
+        -TsaIterationPath "$(TsaIterationPath)"
+        -TsaRepositoryName "$(TsaRepositoryName)"
+        -TsaCodebaseName "$(TsaCodebaseName)"
+        -TsaPublish $True
+    symbolPublishingAdditionalParameters: '/p:PublishSpecialClrFiles=true'
+    # Publish to blob storage.
+    publishInstallersAndChecksums: true
