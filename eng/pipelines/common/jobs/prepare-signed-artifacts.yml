@@ -44,7 +44,7 @@ jobs:
     steps:
     - script: >-
         build.cmd -ci
-        publish
+        -publish
         -configuration Release
         /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
         /p:OfficialBuildId=$(Build.BuildNumber)
