@@ -44,12 +44,14 @@ jobs:
     steps:
     - script: >-
         build.cmd -ci
-        -subset publish
+        -publish
+        -pack
         -configuration Release
         /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
         /p:OfficialBuildId=$(Build.BuildNumber)
         /p:SignType=$(_SignType)
         /p:DotNetSignType=$(_SignType)
+        /p:DotNetPublishUsingPipelines=true
         /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
       displayName: Prepare artifacts and upload to build
     
