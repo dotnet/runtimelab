@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -35,10 +36,10 @@ namespace Internal.JitInterface
         }
 
         // So the char* in cpp is terminated.
-        private static byte[] AppendNullByte(byte[] inputArray)
+        private static byte[] AppendNullByte(ReadOnlySpan<byte> inputArray)
         {
             byte[] nullTerminated = new byte[inputArray.Length + 1];
-            inputArray.CopyTo(nullTerminated, 0);
+            inputArray.CopyTo(new Span<byte>(nullTerminated));
             nullTerminated[inputArray.Length] = 0;
             return nullTerminated;
         }
@@ -50,7 +51,7 @@ namespace Internal.JitInterface
             MethodDesc method = _this.HandleToObject(ftn);
             Utf8String mangledName = _this._compilation.NameMangler.GetMangledMethodName(method);
 
-            return (byte*)_this.GetPin(AppendNullByte(mangledName.UnderlyingArray));
+            return (byte*)_this.GetPin(AppendNullByte(mangledName.AsSpan()));
         }
 
         [UnmanagedCallersOnly]
@@ -116,7 +117,7 @@ namespace Internal.JitInterface
             // to specify whether it represents a function or data symbol (and what its signature is if the former).
             if (node is ExternSymbolNode externSymbolNode)
             {
-                ReadOnlySpan<byte> name = externSymbolNode.Utf8Name.UnderlyingArray;
+                ReadOnlySpan<byte> name = externSymbolNode.Utf8Name.AsSpan();
                 if (name.StartsWith("RhpNew"u8))
                 {
                     if (name.SequenceEqual("RhpNewFast"u8) ||

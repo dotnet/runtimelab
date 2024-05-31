@@ -332,24 +332,6 @@ void * ReturnFromUniversalTransition_DebugStepTailCall;
 #endif // defined(USE_PORTABLE_HELPERS) && !defined(HOST_WASM)
 
 #if defined(USE_PORTABLE_HELPERS)
-//
-// Return address hijacking
-//
-FCIMPL0(void, RhpGcStressHijack)
-{
-    ASSERT_UNCONDITIONALLY("NYI");
-}
-FCIMPLEND
-
-FCIMPL0(void, RhpGcProbeHijack)
-{
-    ASSERT_UNCONDITIONALLY("NYI");
-}
-FCIMPLEND
-
-#endif // defined(USE_PORTABLE_HELPERS) || defined(TARGET_UNIX)
-
-#if defined(USE_PORTABLE_HELPERS)
 
 #ifndef HOST_WASM
 #if !defined (HOST_ARM64)

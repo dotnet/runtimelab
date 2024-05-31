@@ -101,6 +101,10 @@ namespace ILCompiler
             {
                 return ""; // No "hardware" for Wasm at all.
             }
+            else if (architecture == TargetArchitecture.LoongArch64)
+            {
+                return "";
+            }
             else if (architecture == TargetArchitecture.RiscV64)
             {
                 return "";

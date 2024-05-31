@@ -72,12 +72,15 @@
 
   #define RBM_ALLINT               RBM_R0
 
+  #define RBM_CALL_GC_REGS_ORDER   RBM_NONE
+
   #define CNT_CALLEE_SAVED         1
   #define CNT_CALLEE_TRASH         0 // This and below are only used for CSE heuristics; thus an optimistic estimate for an "average" target.
   #define CNT_CALLEE_ENREG         8
 
   #define CNT_CALLEE_SAVED_FLOAT   8
   #define CNT_CALLEE_TRASH_FLOAT   4
+  #define CNT_CALL_GC_REGS         (CNT_CALLEE_SAVED) // This is how targetx86 is defined.
 
   #define REG_CALLEE_SAVED_ORDER   REG_R0
   #define RBM_CALLEE_SAVED_ORDER   RBM_R0

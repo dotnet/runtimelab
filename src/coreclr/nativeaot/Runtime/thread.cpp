@@ -328,14 +328,6 @@ bool Thread::IsGCSpecial()
     return IsStateSet(TSF_IsGcSpecialThread);
 }
 
-bool Thread::CatchAtSafePoint()
-{
-    // This is only called by the GC on a background GC worker thread that's explicitly interested in letting
-    // a foreground GC proceed at that point. So it's always safe to return true.
-    ASSERT(IsGCSpecial());
-    return true;
-}
-
 uint64_t Thread::GetPalThreadIdForLogging()
 {
     return m_threadId;
@@ -593,7 +585,8 @@ void Thread::GcScanRootsWorker(ScanFunc * pfnEnumCallback, ScanContext * pvCallb
 
 #ifndef DACCESS_COMPILE
 
-EXTERN_C void FASTCALL RhpSuspendRedirected();
+#ifdef FEATURE_HIJACK
+
 EXTERN_C void FASTCALL RhpGcProbeHijack();
 EXTERN_C void FASTCALL RhpGcStressHijack();
 
@@ -609,7 +602,6 @@ bool Thread::IsHijackTarget(void* address)
     return false;
 }
 
-#ifdef FEATURE_HIJACK
 void Thread::Hijack()
 {
     ASSERT(ThreadStore::GetCurrentThread() == ThreadStore::GetSuspendingThread());
@@ -851,6 +843,16 @@ NATIVE_CONTEXT* Thread::EnsureRedirectionContext()
     return m_interruptedContext;
 }
 
+EXTERN_C NOINLINE void FASTCALL RhpSuspendRedirected()
+{
+    Thread* pThread = ThreadStore::GetCurrentThread();
+    pThread->WaitForGC(INTERRUPTED_THREAD_MARKER);
+
+    // restore execution at interrupted location
+    PalRestoreContext(pThread->GetInterruptedContext());
+    UNREACHABLE();
+}
+
 bool Thread::Redirect()
 {
     ASSERT(!IsDoNotTriggerGcSet());
@@ -1039,20 +1041,6 @@ EXTERN_C NOINLINE void FASTCALL RhpGcPoll2(PInvokeTransitionFrame* pFrame)
 
     RhpWaitForGC2(pFrame);
 }
-
-#ifdef FEATURE_SUSPEND_REDIRECTION
-
-EXTERN_C NOINLINE void FASTCALL RhpSuspendRedirected()
-{
-    Thread* pThread = ThreadStore::GetCurrentThread();
-    pThread->WaitForGC(INTERRUPTED_THREAD_MARKER);
-
-    // restore execution at interrupted location
-    PalRestoreContext(pThread->GetInterruptedContext());
-    UNREACHABLE();
-}
-
-#endif //FEATURE_SUSPEND_REDIRECTION
 
 void Thread::PushExInfo(ExInfo * pExInfo)
 {

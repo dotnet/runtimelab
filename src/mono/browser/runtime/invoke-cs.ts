@@ -45,7 +45,7 @@ function fixupSymbolName (name: string) {
 export function mono_wasm_bind_cs_function (method: MonoMethod, assemblyName: string, namespaceName: string, shortClassName: string, methodName: string, signatureHash: number, signature: JSFunctionSignature): void {
     const fullyQualifiedName = `[${assemblyName}] ${namespaceName}.${shortClassName}:${methodName}`;
     const mark = startMeasure();
-    mono_log_debug(`Binding [JSExport] ${namespaceName}.${shortClassName}:${methodName} from ${assemblyName} assembly`);
+    mono_log_debug(() => `Binding [JSExport] ${namespaceName}.${shortClassName}:${methodName} from ${assemblyName} assembly`);
     if (NativeAOT) {
         const namespaceNameWithDot = namespaceName ? `${namespaceName}.` : "";
         const js_fqn = `[${assemblyName}]${namespaceNameWithDot}${shortClassName}:${methodName}`;

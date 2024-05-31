@@ -35,7 +35,6 @@ public class WasmTestRunner : WasmApplicationEntryPoint
         var includedNamespaces = new List<string>();
         var includedClasses = new List<string>();
         var includedMethods = new List<string>();
-        var backgroundExec = false;
         var untilFailed = false;
 
         for (int i = index; i < args.Length; i++)
@@ -62,9 +61,6 @@ public class WasmTestRunner : WasmApplicationEntryPoint
                 case "-method":
                     includedMethods.Add(args[i + 1]);
                     i++;
-                    break;
-                case "-backgroundExec":
-                    backgroundExec = true;
                     break;
                 case "-untilFailed":
                     untilFailed = true;
@@ -102,14 +98,7 @@ public class WasmTestRunner : WasmApplicationEntryPoint
         var res = 0;
         do
         {
-            if (backgroundExec)
-            {
-                res = await Task.Run(() => runner.Run());
-            }
-            else
-            {
-                res = await runner.Run();
-            }
+            res = await runner.Run();
         }
         while(res == 0 && untilFailed);
 
