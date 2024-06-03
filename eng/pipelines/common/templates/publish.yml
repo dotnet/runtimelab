@@ -1,4 +1,5 @@
 parameters:
+  PublishRidAgnosticPackagesFromPlatform: windows_x64
   publishingInfraVersion: 3
   enableSigningValidation: false
   enableNugetValidation: false
@@ -13,6 +14,8 @@ stages:
   jobs:
   # Prep artifacts: sign them and upload pipeline artifacts expected by stages-based publishing.
   - template: /eng/pipelines/common/jobs/prepare-signed-artifacts.yml
+    parameters:
+        PublishRidAgnosticPackagesFromPlatform: ${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
 
   # Publish to Build Asset Registry in order to generate the ReleaseConfigs artifact.
   - template: /eng/common/templates-official/job/publish-build-assets.yml
