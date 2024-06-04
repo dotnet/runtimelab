@@ -24,7 +24,7 @@ The Native AOT toolchain can be currently built for Linux (x64/arm64), macOS (x6
 There are two kinds of binary artifacts produced by the build and needed for development: the runtime libraries and the cross-targeting compilers, ILC and RyuJit. They are built differently and separately.
 
 For the runtime libraries:
-- Clone the [emsdk](https://github.com/emscripten-core/emsdk) repository and use the `emsdk.bat` script it comes with to [install](https://emscripten.org/docs/getting_started/downloads.html) (and optionally "activate", i. e. set the relevant environment variables permanently) the Emscripten SDK, which will be used by the native build as a sort of "virtualized" build environment. It is recommended to use the same Emscripten version that [the CI](https://github.com/dotnet/runtimelab/blob/feature/NativeAOT-LLVM/eng/pipelines/runtimelab/install-emscripten.ps1#L16-L20) uses.
+- To build for web browsers, clone the [emsdk](https://github.com/emscripten-core/emsdk) repository and use the `emsdk.bat` script it comes with to [install](https://emscripten.org/docs/getting_started/downloads.html) (and optionally "activate", i. e. set the relevant environment variables permanently) the Emscripten SDK, which will be used by the native build as a sort of "virtualized" build environment. It is recommended to use the same Emscripten version that [the CI](https://github.com/dotnet/runtimelab/blob/feature/NativeAOT-LLVM/eng/pipelines/runtimelab/install-emscripten.ps1#L16-L20) uses.
   ```
   git clone https://github.com/emscripten-core/emsdk
   cd emsdk
@@ -34,7 +34,7 @@ For the runtime libraries:
   ./emsdk install 3.1.47
   ./emsdk activate 3.1.47
   ```
-- To build for WASI, download and install the Wasi SDK from https://github.com/WebAssembly/wasi-sdk/releases (only Windows is supported currently) and set the `WASI_SDK_PATH` environment variable to the location where it is installed, e.g. `set WASI_SDK_PATH=c:\github\wasi-sdk`.
+- To build for WASI, download and install WASI-SDK 22 from https://github.com/WebAssembly/wasi-sdk/releases (only Windows and Linux are supported currently) and set the `WASI_SDK_PATH` environment variable to the location where it is installed, e.g. `set WASI_SDK_PATH=c:\github\wasi-sdk`. Note that WASI-SDK 22 only includes a copy of `pthread.h` for the `wasm32-wasi-threads` target, which we must copy to the include directory for the `wasm32-wasi` target, e.g. `cp $WASI_SDK\share\wasi-sysroot\include\wasm32-wasi-threads\pthread.h $WASI_SDK\share\wasi-sysroot\include\wasm32-wasi\`. This is a temporary workaround until https://github.com/WebAssembly/wasi-libc/issues/501 has been addressed and released.
 - Run `build clr.aot+libs -c [Debug|Release] -a wasm -os [browser|wasi]`. This will create the architecture-dependent libraries needed for linking and runtime execution, as well as the managed binaries to be used as input to ILC.
 
 For the compilers:

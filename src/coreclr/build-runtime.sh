@@ -177,11 +177,11 @@ if [[ "$__CMakeTarget" == *"wasmjit"* ]]; then
 
   if [[ "$__BuildType" == "Release" ]]; then
     if [[ -n $LLVM_CMAKE_CONFIG_RELEASE ]]; then
-      LLVM_CMAKE_CONFIG="$LLVM_CMAKE_CONFIG_RELEASE"
+      export LLVM_CMAKE_CONFIG="$LLVM_CMAKE_CONFIG_RELEASE"
     fi
   else
     if [[ -n $LLVM_CMAKE_CONFIG_DEBUG ]]; then
-      LLVM_CMAKE_CONFIG="$LLVM_CMAKE_CONFIG_DEBUG"
+      export LLVM_CMAKE_CONFIG="$LLVM_CMAKE_CONFIG_DEBUG"
     fi
   fi
 

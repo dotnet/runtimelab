@@ -3,3 +3,4 @@ jitStartup
 getLikelyClasses
 getLikelyMethods
 jitBuildString
+registerLlvmCallbacks

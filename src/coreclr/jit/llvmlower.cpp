@@ -409,6 +409,9 @@ void Llvm::lowerFieldOfDependentlyPromotedStruct(GenTree* node)
                         lclVar->gtFlags |= GTF_VAR_USEASG;
                     }
                     break;
+
+                default:
+                    break;
             }
 
             lclVar->SetLclNum(varDsc->lvParentLcl);

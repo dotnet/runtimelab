@@ -706,16 +706,11 @@ else()
   create_standalone_jit(TARGET clrjit_win_x86_${ARCH_HOST_NAME} OS win ARCH x86 DESTINATIONS .)
 endif (CLR_CMAKE_TARGET_ARCH_RISCV64)
 
-# Note that we currently do not support building the LLVM Jit on Unix.
-# Note as well that we need this "CLR_CMAKE_BUILD_LLVM_JIT", defined by the build scripts,
+# Note that we need this "CLR_CMAKE_BUILD_LLVM_JIT", defined by the build scripts,
 # because there is no way in CMake to ask "what --target's' am I being asked to configure?".
 if (CLR_CMAKE_BUILD_LLVM_JIT)
     # The LLVM clrjit needs to be the last clrjit to use create_standalone_jit as it modifies some cmake variables.
     # LLVM clrjit has an extra export - registerLlvmCallbacks.
-    set(CLRJIT_EXPORTS ${CMAKE_CURRENT_LIST_DIR}/ClrJit.Llvm.exports)
-    set(JIT_EXPORTS_FILE ${CMAKE_CURRENT_BINARY_DIR}/ClrJit.Llvm.exports.def)
-    preprocess_file (${CLRJIT_EXPORTS} ${JIT_EXPORTS_FILE})
-    set(JIT_DEF_FILE ${JIT_EXPORTS_FILE})
 
     # Exclude cpp files that are not required when not processing beyond rationalized LIR.
     # Use REGEX as this list contains the absolute paths.
