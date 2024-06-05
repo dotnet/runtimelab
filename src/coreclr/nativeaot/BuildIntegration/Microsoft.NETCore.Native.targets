@@ -414,7 +414,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'">$(CompileWasmArgs) -s DISABLE_EXCEPTION_CATCHING=0</CompileWasmArgs>
 
       <ScriptExt Condition="'$(OS)' == 'Windows_NT'">.bat</ScriptExt>
-      <WasmCompilerPath>&quot;$(EMSDK)/upstream/emscripten/emcc$(ScriptExt)&quot;</WasmCompilerPath>
+      <WasmCompilerPath Condition="'$(WasmCompilerPath)' == ''">&quot;$(EMSDK)/upstream/emscripten/emcc$(ScriptExt)&quot;</WasmCompilerPath>
       <WasmLinkerPath>$(WasmCompilerPath)</WasmLinkerPath>
     </PropertyGroup>
 
@@ -439,7 +439,7 @@ The .NET Foundation licenses this file to you under the MIT license.
   </Target>
 
   <Target Name="CompileSingleWasmObject">
-    <Exec Command="$(ExecCommand)" />
+    <Exec Command="$(ExecCommand)" EnvironmentVariables="@(EmscriptenEnvVars)" />
   </Target>
 
   <Target Name="LinkNativeSingle" Condition="'$(_targetOS)' != 'browser' and '$(_targetOS)' != 'wasi'"
