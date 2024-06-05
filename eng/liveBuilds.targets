@@ -9,7 +9,6 @@
     <!-- Honor the RuntimeArtifactsPath property. -->
     <CoreCLRArtifactsPath Condition="'$(CoreCLRArtifactsPath)' == '' and '$(RuntimeArtifactsPath)' != ''">$([MSBuild]::NormalizeDirectory('$(RuntimeArtifactsPath)'))</CoreCLRArtifactsPath>
     <MonoArtifactsPath Condition="'$(MonoArtifactsPath)' == '' and '$(RuntimeArtifactsPath)' != ''">$([MSBuild]::NormalizeDirectory('$(RuntimeArtifactsPath)'))</MonoArtifactsPath>
-    <CoreCLRTargetOSConfigurationArchitecture Condition="'$(CoreCLRTargetOSConfigurationArchitecture)' == ''">$(TargetOS)-$(CoreCLRConfiguration)-$(TargetArchitecture)</CoreCLRTargetOSConfigurationArchitecture>
     <LibrariesTargetOSConfigurationArchitecture Condition="'$(LibrariesTargetOSConfigurationArchitecture)' == ''">$(TargetOS)-$(LibrariesConfiguration)-$(TargetArchitecture)</LibrariesTargetOSConfigurationArchitecture>
   </PropertyGroup>
 
@@ -28,7 +27,6 @@
     <CoreCLRCrossILCompilerDir Condition="'$(CrossBuild)' == 'true' or '$(BuildArchitecture)' != '$(TargetArchitecture)' or '$(HostOS)' != '$(TargetOS)' or '$(EnableNativeSanitizers)' != ''">$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', '$(BuildArchitecture)', 'ilc'))</CoreCLRCrossILCompilerDir>
     <CoreCLRAotSdkDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'aotsdk'))</CoreCLRAotSdkDir>
     <CoreCLRBuildIntegrationDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'build'))</CoreCLRBuildIntegrationDir>
-    <CoreCLRNativeArtifactsPath Condition="'$(CoreCLRNativeArtifactsPath)' == ''">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'native', '$(NetCoreAppCurrent)-$(CoreCLRTargetOSConfigurationArchitecture)'))</CoreCLRNativeArtifactsPath>
 
     <!-- NativeAOT-LLVM: we set up cross-compilation for WASM differently from upstream. The upstream cross-compilation scheme
          does not scale for local development because it requires you to build the same host tools for each target configuration.
@@ -229,15 +227,15 @@
       
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
                              Include="
-        $(CoreCLRNativeArtifactsPath)dotnet.js;
-        $(CoreCLRNativeArtifactsPath)dotnet.js.map;
-        $(CoreCLRNativeArtifactsPath)dotnet.runtime.js;
-        $(CoreCLRNativeArtifactsPath)dotnet.runtime.js.map;
-        $(CoreCLRNativeArtifactsPath)dotnet.d.ts;
-        $(CoreCLRNativeArtifactsPath)package.json;"
+        $(CoreCLRAotSdkDir)dotnet.js;
+        $(CoreCLRAotSdkDir)dotnet.js.map;
+        $(CoreCLRAotSdkDir)dotnet.runtime.js;
+        $(CoreCLRAotSdkDir)dotnet.runtime.js.map;
+        $(CoreCLRAotSdkDir)dotnet.d.ts;
+        $(CoreCLRAotSdkDir)package.json;"
         IsNative="true" />
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
-                             Include="$(CoreCLRNativeArtifactsPath)src\es6\*.js"
+                             Include="$(CoreCLRAotSdkDir)src\es6\*.js"
                              NativeSubDirectory="src\es6"
                              IsNative="true" />
 
