@@ -393,6 +393,8 @@ The .NET Foundation licenses this file to you under the MIT license.
            Condition="'$(EMSDK)' == '' and '$(EmscriptenUpstreamEmscriptenPath)' == '' and '$(_targetOS)' == 'browser'" />
     <Error Text="Wasi SDK not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Wasi SDK and ensure the WASI_SDK_PATH environment variable points to the directory containing share/wasi-sysroot"
            Condition="'$(WASI_SDK_PATH)' == '' and '$(_targetOS)' == 'wasi'" />
+    <Warning Text="The WASI SDK version is too low. Please use WASI SDK 22 or newer with a 64 bit Clang."
+             Condition="!Exists('$(WASI_SDK_PATH)/VERSION') and '$(_targetOS)' == 'wasi'" />
   </Target>
 
   <Target Name="CompileWasmObjects"
