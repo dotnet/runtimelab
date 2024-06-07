@@ -387,8 +387,10 @@ The .NET Foundation licenses this file to you under the MIT license.
   </Target>
 
   <Target Name="CheckWasmSdks">
+    <!-- The EMSDK is typically set by user and points to a standard emscripten layout -->
+    <!-- The EmscriptenUpstreamEmscriptenPath comes from upstream mono workload and points to an upstream folder of emscripten. The EmscriptenUpstreamBinPath points to bin folder -->
     <Error Text="Emscripten not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Emscripten and ensure the EMSDK environment variable points to the directory containing upstream/emscripten/emcc.bat"
-           Condition="'$(EMSDK)' == '' and '$(_targetOS)' == 'browser'" />
+           Condition="'$(EMSDK)' == '' and '$(EmscriptenUpstreamEmscriptenPath)' == '' and '$(_targetOS)' == 'browser'" />
     <Error Text="Wasi SDK not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Wasi SDK and ensure the WASI_SDK_PATH environment variable points to the directory containing share/wasi-sysroot"
            Condition="'$(WASI_SDK_PATH)' == '' and '$(_targetOS)' == 'wasi'" />
     <Warning Text="The WASI SDK version is too low. Please use WASI SDK 22 or newer with a 64 bit Clang."
@@ -414,7 +416,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'">$(CompileWasmArgs) -s DISABLE_EXCEPTION_CATCHING=0</CompileWasmArgs>
 
       <ScriptExt Condition="'$(OS)' == 'Windows_NT'">.bat</ScriptExt>
-      <WasmCompilerPath>&quot;$(EMSDK)/upstream/emscripten/emcc$(ScriptExt)&quot;</WasmCompilerPath>
+      <WasmCompilerPath Condition="'$(EMSDK)' != ''">&quot;$(EMSDK)/upstream/emscripten/emcc$(ScriptExt)&quot;</WasmCompilerPath>
+      <WasmCompilerPath Condition="'$(EMSDK)' == ''">&quot;$(EmscriptenUpstreamEmscriptenPath)emcc$(ScriptExt)&quot;</WasmCompilerPath>
       <WasmLinkerPath>$(WasmCompilerPath)</WasmLinkerPath>
     </PropertyGroup>
 
@@ -439,7 +442,7 @@ The .NET Foundation licenses this file to you under the MIT license.
   </Target>
 
   <Target Name="CompileSingleWasmObject">
-    <Exec Command="$(ExecCommand)" />
+    <Exec Command="$(ExecCommand)" EnvironmentVariables="@(EmscriptenEnvVars)" />
   </Target>
 
   <Target Name="LinkNativeSingle" Condition="'$(_targetOS)' != 'browser' and '$(_targetOS)' != 'wasi'"
