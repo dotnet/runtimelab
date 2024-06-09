@@ -224,20 +224,6 @@
         $(LibrariesNativeArtifactsPath)*.dat;
         $(LibrariesNativeArtifactsPath)segmentation-rules.json;"
         IsNative="true" />
-      
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
-                             Include="
-        $(CoreCLRAotSdkDir)dotnet.js;
-        $(CoreCLRAotSdkDir)dotnet.js.map;
-        $(CoreCLRAotSdkDir)dotnet.runtime.js;
-        $(CoreCLRAotSdkDir)dotnet.runtime.js.map;
-        $(CoreCLRAotSdkDir)dotnet.d.ts;
-        $(CoreCLRAotSdkDir)package.json;"
-        IsNative="true" />
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
-                             Include="$(CoreCLRAotSdkDir)src\es6\*.js"
-                             NativeSubDirectory="src\es6"
-                             IsNative="true" />
 
       <!-- for threaded wasm -->
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'Mono' and Exists('$(LibrariesNativeArtifactsPath)dotnet.native.worker.js')"
