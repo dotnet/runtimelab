@@ -58,7 +58,7 @@ namespace System
         public static bool IsNotNetFramework => !IsNetFramework;
         public static bool IsBsdLike => IsApplePlatform || IsFreeBSD || IsNetBSD;
 
-        public static bool IsWasm => RuntimeInformation.ProcessArchitecture == Architecture.Wasm;
+        public static bool IsWasm => RuntimeInformation.ProcessArchitecture == (Architecture)4; // Wasm.
         public static bool IsArmProcess => RuntimeInformation.ProcessArchitecture == Architecture.Arm;
         public static bool IsNotArmProcess => !IsArmProcess;
         public static bool IsArm64Process => RuntimeInformation.ProcessArchitecture == Architecture.Arm64;

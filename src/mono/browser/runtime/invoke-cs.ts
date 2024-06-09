@@ -46,10 +46,20 @@ export function mono_wasm_bind_cs_function (method: MonoMethod, assemblyName: st
     const fullyQualifiedName = `[${assemblyName}] ${namespaceName}.${shortClassName}:${methodName}`;
     const mark = startMeasure();
     mono_log_debug(() => `Binding [JSExport] ${namespaceName}.${shortClassName}:${methodName} from ${assemblyName} assembly`);
+
     if (NativeAOT) {
+        let wrapper_name;
         const namespaceNameWithDot = namespaceName ? `${namespaceName}.` : "";
         const js_fqn = `[${assemblyName}]${namespaceNameWithDot}${shortClassName}:${methodName}`;
-        const wrapper_name = fixupSymbolName(`${js_fqn}_${signatureHash}`);
+        if (namespaceName === "System.Runtime.InteropServices.JavaScript"
+            && shortClassName === "GeneratedAsyncEntryPointThunkClass"
+            && methodName === "AsyncEntryPointThunk") {
+            // The entry point thunk has a well-known export name. See "JSExportCodeGenerator.EntryPoint.cs".
+            wrapper_name = "System_Runtime_InteropServices_JavaScript_JavaScriptExports_CallEntrypoint";
+        } else {
+            wrapper_name = fixupSymbolName(`${js_fqn}_${signatureHash}`);
+        }
+
         method = (Module as any)["_" + wrapper_name];
         if (!method)
             throw new Error(`Could not find method: ${wrapper_name} in ${js_fqn}`);

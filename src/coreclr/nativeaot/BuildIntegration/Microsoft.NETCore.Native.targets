@@ -66,7 +66,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <LinkNativeDependsOnSingleOrLlvm Condition="$(NativeCodeGen) == 'llvm'">LinkNativeLlvm</LinkNativeDependsOnSingleOrLlvm>
   </PropertyGroup>
 
-  <Import Project="$(MSBuildThisFileDirectory)DotNetJsApi.targets" Condition="'$(_targetArchitecture)' == 'wasm' and '$(DotNetJsApi)' == 'true'" />
+  <Import Project="$(MSBuildThisFileDirectory)DotNetJsApi.targets" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' == 'true'" />
 
   <PropertyGroup>
     <NativeObjectExt Condition="'$(_targetOS)' == 'win'">.obj</NativeObjectExt>
@@ -517,6 +517,10 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
 
+    <PropertyGroup>
+      <IlcIsLibLikeApp Condition="'$(IlcIsLibLikeApp)' == '' and ('$(NativeLib)' != '' or '$(CustomNativeMain)' != '')">true</IlcIsLibLikeApp>
+    </PropertyGroup>
+
     <ItemGroup Condition="'$(InvariantGlobalization)' != 'true'">
       <NativeLibrary Include="$(IlcFrameworkNativePath)libicuuc.a" />
       <NativeLibrary Include="$(IlcFrameworkNativePath)libicui18n.a" />
@@ -529,8 +533,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.a" />
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.TimeZoneData.a" Condition="'$(InvariantTimezone)' != 'true'" />
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.TimeZoneData.Disabled.a" Condition="'$(InvariantTimezone)' == 'true'" />
-      <NativeLibrary Condition="$(NativeLib) == '' and '$(CustomNativeMain)' != 'true'" Include="$(IlcSdkPath)libbootstrapper.o" />
-      <NativeLibrary Condition="$(NativeLib) != '' or '$(CustomNativeMain)' == 'true'" Include="$(IlcSdkPath)libbootstrapperdll.o" />
+      <NativeLibrary Condition="'$(IlcIsLibLikeApp)' != 'true'" Include="$(IlcSdkPath)libbootstrapper.o" />
+      <NativeLibrary Condition="'$(IlcIsLibLikeApp)' == 'true'" Include="$(IlcSdkPath)libbootstrapperdll.o" />
       <NativeLibrary Include="$(IlcSdkPath)libPortableRuntime.a" />
       <NativeLibrary Include="$(IlcSdkPath)libstandalonegc-disabled$(LibFileExt)" />
       <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="$(IlcSdkPath)libCppExceptionHandling.a" />

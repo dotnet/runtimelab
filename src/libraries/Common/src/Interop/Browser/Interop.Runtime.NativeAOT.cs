@@ -4,7 +4,6 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.JavaScript;
 
 internal static partial class Interop
 {
@@ -30,27 +29,11 @@ internal static partial class Interop
         public static unsafe partial void CancelPromise(IntPtr gcHandle);
 
         #region Not used by NativeAOT
-
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern IntPtr RegisterGCRoot(void* start, int bytesSize, IntPtr name);
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern void DeregisterGCRoot(IntPtr handle);
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern void AssemblyGetEntryPoint(IntPtr assemblyNamePtr, int auto_insert_breakpoint, void** monoMethodPtrPtr);
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern void BindAssemblyExports(IntPtr assemblyNamePtr);
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        public static extern void GetAssemblyExport(IntPtr assemblyNamePtr, IntPtr namespacePtr, IntPtr classnamePtr, IntPtr methodNamePtr, IntPtr* monoMethodPtrPtr);
-
+        public static IntPtr RegisterGCRoot(void* start, int bytesSize, IntPtr name) => throw new NotImplementedException();
+        public static void DeregisterGCRoot(IntPtr handle) => throw new NotImplementedException();
+        public static void AssemblyGetEntryPoint(IntPtr assemblyNamePtr, int auto_insert_breakpoint, void** monoMethodPtrPtr) => throw new NotImplementedException();
+        public static void BindAssemblyExports(IntPtr assemblyNamePtr) => throw new NotImplementedException();
+        public static void GetAssemblyExport(IntPtr assemblyNamePtr, IntPtr namespacePtr, IntPtr classnamePtr, IntPtr methodNamePtr, IntPtr* monoMethodPtrPtr) => throw new NotImplementedException();
         #endregion
-
-        public static unsafe void BindCSFunction(in string fully_qualified_name, int signature_hash, void* signature, out int is_exception, out object result)
-        {
-            BindCSFunction(fully_qualified_name, fully_qualified_name.Length, signature_hash, signature, out is_exception);
-            if (is_exception != 0)
-                result = "Runtime.BindCSFunction failed"; // TODO-LLVM-JSInterop: Marshal exception message
-            else
-                result = "";
-        }
     }
 }
