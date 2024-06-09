@@ -26,6 +26,12 @@
       <File Include="$(CoreCLRAotSdkDir)*">
         <TargetPath>sdk</TargetPath>
       </File>
+      <File Include="$(CoreCLRAotSdkDir)src/*">
+        <TargetPath>sdk/src</TargetPath>
+      </File>
+      <File Include="$(CoreCLRAotSdkDir)src/es6/*">
+        <TargetPath>sdk/src/es6</TargetPath>
+      </File>
       <File Include="$(MibcOptimizationDataDir)/$(TargetOS)/$(TargetArchitecture)/**/*.mibc">
         <TargetPath>mibc</TargetPath>
       </File>
