@@ -137,7 +137,13 @@ namespace Internal.Runtime
                 gcDesc = Internal.Runtime.Augments.RuntimeAugments.TypeLoaderCallbacks.GetThreadStaticGCDescForDynamicType(typeManager, typeTlsIndex);
             }
 
+#if TARGET_WASM
+            // TODO-LLVM: Remove when there is an upstream fix.  See https://github.com/dotnet/runtimelab/issues/2606 and https://github.com/dotnet/runtime/issues/103234
+            // This is a fix for aligning to 8, thread static fields that should be aligned 8, we just conservatively align everything to 8.
+            return InternalCalls.RhpNewFastAlign8((MethodTable*)gcDesc);
+#else
             return RuntimeImports.RhNewObject((MethodTable*)gcDesc);
+#endif
         }
     }
 }
