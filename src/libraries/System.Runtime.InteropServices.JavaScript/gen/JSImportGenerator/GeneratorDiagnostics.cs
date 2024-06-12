@@ -26,9 +26,41 @@ namespace Microsoft.Interop
             public const string ConfigurationNotSupported = Prefix + "1073";
             public const string JSImportRequiresAllowUnsafeBlocks = Prefix + "1074";
             public const string JSExportRequiresAllowUnsafeBlocks = Prefix + "1075";
+
+            public const string EntryPointImproperlyDefined = Prefix + "1089";
         }
 
         private const string Category = "JSImportGenerator";
+
+        // TODO-LLVM-Upstream: make these messages properly localizable.
+        private const string EntryPointImproperlyDefinedTitle = "The entry point definition is not supported by the JavaScript source generator";
+
+        public static readonly DiagnosticDescriptor EntryPointDefinedInFileClass =
+            DiagnosticDescriptorHelper.Create(
+                Ids.EntryPointImproperlyDefined,
+                EntryPointImproperlyDefinedTitle,
+                "Type '{0}' that defines the entry point has 'file' visibility. The JavaScript source generator will not able to generate entry point marshalling code.",
+                Category,
+                DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor EntryPointDefinedInNestedClass =
+            DiagnosticDescriptorHelper.Create(
+                Ids.EntryPointImproperlyDefined,
+                EntryPointImproperlyDefinedTitle,
+                "Type '{0}' that defines the entry point is nested. The JavaScript source generator will not able to generate entry point marshalling code.",
+                Category,
+                DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
+
+       public static readonly DiagnosticDescriptor PrivateEntryPointDefinedInNotPartialClass =
+            DiagnosticDescriptorHelper.Create(
+                Ids.EntryPointImproperlyDefined,
+                EntryPointImproperlyDefinedTitle,
+                "Type '{0}' that defines the entry point is not 'partial'. The JavaScript source generator will not able to generate entry point marshalling code.",
+                Category,
+                DiagnosticSeverity.Error,
+                isEnabledByDefault: true);
 
         public static readonly DiagnosticDescriptor ConfigurationNotSupported =
             DiagnosticDescriptorHelper.Create(

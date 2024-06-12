@@ -1,13 +1,30 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
+    <!-- Defaults for user-visible settings. -->
+    <WasmEmitSourceMap Condition="'$(WasmEmitSourceMap)' == '' and '$(NativeDebugSymbols)' == 'true'">true</WasmEmitSourceMap>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <LinkNativeDependsOn>$(LinkNativeDependsOn);PrepareDotNetJsApiForLinking</LinkNativeDependsOn>
     <NativeBinary>$(NativeOutputPath)dotnet.native.js</NativeBinary>
     <IlcExportUnmanagedEntrypoints>true</IlcExportUnmanagedEntrypoints><!-- For JSExports -->
+
+    <!-- The async entry point JSExport will be our "Main", so we don't want the IL entrypoint
+         to be exported. Additionally, the hosted application model is essentially a "library"
+         one, expected to be reentrant (e. g. there is no shutdown handling by the entry point). -->
+    <IlcIsLibLikeApp>true</IlcIsLibLikeApp>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe'">
+    <IlcArg Condition="'$(NativeLib)' == ''" Include="--nativelib" />
+    <Compile Include="$(MSBuildThisFileDirectory)AsyncEntryPointThunkClass.cs" Visible="false" />
+  </ItemGroup>
+
   <ItemGroup>
+    <!-- Emscripten methods used by the JS runtime. Keep in loose sync with the same list in "src/mono/browser/browser.proj". -->
+    <!-- TODO-LLVM: unify the lists. -->
     <EmccExportedFunction Include="_free" />
     <EmccExportedFunction Include="_htons" />
-    <EmccExportedFunction Include="_main" />
     <EmccExportedFunction Include="_malloc" />
     <EmccExportedFunction Include="_memalign" />
     <EmccExportedFunction Include="_memset" />
@@ -26,6 +43,7 @@
     <EmccExportedRuntimeMethod Include="addFunction" />
     <EmccExportedRuntimeMethod Include="UTF8ToString" />
     <EmccExportedRuntimeMethod Include="UTF8ArrayToString" />
+    <EmccExportedRuntimeMethod Include="lengthBytesUTF8" />
     <EmccExportedRuntimeMethod Include="stringToUTF8Array" />
     <EmccExportedRuntimeMethod Include="FS_createPath" />
     <EmccExportedRuntimeMethod Include="FS_createDataFile" />
@@ -33,7 +51,6 @@
     <EmccExportedRuntimeMethod Include="safeSetTimeout" />
     <EmccExportedRuntimeMethod Include="runtimeKeepalivePush" />
     <EmccExportedRuntimeMethod Include="runtimeKeepalivePop" />
-    <EmccExportedRuntimeMethod Include="callMain" />
 
     <!-- Pseudo-namespace for the JS interop symbols. -->
     <DirectPInvoke Include="System.Runtime.InteropServices.JavaScript" />
@@ -54,10 +71,8 @@
       <EmscriptenEnvVars Include="ENABLE_BROWSER_PROFILER=0" />
       <EmscriptenEnvVars Include="RUN_AOT_COMPILATION=0" />
 
-      <_DotNetJsLinkerFlag Include="-Wl,--export,__main_argc_argv" /><!-- Export main, a temporal solution until we have a way to export async main -->
       <_DotNetJsLinkerFlag Include="-s EXPORT_ES6=1" /><!-- Produce ES6 module as expented by hosting API -->
       <_DotNetJsLinkerFlag Include="-s MODULARIZE=1" /><!-- Produce ES6 module as expented by hosting API -->
-      <_DotNetJsLinkerFlag Include="-s INVOKE_RUN=0" /><!-- Don't automatically run main, it is called explicitly by user -->
       <_DotNetJsLinkerFlag Include="-s EXPORT_NAME=&quot;'createDotnetRuntime'&quot;" /><!-- Export emscripten factory as 'createDotnetRuntime', as expented by hosting API -->
       <_DotNetJsLinkerFlag Include="-s ENVIRONMENT=&quot;'web,webview,worker,node,shell'&quot;" /><!-- Add support for all enviroments (default list is smaller) -->
       <_DotNetJsLinkerFlag Condition="'$(EmccEnvironment)' != ''" Include="-s ENVIRONMENT=&quot;$(EmccEnvironment)&quot;" />

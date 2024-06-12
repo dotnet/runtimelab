@@ -13,6 +13,43 @@ namespace JSImportGenerator.Unit.Tests
 {
     public class Compiles
     {
+        public static object[][] AsyncEntryPointCodeSnippetsToCompile =
+        [
+            [CodeSnippets.PublicMainInPublicClass_Void],
+            [CodeSnippets.PublicMainInPublicClass_Void_Args],
+            [CodeSnippets.PublicMainInPublicClass_Int],
+            [CodeSnippets.PublicMainInPublicClass_Int_Args],
+            [CodeSnippets.PublicMainInPublicClass_TaskOfVoid],
+            [CodeSnippets.PublicMainInPublicClass_TaskOfVoid_Args],
+            [CodeSnippets.PublicMainInPublicClass_TaskOfInt],
+            [CodeSnippets.PublicMainInPublicClass_TaskOfInt_Args],
+            [CodeSnippets.PrivateMainInPublicClass_Void],
+            [CodeSnippets.PrivateMainInPublicClass_Void_Args],
+            [CodeSnippets.PrivateMainInPublicClass_Int],
+            [CodeSnippets.PrivateMainInPublicClass_Int_Args],
+            [CodeSnippets.PrivateMainInPublicClass_TaskOfVoid],
+            [CodeSnippets.PrivateMainInPublicClass_TaskOfVoid_Args],
+            [CodeSnippets.PrivateMainInPublicClass_TaskOfInt],
+            [CodeSnippets.PrivateMainInPublicClass_TaskOfInt_Args],
+            [CodeSnippets.PrivateMainInPublicClassInNamespace],
+            [CodeSnippets.TopLevelMain],
+            [CodeSnippets.TopLevelAsyncMain],
+        ];
+
+        [Theory]
+        [MemberData(nameof(AsyncEntryPointCodeSnippetsToCompile))]
+        public async Task ValidateAsyncEntryPointSnippets(string source)
+        {
+            Compilation comp = await TestUtils.CreateCompilation(
+                source, outputKind: OutputKind.ConsoleApplication, allowUnsafe: true);
+            TestUtils.AssertPreSourceGeneratorCompilation(comp);
+
+            var newComp = TestUtils.RunGenerators(comp, out var generatorDiags,
+                new Microsoft.Interop.JavaScript.JSExportGenerator());
+            Assert.Empty(generatorDiags);
+            TestUtils.AssertPostSourceGeneratorCompilation(newComp);
+        }
+
         public static IEnumerable<object[]> CodeSnippetsToCompile()
         {
             yield return new object[] { CodeSnippets.TrivialClassDeclarations };

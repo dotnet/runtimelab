@@ -16,7 +16,7 @@ using System.Collections.Generic;
 namespace Microsoft.Interop.JavaScript
 {
     [Generator]
-    public sealed class JSExportGenerator : IIncrementalGenerator
+    public sealed partial class JSExportGenerator : IIncrementalGenerator
     {
         internal sealed record IncrementalStubGenerationContext(
             JSSignatureContext SignatureContext,
@@ -59,9 +59,10 @@ namespace Microsoft.Interop.JavaScript
             });
 
             IncrementalValueProvider<StubEnvironment> stubEnvironment = context.CreateStubEnvironmentProvider();
+            var allAttributedMethods = attributedMethods.Collect();
 
             // Validate environment that is being used to generate stubs.
-            context.RegisterDiagnostics(stubEnvironment.Combine(attributedMethods.Collect()).SelectMany((data, ct) =>
+            context.RegisterDiagnostics(stubEnvironment.Combine(allAttributedMethods).SelectMany((data, ct) =>
             {
                 if (data.Right.IsEmpty // no attributed methods
                     || data.Left.Compilation.Options is CSharpCompilationOptions { AllowUnsafe: true }) // Unsafe code enabled
@@ -132,13 +133,29 @@ namespace Microsoft.Interop.JavaScript
                     context.AddSource("JSExports.g.cs", source.ToString());
                 });
 
+            // Generate info for the special entry point thunk, but only do so if our auxiliary JSExport is present.
+            IncrementalValueProvider<AsyncEntryPointInfo> asyncEntryPointInfo = context.CompilationProvider
+                .Combine(allAttributedMethods)
+                .Select(static (data, ct) => data.Right.IsEmpty ? null : GetAsyncEntryPointInfo(data.Left, ct));
+
+            context.RegisterDiagnostics(asyncEntryPointInfo
+                .SelectMany(static (data, ct) => data?.Error is not null ? [data.Error] : Array.Empty<DiagnosticInfo>()));
+
+            context.RegisterSourceOutput(asyncEntryPointInfo
+                .Select(static (data, ct) => GenerateAsyncEntryPointInfoSource(data)),
+                (context, generatedSource) =>
+                {
+                    if (generatedSource is not null)
+                    {
+                        context.AddSource("JSExports.AsyncEntryPointInfo.g.cs", generatedSource);
+                    }
+                });
         }
 
         private static MemberDeclarationSyntax PrintGeneratedSource(
             IncrementalStubGenerationContext context,
             BlockSyntax wrapperStatements, string wrapperName)
         {
-
             MemberDeclarationSyntax wrappperMethod = MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier(wrapperName))
                 .WithModifiers(TokenList(new[] { Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword), Token(SyntaxKind.UnsafeKeyword) }))
                 .WithAttributeLists(List(
@@ -161,7 +178,7 @@ namespace Microsoft.Interop.JavaScript
                                             AttributeArgument(
                                                 LiteralExpression(
                                                     SyntaxKind.StringLiteralExpression,
-                                                    Literal(FixupSymbolName(context.SignatureContext.QualifiedMethodName + "_" + context.SignatureContext.TypesHash))
+                                                    Literal(GetUnmanagedEntryPointName(context.SignatureContext))
                                                 )
                                             )
                                             .WithNameEquals(
@@ -185,7 +202,18 @@ namespace Microsoft.Interop.JavaScript
             return toPrint;
         }
 
-        private static readonly char[] s_charsToReplace = new[] { '.', '-', '+' };
+        private static string GetUnmanagedEntryPointName(JSSignatureContext sig)
+        {
+            // The special case of the well-known entry point thunk.
+            if (IsAsyncEntryPointThunkMethod(sig.MethodName))
+            {
+                return AsyncEntryPointThunkExportName;
+            }
+
+            return FixupSymbolName(sig.QualifiedMethodName + "_" + sig.TypesHash);
+        }
+
+        private static readonly char[] s_charsToReplace = ['.', '-', '+'];
 
         private static string FixupSymbolName(string name)
         {
