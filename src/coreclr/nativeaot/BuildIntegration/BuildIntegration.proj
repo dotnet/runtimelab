@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.Build.Traversal">
+  <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
   <PropertyGroup>
-    <RestoreUseStaticGraphEvaluation>false</RestoreUseStaticGraphEvaluation>
+    <IsNativeAotProject>false</IsNativeAotProject>
   </PropertyGroup>
 
   <PropertyGroup>
