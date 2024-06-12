@@ -10,9 +10,6 @@
 
     <!-- Unable to compile a project with the Library output type for apple mobile devices -->
     <CLRTestTargetUnsupported Condition="'$(TargetsAppleMobile)' == 'true'">true</CLRTestTargetUnsupported>
-
-    <!-- https://github.com/dotnet/runtimelab/issues/2648 -->
-    <CLRTestTargetUnsupported Condition="'$(TargetOS)' == 'wasi'">true</CLRTestTargetUnsupported>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -33,6 +30,7 @@ cp SharedLibraryDriver native/SharedLibrary
 
   <ItemGroup>
     <Compile Include="SharedLibrary.cs" />
+    <Compile Include="Library.cs" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -58,5 +56,6 @@ cp SharedLibraryDriver$(NativeExtension) native/SharedLibrary$(NativeExtension)
 
   <ItemGroup Condition="'$(WasiReactorTestUsingNodeJS)' == 'true'">
     <Content Include="SharedLibraryDriver.mjs" CopyToOutputDirectory="PreserveNewest" />
+    <CustomLinkerArg Include="-Wl,--component-type,&quot;$(MSBuildProjectDirectory.Replace(&quot;\&quot;, &quot;/&quot;))/LibraryWorld_component_type.wit&quot;" />
   </ItemGroup>
 </Project>

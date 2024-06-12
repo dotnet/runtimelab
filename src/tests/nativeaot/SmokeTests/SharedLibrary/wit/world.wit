@@ -1,0 +1,11 @@
+package local:local;
+
+world library {
+  export test-http: func(port: u16);
+  export returns-primitive-int: func() -> s32;
+  export returns-primitive-bool: func() -> bool;
+  export returns-primitive-char: func() -> char;
+  export ensure-managed-class-loaders: func();
+  export check-simple-exception-handling: func() -> s32;
+  export check-simple-gc-collect: func() -> s32;
+}

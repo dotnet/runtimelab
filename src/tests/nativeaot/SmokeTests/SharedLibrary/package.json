@@ -1,0 +1,11 @@
+{
+  "name": "sharedlibrarytest",
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node SharedLibraryDriver.mjs"
+  },
+  "dependencies": {
+    "@bytecodealliance/jco": "1.3.1"
+  }
+}

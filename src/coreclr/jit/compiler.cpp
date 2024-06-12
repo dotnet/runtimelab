@@ -9686,7 +9686,7 @@ void dumpConvertedVarSet(Compiler* comp, VARSET_VALARG_TP vars)
             {
                 printf(" ");
             }
-            printf("V%02u", varNum);
+            printf("V%02u", (unsigned int) varNum);
             first = false;
         }
     }

@@ -33,6 +33,10 @@ namespace System.Threading
             return mainTask.Result;
         }
 
+        internal static void DispatchWasiEventLoop()
+        {
+            WasiEventLoop.DispatchWasiEventLoop();
+        }
 #endif
 
         // the closest analog to Sleep(0) on Unix is sched_yield

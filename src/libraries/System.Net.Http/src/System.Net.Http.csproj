@@ -462,7 +462,7 @@
   </ItemGroup>
 
   <!-- TODO-LLVM: This is not upstreamable because it makes the build runtime-specific. -->
-  <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'wasi' and '$(RuntimeFlavor)' != 'CoreCLR'">
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'wasi'">
     <Reference Include="System.Threading.Thread" />
     <Compile Include="System\Net\Http\WasiHttpHandler\WasiHttpHandler.cs" />
     <Compile Include="System\Net\Http\WasiHttpHandler\WasiHttp.cs" />
@@ -532,5 +532,4 @@
   <ItemGroup>
     <None Include="Resources\SR.resx" />
   </ItemGroup>
-
 </Project>

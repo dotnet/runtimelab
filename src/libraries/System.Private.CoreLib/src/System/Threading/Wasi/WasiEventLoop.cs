@@ -9,7 +9,7 @@ namespace System.Threading
 {
     internal static class WasiEventLoop
     {
-        private static List<WeakReference<TaskCompletionSource>> s_pollables = new();
+        private static List<TaskCompletionSource> s_pollables = new();
 
         internal static Task RegisterWasiPollableHandle(int handle)
         {
@@ -22,8 +22,7 @@ namespace System.Threading
         internal static Task RegisterWasiPollable(IPoll.Pollable pollable)
         {
             var tcs = new TaskCompletionSource(pollable);
-            var weakRef = new WeakReference<TaskCompletionSource>(tcs);
-            s_pollables.Add(weakRef);
+            s_pollables.Add(tcs);
             return tcs.Task;
         }
 
@@ -34,39 +33,36 @@ namespace System.Threading
             if (s_pollables.Count > 0)
             {
                 var pollables = s_pollables;
-                s_pollables = new List<WeakReference<TaskCompletionSource>>(pollables.Count);
+                s_pollables = new List<TaskCompletionSource>(pollables.Count);
                 var arguments = new List<IPoll.Pollable>(pollables.Count);
                 var indexes = new List<int>(pollables.Count);
                 for (var i = 0; i < pollables.Count; i++)
                 {
-                    var weakRef = pollables[i];
-                    if (weakRef.TryGetTarget(out TaskCompletionSource? tcs))
-                    {
-                        var pollable = (IPoll.Pollable)tcs!.Task.AsyncState!;
-                        arguments.Add(pollable);
-                        indexes.Add(i);
-                    }
+                    var tcs = pollables[i];
+                    var pollable = (IPoll.Pollable)tcs.Task.AsyncState!;
+                    arguments.Add(pollable);
+                    indexes.Add(i);
                 }
 
-                // this is blocking until at least one pollable resolves
-                var readyIndexes = PollInterop.Poll(arguments);
+                if (arguments.Count > 0)
+                {
+                    // this is blocking until at least one pollable resolves
+                    var readyIndexes = PollInterop.Poll(arguments);
 
-                var ready = new bool[arguments.Count];
-                foreach (int readyIndex in readyIndexes)
-                {
-                    ready[readyIndex] = true;
-                    arguments[readyIndex].Dispose();
-                    var weakRef = pollables[indexes[readyIndex]];
-                    if (weakRef.TryGetTarget(out TaskCompletionSource? tcs))
+                    var ready = new bool[arguments.Count];
+                    foreach (int readyIndex in readyIndexes)
                     {
-                        tcs!.SetResult();
+                        ready[readyIndex] = true;
+                        arguments[readyIndex].Dispose();
+                        var tcs = pollables[indexes[readyIndex]];
+                        tcs.SetResult();
                     }
-                }
-                for (var i = 0; i < arguments.Count; ++i)
-                {
-                    if (!ready[i])
+                    for (var i = 0; i < arguments.Count; ++i)
                     {
-                        s_pollables.Add(pollables[indexes[i]]);
+                        if (!ready[i])
+                        {
+                            s_pollables.Add(pollables[indexes[i]]);
+                        }
                     }
                 }
             }
