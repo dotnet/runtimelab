@@ -5,6 +5,177 @@ namespace JSImportGenerator.Unit.Tests
 {
     internal static class CodeSnippets
     {
+        public static readonly string PublicMainInPublicClass_Void = """
+            //PublicMainInPublicClass_Void
+            public static class Program { public static void Main() { } }
+            """;
+
+        public static readonly string PublicMainInPublicClass_Void_Args = """
+            //PublicMainInPublicClass_Void_Args
+            public static class Program { public static void Main(string[] args) { } }
+            """;
+
+        public static readonly string PublicMainInPublicClass_Int = """
+            //PublicMainInPublicClass_Int
+            public static class Program { public static int Main() => 0; }
+            """;
+
+        public static readonly string PublicMainInPublicClass_Int_Args = """
+            //PublicMainInPublicClass_Int_Args
+            public static class Program { public static int Main(string[] args) => 0; }
+            """;
+
+        public static readonly string PublicMainInPublicClass_TaskOfVoid = """
+            //PublicMainInPublicClass_TaskOfVoid
+            using System.Threading.Tasks;
+            public static class Program { public async static Task Main() { await Task.Yield(); } }
+            """;
+
+        public static readonly string PublicMainInPublicClass_TaskOfVoid_Args = """
+            //PublicMainInPublicClass_TaskOfVoid_Args
+            using System.Threading.Tasks;
+            public static class Program { public async static Task Main(string[] args) { await Task.Yield(); } }
+            """;
+
+        public static readonly string PublicMainInPublicClass_TaskOfInt = """
+            //PublicMainInPublicClass_TaskOfInt
+            using System.Threading.Tasks;
+            public static class Program
+            {
+                public async static Task<int> Main()
+                {
+                    await Task.Yield();
+                    return 0;
+                }
+            }
+            """;
+
+        public static readonly string PublicMainInPublicClass_TaskOfInt_Args = """
+            //PublicMainInPublicClass_TaskOfInt_Args
+            using System.Threading.Tasks;
+            public static class Program
+            {
+                public async static Task<int> Main(string[] args)
+                {
+                    await Task.Yield();
+                    return 0;
+                }
+            }
+            """;
+
+        public static readonly string PrivateMainInPublicClass_Void = """
+            //PrivateMainInPublicClass_Void
+            public static partial class Program { private static void Main() { } }
+            """;
+
+        public static readonly string PrivateMainInPublicClass_Void_Args = """
+            //PrivateMainInPublicClass_Void_Args
+            public static partial class Program { private static void Main(string[] args) { } }
+            """;
+
+        public static readonly string PrivateMainInPublicClass_Int = """
+            //PrivateMainInPublicClass_Int
+            public static partial class Program { private static int Main() => 0; }
+            """;
+
+        public static readonly string PrivateMainInPublicClass_Int_Args = """
+            //PrivateMainInPublicClass_Int_Args
+            public static partial class Program { private static int Main(string[] args) => 0; }
+            """;
+
+        public static readonly string PrivateMainInPublicClass_TaskOfVoid = """
+            //PrivateMainInPublicClass_TaskOfVoid
+            using System.Threading.Tasks;
+            public static partial class Program { private async static Task Main() { await Task.Yield(); } }
+            """;
+
+        public static readonly string PrivateMainInPublicClass_TaskOfVoid_Args = """
+            //PrivateMainInPublicClass_TaskOfVoid_Args
+            using System.Threading.Tasks;
+            public static partial class Program { private async static Task Main(string[] args) { await Task.Yield(); } }
+            """;
+
+        public static readonly string PrivateMainInPublicClass_TaskOfInt = """
+            //PrivateMainInPublicClass_TaskOfInt
+            using System.Threading.Tasks;
+            public static partial class Program
+            {
+                private async static Task<int> Main()
+                {
+                    await Task.Yield();
+                    return 0;
+                }
+            }
+            """;
+
+        public static readonly string PrivateMainInPublicClass_TaskOfInt_Args = """
+            //PrivateMainInPublicClass_TaskOfInt_Args
+            using System.Threading.Tasks;
+            public static partial class Program
+            {
+                private async static Task<int> Main(string[] args)
+                {
+                    await Task.Yield();
+                    return 0;
+                }
+            }
+            """;
+
+        public static readonly string PrivateMainInPublicClassInNamespace = """
+            //PrivateMainInPublicClassInNamespace
+            namespace Test
+            {
+                public static partial class Program
+                {
+                    private static void Main(string[] args) { }
+                }
+            }
+            """;
+
+        public static readonly string TopLevelMain = """
+            //TopLevelMain
+            System.Console.WriteLine("Entry point called");
+            """;
+
+        public static readonly string TopLevelAsyncMain = """
+            //TopLevelAsyncMain
+            using System.Threading.Tasks;
+            await Task.Yield();
+            """;
+
+        public static readonly string MainInFileClass = """
+            //MainInFileClass
+            namespace Test
+            {
+                file class Program { public static void Main() { } }
+            }
+            """;
+
+        public static readonly string MainInNestedClass = """
+            //MainInNestedClass
+            namespace Test
+            {
+                public class Outer
+                {
+                    public class Inner
+                    {
+                        public static void Main() { }
+                    }
+                }
+            }
+            """;
+
+        public static readonly string PrivateMainInStaticClassInNamespace = """
+            //PrivateMainInStaticClass
+            namespace Test
+            {
+                public static class Program
+                {
+                    private static void Main() { }
+                }
+            }
+            """;
+
         public static readonly string AllDefault = """
             //AllDefault
             using System;

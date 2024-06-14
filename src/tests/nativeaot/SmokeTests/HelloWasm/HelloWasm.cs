@@ -429,6 +429,8 @@ internal unsafe partial class Program
 
         LSSATests.Run();
 
+        TestThreadStaticAlignment();
+
         if (OperatingSystem.IsBrowser())
         {
             EventLoopTestClass.TestEventLoopIntegration();
@@ -4249,6 +4251,49 @@ internal unsafe partial class Program
         var contains = col.Contains(new ValueTuple<char, char>('a', 'b'));
 
         EndTest(contains);
+    }
+
+    [InlineArray(3)]
+    internal struct ReturnArea
+    {
+        private ulong buffer;
+
+        internal unsafe nint AddressOfReturnArea()
+        {
+            return (nint)Unsafe.AsPointer(ref buffer);
+        }
+    }
+
+    internal class ThreadStaticAlignCheck1
+    {
+        [ThreadStatic]
+        [FixedAddressValueType]
+        internal static ReturnArea returnArea = default;
+    }
+
+    internal class Padder
+    {
+        private object o1;
+    }
+
+    internal class ThreadStaticAlignCheck2
+    {
+        [ThreadStatic]
+        [FixedAddressValueType]
+        internal static ReturnArea returnArea = default;
+    }
+
+    static void TestThreadStaticAlignment()
+    {
+        StartTest("Test ThreadStatic Alignment");
+
+        // Assume that these are allocated sequentially, use a padding object of size 12 ( mod 8 is not 0 ) to move the alignment of the second AddressOfReturnArea in case the first is
+        // coincidentally aligned 8.
+        var ts1Addr = ThreadStaticAlignCheck1.returnArea.AddressOfReturnArea();
+        var p = new Padder();
+        var ts2Addr = ThreadStaticAlignCheck2.returnArea.AddressOfReturnArea();
+
+        EndTest((((nint)ts1Addr) % 8 == 0) && (((nint)ts2Addr) % 8 == 0));
     }
 
     static ushort ReadUInt16()

@@ -3,6 +3,7 @@
 
 using Microsoft.CodeAnalysis;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Xunit;
 using Microsoft.Interop.UnitTests;
@@ -12,6 +13,28 @@ namespace JSImportGenerator.Unit.Tests
 {
     public class Fails
     {
+        public static object[][] AsyncEntryPointCodeSnippetsToFail =
+        [
+            [CodeSnippets.MainInFileClass, "Type 'Test.Program' that defines the entry point has 'file' visibility. The JavaScript source generator will not able to generate entry point marshalling code."],
+            [CodeSnippets.MainInNestedClass, "Type 'Test.Outer.Inner' that defines the entry point is nested. The JavaScript source generator will not able to generate entry point marshalling code."],
+            [CodeSnippets.PrivateMainInStaticClassInNamespace, "Type 'Test.Program' that defines the entry point is not 'partial'. The JavaScript source generator will not able to generate entry point marshalling code."],
+        ];
+
+        [Theory]
+        [MemberData(nameof(AsyncEntryPointCodeSnippetsToFail))]
+        public async Task ValidateAsyncEntryPointFailSnippets(string source, string generatorMessage)
+        {
+            Compilation comp = await TestUtils.CreateCompilation(source, outputKind: OutputKind.ConsoleApplication, allowUnsafe: true);
+            TestUtils.AssertPreSourceGeneratorCompilation(comp);
+
+            Compilation newComp = TestUtils.RunGenerators(comp, out var generatorDiags, new Microsoft.Interop.JavaScript.JSExportGenerator());
+            Assert.NotEmpty(generatorDiags);
+
+            ImmutableArray<Diagnostic> compilationDiags = newComp.GetDiagnostics();
+            Assert.Empty(compilationDiags);
+            JSTestUtils.AssertMessages(generatorDiags, [generatorMessage]);
+        }
+
         public static IEnumerable<object?[]> CodeSnippetsToFail()
         {
             yield return new object?[] { CodeSnippets.DefaultReturnMarshaler<long>(), new string[] {

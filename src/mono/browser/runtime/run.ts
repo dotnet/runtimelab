@@ -1,8 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-import NativeAOT from "consts:nativeAOT";
-
 import WasmEnableThreads from "consts:wasmEnableThreads";
 
 import { ENVIRONMENT_IS_NODE, ENVIRONMENT_IS_WORKER, Module, loaderHelpers, mono_assert, runtimeHelpers } from "./globals";
@@ -56,11 +54,7 @@ export async function mono_run_main (main_assembly_name?: string, args?: string[
         }
     }
 
-    if (NativeAOT) {
-        return (Module as any)["callMain"](args);
-    }
-
-    mono_wasm_set_main_args(main_assembly_name, args);
+    mono_wasm_set_main_args(main_assembly_name, args); // TODO-LLVM: implement.
     loaderHelpers.config.mainAssemblyName = main_assembly_name;
 
     if (runtimeHelpers.waitForDebugger == -1) {
