@@ -268,7 +268,7 @@
     <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrILToolsSubset=true</ClrRuntimeBuildSubsets>
   </PropertyGroup>
 
-  <PropertyGroup Condition="($(_subset.Contains('+clr.nativeaotruntime+')) and '$(NativeAotSupported)' == 'true') or '$(TargetArchitecture)' == 'wasm'">
+  <PropertyGroup Condition="$(_subset.Contains('+clr.nativeaotruntime+')) and ('$(NativeAotSupported)' == 'true' or '$(TargetsWasm)' == 'true')">
     <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrNativeAotSubset=true</ClrRuntimeBuildSubsets>
   </PropertyGroup>
 
