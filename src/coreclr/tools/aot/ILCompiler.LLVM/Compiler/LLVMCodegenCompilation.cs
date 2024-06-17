@@ -45,6 +45,7 @@ namespace ILCompiler
         {
             NodeFactory = nodeFactory;
             Options = options;
+            InitializeCodeGen();
         }
 
         protected override void CompileInternal(string outputFile, ObjectDumper dumper)
@@ -67,7 +68,6 @@ namespace ILCompiler
         private void StartCompilation(string outputFile)
         {
             _outputFile = outputFile;
-            CorInfoImpl.JitStartCompilation();
         }
 
         private void FinishCompilation()

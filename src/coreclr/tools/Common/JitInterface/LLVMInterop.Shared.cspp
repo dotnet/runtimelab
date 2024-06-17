@@ -1,0 +1,30 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+#if !__cplusplus
+namespace Internal.JitInterface.LLVMInterop;
+#endif
+
+#if !__cplusplus
+public
+#endif
+enum LLVMLinkage
+{
+    LLVMAppendingLinkage
+};
+
+#if !__cplusplus
+public
+#endif
+enum LLVMIntPredicate
+{
+    LLVMIntEQ
+};
+
+#if !__cplusplus
+public
+#endif
+enum LLVMAttributeIndex
+{
+    LLVMAttributeFunctionIndex = -1
+};

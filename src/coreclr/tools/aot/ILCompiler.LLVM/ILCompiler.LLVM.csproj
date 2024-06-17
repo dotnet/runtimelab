@@ -22,7 +22,6 @@
 
   <ItemGroup>
     <Compile Include="CodeGen\LLVMCodegenCompilation.CodeGen.cs" />
-    <Compile Include="CodeGen\LLVMSharpInterop.cs" />
     <Compile Include="CodeGen\LLVMObjectWriter.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ExternMethodAccessorNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\LLVMCodegenNodeFactory.cs" />
@@ -33,7 +32,4 @@
     <Compile Include="Compiler\LLVMCodegenCompilationBuilder.cs" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="LLVMSharp" Version="15.0.0-beta1" />
-  </ItemGroup>
 </Project>

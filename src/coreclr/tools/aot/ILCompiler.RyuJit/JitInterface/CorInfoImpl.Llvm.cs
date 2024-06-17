@@ -22,7 +22,7 @@ namespace Internal.JitInterface
 {
     internal sealed unsafe partial class CorInfoImpl
     {
-        private static readonly void*[] s_jitExports = new void*[(int)JitApiId.Count + 1];
+        private static readonly void*[] s_jitExports = new void*[(int)CorJitApiId.CJAI_Count + 1];
 
         private void* _pNativeContext; // Per-thread context pointer. Used by the Jit; opaque to the EE.
 
@@ -128,7 +128,7 @@ namespace Internal.JitInterface
                     {
                         TypeDesc pointerType = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Void).MakePointerType();
                         MethodSignatureFlags signatureFlags = MethodSignatureFlags.Static;
-                        MethodSignature signature = new MethodSignature(signatureFlags, 0, pointerType, new[] { pointerType });
+                        MethodSignature signature = new MethodSignature(signatureFlags, 0, pointerType, [pointerType]);
 
                         // We're technically leaking the signature object here, but we don't get here often, so it's ok.
                         _this.Get_CORINFO_SIG_INFO(signature, pSig, scope: null);
@@ -413,17 +413,10 @@ namespace Internal.JitInterface
             Count
         }
 
-        private enum JitApiId
-        {
-            StartSingleThreadedCompilation,
-            FinishSingleThreadedCompilation,
-            Count
-        };
-
         [DllImport(JitLibrary)]
-        private static extern void registerLlvmCallbacks(void** jitImports, void** jitExports);
+        private static extern int registerLlvmCallbacks(void** jitImports, void** jitExports);
 
-        public static void JitStartCompilation()
+        private static void JitInitializeLlvm()
         {
             void** jitImports = stackalloc void*[(int)EEApiId.Count + 1];
             jitImports[(int)EEApiId.GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
@@ -454,8 +447,11 @@ namespace Internal.JitInterface
 
             fixed (void** jitExports = s_jitExports)
             {
-                registerLlvmCallbacks(jitImports, jitExports);
-                Debug.Assert(jitExports[(int)JitApiId.Count] == (void*)0x1234);
+                // "registerLlvmCallbacks" returning zero means the Jit was built without LLVM support.
+                if (registerLlvmCallbacks(jitImports, jitExports) != 0)
+                {
+                    Debug.Assert(jitExports[(int)CorJitApiId.CJAI_Count] == (void*)0x1234);
+                }
             }
         }
 
@@ -463,15 +459,17 @@ namespace Internal.JitInterface
         {
             fixed (byte* pOutputFileName = StringToUTF8(outputFileName), pTriple = StringToUTF8(triple), pDataLayout = StringToUTF8(dataLayout))
             {
-                var pExport = (delegate* unmanaged<byte*, byte*, byte*, void*>)s_jitExports[(int)JitApiId.StartSingleThreadedCompilation];
+                var pExport = (delegate* unmanaged<byte*, byte*, byte*, void*>)GetJitExport(CorJitApiId.CJAI_StartSingleThreadedCompilation);
                 _pNativeContext = pExport(pOutputFileName, pTriple, pDataLayout);
             }
         }
 
         public void JitFinishSingleThreadedCompilation()
         {
-            ((delegate* unmanaged<void*, void>)s_jitExports[(int)JitApiId.FinishSingleThreadedCompilation])(_pNativeContext);
+            ((delegate* unmanaged<void*, void>)GetJitExport(CorJitApiId.CJAI_FinishSingleThreadedCompilation))(_pNativeContext);
         }
+
+        internal static void* GetJitExport(CorJitApiId id) => s_jitExports[(int)id];
     }
 
     public enum TargetAbiType : byte
