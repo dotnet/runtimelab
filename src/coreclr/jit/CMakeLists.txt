@@ -85,11 +85,11 @@ function(create_standalone_jit)
   endif ()
 
   if ((TARGETDETAILS_ARCH STREQUAL "wasm64") OR (TARGETDETAILS_ARCH STREQUAL "wasm32"))
-    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE USE_STL)
-    target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE PAL_STDCPP_COMPAT)
-
     # We'll be linking against LLVM built without /guard:ehcont, so disable it.
     set_target_properties(${TARGETDETAILS_TARGET} PROPERTIES CLR_EH_CONTINUATION OFF)
+
+    # Shared C#/C++ Jit-EE interface sources.
+    target_include_directories(${TARGETDETAILS_TARGET} PRIVATE "../tools/Common/JitInterface")
 
     # Only look at "our" LLVM with LLVM_CMAKE_CONFIG.
     find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG} NO_DEFAULT_PATH)
@@ -730,8 +730,8 @@ if (CLR_CMAKE_BUILD_LLVM_JIT)
     install_clr(TARGETS clrjit_universal_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
 
     # Uncomment to enable 8 byte pointer size version of the wasm clrjit.dll.
-    # create_standalone_jit(TARGET clrjit_universal_wasm32_${ARCH_HOST_NAME} OS universal ARCH wasm64 DESTINATIONS .)
-    # install_clr(TARGETS clrjit_universal_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
+    # create_standalone_jit(TARGET clrjit_universal_wasm64_${ARCH_HOST_NAME} OS universal ARCH wasm64 DESTINATIONS .)
+    # install_clr(TARGETS clrjit_universal_wasm64_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
 endif (CLR_CMAKE_BUILD_LLVM_JIT)
 
 if (CLR_CMAKE_TARGET_ARCH_I386 AND CLR_CMAKE_TARGET_UNIX)

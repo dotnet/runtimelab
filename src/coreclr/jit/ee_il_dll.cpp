@@ -1423,8 +1423,9 @@ unsigned Compiler::eeTryGetClassSize(CORINFO_CLASS_HANDLE clsHnd)
 #endif // !DEBUG
 
 #ifndef TARGET_WASM
-extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExports)
+extern "C" DLLEXPORT int registerLlvmCallbacks(void** jitImports, void** jitExports)
 {
     // No-op stub; see llvm.cpp for the real implementation for `TARGET_WASM`
+    return 0;
 }
 #endif

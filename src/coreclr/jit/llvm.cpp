@@ -3,6 +3,7 @@
 
 #include "jitpch.h"
 #include "llvm.h"
+#include "CorJitApiId.Shared.cspp"
 
 // TODO-LLVM-Upstream: figure out how to fix these warnings in LLVM headers.
 #pragma warning(push)
@@ -35,13 +36,6 @@ enum class EEApiId
     GetExceptionThrownVariable,
     GetExceptionHandlingTable,
     GetJitTestInfo,
-    Count
-};
-
-enum class JitApiId
-{
-    StartSingleThreadedCompilation,
-    FinishSingleThreadedCompilation,
     Count
 };
 
@@ -860,15 +854,26 @@ void Llvm::GetJitTestInfo(CorInfoLlvmJitTestKind kind, CORINFO_LLVM_JIT_TEST_INF
     CallEEApi<EEApiId::GetJitTestInfo, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, kind, pInfo);
 }
 
-extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExports)
+static void RegisterLlvmInteropExports(void** jitExports);
+
+extern "C" DLLEXPORT int registerLlvmCallbacks(void** jitImports, void** jitExports)
 {
     assert((jitImports != nullptr) && (jitImports[static_cast<int>(EEApiId::Count)] == (void*)0x1234));
     assert(jitExports != nullptr);
 
     memcpy(g_callbacks, jitImports, static_cast<int>(EEApiId::Count) * sizeof(void*));
-    jitExports[static_cast<int>(JitApiId::StartSingleThreadedCompilation)] = (void*)&Llvm::StartSingleThreadedCompilation;
-    jitExports[static_cast<int>(JitApiId::FinishSingleThreadedCompilation)] = (void*)&Llvm::FinishSingleThreadedCompilation;
-    jitExports[static_cast<int>(JitApiId::Count)] = (void*)0x1234;
+
+    RegisterLlvmInteropExports(jitExports);
+    jitExports[CJAI_StartSingleThreadedCompilation] = (void*)&Llvm::StartSingleThreadedCompilation;
+    jitExports[CJAI_FinishSingleThreadedCompilation] = (void*)&Llvm::FinishSingleThreadedCompilation;
+    jitExports[CJAI_Count] = (void*)0x1234;
+
+    for (int i = 0; i < CJAI_Count; i++)
+    {
+        assert(jitExports[i] != nullptr);
+    }
+
+    return 1;
 }
 
 /* static */ SingleThreadedCompilationContext* Llvm::StartSingleThreadedCompilation(
@@ -905,4 +910,393 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void** jitImports, void** jitExp
     llvm::WriteBitcodeToFile(module, bitCodeFileStream);
 
     delete context;
+}
+
+#include "LLVMInterop.Shared.cspp"
+
+static LLVMContext* LLVMInterop_LLVMContext_Create()
+{
+    return new LLVMContext();
+}
+
+static Module* LLVMInterop_LLVMModule_Create(
+    LLVMContext* context, char* name, size_t nameLength, char* target, size_t targetLength, char* dataLayout, size_t dataLayoutLength)
+{
+    Module* module = new Module({name, nameLength}, *context);
+    module->setTargetTriple({target, targetLength});
+    module->setDataLayout({dataLayout, dataLayoutLength});
+    return module;
+}
+
+static llvm::GlobalAlias* LLVMInterop_LLVMModule_GetNamedAlias(Module* module, char* name, size_t nameLength)
+{
+    return module->getNamedAlias({name, nameLength});
+}
+
+static Function* LLVMInterop_LLVMModule_GetNamedFunction(Module* module, char* name, size_t nameLength)
+{
+    return module->getFunction({name, nameLength});
+}
+
+static llvm::GlobalVariable* LLVMInterop_LLVMModule_GetNamedGlobal(Module* module, char* name, size_t nameLength)
+{
+    return module->getNamedGlobal({name, nameLength});
+}
+
+static llvm::GlobalAlias* LLVMInterop_LLVMModule_AddAlias(Module* module, char* name, size_t nameLength, Type* valueType, Value* aliasee)
+{
+    return llvm::GlobalAlias::create(
+        valueType, 0, llvm::GlobalValue::ExternalLinkage, StringRef(name, nameLength), llvm::cast<llvm::Constant>(aliasee), module);
+}
+
+static Function* LLVMInterop_LLVMModule_AddFunction(Module* module, char* name, size_t nameLength, Type* type)
+{
+    return Function::Create(llvm::cast<FunctionType>(type), llvm::GlobalValue::ExternalLinkage, StringRef(name, nameLength), *module);
+}
+
+static llvm::GlobalVariable* LLVMInterop_LLVMModule_AddGlobal(Module* module, char* name, size_t nameLength, Type* type, Value* initializer)
+{
+    llvm::Constant* init = llvm::cast_or_null<llvm::Constant>(initializer);
+    return new llvm::GlobalVariable(*module, type, false, llvm::GlobalValue::ExternalLinkage, init, StringRef(name, nameLength));
+}
+
+static void LLVMInterop_LLVMModule_Verify(Module* module)
+{
+    if (llvm::verifyModule(*module, &llvm::errs()))
+    {
+        abort();
+    }
+}
+
+static void LLVMInterop_LLVMModule_PrintToFile(Module* module, char* path, size_t pathLength)
+{
+    std::error_code code{};
+    llvm::raw_fd_ostream output({path, pathLength}, code);
+    module->print(output, nullptr);
+}
+
+static void LLVMInterop_LLVMModule_WriteBitcodeToFile(Module* module, char* path, size_t pathLength)
+{
+    std::error_code code{};
+    llvm::raw_fd_ostream output({path, pathLength}, code);
+    llvm::WriteBitcodeToFile(*module, output);
+}
+
+static LLVMContext* LLVMInterop_LLVMType_GetContext(Type* type)
+{
+    return &type->getContext();
+}
+
+static Type* LLVMInterop_LLVMType_GetReturnType(Type* type)
+{
+    return llvm::cast<FunctionType>(type)->getReturnType();
+}
+
+static Type* const* LLVMInterop_LLVMType_GetParamTypes(Type* type, size_t* pCount)
+{
+    ArrayRef<Type*> types = llvm::cast<FunctionType>(type)->params();
+    *pCount = types.size();
+    return types.data();
+}
+
+static Type* LLVMInterop_LLVMType_GetPointer(LLVMContext* context)
+{
+    return llvm::PointerType::getUnqual(*context);
+}
+
+static Type* LLVMInterop_LLVMType_GetInt(LLVMContext* context, int bitCount)
+{
+    return Type::getIntNTy(*context, bitCount);
+}
+
+static Type* LLVMInterop_LLVMType_GetFloat(LLVMContext* context)
+{
+    return Type::getFloatTy(*context);
+}
+
+static Type* LLVMInterop_LLVMType_GetDouble(LLVMContext* context)
+{
+    return Type::getDoubleTy(*context);
+}
+
+static Type* LLVMInterop_LLVMType_GetVoid(LLVMContext* context)
+{
+    return Type::getVoidTy(*context);
+}
+
+static FunctionType* LLVMInterop_LLVMType_CreateFunction(Type* result, Type** parameters, size_t paramCount)
+{
+    return FunctionType::get(result, {parameters, paramCount}, /* isVarArg */ false);
+}
+
+static llvm::StructType* LLVMInterop_LLVMType_CreateStruct(LLVMContext* context, Type** elements, size_t elementCount, int packed)
+{
+    return llvm::StructType::get(*context, {elements, elementCount}, packed);
+}
+
+static llvm::ArrayType* LLVMInterop_LLVMType_CreateArray(Type* elementType, uint64_t elementCount)
+{
+    return llvm::ArrayType::get(elementType, elementCount);
+}
+
+static Type* LLVMInterop_LLVMValue_TypeOf(Value* value)
+{
+    return value->getType();
+}
+
+static llvm::BasicBlock* LLVMInterop_LLVMValue_AppendBasicBlock(Value* func, char* name, size_t nameLength)
+{
+    return llvm::BasicBlock::Create(func->getContext(), StringRef{name, nameLength}, llvm::cast<Function>(func));
+}
+
+static void LLVMInterop_LLVMValue_AddAttributeAtIndex(Value* value, LLVMAttributeIndex index, void* attribute)
+{
+    switch (index)
+    {
+        case LLVMAttributeFunctionIndex:
+            llvm::cast<Function>(value)->addFnAttr(llvm::Attribute::fromRawPointer(attribute));
+            break;
+        default:
+            abort();
+    }
+}
+
+static Value* LLVMInterop_LLVMValue_GetParam(Value* func, unsigned index)
+{
+    return llvm::cast<Function>(func)->getArg(index);
+}
+
+static int LLVMInterop_LLVMValue_GetParamCount(Value* func)
+{
+    return llvm::cast<Function>(func)->getFunctionType()->getNumParams();
+}
+
+static Type* LLVMInterop_LLVMValue_GetValueType(Value* value)
+{
+    return llvm::cast<llvm::GlobalValue>(value)->getValueType();
+}
+
+static void LLVMInterop_LLVMValue_SetAlignment(Value* value, uint64_t alignment)
+{
+    llvm::cast<llvm::GlobalObject>(value)->setAlignment(llvm::Align(alignment));
+}
+
+static void LLVMInterop_LLVMValue_SetSection(Value* value, char* name, size_t nameLength)
+{
+    llvm::cast<llvm::GlobalObject>(value)->setSection({name, nameLength});
+}
+
+static void LLVMInterop_LLVMValue_SetLinkage(Value* value, LLVMLinkage linkage)
+{
+    llvm::GlobalObject* obj = llvm::cast<llvm::GlobalObject>(value);
+    switch (linkage)
+    {
+        case LLVMAppendingLinkage:
+            obj->setLinkage(llvm::GlobalValue::AppendingLinkage);
+            break;
+        default:
+            abort();
+    }
+}
+
+static void LLVMInterop_LLVMValue_SetAliasee(Value* alias, Value* aliasee)
+{
+    llvm::cast<llvm::GlobalAlias>(alias)->setAliasee(llvm::cast<llvm::Constant>(aliasee));
+}
+
+static Value* LLVMInterop_LLVMValue_CreateConstNull(Type* type)
+{
+    return llvm::Constant::getNullValue(type);
+}
+
+static Value* LLVMInterop_LLVMValue_CreateConstInt(Type* type, uint64_t value)
+{
+    return llvm::ConstantInt::get(type, value);
+}
+
+static Value* LLVMInterop_LLVMValue_CreateConstIntToPtr(Value* value)
+{
+    Type* type = llvm::PointerType::getUnqual(value->getContext());
+    return llvm::ConstantExpr::getIntToPtr(llvm::cast<llvm::Constant>(value), type);
+}
+
+static Value* LLVMInterop_LLVMValue_CreateConstGEP(Value* address, int offset)
+{
+    LLVMContext& context = address->getContext();
+    Value* offsetValue = llvm::ConstantInt::get(Type::getInt32Ty(context), offset);
+    return llvm::ConstantExpr::getGetElementPtr(Type::getInt8Ty(context), llvm::cast<llvm::Constant>(address), offsetValue);
+}
+
+static Value* LLVMInterop_LLVMValue_CreateConstStruct(Type* type, llvm::Constant** elements, size_t elementCount)
+{
+    return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(type), {elements, elementCount});
+}
+
+static Value* LLVMInterop_LLVMValue_CreateConstArray(Type* type, llvm::Constant** elements, size_t elementCount)
+{
+    return llvm::ConstantArray::get(llvm::cast<llvm::ArrayType>(type), {elements, elementCount});
+}
+
+static Function* LLVMInterop_LLVMBasicBlock_GetParent(llvm::BasicBlock* block)
+{
+    return block->getParent();
+}
+
+static void LLVMInterop_LLVMBasicBlock_MoveAfter(llvm::BasicBlock* block, llvm::BasicBlock* moveAfterBlock)
+{
+    block->moveAfter(moveAfterBlock);
+}
+
+static llvm::IRBuilder<>* LLVMInterop_LLVMBuilder_Create(LLVMContext* context)
+{
+    return new llvm::IRBuilder<>(*context);
+}
+
+static llvm::BasicBlock* LLVMInterop_LLVMBuilder_GetInsertBlock(llvm::IRBuilder<>* builder)
+{
+    return builder->GetInsertBlock();
+}
+
+static Value* LLVMInterop_LLVMBuilder_BuildICmp(llvm::IRBuilder<>* builder, LLVMIntPredicate predicate, Value* left, Value* right, char* name, size_t nameLength)
+{
+    llvm::ICmpInst::Predicate llvmPredicate;
+    switch (predicate)
+    {
+        case LLVMIntEQ:
+            llvmPredicate = llvm::ICmpInst::ICMP_EQ;
+            break;
+        default:
+            abort();
+    }
+    return builder->CreateICmp(llvmPredicate, left, right, StringRef(name, nameLength));
+}
+
+static Value* LLVMInterop_LLVMBuilder_BuildCondBr(llvm::IRBuilder<>* builder, Value* cond, llvm::BasicBlock* trueDest, llvm::BasicBlock* falseDest)
+{
+    return builder->CreateCondBr(cond, trueDest, falseDest);
+}
+
+static Value* LLVMInterop_LLVMBuilder_BuildBr(llvm::IRBuilder<>* builder, llvm::BasicBlock* dest)
+{
+    return builder->CreateBr(dest);
+}
+
+static Value* LLVMInterop_LLVMBuilder_BuildGEP(llvm::IRBuilder<>* builder, Value* address, Value* offset, char* name, size_t nameLength)
+{
+    return builder->CreateGEP(Type::getInt8Ty(builder->getContext()), address, offset, StringRef(name, nameLength));
+}
+
+static Value* LLVMInterop_LLVMBuilder_BuildPtrToInt(llvm::IRBuilder<>* builder, Value* value, Type* type, char* name, size_t nameLength)
+{
+    return builder->CreatePtrToInt(value, type, StringRef(name, nameLength));
+}
+
+static Value* LLVMInterop_LLVMBuilder_BuildIntToPtr(llvm::IRBuilder<>* builder, Value* value, char* name, size_t nameLength)
+{
+    return builder->CreateIntToPtr(value, llvm::PointerType::get(builder->getContext(), 0), StringRef(name, nameLength));
+}
+
+static Value* LLVMInterop_LLVMBuilder_BuildPointerCast(llvm::IRBuilder<>* builder, Value* value, Type* type, char* name, size_t nameLength)
+{
+    return builder->CreatePointerCast(value, type, StringRef(name, nameLength));
+}
+
+static Value* LLVMInterop_LLVMBuilder_BuildCall(llvm::IRBuilder<>* builder, Type* funcType, Value* callee, Value** args, size_t argCount, char* name, size_t nameLength)
+{
+    return builder->CreateCall(llvm::cast<FunctionType>(funcType), callee, {args, argCount}, StringRef(name, nameLength));
+}
+
+static Value* LLVMInterop_LLVMBuilder_BuildLoad(llvm::IRBuilder<>* builder, Type* type, Value* address, char* name, size_t nameLength)
+{
+    return builder->CreateLoad(type, address, StringRef(name, nameLength));
+}
+
+static Value* LLVMInterop_LLVMBuilder_BuildRet(llvm::IRBuilder<>* builder, Value* result)
+{
+    if (result == nullptr)
+    {
+        return builder->CreateRetVoid();
+    }
+
+    return builder->CreateRet(result);
+}
+
+static Value* LLVMInterop_LLVMBuilder_BuildUnreachable(llvm::IRBuilder<>* builder)
+{
+    return builder->CreateUnreachable();
+}
+
+static void LLVMInterop_LLVMBuilder_PositionAtEnd(llvm::IRBuilder<>* builder, llvm::BasicBlock* block)
+{
+    builder->SetInsertPoint(block);
+}
+
+static void LLVMInterop_LLVMBuilder_Dispose(llvm::IRBuilder<>* builder)
+{
+    delete builder;
+}
+
+static void* LLVMInterop_LLVMAttribute_Create(LLVMContext* context, char* name, size_t nameLength, char* value, size_t valueLength)
+{
+    return llvm::Attribute::get(*context, StringRef(name, nameLength), StringRef(value, valueLength)).getRawPointer();
+}
+
+static void RegisterLlvmInteropExports(void** jitExports)
+{
+    jitExports[CJAI_LLVMInterop_LLVMContext_Create] = (void*)&LLVMInterop_LLVMContext_Create;
+    jitExports[CJAI_LLVMInterop_LLVMModule_Create] = (void*)&LLVMInterop_LLVMModule_Create;
+    jitExports[CJAI_LLVMInterop_LLVMModule_GetNamedAlias] = (void*)&LLVMInterop_LLVMModule_GetNamedAlias;
+    jitExports[CJAI_LLVMInterop_LLVMModule_GetNamedFunction] = (void*)&LLVMInterop_LLVMModule_GetNamedFunction;
+    jitExports[CJAI_LLVMInterop_LLVMModule_GetNamedGlobal] = (void*)&LLVMInterop_LLVMModule_GetNamedGlobal;
+    jitExports[CJAI_LLVMInterop_LLVMModule_AddAlias] = (void*)&LLVMInterop_LLVMModule_AddAlias;
+    jitExports[CJAI_LLVMInterop_LLVMModule_AddFunction] = (void*)&LLVMInterop_LLVMModule_AddFunction;
+    jitExports[CJAI_LLVMInterop_LLVMModule_AddGlobal] = (void*)&LLVMInterop_LLVMModule_AddGlobal;
+    jitExports[CJAI_LLVMInterop_LLVMModule_Verify] = (void*)&LLVMInterop_LLVMModule_Verify;
+    jitExports[CJAI_LLVMInterop_LLVMModule_PrintToFile] = (void*)&LLVMInterop_LLVMModule_PrintToFile;
+    jitExports[CJAI_LLVMInterop_LLVMModule_WriteBitcodeToFile] = (void*)&LLVMInterop_LLVMModule_WriteBitcodeToFile;
+    jitExports[CJAI_LLVMInterop_LLVMType_GetContext] = (void*)&LLVMInterop_LLVMType_GetContext;
+    jitExports[CJAI_LLVMInterop_LLVMType_GetReturnType] = (void*)&LLVMInterop_LLVMType_GetReturnType;
+    jitExports[CJAI_LLVMInterop_LLVMType_GetParamTypes] = (void*)&LLVMInterop_LLVMType_GetParamTypes;
+    jitExports[CJAI_LLVMInterop_LLVMType_GetPointer] = (void*)&LLVMInterop_LLVMType_GetPointer;
+    jitExports[CJAI_LLVMInterop_LLVMType_GetInt] = (void*)&LLVMInterop_LLVMType_GetInt;
+    jitExports[CJAI_LLVMInterop_LLVMType_GetFloat] = (void*)&LLVMInterop_LLVMType_GetFloat;
+    jitExports[CJAI_LLVMInterop_LLVMType_GetDouble] = (void*)&LLVMInterop_LLVMType_GetDouble;
+    jitExports[CJAI_LLVMInterop_LLVMType_GetVoid] = (void*)&LLVMInterop_LLVMType_GetVoid;
+    jitExports[CJAI_LLVMInterop_LLVMType_CreateFunction] = (void*)&LLVMInterop_LLVMType_CreateFunction;
+    jitExports[CJAI_LLVMInterop_LLVMType_CreateStruct] = (void*)&LLVMInterop_LLVMType_CreateStruct;
+    jitExports[CJAI_LLVMInterop_LLVMType_CreateArray] = (void*)&LLVMInterop_LLVMType_CreateArray;
+    jitExports[CJAI_LLVMInterop_LLVMValue_TypeOf] = (void*)&LLVMInterop_LLVMValue_TypeOf;
+    jitExports[CJAI_LLVMInterop_LLVMValue_AppendBasicBlock] = (void*)&LLVMInterop_LLVMValue_AppendBasicBlock;
+    jitExports[CJAI_LLVMInterop_LLVMValue_AddAttributeAtIndex] = (void*)&LLVMInterop_LLVMValue_AddAttributeAtIndex;
+    jitExports[CJAI_LLVMInterop_LLVMValue_GetParam] = (void*)&LLVMInterop_LLVMValue_GetParam;
+    jitExports[CJAI_LLVMInterop_LLVMValue_GetParamCount] = (void*)&LLVMInterop_LLVMValue_GetParamCount;
+    jitExports[CJAI_LLVMInterop_LLVMValue_GetValueType] = (void*)&LLVMInterop_LLVMValue_GetValueType;
+    jitExports[CJAI_LLVMInterop_LLVMValue_SetAlignment] = (void*)&LLVMInterop_LLVMValue_SetAlignment;
+    jitExports[CJAI_LLVMInterop_LLVMValue_SetSection] = (void*)&LLVMInterop_LLVMValue_SetSection;
+    jitExports[CJAI_LLVMInterop_LLVMValue_SetLinkage] = (void*)&LLVMInterop_LLVMValue_SetLinkage;
+    jitExports[CJAI_LLVMInterop_LLVMValue_SetAliasee] = (void*)&LLVMInterop_LLVMValue_SetAliasee;
+    jitExports[CJAI_LLVMInterop_LLVMValue_CreateConstNull] = (void*)&LLVMInterop_LLVMValue_CreateConstNull;
+    jitExports[CJAI_LLVMInterop_LLVMValue_CreateConstInt] = (void*)&LLVMInterop_LLVMValue_CreateConstInt;
+    jitExports[CJAI_LLVMInterop_LLVMValue_CreateConstIntToPtr] = (void*)&LLVMInterop_LLVMValue_CreateConstIntToPtr;
+    jitExports[CJAI_LLVMInterop_LLVMValue_CreateConstGEP] = (void*)&LLVMInterop_LLVMValue_CreateConstGEP;
+    jitExports[CJAI_LLVMInterop_LLVMValue_CreateConstStruct] = (void*)&LLVMInterop_LLVMValue_CreateConstStruct;
+    jitExports[CJAI_LLVMInterop_LLVMValue_CreateConstArray] = (void*)&LLVMInterop_LLVMValue_CreateConstArray;
+    jitExports[CJAI_LLVMInterop_LLVMBasicBlock_GetParent] = (void*)&LLVMInterop_LLVMBasicBlock_GetParent;
+    jitExports[CJAI_LLVMInterop_LLVMBasicBlock_MoveAfter] = (void*)&LLVMInterop_LLVMBasicBlock_MoveAfter;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_Create] = (void*)&LLVMInterop_LLVMBuilder_Create;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_GetInsertBlock] = (void*)&LLVMInterop_LLVMBuilder_GetInsertBlock;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_BuildICmp] = (void*)&LLVMInterop_LLVMBuilder_BuildICmp;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_BuildCondBr] = (void*)&LLVMInterop_LLVMBuilder_BuildCondBr;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_BuildBr] = (void*)&LLVMInterop_LLVMBuilder_BuildBr;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_BuildGEP] = (void*)&LLVMInterop_LLVMBuilder_BuildGEP;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_BuildPtrToInt] = (void*)&LLVMInterop_LLVMBuilder_BuildPtrToInt;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_BuildIntToPtr] = (void*)&LLVMInterop_LLVMBuilder_BuildIntToPtr;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_BuildPointerCast] = (void*)&LLVMInterop_LLVMBuilder_BuildPointerCast;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_BuildCall] = (void*)&LLVMInterop_LLVMBuilder_BuildCall;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_BuildLoad] = (void*)&LLVMInterop_LLVMBuilder_BuildLoad;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_BuildRet] = (void*)&LLVMInterop_LLVMBuilder_BuildRet;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_BuildUnreachable] = (void*)&LLVMInterop_LLVMBuilder_BuildUnreachable;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_PositionAtEnd] = (void*)&LLVMInterop_LLVMBuilder_PositionAtEnd;
+    jitExports[CJAI_LLVMInterop_LLVMBuilder_Dispose] = (void*)&LLVMInterop_LLVMBuilder_Dispose;
+    jitExports[CJAI_LLVMInterop_LLVMAttribute_Create] = (void*)&LLVMInterop_LLVMAttribute_Create;
 }

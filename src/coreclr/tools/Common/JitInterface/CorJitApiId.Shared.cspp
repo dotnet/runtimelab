@@ -1,0 +1,79 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+#if !__cplusplus
+namespace Internal.JitInterface;
+#endif
+
+#if !__cplusplus
+public
+#endif
+enum CorJitApiId
+{
+    CJAI_LLVMInterop_LLVMContext_Create,
+
+    CJAI_LLVMInterop_LLVMModule_Create,
+    CJAI_LLVMInterop_LLVMModule_GetNamedAlias,
+    CJAI_LLVMInterop_LLVMModule_GetNamedFunction,
+    CJAI_LLVMInterop_LLVMModule_GetNamedGlobal,
+    CJAI_LLVMInterop_LLVMModule_AddAlias,
+    CJAI_LLVMInterop_LLVMModule_AddFunction,
+    CJAI_LLVMInterop_LLVMModule_AddGlobal,
+    CJAI_LLVMInterop_LLVMModule_PrintToFile,
+    CJAI_LLVMInterop_LLVMModule_Verify,
+    CJAI_LLVMInterop_LLVMModule_WriteBitcodeToFile,
+
+    CJAI_LLVMInterop_LLVMType_GetContext,
+    CJAI_LLVMInterop_LLVMType_GetReturnType,
+    CJAI_LLVMInterop_LLVMType_GetParamTypes,
+    CJAI_LLVMInterop_LLVMType_GetPointer,
+    CJAI_LLVMInterop_LLVMType_GetInt,
+    CJAI_LLVMInterop_LLVMType_GetFloat,
+    CJAI_LLVMInterop_LLVMType_GetDouble,
+    CJAI_LLVMInterop_LLVMType_GetVoid,
+    CJAI_LLVMInterop_LLVMType_CreateFunction,
+    CJAI_LLVMInterop_LLVMType_CreateStruct,
+    CJAI_LLVMInterop_LLVMType_CreateArray,
+
+    CJAI_LLVMInterop_LLVMValue_TypeOf,
+    CJAI_LLVMInterop_LLVMValue_AppendBasicBlock,
+    CJAI_LLVMInterop_LLVMValue_AddAttributeAtIndex,
+    CJAI_LLVMInterop_LLVMValue_GetParam,
+    CJAI_LLVMInterop_LLVMValue_GetParamCount,
+    CJAI_LLVMInterop_LLVMValue_GetValueType,
+    CJAI_LLVMInterop_LLVMValue_SetAlignment,
+    CJAI_LLVMInterop_LLVMValue_SetSection,
+    CJAI_LLVMInterop_LLVMValue_SetLinkage,
+    CJAI_LLVMInterop_LLVMValue_SetAliasee,
+    CJAI_LLVMInterop_LLVMValue_CreateConstNull,
+    CJAI_LLVMInterop_LLVMValue_CreateConstInt,
+    CJAI_LLVMInterop_LLVMValue_CreateConstIntToPtr,
+    CJAI_LLVMInterop_LLVMValue_CreateConstGEP,
+    CJAI_LLVMInterop_LLVMValue_CreateConstStruct,
+    CJAI_LLVMInterop_LLVMValue_CreateConstArray,
+
+    CJAI_LLVMInterop_LLVMBasicBlock_GetParent,
+    CJAI_LLVMInterop_LLVMBasicBlock_MoveAfter,
+
+    CJAI_LLVMInterop_LLVMBuilder_Create,
+    CJAI_LLVMInterop_LLVMBuilder_GetInsertBlock,
+    CJAI_LLVMInterop_LLVMBuilder_BuildICmp,
+    CJAI_LLVMInterop_LLVMBuilder_BuildCondBr,
+    CJAI_LLVMInterop_LLVMBuilder_BuildBr,
+    CJAI_LLVMInterop_LLVMBuilder_BuildGEP,
+    CJAI_LLVMInterop_LLVMBuilder_BuildPtrToInt,
+    CJAI_LLVMInterop_LLVMBuilder_BuildIntToPtr,
+    CJAI_LLVMInterop_LLVMBuilder_BuildPointerCast,
+    CJAI_LLVMInterop_LLVMBuilder_BuildCall,
+    CJAI_LLVMInterop_LLVMBuilder_BuildLoad,
+    CJAI_LLVMInterop_LLVMBuilder_BuildRet,
+    CJAI_LLVMInterop_LLVMBuilder_BuildUnreachable,
+    CJAI_LLVMInterop_LLVMBuilder_PositionAtEnd,
+    CJAI_LLVMInterop_LLVMBuilder_Dispose,
+
+    CJAI_LLVMInterop_LLVMAttribute_Create,
+
+    CJAI_StartSingleThreadedCompilation,
+    CJAI_FinishSingleThreadedCompilation,
+    CJAI_Count,
+};

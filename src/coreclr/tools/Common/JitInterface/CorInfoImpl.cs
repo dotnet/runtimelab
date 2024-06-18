@@ -178,6 +178,9 @@ namespace Internal.JitInterface
         {
             jitStartup(GetJitHost(JitConfigProvider.Instance.UnmanagedInstance));
             JitSetOs(JitPointerAccessor.Get(), os);
+#if !READYTORUN
+            JitInitializeLlvm();
+#endif
         }
 
         public CorInfoImpl()

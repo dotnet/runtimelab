@@ -106,5 +106,13 @@
   <ItemGroup>
     <Compile Include="JitInterface\CorInfoImpl.Llvm.cs" />
     <Compile Include="JitInterface\CorInfoImpl.Llvm.DebugInfo.cs" />
+    <Compile Include="JitInterface\LLVMInterop.cs" />
+    <Compile Include="..\..\Common\JitInterface\CorJitApiId.Shared.cspp">
+      <Link>JitInterface\CorJitApiId.Shared.cspp</Link>
+    </Compile>
+    <Compile Include="..\..\Common\JitInterface\LLVMInterop.Shared.cspp">
+      <Link>JitInterface\LLVMInterop.Shared.cspp</Link>
+    </Compile>
   </ItemGroup>
+
 </Project>
