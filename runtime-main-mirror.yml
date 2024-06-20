@@ -1,5 +1,16 @@
-# Disable triggers as it should only be called using Maestro
-trigger: none
+resources:
+  repositories:
+  - repository: internal dotnet-runtime
+    type: git
+    name: internal/dotnet-runtime
+    ref: main
+    trigger:
+      branches:
+        include:
+        - main
+
+trigger:
+- main
 
 jobs:
   - job: Mirror_runtime_to_runtimelab
