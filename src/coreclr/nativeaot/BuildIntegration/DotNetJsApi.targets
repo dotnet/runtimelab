@@ -86,7 +86,7 @@
       <JSFileType Include="lib.js"     Kind="js-library" />
       <JSFileType Include="post.js"    Kind="post-js" />
       <JSFileType Include="extpost.js" Kind="extern-post-js" />
-      <_WasmExtraJSFile Include="$(IlcFrameworkNativePath)src\es6\*.%(JSFileType.Identity)" Kind="%(JSFileType.Kind)" />
+      <_WasmExtraJSFile Include="$(IlcSdkPath)dotnetjs\src\es6\*.%(JSFileType.Identity)" Kind="%(JSFileType.Kind)" />
       <_DotNetJsLinkerFlag Include="--%(_WasmExtraJSFile.Kind) &quot;%(_WasmExtraJSFile.Identity)&quot;" Condition="'%(_WasmExtraJSFile.Kind)' != ''" />
 
       <!-- Exported functions required by user or runtime API -->
@@ -108,8 +108,8 @@
   </Target>
   <Target Name="CopyDotnetJsAfterLinking" AfterTargets="LinkNativeLlvm">
     <ItemGroup>
-      <_FilesToCopyToNative Include="$(IlcFrameworkNativePath)\dotnet*.js" />
-      <_FilesToCopyToNative Include="$(IlcFrameworkNativePath)\dotnet*.map" Condition="'$(WasmEmitSourceMap)' == 'true'" />
+      <_FilesToCopyToNative Include="$(IlcSdkPath)dotnetjs\dotnet*.js" />
+      <_FilesToCopyToNative Include="$(IlcSdkPath)dotnetjs\dotnet*.map" Condition="'$(WasmEmitSourceMap)' == 'true'" />
       <_FilesToCopyToNative Include="@(WasmExtraFilesToDeploy)" /><!-- User defined extra files to be included in the build output -->
     </ItemGroup>
     <Copy SourceFiles="@(_FilesToCopyToNative)" DestinationFolder="$(NativeOutputPath)" />

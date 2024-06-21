@@ -26,6 +26,10 @@
       <File Include="$(CoreCLRAotSdkDir)*">
         <TargetPath>sdk</TargetPath>
       </File>
+      <DotnetJsCoreCLRAotSdkExtension Include="ts;js;map;json" />
+      <File Include="$(CoreCLRAotSdkDir)dotnetjs/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="sdk/dotnetjs" />
+      <File Include="$(CoreCLRAotSdkDir)dotnetjs/src/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="sdk/dotnetjs/src" />
+      <File Include="$(CoreCLRAotSdkDir)dotnetjs/src/es6/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="sdk/dotnetjs/src/es6" />
       <File Include="$(MibcOptimizationDataDir)/$(TargetOS)/$(TargetArchitecture)/**/*.mibc">
         <TargetPath>mibc</TargetPath>
       </File>
