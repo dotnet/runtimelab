@@ -97,6 +97,7 @@ namespace System.Runtime.InteropServices.JavaScript
 
         // The JS layer invokes this method when the JS wrapper for a JS owned object has been collected by the JS garbage collector
         // the marshaled signature is: void ReleaseJSOwnedObjectByGCHandle(GCHandle gcHandle)
+        [UnmanagedCallersOnly(EntryPoint = "System_Runtime_InteropServices_JavaScript_JavaScriptExports_ReleaseJSOwnedObjectByGCHandle")]
         public static void ReleaseJSOwnedObjectByGCHandle(JSMarshalerArgument* arguments_buffer)
         {
             ref JSMarshalerArgument arg_exc = ref arguments_buffer[0]; // initialized by caller in alloc_stack_frame()
