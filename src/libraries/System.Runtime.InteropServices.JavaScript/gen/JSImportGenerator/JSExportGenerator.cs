@@ -400,8 +400,13 @@ namespace Microsoft.Interop.JavaScript
                                                                             IdentifierName("NonPublicMethods")))),
                                                                 Token(SyntaxKind.CommaToken),
                                                                 AttributeArgument(
-                                                                    TypeOfExpression(
-                                                                        IdentifierName(initializerClass)))})))}))))
+                                                                    LiteralExpression(SyntaxKind.StringLiteralExpression, Literal($"{generatedNamespace}.{initializerClass}"))
+                                                                ),
+                                                                Token(SyntaxKind.CommaToken),
+                                                                AttributeArgument(
+                                                                    LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(assemblyName))
+                                                                )
+                                                            })))}))))
                             .WithModifiers(TokenList(new[] {
                                 Token(SyntaxKind.StaticKeyword),
                                 Token(SyntaxKind.InternalKeyword)

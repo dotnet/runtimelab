@@ -89,6 +89,7 @@
   <PropertyGroup Condition="'$(Platform)' == 'arm64'">
     <DefineConstants>TARGET_64BIT;TARGET_ARM64;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
+<<<<<<< HEAD
   <PropertyGroup Condition="'$(Platform)' == 'wasm'">
     <!-- "WASM ABI" here refers to the use of shadow stacks, native-based EH, conservative GC, etc. -->
     <!-- It does not, in principle, imply TARGET_WASM, or vice-versa, though currently this is the case. -->
@@ -96,6 +97,10 @@
     <WasmAbi>true</WasmAbi>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DefineConstants>TARGET_32BIT;TARGET_WASM;$(DefineConstants)</DefineConstants>
+=======
+  <PropertyGroup Condition="'$(Platform)' == 'loongarch64'">
+    <DefineConstants>TARGET_64BIT;TARGET_LOONGARCH64;$(DefineConstants)</DefineConstants>
+>>>>>>> 61050ae9b4e38dce8a9f7fe2d1a11eea5fa92b99
   </PropertyGroup>
 
   <PropertyGroup>
