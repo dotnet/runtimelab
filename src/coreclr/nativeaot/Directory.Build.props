@@ -89,6 +89,9 @@
   <PropertyGroup Condition="'$(Platform)' == 'arm64'">
     <DefineConstants>TARGET_64BIT;TARGET_ARM64;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)' == 'loongarch64'">
+    <DefineConstants>TARGET_64BIT;TARGET_LOONGARCH64;$(DefineConstants)</DefineConstants>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)' == 'wasm'">
     <!-- "WASM ABI" here refers to the use of shadow stacks, native-based EH, conservative GC, etc. -->
     <!-- It does not, in principle, imply TARGET_WASM, or vice-versa, though currently this is the case. -->
