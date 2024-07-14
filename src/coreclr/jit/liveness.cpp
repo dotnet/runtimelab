@@ -525,32 +525,7 @@ void Compiler::fgPerBlockLocalVarLiveness()
             {
                 if ((block->bbMemoryDef & memoryKindSet(memoryKind)) != 0)
                 {
-<<<<<<< HEAD
-                    // Create a statement for the initializer, sequence it, and append it to the current BB.
-                    Statement* initStmt = gtNewStmt(initNode);
-                    gtSetStmtInfo(initStmt);
-                    fgSetStmtSeq(initStmt);
-                    fgInsertStmtNearEnd(block, initStmt);
-                }
-                else
-                {
-                    LIR::Range initRange = LIR::EmptyRange();
-                    initRange.InsertAfter(nullptr, zero, initNode);
-
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32)
-                    DecomposeLongs::DecomposeRange(this, initRange);
-#endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM32)
-#ifndef TARGET_WASM
-                    m_pLowering->LowerRange(block, initRange);
-#endif // !TARGET_WASM
-
-                    // Naively inserting the initializer at the end of the block may add code after the block's
-                    // terminator, in which case the inserted code will never be executed (and the IR for the
-                    // block will be invalid). Use `LIR::InsertBeforeTerminator` to avoid this problem.
-                    LIR::InsertBeforeTerminator(block, std::move(initRange));
-=======
                     printf(" + %s", memoryKindNames[memoryKind]);
->>>>>>> 61050ae9b4e38dce8a9f7fe2d1a11eea5fa92b99
                 }
                 if ((block->bbMemoryHavoc & memoryKindSet(memoryKind)) != 0)
                 {
@@ -1902,28 +1877,6 @@ void Compiler::fgInterBlockLocalVarLiveness()
 
     fgLiveVarAnalysis();
 
-<<<<<<< HEAD
-    /* For debuggable code, we mark vars as live over their entire
-     * reported scope, so that it will be visible over the entire scope
-     */
-
-#if defined(TARGET_WASM)
-    if (!compRationalIRForm) // TODO-LLVM this will break the debugging experience, so investigate what the problem is with conservative liveness for SSA
-#endif
-        if (opts.compDbgCode && (info.compVarScopesCount > 0))
-        {
-            fgExtendDbgLifetimes();
-        }
-
-    // Nothing more to be done if the backend does not require accurate local var lifetimes.
-    if (!backendRequiresLocalVarLifetimes())
-    {
-        fgLocalVarLivenessDone = true;
-        return;
-    }
-
-=======
->>>>>>> 61050ae9b4e38dce8a9f7fe2d1a11eea5fa92b99
     //-------------------------------------------------------------------------
     // Variables involved in exception-handlers and finally blocks need
     // to be specially marked

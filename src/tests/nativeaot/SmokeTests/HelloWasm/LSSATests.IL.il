@@ -98,7 +98,7 @@
   .method private static void Optimized_ExposedLocal_AddressExposed(object obj) noinlining
   {
     .custom instance void System.Runtime.JitTesting.LSSATestAttribute::.ctor(string) =
-      {string('BB01:\n  ZEROINIT SS01\n  STORE SS00 ARG00 ARG00\n  LOAD SS00 ARG00\n  STORE SS01 USR01 USR01/1')}
+      {string('BB01:\n  ZEROINIT SS01\n  STORE SS00 ARG00 ARG00\n  LOAD SS00 ARG00\n  STORE SS01 USR01 USR01/2')}
     .locals (object objCopy)
 
     ldarga obj
@@ -142,7 +142,7 @@
   .method private static void Optimized_ExposedLocal_DerivedFromAddressExposed(int8& obj) noinlining
   {
     .custom instance void System.Runtime.JitTesting.LSSATestAttribute::.ctor(string) =
-      {string('BB01:\n  ZEROINIT SS01\n  STORE SS00 ARG00 ARG00\n  LOAD SS00 ARG00\n  STORE SS01 USR01 USR01/1')}
+      {string('BB01:\n  ZEROINIT SS01\n  STORE SS00 ARG00 ARG00\n  LOAD SS00 ARG00\n  STORE SS01 USR01 USR01/2')}
     .locals (int8& derivedObj)
 
     ldarga obj

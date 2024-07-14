@@ -177,7 +177,7 @@ enum _regMask_enum : uint64_t
 #include "register.h"
 };
 
-#elif defined(TARGET_X86)
+#elif defined(TARGET_X86) || defined(TARGET_WASM)
 
 enum _regNumber_enum : unsigned
 {
@@ -199,26 +199,6 @@ enum _regMask_enum : unsigned
 #include "register.h"
 };
 
-#elif defined(TARGET_WASM)
-enum _regNumber_enum : unsigned
-{
-#define REGDEF(name, rnum, mask, sname) REG_##name = rnum,
-#define REGALIAS(alias, realname) REG_##alias = REG_##realname,
-#include "register.h"
-
-    REG_COUNT,
-    REG_NA           = REG_COUNT,
-    ACTUAL_REG_COUNT = REG_COUNT - 1 // everything but REG_STK (only real regs)
-};
-
-enum _regMask_enum : unsigned
-{
-    RBM_NONE = 0,
-
-#define REGDEF(name, rnum, mask, sname) RBM_##name = mask,
-#define REGALIAS(alias, realname) RBM_##alias = RBM_##realname,
-#include "register.h"
-};
 #else
 #error Unsupported target architecture
 #endif
@@ -426,7 +406,7 @@ public:
     }
 };
 
-#if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
+#if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
 
 #define REGDEF(name, rnum, mask, sname)                                                                                \
     static constexpr regMaskTP RBM_##name =                                                                            \
@@ -873,15 +853,7 @@ inline regMaskTP fullIntArgRegMask(CorInfoCallConvExtension callConv)
 //
 inline bool isValidIntArgReg(regNumber reg, CorInfoCallConvExtension callConv)
 {
-<<<<<<< HEAD
-#if defined(TARGET_WASM)
-    return true;
-#else
-    return (genRegMask(reg) & fullIntArgRegMask(callConv)) != 0;
-#endif
-=======
     return (genSingleTypeRegMask(reg) & fullIntArgRegMask(callConv)) != 0;
->>>>>>> 61050ae9b4e38dce8a9f7fe2d1a11eea5fa92b99
 }
 
 //-------------------------------------------------------------------------------------------
@@ -949,7 +921,7 @@ extern const regMaskSmall regMasks[REG_COUNT];
 inline SingleTypeRegSet genSingleTypeFloatMask(regNumber reg ARM_ARG(var_types type /* = TYP_DOUBLE */))
 {
 #if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_X86) || defined(TARGET_LOONGARCH64) ||            \
-    defined(TARGET_RISCV64)
+    defined(TARGET_RISCV64) || defined(TARGET_WASM)
     assert(genIsValidFloatReg(reg));
     assert((unsigned)reg < ArrLen(regMasks));
     return regMasks[reg];
@@ -1012,19 +984,8 @@ inline SingleTypeRegSet genSingleTypeRegMask(regNumber reg)
 //
 inline SingleTypeRegSet genSingleTypeRegMask(regNumber regNum, var_types type)
 {
-<<<<<<< HEAD
-#if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_X86) || defined(TARGET_WASM) ||                   \
-    defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
-    assert(genIsValidFloatReg(reg));
-    assert((unsigned)reg < ArrLen(regMasks));
-    return regMasks[reg];
-#elif defined(TARGET_ARM)
-    assert(floatRegCanHoldType(reg, type));
-    assert(reg >= REG_F0 && reg <= REG_F31);
-=======
 #if defined(TARGET_ARM)
     SingleTypeRegSet regMask = RBM_NONE;
->>>>>>> 61050ae9b4e38dce8a9f7fe2d1a11eea5fa92b99
 
     if (varTypeUsesIntReg(type))
     {

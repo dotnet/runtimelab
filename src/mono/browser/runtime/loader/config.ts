@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+import NativeAOT from "consts:nativeAOT";
+
 import BuildConfiguration from "consts:configuration";
 import WasmEnableThreads from "consts:wasmEnableThreads";
 
@@ -239,6 +241,23 @@ export async function mono_wasm_load_config (module: DotnetModuleInternal): Prom
     }
     let configFilePath;
     try {
+        if (NativeAOT && !loaderHelpers.config?.resources) {
+            // TODO-LLVM: embed (part of) the config at app compile time.
+            if (!loaderHelpers.config) {
+                loaderHelpers.config = {};
+            }
+
+            loaderHelpers.config.resources = {
+                assembly: {},
+                jsModuleNative: { "dotnet.native.js": "" },
+                jsModuleWorker: {},
+                jsModuleRuntime: { "dotnet.runtime.js": "" },
+                wasmNative: { "dotnet.native.wasm": "" },
+                vfs: {},
+                satelliteResources: {},
+            };
+        }
+
         if (!module.configSrc && (!loaderHelpers.config || Object.keys(loaderHelpers.config).length === 0 || (!loaderHelpers.config.assets && !loaderHelpers.config.resources))) {
             // if config file location nor assets are provided
             module.configSrc = "./blazor.boot.json";

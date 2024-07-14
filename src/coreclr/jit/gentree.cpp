@@ -5283,14 +5283,7 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
         gtWalkOp(&op1, &op2, base, false);
 
         // op1 and op2 are now descendents of the root GT_ADD of the addressing mode.
-<<<<<<< HEAD
-        assert(op1 != op1Save);
-        assert(op2 != nullptr);
-
 #if defined(TARGET_XARCH) || defined(TARGET_WASM)
-=======
-#if defined(TARGET_XARCH)
->>>>>>> 61050ae9b4e38dce8a9f7fe2d1a11eea5fa92b99
         // Walk the operands again (the third operand is unused in this case).
         // This time we will only consider adds with constant op2's, since
         // we have already found either a non-ADD op1 or a non-constant op2.
@@ -10123,6 +10116,9 @@ void CallArgs::InternalCopyFrom(Compiler* comp, CallArgs* other, CopyNodeFunc co
     for (CallArg& arg : other->Args())
     {
         CallArg* carg           = new (comp, CMK_CallArgs) CallArg();
+#ifdef TARGET_WASM
+        carg->m_signatureCorInfoType = arg.m_signatureCorInfoType;
+#endif // TARGET_WASM
         carg->m_earlyNode       = arg.m_earlyNode != nullptr ? copyNode(arg.m_earlyNode) : nullptr;
         carg->m_lateNode        = arg.m_lateNode != nullptr ? copyNode(arg.m_lateNode) : nullptr;
         carg->m_signatureClsHnd = arg.m_signatureClsHnd;
@@ -10134,13 +10130,7 @@ void CallArgs::InternalCopyFrom(Compiler* comp, CallArgs* other, CopyNodeFunc co
         carg->m_isTmp           = arg.m_isTmp;
         carg->m_processed       = arg.m_processed;
         carg->AbiInfo           = arg.AbiInfo;
-<<<<<<< HEAD
-#ifdef TARGET_WASM
-        carg->m_signatureCorInfoType = arg.m_signatureCorInfoType;
-#endif // TARGET_WASM
-=======
         carg->NewAbiInfo        = arg.NewAbiInfo;
->>>>>>> 61050ae9b4e38dce8a9f7fe2d1a11eea5fa92b99
         *tail                   = carg;
         tail                    = &carg->m_next;
     }
@@ -28054,34 +28044,7 @@ genTreeOps GenTreeHWIntrinsic::GetOperForHWIntrinsicId(NamedIntrinsic id, var_ty
             *isScalar = true;
             return GT_DIV;
         }
-<<<<<<< HEAD
-        GenTree* dummyNode = gtNewLclvNode(dummyTemp, type);
-        return gtNewOperNode(GT_COMMA, type, node, dummyNode);
-    }
-    return node;
-}
-
-//---------------------------------------------------------------------------------------
-// InitializeStructReturnType:
-//    Initialize the Return Type Descriptor for a method that returns a struct type
-//
-// Arguments
-//    comp        -  Compiler Instance
-//    retClsHnd   -  VM handle to the struct type returned by the method
-//
-// Return Value
-//    None
-//
-void ReturnTypeDesc::InitializeStructReturnType(Compiler*                comp,
-                                                CORINFO_CLASS_HANDLE     retClsHnd,
-                                                CorInfoCallConvExtension callConv)
-{
-    assert(!m_inited);
-    assert(retClsHnd != NO_CLASS_HANDLE);
-    unsigned structSize = comp->info.compCompHnd->getClassSize(retClsHnd);
-=======
 #endif
->>>>>>> 61050ae9b4e38dce8a9f7fe2d1a11eea5fa92b99
 
 #if defined(TARGET_ARM64)
         case NI_AdvSimd_DivideScalar:

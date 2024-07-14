@@ -101,12 +101,14 @@ extern "C" void RaiseFailFastException(PEXCEPTION_RECORD arg1, PCONTEXT arg2, ui
 
 static void UnmaskActivationSignal()
 {
+#ifndef HOST_WASM
     sigset_t signal_set;
     sigemptyset(&signal_set);
     sigaddset(&signal_set, INJECT_ACTIVATION_SIGNAL);
 
     int sigmaskRet = pthread_sigmask(SIG_UNBLOCK, &signal_set, NULL);
     _ASSERTE(sigmaskRet == 0);
+#endif
 }
 
 static void TimeSpecAdd(timespec* time, uint32_t milliseconds)

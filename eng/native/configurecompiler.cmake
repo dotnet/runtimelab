@@ -522,25 +522,6 @@ endif ()
 #--------------------------------------
 # Compile Options
 #--------------------------------------
-<<<<<<< HEAD
-if (NOT(MSVC))
-  # The -fms-extensions enable the stuff like __if_exists, __declspec(uuid()), etc.
-  add_compile_options(-fms-extensions)
-  #-fms-compatibility      Enable full Microsoft Visual C++ compatibility
-  #-fms-extensions         Accept some non-standard constructs supported by the Microsoft compiler
-
-  # Disabled common warnings
-  add_compile_options(-Wno-unused-variable)
-  add_compile_options(-Wno-unused-value)
-  add_compile_options(-Wno-unused-function)
-  add_compile_options(-Wno-tautological-compare)
- 
-  #These seem to indicate real issues
-  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-invalid-offsetof>)
-endif (NOT(MSVC))
-
-=======
->>>>>>> 61050ae9b4e38dce8a9f7fe2d1a11eea5fa92b99
 if (CLR_CMAKE_HOST_UNIX)
   # Disable frame pointer optimizations so profilers can get better call stacks
   add_compile_options(-fno-omit-frame-pointer)
@@ -580,7 +561,13 @@ if (CLR_CMAKE_HOST_UNIX)
     add_compile_options(-Werror)
   endif(PRERELEASE)
 
+  # Disabled common warnings
+  add_compile_options(-Wno-unused-variable)
+  add_compile_options(-Wno-unused-value)
+  add_compile_options(-Wno-unused-function)
+  add_compile_options(-Wno-tautological-compare)
   add_compile_options(-Wno-unknown-pragmas)
+
   # Explicitly enabled warnings
   check_c_compiler_flag(-Wimplicit-fallthrough COMPILER_SUPPORTS_W_IMPLICIT_FALLTHROUGH)
   if (COMPILER_SUPPORTS_W_IMPLICIT_FALLTHROUGH)
@@ -711,6 +698,15 @@ if (CLR_CMAKE_HOST_UNIX)
   endif(CLR_CMAKE_HOST_MACCATALYST)
 
 endif(CLR_CMAKE_HOST_UNIX)
+
+if(CLR_CMAKE_HOST_WASI)
+  # TODO-LLVM: deduplicate with the suppressions above (WASI is not "Unix").
+  add_compile_options(-Wno-unused-variable)
+  add_compile_options(-Wno-unused-value)
+  add_compile_options(-Wno-unused-function)
+  add_compile_options(-Wno-tautological-compare)
+  add_compile_options(-Wno-invalid-offsetof)
+endif()
 
 if(CLR_CMAKE_TARGET_UNIX)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_OS>>>:TARGET_UNIX>)
@@ -858,11 +854,7 @@ if (MSVC)
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd5105>) # macro expansion producing 'defined' has undefined behavior
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd5205>) # delete of an abstract class 'type-name' that has a non-virtual destructor results in undefined behavior
 
-  # TODO: if for LLVM
-  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4244>)
-  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4267>)
-  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4141>)
-  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4310>)
+  # TODO-LLVM: turn into pragmas.
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4624>) # destructor was implicitly defined as deleted
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4324>) # structure was padded due to alignment specifier
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4146>) # unary minus operator applied to unsigned type, result still unsigned.  llvm does this in some headers, e.g. -(UINT64_C(1)<<(N-1))

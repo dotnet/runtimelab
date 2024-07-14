@@ -436,6 +436,7 @@
     <Compile Include="Compiler\DependencyAnalysis\Target_ARM64\ARM64TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_ARM\ARMTentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmEmitter.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmJumpStubNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmReadyToRunGenericHelperNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmReadyToRunHelperNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmTentativeMethodNode.cs" />

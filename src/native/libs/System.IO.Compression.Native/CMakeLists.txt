@@ -45,25 +45,6 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
     set(NATIVE_LIBS_EXTRA)
     append_extra_compression_libs(NATIVE_LIBS_EXTRA)
 
-<<<<<<< HEAD
-    if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
-        # LLVM/clang v15 is has K&R function signatures deprecated https://github.com/madler/zlib/issues/633
-        add_compile_options(-Wno-deprecated-non-prototype -Wno-strict-prototypes)
-
-        include(${CLR_SRC_NATIVE_DIR}/external/zlib.cmake)
-        add_definitions(-DINTERNAL_ZLIB)
-        set_source_files_properties(${ZLIB_SOURCES} PROPERTIES COMPILE_DEFINITIONS "${ZLIB_COMPILE_DEFINITIONS}")
-        set_source_files_properties(${ZLIB_SOURCES} PROPERTIES COMPILE_OPTIONS "${ZLIB_COMPILE_OPTIONS}")
-        set(NATIVECOMPRESSION_SOURCES ${ZLIB_SOURCES} ${NATIVECOMPRESSION_SOURCES})
-    else()
-        # TODO-LLVM: put this outside this if, inline with upstream, when we upgrade emscripten/clang
-        # Delete this supression once brotli is upgraded to vNext (current latest v1.0.9
-        # does not contain upstream fix: https://github.com/google/brotli/commit/0a3944c)
-        set(FLAGS "${FLAGS} -Wno-vla-parameter")
-    endif()
-
-=======
->>>>>>> 61050ae9b4e38dce8a9f7fe2d1a11eea5fa92b99
     # Disable implicit fallthrough warning for Zlib and Brotli
     set(FLAGS -Wno-implicit-fallthrough)
 

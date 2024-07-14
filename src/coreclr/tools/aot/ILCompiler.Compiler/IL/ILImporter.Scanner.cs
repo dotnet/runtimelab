@@ -421,11 +421,11 @@ namespace Internal.IL
                     return;
                 }
 
-<<<<<<< HEAD
                 if (_factory.Target.IsWasm && IsInterlockedMethod(method))
                 {
                     _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowMisalign), "Alignment check for an atomic");
-=======
+                }
+
                 if (opcode != ILOpcode.ldftn)
                 {
                     if (IsRuntimeHelpersIsReferenceOrContainsReferences(method))
@@ -437,7 +437,6 @@ namespace Internal.IL
                     {
                         return;
                     }
->>>>>>> 61050ae9b4e38dce8a9f7fe2d1a11eea5fa92b99
                 }
             }
 

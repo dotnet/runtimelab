@@ -1,10 +1,10 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 /*****************************************************************************/
-#ifndef TARGET_WASM
 #ifndef _EMIT_H_
 #define _EMIT_H_
 
+#ifndef TARGET_WASM
 #include "instr.h"
 
 #ifndef _GCINFO_H_
@@ -4306,6 +4306,15 @@ inline BYTE* emitter::emitCodeWithInstructionSize(BYTE* codePtrBefore, BYTE* new
 }
 
 /*****************************************************************************/
+#else // TARGET_WASM
+
+// TODO-LLVM: remove this duplicated code by factoring out 'emitNoGChelper' from the emitter upstream.
+class emitter
+{
+public:
+    static bool emitNoGChelper(CorInfoHelpFunc helpFunc);
+    static bool emitNoGChelper(CORINFO_METHOD_HANDLE methHnd);
+};
+#endif
 #endif // _EMIT_H_
 /*****************************************************************************/
-#endif // TARGET_WASM

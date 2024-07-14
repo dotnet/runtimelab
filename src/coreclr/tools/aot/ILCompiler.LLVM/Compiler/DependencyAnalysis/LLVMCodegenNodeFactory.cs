@@ -26,7 +26,7 @@ namespace ILCompiler.DependencyAnalysis
             InlinedThreadStatics inlinedThreadStatics,
             PreinitializationManager preinitializationManager,
             DevirtualizationManager devirtualizationManager,
-            IEnumerable<ICompilationRootProvider> roots)
+            ObjectDataInterner dataInterner)
             : base(context,
                   compilationModuleGroup,
                   metadataManager,
@@ -38,7 +38,8 @@ namespace ILCompiler.DependencyAnalysis
                   inlinedThreadStatics,
                   new ImportedNodeProviderThrowing(),
                   preinitializationManager,
-                  devirtualizationManager)
+                  devirtualizationManager,
+                  dataInterner)
         {
         }
 

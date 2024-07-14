@@ -16,7 +16,7 @@ namespace ILCompiler.DependencyAnalysis
 {
     public interface IMethodCodeNode : IMethodNode, ISymbolDefinitionNode
     {
-        void SetCode(ObjectNode.ObjectData data, bool isFoldable);
+        void SetCode(ObjectNode.ObjectData data);
         void InitializeFrameInfos(FrameInfo[] frameInfos);
         void InitializeDebugEHClauseInfos(DebugEHClauseInfo[] debugEhClauseInfos);
         void InitializeGCInfo(byte[] gcInfo);

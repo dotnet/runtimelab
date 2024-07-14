@@ -225,6 +225,7 @@ struct EXCEPTION_REGISTRATION_RECORD
 };
 #endif // HOST_X86
 
+#ifndef USE_PORTABLE_HELPERS
 EXTERN_C void QCALLTYPE RhpFailFastForPInvokeExceptionPreemp(intptr_t PInvokeCallsiteReturnAddr,
                                                              void* pExceptionRecord, void* pContextRecord);
 FCDECL3(void, RhpFailFastForPInvokeExceptionCoop, intptr_t PInvokeCallsiteReturnAddr,
@@ -272,6 +273,7 @@ EXTERN_C int32_t __stdcall RhpPInvokeExceptionGuard(PEXCEPTION_RECORD       pExc
 
     return 0;
 }
+#endif // !USE_PORTABLE_HELPERS
 
 FCDECL2(void, RhpThrowHwEx, int exceptionCode, TADDR faultingIP);
 

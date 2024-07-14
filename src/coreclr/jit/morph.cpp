@@ -2201,35 +2201,10 @@ void CallArgs::AddFinalArgsAndDetermineABIInfo(Compiler* comp, GenTreeCall* call
             // This is a register argument
             m_hasRegArgs = true;
 
-<<<<<<< HEAD
-#elif defined(TARGET_ARM64)
-
-        assert(!callIsVararg || !isHfaArg);
-        passUsingFloatRegs = !callIsVararg && (isHfaArg || varTypeUsesFloatReg(argSigType));
-
-#elif defined(TARGET_AMD64) || defined(TARGET_WASM)
-
-        passUsingFloatRegs = varTypeIsFloating(argSigType);
-
-#elif defined(TARGET_X86)
-
-        passUsingFloatRegs = false;
-
-#elif defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
-
-        assert(!callIsVararg && !isHfaArg);
-        passUsingFloatRegs    = varTypeUsesFloatReg(argSigType);
-        DWORD floatFieldFlags = STRUCT_NO_FLOAT_FIELD;
-
-#else
-#error Unsupported or unset target architecture
-#endif // TARGET*
-=======
             unsigned regNumIndex = 0;
             for (unsigned i = 0; i < abiInfo.NumSegments; i++)
             {
                 const ABIPassingSegment& segment = abiInfo.Segment(i);
->>>>>>> 61050ae9b4e38dce8a9f7fe2d1a11eea5fa92b99
 
                 if (regNumIndex < MAX_ARG_REG_COUNT)
                 {
@@ -2298,13 +2273,8 @@ void CallArgs::AddFinalArgsAndDetermineABIInfo(Compiler* comp, GenTreeCall* call
                 comp->compFloatingPointUsed = true;
             }
         }
-<<<<<<< HEAD
-#elif defined(TARGET_ARM) || defined(TARGET_X86) || defined(TARGET_WASM)
-        if (isStructArg)
-=======
 
         if (arg.AbiInfo.PassedByRef)
->>>>>>> 61050ae9b4e38dce8a9f7fe2d1a11eea5fa92b99
         {
             arg.AbiInfo.ByteSize = TARGET_POINTER_SIZE;
         }

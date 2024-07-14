@@ -94,6 +94,104 @@ bool Compiler::IsHfa(CORINFO_CLASS_HANDLE hClass) { return false; }
 var_types Compiler::GetHfaType(CORINFO_CLASS_HANDLE hClass) { return TYP_UNDEF; }
 unsigned Compiler::GetHfaCount(CORINFO_CLASS_HANDLE hClass) { return 0; }
 
+// TODO-LLVM: remove this duplicated code by factoring out 'emitNoGChelper' from the emitter upstream.
+//------------------------------------------------------------------------
+// emitNoGChelper: Returns true if garbage collection won't happen within the helper call.
+//
+// Notes:
+//  There is no need to record live pointers for such call sites.
+//
+// Arguments:
+//   helpFunc - a helper signature for the call, can be CORINFO_HELP_UNDEF, that means that the call is not a helper.
+//
+// Return value:
+//   true if GC can't happen within this call, false otherwise.
+bool emitter::emitNoGChelper(CorInfoHelpFunc helpFunc)
+{
+    // TODO-Throughput: Make this faster (maybe via a simple table of bools?)
+
+    switch (helpFunc)
+    {
+        case CORINFO_HELP_UNDEF:
+            return false;
+
+        case CORINFO_HELP_PROF_FCN_LEAVE:
+        case CORINFO_HELP_PROF_FCN_ENTER:
+        case CORINFO_HELP_PROF_FCN_TAILCALL:
+        case CORINFO_HELP_LLSH:
+        case CORINFO_HELP_LRSH:
+        case CORINFO_HELP_LRSZ:
+
+            //  case CORINFO_HELP_LMUL:
+            //  case CORINFO_HELP_LDIV:
+            //  case CORINFO_HELP_LMOD:
+            //  case CORINFO_HELP_ULDIV:
+            //  case CORINFO_HELP_ULMOD:
+
+#ifdef TARGET_X86
+        case CORINFO_HELP_ASSIGN_REF_EAX:
+        case CORINFO_HELP_ASSIGN_REF_ECX:
+        case CORINFO_HELP_ASSIGN_REF_EBX:
+        case CORINFO_HELP_ASSIGN_REF_EBP:
+        case CORINFO_HELP_ASSIGN_REF_ESI:
+        case CORINFO_HELP_ASSIGN_REF_EDI:
+
+        case CORINFO_HELP_CHECKED_ASSIGN_REF_EAX:
+        case CORINFO_HELP_CHECKED_ASSIGN_REF_ECX:
+        case CORINFO_HELP_CHECKED_ASSIGN_REF_EBX:
+        case CORINFO_HELP_CHECKED_ASSIGN_REF_EBP:
+        case CORINFO_HELP_CHECKED_ASSIGN_REF_ESI:
+        case CORINFO_HELP_CHECKED_ASSIGN_REF_EDI:
+#endif
+
+        case CORINFO_HELP_ASSIGN_REF:
+        case CORINFO_HELP_CHECKED_ASSIGN_REF:
+        case CORINFO_HELP_ASSIGN_BYREF:
+
+        case CORINFO_HELP_GET_GCSTATIC_BASE_NOCTOR:
+        case CORINFO_HELP_GET_NONGCSTATIC_BASE_NOCTOR:
+
+        case CORINFO_HELP_INIT_PINVOKE_FRAME:
+
+        case CORINFO_HELP_FAIL_FAST:
+        case CORINFO_HELP_STACK_PROBE:
+
+        case CORINFO_HELP_CHECK_OBJ:
+
+        // never present on stack at the time of GC
+        case CORINFO_HELP_TAILCALL:
+        case CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER:
+        case CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER_TRACK_TRANSITIONS:
+
+        case CORINFO_HELP_VALIDATE_INDIRECT_CALL:
+            return true;
+
+        default:
+            return false;
+    }
+}
+
+//------------------------------------------------------------------------
+// emitNoGChelper: Returns true if garbage collection won't happen within the helper call.
+//
+// Notes:
+//  There is no need to record live pointers for such call sites.
+//
+// Arguments:
+//   methHnd - a method handle for the call.
+//
+// Return value:
+//   true if GC can't happen within this call, false otherwise.
+bool emitter::emitNoGChelper(CORINFO_METHOD_HANDLE methHnd)
+{
+    CorInfoHelpFunc helpFunc = Compiler::eeGetHelperNum(methHnd);
+    if (helpFunc == CORINFO_HELP_UNDEF)
+    {
+        return false;
+    }
+    return emitNoGChelper(helpFunc);
+}
+
 Llvm::Llvm(Compiler* compiler)
     : m_pEECorInfo(*((void**)compiler->info.compCompHnd + 1)) // TODO-LLVM: hack. CorInfoImpl* is the first field of JitInterfaceWrapper.
     , m_context(GetSingleThreadedCompilationContext())
@@ -328,6 +426,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_BOX) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_BYREF }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_BOX_NULLABLE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_BYREF }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_UNBOX) CORINFO_TYPE_BYREF, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_UNBOX_TYPETEST) },
         { FUNC(CORINFO_HELP_UNBOX_NULLABLE) CORINFO_TYPE_VOID, { CORINFO_TYPE_BYREF, CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS }, HFIF_SS_ARG },
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs".
@@ -410,26 +509,30 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_GETFIELDADDR) },
         { FUNC(CORINFO_HELP_GETSTATICFIELDADDR) },
         { FUNC(CORINFO_HELP_GETSTATICFIELDADDR_TLS) },
-        { FUNC(CORINFO_HELP_GETGENERICS_GCSTATIC_BASE) },
-        { FUNC(CORINFO_HELP_GETGENERICS_NONGCSTATIC_BASE) },
-        { FUNC(CORINFO_HELP_GETSHARED_GCSTATIC_BASE) },
-        { FUNC(CORINFO_HELP_GETSHARED_NONGCSTATIC_BASE) },
-        { FUNC(CORINFO_HELP_GETSHARED_GCSTATIC_BASE_NOCTOR) },
-        { FUNC(CORINFO_HELP_GETSHARED_NONGCSTATIC_BASE_NOCTOR) },
-        { FUNC(CORINFO_HELP_GETSHARED_GCSTATIC_BASE_DYNAMICCLASS) },
-        { FUNC(CORINFO_HELP_GETSHARED_NONGCSTATIC_BASE_DYNAMICCLASS) },
-        { FUNC(CORINFO_HELP_CLASSINIT_SHARED_DYNAMICCLASS) },
-        { FUNC(CORINFO_HELP_GETGENERICS_GCTHREADSTATIC_BASE) },
-        { FUNC(CORINFO_HELP_GETGENERICS_NONGCTHREADSTATIC_BASE) },
-        { FUNC(CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE) },
-        { FUNC(CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE) },
-        { FUNC(CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE_NOCTOR) },
-        { FUNC(CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_NOCTOR) },
-        { FUNC(CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE_DYNAMICCLASS) },
-        { FUNC(CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_DYNAMICCLASS) },
-        { FUNC(CORINFO_HELP_GETSHARED_GCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED) },
-        { FUNC(CORINFO_HELP_GETSHARED_NONGCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED) },
-            
+        { FUNC(CORINFO_HELP_GET_GCSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GET_NONGCSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GETDYNAMIC_GCSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GETDYNAMIC_NONGCSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GETPINNED_GCSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GETPINNED_NONGCSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GET_GCSTATIC_BASE_NOCTOR) },
+        { FUNC(CORINFO_HELP_GET_NONGCSTATIC_BASE_NOCTOR) },
+        { FUNC(CORINFO_HELP_GETDYNAMIC_GCSTATIC_BASE_NOCTOR) },
+        { FUNC(CORINFO_HELP_GETDYNAMIC_NONGCSTATIC_BASE_NOCTOR) },
+        { FUNC(CORINFO_HELP_GETPINNED_GCSTATIC_BASE_NOCTOR) },
+        { FUNC(CORINFO_HELP_GETPINNED_NONGCSTATIC_BASE_NOCTOR) },
+        { FUNC(CORINFO_HELP_GET_GCTHREADSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GET_NONGCTHREADSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GETDYNAMIC_GCTHREADSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GETDYNAMIC_NONGCTHREADSTATIC_BASE) },
+        { FUNC(CORINFO_HELP_GET_GCTHREADSTATIC_BASE_NOCTOR) },
+        { FUNC(CORINFO_HELP_GET_NONGCTHREADSTATIC_BASE_NOCTOR) },
+        { FUNC(CORINFO_HELP_GETDYNAMIC_GCTHREADSTATIC_BASE_NOCTOR) },
+        { FUNC(CORINFO_HELP_GETDYNAMIC_NONGCTHREADSTATIC_BASE_NOCTOR) },
+        { FUNC(CORINFO_HELP_GETDYNAMIC_GCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED) },
+        { FUNC(CORINFO_HELP_GETDYNAMIC_NONGCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED) },
+        { FUNC(CORINFO_HELP_GETDYNAMIC_NONGCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED2) },
+
         // NYI in NativeAOT.
         { FUNC(CORINFO_HELP_DBG_IS_JUST_MY_CODE) },
         { FUNC(CORINFO_HELP_PROF_FCN_ENTER) },
@@ -544,6 +647,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         // Not used in NativeAOT (stack probing - not used for LLVM).
         { FUNC(CORINFO_HELP_STACK_PROBE) },
         { FUNC(CORINFO_HELP_PATCHPOINT) },
+        { FUNC(CORINFO_HELP_PARTIAL_COMPILATION_PATCHPOINT) },
         { FUNC(CORINFO_HELP_CLASSPROFILE32) },
         { FUNC(CORINFO_HELP_CLASSPROFILE64) },
         { FUNC(CORINFO_HELP_DELEGATEPROFILE32) },
@@ -554,7 +658,6 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_COUNTPROFILE64) },
         { FUNC(CORINFO_HELP_VALUEPROFILE32) },
         { FUNC(CORINFO_HELP_VALUEPROFILE64) },
-        { FUNC(CORINFO_HELP_PARTIAL_COMPILATION_PATCHPOINT) },
         { FUNC(CORINFO_HELP_VALIDATE_INDIRECT_CALL) },
         { FUNC(CORINFO_HELP_DISPATCH_INDIRECT_CALL) },
 
