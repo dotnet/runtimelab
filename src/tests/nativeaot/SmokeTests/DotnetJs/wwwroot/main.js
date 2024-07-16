@@ -27,7 +27,7 @@ try {
     exports.DotnetJs.App.Program.Interop.Throw();
     result = 14;
 } catch (e) {
-    console.log(`Thrown expected exception: ${e}`);
+    console.log(`Thrown expected exception: ${e.message}`);
 }
 
 const concat = exports.DotnetJs.App.Program.Interop.Concat("Aaa", "Bbb");
@@ -59,7 +59,7 @@ try {
     if (!isPromiseResolved) {
         result = 20;
     }
-    console.log(`Thrown expected exception: ${e}`);
+    console.log(`Thrown expected exception: ${e.message}`);
 }
 
 const cancelResult = await exports.DotnetJs.App.Program.Interop.AsyncWithCancel();
