@@ -13,13 +13,15 @@ namespace ILCompiler
     public class ExportsFileWriter
     {
         private readonly string _exportsFile;
+        private readonly bool _isExecutable;
         private readonly string[] _exportSymbols;
         private readonly List<EcmaMethod> _methods;
         private readonly TypeSystemContext _context;
 
-        public ExportsFileWriter(TypeSystemContext context, string exportsFile, string[] exportSymbols)
+        public ExportsFileWriter(TypeSystemContext context, bool isExecutable, string exportsFile, string[] exportSymbols)
         {
             _exportsFile = exportsFile;
+            _isExecutable = isExecutable;
             _exportSymbols = exportSymbols;
             _context = context;
             _methods = new List<EcmaMethod>();
@@ -43,6 +45,12 @@ namespace ILCompiler
                 }
                 else if (_context.Target.IsApplePlatform || _context.Target.OperatingSystem == TargetOS.Browser)
                 {
+                    if (_isExecutable && _context.Target.OperatingSystem == TargetOS.Browser && _exportSymbols.Length + _methods.Count != 0)
+                    {
+                        // With Emscripten we need to explicitly export main in case we have exports beside it in an executable.
+                        streamWriter.WriteLine("_main");
+                    }
+
                     foreach (string symbol in _exportSymbols)
                         streamWriter.WriteLine($"_{symbol}");
                     foreach (var method in _methods)
