@@ -280,8 +280,13 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.NoInlining)] // Ensures that the RhGetCurrentThreadStackTrace frame is always present
         public static unsafe int RhGetCurrentThreadStackTrace(IntPtr[] outputBuffer)
         {
+#if TARGET_WASM
+            // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2404.
+            throw new NotImplementedException();
+#else
             fixed (IntPtr* pOutputBuffer = outputBuffer)
                 return RhpGetCurrentThreadStackTrace(pOutputBuffer, (uint)((outputBuffer != null) ? outputBuffer.Length : 0), new UIntPtr(&pOutputBuffer));
+#endif
         }
 
 #pragma warning disable SYSLIB1054 // Use DllImport here instead of LibraryImport because this file is used by Test.CoreLib.

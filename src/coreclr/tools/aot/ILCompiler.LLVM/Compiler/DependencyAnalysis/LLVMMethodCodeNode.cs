@@ -69,7 +69,7 @@ namespace ILCompiler.DependencyAnalysis
             return dependencies;
         }
 
-        public void SetCode(ObjectNode.ObjectData data, bool isFoldable)
+        public void SetCode(ObjectNode.ObjectData data)
         {
             _dependencies ??= new DependencyList();
             foreach (ref Relocation reloc in data.Relocs.AsSpan())

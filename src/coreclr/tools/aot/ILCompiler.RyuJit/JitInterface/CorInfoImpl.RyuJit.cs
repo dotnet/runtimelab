@@ -2211,7 +2211,7 @@ namespace Internal.JitInterface
                     else if (field.IsThreadStatic)
                     {
                         var target = MethodBeingCompiled.Context.Target;
-                        if ((target.IsWindows && target.Architecture is TargetArchitecture.X64) ||
+                        if ((target.IsWindows && target.Architecture is TargetArchitecture.X64 or TargetArchitecture.ARM64) ||
                             ((target.OperatingSystem == TargetOS.Linux) &&
                             (target.Architecture is TargetArchitecture.X64 or TargetArchitecture.ARM64)))
                         {

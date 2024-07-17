@@ -77,6 +77,14 @@
 
 
   <!-- Platform specific properties -->
+  <PropertyGroup Condition="'$(Platform)' == 'wasm'">
+    <!-- "WASM ABI" here refers to the use of shadow stacks, native-based EH, conservative GC, etc. -->
+    <!-- It does not, in principle, imply TARGET_WASM, or vice-versa, though currently this is the case. -->
+    <!-- In the future we may want to create a Windows/Unix build targeting this ABI, for testing. -->
+    <WasmAbi>true</WasmAbi>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DefineConstants>TARGET_32BIT;TARGET_WASM;$(DefineConstants)</DefineConstants>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)' == 'x64'">
     <DefineConstants>TARGET_64BIT;TARGET_AMD64;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
@@ -89,13 +97,8 @@
   <PropertyGroup Condition="'$(Platform)' == 'arm64'">
     <DefineConstants>TARGET_64BIT;TARGET_ARM64;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Platform)' == 'wasm'">
-    <!-- "WASM ABI" here refers to the use of shadow stacks, native-based EH, conservative GC, etc. -->
-    <!-- It does not, in principle, imply TARGET_WASM, or vice-versa, though currently this is the case. -->
-    <!-- In the future we may want to create a Windows/Unix build targeting this ABI, for testing. -->
-    <WasmAbi>true</WasmAbi>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DefineConstants>TARGET_32BIT;TARGET_WASM;$(DefineConstants)</DefineConstants>
+  <PropertyGroup Condition="'$(Platform)' == 'loongarch64'">
+    <DefineConstants>TARGET_64BIT;TARGET_LOONGARCH64;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup>

@@ -1,7 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-import NativeAOT from "consts:nativeAOT";
 import BuildConfiguration from "consts:configuration";
 
 import { type MonoConfig, type DotnetHostBuilder, type DotnetModuleConfig, type RuntimeAPI, type LoadBootResourceCallback, GlobalizationMode } from "../types";
@@ -349,6 +348,15 @@ export class HostBuilder implements DotnetHostBuilder {
         }
     }
 
+    async download (): Promise<void> {
+        try {
+            await downloadOnly();
+        } catch (err) {
+            mono_exit(1, err);
+            throw err;
+        }
+    }
+
     async create (): Promise<RuntimeAPI> {
         try {
             if (!this.instance) {
@@ -376,16 +384,22 @@ export class HostBuilder implements DotnetHostBuilder {
 }
 
 export async function createApi (): Promise<RuntimeAPI> {
+    await createEmscripten(emscriptenModule);
+    return globalObjectsRoot.api;
+}
+
+let emscriptenPrepared = false;
+async function prepareEmscripten (moduleFactory: DotnetModuleConfig | ((api: RuntimeAPI) => DotnetModuleConfig)) {
+    if (emscriptenPrepared) {
+        return;
+    }
+    emscriptenPrepared = true;
     if (ENVIRONMENT_IS_WEB && loaderHelpers.config.forwardConsoleLogsToWS && typeof globalThis.WebSocket != "undefined") {
         setup_proxy_console("main", globalThis.console, globalThis.location.origin);
     }
     mono_assert(emscriptenModule, "Null moduleConfig");
     mono_assert(loaderHelpers.config, "Null moduleConfig.config");
-    await createEmscripten(emscriptenModule);
-    return globalObjectsRoot.api;
-}
 
-export async function createEmscripten (moduleFactory: DotnetModuleConfig | ((api: RuntimeAPI) => DotnetModuleConfig)): Promise<RuntimeAPI | EmscriptenModuleInternal> {
     // extract ModuleConfig
     if (typeof moduleFactory === "function") {
         const extension = moduleFactory(globalObjectsRoot.api) as any;
@@ -401,6 +415,11 @@ export async function createEmscripten (moduleFactory: DotnetModuleConfig | ((ap
     }
 
     await detect_features_and_polyfill(emscriptenModule);
+}
+
+export async function createEmscripten (moduleFactory: DotnetModuleConfig | ((api: RuntimeAPI) => DotnetModuleConfig)): Promise<RuntimeAPI | EmscriptenModuleInternal> {
+    await prepareEmscripten(moduleFactory);
+
     if (BuildConfiguration === "Debug" && !ENVIRONMENT_IS_WORKER) {
         mono_log_info(`starting script ${loaderHelpers.scriptUrl}`);
         mono_log_info(`starting in ${loaderHelpers.scriptDirectory}`);
@@ -413,13 +432,16 @@ export async function createEmscripten (moduleFactory: DotnetModuleConfig | ((ap
         : createEmscriptenMain();
 }
 
+let jsModuleRuntimePromise: Promise<RuntimeModuleExportsInternal>;
+let jsModuleNativePromise: Promise<NativeModuleExportsInternal>;
+
 // in the future we can use feature detection to load different flavors
 function importModules () {
     const jsModuleRuntimeAsset = resolve_single_asset_path("js-module-runtime");
     const jsModuleNativeAsset = resolve_single_asset_path("js-module-native");
-
-    let jsModuleRuntimePromise: Promise<RuntimeModuleExportsInternal>;
-    let jsModuleNativePromise: Promise<NativeModuleExportsInternal>;
+    if (jsModuleRuntimePromise && jsModuleNativePromise) {
+        return [jsModuleRuntimePromise, jsModuleNativePromise];
+    }
 
     if (typeof jsModuleRuntimeAsset.moduleExports === "object") {
         jsModuleRuntimePromise = jsModuleRuntimeAsset.moduleExports;
@@ -476,28 +498,24 @@ async function initializeModules (es6Modules: [RuntimeModuleExportsInternal, Nat
     });
 }
 
+async function downloadOnly ():Promise<void> {
+    prepareEmscripten(emscriptenModule);
+
+    // download config
+    await mono_wasm_load_config(emscriptenModule);
+
+    prepareAssets();
+
+    await initCacheToUseIfEnabled();
+
+    init_globalization();
+
+    mono_download_assets(); // intentionally not awaited
+
+    await loaderHelpers.allDownloadsFinished.promise;
+}
+
 async function createEmscriptenMain (): Promise<RuntimeAPI> {
-    if (NativeAOT && !loaderHelpers.config?.resources) {
-        if (!loaderHelpers.config) {
-            loaderHelpers.config = {};
-        }
-
-        loaderHelpers.config.resources = {
-            assembly: {},
-            jsModuleNative: { "dotnet.native.js": "" },
-            jsModuleWorker: {},
-            jsModuleRuntime: { "dotnet.runtime.js": "" },
-            wasmNative: { "dotnet.native.wasm": "" },
-            vfs: {},
-            satelliteResources: {},
-        };
-    }
-
-    if (!emscriptenModule.configSrc && (!loaderHelpers.config || Object.keys(loaderHelpers.config).length === 0 || (!loaderHelpers.config.assets && !loaderHelpers.config.resources))) {
-        // if config file location nor assets are provided
-        emscriptenModule.configSrc = "./blazor.boot.json";
-    }
-
     // download config
     await mono_wasm_load_config(emscriptenModule);
 

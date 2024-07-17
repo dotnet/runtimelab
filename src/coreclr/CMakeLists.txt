@@ -124,13 +124,16 @@ endif()
 add_subdirectory(pal/prebuilt/inc)
 
 if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
-    # These need to happen before the VM and debug-pal includes.
-    set(EP_GENERATED_HEADER_PATH "${GENERATED_INCLUDE_DIR}")
-    include (${CLR_SRC_NATIVE_DIR}/eventpipe/configure.cmake)
+  # These need to happen before the VM and debug-pal includes.
+  set(EP_GENERATED_HEADER_PATH "${GENERATED_INCLUDE_DIR}")
+  include (${CLR_SRC_NATIVE_DIR}/eventpipe/configure.cmake)
 
-    if(NOT CLR_CMAKE_HOST_MACCATALYST AND NOT CLR_CMAKE_HOST_IOS AND NOT CLR_CMAKE_HOST_TVOS)
-      add_subdirectory(debug/debug-pal)
-    endif()
+  add_subdirectory(${CLR_SRC_NATIVE_DIR}/containers containers)
+  add_subdirectory(${CLR_SRC_NATIVE_DIR}/eventpipe eventpipe)
+
+  if(NOT CLR_CMAKE_HOST_MACCATALYST AND NOT CLR_CMAKE_HOST_IOS AND NOT CLR_CMAKE_HOST_TVOS)
+    add_subdirectory(debug/debug-pal)
+  endif()
 endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
 add_subdirectory(minipal)
@@ -153,7 +156,7 @@ endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
 if(NOT CLR_CROSS_COMPONENTS_BUILD)
   # NativeAOT only buildable for a subset of CoreCLR-supported configurations
-  if(CLR_CMAKE_HOST_ARCH_ARM64 OR CLR_CMAKE_HOST_ARCH_AMD64 OR CLR_CMAKE_HOST_ARCH_ARM OR CLR_CMAKE_TARGET_ARCH_WASM OR (CLR_CMAKE_HOST_ARCH_I386 AND CLR_CMAKE_HOST_WIN32))
+  if(CLR_CMAKE_TARGET_ARCH_WASM OR CLR_CMAKE_HOST_ARCH_ARM64 OR CLR_CMAKE_HOST_ARCH_AMD64 OR CLR_CMAKE_HOST_ARCH_ARM OR CLR_CMAKE_HOST_ARCH_LOONGARCH64 OR (CLR_CMAKE_HOST_ARCH_I386 AND CLR_CMAKE_HOST_WIN32))
     add_subdirectory(nativeaot)
   endif()
 endif(NOT CLR_CROSS_COMPONENTS_BUILD)

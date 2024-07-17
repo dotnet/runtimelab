@@ -195,7 +195,7 @@ TEST_ARCH=$(_AndroidArchitecture)
     <Error Condition="'$(TestRunExitCode)' != '0'" Text="$(TestRunErrorMessage)" />
   </Target>
 
-  <Import Project="$(MSBuildThisFileDirectory)tests.mobile.targets" Condition="'$(TargetsMobile)' == 'true'" />
+  <Import Project="$(MSBuildThisFileDirectory)tests.mobile.targets" Condition="'$(TargetsMobile)' == 'true' and '$(TestNativeAot)' != 'true'" />
   <Import Project="$(MSBuildThisFileDirectory)tests.singlefile.targets" Condition="'$(TestSingleFile)' == 'true'" />
   <Import Project="$(MSBuildThisFileDirectory)xunit\xunit.targets" Condition="'$(TestFramework)' == 'xunit'" />
 
