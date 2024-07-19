@@ -10,7 +10,6 @@ public class TupleTypeSpec : TypeSpec
     public TupleTypeSpec()
         : base(TypeSpecKind.Tuple)
     {
-        Elements = new List<TypeSpec>();
     }
 
     public TupleTypeSpec(TupleTypeSpec other)
