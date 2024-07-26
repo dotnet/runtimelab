@@ -5,13 +5,22 @@ using System.Text;
 
 namespace BindingsGeneration;
 
+/// <summary>
+/// Represents a tuple of arbitrary length
+/// </summary>
 public class TupleTypeSpec : TypeSpec
 {
+	/// <summary>
+	/// Constructs an empty tuple
+	/// </summary>
     public TupleTypeSpec()
         : base(TypeSpecKind.Tuple)
     {
     }
 
+	/// <summary>
+	/// Constructs a shallow copy of the the other type spec
+	/// </summary>
     public TupleTypeSpec(TupleTypeSpec other)
         : base(TypeSpecKind.Tuple)
     {
@@ -23,18 +32,27 @@ public class TupleTypeSpec : TypeSpec
         IsInOut = other.IsInOut;
     }
 
+	/// <summary>
+	/// Constructs a tuple with the provided elements
+	/// </summary>
     public TupleTypeSpec(IEnumerable<TypeSpec> elements)
         : this()
     {
         Elements.AddRange(elements);
     }
 
+	/// <summary>
+	/// Constructs a single type spec
+	/// </summary>
     public TupleTypeSpec(TypeSpec single)
         : this()
     {
         Elements.Add(single);
     }
 
+	/// <summary>
+	/// Returns the elements of the tuple
+	/// </summary>
     public List<TypeSpec> Elements { get; private set; } = new List<TypeSpec>();
 
     protected override string LLToString(bool useFullName)
@@ -58,6 +76,9 @@ public class TupleTypeSpec : TypeSpec
         return false;
     }
 
+	/// <summary>
+	/// Returns true if this is an empty tuple
+	/// </summary>
     public override bool IsEmptyTuple
     {
         get
@@ -66,8 +87,15 @@ public class TupleTypeSpec : TypeSpec
         }
     }
 
+    /// <summary>
+    /// Returns true if any of the types in the list have dynamic self
+    /// </summary>
     public override bool HasDynamicSelf => TypeSpec.AnyHasDynamicSelf(Elements);
 
     static TupleTypeSpec empty = new TupleTypeSpec();
+
+	/// <summary>
+	/// Returns a singleton empty tuple
+	/// </summary>
     public static TupleTypeSpec Empty { get { return empty; } }
 }

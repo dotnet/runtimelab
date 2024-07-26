@@ -5,6 +5,17 @@ using System.Text;
 
 namespace BindingsGeneration;
 
+/// <summary>
+/// Represents a reference to a swift type which will be used (at least) in the following places:
+/// - field declarations
+/// - argument declarations
+/// - property declarations
+/// - subscript declarations
+/// - bound generic types
+/// - generic where clauses
+/// - return types
+/// - type aliases
+/// </summary>
 public abstract class TypeSpec
 {
 	protected TypeSpec(TypeSpecKind kind)
@@ -14,18 +25,75 @@ public abstract class TypeSpec
 		Attributes = new List<TypeSpecAttribute>();
 	}
 
+	/// <summary>
+	/// Used to identify what kind of TypeSpec we're looking at
+	/// </summary>
 	public TypeSpecKind Kind { get; private set; }
+
+	/// <summary>
+	/// A collection of generic parameters for this type. Elements may represent
+	/// bound generic parameters or unbound. The binding state for NamedTypeSpec isn't known without
+	/// the context in which the TypeSpec is used.
+	/// </summary>
 	public List<TypeSpec> GenericParameters { get; private set; }
+
+	/// <summary>
+	/// Returns true if there are generic parameters
+	/// </summary>
 	public bool ContainsGenericParameters { get { return GenericParameters.Count != 0; } }
+
+	/// <summary>
+	/// Returns a list of attributes for the TypeSpec
+	/// </summary>
 	public List<TypeSpecAttribute> Attributes { get; private set; }
+
+	/// <summary>
+	/// Returns true if the TypeSpec has attributes
+	/// </summary>
 	public bool HasAttributes { get { return Attributes.Count != 0; } }
+
+	/// <summary>
+	/// Returns true if the type is an in/out paraemter. This will typically only appear in 
+	/// TupleTypeSpec that are used in closures
+	/// </summary>
 	public bool IsInOut { get; set; }
+
+	/// <summary>
+	/// Returns true if the TypeSpec is marked with "any" as in public func Foo(a: any SomeProtocol)
+	/// </summary>
 	public bool IsAny { get; set; }
+
+	/// <summary>
+	/// Returns true if the TypeSpec is an empty tuple
+	/// </summary>
 	public virtual bool IsEmptyTuple { get { return false; } }
+
+	/// <summary>
+	/// Abstract method to generate the String representation of the TypeSpec. useFullName
+	/// will determine if the and NamedTypeSpec objects contained within with be printed with their
+	/// full names.
+	/// </summary>
 	protected abstract string LLToString(bool useFullName);
+
+	/// <summary>
+	/// Returns any final string to add to the end of the string representation
+	/// </summary>
 	protected virtual string LLFinalStringParts() { return ""; }
+
+	/// <summary>
+	/// Returns compare to another TypeSpec for equality with an option partially match the name
+	/// </summary>
 	protected abstract bool LLEquals(TypeSpec? other, bool partialNameMatch);
+
+	/// <summary>
+	/// Returns an optional label on the type. This is commonly used in tuple elements in
+	/// closures.
+	/// </summary>
 	public string? TypeLabel { get; set; }
+
+	/// <summary>
+	/// Returns true if the type is an array
+	/// </summary>
 	public bool IsArray
 	{
 		get
@@ -34,6 +102,9 @@ public abstract class TypeSpec
 		}
 	}
 
+	/// <summary>
+	/// Returns true if this TypeSpec equals the other. This is deep equality.
+	/// </summary>
 	public override bool Equals(object? obj)
 	{
 		if (obj is TypeSpec spec)
@@ -50,6 +121,9 @@ public abstract class TypeSpec
 		return false;
 	}
 
+	/// <summary>
+	/// Returns true if this TypeSpec matches spec, but do partial matches on the name
+	/// </summary>
 	public bool EqualsPartialMatch(TypeSpec spec)
 	{
 		if (spec == null)
@@ -64,6 +138,9 @@ public abstract class TypeSpec
 		return LLEquals(spec, true);
 	}
 
+	/// <summary>
+	/// Returns true if the types match ignoring differences on references
+	/// </summary>
 	public virtual bool EqualsReferenceInvaraint(TypeSpec type)
 	{
 		var a = ProjectAsNonReference(this);
@@ -77,6 +154,9 @@ public abstract class TypeSpec
 		return a.LLEquals(b, false);
 	}
 
+	/// <summary>
+	/// Returns a copy of this type spec with IsInOut set to false
+	/// </summary>
 	public TypeSpec NonReferenceCloneOf()
 	{
 		if (!IsInOut)
@@ -86,6 +166,10 @@ public abstract class TypeSpec
 		return ty!;
 	}
 
+	/// <summary>
+	/// Returns a copy of this TypeSpec will **all** references removed, including
+	/// removing Swift pointer types.
+	/// </summary>
 	static TypeSpec ProjectAsNonReference(TypeSpec a)
 	{
 		if (a.IsInOut)
@@ -100,11 +184,17 @@ public abstract class TypeSpec
 		return a;
 	}
 
+	/// <summary>
+	/// Returns a hash value for the type
+	/// </summary>
 	public override int GetHashCode()
 	{
 		return ToString().GetHashCode();
 	}
 
+	/// <summary>
+	/// Returns true if two lists of TypeSpec match
+	/// </summary>
 	protected static bool ListEqual(List<TypeSpec> one, List<TypeSpec> two, bool partialNameMatch)
 	{
 		if (one.Count != two.Count)
@@ -125,11 +215,17 @@ public abstract class TypeSpec
 		return true;
 	}
 
+	/// <summary>
+	/// Returns true if `spec` is null or an empty tuple
+	/// </summary>
 	public static bool IsNullOrEmptyTuple(TypeSpec? spec)
 	{
 		return spec is null || spec.IsEmptyTuple;
 	}
 
+	/// <summary>
+	/// Returns true if both TypeSpecs are null or if not, if they are equal
+	/// </summary>
 	public static bool BothNullOrEqual(TypeSpec? one, TypeSpec? two)
 	{
 		if (one is null && two is null)
@@ -138,42 +234,18 @@ public abstract class TypeSpec
 			return false;
 		return one.Equals(two);
 	}
-
-	public bool ContainsBoundGenericClosure()
-	{
-		return ContainsBoundGenericClosure(0);
-	}
-
-	bool ContainsBoundGenericClosure(int depth)
-	{
-		if (this is NamedTypeSpec namedTypeSpec)
-		{
-			foreach (var subSpec in namedTypeSpec.GenericParameters)
-			{
-				if (subSpec.ContainsBoundGenericClosure(depth + 1))
-					return true;
-			}
-		}
-		else if (this is TupleTypeSpec tupleSpec)
-		{
-			foreach (var subSpec in tupleSpec.Elements)
-			{
-				if (subSpec.ContainsBoundGenericClosure(depth + 1))
-					return true;
-			}
-		}
-		else if (this is ClosureTypeSpec closureSpec)
-		{
-			return depth > 0;
-		}
-		return false;
-	}
-
+	
+	/// <summary>
+	/// Returns a string representation of the TypeSpec
+	/// </summary>
 	public override string ToString()
 	{
 		return ToString(true);
 	}
 
+	/// <summary>
+	/// Returns a string representation of the type spec with an option to have full names or not
+	/// </summary>
 	public string ToString(bool useFullNames)
 	{
 		StringBuilder builder = new StringBuilder();
@@ -211,36 +283,9 @@ public abstract class TypeSpec
 		return builder.ToString();
 	}
 
-	static string[] intNames = {
-			"Swift.Int", "Swift.UInt", "Swift.Int8", "Swift.UInt8",
-			"Swift.Int16", "Swift.UInt16", "Swift.Int32", "Swift.UInt32",
-			"Swift.Int64", "Swift.UInt64", "Swift.Char"
-		};
-
-	public static bool IsIntegral(TypeSpec ts)
-	{
-		return ts is NamedTypeSpec named && Array.IndexOf(intNames, named.Name) >= 0;
-	}
-
-	public static bool IsFloatingPoint(TypeSpec ts)
-	{
-		if (ts is NamedTypeSpec named)
-		{
-			return named.Name == "Swift.Float" || named.Name == "Swift.Double" || named.Name == "CoreGraphics.CGFloat";
-		}
-		return false;
-	}
-
-	public static bool IsBoolean(TypeSpec ts)
-	{
-		return ts is NamedTypeSpec named && named.Name == "Swift.Bool";
-	}
-
-	public static bool IsBuiltInValueType(TypeSpec ts)
-	{
-		return IsIntegral(ts) || IsFloatingPoint(ts) || IsBoolean(ts);
-	}
-
+	/// <summary>
+	/// Returns true if the type is "Self" (aka, dynamic self)
+	/// </summary>
 	public bool IsDynamicSelf
 	{
 		get
@@ -249,16 +294,28 @@ public abstract class TypeSpec
 		}
 	}
 
+	/// <summary>
+	/// Returns true if the type contains a dynamic self. This is useful to determine if
+	/// any element of a protocol uses dynamic self (and is therefore a protocol with associated types)
+	/// </summary>
 	public abstract bool HasDynamicSelf
 	{
 		get;
 	}
 
+	/// <summary>
+	/// Returns true if any of the types in the list have dynamic self
+	/// </summary>
 	public static bool AnyHasDynamicSelf(List<TypeSpec> types)
 	{
 		return types.Any(t => t.HasDynamicSelf);
 	}
 
+	/// <summary>
+	/// Replaces the name toFind anywhere in the TypeSpec with the replacement string,
+	/// returning a new TypeSpec and leaving the old one unchanged. This is useful for
+	/// undoing typealias declarations
+	/// </summary>
 	public TypeSpec ReplaceName(string toFind, string replacement)
 	{
 		var result = this;

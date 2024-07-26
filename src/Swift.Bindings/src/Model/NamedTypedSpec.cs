@@ -3,8 +3,14 @@
 
 namespace BindingsGeneration;
 
+/// <summary>
+/// Represents a TypeSpec for a nominal type. This will include classes, structs, actors, and protocols.
+/// </summary>
 public class NamedTypeSpec : TypeSpec
 {
+	/// <summary>
+	/// Constructs a new type spec from the given name. It's encouraged that the name be fully qualified.
+	/// </summary>
     public NamedTypeSpec(string name)
         : base(TypeSpecKind.Named)
     {
@@ -24,12 +30,18 @@ public class NamedTypeSpec : TypeSpec
         Name = name;
     }
 
+	/// <summary>
+	/// Constructs a new type spec from the given name and generic arguments.
+	/// </summary>
     public NamedTypeSpec(string name, params TypeSpec[] genericSpecialization)
         : this(name)
     {
         GenericParameters.AddRange(genericSpecialization);
     }
 
+	/// <summary>
+	/// Gets or sets an inner type for the type spec
+	/// </summary>
     public NamedTypeSpec? InnerType { get; set; }
 
     public bool IsProtocolList { get { return Name == "protocol"; } }
@@ -65,6 +77,9 @@ public class NamedTypeSpec : TypeSpec
         return false;
     }
 
+	/// <summary>
+	/// Returns true if the TypeSpec contains a module
+	/// </summary>
     public bool HasModule()
     {
         // note that this will fail if the type is a protocol with associated types full path,
@@ -72,13 +87,21 @@ public class NamedTypeSpec : TypeSpec
         // the extra context is the context within which this type spec is defined and will need a type mapper.
         return Name.Contains(".");
     }
+
+	/// <summary>
+	/// Returns the module component if present, empty string otherwise.
+	/// </summary>
     public string Module
     {
         get
         {
-            return Name.Substring(0, Name.IndexOf('.'));
+            return HasModule ? Name.Substring(0, Name.IndexOf('.')) : "";
         }
     }
+
+	/// <summary>
+	/// Returns the name of the type spec without a module (if present)
+	/// </summary>
     public string NameWithoutModule
     {
         get
@@ -87,6 +110,9 @@ public class NamedTypeSpec : TypeSpec
         }
     }
 
+	/// <summary>
+	/// Returns true if the name is "Self" or if any of the generic parameters contains dynamic self
+	/// </summary>
     public override bool HasDynamicSelf
     {
         get
