@@ -95,7 +95,7 @@ public class NamedTypeSpec : TypeSpec
     {
         get
         {
-            return HasModule ? Name.Substring(0, Name.IndexOf('.')) : "";
+            return HasModule() ? Name.Substring(0, Name.IndexOf('.')) : "";
         }
     }
 
