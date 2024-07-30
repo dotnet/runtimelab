@@ -1,8 +1,28 @@
-Invoke-WebRequest -Uri https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/wasi-sdk-22.0.m-mingw64.tar.gz -OutFile wasi-sdk-22.0.m-mingw64.tar.gz
+[CmdletBinding(PositionalBinding=$false)]
+param(
+    $InstallDir,
+    [switch]$CI
+)
 
-tar -xzf wasi-sdk-22.0.m-mingw64.tar.gz
+Set-Location -Path $InstallDir
 
-mv wasi-sdk-22.0+m wasi-sdk
+if ($IsWindows)
+{
+    $WasiTar = "wasi-sdk-22.0.m-mingw64.tar.gz"
+    $WasiFolder = "wasi-sdk-22.0+m"
+}
+else
+{
+    $WasiTar = "wasi-sdk-22.0-linux.tar.gz"
+    $WasiFolder = "wasi-sdk-22.0"
+}
+
+$ProgressPreference=-SilentlyContinue
+Invoke-WebRequest -Uri https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/$WasiTar -OutFile $WasiTar
+
+tar -xzf $WasiTar
+
+mv $WasiFolder wasi-sdk
 
 # Temporary WASI-SDK 22 workaround: Until
 # https://github.com/WebAssembly/wasi-libc/issues/501 is addressed, we copy
@@ -11,3 +31,9 @@ mv wasi-sdk-22.0+m wasi-sdk
 # the issue to remove this workaround once WASI-SDK 23 is released.
 
 cp wasi-sdk/share/wasi-sysroot/include/wasm32-wasi-threads/pthread.h wasi-sdk/share/wasi-sysroot/include/wasm32-wasi/
+
+if ($CI)
+{
+    Write-Host "Setting WASI_SDK_PATH to '$InstallDir/wasi-sdk'"
+    Write-Output "##vso[task.setvariable variable=WASI_SDK_PATH]$InstallDir/wasi-sdk"
+}

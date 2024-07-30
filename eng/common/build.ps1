@@ -150,7 +150,7 @@ try {
     }
 
     # This is a bit of a workaround for the fact that the pipelines do not have a great
-    # way of preserving the environment between scripts. Set by install-emscripten.cmd.
+    # way of preserving the environment between scripts. Set by install-emscripten.ps1.
     if ($env:NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH)
     {
         . $env:NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH/emsdk_env.ps1

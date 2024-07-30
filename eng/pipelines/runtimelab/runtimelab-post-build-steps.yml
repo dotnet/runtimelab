@@ -18,7 +18,9 @@ steps:
   # Now we need to build the cross-targeting compilers, RyuJit and ILC. Likewise with packages.
 
   - ${{ if eq(parameters.archType, 'wasm') }}:
-    - script: $(Build.SourcesDirectory)/build$(scriptExt) clr.wasmjit+clr.aot -c $(buildConfigUpper) $(_officialBuildParameter) -ci
+    - script: $(Build.SourcesDirectory)/build$(scriptExt) clr.wasmjit+clr.aot -c $(buildConfigUpper) $(_officialBuildParameter) -ci -cross
+      env:
+        ROOTFS_DIR: /crossrootfs/x64
       displayName: Build the ILC and RyuJit cross-compilers
 
     - ${{ if and(eq(parameters.isOfficialBuild, true), eq(parameters.platform, 'browser_wasm_win')) }}:
@@ -30,12 +32,22 @@ steps:
     - ${{ if eq(parameters.platform, 'browser_wasm_win') }}:
       - script: |
           call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
+          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} /p:TestWrapperTargetsWindows=true
         displayName: Build WebAssembly tests
     - ${{ elseif eq(parameters.platform, 'wasi_wasm_win') }}:
       - script: |
           call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} wasi tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
+          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} wasi tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} /p:TestWrapperTargetsWindows=true
+        displayName: Build WebAssembly tests
+    - ${{ elseif eq(parameters.platform, 'Browser_wasm_linux_x64') }}:
+      - script: |
+          source $(Build.SourcesDirectory)/wasm-tools/emsdk/emsdk_env.sh
+          LD_LIBRARY_PATH=/usr/local/lib:/opt/lib:/lib:/usr/lib:/crossrootfs/x64/lib/x86_64-linux-gnu/ $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) -arch:${{ parameters.archType }} -target-os:browser tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
+        displayName: Build WebAssembly tests
+    - ${{ elseif eq(parameters.platform, 'wasi_wasm_linux_x64') }}:
+      - script: |
+          source $(Build.SourcesDirectory)/wasm-tools/emsdk/emsdk_env.sh
+          LD_LIBRARY_PATH=/usr/local/lib:/opt/lib:/lib:/usr/lib:/crossrootfs/x64/lib/x86_64-linux-gnu/ $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) -arch:${{ parameters.archType }} -target-os:wasi tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
         displayName: Build WebAssembly tests
 
     - ${{ elseif eq(parameters.osGroup, 'windows') }}:
@@ -51,18 +63,30 @@ steps:
             call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
             $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
           displayName: Run WebAssembly tests in single file mode
+      - ${{ elseif in(parameters.platform, 'wasi_wasm_linux_x64') }}:
+        - script: |
+            LD_LIBRARY_PATH=/usr/local/lib:/opt/lib:/lib:/usr/lib:/crossrootfs/x64/lib/x86_64-linux-gnu/ $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests ${{ parameters.archType }} $(buildConfigUpper) wasi
+          displayName: Run WebAssembly tests in single file mode
       - ${{ elseif eq(parameters.osGroup, 'windows') }}:
-        - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
+        - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
           displayName: Run tests in single file mode
       - ${{ else }}:
-        - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }}
+        - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
           displayName: Run tests in single file mode
 
     - ${{ if eq(parameters.archType, 'wasm') }}:
-      - script: |
-            call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-            $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
-        displayName: Build and run WebAssembly libraries tests
+      - ${{ if in(parameters.platform, 'browser_wasm_win', 'wasi_wasm_win') }}:
+        - script: |
+              call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
+              $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
+          displayName: Build and run WebAssembly libraries tests
+      - ${{ else }}:
+        - script: |
+              source $(Build.SourcesDirectory)/wasm-tools/emsdk/emsdk_env.sh
+              LD_LIBRARY_PATH=/usr/local/lib:/opt/lib:/lib:/usr/lib:/crossrootfs/x64/lib/x86_64-linux-gnu/ $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
+          displayName: Build and run WebAssembly libraries tests
+
+
 
 # Upload unsigned artifacts
 - ${{ if eq(parameters.uploadIntermediateArtifacts, true) }}:

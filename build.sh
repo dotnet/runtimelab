@@ -29,5 +29,12 @@ if is_cygwin_or_mingw; then
   scriptroot=$(cygpath -d "$scriptroot")
   powershell -c "$scriptroot\\build.cmd" $@
 else
+  if [[ "$*" == *"wasm"* && "$*" == *"-ci"* ]]; then
+    # This is a bit of a workaround for the fact that the pipelines do not have a great
+    # way of preserving the environment between scripts. Set by install-emscripten.ps1.
+    if [[ -n $NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH ]]; then
+        source $NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH/emsdk_env.sh
+    fi
+  fi
   "$scriptroot/eng/build.sh" $@
 fi

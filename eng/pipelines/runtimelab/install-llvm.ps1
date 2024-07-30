@@ -51,6 +51,23 @@ else
     git clone https://github.com/llvm/llvm-project --branch $LlvmProjectTag $DepthOption
 }
 
+
+# Set the compiler for CI on non-Windows
+if (!$IsWindows) {
+    $RepoDir = Split-path $PSScriptRoot | Split-Path | Split-Path
+
+    bash -c "build_arch=amd64 compiler=clang source $RepoDir/eng/common/native/init-compiler.sh && set | grep -e CC -e CXX -e LDFLAGS" |
+      ForEach-Object {
+        if ($CI)
+        {
+            # Split the "<name>=<value>" line into the variable's name and value.
+            $name, $value = $_ -split '=', 2
+            # Define it as a process-level environment variable in PowerShell.
+            Set-Content ENV:$name $value
+        }
+     }
+}
+
 # There is no [C/c]hecked LLVM config, so change to Debug
 foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ } } | Select-Object -Unique)
 {
@@ -90,8 +107,12 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
         }
     }
     $CmakeConfigureCommandLine += "-DCMAKE_BUILD_TYPE=$LlvmConfig"
+    
+    if (!$IsWindows)
+    {
+        $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64", "-DCMAKE_SYSTEM_NAME=Linux", "-DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross", "-DLLVM_HOST_TRIPLE=x86_64-pc-linux-gnu", "-DLLVM_TARGETS_TO_BUILD=WebAssembly"
+    }
 
-    Write-Host "Invoking CMake configure: 'cmake $CmakeConfigureCommandLine'"
     cmake @CmakeConfigureCommandLine
     if ($LastExitCode -ne 0)
     {
@@ -100,7 +121,6 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
 
     if (!$NoBuild)
     {
-        Write-Host "Invoking CMake --build"
         cmake --build $BuildDirPath --config $LlvmConfig --target LLVMCore LLVMBitWriter
     }
 
@@ -114,10 +134,11 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
         $LlvmCmakeConfigEnvVarName = if ($Config -eq "Release") {"LLVM_CMAKE_CONFIG_RELEASE"} else {"LLVM_CMAKE_CONFIG_DEBUG"}
     }
 
-    Write-Host "Setting $LlvmCmakeConfigEnvVarName to '$LlvmCmakeConfigPath'"
     if ($CI)
     {
         Write-Output "##vso[task.setvariable variable=$LlvmCmakeConfigEnvVarName]$LlvmCmakeConfigPath"
+        # We need LLVM_DIR for Linux
+        Write-Output "##vso[task.setvariable variable=LLVM_DIR]$LlvmCmakeConfigPath"
     }
     else
     {
