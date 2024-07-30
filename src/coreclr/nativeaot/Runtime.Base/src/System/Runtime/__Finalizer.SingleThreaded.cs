@@ -12,7 +12,7 @@ namespace System.Runtime
 {
     internal static class __Finalizer
     {
-        [UnmanagedCallersOnly(EntryPoint = "RhpProcessFinalizersAndReturn", CallConvs = new Type[] { typeof(CallConvCdecl) })]
+        [UnmanagedCallersOnly(EntryPoint = "RhpProcessFinalizersAndReturn")]
         private static unsafe void RhpProcessFinalizersAndReturn()
         {
             // Drain the queue of finalizable objects.

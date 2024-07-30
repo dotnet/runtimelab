@@ -36,6 +36,10 @@ GPTR_DECL(MethodTable, g_pFreeObjectEEType);
 
 GPTR_IMPL(Thread, g_pFinalizerThread);
 
+#if defined(HOST_WASM) && !defined(FEATURE_WASM_THREADS)
+void FinalizeFinalizableObjects();
+#endif
+
 bool RhInitializeFinalization();
 
 // Perform any runtime-startup initialization needed by the GC, HandleTable or environmental code in gcenv.ee.
@@ -108,6 +112,10 @@ EXTERN_C void QCALLTYPE RhpCollect(uint32_t uGeneration, uint32_t uMode, UInt32_
     GCHeapUtilities::GetGCHeap()->GarbageCollect(uGeneration, lowMemoryP, uMode);
 
     pCurThread->EnablePreemptiveMode();
+
+#if defined(HOST_WASM) && !defined(FEATURE_WASM_THREADS)
+    FinalizeFinalizableObjects();
+#endif
 }
 
 EXTERN_C int64_t QCALLTYPE RhpGetGcTotalMemory()
