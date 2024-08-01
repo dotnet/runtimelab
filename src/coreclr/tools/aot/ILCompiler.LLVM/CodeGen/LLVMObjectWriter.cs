@@ -397,12 +397,7 @@ namespace ILCompiler.DependencyAnalysis
             _moduleWithExternalFunctions.Verify();
 #endif
             string dataWasmObjectPath = _objectFilePath;
-            double allocatedBytes = GC.GetAllocatedBytesForCurrentThread();
-            long stamp = Stopwatch.GetTimestamp();
             _wasmObjectWriter.WriteObject(dataWasmObjectPath);
-            TimeSpan time = Stopwatch.GetElapsedTime(stamp);
-            allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocatedBytes;
-            Console.WriteLine($"Object emission finished in {time.Milliseconds} ms, allocated {allocatedBytes / 1024 / 1024:0.##} MB");
 
             string dataLlvmObjectPath = Path.ChangeExtension(_objectFilePath, ".LLVM.bc");
             _module.WriteBitcodeToFile(dataLlvmObjectPath);
