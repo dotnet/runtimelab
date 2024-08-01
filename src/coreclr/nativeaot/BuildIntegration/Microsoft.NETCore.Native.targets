@@ -77,7 +77,6 @@ The .NET Foundation licenses this file to you under the MIT license.
     <LibFileExt Condition="'$(_targetOS)' != 'win'">.a</LibFileExt>
 
     <IlcOutputFileExt Condition="$(IlcOutputFileExt) == ''">$(NativeObjectExt)</IlcOutputFileExt>
-    <IlcOutputFileExt Condition="'$(NativeCodeGen)' == 'llvm'">$(LlvmObjectExt)</IlcOutputFileExt>
 
     <IsNativeExecutable Condition="'$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe'">true</IsNativeExecutable>
 
@@ -375,13 +374,14 @@ The .NET Foundation licenses this file to you under the MIT license.
       AfterTargets="IlcCompile"
       BeforeTargets="CompileWasmObjects;LinkNativeLlvm">
     <ReadLinesFromFile File="$(NativeIntermediateOutputPath)$(TargetName).results.txt">
-      <Output TaskParameter="Lines" ItemName="LlvmObjects" />
+      <Output TaskParameter="Lines" ItemName="_IlcProducedFiles" />
     </ReadLinesFromFile>
 
     <ItemGroup>
-      <LlvmObjects>
+      <LlvmObjects Include="@(_IlcProducedFiles)" Condition="'%(Extension)' == '$(LlvmObjectExt)'">
         <NativeObject>%(RelativeDir)%(Filename)$(NativeObjectExt)</NativeObject>
       </LlvmObjects>
+      <NativeObjects Include="@(_IlcProducedFiles)" Condition="'%(Extension)' == '$(NativeObjectExt)'" />
       <NativeObjects Include="@(LlvmObjects->'%(NativeObject)')" />
     </ItemGroup>
   </Target>

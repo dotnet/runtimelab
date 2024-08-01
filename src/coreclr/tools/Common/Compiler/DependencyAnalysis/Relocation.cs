@@ -66,6 +66,11 @@ namespace ILCompiler.DependencyAnalysis
         //
         IMAGE_REL_SYMBOL_SIZE                = 0x1000, // The size of data in the image represented by the target symbol node
         IMAGE_REL_FILE_ABSOLUTE              = 0x1001, // 32 bit offset from beginning of image
+
+        //
+        // WASM relocations.
+        //
+        R_WASM_FUNCTION_OFFSET_I32, // Offset of a function relative to the Code section.
     }
 
     public struct Relocation
@@ -499,6 +504,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             switch (relocType)
             {
+                case RelocType.R_WASM_FUNCTION_OFFSET_I32:
                 case RelocType.IMAGE_REL_BASED_ABSOLUTE:
                 case RelocType.IMAGE_REL_BASED_ADDR32NB:
                 case RelocType.IMAGE_REL_BASED_HIGHLOW:
@@ -569,6 +575,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             switch (relocType)
             {
+                case RelocType.R_WASM_FUNCTION_OFFSET_I32:
                 case RelocType.IMAGE_REL_BASED_ABSOLUTE:
                 case RelocType.IMAGE_REL_BASED_ADDR32NB:
                 case RelocType.IMAGE_REL_BASED_HIGHLOW:
