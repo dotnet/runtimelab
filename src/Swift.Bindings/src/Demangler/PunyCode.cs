@@ -8,7 +8,7 @@ using System.Text;
 
 namespace BindingsGeneration.Demangling {
 	/// <Summary>
-	/// A class for decoding puny code. Encoder has been removed.
+	/// A class for decoding Swift variant of puny code (https://github.com/swiftlang/swift/blob/main/docs/ABI/Mangling.rst). Encoder has been removed.
 	/// </Summary>
 	public class PunyCode {
 		const string kEncodingStr = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJ";
