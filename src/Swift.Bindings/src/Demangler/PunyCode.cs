@@ -8,7 +8,7 @@ using System.Text;
 
 namespace BindingsGeneration.Demangling {
 	/// <Summary>
-	/// A class for decoding puny code. Encoder has been removed.
+	/// A class for decoding Swift variant of puny code (https://github.com/swiftlang/swift/blob/main/docs/ABI/Mangling.rst). Encoder has been removed.
 	/// Note that this is not true puny code but a variant where _ is used as the
 	/// delimeter and ent symbology is for encoding is [a-zA-J].
 	/// Also non-symbol ASCII caracters (except [$_a-zA-Z0=9]) are mapped to
