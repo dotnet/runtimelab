@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Numerics;
 
 using ILCompiler.DependencyAnalysis;
+using ILCompiler.ObjectWriter;
 
 using Internal.JitInterface;
 using Internal.JitInterface.LLVMInterop;
@@ -47,6 +48,116 @@ namespace ILCompiler
 
         public override CorInfoLlvmEHModel GetLlvmExceptionHandlingModel() => Options.ExceptionHandlingModel;
 
+        internal WasmFunctionType GetWasmFunctionTypeForMethod(MethodSignature signature, bool hasHiddenParam)
+        {
+            WasmValueType wasmPointerType = _nodeFactory.Target.PointerSize == 4 ? WasmValueType.I32 : WasmValueType.I64;
+
+            WasmValueType GetWasmTypeForTypeDesc(TypeDesc type)
+            {
+                switch (type.Category)
+                {
+                    case TypeFlags.Boolean:
+                    case TypeFlags.SByte:
+                    case TypeFlags.Byte:
+                    case TypeFlags.Int16:
+                    case TypeFlags.UInt16:
+                    case TypeFlags.Char:
+                    case TypeFlags.Int32:
+                    case TypeFlags.UInt32:
+                        return WasmValueType.I32;
+
+                    case TypeFlags.IntPtr:
+                    case TypeFlags.UIntPtr:
+                    case TypeFlags.Array:
+                    case TypeFlags.SzArray:
+                    case TypeFlags.ByRef:
+                    case TypeFlags.Class:
+                    case TypeFlags.Interface:
+                    case TypeFlags.Pointer:
+                    case TypeFlags.FunctionPointer:
+                        return wasmPointerType;
+
+                    case TypeFlags.Int64:
+                    case TypeFlags.UInt64:
+                        return WasmValueType.I64;
+
+                    case TypeFlags.Single:
+                        return WasmValueType.F32;
+
+                    case TypeFlags.Double:
+                        return WasmValueType.F64;
+
+                    case TypeFlags.Enum:
+                        return GetWasmTypeForTypeDesc(type.UnderlyingType);
+
+                    case TypeFlags.Void:
+                        return WasmValueType.Invalid;
+
+                    default:
+                        throw new UnreachableException(type.Category.ToString());
+                }
+            }
+
+            WasmValueType GetWasmReturnType(TypeDesc sigReturnType, out bool isPassedByRef)
+            {
+                TypeDesc returnType = sigReturnType;
+                if (IsStruct(sigReturnType))
+                {
+                    returnType = GetPrimitiveTypeForTrivialWasmStruct(sigReturnType);
+                }
+
+                isPassedByRef = returnType == null;
+                return isPassedByRef ? WasmValueType.Invalid : GetWasmTypeForTypeDesc(returnType);
+            }
+
+            WasmValueType GetWasmArgTypeForArg(TypeDesc argSigType)
+            {
+                bool isPassedByRef = false;
+                TypeDesc argType = argSigType;
+                if (IsStruct(argSigType))
+                {
+                    argType = GetPrimitiveTypeForTrivialWasmStruct(argSigType);
+                    if (argType == null)
+                    {
+                        isPassedByRef = true;
+                    }
+                }
+
+                return isPassedByRef ? wasmPointerType : GetWasmTypeForTypeDesc(argType);
+            }
+
+            WasmValueType wasmReturnType = GetWasmReturnType(signature.ReturnType, out bool isReturnByRef);
+
+            int maxWasmSigLength = signature.Length + 4;
+            Span<WasmValueType> signatureTypes =
+                maxWasmSigLength > 100 ? new WasmValueType[maxWasmSigLength] : stackalloc WasmValueType[maxWasmSigLength];
+
+            int index = 0;
+            signatureTypes[index++] = wasmPointerType;
+
+            if (!signature.IsStatic) // TODO-LLVM-Bug: doesn't handle explicit 'this'.
+            {
+                signatureTypes[index++] = wasmPointerType;
+            }
+
+            if (isReturnByRef)
+            {
+                signatureTypes[index++] = wasmPointerType;
+            }
+
+            if (hasHiddenParam)
+            {
+                signatureTypes[index++] = wasmPointerType;
+            }
+
+            foreach (TypeDesc type in signature)
+            {
+                signatureTypes[index++] = GetWasmArgTypeForArg(type);
+            }
+
+            return new WasmFunctionType(wasmReturnType, signatureTypes.Slice(0, index).ToArray());
+        }
+
         internal LLVMTypeRef GetLLVMSignatureForMethod(MethodSignature signature, bool hasHiddenParam)
         {
             LLVMTypeRef llvmReturnType = GetLlvmReturnType(signature.ReturnType, out bool isReturnByRef);
@@ -58,7 +169,7 @@ namespace ILCompiler
             int index = 0;
             signatureTypes[index++] = LLVMPtrType;
 
-            if (!signature.IsStatic) // Bug: doesn't handle explicit 'this'.
+            if (!signature.IsStatic) // TODO-LLVM-Bug: doesn't handle explicit 'this'.
             {
                 signatureTypes[index++] = LLVMPtrType;
             }

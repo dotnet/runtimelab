@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 using ILCompiler.DependencyAnalysisFramework;
-
+using ILCompiler.ObjectWriter;
 using Internal.JitInterface;
 using Internal.JitInterface.LLVMInterop;
 using Internal.Text;
@@ -23,6 +23,8 @@ namespace ILCompiler.DependencyAnalysis
     /// </summary>
     internal sealed unsafe class LLVMObjectWriter
     {
+        private readonly WasmObjectWriter _wasmObjectWriter;
+
         private readonly LLVMContext* _llvmContext;
 
         // Module with ILC-generated code and data.
@@ -47,19 +49,13 @@ namespace ILCompiler.DependencyAnalysis
         // Used for writing mangled names together with Utf8Name.
         private readonly Utf8StringBuilder _utf8StringBuilder = new Utf8StringBuilder();
 
-        // List of global values to be kept alive via @llvm.used.
-        private readonly List<LLVMValueRef> _keepAliveList = new();
-
-        // Data emitted for the current object node. Initial capacity chosen to be the size of the largest node in a small program.
-        private LLVMValueRef[] _currentObjectData = new LLVMValueRef[100_000];
-        private LLVMTypeRef[] _currentObjectTypes = new LLVMTypeRef[100_000];
-
 #if DEBUG
         private static readonly Dictionary<string, ISymbolNode> _previouslyWrittenNodeNames = new();
 #endif
 
         private LLVMObjectWriter(string objectFilePath, LLVMCodegenCompilation compilation)
         {
+            _wasmObjectWriter = new WasmObjectWriter(compilation);
             _llvmContext = compilation.LLVMContext;
             _int8Type = compilation.LLVMInt8Type;
             _int32Type = compilation.LLVMInt32Type;
@@ -132,6 +128,7 @@ namespace ILCompiler.DependencyAnalysis
                     }
 #endif
                     objectWriter.EmitObjectNode(node, nodeContents);
+                    // objectWriter.EmitObjectNode(node, nodeContents);
                 }
 
                 objectWriter.FinishObjWriter();
@@ -156,218 +153,23 @@ namespace ILCompiler.DependencyAnalysis
 
         private void EmitObjectNode(ObjectNode node, ObjectData nodeContents)
         {
-            NodeFactory factory = _nodeFactory;
-            int pointerSize = factory.Target.PointerSize;
-            Span<LLVMTypeRef> typeElements = default;
-
-            // All references to this symbol are through "ordinarily named" aliases. Thus, we need to suffix the real definition.
-            ISymbolNode symbolNode = (ISymbolNode)node;
-            using Utf8Name dataSymbolName = GetMangledUtf8Name(symbolNode, "__DATA");
-
-            // Calculate the size of this object node.
-            int dataSizeInBytes = nodeContents.Data.Length;
-            int dataSizeInBytesAligned = dataSizeInBytes.AlignUp(pointerSize); // TODO-LLVM: do not pad out the data.
-            int dataSizeInElements = dataSizeInBytesAligned / pointerSize;
-
-            // If we need to create unaligned relocs then use a struct for the symbol.
-            // Start with the premise that most nodes will just contain aligned relocs.
-            bool useStruct = false;
-
-            if (_currentObjectData.Length < dataSizeInElements)
-            {
-                Array.Resize(ref _currentObjectData, Math.Max(_currentObjectData.Length * 2, dataSizeInElements));
-            }
-
-            Span<LLVMValueRef> dataElements = _currentObjectData.AsSpan(0, dataSizeInElements);
-            ReadOnlySpan<byte> data = nodeContents.Data.AsSpan();
-
-            // Indicies in byte units to allow us to "zip" the binary data with the relocs
-            int dataOffset = 0;
-            int relocIndex = 0;
-            int elementOffset = 0;
-
-            int relocLength = nodeContents.Relocs.Length;
-            int nextRelocOffset = 0;
-            bool nextRelocValid = relocIndex < relocLength;
-            if (nextRelocValid)
-            {
-                nextRelocOffset = nodeContents.Relocs[0].Offset;
-            }
-
-            while (dataOffset < dataSizeInBytes)
-            {
-                if (!useStruct && nextRelocValid && nextRelocOffset % pointerSize != 0)
-                {
-                    // Switch from array to struct. This will need more elements because binary data is output byte-by-byte.
-                    useStruct = true;
-                    dataSizeInElements = nodeContents.Relocs.Length + dataSizeInBytes - (nodeContents.Relocs.Length * pointerSize);
-
-                    if (_currentObjectData.Length < dataSizeInElements)
-                    {
-                        Array.Resize(ref _currentObjectData, Math.Max(_currentObjectData.Length * 2, dataSizeInElements));
-                    }
-                    if (_currentObjectTypes.Length < dataSizeInElements)
-                    {
-                        Array.Resize(ref _currentObjectTypes, Math.Max(_currentObjectTypes.Length * 2, dataSizeInElements));
-                    }
-
-                    dataElements = _currentObjectData.AsSpan(0, dataSizeInElements);
-                    typeElements = _currentObjectTypes.AsSpan(0, dataSizeInElements);
-
-                    // Restart zipping while loop.
-                    dataOffset = 0;
-                    elementOffset = 0;
-                    relocIndex = 0;
-
-                    continue;
-                }
-
-                // Emit binary data until next reloc.  As some large nodes only contain binary data this is a small optimization.
-                while (dataOffset < dataSizeInBytes && (!nextRelocValid || dataOffset < nextRelocOffset))
-                {
-                    if (useStruct)
-                    {
-                        typeElements[elementOffset] = _int8Type;
-                        dataElements[elementOffset] = LLVMValueRef.CreateConstInt(_int8Type, data[dataOffset]);
-                        dataOffset++;
-                    }
-                    else
-                    {
-                        ulong value = 0;
-                        int size = Math.Min(dataSizeInBytes - dataOffset, pointerSize);
-                        data.Slice(dataOffset, size).CopyTo(new Span<byte>(&value, size));
-                        dataElements[elementOffset] = LLVMValueRef.CreateConstIntToPtr(LLVMValueRef.CreateConstInt(_intPtrType, value));
-                        dataOffset += pointerSize;
-                    }
-                    elementOffset++;
-                }
-
-                if (nextRelocValid)
-                {
-                    Relocation reloc = nodeContents.Relocs[relocIndex];
-                    Debug.Assert(IsSupportedRelocType(node, reloc.RelocType), $"{reloc.RelocType} in {node} not supported");
-
-                    long delta;
-                    fixed (void* location = &data[reloc.Offset])
-                    {
-                        delta = Relocation.ReadValue(reloc.RelocType, location);
-                    }
-
-                    ISymbolNode symbolRefNode = reloc.Target;
-                    if (symbolRefNode is EETypeNode eeTypeNode && eeTypeNode.ShouldSkipEmittingObjectNode(factory))
-                    {
-                        symbolRefNode = factory.ConstructedTypeSymbol(eeTypeNode.Type);
-                    }
-
-                    dataElements[elementOffset] = GetSymbolReferenceValue(symbolRefNode, checked((int)delta));
-                    if (useStruct)
-                    {
-                        typeElements[elementOffset] = _ptrType;
-                    }
-
-                    relocIndex++;
-                    nextRelocValid = relocIndex < relocLength;
-                    if (nextRelocValid)
-                    {
-                        nextRelocOffset = nodeContents.Relocs[relocIndex].Offset;
-                    }
-
-                    dataOffset += pointerSize;
-                    elementOffset++;
-                }
-            }
-
-            Debug.Assert(relocIndex == relocLength);
-
-            // Create and initialize the LLVM global value.
-            LLVMTypeRef dataSymbolType = useStruct
-                ? LLVMTypeRef.CreateStruct(_llvmContext, typeElements, true)
-                : LLVMTypeRef.CreateArray(_ptrType, (uint)dataSizeInElements);
-            LLVMValueRef dataSymbolValue = useStruct
-                ? LLVMValueRef.CreateConstStruct(dataSymbolType, dataElements)
-                : LLVMValueRef.CreateConstArray(dataSymbolType, dataElements);
-
-            LLVMValueRef dataSymbol = _module.AddGlobal(dataSymbolName, dataSymbolType, dataSymbolValue);
-            dataSymbol.Alignment = (uint)nodeContents.Alignment;
-            if (GetObjectNodeSection(node) is string section)
-            {
-                dataSymbol.Section = section;
-            }
-
-            foreach (ISymbolDefinitionNode definedSymbol in nodeContents.DefinedSymbols)
-            {
-                using Utf8Name definedSymbolName = GetMangledUtf8Name(definedSymbol);
-                int definedSymbolOffset = definedSymbol.Offset;
-                EmitSymbolDef(dataSymbol, definedSymbolName, definedSymbolOffset);
-
-                string alternateDefinedSymbolName = factory.GetSymbolAlternateName(definedSymbol);
-                if (alternateDefinedSymbolName != null)
-                {
-                    using Utf8Name alternateDefinedSymbolUtf8Name = GetUtf8Name(alternateDefinedSymbolName);
-                    EmitSymbolDef(dataSymbol, alternateDefinedSymbolUtf8Name, definedSymbolOffset);
-                }
-            }
-
-            if (ObjectNodeMustBeArtificiallyKeptAlive(node))
-            {
-                _keepAliveList.Add(dataSymbol);
-            }
-        }
-
-        private void EmitSymbolDef(LLVMValueRef baseSymbol, ReadOnlySpan<byte> symbolIdentifier, int offsetFromBaseSymbol)
-        {
-            LLVMValueRef symbolAddress = baseSymbol;
-            if (offsetFromBaseSymbol != 0)
-            {
-                symbolAddress = LLVMValueRef.CreateConstGEP(symbolAddress, offsetFromBaseSymbol);
-            }
-
-            LLVMValueRef symbolDef = _module.GetNamedAlias(symbolIdentifier);
-            if (symbolDef.Handle == null)
-            {
-                _module.AddAlias(symbolIdentifier, _int8Type, symbolAddress);
-            }
-            else
-            {
-                // Set the aliasee.
-                symbolDef.Aliasee = symbolAddress;
-            }
-        }
-
-        private string GetObjectNodeSection(ObjectNode node)
-        {
+            ISymbolDefinitionNode sectionSymbol = null;
             ObjectNodeSection section = node.GetSection(_nodeFactory);
-
-            // We do not want to just "return section.Name" because it forces LLVM to:
-            // 1. Lay out symbols such that there must not be alignment holes between them.
-            // 2. Put everything into the (few) specified sections, making linker GC effectively useless.
-            // At the same time, the semantics of which section directions are correctness-bearing are not well-defined.
-            // For now, "IsStandardSection" is sufficient...
-            //
-            return section.IsStandardSection ? null : section.Name;
-        }
-
-        private static bool IsSupportedRelocType(ObjectNode node, RelocType type)
-        {
-            if (node is StackTraceMethodMappingNode)
+            if (section.IsStandardSection && node is ISymbolDefinitionNode definingSymbol)
             {
-                // Stack trace metadata uses relative pointers, but is currently unused.
-                return true;
+                // We **could** emit everything into one huge section, which is also how other targets do it.
+                // However, that would hinder linker GC and diagnosability. We therefore choose to split
+                // the data up into sections, one for each object node. Note that this choice only exists
+                // for data sections. We do not have control over how code is treated by the linker - it is
+                // always processed on a function granularity.
+                sectionSymbol = definingSymbol;
             }
-            return type is RelocType.IMAGE_REL_BASED_HIGHLOW;
-        }
 
-        private static bool ObjectNodeMustBeArtificiallyKeptAlive(ObjectNode node)
-        {
-            // The modules section is referenced through the special __start/__stop
-            // symbols, which don't cause the linker to consider it alive by default.
-            return node is ModulesSectionNode;
+            _wasmObjectWriter.Emit(section, sectionSymbol, nodeContents);
         }
 
         private void FinishObjWriter()
         {
-            EmitKeepAliveList();
-
 #if DEBUG
             _module.PrintToFile(Path.ChangeExtension(_objectFilePath, ".txt"));
             _module.Verify();
@@ -375,31 +177,20 @@ namespace ILCompiler.DependencyAnalysis
             _moduleWithExternalFunctions.PrintToFile(Path.ChangeExtension(_objectFilePath, "external.txt"));
             _moduleWithExternalFunctions.Verify();
 #endif
+            string dataWasmObjectPath = _objectFilePath;
+            _wasmObjectWriter.WriteObject(dataWasmObjectPath);
 
-            string dataLlvmObjectPath = _objectFilePath;
+            string dataLlvmObjectPath = Path.ChangeExtension(_objectFilePath, ".LLVM.bc");
             _module.WriteBitcodeToFile(dataLlvmObjectPath);
 
             string externalLlvmObjectPath = Path.ChangeExtension(_objectFilePath, "external.bc");
             _moduleWithExternalFunctions.WriteBitcodeToFile(externalLlvmObjectPath);
 
             LLVMCompilationResults compilationResults = _compilation.GetCompilationResults();
+            compilationResults.Add(dataWasmObjectPath);
             compilationResults.Add(dataLlvmObjectPath);
             compilationResults.Add(externalLlvmObjectPath);
             compilationResults.SerializeToFile(Path.ChangeExtension(_objectFilePath, "results.txt"));
-        }
-
-        private void EmitKeepAliveList()
-        {
-            // See https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable.
-            ReadOnlySpan<LLVMValueRef> llvmUsedSymbols = CollectionsMarshal.AsSpan(_keepAliveList);
-            if (llvmUsedSymbols.Length != 0)
-            {
-                LLVMTypeRef llvmUsedType = LLVMTypeRef.CreateArray(_ptrType, (uint)llvmUsedSymbols.Length);
-                LLVMValueRef llvmUsedValue = LLVMValueRef.CreateConstArray(llvmUsedType, llvmUsedSymbols);
-                LLVMValueRef llvmUsedGlobal = _module.AddGlobal("llvm.used"u8, llvmUsedType, llvmUsedValue);
-                llvmUsedGlobal.Linkage = LLVMLinkage.LLVMAppendingLinkage;
-                llvmUsedGlobal.Section = "llvm.metadata";
-            }
         }
 
         private void GetCodeForReadyToRunGenericHelper(ReadyToRunGenericHelperNode node, NodeFactory factory)
@@ -424,45 +215,45 @@ namespace ILCompiler.DependencyAnalysis
             switch (node.Id)
             {
                 case ReadyToRunHelperId.GetNonGCStaticBase:
-                    {
-                        MetadataType target = (MetadataType)node.Target;
+                {
+                    MetadataType target = (MetadataType)node.Target;
 
-                        if (TriggersLazyStaticConstructor(factory, target))
-                        {
-                            OutputCodeForTriggerCctor(builder, result);
-                        }
+                    if (TriggersLazyStaticConstructor(factory, target))
+                    {
+                        OutputCodeForTriggerCctor(builder, result);
                     }
-                    break;
+                }
+                break;
 
                 case ReadyToRunHelperId.GetGCStaticBase:
+                {
+                    MetadataType target = (MetadataType)node.Target;
+
+                    if (TriggersLazyStaticConstructor(factory, target))
                     {
-                        MetadataType target = (MetadataType)node.Target;
-
-                        if (TriggersLazyStaticConstructor(factory, target))
-                        {
-                            GenericLookupResult nonGcBaseLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
-                            LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, dictionary);
-                            OutputCodeForTriggerCctor(builder, nonGcStaticsBase);
-                        }
-
-                        result = builder.BuildLoad(_ptrType, result, "gcBase"u8);
+                        GenericLookupResult nonGcBaseLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
+                        LLVMValueRef nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, dictionary);
+                        OutputCodeForTriggerCctor(builder, nonGcStaticsBase);
                     }
-                    break;
+
+                    result = builder.BuildLoad(_ptrType, result, "gcBase"u8);
+                }
+                break;
 
                 case ReadyToRunHelperId.GetThreadStaticBase:
+                {
+                    MetadataType target = (MetadataType)node.Target;
+
+                    LLVMValueRef nonGcStaticsBase = default;
+                    if (TriggersLazyStaticConstructor(factory, target))
                     {
-                        MetadataType target = (MetadataType)node.Target;
-
-                        LLVMValueRef nonGcStaticsBase = default;
-                        if (TriggersLazyStaticConstructor(factory, target))
-                        {
-                            GenericLookupResult nonGcBaseLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
-                            nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, dictionary);
-                        }
-
-                        result = OutputCodeForGetThreadStaticBase(builder, result, nonGcStaticsBase);
+                        GenericLookupResult nonGcBaseLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
+                        nonGcStaticsBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcBaseLookup, dictionary);
                     }
-                    break;
+
+                    result = OutputCodeForGetThreadStaticBase(builder, result, nonGcStaticsBase);
+                }
+                break;
 
                 // These are all simple: just get the thing from the dictionary and we're done
                 case ReadyToRunHelperId.TypeHandle:
@@ -515,71 +306,71 @@ namespace ILCompiler.DependencyAnalysis
             switch (node.Id)
             {
                 case ReadyToRunHelperId.GetNonGCStaticBase:
+                {
+                    MetadataType target = (MetadataType)node.Target;
+
+                    result = GetSymbolReferenceValue(factory.TypeNonGCStaticsSymbol(target));
+
+                    if (_compilation.HasLazyStaticConstructor(target))
                     {
-                        MetadataType target = (MetadataType)node.Target;
-
-                        result = GetSymbolReferenceValue(factory.TypeNonGCStaticsSymbol(target));
-
-                        if (_compilation.HasLazyStaticConstructor(target))
-                        {
-                            OutputCodeForTriggerCctor(builder, result);
-                        }
+                        OutputCodeForTriggerCctor(builder, result);
                     }
-                    break;
+                }
+                break;
 
                 case ReadyToRunHelperId.GetGCStaticBase:
+                {
+                    MetadataType target = (MetadataType)node.Target;
+
+                    if (_compilation.HasLazyStaticConstructor(target))
                     {
-                        MetadataType target = (MetadataType)node.Target;
-
-                        if (_compilation.HasLazyStaticConstructor(target))
-                        {
-                            LLVMValueRef nonGcBase = GetSymbolReferenceValue(factory.TypeNonGCStaticsSymbol(target));
-                            OutputCodeForTriggerCctor(builder, nonGcBase);
-                        }
-
-                        result = GetSymbolReferenceValue(factory.TypeGCStaticsSymbol(target));
-                        result = builder.BuildLoad(_ptrType, result, "gcBase"u8);
+                        LLVMValueRef nonGcBase = GetSymbolReferenceValue(factory.TypeNonGCStaticsSymbol(target));
+                        OutputCodeForTriggerCctor(builder, nonGcBase);
                     }
-                    break;
+
+                    result = GetSymbolReferenceValue(factory.TypeGCStaticsSymbol(target));
+                    result = builder.BuildLoad(_ptrType, result, "gcBase"u8);
+                }
+                break;
 
                 case ReadyToRunHelperId.GetThreadStaticBase:
+                {
+                    MetadataType target = (MetadataType)node.Target;
+
+                    LLVMValueRef nonGcBase = default;
+                    if (_compilation.HasLazyStaticConstructor(target))
                     {
-                        MetadataType target = (MetadataType)node.Target;
-
-                        LLVMValueRef nonGcBase = default;
-                        if (_compilation.HasLazyStaticConstructor(target))
-                        {
-                            nonGcBase = GetSymbolReferenceValue(factory.TypeNonGCStaticsSymbol(target));
-                        }
-
-                        LLVMValueRef pModuleDataSlot = GetSymbolReferenceValue(factory.TypeThreadStaticIndex(target));
-                        result = OutputCodeForGetThreadStaticBase(builder, pModuleDataSlot, nonGcBase);
+                        nonGcBase = GetSymbolReferenceValue(factory.TypeNonGCStaticsSymbol(target));
                     }
-                    break;
+
+                    LLVMValueRef pModuleDataSlot = GetSymbolReferenceValue(factory.TypeThreadStaticIndex(target));
+                    result = OutputCodeForGetThreadStaticBase(builder, pModuleDataSlot, nonGcBase);
+                }
+                break;
 
                 case ReadyToRunHelperId.ResolveVirtualFunction:
+                {
+                    MethodDesc targetMethod = (MethodDesc)node.Target;
+                    LLVMValueRef objThis = helperFunc.GetParam(1);
+
+                    if (targetMethod.OwningType.IsInterface)
                     {
-                        MethodDesc targetMethod = (MethodDesc)node.Target;
-                        LLVMValueRef objThis = helperFunc.GetParam(1);
+                        // TODO-LLVM: would be nice to use pointers instead of IntPtr in "RhpResolveInterfaceMethod".
+                        LLVMTypeRef resolveFuncType = LLVMTypeRef.CreateFunction(_intPtrType, [_ptrType, _ptrType, _intPtrType]);
+                        LLVMValueRef resolveFunc = GetOrCreateLLVMFunction("RhpResolveInterfaceMethod"u8, resolveFuncType);
 
-                        if (targetMethod.OwningType.IsInterface)
-                        {
-                            // TODO-LLVM: would be nice to use pointers instead of IntPtr in "RhpResolveInterfaceMethod".
-                            LLVMTypeRef resolveFuncType = LLVMTypeRef.CreateFunction(_intPtrType, [_ptrType, _ptrType, _intPtrType]);
-                            LLVMValueRef resolveFunc = GetOrCreateLLVMFunction("RhpResolveInterfaceMethod"u8, resolveFuncType);
-
-                            LLVMValueRef cell = GetSymbolReferenceValue(factory.InterfaceDispatchCell(targetMethod));
-                            LLVMValueRef cellArg = builder.BuildPtrToInt(cell, _intPtrType, "cellArg"u8);
-                            result = CreateCall(builder, resolveFunc, [helperFunc.GetParam(0), objThis, cellArg]);
-                            result = builder.BuildIntToPtr(result, "pInterfaceFunc"u8);
-                        }
-                        else
-                        {
-                            Debug.Assert(!targetMethod.CanMethodBeInSealedVTable(factory));
-                            result = OutputCodeForVTableLookup(builder, objThis, targetMethod);
-                        }
+                        LLVMValueRef cell = GetSymbolReferenceValue(factory.InterfaceDispatchCell(targetMethod));
+                        LLVMValueRef cellArg = builder.BuildPtrToInt(cell, _intPtrType, "cellArg"u8);
+                        result = CreateCall(builder, resolveFunc, [helperFunc.GetParam(0), objThis, cellArg]);
+                        result = builder.BuildIntToPtr(result, "pInterfaceFunc"u8);
                     }
-                    break;
+                    else
+                    {
+                        Debug.Assert(!targetMethod.CanMethodBeInSealedVTable(factory));
+                        result = OutputCodeForVTableLookup(builder, objThis, targetMethod);
+                    }
+                }
+                break;
 
                 default:
                     throw new NotImplementedException();
@@ -966,13 +757,11 @@ namespace ILCompiler.DependencyAnalysis
             else
             {
                 using Utf8Name symbolDefName = GetMangledUtf8Name(symbolRef);
-                symbolDefValue = _module.GetNamedAlias(symbolDefName);
+                symbolDefValue = _module.GetNamedGlobal(symbolDefName);
 
                 if (symbolDefValue.Handle == null)
                 {
-                    // Dummy aliasee; emission will fill in the real value.
-                    LLVMValueRef aliasee = LLVMValueRef.CreateConstNull(_ptrType);
-                    symbolDefValue = _module.AddAlias(symbolDefName, _int8Type, aliasee);
+                    symbolDefValue = _module.AddGlobal(symbolDefName, _int8Type, initializer: null);
                 }
             }
 

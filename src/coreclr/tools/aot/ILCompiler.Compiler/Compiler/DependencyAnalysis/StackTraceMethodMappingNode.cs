@@ -127,8 +127,9 @@ namespace ILCompiler.DependencyAnalysis
                     command |= StackTraceDataCommand.IsStackTraceHidden;
                 }
 
+                RelocType reloc = factory.Target.IsWasm ? RelocType.R_WASM_FUNCTION_OFFSET_I32 : RelocType.IMAGE_REL_BASED_RELPTR32;
                 objData.EmitByte(commandReservation, command);
-                objData.EmitReloc(factory.MethodEntrypoint(entry.Method), RelocType.IMAGE_REL_BASED_RELPTR32);
+                objData.EmitReloc(factory.MethodEntrypoint(entry.Method), reloc);
             }
 
             _size = objData.CountBytes;
