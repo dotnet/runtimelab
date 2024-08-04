@@ -221,7 +221,6 @@ namespace ILCompiler
             }
         }
 
-        public virtual TypeDesc GetPrimitiveTypeForTrivialWasmStruct(TypeDesc type) => throw new NotImplementedException();
         public virtual int PadOffset(TypeDesc type, int atOffset) => throw new NotImplementedException();
         public virtual ISymbolNode GetExternalMethodAccessor(MethodDesc method, ReadOnlySpan<TargetAbiType> signature) => throw new NotImplementedException();
         public virtual CorInfoLlvmEHModel GetLlvmExceptionHandlingModel() => throw new NotImplementedException();

@@ -67,14 +67,12 @@ namespace ILCompiler.DependencyAnalysis
                     arm64Emitter.Builder.RequireInitialAlignment(alignment);
                     arm64Emitter.Builder.AddSymbol(this);
                     return arm64Emitter.Builder.ToObjectData();
-
 #if !READYTORUN
                 case TargetArchitecture.Wasm32:
                 case TargetArchitecture.Wasm64:
                     Wasm.WasmEmitter wasmEmitter = new Wasm.WasmEmitter(factory, relocsOnly);
-
                     EmitCode(factory, ref wasmEmitter, relocsOnly);
-
+                    wasmEmitter.Builder.AddSymbol(this);
                     return wasmEmitter.Builder.ToObjectData();
 #endif
                 case TargetArchitecture.LoongArch64:
@@ -96,13 +94,15 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
+#if !READYTORUN
+        public abstract Wasm.WasmFunctionType GetWasmFunctionType(NodeFactory factory);
+        protected abstract void EmitCode(NodeFactory factory, ref Wasm.WasmEmitter instructionEncoder, bool relocsOnly);
+#endif
+
         protected abstract void EmitCode(NodeFactory factory, ref X64.X64Emitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref X86.X86Emitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref ARM.ARMEmitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref ARM64.ARM64Emitter instructionEncoder, bool relocsOnly);
-#if !READYTORUN
-        protected abstract void EmitCode(NodeFactory factory, ref Wasm.WasmEmitter instructionEncoder, bool relocsOnly);
-#endif
         protected abstract void EmitCode(NodeFactory factory, ref LoongArch64.LoongArch64Emitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref RiscV64.RiscV64Emitter instructionEncoder, bool relocsOnly);
     }

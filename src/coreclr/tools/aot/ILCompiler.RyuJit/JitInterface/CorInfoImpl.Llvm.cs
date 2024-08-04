@@ -4,12 +4,12 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
+using ILCompiler.DependencyAnalysis.Wasm;
 
 using Internal.IL;
 using Internal.Text;
@@ -145,7 +145,7 @@ namespace Internal.JitInterface
         {
             var _this = GetThis(thisHandle);
             TypeDesc structType = _this.HandleToObject(structHnd);
-            if (_this._compilation.GetPrimitiveTypeForTrivialWasmStruct(structType) is TypeDesc primitiveType)
+            if (WasmAbi.GetPrimitiveTypeForTrivialWasmStruct(structType) is TypeDesc primitiveType)
             {
                 return _this.asCorInfoType(primitiveType);
             }

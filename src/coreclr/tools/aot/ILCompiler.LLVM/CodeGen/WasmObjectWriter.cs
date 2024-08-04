@@ -8,6 +8,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 
 using ILCompiler.DependencyAnalysis;
+using ILCompiler.DependencyAnalysis.Wasm;
 using ObjectData = ILCompiler.DependencyAnalysis.ObjectNode.ObjectData;
 using static ILCompiler.ObjectWriter.WasmRelocationKind;
 
@@ -154,7 +155,7 @@ namespace ILCompiler.ObjectWriter
                         _undefinedFunctionsCount++;
                     }
 
-                    WasmFunctionType type = symbolInfo.GetFunctionType(_compilation);
+                    WasmFunctionType type = symbolInfo.GetFunctionType(_compilation.NodeFactory);
                     ref uint typeIndex = ref CollectionsMarshal.GetValueRefOrAddDefault(_typeToTypeIndexMap, type, out bool exists);
                     if (!exists)
                     {
@@ -264,7 +265,7 @@ namespace ILCompiler.ObjectWriter
                     Debug.Assert(wasmFunctionTypeIndex != InvalidIndex);
                     definedFunctionIndex++;
                 }
-                Debug.Assert(definedFunctionIndex == definedFunctionsCount);
+                Debug.Assert(definedFunctionIndex - _undefinedFunctionsCount == definedFunctionsCount);
             }
             return size;
         }
@@ -292,12 +293,14 @@ namespace ILCompiler.ObjectWriter
             foreach (ref LinkingSection definedFunction in _codeWasmSection.LinkingSections)
             {
                 ref LinkingSectionChunk chunk = ref definedFunction.Chunks[0];
+
+                size += WriteULeb128(stream, (uint)chunk.Content.Length);
                 if (IsWritingPhase(stream))
                 {
+                    // "WasmSectionRelativeOffset" points at the "Content"'s beginning.
                     chunk.WasmSectionRelativeOffset = size;
                 }
-
-                size += WriteByteVector(stream, chunk.Content);
+                size += WriteBytes(stream, chunk.Content);
             }
             if (IsWritingPhase(stream))
             {
@@ -328,10 +331,10 @@ namespace ILCompiler.ObjectWriter
 
                 uint segmentSize = 0;
                 ref LinkingSection linkingSection = ref linkingSections[linkingSectionIndex];
-                foreach (ref LinkingSectionChunk data in linkingSection.Chunks)
+                foreach (ref LinkingSectionChunk chunk in linkingSection.Chunks)
                 {
-                    segmentSize += AlignUpAddend(segmentSize, data.Alignment);
-                    segmentSize += (uint)data.Content.Length;
+                    segmentSize += AlignUpAddend(segmentSize, chunk.Alignment);
+                    segmentSize += (uint)chunk.Content.Length;
                 }
                 size += WriteULeb128(stream, segmentSize);
 
@@ -405,9 +408,9 @@ namespace ILCompiler.ObjectWriter
                 foreach (ref LinkingSection segment in dataSegments)
                 {
                     uint alignment = 1;
-                    foreach (ref LinkingSectionChunk data in segment.Chunks)
+                    foreach (ref LinkingSectionChunk chunk in segment.Chunks)
                     {
-                        alignment = Math.Max(alignment, data.Alignment);
+                        alignment = Math.Max(alignment, chunk.Alignment);
                     }
 
                     Utf8String segmentBaseName = GetNodeSectionName(segment.Name.Section);
@@ -509,15 +512,15 @@ namespace ILCompiler.ObjectWriter
                 size += WriteULeb128(stream, relocCount);
                 foreach (ref LinkingSection linkingSection in section.LinkingSections)
                 {
-                    foreach (ref LinkingSectionChunk data in linkingSection.Chunks)
+                    foreach (ref LinkingSectionChunk chunk in linkingSection.Chunks)
                     {
-                        foreach (ref Relocation relocation in data.Relocations.AsSpan())
+                        foreach (ref Relocation relocation in chunk.Relocations.AsSpan())
                         {
                             int symbolIndex = _symbolNodeToSymbolIndexMap[relocation.Target];
                             WasmRelocationKind kind = GetWasmRelocationKind(in relocation);
 
                             size += WriteByte(stream, checked((byte)kind));
-                            size += WriteULeb128(stream, data.WasmSectionRelativeOffset + checked((uint)relocation.Offset));
+                            size += WriteULeb128(stream, chunk.WasmSectionRelativeOffset + checked((uint)relocation.Offset));
                             if (kind == R_WASM_TYPE_INDEX_LEB)
                             {
                                 size += WriteULeb128(stream, _symbols[symbolIndex].Index);
@@ -528,7 +531,7 @@ namespace ILCompiler.ObjectWriter
                             }
 
                             long addend = relocation.Target.Offset;
-                            fixed (void* location = &data.Content[relocation.Offset])
+                            fixed (void* location = &chunk.Content[relocation.Offset])
                             {
                                 addend += Relocation.ReadValue(relocation.RelocType, location);
                             }
@@ -675,6 +678,16 @@ namespace ILCompiler.ObjectWriter
 
                 case RelocType.R_WASM_FUNCTION_OFFSET_I32:
                     return R_WASM_FUNCTION_OFFSET_I32;
+                case RelocType.R_WASM_FUNCTION_INDEX_LEB:
+                    return R_WASM_FUNCTION_INDEX_LEB;
+                case RelocType.R_WASM_MEMORY_ADDR_SLEB:
+                    return R_WASM_MEMORY_ADDR_SLEB;
+                case RelocType.R_WASM_TABLE_INDEX_SLEB:
+                    return R_WASM_TABLE_INDEX_SLEB;
+                case RelocType.R_WASM_MEMORY_ADDR_SLEB64:
+                    return R_WASM_MEMORY_ADDR_SLEB64;
+                case RelocType.R_WASM_TABLE_INDEX_SLEB64:
+                    return R_WASM_TABLE_INDEX_SLEB64;
 
                 default:
                     throw new NotSupportedException($"Unsupported relocation type: {relocation.RelocType}");
@@ -728,25 +741,28 @@ namespace ILCompiler.ObjectWriter
             public readonly bool IsFunction => IsFunctionSymbol(Symbol);
             public readonly bool IsData => IsDataSymbol(Symbol);
 
-            public readonly WasmFunctionType GetFunctionType(LLVMCodegenCompilation compilation)
+            public readonly WasmFunctionType GetFunctionType(NodeFactory factory)
             {
                 Debug.Assert(IsFunction);
-                if (Symbol is ExternSymbolNode)
+                switch (Symbol)
                 {
-                    // We assume extenal symbol nodes are functions. This is rather fragile, but handling this precisely
-                    // would require modifying producers of these nodes to provide more information (namely, the signature
-                    // for function symbols).
-                    // TODO-LLVM-Bug: depending on the order symbols are encountered, this hack could lead to problems.
-                    // E. g. a "naked" RhpNewFast, then a "properly typed" RhpNewFast runtime import. However, the linker
-                    // can tolerate mismatches, so as long as the problematic functions aren't called directly...
-                    return new WasmFunctionType(WasmValueType.Invalid, []);
+                    case IMethodNode methodNode:
+                        return WasmAbi.GetWasmFunctionType(methodNode.Method);
+                    case AssemblyStubNode wasmCodeNode:
+                        return wasmCodeNode.GetWasmFunctionType(factory);
+                    default:
+                        // We assume extenal symbol nodes are functions. This is rather fragile, but handling this precisely
+                        // would require modifying producers of these nodes to provide more information (namely, the signature
+                        // for function symbols).
+                        // TODO-LLVM-Bug: depending on the order symbols are encountered, this hack could lead to problems.
+                        // E. g. a "naked" RhpNewFast, then a "properly typed" RhpNewFast runtime import. However, the linker
+                        // can tolerate mismatches, so as long as the problematic functions aren't called directly...
+                        Debug.Assert(Symbol is ExternSymbolNode);
+                        return new WasmFunctionType(WasmValueType.Invalid, []);
                 }
-
-                MethodDesc method = ((IMethodNode)Symbol).Method;
-                return compilation.GetWasmFunctionTypeForMethod(method.Signature, method.RequiresInstArg());
             }
 
-            public static bool IsFunctionSymbol(ISymbolNode symbol) => symbol is ExternSymbolNode or IMethodNode { Offset: 0 };
+            public static bool IsFunctionSymbol(ISymbolNode symbol) => WasmFunctionType.IsFunction(symbol);
             public static bool IsDataSymbol(ISymbolNode symbol) => !IsFunctionSymbol(symbol);
         }
 
