@@ -25,7 +25,7 @@ namespace ILCompiler
         private string _outputFile;
 
         internal LLVMCodegenConfigProvider Options { get; }
-        public new LLVMCodegenNodeFactory NodeFactory { get; }
+        internal new LLVMCodegenNodeFactory NodeFactory { get; }
 
         internal LLVMCodegenCompilation(DependencyAnalyzerBase<NodeFactory> dependencyGraph,
             LLVMCodegenNodeFactory nodeFactory,

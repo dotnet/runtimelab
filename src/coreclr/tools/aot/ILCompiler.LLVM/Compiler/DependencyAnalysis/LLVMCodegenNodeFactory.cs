@@ -7,15 +7,16 @@ using System.Runtime.InteropServices;
 
 using Internal.JitInterface;
 using Internal.TypeSystem;
-using Internal.TypeSystem.Ecma;
 
 namespace ILCompiler.DependencyAnalysis
 {
-    public sealed class LLVMCodegenNodeFactory : NodeFactory
+    internal sealed class LLVMCodegenNodeFactory : NodeFactory
     {
         private readonly Dictionary<string, ExternMethodAccessorNode> _externSymbolsWithAccessors = new();
+        private readonly CorInfoLlvmEHModel _ehModel;
 
         public LLVMCodegenNodeFactory(
+            LLVMCodegenConfigProvider options,
             CompilerTypeSystemContext context,
             CompilationModuleGroup compilationModuleGroup,
             MetadataManager metadataManager,
@@ -41,7 +42,10 @@ namespace ILCompiler.DependencyAnalysis
                   devirtualizationManager,
                   dataInterner)
         {
+            _ehModel = options.ExceptionHandlingModel;
         }
+
+        public override bool TargetsEmulatedEH() => _ehModel is CorInfoLlvmEHModel.Emulated;
 
         internal ExternMethodAccessorNode ExternSymbolWithAccessor(string name, MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
         {
