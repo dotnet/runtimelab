@@ -1838,30 +1838,6 @@ void HelperCallProperties::init()
                 noThrow = true;
                 break;
 
-<<<<<<< HEAD
-            case CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
-            case CORINFO_HELP_LLVM_EH_CATCH:
-            case CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES:
-            case CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME:
-            case CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME:
-
-                noThrow = true;
-                mutatesHeap = true;
-
-                switch (helper)
-                {
-                    case CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
-                        nonNullReturn = true;
-                        break;
-
-                    default:
-                        break;
-                }
-                break;
-
-            // Not sure how to handle optimization involving the rest of these  helpers
-            default:
-=======
             case CORINFO_HELP_TAILCALL: // Never present on stack at the time of GC.
             case CORINFO_HELP_STACK_PROBE:
             case CORINFO_HELP_CHECK_OBJ:
@@ -1872,7 +1848,24 @@ void HelperCallProperties::init()
                 isNoGC      = true;
                 mutatesHeap = true; // Conservatively.
                 break;
->>>>>>> runtime/main
+
+            case CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
+            case CORINFO_HELP_LLVM_EH_CATCH:
+            case CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES:
+            case CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME:
+            case CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME:
+                noThrow     = true;
+                mutatesHeap = true;
+                switch (helper)
+                {
+                    case CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
+                        nonNullReturn = true;
+                        break;
+
+                    default:
+                        break;
+                }
+                break;
 
             default:
                 // The most pessimistic results are returned for these helpers.

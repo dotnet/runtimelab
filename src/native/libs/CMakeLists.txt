@@ -32,14 +32,9 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
     set(CMAKE_INSTALL_PREFIX $ENV{__CMakeBinDir})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -Wno-declaration-after-statement")
 
-<<<<<<< HEAD
-    # TODO-LLVM: remove once upstream moves to WASI SDK 22 as well (or otherwise fixes these warnings).
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-switch-default")
-=======
     if (CLR_CMAKE_TARGET_BROWSER)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-pre-c11-compat")
     endif()
->>>>>>> runtime/main
 
     add_compile_options(-I${CMAKE_CURRENT_SOURCE_DIR}/Common)
     add_compile_options(-I${CMAKE_CURRENT_BINARY_DIR}/Common)

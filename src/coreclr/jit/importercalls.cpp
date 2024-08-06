@@ -4147,12 +4147,8 @@ GenTree* Compiler::impIntrinsic(CORINFO_CLASS_HANDLE    clsHnd,
             case NI_System_Threading_Interlocked_ExchangeAdd:
             {
                 var_types retType = JITtype2varType(sig->retType);
-<<<<<<< HEAD
-#ifndef TARGET_WASM
-                assert((genTypeSize(retType) >= 4) || (ni == NI_System_Threading_Interlocked_Exchange));
-=======
->>>>>>> runtime/main
 
+#ifndef TARGET_WASM
                 if (genTypeSize(retType) > TARGET_POINTER_SIZE)
                 {
                     break;

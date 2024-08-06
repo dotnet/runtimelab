@@ -226,11 +226,7 @@
         IsNative="true" />
 
       <!-- for threaded wasm -->
-<<<<<<< HEAD
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'Mono' and Exists('$(LibrariesNativeArtifactsPath)dotnet.native.worker.js')"
-=======
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and Exists('$(LibrariesNativeArtifactsPath)dotnet.native.worker.mjs')"
->>>>>>> runtime/main
+      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'Mono' and Exists('$(LibrariesNativeArtifactsPath)dotnet.native.worker.mjs')"
                              Include="
         $(LibrariesNativeArtifactsPath)dotnet.native.worker.mjs"
         IsNative="true" />

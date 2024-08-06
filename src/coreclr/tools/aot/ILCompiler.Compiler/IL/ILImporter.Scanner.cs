@@ -94,7 +94,7 @@ namespace Internal.IL
             if (_factory.Target.IsWasm)
             {
                 // ThrowNullReferenceException is needed by the explicit null checks we generate with LLVM.
-                _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowNullRef), "Explicit null checks");
+                _unconditionalDependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.ThrowNullRef), "Explicit null checks");
             }
 
             _ilBytes = methodIL.GetILBytes();

@@ -3551,6 +3551,7 @@ PhaseStatus Compiler::fgCreateThrowHelperBlocks()
     return PhaseStatus::MODIFIED_EVERYTHING;
 }
 
+#ifndef TARGET_WASM
 //------------------------------------------------------------------------
 // fgCreateThrowHelperBlockCode: create the code for throw helper blocks
 //
@@ -3623,6 +3624,7 @@ void Compiler::fgCreateThrowHelperBlockCode(AddCodeDsc* add)
         m_pLowering->LowerRange(block, range);
     }
 }
+#endif
 
 //------------------------------------------------------------------------
 // fgFindExcptnTarget: finds the block to jump to that will throw a given kind of exception

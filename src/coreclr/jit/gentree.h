@@ -4542,15 +4542,9 @@ struct CallArgABIInformation
         : NumRegs(0)
         , ByteOffset(0)
         , ByteSize(0)
-<<<<<<< HEAD
-#if defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
-        , StructFloatFieldType()
-#endif
 #ifdef TARGET_WASM
         , IsPointer(false)
 #endif
-=======
->>>>>>> runtime/main
         , ArgType(TYP_UNDEF)
         , PassedByRef(false)
 #if FEATURE_ARG_SPLIT
@@ -4577,25 +4571,12 @@ public:
     unsigned NumRegs;
     unsigned ByteOffset;
     unsigned ByteSize;
-<<<<<<< HEAD
-#if defined(UNIX_AMD64_ABI)
-    // Unix amd64 will split floating point types and integer types in structs
-    // between floating point and general purpose registers. Keep track of that
-    // information so we do not need to recompute it later.
-    SYSTEMV_AMD64_CORINFO_STRUCT_REG_PASSING_DESCRIPTOR StructDesc;
-#endif // UNIX_AMD64_ABI
-#if defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
-    // For LoongArch64's ABI, the struct which has float field(s) and no more than two fields
-    // may be passed by float register(s).
-    // e.g  `struct {int a; float b;}` passed by an integer register and a float register.
-    var_types StructFloatFieldType[2];
-#endif
+
 #ifdef TARGET_WASM
     // Whether the ABI type of this argument is an unmanaged pointer.
     bool IsPointer : 1;
 #endif // TARGET_WASM
-=======
->>>>>>> runtime/main
+
     // The type used to pass this argument. This is generally the original
     // argument type, but when a struct is passed as a scalar type, this is
     // that type. Note that if a struct is passed by reference, this will still
