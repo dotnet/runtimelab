@@ -127,7 +127,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(OptimizationPreference) == 'Size'">-Oz</WasmOptimizationSetting>
 
     <IlcLlvmTarget Condition="'$(_targetOS)' == 'browser'">wasm32-unknown-emscripten</IlcLlvmTarget>
-    <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-unknown-wasi</IlcLlvmTarget>
+    <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-unknown-wasip2</IlcLlvmTarget>
     <IlcWasmStackSize>1048576</IlcWasmStackSize> <!-- 1MB -->
     <IlcWasmStackSize Condition="'$(EmccStackSize)' != ''">$(EmccStackSize)</IlcWasmStackSize>
     <IlcWasmGlobalBase>1024</IlcWasmGlobalBase> <!-- This value is also hardcoded in the compiler -->
@@ -396,10 +396,16 @@ The .NET Foundation licenses this file to you under the MIT license.
     <!-- See https://github.com/dotnet/runtime/blob/main/src/mono/browser/build/EmSdkRepo.Defaults.props. -->
     <Error Text="Emscripten not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Emscripten and ensure the EMSDK environment variable points to the directory containing emsdk.bat"
            Condition="'$(EMSDK)' == '' and '$(EmscriptenSdkToolsPath)' == '' and '$(_targetOS)' == 'browser'" />
+
+    <!-- Verify the WASI SDK location and version (through indirect means...). -->
     <Error Text="Wasi SDK not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Wasi SDK and ensure the WASI_SDK_PATH environment variable points to the directory containing share/wasi-sysroot"
-           Condition="'$(WASI_SDK_PATH)' == '' and '$(_targetOS)' == 'wasi'" />
-    <Warning Text="The WASI SDK version is too low. Please use WASI SDK 22 or newer with a 64 bit Clang."
-             Condition="!Exists('$(WASI_SDK_PATH)/VERSION') and '$(_targetOS)' == 'wasi'" />
+           Condition="'$(_targetOS)' == 'wasi' and '$(WASI_SDK_PATH)' == ''" />
+    <Exec Command="&quot;$(WASI_SDK_PATH)/bin/wasm-component-ld&quot; --version" StandardOutputImportance="Low" ConsoleToMsBuild="true"
+          Condition="'$(_targetOS)' == 'wasi'">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_WasmComponentLdVersion" />
+    </Exec>
+    <Warning Text="The WASI SDK version is too low. Please use WASI SDK 24 or newer."
+             Condition="'$(_targetOS)' == 'wasi' and $([MSBuild]::VersionLessThan($(_WasmComponentLdVersion.Replace('wasm-component-ld ', '')), '0.5.6'))" />
   </Target>
 
   <Target Name="CompileWasmObjects"
@@ -545,10 +551,12 @@ The .NET Foundation licenses this file to you under the MIT license.
       <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="$(IlcSdkPath)libCppExceptionHandling.a" />
       <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'" Include="$(IlcSdkPath)libWasmExceptionHandling.a" />
       <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'emulated'" Include="$(IlcSdkPath)libEmulatedExceptionHandling.a" />
+      <_WASIComponentImports Include="$(IlcFrameworkNativePath)*.wit" />
 
       <!-- wasi-sdk clang wants forward slashes, emscripten doesn't care -->
       <CustomLinkerArg Include="@(NativeLibrary->'&quot;%(Identity)&quot;'->Replace(&quot;\&quot;, &quot;/&quot;))" />
       <CustomLinkerArg Include="@(NativeObjects->'&quot;%(Identity)&quot;'->Replace(&quot;\&quot;, &quot;/&quot;))" />
+      <CustomLinkerArg Include="@(_WASIComponentImports->Replace('\', '/')->'-Wl,--component-type,&quot;%(Identity)&quot;')" />
       <CustomLinkerArg Include="-o &quot;$(NativeBinary.Replace(&quot;\&quot;, &quot;/&quot;))&quot;" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-Wl,--strip-all" />

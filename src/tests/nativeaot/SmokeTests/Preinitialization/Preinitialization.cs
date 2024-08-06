@@ -64,7 +64,7 @@ internal class Program
         Console.WriteLine("Preinitialization is disabled in multimodule builds for now. Skipping test.");
 #endif
 
-        return 100;
+        return 0;
     }
 }
 

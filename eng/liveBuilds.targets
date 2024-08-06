@@ -205,10 +205,16 @@
         $(LibrariesNativeArtifactsPath)*.dex;
         $(LibrariesNativeArtifactsPath)*.jar;"
         IsNative="true" />
+
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
                              Include="
         $(LibrariesNativeArtifactsPath)pal_random.lib.js;"
         IsNative="true" />
+      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'wasi' and '$(RuntimeFlavor)' == 'CoreCLR'"
+                             Include="
+        $(LibrariesNativeArtifactsPath)*.wit;"
+        IsNative="true" />
+
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'Mono'"
                              Include="
         $(LibrariesNativeArtifactsPath)dotnet.js;

@@ -165,7 +165,7 @@ new CoreFXTestLibrary.Internal.TestInfo("GenericVirtualMethods.TestCoAndContraVa
         if (passed && CoreFXTestLibrary.Internal.Runner.NumPassedTests > 0)
         {
             CoreFXTestLibrary.Logger.LogInformation("All tests PASSED.");
-            return 100;
+            return 0;
         }
         else
         {

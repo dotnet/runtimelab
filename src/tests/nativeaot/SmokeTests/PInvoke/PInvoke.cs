@@ -352,7 +352,7 @@ namespace PInvokeTests
             TestDifferentModopts();
             TestFunctionPointers();
 
-            return 100;
+            return 0;
         }
 
         public static void ThrowIfNotEquals<T>(T expected, T actual, string message)

@@ -9,7 +9,7 @@ using System.Text;
 
 public class BringUpTest
 {
-    const int Pass = 100;
+    const int Pass = 0;
     const int Fail = -1;
 
     volatile int myField;

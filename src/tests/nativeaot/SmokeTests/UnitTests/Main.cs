@@ -20,7 +20,7 @@ success &= RunTest(Devirtualization.Run);
 success &= RunTest(StackTraces.Run);
 #endif
 
-return success ? 100 : 1;
+return success ? 0 : 1;
 
 static bool RunTest(Func<int> t, [CallerArgumentExpression("t")] string name = null)
 {

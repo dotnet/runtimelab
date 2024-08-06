@@ -15,6 +15,7 @@
     <CLRTestTargetUnsupported Condition="'$(TargetsAppleMobile)' == 'true'">true</CLRTestTargetUnsupported>
 
     <IlcTrimMetadata>false</IlcTrimMetadata>
+    <CLRTestExitCode>0</CLRTestExitCode>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Reflection.cs" />
