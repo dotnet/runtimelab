@@ -5,16 +5,16 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
 
 using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysis.Wasm;
 using ObjectData = ILCompiler.DependencyAnalysis.ObjectNode.ObjectData;
-using static ILCompiler.ObjectWriter.WasmRelocationKind;
 
 using Internal.Text;
-using Internal.TypeSystem;
-using System.Runtime.CompilerServices;
+using static ILCompiler.ObjectWriter.WasmRelocationKind;
 
 //
 // The WASM object writer. WASM object files are valid WASM binaries with relocation sections
@@ -25,7 +25,7 @@ using System.Runtime.CompilerServices;
 //
 namespace ILCompiler.ObjectWriter
 {
-    internal sealed class WasmObjectWriter(LLVMCodegenCompilation compilation)
+    internal sealed partial class WasmObjectWriter(LLVMCodegenCompilation compilation)
     {
         private const int InvalidIndexInt32 = -1;
         private const uint InvalidIndex = uint.MaxValue;
@@ -200,11 +200,11 @@ namespace ILCompiler.ObjectWriter
 
         private uint WriteImportSection(Stream stream)
         {
-            ReadOnlySpan<byte> importModuleName = "env"u8;
+            ReadOnlySpan<byte> defaultImportModuleName = "env"u8;
 
             // Import memory so that the data segments (and code) can reference it. // TODO-LLVM: 64 bit support.
             uint size = WriteULeb128(stream, 1 + _undefinedFunctionsCount);
-            size += WriteByteVector(stream, importModuleName);
+            size += WriteByteVector(stream, defaultImportModuleName);
             size += WriteByteVector(stream, "__linear_memory"u8);
             size += WriteBytes(stream, [0x02, 0x00, 0x01]); // memtype: {min: 0x01, max: infinite}.
 
@@ -213,8 +213,16 @@ namespace ILCompiler.ObjectWriter
             {
                 if (!symbol.IsDefined && symbol.IsFunction)
                 {
-                    size += WriteByteVector(stream, importModuleName);
-                    size += WriteByteVector(stream, symbol.Name.AsSpan());
+                    if (symbol.GetImportModuleAndName(_compilation, out string explicitImportModule, out string explicitImportName))
+                    {
+                        size += WriteStringAsUtf8ByteVector(stream, explicitImportModule);
+                        size += WriteStringAsUtf8ByteVector(stream, explicitImportName);
+                    }
+                    else
+                    {
+                        size += WriteByteVector(stream, defaultImportModuleName);
+                        size += WriteByteVector(stream, symbol.Name.AsSpan());
+                    }
                     size += WriteByte(stream, 0x00);
                     size += WriteULeb128(stream, symbol.FunctionTypeIndex);
 
@@ -443,6 +451,7 @@ namespace ILCompiler.ObjectWriter
             const byte SYMTAB_DATA = 1;
             const uint WASM_SYM_UNDEFINED = 0x10;
             const uint WASM_SYM_NO_STRIP = 0x80;
+            const uint WASM_SYM_EXPLICIT_NAME = 0x40;
 
             uint symbolCount = (uint)_symbols.Count;
             if (symbolCount == 0)
@@ -457,6 +466,7 @@ namespace ILCompiler.ObjectWriter
                 size += WriteByte(stream, kind);
 
                 bool isDefined = symbol.IsDefined;
+                bool isExplicitlyImported = symbol.GetImportModuleAndName(_compilation, out _, out _);
                 uint flags = 0;
                 if (!isDefined)
                 {
@@ -465,6 +475,10 @@ namespace ILCompiler.ObjectWriter
                 if (symbol.MustBeArtificiallyKeptAlive)
                 {
                     flags |= WASM_SYM_NO_STRIP;
+                }
+                if (isExplicitlyImported)
+                {
+                    flags |= WASM_SYM_EXPLICIT_NAME;
                 }
                 size += WriteULeb128(stream, flags);
 
@@ -481,7 +495,7 @@ namespace ILCompiler.ObjectWriter
                 else
                 {
                     size += WriteULeb128(stream, symbol.Index);
-                    if (isDefined) // Undefined symbols take their name from the import.
+                    if (isDefined || isExplicitlyImported) // Ordinary undefined symbols take their name from the import.
                     {
                         size += WriteByteVector(stream, symbol.Name.AsSpan());
                     }
@@ -633,6 +647,22 @@ namespace ILCompiler.ObjectWriter
             return count;
         }
 
+        private uint WriteStringAsUtf8ByteVector(Stream stream, string value)
+        {
+            uint size;
+            if (IsWritingPhase(stream))
+            {
+                size = WriteByteVector(stream, _utf8StringBuilder.Clear().Append(value).AsSpan());
+            }
+            else
+            {
+                uint utf8Size = (uint)Encoding.UTF8.GetByteCount(value);
+                size = WriteULeb128(stream, utf8Size);
+                size += utf8Size;
+            }
+            return size;
+        }
+
         private static uint WriteByteVector(Stream stream, ReadOnlySpan<byte> bytes)
         {
             uint size = WriteULeb128(stream, (uint)bytes.Length);
@@ -741,15 +771,29 @@ namespace ILCompiler.ObjectWriter
             public readonly bool IsFunction => IsFunctionSymbol(Symbol);
             public readonly bool IsData => IsDataSymbol(Symbol);
 
+            public readonly bool GetImportModuleAndName(Compilation compilation, out string module, out string name)
+            {
+                if (Symbol is ExternWasmMethodNode wasmFunction &&
+                    wasmFunction.GetImportModuleAndName(compilation, out module, out name))
+                {
+                    Debug.Assert(!IsDefined);
+                    return true;
+                }
+
+                module = default;
+                name = default;
+                return false;
+            }
+
             public readonly WasmFunctionType GetFunctionType(NodeFactory factory)
             {
                 Debug.Assert(IsFunction);
                 switch (Symbol)
                 {
+                    case IWasmFunctionNode wasmFunctionNode:
+                        return wasmFunctionNode.GetWasmFunctionType(factory);
                     case IMethodNode methodNode:
                         return WasmAbi.GetWasmFunctionType(methodNode.Method);
-                    case AssemblyStubNode wasmCodeNode:
-                        return wasmCodeNode.GetWasmFunctionType(factory);
                     default:
                         // We assume extenal symbol nodes are functions. This is rather fragile, but handling this precisely
                         // would require modifying producers of these nodes to provide more information (namely, the signature

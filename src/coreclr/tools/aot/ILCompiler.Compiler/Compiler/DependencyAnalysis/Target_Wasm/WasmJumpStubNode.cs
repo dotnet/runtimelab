@@ -14,11 +14,5 @@ namespace ILCompiler.DependencyAnalysis
             // This node is currently not used on WASM.
             throw new NotImplementedException();
         }
-
-        public override WasmFunctionType GetWasmFunctionType(NodeFactory factory)
-        {
-            // This node is currently not used on WASM.
-            throw new NotImplementedException();
-        }
     }
 }

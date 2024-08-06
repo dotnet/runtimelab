@@ -27,7 +27,5 @@ namespace ILCompiler.DependencyAnalysis
             Debug.Assert(calleeReturnType == WasmAbi.GetWasmReturnType(target.Method, out _));
             encoder.EmitReturnAfterAlwaysThrowCall(callerReturnType, calleeReturnType, isEnd: true);
         }
-
-        public override WasmFunctionType GetWasmFunctionType(NodeFactory factory) => WasmAbi.GetWasmFunctionType(Method);
     }
 }

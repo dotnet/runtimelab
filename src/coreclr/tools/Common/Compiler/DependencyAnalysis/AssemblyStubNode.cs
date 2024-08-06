@@ -95,10 +95,8 @@ namespace ILCompiler.DependencyAnalysis
         }
 
 #if !READYTORUN
-        public abstract Wasm.WasmFunctionType GetWasmFunctionType(NodeFactory factory);
         protected abstract void EmitCode(NodeFactory factory, ref Wasm.WasmEmitter instructionEncoder, bool relocsOnly);
 #endif
-
         protected abstract void EmitCode(NodeFactory factory, ref X64.X64Emitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref X86.X86Emitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref ARM.ARMEmitter instructionEncoder, bool relocsOnly);
