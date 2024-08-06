@@ -29,6 +29,12 @@
     <ProjectReference Include="$(LibrariesProjectRoot)native-binplace.proj" />
   </ItemGroup>
 
+  <PropertyGroup Condition="'$(TargetOS)' == 'wasi'">
+    <WASI_SDK_PATH Condition="'$(WASI_SDK_PATH)' == '' or !Exists('$(WASI_SDK_PATH)/VERSION24')">$([MSBuild]::NormalizeDirectory($(RepoRoot), 'src', 'mono', 'wasi', 'wasi-sdk'))</WASI_SDK_PATH>
+    <WASI_SDK_PATH>$([MSBuild]::EnsureTrailingSlash('$(WASI_SDK_PATH)').Replace('\', '/'))</WASI_SDK_PATH>
+    <_BuildNativeEnvironmentVariables>$(_BuildNativeEnvironmentVariables);WASI_SDK_PATH=$(WASI_SDK_PATH)</_BuildNativeEnvironmentVariables>
+  </PropertyGroup>
+
   <ItemGroup Condition="'$(TargetsAppleMobile)' == 'true' or '$(TargetOS)' == 'browser' or '$(TargetOS)' == 'wasi'">
     <PackageReference Include="Microsoft.NETCore.Runtime.ICU.Transport" PrivateAssets="all" Version="$(MicrosoftNETCoreRuntimeICUTransportVersion)" GeneratePathProperty="true" />
     <PackageReference Include="System.Runtime.TimeZoneData" PrivateAssets="all" Version="$(SystemRuntimeTimeZoneDataVersion)" GeneratePathProperty="true" Condition="'$(TargetsWasm)' == 'true'" />
@@ -72,7 +78,7 @@
     </PropertyGroup>
 
     <Message Text="$(MSBuildThisFileDirectory)build-native.sh $(_BuildNativeUnixArgs)" Importance="High"/>
-    <Exec Command="&quot;$(MSBuildThisFileDirectory)build-native.sh&quot; $(_BuildNativeUnixArgs)" />
+    <Exec Command="&quot;$(MSBuildThisFileDirectory)build-native.sh&quot; $(_BuildNativeUnixArgs)" EnvironmentVariables="$(_BuildNativeEnvironmentVariables)" />
   </Target>
 
   <Target Name="BuildNativeWindows"
@@ -84,7 +90,7 @@
     </PropertyGroup>
     <!-- Run script that uses CMake to generate and build the native files. -->
     <Message Text="&quot;$(MSBuildThisFileDirectory)build-native.cmd&quot; $(_BuildNativeArgs)" Importance="High"/>
-    <Exec Command="&quot;$(MSBuildThisFileDirectory)build-native.cmd&quot; $(_BuildNativeArgs)" />
+    <Exec Command="&quot;$(MSBuildThisFileDirectory)build-native.cmd&quot; $(_BuildNativeArgs)" EnvironmentVariables="$(_BuildNativeEnvironmentVariables)" />
   </Target>
 
   <UsingTask TaskName="AndroidLibBuilderTask"

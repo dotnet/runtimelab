@@ -4,6 +4,7 @@
 #
 
 scriptroot="$( cd -P "$( dirname "$0" )" && pwd )"
+reporoot="$(cd "$scriptroot"/../..; pwd -P)"
 
 if [[ "$#" -lt 4 ]]; then
   echo "Usage..."
@@ -98,12 +99,16 @@ if [[ "$host_arch" == "wasm" ]]; then
     if [[ "$target_os" == "browser" ]]; then
         cmake_command="emcmake $cmake_command"
     elif [[ "$target_os" == "wasi" ]]; then
+<<<<<<< HEAD
         if [[ -z $WASI_SDK_PATH ]]; then
             echo "Error: Should set WASI_SDK_PATH environment variable pointing to WASI SDK root."
             exit 1
         fi
 
         cmake_extra_defines_wasm=("-DCLR_CMAKE_TARGET_OS=wasi" "-DCLR_CMAKE_TARGET_ARCH=wasm" "-DWASI_SDK_PREFIX=$WASI_SDK_PATH" "-DCMAKE_TOOLCHAIN_FILE=$WASI_SDK_PATH/share/cmake/wasi-sdk.cmake" "-DCMAKE_CROSSCOMPILING_EMULATOR=node --experimental-wasm-bigint --experimental-wasi-unstable-preview1")
+=======
+        cmake_extra_defines_wasm=("-DCLR_CMAKE_TARGET_OS=wasi" "-DCLR_CMAKE_TARGET_ARCH=wasm" "-DWASI_SDK_PREFIX=$WASI_SDK_PATH" "-DCMAKE_TOOLCHAIN_FILE=${WASI_SDK_PATH}/share/cmake/wasi-sdk-p2.cmake" "-DCMAKE_SYSROOT=${WASI_SDK_PATH}/share/wasi-sysroot" "-DCMAKE_CROSSCOMPILING_EMULATOR=node --experimental-wasm-bigint --experimental-wasi-unstable-preview1")
+>>>>>>> runtime/main
     else
         echo "target_os was not specified"
         exit 1
@@ -118,6 +123,7 @@ $cmake_command \
   $cmake_extra_defines \
   "${cmake_extra_defines_wasm[@]}" \
   $__UnprocessedCMakeArgs \
+  "${cmake_extra_defines_wasm[@]}" \
   -S "$1" \
   -B "$2"
 

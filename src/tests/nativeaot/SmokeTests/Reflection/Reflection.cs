@@ -74,6 +74,8 @@ internal static class ReflectionTest
         TestAbstractGenericLdtoken.Run();
         TestTypeHandlesVisibleFromIDynamicInterfaceCastable.Run();
         TestCompilerGeneratedCode.Run();
+        Test105034Regression.Run();
+
 
         //
         // Mostly functionality tests
@@ -712,6 +714,45 @@ internal static class ReflectionTest
             TestGeneric<string>();
 
             TestGeneric<int>();
+        }
+    }
+
+    class Test105034Regression
+    {
+        interface IFactory
+        {
+            object Make();
+        }
+
+        interface IOption<T> where T : new() { }
+
+        class OptionFactory<T> : IFactory where T : class, new()
+        {
+            public object Make() => new T();
+        }
+
+        class Gen<T> { }
+
+        struct Atom { }
+
+        static Type Register<T>() => typeof(T).GetGenericArguments()[0];
+        static IFactory Activate(Type t) => (IFactory)Activator.CreateInstance(typeof(OptionFactory<>).MakeGenericType(t));
+
+        public static void Run()
+        {
+            Console.WriteLine(nameof(Test105034Regression));
+
+            Wrap<Atom>();
+
+            static void Wrap<T>()
+            {
+
+                Type t = Register();
+                static Type Register() => Register<IOption<Gen<T>>>();
+
+                var f = Activate(t);
+                f.Make();
+            }
         }
     }
 
@@ -2487,7 +2528,7 @@ internal static class ReflectionTest
     {
         class Atom { }
 
-        public static object MakeMdArray<T>() => new T[1,1,1];
+        public static object MakeMdArray<T>() => new T[1, 1, 1];
 
         public static void Run()
         {
