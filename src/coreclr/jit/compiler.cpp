@@ -6664,7 +6664,7 @@ int Compiler::compCompile(CORINFO_MODULE_HANDLE classPtr,
     }
     endErrorTrap() // ERROR TRAP: End
 
-    return param.result;
+        return param.result;
 }
 
 #if defined(DEBUG)

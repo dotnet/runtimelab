@@ -110,9 +110,10 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
     
     if (!$IsWindows)
     {
-        $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64", "-DCMAKE_SYSTEM_NAME=Linux", "-DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross", "-DLLVM_HOST_TRIPLE=x86_64-pc-linux-gnu", "-DLLVM_TARGETS_TO_BUILD=WebAssembly"
+        $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64", "-DCMAKE_SYSTEM_NAME=Linux", "-DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross"
     }
 
+    Write-Host "Invoking CMake configure: 'cmake $CmakeConfigureCommandLine'"
     cmake @CmakeConfigureCommandLine
     if ($LastExitCode -ne 0)
     {

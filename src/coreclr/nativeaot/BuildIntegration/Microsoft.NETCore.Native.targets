@@ -418,7 +418,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'">$(CompileWasmArgs) -mllvm -enable-emscripten-cxx-exceptions</CompileWasmArgs>
 
       <ScriptExt Condition="'$(OS)' == 'Windows_NT'">.bat</ScriptExt>
-      <ScriptExt Condition="'$(OS)' != 'Windows_NT'"></ScriptExt>
+      <!-- <ScriptExt Condition="'$(OS)' != 'Windows_NT'"></ScriptExt> -->
       <WasmCompilerPath Condition="'$(EMSDK)' != ''">&quot;$(EMSDK)/upstream/bin/clang++&quot;</WasmCompilerPath>
       <WasmCompilerPath Condition="'$(EMSDK)' == ''">&quot;$(EmscriptenSdkToolsPath)bin/clang++&quot;</WasmCompilerPath>
       <WasmLinkerPath Condition="'$(EMSDK)' != ''">&quot;$(EMSDK)/upstream/emscripten/emcc$(ScriptExt)&quot;</WasmLinkerPath>

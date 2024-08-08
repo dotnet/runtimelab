@@ -20,7 +20,7 @@ else
     $WasmerTar="wasmer-linux-amd64.tar.gz"
 }
 
-$ProgressPreference=-SilentlyContinue
+$ProgressPreference = SilentlyContinue
 Invoke-WebRequest -Uri https://github.com/wasmerio/wasmer/releases/download/v3.3.0/$WasmerTar -OutFile $WasmerTar
 
 New-Item -ItemType Directory -Force -Path wasmer

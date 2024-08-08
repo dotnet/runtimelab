@@ -11,8 +11,6 @@ WASM_HOST_ARGS_SEPERATOR=""
 ls $dirname
 
 if [ -e "${dirname}/${exename}.js" ]; then
-  echo using node
-  $node --version
   WASM_HOST_EXECUTABLE=$node
   WASM_BINARY_TO_EXECUTE="${dirname}/${exename}.js"
 elif [ -e "${dirname}/main.js" ]; then

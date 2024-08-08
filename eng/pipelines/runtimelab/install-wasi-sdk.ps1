@@ -17,11 +17,10 @@ else
     $WasiFolder = "wasi-sdk-22.0"
 }
 
-$ProgressPreference=-SilentlyContinue
+$ProgressPreference = SilentlyContinue
 Invoke-WebRequest -Uri https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/$WasiTar -OutFile $WasiTar
 
 tar -xzf $WasiTar
-
 mv $WasiFolder wasi-sdk
 
 # Temporary WASI-SDK 22 workaround: Until

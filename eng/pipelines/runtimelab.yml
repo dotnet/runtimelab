@@ -58,14 +58,14 @@ extends:
             jobTemplate: /eng/pipelines/common/global-build-job.yml
             helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
             buildConfig: debug
-            container: azurelinux-3.0-cross-amd64-net9.0-sanitizer
             platforms:
             # - osx_x64 # Upstream break.
             - windows_x64
             - Browser_wasm_win
             - wasi_wasm_win
-            - Browser_wasm_linux_x64
-            - wasi_wasm_linux_x64
+            # Use a different name to differentiate from upstream as we need the -sanitizer image to get build tools that are not present in the stock wasi-wasm image.
+            - Browser_wasm_linux_x64_naot_llvm
+            - wasi_wasm_linux_x64_naot_llvm
             jobParameters:
               timeoutInMinutes: 300
               buildArgs: -s clr.aot+libs+nativeaot.packages -c debug -rc $(_BuildConfig)
@@ -101,32 +101,17 @@ extends:
             jobTemplate: /eng/pipelines/common/global-build-job.yml
             helixQueuesTemplate: /eng/pipelines/libraries/helix-queues-setup.yml
             buildConfig: release
+            ${{ if containsValue(parameters.platforms, 'Browser_wasm_linux_x64_naot_llvm') }}:
+              container: azurelinux-3.0-cross-amd64-net9.0-sanitizer
             platforms:
             - linux_x64
             - osx_x64
             - windows_x64
             - Browser_wasm_win
             - wasi_wasm_win
-            jobParameters:
-              timeoutInMinutes: 300
-              buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig) /p:ArchiveTests=true
-              postBuildSteps:
-                - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-                  parameters:
-                    librariesConfiguration: Release
-
-        #
-        # Build and test wasi linux with Release libraries and Release runtime with sanitzer container
-        #
-        - template: /eng/pipelines/common/platform-matrix.yml
-          parameters:
-            jobTemplate: /eng/pipelines/common/global-build-job.yml
-            helixQueuesTemplate: /eng/pipelines/libraries/helix-queues-setup.yml
-            buildConfig: release
-            container: azurelinux-3.0-cross-amd64-net9.0-sanitizer
-            platforms:
-            - wasi_wasm_linux_x64
-            - Browser_wasm_linux_x64
+            # Use a different name to differentiate from upstream as we need the -sanitizer image to get build tools that are not present in the stock wasi-wasm image.
+            - wasi_wasm_linux_x64_naot_llvm
+            - Browser_wasm_linux_x64_naot_llvm
             jobParameters:
               timeoutInMinutes: 300
               buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig) /p:ArchiveTests=true
