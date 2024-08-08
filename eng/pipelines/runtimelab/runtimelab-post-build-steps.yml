@@ -63,7 +63,7 @@ steps:
             call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
             $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
           displayName: Run WebAssembly tests in single file mode
-      - ${{ elseif in(parameters.platform, 'wasi_wasm_linux_x64') }}:
+      - ${{ elseif in(parameters.platform, 'wasi_wasm_linux_x64_naot_llvm') }}:
         - script: |
             LD_LIBRARY_PATH=/usr/local/lib:/opt/lib:/lib:/usr/lib:/crossrootfs/x64/lib/x86_64-linux-gnu/ $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests ${{ parameters.archType }} $(buildConfigUpper) wasi
           displayName: Run WebAssembly tests in single file mode
