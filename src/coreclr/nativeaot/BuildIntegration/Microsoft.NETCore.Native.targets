@@ -417,12 +417,12 @@ The .NET Foundation licenses this file to you under the MIT license.
     <PropertyGroup Condition="'$(_targetOS)' == 'browser'">
       <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'">$(CompileWasmArgs) -mllvm -enable-emscripten-cxx-exceptions</CompileWasmArgs>
 
-      <ScriptExt Condition="'$(OS)' == 'Windows_NT'">.bat</ScriptExt>
-      <!-- <ScriptExt Condition="'$(OS)' != 'Windows_NT'"></ScriptExt> -->
+      <EmccScriptExt Condition="'$(OS)' == 'Windows_NT'">.bat</EmccScriptExt>
+      <EmccScriptExt Condition="'$(OS)' != 'Windows_NT'"></EmccScriptExt>
       <WasmCompilerPath Condition="'$(EMSDK)' != ''">&quot;$(EMSDK)/upstream/bin/clang++&quot;</WasmCompilerPath>
       <WasmCompilerPath Condition="'$(EMSDK)' == ''">&quot;$(EmscriptenSdkToolsPath)bin/clang++&quot;</WasmCompilerPath>
-      <WasmLinkerPath Condition="'$(EMSDK)' != ''">&quot;$(EMSDK)/upstream/emscripten/emcc$(ScriptExt)&quot;</WasmLinkerPath>
-      <WasmLinkerPath Condition="'$(EMSDK)' == ''">&quot;$(EmscriptenSdkToolsPath)emscripten/emcc$(ScriptExt)&quot;</WasmLinkerPath>
+      <WasmLinkerPath Condition="'$(EMSDK)' != ''">&quot;$(EMSDK)/upstream/emscripten/emcc$(EmccScriptExt)&quot;</WasmLinkerPath>
+      <WasmLinkerPath Condition="'$(EMSDK)' == ''">&quot;$(EmscriptenSdkToolsPath)emscripten/emcc$(EmccScriptExt)&quot;</WasmLinkerPath>
     </PropertyGroup>
 
    <PropertyGroup Condition="'$(_targetOS)' == 'wasi'">
