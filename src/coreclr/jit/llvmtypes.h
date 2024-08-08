@@ -54,20 +54,29 @@ public:
 struct StructDesc
 {
 private:
+    unsigned   m_size;
     size_t     m_fieldCount;
     FieldDesc* m_fields;
     unsigned   m_hasSignificantPadding;
 
 public:
     // This constructor takes the ownership of the passed in array of field descriptors.
-    StructDesc(size_t fieldCount, FieldDesc* fieldDesc, bool hasSignificantPadding)
-        : m_fieldCount(fieldCount), m_fields(fieldDesc), m_hasSignificantPadding(hasSignificantPadding)
+    StructDesc(unsigned size, size_t fieldCount, FieldDesc* fieldDesc, bool hasSignificantPadding)
+        : m_size(size)
+        , m_fieldCount(fieldCount)
+        , m_fields(fieldDesc)
+        , m_hasSignificantPadding(hasSignificantPadding)
     {
     }
 
     ~StructDesc()
     {
         delete[] m_fields;
+    }
+
+    unsigned getSize()
+    {
+        return m_size;
     }
 
     size_t getFieldCount()
