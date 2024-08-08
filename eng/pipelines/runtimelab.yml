@@ -101,8 +101,6 @@ extends:
             jobTemplate: /eng/pipelines/common/global-build-job.yml
             helixQueuesTemplate: /eng/pipelines/libraries/helix-queues-setup.yml
             buildConfig: release
-            ${{ if containsValue(parameters.platforms, 'Browser_wasm_linux_x64_naot_llvm') }}:
-              container: azurelinux-3.0-cross-amd64-net9.0-sanitizer
             platforms:
             - linux_x64
             - osx_x64
