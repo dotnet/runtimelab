@@ -78,7 +78,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <IlcOutputFileExt Condition="$(IlcOutputFileExt) == ''">$(NativeObjectExt)</IlcOutputFileExt>
 
-    <IsNativeExecutable Condition="'$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe'">true</IsNativeExecutable>
+    <IsNativeExecutable Condition="('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe') and '$(NativeLib)' == ''">true</IsNativeExecutable>
 
     <NativeBinaryExt Condition="'$(IsNativeExecutable)' == 'true' and '$(_targetOS)' == 'win'">.exe</NativeBinaryExt>
     <NativeBinaryExt Condition="'$(IsNativeExecutable)' == 'true' and '$(_targetOS)' != 'win'"></NativeBinaryExt>
@@ -127,7 +127,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <WasmOptimizationSetting Condition="$(Optimize) == 'true' and $(OptimizationPreference) == 'Size'">-Oz</WasmOptimizationSetting>
 
     <IlcLlvmTarget Condition="'$(_targetOS)' == 'browser'">wasm32-unknown-emscripten</IlcLlvmTarget>
-    <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-unknown-wasi</IlcLlvmTarget>
+    <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-unknown-wasip2</IlcLlvmTarget>
     <IlcWasmStackSize>1048576</IlcWasmStackSize> <!-- 1MB -->
     <IlcWasmStackSize Condition="'$(EmccStackSize)' != ''">$(EmccStackSize)</IlcWasmStackSize>
     <IlcWasmGlobalBase>1024</IlcWasmGlobalBase> <!-- This value is also hardcoded in the compiler -->
@@ -283,7 +283,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Condition="'$(CustomNativeMain)' == 'true'" Include="--splitinit" />
       <IlcArg Condition="'$(ExportsFile)' != ''" Include="--exportsfile:$(ExportsFile)" />
       <IlcArg Condition="'$(_targetOS)' == 'win' and '$(DebuggerSupport)' != 'false'" Include="--export-dynamic-symbol:DotNetRuntimeDebugHeader,DATA" />
-      <IlcArg Condition="'$(_targetOS)' != 'win' and  '$(_targetArchitecture)' != 'wasm' and'$(DebuggerSupport)' != 'false'" Include="--export-dynamic-symbol:DotNetRuntimeDebugHeader" />
+      <IlcArg Condition="'$(_targetOS)' != 'win' and '$(_targetArchitecture)' != 'wasm' and '$(DebuggerSupport)' != 'false'" Include="--export-dynamic-symbol:DotNetRuntimeDebugHeader" />
+      <IlcArg Condition="'$(_targetOS)' == 'freebsd' and '$(IsNativeExecutable)' == 'true'" Include="--export-dynamic-symbol:__progname;--export-dynamic-symbol:environ" />
       <IlcArg Condition="'$(IlcExportUnmanagedEntrypoints)' == 'true'" Include="--export-unmanaged-entrypoints" />
       <IlcArg Include="@(AutoInitializedAssemblies->'--initassembly:%(Identity)')" />
       <IlcArg Include="@(DirectPInvoke->'--directpinvoke:%(Identity)')" />
@@ -323,7 +324,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Include="@(_IlcTrimmedAssemblies->'--trim:%(Identity)')" />
       <IlcArg Include="@(_IlcNoSingleWarnAssemblies->'--nosinglewarnassembly:%(Identity)')" />
       <IlcArg Condition="'$(TrimmerDefaultAction)' == 'copyused' or '$(TrimmerDefaultAction)' == 'copy' or '$(TrimMode)' == 'partial'" Include="--defaultrooting" />
-      <IlcArg Include="--resilient" />
+      <IlcArg Condition="$(IlcResilient) != 'false'" Include="--resilient" />
       <IlcArg Include="@(UnmanagedEntryPointsAssembly->'--generateunmanagedentrypoints:%(Identity)')" />
 
       <IlcArg Include="--codegenopt:LlvmExceptionHandlingModel=$(IlcLlvmExceptionHandlingModel)" />
@@ -334,6 +335,9 @@ The .NET Foundation licenses this file to you under the MIT license.
 
       <!-- The managed debugging support in libraries is unused - trim it -->
       <IlcArg Condition="'$(DebuggerSupport)' != 'true'" Include="--feature:System.Diagnostics.Debugger.IsSupported=false" />
+
+      <!-- Export the managed entry point if building a native library in custom main mode -->
+      <IlcArg Condition="'$(NativeLib)' == 'Shared' and '$(CustomNativeMain)' == 'true'" Include="--export-dynamic-symbol:__managed__Main" />
     </ItemGroup>
 
     <MakeDir Directories="$(NativeIntermediateOutputPath)" />
@@ -392,10 +396,16 @@ The .NET Foundation licenses this file to you under the MIT license.
     <!-- See https://github.com/dotnet/runtime/blob/main/src/mono/browser/build/EmSdkRepo.Defaults.props. -->
     <Error Text="Emscripten not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Emscripten and ensure the EMSDK environment variable points to the directory containing emsdk.bat"
            Condition="'$(EMSDK)' == '' and '$(EmscriptenSdkToolsPath)' == '' and '$(_targetOS)' == 'browser'" />
+
+    <!-- Verify the WASI SDK location and version (through indirect means...). -->
     <Error Text="Wasi SDK not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Wasi SDK and ensure the WASI_SDK_PATH environment variable points to the directory containing share/wasi-sysroot"
-           Condition="'$(WASI_SDK_PATH)' == '' and '$(_targetOS)' == 'wasi'" />
-    <Warning Text="The WASI SDK version is too low. Please use WASI SDK 22 or newer with a 64 bit Clang."
-             Condition="!Exists('$(WASI_SDK_PATH)/VERSION') and '$(_targetOS)' == 'wasi'" />
+           Condition="'$(_targetOS)' == 'wasi' and '$(WASI_SDK_PATH)' == ''" />
+    <Exec Command="&quot;$(WASI_SDK_PATH)/bin/wasm-component-ld&quot; --version" StandardOutputImportance="Low" ConsoleToMsBuild="true"
+          Condition="'$(_targetOS)' == 'wasi'">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_WasmComponentLdVersion" />
+    </Exec>
+    <Warning Text="The WASI SDK version is too low. Please use WASI SDK 24 or newer."
+             Condition="'$(_targetOS)' == 'wasi' and $([MSBuild]::VersionLessThan($(_WasmComponentLdVersion.Replace('wasm-component-ld ', '')), '0.5.6'))" />
   </Target>
 
   <Target Name="CompileWasmObjects"
@@ -541,10 +551,12 @@ The .NET Foundation licenses this file to you under the MIT license.
       <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="$(IlcSdkPath)libCppExceptionHandling.a" />
       <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'" Include="$(IlcSdkPath)libWasmExceptionHandling.a" />
       <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'emulated'" Include="$(IlcSdkPath)libEmulatedExceptionHandling.a" />
+      <_WasiComponentImports Include="$(IlcFrameworkNativePath)*.wit" />
 
       <!-- wasi-sdk clang wants forward slashes, emscripten doesn't care -->
       <CustomLinkerArg Include="@(NativeLibrary->'&quot;%(Identity)&quot;'->Replace(&quot;\&quot;, &quot;/&quot;))" />
       <CustomLinkerArg Include="@(NativeObjects->'&quot;%(Identity)&quot;'->Replace(&quot;\&quot;, &quot;/&quot;))" />
+      <CustomLinkerArg Include="@(_WasiComponentImports->Replace('\', '/')->'-Wl,--component-type,&quot;%(Identity)&quot;')" />
       <CustomLinkerArg Include="-o &quot;$(NativeBinary.Replace(&quot;\&quot;, &quot;/&quot;))&quot;" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-Wl,--strip-all" />

@@ -16,6 +16,7 @@
       with system C++ runtime library (-lstdc++).
     -->
     <LinkStandardCPlusPlusLibrary>true</LinkStandardCPlusPlusLibrary>
+    <CLRTestExitCode>0</CLRTestExitCode>
   </PropertyGroup>
 
   <ItemGroup>

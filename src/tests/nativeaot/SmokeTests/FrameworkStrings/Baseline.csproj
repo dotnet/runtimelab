@@ -4,6 +4,7 @@
     <CLRTestPriority>0</CLRTestPriority>
     <!-- Test infra issue on apple devices: https://github.com/dotnet/runtime/issues/89917 -->
     <CLRTestTargetUnsupported Condition="'$(TargetsAppleMobile)' == 'true'">true</CLRTestTargetUnsupported>
+    <CLRTestExitCode>0</CLRTestExitCode>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />

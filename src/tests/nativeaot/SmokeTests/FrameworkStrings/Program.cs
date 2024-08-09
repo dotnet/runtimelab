@@ -72,4 +72,4 @@ if (refNames.Length != 0)
     throw new Exception();
 #endif
 
-return 100;
+return 0;

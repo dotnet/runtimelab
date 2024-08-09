@@ -63,7 +63,7 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
         }
 
         FieldDesc* fields = new FieldDesc[fieldCount];
-        structDesc = new StructDesc(fieldCount, fields, structTypeDescriptor.HasSignificantPadding);
+        structDesc = new StructDesc(structSize, fieldCount, fields, structTypeDescriptor.HasSignificantPadding);
 
         unsigned fieldIx = 0;
         for (unsigned fldOffset = 0; fldOffset < structSize; fldOffset++)
@@ -142,7 +142,7 @@ Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
             }
 
             // If explicit layout is greater than the sum of fields, add padding
-            unsigned structSize = m_info->compCompHnd->getClassSize(structHandle);
+            unsigned structSize = structDesc->getSize();
             if (totalSize < structSize)
             {
                 addPaddingFields(structSize - totalSize, llvmFields);

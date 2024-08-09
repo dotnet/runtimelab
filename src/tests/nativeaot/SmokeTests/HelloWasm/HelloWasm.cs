@@ -437,7 +437,7 @@ internal unsafe partial class Program
         }
 
         PrintLine("Done");
-        return Success ? 100 : -1;
+        return Success ? 0 : -1;
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]

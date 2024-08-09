@@ -10,6 +10,9 @@
 
     <!-- Unable to compile a project with the Library output type for apple mobile devices -->
     <CLRTestTargetUnsupported Condition="'$(TargetsAppleMobile)' == 'true'">true</CLRTestTargetUnsupported>
+
+    <!-- https://github.com/dotnet/runtimelab/issues/2648 -->
+    <CLRTestTargetUnsupported Condition="'$(TargetOS)' == 'wasi'">true</CLRTestTargetUnsupported>
   </PropertyGroup>
 
   <PropertyGroup>

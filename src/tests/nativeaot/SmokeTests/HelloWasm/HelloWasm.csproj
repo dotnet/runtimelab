@@ -7,6 +7,7 @@
     <!-- IL3049 warns about mismatched signatures; we are intentionally testing they are handled correctly
          when the definition is statically linked -->
     <NoWarn>$(NoWarn);IL3049;CS8500</NoWarn>
+    <CLRTestExitCode>0</CLRTestExitCode>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1734,7 +1734,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
             // The compiler requires that blocks representing targets of finally returns remain empty.
             if (predBlock->isBBCallFinallyPairTail())
             {
-                INDEBUG("finret target");
+                INDEBUG(*pReasonWhyNot = "finret target");
                 return false;
             }
 
