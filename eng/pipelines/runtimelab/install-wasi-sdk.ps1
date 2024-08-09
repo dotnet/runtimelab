@@ -4,7 +4,7 @@ $WasiSdkVersion = 24
 $UpstreamWasiSdkVersion = Get-Content $PSScriptRoot/../../../src/mono/wasi/wasi-sdk-version.txt
 if ($WasiSdkVersion -lt [int]$UpstreamWasiSdkVersion)
 {
-    Write-Error "Upstream WASI SDK version is $UpstreamWasiSdkVersion; update `$WasiSdlVersion (currently $WasiSdlVersion)!"
+    Write-Error "Upstream WASI SDK version is $UpstreamWasiSdkVersion; update `$WasiSdlVersion (currently $WasiSdkVersion)!"
     exit
 }
 

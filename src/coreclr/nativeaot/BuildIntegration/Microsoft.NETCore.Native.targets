@@ -551,12 +551,12 @@ The .NET Foundation licenses this file to you under the MIT license.
       <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="$(IlcSdkPath)libCppExceptionHandling.a" />
       <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'" Include="$(IlcSdkPath)libWasmExceptionHandling.a" />
       <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'emulated'" Include="$(IlcSdkPath)libEmulatedExceptionHandling.a" />
-      <_WASIComponentImports Include="$(IlcFrameworkNativePath)*.wit" />
+      <_WasiComponentImports Include="$(IlcFrameworkNativePath)*.wit" />
 
       <!-- wasi-sdk clang wants forward slashes, emscripten doesn't care -->
       <CustomLinkerArg Include="@(NativeLibrary->'&quot;%(Identity)&quot;'->Replace(&quot;\&quot;, &quot;/&quot;))" />
       <CustomLinkerArg Include="@(NativeObjects->'&quot;%(Identity)&quot;'->Replace(&quot;\&quot;, &quot;/&quot;))" />
-      <CustomLinkerArg Include="@(_WASIComponentImports->Replace('\', '/')->'-Wl,--component-type,&quot;%(Identity)&quot;')" />
+      <CustomLinkerArg Include="@(_WasiComponentImports->Replace('\', '/')->'-Wl,--component-type,&quot;%(Identity)&quot;')" />
       <CustomLinkerArg Include="-o &quot;$(NativeBinary.Replace(&quot;\&quot;, &quot;/&quot;))&quot;" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-Wl,--strip-all" />
