@@ -1,5 +1,8 @@
 $WasiSdkVersion = 24
 
+$ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
+
 # Verify that we're not behind upstream (and allow us to be ahead).
 $UpstreamWasiSdkVersion = Get-Content $PSScriptRoot/../../../src/mono/wasi/wasi-sdk-version.txt
 if ($WasiSdkVersion -lt [int]$UpstreamWasiSdkVersion)
