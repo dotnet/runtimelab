@@ -283,7 +283,7 @@ public class TypeSpecParser {
     /// Given an existing TypeSpec type, create a new NamedTypeSpec with name
     /// and type as the generic parameter, e.g. name&lt;type&rt;
     /// </summary>
-    TypeSpec WrapAsBoundGeneric(TypeSpec type, string name)
+    NamedTypeSpec WrapAsBoundGeneric(TypeSpec type, string name)
     {
         var result = new NamedTypeSpec(name);
         result.GenericParameters.Add(type);
