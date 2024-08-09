@@ -11,7 +11,12 @@ namespace BindingsGeneration
         /// <summary>
         /// Type name.
         /// </summary>
-        public required TypeDecl TypeIdentifier { get; set; }
+        public required TypeDecl CSTypeIdentifier { get; set; }
+
+        /// <summary>
+        /// The TypeSpec of the declaration
+        ///
+        public required TypeSpec SwiftTypeSpec {get; set; }
 
         /// <summary>
         /// Indicates the visibility of the declaration.

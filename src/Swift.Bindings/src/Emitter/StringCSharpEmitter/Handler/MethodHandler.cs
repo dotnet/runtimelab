@@ -94,7 +94,7 @@ namespace BindingsGeneration
             var moduleDecl = methodDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
 
             string accessModifier = parentDecl == moduleDecl ? "public" : "internal";
-            string methodType = methodDecl.IsConstructor ? parentDecl.Name : methodDecl.Signature.First().TypeIdentifier.Name;
+            string methodType = methodDecl.IsConstructor ? parentDecl.Name : methodDecl.CSSignature.First().CSTypeIdentifier.Name;
             string methodName = parentDecl == moduleDecl ? methodDecl.Name : $"{env.PInvokePrefix}{methodDecl.Name}";
             string libPath = typeDatabase.GetLibraryName(moduleDecl.Name);
 
@@ -120,7 +120,7 @@ namespace BindingsGeneration
             writer.WriteLine("{");
             writer.Indent++;
 
-            string methodArgs = string.Join(", ", methodDecl.Signature.Skip(1).Select(p => p.Name));
+            string methodArgs = string.Join(", ", methodDecl.CSSignature.Skip(1).Select(p => p.Name));
             writer.WriteLine($"this = {methodName}({GetMethodArgs(methodDecl)});");
 
             writer.Indent--;
@@ -140,7 +140,7 @@ namespace BindingsGeneration
 
             string methodName = $"{env.PInvokePrefix}{methodDecl.Name}";
 
-            writer.WriteLine($"public {(methodDecl.MethodType == MethodType.Static ? "static " : "")}{methodDecl.Signature.First().TypeIdentifier.Name} {methodDecl.Name}({GetPublicMethodSignature(methodDecl)})");
+            writer.WriteLine($"public {(methodDecl.MethodType == MethodType.Static ? "static " : "")}{methodDecl.CSSignature.First().CSTypeIdentifier.Name} {methodDecl.Name}({GetPublicMethodSignature(methodDecl)})");
             writer.WriteLine("{");
             writer.Indent++;
 
@@ -148,8 +148,8 @@ namespace BindingsGeneration
             {
                 writer.WriteLine($"{parentDecl.Name} self = this;");
             }
-            string returnPrefix = methodDecl.Signature.First().TypeIdentifier.Name == "void" ? "" : "return ";
-            string methodArgs = string.Join(", ", methodDecl.Signature.Skip(1).Select(p => p.Name));
+            string returnPrefix = methodDecl.CSSignature.First().CSTypeIdentifier.Name == "void" ? "" : "return ";
+            string methodArgs = string.Join(", ", methodDecl.CSSignature.Skip(1).Select(p => p.Name));
             writer.WriteLine($"{returnPrefix}{methodName}({GetMethodArgs(methodDecl)});");
             writer.Indent--;
             writer.WriteLine("}");
@@ -163,7 +163,7 @@ namespace BindingsGeneration
         private List<ArgumentDecl> GetMethodParams(MethodDecl methodDecl)
         {
             var parentDecl = methodDecl.ParentDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
-            List<ArgumentDecl> tempDecl = new(methodDecl.Signature);
+            List<ArgumentDecl> tempDecl = new(methodDecl.CSSignature);
 
             // If this is a type method, add the marshalling for the self parameter
             if (parentDecl is StructDecl || parentDecl is ClassDecl)
@@ -171,8 +171,9 @@ namespace BindingsGeneration
                 if (!methodDecl.IsConstructor && methodDecl.MethodType != MethodType.Static)
                 {
                     // Add self as the first parameter (after the return type)
-                    tempDecl.Insert(1, new ArgumentDecl { 
-                        TypeIdentifier = new TypeDecl { Name = parentDecl.Name, MangledName = string.Empty, Fields = new List<FieldDecl>(), Declarations = new List<BaseDecl>(), ParentDecl = parentDecl, ModuleDecl = parentDecl.ModuleDecl},
+                    tempDecl.Insert(1, new ArgumentDecl {
+                        SwiftTypeSpec = new NamedTypeSpec (parentDecl.Name), 
+                        CSTypeIdentifier = new TypeDecl { Name = parentDecl.Name, MangledName = string.Empty, Fields = new List<FieldDecl>(), Declarations = new List<BaseDecl>(), ParentDecl = parentDecl, ModuleDecl = parentDecl.ModuleDecl},
                         Name = "self",
                         PrivateName = string.Empty,
                         IsInOut = false,
@@ -195,7 +196,7 @@ namespace BindingsGeneration
             var parentDecl = methodDecl.ParentDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
 
             List<ArgumentDecl> parameters = GetMethodParams(methodDecl);
-            return string.Join(", ", parameters.Select(p => $"{p.TypeIdentifier.Name} {p.Name}").ToList());
+            return string.Join(", ", parameters.Select(p => $"{p.CSTypeIdentifier.Name} {p.Name}").ToList());
         }
 
         /// <summary>
@@ -205,8 +206,8 @@ namespace BindingsGeneration
         /// <returns>The public method signature.</returns>
         private string GetPublicMethodSignature(MethodDecl methodDecl)
         {
-            List<ArgumentDecl> parameters = methodDecl.Signature.Skip(1).ToList();
-            return string.Join(", ", parameters.Select(p => $"{p.TypeIdentifier.Name} {p.Name}").ToList());
+            List<ArgumentDecl> parameters = methodDecl.CSSignature.Skip(1).ToList();
+            return string.Join(", ", parameters.Select(p => $"{p.CSTypeIdentifier.Name} {p.Name}").ToList());
         }
 
         /// <summary>

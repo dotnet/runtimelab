@@ -51,6 +51,10 @@ namespace BindingsGeneration
     /// </summary>
     public sealed unsafe class SwiftABIParser : ISwiftParser
     {
+        const string kNominal = "TypeNominal";
+        const string kFunc = "TypeFunc";
+        const string kTuple = "Tuple";
+
         /// <summary>
         /// The set of operators.
         /// </summary>
@@ -373,7 +377,8 @@ namespace BindingsGeneration
                 MangledName = node.Kind == "Constructor" ? PatchMangledName(node.MangledName) : node.MangledName,
                 MethodType = node.@static ?? false ? MethodType.Static : MethodType.Instance,
                 IsConstructor = node.Kind == "Constructor",
-                Signature = new List<ArgumentDecl>(),
+                CSSignature = new List<ArgumentDecl>(),
+                SwiftSignature = new List<TypeSpec>(),
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl
             };
@@ -382,9 +387,12 @@ namespace BindingsGeneration
             {
                 for (int i = 0; i < node.Children.Count(); i++)
                 {
-                    methodDecl.Signature.Add(new ArgumentDecl
+                    var typeDecl = CreateTypeDecl(node.Children.ElementAt(i), methodDecl, moduleDecl);
+                    var typeSpec = CreateTypeSpec(node.Children.ElementAt(i));
+                    methodDecl.CSSignature.Add(new ArgumentDecl
                     {
-                        TypeIdentifier = CreateTypeDecl(node.Children.ElementAt(i), methodDecl, moduleDecl),
+                        CSTypeIdentifier = typeDecl,
+                        SwiftTypeSpec = typeSpec,
                         Name = paramNames[i],
                         PrivateName = string.Empty,
                         IsInOut = false,
@@ -407,9 +415,11 @@ namespace BindingsGeneration
         private FieldDecl CreateFieldDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
         {
             var typeDecl = CreateTypeDecl(node.Children.ElementAt(0), parentDecl, moduleDecl);
+            var typeSpec = CreateTypeSpec(node.Children.ElementAt(0));
             var fieldDecl = new FieldDecl
             {
-                TypeIdentifier = typeDecl,
+                CSTypeIdentifier = typeDecl,
+                SwiftTypeSpec = typeSpec,
                 Name = node.Name,
                 Visibility = node.IsInternal ?? false ? Visibility.Private : Visibility.Public,
                 ParentDecl = parentDecl,
@@ -417,6 +427,24 @@ namespace BindingsGeneration
             };
             typeDecl.ParentDecl = fieldDecl;
             return fieldDecl;
+        }
+
+        /// <summary>
+        /// Creates a type spec from a given node parsing the printed name
+        /// </summary>
+        TypeSpec CreateTypeSpec(Node node)
+        {
+            switch (node.Kind) {
+                case kNominal:
+                case kFunc:
+                    var spec = TypeSpecParser.Parse(node.PrintedName);
+                    if (spec is null) {
+                            throw new Exception($"Error parsing type from \"{node.PrintedName}\"");
+                    }
+                    return spec;
+                default:
+                    throw new NotImplementedException($"Can't handle node type {node.Kind} yet.");
+            }
         }
 
         /// <summary>
@@ -431,7 +459,7 @@ namespace BindingsGeneration
             // Handle not supported types with a switch statement
             switch (node.Kind)
             {
-                case "TypeNominal":
+                case kNominal:
                     switch (node.Name)
                     {
                         case "Optional":
@@ -447,7 +475,7 @@ namespace BindingsGeneration
                             break;
                     }
                     break;
-                case "TypeFunc":
+                case kFunc:
                     throw new NotImplementedException("Function types are not supported yet.");
             }
 

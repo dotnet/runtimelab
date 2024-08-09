@@ -83,7 +83,7 @@ namespace BindingsGeneration
                 foreach(FieldDecl fieldDecl in moduleDecl.Fields)
                 {
                     string accessModifier = fieldDecl.Visibility == Visibility.Public ? "public" : "private";
-                    writer.WriteLine($"{accessModifier} {fieldDecl.TypeIdentifier.Name} {fieldDecl.Name};");
+                    writer.WriteLine($"{accessModifier} {fieldDecl.CSTypeIdentifier.Name} {fieldDecl.Name};");
                 }
                 writer.WriteLine();
                 foreach(MethodDecl methodDecl in moduleDecl.Methods)
