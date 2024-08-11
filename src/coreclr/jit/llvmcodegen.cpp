@@ -357,7 +357,8 @@ void Llvm::generateUnwindBlocks()
     // Generate the unwind blocks used to catch native exceptions during the second pass.
     // We generate these before the rest of the code because throwing calls need a certain
     // amount of pieces filled in (in particular, "catchswitch"es in the Wasm EH model).
-    m_EHRegionsInfo = new (_compiler->getAllocator(CMK_Codegen)) EHRegionInfo[_compiler->compHndBBtabCount]();
+    CompAllocator alloc = _compiler->getAllocator(CMK_Codegen);
+    m_EHRegionsInfo = new (alloc) EHRegionInfo[_compiler->compHndBBtabCount]();
 
     struct FunctionData
     {
@@ -380,10 +381,35 @@ void Llvm::generateUnwindBlocks()
         });
     }
 
+    // The main loop will need to map an outermost mutually protecting region to the innermost. While usually
+    // mutually protecting handlers form a contiguous 'run' in the table, this is not guaranteed, and disjoint
+    // regions, or regions nested inside the respective handlers can 'break up' the run.
+    jitstd::vector<unsigned> innermostMutuallyProtectingRegionMap(_compiler->compHndBBtabCount, -1, alloc);
+    for (unsigned ehIndex = 0; ehIndex < _compiler->compHndBBtabCount; ehIndex++)
+    {
+        EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
+        if (!ehDsc->HasCatchHandler())
+        {
+            continue; // Of no interest.
+        }
+
+        unsigned innermostEHIndex = innermostMutuallyProtectingRegionMap[ehIndex];
+        if (innermostEHIndex == -1)
+        {
+            innermostEHIndex = ehIndex;
+            innermostMutuallyProtectingRegionMap[ehIndex] = innermostEHIndex;
+        }
+
+        unsigned outerEHIndex = ehDsc->ebdEnclosingTryIndex;
+        if ((outerEHIndex != EHblkDsc::NO_ENCLOSING_INDEX) && ehDsc->ebdIsSameTry(_compiler, outerEHIndex))
+        {
+            innermostMutuallyProtectingRegionMap[outerEHIndex] = innermostEHIndex;
+        }
+    }
+
     // There is no meaningful source location we can attach to the unwind blocks. None of them are "user" code.
     llvm::DILocation* unwindBlocksDebugLoc = getArtificialDebugLocation();
-    jitstd::vector<FunctionData> functionData(
-        _compiler->compFuncCount(), FunctionData{}, _compiler->getAllocator(CMK_Codegen));
+    jitstd::vector<FunctionData> functionData(_compiler->compFuncCount(), FunctionData{}, alloc);
 
     // Note the iteration order: outer -> inner.
     for (unsigned ehIndex = _compiler->compHndBBtabCount - 1; ehIndex != -1; ehIndex--)
@@ -391,6 +417,13 @@ void Llvm::generateUnwindBlocks()
         EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
         if (!isReachable(ehDsc->ExFlowBlock()))
         {
+            continue;
+        }
+
+        EHRegionInfo* pEHRegionInfo = &getEHRegionInfo(ehIndex);
+        if (pEHRegionInfo->UnwindBlock != nullptr)
+        {
+            // Already emitted this part of the unwind sequence for mutually protecting handlers.
             continue;
         }
 
@@ -552,23 +585,16 @@ void Llvm::generateUnwindBlocks()
             _builder.CreateIntrinsic(llvm::Intrinsic::wasm_get_exception, {}, catchPadInst);
         }
 
-        // Eagerly initialize the unwind block to emit calls below.
-        getEHRegionInfo(ehIndex).UnwindBlock = unwindLlvmBlock;
+        // Eagerly initialize the unwind block to emit the calls below.
+        pEHRegionInfo->UnwindBlock = unwindLlvmBlock;
 
         if (ehDsc->HasCatchHandler())
         {
-            // Find the full set of mutually protecting handlers we have. Since we are generating things outer-to-inner,
-            // we are guaranteed to capture them all here.
-            unsigned innerEHIndex = ehIndex;
-            while ((innerEHIndex > 0) && ehDsc->ebdIsSameTry(_compiler, innerEHIndex - 1))
+            // Generate the full set of mutually protecting handlers we have, inner (first) to outer (last).
+            unsigned hndEHIndex = innermostMutuallyProtectingRegionMap[ehIndex];
+            while (hndEHIndex <= ehIndex)
             {
-                innerEHIndex--;
-                getEHRegionInfo(innerEHIndex).UnwindBlock = unwindLlvmBlock;
-            }
-
-            for (unsigned hndEHIndex = innerEHIndex; hndEHIndex <= ehIndex; hndEHIndex++)
-            {
-                EHblkDsc* hndDsc = _compiler->ehGetDsc(hndEHIndex);
+                EHRegionInfo* pHndRegionInfo = &getEHRegionInfo(hndEHIndex);
 
                 // Call the runtime to determine whether this catch should handle the exception. Note how we must do so
                 // even if we know the catch handler is statically unreachable. This is both because the runtime assumes
@@ -579,7 +605,7 @@ void Llvm::generateUnwindBlocks()
                 unsigned hndUnwindIndex = (m_unwindIndexMap != nullptr) ? m_unwindIndexMap->Bottom(hndEHIndex)
                                                                         : UNWIND_INDEX_NOT_IN_TRY;
                 Value* caughtValue = emitHelperCall(CORINFO_HELP_LLVM_EH_CATCH, getIntPtrConst(hndUnwindIndex));
-                getEHRegionInfo(hndEHIndex).CatchArgValue = caughtValue;
+                pHndRegionInfo->CatchArgValue = caughtValue;
 
                 // Yes if we get not-"null" back, otherwise continue unwinding.
                 Value* callCatchValue = _builder.CreateIsNotNull(caughtValue);
@@ -596,9 +622,11 @@ void Llvm::generateUnwindBlocks()
                 }
                 else
                 {
+                    pHndRegionInfo->UnwindBlock = unwindLlvmBlock;
                     continueUnwindLlvmBlock = createInlineLlvmBlock();
                 }
 
+                EHblkDsc* hndDsc = _compiler->ehGetDsc(hndEHIndex);
                 if (isReachable(hndDsc->ebdHndBeg))
                 {
                     llvm::BasicBlock* catchLlvmBlock = getFirstLlvmBlockForBlock(hndDsc->ebdHndBeg);
@@ -610,9 +638,8 @@ void Llvm::generateUnwindBlocks()
                 }
 
                 _builder.SetInsertPoint(continueUnwindLlvmBlock);
+                hndEHIndex = hndDsc->ebdEnclosingTryIndex;
             }
-
-            ehIndex = innerEHIndex;
         }
         else if (ehDsc->HasFinallyHandler())
         {
