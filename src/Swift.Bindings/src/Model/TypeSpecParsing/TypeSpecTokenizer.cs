@@ -20,7 +20,7 @@ public class TypeSpecTokenizer {
     State state;
     StringBuilder buffer;
     TextReader reader;
-    static string invalidNameChars;
+    static HashSet<char> invalidNameChars = new();
 
     /// <summary>
     /// Builds a set of characters that are illegal for names
@@ -30,22 +30,20 @@ public class TypeSpecTokenizer {
         // Since identifiers in Swift can be nearly any unicode, including emoji, we
         // can't just ask "IsLetterOrNumber". Instead, I build the set of characters that are specifically
         // forbidden.
-        var sb = new StringBuilder();
         for (char c = (char)0; c < '.'; c++) {
-            sb.Append (c);
+            invalidNameChars.Add(c);
         }
-        sb.Append ('/');
+        invalidNameChars.Add('/');
         for (char c = ':'; c < 'A'; c++) {
-            sb.Append (c);
+            invalidNameChars.Add(c);
         }
         for (char c = '['; c < '_'; c++) {
-            sb.Append (c);
+            invalidNameChars.Add (c);
         }
-        sb.Append ('`');
+        invalidNameChars.Add('`');
         for (char c = '{'; c <= (char)127; c++) {
-            sb.Append (c);
+            invalidNameChars.Add(c);
         }
-        invalidNameChars = sb.ToString();
     }
 
     /// <summary>
@@ -116,7 +114,7 @@ public class TypeSpecTokenizer {
     {
         // parses a name until we hit an invalid character for a name
         int curr = reader.Peek();
-        if (curr < 0 || InvalidNameCharacter((char)curr)) {
+        if (curr < 0 || IsInvalidNameCharacter((char)curr)) {
             // if the invalid character is a ':', this is a label, otherwise it's a name
             if (curr == ':') {
                 reader.Read(); // drop the colon
@@ -220,7 +218,7 @@ public class TypeSpecTokenizer {
                 reader.Read ();
                 return null;
             }
-            if (InvalidNameCharacter (c)) {
+            if (IsInvalidNameCharacter (c)) {
                 throw new Exception($"Unexpected/illegal char {c}");
             }
             state = State.InName;
@@ -231,8 +229,8 @@ public class TypeSpecTokenizer {
     /// <summary>
     /// Return true if and only if c is invalid for a name
     /// <summary>
-    static bool InvalidNameCharacter (char c)
+    static bool IsInvalidNameCharacter (char c)
     {
-        return invalidNameChars.IndexOf (c) >= 0;
+        return invalidNameChars.Contains(c);
     }
 }

@@ -251,7 +251,7 @@ public class TypeSpecTests : IClassFixture<TypeSpecTests.TestFixture>
         var protos1 = new ProtocolListTypeSpec (specs1);
         var protos2 = new ProtocolListTypeSpec (specs2);
 
-        Assert.False (protos1.Equals (protos2));
+        Assert.NotEqual (protos1, protos2);
     }
 
 }

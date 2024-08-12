@@ -333,4 +333,63 @@ public class TypeSpecParserTests : IClassFixture<TypeSpecParserTests.TestFixture
         Assert.True (inType.Throws);
     }
 
+    [Fact]
+    public static void TestThrowBadArrow()
+    {
+        Assert.Throws<Exception>(() => { TypeSpecParser.Parse("(Swift.Int)-=>(Swift.Int)"); });
+    }
+
+    [Fact]
+    public static void TestIllegalNameChar()
+    {
+        Assert.Throws<Exception>(() => { TypeSpecParser.Parse("Swift#Int"); });
+    }
+
+    [Fact]
+    public static void TestBadStartToken()
+    {
+        Assert.Throws<Exception>(() => { TypeSpecParser.Parse(")"); });
+    }
+
+    [Fact]
+    public static void TestBadClosureToken()
+    {
+        Assert.Throws<Exception>(() => { TypeSpecParser.Parse("() throws ? -> )"); });
+    }
+
+    [Fact]
+    public static void TestInnerClass1()
+    {
+        Assert.Throws<Exception>(() => { TypeSpecParser.Parse("().Foo"); });
+    }
+    
+    [Fact]
+    public static void TestProtoListFail()
+    {
+        Assert.Throws<Exception>(() => { TypeSpecParser.Parse("Foo & ()"); });
+    }
+    
+    [Fact]
+    public static void TestAttributeFail()
+    {
+        Assert.Throws<Exception>(() => { TypeSpecParser.Parse("@&Foo"); });
+    }
+    
+    [Fact]
+    public static void TestListFail()
+    {
+        Assert.Throws<Exception>(() => { TypeSpecParser.Parse("Swift.Foo<A, &>"); });
+    }
+    
+    [Fact]
+    public static void TestArrayFail1()
+    {
+        Assert.Throws<Exception>(() => { TypeSpecParser.Parse("[&]"); });
+    }
+    
+    [Fact]
+    public static void TestArrayFail2()
+    {
+        Assert.Throws<Exception>(() => { TypeSpecParser.Parse("[Swift.Int : ?]"); });
+    }
 }
