@@ -27216,6 +27216,7 @@ bool GenTreeHWIntrinsic::OperIsMemoryLoad(GenTree** pAddr) const
             case NI_Sve_LoadVector:
             case NI_Sve_LoadVectorNonTemporal:
             case NI_Sve_LoadVector128AndReplicateToVector:
+            case NI_Sve_LoadVectorByteZeroExtendFirstFaulting:
             case NI_Sve_LoadVectorByteZeroExtendToInt16:
             case NI_Sve_LoadVectorByteZeroExtendToInt32:
             case NI_Sve_LoadVectorByteZeroExtendToInt64:
@@ -27223,22 +27224,27 @@ bool GenTreeHWIntrinsic::OperIsMemoryLoad(GenTree** pAddr) const
             case NI_Sve_LoadVectorByteZeroExtendToUInt32:
             case NI_Sve_LoadVectorByteZeroExtendToUInt64:
             case NI_Sve_LoadVectorFirstFaulting:
+            case NI_Sve_LoadVectorInt16SignExtendFirstFaulting:
             case NI_Sve_LoadVectorInt16SignExtendToInt32:
             case NI_Sve_LoadVectorInt16SignExtendToInt64:
             case NI_Sve_LoadVectorInt16SignExtendToUInt32:
             case NI_Sve_LoadVectorInt16SignExtendToUInt64:
+            case NI_Sve_LoadVectorInt32SignExtendFirstFaulting:
             case NI_Sve_LoadVectorInt32SignExtendToInt64:
             case NI_Sve_LoadVectorInt32SignExtendToUInt64:
+            case NI_Sve_LoadVectorSByteSignExtendFirstFaulting:
             case NI_Sve_LoadVectorSByteSignExtendToInt16:
             case NI_Sve_LoadVectorSByteSignExtendToInt32:
             case NI_Sve_LoadVectorSByteSignExtendToInt64:
             case NI_Sve_LoadVectorSByteSignExtendToUInt16:
             case NI_Sve_LoadVectorSByteSignExtendToUInt32:
             case NI_Sve_LoadVectorSByteSignExtendToUInt64:
+            case NI_Sve_LoadVectorUInt16ZeroExtendFirstFaulting:
             case NI_Sve_LoadVectorUInt16ZeroExtendToInt32:
             case NI_Sve_LoadVectorUInt16ZeroExtendToInt64:
             case NI_Sve_LoadVectorUInt16ZeroExtendToUInt32:
             case NI_Sve_LoadVectorUInt16ZeroExtendToUInt64:
+            case NI_Sve_LoadVectorUInt32ZeroExtendFirstFaulting:
             case NI_Sve_LoadVectorUInt32ZeroExtendToInt64:
             case NI_Sve_LoadVectorUInt32ZeroExtendToUInt64:
             case NI_Sve_Load2xVectorAndUnzip:
@@ -27749,6 +27755,14 @@ bool GenTreeHWIntrinsic::OperRequiresCallFlag() const
             case NI_Sve_GatherPrefetch32Bit:
             case NI_Sve_GatherPrefetch64Bit:
             case NI_Sve_GatherPrefetch8Bit:
+            case NI_Sve_GetFfrByte:
+            case NI_Sve_GetFfrInt16:
+            case NI_Sve_GetFfrInt32:
+            case NI_Sve_GetFfrInt64:
+            case NI_Sve_GetFfrSByte:
+            case NI_Sve_GetFfrUInt16:
+            case NI_Sve_GetFfrUInt32:
+            case NI_Sve_GetFfrUInt64:
             case NI_Sve_SetFfr:
             {
                 return true;
@@ -27940,6 +27954,14 @@ void GenTreeHWIntrinsic::Initialize(NamedIntrinsic intrinsicId)
             case NI_Sve_PrefetchInt16:
             case NI_Sve_PrefetchInt32:
             case NI_Sve_PrefetchInt64:
+            case NI_Sve_GetFfrByte:
+            case NI_Sve_GetFfrInt16:
+            case NI_Sve_GetFfrInt32:
+            case NI_Sve_GetFfrInt64:
+            case NI_Sve_GetFfrSByte:
+            case NI_Sve_GetFfrUInt16:
+            case NI_Sve_GetFfrUInt32:
+            case NI_Sve_GetFfrUInt64:
             case NI_Sve_SetFfr:
             {
                 // Mark as a call and global reference, much as is done for GT_KEEPALIVE
