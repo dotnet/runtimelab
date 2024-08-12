@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 
 using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysisFramework;
+using ILCompiler.ObjectWriter;
 using ILLink.Shared;
 
 using Internal.IL;
@@ -45,7 +46,6 @@ namespace ILCompiler
         {
             NodeFactory = nodeFactory;
             Options = options;
-            InitializeCodeGen();
         }
 
         protected override void CompileInternal(string outputFile, ObjectDumper dumper)
@@ -64,7 +64,7 @@ namespace ILCompiler
 
             double allocatedBytes = GC.GetAllocatedBytesForCurrentThread();
             stopwatch.Restart();
-            LLVMObjectWriter.EmitObject(outputFile, _dependencyGraph.MarkedNodeList, this, dumper);
+            WasmObjectWriter.EmitObject(outputFile, _dependencyGraph.MarkedNodeList, this, dumper);
             allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocatedBytes;
             Console.WriteLine($"Object writing finished in {stopwatch.Elapsed.TotalSeconds:0.##} seconds, allocated {allocatedBytes / 1024 / 1024:0.##} MB");
         }
@@ -192,6 +192,16 @@ namespace ILCompiler
                     Logger.LogError($"Method will always throw because: {exception.Message}", 1005, method, MessageSubCategory.AotAnalysis);
             }
         }
+
+        public override ISymbolNode GetExternalMethodAccessor(MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
+        {
+            Debug.Assert(!sig.IsEmpty);
+            string name = PInvokeILProvider.GetDirectCallExternName(method);
+
+            return NodeFactory.ExternMethodAccessor(name, method, sig);
+        }
+
+        public override CorInfoLlvmEHModel GetLlvmExceptionHandlingModel() => Options.ExceptionHandlingModel;
 
         internal LLVMCompilationResults GetCompilationResults() => _compilationResults;
     }
