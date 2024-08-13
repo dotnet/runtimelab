@@ -417,6 +417,8 @@ internal unsafe partial class Program
 
         TestJitUseStruct();
 
+        TestStackAllocatedBox();
+
         TestMismatchedStructLocalFieldStore();
 
         TestUnsafe();
@@ -474,6 +476,25 @@ internal unsafe partial class Program
         var res = JitUseStructProblem(&structWithStruct, structWithIndex);
 
         EndTest(res.Index == structWithIndex.Index && res.Value == structWithIndex.Value);
+    }
+
+    private static void TestStackAllocatedBox()
+    {
+        StartTest("Test a stack-allocated box");
+
+        // Step 1: allocate the box.
+        object box = DayOfWeek.Friday;
+        // Step 2: make sure it appears used to Roslyn, etc.
+        static void Use(ref object _) { }
+        Use(ref box);
+        // Step 3: unbox it as a different type to make sure the Jit
+        // uses the unbox type test helper.
+        if (Environment.GetEnvironmentVariable("NEVER") is "HIT")
+        {
+            _ = (long)box;
+        }
+        // Add in another tricky type test for good measure.
+        EndTest((int)box == (int)DayOfWeek.Friday);
     }
 
     public struct StructWrapper
