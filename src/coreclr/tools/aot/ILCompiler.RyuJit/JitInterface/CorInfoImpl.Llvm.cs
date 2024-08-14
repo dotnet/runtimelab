@@ -4,12 +4,12 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
+using ILCompiler.DependencyAnalysis.Wasm;
 
 using Internal.IL;
 using Internal.Text;
@@ -145,7 +145,7 @@ namespace Internal.JitInterface
         {
             var _this = GetThis(thisHandle);
             TypeDesc structType = _this.HandleToObject(structHnd);
-            if (_this._compilation.GetPrimitiveTypeForTrivialWasmStruct(structType) is TypeDesc primitiveType)
+            if (WasmAbi.GetPrimitiveTypeForTrivialWasmStruct(structType) is TypeDesc primitiveType)
             {
                 return _this.asCorInfoType(primitiveType);
             }
@@ -335,11 +335,11 @@ namespace Internal.JitInterface
         [UnmanagedCallersOnly]
         public static void getTypeDescriptor(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* inputType, TypeDescriptor* pTypeDescriptor)
         {
-            var _this = GetThis(thisHandle);
-            TypeDesc type = _this.HandleToObject(inputType);
+            CorInfoImpl _this = GetThis(thisHandle);
+            DefType type = (DefType)_this.HandleToObject(inputType);
 
             uint fieldCount = 0;
-            foreach (var field in type.GetFields())
+            foreach (FieldDesc field in type.GetFields())
             {
                 if (!field.IsStatic)
                 {
@@ -350,7 +350,7 @@ namespace Internal.JitInterface
             CORINFO_FIELD_STRUCT_*[] fields = new CORINFO_FIELD_STRUCT_*[fieldCount];
 
             fieldCount = 0;
-            foreach (var field in type.GetFields())
+            foreach (FieldDesc field in type.GetFields())
             {
                 if (!field.IsStatic)
                 {
@@ -362,10 +362,10 @@ namespace Internal.JitInterface
             bool hasSignificantPadding = false;
             if (type is EcmaType ecmaType)
             {
-                hasSignificantPadding = ecmaType.IsExplicitLayout || ecmaType.GetClassLayout().Size > 0;
+                hasSignificantPadding = ecmaType.IsExplicitLayout || (ecmaType.IsSequentialLayout && ecmaType.GetClassLayout().Size != 0);
             };
 
-            pTypeDescriptor->Size = (uint)type.GetElementSize().AsInt;
+            pTypeDescriptor->Size = (uint)(type.IsValueType ? type.InstanceFieldSize : type.InstanceByteCount).AsInt;
             pTypeDescriptor->FieldCount = fieldCount;
             pTypeDescriptor->Fields = (CORINFO_FIELD_STRUCT_**)_this.GetPin(fields);
             pTypeDescriptor->HasSignificantPadding = hasSignificantPadding ? 1u : 0u;

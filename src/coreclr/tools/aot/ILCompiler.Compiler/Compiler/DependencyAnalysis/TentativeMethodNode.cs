@@ -29,7 +29,7 @@ namespace ILCompiler.DependencyAnalysis
             _methodNode = methodNode;
         }
 
-        public virtual IMethodNode GetTarget(NodeFactory factory)
+        protected virtual IMethodNode GetTarget(NodeFactory factory)
         {
             // If the class library doesn't provide this helper, the optimization is disabled.
             MethodDesc helper = factory.TypeSystemContext.GetOptionalHelperEntryPoint("ThrowHelpers", "ThrowBodyRemoved");

@@ -59,13 +59,23 @@ namespace ILCompiler.DependencyAnalysis
 
         // Windows arm64 TLS access
         IMAGE_REL_ARM64_TLS_SECREL_HIGH12A = 0x10F,  // ADD high 12-bit offset for tls
-        IMAGE_REL_ARM64_TLS_SECREL_LOW12L  = 0x110,  // ADD low 12-bit offset for tls
+        IMAGE_REL_ARM64_TLS_SECREL_LOW12A  = 0x110,  // ADD low 12-bit offset for tls
 
         //
         // Relocations for R2R image production
         //
         IMAGE_REL_SYMBOL_SIZE                = 0x1000, // The size of data in the image represented by the target symbol node
         IMAGE_REL_FILE_ABSOLUTE              = 0x1001, // 32 bit offset from beginning of image
+
+        //
+        // WASM relocations.
+        //
+        R_WASM_FUNCTION_OFFSET_I32, // Offset of a function relative to the Code section.
+        R_WASM_FUNCTION_INDEX_LEB,  // 32 bit function index, used by the call instruction.
+        R_WASM_MEMORY_ADDR_SLEB,    // 32 bit signed LEB for data references in code (i32.const).
+        R_WASM_TABLE_INDEX_SLEB,    // 32 bit signed LEB for function pointer references in code (i32.const).
+        R_WASM_MEMORY_ADDR_SLEB64,  // 64 bit signed LEB for data references in code (i64.const).
+        R_WASM_TABLE_INDEX_SLEB64,  // 64 bit signed LEB for function pointer references in code (i64.const).
     }
 
     public struct Relocation
@@ -73,6 +83,56 @@ namespace ILCompiler.DependencyAnalysis
         public readonly RelocType RelocType;
         public readonly int Offset;
         public readonly ISymbolNode Target;
+
+#if !READYTORUN
+        private static unsafe long GetSLeb128(byte* location)
+        {
+            long value = 0;
+            int shift = 0;
+            byte @byte;
+            do
+            {
+                @byte = *location;
+                value |= (long)(@byte & 0x7f) << shift;
+                shift += 7;
+                location++;
+            } while (@byte >= 128);
+
+            // Sign extend negative numbers if needed.
+            if (shift < 64 && (@byte & 0x40) != 0)
+            {
+                value |= -1L << shift;
+            }
+            return value;
+        }
+
+        private static unsafe void PutSLeb128(byte* location, long value, int size)
+        {
+            Span<byte> bytes = new(location, size);
+
+            int actualSize = ObjectWriter.DwarfHelper.WriteSLEB128(bytes, value);
+            if (actualSize < size)
+            {
+                byte padValue = value < 0 ? (byte)0x7f : (byte)0x00;
+                bytes[actualSize - 1] |= 0x80;
+                bytes.Slice(actualSize, size - actualSize - 1).Fill((byte)(padValue | 0x80));
+                bytes[size - 1] = padValue;
+            }
+        }
+
+        private static unsafe void PutULeb128(byte* location, uint value, int size)
+        {
+            Span<byte> bytes = new(location, size);
+
+            int actualSize = ObjectWriter.DwarfHelper.WriteULEB128(bytes, value);
+            if (actualSize < size)
+            {
+                bytes[actualSize - 1] |= 0x80;
+                bytes.Slice(actualSize, size - actualSize - 1).Fill(0x80);
+                bytes[size - 1] = 0x00;
+            }
+        }
+#endif
 
         //*****************************************************************************
         //  Extract the 16-bit immediate from ARM Thumb2 Instruction (format T2_N)
@@ -499,6 +559,20 @@ namespace ILCompiler.DependencyAnalysis
         {
             switch (relocType)
             {
+#if !READYTORUN
+                case RelocType.R_WASM_FUNCTION_INDEX_LEB:
+                    PutULeb128((byte*)location, checked((uint)value), 5);
+                    break;
+                case RelocType.R_WASM_MEMORY_ADDR_SLEB:
+                case RelocType.R_WASM_TABLE_INDEX_SLEB:
+                    PutSLeb128((byte*)location, value, 5);
+                    break;
+                case RelocType.R_WASM_MEMORY_ADDR_SLEB64:
+                case RelocType.R_WASM_TABLE_INDEX_SLEB64:
+                    PutSLeb128((byte*)location, value, 10);
+                    break;
+#endif
+                case RelocType.R_WASM_FUNCTION_OFFSET_I32:
                 case RelocType.IMAGE_REL_BASED_ABSOLUTE:
                 case RelocType.IMAGE_REL_BASED_ADDR32NB:
                 case RelocType.IMAGE_REL_BASED_HIGHLOW:
@@ -536,7 +610,7 @@ namespace ILCompiler.DependencyAnalysis
                     break;
                 case RelocType.IMAGE_REL_BASED_ARM64_PAGEOFFSET_12A:
                 case RelocType.IMAGE_REL_AARCH64_TLSDESC_ADD_LO12:
-                case RelocType.IMAGE_REL_ARM64_TLS_SECREL_LOW12L:
+                case RelocType.IMAGE_REL_ARM64_TLS_SECREL_LOW12A:
                     PutArm64Rel12((uint*)location, (int)value);
                     break;
                 case RelocType.IMAGE_REL_BASED_LOONGARCH64_PC:
@@ -569,6 +643,17 @@ namespace ILCompiler.DependencyAnalysis
         {
             switch (relocType)
             {
+#if !READYTORUN
+                case RelocType.R_WASM_FUNCTION_INDEX_LEB:
+                case RelocType.R_WASM_TABLE_INDEX_SLEB:
+                case RelocType.R_WASM_TABLE_INDEX_SLEB64:
+                    // These relocs do not support addends.
+                    return 0;
+                case RelocType.R_WASM_MEMORY_ADDR_SLEB:
+                case RelocType.R_WASM_MEMORY_ADDR_SLEB64:
+                    return GetSLeb128((byte*)location);
+#endif
+                case RelocType.R_WASM_FUNCTION_OFFSET_I32:
                 case RelocType.IMAGE_REL_BASED_ABSOLUTE:
                 case RelocType.IMAGE_REL_BASED_ADDR32NB:
                 case RelocType.IMAGE_REL_BASED_HIGHLOW:
@@ -593,7 +678,7 @@ namespace ILCompiler.DependencyAnalysis
                     return GetArm64Rel21((uint*)location);
                 case RelocType.IMAGE_REL_BASED_ARM64_PAGEOFFSET_12A:
                 case RelocType.IMAGE_REL_ARM64_TLS_SECREL_HIGH12A:
-                case RelocType.IMAGE_REL_ARM64_TLS_SECREL_LOW12L:
+                case RelocType.IMAGE_REL_ARM64_TLS_SECREL_LOW12A:
                     return GetArm64Rel12((uint*)location);
                 case RelocType.IMAGE_REL_AARCH64_TLSDESC_LD64_LO12:
                 case RelocType.IMAGE_REL_AARCH64_TLSDESC_ADD_LO12:

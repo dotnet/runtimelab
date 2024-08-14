@@ -411,6 +411,7 @@
     <Compile Include="Compiler\DependencyAnalysis\DataflowAnalyzedTypeDefinitionNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DelegateMarshallingDataNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\DynamicDependencyAttributesOnEntityNode.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\ExactMethodInstantiationsEntryNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ExternSymbolsImportedNodeProvider.cs" />
     <Compile Include="Compiler\DependencyAnalysis\FieldRvaDataNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\FrozenObjectNode.cs" />
@@ -435,7 +436,11 @@
     <Compile Include="Compiler\DependencyAnalysis\StructMarshallingDataNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_ARM64\ARM64TentativeMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_ARM\ARMTentativeMethodNode.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmAbi.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmValueType.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmFunctionType.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmEmitter.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\NodeFactory.Wasm.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmJumpStubNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmReadyToRunGenericHelperNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_Wasm\WasmReadyToRunHelperNode.cs" />
@@ -536,7 +541,6 @@
     <Compile Include="Compiler\DependencyAnalysis\StringAllocatorMethodNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\Target_X64\X64ReadyToRunGenericHelperNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\VTableSliceNode.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\EETypeOptionalFieldsNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\EmbeddedObjectNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\EmbeddedPointerIndirectionNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ExternMethodSymbolNode.cs" />
@@ -675,6 +679,7 @@
     <Compile Include="Compiler\Logging\UnconditionalSuppressMessageAttributeState.cs" />
     <Compile Include="Compiler\XmlObjectDumper.cs" />
     <Compile Include="IL\ILImporter.Scanner.cs" />
+    <Compile Include="IL\IsInstCheckPatternAnalyzer.cs" />
     <Compile Include="IL\TypeEqualityPatternAnalyzer.cs" />
     <Compile Include="IL\Stubs\PInvokeILProvider.cs" />
     <Compile Include="IL\Stubs\StartupCode\StartupCodeMainMethod.cs" />
@@ -694,9 +699,6 @@
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\MethodTable.Constants.cs">
       <Link>Common\MethodTable.Constants.cs</Link>
-    </Compile>
-    <Compile Include="..\..\Common\Internal\Runtime\EETypeOptionalFieldsBuilder.cs">
-      <Link>Common\EETypeOptionalFieldsBuilder.cs</Link>
     </Compile>
     <Compile Include="..\..\Common\Internal\Runtime\EETypeBuilderHelpers.cs">
       <Link>Common\EETypeBuilderHelpers.cs</Link>

@@ -80,6 +80,9 @@ namespace ILCompiler.DependencyAnalysis
             return ExternMethodName.CompareTo(((ExternMethodAccessorNode)other).ExternMethodName);
         }
 
+        public override WasmFunctionType GetWasmFunctionType(NodeFactory factory) =>
+            new WasmFunctionType(WasmAbi.GetNaturalIntType(factory.Target), []);
+
         protected override void EmitCode(NodeFactory factory, ref X64Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
         protected override void EmitCode(NodeFactory factory, ref X86Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
         protected override void EmitCode(NodeFactory factory, ref ARMEmitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();

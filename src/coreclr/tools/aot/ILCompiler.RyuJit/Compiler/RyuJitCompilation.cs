@@ -204,10 +204,6 @@ namespace ILCompiler
 
             if (exception != null)
             {
-                // Try to compile the method again, but with a throwing method body this time.
-                MethodIL throwingIL = TypeSystemThrowingILEmitter.EmitIL(method, exception);
-                corInfo.CompileMethod(methodCodeNodeNeedingCode, throwingIL);
-
                 if (exception is TypeSystemException.InvalidProgramException
                     && method.OwningType is MetadataType mdOwningType
                     && mdOwningType.HasCustomAttribute("System.Runtime.InteropServices", "ClassInterfaceAttribute"))
@@ -218,10 +214,13 @@ namespace ILCompiler
                     Logger.LogMessage($"Method '{method}' will always throw because: {exception.Message}");
                 else
                     Logger.LogError($"Method will always throw because: {exception.Message}", 1005, method, MessageSubCategory.AotAnalysis);
+
+                // Try to compile the method again, but with a throwing method body this time.
+                MethodIL throwingIL = TypeSystemThrowingILEmitter.EmitIL(method, exception);
+                corInfo.CompileMethod(methodCodeNodeNeedingCode, throwingIL);
             }
         }
 
-        public virtual TypeDesc GetPrimitiveTypeForTrivialWasmStruct(TypeDesc type) => throw new NotImplementedException();
         public virtual int PadOffset(TypeDesc type, int atOffset) => throw new NotImplementedException();
         public virtual ISymbolNode GetExternalMethodAccessor(MethodDesc method, ReadOnlySpan<TargetAbiType> signature) => throw new NotImplementedException();
         public virtual CorInfoLlvmEHModel GetLlvmExceptionHandlingModel() => throw new NotImplementedException();

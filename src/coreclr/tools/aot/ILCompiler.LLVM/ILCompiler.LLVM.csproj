@@ -23,6 +23,8 @@
   <ItemGroup>
     <Compile Include="CodeGen\LLVMCodegenCompilation.CodeGen.cs" />
     <Compile Include="CodeGen\LLVMObjectWriter.cs" />
+    <Compile Include="CodeGen\WasmObjectWriter.cs" />
+    <Compile Include="CodeGen\WasmNative.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ExternMethodAccessorNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\LLVMCodegenNodeFactory.cs" />
     <Compile Include="Compiler\DependencyAnalysis\LLVMMethodCodeNode.cs" />

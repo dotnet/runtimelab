@@ -94,104 +94,6 @@ bool Compiler::IsHfa(CORINFO_CLASS_HANDLE hClass) { return false; }
 var_types Compiler::GetHfaType(CORINFO_CLASS_HANDLE hClass) { return TYP_UNDEF; }
 unsigned Compiler::GetHfaCount(CORINFO_CLASS_HANDLE hClass) { return 0; }
 
-// TODO-LLVM: remove this duplicated code by factoring out 'emitNoGChelper' from the emitter upstream.
-//------------------------------------------------------------------------
-// emitNoGChelper: Returns true if garbage collection won't happen within the helper call.
-//
-// Notes:
-//  There is no need to record live pointers for such call sites.
-//
-// Arguments:
-//   helpFunc - a helper signature for the call, can be CORINFO_HELP_UNDEF, that means that the call is not a helper.
-//
-// Return value:
-//   true if GC can't happen within this call, false otherwise.
-bool emitter::emitNoGChelper(CorInfoHelpFunc helpFunc)
-{
-    // TODO-Throughput: Make this faster (maybe via a simple table of bools?)
-
-    switch (helpFunc)
-    {
-        case CORINFO_HELP_UNDEF:
-            return false;
-
-        case CORINFO_HELP_PROF_FCN_LEAVE:
-        case CORINFO_HELP_PROF_FCN_ENTER:
-        case CORINFO_HELP_PROF_FCN_TAILCALL:
-        case CORINFO_HELP_LLSH:
-        case CORINFO_HELP_LRSH:
-        case CORINFO_HELP_LRSZ:
-
-            //  case CORINFO_HELP_LMUL:
-            //  case CORINFO_HELP_LDIV:
-            //  case CORINFO_HELP_LMOD:
-            //  case CORINFO_HELP_ULDIV:
-            //  case CORINFO_HELP_ULMOD:
-
-#ifdef TARGET_X86
-        case CORINFO_HELP_ASSIGN_REF_EAX:
-        case CORINFO_HELP_ASSIGN_REF_ECX:
-        case CORINFO_HELP_ASSIGN_REF_EBX:
-        case CORINFO_HELP_ASSIGN_REF_EBP:
-        case CORINFO_HELP_ASSIGN_REF_ESI:
-        case CORINFO_HELP_ASSIGN_REF_EDI:
-
-        case CORINFO_HELP_CHECKED_ASSIGN_REF_EAX:
-        case CORINFO_HELP_CHECKED_ASSIGN_REF_ECX:
-        case CORINFO_HELP_CHECKED_ASSIGN_REF_EBX:
-        case CORINFO_HELP_CHECKED_ASSIGN_REF_EBP:
-        case CORINFO_HELP_CHECKED_ASSIGN_REF_ESI:
-        case CORINFO_HELP_CHECKED_ASSIGN_REF_EDI:
-#endif
-
-        case CORINFO_HELP_ASSIGN_REF:
-        case CORINFO_HELP_CHECKED_ASSIGN_REF:
-        case CORINFO_HELP_ASSIGN_BYREF:
-
-        case CORINFO_HELP_GET_GCSTATIC_BASE_NOCTOR:
-        case CORINFO_HELP_GET_NONGCSTATIC_BASE_NOCTOR:
-
-        case CORINFO_HELP_INIT_PINVOKE_FRAME:
-
-        case CORINFO_HELP_FAIL_FAST:
-        case CORINFO_HELP_STACK_PROBE:
-
-        case CORINFO_HELP_CHECK_OBJ:
-
-        // never present on stack at the time of GC
-        case CORINFO_HELP_TAILCALL:
-        case CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER:
-        case CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER_TRACK_TRANSITIONS:
-
-        case CORINFO_HELP_VALIDATE_INDIRECT_CALL:
-            return true;
-
-        default:
-            return false;
-    }
-}
-
-//------------------------------------------------------------------------
-// emitNoGChelper: Returns true if garbage collection won't happen within the helper call.
-//
-// Notes:
-//  There is no need to record live pointers for such call sites.
-//
-// Arguments:
-//   methHnd - a method handle for the call.
-//
-// Return value:
-//   true if GC can't happen within this call, false otherwise.
-bool emitter::emitNoGChelper(CORINFO_METHOD_HANDLE methHnd)
-{
-    CorInfoHelpFunc helpFunc = Compiler::eeGetHelperNum(methHnd);
-    if (helpFunc == CORINFO_HELP_UNDEF)
-    {
-        return false;
-    }
-    return emitNoGChelper(helpFunc);
-}
-
 Llvm::Llvm(Compiler* compiler)
     : m_pEECorInfo(*((void**)compiler->info.compCompHnd + 1)) // TODO-LLVM: hack. CorInfoImpl* is the first field of JitInterfaceWrapper.
     , m_context(GetSingleThreadedCompilationContext())
@@ -377,8 +279,6 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         // Implemented as "fmodf"/"fmod".
         { FUNC(CORINFO_HELP_FLTREM) CORINFO_TYPE_FLOAT, { CORINFO_TYPE_FLOAT, CORINFO_TYPE_FLOAT }, HFIF_NO_RPI_OR_GC },
         { FUNC(CORINFO_HELP_DBLREM) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_DOUBLE, CORINFO_TYPE_DOUBLE }, HFIF_NO_RPI_OR_GC },
-        { FUNC(CORINFO_HELP_FLTROUND) },
-        { FUNC(CORINFO_HELP_DBLROUND) },
 
         // Runtime export, implemented in "Runtime.Base\src\System\Runtime\RuntimeExports.cs".
         { FUNC(CORINFO_HELP_NEWFAST) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
@@ -490,22 +390,6 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_BULK_WRITEBARRIER) },
 
         // Not used in NativeAOT (or at all in some cases).
-        { FUNC(CORINFO_HELP_GETFIELD8) },
-        { FUNC(CORINFO_HELP_SETFIELD8) },
-        { FUNC(CORINFO_HELP_GETFIELD16) },
-        { FUNC(CORINFO_HELP_SETFIELD16) },
-        { FUNC(CORINFO_HELP_GETFIELD32) },
-        { FUNC(CORINFO_HELP_SETFIELD32) },
-        { FUNC(CORINFO_HELP_GETFIELD64) },
-        { FUNC(CORINFO_HELP_SETFIELD64) },
-        { FUNC(CORINFO_HELP_GETFIELDOBJ) },
-        { FUNC(CORINFO_HELP_SETFIELDOBJ) },
-        { FUNC(CORINFO_HELP_GETFIELDSTRUCT) },
-        { FUNC(CORINFO_HELP_SETFIELDSTRUCT) },
-        { FUNC(CORINFO_HELP_GETFIELDFLOAT) },
-        { FUNC(CORINFO_HELP_SETFIELDFLOAT) },
-        { FUNC(CORINFO_HELP_GETFIELDDOUBLE) },
-        { FUNC(CORINFO_HELP_SETFIELDDOUBLE) },
         { FUNC(CORINFO_HELP_GETFIELDADDR) },
         { FUNC(CORINFO_HELP_GETSTATICFIELDADDR) },
         { FUNC(CORINFO_HELP_GETSTATICFIELDADDR_TLS) },

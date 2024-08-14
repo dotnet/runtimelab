@@ -40,6 +40,8 @@ internal unsafe partial class Program
 
         TestThrowInMutuallyProtectingHandlers();
 
+        TestDisjointMutuallyProtectingHandlers();
+
         TestExceptionInGvmCall();
 
         TestCatchHandlerNeedsGenericContext();
@@ -425,6 +427,66 @@ internal unsafe partial class Program
         }
 
         PassTest();
+    }
+
+    private static void TestDisjointMutuallyProtectingHandlers()
+    {
+        int index = 0;
+        bool result = true;
+        [MethodImpl(MethodImplOptions.NoInlining)] void At(int expected) => result &= index++ == expected;
+
+        StartTest("TestDisjointMutuallyProtectingHandlers");
+        try
+        {
+            At(0);
+            throw new InvalidOperationException();
+        }
+        catch (NotSupportedException)
+        {
+            At(-1);
+        }
+        catch (InvalidOperationException)
+        {
+            try
+            {
+                At(1);
+                throw new NullReferenceException();
+            }
+            catch (NotSupportedException)
+            {
+                At(-1);
+            }
+            catch (NullReferenceException)
+            {
+                try
+                {
+                    At(2);
+                    throw new Exception();
+                }
+                catch
+                {
+                    At(3);
+                }
+                finally
+                {
+                    At(4);
+                }
+            }
+            catch
+            {
+                At(-1);
+            }
+        }
+        catch (Exception)
+        {
+            At(-1);
+        }
+        finally
+        {
+            At(5);
+        }
+
+        EndTest(result);
     }
 
     private static void TestExceptionInGvmCall()

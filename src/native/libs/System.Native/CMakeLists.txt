@@ -159,7 +159,12 @@ install (TARGETS System.Native-Static DESTINATION ${STATIC_LIB_DESTINATION} COMP
 
 if (CLR_CMAKE_TARGET_BROWSER)
     install(FILES pal_random.lib.js DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
-endif ()
+endif()
+
+if (CLR_CMAKE_TARGET_WASI)
+    # Note: upstream build does this in wasi.proj. We could upstream this way too.
+    install(FILES ../../../libraries/System.Net.Http/src/System/Net/Http/WasiHttpHandler/WasiHttpWorld_component_type.wit DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
+endif()
 
 if (CLR_CMAKE_TARGET_ARCH_WASM AND DEFINED CMAKE_TZD_DIR)
     # Companion library used by NativeAOT that polyfills "mono_bundled_resources_get_data_resource_values".
@@ -177,4 +182,4 @@ if (CLR_CMAKE_TARGET_ARCH_WASM AND DEFINED CMAKE_TZD_DIR)
     # Also add a stub to support InvariantTimezone.
     add_library(System.Native.TimeZoneData.Disabled STATIC pal_datetime_time_zone_data.c)
     install(TARGETS System.Native.TimeZoneData.Disabled DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
-endif ()
+endif()

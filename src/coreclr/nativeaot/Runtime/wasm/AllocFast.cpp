@@ -34,18 +34,51 @@ void SetShadowStackTop(void* pShadowStack);
 // only in the tail-like position so that control can immediately return to the caller in case of an exception.
 extern "C" void RhExceptionHandling_FailedAllocation(void* pShadowStack, MethodTable* pEEType, bool isOverflow);
 
+// Automatic finalization.
+extern "C" void RhpPInvoke(void* pShadowStack, PInvokeTransitionFrame* pFrame);
+extern "C" void RhpPInvokeReturn(PInvokeTransitionFrame* pFrame);
+extern bool g_FinalizationRequestPending;
+void FinalizeFinalizableObjects();
+
 static Object* AllocateObject(void* pShadowStack, MethodTable* pEEType, uint32_t uFlags, uintptr_t numElements)
 {
     // Save the current shadow stack before calling into GC; we may need to scan it for live references.
+    PInvokeTransitionFrame frame;
     SetShadowStackTop(pShadowStack);
+    Object* obj = (Object*)RhpGcAlloc(pEEType, uFlags, numElements, &frame);
 
-    Object* pObject = (Object*)RhpGcAlloc(pEEType, uFlags, numElements, nullptr);
-    if (pObject == nullptr)
+#ifndef FEATURE_WASM_THREADS
+    if (g_FinalizationRequestPending)
+    {
+        GCFrameRegistration gc; // GC-protect our exposed object.
+        Thread* pThread = ThreadStore::GetCurrentThread();
+        if (obj != nullptr)
+        {
+            gc.m_pThread = pThread;
+            gc.m_pObjRefs = (void**)&obj;
+            gc.m_numObjRefs = 1;
+            gc.m_MaybeInterior = 0;
+            pThread->PushGCFrameRegistration(&gc);
+        }
+
+        // "FinalizeFinalizableObjects" runs in preemptive mode.
+        RhpPInvoke(pShadowStack, &frame);
+        FinalizeFinalizableObjects();
+        RhpPInvokeReturn(&frame);
+
+        if (obj != nullptr)
+        {
+            pThread->PopGCFrameRegistration(&gc);
+        }
+    }
+#endif // !FEATURE_WASM_THREADS
+
+    if (obj == nullptr)
     {
         RhExceptionHandling_FailedAllocation(pShadowStack, pEEType, /* isOverflow */ false);
     }
 
-    return pObject;
+    return obj;
 }
 
 static void ThrowOverflowException(void* pShadowStack, MethodTable* pEEType)

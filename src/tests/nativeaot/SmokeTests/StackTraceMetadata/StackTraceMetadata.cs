@@ -22,7 +22,7 @@ class Program
         const bool expected = true;
 #endif
         bool actual = stackTrace.Contains(nameof(Main)) && stackTrace.Contains(nameof(Program));
-        return expected == actual ? 100 : 1;
+        return expected == actual ? 0 : 1;
     }
 
     class DiagnosticMethodInfoTests

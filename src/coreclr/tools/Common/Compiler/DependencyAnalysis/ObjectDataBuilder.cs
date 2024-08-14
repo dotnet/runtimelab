@@ -181,6 +181,11 @@ namespace ILCompiler.DependencyAnalysis
             _data.Append(bytes);
         }
 
+        internal void EmitBytes(ReadOnlySpan<byte> bytes)
+        {
+            bytes.CopyTo(_data.AppendSpan(bytes.Length));
+        }
+
         public void EmitZeroPointer()
         {
             _data.ZeroExtend(_target.PointerSize);
@@ -267,6 +272,24 @@ namespace ILCompiler.DependencyAnalysis
             // And add space for the reloc
             switch (relocType)
             {
+                case RelocType.R_WASM_MEMORY_ADDR_SLEB:
+                case RelocType.R_WASM_TABLE_INDEX_SLEB:
+                case RelocType.R_WASM_FUNCTION_INDEX_LEB:
+                    int lebSize = 5; // All 32 bit LEBs must be padded out to 5 bytes.
+                    goto WriteLeb128;
+                case RelocType.R_WASM_MEMORY_ADDR_SLEB64:
+                case RelocType.R_WASM_TABLE_INDEX_SLEB64:
+                    lebSize = 10; // All 64 bit LEBs must be padded out to 10 (!) bytes.
+                WriteLeb128:
+                    unsafe
+                    {
+                        fixed (byte* location = _data.AppendSpan(lebSize))
+                        {
+                            Relocation.WriteValue(relocType, location, delta);
+                        }
+                    }
+                    break;
+                case RelocType.R_WASM_FUNCTION_OFFSET_I32:
                 case RelocType.IMAGE_REL_BASED_REL32:
                 case RelocType.IMAGE_REL_BASED_RELPTR32:
                 case RelocType.IMAGE_REL_BASED_ABSOLUTE:

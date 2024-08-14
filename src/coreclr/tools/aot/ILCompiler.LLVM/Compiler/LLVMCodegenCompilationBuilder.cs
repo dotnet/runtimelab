@@ -13,7 +13,7 @@ namespace ILCompiler
 {
     public sealed class LLVMCodegenCompilationBuilder : RyuJitCompilationBuilder
     {
-        private LLVMCodegenConfigProvider _config = new LLVMCodegenConfigProvider();
+        private readonly LLVMCodegenConfigProvider _config = new LLVMCodegenConfigProvider();
 
         public LLVMCodegenCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group)
             : base(context, group, new LLVMNodeMangler())
@@ -32,7 +32,7 @@ namespace ILCompiler
         protected override RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options)
         {
             ObjectDataInterner interner = ObjectDataInterner.Null;
-            var factory = new LLVMCodegenNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, interner);
+            var factory = new LLVMCodegenNodeFactory(_config, _context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, interner);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
 
             return new LLVMCodegenCompilation(graph, factory, _compilationRoots, GetILProvider(), _debugInformationProvider, _logger, _config, _inliningPolicy, _instructionSetSupport, _methodImportationErrorProvider, _readOnlyFieldPolicy, options, _parallelism);

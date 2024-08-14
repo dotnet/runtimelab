@@ -25,7 +25,7 @@ namespace ILCompiler
         private string _outputFile;
 
         internal LLVMCodegenConfigProvider Options { get; }
-        public new LLVMCodegenNodeFactory NodeFactory { get; }
+        internal new LLVMCodegenNodeFactory NodeFactory { get; }
 
         internal LLVMCodegenCompilation(DependencyAnalyzerBase<NodeFactory> dependencyGraph,
             LLVMCodegenNodeFactory nodeFactory,
@@ -58,11 +58,15 @@ namespace ILCompiler
             NodeFactory.SetMarkingComplete();
             Console.WriteLine($"LLVM compilation to IR finished in {stopwatch.Elapsed.TotalSeconds:0.##} seconds");
 
+            stopwatch.Restart();
             FinishCompilation();
-
-            LLVMObjectWriter.EmitObject(outputFile, _dependencyGraph.MarkedNodeList, this, dumper);
-
             Console.WriteLine($"LLVM generation of bitcode finished in {stopwatch.Elapsed.TotalSeconds:0.##} seconds");
+
+            double allocatedBytes = GC.GetAllocatedBytesForCurrentThread();
+            stopwatch.Restart();
+            LLVMObjectWriter.EmitObject(outputFile, _dependencyGraph.MarkedNodeList, this, dumper);
+            allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocatedBytes;
+            Console.WriteLine($"Object writing finished in {stopwatch.Elapsed.TotalSeconds:0.##} seconds, allocated {allocatedBytes / 1024 / 1024:0.##} MB");
         }
 
         private void StartCompilation(string outputFile)

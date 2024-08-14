@@ -10,7 +10,7 @@ success &= RunTest(FeatureSwitches.Run);
 success &= RunTest(ILLinkDescriptor.Run);
 success &= RunTest(DependencyInjectionPattern.Run);
 
-return success ? 100 : 1;
+return success ? 0 : 1;
 
 static bool RunTest(Func<int> t, [CallerArgumentExpression("t")] string name = null)
 {

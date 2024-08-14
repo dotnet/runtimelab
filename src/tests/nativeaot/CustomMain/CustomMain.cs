@@ -35,6 +35,6 @@ class Program
     static int Main(string[] args)
     {
         Console.WriteLine("hello from managed main");
-        return s_exitCode;
+        return s_exitCode - 100;
     }
 }
