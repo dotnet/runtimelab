@@ -10,29 +10,37 @@ $ProgressPreference = "SilentlyContinue"
 Set-Location $InstallDir
 
 $WasmtimeVersion = "v21.0.1"
+
+if (!(Test-Path variable:global:IsWindows))
+{
+    $IsWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+}
+
 if ($IsWIndows)
 {
     $WasmtimeBaseName = "wasmtime-$WasmtimeVersion-x86_64-windows"
-    $WasmtimeArchive = $WasmtimeBaseName.zip
+    $WasmtimeArchive = "$WasmtimeBaseName.zip"
 }
 else
 {
     $WasmtimeBaseName = "wasmtime-$WasmtimeVersion-x86_64-linux"
-    $WasmtimeArchive = $WasmtimeFolderName.tar.gz
+    $WasmtimeArchive = "$WasmtimeBaseName.tar.xz"
 }
 
-Invoke-WebRequest -Uri https://github.com/bytecodealliance/wasmtime/releases/download/v21.0.1/$WasmtimeArchive -OutFile $WasmtimeArchive
+Invoke-WebRequest -Uri https://github.com/bytecodealliance/wasmtime/releases/download/$WasmtimeVersion/$WasmtimeArchive -OutFile $WasmtimeArchive
 if ($IsWIndows)
 {
     Expand-Archive -LiteralPath $WasmtimeArchive -DestinationPath .
 }
 else
 {
-    New-Item -ItemType Directory -Force -Path wasmtime
-    tar -xzf $WasmtimeArchive -C wasmtime
+    New-Item -ItemType Directory -Force -Path $WasmtimeBaseName
+    tar -xf $WasmtimeArchive -C $WasmtimeBaseName
 }
 
 if ($CI)
 {
-    Write-Output "##vso[task.prependpath]$pwd/$WasmtimeFolderName"
+    Write-Host "Setting WASMTIME_EXECUTABLE to '$pwd/$WasmtimeBaseName/$WasmtimeBaseName/wasmtime'"
+    Write-Output "##vso[task.setvariable variable=WASMTIME_EXECUTABLE]$pwd/$WasmtimeBaseName/$WasmtimeBaseName/wasmtime"
+    Write-Output "##vso[task.prependpath]$pwd/$WasmtimeBaseName"
 }
