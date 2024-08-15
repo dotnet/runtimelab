@@ -28,8 +28,6 @@ namespace BindingsGeneration
         /// Signature of the method.
         /// </summary>
         public required List<ArgumentDecl> CSSignature { get; set; }
-
-        public required List<TypeSpec> SwiftSignature { get; set; }
     }
 
     /// <summary>

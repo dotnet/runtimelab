@@ -378,7 +378,6 @@ namespace BindingsGeneration
                 MethodType = node.@static ?? false ? MethodType.Static : MethodType.Instance,
                 IsConstructor = node.Kind == "Constructor",
                 CSSignature = new List<ArgumentDecl>(),
-                SwiftSignature = new List<TypeSpec>(),
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl
             };
