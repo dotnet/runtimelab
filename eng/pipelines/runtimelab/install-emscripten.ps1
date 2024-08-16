@@ -21,7 +21,7 @@ git checkout ca7b40ae222a2d8763b6ac845388744b0e57cfb7
 
 if ($CI)
 {
-    Write-Host "Setting EMSDK to '$env:EMSDK'"
-    Write-Output "##vso[task.setvariable variable=EMSDK]$env:EMSDK"
+    Write-Host "Setting EMSDK to '$InstallDir/emsdk'"
+    Write-Output "##vso[task.setvariable variable=EMSDK]$InstallDir/emsdk"
 }
 
