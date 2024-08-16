@@ -216,7 +216,7 @@ jobs:
           displayName: Install Powershell 7
         - script: $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-python.sh $(Build.SourcesDirectory)/wasm-tools
           displayName: set PYTHON3
-      - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.ps1 $(Build.SourcesDirectory)/wasm-tools
+      - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.ps1 $(Build.SourcesDirectory)/wasm-tools -CI
         displayName: Install/activate emscripten
       - ${{ if eq(parameters.hostedOs, 'windows') }}:
         - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/set-cmake-path.cmd
