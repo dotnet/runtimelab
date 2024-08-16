@@ -1,6 +1,6 @@
 param(
     $InstallDir,
-    $CI
+    [switch]$CI
 )
 
 $ErrorActionPreference="Stop"
