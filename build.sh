@@ -32,8 +32,8 @@ else
   if [[ "$*" == *"wasm"* && "$*" == *"-ci"* ]]; then
     # This is a bit of a workaround for the fact that the pipelines do not have a great
     # way of preserving the environment between scripts. Set by install-emscripten.ps1.
-    if [[ -n $NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH ]]; then
-        source $NATIVEAOT_CI_WASM_BUILD_EMSDK_PATH/emsdk_env.sh
+    if [[ -n $EMSDK ]]; then
+        source $EMSDK/emsdk_env.sh
     fi
   fi
   "$scriptroot/eng/build.sh" $@
