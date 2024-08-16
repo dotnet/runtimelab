@@ -1,5 +1,5 @@
 param(
-    $InstallDir
+    $InstallDir,
     $CI
 )
 
