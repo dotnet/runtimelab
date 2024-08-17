@@ -12,6 +12,8 @@
     <MSBuildEnableAllPropertyFunctions>1</MSBuildEnableAllPropertyFunctions>
     <Language>C#</Language>
     <RuntimeIdentifier>$(OutputRID)</RuntimeIdentifier>
+    <!-- NativeAOT-LLVM attempt workaround for https://github.com/dotnet/runtime/issues/106566 -->
+    <CompressSymbols>false</CompressSymbols>
   </PropertyGroup>
 
   <ItemGroup>
