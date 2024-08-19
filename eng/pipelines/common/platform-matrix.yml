@@ -492,9 +492,7 @@ jobs:
       targetRid: browser-wasm
       platform: Browser_wasm_linux_x64_naot_llvm
       shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
-      container: 
-        image: azurelinux-3.0-cross-amd64-net9.0-sanitizer
-        registry: mcr
+      container: linux_x64_sanitizer
       jobParameters:
         hostedOs: linux
         runtimeFlavor: ${{ parameters.runtimeFlavor }}
@@ -515,9 +513,7 @@ jobs:
       targetRid: wasi-wasm
       platform: wasi_wasm_linux_x64_naot_llvm
       shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
-      container: 
-        image: azurelinux-3.0-cross-amd64-net9.0-sanitizer
-        registry: mcr
+      container: linux_x64_sanitizer
       jobParameters:
         hostedOs: linux
         runtimeFlavor: ${{ parameters.runtimeFlavor }}
