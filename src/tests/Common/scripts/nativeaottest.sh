@@ -10,8 +10,11 @@
 # 2. Filename of the test executable
 # 3. - n. Additional arguments that were passed to the test .sh
 
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+exename=$(basename $2 .dll)
+chmod +x $1/native/$exename
+$_DebuggerFullPath $1/native/$exename "${@:3}"
 
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 source $SCRIPT_DIR/../../../../eng/testing/FindWasmHostExecutable.sh "$1/native/$2"
 
 if [ -n "${WASM_HOST_EXECUTABLE}" ]; then

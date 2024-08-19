@@ -88,7 +88,7 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
         $CmakeGenerator = "Unix Makefiles"
     }
 
-    $CmakeConfigureCommandLine = "-G", "$CmakeGenerator", "-DLLVM_INCLUDE_BENCHMARKS=OFF"
+    $CmakeConfigureCommandLine = "-G", "$CmakeGenerator", "-DLLVM_INCLUDE_BENCHMARKS=OFF", "-DLLVM_ENABLE_TERMINFO=0"
     $CmakeConfigureCommandLine += "-S", $SourceDirName, "-B", $BuildDirPath
     if ($Config -eq "Release")
     {
