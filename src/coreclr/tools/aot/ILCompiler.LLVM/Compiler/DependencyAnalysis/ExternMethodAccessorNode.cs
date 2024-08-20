@@ -150,7 +150,7 @@ namespace ILCompiler.DependencyAnalysis
             // TODO-LLVM: the initial design of ExternMethodAccessorNode assumed that, eventually, ILC would not
             // need to concern itself with ABI (i. e. that only the Jit would need to know the ABI details). That
             // is why Signature is provided by Jit. However, at this point, it has become clear that we will not
-            // be able to avoid WASM signature building in ILC, and so the Jit-based mechanism is basically (ILC
+            // be able to avoid WASM signature building in ILC, and so the Jit-based mechanism is redundant (ILC
             // can compute the details by itself). Remove it.
             static WasmValueType ToWasmType(TargetAbiType type) => type switch
             {
