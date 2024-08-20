@@ -32,7 +32,5 @@ namespace ILCompiler.DependencyAnalysis
             encoder.EmitCall(target);
             encoder.EmitEnd();
         }
-
-        public override WasmFunctionType GetWasmFunctionType(NodeFactory factory) => WasmAbi.GetWasmFunctionType(Method);
     }
 }

@@ -42,7 +42,7 @@ namespace ILCompiler.DependencyAnalysis.Wasm
                 maxWasmSigLength > 100 ? new WasmValueType[maxWasmSigLength] : stackalloc WasmValueType[maxWasmSigLength];
 
             int index = 0;
-            signatureTypes[index++] = wasmPointerType;
+            signatureTypes[index++] = wasmPointerType; // Shadow stack.
 
             if (!signature.IsStatic) // TODO-LLVM-Bug: doesn't handle explicit 'this'.
             {

@@ -12,8 +12,11 @@ namespace ILCompiler.DependencyAnalysis
 {
     internal sealed class LLVMCodegenNodeFactory : NodeFactory
     {
-        private readonly Dictionary<string, ExternMethodAccessorNode> _externSymbolsWithAccessors = new();
         private readonly CorInfoLlvmEHModel _ehModel;
+
+        private readonly Dictionary<string, ExternMethodAccessorNode> _externMethodAccessors = new();
+        private readonly NodeCache<ExternMethodAccessorNode, ExternWasmMethodNode> _externWasmMethods =
+            new(accessor => new ExternWasmMethodNode(accessor));
 
         public LLVMCodegenNodeFactory(
             LLVMCodegenConfigProvider options,
@@ -47,9 +50,9 @@ namespace ILCompiler.DependencyAnalysis
 
         public override bool TargetsEmulatedEH() => _ehModel is CorInfoLlvmEHModel.Emulated;
 
-        internal ExternMethodAccessorNode ExternSymbolWithAccessor(string name, MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
+        internal ExternMethodAccessorNode ExternMethodAccessor(string name, MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
         {
-            Dictionary<string, ExternMethodAccessorNode> map = _externSymbolsWithAccessors;
+            Dictionary<string, ExternMethodAccessorNode> map = _externMethodAccessors;
 
             // Not lockless since we mutate the node. Contention on this path is not expected.
             //
@@ -72,6 +75,8 @@ namespace ILCompiler.DependencyAnalysis
                 return node;
             }
         }
+
+        internal ExternWasmMethodNode ExternWasmMethod(ExternMethodAccessorNode accessor) => _externWasmMethods.GetOrAdd(accessor);
 
         protected override IMethodNode CreateMethodEntrypointNode(MethodDesc method)
         {

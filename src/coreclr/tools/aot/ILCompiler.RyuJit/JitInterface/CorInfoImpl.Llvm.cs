@@ -98,10 +98,6 @@ namespace Internal.JitInterface
             {
                 method = methodNode.Method;
             }
-            else if (node is ReadyToRunHelperNode { Id: ReadyToRunHelperId.VirtualCall } helperNode)
-            {
-                method = (MethodDesc)helperNode.Target;
-            }
 
             if (method != null)
             {
@@ -469,7 +465,7 @@ namespace Internal.JitInterface
             ((delegate* unmanaged<void*, void>)GetJitExport(CorJitApiId.CJAI_FinishSingleThreadedCompilation))(_pNativeContext);
         }
 
-        internal static void* GetJitExport(CorJitApiId id) => s_jitExports[(int)id];
+        private static void* GetJitExport(CorJitApiId id) => s_jitExports[(int)id];
     }
 
     public enum TargetAbiType : byte

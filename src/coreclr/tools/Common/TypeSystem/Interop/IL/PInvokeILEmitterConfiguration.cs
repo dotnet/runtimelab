@@ -10,9 +10,6 @@ namespace Internal.IL
     {
         public abstract bool GenerateDirectCall(MethodDesc method, out string externName);
 
-        public virtual bool GenerateWasmImportCall(MethodDesc method, out string externName, out string moduleName)
-        {
-            throw new NotImplementedException();
-        }
+        public virtual bool GenerateWasmImportCall(MethodDesc method, out string externName, out string moduleName) => throw new NotImplementedException();
     }
 }

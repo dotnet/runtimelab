@@ -31,7 +31,7 @@ namespace ILCompiler.DependencyAnalysis.Wasm
             return hash.ToHashCode();
         }
 
-        public static bool IsFunction(ISymbolNode symbol) => symbol is ExternSymbolNode or AssemblyStubNode or IMethodNode { Offset: 0 };
+        public static bool IsFunction(ISymbolNode symbol) => symbol is ExternSymbolNode or IWasmFunctionNode or IMethodNode { Offset: 0 };
 
         public static bool operator ==(WasmFunctionType left, WasmFunctionType right) => left.Equals(right);
         public static bool operator !=(WasmFunctionType left, WasmFunctionType right) => !(left == right);

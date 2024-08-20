@@ -10,8 +10,35 @@ using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
 {
-    public partial class ReadyToRunGenericHelperNode
+    public partial class ReadyToRunGenericHelperNode : IWasmFunctionNode
     {
+        public WasmFunctionType GetWasmFunctionType(NodeFactory factory)
+        {
+            WasmValueType wasmPointerType = WasmAbi.GetNaturalIntType(factory.Target);
+            switch (_id)
+            {
+                case ReadyToRunHelperId.GetNonGCStaticBase:
+                case ReadyToRunHelperId.GetGCStaticBase:
+                case ReadyToRunHelperId.GetThreadStaticBase:
+                case ReadyToRunHelperId.TypeHandle:
+                case ReadyToRunHelperId.MethodHandle:
+                case ReadyToRunHelperId.FieldHandle:
+                case ReadyToRunHelperId.MethodDictionary:
+                case ReadyToRunHelperId.MethodEntry:
+                case ReadyToRunHelperId.VirtualDispatchCell:
+                case ReadyToRunHelperId.DefaultConstructor:
+                case ReadyToRunHelperId.ObjectAllocator:
+                case ReadyToRunHelperId.TypeHandleForCasting:
+                case ReadyToRunHelperId.ConstrainedDirectCall:
+                    return new WasmFunctionType(wasmPointerType, [wasmPointerType, wasmPointerType]);
+                case ReadyToRunHelperId.DelegateCtor:
+                    // (Shadow stack, this, targetObj, GenericContext).
+                    return new WasmFunctionType(WasmValueType.Invalid, [wasmPointerType, wasmPointerType, wasmPointerType, wasmPointerType]);
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
         protected sealed override unsafe void EmitCode(NodeFactory factory, ref WasmEmitter encoder, bool relocsOnly)
         {
             uint InitializeLocals(uint argCount, uint* pHandlesInvalidEntriesLocal, uint* pNonGcStaticBaseLocal = null, uint* pCctorContextLocal = null)
@@ -154,33 +181,6 @@ namespace ILCompiler.DependencyAnalysis
                     encoder.EmitEnd();
                     break;
 
-                default:
-                    throw new NotImplementedException();
-            }
-        }
-
-        public override WasmFunctionType GetWasmFunctionType(NodeFactory factory)
-        {
-            WasmValueType wasmPointerType = WasmAbi.GetNaturalIntType(factory.Target);
-            switch (_id)
-            {
-                case ReadyToRunHelperId.GetNonGCStaticBase:
-                case ReadyToRunHelperId.GetGCStaticBase:
-                case ReadyToRunHelperId.GetThreadStaticBase:
-                case ReadyToRunHelperId.TypeHandle:
-                case ReadyToRunHelperId.MethodHandle:
-                case ReadyToRunHelperId.FieldHandle:
-                case ReadyToRunHelperId.MethodDictionary:
-                case ReadyToRunHelperId.MethodEntry:
-                case ReadyToRunHelperId.VirtualDispatchCell:
-                case ReadyToRunHelperId.DefaultConstructor:
-                case ReadyToRunHelperId.ObjectAllocator:
-                case ReadyToRunHelperId.TypeHandleForCasting:
-                case ReadyToRunHelperId.ConstrainedDirectCall:
-                    return new WasmFunctionType(wasmPointerType, [wasmPointerType, wasmPointerType]);
-                case ReadyToRunHelperId.DelegateCtor:
-                    // (Shadow stack, this, targetObj, GenericContext).
-                    return new WasmFunctionType(WasmValueType.Invalid, [wasmPointerType, wasmPointerType, wasmPointerType, wasmPointerType]);
                 default:
                     throw new NotImplementedException();
             }

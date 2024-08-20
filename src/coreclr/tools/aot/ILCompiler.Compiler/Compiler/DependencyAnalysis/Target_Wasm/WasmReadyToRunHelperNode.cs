@@ -11,8 +11,27 @@ using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
 {
-    public partial class ReadyToRunHelperNode
+    public partial class ReadyToRunHelperNode : IWasmFunctionNode
     {
+        public WasmFunctionType GetWasmFunctionType(NodeFactory factory)
+        {
+            WasmValueType wasmPointerType = WasmAbi.GetNaturalIntType(factory.Target);
+            switch (_id)
+            {
+                case ReadyToRunHelperId.GetNonGCStaticBase:
+                case ReadyToRunHelperId.GetThreadStaticBase:
+                case ReadyToRunHelperId.GetGCStaticBase:
+                    return new WasmFunctionType(wasmPointerType, [wasmPointerType]);
+                case ReadyToRunHelperId.DelegateCtor:
+                    // (Shadow stack, this, targetObj).
+                    return new WasmFunctionType(WasmValueType.Invalid, [wasmPointerType, wasmPointerType, wasmPointerType]);
+                case ReadyToRunHelperId.ResolveVirtualFunction:
+                    return new WasmFunctionType(wasmPointerType, [wasmPointerType, wasmPointerType]);
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
         protected override void EmitCode(NodeFactory factory, ref WasmEmitter encoder, bool relocsOnly)
         {
             WasmValueType wasmPointerType = encoder.GetNaturalIntType();
@@ -155,25 +174,6 @@ namespace ILCompiler.DependencyAnalysis
                 }
                 break;
 
-                default:
-                    throw new NotImplementedException();
-            }
-        }
-
-        public override WasmFunctionType GetWasmFunctionType(NodeFactory factory)
-        {
-            WasmValueType wasmPointerType = WasmAbi.GetNaturalIntType(factory.Target);
-            switch (_id)
-            {
-                case ReadyToRunHelperId.GetNonGCStaticBase:
-                case ReadyToRunHelperId.GetThreadStaticBase:
-                case ReadyToRunHelperId.GetGCStaticBase:
-                    return new WasmFunctionType(wasmPointerType, [wasmPointerType]);
-                case ReadyToRunHelperId.DelegateCtor:
-                    // (Shadow stack, this, targetObj).
-                    return new WasmFunctionType(WasmValueType.Invalid, [wasmPointerType, wasmPointerType, wasmPointerType]);
-                case ReadyToRunHelperId.ResolveVirtualFunction:
-                    return new WasmFunctionType(wasmPointerType, [wasmPointerType, wasmPointerType]);
                 default:
                     throw new NotImplementedException();
             }
