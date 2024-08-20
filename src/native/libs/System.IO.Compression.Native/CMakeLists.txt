@@ -185,6 +185,8 @@ else ()
 
 endif ()
 
-install_static_library(zlib aotsdk nativeaot)
+if((NOT CLR_CMAKE_USE_SYSTEM_ZLIB) AND STATIC_LIBS_ONLY)
+    install_static_library(zlib aotsdk nativeaot)
+endif ()
 
 install (TARGETS System.IO.Compression.Native-Static DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
