@@ -122,6 +122,7 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
 
     if (!$NoBuild)
     {
+        Write-Host "Invoking CMake --build"
         cmake --build $BuildDirPath --config $LlvmConfig --target LLVMCore LLVMBitWriter
     }
 
