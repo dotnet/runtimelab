@@ -35,7 +35,6 @@ extends:
         parameters:
           jobTemplate: /eng/pipelines/common/global-build-job.yml
           buildConfig: Release
-          container: azurelinux-3.0-cross-amd64-net9.0-sanitizer
           platforms:
           - Browser_wasm_win
           - wasi_wasm_win

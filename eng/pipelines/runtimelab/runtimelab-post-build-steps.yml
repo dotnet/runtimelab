@@ -30,12 +30,12 @@ steps:
     - ${{ if eq(parameters.platform, 'browser_wasm_win') }}:
       - script: |
           call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} /p:TestWrapperTargetsWindows=true
+          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
         displayName: Build WebAssembly tests
     - ${{ elseif eq(parameters.platform, 'wasi_wasm_win') }}:
       - script: |
           call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} wasi tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} /p:TestWrapperTargetsWindows=true
+          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} wasi tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
         displayName: Build WebAssembly tests
     - ${{ elseif eq(parameters.platform, 'Browser_wasm_linux_x64_naot_llvm') }}:
       - script: |
