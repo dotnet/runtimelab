@@ -73,8 +73,6 @@ steps:
             $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
         displayName: Build and run WebAssembly libraries tests
 
-
-
 # Upload unsigned artifacts
 - ${{ if eq(parameters.uploadIntermediateArtifacts, true) }}:
   - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
