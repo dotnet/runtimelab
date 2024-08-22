@@ -69,16 +69,9 @@ steps:
           displayName: Run tests in single file mode
 
     - ${{ if eq(parameters.archType, 'wasm') }}:
-      - ${{ if in(parameters.platform, 'browser_wasm_win', 'wasi_wasm_win') }}:
-        - script: |
-              call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-              $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
-          displayName: Build and run WebAssembly libraries tests
-      - ${{ else }}:
-        - script: |
-              source $(Build.SourcesDirectory)/wasm-tools/emsdk/emsdk_env.sh
-              $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
-          displayName: Build and run WebAssembly libraries tests
+      - script: |
+            $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
+        displayName: Build and run WebAssembly libraries tests
 
 
 
