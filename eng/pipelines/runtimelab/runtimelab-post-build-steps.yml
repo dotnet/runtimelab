@@ -61,10 +61,6 @@ steps:
             call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
             $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
           displayName: Run WebAssembly tests in single file mode
-      - ${{ elseif in(parameters.platform, 'wasi_wasm_linux_x64_naot_llvm') }}:
-        - script: |
-            $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests ${{ parameters.archType }} $(buildConfigUpper) wasi
-          displayName: Run WebAssembly tests in single file mode
       - ${{ elseif eq(parameters.osGroup, 'windows') }}:
         - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
           displayName: Run tests in single file mode
