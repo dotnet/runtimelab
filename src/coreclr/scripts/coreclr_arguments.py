@@ -283,7 +283,7 @@ class CoreclrArguments:
             self.target_os = self.host_os
 
         if self.arch == "wasm" and self.target_os != "wasi":
-            self.target_os = "Browser" # assume we need to differentiate between running wasm tests on Windows and *nix so leave host_os as the os where the tests are running
+            self.target_os = "browser" # assume we need to differentiate between running wasm tests on Windows and *nix so leave host_os as the os where the tests are running
 
         self.verify(args,
                     "build_type",

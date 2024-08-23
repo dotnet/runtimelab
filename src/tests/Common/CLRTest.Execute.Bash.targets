@@ -341,7 +341,7 @@ fi
       <WatcherRunFile>"$CORE_ROOT/watchdog" $_WatcherTimeoutMins</WatcherRunFile>
 
       <!-- Note that this overwrites CLRTestBashPreCommands rather than adding to it. -->
-      <CLRTestBashPreCommands Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(TargetArchitecture)' == 'wasm'"><![CDATA[
+      <CLRTestBashPreCommands Condition="'$(CLRTestKind)' == 'BuildAndRun' and '$(TargetArchitecture)' == 'wasm' And '$(RuntimeFlavor)' == 'mono'"><![CDATA[
 # Build wasm app containing the test dll
 __Command=""
 if [ ! -z ${__TestDotNetCmd+x} ] %3B then
@@ -358,7 +358,7 @@ $__Command msbuild $CORE_ROOT/wasm-test-runner/WasmTestRunner.proj /p:NetCoreApp
    ]]>
       </CLRTestBashPreCommands>
 
-      <BashCLRTestLaunchCmds Condition="'$(CLRTestKind)' == 'BuildAndRun' And '$(TargetOS)' != 'browser' And '$(TargetOS)' != 'android' And '$(TargetArchitecture)' != 'arm64'">
+      <BashCLRTestLaunchCmds Condition="'$(CLRTestKind)' == 'BuildAndRun' And ('$(TargetOS)' != 'browser' Or '$(RuntimeFlavor)' != 'mono') And '$(TargetOS)' != 'android' And '$(TargetArchitecture)' != 'arm64'">
     <![CDATA[
 $(BashLinkerTestLaunchCmds)
 
@@ -425,7 +425,7 @@ fi
 
 $(BashLinkerTestCleanupCmds)
       ]]></BashCLRTestLaunchCmds>
-      <BashCLRTestLaunchCmds Condition="'$(CLRTestKind)' == 'BuildAndRun' And '$(TargetOS)' == 'browser'">
+      <BashCLRTestLaunchCmds Condition="'$(CLRTestKind)' == 'BuildAndRun' And '$(TargetOS)' == 'browser' And '$(RuntimeFlavor)' == 'mono'">
       <![CDATA[
 cd WasmApp
 ./run-v8.sh

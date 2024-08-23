@@ -1,5 +1,6 @@
 param(
-    $InstallDir
+    $InstallDir,
+    [switch]$CI
 )
 
 $ErrorActionPreference="Stop"
@@ -17,4 +18,10 @@ git checkout ca7b40ae222a2d8763b6ac845388744b0e57cfb7
 ./emsdk install 3.1.56
 ./emsdk activate 3.1.56
 
-Write-Host "##vso[task.setvariable variable=EMSDK]$env:EMSDK"
+
+if ($CI)
+{
+    Write-Host "Setting EMSDK to '$InstallDir/emsdk'"
+    Write-Output "##vso[task.setvariable variable=EMSDK]$InstallDir/emsdk"
+}
+

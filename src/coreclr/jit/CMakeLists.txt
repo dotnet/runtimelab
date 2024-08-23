@@ -92,6 +92,7 @@ function(create_standalone_jit)
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE "../tools/Common/JitInterface")
 
     # Only look at "our" LLVM with LLVM_CMAKE_CONFIG.
+    set(LLVM_DIR $ENV{LLVM_CMAKE_CONFIG})
     find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG} NO_DEFAULT_PATH)
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_INCLUDE_DIRS})
     separate_arguments(LLVM_DEFINITIONS)
@@ -728,7 +729,6 @@ if (CLR_CMAKE_BUILD_LLVM_JIT)
     list(FILTER JIT_SOURCES EXCLUDE REGEX lsrabuild\.cpp)
     list(FILTER JIT_SOURCES EXCLUDE REGEX regalloc\.cpp)
 
-    # LLVM headers require C++17.
     create_standalone_jit(TARGET clrjit_universal_wasm32_${ARCH_HOST_NAME} OS universal ARCH wasm32 CMAKE_CXX_STANDARD 17 DESTINATIONS .)
     install_clr(TARGETS clrjit_universal_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
 

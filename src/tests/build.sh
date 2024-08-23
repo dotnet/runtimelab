@@ -60,7 +60,7 @@ build_Tests()
     export MSBUILDDEBUGPATH
 
     if [[ "$__SkipNative" != 1 && "$__BuildTestWrappersOnly" != 1 && "$__GenerateLayoutOnly" != 1 && "$__CopyNativeTestBinaries" != 1 && \
-        "$__TargetOS" != "browser" && "$__TargetOS" != "android" && "$__TargetOS" != "ios" && "$__TargetOS" != "iossimulator" && "$__TargetOS" != "tvos" && "$__TargetOS" != "tvossimulator" ]]; then
+        "$__TargetOS" != "android" && "$__TargetOS" != "ios" && "$__TargetOS" != "iossimulator" && "$__TargetOS" != "tvos" && "$__TargetOS" != "tvossimulator" ]]; then
         build_native "$__TargetOS" "$__TargetArch" "$__TestDir" "$__NativeTestIntermediatesDir" "install" "$__CMakeArgs" "CoreCLR test component"
 
         if [[ "$?" -ne 0 ]]; then
@@ -167,6 +167,8 @@ usage_list+=("-test:xxx - Only build the specified test project ^(relative or ab
 usage_list+=("-dir:xxx - Build all test projects in the given directory ^(relative or absolute directory under src\tests^).");
 usage_list+=("-tree:xxx - Build all test projects in the given subtree ^(relative or absolute directory under src\tests^).");
 usage_list+=("-log:xxx - Base file name to use for log files (used in lab pipelines that build tests in multiple steps to retain logs for each step).")
+usage_list+=("-browser - Target Wasm/browser.")
+usage_list+=("-wasi - Target Wasm/WASI.")
 usage_list+=("")
 usage_list+=("Any unrecognized arguments will be passed directly to MSBuild.")
 
@@ -316,6 +318,16 @@ handle_arguments_local() {
             else
                 __BuildLogRootName="${parts[1]}"
             fi
+            ;;
+
+        browser|-browser)
+            __TargetOS=browser
+            __TargetArch=wasm
+            ;;
+
+        wasi|-wasi)
+            __TargetOS=wasi
+            __TargetArch=wasm
             ;;
 
         *)

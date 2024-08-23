@@ -900,8 +900,8 @@ def setup_args(args):
 
     target_os = coreclr_setup_args.host_os
     # using the arg target_os always breaks the OSX tests
-    if coreclr_setup_args.target_os == "Browser":
-        target_os = "Browser"
+    if coreclr_setup_args.target_os == "browser":
+        target_os = "browser"
     if coreclr_setup_args.target_os == "wasi":
         target_os = "wasi"
 

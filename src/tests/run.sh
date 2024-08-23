@@ -106,6 +106,9 @@ do
         android)
             buildOS="android"
             ;;
+        browser)
+            buildOS="browser"
+            ;;
         wasi)
             buildOS="wasi"
             ;;
