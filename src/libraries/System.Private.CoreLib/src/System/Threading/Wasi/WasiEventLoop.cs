@@ -11,17 +11,23 @@ namespace System.Threading
     {
         private static List<TaskCompletionSource> s_pollables = new();
 
-        internal static Task RegisterWasiPollableHandle(int handle)
+        internal static Task RegisterWasiPollableHandle(
+            int handle,
+            CancellationToken cancellationToken
+        )
         {
             // note that this is duplicate of the original Pollable
             // the original should be neutralized without disposing the handle
             var pollableCpy = new IPoll.Pollable(new IPoll.Pollable.THandle(handle));
-            return RegisterWasiPollable(pollableCpy);
+            return RegisterWasiPollable(pollableCpy, cancellationToken);
         }
 
-        internal static Task RegisterWasiPollable(IPoll.Pollable pollable)
+        internal static Task RegisterWasiPollable(
+            IPoll.Pollable pollable,
+            CancellationToken cancellationToken
+        )
         {
-            var tcs = new TaskCompletionSource(pollable);
+            var tcs = new TaskCompletionSource((pollable, cancellationToken));
             s_pollables.Add(tcs);
             return tcs.Task;
         }
@@ -36,27 +42,46 @@ namespace System.Threading
                 s_pollables = new List<TaskCompletionSource>(pollables.Count);
                 var arguments = new List<IPoll.Pollable>(pollables.Count);
                 var indexes = new List<int>(pollables.Count);
+                var tasksCanceled = false;
                 for (var i = 0; i < pollables.Count; i++)
                 {
                     var tcs = pollables[i];
-                    var pollable = (IPoll.Pollable)tcs.Task.AsyncState!;
-                    arguments.Add(pollable);
-                    indexes.Add(i);
+                    var (pollable, cancellationToken) = ((IPoll.Pollable, CancellationToken))
+                        tcs.Task.AsyncState!;
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        tcs.SetException(new TaskCanceledException());
+                        tasksCanceled = true;
+                    }
+                    else
+                    {
+                        arguments.Add(pollable);
+                        indexes.Add(i);
+                    }
                 }
 
                 if (arguments.Count > 0)
                 {
-                    // this is blocking until at least one pollable resolves
-                    var readyIndexes = PollInterop.Poll(arguments);
-
                     var ready = new bool[arguments.Count];
-                    foreach (int readyIndex in readyIndexes)
+
+                    // If at least one task was canceled, we'll return without
+                    // calling `poll` (i.e. delay calling `poll` until the next
+                    // call to this function) to give any dependent tasks a
+                    // chance to make progress before we block.
+                    if (!tasksCanceled)
                     {
-                        ready[readyIndex] = true;
-                        arguments[readyIndex].Dispose();
-                        var tcs = pollables[indexes[readyIndex]];
-                        tcs.SetResult();
+                        // this is blocking until at least one pollable resolves
+                        var readyIndexes = PollInterop.Poll(arguments);
+
+                        foreach (int readyIndex in readyIndexes)
+                        {
+                            ready[readyIndex] = true;
+                            arguments[readyIndex].Dispose();
+                            var tcs = pollables[indexes[readyIndex]];
+                            tcs.SetResult();
+                        }
                     }
+
                     for (var i = 0; i < arguments.Count; ++i)
                     {
                         if (!ready[i])
