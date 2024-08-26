@@ -17,8 +17,9 @@ if (isMainThread) {
         name: "shared-library",
         typescript: false,
     });
-    await writeFile(new URL("./shared-library.core.wasm", base), transpiled.files["shared-library.core.wasm"]);
-    await writeFile(new URL("./shared-library.core2.wasm", base), transpiled.files["shared-library.core2.wasm"]);
+    for (const key of Object.keys(transpiled.files)) {
+        await writeFile(new URL(key, base), transpiled.files[key]);
+    }
     await writeFile(new URL("./shared-library.mjs", base), transpiled.files["shared-library.js"]);
     _setPreopens([]);
     const instance = await import(new URL("./shared-library.mjs", base));
