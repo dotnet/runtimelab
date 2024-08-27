@@ -35,29 +35,6 @@ static Thread* g_RuntimeInitializingThread;
 
 #endif //!DACCESS_COMPILE
 
-#ifdef HOST_WASM
-void* Thread::GetShadowStackBottom()
-{
-    return m_pShadowStackBottom;
-}
-
-void Thread::SetShadowStackBottom(void *pShadowStack)
-{
-    ASSERT(m_pShadowStackBottom == nullptr);
-    m_pShadowStackBottom = pShadowStack;
-}
-
-void* Thread::GetShadowStackTop()
-{
-    return m_pShadowStackTop;
-}
-
-void Thread::SetShadowStackTop(void* pShadowStack)
-{
-    m_pShadowStackTop = pShadowStack;
-}
-#endif
-
 PInvokeTransitionFrame* Thread::GetTransitionFrame()
 {
     if (ThreadStore::GetSuspendingThread() == this)
@@ -406,7 +383,7 @@ void Thread::Destroy()
 void Thread::GcScanWasmShadowStack(ScanFunc * pfnEnumCallback, ScanContext * pvCallbackData)
 {
     // Wasm does not permit iteration of stack frames so is uses a shadow stack instead
-    EnumGcRefsInRegionConservatively((PTR_OBJECTREF)GetShadowStackBottom(), (PTR_OBJECTREF)m_pShadowStackTop, pfnEnumCallback, pvCallbackData);
+    EnumGcRefsInRegionConservatively((PTR_OBJECTREF)m_pShadowStackBottom, (PTR_OBJECTREF)m_pShadowStackTop, pfnEnumCallback, pvCallbackData);
 
     // TODO-LLVM-Upstream: unify this method with the general "GcScanRootsWorker" below.
     for (GCFrameRegistration* pCurGCFrame = m_pGCFrameRegistrations; pCurGCFrame != NULL; pCurGCFrame = pCurGCFrame->m_pNext)

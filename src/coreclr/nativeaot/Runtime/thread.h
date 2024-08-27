@@ -166,11 +166,6 @@ public:
                                                     // On Unix this is an optimization to not queue up more signals when one is
                                                     // still being processed.
     };
-#ifdef HOST_WASM
-    PTR_VOID GetShadowStackTop();
-    void SetShadowStackBottom(PTR_VOID pShadowStack);
-    void SetShadowStackTop(PTR_VOID pShadowStack);
-#endif
 private:
 
     void Construct();
@@ -205,7 +200,6 @@ private:
     PInvokeTransitionFrame* GetTransitionFrame();
 
 #ifdef HOST_WASM
-    PTR_VOID GetShadowStackBottom();
     void GcScanWasmShadowStack(ScanFunc* pfnEnumCallback, ScanContext* pvCallbackData);
 #endif
 
@@ -342,6 +336,12 @@ public:
 #ifdef TARGET_X86
     void                SetPendingRedirect(PCODE eip);
     bool                CheckPendingRedirect(PCODE eip);
+#endif
+
+#ifdef HOST_WASM
+    void* GetShadowStackTop();
+    void SetShadowStackBottom(void* pShadowStack);
+    void SetShadowStackTop(void* pShadowStack);
 #endif
 };
 
