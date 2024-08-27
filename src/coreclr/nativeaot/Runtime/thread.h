@@ -118,6 +118,10 @@ struct RuntimeThreadLocals
 #ifdef FEATURE_GC_STRESS
     uint32_t                m_uRand;                                // current per-thread random number
 #endif // FEATURE_GC_STRESS
+#ifdef HOST_WASM
+    void*                   m_pShadowStackBottom;
+    void*                   m_pShadowStackTop;
+#endif // HOST_WASM
 };
 
 struct ReversePInvokeFrame
@@ -162,6 +166,11 @@ public:
                                                     // On Unix this is an optimization to not queue up more signals when one is
                                                     // still being processed.
     };
+#ifdef HOST_WASM
+    PTR_VOID GetShadowStackTop();
+    void SetShadowStackBottom(PTR_VOID pShadowStack);
+    void SetShadowStackTop(PTR_VOID pShadowStack);
+#endif
 private:
 
     void Construct();
@@ -196,6 +205,7 @@ private:
     PInvokeTransitionFrame* GetTransitionFrame();
 
 #ifdef HOST_WASM
+    PTR_VOID GetShadowStackBottom();
     void GcScanWasmShadowStack(ScanFunc* pfnEnumCallback, ScanContext* pvCallbackData);
 #endif
 
