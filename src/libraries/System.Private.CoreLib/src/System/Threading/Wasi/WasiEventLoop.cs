@@ -50,7 +50,7 @@ namespace System.Threading
                         tcs.Task.AsyncState!;
                     if (cancellationToken.IsCancellationRequested)
                     {
-                        tcs.SetException(new TaskCanceledException());
+                        tcs.SetCanceled(cancellationToken);
                         tasksCanceled = true;
                     }
                     else
