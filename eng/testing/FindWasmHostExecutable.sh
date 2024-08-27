@@ -6,7 +6,6 @@ exename=$(basename "$exename" .js)
 dirname=$(dirname "$1")
 
 node="node --stack_trace_limit=100"
-WASM_HOST_ARGS_SEPERATOR=""
 
 if [ -e "${dirname}/${exename}.js" ]; then
   WASM_HOST_EXECUTABLE=$node
@@ -25,6 +24,5 @@ elif [ -e "${dirname}/${exename}.wasm" ]; then
     WASMTIME_EXECUTABLE=wasmtime
   fi
   WASM_HOST_EXECUTABLE="$WASMTIME_EXECUTABLE run -S http"
-  WASM_HOST_ARGS_SEPERATOR="--"
   WASM_BINARY_TO_EXECUTE="${dirname}/${exename}.wasm"
 fi
