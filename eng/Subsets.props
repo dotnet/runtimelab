@@ -128,6 +128,7 @@
 
     <!-- If we're building clr.nativeaotlibs and not building the CLR runtime, compile libraries against NativeAOT CoreLib -->
     <UseNativeAotCoreLib Condition="'$(TestNativeAot)' == 'true' or ($(_subset.Contains('+clr.nativeaotlibs+')) and !$(_subset.Contains('+clr.native+')) and !$(_subset.Contains('+clr.runtime+')) and !$(_subset.Contains('+clr.corelib+')))">true</UseNativeAotCoreLib>
+    <UseNativeAotCoreLib Condition="'$(UseNativeAotCoreLib)' == '' and $(_subset.Contains('+nativeaot.'))">true</UseNativeAotCoreLib>
   </PropertyGroup>
 
   <!-- Configure build properties for C++ runtime library references. -->

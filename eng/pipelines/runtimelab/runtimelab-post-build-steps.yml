@@ -21,8 +21,14 @@ steps:
     - script: $(Build.SourcesDirectory)/build$(scriptExt) clr.wasmjit+clr.aot -c $(buildConfigUpper) $(_officialBuildParameter) -ci -cross
       displayName: Build the ILC and RyuJit cross-compilers
 
-    - ${{ if and(eq(parameters.isOfficialBuild, true), eq(parameters.platform, 'browser_wasm_win')) }}:
-      - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -c $(buildConfigUpper) $(_officialBuildParameter) -ci
+    # Build target packages when the host OS is Windows (note: target libs already built).
+    - ${{ if contains(parameters.platform, 'win') }}:
+      - script: $(Build.SourcesDirectory)/build$(scriptExt) nativeaot.packages -a wasm -os ${{ parameters.osGroup }} -c $(buildConfigUpper) $(_officialBuildParameter) -ci
+        displayName: Build target packages
+
+    # Build host packages when the target OS is Browser.
+    - ${{ if eq(parameters.osGroup, 'browser') }}:
+      - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -c $(buildConfigUpper) $(_officialBuildParameter) -ci -cross
         displayName: Build host packages
 
   # Build coreclr native test output outside of official build
