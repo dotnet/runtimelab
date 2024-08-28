@@ -221,7 +221,35 @@ namespace System.Net.Http
                 }
             }
 
-            var outgoingRequest = new ITypes.OutgoingRequest(ITypes.Fields.FromList(headers));
+            ITypes.Fields fields;
+            try
+            {
+                fields = ITypes.Fields.FromList(headers);
+            }
+            catch (WitException e)
+            {
+                var error = (ITypes.HeaderError)e.Value;
+                var buffer = new StringBuilder($"header error: {HeaderErrorToString(error)}\n");
+                foreach (var pair in request.Headers)
+                {
+                    foreach (var value in pair.Value)
+                    {
+                        buffer.Append($"\n{pair.Key}: {value}");
+                    }
+                }
+                if (request.Content is not null)
+                {
+                    foreach (var pair in request.Content.Headers)
+                    {
+                        foreach (var value in pair.Value)
+                        {
+                            buffer.Append($"\n{pair.Key}: {value}");
+                        }
+                    }
+                }
+                throw new HttpRequestException(buffer.ToString());
+            }
+            var outgoingRequest = new ITypes.OutgoingRequest(fields);
             outgoingRequest.SetMethod(method);
             outgoingRequest.SetScheme(scheme);
             outgoingRequest.SetAuthority(authority);
@@ -242,7 +270,7 @@ namespace System.Net.Http
                 await Task.WhenAll(
                         new Task<ITypes.IncomingResponse?>[]
                         {
-                            SendRequestAsync(outgoingRequest, cancellationToken),
+                            SendRequestAsync(uri, outgoingRequest, cancellationToken),
                             sendContent()
                         }
                     )
@@ -279,6 +307,7 @@ namespace System.Net.Http
         }
 
         private static async Task<ITypes.IncomingResponse?> SendRequestAsync(
+            Uri? uri,
             ITypes.OutgoingRequest request,
             CancellationToken cancellationToken
         )
@@ -291,7 +320,7 @@ namespace System.Net.Http
             catch (WasiHttpWorld.WitException e)
             {
                 var message = ErrorCodeToString((ITypes.ErrorCode)e.Value);
-                throw new Exception($"Request Error: {message}");
+                throw new Exception($"Request Error for {uri}: {message}");
             }
 
             while (true)
@@ -310,7 +339,7 @@ namespace System.Net.Http
                     else
                     {
                         var message = ErrorCodeToString(result.AsErr);
-                        throw new Exception($"Request Error: {message}");
+                        throw new Exception($"Request Error for {uri}: {message}");
                     }
                 }
                 else
@@ -318,6 +347,21 @@ namespace System.Net.Http
                     await RegisterWasiPollable(future.Subscribe(), cancellationToken)
                         .ConfigureAwait(false);
                 }
+            }
+        }
+
+        private static string HeaderErrorToString(ITypes.HeaderError error)
+        {
+            switch (error.Tag)
+            {
+                case ITypes.HeaderError.INVALID_SYNTAX:
+                    return "INVALID_SYNTAX";
+                case ITypes.HeaderError.FORBIDDEN:
+                    return "FORBIDDEN";
+                case ITypes.HeaderError.IMMUTABLE:
+                    return "IMMUTABLE";
+                default:
+                    return $"{error.Tag}";
             }
         }
 
