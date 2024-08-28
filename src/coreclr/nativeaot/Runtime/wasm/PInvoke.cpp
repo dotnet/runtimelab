@@ -16,27 +16,12 @@
 
 #include "wasm.h"
 
-thread_local void* t_pShadowStackBottom = nullptr;
-thread_local void* t_pShadowStackTop = nullptr;
-
-void* GetShadowStackBottom()
-{
-    return t_pShadowStackBottom;
-}
-
-void* GetShadowStackTop()
-{
-    return t_pShadowStackTop;
-}
-
-void SetShadowStackTop(void* pShadowStack)
-{
-    t_pShadowStackTop = pShadowStack;
-}
-
 FCIMPL_NO_SS(void*, RhpGetOrInitShadowStackTop)
 {
-    void* pShadowStack = t_pShadowStackTop;
+    Thread* pCurThread = ThreadStore::RawGetCurrentThread();
+
+    void* pShadowStack = pCurThread->GetShadowStackTop();
+
     if (pShadowStack == nullptr)
     {
         pShadowStack = malloc(1000000); // ~1MB.
@@ -45,8 +30,7 @@ FCIMPL_NO_SS(void*, RhpGetOrInitShadowStackTop)
             RhFailFast(); // Fatal OOM.
         }
 
-        ASSERT(t_pShadowStackBottom == nullptr);
-        t_pShadowStackBottom = pShadowStack;
+        pCurThread->SetShadowStackBottom(pShadowStack);
     }
 
     return pShadowStack;
@@ -63,7 +47,7 @@ FCIMPL1(void, RhpReversePInvoke, ReversePInvokeFrame* pFrame)
         return;
 
     // The slow path may invoke runtime initialization, which runs managed code.
-    SetShadowStackTop(pShadowStack);
+    pCurThread->SetShadowStackTop(pShadowStack);
     RhpReversePInvokeAttachOrTrapThread2(pFrame);
 }
 FCIMPLEND
@@ -71,15 +55,15 @@ FCIMPLEND
 FCIMPL_NO_SS(void, RhpReversePInvokeReturn, void* pPreviousShadowStackTop, ReversePInvokeFrame* pFrame)
 {
     pFrame->m_savedThread->InlineReversePInvokeReturn(pFrame);
-    SetShadowStackTop(pPreviousShadowStackTop);
+    pFrame->m_savedThread->SetShadowStackTop(pPreviousShadowStackTop);
 }
 FCIMPLEND
 
 FCIMPL1(void, RhpPInvoke, PInvokeTransitionFrame* pFrame)
 {
-    SetShadowStackTop(pShadowStack);
     Thread* pCurThread = ThreadStore::RawGetCurrentThread();
     pCurThread->InlinePInvoke(pFrame);
+    pCurThread->SetShadowStackTop(pShadowStack);
 }
 FCIMPLEND
 

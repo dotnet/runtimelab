@@ -28,7 +28,6 @@
 // WASM-specific allocators: we define them to use a shadow stack argument to avoid saving it on the fast path.
 //
 extern "C" void* RhpGcAlloc(MethodTable* pEEType, uint32_t uFlags, uintptr_t numElements, void* pTransitionFrame);
-void SetShadowStackTop(void* pShadowStack);
 
 // Note that the emulated exception handling model requires us to call all managed methods that may/will throw
 // only in the tail-like position so that control can immediately return to the caller in case of an exception.
@@ -44,14 +43,14 @@ static Object* AllocateObject(void* pShadowStack, MethodTable* pEEType, uint32_t
 {
     // Save the current shadow stack before calling into GC; we may need to scan it for live references.
     PInvokeTransitionFrame frame;
-    SetShadowStackTop(pShadowStack);
+    Thread* pThread = ThreadStore::GetCurrentThread();
+    pThread->SetShadowStackTop(pShadowStack);
     Object* obj = (Object*)RhpGcAlloc(pEEType, uFlags, numElements, &frame);
 
 #ifndef FEATURE_WASM_THREADS
     if (g_FinalizationRequestPending)
     {
         GCFrameRegistration gc; // GC-protect our exposed object.
-        Thread* pThread = ThreadStore::GetCurrentThread();
         if (obj != nullptr)
         {
             gc.m_pThread = pThread;

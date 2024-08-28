@@ -118,6 +118,10 @@ struct RuntimeThreadLocals
 #ifdef FEATURE_GC_STRESS
     uint32_t                m_uRand;                                // current per-thread random number
 #endif // FEATURE_GC_STRESS
+#ifdef HOST_WASM
+    void*                   m_pShadowStackBottom;
+    void*                   m_pShadowStackTop;
+#endif // HOST_WASM
 };
 
 struct ReversePInvokeFrame
@@ -332,6 +336,12 @@ public:
 #ifdef TARGET_X86
     void                SetPendingRedirect(PCODE eip);
     bool                CheckPendingRedirect(PCODE eip);
+#endif
+
+#ifdef HOST_WASM
+    void* GetShadowStackTop();
+    void SetShadowStackBottom(void* pShadowStack);
+    void SetShadowStackTop(void* pShadowStack);
 #endif
 };
 
