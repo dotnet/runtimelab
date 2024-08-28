@@ -21,4 +21,3 @@ world wasi-http {
 }
 EOF
 wit-bindgen c-sharp -w wasi-http -r native-aot --internal wasi-http-0.2.1/wit
-rm -r wasi-http-0.2.1 v0.2.1.tar.gz WasiHttpWorld_wasm_import_linkage_attribute.cs
