@@ -175,6 +175,8 @@ namespace LibraryWorld
 
             using var impatientClient = new HttpClient();
             impatientClient.Timeout = TimeSpan.FromMilliseconds(100);
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
             try {
                 await impatientClient.GetAsync($"{urlBase}/slow-hello");
                 throw new Exception("request to /slow-hello endpoint should have timed out");
@@ -183,6 +185,9 @@ namespace LibraryWorld
                 // response, whereas we've set a 100ms timeout, so this is
                 // expected.
             }
+            stopwatch.Stop();
+            Trace.Assert(stopwatch.ElapsedMilliseconds >= 100);
+            Trace.Assert(stopwatch.ElapsedMilliseconds < 1000);
         }
 
         public static int ReturnsPrimitiveInt()
