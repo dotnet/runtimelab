@@ -22,7 +22,7 @@ See Emscripten documentation on how to properly interact with this code: https:/
 
 This sample uses the `Using direct function calls` option: exported functions are made available globally in JavaScript, prefixed by an underscore.
 
-When targeting `wasi-wasm`, the library produced is a self-contained WASM module. Interacting with it involves simply calling its exportes.
+When targeting `wasi-wasm`, the library produced is a self-contained WASM module. Interacting with it involves simply calling its exports.
 
 ## Exporting methods
 
