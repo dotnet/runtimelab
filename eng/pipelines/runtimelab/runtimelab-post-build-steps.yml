@@ -5,24 +5,25 @@ parameters:
   osSubgroup: ''
   platform: ''
   runtimeVariant: ''
-  uploadTests: false
   testFilter: tree nativeaot
-  runSingleFileTests: true
   isOfficialBuild: false
   librariesConfiguration: Debug
 
 steps:
-- ${{ if and(ne(parameters.archType, 'arm'), ne(parameters.archType, 'arm64')) }}:
-
   # For NativeAOT-LLVM, we have just built the Wasm-targeting native artifacts (the runtime and libraries).
   # Now we need to build the cross-targeting compilers, RyuJit and ILC. Likewise with packages.
-
   - ${{ if eq(parameters.archType, 'wasm') }}:
     - script: $(Build.SourcesDirectory)/build$(scriptExt) clr.wasmjit+clr.aot -c $(buildConfigUpper) $(_officialBuildParameter) -ci -cross
       displayName: Build the ILC and RyuJit cross-compilers
 
-    - ${{ if and(eq(parameters.isOfficialBuild, true), eq(parameters.platform, 'browser_wasm_win')) }}:
-      - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -c $(buildConfigUpper) $(_officialBuildParameter) -ci
+    # Build target packages when the host OS is Windows (note: target libs already built).
+    - ${{ if contains(parameters.platform, 'win') }}:
+      - script: $(Build.SourcesDirectory)/build$(scriptExt) nativeaot.packages -a wasm -os ${{ parameters.osGroup }} -c $(buildConfigUpper) $(_officialBuildParameter) -ci
+        displayName: Build target packages
+
+    # Build host packages when the target OS is Browser.
+    - ${{ if eq(parameters.osGroup, 'browser') }}:
+      - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -c $(buildConfigUpper) $(_officialBuildParameter) -ci -cross
         displayName: Build host packages
 
   # Build coreclr native test output outside of official build
@@ -53,26 +54,25 @@ steps:
       - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} 'tree nativeaot' /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
         displayName: Build tests
 
-    - ${{ if eq(parameters.runSingleFileTests, true) }}:
-      - ${{ if in(parameters.platform, 'browser_wasm_win', 'wasi_wasm_win') }}:
-        - script: |
-            call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-            $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
-          displayName: Run WebAssembly tests in single file mode
-      - ${{ elseif eq(parameters.osGroup, 'windows') }}:
-        - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
-          displayName: Run tests in single file mode
-      - ${{ else }}:
-        - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
-          displayName: Run tests in single file mode
+    - ${{ if in(parameters.platform, 'browser_wasm_win', 'wasi_wasm_win') }}:
+      - script: |
+          call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
+          $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
+        displayName: Run WebAssembly tests in single file mode
+    - ${{ elseif eq(parameters.osGroup, 'windows') }}:
+      - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
+        displayName: Run tests in single file mode
+    - ${{ else }}:
+      - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
+        displayName: Run tests in single file mode
 
     - ${{ if eq(parameters.archType, 'wasm') }}:
       - script: |
             $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
         displayName: Build and run WebAssembly libraries tests
 
-# Upload unsigned artifacts
-- ${{ if eq(parameters.uploadIntermediateArtifacts, true) }}:
-  - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
-    parameters:
-      name: ${{ parameters.platform }}${{ parameters.nameSuffix }}
+  # Upload unsigned artifacts
+  - ${{ if eq(parameters.uploadIntermediateArtifacts, true) }}:
+    - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
+      parameters:
+        name: ${{ parameters.platform }}${{ parameters.nameSuffix }}

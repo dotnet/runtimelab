@@ -36,14 +36,16 @@ extends:
           jobTemplate: /eng/pipelines/common/global-build-job.yml
           buildConfig: Release
           platforms:
-          - Browser_wasm_win
+          - browser_wasm_win
           - wasi_wasm_win
+          - Browser_wasm_linux_x64_naot_llvm
+          - wasi_wasm_linux_x64_naot_llvm
           jobParameters:
             templatePath: 'templates-official'
             timeoutInMinutes: 300
             isOfficialBuild: true
             testGroup: innerloop
-            buildArgs: -s clr.aot+libs+nativeaot.packages -c $(_BuildConfig)
+            buildArgs: -s clr.aot+libs -c $(_BuildConfig)
             postBuildSteps:
             - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
               parameters:
