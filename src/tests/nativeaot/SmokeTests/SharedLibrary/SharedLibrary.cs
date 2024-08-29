@@ -118,6 +118,9 @@ namespace LibraryWorld
     {
         public static void TestHttp(ushort port)
         {
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+
             var task = TestHttpAsync(port);
             while (!task.IsCompleted)
             {
@@ -128,6 +131,13 @@ namespace LibraryWorld
             {
                 throw exception;
             }
+
+            stopwatch.Stop();
+            // Verify that `WasiEventLoop.DispatchWasiEventLoop` returned
+            // promptly once the main task finished, even if there were other
+            // tasks (e.g. the default 100 second HttpClient timeout) still in
+            // progress.
+            Trace.Assert(stopwatch.ElapsedMilliseconds < 1000);
         }
 
         private static async Task TestHttpAsync(ushort port)
