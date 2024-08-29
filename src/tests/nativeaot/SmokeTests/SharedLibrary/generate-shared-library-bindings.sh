@@ -11,6 +11,7 @@ set -ex
 #   [cargo](https://rustup.rs/)
 #   [curl](https://curl.se/download.html)
 
-cargo install --locked --no-default-features --features csharp --version 0.29.0 wit-bindgen-cli
+# TODO: switch to crates.io release once https://github.com/bytecodealliance/wit-bindgen/pull/1040 is merged and released
+cargo install --locked --no-default-features --features csharp --git https://github.com/dicej/wit-bindgen --rev 34afca03 wit-bindgen-cli
 wit-bindgen c-sharp -w library -r native-aot wit
-rm LibraryWorld_wasm_import_linkage_attribute.cs LibraryWorld_cabi_realloc.c LibraryWorld_component_type.o
+rm LibraryWorld_wasm_import_linkage_attribute.cs
