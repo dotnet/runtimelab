@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFramework>$(NetCoreAppCurrent)</TargetFramework>
     <_WasiNeedsHttp>true</_WasiNeedsHttp>
+    <CLRTestExitCode>0</CLRTestExitCode>
     <!-- 
     <WasmSingleFileBundle>true</WasmSingleFileBundle>
     <InvariantGlobalization>true</InvariantGlobalization>
