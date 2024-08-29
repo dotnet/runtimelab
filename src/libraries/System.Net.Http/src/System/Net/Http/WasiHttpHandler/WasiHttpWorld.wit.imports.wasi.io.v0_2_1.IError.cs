@@ -46,7 +46,6 @@ internal interface IError {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:io/error@0.2.1", EntryPoint = "[resource-drop]error"), WasmImportLinkage]
@@ -57,10 +56,6 @@ internal interface IError {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~Error() {
-            Dispose(false);
         }
 
         internal static class ToDebugStringWasmInterop

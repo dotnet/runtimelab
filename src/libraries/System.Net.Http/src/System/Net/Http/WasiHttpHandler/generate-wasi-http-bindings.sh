@@ -12,7 +12,7 @@ set -ex
 #   [curl](https://curl.se/download.html)
 
 # TODO: switch to crates.io release once https://github.com/bytecodealliance/wit-bindgen/pull/1040 is merged and released
-cargo install --locked --no-default-features --features csharp --git https://github.com/dicej/wit-bindgen --rev 34afca03 wit-bindgen-cli
+cargo install --locked --no-default-features --features csharp --git https://github.com/dicej/wit-bindgen --rev 694fd927 wit-bindgen-cli
 curl -OL https://github.com/WebAssembly/wasi-http/archive/refs/tags/v0.2.1.tar.gz
 tar xzf v0.2.1.tar.gz
 cat >wasi-http-0.2.1/wit/world.wit <<EOF

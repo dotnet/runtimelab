@@ -73,7 +73,6 @@ internal interface IStreams {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:io/streams@0.2.1", EntryPoint = "[resource-drop]input-stream"), WasmImportLinkage]
@@ -84,10 +83,6 @@ internal interface IStreams {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~InputStream() {
-            Dispose(false);
         }
 
         internal static class ReadWasmInterop
@@ -389,7 +384,6 @@ internal interface IStreams {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:io/streams@0.2.1", EntryPoint = "[resource-drop]output-stream"), WasmImportLinkage]
@@ -400,10 +394,6 @@ internal interface IStreams {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~OutputStream() {
-            Dispose(false);
         }
 
         internal static class CheckWriteWasmInterop

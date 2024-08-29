@@ -605,7 +605,6 @@ internal interface ITypes {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:http/types@0.2.1", EntryPoint = "[resource-drop]fields"), WasmImportLinkage]
@@ -616,10 +615,6 @@ internal interface ITypes {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~Fields() {
-            Dispose(false);
         }
 
         internal static class ConstructorWasmInterop
@@ -1071,7 +1066,6 @@ internal interface ITypes {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:http/types@0.2.1", EntryPoint = "[resource-drop]incoming-request"), WasmImportLinkage]
@@ -1082,10 +1076,6 @@ internal interface ITypes {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~IncomingRequest() {
-            Dispose(false);
         }
 
         internal static class MethodWasmInterop
@@ -1385,7 +1375,6 @@ internal interface ITypes {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:http/types@0.2.1", EntryPoint = "[resource-drop]outgoing-request"), WasmImportLinkage]
@@ -1396,10 +1385,6 @@ internal interface ITypes {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~OutgoingRequest() {
-            Dispose(false);
         }
 
         internal static class ConstructorWasmInterop
@@ -2069,7 +2054,6 @@ internal interface ITypes {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:http/types@0.2.1", EntryPoint = "[resource-drop]request-options"), WasmImportLinkage]
@@ -2080,10 +2064,6 @@ internal interface ITypes {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~RequestOptions() {
-            Dispose(false);
         }
 
         internal static class ConstructorWasmInterop
@@ -2401,7 +2381,6 @@ internal interface ITypes {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:http/types@0.2.1", EntryPoint = "[resource-drop]response-outparam"), WasmImportLinkage]
@@ -2412,10 +2391,6 @@ internal interface ITypes {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~ResponseOutparam() {
-            Dispose(false);
         }
 
         internal static class SetWasmInterop
@@ -3409,7 +3384,6 @@ internal interface ITypes {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:http/types@0.2.1", EntryPoint = "[resource-drop]incoming-response"), WasmImportLinkage]
@@ -3420,10 +3394,6 @@ internal interface ITypes {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~IncomingResponse() {
-            Dispose(false);
         }
 
         internal static class StatusWasmInterop
@@ -3528,7 +3498,6 @@ internal interface ITypes {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:http/types@0.2.1", EntryPoint = "[resource-drop]incoming-body"), WasmImportLinkage]
@@ -3539,10 +3508,6 @@ internal interface ITypes {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~IncomingBody() {
-            Dispose(false);
         }
 
         internal static class StreamWasmInterop
@@ -3629,7 +3594,6 @@ internal interface ITypes {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:http/types@0.2.1", EntryPoint = "[resource-drop]future-trailers"), WasmImportLinkage]
@@ -3640,10 +3604,6 @@ internal interface ITypes {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~FutureTrailers() {
-            Dispose(false);
         }
 
         internal static class SubscribeWasmInterop
@@ -4353,7 +4313,6 @@ internal interface ITypes {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:http/types@0.2.1", EntryPoint = "[resource-drop]outgoing-response"), WasmImportLinkage]
@@ -4364,10 +4323,6 @@ internal interface ITypes {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~OutgoingResponse() {
-            Dispose(false);
         }
 
         internal static class ConstructorWasmInterop
@@ -4535,7 +4490,6 @@ internal interface ITypes {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:http/types@0.2.1", EntryPoint = "[resource-drop]outgoing-body"), WasmImportLinkage]
@@ -4546,10 +4500,6 @@ internal interface ITypes {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~OutgoingBody() {
-            Dispose(false);
         }
 
         internal static class WriteWasmInterop
@@ -5263,7 +5213,6 @@ internal interface ITypes {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:http/types@0.2.1", EntryPoint = "[resource-drop]future-incoming-response"), WasmImportLinkage]
@@ -5274,10 +5223,6 @@ internal interface ITypes {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~FutureIncomingResponse() {
-            Dispose(false);
         }
 
         internal static class SubscribeWasmInterop

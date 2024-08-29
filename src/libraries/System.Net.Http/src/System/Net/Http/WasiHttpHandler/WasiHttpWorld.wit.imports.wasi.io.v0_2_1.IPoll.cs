@@ -30,7 +30,6 @@ internal interface IPoll {
 
         public void Dispose() {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         [DllImport("wasi:io/poll@0.2.1", EntryPoint = "[resource-drop]pollable"), WasmImportLinkage]
@@ -41,10 +40,6 @@ internal interface IPoll {
                 wasmImportResourceDrop(Handle);
                 Handle = 0;
             }
-        }
-
-        ~Pollable() {
-            Dispose(false);
         }
 
         internal static class ReadyWasmInterop
