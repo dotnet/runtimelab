@@ -289,7 +289,7 @@ namespace ILCompiler.ObjectWriter
             return size;
         }
 
-        private uint WriteCodeSection(Stream stream)
+        private unsafe uint WriteCodeSection(Stream stream)
         {
             uint definedFunctionsCount = (uint)_codeWasmSection.LinkingSections.Length;
             if (definedFunctionsCount == 0)
@@ -305,6 +305,19 @@ namespace ILCompiler.ObjectWriter
                 size += WriteULeb128(stream, (uint)chunk.Content.Length);
                 if (IsWritingPhase(stream))
                 {
+                    foreach (ref Relocation relocation in chunk.Relocations.AsSpan())
+                    {
+                        if (RelocationRequiresValidWasmEntity(in relocation))
+                        {
+                            fixed (void* location = &chunk.Content[relocation.Offset])
+                            {
+                                int symbolIndex = _symbolNodeToSymbolIndexMap[relocation.Target];
+                                uint wasmEntityIndex = _symbols[symbolIndex].Index;
+                                Relocation.WriteValue(relocation.RelocType, location, wasmEntityIndex);
+                            }
+                        }
+                    }
+
                     // "WasmSectionRelativeOffset" points at the "Content"'s beginning.
                     chunk.WasmSectionRelativeOffset = size;
                 }
@@ -692,6 +705,17 @@ namespace ILCompiler.ObjectWriter
         }
 
         private static bool IsWritingPhase(Stream stream) => stream != null;
+
+        // Some relocations need to be fixed up to refer to valid WASM entities at the object file level.
+        // While these values will be overwritten later by the static linker and so are in effect "useless",
+        // fixing them makes the object file validate and helps in diagnostics (e. g. disassembly).
+        private bool RelocationRequiresValidWasmEntity(ref readonly Relocation relocation)
+        {
+            bool result = relocation.RelocType is RelocType.R_WASM_FUNCTION_INDEX_LEB;
+            // Make sure we don't attempt to overwrite the addend, which is also stored in the bytes to be relocated.
+            Debug.Assert(!result || !WasmRelocKindHasAddend(GetWasmRelocationKind(in relocation)));
+            return result;
+        }
 
         private WasmRelocationKind GetWasmRelocationKind(ref readonly Relocation relocation)
         {
