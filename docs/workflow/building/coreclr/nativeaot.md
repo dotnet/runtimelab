@@ -18,13 +18,12 @@ The Native AOT toolchain can be currently built for Linux (x64/arm64), macOS (x6
 
 - This branch contains a version of the WebAssembly compiler that creates LLVM from the clrjit to take advantage of RyuJit's optimizations specific to managed code, and its compiler infrastructure. It goes from RyuJIT IR -> LLVM instead of the older CoreRT way of CIL -> LLVM.
 - The work is of highly experimental nature. Bugs and not-yet-or-ever-to-be-implemented features are to be expected.
-- The build supporting a developer workflow currently only exists on Windows.
-- Do not attempt to build with the emscripten debug environment variable set.  I.e do not `set EMCC_DEBUG=1` as the extra output will confuse the scripts.
+- Do not attempt to build with the emscripten debug environment variable set. I.e do not `set EMCC_DEBUG=1` as the extra output will confuse the scripts.
 
 There are two kinds of binary artifacts produced by the build and needed for development: the runtime libraries and the cross-targeting compilers, ILC and RyuJit. They are built differently and separately.
 
 For the runtime libraries:
-- To build for web browsers, clone the [emsdk](https://github.com/emscripten-core/emsdk) repository and use the `emsdk.bat` script it comes with to [install](https://emscripten.org/docs/getting_started/downloads.html) (and optionally "activate", i. e. set the relevant environment variables permanently) the Emscripten SDK, which will be used by the native build as a sort of "virtualized" build environment.
+- To build for web browsers, clone the [emsdk](https://github.com/emscripten-core/emsdk) repository and use the `emsdk.[bat|sh]` script it comes with to [install](https://emscripten.org/docs/getting_started/downloads.html) (and optionally "activate", i. e. set the relevant environment variables permanently) the Emscripten SDK, which will be used by the native build as a sort of "virtualized" build environment.
   ```
   git clone https://github.com/emscripten-core/emsdk
   cd emsdk
@@ -43,31 +42,32 @@ For the compilers:
   - Runs CMake configuration, with VS 2022 as the generator.
   - Builds the projects needed by RyuJit. You can skip this with `-nobuild`.
   - Sets enviroment variables that the runtime build will later use to find LLVM sources: `LLVM_CMAKE_CONFIG_DEBUG` and `LLVM_CMAKE_CONFIG_RELEASE`.
-    For convenience, the script does this in scope of the current user, so you don't need to run it more than once (unless the LLVM version changes).
+    On Windows, the script does this in scope of the current user, so you don't need to run it more than once (unless the LLVM version changes).
     You can manually set these variables too, to use `Release` LLVM with a `Checked` Jit, or use a different checkout of `llvm-project`.
   - You can alter the configurations the script builds with `-configs`. By default, LLVM is built in `Debug` and `Release`.
 - Build the Jits and the ILC: `build clr.wasmjit+clr.aot -c [Debug|Release]`. Add the `libs` subset if you want the packages for publishing, e.g. `build clr.wasmjit+clr.aot+libs -c Debug`.
-- You can use the `-msbuild` option, `build clr.wasmjit -msbuild`, to generate a Visual Studio solution for the Jit, to be found in `artifacts/obj/coreclr/windows.x64.Debug/ide/jit`.
 
 With the above binaries built, the ILC can be run and debugged as normal. The runtime tests can also be built, in bulk: `src/tests/build nativeaot [debug|release] wasm tree nativeaot`, or individually: `cd <test-directory> && dotnet build TestProjectName.csproj /t:BuildNativeAot /p:TestBuildMode=nativeaot /p:TargetArchitecture=wasm /p:TargetOS=browser`, and run as described in the sections below. When building individual tests, `src/tests/build nativeaot [debug|release] wasm skipmanaged` needs to be run beforehand at least once, to build the native assets and restore test projects. Note that by default, the tests use `Release` libraries - if you want to use `Debug` ones, pass `/p:LibrariesConfiguration=Debug`.
 
-Working on the Jit itself, one possible workflow is taking advantage of the generated VS project:
-- Open the Ilc solution and add the aforementioned Jit project, `clrjit_universal_wasm32_x64.vcxproj`. Then in the project properties, General section, change the output folder to the full path for `artifacts\bin\coreclr\windows.x64.Debug\ilc` e.g. `E:\GitHub\runtimelab\artifacts\bin\coreclr\windows.x64.Debug\ilc`. Build `clrjit_universal_wasm32_x64` project and you should now be able to change and put breakpoints in the C++ code.
+On Windows, it is possible to use generated Visual Studio solutions to work on the Jit:
+- Run `build clr.wasmjit -msbuild` to generate the solution, to be found in `artifacts/obj/coreclr/windows.x64.Debug/ide/jit`.
+- Open the Ilc solution (`src/coreclr/tools/aot/ilc.sln`) and add the aforementioned Jit project, `clrjit_universal_wasm32_x64.vcxproj`. Then in the project properties, General section, change the output folder to the full path for `artifacts\bin\coreclr\windows.x64.Debug\ilc` e.g. `E:\GitHub\runtimelab\artifacts\bin\coreclr\windows.x64.Debug\ilc`. Build `clrjit_universal_wasm32_x64` project and you should now be able to change and put breakpoints in the C++ code.
 
 It is also possible to publish an ordinary console project for Wasm using packages produced by the build: `build nativeaot.packages && build nativeaot.packages -a wasm -os browser`, assuming all the binaries mentioned above have been built (note that the order is important - the build always produces an architecture-independent package that has a dependency on an architecture-dependent one, and we want that architecture-dependent package to be built for Wasm). Add the `path-to-repo/artifacts/packages/[Debug|Release]/Shipping` directory to your project's `NuGet.Config`, add the property
 ```xml
 <PropertyGroup>
   <PublishTrimmed>true</PublishTrimmed>
+  <SelfContained>true</SelfContained>
 </PropertyGroup>
 ```
 and the following two references to the project file itself:
 ```xml
 <ItemGroup>
-  <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="8.0.0-dev" />
-  <PackageReference Include="runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="8.0.0-dev" />
+  <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-dev" />
+  <PackageReference Include="runtime.$(NETCoreSdkPortableRuntimeIdentifier).Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-dev" />
 </ItemGroup>
 ```
-You should now be able to publish the project for Wasm: `dotnet publish --self-contained -r browser-wasm /p:MSBuildEnableWorkloadResolver=false`. This produces `YourApp.html` and `YourApp.js` files under `bin\<Config>\<TFM>\browser-wasm\native`. The former can be opened in the browser, the latter - run via NodeJS.
+You should now be able to publish the project for Wasm: `dotnet publish -r browser-wasm /p:MSBuildEnableWorkloadResolver=false`. This produces `YourApp.html` and `YourApp.js` files under `bin\<Config>\<TFM>\browser-wasm\native`. The former can be opened in the browser, the latter - run via NodeJS.
 
 ## Building
 

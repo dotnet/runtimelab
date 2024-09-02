@@ -1,6 +1,6 @@
 # Compiling with NativeAOT-LLVM
 
-Compilation using NativeAOT-LLVM is currently only supported on Windows x64. Contributions enabling the compiler on other platforms are welcome.
+Compilation using NativeAOT-LLVM is currently only supported on Windows x64 and Linux x64. Contributions enabling the compiler on other platforms are welcome.
 
 This document explains how to compile and publish your project using NativeAOT-LLVM toolchain. First, please _ensure that [pre-requisites](prerequisites.md) are installed_. If you are starting a new project, you may find the [samples](../../samples) useful.
 
@@ -19,17 +19,11 @@ If your project has no `nuget.config` file, it may be created by running
 
 from the project's root directory. New package sources must be added after the `<clear />` element if you decide to keep it.
 
-Once you have added the package sources, add a reference to the ILCompiler packages either by running
-```bash
-> dotnet add package Microsoft.DotNet.ILCompiler.LLVM -v 9.0.0-*
-> dotnet add package runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM -v 9.0.0-*
-```
-
-or by adding the following elements to the project file:
+Once you have added the package sources, add references to the ILCompiler packages by adding the following elements to the project file:
 ```xml
 <ItemGroup>
   <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
-  <PackageReference Include="runtime.win-x64.Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
+  <PackageReference Include="runtime.$(NETCoreSdkPortableRuntimeIdentifier).Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
 </ItemGroup>
 ```
 
