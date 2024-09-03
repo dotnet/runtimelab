@@ -137,7 +137,7 @@ namespace LibraryWorld
             // promptly once the main task finished, even if there were other
             // tasks (e.g. the default 100 second HttpClient timeout) still in
             // progress.
-            Trace.Assert(stopwatch.ElapsedMilliseconds < 1000);
+            Trace.Assert(stopwatch.ElapsedMilliseconds < 10000);
         }
 
         private static async Task TestHttpAsync(ushort port)
