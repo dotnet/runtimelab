@@ -66,6 +66,7 @@ FCIMPL1(uint8_t *, RhGetRuntimeVersion, int32_t* pcbLength)
 }
 FCIMPLEND
 
+#ifndef TARGET_BROWSER
 FCIMPL1(uint8_t *, RhFindMethodStartAddress, void * codeAddr)
 {
     uint8_t *startAddress = dac_cast<uint8_t *>(GetRuntimeInstance()->FindMethodStartAddress(dac_cast<PTR_VOID>(codeAddr)));
@@ -76,6 +77,7 @@ FCIMPL1(uint8_t *, RhFindMethodStartAddress, void * codeAddr)
 #endif
 }
 FCIMPLEND
+#endif // !TARGET_BROWSER
 
 PTR_uint8_t RuntimeInstance::FindMethodStartAddress(PTR_VOID ControlPC)
 {

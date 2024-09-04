@@ -1,7 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+#if TARGET_BROWSER
+#define FEATURE_IP_TO_FUNCTION_POINTER_MAP
+#endif
+
 using System.Reflection.Runtime.General;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 using global::Internal.Metadata.NativeFormat;
@@ -445,6 +450,27 @@ namespace Internal.Reflection.Execution
 
         private struct FunctionPointersToOffsets
         {
+#if FEATURE_IP_TO_FUNCTION_POINTER_MAP
+            public RuntimeAugments.StackTraceIpAndFunctionPointer[] StackTraceIpMap;
+
+            public bool TryGetFunctionPointer(IntPtr methodStartAddress, out IntPtr functionPointer)
+            {
+                if (StackTraceIpMap != null)
+                {
+                    var item = new RuntimeAugments.StackTraceIpAndFunctionPointer() { StackTraceIp = methodStartAddress };
+                    int index = Array.BinarySearch(StackTraceIpMap, item);
+                    if (index > 0)
+                    {
+                        functionPointer = StackTraceIpMap[index].FunctionPointer;
+                        Debug.Assert(functionPointer != 0);
+                        return true;
+                    }
+                }
+
+                functionPointer = 0;
+                return false;
+            }
+#endif
             public FunctionPointerOffsetPair[] Data;
 
             public bool TryGetOffsetsRange(IntPtr functionPointer, out int firstParserOffsetIndex, out int lastParserOffsetIndex)
@@ -498,6 +524,25 @@ namespace Internal.Reflection.Execution
                 _ldftnReverseLookup_InvokeMap = ldFtnReverseLookup;
             }
             return ldFtnReverseLookup;
+        }
+
+        public sealed override IntPtr ConvertStackTraceIpToFunctionPointer(IntPtr methodStartAddress)
+        {
+#if FEATURE_IP_TO_FUNCTION_POINTER_MAP
+            foreach ((_, FunctionPointersToOffsets data) in GetLdFtnReverseLookups_InvokeMap())
+            {
+                if (data.TryGetFunctionPointer(methodStartAddress, out nint functionPointer))
+                {
+                    return functionPointer;
+                }
+            }
+
+            // Not in the InvokeMap, return null.
+            return 0;
+#else
+            // For other targets, IPs and function pointers are in the same address space.
+            return methodStartAddress;
+#endif
         }
 
         internal unsafe void GetFunctionPointerAndInstantiationArgumentForOriginalLdFtnResult(IntPtr originalLdFtnResult, out IntPtr canonOriginalLdFtnResult, out IntPtr instantiationArgument)
@@ -636,6 +681,19 @@ namespace Internal.Reflection.Execution
 
             functionPointerToOffsetInInvokeMap.Data = functionPointers.ToArray();
             Array.Sort(functionPointerToOffsetInInvokeMap.Data);
+
+#if FEATURE_IP_TO_FUNCTION_POINTER_MAP
+            FunctionPointerOffsetPair[] data = functionPointerToOffsetInInvokeMap.Data;
+            var stackTraceIpMap = new RuntimeAugments.StackTraceIpAndFunctionPointer[data.Length];
+            for (int i = 0; i < data.Length; i++)
+            {
+                stackTraceIpMap[i].FunctionPointer = data[i].FunctionPointer;
+            }
+
+            RuntimeAugments.InitializeStackTraceIpMap(stackTraceIpMap);
+            Array.Sort(stackTraceIpMap);
+            functionPointerToOffsetInInvokeMap.StackTraceIpMap = stackTraceIpMap;
+#endif
 
             return functionPointerToOffsetInInvokeMap;
         }

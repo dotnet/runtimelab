@@ -14,6 +14,7 @@ using Internal.Runtime.TypeLoader;
 using Internal.TypeSystem;
 
 using Debug = System.Diagnostics.Debug;
+using Unsafe = System.Runtime.CompilerServices.Unsafe;
 using ReflectionExecution = Internal.Reflection.Execution.ReflectionExecution;
 
 namespace Internal.StackTraceMetadata
@@ -70,6 +71,7 @@ namespace Internal.StackTraceMetadata
             isStackTraceHidden = false;
 
             // We haven't found information in the stack trace metadata tables, but maybe reflection will have this
+            methodStartAddress = ReflectionExecution.ConvertStackTraceIpToFunctionPointer(methodStartAddress);
             if (IsReflectionExecutionAvailable() && ReflectionExecution.TryGetMethodMetadataFromStartAddress(methodStartAddress,
                 out MetadataReader reader,
                 out TypeDefinitionHandle typeHandle,
@@ -125,6 +127,7 @@ namespace Internal.StackTraceMetadata
             }
 
             // We haven't found information in the stack trace metadata tables, but maybe reflection will have this
+            methodStartAddress = ReflectionExecution.ConvertStackTraceIpToFunctionPointer(methodStartAddress);
             if (IsReflectionExecutionAvailable() && ReflectionExecution.TryGetMethodMetadataFromStartAddress(methodStartAddress,
                 out MetadataReader reader,
                 out TypeDefinitionHandle typeHandle,
@@ -386,8 +389,13 @@ namespace Internal.StackTraceMetadata
                         GenericArguments = currentMethodInst,
                     };
 
+#if TARGET_BROWSER
+                    static void* ReadRelPtr32(byte* address)
+                        => (void*)RuntimeAugments.GetBiasedWasmFunctionIndex(Unsafe.ReadUnaligned<int>(address));
+#else
                     static void* ReadRelPtr32(byte* address)
                         => address + *(int*)address;
+#endif
                 }
 
                 Debug.Assert(current == _stacktraceDatas.Length);
@@ -421,7 +429,13 @@ namespace Internal.StackTraceMetadata
 
             public struct StackTraceData : IComparable<StackTraceData>
             {
+#if TARGET_BROWSER
+                // Browser/WASM uses function indices, which are not 'aligned', so we can't use 0x2.
+                // (We could bias them to be aligned, but it would complicate JS, hmm...).
+                private const int IsHiddenFlag = 1 << 31;
+#else
                 private const int IsHiddenFlag = 0x2;
+#endif
 
                 private readonly int _rvaAndIsHiddenBit;
 

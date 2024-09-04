@@ -4798,12 +4798,3 @@ class FieldStatics
         return X == 17 && Y == 347 && S1 == "first string" && S2 == "a different string";
     }
 }
-
-namespace System.Runtime.InteropServices
-{
-
-    [AttributeUsage((System.AttributeTargets.Method | System.AttributeTargets.Class))]
-    internal class McgIntrinsicsAttribute : Attribute
-    {
-    }
-}

@@ -50,6 +50,7 @@ namespace Internal.Reflection
         public override void MakeTypedReference(object target, FieldInfo[] flds, out Type type, out int offset) => throw new NotSupportedException(SR.Reflection_Disabled);
         public override Assembly GetAssemblyForHandle(RuntimeTypeHandle typeHandle) => new RuntimeAssemblyInfo(typeHandle);
         public override void RunClassConstructor(RuntimeTypeHandle typeHandle) => throw new NotSupportedException(SR.Reflection_Disabled);
+        public override IntPtr ConvertStackTraceIpToFunctionPointer(IntPtr methodStartAddress) => 0;
         public override MethodBase GetMethodBaseFromStartAddressIfAvailable(IntPtr methodStartAddress) => null;
     }
 }

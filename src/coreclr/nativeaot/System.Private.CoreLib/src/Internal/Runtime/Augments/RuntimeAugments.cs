@@ -33,7 +33,7 @@ using ReflectionPointer = System.Reflection.Pointer;
 
 namespace Internal.Runtime.Augments
 {
-    public static unsafe class RuntimeAugments
+    public static unsafe partial class RuntimeAugments
     {
         /// <summary>
         /// Callbacks used for metadata-based stack trace resolution.
@@ -654,6 +654,15 @@ namespace Internal.Runtime.Augments
             {
                 return s_stackTraceMetadataCallbacks;
             }
+        }
+
+        public static IntPtr ConvertFunctionPointerToStackTraceIp(nint functionPointer)
+        {
+#if TARGET_BROWSER
+            return RuntimeImports.RhpGetBiasedWasmFunctionIndexForFunctionPointer((nuint)functionPointer);
+#else
+            return functionPointer;
+#endif
         }
 
         public static string TryGetMethodDisplayStringFromIp(IntPtr ip)

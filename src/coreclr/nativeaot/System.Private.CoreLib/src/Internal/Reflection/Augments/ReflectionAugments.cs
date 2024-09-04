@@ -169,6 +169,8 @@ namespace Internal.Reflection.Augments
 
         public abstract MethodInfo GetDelegateMethod(Delegate del);
 
+        public abstract IntPtr ConvertStackTraceIpToFunctionPointer(IntPtr methodStartAddress);
+
         public abstract MethodBase GetMethodBaseFromStartAddressIfAvailable(IntPtr methodStartAddress);
 
         public abstract Assembly GetAssemblyForHandle(RuntimeTypeHandle typeHandle);

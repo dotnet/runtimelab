@@ -24,7 +24,6 @@
     <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetsWasm)' == 'true'">
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\SharedLibrary\SharedLibrary.csproj" Condition="'$(TargetOS)' == 'browser'" />
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\StackTraceMetadata\StackTraceMetadata.csproj" Condition="'$(TargetOS)' == 'wasi'" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\StackTraceMetadata\StackTraceMetadata_Stripped.csproj" Condition="'$(TargetOS)' == 'browser'" />
       <DisabledProjects Include="$(TestRoot)nativeaot\GenerateUnmanagedEntryPoints\GenerateUnmanagedEntryPoints.csproj" />
       <DisabledProjects Include="$(TestRoot)nativeaot\CustomMainWithStubExe\CustomMainWithStubExe.csproj" /> <!-- dlopen-based test -->
       <!-- Determinism uses File.Open read which Wasm can't support without Wasi or Emscripten file system support which we don't enable by default. -->

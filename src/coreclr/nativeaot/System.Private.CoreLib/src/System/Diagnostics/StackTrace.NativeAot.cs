@@ -25,7 +25,6 @@ namespace System.Diagnostics
             Debug.Assert(trueFrameCount == frameCount);
             InitializeForIpAddressArray(stackTrace, skipFrames + SystemDiagnosticsStackDepth, frameCount, needFileInfo);
         }
-#endif
 
         /// <summary>
         /// Initialize the stack trace based on a given exception and initial frame index.
@@ -76,8 +75,8 @@ namespace System.Diagnostics
             _numOfFrames = outputFrameCount;
             _methodsToSkip = 0;
         }
+#endif
 
-#if !TARGET_WASM
         internal void ToString(TraceFormat traceFormat, StringBuilder builder)
         {
             if (_stackFrames != null)
@@ -94,6 +93,5 @@ namespace System.Diagnostics
             if (traceFormat == TraceFormat.TrailingNewLine && builder.Length == 0)
                 builder.AppendLine();
         }
-#endif
     }
 }

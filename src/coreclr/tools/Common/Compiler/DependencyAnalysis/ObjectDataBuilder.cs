@@ -289,7 +289,7 @@ namespace ILCompiler.DependencyAnalysis
                         }
                     }
                     break;
-                case RelocType.R_WASM_FUNCTION_OFFSET_I32:
+                case RelocType.R_WASM_FUNCTION_INDEX_I32:
                 case RelocType.IMAGE_REL_BASED_REL32:
                 case RelocType.IMAGE_REL_BASED_RELPTR32:
                 case RelocType.IMAGE_REL_BASED_ABSOLUTE:

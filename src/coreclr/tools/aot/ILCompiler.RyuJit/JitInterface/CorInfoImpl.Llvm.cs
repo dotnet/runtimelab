@@ -203,14 +203,7 @@ namespace Internal.JitInterface
         {
             CorInfoImpl _this = GetThis(thisHandle);
             RyuJitCompilation compilation = _this._compilation;
-            MethodIL methodIL = (MethodIL)_this.HandleToObject((void*)_this._methodScope);
-            if (count == 1 && pClauses[0].Flags == CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_NONE && pClauses[0].EnclosingIndex == 0)
-            {
-                TypeDesc type = (TypeDesc)methodIL.GetObject((int)pClauses[0].ClauseTypeToken);
-                ISymbolNode symbol = compilation.NecessaryTypeSymbolIfPossible(type);
-
-                return _this.ObjectToHandle(symbol);
-            }
+            MethodIL methodIL = (MethodIL)_this.HandleToObject((void*)_this._methodScope); // Assumes no inlining of EH.
 
             uint maxEclosingIndex = 0;
             for (int i = 0; i < count; i++)
@@ -218,24 +211,19 @@ namespace Internal.JitInterface
                 maxEclosingIndex = Math.Max(pClauses[i].EnclosingIndex, maxEclosingIndex);
             }
 
-            const int MetadataFilter = 1;
-            const int MetadataShift = 1;
+            const int MetadataLargeFormat = 1;
+            const int MetadataFilter = 1 << 1;
+            const int MetadataShift = 2;
 
-            int align = compilation.NodeFactory.Target.PointerSize;
+            Utf8StringBuilder sb = new();
             ObjectDataBuilder builder = new(compilation.NodeFactory, relocsOnly: true);
-            builder.RequireInitialAlignment(align);
+            bool isLargeFormat = maxEclosingIndex > (byte.MaxValue >> MetadataShift);
 
-            bool isSmallFormat = maxEclosingIndex <= (byte.MaxValue >> MetadataShift);
-            if (isSmallFormat)
-            {
-                builder.EmitZeros(align - count % align);
-            }
-            else
-            {
-                builder.EmitZeros(align - 4 * count % align);
-            }
+            // EH info is prefixed by the stack trace IP.
+            builder.EmitReloc(_this._methodCodeNode, RelocType.R_WASM_FUNCTION_INDEX_I32);
+            int symbolDefOffset = builder.CountBytes;
 
-            for (int i = count - 1; i >= 0; i--)
+            for (int i = 0; i < count; i++)
             {
                 CORINFO_LLVM_EH_CLAUSE* pClause = &pClauses[i];
                 uint metadata = pClause->EnclosingIndex << MetadataShift;
@@ -244,25 +232,21 @@ namespace Internal.JitInterface
                     metadata |= MetadataFilter;
                 }
 
-                if (isSmallFormat)
+                if (isLargeFormat)
+                {
+                    if (i == 0)
+                    {
+                        metadata |= MetadataLargeFormat;
+                    }
+
+                    // Note how this is little endian, so the format metadata will always be in the first byte.
+                    builder.EmitUInt(metadata);
+                }
+                else
                 {
                     Debug.Assert((byte)metadata == metadata);
                     builder.EmitByte((byte)metadata);
                 }
-                else
-                {
-                    builder.EmitUInt(metadata);
-                }
-            }
-
-            // This is the offset at which which the EH info symbol will be defined.
-            int symbolDefOffset = builder.CountBytes + (isSmallFormat ? 1 : 2);
-            Debug.Assert(builder.CountBytes % align == 0);
-
-            Utf8StringBuilder sb = new();
-            for (int i = 0; i < count; i++)
-            {
-                CORINFO_LLVM_EH_CLAUSE* pClause = &pClauses[i];
 
                 ISymbolNode symbol;
                 if ((pClause->Flags & CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_FILTER) != 0)

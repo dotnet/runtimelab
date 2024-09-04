@@ -730,8 +730,8 @@ namespace ILCompiler.ObjectWriter
                     Debug.Assert(SymbolInfo.IsDataSymbol(relocation.Target));
                     return _is64Bit ? R_WASM_MEMORY_ADDR_I64 : R_WASM_MEMORY_ADDR_I32;
 
-                case RelocType.R_WASM_FUNCTION_OFFSET_I32:
-                    return R_WASM_FUNCTION_OFFSET_I32;
+                case RelocType.R_WASM_FUNCTION_INDEX_I32:
+                    return R_WASM_FUNCTION_INDEX_I32;
                 case RelocType.R_WASM_FUNCTION_INDEX_LEB:
                     return R_WASM_FUNCTION_INDEX_LEB;
                 case RelocType.R_WASM_MEMORY_ADDR_SLEB:
