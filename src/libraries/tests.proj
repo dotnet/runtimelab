@@ -617,6 +617,8 @@
   <ItemGroup Condition="'$(TestNativeAot)' == 'true' and '$(TargetsWasm)' == 'true'">
     <SmokeTestProject Remove="@(SmokeTestProject)" />
     <SmokeTestProject Include="$(MSBuildThisFileDirectory)System.Collections.Specialized\tests\System.Collections.Specialized.Tests.csproj" />
+    <!-- TODO-LLVM: managed stack traces on WASI. -->
+    <SmokeTestProject Include="$(MSBuildThisFileDirectory)System.Diagnostics.StackTrace\tests\System.Diagnostics.StackTrace.Tests.csproj" Condition="'$(TargetsBrowser)' == 'true'" />
     <!-- S.R.Tests aren't yet passing upstream on WASI. -->
     <SmokeTestProject Include="$(MSBuildThisFileDirectory)System.Runtime\tests\System.Runtime.Tests\System.Runtime.Tests.csproj" Condition="'$(TargetsBrowser)' == 'true'" />
   </ItemGroup>
