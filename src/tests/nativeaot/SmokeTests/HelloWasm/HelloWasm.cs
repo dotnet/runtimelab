@@ -316,7 +316,6 @@ internal unsafe partial class Program
         TestStaticAbiCompatibleSignatures();
 
 #if !CODEGEN_WASI // Easier to test with Javascript/Emscripten.
-
         TestNamedModuleCall();
 
         TestNamedModuleCallWithoutEntryPoint();
@@ -394,6 +393,8 @@ internal unsafe partial class Program
 
         if (OperatingSystem.IsBrowser())
         {
+            TestForeignModuleInStackTrace();
+
             TestJavascriptCall();
         }
 
@@ -4136,14 +4137,170 @@ internal unsafe partial class Program
         PassTest();
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2026")]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static unsafe void TestStackTrace()
     {
         StartTest("Test StackTrace");
-#if DEBUG
-        EndTest(new StackTrace().ToString().Contains("TestStackTrace"), new StackTrace().ToString());
-#else
-        EndTest(new StackTrace().ToString().Contains("wasm-function"));
-#endif
+
+        StackTrace st = new StackTrace();
+        if (!st.ToString().Contains(nameof(TestStackTrace)) ||
+            !st.GetFrame(0).ToString().Contains(nameof(TestStackTrace)) ||
+            !st.GetFrame(1).ToString().Contains("Main"))
+        {
+            FailTest($"Unexpected stack trace:\n{st}");
+            return;
+        }
+
+        StackFrame sf = new StackFrame();
+        if (!sf.ToString().Contains(nameof(TestStackTrace)))
+        {
+            FailTest($"Unexpected stack frame: {sf}");
+            return;
+        }
+
+        Action del = new Action(TestStackTrace);
+        if (sf.GetMethod() != del.Method || sf.GetMethod() != st.GetFrame(0).GetMethod())
+        {
+            FailTest($"Unexpected StackFrame.GetMethod(): {sf.GetMethod()}");
+            return;
+        }
+
+        DiagnosticMethodInfo delDmi = DiagnosticMethodInfo.Create(del);
+        if (delDmi is not { Name: nameof(TestStackTrace), DeclaringTypeName: nameof(Program) })
+        {
+            FailTest($"Unexpected DiagnosticMethodInfo from a delegate: {delDmi?.DeclaringTypeName}::{delDmi?.Name}");
+            return;
+        }
+
+        bool result = true;
+        TestStackTracesInFilters(&result);
+        if (!result)
+        {
+            FailTest("Unexpected stack traces in filters");
+            return;
+        }
+
+        // Put AggressiveInliningMethodWithEH into the same LLVM module as TestStackTracesAndLlvmInlining.
+        JitUse((int*)(delegate*<void>)&AggressiveInliningMethodWithEH);
+        if (!TestStackTracesAndLlvmInlining())
+        {
+            FailTest("TestStackTracesAndLlvmInlining failed");
+            return;
+        }
+
+        PassTest();
+    }
+
+    private const int TestStackTracesInFiltersTotalDepth = 3;
+
+    static void TestStackTracesInFilters(bool* pResult, int depth = TestStackTracesInFiltersTotalDepth)
+    {
+        bool Filter(Exception e)
+        {
+            StackTrace st = new StackTrace(e);
+            if (st.FrameCount != depth + 1)
+            {
+                Console.WriteLine($"Unexpected stack frame count in TestStackTracesInFilters(depth = {depth}): {st.FrameCount}");
+                *pResult = false;
+            }
+            else if (!st.GetFrame(depth).ToString().Contains(nameof(TestStackTracesInFilters)))
+            {
+                Console.WriteLine($"Unexpected stack trace in TestStackTracesInFilters(depth = {depth}):\n{st}");
+                *pResult = false;
+            }
+            return depth == TestStackTracesInFiltersTotalDepth;
+        }
+
+        try
+        {
+            if (depth != 0)
+            {
+                TestStackTracesInFilters(pResult, depth - 1);
+            }
+            else
+            {
+                throw new Exception();
+            }
+        }
+        catch (Exception e) when (Filter(e)) { }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TestStackTracesAndLlvmInlining()
+    {
+        try
+        {
+            // Our runtime logic relies on the 1-1 correspondence between virtual unwind frames and WASM frames,
+            // otherwise it can't detect when to stop appending frames. So we can't let LLVM inline methods with EH.
+            AggressiveInliningMethodWithEH();
+        }
+        catch (Exception e)
+        {
+            StackTrace st = new StackTrace(e);
+            if (st.FrameCount != 2)
+            {
+                PrintLine($"Unexpected stack trace in TestStackTracesAndLlvmInlining:\n{st}");
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void AggressiveInliningMethodWithEH()
+    {
+        try
+        {
+            throw new Exception();
+        }
+        catch { throw; }
+    }
+
+    private static void TestForeignModuleInStackTrace()
+    {
+        StartTest("Test foreign module in stack trace");
+        string reason = null;
+        JSInterop.InternalCalls.TestForeignModuleInStackTraceJS(&reason, (delegate* unmanaged<double, void>)&TestForeignModuleInStackTraceCallee);
+        if (reason != null)
+        {
+            FailTest(reason);
+        }
+        else
+        {
+            PassTest();
+        }
+    }
+
+    [UnmanagedCallersOnly]
+    private static unsafe void TestForeignModuleInStackTraceCallee(double pFailureReasonRaw)
+    {
+        string* pFailureReason = (string*)(nuint)pFailureReasonRaw;
+
+        StackTrace st = new StackTrace();
+        if (!st.GetFrame(0).ToString().Contains(nameof(TestForeignModuleInStackTraceCallee)))
+        {
+            *pFailureReason += $"\nFirst frame not {nameof(TestForeignModuleInStackTraceCallee)}";
+        }
+
+        const string ForeignFuncName = "ForeignModuleFrame";
+        StackFrame ff = st.GetFrame(1);
+        if (!ff.ToString().Contains(ForeignFuncName)) // We generate a "names" section for this.
+        {
+            *pFailureReason += $"\n{ForeignFuncName} frame expected, got: {ff}";
+        }
+
+        var dmi = DiagnosticMethodInfo.Create(ff);
+        if (dmi != null)
+        {
+            *pFailureReason += $"\nExpected the foreign frame to not be managed, got: {dmi.DeclaringTypeName}::{dmi.Name}";
+        }
+
+        if (*pFailureReason != null)
+        {
+            *pFailureReason += $"\nFull stack trace:\n{st}";
+        }
     }
 
     static void TestJavascriptCall()
@@ -4398,6 +4555,14 @@ namespace JSInterop
         public static IntPtr InvokeJSUnmarshalled(out string exception, string js, IntPtr p1, IntPtr p2, IntPtr p3)
         {
             return InvokeJSUnmarshalledInternal(js, js.Length, p1, p2, p3, out exception);
+        }
+
+        [DllImport("js")]
+        private static extern int TestForeignModuleInStackTraceJS(double pReason, double pCallee);
+
+        public static unsafe void TestForeignModuleInStackTraceJS(string* pReason, void* pCallee)
+        {
+            TestForeignModuleInStackTraceJS((nuint)pReason, (nuint)pCallee);
         }
     }
 }

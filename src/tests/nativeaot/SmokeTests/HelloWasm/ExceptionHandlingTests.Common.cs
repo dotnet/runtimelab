@@ -11,6 +11,7 @@ using System.Runtime.InteropServices;
 
 internal unsafe partial class Program
 {
+    internal static bool ExitOnFirstTestFailure = Environment.GetCommandLineArgs().AsSpan().Contains("-exit");
     internal static bool Success = true;
 
     private static bool TestTryCatch()
@@ -2051,7 +2052,13 @@ internal unsafe partial class Program
     {
         Success = false;
         PrintLine("Failed.");
-        if (failMessage != null) PrintLine(failMessage + "-");
+        if (failMessage != null)
+            PrintLine(failMessage + "-");
+
+        if (ExitOnFirstTestFailure)
+        {
+            Environment.Exit(-1);
+        }
     }
 
     public static void PrintString(string s)

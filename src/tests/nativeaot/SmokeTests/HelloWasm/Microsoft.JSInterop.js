@@ -1,15 +1,8 @@
 
-if(typeof window === 'undefined') {
-    window = global;
-    window.location = {
-        search: ''
-    };
-} // create window for node and set to global
-
 // This is a single-file self-contained module to avoid the need for a Webpack build
 var DotNet;
 (function (DotNet) {
-    window.DotNet = DotNet; // Ensure reachable from anywhere
+    globalThis.DotNet = DotNet; // Ensure reachable from anywhere
     const jsonRevivers = [];
     const pendingAsyncCalls = {};
     const cachedJSFunctions = {};
@@ -181,8 +174,8 @@ var DotNet;
         if (cachedJSFunctions.hasOwnProperty(identifier)) {
             return cachedJSFunctions[identifier];
         }
-        let result = window;
-        let resultIdentifier = 'window';
+        let result = globalThis;
+        let resultIdentifier = 'globalThis';
         let lastSegmentValue;
         identifier.split('.').forEach(segment => {
             if (segment in result) {

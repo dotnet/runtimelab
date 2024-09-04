@@ -1,1 +1,1 @@
-window.Answer = function () { return 42; }
+globalThis.Answer = function () { return 42; }
