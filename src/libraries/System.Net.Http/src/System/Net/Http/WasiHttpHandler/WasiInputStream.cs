@@ -103,7 +103,9 @@ namespace System.Net.Http
                         if (buffer.Length == 0)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
-                            await WasiHttpInterop.RegisterWasiPollable(stream.Subscribe(), cancellationToken).ConfigureAwait(false);
+                            await WasiHttpInterop
+                                .RegisterWasiPollable(stream.Subscribe(), cancellationToken)
+                                .ConfigureAwait(false);
                             ObjectDisposedException.ThrowIf(isClosed, this);
                         }
                         else
@@ -193,6 +195,16 @@ namespace System.Net.Http
                             );
                         }
 
+                        break;
+                    }
+                    else if (inner.AsErr.Tag == ErrorCode.CONNECTION_TERMINATED)
+                    {
+                        // TODO: As of this writing, `wasmtime-wasi-http`
+                        // returns this error when no headers are present.  I
+                        // *think* that's a bug, since the `wasi-http` WIT docs
+                        // say it should return `none` rather than an error in
+                        // that case.  If it turns out that, yes, it's a bug, we
+                        // can remove this case once a fix is available.
                         break;
                     }
                     else
