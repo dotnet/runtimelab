@@ -79,7 +79,7 @@ namespace BindingsGeneration
             foreach (var fieldDecl in structDecl.Fields)
             {
                 string accessModifier = fieldDecl.Visibility == Visibility.Public ? "public" : "private";
-                writer.WriteLine($"{accessModifier} {fieldDecl.TypeIdentifier.Name} {fieldDecl.Name};");
+                writer.WriteLine($"{accessModifier} {fieldDecl.CSTypeIdentifier.Name} {fieldDecl.Name};");
 
                 // TODO: Fix memory access violation
                 // // Verify field against Swift type information

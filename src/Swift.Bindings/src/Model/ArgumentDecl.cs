@@ -11,7 +11,12 @@ namespace BindingsGeneration
         /// <summary>
         /// Type of the argument.
         /// </summary>
-        public required TypeDecl TypeIdentifier { get; set; }
+        public required TypeDecl CSTypeIdentifier { get; set; }
+
+        /// <summary>
+        /// Type of the argument
+        ///
+        public required TypeSpec SwiftTypeSpec { get; set; }
         
         /// <summary>
         /// The private name of the argument.
