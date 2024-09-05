@@ -42,7 +42,7 @@ There are a number of changes that Apple made outside of the standard ABIs used 
 The main difference in the Swift runtime is that heap allocated types are reference counted rather than using another memory management scheme. The reference counting is not done with a single count but instead is managed with two counts: a strong count and a weak count. Weak references are available in Swift for making (potentially) circular data structures.
 
 ## Idiomatic Differences
-For the most part, these are minor. C# prefers camel case starting with a capital letter for all types and entry points, using lowercase starts for private fields and argument names. C# adopts that conventions that interfaces start with 'I'. Swift starts types with captials but public variables will start with lowercase.
+For the most part, these are minor. C# prefers camel case starting with a capital letter for all types and entry points, using lowercase starts for private fields and argument names. C# adopts that conventions that interfaces start with 'I'. Swift starts types with capitals but public variables will start with lowercase.
 
 Swift favors value types over heap allocated types and favors copy-on-write semantics.
 

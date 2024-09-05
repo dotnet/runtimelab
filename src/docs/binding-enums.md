@@ -1,6 +1,6 @@
 # Binding Enums
 
-Swift enums are a hybrid value type between enumeraions (names associated with cardinal values) and discriminated unions. Swift enums can be broken down into three categories:
+Swift enums are a hybrid value type between enumerations (names associated with cardinal values) and discriminated unions. Swift enums can be broken down into three categories:
 - Trivial - these are enums that have a integral raw type. These can be nearly fully represented by C# enums
 - Homogeneous - these are enums where the payloads are the same non-integral type
 - Heterogeneous - there are enums where the payloads have at least two different types
@@ -167,7 +167,7 @@ Which at the very least couples the cases and the enum.
 
 I've been in contact with the C# team to encourage that whatever form unions take we can hook this into as cleanly as possible. To this end, I feel it's important to have an approach which is "fast track/abstract" which means that there will be a native C# implementation that works with C# syntax in a way that's performant, but also a way to make a non-native implementation operate with the supporting C# syntax. This precedent already exists in C# in `foreach`: if you use `foreach` on an array you get a fast-track implementation. If you use `foreach` on an `IEnumerable<T>` you get a functional, but less efficient version, but from the user's point of view it operates the same.
 
-One way to achieve that is to mark the enum implementation with attributes to inform the compiler of it's purpose:
+One way to achieve that is to mark the enum implementation with attributes to inform the compiler of its purpose:
 
 ```csharp
 [UnionImplementation(typeof(SomeEnumCase))]
