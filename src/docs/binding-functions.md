@@ -82,7 +82,7 @@ public func Identity(a *T, type: T.Self, ProtoWitness(T.Self, SomeProtocol.Self)
 
 ## Idiomatic Differences
 Functions in swift start with a lowercase letter. We should auto-capitalize the first letter of a function name.
-Since property getters and setters map naturally.
+Since property getters and setters are implemented as functions they map naturally onto C# properties. One difference, which is inconsequential except in projecting C# into Swift is that C# allows set-only properties whereas in Swift if a property has a setter it must have a getter.
 
 ## Accessibility Differences
 For the most part, we should strive to address the language parity issues in ways that feel "right" in C# or at least "least bad". For example, this were definied in Swift:

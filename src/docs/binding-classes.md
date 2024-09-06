@@ -37,7 +37,7 @@ Swift initializers can fail - this is something that doesn't have an exact analo
 
 
 ## Runtime Differences
-Swift classes are reference counted rather than garbage collected. This can create some interesting conditions when an object from Swift surfaced in C# gets garbage collected, but the object may still be live in Swift, so it's necessary to manage this. The way this is handled in Binding Tools for Swift is to add it to an object registry which is a `Dictionary&lt;NativeHandle, GCHandle&gt;` The native handle is the Swift object instance and the GC Handle is made from the corresponding C# instance. When the pair is added to the registry, the registry also takes a weak reference to the Swift
+Swift classes are reference counted rather than garbage collected. This can create some interesting conditions when an object from Swift surfaced in C# gets garbage collected, but the object may still be live in Swift, so it's necessary to manage this. The way this is handled in Binding Tools for Swift is to add it to an object registry which is a `Dictionary<NativeHandle, GCHandle>` The native handle is the Swift object instance and the GC Handle is made from the corresponding C# instance. When the pair is added to the registry, the registry also takes a weak reference to the Swift
 object in order to insure that it doesn't away if it gets disposed.
 
 Naturally, when the C# object gets disposed, the registry removes and does a weak release of the object.

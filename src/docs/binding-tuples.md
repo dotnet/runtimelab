@@ -10,7 +10,7 @@ public func foo(a: Int, b: Bool, c: SomeStruct, d: SomeClass) { // func of 4 arg
     // ...
 }
 ```
-It's unclear why apply would do this except that it might be a vestige of when Swift had the ability to have multiple
+It's unclear why Apple would do this except that it might be a vestige of when Swift had the ability to have multiple
 argument lists and could do partial function application. It also might be because it enables very low-friction usage of tuples in that when used outside of the context of nominal types, tuples don't actually need to exist. They can be implemented as an artifical grouping of scoped variable names.
 
 ## Language Parity Mistmatch

@@ -92,7 +92,7 @@ n1 = n2; // memory leak.
 ```
 
 ## Accessibility
-The main problem that we have is with non-blittable structs. We would either need our users to manually destroy structs when they're no longer needed (this a really bad idea - people are awful at memory management - that's why we have garbage collection and )
+The main problem that we have is with non-blittable structs. We would either need our users to manually destroy structs when they're no longer needed (this a really bad idea - people are awful at memory management - that's why we have garbage collection and `IDisposable`)
 
 The way this was handled in BTfS was to make no distinction between blittable and non-blittable structs and to implement them as a class with a byte array payload that implemented `IDisposable`. This would give the effect of having the destroy method called when the class gets disposed. The downside to this is that all structs, regardless of blitability, incur a cost in terms of heap allocation and at GC time. The up side is that the code to do the binding is simpler and handled uniformly.
 
