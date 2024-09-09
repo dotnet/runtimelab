@@ -12,7 +12,7 @@ Blittable structs are structs that can be correctly copied with `memcpy`. Essent
 
 Structs in Swift are encouraged to be immutable. To help along with this, the compiler enforces a number of rules to prevent you from trying to mutate an immutable value. All arguments to a method are considered to be `let` bindings. The compiler won't let you modify public fields of struct that is defined with a `let` binding. Similarly, you cannot call a `mutating` method on a struct that is bound with `let`.
 
-Every value type in swift comes with a compiler generate Value Witness Table. Unlike other function tables in Swift (Protocol witness tables, vtables etc), the layout of value witness tables are well-defined. The value witness table is documented [here](binding-value-witness-table.md).
+Every value type in Swift comes with a compiler-generated Value Witness Table. Unlike other function tables in Swift (Protocol witness tables, vtables etc), the layout of value witness tables are well-defined. The value witness table is documented [here](binding-value-witness-table.md).
 
 ## Language Parity Mismatches
 
