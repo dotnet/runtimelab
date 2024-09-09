@@ -137,6 +137,15 @@ void Llvm::annotateFunctions()
             {
                 llvmFunc->addFnAttr(llvm::Attribute::NoInline);
             }
+
+            // The runtime stack trace logic relies on a 1-to-1 correspondence between WASM (and therefore LLVM)
+            // frames and virtual unwind frames; it uses this to determine when to stop appending stack frames.
+            // We therefore cannot let LLVM inline methods with virtual unwind frames (~= with catch handlers).
+            // TODO-LLVM-StackTrace: do we need to apply this to (finally) funclets too?
+            if (m_unwindFrameLclNum != BAD_VAR_NUM)
+            {
+                llvmFunc->addFnAttr(llvm::Attribute::NoInline);
+            }
         }
 
         if (_compiler->opts.OptimizationEnabled())
