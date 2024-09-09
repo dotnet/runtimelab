@@ -1,4 +1,4 @@
-include(CheckCCompilerFlag)
+ include(CheckCCompilerFlag)
 include(CheckCSourceCompiles)
 include(CheckCSourceRuns)
 include(CheckIncludeFiles)
@@ -648,7 +648,7 @@ elseif (HAVE_PTHREAD_IN_LIBC)
 endif()
 
 if (NOT CLR_CMAKE_TARGET_WASI)
-    check_library_exists(${PTHREAD_LIBRARY} pthread_condattr_setclock "" HAVE_PTHREAD_CONDATTR_SETCLOCK)
+    check_library_exists(pthread pthread_condattr_setclock "" HAVE_PTHREAD_CONDATTR_SETCLOCK)
 endif()
 
 check_symbol_exists(
@@ -754,7 +754,7 @@ check_c_source_compiles(
 
     int main(void)
     {
-        return mkstemps(\"abc\", 3);
+        return mkstemps(\"XXXXXX\", 3);
     }
     "
     HAVE_MKSTEMPS)
@@ -767,7 +767,7 @@ check_c_source_compiles(
 
     int main(void)
     {
-        return mkstemp(\"abc\");
+        return mkstemp(\"XXXXXXX\");
     }
     "
     HAVE_MKSTEMP)
