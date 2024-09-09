@@ -156,6 +156,12 @@ void Llvm::annotateFunctions()
                 llvmFunc->addFnAttr(llvm::Attribute::OptimizeForSize);
             }
 
+            if ((_compiler->info.compFlags & CORINFO_FLG_FORCEINLINE) != 0)
+            {
+                // LLVM's "alwaysinline" is stronger than the CLR's 'AggressiveInlining'; use "inlinehint" instead.
+                llvmFunc->addFnAttr(llvm::Attribute::InlineHint);
+            }
+
             // Mark the shadow stack dereferenceable.
             if ((funcIdx != ROOT_FUNC_IDX) || _compiler->lvaGetDesc(_shadowStackLclNum)->lvIsParam)
             {
