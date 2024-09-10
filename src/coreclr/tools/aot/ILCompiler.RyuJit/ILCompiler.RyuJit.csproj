@@ -103,8 +103,8 @@
   <ItemGroup>
     <Compile Include="JitInterface\CorInfoImpl.Llvm.cs" />
     <Compile Include="JitInterface\CorInfoImpl.Llvm.DebugInfo.cs" />
-    <Compile Include="..\..\Common\JitInterface\CorJitApiId.Shared.cspp">
-      <Link>JitInterface\CorJitApiId.Shared.cspp</Link>
+    <Compile Include="..\..\Common\JitInterface\JitEEApi.Shared.cspp">
+      <Link>JitInterface\JitEEApi.Shared.cspp</Link>
     </Compile>
   </ItemGroup>
 

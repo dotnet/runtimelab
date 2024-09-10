@@ -1,0 +1,36 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+#if !__cplusplus
+#pragma warning disable SA1400 // Element '<type>' should declare an access modifier
+namespace Internal.JitInterface;
+#endif
+
+enum CorJitApiId
+{
+    CJAI_StartSingleThreadedCompilation,
+    CJAI_FinishSingleThreadedCompilation,
+    CJAI_Count
+};
+
+enum EEApiId
+{
+    EEAI_GetMangledMethodName,
+    EEAI_GetMangledSymbolName,
+    EEAI_GetMangledFilterFuncletName,
+    EEAI_GetSignatureForMethodSymbol,
+    EEAI_AddCodeReloc,
+    EEAI_GetPrimitiveTypeForTrivialWasmStruct,
+    EEAI_GetTypeDescriptor,
+    EEAI_GetAlternativeFunctionName,
+    EEAI_GetExternalMethodAccessor,
+    EEAI_GetDebugTypeForType,
+    EEAI_GetDebugInfoForDebugType,
+    EEAI_GetDebugInfoForCurrentMethod,
+    EEAI_GetSingleThreadedCompilationContext,
+    EEAI_GetExceptionHandlingModel,
+    EEAI_GetExceptionThrownVariable,
+    EEAI_GetExceptionHandlingTable,
+    EEAI_GetJitTestInfo,
+    EEAI_Count
+};

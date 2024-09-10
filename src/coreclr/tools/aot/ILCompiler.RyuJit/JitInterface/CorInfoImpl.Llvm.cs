@@ -369,57 +369,33 @@ namespace Internal.JitInterface
             GetThis(thisHandle).GetDebugInfoForMethod(pInfo);
         }
 
-        // These enums must be kept in sync with their unmanaged versions in "jit/llvm.cpp".
-        //
-        private enum EEApiId
-        {
-            GetMangledMethodName,
-            GetMangledSymbolName,
-            GetMangledFilterFuncletName,
-            GetSignatureForMethodSymbol,
-            AddCodeReloc,
-            GetPrimitiveTypeForTrivialWasmStruct,
-            GetTypeDescriptor,
-            GetAlternativeFunctionName,
-            GetExternalMethodAccessor,
-            GetDebugTypeForType,
-            GetDebugInfoForDebugType,
-            GetDebugInfoForCurrentMethod,
-            GetSingleThreadedCompilationContext,
-            GetExceptionHandlingModel,
-            GetExceptionThrownVariable,
-            GetExceptionHandlingTable,
-            GetJitTestInfo,
-            Count
-        }
-
         [DllImport(JitLibrary)]
         private static extern int registerLlvmCallbacks(void** jitImports, void** jitExports);
 
         private static void JitInitializeLlvm()
         {
-            void** jitImports = stackalloc void*[(int)EEApiId.Count + 1];
-            jitImports[(int)EEApiId.GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
-            jitImports[(int)EEApiId.GetMangledSymbolName] = (delegate* unmanaged<IntPtr, void*, byte*>)&getMangledSymbolName;
-            jitImports[(int)EEApiId.GetMangledFilterFuncletName] = (delegate* unmanaged<IntPtr, uint, byte*>)&getMangledFilterFuncletName;
-            jitImports[(int)EEApiId.GetSignatureForMethodSymbol] = (delegate* unmanaged<IntPtr, void*, CORINFO_SIG_INFO*, int>)&getSignatureForMethodSymbol;
-            jitImports[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
-            jitImports[(int)EEApiId.GetPrimitiveTypeForTrivialWasmStruct] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType>)&getPrimitiveTypeForTrivialWasmStruct;
-            jitImports[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor*, void>)&getTypeDescriptor;
-            jitImports[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
-            jitImports[(int)EEApiId.GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
-            jitImports[(int)EEApiId.GetDebugTypeForType] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_LLVM_DEBUG_TYPE_HANDLE>)&getDebugTypeForType;
-            jitImports[(int)EEApiId.GetDebugInfoForDebugType] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_DEBUG_TYPE_HANDLE, CORINFO_LLVM_TYPE_DEBUG_INFO*, void>)&getDebugInfoForDebugType;
-            jitImports[(int)EEApiId.GetDebugInfoForCurrentMethod] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_METHOD_DEBUG_INFO*, void>)&getDebugInfoForCurrentMethod;
-            jitImports[(int)EEApiId.GetSingleThreadedCompilationContext] = (delegate* unmanaged<IntPtr, void*>)&getSingleThreadedCompilationContext;
-            jitImports[(int)EEApiId.GetExceptionHandlingModel] = (delegate* unmanaged<IntPtr, CorInfoLlvmEHModel>)&getExceptionHandlingModel;
-            jitImports[(int)EEApiId.GetExceptionThrownVariable] = (delegate* unmanaged<IntPtr, IntPtr>)&getExceptionThrownVariable;
-            jitImports[(int)EEApiId.GetExceptionHandlingTable] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_EH_CLAUSE*, int, IntPtr>)&getExceptionHandlingTable;
-            jitImports[(int)EEApiId.GetJitTestInfo] = (delegate* unmanaged<IntPtr, CorInfoLlvmJitTestKind, CORINFO_LLVM_JIT_TEST_INFO*, void>)&getJitTestInfo;
-            jitImports[(int)EEApiId.Count] = (void*)0x1234;
+            void** jitImports = stackalloc void*[(int)EEApiId.EEAI_Count + 1];
+            jitImports[(int)EEApiId.EEAI_GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
+            jitImports[(int)EEApiId.EEAI_GetMangledSymbolName] = (delegate* unmanaged<IntPtr, void*, byte*>)&getMangledSymbolName;
+            jitImports[(int)EEApiId.EEAI_GetMangledFilterFuncletName] = (delegate* unmanaged<IntPtr, uint, byte*>)&getMangledFilterFuncletName;
+            jitImports[(int)EEApiId.EEAI_GetSignatureForMethodSymbol] = (delegate* unmanaged<IntPtr, void*, CORINFO_SIG_INFO*, int>)&getSignatureForMethodSymbol;
+            jitImports[(int)EEApiId.EEAI_AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
+            jitImports[(int)EEApiId.EEAI_GetPrimitiveTypeForTrivialWasmStruct] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType>)&getPrimitiveTypeForTrivialWasmStruct;
+            jitImports[(int)EEApiId.EEAI_GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor*, void>)&getTypeDescriptor;
+            jitImports[(int)EEApiId.EEAI_GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
+            jitImports[(int)EEApiId.EEAI_GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
+            jitImports[(int)EEApiId.EEAI_GetDebugTypeForType] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_LLVM_DEBUG_TYPE_HANDLE>)&getDebugTypeForType;
+            jitImports[(int)EEApiId.EEAI_GetDebugInfoForDebugType] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_DEBUG_TYPE_HANDLE, CORINFO_LLVM_TYPE_DEBUG_INFO*, void>)&getDebugInfoForDebugType;
+            jitImports[(int)EEApiId.EEAI_GetDebugInfoForCurrentMethod] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_METHOD_DEBUG_INFO*, void>)&getDebugInfoForCurrentMethod;
+            jitImports[(int)EEApiId.EEAI_GetSingleThreadedCompilationContext] = (delegate* unmanaged<IntPtr, void*>)&getSingleThreadedCompilationContext;
+            jitImports[(int)EEApiId.EEAI_GetExceptionHandlingModel] = (delegate* unmanaged<IntPtr, CorInfoLlvmEHModel>)&getExceptionHandlingModel;
+            jitImports[(int)EEApiId.EEAI_GetExceptionThrownVariable] = (delegate* unmanaged<IntPtr, IntPtr>)&getExceptionThrownVariable;
+            jitImports[(int)EEApiId.EEAI_GetExceptionHandlingTable] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_EH_CLAUSE*, int, IntPtr>)&getExceptionHandlingTable;
+            jitImports[(int)EEApiId.EEAI_GetJitTestInfo] = (delegate* unmanaged<IntPtr, CorInfoLlvmJitTestKind, CORINFO_LLVM_JIT_TEST_INFO*, void>)&getJitTestInfo;
+            jitImports[(int)EEApiId.EEAI_Count] = (void*)0x1234;
 
 #if DEBUG
-            for (int i = 0; i < (int)EEApiId.Count; i++)
+            for (int i = 0; i < (int)EEApiId.EEAI_Count; i++)
             {
                 Debug.Assert(jitImports[i] != null);
             }
