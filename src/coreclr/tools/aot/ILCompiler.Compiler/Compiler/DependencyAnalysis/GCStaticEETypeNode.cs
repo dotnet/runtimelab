@@ -46,7 +46,7 @@ namespace ILCompiler.DependencyAnalysis
             sb.Append("__GCStaticEEType_"u8).Append(_gcMap.ToString());
             if (_requiresAlign8)
             {
-                sb.Append("_align8");
+                sb.Append("_align8"u8);
             }
         }
 
