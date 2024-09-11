@@ -986,6 +986,10 @@ private:
                     if (m_compiler->lvaInSsa(lclNum))
                     {
                         initValue->SetSsaNum(SsaConfig::FIRST_SSA_NUM);
+                        if (varDsc->lvTracked)
+                        {
+                            VarSetOps::AddElemD(m_compiler, m_compiler->fgFirstBB->bbLiveIn, varDsc->lvVarIndex);
+                        }
                     }
                     InitializeLocalInProlog(lclNum, initValue);
                 }
