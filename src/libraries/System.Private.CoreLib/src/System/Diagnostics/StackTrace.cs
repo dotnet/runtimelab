@@ -198,7 +198,6 @@ namespace System.Diagnostics
             TrailingNewLine,        // include a trailing new line character
         }
 
-#if !TARGET_WASM
         /// <summary>
         /// Builds a readable representation of the stack trace, specifying
         /// the format for backwards compatibility.
@@ -209,7 +208,6 @@ namespace System.Diagnostics
             ToString(traceFormat, sb);
             return sb.ToString();
         }
-#endif
 
 #if !NATIVEAOT
         [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026:RequiresUnreferencedCode",

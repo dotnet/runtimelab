@@ -51,6 +51,13 @@ namespace Internal.Reflection.Execution
             ExecutionEnvironment = executionEnvironment;
         }
 
+        public static IntPtr ConvertStackTraceIpToFunctionPointer(IntPtr methodStartAddress)
+        {
+            if (ExecutionEnvironment == null)
+                return 0;
+            return ExecutionEnvironment.ConvertStackTraceIpToFunctionPointer(methodStartAddress);
+        }
+
         public static bool TryGetMethodMetadataFromStartAddress(IntPtr methodStartAddress, out MetadataReader reader, out TypeDefinitionHandle typeHandle, out MethodHandle methodHandle)
         {
             reader = null;

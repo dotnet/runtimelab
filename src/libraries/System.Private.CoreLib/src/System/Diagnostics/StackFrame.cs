@@ -151,9 +151,12 @@ namespace System.Diagnostics
         /// </summary>
         public virtual int GetNativeOffset()
         {
+#if NATIVEAOT && TARGET_BROWSER
+            return GetNativeOffsetImpl();
+#else
             return _nativeOffset;
+#endif
         }
-
 
         /// <summary>
         /// Returns the offset from the start of the IL code for the

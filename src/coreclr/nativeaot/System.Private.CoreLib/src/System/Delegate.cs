@@ -315,7 +315,8 @@ namespace System
                 {
                     functionPointer = ldftnResult;
                 }
-                return RuntimeAugments.StackTraceCallbacksIfAvailable?.TryGetDiagnosticMethodInfoFromStartAddress(functionPointer);
+                IntPtr methodStartAddress = RuntimeAugments.ConvertFunctionPointerToStackTraceIp(functionPointer);
+                return RuntimeAugments.StackTraceCallbacksIfAvailable?.TryGetDiagnosticMethodInfoFromStartAddress(methodStartAddress);
             }
         }
 

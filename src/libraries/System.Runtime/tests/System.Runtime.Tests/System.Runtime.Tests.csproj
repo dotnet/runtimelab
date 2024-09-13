@@ -33,12 +33,6 @@
     <RdXmlFile Include="default.rd.xml" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'browser'">
-    <!-- TODO-LLVM: delete once we upgrade to Emscripten with https://github.com/emscripten-core/emscripten/pull/21071 -->
-    <!-- https://github.com/dotnet/runtimelab/issues/2455 -->
-    <LinkerArg Include="-sINITIAL_MEMORY=32MB" />
-  </ItemGroup>
-
   <ItemGroup>
     <Compile Include="$(CommonTestPath)System\EnumTypes.cs" Link="Common\System\EnumTypes.cs" />
     <Compile Include="$(CommonTestPath)System\FunctionPointerTests.cs" Link="Common\System\FunctionPointerTests.cs" />

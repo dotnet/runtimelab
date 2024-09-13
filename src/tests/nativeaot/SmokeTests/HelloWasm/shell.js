@@ -30,7 +30,7 @@ var Module = {
                 throw 'DupImportTest was imported when it should have been removed as a duplicate.';
             }
 
-            return successCallback(result['instance']);
+            return successCallback(result['instance'], result['module']);
         }
 
         instantiateAsync(wasmBinary, wasmBinaryFile, info, receiveInstantiationResult);

@@ -6,7 +6,11 @@
 // assumes a managed calling convention (with a shadow stack), while those
 // functions are native.
 
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+
+#pragma warning disable SA1121 // Use built-in type alias
+using JSPointerType = System.Double;
 
 namespace System.Runtime
 {
@@ -211,5 +215,19 @@ namespace System.Runtime
         [LibraryImport(RuntimeLibrary)]
         [SuppressGCTransition]
         internal static unsafe partial float modff(float x, float* intptr);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        [RuntimeImport(RuntimeLibrary, "RhpGetCurrentBrowserThreadStackTrace")]
+        internal static extern unsafe int RhpGetCurrentBrowserThreadStackTrace(JSPointerType pOutputBuffer, int allFramesAsJS);
+
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        [RuntimeImport(RuntimeLibrary, "RhpGetStackTraceIpCanary")]
+        internal static extern unsafe int RhpGetStackTraceIpCanary();
+
+        [LibraryImport(RuntimeLibrary, EntryPoint = "RhpGetBiasedWasmFunctionIndexForFunctionPointer")]
+        internal static unsafe partial int RhpGetBiasedWasmFunctionIndexForFunctionPointer(JSPointerType functionPointer);
+
+        [LibraryImport(RuntimeLibrary, EntryPoint = "RhpInitializeStackTraceIpMap")]
+        internal static unsafe partial void RhpInitializeStackTraceIpMap(JSPointerType pEntries, int count);
     }
 }

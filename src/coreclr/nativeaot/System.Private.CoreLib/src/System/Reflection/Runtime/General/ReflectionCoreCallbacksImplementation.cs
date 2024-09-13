@@ -446,6 +446,11 @@ namespace System.Reflection.Runtime.General
             return ReflectionCoreExecution.ExecutionEnvironment.GetDelegateMethod(del);
         }
 
+        public sealed override IntPtr ConvertStackTraceIpToFunctionPointer(IntPtr methodStartAddress)
+        {
+            return ReflectionCoreExecution.ExecutionEnvironment.ConvertStackTraceIpToFunctionPointer(methodStartAddress);
+        }
+
         public sealed override MethodBase GetMethodBaseFromStartAddressIfAvailable(IntPtr methodStartAddress)
         {
             return ReflectionCoreExecution.ExecutionEnvironment.GetMethodBaseFromStartAddressIfAvailable(methodStartAddress);

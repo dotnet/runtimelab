@@ -197,6 +197,11 @@ namespace System.Diagnostics.Tests
             {
                 Assert.Equal(StackFrame.OFFSET_UNKNOWN, stackFrame.GetNativeOffset());
             }
+            else if (PlatformDetection.IsNativeAot && PlatformDetection.IsWasm)
+            {
+                // We have decided not to return anything here for now, for consistency between Browser and WASI.
+                Assert.Equal(StackFrame.OFFSET_UNKNOWN, stackFrame.GetNativeOffset());
+            }
             else if (skipFrames <= 0)
             {
                 Assert.True(stackFrame.GetNativeOffset() > 0, $"Expected GetNativeOffset() {stackFrame.GetNativeOffset()} for {stackFrame} to be greater than zero.");

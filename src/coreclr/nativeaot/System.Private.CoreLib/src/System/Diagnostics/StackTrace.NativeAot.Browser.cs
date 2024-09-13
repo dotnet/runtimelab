@@ -1,65 +1,93 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Text;
+using System.Runtime;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace System.Diagnostics
 {
     public partial class StackTrace
     {
-        private readonly StringBuilder _builder = new StringBuilder();
-
-        [LibraryImport("*")]
-        private static unsafe partial int emscripten_get_callstack(int flags, byte* outBuf, int maxBytes);
-
+        /// <summary>
+        /// Initialize the stack trace based on current thread and given initial frame index.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private unsafe void InitializeForCurrentThread(int skipFrames, bool needFileInfo)
         {
-            var backtraceBuffer = new byte[8192];
-            int callstackLen;
-            // skip these 2:
-            // at S_P_CoreLib_System_Diagnostics_StackTrace__InitializeForCurrentThread (wasm-function[12314]:275)
-            // at S_P_CoreLib_System_Diagnostics_StackTrace___ctor_0(wasm-function[12724]:118)
-            skipFrames += 2; // METHODS_TO_SKIP is a constant so just change here
+            const int SystemDiagnosticsStackDepth = 2;
 
-            fixed (byte* curChar = backtraceBuffer)
+            int eipCount = RuntimeImports.RhpGetCurrentBrowserThreadStackTrace(0, Exception.ReportAllFramesAsJS());
+            IntPtr[] eips = new IntPtr[eipCount];
+            fixed (void* pEips = eips)
+                RuntimeImports.RhpGetCurrentBrowserThreadStackTrace((nuint)pEips, Exception.ReportAllFramesAsJS());
+
+            int skippedEipCount = Exception.SkipSystemFrames(eips, SystemDiagnosticsStackDepth);
+            InitializeForIpAddressArray(eips, skippedEipCount, skipFrames, needFileInfo);
+        }
+
+        /// <summary>
+        /// Initialize the stack trace based on a given exception and initial frame index.
+        /// </summary>
+        private void InitializeForException(Exception exception, int skipFrames, bool needFileInfo)
+        {
+            InitializeForIpAddressArray(exception.GetStackIPs(), 0, skipFrames, needFileInfo);
+        }
+
+        /// <summary>
+        /// Initialize the stack trace based on a given array of encoded IP addresses (EIPs).
+        /// </summary>
+        private void InitializeForIpAddressArray(IntPtr[] eips, int skippedEipCount, int skipFrames, bool needFileInfo)
+        {
+            // Our callers may pass us values that have overflown.
+            if (skipFrames < 0)
+                skipFrames = int.MaxValue;
+
+            // Calculate true frame count upfront - we need to skip EdiSeparators which get
+            // collapsed onto boolean flags on the preceding stack frame
+            int outputFrameCount = 0;
+            for (int eipIndex = skippedEipCount, actualFrameIndex = 0; eipIndex < eips.Length; actualFrameIndex++)
             {
-                callstackLen = emscripten_get_callstack(16 /* EM_LOG_JS_STACK */, curChar, backtraceBuffer.Length);
-            }
-            int _numOfFrames = 1;
-            int lineStartIx = 0;
-            int ix = 0;
-            for (; ix < callstackLen; ix++)
-            {
-                if (backtraceBuffer[ix] == '\n')
+                IntPtr eip = eips[eipIndex];
+                if (actualFrameIndex >= skipFrames && eip != Exception.EdiSeparator)
                 {
-                    if (_numOfFrames > skipFrames)
-                    {
-                        _builder.Append(Encoding.Default.GetString(backtraceBuffer, lineStartIx, ix - lineStartIx + 1));
-                    }
-                    _numOfFrames++;
-                    lineStartIx = ix + 1;
+                    outputFrameCount++;
                 }
+
+                eipIndex += Exception.GetBrowserFrameLengthInChunks(eip);
             }
-            if (lineStartIx < ix)
+
+            if (outputFrameCount > 0)
             {
-                _builder.AppendLine(Encoding.Default.GetString(backtraceBuffer, lineStartIx, ix - lineStartIx));
+                _stackFrames = new StackFrame[outputFrameCount];
+                int outputFrameIndex = 0;
+                for (int eipIndex = skippedEipCount, actualFrameIndex = 0; eipIndex < eips.Length; actualFrameIndex++)
+                {
+                    IntPtr eip = eips[eipIndex];
+                    if (actualFrameIndex >= skipFrames)
+                    {
+                        if (outputFrameIndex >= outputFrameCount)
+                        {
+                            break;
+                        }
+
+                        if (eip != Exception.EdiSeparator)
+                        {
+                            _stackFrames[outputFrameIndex++] = new StackFrame(eips, eipIndex, needFileInfo);
+                        }
+                        else if (outputFrameIndex > 0)
+                        {
+                            _stackFrames[outputFrameIndex - 1].SetIsLastFrameFromForeignExceptionStackTrace();
+                        }
+                    }
+
+                    eipIndex += Exception.GetBrowserFrameLengthInChunks(eip);
+                }
+                Debug.Assert(outputFrameIndex == outputFrameCount);
             }
+
+            _numOfFrames = outputFrameCount;
             _methodsToSkip = 0;
-        }
-
-        internal string ToString(TraceFormat traceFormat)
-        {
-            var stackTraceString = _builder.ToString();
-            if (traceFormat == TraceFormat.Normal && stackTraceString.EndsWith(Environment.NewLine))
-                return stackTraceString.Substring(0, stackTraceString.Length - Environment.NewLine.Length);
-
-            return stackTraceString;
-        }
-
-        internal void ToString(TraceFormat traceFormat, StringBuilder builder)
-        {
-            builder.Append(ToString(traceFormat));
         }
     }
 }

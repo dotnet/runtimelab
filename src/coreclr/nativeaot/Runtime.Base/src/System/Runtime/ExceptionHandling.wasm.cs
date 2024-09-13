@@ -9,9 +9,12 @@ using Internal.Runtime;
 // Disable: Filter expression is a constant. We know. We just can't do an unfiltered catch.
 #pragma warning disable 7095
 
+//
+// WASM exception handling.
+// See: https://github.com/dotnet/runtimelab/blob/feature/NativeAOT-LLVM/docs/design/coreclr/botr/nativeaot-wasm-exception-handling.md.
+//
 namespace System.Runtime
 {
-    // TODO-LLVM-EH: write and link a design document for this EH scheme. It is not terribly simple...
     internal static unsafe partial class EH
     {
         private const nuint UnwindIndexNotInTry = 0;
@@ -21,6 +24,7 @@ namespace System.Runtime
         private static ExceptionDispatchData? t_lastDispatchedException;
 
         [RuntimeExport("RhpThrowEx")]
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private static void RhpThrowEx(object exception)
         {
 #if INPLACE_RUNTIME
@@ -29,13 +33,14 @@ namespace System.Runtime
 #else
 #error Implement "throw null" in non-INPLACE_RUNTIME builds
 #endif
-            DispatchException(exception, 0);
+            DispatchException(exception, RhEHFrameType.RH_EH_FIRST_FRAME);
         }
 
         [RuntimeExport("RhpRethrow")]
-        private static void RhpRethrow(object pException)
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void RhpRethrow(object exception)
         {
-            DispatchException(pException, RhEHFrameType.RH_EH_FIRST_RETHROW_FRAME);
+            DispatchException(exception, RhEHFrameType.RH_EH_FIRST_FRAME | RhEHFrameType.RH_EH_FIRST_RETHROW_FRAME);
         }
 
         // Note that this method cannot have any catch handlers as it manipulates the virtual unwind frames directly
@@ -43,16 +48,11 @@ namespace System.Runtime
         // all user code via separate noinline methods. It also cannot throw any exceptions as that would lead to
         // infinite recursion.
         //
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private static void DispatchException(object exception, RhEHFrameType flags)
         {
-            WasmEHLogFirstPassEnter(exception, flags);
-
+            WasmEHLogFirstPassEnter(exception, (flags & RhEHFrameType.RH_EH_FIRST_RETHROW_FRAME) != 0);
             OnFirstChanceExceptionNoInline(exception);
-#if INPLACE_RUNTIME
-            Exception.InitializeExceptionStackFrameLLVM(exception, (int)flags);
-#else
-#error Make InitializeExceptionStackFrameLLVM into a classlib export
-#endif
 
             // Find the handler for this exception by virtually unwinding the stack of active protected regions.
             VirtualUnwindFrame** pLastFrameRef = (VirtualUnwindFrame**)InternalCalls.RhpGetRawLastVirtualUnwindFrameRef();
@@ -61,11 +61,14 @@ namespace System.Runtime
             nuint unwindCount = 0;
             while (pFrame != null)
             {
-                EHClause clause;
                 EHTable table = new EHTable(pFrame->UnwindTable);
+                GetAppendStackFrame(exception)(exception, table.GetStackTraceIP(), (int)flags);
+                flags = 0;
+
                 nuint index = pFrame->UnwindIndex;
                 while (IsCatchUnwindIndex(index))
                 {
+                    EHClause clause;
                     nuint enclosingIndex = table.GetClauseInfo(index, &clause);
                     WasmEHLogEHTableEntry(pFrame, index, &clause);
 
@@ -310,6 +313,9 @@ namespace System.Runtime
         [RuntimeExport("RhpHandleUnhandledException")]
         private static void HandleUnhandledException(object exception)
         {
+            // Append JS frames to this unhandled exception for better diagnostics.
+            GetAppendStackFrame(exception)(exception, 0, 0);
+
             OnUnhandledExceptionViaClassLib(exception);
 
             // We have to duplicate "UnhandledExceptionFailFastViaClasslib" because we cannot use code addresses to get helpers.
@@ -332,6 +338,13 @@ namespace System.Runtime
 
             // The classlib's function should never return and should not throw. If it does, then we fail our way...
             FallbackFailFast(RhFailFastReason.UnhandledException, exception);
+        }
+
+        private static delegate*<object, IntPtr, int, void> GetAppendStackFrame(object exception)
+        {
+            // We use this more direct way of invoking "AppendExceptionStackFrame" to preserve more user frames in truncated traces.
+            nint pAppendStackFrame = exception.GetMethodTable()->GetClasslibFunction(ClassLibFunctionId.AppendExceptionStackFrame);
+            return (delegate*<object, IntPtr, int, void>)pAppendStackFrame;
         }
 
         // These are pushed by codegen on the shadow stack for frames that have at least one region protected by a catch.
@@ -360,71 +373,62 @@ namespace System.Runtime
 
         private unsafe struct EHTable
         {
-            private const nuint MetadataFilter = 1;
-            private const nuint MetadataClauseTypeFormat = 2;
-            private const int MetadataShift = 1;
-            private const nuint MetadataMask = ~(1u << MetadataShift);
+            private const nuint MetadataLargeFormat = 1;
+            private const nuint MetadataFilter = 1 << 1;
+            private const int MetadataShift = 2;
 
-            private const nuint FormatClauseType = 0;
-            private const nuint FormatSmall = 1;
-            private const nuint FormatLarge = 2;
-            private const nuint FormatMask = 3;
-
-            private readonly void* _pEHTable;
-            private readonly nuint _format;
+            private readonly byte* _pEHTable;
+            private readonly bool _isLargeFormat;
 
             public EHTable(void* pUnwindTable)
             {
-                _pEHTable = (void*)((nuint)pUnwindTable & ~FormatMask);
-                _format = (nuint)pUnwindTable & FormatMask;
+                _pEHTable = (byte*)pUnwindTable;
+                _isLargeFormat = (*(byte*)pUnwindTable & MetadataLargeFormat) != 0;
             }
 
             public readonly nuint GetClauseInfo(nuint index, EHClause* pClause = null)
             {
-                nuint metadata;
-                nuint enclosingIndex = GetMetadata(index, &metadata);
+                Debug.Assert(IsCatchUnwindIndex(index));
+                nuint largeFormatEntrySize = (nuint)(sizeof(uint) + sizeof(void*));
+                nuint smallFormatEntrySize = (nuint)(sizeof(byte) + sizeof(void*));
+
+                nuint zeroBasedIndex = index - UnwindIndexBase;
+                nuint metadata = _isLargeFormat
+                    ? Unsafe.ReadUnaligned<uint>(_pEHTable + zeroBasedIndex * largeFormatEntrySize)
+                    : Unsafe.ReadUnaligned<byte>(_pEHTable + zeroBasedIndex * smallFormatEntrySize);
+
                 if (pClause != null)
                 {
-                    if (metadata == MetadataClauseTypeFormat)
+                    nuint value = _isLargeFormat
+                        ? Unsafe.ReadUnaligned<nuint>(_pEHTable + zeroBasedIndex * largeFormatEntrySize + sizeof(uint))
+                        : Unsafe.ReadUnaligned<nuint>(_pEHTable + zeroBasedIndex * smallFormatEntrySize + sizeof(byte));
+
+                    if ((metadata & MetadataFilter) != 0)
                     {
-                        pClause->Filter = null;
-                        pClause->ClauseType = (MethodTable*)_pEHTable;
-                    }
-                    else if ((metadata & MetadataFilter) != 0)
-                    {
-                        pClause->Filter = ((void**)_pEHTable)[index - UnwindIndexBase];
+                        pClause->Filter = (void*)value;
                         pClause->ClauseType = null;
                     }
                     else
                     {
                         pClause->Filter = null;
-                        pClause->ClauseType = ((MethodTable**)_pEHTable)[index - UnwindIndexBase];
+                        pClause->ClauseType = (MethodTable*)value;
                     }
                 }
 
+                nuint enclosingIndex = metadata >> MetadataShift;
                 return enclosingIndex;
             }
 
-            private readonly nuint GetMetadata(nuint index, nuint* pMetadata)
+#pragma warning disable CA1822 // Member 'GetStackTraceIP' does not access instance data and can be marked as static
+            public readonly nint GetStackTraceIP()
             {
-                Debug.Assert(IsCatchUnwindIndex(index));
-                nuint metadata;
-                switch (_format)
-                {
-                    case FormatClauseType:
-                        *pMetadata = MetadataClauseTypeFormat;
-                        return UnwindIndexNotInTry;
-                    case FormatSmall:
-                        metadata = ((byte*)_pEHTable)[-(nint)(index - UnwindIndexBase + 1)];
-                        break;
-                    default:
-                        Debug.Assert(_format == FormatLarge);
-                        metadata = ((uint*)_pEHTable)[-(nint)(index - UnwindIndexBase + 1)];
-                        break;
-                }
-
-                *pMetadata = metadata & MetadataMask;
-                return metadata >> MetadataShift;
+#if TARGET_BROWSER
+                int wasmFunctionIndex = Unsafe.ReadUnaligned<int>(_pEHTable - sizeof(int));
+                int wasmFunctionIndexWithBias = Exception.GetBiasedWasmFunctionIndex(wasmFunctionIndex);
+                return wasmFunctionIndexWithBias;
+#else
+                return 0;
+#endif
             }
         }
 
@@ -459,9 +463,9 @@ namespace System.Runtime
         }
 
         [Conditional("ENABLE_NOISY_WASM_EH_LOG")]
-        private static void WasmEHLogFirstPassEnter(object exception, RhEHFrameType flags)
+        private static void WasmEHLogFirstPassEnter(object exception, bool isFirstRethrowFrame)
         {
-            string kind = (flags & RhEHFrameType.RH_EH_FIRST_RETHROW_FRAME) != 0 ? "Rethrowing" : "Throwing";
+            string kind = isFirstRethrowFrame ? "Rethrowing" : "Throwing";
             WasmEHLog(kind + ": [" + exception.GetType() + "]", 1, "\n");
         }
 

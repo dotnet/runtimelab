@@ -30,8 +30,12 @@
     <ProjectReference Include="HelloWasm.IL.ilproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetsBrowser)' == 'true'">
+    <LinkerArg Include="--pre-js &quot;$(MSBuildProjectDirectory)/shell.js&quot;" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(TargetsBrowser)' == 'true'">
-    <EmccExtraArgs>--js-library $(MSBuildProjectDirectory)/dotnet_support.js --pre-js $(MSBuildProjectDirectory)/Microsoft.JSInterop.js --pre-js $(MSBuildProjectDirectory)/shell.js --post-js $(MSBuildProjectDirectory)/HelloWasm.js</EmccExtraArgs>
+    <EmccExtraArgs>-sENVIRONMENT=web,node,shell --js-library $(MSBuildProjectDirectory)/dotnet_support.js --pre-js $(MSBuildProjectDirectory)/Microsoft.JSInterop.js --post-js $(MSBuildProjectDirectory)/HelloWasm.js</EmccExtraArgs>
   </PropertyGroup>
 
   <ItemGroup>

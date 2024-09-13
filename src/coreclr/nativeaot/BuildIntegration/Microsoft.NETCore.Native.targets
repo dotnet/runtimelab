@@ -546,21 +546,24 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
 
     <ItemGroup>
+      <_WasiComponentImports Include="$(IlcFrameworkNativePath)*.wit" />
+
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.a" />
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.TimeZoneData.a" Condition="'$(InvariantTimezone)' != 'true'" />
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.TimeZoneData.Disabled.a" Condition="'$(InvariantTimezone)' == 'true'" />
-      <NativeLibrary Condition="'$(IlcIsLibLikeApp)' != 'true'" Include="$(IlcSdkPath)libbootstrapper.o" />
-      <NativeLibrary Condition="'$(IlcIsLibLikeApp)' == 'true'" Include="$(IlcSdkPath)libbootstrapperdll.o" />
+      <NativeLibrary Include="$(IlcSdkPath)libbootstrapper.o" Condition="'$(IlcIsLibLikeApp)' != 'true'" />
+      <NativeLibrary Include="$(IlcSdkPath)libbootstrapperdll.o" Condition="'$(IlcIsLibLikeApp)' == 'true'" />
       <NativeLibrary Include="$(IlcSdkPath)libPortableRuntime.a" />
       <NativeLibrary Include="$(IlcSdkPath)libstandalonegc-disabled$(LibFileExt)" />
-      <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="$(IlcSdkPath)libCppExceptionHandling.a" />
-      <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'" Include="$(IlcSdkPath)libWasmExceptionHandling.a" />
-      <NativeLibrary Condition="'$(IlcLlvmExceptionHandlingModel)' == 'emulated'" Include="$(IlcSdkPath)libEmulatedExceptionHandling.a" />
-      <_WasiComponentImports Include="$(IlcFrameworkNativePath)*.wit" />
+      <NativeLibrary Include="$(IlcSdkPath)libCppExceptionHandling.a" Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" />
+      <NativeLibrary Include="$(IlcSdkPath)libWasmExceptionHandling.a" Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'" />
+      <NativeLibrary Include="$(IlcSdkPath)libEmulatedExceptionHandling.a" Condition="'$(IlcLlvmExceptionHandlingModel)' == 'emulated'" />
 
       <!-- wasi-sdk clang wants forward slashes, emscripten doesn't care -->
       <CustomLinkerArg Include="@(NativeLibrary->'&quot;%(Identity)&quot;'->Replace(&quot;\&quot;, &quot;/&quot;))" />
       <CustomLinkerArg Include="@(NativeObjects->'&quot;%(Identity)&quot;'->Replace(&quot;\&quot;, &quot;/&quot;))" />
+      <!-- The canary function should be last in the linked output. But adding it to Native[Library|Object] runs into https://github.com/dotnet/msbuild/issues/5937. -->
+      <CustomLinkerArg Include="&quot;$(IlcSdkPath.Replace('\', '/'))libStackTraceIpCanary.o&quot;" Condition="'$(_targetOS)' == 'browser'" />
       <CustomLinkerArg Include="@(_WasiComponentImports->Replace('\', '/')->'-Wl,--component-type,&quot;%(Identity)&quot;')" />
       <CustomLinkerArg Include="-o &quot;$(NativeBinary.Replace(&quot;\&quot;, &quot;/&quot;))&quot;" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
@@ -571,7 +574,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Condition="'$(IlcLlvmTarget)' != ''" Include="-target $(IlcLlvmTarget)" />
     </ItemGroup>
 
-    <ItemGroup Condition = "'$(_targetOS)' == 'browser'" >
+    <ItemGroup Condition="'$(_targetOS)' == 'browser'" >
       <CustomLinkerArg Include="--js-library &quot;$(IlcFrameworkNativePath)pal_random.lib.js&quot;" Condition="'$(DotNetJsApi)' != 'true'" />
       <CustomLinkerArg Condition="'$(WasmHtmlTemplate)' != ''" Include="--shell-file &quot;$(WasmHtmlTemplate)&quot;" />
       <CustomLinkerArg Condition="'$(ExportsFile)' != '' and '$([System.IO.File]::ReadAllText($(ExportsFile)))' != ''" Include="-s EXPORTED_FUNCTIONS=@&quot;$(ExportsFile)&quot;" />
@@ -593,7 +596,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <Output TaskParameter="Lines" ItemName="CustomLinkerArgExport" />
     </ReadLinesFromFile>
 
-    <ItemGroup Condition ="'$(_targetOS)' == 'wasi'" >
+    <ItemGroup Condition="'$(_targetOS)' == 'wasi'" >
       <CustomLinkerArg Include="--sysroot=&quot;$(WASI_SDK_PATH.Replace(&quot;\&quot;, &quot;/&quot;))/share/wasi-sysroot&quot;" />
       <CustomLinkerArg Include="@(CustomLinkerArgExport->'-Wl,--export=%(Identity)')" />
       <!-- TODO-LLVM: change to 'warn-unresolved-symbols' once we have a WASI SDK with https://github.com/llvm/llvm-project/pull/78643. -->

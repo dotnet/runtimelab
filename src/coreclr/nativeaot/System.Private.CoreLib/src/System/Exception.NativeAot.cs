@@ -23,7 +23,11 @@ namespace System
                 if (!HasBeenThrown)
                     return null;
 
+#if TARGET_BROWSER
+                return new StackFrame(_corDbgStackTrace, 0, needFileInfo: false).GetMethod();
+#else
                 return new StackFrame(_corDbgStackTrace[0], needFileInfo: false).GetMethod();
+#endif
             }
         }
 
@@ -133,7 +137,11 @@ namespace System
                 bool fatalOutOfMemory = ex == PreallocatedOutOfMemoryException.Instance;
 
                 if (!fatalOutOfMemory)
+#if TARGET_WASM
+                    ex.AppendStack(IP, isFirstFrame, isFirstRethrowFrame);
+#else
                     ex.AppendStackIP(IP, isFirstRethrowFrame);
+#endif
 
 #if FEATURE_PERFTRACING
                 if (isFirstFrame)
@@ -157,7 +165,6 @@ namespace System
             }
         }
 
-#if !TARGET_WASM
         //==================================================================================================================
         // Support for ExceptionDispatchInfo class - imports and exports the stack trace.
         //==================================================================================================================
@@ -206,7 +213,6 @@ namespace System
                 StackTrace = stackTrace;
             }
         }
-#endif
 
         // This is the object against which a lock will be taken
         // when attempt to restore the EDI. Since its static, its possible

@@ -70,8 +70,8 @@ namespace ILCompiler.DependencyAnalysis
         //
         // WASM relocations.
         //
-        R_WASM_FUNCTION_OFFSET_I32, // Offset of a function relative to the Code section.
-        R_WASM_FUNCTION_INDEX_LEB,  // 32 bit function index, used by the call instruction.
+        R_WASM_FUNCTION_INDEX_I32,  // 32 bit function index.
+        R_WASM_FUNCTION_INDEX_LEB,  // 32 bit function index LEB, used by the call instruction.
         R_WASM_MEMORY_ADDR_SLEB,    // 32 bit signed LEB for data references in code (i32.const).
         R_WASM_TABLE_INDEX_SLEB,    // 32 bit signed LEB for function pointer references in code (i32.const).
         R_WASM_MEMORY_ADDR_SLEB64,  // 64 bit signed LEB for data references in code (i64.const).
@@ -572,7 +572,7 @@ namespace ILCompiler.DependencyAnalysis
                     PutSLeb128((byte*)location, value, 10);
                     break;
 #endif
-                case RelocType.R_WASM_FUNCTION_OFFSET_I32:
+                case RelocType.R_WASM_FUNCTION_INDEX_I32:
                 case RelocType.IMAGE_REL_BASED_ABSOLUTE:
                 case RelocType.IMAGE_REL_BASED_ADDR32NB:
                 case RelocType.IMAGE_REL_BASED_HIGHLOW:
@@ -653,7 +653,7 @@ namespace ILCompiler.DependencyAnalysis
                 case RelocType.R_WASM_MEMORY_ADDR_SLEB64:
                     return GetSLeb128((byte*)location);
 #endif
-                case RelocType.R_WASM_FUNCTION_OFFSET_I32:
+                case RelocType.R_WASM_FUNCTION_INDEX_I32:
                 case RelocType.IMAGE_REL_BASED_ABSOLUTE:
                 case RelocType.IMAGE_REL_BASED_ADDR32NB:
                 case RelocType.IMAGE_REL_BASED_HIGHLOW:

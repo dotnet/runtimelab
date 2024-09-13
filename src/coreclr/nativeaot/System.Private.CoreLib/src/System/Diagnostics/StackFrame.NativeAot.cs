@@ -69,6 +69,7 @@ namespace System.Diagnostics
 
             IntPtr methodStartAddress = _ipAddress - _nativeOffset;
             Debug.Assert(RuntimeImports.RhFindMethodStartAddress(_ipAddress) == methodStartAddress);
+            methodStartAddress = ReflectionAugments.ReflectionCoreCallbacks.ConvertStackTraceIpToFunctionPointer(methodStartAddress);
             _method = ReflectionAugments.ReflectionCoreCallbacks.GetMethodBaseFromStartAddressIfAvailable(methodStartAddress);
             if (_method == null)
             {
@@ -117,6 +118,7 @@ namespace System.Diagnostics
             }
         }
 
+#if !TARGET_BROWSER
         /// <summary>
         /// Internal stack frame initialization based on frame index within the stack of the current thread.
         /// </summary>
@@ -141,6 +143,7 @@ namespace System.Diagnostics
         {
             return _ipAddress;
         }
+#endif
 
         /// <summary>
         /// Check whether method info is available.
@@ -156,7 +159,7 @@ namespace System.Diagnostics
         /// </summary>
         private bool AppendStackFrameWithoutMethodBase(StringBuilder builder)
         {
-            builder.Append(DeveloperExperience.Default.CreateStackTraceString(_ipAddress, includeFileInfo: false, out _));
+            builder.Append(CreateStackTraceString(includeFileInfo: false, out _));
             return true;
         }
 
@@ -175,7 +178,7 @@ namespace System.Diagnostics
         {
             if (_ipAddress != Exception.EdiSeparator)
             {
-                string s = DeveloperExperience.Default.CreateStackTraceString(_ipAddress, _needFileInfo, out bool isStackTraceHidden);
+                string s = CreateStackTraceString(_needFileInfo, out bool isStackTraceHidden);
                 if (!isStackTraceHidden)
                 {
                     // Passing a default string for "at" in case SR.UsingResourceKeys() is true
@@ -193,5 +196,12 @@ namespace System.Diagnostics
                     SR.Exception_EndStackTraceFromPreviousThrow);
             }
         }
+
+#if !TARGET_BROWSER
+        private string CreateStackTraceString(bool includeFileInfo, out bool isStackTraceHidden)
+        {
+            return DeveloperExperience.Default.CreateStackTraceString(_ipAddress, includeFileInfo, out isStackTraceHidden);
+        }
+#endif
     }
 }

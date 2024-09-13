@@ -84,6 +84,8 @@
     <WasmAbi>true</WasmAbi>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DefineConstants>TARGET_32BIT;TARGET_WASM;$(DefineConstants)</DefineConstants>
+    <DefineConstants Condition="'$(TargetsBrowser)' == 'true'">TARGET_BROWSER;$(DefineConstants)</DefineConstants>
+    <DefineConstants Condition="'$(TargetsWasi)' == 'true'">TARGET_WASI;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)' == 'x64'">
     <DefineConstants>TARGET_64BIT;TARGET_AMD64;$(DefineConstants)</DefineConstants>

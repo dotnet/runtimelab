@@ -79,6 +79,7 @@ namespace Internal.Reflection.Core.Execution
         public abstract void GetEnumInfo(RuntimeTypeHandle typeHandle, out string[] names, out object[] values, out bool isFlags);
         public abstract IntPtr GetDynamicInvokeThunk(MethodBaseInvoker invoker);
         public abstract MethodInfo GetDelegateMethod(Delegate del);
+        public abstract IntPtr ConvertStackTraceIpToFunctionPointer(IntPtr methodStartAddress);
         public abstract MethodBase GetMethodBaseFromStartAddressIfAvailable(IntPtr methodStartAddress);
         public abstract IntPtr GetStaticClassConstructionContext(RuntimeTypeHandle typeHandle);
 

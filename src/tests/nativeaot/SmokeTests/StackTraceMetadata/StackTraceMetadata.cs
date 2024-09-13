@@ -29,7 +29,7 @@ class Program
     {
         public static void Run()
         {
-#if !CODEGEN_WASM // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2404.
+#if !CODEGEN_WASI // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2404.
 #if STRIPPED
             DiagnosticMethodInfo dmi = DiagnosticMethodInfo.Create(new StackFrame());
             if (dmi != null)
