@@ -6,12 +6,6 @@ using System.Text;
 
 #nullable enable
 
-#if MLAUNCH
-using Xamarin.Launcher;
-#elif XAMARIN_HOSTING
-using Xamarin.Hosting;
-#endif
-
 namespace Xamarin {
 	[Flags]
 	public enum Abi {
@@ -259,102 +253,9 @@ namespace Xamarin {
 						yield return obj;
 					yield break;
 				}
-#if MTOUCH
-				throw ErrorHelper.CreateError (1604, Errors.MX1604, file.GetType ().Name, filename);
-#else
                 throw new Exception($"File of type {file.GetType ().Name} is not a MachO file {filename}");
-#endif
 			}
 		}
-
-#if MTOUCH
-		// Removes all architectures from the target file, except for those in 'architectures'.
-		// This method doesn't do anything if the target file is a thin mach-o file.
-		// Also it doesn't do anything if the result is an empty file (i.e. none of the
-		// selected architectures match any of the architectures in the file) - this is
-		// only because I haven't investigated what would be needed elsewhere in the link
-		// process when the entire file is removed. FIXME <--.
-		public static void SelectArchitectures (string filename, ICollection<Abi> abis)
-		{
-			var architectures = GetArchitectures (abis);
-			var tmpfile = filename + ".tmp";
-
-			if (abis.Count == 0)
-				return;
-
-			using (var fsr = new FileStream (filename, FileMode.Open, FileAccess.Read)) {
-				using (var reader = new BinaryReader (fsr)) {
-					var file = ReadFile (filename);
-					if (file is MachOFile) {
-						Driver.Log (2, "Skipping architecture selecting of '{0}', since it only contains 1 architecture.", filename);
-						return;
-					}
-
-					var fatfile = (FatFile) file;
-					bool any_removed = false;
-
-					// remove architectures we don't want
-					for (int i = fatfile.entries!.Count - 1; i >= 0; i--) {
-						var ff = fatfile.entries [i];
-						if (!architectures.Contains (ff.entry!.Architecture)) {
-							any_removed = true;
-							fatfile.entries.RemoveAt (i);
-							fatfile.nfat_arch--;
-							Driver.Log (2, "Removing architecture {0} from {1}", ff.entry.Architecture, filename);
-						}
-					}
-
-					if (!any_removed) {
-						Driver.Log (2, "Architecture selection of '{0}' didn't find any architectures to remove.", filename);
-						return;
-					}
-
-					if (fatfile.nfat_arch == 0) {
-						Driver.Log (2, "Skipping architecture selection of '{0}', none of the selected architectures match any of the architectures in the archive.", filename, architectures [0]);
-						return;
-					}
-
-					if (fatfile.nfat_arch == 1) {
-						// Thin file
-						var entry = fatfile.entries [0];
-						using (var fsw = new FileStream (tmpfile, FileMode.Create, FileAccess.Write)) {
-							using (var writer = new BinaryWriter (fsw)) {
-								entry.WriteFile (writer, reader, entry.offset);
-							}
-						}
-					} else {
-						// Fat file
-						// Re-calculate header data
-						var read_offset = new List<uint> (fatfile.entries.Count);
-						read_offset.Add (fatfile.entries [0].offset);
-						fatfile.entries [0].offset = (uint) (1 << (int) fatfile.entries [0].align);
-						for (int i = 1; i < fatfile.entries.Count; i++) {
-							read_offset.Add (fatfile.entries [i].offset);
-							fatfile.entries [i].offset = fatfile.entries [i - 1].offset + fatfile.entries [i - 1].size;
-							var alignSize = (1 << (int) fatfile.entries [i].align);
-							var align = (int) fatfile.entries [i].offset % alignSize;
-							if (align != 0)
-								fatfile.entries [i].offset += (uint) (alignSize - align);
-						}
-						// Write out the fat file
-						using (var fsw = new FileStream (tmpfile, FileMode.Create, FileAccess.Write)) {
-							using (var writer = new BinaryWriter (fsw)) {
-								// write headers
-								fatfile.WriteHeaders (writer);
-								// write data
-								for (int i = 0; i < fatfile.entries.Count; i++) {
-									fatfile.entries [i].Write (writer, reader, read_offset [i]);
-								}
-							}
-						}
-					}
-				}
-			}
-
-			File.Delete (filename);
-			File.Move (tmpfile, filename);
-		}
-#endif
 
 		static Dictionary<string, IEnumerable<string>> native_dependencies = new Dictionary<string, IEnumerable<string>> ();
 
@@ -570,11 +471,7 @@ namespace Xamarin {
 				if (bytes [0] != 0x60 && bytes [1] != 0x0A) {
                     var byte0 = bytes [0].ToString ("x");
                     var byte1 = bytes [1].ToString ("x");
-#if MTOUCH                    
-					throw ErrorHelper.CreateError (1605, Errors.MT1605, fileIdentifier, filename, byte0, byte1);
-#else
                     throw new Exception ($"Invalid entry {fileIdentifier} in the static library {filename}, entry header doesn't end with 0x60 0x0A (found '0x{byte0} 0x{byte1}')");
-#endif
                 }
 
 				if (fileIdentifier.StartsWith ("#1/", StringComparison.Ordinal)) {
@@ -611,11 +508,7 @@ namespace Xamarin {
 			reader.BaseStream.Position = pos;
 
 			if (throw_if_error && !rv) {
-#if MTOUCH
-				throw ErrorHelper.CreateError (1601, Errors.MT1601, System.Text.Encoding.ASCII.GetString (bytes, 0, 7));
-#else
                 throw new Exception ($"Not a static library (unknown header '{System.Text.Encoding.ASCII.GetString (bytes, 0, 7)}')");
-#endif
             }
 
 			return rv;
@@ -711,11 +604,7 @@ namespace Xamarin {
 			if (throw_if_error && !rv) {
                 var magicHex = magic.ToString ("x");
                 var errFile = fat_entry?.Parent?.Filename ?? "";
-#if MTOUCH
-				throw ErrorHelper.CreateError (1600, Errors.MX1600, magicHex, errFile);
-#else
 				throw new Exception ($"Not a Mach-O dynamic library (unknown header '0x{magicHex}'): {errFile}");
-#endif
             }
 
 			return rv;
@@ -767,11 +656,7 @@ namespace Xamarin {
 			default:
                 var magicHex = magic.ToString ("x");
                 var errFile = fat_parent?.Parent?.Filename ?? filename;
-#if MTOUCH
-				throw ErrorHelper.CreateError (1602, Errors.MX1602, magicHex, errFile);
-#else
                 throw new Exception("Not a Mach-O dynamic library (unknown header '0x{magicHex}'): {errFile}.");
-#endif
 			}
 			_cputype = reader.ReadInt32 ();
 			_cpusubtype = reader.ReadInt32 ();
@@ -1040,11 +925,7 @@ namespace Xamarin {
 				static_library.Read (parent?.Filename!, reader, size);
 			} else {
                 var errFile = parent?.Filename ?? "";
-#if MTOUCH
-				throw ErrorHelper.CreateError (1603, Errors.MX1603, offset, errFile);
-#else
 				throw new Exception ($"Unknown format for fat entry at position {offset} in {errFile}.");
-#endif
 			}
 		}
 	}
