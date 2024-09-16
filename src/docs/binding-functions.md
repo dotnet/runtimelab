@@ -5,8 +5,7 @@ Functions can be broken down into several different classes
 - Global - not attached to any type
 - Instance - methods that have an implicit extra argument in the self register for accessing instance variables and functions
 - Static - methods that have no implicit extra argument but can access static variables and static functions
-- Class - methods that have an implicit extra argument in the self register which is the type metadata for the class. Class methods can be overridden in subclasses. It appeared that Apple's intent was to make the type metdata object more of a first class object, but support for other things that
-might make class methods more useful like class fields are not there, but you can make computed variables.
+- Class - methods that have an implicit extra argument in the self register which is the type metadata for the class. Class methods can be overridden in subclasses. It appeared that Apple's intent was to make the type metdata object more of a first class object, but support for other things that might make class methods more useful like class fields are not there, but you can make computed variables.
 
 Within these set of method types there are several variations that are common to the function classes:
 - Convenience - getter, setter, get_indexer, set_indexer, operators. It should be noted that unlike C#, Swift doesn't allow set-only accessors: if there is a setter, there will be a getter. Also indexers can only exist as member functions.
@@ -68,7 +67,7 @@ Operators are problematic as C# has only a limited set of available of operators
 The runtime team is taking care of both the self and return pointers as well as value type passing and returning.
 
 ## Runtime Differences
-There are likely issues in mapping async functions.
+There are likely issues in mapping async functions which are out of scope and would need runtime support.
 Generic functions in Swift work by adding an extra implicit argument for every generic in the function declaration which is a pointer to Swift type metadata for the generic argument. In addition, whatever argument is passed to the function gets passed as a reference. If a generic argument has one or more protocol constraints, the compiler injects an argument which is a pointer to the protocol witness table for the type with respect to the protocol. For example, if you have this Swift function:
 ```swift
 public func Identity<T: SomeProtocol>(a: T) -> T {

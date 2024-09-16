@@ -19,7 +19,7 @@ The layout is:
 
 ## Getting the value witness table
 
-There are two ways to get the value witness table for a type. The first is to get the address of memory using `dlsym` with the entry point for the value witness table. The second is get it relative to the type metadata. In Swift there is extended metadata information that always precedes the type metadata. One machine word back from the type metadata is a pointer to the ValueWitnessTable.
+There are two ways to get the value witness table for a type. The first is to get the address of memory using `dlsym` with the entry point for the value witness table. The second is get it relative to the type metadata. In Swift there is extended metadata information that always precedes the type metadata. One machine word back from the type metadata is a pointer to the ValueWitnessTable (see Apple documentation [here](https://github.com/swiftlang/swift/blob/main/docs/ABI/TypeMetadata.rst#common-metadata-layout))
 
 Probably the most efficient way to get the value witness table is to always go from the Swift Type Metadata.
 

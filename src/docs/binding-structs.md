@@ -1,8 +1,8 @@
 # Binding Structs
 
-Structs in Swift are value types that can have a number of forms each of which requires a certain amount of consideration: frozen/non-frozen and blitable and non-blitable.
+Structs in Swift are value types that can have a number of forms each of which requires a certain amount of consideration: frozen/non-frozen and blittable and non-blittable ([.NET definitions here](https://learn.microsoft.com/en-us/dotnet/framework/interop/blittable-and-non-blittable-types)).
 
-Structs that are frozen are guaranteed not to change. They have a fixed layout and are passed by value lowered up until the point when the size of the struct exceeds the number of registers dedicated for value types in Swift (currently 4 and unlikely to change).
+Structs that are frozen are guaranteed not to change. They have a fixed layout and can be passed by value lowered up until the point when the size of the struct exceeds the number of registers dedicated for value types in Swift (currently 4 and unlikely to change).
 
 Non-frozen structs are passed by reference since the layout and size are not guaranteed.
 
@@ -28,7 +28,7 @@ public class Named {
     }
     deinit
     {
-        print("you killed \(name).")
+        print("\(name) left the building.")
     }
 }
 
@@ -50,8 +50,8 @@ print("all done")
 ```
 It will generate the following output:
 ```
-you killed Corey.
-you killed Ian.
+Corey left the building.
+Ian left the building.
 all done
 ```
 This shows how the destructor in the class gets executed when a struct gets overwritten ("you killed Corey") and when it goes out of scope. C# will do neither of this things.
@@ -65,7 +65,7 @@ within swift to get the address of an non-copyable instance are forbidden.
 Swift has very specific rules for packing structs which Apple has laid out [here](https://github.com/swiftlang/swift/blob/main/docs/ABI/TypeLayout.rst).
 
 Structs are passed to functions in one of two ways depending on whether or not they are frozen under `enable-module-evolution` rules.
-If the struct is frozen, it is lowered into up to 4 registers, otherwise it is passed by reference. This is usually done by copying it onto the stack and taking the address into a register. If the func is an instance method it will be passed by reference in the self register.
+If the struct is frozen and bitwise-copyable, it is lowered into up to 4 registers, otherwise it is passed by reference. This is usually done by copying it onto the stack and taking the address into a register. If the func is an instance method it will be passed by reference in the self register.
 
 ## Runtime Differences
 

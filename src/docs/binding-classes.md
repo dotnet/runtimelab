@@ -17,9 +17,9 @@ There is no `protected` (private but for inheritors) access which will create an
 
 Swift has very specific rules for initialization. Under the hood, Swift breaks up the process of making an instance of a class into two pieces: allocation and initialization. Early on these were very much separate, but in the current swift runtime, the allocator will also call the initializer.
 
-The allocating initializer takes the type metadata for the class in the `self` register. We can call this directly, however under enable-library-evolution, the swift compiler generates a dispatch thunk for this method and we should probably call that.
+The allocating initializer takes the type metadata for the class in the `self` register. We can call this directly, however under [enable-library-evolution](https://www.swift.org/blog/library-evolution/), the swift compiler generates a dispatch thunk for this method and we should probably call that.
 
-Swift divides initializers into two categories: designated and convenience. Designated initializers are initializers which fully initialize a class. If a subclass inherits from base class, it must implement all designated initializers and call the parent class. A convenience intializer will have a different signature than all desinated initializers and **must** call a designated initializer.
+Swift divides initializers into two categories: designated and convenience. Designated initializers are initializers which fully initialize a class. If a subclass inherits from base class, it must implement all designated initializers and call the parent class. A convenience intializer will have a different signature than all designated initializers and **must** call a designated initializer.
 
 The generic programming model in Swift does specialization at runtime. It does this by creating the type metadata for the specialized type
 using the Metadata Accessor function. The Metadata Accessor function has one type metadata argument for each specialized type in the generic class. It is **very important** that the binding code calls the Metadata Accessor rather than trying to synthesize the type metadata object. This is because from Swift's point of view, every type metadata object is a singleton and the runtime will cache generic specializations. 
@@ -33,7 +33,8 @@ Swift initializers can fail - this is something that doesn't have an exact analo
 - Class methods get called with the `self` register pointing to the type metadata.
 - Init methods get called with the type metadata in the first argument.
 - Methods that throw return the error in the error register.
-- Virtual methods in swift get called via a vtable. Since the ordering of the vtable is undefined, methods can't be called using the vtable from C#. In addition, the vtable is consider fragile and may change between versions of any given library. Fortunately, with enable-library-evolution set, the compiler will inject a dispatch thunk for each virtual method.
+- Virtual methods in swift get called via a vtable. Since the ordering of the vtable is undefined, methods can't be called using the vtable from C#. In addition, the vtable is consider fragile and may change between versions of any given library. Fortunately, with enable-library-evolution set, the compiler will inject a dispatch thunk for each virtual method. There is a description of dispatch thunks in the library evolution document [here](https://www.swift.org/blog/library-evolution/).
+This and more is documented by Apple [here](https://github.com/swiftlang/swift/blob/main/docs/ABI/CallingConvention.rst) with a summary of register usage [here](https://github.com/swiftlang/swift/blob/main/docs/ABI/CallConvSummary.rst).
 
 
 ## Runtime Differences

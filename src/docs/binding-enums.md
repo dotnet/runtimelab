@@ -192,4 +192,4 @@ public class SomeEnum : {
     }   
 }
 ```
-This is just one possible way of doing this, but the process is the same: statically advertise the cases and methods to get the case, the payload and factory methods to create them.
+This is just one possible way of doing this, but the process is the same: statically advertise the cases and methods to get the case, the payload and factory methods to create them. There is a C# proposal for something similar [here](https://github.com/dotnet/csharplang/blob/main/proposals/TypeUnions.md#custom-unions).
