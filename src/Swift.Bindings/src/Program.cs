@@ -131,22 +131,12 @@ namespace BindingsGeneration
             while (paths.Count > 0)
             {
                 string path = paths.Dequeue();
-                string dylib;
 
                 if (verbose > 0)
                     Console.WriteLine($"Starting bindings generation for {path}...");
 
-                if (!File.Exists(path))
-                {
-                    // In this case, the path is assumed to be a framework name
-                    dylib = $"/System/Library/Frameworks/{path}.framework/{path}";
-                    path = ResolveABIPath(path, outputDirectory);
-                }
-                else
-                {
-                    // Resolve the dylib path from the ABI file
-                    dylib = $"{Path.GetDirectoryName(path)}/lib{Path.GetFileName(path).Replace(".abi.json", "")}.dylib";
-                }
+                var (resolvedPath, dylib) = GetResolvedPathAndDylibPath(path, outputDirectory);
+                path = resolvedPath;
 
                 if (!Path.Exists(path) || !Path.Exists(dylib))
                 {
@@ -199,6 +189,31 @@ namespace BindingsGeneration
                 string destFilePath = Path.Combine(outputDirectory, fileName);
                 File.Copy(filePath, destFilePath, true);
             }
+        }
+
+        /// <summary>
+        /// Returns a tuple of the ABI path and the dylib path. If path doesn't exist, it will attempt
+        /// to resolve the path relative to the output directory.
+        /// </summary>
+        /// <param name="path">Path to the output ABI or the name of the expected ABI.</param>
+        /// <param name="outputDirectory">Output directory for the ABI file.</param>
+        /// <returns></returns>
+        // Returns 
+        public static (string, string) GetResolvedPathAndDylibPath (string path, string outputDirectory)
+        {
+                var dylib = "";
+                if (!File.Exists(path))
+                {
+                    // In this case, the path is assumed to be a framework name
+                    dylib = $"/System/Library/Frameworks/{path}.framework/{path}";
+                    path = ResolveABIPath(path, outputDirectory);
+                }
+                else
+                {
+                    // Resolve the dylib path from the ABI file
+                    dylib = $"{Path.GetDirectoryName(path)}/lib{Path.GetFileName(path).Replace(".abi.json", "")}.dylib";
+                }
+                return (path, dylib);
         }
 
         /// <summary>
