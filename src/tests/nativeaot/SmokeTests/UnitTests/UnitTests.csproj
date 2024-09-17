@@ -7,7 +7,13 @@
     <!-- There's just too many of these warnings -->
     <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
     <NoWarn>$(NoWarn);IL3050;IL3054</NoWarn>
+<<<<<<< HEAD
     <CLRTestExitCode>0</CLRTestExitCode>
+=======
+
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
+>>>>>>> runtime/main
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="BasicThreading.cs" />
