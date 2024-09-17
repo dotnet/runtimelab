@@ -65,7 +65,7 @@ within swift to get the address of an non-copyable instance are forbidden.
 Swift has very specific rules for packing structs which Apple has laid out [here](https://github.com/swiftlang/swift/blob/main/docs/ABI/TypeLayout.rst).
 
 Structs are passed to functions in one of two ways depending on whether or not they are frozen under `enable-module-evolution` rules.
-If the struct is frozen and bitwise-copyable, it is lowered into up to 4 registers, otherwise it is passed by reference. This is usually done by copying it onto the stack and taking the address into a register. If the func is an instance method it will be passed by reference in the self register.
+If the struct is frozen and bitwise-copyable, it is lowered into up to 4 registers, otherwise it is passed by reference. This is usually done by copying it onto the stack and taking the address into a register. If the func is an instance method the struct will be passed by reference in the self register.
 
 ## Runtime Differences
 
@@ -92,7 +92,7 @@ n1 = n2; // memory leak.
 ```
 
 ## Accessibility
-The main problem that we have is with non-blittable structs. We would either need our users to manually destroy structs when they're no longer needed (this a really bad idea - people are awful at memory management - that's why we have garbage collection and `IDisposable`)
+The main problem that we have is with non-blittable structs. We would either need our users to manually destroy structs when they're no longer needed (this a really bad idea - people are awful at memory management - that's why we have garbage collection and `IDisposable`) or we would need to have the types implement `IDisposable`.
 
 The way this was handled in BTfS was to make no distinction between blittable and non-blittable structs and to implement them as a class with a byte array payload that implemented `IDisposable`. This would give the effect of having the destroy method called when the class gets disposed. The downside to this is that all structs, regardless of blitability, incur a cost in terms of heap allocation and at GC time. The up side is that the code to do the binding is simpler and handled uniformly.
 

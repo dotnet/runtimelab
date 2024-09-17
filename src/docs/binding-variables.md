@@ -2,7 +2,7 @@
 
 Variables in Swift come in two general forms: computed and stored.  Unlike C#, Swift allows variables to exist at the top level of a module being effectively global.
 
-With enable-module-evolution set, all `let` variables will have a getter. Variables that are declared with `var` will have a getter as well as a setter. It is an error to make a set-only variable.
+With enable-library-evolution set, all `let` variables will have a getter. Variables that are declared with `var` will have a getter as well as a setter. It is an error to make a set-only variable.
 
 Variables can be:
 - global

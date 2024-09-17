@@ -5,7 +5,7 @@ Classes function very similarly to C# classes with some important semantic and r
 Swift classes can be either native Swift or Objective-C. The latter is in place strictly for compatability with legacy code and in fact, if a Swift class is declared to be `@ObjC`, it must inherit from `NSObject` and the swift compiler will generate a selector dispatcher for all methods marked as `@ObjC` but these just go to the Swift implementation, therefore Objective-C compatability is just a thin veneer on top of the Swift implementation.
 
 ## Language Parity Mismatches
-Swift provides a different set of accessibility of methods that C#:
+Swift provides a different set of accessibility of methods than C#:
 - open - callable by all and overridable (effectively public virtual)
 - public - callable by all not overridable
 - private - callable only by members of the class
