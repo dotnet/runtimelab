@@ -211,7 +211,7 @@ public func someOtherFunc(y: YourAge) {
 
 The way to get this to work 100% in both directions is to have a reverse binding step that exposes the new C# members and protocol compliance in Swift.
 
-It may seem tempting to synthesize the protocol witness table, a type object and a synthetic swift object, but this would require knowing the layout of the protocol witness tables as well as the layout of the actual vtables which we don't and can't know. In addition, both tables are fragile and susceptible to changes in the class and/or protocol(s).
+It may seem tempting to synthesize the protocol witness table, a type object and a synthetic swift object, but this would require knowing the layout of the protocol witness tables as well as the layout of the actual vtables which we don't and can't know. In addition, both tables are fragile and susceptible to changes in the class and/or protocol(s). How this is handled is described in detail in [this Apple doc on library evolution](https://www.swift.org/blog/library-evolution/).
 
 Here is a complete example of an open class in swift with a virtual member. The code represents a Swift class which is open and should be exposed in C# as a class with a virtual method.
 
