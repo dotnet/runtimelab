@@ -49,7 +49,7 @@ This accessor appears to be thread safe.
 ## Runtime Mismatches
 Tuples that contain heap allocated types will create issues due to reference counting issues. This is the same as with Structs.
 
-For calling generic functions that are being passed a tuple from C#, we will need to pass in the appropriate type metadata. Fortunately, this is relatively straightforward. 
+For calling generic functions that are being passed a tuple from C#, we will need to pass in the appropriate type metadata. Fortunately, this is relatively straightforward. It should be noted that tuples passed in the place of a generic argument to a function are treated like any other value type passed as a generic argument: a copy of the value type is made on the stack and then the address of it gets passed as well as the type metadata added as an implicit argument.
 
 ## Idiomatic Differences
 There are no idiomatic differences that we will need to worry about.
