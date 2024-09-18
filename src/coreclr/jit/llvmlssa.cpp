@@ -985,7 +985,13 @@ private:
                     initValue->SetRegNum(REG_LLVM);
                     if (m_compiler->lvaInSsa(lclNum))
                     {
+                        // Fortunately for the implicit GC def logic, SSA always adds an implicit def for parameters.
+                        assert(varDsc->GetPerSsaData(SsaConfig::FIRST_SSA_NUM)->GetDefNode() == nullptr);
                         initValue->SetSsaNum(SsaConfig::FIRST_SSA_NUM);
+                    }
+                    if (varDsc->lvTracked)
+                    {
+                        VarSetOps::AddElemD(m_compiler, m_compiler->fgFirstBB->bbLiveIn, varDsc->lvVarIndex);
                     }
                     InitializeLocalInProlog(lclNum, initValue);
                 }

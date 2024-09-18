@@ -434,6 +434,8 @@ internal unsafe partial class Program
 
         TestThreadStaticAlignment();
 
+        TestLiveInFirstBlockForTracked(new object());
+
         if (OperatingSystem.IsBrowser())
         {
             EventLoopTestClass.TestEventLoopIntegration();
@@ -4472,6 +4474,23 @@ internal unsafe partial class Program
         var ts2Addr = ThreadStaticAlignCheck2.returnArea.AddressOfReturnArea();
 
         EndTest((((nint)ts1Addr) % 8 == 0) && (((nint)ts2Addr) % 8 == 0));
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    static void SafePoint()
+    {
+    }
+
+    static object TestLiveInFirstBlockForTracked(object a)
+    {
+        StartTest("Test live in populated for first block tracked variables");
+
+        SafePoint();
+        a = new object();
+        SafePoint(); // Force a to the shadow stack
+
+        EndTest(true);
+        return a;
     }
 
     static ushort ReadUInt16()
