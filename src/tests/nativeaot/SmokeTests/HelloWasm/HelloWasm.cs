@@ -46,7 +46,7 @@ internal unsafe partial class Program
         PrintLine("Hello from C#!");
         int tempInt = 0;
         int tempInt2 = 0;
-        StartTest("Address/derefernce test");
+        StartTest("Address/dereference test");
         (*(&tempInt)) = 9;
         EndTest(tempInt == 9);
 

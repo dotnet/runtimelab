@@ -1645,6 +1645,7 @@ private:
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wformat-security"
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif // __clang__
             if (pBuffer == nullptr)
             {

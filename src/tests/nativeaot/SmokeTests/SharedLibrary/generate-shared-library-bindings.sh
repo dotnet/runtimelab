@@ -13,11 +13,5 @@ set -ex
 
 # TODO: switch to crates.io release once https://github.com/bytecodealliance/wit-bindgen/pull/1040 is merged and released
 cargo install --locked --no-default-features --features csharp --git https://github.com/dicej/wit-bindgen --rev 694fd927 wit-bindgen-cli
-curl -OL https://github.com/WebAssembly/wasi-http/archive/refs/tags/v0.2.1.tar.gz
-tar xzf v0.2.1.tar.gz
-cat >wasi-http-0.2.1/wit/world.wit <<EOF
-world wasi-http {
-  import outgoing-handler;
-}
-EOF
-wit-bindgen c-sharp -w wasi-http -r native-aot --internal wasi-http-0.2.1/wit
+wit-bindgen c-sharp -w library -r native-aot wit
+rm LibraryWorld_wasm_import_linkage_attribute.cs

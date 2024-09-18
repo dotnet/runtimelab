@@ -349,9 +349,11 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
         set __CMakeTarget=!__CMakeTarget! nativeaot
 
         if "%__TargetArch%"=="wasm" (
-            if not defined EMSDK (
-                echo %__ErrMsgPrefix%%__MsgPrefix%Error: The EMSDK environment variable pointing to emsdk root must be set.
-                goto ExitWithError
+            if "%__TargetOS%"=="browser" (
+                if not defined EMSDK (
+                    echo %__ErrMsgPrefix%%__MsgPrefix%Error: The EMSDK environment variable pointing to emsdk root must be set.
+                    goto ExitWithError
+                )
             )
         )
     )

@@ -51,11 +51,13 @@ if ($IsWindows)
 {
     Expand-Archive -LiteralPath "$InstallPath\$NodeJSZipName" -DestinationPath $InstallPath -Force
     $NodeJSExePath = "$InstallPath\$NodeJSInstallName\node.exe"
+    $NpmExePath = "$InstallPath\$NodeJSInstallName\npm.cmd"
 }
 else
 {
     tar xJf $InstallPath/$NodeJSZipName -C $InstallPath
     $NodeJSExePath = "$InstallPath/$NodeJSInstallName/bin/node"
+    $NpmExePath = "$InstallPath/$NodeJSInstallName/bin/npm"
 }
 
 if (!(Test-Path $NodeJSExePath))
@@ -64,5 +66,14 @@ if (!(Test-Path $NodeJSExePath))
     exit 1
 }
 
+if (!(Test-Path $NpmExePath))
+{
+    Write-Error "Did not find NPM at: '$NpmExePath'"
+    exit 1
+}
+
 Write-Host Setting NODEJS_EXECUTABLE to $NodeJSExePath
 Write-Host "##vso[task.setvariable variable=NODEJS_EXECUTABLE]$NodeJSExePath"
+
+Write-Host Setting NPM_EXECUTABLE to $NpmExePath
+Write-Host "##vso[task.setvariable variable=NPM_EXECUTABLE]$NpmExePath"

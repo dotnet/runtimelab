@@ -13,9 +13,9 @@ namespace System.Threading
     {
         // these methods are temporarily accessed via UnsafeAccessor from generated code until we have it in public API, probably in WASI preview3 and promises
 #if TARGET_WASI
-        internal static System.Threading.Tasks.Task RegisterWasiPollableHandle(int handle)
+        internal static System.Threading.Tasks.Task RegisterWasiPollableHandle(int handle, CancellationToken cancellationToken)
         {
-            return WasiEventLoop.RegisterWasiPollableHandle(handle);
+            return WasiEventLoop.RegisterWasiPollableHandle(handle, cancellationToken);
         }
 
         internal static int PollWasiEventLoopUntilResolved(Task<int> mainTask)
@@ -33,6 +33,10 @@ namespace System.Threading
             return mainTask.Result;
         }
 
+        internal static void DispatchWasiEventLoop()
+        {
+            WasiEventLoop.DispatchWasiEventLoop();
+        }
 #endif
 
         // the closest analog to Sleep(0) on Unix is sched_yield
