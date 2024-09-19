@@ -6856,17 +6856,11 @@ public:
     AddCodeDscMap* fgGetAddCodeDscMap();
 
 private:
-<<<<<<< HEAD
-    AddCodeDsc* fgAddCodeList;
-    bool        fgRngChkThrowAdded;
-    AddCodeDscMap* fgAddCodeDscMap;
-=======
     static unsigned acdHelper(SpecialCodeKind codeKind);
 
     AddCodeDsc* fgAddCodeList = nullptr;
     bool        fgRngChkThrowAdded = false;
     AddCodeDscMap* fgAddCodeDscMap = nullptr;
->>>>>>> runtime/main
 
     void fgAddCodeRef(BasicBlock* srcBlk, SpecialCodeKind kind);
     PhaseStatus fgCreateThrowHelperBlocks();
@@ -8681,16 +8675,12 @@ public:
     */
 
 public:
-<<<<<<< HEAD
 #ifdef TARGET_WASM
     Llvm* m_llvm;
 #endif // TARGET_WASM
 
 #ifndef TARGET_WASM
-    CodeGenInterface* codeGen;
-=======
     CodeGenInterface* codeGen = nullptr;
->>>>>>> runtime/main
 
     // Record the instr offset mapping to the generated code
 

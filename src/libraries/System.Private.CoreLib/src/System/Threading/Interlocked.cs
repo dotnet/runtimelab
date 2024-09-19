@@ -84,11 +84,7 @@ namespace System.Threading
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe byte Exchange(ref byte location1, byte value)
         {
-<<<<<<< HEAD
-#if !MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64 || TARGET_WASM)
-=======
-#if (MONO && (TARGET_AMD64 || TARGET_ARM64 || TARGET_WASM)) || (!MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64))
->>>>>>> runtime/main
+#if (MONO && (TARGET_AMD64 || TARGET_ARM64 || TARGET_WASM)) || (!MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64 || TARGET_WASM))
             return Exchange(ref location1, value); // Must expand intrinsic
 #else
             // this relies on GC keeping 4B alignment for refs and on subtracting to such alignment being in the same object
@@ -127,11 +123,7 @@ namespace System.Threading
         [CLSCompliant(false)]
         public static unsafe ushort Exchange(ref ushort location1, ushort value)
         {
-<<<<<<< HEAD
-#if !MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64 || TARGET_WASM)
-=======
-#if ((MONO && (TARGET_AMD64 || TARGET_ARM64 || TARGET_WASM)) || !MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64))
->>>>>>> runtime/main
+#if ((MONO && (TARGET_AMD64 || TARGET_ARM64 || TARGET_WASM)) || !MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64 || TARGET_WASM))
             return Exchange(ref location1, value); // Must expand intrinsic
 #else
             // this relies on GC keeping 4B alignment for refs and on subtracting to such alignment being in the same object
@@ -330,11 +322,7 @@ namespace System.Threading
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe byte CompareExchange(ref byte location1, byte value, byte comparand)
         {
-<<<<<<< HEAD
-#if !MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64 || TARGET_WASM)
-=======
-#if (MONO && (TARGET_ARM64 || TARGET_AMD64 || TARGET_WASM)) || (!MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64))
->>>>>>> runtime/main
+#if (MONO && (TARGET_ARM64 || TARGET_AMD64 || TARGET_WASM)) || (!MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64 || TARGET_WASM))
             return CompareExchange(ref location1, value, comparand); // Must expand intrinsic
 #else
             // this relies on GC keeping 4B alignment for refs and on subtracting to such alignment being in the same object
@@ -377,11 +365,7 @@ namespace System.Threading
         [CLSCompliant(false)]
         public static unsafe ushort CompareExchange(ref ushort location1, ushort value, ushort comparand)
         {
-<<<<<<< HEAD
-#if !MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64 || TARGET_WASM)
-=======
-#if (MONO && (TARGET_ARM64 || TARGET_AMD64 || TARGET_WASM)) || (!MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64))
->>>>>>> runtime/main
+#if (MONO && (TARGET_ARM64 || TARGET_AMD64 || TARGET_WASM)) || (!MONO && (TARGET_X86 || TARGET_AMD64 || TARGET_ARM64 || TARGET_WASM))
             return CompareExchange(ref location1, value, comparand); // Must expand intrinsic
 #else
             // this relies on GC keeping 4B alignment for refs and on subtracting to such alignment being in the same object

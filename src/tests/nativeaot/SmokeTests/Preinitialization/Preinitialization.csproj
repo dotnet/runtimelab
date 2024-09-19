@@ -16,12 +16,9 @@
       with system C++ runtime library (-lstdc++).
     -->
     <LinkStandardCPlusPlusLibrary>true</LinkStandardCPlusPlusLibrary>
-<<<<<<< HEAD
     <CLRTestExitCode>0</CLRTestExitCode>
-=======
     <RequiresProcessIsolation>true</RequiresProcessIsolation>
     <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
->>>>>>> runtime/main
   </PropertyGroup>
 
   <ItemGroup>

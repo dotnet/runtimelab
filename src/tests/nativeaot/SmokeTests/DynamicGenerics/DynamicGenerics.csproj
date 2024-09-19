@@ -10,12 +10,9 @@
 
     <!-- Look for MULTIMODULE_BUILD #define for the more specific incompatible parts -->
     <CLRTestTargetUnsupported Condition="'$(IlcMultiModule)' == 'true'">true</CLRTestTargetUnsupported>
-<<<<<<< HEAD
     <CLRTestExitCode>0</CLRTestExitCode>
-=======
     <RequiresProcessIsolation>true</RequiresProcessIsolation>
     <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
->>>>>>> runtime/main
   </PropertyGroup>
 
   <ItemGroup>

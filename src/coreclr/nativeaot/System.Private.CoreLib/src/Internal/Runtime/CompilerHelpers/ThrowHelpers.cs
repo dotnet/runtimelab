@@ -39,58 +39,9 @@ namespace Internal.Runtime.CompilerHelpers
             throw new TypeLoadException(SR.Arg_UnavailableTypeLoadException);
         }
 
-<<<<<<< HEAD
-        public static void ThrowOverflowException()
-        {
-            throw new OverflowException();
-        }
-
-        public static void ThrowIndexOutOfRangeException()
-        {
-            throw new IndexOutOfRangeException();
-        }
-
-        public static void ThrowNullReferenceException()
-        {
-            throw new NullReferenceException();
-        }
-
-        public static void ThrowDataMisalignedException()
-        {
-            throw new DataMisalignedException();
-        }
-
-        public static void ThrowDivideByZeroException()
-        {
-            throw new DivideByZeroException();
-        }
-
-        public static void ThrowArrayTypeMismatchException()
-        {
-            throw new ArrayTypeMismatchException();
-        }
-
-        public static void ThrowPlatformNotSupportedException()
-        {
-            throw new PlatformNotSupportedException();
-        }
-
-        public static void ThrowNotImplementedException()
-        {
-            throw NotImplemented.ByDesign;
-        }
-
-        public static void ThrowNotSupportedException()
-        {
-            throw new NotSupportedException();
-        }
-
-        public static void ThrowBadImageFormatException(ExceptionStringID id)
-=======
         [DoesNotReturn]
         [DebuggerHidden]
         internal static void ThrowBadImageFormatException(ExceptionStringID id)
->>>>>>> runtime/main
         {
             throw TypeLoaderExceptionHelper.CreateBadImageFormatException(id);
         }

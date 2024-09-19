@@ -36,11 +36,7 @@ namespace System.Net.Http
         /// Gets a value that indicates whether the handler is supported on the current platform.
         /// </summary>
         [UnsupportedOSPlatformGuard("browser")]
-<<<<<<< HEAD
-        public static bool IsSupported => !(OperatingSystem.IsBrowser() || OperatingSystem.IsWasi());
-=======
         public static bool IsSupported => !OperatingSystem.IsBrowser() && !OperatingSystem.IsWasi();
->>>>>>> runtime/main
 
         public bool UseCookies
         {

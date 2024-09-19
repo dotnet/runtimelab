@@ -340,8 +340,10 @@ Compiler::Compiler(ArenaAllocator*       arena,
     , impPendingBlockMembers(CompAllocator(arena, CMK_Generic))
     , impSpillCliquePredMembers(CompAllocator(arena, CMK_Generic))
     , impSpillCliqueSuccMembers(CompAllocator(arena, CMK_Generic))
+#ifndef TARGET_WASM
     , genIPmappings(CompAllocator(arena, CMK_DebugInfo))
     , genRichIPmappings(CompAllocator(arena, CMK_DebugInfo))
+#endif // !TARGET_WASM
 {
     info.compCompHnd    = compHnd;
     info.compMethodHnd  = methodHnd;
@@ -395,6 +397,10 @@ Compiler::Compiler(ArenaAllocator*       arena,
         compInlineResult = nullptr;
     }
 
+#ifdef TARGET_WASM
+    m_llvm = new (getAllocator(CMK_Codegen)) Llvm(this);
+#endif // TARGET_WASM
+
     for (int i = 0; i < TYP_COUNT; i++)
     {
         fgBigOffsetMorphingTemps[i] = BAD_VAR_NUM;
@@ -420,7 +426,9 @@ Compiler::Compiler(ArenaAllocator*       arena,
 
     if (!compIsForInlining())
     {
+#ifndef TARGET_WASM
         codeGen = getCodeGenerator(this);
+#endif // !TARGET_WASM
         hashBv::Init(this);
 
         //
@@ -429,6 +437,12 @@ Compiler::Compiler(ArenaAllocator*       arena,
 #if MEASURE_NODE_SIZE
         genNodeSizeStatsPerFunc.Init();
 #endif // MEASURE_NODE_SIZE
+    }
+    else
+    {
+#ifndef TARGET_WASM
+        codeGen = nullptr;
+#endif // !TARGET_WASM
     }
 
     for (MemoryKind memoryKind : allMemoryKinds())
@@ -1965,255 +1979,6 @@ void Compiler::compDisplayStaticSizes()
 
 /*****************************************************************************
  *
-<<<<<<< HEAD
- *  Constructor
- */
-void Compiler::compInit(ArenaAllocator*       pAlloc,
-                        CORINFO_METHOD_HANDLE methodHnd,
-                        COMP_HANDLE           compHnd,
-                        CORINFO_METHOD_INFO*  methodInfo,
-                        InlineInfo*           inlineInfo)
-{
-    assert(pAlloc);
-    compArenaAllocator = pAlloc;
-
-    // Inlinee Compile object will only be allocated when needed for the 1st time.
-    InlineeCompiler = nullptr;
-
-    // Set the inline info.
-    impInlineInfo       = inlineInfo;
-    info.compCompHnd    = compHnd;
-    info.compMethodHnd  = methodHnd;
-    info.compMethodInfo = methodInfo;
-    info.compClassHnd   = compHnd->getMethodClass(methodHnd);
-
-#ifdef DEBUG
-    compAllowStress = true;
-
-    // set this early so we can use it without relying on random memory values
-    verbose = compIsForInlining() ? impInlineInfo->InlinerCompiler->verbose : false;
-
-    compNumStatementLinksTraversed = 0;
-    compPoisoningAnyImplicitByrefs = false;
-#endif
-
-#if defined(DEBUG) || defined(LATE_DISASM) || DUMP_FLOWGRAPHS || DUMP_GC_TABLES
-    // Initialize the method name and related info, as it is used early in determining whether to
-    // apply stress modes, and which ones to apply.
-    // Note that even allocating memory can invoke the stress mechanism, so ensure that both
-    // 'compMethodName' and 'compFullName' are either null or valid before we allocate.
-    // (The stress mode checks references these prior to checking bRangeAllowStress.)
-    //
-    info.compMethodName = nullptr;
-    info.compClassName  = nullptr;
-    info.compFullName   = nullptr;
-
-    info.compMethodName = eeGetMethodName(methodHnd);
-    info.compClassName  = eeGetClassName(info.compClassHnd);
-    info.compFullName   = eeGetMethodFullName(methodHnd);
-
-    info.compMethodSuperPMIIndex = g_jitHost->getIntConfigValue(W("SuperPMIMethodContextNumber"), -1);
-
-    if (!compIsForInlining())
-    {
-        JitMetadata::report(this, JitMetadata::MethodFullName, info.compFullName, strlen(info.compFullName));
-    }
-#endif // defined(DEBUG) || defined(LATE_DISASM) || DUMP_FLOWGRAPHS
-
-#if defined(DEBUG)
-    info.compMethodHashPrivate = 0;
-#endif // defined(DEBUG)
-
-#ifdef DEBUG
-    // Opt-in to jit stress based on method hash ranges.
-    //
-    // Note the default (with JitStressRange not set) is that all
-    // methods will be subject to stress.
-    static ConfigMethodRange fJitStressRange;
-    fJitStressRange.EnsureInit(JitConfig.JitStressRange());
-    assert(!fJitStressRange.Error());
-    compAllowStress =
-        fJitStressRange.Contains(info.compMethodHash()) &&
-        (JitConfig.JitStressOnly().isEmpty() ||
-         JitConfig.JitStressOnly().contains(info.compMethodHnd, info.compClassHnd, &info.compMethodInfo->args));
-
-#endif // DEBUG
-
-    eeInfoInitialized = false;
-
-#if defined(FEATURE_EH_WINDOWS_X86)
-    // Cache Native AOT ABI check. This must happen *after* eeInfoInitialized is initialized, above.
-    eeIsNativeAotAbi = IsTargetAbi(CORINFO_NATIVEAOT_ABI);
-#endif
-
-    compDoAggressiveInlining = false;
-
-    if (compIsForInlining())
-    {
-        m_inlineStrategy = nullptr;
-        compInlineResult = inlineInfo->inlineResult;
-    }
-    else
-    {
-        m_inlineStrategy = new (this, CMK_Inlining) InlineStrategy(this);
-        compInlineResult = nullptr;
-    }
-
-    // Initialize this to the first phase to run.
-    mostRecentlyActivePhase = PHASE_PRE_IMPORT;
-
-    // Initially, no phase checks are active, and all dumps are enabled.
-    activePhaseChecks = PhaseChecks::CHECK_NONE;
-    activePhaseDumps  = PhaseDumps::DUMP_ALL;
-
-    fgInit();
-    lvaInit();
-    optInit();
-
-#ifdef TARGET_WASM
-    m_llvm = new (getAllocator(CMK_Codegen)) Llvm(this);
-#endif // TARGET_WASM
-
-    if (!compIsForInlining())
-    {
-#ifndef TARGET_WASM
-        codeGen = getCodeGenerator(this);
-#endif // !TARGET_WASM
-        hashBv::Init(this);
-        compVarScopeMap = nullptr;
-
-        // If this method were a real constructor for Compiler, these would
-        // become method initializations.
-        impPendingBlockMembers    = JitExpandArray<BYTE>(getAllocator());
-        impSpillCliquePredMembers = JitExpandArray<BYTE>(getAllocator());
-        impSpillCliqueSuccMembers = JitExpandArray<BYTE>(getAllocator());
-
-#ifndef TARGET_WASM
-        new (&genIPmappings, jitstd::placement_t()) jitstd::list<IPmappingDsc>(getAllocator(CMK_DebugInfo));
-        new (&genRichIPmappings, jitstd::placement_t()) jitstd::list<RichIPMapping>(getAllocator(CMK_DebugOnly));
-#endif // !TARGET_WASM
-
-        lvMemoryPerSsaData = SsaDefArray<SsaMemDef>();
-
-        //
-        // Initialize all the per-method statistics gathering data structures.
-        //
-#if LOOP_HOIST_STATS
-        m_loopsConsidered             = 0;
-        m_curLoopHasHoistedExpression = false;
-        m_loopsWithHoistedExpressions = 0;
-        m_totalHoistedExpressions     = 0;
-#endif // LOOP_HOIST_STATS
-#if MEASURE_NODE_SIZE
-        genNodeSizeStatsPerFunc.Init();
-#endif // MEASURE_NODE_SIZE
-    }
-    else
-    {
-#ifndef TARGET_WASM
-        codeGen = nullptr;
-#endif // !TARGET_WASM
-    }
-
-    compJmpOpUsed         = false;
-    compLongUsed          = false;
-    compTailCallUsed      = false;
-    compTailPrefixSeen    = false;
-    compLocallocSeen      = false;
-    compLocallocUsed      = false;
-    compLocallocOptimized = false;
-    compQmarkRationalized = false;
-    compQmarkUsed         = false;
-    compFloatingPointUsed = false;
-
-    compSuppressedZeroInit = false;
-
-    compNeedsGSSecurityCookie = false;
-    compGSReorderStackLayout  = false;
-
-    compGeneratingProlog       = false;
-    compGeneratingEpilog       = false;
-    compGeneratingUnwindProlog = false;
-    compGeneratingUnwindEpilog = false;
-
-    compPostImportationCleanupDone = false;
-    compLSRADone                   = false;
-    compRationalIRForm             = false;
-
-#ifdef DEBUG
-    compCodeGenDone        = false;
-    opts.compMinOptsIsUsed = false;
-#endif
-    opts.compMinOptsIsSet = false;
-
-    // Used by fgFindJumpTargets for inlining heuristics.
-    opts.instrCount = 0;
-
-    // Used to track when we should consider running EarlyProp
-    optMethodFlags       = 0;
-    optNoReturnCallCount = 0;
-
-#ifdef DEBUG
-    m_nodeTestData      = nullptr;
-    m_loopHoistCSEClass = FIRST_LOOP_HOIST_CSE_CLASS;
-#endif
-    m_switchDescMap  = nullptr;
-    m_blockToEHPreds = nullptr;
-    m_dominancePreds = nullptr;
-    m_fieldSeqStore  = nullptr;
-    m_refAnyClass    = nullptr;
-    for (MemoryKind memoryKind : allMemoryKinds())
-    {
-        m_memorySsaMap[memoryKind] = nullptr;
-    }
-
-#ifdef DEBUG
-    if (!compIsForInlining())
-    {
-        compDoComponentUnitTestsOnce();
-    }
-#endif // DEBUG
-
-    vnStore                    = nullptr;
-    m_outlinedCompositeSsaNums = nullptr;
-    m_nodeToLoopMemoryBlockMap = nullptr;
-    m_signatureToLookupInfoMap = nullptr;
-    m_significantSegmentsMap   = nullptr;
-    fgSsaPassesCompleted       = 0;
-    fgSsaValid                 = false;
-    fgVNPassesCompleted        = 0;
-
-#ifdef SWIFT_SUPPORT
-    m_swiftLoweringCache = nullptr;
-#endif
-#if defined(TARGET_RISCV64) || defined(TARGET_LOONGARCH64)
-    m_fpStructLoweringCache = nullptr;
-#endif
-
-    // check that HelperCallProperties are initialized
-
-    assert(s_helperCallProperties.IsPure(CORINFO_HELP_GET_GCSTATIC_BASE));
-
-    // We start with the flow graph in tree-order
-    fgOrder = FGOrderTree;
-
-    m_classLayoutTable = nullptr;
-
-#ifdef FEATURE_SIMD
-    m_simdHandleCache = nullptr;
-#endif // FEATURE_SIMD
-
-    compUsesThrowHelper = false;
-
-    m_preferredInitCctor = CORINFO_HELP_UNDEF;
-
-    new (&Metrics, jitstd::placement_t()) JitMetrics();
-}
-
-/*****************************************************************************
- *
-=======
->>>>>>> runtime/main
  *  Destructor
  */
 
