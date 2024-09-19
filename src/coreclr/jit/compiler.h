@@ -6856,7 +6856,9 @@ public:
     AddCodeDscMap* fgGetAddCodeDscMap();
 
 private:
+#if !defined(TARGET_WASM)
     static unsigned acdHelper(SpecialCodeKind codeKind);
+#endif
 
     AddCodeDsc* fgAddCodeList = nullptr;
     bool        fgRngChkThrowAdded = false;
@@ -6867,7 +6869,9 @@ private:
 
 
 public:
+#if defined(TARGET_WASM) // Accessed in llvmcodegen.cpp
     static unsigned acdHelper(SpecialCodeKind codeKind);
+#endif
 
     AddCodeDsc* fgFindExcptnTarget(SpecialCodeKind kind, unsigned refData);
 
