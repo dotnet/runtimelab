@@ -44,9 +44,6 @@ namespace ILCompiler
                 case ReadyToRunHelper.ThrowDivZero:
                     methodDesc = context.GetHelperEntryPoint("ThrowHelpers", "ThrowDivideByZeroException");
                     break;
-                case ReadyToRunHelper.ThrowMisalign:
-                    methodDesc = context.GetHelperEntryPoint("ThrowHelpers", "ThrowDataMisalignedException");
-                    break;
                 case ReadyToRunHelper.ThrowArgumentOutOfRange:
                     methodDesc = context.GetHelperEntryPoint("ThrowHelpers", "ThrowArgumentOutOfRangeException");
                     break;
