@@ -1,7 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System.Diagnostics;
+
 namespace BindingsGeneration.Demangling;
+
 /// <summary>
 /// MatchRule represents a tree reducing rule for a demangled Swift symbol.
 /// Given a tree of nodes, a match rule contains conditions for the match,
@@ -12,9 +15,10 @@ namespace BindingsGeneration.Demangling;
 /// - One or more NodeKinds to match
 /// If a match occurs, a reducer function can be run on the node.
 /// </summary>
+[DebuggerDisplay("{ToString()}")]
 internal class MatchRule {
     /// <summary>
-    /// The name of this rule - usefule for debugging
+    /// The name of this rule - useful for debugging
     /// </summary>
     public required string Name { get; init; }
 
@@ -41,7 +45,7 @@ internal class MatchRule {
     /// <summary>
     /// If and how to match the content of the Node
     /// </summary>
-    public MatchNodeContentType MatchContent { get; init; } = MatchNodeContentType.None;
+    public MatchNodeContentType MatchContentType { get; init; } = MatchNodeContentType.None;
 
     /// <summary>
     /// Rules to apply to children node.
@@ -65,7 +69,7 @@ internal class MatchRule {
     /// <returns></returns>
     public bool Matches(Node n)
     {
-        return NodeKindMatches(n) && ContentMatches(n) && ChildrenMatches(n);
+        return NodeKindMatches(n) && ContentTypeMatches(n) && ChildrenMatches(n);
     }
 
     /// <summary>
@@ -84,10 +88,10 @@ internal class MatchRule {
     /// <param name="n">a node to match on</param>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    bool ContentMatches(Node n)
+    bool ContentTypeMatches(Node n)
     {
         // Only care about the content type not its value
-        switch (MatchContent)
+        switch (MatchContentType)
         {
         case MatchNodeContentType.AlwaysMatch:
             return true;
@@ -98,7 +102,7 @@ internal class MatchRule {
         case MatchNodeContentType.None:
             return !n.HasIndex && !n.HasText;
         default:
-            throw new InvalidOperationException ($"Unknown match instruction {MatchContent} in match rule.");
+            throw new InvalidOperationException ($"Unknown match instruction {MatchContentType} in match rule.");
         }
     }
 
@@ -128,6 +132,6 @@ internal class MatchRule {
     /// <summary>
     /// Creates a simple string representation of this rule
     /// </summary>
-    /// <returns></returns>
+    /// <returns>a string representation of the rule</returns>
     public override string ToString() => Name;
 }

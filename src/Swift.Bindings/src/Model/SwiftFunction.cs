@@ -1,11 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System.Diagnostics;
+
 namespace BindingsGeneration;
 
 /// <summary>
 /// Represents a Swift function signature and its provenance.
 /// </summary>
+[DebuggerDisplay("{ToString()}")]
 public class SwiftFunction {
     /// <summary>
     /// Gets the name of the function
@@ -31,7 +34,7 @@ public class SwiftFunction {
     /// Returns true if the give object is a SwiftFunction and matches this
     /// </summary>
     /// <param name="o"></param>
-    /// <returns></returns>
+    /// <returns>true if this equals the supplied object</returns>
     public override bool Equals(object? o)
     {
         if (o is SwiftFunction other) {
@@ -51,6 +54,6 @@ public class SwiftFunction {
     /// <summary>
     /// Returns a string representation of the function
     /// </summary>
-    /// <returns></returns>
+    /// <returns>a string representation of the function</returns>
     public override string ToString () => $"{Provenance}.{Name}{ParameterList} -> {Return}";
 }
