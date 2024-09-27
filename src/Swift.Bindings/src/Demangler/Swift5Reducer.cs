@@ -35,7 +35,7 @@ internal class Swift5Reducer {
             Name = "Global", NodeKind = NodeKind.Global, Reducer = ConvertFirstChild
         },
         new MatchRule() {
-            Name = "ProtocolWitnessTable", NodeKind = NodeKind.ProtocolWitnessTable, Reducer = ConvertProtocolWitnessTable
+            Name = "ProtocolConformance", NodeKindList = new List<NodeKind>() { NodeKind.ProtocolWitnessTable, NodeKind.ProtocolConformanceDescriptor, } , Reducer = ConvertProtocolWitnessTable
         },
         new MatchRule() {
             Name = "Type", NodeKind = NodeKind.Type, Reducer = ConvertFirstChild
@@ -43,9 +43,6 @@ internal class Swift5Reducer {
         new MatchRule() {
             Name = "Nominal", NodeKindList = new List<NodeKind>() { NodeKind.Class, NodeKind.Structure, NodeKind.Protocol, NodeKind.Enum },
             Reducer = ConvertNominal
-        },
-        new MatchRule() {
-            Name = "ProtocolConformanceDescriptor", NodeKind = NodeKind.ProtocolConformanceDescriptor, Reducer = ConvertProtocolWitnessTable
         },
         new MatchRule() {
             Name = "Module", NodeKind = NodeKind.Module, Reducer = (n, s) => ProvenanceReduction.TopLevel (mangledName, n.Text)
