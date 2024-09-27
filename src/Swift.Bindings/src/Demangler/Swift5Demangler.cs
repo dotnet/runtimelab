@@ -41,20 +41,35 @@ namespace BindingsGeneration.Demangling {
 			slice.Advance (GetManglingPrefixLength (originalIdentifier));
 		}
 
-		public void Run ()
+		public IReduction Run ()
 		{
 			Node topLevelNode = DemangleType (null);
-			// if (topLevelNode != null && topLevelNode.IsAttribute () && nodeStack.Count >= 1) {
-			// 	var attribute = topLevelNode.ExtractAttribute ();
-			// 	var tld = Run ();
-			// 	if (tld != null && tld is TLFunction tlf) {
-			// 		tlf.Signature.Attributes.Add (attribute);
-			// 	}
-			// 	return tld;
-			// } else {
-			// 	Swift5NodeToTLDefinition converter = new Swift5NodeToTLDefinition (originalIdentifier, offset);
-			// 	return converter.Convert (topLevelNode);
-			// }
+			if (topLevelNode is not null && topLevelNode.IsAttribute() && nodeStack.Count >= 1) {
+				var attribute = ExtractAttribute (topLevelNode);
+				var nextReduction = Run ();
+				if (nextReduction is not null && nextReduction is TypeSpecReduction ts) {
+					ts.TypeSpec.Attributes.Add (attribute);
+				}
+				return nextReduction;
+			} else if (topLevelNode is not null) {
+				var reducer = new Swift5Reducer (originalIdentifier);
+				return reducer.Convert (topLevelNode);
+			} else {
+				return new ReductionError () {Symbol = originalIdentifier,  Message = $"Unable to demangle {originalIdentifier}" };
+			}
+		}
+
+		static TypeSpecAttribute ExtractAttribute (Node node)
+		{
+			switch (node.Kind) {
+				case NodeKind.ObjCAttribute: return new TypeSpecAttribute ("ObjC");
+				case NodeKind.DynamicAttribute: return new TypeSpecAttribute ("Dynamic");
+				case NodeKind.NonObjCAttribute: return new TypeSpecAttribute ("NonObjC");
+				case NodeKind.ImplFunctionAttribute: return new TypeSpecAttribute ("ImplFunction");
+				case NodeKind.DirectMethodReferenceAttribute: return new TypeSpecAttribute ("DirectMethodReference");
+				default:
+					throw new NotSupportedException ($"{node.Kind} is not a supported attribute.");
+			}
 		}
 
 		bool NextIf (string str)
