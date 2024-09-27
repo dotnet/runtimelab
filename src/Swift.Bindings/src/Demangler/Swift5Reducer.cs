@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System.Text;
 using System.Net.Sockets;
 
 namespace BindingsGeneration.Demangling;
@@ -42,6 +43,12 @@ internal class Swift5Reducer {
         new MatchRule() {
             Name = "Nominal", NodeKindList = new List<NodeKind>() { NodeKind.Class, NodeKind.Structure, NodeKind.Protocol, NodeKind.Enum },
             Reducer = ConvertNominal
+        },
+        new MatchRule() {
+            Name = "ProtocolConformanceDescriptor", NodeKind = NodeKind.ProtocolConformanceDescriptor, Reducer = ConvertProtocolWitnessTable
+        },
+        new MatchRule() {
+            Name = "Module", NodeKind = NodeKind.Module, Reducer = (n, s) => ProvenanceReduction.TopLevel (mangledName, n.Text)
         }
     };
 
@@ -62,6 +69,10 @@ internal class Swift5Reducer {
         // ProtocolConformance
         //     Type
         //     Type
+        //     Module - ONLY FOR ProtocolConformanceDescriptor
+
+        var isDescriptor = node.Kind == NodeKind.ProtocolConformanceDescriptor;
+
         var child = node.Children [0];
         if (child.Kind != NodeKind.ProtocolConformance) {
             return ReductionError (ExpectedButGot ("ProtocolConformance", node.Kind.ToString ()));
@@ -83,7 +94,21 @@ internal class Swift5Reducer {
         var impNamed = (NamedTypeSpec)implementingType.TypeSpec;
         var protoNamed = (NamedTypeSpec)protocolType.TypeSpec;
 
-        return new ProtocolWitnessTableReduction() { Symbol = mangledName, ImplementingType = impNamed, ProtocolType = protoNamed };
+        if (isDescriptor) {
+            grandchild = Convert (child.Children [2]);
+            if (grandchild is ProvenanceReduction prov) {
+                if (!prov.Provenance.IsTopLevel)
+                    return ReductionError (ExpectedButGot ("", prov.Provenance.ToString()));
+                return new ProtocolConformanceDescriptorReduction() { Symbol = mangledName, ImplementingType = impNamed, ProtocolType = protoNamed, Module = prov.Provenance.Module};
+            } else if (grandchild is ReductionError) {
+                return grandchild;
+            } else {
+                return ReductionError (ExpectedButGot ("ProvenanceReduction", grandchild.GetType().Name));
+            }
+            
+        } else {
+            return new ProtocolWitnessTableReduction() { Symbol = mangledName, ImplementingType = impNamed, ProtocolType = protoNamed };
+        }
     }
 
     /// <summary>
@@ -92,18 +117,63 @@ internal class Swift5Reducer {
     IReduction ConvertNominal (Node node, string? name)
     {
         // What to expect here:
-        // Class/Structure/Protocol/Enum
+        // Nominal (Class/Structure/Protocol/Enum)
         //    Module Name
         //    Identifier Name
-        var kind = node.Kind;
-        if (kind == NodeKind.Class || kind == NodeKind.Structure || kind == NodeKind.Enum || kind == NodeKind.Protocol) {
-            var moduleName = node.Children [0].Text;
-            if (node.Children[1].Kind != NodeKind.Identifier)
-                return ReductionError(ExpectedButGot("Identifier", node.Children[1].Kind.ToString()));
-            var typeName = node.Children [1].Text;    
-            return new TypeSpecReduction() { Symbol = mangledName, TypeSpec = new NamedTypeSpec ($"{moduleName}.{typeName}")};
+        // -- or --
+        // depth-first nesting of inner types such that the deepest nesting is the module and type
+        // Nominal
+        //   Nominal
+        //     Nominal
+        //       ...
+        //       Nominal
+        //         Module
+        //         Identifier
+        //     Identifier
+        //   Identifier
+        // Identifier
+
+        var sb = new StringBuilder ();
+        try {
+            GetNestedNominalName (node, sb);
+        } catch (Exception err) {
+            return ReductionError (err.Message);
         }
-        return ReductionError(ExpectedButGot("Class/Struct/Enum/Protocol", kind.ToString()));
+        return new TypeSpecReduction() { Symbol = mangledName, TypeSpec = new NamedTypeSpec (sb.ToString ())};
+    }
+
+    /// <summary>
+    /// Returns the nested nominal name from node in the StringBuilder or throw an exception on error
+    /// </summary>
+    void GetNestedNominalName (Node node, StringBuilder sb)
+    {
+        if (IsNominal(node.Children [0])) {
+            GetNestedNominalName (node.Children [0], sb);
+            sb.Append('.').Append (FristChildIdentifierText (node));
+        } else {
+            var moduleName = node.Children [0].Text;
+            var typeName = FristChildIdentifierText (node);
+            sb.Append (moduleName).Append ('.').Append (typeName);
+        }
+    }
+
+    /// <summary>
+    /// Returns the text of the first child of a node if and only if that child is an Identifier, else throw
+    /// </summary>
+    string FristChildIdentifierText (Node node)
+    {
+        if (node.Children [1].Kind != NodeKind.Identifier)
+            throw new Exception (ExpectedButGot ("Identifier", node.Children [1].Kind.ToString()));
+        return node.Children [1].Text;
+    }
+
+    /// <summary>
+    /// Returns true if and only if the node Kind is one of the swift nominal types
+    /// </summary>
+    static bool IsNominal (Node node)
+    {
+        var kind = node.Kind;
+        return kind == NodeKind.Class || kind == NodeKind.Structure || kind == NodeKind.Enum || kind == NodeKind.Protocol;
     }
 
     /// <summary>

@@ -45,7 +45,7 @@ internal class MatchRule {
     /// <summary>
     /// If and how to match the content of the Node
     /// </summary>
-    public MatchNodeContentType MatchContentType { get; init; } = MatchNodeContentType.None;
+    public MatchNodeContentType MatchContentType { get; init; } = MatchNodeContentType.AlwaysMatch;
 
     /// <summary>
     /// Rules to apply to children node.
