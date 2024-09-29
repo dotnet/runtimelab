@@ -213,5 +213,26 @@ namespace System.Net.Http
             get => throw new PlatformNotSupportedException();
             set => throw new PlatformNotSupportedException();
         }
+
+        public static bool SupportsAutomaticDecompression
+        {
+            get => throw new PlatformNotSupportedException();
+        }
+
+        public static bool SupportsProxy
+        {
+            get => throw new PlatformNotSupportedException();
+        }
+
+        public static bool SupportsRedirectConfiguration
+        {
+            get => throw new PlatformNotSupportedException();
+        }
+
+        public ClientCertificateOption ClientCertificateOptions
+        {
+            get => throw new PlatformNotSupportedException();
+            set => throw new PlatformNotSupportedException();
+        }
     }
 }

@@ -167,9 +167,10 @@ namespace System.Net.Http
 
         #region PlatformNotSupported
 #pragma warning disable CA1822
-
-        internal ClientCertificateOption ClientCertificateOptions;
-
+        public ClientCertificateOption ClientCertificateOptions
+        {
+            get => throw new PlatformNotSupportedException();
+        }
 
         public bool UseCookies
         {

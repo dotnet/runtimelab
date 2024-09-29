@@ -1,8 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
-    <ItemGroup>
-      <MergedWrapperProjectReference Include="*/**/*.??proj" Exclude="*/**/Library.csproj" />
-    </ItemGroup>
-  
-    <Import Project="$(TestSourceDir)MergedTestRunner.targets" />
-  </Project>
+  <PropertyGroup>
+    <CLRTestExitCode Condition="'$(CLRTestExitCode)' == ''">100</CLRTestExitCode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <MergedWrapperProjectReference Include="*/**/*.??proj" Exclude="*/**/Library.csproj;*/**/HelloWasm/*.??proj" Condition="'$(TargetsWasm)' != 'true'" />
+    <MergedWrapperProjectReference Include="*/**/*.??proj" Exclude="*/**/Library.csproj"  Condition="'$(TargetsWasm)' == 'true'" />
+  </ItemGroup>
+
+  <Import Project="$(TestSourceDir)MergedTestRunner.targets" />
+</Project>
   

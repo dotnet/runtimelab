@@ -18,5 +18,6 @@
 
   <PropertyGroup>
     <CLRTestTargetUnsupported Condition="'$(TargetsWasm)' == 'true'">true</CLRTestTargetUnsupported>
+    <CLRTestExitCode>100</CLRTestExitCode>
   </PropertyGroup>
 </Project>

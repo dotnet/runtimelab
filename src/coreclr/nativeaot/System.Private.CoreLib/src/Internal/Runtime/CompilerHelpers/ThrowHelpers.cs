@@ -41,6 +41,13 @@ namespace Internal.Runtime.CompilerHelpers
 
         [DoesNotReturn]
         [DebuggerHidden]
+        public static void ThrowDataMisalignedException()
+        {
+            throw new DataMisalignedException();
+        }
+
+        [DoesNotReturn]
+        [DebuggerHidden]
         internal static void ThrowBadImageFormatException(ExceptionStringID id)
         {
             throw TypeLoaderExceptionHelper.CreateBadImageFormatException(id);
