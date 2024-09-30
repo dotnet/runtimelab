@@ -7,7 +7,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PublishAot Condition="'$(NativeAotSupported)' == 'true'">true</PublishAot>
     <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
-    <LinkerFlavor Condition="'$(CrossBuild)' == 'true' and '$(TargetsLinux)' == 'true'">lld</LinkerFlavor>
+    <LinkerFlavor Condition="('$(__TestBuildMode)' == 'nativeaot' or '$(CrossBuild)' == 'true') and '$(TargetsLinux)' == 'true'">lld</LinkerFlavor>
     <SysRoot Condition="'$(CrossBuild)' == 'true' and '$(HostOS)' != 'windows'">$(ROOTFS_DIR)</SysRoot>
   </PropertyGroup>
 
