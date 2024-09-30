@@ -95,7 +95,7 @@ internal class Swift5Reducer {
             grandchild = Convert (child.Children [2]);
             if (grandchild is ProvenanceReduction prov) {
                 if (!prov.Provenance.IsTopLevel)
-                    return ReductionError (ExpectedButGot ("", prov.Provenance.ToString()));
+                    return ReductionError (ExpectedButGot ("A top-level module name", prov.Provenance.ToString()));
                 return new ProtocolConformanceDescriptorReduction() { Symbol = mangledName, ImplementingType = impNamed, ProtocolType = protoNamed, Module = prov.Provenance.Module};
             } else if (grandchild is ReductionError) {
                 return grandchild;
