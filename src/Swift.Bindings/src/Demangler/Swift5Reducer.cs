@@ -35,7 +35,7 @@ internal class Swift5Reducer {
             Name = "Global", NodeKind = NodeKind.Global, Reducer = ConvertFirstChild
         },
         new MatchRule() {
-            Name = "ProtocolConformance", NodeKindList = new List<NodeKind>() { NodeKind.ProtocolWitnessTable, NodeKind.ProtocolConformanceDescriptor, } , Reducer = ConvertProtocolWitnessTable
+            Name = "ProtocolConformance", NodeKindList = new List<NodeKind>() { NodeKind.ProtocolWitnessTable, NodeKind.ProtocolConformanceDescriptor, } , Reducer = ConvertProtocolConformance
         },
         new MatchRule() {
             Name = "Type", NodeKind = NodeKind.Type, Reducer = ConvertFirstChild
@@ -60,7 +60,7 @@ internal class Swift5Reducer {
     /// <summary>
     /// Given a ProtocolWitnessTable node, convert to a ProtocolWitnessTable reduction
     /// </summary>
-    IReduction ConvertProtocolWitnessTable (Node node, string? name)
+    IReduction ConvertProtocolConformance (Node node, string? name)
     {
         // What to expect here:
         // ProtocolConformance
@@ -146,10 +146,10 @@ internal class Swift5Reducer {
     {
         if (IsNominal(node.Children [0])) {
             GetNestedNominalName (node.Children [0], sb);
-            sb.Append('.').Append (FristChildIdentifierText (node));
+            sb.Append('.').Append (FirstChildIdentifierText (node));
         } else {
             var moduleName = node.Children [0].Text;
-            var typeName = FristChildIdentifierText (node);
+            var typeName = FirstChildIdentifierText (node);
             sb.Append (moduleName).Append ('.').Append (typeName);
         }
     }
@@ -157,7 +157,7 @@ internal class Swift5Reducer {
     /// <summary>
     /// Returns the text of the first child of a node if and only if that child is an Identifier, else throw
     /// </summary>
-    string FristChildIdentifierText (Node node)
+    string FirstChildIdentifierText (Node node)
     {
         if (node.Children [1].Kind != NodeKind.Identifier)
             throw new Exception (ExpectedButGot ("Identifier", node.Children [1].Kind.ToString()));

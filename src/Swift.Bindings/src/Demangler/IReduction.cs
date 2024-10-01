@@ -106,7 +106,7 @@ public class ProvenanceReduction : IReduction {
         new ProvenanceReduction() { Symbol = symbol, Provenance = Provenance.Instance (instance) };
 
     /// <summary>
-    /// Factory method to construct an excetion provenance reduction
+    /// Factory method to construct an extension provenance reduction
     /// </summary>
     public static ProvenanceReduction Extension(string symbol, NamedTypeSpec extensionOn) =>
         new ProvenanceReduction() { Symbol = symbol, Provenance = Provenance.Extension (extensionOn) };
