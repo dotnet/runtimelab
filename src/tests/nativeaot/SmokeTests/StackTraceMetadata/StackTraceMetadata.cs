@@ -29,7 +29,6 @@ class Program
     {
         public static void Run()
         {
-#if !CODEGEN_WASI // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2404.
 #if STRIPPED
             DiagnosticMethodInfo dmi = DiagnosticMethodInfo.Create(new StackFrame());
             if (dmi != null)
@@ -57,7 +56,6 @@ class Program
                 if (!dmi.DeclaringTypeName.EndsWith(expectedDeclaringName))
                     throw new Exception($"!{dmi.DeclaringTypeName}.EndsWith({expectedDeclaringName})");
             }
-#endif
 #endif
         }
 

@@ -387,9 +387,7 @@ internal unsafe partial class Program
 
         TestIntOverflows();
 
-#if !CODEGEN_WASI // TODO-LLVM: stack traces on WASI.
         TestStackTrace();
-#endif
 
         if (OperatingSystem.IsBrowser())
         {
@@ -467,7 +465,10 @@ internal unsafe partial class Program
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public unsafe static void JitUse<T>(T* arg) where T : unmanaged { }
+    public unsafe static void JitUse<T>(T* arg) { }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public unsafe static void JitUse<T>(T arg) { }
 
     private unsafe static void TestJitUseStruct()
     {
@@ -1032,6 +1033,20 @@ internal unsafe partial class Program
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void ClearShadowStack(object a, object b, object c, object d, object e, object f)
     {
+    }
+
+    private static object s_shadowStackPoisonObject = new object();
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void PoisonShadowStack(int depth = 10)
+    {
+        if (depth is 0)
+        {
+            return;
+        }
+        object x = s_shadowStackPoisonObject;
+        JitUse(&x);
+        PoisonShadowStack(depth - 1);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -4139,6 +4154,9 @@ internal unsafe partial class Program
         PassTest();
     }
 
+    private static bool s_usingPreciseVirtualUnwind =
+        Type.GetType("Internal.Runtime.Augments.RuntimeAugments, System.Private.CoreLib").GetMethod("get_PreciseVirtualUnwind").Invoke(null, []) is true;
+
     [UnconditionalSuppressMessage("Trimming", "IL2026")]
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static unsafe void TestStackTrace()
@@ -4168,18 +4186,37 @@ internal unsafe partial class Program
             return;
         }
 
-        DiagnosticMethodInfo delDmi = DiagnosticMethodInfo.Create(del);
-        if (delDmi is not { Name: nameof(TestStackTrace), DeclaringTypeName: nameof(Program) })
+        if (!TestDiagnosticMethodInfoFromDelegates())
         {
-            FailTest($"Unexpected DiagnosticMethodInfo from a delegate: {delDmi?.DeclaringTypeName}::{delDmi?.Name}");
+            FailTest("TestDiagnosticMethodInfoFromDelegates failed");
+            return;
+        }
+
+        if (!TestOveralignedFrameUnwinding())
+        {
+            FailTest("TestOveralignedFrameUnwinding failed");
             return;
         }
 
         bool result = true;
-        TestStackTracesInFilters(&result);
+        TestExceptionStackTracesInFilters(&result);
         if (!result)
         {
-            FailTest("Unexpected stack traces in filters");
+            FailTest("Unexpected exception stack traces in filters");
+            return;
+        }
+
+        if (s_usingPreciseVirtualUnwind && // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2404#issuecomment-2340781272
+            !TestStackTraceInFilter())
+        {
+            FailTest("Unexpected stack trace in filter");
+            return;
+        }
+
+        if (s_usingPreciseVirtualUnwind && // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2404#issuecomment-2340781272
+            !TestStackTraceInFinallyCaller())
+        {
+            FailTest("Unexpected stack trace in finally");
             return;
         }
 
@@ -4191,12 +4228,175 @@ internal unsafe partial class Program
             return;
         }
 
+        if (s_usingPreciseVirtualUnwind)
+        {
+            if (!TestCompilerGeneratedCodeInStackTrace())
+            {
+                FailTest("TestCompilerGeneratedCodeInStackTrace failed");
+                return;
+            }
+        }
+
         PassTest();
     }
 
+    private static bool TestDiagnosticMethodInfoFromDelegates()
+    {
+        Action<UniqueStructTypeOne> delOpenStaticExposed = MethodWithUniqueStructOne;
+        JitUse(delOpenStaticExposed.Method);
+        DiagnosticMethodInfo delOpenStaticExposedDmi = DiagnosticMethodInfo.Create(delOpenStaticExposed);
+        if (delOpenStaticExposedDmi is not { Name: nameof(MethodWithUniqueStructOne), DeclaringTypeName: nameof(Program) })
+        {
+            PrintLine($"Unexpected DiagnosticMethodInfo from a reflected open static delegate: {delOpenStaticExposedDmi?.DeclaringTypeName}::{delOpenStaticExposedDmi?.Name}");
+            return false;
+        }
+
+        Action<UniqueStructTypeTwo> delOpenStaticNotExposed = MethodWithUniqueStructTwo;
+        DiagnosticMethodInfo delOpenStaticNotExposedDmi = DiagnosticMethodInfo.Create(delOpenStaticNotExposed);
+        if (delOpenStaticNotExposedDmi is not { Name: nameof(MethodWithUniqueStructTwo), DeclaringTypeName: nameof(Program) })
+        {
+            PrintLine($"Unexpected DiagnosticMethodInfo from a non-reflected open static delegate: {delOpenStaticNotExposedDmi?.DeclaringTypeName}::{delOpenStaticNotExposedDmi?.Name}");
+            return false;
+        }
+
+        UniqueStructTypeOne uniqueStructOne;
+        ActionExposed delClosedInstanceExposed = uniqueStructOne.InstanceMethodOne;
+        JitUse(delClosedInstanceExposed.Method);
+        DiagnosticMethodInfo delClosedInstanceExposedDmi = DiagnosticMethodInfo.Create(delClosedInstanceExposed);
+        if (delClosedInstanceExposedDmi is not { Name: nameof(UniqueStructTypeOne.InstanceMethodOne), DeclaringTypeName: $"{nameof(Program)}+{nameof(UniqueStructTypeOne)}" })
+        {
+            PrintLine($"Unexpected DiagnosticMethodInfo from a reflected closed instance (VT) delegate: {delClosedInstanceExposedDmi?.DeclaringTypeName}::{delClosedInstanceExposedDmi?.Name}");
+            return false;
+        }
+
+        UniqueStructTypeTwo uniqueStructTwo;
+        ActionNotExposed delClosedInstanceNotExposed = uniqueStructTwo.InstanceMethodTwo;
+        DiagnosticMethodInfo delClosedInstanceNotExposedDmi = DiagnosticMethodInfo.Create(delClosedInstanceNotExposed);
+        if (delClosedInstanceNotExposedDmi is not { Name: nameof(UniqueStructTypeTwo.InstanceMethodTwo), DeclaringTypeName: $"{nameof(Program)}+{nameof(UniqueStructTypeTwo)}" })
+        {
+            if (s_usingPreciseVirtualUnwind) // TODO-LLVM: remove after https://github.com/dotnet/runtime/issues/108688 is fixed.
+            {
+                PrintLine($"Unexpected DiagnosticMethodInfo from a non-reflected closed instance (VT) delegate: {delClosedInstanceNotExposedDmi?.DeclaringTypeName}::{delClosedInstanceNotExposedDmi?.Name}");
+                return false;
+            }
+        }
+
+        ActionExposed delClosedInstanceGenericMethodExposed = uniqueStructOne.GenericInstanceMethodOne<object>;
+        JitUse(delClosedInstanceGenericMethodExposed.Method);
+        DiagnosticMethodInfo delClosedInstanceGenericMethodExposedDmi = DiagnosticMethodInfo.Create(delClosedInstanceGenericMethodExposed);
+        if (delClosedInstanceGenericMethodExposedDmi is not { Name: nameof(UniqueStructTypeOne.GenericInstanceMethodOne), DeclaringTypeName: $"{nameof(Program)}+{nameof(UniqueStructTypeOne)}" })
+        {
+            PrintLine($"Unexpected DiagnosticMethodInfo from a reflected closed instance (VT) delegate over generic method: {delClosedInstanceGenericMethodExposedDmi?.DeclaringTypeName}::{delClosedInstanceGenericMethodExposedDmi?.Name}");
+            return false;
+        }
+
+        ActionNotExposed delClosedInstanceGenericMethodNotExposed = uniqueStructTwo.GenericInstanceMethodTwo<object>;
+        DiagnosticMethodInfo delClosedInstanceGenericMethodNotExposedDmi = DiagnosticMethodInfo.Create(delClosedInstanceGenericMethodNotExposed);
+        if (delClosedInstanceGenericMethodNotExposedDmi is not { Name: nameof(UniqueStructTypeTwo.GenericInstanceMethodTwo), DeclaringTypeName: $"{nameof(Program)}+{nameof(UniqueStructTypeTwo)}" })
+        {
+            PrintLine($"Unexpected DiagnosticMethodInfo from a non-reflected closed instance (VT) delegate over generic method: {delClosedInstanceGenericMethodNotExposedDmi?.DeclaringTypeName}::{delClosedInstanceGenericMethodNotExposedDmi?.Name}");
+            return false;
+        }
+
+        GenericUniqueStructTypeOne<object> genericUniqueStructOne;
+        ActionExposed delClosedGenericInstanceExposed = genericUniqueStructOne.InstanceMethodThree;
+        JitUse(delClosedGenericInstanceExposed.Method);
+        DiagnosticMethodInfo delClosedGenericInstanceExposedDmi = DiagnosticMethodInfo.Create(delClosedGenericInstanceExposed);
+        if (delClosedGenericInstanceExposedDmi is not { Name: nameof(GenericUniqueStructTypeOne<object>.InstanceMethodThree), DeclaringTypeName: $"{nameof(Program)}+{nameof(GenericUniqueStructTypeOne<object>)}`1" })
+        {
+            PrintLine($"Unexpected DiagnosticMethodInfo from a reflected closed generic instance (VT) delegate: {delClosedGenericInstanceExposedDmi?.DeclaringTypeName}::{delClosedGenericInstanceExposedDmi?.Name}");
+            return false;
+        }
+
+        GenericUniqueStructTypeTwo<object> genericUniqueStructTwo;
+        ActionNotExposed delClosedGenericInstanceNotExposed = genericUniqueStructTwo.InstanceMethodFour;
+        DiagnosticMethodInfo delClosedGenericInstanceNotExposedDmi = DiagnosticMethodInfo.Create(delClosedGenericInstanceNotExposed);
+        if (delClosedGenericInstanceNotExposedDmi is not { Name: nameof(GenericUniqueStructTypeTwo<object>.InstanceMethodFour), DeclaringTypeName: $"{nameof(Program)}+{nameof(GenericUniqueStructTypeTwo<object>)}`1" })
+        {
+            if (s_usingPreciseVirtualUnwind) // TODO-LLVM: remove after https://github.com/dotnet/runtime/issues/108688 is fixed.
+            {
+                PrintLine($"Unexpected DiagnosticMethodInfo from a non-reflected closed generic instance (VT) delegate: {delClosedGenericInstanceNotExposedDmi?.DeclaringTypeName}::{delClosedGenericInstanceNotExposedDmi?.Name}");
+                return false;
+            }
+        }
+
+        MethodInfo openInstanceMethodInfo = typeof(UniqueStructTypeOne).GetMethod(nameof(UniqueStructTypeOne.AnotherInstanceMethodOne));
+        UniqueStructTypeOneInstanceMethod openInstanceDel = openInstanceMethodInfo.CreateDelegate<UniqueStructTypeOneInstanceMethod>();
+        DiagnosticMethodInfo openInstanceDmi = DiagnosticMethodInfo.Create(openInstanceDel);
+        if (openInstanceDmi is not { Name: nameof(UniqueStructTypeOne.AnotherInstanceMethodOne), DeclaringTypeName: $"{nameof(Program)}+{nameof(UniqueStructTypeOne)}" })
+        {
+            PrintLine($"Unexpected DiagnosticMethodInfo from a reflected open instance (VT) delegate: {openInstanceDmi?.DeclaringTypeName}::{openInstanceDmi?.Name}");
+            return false;
+        }
+
+        return true;
+    }
+
+    private struct UniqueStructTypeOne
+    {
+        public void InstanceMethodOne() { }
+        public void GenericInstanceMethodOne<T>() { }
+        public void AnotherInstanceMethodOne() { }
+    }
+    private struct UniqueStructTypeTwo
+    {
+        public void InstanceMethodTwo() { }
+        public void GenericInstanceMethodTwo<T>() { }
+    }
+    private struct GenericUniqueStructTypeOne<T>
+    {
+        public void InstanceMethodThree() { }
+    }
+    private struct GenericUniqueStructTypeTwo<T>
+    {
+        public void InstanceMethodFour() { }
+    }
+    private static void MethodWithUniqueStructOne(UniqueStructTypeOne _) { }
+    private static void MethodWithUniqueStructTwo(UniqueStructTypeTwo _) { }
+
+    private delegate void ActionNotExposed();
+    private delegate void ActionExposed();
+    private delegate void UniqueStructTypeOneInstanceMethod(ref UniqueStructTypeOne @this);
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TestOveralignedFrameUnwinding()
+    {
+        // Test that we can successfully virtually unwind through overaligned shadow frames.
+        PoisonShadowStack();
+        StackTrace st = MethodWithOveralignedShadowFrameOne();
+        if (!st.GetFrame(0).ToString().Contains(nameof(CollectStackTrace)) ||
+            !st.GetFrame(1).ToString().Contains(nameof(MethodWithOveralignedShadowFrameTwo)) ||
+            !st.GetFrame(2).ToString().Contains(nameof(MethodWithOveralignedShadowFrameOne)) ||
+            !st.GetFrame(3).ToString().Contains(nameof(TestOveralignedFrameUnwinding)))
+        {
+            PrintLine($"Unexpected stack trace in TestOveralignedFrameUnwinding:\n{st}");
+            return false;
+        }
+        return true;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static StackTrace MethodWithOveralignedShadowFrameOne()
+    {
+        StructWithObjectAndDouble s;
+        JitUse(&s);
+        return MethodWithOveralignedShadowFrameTwo();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static StackTrace MethodWithOveralignedShadowFrameTwo()
+    {
+        StructWithObjectAndDouble s;
+        JitUse(&s);
+        return CollectStackTrace();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)] // Separate method to not affect the caller's shadow frame.
+    private static StackTrace CollectStackTrace() => new StackTrace();
+
     private const int TestStackTracesInFiltersTotalDepth = 3;
 
-    static void TestStackTracesInFilters(bool* pResult, int depth = TestStackTracesInFiltersTotalDepth)
+    static void TestExceptionStackTracesInFilters(bool* pResult, int depth = TestStackTracesInFiltersTotalDepth)
     {
         bool Filter(Exception e)
         {
@@ -4206,7 +4406,7 @@ internal unsafe partial class Program
                 Console.WriteLine($"Unexpected stack frame count in TestStackTracesInFilters(depth = {depth}): {st.FrameCount}");
                 *pResult = false;
             }
-            else if (!st.GetFrame(depth).ToString().Contains(nameof(TestStackTracesInFilters)))
+            else if (!st.GetFrame(depth).ToString().Contains(nameof(TestExceptionStackTracesInFilters)))
             {
                 Console.WriteLine($"Unexpected stack trace in TestStackTracesInFilters(depth = {depth}):\n{st}");
                 *pResult = false;
@@ -4218,7 +4418,7 @@ internal unsafe partial class Program
         {
             if (depth != 0)
             {
-                TestStackTracesInFilters(pResult, depth - 1);
+                TestExceptionStackTracesInFilters(pResult, depth - 1);
             }
             else
             {
@@ -4250,6 +4450,136 @@ internal unsafe partial class Program
         return false;
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TestStackTraceInFilter()
+    {
+        bool success = true;
+        TestStackTraceInFilterTop(top: true, ref success);
+        return success;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TestStackTraceInFilterTop(bool top, ref bool success)
+    {
+        StackTrace st = null;
+        try
+        {
+            TestStackTraceInFilterBottom(top, ref success);
+        }
+        catch when ((st = new StackTrace()) != null) { }
+
+        if (top)
+        {
+            if (!st.GetFrame(0).ToString().Contains(nameof(TestStackTraceInFilterTop)) || // Top filter.
+                !st.GetFrame(1).ToString().Contains(nameof(TestStackTraceInFilterBottom)) ||
+                !st.GetFrame(2).ToString().Contains(nameof(TestStackTraceInFilterTop)))
+            {
+                PrintLine($"Unexpected stack trace in TestStackTraceInFilterTop(top: true):\n{st}");
+                success = false;
+            }
+        }
+        else
+        {
+            if (!st.GetFrame(0).ToString().Contains(nameof(TestStackTraceInFilterTop)) || // Top filter.
+                !st.GetFrame(1).ToString().Contains(nameof(TestStackTraceInFilterBottom)) ||
+                !st.GetFrame(2).ToString().Contains(nameof(TestStackTraceInFilterTop)) ||
+                !st.GetFrame(3).ToString().Contains(nameof(TestStackTraceInFilterBottom)) || // Bottom filter.
+                !st.GetFrame(4).ToString().Contains(nameof(TestStackTraceInFilterBottom)) ||
+                !st.GetFrame(5).ToString().Contains(nameof(TestStackTraceInFilterTop)))
+            {
+                PrintLine($"Unexpected stack trace in TestStackTraceInFilterTop(top: false):\n{st}");
+                success = false;
+            }
+        }
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void TestStackTraceInFilterBottom(bool top, ref bool success)
+    {
+        StackTrace st = null;
+        try
+        {
+            throw new Exception();
+        }
+        catch when ((top && TestStackTraceInFilterTop(top: false, ref success)) || (st = new StackTrace()) == null) { }
+
+        if (top)
+        {
+            if (!st.GetFrame(0).ToString().Contains(nameof(TestStackTraceInFilterBottom)) || // Bottom filter.
+                !st.GetFrame(1).ToString().Contains(nameof(TestStackTraceInFilterBottom)) ||
+                !st.GetFrame(2).ToString().Contains(nameof(TestStackTraceInFilterTop)))
+            {
+                PrintLine($"Unexpected stack trace in TestStackTraceInFilterBottom(top: true):\n{st}");
+                success = false;
+            }
+        }
+        else
+        {
+            if (!st.GetFrame(0).ToString().Contains(nameof(TestStackTraceInFilterBottom)) || // Bottom filter.
+                !st.GetFrame(1).ToString().Contains(nameof(TestStackTraceInFilterBottom)) ||
+                !st.GetFrame(2).ToString().Contains(nameof(TestStackTraceInFilterTop)) ||
+                !st.GetFrame(3).ToString().Contains(nameof(TestStackTraceInFilterBottom)) || // Bottom filter.
+                !st.GetFrame(4).ToString().Contains(nameof(TestStackTraceInFilterBottom)) ||
+                !st.GetFrame(5).ToString().Contains(nameof(TestStackTraceInFilterTop)))
+            {
+                PrintLine($"Unexpected stack trace in TestStackTraceInFilterBottom(top: false):\n{st}");
+                success = false;
+            }
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static StackTrace TestStackTraceInFilterCallee()
+    {
+        StackTrace st = null;
+        try
+        {
+            throw new Exception();
+        }
+        catch when ((st = new StackTrace()) != null) { }
+        return st;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TestStackTraceInFinallyCaller()
+    {
+        StackTrace st = null;
+        try
+        {
+            TestStackTraceInFinallyCallee(out st);
+        }
+        catch { }
+
+        if (!st.GetFrame(0).ToString().Contains(nameof(TestStackTraceInFinallyCallee)) ||
+            !st.GetFrame(1).ToString().Contains(nameof(TestStackTraceInFinallyCaller)))
+        {
+            PrintLine($"Unexpected stack trace in TestStackTraceInFinallyCaller:\n{st}");
+            return false;
+        }
+        return true;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void TestStackTraceInFinallyCallee(out StackTrace st)
+    {
+        try
+        {
+            throw new Exception();
+        }
+        finally // Make it more interesting with up to two funclets.
+        {
+            try
+            {
+                throw new Exception();
+            }
+            finally
+            {
+                st = new StackTrace();
+            }
+        }
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void AggressiveInliningMethodWithEH()
     {
@@ -4260,8 +4590,83 @@ internal unsafe partial class Program
         catch { throw; }
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static bool TestCompilerGeneratedCodeInStackTrace()
+    {
+        // First, an open static delegate invoke thunk.
+        Func<StackTrace> delOpenStatic = CollectStackTrace;
+        StackTrace st = delOpenStatic();
+        if (!st.GetFrame(0).ToString().Contains(nameof(CollectStackTrace)) ||
+            !st.GetFrame(1).ToString().Contains(nameof(TestCompilerGeneratedCodeInStackTrace)))
+        {
+            PrintLine($"Unexpected stack trace from open static delegate:\n{st}");
+            return false;
+        }
+
+        // Second: an unboxing and instantiating thunk.
+        IGetStackTrace<object> stObj = GetStackTraceImpl<object>.GetInstance();
+        st = stObj.GetStackTrace();
+        if (!st.GetFrame(0).ToString().Contains(nameof(IGetStackTrace<object>.GetStackTrace)) ||
+            !st.GetFrame(1).ToString().Contains(nameof(TestCompilerGeneratedCodeInStackTrace)))
+        {
+            PrintLine($"Unexpected stack trace from an unboxed and instantiated method:\n{st}");
+            return false;
+        }
+
+        // Third: an unmanaged calli marshalling stub (that will have EH, and therefore always have a frame).
+        var pFunc = (delegate* unmanaged<string, StackTrace*, void>)(delegate* unmanaged<void*, StackTrace*, void>)&UnmanagedGetStackTrace;
+        pFunc("some string", &st);
+        if (!st.GetFrame(0).ToString().Contains(nameof(UnmanagedGetStackTrace)) ||
+            !st.GetFrame(1).ToString().Contains(nameof(TestCompilerGeneratedCodeInStackTrace)))
+        {
+            PrintLine($"Unexpected stack trace from an unmanaged calli:\n{st}");
+            return false;
+        }
+
+        return true;
+    }
+
+    private interface IGetStackTrace<T>
+    {
+        StackTrace GetStackTrace();
+    }
+
+    private struct GetStackTraceImpl<T> : IGetStackTrace<T>
+    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public StackTrace GetStackTrace() => new StackTrace();
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static IGetStackTrace<T> GetInstance()
+        {
+            if (Environment.GetEnvironmentVariable("MAKE_SURE_TO") == "AVOID_DEVIRTUALIZATION")
+            {
+                new FakeGetStackTraceImpl();
+            }
+            return new GetStackTraceImpl<T>();
+        }
+
+        private struct FakeGetStackTraceImpl : IGetStackTrace<T>
+        {
+            public StackTrace GetStackTrace() => throw new UnreachableException();
+        }
+    }
+
+    [UnmanagedCallersOnly]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void UnmanagedGetStackTrace(void* pMarshalledInput, StackTrace* pStackTrace)
+    {
+        *pStackTrace = new StackTrace();
+    }
+
     private static void TestForeignModuleInStackTrace()
     {
+        if (s_usingPreciseVirtualUnwind)
+        {
+            // With precise virtual unwinding, we do not report unmanaged frames, so we skip this test.
+            return;
+        }
+
         StartTest("Test foreign module in stack trace");
         string reason = null;
         JSInterop.InternalCalls.TestForeignModuleInStackTraceJS(&reason, (delegate* unmanaged<double, void>)&TestForeignModuleInStackTraceCallee);
