@@ -151,7 +151,7 @@ namespace System.Diagnostics
         /// </summary>
         public virtual int GetNativeOffset()
         {
-#if NATIVEAOT && TARGET_BROWSER
+#if NATIVEAOT && TARGET_WASM
             return GetNativeOffsetImpl();
 #else
             return _nativeOffset;

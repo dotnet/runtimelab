@@ -17,7 +17,6 @@ namespace System.Runtime.ExceptionServices.Tests
         }
 
         [Fact]
-        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/2404", typeof(PlatformDetection), nameof(PlatformDetection.IsNativeAot), nameof(PlatformDetection.IsWasi))]
         public static void StaticThrow_UpdatesStackTraceAppropriately()
         {
             const string RethrowMessageSubstring = "End of stack trace";
