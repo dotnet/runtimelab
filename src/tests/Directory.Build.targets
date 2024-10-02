@@ -23,6 +23,10 @@
     <IsRuntimeTests>true</IsRuntimeTests>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(TargetsWasm)' == 'true' and '$(RuntimeFlavor)' == 'coreclr'">
+    <BuildAllTestsAsStandalone>true</BuildAllTestsAsStandalone>
+  </PropertyGroup>  
+
   <Import Project="$(RepositoryEngineeringDir)testing\tests.targets"
           Condition="'$(TargetsAppleMobile)' == 'true' and '$(RuntimeFlavor)' == 'mono'" />
 
