@@ -9,6 +9,7 @@ using System.Text;
 
 using Internal.DeveloperExperience;
 using Internal.Reflection.Augments;
+using Internal.Runtime.Augments;
 
 namespace System.Diagnostics
 {
@@ -118,7 +119,6 @@ namespace System.Diagnostics
             }
         }
 
-#if !TARGET_BROWSER
         /// <summary>
         /// Internal stack frame initialization based on frame index within the stack of the current thread.
         /// </summary>
@@ -126,7 +126,13 @@ namespace System.Diagnostics
         private void BuildStackFrame(int frameIndex, bool needFileInfo)
         {
             const int SystemDiagnosticsStackDepth = 2;
-
+#if TARGET_WASM
+            if (!RuntimeAugments.PreciseVirtualUnwind)
+            {
+                BuildStackFrameViaNativeUnwind(frameIndex + SystemDiagnosticsStackDepth, needFileInfo);
+                return;
+            }
+#endif
             frameIndex += SystemDiagnosticsStackDepth;
             IntPtr[] frameArray = new IntPtr[frameIndex + 1];
             int returnedFrameCount = RuntimeImports.RhGetCurrentThreadStackTrace(frameArray);
@@ -136,6 +142,7 @@ namespace System.Diagnostics
             InitializeForIpAddress(ipAddress, needFileInfo);
         }
 
+#if !TARGET_WASM
         /// <summary>
         /// Return native IP address for this stack frame.
         /// </summary>
@@ -197,7 +204,7 @@ namespace System.Diagnostics
             }
         }
 
-#if !TARGET_BROWSER
+#if !TARGET_WASM
         private string CreateStackTraceString(bool includeFileInfo, out bool isStackTraceHidden)
         {
             return DeveloperExperience.Default.CreateStackTraceString(_ipAddress, includeFileInfo, out isStackTraceHidden);

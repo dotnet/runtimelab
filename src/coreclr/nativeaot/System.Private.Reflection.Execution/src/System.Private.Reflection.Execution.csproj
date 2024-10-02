@@ -78,4 +78,11 @@
       <Link>System\Collections\Generic\Empty.cs</Link>
     </Compile>
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Internal\Reflection\Execution\ExecutionEnvironmentImplementation.MappingTables.NotWasm.cs" Condition="'$(TargetsWasm)' != 'true'" />
+    <Compile Include="Internal\Reflection\Execution\ExecutionEnvironmentImplementation.MappingTables.Wasm.cs" Condition="'$(TargetsWasm)' == 'true'" />
+    <Compile Include="Internal\Reflection\Execution\ExecutionEnvironmentImplementation.MappingTables.Wasi.cs" Condition="'$(TargetsWasi)' == 'true'" />
+    <Compile Include="Internal\Reflection\Execution\ExecutionEnvironmentImplementation.MappingTables.Browser.cs" Condition="'$(TargetsBrowser)' == 'true'" />
+  </ItemGroup>
 </Project>

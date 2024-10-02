@@ -28,4 +28,11 @@
       <Link>Internal\Runtime\StackTraceData.cs</Link>
     </Compile>
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Internal\StackTraceMetadata\StackTraceMetadata.NotWasm.cs" Condition="'$(TargetsWasm)' != 'true'" />
+    <Compile Include="Internal\StackTraceMetadata\StackTraceMetadata.Wasm.cs" Condition="'$(TargetsWasm)' == 'true'" />
+    <Compile Include="Internal\StackTraceMetadata\StackTraceMetadata.Wasi.cs" Condition="'$(TargetsWasi)' == 'true'" />
+    <Compile Include="Internal\StackTraceMetadata\StackTraceMetadata.Browser.cs" Condition="'$(TargetsBrowser)' == 'true'" />
+  </ItemGroup>
 </Project>

@@ -3331,8 +3331,7 @@ namespace Internal.JitInterface
 #if !READYTORUN
             if (_compilation.NodeFactory.Target.IsWasm)
             {
-                // The low 1024 bytes are reserved by Emscripten; no valid address will point there.
-                pEEInfoOut.maxUncheckedOffsetForNullObject = new UIntPtr(1024 - 1);
+                pEEInfoOut.maxUncheckedOffsetForNullObject = _compilation.TypeSystemContext.WasmGlobalBase - 1;
             }
             else
 #endif

@@ -39,7 +39,7 @@ namespace ILCompiler
     /// module. It also helps facilitate mappings between generated runtime structures or code,
     /// and the native metadata.
     /// </summary>
-    public abstract class MetadataManager : ICompilationRootProvider
+    public abstract partial class MetadataManager : ICompilationRootProvider
     {
         internal const int MetadataOffsetMask = 0xFFFFFF;
 
@@ -107,6 +107,7 @@ namespace ILCompiler
 
         public bool GenerateUnboxingStubTargetMappings => _typeSystemContext.Target.IsWasm;
         public bool GenerateUnboxingAndInstantiatingStubTargetMappings => _typeSystemContext.Target.IsWasm;
+        public StackTraceEmissionPolicy StackTraceEmissionPolicy => _stackTraceEmissionPolicy;
 
         public bool IsDataDehydrated => (_options & MetadataManagerOptions.DehydrateData) != 0;
 
@@ -769,6 +770,9 @@ namespace ILCompiler
                 // If the method will be folded, no need to emit stack trace info for this one
                 ISymbolNode internedBody = factory.ObjectInterner.GetDeduplicatedSymbol(factory, methodBody);
                 if (internedBody != methodBody)
+                    continue;
+
+                if (SkipGeneratingStackTraceMappingForWasmMethod(factory, methodBody))
                     continue;
 
                 MethodStackTraceVisibilityFlags stackVisibility = _stackTraceEmissionPolicy.GetMethodVisibility(method);

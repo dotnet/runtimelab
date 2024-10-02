@@ -9,6 +9,8 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 
+using Internal.Runtime.Augments;
+
 using MethodBase = System.Reflection.MethodBase;
 
 namespace System
@@ -23,8 +25,8 @@ namespace System
                 if (!HasBeenThrown)
                     return null;
 
-#if TARGET_BROWSER
-                return new StackFrame(_corDbgStackTrace, 0, needFileInfo: false).GetMethod();
+#if TARGET_WASM
+                return GetTargetSiteStackFrame().GetMethod();
 #else
                 return new StackFrame(_corDbgStackTrace[0], needFileInfo: false).GetMethod();
 #endif

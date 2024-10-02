@@ -3,7 +3,6 @@
 
 using System.Runtime;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 using Internal.DeveloperExperience;
 
@@ -19,29 +18,10 @@ namespace System.Diagnostics
             InitializeForEip(eips, eipIndex, needFileInfo);
         }
 
-#pragma warning disable CA1822 // Member 'GetNativeIPAddress' does not access instance data and can be marked as static
-        internal IntPtr GetNativeIPAddress()
-#pragma warning restore CA1822
-        {
-            // Return "null" - same rationale as below.
-            return 0;
-        }
-
-        private static int GetNativeOffsetImpl()
-        {
-            // We could very well make this work - by parsing the WASM binary, for example. For now, however,
-            // we punt making the decision on what this should return, if anything - we probably will not
-            // be able to make WASI return the same value.
-            return OFFSET_UNKNOWN;
-        }
-
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private unsafe void BuildStackFrame(int frameIndex, bool needFileInfo)
+        private unsafe void BuildStackFrameViaNativeUnwind(int frameIndex, bool needFileInfo)
         {
-            const int SystemDiagnosticsStackDepth = 2;
-
-            // We may have a value that has already overflown or will overflow.
-            frameIndex += SystemDiagnosticsStackDepth;
+            frameIndex += 1; // We may have a value that has already overflown or will overflow.
             if (frameIndex < 0)
                 frameIndex = int.MaxValue;
 
@@ -91,9 +71,7 @@ namespace System.Diagnostics
             InitializeForIpAddress(ip, needFileInfo);
         }
 
-#pragma warning disable IDE0060 // Remove unused parameter (includeFileInfo)
-        private string CreateStackTraceString(bool includeFileInfo, out bool isStackTraceHidden)
-#pragma warning restore IDE0060 // Remove unused parameter
+        private string CreateStackTraceStringForNativeUnwind(out bool isStackTraceHidden)
         {
             Debug.Assert(_ipAddress != Exception.EdiSeparator);
             isStackTraceHidden = false;
@@ -101,7 +79,7 @@ namespace System.Diagnostics
             // An unknown frame?
             if (_eips is null)
             {
-                return "<unknown>";
+                return UnknownStackFrameString;
             }
 
             // A JS frame?

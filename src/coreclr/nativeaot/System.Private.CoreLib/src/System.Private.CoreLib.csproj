@@ -339,16 +339,17 @@
   </ItemGroup>
 
   <!-- General WASM-specific things. -->
-  <ItemGroup Condition="'$(TargetsBrowser)' == 'true'">
-    <Compile Include="System\Exception.NativeAot.Browser.cs" />
-    <Compile Include="System\Diagnostics\StackFrame.NativeAot.Browser.cs" />
-    <Compile Include="System\Diagnostics\StackTrace.NativeAot.Browser.cs" />
-    <Compile Include="Internal\Runtime\Augments\RuntimeAugments.Browser.cs" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetsWasi)' == 'true'">
-    <Compile Include="System\Exception.NativeAot.Wasi.cs" />
-    <Compile Include="System\Diagnostics\StackTrace.NativeAot.Wasi.cs" />
+  <ItemGroup Condition="'$(TargetsWasm)' == 'true'">
+    <Compile Include="Internal\Runtime\Augments\RuntimeAugments.Wasm.cs" />
+    <Compile Include="Internal\Runtime\Augments\RuntimeAugments.Browser.cs" Condition="'$(TargetsBrowser)' == 'true'" />
+    <Compile Include="System\Exception.NativeAot.Wasm.cs" />
+    <Compile Include="System\Exception.NativeAot.Wasi.cs" Condition="'$(TargetsWasi)' == 'true'" />
+    <Compile Include="System\Exception.NativeAot.Browser.cs" Condition="'$(TargetsBrowser)' == 'true'" />
+    <Compile Include="System\Diagnostics\StackTrace.NativeAot.Wasi.cs" Condition="'$(TargetsWasi)' == 'true'" />
+    <Compile Include="System\Diagnostics\StackTrace.NativeAot.Browser.cs" Condition="'$(TargetsBrowser)' == 'true'" />
+    <Compile Include="System\Diagnostics\StackFrame.NativeAot.Wasm.cs" />
+    <Compile Include="System\Diagnostics\StackFrame.NativeAot.Wasi.cs" Condition="'$(TargetsWasi)' == 'true'" />
+    <Compile Include="System\Diagnostics\StackFrame.NativeAot.Browser.cs" Condition="'$(TargetsBrowser)' == 'true'" />
   </ItemGroup>
 
   <!-- WASM-specific threading things. Keep in sync with Mono. -->

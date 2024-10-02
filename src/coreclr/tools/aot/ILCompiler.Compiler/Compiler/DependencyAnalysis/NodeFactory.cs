@@ -1478,6 +1478,7 @@ namespace ILCompiler.DependencyAnalysis
                 graph.AddRoot(TlsRoot, "Inlined threadstatics are used if present");
             }
 
+            AddWasmSpecificSections(ReadyToRunHeader);
             ReadyToRunHeader.Add(ReadyToRunSectionType.GCStaticRegion, GCStaticsRegion);
             ReadyToRunHeader.Add(ReadyToRunSectionType.ThreadStaticRegion, ThreadStaticsRegion);
             ReadyToRunHeader.Add(ReadyToRunSectionType.EagerCctor, EagerCctorTable);

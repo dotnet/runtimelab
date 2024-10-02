@@ -130,7 +130,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <IlcLlvmTarget Condition="'$(_targetOS)' == 'wasi'">wasm32-unknown-wasip2</IlcLlvmTarget>
     <IlcWasmStackSize>1048576</IlcWasmStackSize> <!-- 1MB -->
     <IlcWasmStackSize Condition="'$(EmccStackSize)' != ''">$(EmccStackSize)</IlcWasmStackSize>
-    <IlcWasmGlobalBase>1024</IlcWasmGlobalBase> <!-- This value is also hardcoded in the compiler -->
+    <IlcWasmGlobalBase>1024</IlcWasmGlobalBase>
     <IlcLlvmExceptionHandlingModel Condition="'$(WasmEnableExceptionHandling)' == 'true'">wasm</IlcLlvmExceptionHandlingModel>
     <IlcLlvmExceptionHandlingModel Condition="'$(IlcLlvmExceptionHandlingModel)' == '' and '$(targetOS)' == 'browser'">cpp</IlcLlvmExceptionHandlingModel>
     <IlcLlvmExceptionHandlingModel Condition="'$(IlcLlvmExceptionHandlingModel)' == ''">emulated</IlcLlvmExceptionHandlingModel>
@@ -334,6 +334,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <IlcArg Include="--codegenopt:LlvmExceptionHandlingModel=$(IlcLlvmExceptionHandlingModel)" />
       <IlcArg Condition="'$(IlcLlvmTarget)' != ''" Include="--codegenopt:Target=$(IlcLlvmTarget)" />
       <IlcArg Condition="'$(IlcMaxLlvmModuleCount)' != ''" Include="--codegenopt:MaxLlvmModuleCount=$(IlcMaxLlvmModuleCount)" />
+      <IlcArg Condition="'$(IlcWasmGlobalBase)' != ''" Include="--wasm-global-base:$(IlcWasmGlobalBase)" />
+      <IlcArg Condition="'$(IlcWasmMethodLevelVirtualUnwindModel)' != ''" Include="--wasm-method-level-virtual-unwind-model:$(IlcWasmMethodLevelVirtualUnwindModel)" />
 
       <IlcArg Condition="$(IlcDisableReflection) == 'true'" Include="--feature:System.Reflection.IsReflectionExecutionAvailable=false" />
 

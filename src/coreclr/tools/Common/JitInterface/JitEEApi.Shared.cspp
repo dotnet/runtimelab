@@ -30,7 +30,16 @@ enum EEApiId
     EEAI_GetSingleThreadedCompilationContext,
     EEAI_GetExceptionHandlingModel,
     EEAI_GetExceptionThrownVariable,
-    EEAI_GetExceptionHandlingTable,
+    EEAI_GetVirtualUnwindModel,
+    EEAI_GetSparseVirtualUnwindInfo,
+    EEAI_GetPreciseVirtualUnwindInfo,
+    EEAI_IsVirtualUnwindFrameVisible,
     EEAI_GetJitTestInfo,
     EEAI_Count
+};
+
+enum CorInfoLlvmVirtualUnwindModel
+{
+    CILVUM_Sparse,
+    CILVUM_Precise
 };

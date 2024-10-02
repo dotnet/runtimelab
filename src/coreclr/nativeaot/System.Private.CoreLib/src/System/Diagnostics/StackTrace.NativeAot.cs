@@ -5,11 +5,12 @@ using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Text;
 
+using Internal.Runtime.Augments;
+
 namespace System.Diagnostics
 {
     public partial class StackTrace
     {
-#if !TARGET_WASM
         /// <summary>
         /// Initialize the stack trace based on current thread and given initial frame index.
         /// </summary>
@@ -17,7 +18,13 @@ namespace System.Diagnostics
         private void InitializeForCurrentThread(int skipFrames, bool needFileInfo)
         {
             const int SystemDiagnosticsStackDepth = 2;
-
+#if TARGET_WASM
+            if (!RuntimeAugments.PreciseVirtualUnwind)
+            {
+                InitializeForCurrentThreadViaNativeUnwind(SystemDiagnosticsStackDepth, skipFrames, needFileInfo);
+                return;
+            }
+#endif
             int frameCount = -RuntimeImports.RhGetCurrentThreadStackTrace(Array.Empty<IntPtr>());
             Debug.Assert(frameCount >= 0);
             IntPtr[] stackTrace = new IntPtr[frameCount];
@@ -31,6 +38,13 @@ namespace System.Diagnostics
         /// </summary>
         private void InitializeForException(Exception exception, int skipFrames, bool needFileInfo)
         {
+#if TARGET_WASM
+            if (!RuntimeAugments.PreciseVirtualUnwind)
+            {
+                InitializeForIpAddressArrayViaNativeUnwind(exception.GetStackIPs(), skipFrames, needFileInfo);
+                return;
+            }
+#endif
             IntPtr[] stackIPs = exception.GetStackIPs();
             InitializeForIpAddressArray(stackIPs, skipFrames, stackIPs.Length, needFileInfo);
         }
@@ -75,7 +89,6 @@ namespace System.Diagnostics
             _numOfFrames = outputFrameCount;
             _methodsToSkip = 0;
         }
-#endif
 
         internal void ToString(TraceFormat traceFormat, StringBuilder builder)
         {

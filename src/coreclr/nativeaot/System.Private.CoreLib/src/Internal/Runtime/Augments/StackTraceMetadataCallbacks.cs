@@ -18,6 +18,11 @@ namespace Internal.Runtime.Augments
     public abstract class StackTraceMetadataCallbacks
     {
         /// <summary>
+        /// Convert the given function pointer into a stack trace IP suitable for use in APIs below.
+        /// </summary>
+        public abstract IntPtr TryConvertFunctionPointerToStackTraceIp(IntPtr functionPointer);
+
+        /// <summary>
         /// Helper function to format a given method address using the stack trace metadata.
         /// Return null if stack trace information is not available.
         /// </summary>

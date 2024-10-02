@@ -10,7 +10,7 @@ using Debug = System.Diagnostics.Debug;
 
 namespace ILCompiler
 {
-    public sealed class ObjectDataInterner
+    public sealed partial class ObjectDataInterner
     {
         private Dictionary<ISymbolNode, ISymbolNode> _symbolRemapping;
 

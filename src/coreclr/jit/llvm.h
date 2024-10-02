@@ -11,6 +11,7 @@
 #include "sideeffects.h"
 #include "jitgcinfo.h"
 #include "llvmtypes.h"
+#include "JitEEApi.Shared.cspp"
 #include <new>
 
 // this breaks StringMap.h
@@ -139,6 +140,7 @@ enum HelperFuncInfoFlags
     HFIF_VAR_ARG = 1 << 1, // The helper has a variable number of args and must be treated specially.
     HFIF_NO_RPI_OR_GC = 1 << 2, // The helper will not call (back) into managed code or trigger GC.
     HFIF_THROW_OR_NO_RPI_OR_GC = 1 << 3, // The helper either throws or does not call into managed code / trigger GC.
+    HFIF_NO_VIRTUAL_UNWIND = 1 << 4, // The helper will not throw or invoke stack trace collection logic.
 };
 
 struct HelperFuncInfo
@@ -167,6 +169,13 @@ struct HelperFuncInfo
     size_t GetSigArgCount(unsigned* callArgCount = nullptr) const;
 };
 
+enum class BooleanFact : unsigned char
+{
+    Unknown,
+    False,
+    True
+};
+
 enum class ValueInitOpts
 {
     None,
@@ -180,6 +189,19 @@ enum class ValueInitKind
     Zero,
     Uninit
 };
+
+enum CallSiteFacts
+{
+    CSF_NONE = 0,
+    CSF_NO_THROW = 1,
+    CSF_NO_VIRTUAL_UNWIND = 1 << 1,
+    CSF_FUNCLET = 1 << 16,
+};
+
+inline CallSiteFacts& operator |=(CallSiteFacts& a, CallSiteFacts b)
+{
+    return a = static_cast<CallSiteFacts>(static_cast<int>(a) | static_cast<int>(b));
+}
 
 struct ThrowHelperKey
 {
@@ -265,6 +287,7 @@ private:
     Compiler* const _compiler;
     Compiler::Info* const m_info;
     GCInfo* _gcInfo = nullptr;
+    CorInfoLlvmVirtualUnwindModel m_virtualUnwindModel;
 
     // Used by all of lowering, allocator and codegen.
     BasicBlock* m_currentBlock = nullptr;
@@ -274,8 +297,12 @@ private:
     SideEffectSet m_scratchSideEffects; // Used for IsInvariantInRange.
     bool m_anyFilterFunclets = false;
 
-    // Shared between lowering and codegen.
-    bool m_anyReturns = false;
+    // Optimization facts provided by lowering.
+    BooleanFact m_anyVirtuallyUnwindableCalleesViaLowering = BooleanFact::Unknown;
+    bool m_anyReturnsViaLowering = false;
+
+    // Shared between virtual unwind frame insertion and LSSA.
+    unsigned m_initialUnwindIndex = UNWIND_INDEX_NONE;
 
     // Shared between unwind index insertion and EH codegen.
     ArrayStack<unsigned>* m_unwindIndexMap = nullptr;
@@ -315,7 +342,8 @@ private:
     unsigned _shadowStackLocalsSize = 0;
     unsigned _originalShadowStackLclNum = BAD_VAR_NUM;
     unsigned _shadowStackLclNum = BAD_VAR_NUM;
-    unsigned m_unwindFrameLclNum = BAD_VAR_NUM;
+    unsigned m_sparseVirtualUnwindFrameLclNum = BAD_VAR_NUM;
+    unsigned m_preciseVirtualUnwindFrameLclNum = BAD_VAR_NUM;
     unsigned _llvmArgCount = 0;
 
     // ================================================================================================================
@@ -347,6 +375,7 @@ private:
     bool callHasManagedCallingConvention(const GenTreeCall* call) const;
     bool helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) const;
     bool helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const;
+    bool helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const;
 
     static const HelperFuncInfo& getHelperFuncInfo(CorInfoHelpFunc helperFunc);
 
@@ -378,7 +407,11 @@ private:
     SingleThreadedCompilationContext* GetSingleThreadedCompilationContext();
     CorInfoLlvmEHModel GetExceptionHandlingModel();
     CORINFO_GENERIC_HANDLE GetExceptionThrownVariable();
-    CORINFO_GENERIC_HANDLE GetExceptionHandlingTable(CORINFO_LLVM_EH_CLAUSE* pClauses, int count);
+    CorInfoLlvmVirtualUnwindModel GetVirtualUnwindModel();
+    CORINFO_GENERIC_HANDLE GetSparseVirtualUnwindInfo(CORINFO_LLVM_EH_CLAUSE* pClauses, int count);
+    CORINFO_GENERIC_HANDLE GetPreciseVirtualUnwindInfo(
+        unsigned* pAbsoluteValue, unsigned shadowFrameSize, CORINFO_LLVM_EH_CLAUSE* pClauses, int clauseCount);
+    bool IsVirtualUnwindFrameVisible();
     void GetJitTestInfo(CorInfoLlvmJitTestKind kind, CORINFO_LLVM_JIT_TEST_INFO* pInfo);
 
 public:
@@ -449,6 +482,8 @@ private:
     GenTree* insertShadowStackAddr(GenTree* insertBefore, unsigned offset, unsigned shadowStackLclNum);
     GenTreeAddrMode* createAddrModeNode(GenTree* base, unsigned offset);
 
+    void lowerCollectOptimizationFacts(GenTree* node);
+
     bool isInvariantInRange(GenTree* node, GenTree* endExclusive);
 
     void lowerDissolveDependentlyPromotedLocals();
@@ -456,21 +491,30 @@ private:
 
     void lowerCanonicalizeFirstBlock();
     bool isFirstBlockCanonical();
+    void lowerAndInsertIntoFirstBlock(LIR::Range& range, GenTree* insertAfter = nullptr);
 
 public:
     PhaseStatus AddVirtualUnwindFrame();
 
 private:
+    static const unsigned SPARSE_VIRTUAL_UNWIND_FRAME_SIZE = 3 * TARGET_POINTER_SIZE;
+    static const unsigned SPARSE_VIRTUAL_UNWIND_FRAME_UNWIND_INDEX_OFFSET = 2 * TARGET_POINTER_SIZE;
     static const unsigned UNWIND_INDEX_NONE = -1;
     static const unsigned UNWIND_INDEX_NOT_IN_TRY = 0;
     static const unsigned UNWIND_INDEX_NOT_IN_TRY_CATCH = 1;
     static const unsigned UNWIND_INDEX_BASE = 2;
 
+    bool computeVirtualUnwindabilityFact();
+    bool addTentativePreciseVirtualUnwindFrame();
+    bool addConcretePreciseVirtualUnwindFrame(unsigned computedShadowFrameSize);
+    void initializePreciseVirtualUnwindFrame();
+    bool addVirtualUnwindFrameForExceptionHandling();
     void computeBlocksInFilters();
     ArrayStack<unsigned>* computeUnwindIndexMap();
-    CORINFO_GENERIC_HANDLE generateUnwindTable();
+    void computeExceptionHandlingInfo(ArrayStack<CORINFO_LLVM_EH_CLAUSE>& clauses);
 
     bool mayPhysicallyThrow(GenTree* node);
+    bool mayVirtuallyUnwind(GenTree* node);
     bool isBlockInFilter(BasicBlock* block) const;
 
 #ifdef DEBUG
@@ -585,14 +629,15 @@ private:
     llvm::CallBase* emitGcStressCall(GenTreeCall* call, llvm::CallBase* callValue);
     llvm::CallBase* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = {});
     bool canEmitHelperCallAsShadowTailCall(CorInfoHelpFunc helperFunc);
-    llvm::CallBase* emitCallOrInvoke(llvm::Function* callee, ArrayRef<Value*> args = {});
-    llvm::CallBase* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args, bool isThrowingCall);
+    llvm::CallBase* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args, CallSiteFacts facts);
 
     FunctionType* createFunctionType();
     llvm::FunctionCallee consumeCallTarget(GenTreeCall* call);
     FunctionType* createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig);
     FunctionType* createFunctionTypeForCall(GenTreeCall* call);
     FunctionType* createFunctionTypeForHelper(CorInfoHelpFunc helperFunc);
+    CallSiteFacts getCallSiteFactsForCall(GenTreeCall* call);
+    CallSiteFacts getCallSiteFactsForHelper(CorInfoHelpFunc helperFunc);
     void annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc);
     Function* getOrCreateKnownLlvmFunction(StringRef name,
                                            std::function<FunctionType*()> createFunctionType,
@@ -654,6 +699,10 @@ public:
 
 private:
     llvm::Intrinsic::ID getLlvmIntrinsic(NamedIntrinsic intrinsicName) const;
+
+#ifdef DEBUG
+    void verifyFactsCollectedAboutCalls(CallSiteFacts callSiteFacts);
+#endif // DEBUG
 
     // ================================================================================================================
     // |                                    DWARF debug info (part of codegen)                                        |
