@@ -17,6 +17,7 @@ Currently, this repo contains the following experimental projects:
 - [ManagedZLib](https://github.com/dotnet/runtimelab/tree/feature/ManagedZLib) - Fully managed implementation of DEFLATE algorithm and GZip/ZLib envelope formats.
 - [Async](https://github.com/dotnet/runtimelab/tree/feature/async2-experiment) - Move support for async state machine generation from the C# compiler to the runtime.
 - [SwiftBindings](https://github.com/dotnet/runtimelab/tree/feature/swift-bindings) - Swift bindings for .NET.
+- [CoreCLR Interpreter](https://github.com/dotnet/runtimelab/tree/feature/CoreclrInterpreter) - An interpreter for CoreCLR.
 
 You can create your own experiment, learn more [here](CreateAnExperiment.md)!
 
