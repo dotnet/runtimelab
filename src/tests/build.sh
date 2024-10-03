@@ -120,8 +120,6 @@ build_Tests()
     buildArgs+=("${__msbuildLog}" "${__msbuildWrn}" "${__msbuildErr}" "${__msbuildBinLog}")
     buildArgs+=("/p:NUMBER_OF_PROCESSORS=${__NumProc}")
     buildArgs+=("${__UnprocessedBuildArgs[@]}")
-    buildArgs+=("/p:CompressSymbols=false")
-    buildArgs+=("/p:UseSystemZlib=false")
 
     # Disable warnAsError - https://github.com/dotnet/runtime/issues/11077
     nextCommand="\"$__RepoRootDir/eng/common/msbuild.sh\" $__ArcadeScriptArgs --warnAsError false ${buildArgs[@]}"
