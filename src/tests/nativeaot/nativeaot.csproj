@@ -1,9 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup>
-    <MergedWrapperProjectReference Include="*/**/*.??proj" Exclude="*/**/Library.csproj;*/**/HelloWasm/*.??proj" Condition="'$(TargetsWasm)' != 'true'" />
-    <MergedWrapperProjectReference Include="*/**/*.??proj" Exclude="*/**/Library.csproj"  Condition="'$(TargetsWasm)' == 'true'" />
-  </ItemGroup>
+    <ItemGroup>
+      <MergedWrapperProjectReference Include="*/**/*.??proj" Exclude="*/**/Library.csproj" />
+    </ItemGroup>
+  
+    <ItemGroup>
+      <MergedWrapperProjectReference Exclude="*/**/HelloWasm/*.??proj" Condition="'$(TargetsWasm)' != 'true')"/>
+    </ItemGroup>
 
-  <Import Project="$(TestSourceDir)MergedTestRunner.targets" />
-</Project>
+    <Import Project="$(TestSourceDir)MergedTestRunner.targets" />
+  </Project>
   

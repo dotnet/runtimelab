@@ -14,23 +14,7 @@
       <DisabledProjects Include="$(TestRoot)Loader\classloader\StaticVirtualMethods\**\generatetest.csproj" /> <!-- test generators -->
       <DisabledProjects Include="$(TestRoot)Performance\Scenario\JitBench\unofficial_dotnet\JitBench.csproj" /> <!-- no official build support for SDK-style netcoreapp2.0 projects -->
       <DisabledProjects Include="$(TestRoot)TestWrappers*\**\*.csproj" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\*.csproj" Condition="!('$(TestBuildMode)' == 'nativeaot' and '$(TargetsWasm)' == 'true')"/>
       <DisabledProjects Include="$(TestRoot)nativeaot\**\*.csproj" Condition="'$(TestBuildMode)' != 'nativeaot'" />
-
-      <!-- issue https://github.com/dotnet/runtime/issues/87931 -->
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HardwareIntrinsics\X64Avx512.csproj" Condition="'$(TestBuildMode)' == 'nativeaot'" />
-    </ItemGroup>
-
-    <ItemGroup Condition="'$(TestBuildMode)' == 'nativeaot' and '$(TargetsWasm)' == 'true'">
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\SharedLibrary\SharedLibrary.csproj" Condition="'$(TargetOS)' == 'browser'" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\StackTraceMetadata\StackTraceMetadata.csproj" Condition="'$(TargetOS)' == 'wasi'" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\GenerateUnmanagedEntryPoints\GenerateUnmanagedEntryPoints.csproj" />
-      <DisabledProjects Include="$(TestRoot)nativeaot\CustomMainWithStubExe\CustomMainWithStubExe.csproj" /> <!-- dlopen-based test -->
-      <!-- Determinism uses File.Open read which Wasm can't support without Wasi or Emscripten file system support which we don't enable by default. -->
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Determinism\Determinism.csproj" />
-
-      <!-- Manual test. -->
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\WasmDebugging.csproj" />
       <DisabledProjects Include="$(TestRoot)readytorun\**\*.csproj" Condition="'$(TestBuildMode)' == 'nativeaot'" />
     </ItemGroup>
 
