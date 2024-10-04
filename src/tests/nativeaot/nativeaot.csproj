@@ -5,18 +5,7 @@
       <DisabledProjects Include="*/**/HelloWasm/*.??proj" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(TargetsWasm)' == 'true'">
-      <DisabledProjects Include="*/**/SharedLibrary.csproj" Condition="'$(TargetOS)' == 'browser'" />
-      <DisabledProjects Include="*/**/StackTraceMetadata.csproj" Condition="'$(TargetOS)' == 'wasi'" />
-      <DisabledProjects Include="*/**/GenerateUnmanagedEntryPoints.csproj" />
-      <DisabledProjects Include="*/**/CustomMainWithStubExe.csproj" /> <!-- dlopen-based test -->
-      <!-- Determinism uses File.Open read which Wasm can't support without Wasi or Emscripten file system support which we don't enable by default. -->
-      <DisabledProjects Include="*/**/Determinism.csproj" />
-
-      <!-- Manual test. -->
-      <DisabledProjects Include="*/**/HelloWasm\WasmDebugging.csproj" />
-      <DisabledProjects Include="*/**/readytorun/**/*.csproj" />
-    </ItemGroup>
+    <!-- Wasm disabled projects are still in dirs.proj because Wasm is not using this merged test wrapper -->
 
     <ItemGroup>
       <MergedWrapperProjectReference Include="*/**/*.??proj" Exclude="@(DisabledProjects)" />
