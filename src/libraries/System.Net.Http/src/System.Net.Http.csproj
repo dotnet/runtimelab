@@ -24,11 +24,6 @@
     <EmitCompilerGeneratedFiles Condition="'$(Configuration)' == 'Debug' and '$(TargetPlatformIdentifier)' == 'browser'">true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
 
-  <!-- TODO-LLVM: This is not upstreamable because it makes the build runtime-specific. -->
-  <PropertyGroup>
-    <DefineConstants Condition="'$(RuntimeFlavor)' == 'CoreCLR'">$(DefineConstants);NATIVE_AOT</DefineConstants>
-  </PropertyGroup>
-  
   <ItemGroup>
     <ILLinkSubstitutionsXmls Include="$(ILLinkDirectory)ILLink.Substitutions.xml" Condition="'$(TargetPlatformIdentifier)' != 'wasi'"/>
   </ItemGroup>
