@@ -10,8 +10,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics.Metrics;
-// TODO-LLVM: This is not upstreamable and should be deleted when https://github.com/dotnet/runtimelab/pull/2614 is merged
-#if TARGET_WASI && !NATIVE_AOT
+#if TARGET_WASI
 using System.Diagnostics;
 using System.Net.Http.Metrics;
 using HttpHandlerType = System.Net.Http.WasiHttpHandler;
@@ -29,8 +28,7 @@ namespace System.Net.Http
     {
         private readonly HttpHandlerType _underlyingHandler;
 
-// TODO-LLVM: This is not upstreamable and !NATIVE_AOT should be reverted when https://github.com/dotnet/runtimelab/pull/2614 is merged
-#if TARGET_BROWSER || (TARGET_WASI && !NATIVE_AOT)
+#if TARGET_BROWSER || TARGET_WASI
         private IMeterFactory? _meterFactory;
         private HttpMessageHandler? _firstHandler; // DiagnosticsHandler or MetricsHandler, depending on global configuration.
 
@@ -100,8 +98,7 @@ namespace System.Net.Http
         [CLSCompliant(false)]
         public IMeterFactory? MeterFactory
         {
-// TODO-LLVM: This is not upstreamable and !NATIVE_AOT should be reverted when https://github.com/dotnet/runtimelab/pull/2614 is merged
-#if TARGET_BROWSER || (TARGET_WASI && !NATIVE_AOT)
+#if TARGET_BROWSER || TARGET_WASI
             get => _meterFactory;
             set
             {
