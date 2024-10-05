@@ -9,8 +9,12 @@
     <WasiReactorTestUsingNodeJS Condition="'$(TargetOS)' == 'wasi'">true</WasiReactorTestUsingNodeJS>
 
     <BuildAsStandalone>false</BuildAsStandalone>
-    <!-- Unable to compile a project with the Library output type for apple mobile devices or WASI -->
-    <CLRTestTargetUnsupported Condition="'$(TargetsAppleMobile)' == 'true' or '$(TargetOS)' == 'wasi'">true</CLRTestTargetUnsupported>
+
+    <!-- Unable to compile a project with the Library output type for apple mobile devices -->
+    <CLRTestTargetUnsupported Condition="'$(TargetsAppleMobile)' == 'true'">true</CLRTestTargetUnsupported>
+
+    <!-- https://github.com/dotnet/runtimelab/issues/2648 -->
+    <CLRTestTargetUnsupported Condition="'$(TargetOS)' == 'wasi'">true</CLRTestTargetUnsupported>
 
     <!-- Regression test for https://github.com/dotnet/runtime/issues/105330: make sure the UnmanagedCallersOnly are completely unreferenced,
          not even from stack trace mapping data -->
