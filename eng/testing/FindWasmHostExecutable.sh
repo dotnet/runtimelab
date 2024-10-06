@@ -22,6 +22,5 @@ elif [ -e "${dirname}/main.mjs" ]; then
   WASM_BINARY_TO_EXECUTE="${dirname}/main.mjs"
 elif [ -e "${dirname}/${exename}.wasm" ]; then
   WASM_HOST_EXECUTABLE="$WASMTIME_EXECUTABLE -S http"
-  WASM_HOST_ARGS_SEPERATOR="--"
   WASM_BINARY_TO_EXECUTE="${dirname}/${exename}.wasm"
 fi
