@@ -493,7 +493,7 @@ private:
 
     unsigned getShadowFrameSize(unsigned funcIdx) const;
     unsigned getCalleeShadowStackOffset(unsigned funcIdx, bool isTailCall) const;
-    bool canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter) const;
+    bool canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter DEBUGARG(const char** pReasonWhyNot)) const;
     bool isPotentialGcSafePoint(GenTree* node) const;
     bool isShadowFrameLocal(LclVarDsc* varDsc) const;
     bool isShadowStackLocal(unsigned lclNum) const;
