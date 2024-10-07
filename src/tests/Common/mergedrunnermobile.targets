@@ -39,26 +39,8 @@
                       WriteOnlyWhenDifferent="true" />
   </Target>
 
-  <Target Name="FetchExternalProperties">
-    <!--Call GetExecuteShFullPath to get ToRunProject cmd file Path  -->
-    <MSBuild Projects="$(CLRTestProjectToRun)"
-             Targets="$(GetExecuteScriptTarget)"
-             Properties="GenerateRunScript=True"
-             Condition="'$(_CLRTestNeedsProjectToRun)' == 'True'">
-      <Output TaskParameter="TargetOutputs" PropertyName="_CLRTestToRunFileFullPath"/>
-    </MSBuild>
-
-    <PropertyGroup>
-      <InputAssemblyName Condition="'$(CLRTestKind)' == 'RunOnly'">$([MSBuild]::MakeRelative($(OutputPath), $(_CLRTestToRunFileFullPath)))</InputAssemblyName>
-      <InputAssemblyName Condition="'$(CLRTestKind)' == 'BuildAndRun'">$(AssemblyName).dll</InputAssemblyName>
-    </PropertyGroup>
-  </Target>
-  
   <!-- Don't use the usual script generation, the scripts it generates are not useful for these tests. -->
-  <Target Name="GenerateExecutionScriptsInternal"
-    Condition="$(_CLRTestNeedsToRun) or $(_CLRTestBuildsExecutable)"
-    DependsOnTargets="FetchExternalProperties;Generate@(ExecutionScriptKind, 'ExecutionScript;Generate')ExecutionScript;" />
-
+  <Target Name="GenerateExecutionScriptsInternal" />
   <Target Name="GenerateLocalRunnerScript" DependsOnTargets="GenerateRunScript" AfterTargets="PublishTestAsSelfContained" />
 
   <Import Project="$(RepositoryEngineeringDir)testing\tests.targets" />
