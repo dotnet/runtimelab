@@ -24,6 +24,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetsWasm)' == 'true' and '$(RuntimeFlavor)' == 'coreclr'">
+    <!-- NativeAOT-LLVM: https://github.com/dotnet/runtimelab/issues/2695. -->
     <BuildAllTestsAsStandalone>true</BuildAllTestsAsStandalone>
   </PropertyGroup>  
 
