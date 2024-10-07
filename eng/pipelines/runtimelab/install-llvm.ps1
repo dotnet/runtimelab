@@ -7,6 +7,11 @@ param(
     [switch]$NoBuild
 )
 
+[GC]::Collect()
+[GC]::GetGCMemoryInfo()
+"Processor count: " + [Environment]::ProcessorCount
+exit 1
+
 $ErrorActionPreference="Stop"
 
 # Set IsWindows if the version of Powershell does not already have it.

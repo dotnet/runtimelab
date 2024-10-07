@@ -58,11 +58,11 @@ extends:
             helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
             buildConfig: debug
             platforms:
-            - windows_x64
-            - browser_wasm_win
-            - wasi_wasm_win
+            # - windows_x64
+            # - browser_wasm_win
+            # - wasi_wasm_win
             - Browser_wasm_linux_x64_naot_llvm
-            - wasi_wasm_linux_x64_naot_llvm
+            # - wasi_wasm_linux_x64_naot_llvm
             jobParameters:
               timeoutInMinutes: 300
               buildArgs: -s clr.aot+libs -c debug -rc $(_BuildConfig)
@@ -98,12 +98,12 @@ extends:
             helixQueuesTemplate: /eng/pipelines/libraries/helix-queues-setup.yml
             buildConfig: release
             platforms:
-            - linux_x64
-            - osx_x64
-            - windows_x64
-            - Browser_wasm_win
-            - wasi_wasm_win
-            - wasi_wasm_linux_x64_naot_llvm
+            # - linux_x64
+            # - osx_x64
+            # - windows_x64
+            # - Browser_wasm_win
+            # - wasi_wasm_win
+            # - wasi_wasm_linux_x64_naot_llvm
             - Browser_wasm_linux_x64_naot_llvm
             jobParameters:
               timeoutInMinutes: 300
