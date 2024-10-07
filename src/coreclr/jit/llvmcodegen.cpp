@@ -2615,9 +2615,10 @@ bool Llvm::canEmitHelperCallAsShadowTailCall(CorInfoHelpFunc helperFunc)
     assert(helperCallHasShadowStackArg(helperFunc));
 
     // Right now the check on whether the call is in a "tail" position is simply that it won't return.
+    INDEBUG(const char* reasonWhyNot);
     if (Compiler::s_helperCallProperties.AlwaysThrow(helperFunc) &&
         canEmitCallAsShadowTailCall(getCurrentProtectedRegionIndex() != EHblkDsc::NO_ENCLOSING_INDEX,
-                                    isCurrentContextInFilter()))
+                                    isCurrentContextInFilter() DEBUGARG(&reasonWhyNot)))
     {
         return true;
     }

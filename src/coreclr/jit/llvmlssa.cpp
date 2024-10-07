@@ -1281,10 +1281,19 @@ private:
         // Add in the shadow stack argument now that we know the shadow frame size.
         if (m_llvm->callHasManagedCallingConvention(call))
         {
-            unsigned funcIdx = m_llvm->getLlvmFunctionIndexForBlock(m_llvm->CurrentBlock());
-            bool isTailCall = CanShadowTailCall(call);
-            unsigned calleeShadowStackOffset = m_llvm->getCalleeShadowStackOffset(funcIdx, isTailCall);
+            INDEBUG(const char* reasonWhyNot = nullptr);
+            bool isTailCall = CanShadowTailCall(call DEBUGARG(&reasonWhyNot));
+            if (isTailCall)
+            {
+                JITDUMP("Shadow tail-calling [%06u]\n", Compiler::dspTreeID(call));
+            }
+            else
+            {
+                JITDUMP("Not shadow tail-calling [%06u]: %s\n", Compiler::dspTreeID(call), reasonWhyNot);
+            }
 
+            unsigned funcIdx = m_llvm->getLlvmFunctionIndexForBlock(m_llvm->CurrentBlock());
+            unsigned calleeShadowStackOffset = m_llvm->getCalleeShadowStackOffset(funcIdx, isTailCall);
             GenTree* calleeShadowStack =
                 m_llvm->insertShadowStackAddr(call, calleeShadowStackOffset, m_llvm->_shadowStackLclNum);
             CallArg* calleeShadowStackArg =
@@ -1301,20 +1310,32 @@ private:
         }
     }
 
-    bool CanShadowTailCall(GenTreeCall* call)
+    bool CanShadowTailCall(GenTreeCall* call DEBUGARG(const char** pReasonWhyNot))
     {
         BasicBlock* block = m_llvm->CurrentBlock();
-        if (!m_llvm->canEmitCallAsShadowTailCall(block->hasTryIndex(), m_llvm->isBlockInFilter(block)))
+        if (!m_llvm->canEmitCallAsShadowTailCall(
+            block->hasTryIndex(), m_llvm->isBlockInFilter(block) DEBUGARG(pReasonWhyNot)))
         {
             return false;
         }
 
         // We support only the simplest cases for now.
-        if (call->IsNoReturn() || ((call->gtNext != nullptr) && call->gtNext->OperIs(GT_RETURN)))
+        if (call->IsNoReturn())
         {
             return true;
         }
 
+        GenTree* nextNode = call->gtNext;
+        while ((nextNode != nullptr) && nextNode->OperIs(GT_IL_OFFSET))
+        {
+            nextNode = nextNode->gtNext;
+        }
+        if ((nextNode != nullptr) && nextNode->OperIs(GT_RETURN))
+        {
+            return true;
+        }
+
+        INDEBUG(*pReasonWhyNot = "not in a tail position");
         return false;
     }
 
@@ -1925,12 +1946,13 @@ bool Llvm::isPotentialGcSafePoint(GenTree* node) const
 // Return Value:
 //    Whether a call can be made without preserving the current shadow frame.
 //
-bool Llvm::canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter) const
+bool Llvm::canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter DEBUGARG(const char** pReasonWhyNot)) const
 {
     // We don't want to tail call anything in debug code, as it leads to a confusing debugging experience where
     // calls down the stack may modify (corrupt) shadow variables from their callers.
     if (_compiler->opts.compDbgCode)
     {
+        INDEBUG(*pReasonWhyNot = "debug code");
         return false;
     }
 
@@ -1938,11 +1960,18 @@ bool Llvm::canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter) co
     // Likewise with pinning.
     if (m_anyAddressExposedOrPinnedShadowLocals)
     {
+        INDEBUG(*pReasonWhyNot = "pinned or address-exposed shadow locals present");
         return false;
     }
 
     // Both protected regions and filters induce exceptional flow that may return back to this method.
-    return !callIsInTry && !callIsInFilter;
+    if (callIsInTry || callIsInFilter)
+    {
+        INDEBUG(*pReasonWhyNot = "call is in a protected region or filter handler");
+        return false;
+    }
+
+    return true;
 }
 
 //------------------------------------------------------------------------
