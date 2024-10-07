@@ -68,6 +68,8 @@ extends:
                   parameters:
                     creator: dotnet-bot
                     testRunNamePrefixSuffix: CoreCLR_$(_BuildConfig)
+              extraVariablesTemplates:
+                - template: /eng/pipelines/common/templates/runtimes/test-variables.yml
 
         #
         # Build the whole product with Release CoreCLR and run libraries tests
@@ -88,6 +90,8 @@ extends:
                   parameters:
                     creator: dotnet-bot
                     testRunNamePrefixSuffix: Libraries_$(_BuildConfig)
+              extraVariablesTemplates:
+                - template: /eng/pipelines/common/templates/runtimes/test-variables.yml
 
         #
         # Build and test libraries AllConfigurations
@@ -102,3 +106,5 @@ extends:
               buildArgs: -test -s tools+libs+libs.tests -allConfigurations -c $(_BuildConfig) /p:TestAssemblies=false /p:TestPackages=true
               nameSuffix: Libraries_AllConfigurations
               timeoutInMinutes: 150
+              extraVariablesTemplates:
+                - template: /eng/pipelines/common/templates/runtimes/test-variables.yml
