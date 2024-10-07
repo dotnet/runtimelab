@@ -10,7 +10,6 @@
     <ItemGroup>
       <MergedWrapperProjectReference Include="*/**/*.??proj" Exclude="@(DisabledProjects)" />
     </ItemGroup>
-
     <Import Project="$(TestSourceDir)MergedTestRunner.targets" />
   </Project>
   
