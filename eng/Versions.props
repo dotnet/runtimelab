@@ -16,6 +16,6 @@
     <XUnitVersion>2.4.1</XUnitVersion>
     <XUnitRunnerVisualStudioVersion>2.4.3</XUnitRunnerVisualStudioVersion>
     <!-- Set the custom NETCoreApp version -->
-    <MicrosoftNETCoreAppVersion>9.0.0-preview.3.24172.9</MicrosoftNETCoreAppVersion>
+    <MicrosoftNETCoreAppVersion>9.0.0-rc.1.24431.7</MicrosoftNETCoreAppVersion>
   </PropertyGroup>
 </Project>
