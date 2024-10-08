@@ -79,7 +79,7 @@
   </Target>
 
   <Target Name="RunSingleMergedTest">
-    <Exec Command="chmod +x $(TestWrapperScript)" WorkingDirectory="$(BaseOutputPathWithConfig)" EchoOff="true" Condition="'$(TargetOS)' != 'windows'" />
+    <Exec Command="chmod +x $(TestWrapperScript)" WorkingDirectory="$(BaseOutputPathWithConfig)" EchoOff="true" Condition="'$(TargetOS)' != 'windows' and '$(OS)' != 'Windows_NT'" />
     <Exec Command="$(TestWrapperScript) &gt;$(RedirectOutputToFile) 2&gt;&amp;1" WorkingDirectory="$(BaseOutputPathWithConfig)" Timeout="$(__TestTimeout)" IgnoreExitCode="true">
       <Output TaskParameter="ExitCode" PropertyName="MergedTestExitCode" />
     </Exec>

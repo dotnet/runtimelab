@@ -410,7 +410,7 @@ FCIMPL4(Object*, RuntimeMethodHandle::InvokeMethod,
     Object *target,
     PVOID* args, // An array of byrefs
     SignatureNative* pSigUNSAFE,
-    CLR_BOOL fConstructor)
+    FC_BOOL_ARG fConstructor)
 {
     FCALL_CONTRACT;
 
@@ -443,7 +443,7 @@ FCIMPL4(Object*, RuntimeMethodHandle::InvokeMethod,
 
     BOOL fCtorOfVariableSizedObject = FALSE;
 
-    if (fConstructor)
+    if (FC_ACCESS_BOOL(fConstructor))
     {
         // If we are invoking a constructor on an array then we must
         // handle this specially.
@@ -550,7 +550,7 @@ FCIMPL4(Object*, RuntimeMethodHandle::InvokeMethod,
     if (!pMeth->IsStatic() && !fCtorOfVariableSizedObject) {
         PVOID pThisPtr;
 
-        if (fConstructor)
+        if (FC_ACCESS_BOOL(fConstructor))
         {
             // Copy "this" pointer: only unbox if type is value type and method is not unboxing stub
             if (ownerType.IsValueType() && !pMeth->IsUnboxingStub()) {
@@ -672,7 +672,7 @@ FCIMPL4(Object*, RuntimeMethodHandle::InvokeMethod,
     CallDescrWorkerWithHandler(&callDescrData);
 
     // It is still illegal to do a GC here.  The return type might have/contain GC pointers.
-    if (fConstructor)
+    if (FC_ACCESS_BOOL(fConstructor))
     {
         // We have a special case for Strings...The object is returned...
         if (fCtorOfVariableSizedObject) {
@@ -1282,7 +1282,7 @@ extern "C" BOOL QCALLTYPE RuntimeFieldHandle_GetRVAFieldInfo(FieldDesc* pField, 
         Module* pModule = pField->GetModule();
         *address = pModule->GetRvaField(pField->GetOffset());
         *size = pField->LoadSize();
-        
+
         ret = TRUE;
     }
 
@@ -1332,12 +1332,12 @@ extern "C" void QCALLTYPE ReflectionInvocation_RunModuleConstructor(QCall::Modul
 {
     QCALL_CONTRACT;
 
-    DomainAssembly *pDomainAssembly = pModule->GetDomainAssembly();
-    if (pDomainAssembly != NULL && pDomainAssembly->IsActive())
+    Assembly *pAssembly = pModule->GetAssembly();
+    if (pAssembly != NULL && pAssembly->IsActive())
         return;
 
     BEGIN_QCALL;
-    pDomainAssembly->EnsureActive();
+    pAssembly->EnsureActive();
     END_QCALL;
 }
 

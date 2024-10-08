@@ -8,6 +8,9 @@
     <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
     <NoWarn>$(NoWarn);IL3050;IL3054</NoWarn>
     <CLRTestExitCode>0</CLRTestExitCode>
+
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="BasicThreading.cs" />

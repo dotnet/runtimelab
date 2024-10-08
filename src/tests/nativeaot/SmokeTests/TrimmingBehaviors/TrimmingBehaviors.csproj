@@ -8,6 +8,8 @@
     <!-- We don't run the scanner in optimized builds -->
     <CLRTestTargetUnsupported Condition="'$(IlcMultiModule)' == 'true'">true</CLRTestTargetUnsupported>
     <CLRTestExitCode>0</CLRTestExitCode>
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
   </PropertyGroup>
 
   <ItemGroup>

@@ -10,6 +10,8 @@
     <DefineConstants>$(DefineConstants);STRIPPED</DefineConstants>
     <StackTraceSupport>false</StackTraceSupport>
     <CLRTestExitCode>0</CLRTestExitCode>
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="StackTraceMetadata.cs" />

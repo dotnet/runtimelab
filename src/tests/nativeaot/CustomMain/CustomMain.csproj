@@ -7,6 +7,8 @@
     <!-- TODO-LLVM: Remove when https://github.com/WebAssembly/wasi-sdk/issues/367 is resolved -->
     <EmccExtraArgs Condition="'$(TargetOS)' == 'wasi'">-Wl,--export-if-defined=__main_argc_argv</EmccExtraArgs>
     <CLRTestExitCode>0</CLRTestExitCode>
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
   </PropertyGroup>
 
   <ItemGroup>

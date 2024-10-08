@@ -16,6 +16,8 @@
 
     <IlcTrimMetadata>false</IlcTrimMetadata>
     <CLRTestExitCode>0</CLRTestExitCode>
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Reflection.cs" />

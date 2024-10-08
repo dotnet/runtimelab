@@ -8,6 +8,9 @@
          when the definition is statically linked -->
     <NoWarn>$(NoWarn);IL3049;CS8500</NoWarn>
     <CLRTestExitCode>0</CLRTestExitCode>
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
+    <CLRTestTargetUnsupported Condition="'$(TargetsWasm)' != 'true'">true</CLRTestTargetUnsupported>
   </PropertyGroup>
 
   <ItemGroup>

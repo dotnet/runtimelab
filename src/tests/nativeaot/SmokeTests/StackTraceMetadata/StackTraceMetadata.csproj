@@ -8,6 +8,8 @@
     <!-- Tracking issue: https://github.com/dotnet/runtime/issues/90460 -->
     <CLRTestTargetUnsupported Condition="'$(TargetOS)' == 'tvos' and '$(TargetArchitecture)' == 'arm64'">true</CLRTestTargetUnsupported>
     <CLRTestExitCode>0</CLRTestExitCode>
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="StackTraceMetadata.cs" />

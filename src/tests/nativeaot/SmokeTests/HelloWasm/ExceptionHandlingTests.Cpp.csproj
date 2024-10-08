@@ -6,6 +6,8 @@
 
     <!-- Test that the C++-based exception dispatch is working. -->
     <WasmEnableExceptionHandling>false</WasmEnableExceptionHandling>
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
 
     <!-- The C++-based exception handling model is only supported on Browser -->
     <CLRTestTargetUnsupported Condition="'$(TargetOS)' != 'browser'">true</CLRTestTargetUnsupported>

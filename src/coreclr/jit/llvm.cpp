@@ -422,7 +422,6 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_PROF_FCN_ENTER) },
         { FUNC(CORINFO_HELP_PROF_FCN_LEAVE) },
         { FUNC(CORINFO_HELP_PROF_FCN_TAILCALL) },
-        { FUNC(CORINFO_HELP_BBT_FCN_ENTER) },
 
         // Not used in NativeAOT.
         { FUNC(CORINFO_HELP_PINVOKE_CALLI) },
@@ -446,9 +445,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
 
         // Not used in NativeAOT.
         { FUNC(CORINFO_HELP_RUNTIMEHANDLE_METHOD) },
-        { FUNC(CORINFO_HELP_RUNTIMEHANDLE_METHOD_LOG) },
         { FUNC(CORINFO_HELP_RUNTIMEHANDLE_CLASS) },
-        { FUNC(CORINFO_HELP_RUNTIMEHANDLE_CLASS_LOG) },
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs".
         { FUNC(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
