@@ -25,7 +25,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ILLinkSubstitutionsXmls Include="$(ILLinkDirectory)ILLink.Substitutions.xml" Condition="'$(TargetPlatformIdentifier)' != 'wasi'"/>
+    <ILLinkSubstitutionsXmls Include="$(ILLinkDirectory)ILLink.Substitutions.xml" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetPlatformIdentifier)' != ''">
