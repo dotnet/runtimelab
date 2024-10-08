@@ -63,11 +63,6 @@ extends:
             jobParameters:
               timeoutInMinutes: 200
               buildArgs: -s clr+libs+clr.hosts+packs -c debug -rc $(_BuildConfig)
-              postBuildSteps:
-                - template: /eng/pipelines/common/templates/runtimes/build-runtime-tests-and-send-to-helix.yml
-                  parameters:
-                    creator: dotnet-bot
-                    testRunNamePrefixSuffix: CoreCLR_$(_BuildConfig)
               extraVariablesTemplates:
                 - template: /eng/pipelines/common/templates/runtimes/test-variables.yml
 
