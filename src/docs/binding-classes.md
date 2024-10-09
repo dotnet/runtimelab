@@ -396,3 +396,5 @@ public class ValBool : SwiftNativeObject {
     }    
 }
 ```
+
+It should be noted that there is a mechanism that can be used to call the C# receivers directly from Swift. This is detailed in [this document about an alternative to vtables](vtable-alternative.md).
