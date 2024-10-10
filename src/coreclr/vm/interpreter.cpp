@@ -753,12 +753,12 @@ CorJitResult Interpreter::GenerateInterpreterStub(CEEInfo* comp,
     {
         const char* clsName;
         const char* methName = getMethodName(comp, info->ftn, &clsName);
-        if (   !s_InterpretMeths.contains(methName, clsName, info->args.pSig)
-            || s_InterpretMethsExclude.contains(methName, clsName, info->args.pSig))
-        {
-            TRACE_SKIPPED(clsName, methName, "not in set of methods to interpret");
-            return CORJIT_SKIPPED;
-        }
+        // if (   !s_InterpretMeths.contains(methName, clsName, info->args.pSig)
+        //     || s_InterpretMethsExclude.contains(methName, clsName, info->args.pSig))
+        // {
+        //     TRACE_SKIPPED(clsName, methName, "not in set of methods to interpret");
+        //     return CORJIT_SKIPPED;
+        // }
 
         unsigned methHash = comp->getMethodHash(info->ftn);
         if (   methHash < s_InterpretMethHashMin.val(CLRConfig::INTERNAL_InterpreterMethHashMin)
@@ -9304,16 +9304,18 @@ void Interpreter::DoCallWork(bool virtualCall, void* thisArg, CORINFO_RESOLVED_T
             const char* className = NULL;
             const char* methodName = getMethodName(&m_interpCeeInfo, (CORINFO_METHOD_HANDLE)methToCall, &className, &namespaceName);
             if (
-                (strcmp(namespaceName, "System.Runtime.Intrinsics") == 0 ||
+                (strcmp(namespaceName, "System.Runtime.Intrinsics") == 0
 #if defined(TARGET_X86) || defined(TARGET_AMD64)
-                strcmp(namespaceName, "System.Runtime.Intrinsics.X86") == 0
+                    || strcmp(namespaceName, "System.Runtime.Intrinsics.X86") == 0
 #elif defined(TARGET_ARM64)
-                strcmp(namespaceName, "System.Runtime.Intrinsics.Arm") == 0
-#else
-                0
+                    || strcmp(namespaceName, "System.Runtime.Intrinsics.Arm") == 0
 #endif
-                ) &&
-                strcmp(methodName, "get_IsSupported") == 0
+                    || (strcmp(namespaceName, "") == 0
+                        && (strcmp(className, "V512") == 0
+                            || strcmp(className, "VL") == 0
+                            || strcmp(className, "X64") == 0))
+                )
+                && strcmp(methodName, "get_IsSupported") == 0
             )
             {
                 GCX_COOP();
@@ -10533,21 +10535,15 @@ void Interpreter::CallI()
             {
                 pMD = CoreLibBinder::GetMethod(METHOD__INTERLOCKED__COMPARE_EXCHANGE_OBJECT);  // A random static method.
             }
+
             MethodDescCallSite mdcs(pMD, &mSig, ftnPtr);
-#if 0
+
             // If the current method being interpreted is an IL stub, we're calling native code, so
             // change the GC mode.  (We'll only do this at the call if the calling convention turns out
             // to be a managed calling convention.)
             MethodDesc* pStubContextMD = reinterpret_cast<MethodDesc*>(m_stubContext);
             bool transitionToPreemptive = (pStubContextMD != NULL && !pStubContextMD->IsIL());
             mdcs.CallTargetWorker(args, &retVal, sizeof(retVal), transitionToPreemptive);
-#else
-            // TODO The code above triggers assertion at threads.cpp:6861:
-            //     _ASSERTE(thread->PreemptiveGCDisabled());  // Should have been in managed code
-            // The workaround will likely break more things than what it is fixing:
-            // just do not make transition to preemptive GC for now.
-            mdcs.CallTargetWorker(args, &retVal, sizeof(retVal));
-#endif
         }
         // retVal is now vulnerable.
         GCX_FORBID();
