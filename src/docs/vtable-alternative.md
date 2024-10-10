@@ -26,9 +26,9 @@ So with a file structure like this:
   |
   +- module.map
 ```
-The swift compiler can interpret the decalrations.
+The swift compiler can interpret the declarations.
 
-Here's a module.map that will wotk in this example:
+Here's a module.map that will work in this example:
 ```
 module SomeCSharpLib {
 	umbrella "Headers"
@@ -68,7 +68,7 @@ And in a C# file, we have:
 ```csharp
 public static class ThisIsNotImportant
 {
-    [UnmanagedCallersOnly (EntryPoint = "csGetAgeImpl)]
+    [UnmanagedCallersOnly (EntryPoint = "csGetAgeImpl")]
     public static int csGetAgeImpl()
     {
         return 17;

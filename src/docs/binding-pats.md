@@ -2,7 +2,7 @@
 
 Swift PATs are an entity that do not have a direct analog in C# and as such can feel very foreign to C# programmers. The main issue with PATs is that they are not actual types, at least not in the sense of the other types in Swift and are not simply generic interfaces.
 
-[This is a great video](https://www.youtube.com/watch?v=XWoNjiSPqI8) about PATs. Even though it's based on an earlier version of Swift syntax, it still applies. When looking at the video, you'll see that he uses the keyword `typealias`, but in current Swift they use `associatedtype` instead. There is a paper which is referenced in this video [here](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/C97D5964ECC2E651EEF9A70BC50600A6/S0956796806006198a.pdf/an_extended_comparative_study_of_language_support_for_generic_programming.pdf).
+[This is a great video](https://www.youtube.com/watch?v=XWoNjiSPqI8) about PATs. Even though it's based on an earlier version of Swift syntax, it still applies. When looking at the video, you'll see that the presenter uses the keyword `typealias`, but in current Swift they use `associatedtype` instead. There is a paper which is referenced in this video [here](https://www.cambridge.org/core/services/aop-cambridge-core/content/view/C97D5964ECC2E651EEF9A70BC50600A6/S0956796806006198a.pdf/an_extended_comparative_study_of_language_support_for_generic_programming.pdf).
 
 The easiest way to grasp onto how PATs work is to look at very simple examples. One such example is checking for equality. Consider this PAT:
 
@@ -106,6 +106,8 @@ Obviously, C# doesn't have PATs and the closest we can get is to use generic int
 
 # ABI Differences
 
+Other than the typical Swift function call ABI differences common to all types that have functions, there are no ABI differences unique to PATs.
+
 # Runtime Differences
 
 Because PATs inherently require a generic declaration, it means that the implementation details of the type comes along separately.
@@ -116,7 +118,7 @@ public func areTangent<T: TangentialProto>(a: T, b: T) -> Bool { // TangentialPr
    // ...
 }
 ```
-there are two extra implicit arguments added to the function: the type metadata for `T` and the protocol witness table for `T` with respect to `TangentialProto`. This is also the case with PATs except that the protocol witness table is not necessarily known at compile time because. Swift therefore has a data structure called a Protocol Conformance Descriptor which describes the shape of the protocol witness table and given the type metadata for the associated type(s) can generate a protocol witness table for that specialization. There is some discussion from Apple on that matter in [this forum post](https://forums.swift.org/t/need-help-understanding-protocols-and-generics/37564/35).
+there are two extra implicit arguments added to the function: the type metadata for `T` and the protocol witness table for `T` with respect to `TangentialProto`. This is also the case with PATs except that the protocol witness table is not necessarily known at compile time because the associated types effectively creates an unbound generic type. Swift therefore has a data structure called a Protocol Conformance Descriptor which describes the shape of the protocol witness table and given the type metadata for the associated type(s) can generate a protocol witness table for that specialization. There is some discussion from Apple on that matter in [this forum post](https://forums.swift.org/t/need-help-understanding-protocols-and-generics/37564/35).
 
 
 # Accessibility
@@ -127,6 +129,7 @@ To start to understand the binding of PATs (protocols with associated types), it
 
 ```swift
 public protocol IteratorProtocol {
+    associatedtype Element
     mutating func next() -> Element?
 }
 ```
