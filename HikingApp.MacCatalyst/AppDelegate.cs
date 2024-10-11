@@ -1,3 +1,7 @@
+using System;
+using System.Globalization;
+using HikingApp.MacCatalyst.ViewControllers;
+
 namespace HikingApp.MacCatalyst;
 
 [Register ("AppDelegate")]
@@ -12,15 +16,11 @@ public class AppDelegate : UIApplicationDelegate {
 		// create a new window instance based on the screen size
 		Window = new UIWindow (UIScreen.MainScreen.Bounds);
 
-		// create a UIViewController with a single UILabel
-		var vc = new UIViewController ();
-		vc.View!.AddSubview (new UILabel (Window!.Frame) {
-			BackgroundColor = UIColor.SystemBackground,
-			TextAlignment = UITextAlignment.Center,
-			Text = "Hello, Mac Catalyst!",
-			AutoresizingMask = UIViewAutoresizing.All,
-		});
-		Window.RootViewController = vc;
+		var explorePageController = new ExploreViewController();
+
+		var navigationController = new UINavigationController (explorePageController);
+
+		Window.RootViewController = navigationController;
 
 		// make the window visible
 		Window.MakeKeyAndVisible ();
