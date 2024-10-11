@@ -1815,6 +1815,7 @@ bool StubLinker::EmitUnwindInfo(Stub* pStubRX, Stub* pStubRW, int globalsize, Lo
 
 #ifdef TARGET_AMD64
     // Publish Unwind info to ETW stack crawler
+    UnwindInfoTable::PublishUnwindInfo(false);
     UnwindInfoTable::AddToUnwindInfoTable(
         &pStubHeapSegment->pUnwindInfoTable, pCurFunction,
         (TADDR) pStubHeapSegment->pbBaseAddress,
