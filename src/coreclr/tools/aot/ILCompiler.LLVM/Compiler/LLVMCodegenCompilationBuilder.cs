@@ -87,6 +87,6 @@ namespace ILCompiler
         public CorInfoLlvmEHModel ExceptionHandlingModel { get; private set; } = CorInfoLlvmEHModel.Wasm;
 
         // Below options are debug-only and not supported.
-        public int MaxLlvmModuleCount { get; private set; } = 8;
+        public int MaxLlvmModuleCount { get; private set; } = 16;
     }
 }
