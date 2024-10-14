@@ -609,6 +609,7 @@ struct InterpreterMethodInfo
         // We recognize two forms of dead simple getters, one for "opt" and one for "dbg".  If it is
         // dead simple, is it dbg or opt?
         Flag_methIsDeadSimpleGetterIsDbgForm,
+        Flag_unmanagedCallersOnly,
         Flag_Count,
     };
 
@@ -735,6 +736,7 @@ public:
 };
 
 extern INT64 F_CALL_CONV InterpretMethod(InterpreterMethodInfo* methInfo, BYTE* ilArgs, void* stubContext);
+extern INT64 F_CALL_CONV ReversePInvokeInterpretMethod(struct InterpreterMethodInfo* interpMethInfo, BYTE* ilArgs, void* stubContext);
 extern float F_CALL_CONV InterpretMethodFloat(InterpreterMethodInfo* methInfo, BYTE* ilArgs, void* stubContext);
 extern double F_CALL_CONV InterpretMethodDouble(InterpreterMethodInfo* methInfo, BYTE* ilArgs, void* stubContext);
 

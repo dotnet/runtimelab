@@ -106,11 +106,13 @@ InterpreterMethodInfo::InterpreterMethodInfo(CEEInfo* comp, CORINFO_METHOD_INFO*
 #endif
     SetFlag<Flag_hasRetBuffArg>(hasRetBuff);
 
-    MetaSig sig(reinterpret_cast<MethodDesc*>(methInfo->ftn));
+    MethodDesc* targetMD = reinterpret_cast<MethodDesc*>(methInfo->ftn);
+    MetaSig sig(targetMD);
     SetFlag<Flag_hasGenericsContextArg>((methInfo->args.callConv & CORINFO_CALLCONV_PARAMTYPE) != 0);
     SetFlag<Flag_isVarArg>((methInfo->args.callConv & CORINFO_CALLCONV_VARARG) != 0);
     SetFlag<Flag_typeHasGenericArgs>(methInfo->args.sigInst.classInstCount > 0);
     SetFlag<Flag_methHasGenericArgs>(methInfo->args.sigInst.methInstCount > 0);
+    SetFlag<Flag_unmanagedCallersOnly>(targetMD->HasUnmanagedCallersOnlyAttribute());
     _ASSERTE_MSG(!GetFlag<Flag_hasGenericsContextArg>()
                  || ((GetFlag<Flag_typeHasGenericArgs>() && !(GetFlag<Flag_hasThisArg>() && GetFlag<Flag_thisArgIsObjPtr>())) || GetFlag<Flag_methHasGenericArgs>()),
                  "If the method takes a generic parameter, is a static method of generic class (or meth of a value class), and/or itself takes generic parameters");
@@ -820,15 +822,15 @@ CorJitResult Interpreter::GenerateInterpreterStub(CEEInfo* comp,
         *ppInterpMethodInfo = interpMethInfo;
     }
     interpMethInfo->m_stubNum = s_interpreterStubNum;
-    MethodDesc* methodDesc = reinterpret_cast<MethodDesc*>(info->ftn);
     if (!jmpCall)
     {
         interpMethInfo = RecordInterpreterMethodInfoForMethodHandle(info->ftn, interpMethInfo);
     }
 
+    MethodDesc* pMD = reinterpret_cast<MethodDesc*>(info->ftn);
 #if FEATURE_INTERPRETER_DEADSIMPLE_OPT
     unsigned offsetOfLd;
-    if (IsDeadSimpleGetter(comp, methodDesc, &offsetOfLd))
+    if (IsDeadSimpleGetter(comp, pMD, &offsetOfLd))
     {
         interpMethInfo->SetFlag<InterpreterMethodInfo::Flag_methIsDeadSimpleGetter>(true);
         if (offsetOfLd == ILOffsetOfLdFldInDeadSimpleInstanceGetterDbg)
@@ -892,7 +894,6 @@ CorJitResult Interpreter::GenerateInterpreterStub(CEEInfo* comp,
     // In the IL stub case, which uses eax, it would be problematic to do this sharing.
 
     StubLinkerCPU sl;
-    MethodDesc* pMD = reinterpret_cast<MethodDesc*>(info->ftn);
     if (!jmpCall)
     {
         sl.Init();
@@ -918,7 +919,7 @@ CorJitResult Interpreter::GenerateInterpreterStub(CEEInfo* comp,
 #endif
     }
 
-    MetaSig sig(methodDesc);
+    MetaSig sig(pMD);
 
     unsigned totalArgs = info->args.numArgs;
     unsigned sigArgsPlusThis = totalArgs;
@@ -956,7 +957,7 @@ CorJitResult Interpreter::GenerateInterpreterStub(CEEInfo* comp,
         totalArgs++; sigArgsPlusThis++;
     }
 
-    if (methodDesc->HasRetBuffArg())
+    if (pMD->HasRetBuffArg())
     {
         hasRetBuff = true;
         retBuffArgIndex = totalArgs;
@@ -1403,7 +1404,9 @@ CorJitResult Interpreter::GenerateInterpreterStub(CEEInfo* comp,
             interpretMethodFunc = reinterpret_cast<PCODE>(&InterpretMethodDouble);
             break;
         default:
-            interpretMethodFunc = reinterpret_cast<PCODE>(&InterpretMethod);
+            interpretMethodFunc = interpMethInfo->GetFlag<InterpreterMethodInfo::Flag_unmanagedCallersOnly>()
+                ? reinterpret_cast<PCODE>(&ReversePInvokeInterpretMethod)
+                : reinterpret_cast<PCODE>(&InterpretMethod);
             break;
         }
         // The argument registers have been pushed by now, so we can use them.
@@ -1920,6 +1923,18 @@ HCIMPL3(INT64, InterpretMethod, struct InterpreterMethodInfo* interpMethInfo, BY
     return static_cast<INT64>(retVal);
 }
 HCIMPLEND
+
+// static
+HCIMPL3_RAW(INT64, ReversePInvokeInterpretMethod, struct InterpreterMethodInfo* interpMethInfo, BYTE* ilArgs, void* stubContext)
+{
+    FCALL_CONTRACT;
+
+    _ASSERTE(CURRENT_THREAD == NULL || !CURRENT_THREAD->PreemptiveGCDisabled());
+
+    GCX_COOP();
+    return HCCALL3(InterpretMethod, interpMethInfo, ilArgs, stubContext);
+}
+HCIMPLEND_RAW
 
 bool Interpreter::IsInCalleesFrames(void* stackPtr)
 {
