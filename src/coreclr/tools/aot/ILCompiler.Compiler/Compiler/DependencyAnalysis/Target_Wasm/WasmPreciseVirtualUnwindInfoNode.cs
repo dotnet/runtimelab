@@ -133,7 +133,7 @@ namespace ILCompiler.DependencyAnalysis
             {
                 // For instance methods on value types, we want the unboxing stub as that's what reflection uses.
                 // The delegate case ('2') may need to map back both entrypoints; that too requires access to
-                // the unboxing version - we can map it to the its target at runtime.
+                // the unboxing version - we can map it to its target at runtime.
                 MethodDesc method = _methodNode.Method;
                 if (method.OwningType.IsValueType && !method.Signature.IsStatic)
                 {
