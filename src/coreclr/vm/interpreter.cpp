@@ -22,6 +22,19 @@
 #include "runtimehandles.h"
 #include "vars.hpp"
 #include "cycletimer.h"
+#include <math.h>
+
+#ifndef _I64_MIN
+#define _I64_MIN LLONG_MIN
+#endif
+
+#ifndef _I64_MAX
+#define _I64_MAX LLONG_MAX
+#endif
+
+#ifndef _UI64_MAX
+#define _UI64_MAX ULLONG_MAX
+#endif
 
 inline CORINFO_CALLINFO_FLAGS combine(CORINFO_CALLINFO_FLAGS flag1, CORINFO_CALLINFO_FLAGS flag2)
 {
@@ -6521,7 +6534,7 @@ void Interpreter::CkFinite()
         break;
     }
 
-    if (!isfinite(val))
+    if (!std::isfinite(val))
         ThrowSysArithException();
 }
 
@@ -6843,17 +6856,6 @@ void Interpreter::SetILInstrCategories()
 }
 #endif // INTERP_ILINSTR_PROFILE
 
-#ifndef TARGET_WINDOWS
-namespace
-{
-    bool isnan(float val)
-    {
-        UINT32 bits = *reinterpret_cast<UINT32*>(&val);
-        return (bits & 0x7FFFFFFFU) > 0x7F800000U;
-    }
-}
-#endif
-
 template<int op>
 void Interpreter::CompareOp()
 {
@@ -7160,7 +7162,7 @@ INT32 Interpreter::CompareOpRes(unsigned op1idx)
                 else if (op == CO_GT_UN)
                 {
                     // Check for NAN's here: if either is a NAN, they're unordered, so this comparison returns true.
-                    if (isnan(val1) || isnan(val2)) res = 1;
+                    if (std::isnan(val1) || std::isnan(val2)) res = 1;
                     else if (val1 > val2) res = 1;
                 }
                 else if (op == CO_LT)
@@ -7171,7 +7173,7 @@ INT32 Interpreter::CompareOpRes(unsigned op1idx)
                 {
                     _ASSERTE(op == CO_LT_UN);
                     // Check for NAN's here: if either is a NAN, they're unordered, so this comparison returns true.
-                    if (isnan(val1) || isnan(val2)) res = 1;
+                    if (std::isnan(val1) || std::isnan(val2)) res = 1;
                     else if (val1 < val2) res = 1;
                 }
             }
@@ -7202,7 +7204,7 @@ INT32 Interpreter::CompareOpRes(unsigned op1idx)
                 else if (op == CO_GT_UN)
                 {
                     // Check for NAN's here: if either is a NAN, they're unordered, so this comparison returns true.
-                    if (isnan(val1) || isnan(val2)) res = 1;
+                    if (std::isnan(val1) || std::isnan(val2)) res = 1;
                     else if (val1 > val2) res = 1;
                 }
                 else if (op == CO_LT)
@@ -7213,7 +7215,7 @@ INT32 Interpreter::CompareOpRes(unsigned op1idx)
                 {
                     _ASSERTE(op == CO_LT_UN);
                     // Check for NAN's here: if either is a NAN, they're unordered, so this comparison returns true.
-                    if (isnan(val1) || isnan(val2)) res = 1;
+                    if (std::isnan(val1) || std::isnan(val2)) res = 1;
                     else if (val1 < val2) res = 1;
                 }
             }
@@ -11917,10 +11919,6 @@ void Interpreter::OpStackNormalize()
     m_orOfPushedInterpreterTypes = 0;
 }
 
-#if INTERP_TRACING
-
-// Code copied from eeinterface.cpp in "compiler".  Should be common...
-
 static const char* CorInfoTypeNames[] = {
     "undef",
     "void",
@@ -12035,6 +12033,10 @@ const char* Interpreter::getMethodName(CEEInfo* info, CORINFO_METHOD_HANDLE hnd,
 
     return info->getMethodNameFromMetadata(hnd, className, namespaceName, nullptr, 0);
 }
+
+#if INTERP_TRACING
+
+// Code copied from eeinterface.cpp in "compiler".  Should be common...
 
 const char* eeGetMethodFullName(CEEInfo* info, CORINFO_METHOD_HANDLE hnd, const char** clsName)
 {
@@ -12315,13 +12317,13 @@ void Interpreter::PrintValue(InterpreterType it, BYTE* valAddr)
 
     case CORINFO_TYPE_NATIVEINT:
         {
-            INT64 val = static_cast<INT64>(*reinterpret_cast<NativeInt*>(valAddr));
+            long long val = static_cast<long long>(*reinterpret_cast<NativeInt*>(valAddr));
             fprintf(GetLogFile(), "%lld (= 0x%llx)", val, val);
         }
         break;
     case CORINFO_TYPE_NATIVEUINT:
         {
-            UINT64 val = static_cast<UINT64>(*reinterpret_cast<NativeUInt*>(valAddr));
+            unsigned long long val = static_cast<unsigned long long>(*reinterpret_cast<NativeUInt*>(valAddr));
             fprintf(GetLogFile(), "%lld (= 0x%llx)", val, val);
         }
         break;
@@ -12332,12 +12334,12 @@ void Interpreter::PrintValue(InterpreterType it, BYTE* valAddr)
 
     case CORINFO_TYPE_LONG:
         {
-            INT64 val = *reinterpret_cast<INT64*>(valAddr);
+            long long val = *reinterpret_cast<long long*>(valAddr);
             fprintf(GetLogFile(), "%lld (= 0x%llx)", val, val);
         }
         break;
     case CORINFO_TYPE_ULONG:
-        fprintf(GetLogFile(), "%lld", *reinterpret_cast<UINT64*>(valAddr));
+        fprintf(GetLogFile(), "%lld", *reinterpret_cast<unsigned long long*>(valAddr));
         break;
 
     case CORINFO_TYPE_CLASS:
