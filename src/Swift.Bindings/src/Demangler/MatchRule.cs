@@ -60,7 +60,7 @@ internal class MatchRule {
     /// <summary>
     /// A reducer to apply if the node matches
     /// </summary>
-    public required Func<Node, string?, IReduction> Reducer { get; init; }
+    public required Func<Node, string?, IReduction> Reducer { get; init; } = (node, name) => new ReductionError () { Message = "Call of empty reduction rule", Symbol = name ?? "no symbol" };
 
     /// <summary>
     /// Returns true if and only if the given node matches this rule
@@ -128,6 +128,14 @@ internal class MatchRule {
         }
         return true;
     }
+
+    /// <summary>
+    /// Returns a reducer to serve as a placeholder for a reducer that shouldn't be run.
+    /// This is best used in ChildRules of match rules which get matched but don't run a reducer.
+    /// </summary>
+    public static Func<Node, string?, IReduction> ErrorReducer = (n, s) => {
+        return new ReductionError () { Message = $"Undefined reduction error for Node {n.Kind}", Symbol = s ?? "" };
+    };
 
     /// <summary>
     /// Creates a simple string representation of this rule

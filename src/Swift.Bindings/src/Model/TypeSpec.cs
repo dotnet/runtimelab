@@ -92,6 +92,12 @@ public abstract class TypeSpec
 	public string? TypeLabel { get; set; }
 
 	/// <summary>
+	/// Returns true if and only if this TypeSpec is a variadic type. If so, then this will be a
+	/// NamedTypeSpec with the name Swift.Array and a bound generic type of the variadic type
+	/// </summary>
+	public bool IsVariadic { get; set; } = false;
+
+	/// <summary>
 	/// Returns true if the type is an array
 	/// </summary>
 	public bool IsArray
@@ -114,6 +120,8 @@ public abstract class TypeSpec
 			if (!ListEqual(GenericParameters, spec.GenericParameters, false))
 				return false;
 			if (IsInOut != spec.IsInOut)
+				return false;
+			if (IsVariadic != spec.IsVariadic)
 				return false;
 			// Don't compare IsAny - it's really not important (yet)
 			return LLEquals(spec, false);
