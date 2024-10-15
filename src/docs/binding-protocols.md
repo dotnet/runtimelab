@@ -245,3 +245,4 @@ public class ReturnsFloatXamProxy : BaseProxy, IReturnsFloat {
 }
 ```
 
+It should be noted that this approach, while completely functional, can be implemented with direct calls to `[UnmanagedCallersOnly]` receivers rather than using a vtable. See [this document about an alternative to vtables](vtable-alternative.md).
