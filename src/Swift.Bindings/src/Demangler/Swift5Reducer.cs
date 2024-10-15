@@ -3,6 +3,7 @@
 
 using System.Text;
 using System.Net.Sockets;
+using System.CommandLine;
 
 namespace BindingsGeneration.Demangling;
 
@@ -46,7 +47,68 @@ internal class Swift5Reducer {
         },
         new MatchRule() {
             Name = "Module", NodeKind = NodeKind.Module, Reducer = (n, s) => ProvenanceReduction.TopLevel (mangledName, n.Text)
-        }
+        },
+        new MatchRule() {
+            Name = "Tuple", NodeKind = NodeKind.Tuple, Reducer = ConvertTuple
+        },
+        new MatchRule() {
+            Name = "TupleElement", NodeKind = NodeKind.TupleElement, Reducer = ConvertTupleElement,
+            ChildRules = new List<MatchRule> () {
+                new MatchRule () {
+                    Name = "TupleElementType", NodeKind = NodeKind.Type, Reducer = MatchRule.ErrorReducer
+                },
+            }
+        },
+        new MatchRule() { // named tuple element has a tuple element name node as the first child, otherwise it's a tuple element
+            Name = "NamedTupleElement", NodeKind = NodeKind.TupleElement, Reducer = ConvertTupleElement,
+            ChildRules = new List<MatchRule> () {
+                new MatchRule () {
+                    Name = "TupleElementName", NodeKind = NodeKind.TupleElementName, Reducer = MatchRule.ErrorReducer
+                },
+                new MatchRule () {
+                    Name = "TupleElementType", NodeKind = NodeKind.Type, Reducer = MatchRule.ErrorReducer
+                },
+            }
+        },
+        new MatchRule() {
+            Name = "VariadicTupleElement", NodeKind = NodeKind.TupleElement, Reducer = ConvertVariadicTupleElement,
+            ChildRules = new List<MatchRule> () {
+                new MatchRule () {
+                    Name = "VariadicTupleElementMarker", NodeKind = NodeKind.VariadicMarker, Reducer = MatchRule.ErrorReducer
+                },
+                new MatchRule () {
+                    Name = "VariadicTupleElementType", NodeKind = NodeKind.Type, Reducer = MatchRule.ErrorReducer
+                },
+            }
+        },
+        new MatchRule() {
+            Name = "FunctionType", NodeKind = NodeKind.FunctionType, Reducer = ConvertFunctionType,
+            ChildRules = new List<MatchRule> () {
+                new MatchRule () {
+                    Name = "Arguments", NodeKind = NodeKind.ArgumentTuple, Reducer = MatchRule.ErrorReducer
+                },
+                new MatchRule () {
+                    Name = "ReturnType", NodeKind = NodeKind.ReturnType, Reducer = MatchRule.ErrorReducer
+                },
+            }
+        },
+        new MatchRule() {
+            Name = "Function", NodeKind = NodeKind.Function, Reducer = ConvertFunction,
+            ChildRules = new List<MatchRule> () {
+                new MatchRule () {
+                    Name = "Module", NodeKind = NodeKind.Module, Reducer = MatchRule.ErrorReducer
+                },
+                new MatchRule () {
+                    Name = "Identifier", NodeKind = NodeKind.Identifier, Reducer = MatchRule.ErrorReducer
+                },
+                new MatchRule () {
+                    Name = "LabelList", NodeKind = NodeKind.LabelList, Reducer = MatchRule.ErrorReducer
+                },
+                new MatchRule () {
+                    Name = "Type", NodeKind = NodeKind.Type, Reducer = MatchRule.ErrorReducer
+                },
+            }
+        },
     };
 
     /// <summary>
@@ -137,6 +199,183 @@ internal class Swift5Reducer {
             return ReductionError (err.Message);
         }
         return new TypeSpecReduction() { Symbol = mangledName, TypeSpec = new NamedTypeSpec (sb.ToString ())};
+    }
+
+    /// <summary>
+    /// Converts a node of type Tuple into a TypeSpecReduction.
+    /// </summary>
+    /// <param name="node">The node for a Tuple</param>
+    /// <param name="name">an optional name</param>
+    /// <returns>a TypeSpecReduction</returns>
+    /// 
+    IReduction ConvertTuple (Node node, string? name)
+    {
+        // What to expect here:
+        // Tuple
+        //   TupleElement*   - 0 or more TupleElement nodes
+
+        // No children, empty tuple
+        if (node.Children.Count == 0)
+            return new TypeSpecReduction () { Symbol = mangledName, TypeSpec = TupleTypeSpec.Empty };
+
+        var types = new List<TypeSpec> ();
+
+        foreach (var child in node.Children) {
+            var reduction = Convert (child);
+            if (reduction is ReductionError error)
+                return error;
+            else if (reduction is TypeSpecReduction typeSpecReduction) {
+                // Every child should be a Type node which turns into a TypeSpecReduction
+                types.Add (typeSpecReduction.TypeSpec);
+            } else {
+                return ReductionError (ExpectedButGot ("TypeSpecReduction in tuple", reduction.GetType ().Name));
+            }
+        }
+
+        return new TypeSpecReduction () { Symbol = mangledName, TypeSpec = new TupleTypeSpec (types)};
+    }
+
+    /// <summary>
+    /// Converts a node of type TupleElement into a TypeSpecReduction
+    /// </summary>
+    /// <param name="node">The node for a TupleElement</param>
+    /// <param name="name">an optional name</param>
+    /// <returns>a TypeSpecReduction</returns>
+    IReduction ConvertTupleElement (Node node, string? name)
+    {
+        // What to expect here:
+        // TupleElement
+        //    TupleElementName
+        //    Type
+        // --- OR ---
+        // TupleElement
+        //    Type
+        var isNamedElement = node.Children [0].Kind == NodeKind.TupleElementName;
+        var label = isNamedElement ? node.Children [0].Text : null;
+        var index = isNamedElement ? 1 : 0;
+        var reduction = Convert (node.Children [index]);
+        if (reduction is ReductionError error)
+            return error;
+        else if (reduction is TypeSpecReduction typeSpecReduction) {
+            typeSpecReduction.TypeSpec.TypeLabel = label;
+            return typeSpecReduction;
+        } else {
+            return ReductionError (ExpectedButGot ("TypeSpecReduction in tuple element", reduction.GetType ().Name));
+        }
+    }
+
+    /// <summary>
+    /// Converts a TupleElement with a VariadicMarker into a TypeSpecReduction of type Swift.Array<Type>
+    /// </summary>
+    /// <param name="node">A TupleElement node with a VariadicMarker</param>
+    /// <param name="name">an optional name</param>
+    /// <returns>A TypeSpecReduction with a Swift.Array<T></returns>
+    IReduction ConvertVariadicTupleElement (Node node, string? name)
+    {
+        // What to expect here:
+        // TupleElement
+        //    VariadicMarker
+        //    Type
+
+        // will turn this into a named type spec Swift.Array<Type>
+        var reduction = Convert (node.Children [1]);
+        if (reduction is ReductionError error)
+            return error;
+        else if (reduction is TypeSpecReduction typeSpecReduction) {
+            var newSpec = new NamedTypeSpec ("Swift.Array");
+            newSpec.GenericParameters.Add (typeSpecReduction.TypeSpec);
+            typeSpecReduction.TypeSpec.IsVariadic = true;
+            return new TypeSpecReduction () { Symbol = typeSpecReduction.Symbol, TypeSpec = newSpec };
+        } else {
+            return ReductionError (ExpectedButGot ("TypeSpecReduction in variadic tuple element", reduction.GetType ().Name));
+        }
+    }
+
+    /// <summary>
+    /// Convert a FunctionType node into a TypeSpecReduction
+    /// </summary>
+    /// <param name="node">a FunctionType node</param>
+    /// <param name="name">an optional string</param>
+    /// <returns>A TypeSpecReduction</returns>
+    IReduction ConvertFunctionType (Node node, string? name)
+    {
+        // What to expect here:
+        // FunctionType
+        //    ArgumentTuple
+        //        Type
+        //    ReturnType
+        //        Type
+
+        var argTuple = node.Children [0];
+        var @return = node.Children [1];
+
+        var reduction = ConvertFirstChild (argTuple, name);
+        if (reduction is ReductionError error)
+            return error;
+        else if (reduction is TypeSpecReduction argsTypeSpecReduction) {
+            reduction = ConvertFirstChild (@return, name);
+            if (reduction is ReductionError returnError)
+                return returnError;
+            else if (reduction is TypeSpecReduction returnTypeSpecReduction) {
+                var closure = new ClosureTypeSpec (argsTypeSpecReduction.TypeSpec, returnTypeSpecReduction.TypeSpec);
+                return new TypeSpecReduction () { Symbol = argsTypeSpecReduction.Symbol, TypeSpec = closure };
+            } else {
+                return ReductionError (ExpectedButGot ("TypeSpecReduction in function return type", reduction.GetType ().Name));
+            }            
+        } else {
+            return ReductionError (ExpectedButGot ("TypeSpecReduction in argument tuple type", reduction.GetType ().Name));
+        }
+    }
+
+    /// <summary>
+    /// Convert a Function node into a FunctionReduction
+    /// </summary>
+    /// <param name="node">A Function node</param>
+    /// <param name="name">an optional string</param>
+    /// <returns>A FunctionReduction</returns>
+    IReduction ConvertFunction (Node node, string? name)
+    {
+        // Expecting:
+        // Function
+        //   Module
+        //   Identifier
+        //   LabelList
+        //   Type
+        var moduleNode = node.Children [0];
+        var identifierNode = node.Children [1];
+        var labelList = node.Children [2];
+        var typeNode = node.Children [3];
+
+        var reduction = Convert (moduleNode);
+        if (reduction is ReductionError error)
+            return error;
+        else if (reduction is ProvenanceReduction provenance) {
+            var identifier = identifierNode.Text;
+            var labels = labelList.Children.Select (n => n.Text).ToArray();
+            reduction = Convert (typeNode);
+            if (reduction is ReductionError typeError)
+                return typeError;
+            else if (reduction is TypeSpecReduction typeSpecReduction) {
+                if (typeSpecReduction.TypeSpec is ClosureTypeSpec closure) {
+                    if (closure.ArgumentCount () != labels.Length)
+                        return ReductionError (ExpectedButGot ($"Expected {closure.ArgumentCount} labels", $"{labels.Length}"));
+
+                    var newArgs = new List<TypeSpec> (labels.Length);                    
+                    var args = closure.ArgumentsAsTuple;
+                    for (var i = 0; i < labels.Length; i++) {
+                        args.Elements [i].TypeLabel = labels [i];
+                    }
+                    var function = new SwiftFunction () { Name = identifier, ParameterList = args, Provenance = provenance.Provenance, Return = closure.ReturnType };
+                    return new FunctionReduction () { Symbol = mangledName, Function = function };
+                } else {
+                    return ReductionError (ExpectedButGot ("ClosureTypeSpec as Function Type", typeSpecReduction.TypeSpec.GetType ().Name));
+                }
+            } else {
+                return ReductionError (ExpectedButGot ("TypeSpecReduction in Function Type", reduction.GetType ().Name));
+            }
+        } else {
+            return ReductionError (ExpectedButGot ("ProvenanceReduction in Function Module", reduction.GetType ().Name));
+        }
     }
 
     /// <summary>

@@ -93,4 +93,29 @@ public class BasicDemanglingTests : IClassFixture<BasicDemanglingTests.TestFixtu
         Assert.Equal("someclient.Ageable", conf.ProtocolType.Name);
         Assert.Equal("someclient", conf.Module);
     }
+
+    [Fact]
+    public void TestFuncWithTuple()
+    {
+        var symbol = "_$s17unitHelpFrawework10ReturnsInt3arg1cS2u1a_Si1bt_SitF";
+        var demangler = new Swift5Demangler (symbol);
+        var result = demangler.Run ();
+        var func = result as FunctionReduction;
+        Assert.NotNull (func);
+        Assert.Equal ("ReturnsInt", func.Function.Name);
+        var returnType = func.Function.Return as NamedTypeSpec;
+        Assert.NotNull (returnType);
+        Assert.Equal ("Swift.UInt", returnType.Name);
+        var args = func.Function.ParameterList;
+        Assert.Equal (2, args.Elements.Count);
+        var firstarg = args.Elements [0] as TupleTypeSpec;
+        Assert.NotNull (firstarg);
+        Assert.Equal ("arg", firstarg.TypeLabel);
+        Assert.Equal (2, firstarg.Elements.Count);
+        Assert.Equal ("arg: (a: Swift.UInt, b: Swift.Int)", firstarg.ToString());
+        var secondarg = args.Elements [1] as NamedTypeSpec;
+        Assert.NotNull (secondarg);
+        Assert.Equal ("c", secondarg.TypeLabel);
+        Assert.Equal ("Swift.Int", secondarg.Name);
+    }
 }
