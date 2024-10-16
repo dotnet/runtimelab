@@ -4915,13 +4915,6 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     //
     DoPhase(this, PHASE_COMPUTE_BLOCK_WEIGHTS, &Compiler::fgComputeBlockWeights);
 
-    if (UsesFunclets())
-    {
-        // Create funclets from the EH handlers.
-        //
-        DoPhase(this, PHASE_CREATE_FUNCLETS, &Compiler::fgCreateFunclets);
-    }
-
     if (opts.OptimizationEnabled())
     {
         // Invert loops
@@ -5189,6 +5182,16 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     DoPhase(this, PHASE_STRESS_SPLIT_TREE, &Compiler::StressSplitTree);
 #endif
 
+    // Try again to remove empty try finally/fault clauses
+    DoPhase(this, PHASE_EMPTY_FINALLY_2, &Compiler::fgRemoveEmptyFinally);
+
+    if (UsesFunclets())
+    {
+        // Create funclets from the EH handlers.
+        //
+        DoPhase(this, PHASE_CREATE_FUNCLETS, &Compiler::fgCreateFunclets);
+    }
+
     // Expand casts
     DoPhase(this, PHASE_EXPAND_CASTS, &Compiler::fgLateCastExpansion);
 
@@ -5227,10 +5230,6 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
         // Conditional to Switch conversion
         //
         DoPhase(this, PHASE_SWITCH_RECOGNITION, &Compiler::optSwitchRecognition);
-
-        // Determine start of cold region if we are hot/cold splitting
-        //
-        DoPhase(this, PHASE_DETERMINE_FIRST_COLD_BLOCK, &Compiler::fgDetermineFirstColdBlock);
     }
 
 #ifdef DEBUG
@@ -5342,17 +5341,20 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
             auto lateLayoutPhase = [this] {
                 fgDoReversePostOrderLayout();
                 fgMoveColdBlocks();
+
+                if (compHndBBtabCount != 0)
+                {
+                    fgFindEHRegionEnds();
+                }
+
                 return PhaseStatus::MODIFIED_EVERYTHING;
             };
 
             DoPhase(this, PHASE_OPTIMIZE_LAYOUT, lateLayoutPhase);
-
-            if (fgFirstColdBlock != nullptr)
-            {
-                fgFirstColdBlock = nullptr;
-                DoPhase(this, PHASE_DETERMINE_FIRST_COLD_BLOCK, &Compiler::fgDetermineFirstColdBlock);
-            }
         }
+
+        // Determine start of cold region if we are hot/cold splitting
+        DoPhase(this, PHASE_DETERMINE_FIRST_COLD_BLOCK, &Compiler::fgDetermineFirstColdBlock);
 
         // Now that the flowgraph is finalized, run post-layout optimizations.
         DoPhase(this, PHASE_OPTIMIZE_POST_LAYOUT, &Compiler::optOptimizePostLayout);
@@ -7115,12 +7117,10 @@ int Compiler::compCompileHelper(CORINFO_MODULE_HANDLE classPtr,
         }
     }
 
-#ifdef DEBUG
     if (compIsForInlining())
     {
         compBasicBlockID = impInlineInfo->InlinerCompiler->compBasicBlockID;
     }
-#endif
 
     const bool forceInline = !!(info.compFlags & CORINFO_FLG_FORCEINLINE);
 
@@ -7347,11 +7347,15 @@ int Compiler::compCompileHelper(CORINFO_MODULE_HANDLE classPtr,
 #ifdef DEBUG
     if (compIsForInlining())
     {
-        impInlineInfo->InlinerCompiler->compGenTreeID    = compGenTreeID;
-        impInlineInfo->InlinerCompiler->compStatementID  = compStatementID;
-        impInlineInfo->InlinerCompiler->compBasicBlockID = compBasicBlockID;
+        impInlineInfo->InlinerCompiler->compGenTreeID   = compGenTreeID;
+        impInlineInfo->InlinerCompiler->compStatementID = compStatementID;
     }
 #endif
+
+    if (compIsForInlining())
+    {
+        impInlineInfo->InlinerCompiler->compBasicBlockID = compBasicBlockID;
+    }
 
 _Next:
 
