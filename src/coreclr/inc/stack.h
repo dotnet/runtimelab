@@ -21,7 +21,7 @@ class Stack
     {
         if (m_elemsCount == m_elemsSize)
         {
-            static const unsigned InitSize = 8;
+            const unsigned InitSize = 8;
             m_elemsSize = max(InitSize, 2*m_elemsSize);
             T* newElems = new T[m_elemsSize];
             if (m_elemsCount != 0)
