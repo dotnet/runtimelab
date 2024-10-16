@@ -1,17 +1,18 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#include <stdint.h>
-#include <emscripten.h>
-
 #include "CommonTypes.h"
 #include "CommonMacros.h"
+
+#ifdef HOST_BROWSER
+#include <stdint.h>
+#include <emscripten.h>
 
 // Recieve pointers as JS-native types to avoid BigInt overheads on 64 bit
 // and the need to worry about normalizing large (> int.MaxValue) values.
 using JSPointerType = double;
 
-EM_JS_DEPS(RhpBrowserStackTraceDependencies, "$wasmTable,$UTF8ArrayToString");
+EM_JS_DEPS(RhpBrowserStackTraceDependencies, "$wasmTable");
 
 // It is a shortcut that this method is an FCall (i. e. called in cooperative mode) - computing the stack trace
 // is a heavy operation that should ideally be done in preemptive mode. However, doing it this way allows us to
@@ -146,10 +147,11 @@ EM_JS(int32_t, RhpGetBiasedWasmFunctionIndexForFunctionPointer, (JSPointerType f
         wasmFuncIndex = 0; // Be defensive against future extensions (e. g. JS Builtins) and WKI.
     return wasmFuncIndex;
 });
+#endif // HOST_BROWSER
 
 FCIMPL1(void*, RhFindMethodStartAddress, void* addr)
 {
-    // Our stack trace "IP"s are (biased) function indices, which do not require adjustment.
+    // Our stack trace "IP"s are method-level and so do not require adjustment.
     return addr;
 }
 FCIMPLEND

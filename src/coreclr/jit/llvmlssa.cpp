@@ -153,10 +153,16 @@ private:
             INDEBUG(const char* reason = nullptr);
 
             // The unwind frame MUST be allocated on the shadow stack. The runtime uses its value to invoke filters.
-            if (lclNum == m_llvm->m_unwindFrameLclNum)
+            if (lclNum == m_llvm->m_sparseVirtualUnwindFrameLclNum)
             {
                 allocLocation = REG_STK_CANDIDATE_UNCONDITIONAL;
-                INDEBUG(reason = "virtual unwind frame");
+                INDEBUG(reason = "sparse virtual unwind frame");
+            }
+            // Precise virtual unwind frames work by being at known offsets from each other on the shadow stack.
+            else if (lclNum == m_llvm->m_preciseVirtualUnwindFrameLclNum)
+            {
+                allocLocation = REG_STK_CANDIDATE_UNCONDITIONAL;
+                INDEBUG(reason = "precise virtual unwind frame");
             }
             // Locals live-in/out of funclets need to be accessible throughout the whole logical method and using the
             // shadow stack is a simple way to achieve this. Another would be to implement LLVM intrinsics that allow
@@ -1055,11 +1061,19 @@ private:
             varDsc->SetRegNum(REG_STK);
         };
 
+        unsigned preciseVirtualUnwindFrameLclNum = m_llvm->m_preciseVirtualUnwindFrameLclNum;
+        if (preciseVirtualUnwindFrameLclNum != BAD_VAR_NUM)
+        {
+            // The precise virtual unwind frame is in effect an argument on the shadow stack, and so
+            // has to be assigned to the logical bottom of the frame. Exclude it from the loops below.
+            m_compiler->lvaGetDesc(preciseVirtualUnwindFrameLclNum)->SetRegNum(REG_STK);
+        }
+
         // The shadow frame must be allocated at a zero offset; the runtime uses its value as the original
         // shadow frame parameter to filter funclets.
-        if (m_llvm->m_unwindFrameLclNum != BAD_VAR_NUM)
+        if (m_llvm->m_sparseVirtualUnwindFrameLclNum != BAD_VAR_NUM)
         {
-            assignOffset(m_compiler->lvaGetDesc(m_llvm->m_unwindFrameLclNum));
+            assignOffset(m_compiler->lvaGetDesc(m_llvm->m_sparseVirtualUnwindFrameLclNum));
         }
 
         // Assigns offsets such that locals which need to be zeroed come first. This will allow us to zero them all
@@ -1090,15 +1104,25 @@ private:
             assignOffset(varDsc);
         }
 
+        if (preciseVirtualUnwindFrameLclNum != BAD_VAR_NUM)
+        {
+            if (m_llvm->addConcretePreciseVirtualUnwindFrame(offset))
+            {
+                assignOffset(m_compiler->lvaGetDesc(preciseVirtualUnwindFrameLclNum));
+            }
+            else
+            {
+                m_compiler->lvaGetDesc(preciseVirtualUnwindFrameLclNum)->SetRegNum(REG_NA);
+            }
+        }
+
         m_llvm->_shadowStackLocalsSize = AlignUp(offset, Llvm::DEFAULT_SHADOW_STACK_ALIGNMENT);
-
         m_compiler->compLclFrameSize = m_llvm->_shadowStackLocalsSize;
-        m_compiler->lvaDoneFrameLayout = Compiler::TENTATIVE_FRAME_LAYOUT;
 
+        m_compiler->lvaDoneFrameLayout = Compiler::TENTATIVE_FRAME_LAYOUT;
         JITDUMP("\nLocals after shadow stack layout:\n");
         JITDUMPEXEC(m_compiler->lvaTableDump());
         JITDUMP("\n");
-
         m_compiler->lvaDoneFrameLayout = Compiler::INITIAL_FRAME_LAYOUT;
     }
 
@@ -1106,6 +1130,7 @@ private:
     {
         LIR::Range range;
         m_llvm->m_currentRange = &range;
+        m_llvm->initializePreciseVirtualUnwindFrame();
 
         unsigned zeroingSize = m_prologZeroingSize;
         if (zeroingSize != 0)
@@ -1128,9 +1153,7 @@ private:
         GenTree* zeroILOffsetNode = new (m_compiler, GT_IL_OFFSET) GenTreeILOffset(zeroILOffsetDi);
         range.InsertAtEnd(zeroILOffsetNode);
 
-        assert(m_llvm->isFirstBlockCanonical());
-        m_llvm->lowerRange(m_compiler->fgFirstBB, range);
-        LIR::AsRange(m_compiler->fgFirstBB).InsertAfter(m_lastPrologNode, std::move(range));
+        m_llvm->lowerAndInsertIntoFirstBlock(range, m_lastPrologNode);
     }
 
     GenTreeLclVar* InitializeLocalInProlog(unsigned lclNum, GenTree* value)
@@ -1963,6 +1986,12 @@ bool Llvm::canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter DEB
         INDEBUG(*pReasonWhyNot = "pinned or address-exposed shadow locals present");
         return false;
     }
+
+    // Tail-calling with a precise virtual unwind frame active would discard the parent frame from the stack trace.
+    // That can be OK, but we would need to ask the VM for permission via "canTailCall". Right now, we should never
+    // get here with a precise virtual unwind frame due to the above check.
+    // TODO-LLVM-StackTrace-CQ: allow shadow tail-calling with precise virtual unwinding.
+    assert(m_preciseVirtualUnwindFrameLclNum == BAD_VAR_NUM);
 
     // Both protected regions and filters induce exceptional flow that may return back to this method.
     if (callIsInTry || callIsInFilter)

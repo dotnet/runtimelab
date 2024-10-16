@@ -683,15 +683,6 @@ namespace Internal.Runtime.Augments
             }
         }
 
-        public static IntPtr ConvertFunctionPointerToStackTraceIp(nint functionPointer)
-        {
-#if TARGET_BROWSER
-            return RuntimeImports.RhpGetBiasedWasmFunctionIndexForFunctionPointer((nuint)functionPointer);
-#else
-            return functionPointer;
-#endif
-        }
-
         public static string TryGetMethodDisplayStringFromIp(IntPtr ip)
         {
             StackTraceMetadataCallbacks callbacks = StackTraceCallbacksIfAvailable;

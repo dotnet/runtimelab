@@ -6,9 +6,9 @@
 
 #include "../wasm.h"
 
-struct VirtualUnwindFrame
+struct SparseVirtualUnwindFrame
 {
-    VirtualUnwindFrame* Prev;
+    SparseVirtualUnwindFrame* Prev;
     void* UnwindTable;
     size_t UnwindIndex;
 };
@@ -17,29 +17,35 @@ struct VirtualUnwindFrame
 //  1) Unmanaged thread locals are currently much more efficient than managed ones.
 //  2) Push/pop functions do not need the shadow stack argument.
 //
-thread_local VirtualUnwindFrame* t_pLastVirtualUnwindFrame = nullptr;
+thread_local SparseVirtualUnwindFrame* t_pLastSparseVirtualUnwindFrame = nullptr;
 
-FCIMPL_NO_SS(void, RhpPushVirtualUnwindFrame, VirtualUnwindFrame* pFrame, void* pUnwindTable, size_t unwindIndex)
+FCIMPL_NO_SS(void, RhpPushSparseVirtualUnwindFrame, SparseVirtualUnwindFrame* pFrame, void* pUnwindTable, size_t unwindIndex)
 {
-    ASSERT(t_pLastVirtualUnwindFrame < pFrame);
-    pFrame->Prev = t_pLastVirtualUnwindFrame;
+    ASSERT(t_pLastSparseVirtualUnwindFrame < pFrame);
+    pFrame->Prev = t_pLastSparseVirtualUnwindFrame;
     pFrame->UnwindTable = pUnwindTable;
     pFrame->UnwindIndex = unwindIndex;
 
-    t_pLastVirtualUnwindFrame = pFrame;
+    t_pLastSparseVirtualUnwindFrame = pFrame;
 }
 FCIMPLEND
 
-FCIMPL_NO_SS(void, RhpPopVirtualUnwindFrame)
+FCIMPL_NO_SS(void, RhpPopSparseVirtualUnwindFrame)
 {
-    ASSERT(t_pLastVirtualUnwindFrame != nullptr);
-    t_pLastVirtualUnwindFrame = t_pLastVirtualUnwindFrame->Prev;
+    ASSERT(t_pLastSparseVirtualUnwindFrame != nullptr);
+    t_pLastSparseVirtualUnwindFrame = t_pLastSparseVirtualUnwindFrame->Prev;
 }
 FCIMPLEND
 
-FCIMPL0(void*, RhpGetRawLastVirtualUnwindFrameRef)
+FCIMPL0(SparseVirtualUnwindFrame**, RhpGetLastSparseVirtualUnwindFrameRef)
 {
-    return &t_pLastVirtualUnwindFrame;
+    return &t_pLastSparseVirtualUnwindFrame;
+}
+FCIMPLEND
+
+FCIMPL0(void*, RhpGetLastPreciseVirtualUnwindFrame)
+{
+    return static_cast<uint8_t*>(pShadowStack) - sizeof(void*);
 }
 FCIMPLEND
 

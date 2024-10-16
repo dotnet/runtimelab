@@ -127,9 +127,31 @@ namespace ILCompiler.DependencyAnalysis
                     command |= StackTraceDataCommand.IsStackTraceHidden;
                 }
 
-                RelocType reloc = factory.Target.IsWasm ? RelocType.R_WASM_FUNCTION_INDEX_I32 : RelocType.IMAGE_REL_BASED_RELPTR32;
+                if (factory.Target.IsWasm)
+                {
+                    Wasm.IWasmMethodCodeNode methodNode = (Wasm.IWasmMethodCodeNode)factory.MethodEntrypoint(entry.Method);
+
+                    objData.EmitByte(commandReservation, command);
+                    if (factory.TypeSystemContext.WasmMethodLevelVirtualUnwindModel == Wasm.WasmMethodLevelVirtualUnwindModel.Precise)
+                    {
+                        // Inlining the unwind info saves one reloc worth of bytes per method with metadata.
+                        int offset = objData.CountBytes;
+                        WasmMethodPreciseVirtualUnwindInfoNode.Emit(methodNode, ref objData, factory);
+                        Debug.Assert(offset != objData.CountBytes, $"Missing unwind info: {methodNode.GetMangledName(factory.NameMangler)}");
+                    }
+                    else if (factory.Target.OperatingSystem == TargetOS.Browser)
+                    {
+                        objData.EmitReloc(methodNode, RelocType.R_WASM_FUNCTION_INDEX_I32);
+                    }
+                    else
+                    {
+                        // WASI doesn't have a native unwinding mechanism; we only allow this case for orthogonality.
+                    }
+                    continue;
+                }
+
                 objData.EmitByte(commandReservation, command);
-                objData.EmitReloc(factory.MethodEntrypoint(entry.Method), reloc);
+                objData.EmitReloc(factory.MethodEntrypoint(entry.Method), RelocType.IMAGE_REL_BASED_RELPTR32);
             }
 
             _size = objData.CountBytes;

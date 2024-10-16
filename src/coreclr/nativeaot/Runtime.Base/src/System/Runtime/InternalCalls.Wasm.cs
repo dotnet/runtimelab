@@ -6,15 +6,21 @@
 //
 using System.Runtime.CompilerServices;
 
-using Internal.Runtime;
-
 namespace System.Runtime
 {
     internal static partial class InternalCalls
     {
-        [RuntimeImport(Redhawk.BaseName, "RhpGetRawLastVirtualUnwindFrameRef")]
+        [RuntimeImport(Redhawk.BaseName, "RhpGetCurrentThreadShadowStackBottom")]
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern unsafe void* RhpGetRawLastVirtualUnwindFrameRef();
+        internal static extern unsafe void* RhpGetCurrentThreadShadowStackBottom();
+
+        [RuntimeImport(Redhawk.BaseName, "RhpGetLastSparseVirtualUnwindFrameRef")]
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        internal static extern unsafe void* RhpGetLastSparseVirtualUnwindFrameRef();
+
+        [RuntimeImport(Redhawk.BaseName, "RhpGetLastPreciseVirtualUnwindFrame")]
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        internal static extern unsafe void* RhpGetLastPreciseVirtualUnwindFrame();
 
         [RuntimeImport(Redhawk.BaseName, "RhpThrowNativeException")]
         [MethodImpl(MethodImplOptions.InternalCall)]

@@ -11,7 +11,7 @@ using Internal.TypeSystem;
 
 namespace ILCompiler
 {
-    internal sealed class ILCompilerRootCommand : CliRootCommand
+    internal sealed partial class ILCompilerRootCommand : CliRootCommand
     {
         public CliArgument<Dictionary<string, string>> InputFilePaths { get; } =
             new("input-file-path") { CustomParser = result => Helpers.BuildPathDictionary(result.Tokens, true), Description = "Input file(s)", Arity = ArgumentArity.OneOrMore };
@@ -243,6 +243,7 @@ namespace ILCompiler
             Options.Add(ConditionallyRootedAssemblies);
             Options.Add(TrimmedAssemblies);
             Options.Add(RootDefaultAssemblies);
+            InitializeWasmOptions();
             Options.Add(TargetArchitecture);
             Options.Add(TargetOS);
             Options.Add(JitPath);

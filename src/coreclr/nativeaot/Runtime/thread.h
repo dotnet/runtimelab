@@ -339,8 +339,9 @@ public:
 #endif
 
 #ifdef HOST_WASM
-    void* GetShadowStackTop();
+    void* GetShadowStackBottom();
     void SetShadowStackBottom(void* pShadowStack);
+    void* GetShadowStackTop();
     void SetShadowStackTop(void* pShadowStack);
 #endif
 };

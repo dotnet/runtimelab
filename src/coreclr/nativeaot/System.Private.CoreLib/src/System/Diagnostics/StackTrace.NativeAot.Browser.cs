@@ -10,34 +10,24 @@ namespace System.Diagnostics
     public partial class StackTrace
     {
         /// <summary>
-        /// Initialize the stack trace based on current thread and given initial frame index.
+        /// Initialize the stack trace using the JS "Error.prototype.stack" API.
         /// </summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private unsafe void InitializeForCurrentThread(int skipFrames, bool needFileInfo)
+        private unsafe void InitializeForCurrentThreadViaNativeUnwind(int skipSystemFrames, int skipFrames, bool needFileInfo)
         {
-            const int SystemDiagnosticsStackDepth = 2;
-
             int eipCount = RuntimeImports.RhpGetCurrentBrowserThreadStackTrace(0, Exception.ReportAllFramesAsJS());
             IntPtr[] eips = new IntPtr[eipCount];
             fixed (void* pEips = eips)
                 RuntimeImports.RhpGetCurrentBrowserThreadStackTrace((nuint)pEips, Exception.ReportAllFramesAsJS());
 
-            int skippedEipCount = Exception.SkipSystemFrames(eips, SystemDiagnosticsStackDepth);
-            InitializeForIpAddressArray(eips, skippedEipCount, skipFrames, needFileInfo);
-        }
-
-        /// <summary>
-        /// Initialize the stack trace based on a given exception and initial frame index.
-        /// </summary>
-        private void InitializeForException(Exception exception, int skipFrames, bool needFileInfo)
-        {
-            InitializeForIpAddressArray(exception.GetStackIPs(), 0, skipFrames, needFileInfo);
+            int skippedEipCount = Exception.SkipSystemFrames(eips, skipSystemFrames + 1);
+            InitializeForIpAddressArrayViaNativeUnwind(eips, skipFrames, needFileInfo, skippedEipCount);
         }
 
         /// <summary>
         /// Initialize the stack trace based on a given array of encoded IP addresses (EIPs).
         /// </summary>
-        private void InitializeForIpAddressArray(IntPtr[] eips, int skippedEipCount, int skipFrames, bool needFileInfo)
+        private void InitializeForIpAddressArrayViaNativeUnwind(IntPtr[] eips, int skipFrames, bool needFileInfo, int skippedEipCount = 0)
         {
             // Our callers may pass us values that have overflown.
             if (skipFrames < 0)

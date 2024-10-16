@@ -19,7 +19,10 @@ namespace System
         [MethodImpl(MethodImplOptions.NoInlining)]
         private unsafe void AppendStack(IntPtr ip, bool isFirstFrame, bool isFirstRethrowFrame)
         {
-            Debug.Assert(!isFirstRethrowFrame || isFirstFrame);
+            if (AppendIpForPreciseVirtualUnwind(ip, isFirstFrame, isFirstRethrowFrame))
+            {
+                return;
+            }
 
             if (isFirstRethrowFrame)
             {
@@ -122,6 +125,8 @@ namespace System
             Debug.Assert(index <= eips.Length);
             _eipConsumedCount = index;
         }
+
+        private StackFrame GetTargetSiteStackFrameViaNativeUnwind() => new StackFrame(_corDbgStackTrace, 0, needFileInfo: false);
 
         // The WASM binary may be modified post-link (e.g. by wasm-opt), which will invalidate our stack trace metadata.
         // To handle this scenario gracefully, we fall back to using 'JS' frames for everything in that case. Obviously,

@@ -3,7 +3,6 @@
 
 #include "jitpch.h"
 #include "llvm.h"
-#include "CorJitApiId.Shared.cspp"
 
 // TODO-LLVM-Upstream: figure out how to fix these warnings in LLVM headers.
 #pragma warning(push)
@@ -15,31 +14,7 @@
 #include "llvm/Support/Signals.h"
 #pragma warning(pop)
 
-// Must be kept in sync with the managed version in "CorInfoImpl.Llvm.cs".
-//
-enum class EEApiId
-{
-    GetMangledMethodName,
-    GetSymbolMangledName,
-    GetMangledFilterFuncletName,
-    GetSignatureForMethodSymbol,
-    AddCodeReloc,
-    GetPrimitiveTypeForTrivialWasmStruct,
-    GetTypeDescriptor,
-    GetAlternativeFunctionName,
-    GetExternalMethodAccessor,
-    GetDebugTypeForType,
-    GetDebugInfoForDebugType,
-    GetDebugInfoForCurrentMethod,
-    GetSingleThreadedCompilationContext,
-    GetExceptionHandlingModel,
-    GetExceptionThrownVariable,
-    GetExceptionHandlingTable,
-    GetJitTestInfo,
-    Count
-};
-
-void* g_callbacks[static_cast<int>(EEApiId::Count)];
+void* g_callbacks[EEAI_Count];
 
 CorInfoType HelperFuncInfo::GetSigReturnType() const
 {
@@ -99,6 +74,7 @@ Llvm::Llvm(Compiler* compiler)
     , m_context(GetSingleThreadedCompilationContext())
     , _compiler(compiler)
     , m_info(&compiler->info)
+    , m_virtualUnwindModel(GetVirtualUnwindModel())
     , _builder(m_context->Context)
     , _sdsuMap(compiler->getAllocator(CMK_Codegen))
     , _localsMap(compiler->getAllocator(CMK_Codegen))
@@ -194,9 +170,20 @@ bool Llvm::helperCallHasManagedCallingConvention(CorInfoHelpFunc helperFunc) con
 
 bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
 {
+    if ((helperFunc == CORINFO_HELP_ASSIGN_REF) || (helperFunc == CORINFO_HELP_CHECKED_ASSIGN_REF))
+    {
+        // WASM write barriers do not throw - we inline the null checks in codegen.
+        return false;
+    }
+
     // Allocators can throw OOM.
     HelperCallProperties& properties = Compiler::s_helperCallProperties;
     return !properties.NoThrow(helperFunc) || properties.IsAllocator(helperFunc);
+}
+
+bool Llvm::helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const
+{
+    return !getHelperFuncInfo(helperFunc).HasFlag(HFIF_NO_VIRTUAL_UNWIND);
 }
 
 //------------------------------------------------------------------------
@@ -380,11 +367,11 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
 
         // Debug-only helpers, implemented in "Runtime\wasm\GcStress.cpp".
         { FUNC(CORINFO_HELP_STRESS_GC) CORINFO_TYPE_BYREF, { CORINFO_TYPE_BYREF, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_CHECK_OBJ) CORINFO_TYPE_CLASS, { CORINFO_TYPE_CLASS }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_CHECK_OBJ) CORINFO_TYPE_CLASS, { CORINFO_TYPE_CLASS }, HFIF_NO_RPI_OR_GC | HFIF_NO_VIRTUAL_UNWIND },
 
-        // Write barriers, implemented in "Runtime\portable.cpp".
-        { FUNC(CORINFO_HELP_ASSIGN_REF) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS }, HFIF_NO_RPI_OR_GC },
-        { FUNC(CORINFO_HELP_CHECKED_ASSIGN_REF) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS }, HFIF_NO_RPI_OR_GC },
+        // Write barriers, implemented in "Runtime\wasn\WriteBarriers.cpp".
+        { FUNC(CORINFO_HELP_ASSIGN_REF) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS }, HFIF_NO_RPI_OR_GC | HFIF_NO_VIRTUAL_UNWIND },
+        { FUNC(CORINFO_HELP_CHECKED_ASSIGN_REF) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_CLASS }, HFIF_NO_RPI_OR_GC | HFIF_NO_VIRTUAL_UNWIND },
         { FUNC(CORINFO_HELP_ASSIGN_REF_ENSURE_NONHEAP) }, // NYI in NativeAOT.
         { FUNC(CORINFO_HELP_ASSIGN_BYREF) }, // Not used on WASM.
         { FUNC(CORINFO_HELP_BULK_WRITEBARRIER) },
@@ -441,7 +428,7 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_MEMCPY) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_NATIVEUINT }, HFIF_SS_ARG },
 
         // Implemented as plain "memset".
-        { FUNC(CORINFO_HELP_NATIVE_MEMSET) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT, CORINFO_TYPE_NATIVEUINT }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_NATIVE_MEMSET) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT, CORINFO_TYPE_NATIVEUINT }, HFIF_NO_RPI_OR_GC | HFIF_NO_VIRTUAL_UNWIND },
 
         // Not used in NativeAOT.
         { FUNC(CORINFO_HELP_RUNTIMEHANDLE_METHOD) },
@@ -515,11 +502,11 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_THROW_ENTRYPOINT_NOT_FOUND_EXCEPTION) },
 
         // [R]PI helpers, implemented in "Runtime\thread.cpp".
-        { FUNC(CORINFO_HELP_JIT_PINVOKE_BEGIN) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_SS_ARG | HFIF_NO_RPI_OR_GC },
-        { FUNC(CORINFO_HELP_JIT_PINVOKE_END) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_JIT_PINVOKE_BEGIN) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_SS_ARG | HFIF_NO_RPI_OR_GC | HFIF_NO_VIRTUAL_UNWIND },
+        { FUNC(CORINFO_HELP_JIT_PINVOKE_END) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC | HFIF_NO_VIRTUAL_UNWIND },
         { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER_TRACK_TRANSITIONS) },
-        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR }, HFIF_NO_RPI_OR_GC | HFIF_NO_VIRTUAL_UNWIND },
         { FUNC(CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT_TRACK_TRANSITIONS) },
 
         // Implemented in "CoreLib\src\System\Runtime\TypeLoaderExports.cs".
@@ -542,14 +529,14 @@ bool Llvm::helperCallMayPhysicallyThrow(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_VALIDATE_INDIRECT_CALL) },
         { FUNC(CORINFO_HELP_DISPATCH_INDIRECT_CALL) },
 
-        { FUNC(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP) CORINFO_TYPE_PTR, { }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP) CORINFO_TYPE_PTR, { }, HFIF_NO_RPI_OR_GC | HFIF_NO_VIRTUAL_UNWIND },
         { FUNC(CORINFO_HELP_LLVM_EH_CATCH) CORINFO_TYPE_CLASS, { CORINFO_TYPE_NATIVEUINT }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_NATIVEUINT }, HFIF_NO_RPI_OR_GC },
-        { FUNC(CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME) CORINFO_TYPE_VOID, { }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR, CORINFO_TYPE_PTR, CORINFO_TYPE_NATIVEUINT }, HFIF_NO_RPI_OR_GC | HFIF_NO_VIRTUAL_UNWIND},
+        { FUNC(CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME) CORINFO_TYPE_VOID, { }, HFIF_NO_RPI_OR_GC | HFIF_NO_VIRTUAL_UNWIND},
         { FUNC(CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET) CORINFO_TYPE_PTR, { CORINFO_TYPE_CLASS, CORINFO_TYPE_PTR }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_LLVM_GET_EXTERNAL_CALL_TARGET) CORINFO_TYPE_PTR, { }, HFIF_NO_RPI_OR_GC },
+        { FUNC(CORINFO_HELP_LLVM_GET_EXTERNAL_CALL_TARGET) CORINFO_TYPE_PTR, { }, HFIF_NO_RPI_OR_GC | HFIF_NO_VIRTUAL_UNWIND },
     };
     // clang-format on
 
@@ -753,97 +740,113 @@ TReturn CallEEApi(TArgs... args)
 
 const char* Llvm::GetMangledMethodName(CORINFO_METHOD_HANDLE methodHandle)
 {
-    return CallEEApi<EEApiId::GetMangledMethodName, const char*>(m_pEECorInfo, methodHandle);
+    return CallEEApi<EEAI_GetMangledMethodName, const char*>(m_pEECorInfo, methodHandle);
 }
 
 const char* Llvm::GetMangledSymbolName(void* symbol)
 {
-    return CallEEApi<EEApiId::GetSymbolMangledName, const char*>(m_pEECorInfo, symbol);
+    return CallEEApi<EEAI_GetMangledSymbolName, const char*>(m_pEECorInfo, symbol);
 }
 
 const char* Llvm::GetMangledFilterFuncletName(unsigned index)
 {
-    return CallEEApi<EEApiId::GetMangledFilterFuncletName, const char*>(m_pEECorInfo, index);
+    return CallEEApi<EEAI_GetMangledFilterFuncletName, const char*>(m_pEECorInfo, index);
 }
 
 bool Llvm::GetSignatureForMethodSymbol(CORINFO_GENERIC_HANDLE symbolHandle, CORINFO_SIG_INFO* pSig)
 {
-    return CallEEApi<EEApiId::GetSignatureForMethodSymbol, int>(m_pEECorInfo, symbolHandle, pSig) != 0;
+    return CallEEApi<EEAI_GetSignatureForMethodSymbol, int>(m_pEECorInfo, symbolHandle, pSig) != 0;
 }
 
 void Llvm::AddCodeReloc(void* handle)
 {
-    CallEEApi<EEApiId::AddCodeReloc, void>(m_pEECorInfo, handle);
+    CallEEApi<EEAI_AddCodeReloc, void>(m_pEECorInfo, handle);
 }
 
 CorInfoType Llvm::GetPrimitiveTypeForTrivialWasmStruct(CORINFO_CLASS_HANDLE structHandle)
 {
-    return CallEEApi<EEApiId::GetPrimitiveTypeForTrivialWasmStruct, CorInfoType>(m_pEECorInfo, structHandle);
+    return CallEEApi<EEAI_GetPrimitiveTypeForTrivialWasmStruct, CorInfoType>(m_pEECorInfo, structHandle);
 }
 
 void Llvm::GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle, TypeDescriptor* pTypeDescriptor)
 {
-    CallEEApi<EEApiId::GetTypeDescriptor, void>(m_pEECorInfo, typeHandle, pTypeDescriptor);
+    CallEEApi<EEAI_GetTypeDescriptor, void>(m_pEECorInfo, typeHandle, pTypeDescriptor);
 }
 
 const char* Llvm::GetAlternativeFunctionName()
 {
-    return CallEEApi<EEApiId::GetAlternativeFunctionName, const char*>(m_pEECorInfo);
+    return CallEEApi<EEAI_GetAlternativeFunctionName, const char*>(m_pEECorInfo);
 }
 
 CORINFO_GENERIC_HANDLE Llvm::GetExternalMethodAccessor(
     CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* sig, int sigLength)
 {
-    return CallEEApi<EEApiId::GetExternalMethodAccessor, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, methodHandle, sig,
-                                                                               sigLength);
+    return CallEEApi<EEAI_GetExternalMethodAccessor, CORINFO_GENERIC_HANDLE>(
+        m_pEECorInfo, methodHandle, sig, sigLength);
 }
 
 CORINFO_LLVM_DEBUG_TYPE_HANDLE Llvm::GetDebugTypeForType(CORINFO_CLASS_HANDLE typeHandle)
 {
-    return CallEEApi<EEApiId::GetDebugTypeForType, CORINFO_LLVM_DEBUG_TYPE_HANDLE>(m_pEECorInfo, typeHandle);
+    return CallEEApi<EEAI_GetDebugTypeForType, CORINFO_LLVM_DEBUG_TYPE_HANDLE>(m_pEECorInfo, typeHandle);
 }
 
 void Llvm::GetDebugInfoForDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo)
 {
-    CallEEApi<EEApiId::GetDebugInfoForDebugType, void>(m_pEECorInfo, debugTypeHandle, pInfo);
+    CallEEApi<EEAI_GetDebugInfoForDebugType, void>(m_pEECorInfo, debugTypeHandle, pInfo);
 }
 
 void Llvm::GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
 {
-    CallEEApi<EEApiId::GetDebugInfoForCurrentMethod, void>(m_pEECorInfo, pInfo);
+    CallEEApi<EEAI_GetDebugInfoForCurrentMethod, void>(m_pEECorInfo, pInfo);
 }
 
 SingleThreadedCompilationContext* Llvm::GetSingleThreadedCompilationContext()
 {
-    return CallEEApi<EEApiId::GetSingleThreadedCompilationContext, SingleThreadedCompilationContext*>(m_pEECorInfo);
+    return CallEEApi<EEAI_GetSingleThreadedCompilationContext, SingleThreadedCompilationContext*>(m_pEECorInfo);
 }
 
 CorInfoLlvmEHModel Llvm::GetExceptionHandlingModel()
 {
-    return CallEEApi<EEApiId::GetExceptionHandlingModel, CorInfoLlvmEHModel>(m_pEECorInfo);
+    return CallEEApi<EEAI_GetExceptionHandlingModel, CorInfoLlvmEHModel>(m_pEECorInfo);
 }
 
 CORINFO_GENERIC_HANDLE Llvm::GetExceptionThrownVariable()
 {
-    return CallEEApi<EEApiId::GetExceptionThrownVariable, CORINFO_GENERIC_HANDLE>(m_pEECorInfo);
+    return CallEEApi<EEAI_GetExceptionThrownVariable, CORINFO_GENERIC_HANDLE>(m_pEECorInfo);
 }
 
-CORINFO_GENERIC_HANDLE Llvm::GetExceptionHandlingTable(CORINFO_LLVM_EH_CLAUSE* pClauses, int count)
+CorInfoLlvmVirtualUnwindModel Llvm::GetVirtualUnwindModel()
 {
-    return CallEEApi<EEApiId::GetExceptionHandlingTable, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, pClauses, count);
+    return CallEEApi<EEAI_GetVirtualUnwindModel, CorInfoLlvmVirtualUnwindModel>(m_pEECorInfo);
+}
+
+CORINFO_GENERIC_HANDLE Llvm::GetSparseVirtualUnwindInfo(CORINFO_LLVM_EH_CLAUSE* pClauses, int count)
+{
+    return CallEEApi<EEAI_GetSparseVirtualUnwindInfo, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, pClauses, count);
+}
+
+CORINFO_GENERIC_HANDLE Llvm::GetPreciseVirtualUnwindInfo(
+    unsigned* pAbsoluteValue, unsigned shadowFrameSize, CORINFO_LLVM_EH_CLAUSE* pClauses, int clauseCount)
+{
+    return CallEEApi<EEAI_GetPreciseVirtualUnwindInfo, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, pAbsoluteValue, shadowFrameSize, pClauses, clauseCount);
+}
+
+bool Llvm::IsVirtualUnwindFrameVisible()
+{
+    return CallEEApi<EEAI_IsVirtualUnwindFrameVisible, bool>(m_pEECorInfo);
 }
 
 void Llvm::GetJitTestInfo(CorInfoLlvmJitTestKind kind, CORINFO_LLVM_JIT_TEST_INFO* pInfo)
 {
-    CallEEApi<EEApiId::GetJitTestInfo, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, kind, pInfo);
+    CallEEApi<EEAI_GetJitTestInfo, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, kind, pInfo);
 }
 
 extern "C" DLLEXPORT int registerLlvmCallbacks(void** jitImports, void** jitExports)
 {
-    assert((jitImports != nullptr) && (jitImports[static_cast<int>(EEApiId::Count)] == (void*)0x1234));
+    assert((jitImports != nullptr) && (jitImports[EEAI_Count] == (void*)0x1234));
     assert(jitExports != nullptr);
 
-    memcpy(g_callbacks, jitImports, static_cast<int>(EEApiId::Count) * sizeof(void*));
+    memcpy(g_callbacks, jitImports, static_cast<int>(EEAI_Count) * sizeof(void*));
 
     jitExports[CJAI_StartSingleThreadedCompilation] = (void*)&Llvm::StartSingleThreadedCompilation;
     jitExports[CJAI_FinishSingleThreadedCompilation] = (void*)&Llvm::FinishSingleThreadedCompilation;

@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
+using ILCompiler.DependencyAnalysis.Wasm;
+
 using Internal.JitInterface;
 using Internal.TypeSystem;
 

@@ -2,7 +2,6 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <CLRTestKind>BuildAndRun</CLRTestKind>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <!-- IL3049 warns about mismatched signatures; we are intentionally testing they are handled correctly
          when the definition is statically linked -->
@@ -42,6 +41,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <IlcArg Include="--codegenopt:JitRunLssaTests=1" />
+    <!-- LSSA tests are currently not compatible with precise virtual unwind frames. TODO-LLVM: ignore virtual unwind
+         frames in the LSSA's allocation result reporting and enable these back. -->
+    <IlcArg Include="--codegenopt:JitRunLssaTests=1" Condition="'$(TargetOS)' != 'wasi' and '$(IlcWasmMethodLevelVirtualUnwindModel)' != 'precise'" />
   </ItemGroup>
 </Project>

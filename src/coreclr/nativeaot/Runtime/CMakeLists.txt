@@ -223,10 +223,9 @@ if (CLR_CMAKE_TARGET_ARCH_WASM)
     ${ARCH_SOURCES_DIR}/PInvoke.cpp
     ${ARCH_SOURCES_DIR}/StubDispatch.cpp
     ${ARCH_SOURCES_DIR}/WriteBarriers.cpp
+    ${ARCH_SOURCES_DIR}/StackTrace.cpp
   )
   if (CLR_CMAKE_TARGET_BROWSER)
-    list(APPEND COMMON_RUNTIME_SOURCES ${ARCH_SOURCES_DIR}/StackTrace.Browser.cpp)
-
     add_library(StackTraceIpCanary OBJECT ${ARCH_SOURCES_DIR}/StackTraceIpCanary.cpp)
     add_dependencies(nativeaot StackTraceIpCanary)
     install(FILES $<TARGET_OBJECTS:StackTraceIpCanary> DESTINATION aotsdk COMPONENT nativeaot RENAME libStackTraceIpCanary.o)

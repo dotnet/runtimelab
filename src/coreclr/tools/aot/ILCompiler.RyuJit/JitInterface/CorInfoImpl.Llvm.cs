@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using ILCompiler;
 using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysis.Wasm;
+using ObjectData = ILCompiler.DependencyAnalysis.ObjectNode.ObjectData;
 
 using Internal.IL;
 using Internal.Text;
@@ -190,6 +191,23 @@ namespace Internal.JitInterface
             return _this.ObjectToHandle(node);
         }
 
+        [UnmanagedCallersOnly]
+        private static CorInfoLlvmVirtualUnwindModel getVirtualUnwindModel(IntPtr thisHandle)
+        {
+            return GetThis(thisHandle).GetVirtualUnwindModelImpl();
+        }
+
+        private CorInfoLlvmVirtualUnwindModel GetVirtualUnwindModelImpl()
+        {
+            // Note how we are converting between two **different** notions of a virtual unwinding model.
+            // One ("WasmMethodLevelVirtualUnwindModel") is method-granular, suitable for stack traces,
+            // another ("CorInfoLlvmVirtualUnwindModel") is EH-method-granular, suitable for exceptions.
+            CompilerTypeSystemContext context = _compilation.TypeSystemContext;
+            return context.WasmMethodLevelVirtualUnwindModel == WasmMethodLevelVirtualUnwindModel.Precise
+                ? CorInfoLlvmVirtualUnwindModel.CILVUM_Precise
+                : CorInfoLlvmVirtualUnwindModel.CILVUM_Sparse;
+        }
+
         public struct CORINFO_LLVM_EH_CLAUSE
         {
             public CORINFO_EH_CLAUSE_FLAGS Flags;
@@ -198,12 +216,13 @@ namespace Internal.JitInterface
             public uint FilterIndex;
         }
 
-        [UnmanagedCallersOnly]
-        private static IntPtr getExceptionHandlingTable(IntPtr thisHandle, CORINFO_LLVM_EH_CLAUSE* pClauses, int count)
+        private ObjectData GetLlvmEHInfo(CORINFO_LLVM_EH_CLAUSE* pClauses, int count, out int symbolDefOffset)
         {
-            CorInfoImpl _this = GetThis(thisHandle);
-            RyuJitCompilation compilation = _this._compilation;
-            MethodIL methodIL = (MethodIL)_this.HandleToObject((void*)_this._methodScope); // Assumes no inlining of EH.
+            if (count == 0)
+            {
+                symbolDefOffset = 0;
+                return null;
+            }
 
             uint maxEclosingIndex = 0;
             for (int i = 0; i < count; i++)
@@ -215,14 +234,20 @@ namespace Internal.JitInterface
             const int MetadataFilter = 1 << 1;
             const int MetadataShift = 2;
 
+            NodeFactory factory = _compilation.NodeFactory;
             Utf8StringBuilder sb = new();
-            ObjectDataBuilder builder = new(compilation.NodeFactory, relocsOnly: true);
+            ObjectDataBuilder builder = new(factory, relocsOnly: true);
             bool isLargeFormat = maxEclosingIndex > (byte.MaxValue >> MetadataShift);
 
-            // EH info is prefixed by the stack trace IP.
-            builder.EmitReloc(_this._methodCodeNode, RelocType.R_WASM_FUNCTION_INDEX_I32);
-            int symbolDefOffset = builder.CountBytes;
+            if (factory.TypeSystemContext.WasmMethodLevelVirtualUnwindModel == WasmMethodLevelVirtualUnwindModel.Native &&
+                factory.Target.OperatingSystem == TargetOS.Browser)
+            {
+                // EH info is prefixed by the (unbiased) stack trace IP.
+                builder.EmitReloc(_methodCodeNode, RelocType.R_WASM_FUNCTION_INDEX_I32);
+            }
+            symbolDefOffset = builder.CountBytes;
 
+            MethodIL methodIL = (MethodIL)HandleToObject((void*)_methodScope); // Assumes no inlining of EH.
             for (int i = 0; i < count; i++)
             {
                 CORINFO_LLVM_EH_CLAUSE* pClause = &pClauses[i];
@@ -251,23 +276,63 @@ namespace Internal.JitInterface
                 ISymbolNode symbol;
                 if ((pClause->Flags & CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_FILTER) != 0)
                 {
-                    _this.GetMangledFilterFuncletName(sb, pClause->FilterIndex);
-                    symbol = compilation.NodeFactory.ExternSymbol(sb.ToString());
+                    GetMangledFilterFuncletName(sb, pClause->FilterIndex);
+                    symbol = factory.ExternSymbol(sb.ToString());
                 }
                 else
                 {
                     TypeDesc type = (TypeDesc)methodIL.GetObject((int)pClause->ClauseTypeToken);
-                    symbol = compilation.NecessaryTypeSymbolIfPossible(type);
+                    symbol = _compilation.NecessaryTypeSymbolIfPossible(type);
                 }
 
                 builder.EmitPointerReloc(symbol);
             }
 
-            ILLVMMethodCodeNode methodNode = ((ILLVMMethodCodeNode)_this._methodCodeNode);
-            ObjectNode.ObjectData ehInfo = builder.ToObjectData();
-            ISymbolNode ehInfoNode = methodNode.InitializeEHInfoLLVM(ehInfo, symbolDefOffset);
+            return builder.ToObjectData();
+        }
+
+        [UnmanagedCallersOnly]
+        private static IntPtr getSparseVirtualUnwindInfo(IntPtr thisHandle, CORINFO_LLVM_EH_CLAUSE* pClauses, int count)
+        {
+            CorInfoImpl _this = GetThis(thisHandle);
+            Debug.Assert(_this.GetVirtualUnwindModelImpl() == CorInfoLlvmVirtualUnwindModel.CILVUM_Sparse);
+
+            Debug.Assert(count != 0);
+            ObjectData ehInfo = _this.GetLlvmEHInfo(pClauses, count, out int symbolDefOffset);
+            IWasmMethodCodeNode methodNode = (IWasmMethodCodeNode)_this._methodCodeNode;
+            ISymbolNode ehInfoNode = new MethodExceptionHandlingInfoNode(methodNode.Method, ehInfo, symbolDefOffset);
 
             return _this.ObjectToHandle(ehInfoNode);
+        }
+
+        [UnmanagedCallersOnly]
+        private static IntPtr getPreciseVirtualUnwindInfo(IntPtr thisHandle, uint* pAbsoluteValue, uint shadowFrameSize, CORINFO_LLVM_EH_CLAUSE* pClauses, int clauseCount)
+        {
+            CorInfoImpl _this = GetThis(thisHandle);
+            Debug.Assert(_this.GetVirtualUnwindModelImpl() == CorInfoLlvmVirtualUnwindModel.CILVUM_Precise);
+
+            IWasmMethodCodeNode methodNode = (IWasmMethodCodeNode)_this._methodCodeNode;
+            ObjectData ehInfo = _this.GetLlvmEHInfo(pClauses, clauseCount, out int symbolDefOffset);
+            Debug.Assert(symbolDefOffset == 0); // The unwind info format can't handle non-zero offsets.
+            WasmMethodPreciseVirtualUnwindInfoNode unwindInfo = WasmMethodPreciseVirtualUnwindInfoNode.Create(
+                _this._compilation.NodeFactory, methodNode, shadowFrameSize, ehInfo, out *pAbsoluteValue);
+            if (unwindInfo != null)
+            {
+                methodNode.InitializePreciseVirtualUnwindInfo(unwindInfo);
+                return _this.ObjectToHandle(unwindInfo);
+            }
+
+            Debug.Assert(*pAbsoluteValue != 0);
+            return 0;
+        }
+
+        [UnmanagedCallersOnly]
+        private static int isVirtualUnwindFrameVisible(IntPtr thisHandle)
+        {
+            CorInfoImpl _this = GetThis(thisHandle);
+            MetadataManager mdManager = _this._compilation.NodeFactory.MetadataManager;
+            bool isVisible = mdManager.HasStackTraceIpWithPreciseVirtualUnwind((IWasmMethodCodeNode)_this._methodCodeNode);
+            return isVisible ? 1 : 0;
         }
 
         public enum CorInfoLlvmJitTestKind
@@ -369,57 +434,36 @@ namespace Internal.JitInterface
             GetThis(thisHandle).GetDebugInfoForMethod(pInfo);
         }
 
-        // These enums must be kept in sync with their unmanaged versions in "jit/llvm.cpp".
-        //
-        private enum EEApiId
-        {
-            GetMangledMethodName,
-            GetMangledSymbolName,
-            GetMangledFilterFuncletName,
-            GetSignatureForMethodSymbol,
-            AddCodeReloc,
-            GetPrimitiveTypeForTrivialWasmStruct,
-            GetTypeDescriptor,
-            GetAlternativeFunctionName,
-            GetExternalMethodAccessor,
-            GetDebugTypeForType,
-            GetDebugInfoForDebugType,
-            GetDebugInfoForCurrentMethod,
-            GetSingleThreadedCompilationContext,
-            GetExceptionHandlingModel,
-            GetExceptionThrownVariable,
-            GetExceptionHandlingTable,
-            GetJitTestInfo,
-            Count
-        }
-
         [DllImport(JitLibrary)]
         private static extern int registerLlvmCallbacks(void** jitImports, void** jitExports);
 
         private static void JitInitializeLlvm()
         {
-            void** jitImports = stackalloc void*[(int)EEApiId.Count + 1];
-            jitImports[(int)EEApiId.GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
-            jitImports[(int)EEApiId.GetMangledSymbolName] = (delegate* unmanaged<IntPtr, void*, byte*>)&getMangledSymbolName;
-            jitImports[(int)EEApiId.GetMangledFilterFuncletName] = (delegate* unmanaged<IntPtr, uint, byte*>)&getMangledFilterFuncletName;
-            jitImports[(int)EEApiId.GetSignatureForMethodSymbol] = (delegate* unmanaged<IntPtr, void*, CORINFO_SIG_INFO*, int>)&getSignatureForMethodSymbol;
-            jitImports[(int)EEApiId.AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
-            jitImports[(int)EEApiId.GetPrimitiveTypeForTrivialWasmStruct] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType>)&getPrimitiveTypeForTrivialWasmStruct;
-            jitImports[(int)EEApiId.GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor*, void>)&getTypeDescriptor;
-            jitImports[(int)EEApiId.GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
-            jitImports[(int)EEApiId.GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
-            jitImports[(int)EEApiId.GetDebugTypeForType] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_LLVM_DEBUG_TYPE_HANDLE>)&getDebugTypeForType;
-            jitImports[(int)EEApiId.GetDebugInfoForDebugType] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_DEBUG_TYPE_HANDLE, CORINFO_LLVM_TYPE_DEBUG_INFO*, void>)&getDebugInfoForDebugType;
-            jitImports[(int)EEApiId.GetDebugInfoForCurrentMethod] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_METHOD_DEBUG_INFO*, void>)&getDebugInfoForCurrentMethod;
-            jitImports[(int)EEApiId.GetSingleThreadedCompilationContext] = (delegate* unmanaged<IntPtr, void*>)&getSingleThreadedCompilationContext;
-            jitImports[(int)EEApiId.GetExceptionHandlingModel] = (delegate* unmanaged<IntPtr, CorInfoLlvmEHModel>)&getExceptionHandlingModel;
-            jitImports[(int)EEApiId.GetExceptionThrownVariable] = (delegate* unmanaged<IntPtr, IntPtr>)&getExceptionThrownVariable;
-            jitImports[(int)EEApiId.GetExceptionHandlingTable] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_EH_CLAUSE*, int, IntPtr>)&getExceptionHandlingTable;
-            jitImports[(int)EEApiId.GetJitTestInfo] = (delegate* unmanaged<IntPtr, CorInfoLlvmJitTestKind, CORINFO_LLVM_JIT_TEST_INFO*, void>)&getJitTestInfo;
-            jitImports[(int)EEApiId.Count] = (void*)0x1234;
+            void** jitImports = stackalloc void*[(int)EEApiId.EEAI_Count + 1];
+            jitImports[(int)EEApiId.EEAI_GetMangledMethodName] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*>)&getMangledMethodName;
+            jitImports[(int)EEApiId.EEAI_GetMangledSymbolName] = (delegate* unmanaged<IntPtr, void*, byte*>)&getMangledSymbolName;
+            jitImports[(int)EEApiId.EEAI_GetMangledFilterFuncletName] = (delegate* unmanaged<IntPtr, uint, byte*>)&getMangledFilterFuncletName;
+            jitImports[(int)EEApiId.EEAI_GetSignatureForMethodSymbol] = (delegate* unmanaged<IntPtr, void*, CORINFO_SIG_INFO*, int>)&getSignatureForMethodSymbol;
+            jitImports[(int)EEApiId.EEAI_AddCodeReloc] = (delegate* unmanaged<IntPtr, void*, void>)&addCodeReloc;
+            jitImports[(int)EEApiId.EEAI_GetPrimitiveTypeForTrivialWasmStruct] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType>)&getPrimitiveTypeForTrivialWasmStruct;
+            jitImports[(int)EEApiId.EEAI_GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor*, void>)&getTypeDescriptor;
+            jitImports[(int)EEApiId.EEAI_GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
+            jitImports[(int)EEApiId.EEAI_GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
+            jitImports[(int)EEApiId.EEAI_GetDebugTypeForType] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_LLVM_DEBUG_TYPE_HANDLE>)&getDebugTypeForType;
+            jitImports[(int)EEApiId.EEAI_GetDebugInfoForDebugType] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_DEBUG_TYPE_HANDLE, CORINFO_LLVM_TYPE_DEBUG_INFO*, void>)&getDebugInfoForDebugType;
+            jitImports[(int)EEApiId.EEAI_GetDebugInfoForCurrentMethod] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_METHOD_DEBUG_INFO*, void>)&getDebugInfoForCurrentMethod;
+            jitImports[(int)EEApiId.EEAI_GetSingleThreadedCompilationContext] = (delegate* unmanaged<IntPtr, void*>)&getSingleThreadedCompilationContext;
+            jitImports[(int)EEApiId.EEAI_GetExceptionHandlingModel] = (delegate* unmanaged<IntPtr, CorInfoLlvmEHModel>)&getExceptionHandlingModel;
+            jitImports[(int)EEApiId.EEAI_GetExceptionThrownVariable] = (delegate* unmanaged<IntPtr, IntPtr>)&getExceptionThrownVariable;
+            jitImports[(int)EEApiId.EEAI_GetVirtualUnwindModel] = (delegate* unmanaged<IntPtr, CorInfoLlvmVirtualUnwindModel>)&getVirtualUnwindModel;
+            jitImports[(int)EEApiId.EEAI_GetSparseVirtualUnwindInfo] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_EH_CLAUSE*, int, IntPtr>)&getSparseVirtualUnwindInfo;
+            jitImports[(int)EEApiId.EEAI_GetPreciseVirtualUnwindInfo] = (delegate* unmanaged<IntPtr, uint*, uint, CORINFO_LLVM_EH_CLAUSE*, int, IntPtr>)&getPreciseVirtualUnwindInfo;
+            jitImports[(int)EEApiId.EEAI_IsVirtualUnwindFrameVisible] = (delegate* unmanaged<IntPtr, int>)&isVirtualUnwindFrameVisible;
+            jitImports[(int)EEApiId.EEAI_GetJitTestInfo] = (delegate* unmanaged<IntPtr, CorInfoLlvmJitTestKind, CORINFO_LLVM_JIT_TEST_INFO*, void>)&getJitTestInfo;
+            jitImports[(int)EEApiId.EEAI_Count] = (void*)0x1234;
 
 #if DEBUG
-            for (int i = 0; i < (int)EEApiId.Count; i++)
+            for (int i = 0; i < (int)EEApiId.EEAI_Count; i++)
             {
                 Debug.Assert(jitImports[i] != null);
             }

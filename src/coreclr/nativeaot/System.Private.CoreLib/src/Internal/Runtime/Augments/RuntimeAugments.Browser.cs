@@ -13,6 +13,11 @@ namespace Internal.Runtime.Augments
             return Exception.GetBiasedWasmFunctionIndex(wasmFunctionIndex);
         }
 
+        public static int GetBiasedWasmFunctionIndexForFunctionPointer(IntPtr functionPointer)
+        {
+            return RuntimeImports.RhpGetBiasedWasmFunctionIndexForFunctionPointer((nuint)functionPointer);
+        }
+
         public static unsafe void InitializeStackTraceIpMap(StackTraceIpAndFunctionPointer[] stackTraceIpMap)
         {
             fixed (void* pEntries = stackTraceIpMap)

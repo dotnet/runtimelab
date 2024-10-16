@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 
 using ILCompiler.DependencyAnalysis;
+using ILCompiler.DependencyAnalysis.Wasm;
 using ILCompiler.DependencyAnalysisFramework;
 
 using Internal.JitInterface;
@@ -31,7 +32,7 @@ namespace ILCompiler
 
         protected override RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options)
         {
-            ObjectDataInterner interner = ObjectDataInterner.Null;
+            ObjectDataInterner interner = _metadataManager.CreateObjectInternerForAddressExposureTracking() ?? ObjectDataInterner.Null;
             var factory = new LLVMCodegenNodeFactory(_config, _context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, interner);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
 

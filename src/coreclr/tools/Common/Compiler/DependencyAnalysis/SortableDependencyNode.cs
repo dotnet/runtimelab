@@ -97,6 +97,7 @@ namespace ILCompiler.DependencyAnalysis
             ExternalReferencesTableNode,
             StackTraceEmbeddedMetadataNode,
             StackTraceMethodMappingNode,
+            WasmPreciseVirtualUnwindInfoNode,
             ArrayOfEmbeddedDataNode,
         }
 

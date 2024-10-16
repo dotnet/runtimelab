@@ -271,6 +271,8 @@ void Llvm::lowerRange(BasicBlock* block, LIR::Range& range)
 
 void Llvm::lowerNode(GenTree* node)
 {
+    lowerCollectOptimizationFacts(node);
+
     switch (node->OperGet())
     {
         case GT_LCL_VAR:
@@ -656,7 +658,7 @@ void Llvm::lowerArrLength(GenTreeArrCommon* node)
 
 void Llvm::lowerReturn(GenTreeUnOp* retNode)
 {
-    m_anyReturns = true;
+    m_anyReturnsViaLowering = true;
 
     if (retNode->TypeIs(TYP_VOID))
     {
@@ -739,7 +741,7 @@ void Llvm::lowerVirtualStubCall(GenTreeCall* callNode)
     callNode->gtCallMoreFlags &= ~GTF_CALL_M_VIRTSTUB_REL_INDIRECT;
 
     // Lower the newly introduced stub call.
-    lowerCall(stubCall);
+    lowerNode(stubCall);
 }
 
 void Llvm::insertNullCheckForCall(GenTreeCall* callNode)
@@ -823,8 +825,8 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
         GenTreeLclFld* frameAddr = _compiler->gtNewLclVarAddrNode(_compiler->lvaInlinedPInvokeFrameVar);
         GenTreeCall* helperCall = _compiler->gtNewHelperCallNode(CORINFO_HELP_JIT_PINVOKE_BEGIN, TYP_VOID, frameAddr);
         CurrentRange().InsertBefore(callNode, frameAddr, helperCall);
-        lowerLocal(frameAddr);
-        lowerCall(helperCall);
+        lowerNode(frameAddr);
+        lowerNode(helperCall);
 
         // Insert CORINFO_HELP_JIT_PINVOKE_END. No need to explicitly lower the call/local address as the
         // normal lowering loop will pick them up.
@@ -861,7 +863,7 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
         callNode->gtCallAddr = getTargetCall;
         callNode->gtCallCookie = nullptr;
         CurrentRange().InsertBefore(callNode, getTargetCall);
-        lowerCall(getTargetCall);
+        lowerNode(getTargetCall);
     }
 }
 
@@ -1225,6 +1227,27 @@ GenTreeAddrMode* Llvm::createAddrModeNode(GenTree* base, unsigned offset)
         GenTreeAddrMode(varTypeIsGC(base) ? TYP_BYREF : TYP_I_IMPL, base, nullptr, 0, offset);
 }
 
+void Llvm::lowerCollectOptimizationFacts(GenTree* node)
+{
+    if (_compiler->opts.OptimizationDisabled())
+    {
+        return;
+    }
+
+    if (computeVirtualUnwindabilityFact())
+    {
+        if (m_anyVirtuallyUnwindableCalleesViaLowering == BooleanFact::Unknown)
+        {
+            // The base assumption for this boolean fact is that there are no virtually unwindable calls.
+            m_anyVirtuallyUnwindableCalleesViaLowering = BooleanFact::False;
+        }
+        if ((m_anyVirtuallyUnwindableCalleesViaLowering != BooleanFact::True) && mayVirtuallyUnwind(node))
+        {
+            m_anyVirtuallyUnwindableCalleesViaLowering = BooleanFact::True;
+        }
+    }
+}
+
 //------------------------------------------------------------------------
 // isInvariantInRange: Check if a node is invariant in the specified range. In
 // other words, can 'node' be moved to right before 'endExclusive' without its
@@ -1320,6 +1343,13 @@ bool Llvm::isFirstBlockCanonical()
     return !block->hasTryIndex() && (block->bbPreds == nullptr);
 }
 
+void Llvm::lowerAndInsertIntoFirstBlock(LIR::Range& range, GenTree* insertAfter)
+{
+    assert(isFirstBlockCanonical());
+    lowerRange(_compiler->fgFirstBB, range);
+    LIR::AsRange(_compiler->fgFirstBB).InsertAfter(insertAfter, std::move(range));
+}
+
 //------------------------------------------------------------------------
 // AddVirtualUnwindFrame: Add "virtually unwindable" frame state.
 //
@@ -1361,6 +1391,133 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
     // Always compute the set of filter blocks, for simplicity.
     computeBlocksInFilters();
 
+    if (addVirtualUnwindFrameForExceptionHandling())
+    {
+        return PhaseStatus::MODIFIED_EVERYTHING;
+    }
+
+    if (addTentativePreciseVirtualUnwindFrame())
+    {
+        return PhaseStatus::MODIFIED_EVERYTHING;
+    }
+
+    return PhaseStatus::MODIFIED_NOTHING;
+}
+
+bool Llvm::computeVirtualUnwindabilityFact()
+{
+    assert(_compiler->opts.OptimizationEnabled());
+    return m_virtualUnwindModel == CILVUM_Precise;
+}
+
+bool Llvm::addTentativePreciseVirtualUnwindFrame()
+{
+    if (m_virtualUnwindModel != CILVUM_Precise)
+    {
+        return false;
+    }
+
+    bool neededForEH = m_initialUnwindIndex != UNWIND_INDEX_NONE;
+    if (m_anyVirtuallyUnwindableCalleesViaLowering == BooleanFact::False)
+    {
+        JITDUMP("Skipping precise virtual unwind frame insertion: no callees that can virtually unwind\n");
+        assert(!neededForEH);
+        return false;
+    }
+
+    // struct { [nuint UnwindIndex,] void* UnwindInfo }.
+    unsigned lclNum = _compiler->lvaGrabTemp(false DEBUGARG("precise virtual unwind frame"));
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+    if (neededForEH)
+    {
+        _compiler->lvaSetStruct(
+            lclNum, _compiler->typGetBlkLayout(2 * TARGET_POINTER_SIZE), /* unsafeValueClsCheck */ false);
+    }
+    else
+    {
+        varDsc->lvType = TYP_I_IMPL;
+    }
+    _compiler->lvaSetVarAddrExposed(lclNum DEBUGARG(AddressExposedReason::EXTERNALLY_VISIBLE_IMPLICITLY));
+    varDsc->lvHasExplicitInit = true;
+
+    // We may still decide we don't need this frame after LSSA; don't insert any IR yet.
+    assert(m_preciseVirtualUnwindFrameLclNum == BAD_VAR_NUM);
+    m_preciseVirtualUnwindFrameLclNum = lclNum;
+    return true;
+}
+
+bool Llvm::addConcretePreciseVirtualUnwindFrame(unsigned computedShadowFrameSize)
+{
+    assert(m_preciseVirtualUnwindFrameLclNum != BAD_VAR_NUM); // We should have a tentative frame.
+    if ((computedShadowFrameSize == 0) && (m_initialUnwindIndex == UNWIND_INDEX_NONE) && !IsVirtualUnwindFrameVisible())
+    {
+        JITDUMP("Skipping precise virtual unwind frame insertion: hidden frame without shadow state or EH\n");
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(m_preciseVirtualUnwindFrameLclNum);
+        varDsc->CleanAddressExposed();
+        varDsc->setLvRefCnt(0); // Now unused.
+        m_preciseVirtualUnwindFrameLclNum = BAD_VAR_NUM;
+        return false;
+    }
+    return true;
+}
+
+void Llvm::initializePreciseVirtualUnwindFrame()
+{
+    unsigned lclNum = m_preciseVirtualUnwindFrameLclNum;
+    if (lclNum == BAD_VAR_NUM)
+    {
+        return; // Nothing to do.
+    }
+
+    LIR::Range initRange;
+    unsigned unwindInfoFieldOffset = 0;
+    if (m_initialUnwindIndex != UNWIND_INDEX_NONE) // Do we have an unwind index in this frame?
+    {
+        GenTree* unwindIndexNode = _compiler->gtNewIconNode(static_cast<int>(m_initialUnwindIndex), TYP_I_IMPL);
+        GenTree* unwindIndexInit = _compiler->gtNewStoreLclFldNode(lclNum, TYP_I_IMPL, 0, unwindIndexNode);
+        initRange.InsertAtEnd(unwindIndexNode);
+        initRange.InsertAtEnd(unwindIndexInit);
+        unwindInfoFieldOffset += TARGET_POINTER_SIZE;
+    }
+
+    // Now initialize the unwind info.
+    unsigned shadowFrameSize = getShadowFrameSize(ROOT_FUNC_IDX);
+    assert(shadowFrameSize != 0); // At least this frame is present on the stack.
+
+    int clauseCount = 0;
+    CORINFO_LLVM_EH_CLAUSE* pClauses = nullptr;
+    if (_compiler->lvaGetDesc(m_preciseVirtualUnwindFrameLclNum)->TypeGet() == TYP_STRUCT)
+    {
+        ArrayStack<CORINFO_LLVM_EH_CLAUSE> clauses(_compiler->getAllocator(CMK_Codegen));
+        computeExceptionHandlingInfo(clauses);
+        clauseCount = clauses.Height();
+        pClauses = &clauses.BottomRef();
+    }
+
+    unsigned absoluteValue;
+    CORINFO_GENERIC_HANDLE unwindInfo = GetPreciseVirtualUnwindInfo(&absoluteValue, shadowFrameSize, pClauses, clauseCount);
+    GenTreeIntCon* unwindInfoNode;
+    if (unwindInfo != nullptr)
+    {
+        unwindInfoNode = _compiler->gtNewIconHandleNode(reinterpret_cast<size_t>(unwindInfo), GTF_ICON_CONST_PTR);
+    }
+    else
+    {
+        unwindInfoNode = _compiler->gtNewIconNode(static_cast<int>(absoluteValue), TYP_I_IMPL);
+    }
+    GenTree* unwindInfoInit = _compiler->gtNewStoreLclFldNode(lclNum, TYP_I_IMPL, unwindInfoFieldOffset, unwindInfoNode);
+
+    initRange.InsertAtEnd(unwindInfoNode);
+    initRange.InsertAtEnd(unwindInfoInit);
+
+    // Insert this into the current range (prolog) and let LSSA take care of the lowering.
+    JITDUMP("Added precise virtual unwind frame initialization:\n");
+    DISPRANGE(initRange);
+    m_currentRange->InsertAtEnd(std::move(initRange));
+}
+
+bool Llvm::addVirtualUnwindFrameForExceptionHandling()
+{
     // TODO-LLVM: make a distinct flag; using this alias avoids conflicts.
     static const BasicBlockFlags BBF_MAY_THROW = BBF_HAS_CALL;
     static const unsigned UNWIND_INDEX_GROUP_NONE = -1;
@@ -1369,8 +1526,8 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
     ArrayStack<unsigned>* indexMap = computeUnwindIndexMap();
     if (indexMap == nullptr)
     {
-        // No catch handlers; no need for virtual unwinding.
-        return PhaseStatus::MODIFIED_NOTHING;
+        // No catch handlers; no need for EH virtual unwinding.
+        return false;
     }
 
     // Compute which blocks may throw and thus need an up-to-date unwind index.
@@ -1487,37 +1644,55 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
                 return false;
             }
 
-            ClassLayout* unwindFrameLayout = m_compiler->typGetBlkLayout(3 * TARGET_POINTER_SIZE);
-            unsigned unwindFrameLclNum = m_compiler->lvaGrabTemp(false DEBUGARG("virtual unwind frame"));
-            m_compiler->lvaSetStruct(unwindFrameLclNum, unwindFrameLayout, /* unsafeValueClsCheck */ false);
-            m_compiler->lvaSetVarAddrExposed(unwindFrameLclNum DEBUGARG(AddressExposedReason::ESCAPE_ADDRESS));
-            m_compiler->lvaGetDesc(unwindFrameLclNum)->lvHasExplicitInit = true;
-            m_llvm->m_unwindFrameLclNum = unwindFrameLclNum;
-
             m_llvm->m_unwindIndexMap = m_indexMap;
-            size_t unwindTableAddr = size_t(m_llvm->generateUnwindTable());
-            GenTree* unwindTableAddrNode = m_compiler->gtNewIconHandleNode(unwindTableAddr, GTF_ICON_CONST_PTR);
-            GenTree* unwindFrameLclAddr = m_compiler->gtNewLclVarAddrNode(unwindFrameLclNum);
-            GenTreeIntCon* initialUnwindIndexNode = m_compiler->gtNewIconNode(m_initialIndexValue, TYP_I_IMPL);
-            GenTreeCall* initializeCall =
-                m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME, TYP_VOID,
-                                                unwindFrameLclAddr, unwindTableAddrNode, initialUnwindIndexNode);
-            LIR::Range initRange;
-            initRange.InsertAtEnd(unwindFrameLclAddr);
-            initRange.InsertAtEnd(unwindTableAddrNode);
-            initRange.InsertAtEnd(initialUnwindIndexNode);
-            initRange.InsertAtEnd(initializeCall);
+            m_llvm->m_initialUnwindIndex = m_initialIndexValue;
 
-            assert(m_llvm->isFirstBlockCanonical());
-            m_llvm->lowerRange(m_compiler->fgFirstBB, initRange);
-            LIR::AsRange(m_compiler->fgFirstBB).InsertAtBeginning(std::move(initRange));
+            unsigned unwindFrameLclNum;
+            unsigned unwindIndexFieldOffset;
+            if (m_llvm->addTentativePreciseVirtualUnwindFrame())
+            {
+                unwindFrameLclNum = m_llvm->m_preciseVirtualUnwindFrameLclNum;
+                unwindIndexFieldOffset = 0;
+            }
+            else
+            {
+                noway_assert(m_llvm->m_virtualUnwindModel == CILVUM_Sparse);
+                unwindFrameLclNum = m_compiler->lvaGrabTemp(false DEBUGARG("sparse virtual unwind frame"));
+                unwindIndexFieldOffset = SPARSE_VIRTUAL_UNWIND_FRAME_UNWIND_INDEX_OFFSET;
+
+                ClassLayout* unwindFrameLayout = m_compiler->typGetBlkLayout(SPARSE_VIRTUAL_UNWIND_FRAME_SIZE);
+                m_compiler->lvaSetStruct(unwindFrameLclNum, unwindFrameLayout, /* unsafeValueClsCheck */ false);
+                m_compiler->lvaSetVarAddrExposed(unwindFrameLclNum DEBUGARG(AddressExposedReason::ESCAPE_ADDRESS));
+                m_compiler->lvaGetDesc(unwindFrameLclNum)->lvHasExplicitInit = true;
+
+                ArrayStack<CORINFO_LLVM_EH_CLAUSE> clauses(m_compiler->getAllocator(CMK_Codegen));
+                m_llvm->computeExceptionHandlingInfo(clauses);
+                CORINFO_GENERIC_HANDLE ehInfoSymbol =
+                    m_llvm->GetSparseVirtualUnwindInfo(&clauses.BottomRef(), clauses.Height());
+
+                GenTree* ehInfoNode =
+                    m_compiler->gtNewIconHandleNode(reinterpret_cast<size_t>(ehInfoSymbol), GTF_ICON_CONST_PTR);
+                GenTree* unwindFrameLclAddr = m_compiler->gtNewLclVarAddrNode(unwindFrameLclNum);
+                GenTreeIntCon* initialUnwindIndexNode = m_compiler->gtNewIconNode(m_initialIndexValue, TYP_I_IMPL);
+                GenTreeCall* initializeCall =
+                    m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME, TYP_VOID,
+                        unwindFrameLclAddr, ehInfoNode, initialUnwindIndexNode);
+
+                LIR::Range initRange;
+                initRange.InsertAtEnd(unwindFrameLclAddr);
+                initRange.InsertAtEnd(ehInfoNode);
+                initRange.InsertAtEnd(initialUnwindIndexNode);
+                initRange.InsertAtEnd(initializeCall);
+                m_llvm->lowerAndInsertIntoFirstBlock(initRange);
+                m_llvm->m_sparseVirtualUnwindFrameLclNum = unwindFrameLclNum;
+            }
 
             for (int i = 0; i < m_definedIndices.Height(); i++)
             {
                 const IndexDef& def = m_definedIndices.BottomRef(i);
                 GenTree* indexValueNode = m_compiler->gtNewIconNode(def.Value);
                 GenTree* indexValueStore = m_compiler->gtNewStoreLclFldNode(unwindFrameLclNum, TYP_INT,
-                                                                            2 * TARGET_POINTER_SIZE, indexValueNode);
+                    unwindIndexFieldOffset, indexValueNode);
 
                 // No need to lower these nodes at this point in time.
                 LIR::Range& blockRange = LIR::AsRange(def.Block);
@@ -1526,20 +1701,24 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
                 blockRange.InsertBefore(insertionPoint, indexValueStore);
             }
 
-            for (BasicBlock* block : m_compiler->Blocks())
+            // Explicit pops are only needed for explicitly linked (via TLS) sparse frames.
+            if (m_llvm->m_sparseVirtualUnwindFrameLclNum != BAD_VAR_NUM)
             {
-                // TODO-LLVM-EH: fold NOT_IN_TRY settings into pop calls when legal.
-                if (block->KindIs(BBJ_RETURN))
+                for (BasicBlock* block : m_compiler->Blocks())
                 {
-                    GenTree* lastNode = block->lastNode();
-                    assert(lastNode->OperIs(GT_RETURN));
+                    // TODO-LLVM-EH: fold NOT_IN_TRY settings into pop calls when legal.
+                    if (block->KindIs(BBJ_RETURN))
+                    {
+                        GenTree* lastNode = block->lastNode();
+                        assert(lastNode->OperIs(GT_RETURN));
 
-                    GenTreeCall* popCall =
-                        m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME, TYP_VOID);
-                    LIR::Range popCallRange;
-                    popCallRange.InsertAtBeginning(popCall);
-                    m_llvm->lowerRange(block, popCallRange);
-                    LIR::AsRange(block).InsertBefore(lastNode, std::move(popCallRange));
+                        GenTreeCall* popCall =
+                            m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME, TYP_VOID);
+                        LIR::Range popCallRange;
+                        popCallRange.InsertAtBeginning(popCall);
+                        m_llvm->lowerRange(block, popCallRange);
+                        LIR::AsRange(block).InsertBefore(lastNode, std::move(popCallRange));
+                    }
                 }
             }
 
@@ -1801,12 +1980,7 @@ PhaseStatus Llvm::AddVirtualUnwindFrame()
         }
     }
 
-    if (!inserter.SerializeResultsIntoIR())
-    {
-        return PhaseStatus::MODIFIED_NOTHING;
-    }
-
-    return PhaseStatus::MODIFIED_EVERYTHING;
+    return inserter.SerializeResultsIntoIR();
 }
 
 void Llvm::computeBlocksInFilters()
@@ -1901,10 +2075,9 @@ ArrayStack<unsigned>* Llvm::computeUnwindIndexMap()
     return indexMap;
 }
 
-CORINFO_GENERIC_HANDLE Llvm::generateUnwindTable()
+void Llvm::computeExceptionHandlingInfo(ArrayStack<CORINFO_LLVM_EH_CLAUSE>& clauses)
 {
     JITDUMP("\nGenerating the unwind table:\n")
-    ArrayStack<CORINFO_LLVM_EH_CLAUSE> clauses(_compiler->getAllocator(CMK_Codegen));
     for (unsigned ehIndex = 0; ehIndex < _compiler->compHndBBtabCount; ehIndex++)
     {
         EHblkDsc* ehDsc = _compiler->ehGetDsc(ehIndex);
@@ -1955,12 +2128,11 @@ CORINFO_GENERIC_HANDLE Llvm::generateUnwindTable()
         }
     }
 
-    CORINFO_GENERIC_HANDLE tableSymbolHandle = GetExceptionHandlingTable(&clauses.BottomRef(), clauses.Height());
-    return tableSymbolHandle;
+    assert(clauses.Height() > 0);
 }
 
 //------------------------------------------------------------------------
-// mayPhysicallyThrow: Can this node cause unwinding?
+// mayPhysicallyThrow: Can this node throw?
 //
 // Certain nodes, such as allocator helpers, are marked no-throw in the Jit
 // model, but we must still generate code that allows for the catching of
@@ -1989,6 +2161,47 @@ bool Llvm::mayPhysicallyThrow(GenTree* node)
     }
 
     return node->OperMayThrow(_compiler);
+}
+
+//------------------------------------------------------------------------
+// mayVirtuallyUnwind: Can this node virtually unwind?
+//
+// Nodes may virtually unwind by throwing an exception or collecting
+// the stack trace.
+//
+// Arguments:
+//    node - The node in question
+//
+// Return Value:
+//    Whether "node" may cause virtual unwinding (through this method).
+//
+bool Llvm::mayVirtuallyUnwind(GenTree* node)
+{
+    // Calls may virtually unwind, even if they never throw.
+    if (node->OperRequiresCallFlag(_compiler))
+    {
+        if (node->OperIs(GT_KEEPALIVE))
+        {
+            // Not an actual call.
+            return false;
+        }
+
+        if (node->IsHelperCall())
+        {
+            // A handful of helpers we know will never unwind.
+            return helperCallMayVirtuallyUnwind(node->AsCall()->GetHelperNum());
+        }
+
+        return true;
+    }
+
+    // Nodes that may throw may virtually unwind.
+    if (mayPhysicallyThrow(node))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 //------------------------------------------------------------------------

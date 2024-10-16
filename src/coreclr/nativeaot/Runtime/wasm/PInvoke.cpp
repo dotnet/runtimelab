@@ -73,3 +73,9 @@ FCIMPL_NO_SS(void, RhpPInvokeReturn, PInvokeTransitionFrame* pFrame)
     pFrame->m_pThread->InlinePInvokeReturn(pFrame);
 }
 FCIMPLEND
+
+FCIMPL0(void*, RhpGetCurrentThreadShadowStackBottom)
+{
+    return ThreadStore::RawGetCurrentThread()->GetShadowStackBottom();
+}
+FCIMPLEND

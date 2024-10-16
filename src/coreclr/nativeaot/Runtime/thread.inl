@@ -158,6 +158,11 @@ FORCEINLINE bool Thread::InlineTryFastReversePInvoke(ReversePInvokeFrame* pFrame
 }
 
 #ifdef HOST_WASM
+FORCEINLINE void* Thread::GetShadowStackBottom()
+{
+    return m_pShadowStackBottom;
+}
+
 FORCEINLINE void Thread::SetShadowStackBottom(void *pShadowStack)
 {
     ASSERT(m_pShadowStackBottom == nullptr);

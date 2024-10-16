@@ -63,14 +63,12 @@ public class BringUpTest
                 return Fail;
             }
 
-#if !CODEGEN_WASI // TODO-LLVM: stack traces on WASI.
             string stackTrace = e.StackTrace;
             if (!stackTrace.Contains("BringUpTest.Main"))
             {
                 Console.WriteLine("Unexpected stack trace: " + stackTrace);
                 return Fail;
             }
-#endif
             counter++;
         }
 
