@@ -80,11 +80,6 @@ extends:
             jobParameters:
               timeoutInMinutes: 180
               buildArgs: -s clr+libs+libs.tests+clr.hosts+packs -c $(_BuildConfig) /p:ArchiveTests=true
-              postBuildSteps:
-                - template: /eng/pipelines/libraries/helix.yml
-                  parameters:
-                    creator: dotnet-bot
-                    testRunNamePrefixSuffix: Libraries_$(_BuildConfig)
               extraVariablesTemplates:
                 - template: /eng/pipelines/common/templates/runtimes/test-variables.yml
 
