@@ -12340,7 +12340,7 @@ void Interpreter::PrintValue(InterpreterType it, BYTE* valAddr)
         }
         break;
     case CORINFO_TYPE_ULONG:
-        fprintf(GetLogFile(), "%lld", *reinterpret_cast<unsigned long long*>(valAddr));
+        fprintf(GetLogFile(), "%" PRIu64 "", *reinterpret_cast<UINT64*>(valAddr));
         break;
 
     case CORINFO_TYPE_CLASS:
