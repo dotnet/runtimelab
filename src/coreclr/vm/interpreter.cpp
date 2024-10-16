@@ -23,6 +23,7 @@
 #include "vars.hpp"
 #include "cycletimer.h"
 #include <math.h>
+#include <inttypes.h>
 
 #ifndef _I64_MIN
 #define _I64_MIN LLONG_MIN
@@ -12317,14 +12318,14 @@ void Interpreter::PrintValue(InterpreterType it, BYTE* valAddr)
 
     case CORINFO_TYPE_NATIVEINT:
         {
-            long long val = static_cast<long long>(*reinterpret_cast<NativeInt*>(valAddr));
-            fprintf(GetLogFile(), "%lld (= 0x%llx)", val, val);
+            INT64 val = static_cast<INT64>(*reinterpret_cast<NativeInt*>(valAddr));
+            fprintf(GetLogFile(), "%" PRId64 " (= 0x%" PRIx64 ")", val, val);
         }
         break;
     case CORINFO_TYPE_NATIVEUINT:
         {
-            unsigned long long val = static_cast<unsigned long long>(*reinterpret_cast<NativeUInt*>(valAddr));
-            fprintf(GetLogFile(), "%lld (= 0x%llx)", val, val);
+            UINT64 val = static_cast<UINT64>(*reinterpret_cast<NativeUInt*>(valAddr));
+            fprintf(GetLogFile(), "%" PRIu64 " (= 0x%" PRIx64 ")", val, val);
         }
         break;
 
@@ -12334,8 +12335,8 @@ void Interpreter::PrintValue(InterpreterType it, BYTE* valAddr)
 
     case CORINFO_TYPE_LONG:
         {
-            long long val = *reinterpret_cast<long long*>(valAddr);
-            fprintf(GetLogFile(), "%lld (= 0x%llx)", val, val);
+            INT64 val = *reinterpret_cast<INT64*>(valAddr);
+            fprintf(GetLogFile(), "%" PRId64 " (= 0x%" PRIx64 ")", val, val);
         }
         break;
     case CORINFO_TYPE_ULONG:
