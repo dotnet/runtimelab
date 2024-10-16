@@ -1807,10 +1807,6 @@ void HelperCallProperties::init()
                 alwaysThrow = true;
                 break;
 
-            // These helper calls may throw an exception
-            case CORINFO_HELP_MON_EXIT_STATIC:
-                break;
-
             // This is a debugging aid; it simply returns a constant address.
             case CORINFO_HELP_LOOP_CLONE_CHOICE_ADDR:
             case CORINFO_HELP_LLVM_GET_EXTERNAL_CALL_TARGET:
@@ -1827,7 +1823,6 @@ void HelperCallProperties::init()
             case CORINFO_HELP_POLL_GC:
             case CORINFO_HELP_MON_ENTER:
             case CORINFO_HELP_MON_EXIT:
-            case CORINFO_HELP_MON_ENTER_STATIC:
             case CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT:
             case CORINFO_HELP_GETFIELDADDR:
             case CORINFO_HELP_JIT_PINVOKE_BEGIN:

@@ -532,6 +532,7 @@
 
   <Import Project="$(RepoRoot)/src/tests/Common/XUnitWrapperGenerator/XUnitWrapperGenerator.props" />
   <Import Project="$(RepoRoot)eng/liveBuilds.targets" />
+  <Import Project="$(RepositoryEngineeringDir)toolAot.targets" />
   <Import Project="$(MSBuildProjectFullPath).targets" Condition="Exists('$(MSBuildProjectFullPath).targets')"/>
   <Import Project="$(RepoRoot)/src/tests/Common/mergedrunner.targets" Condition="'$(IsMergedTestRunnerAssembly)' == 'true'" />
 
@@ -576,7 +577,6 @@
     <IlcFrameworkNativePath>$(MicrosoftNetCoreAppRuntimePackNativeDir)</IlcFrameworkNativePath>
     <RuntimeIdentifier>$(OutputRID)</RuntimeIdentifier>
 
-    <SysRoot Condition="'$(CrossBuild)' == 'true' and '$(HostOS)' != 'windows'">$(ROOTFS_DIR)</SysRoot>
     <BuildNativeAotFrameworkObjects Condition="'$(IlcMultiModule)' == 'true'">true</BuildNativeAotFrameworkObjects>
     <DisableFrameworkLibGeneration Condition="'$(BuildNativeAotFrameworkObjects)' == 'true'">true</DisableFrameworkLibGeneration>
     <FrameworkLibPath Condition="'$(BuildNativeAotFrameworkObjects)' == 'true'">$(IlcSdkPath)</FrameworkLibPath>
@@ -624,6 +624,7 @@
           Condition="'$(_WillCLRTestProjectBuild)' == 'true' and '$(CLRTestKind)' == 'BuildAndRun'"
           DependsOnTargets="ComputeResolvedFilesToPublishList;LinkNative" />
 
+<<<<<<< HEAD
   <Target Name="AddNativeStaticTestLibrariesForNativeAotLinking"
           AfterTargets="CopyAllNativeProjectReferenceBinaries"
           BeforeTargets="Build"
@@ -654,4 +655,6 @@
     </PropertyGroup>
   </Target>
 
+=======
+>>>>>>> runtime/main
 </Project>
