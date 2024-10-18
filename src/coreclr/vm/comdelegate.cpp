@@ -1879,6 +1879,10 @@ Stub* COMDelegate::GetInvokeMethodStub(EEImplMethodDesc* pMD)
         if (*pMD->GetSig() != (IMAGE_CEE_CS_CALLCONV_HASTHIS | IMAGE_CEE_CS_CALLCONV_DEFAULT))
             COMPlusThrow(kInvalidProgramException);
 
+        PCCOR_SIGNATURE pSig;
+        DWORD cbSig;
+        pMD->GetSig(&pSig,&cbSig);
+
         MetaSig sig(pMD);
 
         BOOL fReturnVal = !sig.IsReturnTypeVoid();
@@ -1888,12 +1892,6 @@ Stub* COMDelegate::GetInvokeMethodStub(EEImplMethodDesc* pMD)
 
         ILCodeStream *pCode = sl.NewCodeStream(ILStubLinker::kDispatch);
 
-        // This stub is only used for rare indirect cases, for example
-        // when Delegate.Invoke method is wrapped into another delegate.
-        // Direct invocation of delegate is expanded by JIT.
-        // Emit a recursive call here to let JIT handle complex cases like
-        // virtual dispatch and GC safety.
-
         // Load the delegate object
         pCode->EmitLoadThis();
 
@@ -1901,15 +1899,29 @@ Stub* COMDelegate::GetInvokeMethodStub(EEImplMethodDesc* pMD)
         for (UINT paramCount = 0; paramCount < sig.NumFixedArgs(); paramCount++)
             pCode->EmitLDARG(paramCount);
 
-        // recursively call the delegate itself
+#ifdef FEATURE_INTERPRETER
+        // Call the underlying method pointer.
+        pCode->EmitLoadThis();
+        pCode->EmitLDFLD(FIELD__DELEGATE__METHOD_PTR);
+
+        mdToken sigTok = pCode->GetSigToken(pSig, cbSig);
+        pCode->EmitCALLI(sigTok, sig.NumFixedArgs(), fReturnVal);
+
+        pCode->EmitLoadThis();
+        pCode->EmitCALL(METHOD__GC__KEEP_ALIVE, 1, 0);
+#else
+        // This stub is only used for rare indirect cases, for example
+        // when Delegate.Invoke method is wrapped into another delegate.
+        // Direct invocation of delegate is expanded by JIT.
+        // Emit a recursive call here to let JIT handle complex cases like
+        // virtual dispatch and GC safety.
+
+        // Recursively call the delegate itself.
         pCode->EmitCALL(pCode->GetToken(pMD), sig.NumFixedArgs(), fReturnVal);
+#endif // !FEATURE_INTERPRETER
 
         // return
         pCode->EmitRET();
-
-        PCCOR_SIGNATURE pSig;
-        DWORD cbSig;
-        pMD->GetSig(&pSig,&cbSig);
 
         MethodDesc* pStubMD = ILStubCache::CreateAndLinkNewILStubMethodDesc(pMD->GetLoaderAllocator(),
                                                                 pMD->GetMethodTable(),

@@ -923,6 +923,7 @@ public:
         NI_System_StubHelpers_GetStubContext,
         NI_System_Runtime_InteropService_MemoryMarshal_GetArrayDataReference,
         NI_System_Runtime_CompilerServices_RuntimeHelpers_IsReferenceOrContainsReferences,
+        NI_System_Runtime_CompilerServices_RuntimeHelpers_GetMethodTable,
         NI_System_Threading_Interlocked_CompareExchange,
         NI_System_Threading_Interlocked_Exchange,
         NI_System_Threading_Interlocked_ExchangeAdd,
@@ -1797,6 +1798,7 @@ private:
     void DoGetIsSupported();
     void DoGetArrayDataReference();
     void DoIsReferenceOrContainsReferences(CORINFO_METHOD_HANDLE method);
+    void DoGetMethodTable();
     bool DoInterlockedCompareExchange(CorInfoType retType);
     bool DoInterlockedExchange(CorInfoType retType);
     bool DoInterlockedExchangeAdd(CorInfoType retType);

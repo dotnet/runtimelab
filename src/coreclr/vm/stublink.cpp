@@ -1811,7 +1811,7 @@ bool StubLinker::EmitUnwindInfo(Stub* pStubRX, Stub* pStubRW, int globalsize, Lo
     //
 
     pHeaderRW->pNext = pStubHeapSegment->pUnwindHeaderList;
-    pStubHeapSegment->pUnwindHeaderList = pHeaderRW;
+    pStubHeapSegment->pUnwindHeaderList = pHeaderRX;
 
 #ifdef TARGET_AMD64
     // Publish Unwind info to ETW stack crawler
@@ -1826,7 +1826,7 @@ bool StubLinker::EmitUnwindInfo(Stub* pStubRX, Stub* pStubRW, int globalsize, Lo
 
 #ifdef _DEBUG
     _ASSERTE(pHeaderRW->IsRegistered());
-    _ASSERTE(   &pHeaderRW->FunctionEntry
+    _ASSERTE(   &pHeaderRX->FunctionEntry
              == FindStubFunctionEntry((ULONG64)pCode,                  EncodeDynamicFunctionTableContext(pStubHeapSegment, DYNFNTABLE_STUB)));
 #endif
 

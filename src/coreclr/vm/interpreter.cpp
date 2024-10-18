@@ -9289,6 +9289,11 @@ void Interpreter::DoCallWork(bool virtualCall, void* thisArg, CORINFO_RESOLVED_T
             didIntrinsic = true;
             break;
 
+        case NI_System_Runtime_CompilerServices_RuntimeHelpers_GetMethodTable:
+            DoGetMethodTable();
+            didIntrinsic = true;
+            break;
+
         case NI_System_Threading_Interlocked_CompareExchange:
             // Here and in other Interlocked.* intrinsics we use sigInfo.retType to be able
             // to detect small-integer overloads.
@@ -10986,6 +10991,34 @@ void Interpreter::DoIsReferenceOrContainsReferences(CORINFO_METHOD_HANDLE method
     m_curStackHt++;
 }
 
+void Interpreter::DoGetMethodTable()
+{
+    CONTRACTL{
+        THROWS;
+        GC_TRIGGERS;
+        MODE_COOPERATIVE;
+    } CONTRACTL_END;
+
+    _ASSERTE(m_curStackHt > 0);
+    unsigned ind = m_curStackHt - 1;
+
+#ifdef _DEBUG
+    _ASSERTE(OpStackTypeGet(ind).ToCorInfoType() == CORINFO_TYPE_CLASS);
+#endif // _DEBUG
+
+    Object* obj = OpStackGet<Object*>(ind);
+
+    if (obj == NULL)
+    {
+        ThrowNullPointerException();
+    }
+
+    MethodTable* pMT = obj->RawGetMethodTable();
+
+    OpStackSet<MethodTable*>(m_curStackHt, pMT);
+    OpStackTypeSet(m_curStackHt, InterpreterType(CORINFO_TYPE_NATIVEINT));
+}
+
 bool Interpreter::DoInterlockedCompareExchange(CorInfoType retType)
 {
     CONTRACTL{
@@ -11991,6 +12024,10 @@ Interpreter::InterpreterNamedIntrinsics Interpreter::getNamedIntrinsicID(CEEInfo
                         if (strcmp(methodName, "IsReferenceOrContainsReferences") == 0)
                         {
                             result = NI_System_Runtime_CompilerServices_RuntimeHelpers_IsReferenceOrContainsReferences;
+                        }
+                        else if (strcmp(methodName, "GetMethodTable") == 0)
+                        {
+                            result = NI_System_Runtime_CompilerServices_RuntimeHelpers_GetMethodTable;
                         }
                     }
                 }
