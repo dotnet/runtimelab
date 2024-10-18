@@ -1892,12 +1892,6 @@ Stub* COMDelegate::GetInvokeMethodStub(EEImplMethodDesc* pMD)
 
         ILCodeStream *pCode = sl.NewCodeStream(ILStubLinker::kDispatch);
 
-        // This stub is only used for rare indirect cases, for example
-        // when Delegate.Invoke method is wrapped into another delegate.
-        // Direct invocation of delegate is expanded by JIT.
-        // Emit a recursive call here to let JIT handle complex cases like
-        // virtual dispatch and GC safety.
-
         // Load the delegate object
         pCode->EmitLoadThis();
 
@@ -1912,8 +1906,17 @@ Stub* COMDelegate::GetInvokeMethodStub(EEImplMethodDesc* pMD)
 
         mdToken sigTok = pCode->GetSigToken(pSig, cbSig);
         pCode->EmitCALLI(sigTok, sig.NumFixedArgs(), fReturnVal);
+
+        pCode->EmitLoadThis();
+        pCode->EmitCALL(METHOD__GC__KEEP_ALIVE, 1, 0);
 #else
-        // Recursively call the delegate itself, will be lower by the JIT.
+        // This stub is only used for rare indirect cases, for example
+        // when Delegate.Invoke method is wrapped into another delegate.
+        // Direct invocation of delegate is expanded by JIT.
+        // Emit a recursive call here to let JIT handle complex cases like
+        // virtual dispatch and GC safety.
+
+        // Recursively call the delegate itself.
         pCode->EmitCALL(pCode->GetToken(pMD), sig.NumFixedArgs(), fReturnVal);
 #endif // !FEATURE_INTERPRETER
 
