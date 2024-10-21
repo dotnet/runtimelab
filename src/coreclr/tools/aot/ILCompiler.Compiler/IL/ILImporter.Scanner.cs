@@ -177,14 +177,6 @@ namespace Internal.IL
                             _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(_compilation.NodeFactory.TypeSystemContext.GetHelperEntryPoint("SynchronizedMethodHelpers", "GetClassFromMethodParam")), reason);
                     }
                 }
-<<<<<<< HEAD
-                else
-                {
-                    _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.MonitorEnter), reason);
-                    _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.MonitorExit), reason);
-                }
-=======
->>>>>>> runtime/main
             }
 
             FindBasicBlocks();
@@ -303,7 +295,7 @@ namespace Internal.IL
 
         private bool InTryRegion()
         {
-            for (int i = 0; i < _exceptionRegions.Length ; i++)
+            for (int i = 0; i < _exceptionRegions.Length; i++)
             {
                 ILExceptionRegion region = _exceptionRegions[i].ILRegion;
                 if (IsOffsetContained(_currentOffset - 1, region.TryOffset, region.TryLength))

@@ -14,9 +14,8 @@ success &= RunTest(Generics.Run);
 success &= RunTest(Interfaces.Run);
 #if !CODEGEN_WASM
 success &= RunTest(Threading.Run);
-#endif
+// Devirtualization uses `IDynamicCastableGetInterfaceImplementation` and `RhGetCommonStubAddress`
 success &= RunTest(Devirtualization.Run);
-#if !CODEGEN_WASM
 success &= RunTest(StackTraces.Run);
 #endif
 

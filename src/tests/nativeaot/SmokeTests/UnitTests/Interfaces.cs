@@ -46,7 +46,9 @@ public class Interfaces
         TestGenericAnalysis.Run();
         TestRuntime108229Regression.Run();
         TestCovariantReturns.Run();
+#if !CODEGEN_WASM
         TestDynamicInterfaceCastable.Run();
+#endif
         TestStaticInterfaceMethodsAnalysis.Run();
         TestStaticInterfaceMethods.Run();
         TestSimpleStaticDefaultInterfaceMethods.Run();
@@ -1098,6 +1100,7 @@ public class Interfaces
                     throw new Exception();
             }
 
+#if !CODEGEN_WASM
             {
                 IInterface o = (IInterface)new CastableClass<IInterface, IInterfaceCastableImpl<Atom>>();
                 if (o.GetCookie() != "Atom")
@@ -1109,6 +1112,7 @@ public class Interfaces
                 if (o.GetCookie() != "Atom")
                     throw new Exception();
             }
+#endif
         }
     }
 

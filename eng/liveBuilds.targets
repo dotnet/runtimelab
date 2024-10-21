@@ -28,18 +28,14 @@
     <CoreCLRAotSdkDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'aotsdk'))</CoreCLRAotSdkDir>
     <CoreCLRBuildIntegrationDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'build'))</CoreCLRBuildIntegrationDir>
 
-<<<<<<< HEAD
     <!-- NativeAOT-LLVM: we set up cross-compilation for WASM differently from upstream. The upstream cross-compilation scheme
          does not scale for local development because it requires you to build the same host tools for each target configuration.
          E. g. you need to build the same Debug compiler 3 times if you want to compile code in Debug, Checked and Release. -->
     <IlcConfig Condition="'$(IlcConfig)' == ''">$(CoreCLRConfiguration)</IlcConfig>
     <CoreCLRCrossILCompilerDir Condition="'$(CoreCLRCrossILCompilerDir)' != '' and '$(TargetsWasm)' == 'true'">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(BuildArchitecture).$(IlcConfig)', 'ilc'))</CoreCLRCrossILCompilerDir>
 
-    <Crossgen2Dir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', '$(BuildArchitecture)', 'crossgen2'))</Crossgen2Dir>
-=======
     <Crossgen2Dir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'crossgen2-published'))</Crossgen2Dir>
     <Crossgen2InBuildDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', '$(BuildArchitecture)', 'crossgen2'))</Crossgen2InBuildDir>
->>>>>>> runtime/main
 
     <ToolsILLinkDir>$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'ILLink.Tasks', '$(ToolsConfiguration)'))</ToolsILLinkDir>
 
@@ -71,7 +67,6 @@
     <SingleFileHostSourcePath>$([MSBuild]::NormalizePath('$(CoreCLRArtifactsPath)', 'corehost', 'singlefilehost$(ExeSuffix)'))</SingleFileHostSourcePath>
   </PropertyGroup>
 
-<<<<<<< HEAD
   <!-- Not a live build, but allow overriding the LKG ILCompiler package with a specific version. -->
   <PropertyGroup Condition="'$(UseNativeAotForComponents)' == 'true' and '$(PublishAot)' == 'true' and '$(MicrosoftDotNetILCompilerVersion)' != ''">
     <SuppressGenerateILCompilerExplicitPackageReferenceWarning>true</SuppressGenerateILCompilerExplicitPackageReferenceWarning>
@@ -82,9 +77,6 @@
   </ItemGroup>
 
   <Target Name="ResolveRuntimeFilesFromLocalBuild" Condition="$(TestBuildMode) != 'nativeaot'">
-=======
-  <Target Name="ResolveRuntimeFilesFromLocalBuild">
->>>>>>> runtime/main
     <Error Condition="!Exists('$(CoreCLRArtifactsPath)') and '$(RuntimeFlavor)' == 'CoreCLR'"
            Text="The CoreCLR artifacts path does not exist '$(CoreCLRArtifactsPath)'. The 'clr' subset must be built before building this project. Configuration: '$(CoreCLRConfiguration)'. To use a different configuration, specify the 'RuntimeConfiguration' property." />
     <Error Condition="!Exists('$(MonoArtifactsPath)') and '$(RuntimeFlavor)' == 'Mono'"

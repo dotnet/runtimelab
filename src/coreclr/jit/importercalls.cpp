@@ -380,11 +380,16 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
                 call = gtNewCallNode(CT_USER_FUNC, callInfo->hMethod, callRetTyp, di);
                 call->gtFlags |= GTF_CALL_VIRT_VTABLE;
 
+                // In consumeCallTarget we assume virtual vtable calls are expanded into gtControlExpr
+#if !defined(TARGET_WASM)
                 if (opts.OptimizationEnabled())
                 {
+#endif
                     // Mark this method to expand the virtual call target early in fgMorphCall
                     call->AsCall()->SetExpandedEarly();
+#if !defined(TARGET_WASM)
                 }
+#endif
                 break;
             }
 

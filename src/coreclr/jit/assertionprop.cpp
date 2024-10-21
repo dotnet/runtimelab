@@ -2643,7 +2643,7 @@ GenTree* Compiler::optVNBasedFoldExpr_Call_Memmove(GenTreeCall* call)
 
     // if dstArg is not simple, we replace the arg directly with a temp assignment and
     // continue using that temp - it allows us reliably extract all side effects.
-    GenTree* dst = fgMakeMultiUse(&dstArg->LateNodeRef());
+    GenTree* dst = fgMakeMultiUse(dstArg->GetLateNode() != nullptr ? &dstArg->LateNodeRef() : &dstArg->EarlyNodeRef());
 
     // Now we're going to emit a chain of STOREIND via COMMA nodes.
     // the very first tree is expected to be side-effects from the original call (including all args)
@@ -2714,7 +2714,8 @@ GenTree* Compiler::optVNBasedFoldExpr_Call(BasicBlock* block, GenTree* parent, G
             {
                 // if castObjArg is not simple, we replace the arg with a temp assignment and
                 // continue using that temp - it allows us reliably extract all side effects
-                castObjArg = fgMakeMultiUse(&castObjCallArg->LateNodeRef());
+                castObjArg = fgMakeMultiUse(castObjCallArg->GetLateNode() != nullptr ? &castObjCallArg->LateNodeRef()
+                                                                                     : &castObjCallArg->EarlyNodeRef());
                 return gtWrapWithSideEffects(castObjArg, call, GTF_ALL_EFFECT, true);
             }
 
@@ -2731,7 +2732,10 @@ GenTree* Compiler::optVNBasedFoldExpr_Call(BasicBlock* block, GenTree* parent, G
                     {
                         // if castObjArg is not simple, we replace the arg with a temp assignment and
                         // continue using that temp - it allows us reliably extract all side effects
-                        castObjArg = fgMakeMultiUse(&castObjCallArg->LateNodeRef());
+                        castObjArg =
+                            fgMakeMultiUse(castObjCallArg->GetLateNode() != nullptr ? &castObjCallArg->LateNodeRef()
+                                                                                    : &castObjCallArg->EarlyNodeRef());
+                        ;
                         return gtWrapWithSideEffects(castObjArg, call, GTF_ALL_EFFECT, true);
                     }
                 }
@@ -5228,7 +5232,8 @@ GenTree* Compiler::optAssertionProp_Call(ASSERT_VALARG_TP assertions, GenTreeCal
 
                 // if castObjArg is not simple, we replace the arg with a temp assignment and
                 // continue using that temp - it allows us reliably extract all side effects
-                objArg = fgMakeMultiUse(&objCallArg->LateNodeRef());
+                objArg = fgMakeMultiUse(objCallArg->GetLateNode() != nullptr ? &objCallArg->LateNodeRef()
+                                                                     : &objCallArg->EarlyNodeRef());
                 objArg = gtWrapWithSideEffects(objArg, call, GTF_SIDE_EFFECT, true);
                 return optAssertionProp_Update(objArg, call, stmt);
             }
