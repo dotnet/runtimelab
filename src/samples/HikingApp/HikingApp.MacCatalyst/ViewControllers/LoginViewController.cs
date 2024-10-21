@@ -42,6 +42,7 @@ namespace HikingApp.MacCatalyst.ViewControllers
         {
             var mainViewController = new MainViewController();
             // AppleID sign-in feature
+            // TODO: Implement AppleID sign-in functionality
 
             // Replace the RootViewController with MainViewController
             if (UIApplication.SharedApplication.Delegate is AppDelegate appDelegate)

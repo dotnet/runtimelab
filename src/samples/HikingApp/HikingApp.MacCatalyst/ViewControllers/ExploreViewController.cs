@@ -114,6 +114,7 @@ internal class ExploreViewController : UIViewController
             purchaseButton.TouchUpInside += (sender, e) =>
             {
                 // In-app purchase
+                // TODO: Implement in-app purchase functionality
             };
 
             // Add the trail view to the stack view
