@@ -72,7 +72,6 @@ namespace HikingApp.MacCatalyst.ViewControllers
             };
             mapView.AddAnnotation(annotation);
 
-            // Add labels and map view to the view
             View!.AddSubviews(descriptionLabel, distanceLabel, difficultyLabel, terrainTypeLabel, mapView);
 
             // Set up constraints for labels and map view
@@ -80,7 +79,6 @@ namespace HikingApp.MacCatalyst.ViewControllers
             distanceLabel.TranslatesAutoresizingMaskIntoConstraints = false;
             difficultyLabel.TranslatesAutoresizingMaskIntoConstraints = false;
             terrainTypeLabel.TranslatesAutoresizingMaskIntoConstraints = false;
-
             NSLayoutConstraint.ActivateConstraints(new[]
             {
                 descriptionLabel.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor, 20),

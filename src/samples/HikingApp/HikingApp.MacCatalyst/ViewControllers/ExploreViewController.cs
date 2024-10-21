@@ -19,13 +19,11 @@ internal class ExploreViewController : UIViewController
     {
         base.ViewDidLoad();
 
-        // Initialize the scroll view
         UIScrollView scrollView = new UIScrollView
         {
             TranslatesAutoresizingMaskIntoConstraints = false
         };
 
-        // Initialize the stack view
         UIStackView stackView = new UIStackView
         {
             Axis = UILayoutConstraintAxis.Vertical,
@@ -34,7 +32,7 @@ internal class ExploreViewController : UIViewController
             TranslatesAutoresizingMaskIntoConstraints = false
         };
 
-        // Iterate through the AllTrails collection
+        // Iterate through the AllTrails collection and create a view for each trail
         foreach (var trailViewController in AllTrails)
         {
             UIView trailView = new UIView
@@ -54,9 +52,8 @@ internal class ExploreViewController : UIViewController
                 ClipsToBounds = true,
                 TranslatesAutoresizingMaskIntoConstraints = false
             };
-
             imageView.Image = UIImage.FromBundle("TrailImage");
-            // Create labels for name and description
+
             UILabel nameLabel = new UILabel
             {
                 Text = trailViewController.TrailName,
@@ -73,7 +70,7 @@ internal class ExploreViewController : UIViewController
                 Lines = 0 
             };
 
-            // Create a button for details
+            // Create a button for purchasing the trail
             UIButton purchaseButton = new UIButton(UIButtonType.System);
             purchaseButton.SetTitle("Purchase", UIControlState.Normal);
             purchaseButton.TitleLabel.Font = UIFont.SystemFontOfSize(16);
@@ -110,21 +107,16 @@ internal class ExploreViewController : UIViewController
                 purchaseButton.BottomAnchor.ConstraintEqualTo(trailView.BottomAnchor, -10)
             });
 
-            // Add tap gesture recognizer to the details button
+            // Add tap gesture recognizer to the purchase button
             purchaseButton.TouchUpInside += (sender, e) =>
             {
                 // In-app purchase
                 // TODO: Implement in-app purchase functionality
             };
-
-            // Add the trail view to the stack view
             stackView.AddArrangedSubview(trailView);
         }
 
-        // Add the stack view to the scroll view
         scrollView.AddSubview(stackView);
-
-        // Add the scroll view to the main view
         View!.AddSubview(scrollView);
 
         // Set up constraints for the scroll view
@@ -136,7 +128,7 @@ internal class ExploreViewController : UIViewController
             scrollView.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor)
         });
 
-        // Set up constraints for the stack view
+        // Set up constraints for the stack view within the scroll view
         NSLayoutConstraint.ActivateConstraints(new[]
         {
             stackView.TopAnchor.ConstraintEqualTo(scrollView.TopAnchor),

@@ -30,6 +30,7 @@ internal class MyTrailsViewController : UIViewController
             TranslatesAutoresizingMaskIntoConstraints = false
         };
 
+        // Iterate through the PurchasedTrails collection and create a view for each purchased trail
         foreach (var trailViewController in PurchasedTrails)
         {
             UIView trailView = new UIView
@@ -67,6 +68,7 @@ internal class MyTrailsViewController : UIViewController
                 Lines = 0
             };
 
+            // Create a button to view details of the trail
             UIButton detailsButton = new UIButton(UIButtonType.System);
             detailsButton.SetTitle("View Details", UIControlState.Normal);
             detailsButton.TitleLabel.Font = UIFont.SystemFontOfSize(16); 
@@ -77,6 +79,7 @@ internal class MyTrailsViewController : UIViewController
 
             trailView.AddSubviews(new UIView[] { imageView, nameLabel, descriptionLabel, detailsButton });
 
+            // Set up constraints for the image, labels, and button within the container view
             nameLabel.TranslatesAutoresizingMaskIntoConstraints = false;
             descriptionLabel.TranslatesAutoresizingMaskIntoConstraints = false;
             detailsButton.TranslatesAutoresizingMaskIntoConstraints = false;
@@ -111,9 +114,9 @@ internal class MyTrailsViewController : UIViewController
         }
 
         scrollView.AddSubview(stackView);
-
         View!.AddSubview(scrollView);
 
+        // Set up constraints for the scroll view
         NSLayoutConstraint.ActivateConstraints(new[]
         {
             scrollView.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor),
@@ -122,6 +125,7 @@ internal class MyTrailsViewController : UIViewController
             scrollView.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor)
         });
 
+        // Set up constraints for the stack view within the scroll view
         NSLayoutConstraint.ActivateConstraints(new[]
         {
             stackView.TopAnchor.ConstraintEqualTo(scrollView.TopAnchor),
