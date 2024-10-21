@@ -98,7 +98,7 @@ To keep things organized, each of the separate language features are broken out 
 - [tuples](binding-tuples.md)
 - [protocols](binding-protocols.md)
 - protocols with associated types
-- closures
+- [closures] (binding-closures.md)
 
 
 
