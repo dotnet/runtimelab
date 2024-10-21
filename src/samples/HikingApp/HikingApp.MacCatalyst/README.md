@@ -4,6 +4,14 @@ HikingApp is a MacCatalyst application designed to help users explore and purcha
 
 The goal of this project is to prototype and validate Swift bindings in e2e manner.
 
+## How to run
+
+**Terminal**: dotnet build t:Run
+
+**VSCode**: Install .NET MAUI extension https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.dotnet-maui and hit `F5`.
+
+The output files get generated into *bin* and *obj* folders.
+
 ## TODOs
   - [ ] Sign-in functionality using AppleID
   - [ ] In-app trail purchases
