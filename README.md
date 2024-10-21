@@ -1,1 +1,0 @@
-# hiking-app-swift-bindings
