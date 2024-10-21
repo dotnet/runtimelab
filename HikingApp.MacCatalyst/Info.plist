@@ -31,5 +31,7 @@
     </array>
     <key>XSAppIconAssets</key>
     <string>Assets.xcassets/AppIcon.appiconset</string>
+    <key>XSImageAssets</key>
+    <string>Assets.xcassets/TrailImage.imageset</string>
 </dict>
 </plist> 

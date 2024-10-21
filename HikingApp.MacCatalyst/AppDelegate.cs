@@ -15,12 +15,7 @@ public class AppDelegate : UIApplicationDelegate {
 	{
 		// create a new window instance based on the screen size
 		Window = new UIWindow (UIScreen.MainScreen.Bounds);
-
-		var explorePageController = new ExploreViewController();
-
-		var navigationController = new UINavigationController (explorePageController);
-
-		Window.RootViewController = navigationController;
+        Window.RootViewController = new LoginViewController();
 
 		// make the window visible
 		Window.MakeKeyAndVisible ();

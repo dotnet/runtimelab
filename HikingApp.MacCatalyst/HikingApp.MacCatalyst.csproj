@@ -18,6 +18,15 @@
     <TrimMode Condition="'$(Configuration)' == 'Release'">full</TrimMode>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ImageAsset Include="Assets.xcassets\TrailImage.imageset\TrailImage.svg">
+      <Visible>false</Visible>
+    </ImageAsset>
+    <ImageAsset Include="Assets.xcassets\TrailImage.imageset\Contents.json">
+      <Visible>false</Visible>
+    </ImageAsset>   
+  </ItemGroup>
+
   <!-- Notes about the values set below:
     1. For macOS it's possible to sign both the app bundle (EnableCodesigning=true) and the package (*.pkg) (EnablePackageSigning=true),
        and these are signed separately and with different certificates.

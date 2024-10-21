@@ -2,71 +2,108 @@ using UIKit;
 using CoreLocation;
 using MapKit;
 
-namespace HikingApp.MacCatalyst.ViewControllers;
-
-
-internal class TrailViewController : UIViewController
+namespace HikingApp.MacCatalyst.ViewControllers
 {
-    private Models.Trail _trail;
-    public string TrailName => _trail.TrailName;
-    public string TrailDescription => _trail.Description;
-    public CLLocation TrailStartLocation => _trail.StartLocation;
-
-    public TrailViewController(Models.Trail trail)
+    internal class TrailViewController : UIViewController
     {
-        _trail = trail;
+        private Models.Trail _trail;
 
-        View!.BackgroundColor = UIColor.White;
-    }
+        public string TrailName => _trail.TrailName;
+        public string TrailDescription => _trail.Description;
+        public CLLocation TrailStartLocation => _trail.StartLocation;
+        public double TrailDistance => _trail.Distance;
+        public string TrailDifficulty => _trail.Difficulty;
+        public string TrailTerrainType => _trail.TerrainType;
 
-    public override void ViewDidLoad()
-    {
-        base.ViewDidLoad();
-
-        this.Title = TrailName;
-
-         // Create labels for trail details
-        UILabel descriptionLabel = new UILabel
+        public TrailViewController(Models.Trail trail)
         {
-            Text = $"Description: {TrailDescription}",
-            Font = UIFont.SystemFontOfSize(16),
-            Lines = 0 // Allow multiple lines
-        };
+            _trail = trail;
+            View!.BackgroundColor = UIColor.White;
+        }
 
-        // Create a map view to display the start location
-        MKMapView mapView = new MKMapView
+        public override void ViewDidLoad()
         {
-            TranslatesAutoresizingMaskIntoConstraints = false
-        };
+            base.ViewDidLoad();
 
-        // Set the map's region to center on the trail's start location
-        CLLocationCoordinate2D coordinate = TrailStartLocation.Coordinate;
-        MKCoordinateRegion region = MKCoordinateRegion.FromDistance(coordinate, 1000, 1000);
-        mapView.SetRegion(region, animated: false);
+            this.Title = TrailName;
 
-        // Add a pin annotation to the map at the trail's start location
-        MKPointAnnotation annotation = new MKPointAnnotation
-        {
-            Coordinate = coordinate,
-            Title = "START"
-        };
-        mapView.AddAnnotation(annotation);
+            // Create labels for trail details
+            UILabel descriptionLabel = new UILabel
+            {
+                Text = $"Description: {TrailDescription}",
+                Font = UIFont.SystemFontOfSize(16),
+                Lines = 0 // Allow multiple lines
+            };
 
-        // Add labels and map view to the view
-        View!.AddSubviews(descriptionLabel, mapView);
+            UILabel distanceLabel = new UILabel
+            {
+                Text = $"Distance: {TrailDistance} km",
+                Font = UIFont.SystemFontOfSize(16)
+            };
 
-        // Set up constraints for labels and map view
-        descriptionLabel.TranslatesAutoresizingMaskIntoConstraints = false;
-        NSLayoutConstraint.ActivateConstraints(new[]
-        {
-            descriptionLabel.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor, 20),
-            descriptionLabel.LeadingAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.LeadingAnchor, 20),
-            descriptionLabel.TrailingAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TrailingAnchor, -20),
+            UILabel difficultyLabel = new UILabel
+            {
+                Text = $"Difficulty: {TrailDifficulty}",
+                Font = UIFont.SystemFontOfSize(16)
+            };
 
-            mapView.TopAnchor.ConstraintEqualTo(descriptionLabel.BottomAnchor, 20),
-            mapView.LeadingAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.LeadingAnchor, 20),
-            mapView.TrailingAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TrailingAnchor, -20),
-            mapView.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor, -20)
-        });
+            UILabel terrainTypeLabel = new UILabel
+            {
+                Text = $"Terrain Type: {TrailTerrainType}",
+                Font = UIFont.SystemFontOfSize(16)
+            };
+
+            // Create a map view to display the start location
+            MKMapView mapView = new MKMapView
+            {
+                TranslatesAutoresizingMaskIntoConstraints = false
+            };
+
+            // Set the map's region to center on the trail's start location
+            CLLocationCoordinate2D coordinate = TrailStartLocation.Coordinate;
+            MKCoordinateRegion region = MKCoordinateRegion.FromDistance(coordinate, 1000, 1000);
+            mapView.SetRegion(region, animated: false);
+
+            // Add a pin annotation to the map at the trail's start location
+            MKPointAnnotation annotation = new MKPointAnnotation
+            {
+                Coordinate = coordinate,
+                Title = "START"
+            };
+            mapView.AddAnnotation(annotation);
+
+            // Add labels and map view to the view
+            View!.AddSubviews(descriptionLabel, distanceLabel, difficultyLabel, terrainTypeLabel, mapView);
+
+            // Set up constraints for labels and map view
+            descriptionLabel.TranslatesAutoresizingMaskIntoConstraints = false;
+            distanceLabel.TranslatesAutoresizingMaskIntoConstraints = false;
+            difficultyLabel.TranslatesAutoresizingMaskIntoConstraints = false;
+            terrainTypeLabel.TranslatesAutoresizingMaskIntoConstraints = false;
+
+            NSLayoutConstraint.ActivateConstraints(new[]
+            {
+                descriptionLabel.TopAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TopAnchor, 20),
+                descriptionLabel.LeadingAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.LeadingAnchor, 20),
+                descriptionLabel.TrailingAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TrailingAnchor, -20),
+
+                distanceLabel.TopAnchor.ConstraintEqualTo(descriptionLabel.BottomAnchor, 10),
+                distanceLabel.LeadingAnchor.ConstraintEqualTo(descriptionLabel.LeadingAnchor),
+                distanceLabel.TrailingAnchor.ConstraintEqualTo(descriptionLabel.TrailingAnchor),
+
+                difficultyLabel.TopAnchor.ConstraintEqualTo(distanceLabel.BottomAnchor, 10),
+                difficultyLabel.LeadingAnchor.ConstraintEqualTo(descriptionLabel.LeadingAnchor),
+                difficultyLabel.TrailingAnchor.ConstraintEqualTo(descriptionLabel.TrailingAnchor),
+
+                terrainTypeLabel.TopAnchor.ConstraintEqualTo(difficultyLabel.BottomAnchor, 10),
+                terrainTypeLabel.LeadingAnchor.ConstraintEqualTo(descriptionLabel.LeadingAnchor),
+                terrainTypeLabel.TrailingAnchor.ConstraintEqualTo(descriptionLabel.TrailingAnchor),
+
+                mapView.TopAnchor.ConstraintEqualTo(terrainTypeLabel.BottomAnchor, 20),
+                mapView.LeadingAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.LeadingAnchor, 20),
+                mapView.TrailingAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TrailingAnchor, -20),
+                mapView.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor, -20)
+            });
+        }
     }
 }
