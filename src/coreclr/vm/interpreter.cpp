@@ -9625,6 +9625,8 @@ void Interpreter::DoCallWork(bool virtualCall, void* thisArg, CORINFO_RESOLVED_T
     {
         _ASSERTE(m_callThisArg == NULL);  // "m_callThisArg" non-null only for .ctor, which are not callvirts.
 
+        bool staticAbstract = false;
+
         // The constrained. prefix will be immediately followed by a ldftn, call or callvirt instruction.
         // See Ecma-335-Augments.md#iii21-constrained---prefix-invoke-a-member-on-a-value-of-a-variable-type-page-316 for more detail
         if (sigInfo.hasThis())
@@ -9637,7 +9639,8 @@ void Interpreter::DoCallWork(bool virtualCall, void* thisArg, CORINFO_RESOLVED_T
         else
         {
             // If the constrained. prefix is applied to a call or ldftn instruction, method must be a virtual static method.
-            // TODO: Assert it is a virtual static method.
+            OPCODE opcode = (OPCODE)(*m_ILCodePtr);
+            staticAbstract = (opcode == CEE_CALL || opcode == CEE_LDFTN) && methToCall->IsStatic();
         }
 
         // We only cache for the CORINFO_NO_THIS_TRANSFORM case, so we may assume that if we have a cached call site,
@@ -9683,7 +9686,7 @@ void Interpreter::DoCallWork(bool virtualCall, void* thisArg, CORINFO_RESOLVED_T
                 DWORD exactClassAttribs = m_interpCeeInfo.getClassAttribs(exactClass);
                 // If the constraint type is a value class, then it is the exact class (which will be the
                 // "owner type" in the MDCS below.)  If it is not, leave it as the (precise) interface method.
-                if (exactClassAttribs & CORINFO_FLG_VALUECLASS)
+                if (exactClassAttribs & CORINFO_FLG_VALUECLASS && !staticAbstract)
                 {
                     MethodTable* exactClassMT = GetMethodTableFromClsHnd(exactClass);
                     // Find the method on exactClass corresponding to methToCall.
@@ -9696,6 +9699,8 @@ void Interpreter::DoCallWork(bool virtualCall, void* thisArg, CORINFO_RESOLVED_T
                 }
                 else
                 {
+                    if (staticAbstract)
+                        methToCall = reinterpret_cast<MethodDesc*>(callInfoPtr->hMethod);
                     exactClass = methTokPtr->hClass;
                 }
             }
@@ -10565,7 +10570,11 @@ void Interpreter::CallI()
             // change the GC mode.  (We'll only do this at the call if the calling convention turns out
             // to be a managed calling convention.)
             MethodDesc* pStubContextMD = reinterpret_cast<MethodDesc*>(m_stubContext);
-            bool transitionToPreemptive = (pStubContextMD != NULL && !pStubContextMD->IsIL());
+            bool transitionToPreemptive;
+            {
+                GCX_PREEMP();
+                transitionToPreemptive = (pStubContextMD != NULL && !pStubContextMD->IsIL() && !pStubContextMD->ShouldSuppressGCTransition());
+            }
             mdcs.CallTargetWorker(args, &retVal, sizeof(retVal), transitionToPreemptive);
         }
         // retVal is now vulnerable.
@@ -11015,8 +11024,8 @@ void Interpreter::DoGetMethodTable()
 
     MethodTable* pMT = obj->RawGetMethodTable();
 
-    OpStackSet<MethodTable*>(m_curStackHt, pMT);
-    OpStackTypeSet(m_curStackHt, InterpreterType(CORINFO_TYPE_NATIVEINT));
+    OpStackSet<MethodTable*>(ind, pMT);
+    OpStackTypeSet(ind, InterpreterType(CORINFO_TYPE_NATIVEINT));
 }
 
 bool Interpreter::DoInterlockedCompareExchange(CorInfoType retType)
