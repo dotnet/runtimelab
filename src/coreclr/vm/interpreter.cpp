@@ -11024,8 +11024,8 @@ void Interpreter::DoGetMethodTable()
 
     MethodTable* pMT = obj->RawGetMethodTable();
 
-    OpStackSet<MethodTable*>(m_curStackHt, pMT);
-    OpStackTypeSet(m_curStackHt, InterpreterType(CORINFO_TYPE_NATIVEINT));
+    OpStackSet<MethodTable*>(ind, pMT);
+    OpStackTypeSet(ind, InterpreterType(CORINFO_TYPE_NATIVEINT));
 }
 
 bool Interpreter::DoInterlockedCompareExchange(CorInfoType retType)

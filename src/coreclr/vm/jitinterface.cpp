@@ -7704,6 +7704,7 @@ CEEInfo::getMethodInfo(
         getMethodInfoHelper(cxt, methInfo, context);
         result = true;
     }
+#ifndef FEATURE_INTERPRETER
     else if (ftn->IsIL() && ftn->GetRVA() == 0)
     {
         // We will either find or create transient method details.
@@ -7733,6 +7734,7 @@ CEEInfo::getMethodInfo(
 
         result = true;
     }
+#endif // !FEATURE_INTERPRETER
 
     if (result)
     {
