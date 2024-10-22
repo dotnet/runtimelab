@@ -98,8 +98,8 @@ namespace HikingApp.MacCatalyst.ViewControllers
                 terrainTypeLabel.TrailingAnchor.ConstraintEqualTo(descriptionLabel.TrailingAnchor),
 
                 mapView.TopAnchor.ConstraintEqualTo(terrainTypeLabel.BottomAnchor, 20),
-                mapView.LeadingAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.LeadingAnchor, 20),
-                mapView.TrailingAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.TrailingAnchor, -20),
+                mapView.LeadingAnchor.ConstraintEqualTo(descriptionLabel.LeadingAnchor),
+                mapView.TrailingAnchor.ConstraintEqualTo(descriptionLabel.TrailingAnchor),
                 mapView.BottomAnchor.ConstraintEqualTo(View.SafeAreaLayoutGuide.BottomAnchor, -20)
             });
         }

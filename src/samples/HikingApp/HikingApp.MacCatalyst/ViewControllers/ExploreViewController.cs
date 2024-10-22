@@ -91,7 +91,6 @@ internal class ExploreViewController : UIViewController
                 imageView.LeadingAnchor.ConstraintEqualTo(trailView.LeadingAnchor, 10),
                 imageView.WidthAnchor.ConstraintEqualTo(150),
                 imageView.HeightAnchor.ConstraintEqualTo(150),
-                purchaseButton.BottomAnchor.ConstraintEqualTo(trailView.BottomAnchor),
 
                 nameLabel.TopAnchor.ConstraintEqualTo(trailView.TopAnchor, 10),
                 nameLabel.LeadingAnchor.ConstraintEqualTo(imageView.TrailingAnchor, 10),
