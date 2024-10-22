@@ -1,7 +1,9 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 using System.Collections.ObjectModel;
 
 namespace HikingApp.MacCatalyst.ViewControllers;
-
 
 internal class ExploreViewController : UIViewController
 {
