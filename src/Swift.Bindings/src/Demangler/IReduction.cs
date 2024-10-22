@@ -56,6 +56,23 @@ public class FunctionReduction : IReduction {
 }
 
 /// <summary>
+/// Represents a dispatch thunk for a function.
+/// While they are identical in terms of content, having this as a separate type will make it easy to locate
+/// dispatch thunks.
+/// </summary>
+public class DispatchThunkFunctionReduction : FunctionReduction {
+    /// <summary>
+    /// Factory method to create a DispatchThunkFunctionReduction from a FunctionReduction
+    /// </summary>
+    /// <param name="reduction">The FunctionReduction to copy</param>
+    /// <returns>A DispatchThunkFunctionReduction that matches the give FunctionReduction</returns>
+    public static DispatchThunkFunctionReduction FromFunctionReduction (FunctionReduction reduction)
+    {
+        return new DispatchThunkFunctionReduction() { Symbol = reduction.Symbol, Function = reduction.Function };
+    }
+}
+
+/// <summary>
 /// Represents a reduction to a protocol witness table
 /// </summary>
 public class ProtocolWitnessTableReduction : IReduction {
