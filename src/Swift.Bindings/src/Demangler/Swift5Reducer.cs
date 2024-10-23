@@ -96,7 +96,9 @@ internal class Swift5Reducer {
             Name = "Function", NodeKind = NodeKind.Function, Reducer = ConvertFunction,
             ChildRules = new List<MatchRule> () {
                 new MatchRule () {
-                    Name = "Module", NodeKind = NodeKind.Module, Reducer = MatchRule.ErrorReducer
+                    Name = "Provenance", NodeKindList = new List<NodeKind> () {
+                        NodeKind.Module, NodeKind.Class, NodeKind.Structure, NodeKind.Protocol, NodeKind.Enum },
+                        Reducer = MatchRule.ErrorReducer
                 },
                 new MatchRule () {
                     Name = "Identifier", NodeKind = NodeKind.Identifier, Reducer = MatchRule.ErrorReducer
@@ -107,6 +109,44 @@ internal class Swift5Reducer {
                 new MatchRule () {
                     Name = "Type", NodeKind = NodeKind.Type, Reducer = MatchRule.ErrorReducer
                 },
+            }
+        },
+        new MatchRule() {
+            Name = "Function", NodeKind = NodeKind.Function, Reducer = ConvertFunction,
+            ChildRules = new List<MatchRule> () {
+                new MatchRule () {
+                    Name = "Provenance", NodeKindList = new List<NodeKind> () {
+                        NodeKind.Module, NodeKind.Class, NodeKind.Structure, NodeKind.Protocol, NodeKind.Enum },
+                        Reducer = MatchRule.ErrorReducer
+                },
+                new MatchRule () {
+                    Name = "Identifier", NodeKind = NodeKind.Identifier, Reducer = MatchRule.ErrorReducer
+                },
+                new MatchRule () {
+                    Name = "Type", NodeKind = NodeKind.Type, Reducer = MatchRule.ErrorReducer
+                },
+            }
+        },
+        new MatchRule() {
+            Name = "Allocator", NodeKind = NodeKind.Allocator, Reducer = ConvertAllocator,
+            ChildRules = new List<MatchRule> () {
+                new MatchRule () {
+                    Name = "AllocatorProvenance", NodeKindList = new List<NodeKind> () {
+                        NodeKind.Module, NodeKind.Class, NodeKind.Structure, NodeKind.Protocol, NodeKind.Enum },
+                        Reducer = MatchRule.ErrorReducer
+                },
+                new MatchRule () {
+                    Name = "AllocatorType", NodeKind = NodeKind.Type, Reducer = MatchRule.ErrorReducer
+                },
+            }
+        },
+        new MatchRule() {
+            Name = "DispatchThunkFunction", NodeKind = NodeKind.DispatchThunk, Reducer = ConvertDispatchThunkFunction,
+            ChildRules = new List<MatchRule> () {
+                new MatchRule () {
+                    Name = "Function", NodeKindList = new List<NodeKind> () { NodeKind.Function, NodeKind.Allocator },
+                    Reducer = MatchRule.ErrorReducer
+                }
             }
         },
     };
@@ -337,33 +377,35 @@ internal class Swift5Reducer {
     {
         // Expecting:
         // Function
-        //   Module
+        //   Module/Nominal (provenance)
         //   Identifier
-        //   LabelList
+        //   [LabelList]
         //   Type
-        var moduleNode = node.Children [0];
+        var provenanceNode = node.Children [0];
         var identifierNode = node.Children [1];
-        var labelList = node.Children [2];
-        var typeNode = node.Children [3];
+        var labelList = node.Children [2].Kind == NodeKind.LabelList ? node.Children [2] : null;
+        var typeNodeIndex = labelList is not null ? 3 : 2;
+        var typeNode = node.Children [typeNodeIndex];
 
-        var reduction = Convert (moduleNode);
+        var reduction = Convert (provenanceNode);
+        if (reduction is TypeSpecReduction ts)
+            reduction = TypeSpecToProvenance (ts);
+
         if (reduction is ReductionError error)
             return error;
         else if (reduction is ProvenanceReduction provenance) {
             var identifier = identifierNode.Text;
-            var labels = labelList.Children.Select (n => n.Text).ToArray();
+            var labels = labelList is not null ? labelList.Children.Select (n => n.Kind == NodeKind.Identifier ? n.Text : "").ToArray() : new string [0];
             reduction = Convert (typeNode);
             if (reduction is ReductionError typeError)
                 return typeError;
             else if (reduction is TypeSpecReduction typeSpecReduction) {
                 if (typeSpecReduction.TypeSpec is ClosureTypeSpec closure) {
-                    if (closure.ArgumentCount () != labels.Length)
-                        return ReductionError (ExpectedButGot ($"Expected {closure.ArgumentCount} labels", $"{labels.Length}"));
 
-                    var newArgs = new List<TypeSpec> (labels.Length);                    
                     var args = closure.ArgumentsAsTuple;
                     for (var i = 0; i < labels.Length; i++) {
-                        args.Elements [i].TypeLabel = labels [i];
+                        if (!string.IsNullOrEmpty (labels [i]))
+                            args.Elements [i].TypeLabel = labels [i];
                     }
                     var function = new SwiftFunction () { Name = identifier, ParameterList = args, Provenance = provenance.Provenance, Return = closure.ReturnType };
                     return new FunctionReduction () { Symbol = mangledName, Function = function };
@@ -375,6 +417,68 @@ internal class Swift5Reducer {
             }
         } else {
             return ReductionError (ExpectedButGot ("ProvenanceReduction in Function Module", reduction.GetType ().Name));
+        }
+    }
+
+    /// <summary>
+    /// ConvertAllocator converts an Allocator node to a FunctionRetuction. An allocator is similar to a function except that it
+    /// never has an implicit name instead of an Identifier and it never has a LabelList since there are never any parameters.
+    /// </summary>
+    /// <param name="node">An Allocator node</param>
+    /// <param name="name">an optional name</param>
+    /// <returns>A FunctionReduction</returns>
+    IReduction ConvertAllocator (Node node, string? name)
+    {
+        // Expecting:
+        // Function
+        //   Module/Nominal (provenance)
+        //   Type
+        var provenanceNode = node.Children [0];
+        var typeNode = node.Children [1];
+
+        var reduction = Convert (provenanceNode);
+        if (reduction is TypeSpecReduction ts)
+            reduction = TypeSpecToProvenance (ts);
+
+        if (reduction is ReductionError error)
+            return error;
+        else if (reduction is ProvenanceReduction provenance) {
+            var identifier = "__allocating_init";
+            reduction = Convert (typeNode);
+            if (reduction is ReductionError typeError)
+                return typeError;
+            else if (reduction is TypeSpecReduction typeSpecReduction) {
+                if (typeSpecReduction.TypeSpec is ClosureTypeSpec closure) {
+                    var args = closure.ArgumentsAsTuple;
+                    var function = new SwiftFunction () { Name = identifier, ParameterList = args, Provenance = provenance.Provenance, Return = closure.ReturnType };
+                    return new FunctionReduction () { Symbol = mangledName, Function = function };
+                } else {
+                    return ReductionError (ExpectedButGot ("ClosureTypeSpec as Allocator Type", typeSpecReduction.TypeSpec.GetType ().Name));
+                }
+            } else {
+                return ReductionError (ExpectedButGot ("TypeSpecReduction in Allocator Type", reduction.GetType ().Name));
+            }
+        } else {
+            return ReductionError (ExpectedButGot ("ProvenanceReduction in Allocator Module", reduction.GetType ().Name));
+        }
+    }
+
+    /// <summary>
+    /// ConvertDispatchThunkFunction converts a DispatchThunk node to a DispatchThunkFunctionReduction. This is essentially
+    /// the same as a FunctionReduction but in a different type so it's easy to locate
+    /// </summary>
+    /// <param name="node">A DispatchThunk node</param>
+    /// <param name="name">An optional name</param>
+    /// <returns>A DispatchThunkFunctionReduction</returns>
+    IReduction ConvertDispatchThunkFunction (Node node, string? name)
+    {
+        var childReduction = ConvertFirstChild (node, name);
+        if (childReduction is ReductionError error)
+            return error;
+        if (childReduction is FunctionReduction funcReduction) {
+            return DispatchThunkFunctionReduction.FromFunctionReduction (funcReduction);
+        } else {
+            return ReductionError (ExpectedButGot ("FunctionReduction in DispatchThunk", childReduction.GetType ().Name));
         }
     }
 
@@ -434,5 +538,17 @@ internal class Swift5Reducer {
     ReductionError ReductionError (string message)
     {
         return new ReductionError() { Symbol = mangledName, Message = message };
+    }
+
+    /// <summary>
+    /// Converts a TypeSpecReduction to a ProvenanceReduction, expecting it to contain a NamedTypeSpec
+    /// </summary>
+    /// <param name="ts">a TypeSpecReduction to convert</param>
+    /// <returns>A ProvenanceReduction if the TypeSpecReduction contains a NamedTypeSpec, otherwise a ReductionError</returns>
+    IReduction TypeSpecToProvenance (TypeSpecReduction ts)
+    {
+        if (ts.TypeSpec is NamedTypeSpec ns)
+            return ProvenanceReduction.Instance (ts.Symbol, ns);
+        return ReductionError (ExpectedButGot ("NamedTypeSpec in TypeSpecReduction", ts.TypeSpec.GetType ().Name));
     }
 }
