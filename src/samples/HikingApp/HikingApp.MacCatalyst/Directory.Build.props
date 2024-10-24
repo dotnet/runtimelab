@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <UseCustomRuntimeVersion>false</UseCustomRuntimeVersion>
+
+    <BaseOutputPath>bin/</BaseOutputPath>
+    <BaseIntermediateOutputPath>obj/</BaseIntermediateOutputPath>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.DotNet.Arcade.Sdk" />
+</Project>
