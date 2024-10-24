@@ -52,8 +52,7 @@ namespace BindingsGeneration.Demangling {
 				}
 				return nextReduction;
 			} else if (topLevelNode is not null) {
-				var reducer = new Swift5Reducer (originalIdentifier);
-				return reducer.Convert (topLevelNode);
+				return Swift5Reducer.Convert (topLevelNode, originalIdentifier);
 			} else {
 				return new ReductionError () {Symbol = originalIdentifier,  Message = $"Unable to demangle {originalIdentifier}" };
 			}
