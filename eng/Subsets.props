@@ -56,7 +56,7 @@
 
   <PropertyGroup>
     <RuntimeFlavor Condition="'$(TargetsMobile)' == 'true' and !$(_subset.Contains('+clr.nativeaotlibs+'))">Mono</RuntimeFlavor>
-    <RuntimeFlavor Condition="('$(TargetsMobile)' == 'true' or '$(TargetsLinuxBionic)' == 'true') and ($(_subset.Contains('+clr.')) or $(_subset.Contains('+nativeaot.')) or '$(TestNativeAot)' == 'true')">CoreCLR</RuntimeFlavor>
+    <RuntimeFlavor Condition="('$(TargetsMobile)' == 'true' or '$(TargetsLinuxBionic)' == 'true') and $(_subset.Contains('+clr.nativeaotlibs+'))">CoreCLR</RuntimeFlavor>
     <RuntimeFlavor Condition="'$(RuntimeFlavor)' == '' and ($(_subset.Contains('+mono+')) or $(_subset.Contains('+mono.runtime+'))) and (!$(_subset.Contains('+clr+')) and !$(_subset.Contains('+clr.runtime+')))">Mono</RuntimeFlavor>
     <RuntimeFlavor Condition="'$(RuntimeFlavor)' == ''">$(PrimaryRuntimeFlavor)</RuntimeFlavor>
   </PropertyGroup>
@@ -68,8 +68,6 @@
     <DefaultCoreClrSubsets Condition="'$(PrimaryRuntimeFlavor)' != 'CoreCLR'">clr.iltools+clr.packages</DefaultCoreClrSubsets>
 
     <DefaultNativeAotSubsets>clr.alljits+clr.tools+clr.nativeaotlibs+clr.nativeaotruntime</DefaultNativeAotSubsets>
-    <DefaultNativeAotSubsets Condition="'$(TargetsWasm)' == 'true'">clr.nativeaotlibs+clr.nativeaotruntime+nativeaot.build</DefaultNativeAotSubsets>
-    <DefaultNativeAotSubsets Condition="'$(TargetsBrowser)' == 'true'">$(DefaultNativeAotSubsets)+mono.wasmruntime</DefaultNativeAotSubsets>
 
     <DefaultMonoSubsets Condition="'$(MonoEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
     <DefaultMonoSubsets Condition="'$(MonoAOTEnableLLVM)' == 'true' and '$(MonoLLVMDir)' == ''">mono.llvm+</DefaultMonoSubsets>
@@ -128,7 +126,6 @@
 
     <!-- If we're building clr.nativeaotlibs and not building the CLR runtime, compile libraries against NativeAOT CoreLib -->
     <UseNativeAotCoreLib Condition="'$(TestNativeAot)' == 'true' or ($(_subset.Contains('+clr.nativeaotlibs+')) and !$(_subset.Contains('+clr.native+')) and !$(_subset.Contains('+clr.runtime+')) and !$(_subset.Contains('+clr.corelib+')))">true</UseNativeAotCoreLib>
-    <UseNativeAotCoreLib Condition="'$(UseNativeAotCoreLib)' == '' and $(_subset.Contains('+nativeaot.'))">true</UseNativeAotCoreLib>
   </PropertyGroup>
 
   <!-- Configure build properties for C++ runtime library references. -->
@@ -139,10 +136,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- CoreClr Native AOT -->
-    <SubsetName Include="NativeAot.Packages" Description="The CoreCLR native AOT compiler." />
-    <SubsetName Include="NativeAot.Build" Description="The CoreCLR native AOT build integration." />
-
     <!-- CoreClr -->
     <SubsetName Include="Clr" Description="The full CoreCLR runtime. Equivalent to: $(DefaultCoreClrSubsets)" />
     <SubsetName Include="Clr.NativePrereqs" Description="Managed tools that support building the native components of the runtime (such as DacTableGen)." />
@@ -157,7 +150,6 @@
     <SubsetName Include="Clr.PalTestList" OnDemand="true" Description="Generate the list of the CoreCLR PAL tests. When using the command line, use Clr.PalTests instead." />
     <SubsetName Include="Clr.Hosts" Description="The CoreCLR corerun test host." />
     <SubsetName Include="Clr.Jit" Description="The JIT for the CoreCLR .NET runtime." />
-    <SubsetName Include="Clr.WasmJit" Description="The cross-compiling CoreCLR JIT targeting WebAssembly." />
     <SubsetName Include="Clr.AllJits" Description="All of the cross-targeting JIT compilers for the CoreCLR .NET runtime." />
     <SubsetName Include="Clr.Spmi" Description="SuperPMI, a tool for CoreCLR JIT testing." />
     <SubsetName Include="Clr.CoreLib" Description="The managed System.Private.CoreLib library for CoreCLR." />
@@ -214,7 +206,6 @@
     <SubsetName Include="Packs.Tests" Description="The framework pack tests." />
 
     <!-- Utility -->
-    <SubsetName Include="publish" OnDemand="true" Description="Generate asset manifests and prepare to publish to BAR." />
     <SubsetName Include="RegenerateDownloadTable" OnDemand="true" Description="Regenerates the nightly build download table" />
     <SubsetName Include="RegenerateThirdPartyNotices" OnDemand="true" Description="Regenerates the THIRD-PARTY-NOTICES.TXT file based on other repos' TPN files." />
     <SubsetName Include="tasks" OnDemand="true" Description="Build the repo local task projects." />
@@ -252,10 +243,6 @@
     <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrJitSubset=true</ClrRuntimeBuildSubsets>
   </PropertyGroup>
 
-  <PropertyGroup Condition="$(_subset.Contains('+clr.wasmjit+'))">
-    <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrWasmJitSubset=true</ClrRuntimeBuildSubsets>
-  </PropertyGroup>
-
   <PropertyGroup Condition="$(_subset.Contains('+clr.paltests+'))">
     <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrPalTestsSubset=true</ClrRuntimeBuildSubsets>
   </PropertyGroup>
@@ -268,7 +255,7 @@
     <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrILToolsSubset=true</ClrRuntimeBuildSubsets>
   </PropertyGroup>
 
-  <PropertyGroup Condition="$(_subset.Contains('+clr.nativeaotruntime+')) and ('$(NativeAotSupported)' == 'true' or '$(TargetsWasm)' == 'true')">
+  <PropertyGroup Condition="$(_subset.Contains('+clr.nativeaotruntime+')) and '$(NativeAotSupported)' == 'true'">
     <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrNativeAotSubset=true</ClrRuntimeBuildSubsets>
   </PropertyGroup>
 
@@ -291,7 +278,7 @@
     Build the CoreCLR cross tools when we're doing a cross build and either we're building any CoreCLR native tools for platforms CoreCLR fully supports or when someone explicitly requests them.
     The cross tools are used as part of the build process with the downloaded build tools, so we need to build them for the host architecture and build them as unsanitized binaries.
     -->
-  <ItemGroup Condition="(('$(ClrRuntimeBuildSubsets)' != '' and ('$(PrimaryRuntimeFlavor)' == 'CoreCLR' or '$(TargetsMobile)' == 'true')) or $(_subset.Contains('+clr.crossarchtools+'))) and ('$(CrossBuild)' == 'true' or '$(BuildArchitecture)' != '$(TargetArchitecture)' or '$(EnableNativeSanitizers)' != '') and '$(TargetArchitecture)' != 'wasm'">
+  <ItemGroup Condition="(('$(ClrRuntimeBuildSubsets)' != '' and ('$(PrimaryRuntimeFlavor)' == 'CoreCLR' or '$(TargetsMobile)' == 'true')) or $(_subset.Contains('+clr.crossarchtools+'))) and ('$(CrossBuild)' == 'true' or '$(BuildArchitecture)' != '$(TargetArchitecture)' or '$(EnableNativeSanitizers)' != '')">
     <ProjectToBuild
       Include="$(CoreClrProjectRoot)runtime.proj"
       AdditionalProperties="%(AdditionalProperties);
@@ -431,18 +418,13 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\dotnet-pgo\dotnet-pgo-pack.proj" Pack="true" Category="clr" Condition="'$(DotNetBuildSourceOnly)' != 'true' and '$(RuntimeFlavor)' != 'Mono'"/>
   </ItemGroup>
 
-  <ItemGroup Condition="$(_subset.Contains('+clr.nativeaotlibs+')) and ('$(NativeAotSupported)' == 'true' or ('$(TargetArchitecture)' == 'wasm'))">
+  <ItemGroup Condition="$(_subset.Contains('+clr.nativeaotlibs+')) and '$(NativeAotSupported)' == 'true'">
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\**\src\*.csproj" Category="clr" />
-  </ItemGroup>
-
-  <ItemGroup Condition="$(_subset.Contains('+nativeaot.build+'))">
-    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
   </ItemGroup>
 
   <!-- Mono sets -->
   <ItemGroup Condition="$(_subset.Contains('+mono.llvm+')) or $(_subset.Contains('+mono.aotcross+')) or '$(TargetOS)' == 'ios' or '$(TargetOS)' == 'iossimulator' or '$(TargetOS)' == 'tvos' or '$(TargetOS)' == 'tvossimulator' or '$(TargetOS)' == 'maccatalyst' or '$(TargetOS)' == 'android' or '$(TargetOS)' == 'browser' or '$(TargetOS)' == 'wasi' or '$(TargetsLinuxBionic)' == 'true'">
-    <ProjectToBuild Include="$(MonoProjectRoot)llvm\llvm-init.proj" Category="mono" Condition="'$(RuntimeFlavor)' == 'mono'" />
+    <ProjectToBuild Include="$(MonoProjectRoot)llvm\llvm-init.proj" Category="mono" />
   </ItemGroup>
 
   <ItemGroup Condition="$(_subset.Contains('+mono.manifests+'))">
@@ -575,14 +557,6 @@
   <ItemGroup Condition="$(_subset.Contains('+packs.tests+')) AND '$(BuildOnlyPgoInstrumentedAssets)' != 'true'">
     <TestProjectToBuild Include="$(InstallerProjectRoot)tests\Microsoft.DotNet.CoreSetup.Packaging.Tests\Microsoft.DotNet.CoreSetup.Packaging.Tests.csproj" />
     <ProjectToBuild Include="@(TestProjectToBuild)" BuildInParallel="true" Test="true" Category="packs" />
-  </ItemGroup>
-
-  <ItemGroup Condition="$(_subset.Contains('+publish+'))">
-    <ProjectToBuild Include="$(InstallerProjectRoot)prepare-artifacts.proj" Pack="true" Category="publish" />
-  </ItemGroup>
-
-  <ItemGroup Condition="$(_subset.Contains('+nativeaot.packages+'))">
-    <ProjectToBuild Include="$(InstallerProjectRoot)\pkg\projects\nativeaot-packages.proj" Category="packs" />
   </ItemGroup>
 
   <!-- Utility -->

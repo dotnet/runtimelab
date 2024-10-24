@@ -28,12 +28,6 @@
     <CoreCLRAotSdkDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'aotsdk'))</CoreCLRAotSdkDir>
     <CoreCLRBuildIntegrationDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'build'))</CoreCLRBuildIntegrationDir>
 
-    <!-- NativeAOT-LLVM: we set up cross-compilation for WASM differently from upstream. The upstream cross-compilation scheme
-         does not scale for local development because it requires you to build the same host tools for each target configuration.
-         E. g. you need to build the same Debug compiler 3 times if you want to compile code in Debug, Checked and Release. -->
-    <IlcConfig Condition="'$(IlcConfig)' == ''">$(CoreCLRConfiguration)</IlcConfig>
-    <CoreCLRCrossILCompilerDir Condition="'$(CoreCLRCrossILCompilerDir)' != '' and '$(TargetsWasm)' == 'true'">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(BuildArchitecture).$(IlcConfig)', 'ilc'))</CoreCLRCrossILCompilerDir>
-
     <Crossgen2Dir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'crossgen2-published'))</Crossgen2Dir>
     <Crossgen2InBuildDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', '$(BuildArchitecture)', 'crossgen2'))</Crossgen2InBuildDir>
 
@@ -67,16 +61,7 @@
     <SingleFileHostSourcePath>$([MSBuild]::NormalizePath('$(CoreCLRArtifactsPath)', 'corehost', 'singlefilehost$(ExeSuffix)'))</SingleFileHostSourcePath>
   </PropertyGroup>
 
-  <!-- Not a live build, but allow overriding the LKG ILCompiler package with a specific version. -->
-  <PropertyGroup Condition="'$(UseNativeAotForComponents)' == 'true' and '$(PublishAot)' == 'true' and '$(MicrosoftDotNetILCompilerVersion)' != ''">
-    <SuppressGenerateILCompilerExplicitPackageReferenceWarning>true</SuppressGenerateILCompilerExplicitPackageReferenceWarning>
-  </PropertyGroup>
-  <ItemGroup Condition="'$(UseNativeAotForComponents)' == 'true' and '$(PublishAot)' == 'true' and '$(MicrosoftDotNetILCompilerVersion)' != ''">
-    <PackageReference Include="Microsoft.DotNet.ILCompiler" Version="$(MicrosoftDotNetILCompilerVersion)" />
-    <PackageReference Include="runtime.$(ToolsRID).Microsoft.DotNet.ILCompiler" Version="$(MicrosoftDotNetILCompilerVersion)" />
-  </ItemGroup>
-
-  <Target Name="ResolveRuntimeFilesFromLocalBuild" Condition="$(TestBuildMode) != 'nativeaot'">
+  <Target Name="ResolveRuntimeFilesFromLocalBuild">
     <Error Condition="!Exists('$(CoreCLRArtifactsPath)') and '$(RuntimeFlavor)' == 'CoreCLR'"
            Text="The CoreCLR artifacts path does not exist '$(CoreCLRArtifactsPath)'. The 'clr' subset must be built before building this project. Configuration: '$(CoreCLRConfiguration)'. To use a different configuration, specify the 'RuntimeConfiguration' property." />
     <Error Condition="!Exists('$(MonoArtifactsPath)') and '$(RuntimeFlavor)' == 'Mono'"
@@ -217,17 +202,7 @@
         $(LibrariesNativeArtifactsPath)*.dex;
         $(LibrariesNativeArtifactsPath)*.jar;"
         IsNative="true" />
-
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
-                             Include="
-        $(LibrariesNativeArtifactsPath)pal_random.lib.js;"
-        IsNative="true" />
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'wasi' and '$(RuntimeFlavor)' == 'CoreCLR'"
-                             Include="
-        $(LibrariesNativeArtifactsPath)*.wit;"
-        IsNative="true" />
-
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'Mono'"
+      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser'"
                              Include="
         $(LibrariesNativeArtifactsPath)dotnet.js;
         $(LibrariesNativeArtifactsPath)dotnet.js.map;
@@ -242,13 +217,12 @@
         $(LibrariesNativeArtifactsPath)*.dat;
         $(LibrariesNativeArtifactsPath)segmentation-rules.json;"
         IsNative="true" />
-
       <!-- for threaded wasm -->
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'Mono' and Exists('$(LibrariesNativeArtifactsPath)dotnet.native.worker.mjs')"
+      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and Exists('$(LibrariesNativeArtifactsPath)dotnet.native.worker.mjs')"
                              Include="
         $(LibrariesNativeArtifactsPath)dotnet.native.worker.mjs"
         IsNative="true" />
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'Mono'"
+      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser'"
                              Include="
         $(LibrariesNativeArtifactsPath)src\*.c;
         $(LibrariesNativeArtifactsPath)src\*.js;
@@ -257,19 +231,19 @@
         $(LibrariesNativeArtifactsPath)src\wasm-props.json;"
         NativeSubDirectory="src"
         IsNative="true" />
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'Mono'"
+      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser'"
                              Include="$(LibrariesNativeArtifactsPath)src\es6\*.js"
                              NativeSubDirectory="src\es6"
                              IsNative="true" />
 
-      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'Mono'"
+      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser'"
                              Include="
         $(LibrariesNativeArtifactsPath)include\wasm\*.h;"
         NativeSubDirectory="include\wasm"
         IsNative="true" />
     </ItemGroup>
 
-    <ItemGroup Label="Wasi" Condition="'$(TargetOS)' == 'wasi' and '$(RuntimeFlavor)' == 'Mono'">
+    <ItemGroup Label="Wasi" Condition="'$(TargetOS)' == 'wasi'">
       <LibrariesRuntimeFiles
                              Include="
         $(LibrariesNativeArtifactsPath)dotnet.wasm;

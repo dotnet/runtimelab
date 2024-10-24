@@ -177,12 +177,10 @@ TEST_ARCH=$(_AndroidArchitecture)
     </PropertyGroup>
 
     <!-- Invoke the run script with the test host as the runtime path. -->
-    <!-- We set HELIX_WORKITEM_PAYLOAD to an empty string to prevent the runner script from exiting with code 0 if there's failures -->
     <Exec Command="$(RunTestsCommand)"
           ContinueOnError="true"
           IgnoreExitCode="true"
-          IgnoreStandardErrorWarningFormat="true"
-          EnvironmentVariables="HELIX_WORKITEM_PAYLOAD=;">
+          IgnoreStandardErrorWarningFormat="true">
       <Output PropertyName="TestRunExitCode" TaskParameter="ExitCode" />
     </Exec>
 
@@ -195,7 +193,7 @@ TEST_ARCH=$(_AndroidArchitecture)
     <Error Condition="'$(TestRunExitCode)' != '0'" Text="$(TestRunErrorMessage)" />
   </Target>
 
-  <Import Project="$(MSBuildThisFileDirectory)tests.mobile.targets" Condition="'$(TargetsMobile)' == 'true' and '$(TestNativeAot)' != 'true' and '$(TestBuildMode)' != 'nativeaot'" />
+  <Import Project="$(MSBuildThisFileDirectory)tests.mobile.targets" Condition="'$(TargetsMobile)' == 'true'" />
   <Import Project="$(MSBuildThisFileDirectory)tests.singlefile.targets" Condition="'$(TestSingleFile)' == 'true'" />
   <Import Project="$(MSBuildThisFileDirectory)xunit\xunit.targets" Condition="'$(TestFramework)' == 'xunit'" />
 

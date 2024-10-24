@@ -53,7 +53,7 @@
     <XunitExcludesTxtFileContent>$(_withoutCategories.Replace(';', '%0dcategory='))</XunitExcludesTxtFileContent>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TestSingleFile)' == 'true' and '$(TargetsWasm)' != 'true'">
+  <PropertyGroup Condition="'$(TestSingleFile)' == 'true'">
     <!-- Pass the results file -->
     <RunScriptCommand>$(RunScriptCommand) -xml $(TestResultsName)</RunScriptCommand>
   </PropertyGroup>

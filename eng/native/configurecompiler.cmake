@@ -1,7 +1,3 @@
-# Due to how we build the libraries native build as part of the CoreCLR build as well as standalone,
-# we can end up coming to this file twice. Only run it once to simplify our build.
-include_guard()
-
 include(${CMAKE_CURRENT_LIST_DIR}/configuretools.cmake)
 
 # Set initial flags for each configuration
@@ -699,15 +695,6 @@ if (CLR_CMAKE_HOST_UNIX)
 
 endif(CLR_CMAKE_HOST_UNIX)
 
-if(CLR_CMAKE_HOST_WASI)
-  # TODO-LLVM: deduplicate with the suppressions above (WASI is not "Unix").
-  add_compile_options(-Wno-unused-variable)
-  add_compile_options(-Wno-unused-value)
-  add_compile_options(-Wno-unused-function)
-  add_compile_options(-Wno-tautological-compare)
-  add_compile_options(-Wno-invalid-offsetof)
-endif()
-
 if(CLR_CMAKE_TARGET_UNIX)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_OS>>>:TARGET_UNIX>)
   # Contracts are disabled on UNIX.
@@ -747,12 +734,6 @@ if(CLR_CMAKE_TARGET_UNIX)
   endif()
 elseif(CLR_CMAKE_TARGET_WASI)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_OS>>>:TARGET_WASI>)
-  if (CLR_CMAKE_TARGET_OS STREQUAL wasi)
-    add_definitions(-D_WASI_EMULATED_PROCESS_CLOCKS -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_GETPID -D_GNU_SOURCE)
-    # no-unsafe-buffer-usage for pal_random.c
-    # no-unused-macros for _version.c
-    add_compile_options(-Wno-deprecated-declarations -Wno-unsafe-buffer-usage -Wno-unused-macros)
-  endif ()
 else(CLR_CMAKE_TARGET_UNIX)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_OS>>>:TARGET_WINDOWS>)
 endif(CLR_CMAKE_TARGET_UNIX)
@@ -853,12 +834,6 @@ if (MSVC)
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4961>) # No profile data was merged into '.pgd file', profile-guided optimizations disabled
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd5105>) # macro expansion producing 'defined' has undefined behavior
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd5205>) # delete of an abstract class 'type-name' that has a non-virtual destructor results in undefined behavior
-
-  # TODO-LLVM: turn into pragmas.
-  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4624>) # destructor was implicitly defined as deleted
-  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4324>) # structure was padded due to alignment specifier
-  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4146>) # unary minus operator applied to unsigned type, result still unsigned.  llvm does this in some headers, e.g. -(UINT64_C(1)<<(N-1))
-  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/wd4459>) # declaration of 'xxx' hides global declaration - LLVM does this for BitWidth in v15
 
   # Treat Warnings as Errors:
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/we4007>) # 'main' : must be __cdecl.

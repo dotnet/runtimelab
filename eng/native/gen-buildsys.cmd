@@ -2,7 +2,7 @@
 rem
 rem This file invokes cmake and generates the build system for windows.
 
-setlocal enabledelayedexpansion
+setlocal
 
 set argC=0
 for %%x in (%*) do Set /A argC+=1
@@ -12,8 +12,6 @@ if %1=="/?" GOTO :USAGE
 
 setlocal enabledelayedexpansion
 set "__repoRoot=%~dp0..\.."
-REM a parameter ending with \" seems to be causing a problem for python or emscripten so convert to forward slashes.
-set "__repoRoot=!__repoRoot:\=/!"
 :: normalize
 for %%i in ("%__repoRoot%") do set "__repoRoot=%%~fi"
 
@@ -24,30 +22,41 @@ set __Arch=%4
 set __Os=%5
 set __CmakeGenerator=Visual Studio
 set __UseEmcmake=0
-
 if /i "%__Ninja%" == "1" (
     set __CmakeGenerator=Ninja
 ) else (
-    if /i "%__VSVersion%" == "vs2022" (set __CmakeGenerator=%__CmakeGenerator% 17 2022)
+    if /i NOT "%__Arch%" == "wasm" (
+        if /i "%__VSVersion%" == "vs2022" (set __CmakeGenerator=%__CmakeGenerator% 17 2022)
 
-    if /i "%__Arch%" == "x64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A x64)
-    if /i "%__Arch%" == "arm" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM)
-    if /i "%__Arch%" == "arm64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM64)
-    if /i "%__Arch%" == "x86" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A Win32)
+        if /i "%__Arch%" == "x64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A x64)
+        if /i "%__Arch%" == "arm" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM)
+        if /i "%__Arch%" == "arm64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM64)
+        if /i "%__Arch%" == "x86" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A Win32)
+    ) else (
+        set __CmakeGenerator=NMake Makefiles
+    )
 )
 
 if /i "%__Arch%" == "wasm" (
+
     if "%__Os%" == "" (
         echo Error: Please add target OS parameter
         exit /B 1
     )
     if /i "%__Os%" == "browser" (
-        if "%EMSDK%" == "" (
-            echo Error: Should set EMSDK environment variable pointing to emsdk root.
-            exit /B 1
-        )
+        if "%EMSDK_PATH%" == "" (
+            if not exist "%__repoRoot%\src\mono\browser\emsdk" (
+                echo Error: Should set EMSDK_PATH environment variable pointing to emsdk root.
+                exit /B 1
+            )
 
-        set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+            set "EMSDK_PATH=%__repoRoot%\src\mono\browser\emsdk"
+        )
+        :: replace backslash with forward slash and append last slash
+        set "EMSDK_PATH=!EMSDK_PATH:\=/!"
+        if not "!EMSDK_PATH:~-1!" == "/" set "EMSDK_PATH=!EMSDK_PATH!/"
+
+        set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TOOLCHAIN_FILE=!EMSDK_PATH!/emscripten/cmake/Modules/Platform/Emscripten.cmake"
         set __UseEmcmake=1
     )
     if /i "%__Os%" == "wasi" (
@@ -100,7 +109,7 @@ if not "%__ConfigureOnly%" == "1" (
 )
 
 if /i "%__UseEmcmake%" == "1" (
-    call "!EMSDK!/emsdk_env" > nul 2>&1 && emcmake "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir%
+    call "!EMSDK_PATH!/emsdk_env.cmd" > nul 2>&1 && emcmake "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir%
 ) else (
     "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir%
 )

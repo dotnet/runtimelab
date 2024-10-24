@@ -50,29 +50,7 @@ extends:
     - stage: Build
       jobs:
         #
-        # Build and test with Debug libraries and Debug runtime
-        #
-        - template: /eng/pipelines/common/platform-matrix.yml
-          parameters:
-            jobTemplate: /eng/pipelines/common/global-build-job.yml
-            helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
-            buildConfig: debug
-            platforms:
-            - windows_x64
-            - browser_wasm_win
-            - wasi_wasm_win
-            - Browser_wasm_linux_x64_naot_llvm
-            - wasi_wasm_linux_x64_naot_llvm
-            jobParameters:
-              timeoutInMinutes: 300
-              buildArgs: -s clr.aot+libs -c debug -rc $(_BuildConfig)
-              postBuildSteps:
-                - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
-                  parameters:
-                    librariesConfiguration: Debug
-
-        #
-        # Build and test with Debug libraries and Checked runtime
+        # Build the whole product with Checked CoreCLR and run runtime tests
         #
         - template: /eng/pipelines/common/platform-matrix.yml
           parameters:
@@ -80,17 +58,21 @@ extends:
             helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
             buildConfig: checked
             platforms:
+            - linux_x64
             - windows_x64
             jobParameters:
-              timeoutInMinutes: 300
-              buildArgs: -s clr.aot+libs -c debug -rc $(_BuildConfig)
+              timeoutInMinutes: 200
+              buildArgs: -s clr+libs+clr.hosts+packs -c debug -rc $(_BuildConfig)
               postBuildSteps:
-                - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+                - template: /eng/pipelines/common/templates/runtimes/build-runtime-tests-and-send-to-helix.yml
                   parameters:
-                    librariesConfiguration: Debug
+                    creator: dotnet-bot
+                    testRunNamePrefixSuffix: CoreCLR_$(_BuildConfig)
+              extraVariablesTemplates:
+                - template: /eng/pipelines/common/templates/runtimes/test-variables.yml
 
         #
-        # Build and test with Release libraries and Release runtime
+        # Build the whole product with Release CoreCLR and run libraries tests
         #
         - template: /eng/pipelines/common/platform-matrix.yml
           parameters:
@@ -99,16 +81,30 @@ extends:
             buildConfig: release
             platforms:
             - linux_x64
-            - osx_x64
             - windows_x64
-            - Browser_wasm_win
-            - wasi_wasm_win
-            - wasi_wasm_linux_x64_naot_llvm
-            - Browser_wasm_linux_x64_naot_llvm
             jobParameters:
-              timeoutInMinutes: 300
-              buildArgs: -s clr.aot+libs -c $(_BuildConfig)
+              timeoutInMinutes: 180
+              buildArgs: -s clr+libs+libs.tests+clr.hosts+packs -c $(_BuildConfig) /p:ArchiveTests=true
               postBuildSteps:
-                - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+                - template: /eng/pipelines/libraries/helix.yml
                   parameters:
-                    librariesConfiguration: Release
+                    creator: dotnet-bot
+                    testRunNamePrefixSuffix: Libraries_$(_BuildConfig)
+              extraVariablesTemplates:
+                - template: /eng/pipelines/common/templates/runtimes/test-variables.yml
+
+        #
+        # Build and test libraries AllConfigurations
+        #
+        - template: /eng/pipelines/common/platform-matrix.yml
+          parameters:
+            jobTemplate: /eng/pipelines/common/global-build-job.yml
+            buildConfig: ${{ variables.debugOnPrReleaseOnRolling }}
+            platforms:
+            - windows_x64
+            jobParameters:
+              buildArgs: -test -s tools+libs+libs.tests -allConfigurations -c $(_BuildConfig) /p:TestAssemblies=false /p:TestPackages=true
+              nameSuffix: Libraries_AllConfigurations
+              timeoutInMinutes: 150
+              extraVariablesTemplates:
+                - template: /eng/pipelines/common/templates/runtimes/test-variables.yml
