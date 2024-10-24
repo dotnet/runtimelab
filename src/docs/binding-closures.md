@@ -1,6 +1,6 @@
 # Binding Closures
 
-Closures in Swift come in two general forms: escaping and non-escaping. A closure is considered escaping if it consinues to exist outside of the context that created it. For example, a closure paramater to a function that gets stored in a member variable in a class *must* be marked `@escaping` or the compiler will flag it as an error.
+Closures in Swift come in two general forms: escaping and non-escaping. A closure is considered escaping if it continues to exist outside of the context that created it. For example, a closure parameter to a function that gets stored in a member variable in a class *must* be marked `@escaping` or the compiler will flag it as an error.
 
 In either case, Swift closures, unlike some other languages, are full-fledged closures that can have both free and bound variables within the body of the closure.
 
@@ -10,7 +10,7 @@ Beyond the broad classification of escaping/non-escaping, closures can also be a
 
 Internally, closures are represented as 2 machine words:
 - Pointer to a function entry point for the closure (see below for details)
-- Pointer to the data context object for captured free variables or 0/null if there is no context object
+- Pointer to the data context object for captured free variables or 0/null if there is no context object. When the closure is called, this will be in the context/self register.
 
 ## Language Parity Mismatches
 
@@ -22,7 +22,7 @@ If you have a function like this in Swift:
 public func sorter<T>(arr: [T], by: (T, T) -> Int) { /* implementation not important */ }
 
 ```
-And `sorter` can by called by any of the following means:
+And `sorter` can be called by any of the following means:
 
 ```swift
 private func sort0 (a: Int, b: Int) -> Int {
@@ -108,7 +108,7 @@ public func callsIntoCSharp (a: @escaping (Int, SomeStruct, Bool) -> SomeOtherSt
 
 In this case, the original closure gets captured by `a_adapter`. Before calling the adapter, C# obviously has to create the argument tuple, space for the return value (allocated but not initialized) and can call it because effectively the delegate signature has become `delegate void csAdapter (IntPtr ret, IntPtr args)`. A similar process is used to get C# closures into Swift.
 
-One obvious problem here is that this only works with escaping closures. If rewritten with a non escaping closure, the act of capturing the original closure in the new one is flagged by the Swift compiler as an error. Fortunately, Swift has a workaround to this via the function [`withoutActuallyEscaping`](https://developer.apple.com/documentation/swift/withoutactuallyescaping(_:do:)/), for which the previous code can be rewritten as this:
+One obvious problem here is that this only works with escaping closures. If rewritten with a non-escaping closure, the act of capturing the original closure in the new one is flagged by the Swift compiler as an error. Fortunately, Swift has a workaround to this via the function [`withoutActuallyEscaping`](https://developer.apple.com/documentation/swift/withoutactuallyescaping(_:do:)/), for which the previous code can be rewritten as this:
 
 ```swift
 public func callsIntoCSharp (a: (Int, SomeStruct, Bool) -> SomeOtherStruct) {
