@@ -11,7 +11,7 @@ internal class ExploreViewController : UIViewController
 
     public ExploreViewController()
     {
-        AllTrails = new ObservableCollection<ViewControllers.TrailViewController>(Models.Trail.GetTestTrailData(5).Select(trail => new ViewControllers.TrailViewController(trail)));
+        AllTrails = new ObservableCollection<ViewControllers.TrailViewController>(Models.Trail.GetMockTrailData(5).Select(trail => new ViewControllers.TrailViewController(trail)));
 
         View!.BackgroundColor = UIColor.FromRGB(240, 240, 240);
     }
@@ -20,6 +20,7 @@ internal class ExploreViewController : UIViewController
      public override void ViewDidLoad ()
     {
         base.ViewDidLoad();
+        ArgumentNullException.ThrowIfNull(View);
 
         UIScrollView scrollView = new UIScrollView
         {
@@ -118,7 +119,7 @@ internal class ExploreViewController : UIViewController
         }
 
         scrollView.AddSubview(stackView);
-        View!.AddSubview(scrollView);
+        View.AddSubview(scrollView);
 
         // Set up constraints for the scroll view
         NSLayoutConstraint.ActivateConstraints(new[]

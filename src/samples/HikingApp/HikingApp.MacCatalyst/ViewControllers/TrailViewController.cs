@@ -27,6 +27,7 @@ internal class TrailViewController : UIViewController
     public override void ViewDidLoad()
     {
         base.ViewDidLoad();
+        ArgumentNullException.ThrowIfNull(View);
 
         this.Title = TrailName;
 
@@ -75,7 +76,7 @@ internal class TrailViewController : UIViewController
         };
         mapView.AddAnnotation(annotation);
 
-        View!.AddSubviews(descriptionLabel, distanceLabel, difficultyLabel, terrainTypeLabel, mapView);
+        View.AddSubviews(descriptionLabel, distanceLabel, difficultyLabel, terrainTypeLabel, mapView);
 
         // Set up constraints for labels and map view
         descriptionLabel.TranslatesAutoresizingMaskIntoConstraints = false;

@@ -12,10 +12,11 @@ namespace HikingApp.MacCatalyst.ViewControllers
         public override void ViewDidLoad()
         {
             base.ViewDidLoad();
+            ArgumentNullException.ThrowIfNull(View);
+            
+            View.BackgroundColor = UIColor.White;
 
-            View!.BackgroundColor = UIColor.White;
-
-            //  Create a button for Apple ID sign-in
+            // Create a button for Apple ID sign-in
             appleSignInButton.SetTitle("Sign in with Apple ID", UIControlState.Normal);
             appleSignInButton.TitleLabel.Font = UIFont.BoldSystemFontOfSize(16);
             appleSignInButton.BackgroundColor = UIColor.Black;

@@ -61,13 +61,13 @@ internal class Trail
     }
 
     /// <summary>
-    /// Generates a collection of test trail data.
+    /// Generates a collection of mock trail data.
     /// </summary>
-    /// <param name="count">The number of test trails to generate.</param>
+    /// <param name="count">The number of mock trails to generate.</param>
     /// <returns>An enumerable collection of <see cref="Trail"/> objects.</returns>
-    public static IEnumerable<Trail> GetTestTrailData(int count)
+    public static IEnumerable<Trail> GetMockTrailData(int count)
     {
-        Random random = new Random();
+        Random random = Random.Shared;
         string[] trailNames = { "Bear Mountain", "Eagle's Peak", "Sunset Ridge", "River Valley", "Pine Forest", "Coastal Cliff", "Highland Path" };
         string[] difficulties = { "Easy", "Moderate", "Hard" };
         string[] terrains = { "Forest", "Mountain", "Hill", "Rocky Path"  };
