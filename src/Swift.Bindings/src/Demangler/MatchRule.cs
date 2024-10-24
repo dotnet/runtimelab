@@ -60,7 +60,7 @@ internal class MatchRule {
     /// <summary>
     /// A reducer to apply if the node matches
     /// </summary>
-    public required Func<Node, string?, IReduction> Reducer { get; init; } = (node, name) => new ReductionError () { Message = "Call of empty reduction rule", Symbol = name ?? "no symbol" };
+    public required Func<Node, string, IReduction> Reducer { get; init; } = (node, mangledName) => new ReductionError () { Message = "Call of empty reduction rule", Symbol = mangledName };
 
     /// <summary>
     /// Returns true if and only if the given node matches this rule
