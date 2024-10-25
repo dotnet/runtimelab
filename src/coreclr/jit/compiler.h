@@ -6891,15 +6891,11 @@ private:
 
 
 public:
-<<<<<<< HEAD
 #if defined(TARGET_WASM) // Accessed in llvmcodegen.cpp
     static unsigned acdHelper(SpecialCodeKind codeKind);
 #endif
 
-    AddCodeDsc* fgFindExcptnTarget(SpecialCodeKind kind, unsigned refData);
-=======
     AddCodeDsc* fgFindExcptnTarget(SpecialCodeKind kind, BasicBlock* fromBlock);
->>>>>>> 68d84782674ffaa16edb7f0b42b4eeaf9ca7751c
 
     bool fgUseThrowHelperBlocks();
 
