@@ -1758,14 +1758,7 @@ bool MethodDesc::TryGenerateAsyncThunk(DynamicResolver** resolver, COR_ILMETHOD_
 
     if (IsAsyncTaskMethodTaskReturningMethod(asyncType))
     {
-        if (!g_pConfig->RuntimeAsyncViaJitGeneratedStateMachines())
-        {
-            EmitUnwindingBasedRuntimeAsyncThunk(pAsyncOtherVariant, msig, &sl);
-        }
-        else
-        {
-            EmitJitStateMachineBasedRuntimeAsyncThunk(pAsyncOtherVariant, msig, &sl);
-        }
+        EmitJitStateMachineBasedRuntimeAsyncThunk(pAsyncOtherVariant, msig, &sl);
     }
     else
     {

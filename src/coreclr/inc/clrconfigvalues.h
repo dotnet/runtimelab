@@ -806,11 +806,6 @@ RETAIL_CONFIG_DWORD_INFO(EXTERNAL_EnableArm64Sve,               W("EnableArm64Sv
 #endif
 
 ///
-/// Runtime async
-///
-RETAIL_CONFIG_DWORD_INFO(EXTERNAL_RuntimeAsyncViaJitGeneratedStateMachines, W("RuntimeAsyncViaJitGeneratedStateMachines"), 1, "Use JIT generated state machines instead of unwinding-based runtime async")
-
-///
 /// Uncategorized
 ///
 //

@@ -112,8 +112,6 @@ public:
 
     bool          BackpatchEntryPointSlots() const { LIMITED_METHOD_CONTRACT; return backpatchEntryPointSlots; }
 
-    bool          RuntimeAsyncViaJitGeneratedStateMachines() const { LIMITED_METHOD_CONTRACT; return runtimeAsyncViaJitGeneratedStateMachines; }
-
 #if defined(FEATURE_GDBJIT) && defined(_DEBUG)
     inline bool ShouldDumpElfOnMethod(LPCUTF8 methodName) const
     {
