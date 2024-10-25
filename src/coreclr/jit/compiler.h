@@ -2916,8 +2916,6 @@ public:
     bool     ehAnyFunclets();  // Are there any funclets in this function?
     unsigned ehFuncletCount(); // Return the count of funclets in the function
 
-    unsigned bbThrowIndex(BasicBlock* blk); // Get the index to use as the cache key for sharing throw blocks
-
     FlowEdge* BlockPredsWithEH(BasicBlock* blk);
     FlowEdge* BlockDominancePreds(BasicBlock* blk);
 
@@ -6813,29 +6811,50 @@ private:
     //  range checking or explicit calls to enable GC, and so on.
     //
 public:
+
+    enum class AcdKeyDesignator { KD_NONE, KD_TRY, KD_HND, KD_FLT };
+
     struct AddCodeDsc
     {
         AddCodeDsc*     acdNext;
 
-        // Initially the source block of the exception. After fgCreateThrowHelperBlocks, the block to which
+        // After fgCreateThrowHelperBlocks, the block to which
         // we jump to raise the exception.
         BasicBlock*     acdDstBlk;
 
+        // EH region key used to look up this dsc in the map
         unsigned        acdData;
+
+        // EH regions for this dsc
+        unsigned short acdTryIndex;
+        unsigned short acdHndIndex;
+
+        // Which EH region forms the key?
+        AcdKeyDesignator  acdKeyDsg;
+
         SpecialCodeKind acdKind; // what kind of a special block is this?
         bool            acdUsed; // do we need to keep this helper block?
+
 #if !FEATURE_FIXED_OUT_ARGS
         bool     acdStkLvlInit; // has acdStkLvl value been already set?
         unsigned acdStkLvl;     // stack level in stack slots.
 #endif                          // !FEATURE_FIXED_OUT_ARGS
+
+        INDEBUG(unsigned acdNum);
     };
+
+    unsigned acdCount = 0;
+
+    // Get the index to use as part of the AddCodeDsc key for sharing throw blocks
+    unsigned bbThrowIndex(BasicBlock* blk, AcdKeyDesignator* dsg); 
 
     struct AddCodeDscKey
     {
     public:
         AddCodeDscKey(): acdKind(SCK_NONE), acdData(0) {}
-        AddCodeDscKey(SpecialCodeKind kind, unsigned data): acdKind(kind), acdData(data) {}
-
+        AddCodeDscKey(SpecialCodeKind kind, BasicBlock* block, Compiler* comp);
+        AddCodeDscKey(AddCodeDsc* add);
+        
         static bool Equals(const AddCodeDscKey& x, const AddCodeDscKey& y)
         {
             return (x.acdData == y.acdData) && (x.acdKind == y.acdKind);
@@ -6846,7 +6865,10 @@ public:
             return (x.acdData << 3) | (unsigned) x.acdKind;
         }
 
+        unsigned Data() const { return acdData; }
+
     private:
+
         SpecialCodeKind acdKind;
         unsigned acdData;
     };
@@ -6869,11 +6891,15 @@ private:
 
 
 public:
+<<<<<<< HEAD
 #if defined(TARGET_WASM) // Accessed in llvmcodegen.cpp
     static unsigned acdHelper(SpecialCodeKind codeKind);
 #endif
 
     AddCodeDsc* fgFindExcptnTarget(SpecialCodeKind kind, unsigned refData);
+=======
+    AddCodeDsc* fgFindExcptnTarget(SpecialCodeKind kind, BasicBlock* fromBlock);
+>>>>>>> 68d84782674ffaa16edb7f0b42b4eeaf9ca7751c
 
     bool fgUseThrowHelperBlocks();
 
@@ -10907,11 +10933,11 @@ private:
 
 public:
 #ifdef DEBUG
-    unsigned compGenTreeID    = 0;
-    unsigned compStatementID  = 0;
-    unsigned compBasicBlockID = 0;
+    unsigned compGenTreeID   = 0;
+    unsigned compStatementID = 0;
 #endif
-    LONG compMethodID = 0;
+    unsigned compBasicBlockID = 0;
+    LONG     compMethodID     = 0;
 
     BasicBlock* compCurBB = nullptr; // the current basic block in process
     Statement*  compCurStmt;         // the current statement in process
