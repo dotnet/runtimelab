@@ -26,8 +26,6 @@
 #include "genanalysis.h"
 #include "eventpipeadapter.h"
 
-#include "runtimesuspension.h"
-
 // Finalizes a weak reference directly.
 extern void FinalizeWeakReference(Object* obj);
 
@@ -330,11 +328,6 @@ void GCToEEInterface::GcScanRoots(promote_func* fn, int condemned, int max_gen, 
             SystemDomain::EnumAllStaticGCRefs(fn, sc);
         }
     }
-
-#ifndef DACCESS_COMPILE
-// TODO Make tasklet reporting DAC friendly
-    IterateTaskletsForGC(fn, sc);
-#endif
 }
 
 void GCToEEInterface::GcStartWork (int condemned, int max_gen)
