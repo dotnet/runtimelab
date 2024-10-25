@@ -85,7 +85,6 @@ static const Entry s_QCall[] =
     DllImportEntry(CustomAttribute_ParseAttributeUsageAttribute)
     DllImportEntry(CustomAttribute_CreateCustomAttributeInstance)
     DllImportEntry(CustomAttribute_CreatePropertyOrFieldData)
-    DllImportEntry(RuntimeSuspension_RegisterTasklet)
     DllImportEntry(RuntimeSuspension_DeleteTasklet)
     DllImportEntry(RuntimeSuspension_CaptureTasklets)
     DllImportEntry(Enum_GetValuesAndNames)
