@@ -1993,7 +1993,6 @@ private:
 
     bool TryGenerateAsyncThunk(DynamicResolver** resolver, COR_ILMETHOD_DECODER** methodILDecoder);
     bool TryGenerateUnsafeAccessor(DynamicResolver** resolver, COR_ILMETHOD_DECODER** methodILDecoder);
-    void EmitUnwindingBasedRuntimeAsyncThunk(MethodDesc* pAsyncOtherVariant, MetaSig& msig, ILStubLinker* pSL);  // TODO: VS delete this
     void EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOtherVariant, MetaSig& thunkMsig, ILStubLinker* pSL);
     void EmitAsync2MethodThunk(MethodDesc* pAsyncOtherVariant, MetaSig& msig, ILStubLinker* pSL);
 public:
