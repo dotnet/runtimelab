@@ -43,3 +43,9 @@ DOTNET_TraceInterpreterIL=1
 
 Many verification steps assume the following is disabled.
 `DOTNET_InterpreterLooseRules=0`
+
+## Running IL scenarios
+
+After building CoreCLR, the following can be executed:
+
+> `.\artifacts\bin\coreclr\windows.x64.Debug\ilasm.exe /EXE /OUTPUT=.\artifacts\tmp\App.dll App.il`

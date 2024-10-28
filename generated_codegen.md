@@ -2,6 +2,33 @@ Uses of `ExecutableWriterHolder` and `ExecutableWriterHolderNoLog` under `src\co
 
 **Collected at hash `9ceb2bfd35ad8edd0342d2b10fef2860ad86ac9b`**
 
+## JanV analysis:
+
+* Let's ignore the debugger stuff for now, the debugger will need some other way to set breakpoints and step that will be platform specific.
+* The LoaderHeap won't be used by the interpreter, it manages memory for various stubs and we need to decide on what we would do with each of the stub.
+* I believe the Module::FixupVTables is for C++/CLI and we can ignore it
+* We can ignore any COM related stuff
+* CodeFragmentHeap is used by virtual stub lookup, dispatch, resolve and vtable helpers and dynamic helpers for R2R. We need to figure out how to replace these by a mechanism that doesn't need generated code
+* I believe jump stub blocks are only for JIT, so anything related to them should not be needed. I need to double check though if R2R doesn't use them somehow too.
+* EEJitManager::allocCodeFragmentBlock - code fragment heap stuff, see my comment above
+* UMEntryThunk stuff - we will need to figure out how to handle unmanaged calls to managed code without the generated thunks.
+* HostCodeHeap stuff is for JIT only, so we can ignore it
+* GC coverage instruction writing - we can ignore it, as it works with jitted code only.
+* CEEJitInfo::WriteCodeBytes - JIT only, we can ignore it
+* EntryPointSlots::Backpatch_Locked - I don't know yet
+* Precode::Allocate - we need to figure out what to do with the PRECODE_THISPTR_RETBUF
+* Precode::Reset - I am not sure for which precodes it is used, maybe just the PRECODE_THISPTR_RETBUF. It doesn't make sense to be used for stub and fixup precodes.
+* MethodDesc::DoPrestub - This seems to create unboxing stubs, instantiating stubs, array op stub and delegate stubs. These stubs look like some of them are IL stubs and some of them may be IL or native code depending on some defines. For the native ones, we'll need to come up with an alternative plan.
+* StubCacheBase - I think this is used by native code stubs only, so once we replace them by something else, this will not be used anymore
+* StubUnwindInfoSegmentBoundaryReservationList - this goes away, since except for the unwind info that Andrew temporarily added for the interpreter stub, the stub unwind info is not used anywhere.
+* StubLinker::EmitStub - will go away after we replace all native code stubs by some other means
+* Stub::NewStub - ditto
+* Write barrier copy and state update - we will need to figure out how to handle changing write barriers without patching their code
+* VirtualCallStubManager stuff - will go away after we replace the virtual stub lookup, dispatch, resolve and vtable stubs by some other mechanism.
+* DynamicHelpers - I believe these are all dynamically generated R2R helpers. We'll need to come up with an alternative way of doing what R2R needs for their cases.
+* ThisPtrRetBufPrecode -  will need to be replaced by some other mechanism
+
+
 ## `src\coreclr\debug\ee\controller.cpp`:
 
 Debugger patching for breakpoints.
