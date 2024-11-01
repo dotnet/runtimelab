@@ -22,8 +22,8 @@ from the project's root directory. New package sources must be added after the `
 Once you have added the package sources, add references to the ILCompiler packages by adding the following elements to the project file:
 ```xml
 <ItemGroup>
-  <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
-  <PackageReference Include="runtime.$(NETCoreSdkPortableRuntimeIdentifier).Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
+  <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="10.0.0-*" />
+  <PackageReference Include="runtime.$(NETCoreSdkPortableRuntimeIdentifier).Microsoft.DotNet.ILCompiler.LLVM" Version="10.0.0-*" />
 </ItemGroup>
 ```
 

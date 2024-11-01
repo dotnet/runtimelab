@@ -1684,7 +1684,9 @@ void HelperCallProperties::init()
             // only support that when it is not an implicit byref.
             case CORINFO_HELP_GETREFANY:
 #ifndef WINDOWS_AMD64_ABI
+#ifndef TARGET_WASM
                 isPure = true;
+#endif
 #endif
                 break;
 
