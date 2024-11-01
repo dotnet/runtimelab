@@ -31,27 +31,27 @@ steps:
     - ${{ if eq(parameters.platform, 'browser_wasm_win') }}:
       - script: |
           call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
-          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
+          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) ci tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
         displayName: Build WebAssembly tests
     - ${{ elseif eq(parameters.platform, 'wasi_wasm_win') }}:
       - script: |
-          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) wasi tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
+          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) ci wasi tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
         displayName: Build WebAssembly tests
     - ${{ elseif eq(parameters.platform, 'Browser_wasm_linux_x64_naot_llvm') }}:
       - script: |
           source $(Build.SourcesDirectory)/wasm-tools/emsdk/emsdk_env.sh
-          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) $(crossArg) -browser tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
+          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) $(crossArg) ci -browser tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
         displayName: Build WebAssembly tests
     - ${{ elseif eq(parameters.platform, 'wasi_wasm_linux_x64_naot_llvm') }}:
       - script: |
-          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) $(crossArg) -wasi tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
+          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) $(crossArg) ci -wasi tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
         displayName: Build WebAssembly tests
 
     - ${{ elseif eq(parameters.osGroup, 'windows') }}:
-      - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) ${{ parameters.testFilter }} /p:NativeAotMultimodule=true /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
+      - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) ci ${{ parameters.testFilter }} /p:NativeAotMultimodule=true /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
         displayName: Build tests
     - ${{ else }}:
-      - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) 'tree nativeaot' /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
+      - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) ci 'tree nativeaot' /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
         displayName: Build tests
 
     - ${{ if in(parameters.platform, 'browser_wasm_win', 'wasi_wasm_win') }}:
