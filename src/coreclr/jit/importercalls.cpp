@@ -381,7 +381,6 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
                 call->gtFlags |= GTF_CALL_VIRT_VTABLE;
 
 #if !defined(TARGET_WASM)
-#if !defined(TARGET_WASM)
                 if (opts.OptimizationEnabled())
 #endif
                 {
