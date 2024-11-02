@@ -6,10 +6,10 @@
 
 // TODO-LLVM-Upstream: figure out how to fix these warnings in LLVM headers.
 #pragma warning(push)
-#pragma warning(disable : 4242)
-#pragma warning(disable : 4244)
-#pragma warning(disable : 4459)
-#pragma warning(disable : 4267)
+#pragma warning (disable : 4242)
+#pragma warning (disable : 4244)
+#pragma warning (disable : 4459)
+#pragma warning (disable : 4267)
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/Signals.h"
 #pragma warning(pop)
@@ -65,22 +65,12 @@ size_t HelperFuncInfo::GetSigArgCount(unsigned* callArgCount) const
     return count;
 }
 
-bool Compiler::IsHfa(CORINFO_CLASS_HANDLE hClass)
-{
-    return false;
-}
-var_types Compiler::GetHfaType(CORINFO_CLASS_HANDLE hClass)
-{
-    return TYP_UNDEF;
-}
-unsigned Compiler::GetHfaCount(CORINFO_CLASS_HANDLE hClass)
-{
-    return 0;
-}
+bool Compiler::IsHfa(CORINFO_CLASS_HANDLE hClass) { return false; }
+var_types Compiler::GetHfaType(CORINFO_CLASS_HANDLE hClass) { return TYP_UNDEF; }
+unsigned Compiler::GetHfaCount(CORINFO_CLASS_HANDLE hClass) { return 0; }
 
 Llvm::Llvm(Compiler* compiler)
-    : m_pEECorInfo(*((void**)compiler->info.compCompHnd + 1)) // TODO-LLVM: hack. CorInfoImpl* is the first field of
-                                                              // JitInterfaceWrapper.
+    : m_pEECorInfo(*((void**)compiler->info.compCompHnd + 1)) // TODO-LLVM: hack. CorInfoImpl* is the first field of JitInterfaceWrapper.
     , m_context(GetSingleThreadedCompilationContext())
     , _compiler(compiler)
     , m_info(&compiler->info)
@@ -122,7 +112,7 @@ var_types Llvm::GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPa
 {
     // Note the managed and unmanaged ABIs are the same in terms of values, but do differ w.r.t by-ref
     // parameter aliasing guarantees (native assumes no aliasing, we do not).
-    bool        isPassedByRef;
+    bool isPassedByRef;
     CorInfoType argType = getLlvmArgTypeForArg(CORINFO_TYPE_VALUECLASS, structHnd, &isPassedByRef);
 
     *pPassKind = isPassedByRef ? Compiler::SPK_ByReference : Compiler::SPK_ByValue;
@@ -131,7 +121,7 @@ var_types Llvm::GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPa
 
 var_types Llvm::GetReturnTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind)
 {
-    bool        isReturnByRef;
+    bool isReturnByRef;
     CorInfoType retType = getLlvmReturnType(CORINFO_TYPE_VALUECLASS, structHnd, &isReturnByRef);
     if (isReturnByRef)
     {
@@ -591,7 +581,7 @@ CorInfoType Llvm::getLlvmArgTypeForArg(CorInfoType argSigType, CORINFO_CLASS_HAN
     // In essence, structs are passed by reference except if they are trivial wrappers of a primitive (scalar).
     // We follow this rule for the native calling convention as well as the managed one.
     //
-    bool        isByRef = false;
+    bool isByRef = false;
     CorInfoType argType = argSigType;
     if (argSigType == CORINFO_TYPE_VALUECLASS)
     {
@@ -632,8 +622,8 @@ CorInfoType Llvm::getLlvmReturnType(CorInfoType sigRetType, CORINFO_CLASS_HANDLE
     return isByRef ? CORINFO_TYPE_VOID : returnType;
 }
 
-// When looking at a sigInfo from eeGetMethodSig we have CorInfoType(s) but when looking at lclVars we have LclVarDsc or
-// var_type(s), This method exists to allow both to map to LLVM types.
+// When looking at a sigInfo from eeGetMethodSig we have CorInfoType(s) but when looking at lclVars we have LclVarDsc or var_type(s),
+// This method exists to allow both to map to LLVM types.
 /* static */ CorInfoType Llvm::toCorInfoType(var_types type)
 {
     switch (type)
@@ -721,7 +711,7 @@ TargetAbiType Llvm::getAbiTypeForType(var_types type)
 CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForHelperFunc(CorInfoHelpFunc helperFunc)
 {
     void* pIndirection = nullptr;
-    void* handle       = _compiler->compGetHelperFtn(static_cast<CorInfoHelpFunc>(helperFunc), &pIndirection);
+    void* handle = _compiler->compGetHelperFtn(static_cast<CorInfoHelpFunc>(helperFunc), &pIndirection);
     assert(pIndirection == nullptr);
 
     return CORINFO_GENERIC_HANDLE(handle);
@@ -733,7 +723,7 @@ CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForClassToken(mdToken token)
     CORINFO_RESOLVED_TOKEN resolvedToken;
     _compiler->impResolveToken((BYTE*)&token, &resolvedToken, CORINFO_TOKENKIND_Class);
 
-    void*                pIndirection     = nullptr;
+    void* pIndirection = nullptr;
     CORINFO_CLASS_HANDLE typeSymbolHandle = m_info->compCompHnd->embedClassHandle(resolvedToken.hClass, &pIndirection);
     assert(pIndirection == nullptr);
 
@@ -786,12 +776,11 @@ const char* Llvm::GetAlternativeFunctionName()
     return CallEEApi<EEAI_GetAlternativeFunctionName, const char*>(m_pEECorInfo);
 }
 
-CORINFO_GENERIC_HANDLE Llvm::GetExternalMethodAccessor(CORINFO_METHOD_HANDLE methodHandle,
-                                                       const TargetAbiType*  sig,
-                                                       int                   sigLength)
+CORINFO_GENERIC_HANDLE Llvm::GetExternalMethodAccessor(
+    CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* sig, int sigLength)
 {
-    return CallEEApi<EEAI_GetExternalMethodAccessor, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, methodHandle, sig,
-                                                                             sigLength);
+    return CallEEApi<EEAI_GetExternalMethodAccessor, CORINFO_GENERIC_HANDLE>(
+        m_pEECorInfo, methodHandle, sig, sigLength);
 }
 
 CORINFO_LLVM_DEBUG_TYPE_HANDLE Llvm::GetDebugTypeForType(CORINFO_CLASS_HANDLE typeHandle)
@@ -834,13 +823,10 @@ CORINFO_GENERIC_HANDLE Llvm::GetSparseVirtualUnwindInfo(CORINFO_LLVM_EH_CLAUSE* 
     return CallEEApi<EEAI_GetSparseVirtualUnwindInfo, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, pClauses, count);
 }
 
-CORINFO_GENERIC_HANDLE Llvm::GetPreciseVirtualUnwindInfo(unsigned*               pAbsoluteValue,
-                                                         unsigned                shadowFrameSize,
-                                                         CORINFO_LLVM_EH_CLAUSE* pClauses,
-                                                         int                     clauseCount)
+CORINFO_GENERIC_HANDLE Llvm::GetPreciseVirtualUnwindInfo(
+    unsigned* pAbsoluteValue, unsigned shadowFrameSize, CORINFO_LLVM_EH_CLAUSE* pClauses, int clauseCount)
 {
-    return CallEEApi<EEAI_GetPreciseVirtualUnwindInfo, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, pAbsoluteValue,
-                                                                               shadowFrameSize, pClauses, clauseCount);
+    return CallEEApi<EEAI_GetPreciseVirtualUnwindInfo, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, pAbsoluteValue, shadowFrameSize, pClauses, clauseCount);
 }
 
 bool Llvm::IsVirtualUnwindFrameVisible()
@@ -860,9 +846,9 @@ extern "C" DLLEXPORT int registerLlvmCallbacks(void** jitImports, void** jitExpo
 
     memcpy(g_callbacks, jitImports, static_cast<int>(EEAI_Count) * sizeof(void*));
 
-    jitExports[CJAI_StartSingleThreadedCompilation]  = (void*)&Llvm::StartSingleThreadedCompilation;
+    jitExports[CJAI_StartSingleThreadedCompilation] = (void*)&Llvm::StartSingleThreadedCompilation;
     jitExports[CJAI_FinishSingleThreadedCompilation] = (void*)&Llvm::FinishSingleThreadedCompilation;
-    jitExports[CJAI_Count]                           = (void*)0x1234;
+    jitExports[CJAI_Count] = (void*)0x1234;
 
     for (int i = 0; i < CJAI_Count; i++)
     {
@@ -872,9 +858,8 @@ extern "C" DLLEXPORT int registerLlvmCallbacks(void** jitImports, void** jitExpo
     return 1;
 }
 
-/* static */ SingleThreadedCompilationContext* Llvm::StartSingleThreadedCompilation(const char* path,
-                                                                                    const char* triple,
-                                                                                    const char* dataLayout)
+/* static */ SingleThreadedCompilationContext* Llvm::StartSingleThreadedCompilation(
+    const char* path, const char* triple, const char* dataLayout)
 {
     SingleThreadedCompilationContext* context = new SingleThreadedCompilationContext(path);
     context->Module.setTargetTriple(triple);
@@ -895,7 +880,7 @@ extern "C" DLLEXPORT int registerLlvmCallbacks(void** jitImports, void** jitExpo
     }
 
     std::error_code code;
-    StringRef       outputFilePath = module.getName();
+    StringRef outputFilePath = module.getName();
     if (JitConfig.JitCheckLlvmIR())
     {
         StringRef outputFilePathWithoutExtension = outputFilePath.take_front(outputFilePath.find_last_of('.'));
