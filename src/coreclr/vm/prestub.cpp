@@ -1811,6 +1811,8 @@ void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOth
 
     TypeHandle thTaskRet = thunkMsig.GetRetTypeHandleThrowing();
 
+    bool hasInstParam = thunkMsig.HasGenericContextArg() != FALSE;
+
     bool isValueTask = thTaskRet.GetMethodTable()->IsValueType();
 
     LocalDesc returnLocalDesc(thTaskRet);
@@ -1850,12 +1852,73 @@ void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOth
                 _ASSERTE(!this->GetMethodTable()->IsValueType());
                 pCode->EmitLDARG(localArg++);
             }
+
             for (UINT iArg = 0; iArg < thunkMsig.NumFixedArgs(); iArg++)
             {
                 pCode->EmitLDARG(localArg++);
             }
 
-            pCode->EmitCALL(pCode->GetToken(pAsyncOtherVariant), localArg, logicalResultLocal != UINT_MAX ? 1 : 0);
+            int token;
+            if (pAsyncOtherVariant->IsSharedByGenericInstantiations())
+            {
+                // When shared, the IL we emit needs to encode generic signatures.
+                SigBuilder typeSigBuilder;
+                if (pAsyncOtherVariant->GetMethodTable()->IsSharedByGenericInstantiations())
+                {
+                    typeSigBuilder.AppendElementType(ELEMENT_TYPE_GENERICINST);
+                    typeSigBuilder.AppendElementType(ELEMENT_TYPE_INTERNAL);
+                    // TODO: Shouldn't this be the typical method table? It
+                    // hits  an assert in resolveToken for the dynamic resolver
+                    // path.
+                    typeSigBuilder.AppendPointer(pAsyncOtherVariant->GetMethodTable());
+                    DWORD numClassTypeArgs = pAsyncOtherVariant->GetNumGenericClassArgs();
+                    typeSigBuilder.AppendData(numClassTypeArgs);
+                    for (DWORD i = 0; i < numClassTypeArgs; ++i)
+                    {
+                        typeSigBuilder.AppendElementType(ELEMENT_TYPE_VAR);
+                        typeSigBuilder.AppendData(i);
+                    }
+                }
+                else
+                {
+                    typeSigBuilder.AppendElementType(ELEMENT_TYPE_INTERNAL);
+                    typeSigBuilder.AppendPointer(pAsyncOtherVariant->GetMethodTable());
+                }
+
+                DWORD typeSigLen;
+                PCCOR_SIGNATURE typeSig = (PCCOR_SIGNATURE)typeSigBuilder.GetSignature(&typeSigLen);
+                int typeSigToken = pCode->GetSigToken(typeSig, typeSigLen);
+
+                if (pAsyncOtherVariant->IsSharedByGenericMethodInstantiations())
+                {
+                    SigBuilder methodSigBuilder;
+                    DWORD numMethodTypeArgs = pAsyncOtherVariant->GetNumGenericMethodArgs();
+                    methodSigBuilder.AppendByte(IMAGE_CEE_CS_CALLCONV_GENERICINST);
+                    methodSigBuilder.AppendData(numMethodTypeArgs);
+                    for (DWORD i = 0; i < numMethodTypeArgs; ++i)
+                    {
+                        methodSigBuilder.AppendElementType(ELEMENT_TYPE_MVAR);
+                        methodSigBuilder.AppendData(i);
+                    }
+
+                    DWORD sigLen;
+                    PCCOR_SIGNATURE sig = (PCCOR_SIGNATURE)methodSigBuilder.GetSignature(&sigLen);
+                    int methodSigToken = pCode->GetSigToken(sig, sigLen);
+                    // TODO: Should be typical method definition?
+                    token = pCode->GetToken(pAsyncOtherVariant, typeSigToken, methodSigToken);
+                }
+                else
+                {
+                    // TODO: Should be typical method definition?
+                    token = pCode->GetToken(pAsyncOtherVariant, typeSigToken);
+                }
+            }
+            else
+            {
+                token = pCode->GetToken(pAsyncOtherVariant);
+            }
+
+            pCode->EmitCALL(token, localArg, logicalResultLocal != UINT_MAX ? 1 : 0);
 
             if (logicalResultLocal != UINT_MAX)
                 pCode->EmitSTLOC(logicalResultLocal);
@@ -2492,7 +2555,7 @@ void MethodDesc::CreateDerivedTargetSigWithExtraParams(MetaSig& msig, SigBuilder
     stubSigBuilder->AppendByte(callingConvention);
 
     unsigned numArgs = msig.NumFixedArgs();
-    bool hasInstParam = (msig.GetCallingConventionInfo() & CORINFO_CALLCONV_PARAMTYPE) != 0;
+    bool hasInstParam = msig.HasGenericContextArg() != FALSE;
     if (hasInstParam)
         numArgs++;
     if (msig.HasAsyncContinuation())

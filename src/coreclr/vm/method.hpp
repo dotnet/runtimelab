@@ -1457,7 +1457,7 @@ public:
     PTR_PCODE GetAddrOfNativeCodeSlot();
     PTR_AsyncMethodData GetAddrOfAsyncMethodData();
 #ifndef DACCESS_COMPILE
-    const AsyncMethodData& GetAsyncMethodData() { _ASSERTE(IsAsyncThunkMethod()); return *GetAddrOfAsyncMethodData(); }
+    const AsyncMethodData& GetAsyncMethodData() { _ASSERTE(HasAsyncMethodData()); return *GetAddrOfAsyncMethodData(); }
 #endif
 
     BOOL MayHaveNativeCode();
@@ -1615,8 +1615,7 @@ public:
 
     MethodDesc* GetAsyncOtherVariant()
     {
-        // TODO This should be FindOrCreateAssociatedMethodDesc with some set of params
-        return GetMethodTable()->GetParallelMethodDesc(this, AsyncVariantLookup::AsyncOtherVariant);
+        return FindOrCreateAssociatedMethodDesc(this, GetMethodTable(), FALSE, GetMethodInstantiation(), TRUE, FALSE, TRUE, AsyncVariantLookup::AsyncOtherVariant);
     }
 
     // True if a MD is an funny BoxedEntryPointStub (not from the method table) or
