@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Xunit;
 public class Async2SharedGeneric
 {
-    public static Type Type;
     [Fact]
     public static void TestEntryPoint()
     {
