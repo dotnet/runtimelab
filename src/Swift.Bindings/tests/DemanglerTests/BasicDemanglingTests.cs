@@ -222,4 +222,15 @@ public class BasicDemanglingTests : IClassFixture<BasicDemanglingTests.TestFixtu
         Assert.NotNull (metadataAccessor);
         Assert.Equal ("GeneralHackingNonsense.Duplet", metadataAccessor.TypeSpec.Name);
     }
+
+    [Fact]
+    public void TestUnknownEntry()
+    {
+        var symbol = "_$ss5print_9separator10terminatoryypd_S2StFfA0_"; // default argument initializer
+        var demangler = new Swift5Demangler (symbol);
+        var result = demangler.Run();
+        var error = result as ReductionError;
+        Assert.NotNull (error);
+        Assert.Equal (ReductErrorSeverity.Low, error.Severity);
+    }
 }

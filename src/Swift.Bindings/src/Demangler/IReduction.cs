@@ -25,6 +25,11 @@ public class ReductionError : IReduction {
     /// Returns an error message describing the error
     /// </summary>
     public required string Message { get; init; }
+
+    /// <summary>
+    /// Returns the severity of the error
+    /// </summary>
+    public ReductErrorSeverity Severity { get; set; } = ReductErrorSeverity.Low;
 }
 
 /// <summary>

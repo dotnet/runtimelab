@@ -170,20 +170,26 @@ internal class Swift5Reducer {
 
         var child = node.Children [0];
         if (child.Kind != NodeKind.ProtocolConformance) {
-            return ReductionError (ExpectedButGot ("ProtocolConformance", node.Kind.ToString (), mangledName), mangledName);
+            return ReductionErrorHigh (ExpectedButGot ("ProtocolConformance", node.Kind.ToString (), mangledName), mangledName);
         }
         var grandchild = Convert (child.Children [0], mangledName);
-        if (grandchild is ReductionError) return grandchild;
+        if (grandchild is ReductionError error) {
+            error.Severity = ReductErrorSeverity.High;
+            return error;
+        }
         var implementingType = grandchild as TypeSpecReduction;
         if (implementingType is null) {
-            return ReductionError (ExpectedButGot ("Nominal type implementing protocol", grandchild.GetType().Name, mangledName), mangledName);
+            return ReductionErrorHigh (ExpectedButGot ("Nominal type implementing protocol", grandchild.GetType().Name, mangledName), mangledName);
         }
 
         grandchild = Convert (child.Children [1], mangledName);
-        if (grandchild is ReductionError) return grandchild;
+        if (grandchild is ReductionError error1) {
+            error1.Severity = ReductErrorSeverity.High;
+            return error1;
+        }
         var protocolType = grandchild as TypeSpecReduction;
         if (protocolType is null) {
-            return ReductionError (ExpectedButGot ("Nominal type protocol", grandchild.GetType().Name, mangledName), mangledName);
+            return ReductionErrorHigh (ExpectedButGot ("Nominal type protocol", grandchild.GetType().Name, mangledName), mangledName);
         }
 
         var impNamed = (NamedTypeSpec)implementingType.TypeSpec;
@@ -193,12 +199,13 @@ internal class Swift5Reducer {
             grandchild = Convert (child.Children [2], mangledName);
             if (grandchild is ProvenanceReduction prov) {
                 if (!prov.Provenance.IsTopLevel)
-                    return ReductionError (ExpectedButGot ("A top-level module name", prov.Provenance.ToString(), mangledName), mangledName);
+                    return ReductionErrorHigh (ExpectedButGot ("A top-level module name", prov.Provenance.ToString(), mangledName), mangledName);
                 return new ProtocolConformanceDescriptorReduction() { Symbol = mangledName, ImplementingType = impNamed, ProtocolType = protoNamed, Module = prov.Provenance.Module};
-            } else if (grandchild is ReductionError) {
-                return grandchild;
+            } else if (grandchild is ReductionError error2) {
+                error2.Severity = ReductErrorSeverity.High;
+                return error2;
             } else {
-                return ReductionError (ExpectedButGot ("ProvenanceReduction", grandchild.GetType().Name, mangledName), mangledName);
+                return ReductionErrorHigh (ExpectedButGot ("ProvenanceReduction", grandchild.GetType().Name, mangledName), mangledName);
             }
             
         } else {
@@ -235,7 +242,7 @@ internal class Swift5Reducer {
         try {
             GetNestedNominalName (node, sb, mangledName);
         } catch (Exception err) {
-            return ReductionError (err.Message, mangledName);
+            return ReductionErrorLow (err.Message, mangledName);
         }
         return new TypeSpecReduction() { Symbol = mangledName, TypeSpec = new NamedTypeSpec (sb.ToString ())};
     }
@@ -267,7 +274,7 @@ internal class Swift5Reducer {
                 // Every child should be a Type node which turns into a TypeSpecReduction
                 types.Add (typeSpecReduction.TypeSpec);
             } else {
-                return ReductionError (ExpectedButGot ("TypeSpecReduction in tuple", reduction.GetType ().Name, mangledName), mangledName);
+                return ReductionErrorLow (ExpectedButGot ("TypeSpecReduction in tuple", reduction.GetType ().Name, mangledName), mangledName);
             }
         }
 
@@ -299,7 +306,7 @@ internal class Swift5Reducer {
             typeSpecReduction.TypeSpec.TypeLabel = label;
             return typeSpecReduction;
         } else {
-            return ReductionError (ExpectedButGot ("TypeSpecReduction in tuple element", reduction.GetType ().Name, mangledName), mangledName);
+            return ReductionErrorLow (ExpectedButGot ("TypeSpecReduction in tuple element", reduction.GetType ().Name, mangledName), mangledName);
         }
     }
 
@@ -326,7 +333,7 @@ internal class Swift5Reducer {
             typeSpecReduction.TypeSpec.IsVariadic = true;
             return new TypeSpecReduction () { Symbol = typeSpecReduction.Symbol, TypeSpec = newSpec };
         } else {
-            return ReductionError (ExpectedButGot ("TypeSpecReduction in variadic tuple element", reduction.GetType ().Name, mangledName), mangledName);
+            return ReductionErrorLow (ExpectedButGot ("TypeSpecReduction in variadic tuple element", reduction.GetType ().Name, mangledName), mangledName);
         }
     }
 
@@ -359,10 +366,10 @@ internal class Swift5Reducer {
                 var closure = new ClosureTypeSpec (argsTypeSpecReduction.TypeSpec, returnTypeSpecReduction.TypeSpec);
                 return new TypeSpecReduction () { Symbol = argsTypeSpecReduction.Symbol, TypeSpec = closure };
             } else {
-                return ReductionError (ExpectedButGot ("TypeSpecReduction in function return type", reduction.GetType ().Name, mangledName), mangledName);
+                return ReductionErrorLow (ExpectedButGot ("TypeSpecReduction in function return type", reduction.GetType ().Name, mangledName), mangledName);
             }            
         } else {
-            return ReductionError (ExpectedButGot ("TypeSpecReduction in argument tuple type", reduction.GetType ().Name, mangledName), mangledName);
+            return ReductionErrorLow (ExpectedButGot ("TypeSpecReduction in argument tuple type", reduction.GetType ().Name, mangledName), mangledName);
         }
     }
 
@@ -390,14 +397,18 @@ internal class Swift5Reducer {
         if (reduction is TypeSpecReduction ts)
             reduction = TypeSpecToProvenance (ts);
 
-        if (reduction is ReductionError error)
+        if (reduction is ReductionError error) {
+            error.Severity = ReductErrorSeverity.High;
             return error;
+        }
         else if (reduction is ProvenanceReduction provenance) {
             var identifier = identifierNode.Text;
             var labels = labelList is not null ? labelList.Children.Select (n => n.Kind == NodeKind.Identifier ? n.Text : "").ToArray() : new string [0];
             reduction = Convert (typeNode, mangledName);
-            if (reduction is ReductionError typeError)
+            if (reduction is ReductionError typeError) {
+                typeError.Severity = ReductErrorSeverity.High;
                 return typeError;
+            }
             else if (reduction is TypeSpecReduction typeSpecReduction) {
                 if (typeSpecReduction.TypeSpec is ClosureTypeSpec closure) {
 
@@ -409,13 +420,13 @@ internal class Swift5Reducer {
                     var function = new SwiftFunction () { Name = identifier, ParameterList = args, Provenance = provenance.Provenance, Return = closure.ReturnType };
                     return new FunctionReduction () { Symbol = mangledName, Function = function };
                 } else {
-                    return ReductionError (ExpectedButGot ("ClosureTypeSpec as Function Type", typeSpecReduction.TypeSpec.GetType ().Name, mangledName), mangledName);
+                    return ReductionErrorHigh (ExpectedButGot ("ClosureTypeSpec as Function Type", typeSpecReduction.TypeSpec.GetType ().Name, mangledName), mangledName);
                 }
             } else {
-                return ReductionError (ExpectedButGot ("TypeSpecReduction in Function Type", reduction.GetType ().Name, mangledName), mangledName);
+                return ReductionErrorHigh (ExpectedButGot ("TypeSpecReduction in Function Type", reduction.GetType ().Name, mangledName), mangledName);
             }
         } else {
-            return ReductionError (ExpectedButGot ("ProvenanceReduction in Function Module", reduction.GetType ().Name, mangledName), mangledName);
+            return ReductionErrorHigh (ExpectedButGot ("ProvenanceReduction in Function Module", reduction.GetType ().Name, mangledName), mangledName);
         }
     }
 
@@ -439,26 +450,30 @@ internal class Swift5Reducer {
         if (reduction is TypeSpecReduction ts)
             reduction = TypeSpecToProvenance (ts);
 
-        if (reduction is ReductionError error)
+        if (reduction is ReductionError error) {
+            error.Severity = ReductErrorSeverity.High;
             return error;
+        }
         else if (reduction is ProvenanceReduction provenance) {
             var identifier = "__allocating_init";
             reduction = Convert (typeNode, mangledName);
-            if (reduction is ReductionError typeError)
+            if (reduction is ReductionError typeError) {
+                typeError.Severity = ReductErrorSeverity.High;
                 return typeError;
+            }
             else if (reduction is TypeSpecReduction typeSpecReduction) {
                 if (typeSpecReduction.TypeSpec is ClosureTypeSpec closure) {
                     var args = closure.ArgumentsAsTuple;
                     var function = new SwiftFunction () { Name = identifier, ParameterList = args, Provenance = provenance.Provenance, Return = closure.ReturnType };
                     return new FunctionReduction () { Symbol = mangledName, Function = function };
                 } else {
-                    return ReductionError (ExpectedButGot ("ClosureTypeSpec as Allocator Type", typeSpecReduction.TypeSpec.GetType ().Name, mangledName), mangledName);
+                    return ReductionErrorHigh (ExpectedButGot ("ClosureTypeSpec as Allocator Type", typeSpecReduction.TypeSpec.GetType ().Name, mangledName), mangledName);
                 }
             } else {
-                return ReductionError (ExpectedButGot ("TypeSpecReduction in Allocator Type", reduction.GetType ().Name, mangledName), mangledName);
+                return ReductionErrorHigh (ExpectedButGot ("TypeSpecReduction in Allocator Type", reduction.GetType ().Name, mangledName), mangledName);
             }
         } else {
-            return ReductionError (ExpectedButGot ("ProvenanceReduction in Allocator Module", reduction.GetType ().Name, mangledName), mangledName);
+            return ReductionErrorHigh (ExpectedButGot ("ProvenanceReduction in Allocator Module", reduction.GetType ().Name, mangledName), mangledName);
         }
     }
 
@@ -472,12 +487,14 @@ internal class Swift5Reducer {
     static IReduction ConvertDispatchThunkFunction (Node node, string mangledName)
     {
         var childReduction = ConvertFirstChild (node, mangledName);
-        if (childReduction is ReductionError error)
+        if (childReduction is ReductionError error) {
+            error.Severity = ReductErrorSeverity.High;
             return error;
+        }
         if (childReduction is FunctionReduction funcReduction) {
             return DispatchThunkFunctionReduction.FromFunctionReduction (funcReduction);
         } else {
-            return ReductionError (ExpectedButGot ("FunctionReduction in DispatchThunk", childReduction.GetType ().Name, mangledName), mangledName);
+            return ReductionErrorHigh (ExpectedButGot ("FunctionReduction in DispatchThunk", childReduction.GetType ().Name, mangledName), mangledName);
         }
     }
 
@@ -494,17 +511,19 @@ internal class Swift5Reducer {
         //    Type
         //       nominal type
         var childReduction = ConvertFirstChild (node, mangledName);
-        if (childReduction is ReductionError error)
+        if (childReduction is ReductionError error) {
+            error.Severity = ReductErrorSeverity.High;
             return error;
+        }
         if (childReduction is TypeSpecReduction typeSpec)
         {
             if (typeSpec.TypeSpec is NamedTypeSpec ns) {
                 return new MetadataAccessorReduction () { Symbol = mangledName, TypeSpec = ns };
             } else {
-                return ReductionError (ExpectedButGot ("NamedTypeSpec in MetadataAccessor", typeSpec.TypeSpec.GetType ().Name, mangledName), mangledName);
+                return ReductionErrorHigh (ExpectedButGot ("NamedTypeSpec in MetadataAccessor", typeSpec.TypeSpec.GetType ().Name, mangledName), mangledName);
             }
         } else {
-            return ReductionError (ExpectedButGot ("TypeSpecReduction in Metadata Accessor", childReduction.GetType ().Name, mangledName), mangledName);
+            return ReductionErrorHigh (ExpectedButGot ("TypeSpecReduction in Metadata Accessor", childReduction.GetType ().Name, mangledName), mangledName);
         }
     }
 
@@ -561,9 +580,31 @@ internal class Swift5Reducer {
     /// <summary>
     /// Convenience factory for reduction errors
     /// </summary>
-    static ReductionError ReductionError (string message, string mangledName)
+    static ReductionError ReductionError (string message, string mangledName, ReductErrorSeverity severity)
     {
-        return new ReductionError() { Symbol = mangledName, Message = message };
+        return new ReductionError() { Symbol = mangledName, Message = message, Severity = severity };
+    }
+
+    /// <summary>
+    /// Convenience factory for a ReductionError with the given message and mangled name with the severity set to low
+    /// </summary>
+    /// <param name="message">the error message</param>
+    /// <param name="mangledName">the mangled name that was demangled and reduced</param>
+    /// <returns>a Reduction error of low severity</returns>
+    static ReductionError ReductionErrorLow (string message, string mangledName)
+    {
+        return ReductionError (message, mangledName, ReductErrorSeverity.Low);
+    }
+
+    /// <summary>
+    /// Convenience factory for a ReductionError with the given message and mangled name with the severity set to high
+    /// </summary>
+    /// <param name="message">the error message</param>
+    /// <param name="mangledName">the mangled name that was demangled and reduced</param>
+    /// <returns>a Reduction error of high severity</returns>
+    static ReductionError ReductionErrorHigh (string message, string mangledName)
+    {
+        return ReductionError (message, mangledName, ReductErrorSeverity.High);
     }
 
     /// <summary>
@@ -575,6 +616,6 @@ internal class Swift5Reducer {
     {
         if (ts.TypeSpec is NamedTypeSpec ns)
             return ProvenanceReduction.Instance (ts.Symbol, ns);
-        return ReductionError (ExpectedButGot ("NamedTypeSpec in TypeSpecReduction", ts.TypeSpec.GetType ().Name, ts.Symbol), ts.Symbol);
+        return ReductionErrorLow (ExpectedButGot ("NamedTypeSpec in TypeSpecReduction", ts.TypeSpec.GetType ().Name, ts.Symbol), ts.Symbol);
     }
 }
