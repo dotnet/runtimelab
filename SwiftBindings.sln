@@ -11,8 +11,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwiftRuntime", "src\Swift.R
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwiftRuntime.Tests", "src\Swift.Runtime\tests\Swift.Runtime.Tests.csproj", "{61F74BC6-1CCA-49FA-B5B8-6C9EABC1D0AB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HikingApp.MacCatalyst", "src\samples\HikingApp\HikingApp.MacCatalyst\HikingApp.MacCatalyst.csproj", "{DB210484-7F5B-4F5A-8975-1181D461B195}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -74,9 +72,5 @@ Global
 		{61F74BC6-1CCA-49FA-B5B8-6C9EABC1D0AB}.Release|x64.Build.0 = Release|Any CPU
 		{61F74BC6-1CCA-49FA-B5B8-6C9EABC1D0AB}.Release|x86.ActiveCfg = Release|Any CPU
 		{61F74BC6-1CCA-49FA-B5B8-6C9EABC1D0AB}.Release|x86.Build.0 = Release|Any CPU
-		{DB210484-7F5B-4F5A-8975-1181D461B195}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DB210484-7F5B-4F5A-8975-1181D461B195}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DB210484-7F5B-4F5A-8975-1181D461B195}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DB210484-7F5B-4F5A-8975-1181D461B195}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
