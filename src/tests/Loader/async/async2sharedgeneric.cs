@@ -9,27 +9,31 @@ public class Async2SharedGeneric
     [Fact]
     public static void TestEntryPoint()
     {
-        Async1EntryPoint<int>(typeof(int)).Wait();
-        Async1EntryPoint<string>(typeof(string)).Wait();
-        Async1EntryPoint<object>(typeof(object)).Wait();
+        Async1EntryPoint<int>(typeof(int), 42).Wait();
+        Async1EntryPoint<string>(typeof(string), "abc").Wait();
+        Async1EntryPoint<object>(typeof(object), "def").Wait();
 
-        Async2EntryPoint<int>(typeof(int)).Wait();
-        Async2EntryPoint<string>(typeof(string)).Wait();
-        Async2EntryPoint<object>(typeof(object)).Wait();
+        Async2EntryPoint<int>(typeof(int), 142).Wait();
+        Async2EntryPoint<string>(typeof(string), "ghi").Wait();
+        Async2EntryPoint<object>(typeof(object), "jkl").Wait();
     }
 
-    private static async Task Async1EntryPoint<T>(Type t)
+    private static async Task Async1EntryPoint<T>(Type t, T value)
     {
         await new GenericClass<T>().InstanceMethod(t);
         await GenericClass<T>.StaticMethod(t);
         await GenericClass<T>.StaticMethod<T>(t, t);
+        Assert.Equal(value, await GenericClass<T>.StaticReturnClassType(value));
+        Assert.Equal(value, await GenericClass<T>.StaticReturnMethodType<T>(value));
     }
 
-    private static async2 Task Async2EntryPoint<T>(Type t)
+    private static async2 Task Async2EntryPoint<T>(Type t, T value)
     {
         await new GenericClass<T>().InstanceMethod(t);
         await GenericClass<T>.StaticMethod(t);
         await GenericClass<T>.StaticMethod<T>(t, t);
+        Assert.Equal(value, await GenericClass<T>.StaticReturnClassType(value));
+        Assert.Equal(value, await GenericClass<T>.StaticReturnMethodType<T>(value));
     }
 }
 
@@ -62,5 +66,17 @@ public class GenericClass<T>
         await Task.Yield();
         Assert.Equal(typeof(T), t);
         Assert.Equal(typeof(TM), tm);
+    }
+
+    public static async2 Task<T> StaticReturnClassType(T value)
+    {
+        await Task.Yield();
+        return value;
+    }
+
+    public static async2 Task<TM> StaticReturnMethodType<TM>(TM value)
+    {
+        await Task.Yield();
+        return value;
     }
 }

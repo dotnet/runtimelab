@@ -1994,6 +1994,8 @@ private:
     bool TryGenerateUnsafeAccessor(DynamicResolver** resolver, COR_ILMETHOD_DECODER** methodILDecoder);
     void EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOtherVariant, MetaSig& thunkMsig, ILStubLinker* pSL);
     void EmitAsync2MethodThunk(MethodDesc* pAsyncOtherVariant, MetaSig& msig, ILStubLinker* pSL);
+    SigPointer GetAsync2ThunkResultTypeSig();
+    int GetTokenForGenericMethodCallWithAsyncReturnType(ILCodeStream* pCode, MethodDesc* md);
 public:
     static void CreateDerivedTargetSigWithExtraParams(MetaSig& msig, SigBuilder* stubSigBuilder);
     bool TryGenerateTransientILImplementation(DynamicResolver** resolver, COR_ILMETHOD_DECODER** methodILDecoder);
