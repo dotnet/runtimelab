@@ -1750,12 +1750,11 @@ bool MethodDesc::TryGenerateAsyncThunk(DynamicResolver** resolver, COR_ILMETHOD_
 
     MetaSig msig(this);
 
-    // [TODO] Handle generics
-    SigTypeContext emptyContext;
+    SigTypeContext sigContext(pAsyncOtherVariant);
     ILStubLinker sl(
         GetModule(),
         GetSignature(),
-        &emptyContext,
+        &sigContext,
         pAsyncOtherVariant,
         (ILStubLinkerFlags)ILSTUB_LINKER_FLAG_NONE);
 
