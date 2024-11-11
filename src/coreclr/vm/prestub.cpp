@@ -1744,7 +1744,10 @@ bool MethodDesc::TryGenerateAsyncThunk(DynamicResolver** resolver, COR_ILMETHOD_
     ULONG offsetOfAsyncDetailsUnused;
     bool isValueTypeUnused;
     AsyncTaskMethod asyncType = ClassifyAsyncMethod(GetSigPointer(), GetModule(), &offsetOfAsyncDetailsUnused, &isValueTypeUnused);
+
     MethodDesc *pAsyncOtherVariant = this->GetAsyncOtherVariant();
+    _ASSERTE(!IsWrapperStub() && !pAsyncOtherVariant->IsWrapperStub());
+
     MetaSig msig(this);
 
     // [TODO] Handle generics
@@ -1811,8 +1814,6 @@ void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOth
 
     TypeHandle thTaskRet = thunkMsig.GetRetTypeHandleThrowing();
 
-    bool hasInstParam = thunkMsig.HasGenericContextArg() != FALSE;
-
     bool isValueTask = thTaskRet.GetMethodTable()->IsValueType();
 
     LocalDesc returnLocalDesc(thTaskRet);
@@ -1859,17 +1860,19 @@ void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOth
             }
 
             int token;
-            if (pAsyncOtherVariant->IsSharedByGenericInstantiations())
+            _ASSERTE(!pAsyncOtherVariant->IsWrapperStub());
+            if (pAsyncOtherVariant->HasClassOrMethodInstantiation())
             {
-                // When shared, the IL we emit needs to encode generic signatures.
-                SigBuilder typeSigBuilder;
-                if (pAsyncOtherVariant->GetMethodTable()->IsSharedByGenericInstantiations())
+                // For generic code emit generic signatures.
+                int typeSigToken = mdTokenNil;
+                if (pAsyncOtherVariant->HasClassInstantiation())
                 {
+                    SigBuilder typeSigBuilder;
                     typeSigBuilder.AppendElementType(ELEMENT_TYPE_GENERICINST);
                     typeSigBuilder.AppendElementType(ELEMENT_TYPE_INTERNAL);
-                    // TODO: Shouldn't this be the typical method table? It
-                    // hits  an assert in resolveToken for the dynamic resolver
-                    // path.
+                    // TODO: Encoding potentially shared method tables in
+                    // signatures of tokens seems odd, but this hits assert
+                    // with the typical method table.
                     typeSigBuilder.AppendPointer(pAsyncOtherVariant->GetMethodTable());
                     DWORD numClassTypeArgs = pAsyncOtherVariant->GetNumGenericClassArgs();
                     typeSigBuilder.AppendData(numClassTypeArgs);
@@ -1878,18 +1881,13 @@ void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOth
                         typeSigBuilder.AppendElementType(ELEMENT_TYPE_VAR);
                         typeSigBuilder.AppendData(i);
                     }
-                }
-                else
-                {
-                    typeSigBuilder.AppendElementType(ELEMENT_TYPE_INTERNAL);
-                    typeSigBuilder.AppendPointer(pAsyncOtherVariant->GetMethodTable());
+
+                    DWORD typeSigLen;
+                    PCCOR_SIGNATURE typeSig = (PCCOR_SIGNATURE)typeSigBuilder.GetSignature(&typeSigLen);
+                    typeSigToken = pCode->GetSigToken(typeSig, typeSigLen);
                 }
 
-                DWORD typeSigLen;
-                PCCOR_SIGNATURE typeSig = (PCCOR_SIGNATURE)typeSigBuilder.GetSignature(&typeSigLen);
-                int typeSigToken = pCode->GetSigToken(typeSig, typeSigLen);
-
-                if (pAsyncOtherVariant->IsSharedByGenericMethodInstantiations())
+                if (pAsyncOtherVariant->HasMethodInstantiation())
                 {
                     SigBuilder methodSigBuilder;
                     DWORD numMethodTypeArgs = pAsyncOtherVariant->GetNumGenericMethodArgs();
@@ -1904,12 +1902,10 @@ void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOth
                     DWORD sigLen;
                     PCCOR_SIGNATURE sig = (PCCOR_SIGNATURE)methodSigBuilder.GetSignature(&sigLen);
                     int methodSigToken = pCode->GetSigToken(sig, sigLen);
-                    // TODO: Should be typical method definition?
                     token = pCode->GetToken(pAsyncOtherVariant, typeSigToken, methodSigToken);
                 }
                 else
                 {
-                    // TODO: Should be typical method definition?
                     token = pCode->GetToken(pAsyncOtherVariant, typeSigToken);
                 }
             }
@@ -1940,7 +1936,7 @@ void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOth
                 else
                     fromExceptionMD = CoreLibBinder::GetMethod(METHOD__TASK__FROM_EXCEPTION_1);
 
-                fromExceptionMD = FindOrCreateAssociatedMethodDesc(fromExceptionMD, fromExceptionMD->GetMethodTable(), FALSE, Instantiation(&thLogicalRetType, 1), TRUE);
+                fromExceptionMD = FindOrCreateAssociatedMethodDesc(fromExceptionMD, fromExceptionMD->GetMethodTable(), FALSE, Instantiation(&thLogicalRetType, 1), FALSE);
 
                 fromExceptionToken = GetTokenForGenericMethodCallWithAsyncReturnType(pCode, fromExceptionMD);
             }
@@ -1981,7 +1977,7 @@ void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOth
             md = CoreLibBinder::GetMethod(METHOD__VALUETASK__FROM_RESULT_T);
         else
             md = CoreLibBinder::GetMethod(METHOD__TASK__FROM_RESULT_T);
-        md = FindOrCreateAssociatedMethodDesc(md, md->GetMethodTable(), FALSE, Instantiation(&thLogicalRetType, 1), TRUE);
+        md = FindOrCreateAssociatedMethodDesc(md, md->GetMethodTable(), FALSE, Instantiation(&thLogicalRetType, 1), FALSE);
 
         int fromResultToken = GetTokenForGenericMethodCallWithAsyncReturnType(pCode, md);
         pCode->EmitCALL(fromResultToken, 1, 1);
@@ -2010,7 +2006,7 @@ void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOth
         else
             md = CoreLibBinder::GetMethod(METHOD__RUNTIME_HELPERS__FINALIZE_TASK_RETURNING_THUNK_1);
 
-        md = FindOrCreateAssociatedMethodDesc(md, md->GetMethodTable(), FALSE, Instantiation(&thLogicalRetType, 1), TRUE);
+        md = FindOrCreateAssociatedMethodDesc(md, md->GetMethodTable(), FALSE, Instantiation(&thLogicalRetType, 1), FALSE);
         finalizeTaskReturningThunkToken = GetTokenForGenericMethodCallWithAsyncReturnType(pCode, md);
     }
     else
@@ -2044,29 +2040,32 @@ SigPointer MethodDesc::GetAsync2ThunkResultTypeSig()
 
     SigPointer pSig(pSigRaw, cSig);
     uint32_t callConvInfo;
-    HRESULT hr = pSig.GetCallingConvInfo(&callConvInfo);
-    _ASSERTE(SUCCEEDED(hr));
+    IfFailThrow(pSig.GetCallingConvInfo(&callConvInfo));
 
     if ((callConvInfo & IMAGE_CEE_CS_CALLCONV_GENERIC) != 0)
     {
         // GenParamCount
-        hr = pSig.GetData(NULL);
-        _ASSERTE(SUCCEEDED(hr));
+        IfFailThrow(pSig.GetData(NULL));
     }
 
     // ParamCount
-    hr = pSig.GetData(NULL);
-    _ASSERTE(SUCCEEDED(hr));
+    IfFailThrow(pSig.GetData(NULL));
 
-    // ReturnType comes now.
-    hr = pSig.SkipCustomModifiers();
-    _ASSERTE(SUCCEEDED(hr));
+    // ReturnType comes now. Skip the modifiers (like async2 modifier).
+    IfFailThrow(pSig.SkipCustomModifiers());
 
-    // TODO: This also returns signature for all parameters, we shouldn't do that
+    // Get the start of the return type
     PCCOR_SIGNATURE returnTypeSig;
     uint32_t tailLength;
     pSig.GetSignature(&returnTypeSig, &tailLength);
-    return SigPointer(returnTypeSig, tailLength);
+
+    // Skip to the end of the return type so we can get the length.
+    IfFailThrow(pSig.SkipExactlyOne());
+
+    PCCOR_SIGNATURE returnTypeSigEnd;
+    pSig.GetSignature(&returnTypeSigEnd, &tailLength);
+
+    return SigPointer(returnTypeSig, (DWORD)(returnTypeSigEnd - returnTypeSig));
 }
 
 // Given a method Foo<T>, return a MethodSpec token for Foo<T> instantiated
@@ -2076,17 +2075,13 @@ SigPointer MethodDesc::GetAsync2ThunkResultTypeSig()
 // Task.FromResult<List<T>>.
 int MethodDesc::GetTokenForGenericMethodCallWithAsyncReturnType(ILCodeStream* pCode, MethodDesc* md)
 {
-    if (!md->IsSharedByGenericInstantiations())
+    if (!md->HasClassOrMethodInstantiation())
     {
         return pCode->GetToken(md);
     }
 
-    SigBuilder typeSigBuilder;
-    typeSigBuilder.AppendElementType(ELEMENT_TYPE_INTERNAL);
-    typeSigBuilder.AppendPointer(md->GetMethodTable());
-    DWORD typeSigLen;
-    PCCOR_SIGNATURE typeSig = (PCCOR_SIGNATURE)typeSigBuilder.GetSignature(&typeSigLen);
-    int typeSigToken = pCode->GetSigToken(typeSig, typeSigLen);
+    // We never get here with a class instantiation currently.
+    _ASSERTE(!md->HasClassInstantiation());
 
     SigBuilder methodSigBuilder;
     methodSigBuilder.AppendByte(IMAGE_CEE_CS_CALLCONV_GENERICINST);
@@ -2101,7 +2096,7 @@ int MethodDesc::GetTokenForGenericMethodCallWithAsyncReturnType(ILCodeStream* pC
     PCCOR_SIGNATURE methodSig = (PCCOR_SIGNATURE)methodSigBuilder.GetSignature(&methodSigLen);
     int methodSigToken = pCode->GetSigToken(methodSig, methodSigLen);
 
-    return pCode->GetToken(md, typeSigToken, methodSigToken);
+    return pCode->GetToken(md, mdTokenNil, methodSigToken);
 }
 
 void MethodDesc::EmitAsync2MethodThunk(MethodDesc* pAsyncOtherVariant, MetaSig& msig, ILStubLinker* pSL)
