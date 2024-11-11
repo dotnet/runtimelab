@@ -14474,9 +14474,6 @@ CORINFO_METHOD_HANDLE CEEJitInfo::getAsyncResumptionStub()
 #ifndef TARGET_X86
     if (msig.HasGenericContextArg())
     {
-        // TODO: Is the VM ok with this being null temporarily while the JIT is
-        // restoring state? Should we instead store the generic context (and
-        // perhaps "this") in a pre-agreed upon place, and then pass it here?
         pCode->EmitLDC(0);
         numArgs++;
     }
