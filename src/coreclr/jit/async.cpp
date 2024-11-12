@@ -434,13 +434,6 @@ void Async2Transformation::Transform(
         returnInGCData = varTypeIsGC(call->gtReturnType);
     }
 
-    if (returnSize > 0)
-    {
-        JITDUMP("  Will store return of type %s, size %u in %sGC data\n",
-                call->gtReturnType == TYP_STRUCT ? returnStructLayout->GetClassName() : varTypeName(call->gtReturnType),
-                returnSize, returnInGCData ? "" : "non-");
-    }
-
     assert((returnSize > 0) == (call->gtReturnType != TYP_VOID));
 
     // The return value is always stored:
@@ -457,9 +450,25 @@ void Async2Transformation::Transform(
     {
         returnValDataOffset = dataSize;
         dataSize += returnSize;
-
-        JITDUMP("  at offset %u\n", returnValDataOffset);
     }
+
+#ifdef DEBUG
+    if (returnSize > 0)
+    {
+        JITDUMP("  Will store return of type %s, size %u in",
+            call->gtReturnType == TYP_STRUCT ? returnStructLayout->GetClassName() : varTypeName(call->gtReturnType),
+            returnSize);
+
+        if (returnInGCData)
+        {
+            JITDUMP(" GC data\n");
+        }
+        else
+        {
+            JITDUMP(" non-GC data at offset %u\n", returnValDataOffset);
+        }
+    }
+#endif
 
     unsigned exceptionGCDataIndex = UINT_MAX;
     if (block->hasTryIndex())
