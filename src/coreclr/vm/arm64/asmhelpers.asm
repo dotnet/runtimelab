@@ -645,8 +645,8 @@ COMToCLRDispatchHelper_RegSetup
     str x2, [sp, #112]
 
     ; save any FP/HFA/HVA return value(s)
-    stp q0, q1, [sp, #120]
-    stp q2, q3, [sp, #152]
+    stp q0, q1, [sp, #128]
+    stp q2, q3, [sp, #160]
 
     mov x0, sp
     bl OnHijackWorker
@@ -658,8 +658,8 @@ COMToCLRDispatchHelper_RegSetup
     ldr x2, [sp, #112]
 
     ; restore any FP/HFA/HVA return value(s)
-    ldp q0, q1, [sp, #120]
-    ldp q2, q3, [sp, #152]
+    ldp q0, q1, [sp, #128]
+    ldp q2, q3, [sp, #160]
 
     EPILOG_RESTORE_REG_PAIR   x19, x20, #16
     EPILOG_RESTORE_REG_PAIR   x21, x22, #32
