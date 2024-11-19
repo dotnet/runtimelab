@@ -15,6 +15,7 @@ trigger:
     - eng/Version.Details.xml
     - .github/*
     - docs/*
+    - src/docs/*
     - CODE-OF-CONDUCT.md
     - LICENSE.TXT
     - PATENTS.TXT
