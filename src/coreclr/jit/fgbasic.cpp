@@ -2562,6 +2562,11 @@ void Compiler::fgFindJumpTargets(const BYTE* codeAddr, IL_OFFSET codeSize, Fixed
         fgAdjustForAddressExposedOrWrittenThis();
     }
 
+    if (compIsStructMethodThatOperatesOnCopy())
+    {
+        fgInitializeThisCopyVar();
+    }
+
     // Now that we've seen the IL, set lvSingleDef for root method
     // locals.
     //
@@ -2630,6 +2635,16 @@ void Compiler::fgAdjustForAddressExposedOrWrittenThis()
         thisVarDsc->CleanAddressExposed();
         thisVarDsc->lvHasILStoreOp = false;
     }
+}
+
+void Compiler::fgInitializeThisCopyVar()
+{
+    assert(lvaAsyncThisCopyVar == BAD_VAR_NUM);
+    lvaAsyncThisCopyVar = lvaGrabTemp(false DEBUGARG("Copy of 'this' for async2 struct instance method"));
+    lvaSetStruct(lvaAsyncThisCopyVar, info.compClassHnd, false);
+
+    LclVarDsc* lclDsc = lvaGetDesc(lvaAsyncThisCopyVar);
+    lclDsc->lvHasLdAddrOp = 1;
 }
 
 //------------------------------------------------------------------------

@@ -9118,6 +9118,11 @@ void Compiler::impCheckCanInline(GenTreeCall*           call,
                         (CORINFO_CLASS_HANDLE)((size_t)pParam->exactContextHnd & ~CORINFO_CONTEXTFLAGS_MASK)));
         }
 
+        if (VERBOSE)
+        {
+            printf("here\n");
+        }
+
         // Fetch method info. This may fail, if the method doesn't have IL.
         //
         CORINFO_METHOD_INFO methInfo;

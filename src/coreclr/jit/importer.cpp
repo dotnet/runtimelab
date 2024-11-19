@@ -6750,6 +6750,11 @@ void Compiler::impImportBlockCode(BasicBlock* block)
 
                 if (compIsForInlining())
                 {
+                    if ((lclNum == 0) && compIsStructMethodThatOperatesOnCopy())
+                    {
+                        BADCODE("Illegal starg 0 in function");
+                    }
+
                     op1 = impInlineFetchArg(impInlineInfo->inlArgInfo[lclNum], impInlineInfo->lclVarInfo[lclNum]);
                     noway_assert(op1->gtOper == GT_LCL_VAR);
                     lclNum = op1->AsLclVar()->GetLclNum();
@@ -6763,6 +6768,11 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                 if (lclNum == info.compThisArg)
                 {
                     lclNum = lvaArg0Var;
+
+                    if (compIsStructMethodThatOperatesOnCopy())
+                    {
+                        BADCODE("Illegal starg 0 in function");
+                    }
                 }
 
                 // We should have seen this arg write in the prescan
@@ -6962,6 +6972,11 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                         return;
                     }
 
+                    if ((lclNum == 0) && compIsStructMethodThatOperatesOnCopy())
+                    {
+                        BADCODE("Illegal ldarga 0 in function");
+                    }
+
                     op1->ChangeType(TYP_BYREF);
                     op1->SetOper(GT_LCL_ADDR);
                     op1->AsLclFld()->SetLclOffs(0);
@@ -6974,6 +6989,11 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                 if (lclNum == info.compThisArg)
                 {
                     lclNum = lvaArg0Var;
+
+                    if (compIsStructMethodThatOperatesOnCopy())
+                    {
+                        BADCODE("Illegal ldarga 0 in runtime-async function");
+                    }
                 }
 
                 goto ADRVAR;
@@ -10957,6 +10977,14 @@ void Compiler::impLoadArg(unsigned ilArgNum, IL_OFFSET offset)
         if (lclNum == info.compThisArg)
         {
             lclNum = lvaArg0Var;
+
+            // Redirect to copy in async2 struct instance methods
+            if (lvaAsyncThisCopyVar != BAD_VAR_NUM)
+            {
+                GenTree* lclAddr = gtNewLclVarAddrNode(lvaAsyncThisCopyVar, TYP_BYREF);
+                impPushOnStack(lclAddr, verMakeTypeInfoForLocal(lclNum));
+                return;
+            }
         }
 
         impLoadVar(lclNum, offset);
@@ -13244,12 +13272,18 @@ void Compiler::impInlineInitVars(InlineInfo* pInlineInfo)
     GenTreeCall*         call         = pInlineInfo->iciCall;
     CORINFO_METHOD_INFO* methInfo     = &pInlineInfo->inlineCandidateInfo->methInfo;
     unsigned             clsAttr      = pInlineInfo->inlineCandidateInfo->clsAttr;
+    unsigned             methAttr     = pInlineInfo->inlineCandidateInfo->methAttr;
     InlArgInfo*          inlArgInfo   = pInlineInfo->inlArgInfo;
     InlLclVarInfo*       lclVarInfo   = pInlineInfo->lclVarInfo;
     InlineResult*        inlineResult = pInlineInfo->inlineResult;
 
     /* init the argument struct */
     memset(inlArgInfo, 0, (MAX_INL_ARGS + 1) * sizeof(inlArgInfo[0]));
+
+    if (verbose)
+    {
+        printf("here\n");
+    }
 
     unsigned ilArgCnt = 0;
     for (CallArg& arg : call->gtArgs.Args())
@@ -13292,6 +13326,16 @@ void Compiler::impInlineInitVars(InlineInfo* pInlineInfo)
         if (inlineResult->IsFailure())
         {
             return;
+        }
+
+        if ((arg.GetWellKnownArg() == WellKnownArg::ThisPointer) && ((methInfo->options & CORINFO_OPT_COPY_STRUCT_INSTANCE) != 0))
+        {
+            // struct instance async2 method. We will load the instance
+            // as part of copying, so set up flags to indicate that
+            // there is a side effect.
+            inlArgInfo[ilArgCnt].argIsByRefToCopy = true;
+            inlArgInfo[ilArgCnt].argHasGlobRef = true;
+            inlArgInfo[ilArgCnt].argHasSideEff = true;
         }
 
         ilArgCnt++;
@@ -13682,9 +13726,13 @@ unsigned Compiler::impInlineFetchLocal(unsigned lclNum DEBUGARG(const char* reas
 
 GenTree* Compiler::impInlineFetchArg(InlArgInfo& argInfo, const InlLclVarInfo& lclInfo)
 {
+    if (verbose)
+    {
+        printf("here\n");
+    }
     // Cache the relevant arg and lcl info for this argument.
     // We will modify argInfo but not lclVarInfo.
-    const bool      argCanBeModified = argInfo.argHasLdargaOp || argInfo.argHasStargOp;
+    const bool      argCanBeModified = argInfo.argHasLdargaOp || argInfo.argHasStargOp || argInfo.argIsByRefToCopy;
     const var_types lclTyp           = lclInfo.lclTypeInfo;
     GenTree*        op1              = nullptr;
 
@@ -13747,7 +13795,7 @@ GenTree* Compiler::impInlineFetchArg(InlArgInfo& argInfo, const InlLclVarInfo& l
             }
         }
     }
-    else if (argInfo.argIsByRefToStructLocal && !argInfo.argHasStargOp)
+    else if (argInfo.argIsByRefToStructLocal && !argInfo.argHasStargOp && !argInfo.argIsByRefToCopy)
     {
         /* Argument is a by-ref address to a struct, a normed struct, or its field.
            In these cases, don't spill the byref to a local, simply clone the tree and use it.
@@ -13846,7 +13894,7 @@ GenTree* Compiler::impInlineFetchArg(InlArgInfo& argInfo, const InlLclVarInfo& l
             // if it is a struct, because it requires some additional handling.
 
             if ((!varTypeIsStruct(lclTyp) && !argInfo.argHasSideEff && !argInfo.argHasGlobRef &&
-                 !argInfo.argHasCallerLocalRef))
+                 !argInfo.argHasCallerLocalRef && !argInfo.argIsByRefToStructLocal))
             {
                 /* Get a *LARGE* LCL_VAR node */
                 op1 = gtNewLclLNode(tmpNum, genActualType(lclTyp));
