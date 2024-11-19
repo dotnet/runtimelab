@@ -144,11 +144,11 @@ public:
         return !dsc->lvTracked || VarSetOps::IsMember(m_comp, m_comp->compCurLife, dsc->lvVarIndex);
     }
 
-    void GetLiveLocals(jitstd::vector<Async2Transformation::LiveLocalInfo>& liveLocals, unsigned fullyDefinedRetBufLcl)
+    void GetLiveLocals(jitstd::vector<Async2Transformation::LiveLocalInfo>& liveLocals, unsigned fullyDefinedRetBufLcl, unsigned fullyDefinedStructInstanceLcl)
     {
         for (unsigned lclNum = 0; lclNum < m_numVars; lclNum++)
         {
-            if ((lclNum != fullyDefinedRetBufLcl) && IsLive(lclNum))
+            if ((lclNum != fullyDefinedRetBufLcl) && (lclNum != fullyDefinedStructInstanceLcl) && IsLive(lclNum))
             {
                 liveLocals.push_back(Async2Transformation::LiveLocalInfo(lclNum));
             }
@@ -328,7 +328,16 @@ void Async2Transformation::Transform(
         }
     }
 
-    life.GetLiveLocals(m_liveLocals, fullyDefinedRetBufLcl);
+    CallArg* thisArg = call->gtArgs.GetThisArg();
+    bool isStructInstanceCall = (thisArg != nullptr) && (thisArg->GetSignatureType() != TYP_REF);
+    unsigned fullyDefinedStructInstanceLcl = BAD_VAR_NUM;
+    if (isStructInstanceCall && thisArg->GetNode()->OperIs(GT_LCL_ADDR))
+    {
+        // This call also fully defined the struct instance it is called on.
+        fullyDefinedStructInstanceLcl = thisArg->GetNode()->AsLclVarCommon()->GetLclNum();
+    }
+
+    life.GetLiveLocals(m_liveLocals, fullyDefinedRetBufLcl, fullyDefinedStructInstanceLcl);
     LiftLIREdges(block, call, defs, m_liveLocals);
 
 #ifdef DEBUG
@@ -469,6 +478,26 @@ void Async2Transformation::Transform(
         }
     }
 #endif
+
+    // If the callee is on a value type then the instance is essentially
+    // another result, so allocate an instance for it -- the resumption stub of
+    // the callee will propagate the instance back.
+    unsigned calleeStructInstanceResultIndex = UINT_MAX;
+    if (isStructInstanceCall)
+    {
+        calleeStructInstanceResultIndex = gcRefsCount++;
+        JITDUMP("  Will store return struct instance at GC@+%02u\n", calleeStructInstanceResultIndex);
+    }
+
+    // If this method is a value type instance method, then we need an index to
+    // box and save our "this" instance.
+    // TODO-CQ: This might be avoidable for self calls
+    unsigned structInstanceIndex = UINT_MAX;
+    if ((m_comp->info.compThisArg != BAD_VAR_NUM) && (m_comp->info.compClassAttr & CORINFO_FLG_VALUECLASS) != 0)
+    {
+        structInstanceIndex = gcRefsCount++;
+        JITDUMP("  Will store boxed 'this' at GC@+%02u\n", structInstanceIndex);
+    }
 
     unsigned exceptionGCDataIndex = UINT_MAX;
     if (block->hasTryIndex())
@@ -620,6 +649,10 @@ void Async2Transformation::Transform(
     unsigned continuationFlags = 0;
     if (returnInGCData)
         continuationFlags |= CORINFO_CONTINUATION_RESULT_IN_GCDATA;
+    if (calleeStructInstanceResultIndex != UINT_MAX)
+        continuationFlags |= CORINFO_CONTINUATION_RESULT_INSTANCE_IN_GCDATA;
+    if (structInstanceIndex != UINT_MAX)
+        continuationFlags |= CORINFO_CONTINUATION_INSTANCE_IN_GCDATA;
     if (block->hasTryIndex())
         continuationFlags |= CORINFO_CONTINUATION_NEEDS_EXCEPTION;
     if (m_comp->doesMethodHavePatchpoints() || m_comp->opts.IsOSR())
@@ -641,6 +674,26 @@ void Async2Transformation::Transform(
         GenTree* gcDataInd    = LoadFromOffset(newContinuation, gcDataOffset, TYP_REF);
         GenTree* storeAllocedObjectArr = m_comp->gtNewStoreLclVarNode(objectArrLclNum, gcDataInd);
         LIR::AsRange(suspendBB).InsertAtEnd(LIR::SeqTree(m_comp, storeAllocedObjectArr));
+
+        if ((structInstanceIndex != UINT_MAX) && ((thisArg == nullptr) || !thisArg->GetNode()->OperIs(GT_LCL_VAR)))
+        {
+            // Box "this" if we are the leaf call on this struct
+            // TODO: This boxes with shared type. We will need a runtime lookup
+            // for shared generics, at least for diagnostics (functionally not
+            // a problem as we just use this box as a container for the data).
+            GenTree* clsHnd = m_comp->gtNewIconEmbClsHndNode(m_comp->info.compClassHnd);
+            GenTree* thisAddr = m_comp->gtNewLclvNode(m_comp->info.compThisArg, TYP_BYREF);
+            GenTree* boxedThis = m_comp->gtNewHelperCallNode(CORINFO_HELP_BOX, TYP_REF, clsHnd, thisAddr);
+
+            m_comp->compCurBB = suspendBB;
+            m_comp->fgMorphTree(boxedThis);
+
+            unsigned boxedThisOffset = OFFSETOF__CORINFO_Array__data + structInstanceIndex * TARGET_POINTER_SIZE;
+
+            GenTree* objectArr = m_comp->gtNewLclvNode(objectArrLclNum, TYP_REF);
+            GenTree* storeBoxedThis = StoreAtOffset(objectArr, boxedThisOffset, boxedThis);
+            LIR::AsRange(suspendBB).InsertAtEnd(LIR::SeqTree(m_comp, storeBoxedThis));
+        }
 
         for (LiveLocalInfo& inf : m_liveLocals)
         {
@@ -935,6 +988,71 @@ void Async2Transformation::Transform(
             }
         }
 
+        // If the call is on a struct instance then propagate it back to the instance we called on.
+        if (calleeStructInstanceResultIndex != UINT_MAX)
+        {
+            JITDUMP("  We need to restore callee struct instance result\n");
+
+            GenTree* thisArgNode = thisArg->GetNode();
+            GenTree* objectArr       = m_comp->gtNewLclvNode(resumeObjectArrLclNum, TYP_REF);
+            unsigned thisObjectOffset = OFFSETOF__CORINFO_Array__data + calleeStructInstanceResultIndex * TARGET_POINTER_SIZE;
+            GenTree* thisObjectInd    = LoadFromOffset(objectArr, thisObjectOffset, TYP_REF);
+
+            // Value type instance calls are required to be one of two shapes:
+            // 1. LCL_VAR 'this', for self calls
+            // 2. LCL_ADDR <local>, for other calls
+            // We verify this during import. Here we just noway_assert to ensure we
+            // haven't broken these patterns (this is best-effort, e.g. it allows
+            // nested calls on a field at offset 0, which is still illegal).
+
+            if (thisArgNode->OperIs(GT_LCL_VAR))
+            {
+                JITDUMP("    This is a self-call; restoring to 'this' byref\n");
+                GenTreeLclVar* lcl = thisArgNode->AsLclVar();
+                noway_assert(lcl->GetLclNum() == m_comp->info.compThisArg);
+
+                unsigned structInstanceBoxLcl = GetCalleeStructInstanceBoxVar();
+                GenTree* storeStructInstanceBox = m_comp->gtNewStoreLclVarNode(structInstanceBoxLcl, thisObjectInd);
+                LIR::AsRange(resumeBB).InsertAtEnd(LIR::SeqTree(m_comp, storeStructInstanceBox));
+
+                GenTree* thisObject = m_comp->gtNewLclvNode(structInstanceBoxLcl, TYP_REF);
+                GenTree* thisObjectUnboxed = m_comp->gtNewOperNode(GT_ADD, TYP_BYREF, thisObject, m_comp->gtNewIconNode(TARGET_POINTER_SIZE, TYP_I_IMPL));
+                GenTree* storeThisPointer  = m_comp->gtNewStoreLclVarNode(m_comp->info.compThisArg, thisObjectUnboxed);
+                LIR::AsRange(resumeBB).InsertAtEnd(LIR::SeqTree(m_comp, storeThisPointer));
+
+                // We must furthermore propagate the instance back for our caller.
+                objectArr       = m_comp->gtNewLclvNode(resumeObjectArrLclNum, TYP_REF);
+                unsigned structInstanceOffset = OFFSETOF__CORINFO_Array__data + structInstanceIndex * TARGET_POINTER_SIZE;
+                GenTree* storeInstance = StoreAtOffset(objectArr, structInstanceOffset, m_comp->gtNewLclvNode(structInstanceBoxLcl, TYP_REF));
+                LIR::AsRange(resumeBB).InsertAtEnd(LIR::SeqTree(m_comp, storeInstance));
+            }
+            else
+            {
+                JITDUMP("    This is a call on a local; copying\n");
+                noway_assert(thisArgNode->IsLclVarAddr() && varTypeIsStruct(m_comp->lvaGetDesc(thisArgNode->AsLclVarCommon())));
+
+                ClassLayout* layout = m_comp->lvaGetDesc(thisArgNode->AsLclVarCommon())->GetLayout();
+                GenTree* thisObjectUnboxed = m_comp->gtNewOperNode(GT_ADD, TYP_BYREF, thisObjectInd, m_comp->gtNewIconNode(TARGET_POINTER_SIZE, TYP_I_IMPL));
+                GenTree* thisData         = m_comp->gtNewBlkIndir(layout, thisObjectUnboxed);
+                GenTree* storeThis = m_comp->gtNewStoreLclVarNode(thisArgNode->AsLclVarCommon()->GetLclNum(), thisData);
+                LIR::AsRange(resumeBB).InsertAtEnd(LIR::SeqTree(m_comp, storeThis));
+            }
+        }
+
+        // If this method is on a struct instance, then restore it unless we
+        // already did from the self-call handling above.
+        if ((structInstanceIndex != UINT_MAX) && ((thisArg == nullptr) || !thisArg->GetNode()->OperIs(GT_LCL_VAR)))
+        {
+            JITDUMP("  We need to restore 'this' byref\n");
+            GenTree* objectArr       = m_comp->gtNewLclvNode(resumeObjectArrLclNum, TYP_REF);
+            unsigned thisObjectOffset = OFFSETOF__CORINFO_Array__data + structInstanceIndex * TARGET_POINTER_SIZE;
+            GenTree* thisObjectInd    = LoadFromOffset(objectArr, thisObjectOffset, TYP_REF);
+            GenTree* thisObjectUnboxed = m_comp->gtNewOperNode(GT_ADD, TYP_BYREF, thisObjectInd, m_comp->gtNewIconNode(TARGET_POINTER_SIZE, TYP_I_IMPL));
+
+            GenTree* storeThisPointer  = m_comp->gtNewStoreLclVarNode(m_comp->info.compThisArg, thisObjectUnboxed);
+            LIR::AsRange(resumeBB).InsertAtEnd(LIR::SeqTree(m_comp, storeThisPointer));
+        }
+
         if (exceptionGCDataIndex != UINT_MAX)
         {
             JITDUMP("  We need to rethrow an exception\n");
@@ -1168,6 +1286,17 @@ unsigned Async2Transformation::GetExceptionVar()
     }
 
     return m_exceptionVar;
+}
+
+unsigned Async2Transformation::GetCalleeStructInstanceBoxVar()
+{
+    if ((m_calleeStructInstanceBoxVar == BAD_VAR_NUM) || !m_comp->lvaHaveManyLocals())
+    {
+        m_calleeStructInstanceBoxVar = m_comp->lvaGrabTemp(false DEBUGARG("callee struct instance box var"));
+        m_comp->lvaGetDesc(m_calleeStructInstanceBoxVar)->lvType = TYP_REF;
+    }
+
+    return m_calleeStructInstanceBoxVar;
 }
 
 GenTree* Async2Transformation::CreateResumptionStubAddrTree()

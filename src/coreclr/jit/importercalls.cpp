@@ -980,11 +980,27 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
 
         // Store the "this" value in the call
         call->gtFlags |= obj->gtFlags & GTF_GLOB_EFFECT;
-        call->AsCall()->gtArgs.PushFront(this, NewCallArg::Primitive(obj).WellKnown(WellKnownArg::ThisPointer));
+        CallArg* thisArg = call->AsCall()->gtArgs.PushFront(this, NewCallArg::Primitive(obj).WellKnown(WellKnownArg::ThisPointer));
 
         if (impIsThis(obj))
         {
             call->AsCall()->gtCallMoreFlags |= GTF_CALL_M_NONVIRT_SAME_THIS;
+        }
+
+        if (sig->isAsyncCall() && (thisArg->GetSignatureType() != TYP_REF))
+        {
+            if (thisArg->GetNode()->OperIs(GT_LCL_ADDR))
+            {
+                // OK, fall through
+            }
+            else if (thisArg->GetNode()->OperIs(GT_LCL_VAR) && impIsThis(obj))
+            {
+                // OK, fall through
+            }
+            else
+            {
+                BADCODE("Illegal runtime-async struct instance call");
+            }
         }
     }
 

@@ -1702,14 +1702,21 @@ enum CorInfoContinuationFlags
     // Whether or not the continuation expects the result to be boxed and
     // placed in the GCData array at index 0. Not set if the callee is void.
     CORINFO_CONTINUATION_RESULT_IN_GCDATA = 1,
+    // Whether or not the continuation expects the callee's "this" pointer to
+    // be placed in the GCData array (after the result). Used when awaiting a
+    // struct instance method.
+    CORINFO_CONTINUATION_RESULT_INSTANCE_IN_GCDATA = 2,
+    // Whether or not the continuation stores its own instance in the GCData
+    // array (after the previous flags). Used when awaiting from a struct
+    // instance method.
+    CORINFO_CONTINUATION_INSTANCE_IN_GCDATA = 4,
     // If this bit is set the continuation resumes inside a try block and thus
     // if an exception is being propagated, needs to be resumed. The exception
-    // should be placed at index 0 or 1 depending on whether the continuation
-    // also expects a result.
-    CORINFO_CONTINUATION_NEEDS_EXCEPTION = 2,
+    // should be placed at index 0, 1, 2 or 3 depending on the previous flags.
+    CORINFO_CONTINUATION_NEEDS_EXCEPTION = 8,
     // If this bit is set the continuation has an OSR IL offset saved in the
     // beginning of 'Data'.
-    CORINFO_CONTINUATION_OSR_IL_OFFSET_IN_DATA = 4,
+    CORINFO_CONTINUATION_OSR_IL_OFFSET_IN_DATA = 16,
 };
 
 struct CORINFO_ASYNC2_INFO

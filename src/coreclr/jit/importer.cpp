@@ -6763,6 +6763,11 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                 if (lclNum == info.compThisArg)
                 {
                     lclNum = lvaArg0Var;
+
+                    if (compIsAsync2() && ((info.compClassAttr & CORINFO_FLG_VALUECLASS) != 0))
+                    {
+                        BADCODE("Illegal starg 0 in runtime-async function");
+                    }
                 }
 
                 // We should have seen this arg write in the prescan
@@ -6974,6 +6979,11 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                 if (lclNum == info.compThisArg)
                 {
                     lclNum = lvaArg0Var;
+
+                    if (compIsAsync2() && ((info.compClassAttr & CORINFO_FLG_VALUECLASS) != 0))
+                    {
+                        BADCODE("Illegal ldarga 0 in runtime-async function");
+                    }
                 }
 
                 goto ADRVAR;

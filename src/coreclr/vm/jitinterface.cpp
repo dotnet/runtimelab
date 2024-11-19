@@ -14366,7 +14366,7 @@ static Signature BuildResumptionStubSignature(LoaderAllocator* alloc)
     return AllocateSignature(alloc, sigBuilder);
 }
 
-static Signature BuildResumptionStubCalliSignature(MetaSig& msig, LoaderAllocator* alloc)
+static Signature BuildResumptionStubCalliSignature(MetaSig& msig, MethodTable* mt, LoaderAllocator* alloc)
 {
     unsigned numArgs = 0;
     if (msig.HasThis())
@@ -14384,7 +14384,7 @@ static Signature BuildResumptionStubCalliSignature(MetaSig& msig, LoaderAllocato
     numArgs += msig.NumFixedArgs();
 
     SigBuilder sigBuilder;
-    sigBuilder.AppendByte(IMAGE_CEE_CS_CALLCONV_DEFAULT);
+    sigBuilder.AppendByte(IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS | IMAGE_CEE_CS_CALLCONV_EXPLICITTHIS);
     sigBuilder.AppendData(numArgs);
 
     auto appendTypeHandle = [&](TypeHandle th) {
@@ -14409,7 +14409,15 @@ static Signature BuildResumptionStubCalliSignature(MetaSig& msig, LoaderAllocato
     appendTypeHandle(msig.GetRetTypeHandleThrowing()); // return type
     if (msig.HasThis())
     {
-        sigBuilder.AppendElementType(ELEMENT_TYPE_OBJECT);
+        if (mt->IsValueType())
+        {
+            sigBuilder.AppendElementType(ELEMENT_TYPE_BYREF);
+            appendTypeHandle(TypeHandle(mt));
+        }
+        else
+        {
+            sigBuilder.AppendElementType(ELEMENT_TYPE_OBJECT);
+        }
     }
 #ifndef TARGET_X86
     if (msig.HasGenericContextArg())
@@ -14455,7 +14463,7 @@ CORINFO_METHOD_HANDLE CEEJitInfo::getAsyncResumptionStub()
     Signature stubSig = BuildResumptionStubSignature(md->GetLoaderAllocator());
 
     MetaSig msig(md);
-    Signature calliSig = BuildResumptionStubCalliSignature(msig, md->GetLoaderAllocator());
+    Signature calliSig = BuildResumptionStubCalliSignature(msig, md->GetMethodTable(), md->GetLoaderAllocator());
 
     SigTypeContext emptyCtx;
     ILStubLinker sl(md->GetModule(), stubSig, &emptyCtx, NULL, ILSTUB_LINKER_FLAG_NONE);
@@ -14466,8 +14474,16 @@ CORINFO_METHOD_HANDLE CEEJitInfo::getAsyncResumptionStub()
 
     if (msig.HasThis())
     {
-        _ASSERTE(!md->GetMethodTable()->IsValueType());
-        pCode->EmitLDNULL();
+        if (md->GetMethodTable()->IsValueType())
+        {
+            pCode->EmitLDC(0);
+            pCode->EmitCONV_U();
+        }
+        else
+        {
+            pCode->EmitLDNULL();
+        }
+
         numArgs++;
     }
 
@@ -14553,12 +14569,21 @@ CORINFO_METHOD_HANDLE CEEJitInfo::getAsyncResumptionStub()
     pCode->EmitCALL(METHOD__STUBHELPERS__ASYNC2_CALL_CONTINUATION, 0, 1);
     pCode->EmitSTLOC(newContinuationLoc);
 
+    ILCodeLabel* donePropagating = pCode->NewCodeLabel();
+;
+    bool isStructInstanceCall = msig.HasThis() && md->GetMethodTable()->IsValueType();
+
+    if (msig.IsReturnTypeVoid() && !isStructInstanceCall)
+    {
+        // Need to propagate result or struct instance into next continuation,
+        // but only if we didn't suspend.
+        pCode->EmitLDLOC(newContinuationLoc);
+        pCode->EmitBRTRUE(donePropagating);
+    }
+
     if (!msig.IsReturnTypeVoid())
     {
         ILCodeLabel* doneResult = pCode->NewCodeLabel();
-        pCode->EmitLDLOC(newContinuationLoc);
-        pCode->EmitBRTRUE(doneResult);
-
         // Load 'next' of current continuation
         pCode->EmitLDARG(0);
         pCode->EmitLDFLD(FIELD__CONTINUATION__NEXT);
@@ -14626,6 +14651,14 @@ CORINFO_METHOD_HANDLE CEEJitInfo::getAsyncResumptionStub()
 
         pCode->EmitLabel(doneResult);
     }
+
+    if (msig.HasThis() && md->GetMethodTable()->IsValueType())
+    {
+        pCode->EmitLDARG(0);
+        pCode->EmitCALL(METHOD__CONTINUATION__PROPAGATE_BOXED_STRUCT_INSTANCE, 1, 0);
+    }
+
+    pCode->EmitLabel(donePropagating);
 
     pCode->EmitLDLOC(newContinuationLoc);
     pCode->EmitRET();
