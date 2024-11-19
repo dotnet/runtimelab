@@ -65,7 +65,7 @@ If the compilation succeeds, the native artifacts will be placed under the `bin/
 
 ## WebAssembly application configuration
 
-By default, the build will produce a binary with debug information, which is usually quite large. If you do not need it, add `/p:NativeDebugSymbols=false` to the publish command line. Note that this will disable the generation of _all_ debug info, including function names for stack traces.
+By default, the build will produce a binary with debug information, which is usually quite large. If you do not need it, add `/p:DebugType=none` to the publish command line.
 
 Another large contributor to the size is globalization support (ICU data and code). You can opt out by setting the [`InvariantGlobalization`](https://learn.microsoft.com/en-us/dotnet/core/runtime-config/globalization) MSBuild property to `true`.
 
