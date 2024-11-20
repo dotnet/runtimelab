@@ -107,8 +107,8 @@
     <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
 
-    <Delete Files="$(PublishDir)\$(TargetName).wasm.debug.wasm" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
-    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm.debug.wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
+    <Delete Files="$(PublishDir)\$(TargetName).debug.wasm" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
+    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).debug.wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
 
     <ItemGroup>
       <_FilesToCopyToNative Include="$(NativeOutputPath)\dotnet.native.js" />

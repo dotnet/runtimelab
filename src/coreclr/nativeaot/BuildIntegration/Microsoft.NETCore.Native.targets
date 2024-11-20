@@ -35,7 +35,6 @@ The .NET Foundation licenses this file to you under the MIT license.
     <IlcTreatWarningsAsErrors Condition="'$(IlcTreatWarningsAsErrors)' == ''">$(TreatWarningsAsErrors)</IlcTreatWarningsAsErrors>
     <_IsiOSLikePlatform Condition="'$(_targetOS)' == 'maccatalyst' or $(_targetOS.StartsWith('ios')) or $(_targetOS.StartsWith('tvos'))">true</_IsiOSLikePlatform>
     <_IsApplePlatform Condition="'$(_targetOS)' == 'osx' or '$(_IsiOSLikePlatform)' == 'true'">true</_IsApplePlatform>
-    <WasmExternalDwarf Condition="'$(WasmExternalDwarf)' == ''and '$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'">true</WasmExternalDwarf>
   </PropertyGroup>
 
   <!-- Set up default feature switches -->
@@ -443,8 +442,6 @@ The .NET Foundation licenses this file to you under the MIT license.
       <WasmCompilerPath Condition="'$(EMSDK)' == ''">&quot;$(EmscriptenSdkToolsPath)bin/clang++&quot;</WasmCompilerPath>
       <WasmLinkerPath Condition="'$(EMSDK)' != ''">&quot;$(EMSDK)/upstream/emscripten/emcc$(EmccScriptExt)&quot;</WasmLinkerPath>
       <WasmLinkerPath Condition="'$(EMSDK)' == ''">&quot;$(EmscriptenSdkToolsPath)emscripten/emcc$(EmccScriptExt)&quot;</WasmLinkerPath>
-      <WasmDwarfLinkerPath Condition="'$(EMSDK)' != ''">&quot;$(EMSDK)/upstream/bin/llvm-dwp$(ExeExt)&quot;</WasmDwarfLinkerPath>
-      <WasmDwarfLinkerPath Condition="'$(EMSDK)' == ''">&quot;$(EmscriptenSdkToolsPath)/bin/llvm-dwp$(ExeExt)&quot;</WasmDwarfLinkerPath>
     </PropertyGroup>
 
    <PropertyGroup Condition="'$(_targetOS)' == 'wasi'">
@@ -543,6 +540,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <PropertyGroup>
       <IlcIsLibLikeApp Condition="'$(IlcIsLibLikeApp)' == '' and ('$(NativeLib)' != '' or '$(CustomNativeMain)' != '')">true</IlcIsLibLikeApp>
+      <WasmSymbolFile>$([System.IO.Path]::ChangeExtension('$(NativeBinary)', '.debug.wasm'))</WasmSymbolFile>
     </PropertyGroup>
 
     <ItemGroup Condition="'$(InvariantGlobalization)' != 'true'">
@@ -581,8 +579,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <!-- see https://github.com/emscripten-core/emscripten/issues/16836 for the issue that means we have to force the linker to include these symbols before LTO -->
       <!--<CustomLinkerArg Condition="'$(Optimize)' != 'true'" Include="$(WasmOptimizationSetting) -flto" /> -->
       <CustomLinkerArg Condition="'$(IlcLlvmTarget)' != ''" Include="-target $(IlcLlvmTarget)" />
-
-	    <CustomLinkerArg Condition="'$(WasmExternalDwarf)' == 'true'" Include="-gseparate-dwarf" />
+	    <CustomLinkerArg Condition="'$(StripSymbols)' == 'true'" Include="-gseparate-dwarf=&quot;$(WasmSymbolFile)&quot;" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(_targetOS)' == 'browser'" >
