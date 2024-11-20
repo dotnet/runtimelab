@@ -211,10 +211,7 @@ jobs:
 
       # Install Wasm dependencies: emscripten, LLVM, NodeJS
     - ${{ if and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.archType, 'wasm')) }}:
-      # Install Powershell on OSes that don't come with it by default
       - ${{ if ne(parameters.hostedOs, 'windows') }}:
-        - script: $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-pwsh.sh $(Build.SourcesDirectory)/wasm-tools
-          displayName: Install Powershell 7
         - script: $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-python.sh $(Build.SourcesDirectory)/wasm-tools
           displayName: set PYTHON3
       - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.ps1 $(Build.SourcesDirectory)/wasm-tools -CI
