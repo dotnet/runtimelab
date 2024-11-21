@@ -415,10 +415,10 @@ And the user would be exposed the following wrapper:
 ```csharp
 public static unsafe Pair<FrozenStruct, FrozenStruct> WithTwoFrozenParameters(Pair<FrozenStruct, FrozenStruct> pair)
 {
-    Pair_FrozenStruct_FrozenStruct struct_pair = *(Pair_FrozenStruct_FrozenStruct*)pair.GetPayload(); /* This would have to be revised for memory safety*/
+    Pair_FrozenStruct_FrozenStruct structPair = *(Pair_FrozenStruct_FrozenStruct*)pair.GetPayload(); /* This would have to be revised for memory safety*/
 
-    Pair_FrozenStruct_FrozenStruct new_pair = WithTwoFrozenParameters(struct_pair);
-    return new Pair<FrozenStruct, FrozenStruct>(new_pair.first, new_pair.second);
+    Pair_FrozenStruct_FrozenStruct newPair = WithTwoFrozenParameters(struct_pair);
+    return new Pair<FrozenStruct, FrozenStruct>(newPair.first, newPair.second);
 }
 ```
 
