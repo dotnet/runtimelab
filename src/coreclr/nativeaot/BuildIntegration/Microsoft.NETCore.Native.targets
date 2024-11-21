@@ -100,7 +100,6 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <NativeObject>$(NativeIntermediateOutputPath)$(TargetName)$(NativeObjectExt)</NativeObject>
     <NativeBinary Condition="'$(NativeBinary)' == ''">$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)</NativeBinary>
-    <WasmBinary Condition="'$(_targetArchitecture)' == 'wasm'">$(NativeOutputPath)$(TargetName).wasm</WasmBinary>
     <IlcExportUnmanagedEntrypoints Condition="'$(IlcExportUnmanagedEntrypoints)' == '' and '$(NativeLib)' == 'Shared'">true</IlcExportUnmanagedEntrypoints>
     <ExportsFile Condition="$(ExportsFile) == '' and '$(BuildingFrameworkLibrary)' != 'true'">$(NativeIntermediateOutputPath)$(TargetName)$(ExportsFileExt)</ExportsFile>
 
