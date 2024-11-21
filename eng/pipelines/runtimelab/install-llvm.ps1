@@ -9,11 +9,6 @@ param(
 
 $ErrorActionPreference="Stop"
 
-# Set IsWindows if the version of Powershell does not already have it.
-if (!(Test-Path variable:global:IsWindows)) 
-{
-    $IsWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
-}
 if (!(gcm git -ErrorAction SilentlyContinue))
 {
    Write-Error "Unable to find 'git' in PATH"
@@ -23,7 +18,7 @@ if (!(gcm cmake -ErrorAction SilentlyContinue))
    Write-Error "Unable to find 'cmake' in PATH"
 }
 
-if ($CloneDir -ne $null)
+if ($CloneDir)
 {
     New-Item -ItemType Directory -Path $CloneDir -Force
     Set-Location -Path $CloneDir
@@ -50,7 +45,6 @@ else
     $DepthOption = if ($CI) {"--depth","1"} else {}
     git clone https://github.com/llvm/llvm-project --branch $LlvmProjectTag $DepthOption
 }
-
 
 # Set the compiler for CI on non-Windows
 if (!$IsWindows) {
@@ -79,51 +73,38 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
     $SourceDirName = "$pwd/llvm"
     popd
 
+    $LlvmConfig = $Config -eq "Release" ? "Release" : "Debug"
+    $CmakeConfigureCommandLine =
+        "-G", ($IsWindows ? "Visual Studio 17 2022" : "Unix Makefiles"),
+        "-S", $SourceDirName,
+        "-B", $BuildDirPath,
+        "-DLLVM_INCLUDE_BENCHMARKS=OFF",
+        "-DLLVM_ENABLE_TERMINFO=0",
+        "-DLLVM_TARGETS_TO_BUILD=WebAssembly",
+        "-DCMAKE_BUILD_TYPE=$LlvmConfig"
     if ($IsWindows)
     {
-        $CmakeGenerator = "Visual Studio 17 2022"
+        $RuntimeLibrary = $LlvmConfig -eq "Release" ? "MultiThreaded" : "MultiThreadedDebug"
+        $CmakeConfigureCommandLine += "-DCMAKE_MSVC_RUNTIME_LIBRARY=$RuntimeLibrary", "-Thost=x64"
     }
-    else
+    elseif ($env:ROOTFS_DIR)
     {
-        $CmakeGenerator = "Unix Makefiles"
-    }
-
-    $CmakeConfigureCommandLine = "-G", "$CmakeGenerator", "-DLLVM_INCLUDE_BENCHMARKS=OFF", "-DLLVM_ENABLE_TERMINFO=0"
-    $CmakeConfigureCommandLine += "-S", $SourceDirName, "-B", $BuildDirPath
-    if ($Config -eq "Release")
-    {
-        $LlvmConfig = "Release"
-        if ($IsWindows)
-        {
-            $CmakeConfigureCommandLine += "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded", "-Thost=x64"
-        }
-    }
-    else
-    {
-        $LlvmConfig = "Debug"
-        if ($IsWindows)
-        {
-            $CmakeConfigureCommandLine += "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDebug", "-Thost=x64"
-        }
-    }
-    $CmakeConfigureCommandLine += "-DCMAKE_BUILD_TYPE=$LlvmConfig"
-    
-    if (!$IsWindows)
-    {
-        $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64", "-DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross"
+        $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=$env:ROOTFS_DIR", "-DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross"
     }
 
     Write-Host "Invoking CMake configure: 'cmake $CmakeConfigureCommandLine'"
-    cmake @CmakeConfigureCommandLine
-    if ($LastExitCode -ne 0)
-    {
-        Write-Error "CMake configure failed"
-    }
+    cmake @CmakeConfigureCommandLine || Write-Error "CMake configure failed"
 
     if (!$NoBuild)
     {
-        Write-Host "Invoking CMake --build"
-        cmake --build $BuildDirPath --config $LlvmConfig --target LLVMCore LLVMBitWriter
+        $CmakeBuildCommandLine =
+            "--build", $BuildDirPath,
+            "--parallel", $([Environment]::ProcessorCount),
+            "--config", $LlvmConfig,
+            "--target", "LLVMCore", "LLVMBitWriter"
+
+        Write-Host "Invoking Cmake build: 'cmake $CmakeBuildCommandLine'"
+        cmake @CmakeBuildCommandLine || Write-Error "CMake build failed"
     }
 
     $LlvmCmakeConfigPath = "$BuildDirPath/lib/cmake/llvm"
@@ -133,7 +114,7 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
     }
     else
     {
-        $LlvmCmakeConfigEnvVarName = if ($Config -eq "Release") {"LLVM_CMAKE_CONFIG_RELEASE"} else {"LLVM_CMAKE_CONFIG_DEBUG"}
+        $LlvmCmakeConfigEnvVarName = $Config -eq "Release" ? "LLVM_CMAKE_CONFIG_RELEASE" : "LLVM_CMAKE_CONFIG_DEBUG"
     }
 
     Write-Host "Setting $LlvmCmakeConfigEnvVarName to '$LlvmCmakeConfigPath'"
