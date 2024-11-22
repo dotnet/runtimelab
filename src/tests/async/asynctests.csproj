@@ -4,8 +4,6 @@
     <MergedWrapperProjectReference Include="*.??proj" />
     <MergedWrapperProjectReference Remove="$(MSBuildProjectName).csproj" />
 
-    <MergedWrapperProjectReference Remove="struct-mutate.csproj" />
-
     <!-- Remove manual benchmarks from the test wrapper -->
     <MergedWrapperProjectReference Remove="eh-microbench.csproj" />
     <MergedWrapperProjectReference Remove="gc-roots-scan.csproj" />
