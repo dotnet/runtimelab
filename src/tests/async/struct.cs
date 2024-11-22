@@ -20,7 +20,7 @@ public class Async2Struct
     {
         S s = new S(100);
         await s.Test();
-        Assert.Equal(100, s.Value);
+        AssertEqual(100, s.Value);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
