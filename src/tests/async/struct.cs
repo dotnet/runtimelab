@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Xunit;
 
-public class Async2StructMutate
+public class Async2Struct
 {
     [Fact]
     public static void TestEntryPoint()
