@@ -13280,11 +13280,6 @@ void Compiler::impInlineInitVars(InlineInfo* pInlineInfo)
     /* init the argument struct */
     memset(inlArgInfo, 0, (MAX_INL_ARGS + 1) * sizeof(inlArgInfo[0]));
 
-    if (verbose)
-    {
-        printf("here\n");
-    }
-
     unsigned ilArgCnt = 0;
     for (CallArg& arg : call->gtArgs.Args())
     {
@@ -13726,10 +13721,6 @@ unsigned Compiler::impInlineFetchLocal(unsigned lclNum DEBUGARG(const char* reas
 
 GenTree* Compiler::impInlineFetchArg(InlArgInfo& argInfo, const InlLclVarInfo& lclInfo)
 {
-    if (verbose)
-    {
-        printf("here\n");
-    }
     // Cache the relevant arg and lcl info for this argument.
     // We will modify argInfo but not lclVarInfo.
     const bool      argCanBeModified = argInfo.argHasLdargaOp || argInfo.argHasStargOp || argInfo.argIsByRefToCopy;

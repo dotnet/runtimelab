@@ -2045,11 +2045,6 @@ Statement* Compiler::fgInlinePrependStatements(InlineInfo* inlineInfo)
         }
     }
 
-    if (verbose)
-    {
-        printf("here\n");
-    }
-
     // Append the InstParam
     if (inlineInfo->inlInstParamArgInfo != nullptr)
     {
