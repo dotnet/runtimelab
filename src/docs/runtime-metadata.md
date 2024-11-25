@@ -30,13 +30,42 @@ Within accessors, there are two classes of accessor:
 
 Generally speaking, it's probably best for us to use the accessors and if we choose, to cache those values as static fields in bound types.
 
-The signature of a type metadata accessor is a request followed by n TypeMetadata objects, one for each generic type:
+The signature of a type metadata accessor is a request followed by n TypeMetadata objects (one for each generic type). Those are then followed by protocol witness tables (one for each protocol conformace). The witness tables are ordered first by the generic type they correspond to, second by lexicographical order.
+
 ```csharp
-public static TypeMetadata Accessor(TypeMetadataRequest request [, TypeMetadata specialization0, TypeMetadata specialization1, ...])
+public static TypeMetadata Accessor(TypeMetadataRequest request, [ TypeMetadata specialization0, TypeMetadata specialization1, ..., NativeHandle pwt0, NativeHandle pwt1, ...])
 {
 
 }
 ```
+
+Also, when total number of generic types and protocol conformances exceeds three, the signature changes to contain a request followed by a pointer to a buffer containing the said handles.
+
+```csharp
+public static TypeMetadata Accessor(TypeMetadataRequest request, IntPtr parameters)
+{
+
+}
+```
+
+So for example for a sample type:
+
+```swift
+public struct Foo<T0: P2 & P0, T1, T2: P1> {...}
+```
+
+```csharp
+struct MetadataParameters
+{
+    TypedMetadata T0;
+    TypedMetadata T1;
+    TypedMetadata T2;
+    NativeHandle P0;
+    NativeHandle P2;
+    NativeHandle P1;
+}
+```
+
 The request is the state of the resulting type metadata object. This is documented [here](https://github.com/swiftlang/swift/blob/9fed7159e9419e27f081364f7501f6fc7592f8c2/include/swift/ABI/MetadataValues.h#L2392), but for our needs, I don't anticipate any use but `Complete` which is 0.
 
 ## Implementation
