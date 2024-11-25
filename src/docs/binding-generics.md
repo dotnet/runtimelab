@@ -45,7 +45,7 @@ public static extern void PInvoke_ReturnData(SwiftIndirectResult result, NativeH
 
 public static unsafe T ReturnData<T>(T data) where T : unmanaged, ISwiftObject
 {
-    TypeMetadata.TryGetTypeMetadata<T>(out var metadata);
+    var metadata = GetTypeMetadataOrThrow<T>();
     nuint payloadSize = /* Extract size from metadata */;
 
     var payload = NativeMemory.Alloc(payloadSize);
@@ -81,7 +81,7 @@ public static extern void PInvoke_ReturnData(SwiftIndirectResult result, NativeH
 
 public static unsafe T ReturnData<T>(T data)
 {
-    TypeMetadata.TryGetTypeMetadata<T>(out var metadata);
+    var metadata = GetTypeMetadataOrThrow<T>();
     nuint payloadSize = /* Extract size from metadata */;
     NativeHandle payload = new NativeHandle(NativeMemory.Alloc(payloadSize));
 
@@ -91,9 +91,9 @@ public static unsafe T ReturnData<T>(T data)
         
         NativeHandle dataPayload = Runtime.GetPayload(ref data);
         PInvoke_ReturnData(result, dataPayload, metadata!.Value);
-        return Runtime.FromPayload<T>(payload);
+        return Runtime.FromPayload<T>(payload); // Transfers ownership of the payload
     }
-    finally
+    catch
     {
         NativeMemory.Free(payload);
     }
@@ -134,6 +134,16 @@ public static bool TryGetTypeMetadata<T>([NotNullWhen(true)] out TypeMetadata? r
         result = null;
         return false;
     }
+}
+
+public static TypeMetadata GetTypeMetadataOrThrow<T>()
+{
+    if (TryGetTypeMetadata<T>(out var result))
+    {
+        return result!;
+    }
+
+    throw new InvalidOperationException($"Could not obtain TypeMetadata for {typeof(T)}.");
 }
 
 public static NativeHandle GetPayload<T>(ref T type)
@@ -203,8 +213,7 @@ class NonFrozenStruct : ISwiftObject
 
     private unsafe NonFrozenStruct(NativeHandle payload) 
     { 
-        _payload = new NativeHandle(NativeMemory.Alloc(PayloadSize));
-        NativeMemory.Copy(payload, _payload, PayloadSize);
+        _payload = payload;
     }
 }
 
@@ -222,7 +231,9 @@ struct FrozenStruct : ISwiftObject
 
     public static unsafe object FromPayload(NativeHandle payload)
     {
-        return *(FrozenStruct*)payload;
+        var struct =  *(FrozenStruct*)payload;
+        NativeMemory.Free(payload);
+        return struct;
     }
 }
 ```
@@ -282,8 +293,8 @@ class Pair<T, U> : ISwiftObject
 
         SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult(_payload);
 
-        TypeMetadata.TryGetTypeMetadata<T>(out var firstMetadata);
-        TypeMetadata.TryGetTypeMetadata<U>(out var secondMetadata);
+        var firstMetadata = GetTypeMetadataOrThrow<T>();
+        var secondMetadata = GetTypeMetadataOrThrow<U>();
 
         var nativeHandleFirst = Runtime.GetPayload(ref first);
         var nativeHandleSecond = Runtime.GetPayload(ref second);
@@ -296,8 +307,8 @@ class Pair<T, U> : ISwiftObject
         /* This should be cached */
         get
         {
-            TypeMetadata.TryGetTypeMetadata<T>(out var firstMetadata);
-            TypeMetadata.TryGetTypeMetadata<U>(out var secondMetadata);
+            var firstMetadata = GetTypeMetadataOrThrow<T>();
+            var secondMetadata = GetTypeMetadataOrThrow<U>();
 
             return PairPInvokes.PInvokeMetadata(TypeMetadataRequest.Complete, firstMetadata!.Value, secondMetadata!.Value);
         }
@@ -318,8 +329,7 @@ class Pair<T, U> : ISwiftObject
 
     private unsafe Pair(NativeHandle payload)
     {
-        _payload = new NativeHandle(NativeMemory.Alloc(PayloadSize));
-        NativeMemory.Copy(payload, _payload, PayloadSize);
+        _payload = payload;
     }
 }
 ```
