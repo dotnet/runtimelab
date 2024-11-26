@@ -47,7 +47,7 @@ class Async2Transformation
 
     GenTreeCall* CreateAllocContinuationCall(
         AsyncLiveness& life,
-        GenTree* nextContinuation,
+        GenTree* prevContinuation,
         unsigned gcRefsCount,
         unsigned int dataSize);
 

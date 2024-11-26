@@ -1098,7 +1098,7 @@ void Async2Transformation::Transform(
     m_resumptionBBs.push_back(resumeBB);
 }
 
-GenTreeCall* Async2Transformation::CreateAllocContinuationCall(AsyncLiveness& life, GenTree* nextContinuation, unsigned gcRefsCount, unsigned dataSize)
+GenTreeCall* Async2Transformation::CreateAllocContinuationCall(AsyncLiveness& life, GenTree* prevContinuation, unsigned gcRefsCount, unsigned dataSize)
 {
     GenTree* gcRefsCountNode = m_comp->gtNewIconNode((ssize_t)gcRefsCount, TYP_I_IMPL);
     GenTree* dataSizeNode = m_comp->gtNewIconNode((ssize_t)dataSize, TYP_I_IMPL);
@@ -1112,9 +1112,6 @@ GenTreeCall* Async2Transformation::CreateAllocContinuationCall(AsyncLiveness& li
     }
     else if (((m_comp->info.compMethodInfo->options & CORINFO_GENERICS_CTXT_FROM_METHODTABLE) != 0) && life.IsLive(m_comp->info.compTypeCtxtArg))
     {
-        // TODO: Do we also need to keep the method handle's loader allocator
-        // alive here in case the shared generic method is inside a collectible
-        // ALC?
         classHandleArg = m_comp->gtNewLclvNode(m_comp->info.compTypeCtxtArg, TYP_I_IMPL);
     }
     else if (m_async2Info.continuationsNeedMethodHandle)
@@ -1127,7 +1124,7 @@ GenTreeCall* Async2Transformation::CreateAllocContinuationCall(AsyncLiveness& li
         return m_comp->gtNewHelperCallNode(
             CORINFO_HELP_ALLOC_CONTINUATION_METHOD,
             TYP_REF,
-            nextContinuation, gcRefsCountNode, dataSizeNode, methodHandleArg);
+            prevContinuation, gcRefsCountNode, dataSizeNode, methodHandleArg);
     }
 
     if (classHandleArg != nullptr)
@@ -1135,13 +1132,13 @@ GenTreeCall* Async2Transformation::CreateAllocContinuationCall(AsyncLiveness& li
         return m_comp->gtNewHelperCallNode(
             CORINFO_HELP_ALLOC_CONTINUATION_CLASS,
             TYP_REF,
-            nextContinuation, gcRefsCountNode, dataSizeNode, classHandleArg);
+            prevContinuation, gcRefsCountNode, dataSizeNode, classHandleArg);
     }
 
     return m_comp->gtNewHelperCallNode(
         CORINFO_HELP_ALLOC_CONTINUATION,
         TYP_REF,
-        nextContinuation, gcRefsCountNode, dataSizeNode);
+        prevContinuation, gcRefsCountNode, dataSizeNode);
 }
 
 
