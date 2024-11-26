@@ -24,12 +24,12 @@ class Async2Transformation
     jitstd::vector<BasicBlock*>   m_resumptionBBs;
     CORINFO_METHOD_HANDLE         m_resumeStub = NO_METHOD_HANDLE;
     CORINFO_CONST_LOOKUP          m_resumeStubLookup;
-    unsigned                      m_returnedContinuationVar    = BAD_VAR_NUM;
-    unsigned                      m_newContinuationVar         = BAD_VAR_NUM;
-    unsigned                      m_dataArrayVar               = BAD_VAR_NUM;
-    unsigned                      m_gcDataArrayVar             = BAD_VAR_NUM;
-    unsigned                      m_resultBaseVar              = BAD_VAR_NUM;
-    unsigned                      m_exceptionVar               = BAD_VAR_NUM;
+    unsigned                      m_returnedContinuationVar = BAD_VAR_NUM;
+    unsigned                      m_newContinuationVar      = BAD_VAR_NUM;
+    unsigned                      m_dataArrayVar            = BAD_VAR_NUM;
+    unsigned                      m_gcDataArrayVar          = BAD_VAR_NUM;
+    unsigned                      m_resultBaseVar           = BAD_VAR_NUM;
+    unsigned                      m_exceptionVar            = BAD_VAR_NUM;
     BasicBlock*                   m_lastSuspensionBB        = nullptr;
     BasicBlock*                   m_lastResumptionBB        = nullptr;
     BasicBlock* m_sharedReturnBB                            = nullptr;

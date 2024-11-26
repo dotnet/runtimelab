@@ -14573,6 +14573,9 @@ CORINFO_METHOD_HANDLE CEEJitInfo::getAsyncResumptionStub()
     if (!msig.IsReturnTypeVoid())
     {
         ILCodeLabel* doneResult = pCode->NewCodeLabel();
+        pCode->EmitLDLOC(newContinuationLoc);
+        pCode->EmitBRTRUE(doneResult);
+
         // Load 'next' of current continuation
         pCode->EmitLDARG(0);
         pCode->EmitLDFLD(FIELD__CONTINUATION__NEXT);

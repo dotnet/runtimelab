@@ -3981,9 +3981,10 @@ public:
                          // However, if there is a "ldarga 0" or "starg 0" in the IL,
                          // we will redirect all "ldarg(a) 0" and "starg 0" to this temp.
 
-     // For async2 struct instance functions this is the copied struct instance
-     // that accesses on "this" are redirected to
-    unsigned lvaAsyncThisCopyVar = BAD_VAR_NUM;
+     // For struct instance functions with CORINFO_OPT_COPY_STRUCT_INSTANCE
+     // this is the local that has the copy of "this" to which accesses on
+     // "this" are redirected to
+    unsigned lvaThisCopyVar = BAD_VAR_NUM;
 
     unsigned lvaInlineeReturnSpillTemp = BAD_VAR_NUM; // The temp to spill the non-VOID return expression
                                         // in case there are multiple BBJ_RETURN blocks in the inlinee

@@ -2366,16 +2366,16 @@ PhaseStatus Compiler::fgAddInternal()
             madeChanges = true;
         }
 
-        if (lvaAsyncThisCopyVar != BAD_VAR_NUM)
+        if (lvaThisCopyVar != BAD_VAR_NUM)
         {
             fgEnsureFirstBBisScratch();
 
-            ClassLayout* layout = lvaGetDesc(lvaAsyncThisCopyVar)->GetLayout();
+            ClassLayout* layout = lvaGetDesc(lvaThisCopyVar)->GetLayout();
             GenTree* addr = gtNewLclVarNode(info.compThisArg);
-            GenTree* store = gtNewStoreLclVarNode(lvaAsyncThisCopyVar, gtNewBlkIndir(layout, addr));
+            GenTree* store = gtNewStoreLclVarNode(lvaThisCopyVar, gtNewBlkIndir(layout, addr));
             Statement* stmt = fgNewStmtAtEnd(fgFirstBB, store);
 
-            JITDUMP("\nCopy \"this\" to V%02u for async2 struct instance method\n", lvaAsyncThisCopyVar);
+            JITDUMP("\nCopy \"this\" to V%02u for struct instance method operating on copy\n", lvaThisCopyVar);
             DISPSTMT(stmt);
 
             madeChanges = true;

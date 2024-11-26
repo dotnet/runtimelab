@@ -6992,7 +6992,7 @@ void Compiler::impImportBlockCode(BasicBlock* block)
 
                     if (compIsStructMethodThatOperatesOnCopy())
                     {
-                        BADCODE("Illegal ldarga 0 in runtime-async function");
+                        BADCODE("Illegal ldarga 0 in function");
                     }
                 }
 
@@ -10978,10 +10978,10 @@ void Compiler::impLoadArg(unsigned ilArgNum, IL_OFFSET offset)
         {
             lclNum = lvaArg0Var;
 
-            // Redirect to copy in async2 struct instance methods
-            if (lvaAsyncThisCopyVar != BAD_VAR_NUM)
+            // Redirect to copy in some struct instance methods
+            if (lvaThisCopyVar != BAD_VAR_NUM)
             {
-                GenTree* lclAddr = gtNewLclVarAddrNode(lvaAsyncThisCopyVar, TYP_BYREF);
+                GenTree* lclAddr = gtNewLclVarAddrNode(lvaThisCopyVar, TYP_BYREF);
                 impPushOnStack(lclAddr, verMakeTypeInfoForLocal(lclNum));
                 return;
             }
@@ -13272,7 +13272,6 @@ void Compiler::impInlineInitVars(InlineInfo* pInlineInfo)
     GenTreeCall*         call         = pInlineInfo->iciCall;
     CORINFO_METHOD_INFO* methInfo     = &pInlineInfo->inlineCandidateInfo->methInfo;
     unsigned             clsAttr      = pInlineInfo->inlineCandidateInfo->clsAttr;
-    unsigned             methAttr     = pInlineInfo->inlineCandidateInfo->methAttr;
     InlArgInfo*          inlArgInfo   = pInlineInfo->inlArgInfo;
     InlLclVarInfo*       lclVarInfo   = pInlineInfo->lclVarInfo;
     InlineResult*        inlineResult = pInlineInfo->inlineResult;
@@ -13325,9 +13324,9 @@ void Compiler::impInlineInitVars(InlineInfo* pInlineInfo)
 
         if ((arg.GetWellKnownArg() == WellKnownArg::ThisPointer) && ((methInfo->options & CORINFO_OPT_COPY_STRUCT_INSTANCE) != 0))
         {
-            // struct instance async2 method. We will load the instance
-            // as part of copying, so set up flags to indicate that
-            // there is a side effect.
+            // Method call to a struct instance method that operates on a copy.
+            // We will load the instance as part of copying, so set up flags to
+            // indicate that there is a side effect.
             inlArgInfo[ilArgCnt].argIsByRefToCopy = true;
             inlArgInfo[ilArgCnt].argHasGlobRef = true;
             inlArgInfo[ilArgCnt].argHasSideEff = true;
