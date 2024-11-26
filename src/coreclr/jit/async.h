@@ -45,6 +45,12 @@ class Async2Transformation
                    class AsyncLiveness&      life,
                    BasicBlock**              remainder);
 
+    GenTreeCall* CreateAllocContinuationCall(
+        AsyncLiveness& life,
+        GenTree* nextContinuation,
+        unsigned gcRefsCount,
+        unsigned int dataSize);
+
     GenTreeIndir* LoadFromOffset(GenTree*     base,
                                  unsigned     offset,
                                  var_types    type,
