@@ -59,7 +59,7 @@ namespace BindingsGeneration
         {
             var methodEnv = (MethodEnvironment)env;
             var methodDecl = (MethodDecl)methodEnv.MethodDecl;
-            
+
             // Emit PInvoke method
             EmitPInvoke(writer, methodEnv, typeDatabase);
 
@@ -146,7 +146,7 @@ namespace BindingsGeneration
 
             if (methodDecl.MethodType == MethodType.Instance)
             {
-                writer.WriteLine($"{parentDecl.Name} self = this;");
+                writer.WriteLine($"var self = new System.Runtime.InteropServices.Swift.SwiftSelf<{parentDecl.Name}>(this);");
             }
             string returnPrefix = methodDecl.CSSignature.First().CSTypeIdentifier.Name == "void" ? "" : "return ";
             string methodArgs = string.Join(", ", methodDecl.CSSignature.Skip(1).Select(p => p.Name));
@@ -171,9 +171,10 @@ namespace BindingsGeneration
                 if (!methodDecl.IsConstructor && methodDecl.MethodType != MethodType.Static)
                 {
                     // Add self as the first parameter (after the return type)
-                    tempDecl.Insert(1, new ArgumentDecl {
-                        SwiftTypeSpec = new NamedTypeSpec (parentDecl.Name), 
-                        CSTypeIdentifier = new TypeDecl { Name = parentDecl.Name, MangledName = string.Empty, Fields = new List<FieldDecl>(), Declarations = new List<BaseDecl>(), ParentDecl = parentDecl, ModuleDecl = parentDecl.ModuleDecl},
+                    tempDecl.Insert(1, new ArgumentDecl
+                    {
+                        SwiftTypeSpec = new NamedTypeSpec(parentDecl.Name),
+                        CSTypeIdentifier = new TypeDecl { Name = $"System.Runtime.InteropServices.Swift.SwiftSelf<{parentDecl.Name}>", MangledName = string.Empty, Fields = new List<FieldDecl>(), Declarations = new List<BaseDecl>(), ParentDecl = parentDecl, ModuleDecl = parentDecl.ModuleDecl },
                         Name = "self",
                         PrivateName = string.Empty,
                         IsInOut = false,
