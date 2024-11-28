@@ -586,7 +586,7 @@ namespace System.Runtime.CompilerServices
         private static unsafe Continuation AllocContinuationMethod(Continuation prevContinuation, nuint numGCRefs, nuint dataSize, MethodDesc* method)
         {
             LoaderAllocator loaderAllocator = RuntimeMethodHandle.GetLoaderAllocator(new RuntimeMethodHandleInternal((IntPtr)method));
-            object[] gcData;
+            object?[] gcData;
             if (loaderAllocator != null)
             {
                 gcData = new object[numGCRefs + 1];
@@ -605,7 +605,7 @@ namespace System.Runtime.CompilerServices
         private static unsafe Continuation AllocContinuationClass(Continuation prevContinuation, nuint numGCRefs, nuint dataSize, MethodTable* methodTable)
         {
             IntPtr loaderAllocatorHandle = methodTable->GetLoaderAllocatorHandle();
-            object[] gcData;
+            object?[] gcData;
             if (loaderAllocatorHandle != IntPtr.Zero)
             {
                 gcData = new object[numGCRefs + 1];
