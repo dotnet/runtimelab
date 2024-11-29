@@ -39,6 +39,8 @@ There are [a number of changes that Apple made outside of the standard ABIs](htt
 - For returning value types an extra register is available
 - For async methods, there is a separate register for the async context
 
+To support unstable parts of the Swift ABI, thin Swift wrappers are generated: [Swift code generation](swift-code-generation.md)
+
 ## Runtime Differences
 The main difference in the Swift runtime is that heap allocated types are reference counted rather than using another memory management scheme. The reference counting is not done with a single count but instead is managed with two counts: a strong count and a weak count. Weak references are available in Swift for making (potentially) circular data structures.
 
