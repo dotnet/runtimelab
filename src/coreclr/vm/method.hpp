@@ -1822,7 +1822,7 @@ public:
         m_wFlags |= mdfHasNativeCodeSlot;
     }
 
-    inline bool IsAsyncThunkMethod() const
+    inline bool IsAsyncHelperMethod() const
     {
         LIMITED_METHOD_DAC_CONTRACT;
         if (!HasAsyncMethodData())
@@ -1837,7 +1837,7 @@ public:
         // right now the only Async2 methods that exist are synthetic helpers.
 
         // it may be possible to declare an Async2 method in IL, but we do not have a scenario for that.
-        return IsAsyncThunkMethod();
+        return IsAsyncHelperMethod();
     }
 
     inline bool IsStructMethodOperatingOnCopy()

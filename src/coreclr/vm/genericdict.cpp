@@ -1080,7 +1080,7 @@ Dictionary::PopulateEntry(
                 break;
             }
 
-            _ASSERTE((!!isAsyncThunk) == pMethod->IsAsyncThunkMethod());
+            _ASSERTE((!!isAsyncThunk) == pMethod->IsAsyncHelperMethod());
 
             Instantiation inst;
 
@@ -1126,7 +1126,7 @@ Dictionary::PopulateEntry(
                 inst,
                 (!isInstantiatingStub && !isUnboxingStub));
 
-            _ASSERTE((!!isAsyncThunk) == pMethod->IsAsyncThunkMethod());
+            _ASSERTE((!!isAsyncThunk) == pMethod->IsAsyncHelperMethod());
 
             if (kind == ConstrainedMethodEntrySlot)
             {

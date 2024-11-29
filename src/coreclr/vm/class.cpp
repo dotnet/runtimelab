@@ -741,7 +741,7 @@ HRESULT EEClass::AddMethodDesc(
                                                             classification,
                                                             TRUE, // fNonVtableSlot
                                                             TRUE, // fNativeCodeSlot
-                                                            FALSE, /* IsAsyncThunkMethod */
+                                                            FALSE, /* IsAsyncHelperMethod */
                                                             pMT,
                                                             &dummyAmTracker);
 

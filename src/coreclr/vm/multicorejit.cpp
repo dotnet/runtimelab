@@ -398,7 +398,7 @@ HRESULT MulticoreJitRecorder::WriteOutput(IStream * pStream)
         }
 
         MethodDesc * pMethod = m_JitInfoArray[i].GetMethodDescAndClean();
-        if (pMethod->IsAsyncThunkMethod())
+        if (pMethod->IsAsyncHelperMethod())
         {
             // TODO consider adding support for async thunks in the future
             skipped++;
