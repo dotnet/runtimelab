@@ -1736,7 +1736,7 @@ bool MethodDesc::TryGenerateAsyncThunk(DynamicResolver** resolver, COR_ILMETHOD_
     _ASSERTE(IsIL());
     _ASSERTE(GetRVA() == 0);
 
-    if (!ForwardsToOther())
+    if (!IsAsyncThunkMethod())
     {
         return false;
     }
@@ -1802,7 +1802,7 @@ bool MethodDesc::TryGenerateAsyncThunk(DynamicResolver** resolver, COR_ILMETHOD_
 
 void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOtherVariant, MetaSig& thunkMsig, ILStubLinker* pSL)
 {
-    _ASSERTE(!pAsyncOtherVariant->ForwardsToOther());
+    _ASSERTE(!pAsyncOtherVariant->IsAsyncThunkMethod());
 
     ILCodeStream* pCode = pSL->NewCodeStream(ILStubLinker::kDispatch);
 
@@ -2024,7 +2024,7 @@ void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOth
 // (MVAR 0). For Task<int>, it returns the signature representing (int).
 SigPointer MethodDesc::GetAsync2ThunkResultTypeSig()
 {
-    _ASSERTE(ForwardsToOther());
+    _ASSERTE(IsAsyncThunkMethod());
     PCCOR_SIGNATURE pSigRaw;
     DWORD cSig;
     if (FAILED(GetMDImport()->GetSigOfMethodDef(GetMemberDef(), &cSig, &pSigRaw)))
@@ -2135,7 +2135,7 @@ int MethodDesc::GetTokenForGenericTypeMethodCallWithAsyncReturnType(ILCodeStream
 
 void MethodDesc::EmitAsync2MethodThunk(MethodDesc* pAsyncOtherVariant, MetaSig& msig, ILStubLinker* pSL)
 {
-    _ASSERTE(!pAsyncOtherVariant->ForwardsToOther());
+    _ASSERTE(!pAsyncOtherVariant->IsAsyncThunkMethod());
     _ASSERTE(!pAsyncOtherVariant->IsVoid());
 
     // Implement IL that is effectively the following

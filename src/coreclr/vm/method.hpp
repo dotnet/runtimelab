@@ -665,7 +665,7 @@ public:
         LIMITED_METHOD_DAC_CONTRACT;
         return mcFCall == GetClassification()
             || mcArray == GetClassification()
-            || ForwardsToOther();
+            || IsAsyncThunkMethod();
     }
 
     inline DWORD IsArray() const
@@ -1832,11 +1832,14 @@ public:
             asyncType == AsyncMethodKind::AsyncImplHelper;
     }
 
+    // We use "async2" for runtime async methods that return "Unwrapped" values (i.e. T instead of Task<T>)
+    // The type of promise is typically captured in a modreq.
+    // CONSIDER: We probably need a better name for the concept, but it is hard to beat shortness of "async2"
     inline bool IsAsync2Method() const
     {
-        // right now the only Async2 methods that exist are synthetic helpers.
-
-        // it may be possible to declare an Async2 method in IL, but we do not have a scenario for that.
+        // Right now the only Async2 methods that exist are synthetic helpers.
+        // It is possible to declare an Async2 method directly in IL/Metadata,
+        // but we do not have a scenario for that.
         return IsAsyncHelperMethod();
     }
 
@@ -1848,14 +1851,15 @@ public:
         if (!HasAsyncMethodData())
             return false;
 
-        // Only user runtimeasync methods operate on copies. runtime-async ->
-        // compiler-async thunks do not.
+        // Only async2 methods backed by actual user code operate on copies.
+        //Thanks with runtime-supplied implementation do not.
         AsyncMethodKind asyncType = GetAddrOfAsyncMethodData()->type;
 
         return asyncType == AsyncMethodType::Async;
     }
 
-    inline bool ForwardsToOther() const
+    // The method is a Task/async2 adapter to an async2/Task implementation
+    inline bool IsAsyncThunkMethod() const
     {
         LIMITED_METHOD_DAC_CONTRACT;
         if (!HasAsyncMethodData())
