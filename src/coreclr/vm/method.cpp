@@ -1155,7 +1155,7 @@ PTR_PCODE MethodDesc::GetAddrOfNativeCodeSlot()
 }
 
 //*******************************************************************************
-PTR_AsyncMethodData MethodDesc::GetAddrOfAsyncMethodData()
+PTR_AsyncMethodData MethodDesc::GetAddrOfAsyncMethodData() const
 {
     WRAPPER_NO_CONTRACT;
 

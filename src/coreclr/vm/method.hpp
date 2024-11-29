@@ -55,17 +55,27 @@ EXTERN_C VOID STDCALL NDirectImportThunk();
 #define METHOD_TOKEN_RANGE_BIT_COUNT (24 - METHOD_TOKEN_REMAINDER_BIT_COUNT)
 #define METHOD_TOKEN_RANGE_MASK ((1 << METHOD_TOKEN_RANGE_BIT_COUNT) - 1)
 
-enum class AsyncMethodType
+enum class AsyncMethodKind
 {
+    // Regular methods, including Task-returning ones.
+    // Those that do not return Task/ValueTask do not get a thunk sibling
     NotAsync,
-    TaskToAsync,
-    AsyncToTask,
-    Async
+
+    // Task-returning methods marked as async in IL.
+    // The method body forwards to Async2 implementation thunk
+    Async,
+
+    // Synthetic Async2 method that contains the
+    // actual implementation transformed into a resumable state machine
+    AsyncImplHelper,
+
+    // Synthetic Async2 method that forwards to the NotAsync Task-returning method
+    AsyncThunkHelper
 };
 
 struct AsyncMethodData
 {
-    AsyncMethodType type;
+    AsyncMethodKind type;
     Signature sig;
 };
 
@@ -193,7 +203,6 @@ enum class AsyncTaskMethod
     TaskReturningMethod,
     TaskNonGenericReturningMethod,
     Async2Method,
-    Async2MethodThatCannotBeImplementedByTask,
     Async2MethodNonGeneric,
     NormalMethod
 };
@@ -205,7 +214,7 @@ inline bool IsAsyncTaskMethodNormal(AsyncTaskMethod input)
 
 inline bool IsAsyncTaskMethodAsync2Method(AsyncTaskMethod input)
 {
-    return (input == AsyncTaskMethod::Async2Method) || (input == AsyncTaskMethod::Async2MethodThatCannotBeImplementedByTask) || (input == AsyncTaskMethod::Async2MethodNonGeneric);
+    return (input == AsyncTaskMethod::Async2Method) || (input == AsyncTaskMethod::Async2MethodNonGeneric);
 }
 
 inline bool IsAsyncTaskMethodTaskReturningMethod(AsyncTaskMethod input)
@@ -656,7 +665,7 @@ public:
         LIMITED_METHOD_DAC_CONTRACT;
         return mcFCall == GetClassification()
             || mcArray == GetClassification()
-            || IsAsyncThunkMethod();
+            || ForwardsToOther();
     }
 
     inline DWORD IsArray() const
@@ -1455,7 +1464,7 @@ public:
     BOOL SetNativeCodeInterlocked(PCODE addr, PCODE pExpected = 0);
 
     PTR_PCODE GetAddrOfNativeCodeSlot();
-    PTR_AsyncMethodData GetAddrOfAsyncMethodData();
+    PTR_AsyncMethodData GetAddrOfAsyncMethodData() const;
 #ifndef DACCESS_COMPILE
     const AsyncMethodData& GetAsyncMethodData() { _ASSERTE(HasAsyncMethodData()); return *GetAddrOfAsyncMethodData(); }
 #endif
@@ -1813,22 +1822,22 @@ public:
         m_wFlags |= mdfHasNativeCodeSlot;
     }
 
-    inline bool IsAsyncThunkMethod()
+    inline bool IsAsyncThunkMethod() const
     {
         LIMITED_METHOD_DAC_CONTRACT;
         if (!HasAsyncMethodData())
             return false;
-        AsyncMethodType asyncType = GetAddrOfAsyncMethodData()->type;
-        return asyncType == AsyncMethodType::AsyncToTask || asyncType == AsyncMethodType::TaskToAsync;
+        auto asyncType = GetAddrOfAsyncMethodData()->type;
+        return asyncType == AsyncMethodKind::AsyncThunkHelper ||
+            asyncType == AsyncMethodKind::AsyncImplHelper;
     }
 
-    inline bool IsAsync2Method()
+    inline bool IsAsync2Method() const
     {
-        if (!HasAsyncMethodData())
-            return false;
-        AsyncMethodType asyncType = GetAddrOfAsyncMethodData()->type;
+        // right now the only Async2 methods that exist are synthetic helpers.
 
-        return asyncType == AsyncMethodType::Async || asyncType == AsyncMethodType::AsyncToTask;
+        // it may be possible to declare an Async2 method in IL, but we do not have a scenario for that.
+        return IsAsyncThunkMethod();
     }
 
     inline bool IsStructMethodOperatingOnCopy()
@@ -1841,17 +1850,23 @@ public:
 
         // Only user runtimeasync methods operate on copies. runtime-async ->
         // compiler-async thunks do not.
-        AsyncMethodType asyncType = GetAddrOfAsyncMethodData()->type;
+        AsyncMethodKind asyncType = GetAddrOfAsyncMethodData()->type;
 
         return asyncType == AsyncMethodType::Async;
     }
 
-    inline bool RequiresAsyncContinuationArg()
+    inline bool ForwardsToOther() const
     {
-        return IsAsync2Method();
+        LIMITED_METHOD_DAC_CONTRACT;
+        if (!HasAsyncMethodData())
+            return false;
+
+        auto asyncType = GetAddrOfAsyncMethodData()->type;
+        return asyncType == AsyncMethodKind::AsyncThunkHelper ||
+            asyncType == AsyncMethodKind::Async;
     }
 
-    inline bool HasAsyncMethodData()
+    inline bool HasAsyncMethodData() const
     {
         return (m_wFlags & mdfHasAsyncMethodData) != 0;
     }

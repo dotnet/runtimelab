@@ -1736,14 +1736,10 @@ bool MethodDesc::TryGenerateAsyncThunk(DynamicResolver** resolver, COR_ILMETHOD_
     _ASSERTE(IsIL());
     _ASSERTE(GetRVA() == 0);
 
-    if (!IsAsyncThunkMethod())
+    if (!ForwardsToOther())
     {
         return false;
     }
-
-    ULONG offsetOfAsyncDetailsUnused;
-    bool isValueTypeUnused;
-    AsyncTaskMethod asyncType = ClassifyAsyncMethod(GetSigPointer(), GetModule(), &offsetOfAsyncDetailsUnused, &isValueTypeUnused);
 
     MethodDesc *pAsyncOtherVariant = this->GetAsyncOtherVariant();
     _ASSERTE(!IsWrapperStub() && !pAsyncOtherVariant->IsWrapperStub());
@@ -1758,14 +1754,13 @@ bool MethodDesc::TryGenerateAsyncThunk(DynamicResolver** resolver, COR_ILMETHOD_
         pAsyncOtherVariant,
         (ILStubLinkerFlags)ILSTUB_LINKER_FLAG_NONE);
 
-    if (IsAsyncTaskMethodTaskReturningMethod(asyncType))
+    if (IsAsync2Method())
     {
-        EmitJitStateMachineBasedRuntimeAsyncThunk(pAsyncOtherVariant, msig, &sl);
+        EmitAsync2MethodThunk(pAsyncOtherVariant, msig, &sl);
     }
     else
     {
-        _ASSERTE(IsAsyncTaskMethodAsync2Method(asyncType));
-        EmitAsync2MethodThunk(pAsyncOtherVariant, msig, &sl);
+        EmitJitStateMachineBasedRuntimeAsyncThunk(pAsyncOtherVariant, msig, &sl);
     }
 
     NewHolder<ILStubResolver> ilResolver = new ILStubResolver();
@@ -1807,6 +1802,8 @@ bool MethodDesc::TryGenerateAsyncThunk(DynamicResolver** resolver, COR_ILMETHOD_
 
 void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOtherVariant, MetaSig& thunkMsig, ILStubLinker* pSL)
 {
+    _ASSERTE(!pAsyncOtherVariant->ForwardsToOther());
+
     ILCodeStream* pCode = pSL->NewCodeStream(ILStubLinker::kDispatch);
 
     unsigned continuationLocal = pCode->NewLocal(LocalDesc(CoreLibBinder::GetClass(CLASS__CONTINUATION)));
@@ -2022,12 +2019,12 @@ void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOth
     pCode->EmitRET();
 }
 
-// Given an async 2 method, return a SigPointer to the unwrapped result type. For
+// Given an async method, return a SigPointer to the unwrapped result type. For
 // example, for async2 Task<T> Foo<T>() this returns the signature representing
 // (MVAR 0). For Task<int>, it returns the signature representing (int).
 SigPointer MethodDesc::GetAsync2ThunkResultTypeSig()
 {
-    _ASSERTE(GetAsyncMethodData().type == AsyncMethodType::TaskToAsync || GetAsyncMethodData().type == AsyncMethodType::AsyncToTask);
+    _ASSERTE(ForwardsToOther());
     PCCOR_SIGNATURE pSigRaw;
     DWORD cSig;
     if (FAILED(GetMDImport()->GetSigOfMethodDef(GetMemberDef(), &cSig, &pSigRaw)))
@@ -2138,10 +2135,13 @@ int MethodDesc::GetTokenForGenericTypeMethodCallWithAsyncReturnType(ILCodeStream
 
 void MethodDesc::EmitAsync2MethodThunk(MethodDesc* pAsyncOtherVariant, MetaSig& msig, ILStubLinker* pSL)
 {
+    _ASSERTE(!pAsyncOtherVariant->ForwardsToOther());
+    _ASSERTE(!pAsyncOtherVariant->IsVoid());
+
     // Implement IL that is effectively the following
     /*
     {
-        TaskAwaiter<RetType> awaiter = Thunk(arg).GetAwaiter();
+        TaskAwaiter<RetType> awaiter = other(arg).GetAwaiter();
         if (!awaiter.IsCompleted)
         {
             // Magic function which will suspend the current run of async methods
