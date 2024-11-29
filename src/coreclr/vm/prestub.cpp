@@ -2050,6 +2050,23 @@ SigPointer MethodDesc::GetAsync2ThunkResultTypeSig()
     // ReturnType comes now. Skip the modifiers (like async2 modifier).
     IfFailThrow(pSig.SkipCustomModifiers());
 
+    CorElementType etype;
+    IfFailThrow(pSig.PeekElemType(&etype));
+
+    if ((etype & ELEMENT_TYPE_GENERICINST) != 0)
+    {
+        // GENERICINST <generic type> <argCnt> <arg1>
+
+        // ELEMENT_TYPE_GENERICINST
+        IfFailThrow(pSig.GetElemType(NULL));
+
+        // Task`1/ValueTask`1
+        IfFailThrow(pSig.SkipExactlyOne());
+
+        // argCnt
+        IfFailThrow(pSig.GetData(NULL));
+    }
+
     // Get the start of the return type
     PCCOR_SIGNATURE returnTypeSig;
     uint32_t tailLength;
