@@ -3593,10 +3593,11 @@ MethodTableBuilder::EnumerateClassMethods()
                 else if (IsAsyncTaskMethodTaskReturningMethod(asyncMethodType))
                 {
                     // ordinary Task-returning method:
-                    //    declare an ordinary method and add an Aux thunk Async2 signature
+                    //    declare an ordinary method and add a helper thunk with Async2 signature
                     // 
                     // IsMiAsync Task-returning method:
-                    //    declare an Async method and add an Aux method with the actual implementation
+                    //    declare an Async method and add a helper method with the actual implementation
+                    //    the Async method becomes a thunk to the implementation helper.
                     pNewMethod->SetAsyncMethodKind(IsMiAsync(dwImplFlags) ? AsyncMethodKind::Async : AsyncMethodKind::NotAsync);
                 }
                 else
