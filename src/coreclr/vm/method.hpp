@@ -1852,7 +1852,7 @@ public:
             return false;
 
         // Only async2 methods backed by actual user code operate on copies.
-        //Thanks with runtime-supplied implementation do not.
+        // Thunks with runtime-supplied implementation do not.
         AsyncMethodKind asyncType = GetAddrOfAsyncMethodData()->type;
 
         return asyncType == AsyncMethodKind::Async;
