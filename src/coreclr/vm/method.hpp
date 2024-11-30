@@ -1855,7 +1855,7 @@ public:
         //Thanks with runtime-supplied implementation do not.
         AsyncMethodKind asyncType = GetAddrOfAsyncMethodData()->type;
 
-        return asyncType == AsyncMethodType::Async;
+        return asyncType == AsyncMethodKind::Async;
     }
 
     // The method is a Task/async2 adapter to an async2/Task implementation
