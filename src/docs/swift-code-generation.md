@@ -1,6 +1,6 @@
 # Swift code generation
 
-Certain parts of the Swift ABI are unsable, such as metadata, async context, dynamic dispatch thunks, and cannot be directly projected into .NET without Swift wrappers. These wrappers provide the flexibility to encapsulate unstable ABI parts into a stable calling convention.
+Certain parts of the Swift ABI are poorly documented and too complex to project directly to .NET, such as metadata, async contexts, and dynamic dispatch thunks. In these cases, Swift wrappers offer the flexibility to encapsulate these poorly documented ABI components within Swift code, enabling interop through the stable ABI.
 
 The main tradeoff is between added flexibility for supporting more unsable ABI scenarios and the increased cost of shipping and trimming. To minimize complexity, we propose generating Swift wrappers only when absolutely necessary, keeping them as thin as possible.
 
@@ -17,7 +17,7 @@ Discriminated unions are not supported in C#, and their memory layout in Swift i
 ## Async
 Priority: High (required for StoreKit2 and SwiftUI)
 
-Async context in Swift is unstable and require thin wrappers for synhronous invocation. The wrapper will convert async functions into synchronous calls by using a Task as an async worker and a DispatchSemaphore to block until the operation completes. This approach encapsulates the unstable Swift async context, exposing only the stable wrapper interface to .NET.
+Async context in Swift is unknown and require thin wrappers for synhronous invocation. The wrapper will convert async functions into synchronous calls by using a Task as an async worker and a DispatchSemaphore to block until the operation completes. This approach encapsulates the unknown Swift async context, exposing only the stable wrapper interface to .NET.
 
 Here is an example:
 ```swift
