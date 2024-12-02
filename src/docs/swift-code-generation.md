@@ -17,7 +17,7 @@ Discriminated unions are not supported in C#, and their memory layout in Swift i
 ## Async
 Priority: High (required for StoreKit2 and SwiftUI)
 
-Async context in Swift is unstable and require thin wrappers for synhronous invocation. The wrapper will convert async functions into synchronous calls by using a Task as an async worker and a DispatchSemaphore to block until the operation completes. This approach encapsulates the unstable Swift async context, exposing only the stable wrapper interface to .NET.
+Async context in Swift is unstable and require thin wrappers for synchronous invocation. The wrapper will convert async functions into synchronous calls by using a Task as an async worker and a DispatchSemaphore to block until the operation completes. This approach encapsulates the unstable Swift async context, exposing only the stable wrapper interface to .NET.
 
 Here is an example:
 ```swift
