@@ -1,6 +1,6 @@
 # Swift code generation
 
-Certain parts of the Swift ABI are poorly documented and too complex to project directly to .NET, such as metadata, async contexts, and dynamic dispatch thunks. In these cases, Swift wrappers offer the flexibility to encapsulate these poorly documented ABI components within Swift code, enabling interop through the stable ABI.
+Certain parts of the Swift ABI are poorly documented and too complex to project directly to .NET, such as metadata, async contexts, and dynamic dispatch thunks. In these cases, Swift wrappers offer the flexibility to encapsulate these poorly documented ABI components within Swift code, enabling more maintainable C#/Swift interop boundary.
 
 The main tradeoff is between added flexibility for supporting more unsable ABI scenarios and the increased cost of shipping and trimming. To minimize complexity, we propose generating Swift wrappers only when absolutely necessary, keeping them as thin as possible.
 
