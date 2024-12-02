@@ -1,6 +1,6 @@
 # Swift code generation
 
-Certain parts of the Swift ABI are unsable, such as metadata, async context, dynamic dispatch thunks, and cannot be directly projected into .NET without Swift wrappers. These wrappers provide the flexibility to encapsulate unstable ABI parts into a stable calling convention.
+Certain parts of the Swift ABI are unstable, such as metadata, async context, dynamic dispatch thunks, and cannot be directly projected into .NET without Swift wrappers. These wrappers provide the flexibility to encapsulate unstable ABI parts into a stable calling convention.
 
 The main tradeoff is between added flexibility for supporting more unsable ABI scenarios and the increased cost of shipping and trimming. To minimize complexity, we propose generating Swift wrappers only when absolutely necessary, keeping them as thin as possible.
 
