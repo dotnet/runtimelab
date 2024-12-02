@@ -38,7 +38,7 @@ public func loadProductsSync(using storeManager: StoreManager) -> [Product]? {
 ## Dynamic dispatch
 Priority: Low
 
-Vtable requirements can be reordered or expanded, making their layout unstable across resilience boundaries. To manage this, the binary framework includes a dispatch thunk which abstracts vtable offsets. The dispatch thunk is part of the framework itself, enabling direct access to the correct offsets while ensuring that the vtable can be extended without breaking compatibility.
+Vtable requirements can be reordered or expanded, making their layout unstable across versioning resilience boundaries. To manage this, the binary framework includes a dispatch thunk which abstracts vtable offsets. The dispatch thunk is part of the framework itself, enabling direct access to the correct offsets while ensuring that the vtable can be extended without breaking compatibility.
 
 ### Virtual classes
 
