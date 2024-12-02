@@ -10,7 +10,7 @@ Below, we outline the specific scenarios where Swift wrappers are required.
 
 Priority: High (required for StoreKit2 and SwiftUI)
 
-Discriminated unions are not supported in C#, and their memory layout in Swift is opaque, fragile, and unstable. To interact with Swift enums, a wrapper is necessary for payoload access and initialization. 
+Discriminated unions are not supported in C#. To interact with Swift enums, a wrapper is necessary for payload access and initialization. 
 
 [Implementation details](binding-enums.md)
 
