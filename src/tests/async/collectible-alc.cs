@@ -17,14 +17,20 @@ public class Async2CollectibleAlc
         AsyncEntryPoint().Wait();
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void CollectOnce()
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+    }
+
     private static async2 Task AsyncEntryPoint()
     {
         WeakReference wr = await CallFooAsyncAndUnload();
 
         for (int i = 0; i < 10 && wr.IsAlive; i++)
         {
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
+            CollectOnce();
         }
 
         Assert.False(wr.IsAlive);
@@ -37,8 +43,7 @@ public class Async2CollectibleAlc
         (Task<string> task, WeakReference wr) = CallFooAsyncInCollectibleALC(tcs.Task);
         for (int i = 0; i < 10; i++)
         {
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
+            CollectOnce();
         }
 
         Assert.True(wr.IsAlive);
