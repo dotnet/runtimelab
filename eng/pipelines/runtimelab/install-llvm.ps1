@@ -2,6 +2,7 @@
 param(
     [string]$CloneDir = $null,
     [ValidateSet("Debug","Release","Checked")][string[]]$Configs = @("Debug","Release"),
+    [string]$Path = "llvm-project",
     [switch]$CI,
     [switch]$NoClone,
     [switch]$NoBuild
@@ -27,12 +28,12 @@ if ($CloneDir)
 $LlvmProjectTag = "llvmorg-18.1.3"
 if ($NoClone)
 {
-    if (!(Test-Path llvm-project))
+    if (!(Test-Path $Path))
     {
-        Write-Error "llvm-project repository not present in the current directory"
+        Write-Error "$Path repository not present in the current directory"
     }
 
-    pushd llvm-project
+    pushd $Path
     git checkout $LlvmProjectTag
     popd
     if ($LastExitCode -ne 0)
@@ -43,7 +44,7 @@ if ($NoClone)
 else
 {
     $DepthOption = if ($CI) {"--depth","1"} else {}
-    git clone https://github.com/llvm/llvm-project --branch $LlvmProjectTag $DepthOption
+    git clone https://github.com/llvm/llvm-project $Path --branch $LlvmProjectTag $DepthOption
 }
 
 # Set the compiler for CI on non-Windows
@@ -65,7 +66,7 @@ if (!$IsWindows) {
 # There is no [C/c]hecked LLVM config, so change to Debug
 foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ } } | Select-Object -Unique)
 {
-    pushd llvm-project
+    pushd $Path
     $BuildDirName = "build-$($Config.ToLower())"
     New-Item -ItemType Directory $BuildDirName -Force
 
