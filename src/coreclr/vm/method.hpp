@@ -75,7 +75,7 @@ enum class AsyncMethodKind
 
 struct AsyncMethodData
 {
-    AsyncMethodKind type;
+    AsyncMethodKind kind;
     Signature sig;
 };
 
@@ -1827,9 +1827,9 @@ public:
         LIMITED_METHOD_DAC_CONTRACT;
         if (!HasAsyncMethodData())
             return false;
-        auto asyncType = GetAddrOfAsyncMethodData()->type;
-        return asyncType == AsyncMethodKind::AsyncThunkHelper ||
-            asyncType == AsyncMethodKind::AsyncImplHelper;
+        auto asyncKind = GetAddrOfAsyncMethodData()->kind;
+        return asyncKind == AsyncMethodKind::AsyncThunkHelper ||
+            asyncKind == AsyncMethodKind::AsyncImplHelper;
     }
 
     // We use "async2" for runtime async methods that return "Unwrapped" values (i.e. T instead of Task<T>)
@@ -1853,9 +1853,7 @@ public:
 
         // Only async2 methods backed by actual user code operate on copies.
         // Thunks with runtime-supplied implementation do not.
-        AsyncMethodKind asyncType = GetAddrOfAsyncMethodData()->type;
-
-        return asyncType == AsyncMethodKind::Async;
+        return GetAddrOfAsyncMethodData()->kind == AsyncMethodKind::AsyncImplHelper;
     }
 
     // The method is a Task/async2 adapter to an async2/Task implementation
@@ -1865,7 +1863,7 @@ public:
         if (!HasAsyncMethodData())
             return false;
 
-        auto asyncType = GetAddrOfAsyncMethodData()->type;
+        auto asyncType = GetAddrOfAsyncMethodData()->kind;
         return asyncType == AsyncMethodKind::AsyncThunkHelper ||
             asyncType == AsyncMethodKind::Async;
     }

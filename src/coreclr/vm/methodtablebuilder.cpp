@@ -3585,12 +3585,7 @@ MethodTableBuilder::EnumerateClassMethods()
                     type,
                     implType);
 
-                if (IsAsyncTaskMethodAsync2Method(asyncMethodType))
-                {
-                    _ASSERTE(false);
-                    pNewMethod->SetAsyncMethodKind(AsyncMethodKind::Async);
-                }
-                else if (IsAsyncTaskMethodTaskReturningMethod(asyncMethodType))
+                if (IsAsyncTaskMethodTaskReturningMethod(asyncMethodType))
                 {
                     // ordinary Task-returning method:
                     //    declare an ordinary method and add a helper thunk with Async2 signature
@@ -6659,7 +6654,7 @@ MethodTableBuilder::InitMethodDesc(
     if (asyncKind != AsyncMethodKind::NotAsync)
     {
         AsyncMethodData* pThunkData = pNewMD->GetAddrOfAsyncMethodData();
-        pThunkData->type = asyncKind;
+        pThunkData->kind = asyncKind;
         if (asyncKind == AsyncMethodKind::AsyncThunkHelper || asyncKind == AsyncMethodKind::AsyncImplHelper)
         {
             pThunkData->sig = sig;
