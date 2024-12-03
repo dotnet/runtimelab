@@ -62,7 +62,7 @@ enum class AsyncMethodKind
     NotAsync,
 
     // Task-returning methods marked as async in IL.
-    // The method body forwards to Async2 implementation thunk
+    // The method body forwards to Async2 implementation thunk (method with kind AsyncImplHelper)
     Async,
 
     // Synthetic Async2 method that contains the
