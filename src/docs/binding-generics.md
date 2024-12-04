@@ -465,23 +465,30 @@ When a function is declared with a generic argument, an extra implicit argument 
 This can be projected into C\# as follows:
 
 ```csharp
+[SwiftProtocol("ModuleA", "Printable")] // New attribute which encapsulates information necessary to extract Protocol Conformance Descriptor
 public interface IPrintableProtocol
 {
     public void PrintMe();
-    public abstract static NativeHandle GetIPrintableProtocolWitnessTable();
 
 }
 
 public static void PrintPrintable<T>(T data) where T : ISwiftObject, IPrintableProtocol
 {
     var metadata = TypeMetadata.GetTypeMetadataOrThrow<T>();
-    var protocolWitnessTable = T.GetIPrintableProtocolWitnessTable();
+    var protocolWitnessTable = T.GetProtocolWitnessTable<IPrintableProtocol>();
     PInvokePrintPrintable(data.GetPayload(), metadata, protocolWitnessTable);
 }
 
 [DllImport(Path, EntryPoint = "...")]
 [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
 private static extern void PInvokePrintPrintable(NativeHandle data, TypeMetadata metadata, NativeHandle protocolWitnessTable);
+```
+
+This would require adding a new method to `ISwiftObject`
+
+```csharp
+public interface ISwiftObject
+    public static abstract NativeHandle GetProtocolWitnessTable<T>();
 ```
 
 Then a type implementing the interface could look like:
@@ -492,10 +499,18 @@ struct FrozenStruct : ISwiftObject, IPrintableProtocol
 {
     // Other members
 
-    public static NativeHandle GetIPrintableProtocolWitnessTable()
+    public static NativeHandle GetProtocolWitnessTable<T>()
     {
-        // This method extracts the witness table symbol from the dynamic library and should be cached.
-        return GetWitnessValueTable("...");
+        TypeInfo typeInfo = typeof(T).GetTypeInfo();
+
+        var protocolAttribute = typeInfo.GetCustomAttribute<SwiftProtocolAttribute>();
+        if (protocolAttribute == null)
+        {
+            throw new InvalidOperationException($"Type {typeof(T).Name} does not have a SwiftProtocol attribute");
+        }
+
+        // Use information from protocolAttribute to correctly extract the PWT
+        return GetProtocolWitnessTable(...);
     }
 
     public void PrintMe()
@@ -531,8 +546,8 @@ The corresponding C\# projection would be:
 
 ```csharp
 class Pair<T, U> : ISwiftObject
-    where T : IPrintableProtocol
-    where U : IPrintableProtocol
+    where T : ISwiftObject, IPrintableProtocol
+    where U : ISwiftObject, IPrintableProtocol
 {
 
     private static nuint PayloadSize =  /* Extract size */;
@@ -550,8 +565,8 @@ class Pair<T, U> : ISwiftObject
         var nativeHandleFirst = Runtime.GetPayload(ref first);
         var nativeHandleSecond = Runtime.GetPayload(ref second);
 
-        var printableProtocolWitnessTableT = T.GetIPrintableProtocolWitnessTable();
-        var printableProtocolWitnessTableU = U.GetIPrintableProtocolWitnessTable();
+        var printableProtocolWitnessTableT = T.GetProtocolWitnessTable<IPrintableProtocol>();
+        var printableProtocolWitnessTableU = U.GetProtocolWitnessTable<IPrintableProtocol>();
 
         PairPInvokes.Pair(swiftIndirectResult, nativeHandleFirst, nativeHandleSecond, firstMetadata, secondMetadata, printableProtocolWitnessTableT, printableProtocolWitnessTableU);
     }
@@ -564,8 +579,8 @@ class Pair<T, U> : ISwiftObject
             var firstMetadata = GetTypeMetadataOrThrow<T>();
             var secondMetadata = GetTypeMetadataOrThrow<U>();
 
-            var printableProtocolWitnessTableT = T.GetIPrintableProtocolWitnessTable();
-            var printableProtocolWitnessTableU = U.GetIPrintableProtocolWitnessTable();
+            var printableProtocolWitnessTableT = T.GetProtocolWitnessTable<IPrintableProtocol>();
+            var printableProtocolWitnessTableU = U.GetProtocolWitnessTable<IPrintableProtocol>();
 
             // Might be handled differently due to the metadata lowering https://github.com/dotnet/runtimelab/pull/2810
 
@@ -601,7 +616,7 @@ public interface IHashable
 public static void AcceptHashable<T>(T data) where T : ISwiftObject, IHashable
 {
     var metadata = TypeMetadata.GetTypeMetadataOrThrow<T>();
-    var protocolWitnessTable = T.GetIHashableProtocolWitnessTable();
+    var protocolWitnessTable = T.GetProtocolWitnessTable<IHashable>();
     PInvokeAcceptHashable(data.GetPayload(), metadata, protocolWitnessTable);
 }
 
@@ -624,3 +639,5 @@ public struct SwiftIntWrapper : ISwiftObject, IHashable, ...
 ```
 
 Before calling a function with generic constraints, the primitive value would have to be explicitly wrapped using these wrapper structs.
+
+**NOTE:** This makes an assumption that binary representation of value of a frozen struct with a single `Int` field is the same as of `Int` itself.
