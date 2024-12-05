@@ -119,7 +119,7 @@ MethodDesc* InstMethodHashTable::FindMethodDesc(TypeHandle declaringType,
                                                 BOOL unboxingStub,
                                                 Instantiation inst,
                                                 BOOL getSharedNotStub,
-                                                bool isAsyncThunk)
+                                                bool isAsyncHelper)
 {
     CONTRACTL
     {
@@ -161,7 +161,7 @@ MethodDesc* InstMethodHashTable::FindMethodDesc(TypeHandle declaringType,
             continue;  // Next iteration of the for loop
         }
 
-        if (pMD->IsAsyncHelperMethod() != isAsyncThunk)
+        if (pMD->IsAsyncHelperMethod() != isAsyncHelper)
         {
             continue;
         }

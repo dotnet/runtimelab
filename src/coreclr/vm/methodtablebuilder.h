@@ -673,7 +673,7 @@ private:
 
         //-----------------------------------------------------------------------------------------
         // This constructor can be used with hard-coded signatures that are used for
-        // representing async thunk methods
+        // representing async helper methods
         MethodSignature(
             Module *             pModule,
             mdToken              tok,

@@ -2806,7 +2806,7 @@ PrepareCodeConfigBuffer::PrepareCodeConfigBuffer(NativeCodeVersion codeVersion)
 
 // CreateDerivedTargetSigWithExtraParams:
 // This method is used to create the signature of the target of the ILStub for
-// instantiating, unboxing, and async thunk stubs, when/where we need to
+// instantiating, unboxing, and async helper stubs, when/where we need to
 // introduce a generic context/async continuation.
 // And since the generic context/async continuations are hidden parameters,
 // we're creating a signature that looks like non-generic but with additional
