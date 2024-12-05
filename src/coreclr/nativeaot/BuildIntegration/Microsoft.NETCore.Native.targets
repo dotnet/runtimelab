@@ -548,7 +548,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
 
     <ItemGroup>
-      <_WasiComponentImports Include="$(IlcFrameworkNativePath)*.wit" />
+      <WasmComponentTypeWit Include="$(IlcFrameworkNativePath)*.wit" />
 
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.a" />
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.TimeZoneData.a" Condition="'$(InvariantTimezone)' != 'true'" />
@@ -566,7 +566,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="@(NativeObjects->'&quot;%(Identity)&quot;'->Replace(&quot;\&quot;, &quot;/&quot;))" />
       <!-- The canary function should be last in the linked output. But adding it to Native[Library|Object] runs into https://github.com/dotnet/msbuild/issues/5937. -->
       <CustomLinkerArg Include="&quot;$(IlcSdkPath.Replace('\', '/'))libStackTraceIpCanary.o&quot;" Condition="'$(_targetOS)' == 'browser'" />
-      <CustomLinkerArg Include="@(_WasiComponentImports->Replace('\', '/')->'-Wl,--component-type,&quot;%(Identity)&quot;')" />
+      <CustomLinkerArg Include="@(WasmComponentTypeWit->'%(FullPath)'->Replace('\', '/')->'-Wl,--component-type,&quot;%(Identity)&quot;')" />
       <CustomLinkerArg Include="-o &quot;$(NativeBinary.Replace(&quot;\&quot;, &quot;/&quot;))&quot;" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-Wl,--strip-all" />
