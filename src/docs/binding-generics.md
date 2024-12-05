@@ -475,21 +475,49 @@ public interface IPrintableProtocol
 public static void PrintPrintable<T>(T data) where T : ISwiftObject, IPrintableProtocol
 {
     var metadata = TypeMetadata.GetTypeMetadataOrThrow<T>();
-    var protocolWitnessTable = T.GetProtocolWitnessTable<IPrintableProtocol>();
-    PInvokePrintPrintable(data.GetPayload(), metadata, protocolWitnessTable);
+    var protocolWitnessTable = ProtocolWitnessTable.GetProtocolWitnessTableOrThrow<T, IPrintableProtocol>();
+    PrintPrintable(data.GetPayload(), metadata, protocolWitnessTable);
 }
 
 [DllImport(Path, EntryPoint = "...")]
 [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
-private static extern void PInvokePrintPrintable(NativeHandle data, TypeMetadata metadata, NativeHandle protocolWitnessTable);
+private static extern void PInvokePrintPrintable(NativeHandle data, TypeMetadata metadata, ProtocolWitnessTable protocolWitnessTable);
 ```
 
-This would require adding a new method to `ISwiftObject`
+This utilizes a new type `ProtocolWitnessTable` whose implementation might look something like:
+
+```csharp
+public record struct ProtocolWitnessTable
+{
+    NativeHandle handle;
+
+    internal ProtocolWitnessTable(NativeHandle handle)
+    {
+        this.handle = handle;
+    }
+
+    public NativeHandle Handle
+    {
+        get { return handle; }
+    }
+
+    public static ProtocolWitnessTable GetProtocolWitnessTable<T, U>() where T : ISwiftObject
+    {
+        var metadata = TypeMetadata.GetTypeMetadataOrThrow<T>();
+        var conformanceDescriptor = T.GetProtocolConformanceDescriptor<U>();
+        return new ProtocolWitnessTable(Runtime.GetProtocolWitnessTable(conformanceDescriptor, metadata));
+    }
+}
+```
+
+This would require adding a new method to `ISwiftObject`.
 
 ```csharp
 public interface ISwiftObject
-    public static abstract NativeHandle GetProtocolWitnessTable<T>();
+    public static abstract NativeHandle GetProtocolConformanceDescriptor<T>();
 ```
+
+**NOTE:** Here an assumption is made -- we will only need PWTs of things which implement the `ISwiftObject` interface.
 
 Then a type implementing the interface could look like:
 
@@ -499,7 +527,7 @@ struct FrozenStruct : ISwiftObject, IPrintableProtocol
 {
     // Other members
 
-    public static NativeHandle GetProtocolWitnessTable<T>()
+    public static NativeHandle GetProtocolConformanceDescriptor<T>()
     {
         TypeInfo typeInfo = typeof(T).GetTypeInfo();
 
@@ -509,8 +537,8 @@ struct FrozenStruct : ISwiftObject, IPrintableProtocol
             throw new InvalidOperationException($"Type {typeof(T).Name} does not have a SwiftProtocol attribute");
         }
 
-        // Use information from protocolAttribute to correctly extract the PWT
-        return GetProtocolWitnessTable(...);
+        // Use information from protocolAttribute to correctly extract the conformance descriptor
+        return GetProtocolConformanceDescriptor(...);
     }
 
     public void PrintMe()
@@ -565,8 +593,8 @@ class Pair<T, U> : ISwiftObject
         var nativeHandleFirst = Runtime.GetPayload(ref first);
         var nativeHandleSecond = Runtime.GetPayload(ref second);
 
-        var printableProtocolWitnessTableT = T.GetProtocolWitnessTable<IPrintableProtocol>();
-        var printableProtocolWitnessTableU = U.GetProtocolWitnessTable<IPrintableProtocol>();
+        var printableProtocolWitnessTableT = ProtocolWitnessTable.GetProtocolWitnessTable<T, IPrintableProtocol>();
+        var printableProtocolWitnessTableU = ProtocolWitnessTable.GetProtocolWitnessTable<U, IPrintableProtocol>();
 
         PairPInvokes.Pair(swiftIndirectResult, nativeHandleFirst, nativeHandleSecond, firstMetadata, secondMetadata, printableProtocolWitnessTableT, printableProtocolWitnessTableU);
     }
@@ -579,8 +607,8 @@ class Pair<T, U> : ISwiftObject
             var firstMetadata = GetTypeMetadataOrThrow<T>();
             var secondMetadata = GetTypeMetadataOrThrow<U>();
 
-            var printableProtocolWitnessTableT = T.GetProtocolWitnessTable<IPrintableProtocol>();
-            var printableProtocolWitnessTableU = U.GetProtocolWitnessTable<IPrintableProtocol>();
+            var printableProtocolWitnessTableT = ProtocolWitnessTable.GetProtocolWitnessTable<T, IPrintableProtocol>();
+            var printableProtocolWitnessTableU = ProtocolWitnessTable.GetProtocolWitnessTable<U, IPrintableProtocol>();
 
             // Might be handled differently due to the metadata lowering https://github.com/dotnet/runtimelab/pull/2810
 
@@ -616,13 +644,13 @@ public interface IHashable
 public static void AcceptHashable<T>(T data) where T : ISwiftObject, IHashable
 {
     var metadata = TypeMetadata.GetTypeMetadataOrThrow<T>();
-    var protocolWitnessTable = T.GetProtocolWitnessTable<IHashable>();
+    var protocolWitnessTable = ProtocolWitnessTable.GetProtocolWitnessTable<T, IHashable>();
     PInvokeAcceptHashable(data.GetPayload(), metadata, protocolWitnessTable);
 }
 
 [DllImport(Path, EntryPoint = "...")]
 [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
-private static extern void PInvokeAcceptHashable(NativeHandle data, TypeMetadata metadata, NativeHandle protocolWitnessTable);
+private static extern void PInvokeAcceptHashable(NativeHandle data, TypeMetadata metadata, ProtocolWitnessTable protocolWitnessTable);
 ```
 
 We would be able to call `AcceptHashable<T>` using a type that implements both `ISwiftObject` and `IHashable`, but we would not be able to call it using, for example, `System.Int64`.
