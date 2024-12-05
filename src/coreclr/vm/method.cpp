@@ -2972,7 +2972,7 @@ bool MethodDesc::DetermineAndSetIsEligibleForTieredCompilation()
         !IsJitOptimizationLevelRequested() &&
 
         // Tiering the async thunk methods doesn't make sense
-        !IsAsyncHelperMethod()
+        !IsAsyncThunkMethod()
         )
     {
         InterlockedUpdateFlags3(enum_flag3_IsEligibleForTieredCompilation, TRUE);
