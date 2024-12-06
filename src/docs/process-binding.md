@@ -12,8 +12,9 @@ In theory, the process of binding a Swift binary into C# should be as simple as:
 Unfortunately, it is not so simple. There are complications that need to be considered because of special cases in the Swift language as well as special cases or limitations in C#.
 
 For example
+
 - `open` Swift classes need to be handled differently from `public` swift classes.
-- Structs and enums that are `@frozen` are passed differently from structs that are not. 
+- Structs and enums that are `@frozen` are passed differently from structs that are not.
 - Structs and enums that contain or may contain non-blitable members need to be defined differently.
 - Enums come in different forms that lend themselves to different representations in C#.
 - C# doesn't have methods or properties on enums so those need to be put into extension methods.
@@ -25,6 +26,7 @@ For example
 All of this makes the process of generating code challenging.
 
 The complexities fall into several broad categories:
+
 - Type and member naming
 - Multiple types being defined in multiple languages concurrently
 - Marshaling handled differently based on the type of the parameter and the type of the function
@@ -34,6 +36,7 @@ The complexities fall into several broad categories:
 Because of these complexities, I think we should adopt a strategy and factory pattern for handlers at various levels.
 
 The general pattern would work like this:
+
 1. Start with a Swift language entity
 2. Aggregate information about that entity
 3. Select a factory to create a handler for that entity
@@ -48,6 +51,7 @@ Handlers will contain factories for handling sub steps, if needed.
 I strongly recommend using code-generation tools that can work in a non-linear fashion. The Dynamo framework from Binding Tools for Swift is an excellent candidate as it can handle both C# and Swift and generates non-linearly. In addition, it's not a stretch to have multithreaded binding on type boundaries that are defined at the same level.
 
 Dynamo works by building functional language components out of small objects and aggregating them into what is effectively an abstract syntax tree. Because of this approach, it is possible to do things with the tree that for a string-based system are impractical. Some examples of this include:
+
 - Maintaining import/using statements on as as-needed basis
 - Being able to easily insert fixed blocks
 - Modifying a declaration late to be unsafe
@@ -58,6 +62,7 @@ Dynamo works by building functional language components out of small objects and
 All of these things are necessary in the strategy/factory/handler approach.  To do these things with a string-based generator involves buffering of strings with only as much structure and honoring of the syntax as you add into it, and by that time you're halfway to re-creating Dynamo. On top of this, with Dynamo it's actually very hard to generate syntactically incorrect code.
 
 Consider the case of a protocol proxy implementation as outlined [here](binding-protocols.md), with this Swift code:
+
 ```swift
 public protocol Colorful {
     func getColor (element: ClothingItem) -> Color
@@ -65,6 +70,7 @@ public protocol Colorful {
 ```
 
 This would require:
+
 - An interface definition in C#
 - A simulated vtable in Swift
 - A parallel vtable in C#
@@ -85,8 +91,9 @@ Suppose, for example, we decided later to not use Swift's implementation of `Str
 ```Swift
 public func generateAClass(String name) -> SomeClass { }
 ```
+
 The process would look at this and identify this as a top-level function and will select a handler factory for it.
-The handler will create a context for the object which would include a class for the top-level object to live in (C# doesn't have top-level functions) and a class to hold top-level pinvokes and a function generation context which would include a place to place function argument declarations, generic declarations, function argument pre-marshaling code, pinvoke argument declarations, pinvoke argument expressions, post-marshaling code, return type declaration, and a return expression. 
+The handler will create a context for the object which would include a class for the top-level object to live in (C# doesn't have top-level functions) and a class to hold top-level pinvokes and a function generation context which would include a place to place function argument declarations, generic declarations, function argument pre-marshaling code, pinvoke argument declarations, pinvoke argument expressions, post-marshaling code, return type declaration, and a return expression.
 
 The handler will execute a step to name the function and the associated pinvoke, including the entry point and library.
 Then for each argument, it will gather the necessary information and from the function handler get a factory to build an argument handler for type `String`. This will in turn name the argument, generate the C# type and add it to the C# argument declaration. It will define the argument type for the pinvoke and add it to the C# pinvoke argument list. If needed, it will generate premarshal code and add it to the premarshal list and post marshal code, and finally an expression for calling the pinvoke.
@@ -114,6 +121,7 @@ public interface Handler<EntityInformation, ParentContext> {
 ```
 
 A factory might look like this:
+
 ```csharp
 public interface Factory<EntityInformation, ParentContext> {
     bool TryGetHandler (EntityInformation info, [NotNullWhen(true)] out Handler<EntityInformation, ParentContext>? handler);

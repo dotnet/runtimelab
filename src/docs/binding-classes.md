@@ -5,7 +5,9 @@ Classes function very similarly to C# classes with some important semantic and r
 Swift classes can be either native Swift or Objective-C. The latter is in place strictly for compatability with legacy code and in fact, if a Swift class is declared to be `@ObjC`, it must inherit from `NSObject` and the swift compiler will generate a selector dispatcher for all methods marked as `@ObjC` but these just go to the Swift implementation, therefore Objective-C compatability is just a thin veneer on top of the Swift implementation.
 
 ## Language Parity Mismatches
+
 Swift provides a different set of accessibility of methods than C#:
+
 - open - callable by all and overridable (effectively public virtual)
 - public - callable by all not overridable
 - private - callable only by members of the class
@@ -22,13 +24,15 @@ The allocating initializer takes the type metadata for the class in the `self` r
 Swift divides initializers into two categories: designated and convenience. Designated initializers are initializers which fully initialize a class. If a subclass inherits from base class, it must implement all designated initializers and call the parent class. A convenience intializer will have a different signature than all designated initializers and **must** call a designated initializer.
 
 The generic programming model in Swift does specialization at runtime. It does this by creating the type metadata for the specialized type
-using the Metadata Accessor function. The Metadata Accessor function has one type metadata argument for each specialized type in the generic class. It is **very important** that the binding code calls the Metadata Accessor rather than trying to synthesize the type metadata object. This is because from Swift's point of view, every type metadata object is a singleton and the runtime will cache generic specializations. 
+using the Metadata Accessor function. The Metadata Accessor function has one type metadata argument for each specialized type in the generic class. It is **very important** that the binding code calls the Metadata Accessor rather than trying to synthesize the type metadata object. This is because from Swift's point of view, every type metadata object is a singleton and the runtime will cache generic specializations.
 
 Swift initializers can fail - this is something that doesn't have an exact analog in C#. There are two ways to handle this:
+
 - make the corresponding C# constructor throw
 - write a factory method that returns `BoundType?`
 
 ## ABI differences
+
 - Instance methods get called with the `self` register pointing to the instance.
 - Class methods get called with the `self` register pointing to the type metadata.
 - Init methods get called with the type metadata in the first argument.
@@ -36,17 +40,19 @@ Swift initializers can fail - this is something that doesn't have an exact analo
 - Virtual methods in swift get called via a vtable. Since the ordering of the vtable is undefined, methods can't be called using the vtable from C#. In addition, the vtable is consider fragile and may change between versions of any given library. Fortunately, with enable-library-evolution set, the compiler will inject a dispatch thunk for each virtual method. There is a description of dispatch thunks in the library evolution document [here](https://www.swift.org/blog/library-evolution/).
 This and more is documented by Apple [here](https://github.com/swiftlang/swift/blob/main/docs/ABI/CallingConvention.rst) with a summary of register usage [here](https://github.com/swiftlang/swift/blob/main/docs/ABI/CallConvSummary.rst).
 
-
 ## Runtime Differences
+
 Swift classes are reference counted rather than garbage collected. This can create some interesting conditions when an object from Swift surfaced in C# gets garbage collected, but the object may still be live in Swift, so it's necessary to manage this. The way this is handled in Binding Tools for Swift is to add it to an object registry which is a `Dictionary<NativeHandle, GCHandle>` The native handle is the Swift object instance and the GC Handle is made from the corresponding C# instance. When the pair is added to the registry, the registry also takes a weak reference to the Swift
 object in order to insure that it doesn't away if it gets disposed.
 
 Naturally, when the C# object gets disposed, the registry removes and does a weak release of the object.
 
 ## Idiomatic Differences
+
 There are very few idiomatic differences between Swift classes and C# classes.
 
 ## Accessibility
+
 This is where the true challenge lies.
 Let's break Swift classes into two varieties: virtual and non-virtual. Non-virtual are easy because the implementation will be a `sealed` C# class for which each method would be a p/invoke into the Swift implementation.
 
@@ -100,6 +106,7 @@ open class YourAgeWrapper : YourAge {
 ```
 
 Then in C# you need something like this:
+
 ```csharp
 public class YourAge :  SwiftNativeObject { // SwiftNativeObject has a class handle and an instance handle and is IDisposable
     // set the vtable in the initializer
@@ -171,7 +178,7 @@ This gets more complicated for generic classes.
 For generic classes you don't have a singleton vtable. Instead you need a vtable for every specialization of the class.
 
 In addition, because of issues with the way that C# handles unmanaged callbacks, you can't have an unmanaged callback inside a generic class.
-As a result it's necessary to create an unmanaged vtable and a managed vtable. 
+As a result it's necessary to create an unmanaged vtable and a managed vtable.
 
 For each unmanaged vtable function of the form `delegate *unmanaged<IntPtr, IntPtr, args..., Result>` there will be a managed delegate of the form
 `Func<IntPtr, args, Result>`. The unmanaged vtable will also have an IntPtr which is a `GCHandle` to the managed table. The unmanaged delegate will include an `IntPtr` as the first argument which is the handle to the managed vtable.
@@ -191,6 +198,7 @@ public static Result SomeUnmanagedReceiver(IntPtr managedVTPtr, IntPtr csHandle,
 
 One thing that this does not do is expose new members to Swift nor does it make protocol compliance visible in all circumstances.
 For example, if I do something like this in C#:
+
 ```csharp
 public class OneAge : YourAge, ISomeSwiftProtocol {
     public int ExtraProperty { get; set; }
@@ -200,7 +208,9 @@ public class OneAge : YourAge, ISomeSwiftProtocol {
     }
 }
 ```
+
 and had this in Swift:
+
 ```swift
 public func someOtherFunc(y: YourAge) {
     if let ssp = y as? SomeSwiftProtocol { // as called from C# this will never work since y is YourAgeWrapper
@@ -227,7 +237,9 @@ open class ValBool {
     open func val() -> Bool { return true; }
 }
 ```
+
 This class gets wrapped with the following Swift code:
+
 ```swift
 public final class xam_sub_ValBool : ValBool {
     // swift side vtable that points to C# receiver with a handle
@@ -287,6 +299,7 @@ public func xamarin_xam_sub_ValBoolDxam_super_val(this: xam_sub_MontyWSMBool) ->
     return this.xam_super_val();
 }
 ```
+
 With this in place, the following C# wrapper gets written:
 
 ```csharp

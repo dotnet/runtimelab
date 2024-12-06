@@ -48,12 +48,14 @@ It might be useful in the binding process to have two data structures: one for t
 This can be accomplished in a number of ways, either by have the module defined type information kept entirely separate, subclassing or interfacing the type database entry to include extra information, etc.
 
 The type database class should have the ability to:
+
 - Read and merge type database entries from files and/or streams
 - Add individual entries in the introduction phase of binding
 - Retrieve entries using full Swift type name as the key
 - Write the type database to an output file
 
 In terms of organization, we are likely going to want to have the type database files stored in a hierarchy organized by:
+
 - Target platform
 - Target SDK or OS version (which?)
 - Framework or module name

@@ -14,6 +14,7 @@ The only language parity mismatch is that Swift offers protocol composition thro
 ## ABI Differences
 
 There should be none. In Binding Tools for Swift, I created a representation of an existential container starting with an interface:
+
 ```csharp
 public interface ISwiftExistentialContainer {
     IntPtr Data0 { get; set; }
@@ -31,6 +32,7 @@ public interface ISwiftExistentialContainer {
 and implemented 8 of these, assuming that 8 protocol compositions are enough for anyone. These types were generally only seen in P/Invokes.
 
 There is a case where the calling convention is different even though it looks like it should be the same:
+
 ```swift
 public protocol SomeProto {
     // ...
@@ -44,18 +46,22 @@ public func foo<T: SomeProto>(a: T) {
     // ...
 }
 ```
+
 In the first version of `foo` there is 1 argument which is an existential container. In the second, there are 3 arguments: a pointer to a, the type metadata for T, and the protocol witness table for SomeProto with respect to T.
 
 ## Runtime Differences
+
 Since the protocol witness table is effectively a box, we need to pay attention to what's been boxed and make sure that we handle reference counting issues (if any).
 
 ## Idiomatic Differences
+
 None beyond protocol composition.
 
 ## Accessibility
+
 One thing that we would like to be able to do is project types that implement the protocol into C# and be consumed correctly. In addition, we would like to be able to project C# types that implement the corresponding interface into Swift. For most cases, this is straightforward, but there are some cases where this is impossible or creates unexpected results.
 
-To project swift types into C#, this can be done by creating an interface for the protocol and a proxy class. The proxy class is dual purpose. It implements the C# interface and it either contains a C# implementation of the interface or it contained a handle to the Swift type. If it was a Swift type being used in C#, any calls to the interface would get redirected to Swift. If it was a C# type being called by Swift, the Swift code would be working with an instance of `EveryProtocol` and extension methods in Swift would redirect the protocol methods into C# via a simulated vtable. 
+To project swift types into C#, this can be done by creating an interface for the protocol and a proxy class. The proxy class is dual purpose. It implements the C# interface and it either contains a C# implementation of the interface or it contained a handle to the Swift type. If it was a Swift type being used in C#, any calls to the interface would get redirected to Swift. If it was a C# type being called by Swift, the Swift code would be working with an instance of `EveryProtocol` and extension methods in Swift would redirect the protocol methods into C# via a simulated vtable.
 
 This works in nearly all of the cases that we care about. There is an issue which has to deal with referential transparency. When we provide a type to Swift, we are presenting `EveryProtocol` and if Swift code tries to cast it to other types or otherwise assume things about its provenance, it may surprisingly fail or surprisingly succeed. In the former case, Swift code will always see a type of `EveryProtocol` as the underlying type and might not operate correctly. In the latter case, casts that might (correctly) fail may succeed since `EveryProtocol` is exactly what it says on the box: it implements every protocol.
 
@@ -65,18 +71,23 @@ In the case of functions that return protocol compositions, that presents more c
 
 To best understand the overall process, it's probably best to start with a simple example.
 To start, here is the implementation of `EveryProtocol`
+
 ```swift
 public final class EveryProtocol {
     public init() { }
 }
 ```
+
 And here is a simple protocol:
+
 ```swift
 public protocol ReturnsFloat {
     func val() -> Float
 }
 ```
+
 Bindings Tools for Swift generates the following Swift code:
+
 ```swift
 
 // this is the definition for the vtable
@@ -116,6 +127,7 @@ public func xamarin_ReturnsFloatDval(this: UnsafeMutablePointer<MontyWSMFloat>) 
 ```
 
 From here, BTfS generates the following interface for the protocol and proxy:
+
 ```csharp
 [SwiftProtocolType(typeof(ReturnsFloatXamProxy), "libProtocolTests.dylib",
         "$s13ProtocolTests13MontyWSMFloatMp")] // the last string is symbol for the protocol descriptor

@@ -19,6 +19,7 @@ Every value type in Swift comes with a compiler-generated Value Witness Table. U
 Structs in C# and Swift are very similar. They both represent value types with a concrete memory layout. The primary difference is that structs in Swift will execute code whenever it goes out of scope.
 
 Given the following Swift code:
+
 ```swift
 public class Named {
     private let name: String
@@ -48,12 +49,15 @@ public func runIt()
 runIt()
 print("all done")
 ```
+
 It will generate the following output:
+
 ```
 Corey left the building.
 Ian left the building.
 all done
 ```
+
 This shows how the destructor in the class gets executed when a struct gets overwritten ("you killed Corey") and when it goes out of scope. C# will do neither of this things.
 
 Swift allows 0-length structs, whereas C# does not.
@@ -62,6 +66,7 @@ being bound. The value witness table contains functions that will execute an ill
 within swift to get the address of an non-copyable instance are forbidden.
 
 ## ABI Differences
+
 Swift has very specific rules for packing structs which Apple has laid out [here](https://github.com/swiftlang/swift/blob/main/docs/ABI/TypeLayout.rst).
 
 Structs are passed to functions in one of two ways depending on whether or not they are frozen under `enable-module-evolution` rules.
@@ -92,9 +97,9 @@ n1 = n2; // memory leak.
 ```
 
 ## Accessibility
+
 The main problem that we have is with non-blittable structs. We would either need our users to manually destroy structs when they're no longer needed (this a really bad idea - people are awful at memory management - that's why we have garbage collection and `IDisposable`) or we would need to have the types implement `IDisposable`.
 
 The way this was handled in BTfS was to make no distinction between blittable and non-blittable structs and to implement them as a class with a byte array payload that implemented `IDisposable`. This would give the effect of having the destroy method called when the class gets disposed. The downside to this is that all structs, regardless of blitability, incur a cost in terms of heap allocation and at GC time. The up side is that the code to do the binding is simpler and handled uniformly.
 
 Moving forward I think that non-blittable structs should be bound by a class with an opaque payload.
-

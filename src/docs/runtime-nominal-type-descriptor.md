@@ -4,11 +4,13 @@ In Swift, descriptors are implicit data types that are separate from type metada
 Nominal type descriptors in Swift provide information about elements that are common to most nominal types: struct, class and enum. Protocols are **not** included, even though they are technically nominal types. Protocols with associated types are also **not** included as [has been discussed before](binding-pats.md) PATs are not actual types.
 
 Nominal type descriptors contain the following information that we will need at runtime:
+
 - the name of the type and through chaining of descriptors, the full type name.
 - the generic type information
 
 The first is useful for runtime debugging.
 The second is vital for runtime type mapping. Consider the following Swift code:
+
 ```swift
 public protocol SomeProtocol {
     var name { get; }
@@ -42,9 +44,11 @@ if (p is Foo<nint> fooInst) {
     // ...
 }
 ```
+
 which enables us to correctly cast the return value to its actual type, something we can't do otherwise.
 
 In terms of representation, we can use something like this:
+
 ```csharp
 public struct NominalTypeDescriptor {
     NativeHandle handle;

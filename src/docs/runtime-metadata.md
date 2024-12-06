@@ -164,6 +164,7 @@ public int GenericArgumentCount { get; }
 ```
 
 In addition, we are likely to need **internal** accessors for:
+
 - the class superclass `TypeMetadata`
 - the number of elements in a tuple
 - the `TypeMetadata` of each tuple element
@@ -175,6 +176,7 @@ In addition, we are likely to need **internal** accessors for:
 - whether or not parameters have flags (this determines if a parameter is `inout`, variadic or autoclosure)
 
 In addition, while we are not likely to need but is present:
+
 - Protocol information (flags, number of witness tables, protocol descriptors for each, whether a protocol is ObjC)
 
 ## Mapping C# Type to TypeMetadata and Vice Versa
@@ -182,6 +184,7 @@ In addition, while we are not likely to need but is present:
 There should be a threadsafe 1 to 1 bi-map of Type <-> TypeMetadata to serve as cache.
 
 For the Type -> TypeMetadata half, there should be a strategy mechanism that handles the following cases:
+
 - primitive value types such as int, uint, short, ushort etc. NB: IntPtr is a synonym for nint and UIntPtr is a synonym for nuint
 - bound Swift types should each have a static method for getting the type metadata using the metadata accessor which should be inspectable via reflection or interface compliance
 - for tuples, there is a Swift library routine, `swift_getTupleTypeMetadata`
@@ -194,6 +197,7 @@ For the TypeMetadata -> Type half, this is a little more problematic. For nomina
 In terms of finding out if a C# type is capable of reporting Swift type metadata, I did benchmarking on several mechanisms and found that using static abstract interfaces is the most efficient predicate for an interface.
 
 Given that, we can write something like this:
+
 ```csharp
 // NB - the name in particular is not important just that
 // this this interface must be implemented by all nominal types that are projected from Swift to C#
@@ -261,6 +265,7 @@ internal static class SomeBoundTypePinvokes {
 
 Note that for generic types, the MetadataAcessor with have a `TypeMetadata` argument for each generic parameter.
 An example of that might be:
+
 ```csharp
 public class SomeBoundTypeGeneric<T> : ISwiftTyped {
     static TypeMetadata? _metadata;

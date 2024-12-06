@@ -9,6 +9,7 @@ The distinction between the two is that escaping closures that capture free vari
 Beyond the broad classification of escaping/non-escaping, closures can also be async and they can throw.
 
 Internally, closures are represented as 2 machine words:
+
 - Pointer to a function entry point for the closure (see below for details)
 - Pointer to the data context object for captured free variables or 0/null if there is no context object. When the closure is called, this will be in the context/self register.
 
@@ -18,10 +19,12 @@ None in particular. From a language standpoint, they both align in capability al
 
 Swift has a delightful bit of syntax sugar that allows you to supply a closure at the call site in a way that it looks like inline code.
 If you have a function like this in Swift:
+
 ```swift
 public func sorter<T>(arr: [T], by: (T, T) -> Int) { /* implementation not important */ }
 
 ```
+
 And `sorter` can be called by any of the following means:
 
 ```swift
@@ -36,6 +39,7 @@ sorter(arr: a) { a, b in  // 3: trailing closure
     return a - b
 }
 ```
+
 The last case is a trailing closure which is exactly equivalent to the second inline closure
 
 ## ABI Differences
@@ -45,6 +49,7 @@ Closures follow the same calling conventions as [functions](binding-functions.md
 With support for Swift calling conventions in the runtime, we should be insulated from issues in the ABI differences.
 
 We would need to be aware reference counting of the context object. Closures are more or like like this:
+
 ```swift
 public struct EscapingClosure {
     public var entryPoint: OpaquePointer
@@ -59,11 +64,13 @@ public struct Closure {
 
 When invoking the closure, the self register needs to be set to contents of the context pointer.
 So essentially:
+
 ```
 mov entryPoint[closoure], rax
 mov context[closure], r13
 jsr [rax]
 ```
+
 or something similar.
 
 One interesting thing is that the Swift compiler writes closure with arguments for free variables as well as a forwarder.
@@ -77,13 +84,17 @@ public func getSummer (a: Int) -> (Int) -> Int {
     }
 }
 ```
+
 Then the compiler will write this:
+
 ```Swift
 private func getSummerImplementation(a: Int, b: Int) -> Int {
     return a + b
 }
 ```
+
 And a forwarder that looks like this:
+
 ```
 move 10[r13], rsi // b goes into argument 2
 jmp _getSummerImplementation
@@ -96,6 +107,7 @@ Ideally, we would like to be able to pass C# delegates to Swift functions or sto
 If there is a case when we can't directly adapt a Swift closure into C#, there are some options that are available to us. In BTfS, which has no benefits from the runtime, this is done by converting Swift adapters into a more general form:
 
 Given a closure of the form `(arguments) -> return`, this can be converted into the form: `(UnsafeMutablePointer<return>, UnsafeMutablePointer<(arguments)>)->()` For example:
+
 ```swift
 public func callsIntoCSharp (a: @escaping (Int, SomeStruct, Bool) -> SomeOtherStruct) {
     let a_adapter = { (ret: UnsafeMutablePointer<SomeOtherStruct>, args: UnsafeMutablePointer<(Int, SomeStruct, Bool)>) in

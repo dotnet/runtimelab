@@ -1,6 +1,7 @@
 # Binding Enums
 
 Swift enums are a hybrid value type between enumerations (names associated with cardinal values) and discriminated unions. Swift enums can be broken down into three categories:
+
 - Trivial - these are enums that have a integral raw type. These can be nearly fully represented by C# enums
 - Homogeneous - these are enums where the payloads are the same non-integral type
 - Heterogeneous - there are enums where the payloads have at least two different types
@@ -44,6 +45,7 @@ In Binding tools for Swift, the type was implemented with a class implementing `
 We should not, under any circumstances, try to synthesize Swift enums ourselves. The memory layout of enums is not only opaque, it is fragile and the tools available in the value witness table are undocumented.
 
 Fortunately, writing a wrapper to get a predictable result in Swift is straightforward:
+
 ```swift
 // given:
 public enum SomeEnum {
@@ -66,6 +68,7 @@ public func _SomeEnumCase(p: UnsafePointer<SomeEnum>) -> Int {
 ```
 
 Getting a particular payload is straightforward, but also involves writing some Swift code:
+
 ```swift
 public enum SomeRuntimeError : Error { // this would be a more general type
     case failure(message: String)
@@ -86,6 +89,7 @@ public func _SomeEnumNewIntVal(p: UnsafeMutablePointer<SomeEnum>, nint val)
 
 // repeat for each payload
 ```
+
 With these two pieces, it's possible to treat Swift in a way that approximates discriminated union in C#:
 
 ```csharp
@@ -158,11 +162,13 @@ public class SomeEnum : SwiftNativeValueType {
 
 There are a number of ways that we can improve the experience somewhat. For example, we can define a common interface for
 all enums:
+
 ```csharp
 public interface ISwiftEnum<T> where T : System.Enum {
     T Case { get; }
 }
 ```
+
 Which at the very least couples the cases and the enum.
 
 I've been in contact with the C# team to encourage that whatever form unions take we can hook this into as cleanly as possible. To this end, I feel it's important to have an approach which is "fast track/abstract" which means that there will be a native C# implementation that works with C# syntax in a way that's performant, but also a way to make a non-native implementation operate with the supporting C# syntax. This precedent already exists in C# in `foreach`: if you use `foreach` on an array you get a fast-track implementation. If you use `foreach` on an `IEnumerable<T>` you get a functional, but less efficient version, but from the user's point of view it operates the same.
@@ -192,4 +198,5 @@ public class SomeEnum : {
     }   
 }
 ```
+
 This is just one possible way of doing this, but the process is the same: statically advertise the cases and methods to get the case, the payload and factory methods to create them. There is a C# proposal for something similar [here](https://github.com/dotnet/csharplang/blob/main/proposals/TypeUnions.md#custom-unions).
