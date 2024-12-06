@@ -7697,7 +7697,7 @@ CEEInfo::getMethodInfo(
         getMethodInfoHelper(cxt, methInfo, context);
         result = true;
     }
-    else if (!ftn->IsWrapperStub() && ftn->HasILHeader())
+    else if (ftn->HasILHeader()) // !ftn->IsWrapperStub() && 
     {
         COR_ILMETHOD_DECODER header(ftn->GetILHeader(), ftn->GetMDImport(), NULL);
         cxt.Header = &header;

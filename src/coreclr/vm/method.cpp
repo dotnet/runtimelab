@@ -2658,6 +2658,14 @@ MethodDesc* MethodDesc::GetMethodDescFromStubAddr(PCODE addr, BOOL fSpeculative 
 
     MethodDesc* pMD = NULL;
 
+#ifdef FEATURE_INTERPRETER
+    if (InterpreterPrecode::IsInstance(addr))
+    {
+        pMD = InterpreterPrecode::Get(addr)->GetMethodDesc();
+        RETURN(pMD);
+    }
+#endif // FEATURE_INTERPRETER
+
     // Otherwise this must be some kind of precode
     //
     PTR_Precode pPrecode = Precode::GetPrecodeFromEntryPoint(addr, fSpeculative);
@@ -3879,7 +3887,9 @@ PrecodeType MethodDesc::GetPrecodeType()
     LIMITED_METHOD_CONTRACT;
 
     PrecodeType precodeType = PRECODE_INVALID;
-
+#ifdef FEATURE_INTERPRETER
+    precodeType = PRECODE_INTERPRETER;
+#else // !FEATURE_INTERPRETER
 #ifdef HAS_FIXUP_PRECODE
     if (!RequiresMethodDescCallingConvention())
     {
@@ -3891,6 +3901,7 @@ PrecodeType MethodDesc::GetPrecodeType()
     {
         precodeType = PRECODE_STUB;
     }
+#endif // FEATURE_INTERPRETER
 
     return precodeType;
 }

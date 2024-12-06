@@ -33,6 +33,10 @@ void AssertMulticoreJitAllowedModule(PCODE pTarget)
 
 #endif
 
+#ifdef FEATURE_INTERPRETER
+extern void InterpretCallTarget(PCODE pCallTarget, const ARG_SLOT* pArguments, ARG_SLOT* pReturnValue, int cbReturnValue);
+#endif // FEATURE_INTERPRETER
+
 // For X86, INSTALL_COMPLUS_EXCEPTION_HANDLER grants us sufficient protection to call into
 // managed code.
 //
@@ -209,7 +213,7 @@ void * DispatchCallSimple(
         g_pDebugInterface->TraceCall((const BYTE *)pTargetAddress);
 #endif // DEBUGGING_SUPPORTED
 
-    CallDescrData callDescrData;
+    CallDescrData callDescrData{};
 
 #ifdef CALLDESCR_ARGREGS
     callDescrData.pSrc = pSrc + NUM_ARGUMENT_REGISTERS;
@@ -234,18 +238,22 @@ void * DispatchCallSimple(
     callDescrData.fpReturnSize = 0;
     callDescrData.pTarget = pTargetAddress;
 
-    if ((dwDispatchCallSimpleFlags & DispatchCallSimple_CatchHandlerFoundNotification) != 0)
-    {
-        DispatchCallDebuggerWrapper(
-            &callDescrData,
-            dwDispatchCallSimpleFlags & DispatchCallSimple_CriticalCall);
-    }
-    else
-    {
-        CallDescrWorkerWithHandler(&callDescrData, dwDispatchCallSimpleFlags & DispatchCallSimple_CriticalCall);
-    }
+    ARG_SLOT result;
+    InterpretCallTarget(pTargetAddress, pSrc, &result, sizeof(result));
+    return (void*)result;
 
-    return *(void **)(&callDescrData.returnValue);
+    //if ((dwDispatchCallSimpleFlags & DispatchCallSimple_CatchHandlerFoundNotification) != 0)
+    //{
+    //    DispatchCallDebuggerWrapper(
+    //        &callDescrData,
+    //        dwDispatchCallSimpleFlags & DispatchCallSimple_CriticalCall);
+    //}
+    //else
+    //{
+    //    CallDescrWorkerWithHandler(&callDescrData, dwDispatchCallSimpleFlags & DispatchCallSimple_CriticalCall);
+    //}
+
+    //return *(void **)(&callDescrData.returnValue);
 }
 
 #ifdef CALLDESCR_REGTYPEMAP
@@ -553,7 +561,7 @@ void MethodDescCallSite::CallTargetWorker(const ARG_SLOT *pArguments, ARG_SLOT *
 
     } // END GCX_FORBID & ENABLE_FORBID_GC_LOADER_USE_IN_THIS_SCOPE
 
-    CallDescrData callDescrData;
+    CallDescrData callDescrData{};
 
     callDescrData.pSrc = pTransitionBlock + sizeof(TransitionBlock);
     _ASSERTE((nStackBytes % TARGET_POINTER_SIZE) == 0);
@@ -574,49 +582,65 @@ void MethodDescCallSite::CallTargetWorker(const ARG_SLOT *pArguments, ARG_SLOT *
     callDescrData.pTarget = m_pCallTarget;
 
 #ifdef FEATURE_INTERPRETER
-    if (transitionToPreemptive)
+    callDescrData.pStubContextMD = m_pMD;
+    if (InterpreterPrecode::IsInstance(m_pCallTarget))
     {
-        GCPreemp transitionIfILStub(transitionToPreemptive);
-        CallDescrWorkerInternal(&callDescrData);
+        if (transitionToPreemptive)
+        {
+            GCPreemp transitionIfILStub(transitionToPreemptive);
+            InterpretCallTarget(m_pCallTarget, pArguments, pReturnValue, cbReturnValue);
+        }
+        else
+        {
+            InterpretCallTarget(m_pCallTarget, pArguments, pReturnValue, cbReturnValue);
+        }
     }
     else
 #endif // FEATURE_INTERPRETER
     {
-        CallDescrWorkerWithHandler(&callDescrData);
-    }
-
-#ifdef FEATURE_HFA
-    if (pvRetBuff != NULL)
-    {
-        memcpyNoGCRefs(pvRetBuff, &callDescrData.returnValue, sizeof(callDescrData.returnValue));
-    }
-#endif // FEATURE_HFA
-
-    if (pReturnValue != NULL)
-    {
-        _ASSERTE((DWORD)cbReturnValue <= sizeof(callDescrData.returnValue));
-#if defined(TARGET_RISCV64) || defined(TARGET_LOONGARCH64)
-        if (callDescrData.fpReturnSize != FpStruct::UseIntCallConv)
+        if (transitionToPreemptive)
         {
-            FpStructInRegistersInfo info = m_argIt.GetReturnFpStructInRegistersInfo();
-            CopyReturnedFpStructFromRegisters(pReturnValue, callDescrData.returnValue, info, false);
+            GCPreemp transitionIfILStub(transitionToPreemptive);
+            CallDescrWorkerInternal(&callDescrData);
         }
         else
-#endif // defined(TARGET_RISCV64) || defined(TARGET_LOONGARCH64)
         {
-            memcpyNoGCRefs(pReturnValue, &callDescrData.returnValue, cbReturnValue);
+            CallDescrWorkerWithHandler(&callDescrData);
         }
+
+#ifdef FEATURE_HFA
+        if (pvRetBuff != NULL)
+        {
+            memcpyNoGCRefs(pvRetBuff, &callDescrData.returnValue, sizeof(callDescrData.returnValue));
+        }
+#endif // FEATURE_HFA
+
+        if (pReturnValue != NULL)
+        {
+            _ASSERTE((DWORD)cbReturnValue <= sizeof(callDescrData.returnValue));
+#if defined(TARGET_RISCV64) || defined(TARGET_LOONGARCH64)
+            if (callDescrData.fpReturnSize != FpStruct::UseIntCallConv)
+            {
+                FpStructInRegistersInfo info = m_argIt.GetReturnFpStructInRegistersInfo();
+                CopyReturnedFpStructFromRegisters(pReturnValue, callDescrData.returnValue, info, false);
+            }
+            else
+#endif // defined(TARGET_RISCV64) || defined(TARGET_LOONGARCH64)
+            {
+                memcpyNoGCRefs(pReturnValue, &callDescrData.returnValue, cbReturnValue);
+            }
 
 #if !defined(HOST_64BIT) && BIGENDIAN
-        {
-            GCX_FORBID();
-
-            if (!m_methodSig.Is64BitReturn())
             {
-                pReturnValue[0] >>= 32;
+                GCX_FORBID();
+
+                if (!m_methodSig.Is64BitReturn())
+                {
+                    pReturnValue[0] >>= 32;
+                }
             }
-        }
 #endif // !defined(HOST_64BIT) && BIGENDIAN
+        }
     }
 }
 

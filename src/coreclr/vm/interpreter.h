@@ -746,9 +746,11 @@ class Interpreter
     friend float F_CALL_CONV InterpretMethodFloat(InterpreterMethodInfo* methInfo, BYTE* ilArgs, void* stubContext);
     friend double F_CALL_CONV InterpretMethodDouble(InterpreterMethodInfo* methInfo, BYTE* ilArgs, void* stubContext);
 
+public:
     // This will be inlined into the bodies of the methods above
     static inline ARG_SLOT InterpretMethodBody(InterpreterMethodInfo* interpMethInfo, bool directCall, BYTE* ilArgs, void* stubContext);
 
+private:
     // The local frame size of the method being interpreted.
     static size_t GetFrameSize(InterpreterMethodInfo* interpMethInfo);
 

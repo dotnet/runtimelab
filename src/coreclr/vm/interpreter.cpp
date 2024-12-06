@@ -13,6 +13,7 @@
 #include "openum.h"
 #include "fcall.h"
 #include "frames.h"
+#include "dllimport.h"
 #include "gcheaputilities.h"
 #include <float.h>
 #include "jitinterface.h"
@@ -10050,7 +10051,12 @@ void Interpreter::DoCallWork(bool virtualCall, void* thisArg, CORINFO_RESOLVED_T
         }
 
         // Compile the target in advance of calling.
-        if (exactMethToCall->IsPointingToPrestub())
+        if (exactMethToCall->IsNDirect())
+        {
+            GCX_PREEMP();
+            target = GetStubForInteropMethod(exactMethToCall);
+        }
+        else if (exactMethToCall->IsPointingToPrestub())
         {
             MethodTable* dispatchingMT = NULL;
             if (exactMethToCall->IsVtableMethod())
@@ -10087,10 +10093,19 @@ void Interpreter::DoCallWork(bool virtualCall, void* thisArg, CORINFO_RESOLVED_T
             bool b = CycleTimer::GetThreadCyclesS(&startCycles); _ASSERTE(b);
 #endif // INTERP_ILCYCLE_PROFILE
 
+            // If the current method being interpreted is an IL stub, we're calling native code, so
+            // change the GC mode.  (We'll only do this at the call if the calling convention turns out
+            // to be a managed calling convention.)
+            bool transitionToPreemptive = false;
+            {
+                //GCX_PREEMP();
+                //transitionToPreemptive = exactMethToCall != NULL && exactMethToCall->IsNDirect();
+            }
+
 #if defined(UNIX_AMD64_ABI) || defined(TARGET_RISCV64)
-            mdcs.CallTargetWorker(args, retVals, HasTwoSlotBuf ? 16: 8);
+            mdcs.CallTargetWorker(args, retVals, HasTwoSlotBuf ? 16: 8, transitionToPreemptive);
 #else
-            mdcs.CallTargetWorker(args, retVals, 8);
+            mdcs.CallTargetWorker(args, retVals, 8, transitionToPreemptive);
 #endif
 
             if (pCscd != NULL)
@@ -10534,12 +10549,30 @@ void Interpreter::CallI()
     PCODE ftnPtr = OpStackGet<PCODE>(ftnInd);
 
     {
-        MethodDesc* methToCall;
+        MethodDesc* methToCall = NULL;
         // If we're interpreting the target, simply call it directly.
-        if ((methToCall = InterpretationStubToMethodInfo((PCODE)ftnPtr)) != NULL)
+        if (InterpreterPrecode::IsInstance(ftnPtr)
+            || (methToCall = InterpretationStubToMethodInfo((PCODE)ftnPtr)) != NULL)
         {
-            InterpreterMethodInfo* methInfo = MethodHandleToInterpreterMethInfoPtr(CORINFO_METHOD_HANDLE(methToCall));
+            InterpreterMethodInfo* methInfo = methToCall != NULL
+                ? MethodHandleToInterpreterMethInfoPtr(CORINFO_METHOD_HANDLE(methToCall))
+                : NULL;
+
+            // Allocate a new jitInfo and also a new InterpreterMethodInfo.
+            if (methInfo == NULL)
+            {
+                methToCall = InterpreterPrecode::Get(ftnPtr)->GetMethodDesc();
+                CEEInfo* jitInfo = new CEEInfo(methToCall, true);
+
+                CORINFO_METHOD_INFO methInfoLocal;
+
+                GCX_PREEMP();
+                jitInfo->getMethodInfo(CORINFO_METHOD_HANDLE(methToCall), &methInfoLocal, NULL);
+                GenerateInterpreterStub(jitInfo, &methInfoLocal, NULL, 0, &methInfo, true);
+                delete jitInfo;
+            }
             _ASSERTE(methInfo != NULL);
+
 #if INTERP_ILCYCLE_PROFILE
             bool b = CycleTimer::GetThreadCyclesS(&startCycles); _ASSERTE(b);
 #endif // INTERP_ILCYCLE_PROFILE
@@ -12868,5 +12901,33 @@ void Interpreter::PrintILProfile(Interpreter::InstrExecRecord *recs, unsigned in
     }
 }
 #endif // INTERP_ILINSTR_PROFILE
+
+void InterpretCallTarget(PCODE pCallTarget, const ARG_SLOT* pArguments, ARG_SLOT* pReturnValue, int cbReturnValue)
+{
+    _ASSERTE(InterpreterPrecode::IsInstance(pCallTarget));
+
+    InterpreterPrecode* interpPrecode = InterpreterPrecode::Get(pCallTarget);
+
+    MethodDesc* pMD = interpPrecode->GetMethodDesc();
+
+    InterpreterMethodInfo* methInfo;
+    CORINFO_METHOD_INFO jitMethInfo;
+    {
+        CEEInfo* jitInfo = new CEEInfo(pMD, true);
+
+        GCX_PREEMP();
+        if (!jitInfo->getMethodInfo(CORINFO_METHOD_HANDLE(pMD), &jitMethInfo, NULL))
+        {
+            _ASSERTE(false && "getMethodInfo failure");
+        }
+
+        Interpreter::GenerateInterpreterStub(jitInfo, &jitMethInfo, NULL, 0, &methInfo, true);
+        delete jitInfo;
+    }
+
+    ARG_SLOT retVal = Interpreter::InterpretMethodBody(methInfo, true, reinterpret_cast<BYTE*>(const_cast<ARG_SLOT*>(pArguments)), NULL);
+    if (pReturnValue != NULL)
+        *pReturnValue = retVal;
+}
 
 #endif // FEATURE_INTERPRETER

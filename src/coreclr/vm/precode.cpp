@@ -33,6 +33,9 @@ BOOL Precode::IsValidType(PrecodeType t)
 #ifdef HAS_THISPTR_RETBUF_PRECODE
     case PRECODE_THISPTR_RETBUF:
 #endif // HAS_THISPTR_RETBUF_PRECODE
+#ifdef FEATURE_INTERPRETER
+    case PRECODE_INTERPRETER:
+#endif // FEATURE_INTERPRETER
         return TRUE;
     default:
         return FALSE;
@@ -60,6 +63,10 @@ SIZE_T Precode::SizeOf(PrecodeType t)
     case PRECODE_THISPTR_RETBUF:
         return sizeof(ThisPtrRetBufPrecode);
 #endif // HAS_THISPTR_RETBUF_PRECODE
+#ifdef FEATURE_INTERPRETER
+    case PRECODE_INTERPRETER:
+        return sizeof(InterpreterPrecode);
+#endif // FEATURE_INTERPRETER
 
     default:
         UnexpectedPrecodeType("Precode::SizeOf", t);
@@ -92,6 +99,11 @@ PCODE Precode::GetTarget()
         target = AsThisPtrRetBufPrecode()->GetTarget();
         break;
 #endif // HAS_THISPTR_RETBUF_PRECODE
+#ifdef FEATURE_INTERPRETER
+    case PRECODE_INTERPRETER:
+        target = (PCODE)AsInterpreterPrecode();
+        break;
+#endif // FEATURE_INTERPRETER
 
     default:
         UnexpectedPrecodeType("Precode::GetTarget", precodeType);
@@ -131,6 +143,11 @@ MethodDesc* Precode::GetMethodDesc(BOOL fSpeculative /*= FALSE*/)
         pMD = AsThisPtrRetBufPrecode()->GetMethodDesc();
         break;
 #endif // HAS_THISPTR_RETBUF_PRECODE
+#ifdef FEATURE_INTERPRETER
+    case PRECODE_INTERPRETER:
+        pMD = (TADDR)AsInterpreterPrecode()->GetMethodDesc();
+        break;
+#endif // FEATURE_INTERPRETER
 
     default:
         break;
@@ -226,6 +243,14 @@ Precode* Precode::Allocate(PrecodeType t, MethodDesc* pMD,
         pPrecode = (Precode*)pamTracker->Track(pLoaderAllocator->GetNewStubPrecodeHeap()->AllocAlignedMem(size, 1));
         pPrecode->Init(pPrecode, t, pMD, pLoaderAllocator);
     }
+#ifdef FEATURE_INTERPRETER
+    else if (t == PRECODE_INTERPRETER)
+    {
+        InterpreterPrecode* pInterpPrecode = (InterpreterPrecode*)pamTracker->Track(pLoaderAllocator->GetHighFrequencyHeap()->AllocAlignedMem(size, InterpreterPrecode::Bit << 1));
+        pInterpPrecode->Init(pMD);
+        pPrecode = InterpreterPrecode::Create((Precode*)pInterpPrecode);
+    }
+#endif // FEATURE_INTERPRETER
     else
     {
         pPrecode = (Precode*)pamTracker->Track(pLoaderAllocator->GetPrecodeHeap()->AllocAlignedMem(size, AlignOf(t)));
@@ -261,6 +286,11 @@ void Precode::Init(Precode* pPrecodeRX, PrecodeType t, MethodDesc* pMD, LoaderAl
         ((ThisPtrRetBufPrecode*)this)->Init(pMD, pLoaderAllocator);
         break;
 #endif // HAS_THISPTR_RETBUF_PRECODE
+#ifdef FEATURE_INTERPRETER
+    case PRECODE_INTERPRETER:
+        ((InterpreterPrecode*)this)->Init(pMD);
+        break;
+#endif // FEATURE_INTERPRETER
     default:
         UnexpectedPrecodeType("Precode::Init", t);
         break;
@@ -325,6 +355,13 @@ BOOL Precode::SetTargetInterlocked(PCODE target, BOOL fOnlyRedirectFromPrestub)
         ClrFlushInstructionCache(this, sizeof(ThisPtrRetBufPrecode), /* hasCodeExecutedBefore */ true);
         break;
 #endif // HAS_THISPTR_RETBUF_PRECODE
+
+#ifdef FEATURE_INTERPRETER
+    case PRECODE_INTERPRETER:
+        _ASSERTE(false && "Why is this being called?");
+        ret = TRUE;
+        break;
+#endif // FEATURE_INTERPRETER
 
     default:
         UnexpectedPrecodeType("Precode::SetTargetInterlocked", precodeType);

@@ -29,6 +29,10 @@ struct CallDescrData
     UINT32                      fpReturnSize;
     PCODE                       pTarget;
 
+#ifdef FEATURE_INTERPRETER
+    LPVOID                      pStubContextMD;
+#endif // FEATURE_INTERPRETER
+
 #ifdef CALLDESCR_RETBUFFARGREG
     // Pointer to return buffer arg location
     UINT64*                     pRetBuffArg;

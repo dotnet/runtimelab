@@ -355,7 +355,58 @@ enum PrecodeType {
 #ifdef HAS_THISPTR_RETBUF_PRECODE
     PRECODE_THISPTR_RETBUF  = ThisPtrRetBufPrecode::Type,
 #endif // HAS_THISPTR_RETBUF_PRECODE
+#ifdef FEATURE_INTERPRETER
+    PRECODE_INTERPRETER,
+#endif // FEATURE_INTERPRETER
 };
+
+#ifdef FEATURE_INTERPRETER
+struct InterpreterPrecode final
+{
+public: // static
+    static constexpr int Type = PrecodeType::PRECODE_INTERPRETER;
+
+    static constexpr intptr_t Bit = 0x2;
+    static constexpr intptr_t Mask = ~Bit;
+
+    static bool IsInstance(PCODE pCode)
+    {
+        return (((intptr_t)pCode) & Bit) != 0;
+    }
+
+    static InterpreterPrecode* Get(PCODE pCode)
+    {
+        return IsInstance(pCode)
+            ? (InterpreterPrecode*)((intptr_t)pCode & Mask)
+            : NULL;
+    }
+
+    static PTR_Precode Create(PTR_Precode pCode)
+    {
+        _ASSERTE(!IsInstance((PCODE)(intptr_t)(void*)pCode));
+        return (PTR_Precode)((intptr_t)(void*)pCode | Bit);
+    }
+
+private:
+    MethodDesc* _pMD;
+
+public:
+    InterpreterPrecode() = delete;
+    ~InterpreterPrecode() = delete;
+
+    void Init(MethodDesc* pMD)
+    {
+        _ASSERTE(pMD != NULL);
+        _ASSERTE(_pMD == NULL || _pMD == pMD);
+        _pMD = pMD;
+    }
+
+    MethodDesc* GetMethodDesc() const
+    {
+        return _pMD;
+    }
+};
+#endif // FEATURE_INTERPRETER
 
 // For more details see. file:../../doc/BookOfTheRuntime/ClassLoader/MethodDescDesign.doc
 class Precode {
@@ -403,6 +454,15 @@ private:
     }
 #endif // HAS_THISPTR_RETBUF_PRECODE
 
+#ifdef FEATURE_INTERPRETER
+    InterpreterPrecode* AsInterpreterPrecode()
+    {
+        LIMITED_METHOD_CONTRACT;
+        _ASSERTE(InterpreterPrecode::IsInstance((PCODE)this));
+        return reinterpret_cast<InterpreterPrecode*>(this);
+    }
+#endif // FEATURE_INTERPRETER
+
     TADDR GetStart()
     {
         SUPPORTS_DAC;
@@ -433,6 +493,11 @@ public:
     {
         LIMITED_METHOD_CONTRACT;
         SUPPORTS_DAC;
+
+#ifdef FEATURE_INTERPRETER
+        if (InterpreterPrecode::IsInstance((PCODE)this))
+            return PRECODE_INTERPRETER;
+#endif // FEATURE_INTERPRETER
 
 #ifdef OFFSETOF_PRECODE_TYPE
 
@@ -550,6 +615,12 @@ public:
 #endif
 
         TADDR pInstr = PCODEToPINSTR(addr);
+
+        if (InterpreterPrecode::IsInstance(addr))
+        {
+            PTR_Precode pPrecode = PTR_Precode(pInstr);
+            return pPrecode;
+        }
 
         // Always do consistency check in debug
         if (fSpeculative INDEBUG(|| TRUE))

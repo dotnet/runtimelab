@@ -42,6 +42,11 @@ StackCopyLoop:                          ; copy the arguments to stack top-down t
 
         mov     rax, [rbx + CallDescrData__dwRegTypeMap] ; save the reg (arg) type map
 
+        ; Store stub context
+        cmp     QWORD PTR [rbx + CallDescrData__pStubContextMD], 0
+        jz      NoStubContext
+        mov     r10, [rbx + CallDescrData__pStubContextMD]
+NoStubContext:
         mov     rcx, 0[rsp]             ; load first four argument registers
         movss   xmm0, real4 ptr 0[rsp]  ;
         cmp     al, ASM_ELEMENT_TYPE_R8 ;

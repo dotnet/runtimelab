@@ -477,12 +477,14 @@ ASMCONSTANTS_C_ASSERT(OFFSETOF__InlinedCallFrame__m_pThread
 #define CallDescrData__pFloatArgumentRegisters 0x18
 #define CallDescrData__fpReturnSize        0x20
 #define CallDescrData__pTarget             0x28
-#define CallDescrData__returnValue         0x30
+#define CallDescrData__pStubContextMD      0x30
+#define CallDescrData__returnValue         0x38
 #else
 #define CallDescrData__dwRegTypeMap        0x10
 #define CallDescrData__fpReturnSize        0x18
 #define CallDescrData__pTarget             0x20
-#define CallDescrData__returnValue         0x28
+#define CallDescrData__pStubContextMD      0x28
+#define CallDescrData__returnValue         0x30
 #endif
 
 ASMCONSTANTS_C_ASSERT(CallDescrData__pSrc                 == offsetof(CallDescrData, pSrc))
@@ -495,6 +497,7 @@ ASMCONSTANTS_C_ASSERT(CallDescrData__dwRegTypeMap         == offsetof(CallDescrD
 #endif
 ASMCONSTANTS_C_ASSERT(CallDescrData__fpReturnSize         == offsetof(CallDescrData, fpReturnSize))
 ASMCONSTANTS_C_ASSERT(CallDescrData__pTarget              == offsetof(CallDescrData, pTarget))
+ASMCONSTANTS_C_ASSERT(CallDescrData__pStubContextMD       == offsetof(CallDescrData, pStubContextMD))
 ASMCONSTANTS_C_ASSERT(CallDescrData__returnValue          == offsetof(CallDescrData, returnValue))
 
 #ifdef UNIX_AMD64_ABI

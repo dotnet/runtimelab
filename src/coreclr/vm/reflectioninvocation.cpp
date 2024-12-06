@@ -429,7 +429,7 @@ FCIMPL4(Object*, RuntimeMethodHandle::InvokeMethod,
 
     LPBYTE pTransitionBlock = pAlloc + TransitionBlock::GetNegSpaceSize();
 
-    CallDescrData callDescrData;
+    CallDescrData callDescrData{};
 
     callDescrData.pSrc = pTransitionBlock + sizeof(TransitionBlock);
     _ASSERTE((nStackBytes % TARGET_POINTER_SIZE) == 0);
