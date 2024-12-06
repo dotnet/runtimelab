@@ -33,7 +33,7 @@ Generally speaking, it's probably best for us to use the accessors and if we cho
 The signature of a type metadata accessor is a request followed by n TypeMetadata objects (one for each generic type). Those are then followed by protocol witness tables (one for each protocol conformace). The witness tables are ordered first by the generic type they correspond to, second by lexicographical order.
 
 ```csharp
-public static TypeMetadata Accessor(TypeMetadataRequest request, [ TypeMetadata specialization0, TypeMetadata specialization1, ..., NativeHandle pwt0, NativeHandle pwt1, ...])
+public static TypeMetadata Accessor(TypeMetadataRequest request, [ TypeMetadata specialization0, TypeMetadata specialization1, ..., SwiftHandle pwt0, SwiftHandle pwt1, ...])
 {
 
 }
@@ -60,9 +60,9 @@ struct MetadataParameters
     TypedMetadata T0;
     TypedMetadata T1;
     TypedMetadata T2;
-    NativeHandle P0;
-    NativeHandle P2;
-    NativeHandle P1;
+    SwiftHandle P0;
+    SwiftHandle P2;
+    SwiftHandle P1;
 }
 ```
 
@@ -113,14 +113,14 @@ public enum TypeMetadataKind {
 public record struct TypeMetadata
 {
     const nint kMaxDiscriminator = 0x7ff;
-    NativeHandle handle;
+    SwiftHandle handle;
 
-    internal TypeMetadata (NativeHandle handle) // internal to help prevent bogus handles
+    internal TypeMetadata (SwiftHandle handle) // internal to help prevent bogus handles
     {
         this.handle = handle;
     }
 
-    public NativeHandle Handle {
+    public SwiftHandle Handle {
         get { return handle; }
     }
 
@@ -138,7 +138,7 @@ public record struct TypeMetadata
         return TryGetTypeMetadata (typeof (t), out result);
     }
 
-    static TypeMetadataKind TypeMetadataKindFromHandle (NativeHandle h)
+    static TypeMetadataKind TypeMetadataKindFromHandle (SwiftHandle h)
     {
         nint val = ReadNativeInt (h.Handle);
         if (val == 0)

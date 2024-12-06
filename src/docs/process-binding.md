@@ -98,7 +98,7 @@ The handler will create a context for the object which would include a class for
 The handler will execute a step to name the function and the associated pinvoke, including the entry point and library.
 Then for each argument, it will gather the necessary information and from the function handler get a factory to build an argument handler for type `String`. This will in turn name the argument, generate the C# type and add it to the C# argument declaration. It will define the argument type for the pinvoke and add it to the C# pinvoke argument list. If needed, it will generate premarshal code and add it to the premarshal list and post marshal code, and finally an expression for calling the pinvoke.
 
-A similar process will be done for handling the return type and value. In this case, the pinvoke return type will be a `NativeHandle` and it will be used in conjunction with a registry to either retrieve an already existing C# object that is bound to that handle or it will build one through a factory.
+A similar process will be done for handling the return type and value. In this case, the pinvoke return type will be a `SwiftHandle` and it will be used in conjunction with a registry to either retrieve an already existing C# object that is bound to that handle or it will build one through a factory.
 
 After all this is done, the function handler will finish up by aggregating all the information, writing the C# method and writing the C# pinvoke.
 

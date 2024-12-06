@@ -17,6 +17,7 @@ Finally, there is an inline list of pointers to protocol witness tables. This li
 Because of the memory issues, existential containers need to be handled with attention paid to reference counting, but this can be managed by avoiding exposing the existential containers to the public API. This is straight-forward since in order to present protocols back and forth to each language will require dual proxies. This is detailed [here](binding-protocols.md).
 
 To start, we want to be able to operate on existential containers in the abstract. Therefore all existential containers should implement a common interface:
+
 ```csharp
 public interface IExistentialContainer {
     // These 3 elements hold the payload of the existential type
@@ -28,7 +29,7 @@ public interface IExistentialContainer {
     // looking at the value witness table, if it's a value type, which has a field for the type's size
     TypeMetadata ObjectMetadata { get; set; }
     // an indexer into each of the value witness tables
-    NativeHandle this [int index] { get; set; } // this[] and Count could just as easily be IEnumerable<NativeHandle>
+    SwiftHandle this [int index] { get; set; } // this[] and Count could just as easily be IEnumerable<SwiftHandle>
     // the number of value witness tables
     int Count { get; }
     // the size of this in bytes
@@ -57,10 +58,11 @@ There is also a second flavor of existential container which is a special case r
 This is noted in [Apple's documentation](https://github.com/swiftlang/swift/blob/main/docs/ABI/TypeLayout.rst#class-existential-containers). I have never encountered this in Apple's code nor in the wild. This is mostly due to Apple encouraging Swift to be a value type based language.
 
 Although this would not be a priority for us, the type could be represented like this:
+
 ```csharp
 public interface IClassExistentialContainer {
-    NativeHandle Object { get; set; }
-    NativeHandle this [int index] { get; set; } // this and count could just as easily by IEnumerable<NativeHandle>
+    SwiftHandle Object { get; set; }
+    SwiftHandle this [int index] { get; set; } // this and count could just as easily by IEnumerable<SwiftHandle>
     int Count { get; }
     int Sizeof { get; }
     IntPtr CopyTo (IntPtr memory);

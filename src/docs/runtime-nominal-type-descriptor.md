@@ -51,10 +51,10 @@ In terms of representation, we can use something like this:
 
 ```csharp
 public struct NominalTypeDescriptor {
-    NativeHandle handle;
+    SwiftHandle handle;
 
     // this should only get called by TypeMetadata
-    internal NominalTypeDescriptor(NativeHandle handle)
+    internal NominalTypeDescriptor(SwiftHandle handle)
     {
         this.handle = handle;
     }

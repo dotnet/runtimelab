@@ -31,11 +31,11 @@ We could have C# like this:
 
 ```csharp
 public class TypeMetadata {
-    public TypeMetadata(NativeHandle handle)
+    public TypeMetadata(SwiftHandle handle)
     {
         Handle = handle;
     }
-    public NativeHandle Handle { get; private set; }
+    public SwiftHandle Handle { get; private set; }
 }
 
 public class Foo {
@@ -46,10 +46,10 @@ public class Foo {
         }
 
         [DllImport()]
-        static extern SwiftString _getName(NativeHandle self);
+        static extern SwiftString _getName(SwiftHandle self);
     }
 
-    public NativeHandle ClassHandle { get; } // singleton implementation not important
+    public SwiftHandle ClassHandle { get; } // singleton implementation not important
 }
 ```
 

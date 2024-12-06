@@ -41,7 +41,7 @@ A sample projection into C# assuming that the type argument is projected as stru
 ```csharp
 [DllImport(Path, EntryPoint = "...")]
 [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
-public static extern void PInvoke_ReturnData(SwiftIndirectResult result, NativeHandle data, TypeMetadata metadata);
+public static extern void PInvoke_ReturnData(SwiftIndirectResult result, SwiftHandle data, TypeMetadata metadata);
 
 public static unsafe T ReturnData<T>(T data) where T : unmanaged, ISwiftObject
 {
@@ -68,8 +68,8 @@ However, the projection has to support type arguments agnostic of whether they a
 Those could look something like
 
 ```csharp
-public NativeHandle GetPayload();
-public static abstract object FromPayload(NativeHandle payload);
+public SwiftHandle GetPayload();
+public static abstract object FromPayload(SwiftHandle payload);
 ```
 
 Using these abstractions, the projection becomes:
@@ -77,19 +77,19 @@ Using these abstractions, the projection becomes:
 ```csharp
 [DllImport(Path, EntryPoint = "...")]
 [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
-public static extern void PInvoke_ReturnData(SwiftIndirectResult result, NativeHandle data, TypeMetadata metadata);
+public static extern void PInvoke_ReturnData(SwiftIndirectResult result, SwiftHandle data, TypeMetadata metadata);
 
 public static unsafe T ReturnData<T>(T data)
 {
     var metadata = GetTypeMetadataOrThrow<T>();
     nuint payloadSize = /* Extract size from metadata */;
-    NativeHandle payload = new NativeHandle(NativeMemory.Alloc(payloadSize));
+    SwiftHandle payload = new SwiftHandle(NativeMemory.Alloc(payloadSize));
 
     try 
     {
         SwiftIndirectResult result = new SwiftIndirectResult(payload);
         
-        NativeHandle dataPayload = Runtime.GetPayload(ref data);
+        SwiftHandle dataPayload = Runtime.GetPayload(ref data);
         PInvoke_ReturnData(result, dataPayload, metadata);
         return Runtime.FromPayload<T>(payload); // Transfers ownership of the payload
     }
@@ -103,7 +103,7 @@ public static unsafe T ReturnData<T>(T data)
 **Memory Management Considerations:**
 
 - **Structs**: The CLR copies the data from unmanaged to managed memory. We must free the unmanaged memory to avoid leaks.
-- **Classes**: In this example we expect that calling `ConstructFromNativeHandle` will copy the necessary data so that the function can free all the resources it allocated.
+- **Classes**: In this example we expect that calling `ConstructFromSwiftHandle` will copy the necessary data so that the function can free all the resources it allocated.
 
 ### New API implementation
 
@@ -112,9 +112,9 @@ public interface ISwiftObject // Could be also INominalType, naming
 {
     public static abstract TypeMetadata Metadata { get; }
 
-    public NativeHandle GetPayload();
+    public SwiftHandle GetPayload();
 
-    public static abstract object FromPayload(NativeHandle payload);
+    public static abstract object FromPayload(SwiftHandle payload);
 }
 ```
 
@@ -146,7 +146,7 @@ public static TypeMetadata GetTypeMetadataOrThrow<T>()
     throw new InvalidOperationException($"Could not obtain TypeMetadata for {typeof(T)}.");
 }
 
-public static NativeHandle GetPayload<T>(ref T type)
+public static SwiftHandle GetPayload<T>(ref T type)
 {
     // Logic for other types
 
@@ -160,14 +160,14 @@ public static NativeHandle GetPayload<T>(ref T type)
     }
 }
 
-public static T FromPayload<T>(NativeHandle payload)
+public static T FromPayload<T>(SwiftHandle payload)
 {   
     // Logic for other types
 
     if (typeof(ISwiftObject).IsAssignableFrom(typeof(T)))
     {
         var helperType = typeof(Helper<>).MakeGenericType(typeof(T));
-        return (T)helperType.GetMethod("FromPayload")!.Invoke(null, new object[] { (NativeHandle)payload })!;
+        return (T)helperType.GetMethod("FromPayload")!.Invoke(null, new object[] { (SwiftHandle)payload })!;
     }
     else
     {
@@ -186,7 +186,7 @@ public static class Helper<T> where T : ISwiftObject // We should have a better 
         return T.Metadata;
     }
 
-    public static T FromPayload(NativeHandle payload)
+    public static T FromPayload(SwiftHandle payload)
     {
         return (T)T.FromPayload(payload);
     }
@@ -198,20 +198,20 @@ class NonFrozenStruct : ISwiftObject
 {
     private static nuint PayloadSize = /* Extract size from metadata */;
 
-    private NativeHandle _payload;
+    private SwiftHandle _payload;
 
     // Other members
 
     public static TypeMetadata Metadata => PInvokeMetadataForNonFrozenStruct();
 
-    public NativeHandle GetPayload() => _payload;
+    public SwiftHandle GetPayload() => _payload;
 
-    public static object FromPayload(NativeHandle payload)
+    public static object FromPayload(SwiftHandle payload)
     {
         return new NonFrozenStruct(payload);
     }
 
-    private unsafe NonFrozenStruct(NativeHandle payload) 
+    private unsafe NonFrozenStruct(SwiftHandle payload) 
     { 
         _payload = payload;
     }
@@ -224,12 +224,12 @@ struct FrozenStruct : ISwiftObject
 
     public static TypeMetadata Metadata => PInvokeMetadataForFrozenStruct();
 
-    public unsafe NativeHandle GetPayload()
+    public unsafe SwiftHandle GetPayload()
     {
-        return new NativeHandle(Unsafe.AsPointer(ref this));
+        return new SwiftHandle(Unsafe.AsPointer(ref this));
     }
 
-    public static unsafe object FromPayload(NativeHandle payload)
+    public static unsafe object FromPayload(SwiftHandle payload)
     {
         var struct =  *(FrozenStruct*)payload;
         NativeMemory.Free(payload);
@@ -246,7 +246,7 @@ The proposed API will only work with types known at compile time. In some cases 
 
 The InitializeWithCopy should be used if we need to return a type to a swift caller, for example a closure, virtual method - anything done from a reverse invoke.
 
-For heap allocated types (classes and actors), the pointer is not a buffer but is is and actual instance pointer. For getting that into C#, we need to have a global registry that has a map of NativeHandle -> GCHandle where the GCHandle is taken from the actual C# instance of the type. For a type that doesn't exist in the map, we use the C# type (if we have it) or use the TypeMetadata to identify the C# type and run a flavor of constructor that takes a NativeHandle to initialize the type. As part of the memory management, we take both a strong and weak reference to the Swift handle. If the C# type is disposed, we inform the registry and it removes it from the cache as well as dropping the references. In BTfS this is in the class SwiftObjectRegistry. The strong reference is taken in the object and the weak is taken in the registry.
+For heap allocated types (classes and actors), the pointer is not a buffer but is is and actual instance pointer. For getting that into C#, we need to have a global registry that has a map of SwiftHandle -> GCHandle where the GCHandle is taken from the actual C# instance of the type. For a type that doesn't exist in the map, we use the C# type (if we have it) or use the TypeMetadata to identify the C# type and run a flavor of constructor that takes a SwiftHandle to initialize the type. As part of the memory management, we take both a strong and weak reference to the Swift handle. If the C# type is disposed, we inform the registry and it removes it from the cache as well as dropping the references. In BTfS this is in the class SwiftObjectRegistry. The strong reference is taken in the object and the weak is taken in the registry.
 
 ## Generic Types
 
@@ -285,21 +285,21 @@ class Pair<T, U> : ISwiftObject
 {
 
     private static nuint PayloadSize =  /* Extract size */;
-    private NativeHandle _payload;
+    private SwiftHandle _payload;
 
     public unsafe Pair(T first, U second)
     {
-        _payload = new NativeHandle(NativeMemory.Alloc(PayloadSize));
+        _payload = new SwiftHandle(NativeMemory.Alloc(PayloadSize));
 
         SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult(_payload);
 
         var firstMetadata = GetTypeMetadataOrThrow<T>();
         var secondMetadata = GetTypeMetadataOrThrow<U>();
 
-        var nativeHandleFirst = Runtime.GetPayload(ref first);
-        var nativeHandleSecond = Runtime.GetPayload(ref second);
+        var SwiftHandleFirst = Runtime.GetPayload(ref first);
+        var SwiftHandleSecond = Runtime.GetPayload(ref second);
 
-        PairPInvokes.Pair(swiftIndirectResult, nativeHandleFirst, nativeHandleSecond, firstMetadata, secondMetadata);
+        PairPInvokes.Pair(swiftIndirectResult, SwiftHandleFirst, SwiftHandleSecond, firstMetadata, secondMetadata);
     }
 
     public static TypeMetadata Metadata
@@ -314,12 +314,12 @@ class Pair<T, U> : ISwiftObject
         }
     }
 
-    public static object FromPayload(NativeHandle payload)
+    public static object FromPayload(SwiftHandle payload)
     {
         return new Pair<T, U>(payload);
     }
 
-    public NativeHandle GetPayload() => _payload;
+    public SwiftHandle GetPayload() => _payload;
 
     public unsafe void ChangeFirst(T newFirst)
     {
@@ -327,7 +327,7 @@ class Pair<T, U> : ISwiftObject
         PairPInvokes.ChangeFirst(Runtime.GetPayload(ref newFirst), Metadata, self);
     }
 
-    private unsafe Pair(NativeHandle payload)
+    private unsafe Pair(SwiftHandle payload)
     {
         _payload = payload;
     }
@@ -481,7 +481,7 @@ public static void PrintPrintable<T>(T data) where T : ISwiftObject, IPrintableP
 
 [DllImport(Path, EntryPoint = "...")]
 [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
-private static extern void PInvokePrintPrintable(NativeHandle data, TypeMetadata metadata, ProtocolWitnessTable protocolWitnessTable);
+private static extern void PInvokePrintPrintable(SwiftHandle data, TypeMetadata metadata, ProtocolWitnessTable protocolWitnessTable);
 ```
 
 This utilizes a new type `ProtocolWitnessTable` whose implementation might look something like:
@@ -489,14 +489,14 @@ This utilizes a new type `ProtocolWitnessTable` whose implementation might look 
 ```csharp
 public record struct ProtocolWitnessTable
 {
-    NativeHandle handle;
+    SwiftHandle handle;
 
-    internal ProtocolWitnessTable(NativeHandle handle)
+    internal ProtocolWitnessTable(SwiftHandle handle)
     {
         this.handle = handle;
     }
 
-    public NativeHandle Handle
+    public SwiftHandle Handle
     {
         get { return handle; }
     }
@@ -514,7 +514,7 @@ This would require adding a new method to `ISwiftObject`.
 
 ```csharp
 public interface ISwiftObject
-    public static abstract NativeHandle GetProtocolConformanceDescriptor<T>();
+    public static abstract SwiftHandle GetProtocolConformanceDescriptor<T>();
 ```
 
 **NOTE:** Here an assumption is made -- we will only need PWTs of things which implement the `ISwiftObject` interface.
@@ -527,7 +527,7 @@ struct FrozenStruct : ISwiftObject, IPrintableProtocol
 {
     // Other members
 
-    public static NativeHandle GetProtocolConformanceDescriptor<T>()
+    public static SwiftHandle GetProtocolConformanceDescriptor<T>()
     {
         TypeInfo typeInfo = typeof(T).GetTypeInfo();
 
@@ -579,24 +579,24 @@ class Pair<T, U> : ISwiftObject
 {
 
     private static nuint PayloadSize =  /* Extract size */;
-    private NativeHandle _payload;
+    private SwiftHandle _payload;
 
     public unsafe Pair(T first, U second)
     {
-        _payload = new NativeHandle(NativeMemory.Alloc(PayloadSize));
+        _payload = new SwiftHandle(NativeMemory.Alloc(PayloadSize));
 
         SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult(_payload);
 
         var firstMetadata = GetTypeMetadataOrThrow<T>();
         var secondMetadata = GetTypeMetadataOrThrow<U>();
 
-        var nativeHandleFirst = Runtime.GetPayload(ref first);
-        var nativeHandleSecond = Runtime.GetPayload(ref second);
+        var SwiftHandleFirst = Runtime.GetPayload(ref first);
+        var SwiftHandleSecond = Runtime.GetPayload(ref second);
 
         var printableProtocolWitnessTableT = ProtocolWitnessTable.GetProtocolWitnessTable<T, IPrintableProtocol>();
         var printableProtocolWitnessTableU = ProtocolWitnessTable.GetProtocolWitnessTable<U, IPrintableProtocol>();
 
-        PairPInvokes.Pair(swiftIndirectResult, nativeHandleFirst, nativeHandleSecond, firstMetadata, secondMetadata, printableProtocolWitnessTableT, printableProtocolWitnessTableU);
+        PairPInvokes.Pair(swiftIndirectResult, SwiftHandleFirst, SwiftHandleSecond, firstMetadata, secondMetadata, printableProtocolWitnessTableT, printableProtocolWitnessTableU);
     }
 
     public static TypeMetadata Metadata
@@ -638,7 +638,7 @@ This would map into c# as described above into:
 ```csharp
 public interface IHashable
 {
-    public abstract static NativeHandle GetIHashableProtocolWitnessTable();
+    public abstract static SwiftHandle GetIHashableProtocolWitnessTable();
 }
 
 public static void AcceptHashable<T>(T data) where T : ISwiftObject, IHashable
@@ -650,7 +650,7 @@ public static void AcceptHashable<T>(T data) where T : ISwiftObject, IHashable
 
 [DllImport(Path, EntryPoint = "...")]
 [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
-private static extern void PInvokeAcceptHashable(NativeHandle data, TypeMetadata metadata, ProtocolWitnessTable protocolWitnessTable);
+private static extern void PInvokeAcceptHashable(SwiftHandle data, TypeMetadata metadata, ProtocolWitnessTable protocolWitnessTable);
 ```
 
 We would be able to call `AcceptHashable<T>` using a type that implements both `ISwiftObject` and `IHashable`, but we would not be able to call it using, for example, `System.Int64`.
