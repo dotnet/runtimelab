@@ -18,8 +18,8 @@ Here are the elements that are likely to be needed in a type database entry:
 - Size, stride, and alignment (if knowable)
 - C# namespace
 - C# type name (may be a type path for inner types)
-- Swift entity type (stuct, enum, class, actor, protocol)
-- Whether or not the type is blitable
+- Swift entity type (struct, enum, class, actor, protocol)
+- Whether or not the type is blittable
 - Whether or not the type is frozen
 
 (idea - maybe also include an optional C# pinvoke type)

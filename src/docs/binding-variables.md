@@ -15,7 +15,7 @@ Variables can be:
 
 ## Language Parity Mismatches
 
-- Naming - Swift can have variable names that are unpronouncable in C#
+- Naming - Swift can have variable names that are unpronounceable in C#
 - Class - the notion of class variables doesn't exist in C#
 - Swift variables can be `async` whereas C# properties can't
 - willSet/didSet - while these can be conceptually modeled with events in C#, these are problematic for binding as there is no real way to override/chain these
@@ -37,7 +37,7 @@ In each observer, there is an implicit parameter which in `willSet` is `newValue
 
 There are some restrictions on observers. First, they are never called from the initializer. This makes sense - Swift wants initialization to proceed in an orderly manner and calling `willSet`/`didSet` from the initializer opens doors for methods to be called when the instance is not completely initialized. Second, they can only be applied to non-computed properties *unless they are in the subclass of a computed property*. Finally, Swift observers implicitly call the super class’ observer. In `willSet`, the superclass is tail chained. In `didSet`, it’s head chained.
 
-Here's an example of non computed and overriden computed variables:
+Here's an example of non computed and overridden computed variables:
 
 ```swift
 open class Circle {
@@ -98,7 +98,7 @@ open class Jane : Bob
 
 This produces the following output:
 
-```
+```text
 Jane willSet
 Bob willSet
 Bob didSet

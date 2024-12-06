@@ -15,7 +15,7 @@ Internally, closures are represented as 2 machine words:
 
 ## Language Parity Mismatches
 
-None in particular. From a language standpoint, they both align in capability although the implementatioa are different.
+None in particular. From a language standpoint, they both align in capability although the implementation are different.
 
 Swift has a delightful bit of syntax sugar that allows you to supply a closure at the call site in a way that it looks like inline code.
 If you have a function like this in Swift:
@@ -65,8 +65,8 @@ public struct Closure {
 When invoking the closure, the self register needs to be set to contents of the context pointer.
 So essentially:
 
-```
-mov entryPoint[closoure], rax
+```asm
+mov entryPoint[closure], rax
 mov context[closure], r13
 jsr [rax]
 ```
@@ -95,12 +95,12 @@ private func getSummerImplementation(a: Int, b: Int) -> Int {
 
 And a forwarder that looks like this:
 
-```
+```asm
 move 10[r13], rsi // b goes into argument 2
 jmp _getSummerImplementation
 ```
 
-# Runtime Differences
+## Runtime Differences
 
 Ideally, we would like to be able to pass C# delegates to Swift functions or store them into Swift types and have them call back into the right place.  The problem with this is that it would be essentially a reverse p/invoke so an arbitrary C# delegate is incompatible as is, but with support from the runtime, this should be less of an issue, but there are still some things that we would need to care about.
 
@@ -138,10 +138,10 @@ Please note that with runtime support, this shouldn't be necessary, but this may
 
 In running the other direction, we would need a way to convert a C# closure into something that is callable from Swift. The approach in BTfS is heavy handed because of the lack of runtime support. Given a C# closure, we create a handle to it, then call into a Swift routine which generates a swift closure that calls back into C# with a pointer to argument and return as before, but now with the handle and a `@convention (c)` function pointer to goes back into to a C# routine that unpacks the arguments, uses the handle to get the original C# closure and calls it. We should be able to do better than this.
 
-# Idiomatic Differences
+## Idiomatic Differences
 
 The main idiomatic difference has to do with the escaping/non-escaping varieties of closure. Obviously, C# doesn't make this distinction. As such, if a C# method gets passed a delegate from Swift that is non-escaping, it is incumbent upon the user to never store it. We can make this somewhat better by putting an attribute on such delegates that flags it as a non-escaping and create a Roslyn analyzer that looks for usage that would violate that.
 
-# Accessibility
+## Accessibility
 
 The main decision in presenting Swift closure types to C# programmers is how to present the types to the user. We can use the types `Func<>` and `Action<>`, but they create an artificial distinction between closures that have or lack return values and that end ups complicating adapting code. Or we can create `delegate` type declarations that match the closure definition.

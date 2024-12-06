@@ -15,7 +15,7 @@ For example
 
 - `open` Swift classes need to be handled differently from `public` swift classes.
 - Structs and enums that are `@frozen` are passed differently from structs that are not.
-- Structs and enums that contain or may contain non-blitable members need to be defined differently.
+- Structs and enums that contain or may contain non-blittable members need to be defined differently.
 - Enums come in different forms that lend themselves to different representations in C#.
 - C# doesn't have methods or properties on enums so those need to be put into extension methods.
 - Any protocol implementation in C# will need proxy types in both C# and Swift
@@ -41,7 +41,7 @@ The general pattern would work like this:
 2. Aggregate information about that entity
 3. Select a factory to create a handler for that entity
 4. The handler will generate a context object for handling that entity
-5. Execute a series of steps through the handler that will do work apropriate for each step
+5. Execute a series of steps through the handler that will do work appropriate for each step
 6. Aggregate the result and generate as needed
 
 Handlers will contain factories for handling sub steps, if needed.
@@ -55,7 +55,7 @@ Dynamo works by building functional language components out of small objects and
 - Maintaining import/using statements on as as-needed basis
 - Being able to easily insert fixed blocks
 - Modifying a declaration late to be unsafe
-- Being able to write several types that logically belong in one file in parallel for example, for protocols with associated types and virtual classes, we can write methods and their corresponsing p/invoke and their corresponding reverse p/invoke "receiver" at the same time
+- Being able to write several types that logically belong in one file in parallel for example, for protocols with associated types and virtual classes, we can write methods and their corresponding p/invoke and their corresponding reverse p/invoke "receiver" at the same time
 - Being able to insert variable declarations at any point in the process
 - Being able to attach attributes to any entity at any point in the process
 

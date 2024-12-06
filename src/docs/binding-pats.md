@@ -56,7 +56,7 @@ public interface ISameness<TSelf> where TSelf: ISameness<TSelf> {
 }
 ```
 
-This only gets more complicated as associated types are added and as those associated types have constraints on them. This is because the generic relationships and constraints are encapsulted in the PAT whereas in other languages the generic relationships and constraints need to be part of the declaration which uses it.
+This only gets more complicated as associated types are added and as those associated types have constraints on them. This is because the generic relationships and constraints are encapsulated in the PAT whereas in other languages the generic relationships and constraints need to be part of the declaration which uses it.
 
 One of the nice things about PATs, is that it makes it much easier to write statically typed generic code. One example would be the canonical animal example (similar to the video referenced above):
 
@@ -103,15 +103,15 @@ public static class TopFuncs {
 }
 ```
 
-# Language Parity Mismatches
+## Language Parity Mismatches
 
 Obviously, C# doesn't have PATs and the closest we can get is to use generic interfaces. In addition, there is a language feature in Swift which is the keyword `some` which is used for return types that are PATs without having to specify the generic in the declaration. Think of it this was: in C# if you want to return a generic type from a method, it is the caller that determines what the expected return type will be. In Swift, `some` allows the *callee* not the caller to determine the specialization of the PAT. There is a way to model this in C#, and I'll explain that later.
 
-# ABI Differences
+## ABI Differences
 
 Other than the typical Swift function call ABI differences common to all types that have functions, there are no ABI differences unique to PATs.
 
-# Runtime Differences
+## Runtime Differences
 
 Because PATs inherently require a generic declaration, it means that the implementation details of the type comes along separately.
 
@@ -125,7 +125,7 @@ public func areTangent<T: TangentialProto>(a: T, b: T) -> Bool { // TangentialPr
 
 there are two extra implicit arguments added to the function: the type metadata for `T` and the protocol witness table for `T` with respect to `TangentialProto`. This is also the case with PATs except that the protocol witness table is not necessarily known at compile time because the associated types effectively creates an unbound generic type. Swift therefore has a data structure called a Protocol Conformance Descriptor which describes the shape of the protocol witness table and given the type metadata for the associated type(s) can generate a protocol witness table for that specialization. There is some discussion from Apple on that matter in [this forum post](https://forums.swift.org/t/need-help-understanding-protocols-and-generics/37564/35).
 
-# Accessibility
+## Accessibility
 
 This is an excerpt from a document I wrote about how PATs are bound in Binding Tools for Swift. It should be noted that with NativeAOT we don't need the vtable, as outlined [here](vtable-alternative.md).
 
@@ -358,7 +358,7 @@ If the proxy has a C# implementation, it calls that. If it has a Swift implement
 
 And for `ISwiftIteratorProtocol<T>`, I created an extension method `AsIEnumerable<T>` so that you can do something like:
 
-```
+```csharp
 foreach (var elem in someSwiftIterator.AsIEnumerable()) { }
 ```
 

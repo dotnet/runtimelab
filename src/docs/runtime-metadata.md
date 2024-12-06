@@ -30,7 +30,7 @@ Within accessors, there are two classes of accessor:
 
 Generally speaking, it's probably best for us to use the accessors and if we choose, to cache those values as static fields in bound types.
 
-The signature of a type metadata accessor is a request followed by n TypeMetadata objects (one for each generic type). Those are then followed by protocol witness tables (one for each protocol conformace). The witness tables are ordered first by the generic type they correspond to, second by lexicographical order.
+The signature of a type metadata accessor is a request followed by n TypeMetadata objects (one for each generic type). Those are then followed by protocol witness tables (one for each protocol conformance). The witness tables are ordered first by the generic type they correspond to, second by lexicographical order.
 
 ```csharp
 public static TypeMetadata Accessor(TypeMetadataRequest request, [ TypeMetadata specialization0, TypeMetadata specialization1, ..., SwiftHandle pwt0, SwiftHandle pwt1, ...])
@@ -157,7 +157,7 @@ In addition, there should be the following **public** methods at a minimum:
 ```csharp
 public bool TryGetNominalTypeDescriptor ([NotNullWhen (true)] out NominalTypeDescriptor? result) { }
 public string TypeName { get; } // uses the nominal type descriptor
-// NB - while Swift's Optional<T> is declarad as a generic enum, its implementation is a special case
+// NB - while Swift's Optional<T> is declared as a generic enum, its implementation is a special case
 // since it is very common.
 public bool IsGeneric { get; } // uses nominal type descriptor
 public int GenericArgumentCount { get; }
@@ -263,7 +263,7 @@ internal static class SomeBoundTypePinvokes {
 }
 ```
 
-Note that for generic types, the MetadataAcessor with have a `TypeMetadata` argument for each generic parameter.
+Note that for generic types, the MetadataAccessor with have a `TypeMetadata` argument for each generic parameter.
 An example of that might be:
 
 ```csharp

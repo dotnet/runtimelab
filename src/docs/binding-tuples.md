@@ -13,9 +13,9 @@ public func foo(a: Int, b: Bool, c: SomeStruct, d: SomeClass) { // func of 4 arg
 ```
 
 It's unclear why Apple would do this except that it might be a vestige of when Swift had the ability to have multiple
-argument lists and could do partial function application. It also might be because it enables very low-friction usage of tuples in that when used outside of the context of nominal types, tuples don't actually need to exist. They can be implemented as an artifical grouping of scoped variable names.
+argument lists and could do partial function application. It also might be because it enables very low-friction usage of tuples in that when used outside of the context of nominal types, tuples don't actually need to exist. They can be implemented as an artificial grouping of scoped variable names.
 
-## Language Parity Mistmatch
+## Language Parity Mismatch
 
 Since Tuples became available in C# they have had two varieties: `System.Tuple` and `System.ValueTuple`. The latter is what has been adopted into C# as a first class citizen in the language and since it matches closely to Swift tuples, we should follow that.
 
@@ -46,7 +46,7 @@ static extern nint _sumTuple(xa: nint, xb: nint, xc: nint);
 
 Of course care needs to be taken when doing this because in writing the pinvoke, we're changing the signature of the function which may create a pinvoke that conflicts in another existing pinvoke.
 
-In returning tuples Swift follows the pattern for structs in that the return value is packed into up to 4 registers before requiring the caller to pass in a pointer to memory. The Swift runtime has an entrypoint which given a pointer to an array of type metadata pointers and a count will return the type metadata for that tuple. The actual arguments are more complicated than that, but nothing that we need to worry about. What is important to keep in mind is that we should **never** try to synthesize Swift type metadata for tuples (or for any other types, really). The Swift runtime has expectations that type metadata are singletons and will do comparisons on pointers for equiality and Swift caches type metadata objects. Therefore we should ensure that any type metadata that need at runtime should be gotten from Swift.
+In returning tuples Swift follows the pattern for structs in that the return value is packed into up to 4 registers before requiring the caller to pass in a pointer to memory. The Swift runtime has an entrypoint which given a pointer to an array of type metadata pointers and a count will return the type metadata for that tuple. The actual arguments are more complicated than that, but nothing that we need to worry about. What is important to keep in mind is that we should **never** try to synthesize Swift type metadata for tuples (or for any other types, really). The Swift runtime has expectations that type metadata are singletons and will do comparisons on pointers for equality and Swift caches type metadata objects. Therefore we should ensure that any type metadata that need at runtime should be gotten from Swift.
 
 This accessor appears to be thread safe.
 

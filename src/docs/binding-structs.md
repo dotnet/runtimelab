@@ -52,13 +52,13 @@ print("all done")
 
 It will generate the following output:
 
-```
+```text
 Corey left the building.
 Ian left the building.
 all done
 ```
 
-This shows how the destructor in the class gets executed when a struct gets overwritten ("you killed Corey") and when it goes out of scope. C# will do neither of this things.
+This shows how the destructor in the class gets executed when a struct gets overwritten ("Corey left the building.") and when it goes out of scope. C# will do neither of this things.
 
 Swift allows 0-length structs, whereas C# does not.
 Swift allows structs to be non-copyable by adding the pseudo inheritance `: ~Copyable` to the type declaration. These types may present issues when
@@ -92,7 +92,7 @@ public struct NamedHolder {
 // ...
 // Consuming code, which seems totally reasonable for C#
 var n1 = new NamedHolder(SwiftString.FromString("Corey"));
-var n2 = new NamedHolder(SwiftString.FromString("Ian));
+var n2 = new NamedHolder(SwiftString.FromString("Ian"));
 n1 = n2; // memory leak.
 ```
 

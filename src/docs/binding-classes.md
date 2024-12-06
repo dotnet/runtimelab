@@ -2,7 +2,7 @@
 
 Classes function very similarly to C# classes with some important semantic and runtime differences which affect how they are exposed in C#, but generally speaking, they can exist as a 1:1 mapping. It should be noted that while Swift provides the ability to create traditional OO code, Apple is eschewing the use of classes in their own code and preferring value types instead. It is telling that in the main Swift runtime library, libswiftCore, there are no exported classes.
 
-Swift classes can be either native Swift or Objective-C. The latter is in place strictly for compatability with legacy code and in fact, if a Swift class is declared to be `@ObjC`, it must inherit from `NSObject` and the swift compiler will generate a selector dispatcher for all methods marked as `@ObjC` but these just go to the Swift implementation, therefore Objective-C compatability is just a thin veneer on top of the Swift implementation.
+Swift classes can be either native Swift or Objective-C. The latter is in place strictly for compatibility with legacy code and in fact, if a Swift class is declared to be `@ObjC`, it must inherit from `NSObject` and the swift compiler will generate a selector dispatcher for all methods marked as `@ObjC` but these just go to the Swift implementation, therefore Objective-C compatibility is just a thin veneer on top of the Swift implementation.
 
 ## Language Parity Mismatches
 
@@ -21,7 +21,7 @@ Swift has very specific rules for initialization. Under the hood, Swift breaks u
 
 The allocating initializer takes the type metadata for the class in the `self` register. We can call this directly, however under [enable-library-evolution](https://www.swift.org/blog/library-evolution/), the swift compiler generates a dispatch thunk for this method and we should probably call that.
 
-Swift divides initializers into two categories: designated and convenience. Designated initializers are initializers which fully initialize a class. If a subclass inherits from base class, it must implement all designated initializers and call the parent class. A convenience intializer will have a different signature than all designated initializers and **must** call a designated initializer.
+Swift divides initializers into two categories: designated and convenience. Designated initializers are initializers which fully initialize a class. If a subclass inherits from base class, it must implement all designated initializers and call the parent class. A convenience initializer will have a different signature than all designated initializers and **must** call a designated initializer.
 
 The generic programming model in Swift does specialization at runtime. It does this by creating the type metadata for the specialized type
 using the Metadata Accessor function. The Metadata Accessor function has one type metadata argument for each specialized type in the generic class. It is **very important** that the binding code calls the Metadata Accessor rather than trying to synthesize the type metadata object. This is because from Swift's point of view, every type metadata object is a singleton and the runtime will cache generic specializations.
@@ -134,7 +134,7 @@ public class YourAge :  SwiftNativeObject { // SwiftNativeObject has a class han
     static extern void SetYourAgeVt(ref YourAgeVt vt);
 
     [UnmanagedCallersOnly]
-    static nint GetAgeReveiver(IntPtr handle)
+    static nint GetAgeReceiver(IntPtr handle)
     {
         var gch = GCHandle.FromIntPtr(handle);
         if (gch.Target is YourAge ya) {
@@ -263,7 +263,7 @@ public final class xam_sub_ValBool : ValBool {
     public override init()
     {
         super.init();
-        _xamarinClassIsinitialized = true;
+        _xamarinClassIsInitialized = true;
     }
 
     // vector to super implementation
@@ -386,7 +386,7 @@ public class ValBool : SwiftNativeObject {
         public unsafe delegate *unmanaged<IntPtr, IntPtr, nint> Func0;
     }
 
-    // actual funcion(s) that go into the Swift vtable, callable from Swift
+    // actual function(s) that go into the Swift vtable, callable from Swift
     internal static class ValBoolUnmanagedReceivers
     {
         [UnmanagedCallersOnly]

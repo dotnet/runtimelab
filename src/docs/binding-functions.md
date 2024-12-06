@@ -5,7 +5,7 @@ Functions can be broken down into several different classes
 - Global - not attached to any type
 - Instance - methods that have an implicit extra argument in the self register for accessing instance variables and functions
 - Static - methods that have no implicit extra argument but can access static variables and static functions
-- Class - methods that have an implicit extra argument in the self register which is the type metadata for the class. Class methods can be overridden in subclasses. It appeared that Apple's intent was to make the type metdata object more of a first class object, but support for other things that might make class methods more useful like class fields are not there, but you can make computed variables.
+- Class - methods that have an implicit extra argument in the self register which is the type metadata for the class. Class methods can be overridden in subclasses. It appeared that Apple's intent was to make the type metadata object more of a first class object, but support for other things that might make class methods more useful like class fields are not there, but you can make computed variables.
 
 Within these set of method types there are several variations that are common to the function classes:
 
@@ -63,7 +63,7 @@ Swift allows identifiers with unicode values that are not present in C#. Notably
 Swift allows function homonyms and C# does not. In order to handle this, homonyms can be detected and the function name can have the name of the return type appended to it. This can get more complicated when the return types don't have pretty names on their own such as tuples or generic types
 or inner types.
 
-Like C#, Swift has keyword escaping, but uses backticks as delimeters instead of the at-sign prefix in C#.
+Like C#, Swift has keyword escaping, but uses backticks as delimiters instead of the at-sign prefix in C#.
 
 Operators are problematic as C# has only a limited set of available of operators whereas Swift has a very flexible set of operators.
 
@@ -95,7 +95,7 @@ Since property getters and setters are implemented as functions they map natural
 
 ## Accessibility Differences
 
-For the most part, we should strive to address the language parity issues in ways that feel "right" in C# or at least "least bad". For example, this were definied in Swift:
+For the most part, we should strive to address the language parity issues in ways that feel "right" in C# or at least "least bad". For example, this were defined in Swift:
 
 ```swift
 prefix operator -+-

@@ -1,6 +1,6 @@
-## Demangling
+# Demangling
 
-# Background
+## Background
 
 In reflecting on a swift module through the `abi.json` files, there are a number
 of mangled entry points that can be used for calling functions and methods. The
@@ -12,7 +12,7 @@ way that grows with the complexity of the signature of the function.
 Because of this and because Binding Tools for Swift has a well-tested
 demangler, it makes sense to port this instead.
 
-# How This Fits Into the Process of Binding
+## How This Fits Into the Process of Binding
 
 The general process should be:
 
@@ -28,7 +28,7 @@ obvious gains in parallel processing but requires the either another pass to
 put the needed symbols where they belong or it requires the binding code to
 look up the required symbols.
 
-# Overview of the Demangling Code
+## Overview of the Demangling Code
 
 The ported Apple demangler works by parsing the little language of the mangled
 symbol and builds a tree of Nodes via a stack machine and a recursive descent

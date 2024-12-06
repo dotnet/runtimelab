@@ -9,9 +9,9 @@ The layout is:
 - initializeWithCopy `T *(*initializeWithCopy)(T *dest, T* src, SwiftMetadata *metadata)`- initializes a pointer to memory (dest) with a copy of a struct pointer to by src using the provided type metadata
 - assignWithCopy `T *(*assignWithCopy)(T *dest, T *src, SwiftMetadata *metadata)` - destroys the contents of dest before copying the contents of src on top of it using the provided type metadata
 - initializeWithTake `T *(*initializeWithTake)(T *dest, T *src, SwiftMetadata *metadata)` - initializes the contents of fest with the contents of src, destroying src using the provided type metadata.
-- assignWithTake `T *(*assignWithTake)(T *dest, T *src, SwiftMetadata *metadata)` - destroys the contents of dest before copying the contants of src on top of it, destroying src using the provided type metadata.
+- assignWithTake `T *(*assignWithTake)(T *dest, T *src, SwiftMetadata *metadata)` - destroys the contents of dest before copying the contents of src on top of it, destroying src using the provided type metadata.
 - getEnumTagSinglePayload - `unsigned int (*getEnumTagSinglePayload)(T* enumInst, unsigned int numEmptyCases, SwiftMetadata *metadata)` - gets the current discriminator for an enum with a single payload using the supplied type metadata.
-- storeEnumTagSinglePayload - `void (*storeEnumTagSinglePayload)(T *enumInst, unsigned int whichCase, int numEmptyCases, SwiftMetadata *metadata)` - sets the current discriminator for an enum with a signle payload using the supplied type metadata.
+- storeEnumTagSinglePayload - `void (*storeEnumTagSinglePayload)(T *enumInst, unsigned int whichCase, int numEmptyCases, SwiftMetadata *metadata)` - sets the current discriminator for an enum with a single payload using the supplied type metadata.
 - Size - machine word representing the size of the type in bytes
 - Stride - machine word representing the stride of the type in bytes
 - Flags - 32 bit unsigned int - contains flags that describe how to work with the time including the memory alignment

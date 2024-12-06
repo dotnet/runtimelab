@@ -19,7 +19,7 @@ Most of these issues can be solved if Swift can call C# exported functions direc
 To do this, we leverage the Swift package manager. We start by creating a directory for information to pass to the compiler. In this directory create a subdirectory for C header files and aggregate any and all headers that declare the `[UnmanagedCallersOnly]` entry points. Finally, in the module directory you create a module.map file that declares where to look for the headers.
 So with a file structure like this:
 
-```
+```text
 +- Module
   |
   +- Headers
@@ -33,7 +33,7 @@ The swift compiler can interpret the declarations.
 
 Here's a module.map that will work in this example:
 
-```
+```text
 module SomeCSharpLib {
     umbrella "Headers"
     export *
