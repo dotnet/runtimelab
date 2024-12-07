@@ -47,7 +47,7 @@ static Object* AllocateObject(void* pShadowStack, MethodTable* pEEType, uint32_t
     pThread->SetShadowStackTop(pShadowStack);
     Object* obj = (Object*)RhpGcAlloc(pEEType, uFlags, numElements, &frame);
 
-#ifndef FEATURE_WASM_THREADS
+#ifndef FEATURE_WASM_MANAGED_THREADS
     if (g_FinalizationRequestPending)
     {
         GCFrameRegistration gc; // GC-protect our exposed object.
@@ -70,7 +70,7 @@ static Object* AllocateObject(void* pShadowStack, MethodTable* pEEType, uint32_t
             pThread->PopGCFrameRegistration(&gc);
         }
     }
-#endif // !FEATURE_WASM_THREADS
+#endif // !FEATURE_WASM_MANAGED_THREADS
 
     if (obj == nullptr)
     {

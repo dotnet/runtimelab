@@ -19,7 +19,7 @@
 #define MEM_COMMIT     0x1000
 #define MEM_RELEASE    0x8000
 
-#ifndef FEATURE_WASM_THREADS
+#ifndef FEATURE_WASM_MANAGED_THREADS
 //
 // Note that we return the native stack bounds here, not shadow stack ones. Currently this functionality is mainly
 // used for RuntimeHelpers.TryEnsureSufficientExecutionStack, and we do use the native stack in codegen, so this
@@ -189,7 +189,7 @@ extern "C" int __cxa_thread_atexit(Dtor dtor, void* obj, void*)
     return 0;
 }
 #endif // TARGET_WASI
-#endif // !FEATURE_WASM_THREADS
+#endif // !FEATURE_WASM_MANAGED_THREADS
 
 // Recall that WASM's model is extremely simple: we have one linear memory, which can only be grown, in chunks
 // of 64K pages. Thus, "mmap"/"munmap" fundamentally cannot be faithfully recreated and the Unix emulators we
