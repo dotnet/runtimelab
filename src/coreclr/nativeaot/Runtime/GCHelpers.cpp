@@ -36,7 +36,7 @@ GPTR_DECL(MethodTable, g_pFreeObjectEEType);
 
 GPTR_IMPL(Thread, g_pFinalizerThread);
 
-#if defined(HOST_WASM) && !defined(FEATURE_WASM_THREADS)
+#if defined(HOST_WASM) && !defined(FEATURE_WASM_MANAGED_THREADS)
 void FinalizeFinalizableObjects();
 #endif
 
@@ -113,7 +113,7 @@ EXTERN_C void QCALLTYPE RhpCollect(uint32_t uGeneration, uint32_t uMode, UInt32_
 
     pCurThread->EnablePreemptiveMode();
 
-#if defined(HOST_WASM) && !defined(FEATURE_WASM_THREADS)
+#if defined(HOST_WASM) && !defined(FEATURE_WASM_MANAGED_THREADS)
     FinalizeFinalizableObjects();
 #endif
 }
