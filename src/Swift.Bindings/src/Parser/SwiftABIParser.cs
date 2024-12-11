@@ -38,7 +38,7 @@ namespace BindingsGeneration
         public required string MangledName { get; set; }
         public required string PrintedName { get; set; }
         public required string ModuleName { get; set; }
-        public required string [] DeclAttributes { get; set; }
+        public required string[] DeclAttributes { get; set; }
         public required bool? @static { get; set; }
         public required bool? IsInternal { get; set; }
         public required string? GenericSig { get; set; }
@@ -244,9 +244,9 @@ namespace BindingsGeneration
             catch (NotImplementedException e)
             {
                 if (_verbose > 1)
-                    Console.WriteLine($"Not implemented '{node.Name}': {e.Message}"); 
+                    Console.WriteLine($"Not implemented '{node.Name}': {e.Message}");
             }
-            catch (Exception e) 
+            catch (Exception e)
             {
                 if (_verbose > 0)
                     Console.WriteLine($"Error while processing node '{node.Name}': {e.Message}");
@@ -284,15 +284,11 @@ namespace BindingsGeneration
                     metadataPtr = DynamicLibraryLoader.invoke(_dylibPath, GetMetadataAccessor(node));
                     var swiftTypeInfo = new SwiftTypeInfo { MetadataPtr = metadataPtr };
 
-                    if (node.DeclAttributes != null && Array.IndexOf(node.DeclAttributes, "Frozen") != -1 && 
-                        (!swiftTypeInfo.ValueWitnessTable->IsNonPOD || !swiftTypeInfo.ValueWitnessTable->IsNonBitwiseTakable))
-                    {
-                        decl = CreateStructDecl(node, parentDecl, moduleDecl);
-                    }
-                    else
-                    {
-                        decl = CreateClassDecl(node, parentDecl, moduleDecl);
-                    }
+                    // TODO: Find better place for this
+                    typeRecord.IsBlittable = !swiftTypeInfo.ValueWitnessTable->IsNonPOD || !swiftTypeInfo.ValueWitnessTable->IsNonBitwiseTakable; //TODO: This is not the full picture.
+                    typeRecord.IsFrozen = node.DeclAttributes != null && Array.IndexOf(node.DeclAttributes, "Frozen") != -1;
+
+                    decl = CreateStructDecl(node, parentDecl, moduleDecl, typeRecord.IsFrozen, typeRecord.IsBlittable);
                     typeRecord.SwiftTypeInfo = swiftTypeInfo;
                     break;
 
@@ -325,7 +321,7 @@ namespace BindingsGeneration
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The struct declaration.</returns>
-        private StructDecl CreateStructDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
+        private StructDecl CreateStructDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl, bool IsFrozen, bool IsBlittable)
         {
             return new StructDecl
             {
@@ -334,7 +330,9 @@ namespace BindingsGeneration
                 Fields = new List<FieldDecl>(),
                 Declarations = new List<BaseDecl>(),
                 ParentDecl = parentDecl,
-                ModuleDecl = moduleDecl
+                ModuleDecl = moduleDecl,
+                IsFrozen = IsFrozen,
+                IsBlittable = IsBlittable
             };
         }
 
@@ -434,12 +432,14 @@ namespace BindingsGeneration
         /// </summary>
         TypeSpec CreateTypeSpec(Node node)
         {
-            switch (node.Kind) {
+            switch (node.Kind)
+            {
                 case kNominal:
                 case kFunc:
                     var spec = TypeSpecParser.Parse(node.PrintedName);
-                    if (spec is null) {
-                            throw new Exception($"Error parsing type from \"{node.PrintedName}\"");
+                    if (spec is null)
+                    {
+                        throw new Exception($"Error parsing type from \"{node.PrintedName}\"");
                     }
                     return spec;
                 default:

@@ -7,6 +7,98 @@ using Swift.Runtime;
 namespace BindingsGeneration
 {
     /// <summary>
+    /// Factory class for creating instances of ConstructorHandler.
+    /// </summary>
+    public class ConstructorHandlerFactory : IFactory<BaseDecl, IMethodHandler>
+    {
+        /// <summary>
+        /// Determines if the factory handles the specified declaration.
+        /// </summary>
+        /// <param name="decl">The base declaration.</param>
+        public bool Handles(BaseDecl decl)
+        {
+            return decl is MethodDecl methodDecl && methodDecl.IsConstructor;
+        }
+
+        /// <summary>
+        /// Constructs a new instance of ConstructorHandler.
+        /// </summary>
+        public IMethodHandler Construct()
+        {
+            return new ConstructorHandler();
+        }
+    }
+
+    /// <summary>
+    /// Handler class for constructor declarations.
+    /// </summary>
+    public class ConstructorHandler : BaseHandler, IMethodHandler
+    {
+        public ConstructorHandler()
+        {
+        }
+
+        /// <summary>
+        /// Marshals the specified constructor.
+        /// </summary>
+        /// <param name="decl"></param>
+        public IEnvironment Marshal(BaseDecl decl)
+        {
+            return new MethodEnvironment(decl);
+        }
+
+        /// <summary>
+        /// Emits the code for the specified environment.
+        /// </summary>
+        /// <param name="writer">The IndentedTextWriter instance.</param>
+        /// <param name="env">The environment.</param>
+        /// <param name="conductor">The conductor instance.</param>
+        /// <param name="typeDatabase">The type database instance.</param>
+        public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor, TypeDatabase typeDatabase)
+        {
+            var methodEnv = (MethodEnvironment)env;
+            EmitWrapper(writer, methodEnv, typeDatabase);
+            PInvokeEmitter.EmitPInvoke(writer, methodEnv, typeDatabase);
+            writer.WriteLine();
+        }
+
+        /// <summary>
+        /// Emits the wrapper method declaration.
+        /// </summary>
+        /// <param name="writer">The IndentedTextWriter instance.</param>
+        /// <param name="methodEnv">The method environment.</param>
+        /// <param name="typeDatabase">The type database instance.</param>
+        private static void EmitWrapper(IndentedTextWriter writer, MethodEnvironment methodEnv, TypeDatabase typeDatabase)
+        {
+            var methodDecl = (MethodDecl)methodEnv.MethodDecl;
+            var parentDecl = methodDecl.ParentDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
+            writer.WriteLine($"public {parentDecl.Name}({SignatureHandler.GetCSWrapperSignature(methodDecl)})");
+
+            writer.WriteLine("{");
+            writer.Indent++;
+
+            string PInvokeName = $"{methodEnv.PInvokePrefix}{methodDecl.Name}";
+
+            var pInvokeSignature = SignatureHandler.GetPinvokeSignature(methodDecl, typeDatabase);
+            string invokeArguments = pInvokeSignature.ParametersNames();
+
+            if (methodDecl.RequiresIndirectResult(parentDecl, typeDatabase))
+            {
+                writer.WriteLine($"_payload = (SwiftHandle)NativeMemory.Alloc(_payloadSize);");
+                writer.WriteLine("var swiftIndirectResult = new SwiftIndirectResult((void*)_payload);");
+                writer.WriteLine($"{PInvokeName}({invokeArguments});");
+            }
+            else
+            {
+                writer.WriteLine($"this = {PInvokeName}({invokeArguments});");
+            }
+
+            writer.Indent--;
+            writer.WriteLine("}");
+        }
+    }
+
+    /// <summary>
     /// Represents a method handler factory.
     /// </summary>
     public class MethodHandlerFactory : IFactory<BaseDecl, IMethodHandler>
@@ -18,13 +110,13 @@ namespace BindingsGeneration
         /// <returns></returns>
         public bool Handles(BaseDecl decl)
         {
-            return decl is MethodDecl;
+            return decl is MethodDecl methodDecl && !methodDecl.IsConstructor;
         }
 
         /// <summary>
         /// Constructs a handler.
         /// </summary>
-        public IMethodHandler Construct ()
+        public IMethodHandler Construct()
         {
             return new MethodHandler();
         }
@@ -35,7 +127,7 @@ namespace BindingsGeneration
     /// </summary>
     public class MethodHandler : BaseHandler, IMethodHandler
     {
-        public MethodHandler ()
+        public MethodHandler()
         {
         }
 
@@ -58,73 +150,10 @@ namespace BindingsGeneration
         public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor, TypeDatabase typeDatabase)
         {
             var methodEnv = (MethodEnvironment)env;
-            var methodDecl = (MethodDecl)methodEnv.MethodDecl;
 
-            // Emit PInvoke method
-            EmitPInvoke(writer, methodEnv, typeDatabase);
-
-            // Emit wrapper method if marshalling is required
-            if (methodDecl.ParentDecl is StructDecl || methodDecl.ParentDecl is ClassDecl)
-            {
-                if (methodDecl.IsConstructor)
-                {
-                    // Emit constructor
-                    EmitConstructor(writer, methodEnv);
-                }
-                else
-                {
-                    // Emit method
-                    EmitWrapperMethod(writer, methodEnv);
-                }
-            }
-
+            EmitWrapperMethod(writer, methodEnv, typeDatabase);
+            PInvokeEmitter.EmitPInvoke(writer, methodEnv, typeDatabase);
             writer.WriteLine();
-        }
-
-        /// <summary>
-        /// Emits the PInvoke method declaration.
-        /// </summary>
-        /// <param name="writer">The IndentedTextWriter instance.</param>
-        /// <param name="env">The environment.</param>
-        /// <param name="typeDatabase">The type database.</param>
-        private void EmitPInvoke(IndentedTextWriter writer, MethodEnvironment env, TypeDatabase typeDatabase)
-        {
-            var methodDecl = (MethodDecl)env.MethodDecl;
-            var parentDecl = methodDecl.ParentDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
-            var moduleDecl = methodDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
-
-            string accessModifier = parentDecl == moduleDecl ? "public" : "internal";
-            string methodType = methodDecl.IsConstructor ? parentDecl.Name : methodDecl.CSSignature.First().CSTypeIdentifier.Name;
-            string methodName = parentDecl == moduleDecl ? methodDecl.Name : $"{env.PInvokePrefix}{methodDecl.Name}";
-            string libPath = typeDatabase.GetLibraryName(moduleDecl.Name);
-
-            writer.WriteLine("[UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]");
-            writer.WriteLine($"[DllImport(\"{libPath}\", EntryPoint = \"{methodDecl.MangledName}\")]");
-            writer.WriteLine($"{accessModifier} static extern {methodType} {methodName}({GetInternalMethodSignature(methodDecl)});");
-        }
-
-        /// <summary>
-        /// Emits the constructor declaration.
-        /// </summary>
-        /// <param name="writer">The IndentedTextWriter instance.</param>
-        /// <param name="env">The environment declaration.</param>
-        private void EmitConstructor(IndentedTextWriter writer, MethodEnvironment env)
-        {
-            var methodDecl = (MethodDecl)env.MethodDecl;
-            var parentDecl = methodDecl.ParentDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
-            var moduleDecl = methodDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
-
-            string methodName = $"{env.PInvokePrefix}{methodDecl.Name}";
-
-            writer.WriteLine($"public {parentDecl.Name}({GetPublicMethodSignature(methodDecl)})");
-            writer.WriteLine("{");
-            writer.Indent++;
-
-            string methodArgs = string.Join(", ", methodDecl.CSSignature.Skip(1).Select(p => p.Name));
-            writer.WriteLine($"this = {methodName}({GetMethodArgs(methodDecl)});");
-
-            writer.Indent--;
-            writer.WriteLine("}");
         }
 
         /// <summary>
@@ -132,94 +161,232 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="writer">The IndentedTextWriter instance.</param>
         /// <param name="env">The environment.</param>
-        private void EmitWrapperMethod(IndentedTextWriter writer, MethodEnvironment env)
+        /// <param name="typeDatabase">The type database.</param>
+        private void EmitWrapperMethod(IndentedTextWriter writer, MethodEnvironment env, TypeDatabase typeDatabase)
         {
             var methodDecl = (MethodDecl)env.MethodDecl;
             var parentDecl = methodDecl.ParentDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
-            var moduleDecl = methodDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
 
             string methodName = $"{env.PInvokePrefix}{methodDecl.Name}";
 
-            writer.WriteLine($"public {(methodDecl.MethodType == MethodType.Static ? "static " : "")}{methodDecl.CSSignature.First().CSTypeIdentifier.Name} {methodDecl.Name}({GetPublicMethodSignature(methodDecl)})");
+            writer.WriteLine($"public {((methodDecl.MethodType == MethodType.Static || parentDecl is ModuleDecl) ? "static " : "")}{methodDecl.CSSignature.First().CSTypeIdentifier.Name} {methodDecl.Name}({SignatureHandler.GetCSWrapperSignature(methodDecl)})");
             writer.WriteLine("{");
             writer.Indent++;
 
-            if (methodDecl.MethodType == MethodType.Instance)
+            if (methodDecl.RequiresSwiftSelf(parentDecl))
             {
-                writer.WriteLine($"var self = new System.Runtime.InteropServices.Swift.SwiftSelf<{parentDecl.Name}>(this);");
+                if (parentDecl is StructDecl structDecl && structDecl.IsMarshalledAsStruct())
+                    writer.WriteLine($"var self = new SwiftSelf<{parentDecl.Name}>(this);");
+                else
+                    writer.WriteLine($"var self = new SwiftSelf((void*)_payload);");
             }
+
+            // TODO: Add Indirect result marshalling to methods other than constructors
+
             string returnPrefix = methodDecl.CSSignature.First().CSTypeIdentifier.Name == "void" ? "" : "return ";
-            string methodArgs = string.Join(", ", methodDecl.CSSignature.Skip(1).Select(p => p.Name));
-            writer.WriteLine($"{returnPrefix}{methodName}({GetMethodArgs(methodDecl)});");
+
+            var pInvokeSignature = SignatureHandler.GetPinvokeSignature(methodDecl, typeDatabase);
+            string invokeArguments = pInvokeSignature.ParametersNames();
+
+            // Call the PInvoke method
+            writer.WriteLine($"{returnPrefix}{methodName}({invokeArguments});");
+
             writer.Indent--;
             writer.WriteLine("}");
         }
+    }
 
+    /// <summary>
+    /// Represents a PInvoke argument.
+    /// </summary>
+    /// <param name="Type"></param>
+    /// <param name="Name"></param>
+    internal record PInvokeArgument(string Type, string Name)
+    {
+        public override string ToString() => $"{Type} {Name}";
+    }
+
+    /// <summary>
+    /// Represents a PInvoke signature.
+    /// </summary>
+    /// <param name="ReturnType"></param>
+    /// <param name="Parameters"></param>
+    internal record PInvokeSignature(string ReturnType, IReadOnlyList<PInvokeArgument> Parameters)
+    {
+        public string ParametersString() => string.Join(", ", Parameters.Select(p => p.ToString()));
+
+        public string ParametersNames() => string.Join(", ", Parameters.Select(p =>
+            p.Type == "SwiftHandle" ? $"{p.Name}.Payload" : p.Name)); // TODO: Find a better way to do this
+    }
+
+    /// <summary>
+    /// Represents a PInvoke signature builder.
+    /// </summary>
+    internal class PInvokeSignatureBuilder
+    {
+        private string _returnType = "invalid";
+        private readonly List<PInvokeArgument> _parameters = new();
+
+        MethodDecl MethodDecl { get; }
+        BaseDecl ParentDecl { get; }
+        TypeDatabase TypeDatabase { get; }
+
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PInvokeSignatureBuilder"/> class.
+        /// </summary>
+        /// <param name="methodDecl">The method declaration.</param>
+        /// <param name="parentDecl">The parent declaration.</param>
+        /// <param name="typeDatabase">The type database.</param>
+        public PInvokeSignatureBuilder(MethodDecl methodDecl, BaseDecl parentDecl, TypeDatabase typeDatabase)
+        {
+            MethodDecl = methodDecl;
+            ParentDecl = parentDecl;
+            TypeDatabase = typeDatabase;
+        }
+
+        /// <summary>
+        /// Handles the return type of the method.
+        /// </summary>
+        public void HandleReturnType()
+        {
+            if (!MethodDecl.RequiresIndirectResult(ParentDecl, TypeDatabase))
+            {
+                var returnType = MethodDecl.CSSignature.First().CSTypeIdentifier.Name;
+                SetReturnType(returnType);
+            }
+            else
+            {
+                AddParameter("SwiftIndirectResult", "swiftIndirectResult");
+                SetReturnType("void");
+            }
+        }
+
+        /// <summary>
+        /// Handles the arguments of the method.
+        /// </summary>
+        public void HandleArguments()
+        {
+            foreach (var argument in MethodDecl.CSSignature.Skip(1))
+            {
+                var typeRecord = TypeDatabase.Registrar.GetType(argument);
+                if (typeRecord.IsFrozen && typeRecord.IsBlittable)
+                {
+                    AddParameter(argument.CSTypeIdentifier.Name, argument.Name);
+                }
+                else
+                {
+                    AddParameter($"SwiftHandle", argument.Name);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles the Swift self parameter of the method.
+        /// </summary>
+        public void HandleSwiftSelf()
+        {
+            if (MethodDecl.RequiresSwiftSelf(ParentDecl))
+            {
+                if (ParentDecl is StructDecl structDecl && structDecl.IsMarshalledAsStruct())
+                {
+                    AddParameter($"SwiftSelf<{ParentDecl.Name}>", "self");
+                }
+                else
+                {
+                    AddParameter("SwiftSelf", "self");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Builds the PInvoke signature.
+        /// </summary>
+        /// <returns>The PInvoke signature.</returns>
+        public PInvokeSignature Build()
+        {
+            return new PInvokeSignature(_returnType, _parameters.ToArray());
+        }
+
+        /// <summary>
+        /// Sets the return type of the method.
+        /// </summary>
+        /// <param name="returnType">The return type.</param>
+        private void SetReturnType(string returnType)
+        {
+            _returnType = returnType;
+        }
+
+        /// <summary>
+        /// Adds a parameter to the PInvoke signature.
+        /// </summary>
+        /// <param name="type">The parameter type.</param>
+        /// <param name="name">The parameter name.</param>s
+        private void AddParameter(string type, string name)
+        {
+            _parameters.Add(new PInvokeArgument(type, name));
+        }
+    }
+
+    /// <summary>
+    /// Provides methods for handling method signatures.
+    /// </summary>
+    static class SignatureHandler
+    {
         /// <summary>
         /// Gets the method parameters.
         /// </summary>
         /// <param name="methodDecl">The method declaration.</param>
-        /// <returns>The list of method parameters.</returns>
-        private List<ArgumentDecl> GetMethodParams(MethodDecl methodDecl)
+        /// <param name="typeDatabase">The type database.</param>
+        /// <returns>The method parameters.</returns>
+        public static PInvokeSignature GetPinvokeSignature(MethodDecl methodDecl, TypeDatabase typeDatabase)
         {
             var parentDecl = methodDecl.ParentDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
-            List<ArgumentDecl> tempDecl = new(methodDecl.CSSignature);
-
-            // If this is a type method, add the marshalling for the self parameter
-            if (parentDecl is StructDecl || parentDecl is ClassDecl)
-            {
-                if (!methodDecl.IsConstructor && methodDecl.MethodType != MethodType.Static)
-                {
-                    // Add self as the first parameter (after the return type)
-                    tempDecl.Insert(1, new ArgumentDecl
-                    {
-                        SwiftTypeSpec = new NamedTypeSpec(parentDecl.Name),
-                        CSTypeIdentifier = new TypeDecl { Name = $"System.Runtime.InteropServices.Swift.SwiftSelf<{parentDecl.Name}>", MangledName = string.Empty, Fields = new List<FieldDecl>(), Declarations = new List<BaseDecl>(), ParentDecl = parentDecl, ModuleDecl = parentDecl.ModuleDecl },
-                        Name = "self",
-                        PrivateName = string.Empty,
-                        IsInOut = false,
-                        ParentDecl = methodDecl,
-                        ModuleDecl = methodDecl.ModuleDecl
-                    });
-                }
-            }
-
-            return tempDecl.Skip(1).ToList();
+            var pInvokeSignature = new PInvokeSignatureBuilder(methodDecl, parentDecl, typeDatabase);
+            pInvokeSignature.HandleReturnType();
+            pInvokeSignature.HandleArguments();
+            pInvokeSignature.HandleSwiftSelf();
+            return pInvokeSignature.Build();
         }
 
         /// <summary>
-        /// Gets the internal method signature.
+        /// Gets the wrapper method signature.
         /// </summary>
         /// <param name="moduleDecl">The module declaration.</param>
-        /// <returns>The internal method signature.</returns>
-        private string GetInternalMethodSignature(MethodDecl methodDecl)
-        {
-            var parentDecl = methodDecl.ParentDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
-
-            List<ArgumentDecl> parameters = GetMethodParams(methodDecl);
-            return string.Join(", ", parameters.Select(p => $"{p.CSTypeIdentifier.Name} {p.Name}").ToList());
-        }
-
-        /// <summary>
-        /// Gets the public method signature.
-        /// </summary>
-        /// <param name="moduleDecl">The module declaration.</param>
-        /// <returns>The public method signature.</returns>
-        private string GetPublicMethodSignature(MethodDecl methodDecl)
+        /// <returns>The wrapper method signature.</returns>
+        public static string GetCSWrapperSignature(MethodDecl methodDecl)
         {
             List<ArgumentDecl> parameters = methodDecl.CSSignature.Skip(1).ToList();
             return string.Join(", ", parameters.Select(p => $"{p.CSTypeIdentifier.Name} {p.Name}").ToList());
         }
+    }
 
+    /// <summary>
+    /// Provides methods for emitting PInvoke signatures.
+    /// </summary>
+    public static class PInvokeEmitter
+    {
         /// <summary>
-        /// Gets the method arguments.
+        /// Emits the PInvoke signature.
         /// </summary>
-        /// <param name="moduleDecl">The module declaration.</param>
-        /// <returns>The public method arguments.</returns>
-        private string GetMethodArgs(MethodDecl methodDecl)
+        /// <param name="writer">The IndentedTextWriter instance.</param>
+        /// <param name="methodEnv">The method environment.</param>
+        /// <param name="typeDatabase">The type database.</param>
+        public static void EmitPInvoke(IndentedTextWriter writer, MethodEnvironment methodEnv, TypeDatabase typeDatabase)
         {
-            List<ArgumentDecl> parameters = GetMethodParams(methodDecl);
-            return string.Join(", ", parameters.Select(p => p.Name).ToList());
+            var methodDecl = (MethodDecl)methodEnv.MethodDecl;
+            var parentDecl = methodDecl.ParentDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
+            var moduleDecl = methodDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(methodDecl.ModuleDecl));
+
+            string PInvokeName = $"{methodEnv.PInvokePrefix}{methodDecl.Name}";
+            string libPath = typeDatabase.GetLibraryName(moduleDecl.Name);
+
+            writer.WriteLine("[UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]");
+            writer.WriteLine($"[DllImport(\"{libPath}\", EntryPoint = \"{methodDecl.MangledName}\")]");
+
+            var pInvokeSignature = SignatureHandler.GetPinvokeSignature(methodDecl, typeDatabase);
+
+            writer.WriteLine($"private static extern {pInvokeSignature.ReturnType} {PInvokeName}({pInvokeSignature.ParametersString()});");
         }
     }
 }

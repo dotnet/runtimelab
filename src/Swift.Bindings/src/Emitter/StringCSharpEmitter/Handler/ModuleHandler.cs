@@ -23,7 +23,7 @@ namespace BindingsGeneration
         /// <summary>
         /// Constructs a new instance of ModuleHandler.
         /// </summary>
-        public IModuleHandler Construct ()
+        public IModuleHandler Construct()
         {
             return new ModuleHandler();
         }
@@ -34,7 +34,7 @@ namespace BindingsGeneration
     /// </summary>
     public class ModuleHandler : BaseHandler, IModuleHandler
     {
-        public ModuleHandler ()
+        public ModuleHandler()
         {
         }
 
@@ -58,7 +58,7 @@ namespace BindingsGeneration
         {
             var moduleEnv = (ModuleEnvironment)env;
             var moduleDecl = (ModuleDecl)moduleEnv.ModuleDecl;
-            
+
             var generatedNamespace = $"Swift.{moduleDecl.Name}";
 
             writer.WriteLine($"using System;");
@@ -82,13 +82,13 @@ namespace BindingsGeneration
                 writer.WriteLine($"public class {moduleDecl.Name}");
                 writer.WriteLine("{");
                 writer.Indent++;
-                foreach(FieldDecl fieldDecl in moduleDecl.Fields)
+                foreach (FieldDecl fieldDecl in moduleDecl.Fields)
                 {
                     string accessModifier = fieldDecl.Visibility == Visibility.Public ? "public" : "private";
                     writer.WriteLine($"{accessModifier} {fieldDecl.CSTypeIdentifier.Name} {fieldDecl.Name};");
                 }
                 writer.WriteLine();
-                foreach(MethodDecl methodDecl in moduleDecl.Methods)
+                foreach (MethodDecl methodDecl in moduleDecl.Methods)
                 {
                     if (conductor.TryGetMethodHandler(methodDecl, out var methodHandler))
                     {

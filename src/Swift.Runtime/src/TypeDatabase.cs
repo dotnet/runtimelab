@@ -82,7 +82,7 @@ namespace Swift.Runtime
             XmlNode? entitiesNode = xmlDoc.SelectSingleNode("//swifttypedatabase/entities");
 
             if (entitiesNode == null)
-            	throw new Exception("Invalid XML structure: 'entities' node not found.");
+                throw new Exception("Invalid XML structure: 'entities' node not found.");
 
             foreach (XmlNode? entityNode in entitiesNode.ChildNodes)
             {
@@ -95,6 +95,8 @@ namespace Swift.Runtime
                 string swiftMetadataAccessor = typeDeclarationNode?.Attributes?["metadataaccessor"]?.Value ?? string.Empty;
                 string csharpTypeIdentifier = entityNode?.Attributes?["managedTypeName"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'managedTypeName' attribute.");
                 string @namespace = entityNode?.Attributes?["managedNameSpace"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'managedNameSpace' attribute.");
+                string frozen = typeDeclarationNode?.Attributes?["frozen"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'frozen' attribute.");
+                string blittable = typeDeclarationNode?.Attributes?["blittable"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'blittable' attribute.");
                 if (swiftTypeIdentifier == null || csharpTypeIdentifier == null)
                     throw new Exception("Invalid XML structure: Missing attributes.");
 
@@ -105,6 +107,8 @@ namespace Swift.Runtime
                 typeRecord.TypeIdentifier = csharpTypeIdentifier;
                 typeRecord.MetadataAccessor = $"{swiftMetadataAccessor}Ma";
                 typeRecord.IsProcessed = true;
+                typeRecord.IsBlittable = blittable.ToLower() == "true";
+                typeRecord.IsFrozen = frozen.ToLower() == "true";
             }
         }
 
@@ -154,7 +158,7 @@ namespace Swift.Runtime
             var typeRecord = Registrar.GetType(moduleName, typeIdentifier);
             if (typeRecord != null)
                 return typeRecord.IsProcessed;
-            
+
             return false;
         }
 

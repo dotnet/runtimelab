@@ -53,7 +53,7 @@ namespace Swift.Runtime
         /// The C# type identifier.
         /// </summary>
         public required string TypeIdentifier { get; set; }
-    
+
         /// <summary>
         /// The Swift metadata accessor.
         /// </summary>
@@ -68,6 +68,10 @@ namespace Swift.Runtime
         /// The value indicating whether the type has been processed.
         /// </summary>
         public required bool IsProcessed { get; set; }
+
+        public required bool IsBlittable { get; set; }
+
+        public required bool IsFrozen { get; set; }
     }
 
     public class TypeRegistrar
@@ -102,14 +106,16 @@ namespace Swift.Runtime
         /// <returns>The type record.</returns>
         public TypeRecord RegisterType(string moduleName, string typeIdentifier)
         {
-            var moduleRecord = RegisterModule(moduleName); 
+            var moduleRecord = RegisterModule(moduleName);
             return moduleRecord.TypeRecords.GetOrAdd(typeIdentifier, _ => new TypeRecord
             {
                 Namespace = moduleName,
                 TypeIdentifier = typeIdentifier,
                 SwiftTypeInfo = null,
                 IsProcessed = false,
-                MetadataAccessor = string.Empty
+                MetadataAccessor = string.Empty,
+                IsBlittable = false,
+                IsFrozen = false
             });
         }
 
