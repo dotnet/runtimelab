@@ -1692,11 +1692,20 @@ CorJitResult Interpreter::GenerateInterpreterStub(CEEInfo* comp,
 #else
 #error unsupported platform
 #endif
-        stub = sl.Link(SystemDomain::GetGlobalLoaderAllocator()->GetStubHeap());
+        if (false)
+        {
+            stub = sl.Link(SystemDomain::GetGlobalLoaderAllocator()->GetStubHeap());
 
-        *nativeSizeOfCode = static_cast<ULONG>(stub->GetNumCodeBytes());
-        // TODO: manage reference count of interpreter stubs.  Look for examples...
-        *nativeEntry = dac_cast<BYTE*>(stub->GetEntryPoint());
+            *nativeSizeOfCode = static_cast<ULONG>(stub->GetNumCodeBytes());
+            // TODO: manage reference count of interpreter stubs.  Look for examples...
+            *nativeEntry = dac_cast<BYTE*>(stub->GetEntryPoint());
+        }
+        else
+        {
+            // Intentionally avoid generating any code - but it is required
+            // for us to have an unique nativeEntry since it will be part of some hash table
+            *nativeEntry = (BYTE*)(((uint64_t)interpMethInfo) | 0x1);
+        }
     }
 
     // Initialize the arg offset information.
@@ -1771,6 +1780,81 @@ ARG_SLOT Interpreter::ExecuteMethodWrapper(struct InterpreterMethodInfo* interpM
 
     interpFrame.Pop();
     return retVal;
+}
+
+COR_ILMETHOD_DECODER* CopiedGetAndVerifyMetadataILHeader(MethodDesc* pMD, PrepareCodeConfig* pConfig, COR_ILMETHOD_DECODER* pDecoderMemory)
+{
+    // STANDARD_VM_CONTRACT;
+    _ASSERTE(pMD != NULL);
+    _ASSERTE(!pMD->IsNoMetadata());
+    _ASSERTE(pConfig != NULL);
+    _ASSERTE(pDecoderMemory != NULL);
+
+    COR_ILMETHOD_DECODER* pHeader = NULL;
+    COR_ILMETHOD* ilHeader = pConfig->GetILHeader();
+    if (ilHeader == NULL)
+        return NULL;
+
+    COR_ILMETHOD_DECODER::DecoderStatus status = COR_ILMETHOD_DECODER::FORMAT_ERROR;
+    {
+        // Decoder ctor can AV on a malformed method header
+        AVInRuntimeImplOkayHolder AVOkay;
+        pHeader = new (pDecoderMemory) COR_ILMETHOD_DECODER(ilHeader, pMD->GetMDImport(), &status);
+    }
+
+    if (status == COR_ILMETHOD_DECODER::FORMAT_ERROR)
+        COMPlusThrowHR(COR_E_BADIMAGEFORMAT, BFA_BAD_IL);
+
+    return pHeader;
+}
+
+COR_ILMETHOD_DECODER* CopiedGetAndVerifyILHeader(MethodDesc* pMD, PrepareCodeConfig* pConfig, COR_ILMETHOD_DECODER* pIlDecoderMemory)
+{
+    // STANDARD_VM_CONTRACT;
+    _ASSERTE(pMD != NULL);
+    if (pMD->IsIL())
+    {
+        return CopiedGetAndVerifyMetadataILHeader(pMD, pConfig, pIlDecoderMemory);
+    }
+    else if (pMD->IsILStub())
+    {
+        ILStubResolver* pResolver = pMD->AsDynamicMethodDesc()->GetILStubResolver();
+        return pResolver->GetILHeader();
+    }
+
+    _ASSERTE(pMD->IsNoMetadata());
+    return NULL;
+}
+
+void ToMethodInfo(MethodDesc* ftn, COR_ILMETHOD_DECODER* ILHeader, CORINFO_METHOD_INFO* pMethodInfo);
+
+void* ToInterpreterMethodInfo(MethodDesc* pMd)
+{
+    // Given a methodDesc, convert it into an InterpreterMethodInfo
+    GCX_PREEMP();
+    NativeCodeVersion activeCodeVersion(pMd);
+    PrepareCodeConfigBuffer pccb(activeCodeVersion);
+    PrepareCodeConfig* pConfig = pccb.GetConfig();
+    COR_ILMETHOD_DECODER ilDecoderTemp;
+    COR_ILMETHOD_DECODER* pilHeader = CopiedGetAndVerifyILHeader(pMd, pConfig, &ilDecoderTemp);
+    CORINFO_METHOD_INFO methodInfo;
+    ToMethodInfo(pMd, pilHeader, &methodInfo);
+    CEEInfo* jitInfo = new CEEInfo(pMd, true);
+
+    InterpreterMethodInfo* interpreterMethodInfo;
+    BYTE* unusedEntry;
+    uint32_t unusedSize;
+    
+    // The method is modified so that it won't generate code anymore
+    Interpreter::GenerateInterpreterStub(jitInfo, &methodInfo, &unusedEntry, &unusedSize, &interpreterMethodInfo, false);
+    return (void*)(((uint64_t)interpreterMethodInfo) | 0x1);
+}
+
+void CallInterpretMethod(void* interpreterMethodInfo, BYTE* ilArgs)
+{
+    struct InterpreterMethodInfo* interpMethInfo = (struct InterpreterMethodInfo*)interpreterMethodInfo;
+    // TODO, return!
+    Interpreter::InterpretMethodBody(interpMethInfo, true, ilArgs, nullptr);
 }
 
 // TODO: Add GSCookie checks

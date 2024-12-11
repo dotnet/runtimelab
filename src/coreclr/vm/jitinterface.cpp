@@ -12885,6 +12885,11 @@ void ThrowExceptionForJit(HRESULT res)
 BOOL g_fAllowRel32 = TRUE;
 #endif
 
+void ToMethodInfo(MethodDesc* ftn, COR_ILMETHOD_DECODER* ILHeader, CORINFO_METHOD_INFO* pMethodInfo)
+{
+    MethodInfoHelperContext cxt{ ftn, ILHeader };
+    getMethodInfoHelper(cxt, pMethodInfo);
+}
 
 // ********************************************************************
 //                  README!!

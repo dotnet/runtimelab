@@ -88,7 +88,16 @@ void ECall::PopulateManagedStringConstructors()
         MethodDesc* pMD = CoreLibBinder::GetMethod((BinderMethodID)(METHOD__STRING__CTORF_FIRST + i));
         _ASSERTE(pMD != NULL);
 
+#ifdef FEATURE_INTERPRETER
+        // 
+        // Experiment Comment:
+        // Step 3: GetMultiCallableAddrOfCode will eventually try to interpret the entry point
+        // as a Precode. For that, we simply ignore that work.
+        //
+        PCODE pDest = (PCODE)((uint64_t)pMD & 0x03);
+#else
         PCODE pDest = pMD->GetMultiCallableAddrOfCode();
+#endif
 
         ECall::DynamicallyAssignFCallImpl(pDest, ECallCtor_First + i);
     }

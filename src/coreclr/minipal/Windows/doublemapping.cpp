@@ -184,8 +184,15 @@ void* VMToOSInterface::ReserveDoubleMappedMemory(void *mapperHandle, size_t offs
     return pResult;
 }
 
+extern void andrew_debug();
+
 void *VMToOSInterface::CommitDoubleMappedMemory(void* pStart, size_t size, bool isExecutable)
 {
+    if (isExecutable)
+    {
+        // Whenever this is called, we are generating code.
+        andrew_debug();
+    }
     return VirtualAlloc(pStart, size, MEM_COMMIT, isExecutable ? PAGE_EXECUTE_READ : PAGE_READWRITE);
 }
 

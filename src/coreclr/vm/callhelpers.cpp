@@ -18,6 +18,8 @@
 #include "invokeutil.h"
 #include "argdestination.h"
 
+void andrew_debug();
+
 #if defined(FEATURE_MULTICOREJIT) && defined(_DEBUG)
 
 // Allow system module for Appx
@@ -32,6 +34,10 @@ void AssertMulticoreJitAllowedModule(PCODE pTarget)
 }
 
 #endif
+
+void* ToInterpreterMethodInfo(MethodDesc* pMd);
+
+void CallInterpretMethod(void* interpreterMethodInfo, BYTE* ilArgs);
 
 // For X86, INSTALL_COMPLUS_EXCEPTION_HANDLER grants us sufficient protection to call into
 // managed code.
@@ -60,7 +66,44 @@ void CallDescrWorkerWithHandler(
 
     BEGIN_CALL_TO_MANAGEDEX(fCriticalCall ? EEToManagedCriticalCall : EEToManagedDefault);
 
+#ifdef FEATURE_INTERPRETER
+    uint64_t pCallTarget = (uint64_t)(pCallDescrData->pTarget);
+    if ((pCallTarget & 0x3) == 0x3)
+    {
+        //
+        // Experiment comment:
+        // Step 4: When we call a method, we simply redirect it to use CallInterpretMethod instead
+        // of calling a stub and then redirecting back to call InterpretMethod anyway.
+        // 
+        // That involves first converting the MethodDesc to an InterpreterMethodInfo. We will store
+        // that on the MethodTable slot so we do not do repeated conversion.
+        //
+        MethodDesc* pMD = (MethodDesc*)(pCallTarget & (~0x3));
+            
+        if (pMD->IsIL() && !pMD->IsUnboxingStub())
+        {
+            void* translated = ToInterpreterMethodInfo(pMD);
+            *(pMD->GetAddrOfSlot()) = pCallTarget = (PCODE)translated;
+        }
+    }
+    if ((pCallTarget & 0x3) == 0x1)
+    {
+        //
+        // Experiment comment:
+        // Step 5: Now we have an InterpreterMethodInfo, simply call CallInterpretMethod
+        // 
+        // That involves first converting the MethodDesc to an InterpreterMethodInfo. We will store
+        // that on the MethodTable slot so we do not do repeated conversion.
+        //
+        CallInterpretMethod((void*)(pCallTarget & (~0x1)), (BYTE*)pCallDescrData->pSrc);
+    }
+    else
+    {
+        CallDescrWorker(pCallDescrData);
+    }
+#else
     CallDescrWorker(pCallDescrData);
+#endif
 
     END_CALL_TO_MANAGED();
 }

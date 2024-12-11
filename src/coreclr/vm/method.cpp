@@ -2660,6 +2660,12 @@ MethodDesc* MethodDesc::GetMethodDescFromStubAddr(PCODE addr, BOOL fSpeculative 
 
     // Otherwise this must be some kind of precode
     //
+#ifdef FEATURE_INTERPRETER
+    if ((addr & 0x03) == 0x03)
+    {
+        return (MethodDesc*)((addr) & (~0x03));
+    }
+#endif
     PTR_Precode pPrecode = Precode::GetPrecodeFromEntryPoint(addr, fSpeculative);
     PREFIX_ASSUME(fSpeculative || (pPrecode != NULL));
     if (pPrecode != NULL)
@@ -2758,6 +2764,16 @@ void MethodDesc::EnsureTemporaryEntryPointCore(AllocMemTracker *pamTracker)
         GetMethodDescChunk()->DetermineAndSetIsEligibleForTieredCompilation();
         PTR_PCODE pSlot = GetAddrOfSlot();
 
+#ifdef FEATURE_INTERPRETER
+        //
+        // Experiment comment:
+        // Step 1: Whenever we create a MethodDesc, we used to generate a precode for it
+        // This change avoids that and we put in a tagged MethodDesc there instead.
+        //
+        IfFailThrow(EnsureCodeDataExists(pamTracker));
+        // TODO: Interlocked?
+        PCODE tempEntryPoint = m_codeData->TemporaryEntryPoint = (PCODE)((uint64_t)this | 0x3);
+#else
         AllocMemTracker amt;
         AllocMemTracker *pamTrackerPrecode = pamTracker != NULL ? pamTracker : &amt;
         Precode* pPrecode = Precode::Allocate(GetPrecodeType(), this, GetLoaderAllocator(), pamTrackerPrecode);
@@ -2769,6 +2785,7 @@ void MethodDesc::EnsureTemporaryEntryPointCore(AllocMemTracker *pamTracker)
 
         PCODE tempEntryPoint = m_codeData->TemporaryEntryPoint;
         _ASSERTE(tempEntryPoint != (PCODE)NULL);
+#endif
 
         if (*pSlot == (PCODE)NULL)
         {
@@ -2866,16 +2883,26 @@ Precode* MethodDesc::GetOrCreatePrecode()
 
 void MethodDesc::MarkPrecodeAsStableEntrypoint()
 {
+#ifndef FEATURE_INTERPRETER
 #if _DEBUG
     PCODE tempEntry = GetTemporaryEntryPointIfExists();
     _ASSERTE(tempEntry != (PCODE)NULL);
     PrecodeType requiredType = GetPrecodeType();
+    //
+    // Experiment comment:
+    // Step 2: Later on, for various reasons, we might want to know more about the function
+    // Currently, it is done by Precode::GetPrecodeFromEntryPoint, which will obviously not
+    // work because the entry point is no longer a Precode.
+    // 
+    // Depending on what we actually want, this needs to be fixed differently. For example
+    // this is just doing some assertion, we can simply ignore it.
+    //
     PrecodeType availableType = Precode::GetPrecodeFromEntryPoint(tempEntry)->GetType();
     _ASSERTE(requiredType == availableType);
 #endif
     _ASSERTE(!HasPrecode());
     _ASSERTE(RequiresStableEntryPoint());
-
+#endif
     InterlockedUpdateFlags3(enum_flag3_HasStableEntryPoint | enum_flag3_HasPrecode, TRUE);
 }
 
