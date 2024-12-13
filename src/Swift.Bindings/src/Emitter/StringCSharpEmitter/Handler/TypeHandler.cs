@@ -42,9 +42,9 @@ namespace BindingsGeneration
         /// Marshals the specified struct declaration.
         /// </summary>
         /// <param name="structDecl">The struct declaration.</param>
-        public IEnvironment Marshal(BaseDecl structDecl)
+        public IEnvironment Marshal(BaseDecl structDecl, TypeDatabase typeDatabase)
         {
-            return new TypeEnvironment(structDecl);
+            return new TypeEnvironment(structDecl, typeDatabase);
         }
 
         /// <summary>
@@ -54,14 +54,14 @@ namespace BindingsGeneration
         /// <param name="env">The environment.</param>
         /// <param name="conductor">The conductor instance.</param>
         /// <param name="typeDatabase">The type database instance.</param>
-        public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor, TypeDatabase typeDatabase)
+        public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor)
         {
             var structEnv = (TypeEnvironment)env;
             var structDecl = (StructDecl)structEnv.TypeDecl;
             var parentDecl = structDecl.ParentDecl ?? throw new ArgumentNullException(nameof(structDecl.ParentDecl));
             var moduleDecl = structDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(structDecl.ParentDecl));
             // Retrieve type info from the type database
-            var typeRecord = typeDatabase.Registrar.GetType(moduleDecl.Name, structDecl.Name);
+            var typeRecord = env.TypeDatabase.Registrar.GetType(moduleDecl.Name, structDecl.Name);
             SwiftTypeInfo? swiftTypeInfo = typeRecord?.SwiftTypeInfo;
 
             if (swiftTypeInfo.HasValue)
@@ -91,7 +91,7 @@ namespace BindingsGeneration
             }
             writer.WriteLine();
 
-            base.HandleBaseDecl(writer, structDecl.Declarations, conductor, typeDatabase);
+            base.HandleBaseDecl(writer, structDecl.Declarations, conductor, env.TypeDatabase);
 
             writer.Indent--;
             writer.WriteLine("}");
@@ -162,9 +162,9 @@ namespace BindingsGeneration
         /// Marshals the specified struct declaration.
         /// </summary>
         /// <param name="structDecl">The struct declaration.</param>
-        public IEnvironment Marshal(BaseDecl structDecl)
+        public IEnvironment Marshal(BaseDecl structDecl, TypeDatabase typeDatabase)
         {
-            return new TypeEnvironment(structDecl);
+            return new TypeEnvironment(structDecl, typeDatabase);
         }
 
         /// <summary>
@@ -174,13 +174,13 @@ namespace BindingsGeneration
         /// <param name="env">The environment.</param>
         /// <param name="conductor">The conductor instance.</param>
         /// <param name="typeDatabase">The type database instance.</param>
-        public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor, TypeDatabase typeDatabase)
+        public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor)
         {
             var structEnv = (TypeEnvironment)env;
             var structDecl = (StructDecl)structEnv.TypeDecl;
             var parentDecl = structDecl.ParentDecl ?? throw new ArgumentNullException(nameof(structDecl.ParentDecl));
             var moduleDecl = structDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(structDecl.ModuleDecl));
-            var typeRecord = typeDatabase.Registrar.GetType(moduleDecl.Name, structDecl.Name);
+            var typeRecord = env.TypeDatabase.Registrar.GetType(moduleDecl.Name, structDecl.Name);
             SwiftTypeInfo? swiftTypeInfo = typeRecord?.SwiftTypeInfo;
 
             writer.WriteLine($"public unsafe class {structDecl.Name} : IDisposable");
@@ -191,10 +191,10 @@ namespace BindingsGeneration
             WriteDisposeMethod(writer, structDecl.Name);
             WriteFinalizer(writer, structDecl.Name);
             WritePayload(writer);
-            WriteMetadata(writer, moduleDecl.Name, structDecl.MangledName, typeDatabase);
+            WriteMetadata(writer, moduleDecl.Name, structDecl.MangledName, env.TypeDatabase);
 
             writer.WriteLine();
-            base.HandleBaseDecl(writer, structDecl.Declarations, conductor, typeDatabase);
+            base.HandleBaseDecl(writer, structDecl.Declarations, conductor, env.TypeDatabase);
 
             writer.Indent--;
             writer.WriteLine("}");
@@ -302,9 +302,9 @@ namespace BindingsGeneration
         /// Marshals the specified class declaration.
         /// </summary>
         /// <param name="classDecl">The class declaration.</param>
-        public IEnvironment Marshal(BaseDecl classDecl)
+        public IEnvironment Marshal(BaseDecl classDecl, TypeDatabase typeDatabase)
         {
-            return new TypeEnvironment(classDecl);
+            return new TypeEnvironment(classDecl, typeDatabase);
         }
 
         /// <summary>
@@ -314,7 +314,7 @@ namespace BindingsGeneration
         /// <param name="env">The environment.</param>
         /// <param name="conductor">The conductor instance.</param>
         /// <param name="typeDatabase">The type database instance.</param>
-        public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor, TypeDatabase typeDatabase)
+        public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor)
         {
             var classEnv = (TypeEnvironment)env;
             var classDecl = (ClassDecl)classEnv.TypeDecl;
@@ -322,7 +322,7 @@ namespace BindingsGeneration
             writer.WriteLine($"public unsafe class {classDecl.Name} {{");
             writer.Indent++;
 
-            base.HandleBaseDecl(writer, classDecl.Declarations, conductor, typeDatabase);
+            base.HandleBaseDecl(writer, classDecl.Declarations, conductor, env.TypeDatabase);
 
             writer.Indent--;
             writer.WriteLine("}");

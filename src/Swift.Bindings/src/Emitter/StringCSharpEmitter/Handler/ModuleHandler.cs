@@ -42,9 +42,9 @@ namespace BindingsGeneration
         /// Marshals the module declaration.
         /// </summary>
         /// <param name="moduleDecl">The module declaration.</param>
-        public IEnvironment Marshal(BaseDecl moduleDecl)
+        public IEnvironment Marshal(BaseDecl moduleDecl, TypeDatabase typeDatabase)
         {
-            return new ModuleEnvironment(moduleDecl);
+            return new ModuleEnvironment(moduleDecl, typeDatabase);
         }
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace BindingsGeneration
         /// <param name="env">The environment.</param>
         /// <param name="conductor">The conductor instance.</param>
         /// <param name="typeDatabase">The type database instance.</param>
-        public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor, TypeDatabase typeDatabase)
+        public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor)
         {
             var moduleEnv = (ModuleEnvironment)env;
             var moduleDecl = (ModuleDecl)moduleEnv.ModuleDecl;
@@ -92,8 +92,8 @@ namespace BindingsGeneration
                 {
                     if (conductor.TryGetMethodHandler(methodDecl, out var methodHandler))
                     {
-                        var methodEnv = methodHandler.Marshal(methodDecl);
-                        methodHandler.Emit(writer, methodEnv, conductor, typeDatabase);
+                        var methodEnv = methodHandler.Marshal(methodDecl, env.TypeDatabase);
+                        methodHandler.Emit(writer, methodEnv, conductor);
                     }
                     else
                     {
@@ -108,7 +108,7 @@ namespace BindingsGeneration
             }
 
             // Emit top-level types
-            base.HandleBaseDecl(writer, moduleDecl.Declarations, conductor, typeDatabase);
+            base.HandleBaseDecl(writer, moduleDecl.Declarations, conductor, env.TypeDatabase);
 
             writer.Indent--;
             writer.WriteLine("}");

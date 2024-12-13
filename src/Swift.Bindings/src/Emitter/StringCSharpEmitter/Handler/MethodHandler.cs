@@ -42,9 +42,9 @@ namespace BindingsGeneration
         /// Marshals the specified constructor.
         /// </summary>
         /// <param name="decl"></param>
-        public IEnvironment Marshal(BaseDecl decl)
+        public IEnvironment Marshal(BaseDecl decl, TypeDatabase typeDatabase)
         {
-            return new MethodEnvironment(decl);
+            return new MethodEnvironment(decl, typeDatabase);
         }
 
         /// <summary>
@@ -54,11 +54,11 @@ namespace BindingsGeneration
         /// <param name="env">The environment.</param>
         /// <param name="conductor">The conductor instance.</param>
         /// <param name="typeDatabase">The type database instance.</param>
-        public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor, TypeDatabase typeDatabase)
+        public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor)
         {
             var methodEnv = (MethodEnvironment)env;
-            EmitWrapper(writer, methodEnv, typeDatabase);
-            PInvokeEmitter.EmitPInvoke(writer, methodEnv, typeDatabase);
+            EmitWrapper(writer, methodEnv);
+            PInvokeEmitter.EmitPInvoke(writer, methodEnv);
             writer.WriteLine();
         }
 
@@ -68,7 +68,7 @@ namespace BindingsGeneration
         /// <param name="writer">The IndentedTextWriter instance.</param>
         /// <param name="methodEnv">The method environment.</param>
         /// <param name="typeDatabase">The type database instance.</param>
-        private static void EmitWrapper(IndentedTextWriter writer, MethodEnvironment methodEnv, TypeDatabase typeDatabase)
+        private static void EmitWrapper(IndentedTextWriter writer, MethodEnvironment methodEnv)
         {
             var methodDecl = (MethodDecl)methodEnv.MethodDecl;
             var parentDecl = methodDecl.ParentDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
@@ -79,10 +79,10 @@ namespace BindingsGeneration
 
             string PInvokeName = $"{methodEnv.PInvokePrefix}{methodDecl.Name}";
 
-            var pInvokeSignature = SignatureHandler.GetPinvokeSignature(methodDecl, typeDatabase);
+            var pInvokeSignature = SignatureHandler.GetPinvokeSignature(methodDecl, methodEnv.TypeDatabase);
             string invokeArguments = pInvokeSignature.ParametersNames();
 
-            if (methodDecl.RequiresIndirectResult(parentDecl, typeDatabase))
+            if (methodDecl.RequiresIndirectResult(parentDecl, methodEnv.TypeDatabase))
             {
                 writer.WriteLine($"_payload = (SwiftHandle)NativeMemory.Alloc(_payloadSize);");
                 writer.WriteLine("var swiftIndirectResult = new SwiftIndirectResult((void*)_payload);");
@@ -135,9 +135,9 @@ namespace BindingsGeneration
         /// Marshals the method declaration.
         /// </summary>
         /// <param name="methodDecl">The method declaration.</param>
-        public IEnvironment Marshal(BaseDecl methodDecl)
+        public IEnvironment Marshal(BaseDecl methodDecl, TypeDatabase typeDatabase)
         {
-            return new MethodEnvironment(methodDecl);
+            return new MethodEnvironment(methodDecl, typeDatabase);
         }
 
         /// <summary>
@@ -147,12 +147,12 @@ namespace BindingsGeneration
         /// <param name="env">The environment.</param>
         /// <param name="conductor">The conductor instance.</param>
         /// <param name="typeDatabase">The type database.</param>
-        public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor, TypeDatabase typeDatabase)
+        public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor)
         {
             var methodEnv = (MethodEnvironment)env;
 
-            EmitWrapperMethod(writer, methodEnv, typeDatabase);
-            PInvokeEmitter.EmitPInvoke(writer, methodEnv, typeDatabase);
+            EmitWrapperMethod(writer, methodEnv);
+            PInvokeEmitter.EmitPInvoke(writer, methodEnv);
             writer.WriteLine();
         }
 
@@ -162,7 +162,7 @@ namespace BindingsGeneration
         /// <param name="writer">The IndentedTextWriter instance.</param>
         /// <param name="env">The environment.</param>
         /// <param name="typeDatabase">The type database.</param>
-        private void EmitWrapperMethod(IndentedTextWriter writer, MethodEnvironment env, TypeDatabase typeDatabase)
+        private void EmitWrapperMethod(IndentedTextWriter writer, MethodEnvironment env)
         {
             var methodDecl = (MethodDecl)env.MethodDecl;
             var parentDecl = methodDecl.ParentDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
@@ -185,7 +185,7 @@ namespace BindingsGeneration
 
             string returnPrefix = methodDecl.CSSignature.First().CSTypeIdentifier.Name == "void" ? "" : "return ";
 
-            var pInvokeSignature = SignatureHandler.GetPinvokeSignature(methodDecl, typeDatabase);
+            var pInvokeSignature = SignatureHandler.GetPinvokeSignature(methodDecl, env.TypeDatabase);
             string invokeArguments = pInvokeSignature.ParametersNames();
 
             // Call the PInvoke method
@@ -372,19 +372,19 @@ namespace BindingsGeneration
         /// <param name="writer">The IndentedTextWriter instance.</param>
         /// <param name="methodEnv">The method environment.</param>
         /// <param name="typeDatabase">The type database.</param>
-        public static void EmitPInvoke(IndentedTextWriter writer, MethodEnvironment methodEnv, TypeDatabase typeDatabase)
+        public static void EmitPInvoke(IndentedTextWriter writer, MethodEnvironment methodEnv)
         {
             var methodDecl = (MethodDecl)methodEnv.MethodDecl;
             var parentDecl = methodDecl.ParentDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
             var moduleDecl = methodDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(methodDecl.ModuleDecl));
 
             string PInvokeName = $"{methodEnv.PInvokePrefix}{methodDecl.Name}";
-            string libPath = typeDatabase.GetLibraryName(moduleDecl.Name);
+            string libPath = methodEnv.TypeDatabase.GetLibraryName(moduleDecl.Name);
 
             writer.WriteLine("[UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]");
             writer.WriteLine($"[DllImport(\"{libPath}\", EntryPoint = \"{methodDecl.MangledName}\")]");
 
-            var pInvokeSignature = SignatureHandler.GetPinvokeSignature(methodDecl, typeDatabase);
+            var pInvokeSignature = SignatureHandler.GetPinvokeSignature(methodDecl, methodEnv.TypeDatabase);
 
             writer.WriteLine($"private static extern {pInvokeSignature.ReturnType} {PInvokeName}({pInvokeSignature.ParametersString()});");
         }

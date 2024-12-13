@@ -16,7 +16,7 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="baseDecl">The base declaration.</param>
         /// <returns>The environment corresponding to the base declaration.</returns>
-        IEnvironment Marshal(BaseDecl baseDecl);
+        IEnvironment Marshal(BaseDecl baseDecl, TypeDatabase typeDatabase);
 
         /// <summary>
         /// Emits the necessary code for the specified environment.
@@ -24,8 +24,7 @@ namespace BindingsGeneration
         /// <param name="writer">The IndentedTextWriter instance.</param>
         /// <param name="env">The environment.</param>
         /// <param name="conductor">The conductor instance.</param>
-        /// <param name="typeDatabase">The type database instance.</param>
-        void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor, TypeDatabase typeDatabase);
+        void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor);
     }
 
     /// <summary>
@@ -83,8 +82,8 @@ namespace BindingsGeneration
                 {
                     if (conductor.TryGetTypeHandler(structDecl, out var handler))
                     {
-                        var env = handler.Marshal(structDecl);
-                        handler.Emit(writer, env, conductor, typeDatabase);
+                        var env = handler.Marshal(structDecl, typeDatabase);
+                        handler.Emit(writer, env, conductor);
                     }
                     else
                     {
@@ -95,8 +94,8 @@ namespace BindingsGeneration
                 {
                     if (conductor.TryGetTypeHandler(classDecl, out var handler))
                     {
-                        var env = handler.Marshal(classDecl);
-                        handler.Emit(writer, env, conductor, typeDatabase);
+                        var env = handler.Marshal(classDecl, typeDatabase);
+                        handler.Emit(writer, env, conductor);
                     }
                     else
                     {
@@ -107,8 +106,8 @@ namespace BindingsGeneration
                 {
                     if (conductor.TryGetMethodHandler(methodDecl, out var handler))
                     {
-                        var env = handler.Marshal(methodDecl);
-                        handler.Emit(writer, env, conductor, typeDatabase);
+                        var env = handler.Marshal(methodDecl, typeDatabase);
+                        handler.Emit(writer, env, conductor);
                     }
                     else
                     {

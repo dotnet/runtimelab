@@ -40,8 +40,8 @@ namespace BindingsGeneration
                 IndentedTextWriter writer = new(sw);
                 var @namespace = $"Swift.{moduleDecl.Name}";
 
-                var env = moduleHandler.Marshal(moduleDecl);
-                moduleHandler.Emit(writer, env, _conductor, _typeDatabase);
+                var env = moduleHandler.Marshal(moduleDecl, _typeDatabase);
+                moduleHandler.Emit(writer, env, _conductor);
 
                 string csOutputPath = Path.Combine(_outputDirectory, $"{@namespace}.cs");
                 using (StreamWriter outputFile = new(csOutputPath))

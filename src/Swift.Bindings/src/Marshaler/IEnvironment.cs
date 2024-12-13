@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using Swift.Runtime;
+
 namespace BindingsGeneration
 {
     /// <summary>
@@ -8,6 +10,7 @@ namespace BindingsGeneration
     /// </summary>
     public interface IEnvironment
     {
+        public TypeDatabase TypeDatabase { get; } // TODO: Replace with proper interface. Consider base class.
     }
 
     /// <summary>
@@ -17,12 +20,13 @@ namespace BindingsGeneration
     /// Initializes a new instance of the ModuleEnvironment class.
     /// </remarks>
     /// <param name="moduleDecl">The module declaration.</param>
-    public class ModuleEnvironment(BaseDecl moduleDecl) : IEnvironment
+    public class ModuleEnvironment(BaseDecl moduleDecl, TypeDatabase typeDatabase) : IEnvironment
     {
         /// <summary>
         /// Gets the module declaration.
         /// </summary>
         public BaseDecl ModuleDecl { get; private set; } = moduleDecl;
+        public TypeDatabase TypeDatabase { get; } = typeDatabase;
     }
 
     /// <summary>
@@ -32,12 +36,13 @@ namespace BindingsGeneration
     /// Initializes a new instance of the TypeEnvironment class.
     /// </remarks>
     /// <param name="typeDecl">The type declaration.</param>
-    public class TypeEnvironment(BaseDecl typeDecl) : IEnvironment
+    public class TypeEnvironment(BaseDecl typeDecl, TypeDatabase typeDatabase) : IEnvironment
     {
         /// <summary>
         /// Gets the type declaration.
         /// </summary>
         public BaseDecl TypeDecl { get; private set; } = typeDecl;
+        public TypeDatabase TypeDatabase { get; } = typeDatabase;
     }
 
     /// <summary>
@@ -47,7 +52,7 @@ namespace BindingsGeneration
     /// Initializes a new instance of the MethodEnvironment class.
     /// </remarks>
     /// <param name="methodDecl">The method declaration.</param>
-    public class MethodEnvironment(BaseDecl methodDecl) : IEnvironment
+    public class MethodEnvironment(BaseDecl methodDecl, TypeDatabase typeDatabase) : IEnvironment
     {
         /// <summary>
         /// Gets the method declaration.
@@ -58,5 +63,7 @@ namespace BindingsGeneration
         /// Gets the PInvoke prefix.
         /// </summary>
         public string PInvokePrefix { get; private set; } = "PInvoke_";
+
+        public TypeDatabase TypeDatabase { get; } = typeDatabase;
     }
 }
