@@ -27,7 +27,7 @@ namespace ILCompiler
         private readonly ProfileDataManager _profileDataManager;
         protected readonly MethodImportationErrorProvider _methodImportationErrorProvider;
         private readonly ReadOnlyFieldPolicy _readOnlyFieldPolicy;
-        protected readonly int _parallelism;
+        private readonly int _parallelism;
 
         public InstructionSetSupport InstructionSetSupport { get; }
 

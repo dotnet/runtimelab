@@ -9,6 +9,7 @@ using ILCompiler.DependencyAnalysis.Wasm;
 using ILCompiler.DependencyAnalysisFramework;
 
 using Internal.IL;
+using Internal.JitInterface;
 using Internal.Text;
 using Internal.TypeSystem;
 
@@ -16,9 +17,11 @@ using CombinedDependencyList = System.Collections.Generic.List<ILCompiler.Depend
 
 namespace ILCompiler.DependencyAnalysis
 {
-    internal sealed class LLVMMethodCodeNode : DependencyNodeCore<NodeFactory>, IMethodBodyNode, IMethodCodeNode, IWasmMethodCodeNode, ISpecialUnboxThunkNode
+    internal sealed class LLVMMethodCodeNode : DependencyNodeCore<NodeFactory>, IMethodBodyNode, IMethodCodeNode, IWasmMethodCodeNode, INodeWithDebugInfo, ISpecialUnboxThunkNode
     {
         private readonly MethodDesc _method;
+        private MethodDebugInformation _debugInfo;
+        private TypeDesc[] _localTypes;
         private DependencyList _dependencies;
 
         public LLVMMethodCodeNode(MethodDesc method)
@@ -29,6 +32,8 @@ namespace ILCompiler.DependencyAnalysis
 
         public MethodDesc Method => _method;
         public WasmMethodPreciseVirtualUnwindInfoNode PreciseVirtualUnwindInfo { get; private set; }
+        public bool HasDebugInfo => _debugInfo != null;
+        public bool IsStateMachineMoveNextMethod => _debugInfo.IsStateMachineMoveNextMethod;
         public bool CompilationCompleted { get; set; }
 
         public int Offset => 0;
@@ -71,9 +76,23 @@ namespace ILCompiler.DependencyAnalysis
 
         public void InitializeDebugVarInfos(DebugVarInfo[] debugVarInfos) { }
 
-        public void InitializeDebugInfo(MethodDebugInformation debugInfo) { }
+        public void InitializeDebugInfo(MethodDebugInformation debugInfo)
+        {
+            Debug.Assert(_debugInfo == null);
+            _debugInfo = debugInfo;
+        }
 
-        public void InitializeLocalTypes(TypeDesc[] localTypes) { }
+        public void InitializeLocalTypes(TypeDesc[] localTypes)
+        {
+            // This should really be combined with "InitializeDebugInfo".
+            Debug.Assert(_localTypes == null);
+            _localTypes = localTypes;
+        }
+
+        public IEnumerable<NativeSequencePoint> GetNativeSequencePoints() => null;
+
+        public IEnumerable<DebugVarInfoMetadata> GetDebugVars() =>
+            CorInfoImpl.GetDebugVarsForMethod(_method, _localTypes, static t => t, _debugInfo, out _);
 
         public void InitializeNonRelocationDependencies(DependencyList additionalDependencies)
         {

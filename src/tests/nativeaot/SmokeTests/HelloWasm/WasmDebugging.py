@@ -32,7 +32,7 @@ def run_wasm_debugging_tests(debugger):
     test_basic_array_display(target, process, thread)
     test_complex_array_display(target, process, thread)
     test_basic_multi_dimensional_array_display(target, process, thread)
-    # TODO-LLVM-DI: issue number needed.
+    # TODO-LLVM-DI: https://github.com/dotnet/runtimelab/issues/2884.
     process.Continue() # test_simple_struct_display(target, process, thread)
     test_simple_class_display(target, process, thread)
     test_derived_class_display(target, process, thread)

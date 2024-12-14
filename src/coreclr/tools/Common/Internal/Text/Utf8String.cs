@@ -21,6 +21,7 @@ namespace Internal.Text
             _value = Encoding.UTF8.GetBytes(s);
         }
 
+        public byte[] Value => _value;
         public int Length => _value.Length;
 
         // For now, define implicit conversions between string and Utf8String to aid the transition
