@@ -82,20 +82,20 @@ namespace BindingsGeneration
             writer.WriteLine("{");
             writer.Indent++;
 
-            string PInvokeName = $"{methodEnv.PInvokePrefix}{methodDecl.Name}";
+            var pInvokeName = NameProvider.GetPInvokeName(methodDecl);
 
             var pInvokeSignature = methodEnv.SignatureHandler.GetPInvokeSignature();
-            string invokeArguments = pInvokeSignature.CallArgumentsString();
+            var invokeArguments = pInvokeSignature.CallArgumentsString();
 
             if (methodDecl.RequiresIndirectResult(parentDecl, methodEnv.TypeDatabase))
             {
                 writer.WriteLine($"_payload = (SwiftHandle)NativeMemory.Alloc(_payloadSize);");
                 writer.WriteLine("var swiftIndirectResult = new SwiftIndirectResult((void*)_payload);");
-                writer.WriteLine($"{PInvokeName}({invokeArguments});");
+                writer.WriteLine($"{pInvokeName}({invokeArguments});");
             }
             else
             {
-                writer.WriteLine($"this = {PInvokeName}({invokeArguments});");
+                writer.WriteLine($"this = {pInvokeName}({invokeArguments});");
             }
 
             writer.Indent--;
@@ -175,7 +175,7 @@ namespace BindingsGeneration
             var methodDecl = (MethodDecl)env.MethodDecl;
             var parentDecl = methodDecl.ParentDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
 
-            var methodName = $"{env.PInvokePrefix}{methodDecl.Name}";
+            var pInvokeName = NameProvider.GetPInvokeName(methodDecl);
             var staticKeyword = methodDecl.MethodType == MethodType.Static || parentDecl is ModuleDecl ? "static " : "";
 
             writer.WriteLine($"public {staticKeyword}{methodDecl.CSSignature.First().CSTypeIdentifier.Name} {methodDecl.Name}({env.SignatureHandler.GetWrapperSignature().ParametersString()})");
@@ -196,7 +196,7 @@ namespace BindingsGeneration
             var invokeArguments = env.SignatureHandler.GetPInvokeSignature().CallArgumentsString();
 
             // Call the PInvoke method
-            writer.WriteLine($"{returnPrefix}{methodName}({invokeArguments});");
+            writer.WriteLine($"{returnPrefix}{pInvokeName}({invokeArguments});");
 
             writer.Indent--;
             writer.WriteLine("}");
@@ -467,15 +467,23 @@ namespace BindingsGeneration
             var methodDecl = (MethodDecl)methodEnv.MethodDecl;
             var moduleDecl = methodDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(methodDecl.ModuleDecl));
 
-            string PInvokeName = $"{methodEnv.PInvokePrefix}{methodDecl.Name}";
-            string libPath = methodEnv.TypeDatabase.GetLibraryName(moduleDecl.Name);
+            var pInvokeName = NameProvider.GetPInvokeName(methodDecl);
+            var libPath = methodEnv.TypeDatabase.GetLibraryName(moduleDecl.Name);
 
             writer.WriteLine("[UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]");
             writer.WriteLine($"[DllImport(\"{libPath}\", EntryPoint = \"{methodDecl.MangledName}\")]");
 
             var pInvokeSignature = methodEnv.SignatureHandler.GetPInvokeSignature();
 
-            writer.WriteLine($"private static extern {pInvokeSignature.ReturnType} {PInvokeName}({pInvokeSignature.ParametersString()});");
+            writer.WriteLine($"private static extern {pInvokeSignature.ReturnType} {pInvokeName}({pInvokeSignature.ParametersString()});");
+        }
+    }
+
+    public static class NameProvider
+    {
+        public static string GetPInvokeName(MethodDecl methodDecl)
+        {
+            return $"PInvoke_{methodDecl.Name}";
         }
     }
 }

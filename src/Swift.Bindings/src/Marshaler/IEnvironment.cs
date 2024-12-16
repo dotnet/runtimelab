@@ -73,10 +73,6 @@ namespace BindingsGeneration
         /// </summary>
         public MethodDecl MethodDecl { get; private set; } = methodDecl;
 
-        /// <summary>
-        /// Gets the PInvoke prefix.
-        /// </summary>
-        public string PInvokePrefix { get; private set; } = "PInvoke_";
 
         /// <summary>
         /// Gets the TypeDatabase
