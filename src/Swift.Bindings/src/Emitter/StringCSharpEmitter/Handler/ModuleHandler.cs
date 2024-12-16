@@ -42,8 +42,13 @@ namespace BindingsGeneration
         /// Marshals the module declaration.
         /// </summary>
         /// <param name="moduleDecl">The module declaration.</param>
-        public IEnvironment Marshal(BaseDecl moduleDecl, TypeDatabase typeDatabase)
+        /// <param name="typeDatabase">The type database instance.</param>
+        public IEnvironment Marshal(BaseDecl decl, TypeDatabase typeDatabase)
         {
+            if (decl is not ModuleDecl moduleDecl)
+            {
+                throw new ArgumentException("The provided decl must be a ModuleDecl.", nameof(decl));
+            }
             return new ModuleEnvironment(moduleDecl, typeDatabase);
         }
 
@@ -57,7 +62,7 @@ namespace BindingsGeneration
         public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor)
         {
             var moduleEnv = (ModuleEnvironment)env;
-            var moduleDecl = (ModuleDecl)moduleEnv.ModuleDecl;
+            var moduleDecl = moduleEnv.ModuleDecl;
 
             var generatedNamespace = $"Swift.{moduleDecl.Name}";
 

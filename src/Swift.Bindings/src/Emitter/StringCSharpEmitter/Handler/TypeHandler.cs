@@ -42,8 +42,13 @@ namespace BindingsGeneration
         /// Marshals the specified struct declaration.
         /// </summary>
         /// <param name="structDecl">The struct declaration.</param>
-        public IEnvironment Marshal(BaseDecl structDecl, TypeDatabase typeDatabase)
+        /// <param name="typeDatabase">The type database instance.</param>
+        public IEnvironment Marshal(BaseDecl decl, TypeDatabase typeDatabase)
         {
+            if (decl is not StructDecl structDecl)
+            {
+                throw new ArgumentException("The provided decl must be a StructDecl.", nameof(decl));
+            }
             return new TypeEnvironment(structDecl, typeDatabase);
         }
 
@@ -162,8 +167,14 @@ namespace BindingsGeneration
         /// Marshals the specified struct declaration.
         /// </summary>
         /// <param name="structDecl">The struct declaration.</param>
-        public IEnvironment Marshal(BaseDecl structDecl, TypeDatabase typeDatabase)
+        /// <param name="typeDatabase">The type database instance.</param>
+        public IEnvironment Marshal(BaseDecl decl, TypeDatabase typeDatabase)
         {
+            if (decl is not StructDecl structDecl)
+            {
+                throw new ArgumentException("The provided decl must be a StructDecl.", nameof(decl));
+
+            }
             return new TypeEnvironment(structDecl, typeDatabase);
         }
 
@@ -302,8 +313,13 @@ namespace BindingsGeneration
         /// Marshals the specified class declaration.
         /// </summary>
         /// <param name="classDecl">The class declaration.</param>
-        public IEnvironment Marshal(BaseDecl classDecl, TypeDatabase typeDatabase)
+        /// <param name="typeDatabase">The type database instance.</param>
+        public IEnvironment Marshal(BaseDecl decl, TypeDatabase typeDatabase)
         {
+            if (decl is not ClassDecl classDecl)
+            {
+                throw new ArgumentException("The provided decl must be a ClassDecl.", nameof(decl));
+            }
             return new TypeEnvironment(classDecl, typeDatabase);
         }
 
