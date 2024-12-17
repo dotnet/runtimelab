@@ -17,7 +17,7 @@ namespace BindingsGeneration
         /// <param name="decl">The base declaration.</param>
         public bool Handles(BaseDecl decl)
         {
-            return decl is StructDecl structDecl && structDecl.IsMarshalledAsStruct();
+            return decl is StructDecl structDecl && MarshallingHelpers.StructIsMarshalledAsCSStruct(structDecl);
         }
 
         /// <summary>
@@ -142,7 +142,7 @@ namespace BindingsGeneration
         /// <param name="decl">The base declaration.</param>
         public bool Handles(BaseDecl decl)
         {
-            return decl is StructDecl structDecl && !structDecl.IsMarshalledAsStruct();
+            return decl is StructDecl structDecl && !MarshallingHelpers.StructIsMarshalledAsCSStruct(structDecl);
         }
 
         /// <summary>

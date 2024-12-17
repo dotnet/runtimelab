@@ -5,21 +5,20 @@ using Swift.Runtime;
 
 namespace BindingsGeneration
 {
-    public static class MarshallingExtensions // TODO: Find better place for those
+    public static class MarshallingHelpers // TODO: Find better place for those
     {
-        public static bool RequiresIndirectResult(this MethodDecl methodDecl, BaseDecl parentDecl, TypeDatabase typeDatabase)
+        public static bool MethodRequiresIndirectResult(MethodDecl methodDecl, BaseDecl parentDecl, TypeDatabase typeDatabase)
         {
-            if (methodDecl.IsConstructor && !(parentDecl is StructDecl structDecl && structDecl.IsMarshalledAsStruct())) return true;
+            if (methodDecl.IsConstructor && !(parentDecl is StructDecl structDecl && StructIsMarshalledAsCSStruct(structDecl))) return true;
             var returnType = methodDecl.CSSignature.First();
 
             if (returnType.Name == "") return false; // TODO: Void should be handled differently
 
-            var returnTypeRecord = typeDatabase.Registrar.GetType(returnType);
-            if (!(returnTypeRecord.IsFrozen && returnTypeRecord.IsBlittable)) return true;
+            if (!ArgumentIsMarshalledAsCSStruct(returnType, typeDatabase)) return true;
             return false;
         }
 
-        public static bool RequiresSwiftSelf(this MethodDecl methodDecl, BaseDecl parentDecl)
+        public static bool MethodRequiresSwiftSelf(MethodDecl methodDecl, BaseDecl parentDecl)
         {
             if (parentDecl is ModuleDecl) return false; // global funcs
             if (methodDecl.MethodType == MethodType.Static) return false;
@@ -28,12 +27,18 @@ namespace BindingsGeneration
             return true;
         }
 
-        public static bool IsMarshalledAsStruct(this StructDecl decl)
+        public static bool StructIsMarshalledAsCSStruct(StructDecl decl)
         {
             return decl is StructDecl structDecl && structDecl.IsFrozen && structDecl.IsBlittable;
         }
 
-        public static TypeRecord GetType(this TypeRegistrar typeRegistrar, ArgumentDecl argumentDecl)
+        public static bool ArgumentIsMarshalledAsCSStruct(ArgumentDecl argumentDecl, TypeDatabase typeDatabase)
+        {
+            var typeRecord = GetType(argumentDecl, typeDatabase.Registrar); //TODO: Add information to typeRecord if thing is a struct
+            return typeRecord.IsFrozen && typeRecord.IsBlittable;
+        }
+
+        private static TypeRecord GetType(ArgumentDecl argumentDecl, TypeRegistrar typeRegistrar)
         {
             if (argumentDecl.SwiftTypeSpec is not NamedTypeSpec swiftTypeSpec)
             {

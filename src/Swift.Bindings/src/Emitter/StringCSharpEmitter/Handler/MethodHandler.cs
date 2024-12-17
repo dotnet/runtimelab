@@ -87,7 +87,7 @@ namespace BindingsGeneration
             var pInvokeSignature = methodEnv.SignatureHandler.GetPInvokeSignature();
             var invokeArguments = pInvokeSignature.CallArgumentsString();
 
-            if (methodDecl.RequiresIndirectResult(parentDecl, methodEnv.TypeDatabase))
+            if (MarshallingHelpers.MethodRequiresIndirectResult(methodDecl, parentDecl, methodEnv.TypeDatabase))
             {
                 writer.WriteLine($"_payload = (SwiftHandle)NativeMemory.Alloc(_payloadSize);");
                 writer.WriteLine("var swiftIndirectResult = new SwiftIndirectResult((void*)_payload);");
@@ -182,9 +182,9 @@ namespace BindingsGeneration
             writer.WriteLine("{");
             writer.Indent++;
 
-            if (methodDecl.RequiresSwiftSelf(parentDecl))
+            if (MarshallingHelpers.MethodRequiresSwiftSelf(methodDecl, parentDecl))
             {
-                if (parentDecl is StructDecl structDecl && structDecl.IsMarshalledAsStruct())
+                if (parentDecl is StructDecl structDecl && MarshallingHelpers.StructIsMarshalledAsCSStruct(structDecl))
                     writer.WriteLine($"var self = new SwiftSelf<{parentDecl.Name}>(this);");
                 else
                     writer.WriteLine($"var self = new SwiftSelf((void*)_payload);");
@@ -323,7 +323,7 @@ namespace BindingsGeneration
         /// </summary>
         public void HandleReturnType()
         {
-            if (!MethodDecl.RequiresIndirectResult(ParentDecl, TypeDatabase))
+            if (!MarshallingHelpers.MethodRequiresIndirectResult(MethodDecl, ParentDecl, TypeDatabase))
             {
                 var returnType = MethodDecl.CSSignature.First().CSTypeIdentifier.Name;
                 SetReturnType(returnType);
@@ -342,8 +342,7 @@ namespace BindingsGeneration
         {
             foreach (var argument in MethodDecl.CSSignature.Skip(1))
             {
-                var typeRecord = TypeDatabase.Registrar.GetType(argument);
-                if (typeRecord.IsFrozen && typeRecord.IsBlittable)
+                if (MarshallingHelpers.ArgumentIsMarshalledAsCSStruct(argument, TypeDatabase))
                 {
                     AddParameter(argument.CSTypeIdentifier.Name, argument.Name);
                 }
@@ -359,9 +358,9 @@ namespace BindingsGeneration
         /// </summary>
         public void HandleSwiftSelf()
         {
-            if (MethodDecl.RequiresSwiftSelf(ParentDecl))
+            if (MarshallingHelpers.MethodRequiresSwiftSelf(MethodDecl, ParentDecl))
             {
-                if (ParentDecl is StructDecl structDecl && structDecl.IsMarshalledAsStruct())
+                if (ParentDecl is StructDecl structDecl && MarshallingHelpers.StructIsMarshalledAsCSStruct(structDecl))
                 {
                     AddParameter($"SwiftSelf<{ParentDecl.Name}>", "self");
                 }
