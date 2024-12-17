@@ -16,20 +16,23 @@ namespace BindingsGeneration
     /// The Conductor class is responsible for managing handler factories and retrieving specific handlers for declarations.
     /// It initializes the handler factories and provides methods to fetch handlers for given declarations.
     /// </summary>
-    public class Conductor {
+    public class Conductor
+    {
         private readonly List<IModuleHandlerFactory> _moduleHandlerFactories = [
             new ModuleHandlerFactory()
         ];
         private readonly List<ITypeHandlerFactory> _typeHandlerFactories = [
-            new StructHandlerFactory(),
+            new NonFrozenStructHandlerFactory(),
+            new FrozenStructHandlerFactory(),
             new ClassHandlerFactory(),
         ];
         private readonly List<IFieldHandlerFactory> _fieldHandlerFactories = [];
         private readonly List<IMethodHandlerFactory> _methodHandlerFactories = [
-            new MethodHandlerFactory()
+            new MethodHandlerFactory(),
+            new ConstructorHandlerFactory(),
         ];
         private readonly List<IArgumentHandlerFactory> _argumentHandlerFactories = [];
-        
+
         /// <summary>
         /// Initializes a new instance of the Conductor class and loads all handler factories.
         /// </summary>

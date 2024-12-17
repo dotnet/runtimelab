@@ -218,7 +218,7 @@ namespace BindingsGeneration
         {
             writer.WriteLine();
             writer.WriteLine("private static nuint _payloadSize = Metadata.Size;");
-            writer.WriteLine("private SwiftHandle _payload;");
+            writer.WriteLine("private SwiftHandle _payload = SwiftHandle.Zero;");
             writer.WriteLine("private bool _disposed = false;");
         }
 
