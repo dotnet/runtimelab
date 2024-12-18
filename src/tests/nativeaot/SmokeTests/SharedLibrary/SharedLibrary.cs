@@ -147,29 +147,16 @@ namespace SharedLibrary
         }
 
         [UnmanagedCallersOnly(EntryPoint = "test-http")]
-        public static unsafe void wasmExportTestHttp(int p0)
+        public static unsafe void TestHttp(int port)
         {
-            TestHttp((((ushort)p0)));
-        }
+            [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "PollWasiEventLoopUntilResolvedVoid")]
+            static extern void PollWasiEventLoopUntilResolvedVoid(Thread t, Task task);
 
-        public static void TestHttp(ushort port)
-        {
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            var task = TestHttpAsync(port);
-            while (!task.IsCompleted)
-            {
-                WasiEventLoop.DispatchWasiEventLoop();
-            }
-            var exception = task.Exception;
-            if (exception is not null)
-            {
-                throw exception;
-            }
-
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            PollWasiEventLoopUntilResolvedVoid(null, TestHttpAsync((ushort)port));
             stopwatch.Stop();
-            // Verify that `WasiEventLoop.DispatchWasiEventLoop` returned
+
+            // Verify that `PollWasiEventLoopUntilResolvedVoid` returned
             // promptly once the main task finished, even if there were other
             // tasks (e.g. the default 100 second HttpClient timeout) still in
             // progress.
@@ -237,17 +224,6 @@ namespace SharedLibrary
             stopwatch.Stop();
             Trace.Assert(stopwatch.ElapsedMilliseconds >= 100);
             Trace.Assert(stopwatch.ElapsedMilliseconds < 1000);
-        }
-    }
-
-    internal static class WasiEventLoop
-    {
-        internal static void DispatchWasiEventLoop()
-        {
-            CallDispatchWasiEventLoop((Thread)null!);
-
-            [UnsafeAccessor(UnsafeAccessorKind.StaticMethod, Name = "DispatchWasiEventLoop")]
-            static extern void CallDispatchWasiEventLoop(Thread t);
         }
     }
 }
