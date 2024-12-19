@@ -31,6 +31,8 @@ variables:
 - ${{ if and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}:
   - name: TeamName
     value: dotnet-core
+  - name: OfficialSignType
+    value: test
 extends:
   template: /eng/pipelines/common/templates/template1es.yml@self
   parameters:

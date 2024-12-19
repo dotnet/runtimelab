@@ -23,7 +23,7 @@ jobs:
 
     variables:
       - name: '_SignType'
-        value: $[ coalesce(variables.OfficialSignType, 'test') ]
+        value: $[ coalesce(variables.OfficialSignType, 'real') ]
       
     templateContext:
       inputs:
