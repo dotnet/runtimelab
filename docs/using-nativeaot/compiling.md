@@ -71,6 +71,8 @@ Another large contributor to the size is globalization support (ICU data and cod
 
 Additionally, NativeAOT-LLVM supports the following properties:
 - `WasmHtmlTemplate`: specifies path to the HTML template within which the WASM application will be embedded. An example of a minimal template can be found in the Emscripten repo: https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html
+And item groups:
+- `WasmComponentTypeWit`: WIT files that will be passed to the linker to define the imports and exports ('world') of the application as a component.
 
 ## WebAssembly native libraries
 

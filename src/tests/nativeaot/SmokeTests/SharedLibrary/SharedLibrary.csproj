@@ -13,9 +13,6 @@
     <!-- Unable to compile a project with the Library output type for apple mobile devices -->
     <CLRTestTargetUnsupported Condition="'$(TargetsAppleMobile)' == 'true'">true</CLRTestTargetUnsupported>
 
-    <!-- https://github.com/dotnet/runtimelab/issues/2648 -->
-    <CLRTestTargetUnsupported Condition="'$(TargetOS)' == 'wasi'">true</CLRTestTargetUnsupported>
-
     <!-- Regression test for https://github.com/dotnet/runtime/issues/105330: make sure the UnmanagedCallersOnly are completely unreferenced,
          not even from stack trace mapping data -->
     <StackTraceSupport>false</StackTraceSupport>
@@ -66,6 +63,6 @@ cp SharedLibraryDriver$(NativeExtension) native/SharedLibrary$(NativeExtension)
 
   <ItemGroup Condition="'$(WasiReactorTestUsingNodeJS)' == 'true'">
     <Content Include="SharedLibraryDriver.mjs" CopyToOutputDirectory="PreserveNewest" />
-    <CustomLinkerArg Include="-Wl,--component-type,&quot;$(MSBuildProjectDirectory.Replace(&quot;\&quot;, &quot;/&quot;))/wit/world.wit&quot;" />
+    <WasmComponentTypeWit Include="wit/world.wit" />
   </ItemGroup>
 </Project>
