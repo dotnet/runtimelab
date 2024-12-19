@@ -3,7 +3,7 @@
 
 using Xunit;
 
-namespace BindingsGeneration.Tests
+namespace BindingsGeneration.StressTests
 {
     public class PInvokeTests : IClassFixture<PInvokeTests.TestFixture>
     {
@@ -41,7 +41,7 @@ namespace BindingsGeneration.Tests
             Assert.True(result);
         }
 
-                [Fact]
+        [Fact]
         public static void TestSwiftFunc0()
         {
             long result = Swift.PInvokeTests.PInvokeTests.swiftFunc0(233837, -19649, 949339914140650, 515944430, 3611910812477598, 1366498001922882872, 253, 36322, 9433, 4255310654111403863);

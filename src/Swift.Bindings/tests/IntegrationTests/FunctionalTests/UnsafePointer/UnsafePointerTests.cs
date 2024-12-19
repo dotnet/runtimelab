@@ -5,9 +5,9 @@ using Xunit;
 using System.Diagnostics;
 using System.Security.Cryptography;
 
-namespace BindingsGeneration.Tests
+namespace BindingsGeneration.FunctionalTests
 {
-    public class UnsafePointerTests: IClassFixture<UnsafePointerTests.TestFixture>
+    public class UnsafePointerTests : IClassFixture<UnsafePointerTests.TestFixture>
     {
         private readonly TestFixture _fixture;
 
@@ -90,7 +90,7 @@ namespace BindingsGeneration.Tests
                 Swift.Runtime.UnsafeMutableRawPointer _keyPtr = new Swift.Runtime.UnsafeMutableRawPointer(keyPtr);
                 Swift.Runtime.UnsafeMutableRawPointer _noncePtr = new Swift.Runtime.UnsafeMutableRawPointer(noncePtr);
                 Swift.Runtime.UnsafeMutableRawPointer _ciphertextPtr = new Swift.Runtime.UnsafeMutableRawPointer(ciphertextPtr);
-                Swift.Runtime.UnsafeMutableRawPointer _tagPtr = new Swift.Runtime.UnsafeMutableRawPointer (tagPtr);
+                Swift.Runtime.UnsafeMutableRawPointer _tagPtr = new Swift.Runtime.UnsafeMutableRawPointer(tagPtr);
                 Swift.Runtime.UnsafeMutablePointer<Byte> _plaintextPtr = new Swift.Runtime.UnsafeMutablePointer<Byte>(plaintextPtr);
                 Swift.Runtime.UnsafeMutableRawPointer _aadPtr = new Swift.Runtime.UnsafeMutableRawPointer(aadPtr);
 

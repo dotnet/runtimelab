@@ -8,12 +8,12 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Swift;
 using System.Security.Cryptography;
 using System.Diagnostics;
-using AesGcm = BindingsGeneration.Tests.AesGcm;
+using AesGcm = BindingsGeneration.FunctionalTests.AesGcm;
 
 
-namespace BindingsGeneration.Tests
+namespace BindingsGeneration.FunctionalTests
 {
-    public class CryptoKitTests: IClassFixture<CryptoKitTests.TestFixture>
+    public class CryptoKitTests : IClassFixture<CryptoKitTests.TestFixture>
     {
         private readonly TestFixture _fixture;
 
@@ -225,7 +225,7 @@ namespace BindingsGeneration.Tests
         private const int KeySizeInBytes = 256 / 8;
         private const int NonceSizeInBytes = 96 / 8;
         private const int TagSizeInBytes = 128 / 8;
-        
+
         [Fact]
         public static void TestUnsafePointerCryptoKit()
         {
@@ -244,7 +244,7 @@ namespace BindingsGeneration.Tests
 
             decrypted = new byte[dataLength];
             AesGcmEncrypt(key, nonce, plaintext, ciphertext, tag, default);
-            
+
             AesGcmDecrypt(key, nonce, ciphertext, tag, decrypted, default);
 
             Assert.True(plaintext.SequenceEqual(decrypted));

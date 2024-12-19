@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 using System.Reflection;
 using Swift.Runtime;
 
-namespace BindingsGeneration.Tests
+namespace BindingsGeneration.FunctionalTests
 {
     /// <summary>
     /// Represents a Swift type in C#.
@@ -67,23 +67,23 @@ namespace BindingsGeneration.Tests
         public const string Path = "/System/Library/Frameworks/Foundation.framework/Foundation";
 
         [DllImport(Path, EntryPoint = "$s10Foundation4DataV5bytes5countACSV_SitcfC")]
-        [UnmanagedCallConv(CallConvs = [ typeof(CallConvSwift) ])]
+        [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
         public static unsafe extern Data PInvoke_Data_InitWithBytes(UnsafeRawPointer pointer, nint count);
 
         [DllImport(Path, EntryPoint = "$s10Foundation4DataV5countSivg")]
-        [UnmanagedCallConv(CallConvs = [ typeof(CallConvSwift) ])]
+        [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
         public static unsafe extern nint PInvoke_Data_GetCount(Data data);
 
         [DllImport(Path, EntryPoint = "$s10Foundation4DataV9copyBytes2to5countySpys5UInt8VG_SitF")]
-        [UnmanagedCallConv(CallConvs = [ typeof(CallConvSwift) ])]
+        [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
         public static unsafe extern void PInvoke_Data_CopyBytes(UnsafeMutablePointer<byte> buffer, nint count, Data data);
 
         [DllImport(Path, EntryPoint = "swift_getWitnessTable")]
-        [UnmanagedCallConv(CallConvs = [ typeof(CallConvSwift) ])]
+        [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
         public static unsafe extern void* PInvoke_Swift_GetWitnessTable(void* conformanceDescriptor, TypeMetadata typeMetadata, void* instantiationArgs);
 
         [DllImport(Path, EntryPoint = "$s10Foundation4DataVMa")]
-        [UnmanagedCallConv(CallConvs = [ typeof(CallConvSwift) ])]
+        [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
         public static unsafe extern TypeMetadata PInvoke_Data_GetMetadata();
     }
 
@@ -92,7 +92,7 @@ namespace BindingsGeneration.Tests
     /// </summary>
     public static class Runtime
     {
-        public static unsafe TypeMetadata GetMetadata<T>(T type) where T: ISwiftObject
+        public static unsafe TypeMetadata GetMetadata<T>(T type) where T : ISwiftObject
         {
             return T.Metadata;
         }

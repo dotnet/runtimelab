@@ -4,7 +4,7 @@
 using Xunit;
 using Swift.NonFrozenStructsTests;
 
-namespace BindingsGeneration.Tests
+namespace BindingsGeneration.StressTests
 {
     public class NonFrozenStructsTests : IClassFixture<NonFrozenStructsTests.TestFixture>
     {

@@ -8,7 +8,7 @@ using System.Security.Cryptography;
 using Swift.Runtime;
 using Swift.UnsafeBufferPointerTests;
 
-namespace BindingsGeneration.Tests
+namespace BindingsGeneration.FunctionalTests
 {
     public class UnsafeBufferPointerTests : IClassFixture<UnsafeBufferPointerTests.TestFixture>
     {
@@ -93,7 +93,7 @@ namespace BindingsGeneration.Tests
                 Swift.Runtime.UnsafeRawBufferPointer keyBuffer = new Swift.Runtime.UnsafeRawBufferPointer(keyPtr, key.Length);
                 Swift.Runtime.UnsafeRawBufferPointer nonceBuffer = new Swift.Runtime.UnsafeRawBufferPointer(noncePtr, nonce.Length);
                 Swift.Runtime.UnsafeRawBufferPointer ciphertextBuffer = new Swift.Runtime.UnsafeRawBufferPointer(ciphertextPtr, ciphertext.Length);
-                Swift.Runtime.UnsafeRawBufferPointer tagBuffer = new Swift.Runtime.UnsafeRawBufferPointer (tagPtr, tag.Length);
+                Swift.Runtime.UnsafeRawBufferPointer tagBuffer = new Swift.Runtime.UnsafeRawBufferPointer(tagPtr, tag.Length);
                 Swift.Runtime.UnsafeMutableBufferPointer<Byte> plaintextBuffer = new Swift.Runtime.UnsafeMutableBufferPointer<Byte>(plaintextPtr, plaintext.Length);
                 Swift.Runtime.UnsafeRawBufferPointer aadBuffer = new Swift.Runtime.UnsafeRawBufferPointer(aadPtr, aad.Length);
 
