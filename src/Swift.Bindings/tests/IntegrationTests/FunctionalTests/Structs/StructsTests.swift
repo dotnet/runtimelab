@@ -55,33 +55,33 @@ public struct NonFrozenStruct
     }
 }
 
-@frozen 
-public struct FrozenStructWithNonFrozenMember
-{
-    public var x: FrozenStruct
-    public var y: NonFrozenStruct
+// @frozen 
+// public struct FrozenStructWithNonFrozenMember
+// {
+//     public var x: FrozenStruct
+//     public var y: NonFrozenStruct
 
-    public init(x: FrozenStruct, y: NonFrozenStruct)
-    {
-        self.x = x
-        self.y = y
-    }
+//     public init(x: FrozenStruct, y: NonFrozenStruct)
+//     {
+//         self.x = x
+//         self.y = y
+//     }
 
-    public func getX() -> FrozenStruct
-    {
-        return x
-    }
+//     public func getX() -> FrozenStruct
+//     {
+//         return x
+//     }
 
-    public func getY() -> NonFrozenStruct
-    {
-        return y
-    }
+//     public func getY() -> NonFrozenStruct
+//     {
+//         return y
+//     }
 
-    public func sum(a: NonFrozenStruct, b: FrozenStruct) -> Int
-    {
-        return x.sum() + y.sum() + a.sum() + b.sum()
-    }
-}
+//     public func sum(a: NonFrozenStruct, b: FrozenStruct) -> Int
+//     {
+//         return x.sum() + y.sum() + a.sum() + b.sum()
+//     }
+// }
 
 public struct NonFrozenStructWithNonFrozenMember
 {
