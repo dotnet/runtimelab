@@ -56,26 +56,26 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(y, gotY);
         }
 
-        // [Fact]
-        // public void TestNonFrozenStructWithNonFrozenMemberCreation()
-        // {
-        //     IntPtr frozenX = 1;
-        //     IntPtr frozenY = 2;
-        //     IntPtr nonFrozenX = 30;
-        //     IntPtr nonFrozenY = 40;
+        [Fact(Skip = "Indirect result on non-constructor not implemented")]
+        public void TestNonFrozenStructWithNonFrozenMemberCreation()
+        {
+            IntPtr frozenX = 1;
+            IntPtr frozenY = 2;
+            IntPtr nonFrozenX = 30;
+            IntPtr nonFrozenY = 40;
 
-        //     var frozen = new FrozenStruct(frozenX, frozenY);
-        //     var nonFrozen = new NonFrozenStruct(nonFrozenX, nonFrozenY);
+            var frozen = new FrozenStruct(frozenX, frozenY);
+            var nonFrozen = new NonFrozenStruct(nonFrozenX, nonFrozenY);
 
-        //     var complexStruct = new NonFrozenStructWithNonFrozenMember(frozen, nonFrozen);
-        //     var gotF = complexStruct.getX();
-        //     var gotNF = complexStruct.getY();
+            var complexStruct = new NonFrozenStructWithNonFrozenMember(frozen, nonFrozen);
+            var gotF = complexStruct.getX();
+            var gotNF = complexStruct.getY();
 
-        //     Assert.Equal(frozenX, gotF.getX());
-        //     Assert.Equal(frozenY, gotF.getY());
-        //     Assert.Equal(nonFrozenX, gotNF.getX());
-        //     Assert.Equal(nonFrozenY, gotNF.getY());
-        // }
+            Assert.Equal(frozenX, gotF.getX());
+            Assert.Equal(frozenY, gotF.getY());
+            Assert.Equal(nonFrozenX, gotNF.getX());
+            Assert.Equal(nonFrozenY, gotNF.getY());
+        }
 
         [Fact]
         public void TestInstanceMethodOnFrozenStruct()
@@ -148,17 +148,17 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(y, result.getY());
         }
 
-        // [Fact]
-        // public void TestModuleFuncReturningNonFrozenStruct()
-        // {
-        //     IntPtr x = 1;
-        //     IntPtr y = 2;
+        [Fact(Skip = "Indirect result on non-constructor not implemented")]
+        public void TestModuleFuncReturningNonFrozenStruct()
+        {
+            IntPtr x = 1;
+            IntPtr y = 2;
 
-        //     var result = StructsTests.createNonFrozenStruct(x, y);
+            var result = StructsTests.createNonFrozenStruct(x, y);
 
-        //     Assert.Equal(x, result.getX());
-        //     Assert.Equal(y, result.getY());
-        // }
+            Assert.Equal(x, result.getX());
+            Assert.Equal(y, result.getY());
+        }
 
         [Fact]
         public void TestInstanceMethodReturningFrozenStruct()
@@ -173,18 +173,18 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(y, result.getY());
         }
 
-        // [Fact]
-        // public void TestInstanceMethodReturningNonFrozenStruct()
-        // {
-        //     IntPtr x = 1;
-        //     IntPtr y = 2;
-        //     var structBuilder = new StructBuilder(x, y);
+        [Fact(Skip = "Indirect result on non-constructor not implemented")]
+        public void TestInstanceMethodReturningNonFrozenStruct()
+        {
+            IntPtr x = 1;
+            IntPtr y = 2;
+            var structBuilder = new StructBuilder(x, y);
 
-        //     var result = structBuilder.createNonFrozenStruct();
+            var result = structBuilder.createNonFrozenStruct();
 
-        //     Assert.Equal(x, result.getX());
-        //     Assert.Equal(y, result.getY());
-        // }
+            Assert.Equal(x, result.getX());
+            Assert.Equal(y, result.getY());
+        }
 
         [Fact]
         public void TestStaticMethodReturningFrozenStruct()
@@ -198,16 +198,16 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(y, result.getY());
         }
 
-        // [Fact]
-        // public void TestStaticMethodReturningNonFrozenStruct()
-        // {
-        //     IntPtr x = 1;
-        //     IntPtr y = 2;
+        [Fact(Skip = "Indirect result on non-constructor not implemented")]
+        public void TestStaticMethodReturningNonFrozenStruct()
+        {
+            IntPtr x = 1;
+            IntPtr y = 2;
 
-        //     var result = StructBuilder.createNonFrozenStruct(x, y);
+            var result = StructBuilder.createNonFrozenStruct(x, y);
 
-        //     Assert.Equal(x, result.getX());
-        //     Assert.Equal(y, result.getY());
-        // }
+            Assert.Equal(x, result.getX());
+            Assert.Equal(y, result.getY());
+        }
     }
 }
