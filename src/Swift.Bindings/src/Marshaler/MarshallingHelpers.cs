@@ -34,19 +34,22 @@ namespace BindingsGeneration
 
         public static bool ArgumentIsMarshalledAsCSStruct(ArgumentDecl argumentDecl, TypeDatabase typeDatabase)
         {
-            var typeRecord = GetType(argumentDecl, typeDatabase.Registrar); //TODO: Add information to typeRecord if thing is a struct
+            var typeRecord = GetType(argumentDecl, typeDatabase.Registrar) ?? throw new NotImplementedException($"Type {argumentDecl.Name} not found in type database"); //TODO: Add information to typeRecord if thing is a struct
             return typeRecord.IsFrozen && typeRecord.IsBlittable;
         }
 
-        private static TypeRecord GetType(ArgumentDecl argumentDecl, TypeRegistrar typeRegistrar)
+        public static TypeRecord GetType(ArgumentDecl argumentDecl, TypeRegistrar typeRegistrar)
         {
-            if (argumentDecl.SwiftTypeSpec is not NamedTypeSpec swiftTypeSpec)
+            switch (argumentDecl.SwiftTypeSpec)
             {
-                throw new NotImplementedException($"{argumentDecl} is not a NamedTypeSpec");
+                case NamedTypeSpec namedTypeSpec:
+                    string typeIdentifier = namedTypeSpec.GenericParameters.Count > 0 ? $"{namedTypeSpec.NameWithoutModule}`{namedTypeSpec.GenericParameters.Count}" : namedTypeSpec.NameWithoutModule;
+                    return typeRegistrar.GetType(namedTypeSpec.Module, typeIdentifier) ?? throw new NotImplementedException($"Type ${argumentDecl} not found in type database");
+                case TupleTypeSpec tupleTypeSpec:
+                    return typeRegistrar.GetType(string.Empty, tupleTypeSpec.ToString(true)) ?? throw new NotImplementedException($"Type ${argumentDecl} not found in type database");
+                default:
+                    throw new NotImplementedException($"{argumentDecl} is not supported");
             }
-
-            var typeRecord = typeRegistrar.GetType(swiftTypeSpec.Module, swiftTypeSpec.NameWithoutModule) ?? throw new NotImplementedException($"Type {swiftTypeSpec.Name} not found in type database");
-            return typeRecord;
         }
     }
 }

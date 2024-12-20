@@ -5,6 +5,7 @@ using Xunit;
 using System;
 using System.Diagnostics;
 using System.Security.Cryptography;
+using Swift;
 using Swift.Runtime;
 using Swift.UnsafeBufferPointerTests;
 
@@ -49,12 +50,12 @@ namespace BindingsGeneration.FunctionalTests
             {
                 const int Success = 1;
 
-                Swift.Runtime.UnsafeRawBufferPointer keyBuffer = new Swift.Runtime.UnsafeRawBufferPointer(keyPtr, key.Length);
-                Swift.Runtime.UnsafeRawBufferPointer nonceBuffer = new Swift.Runtime.UnsafeRawBufferPointer(noncePtr, nonce.Length);
-                Swift.Runtime.UnsafeRawBufferPointer plaintextBuffer = new Swift.Runtime.UnsafeRawBufferPointer(plaintextPtr, plaintext.Length);
-                Swift.Runtime.UnsafeMutableBufferPointer<Byte> ciphertextBuffer = new Swift.Runtime.UnsafeMutableBufferPointer<Byte>(ciphertextPtr, ciphertext.Length);
-                Swift.Runtime.UnsafeMutableBufferPointer<Byte> tagBuffer = new Swift.Runtime.UnsafeMutableBufferPointer<Byte>(tagPtr, tag.Length);
-                Swift.Runtime.UnsafeRawBufferPointer aadBuffer = new Swift.Runtime.UnsafeRawBufferPointer(aadPtr, aad.Length);
+                UnsafeRawBufferPointer keyBuffer = new UnsafeRawBufferPointer(keyPtr, key.Length);
+                UnsafeRawBufferPointer nonceBuffer = new UnsafeRawBufferPointer(noncePtr, nonce.Length);
+                UnsafeRawBufferPointer plaintextBuffer = new UnsafeRawBufferPointer(plaintextPtr, plaintext.Length);
+                UnsafeMutableBufferPointer<Byte> ciphertextBuffer = new UnsafeMutableBufferPointer<Byte>(ciphertextPtr, ciphertext.Length);
+                UnsafeMutableBufferPointer<Byte> tagBuffer = new UnsafeMutableBufferPointer<Byte>(tagPtr, tag.Length);
+                UnsafeRawBufferPointer aadBuffer = new UnsafeRawBufferPointer(aadPtr, aad.Length);
 
                 int result = Swift.UnsafeBufferPointerTests.UnsafeBufferPointerTests.AppleCryptoNative_ChaCha20Poly1305Encrypt(
                                     keyBuffer,
@@ -90,12 +91,12 @@ namespace BindingsGeneration.FunctionalTests
                 const int Success = 1;
                 const int AuthTagMismatch = -1;
 
-                Swift.Runtime.UnsafeRawBufferPointer keyBuffer = new Swift.Runtime.UnsafeRawBufferPointer(keyPtr, key.Length);
-                Swift.Runtime.UnsafeRawBufferPointer nonceBuffer = new Swift.Runtime.UnsafeRawBufferPointer(noncePtr, nonce.Length);
-                Swift.Runtime.UnsafeRawBufferPointer ciphertextBuffer = new Swift.Runtime.UnsafeRawBufferPointer(ciphertextPtr, ciphertext.Length);
-                Swift.Runtime.UnsafeRawBufferPointer tagBuffer = new Swift.Runtime.UnsafeRawBufferPointer(tagPtr, tag.Length);
-                Swift.Runtime.UnsafeMutableBufferPointer<Byte> plaintextBuffer = new Swift.Runtime.UnsafeMutableBufferPointer<Byte>(plaintextPtr, plaintext.Length);
-                Swift.Runtime.UnsafeRawBufferPointer aadBuffer = new Swift.Runtime.UnsafeRawBufferPointer(aadPtr, aad.Length);
+                UnsafeRawBufferPointer keyBuffer = new UnsafeRawBufferPointer(keyPtr, key.Length);
+                UnsafeRawBufferPointer nonceBuffer = new UnsafeRawBufferPointer(noncePtr, nonce.Length);
+                UnsafeRawBufferPointer ciphertextBuffer = new UnsafeRawBufferPointer(ciphertextPtr, ciphertext.Length);
+                UnsafeRawBufferPointer tagBuffer = new UnsafeRawBufferPointer(tagPtr, tag.Length);
+                UnsafeMutableBufferPointer<Byte> plaintextBuffer = new UnsafeMutableBufferPointer<Byte>(plaintextPtr, plaintext.Length);
+                UnsafeRawBufferPointer aadBuffer = new UnsafeRawBufferPointer(aadPtr, aad.Length);
 
                 int result = Swift.UnsafeBufferPointerTests.UnsafeBufferPointerTests.AppleCryptoNative_ChaCha20Poly1305Decrypt(
                     keyBuffer,

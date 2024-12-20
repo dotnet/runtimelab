@@ -234,6 +234,7 @@ namespace BindingsGeneration
             writer.WriteLine("{");
             writer.Indent++;
             writer.WriteLine("NativeMemory.Free((void*)_payload);");
+            writer.WriteLine("_payload = SwiftHandle.Zero;");
             writer.WriteLine("_disposed = true;");
             writer.WriteLine("GC.SuppressFinalize(this);");
             writer.Indent--;
@@ -251,6 +252,7 @@ namespace BindingsGeneration
             writer.WriteLine("{");
             writer.Indent++;
             writer.WriteLine("NativeMemory.Free((void*)_payload);");
+            writer.WriteLine("_payload = SwiftHandle.Zero;");
             writer.Indent--;
             writer.WriteLine("}");
         }

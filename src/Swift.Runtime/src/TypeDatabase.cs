@@ -92,7 +92,7 @@ namespace Swift.Runtime
 
                 string moduleName = typeDeclarationNode?.Attributes?["module"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'module' attribute.");
                 string swiftTypeIdentifier = typeDeclarationNode?.Attributes?["name"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'name' attribute.");
-                string swiftMetadataAccessor = typeDeclarationNode?.Attributes?["metadataaccessor"]?.Value ?? string.Empty;
+                string swiftMangledName = typeDeclarationNode?.Attributes?["mangledName"]?.Value ?? string.Empty;
                 string csharpTypeIdentifier = entityNode?.Attributes?["managedTypeName"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'managedTypeName' attribute.");
                 string @namespace = entityNode?.Attributes?["managedNameSpace"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'managedNameSpace' attribute.");
                 string frozen = typeDeclarationNode?.Attributes?["frozen"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'frozen' attribute.");
@@ -105,11 +105,19 @@ namespace Swift.Runtime
 
                 var typeRecord = Registrar.RegisterType(moduleName, swiftTypeIdentifier);
                 typeRecord.TypeIdentifier = csharpTypeIdentifier;
-                typeRecord.MetadataAccessor = $"{swiftMetadataAccessor}Ma";
+                typeRecord.MetadataAccessor = $"{swiftMangledName}Ma";
                 typeRecord.IsProcessed = true;
                 typeRecord.IsBlittable = blittable.ToLower() == "true";
                 typeRecord.IsFrozen = frozen.ToLower() == "true";
             }
+
+            // Register AnyType
+            var anyTypeRecord = Registrar.RegisterType("Swift", "AnyType");
+            anyTypeRecord.TypeIdentifier = "AnyType";
+            anyTypeRecord.MetadataAccessor = string.Empty;
+            anyTypeRecord.IsProcessed = true;
+            anyTypeRecord.IsBlittable = false;
+            anyTypeRecord.IsFrozen = false;
         }
 
         /// <summary>
@@ -163,29 +171,6 @@ namespace Swift.Runtime
         }
 
         /// <summary>
-        /// Gets the Swift type information for the specified Swift type name.
-        /// </summary>
-        /// <returns>The list of unprocessed modules.</returns>
-        public List<string> GetUnprocessedModules()
-        {
-            // Exclude built-in modules and processed modules
-            var modules = Registrar.GetModules();
-            return modules.Where(x => !x.IsProcessed && x.Name != "" && x.Name != "Swift").Select(x => x.Name).ToList();
-        }
-
-        /// <summary>
-        /// Gets the unprocessed type records for the specified module.
-        /// </summary>
-        /// <param name="moduleName">The Swift module name.</param>
-        /// <returns>The list of unprocessed type records.</returns>
-        public List<string> GetUnprocessedTypes(string moduleName)
-        {
-            // Exclude processed types
-            var types = Registrar.GetTypes(moduleName);
-            return types.Where(x => !x.IsProcessed).Select(x => x.TypeIdentifier).ToList();
-        }
-
-        /// <summary>
         /// Gets the library name for the specified module.
         /// </summary>
         /// <param name="moduleName">The Swift module name.</param>
@@ -193,7 +178,7 @@ namespace Swift.Runtime
         public string GetLibraryName(string moduleName)
         {
             var moduleRecord = Registrar.GetModule(moduleName);
-            return moduleRecord?.Path ?? "";
+            return moduleRecord!.Path ?? throw new Exception($"Library path does not exist for module {moduleName}.");
         }
     }
 }

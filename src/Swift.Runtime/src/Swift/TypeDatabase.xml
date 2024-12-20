@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<swifttypedatabase version="1.0">
+    <entities>
+        <entity managedNameSpace="System" managedTypeName="void">
+            <typedeclaration kind="typealias" name="()" module="" mangledName="$sytN" frozen="false" blittable ="false" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="Byte">
+            <typedeclaration kind="struct" name="UInt8" module="Swift" mangledName="$ss5UInt8V" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="SByte">
+            <typedeclaration kind="struct" name="Int8" module="Swift" mangledName="$ss4Int8V" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="Int16">
+            <typedeclaration kind="struct" name="Int16" module="Swift" mangledName="$ss5Int16V" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="UInt16">
+            <typedeclaration kind="struct" name="UInt16" module="Swift" mangledName="$ss6UInt16V" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="Int32">
+            <typedeclaration kind="struct" name="Int32" module="Swift" mangledName="$ss5Int32V" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="UInt32">
+            <typedeclaration kind="struct" name="UInt32" module="Swift" mangledName="$ss6UInt32V" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="Int64">
+            <typedeclaration kind="struct" name="Int64" module="Swift" mangledName="$ss5Int64V" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="UInt64">
+            <typedeclaration kind="struct" name="UInt64" module="Swift" mangledName="$ss6UInt64V" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="Single">
+            <typedeclaration kind="struct" name="Float" module="Swift" mangledName="$sSf" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="Double">
+            <typedeclaration kind="struct" name="Double" module="Swift" mangledName="$sSd" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="IntPtr">
+            <typedeclaration kind="struct" name="Int" module="Swift" mangledName="$sSi" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="UIntPtr">
+            <typedeclaration kind="struct" name="UInt" module="Swift" mangledName="$sSu" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="System" managedTypeName="bool">
+            <typedeclaration kind="struct" name="Bool" module="Swift" mangledName="$sSb" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="Swift.Runtime" managedTypeName="UnsafePointer">
+            <typedeclaration kind="struct" name="UnsafePointer`1" module="Swift" mangledName="sSP" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="Swift.Runtime" managedTypeName="UnsafeMutablePointer">
+            <typedeclaration kind="struct" name="UnsafeMutablePointer`1" module="Swift" mangledName="sSp" frozen="true" blittable ="true" />
+        </entity>
+        <entity managedNameSpace="Swift.Runtime" managedTypeName="UnsafeRawPointer">
+            <typedeclaration kind="struct" name="UnsafeRawPointer" module="Swift" mangledName="sSV" frozen="true" blittable ="true"/>
+        </entity>
+        <entity managedNameSpace="Swift.Runtime" managedTypeName="UnsafeMutableRawPointer">
+            <typedeclaration kind="struct" name="UnsafeMutableRawPointer" module="Swift" mangledName="sSv" frozen="true" blittable ="true"/>
+        </entity>
+        <entity managedNameSpace="Swift.Runtime" managedTypeName="UnsafeBufferPointer">
+            <typedeclaration kind="struct" name="UnsafeBufferPointer`1" module="Swift" mangledName="sSR" frozen="true" blittable ="true"/>
+        </entity>
+        <entity managedNameSpace="Swift.Runtime" managedTypeName="UnsafeMutableBufferPointer">
+            <typedeclaration kind="struct" name="UnsafeMutableBufferPointer`1" module="Swift" mangledName="sSr" frozen="true" blittable ="true"/>
+        </entity>
+        <entity managedNameSpace="Swift.Runtime" managedTypeName="UnsafeRawBufferPointer">
+            <typedeclaration kind="struct" name="UnsafeRawBufferPointer" module="Swift" mangledName="sSW" frozen="true" blittable ="true"/>
+        </entity>
+        <entity managedNameSpace="Swift.Runtime" managedTypeName="UnsafeMutableRawBufferPointer">
+            <typedeclaration kind="struct" name="UnsafeMutableRawBufferPointer" module="Swift" mangledName="sSw" frozen="true" blittable ="true"/>
+        </entity>
+    </entities>
+</swifttypedatabase>

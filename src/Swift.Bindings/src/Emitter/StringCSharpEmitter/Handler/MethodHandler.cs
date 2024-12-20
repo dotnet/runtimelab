@@ -62,6 +62,12 @@ namespace BindingsGeneration
         public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor)
         {
             var methodEnv = (MethodEnvironment)env;
+            if (methodEnv.SignatureHandler.GetWrapperSignature().ContainsPlaceholder)
+            {
+                Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported signature: ({methodEnv.SignatureHandler.GetWrapperSignature().ParametersString()}) -> {methodEnv.SignatureHandler.GetWrapperSignature().ReturnType}");
+                return;
+            }
+    
             EmitWrapper(writer, methodEnv);
             PInvokeEmitter.EmitPInvoke(writer, methodEnv);
             writer.WriteLine();
@@ -159,6 +165,11 @@ namespace BindingsGeneration
         public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor)
         {
             var methodEnv = (MethodEnvironment)env;
+            if (methodEnv.SignatureHandler.GetWrapperSignature().ContainsPlaceholder)
+            {
+                Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported signature: ({methodEnv.SignatureHandler.GetWrapperSignature().ParametersString()}) -> {methodEnv.SignatureHandler.GetWrapperSignature().ReturnType}");
+                return;
+            }
 
             EmitWrapperMethod(writer, methodEnv);
             PInvokeEmitter.EmitPInvoke(writer, methodEnv);
@@ -178,7 +189,7 @@ namespace BindingsGeneration
             var pInvokeName = NameProvider.GetPInvokeName(methodDecl);
             var staticKeyword = methodDecl.MethodType == MethodType.Static || parentDecl is ModuleDecl ? "static " : "";
 
-            writer.WriteLine($"public {staticKeyword}{methodDecl.CSSignature.First().CSTypeIdentifier.Name} {methodDecl.Name}({env.SignatureHandler.GetWrapperSignature().ParametersString()})");
+            writer.WriteLine($"public {staticKeyword}{env.SignatureHandler.GetWrapperSignature().ReturnType} {methodDecl.Name}({env.SignatureHandler.GetWrapperSignature().ParametersString()})");
             writer.WriteLine("{");
             writer.Indent++;
 
@@ -220,6 +231,7 @@ namespace BindingsGeneration
     /// <param name="Parameters"></param>
     public record Signature(string ReturnType, IReadOnlyList<Parameter> Parameters)
     {
+        public bool ContainsPlaceholder => Parameters.Any(p => p.Type == "AnyType") || ReturnType == "AnyType";
         public string ParametersString() => string.Join(", ", Parameters.Select(p => p.ToString()));
 
         public string CallArgumentsString() => string.Join(", ", Parameters.Select(p =>
@@ -230,7 +242,6 @@ namespace BindingsGeneration
     {
         private string _returnType = "invalid";
         private readonly List<Parameter> _parameters = new();
-
         MethodDecl MethodDecl { get; }
         BaseDecl ParentDecl { get; }
         TypeDatabase TypeDatabase { get; }
@@ -247,7 +258,14 @@ namespace BindingsGeneration
         /// </summary>
         public void HandleReturnType()
         {
-            var returnType = MethodDecl.CSSignature.First().CSTypeIdentifier.Name;
+            var argument = MethodDecl.CSSignature.First();
+            var returnType = argument.CSTypeIdentifier.Name;
+            var typeRecord = MarshallingHelpers.GetType(argument, TypeDatabase.Registrar);
+            if (typeRecord == null || !typeRecord.IsProcessed)
+            {                    
+                Console.WriteLine($"Method {MethodDecl.Name} has unprocessed return type {returnType}");
+                returnType = "AnyType";
+            }
             SetReturnType(returnType);
         }
 
@@ -258,7 +276,14 @@ namespace BindingsGeneration
         {
             foreach (var argument in MethodDecl.CSSignature.Skip(1))
             {
-                AddParameter(argument.CSTypeIdentifier.Name, argument.Name);
+                string typeIdentifier = argument.CSTypeIdentifier.Name;
+                var typeRecord = MarshallingHelpers.GetType(argument, TypeDatabase.Registrar);
+                if (typeRecord == null || !typeRecord.IsProcessed)
+                {
+                    Console.WriteLine($"Method {MethodDecl.Name} has unprocessed argument {typeIdentifier}");
+                    typeIdentifier = "AnyType";
+                }
+                AddParameter(typeIdentifier, argument.Name);
             }
         }
 

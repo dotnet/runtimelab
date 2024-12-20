@@ -4,6 +4,9 @@
 using Xunit;
 using System.Diagnostics;
 using System.Security.Cryptography;
+using Swift;
+using Swift.Runtime;
+using Swift.UnsafePointerTests;
 
 namespace BindingsGeneration.FunctionalTests
 {
@@ -46,12 +49,12 @@ namespace BindingsGeneration.FunctionalTests
             {
                 const int Success = 1;
 
-                Swift.Runtime.UnsafeMutableRawPointer _keyPtr = new Swift.Runtime.UnsafeMutableRawPointer(keyPtr);
-                Swift.Runtime.UnsafeMutableRawPointer _noncePtr = new Swift.Runtime.UnsafeMutableRawPointer(noncePtr);
-                Swift.Runtime.UnsafeMutableRawPointer _plaintextPtr = new Swift.Runtime.UnsafeMutableRawPointer(plaintextPtr);
-                Swift.Runtime.UnsafeMutablePointer<Byte> _ciphertextPtr = new Swift.Runtime.UnsafeMutablePointer<Byte>(ciphertextPtr);
-                Swift.Runtime.UnsafeMutablePointer<Byte> _tagPtr = new Swift.Runtime.UnsafeMutablePointer<Byte>(tagPtr);
-                Swift.Runtime.UnsafeMutableRawPointer _aadPtr = new Swift.Runtime.UnsafeMutableRawPointer(aadPtr);
+                UnsafeMutableRawPointer _keyPtr = new UnsafeMutableRawPointer(keyPtr);
+                UnsafeMutableRawPointer _noncePtr = new UnsafeMutableRawPointer(noncePtr);
+                UnsafeMutableRawPointer _plaintextPtr = new UnsafeMutableRawPointer(plaintextPtr);
+                UnsafeMutablePointer<Byte> _ciphertextPtr = new UnsafeMutablePointer<Byte>(ciphertextPtr);
+                UnsafeMutablePointer<Byte> _tagPtr = new UnsafeMutablePointer<Byte>(tagPtr);
+                UnsafeMutableRawPointer _aadPtr = new UnsafeMutableRawPointer(aadPtr);
 
                 int result = Swift.UnsafePointerTests.UnsafePointerTests.AppleCryptoNative_ChaCha20Poly1305Encrypt(
                                     _keyPtr, key.Length,
@@ -87,12 +90,12 @@ namespace BindingsGeneration.FunctionalTests
                 const int Success = 1;
                 const int AuthTagMismatch = -1;
 
-                Swift.Runtime.UnsafeMutableRawPointer _keyPtr = new Swift.Runtime.UnsafeMutableRawPointer(keyPtr);
-                Swift.Runtime.UnsafeMutableRawPointer _noncePtr = new Swift.Runtime.UnsafeMutableRawPointer(noncePtr);
-                Swift.Runtime.UnsafeMutableRawPointer _ciphertextPtr = new Swift.Runtime.UnsafeMutableRawPointer(ciphertextPtr);
-                Swift.Runtime.UnsafeMutableRawPointer _tagPtr = new Swift.Runtime.UnsafeMutableRawPointer(tagPtr);
-                Swift.Runtime.UnsafeMutablePointer<Byte> _plaintextPtr = new Swift.Runtime.UnsafeMutablePointer<Byte>(plaintextPtr);
-                Swift.Runtime.UnsafeMutableRawPointer _aadPtr = new Swift.Runtime.UnsafeMutableRawPointer(aadPtr);
+                UnsafeMutableRawPointer _keyPtr = new UnsafeMutableRawPointer(keyPtr);
+                UnsafeMutableRawPointer _noncePtr = new UnsafeMutableRawPointer(noncePtr);
+                UnsafeMutableRawPointer _ciphertextPtr = new UnsafeMutableRawPointer(ciphertextPtr);
+                UnsafeMutableRawPointer _tagPtr = new UnsafeMutableRawPointer(tagPtr);
+                UnsafeMutablePointer<Byte> _plaintextPtr = new UnsafeMutablePointer<Byte>(plaintextPtr);
+                UnsafeMutableRawPointer _aadPtr = new UnsafeMutableRawPointer(aadPtr);
 
                 int result = Swift.UnsafePointerTests.UnsafePointerTests.AppleCryptoNative_ChaCha20Poly1305Decrypt(
                     _keyPtr, key.Length,

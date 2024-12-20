@@ -12,7 +12,7 @@ public class XmlFileTests
     public void TestXmlFormat()
     {
         XmlDocument xmlDoc = new();
-        xmlDoc.Load("TypeDatabase.xml");
+        xmlDoc.Load("Swift/TypeDatabase.xml");
         bool isValidXml = TypeDatabase.ValidateXmlSchema(xmlDoc);
         Assert.True(isValidXml);
     }

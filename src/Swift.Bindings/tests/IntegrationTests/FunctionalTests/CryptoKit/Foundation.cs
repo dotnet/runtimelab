@@ -5,6 +5,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Reflection;
+using Swift;
 using Swift.Runtime;
 
 namespace BindingsGeneration.FunctionalTests

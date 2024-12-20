@@ -55,7 +55,7 @@ jobs:
         displayName: Build and Test
 
       - ${{ if and(eq(parameters.bindings.isBindingsBuild, true), ne(parameters.osGroup, 'Windows_NT')) }}:
-        - script: ./generate.sh ${{ parameters.bindings.scriptArgs }}
+        - script: ./generate.sh --configuration $(_BuildConfig) ${{ parameters.bindings.scriptArgs }}
           displayName: Generate Bindings
 
       - ${{ if eq(parameters.isOfficialBuild, true) }}:

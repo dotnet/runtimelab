@@ -95,12 +95,6 @@ namespace BindingsGeneration
         private readonly int _verbose;
 
         /// <summary>
-        /// The list of filters for the parser.
-        /// Currently, only name filtering is supported.
-        /// </summary>
-        private List<string> _filters;
-
-        /// <summary>
         /// The module root node.
         /// </summary>
         private readonly ABIRootNode _moduleRoot;
@@ -111,18 +105,9 @@ namespace BindingsGeneration
             _dylibPath = dylibPath;
             _typeDatabase = typeDatabase;
             _verbose = verbose;
-            _filters = new List<string>();
 
             string jsonContent = File.ReadAllText(_filePath);
             _moduleRoot = JsonConvert.DeserializeObject<ABIRootNode>(jsonContent) ?? throw new InvalidOperationException("Invalid ABI structure.");
-        }
-
-        /// <summary>
-        /// Sets the filter for the parser.
-        /// </summary>
-        public void SetFilter(List<string> filter)
-        {
-            _filters = filter;
         }
 
         /// <summary>
@@ -145,6 +130,7 @@ namespace BindingsGeneration
             var moduleDecl = new ModuleDecl
             {
                 Name = ExtractUniqueName(moduleName),
+                FullyQualifiedName = string.Empty,
                 Fields = new List<FieldDecl>(),
                 Methods = new List<MethodDecl>(),
                 Declarations = new List<BaseDecl>(),
@@ -153,7 +139,7 @@ namespace BindingsGeneration
                 ModuleDecl = null
             };
 
-            var decls = CollectDeclarations(_moduleRoot.ABIRoot.Children, moduleDecl, moduleDecl, _filters.Count == 0);
+            var decls = CollectDeclarations(_moduleRoot.ABIRoot.Children, moduleDecl, moduleDecl);
 
             dependencies.AddRange(_typeDatabase.Registrar.GetDependencies(moduleName));
             dependencies.Remove(moduleName);
@@ -172,32 +158,15 @@ namespace BindingsGeneration
         /// <param name="nodes">The list of nodes to collect declarations from.</param>
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
-        /// <param name="collect">A flag indicating whether to collect declarations.</param>
         /// <returns>The list of collected declarations.</returns>
-        private List<BaseDecl> CollectDeclarations(IEnumerable<Node> nodes, BaseDecl parentDecl, BaseDecl moduleDecl, bool collect)
+        private List<BaseDecl> CollectDeclarations(IEnumerable<Node> nodes, BaseDecl parentDecl, BaseDecl moduleDecl)
         {
             var declarations = new List<BaseDecl>();
             foreach (var node in nodes)
             {
-                // Skip generic types
-                if (node.GenericSig != null)
-                {
-                    if (_verbose > 1)
-                        Console.WriteLine($"Generic type '{node.Name}' encountered. Skipping.");
-                    continue;
-                }
-
-                if (!collect && _filters.Contains(node.Name))
-                    collect = true;
-
-                var nodeDeclaration = HandleNode(node, parentDecl, moduleDecl, collect);
+                var nodeDeclaration = HandleNode(node, parentDecl, moduleDecl);
                 if (nodeDeclaration != null)
                     declarations.Add(nodeDeclaration);
-
-                // Reset collect to false if it was set true for a specific node only
-                // TODO: Implement recursive filtering
-                if (collect && _filters.Contains(node.Name))
-                    collect = false;
             }
             return declarations;
         }
@@ -208,20 +177,16 @@ namespace BindingsGeneration
         /// <param name="node">The node representing a declaration.</param>
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
-        /// <param name="collect">A flag indicating whether to collect declarations.</param>
         /// <returns>The declaration.</returns>
-        private BaseDecl? HandleNode(Node node, BaseDecl parentDecl, BaseDecl moduleDecl, bool collect)
+        private BaseDecl? HandleNode(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
         {
-            if (!collect && !_filters.Contains(node.Name))
-                return null;
-
             BaseDecl? result = null;
             try
             {
                 switch (node.Kind)
                 {
                     case "TypeDecl":
-                        result = HandleTypeDecl(node, parentDecl, moduleDecl, collect);
+                        result = HandleTypeDecl(node, parentDecl, moduleDecl);
                         break;
                     case "Function":
                     case "Constructor":
@@ -236,20 +201,18 @@ namespace BindingsGeneration
                     case "Import":
                         break;
                     default:
-                        if (_verbose > 1)
-                            Console.WriteLine($"Unsupported declaration '{node.DeclKind} {node.Name}' encountered.");
-                        break;
+                        throw new NotImplementedException($"Unsupported node kind '{node.Kind}' encountered.");
                 }
             }
             catch (NotImplementedException e)
             {
                 if (_verbose > 1)
-                    Console.WriteLine($"Not implemented '{node.Name}': {e.Message}");
+                    Console.WriteLine($"Not implemented '{node.Name}' ({node.MangledName}): {e.Message}");
             }
             catch (Exception e)
             {
                 if (_verbose > 0)
-                    Console.WriteLine($"Error while processing node '{node.Name}': {e.Message}");
+                    Console.WriteLine($"Error while processing node '{node.Name} ({node.MangledName})': {e.Message}");
             }
 
             return result;
@@ -261,20 +224,33 @@ namespace BindingsGeneration
         /// <param name="node">The node representing a type declaration.</param>
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
-        /// <param name="collect">A flag indicating whether to collect declarations.</param>
         /// <returns>The type declaration.</returns>
-        private TypeDecl? HandleTypeDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl, bool collect)
+        private TypeDecl? HandleTypeDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
         {
-            if (_typeDatabase.IsTypeProcessed(node.ModuleName, node.Name))
+            if (_typeDatabase.IsTypeProcessed(node.ModuleName, ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name)))
             {
                 if (_verbose > 1)
                     Console.WriteLine($"Type '{node.Name}' already processed. Skipping.");
                 return null;
             }
 
+            if (string.IsNullOrEmpty(node.MangledName))
+            {
+                if (_verbose > 1)
+                    Console.WriteLine($"Type '{node.Name}' has no mangled name. Skipping.");
+                return null;
+            }
+
             TypeDecl? decl = null;
-            TypeRecord typeRecord = _typeDatabase.Registrar.RegisterType(node.ModuleName, node.Name);
+            TypeRecord typeRecord = _typeDatabase.Registrar.RegisterType(node.ModuleName, ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name));
             IntPtr metadataPtr;
+
+            if (node.GenericSig != null)
+            {
+                if (_verbose > 1)
+                    Console.WriteLine($"Generic type '{node.Name}' not supported. Skipping.");
+                return null;
+            }
 
             switch (node.DeclKind)
             {
@@ -306,7 +282,7 @@ namespace BindingsGeneration
 
             if (node.Children != null && decl != null)
             {
-                var childDecls = CollectDeclarations(node.Children, decl, moduleDecl, collect);
+                var childDecls = CollectDeclarations(node.Children, decl, moduleDecl);
                 decl.Fields.AddRange(childDecls.OfType<FieldDecl>());
                 decl.Declarations.AddRange(childDecls.Where(d => !(d is FieldDecl)));
             }
@@ -326,6 +302,7 @@ namespace BindingsGeneration
             return new StructDecl
             {
                 Name = ExtractUniqueName(node.Name),
+                FullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name),
                 MangledName = node.MangledName,
                 Fields = new List<FieldDecl>(),
                 Declarations = new List<BaseDecl>(),
@@ -348,6 +325,7 @@ namespace BindingsGeneration
             return new ClassDecl
             {
                 Name = ExtractUniqueName(node.Name),
+                FullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name),
                 MangledName = node.MangledName,
                 Fields = new List<FieldDecl>(),
                 Declarations = new List<BaseDecl>(),
@@ -371,6 +349,7 @@ namespace BindingsGeneration
             var methodDecl = new MethodDecl
             {
                 Name = ExtractUniqueName(node.Name),
+                FullyQualifiedName = parentDecl.FullyQualifiedName,
                 // Constructors for structs are named with a trailing 'C' instead of 'c'
                 // because a constructor wrapper is missing in the library.
                 MangledName = node.Kind == "Constructor" ? PatchMangledName(node.MangledName) : node.MangledName,
@@ -392,6 +371,7 @@ namespace BindingsGeneration
                         CSTypeIdentifier = typeDecl,
                         SwiftTypeSpec = typeSpec,
                         Name = paramNames[i],
+                        FullyQualifiedName = string.Empty,
                         PrivateName = string.Empty,
                         IsInOut = false,
                         ParentDecl = methodDecl,
@@ -419,6 +399,7 @@ namespace BindingsGeneration
                 CSTypeIdentifier = typeDecl,
                 SwiftTypeSpec = typeSpec,
                 Name = node.Name,
+                FullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name),
                 Visibility = node.IsInternal ?? false ? Visibility.Private : Visibility.Public,
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl
@@ -466,6 +447,8 @@ namespace BindingsGeneration
                         case "Dictionary":
                         case "Tuple":
                         case "Array":
+                        case "ProtocolComposition": // Swift.Any
+                        case "Set":
                             throw new NotImplementedException($"{node.Name} types are not supported yet.");
                         default:
                             if (node.PrintedName.StartsWith("any ", StringComparison.InvariantCultureIgnoreCase))
@@ -482,6 +465,7 @@ namespace BindingsGeneration
             var typeDecl = new TypeDecl
             {
                 Name = string.Empty,
+                FullyQualifiedName = string.Empty,
                 MangledName = node.MangledName,
                 Fields = new List<FieldDecl>(),
                 Declarations = new List<BaseDecl>(),
@@ -515,6 +499,7 @@ namespace BindingsGeneration
                 typeRecord = _typeDatabase.GetTypeMapping(moduleName, typeIdentifier);
                 typeDecl.Name = typeRecord.TypeIdentifier;
             }
+            typeDecl.FullyQualifiedName = typeDecl.Name;
             _typeDatabase.Registrar.UpdateDependencies(GetModuleName(), typeRecord.Namespace);
 
             return typeDecl;
@@ -561,6 +546,11 @@ namespace BindingsGeneration
             }
 
             return name;
+        }
+
+        private static string ExtractFullyQualifiedName(string parentName, string name)
+        {
+            return string.IsNullOrEmpty(parentName) ? ExtractUniqueName(name) : $"{parentName}.{ExtractUniqueName(name)}";
         }
 
         /// <summary>

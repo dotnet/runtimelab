@@ -1,7 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Swift.Runtime
+using Swift.Runtime;
+
+namespace Swift
 {
     // <summary>
     // Represents Swift UnsafePointer in C#.

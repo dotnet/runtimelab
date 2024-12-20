@@ -13,8 +13,19 @@ namespace BindingsGeneration
         /// </summary>
         public required string Name { get; set; }
 
+        /// <summary>
+        /// The fully qualified name of the declaration used for type registration.
+        /// </summary>
+        public required string FullyQualifiedName { get; set; }
+
+        /// <summary>
+        /// The parent declaration.
+        /// </summary>
         public required BaseDecl? ParentDecl { get; set; }
 
+        /// <summary>
+        /// The module declaration.
+        /// </summary>
         public required BaseDecl? ModuleDecl { get; set; }
     }
 }

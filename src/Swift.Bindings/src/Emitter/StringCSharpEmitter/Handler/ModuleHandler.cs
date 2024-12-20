@@ -70,12 +70,8 @@ namespace BindingsGeneration
             writer.WriteLine($"using System.Runtime.CompilerServices;");
             writer.WriteLine($"using System.Runtime.InteropServices;");
             writer.WriteLine($"using System.Runtime.InteropServices.Swift;");
+            writer.WriteLine($"using Swift;");
             writer.WriteLine($"using Swift.Runtime;");
-
-            foreach (var dependency in moduleDecl.Dependencies)
-                writer.WriteLine(dependency.Contains("Swift.") ? $"using {dependency};" : $"using Swift.{dependency};");
-
-
             writer.WriteLine();
             writer.WriteLine($"namespace {generatedNamespace}");
             writer.WriteLine("{");
