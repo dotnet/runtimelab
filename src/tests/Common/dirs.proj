@@ -23,6 +23,8 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\CustomMainWithStubExe\CustomMainWithStubExe.csproj" /> <!-- dlopen-based test -->
       <!-- Determinism uses File.Open read which Wasm can't support without Wasi or Emscripten file system support which we don't enable by default. -->
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Determinism\Determinism.csproj" />
+      <!-- Fails sporadically in CI: https://github.com/dotnet/runtimelab/issues/2903. -->
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\SharedLibrary\SharedLibrary.csproj" />
 
       <!-- Only automated on WASI with LLDB, which we don't have on Windows CI machines. -->
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\WasmDebugging.csproj" Condition="'$(TargetOS)' == 'browser' or '$(OS)' == 'Windows_NT'" />
