@@ -431,7 +431,7 @@ namespace Internal.JitInterface
         [UnmanagedCallersOnly]
         private static void getDebugInfoForCurrentMethod(IntPtr thisHandle, CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
         {
-            GetThis(thisHandle).GetDebugInfoForMethod(pInfo);
+            GetThis(thisHandle).GetDebugInfoForCurrentMethod(pInfo);
         }
 
         [DllImport(JitLibrary)]
@@ -479,7 +479,7 @@ namespace Internal.JitInterface
             }
         }
 
-        public void JitStartSingleThreadedCompilation(string outputFileName, string triple, string dataLayout)
+        internal void JitStartSingleThreadedCompilation(string outputFileName, string triple, string dataLayout)
         {
             fixed (byte* pOutputFileName = StringToUTF8(outputFileName), pTriple = StringToUTF8(triple), pDataLayout = StringToUTF8(dataLayout))
             {
@@ -488,9 +488,21 @@ namespace Internal.JitInterface
             }
         }
 
-        public void JitFinishSingleThreadedCompilation()
+        internal void JitFinishSingleThreadedCompilation()
         {
             ((delegate* unmanaged<void*, void>)GetJitExport(CorJitApiId.CJAI_FinishSingleThreadedCompilation))(_pNativeContext);
+        }
+
+        internal CORINFO_LLVM_DEBUG_TYPE_HANDLE JitEmitDebugTypeInfo(CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo)
+        {
+            void* pExport = GetJitExport(CorJitApiId.CJAI_EmitDebugTypeInfo);
+            return ((delegate* unmanaged<void*, CORINFO_LLVM_TYPE_DEBUG_INFO*, CORINFO_LLVM_DEBUG_TYPE_HANDLE>)pExport)(_pNativeContext, pInfo);
+        }
+
+        internal CORINFO_LLVM_DEBUG_METHOD_DECL_HANDLE JitEmitDebugMethodDecl(CORINFO_LLVM_METHOD_DECL_DEBUG_INFO* pInfo)
+        {
+            void* pExport = GetJitExport(CorJitApiId.CJAI_EmitDebugMethodDecl);
+            return ((delegate* unmanaged<void*, CORINFO_LLVM_METHOD_DECL_DEBUG_INFO*, CORINFO_LLVM_DEBUG_METHOD_DECL_HANDLE>)pExport)(_pNativeContext, pInfo);
         }
 
         private static void* GetJitExport(CorJitApiId id) => s_jitExports[(int)id];

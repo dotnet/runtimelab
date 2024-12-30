@@ -231,6 +231,7 @@ namespace ILCompiler
 
                 MemberFunctionIdTypeDescriptor descriptor = default(MemberFunctionIdTypeDescriptor);
 
+                descriptor.Method = method;
                 descriptor.MemberFunction = GetMethodTypeIndex(method);
                 descriptor.ParentClass = GetTypeIndex(method.OwningType, true);
                 descriptor.Name = method.Name;

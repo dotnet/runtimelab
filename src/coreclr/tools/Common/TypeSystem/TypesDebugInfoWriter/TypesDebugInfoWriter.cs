@@ -106,6 +106,7 @@ namespace Internal.TypeSystem.TypesDebugInfo
     [StructLayout(LayoutKind.Sequential)]
     public struct MemberFunctionIdTypeDescriptor
     {
+        public MethodDesc Method;
         public uint MemberFunction;
         public uint ParentClass;
         public string Name;

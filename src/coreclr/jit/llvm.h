@@ -89,19 +89,17 @@ struct CORINFO_LLVM_JIT_TEST_INFO
 };
 
 typedef unsigned CORINFO_LLVM_DEBUG_TYPE_HANDLE;
+typedef unsigned CORINFO_LLVM_DEBUG_METHOD_DECL_HANDLE;
 
 const CORINFO_LLVM_DEBUG_TYPE_HANDLE NO_DEBUG_TYPE = 0;
 
-struct CORINFO_LLVM_FORWARD_REF_TYPE_DEBUG_INFO;
-struct CORINFO_LLVM_COMPOSITE_TYPE_DEBUG_INFO;
-struct CORINFO_LLVM_ENUM_TYPE_DEBUG_INFO;
-struct CORINFO_LLVM_ARRAY_TYPE_DEBUG_INFO;
-struct CORINFO_LLVM_POINTER_TYPE_DEBUG_INFO;
-struct CORINFO_LLVM_FUNCTION_TYPE_DEBUG_INFO;
 struct CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO;
+struct CORINFO_LLVM_METHOD_DECL_DEBUG_INFO;
 struct CORINFO_LLVM_METHOD_DEBUG_INFO;
 struct CORINFO_LLVM_TYPE_DEBUG_INFO;
 
+template <typename T>
+struct JitStdMallocAllocator;
 struct MallocAllocator
 {
     template <typename T>
@@ -118,6 +116,29 @@ struct MallocAllocator
     void deallocate(void* p)
     {
         free(p);
+    }
+
+    template <typename U>
+    struct rebind
+    {
+        typedef struct JitStdMallocAllocator<U> allocator;
+    };
+};
+
+template <typename T>
+struct JitStdMallocAllocator
+{
+    MallocAllocator m_alloc;
+    JitStdMallocAllocator(MallocAllocator alloc) : m_alloc(alloc) { }
+
+    T* allocate(size_t count)
+    {
+        return m_alloc.allocate<T>(count);
+    }
+
+    void deallocate(void* p, size_t size)
+    {
+        m_alloc.deallocate(p);
     }
 };
 
@@ -255,24 +276,25 @@ struct EHRegionInfo
     Value* CatchArgValue;
 };
 
+class TypeDebugInfoModule;
 class SingleThreadedCompilationContext
 {
 public:
     LLVMContext Context;
     Module Module;
-    JitHashTable<CORINFO_CLASS_HANDLE, JitPtrKeyFuncs<CORINFO_CLASS_STRUCT_>, Type*, MallocAllocator> LlvmStructTypesMap;
-    JitHashTable<CORINFO_CLASS_HANDLE, JitPtrKeyFuncs<CORINFO_CLASS_STRUCT_>, StructDesc*, MallocAllocator> StructDescMap;
-    JitHashTable<CORINFO_LLVM_DEBUG_TYPE_HANDLE, JitSmallPrimitiveKeyFuncs<CORINFO_LLVM_DEBUG_TYPE_HANDLE>, llvm::DIType*, MallocAllocator> DebugTypesMap;
-    JitHashTable<llvm::DIFile*, JitPtrKeyFuncs<llvm::DIFile>, llvm::DICompileUnit*, MallocAllocator> DebugCompileUnitsMap;
+    JitHashTable<CORINFO_CLASS_HANDLE, JitPtrKeyFuncs<CORINFO_CLASS_STRUCT_>, Type*, MallocAllocator> LlvmStructTypesMap = {{}};
+    JitHashTable<CORINFO_CLASS_HANDLE, JitPtrKeyFuncs<CORINFO_CLASS_STRUCT_>, StructDesc*, MallocAllocator> StructDescMap = {{}};
+    JitHashTable<CORINFO_LLVM_DEBUG_TYPE_HANDLE, JitSmallPrimitiveKeyFuncs<CORINFO_LLVM_DEBUG_TYPE_HANDLE>, llvm::DIType*, MallocAllocator> DebugTypesMap = {{}};
+    JitHashTable<llvm::DIFile*, JitPtrKeyFuncs<llvm::DIFile>, llvm::DICompileUnit*, MallocAllocator> DebugCompileUnitsMap = {{}};
+    TypeDebugInfoModule* DebugTypes = nullptr;
 
-    SingleThreadedCompilationContext(StringRef name)
-        : Module(name, Context)
-        , LlvmStructTypesMap({})
-        , StructDescMap({})
-        , DebugTypesMap({})
-        , DebugCompileUnitsMap({})
+    SingleThreadedCompilationContext(StringRef name) : Module(name, Context)
     {
     }
+
+    static CORINFO_LLVM_DEBUG_TYPE_HANDLE EmitDebugTypeInfo(SingleThreadedCompilationContext* context, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo);
+    static CORINFO_LLVM_DEBUG_METHOD_DECL_HANDLE EmitDebugMethodDecl(SingleThreadedCompilationContext* context, CORINFO_LLVM_METHOD_DECL_DEBUG_INFO* pInfo);
+    void FinishDebugInfo();
 };
 
 class Llvm
@@ -413,11 +435,6 @@ private:
         unsigned* pAbsoluteValue, unsigned shadowFrameSize, CORINFO_LLVM_EH_CLAUSE* pClauses, int clauseCount);
     bool IsVirtualUnwindFrameVisible();
     void GetJitTestInfo(CorInfoLlvmJitTestKind kind, CORINFO_LLVM_JIT_TEST_INFO* pInfo);
-
-public:
-    static SingleThreadedCompilationContext* StartSingleThreadedCompilation(
-        const char* path, const char* triple, const char* dataLayout);
-    static void FinishSingleThreadedCompilation(SingleThreadedCompilationContext* context);
 
     // ================================================================================================================
     // |                                                 Type system                                                  |
@@ -719,20 +736,8 @@ private:
     llvm::DILocation* getDebugLocation(unsigned lineNo);
     llvm::DILocation* getArtificialDebugLocation();
     llvm::DILocation* getCurrentOrArtificialDebugLocation();
-    llvm::DIFile* getUnknownDebugFile();
 
     llvm::DIType* getOrCreateDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle);
     llvm::DIType* createDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle);
-    llvm::DIType* createDebugTypeForPrimitive(CorInfoType type);
-    llvm::DIType* createDebugTypeForCompositeType(
-        CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_COMPOSITE_TYPE_DEBUG_INFO* pInfo);
-    llvm::DIType* createDebugTypeForEnumType(CORINFO_LLVM_ENUM_TYPE_DEBUG_INFO* pInfo);
-    llvm::DIType* createDebugTypeForArrayType(CORINFO_LLVM_ARRAY_TYPE_DEBUG_INFO* pInfo);
-    llvm::DIType* createDebugTypeForPointerType(CORINFO_LLVM_POINTER_TYPE_DEBUG_INFO* pInfo);
-    llvm::DIType* createFixedArrayDebugType(llvm::DIType* elementDebugType, unsigned size);
-    llvm::DISubroutineType* createDebugTypeForFunctionType(CORINFO_LLVM_FUNCTION_TYPE_DEBUG_INFO* pInfo);
-    llvm::DIType* createClassDebugType(StringRef name, unsigned size, ArrayRef<llvm::Metadata*> elements);
-    llvm::DIDerivedType* createDebugMember(StringRef name, llvm::DIType* debugType, unsigned offset);
-    llvm::DIDerivedType* createPointerDebugType(llvm::DIType* pointeeDebugType);
 };
 #endif /* End of _LLVM_H_ */

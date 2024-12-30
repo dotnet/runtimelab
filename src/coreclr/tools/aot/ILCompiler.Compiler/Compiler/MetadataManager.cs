@@ -1003,7 +1003,7 @@ namespace ILCompiler
             return _cctorContextsGenerated;
         }
 
-        internal IEnumerable<MetadataType> GetTypesWithStaticBases()
+        public IEnumerable<MetadataType> GetTypesWithStaticBases()
         {
             var allTypes = new SortedSet<MetadataType>(CompilerComparer.Instance);
             allTypes.UnionWith(_typesWithNonGCStaticsGenerated);

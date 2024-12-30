@@ -23,6 +23,7 @@ namespace ILCompiler
     {
         private Dictionary<int, CorInfoImpl> _compilationContexts;
         private readonly LLVMCompilationResults _compilationResults = new();
+        private readonly ParallelOptions _parallelOptions;
         private string _outputFile;
 
         internal LLVMCodegenConfigProvider Options { get; }
@@ -44,6 +45,7 @@ namespace ILCompiler
             : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, logger, inliningPolicy, instructionSetSupport,
                 null /* ProfileDataManager */, errorProvider, readOnlyFieldPolicy, baseOptions, parallelism)
         {
+            _parallelOptions = new() { MaxDegreeOfParallelism = parallelism };
             NodeFactory = nodeFactory;
             Options = options;
         }
@@ -51,22 +53,16 @@ namespace ILCompiler
         protected override void CompileInternal(string outputFile, ObjectDumper dumper)
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
-
             StartCompilation(outputFile);
 
             _dependencyGraph.ComputeMarkedNodes();
-            NodeFactory.SetMarkingComplete();
             Console.WriteLine($"LLVM compilation to IR finished in {stopwatch.Elapsed.TotalSeconds:0.##} seconds");
 
             stopwatch.Restart();
             FinishCompilation();
             Console.WriteLine($"LLVM generation of bitcode finished in {stopwatch.Elapsed.TotalSeconds:0.##} seconds");
 
-            double allocatedBytes = GC.GetAllocatedBytesForCurrentThread();
-            stopwatch.Restart();
-            WasmObjectWriter.EmitObject(outputFile, _dependencyGraph.MarkedNodeList, this, dumper);
-            allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocatedBytes;
-            Console.WriteLine($"Object writing finished in {stopwatch.Elapsed.TotalSeconds:0.##} seconds, allocated {allocatedBytes / 1024 / 1024:0.##} MB");
+            Parallel.ForEach([EmitTypeDebugInfo, () => EmitObject(dumper)], _parallelOptions, action => action());
         }
 
         private void StartCompilation(string outputFile)
@@ -76,12 +72,63 @@ namespace ILCompiler
 
         private void FinishCompilation()
         {
-            Parallel.ForEach(_compilationContexts, new() { MaxDegreeOfParallelism = _parallelism }, context =>
+            NodeFactory.SetMarkingComplete();
+            Parallel.ForEach(_compilationContexts, _parallelOptions, context =>
             {
                 context.Value.JitFinishSingleThreadedCompilation();
             });
 
             _compilationContexts = null;
+        }
+
+        private void EmitTypeDebugInfo()
+        {
+            if (_debugInformationProvider is NullDebugInformationProvider)
+            {
+                return;
+            }
+
+            long start = Stopwatch.GetTimestamp();
+            CorInfoImpl diModule = CreateModuleCompilationContext("debug");
+            LlvmTypesDebugInfoEmit diEmit = new LlvmTypesDebugInfoEmit(this, diModule);
+
+            // Keep the logic below in sync with "ObjectWriter::EmitObject".
+            foreach (DependencyNode node in _dependencyGraph.MarkedNodeList)
+            {
+                // Ensure any allocated MethodTables have debug info.
+                if (node is ConstructedEETypeNode methodTable)
+                {
+                    diEmit.EmitTypeInfo(methodTable.Type);
+                }
+                else if (node is LLVMMethodCodeNode { HasDebugInfo: true } methodNode)
+                {
+                    diEmit.EmitMethodInfo(methodNode.Method, methodNode);
+                }
+            }
+
+            // Ensure all fields associated with generated static bases have debug info.
+            foreach (MetadataType typeWithStaticBase in _nodeFactory.MetadataManager.GetTypesWithStaticBases())
+            {
+                diEmit.EmitTypeInfo(typeWithStaticBase);
+            }
+
+            // Finish up and emit the module.
+            diModule.JitFinishSingleThreadedCompilation();
+
+            TimeSpan elapsed = Stopwatch.GetElapsedTime(start);
+            Console.WriteLine($"LLVM generation of debug info finished in {elapsed.TotalSeconds:0.##} seconds");
+        }
+
+        private void EmitObject(ObjectDumper dumper)
+        {
+            double allocatedBytes = GC.GetAllocatedBytesForCurrentThread();
+            long start = Stopwatch.GetTimestamp();
+
+            WasmObjectWriter.EmitObject(_outputFile, _dependencyGraph.MarkedNodeList, this, dumper);
+
+            TimeSpan elapsed = Stopwatch.GetElapsedTime(start);
+            allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocatedBytes;
+            Console.WriteLine($"Object writing finished in {elapsed.TotalSeconds:0.##} seconds, allocated {allocatedBytes / 1024 / 1024:0.##} MB");
         }
 
         protected override void ComputeDependencyNodeDependencies(List<DependencyNodeCore<NodeFactory>> obj)
@@ -125,19 +172,15 @@ namespace ILCompiler
             int moduleCount = Options.MaxLlvmModuleCount;
             if (_compilationContexts == null)
             {
-                _compilationContexts = new();
+                _compilationContexts = new(moduleCount);
                 for (int index = 0; index < moduleCount; index++)
                 {
                     CorInfoImpl corInfo = new CorInfoImpl(this);
-                    string outputFilePath = Path.ChangeExtension(_outputFile, null) + $".{index}.bc";
-
-                    corInfo.JitStartSingleThreadedCompilation(outputFilePath, Options.Target, Options.DataLayout);
-                    _compilationResults.Add(outputFilePath);
-                    _compilationContexts[index] = corInfo;
+                    _compilationContexts[index] = CreateModuleCompilationContext(index.ToString());
                 }
             }
 
-            Parallel.For(0, moduleCount, new() { MaxDegreeOfParallelism = _parallelism }, index =>
+            Parallel.For(0, moduleCount, _parallelOptions, index =>
             {
                 CorInfoImpl corInfo = _compilationContexts[index];
                 int allMethodsCount = methodsToCompile.Count;
@@ -191,6 +234,16 @@ namespace ILCompiler
                 else
                     Logger.LogError($"Method will always throw because: {exception.Message}", 1005, method, MessageSubCategory.AotAnalysis);
             }
+        }
+
+        private CorInfoImpl CreateModuleCompilationContext(string kind)
+        {
+            CorInfoImpl corInfo = new CorInfoImpl(this);
+            string outputFilePath = Path.ChangeExtension(_outputFile, $".{kind}.bc");
+
+            corInfo.JitStartSingleThreadedCompilation(outputFilePath, Options.Target, Options.DataLayout);
+            _compilationResults.Add(outputFilePath);
+            return corInfo;
         }
 
         public override ISymbolNode GetExternalMethodAccessor(MethodDesc method, ReadOnlySpan<TargetAbiType> sig)

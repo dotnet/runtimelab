@@ -10,6 +10,8 @@ enum CorJitApiId
 {
     CJAI_StartSingleThreadedCompilation,
     CJAI_FinishSingleThreadedCompilation,
+    CJAI_EmitDebugTypeInfo,
+    CJAI_EmitDebugMethodDecl,
     CJAI_Count
 };
 
@@ -42,4 +44,23 @@ enum CorInfoLlvmVirtualUnwindModel
 {
     CILVUM_Sparse,
     CILVUM_Precise
+};
+
+enum CorInfoLlvmDebugTypeKind
+{
+    CORINFO_LLVM_DEBUG_TYPE_UNDEF,
+    CORINFO_LLVM_DEBUG_TYPE_PRIMITIVE,
+    CORINFO_LLVM_DEBUG_TYPE_COMPOSITE,
+    CORINFO_LLVM_DEBUG_TYPE_ENUM,
+    CORINFO_LLVM_DEBUG_TYPE_ARRAY,
+    CORINFO_LLVM_DEBUG_TYPE_POINTER,
+    CORINFO_LLVM_DEBUG_TYPE_FORWARD,
+    CORINFO_LLVM_DEBUG_TYPE_FUNCTION,
+    CORINFO_LLVM_DEBUG_TYPE_COUNT
+};
+
+enum CorInfoLlvmDebugTypeForwardKind
+{
+    CORINFO_LLVM_DEBUG_TYPE_FORWARD_STRUCT,
+    CORINFO_LLVM_DEBUG_TYPE_FORWARD_ENUM
 };

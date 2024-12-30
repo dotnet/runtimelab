@@ -56,9 +56,9 @@ unsafe class Program
         Debugger.Break(); // Both "p1" and "p2" parameters should be inspectable and equal to "{ 1, 2.0 }".
     }
 
-    private static void TestPointerDisplay(SimpleStruct* s)
+    private static void TestPointerDisplay(SimpleStruct* p)
     {
-        Debugger.Break(); // The "*s" value should be inspectable and equal to "{ 1, 2.0 }".
+        Debugger.Break(); // The "*p" value should be inspectable and equal to "{ 1, 2.0 }".
     }
 
     private static void TestStringDisplay(string s)

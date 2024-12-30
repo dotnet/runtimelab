@@ -9,7 +9,9 @@ $ProgressPreference = "SilentlyContinue"
 
 Set-Location $InstallDir
 
-$WasmtimeVersion = "v26.0.1"
+# Currently we need to use the daily releases for the debugging test to work.
+$UsePreRelease = $true
+$WasmtimeVersion = $UsePreRelease ? "dev" : "v26.0.1"
 
 if ($IsWindows)
 {

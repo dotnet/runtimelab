@@ -26,8 +26,20 @@ def run_wasm_debugging_tests(debugger):
 
     test_basic_types_display(target, process, thread)
     test_enum_display(target, process, thread)
-    # TODO-LLVM-DI: https://github.com/dotnet/runtimelab/issues/2728.
-    # test_by_ref_display(target, process, thread)
+    test_by_ref_display(target, process, thread)
+    test_pointer_display(target, process, thread)
+    test_string_display(target, process, thread)
+    test_basic_array_display(target, process, thread)
+    test_complex_array_display(target, process, thread)
+    test_basic_multi_dimensional_array_display(target, process, thread)
+    # TODO-LLVM-DI: https://github.com/dotnet/runtimelab/issues/2884.
+    process.Continue() # test_simple_struct_display(target, process, thread)
+    test_simple_class_display(target, process, thread)
+    test_derived_class_display(target, process, thread)
+    test_recursive_class_display(target, process, thread)
+    # TODO-LLVM-DI: need to fix wasmtime issues with "this".
+    process.Continue() # test_struct_instance_method(target, process, thread)
+    process.Continue() # test_class_instance_method(target, process, thread)
 
     if all_tests_passed:
         print('==== All WASM debugging tests passed ====')
@@ -85,7 +97,51 @@ def test_by_ref_display(target, process, thread):
         [('(*p1).IntField', '1'), ('(*p1).FloatField', '2'),
          ('(*p2)->IntField', '1'), ('(*p2)->FloatField', '2')])
 
-def test_values_display_impl(target, process, thread, pyname, expected_values, use_get_variable_path=False):
+def test_pointer_display(target, process, thread):
+    test_values_display_impl(target, process, thread, 'test_pointer_display',
+        [('p->IntField', '1'), ('p->FloatField', '2')])
+
+def test_string_display(target, process, thread):
+    test_values_display_impl(target, process, thread, 'test_string_display',
+        [('&s->_firstChar', 'u"Basic string"')], # TODO-LLVM-DI: improve string display.
+        use_get_summary=True)
+
+def test_basic_array_display(target, process, thread):
+    test_values_display_impl(target, process, thread, 'test_basic_array_display',
+        [('p1->Data[0]', '1'), ('p1->Data[1]', '2'), ('p1->Data[2]', '3'), ('p1->Length', '3'), # TODO-LLVM-DI: improve array indexing.
+         ('p2->Data[0]', '1'), ('p2->Data[1]', '2'), ('p2->Data[2]', '3'), ('p2->Length', '3')]) # TODO-LLVM-DI: improve array display.
+
+def test_complex_array_display(target, process, thread):
+    test_values_display_impl(target, process, thread, 'test_complex_array_display',
+        [('p1->Data[0]->IntField', '1'), ('p1->Data[0]->FloatField', '2'),
+         ('p2->Data[0].IntField', '1'), ('p2->Data[0].FloatField', '2')])
+
+def test_basic_multi_dimensional_array_display(target, process, thread):
+    test_values_display_impl(target, process, thread, 'test_basic_multi_dimensional_array_display',
+        [('s->Length', '6'),
+         ('sizeof(s->LowerBounds) / sizeof(*s->LowerBounds)', '2'), ('s->LowerBounds[0]', '0'), ('s->LowerBounds[1]', '0'),
+         ('sizeof(s->Lengths) / sizeof(*s->Lengths)', '2'), ('s->Lengths[0]', '2'), ('s->Lengths[1]', '3'),
+         ('s->Data[0]', '1'), ('s->Data[1]', '2'), ('s->Data[2]', '3'),
+         ('s->Data[3]', '4'), ('s->Data[4]', '5'), ('s->Data[5]', '6')])
+
+def test_simple_struct_display(target, process, thread):
+    test_values_display_impl(target, process, thread, 'test_simple_struct_display',
+        [('s.IntField', '1'), ('s.FloatField', '2')],
+        use_get_variable_path=True)
+
+def test_simple_class_display(target, process, thread):
+    test_values_display_impl(target, process, thread, 'test_simple_class_display',
+        [('s->IntField', '1'), ('s->FloatField', '2')])
+
+def test_derived_class_display(target, process, thread):
+    test_values_display_impl(target, process, thread, 'test_derived_class_display',
+        [('s->IntField', '1'), ('s->FloatField', '2'), ('s->LongField', '3')])
+
+def test_recursive_class_display(target, process, thread):
+    test_values_display_impl(target, process, thread, 'test_recursive_class_display',
+        [('s->Value', '1'), ('s->Next->Value', '2')])
+
+def test_values_display_impl(target, process, thread, pyname, expected_values, use_get_variable_path=False, use_get_summary=False):
     start_test(pyname)
     process.Continue()
     frame = thread.GetSelectedFrame()
@@ -95,8 +151,12 @@ def test_values_display_impl(target, process, thread, pyname, expected_values, u
             actual_sb_value = frame.GetValueForVariablePath(name)
         else:
             actual_sb_value = frame.EvaluateExpression(name)
-        if actual_sb_value.GetValue() != value:
-            fail_test(f'unexpected "{name}": "{actual_sb_value}" (expected "{value}")')
+        if use_get_summary:
+            actual_value_as_string = actual_sb_value.GetSummary()
+        else:
+            actual_value_as_string = actual_sb_value.GetValue()
+        if actual_value_as_string != value:
+            fail_test(f'unexpected "{name}": "{actual_value_as_string}" (expected "{value}")')
             return
     pass_test()
 

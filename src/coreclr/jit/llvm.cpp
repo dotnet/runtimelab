@@ -841,26 +841,7 @@ void Llvm::GetJitTestInfo(CorInfoLlvmJitTestKind kind, CORINFO_LLVM_JIT_TEST_INF
     CallEEApi<EEAI_GetJitTestInfo, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, kind, pInfo);
 }
 
-extern "C" DLLEXPORT int registerLlvmCallbacks(void** jitImports, void** jitExports)
-{
-    assert((jitImports != nullptr) && (jitImports[EEAI_Count] == (void*)0x1234));
-    assert(jitExports != nullptr);
-
-    memcpy(g_callbacks, jitImports, static_cast<int>(EEAI_Count) * sizeof(void*));
-
-    jitExports[CJAI_StartSingleThreadedCompilation] = (void*)&Llvm::StartSingleThreadedCompilation;
-    jitExports[CJAI_FinishSingleThreadedCompilation] = (void*)&Llvm::FinishSingleThreadedCompilation;
-    jitExports[CJAI_Count] = (void*)0x1234;
-
-    for (int i = 0; i < CJAI_Count; i++)
-    {
-        assert(jitExports[i] != nullptr);
-    }
-
-    return 1;
-}
-
-/* static */ SingleThreadedCompilationContext* Llvm::StartSingleThreadedCompilation(
+static SingleThreadedCompilationContext* StartSingleThreadedCompilation(
     const char* path, const char* triple, const char* dataLayout)
 {
     SingleThreadedCompilationContext* context = new SingleThreadedCompilationContext(path);
@@ -870,12 +851,14 @@ extern "C" DLLEXPORT int registerLlvmCallbacks(void** jitImports, void** jitExpo
     return context;
 }
 
-/* static */ void Llvm::FinishSingleThreadedCompilation(SingleThreadedCompilationContext* context)
+static void FinishSingleThreadedCompilation(SingleThreadedCompilationContext* context)
 {
     assert(context != nullptr);
 
+    context->FinishDebugInfo();
+
     Module& module = context->Module;
-    if (context->DebugCompileUnitsMap.GetCount() != 0)
+    if (!context->Module.debug_compile_units().empty())
     {
         module.addModuleFlag(llvm::Module::Warning, "Dwarf Version", 4);
         module.addModuleFlag(llvm::Module::Warning, "Debug Info Version", 3);
@@ -894,4 +877,25 @@ extern "C" DLLEXPORT int registerLlvmCallbacks(void** jitImports, void** jitExpo
     llvm::WriteBitcodeToFile(module, bitCodeFileStream);
 
     delete context;
+}
+
+extern "C" DLLEXPORT int registerLlvmCallbacks(void** jitImports, void** jitExports)
+{
+    assert((jitImports != nullptr) && (jitImports[EEAI_Count] == (void*)0x1234));
+    assert(jitExports != nullptr);
+
+    memcpy(g_callbacks, jitImports, static_cast<int>(EEAI_Count) * sizeof(void*));
+
+    jitExports[CJAI_StartSingleThreadedCompilation] = (void*)&StartSingleThreadedCompilation;
+    jitExports[CJAI_FinishSingleThreadedCompilation] = (void*)&FinishSingleThreadedCompilation;
+    jitExports[CJAI_EmitDebugTypeInfo] = (void*)&SingleThreadedCompilationContext::EmitDebugTypeInfo;
+    jitExports[CJAI_EmitDebugMethodDecl] = (void*)&SingleThreadedCompilationContext::EmitDebugMethodDecl;
+    jitExports[CJAI_Count] = (void*)0x1234;
+
+    for (int i = 0; i < CJAI_Count; i++)
+    {
+        assert(jitExports[i] != nullptr);
+    }
+
+    return 1;
 }
