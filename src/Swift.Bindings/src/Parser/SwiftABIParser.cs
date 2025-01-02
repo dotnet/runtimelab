@@ -24,7 +24,7 @@ namespace BindingsGeneration
         public required string Kind { get; set; }
         public required string Name { get; set; }
         public required string PrintedName { get; set; }
-        public required IEnumerable<Node> Children { get; set; }
+        public required IEnumerable<Node> Children { get; set; } = Enumerable.Empty<Node>();
     }
 
     /// <summary>
@@ -43,7 +43,7 @@ namespace BindingsGeneration
         public required bool? IsInternal { get; set; }
         public required string? GenericSig { get; set; }
         public required string? sugared_genericSig { get; set; }
-        public required IEnumerable<Node> Children { get; set; }
+        public required IEnumerable<Node> Children { get; set; } = Enumerable.Empty<Node>();
     }
 
     /// <summary>
@@ -178,7 +178,7 @@ namespace BindingsGeneration
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The declaration.</returns>
-        private BaseDecl? HandleNode(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
+        private BaseDecl HandleNode(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
         {
             BaseDecl? result = null;
             try
@@ -280,7 +280,7 @@ namespace BindingsGeneration
 
             typeRecord.IsProcessed = true;
 
-            if (node.Children != null && decl != null)
+            if (decl != null)
             {
                 var childDecls = CollectDeclarations(node.Children, decl, moduleDecl);
                 decl.Fields.AddRange(childDecls.OfType<FieldDecl>());
@@ -360,24 +360,21 @@ namespace BindingsGeneration
                 ModuleDecl = moduleDecl
             };
 
-            if (node.Children != null)
+            for (int i = 0; i < node.Children.Count(); i++)
             {
-                for (int i = 0; i < node.Children.Count(); i++)
+                var typeDecl = CreateTypeDecl(node.Children.ElementAt(i), methodDecl, moduleDecl);
+                var typeSpec = CreateTypeSpec(node.Children.ElementAt(i));
+                methodDecl.CSSignature.Add(new ArgumentDecl
                 {
-                    var typeDecl = CreateTypeDecl(node.Children.ElementAt(i), methodDecl, moduleDecl);
-                    var typeSpec = CreateTypeSpec(node.Children.ElementAt(i));
-                    methodDecl.CSSignature.Add(new ArgumentDecl
-                    {
-                        CSTypeIdentifier = typeDecl,
-                        SwiftTypeSpec = typeSpec,
-                        Name = paramNames[i],
-                        FullyQualifiedName = string.Empty,
-                        PrivateName = string.Empty,
-                        IsInOut = false,
-                        ParentDecl = methodDecl,
-                        ModuleDecl = moduleDecl
-                    });
-                }
+                    CSTypeIdentifier = typeDecl,
+                    SwiftTypeSpec = typeSpec,
+                    Name = paramNames[i],
+                    FullyQualifiedName = string.Empty,
+                    PrivateName = string.Empty,
+                    IsInOut = false,
+                    ParentDecl = methodDecl,
+                    ModuleDecl = moduleDecl
+                });
             }
 
             return methodDecl;
@@ -476,7 +473,7 @@ namespace BindingsGeneration
             TypeRecord typeRecord;
             string moduleName = node.PrintedName.IndexOf('.') > -1 ? node.PrintedName.Substring(0, node.PrintedName.IndexOf('.')) : string.Empty;
             // If the node has children, it is a generic type
-            if (node.Children != null && node.Children.Any())
+            if (node.Children.Any())
             {
                 typeRecord = _typeDatabase.GetTypeMapping(moduleName, $"{node.Name}`{node.Children.Count()}");
                 typeDecl.Name = typeRecord.TypeIdentifier.Replace($"`{node.Children.Count()}", "") + "<";
