@@ -21,4 +21,35 @@ public struct AnyType : ISwiftObject {
         _payload = payload;
     }
     public SwiftHandle Payload => _payload;
+
+    /// <summary>
+    /// Creates a new SwiftOptional from a Swift payload
+    /// </summary>
+    static ISwiftObject ISwiftObject.NewFromPayload(IntPtr payload)
+    {
+        return new AnyType(new SwiftHandle(payload));
+    }
+
+    /// <summary>
+    /// Marshals this object to a Swift destination
+    /// </summary>
+    /// <param name="swiftDest"></param>
+    /// <returns></returns>
+    IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+    {
+        var metadata = SwiftObjectHelper<AnyType>.GetTypeMetadata();
+        if (!metadata.IsValid)
+        {
+            throw new InvalidOperationException("Cannot marshal AnyType to Swift without metadata");
+        }
+        if (_payload == SwiftHandle.Zero)
+        {
+            throw new InvalidOperationException("Cannot marshal AnyType to Swift without payload");
+        }
+        unsafe {
+            metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload, metadata);
+        }
+        return swiftDest;
+    }
+
 }

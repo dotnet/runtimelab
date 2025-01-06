@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Xunit;
+using Swift;
 using Swift.Runtime;
 using System.Reflection;
 using System.Runtime.InteropServices;

@@ -2,8 +2,9 @@
 // Licensed under the MIT License.
 
 using System.Runtime.InteropServices;
+using Swift.Runtime;
 
-namespace Swift.Runtime;
+namespace Swift;
 
 /// <summary>
 /// Defines the possible cases for an optional type
