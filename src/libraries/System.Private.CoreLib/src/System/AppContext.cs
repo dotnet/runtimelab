@@ -154,6 +154,8 @@ namespace System
 #elif !NATIVEAOT
         internal static unsafe void Setup(char** pNames, char** pValues, int count)
         {
+            Base obj = Collatz();
+            obj.Collatz1();
             Debug.Assert(s_dataStore == null, "s_dataStore is not expected to be inited before Setup is called");
             s_dataStore = new Dictionary<string, object?>(count);
             for (int i = 0; i < count; i++)
@@ -161,6 +163,78 @@ namespace System
                 s_dataStore.Add(new string(pNames[i]), new string(pValues[i]));
             }
         }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void ReadyToCall()
+        {
+            // Do nothing really
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static Base Collatz()
+        {
+#pragma warning disable IDE0054
+            ReadyToCall(); // Should fail now?
+            int a = 10086;
+            while (a > 1)
+            {
+                if (a % 2 == 0)
+                {
+                    a = a / 2;
+                }
+                else
+                {
+                    a = 3 * a + 1;
+                }
+            }
+            if (a == 0)
+            {
+                return new Base();
+            }
+            else
+            {
+                return new Derived();
+            }
+        }
+
+        internal class Base
+        {
+            public virtual void Collatz1()
+            {
+                int a = 12580;
+                while (a > 1)
+                {
+                    if (a % 2 == 0)
+                    {
+                        a = a / 2;
+                    }
+                    else
+                    {
+                        a = 3 * a + 1;
+                    }
+                }
+            }
+        }
+
+        internal sealed class Derived : Base
+        {
+            public override void Collatz1()
+            {
+                int a = 28963035;
+                while (a > 1)
+                {
+                    if (a % 2 == 0)
+                    {
+                        a = a / 2;
+                    }
+                    else
+                    {
+                        a = 3 * a + 1;
+                    }
+                }
+            }
+        }
+#pragma warning restore IDE0054
 #endif
     }
 }

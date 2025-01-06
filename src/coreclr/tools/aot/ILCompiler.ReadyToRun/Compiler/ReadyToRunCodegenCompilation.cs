@@ -348,7 +348,8 @@ namespace ILCompiler
         {
             _computedFixedLayoutTypesUncached = IsLayoutFixedInCurrentVersionBubbleInternal;
             _resilient = resilient;
-            _parallelism = parallelism;
+            // TODO, andrewau, until we fix the problem in InterpreterMapNode, this is required
+            _parallelism = 1;
             _corInfoImpls = new CorInfoImpl[_parallelism];
             _generateMapFile = generateMapFile;
             _generateMapCsvFile = generateMapCsvFile;

@@ -3359,6 +3359,17 @@ EXTERN_C PCODE STDCALL ExternalMethodFixupWorker(TransitionBlock * pTransitionBl
 
             pCode = pMD->GetMethodEntryPoint();
 
+            if (InterpreterPrecode::IsInstance(pCode))
+            {
+                InterpreterMethodInfo* pInterpreterMethodInfo = GetInterpreterMethodInfo(pCode);
+                RVA interpreterCellRva;
+                RVA interpreterStubRva;
+                pModule->GetReadyToRunInfo()->GetInterpreterStub(rva, &interpreterCellRva, &interpreterStubRva);
+                pCode = pNativeImage->GetRvaData(interpreterStubRva);
+                InterpreterMethodInfo** pCell = (InterpreterMethodInfo**)pNativeImage->GetRvaData(interpreterCellRva);
+                *pCell = pInterpreterMethodInfo;
+            }
+
 #if _DEBUG
             if (pEMFrame->GetGCRefMap() != NULL)
             {

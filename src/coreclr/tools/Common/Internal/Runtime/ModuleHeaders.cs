@@ -79,6 +79,7 @@ namespace Internal.Runtime
         MethodIsGenericMap = 121, // Added in V9.0
         EnclosingTypeMap = 122, // Added in V9.0
         TypeGenericInfoMap = 123, // Added in V9.0
+        InterpreterMap = 124, // Added for prototyping only
 
         //
         // NativeAOT ReadyToRun sections

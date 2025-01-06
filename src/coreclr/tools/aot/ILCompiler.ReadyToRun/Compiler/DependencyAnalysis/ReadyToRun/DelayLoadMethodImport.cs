@@ -46,6 +46,16 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
             {
                 yield return entry;
             }
+            
+            // It is possible that an instance of DelayLoadMethodImport is constructed by never get into the graph
+            // So we must delay the construction and rooting of the InterpreterImport
+
+            InterpreterImport _interpreterImport = new InterpreterImport();
+            InterpreterStub _interpreterStub = new InterpreterStub(_interpreterImport);
+            factory.AddInterpreterMapping(this, _interpreterImport, _interpreterStub);
+            yield return new DependencyListEntry(_interpreterImport, "Unused reason 1");
+            yield return new DependencyListEntry(_interpreterStub, "Unused reason 2");
+            yield return new DependencyListEntry(factory.InterpreterMap, "Unused reason 3");
             if (_localMethod != null)
                 yield return new DependencyListEntry(_localMethod, "Local method import");
         }

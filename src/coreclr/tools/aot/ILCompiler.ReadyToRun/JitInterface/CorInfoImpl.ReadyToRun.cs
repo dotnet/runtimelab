@@ -511,6 +511,15 @@ namespace Internal.JitInterface
 
         public static bool ShouldSkipCompilation(InstructionSetSupport instructionSetSupport, MethodDesc methodNeedingCode)
         {
+            // TODO, andrewau, this will restrict the compilation to only a handful of methods for simplicity only
+            if (
+                !string.Equals(methodNeedingCode.Name, "Setup")
+                &&
+                !string.Equals(methodNeedingCode.Name, "Collatz")
+                )
+            {
+                return true;
+            }
             if (methodNeedingCode.IsAggressiveOptimization)
             {
                 return true;

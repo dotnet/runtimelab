@@ -831,6 +831,17 @@ ReadyToRunInfo::ReadyToRunInfo(Module * pModule, LoaderAllocator* pLoaderAllocat
         m_nHotColdMap = 0;
     }
 
+    IMAGE_DATA_DIRECTORY * pInterpreterMapDir = m_pComposite->FindSection(ReadyToRunSectionType::InterpreterMap);
+    if (pInterpreterMapDir != NULL)
+    {
+        m_pInterpreterMap = (PTR_ULONG)m_pComposite->GetLayout()->GetDirectoryData(pInterpreterMapDir);
+        m_nInterpreterMap = pInterpreterMapDir->Size / sizeof(ULONG);
+    }
+    else
+    {
+        m_nInterpreterMap = 0;
+    }
+
     IMAGE_DATA_DIRECTORY * pImportSectionsDir = m_pComposite->FindSection(ReadyToRunSectionType::ImportSections);
     if (pImportSectionsDir != NULL)
     {

@@ -3888,8 +3888,17 @@ PrecodeType MethodDesc::GetPrecodeType()
 
     PrecodeType precodeType = PRECODE_INVALID;
 #ifdef FEATURE_INTERPRETER
-    precodeType = PRECODE_INTERPRETER;
-#else // !FEATURE_INTERPRETER
+    if (
+        !m_pszDebugClassName
+        ||
+        !m_pszDebugClassName
+        ||
+        (strcmp("System.AppContext", m_pszDebugClassName) != 0)
+        || 
+        (strcmp("Collatz", m_pszDebugMethodName) != 0)
+    )
+        return PRECODE_INTERPRETER;
+#endif // FEATURE_INTERPRETER
 #ifdef HAS_FIXUP_PRECODE
     if (!RequiresMethodDescCallingConvention())
     {
@@ -3901,7 +3910,6 @@ PrecodeType MethodDesc::GetPrecodeType()
     {
         precodeType = PRECODE_STUB;
     }
-#endif // FEATURE_INTERPRETER
 
     return precodeType;
 }

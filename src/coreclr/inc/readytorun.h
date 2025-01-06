@@ -102,6 +102,7 @@ enum class ReadyToRunSectionType : uint32_t
     MethodIsGenericMap          = 121, // Added in V9.0
     EnclosingTypeMap            = 122, // Added in V9.0
     TypeGenericInfoMap          = 123, // Added in V9.0
+    InterpreterMap              = 124, // Prototype
 
     // If you add a new section consider whether it is a breaking or non-breaking change.
     // Usually it is non-breaking, but if it is preferable to have older runtimes fail
@@ -447,6 +448,8 @@ enum ReadyToRunHelper
     READYTORUN_HELPER_StackProbe                = 0x111,
 
     READYTORUN_HELPER_GetCurrentManagedThreadId = 0x112,
+
+    READYTORUN_HELPER_InterpreterRoutine        = 0x113,
 };
 
 #include "readytoruninstructionset.h"

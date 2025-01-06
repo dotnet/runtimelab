@@ -12902,7 +12902,7 @@ void Interpreter::PrintILProfile(Interpreter::InstrExecRecord *recs, unsigned in
 }
 #endif // INTERP_ILINSTR_PROFILE
 
-void InterpretCallTarget(PCODE pCallTarget, const ARG_SLOT* pArguments, ARG_SLOT* pReturnValue, int cbReturnValue)
+InterpreterMethodInfo* GetInterpreterMethodInfo(PCODE pCallTarget)
 {
     _ASSERTE(InterpreterPrecode::IsInstance(pCallTarget));
 
@@ -12924,6 +12924,13 @@ void InterpretCallTarget(PCODE pCallTarget, const ARG_SLOT* pArguments, ARG_SLOT
         Interpreter::GenerateInterpreterStub(jitInfo, &jitMethInfo, NULL, 0, &methInfo, true);
         delete jitInfo;
     }
+
+    return methInfo;
+}
+
+void InterpretCallTarget(PCODE pCallTarget, const ARG_SLOT* pArguments, ARG_SLOT* pReturnValue, int cbReturnValue)
+{
+    InterpreterMethodInfo* methInfo = GetInterpreterMethodInfo(pCallTarget);
 
     ARG_SLOT retVal = Interpreter::InterpretMethodBody(methInfo, true, reinterpret_cast<BYTE*>(const_cast<ARG_SLOT*>(pArguments)), NULL);
     if (pReturnValue != NULL)

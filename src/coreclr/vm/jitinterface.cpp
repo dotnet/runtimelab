@@ -13788,6 +13788,10 @@ BOOL LoadDynamicInfoEntry(Module *currentModule,
                 case READYTORUN_HELPER_DelayLoad_MethodCall:
                     result = (size_t)GetEEFuncEntryPoint(DelayLoad_MethodCall);
                     break;
+            
+                case READYTORUN_HELPER_InterpreterRoutine:
+                    result = (size_t)GetEEFuncEntryPoint(InterpretMethod);
+                    break;
 
                 case READYTORUN_HELPER_DelayLoad_Helper:
                     result = (size_t)GetEEFuncEntryPoint(DelayLoad_Helper);

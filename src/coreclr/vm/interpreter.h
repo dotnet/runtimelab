@@ -2098,4 +2098,6 @@ unsigned short Interpreter::NumberOfIntegerRegArgs() { return 8; }
 #error Unsupported architecture.
 #endif
 
+InterpreterMethodInfo* GetInterpreterMethodInfo(PCODE pCallTarget);
+
 #endif  // INTERPRETER_H_DEFINED

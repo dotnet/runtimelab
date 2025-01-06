@@ -118,6 +118,26 @@ class ReadyToRunInfo
     PTR_ULONG                       m_pHotColdMap;
     DWORD                           m_nHotColdMap;
 
+    PTR_ULONG                       m_pInterpreterMap;
+    DWORD                           m_nInterpreterMap;
+
+public:
+    void GetInterpreterStub(RVA rva, RVA* pCell, RVA* pStub)
+    {
+        // TODO, move file
+        // TODO, assert
+        // TODO, andrewau, can we make this a more efficient sort?
+        for (uint i = 0; i < m_nInterpreterMap; i += 3)
+        {
+            if (rva == m_pInterpreterMap[i])
+            {
+                *pCell = m_pInterpreterMap[i + 1];
+                *pStub = m_pInterpreterMap[i + 2];
+            }
+        }
+    }
+private:
+
     PTR_IMAGE_DATA_DIRECTORY        m_pSectionDelayLoadMethodCallThunks;
 
     PTR_READYTORUN_IMPORT_SECTION   m_pImportSections;

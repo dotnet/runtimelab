@@ -97,6 +97,16 @@ namespace ILCompiler.DependencyAnalysis
                 dependencyGraph.AddRoot(HotColdMap, "HotColdMap is generated because there is cold code");
             }
         }
+        
+        public void AddInterpreterMapping(DelayLoadMethodImport left, InterpreterImport right, InterpreterStub last)
+        {
+            if (InterpreterMap == null)
+            {
+                InterpreterMap = new InterpreterMapNode();
+                Header.Add(Internal.Runtime.ReadyToRunSectionType.InterpreterMap, InterpreterMap, InterpreterMap);
+            }
+            InterpreterMap.AddMapping(left, right, last);
+        }
 
         public void SetMarkingComplete()
         {
@@ -372,6 +382,8 @@ namespace ILCompiler.DependencyAnalysis
 
         public HotColdMapNode HotColdMap;
 
+        public InterpreterMapNode InterpreterMap;
+
         public RuntimeFunctionsGCInfoNode RuntimeFunctionsGCInfo;
 
         public DelayLoadMethodCallThunkNodeRange DelayLoadMethodCallThunks;
@@ -386,6 +398,8 @@ namespace ILCompiler.DependencyAnalysis
         public InliningInfoNode CrossModuleInlningInfo;
 
         public Import ModuleImport;
+
+        public Import InterpreterRoutineImport;
 
         public ISymbolNode PersonalityRoutine;
 
@@ -802,6 +816,10 @@ namespace ILCompiler.DependencyAnalysis
             ModuleImport = new Import(EagerImports, new ReadyToRunHelperSignature(
                 ReadyToRunHelper.Module));
             graph.AddRoot(ModuleImport, "Module import is required by the R2R format spec");
+
+            InterpreterRoutineImport = new Import(EagerImports, new ReadyToRunHelperSignature(
+                ReadyToRunHelper.InterpreterRoutine));
+            graph.AddRoot(InterpreterRoutineImport, "This allow ready to run code to bail to interpreter");
 
             if (Target.Architecture != TargetArchitecture.X86)
             {
