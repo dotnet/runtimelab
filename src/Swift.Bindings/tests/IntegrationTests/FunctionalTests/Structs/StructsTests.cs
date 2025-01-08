@@ -77,6 +77,27 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(nonFrozenY, gotNF.getY());
         }
 
+        [Fact(Skip = "Indirect result on non-constructor not implemented")]
+        public void TestFrozenStructWithNonFrozenMemberCreation()
+        {
+            IntPtr frozenX = 1;
+            IntPtr frozenY = 2;
+            IntPtr nonFrozenX = 30;
+            IntPtr nonFrozenY = 40;
+
+            var frozen = new FrozenStruct(frozenX, frozenY);
+            var nonFrozen = new NonFrozenStruct(nonFrozenX, nonFrozenY);
+
+            var complexStruct = new FrozenStructWithNonFrozenMember(frozen, nonFrozen);
+            var gotF = complexStruct.getX();
+            var gotNF = complexStruct.getY();
+
+            Assert.Equal(frozenX, gotF.getX());
+            Assert.Equal(frozenY, gotF.getY());
+            Assert.Equal(nonFrozenX, gotNF.getX());
+            Assert.Equal(nonFrozenY, gotNF.getY());
+        }
+
         [Fact]
         public void TestInstanceMethodOnFrozenStruct()
         {
@@ -114,6 +135,23 @@ namespace BindingsGeneration.FunctionalTests
             var frozen = new FrozenStruct(frozenX, frozenY);
             var nonFrozen = new NonFrozenStruct(nonFrozenX, nonFrozenY);
             var complexStruct = new NonFrozenStructWithNonFrozenMember(frozen, nonFrozen);
+
+            var result = complexStruct.sum();
+
+            Assert.Equal(1 + 2 + 30 + 40, result);
+        }
+
+        [Fact]
+        public void TestInstanceMethodOnFrozenStructWithNonFrozenMember()
+        {
+            IntPtr frozenX = 1;
+            IntPtr frozenY = 2;
+            IntPtr nonFrozenX = 30;
+            IntPtr nonFrozenY = 40;
+
+            var frozen = new FrozenStruct(frozenX, frozenY);
+            var nonFrozen = new NonFrozenStruct(nonFrozenX, nonFrozenY);
+            var complexStruct = new FrozenStructWithNonFrozenMember(frozen, nonFrozen);
 
             var result = complexStruct.sum();
 
