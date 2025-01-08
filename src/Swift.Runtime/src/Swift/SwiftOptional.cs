@@ -36,7 +36,7 @@ public class SwiftOptional<T> : ISwiftObject
     static TypeMetadata ISwiftObject.GetTypeMetadata()
     {
         return TypeMetadata.Cache.GetOrAdd (typeof(SwiftOptional<T>), _ =>
-                PInvokesForSwiftOptional._MetadataAccessor(MetadataRequest.Complete, TypeMetadata.GetTypeMetadataOrThrow<T>()));
+                PInvokesForSwiftOptional._MetadataAccessor(TypeMetadataRequest.Complete, TypeMetadata.GetTypeMetadataOrThrow<T>()));
     }
 
     /// <summary>
@@ -152,5 +152,5 @@ public class SwiftOptional<T> : ISwiftObject
 
 internal static  class PInvokesForSwiftOptional {
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSqMa")]
-    public static extern TypeMetadata _MetadataAccessor(MetadataRequest request, TypeMetadata typeMetadata);
+    public static extern TypeMetadata _MetadataAccessor(TypeMetadataRequest request, TypeMetadata typeMetadata);
 }

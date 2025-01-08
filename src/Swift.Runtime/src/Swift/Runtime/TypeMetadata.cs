@@ -121,6 +121,18 @@ public enum TypeMetadataKind {
     Class = 0x800 
 }
 
+/// <summary>
+/// Represents the possible values for a TypeMetadataRequest
+/// </summary>
+[Flags] 
+public enum TypeMetadataRequest {
+        Complete = 0,
+        NonTransitiveComplete = 1,
+        LayoutComplete = 0x3f,
+        Abstract = 0xff,
+        IsNotBlocking = 0x100, 
+}
+
 
 /// <summary>
 /// Represents the type metadata for a Swift type
