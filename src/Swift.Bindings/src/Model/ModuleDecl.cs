@@ -19,9 +19,9 @@ namespace BindingsGeneration
         public required List<MethodDecl> Methods { get; set; }
 
         /// <summary>
-        /// Declarations within the base declaration.
+        /// The module's types.
         /// </summary>
-        public required List<BaseDecl> Declarations { get; set; }
+        public required Dictionary<NamedTypeSpec, TypeDecl> Types { get; set; }
 
         // <summary>
         // The module's `using` dependencies.

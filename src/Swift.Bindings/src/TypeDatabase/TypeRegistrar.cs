@@ -96,6 +96,7 @@ namespace BindingsGeneration
             });
         }
 
+        // TODO: Remove this method
         /// <summary>
         /// Registers a type with the specified module and type name.
         /// </summary>
@@ -117,10 +118,16 @@ namespace BindingsGeneration
             });
         }
 
+        /// <summary>
+        /// Registers a type with the specified module and type name.
+        /// </summary>
+        /// <param name="moduleName">The Swift module name.</param>
+        /// <param name="typeIdentifier">The Swift type name.</param>
+        /// <param name="record">The type record.</param>
         public void RegisterType(string moduleName, string typeIdentifier, TypeRecord record)
         {
             var moduleRecord = RegisterModule(moduleName);
-            moduleRecord.TypeRecords.GetOrAdd(typeIdentifier, record);
+            moduleRecord.TypeRecords.AddOrUpdate(typeIdentifier, record, (_, _) => record);
         }
 
         /// <summary>

@@ -2,10 +2,6 @@
 // Licensed under the MIT License.
 
 using System.CommandLine;
-using Swift.Runtime;
-using System.IO;
-using System.Diagnostics;
-using System.CodeDom.Compiler;
 
 namespace BindingsGeneration
 {
@@ -92,17 +88,21 @@ namespace BindingsGeneration
             // Initialize the Swift ABI parser
             var swiftParser = new SwiftABIParser(swiftAbiPath, dylibPath, typeDatabase, verbose);
             var moduleName = swiftParser.GetModuleName();
-            
+
             // Skip if the module has already been processed
+            // Modules will have to be processed in topological order
             if (!typeDatabase.IsModuleProcessed(moduleName))
             {
-            
+
                 // Register the module and set the filter
                 var moduleRecord = typeDatabase.Registrar.RegisterModule(moduleName);
                 moduleRecord.Path = dylibPath;
 
                 // Parse the Swift ABI file and generate declarations
                 var decl = swiftParser.GetModuleDecl();
+
+                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, decl.Types, typeDatabase);
+                moduleProcessor.FinalizeTypeProcessing();
 
                 if (verbose > 1)
                     Console.WriteLine("Parsed Swift ABI file successfully.");
@@ -115,7 +115,8 @@ namespace BindingsGeneration
                 if (verbose > 0)
                     Console.WriteLine($"Bindings generation completed for {swiftAbiPath}.");
 
-            } else if (verbose > 0)
+            }
+            else if (verbose > 0)
                 Console.WriteLine($"Bindings generation already completed for {swiftAbiPath}.");
 
             // Copy the Swift library to the output directory

@@ -130,10 +130,10 @@ namespace BindingsGeneration
             var moduleDecl = new ModuleDecl
             {
                 Name = ExtractUniqueName(moduleName),
-                FullyQualifiedName = string.Empty,
+                FullyQualifiedName = ExtractUniqueName(moduleName),
                 Fields = new List<FieldDecl>(),
                 Methods = new List<MethodDecl>(),
-                Declarations = new List<BaseDecl>(),
+                Types = new Dictionary<NamedTypeSpec, TypeDecl>(),
                 Dependencies = dependencies,
                 ParentDecl = null,
                 ModuleDecl = null
@@ -146,7 +146,7 @@ namespace BindingsGeneration
 
             moduleDecl.Fields = decls.OfType<FieldDecl>().ToList();
             moduleDecl.Methods = decls.OfType<MethodDecl>().ToList();
-            moduleDecl.Declarations = decls.Where(d => !(d is MethodDecl) && !(d is FieldDecl)).ToList();
+            moduleDecl.Types = decls.OfType<TypeDecl>().ToDictionary(d => new NamedTypeSpec(d.FullyQualifiedName), d => d);
             moduleDecl.Dependencies = dependencies;
 
             return moduleDecl;
@@ -178,7 +178,7 @@ namespace BindingsGeneration
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The declaration.</returns>
-        private BaseDecl HandleNode(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
+        private BaseDecl? HandleNode(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
         {
             BaseDecl? result = null;
             try
@@ -242,8 +242,6 @@ namespace BindingsGeneration
             }
 
             TypeDecl? decl = null;
-            TypeRecord typeRecord = _typeDatabase.Registrar.RegisterType(node.ModuleName, ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name));
-            IntPtr metadataPtr;
 
             if (node.GenericSig != null)
             {
@@ -256,16 +254,8 @@ namespace BindingsGeneration
             {
                 case "Struct":
                 case "Enum":
-                    // TODO: fix this code to not use static metadata objects if possible
-                    metadataPtr = DynamicLibraryLoader.invoke(_dylibPath, GetMetadataAccessor(node));
-                    var swiftTypeInfo = new SwiftTypeInfo { MetadataPtr = metadataPtr };
-
-                    // TODO: Find better place for this
-                    typeRecord.IsBlittable = !swiftTypeInfo.ValueWitnessTable->IsNonPOD || !swiftTypeInfo.ValueWitnessTable->IsNonBitwiseTakable; //TODO: This is not the full picture.
-                    typeRecord.IsFrozen = node.DeclAttributes != null && Array.IndexOf(node.DeclAttributes, "Frozen") != -1;
-
-                    decl = CreateStructDecl(node, parentDecl, moduleDecl, typeRecord.IsFrozen, typeRecord.IsBlittable);
-                    typeRecord.SwiftTypeInfo = swiftTypeInfo;
+                    var hasFrozenAttribute = node.DeclAttributes != null && Array.IndexOf(node.DeclAttributes, "Frozen") != -1;
+                    decl = CreateStructDecl(node, parentDecl, moduleDecl, hasFrozenAttribute);
                     break;
 
                 case "Class":
@@ -277,8 +267,6 @@ namespace BindingsGeneration
                         Console.WriteLine($"Unsupported declaration type '{node.DeclKind} {node.Name}' encountered.");
                     return null;
             }
-
-            typeRecord.IsProcessed = true;
 
             if (decl != null)
             {
@@ -297,7 +285,7 @@ namespace BindingsGeneration
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The struct declaration.</returns>
-        private StructDecl CreateStructDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl, bool IsFrozen, bool IsBlittable)
+        private StructDecl CreateStructDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl, bool hasFrozenAttribute)
         {
             return new StructDecl
             {
@@ -308,8 +296,8 @@ namespace BindingsGeneration
                 Declarations = new List<BaseDecl>(),
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl,
-                IsFrozen = IsFrozen,
-                IsBlittable = IsBlittable
+                IsFrozen = hasFrozenAttribute,
+                IsBlittable = false,
             };
         }
 
@@ -572,19 +560,6 @@ namespace BindingsGeneration
                 return mangledName.Substring(0, mangledName.Length - 1) + "C";
             }
             return mangledName;
-        }
-
-        /// <summary>
-        /// Gets the metadata accessor for a given node.
-        /// </summary>
-        /// <param name="node">The node to get the metadata accessor for.</param>
-        /// <returns>The metadata accessor.</returns>
-        private string GetMetadataAccessor(Node node)
-        {
-            if (node.GenericSig == null)
-                return $"{node.MangledName}Ma";
-            else
-                return node.MangledName;
         }
     }
 }

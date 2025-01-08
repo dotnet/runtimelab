@@ -67,7 +67,7 @@ namespace BindingsGeneration
                 Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported signature: ({methodEnv.SignatureHandler.GetWrapperSignature().ParametersString()}) -> {methodEnv.SignatureHandler.GetWrapperSignature().ReturnType}");
                 return;
             }
-    
+
             EmitWrapper(writer, methodEnv);
             PInvokeEmitter.EmitPInvoke(writer, methodEnv);
             writer.WriteLine();
@@ -262,7 +262,7 @@ namespace BindingsGeneration
             var returnType = argument.CSTypeIdentifier.Name;
             var typeRecord = MarshallingHelpers.GetType(argument, TypeDatabase.Registrar);
             if (typeRecord == null || !typeRecord.IsProcessed)
-            {                    
+            {
                 Console.WriteLine($"Method {MethodDecl.Name} has unprocessed return type {returnType}");
                 returnType = "AnyType";
             }
