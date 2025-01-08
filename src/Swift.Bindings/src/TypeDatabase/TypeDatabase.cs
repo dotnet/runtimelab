@@ -3,7 +3,7 @@
 
 using System.Xml;
 
-namespace Swift.Runtime
+namespace BindingsGeneration
 {
     /// <summary>
     /// Manages a mapping database between Swift types and C# types.

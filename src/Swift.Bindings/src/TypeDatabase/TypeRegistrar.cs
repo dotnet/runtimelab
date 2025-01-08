@@ -1,12 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Runtime.CompilerServices;
 using System.Collections.Concurrent;
+using Swift.Runtime;
 
-namespace Swift.Runtime
+namespace BindingsGeneration
 {
     /// <summary>
     /// Represents a Swift module in C#.
@@ -117,6 +115,12 @@ namespace Swift.Runtime
                 IsBlittable = false,
                 IsFrozen = false
             });
+        }
+
+        public void RegisterType(string moduleName, string typeIdentifier, TypeRecord record)
+        {
+            var moduleRecord = RegisterModule(moduleName);
+            moduleRecord.TypeRecords.GetOrAdd(typeIdentifier, record);
         }
 
         /// <summary>
