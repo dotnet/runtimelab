@@ -55,6 +55,11 @@
 #include "interpreter.h"
 #endif // FEATURE_INTERPRETER
 
+extern "C"
+{
+    void InterpreterRoutine();
+}
+
 #ifdef FEATURE_PERFMAP
 #include "perfmap.h"
 #endif
@@ -13790,7 +13795,7 @@ BOOL LoadDynamicInfoEntry(Module *currentModule,
                     break;
             
                 case READYTORUN_HELPER_InterpreterRoutine:
-                    result = (size_t)GetEEFuncEntryPoint(InterpretMethod);
+                    result = (size_t)GetEEFuncEntryPoint(InterpreterRoutine);
                     break;
 
                 case READYTORUN_HELPER_DelayLoad_Helper:

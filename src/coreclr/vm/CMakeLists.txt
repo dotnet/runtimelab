@@ -618,6 +618,7 @@ if(CLR_CMAKE_TARGET_ARCH_AMD64)
         ${ARCH_SOURCES_DIR}/GenericComCallStubs.asm
         ${ARCH_SOURCES_DIR}/GenericCLRToCOMCallStubs.asm
         ${ARCH_SOURCES_DIR}/getstate.asm
+        ${ARCH_SOURCES_DIR}/interpreter.asm
         ${ARCH_SOURCES_DIR}/JitHelpers_Fast.asm
         ${ARCH_SOURCES_DIR}/JitHelpers_FastWriteBarriers.asm
         ${ARCH_SOURCES_DIR}/JitHelpers_SingleAppDomain.asm
@@ -653,6 +654,7 @@ elseif(CLR_CMAKE_TARGET_ARCH_ARM64)
     set(VM_SOURCES_WKS_ARCH_ASM
         ${ARCH_SOURCES_DIR}/AsmHelpers.asm
         ${ARCH_SOURCES_DIR}/CallDescrWorkerARM64.asm
+        ${ARCH_SOURCES_DIR}/interpreter.asm
         ${ARCH_SOURCES_DIR}/patchedcode.asm
         ${ARCH_SOURCES_DIR}/PInvokeStubs.asm
         ${ARCH_SOURCES_DIR}/thunktemplates.asm

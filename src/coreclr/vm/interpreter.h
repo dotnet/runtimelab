@@ -1125,7 +1125,30 @@ private:
                 return *reinterpret_cast<BYTE**>(&m_ilArgs[m_methInfo->m_argDescs[argNum].m_nativeOffset]);
             }
 #endif
-            return &m_ilArgs[m_methInfo->m_argDescs[argNum].m_nativeOffset];
+            BYTE* argAddr = &m_ilArgs[m_methInfo->m_argDescs[argNum].m_nativeOffset];
+            if (argAddr >= m_ilArgs + 0x20)
+            {
+                //
+                // This is to adjust for the fact that the assembly stub does not know
+                // the signature of the method, and therefore it has no idea how many spill arg to copy
+                // so we are referencing the spill args where they were
+                //
+                // The stack look like this:
+                //
+                // top (low address) <- bottom (high address)
+                // [s0] [s1] [s2] [s3] [rcx] [rdx] [r8] [r9] [na] [ret] [s0] [s1] [s2] [s3] [spill args]
+                //                     ^
+                //                     m_ilArgs
+                //                                           ^
+                //                                           m_ilArgs + 0x20
+                //                                                      ^
+                //                                                      m_ilArgs + 0x30
+                //
+                // The end effect of the shift will make accessing [na] become accessing spill args, which is what we wanted
+                //
+                argAddr += 0x30;
+            }
+            return argAddr;
         }
         else
         {

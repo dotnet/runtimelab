@@ -99,10 +99,25 @@ namespace ILCompiler.DependencyAnalysis.X64
             {
                 Builder.EmitByte(0xE9);
                 Builder.EmitReloc(symbol, RelocType.IMAGE_REL_BASED_REL32);
-
             }
         }
 
+        public void EmitCALL(ISymbolNode symbol)
+        {
+            if (symbol.RepresentsIndirectionCell)
+            {
+                // CALL instruction with indirection
+                Builder.EmitByte(0xFF);
+                Builder.EmitByte(0x15);
+                Builder.EmitReloc(symbol, RelocType.IMAGE_REL_BASED_REL32);
+            }
+            else
+            {
+                // Regular CALL instruction
+                Builder.EmitByte(0xE8);
+                Builder.EmitReloc(symbol, RelocType.IMAGE_REL_BASED_REL32);
+            }
+        }
         public void EmitJE(ISymbolNode symbol)
         {
             if (symbol.RepresentsIndirectionCell)
@@ -141,6 +156,14 @@ namespace ILCompiler.DependencyAnalysis.X64
             EmitIndirInstruction(0xFF, 0x4, ref addrMode);
         }
 
+        public void EmitPUSH(Register reg)
+        {
+            if (reg >= Register.RAX && reg <= Register.R15)
+            {
+                Builder.EmitByte((byte)((byte)0x50 + (byte)((byte)reg & (byte)0x0F)));
+            }
+        }
+
         public void EmitPUSH(sbyte imm8)
         {
             Builder.EmitByte(0x6A);
@@ -171,6 +194,11 @@ namespace ILCompiler.DependencyAnalysis.X64
                 Builder.EmitByte(0x04);
                 Builder.EmitByte(0x24);
             }
+        }
+
+        public void EmitPOP()
+        {
+            Builder.EmitByte(0x58);
         }
 
         public void EmitRET()

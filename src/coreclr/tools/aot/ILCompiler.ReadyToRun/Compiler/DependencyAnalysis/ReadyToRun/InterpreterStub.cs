@@ -14,8 +14,9 @@ using ILCompiler.DependencyAnalysis.X64;
 namespace ILCompiler.DependencyAnalysis.ReadyToRun
 {
     // An InterpreterStub is a small trampoline that 
-    // 1.) Push the InterpreterMethodInfo to the stack, and
-    // 2.) Jump to the InterpreterMethod
+    // 1.) Copy the pointer to the pointer to the InterpreterMethodInfo into RAX
+    // 2.) Jump to the InterpreterRoutine
+    //
     public class InterpreterStub : ObjectNode, ISymbolDefinitionNode
     {
         public InterpreterImport _interpreterImport;
@@ -34,10 +35,7 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
         {
             X64Emitter x64Emitter = new X64Emitter(factory, relocsOnly);
             x64Emitter.Builder.AddSymbol(this);
-            x64Emitter.EmitMOV(Register.RCX, _interpreterImport);
-            // TODO, andrewau, shouldn't have to do this if we can make node represent redirection cell
-            AddrMode addr = new AddrMode(Register.RCX, null, 0, 0, AddrModeSize.Int64);
-            x64Emitter.EmitMOV(Register.RCX, ref addr);
+            x64Emitter.EmitMOV(Register.RAX, _interpreterImport);
             x64Emitter.EmitJMP(factory.InterpreterRoutineImport);
             return x64Emitter.Builder.ToObjectData();
         }

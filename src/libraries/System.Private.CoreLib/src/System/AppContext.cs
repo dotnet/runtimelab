@@ -165,17 +165,20 @@ namespace System
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        private static void ReadyToCall()
+        private static int ReadyToCall(int a, int b, int c, int d, int e, int f)
         {
-            // Do nothing really
+            return a * 1048576 + b * 65536 + c * 4096 + d * 256 + e * 16 + f;
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
         private static Base Collatz()
         {
 #pragma warning disable IDE0054
-            ReadyToCall(); // Should fail now?
-            int a = 10086;
+            int a = ReadyToCall(1, 2, 3, 4, 5, 6);
+            if (a > 0)
+            {
+                throw new Exception(a.ToString());
+            }
             while (a > 1)
             {
                 if (a % 2 == 0)
