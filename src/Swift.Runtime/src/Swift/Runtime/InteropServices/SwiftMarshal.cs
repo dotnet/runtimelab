@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Swift.Runtime;
+namespace Swift.Runtime.InteropServices;
 
 #nullable enable
 

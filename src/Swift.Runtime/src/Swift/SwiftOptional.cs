@@ -3,6 +3,7 @@
 
 using System.Runtime.InteropServices;
 using Swift.Runtime;
+using Swift.Runtime.InteropServices;
 
 namespace Swift;
 
