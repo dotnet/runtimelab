@@ -19,8 +19,13 @@ namespace BindingsGeneration
         public required List<FieldDecl> Fields { get; set; }
 
         /// <summary>
-        /// Declarations within the base declaration.
+        /// Methods within the base declaration.
         /// </summary>
-        public required List<BaseDecl> Declarations { get; set; }
+        public required List<MethodDecl> Methods { get; set; }
+
+        /// <summary>
+        /// Types declarations within the base declaration.
+        /// </summary>
+        public required List<TypeDecl> Types { get; set; }
     }
 }

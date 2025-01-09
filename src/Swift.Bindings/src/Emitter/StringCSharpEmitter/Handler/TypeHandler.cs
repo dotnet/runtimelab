@@ -96,7 +96,8 @@ namespace BindingsGeneration
             }
             writer.WriteLine();
 
-            base.HandleBaseDecl(writer, structDecl.Declarations, conductor, env.TypeDatabase);
+            base.HandleBaseDecl(writer, structDecl.Types, conductor, env.TypeDatabase);
+            base.HandleBaseDecl(writer, structDecl.Methods, conductor, env.TypeDatabase);
 
             writer.Indent--;
             writer.WriteLine("}");
@@ -205,7 +206,9 @@ namespace BindingsGeneration
             WriteMetadata(writer, moduleDecl.Name, structDecl.MangledName, env.TypeDatabase);
 
             writer.WriteLine();
-            base.HandleBaseDecl(writer, structDecl.Declarations, conductor, env.TypeDatabase);
+
+            base.HandleBaseDecl(writer, structDecl.Types, conductor, env.TypeDatabase);
+            base.HandleBaseDecl(writer, structDecl.Methods, conductor, env.TypeDatabase);
 
             writer.Indent--;
             writer.WriteLine("}");
@@ -340,7 +343,8 @@ namespace BindingsGeneration
             writer.WriteLine($"public unsafe class {classDecl.Name} {{");
             writer.Indent++;
 
-            base.HandleBaseDecl(writer, classDecl.Declarations, conductor, env.TypeDatabase);
+            base.HandleBaseDecl(writer, classDecl.Types, conductor, env.TypeDatabase);
+            base.HandleBaseDecl(writer, classDecl.Methods, conductor, env.TypeDatabase);
 
             writer.Indent--;
             writer.WriteLine("}");

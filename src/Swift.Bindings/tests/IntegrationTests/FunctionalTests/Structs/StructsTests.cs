@@ -99,6 +99,19 @@ namespace BindingsGeneration.FunctionalTests
         }
 
         [Fact]
+        public void TestFrozenStructWithNonFrozenMemberDeclaredWithinTheStruct()
+        {
+            IntPtr innerFieldValue = 123;
+
+            var innerStruct = new FrozenStructWithNonFrozenMemberDeclaredWithinTheStruct.InnerStruct(innerFieldValue);
+            var outerStruct = new FrozenStructWithNonFrozenMemberDeclaredWithinTheStruct(innerStruct);
+
+            var gotInner = outerStruct.getInnerFieldValue();
+
+            Assert.Equal(innerFieldValue, gotInner);
+        }
+
+        [Fact]
         public void TestInstanceMethodOnFrozenStruct()
         {
             IntPtr x = 1;

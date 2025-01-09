@@ -110,6 +110,31 @@ public struct NonFrozenStructWithNonFrozenMember
     }
 }
 
+@frozen
+public struct FrozenStructWithNonFrozenMemberDeclaredWithinTheStruct
+{
+    public struct InnerStruct {
+        public var innerField: Int
+
+        public init(val: Int)
+        {
+            self.innerField = val
+        }
+    }
+
+    public var x: InnerStruct
+
+    public init(x: InnerStruct)
+    {
+        self.x = x
+    }
+
+    public func getInnerFieldValue() -> Int
+    {
+        return x.innerField
+    }
+}
+
 public struct StructBuilder
 {
     public let x: Int

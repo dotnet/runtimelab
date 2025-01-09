@@ -109,7 +109,7 @@ namespace BindingsGeneration
             }
 
             // Emit top-level types
-            base.HandleBaseDecl(writer, moduleDecl.Types.Values, conductor, env.TypeDatabase);
+            base.HandleBaseDecl(writer, moduleDecl.Types, conductor, env.TypeDatabase);
 
             writer.Indent--;
             writer.WriteLine("}");

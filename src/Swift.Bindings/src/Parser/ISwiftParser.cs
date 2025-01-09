@@ -16,7 +16,7 @@ namespace BindingsGeneration
         /// <summary>
         /// Gets the module declaration.
         /// </summary>
-        public ModuleDecl GetModuleDecl();
+        public ModuleParsingResult ParseModule();
 
     }
 }

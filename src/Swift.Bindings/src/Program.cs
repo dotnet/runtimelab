@@ -99,9 +99,9 @@ namespace BindingsGeneration
                 moduleRecord.Path = dylibPath;
 
                 // Parse the Swift ABI file and generate declarations
-                var decl = swiftParser.GetModuleDecl();
+                var (decl, moduleTypes) = swiftParser.ParseModule();
 
-                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, decl.Types, typeDatabase);
+                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, moduleTypes, typeDatabase);
                 moduleProcessor.FinalizeTypeProcessing();
 
                 if (verbose > 1)

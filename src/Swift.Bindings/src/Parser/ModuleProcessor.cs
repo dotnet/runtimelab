@@ -207,7 +207,7 @@ namespace BindingsGeneration
         /// <param name="enumDecl">The enum declaration node.</param>
         private void ProcessEnum(NamedTypeSpec namedTypeSpec, EnumDecl enumDecl)
         {
-            throw new NotImplementedException("Enum processing is not yet implemented.");
+            return;
         }
 
         /// <summary>
@@ -217,7 +217,7 @@ namespace BindingsGeneration
         /// <param name="classDecl">The class declaration node.</param>
         private void ProcessClass(NamedTypeSpec namedTypeSpec, ClassDecl classDecl)
         {
-            throw new NotImplementedException("Class processing is not yet implemented.");
+            return;
         }
     }
 }

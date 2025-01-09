@@ -99,6 +99,8 @@ namespace BindingsGeneration
         /// </summary>
         private readonly ABIRootNode _moduleRoot;
 
+        private readonly Dictionary<NamedTypeSpec, TypeDecl> _moduleTypes = new();
+
         public SwiftABIParser(string filePath, string dylibPath, TypeDatabase typeDatabase, int verbose = 0)
         {
             _filePath = filePath;
@@ -120,10 +122,10 @@ namespace BindingsGeneration
         }
 
         /// <summary>
-        /// Gets the module declaration from the ABI file.
+        /// Processes the module ABI. Processes all declarations and builds the ModuleDecl.
         /// </summary>
-        /// <returns>The module declaration.</returns>
-        public ModuleDecl GetModuleDecl()
+        /// <returns>The module ABI processing result.</returns>
+        public ModuleParsingResult ParseModule()
         {
             var dependencies = new List<string>();
             var moduleName = GetModuleName();
@@ -133,7 +135,7 @@ namespace BindingsGeneration
                 FullyQualifiedName = ExtractUniqueName(moduleName),
                 Fields = new List<FieldDecl>(),
                 Methods = new List<MethodDecl>(),
-                Types = new Dictionary<NamedTypeSpec, TypeDecl>(),
+                Types = new List<TypeDecl>(),
                 Dependencies = dependencies,
                 ParentDecl = null,
                 ModuleDecl = null
@@ -146,10 +148,15 @@ namespace BindingsGeneration
 
             moduleDecl.Fields = decls.OfType<FieldDecl>().ToList();
             moduleDecl.Methods = decls.OfType<MethodDecl>().ToList();
-            moduleDecl.Types = decls.OfType<TypeDecl>().ToDictionary(d => new NamedTypeSpec(d.FullyQualifiedName), d => d);
+            moduleDecl.Types = decls.OfType<TypeDecl>().ToList();
             moduleDecl.Dependencies = dependencies;
 
-            return moduleDecl;
+            foreach (var type in moduleDecl.Types)
+            {
+                _moduleTypes.Add(new NamedTypeSpec(type.FullyQualifiedName), type);
+            }
+
+            return new ModuleParsingResult(moduleDecl, _moduleTypes);
         }
 
         /// <summary>
@@ -272,7 +279,13 @@ namespace BindingsGeneration
             {
                 var childDecls = CollectDeclarations(node.Children, decl, moduleDecl);
                 decl.Fields.AddRange(childDecls.OfType<FieldDecl>());
-                decl.Declarations.AddRange(childDecls.Where(d => !(d is FieldDecl)));
+                decl.Methods.AddRange(childDecls.OfType<MethodDecl>());
+                decl.Types.AddRange(childDecls.OfType<TypeDecl>());
+
+                foreach (var type in decl.Types)
+                {
+                    _moduleTypes.Add(new NamedTypeSpec(type.FullyQualifiedName), type);
+                }
             }
 
             return decl;
@@ -293,7 +306,8 @@ namespace BindingsGeneration
                 FullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name),
                 MangledName = node.MangledName,
                 Fields = new List<FieldDecl>(),
-                Declarations = new List<BaseDecl>(),
+                Methods = new List<MethodDecl>(),
+                Types = new List<TypeDecl>(),
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl,
                 IsFrozen = hasFrozenAttribute,
@@ -316,7 +330,8 @@ namespace BindingsGeneration
                 FullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name),
                 MangledName = node.MangledName,
                 Fields = new List<FieldDecl>(),
-                Declarations = new List<BaseDecl>(),
+                Methods = new List<MethodDecl>(),
+                Types = new List<TypeDecl>(),
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl
             };
@@ -453,7 +468,8 @@ namespace BindingsGeneration
                 FullyQualifiedName = string.Empty,
                 MangledName = node.MangledName,
                 Fields = new List<FieldDecl>(),
-                Declarations = new List<BaseDecl>(),
+                Methods = new List<MethodDecl>(),
+                Types = new List<TypeDecl>(),
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl
             };
@@ -469,7 +485,7 @@ namespace BindingsGeneration
                 for (int i = 0; i < node.Children.Count(); i++)
                 {
                     var child = CreateTypeDecl(node.Children.ElementAt(i), typeDecl, moduleDecl);
-                    typeDecl.Declarations.Add(child);
+                    typeDecl.Types.Add(child);
                     if (i > 0)
                         typeDecl.Name += ", ";
                     typeDecl.Name += child.Name;
