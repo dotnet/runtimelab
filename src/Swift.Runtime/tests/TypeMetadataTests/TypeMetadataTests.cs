@@ -102,7 +102,7 @@ public class TypeMetadataTests : IClassFixture<TypeMetadataTests.TestFixture>
     [Fact]
     public static void TryGetWillThrow()
     {
-        Assert.Throws<Exception>(() => {
+        Assert.Throws<SwiftRuntimeException>(() => {
             TypeMetadata.GetTypeMetadataOrThrow<TypeMetadataTests>();
         });
     }

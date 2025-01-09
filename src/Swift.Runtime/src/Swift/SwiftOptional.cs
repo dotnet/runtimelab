@@ -142,7 +142,7 @@ public class SwiftOptional<T> : ISwiftObject
     public T? Value => Case switch {
             SwiftOptionalCases.Some => Some,
             SwiftOptionalCases.None => default(T),
-            _ => throw new InvalidOperationException("Unknown case")
+            _ => throw new SwiftRuntimeException(string.Format("Unknown case {0}", Case))
         };
 
     /// <summary>

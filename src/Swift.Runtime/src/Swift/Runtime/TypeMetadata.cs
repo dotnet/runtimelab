@@ -168,11 +168,11 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata> {
     /// <summary>
     /// Throws a NotSupportedException if the TypeMetadata is invalid
     /// </summary>
-    /// <exception cref="NotSupportedException"></exception>
+    /// <exception cref="SwiftRuntimeException"></exception>
     void ThrowOnInvalid ()
     {
         if (!IsValid)
-            throw new NotSupportedException ();
+            throw new SwiftRuntimeException("TypeMetadata is invalid.");
     }
 
     // This comes from the Swift ABI documentation - https://github.com/swiftlang/swift/blob/23e3f5f5de2ed046f3183264589be1f9a54f7e1e/include/swift/ABI/MetadataValues.h#L117
@@ -284,12 +284,12 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata> {
     /// </summary>
     /// <typeparam name="T">The type of the object</typeparam>
     /// <returns>The result of the looked up type metadata on success</returns>
-    /// <exception cref="Exception">Throws when lookup fails</exception>
+    /// <exception cref="SwiftRuntimeException">Throws when lookup fails</exception>
     public static TypeMetadata GetTypeMetadataOrThrow<T>()
     {
         if (TryGetTypeMetadata<T>(out var result))
             return result.Value;
-        throw new Exception(string.Format("Unable to get type metadata for type {0}", typeof(T).Name));
+        throw new SwiftRuntimeException(string.Format("Unable to get type metadata for type {0}", typeof(T).Name));
     }
 
     /// <summary>
@@ -325,12 +325,12 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata> {
     /// Returns an enumeration of known Type and TypeMetadata objects
     /// </summary>
     /// <returns>An enumeration of known Type and TypeMetadata objects</returns>
-    /// <exception cref="Exception">Throws if unable to load a library containing known types</exception>
+    /// <exception cref="SwiftRuntimeException">Throws if unable to load a library containing known types</exception>
     static IEnumerable<(Type, TypeMetadata)> KnownMetadata()
     {
         var libraryHandle = NativeLibrary.Load(KnownLibraries.SwiftCore);
         if (libraryHandle == IntPtr.Zero)
-            throw new Exception(string.Format("Unable to load library {0}", KnownLibraries.SwiftCore));
+            throw new SwiftRuntimeException(string.Format("Unable to load library {0}", KnownLibraries.SwiftCore));
         // types from libSwiftCore
         yield return (typeof(bool), MetadataFromNativeLibrary(libraryHandle, "$sSbN"));
         yield return (typeof(nint), MetadataFromNativeLibrary(libraryHandle, "$sSiN"));
@@ -358,12 +358,12 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata> {
     /// <param name="symbolName">Swift symbol for a type metadata object</param>
     /// <param name="libraryName">The library to load from. Defaults to libswiftCore.dylib</param>
     /// <returns>A type metadata object for the symbol</returns>
-    /// <exception cref="Exception">Throws on failure to load symbol</exception>
+    /// <exception cref="SwiftRuntimeException">Throws on failure to load symbol</exception>
     static TypeMetadata MetadataFromNativeLibrary(IntPtr handle, string symbolName, string libraryName = KnownLibraries.SwiftCore)
     {
-        var entryPoint = NativeLibrary.GetExport(handle, symbolName);
-        if (entryPoint == IntPtr.Zero)
-            throw new Exception(string.Format("Unable to find symbol {0} in library {1}", symbolName, libraryName));
-        return new TypeMetadata(entryPoint);
+        if (NativeLibrary.TryGetExport(handle, symbolName, out var entryPoint)) {
+            return new TypeMetadata(entryPoint);
+        }
+        throw new SwiftRuntimeException(string.Format("Unable to find symbol {0} in library {1}", symbolName, libraryName));
     }
 }
