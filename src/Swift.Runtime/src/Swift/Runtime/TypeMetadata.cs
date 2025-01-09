@@ -166,7 +166,7 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata> {
     public bool IsValid => handle != IntPtr.Zero;
 
     /// <summary>
-    /// Throws a NotSupportedException if the TypeMetadata is invalid
+    /// Throws a SwiftRuntimeException if the TypeMetadata is invalid
     /// </summary>
     /// <exception cref="SwiftRuntimeException"></exception>
     void ThrowOnInvalid ()
