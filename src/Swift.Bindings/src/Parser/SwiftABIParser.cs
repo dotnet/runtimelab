@@ -402,7 +402,8 @@ namespace BindingsGeneration
                 FullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name),
                 Visibility = node.IsInternal ?? false ? Visibility.Private : Visibility.Public,
                 ParentDecl = parentDecl,
-                ModuleDecl = moduleDecl
+                ModuleDecl = moduleDecl,
+                IsStatic = node.@static ?? false
             };
             typeDecl.ParentDecl = fieldDecl;
             return fieldDecl;

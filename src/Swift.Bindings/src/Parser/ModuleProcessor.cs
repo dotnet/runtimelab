@@ -121,13 +121,17 @@ namespace BindingsGeneration
                 if (fieldDecl.SwiftTypeSpec is not NamedTypeSpec namedFieldType)
                     continue;
 
+                if (fieldDecl.IsStatic)
+                    continue;
+
                 // If the field is from a different module, ensure that type is already processed.
                 if (namedFieldType.Module != _module)
                 {
                     if (!_typeDatabase.IsTypeProcessed(namedFieldType.Module, namedFieldType.NameWithoutModule))
                     {
-                        throw new Exception(
-                            $"Type '{namedFieldType.NameWithoutModule}' from module '{namedFieldType.Module}' was not processed.");
+                        if (_verbosity > 1)
+                            Console.WriteLine($"Skipping field '{fieldDecl.Name}' of type '{namedFieldType.NameWithoutModule}' from module '{namedFieldType.Module}'. Type should have been processed in a previous module, but was not found.");
+                        continue;
                     }
                 }
                 // If the field is in the same module, process it recursively.
@@ -135,8 +139,9 @@ namespace BindingsGeneration
                 {
                     if (!_typeDecls.TryGetValue(namedFieldType, out var nestedDecl))
                     {
-                        throw new Exception(
-                            $"Type '{namedFieldType.NameWithoutModule}' from module '{namedFieldType.Module}' not found in type declarations.");
+                        if (_verbosity > 1)
+                            Console.WriteLine($"Skipping field '{fieldDecl.Name}' of type '{namedFieldType.NameWithoutModule}' from module '{namedFieldType.Module}'. Not found in type declarations.");
+                        continue;
                     }
                     ProcessTypeRecursively(namedFieldType, nestedDecl);
                 }

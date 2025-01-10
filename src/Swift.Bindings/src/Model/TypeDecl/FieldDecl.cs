@@ -6,7 +6,7 @@ namespace BindingsGeneration
     /// <summary>
     /// Represents a field declaration.
     /// </summary>
-    public record FieldDecl: BaseDecl
+    public record FieldDecl : BaseDecl
     {
         /// <summary>
         /// Type name.
@@ -15,13 +15,18 @@ namespace BindingsGeneration
 
         /// <summary>
         /// The TypeSpec of the declaration
-        ///
-        public required TypeSpec SwiftTypeSpec {get; set; }
+        /// <summary>
+        public required TypeSpec SwiftTypeSpec { get; set; }
 
         /// <summary>
         /// Indicates the visibility of the declaration.
         /// </summary>
         public Visibility? Visibility { get; set; }
+
+        /// <summary>
+        /// Indicates if the declaration is static.
+        /// </summary>
+        public required bool IsStatic { get; set; }
     }
 
     /// <summary>
