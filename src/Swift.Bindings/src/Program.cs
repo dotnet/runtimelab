@@ -101,7 +101,7 @@ namespace BindingsGeneration
                 // Parse the Swift ABI file and generate declarations
                 var (decl, moduleTypes) = swiftParser.ParseModule();
 
-                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, moduleTypes, typeDatabase);
+                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, moduleTypes, typeDatabase, verbose);
                 moduleProcessor.FinalizeTypeProcessing();
 
                 if (verbose > 1)

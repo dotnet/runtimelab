@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.  
+// Licensed under the MIT License. 
+
 using Swift.Runtime;
 
 namespace BindingsGeneration
@@ -13,21 +16,24 @@ namespace BindingsGeneration
         private readonly string _dylibPath;
         private readonly TypeDatabase _typeDatabase;
         private readonly Dictionary<NamedTypeSpec, TypeDecl> _typeDecls;
+        private readonly int _verbosity;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ModuleProcessor"/> class.
         /// </summary>
-        /// <param name="typeDatabase">The global type database tracking processed types.</param>
         /// <param name="module">The name of the Swift module being processed.</param>
-        /// <param name="typeDecls">Dictionary of Swift type specs to their declarations.</param>
         /// <param name="dylibPath">File path to the Swift dynamic library.</param>
+        /// <param name="typeDatabase">The global type database tracking processed types.</param>
+        /// <param name="typeDecls">Dictionary of Swift type specs to their declarations.</param>
+        /// <param name="verbosity">Verbosity level for logging.</param>
         public ModuleProcessor(string module, string dylibPath,
-            Dictionary<NamedTypeSpec, TypeDecl> typeDecls, TypeDatabase typeDatabase)
+            Dictionary<NamedTypeSpec, TypeDecl> typeDecls, TypeDatabase typeDatabase, int verbosity)
         {
             _module = module;
             _dylibPath = dylibPath;
             _typeDatabase = typeDatabase;
             _typeDecls = typeDecls;
+            _verbosity = verbosity;
         }
 
         /// <summary>
@@ -71,7 +77,9 @@ namespace BindingsGeneration
                     break;
 
                 default:
-                    throw new NotSupportedException($"Unknown or unsupported type declaration '{typeDecl.GetType().Name}'.");
+                    if (_verbosity > 1)
+                        Console.WriteLine($"Skipping unknown type declaration '{typeDecl.GetType().Name}'.");
+                    return;
             }
         }
 
