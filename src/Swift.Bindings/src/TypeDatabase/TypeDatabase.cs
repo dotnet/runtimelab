@@ -131,7 +131,7 @@ namespace BindingsGeneration
         {
             // Try to find a mapping in the database
             var typeRecord = Registrar.GetType(moduleName, typeIdentifier);
-            if (typeRecord != null)
+            if (typeRecord is not null)
                 return typeRecord;
 
             // Type not found; register it for lazy-loading
@@ -149,7 +149,7 @@ namespace BindingsGeneration
         public bool IsModuleProcessed(string moduleName)
         {
             var moduleRecord = Registrar.GetModule(moduleName);
-            if (moduleRecord != null)
+            if (moduleRecord is not null)
                 return moduleRecord.IsProcessed;
 
             return false;
@@ -164,7 +164,7 @@ namespace BindingsGeneration
         public bool IsTypeProcessed(string moduleName, string typeIdentifier)
         {
             var typeRecord = Registrar.GetType(moduleName, typeIdentifier);
-            if (typeRecord != null)
+            if (typeRecord is not null)
                 return typeRecord.IsProcessed;
 
             return false;

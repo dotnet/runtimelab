@@ -172,7 +172,7 @@ namespace BindingsGeneration
             foreach (var node in nodes)
             {
                 var nodeDeclaration = HandleNode(node, parentDecl, moduleDecl);
-                if (nodeDeclaration != null)
+                if (nodeDeclaration is not null)
                     declarations.Add(nodeDeclaration);
             }
             return declarations;
@@ -202,7 +202,7 @@ namespace BindingsGeneration
                         break;
                     case "Var":
                         // TODO: Implement computed properties
-                        if (node.DeclAttributes != null && Array.IndexOf(node.DeclAttributes, "HasStorage") != -1)
+                        if (node.DeclAttributes is not null && Array.IndexOf(node.DeclAttributes, "HasStorage") != -1)
                             result = CreateFieldDecl(node, parentDecl, moduleDecl);
                         break;
                     case "Import":
@@ -248,9 +248,9 @@ namespace BindingsGeneration
                 return null;
             }
 
-            TypeDecl? decl = null;
+            TypeDecl? decl;
 
-            if (node.GenericSig != null)
+            if (node.GenericSig is not null)
             {
                 if (_verbose > 1)
                     Console.WriteLine($"Generic type '{node.Name}' not supported. Skipping.");
@@ -261,7 +261,7 @@ namespace BindingsGeneration
             {
                 case "Struct":
                 case "Enum":
-                    var hasFrozenAttribute = node.DeclAttributes != null && Array.IndexOf(node.DeclAttributes, "Frozen") != -1;
+                    var hasFrozenAttribute = node.DeclAttributes is not null && Array.IndexOf(node.DeclAttributes, "Frozen") != -1;
                     decl = CreateStructDecl(node, parentDecl, moduleDecl, hasFrozenAttribute);
                     break;
 
@@ -275,7 +275,7 @@ namespace BindingsGeneration
                     return null;
             }
 
-            if (decl != null)
+            if (decl is not null)
             {
                 var childDecls = CollectDeclarations(node.Children, decl, moduleDecl);
                 decl.Fields.AddRange(childDecls.OfType<FieldDecl>());
