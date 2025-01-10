@@ -110,9 +110,17 @@ public class NamedTypeSpec : TypeSpec
         }
     }
 
-	/// <summary>
-	/// Returns true if the name is "Self" or if any of the generic parameters contains dynamic self
-	/// </summary>
+    public string NameWithoutModuleWithGenericParameters
+    {
+        get
+        {
+            return NameWithoutModule + (GenericParameters.Count > 0 ? "<" + string.Join(", ", GenericParameters) + ">" : "");
+        }
+    }
+
+    /// <summary>
+    /// Returns true if the name is "Self" or if any of the generic parameters contains dynamic self
+    /// </summary>
     public override bool HasDynamicSelf
     {
         get

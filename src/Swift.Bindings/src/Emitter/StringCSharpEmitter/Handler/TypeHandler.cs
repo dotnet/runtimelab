@@ -43,7 +43,7 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="structDecl">The struct declaration.</param>
         /// <param name="typeDatabase">The type database instance.</param>
-        public IEnvironment Marshal(BaseDecl decl, TypeDatabase typeDatabase)
+        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
         {
             if (decl is not StructDecl structDecl)
             {
@@ -66,7 +66,7 @@ namespace BindingsGeneration
             var parentDecl = structDecl.ParentDecl ?? throw new ArgumentNullException(nameof(structDecl.ParentDecl));
             var moduleDecl = structDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(structDecl.ParentDecl));
             // Retrieve type info from the type database
-            var typeRecord = env.TypeDatabase.Registrar.GetType(moduleDecl.Name, structDecl.Name);
+            var typeRecord = env.TypeDatabase.GetTypeRecordOrThrow(moduleDecl.Name, structDecl.FullyQualifiedNameWithoutModule);
             SwiftTypeInfo? swiftTypeInfo = typeRecord?.SwiftTypeInfo;
 
             if (swiftTypeInfo.HasValue)
@@ -85,7 +85,8 @@ namespace BindingsGeneration
             foreach (var fieldDecl in structDecl.Fields)
             {
                 string accessModifier = fieldDecl.Visibility == Visibility.Public ? "public" : "private";
-                writer.WriteLine($"{accessModifier} {fieldDecl.CSTypeIdentifier.Name} {fieldDecl.Name};");
+                var fieldRecord = env.TypeDatabase.GetTypeRecordOrThrow(fieldDecl.SwiftTypeSpec);
+                writer.WriteLine($"{accessModifier} {fieldRecord.CSTypeIdentifier} {fieldDecl.Name};");
 
                 // TODO: Fix memory access violation
                 // // Verify field against Swift type information
@@ -169,7 +170,7 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="structDecl">The struct declaration.</param>
         /// <param name="typeDatabase">The type database instance.</param>
-        public IEnvironment Marshal(BaseDecl decl, TypeDatabase typeDatabase)
+        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
         {
             if (decl is not StructDecl structDecl)
             {
@@ -190,10 +191,7 @@ namespace BindingsGeneration
         {
             var structEnv = (TypeEnvironment)env;
             var structDecl = (StructDecl)structEnv.TypeDecl;
-            var parentDecl = structDecl.ParentDecl ?? throw new ArgumentNullException(nameof(structDecl.ParentDecl));
             var moduleDecl = structDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(structDecl.ModuleDecl));
-            var typeRecord = env.TypeDatabase.Registrar.GetType(moduleDecl.Name, structDecl.Name);
-            SwiftTypeInfo? swiftTypeInfo = typeRecord?.SwiftTypeInfo;
 
             writer.WriteLine($"public unsafe class {structDecl.Name} : IDisposable");
             writer.WriteLine("{");
@@ -263,12 +261,12 @@ namespace BindingsGeneration
         /// <summary>
         /// Writes the metadata for the class.
         /// </summary>
-        private static void WriteMetadata(IndentedTextWriter writer, string moduleName, string mangledName, TypeDatabase typeDatabase)
+        private static void WriteMetadata(IndentedTextWriter writer, string moduleName, string mangledName, ITypeDatabase typeDatabase)
         {
             writer.WriteLine("public static TypeMetadata Metadata => PInvoke_getMetadata();");
 
             writer.WriteLine("[UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]");
-            string libPath = typeDatabase.GetLibraryName(moduleName);
+            string libPath = typeDatabase.GetLibraryPath(moduleName);
             writer.WriteLine($"[DllImport(\"{libPath}\", EntryPoint = \"{mangledName}Ma\")]");
             writer.WriteLine("internal static extern TypeMetadata PInvoke_getMetadata();");
         }
@@ -319,7 +317,7 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="classDecl">The class declaration.</param>
         /// <param name="typeDatabase">The type database instance.</param>
-        public IEnvironment Marshal(BaseDecl decl, TypeDatabase typeDatabase)
+        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
         {
             if (decl is not ClassDecl classDecl)
             {

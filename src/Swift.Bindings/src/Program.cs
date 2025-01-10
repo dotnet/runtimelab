@@ -80,29 +80,25 @@ namespace BindingsGeneration
         /// <param name="verbose">Verbosity level.</param>
         public static void GenerateBindings(string swiftAbiPath, string dylibPath, string outputDirectory, int verbose = 2)
         {
-            TypeDatabase typeDatabase = new(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Swift", "TypeDatabase.xml"));
+            var typeDatabase = new TypeDatabase();
+            typeDatabase.LoadModuleDatabaseFromFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Swift", "TypeDatabase.xml"));
 
             if (verbose > 0)
                 Console.WriteLine($"Starting bindings generation for {swiftAbiPath}...");
 
             // Initialize the Swift ABI parser
-            var swiftParser = new SwiftABIParser(swiftAbiPath, dylibPath, typeDatabase, verbose);
+            var swiftParser = new SwiftABIParser(swiftAbiPath, typeDatabase, verbose);
             var moduleName = swiftParser.GetModuleName();
 
             // Skip if the module has already been processed
             // Modules will have to be processed in topological order
             if (!typeDatabase.IsModuleProcessed(moduleName))
             {
-
-                // Register the module and set the filter
-                var moduleRecord = typeDatabase.Registrar.RegisterModule(moduleName);
-                moduleRecord.Path = dylibPath;
-
                 // Parse the Swift ABI file and generate declarations
-                var (decl, moduleTypes) = swiftParser.ParseModule();
+                var (decl, moduleTypes, closedGenericTypes) = swiftParser.ParseModule();
 
-                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, moduleTypes, typeDatabase, verbose);
-                moduleProcessor.FinalizeTypeProcessing();
+                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, moduleTypes, closedGenericTypes, typeDatabase, verbose);
+                moduleProcessor.FinalizeTypeProcessingAndCreateModuleDatabase();
 
                 if (verbose > 1)
                     Console.WriteLine("Parsed Swift ABI file successfully.");
@@ -111,7 +107,6 @@ namespace BindingsGeneration
                 var csharpEmitter = new StringCSharpEmitter(outputDirectory, typeDatabase, verbose);
                 csharpEmitter.EmitModule(decl);
 
-                moduleRecord.IsProcessed = true;
                 if (verbose > 0)
                     Console.WriteLine($"Bindings generation completed for {swiftAbiPath}.");
 

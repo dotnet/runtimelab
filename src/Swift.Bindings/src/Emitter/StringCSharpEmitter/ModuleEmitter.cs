@@ -13,14 +13,14 @@ namespace BindingsGeneration
     {
         // Private properties
         private readonly string _outputDirectory;
-        private readonly TypeDatabase _typeDatabase;
+        private readonly ITypeDatabase _typeDatabase;
         private readonly int _verbose;
         private readonly Conductor _conductor;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="StringCSharpEmitter"/> class.
         /// </summary>
-        public StringCSharpEmitter(string outputDirectory, TypeDatabase typeDatabase, int verbose = 0)
+        public StringCSharpEmitter(string outputDirectory, ITypeDatabase typeDatabase, int verbose = 0)
         {
             _outputDirectory = outputDirectory;
             _typeDatabase = typeDatabase;

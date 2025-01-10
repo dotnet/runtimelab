@@ -1,25 +1,46 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Xml;
 
 namespace BindingsGeneration
 {
+
     /// <summary>
     /// Manages a mapping database between Swift types and C# types.
     /// </summary>
-    public unsafe class TypeDatabase
+    public class TypeDatabase : ITypeDatabase
     {
-        /// <summary>
-        /// The module and type records associated with the database.
-        /// </summary>
-        public readonly TypeRegistrar Registrar = new();
+        private readonly ConcurrentDictionary<string, IModuleDatabase> _modules = new();
+
+        // This store is intended for types which are encountered in one module but should belong to another.
+        // This is true for closed generics, where a generic definition is in one module and instantiation is in another.
+        private readonly ConcurrentDictionary<string, TypeRecord> _outOfModuleTypes = new();
+
+        public TypeDatabase()
+        {
+            var voidModuleRecord = new ModuleDatabase("", "");
+            voidModuleRecord.RegisterType("()", new TypeRecord()
+            {
+                CSTypeIdentifier = "void",
+                SwiftTypeIdentifier = "()",
+                MetadataAccessor = string.Empty,
+                Namespace = string.Empty,
+                ModuleName = string.Empty,
+                IsBlittable = true,
+                IsFrozen = true,
+            });
+
+            AddModuleDatabase(voidModuleRecord);
+        }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="TypeDatabase"/> class.
+        /// Loads a module database from a specified file.
         /// </summary>
-        /// <param name="file">The path to the XML file containing the type mappings.</param>
-        public TypeDatabase(string file)
+        /// <param name="file">The file path of the module database to load.</param>
+        public void LoadModuleDatabaseFromFile(string file)
         {
             XmlDocument xmlDoc = new();
             xmlDoc.Load(file);
@@ -27,13 +48,26 @@ namespace BindingsGeneration
                 throw new Exception(string.Format($"Invalid XML schema in {0}.", file));
 
             var version = xmlDoc.DocumentElement?.Attributes?["version"]?.Value;
-            switch (version)
+            var moduleDatabase = version switch
             {
-                case "1.0":
-                    ReadVersion1_0(xmlDoc);
-                    break;
-                default:
-                    throw new Exception(string.Format($"Unsupported database version {0} in {1}.", version, file));
+                "1.0" => ReadVersion1_0(xmlDoc),
+                _ => throw new Exception(string.Format($"Unsupported database version {0} in {1}.", version, file))
+            };
+
+            AddModuleDatabase(moduleDatabase);
+        }
+
+
+        /// <summary>
+        /// Adds a module database to the type database.
+        /// </summary>
+        /// <param name="moduleDatabase">The module database to add.</param>
+        /// <exception cref="Exception">Thrown if a module with the same name already exists in the database.</exception>
+        public void AddModuleDatabase(IModuleDatabase moduleDatabase)
+        {
+            if (!_modules.TryAdd(moduleDatabase.Name, moduleDatabase))
+            {
+                throw new Exception($"Module {moduleDatabase.Name} already exists in the database.");
             }
         }
 
@@ -42,7 +76,7 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="xmlDoc">The XML document to validate.</param>
         /// <returns>True if the XML schema is valid; otherwise, false.</returns>
-        public static bool ValidateXmlSchema(XmlDocument xmlDoc)
+        private static bool ValidateXmlSchema(XmlDocument xmlDoc)
         {
             if (xmlDoc == null)
                 return false;
@@ -77,8 +111,18 @@ namespace BindingsGeneration
         /// Reads and parses the XML document containing type mappings based on the version 1.0.
         /// </summary>
         /// <param name="xmlDoc">The XML document to read.</param>
-        private void ReadVersion1_0(XmlDocument xmlDoc)
+        /// <returns>The module database.</returns>
+        private static IModuleDatabase ReadVersion1_0(XmlDocument xmlDoc)
         {
+            XmlNode? rootNode = xmlDoc.SelectSingleNode("//swifttypedatabase");
+            if (rootNode == null)
+                throw new Exception("Invalid XML structure: 'swifttypedatabase' node not found.");
+
+            var databaseModuleName = rootNode.Attributes?["moduleName"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'moduleName' attribute.");
+            var databaseModulePath = rootNode.Attributes?["modulePath"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'modulePath' attribute.");
+
+            var moduleDatabase = new ModuleDatabase(databaseModuleName, databaseModulePath);
+
             XmlNode? entitiesNode = xmlDoc.SelectSingleNode("//swifttypedatabase/entities");
 
             if (entitiesNode == null)
@@ -90,7 +134,7 @@ namespace BindingsGeneration
                 if (typeDeclarationNode == null)
                     throw new Exception("Invalid XML structure: 'typedeclaration' node not found.");
 
-                string moduleName = typeDeclarationNode?.Attributes?["module"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'module' attribute.");
+                string moduleName = typeDeclarationNode?.Attributes?["module"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'module' attribute."); // TODO: Closed generics
                 string swiftTypeIdentifier = typeDeclarationNode?.Attributes?["name"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'name' attribute.");
                 string swiftMangledName = typeDeclarationNode?.Attributes?["mangledName"]?.Value ?? string.Empty;
                 string csharpTypeIdentifier = entityNode?.Attributes?["managedTypeName"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'managedTypeName' attribute.");
@@ -100,85 +144,93 @@ namespace BindingsGeneration
                 if (swiftTypeIdentifier == null || csharpTypeIdentifier == null)
                     throw new Exception("Invalid XML structure: Missing attributes.");
 
-                var moduleRecord = Registrar.RegisterModule(moduleName);
-                moduleRecord.Path = "/System/Library/Frameworks/Foundation.framework/Foundation";
+                var typeRecord = new TypeRecord()
+                {
+                    CSTypeIdentifier = csharpTypeIdentifier,
+                    SwiftTypeIdentifier = swiftTypeIdentifier,
+                    MetadataAccessor = swiftMangledName,
+                    Namespace = @namespace,
+                    ModuleName = moduleName,
+                    IsBlittable = blittable.ToLower() == "true",
+                    IsFrozen = frozen.ToLower() == "true",
+                };
 
-                var typeRecord = Registrar.RegisterType(moduleName, swiftTypeIdentifier);
-                typeRecord.TypeIdentifier = csharpTypeIdentifier;
-                typeRecord.MetadataAccessor = $"{swiftMangledName}Ma";
-                typeRecord.IsProcessed = true;
-                typeRecord.IsBlittable = blittable.ToLower() == "true";
-                typeRecord.IsFrozen = frozen.ToLower() == "true";
+                moduleDatabase.RegisterType(swiftTypeIdentifier, typeRecord);
             }
 
-            // Register AnyType
-            var anyTypeRecord = Registrar.RegisterType("Swift", "AnyType");
-            anyTypeRecord.TypeIdentifier = "AnyType";
-            anyTypeRecord.MetadataAccessor = string.Empty;
-            anyTypeRecord.IsProcessed = true;
-            anyTypeRecord.IsBlittable = false;
-            anyTypeRecord.IsFrozen = false;
+            return moduleDatabase;
         }
 
         /// <summary>
-        /// Gets the C# type for the specified Swift type.
-        /// The method first tries to find a known mapping, and if that fails, it looks for a type in Swift.Runtime.
+        /// Attempts to retrieve the type record for a specified type identifier within a module.
         /// </summary>
-        /// <param name="moduleName">The Swift module name.</param>
-        /// <param name="typeIdentifier">The Swift type identifier.</param>
-        /// <returns>The corresponding C# type record.</returns>
-        public TypeRecord GetTypeMapping(string moduleName, string typeIdentifier)
+        /// <param name="moduleName">The name of the module.</param>
+        /// <param name="typeIdentifier">The identifier for the Swift type.</param>
+        /// <param name="record">
+        /// When this method returns, contains the type record if found; otherwise, <c>null</c>.
+        /// </param>
+        /// <returns><c>true</c> if the type record was found; otherwise, <c>false</c>.</returns>
+        public bool TryGetTypeRecord(string moduleName, string typeIdentifier, [NotNullWhen(returnValue: true)] out TypeRecord? record)
         {
-            // Try to find a mapping in the database
-            var typeRecord = Registrar.GetType(moduleName, typeIdentifier);
-            if (typeRecord is not null)
-                return typeRecord;
+            if (_modules.TryGetValue(moduleName, out var moduleDatabase))
+            {
+                if (moduleDatabase.TryGetTypeRecord(typeIdentifier, out record))
+                    return true;
+            }
 
-            // Type not found; register it for lazy-loading
-            typeRecord = Registrar.RegisterType(moduleName, typeIdentifier);
-            typeRecord.IsProcessed = false;
+            // Try looking in the out-of-module types
+            if (_outOfModuleTypes.TryGetValue($"{moduleName}.{typeIdentifier}", out record))
+                return true;
 
-            return typeRecord;
+            return false;
         }
 
         /// <summary>
         /// Determines whether the specified module has been processed.
         /// </summary>
         /// <param name="moduleName">The Swift module name.</param>
-        /// <returns>True if the module has been processed; otherwise, false.</returns>
+        /// <returns><c>true</c> if the module has been processed; otherwise, <c>false</c>.</returns>
         public bool IsModuleProcessed(string moduleName)
         {
-            var moduleRecord = Registrar.GetModule(moduleName);
-            if (moduleRecord is not null)
-                return moduleRecord.IsProcessed;
-
-            return false;
+            return _modules.ContainsKey(moduleName);
         }
 
         /// <summary>
-        /// Determines whether the specified module has been processed.
+        /// Checks whether a specific type in a specified module has been processed.
         /// </summary>
-        /// <param name="moduleName">The Swift module name.</param>
-        /// <param name="typeIdentifier">The Swift type identifier.</param>
-        /// <returns>True if the module has been processed; otherwise, false.</returns>
+        /// <param name="moduleName">The name of the module.</param>
+        /// <param name="typeIdentifier">The identifier for the Swift type.</param>
+        /// <returns><c>true</c> if the type has been processed; otherwise, <c>false</c>.</returns>
         public bool IsTypeProcessed(string moduleName, string typeIdentifier)
         {
-            var typeRecord = Registrar.GetType(moduleName, typeIdentifier);
-            if (typeRecord is not null)
-                return typeRecord.IsProcessed;
+            if (_modules.TryGetValue(moduleName, out var moduleDatabase))
+                return moduleDatabase.IsTypeProcessed(typeIdentifier);
 
             return false;
         }
 
         /// <summary>
-        /// Gets the library name for the specified module.
+        /// Retrieves the library path for the specified module.
         /// </summary>
-        /// <param name="moduleName">The Swift module name.</param>
-        /// <returns>The library name.</returns>
-        public string GetLibraryName(string moduleName)
+        /// <param name="moduleName">The name of the module.</param>
+        /// <returns>The file path of the library associated with the module.</returns>
+        /// <exception cref="Exception">Thrown if the library path does not exist for the specified module.</exception>
+        public string GetLibraryPath(string moduleName)
         {
-            var moduleRecord = Registrar.GetModule(moduleName);
-            return moduleRecord!.Path ?? throw new Exception($"Library path does not exist for module {moduleName}.");
+            var moduleDatabase = _modules[moduleName];
+            return moduleDatabase?.Path ?? throw new Exception($"Library path does not exist for module {moduleName}.");
+        }
+
+        /// <summary>
+        /// Populates the out-of-module types store with the specified types.
+        /// </summary>
+        /// <param name="types">The types to add.</param>
+        public void AddOutOfModuleTypes(IEnumerable<(string identifier, TypeRecord record)> types)
+        {
+            foreach (var (identifier, record) in types)
+            {
+                _outOfModuleTypes.TryAdd(identifier, record);
+            }
         }
     }
 }

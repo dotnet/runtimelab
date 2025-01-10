@@ -43,7 +43,7 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="methodDecl">The method declaration.</param>
         /// <param name="typeDatabase">The type database instance.</param>
-        public IEnvironment Marshal(BaseDecl decl, TypeDatabase typeDatabase)
+        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
         {
             if (decl is not MethodDecl methodDecl)
             {
@@ -147,7 +147,7 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="methodDecl">The method declaration.</param>
         /// <param name="typeDatabase">The type database instance.</param>
-        public IEnvironment Marshal(BaseDecl decl, TypeDatabase typeDatabase)
+        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
         {
             if (decl is not MethodDecl methodDecl)
             {
@@ -203,7 +203,7 @@ namespace BindingsGeneration
 
             // TODO: Add Indirect result marshalling to methods other than constructors
 
-            var returnPrefix = methodDecl.CSSignature.First().CSTypeIdentifier.Name == "void" ? "" : "return ";
+            var returnPrefix = methodDecl.CSSignature.First().SwiftTypeSpec is TupleTypeSpec tupleTypeSpec && tupleTypeSpec.IsEmptyTuple ? "" : "return ";
             var invokeArguments = env.SignatureHandler.GetPInvokeSignature().CallArgumentsString();
 
             // Call the PInvoke method
@@ -244,9 +244,9 @@ namespace BindingsGeneration
         private readonly List<Parameter> _parameters = new();
         MethodDecl MethodDecl { get; }
         BaseDecl ParentDecl { get; }
-        TypeDatabase TypeDatabase { get; }
+        ITypeDatabase TypeDatabase { get; }
 
-        public WrapperSignatureBuilder(MethodDecl methodDecl, TypeDatabase typeDatabase)
+        public WrapperSignatureBuilder(MethodDecl methodDecl, ITypeDatabase typeDatabase)
         {
             MethodDecl = methodDecl;
             ParentDecl = methodDecl.ParentDecl!;
@@ -259,14 +259,8 @@ namespace BindingsGeneration
         public void HandleReturnType()
         {
             var argument = MethodDecl.CSSignature.First();
-            var returnType = argument.CSTypeIdentifier.Name;
-            var typeRecord = MarshallingHelpers.GetType(argument, TypeDatabase.Registrar);
-            if (typeRecord == null || !typeRecord.IsProcessed)
-            {
-                Console.WriteLine($"Method {MethodDecl.Name} has unprocessed return type {returnType}");
-                returnType = "AnyType";
-            }
-            SetReturnType(returnType);
+            var typeRecord = TypeDatabase.GetTypeRecordOrAnyType(argument.SwiftTypeSpec);
+            SetReturnType(typeRecord.CSTypeIdentifier);
         }
 
         /// <summary>
@@ -276,14 +270,8 @@ namespace BindingsGeneration
         {
             foreach (var argument in MethodDecl.CSSignature.Skip(1))
             {
-                string typeIdentifier = argument.CSTypeIdentifier.Name;
-                var typeRecord = MarshallingHelpers.GetType(argument, TypeDatabase.Registrar);
-                if (typeRecord == null || !typeRecord.IsProcessed)
-                {
-                    Console.WriteLine($"Method {MethodDecl.Name} has unprocessed argument {typeIdentifier}");
-                    typeIdentifier = "AnyType";
-                }
-                AddParameter(typeIdentifier, argument.Name);
+                var typeRecord = TypeDatabase.GetTypeRecordOrAnyType(argument.SwiftTypeSpec);
+                AddParameter(typeRecord.CSTypeIdentifier, argument.Name);
             }
         }
 
@@ -327,7 +315,7 @@ namespace BindingsGeneration
 
         MethodDecl MethodDecl { get; }
         BaseDecl ParentDecl { get; }
-        TypeDatabase TypeDatabase { get; }
+        ITypeDatabase TypeDatabase { get; }
 
 
         /// <summary>
@@ -336,7 +324,7 @@ namespace BindingsGeneration
         /// <param name="methodDecl">The method declaration.</param>
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="typeDatabase">The type database.</param>
-        public PInvokeSignatureBuilder(MethodDecl methodDecl, TypeDatabase typeDatabase)
+        public PInvokeSignatureBuilder(MethodDecl methodDecl, ITypeDatabase typeDatabase)
         {
             MethodDecl = methodDecl;
             ParentDecl = methodDecl.ParentDecl!;
@@ -350,8 +338,8 @@ namespace BindingsGeneration
         {
             if (!MarshallingHelpers.MethodRequiresIndirectResult(MethodDecl, ParentDecl, TypeDatabase))
             {
-                var returnType = MethodDecl.CSSignature.First().CSTypeIdentifier.Name;
-                SetReturnType(returnType);
+                var returnTypeRecord = TypeDatabase.GetTypeRecordOrThrow(MethodDecl.CSSignature.First().SwiftTypeSpec);
+                SetReturnType(returnTypeRecord.CSTypeIdentifier);
             }
             else
             {
@@ -367,9 +355,10 @@ namespace BindingsGeneration
         {
             foreach (var argument in MethodDecl.CSSignature.Skip(1))
             {
+                var argumentTypeRecord = TypeDatabase.GetTypeRecordOrThrow(argument.SwiftTypeSpec);
                 if (MarshallingHelpers.ArgumentIsMarshalledAsCSStruct(argument, TypeDatabase))
                 {
-                    AddParameter(argument.CSTypeIdentifier.Name, argument.Name);
+                    AddParameter(argumentTypeRecord.CSTypeIdentifier, argument.Name);
                 }
                 else
                 {
@@ -434,9 +423,9 @@ namespace BindingsGeneration
         private Signature? _wrapperSignature;
 
         MethodDecl MethodDecl { get; }
-        TypeDatabase TypeDatabase { get; }
+        ITypeDatabase TypeDatabase { get; }
 
-        public SignatureHandler(MethodDecl methodDecl, TypeDatabase typeDatabase)
+        public SignatureHandler(MethodDecl methodDecl, ITypeDatabase typeDatabase)
         {
             MethodDecl = methodDecl;
             TypeDatabase = typeDatabase;
@@ -492,7 +481,7 @@ namespace BindingsGeneration
             var moduleDecl = methodDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(methodDecl.ModuleDecl));
 
             var pInvokeName = NameProvider.GetPInvokeName(methodDecl);
-            var libPath = methodEnv.TypeDatabase.GetLibraryName(moduleDecl.Name);
+            var libPath = methodEnv.TypeDatabase.GetLibraryPath(moduleDecl.Name);
 
             writer.WriteLine("[UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]");
             writer.WriteLine($"[DllImport(\"{libPath}\", EntryPoint = \"{methodDecl.MangledName}\")]");

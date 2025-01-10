@@ -43,7 +43,7 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <param name="typeDatabase">The type database instance.</param>
-        public IEnvironment Marshal(BaseDecl decl, TypeDatabase typeDatabase)
+        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
         {
             if (decl is not ModuleDecl moduleDecl)
             {
@@ -86,7 +86,8 @@ namespace BindingsGeneration
                 foreach (FieldDecl fieldDecl in moduleDecl.Fields)
                 {
                     string accessModifier = fieldDecl.Visibility == Visibility.Public ? "public" : "private";
-                    writer.WriteLine($"{accessModifier} {fieldDecl.CSTypeIdentifier.Name} {fieldDecl.Name};");
+                    var fieldTypeRecord = moduleEnv.TypeDatabase.GetTypeRecordOrThrow(fieldDecl.SwiftTypeSpec);
+                    writer.WriteLine($"{accessModifier} {fieldTypeRecord.CSTypeIdentifier} {fieldDecl.Name};");
                 }
                 writer.WriteLine();
                 foreach (MethodDecl methodDecl in moduleDecl.Methods)

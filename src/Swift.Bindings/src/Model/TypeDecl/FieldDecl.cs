@@ -9,11 +9,6 @@ namespace BindingsGeneration
     public record FieldDecl : BaseDecl
     {
         /// <summary>
-        /// Type name.
-        /// </summary>
-        public required TypeDecl CSTypeIdentifier { get; set; }
-
-        /// <summary>
         /// The TypeSpec of the declaration
         /// <summary>
         public required TypeSpec SwiftTypeSpec { get; set; }

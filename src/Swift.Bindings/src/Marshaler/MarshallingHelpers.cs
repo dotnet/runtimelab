@@ -7,7 +7,7 @@ namespace BindingsGeneration
 {
     public static class MarshallingHelpers // TODO: Find better place for those
     {
-        public static bool MethodRequiresIndirectResult(MethodDecl methodDecl, BaseDecl parentDecl, TypeDatabase typeDatabase)
+        public static bool MethodRequiresIndirectResult(MethodDecl methodDecl, BaseDecl parentDecl, ITypeDatabase typeDatabase)
         {
             if (methodDecl.IsConstructor && !(parentDecl is StructDecl structDecl && StructIsMarshalledAsCSStruct(structDecl))) return true;
             var returnType = methodDecl.CSSignature.First();
@@ -32,24 +32,10 @@ namespace BindingsGeneration
             return decl is StructDecl structDecl && structDecl.IsFrozen && structDecl.IsBlittable;
         }
 
-        public static bool ArgumentIsMarshalledAsCSStruct(ArgumentDecl argumentDecl, TypeDatabase typeDatabase)
+        public static bool ArgumentIsMarshalledAsCSStruct(ArgumentDecl argumentDecl, ITypeDatabase typeDatabase)
         {
-            var typeRecord = GetType(argumentDecl, typeDatabase.Registrar) ?? throw new NotImplementedException($"Type {argumentDecl.Name} not found in type database"); //TODO: Add information to typeRecord if thing is a struct
+            var typeRecord = typeDatabase.GetTypeRecordOrThrow(argumentDecl.SwiftTypeSpec);
             return typeRecord.IsFrozen && typeRecord.IsBlittable;
-        }
-
-        public static TypeRecord GetType(ArgumentDecl argumentDecl, TypeRegistrar typeRegistrar)
-        {
-            switch (argumentDecl.SwiftTypeSpec)
-            {
-                case NamedTypeSpec namedTypeSpec:
-                    string typeIdentifier = namedTypeSpec.GenericParameters.Count > 0 ? $"{namedTypeSpec.NameWithoutModule}`{namedTypeSpec.GenericParameters.Count}" : namedTypeSpec.NameWithoutModule;
-                    return typeRegistrar.GetType(namedTypeSpec.Module, typeIdentifier) ?? throw new NotImplementedException($"Type ${argumentDecl} not found in type database");
-                case TupleTypeSpec tupleTypeSpec:
-                    return typeRegistrar.GetType(string.Empty, tupleTypeSpec.ToString(true)) ?? throw new NotImplementedException($"Type ${argumentDecl} not found in type database");
-                default:
-                    throw new NotImplementedException($"{argumentDecl} is not supported");
-            }
         }
     }
 }

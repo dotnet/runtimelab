@@ -13,7 +13,7 @@ namespace BindingsGeneration
         /// <summary>
         /// Gets the TypeDatabase
         /// </summary>
-        public TypeDatabase TypeDatabase { get; } // TODO: Replace with proper interface. Consider base class.
+        public ITypeDatabase TypeDatabase { get; }
     }
 
     /// <summary>
@@ -24,7 +24,7 @@ namespace BindingsGeneration
     /// </remarks>
     /// <param name="moduleDecl">The module declaration.</param>
     /// <param name="typeDatabase">The type database instance.</param>
-    public class ModuleEnvironment(ModuleDecl moduleDecl, TypeDatabase typeDatabase) : IEnvironment
+    public class ModuleEnvironment(ModuleDecl moduleDecl, ITypeDatabase typeDatabase) : IEnvironment
     {
         /// <summary>
         /// Gets the module declaration.
@@ -34,7 +34,7 @@ namespace BindingsGeneration
         /// <summary>
         /// Gets the TypeDatabase
         /// </summary>
-        public TypeDatabase TypeDatabase { get; } = typeDatabase;
+        public ITypeDatabase TypeDatabase { get; } = typeDatabase;
     }
 
     /// <summary>
@@ -45,7 +45,7 @@ namespace BindingsGeneration
     /// </remarks>
     /// <param name="typeDecl">The type declaration.</param>
     /// <param name="typeDatabase">The type database instance.</param>
-    public class TypeEnvironment(TypeDecl typeDecl, TypeDatabase typeDatabase) : IEnvironment
+    public class TypeEnvironment(TypeDecl typeDecl, ITypeDatabase typeDatabase) : IEnvironment
     {
         /// <summary>
         /// Gets the type declaration.
@@ -55,7 +55,7 @@ namespace BindingsGeneration
         /// <summary>
         /// Gets the TypeDatabase
         /// </summary>
-        public TypeDatabase TypeDatabase { get; } = typeDatabase;
+        public ITypeDatabase TypeDatabase { get; } = typeDatabase;
     }
 
     /// <summary>
@@ -66,7 +66,7 @@ namespace BindingsGeneration
     /// </remarks>
     /// <param name="methodDecl">The method declaration.</param>
     /// <param name="typeDatabase">The type database instance.</param>
-    public class MethodEnvironment(MethodDecl methodDecl, TypeDatabase typeDatabase) : IEnvironment
+    public class MethodEnvironment(MethodDecl methodDecl, ITypeDatabase typeDatabase) : IEnvironment
     {
         /// <summary>
         /// Gets the method declaration.
@@ -77,7 +77,7 @@ namespace BindingsGeneration
         /// <summary>
         /// Gets the TypeDatabase
         /// </summary>
-        public TypeDatabase TypeDatabase { get; } = typeDatabase;
+        public ITypeDatabase TypeDatabase { get; } = typeDatabase;
 
         /// <summary>
         /// Gets the SignatureHandler

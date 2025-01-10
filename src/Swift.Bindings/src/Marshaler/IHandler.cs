@@ -16,7 +16,7 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="baseDecl">The base declaration.</param>
         /// <returns>The environment corresponding to the base declaration.</returns>
-        IEnvironment Marshal(BaseDecl baseDecl, TypeDatabase typeDatabase);
+        IEnvironment Marshal(BaseDecl baseDecl, ITypeDatabase typeDatabase);
 
         /// <summary>
         /// Emits the necessary code for the specified environment.
@@ -74,7 +74,7 @@ namespace BindingsGeneration
         /// <param name="decl">The list of base declarations.</param>
         /// <param name="conductor">The conductor instance.</param>
         /// <param name="typeDatabase">The type database instance.</param>
-        protected virtual void HandleBaseDecl(IndentedTextWriter writer, IEnumerable<BaseDecl> decl, Conductor conductor, TypeDatabase typeDatabase)
+        protected virtual void HandleBaseDecl(IndentedTextWriter writer, IEnumerable<BaseDecl> decl, Conductor conductor, ITypeDatabase typeDatabase)
         {
             foreach (var baseDecl in decl)
             {

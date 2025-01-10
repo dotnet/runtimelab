@@ -80,14 +80,9 @@ namespace BindingsGeneration
         private readonly string _filePath;
 
         /// <summary>
-        /// The dylib path.
-        /// </summary>
-        private readonly string _dylibPath;
-
-        /// <summary>
         /// The type database.
         /// </summary>
-        private readonly TypeDatabase _typeDatabase;
+        private readonly ITypeDatabase _typeDatabase;
 
         /// <summary>
         /// The verbosity level.
@@ -99,12 +94,19 @@ namespace BindingsGeneration
         /// </summary>
         private readonly ABIRootNode _moduleRoot;
 
+        /// <summary>
+        /// Types declared in the module.
+        /// </summary>
         private readonly Dictionary<NamedTypeSpec, TypeDecl> _moduleTypes = new();
 
-        public SwiftABIParser(string filePath, string dylibPath, TypeDatabase typeDatabase, int verbose = 0)
+        /// <summary>
+        /// Closed generic types encountered during parsing method signatures.
+        /// </summary>
+        private readonly List<NamedTypeSpec> _closedGenericTypes = new();
+
+        public SwiftABIParser(string filePath, ITypeDatabase typeDatabase, int verbose = 0)
         {
             _filePath = filePath;
-            _dylibPath = dylibPath;
             _typeDatabase = typeDatabase;
             _verbose = verbose;
 
@@ -143,7 +145,6 @@ namespace BindingsGeneration
 
             var decls = CollectDeclarations(_moduleRoot.ABIRoot.Children, moduleDecl, moduleDecl);
 
-            dependencies.AddRange(_typeDatabase.Registrar.GetDependencies(moduleName));
             dependencies.Remove(moduleName);
 
             moduleDecl.Fields = decls.OfType<FieldDecl>().ToList();
@@ -156,7 +157,7 @@ namespace BindingsGeneration
                 _moduleTypes.Add(new NamedTypeSpec(type.FullyQualifiedName), type);
             }
 
-            return new ModuleParsingResult(moduleDecl, _moduleTypes);
+            return new ModuleParsingResult(moduleDecl, _moduleTypes, _closedGenericTypes);
         }
 
         /// <summary>
@@ -365,11 +366,16 @@ namespace BindingsGeneration
 
             for (int i = 0; i < node.Children.Count(); i++)
             {
-                var typeDecl = CreateTypeDecl(node.Children.ElementAt(i), methodDecl, moduleDecl);
                 var typeSpec = CreateTypeSpec(node.Children.ElementAt(i));
+
+                //TODO: Make sure that the generics are actually closed
+                if (!_typeDatabase.IsTypeProcessed(typeSpec) && typeSpec is NamedTypeSpec namedTypeSpec && namedTypeSpec.GenericParameters.Count > 0)
+                {
+                    _closedGenericTypes.Add(namedTypeSpec);
+                }
+
                 methodDecl.CSSignature.Add(new ArgumentDecl
                 {
-                    CSTypeIdentifier = typeDecl,
                     SwiftTypeSpec = typeSpec,
                     Name = paramNames[i],
                     FullyQualifiedName = string.Empty,
@@ -392,11 +398,9 @@ namespace BindingsGeneration
         /// <returns>The field declaration.</returns>
         private FieldDecl CreateFieldDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
         {
-            var typeDecl = CreateTypeDecl(node.Children.ElementAt(0), parentDecl, moduleDecl);
             var typeSpec = CreateTypeSpec(node.Children.ElementAt(0));
             var fieldDecl = new FieldDecl
             {
-                CSTypeIdentifier = typeDecl,
                 SwiftTypeSpec = typeSpec,
                 Name = node.Name,
                 FullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name),
@@ -405,7 +409,7 @@ namespace BindingsGeneration
                 ModuleDecl = moduleDecl,
                 IsStatic = node.@static ?? false
             };
-            typeDecl.ParentDecl = fieldDecl;
+
             return fieldDecl;
         }
 
@@ -427,84 +431,6 @@ namespace BindingsGeneration
                 default:
                     throw new NotImplementedException($"Can't handle node type {node.Kind} yet.");
             }
-        }
-
-        /// <summary>
-        /// Creates a type declaration from a given node.
-        /// </summary>
-        /// <param name="node">The node representing the type declaration.</param>
-        /// <param name="parentDecl">The parent declaration.</param>
-        /// <param name="moduleDecl">The module declaration.</param>
-        /// <returns>The type declaration.</returns>
-        private TypeDecl CreateTypeDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
-        {
-            // Handle not supported types with a switch statement
-            switch (node.Kind)
-            {
-                case kNominal:
-                    switch (node.Name)
-                    {
-                        case "Optional":
-                        case "Dictionary":
-                        case "Tuple":
-                        case "Array":
-                        case "ProtocolComposition": // Swift.Any
-                        case "Set":
-                            throw new NotImplementedException($"{node.Name} types are not supported yet.");
-                        default:
-                            if (node.PrintedName.StartsWith("any ", StringComparison.InvariantCultureIgnoreCase))
-                            {
-                                throw new NotImplementedException("Protocols are not supported yet.");
-                            }
-                            break;
-                    }
-                    break;
-                case kFunc:
-                    throw new NotImplementedException("Function types are not supported yet.");
-            }
-
-            var typeDecl = new TypeDecl
-            {
-                Name = string.Empty,
-                FullyQualifiedName = string.Empty,
-                MangledName = node.MangledName,
-                Fields = new List<FieldDecl>(),
-                Methods = new List<MethodDecl>(),
-                Types = new List<TypeDecl>(),
-                ParentDecl = parentDecl,
-                ModuleDecl = moduleDecl
-            };
-
-            TypeRecord typeRecord;
-            string moduleName = node.PrintedName.IndexOf('.') > -1 ? node.PrintedName.Substring(0, node.PrintedName.IndexOf('.')) : string.Empty;
-            // If the node has children, it is a generic type
-            if (node.Children.Any())
-            {
-                typeRecord = _typeDatabase.GetTypeMapping(moduleName, $"{node.Name}`{node.Children.Count()}");
-                typeDecl.Name = typeRecord.TypeIdentifier.Replace($"`{node.Children.Count()}", "") + "<";
-
-                for (int i = 0; i < node.Children.Count(); i++)
-                {
-                    var child = CreateTypeDecl(node.Children.ElementAt(i), typeDecl, moduleDecl);
-                    typeDecl.Types.Add(child);
-                    if (i > 0)
-                        typeDecl.Name += ", ";
-                    typeDecl.Name += child.Name;
-                }
-
-                typeDecl.Name += ">";
-            }
-            // If the node has no children, it is a non-generic type
-            else
-            {
-                var typeIdentifier = node.PrintedName.IndexOf('.') > -1 ? node.PrintedName.Substring(node.PrintedName.IndexOf('.') + 1) : node.PrintedName;
-                typeRecord = _typeDatabase.GetTypeMapping(moduleName, typeIdentifier);
-                typeDecl.Name = typeRecord.TypeIdentifier;
-            }
-            typeDecl.FullyQualifiedName = typeDecl.Name;
-            _typeDatabase.Registrar.UpdateDependencies(GetModuleName(), typeRecord.Namespace);
-
-            return typeDecl;
         }
 
         /// <summary>
