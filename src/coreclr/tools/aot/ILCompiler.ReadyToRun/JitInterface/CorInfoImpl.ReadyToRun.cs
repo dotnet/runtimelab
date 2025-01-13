@@ -516,6 +516,8 @@ namespace Internal.JitInterface
                 !string.Equals(methodNeedingCode.Name, "Setup")
                 &&
                 !string.Equals(methodNeedingCode.Name, "Collatz")
+                &&
+                !string.Equals(methodNeedingCode.Name, "ReadyToRun")
                 )
             {
                 return true;

@@ -450,6 +450,7 @@ enum ReadyToRunHelper
     READYTORUN_HELPER_GetCurrentManagedThreadId = 0x112,
 
     READYTORUN_HELPER_InterpreterRoutine        = 0x113,
+    READYTORUN_HELPER_InterpreterVirtualRoutine = 0x114,
 };
 
 #include "readytoruninstructionset.h"

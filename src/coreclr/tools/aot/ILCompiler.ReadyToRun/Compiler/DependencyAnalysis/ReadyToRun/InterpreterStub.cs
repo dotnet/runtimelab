@@ -20,10 +20,12 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
     public class InterpreterStub : ObjectNode, ISymbolDefinitionNode
     {
         public InterpreterImport _interpreterImport;
+        public bool _virtual;
 
-        public InterpreterStub(InterpreterImport interpreterImport)
+        public InterpreterStub(InterpreterImport interpreterImport, bool isVirtual)
         {
             _interpreterImport = interpreterImport;
+            _virtual = isVirtual;
         }
 
         public override int CompareToImpl(ISortableNode other, CompilerComparer comparer)
@@ -36,7 +38,14 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
             X64Emitter x64Emitter = new X64Emitter(factory, relocsOnly);
             x64Emitter.Builder.AddSymbol(this);
             x64Emitter.EmitMOV(Register.RAX, _interpreterImport);
-            x64Emitter.EmitJMP(factory.InterpreterRoutineImport);
+            if (_virtual)
+            {
+                x64Emitter.EmitJMP(factory.InterpreterVirtualRoutineImport);
+            }
+            else
+            {
+                x64Emitter.EmitJMP(factory.InterpreterRoutineImport);
+            }
             return x64Emitter.Builder.ToObjectData();
         }
 

@@ -98,7 +98,7 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
         
-        public void AddInterpreterMapping(DelayLoadMethodImport left, InterpreterImport right, InterpreterStub last)
+        public void AddInterpreterMapping(ISymbolNode left, InterpreterImport right, InterpreterStub last)
         {
             if (InterpreterMap == null)
             {
@@ -400,6 +400,8 @@ namespace ILCompiler.DependencyAnalysis
         public Import ModuleImport;
 
         public Import InterpreterRoutineImport;
+
+        public Import InterpreterVirtualRoutineImport;
 
         public ISymbolNode PersonalityRoutine;
 
@@ -820,6 +822,10 @@ namespace ILCompiler.DependencyAnalysis
             InterpreterRoutineImport = new Import(EagerImports, new ReadyToRunHelperSignature(
                 ReadyToRunHelper.InterpreterRoutine));
             graph.AddRoot(InterpreterRoutineImport, "This allow ready to run code to bail to interpreter");
+
+            InterpreterVirtualRoutineImport = new Import(EagerImports, new ReadyToRunHelperSignature(
+                ReadyToRunHelper.InterpreterVirtualRoutine));
+            graph.AddRoot(InterpreterVirtualRoutineImport, "This allow ready to run code to bail to interpreter");
 
             if (Target.Architecture != TargetArchitecture.X86)
             {

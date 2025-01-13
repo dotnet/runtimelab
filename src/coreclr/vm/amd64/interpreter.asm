@@ -57,4 +57,39 @@ END_PROLOGUE
         ret
 NESTED_END InterpreterRoutine, _TEXT
 
+NESTED_ENTRY InterpreterVirtualRoutine, _TEXT
+        alloc_stack 48h
+
+END_PROLOGUE
+        ; At this point, I have rax pointing to the slot number, and rcx pointing to this
+        ; I am making two assumptions
+        ; 1. virtual slot < 8 (i.e. we are always calling in the 1st chunk), and
+        ; 2. we are always going into the InterpreterMethodInfo
+        
+        ; rcx was pointing to the object
+        mov r8, [rcx]
+        ; r8 is pointing to the method table
+        add r8, 48h
+        ; r8 is pointing to the pointer to the vtable
+        mov r8, [r8]
+        ; r8 is pointing to the vtable
+
+        ; rax was pointing to the slot number
+        mov rax, [rax]
+        ; rax is the slot number
+        shl rax, 3
+        ; rax is the offset from the v-table
+        add r8, rax
+        ; r8 is pointing to the interpreter-precode
+        mov [rsp+38h], r9
+        mov [rsp+30h], r8
+        mov [rsp+28h], rdx
+        mov [rsp+20h], rcx
+        mov rcx, [r8] ; rcx is the interpreter-precode
+        lea rdx, [rsp + 20h]
+        call ?InterpretMethod@@YA_JPEAUInterpreterMethodInfo@@PEAEPEAX@Z
+        add rsp, 48h
+        ret
+NESTED_END InterpreterVirtualRoutine, _TEXT
+
         end

@@ -13,11 +13,11 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
     {
         public override int ClassCode => 25687179;
 
-        private List<DelayLoadMethodImport> leftItems = new List<DelayLoadMethodImport>();
+        private List<ISymbolNode> leftItems = new List<ISymbolNode>();
         private List<InterpreterStub> lastItems = new List<InterpreterStub>();
         private List<InterpreterImport> rightItems = new List<InterpreterImport>();
 
-        public void AddMapping(DelayLoadMethodImport left, InterpreterImport right, InterpreterStub last)
+        public void AddMapping(ISymbolNode left, InterpreterImport right, InterpreterStub last)
         {
             // TODO, andrewau, this require proper locking and sorting for multithreaded compilation.
             // correctness and determinism

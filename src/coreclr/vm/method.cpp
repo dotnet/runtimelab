@@ -3895,7 +3895,7 @@ PrecodeType MethodDesc::GetPrecodeType()
         ||
         (strcmp("System.AppContext", m_pszDebugClassName) != 0)
         || 
-        (strcmp("Collatz", m_pszDebugMethodName) != 0)
+        (strcmp("ReadyToRun", m_pszDebugMethodName) != 0)
     )
         return PRECODE_INTERPRETER;
 #endif // FEATURE_INTERPRETER

@@ -1932,6 +1932,13 @@ HCIMPL3(INT64, InterpretMethod, struct InterpreterMethodInfo* interpMethInfo, BY
     ARG_SLOT retVal = 0;
 
     HELPER_METHOD_FRAME_BEGIN_RET_ATTRIB(Frame::FRAME_ATTR_EXACT_DEPTH|Frame::FRAME_ATTR_CAPTURE_DEPTH_2);
+
+    PCODE addr = (PCODE)interpMethInfo;
+    if (InterpreterPrecode::IsInstance(addr))
+    {
+        interpMethInfo = GetInterpreterMethodInfo(addr);
+    }
+
     retVal = Interpreter::InterpretMethodBody(interpMethInfo, false, ilArgs, stubContext);
     HELPER_METHOD_FRAME_END();
 

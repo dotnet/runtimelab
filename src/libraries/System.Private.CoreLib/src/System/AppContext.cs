@@ -154,14 +154,20 @@ namespace System
 #elif !NATIVEAOT
         internal static unsafe void Setup(char** pNames, char** pValues, int count)
         {
-            Base obj = Collatz();
-            obj.Collatz1();
+            ReadyToRun();
             Debug.Assert(s_dataStore == null, "s_dataStore is not expected to be inited before Setup is called");
             s_dataStore = new Dictionary<string, object?>(count);
             for (int i = 0; i < count; i++)
             {
                 s_dataStore.Add(new string(pNames[i]), new string(pValues[i]));
             }
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void ReadyToRun()
+        {
+            Base obj = Collatz();
+            obj.Collatz1();
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
@@ -175,10 +181,6 @@ namespace System
         {
 #pragma warning disable IDE0054
             int a = ReadyToCall(1, 2, 3, 4, 5, 6);
-            if (a > 0)
-            {
-                throw new Exception(a.ToString());
-            }
             while (a > 1)
             {
                 if (a % 2 == 0)

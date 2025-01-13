@@ -3342,8 +3342,12 @@ EXTERN_C PCODE STDCALL ExternalMethodFixupWorker(TransitionBlock * pTransitionBl
             }
             else
             {
-                pCode = pMgr->GetVTableCallStub(slot);
-                *(TADDR *)pIndirection = pCode;
+                RVA interpreterCellRva;
+                RVA interpreterStubRva;
+                pModule->GetReadyToRunInfo()->GetInterpreterStub(rva, &interpreterCellRva, &interpreterStubRva);
+                pCode = pNativeImage->GetRvaData(interpreterStubRva);
+                DWORD* pCell = (DWORD*)pNativeImage->GetRvaData(interpreterCellRva);
+                *pCell = slot;
             }
             _ASSERTE(pCode != (PCODE)NULL);
         }

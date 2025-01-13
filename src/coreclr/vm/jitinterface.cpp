@@ -58,6 +58,7 @@
 extern "C"
 {
     void InterpreterRoutine();
+    void InterpreterVirtualRoutine();
 }
 
 #ifdef FEATURE_PERFMAP
@@ -13796,6 +13797,10 @@ BOOL LoadDynamicInfoEntry(Module *currentModule,
             
                 case READYTORUN_HELPER_InterpreterRoutine:
                     result = (size_t)GetEEFuncEntryPoint(InterpreterRoutine);
+                    break;
+
+                case READYTORUN_HELPER_InterpreterVirtualRoutine:
+                    result = (size_t)GetEEFuncEntryPoint(InterpreterVirtualRoutine);
                     break;
 
                 case READYTORUN_HELPER_DelayLoad_Helper:

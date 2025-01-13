@@ -42,6 +42,15 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
             {
                 yield return baseEntry;
             }
+
+            // This is for virtual calls
+            InterpreterImport _interpreterImport = new InterpreterImport();
+            InterpreterStub _interpreterStub = new InterpreterStub(_interpreterImport, /* virtual = */true);
+            factory.AddInterpreterMapping(this, _interpreterImport, _interpreterStub);
+            yield return new DependencyListEntry(_interpreterImport, "Unused reason 1");
+            yield return new DependencyListEntry(_interpreterStub, "Unused reason 2");
+            yield return new DependencyListEntry(factory.InterpreterMap, "Unused reason 3");
+
             if (_useInstantiatingStub)
             {
                 // Require compilation of the canonical version for instantiating stubs

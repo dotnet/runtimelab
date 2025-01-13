@@ -350,6 +350,7 @@ namespace Internal.ReadyToRunConstants
 
         //Interpreter
         InterpreterRoutine          = 0x113,
+        InterpreterVirtualRoutine   = 0x114,
 
         // **********************************************************************************************
         //
