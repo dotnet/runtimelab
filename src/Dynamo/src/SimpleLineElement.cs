@@ -46,7 +46,10 @@ public class SimpleLineElement : ICodeElement
         return new object();
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Fire the Begin event.
+    /// </summary>
+    /// <param name="args">the event arguments for the Begin event</param>    
     protected virtual void OnBegin(WriteEventArgs args)
     {
         Begin(this, args);
@@ -68,12 +71,16 @@ public class SimpleLineElement : ICodeElement
         OnEnd(new WriteEventArgs(writer));
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Fire the End event.
+    /// </summary>
+    /// <param name="args">the event arguments for the End event</param>
     protected virtual void OnEnd(WriteEventArgs args)
     {
         End.FireInReverse(this, args);
     }
 
+    /// <inheritdoc/>
     public override string ToString()
     {
         return Contents;
