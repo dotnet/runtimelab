@@ -1,0 +1,83 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+using System.Diagnostics;
+
+namespace Dynamo;
+
+/// <summary>
+/// Represents a code element that is exists on a single line.
+/// </summary>
+[DebuggerDisplay("{Contents}")]
+public class SimpleLineElement : ICodeElement
+{
+    bool indent, prependIndents, allowSplit;
+
+    /// <summary>
+    /// Creates a new SimpleLineElement with the specified contents.
+    /// </summary>
+    /// <param name="contents">The contents of the line</param>
+    /// <param name="indent">if true, indent the line before writing</param>
+    /// <param name="prependIdents">if true, prepend the indents before the new line</param>
+    /// <param name="allowSplit">if true, allow a line break in the contents</param>
+    public SimpleLineElement(string contents, bool indent, bool prependIdents, bool allowSplit)
+    {
+        Contents = contents;
+        this.indent = indent;
+        this.prependIndents = prependIdents;
+        this.allowSplit = allowSplit;
+    }
+
+    /// <summary>
+    /// The contents of the line.
+    /// </summary>
+    public string Contents { get; private set; }
+
+    /// <inheritdoc/>
+    public event EventHandler<WriteEventArgs> Begin = (s, e) => { };
+
+    /// <inheritdoc/>
+    public event EventHandler<WriteEventArgs> End = (s, e) => { };
+
+    /// <inheritdoc/>
+    public object BeginWrite(ICodeWriter writer)
+    {
+        OnBegin(new WriteEventArgs(writer));
+        return new object();
+    }
+
+    /// <inheritdoc/>
+    protected virtual void OnBegin(WriteEventArgs args)
+    {
+        Begin(this, args);
+    }
+
+    /// <inheritdoc/>
+    public void Write(ICodeWriter writer, object memento)
+    {
+        if (indent)
+            writer.Indent();
+        writer.BeginNewLine(prependIndents);
+        writer.Write(Contents, allowSplit);
+        writer.EndLine();
+    }
+
+    /// <inheritdoc/>
+    public void EndWrite(ICodeWriter writer, object memento)
+    {
+        OnEnd(new WriteEventArgs(writer));
+    }
+
+    /// <inheritdoc/>
+    protected virtual void OnEnd(WriteEventArgs args)
+    {
+        End.FireInReverse(this, args);
+    }
+
+    public override string ToString()
+    {
+        return Contents;
+    }
+}
+
+

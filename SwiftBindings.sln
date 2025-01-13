@@ -13,6 +13,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Swift.Runtime.Tests", "src\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Swift.Bindings.Integration.Tests", "src\Swift.Bindings\tests\IntegrationTests\Swift.Bindings.Integration.Tests.csproj", "{CF9035B8-57F0-49A2-B985-94B1F6389339}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E20064C3-DB10-4C70-A97A-6E49C1F90A54}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Dynamo", "Dynamo", "{5C795F44-0891-467B-9A35-7152247547FB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dynamo", "src\Dynamo\src\Dynamo.csproj", "{31CDCAEA-2A55-4730-8DEB-935CB9CE0B3F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -86,5 +92,21 @@ Global
 		{CF9035B8-57F0-49A2-B985-94B1F6389339}.Release|x64.Build.0 = Release|Any CPU
 		{CF9035B8-57F0-49A2-B985-94B1F6389339}.Release|x86.ActiveCfg = Release|Any CPU
 		{CF9035B8-57F0-49A2-B985-94B1F6389339}.Release|x86.Build.0 = Release|Any CPU
+		{31CDCAEA-2A55-4730-8DEB-935CB9CE0B3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{31CDCAEA-2A55-4730-8DEB-935CB9CE0B3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{31CDCAEA-2A55-4730-8DEB-935CB9CE0B3F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{31CDCAEA-2A55-4730-8DEB-935CB9CE0B3F}.Debug|x64.Build.0 = Debug|Any CPU
+		{31CDCAEA-2A55-4730-8DEB-935CB9CE0B3F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{31CDCAEA-2A55-4730-8DEB-935CB9CE0B3F}.Debug|x86.Build.0 = Debug|Any CPU
+		{31CDCAEA-2A55-4730-8DEB-935CB9CE0B3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{31CDCAEA-2A55-4730-8DEB-935CB9CE0B3F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{31CDCAEA-2A55-4730-8DEB-935CB9CE0B3F}.Release|x64.ActiveCfg = Release|Any CPU
+		{31CDCAEA-2A55-4730-8DEB-935CB9CE0B3F}.Release|x64.Build.0 = Release|Any CPU
+		{31CDCAEA-2A55-4730-8DEB-935CB9CE0B3F}.Release|x86.ActiveCfg = Release|Any CPU
+		{31CDCAEA-2A55-4730-8DEB-935CB9CE0B3F}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{5C795F44-0891-467B-9A35-7152247547FB} = {E20064C3-DB10-4C70-A97A-6E49C1F90A54}
+		{31CDCAEA-2A55-4730-8DEB-935CB9CE0B3F} = {5C795F44-0891-467B-9A35-7152247547FB}
 	EndGlobalSection
 EndGlobal
