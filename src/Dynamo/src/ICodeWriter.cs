@@ -32,7 +32,7 @@ public interface ICodeWriter {
     /// Write a string to the output.
     /// </summary>
     /// <param name="text">The text to write</param>
-    /// <param name="allowSplit">If truw, allows the writer to insert a line break, splitting the current line.</param>
+    /// <param name="allowSplit">If true, allows the writer to insert a line break, splitting the current line.</param>
     void Write (string text, bool allowSplit);
 
     /// <summary>

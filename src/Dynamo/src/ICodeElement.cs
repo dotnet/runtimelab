@@ -12,7 +12,7 @@ public interface ICodeElement
 {
     /// <summary>
     /// When implemented, this method should write the code element to the code writer.
-    /// BeginWrite should also fire the Begin event beforeq writing anything.
+    /// BeginWrite should also fire the Begin event before writing anything.
     /// </summary>
     /// <param name="writer">The writer for the code</param>
     /// <returns>A memento that will be passed back to Write and EndWrite</returns>
