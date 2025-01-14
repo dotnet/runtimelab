@@ -81,7 +81,7 @@ namespace BindingsGeneration
         public static void GenerateBindings(string swiftAbiPath, string dylibPath, string outputDirectory, int verbose = 2)
         {
             var typeDatabase = new TypeDatabase();
-            typeDatabase.LoadModuleDatabaseFromFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Swift", "TypeDatabase.xml"));
+            typeDatabase.LoadModuleDatabaseFromFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Swift", "FoundationDatabase.xml")).Wait();
 
             if (verbose > 0)
                 Console.WriteLine($"Starting bindings generation for {swiftAbiPath}...");
@@ -95,10 +95,12 @@ namespace BindingsGeneration
             if (!typeDatabase.IsModuleProcessed(moduleName))
             {
                 // Parse the Swift ABI file and generate declarations
-                var (decl, moduleTypes, closedGenericTypes) = swiftParser.ParseModule();
+                var (decl, moduleTypes, boundGenericTypes) = swiftParser.ParseModule();
 
-                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, moduleTypes, closedGenericTypes, typeDatabase, verbose);
-                moduleProcessor.FinalizeTypeProcessingAndCreateModuleDatabase();
+                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, moduleTypes, boundGenericTypes, typeDatabase, verbose);
+                var (moduleDatabase, outOfModuleTypeRecords) = moduleProcessor.FinalizeTypeProcessingAndCreateModuleDatabase();
+                typeDatabase.AddModuleDatabase(moduleDatabase);
+                typeDatabase.AddOutOfModuleTypes(outOfModuleTypeRecords);
 
                 if (verbose > 1)
                     Console.WriteLine("Parsed Swift ABI file successfully.");

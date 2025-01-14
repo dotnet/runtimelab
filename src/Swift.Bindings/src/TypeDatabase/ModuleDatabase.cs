@@ -9,19 +9,14 @@ namespace BindingsGeneration
     /// <summary>
     /// Represents a Swift module in C#, managing type records and module metadata.
     /// </summary>
-    public class ModuleDatabase : IModuleDatabase
+    public class ModuleTypeDatabase
     {
         /// <summary>
         /// The type records associated with the module, where the key is the Swift type identifier.
         /// </summary>
         private readonly ConcurrentDictionary<string, TypeRecord> _typeRecords;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ModuleDatabase"/> class with the specified module name and path.
-        /// </summary>
-        /// <param name="name">The name of the Swift module.</param>
-        /// <param name="path">The file path to the module.</param>
-        public ModuleDatabase(string name, string path)
+        public ModuleTypeDatabase(string name, string path)
         {
             Name = name;
             Path = path;
@@ -73,15 +68,6 @@ namespace BindingsGeneration
                 return true;
 
             return false;
-        }
-
-        /// <summary>
-        /// Retrieves all type records registered in the module.
-        /// </summary>
-        /// <returns>A list of all type records in the module.</returns>
-        public List<TypeRecord> GetTypes()
-        {
-            return _typeRecords.Values.ToList();
         }
     }
 }

@@ -11,19 +11,6 @@ namespace BindingsGeneration;
 public interface ITypeDatabase
 {
     /// <summary>
-    /// Loads a module database from a specified file.
-    /// </summary>
-    /// <param name="file">The file path of the module database to load.</param>
-    public void LoadModuleDatabaseFromFile(string file);
-
-    /// <summary>
-    /// Adds a module database to the type database.
-    /// </summary>
-    /// <param name="moduleDatabase">The module database to add.</param>
-    /// <exception cref="Exception">Thrown if a module with the same name already exists in the database.</exception>
-    public void AddModuleDatabase(IModuleDatabase moduleDatabase);
-
-    /// <summary>
     /// Checks whether a specific type in a specified module has been processed.
     /// </summary>
     /// <param name="moduleName">The name of the module.</param>

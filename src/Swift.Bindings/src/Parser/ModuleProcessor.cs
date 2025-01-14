@@ -8,6 +8,13 @@ using Swift.Runtime;
 namespace BindingsGeneration
 {
     /// <summary>
+    /// Represents the result of processing a Swift module.
+    /// </summary>
+    /// <param name="ModuleDatabase">The module database containing type records.</param>
+    /// <param name="OutOfModuleTypeRecords"> Type records which look as if they belong to another module, e.g. closed generics.</param>
+    sealed record ModuleProcessingResult(ModuleTypeDatabase ModuleDatabase, IEnumerable<(string, TypeRecord)> OutOfModuleTypeRecords);
+
+    /// <summary>
     /// Performs post-processing of types collected from the Swift ABI before generating bindings.
     /// Calculates properties on types which are not directly available from the ABI.
     /// Generates type database entries for structs, enums, and classes.
@@ -16,10 +23,10 @@ namespace BindingsGeneration
     {
         private readonly string _module;
         private readonly string _dylibPath;
-        private readonly TypeDatabase _typeDatabase;
-        private readonly IModuleDatabase _moduleDatabase;
+        private readonly ITypeDatabase _typeDatabase;
+        private readonly ModuleTypeDatabase _moduleDatabase;
         private readonly Dictionary<NamedTypeSpec, TypeDecl> _typeDecls;
-        private readonly List<NamedTypeSpec> _closedGenericTypes;
+        private readonly List<NamedTypeSpec> _boundGenericTypes; // TODO: Temporary solution for closed generics. Revise.
         private readonly Dictionary<string, TypeRecord> _outOfModuleTypeRecords; // E.g. closed generics from other modules.
         private readonly int _verbosity;
 
@@ -29,22 +36,22 @@ namespace BindingsGeneration
         /// <param name="module">The name of the Swift module being processed.</param>
         /// <param name="dylibPath">The file path to the Swift dynamic library.</param>
         /// <param name="typeDecls">A dictionary mapping Swift type specs to their declarations.</param>
-        /// <param name="closedGenericTypes">A list of closed generic types encountered during method signature parsing.</param>
+        /// <param name="boundGenericTypes">A list of closed generic types encountered during method signature parsing.</param>
         /// <param name="typeDatabase">The global type database tracking processed types.</param>
         /// <param name="verbosity">The verbosity level for logging.</param>
         public ModuleProcessor(
             string module,
             string dylibPath,
             Dictionary<NamedTypeSpec, TypeDecl> typeDecls,
-            List<NamedTypeSpec> closedGenericTypes,
-            TypeDatabase typeDatabase,
+            List<NamedTypeSpec> boundGenericTypes,
+            ITypeDatabase typeDatabase,
             int verbosity)
         {
             _module = module;
             _dylibPath = dylibPath;
             _typeDatabase = typeDatabase;
-            _moduleDatabase = new ModuleDatabase(module, dylibPath);
-            _closedGenericTypes = closedGenericTypes;
+            _moduleDatabase = new ModuleTypeDatabase(module, dylibPath);
+            _boundGenericTypes = boundGenericTypes;
             _outOfModuleTypeRecords = new Dictionary<string, TypeRecord>();
             _typeDecls = typeDecls;
             _verbosity = verbosity;
@@ -81,7 +88,8 @@ namespace BindingsGeneration
         /// Executes the post-processing workflow for all unprocessed types in the current module.
         /// Produces type database entries for structs, enums, and classes.
         /// </summary>
-        public void FinalizeTypeProcessingAndCreateModuleDatabase()
+        /// <returns>A <see cref="ModuleProcessingResult"/>The module database and out-of-module type records.</returns>
+        public ModuleProcessingResult FinalizeTypeProcessingAndCreateModuleDatabase()
         {
             foreach (var (typeSpec, typeDecl) in _typeDecls)
             {
@@ -89,13 +97,12 @@ namespace BindingsGeneration
             }
 
             // Placeholder for handling closed generics.
-            foreach (var closedGenericType in _closedGenericTypes)
+            foreach (var closedGenericType in _boundGenericTypes)
             {
                 ProcessGenericTypeSpec(closedGenericType);
             }
 
-            _typeDatabase.AddModuleDatabase(_moduleDatabase);
-            _typeDatabase.AddOutOfModuleTypes(_outOfModuleTypeRecords.Select(kv => (kv.Key, kv.Value)));
+            return new ModuleProcessingResult(_moduleDatabase, _outOfModuleTypeRecords.Select(kv => (kv.Key, kv.Value)));
         }
 
         /// <summary>

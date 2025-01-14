@@ -2,12 +2,21 @@
 // Licensed under the MIT License.
 
 using Newtonsoft.Json;
-using Swift.Runtime;
-using System.Globalization;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace BindingsGeneration
 {
+    /// <summary>
+    /// Represents the result of parsing a module.
+    /// </summary>
+    /// <param name="ModuleDecl">The module declaration.</param>
+    /// <param name="TypeDecls">The type declarations.</param>
+    /// <param name="BoundGenericTypes">The bound generic types.</param>
+    public sealed record ModuleParsingResult(
+    ModuleDecl ModuleDecl,
+    Dictionary<NamedTypeSpec, TypeDecl> TypeDecls,
+    List<NamedTypeSpec> BoundGenericTypes);
+
     /// <summary>
     /// Represents the root node of the ABI.
     /// </summary>
@@ -102,7 +111,7 @@ namespace BindingsGeneration
         /// <summary>
         /// Closed generic types encountered during parsing method signatures.
         /// </summary>
-        private readonly List<NamedTypeSpec> _closedGenericTypes = new();
+        private readonly List<NamedTypeSpec> _boundGenericTypes = new();
 
         public SwiftABIParser(string filePath, ITypeDatabase typeDatabase, int verbose = 0)
         {
@@ -157,7 +166,7 @@ namespace BindingsGeneration
                 _moduleTypes.Add(new NamedTypeSpec(type.FullyQualifiedName), type);
             }
 
-            return new ModuleParsingResult(moduleDecl, _moduleTypes, _closedGenericTypes);
+            return new ModuleParsingResult(moduleDecl, _moduleTypes, _boundGenericTypes);
         }
 
         /// <summary>
@@ -368,10 +377,10 @@ namespace BindingsGeneration
             {
                 var typeSpec = CreateTypeSpec(node.Children.ElementAt(i));
 
-                //TODO: Make sure that the generics are actually closed
+                //TODO: Make sure that the generics are actually bound
                 if (!_typeDatabase.IsTypeProcessed(typeSpec) && typeSpec is NamedTypeSpec namedTypeSpec && namedTypeSpec.GenericParameters.Count > 0)
                 {
-                    _closedGenericTypes.Add(namedTypeSpec);
+                    _boundGenericTypes.Add(namedTypeSpec);
                 }
 
                 methodDecl.CSSignature.Add(new ArgumentDecl

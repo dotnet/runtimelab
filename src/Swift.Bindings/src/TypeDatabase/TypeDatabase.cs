@@ -13,15 +13,16 @@ namespace BindingsGeneration
     /// </summary>
     public class TypeDatabase : ITypeDatabase
     {
-        private readonly ConcurrentDictionary<string, IModuleDatabase> _modules = new();
+        private readonly ConcurrentDictionary<string, ModuleTypeDatabase> _modules = new();
 
         // This store is intended for types which are encountered in one module but should belong to another.
         // This is true for closed generics, where a generic definition is in one module and instantiation is in another.
+        // TODO: This is a temporary solution and should be replaced with a more robust mechanism.
         private readonly ConcurrentDictionary<string, TypeRecord> _outOfModuleTypes = new();
 
         public TypeDatabase()
         {
-            var voidModuleRecord = new ModuleDatabase("", "");
+            var voidModuleRecord = new ModuleTypeDatabase("", "");
             voidModuleRecord.RegisterType("()", new TypeRecord()
             {
                 CSTypeIdentifier = "void",
@@ -40,10 +41,13 @@ namespace BindingsGeneration
         /// Loads a module database from a specified file.
         /// </summary>
         /// <param name="file">The file path of the module database to load.</param>
-        public void LoadModuleDatabaseFromFile(string file)
+        public async Task LoadModuleDatabaseFromFile(string file)
         {
+            var fileContent = await File.ReadAllTextAsync(file);
+
             XmlDocument xmlDoc = new();
-            xmlDoc.Load(file);
+            // TODO: This is synchronous, consider other xml parsers, other formats
+            xmlDoc.LoadXml(fileContent);
             if (!ValidateXmlSchema(xmlDoc))
                 throw new Exception(string.Format($"Invalid XML schema in {0}.", file));
 
@@ -63,7 +67,7 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="moduleDatabase">The module database to add.</param>
         /// <exception cref="Exception">Thrown if a module with the same name already exists in the database.</exception>
-        public void AddModuleDatabase(IModuleDatabase moduleDatabase)
+        public void AddModuleDatabase(ModuleTypeDatabase moduleDatabase)
         {
             if (!_modules.TryAdd(moduleDatabase.Name, moduleDatabase))
             {
@@ -112,7 +116,7 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="xmlDoc">The XML document to read.</param>
         /// <returns>The module database.</returns>
-        private static IModuleDatabase ReadVersion1_0(XmlDocument xmlDoc)
+        private static ModuleTypeDatabase ReadVersion1_0(XmlDocument xmlDoc)
         {
             XmlNode? rootNode = xmlDoc.SelectSingleNode("//swifttypedatabase");
             if (rootNode == null)
@@ -121,7 +125,7 @@ namespace BindingsGeneration
             var databaseModuleName = rootNode.Attributes?["moduleName"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'moduleName' attribute.");
             var databaseModulePath = rootNode.Attributes?["modulePath"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'modulePath' attribute.");
 
-            var moduleDatabase = new ModuleDatabase(databaseModuleName, databaseModulePath);
+            var moduleDatabase = new ModuleTypeDatabase(databaseModuleName, databaseModulePath);
 
             XmlNode? entitiesNode = xmlDoc.SelectSingleNode("//swifttypedatabase/entities");
 
