@@ -221,8 +221,12 @@ namespace BindingsGeneration
         /// <exception cref="Exception">Thrown if the library path does not exist for the specified module.</exception>
         public string GetLibraryPath(string moduleName)
         {
-            var moduleDatabase = _modules[moduleName];
-            return moduleDatabase?.Path ?? throw new Exception($"Library path does not exist for module {moduleName}.");
+            if (!_modules.TryGetValue(moduleName, out var moduleDatabase))
+            {
+                throw new Exception($"Module {moduleName} does not exist in the database.");
+            }
+
+            return moduleDatabase.Path;
         }
 
         /// <summary>
