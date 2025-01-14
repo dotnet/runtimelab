@@ -87,9 +87,9 @@ public readonly struct SwiftHandle : IEquatable<SwiftHandle> {
     }
 
     /// <summary>
-    /// Implicit conversion from IntPtr to SwiftHandle
+    /// Explicit conversion from IntPtr to SwiftHandle
     /// </summary>
-    public static implicit operator SwiftHandle (IntPtr value)
+    public static explicit operator SwiftHandle (IntPtr value)
     {
         return new SwiftHandle (value);
     }

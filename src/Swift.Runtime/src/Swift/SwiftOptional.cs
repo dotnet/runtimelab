@@ -43,7 +43,7 @@ public class SwiftOptional<T> : ISwiftObject
     /// <summary>
     /// Creates a new SwiftOptional from a Swift payload
     /// </summary>
-    static ISwiftObject ISwiftObject.NewFromPayload(IntPtr payload)
+    static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle payload)
     {
         var metadata = SwiftObjectHelper<SwiftOptional<T>>.GetTypeMetadata();
         var instance = new SwiftOptional<T>();
@@ -130,7 +130,7 @@ public class SwiftOptional<T> : ISwiftObject
                 _payload.CopyTo(payload);
                 fixed (byte* payloadPtr = payload) {
                     metadata.ValueWitnessTable->DestructiveProjectEnumData(payloadPtr, metadata);                  
-                    return SwiftMarshal.MarshalFromSwift<T>(new IntPtr (payloadPtr));
+                    return SwiftMarshal.MarshalFromSwift<T>((SwiftHandle) new IntPtr (payloadPtr));
                 }
             }
         }

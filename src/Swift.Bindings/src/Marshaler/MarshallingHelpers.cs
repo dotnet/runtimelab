@@ -12,7 +12,7 @@ namespace BindingsGeneration
             if (methodDecl.IsConstructor && !(parentDecl is StructDecl structDecl && StructIsMarshalledAsCSStruct(structDecl))) return true;
             var returnType = methodDecl.CSSignature.First();
 
-            if (returnType.Name == "") return false; // TODO: Void should be handled differently
+            if (returnType.SwiftTypeSpec.IsEmptyTuple) return false;
 
             if (!ArgumentIsMarshalledAsCSStruct(returnType, typeDatabase)) return true;
             return false;

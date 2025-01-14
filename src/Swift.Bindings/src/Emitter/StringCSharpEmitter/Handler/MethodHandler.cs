@@ -189,7 +189,13 @@ namespace BindingsGeneration
             var pInvokeName = NameProvider.GetPInvokeName(methodDecl);
             var staticKeyword = methodDecl.MethodType == MethodType.Static || parentDecl is ModuleDecl ? "static " : "";
 
-            writer.WriteLine($"public {staticKeyword}{env.SignatureHandler.GetWrapperSignature().ReturnType} {methodDecl.Name}({env.SignatureHandler.GetWrapperSignature().ParametersString()})");
+            var wrapperSignature = env.SignatureHandler.GetWrapperSignature();
+            var pInvokeSignature = env.SignatureHandler.GetPInvokeSignature();
+
+            var requiresIndirectResult = MarshallingHelpers.MethodRequiresIndirectResult(methodDecl, parentDecl, env.TypeDatabase);
+            var unsafeKeyword = requiresIndirectResult ? "unsafe " : "";
+
+            writer.WriteLine($"public {staticKeyword}{unsafeKeyword} {wrapperSignature.ReturnType} {methodDecl.Name}({wrapperSignature.ParametersString()})");
             writer.WriteLine("{");
             writer.Indent++;
 
@@ -201,14 +207,21 @@ namespace BindingsGeneration
                     writer.WriteLine($"var self = new SwiftSelf((void*)_payload);");
             }
 
-            // TODO: Add Indirect result marshalling to methods other than constructors
+            if (requiresIndirectResult)
+            {
+                writer.WriteLine($"var payload = (SwiftHandle)NativeMemory.Alloc({wrapperSignature.ReturnType}.PayloadSize);");
+                writer.WriteLine("var swiftIndirectResult = new SwiftIndirectResult((void*)payload);");
+                writer.WriteLine($"{pInvokeName}({pInvokeSignature.CallArgumentsString()});");
+                writer.WriteLine($"return SwiftMarshal.MarshalFromSwift<{wrapperSignature.ReturnType}>((SwiftHandle)swiftIndirectResult.Value);");
+            }
+            else
+            {
+                var returnPrefix = methodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple ? "" : "return ";
+                var invokeArguments = env.SignatureHandler.GetPInvokeSignature().CallArgumentsString();
 
-            var returnPrefix = methodDecl.CSSignature.First().SwiftTypeSpec is TupleTypeSpec tupleTypeSpec && tupleTypeSpec.IsEmptyTuple ? "" : "return ";
-            var invokeArguments = env.SignatureHandler.GetPInvokeSignature().CallArgumentsString();
-
-            // Call the PInvoke method
-            writer.WriteLine($"{returnPrefix}{pInvokeName}({invokeArguments});");
-
+                // Call the PInvoke method
+                writer.WriteLine($"{returnPrefix}{pInvokeName}({invokeArguments});");
+            }
             writer.Indent--;
             writer.WriteLine("}");
         }

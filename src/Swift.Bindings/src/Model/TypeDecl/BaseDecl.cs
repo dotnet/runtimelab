@@ -31,6 +31,6 @@ namespace BindingsGeneration
         /// <summary>
         /// The module declaration.
         /// </summary>
-        public required BaseDecl? ModuleDecl { get; set; }
+        public required ModuleDecl? ModuleDecl { get; set; }
     }
 }

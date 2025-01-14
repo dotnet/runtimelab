@@ -25,9 +25,9 @@ public struct AnyType : ISwiftObject {
     /// <summary>
     /// Creates a new SwiftOptional from a Swift payload
     /// </summary>
-    static ISwiftObject ISwiftObject.NewFromPayload(IntPtr payload)
+    static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle payload)
     {
-        return new AnyType(new SwiftHandle(payload));
+        return new AnyType(payload);
     }
 
     /// <summary>

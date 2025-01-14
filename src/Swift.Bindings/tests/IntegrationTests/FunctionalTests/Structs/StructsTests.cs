@@ -56,7 +56,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(y, gotY);
         }
 
-        [Fact(Skip = "Indirect result on non-constructor not implemented")]
+        [Fact]
         public void TestNonFrozenStructWithNonFrozenMemberCreation()
         {
             IntPtr frozenX = 1;
@@ -77,7 +77,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(nonFrozenY, gotNF.getY());
         }
 
-        [Fact(Skip = "Indirect result on non-constructor not implemented")]
+        [Fact]
         public void TestFrozenStructWithNonFrozenMemberCreation()
         {
             IntPtr frozenX = 1;
@@ -199,7 +199,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(y, result.getY());
         }
 
-        [Fact(Skip = "Indirect result on non-constructor not implemented")]
+        [Fact]
         public void TestModuleFuncReturningNonFrozenStruct()
         {
             IntPtr x = 1;
@@ -224,7 +224,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(y, result.getY());
         }
 
-        [Fact(Skip = "Indirect result on non-constructor not implemented")]
+        [Fact]
         public void TestInstanceMethodReturningNonFrozenStruct()
         {
             IntPtr x = 1;
@@ -249,7 +249,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(y, result.getY());
         }
 
-        [Fact(Skip = "Indirect result on non-constructor not implemented")]
+        [Fact]
         public void TestStaticMethodReturningNonFrozenStruct()
         {
             IntPtr x = 1;

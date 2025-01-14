@@ -72,6 +72,7 @@ namespace BindingsGeneration
             writer.WriteLine($"using System.Runtime.InteropServices.Swift;");
             writer.WriteLine($"using Swift;");
             writer.WriteLine($"using Swift.Runtime;");
+            writer.WriteLine($"using Swift.Runtime.InteropServices;");
             writer.WriteLine();
             writer.WriteLine($"namespace {generatedNamespace}");
             writer.WriteLine("{");

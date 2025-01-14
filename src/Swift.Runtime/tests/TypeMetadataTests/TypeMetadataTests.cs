@@ -81,7 +81,7 @@ public class TypeMetadataTests : IClassFixture<TypeMetadataTests.TestFixture>
             return swiftDest;
         }
 
-        static ISwiftObject ISwiftObject.NewFromPayload(IntPtr payload)
+        static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle payload)
         {
             return new ThisOnlyGetsUsedHere();
         }

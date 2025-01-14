@@ -176,7 +176,7 @@ namespace BindingsGeneration
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The list of collected declarations.</returns>
-        private List<BaseDecl> CollectDeclarations(IEnumerable<Node> nodes, BaseDecl parentDecl, BaseDecl moduleDecl)
+        private List<BaseDecl> CollectDeclarations(IEnumerable<Node> nodes, BaseDecl parentDecl, ModuleDecl moduleDecl)
         {
             var declarations = new List<BaseDecl>();
             foreach (var node in nodes)
@@ -195,7 +195,7 @@ namespace BindingsGeneration
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The declaration.</returns>
-        private BaseDecl? HandleNode(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
+        private BaseDecl? HandleNode(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl)
         {
             BaseDecl? result = null;
             try
@@ -242,7 +242,7 @@ namespace BindingsGeneration
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The type declaration.</returns>
-        private TypeDecl? HandleTypeDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
+        private TypeDecl? HandleTypeDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl)
         {
             if (_typeDatabase.IsTypeProcessed(node.ModuleName, ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name)))
             {
@@ -308,7 +308,7 @@ namespace BindingsGeneration
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The struct declaration.</returns>
-        private StructDecl CreateStructDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl, bool hasFrozenAttribute)
+        private StructDecl CreateStructDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl, bool hasFrozenAttribute)
         {
             return new StructDecl
             {
@@ -332,7 +332,7 @@ namespace BindingsGeneration
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The class declaration.</returns>
-        private ClassDecl CreateClassDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
+        private ClassDecl CreateClassDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl)
         {
             return new ClassDecl
             {
@@ -354,7 +354,7 @@ namespace BindingsGeneration
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The method declaration.</returns>
-        private MethodDecl CreateMethodDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
+        private MethodDecl CreateMethodDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl)
         {
             // Extract parameter names from the signature
             var paramNames = ExtractParameterNames(node.PrintedName);
@@ -405,7 +405,7 @@ namespace BindingsGeneration
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The field declaration.</returns>
-        private FieldDecl CreateFieldDecl(Node node, BaseDecl parentDecl, BaseDecl moduleDecl)
+        private FieldDecl CreateFieldDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl)
         {
             var typeSpec = CreateTypeSpec(node.Children.ElementAt(0));
             var fieldDecl = new FieldDecl

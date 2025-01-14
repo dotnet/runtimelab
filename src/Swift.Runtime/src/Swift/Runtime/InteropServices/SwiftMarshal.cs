@@ -98,10 +98,10 @@ public static class SwiftMarshal {
     /// <param name="swiftSource">Memory to read from</param>
     /// <returns>The C# type created by marshaling</returns>
     /// <exception cref="NotSupportedException"></exception>
-    public static T MarshalFromSwift<T>(IntPtr swiftSource) {
+    public static T MarshalFromSwift<T>(SwiftHandle swiftSource) {
         if (typeof(ISwiftObject).IsAssignableFrom(typeof(T))) {
             var helper = typeof(SwiftObjectHelper<>).MakeGenericType(typeof(T));
-            return (T)helper.GetMethod("NewFromPayload")!.Invoke(null, new object[] { new IntPtr(swiftSource) })!;
+            return (T)helper.GetMethod("NewFromPayload")!.Invoke(null, new object[] { new SwiftHandle(swiftSource) })!;
         }
         var type = typeof(T);
         if (type.IsPrimitive) {
