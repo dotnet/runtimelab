@@ -62,7 +62,6 @@ public class CodeElementCollection<T> : List<T>, ICodeElementSet where T : ICode
         End.FireInReverse(this, args);
     }
 
-
     /// <inheritdoc/>
     public System.Collections.Generic.IEnumerable<ICodeElement> Elements
     {
@@ -71,7 +70,4 @@ public class CodeElementCollection<T> : List<T>, ICodeElementSet where T : ICode
             return this.Cast<ICodeElement>();
         }
     }
-
 }
-
-

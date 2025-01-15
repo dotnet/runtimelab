@@ -71,13 +71,13 @@ public class CSUsingPackages : CodeElementCollection<CSUsing> {
     /// form of: packages.And("System").And("System.Runtime")...
     /// </summary>
     /// <param name="namespace">the namespace to add</param>
-    /// <returns></returns>
+    /// <returns>The modified collection</returns>
     public CSUsingPackages And (string @namespace) { return And (new CSUsing (@namespace)); }
 
     /// <summary>
     /// Adds a using statement if it is not already present in the collection.
     /// </summary>
-    /// <param name=""></param>
+    /// <param name="">the namespace to add</param>
     public void AddIfNotPresent (string @namespace)
     {
         var target = new CSUsing (@namespace);
@@ -89,9 +89,10 @@ public class CSUsingPackages : CodeElementCollection<CSUsing> {
     /// <summary>
     /// Adds a using statement using the provided Type if it is not already present in the collection.
     /// </summary>
-    /// <param name="type"></param>
+    /// <param name="type">A type whose namespace will be used in a using statement</param>
     public void AddIfNotPresent (Type type)
     {
         AddIfNotPresent (type.Namespace!);
     }
 }
+
