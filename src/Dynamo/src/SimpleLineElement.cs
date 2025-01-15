@@ -20,11 +20,11 @@ public class SimpleLineElement : ICodeElement
     /// <param name="indent">if true, indent the line before writing</param>
     /// <param name="prependIdents">if true, prepend the indents before the new line</param>
     /// <param name="allowSplit">if true, allow a line break in the contents</param>
-    public SimpleLineElement(string contents, bool indent, bool prependIdents, bool allowSplit)
+    public SimpleLineElement(string contents, bool indent, bool prependIndents, bool allowSplit)
     {
         Contents = contents;
         this.indent = indent;
-        this.prependIndents = prependIdents;
+        this.prependIndents = prependIndents;
         this.allowSplit = allowSplit;
     }
 

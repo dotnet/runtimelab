@@ -125,7 +125,7 @@ end
 This gets even more complicated when you need to implement a Swift protocol as that will require writing Swift that calls back into C# (reverse pinvoke). Keeping everything in one place is a huge advantage. In the case of a protocol implementation, we have to write:
 1 - a C# interface
 2 - a C# proxy type that implements that interface
-3 - an extension in Swift that understand how to map to the proxy in C#
+3 - an extension in Swift that understands how to map to the proxy in C#
 4 - a C# class to hold reverse pinvokes
 5 - a C# class to hold pinvokes
 
