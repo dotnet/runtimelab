@@ -206,7 +206,7 @@ namespace BindingsGeneration
 
             WritePrivateFields(writer, structDecl);
             WriteDisposeMethod(writer);
-            WriteFinalizer(writer, structDecl.Name);
+            WriteFinalizer(writer, structDecl);
             WritePayloadSize(writer);
             WritePayload(writer);
 
@@ -259,9 +259,9 @@ namespace BindingsGeneration
         /// <summary>
         /// Writes the finalizer for the class.
         /// </summary>
-        private static void WriteFinalizer(IndentedTextWriter writer, string className)
+        private static void WriteFinalizer(IndentedTextWriter writer, StructDecl structDecl)
         {
-            writer.WriteLine($"~{className}()");
+            writer.WriteLine($"~{structDecl.Name}()");
             writer.WriteLine("{");
             writer.Indent++;
             writer.WriteLine("NativeMemory.Free((void*)_payload);");
@@ -360,6 +360,9 @@ namespace BindingsGeneration
         }
     }
 
+    /// <summary>
+    /// Class responsible for emitting the necessary code for ISwiftObject methods.
+    /// </summary>
     class ISwiftObjectMethodWriter
     {
         private readonly IndentedTextWriter _writer;
@@ -375,6 +378,9 @@ namespace BindingsGeneration
             _structDecl = structDecl;
         }
 
+        /// <summary>
+        /// Writes the implementation for ISwiftObject methods for non-frozen structs.
+        /// </summary>
         public void WriteNonFrozenStructImplementation()
         {
             WriteGetTypeMetadata();
@@ -382,6 +388,9 @@ namespace BindingsGeneration
             WriteMarshalToSwift();
         }
 
+        /// <summary>
+        /// Writes the implementation for ISwiftObject methods for frozen structs.
+        /// </summary>
         public void WriteFrozenStructImplementation()
         {
             WriteGetTypeMetadata();
@@ -389,6 +398,9 @@ namespace BindingsGeneration
             WriteMarshalToSwift();
         }
 
+        /// <summary>
+        /// Writes the GetTypeMetadata method for the struct along with the PInvoke method.
+        /// </summary>
         private void WriteGetTypeMetadata()
         {
             _writer.WriteLine("static TypeMetadata ISwiftObject.GetTypeMetadata() => PInvoke_getMetadata();");
@@ -400,6 +412,9 @@ namespace BindingsGeneration
             _writer.WriteLine();
         }
 
+        /// <summary>
+        /// Writes the NewFromPayload method for the struct.
+        /// </summary>
         private void WriteNewFromPayloadFrozenStruct()
         {
             _writer.WriteLine("static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)");
@@ -411,6 +426,9 @@ namespace BindingsGeneration
             _writer.WriteLine();
         }
 
+        /// <summary>
+        /// Writes the NewFromPayload method for the struct.
+        /// </summary>
         private void WriteNewFromPayloadNonFrozenStruct()
         {
             _writer.WriteLine("static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)");
@@ -424,7 +442,9 @@ namespace BindingsGeneration
             EmitPrivateConstructor();
         }
 
-
+        /// <summary>
+        /// Writes the private constructor accepting a SwiftHandle.
+        /// </summary>
         private void EmitPrivateConstructor()
         {
             _writer.WriteLine($"unsafe {_structDecl.Name}(SwiftHandle handle)");
@@ -436,6 +456,9 @@ namespace BindingsGeneration
             _writer.WriteLine();
         }
 
+        /// <summary>
+        /// Writes the MarshalToSwift method for the struct.
+        /// </summary>
         private void WriteMarshalToSwift()
         {
             _writer.WriteLine("IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest) => throw new NotImplementedException();");
