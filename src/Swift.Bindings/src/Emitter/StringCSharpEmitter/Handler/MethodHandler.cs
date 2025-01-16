@@ -104,6 +104,16 @@ namespace BindingsGeneration
                 writer.WriteLine($"this = {pInvokeName}({invokeArguments});");
             }
 
+            if (methodDecl.Throws)
+            {
+                writer.WriteLine("if (error.Value != null)");
+                writer.WriteLine("{");
+                writer.Indent++;
+                writer.WriteLine($"throw new SwiftRuntimeException(\"Call to Swift method {methodDecl.FullyQualifiedName} failed.\");");
+                writer.Indent--;
+                writer.WriteLine("}");
+            }
+
             writer.Indent--;
             writer.WriteLine("}");
         }
@@ -183,7 +193,7 @@ namespace BindingsGeneration
         /// <param name="env">The environment.</param>
         private void EmitWrapperMethod(IndentedTextWriter writer, MethodEnvironment env)
         {
-            var methodDecl = (MethodDecl)env.MethodDecl;
+            var methodDecl = env.MethodDecl;
             var parentDecl = methodDecl.ParentDecl ?? throw new ArgumentNullException(nameof(methodDecl.ParentDecl));
 
             var pInvokeName = NameProvider.GetPInvokeName(methodDecl);
@@ -202,26 +212,57 @@ namespace BindingsGeneration
             if (MarshallingHelpers.MethodRequiresSwiftSelf(methodDecl, parentDecl))
             {
                 if (parentDecl is StructDecl structDecl && MarshallingHelpers.StructIsMarshalledAsCSStruct(structDecl))
+                {
                     writer.WriteLine($"var self = new SwiftSelf<{parentDecl.Name}>(this);");
+                }
                 else
+                {
                     writer.WriteLine($"var self = new SwiftSelf((void*)_payload);");
+                }
             }
 
             if (requiresIndirectResult)
             {
                 writer.WriteLine($"var payload = (SwiftHandle)NativeMemory.Alloc({wrapperSignature.ReturnType}.PayloadSize);");
                 writer.WriteLine("var swiftIndirectResult = new SwiftIndirectResult((void*)payload);");
+            }
+
+            if (methodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple)
+            {
                 writer.WriteLine($"{pInvokeName}({pInvokeSignature.CallArgumentsString()});");
+            }
+            else
+            {
+                var returnPrefix = requiresIndirectResult ? "" : "var result = ";
+                writer.WriteLine($"{returnPrefix}{pInvokeName}({pInvokeSignature.CallArgumentsString()});");
+            }
+
+            if (methodDecl.Throws)
+            {
+                writer.WriteLine("if (error.Value != null)");
+                writer.WriteLine("{");
+                writer.Indent++;
+                writer.WriteLine($"throw new SwiftRuntimeException(\"Call to Swift method {methodDecl.FullyQualifiedName} failed.\");");
+                writer.Indent--;
+                writer.WriteLine("}");
+            }
+
+            if (requiresIndirectResult)
+            {
                 writer.WriteLine($"return SwiftMarshal.MarshalFromSwift<{wrapperSignature.ReturnType}>((SwiftHandle)swiftIndirectResult.Value);");
             }
             else
             {
-                var returnPrefix = methodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple ? "" : "return ";
-                var invokeArguments = env.SignatureHandler.GetPInvokeSignature().CallArgumentsString();
-
-                // Call the PInvoke method
-                writer.WriteLine($"{returnPrefix}{pInvokeName}({invokeArguments});");
+                if (methodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple)
+                {
+                    writer.WriteLine("return;");
+                }
+                else
+                {
+                    writer.WriteLine("return result;");
+                }
             }
+
             writer.Indent--;
             writer.WriteLine("}");
         }
@@ -232,9 +273,10 @@ namespace BindingsGeneration
     /// </summary>
     /// <param name="Type"></param>
     /// <param name="Name"></param>
-    public record Parameter(string Type, string Name)
+    public record Parameter(string Type, string Name, string modifier = "")
     {
-        public override string ToString() => $"{Type} {Name}";
+        public string CallString() => $"{Type} {Name}";
+        public string SignatureString() => $"{modifier} {Type} {Name}";
     }
 
     /// <summary>
@@ -245,10 +287,19 @@ namespace BindingsGeneration
     public record Signature(string ReturnType, IReadOnlyList<Parameter> Parameters)
     {
         public bool ContainsPlaceholder => Parameters.Any(p => p.Type == "AnyType") || ReturnType == "AnyType";
-        public string ParametersString() => string.Join(", ", Parameters.Select(p => p.ToString()));
+        public string ParametersString() => string.Join(", ", Parameters.Select(p => p.SignatureString()));
 
-        public string CallArgumentsString() => string.Join(", ", Parameters.Select(p =>
-            p.Type == "SwiftHandle" ? $"{p.Name}.Payload" : p.Name)); // TODO: Find a better way to do this
+        public string CallArgumentsString() => string.Join(", ", Parameters.Select(p => GetCallArgumentString(p)));
+
+        public static string GetCallArgumentString(Parameter parameter)
+        {
+            return parameter switch
+            {
+                { Type: "SwiftHandle" } => $"{parameter.Name}.Payload",
+                { modifier: "out" } => $"out var {parameter.Name}",
+                _ => parameter.Name
+            };
+        }
     }
 
     public class WrapperSignatureBuilder
@@ -381,7 +432,7 @@ namespace BindingsGeneration
         }
 
         /// <summary>
-        /// Handles the Swift self parameter of the method.
+        /// Handles the SwiftSelf parameter of the method.
         /// </summary>
         public void HandleSwiftSelf()
         {
@@ -395,6 +446,17 @@ namespace BindingsGeneration
                 {
                     AddParameter("SwiftSelf", "self");
                 }
+            }
+        }
+
+        /// <summary>
+        /// Handles the SwiftError parameter of the method.
+        /// </summary>
+        public void HandleSwiftError()
+        {
+            if (MethodDecl.Throws)
+            {
+                AddParameter("SwiftError", "error", "out");
             }
         }
 
@@ -421,9 +483,9 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="type">The parameter type.</param>
         /// <param name="name">The parameter name.</param>s
-        private void AddParameter(string type, string name)
+        private void AddParameter(string type, string name, string modifier = "")
         {
-            _parameters.Add(new Parameter(type, name));
+            _parameters.Add(new Parameter(type, name, modifier));
         }
     }
 
@@ -456,6 +518,7 @@ namespace BindingsGeneration
                 pInvokeSignature.HandleReturnType();
                 pInvokeSignature.HandleArguments();
                 pInvokeSignature.HandleSwiftSelf();
+                pInvokeSignature.HandleSwiftError();
                 _pInvokeSignature = pInvokeSignature.Build();
             }
             return _pInvokeSignature;

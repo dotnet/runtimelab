@@ -3,6 +3,7 @@
 
 using Xunit;
 using Swift.StructsTests;
+using Swift.Runtime;
 
 namespace BindingsGeneration.FunctionalTests
 {
@@ -259,6 +260,25 @@ namespace BindingsGeneration.FunctionalTests
 
             Assert.Equal(x, result.getX());
             Assert.Equal(y, result.getY());
+        }
+
+        [Fact]
+        public void TestInitMethodThrowingError()
+        {
+            Assert.Throws<SwiftRuntimeException>(() => new StructWithThrowingInit(0, 0));
+        }
+
+        [Fact]
+        public void TestInstanceMethodThrowingError()
+        {
+            var structWithThrowingMethods = new StructWithThrowingMethods(0, 0);
+            Assert.Throws<SwiftRuntimeException>(() => structWithThrowingMethods.sum());
+        }
+
+        [Fact]
+        public void TestStaticMethodThrowingError()
+        {
+            Assert.Throws<SwiftRuntimeException>(() => StructWithThrowingMethods.sum(0, 0));
         }
     }
 }

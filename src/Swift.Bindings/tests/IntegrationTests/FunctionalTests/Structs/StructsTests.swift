@@ -167,6 +167,43 @@ public struct StructBuilder
     }
 }
 
+@frozen 
+public struct StructWithThrowingInit
+{
+	public var x: Int
+	public var y: Int
+
+	public init(x: Int, y: Int) throws
+	{
+		self.x = x
+		self.y = y
+
+        throw NSError()
+	}
+}
+
+public struct StructWithThrowingMethods
+{
+    public var x: Int
+    public var y: Int
+
+    public init(x: Int, y: Int)
+    {
+        self.x = x
+        self.y = y
+    }
+
+    public func sum() throws -> Int
+    {
+        throw NSError()
+    }
+
+    public static func sum(x: Int, y: Int) throws -> Int
+    {
+        throw NSError()
+    }
+}
+
 public func sumFrozenAndNonFrozen(a: FrozenStruct, b: NonFrozenStruct) -> Int
 {
     return a.sum() + b.sum()

@@ -28,6 +28,11 @@ namespace BindingsGeneration
         /// Signature of the method.
         /// </summary>
         public required List<ArgumentDecl> CSSignature { get; set; }
+
+		/// <summary>
+		/// Indicates if method can throw an exception.
+		/// </summary>
+		public required bool Throws { get; set; }
     }
 
     /// <summary>

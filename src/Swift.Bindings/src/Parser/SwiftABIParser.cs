@@ -52,6 +52,7 @@ namespace BindingsGeneration
         public required bool? IsInternal { get; set; }
         public required string? GenericSig { get; set; }
         public required string? sugared_genericSig { get; set; }
+        public required bool? throwing { get; set; }
         public required IEnumerable<Node> Children { get; set; } = Enumerable.Empty<Node>();
     }
 
@@ -370,7 +371,8 @@ namespace BindingsGeneration
                 IsConstructor = node.Kind == "Constructor",
                 CSSignature = new List<ArgumentDecl>(),
                 ParentDecl = parentDecl,
-                ModuleDecl = moduleDecl
+                ModuleDecl = moduleDecl,
+                Throws = node.throwing ?? false
             };
 
             for (int i = 0; i < node.Children.Count(); i++)
