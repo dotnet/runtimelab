@@ -1,4 +1,4 @@
-# Dyanmo
+# Dynamo
 
 Dynamo is code generator that uses C# combinators to write source code. The target language can be any language you wish. At present, it is built to support C# and Swift which are requirements for Binding Tools for Swift.
 
