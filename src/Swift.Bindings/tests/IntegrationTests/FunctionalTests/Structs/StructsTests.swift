@@ -174,7 +174,7 @@ public struct StructWithThrowingInit
     public var y: Int
 
     public init(x: Int, y: Int) throws
-	{
+    {
         self.x = x
         self.y = y
 
