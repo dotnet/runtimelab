@@ -227,7 +227,6 @@ namespace BindingsGeneration
         /// </summary>
         private static void WritePrivateFields(IndentedTextWriter writer, StructDecl structDecl)
         {
-            writer.WriteLine();
             writer.WriteLine($"static nuint _payloadSize = SwiftObjectHelper<{structDecl.Name}>.GetTypeMetadata().Size;");
             writer.WriteLine("SwiftHandle _payload = SwiftHandle.Zero;");
             writer.WriteLine("bool _disposed = false;");
@@ -239,20 +238,20 @@ namespace BindingsGeneration
         /// </summary>
         private static void WriteDisposeMethod(IndentedTextWriter writer)
         {
-            writer.WriteLine("public void Dispose()");
-            writer.WriteLine("{");
-            writer.Indent++;
-            writer.WriteLine("if (!_disposed)");
-            writer.WriteLine("{");
-            writer.Indent++;
-            writer.WriteLine("NativeMemory.Free((void*)_payload);");
-            writer.WriteLine("_payload = SwiftHandle.Zero;");
-            writer.WriteLine("_disposed = true;");
-            writer.WriteLine("GC.SuppressFinalize(this);");
-            writer.Indent--;
-            writer.WriteLine("}");
-            writer.Indent--;
-            writer.WriteLine("}");
+            var text = $$"""
+            public void Dispose()
+            {
+                if (!_disposed)
+                {
+                    NativeMemory.Free((void*)_payload);
+                    _payload = SwiftHandle.Zero;
+                    _disposed = true;
+                    GC.SuppressFinalize(this);
+                }
+            }
+            """;
+
+            writer.WriteLines(text);
             writer.WriteLine();
         }
 
@@ -261,13 +260,15 @@ namespace BindingsGeneration
         /// </summary>
         private static void WriteFinalizer(IndentedTextWriter writer, StructDecl structDecl)
         {
-            writer.WriteLine($"~{structDecl.Name}()");
-            writer.WriteLine("{");
-            writer.Indent++;
-            writer.WriteLine("NativeMemory.Free((void*)_payload);");
-            writer.WriteLine("_payload = SwiftHandle.Zero;");
-            writer.Indent--;
-            writer.WriteLine("}");
+            var text = $$"""
+            ~{{structDecl.Name}}()
+            {
+                NativeMemory.Free((void*)_payload);
+                _payload = SwiftHandle.Zero;
+            }
+            """;
+
+            writer.WriteLines(text);
             writer.WriteLine();
         }
 
@@ -404,11 +405,17 @@ namespace BindingsGeneration
         private void WriteGetTypeMetadata()
         {
             _writer.WriteLine("static TypeMetadata ISwiftObject.GetTypeMetadata() => PInvoke_getMetadata();");
+            _writer.WriteLine();
 
-            _writer.WriteLine("[UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]");
             string libPath = _typeDatabase.GetLibraryPath(_moduleDecl.Name);
-            _writer.WriteLine($"[DllImport(\"{libPath}\", EntryPoint = \"{_structDecl.MangledName}Ma\")]");
-            _writer.WriteLine("internal static extern TypeMetadata PInvoke_getMetadata();");
+
+            var pinvokeText = $$"""
+            [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
+            [DllImport("{{libPath}}", EntryPoint = "{{_structDecl.MangledName}}Ma")]
+            internal static extern TypeMetadata PInvoke_getMetadata();
+            """;
+
+            _writer.WriteLines(pinvokeText);
             _writer.WriteLine();
         }
 
@@ -417,12 +424,14 @@ namespace BindingsGeneration
         /// </summary>
         private void WriteNewFromPayloadFrozenStruct()
         {
-            _writer.WriteLine("static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)");
-            _writer.WriteLine("{");
-            _writer.Indent++;
-            _writer.WriteLine($"return *({_structDecl.Name}*)handle;");
-            _writer.Indent--;
-            _writer.WriteLine("}");
+            var text = $$"""
+            static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+            {
+                return *({{_structDecl.Name}}*)handle;
+            }
+            """;
+
+            _writer.WriteLines(text);
             _writer.WriteLine();
         }
 
@@ -431,12 +440,14 @@ namespace BindingsGeneration
         /// </summary>
         private void WriteNewFromPayloadNonFrozenStruct()
         {
-            _writer.WriteLine("static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)");
-            _writer.WriteLine("{");
-            _writer.Indent++;
-            _writer.WriteLine($"return new {_structDecl.Name}(handle);");
-            _writer.Indent--;
-            _writer.WriteLine("}");
+            var text = $$"""
+            static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+            {
+                return new {{_structDecl.Name}}(handle);
+            }
+            """;
+
+            _writer.WriteLines(text);
             _writer.WriteLine();
 
             EmitPrivateConstructor();
@@ -447,12 +458,14 @@ namespace BindingsGeneration
         /// </summary>
         private void EmitPrivateConstructor()
         {
-            _writer.WriteLine($"unsafe {_structDecl.Name}(SwiftHandle handle)");
-            _writer.WriteLine("{");
-            _writer.Indent++;
-            _writer.WriteLine("_payload = handle;");
-            _writer.Indent--;
-            _writer.WriteLine("}");
+            var text = $$"""
+            unsafe {{_structDecl.Name}}(SwiftHandle handle)
+            {
+                _payload = handle;
+            }
+            """;
+
+            _writer.WriteLines(text);
             _writer.WriteLine();
         }
 

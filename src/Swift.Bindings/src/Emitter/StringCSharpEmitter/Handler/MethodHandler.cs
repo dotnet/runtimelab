@@ -534,7 +534,7 @@ namespace BindingsGeneration
                 writer.WriteLine("var self = new SwiftSelf((void*)_payload);");
             }
 
-            writer.WriteLine("");
+            writer.WriteLine();
         }
 
         /// <summary>
@@ -550,7 +550,7 @@ namespace BindingsGeneration
 
             writer.WriteLine($"_payload = (SwiftHandle)NativeMemory.Alloc(_payloadSize);");
             writer.WriteLine("var swiftIndirectResult = new SwiftIndirectResult((void*)_payload);");
-            writer.WriteLine("");
+            writer.WriteLine();
         }
 
 
@@ -567,7 +567,7 @@ namespace BindingsGeneration
 
             writer.WriteLine($"var payload = (SwiftHandle)NativeMemory.Alloc({_wrapperSignature.ReturnType}.PayloadSize);");
             writer.WriteLine("var swiftIndirectResult = new SwiftIndirectResult((void*)payload);");
-            writer.WriteLine("");
+            writer.WriteLine();
         }
 
         /// <summary>
@@ -579,7 +579,7 @@ namespace BindingsGeneration
             var voidReturn = _methodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple;
             var returnPrefix = (_requiresIndirectResult || voidReturn) ? "" : "var result = ";
             writer.WriteLine($"{returnPrefix}{NameProvider.GetPInvokeName(_methodDecl)}({_pInvokeSignature.CallArgumentsString()});");
-            writer.WriteLine("");
+            writer.WriteLine();
         }
 
         /// <summary>
@@ -593,13 +593,15 @@ namespace BindingsGeneration
                 return;
             }
 
-            writer.WriteLine("if (error.Value != null)");
-            writer.WriteLine("{");
-            writer.Indent++;
-            writer.WriteLine($"throw new SwiftRuntimeException(\"Call to Swift method {_methodDecl.FullyQualifiedName} failed.\");");
-            writer.Indent--;
-            writer.WriteLine("}");
-            writer.WriteLine("");
+            var text = $$"""
+            if (error.Value != null)
+            {
+                throw new SwiftRuntimeException("Call to Swift method {{_methodDecl.FullyQualifiedName}} failed.");
+            }
+            """;
+
+            writer.WriteLines(text);
+            writer.WriteLine();
         }
 
         /// <summary>
@@ -676,7 +678,7 @@ namespace BindingsGeneration
         {
             writer.Indent--;
             writer.WriteLine("}");
-            writer.WriteLine("");
+            writer.WriteLine();
         }
     }
 }
