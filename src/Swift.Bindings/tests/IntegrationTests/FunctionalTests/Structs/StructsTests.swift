@@ -170,16 +170,16 @@ public struct StructBuilder
 @frozen 
 public struct StructWithThrowingInit
 {
-	public var x: Int
-	public var y: Int
+    public var x: Int
+    public var y: Int
 
-	public init(x: Int, y: Int) throws
+    public init(x: Int, y: Int) throws
 	{
-		self.x = x
-		self.y = y
+        self.x = x
+        self.y = y
 
         throw NSError()
-	}
+    }
 }
 
 public struct StructWithThrowingMethods
