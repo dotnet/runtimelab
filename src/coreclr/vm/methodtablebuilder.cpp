@@ -3605,7 +3605,18 @@ MethodTableBuilder::EnumerateClassMethods()
                 else
                 {
                     _ASSERTE(IsAsyncTaskMethodNormal(asyncMethodType));
-                    pNewMethod->SetAsyncMethodKind(AsyncMethodKind::NotAsync);
+
+                    if (IsMiAsync(dwImplFlags))
+                    {
+                        // TODO: VS must validate that only a few special methods can do this.
+                        //       the possibility is useful, but should not become a general
+                        //       feature by accident.
+                        pNewMethod->SetAsyncMethodKind(AsyncMethodKind::AsyncImplExplicit);
+                    }
+                    else
+                    {
+                        pNewMethod->SetAsyncMethodKind(AsyncMethodKind::NotAsync);
+                    }
                 }
 
                 pDeclaredMethod = pNewMethod;

@@ -70,7 +70,12 @@ enum class AsyncMethodKind
     AsyncImplHelper,
 
     // Synthetic Async2 method that forwards to the NotAsync Task-returning method
-    AsyncThunkHelper
+    AsyncThunkHelper,
+
+    // Actual IL method that is explicitly declared as Async2 and thus compiled into a state machine.
+    // Such methods do not get Async thunks and can only be called from another Async2 method using Async2 call convention.
+    // This is used in a few infrastructure methods like `Await`
+    AsyncImplExplicit,
 };
 
 struct AsyncMethodData
@@ -1829,10 +1834,13 @@ public:
     // CONSIDER: We probably need a better name for the concept, but it is hard to beat shortness of "async2"
     inline bool IsAsync2Method() const
     {
-        // Right now the only Async2 methods that exist are synthetic helpers.
-        // It is possible to declare an Async2 method directly in IL/Metadata,
-        // but we do not have a scenario for that.
-        return IsAsyncHelperMethod();
+        LIMITED_METHOD_DAC_CONTRACT;
+        if (!HasAsyncMethodData())
+            return false;
+        auto asyncKind = GetAddrOfAsyncMethodData()->kind;
+        return asyncKind == AsyncMethodKind::AsyncThunkHelper ||
+            asyncKind == AsyncMethodKind::AsyncImplHelper ||
+            asyncKind == AsyncMethodKind::AsyncImplExplicit;
     }
 
     inline bool IsStructMethodOperatingOnCopy()

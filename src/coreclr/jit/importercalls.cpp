@@ -914,7 +914,7 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
     impPopCallArgs(sig, call->AsCall());
 
     // Extra args
-    if ((instParam != nullptr) || sig->isAsyncCall() || (varArgsCookie != nullptr))
+    if ((instParam != nullptr) || call->AsCall()->IsAsync2() || (varArgsCookie != nullptr))
     {
         if (Target::g_tgtArgOrder == Target::ARG_ORDER_R2L)
         {
@@ -924,7 +924,7 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
                                                            .WellKnown(WellKnownArg::VarArgsCookie));
             }
 
-            if (sig->isAsyncCall())
+            if (call->AsCall()->IsAsync2())
             {
                 call->AsCall()->gtArgs.PushFront(this, NewCallArg::Primitive(gtNewNull(), TYP_REF)
                                                            .WellKnown(WellKnownArg::AsyncContinuation));
@@ -944,7 +944,7 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
                                                 NewCallArg::Primitive(instParam).WellKnown(WellKnownArg::InstParam));
             }
 
-            if (sig->isAsyncCall())
+            if (call->AsCall()->IsAsync2())
             {
                 call->AsCall()->gtArgs.PushBack(this, NewCallArg::Primitive(gtNewNull(), TYP_REF)
                                                           .WellKnown(WellKnownArg::AsyncContinuation));
