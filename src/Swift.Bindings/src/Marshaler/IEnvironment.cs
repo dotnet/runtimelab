@@ -73,6 +73,10 @@ namespace BindingsGeneration
         /// </summary>
         public MethodDecl MethodDecl { get; private set; } = methodDecl;
 
+        /// <summary>
+        /// Gets the parent declaration.
+        /// </summary>
+        public BaseDecl ParentDecl { get; } = methodDecl.ParentDecl ?? throw new ArgumentNullException($"Parent declaration on method {methodDecl.Name} is null.");
 
         /// <summary>
         /// Gets the TypeDatabase
@@ -80,8 +84,8 @@ namespace BindingsGeneration
         public ITypeDatabase TypeDatabase { get; } = typeDatabase;
 
         /// <summary>
-        /// Gets the SignatureHandler
+        /// Mapping of Swift generic type names to C# generic type names.
         /// </summary>
-        public SignatureHandler SignatureHandler { get; } = new SignatureHandler(methodDecl, typeDatabase);
+        public Dictionary<string, GenericParameterCSName> GenericTypeMapping { get; } = NameProvider.GetGenericTypeMapping(methodDecl);
     }
 }

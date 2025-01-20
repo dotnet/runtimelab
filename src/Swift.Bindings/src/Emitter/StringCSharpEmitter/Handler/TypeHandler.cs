@@ -386,7 +386,7 @@ namespace BindingsGeneration
         {
             WriteGetTypeMetadata();
             WriteNewFromPayloadNonFrozenStruct();
-            WriteMarshalToSwift();
+            WriteMarshalToSwiftNonFrozenStruct();
         }
 
         /// <summary>
@@ -396,7 +396,7 @@ namespace BindingsGeneration
         {
             WriteGetTypeMetadata();
             WriteNewFromPayloadFrozenStruct();
-            WriteMarshalToSwift();
+            WriteMarshalToSwiftFrozenStruct();
         }
 
         /// <summary>
@@ -472,9 +472,43 @@ namespace BindingsGeneration
         /// <summary>
         /// Writes the MarshalToSwift method for the struct.
         /// </summary>
-        private void WriteMarshalToSwift()
+        private void WriteMarshalToSwiftFrozenStruct()
         {
-            _writer.WriteLine("IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest) => throw new NotImplementedException();");
+            var text = $$"""
+            IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+            {
+                var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
+                unsafe {
+                    fixed (void* payload = &this)
+                    {
+                    metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, payload, metadata);
+                    }
+                }
+                return swiftDest;
+            }
+            """;
+
+            _writer.WriteLines(text);
+            _writer.WriteLine();
+        }
+
+        /// <summary>
+        /// Writes the MarshalToSwift method for the struct.
+        /// </summary>
+        private void WriteMarshalToSwiftNonFrozenStruct()
+        {
+            var text = $$"""
+            IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+            {
+                var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
+                unsafe {
+                    metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload, metadata);
+                }
+                return swiftDest;
+            }
+            """;
+
+            _writer.WriteLines(text);
             _writer.WriteLine();
         }
     }

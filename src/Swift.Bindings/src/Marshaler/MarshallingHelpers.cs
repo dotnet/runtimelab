@@ -1,28 +1,27 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-using Swift.Runtime;
-
 namespace BindingsGeneration
 {
     public static class MarshallingHelpers // TODO: Find better place for those
     {
-        public static bool MethodRequiresIndirectResult(MethodDecl methodDecl, BaseDecl parentDecl, ITypeDatabase typeDatabase)
+        public static bool MethodRequiresIndirectResult(MethodEnvironment env)
         {
-            if (methodDecl.IsConstructor && !(parentDecl is StructDecl structDecl && StructIsMarshalledAsCSStruct(structDecl))) return true;
-            var returnType = methodDecl.CSSignature.First();
+            if (env.MethodDecl.IsConstructor && !(env.ParentDecl is StructDecl structDecl && StructIsMarshalledAsCSStruct(structDecl))) return true;
+            var returnType = env.MethodDecl.CSSignature.First();
 
+            if (returnType.IsGeneric) return true;
             if (returnType.SwiftTypeSpec.IsEmptyTuple) return false;
 
-            if (!ArgumentIsMarshalledAsCSStruct(returnType, typeDatabase)) return true;
+            if (!ArgumentIsMarshalledAsCSStruct(returnType, env.TypeDatabase)) return true;
             return false;
         }
 
-        public static bool MethodRequiresSwiftSelf(MethodDecl methodDecl, BaseDecl parentDecl)
+        public static bool MethodRequiresSwiftSelf(MethodEnvironment env)
         {
-            if (parentDecl is ModuleDecl) return false; // global funcs
-            if (methodDecl.MethodType == MethodType.Static) return false;
-            if (methodDecl.IsConstructor) return false;
+            if (env.ParentDecl is ModuleDecl) return false; // global funcs
+            if (env.MethodDecl.MethodType == MethodType.Static) return false;
+            if (env.MethodDecl.IsConstructor) return false;
 
             return true;
         }

@@ -10,7 +10,7 @@ namespace BindingsGeneration
     {
         /// <summary>
         /// Type of the argument
-        ///
+        /// <summary>
         public required TypeSpec SwiftTypeSpec { get; set; }
 
         /// <summary>
@@ -22,5 +22,10 @@ namespace BindingsGeneration
         /// Indicates the inout annotation of the argument.
         /// </summary>
         public required bool IsInOut { get; set; }
+
+        /// <summary>
+        /// Indicates if the argument is generic.
+        /// </summary>
+        public required bool IsGeneric { get; set; }
     }
 }

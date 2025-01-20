@@ -8,7 +8,6 @@ namespace BindingsGeneration
     /// </summary>
     public sealed record MethodDecl : BaseDecl
     {
- 
         /// <summary>
         /// Mangled name of the declaration.
         /// </summary>
@@ -29,10 +28,20 @@ namespace BindingsGeneration
         /// </summary>
         public required List<ArgumentDecl> CSSignature { get; set; }
 
-		/// <summary>
-		/// Indicates if method can throw an exception.
-		/// </summary>
-		public required bool Throws { get; set; }
+        /// <summary>
+        /// Indicates if method can throw an exception.
+        /// </summary>
+        public required bool Throws { get; set; }
+
+        /// <summary>
+        /// Generic parameters of the method.
+        /// </summary>
+        public required List<string> GenericParameters { get; set; }
+
+        /// <summary>
+        /// Indicates if the method is generic.
+        /// </summary>
+        public bool IsGeneric => GenericParameters.Count > 0;
     }
 
     /// <summary>

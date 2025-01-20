@@ -11,7 +11,7 @@ namespace BindingsGeneration
         /// <summary>
         /// Name of the declaration.
         /// </summary>
-        public required string Name { get; set; }
+        public required string Name { get; set; } //TODO: Hide or remove this property. This might not contain a correct name.
 
         /// <summary>
         /// The fully qualified name of the declaration used for type registration.
