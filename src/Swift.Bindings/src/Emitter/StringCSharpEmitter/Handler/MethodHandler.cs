@@ -502,6 +502,7 @@ namespace BindingsGeneration
             EmitBodyStart(writer);
             EmitSwiftSelf(writer);
             EmitIndirectResultConstructor(writer);
+            EmitGenericArguments(writer);
             EmitPInvokeCall(writer);
             EmitSwiftError(writer);
             EmitReturnConstructor(writer);
@@ -518,6 +519,7 @@ namespace BindingsGeneration
             EmitBodyStart(writer);
             EmitSwiftSelf(writer);
             EmitIndirectResultMethod(writer);
+            EmitGenericArguments(writer);
             EmitPInvokeCall(writer);
             EmitSwiftError(writer);
             EmitReturnMethod(writer);
@@ -582,25 +584,26 @@ namespace BindingsGeneration
         }
 
         /// <summary>
+        /// Emits the generic arguments setup.
+        /// </summary>
+        private void EmitGenericArguments(IndentedTextWriter writer)
+        {
+            foreach (var argument in _env.MethodDecl.CSSignature.Skip(1).Where(a => a.IsGeneric))
+            {
+                var (typeName, metadataName, payloadName) = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()];
+                writer.WriteLine($"var {metadataName} = TypeMetadata.GetTypeMetadataOrThrow<{typeName}>();");
+                writer.WriteLine($"IntPtr {payloadName} = (IntPtr)NativeMemory.Alloc({metadataName}.Size);");
+                writer.WriteLine($"SwiftMarshal.MarshalToSwift({argument.Name}, {payloadName});");
+            }
+            writer.WriteLine();
+        }
+
+        /// <summary>
         /// Emits the PInvoke call.
         /// </summary>
         /// <param name="writer">The IndentedTextWriter instance.</param>
         private void EmitPInvokeCall(IndentedTextWriter writer)
         {
-            foreach (var argument in _env.MethodDecl.CSSignature.Skip(1))
-            {
-                if (!argument.IsGeneric)
-                {
-                    continue;
-                }
-
-                var (typeName, metadataName, payloadName) = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()];
-                writer.WriteLine($"var {metadataName} = TypeMetadata.GetTypeMetadataOrThrow<{typeName}>();");
-                writer.WriteLine($"IntPtr {payloadName} = (IntPtr)NativeMemory.Alloc({metadataName}.Size);"); // Try - finally
-                writer.WriteLine($"SwiftMarshal.MarshalToSwift({argument.Name}, {payloadName});");
-            }
-            writer.WriteLine();
-
             var voidReturn = _env.MethodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple;
             var returnPrefix = (_requiresIndirectResult || voidReturn) ? "" : "var result = ";
             writer.WriteLine($"{returnPrefix}{NameProvider.GetPInvokeName(_env.MethodDecl)}({_pInvokeSignature.CallArgumentsString()});");
