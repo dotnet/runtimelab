@@ -5,75 +5,6 @@ using System.CodeDom.Compiler;
 
 namespace BindingsGeneration
 {
-    /// <summary>
-    /// Factory class for creating instances of ConstructorHandler.
-    /// </summary>
-    public class ConstructorHandlerFactory : IFactory<BaseDecl, IMethodHandler>
-    {
-        /// <summary>
-        /// Determines if the factory handles the specified declaration.
-        /// </summary>
-        /// <param name="decl">The base declaration.</param>
-        public bool Handles(BaseDecl decl)
-        {
-            return decl is MethodDecl methodDecl && methodDecl.IsConstructor;
-        }
-
-        /// <summary>
-        /// Constructs a new instance of ConstructorHandler.
-        /// </summary>
-        public IMethodHandler Construct()
-        {
-            return new ConstructorHandler();
-        }
-    }
-
-    /// <summary>
-    /// Handler class for constructor declarations.
-    /// </summary>
-    public class ConstructorHandler : BaseHandler, IMethodHandler
-    {
-        public ConstructorHandler()
-        {
-        }
-
-        /// <summary>
-        /// Marshals the specified constructor.
-        /// </summary>
-        /// <param name="methodDecl">The method declaration.</param>
-        /// <param name="typeDatabase">The type database instance.</param>
-        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
-        {
-            if (decl is not MethodDecl methodDecl)
-            {
-                throw new ArgumentException("The provided decl must be a MethodDecl.", nameof(decl));
-            }
-            return new MethodEnvironment(methodDecl, typeDatabase);
-        }
-
-        /// <summary>
-        /// Emits the code for the specified environment.
-        /// </summary>
-        /// <param name="writer">The IndentedTextWriter instance.</param>
-        /// <param name="env">The environment.</param>
-        /// <param name="conductor">The conductor instance.</param>
-        public void Emit(IndentedTextWriter writer, IEnvironment env, Conductor conductor)
-        {
-            var methodEnv = (MethodEnvironment)env;
-            var signatureHandler = new SignatureHandler(methodEnv);
-
-            if (signatureHandler.GetWrapperSignature().ContainsPlaceholder)
-            {
-                Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported signature: ({signatureHandler.GetWrapperSignature().ParametersString()}) -> {signatureHandler.GetWrapperSignature().ReturnType}");
-                return;
-            }
-
-            var wrapperEmitter = new WrapperEmitter(methodEnv, signatureHandler);
-            wrapperEmitter.EmitConstructor(writer);
-            PInvokeEmitter.EmitPInvoke(writer, methodEnv, signatureHandler);
-            writer.WriteLine();
-        }
-    }
 
     /// <summary>
     /// Represents a method handler factory.
@@ -87,7 +18,7 @@ namespace BindingsGeneration
         /// <returns></returns>
         public bool Handles(BaseDecl decl)
         {
-            return decl is MethodDecl methodDecl && !methodDecl.IsConstructor;
+            return decl is MethodDecl;
         }
 
         /// <summary>
@@ -139,7 +70,14 @@ namespace BindingsGeneration
             }
 
             var wrapperEmitter = new WrapperEmitter(methodEnv, signatureHandler);
-            wrapperEmitter.EmitMethod(writer);
+            if (methodEnv.MethodDecl.IsConstructor)
+            {
+                wrapperEmitter.EmitConstructor(writer);
+            }
+            else
+            {
+                wrapperEmitter.EmitMethod(writer);
+            }
             PInvokeEmitter.EmitPInvoke(writer, methodEnv, signatureHandler);
             writer.WriteLine();
         }
