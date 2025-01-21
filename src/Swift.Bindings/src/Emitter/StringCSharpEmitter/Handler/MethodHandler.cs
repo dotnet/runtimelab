@@ -70,14 +70,7 @@ namespace BindingsGeneration
             }
 
             var wrapperEmitter = new WrapperEmitter(methodEnv, signatureHandler);
-            if (methodEnv.MethodDecl.IsConstructor)
-            {
-                wrapperEmitter.EmitConstructor(writer);
-            }
-            else
-            {
-                wrapperEmitter.EmitMethod(writer);
-            }
+            wrapperEmitter.Emit(writer);
             PInvokeEmitter.EmitPInvoke(writer, methodEnv, signatureHandler);
             writer.WriteLine();
         }
@@ -431,36 +424,84 @@ namespace BindingsGeneration
         }
 
         /// <summary>
+        /// Emits the wrapper.
+        /// </summary>
+        /// <param name="writer"></param>
+        internal void Emit(IndentedTextWriter writer)
+        {
+            if (_env.MethodDecl.IsConstructor)
+            {
+                EmitConstructor(writer);
+            }
+            else
+            {
+                EmitMethod(writer);
+            }
+        }
+
+        /// <summary>
         /// Emits the constructor wrapper.
         /// </summary>
         /// <param name="writer">The IndentedTextWriter instance.</param>
-        internal void EmitConstructor(IndentedTextWriter writer)
+        private void EmitConstructor(IndentedTextWriter writer)
         {
             EmitSignatureConstructor(writer);
             EmitBodyStart(writer);
+
+            EmitDeclarationsForAllocations(writer);
+
+            EmitTryBlockStart(writer);
+
             EmitSwiftSelf(writer);
             EmitIndirectResultConstructor(writer);
             EmitGenericArguments(writer);
             EmitPInvokeCall(writer);
             EmitSwiftError(writer);
             EmitReturnConstructor(writer);
+
+            EmitTryBlockEnd(writer);
+
+            EmitFinally(writer);
+
             EmitBodyEnd(writer);
+        }
+
+        /// <summary>
+        /// Emits the declarations for allocations.
+        /// </summary>
+        private void EmitDeclarationsForAllocations(IndentedTextWriter writer)
+        {
+            foreach (var argument in _env.MethodDecl.CSSignature.Skip(1).Where(a => a.IsGeneric))
+            {
+                var (typeName, metadataName, payloadName) = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()];
+                writer.WriteLine($"IntPtr {payloadName} = IntPtr.Zero;");
+            }
         }
 
         /// <summary>
         /// Emits the method wrapper.
         /// </summary>
         /// <param name="writer">The IndentedTextWriter instance.</param>
-        internal void EmitMethod(IndentedTextWriter writer)
+        private void EmitMethod(IndentedTextWriter writer)
         {
             EmitSignatureMethod(writer);
             EmitBodyStart(writer);
+
+            EmitDeclarationsForAllocations(writer);
+
+            EmitTryBlockStart(writer);
+
             EmitSwiftSelf(writer);
             EmitIndirectResultMethod(writer);
             EmitGenericArguments(writer);
             EmitPInvokeCall(writer);
             EmitSwiftError(writer);
             EmitReturnMethod(writer);
+
+            EmitTryBlockEnd(writer);
+
+            EmitFinally(writer);
+
             EmitBodyEnd(writer);
         }
 
@@ -498,8 +539,12 @@ namespace BindingsGeneration
                 return;
             }
 
-            writer.WriteLine($"_payload = (SwiftHandle)NativeMemory.Alloc(_payloadSize);");
-            writer.WriteLine("var swiftIndirectResult = new SwiftIndirectResult((void*)_payload);");
+            var text = $$"""
+            _payload = (SwiftHandle)NativeMemory.Alloc(_payloadSize);
+            var swiftIndirectResult = new SwiftIndirectResult((void*)_payload);
+            """;
+
+            writer.WriteLines(text);
             writer.WriteLine();
         }
 
@@ -515,9 +560,13 @@ namespace BindingsGeneration
                 return;
             }
 
-            writer.WriteLine($"var returnMetadata = TypeMetadata.GetTypeMetadataOrThrow<{_wrapperSignature.ReturnType}>();");
-            writer.WriteLine($"var payload = (SwiftHandle)NativeMemory.Alloc(returnMetadata.Size);");
-            writer.WriteLine("var swiftIndirectResult = new SwiftIndirectResult((void*)payload);");
+            var text = $$"""
+            var returnMetadata = TypeMetadata.GetTypeMetadataOrThrow<{{_wrapperSignature.ReturnType}}>();
+            var payload = (SwiftHandle)NativeMemory.Alloc(returnMetadata.Size);
+            var swiftIndirectResult = new SwiftIndirectResult((void*)payload);
+            """;
+
+            writer.WriteLines(text);
             writer.WriteLine();
         }
 
@@ -529,9 +578,12 @@ namespace BindingsGeneration
             foreach (var argument in _env.MethodDecl.CSSignature.Skip(1).Where(a => a.IsGeneric))
             {
                 var (typeName, metadataName, payloadName) = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()];
-                writer.WriteLine($"var {metadataName} = TypeMetadata.GetTypeMetadataOrThrow<{typeName}>();");
-                writer.WriteLine($"IntPtr {payloadName} = (IntPtr)NativeMemory.Alloc({metadataName}.Size);");
-                writer.WriteLine($"SwiftMarshal.MarshalToSwift({argument.Name}, {payloadName});");
+                var text = $$"""
+                var {{metadataName}} = TypeMetadata.GetTypeMetadataOrThrow<{{typeName}}>();
+                {{payloadName}} = (IntPtr)NativeMemory.Alloc({{metadataName}}.Size);
+                SwiftMarshal.MarshalToSwift({{argument.Name}}, {{payloadName}});
+                """;
+                writer.WriteLines(text);
             }
             writer.WriteLine();
         }
@@ -635,6 +687,40 @@ namespace BindingsGeneration
             var unsafeKeyword = _requiresIndirectResult || _env.MethodDecl.IsGeneric ? "unsafe " : "";
 
             writer.WriteLine($"public {staticKeyword}{unsafeKeyword}{_wrapperSignature.ReturnType} {_env.MethodDecl.Name}{genericParams}({_wrapperSignature.ParametersString()})");
+        }
+
+        /// <summary>
+        /// Emits the finally block.
+        /// </summary>
+        private void EmitFinally(IndentedTextWriter writer)
+        {
+            writer.WriteLine("finally");
+            EmitBodyStart(writer);
+
+            foreach (var argument in _env.MethodDecl.CSSignature.Skip(1).Where(a => a.IsGeneric))
+            {
+                var (_, _, payloadName) = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()];
+                writer.WriteLine($"NativeMemory.Free((void*){payloadName});");
+            }
+
+            EmitBodyEnd(writer);
+        }
+
+        /// <summary>
+        /// Emits the try block start.
+        /// </summary>
+        private void EmitTryBlockStart(IndentedTextWriter writer)
+        {
+            writer.WriteLine("try");
+            EmitBodyStart(writer);
+        }
+
+        /// <summary>
+        /// Emits the try block end.
+        /// </summary>
+        private void EmitTryBlockEnd(IndentedTextWriter writer)
+        {
+            EmitBodyEnd(writer);
         }
 
         /// <summary>
