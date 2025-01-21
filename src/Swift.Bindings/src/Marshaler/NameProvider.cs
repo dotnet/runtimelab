@@ -36,7 +36,7 @@ public static class NameProvider
     public static Dictionary<string, GenericParameterCSName> GetGenericTypeMapping(MethodDecl methodDecl) =>
         methodDecl.GenericParameters
             .Select((param, i) => (param, i))
-            .ToDictionary(x => x.param, x => new GenericParameterCSName(
+            .ToDictionary(x => x.param.TypeName, x => new GenericParameterCSName(
                 TypeName: $"T{x.i}",
                 MetadataName: $"T{x.i}Metadata",
                 PayloadName: $"T{x.i}Payload"

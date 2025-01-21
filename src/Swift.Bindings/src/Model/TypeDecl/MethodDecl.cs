@@ -36,7 +36,7 @@ namespace BindingsGeneration
         /// <summary>
         /// Generic parameters of the method.
         /// </summary>
-        public required List<string> GenericParameters { get; set; }
+        public required List<GenericArgumentDecl> GenericParameters { get; set; }
 
         /// <summary>
         /// Indicates if the method is generic.

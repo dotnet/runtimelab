@@ -63,6 +63,13 @@ namespace BindingsGeneration
         {
             var methodEnv = (MethodEnvironment)env;
             var signatureHandler = new SignatureHandler(methodEnv);
+
+            if (methodEnv.MethodDecl.GenericParameters.Any(x => x.Constraints.Count > 0))
+            {
+                Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported generic constraints");
+                return;
+            }
+
             if (signatureHandler.GetWrapperSignature().ContainsPlaceholder)
             {
                 Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported signature: ({signatureHandler.GetWrapperSignature().ParametersString()}) -> {signatureHandler.GetWrapperSignature().ReturnType}");
@@ -104,7 +111,6 @@ namespace BindingsGeneration
             return parameter switch
             {
                 { Type: "SwiftHandle" } => $"{parameter.Name}.Payload",
-                { Type: "IntPtr" } => parameter.Name,
                 { modifier: "out" } => $"out var {parameter.Name}",
                 _ => parameter.Name
             };
@@ -258,7 +264,7 @@ namespace BindingsGeneration
         {
             foreach (var genericParameter in _env.MethodDecl.GenericParameters)
             {
-                var CSName = _env.GenericTypeMapping[genericParameter];
+                var CSName = _env.GenericTypeMapping[genericParameter.TypeName];
                 AddParameter("TypeMetadata", CSName.MetadataName);
             }
         }
@@ -665,7 +671,7 @@ namespace BindingsGeneration
         {
             var genericParams = _env.MethodDecl.IsGeneric switch
             {
-                true => $"<{string.Join(", ", _env.MethodDecl.GenericParameters.Select(p => _env.GenericTypeMapping[p].TypeName))}>",
+                true => $"<{string.Join(", ", _env.MethodDecl.GenericParameters.Select(p => _env.GenericTypeMapping[p.TypeName].TypeName))}>",
                 false => ""
             };
             writer.WriteLine($"public {_env.ParentDecl.Name}{genericParams}({_wrapperSignature.ParametersString()})");
@@ -679,7 +685,7 @@ namespace BindingsGeneration
         {
             var genericParams = _env.MethodDecl.IsGeneric switch
             {
-                true => $"<{string.Join(", ", _env.MethodDecl.GenericParameters.Select(p => _env.GenericTypeMapping[p].TypeName))}>",
+                true => $"<{string.Join(", ", _env.MethodDecl.GenericParameters.Select(p => _env.GenericTypeMapping[p.TypeName].TypeName))}>",
                 false => ""
             };
 
