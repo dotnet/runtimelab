@@ -76,16 +76,16 @@ public class Async2VaryingYields
 
         public Benchmark(double yieldProbability) => _yieldProbability = yieldProbability;
 
-        public
+public
 #if ASYNC1_TASK
         async Task<long>
 #elif ASYNC1_VALUETASK
         async ValueTask<long>
 #else
-                async2 Task<long>
+        async2 Task<long>
 #endif
-                Run(int depth)
-                {
+        Run(int depth)
+        {
             int liveState1 = depth * 3 + (int)(1 / _yieldProbability);
             int liveState2 = depth;
             double liveState3 = _yieldProbability;
@@ -98,16 +98,16 @@ public class Async2VaryingYields
             return result;
         }
 
-        private
+private
 #if ASYNC1_TASK
         async Task<long>
 #elif ASYNC1_VALUETASK
         async ValueTask<long>
 #else
-                async2 Task<long>
+        async2 Task<long>
 #endif
-                Loop()
-                {
+        Loop()
+        {
             int time = Warmup ? 5 : 500;
 
             Stopwatch timer = Stopwatch.StartNew();
@@ -124,16 +124,16 @@ public class Async2VaryingYields
             return numIters;
         }
 
-        private
+private
 #if ASYNC1_TASK
         async Task<int>
 #elif ASYNC1_VALUETASK
         async ValueTask<int>
 #else
-                async2 Task<int>
+        async2 Task<int>
 #endif
-                DoYields()
-                {
+        DoYields()
+        {
             int numIters = 0;
 
             if (_rand.NextDouble() < _yieldProbability)
