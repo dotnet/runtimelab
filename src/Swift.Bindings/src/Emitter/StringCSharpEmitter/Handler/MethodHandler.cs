@@ -136,8 +136,8 @@ namespace BindingsGeneration
             var argument = _env.MethodDecl.CSSignature.First();
             if (argument.IsGeneric)
             {
-                var CSName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()];
-                SetReturnType(CSName.TypeName);
+                var placeholderName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()].PlaceholderName;
+                SetReturnType(placeholderName);
             }
             else
             {
@@ -155,8 +155,8 @@ namespace BindingsGeneration
             {
                 if (argument.IsGeneric)
                 {
-                    var CSName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()];
-                    AddParameter(CSName.TypeName, argument.Name);
+                    var placeholderName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()].PlaceholderName;
+                    AddParameter(placeholderName, argument.Name);
                 }
                 else
                 {
@@ -242,8 +242,8 @@ namespace BindingsGeneration
             {
                 if (argument.IsGeneric)
                 {
-                    var CSName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()];
-                    AddParameter("IntPtr", CSName.PayloadName);
+                    var payloadName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()].PayloadName;
+                    AddParameter("IntPtr", payloadName);
                 }
                 else if (MarshallingHelpers.ArgumentIsMarshalledAsCSStruct(argument, _env.TypeDatabase))
                 {
@@ -264,8 +264,8 @@ namespace BindingsGeneration
         {
             foreach (var genericParameter in _env.MethodDecl.GenericParameters)
             {
-                var CSName = _env.GenericTypeMapping[genericParameter.TypeName];
-                AddParameter("TypeMetadata", CSName.MetadataName);
+                var metadataName = _env.GenericTypeMapping[genericParameter.TypeName].MetadataName;
+                AddParameter("TypeMetadata", metadataName);
             }
         }
 
@@ -671,7 +671,7 @@ namespace BindingsGeneration
         {
             var genericParams = _env.MethodDecl.IsGeneric switch
             {
-                true => $"<{string.Join(", ", _env.MethodDecl.GenericParameters.Select(p => _env.GenericTypeMapping[p.TypeName].TypeName))}>",
+                true => $"<{string.Join(", ", _env.MethodDecl.GenericParameters.Select(p => _env.GenericTypeMapping[p.TypeName].PlaceholderName))}>",
                 false => ""
             };
             writer.WriteLine($"public {_env.ParentDecl.Name}{genericParams}({_wrapperSignature.ParametersString()})");
@@ -685,7 +685,7 @@ namespace BindingsGeneration
         {
             var genericParams = _env.MethodDecl.IsGeneric switch
             {
-                true => $"<{string.Join(", ", _env.MethodDecl.GenericParameters.Select(p => _env.GenericTypeMapping[p.TypeName].TypeName))}>",
+                true => $"<{string.Join(", ", _env.MethodDecl.GenericParameters.Select(p => _env.GenericTypeMapping[p.TypeName].PlaceholderName))}>",
                 false => ""
             };
 
