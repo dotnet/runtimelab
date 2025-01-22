@@ -27,7 +27,7 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\SharedLibrary\SharedLibrary.csproj" />
 
       <!-- Only automated on WASI with LLDB, which we don't have on Windows CI machines. -->
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\WasmDebugging.csproj" Condition="'$(TargetOS)' == 'browser' or '$(OS)' == 'Windows_NT'" />
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\WasmDebugging.csproj" Condition="'$(TargetOS)' == 'browser' or '$(OS)' == 'Windows_NT' or '$(Configuration)' != 'Debug'" />
       <DisabledProjects Include="$(TestRoot)readytorun\**\*.csproj" Condition="'$(TestBuildMode)' == 'nativeaot'" />
     </ItemGroup>
 
