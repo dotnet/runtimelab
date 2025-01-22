@@ -1263,6 +1263,8 @@ uint64_t GetAvailablePhysicalMemory()
     sysctlbyname("vm.stats.vm.v_free_count", &free_count, &sz, NULL, 0);
 
     available = (inactive_count + laundry_count + free_count) * sysconf(_SC_PAGESIZE);
+#elif defined(TARGET_WASM)
+    available = sysconf(SYSCONF_PAGES) * sysconf(_SC_PAGE_SIZE);
 #else // Linux
     static volatile bool tryReadMemInfo = true;
 

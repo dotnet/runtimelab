@@ -4,7 +4,6 @@
 #include "common.h"
 #include "gcenv.h"
 
-
 // Flush write buffers of processors that are executing threads of the current process - a NOP for Wasm
 void GCToOSInterface::FlushProcessWriteBuffers()
 {
@@ -117,4 +116,25 @@ bool GCToOSInterface::VirtualDecommit(void* address, size_t size)
 bool GCToOSInterface::VirtualReset(void* address, size_t size, bool unlock)
 {
     return false;
+}
+
+//
+// CPU and memory limits - not avaliable on WASM (yet).
+//
+void InitializeCGroup()
+{
+}
+
+void CleanupCGroup()
+{
+}
+
+size_t GetRestrictedPhysicalMemoryLimit()
+{
+    return 0; // 'Unlimited'.
+}
+
+bool GetPhysicalMemoryUsed(size_t* val)
+{
+    return false; // 'Unknown'.
 }
