@@ -4,8 +4,6 @@
 //#define ASYNC1_TASK
 //#define ASYNC1_VALUETASK
 
-#pragma warning disable 4014, 1998
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -78,48 +76,38 @@ public class Async2VaryingYields
 
         public Benchmark(double yieldProbability) => _yieldProbability = yieldProbability;
 
-public
+        public
 #if ASYNC1_TASK
         async Task<long>
 #elif ASYNC1_VALUETASK
         async ValueTask<long>
 #else
-        async2 Task<long>
+                async2 Task<long>
 #endif
-        Run(int depth)
-        {
+                Run(int depth)
+                {
             int liveState1 = depth * 3 + (int)(1 / _yieldProbability);
             int liveState2 = depth;
             double liveState3 = _yieldProbability;
 
             if (depth == 0)
-#if AWAIT
-                return RuntimeHelpers.Await(Loop());
-#else
                 return await Loop();
-#endif
 
-            long result =
-#if AWAIT
-                RuntimeHelpers.Await(Run(depth - 1));
-#else
-                await Run(depth - 1);
-#endif
-
+            long result = await Run(depth - 1);
             Sink = (int)liveState1 + (int)liveState2 + (int)(1 / liveState3) + depth;
             return result;
         }
 
-private
+        private
 #if ASYNC1_TASK
         async Task<long>
 #elif ASYNC1_VALUETASK
         async ValueTask<long>
 #else
-        async2 Task<long>
+                async2 Task<long>
 #endif
-        Loop()
-        {
+                Loop()
+                {
             int time = Warmup ? 5 : 500;
 
             Stopwatch timer = Stopwatch.StartNew();
@@ -129,28 +117,23 @@ private
             {
                 for (int i = 0; i < 20; i++)
                 {
-                    numIters +=
-#if AWAIT
-                        RuntimeHelpers.Await(DoYields());
-#else
-                        await DoYields();
-#endif
+                    numIters += await DoYields();
                 }
             }
 
             return numIters;
         }
 
-private
+        private
 #if ASYNC1_TASK
         async Task<int>
 #elif ASYNC1_VALUETASK
         async ValueTask<int>
 #else
-        async2 Task<int>
+                async2 Task<int>
 #endif
-        DoYields()
-        {
+                DoYields()
+                {
             int numIters = 0;
 
             if (_rand.NextDouble() < _yieldProbability)
