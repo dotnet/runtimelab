@@ -3608,9 +3608,8 @@ MethodTableBuilder::EnumerateClassMethods()
 
                     if (IsMiAsync(dwImplFlags))
                     {
-                        // TODO: VS must validate that only a few special methods can do this.
-                        //       the possibility is useful, but should not become a general
-                        //       feature by accident.
+                        // TODO: explicitly-async methods have special semantics that is useful in the implementation of runtime async itself.
+                        //       It should not be valid to declare this outside of runtime infrastructure methods. (exact criteria TBD)
                         pNewMethod->SetAsyncMethodKind(AsyncMethodKind::AsyncImplExplicit);
                     }
                     else
