@@ -209,8 +209,6 @@ namespace System.Runtime.CompilerServices
             return;
         }
 
-        // TODO: should this be called "AwaitFromRuntimeAsync" ?  (i.e. same as above, but no "Awaiter")
-        //
         // Marked intrinsic since this needs to be
         // recognizes as an async2 call.
         [Intrinsic]
@@ -225,6 +223,56 @@ namespace System.Runtime.CompilerServices
             }
 
             return awaiter.GetResult();
+        }
+
+        // Marked intrinsic since this needs to be
+        // recognizes as an async2 call.
+        [Intrinsic]
+        [BypassReadyToRun]
+        [MethodImpl(MethodImplOptions.NoInlining | (MethodImplOptions)0x0400)]  // NoInlining | Async
+        public static void Await(Task task)
+        {
+            TaskAwaiter awaiter = task.GetAwaiter();
+            if (!awaiter.IsCompleted)
+            {
+                UnsafeAwaitAwaiterFromRuntimeAsync(awaiter);
+            }
+
+            awaiter.GetResult();
+            return;
+        }
+
+        // Marked intrinsic since this needs to be
+        // recognizes as an async2 call.
+        [Intrinsic]
+        [BypassReadyToRun]
+        [MethodImpl(MethodImplOptions.NoInlining | (MethodImplOptions)0x0400)]  // NoInlining | Async
+        public static T Await<T>(ValueTask<T> task)
+        {
+            ValueTaskAwaiter<T> awaiter = task.GetAwaiter();
+            if (!awaiter.IsCompleted)
+            {
+                UnsafeAwaitAwaiterFromRuntimeAsync(awaiter);
+            }
+
+            return awaiter.GetResult();
+        }
+
+        // Marked intrinsic since this needs to be
+        // recognizes as an async2 call.
+        [Intrinsic]
+        [BypassReadyToRun]
+        [MethodImpl(MethodImplOptions.NoInlining | (MethodImplOptions)0x0400)]  // NoInlining | Async
+        public static void Await(ValueTask task)
+        {
+            ValueTaskAwaiter awaiter = task.GetAwaiter();
+            if (!awaiter.IsCompleted)
+            {
+                UnsafeAwaitAwaiterFromRuntimeAsync(awaiter);
+            }
+
+            awaiter.GetResult();
+            return;
         }
 
 #endif
