@@ -72,6 +72,17 @@ public class SwiftOptional<T> : ISwiftObject
     }
 
     /// <summary>
+    /// Gets the protocol conformance descriptor for the given type
+    /// </summary>
+    /// <typeparam name="U"></typeparam>
+    /// <returns></returns>
+    static ProtocolConformanceDescriptor ISwiftObject.GetProtocolConformanceDescriptor<U>()
+    {
+        // TODO: Implement
+        throw new NotImplementedException();
+    }
+
+    /// <summary>
     /// Creates a new SwiftOptional with a Some case payload
     /// </summary>
     public static SwiftOptional<T> NewSome(T value)

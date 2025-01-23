@@ -67,10 +67,12 @@ public class TypeMetadataTests : IClassFixture<TypeMetadataTests.TestFixture>
         Assert.True(contains);
     }
 
-    public struct ThisOnlyGetsUsedHere : ISwiftObject {
+    public struct ThisOnlyGetsUsedHere : ISwiftObject
+    {
         static TypeMetadata ISwiftObject.GetTypeMetadata()
         {
-            if (TypeMetadata.TryGetTypeMetadata<int>(out var fakeMd)) {
+            if (TypeMetadata.TryGetTypeMetadata<int>(out var fakeMd))
+            {
                 return TypeMetadata.Cache.GetOrAdd(typeof(ThisOnlyGetsUsedHere), (type) => fakeMd.Value);
             }
             return TypeMetadata.Zero;
@@ -84,6 +86,11 @@ public class TypeMetadataTests : IClassFixture<TypeMetadataTests.TestFixture>
         static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle payload)
         {
             return new ThisOnlyGetsUsedHere();
+        }
+
+        static ProtocolConformanceDescriptor ISwiftObject.GetProtocolConformanceDescriptor<U>()
+        {
+            return ProtocolConformanceDescriptor.Zero;
         }
     }
 
@@ -102,7 +109,8 @@ public class TypeMetadataTests : IClassFixture<TypeMetadataTests.TestFixture>
     [Fact]
     public static void TryGetWillThrow()
     {
-        Assert.Throws<SwiftRuntimeException>(() => {
+        Assert.Throws<SwiftRuntimeException>(() =>
+        {
             TypeMetadata.GetTypeMetadataOrThrow<TypeMetadataTests>();
         });
     }

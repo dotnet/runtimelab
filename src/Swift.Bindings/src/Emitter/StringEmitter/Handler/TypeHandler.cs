@@ -387,6 +387,7 @@ namespace BindingsGeneration
             WriteGetTypeMetadata();
             WriteNewFromPayloadNonFrozenStruct();
             WriteMarshalToSwiftNonFrozenStruct();
+            WriteGetProtocolConformanceDescriptor();
         }
 
         /// <summary>
@@ -397,6 +398,7 @@ namespace BindingsGeneration
             WriteGetTypeMetadata();
             WriteNewFromPayloadFrozenStruct();
             WriteMarshalToSwiftFrozenStruct();
+            WriteGetProtocolConformanceDescriptor();
         }
 
         /// <summary>
@@ -510,6 +512,23 @@ namespace BindingsGeneration
 
             _writer.WriteLines(text);
             _writer.WriteLine();
+        }
+
+        /// <summary>
+        /// Writes the GetProtocolConformanceDescriptor method for the struct.
+        /// </summary>
+        private void WriteGetProtocolConformanceDescriptor()
+        {
+            var text = $$"""
+            static ProtocolConformanceDescriptor ISwiftObject.GetProtocolConformanceDescriptor<U>()
+            {
+                throw new NotImplementedException();
+            }
+            """;
+
+            _writer.WriteLines(text);
+            _writer.WriteLine();
+
         }
     }
 }
