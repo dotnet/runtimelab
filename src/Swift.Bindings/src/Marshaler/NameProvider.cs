@@ -43,6 +43,16 @@ public static class NameProvider
     }
 
     /// <summary>
+    /// Provides the name of the interface based on a protocol name.
+    /// </summary>
+    /// <param name="protocolName">The protocol name.</param>
+    /// <returns>The name of the interface.</returns>
+    public static string GetInterfaceName(string protocolName)
+    {
+        return $"ISwift{protocolName}";
+    }
+
+    /// <summary>
     /// Provides the mapping of generic type parameters.
     /// </summary>
     /// <param name="methodDecl">The method declaration.</param>

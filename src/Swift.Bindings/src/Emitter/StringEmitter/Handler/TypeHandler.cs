@@ -531,4 +531,78 @@ namespace BindingsGeneration
 
         }
     }
+
+    /// <summary>
+    /// Factory class for creating instances of ProtocolHandler.
+    /// </summary>
+    public class ProtocolHandlerFactory : IFactory<BaseDecl, ITypeHandler>
+    {
+        /// <summary>
+        /// Determines if the factory handles the specified declaration.
+        /// </summary>
+        /// <param name="decl">The base declaration.</param>
+        public bool Handles(BaseDecl decl)
+        {
+            return decl is ProtocolDecl;
+        }
+
+        /// <summary>
+        /// Constructs a new instance of ProtocolHandler.
+        /// </summary>
+        public ITypeHandler Construct()
+        {
+            return new ProtocolHandler();
+        }
+    }
+
+    /// <summary>
+    /// Handler class for protocol declarations.
+    /// </summary>
+    public class ProtocolHandler : BaseHandler, ITypeHandler
+    {
+        public ProtocolHandler()
+        {
+        }
+
+        /// <summary>
+        /// Marshals the specified protocol declaration.
+        /// </summary>
+        /// <param name="protocolDecl">The protocol declaration.</param>
+        /// <param name="typeDatabase">The type database instance.</param>
+        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
+        {
+            if (decl is not ProtocolDecl structDecl)
+            {
+                throw new ArgumentException("The provided decl must be a ProtocolDecl.", nameof(decl));
+            }
+            return new TypeEnvironment(structDecl, typeDatabase);
+        }
+
+        /// <summary>
+        /// Emits the code for the specified environment.
+        /// </summary>
+        /// <param name="writer">The IndentedTextWriter instance.</param>
+        /// <param name="env">The environment.</param>
+        /// <param name="conductor">The conductor instance.</param>
+        /// <param name="typeDatabase">The type database instance.</param>
+        public void Emit(CSharpWriter csWriter, SwiftWriter swiftWriter, IEnvironment env, Conductor conductor)
+        {
+            var protocolEnv = (TypeEnvironment)env;
+            var protocolDecl = (ProtocolDecl)protocolEnv.TypeDecl;
+
+            var interfaceName = NameProvider.GetInterfaceName(protocolDecl.Name);
+
+            csWriter.WriteLine($"public interface {interfaceName}");
+            csWriter.WriteLine("{");
+            csWriter.Indent++;
+
+            // TODO: Implement protocol methods and properties
+            // base.HandleBaseDecl(writer, protocolDecl.Types, conductor, env.TypeDatabase);
+            // base.HandleBaseDecl(writer, protocolDecl.Methods, conductor, env.TypeDatabase);
+
+            csWriter.Indent--;
+            csWriter.WriteLine("}");
+            csWriter.WriteLine();
+        }
+    }
 }

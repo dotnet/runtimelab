@@ -24,6 +24,7 @@ namespace BindingsGeneration
         private readonly List<ITypeHandlerFactory> _typeHandlerFactories = [
             new NonFrozenStructHandlerFactory(),
             new FrozenStructHandlerFactory(),
+            new ProtocolHandlerFactory(),
             new ClassHandlerFactory(),
         ];
         private readonly List<IFieldHandlerFactory> _fieldHandlerFactories = [];

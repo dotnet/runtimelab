@@ -102,6 +102,18 @@ namespace BindingsGeneration
                         Console.WriteLine($"No handler found for method {classDecl.Name}");
                     }
                 }
+                else if (baseDecl is ProtocolDecl protocolDecl)
+                {
+                    if (conductor.TryGetTypeHandler(protocolDecl, out var handler))
+                    {
+                        var env = handler.Marshal(protocolDecl, typeDatabase);
+                        handler.Emit(csWriter, swiftWriter, env, conductor);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"No handler found for method {protocolDecl.Name}");
+                    }
+                }
                 else if (baseDecl is MethodDecl methodDecl)
                 {
                     if (conductor.TryGetMethodHandler(methodDecl, out var handler))
