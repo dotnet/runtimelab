@@ -55,6 +55,7 @@ namespace BindingsGeneration
         public required string? sugared_genericSig { get; set; }
         public required bool? throwing { get; set; }
         public required IEnumerable<Node> Children { get; set; } = Enumerable.Empty<Node>();
+        public required IEnumerable<Node> Conformances { get; set; } = Enumerable.Empty<Node>();
     }
 
     /// <summary>
@@ -312,6 +313,21 @@ namespace BindingsGeneration
             return decl;
         }
 
+        private Conformance? HandleConformance(Node node, string typeName)
+        {
+            if (node.Children.Count() > 0)
+            {
+                Console.WriteLine($"Protocols with associated types not supported. Skipping.");
+            }
+
+            var reduction = demangler.Run(node.MangledName) as TypeSpecReduction ?? throw new InvalidOperationException($"Invalid demangling result for '{node.MangledName}'.");
+            var protocolTypeSpec = reduction.TypeSpec as NamedTypeSpec ?? throw new InvalidOperationException($"TypeSpec '{reduction.TypeSpec}' is not a NamedTypeSpec");
+
+            var conformance = new ProtocolConformance(typeName, protocolTypeSpec.Name);
+
+            return conformance;
+        }
+
         /// <summary>
         /// Creates a struct declaration from a node.
         /// </summary>
@@ -321,14 +337,16 @@ namespace BindingsGeneration
         /// <returns>The struct declaration.</returns>
         private StructDecl CreateStructDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl, bool hasFrozenAttribute)
         {
+            var fullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name);
             return new StructDecl
             {
                 Name = ExtractUniqueName(node.Name),
-                FullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name),
+                FullyQualifiedName = fullyQualifiedName,
                 MangledName = node.MangledName,
                 Fields = new List<FieldDecl>(),
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
+                Conformances = [.. node.Conformances.Select(x => HandleConformance(x, fullyQualifiedName)).Where(x => x is not null).Cast<Conformance>()],
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl,
                 IsFrozen = hasFrozenAttribute,
@@ -345,6 +363,7 @@ namespace BindingsGeneration
         /// <returns>The class declaration.</returns>
         private ClassDecl CreateClassDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl)
         {
+            var fullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name);
             return new ClassDecl
             {
                 Name = ExtractUniqueName(node.Name),
@@ -353,6 +372,7 @@ namespace BindingsGeneration
                 Fields = new List<FieldDecl>(),
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
+                Conformances = [.. node.Conformances.Select(x => HandleConformance(x, fullyQualifiedName)).Where(x => x is not null).Cast<Conformance>()],
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl
             };
@@ -375,6 +395,7 @@ namespace BindingsGeneration
                 Fields = new List<FieldDecl>(),
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
+                Conformances = new List<Conformance>(),
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl
             };
