@@ -8949,11 +8949,50 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                 {
                     _impResolveToken(CORINFO_TOKENKIND_Method);
 
+                    // this is how impImportCall invokes getCallInfo
+                    CORINFO_CALLINFO_FLAGS flags =
+                        combine(combine(CORINFO_CALLINFO_ALLOWINSTPARAM, CORINFO_CALLINFO_SECURITYCHECKS),
+                                (opcode == CEE_CALLVIRT) ? CORINFO_CALLINFO_CALLVIRT : CORINFO_CALLINFO_NONE);
+
+                    if (JitConfig.JitOptimizeAwait())
+                    {
+                        // If we see the following code pattern in runtime async methods:
+                        //
+                        //    call[virt] <Method>
+                        //    call       <Await>
+                        //
+                        //  we emit an eqivalent of
+                        //
+                        //    call[virt] <RtMethod>
+                        //
+                        //  where "RtMethod" is the runtime-async counterpart of a Task-returning method.
+                        //
+                        //  NOTE: we could potentially check if Method is not a thunk and, in cases when we can tell,
+                        //        bypass this optimization. Otherwise in a non-thunk case we would be
+                        //        replacing the pattern with a call to a thunk, which contains roughly the same code.
+
+                        const BYTE* nextOpcode = codeAddr + sizeof(mdToken);
+                        if (compIsAsync2() && (nextOpcode + sizeof(mdToken) < codeEndp) &&
+                            (getU1LittleEndian(nextOpcode) == CEE_CALL))
+                        {
+                            // resolve the next token
+                            CORINFO_RESOLVED_TOKEN nextCallTok;
+                            impResolveToken(nextOpcode + 1, &nextCallTok, CORINFO_TOKENKIND_Method);
+
+                            // check if it is an Await intrinsic
+                            if (lookupNamedIntrinsic(nextCallTok.hMethod) ==
+                                NI_System_Runtime_CompilerServices_RuntimeHelpers_Await)
+                            {
+                                // consume the extra callvirt
+                                codeAddr += 1 + sizeof(mdToken);
+                                // instruct eeGetCallInfo to fetch the info for the RtAsync method
+                                flags = combine(flags, CORINFO_CALLINFO_RUNTIMEASYNC_VARIANT);
+                            }
+                        }
+                    }
+
                     eeGetCallInfo(&resolvedToken,
-                                  (prefixFlags & PREFIX_CONSTRAINED) ? &constrainedResolvedToken : nullptr,
-                                  // this is how impImportCall invokes getCallInfo
-                                  combine(combine(CORINFO_CALLINFO_ALLOWINSTPARAM, CORINFO_CALLINFO_SECURITYCHECKS),
-                                          (opcode == CEE_CALLVIRT) ? CORINFO_CALLINFO_CALLVIRT : CORINFO_CALLINFO_NONE),
+                                  (prefixFlags & PREFIX_CONSTRAINED) ? &constrainedResolvedToken : nullptr, flags,
                                   &callInfo);
                 }
                 else

@@ -4919,6 +4919,13 @@ void CEEInfo::getCallInfo(
     pResult->stubLookup.lookupKind.needsRuntimeLookup = false;
 
     MethodDesc* pMD = (MethodDesc *)pResolvedToken->hMethod;
+    if (flags & CORINFO_CALLINFO_RUNTIMEASYNC_VARIANT)
+    {
+        _ASSERTE(!pMD->IsAsync2Method());
+        pMD = pMD->GetAsyncOtherVariant();
+        pResolvedToken->hMethod = (CORINFO_METHOD_HANDLE)pMD;
+    }
+
     TypeHandle th(pResolvedToken->hClass);
 
     _ASSERTE(pMD);
