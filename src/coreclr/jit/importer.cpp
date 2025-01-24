@@ -8980,8 +8980,8 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                             impResolveToken(nextOpcode + 1, &nextCallTok, CORINFO_TOKENKIND_Method);
 
                             // check if it is an Await intrinsic
-                            if (lookupNamedIntrinsic(nextCallTok.hMethod) ==
-                                NI_System_Runtime_CompilerServices_RuntimeHelpers_Await)
+                            if (eeIsIntrinsic(nextCallTok.hMethod) &&
+                                lookupNamedIntrinsic(nextCallTok.hMethod) == NI_System_Runtime_CompilerServices_RuntimeHelpers_Await)
                             {
                                 // consume the extra callvirt
                                 codeAddr += 1 + sizeof(mdToken);
