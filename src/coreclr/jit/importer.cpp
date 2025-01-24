@@ -8994,13 +8994,11 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                         _impResolveToken(CORINFO_TOKENKIND_Method);
                     }
 
-                    // this is how impImportCall invokes getCallInfo
-                    CORINFO_CALLINFO_FLAGS flags =
-                        combine(combine(CORINFO_CALLINFO_ALLOWINSTPARAM, CORINFO_CALLINFO_SECURITYCHECKS),
-                                (opcode == CEE_CALLVIRT) ? CORINFO_CALLINFO_CALLVIRT : CORINFO_CALLINFO_NONE);
-
                     eeGetCallInfo(&resolvedToken,
-                                  (prefixFlags & PREFIX_CONSTRAINED) ? &constrainedResolvedToken : nullptr, flags,
+                                  (prefixFlags & PREFIX_CONSTRAINED) ? &constrainedResolvedToken : nullptr,
+                                  // this is how impImportCall invokes getCallInfo
+                                  combine(combine(CORINFO_CALLINFO_ALLOWINSTPARAM, CORINFO_CALLINFO_SECURITYCHECKS),
+                                          (opcode == CEE_CALLVIRT) ? CORINFO_CALLINFO_CALLVIRT : CORINFO_CALLINFO_NONE),
                                   &callInfo);
                 }
                 else
