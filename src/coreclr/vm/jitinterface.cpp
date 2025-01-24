@@ -1100,6 +1100,10 @@ void CEEInfo::resolveToken(/* IN, OUT */ CORINFO_RESOLVED_TOKEN * pResolvedToken
             th = ClassLoader::LoadArrayTypeThrowing(th);
             break;
 
+        case CORINFO_TOKENKIND_Await:
+            pMD = pMD->GetAsyncOtherVariant();
+            break;
+
         default:
             // Disallow ELEMENT_TYPE_BYREF and ELEMENT_TYPE_VOID
             if (et == ELEMENT_TYPE_BYREF || et == ELEMENT_TYPE_VOID)

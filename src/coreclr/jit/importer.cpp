@@ -8947,13 +8947,7 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                 // many other places.  We unfortunately embed that knowledge here.
                 if (opcode != CEE_CALLI)
                 {
-                    _impResolveToken(CORINFO_TOKENKIND_Method);
-
-                    // this is how impImportCall invokes getCallInfo
-                    CORINFO_CALLINFO_FLAGS flags =
-                        combine(combine(CORINFO_CALLINFO_ALLOWINSTPARAM, CORINFO_CALLINFO_SECURITYCHECKS),
-                                (opcode == CEE_CALLVIRT) ? CORINFO_CALLINFO_CALLVIRT : CORINFO_CALLINFO_NONE);
-
+                    bool isAwait = false;
                     if (JitConfig.JitOptimizeAwait())
                     {
                         // If we see the following code pattern in runtime async methods:
@@ -8983,13 +8977,27 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                             if (eeIsIntrinsic(nextCallTok.hMethod) &&
                                 lookupNamedIntrinsic(nextCallTok.hMethod) == NI_System_Runtime_CompilerServices_RuntimeHelpers_Await)
                             {
-                                // consume the extra callvirt
-                                codeAddr += 1 + sizeof(mdToken);
-                                // instruct eeGetCallInfo to fetch the info for the RtAsync method
-                                flags = combine(flags, CORINFO_CALLINFO_RUNTIMEASYNC_VARIANT);
+                                // yes, this is an Await
+                                isAwait = true;
                             }
                         }
                     }
+
+                    if (isAwait)
+                    {
+                        _impResolveToken(CORINFO_TOKENKIND_Await);
+                        // consume the extra call
+                        codeAddr += 1 + sizeof(mdToken);
+                    }
+                    else
+                    {
+                        _impResolveToken(CORINFO_TOKENKIND_Method);
+                    }
+
+                    // this is how impImportCall invokes getCallInfo
+                    CORINFO_CALLINFO_FLAGS flags =
+                        combine(combine(CORINFO_CALLINFO_ALLOWINSTPARAM, CORINFO_CALLINFO_SECURITYCHECKS),
+                                (opcode == CEE_CALLVIRT) ? CORINFO_CALLINFO_CALLVIRT : CORINFO_CALLINFO_NONE);
 
                     eeGetCallInfo(&resolvedToken,
                                   (prefixFlags & PREFIX_CONSTRAINED) ? &constrainedResolvedToken : nullptr, flags,
