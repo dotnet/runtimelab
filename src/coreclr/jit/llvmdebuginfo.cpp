@@ -153,8 +153,24 @@ static StringRef AsRef(CORINFO_LLVM_STRING string)
     return StringRef(string.Data, string.Length);
 }
 
-static DICompileUnit* CreateCompileUnit(DIBuilder* diBuilder, DIFile* debugFile)
+static DICompileUnit* CreateCompileUnit(DIBuilder* diBuilder, Module* module)
 {
+    StringRef path = module->getName();
+    StringRef dir;
+    StringRef name;
+    size_t dirEnd = path.find_last_of("\\/");
+    if (dirEnd != StringRef::npos)
+    {
+        dir = path.take_front(dirEnd);
+        name = path.substr(dirEnd + 1);
+    }
+    else
+    {
+        dir = "";
+        name = path;
+    }
+
+    DIFile* debugFile = diBuilder->createFile(name, dir);
     return diBuilder->createCompileUnit(DW_LANG_C_plus_plus, debugFile, "ILC", false, "", 1, "",
         DICompileUnit::FullDebug, 0, false);
 }
@@ -188,7 +204,7 @@ void Llvm::initializeDebugInfo()
     assert(info.SortedLineNumbers != nullptr);
     m_lineNumberCount = info.LineNumberCount;
     m_lineNumbers = info.SortedLineNumbers;
-    DIFile* debugFile = initializeDebugInfoBuilder(&info);
+    initializeDebugInfoBuilder();
 
     // For debug type unification across compile units to work, we need to first declare our methods. This is not
     // really specified anywhere, but it is how C++ DI is emitted and how LLDB expects these things to be shaped.
@@ -197,6 +213,7 @@ void Llvm::initializeDebugInfo()
     unsigned lineNo = m_lineNumbers[0].LineNumber;
     DISubprogram::DISPFlags funcFlags = DISubprogram::SPFlagDefinition;
 
+    DIFile* debugFile = m_diBuilder->createFile(info.FileName, info.Directory);
     m_diFunction = m_diBuilder->createFunction(nullptr, debugDecl->getName(), debugDecl->getLinkageName(),
         debugFile, lineNo, debugDecl->getType(), 0, DINode::FlagPrototyped, funcFlags, nullptr, debugDecl);
 
@@ -206,25 +223,22 @@ void Llvm::initializeDebugInfo()
     getRootLlvmFunction()->setSubprogram(m_diFunction);
 }
 
-DIFile* Llvm::initializeDebugInfoBuilder(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
+void Llvm::initializeDebugInfoBuilder()
 {
-    assert((pInfo->FileName != nullptr) && (pInfo->Directory != nullptr));
-
-    DIFile* debugFile = DIFile::get(m_context->Context, pInfo->FileName, pInfo->Directory);
-
     DICompileUnit* debugCompileUnit = nullptr;
-    m_context->DebugCompileUnitsMap.Lookup(debugFile, &debugCompileUnit);
+    for (DICompileUnit* unit : m_context->Module.debug_compile_units())
+    {
+        debugCompileUnit = unit;
+        break;
+    }
 
     m_diBuilder =
         new (_compiler->getAllocator(CMK_DebugInfo)) llvm::DIBuilder(m_context->Module, true, debugCompileUnit);
 
     if (debugCompileUnit == nullptr)
     {
-        debugCompileUnit = CreateCompileUnit(m_diBuilder, debugFile);
-        m_context->DebugCompileUnitsMap.Set(debugFile, debugCompileUnit);
+        debugCompileUnit = CreateCompileUnit(m_diBuilder, &m_context->Module);
     }
-
-    return debugFile;
 }
 
 void Llvm::initializeDebugVariables(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
@@ -580,8 +594,7 @@ public:
         , m_diTypes({})
     {
         m_diTypes.push_back(nullptr);
-        DIFile* debugFile = m_diBuilder.createFile(".NET Types", "");
-        CreateCompileUnit(&m_diBuilder, debugFile);
+        CreateCompileUnit(&m_diBuilder, &m_context->Module);
     }
 
     void Finish()

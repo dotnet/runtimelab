@@ -285,7 +285,6 @@ public:
     JitHashTable<CORINFO_CLASS_HANDLE, JitPtrKeyFuncs<CORINFO_CLASS_STRUCT_>, Type*, MallocAllocator> LlvmStructTypesMap = {{}};
     JitHashTable<CORINFO_CLASS_HANDLE, JitPtrKeyFuncs<CORINFO_CLASS_STRUCT_>, StructDesc*, MallocAllocator> StructDescMap = {{}};
     JitHashTable<CORINFO_LLVM_DEBUG_TYPE_HANDLE, JitSmallPrimitiveKeyFuncs<CORINFO_LLVM_DEBUG_TYPE_HANDLE>, llvm::DIType*, MallocAllocator> DebugTypesMap = {{}};
-    JitHashTable<llvm::DIFile*, JitPtrKeyFuncs<llvm::DIFile>, llvm::DICompileUnit*, MallocAllocator> DebugCompileUnitsMap = {{}};
     TypeDebugInfoModule* DebugTypes = nullptr;
 
     SingleThreadedCompilationContext(StringRef name) : Module(name, Context)
@@ -726,7 +725,7 @@ private:
     // ================================================================================================================
 
     void initializeDebugInfo();
-    llvm::DIFile* initializeDebugInfoBuilder(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
+    void initializeDebugInfoBuilder();
     void initializeDebugVariables(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
 
     void declareDebugVariables();
