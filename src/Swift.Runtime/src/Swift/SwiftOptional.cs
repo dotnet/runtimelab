@@ -74,9 +74,10 @@ public class SwiftOptional<T> : ISwiftObject
     /// <summary>
     /// Gets the protocol conformance descriptor for the given type
     /// </summary>
-    /// <typeparam name="U"></typeparam>
+    /// <typeparam name="TProtocol"></typeparam>
     /// <returns></returns>
-    static ProtocolConformanceDescriptor ISwiftObject.GetProtocolConformanceDescriptor<U>()
+    static ProtocolConformanceDescriptor ISwiftObject.GetProtocolConformanceDescriptor<TProtocol>()
+        where TProtocol : class
     {
         // TODO: Implement
         throw new NotImplementedException();
