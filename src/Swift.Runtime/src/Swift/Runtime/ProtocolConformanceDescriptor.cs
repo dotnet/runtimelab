@@ -40,13 +40,13 @@ public readonly struct ProtocolConformanceDescriptor : IEquatable<ProtocolConfor
         return false;
     }
 
-    public static ProtocolConformanceDescriptor LoadFromSymbol(string libraryPath, string symbolName)
+    public static ProtocolConformanceDescriptor LoadFromSymbol(string libraryName, string symbolName)
     {
-        var libraryHandle = NativeLibrary.Load(libraryPath);
+        var libraryHandle = NativeLibrary.Load(libraryName, typeof(ProtocolConformanceDescriptor).Assembly, null);
 
         if (libraryHandle == IntPtr.Zero)
         {
-            throw new SwiftRuntimeException($"Unable to load library: {libraryPath}");
+            throw new SwiftRuntimeException($"Unable to load library: {libraryName}");
         }
 
         if (NativeLibrary.TryGetExport(libraryHandle, symbolName, out var handle))
@@ -54,6 +54,6 @@ public readonly struct ProtocolConformanceDescriptor : IEquatable<ProtocolConfor
             return new ProtocolConformanceDescriptor(handle);
         }
 
-        throw new SwiftRuntimeException($"Unable to find symbol: {symbolName} in library: {libraryPath}");
+        throw new SwiftRuntimeException($"Unable to find symbol: {symbolName} in library: {libraryName}");
     }
 }
