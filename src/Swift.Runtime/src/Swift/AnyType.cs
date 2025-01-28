@@ -62,8 +62,6 @@ public struct AnyType : ISwiftObject
     static ProtocolConformanceDescriptor ISwiftObject.GetProtocolConformanceDescriptor<TProtocol>()
         where TProtocol : class
     {
-        // TODO: Implement
-        throw new NotImplementedException();
+        return ProtocolConformanceDescriptor.Zero;
     }
-
 }

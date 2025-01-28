@@ -64,6 +64,29 @@ public class ProtocolWitnessTableTests : IClassFixture<ProtocolWitnessTableTests
         }
     }
 
+    struct AnyTypeMock : ISwiftObject
+    {
+        static ProtocolConformanceDescriptor ISwiftObject.GetProtocolConformanceDescriptor<TProtocol>() where TProtocol : class
+        {
+            return ProtocolConformanceDescriptor.Zero;
+        }
+
+        static TypeMetadata ISwiftObject.GetTypeMetadata()
+        {
+            return TypeMetadata.Zero;
+        }
+
+        static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle payload)
+        {
+            throw new NotImplementedException();
+        }
+
+        nint ISwiftObject.MarshalToSwift(nint swiftDest)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     [Fact]
     public static void TryGetRetrievesProtocolWitnessTable()
     {
@@ -92,5 +115,13 @@ public class ProtocolWitnessTableTests : IClassFixture<ProtocolWitnessTableTests
     public static void GetOrThrowThrowsWhenTypeDoesNotConformToProtocol()
     {
         Assert.Throws<SwiftRuntimeException>(() => ProtocolWitnessTable.GetOrThrow<SomeType, ISwiftHashableMock>());
+    }
+
+    [Fact]
+    public static void FailsToRetrieveProtocolWitnessTableWhenProtocolConformanceDescriptorInvalid()
+    {
+        var result = ProtocolWitnessTable.TryGet<AnyTypeMock, ISwiftHashableMock>(out var protocolWitnessTable);
+        Assert.False(result);
+        Assert.Null(protocolWitnessTable);
     }
 }

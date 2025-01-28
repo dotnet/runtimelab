@@ -84,7 +84,7 @@ public class SwiftOptional<T> : ISwiftObject
     static ProtocolConformanceDescriptor ISwiftObject.GetProtocolConformanceDescriptor<TProtocol>()
         where TProtocol : class
     {
-        // TODO: Implement
+        // TODO: https://github.com/dotnet/runtimelab/issues/2963
         throw new NotImplementedException();
     }
 
