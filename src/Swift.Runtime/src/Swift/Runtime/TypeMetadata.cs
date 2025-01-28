@@ -13,7 +13,8 @@ namespace Swift.Runtime;
 /// Flags used to describe types
 /// </summary>
 [Flags]
-public enum TypeMetadataFlags {
+public enum TypeMetadataFlags
+{
     None = 0,
     /// <summary>
     /// The metadata is not an actual type
@@ -32,7 +33,8 @@ public enum TypeMetadataFlags {
 /// <summary>
 /// The type represented by the metadata
 /// </summary>
-public enum TypeMetadataKind {
+public enum TypeMetadataKind
+{
     /// <summary>
     /// None - errror
     /// </summary>
@@ -118,29 +120,31 @@ public enum TypeMetadataKind {
     /// <summary>
     /// The metadata represents a class
     /// </summary>
-    Class = 0x800 
+    Class = 0x800
 }
 
 /// <summary>
 /// Represents the possible values for a TypeMetadataRequest
 /// </summary>
-[Flags] 
-public enum TypeMetadataRequest {
-        Complete = 0,
-        NonTransitiveComplete = 1,
-        LayoutComplete = 0x3f,
-        Abstract = 0xff,
-        IsNotBlocking = 0x100, 
+[Flags]
+public enum TypeMetadataRequest
+{
+    Complete = 0,
+    NonTransitiveComplete = 1,
+    LayoutComplete = 0x3f,
+    Abstract = 0xff,
+    IsNotBlocking = 0x100,
 }
 
 
 /// <summary>
 /// Represents the type metadata for a Swift type
 /// </summary>
-public readonly struct TypeMetadata : IEquatable<TypeMetadata> {
+public readonly struct TypeMetadata : IEquatable<TypeMetadata>
+{
     readonly IntPtr handle;
 
-    static TypeMetadata ()
+    static TypeMetadata()
     {
         // TODO - add metadata for common built-in types like scalars and strings
         cache = new TypeMetadataCache(KnownMetadata());
@@ -149,13 +153,13 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata> {
     /// <summary>
     /// An empty/invalid TypeMetadata object
     /// </summary>
-    public readonly static TypeMetadata Zero = default (TypeMetadata);
+    public readonly static TypeMetadata Zero = default(TypeMetadata);
 
     /// <summary>
     /// Construct a TypeMetadata object
     /// </summary>
     /// <param name="handle">The handle for the type</param>
-    TypeMetadata (IntPtr handle)
+    TypeMetadata(IntPtr handle)
     {
         this.handle = handle;
     }
@@ -169,7 +173,7 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata> {
     /// Throws a SwiftRuntimeException if the TypeMetadata is invalid
     /// </summary>
     /// <exception cref="SwiftRuntimeException"></exception>
-    void ThrowOnInvalid ()
+    void ThrowOnInvalid()
     {
         if (!IsValid)
             throw new SwiftRuntimeException("TypeMetadata is invalid.");
@@ -181,12 +185,14 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata> {
     /// <summary>
     /// Returns the kind of this TypeMetadata
     /// </summary>
-    public TypeMetadataKind Kind {
-        get {
-            ThrowOnInvalid ();
-            long val = ReadPointerSizedInt (handle);
+    public TypeMetadataKind Kind
+    {
+        get
+        {
+            ThrowOnInvalid();
+            long val = ReadPointerSizedInt(handle);
             if (val == 0)
-            return TypeMetadataKind.None;
+                return TypeMetadataKind.None;
             if (val > kMaxDiscriminator)
                 return TypeMetadataKind.Class;
             return (TypeMetadataKind)val;
@@ -196,7 +202,7 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata> {
     /// <summary>
     /// Returns a pointer to the value witness table for the given type
     /// </summary>
-    public unsafe ValueWitnessTable *ValueWitnessTable => IsValid ? (ValueWitnessTable*)(*((IntPtr*)handle - 1)) : throw new NullReferenceException ("TypeMetadata is null");
+    public unsafe ValueWitnessTable* ValueWitnessTable => IsValid ? (ValueWitnessTable*)(*((IntPtr*)handle - 1)) : throw new NullReferenceException("TypeMetadata is null");
 
     /// <summary>
     /// Returns the size of the Swift type in bytes
@@ -218,13 +224,13 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata> {
     /// </summary>
     /// <param name="p">a pointer to memory</param>
     /// <returns></returns>
-    unsafe static nint ReadPointerSizedInt (IntPtr p)
+    unsafe static nint ReadPointerSizedInt(IntPtr p)
     {
         // Check for debug only. This calling code should always do the null
         // checking.
 #if DEBUG
         if (p == IntPtr.Zero)
-            throw new ArgumentOutOfRangeException (nameof (p));
+            throw new ArgumentOutOfRangeException(nameof(p));
 #endif
         return *((nint*)p);
     }
@@ -244,20 +250,20 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata> {
     /// </summary>
     /// <param name="o">an object to compare</param>
     /// <returns>true if the other is the same, false otherwise</returns>
-    public override bool Equals (object? o)
+    public override bool Equals(object? o)
     {
         if (o is TypeMetadata tm)
             return tm.handle == this.handle;
         return false;
     }
-    
+
     /// <summary>
     /// Returns a hashcode for this TypeMetadata object
     /// </summary>
     /// <returns>A hashcode for this TypeMetadata object</returns>
-    public override int GetHashCode ()
+    public override int GetHashCode()
     {
-        return handle.GetHashCode ();
+        return handle.GetHashCode();
     }
 
     static readonly TypeMetadataCache cache;
@@ -305,8 +311,14 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata> {
         if (typeof(ISwiftObject).IsAssignableFrom(type))
         {
             var helper = typeof(SwiftObjectHelper<>).MakeGenericType(type);
-            result = (TypeMetadata)helper.GetMethod("GetTypeMetadata")!.Invoke(null, null)!;
-            return true;
+            var candidate = (TypeMetadata)helper.GetMethod("GetTypeMetadata")!.Invoke(null, null)!;
+
+            // GetTypeMetadata can return an IntPtr.Zero 
+            if (candidate.IsValid)
+            {
+                result = candidate;
+                return true;
+            }
         }
 
         // NB - all further methods here should finish by putting the type into the cache
@@ -361,7 +373,8 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata> {
     /// <exception cref="SwiftRuntimeException">Throws on failure to load symbol</exception>
     static TypeMetadata MetadataFromNativeLibrary(IntPtr handle, string symbolName, string libraryName = KnownLibraries.SwiftCore)
     {
-        if (NativeLibrary.TryGetExport(handle, symbolName, out var entryPoint)) {
+        if (NativeLibrary.TryGetExport(handle, symbolName, out var entryPoint))
+        {
             return new TypeMetadata(entryPoint);
         }
         throw new SwiftRuntimeException(string.Format("Unable to find symbol {0} in library {1}", symbolName, libraryName));

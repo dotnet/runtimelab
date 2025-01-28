@@ -126,4 +126,10 @@ public class TypeMetadataTests : IClassFixture<TypeMetadataTests.TestFixture>
     {
         Assert.False(TypeMetadata.TryGetTypeMetadata<object>(out var md));
     }
+
+    [Fact]
+    public static void FailsWhenMetadataIsNotValid()
+    {
+        Assert.False(TypeMetadata.TryGetTypeMetadata<AnyTypeMock>(out var md));
+    }
 }

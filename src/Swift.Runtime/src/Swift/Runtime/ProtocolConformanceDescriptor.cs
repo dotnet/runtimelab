@@ -92,8 +92,14 @@ public readonly struct ProtocolConformanceDescriptor : IEquatable<ProtocolConfor
         if (typeof(ISwiftObject).IsAssignableFrom(type))
         {
             var helperType = typeof(ProtocolConformanceDescriptorHelper<,>).MakeGenericType(typeof(TType), typeof(TProtocol));
-            result = (ProtocolConformanceDescriptor)helperType.GetMethod("GetProtocolConformanceDescriptor")!.Invoke(null, null)!;
-            return true;
+            var candidate = (ProtocolConformanceDescriptor)helperType.GetMethod("GetProtocolConformanceDescriptor")!.Invoke(null, null)!;
+
+            // GetProtocolConformanceDescriptor can return an IntPtr.Zero
+            if (candidate.IsValid)
+            {
+                result = candidate;
+                return true;
+            }
         }
 
         result = null;
