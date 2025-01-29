@@ -64,9 +64,9 @@ namespace BindingsGeneration
             var methodEnv = (MethodEnvironment)env;
             var signatureHandler = new SignatureHandler(methodEnv);
 
-            if (methodEnv.MethodDecl.GenericParameters.Any(x => x.Constraints.Count > 0))
+            if (methodEnv.MethodDecl.GenericParameters.Any(x => x.Constraints.OfType<AssociatedTypeConformance>().ToList().Count > 0))
             {
-                Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported generic constraints");
+                Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported PAT generic constraints");
                 return;
             }
 
@@ -292,6 +292,23 @@ namespace BindingsGeneration
         }
 
         /// <summary>
+        /// Handles the protocol conformances of the generic parameters of the method.
+        /// </summary>
+        public void HandleProtocolConformance()
+        {
+            foreach (var genericParameter in _env.MethodDecl.GenericParameters)
+            {
+                var conformances = genericParameter.Constraints.Where(c => c is ProtocolConformance).OrderBy(c => c.ProtocolSpec.NameWithoutModule);
+                foreach (var conformance in conformances)
+                {
+                    var protocolConformance = (ProtocolConformance)conformance;
+                    var pwtName = $"{_env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName}_{protocolConformance.ProtocolSpec.NameWithoutModule}_pwt";
+                    AddParameter("ProtocolWitnessTable", pwtName);
+                }
+            }
+        }
+
+        /// <summary>
         /// Handles the SwiftSelf parameter of the method.
         /// </summary>
         public void HandleSwiftSelf()
@@ -376,6 +393,7 @@ namespace BindingsGeneration
                 pInvokeSignature.HandleSwiftAsync();
                 pInvokeSignature.HandleArguments();
                 pInvokeSignature.HandleGenericMetadata();
+                pInvokeSignature.HandleProtocolConformance();
                 pInvokeSignature.HandleSwiftSelf();
                 pInvokeSignature.HandleSwiftError();
                 _pInvokeSignature = pInvokeSignature.Build();
@@ -485,6 +503,7 @@ namespace BindingsGeneration
             EmitSwiftSelf(csWriter);
             EmitIndirectResultConstructor(csWriter);
             EmitGenericArguments(csWriter);
+            EmitProtocolWitnessTables(csWriter);
             EmitPInvokeCall(csWriter);
             EmitSwiftError(csWriter);
             EmitReturnConstructor(csWriter);
@@ -527,6 +546,7 @@ namespace BindingsGeneration
             EmitSwiftSelf(csWriter);
             EmitIndirectResultMethod(csWriter);
             EmitGenericArguments(csWriter);
+            EmitProtocolWitnessTables(csWriter);
             EmitPInvokeCall(csWriter);
             EmitSwiftError(csWriter);
             EmitReturnMethod(csWriter);
@@ -655,12 +675,31 @@ namespace BindingsGeneration
             foreach (var argument in _env.MethodDecl.CSSignature.Skip(1).Where(a => a.IsGeneric))
             {
                 var (typeName, metadataName, payloadName) = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()];
+
                 var text = $$"""
                 var {{metadataName}} = TypeMetadata.GetTypeMetadataOrThrow<{{typeName}}>();
                 {{payloadName}} = (IntPtr)NativeMemory.Alloc({{metadataName}}.Size);
                 SwiftMarshal.MarshalToSwift({{argument.Name}}, {{payloadName}});
                 """;
                 csWriter.WriteLines(text);
+            }
+            csWriter.WriteLine();
+        }
+
+
+        private void EmitProtocolWitnessTables(CSharpWriter csWriter)
+        {
+            foreach (var genericParameter in _env.MethodDecl.GenericParameters)
+            {
+                var (placeholderName, _, _) = _env.GenericTypeMapping[genericParameter.TypeName];
+                var conformances = genericParameter.Constraints.Where(c => c is ProtocolConformance).OrderBy(c => c.ProtocolSpec.NameWithoutModule);
+                foreach (var conformance in conformances)
+                {
+                    var protocolConformance = (ProtocolConformance)conformance;
+                    var pwtName = $"{_env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName}_{protocolConformance.ProtocolSpec.NameWithoutModule}_pwt";
+                    var protocolName = NameProvider.GetInterfaceName(protocolConformance.ProtocolSpec.NameWithoutModule);
+                    csWriter.WriteLine($"var {pwtName} = ProtocolWitnessTable.GetOrThrow<{placeholderName}, {protocolName}>();");
+                }
             }
             csWriter.WriteLine();
         }

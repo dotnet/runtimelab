@@ -82,5 +82,30 @@ namespace BindingsGeneration.FunctionalTests
             var result2 = GenericTests.AcceptsGenericParameterAndReturnsGeneric(b);
             // No deep comparison for non-frozen structs yet
         }
+
+        [Fact]
+        public void TestFunctionTakesGenericParameterConstrainedToProtocol()
+        {
+            var a = new SummableStruct(2, 40);
+            var result = GenericTests.AcceptsSummable(a);
+            Assert.Equal(42, result);
+        }
+
+        [Fact]
+        public void TestFunctionTakesGenericParameterConstrainedToMultipleProtocols()
+        {
+            var a = new StructWithMultipleProtocols(43, 177);
+            var result = GenericTests.AcceptsMultipleProtocols(a);
+            Assert.Equal(43 + 177 + 43 - 177 + 43 * 177, result);
+        }
+
+        [Fact]
+        public void TestFunctionTakesMultipleGenericParametersConstrainedToMultipleProtocols()
+        {
+            var a = new StructWithMultipleProtocols(43, 177);
+            var b = new StructWithMultipleProtocols(531, 133);
+            var result = GenericTests.AcceptsMultipleGenericParamsWithProtocols(a, b);
+            Assert.Equal((43 + 177) + (43 * 177) + (531 - 133) + (531 / 133), result);
+        }
     }
 }

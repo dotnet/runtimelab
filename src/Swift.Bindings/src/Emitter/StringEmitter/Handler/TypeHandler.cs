@@ -519,16 +519,46 @@ namespace BindingsGeneration
         /// </summary>
         private void WriteGetProtocolConformanceDescriptor()
         {
+            var libPath = _typeDatabase.GetLibraryPath(_moduleDecl.Name);
             var text = $$"""
-            static ProtocolConformanceDescriptor ISwiftObject.GetProtocolConformanceDescriptor<U>()
+            static ProtocolConformanceDescriptor ISwiftObject.GetProtocolConformanceDescriptor<TProtocol>()
+                where TProtocol : class
             {
-                throw new NotImplementedException();
+                var dispatch = new Dictionary<Type, string>
+                {
+                    {{GenerateGetProtocolConformanceDictionaryEntries()}}
+                };
+
+                if (!dispatch.ContainsKey(typeof(TProtocol)))
+                {
+                    throw new SwiftRuntimeException($"Attempted to retrieve protocol conformance descriptor for type {{_structDecl.Name}} and protocol {typeof(TProtocol).Name}, but no conformance was found.");
+                }
+
+                return ProtocolConformanceDescriptor.LoadFromSymbol("{{libPath}}", dispatch[typeof(TProtocol)]);
             }
             """;
 
             _writer.WriteLines(text);
             _writer.WriteLine();
 
+        }
+
+        private string GenerateGetProtocolConformanceDictionaryEntries()
+        {
+            var libPath = _typeDatabase.GetLibraryPath(_moduleDecl.Name);
+            var entries = new List<string>();
+            var protocolConformanceDescriptors = DemangledSymbolsRegister.Instance.GetData(libPath).ProtocolConformanceDescriptors;
+
+            foreach (var conformance in _structDecl.Conformances.OfType<ProtocolConformance>().Where(c => c.ProtocolSpec.Module == _moduleDecl.Name)) // Process only protocol conformances from current module for now
+            {
+                var protocol = NameProvider.GetInterfaceName(conformance.ProtocolSpec.NameWithoutModule);
+                var typeRecord = _typeDatabase.GetTypeRecordOrThrow(_moduleDecl.Name, _structDecl.FullyQualifiedNameWithoutModule);
+                var protocolConformanceSymbol = protocolConformanceDescriptors[(new NamedTypeSpec(_structDecl.FullyQualifiedName), conformance.ProtocolSpec)]; // TODO: Get rid of TypeSpec https://github.com/dotnet/runtimelab/issues/2889
+
+                entries.Add($"{{typeof({protocol}), \"{protocolConformanceSymbol}\"}}");
+            }
+
+            return string.Join(",\n", entries);
         }
     }
 
