@@ -323,7 +323,7 @@ namespace BindingsGeneration
             var reduction = demangler.Run(node.MangledName) as TypeSpecReduction ?? throw new InvalidOperationException($"Invalid demangling result for '{node.MangledName}'.");
             var protocolTypeSpec = reduction.TypeSpec as NamedTypeSpec ?? throw new InvalidOperationException($"TypeSpec '{reduction.TypeSpec}' is not a NamedTypeSpec");
 
-            var conformance = new ProtocolConformance(typeName, protocolTypeSpec.Name);
+            var conformance = new ProtocolConformance(typeName, protocolTypeSpec);
 
             return conformance;
         }

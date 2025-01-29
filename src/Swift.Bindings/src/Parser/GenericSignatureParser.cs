@@ -76,8 +76,14 @@ public class GenericSignatureParser
     private static Conformance ParseConstraint(string clause)
     {
         var parts = clause.Split(new[] { ":", "==" }, StringSplitOptions.TrimEntries);
-        return parts[0].Contains('.')
-            ? new AssociatedTypeConformance(parts[0].Split('.')[0], parts[1], parts[0].Split('.')[1])
-            : new ProtocolConformance(parts[0], parts[1]);
+        if (parts.Length != 2)
+        {
+            throw new InvalidOperationException($"Invalid constraint clause: {clause}");
+        }
+
+        var target = parts[0];
+        var protocol = parts[1];
+
+        return target.Contains('.') ? new AssociatedTypeConformance(target, new NamedTypeSpec(protocol)) : new ProtocolConformance(target, new NamedTypeSpec(protocol));
     }
 }

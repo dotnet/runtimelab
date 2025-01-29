@@ -72,7 +72,7 @@ public class GenericSignatureParserTests
         Assert.Single(decl.Constraints);
         var conformance = Assert.IsType<ProtocolConformance>(decl.Constraints[0]);
         Assert.Equal("τ_0_0", conformance.TargetType);
-        Assert.Equal("Swift.Equatable", conformance.ProtocolName);
+        Assert.Equal("Swift.Equatable", conformance.ProtocolSpec.Name);
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public class GenericSignatureParserTests
         Assert.Single(first.Constraints);
         var firstConformance = Assert.IsType<ProtocolConformance>(first.Constraints[0]);
         Assert.Equal("τ_0_0", firstConformance.TargetType);
-        Assert.Equal("Swift.Equatable", firstConformance.ProtocolName);
+        Assert.Equal("Swift.Equatable", firstConformance.ProtocolSpec.Name);
 
         var second = result[1];
         Assert.Equal("τ_0_1", second.TypeName);
@@ -99,7 +99,7 @@ public class GenericSignatureParserTests
         Assert.Single(second.Constraints);
         var secondConformance = Assert.IsType<ProtocolConformance>(second.Constraints[0]);
         Assert.Equal("τ_0_1", secondConformance.TargetType);
-        Assert.Equal("Swift.Hashable", secondConformance.ProtocolName);
+        Assert.Equal("Swift.Hashable", secondConformance.ProtocolSpec.Name);
     }
 
     [Fact]
@@ -118,11 +118,10 @@ public class GenericSignatureParserTests
 
         var proto = Assert.IsType<ProtocolConformance>(decl.Constraints[0]);
         Assert.Equal("τ_0_0", proto.TargetType);
-        Assert.Equal("SomeProtocol", proto.ProtocolName);
+        Assert.Equal("SomeProtocol", proto.ProtocolSpec.Name);
 
         var assoc = Assert.IsType<AssociatedTypeConformance>(decl.Constraints[1]);
-        Assert.Equal("τ_0_0", assoc.TargetType);
-        Assert.Equal("System.Guid", assoc.ProtocolName);
-        Assert.Equal("ID", assoc.AssociatedTypeName);
+        Assert.Equal("τ_0_0.ID", assoc.TargetType);
+        Assert.Equal("System.Guid", assoc.ProtocolSpec.Name);
     }
 }
