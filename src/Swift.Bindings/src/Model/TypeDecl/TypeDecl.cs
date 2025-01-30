@@ -27,10 +27,5 @@ namespace BindingsGeneration
         /// Types declarations within the base declaration.
         /// </summary>
         public required List<TypeDecl> Types { get; set; }
-
-        /// <summary>
-        /// Protocol conformances.
-        /// </summary>
-        public required List<Conformance> Conformances { get; set; }
     }
 }

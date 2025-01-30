@@ -390,7 +390,6 @@ namespace BindingsGeneration
                 Fields = new List<FieldDecl>(),
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
-                Conformances = new List<Conformance>(),
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl
             };

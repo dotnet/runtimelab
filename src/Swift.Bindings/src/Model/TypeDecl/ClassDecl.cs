@@ -8,5 +8,9 @@ namespace BindingsGeneration
     /// </summary>
     public sealed record ClassDecl : TypeDecl
     {
+        /// <summary>
+        /// Protocol conformances.
+        /// </summary>
+        public required List<Conformance> Conformances { get; set; }
     }
 }

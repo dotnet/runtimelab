@@ -11,5 +11,10 @@ namespace BindingsGeneration
         public required bool IsBlittable { get; set; }
 
         public required bool IsFrozen { get; set; }
+
+        /// <summary>
+        /// Protocol conformances.
+        /// </summary>
+        public required List<Conformance> Conformances { get; set; }
     }
 }
