@@ -5,6 +5,81 @@ using System.CodeDom.Compiler;
 
 namespace BindingsGeneration
 {
+    /// <summary>
+    /// Factory class for creating instances of ConstructorHandler.
+    /// </summary>
+    public class ConstructorHandlerFactory : IFactory<BaseDecl, IMethodHandler>
+    {
+        /// <summary>
+        /// Determines if the factory handles the specified declaration.
+        /// </summary>
+        /// <param name="decl">The base declaration.</param>
+        public bool Handles(BaseDecl decl)
+        {
+            return decl is MethodDecl methodDecl && methodDecl.IsConstructor;
+        }
+
+        /// <summary>
+        /// Constructs a new instance of ConstructorHandler.
+        /// </summary>
+        public IMethodHandler Construct()
+        {
+            return new ConstructorHandler();
+        }
+    }
+
+    /// <summary>
+    /// Handler class for constructor declarations.
+    /// </summary>
+    public class ConstructorHandler : BaseHandler, IMethodHandler
+    {
+        public ConstructorHandler()
+        {
+        }
+
+        /// <summary>
+        /// Marshals the specified constructor.
+        /// </summary>
+        /// <param name="methodDecl">The method declaration.</param>
+        /// <param name="typeDatabase">The type database instance.</param>
+        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
+        {
+            if (decl is not MethodDecl methodDecl)
+            {
+                throw new ArgumentException("The provided decl must be a MethodDecl.", nameof(decl));
+            }
+            return new MethodEnvironment(methodDecl, typeDatabase);
+        }
+
+        /// <summary>
+        /// Emits the method declaration.
+        /// </summary>
+        /// <param name="csWriter">The IndentedTextWriter instance.</param>
+        /// <param name="env">The environment.</param>
+        /// <param name="conductor">The conductor instance.</param>
+        public void Emit(CSharpWriter csWriter, SwiftWriter swiftWriter, IEnvironment env, Conductor conductor)
+        {
+            var methodEnv = (MethodEnvironment)env;
+            var signatureHandler = new SignatureHandler(methodEnv);
+
+            if (methodEnv.MethodDecl.IsGeneric)
+            {
+                Console.WriteLine($"Constructor {methodEnv.MethodDecl.Name} has unsupported generic parameters");
+                return;
+            }
+
+            if (signatureHandler.GetWrapperSignature().ContainsPlaceholder)
+            {
+                Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported signature: ({signatureHandler.GetWrapperSignature().ParametersString()}) -> {signatureHandler.GetWrapperSignature().ReturnType}");
+                return;
+            }
+
+            var wrapperEmitter = new WrapperEmitter(methodEnv, signatureHandler);
+            wrapperEmitter.EmitConstructor(csWriter);
+            PInvokeEmitter.EmitPInvoke(csWriter, methodEnv, signatureHandler);
+            csWriter.WriteLine();
+        }
+    }
 
     /// <summary>
     /// Represents a method handler factory.
@@ -77,7 +152,7 @@ namespace BindingsGeneration
             }
 
             var wrapperEmitter = new WrapperEmitter(methodEnv, signatureHandler);
-            wrapperEmitter.Emit(csWriter, swiftWriter);
+            wrapperEmitter.EmitMethod(csWriter, swiftWriter);
             PInvokeEmitter.EmitPInvoke(csWriter, methodEnv, signatureHandler);
             csWriter.WriteLine();
         }
@@ -472,66 +547,38 @@ namespace BindingsGeneration
         }
 
         /// <summary>
-        /// Emits the wrapper.
-        /// </summary>
-        /// <param name="writer"></param>
-        internal void Emit(CSharpWriter csWriter, SwiftWriter swiftWriter)
-        {
-            if (_env.MethodDecl.IsConstructor)
-            {
-                EmitConstructor(csWriter);
-            }
-            else
-            {
-                EmitMethod(csWriter, swiftWriter);
-            }
-        }
-
-        /// <summary>
         /// Emits the constructor wrapper.
         /// </summary>
         /// <param name="writer">The IndentedTextWriter instance.</param>
-        private void EmitConstructor(CSharpWriter csWriter)
+        internal void EmitConstructor(CSharpWriter csWriter)
         {
             EmitSignatureConstructor(csWriter);
             EmitBodyStart(csWriter);
 
-            EmitDeclarationsForAllocations(csWriter);
+            // EmitDeclarationsForAllocations(csWriter);
 
-            EmitTryBlockStart(csWriter);
+            // EmitTryBlockStart(csWriter);
 
             EmitSwiftSelf(csWriter);
             EmitIndirectResultConstructor(csWriter);
-            EmitGenericArguments(csWriter);
-            EmitProtocolWitnessTables(csWriter);
+            // EmitGenericArguments(csWriter);
+            // EmitProtocolWitnessTables(csWriter); TODO: Add support for generic arguments and protocol witness tables in constructors
             EmitPInvokeCall(csWriter);
             EmitSwiftError(csWriter);
             EmitReturnConstructor(csWriter);
 
-            EmitTryBlockEnd(csWriter);
+            // EmitTryBlockEnd(csWriter);
 
-            EmitFinally(csWriter);
+            // EmitFinally(csWriter);
 
             EmitBodyEnd(csWriter);
-        }
-
-        /// <summary>
-        /// Emits the declarations for allocations.
-        /// </summary>
-        private void EmitDeclarationsForAllocations(CSharpWriter csWriter)
-        {
-            foreach (var argument in _env.MethodDecl.CSSignature.Skip(1).Where(a => a.IsGeneric))
-            {
-                var (typeName, metadataName, payloadName) = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()];
-                csWriter.WriteLine($"IntPtr {payloadName} = IntPtr.Zero;");
-            }
         }
 
         /// <summary>
         /// Emits the method wrapper.
         /// </summary>
         /// <param name="writer">The IndentedTextWriter instance.</param>
-        private void EmitMethod(CSharpWriter csWriter, SwiftWriter swiftWriter)
+        internal void EmitMethod(CSharpWriter csWriter, SwiftWriter swiftWriter)
         {
             EmitAsyncWrapper(csWriter);
 
@@ -556,6 +603,18 @@ namespace BindingsGeneration
             EmitFinally(csWriter);
 
             EmitBodyEnd(csWriter);
+        }
+
+        /// <summary>
+        /// Emits the declarations for allocations.
+        /// </summary>
+        private void EmitDeclarationsForAllocations(CSharpWriter csWriter)
+        {
+            foreach (var argument in _env.MethodDecl.CSSignature.Skip(1).Where(a => a.IsGeneric))
+            {
+                var (typeName, metadataName, payloadName) = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()];
+                csWriter.WriteLine($"IntPtr {payloadName} = IntPtr.Zero;");
+            }
         }
 
         /// <summary>
