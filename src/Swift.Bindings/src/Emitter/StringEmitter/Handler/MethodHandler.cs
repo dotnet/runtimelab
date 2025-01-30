@@ -370,7 +370,7 @@ namespace BindingsGeneration
                 var conformances = genericParameter.Constraints.Where(c => c is ProtocolConformance).OrderBy(c => c.ProtocolSpec.NameWithoutModule);
                 foreach (var conformance in conformances)
                 {
-                    var pwtName = $"{_env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName}_{conformance.ProtocolSpec.NameWithoutModule}_pwt";
+                    var pwtName = NameProvider.GetProtocolWitnessTableName(_env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName, conformance.ProtocolSpec.NameWithoutModule);
                     AddParameter("ProtocolWitnessTable", pwtName);
                 }
             }
@@ -756,7 +756,7 @@ namespace BindingsGeneration
                 var conformances = genericParameter.Constraints.Where(c => c is ProtocolConformance).OrderBy(c => c.ProtocolSpec.NameWithoutModule);
                 foreach (var conformance in conformances)
                 {
-                    var pwtName = $"{_env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName}_{conformance.ProtocolSpec.NameWithoutModule}_pwt";
+                    var pwtName = NameProvider.GetProtocolWitnessTableName(placeholderName, conformance.ProtocolSpec.NameWithoutModule);
                     var protocolName = NameProvider.GetInterfaceName(conformance.ProtocolSpec.NameWithoutModule);
                     csWriter.WriteLine($"var {pwtName} = ProtocolWitnessTable.GetOrThrow<{placeholderName}, {protocolName}>();");
                 }
