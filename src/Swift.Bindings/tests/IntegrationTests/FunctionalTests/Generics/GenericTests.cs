@@ -84,11 +84,29 @@ namespace BindingsGeneration.FunctionalTests
         }
 
         [Fact]
+        public void TestFunctionTakesMultipleGenericParametersOfSameType()
+        {
+            var a = new FrozenStruct(1, 2);
+            var b = new FrozenStruct(3, 4);
+            var result = GenericTests.AcceptsTwoValuesOfTheSameGenericType(a, b);
+            Assert.Equal(a, result);
+        }
+
+        [Fact]
         public void TestFunctionTakesGenericParameterConstrainedToProtocol()
         {
             var a = new SummableStruct(2, 40);
             var result = GenericTests.AcceptsSummable(a);
             Assert.Equal(42, result);
+        }
+
+        [Fact]
+        public void TestFunctionTakesMultipleGenericParametersOfSameTypeConstrainedToProtocol()
+        {
+            var a = new SummableStruct(2, 40);
+            var b = new SummableStruct(3, 39);
+            var result = GenericTests.AcceptsMultipleGenericParamsOfTheSameTypeConstrainedByProtocol(a, b);
+            Assert.Equal(42 + 42, result);
         }
 
         [Fact]

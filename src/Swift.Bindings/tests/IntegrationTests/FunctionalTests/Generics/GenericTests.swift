@@ -46,6 +46,10 @@ public func AcceptsGenericParameterAndReturnsGeneric<T>(a: T) -> T {
     return a;
 }
 
+public func AcceptsTwoValuesOfTheSameGenericType<T>(a: T, b: T) -> T {
+    return a;
+}
+
 public protocol Summable {
     func sum() -> Int
 }
@@ -79,6 +83,10 @@ public struct SummableStruct: Summable {
 
 public func AcceptsSummable<T: Summable>(a: T) -> Int {
     return a.sum()
+}
+
+public func AcceptsMultipleGenericParamsOfTheSameTypeConstrainedByProtocol<T: Summable>(a: T, b: T) -> Int {
+    return a.sum() + b.sum()
 }
 
 public struct StructWithMultipleProtocols: Summable, Subtractable, Multiplicable, Dividable {

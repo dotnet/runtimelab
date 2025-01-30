@@ -333,7 +333,7 @@ namespace BindingsGeneration
             {
                 if (argument.IsGeneric)
                 {
-                    var payloadName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()].PayloadName;
+                    var payloadName = NameProvider.GetPayloadName(argument.Name);
                     AddParameter("IntPtr", payloadName);
                 }
                 else if (MarshallingHelpers.ArgumentIsMarshalledAsCSStruct(argument, _env.TypeDatabase))
@@ -355,7 +355,7 @@ namespace BindingsGeneration
         {
             foreach (var genericParameter in _env.MethodDecl.GenericParameters)
             {
-                var metadataName = _env.GenericTypeMapping[genericParameter.TypeName].MetadataName;
+                var metadataName = NameProvider.GetMetadataName(_env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName);
                 AddParameter("TypeMetadata", metadataName);
             }
         }
@@ -605,7 +605,7 @@ namespace BindingsGeneration
         {
             foreach (var argument in _env.MethodDecl.CSSignature.Skip(1).Where(a => a.IsGeneric))
             {
-                var (typeName, metadataName, payloadName) = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()];
+                var payloadName = NameProvider.GetPayloadName(argument.Name);
                 csWriter.WriteLine($"IntPtr {payloadName} = IntPtr.Zero;");
             }
         }
@@ -724,12 +724,21 @@ namespace BindingsGeneration
         /// </summary>
         private void EmitGenericArguments(CSharpWriter csWriter)
         {
+            foreach (var genericParameter in _env.MethodDecl.GenericParameters)
+            {
+                var placeholderName = _env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName;
+                var metadataName = NameProvider.GetMetadataName(placeholderName);
+
+                csWriter.WriteLine($"var {metadataName} = TypeMetadata.GetTypeMetadataOrThrow<{placeholderName}>();");
+            }
+
             foreach (var argument in _env.MethodDecl.CSSignature.Skip(1).Where(a => a.IsGeneric))
             {
-                var (typeName, metadataName, payloadName) = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()];
+                var placeholderName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()].PlaceholderName;
+                var metadataName = NameProvider.GetMetadataName(placeholderName);
+                var payloadName = NameProvider.GetPayloadName(argument.Name);
 
                 var text = $$"""
-                var {{metadataName}} = TypeMetadata.GetTypeMetadataOrThrow<{{typeName}}>();
                 {{payloadName}} = (IntPtr)NativeMemory.Alloc({{metadataName}}.Size);
                 SwiftMarshal.MarshalToSwift({{argument.Name}}, {{payloadName}});
                 """;
@@ -743,7 +752,7 @@ namespace BindingsGeneration
         {
             foreach (var genericParameter in _env.MethodDecl.GenericParameters)
             {
-                var (placeholderName, _, _) = _env.GenericTypeMapping[genericParameter.TypeName];
+                var placeholderName = _env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName;
                 var conformances = genericParameter.Constraints.Where(c => c is ProtocolConformance).OrderBy(c => c.ProtocolSpec.NameWithoutModule);
                 foreach (var conformance in conformances)
                 {
@@ -908,7 +917,7 @@ namespace BindingsGeneration
 
             foreach (var argument in _env.MethodDecl.CSSignature.Skip(1).Where(a => a.IsGeneric))
             {
-                var (_, _, payloadName) = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()];
+                var payloadName = NameProvider.GetPayloadName(argument.Name);
                 csWriter.WriteLine($"NativeMemory.Free((void*){payloadName});");
             }
 
