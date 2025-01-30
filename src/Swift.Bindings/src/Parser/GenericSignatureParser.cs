@@ -35,7 +35,7 @@ public class GenericSignatureParser
             new GenericArgumentDecl(
                 typeName,
                 paramMap[typeName],
-                constraints.Where(c => c.TargetType.StartsWith(typeName)).ToList()
+                constraints.Where(c => c.TargetType.NameWithoutModule.StartsWith(typeName)).ToList()
             )
         ).ToList();
     }
@@ -59,13 +59,13 @@ public class GenericSignatureParser
     /// </summary>
     /// <param name="signature">The generic signature to extract constraints from.</param>
     /// <returns>A list of constraints.</returns>
-    private static List<Conformance> ExtractConstraints(string signature)
+    private static List<ProtocolConformance> ExtractConstraints(string signature)
     {
         var whereIndex = signature.IndexOf("where", StringComparison.OrdinalIgnoreCase);
         if (whereIndex == -1)
-            return new List<Conformance>();
+            return new List<ProtocolConformance>();
 
-        return signature[(whereIndex + "where".Length)..].Split(',').Select(ParseConstraint).ToList();
+        return [.. signature[(whereIndex + "where".Length)..].Split(',').Select(ParseConstraint).Where(c => c is not null).Cast<ProtocolConformance>()];
     }
 
     /// <summary>
@@ -73,7 +73,7 @@ public class GenericSignatureParser
     /// </summary>
     /// <param name="clause">The constraint clause to parse.</param>
     /// <returns>A Conformance object.</returns>
-    private static Conformance ParseConstraint(string clause)
+    private static ProtocolConformance? ParseConstraint(string clause)
     {
         var parts = clause.Split(new[] { ":", "==" }, StringSplitOptions.TrimEntries);
         if (parts.Length != 2)
@@ -84,6 +84,8 @@ public class GenericSignatureParser
         var target = parts[0];
         var protocol = parts[1];
 
-        return target.Contains('.') ? new AssociatedTypeConformance(target, new NamedTypeSpec(protocol)) : new ProtocolConformance(target, new NamedTypeSpec(protocol));
+        if (!target.Contains(".")) return new ProtocolConformance(new NamedTypeSpec(target), new NamedTypeSpec(protocol));
+
+        return null;
     }
 }

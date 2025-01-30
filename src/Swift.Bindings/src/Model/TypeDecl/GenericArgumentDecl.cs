@@ -12,5 +12,5 @@ namespace BindingsGeneration;
 public record GenericArgumentDecl(
     string TypeName,
     string SugaredTypeName,
-    List<Conformance> Constraints
+    List<ProtocolConformance> Constraints
 );
