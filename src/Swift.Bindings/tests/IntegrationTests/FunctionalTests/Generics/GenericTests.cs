@@ -107,5 +107,17 @@ namespace BindingsGeneration.FunctionalTests
             var result = GenericTests.AcceptsMultipleGenericParamsWithProtocols(a, b);
             Assert.Equal((43 + 177) + (43 * 177) + (531 - 133) + (531 / 133), result);
         }
+
+        [Fact]
+        public void TestFunctionWithGenericParamConstrainedToPAT()
+        {
+            var a = new IntContainer1(42);
+            var result = GenericTests.AcceptsIntContainer(a);
+            Assert.Equal(42 * 2, result);
+
+            var b = new IntContainer2(42);
+            var result2 = GenericTests.AcceptsIntContainer(b);
+            Assert.Equal(42 * 4, result2);
+        }
     }
 }

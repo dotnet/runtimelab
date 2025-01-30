@@ -313,13 +313,8 @@ namespace BindingsGeneration
             return decl;
         }
 
-        private Conformance? HandleConformance(Node node, string typeName)
+        private Conformance HandleConformance(Node node, string typeName)
         {
-            if (node.Children.Count() > 0)
-            {
-                Console.WriteLine($"Protocols with associated types not supported. Skipping.");
-            }
-
             var reduction = demangler.Run(node.MangledName) as TypeSpecReduction ?? throw new InvalidOperationException($"Invalid demangling result for '{node.MangledName}'.");
             var protocolTypeSpec = reduction.TypeSpec as NamedTypeSpec ?? throw new InvalidOperationException($"TypeSpec '{reduction.TypeSpec}' is not a NamedTypeSpec");
 
@@ -346,7 +341,7 @@ namespace BindingsGeneration
                 Fields = new List<FieldDecl>(),
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
-                Conformances = [.. node.Conformances.Select(x => HandleConformance(x, fullyQualifiedName)).Where(x => x is not null).Cast<Conformance>()],
+                Conformances = [.. node.Conformances.Select(x => HandleConformance(x, fullyQualifiedName))],
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl,
                 IsFrozen = hasFrozenAttribute,
@@ -372,7 +367,7 @@ namespace BindingsGeneration
                 Fields = new List<FieldDecl>(),
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
-                Conformances = [.. node.Conformances.Select(x => HandleConformance(x, fullyQualifiedName)).Where(x => x is not null).Cast<Conformance>()],
+                Conformances = [.. node.Conformances.Select(x => HandleConformance(x, fullyQualifiedName))],
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl
             };

@@ -549,7 +549,7 @@ namespace BindingsGeneration
             var entries = new List<string>();
             var protocolConformanceDescriptors = DemangledSymbolsRegister.Instance.GetData(libPath).ProtocolConformanceDescriptors;
 
-            foreach (var conformance in _structDecl.Conformances.OfType<ProtocolConformance>().Where(c => c.ProtocolSpec.Module == _moduleDecl.Name)) // Process only protocol conformances from current module for now
+            foreach (var conformance in _structDecl.Conformances.Where(c => c.ProtocolSpec.Module == _moduleDecl.Name)) // Process only protocol conformances from current module for now
             {
                 var protocol = NameProvider.GetInterfaceName(conformance.ProtocolSpec.NameWithoutModule);
                 var typeRecord = _typeDatabase.GetTypeRecordOrThrow(_moduleDecl.Name, _structDecl.FullyQualifiedNameWithoutModule);

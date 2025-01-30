@@ -114,3 +114,48 @@ public func AcceptsMultipleProtocols<T: Summable & Subtractable & Multiplicable>
 public func AcceptsMultipleGenericParamsWithProtocols<T: Summable & Multiplicable, U: Subtractable & Dividable>(a: T, b: U) -> Int {
     return a.sum() + a.multiply() + b.subtract() + b.divide()
 }
+
+public protocol Container {
+    associatedtype Element
+    func increase() -> Element
+}
+
+public struct IntContainer1: Container {
+    public var value: Int
+
+    public init(value: Int) {
+        self.value = value
+    }
+
+    public func increase() -> Int {
+        return value * 2
+    }
+}
+
+public struct IntContainer2: Container {
+    public var value: Int
+
+    public init(value: Int) {
+        self.value = value
+    }
+
+    public func increase() -> Int {
+        return value * 4
+    }
+}
+
+public struct DoubleContainer: Container {
+    public var value: Double
+
+    public init(value: Double) {
+        self.value = value
+    }
+
+    public func increase() -> Double {
+        return value * 2
+    }
+}
+
+public func AcceptsIntContainer<T: Container>(a: T) -> Int where T.Element == Int {
+    return a.increase()
+}

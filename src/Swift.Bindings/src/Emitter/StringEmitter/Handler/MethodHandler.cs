@@ -139,12 +139,6 @@ namespace BindingsGeneration
             var methodEnv = (MethodEnvironment)env;
             var signatureHandler = new SignatureHandler(methodEnv);
 
-            if (methodEnv.MethodDecl.GenericParameters.Any(x => x.Constraints.OfType<AssociatedTypeConformance>().ToList().Count > 0))
-            {
-                Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported PAT generic constraints");
-                return;
-            }
-
             if (signatureHandler.GetWrapperSignature().ContainsPlaceholder)
             {
                 Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported signature: ({signatureHandler.GetWrapperSignature().ParametersString()}) -> {signatureHandler.GetWrapperSignature().ReturnType}");
@@ -376,8 +370,7 @@ namespace BindingsGeneration
                 var conformances = genericParameter.Constraints.Where(c => c is ProtocolConformance).OrderBy(c => c.ProtocolSpec.NameWithoutModule);
                 foreach (var conformance in conformances)
                 {
-                    var protocolConformance = (ProtocolConformance)conformance;
-                    var pwtName = $"{_env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName}_{protocolConformance.ProtocolSpec.NameWithoutModule}_pwt";
+                    var pwtName = $"{_env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName}_{conformance.ProtocolSpec.NameWithoutModule}_pwt";
                     AddParameter("ProtocolWitnessTable", pwtName);
                 }
             }
@@ -754,9 +747,8 @@ namespace BindingsGeneration
                 var conformances = genericParameter.Constraints.Where(c => c is ProtocolConformance).OrderBy(c => c.ProtocolSpec.NameWithoutModule);
                 foreach (var conformance in conformances)
                 {
-                    var protocolConformance = (ProtocolConformance)conformance;
-                    var pwtName = $"{_env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName}_{protocolConformance.ProtocolSpec.NameWithoutModule}_pwt";
-                    var protocolName = NameProvider.GetInterfaceName(protocolConformance.ProtocolSpec.NameWithoutModule);
+                    var pwtName = $"{_env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName}_{conformance.ProtocolSpec.NameWithoutModule}_pwt";
+                    var protocolName = NameProvider.GetInterfaceName(conformance.ProtocolSpec.NameWithoutModule);
                     csWriter.WriteLine($"var {pwtName} = ProtocolWitnessTable.GetOrThrow<{placeholderName}, {protocolName}>();");
                 }
             }
