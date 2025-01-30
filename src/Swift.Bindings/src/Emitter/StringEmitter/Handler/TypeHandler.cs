@@ -553,7 +553,7 @@ namespace BindingsGeneration
             {
                 var protocol = NameProvider.GetInterfaceName(conformance.ProtocolSpec.NameWithoutModule);
                 var typeRecord = _typeDatabase.GetTypeRecordOrThrow(_moduleDecl.Name, _structDecl.FullyQualifiedNameWithoutModule);
-                var protocolConformanceSymbol = protocolConformanceDescriptors[(new NamedTypeSpec(_structDecl.FullyQualifiedName), conformance.ProtocolSpec)]; // TODO: Get rid of TypeSpec https://github.com/dotnet/runtimelab/issues/2889
+                var protocolConformanceSymbol = protocolConformanceDescriptors.GetValueOrDefault((new NamedTypeSpec(_structDecl.FullyQualifiedName), conformance.ProtocolSpec)); // TODO: Get rid of TypeSpec https://github.com/dotnet/runtimelab/issues/2889
 
                 entries.Add($"{{typeof({protocol}), \"{protocolConformanceSymbol}\"}}");
             }

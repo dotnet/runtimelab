@@ -43,7 +43,8 @@ public sealed class DemangledSymbolsRegister
     {
         try
         {
-            var descriptors = DemanglingResults.FromFile(dylibPath, Abi.ARM64).ProtocolConformanceDescriptors;
+            var abis = MachO.GetArchitectures(dylibPath);
+            var descriptors = DemanglingResults.FromFile(dylibPath, abis[0]).ProtocolConformanceDescriptors;
             var dictionary = new Dictionary<(NamedTypeSpec, NamedTypeSpec), string>();
 
             foreach (var descriptor in descriptors)
