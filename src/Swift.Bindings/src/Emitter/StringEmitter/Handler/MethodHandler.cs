@@ -547,23 +547,11 @@ namespace BindingsGeneration
         {
             EmitSignatureConstructor(csWriter);
             EmitBodyStart(csWriter);
-
-            // EmitDeclarationsForAllocations(csWriter);
-
-            // EmitTryBlockStart(csWriter);
-
             EmitSwiftSelf(csWriter);
             EmitIndirectResultConstructor(csWriter);
-            // EmitGenericArguments(csWriter);
-            // EmitProtocolWitnessTables(csWriter); TODO: Add support for generic arguments and protocol witness tables in constructors
             EmitPInvokeCall(csWriter);
             EmitSwiftError(csWriter);
             EmitReturnConstructor(csWriter);
-
-            // EmitTryBlockEnd(csWriter);
-
-            // EmitFinally(csWriter);
-
             EmitBodyEnd(csWriter);
         }
 

@@ -72,7 +72,7 @@ public class GenericSignatureParser
     /// Parses a constraint clause into a Conformance object.
     /// </summary>
     /// <param name="clause">The constraint clause to parse.</param>
-    /// <returns>A Conformance object.</returns>
+    /// <returns>A Conformance object. Null if the constraint refers to the associated type.</returns>
     private static ProtocolConformance? ParseConstraint(string clause)
     {
         var parts = clause.Split(new[] { ":", "==" }, StringSplitOptions.TrimEntries);

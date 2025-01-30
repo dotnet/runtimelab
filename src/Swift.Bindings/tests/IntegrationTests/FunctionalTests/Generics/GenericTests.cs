@@ -127,6 +127,15 @@ namespace BindingsGeneration.FunctionalTests
         }
 
         [Fact]
+        public void TestFunctionTakesMultipleGenericParametersOfDifferentTypesConstrainedByTheSameProtocol()
+        {
+            var a = new SummableStruct(2, 40);
+            var b = new AnotherSummableStruct(3, 39);
+            var result = GenericTests.AcceptsMultipleGenericParamsOfDifferentTypesConstrainedByTheSameProtocol(a, b);
+            Assert.Equal(42 + 42, result);
+        }
+
+        [Fact]
         public void TestFunctionWithGenericParamConstrainedToPAT()
         {
             var a = new IntContainer1(42);

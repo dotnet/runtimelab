@@ -81,11 +81,30 @@ public struct SummableStruct: Summable {
     }
 }
 
+@frozen 
+public struct AnotherSummableStruct: Summable {
+    public var x: Int
+    public var y: Int
+
+    public init(x: Int, y: Int) {
+        self.x = x
+        self.y = y
+    }
+
+    public func sum() -> Int {
+        return x + y
+    }
+}
+
 public func AcceptsSummable<T: Summable>(a: T) -> Int {
     return a.sum()
 }
 
 public func AcceptsMultipleGenericParamsOfTheSameTypeConstrainedByProtocol<T: Summable>(a: T, b: T) -> Int {
+    return a.sum() + b.sum()
+}
+
+public func AcceptsMultipleGenericParamsOfDifferentTypesConstrainedByTheSameProtocol<T: Summable, U: Summable>(a: T, b: U) -> Int {
     return a.sum() + b.sum()
 }
 

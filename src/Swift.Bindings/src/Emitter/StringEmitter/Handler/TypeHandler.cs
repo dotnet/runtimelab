@@ -601,11 +601,11 @@ namespace BindingsGeneration
         /// <param name="typeDatabase">The type database instance.</param>
         public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
         {
-            if (decl is not ProtocolDecl structDecl)
+            if (decl is not ProtocolDecl protocolDecl)
             {
                 throw new ArgumentException("The provided decl must be a ProtocolDecl.", nameof(decl));
             }
-            return new TypeEnvironment(structDecl, typeDatabase);
+            return new TypeEnvironment(protocolDecl, typeDatabase);
         }
 
         /// <summary>
