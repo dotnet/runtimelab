@@ -7,10 +7,10 @@ namespace BindingsGeneration;
 /// <summary>
 /// Represents a generic parameter name mapping.
 /// </summary>
-/// <param name="PlaceholderName">The name of the generic type parameter e.g. T0.</param>
+/// <param name="TypeParameter">The name of the generic type parameter e.g. T0.</param>
 /// <param name="MetadataName">The name of the metadata type parameter.</param>
 /// <param name="PayloadName">The name of the payload type parameter. </param>
-public record struct GenericParameterCSName(string PlaceholderName);
+public record struct GenericParameterCSName(string TypeParameter);
 
 /// <summary>
 /// Provides methods for generating names.
@@ -61,7 +61,7 @@ public static class NameProvider
         methodDecl.GenericParameters
             .Select((param, i) => (param, i))
             .ToDictionary(x => x.param.TypeName, x => new GenericParameterCSName(
-                PlaceholderName: $"T{x.i}"
+                TypeParameter: $"T{x.i}"
             ));
 
     public static string GetMetadataName(string typeName) => $"{typeName}Metadata";

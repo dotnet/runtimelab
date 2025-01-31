@@ -519,28 +519,44 @@ namespace BindingsGeneration
         /// </summary>
         private void WriteGetProtocolConformanceDescriptor()
         {
+            WriteStaticConstructor();
             var libPath = _typeDatabase.GetLibraryPath(_moduleDecl.Name);
             var text = $$"""
             static ProtocolConformanceDescriptor ISwiftObject.GetProtocolConformanceDescriptor<TProtocol>()
                 where TProtocol : class
             {
-                var dispatch = new Dictionary<Type, string>
-                {
-                    {{GenerateGetProtocolConformanceDictionaryEntries()}}
-                };
-
-                if (!dispatch.ContainsKey(typeof(TProtocol)))
+                if (!_protocolConformanceSymbols.TryGetValue(typeof(TProtocol), out var symbolName))
                 {
                     throw new SwiftRuntimeException($"Attempted to retrieve protocol conformance descriptor for type {{_structDecl.Name}} and protocol {typeof(TProtocol).Name}, but no conformance was found.");
                 }
 
-                return ProtocolConformanceDescriptor.LoadFromSymbol("{{libPath}}", dispatch[typeof(TProtocol)]);
+                return ProtocolConformanceDescriptor.LoadFromSymbol("{{libPath}}", symbolName);
             }
             """;
 
             _writer.WriteLines(text);
             _writer.WriteLine();
+        }
 
+        /// <summary>
+        /// Writes the static constructor for the struct.
+        /// </summary>
+        private void WriteStaticConstructor()
+        {
+            var text = $$"""
+            private static Dictionary<Type, string> _protocolConformanceSymbols;
+
+            static {{_structDecl.Name}}()
+            {
+                _protocolConformanceSymbols = new Dictionary<Type, string>
+                {
+                    {{GenerateGetProtocolConformanceDictionaryEntries()}}
+                };
+            }
+            """;
+
+            _writer.WriteLines(text);
+            _writer.WriteLine();
         }
 
         private string GenerateGetProtocolConformanceDictionaryEntries()

@@ -214,8 +214,8 @@ namespace BindingsGeneration
             var argument = _env.MethodDecl.CSSignature.First();
             if (argument.IsGeneric)
             {
-                var placeholderName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()].PlaceholderName;
-                SetReturnType(placeholderName);
+                var csTypeParamName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()].TypeParameter;
+                SetReturnType(csTypeParamName);
             }
             else
             {
@@ -233,8 +233,8 @@ namespace BindingsGeneration
             {
                 if (argument.IsGeneric)
                 {
-                    var placeholderName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()].PlaceholderName;
-                    AddParameter(placeholderName, argument.Name);
+                    var csTypeParamName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()].TypeParameter;
+                    AddParameter(csTypeParamName, argument.Name);
                 }
                 else
                 {
@@ -355,7 +355,7 @@ namespace BindingsGeneration
         {
             foreach (var genericParameter in _env.MethodDecl.GenericParameters)
             {
-                var metadataName = NameProvider.GetMetadataName(_env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName);
+                var metadataName = NameProvider.GetMetadataName(_env.GenericTypeMapping[genericParameter.TypeName].TypeParameter);
                 AddParameter("TypeMetadata", metadataName);
             }
         }
@@ -370,7 +370,7 @@ namespace BindingsGeneration
                 var conformances = genericParameter.Constraints.Where(c => c is ProtocolConformance).OrderBy(c => c.ProtocolSpec.NameWithoutModule);
                 foreach (var conformance in conformances)
                 {
-                    var pwtName = NameProvider.GetProtocolWitnessTableName(_env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName, conformance.ProtocolSpec.NameWithoutModule);
+                    var pwtName = NameProvider.GetProtocolWitnessTableName(_env.GenericTypeMapping[genericParameter.TypeName].TypeParameter, conformance.ProtocolSpec.NameWithoutModule);
                     AddParameter("ProtocolWitnessTable", pwtName);
                 }
             }
@@ -714,16 +714,16 @@ namespace BindingsGeneration
         {
             foreach (var genericParameter in _env.MethodDecl.GenericParameters)
             {
-                var placeholderName = _env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName;
-                var metadataName = NameProvider.GetMetadataName(placeholderName);
+                var csTypeParamName = _env.GenericTypeMapping[genericParameter.TypeName].TypeParameter;
+                var metadataName = NameProvider.GetMetadataName(csTypeParamName);
 
-                csWriter.WriteLine($"var {metadataName} = TypeMetadata.GetTypeMetadataOrThrow<{placeholderName}>();");
+                csWriter.WriteLine($"var {metadataName} = TypeMetadata.GetTypeMetadataOrThrow<{csTypeParamName}>();");
             }
 
             foreach (var argument in _env.MethodDecl.CSSignature.Skip(1).Where(a => a.IsGeneric))
             {
-                var placeholderName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()].PlaceholderName;
-                var metadataName = NameProvider.GetMetadataName(placeholderName);
+                var csTypeParamName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()].TypeParameter;
+                var metadataName = NameProvider.GetMetadataName(csTypeParamName);
                 var payloadName = NameProvider.GetPayloadName(argument.Name);
 
                 var text = $$"""
@@ -740,13 +740,13 @@ namespace BindingsGeneration
         {
             foreach (var genericParameter in _env.MethodDecl.GenericParameters)
             {
-                var placeholderName = _env.GenericTypeMapping[genericParameter.TypeName].PlaceholderName;
+                var csTypeParamName = _env.GenericTypeMapping[genericParameter.TypeName].TypeParameter;
                 var conformances = genericParameter.Constraints.Where(c => c is ProtocolConformance).OrderBy(c => c.ProtocolSpec.NameWithoutModule);
                 foreach (var conformance in conformances)
                 {
-                    var pwtName = NameProvider.GetProtocolWitnessTableName(placeholderName, conformance.ProtocolSpec.NameWithoutModule);
+                    var pwtName = NameProvider.GetProtocolWitnessTableName(csTypeParamName, conformance.ProtocolSpec.NameWithoutModule);
                     var protocolName = NameProvider.GetInterfaceName(conformance.ProtocolSpec.NameWithoutModule);
-                    csWriter.WriteLine($"var {pwtName} = ProtocolWitnessTable.GetOrThrow<{placeholderName}, {protocolName}>();");
+                    csWriter.WriteLine($"var {pwtName} = ProtocolWitnessTable.GetOrThrow<{csTypeParamName}, {protocolName}>();");
                 }
             }
             csWriter.WriteLine();
@@ -833,7 +833,7 @@ namespace BindingsGeneration
         {
             var genericParams = _env.MethodDecl.IsGeneric switch
             {
-                true => $"<{string.Join(", ", _env.MethodDecl.GenericParameters.Select(p => _env.GenericTypeMapping[p.TypeName].PlaceholderName))}>",
+                true => $"<{string.Join(", ", _env.MethodDecl.GenericParameters.Select(p => _env.GenericTypeMapping[p.TypeName].TypeParameter))}>",
                 false => ""
             };
             csWriter.WriteLine($"public {_env.ParentDecl.Name}{genericParams}({_wrapperSignature.ParametersString()})");
@@ -847,7 +847,7 @@ namespace BindingsGeneration
         {
             var genericParams = _env.MethodDecl.IsGeneric switch
             {
-                true => $"<{string.Join(", ", _env.MethodDecl.GenericParameters.Select(p => _env.GenericTypeMapping[p.TypeName].PlaceholderName))}>",
+                true => $"<{string.Join(", ", _env.MethodDecl.GenericParameters.Select(p => _env.GenericTypeMapping[p.TypeName].TypeParameter))}>",
                 false => ""
             };
 
