@@ -26,6 +26,22 @@ public static class TypeDatabaseExtensions
     }
 
     /// <summary>
+    /// Determines whether the specified Swift type has been processed.
+    /// </summary>
+    /// <param name="typeDatabase">The type database.</param>
+    /// <param name="swiftTypeName">The Swift type name.</param>
+    /// <returns>True if the type has been processed; otherwise, false.</returns>
+    public static bool IsTypeProcessed(this ITypeDatabase typeDatabase, SwiftTypeName swiftTypeName)
+    {
+        var typeIdentifier = swiftTypeName.ModuleQualifiedName.IndexOf('.') switch
+        {
+            -1 => swiftTypeName.Name,
+            int index => swiftTypeName.ModuleQualifiedName.Substring(index + 1),
+        };
+        return typeDatabase.IsTypeProcessed(swiftTypeName.Module, typeIdentifier); //TODO: remove this logic once module qualified names are used as keys
+    }
+
+    /// <summary>
     /// Gets the type record for the specified Swift type or throws an exception if the type is not found.
     /// </summary>
     /// <param name="typeDatabase">The type database.</param>
@@ -43,6 +59,22 @@ public static class TypeDatabaseExtensions
             default:
                 return GetAnyType();
         }
+    }
+
+    /// <summary>
+    /// Gets the type record for the specified Swift type or throws an exception if the type is not found.
+    /// </summary>
+    /// <param name="typeDatabase">The type database.</param>
+    /// <param name="swiftTypeName">The Swift type name.</param>
+    /// <returns></returns>
+    public static TypeRecord GetTypeRecordOrThrow(this ITypeDatabase typeDatabase, SwiftTypeName swiftTypeName)
+    {
+        var typeIdentifier = swiftTypeName.ModuleQualifiedName.IndexOf('.') switch
+        {
+            -1 => swiftTypeName.Name,
+            int index => swiftTypeName.ModuleQualifiedName.Substring(index + 1),
+        };
+        return typeDatabase.GetTypeRecordOrThrow(swiftTypeName.Module, typeIdentifier); //TODO: remove this logic once module qualified names are used as keys
     }
 
     /// <summary>

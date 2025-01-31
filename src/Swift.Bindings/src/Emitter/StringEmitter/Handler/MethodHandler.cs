@@ -758,10 +758,11 @@ namespace BindingsGeneration
                 return;
             }
 
+            // TODO: Replace with correct method name
             var text = $$"""
             if (error.Value != null)
             {
-                throw new SwiftRuntimeException("Call to Swift method {{_env.MethodDecl.FullyQualifiedName}} failed.");
+                throw new SwiftRuntimeException("Call to Swift method {{_env.MethodDecl.Name}} failed.");
             }
             """;
 

@@ -256,7 +256,8 @@ namespace BindingsGeneration
                 ModuleName = namedTypeSpec.Module,
                 Namespace = namedTypeSpec.Module, // TODO: Correctly map to a .NET namespace
                 SwiftTypeIdentifier = namedTypeSpec.NameWithoutModule,
-                CSTypeIdentifier = structDecl.FullyQualifiedNameWithoutModule,
+                // TODO: Remove this logic once correct csharp type names are used
+                CSTypeIdentifier = structDecl.SwiftTypeName.Module == "" ? structDecl.SwiftTypeName.Name : structDecl.SwiftTypeName.ModuleQualifiedName.Substring(structDecl.SwiftTypeName.ModuleQualifiedName.IndexOf(".") + 1),
                 SwiftTypeInfo = swiftTypeInfo,
                 MetadataAccessor = $"{structDecl.MangledName}Ma",
                 IsBlittable = isBlittable,
