@@ -55,6 +55,7 @@ namespace BindingsGeneration
 
             if (methodEnv.MethodDecl.IsGeneric)
             {
+                // TODO: This should revert writing the entire struct: https://github.com/dotnet/runtimelab/issues/2890
                 Console.WriteLine($"Constructor {methodEnv.MethodDecl.Name} has unsupported generic parameters");
                 return;
             }
