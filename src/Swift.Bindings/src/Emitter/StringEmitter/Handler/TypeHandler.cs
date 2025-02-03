@@ -38,27 +38,17 @@ namespace BindingsGeneration
         {
         }
 
-        /// <summary>
-        /// Marshals the specified struct declaration.
-        /// </summary>
-        /// <param name="structDecl">The struct declaration.</param>
-        /// <param name="typeDatabase">The type database instance.</param>
-        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
+        /// <inheritdoc/>
+        public IEnvironment Marshal(BaseDecl baseDecl, ITypeDatabase typeDatabase)
         {
-            if (decl is not StructDecl structDecl)
+            if (baseDecl is not StructDecl structDecl)
             {
-                throw new ArgumentException("The provided decl must be a StructDecl.", nameof(decl));
+                throw new ArgumentException("The provided decl must be a StructDecl.", nameof(baseDecl));
             }
             return new TypeEnvironment(structDecl, typeDatabase);
         }
 
-        /// <summary>
-        /// Emits the code for the specified environment.
-        /// </summary>
-        /// <param name="csWriter">The IndentedTextWriter instance.</param>
-        /// <param name="env">The environment.</param>
-        /// <param name="conductor">The conductor instance.</param>
-        /// <param name="typeDatabase">The type database instance.</param>
+        /// <inheritdoc/>
         public void Emit(CSharpWriter csWriter, SwiftWriter swiftWriter, IEnvironment env, Conductor conductor)
         {
             var structEnv = (TypeEnvironment)env;
@@ -170,28 +160,18 @@ namespace BindingsGeneration
         {
         }
 
-        /// <summary>
-        /// Marshals the specified struct declaration.
-        /// </summary>
-        /// <param name="structDecl">The struct declaration.</param>
-        /// <param name="typeDatabase">The type database instance.</param>
-        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
+        /// <inheritdoc/>
+        public IEnvironment Marshal(BaseDecl baseDecl, ITypeDatabase typeDatabase)
         {
-            if (decl is not StructDecl structDecl)
+            if (baseDecl is not StructDecl structDecl)
             {
-                throw new ArgumentException("The provided decl must be a StructDecl.", nameof(decl));
+                throw new ArgumentException("The provided decl must be a StructDecl.", nameof(baseDecl));
 
             }
             return new TypeEnvironment(structDecl, typeDatabase);
         }
 
-        /// <summary>
-        /// Emits the code for the specified environment.
-        /// </summary>
-        /// <param name="csWriter">The IndentedTextWriter instance.</param>
-        /// <param name="env">The environment.</param>
-        /// <param name="conductor">The conductor instance.</param>
-        /// <param name="typeDatabase">The type database instance.</param>
+        /// <inheritdoc/>
         public void Emit(CSharpWriter csWriter, SwiftWriter swiftWriter, IEnvironment env, Conductor conductor)
         {
             var structEnv = (TypeEnvironment)env;
@@ -323,27 +303,17 @@ namespace BindingsGeneration
         {
         }
 
-        /// <summary>
-        /// Marshals the specified class declaration.
-        /// </summary>
-        /// <param name="classDecl">The class declaration.</param>
-        /// <param name="typeDatabase">The type database instance.</param>
-        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
+        /// <inheritdoc/>
+        public IEnvironment Marshal(BaseDecl baseDecl, ITypeDatabase typeDatabase)
         {
-            if (decl is not ClassDecl classDecl)
+            if (baseDecl is not ClassDecl classDecl)
             {
-                throw new ArgumentException("The provided decl must be a ClassDecl.", nameof(decl));
+                throw new ArgumentException("The provided decl must be a ClassDecl.", nameof(baseDecl));
             }
             return new TypeEnvironment(classDecl, typeDatabase);
         }
 
-        /// <summary>
-        /// Emits the necessary code for the specified environment.
-        /// </summary>
-        /// <param name="csWriter">The IndentedTextWriter instance.</param>
-        /// <param name="env">The environment.</param>
-        /// <param name="conductor">The conductor instance.</param>
-        /// <param name="typeDatabase">The type database instance.</param>
+        /// <inheritdoc/>
         public void Emit(CSharpWriter csWriter, SwiftWriter swiftWriter, IEnvironment env, Conductor conductor)
         {
             var classEnv = (TypeEnvironment)env;
@@ -610,27 +580,17 @@ namespace BindingsGeneration
         {
         }
 
-        /// <summary>
-        /// Marshals the specified protocol declaration.
-        /// </summary>
-        /// <param name="protocolDecl">The protocol declaration.</param>
-        /// <param name="typeDatabase">The type database instance.</param>
-        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
+        /// <inheritdoc/>
+        public IEnvironment Marshal(BaseDecl baseDecl, ITypeDatabase typeDatabase)
         {
-            if (decl is not ProtocolDecl protocolDecl)
+            if (baseDecl is not ProtocolDecl protocolDecl)
             {
-                throw new ArgumentException("The provided decl must be a ProtocolDecl.", nameof(decl));
+                throw new ArgumentException("The provided decl must be a ProtocolDecl.", nameof(baseDecl));
             }
             return new TypeEnvironment(protocolDecl, typeDatabase);
         }
 
-        /// <summary>
-        /// Emits the code for the specified environment.
-        /// </summary>
-        /// <param name="writer">The IndentedTextWriter instance.</param>
-        /// <param name="env">The environment.</param>
-        /// <param name="conductor">The conductor instance.</param>
-        /// <param name="typeDatabase">The type database instance.</param>
+        /// <inheritdoc/>
         public void Emit(CSharpWriter csWriter, SwiftWriter swiftWriter, IEnvironment env, Conductor conductor)
         {
             var protocolEnv = (TypeEnvironment)env;

@@ -65,7 +65,15 @@ public class GenericSignatureParser
         if (whereIndex == -1)
             return new List<ProtocolConformance>();
 
-        return [.. signature[(whereIndex + "where".Length)..].Split(',').Select(ParseConstraint).Where(c => c is not null).Cast<ProtocolConformance>()];
+        var constraintsSection = signature[(whereIndex + "where".Length)..];
+        var constraints = constraintsSection.Split(',');
+
+        var parsedConstraints = constraints
+            .Select(ParseConstraint)
+            .Where(constraint => constraint is not null)
+            .Cast<ProtocolConformance>();
+
+        return [.. parsedConstraints];
     }
 
     /// <summary>

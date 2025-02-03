@@ -362,7 +362,7 @@ namespace BindingsGeneration
             return new ClassDecl
             {
                 Name = ExtractUniqueName(node.Name),
-                FullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name),
+                FullyQualifiedName = fullyQualifiedName,
                 MangledName = node.MangledName,
                 Fields = new List<FieldDecl>(),
                 Methods = new List<MethodDecl>(),

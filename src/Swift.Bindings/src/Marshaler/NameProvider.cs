@@ -8,8 +8,6 @@ namespace BindingsGeneration;
 /// Represents a generic parameter name mapping.
 /// </summary>
 /// <param name="TypeParameter">The name of the generic type parameter e.g. T0.</param>
-/// <param name="MetadataName">The name of the metadata type parameter.</param>
-/// <param name="PayloadName">The name of the payload type parameter. </param>
 public record struct GenericParameterCSName(string TypeParameter);
 
 /// <summary>

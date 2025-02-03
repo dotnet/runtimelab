@@ -32,7 +32,7 @@ namespace BindingsGeneration.FunctionalTests
         public void ProtocolIsProjected()
         {
             // This test is to ensure that the protocol is projected, it just needs to compile
-            Assert.NotNull(typeof(ISwiftPrintable));
+            Assert.True(typeof(ISwiftPrintable).IsInterface);
         }
     }
 }

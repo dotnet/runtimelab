@@ -171,18 +171,6 @@ public struct IntContainer2: Container {
     }
 }
 
-public struct DoubleContainer: Container {
-    public var value: Double
-
-    public init(value: Double) {
-        self.value = value
-    }
-
-    public func increase() -> Double {
-        return value * 2
-    }
-}
-
 public func AcceptsIntContainer<T: Container>(a: T) -> Int where T.Element == Int {
     return a.increase()
 }

@@ -38,27 +38,17 @@ namespace BindingsGeneration
         {
         }
 
-        /// <summary>
-        /// Marshals the module declaration.
-        /// </summary>
-        /// <param name="moduleDecl">The module declaration.</param>
-        /// <param name="typeDatabase">The type database instance.</param>
-        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
+        /// <inheritdoc/>
+        public IEnvironment Marshal(BaseDecl baseDecl, ITypeDatabase typeDatabase)
         {
-            if (decl is not ModuleDecl moduleDecl)
+            if (baseDecl is not ModuleDecl moduleDecl)
             {
-                throw new ArgumentException("The provided decl must be a ModuleDecl.", nameof(decl));
+                throw new ArgumentException("The provided decl must be a ModuleDecl.", nameof(baseDecl));
             }
             return new ModuleEnvironment(moduleDecl, typeDatabase);
         }
 
-        /// <summary>
-        /// Emits the code for the specified environment.
-        /// </summary>
-        /// <param name="csWriter">The IndentedTextWriter instance.</param>
-        /// <param name="env">The environment.</param>
-        /// <param name="conductor">The conductor instance.</param>
-        /// <param name="typeDatabase">The type database instance.</param>
+        /// <inheritdoc/>
         public void Emit(CSharpWriter csWriter, SwiftWriter swiftWriter, IEnvironment env, Conductor conductor)
         {
             var moduleEnv = (ModuleEnvironment)env;

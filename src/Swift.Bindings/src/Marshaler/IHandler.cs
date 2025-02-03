@@ -15,13 +15,15 @@ namespace BindingsGeneration
         /// Marshals the specified base declaration.
         /// </summary>
         /// <param name="baseDecl">The base declaration.</param>
+        /// <param name="typeDatabase">The type database instance.</param>
         /// <returns>The environment corresponding to the base declaration.</returns>
         IEnvironment Marshal(BaseDecl baseDecl, ITypeDatabase typeDatabase);
 
         /// <summary>
         /// Emits the necessary code for the specified environment.
         /// </summary>
-        /// <param name="writer">The IndentedTextWriter instance.</param>
+        /// <param name="csWriter">The csWriter instance.</param>
+        /// <param name="swiftWriter">The swiftWriter instance.</param>
         /// <param name="env">The environment.</param>
         /// <param name="conductor">The conductor instance.</param>
         void Emit(CSharpWriter csWriter, SwiftWriter swiftWriter, IEnvironment env, Conductor conductor);

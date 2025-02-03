@@ -37,26 +37,17 @@ namespace BindingsGeneration
         {
         }
 
-        /// <summary>
-        /// Marshals the specified constructor.
-        /// </summary>
-        /// <param name="methodDecl">The method declaration.</param>
-        /// <param name="typeDatabase">The type database instance.</param>
-        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
+        /// <inheritdoc/>
+        public IEnvironment Marshal(BaseDecl baseDecl, ITypeDatabase typeDatabase)
         {
-            if (decl is not MethodDecl methodDecl)
+            if (baseDecl is not MethodDecl methodDecl)
             {
-                throw new ArgumentException("The provided decl must be a MethodDecl.", nameof(decl));
+                throw new ArgumentException("The provided decl must be a MethodDecl.", nameof(baseDecl));
             }
             return new MethodEnvironment(methodDecl, typeDatabase);
         }
 
-        /// <summary>
-        /// Emits the method declaration.
-        /// </summary>
-        /// <param name="csWriter">The IndentedTextWriter instance.</param>
-        /// <param name="env">The environment.</param>
-        /// <param name="conductor">The conductor instance.</param>
+        /// <inheritdoc/>
         public void Emit(CSharpWriter csWriter, SwiftWriter swiftWriter, IEnvironment env, Conductor conductor)
         {
             var methodEnv = (MethodEnvironment)env;
@@ -114,26 +105,17 @@ namespace BindingsGeneration
         {
         }
 
-        /// <summary>
-        /// Marshals the method declaration.
-        /// </summary>
-        /// <param name="methodDecl">The method declaration.</param>
-        /// <param name="typeDatabase">The type database instance.</param>
-        public IEnvironment Marshal(BaseDecl decl, ITypeDatabase typeDatabase)
+        /// <inheritdoc/>
+        public IEnvironment Marshal(BaseDecl baseDecl, ITypeDatabase typeDatabase)
         {
-            if (decl is not MethodDecl methodDecl)
+            if (baseDecl is not MethodDecl methodDecl)
             {
-                throw new ArgumentException("The provided decl must be a MethodDecl.", nameof(decl));
+                throw new ArgumentException("The provided decl must be a MethodDecl.", nameof(baseDecl));
             }
             return new MethodEnvironment(methodDecl, typeDatabase);
         }
 
-        /// <summary>
-        /// Emits the method declaration.
-        /// </summary>
-        /// <param name="csWriter">The IndentedTextWriter instance.</param>
-        /// <param name="env">The environment.</param>
-        /// <param name="conductor">The conductor instance.</param>
+        /// <inheritdoc/>
         public void Emit(CSharpWriter csWriter, SwiftWriter swiftWriter, IEnvironment env, Conductor conductor)
         {
             var methodEnv = (MethodEnvironment)env;
