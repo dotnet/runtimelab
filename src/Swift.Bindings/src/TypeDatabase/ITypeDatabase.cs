@@ -14,20 +14,20 @@ public interface ITypeDatabase
     /// Checks whether a specific type in a specified module has been processed.
     /// </summary>
     /// <param name="moduleName">The name of the module.</param>
-    /// <param name="typeIdentifier">The identifier for the Swift type.</param>
+    /// <param name="swiftTypeName">The name of the Swift type.</param>
     /// <returns><c>true</c> if the type has been processed; otherwise, <c>false</c>.</returns>
-    public bool IsTypeProcessed(string moduleName, string typeIdentifier);
+    public bool IsTypeProcessed(SwiftTypeName swiftTypeName);
 
     /// <summary>
     /// Attempts to retrieve the type record for a specified type identifier within a module.
     /// </summary>
     /// <param name="moduleName">The name of the module.</param>
-    /// <param name="typeIdentifier">The identifier for the Swift type.</param>
+    /// <param name="swiftTypeName">The name of the Swift type.</param>
     /// <param name="record">
     /// When this method returns, contains the type record if found; otherwise, <c>null</c>.
     /// </param>
     /// <returns><c>true</c> if the type record was found; otherwise, <c>false</c>.</returns>
-    public bool TryGetTypeRecord(string moduleName, string typeIdentifier, [NotNullWhen(returnValue: true)] out TypeRecord? record);
+    public bool TryGetTypeRecord(SwiftTypeName swiftTypeName, [NotNullWhen(returnValue: true)] out TypeRecord? record);
 
     /// <summary>
     /// Retrieves the library path for the specified module.

@@ -14,14 +14,14 @@ namespace BindingsGeneration
         /// <summary>
         /// The type records associated with the module, where the key is the Swift type identifier.
         /// </summary>
-        private readonly ConcurrentDictionary<string, TypeRecord> _typeRecords;
+        private readonly ConcurrentDictionary<SwiftTypeName, TypeRecord> _typeRecords;
 
         public ModuleTypeDatabase(string name, string path)
         {
             Name = name;
             Path = path;
 
-            _typeRecords = new ConcurrentDictionary<string, TypeRecord>();
+            _typeRecords = new ConcurrentDictionary<SwiftTypeName, TypeRecord>();
         }
 
         /// <summary>
@@ -39,9 +39,9 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="typeIdentifier">The identifier for the Swift type.</param>
         /// <returns><c>true</c> if the type has been processed; otherwise, <c>false</c>.</returns>
-        public bool IsTypeProcessed(string typeIdentifier)
+        public bool IsTypeProcessed(SwiftTypeName swiftTypeName)
         {
-            return _typeRecords.ContainsKey(typeIdentifier);
+            return _typeRecords.ContainsKey(swiftTypeName);
         }
 
         /// <summary>
@@ -49,9 +49,9 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="typeIdentifier">The identifier for the Swift type.</param>
         /// <param name="record">The type record to register.</param>
-        public void RegisterType(string typeIdentifier, TypeRecord record)
+        public void RegisterType(SwiftTypeName swiftTypeName, TypeRecord record)
         {
-            _typeRecords.AddOrUpdate(typeIdentifier, record, (_, _) => record);
+            _typeRecords.AddOrUpdate(swiftTypeName, record, (_, _) => record);
         }
 
         /// <summary>
@@ -62,9 +62,9 @@ namespace BindingsGeneration
         /// When this method returns, contains the type record if found; otherwise, <c>null</c>.
         /// </param>
         /// <returns><c>true</c> if the type record is found; otherwise, <c>false</c>.</returns>
-        public bool TryGetTypeRecord(string typeIdentifier, [NotNullWhen(returnValue: true)] out TypeRecord? record)
+        public bool TryGetTypeRecord(SwiftTypeName swiftTypeName, [NotNullWhen(returnValue: true)] out TypeRecord? record)
         {
-            if (_typeRecords.TryGetValue(typeIdentifier, out record))
+            if (_typeRecords.TryGetValue(swiftTypeName, out record))
                 return true;
 
             return false;
