@@ -45,7 +45,7 @@ namespace BindingsGeneration.Tests
         {
             var typeDatabase = new TypeDatabase();
             var module = new ModuleTypeDatabase("TestModule", "/fake/path");
-            var swiftTypeName = SwiftTypeName.FromModuleAndName("TestModule", "MyType");
+            var swiftTypeName = SwiftTypeName.FromModuleQualifiedName("TestModule.MyType");
             var myType = new TypeRecord
             {
                 CSTypeIdentifier = "MyType",
@@ -70,7 +70,7 @@ namespace BindingsGeneration.Tests
         {
             var typeDatabase = new TypeDatabase();
             var module = new ModuleTypeDatabase("TestModule", "/fake/path");
-            var swiftTypeName = SwiftTypeName.FromModuleAndName("TestModule", "MyType");
+            var swiftTypeName = SwiftTypeName.FromModuleQualifiedName("TestModule.MyType");
             typeDatabase.AddModuleDatabase(module);
 
             var found = typeDatabase.TryGetTypeRecord(swiftTypeName, out var record);
@@ -84,7 +84,7 @@ namespace BindingsGeneration.Tests
         {
             var typeDatabase = new TypeDatabase();
             var module = new ModuleTypeDatabase("TestModule", "/fake/path");
-            var swiftTypeName = SwiftTypeName.FromModuleAndName("AnotherModule", "MyOutOfModuleType");
+            var swiftTypeName = SwiftTypeName.FromModuleQualifiedName("AnotherModule.MyOutOfModuleType");
             typeDatabase.AddModuleDatabase(module);
 
             var outOfModuleRecord = new TypeRecord
@@ -116,7 +116,7 @@ namespace BindingsGeneration.Tests
             // Arrange
             var typeDatabase = new TypeDatabase();
             var module = new ModuleTypeDatabase("TestModule", "/fake/path");
-            var swiftTypeName = SwiftTypeName.FromModuleAndName("TestModule", "ProcessedType");
+            var swiftTypeName = SwiftTypeName.FromModuleQualifiedName("TestModule.ProcessedType");
             module.RegisterType(swiftTypeName, new TypeRecord
             {
                 CSTypeIdentifier = "ProcessedType",
@@ -138,7 +138,7 @@ namespace BindingsGeneration.Tests
         {
             var typeDatabase = new TypeDatabase();
             var module = new ModuleTypeDatabase("TestModule", "/fake/path");
-            var swiftTypeName = SwiftTypeName.FromModuleAndName("TestModule", "UnprocessedType");
+            var swiftTypeName = SwiftTypeName.FromModuleQualifiedName("TestModule.UnprocessedType");
 
             typeDatabase.AddModuleDatabase(module);
 

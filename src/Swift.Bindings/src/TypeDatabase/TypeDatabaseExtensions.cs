@@ -13,7 +13,7 @@ public static class TypeDatabaseExtensions
     /// <returns>True if the type has been processed; otherwise, false.</returns>
     public static bool IsTypeProcessed(this ITypeDatabase typeDatabase, TypeSpec typeSpec)
     {
-        var typeName = SwiftTypeName.FromTypeSpecWithGenericParameters(typeSpec);
+        var typeName = SwiftTypeNameConverter.ConvertWithGenericParameters(typeSpec);
         return typeDatabase.IsTypeProcessed(typeName);
     }
 
@@ -25,7 +25,7 @@ public static class TypeDatabaseExtensions
     /// <returns>The type record.</returns>
     public static TypeRecord GetTypeRecordOrAnyType(this ITypeDatabase typeDatabase, TypeSpec typeSpec)
     {
-        var typeName = SwiftTypeName.FromTypeSpecWithGenericParameters(typeSpec);
+        var typeName = SwiftTypeNameConverter.ConvertWithGenericParameters(typeSpec);
         return typeDatabase.GetTypeRecordOrAnyType(typeName);
     }
 
@@ -37,7 +37,7 @@ public static class TypeDatabaseExtensions
     /// <returns>The type record.</returns>
     public static TypeRecord GetTypeRecordOrThrow(this ITypeDatabase typeDatabase, TypeSpec typeSpec)
     {
-        var typeName = SwiftTypeName.FromTypeSpecWithGenericParameters(typeSpec);
+        var typeName = SwiftTypeNameConverter.ConvertWithGenericParameters(typeSpec);
         return typeDatabase.GetTypeRecordOrThrow(typeName);
     }
 

@@ -149,7 +149,7 @@ namespace BindingsGeneration
                     throw new Exception("Invalid XML structure: Missing attributes.");
 
 
-                var swiftTypeName = SwiftTypeName.FromModuleAndName(moduleName, swiftTypeIdentifier); // TODO: Add support for nested types in type database.
+                var swiftTypeName = SwiftTypeName.FromModuleQualifiedName($"{moduleName}.{swiftTypeIdentifier}"); // TODO: Change layout of xml
                 var typeRecord = new TypeRecord()
                 {
                     CSTypeIdentifier = csharpTypeIdentifier,

@@ -526,8 +526,8 @@ namespace BindingsGeneration
         private static SwiftTypeName GetSwiftTypeName(BaseDecl parentDecl, string name)
             => parentDecl switch
             {
-                ModuleDecl moduleDecl => SwiftTypeName.FromModuleAndName(moduleDecl.Name, ExtractUniqueName(name)),
-                TypeDecl typeDecl => SwiftTypeName.FromParentTypeAndName(typeDecl.SwiftTypeName, ExtractUniqueName(name)),
+                ModuleDecl moduleDecl => SwiftTypeName.FromModuleQualifiedName($"{moduleDecl.Name}.{name}"),
+                TypeDecl typeDecl => SwiftTypeName.FromModuleQualifiedName($"{typeDecl.SwiftTypeName.ModuleQualifiedName}.{name}"),
                 _ => throw new InvalidOperationException("Parent declaration is not a module or type.")
             };
 
