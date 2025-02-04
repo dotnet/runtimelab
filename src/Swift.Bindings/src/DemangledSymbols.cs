@@ -6,9 +6,9 @@ using Xamarin;
 
 public readonly record struct DemangledSymbols
 {
-    public Dictionary<(NamedTypeSpec, NamedTypeSpec), string> ProtocolConformanceDescriptors { get; init; }
+    public Dictionary<(SwiftTypeName, SwiftTypeName), string> ProtocolConformanceDescriptors { get; init; }
 
-    public DemangledSymbols(Dictionary<(NamedTypeSpec, NamedTypeSpec), string> descriptors)
+    public DemangledSymbols(Dictionary<(SwiftTypeName, SwiftTypeName), string> descriptors)
     {
         ProtocolConformanceDescriptors = descriptors;
     }
@@ -18,7 +18,7 @@ public sealed class DemangledSymbolsRegister
 {
     private static readonly Lazy<DemangledSymbolsRegister> _instance = new(() => new DemangledSymbolsRegister());
 
-    private DemangledSymbols _symbols = new(new Dictionary<(NamedTypeSpec, NamedTypeSpec), string>());
+    private DemangledSymbols _symbols = new(new Dictionary<(SwiftTypeName, SwiftTypeName), string>());
     private bool _isLoaded = false;
 
     public static DemangledSymbolsRegister Instance => _instance.Value;
@@ -45,11 +45,13 @@ public sealed class DemangledSymbolsRegister
         {
             var abis = MachO.GetArchitectures(dylibPath);
             var descriptors = DemanglingResults.FromFile(dylibPath, abis[0]).ProtocolConformanceDescriptors;
-            var dictionary = new Dictionary<(NamedTypeSpec, NamedTypeSpec), string>();
+            var dictionary = new Dictionary<(SwiftTypeName, SwiftTypeName), string>();
 
             foreach (var descriptor in descriptors)
             {
-                dictionary[(descriptor.ImplementingType, descriptor.ProtocolType)] = descriptor.Symbol[1..];
+                var implementingType = SwiftTypeNameConverter.Convert(descriptor.ImplementingType);
+                var protocolType = SwiftTypeNameConverter.Convert(descriptor.ProtocolType);
+                dictionary[(implementingType, protocolType)] = descriptor.Symbol[1..];
             }
 
             _symbols = new DemangledSymbols(dictionary);

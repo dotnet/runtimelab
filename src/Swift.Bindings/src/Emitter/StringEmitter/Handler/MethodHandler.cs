@@ -350,10 +350,10 @@ namespace BindingsGeneration
         {
             foreach (var genericParameter in _env.MethodDecl.GenericParameters)
             {
-                var conformances = genericParameter.Constraints.Where(c => c is ProtocolConformance).OrderBy(c => c.ProtocolSpec.NameWithoutModule);
+                var conformances = genericParameter.Constraints.OrderBy(c => c.ProtocolSpec.ModuleQualifiedName);
                 foreach (var conformance in conformances)
                 {
-                    var pwtName = NameProvider.GetProtocolWitnessTableName(_env.GenericTypeMapping[genericParameter.TypeName].TypeParameter, conformance.ProtocolSpec.NameWithoutModule);
+                    var pwtName = NameProvider.GetProtocolWitnessTableName(_env.GenericTypeMapping[genericParameter.TypeName].TypeParameter, conformance.ProtocolSpec.Name);
                     AddParameter("ProtocolWitnessTable", pwtName);
                 }
             }
@@ -724,11 +724,11 @@ namespace BindingsGeneration
             foreach (var genericParameter in _env.MethodDecl.GenericParameters)
             {
                 var csTypeParamName = _env.GenericTypeMapping[genericParameter.TypeName].TypeParameter;
-                var conformances = genericParameter.Constraints.Where(c => c is ProtocolConformance).OrderBy(c => c.ProtocolSpec.NameWithoutModule);
+                var conformances = genericParameter.Constraints.OrderBy(c => c.ProtocolSpec.ModuleQualifiedName);
                 foreach (var conformance in conformances)
                 {
-                    var pwtName = NameProvider.GetProtocolWitnessTableName(csTypeParamName, conformance.ProtocolSpec.NameWithoutModule);
-                    var protocolName = NameProvider.GetInterfaceName(conformance.ProtocolSpec.NameWithoutModule);
+                    var pwtName = NameProvider.GetProtocolWitnessTableName(csTypeParamName, conformance.ProtocolSpec.Name);
+                    var protocolName = NameProvider.GetInterfaceName(conformance.ProtocolSpec.Name);
                     csWriter.WriteLine($"var {pwtName} = ProtocolWitnessTable.GetOrThrow<{csTypeParamName}, {protocolName}>();");
                 }
             }
