@@ -12,11 +12,7 @@ namespace BindingsGeneration
     /// </summary>
     /// <param name="ModuleDecl">The module declaration.</param>
     /// <param name="TypeDecls">The type declarations.</param>
-    /// <param name="BoundGenericTypes">The bound generic types.</param>
-    public sealed record ModuleParsingResult(
-    ModuleDecl ModuleDecl,
-    Dictionary<NamedTypeSpec, TypeDecl> TypeDecls,
-    List<NamedTypeSpec> BoundGenericTypes);
+    public sealed record ModuleParsingResult(ModuleDecl ModuleDecl, Dictionary<NamedTypeSpec, TypeDecl> TypeDecls);
 
     /// <summary>
     /// Represents the root node of the ABI.
@@ -116,11 +112,6 @@ namespace BindingsGeneration
         /// </summary>
         private readonly Swift5Demangler demangler = new();
 
-        /// <summary>
-        /// Closed generic types encountered during parsing method signatures.
-        /// </summary>
-        private readonly List<NamedTypeSpec> _boundGenericTypes = new();
-
         public SwiftABIParser(string filePath, ITypeDatabase typeDatabase, int verbose = 0)
         {
             _filePath = filePath;
@@ -174,7 +165,7 @@ namespace BindingsGeneration
                 _moduleTypes.Add(new NamedTypeSpec(type.FullyQualifiedName), type);
             }
 
-            return new ModuleParsingResult(moduleDecl, _moduleTypes, _boundGenericTypes);
+            return new ModuleParsingResult(moduleDecl, _moduleTypes);
         }
 
         /// <summary>
@@ -432,12 +423,6 @@ namespace BindingsGeneration
             for (int i = 0; i < node.Children.Count(); i++)
             {
                 var typeSpec = CreateTypeSpec(node.Children.ElementAt(i));
-
-                //TODO: Make sure that the generics are actually bound
-                if (!_typeDatabase.IsTypeProcessed(typeSpec) && typeSpec is NamedTypeSpec namedTypeSpec && namedTypeSpec.GenericParameters.Count > 0)
-                {
-                    _boundGenericTypes.Add(namedTypeSpec);
-                }
 
                 methodDecl.CSSignature.Add(new ArgumentDecl
                 {

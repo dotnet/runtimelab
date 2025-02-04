@@ -11,8 +11,7 @@ namespace BindingsGeneration
     /// Represents the result of processing a Swift module.
     /// </summary>
     /// <param name="ModuleDatabase">The module database containing type records.</param>
-    /// <param name="OutOfModuleTypeRecords"> Type records which look as if they belong to another module, e.g. closed generics.</param>
-    sealed record ModuleProcessingResult(ModuleTypeDatabase ModuleDatabase, IEnumerable<(string, TypeRecord)> OutOfModuleTypeRecords);
+    sealed record ModuleProcessingResult(ModuleTypeDatabase ModuleDatabase);
 
     /// <summary>
     /// Performs post-processing of types collected from the Swift ABI before generating bindings.
@@ -26,8 +25,6 @@ namespace BindingsGeneration
         private readonly ITypeDatabase _typeDatabase;
         private readonly ModuleTypeDatabase _moduleDatabase;
         private readonly Dictionary<NamedTypeSpec, TypeDecl> _typeDecls;
-        private readonly List<NamedTypeSpec> _boundGenericTypes; // TODO: Temporary solution for closed generics. Revise.
-        private readonly Dictionary<string, TypeRecord> _outOfModuleTypeRecords; // E.g. closed generics from other modules.
         private readonly int _verbosity;
 
         /// <summary>
@@ -36,14 +33,12 @@ namespace BindingsGeneration
         /// <param name="module">The name of the Swift module being processed.</param>
         /// <param name="dylibPath">The file path to the Swift dynamic library.</param>
         /// <param name="typeDecls">A dictionary mapping Swift type specs to their declarations.</param>
-        /// <param name="boundGenericTypes">A list of closed generic types encountered during method signature parsing.</param>
         /// <param name="typeDatabase">The global type database tracking processed types.</param>
         /// <param name="verbosity">The verbosity level for logging.</param>
         public ModuleProcessor(
             string module,
             string dylibPath,
             Dictionary<NamedTypeSpec, TypeDecl> typeDecls,
-            List<NamedTypeSpec> boundGenericTypes,
             ITypeDatabase typeDatabase,
             int verbosity)
         {
@@ -51,8 +46,6 @@ namespace BindingsGeneration
             _dylibPath = dylibPath;
             _typeDatabase = typeDatabase;
             _moduleDatabase = new ModuleTypeDatabase(module, dylibPath);
-            _boundGenericTypes = boundGenericTypes;
-            _outOfModuleTypeRecords = new Dictionary<string, TypeRecord>();
             _typeDecls = typeDecls;
             _verbosity = verbosity;
         }
@@ -74,12 +67,6 @@ namespace BindingsGeneration
                 return _moduleDatabase.TryGetTypeRecord(typeIdentifier, out record);
             }
 
-            // Next, check if the type is an out-of-module type (e.g., a closed generic).
-            if (_outOfModuleTypeRecords.TryGetValue($"{moduleName}.{typeIdentifier}", out record))
-            {
-                return true;
-            }
-
             // Otherwise, fall back to checking the global type database.
             return _typeDatabase.TryGetTypeRecord(moduleName, typeIdentifier, out record);
         }
@@ -96,13 +83,7 @@ namespace BindingsGeneration
                 ProcessTypeRecursively(typeSpec, typeDecl);
             }
 
-            // Placeholder for handling closed generics.
-            foreach (var closedGenericType in _boundGenericTypes)
-            {
-                ProcessGenericTypeSpec(closedGenericType);
-            }
-
-            return new ModuleProcessingResult(_moduleDatabase, _outOfModuleTypeRecords.Select(kv => (kv.Key, kv.Value)));
+            return new ModuleProcessingResult(_moduleDatabase);
         }
 
         /// <summary>
@@ -303,68 +284,6 @@ namespace BindingsGeneration
         private void ProcessClass(NamedTypeSpec namedTypeSpec, ClassDecl classDecl)
         {
             return;
-        }
-
-        /// <summary>
-        /// Processes a closed generic type specification by mapping open generic definitions
-        /// to specific instantiations (e.g., <c>MyGenericClass&lt;SomeType&gt;</c>).
-        /// </summary>
-        /// <param name="namedTypeSpec">The Swift type specification representing the closed generic.</param>
-        private void ProcessGenericTypeSpec(NamedTypeSpec namedTypeSpec)
-        {
-            // Attempt to retrieve the open generic type record (e.g., MyGenericClass`1).
-            if (!TryGetTypeRecord(namedTypeSpec.Module, $"{namedTypeSpec.NameWithoutModule}`{namedTypeSpec.GenericParameters.Count}", out var genericTypeRecord))
-            {
-                if (_verbosity > 1)
-                {
-                    Console.WriteLine($"Skipping generic '{namedTypeSpec}' from module '{namedTypeSpec.Module}'. " +
-                                      "Could not find open generic's type record.");
-                }
-                return;
-            }
-
-            // Build a C#-style generic type name based on the parameters.
-            var nameBuilder = new StringBuilder(genericTypeRecord.CSTypeIdentifier).Append("<");
-
-            foreach (var genericParameter in namedTypeSpec.GenericParameters)
-            {
-                if (genericParameter is not NamedTypeSpec namedGenericParameter)
-                    continue;
-
-                if (!TryGetTypeRecord(namedGenericParameter.Module, namedGenericParameter.NameWithoutModule, out var genericParameterRecord))
-                {
-                    if (_verbosity > 1)
-                    {
-                        Console.WriteLine($"Skipping generic '{namedTypeSpec}' from module '{namedTypeSpec.Module}'.");
-                    }
-                    return;
-                }
-                nameBuilder.Append(genericParameterRecord.CSTypeIdentifier);
-            }
-
-            nameBuilder.Append(">");
-
-            var typeRecord = new TypeRecord
-            {
-                ModuleName = namedTypeSpec.Module,
-                Namespace = namedTypeSpec.Module, // TODO: Correctly map to a .NET namespace
-                SwiftTypeIdentifier = namedTypeSpec.NameWithoutModuleWithGenericParameters,
-                CSTypeIdentifier = nameBuilder.ToString(),
-                MetadataAccessor = string.Empty, // TODO: Implement metadata accessor for closed generics
-                IsBlittable = true,
-                IsFrozen = true
-            };
-
-            // If the closed generic belongs to a different module, store it in out-of-module records.
-            if (namedTypeSpec.Module != _module)
-            {
-                _outOfModuleTypeRecords[$"{namedTypeSpec.Module}.{namedTypeSpec.NameWithoutModuleWithGenericParameters}"] = typeRecord;
-            }
-            // Otherwise, register it in the current module.
-            else
-            {
-                _moduleDatabase.RegisterType(namedTypeSpec.NameWithoutModuleWithGenericParameters, typeRecord);
-            }
         }
     }
 }

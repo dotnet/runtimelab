@@ -95,12 +95,11 @@ namespace BindingsGeneration
             if (!typeDatabase.IsModuleProcessed(moduleName))
             {
                 // Parse the Swift ABI file and generate declarations
-                var (decl, moduleTypes, boundGenericTypes) = swiftParser.ParseModule();
+                var (decl, moduleTypes) = swiftParser.ParseModule();
 
-                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, moduleTypes, boundGenericTypes, typeDatabase, verbose);
-                var (moduleDatabase, outOfModuleTypeRecords) = moduleProcessor.FinalizeTypeProcessingAndCreateModuleDatabase();
+                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, moduleTypes, typeDatabase, verbose);
+                var moduleDatabase = moduleProcessor.FinalizeTypeProcessingAndCreateModuleDatabase().ModuleDatabase;
                 typeDatabase.AddModuleDatabase(moduleDatabase);
-                typeDatabase.AddOutOfModuleTypes(outOfModuleTypeRecords);
 
                 if (verbose > 1)
                     Console.WriteLine("Parsed Swift ABI file successfully.");
