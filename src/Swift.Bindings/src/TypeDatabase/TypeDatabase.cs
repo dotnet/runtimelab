@@ -22,19 +22,6 @@ namespace BindingsGeneration
 
         public TypeDatabase()
         {
-            var voidModuleRecord = new ModuleTypeDatabase("", "");
-            var voidSwiftTypeName = SwiftTypeName.VoidType;
-            voidModuleRecord.RegisterType(voidSwiftTypeName, new TypeRecord()
-            {
-                CSTypeIdentifier = "void",
-                SwiftTypeName = voidSwiftTypeName,
-                MetadataAccessor = string.Empty,
-                Namespace = string.Empty,
-                IsBlittable = true,
-                IsFrozen = true,
-            });
-
-            AddModuleDatabase(voidModuleRecord);
         }
 
         /// <summary>

@@ -58,7 +58,7 @@ namespace BindingsGeneration
         /// When this method returns, contains the <see cref="TypeRecord"/> if found; otherwise, <c>null</c>.
         /// </param>
         /// <returns><c>true</c> if the type was found; otherwise, <c>false</c>.</returns>
-        private bool TryGetTypeRecord(TypeSpec swiftTypeSpec, [NotNullWhen(true)] out TypeRecord? record)
+        private bool TryGetTypeRecord(NamedTypeSpec swiftTypeSpec, [NotNullWhen(true)] out TypeRecord? record)
         {
             var swiftTypeName = SwiftTypeNameConverter.Convert(swiftTypeSpec);
 
