@@ -18,8 +18,8 @@ public record TypeConformance(
 /// Represents a generic parameter conformance.
 /// </summary>
 /// <param name="GenericParameter">The generic parameter</param>
-/// <param name="ProtocolSpec">The protocol that the generic parameter conforms to</param>
+/// <param name="Protocol">The protocol that the generic parameter conforms to</param>
 public record GenericParameterConformance(
     NamedTypeSpec GenericParameter,
-    SwiftTypeName ProtocolSpec
+    SwiftTypeName Protocol
 );

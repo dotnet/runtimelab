@@ -72,7 +72,7 @@ public class GenericSignatureParserTests
         Assert.Single(decl.Constraints);
         var conformance = Assert.IsType<GenericParameterConformance>(decl.Constraints[0]);
         Assert.Equal("τ_0_0", conformance.GenericParameter.Name);
-        Assert.Equal("Swift.Equatable", conformance.ProtocolSpec.ModuleQualifiedName);
+        Assert.Equal("Swift.Equatable", conformance.Protocol.ModuleQualifiedName);
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public class GenericSignatureParserTests
         Assert.Single(first.Constraints);
         var firstConformance = Assert.IsType<GenericParameterConformance>(first.Constraints[0]);
         Assert.Equal("τ_0_0", firstConformance.GenericParameter.Name);
-        Assert.Equal("Swift.Equatable", firstConformance.ProtocolSpec.ModuleQualifiedName);
+        Assert.Equal("Swift.Equatable", firstConformance.Protocol.ModuleQualifiedName);
 
         var second = result[1];
         Assert.Equal("τ_0_1", second.TypeName);
@@ -99,7 +99,7 @@ public class GenericSignatureParserTests
         Assert.Single(second.Constraints);
         var secondConformance = Assert.IsType<GenericParameterConformance>(second.Constraints[0]);
         Assert.Equal("τ_0_1", secondConformance.GenericParameter.Name);
-        Assert.Equal("Swift.Hashable", secondConformance.ProtocolSpec.ModuleQualifiedName);
+        Assert.Equal("Swift.Hashable", secondConformance.Protocol.ModuleQualifiedName);
     }
 
     [Fact]
@@ -118,6 +118,6 @@ public class GenericSignatureParserTests
 
         var proto = Assert.IsType<GenericParameterConformance>(decl.Constraints[0]);
         Assert.Equal("τ_0_0", proto.GenericParameter.Name);
-        Assert.Equal("SomeModule.SomeProtocol", proto.ProtocolSpec.ModuleQualifiedName);
+        Assert.Equal("SomeModule.SomeProtocol", proto.Protocol.ModuleQualifiedName);
     }
 }
