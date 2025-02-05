@@ -57,7 +57,7 @@ namespace BindingsGeneration
     /// <summary>
     /// Represents a parser for Swift ABI.
     /// </summary>
-    public sealed unsafe class SwiftABIParser : ISwiftParser
+    public sealed class SwiftABIParser : ISwiftParser
     {
         const string kNominal = "TypeNominal";
         const string kFunc = "TypeFunc";
