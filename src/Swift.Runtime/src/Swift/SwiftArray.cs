@@ -269,9 +269,11 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
 
 internal static class SwiftArrayPInvokes
 {
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSaMa")]
     public static extern TypeMetadata PInvoke_getMetadata(TypeMetadataRequest request, TypeMetadata typeMetadata);
 
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sS2ayxGycfC")]
     public static extern ArrayBuffer Init(TypeMetadata typeMetadata);
 
@@ -283,6 +285,7 @@ internal static class SwiftArrayPInvokes
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSayxSicis")]
     public static unsafe extern void Set(SwiftHandle value, nint index, TypeMetadata elementMetadata, SwiftSelf self);
 
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSa5countSivg")]
     public static extern nint Count(ArrayBuffer handle, TypeMetadata elementMetadata);
 

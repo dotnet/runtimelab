@@ -355,5 +355,20 @@ namespace BindingsGeneration.FunctionalTests
         [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
         [DllImport("Structs/libStructsTests.dylib", EntryPoint = "$s12StructsTests8sumArray5arrays5Int32VSayAEG_tF")]
         private static extern int PInvoke_SumArray(ArrayBuffer array);
+
+        [Fact]
+        public void TestString()
+        {
+            SwiftString swiftString = StructsTests.getString();
+            int result = StructsTests.verifyString(swiftString);
+            Assert.Equal(42, result);
+
+            string str = swiftString.ToString();
+            Assert.Equal("Hello world!", str);
+
+            swiftString = new SwiftString(str);
+            result = StructsTests.verifyString(swiftString);
+            Assert.Equal(42, result);
+        }
     }
 }

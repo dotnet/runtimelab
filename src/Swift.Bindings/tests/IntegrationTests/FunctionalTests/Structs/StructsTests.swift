@@ -257,3 +257,18 @@ public func sumArray(array: Array<Int32>) -> Int32
 {
     return array.reduce(0, +)
 }
+
+public func getString() -> String
+{
+    return "Hello world!"
+}
+
+public func verifyString(str: String) -> Int32
+{
+    if str == "Hello world!" {
+        return 42
+    }
+
+    return -1
+}
+

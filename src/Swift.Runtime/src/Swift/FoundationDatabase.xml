@@ -70,5 +70,8 @@
         <entity managedNameSpace="Swift" managedTypeName="UnsafeMutableBufferPointer&lt;System.Byte&gt;">
             <typedeclaration kind="struct" name="UnsafeMutableBufferPointer&lt;Swift.UInt8&gt;" module="Swift" mangledName="sSr" frozen="true" blittable="true"/>
         </entity>
+        <entity managedNameSpace="Swift" managedTypeName="SwiftString">
+            <typedeclaration kind="struct" name="String" module="Swift" mangledName="sSS" frozen="true" blittable="true"/>
+        </entity>
     </entities>
 </swifttypedatabase>
