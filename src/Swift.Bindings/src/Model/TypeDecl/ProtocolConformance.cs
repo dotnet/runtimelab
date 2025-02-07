@@ -20,6 +20,6 @@ public record TypeConformance(
 /// <param name="GenericParameter">The generic parameter</param>
 /// <param name="Protocol">The protocol that the generic parameter conforms to</param>
 public record GenericParameterConformance(
-    NamedTypeSpec GenericParameter,
+    string GenericParameter,
     SwiftTypeName Protocol
 );
