@@ -75,7 +75,7 @@ public struct SwiftString : ISwiftObject
     {
         if (!_protocolConformanceSymbols.TryGetValue(typeof(TProtocol), out var symbolName))
         {
-            throw new SwiftRuntimeException($"Attempted to retrieve protocol conformance descriptor for type SwiftSet and protocol {typeof(TProtocol).Name}, but no conformance was found.");
+            throw new SwiftRuntimeException($"Attempted to retrieve protocol conformance descriptor for type SwiftString and protocol {typeof(TProtocol).Name}, but no conformance was found.");
         }
         return ProtocolConformanceDescriptor.LoadFromSymbol("/usr/lib/swift/libswiftCore.dylib", symbolName);
     }
