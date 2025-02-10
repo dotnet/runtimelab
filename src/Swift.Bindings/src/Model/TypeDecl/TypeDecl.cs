@@ -19,9 +19,9 @@ namespace BindingsGeneration
         public required string MangledName { get; set; }
 
         /// <summary>
-        /// Type fields.
+        /// Type properties.
         /// </summary>
-        public required List<FieldDecl> Fields { get; set; }
+        public required List<PropertyDecl> Properties { get; set; }
 
         /// <summary>
         /// Methods within the base declaration.

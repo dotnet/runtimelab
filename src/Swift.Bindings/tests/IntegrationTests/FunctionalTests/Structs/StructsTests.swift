@@ -257,3 +257,36 @@ public func sumArray(array: Array<Int32>) -> Int32
 {
     return array.reduce(0, +)
 }
+
+@frozen
+public struct PropertiesTestStruct {
+    public let letProperty: Int
+    public var varProperty: Int
+    private let multiplier: Int
+    
+    public init(letValue: Int, varValue: Int, multiplier: Int) {
+        self.letProperty = letValue
+        self.varProperty = varValue
+        self.multiplier = multiplier
+    }
+    
+    public var computedProperty: Int {
+        return letProperty * multiplier
+    }
+}
+
+public struct NonFrozenPropertiesTestStruct {
+    public let letProperty: Int
+    public var varProperty: Int
+    private let multiplier: Int
+    
+    public init(letValue: Int, varValue: Int, multiplier: Int) {
+        self.letProperty = letValue
+        self.varProperty = varValue
+        self.multiplier = multiplier
+    }
+    
+    public var computedProperty: Int {
+        return letProperty * multiplier
+    }
+}

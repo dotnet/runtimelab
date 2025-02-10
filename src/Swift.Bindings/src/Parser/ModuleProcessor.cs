@@ -156,9 +156,9 @@ namespace BindingsGeneration
         /// </exception>
         private void ProcessStructFields(StructDecl structDecl)
         {
-            foreach (var fieldDecl in structDecl.Fields)
+            foreach (var propertyDecl in structDecl.Properties)
             {
-                if (fieldDecl.SwiftTypeSpec is not NamedTypeSpec namedFieldType || fieldDecl.IsStatic)
+                if (propertyDecl.SwiftTypeSpec is not NamedTypeSpec namedFieldType || propertyDecl.IsStatic)
                     continue;
 
                 // If the field is from a different module, ensure that type is already processed.
@@ -169,7 +169,7 @@ namespace BindingsGeneration
                         if (_verbosity > 1)
                         {
                             Console.WriteLine(
-                                $"Skipping field '{fieldDecl.Name}' of type '{namedFieldType.NameWithoutModule}' " +
+                                $"Skipping field '{propertyDecl.Name}' of type '{namedFieldType.NameWithoutModule}' " +
                                 $"from module '{namedFieldType.Module}'. Type should have been processed " +
                                 "in a previous module but was not found.");
                         }
@@ -184,7 +184,7 @@ namespace BindingsGeneration
                         if (_verbosity > 1)
                         {
                             Console.WriteLine(
-                                $"Skipping field '{fieldDecl.Name}' of type '{namedFieldType.NameWithoutModule}' " +
+                                $"Skipping field '{propertyDecl.Name}' of type '{namedFieldType.NameWithoutModule}' " +
                                 $"from module '{namedFieldType.Module}'. Not found in type declarations.");
                         }
                         continue;
@@ -206,9 +206,9 @@ namespace BindingsGeneration
                 return false;
 
             // If any field is not frozen, the struct cannot be frozen.
-            foreach (var fieldDecl in structDecl.Fields)
+            foreach (var propertyDecl in structDecl.Properties)
             {
-                if (fieldDecl.SwiftTypeSpec is not NamedTypeSpec namedFieldType)
+                if (propertyDecl.SwiftTypeSpec is not NamedTypeSpec namedFieldType)
                     continue;
 
                 if (!TryGetTypeRecord(namedFieldType, out var fieldRecord))

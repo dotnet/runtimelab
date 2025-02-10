@@ -50,8 +50,10 @@ namespace BindingsGeneration
         public required string? GenericSig { get; set; }
         public required string? sugared_genericSig { get; set; }
         public required bool? throwing { get; set; }
+        public required string? AccessorKind { get; set; }
         public required IEnumerable<Node> Children { get; set; } = Enumerable.Empty<Node>();
         public required IEnumerable<Node> Conformances { get; set; } = Enumerable.Empty<Node>();
+        public required IEnumerable<Node> Accessors { get; set; } = Enumerable.Empty<Node>();
     }
 
     /// <summary>
@@ -142,7 +144,7 @@ namespace BindingsGeneration
             var moduleDecl = new ModuleDecl
             {
                 Name = ExtractUniqueName(moduleName),
-                Fields = new List<FieldDecl>(),
+                Properties = new List<PropertyDecl>(),
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
                 Dependencies = dependencies,
@@ -154,7 +156,7 @@ namespace BindingsGeneration
 
             dependencies.Remove(moduleName);
 
-            moduleDecl.Fields = decls.OfType<FieldDecl>().ToList();
+            moduleDecl.Properties = decls.OfType<PropertyDecl>().ToList();
             moduleDecl.Methods = decls.OfType<MethodDecl>().ToList();
             moduleDecl.Types = decls.OfType<TypeDecl>().ToList();
             moduleDecl.Dependencies = dependencies;
@@ -209,9 +211,7 @@ namespace BindingsGeneration
                         result = IsOperator(node.Name) ? null : CreateMethodDecl(node, parentDecl, moduleDecl);
                         break;
                     case "Var":
-                        // TODO: Implement computed properties
-                        if (node.DeclAttributes is not null && Array.IndexOf(node.DeclAttributes, "HasStorage") != -1)
-                            result = CreateFieldDecl(node, parentDecl, moduleDecl);
+                        result = CreatePropertyDecl(node, parentDecl, moduleDecl);
                         break;
                     case "Import":
                         break;
@@ -288,7 +288,7 @@ namespace BindingsGeneration
             if (decl is not null)
             {
                 var childDecls = CollectDeclarations(node.Children, decl, moduleDecl);
-                decl.Fields.AddRange(childDecls.OfType<FieldDecl>());
+                decl.Properties.AddRange(childDecls.OfType<PropertyDecl>());
                 decl.Methods.AddRange(childDecls.OfType<MethodDecl>());
                 decl.Types.AddRange(childDecls.OfType<TypeDecl>());
 
@@ -328,7 +328,7 @@ namespace BindingsGeneration
                 Name = ExtractUniqueName(node.Name),
                 SwiftTypeName = GetSwiftTypeName(parentDecl, node.Name),
                 MangledName = node.MangledName,
-                Fields = new List<FieldDecl>(),
+                Properties = new List<PropertyDecl>(),
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
                 Conformances = [.. node.Conformances.Select(x => HandleConformance(x, swiftTypeName))],
@@ -354,7 +354,7 @@ namespace BindingsGeneration
                 Name = ExtractUniqueName(node.Name),
                 SwiftTypeName = swiftTypeName,
                 MangledName = node.MangledName,
-                Fields = new List<FieldDecl>(),
+                Properties = new List<PropertyDecl>(),
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
                 Conformances = [.. node.Conformances.Select(x => HandleConformance(x, swiftTypeName))],
@@ -377,7 +377,7 @@ namespace BindingsGeneration
                 Name = ExtractUniqueName(node.Name),
                 SwiftTypeName = GetSwiftTypeName(parentDecl, node.Name),
                 MangledName = node.MangledName,
-                Fields = new List<FieldDecl>(),
+                Properties = new List<PropertyDecl>(),
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
                 ParentDecl = parentDecl,
@@ -437,27 +437,70 @@ namespace BindingsGeneration
             return methodDecl;
         }
 
-        /// <summary>
-        /// Creates a field declaration from a given node.
-        /// </summary>
-        /// <param name="node">The node representing the field declaration.</param>
-        /// <param name="parentDecl">The parent declaration.</param>
-        /// <param name="moduleDecl">The module declaration.</param>
-        /// <returns>The field declaration.</returns>
-        private FieldDecl CreateFieldDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl)
+        private List<AccessorDecl> HandleAccessors(IEnumerable<Node> accessors, string fieldName, BaseDecl parentDecl, ModuleDecl moduleDecl)
+        {
+            var result = new List<AccessorDecl>();
+
+            foreach (var accessor in accessors)
+            {
+                switch (accessor.AccessorKind)
+                {
+                    case "get":
+                        result.Add(CreateGetAccessor(accessor, fieldName, parentDecl, moduleDecl));
+                        break;
+                    default:
+                        Console.WriteLine($"Unsupported accessor kind '{accessor.AccessorKind}' encountered.");
+                        break;
+                }
+            }
+
+            return result;
+        }
+
+        private GetAccessorDecl CreateGetAccessor(Node accessor, string fieldName, BaseDecl parentDecl, ModuleDecl moduleDecl)
+        {
+            var methodDecl = new MethodDecl
+            {
+                Name = $"{fieldName}_Get",
+                MangledName = accessor.MangledName,
+                MethodType = MethodType.Instance,
+                IsConstructor = false,
+                CSSignature = new List<ArgumentDecl>
+                {
+                    new ArgumentDecl
+                    {
+                        SwiftTypeSpec = CreateTypeSpec(accessor.Children.ElementAt(0)),
+                        Name = string.Empty,
+                        PrivateName = string.Empty,
+                        IsInOut = false,
+                        IsGeneric = false,
+                        ParentDecl = parentDecl,
+                        ModuleDecl = moduleDecl
+                    }
+                },
+                GenericParameters = new List<GenericArgumentDecl>(),
+                ParentDecl = parentDecl,
+                ModuleDecl = moduleDecl,
+                Throws = false,
+                IsAsync = false
+            };
+
+            return new GetAccessorDecl { Method = methodDecl };
+        }
+
+        private PropertyDecl CreatePropertyDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl)
         {
             var typeSpec = CreateTypeSpec(node.Children.ElementAt(0));
-            var fieldDecl = new FieldDecl
+
+            return new PropertyDecl
             {
                 SwiftTypeSpec = typeSpec,
                 Name = node.Name,
-                Visibility = node.IsInternal ?? false ? Visibility.Private : Visibility.Public,
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl,
-                IsStatic = node.@static ?? false
+                IsStatic = node.@static ?? false,
+                Accessors = HandleAccessors(node.Accessors, node.Name, parentDecl, moduleDecl)
             };
-
-            return fieldDecl;
         }
 
         /// <summary>

@@ -74,19 +74,18 @@ namespace BindingsGeneration
             csWriter.WriteLine($"public unsafe struct {structDecl.Name} : {typeof(ISwiftObject).Name} {{");
             csWriter.Indent++;
 
-            // Emit each field in the struct
-            foreach (var fieldDecl in structDecl.Fields)
+            foreach (PropertyDecl propertyDecl in structDecl.Properties)
             {
-                string accessModifier = fieldDecl.Visibility == Visibility.Public ? "public" : "private";
-                var fieldRecord = env.TypeDatabase.GetTypeRecordOrThrow(fieldDecl.SwiftTypeSpec);
-                csWriter.WriteLine($"{accessModifier} {fieldRecord.CSTypeIdentifier} {fieldDecl.Name};");
+                if (conductor.TryGetPropertyHandler(propertyDecl, out var propertyHandler))
+                {
+                    var fieldRecord = env.TypeDatabase.GetTypeRecordOrThrow(propertyDecl.SwiftTypeSpec);
+                    csWriter.WriteLine($"private {fieldRecord.CSTypeIdentifier} {propertyDecl.Name}_;");
 
-                // TODO: Fix memory access violation
-                // // Verify field against Swift type information
-                // if (swiftTypeInfo.HasValue && !VerifyFieldRecord(swiftTypeInfo.Value, structDecl.Fields.IndexOf(fieldDecl), fieldDecl))
-                // {
-                //     Console.WriteLine("Field record does not match the field declaration");
-                // }
+                    var propertyEnv = propertyHandler.Marshal(propertyDecl, env.TypeDatabase);
+                    propertyHandler.Emit(csWriter, swiftWriter, propertyEnv, conductor);
+                }
+                else
+                    Console.WriteLine($"No handler found for property {propertyDecl.Name}");
             }
             csWriter.WriteLine();
 
@@ -98,35 +97,8 @@ namespace BindingsGeneration
             csWriter.Indent--;
             csWriter.WriteLine("}");
         }
-
-        /// <summary>
-        /// Verify field record with the Swift type information.
-        /// </summary>
-        private unsafe bool VerifyFieldRecord(SwiftTypeInfo swiftTypeInfo, int fieldIndex, FieldDecl fieldDecl)
-        {
-            // Access the field descriptor using pointer arithmetic
-            FieldDescriptor* desc = (FieldDescriptor*)IntPtr.Add(
-                (IntPtr)(((StructDescriptor*)swiftTypeInfo.Metadata->TypeDescriptor))->NominalType.FieldsPtr.Target,
-                IntPtr.Size * fieldIndex
-            );
-
-            // Ensure the field number is within bounds
-            if (desc->NumFields <= fieldIndex)
-            {
-                return false;
-            }
-
-            FieldRecord* fieldRecord = desc->GetFieldRecord(fieldIndex);
-
-            // Check field name
-            if ((System.Runtime.InteropServices.Marshal.PtrToStringAnsi((IntPtr)fieldRecord->Name.Target) ?? string.Empty) != fieldDecl.Name)
-            {
-                return false;
-            }
-
-            return true;
-        }
     }
+
 
     /// <summary>
     /// Factory class for creating instances of NonFrozenStructHandler.
@@ -183,6 +155,17 @@ namespace BindingsGeneration
             csWriter.WriteLine($"public unsafe class {structDecl.Name} : IDisposable, {typeof(ISwiftObject).Name}");
             csWriter.WriteLine("{");
             csWriter.Indent++;
+
+            foreach (PropertyDecl propertyDecl in structDecl.Properties)
+            {
+                if (conductor.TryGetPropertyHandler(propertyDecl, out var propertyHandler))
+                {
+                    var propertyEnv = propertyHandler.Marshal(propertyDecl, env.TypeDatabase);
+                    propertyHandler.Emit(csWriter, swiftWriter, propertyEnv, conductor);
+                }
+                else
+                    Console.WriteLine($"No handler found for field {propertyDecl.Name}");
+            }
 
             WritePrivateFields(csWriter, structDecl);
             WriteDisposeMethod(csWriter);

@@ -68,18 +68,12 @@ namespace BindingsGeneration
             csWriter.WriteLine("{");
             csWriter.Indent++;
 
-            // Emit top-level fields and pinvokes
-            if (moduleDecl.Methods.Any() || moduleDecl.Fields.Any())
+            // Emit top-level methods
+            if (moduleDecl.Methods.Any())
             {
                 csWriter.WriteLine($"public class {moduleDecl.Name}");
                 csWriter.WriteLine("{");
                 csWriter.Indent++;
-                foreach (FieldDecl fieldDecl in moduleDecl.Fields)
-                {
-                    string accessModifier = fieldDecl.Visibility == Visibility.Public ? "public" : "private";
-                    var fieldTypeRecord = moduleEnv.TypeDatabase.GetTypeRecordOrThrow(fieldDecl.SwiftTypeSpec);
-                    csWriter.WriteLine($"{accessModifier} {fieldTypeRecord.CSTypeIdentifier} {fieldDecl.Name};");
-                }
                 csWriter.WriteLine();
                 foreach (MethodDecl methodDecl in moduleDecl.Methods)
                 {

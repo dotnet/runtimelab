@@ -65,6 +65,13 @@ namespace BindingsGeneration
     }
 
     /// <summary>
+    /// Interface for handling property declarations.
+    /// </summary>
+    public interface IPropertyHandler : IHandler
+    {
+    }
+
+    /// <summary>
     /// Base class for handling declarations.
     /// </summary>
     public class BaseHandler
