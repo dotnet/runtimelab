@@ -21,14 +21,9 @@ public record TypeRecord
     public required string CSTypeIdentifier { get; init; }
 
     /// <summary>
-    /// The Swift module name.
-    /// </summary>
-    public required string ModuleName { get; init; }
-
-    /// <summary>
     /// The Swift type identifier.
     /// </summary>
-    public required string SwiftTypeIdentifier { get; init; }
+    public required SwiftTypeName SwiftTypeName { get; init; }
 
     /// <summary>
     /// The Swift metadata accessor.

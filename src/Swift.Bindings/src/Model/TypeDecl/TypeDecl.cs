@@ -9,6 +9,11 @@ namespace BindingsGeneration
     public record TypeDecl : BaseDecl
     {
         /// <summary>
+        /// Swift type name.
+        /// </summary>
+        public required SwiftTypeName SwiftTypeName { get; set; }
+
+        /// <summary>
         /// Mangled name of the declaration.
         /// </summary>
         public required string MangledName { get; set; }

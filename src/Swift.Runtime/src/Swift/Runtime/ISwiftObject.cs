@@ -14,7 +14,7 @@ public interface ISwiftObject
     /// <returns>A type metadata object for the type.</returns>
     public static abstract TypeMetadata GetTypeMetadata();
 
-    /// <summary>  
+    /// <summary>
     /// Creates a new Swift object from a given payload
     /// </summary>
     public static abstract ISwiftObject NewFromPayload(SwiftHandle payload);
@@ -30,7 +30,7 @@ public interface ISwiftObject
     public static abstract ProtocolConformanceDescriptor GetProtocolConformanceDescriptor<TProtocol>() where TProtocol : class;
 }
 
-/// <summary>  
+/// <summary>
 /// Helper class for Swift invoking ISwiftObject static methods
 /// </summary>
 public struct SwiftObjectHelper<T> where T : ISwiftObject

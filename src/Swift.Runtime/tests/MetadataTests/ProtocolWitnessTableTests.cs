@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using Swift;
 using Swift.Runtime;
 using Xunit;
 
@@ -29,7 +30,7 @@ public class ProtocolWitnessTableTests : IClassFixture<ProtocolWitnessTableTests
     [Fact]
     public static void TryGetRetrievesProtocolWitnessTable()
     {
-        var result = ProtocolWitnessTable.TryGet<SwiftIntMock, ISwiftHashableMock>(out var protocolWitnessTable);
+        var result = ProtocolWitnessTable.TryGet<SwiftIntMock, ISwiftHashable>(out var protocolWitnessTable);
         Assert.True(result);
         Assert.NotNull(protocolWitnessTable);
         Assert.True(protocolWitnessTable!.Value.IsValid);
@@ -38,7 +39,7 @@ public class ProtocolWitnessTableTests : IClassFixture<ProtocolWitnessTableTests
     [Fact]
     public static void TryGetFailsToRetrieveProtocolWitnessTableWhenTypeDoesNotConformToProtocol()
     {
-        var result = ProtocolWitnessTable.TryGet<TypeNotImplementingAnyProtocols, ISwiftHashableMock>(out var protocolWitnessTable);
+        var result = ProtocolWitnessTable.TryGet<TypeNotImplementingAnyProtocols, ISwiftHashable>(out var protocolWitnessTable);
         Assert.False(result);
         Assert.Null(protocolWitnessTable);
     }
@@ -46,20 +47,20 @@ public class ProtocolWitnessTableTests : IClassFixture<ProtocolWitnessTableTests
     [Fact]
     public static void GetOrThrowRetrievesProtocolWitnessTable()
     {
-        var protocolWitnessTable = ProtocolWitnessTable.GetOrThrow<SwiftIntMock, ISwiftHashableMock>();
+        var protocolWitnessTable = ProtocolWitnessTable.GetOrThrow<SwiftIntMock, ISwiftHashable>();
         Assert.True(protocolWitnessTable.IsValid);
     }
 
     [Fact]
     public static void GetOrThrowThrowsWhenTypeDoesNotConformToProtocol()
     {
-        Assert.Throws<SwiftRuntimeException>(() => ProtocolWitnessTable.GetOrThrow<TypeNotImplementingAnyProtocols, ISwiftHashableMock>());
+        Assert.Throws<SwiftRuntimeException>(() => ProtocolWitnessTable.GetOrThrow<TypeNotImplementingAnyProtocols, ISwiftHashable>());
     }
 
     [Fact]
     public static void FailsToRetrieveProtocolWitnessTableWhenProtocolConformanceDescriptorInvalid()
     {
-        var result = ProtocolWitnessTable.TryGet<AnyTypeMock, ISwiftHashableMock>(out var protocolWitnessTable);
+        var result = ProtocolWitnessTable.TryGet<AnyTypeMock, ISwiftHashable>(out var protocolWitnessTable);
         Assert.False(result);
         Assert.Null(protocolWitnessTable);
     }

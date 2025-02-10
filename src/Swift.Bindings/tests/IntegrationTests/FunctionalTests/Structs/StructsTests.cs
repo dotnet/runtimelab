@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Swift;
+using BindingsGeneration.Tests;
 using Swift;
 using Swift.Runtime;
 using Swift.Runtime.InteropServices;
@@ -355,6 +356,41 @@ namespace BindingsGeneration.FunctionalTests
         [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
         [DllImport("Structs/libStructsTests.dylib", EntryPoint = "$s12StructsTests8sumArray5arrays5Int32VSayAEG_tF")]
         private static extern int PInvoke_SumArray(ArrayBuffer array);
+
+        [Fact]
+        public void TestSwiftSet()
+        {
+            var set = GetSet(42, 17);
+            Assert.Equal(2, set.Count);
+            int sum = SumSet(set);
+            Assert.Equal(42 + 17, sum);
+
+            set = new SwiftSet<SwiftIntMock>();
+            sum = SumSet(set);
+            Assert.Equal(0, sum);
+        }
+
+        // TODO: Remove helper methods when https://github.com/dotnet/runtimelab/issues/2970
+        private static unsafe SwiftSet<SwiftIntMock> GetSet(int a, int b)
+        {
+            Variant variant = PInvoke_GetSet(a, b);
+            return SwiftMarshal.MarshalFromSwift<SwiftSet<SwiftIntMock>>((SwiftHandle)new IntPtr(&variant));
+        }
+
+        private static unsafe int SumSet(SwiftSet<SwiftIntMock> set)
+        {
+            Variant variant = new Variant();
+            SwiftMarshal.MarshalToSwift<SwiftSet<SwiftIntMock>>(set, new IntPtr(&variant));
+            return PInvoke_SumSet(variant);
+        }
+
+        [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
+        [DllImport("Structs/libStructsTests.dylib", EntryPoint = "$s12StructsTests8getArray1a1bSays5Int32VGAF_AFtF")]
+        private static extern Variant PInvoke_GetSet(int a, int b);
+
+        [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
+        [DllImport("Structs/libStructsTests.dylib", EntryPoint = "$s12StructsTests8sumArray5arrays5Int32VSayAEG_tF")]
+        private static extern int PInvoke_SumSet(Variant array);
 
         [Fact]
         public void TestString()

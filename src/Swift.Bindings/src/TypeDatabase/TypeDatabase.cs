@@ -18,23 +18,10 @@ namespace BindingsGeneration
         // This store is intended for types which are encountered in one module but should belong to another.
         // This is true for closed generics, where a generic definition is in one module and instantiation is in another.
         // TODO: This is a temporary solution and should be replaced with a more robust mechanism.
-        private readonly ConcurrentDictionary<string, TypeRecord> _outOfModuleTypes = new();
+        private readonly ConcurrentDictionary<SwiftTypeName, TypeRecord> _outOfModuleTypes = new();
 
         public TypeDatabase()
         {
-            var voidModuleRecord = new ModuleTypeDatabase("", "");
-            voidModuleRecord.RegisterType("()", new TypeRecord()
-            {
-                CSTypeIdentifier = "void",
-                SwiftTypeIdentifier = "()",
-                MetadataAccessor = string.Empty,
-                Namespace = string.Empty,
-                ModuleName = string.Empty,
-                IsBlittable = true,
-                IsFrozen = true,
-            });
-
-            AddModuleDatabase(voidModuleRecord);
         }
 
         /// <summary>
@@ -148,42 +135,35 @@ namespace BindingsGeneration
                 if (swiftTypeIdentifier == null || csharpTypeIdentifier == null)
                     throw new Exception("Invalid XML structure: Missing attributes.");
 
+
+                var swiftTypeName = SwiftTypeName.FromModuleQualifiedName($"{moduleName}.{swiftTypeIdentifier}"); // TODO: Change layout of xml
                 var typeRecord = new TypeRecord()
                 {
                     CSTypeIdentifier = csharpTypeIdentifier,
-                    SwiftTypeIdentifier = swiftTypeIdentifier,
+                    SwiftTypeName = swiftTypeName,
                     MetadataAccessor = swiftMangledName,
                     Namespace = @namespace,
-                    ModuleName = moduleName,
                     IsBlittable = blittable.ToLower() == "true",
                     IsFrozen = frozen.ToLower() == "true",
                 };
 
-                moduleDatabase.RegisterType(swiftTypeIdentifier, typeRecord);
+                moduleDatabase.RegisterType(swiftTypeName, typeRecord);
             }
 
             return moduleDatabase;
         }
 
-        /// <summary>
-        /// Attempts to retrieve the type record for a specified type identifier within a module.
-        /// </summary>
-        /// <param name="moduleName">The name of the module.</param>
-        /// <param name="typeIdentifier">The identifier for the Swift type.</param>
-        /// <param name="record">
-        /// When this method returns, contains the type record if found; otherwise, <c>null</c>.
-        /// </param>
-        /// <returns><c>true</c> if the type record was found; otherwise, <c>false</c>.</returns>
-        public bool TryGetTypeRecord(string moduleName, string typeIdentifier, [NotNullWhen(returnValue: true)] out TypeRecord? record)
+        /// <inheritdoc/>
+        public bool TryGetTypeRecord(SwiftTypeName swiftTypeName, [NotNullWhen(returnValue: true)] out TypeRecord? record)
         {
-            if (_modules.TryGetValue(moduleName, out var moduleDatabase))
+            if (_modules.TryGetValue(swiftTypeName.Module, out var moduleDatabase))
             {
-                if (moduleDatabase.TryGetTypeRecord(typeIdentifier, out record))
+                if (moduleDatabase.TryGetTypeRecord(swiftTypeName, out record))
                     return true;
             }
 
             // Try looking in the out-of-module types
-            if (_outOfModuleTypes.TryGetValue($"{moduleName}.{typeIdentifier}", out record))
+            if (_outOfModuleTypes.TryGetValue(swiftTypeName, out record))
                 return true;
 
             return false;
@@ -199,16 +179,11 @@ namespace BindingsGeneration
             return _modules.ContainsKey(moduleName);
         }
 
-        /// <summary>
-        /// Checks whether a specific type in a specified module has been processed.
-        /// </summary>
-        /// <param name="moduleName">The name of the module.</param>
-        /// <param name="typeIdentifier">The identifier for the Swift type.</param>
-        /// <returns><c>true</c> if the type has been processed; otherwise, <c>false</c>.</returns>
-        public bool IsTypeProcessed(string moduleName, string typeIdentifier)
+        /// <inheritdoc/>
+        public bool IsTypeProcessed(SwiftTypeName swiftTypeName)
         {
-            if (_modules.TryGetValue(moduleName, out var moduleDatabase))
-                return moduleDatabase.IsTypeProcessed(typeIdentifier);
+            if (_modules.TryGetValue(swiftTypeName.Module, out var moduleDatabase))
+                return moduleDatabase.IsTypeProcessed(swiftTypeName);
 
             return false;
         }
@@ -233,7 +208,7 @@ namespace BindingsGeneration
         /// Populates the out-of-module types store with the specified types.
         /// </summary>
         /// <param name="types">The types to add.</param>
-        public void AddOutOfModuleTypes(IEnumerable<(string identifier, TypeRecord record)> types)
+        public void AddOutOfModuleTypes(IEnumerable<(SwiftTypeName identifier, TypeRecord record)> types)
         {
             foreach (var (identifier, record) in types)
             {

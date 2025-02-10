@@ -56,7 +56,7 @@ namespace BindingsGeneration
             var parentDecl = structDecl.ParentDecl ?? throw new ArgumentNullException(nameof(structDecl.ParentDecl));
             var moduleDecl = structDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(structDecl.ParentDecl));
             // Retrieve type info from the type database
-            var typeRecord = env.TypeDatabase.GetTypeRecordOrThrow(moduleDecl.Name, structDecl.FullyQualifiedNameWithoutModule);
+            var typeRecord = env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
 
             var ISwiftObjectMethodWriter = new ISwiftObjectMethodWriter(csWriter, env.TypeDatabase, moduleDecl, structDecl);
 
@@ -535,11 +535,11 @@ namespace BindingsGeneration
             var entries = new List<string>();
             var protocolConformanceDescriptors = DemangledSymbolsRegister.Instance.GetData(libPath).ProtocolConformanceDescriptors;
 
-            foreach (var conformance in _structDecl.Conformances.Where(c => c.ProtocolSpec.Module == _moduleDecl.Name)) // Process only protocol conformances from current module for now
+            foreach (var conformance in _structDecl.Conformances.Where(c => c.Protocol.Module == _moduleDecl.Name)) // Process only protocol conformances from current module for now
             {
-                var protocol = NameProvider.GetInterfaceName(conformance.ProtocolSpec.NameWithoutModule);
-                var typeRecord = _typeDatabase.GetTypeRecordOrThrow(_moduleDecl.Name, _structDecl.FullyQualifiedNameWithoutModule);
-                var protocolConformanceSymbol = protocolConformanceDescriptors.GetValueOrDefault((new NamedTypeSpec(_structDecl.FullyQualifiedName), conformance.ProtocolSpec)); // TODO: Get rid of TypeSpec https://github.com/dotnet/runtimelab/issues/2889
+                var protocol = NameProvider.GetInterfaceName(conformance.Protocol.Name);
+                var typeRecord = _typeDatabase.GetTypeRecordOrThrow(_structDecl.SwiftTypeName);
+                var protocolConformanceSymbol = protocolConformanceDescriptors.GetValueOrDefault((_structDecl.SwiftTypeName, conformance.Protocol)); // TODO: Get rid of TypeSpec https://github.com/dotnet/runtimelab/issues/2889
 
                 entries.Add($"{{typeof({protocol}), \"{protocolConformanceSymbol}\"}}");
             }

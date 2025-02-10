@@ -3,6 +3,9 @@
 
 namespace BindingsGeneration;
 
+// TODO: TypeDatabase should hold only nominal types (represented by NamedTypeSpec). Specifically tuples, closures etc. should not reside inside TypeDatabase.
+// Functions taking TypeSpec should be moved into another class which will handle construction of complex types using nominal types.
+
 public static class TypeDatabaseExtensions
 {
     /// <summary>
@@ -13,36 +16,52 @@ public static class TypeDatabaseExtensions
     /// <returns>True if the type has been processed; otherwise, false.</returns>
     public static bool IsTypeProcessed(this ITypeDatabase typeDatabase, TypeSpec typeSpec)
     {
-        switch (typeSpec)
+        return typeSpec switch
         {
-            case NamedTypeSpec namedTypeSpec:
-                string typeIdentifier = namedTypeSpec.NameWithoutModuleWithGenericParameters;
-                return typeDatabase.IsTypeProcessed(namedTypeSpec.Module, typeIdentifier);
-            case TupleTypeSpec tupleTypeSpec:
-                return typeDatabase.IsTypeProcessed(string.Empty, tupleTypeSpec.ToString(true));
-            default:
-                return false;
-        }
+            NamedTypeSpec namedTypeSpec => typeDatabase.IsTypeProcessed(namedTypeSpec),
+            TupleTypeSpec { IsEmptyTuple: true } => true,
+            _ => false
+        };
     }
 
     /// <summary>
-    /// Gets the type record for the specified Swift type or throws an exception if the type is not found.
+    /// Determines whether the specified Swift type has been processed.
+    /// </summary>
+    /// <param name="typeDatabase">The type database.</param>
+    /// <param name="typeSpec">The Swift type specification.</param>
+    /// <returns>True if the type has been processed; otherwise, false.</returns>
+    public static bool IsTypeProcessed(this ITypeDatabase typeDatabase, NamedTypeSpec typeSpec)
+    {
+        var typeName = SwiftTypeNameConverter.ConvertWithGenericParameters(typeSpec);
+        return typeDatabase.IsTypeProcessed(typeName);
+    }
+
+    /// <summary>
+    /// Gets the type record for the specified Swift type or the Any type if the type is not found.
     /// </summary>
     /// <param name="typeDatabase">The type database.</param>
     /// <param name="typeSpec">The Swift type specification.</param>
     /// <returns>The type record.</returns>
     public static TypeRecord GetTypeRecordOrAnyType(this ITypeDatabase typeDatabase, TypeSpec typeSpec)
     {
-        switch (typeSpec)
+        return typeSpec switch
         {
-            case NamedTypeSpec namedTypeSpec:
-                string typeIdentifier = namedTypeSpec.NameWithoutModuleWithGenericParameters;
-                return typeDatabase.GetTypeRecordOrAnyType(namedTypeSpec.Module, typeIdentifier);
-            case TupleTypeSpec tupleTypeSpec:
-                return typeDatabase.GetTypeRecordOrAnyType(string.Empty, tupleTypeSpec.ToString(true));
-            default:
-                return GetAnyType();
-        }
+            NamedTypeSpec namedTypeSpec => typeDatabase.GetTypeRecordOrAnyType(namedTypeSpec),
+            TupleTypeSpec { IsEmptyTuple: true } => VoidType,
+            _ => AnyType
+        };
+    }
+
+    /// <summary>
+    /// Gets the type record for the specified Swift type or the Any type if the type is not found.
+    /// </summary>
+    /// <param name="typeDatabase">The type database.</param>
+    /// <param name="typeSpec">The Swift type specification.</param>
+    /// <returns>The type record.</returns>
+    public static TypeRecord GetTypeRecordOrAnyType(this ITypeDatabase typeDatabase, NamedTypeSpec typeSpec)
+    {
+        var typeName = SwiftTypeNameConverter.ConvertWithGenericParameters(typeSpec);
+        return typeDatabase.GetTypeRecordOrAnyType(typeName);
     }
 
     /// <summary>
@@ -53,63 +72,75 @@ public static class TypeDatabaseExtensions
     /// <returns>The type record.</returns>
     public static TypeRecord GetTypeRecordOrThrow(this ITypeDatabase typeDatabase, TypeSpec typeSpec)
     {
-        switch (typeSpec)
+        return typeSpec switch
         {
-            case NamedTypeSpec namedTypeSpec:
-                string typeIdentifier = namedTypeSpec.NameWithoutModuleWithGenericParameters;
-                return typeDatabase.GetTypeRecordOrThrow(namedTypeSpec.Module, typeIdentifier);
-            case TupleTypeSpec tupleTypeSpec:
-                return typeDatabase.GetTypeRecordOrThrow(string.Empty, tupleTypeSpec.ToString(true));
-            default:
-                throw new InvalidOperationException("Cannot get type record for non-named type.");
-        }
+            NamedTypeSpec namedTypeSpec => typeDatabase.GetTypeRecordOrThrow(namedTypeSpec),
+            TupleTypeSpec { IsEmptyTuple: true } => VoidType,
+            _ => throw new ArgumentException($"Attempted to read TypeRecord of unsupported type spec: {typeSpec}")
+        };
     }
 
     /// <summary>
     /// Gets the type record for the specified Swift type or throws an exception if the type is not found.
     /// </summary>
     /// <param name="typeDatabase">The type database.</param>
-    /// <param name="moduleName">The Swift module name.</param>
-    /// <param name="typeIdentifier">The Swift type identifier.</param>
+    /// <param name="typeSpec">The Swift type specification.</param>
     /// <returns>The type record.</returns>
-    public static TypeRecord GetTypeRecordOrThrow(this ITypeDatabase typeDatabase, string moduleName, string typeIdentifier)
+    public static TypeRecord GetTypeRecordOrThrow(this ITypeDatabase typeDatabase, NamedTypeSpec typeSpec)
     {
-        if (typeDatabase.TryGetTypeRecord(moduleName, typeIdentifier, out var record))
+        var typeName = SwiftTypeNameConverter.ConvertWithGenericParameters(typeSpec);
+        return typeDatabase.GetTypeRecordOrThrow(typeName);
+    }
+
+    /// <summary>
+    /// Gets the type record for the specified Swift type or throws an exception if the type is not found.
+    /// </summary>
+    /// <param name="typeDatabase">The type database.</param>
+    /// <param name="swiftTypeName">The Swift type name.</param>
+    /// <returns>The type record.</returns>
+    public static TypeRecord GetTypeRecordOrThrow(this ITypeDatabase typeDatabase, SwiftTypeName swiftTypeName)
+    {
+        if (typeDatabase.TryGetTypeRecord(swiftTypeName, out var record))
             return record;
 
-        throw new Exception($"Type {moduleName}.{typeIdentifier} not found in database.");
+        throw new Exception($"Type {swiftTypeName.ModuleQualifiedName} not found in database.");
     }
 
     /// <summary>
     /// Gets the type record for the specified Swift type or the Any type if the type is not found.
     /// </summary>
     /// <param name="typeDatabase">The type database.</param>
-    /// <param name="moduleName">The Swift module name.</param>
-    /// <param name="typeIdentifier">The Swift type identifier.</param>
+    /// <param name="swiftTypeName">The Swift type name.</param>
     /// <returns>The type record.</returns>
-    public static TypeRecord GetTypeRecordOrAnyType(this ITypeDatabase typeDatabase, string moduleName, string typeIdentifier)
+    public static TypeRecord GetTypeRecordOrAnyType(this ITypeDatabase typeDatabase, SwiftTypeName swiftTypeName)
     {
-        if (typeDatabase.TryGetTypeRecord(moduleName, typeIdentifier, out var record))
+        if (typeDatabase.TryGetTypeRecord(swiftTypeName, out var record))
             return record;
 
-        return GetAnyType();
+        return AnyType;
     }
 
     /// <summary>
     /// Gets the type record for the Any type.
     /// </summary>
     /// <returns>The type record for the Any type.</returns>
-    public static TypeRecord GetAnyType()
+    static readonly TypeRecord AnyType = new TypeRecord
     {
-        return new TypeRecord
-        {
-            Namespace = "Swift",
-            CSTypeIdentifier = "AnyType",
-            ModuleName = "Swift",
-            SwiftTypeIdentifier = "AnyType",
-            MetadataAccessor = string.Empty,
-            IsBlittable = false,
-            IsFrozen = false
-        };
-    }
+        Namespace = "Swift",
+        CSTypeIdentifier = "AnyType",
+        SwiftTypeName = SwiftTypeName.AnyType,
+        MetadataAccessor = string.Empty,
+        IsBlittable = false,
+        IsFrozen = false
+    };
+
+    static readonly TypeRecord VoidType = new TypeRecord
+    {
+        Namespace = "",
+        CSTypeIdentifier = "void",
+        SwiftTypeName = SwiftTypeName.VoidType,
+        MetadataAccessor = string.Empty,
+        IsBlittable = true,
+        IsFrozen = true
+    };
 }
