@@ -110,11 +110,11 @@ public class NamedTypeSpec : TypeSpec
         }
     }
 
-    public string NameWithoutModuleWithGenericParameters
+    public string NameWithGenericParameters
     {
         get
         {
-            return NameWithoutModule + (GenericParameters.Count > 0 ? "<" + string.Join(", ", GenericParameters) + ">" : "");
+            return Name + (GenericParameters.Count > 0 ? "<" + string.Join(", ", GenericParameters) + ">" : "");
         }
     }
 

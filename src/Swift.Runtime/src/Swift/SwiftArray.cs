@@ -73,8 +73,11 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
 
     unsafe ~SwiftArray()
     {
-        Arc.Release(*(IntPtr*)_buffer.storage);
-        _buffer.storage = IntPtr.Zero;
+        if (_buffer.storage != IntPtr.Zero)
+        {
+            Arc.Release(*(IntPtr*)_buffer.storage);
+            _buffer.storage = IntPtr.Zero;
+        }
     }
 
     public static nuint PayloadSize => _payloadSize;

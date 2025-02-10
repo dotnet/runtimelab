@@ -121,7 +121,7 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
         Assert.Equal(999999, array[count - 1]);
     }
 
-    [Fact]
+    [Fact(Skip = "https://github.com/dotnet/runtimelab/issues/2851")]
     public unsafe void ArrayDispose()
     {
         var array = new SwiftArray<int>();

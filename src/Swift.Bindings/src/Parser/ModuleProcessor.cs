@@ -53,22 +53,23 @@ namespace BindingsGeneration
         /// <summary>
         /// Tries to retrieve a <see cref="TypeRecord"/> for the specified Swift type.
         /// </summary>
-        /// <param name="moduleName">The Swift module name.</param>
-        /// <param name="typeIdentifier">The Swift type identifier.</param>
+        /// <param name="swiftTypeSpec">The Swift type specification.</param>
         /// <param name="record">
         /// When this method returns, contains the <see cref="TypeRecord"/> if found; otherwise, <c>null</c>.
         /// </param>
         /// <returns><c>true</c> if the type was found; otherwise, <c>false</c>.</returns>
-        private bool TryGetTypeRecord(string moduleName, string typeIdentifier, [NotNullWhen(true)] out TypeRecord? record)
+        private bool TryGetTypeRecord(NamedTypeSpec swiftTypeSpec, [NotNullWhen(true)] out TypeRecord? record)
         {
+            var swiftTypeName = SwiftTypeNameConverter.Convert(swiftTypeSpec);
+
             // First, check if this module is the one being processed.
-            if (moduleName == _module)
+            if (swiftTypeName.Module == _module)
             {
-                return _moduleDatabase.TryGetTypeRecord(typeIdentifier, out record);
+                return _moduleDatabase.TryGetTypeRecord(swiftTypeName, out record);
             }
 
             // Otherwise, fall back to checking the global type database.
-            return _typeDatabase.TryGetTypeRecord(moduleName, typeIdentifier, out record);
+            return _typeDatabase.TryGetTypeRecord(swiftTypeName, out record);
         }
 
         /// <summary>
@@ -94,7 +95,7 @@ namespace BindingsGeneration
         /// <param name="typeDecl">The associated type declaration.</param>
         private void ProcessTypeRecursively(NamedTypeSpec namedTypeSpec, TypeDecl typeDecl)
         {
-            if (_moduleDatabase.IsTypeProcessed(namedTypeSpec.NameWithoutModule))
+            if (_moduleDatabase.IsTypeProcessed(SwiftTypeNameConverter.Convert(namedTypeSpec)))
                 return;
 
             switch (typeDecl)
@@ -163,7 +164,7 @@ namespace BindingsGeneration
                 // If the field is from a different module, ensure that type is already processed.
                 if (namedFieldType.Module != _module)
                 {
-                    if (!_typeDatabase.IsTypeProcessed(namedFieldType.Module, namedFieldType.NameWithoutModule))
+                    if (!_typeDatabase.IsTypeProcessed(namedFieldType))
                     {
                         if (_verbosity > 1)
                         {
@@ -210,7 +211,7 @@ namespace BindingsGeneration
                 if (fieldDecl.SwiftTypeSpec is not NamedTypeSpec namedFieldType)
                     continue;
 
-                if (!TryGetTypeRecord(namedFieldType.Module, namedFieldType.NameWithoutModule, out var fieldRecord))
+                if (!TryGetTypeRecord(namedFieldType, out var fieldRecord))
                 {
                     throw new Exception($"Type not found in the database: {namedFieldType}");
                 }
@@ -253,17 +254,17 @@ namespace BindingsGeneration
         {
             var typeRecord = new TypeRecord
             {
-                ModuleName = namedTypeSpec.Module,
+                SwiftTypeName = structDecl.SwiftTypeName,
                 Namespace = namedTypeSpec.Module, // TODO: Correctly map to a .NET namespace
-                SwiftTypeIdentifier = namedTypeSpec.NameWithoutModule,
-                CSTypeIdentifier = structDecl.FullyQualifiedNameWithoutModule,
+                // TODO: Remove this logic once correct csharp type names are used
+                CSTypeIdentifier = structDecl.SwiftTypeName.Module == "" ? structDecl.SwiftTypeName.Name : structDecl.SwiftTypeName.ModuleQualifiedName.Substring(structDecl.SwiftTypeName.ModuleQualifiedName.IndexOf(".") + 1),
                 SwiftTypeInfo = swiftTypeInfo,
                 MetadataAccessor = $"{structDecl.MangledName}Ma",
                 IsBlittable = isBlittable,
                 IsFrozen = isFrozen
             };
 
-            _moduleDatabase.RegisterType(namedTypeSpec.NameWithoutModule, typeRecord);
+            _moduleDatabase.RegisterType(structDecl.SwiftTypeName, typeRecord);
         }
 
         /// <summary>

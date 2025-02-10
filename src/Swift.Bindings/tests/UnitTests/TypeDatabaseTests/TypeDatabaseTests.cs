@@ -45,20 +45,20 @@ namespace BindingsGeneration.Tests
         {
             var typeDatabase = new TypeDatabase();
             var module = new ModuleTypeDatabase("TestModule", "/fake/path");
+            var swiftTypeName = SwiftTypeName.FromModuleQualifiedName("TestModule.MyType");
             var myType = new TypeRecord
             {
                 CSTypeIdentifier = "MyType",
-                SwiftTypeIdentifier = "MyType",
+                SwiftTypeName = swiftTypeName,
                 MetadataAccessor = "mangledAccessor",
                 Namespace = "BindingsGeneration.Tests",
-                ModuleName = "TestModule",
                 IsBlittable = false,
                 IsFrozen = false
             };
-            module.RegisterType("MyType", myType);
+            module.RegisterType(swiftTypeName, myType);
             typeDatabase.AddModuleDatabase(module);
 
-            var found = typeDatabase.TryGetTypeRecord("TestModule", "MyType", out var record);
+            var found = typeDatabase.TryGetTypeRecord(swiftTypeName, out var record);
 
             Assert.True(found);
             Assert.NotNull(record);
@@ -70,9 +70,10 @@ namespace BindingsGeneration.Tests
         {
             var typeDatabase = new TypeDatabase();
             var module = new ModuleTypeDatabase("TestModule", "/fake/path");
+            var swiftTypeName = SwiftTypeName.FromModuleQualifiedName("TestModule.MyType");
             typeDatabase.AddModuleDatabase(module);
 
-            var found = typeDatabase.TryGetTypeRecord("TestModule", "NonExistentType", out var record);
+            var found = typeDatabase.TryGetTypeRecord(swiftTypeName, out var record);
 
             Assert.False(found);
             Assert.Null(record);
@@ -83,31 +84,30 @@ namespace BindingsGeneration.Tests
         {
             var typeDatabase = new TypeDatabase();
             var module = new ModuleTypeDatabase("TestModule", "/fake/path");
+            var swiftTypeName = SwiftTypeName.FromModuleQualifiedName("AnotherModule.MyOutOfModuleType");
             typeDatabase.AddModuleDatabase(module);
 
-            var outOfModuleIdentifier = "TestModule.MyOutOfModuleType";
             var outOfModuleRecord = new TypeRecord
             {
                 CSTypeIdentifier = "MyOutOfModuleType",
-                SwiftTypeIdentifier = "MyOutOfModuleType",
+                SwiftTypeName = swiftTypeName,
                 MetadataAccessor = "mangledOutOfModule",
                 Namespace = "BindingsGeneration.Tests",
-                ModuleName = "AnotherModule",
                 IsBlittable = false,
                 IsFrozen = false
             };
 
             typeDatabase.AddOutOfModuleTypes(new[]
             {
-                (outOfModuleIdentifier, outOfModuleRecord)
+                (swiftTypeName, outOfModuleRecord)
             });
 
-            var found = typeDatabase.TryGetTypeRecord("TestModule", "MyOutOfModuleType", out var record);
+            var found = typeDatabase.TryGetTypeRecord(swiftTypeName, out var record);
 
             Assert.True(found);
             Assert.NotNull(record);
             Assert.Equal("MyOutOfModuleType", record!.CSTypeIdentifier);
-            Assert.Equal("AnotherModule", record.ModuleName);
+            Assert.Equal("AnotherModule", record.SwiftTypeName.Module);
         }
 
         [Fact]
@@ -116,19 +116,19 @@ namespace BindingsGeneration.Tests
             // Arrange
             var typeDatabase = new TypeDatabase();
             var module = new ModuleTypeDatabase("TestModule", "/fake/path");
-            module.RegisterType("ProcessedType", new TypeRecord
+            var swiftTypeName = SwiftTypeName.FromModuleQualifiedName("TestModule.ProcessedType");
+            module.RegisterType(swiftTypeName, new TypeRecord
             {
                 CSTypeIdentifier = "ProcessedType",
-                SwiftTypeIdentifier = "ProcessedType",
+                SwiftTypeName = swiftTypeName,
                 MetadataAccessor = string.Empty,
                 Namespace = string.Empty,
-                ModuleName = "TestModule",
                 IsBlittable = false,
                 IsFrozen = false
             });
             typeDatabase.AddModuleDatabase(module);
 
-            var result = typeDatabase.IsTypeProcessed("TestModule", "ProcessedType");
+            var result = typeDatabase.IsTypeProcessed(swiftTypeName);
 
             Assert.True(result);
         }
@@ -138,9 +138,11 @@ namespace BindingsGeneration.Tests
         {
             var typeDatabase = new TypeDatabase();
             var module = new ModuleTypeDatabase("TestModule", "/fake/path");
+            var swiftTypeName = SwiftTypeName.FromModuleQualifiedName("TestModule.UnprocessedType");
+
             typeDatabase.AddModuleDatabase(module);
 
-            var result = typeDatabase.IsTypeProcessed("TestModule", "UnprocessedType");
+            var result = typeDatabase.IsTypeProcessed(swiftTypeName);
 
             Assert.False(result);
         }
