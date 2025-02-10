@@ -98,7 +98,7 @@ public struct SwiftString : ISwiftObject
         {
             fixed (byte* utf8BytesPtr = utf8Bytes)
             {
-                _payload = Create(utf8BytesPtr, utf8Bytes.Length, 1);
+                _payload = PInvoke_Create(utf8BytesPtr, utf8Bytes.Length, 1);
             }
         }
     }
@@ -106,7 +106,7 @@ public struct SwiftString : ISwiftObject
     /// <summary>
     /// Gets the length of string.
     /// </summary>
-    public int Length => (int)GetLength(_payload);
+    public int Length => (int)PInvoke_GetLength(_payload);
 
     /// <summary>
     /// Converts the SwiftString to a C# string.
@@ -124,8 +124,8 @@ public struct SwiftString : ISwiftObject
 
             string? str = null;
 
-            var arr = GetUtf8ContiguousArray(_payload);
-            WithUnsafeBytes(bytes =>
+            var arr = PInvoke_GetUtf8ContiguousArray(_payload);
+            PInvoke_WithUnsafeBytes(bytes =>
                 {
                     unsafe
                     {
@@ -146,19 +146,19 @@ public struct SwiftString : ISwiftObject
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, CharSet = CharSet.Unicode, EntryPoint = "$sSS21_builtinStringLiteral17utf8CodeUnitCount7isASCIISSBp_BwBi1_tcfC")]
-    public static unsafe extern Data Create(byte* str, long len, byte flag);
+    public static unsafe extern Data PInvoke_Create(byte* str, long len, byte flag);
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSS5countSivg")]
-    public static extern long GetLength(Data str);
+    public static extern long PInvoke_GetLength(Data str);
 
     // https://developer.apple.com/documentation/swift/string/utf8cstring
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSS11utf8CStrings15ContiguousArrayVys4Int8VGvg")]
-    public static unsafe extern IntPtr GetUtf8ContiguousArray(Data str);
+    public static unsafe extern IntPtr PInvoke_GetUtf8ContiguousArray(Data str);
 
     // https://developer.apple.com/documentation/swift/contiguousarray/withunsafebytes(_:)
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$ss15ContiguousArrayV15withUnsafeBytesyqd__qd__SWKXEKlF")]
-    public static extern unsafe IntPtr WithUnsafeBytes(CallbackDelegate callback, IntPtr context, IntPtr contiguousArray, TypeMetadata elementType, TypeMetadata resultType);
+    public static extern unsafe IntPtr PInvoke_WithUnsafeBytes(CallbackDelegate callback, IntPtr context, IntPtr contiguousArray, TypeMetadata elementType, TypeMetadata resultType);
 }
