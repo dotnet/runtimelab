@@ -104,32 +104,22 @@ public struct SwiftString : ISwiftObject
     /// </summary>
     public override string ToString()
     {
-        unsafe
-        {
             var elementType = TypeMetadata.GetTypeMetadataOrThrow<byte>();
             var resultType = TypeMetadata.GetTypeMetadataOrThrow<long>();
 
-            var len = Length;
-            if (len <= 0)
+            var length = Length;
+            if (length <= 0)
                 return string.Empty;
 
-            string? str = null;
-
-            var arr = PInvoke_GetUtf8ContiguousArray(_payload);
-            PInvoke_WithUnsafeBytes(bytes =>
-                {
-                    unsafe
-                    {
-                        str = Encoding.UTF8.GetString((byte*)bytes, len);
-                        return IntPtr.Zero;
-                    }
-                }, IntPtr.Zero, arr, elementType, resultType);
-
-            return str!;
-        }
+            var contiguousArray = PInvoke_GetUtf8ContiguousArray(_payload);
+            unsafe
+            {
+                IntPtr utf8Ptr = PInvoke_WithUnsafeBytes(&WithUnsafeBytesCallback, (IntPtr)(int*)&length, contiguousArray, elementType, resultType);
+                string result = Marshal.PtrToStringUTF8(utf8Ptr, length);
+                NativeMemory.Free((void*)utf8Ptr);
+                return result;
+            }
     }
-
-    public unsafe delegate IntPtr CallbackDelegate(IntPtr param);
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSSMa")]
@@ -151,5 +141,17 @@ public struct SwiftString : ISwiftObject
     // https://developer.apple.com/documentation/swift/contiguousarray/withunsafebytes(_:)
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$ss15ContiguousArrayV15withUnsafeBytesyqd__qd__SWKXEKlF")]
-    public static extern unsafe IntPtr PInvoke_WithUnsafeBytes(CallbackDelegate callback, IntPtr context, IntPtr contiguousArray, TypeMetadata elementType, TypeMetadata resultType);
+    public static extern unsafe IntPtr PInvoke_WithUnsafeBytes(delegate* unmanaged[Swift]<byte*, SwiftSelf, IntPtr> callback, IntPtr context, IntPtr contiguousArray, TypeMetadata elementType, TypeMetadata resultType);
+
+    [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvSwift) })]
+    public static unsafe IntPtr WithUnsafeBytesCallback(byte* bytes, SwiftSelf context)
+    {
+        int length = *(int*)context.Value;
+        void* utf8Ptr = NativeMemory.Alloc((nuint)(length + 1));
+        Buffer.MemoryCopy(bytes, utf8Ptr, length, length);
+
+        ((byte*)utf8Ptr)[length] = 0;
+
+        return (IntPtr)utf8Ptr;
+    }
 }
