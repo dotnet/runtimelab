@@ -820,7 +820,8 @@ namespace BindingsGeneration
                 true => $"<{string.Join(", ", _env.MethodDecl.GenericParameters.Select(p => _env.GenericTypeMapping[p.TypeName].TypeParameter))}>",
                 false => ""
             };
-            csWriter.WriteLine($"public {_env.ParentDecl.Name}{genericParams}({_wrapperSignature.ParametersString()})");
+            var accessModifier = NameProvider.GetAccessModifier(_env.MethodDecl.Visibility);
+            csWriter.WriteLine($"{accessModifier} {_env.ParentDecl.Name}{genericParams}({_wrapperSignature.ParametersString()})");
         }
 
         /// <summary>
@@ -844,7 +845,8 @@ namespace BindingsGeneration
                 returnType = $"Task{(_env.MethodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple ? "" : $"<{_wrapperSignature.ReturnType}>")}";
             }
 
-            csWriter.WriteLine($"public {staticKeyword}{unsafeKeyword}{returnType} {_env.MethodDecl.Name}{genericParams}({_wrapperSignature.ParametersString()})");
+            var accessModifier = NameProvider.GetAccessModifier(_env.MethodDecl.Visibility);
+            csWriter.WriteLine($"{accessModifier} {staticKeyword}{unsafeKeyword}{returnType} {_env.MethodDecl.Name}{genericParams}({_wrapperSignature.ParametersString()})");
         }
 
         /// <summary>

@@ -65,4 +65,14 @@ public static class NameProvider
     public static string GetMetadataName(string typeName) => $"{typeName}Metadata";
     public static string GetPayloadName(string argumentName) => $"{argumentName}Payload";
     public static string GetProtocolWitnessTableName(string typeName, string protocolName) => $"{typeName}{protocolName}PWT";
+
+    /// <summary>
+    /// Maps visibility to C# access modifier keyword.
+    /// </summary>
+    public static string GetAccessModifier(Visibility visibility) => visibility switch
+    {
+        Visibility.Public => "public",
+        Visibility.Private => "private",
+        _ => throw new ArgumentException($"Unknown visibility: {visibility}")
+    };
 }

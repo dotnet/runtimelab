@@ -23,20 +23,4 @@ namespace BindingsGeneration
         /// </summary>
         public required IReadOnlyList<AccessorDecl> Accessors { get; init; }
     }
-
-    /// <summary>
-    /// Represents the visibility of a declaration.
-    /// </summary>
-    public enum Visibility
-    {
-        /// <summary>
-        /// Public visibility.
-        /// </summary>
-        Public,
-
-        /// <summary>
-        /// Private visibility.
-        /// </summary>
-        Private
-    }
 }

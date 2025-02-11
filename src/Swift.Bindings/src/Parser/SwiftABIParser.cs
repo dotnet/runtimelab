@@ -415,7 +415,8 @@ namespace BindingsGeneration
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl,
                 Throws = node.throwing ?? false,
-                IsAsync = functionReduction?.Function?.IsAsync ?? false
+                IsAsync = functionReduction?.Function?.IsAsync ?? false,
+                Visibility = Visibility.Public,
             };
 
             for (int i = 0; i < node.Children.Count(); i++)
@@ -482,7 +483,8 @@ namespace BindingsGeneration
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl,
                 Throws = false,
-                IsAsync = false
+                IsAsync = false,
+                Visibility = Visibility.Private,
             };
 
             return new GetAccessorDecl { Method = methodDecl };
