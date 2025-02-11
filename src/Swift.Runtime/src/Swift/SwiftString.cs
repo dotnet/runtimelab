@@ -104,21 +104,21 @@ public struct SwiftString : ISwiftObject
     /// </summary>
     public override string ToString()
     {
-            var elementType = TypeMetadata.GetTypeMetadataOrThrow<byte>();
-            var resultType = TypeMetadata.GetTypeMetadataOrThrow<long>();
+        var elementType = TypeMetadata.GetTypeMetadataOrThrow<byte>();
+        var resultType = TypeMetadata.GetTypeMetadataOrThrow<long>();
 
-            var length = Length;
-            if (length <= 0)
-                return string.Empty;
+        var length = Length;
+        if (length <= 0)
+            return string.Empty;
 
-            var contiguousArray = PInvoke_GetUtf8ContiguousArray(_payload);
-            unsafe
-            {
-                IntPtr utf8Ptr = PInvoke_WithUnsafeBytes(&WithUnsafeBytesCallback, (IntPtr)(int*)&length, contiguousArray, elementType, resultType);
-                string result = Marshal.PtrToStringUTF8(utf8Ptr, length);
-                NativeMemory.Free((void*)utf8Ptr);
-                return result;
-            }
+        var contiguousArray = PInvoke_GetUtf8ContiguousArray(_payload);
+        unsafe
+        {
+            IntPtr utf8Ptr = PInvoke_WithUnsafeBytes(&WithUnsafeBytesCallback, (IntPtr)(int*)&length, contiguousArray, elementType, resultType);
+            string result = Marshal.PtrToStringUTF8(utf8Ptr, length);
+            NativeMemory.Free((void*)utf8Ptr);
+            return result;
+        }
     }
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
