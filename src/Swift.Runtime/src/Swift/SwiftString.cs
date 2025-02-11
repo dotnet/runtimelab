@@ -14,20 +14,11 @@ using Swift.Runtime.InteropServices;
 namespace Swift;
 
 /// <summary>
-/// Represents Foundation.Data type.
-/// </summary>
-public struct Data
-{
-    private long _flags;
-    private IntPtr _object;
-}
-
-/// <summary>
 /// Represents a Swift string with Foundation.Data payload.
 /// </summary>
 public struct SwiftString : ISwiftObject
 {
-    static nuint _payloadSize = SwiftObjectHelper<SwiftString>.GetTypeMetadata().Size;
+    private static nuint _payloadSize = SwiftObjectHelper<SwiftString>.GetTypeMetadata().Size;
 
     private Data _payload;
 

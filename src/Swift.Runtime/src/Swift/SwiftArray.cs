@@ -65,7 +65,8 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
     {
         if (_buffer.storage != IntPtr.Zero)
         {
-            Arc.Release(*(IntPtr*)_buffer.storage);
+            // TODO: https://github.com/dotnet/runtimelab/issues/2851
+            Arc.Release(_buffer.storage);
             _buffer.storage = IntPtr.Zero;
             GC.SuppressFinalize(this);
         }
@@ -75,7 +76,8 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
     {
         if (_buffer.storage != IntPtr.Zero)
         {
-            Arc.Release(*(IntPtr*)_buffer.storage);
+            // TODO: https://github.com/dotnet/runtimelab/issues/2851
+            Arc.Release(_buffer.storage);
             _buffer.storage = IntPtr.Zero;
         }
     }

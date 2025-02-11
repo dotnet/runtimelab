@@ -66,7 +66,8 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
     {
         if (_variant.rawValue != IntPtr.Zero)
         {
-            Arc.Release(*(IntPtr*)_variant.rawValue);
+            // TODO: https://github.com/dotnet/runtimelab/issues/2851
+            Arc.Release(_variant.rawValue);
             _variant.rawValue = IntPtr.Zero;
             GC.SuppressFinalize(this);
         }
@@ -76,7 +77,8 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
     {
         if (_variant.rawValue != IntPtr.Zero)
         {
-            Arc.Release(*(IntPtr*)_variant.rawValue);
+            // TODO: https://github.com/dotnet/runtimelab/issues/2851
+            Arc.Release(_variant.rawValue);
             _variant.rawValue = IntPtr.Zero;
         }
     }
