@@ -53,13 +53,13 @@ public struct FrozenPoint {
 
     private unsafe void Set_x(nint value)
     {
-        IntPtr payload;
+        void* payload;
         try 
         {
             var metadata = ...;
             payload = (SwiftHandle)NativeMemory.Alloc(returnMetadata.Size);
-            SwiftMarshal.MarshalToSwift(instance, payload);
-            var self = new SwiftSelf((void*)_payload);
+            SwiftMarshal.MarshalToSwift(this, (IntPtr)payload);
+            var self = new SwiftSelf(payload);
 
             PInvoke_set_x(value, self);
 
@@ -67,7 +67,7 @@ public struct FrozenPoint {
         }
         finally
         {
-            NativeMemory.Free((void*)payload);
+            NativeMemory.Free(payload);
         }
     }
 
