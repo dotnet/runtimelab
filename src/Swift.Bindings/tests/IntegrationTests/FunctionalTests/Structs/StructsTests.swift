@@ -248,16 +248,6 @@ public struct TimerStruct {
     }
 }
 
-public func getArray(a: Int32, b: Int32) -> Array<Int32>
-{
-    return [a, b]
-}
-
-public func sumArray(array: Array<Int32>) -> Int32
-{
-    return array.reduce(0, +)
-}
-
 @frozen
 public struct PropertiesTestStruct {
     public let letProperty: Int32

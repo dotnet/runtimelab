@@ -325,91 +325,27 @@ namespace BindingsGeneration.FunctionalTests
         }
 
         [Fact]
-        public void TestSwiftArray()
-        {
-            var array = GetArray(42, 17);
-            Assert.Equal(2, array.Count);
-            Assert.Equal(42, array[0]);
-            Assert.Equal(17, array[1]);
-            int sum = SumArray(array);
-            Assert.Equal(42 + 17, sum);
-        }
-
-        // TODO: Remove helper methods when https://github.com/dotnet/runtimelab/issues/2970
-        private static unsafe SwiftArray<int> GetArray(int a, int b)
-        {
-            ArrayBuffer buffer = PInvoke_GetArray(a, b);
-            return SwiftMarshal.MarshalFromSwift<SwiftArray<int>>((SwiftHandle)new IntPtr(&buffer));
-        }
-
-        [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
-        [DllImport("Structs/libStructsTests.dylib", EntryPoint = "$s12StructsTests8getArray1a1bSays5Int32VGAF_AFtF")]
-        private static extern ArrayBuffer PInvoke_GetArray(int a, int b);
-
-        private static unsafe int SumArray(SwiftArray<int> array)
-        {
-            ArrayBuffer buffer = new ArrayBuffer();
-            SwiftMarshal.MarshalToSwift<SwiftArray<int>>(array, new IntPtr(&buffer));
-            return PInvoke_SumArray(buffer);
-        }
-
-        [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
-        [DllImport("Structs/libStructsTests.dylib", EntryPoint = "$s12StructsTests8sumArray5arrays5Int32VSayAEG_tF")]
-        private static extern int PInvoke_SumArray(ArrayBuffer array);
-
-        [Fact]
-        public void TestSwiftSet()
-        {
-            var set = GetSet(42, 17);
-            Assert.Equal(2, set.Count);
-            int sum = SumSet(set);
-            Assert.Equal(42 + 17, sum);
-
-            set = new SwiftSet<SwiftIntMock>();
-            sum = SumSet(set);
-            Assert.Equal(0, sum);
-        }
-
-        // TODO: Remove helper methods when https://github.com/dotnet/runtimelab/issues/2970
-        private static unsafe SwiftSet<SwiftIntMock> GetSet(int a, int b)
-        {
-            Variant variant = PInvoke_GetSet(a, b);
-            return SwiftMarshal.MarshalFromSwift<SwiftSet<SwiftIntMock>>((SwiftHandle)new IntPtr(&variant));
-        }
-
-        private static unsafe int SumSet(SwiftSet<SwiftIntMock> set)
-        {
-            Variant variant = new Variant();
-            SwiftMarshal.MarshalToSwift<SwiftSet<SwiftIntMock>>(set, new IntPtr(&variant));
-            return PInvoke_SumSet(variant);
-        }
-
-        [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
-        [DllImport("Structs/libStructsTests.dylib", EntryPoint = "$s12StructsTests8getArray1a1bSays5Int32VGAF_AFtF")]
-        private static extern Variant PInvoke_GetSet(int a, int b);
-
-        [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
-        [DllImport("Structs/libStructsTests.dylib", EntryPoint = "$s12StructsTests8sumArray5arrays5Int32VSayAEG_tF")]
-        private static extern int PInvoke_SumSet(Variant array);
-
-        [Fact]
         public void TestFrozenStructProperties()
         {
-            var struct1 = new PropertiesTestStruct(letValue: 10, varValue: 20.5, multiplier: 3.0f);
+            var struct1 = new PropertiesTestStruct(letValue: 10, varValue: 20, multiplier: 3);
 
             Assert.Equal(10, struct1.letProperty);
-            Assert.Equal(20.5, struct1.varProperty);
-            Assert.Equal(30.0, struct1.computedProperty);
+
+            Assert.Equal(20, struct1.varProperty);
+
+            Assert.Equal(30, struct1.computedProperty);
         }
 
         [Fact]
         public void TestNonFrozenStructProperties()
         {
-            var struct1 = new NonFrozenPropertiesTestStruct(letValue: 10, varValue: 20.5, multiplier: 3.0f);
+            var struct1 = new NonFrozenPropertiesTestStruct(letValue: 10, varValue: 20, multiplier: 3);
 
             Assert.Equal(10, struct1.letProperty);
-            Assert.Equal(20.5, struct1.varProperty);
-            Assert.Equal(30.0, struct1.computedProperty);
+
+            Assert.Equal(20, struct1.varProperty);
+
+            Assert.Equal(30, struct1.computedProperty);
         }
     }
 }

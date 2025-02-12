@@ -138,7 +138,7 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
         Arc.Release(payload);
     }
 
-    private static void PrimitiveArrayTest<T>(T value1, T value2, T overwriteValue) where T : unmanaged
+    private static void PrimitiveArrayTest<T>(T value1, T value2, T overwriteValue)
     {
         var metadata = TypeMetadata.GetTypeMetadataOrThrow<SwiftArray<T>>();
         Assert.True(metadata.Size > 0);
@@ -181,4 +181,5 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
     [Fact] public void ArrayTestFloat() => PrimitiveArrayTest<float>(4.2f, 1.7f, 10.0f);
     [Fact] public void ArrayTestDouble() => PrimitiveArrayTest<double>(4.2, 1.7, 10.0);
     [Fact] public void ArrayTestBool() => PrimitiveArrayTest<bool>(true, false, true);
+    [Fact] public void ArrayTestString() => PrimitiveArrayTest<SwiftString>(new SwiftString("Hello"), new SwiftString("World"), new SwiftString("String"));
 }
