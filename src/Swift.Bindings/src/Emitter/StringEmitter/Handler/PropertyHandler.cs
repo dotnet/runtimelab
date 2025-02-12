@@ -58,11 +58,18 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
             return;
         }
 
-        if (propertyDecl.IsStatic)
+        if (propertyDecl.IsStatic) // TODO: https://github.com/dotnet/runtimelab/issues/2995
         {
             Console.WriteLine($"PropertyHandler: Static properties are not supported. Skipping property {propertyDecl.Name}.");
             return;
         }
+
+        if (propertyDecl.Accessors.Any(a => a.Method.IsAsync)) // TODO: https://github.com/dotnet/runtimelab/issues/2996
+        {
+            Console.WriteLine($"PropertyHandler: Async properties are not supported. Skipping property {propertyDecl.Name}.");
+            return;
+        }
+
         var csTypeName = typeRecord!.CSTypeIdentifier;
 
 
