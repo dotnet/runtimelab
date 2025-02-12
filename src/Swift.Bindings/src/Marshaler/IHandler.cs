@@ -44,13 +44,6 @@ namespace BindingsGeneration
     }
 
     /// <summary>
-    /// Interface for handling field declarations.
-    /// </summary>
-    public interface IFieldHandler : IHandler
-    {
-    }
-
-    /// <summary>
     /// Interface for handling method declarations.
     /// </summary>
     public interface IMethodHandler : IHandler

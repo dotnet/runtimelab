@@ -129,8 +129,8 @@ namespace BindingsGeneration
         /// <param name="structDecl">The struct declaration.</param>
         private void ProcessStruct(NamedTypeSpec namedTypeSpec, StructDecl structDecl)
         {
-            // Ensure that all fields are processed or known in the database.
-            ProcessStructFields(structDecl);
+            // Ensure that all properties are processed or known in the database.
+            ProcessStructProperties(structDecl);
 
             // TODO: Remove loading dylib
             IntPtr metadataPtr = DynamicLibraryLoader.invoke(_dylibPath, $"{structDecl.MangledName}Ma");
@@ -141,62 +141,62 @@ namespace BindingsGeneration
 
             RegisterStructType(namedTypeSpec, structDecl, swiftTypeInfo, isFrozen, isBlittable);
 
-            // Update the struct declaration in memory so future passes see these fields.
+            // Update the struct declaration in memory so future passes see these properties.
             structDecl.IsBlittable = isBlittable;
             structDecl.IsFrozen = isFrozen;
         }
 
         /// <summary>
-        /// Ensures that each field in the struct is either from an already processed type
+        /// Ensures that each property in the struct is either from an already processed type
         /// or is recursively processed in this module.
         /// </summary>
         /// <param name="structDecl">The struct declaration.</param>
         /// <exception cref="Exception">
-        /// Thrown if a field type cannot be found or processed.
+        /// Thrown if a property type cannot be found or processed.
         /// </exception>
-        private void ProcessStructFields(StructDecl structDecl)
+        private void ProcessStructProperties(StructDecl structDecl)
         {
             foreach (var propertyDecl in structDecl.Properties)
             {
-                if (propertyDecl.SwiftTypeSpec is not NamedTypeSpec namedFieldType || propertyDecl.IsStatic)
+                if (propertyDecl.SwiftTypeSpec is not NamedTypeSpec namedPropertyType || propertyDecl.IsStatic)
                     continue;
 
-                // If the field is from a different module, ensure that type is already processed.
-                if (namedFieldType.Module != _module)
+                // If the property is from a different module, ensure that type is already processed.
+                if (namedPropertyType.Module != _module)
                 {
-                    if (!_typeDatabase.IsTypeProcessed(namedFieldType))
+                    if (!_typeDatabase.IsTypeProcessed(namedPropertyType))
                     {
                         if (_verbosity > 1)
                         {
                             Console.WriteLine(
-                                $"Skipping field '{propertyDecl.Name}' of type '{namedFieldType.NameWithoutModule}' " +
-                                $"from module '{namedFieldType.Module}'. Type should have been processed " +
+                                $"Skipping property '{propertyDecl.Name}' of type '{namedPropertyType.NameWithoutModule}' " +
+                                $"from module '{namedPropertyType.Module}'. Type should have been processed " +
                                 "in a previous module but was not found.");
                         }
                         continue;
                     }
                 }
-                // If the field is in the same module, process it recursively.
+                // If the property is in the same module, process it recursively.
                 else
                 {
-                    if (!_typeDecls.TryGetValue(namedFieldType, out var nestedDecl))
+                    if (!_typeDecls.TryGetValue(namedPropertyType, out var nestedDecl))
                     {
                         if (_verbosity > 1)
                         {
                             Console.WriteLine(
-                                $"Skipping field '{propertyDecl.Name}' of type '{namedFieldType.NameWithoutModule}' " +
-                                $"from module '{namedFieldType.Module}'. Not found in type declarations.");
+                                $"Skipping property '{propertyDecl.Name}' of type '{namedPropertyType.NameWithoutModule}' " +
+                                $"from module '{namedPropertyType.Module}'. Not found in type declarations.");
                         }
                         continue;
                     }
-                    ProcessTypeRecursively(namedFieldType, nestedDecl);
+                    ProcessTypeRecursively(namedPropertyType, nestedDecl);
                 }
             }
         }
 
         /// <summary>
         /// Determines whether a struct is truly frozen. The struct itself must be marked frozen
-        /// and all of its fields must also be from frozen types.
+        /// and all of its properties must also be from frozen types.
         /// </summary>
         /// <param name="structDecl">The struct declaration.</param>
         /// <returns><c>true</c> if the struct is frozen; otherwise, <c>false</c>.</returns>
@@ -205,18 +205,18 @@ namespace BindingsGeneration
             if (!structDecl.IsFrozen)
                 return false;
 
-            // If any field is not frozen, the struct cannot be frozen.
+            // If any property is not frozen, the struct cannot be frozen.
             foreach (var propertyDecl in structDecl.Properties)
             {
-                if (propertyDecl.SwiftTypeSpec is not NamedTypeSpec namedFieldType)
+                if (propertyDecl.SwiftTypeSpec is not NamedTypeSpec namedPropertyType)
                     continue;
 
-                if (!TryGetTypeRecord(namedFieldType, out var fieldRecord))
+                if (!TryGetTypeRecord(namedPropertyType, out var propertyRecord))
                 {
-                    throw new Exception($"Type not found in the database: {namedFieldType}");
+                    throw new Exception($"Type not found in the database: {namedPropertyType}");
                 }
 
-                if (!fieldRecord.IsFrozen)
+                if (!propertyRecord.IsFrozen)
                     return false;
             }
 
