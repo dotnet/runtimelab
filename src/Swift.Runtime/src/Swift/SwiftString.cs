@@ -153,9 +153,9 @@ public struct SwiftString : ISwiftObject
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$ss15ContiguousArrayV15withUnsafeBytesyqd__qd__SWKXEKlF")]
     public static extern unsafe IntPtr PInvoke_WithUnsafeBytes(delegate* unmanaged[Swift]<byte*, SwiftSelf, IntPtr> callback, IntPtr context, IntPtr contiguousArray, TypeMetadata elementType, TypeMetadata resultType);
 
-     private class ToStringCallbackContext
-     {
-         public int _length;
-         public string? _returnString;
-     }
+    private class ToStringCallbackContext
+    {
+        public int _length;
+        public string? _returnString;
+    }
 }
