@@ -28,6 +28,13 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
 {
     private readonly MethodHandler _methodHandler = new();
 
+    // Dictionary of Swift property names that need to be renamed in C#
+    // Temporary workaround for https://github.com/dotnet/runtimelab/issues/2997 to keep StoreKit tests passing
+    private static readonly Dictionary<string, string> PropertyNameMappings = new()
+    {
+        { "isEligibleForIntroOffer", "isEligibleForIntroOfferProperty" },
+    };
+
     /// <inheritdoc/>
     public IEnvironment Marshal(BaseDecl baseDecl, ITypeDatabase typeDatabase)
     {
@@ -64,14 +71,14 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
             return;
         }
 
-        if (propertyDecl.Accessors.Any(a => a.Method.IsAsync)) // TODO: https://github.com/dotnet/runtimelab/issues/2996
-        {
-            Console.WriteLine($"PropertyHandler: Async properties are not supported. Skipping property {propertyDecl.Name}.");
-            return;
-        }
-
+        // TODO Detect and skip / Handle async properties https://github.com/dotnet/runtimelab/issues/2996
         var csTypeName = typeRecord!.CSTypeIdentifier;
 
+        // Get the C# property name, using the mapping dictionary if necessary
+        // Temporary workaround for https://github.com/dotnet/runtimelab/issues/2997 to keep StoreKit tests passing
+        var propertyName = PropertyNameMappings.TryGetValue(propertyDecl.Name, out var mappedName)
+            ? mappedName
+            : propertyDecl.Name;
 
         // First emit the accessor methods using MethodHandler
         foreach (var accessor in propertyDecl.Accessors)
@@ -81,7 +88,7 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
         }
 
         // Then emit the property
-        csWriter.WriteLine($"public {csTypeName} {propertyDecl.Name}");
+        csWriter.WriteLine($"public {csTypeName} {propertyName}");
         csWriter.WriteLine("{");
         csWriter.Indent++;
 
