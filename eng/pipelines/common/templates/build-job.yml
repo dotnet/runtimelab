@@ -61,6 +61,22 @@ jobs:
         - script: ./generate.sh --configuration $(_BuildConfig) ${{ parameters.bindings.scriptArgs }}
           displayName: Generate Bindings
 
+      - script: |
+          ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/RunnerApp/RunnerApp.csproj \
+          -f net9.0-maccatalyst \
+          -c $(_BuildConfig) \
+          /bl:./artifacts/logs/msbuild-publish.binlog
+        displayName: Publish app
+
+      - script: |
+          ./dotnet.sh xharness apple test \
+          --target maccatalyst \
+          --timeout="00:02:00" \
+          --launch-timeout=00:06:00 \
+          --app ./src/Swift.Bindings/tests/FrameworkTests/RunnerApp/bin/$(_BuildConfig)/net9.0-maccatalyst/maccatalyst-${{ parameters.archType }}/RunnerApp.app \
+          --output-directory artifacts
+        displayName: Run device tests
+
       - ${{ if eq(parameters.isOfficialBuild, true) }}:
         - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
           parameters:
