@@ -73,5 +73,8 @@
         <entity managedNameSpace="Swift" managedTypeName="SwiftString">
             <typedeclaration kind="struct" name="String" module="Swift" mangledName="sSS" frozen="true" blittable="true"/>
         </entity>
+        <entity managedNameSpace="Swift" managedTypeName="Data">
+            <typedeclaration kind="struct" name="Data" module="Foundation" mangledName="s10Foundation4DataV" frozen="true" blittable="true"/>
+        </entity>
     </entities>
 </swifttypedatabase>
