@@ -260,33 +260,39 @@ public func sumArray(array: Array<Int32>) -> Int32
 
 @frozen
 public struct PropertiesTestStruct {
-    public let letProperty: Int
-    public var varProperty: Int
-    private let multiplier: Int
+    public let letProperty: Int32
+    public var computedPropertyAmongStorageProperties: Double {
+        return Double(letProperty) * Double(multiplier)
+    } // This property is added to make sure the layout is correct
+    public var varProperty: Double
+    private let multiplier: Float
     
-    public init(letValue: Int, varValue: Int, multiplier: Int) {
+    public init(letValue: Int32, varValue: Double, multiplier: Float) {
         self.letProperty = letValue
         self.varProperty = varValue
         self.multiplier = multiplier
     }
     
-    public var computedProperty: Int {
-        return letProperty * multiplier
+    public var computedProperty: Double {
+        return Double(letProperty) * Double(multiplier)
     }
 }
 
 public struct NonFrozenPropertiesTestStruct {
-    public let letProperty: Int
-    public var varProperty: Int
-    private let multiplier: Int
+    public let letProperty: Int32
+    public var computedPropertyAmongStorageProperties: Double {
+        return Double(letProperty) * Double(multiplier)
+    } // This property is added to make sure the layout is correct
+    public var varProperty: Double
+    private let multiplier: Float
     
-    public init(letValue: Int, varValue: Int, multiplier: Int) {
+    public init(letValue: Int32, varValue: Double, multiplier: Float) {
         self.letProperty = letValue
         self.varProperty = varValue
         self.multiplier = multiplier
     }
     
-    public var computedProperty: Int {
-        return letProperty * multiplier
+    public var computedProperty: Double {
+        return Double(letProperty) * Double(multiplier)
     }
 }

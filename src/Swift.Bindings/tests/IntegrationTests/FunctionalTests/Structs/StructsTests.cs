@@ -395,25 +395,21 @@ namespace BindingsGeneration.FunctionalTests
         [Fact]
         public void TestFrozenStructProperties()
         {
-            var struct1 = new PropertiesTestStruct(letValue: 10, varValue: 20, multiplier: 3);
+            var struct1 = new PropertiesTestStruct(letValue: 10, varValue: 20.5, multiplier: 3.0f);
 
             Assert.Equal(10, struct1.letProperty);
-
-            Assert.Equal(20, struct1.varProperty);
-
-            Assert.Equal(30, struct1.computedProperty);
+            Assert.Equal(20.5, struct1.varProperty);
+            Assert.Equal(30.0, struct1.computedProperty);
         }
 
         [Fact]
         public void TestNonFrozenStructProperties()
         {
-            var struct1 = new NonFrozenPropertiesTestStruct(letValue: 10, varValue: 20, multiplier: 3);
+            var struct1 = new NonFrozenPropertiesTestStruct(letValue: 10, varValue: 20.5, multiplier: 3.0f);
 
             Assert.Equal(10, struct1.letProperty);
-
-            Assert.Equal(20, struct1.varProperty);
-
-            Assert.Equal(30, struct1.computedProperty);
+            Assert.Equal(20.5, struct1.varProperty);
+            Assert.Equal(30.0, struct1.computedProperty);
         }
     }
 }

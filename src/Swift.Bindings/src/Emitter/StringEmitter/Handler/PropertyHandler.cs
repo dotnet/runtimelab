@@ -12,7 +12,7 @@ public class PropertyHandlerFactory : IFactory<BaseDecl, IPropertyHandler>
 {
     public bool Handles(BaseDecl decl)
     {
-        return decl is PropertyDecl propertyDecl && propertyDecl.Accessors.Any();
+        return decl is PropertyDecl;
     }
 
     public IPropertyHandler Construct()
@@ -46,7 +46,16 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
 
         var typeRecord = propertyEnv.TypeDatabase.GetTypeRecordOrThrow(propertyDecl.SwiftTypeSpec);
 
-        var staticModifier = propertyDecl.IsStatic ? "static " : "";
+        if (propertyDecl.Accessors.Count == 0)
+        {
+            // No public accessors, so we don't need to emit anything
+            return;
+        }
+
+        if (propertyDecl.IsStatic)
+        {
+            throw new NotImplementedException("Static properties are not supported yet.");
+        }
         var csTypeName = typeRecord.CSTypeIdentifier;
 
 
@@ -58,7 +67,7 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
         }
 
         // Then emit the property
-        csWriter.WriteLine($"public {staticModifier}{csTypeName} {propertyDecl.Name}");
+        csWriter.WriteLine($"public {csTypeName} {propertyDecl.Name}");
         csWriter.WriteLine("{");
         csWriter.Indent++;
 

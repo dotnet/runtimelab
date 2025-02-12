@@ -501,6 +501,7 @@ namespace BindingsGeneration
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl,
                 IsStatic = node.@static ?? false,
+                HasStorage = node.DeclAttributes is not null && Array.IndexOf(node.DeclAttributes, "HasStorage") != -1,
                 Accessors = HandleAccessors(node.Accessors, node.Name, parentDecl, moduleDecl)
             };
         }

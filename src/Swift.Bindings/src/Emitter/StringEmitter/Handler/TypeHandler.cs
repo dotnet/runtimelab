@@ -74,12 +74,22 @@ namespace BindingsGeneration
             csWriter.WriteLine($"public unsafe struct {structDecl.Name} : {typeof(ISwiftObject).Name} {{");
             csWriter.Indent++;
 
+            // For frozen structs, we need to emit fields that match the Swift struct's memory layout exactly.
+            // These backing fields are required for proper memory layout and marshalling, even though they
+            // are never directly accessed from C# code. The actual value access happens through Swift's
+            // accessor methods.
+            //
+            // Important: Direct access to these fields from C# will not provide the correct value - always
+            // use the generated property accessors which call into Swift.
             foreach (PropertyDecl propertyDecl in structDecl.Properties)
             {
                 if (conductor.TryGetPropertyHandler(propertyDecl, out var propertyHandler))
                 {
-                    var fieldRecord = env.TypeDatabase.GetTypeRecordOrThrow(propertyDecl.SwiftTypeSpec);
-                    csWriter.WriteLine($"private {fieldRecord.CSTypeIdentifier} {propertyDecl.Name}_;");
+                    if (propertyDecl.HasStorage)
+                    {
+                        var fieldRecord = env.TypeDatabase.GetTypeRecordOrThrow(propertyDecl.SwiftTypeSpec);
+                        csWriter.WriteLine($"private {fieldRecord.CSTypeIdentifier} {propertyDecl.Name}_;  // Note: Do not access this field directly - use the property accessors");
+                    }
 
                     var propertyEnv = propertyHandler.Marshal(propertyDecl, env.TypeDatabase);
                     propertyHandler.Emit(csWriter, swiftWriter, propertyEnv, conductor);

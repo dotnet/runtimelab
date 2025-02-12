@@ -6,9 +6,9 @@ using System.Diagnostics.CodeAnalysis;
 namespace BindingsGeneration
 {
     using IArgumentHandlerFactory = IFactory<BaseDecl, IArgumentHandler>;
-    using IPropertyHandlerFactory = IFactory<BaseDecl, IPropertyHandler>;
     using IMethodHandlerFactory = IFactory<BaseDecl, IMethodHandler>;
     using IModuleHandlerFactory = IFactory<BaseDecl, IModuleHandler>;
+    using IPropertyHandlerFactory = IFactory<BaseDecl, IPropertyHandler>;
     using ITypeHandlerFactory = IFactory<BaseDecl, ITypeHandler>;
 
     /// <summary>

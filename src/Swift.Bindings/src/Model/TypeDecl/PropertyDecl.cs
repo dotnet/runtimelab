@@ -14,6 +14,11 @@ namespace BindingsGeneration
         public required TypeSpec SwiftTypeSpec { get; set; }
 
         /// <summary>
+        /// Indicates if the property has a backing field
+        /// </summary>
+        public required bool HasStorage { get; set; }
+
+        /// <summary>
         /// Indicates if the declaration is static.
         /// </summary>
         public required bool IsStatic { get; set; }
