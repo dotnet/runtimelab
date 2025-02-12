@@ -109,7 +109,6 @@ namespace BindingsGeneration
         }
     }
 
-
     /// <summary>
     /// Factory class for creating instances of NonFrozenStructHandler.
     /// </summary>
