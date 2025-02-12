@@ -10,7 +10,7 @@ function InstallWorkloads {
         echo "dotnet is installed at $(command -v dotnet)."
     fi
 
-    dotnet workload install maccatalyst --source https://api.nuget.org/v3/index.json
+    dotnet workload install maccatalyst --version 9.0.102.1 --source https://api.nuget.org/v3/index.json
 
     if [[ $? != 0 ]]; then
         Write-PipelineTelemetryError -category 'InitializeToolset' "Failed to install workloads."
