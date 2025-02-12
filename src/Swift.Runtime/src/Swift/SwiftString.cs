@@ -114,10 +114,18 @@ public struct SwiftString : ISwiftObject
         var contiguousArray = PInvoke_GetUtf8ContiguousArray(_payload);
         unsafe
         {
-            IntPtr utf8Ptr = PInvoke_WithUnsafeBytes(&WithUnsafeBytesCallback, (IntPtr)(int*)&length, contiguousArray, elementType, resultType);
-            string result = Marshal.PtrToStringUTF8(utf8Ptr, length);
-            NativeMemory.Free((void*)utf8Ptr);
-            return result;
+            ToStringCallbackContext callbackContext;
+            callbackContext._length = length;
+            PInvoke_WithUnsafeBytes(&Callback, (IntPtr)(void*)&callbackContext, contiguousArray, elementType, resultType);
+            return callbackContext._returnString;
+
+            [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvSwift) })]
+            static IntPtr Callback(byte* bytes, SwiftSelf context)
+            {
+                ToStringCallbackContext* pContext = (ToStringCallbackContext*)context.Value;
+                pContext->_returnString = Encoding.UTF8.GetString(new ReadOnlySpan<byte>(bytes, pContext->_length));
+                return default;
+            }
         }
     }
 
