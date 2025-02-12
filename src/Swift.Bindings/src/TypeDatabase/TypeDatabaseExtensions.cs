@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace BindingsGeneration;
 
 // TODO: TypeDatabase should hold only nominal types (represented by NamedTypeSpec). Specifically tuples, closures etc. should not reside inside TypeDatabase.
@@ -78,6 +80,37 @@ public static class TypeDatabaseExtensions
             TupleTypeSpec { IsEmptyTuple: true } => VoidType,
             _ => throw new ArgumentException($"Attempted to read TypeRecord of unsupported type spec: {typeSpec}")
         };
+    }
+
+    /// <summary>
+    /// Tries to get the type record for the specified Swift type.
+    /// </summary>
+    /// <param name="typeDatabase">The type database.</param>
+    /// <param name="typeSpec">The Swift type specification.</param>
+    /// <param name="record">The type record.</param>
+    /// <returns>True if the type record was found; otherwise, false.</returns>
+    public static bool TryGetTypeRecord(this ITypeDatabase typeDatabase, TypeSpec typeSpec, [NotNullWhen(returnValue: true)] out TypeRecord? record)
+    {
+        record = null;
+        return typeSpec switch
+        {
+            NamedTypeSpec namedTypeSpec => typeDatabase.TryGetTypeRecord(namedTypeSpec, out record),
+            TupleTypeSpec { IsEmptyTuple: true } => false,
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// Tries to get the type record for the specified Swift type.
+    /// </summary>
+    /// <param name="typeDatabase">The type database.</param>
+    /// <param name="typeSpec">The Swift type specification.</param>
+    /// <param name="record">The type record.</param>
+    /// <returns>True if the type record was found; otherwise, false.</returns>
+    public static bool TryGetTypeRecord(this ITypeDatabase typeDatabase, NamedTypeSpec typeSpec, [NotNullWhen(returnValue: true)] out TypeRecord? record)
+    {
+        var typeName = SwiftTypeNameConverter.ConvertWithGenericParameters(typeSpec);
+        return typeDatabase.TryGetTypeRecord(typeName, out record);
     }
 
     /// <summary>

@@ -44,7 +44,13 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
         var propertyEnv = (PropertyEnvironment)env;
         var propertyDecl = propertyEnv.PropertyDecl;
 
-        var typeRecord = propertyEnv.TypeDatabase.GetTypeRecordOrThrow(propertyDecl.SwiftTypeSpec);
+        bool processed = propertyEnv.TypeDatabase.TryGetTypeRecord(propertyDecl.SwiftTypeSpec, out var typeRecord);
+
+        if (!processed)
+        {
+            Console.WriteLine($"PropertyHandler: Couldn't process property {propertyDecl.Name} of type {propertyDecl.SwiftTypeSpec}. Skipping.");
+            return;
+        }
 
         if (propertyDecl.Accessors.Count == 0)
         {
@@ -54,9 +60,10 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
 
         if (propertyDecl.IsStatic)
         {
-            throw new NotImplementedException("Static properties are not supported yet.");
+            Console.WriteLine($"PropertyHandler: Static properties are not supported. Skipping property {propertyDecl.Name}.");
+            return;
         }
-        var csTypeName = typeRecord.CSTypeIdentifier;
+        var csTypeName = typeRecord!.CSTypeIdentifier;
 
 
         // First emit the accessor methods using MethodHandler
