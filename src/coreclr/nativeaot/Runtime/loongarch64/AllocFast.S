@@ -10,8 +10,8 @@
 //
 // Rename fields of nested structs
 //
-#define OFFSETOF__Thread__m_alloc_context__alloc_ptr        (OFFSETOF__Thread__m_rgbAllocContextBuffer + OFFSETOF__gc_alloc_context__alloc_ptr)
-#define OFFSETOF__Thread__m_alloc_context__alloc_limit      (OFFSETOF__Thread__m_rgbAllocContextBuffer + OFFSETOF__gc_alloc_context__alloc_limit)
+#define OFFSETOF__Thread__m_alloc_context__alloc_ptr        (OFFSETOF__Thread__m_eeAllocContext + OFFSETOF__ee_alloc_context__m_rgbAllocContextBuffer + OFFSETOF__gc_alloc_context__alloc_ptr)
+#define OFFSETOF__Thread__m_eeAllocContext__combined_limit  (OFFSETOF__Thread__m_eeAllocContext + OFFSETOF__ee_alloc_context__combined_limit)
 
 
 
@@ -21,11 +21,7 @@
     LEAF_ENTRY RhpNewFast, _TEXT
 
         // a1 = GetThread()
-#ifdef FEATURE_EMULATED_TLS
-        GETTHREAD_ETLS_1
-#else
         INLINE_GETTHREAD  $a1
-#endif
 
         //
         // a0 contains MethodTable pointer
@@ -44,7 +40,7 @@
         // Determine whether the end of the object would lie outside of the current allocation context. If so,
         // we abandon the attempt to allocate the object directly and fall back to the slow helper.
         add.d  $a2, $a2, $t3
-        ld.d   $t4, $a1, OFFSETOF__Thread__m_alloc_context__alloc_limit
+        ld.d   $t4, $a1, OFFSETOF__Thread__m_eeAllocContext__combined_limit
         bltu  $t4, $a2, LOCAL_LABEL(RhpNewFast_RarePath)
 
         // Update the alloc pointer to account for the allocation.
@@ -125,11 +121,7 @@ LOCAL_LABEL(NewOutOfMemory):
         // a1 == element count
         // a2 == string size
 
-#ifdef FEATURE_EMULATED_TLS
-        GETTHREAD_ETLS_3
-#else
         INLINE_GETTHREAD $a3
-#endif
 
         // Load potential new object address into t3.
         ld.d  $t3, $a3, OFFSETOF__Thread__m_alloc_context__alloc_ptr
@@ -137,7 +129,7 @@ LOCAL_LABEL(NewOutOfMemory):
         // Determine whether the end of the object would lie outside of the current allocation context. If so,
         // we abandon the attempt to allocate the object directly and fall back to the slow helper.
         add.d  $a2, $a2, $t3
-        ld.d  $t3, $a3, OFFSETOF__Thread__m_alloc_context__alloc_limit
+        ld.d  $t3, $a3, OFFSETOF__Thread__m_eeAllocContext__combined_limit
         bltu  $t3, $a2, LOCAL_LABEL(RhNewString_Rare)
 
         // Reload new object address into r12.
@@ -199,7 +191,7 @@ LOCAL_LABEL(RhNewString_Rare):
         // Determine whether the end of the object would lie outside of the current allocation context. If so,
         // we abandon the attempt to allocate the object directly and fall back to the slow helper.
         add.d  $a2, $a2, $t3
-        ld.d  $t3, $a3, OFFSETOF__Thread__m_alloc_context__alloc_limit
+        ld.d  $t3, $a3, OFFSETOF__Thread__m_eeAllocContext__combined_limit
         bltu  $t3, $a2, LOCAL_LABEL(RhpNewArray_Rare)
 
         // Reload new object address into t3.

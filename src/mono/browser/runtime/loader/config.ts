@@ -73,9 +73,6 @@ function deep_merge_resources (target: ResourceGroups, source: ResourceGroups): 
     if (providedResources.jsModuleNative !== undefined) {
         providedResources.jsModuleNative = { ...(target.jsModuleNative || {}), ...(providedResources.jsModuleNative || {}) };
     }
-    if (providedResources.jsModuleGlobalization !== undefined) {
-        providedResources.jsModuleGlobalization = { ...(target.jsModuleGlobalization || {}), ...(providedResources.jsModuleGlobalization || {}) };
-    }
     if (providedResources.jsModuleRuntime !== undefined) {
         providedResources.jsModuleRuntime = { ...(target.jsModuleRuntime || {}), ...(providedResources.jsModuleRuntime || {}) };
     }
@@ -126,7 +123,6 @@ export function normalizeConfig () {
     config.resources = config.resources || {
         assembly: {},
         jsModuleNative: {},
-        jsModuleGlobalization: {},
         jsModuleWorker: {},
         jsModuleRuntime: {},
         wasmNative: {},
@@ -166,9 +162,6 @@ export function normalizeConfig () {
                     break;
                 case "js-module-threads":
                     toMerge.jsModuleWorker = resource;
-                    break;
-                case "js-module-globalization":
-                    toMerge.jsModuleGlobalization = resource;
                     break;
                 case "js-module-runtime":
                     toMerge.jsModuleRuntime = resource;

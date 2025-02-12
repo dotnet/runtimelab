@@ -24,9 +24,13 @@ Abstract:
 #if defined(__APPLE__) || defined(__FreeBSD__)
 #include <sys/param.h>
 #include <sys/mount.h>
+<<<<<<< HEAD
 #elif defined(TARGET_WASI)
 #include "../../nativeaot/Runtime/wasm/wasi.h"
 #else
+=======
+#elif !defined(__HAIKU__)
+>>>>>>> runtime/main
 #include <sys/vfs.h>
 #endif
 #include <errno.h>
@@ -57,7 +61,7 @@ Abstract:
 
 extern bool ReadMemoryValueFromFile(const char* filename, uint64_t* val);
 
-namespace 
+namespace
 {
 class CGroup
 {

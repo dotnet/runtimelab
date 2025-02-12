@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <Import Project="ILCompiler.props" />
+<<<<<<< HEAD
 
 
   <!-- BEGIN: Workaround for https://github.com/dotnet/runtime/issues/67742 -->
@@ -21,4 +22,6 @@
           AfterTargets="Build"
           DependsOnTargets="Publish" />
 
+=======
+>>>>>>> runtime/main
 </Project>

@@ -425,7 +425,7 @@ PalCreateCrashDumpIfEnabled()
 }
 
 void
-PalCreateCrashDumpIfEnabled(void* pExceptionRecord, void* pExContext)
+PalCreateCrashDumpIfEnabled(void* pExceptionRecord)
 {
     PalCreateCrashDumpIfEnabled(SIGABRT, nullptr, pExceptionRecord);
 }

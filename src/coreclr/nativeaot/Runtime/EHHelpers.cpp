@@ -1,6 +1,9 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 #include "common.h"
+#ifdef HOST_WINDOWS
+#include <windows.h>
+#endif
 #ifndef DACCESS_COMPILE
 #include "CommonTypes.h"
 #include "CommonMacros.h"
@@ -28,6 +31,7 @@
 #include "MethodTable.h"
 #include "MethodTable.inl"
 #include "CommonMacros.inl"
+#include "NativeContext.h"
 
 struct MethodRegionInfo
 {
@@ -110,33 +114,21 @@ FCIMPL2(int32_t, RhGetModuleFileName, HANDLE moduleHandle, _Out_ const TCHAR** p
 }
 FCIMPLEND
 
+#ifdef TARGET_WINDOWS
 FCIMPL3(void, RhpCopyContextFromExInfo, void * pOSContext, int32_t cbOSContext, PAL_LIMITED_CONTEXT * pPalContext)
 {
     ASSERT((size_t)cbOSContext >= sizeof(CONTEXT));
     CONTEXT* pContext = (CONTEXT *)pOSContext;
 
-#ifndef HOST_WASM
-
+#if defined(HOST_X86) || defined(HOST_AMD64)
     memset(pOSContext, 0, cbOSContext);
     pContext->ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
 
     // Fill in CONTEXT_CONTROL registers that were not captured in PAL_LIMITED_CONTEXT.
     PopulateControlSegmentRegisters(pContext);
+#endif // HOST_X86 || HOST_AMD64
 
-#endif // !HOST_WASM
-
-#if defined(UNIX_AMD64_ABI)
-    pContext->Rip = pPalContext->IP;
-    pContext->Rsp = pPalContext->Rsp;
-    pContext->Rbp = pPalContext->Rbp;
-    pContext->Rdx = pPalContext->Rdx;
-    pContext->Rax = pPalContext->Rax;
-    pContext->Rbx = pPalContext->Rbx;
-    pContext->R12 = pPalContext->R12;
-    pContext->R13 = pPalContext->R13;
-    pContext->R14 = pPalContext->R14;
-    pContext->R15 = pPalContext->R15;
-#elif defined(HOST_AMD64)
+#if defined(HOST_AMD64)
     pContext->Rip = pPalContext->IP;
     pContext->Rsp = pPalContext->Rsp;
     pContext->Rbp = pPalContext->Rbp;
@@ -156,19 +148,6 @@ FCIMPL3(void, RhpCopyContextFromExInfo, void * pOSContext, int32_t cbOSContext, 
     pContext->Esi = pPalContext->Rsi;
     pContext->Eax = pPalContext->Rax;
     pContext->Ebx = pPalContext->Rbx;
-#elif defined(HOST_ARM)
-    pContext->R0  = pPalContext->R0;
-    pContext->R4  = pPalContext->R4;
-    pContext->R5  = pPalContext->R5;
-    pContext->R6  = pPalContext->R6;
-    pContext->R7  = pPalContext->R7;
-    pContext->R8  = pPalContext->R8;
-    pContext->R9  = pPalContext->R9;
-    pContext->R10 = pPalContext->R10;
-    pContext->R11 = pPalContext->R11;
-    pContext->Sp  = pPalContext->SP;
-    pContext->Lr  = pPalContext->LR;
-    pContext->Pc  = pPalContext->IP;
 #elif defined(HOST_ARM64)
     pContext->X0 = pPalContext->X0;
     pContext->X1 = pPalContext->X1;
@@ -187,30 +166,13 @@ FCIMPL3(void, RhpCopyContextFromExInfo, void * pOSContext, int32_t cbOSContext, 
     pContext->Sp = pPalContext->SP;
     pContext->Lr = pPalContext->LR;
     pContext->Pc = pPalContext->IP;
-#elif defined(HOST_LOONGARCH64)
-    pContext->R4 = pPalContext->R4;
-    pContext->R5 = pPalContext->R5;
-    pContext->R23 = pPalContext->R23;
-    pContext->R24 = pPalContext->R24;
-    pContext->R25 = pPalContext->R25;
-    pContext->R26 = pPalContext->R26;
-    pContext->R27 = pPalContext->R27;
-    pContext->R28 = pPalContext->R28;
-    pContext->R29 = pPalContext->R29;
-    pContext->R30 = pPalContext->R30;
-    pContext->R31 = pPalContext->R31;
-    pContext->Fp = pPalContext->FP;
-    pContext->Sp = pPalContext->SP;
-    pContext->Ra = pPalContext->RA;
-    pContext->Pc = pPalContext->IP;
-#elif defined(HOST_WASM)
-    // No registers, no work to do yet
 #else
 #error Not Implemented for this architecture -- RhpCopyContextFromExInfo
 #endif
 }
 FCIMPLEND
 
+<<<<<<< HEAD
 struct DISPATCHER_CONTEXT
 {
     uintptr_t  ControlPc;
@@ -226,19 +188,16 @@ struct EXCEPTION_REGISTRATION_RECORD
 #endif // HOST_X86
 
 #ifndef USE_PORTABLE_HELPERS
+=======
+>>>>>>> runtime/main
 EXTERN_C void QCALLTYPE RhpFailFastForPInvokeExceptionPreemp(intptr_t PInvokeCallsiteReturnAddr,
                                                              void* pExceptionRecord, void* pContextRecord);
 FCDECL3(void, RhpFailFastForPInvokeExceptionCoop, intptr_t PInvokeCallsiteReturnAddr,
                                                   void* pExceptionRecord, void* pContextRecord);
-EXTERN_C int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs);
 
-EXTERN_C int32_t __stdcall RhpPInvokeExceptionGuard(PEXCEPTION_RECORD       pExceptionRecord,
-                                                  uintptr_t              EstablisherFrame,
-                                                  PCONTEXT                pContextRecord,
-                                                  DISPATCHER_CONTEXT *    pDispatcherContext)
-{
-    UNREFERENCED_PARAMETER(EstablisherFrame);
+LONG WINAPI RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs);
 
+<<<<<<< HEAD
     Thread * pThread = ThreadStore::GetCurrentThread();
 
     // A thread in DoNotTriggerGc mode has many restrictions that will become increasingly likely to be violated as
@@ -274,6 +233,9 @@ EXTERN_C int32_t __stdcall RhpPInvokeExceptionGuard(PEXCEPTION_RECORD       pExc
     return 0;
 }
 #endif // !USE_PORTABLE_HELPERS
+=======
+#endif // TARGET_WINDOWS
+>>>>>>> runtime/main
 
 FCDECL2(void, RhpThrowHwEx, int exceptionCode, TADDR faultingIP);
 
@@ -297,7 +259,7 @@ EXTERN_C CODE_LOCATION RhpCheckedAssignRefEBPAVLocation;
 #endif
 EXTERN_C CODE_LOCATION RhpByRefAssignRefAVLocation1;
 
-#if !defined(HOST_ARM64) && !defined(HOST_LOONGARCH64)
+#if !defined(HOST_ARM64) && !defined(HOST_LOONGARCH64) && !defined(HOST_RISCV64)
 EXTERN_C CODE_LOCATION RhpByRefAssignRefAVLocation2;
 #endif
 
@@ -330,7 +292,7 @@ static bool InWriteBarrierHelper(uintptr_t faultingIP)
         (uintptr_t)&RhpCheckedAssignRefEBPAVLocation,
 #endif
         (uintptr_t)&RhpByRefAssignRefAVLocation1,
-#if !defined(HOST_ARM64) && !defined(HOST_LOONGARCH64)
+#if !defined(HOST_ARM64) && !defined(HOST_LOONGARCH64) && !defined(HOST_RISCV64)
         (uintptr_t)&RhpByRefAssignRefAVLocation2,
 #endif
     };
@@ -397,7 +359,7 @@ static uintptr_t UnwindSimpleHelperToCaller(
 #ifdef TARGET_UNIX
     PAL_LIMITED_CONTEXT * pContext
 #else
-    _CONTEXT * pContext
+    NATIVE_CONTEXT * pContext
 #endif
     )
 {
@@ -412,7 +374,7 @@ static uintptr_t UnwindSimpleHelperToCaller(
     pContext->SetSp(sp+sizeof(uintptr_t)); // pop the stack
 #elif defined(HOST_ARM) || defined(HOST_ARM64)
     uintptr_t adjustedFaultingIP = pContext->GetLr();
-#elif defined(HOST_LOONGARCH64)
+#elif defined(HOST_LOONGARCH64) || defined(HOST_RISCV64)
     uintptr_t adjustedFaultingIP = pContext->GetRa();
 #else
     uintptr_t adjustedFaultingIP = 0; // initializing to make the compiler happy
@@ -487,6 +449,9 @@ int32_t __stdcall RhpHardwareExceptionHandler(uintptr_t faultCode, uintptr_t fau
 
 #else // TARGET_UNIX
 
+uintptr_t GetSSP(CONTEXT *pContext);
+void SetSSP(CONTEXT *pContext, uintptr_t ssp);
+
 static bool g_ContinueOnFatalErrors = false;
 
 // Set the runtime to continue search when encountering an unhandled runtime exception. Once done it is forever.
@@ -497,7 +462,7 @@ EXTERN_C void RhpContinueOnFatalErrors()
     g_ContinueOnFatalErrors = true;
 }
 
-int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
+LONG WINAPI RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
 {
     uintptr_t faultCode = pExPtrs->ExceptionRecord->ExceptionCode;
 
@@ -531,7 +496,7 @@ int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
             RhFailFast();
         }
 
-        PCONTEXT interruptedContext = pExPtrs->ContextRecord;
+        NATIVE_CONTEXT* interruptedContext = (NATIVE_CONTEXT*)pExPtrs->ContextRecord;
         bool areShadowStacksEnabled = PalAreShadowStacksEnabled();
         if (areShadowStacksEnabled)
         {
@@ -541,28 +506,22 @@ int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
             // When the CET is enabled, the interruption happens on the ret instruction in the calee.
             // We need to "pop" rsp to the caller, as if the ret has consumed it.
             interruptedContext->SetSp(interruptedContext->GetSp() + 8);
+            uintptr_t ssp = GetSSP(&interruptedContext->ctx);
+            SetSSP(&interruptedContext->ctx, ssp + 8);
         }
 
         // Change the IP to be at the original return site, as if we have returned to the caller.
         // That IP is an interruptible safe point, so we can suspend right there.
-        uintptr_t origIp = interruptedContext->GetIp();
         interruptedContext->SetIp((uintptr_t)pThread->GetHijackedReturnAddress());
 
         pThread->InlineSuspend(interruptedContext);
-
-        if (areShadowStacksEnabled)
-        {
-            // Undo the "pop", so that the ret could now succeed.
-            interruptedContext->SetSp(interruptedContext->GetSp() - 8);
-            interruptedContext->SetIp(origIp);
-        }
 
         ASSERT(!pThread->IsHijacked());
         return EXCEPTION_CONTINUE_EXECUTION;
     }
 #endif // TARGET_AMD64    (support for STATUS_RETURN_ADDRESS_HIJACK_ATTEMPT)
 
-    uintptr_t faultingIP = pExPtrs->ContextRecord->GetIp();
+    uintptr_t faultingIP = ((NATIVE_CONTEXT*)pExPtrs->ContextRecord)->GetIp();
 
     ICodeManager * pCodeManager = GetRuntimeInstance()->GetCodeManagerForAddress((PTR_VOID)faultingIP);
     bool translateToManagedException = false;
@@ -588,7 +547,7 @@ int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
 
             // Do not use ASSERT_UNCONDITIONALLY here. It will crash because of it consumes too much stack.
             PalPrintFatalError("\nProcess is terminating due to StackOverflowException.\n");
-            PalRaiseFailFastException(pExPtrs->ExceptionRecord, pExPtrs->ContextRecord, 0);
+            RaiseFailFastException(pExPtrs->ExceptionRecord, pExPtrs->ContextRecord, 0);
         }
 
         translateToManagedException = true;
@@ -608,7 +567,7 @@ int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
             }
 
             // we were AV-ing in a helper - unwind our way to our caller
-            faultingIP = UnwindSimpleHelperToCaller(pExPtrs->ContextRecord);
+            faultingIP = UnwindSimpleHelperToCaller((NATIVE_CONTEXT*)(pExPtrs->ContextRecord));
 
             translateToManagedException = true;
         }
@@ -616,9 +575,11 @@ int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
 
     if (translateToManagedException)
     {
-        pExPtrs->ContextRecord->SetIp(PCODEToPINSTR((PCODE)&RhpThrowHwEx));
-        pExPtrs->ContextRecord->SetArg0Reg(faultCode);
-        pExPtrs->ContextRecord->SetArg1Reg(faultingIP);
+        NATIVE_CONTEXT* pCtx = (NATIVE_CONTEXT*)pExPtrs->ContextRecord;
+
+        pCtx->SetIp(PCODEToPINSTR((PCODE)&RhpThrowHwEx));
+        pCtx->SetArg0Reg(faultCode);
+        pCtx->SetArg1Reg(faultingIP);
 
         return EXCEPTION_CONTINUE_EXECUTION;
     }
@@ -651,7 +612,7 @@ int32_t __stdcall RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs)
         if (((uint8_t*)faultingIP >= s_pbRuntimeModuleLower) && ((uint8_t*)faultingIP < s_pbRuntimeModuleUpper))
         {
             ASSERT_UNCONDITIONALLY("Hardware exception raised inside the runtime.");
-            PalRaiseFailFastException(pExPtrs->ExceptionRecord, pExPtrs->ContextRecord, 0);
+            RaiseFailFastException(pExPtrs->ExceptionRecord, pExPtrs->ContextRecord, 0);
         }
     }
 

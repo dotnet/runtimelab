@@ -1,6 +1,10 @@
 parameters:
+<<<<<<< HEAD
   PublishRidAgnosticPackagesFromPlatform: Browser_wasm_win
   publishingInfraVersion: 3
+=======
+  PublishRidAgnosticPackagesFromPlatform: windows_x64
+>>>>>>> runtime/main
 
 stages:
 
@@ -28,7 +32,6 @@ stages:
 # Stages-based publishing entry point
 - template: /eng/common/templates-official/post-build/post-build.yml
   parameters:
-    publishingInfraVersion: ${{ parameters.publishingInfraVersion }}
     validateDependsOn:
     - PrepareForPublish
     # The following checks are run after the build in the validation and release pipelines

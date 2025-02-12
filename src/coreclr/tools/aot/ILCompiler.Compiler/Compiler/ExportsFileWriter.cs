@@ -28,7 +28,7 @@ namespace ILCompiler
         }
 
         public void AddExportedMethods(IEnumerable<EcmaMethod> methods)
-            => _methods.AddRange(methods.Where(m => m.Module != _context.SystemModule));
+            => _methods.AddRange(methods);
 
         public void EmitExportedMethods()
         {
@@ -43,7 +43,11 @@ namespace ILCompiler
                     foreach (var method in _methods)
                         streamWriter.WriteLine($"   {method.GetUnmanagedCallersOnlyExportName()}");
                 }
+<<<<<<< HEAD
                 else if (_context.Target.IsApplePlatform || _context.Target.OperatingSystem == TargetOS.Browser)
+=======
+                else if (_context.Target.IsApplePlatform)
+>>>>>>> runtime/main
                 {
                     if (_isExecutable && _context.Target.OperatingSystem == TargetOS.Browser && _exportSymbols.Length + _methods.Count != 0)
                     {
