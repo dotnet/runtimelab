@@ -44,6 +44,10 @@ public unsafe struct Data : ISwiftObject
         return TypeMetadata.Cache.GetOrAdd(typeof(Data), _ => PInvoke_getMetadata());
     }
 
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
+    [DllImport(KnownLibraries.SwiftFoundation, EntryPoint = "$s10Foundation4DataVMa")]
+    public static unsafe extern TypeMetadata PInvoke_getMetadata();
+
     static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
     {
         return *(Data*)handle;
@@ -93,27 +97,23 @@ public unsafe struct Data : ISwiftObject
         this = PInvoke_InitWithBytes(pointer, count);
     }
 
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
+    [DllImport(KnownLibraries.SwiftFoundation, EntryPoint = "$s10Foundation4DataV5bytes5countACSV_SitcfC")]
+    public static unsafe extern Data PInvoke_InitWithBytes(UnsafeRawPointer pointer, nint count);
+
     public readonly nint Count => PInvoke_GetCount(this);
+
+
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
+    [DllImport(KnownLibraries.SwiftFoundation, EntryPoint = "$s10Foundation4DataV5countSivg")]
+    public static unsafe extern nint PInvoke_GetCount(Data data);
 
     public unsafe void CopyBytes(UnsafeMutablePointer<byte> buffer, nint count)
     {
         PInvoke_CopyBytes(buffer, count, this);
     }
 
-
-    [DllImport(KnownLibraries.SwiftFoundation, EntryPoint = "$s10Foundation4DataVMa")]
     [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
-    public static unsafe extern TypeMetadata PInvoke_getMetadata();
-
-    [DllImport(KnownLibraries.SwiftFoundation, EntryPoint = "$s10Foundation4DataV5bytes5countACSV_SitcfC")]
-    [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
-    public static unsafe extern Data PInvoke_InitWithBytes(UnsafeRawPointer pointer, nint count);
-
-    [DllImport(KnownLibraries.SwiftFoundation, EntryPoint = "$s10Foundation4DataV5countSivg")]
-    [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
-    public static unsafe extern nint PInvoke_GetCount(Data data);
-
     [DllImport(KnownLibraries.SwiftFoundation, EntryPoint = "$s10Foundation4DataV9copyBytes2to5countySpys5UInt8VG_SitF")]
-    [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     public static unsafe extern void PInvoke_CopyBytes(UnsafeMutablePointer<byte> buffer, nint count, Data data);
 }
