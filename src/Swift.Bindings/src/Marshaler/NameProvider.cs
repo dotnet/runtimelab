@@ -16,6 +16,13 @@ public record struct GenericParameterCSName(string TypeParameter);
 /// 
 public static class NameProvider
 {
+    // Dictionary of Swift property names that need to be renamed in C#
+    // Temporary workaround for https://github.com/dotnet/runtimelab/issues/2997 to keep StoreKit tests passing
+    private static readonly Dictionary<string, string> PropertyNameMappings = new()
+    {
+        { "isEligibleForIntroOffer", "isEligibleForIntroOfferProperty" },
+    };
+
     /// <summary>
     /// Provides the name of the PInvoke method.
     /// </summary>
@@ -75,4 +82,14 @@ public static class NameProvider
         Visibility.Private => "private",
         _ => throw new ArgumentException($"Unknown visibility: {visibility}")
     };
+
+    /// <summary>
+    /// Gets the C# property name for a given Swift property name, handling reserved keywords and special cases.
+    /// </summary>
+    /// <param name="swiftPropertyName">The original Swift property name.</param>
+    /// <returns>The appropriate C# property name.</returns>
+    public static string GetPropertyName(string swiftPropertyName) =>
+        PropertyNameMappings.TryGetValue(swiftPropertyName, out var mappedName)
+            ? mappedName
+            : swiftPropertyName;
 }

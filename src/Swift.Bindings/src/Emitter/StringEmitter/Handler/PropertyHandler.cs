@@ -26,9 +26,6 @@ public class PropertyHandlerFactory : IFactory<BaseDecl, IPropertyHandler>
 /// </summary> 
 public class PropertyHandler : BaseHandler, IPropertyHandler
 {
-
-    // Dictionary of Swift property names that need to be renamed in C#
-    // Temporary workaround for https://github.com/dotnet/runtimelab/issues/2997 to keep StoreKit tests passing
     private static readonly Dictionary<string, string> PropertyNameMappings = new()
     {
         { "isEligibleForIntroOffer", "isEligibleForIntroOfferProperty" },
@@ -79,11 +76,8 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
         // TODO Detect and skip / Handle async properties https://github.com/dotnet/runtimelab/issues/2996
         var csTypeName = typeRecord!.CSTypeIdentifier;
 
-        // Get the C# property name, using the mapping dictionary if necessary
-        // Temporary workaround for https://github.com/dotnet/runtimelab/issues/2997 to keep StoreKit tests passing
-        var propertyName = PropertyNameMappings.TryGetValue(propertyDecl.Name, out var mappedName)
-            ? mappedName
-            : propertyDecl.Name;
+        // Get the C# property name, handling reserved keywords and special cases
+        var propertyName = NameProvider.GetPropertyName(propertyDecl.Name);
 
         // First emit the accessor methods using MethodHandler
         foreach (var accessor in propertyDecl.Accessors)
