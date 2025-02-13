@@ -48,6 +48,12 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
     /// <inheritdoc/>
     public void Emit(CSharpWriter csWriter, SwiftWriter swiftWriter, IEnvironment env, Conductor conductor)
     {
+        // This will emit the C# equivalent of the Swift property.
+        // To achieve this, the process is divided into the following steps:
+        // 1. Emit Accessor Methods: Generate the C# methods that correspond to the Swift property's accessors (getter, setter, etc.).
+        // 2. Emit Property Definition: Define the C# property itself, including its type, name, and accessors.
+        //    This step utilizes the previously generated accessor methods to implement the property's behavior.
+
         var propertyEnv = (PropertyEnvironment)env;
         var propertyDecl = propertyEnv.PropertyDecl;
 
