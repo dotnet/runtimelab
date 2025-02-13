@@ -100,7 +100,9 @@ namespace BindingsGeneration
                     propertyHandler.Emit(csWriter, swiftWriter, propertyEnv, conductor);
                 }
                 else
-                    Console.WriteLine($"No handler found for property {propertyDecl.Name}");
+                {
+                    throw new InvalidOperationException($"No handler found for property {propertyDecl.Name}");
+                }
             }
             csWriter.WriteLine();
 

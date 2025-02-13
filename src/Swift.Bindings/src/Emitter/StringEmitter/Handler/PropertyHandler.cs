@@ -26,7 +26,6 @@ public class PropertyHandlerFactory : IFactory<BaseDecl, IPropertyHandler>
 /// </summary> 
 public class PropertyHandler : BaseHandler, IPropertyHandler
 {
-    private readonly MethodHandler _methodHandler = new();
 
     // Dictionary of Swift property names that need to be renamed in C#
     // Temporary workaround for https://github.com/dotnet/runtimelab/issues/2997 to keep StoreKit tests passing
@@ -89,8 +88,15 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
         // First emit the accessor methods using MethodHandler
         foreach (var accessor in propertyDecl.Accessors)
         {
-            var accessorEnv = new MethodEnvironment(accessor.Method, propertyEnv.TypeDatabase);
-            _methodHandler.Emit(csWriter, swiftWriter, accessorEnv, conductor);
+            if (conductor.TryGetMethodHandler(accessor.Method, out var methodHandler))
+            {
+                var accessorEnv = methodHandler.Marshal(accessor.Method, propertyEnv.TypeDatabase);
+                methodHandler.Emit(csWriter, swiftWriter, accessorEnv, conductor);
+            }
+            else
+            {
+                throw new InvalidOperationException($"No handler found for properties accessor {accessor.Method.Name}");
+            }
         }
 
         // Then emit the property
