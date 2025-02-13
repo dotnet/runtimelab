@@ -65,6 +65,7 @@ jobs:
           ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/RunnerApp/RunnerApp.csproj \
           -f net9.0-maccatalyst \
           -c $(_BuildConfig) \
+          -r maccatalyst-${{ parameters.archType }}
           /bl:./artifacts/logs/msbuild-publish.binlog
         displayName: Publish app
 
