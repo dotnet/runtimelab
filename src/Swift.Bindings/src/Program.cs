@@ -81,7 +81,11 @@ namespace BindingsGeneration
         public static void GenerateBindings(string swiftAbiPath, string dylibPath, string outputDirectory, int verbose = 2)
         {
             var typeDatabase = new TypeDatabase();
-            typeDatabase.LoadModuleDatabaseFromFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Swift", "FoundationDatabase.xml")).Wait();
+            string[] moduleDatabases = { "FoundationDatabase.xml", "SwiftDatabase.xml" };
+            foreach (var database in moduleDatabases)
+            {
+                typeDatabase.LoadModuleDatabaseFromFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Swift", database)).Wait();
+            }
 
             if (verbose > 0)
                 Console.WriteLine($"Starting bindings generation for {swiftAbiPath}...");

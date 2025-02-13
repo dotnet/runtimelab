@@ -113,7 +113,7 @@ public struct SwiftString : ISwiftObject
 
         var contiguousArray = PInvoke_GetUtf8ContiguousArray(_payload);
 
-        #pragma warning disable CS8500
+#pragma warning disable CS8500
         unsafe
         {
             ToStringCallbackContext callbackContext;
@@ -129,7 +129,7 @@ public struct SwiftString : ISwiftObject
                 return default;
             }
         }
-        #pragma warning restore CS8500
+#pragma warning restore CS8500
     }
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
