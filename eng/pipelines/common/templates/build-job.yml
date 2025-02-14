@@ -61,6 +61,9 @@ jobs:
         - script: ./generate.sh --configuration $(_BuildConfig) ${{ parameters.bindings.scriptArgs }}
           displayName: Generate Bindings
 
+      - script: xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+        displayName: Select Xcode 16.2
+
       - script: |
           ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/RunnerApp/RunnerApp.csproj \
           -f net9.0-maccatalyst \
