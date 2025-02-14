@@ -73,6 +73,13 @@ jobs:
         displayName: Publish app
 
       - script: |
+          ./dotnet.sh tool install Microsoft.DotNet.XHarness.CLI \
+          --global \
+          --add-source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-eng/nuget/v3/index.json \
+          --version "10.0.0-prerelease*"
+        displayName: Install XHarness
+
+      - script: |
           ./dotnet.sh xharness apple test \
           --target maccatalyst \
           --timeout="00:02:00" \
