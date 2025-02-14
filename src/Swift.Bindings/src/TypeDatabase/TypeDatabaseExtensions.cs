@@ -34,7 +34,7 @@ public static class TypeDatabaseExtensions
     /// <returns>True if the type has been processed; otherwise, false.</returns>
     public static bool IsTypeProcessed(this ITypeDatabase typeDatabase, NamedTypeSpec typeSpec)
     {
-        var typeName = SwiftTypeNameConverter.ConvertWithGenericParameters(typeSpec);
+        var typeName = SwiftTypeNameConverter.Convert(typeSpec);
         return typeDatabase.IsTypeProcessed(typeName);
     }
 
@@ -62,7 +62,7 @@ public static class TypeDatabaseExtensions
     /// <returns>The type record.</returns>
     public static TypeRecord GetTypeRecordOrAnyType(this ITypeDatabase typeDatabase, NamedTypeSpec typeSpec)
     {
-        var typeName = SwiftTypeNameConverter.ConvertWithGenericParameters(typeSpec);
+        var typeName = SwiftTypeNameConverter.Convert(typeSpec);
         return typeDatabase.GetTypeRecordOrAnyType(typeName);
     }
 
@@ -109,7 +109,7 @@ public static class TypeDatabaseExtensions
     /// <returns>True if the type record was found; otherwise, false.</returns>
     public static bool TryGetTypeRecord(this ITypeDatabase typeDatabase, NamedTypeSpec typeSpec, [NotNullWhen(returnValue: true)] out TypeRecord? record)
     {
-        var typeName = SwiftTypeNameConverter.ConvertWithGenericParameters(typeSpec);
+        var typeName = SwiftTypeNameConverter.Convert(typeSpec);
         return typeDatabase.TryGetTypeRecord(typeName, out record);
     }
 
@@ -121,7 +121,7 @@ public static class TypeDatabaseExtensions
     /// <returns>The type record.</returns>
     public static TypeRecord GetTypeRecordOrThrow(this ITypeDatabase typeDatabase, NamedTypeSpec typeSpec)
     {
-        var typeName = SwiftTypeNameConverter.ConvertWithGenericParameters(typeSpec);
+        var typeName = SwiftTypeNameConverter.Convert(typeSpec);
         return typeDatabase.GetTypeRecordOrThrow(typeName);
     }
 
@@ -157,23 +157,27 @@ public static class TypeDatabaseExtensions
     /// Gets the type record for the Any type.
     /// </summary>
     /// <returns>The type record for the Any type.</returns>
-    static readonly TypeRecord AnyType = new TypeRecord
+    public static TypeRecord AnyType { get; } = new TypeRecord
     {
         Namespace = "Swift",
         CSTypeIdentifier = "AnyType",
         SwiftTypeName = SwiftTypeName.AnyType,
         MetadataAccessor = string.Empty,
         IsBlittable = false,
-        IsFrozen = false
+        IsFrozen = false,
     };
 
-    static readonly TypeRecord VoidType = new TypeRecord
+    /// <summary>
+    /// Gets the type record for the Void type.
+    /// </summary>
+    /// <returns>The type record for the Void type.</returns>
+    public static TypeRecord VoidType { get; } = new TypeRecord
     {
         Namespace = "",
         CSTypeIdentifier = "void",
         SwiftTypeName = SwiftTypeName.VoidType,
         MetadataAccessor = string.Empty,
         IsBlittable = true,
-        IsFrozen = true
+        IsFrozen = true,
     };
 }

@@ -11,7 +11,6 @@ namespace BindingsGeneration
             var returnType = env.MethodDecl.CSSignature.First();
 
             if (returnType.IsGeneric) return true;
-            if (returnType.SwiftTypeSpec.IsEmptyTuple) return false;
 
             if (!ArgumentIsMarshalledAsCSStruct(returnType, env.TypeDatabase)) return true;
             return false;

@@ -41,35 +41,35 @@ namespace BindingsGeneration.FunctionalTests
         [Fact]
         public void SmokeTestArray()
         {
-            var array = GetArray(3);
+            var array = Bindings.RuntimeTests.getArray(3);
             Assert.Equal(3, array.Count);
             Assert.Equal(0, array[0]);
             Assert.Equal(1, array[1]);
             Assert.Equal(2, array[2]);
-            Assert.Equal(3, SumArray(array));
+            Assert.Equal(3, Bindings.RuntimeTests.sumArray(array));
         }
 
         [Fact]
         public void TestEmptyArray()
         {
-            var array = GetArray(0);
+            var array = Bindings.RuntimeTests.getArray(0);
             Assert.Equal(0, array.Count);
-            Assert.Equal(0, SumArray(array));
+            Assert.Equal(0, Bindings.RuntimeTests.sumArray(array));
         }
 
         [Fact]
         public void TestOneElementArray()
         {
-            var array = GetArray(1);
+            var array = Bindings.RuntimeTests.getArray(1);
             Assert.Equal(1, array.Count);
             Assert.Equal(0, array[0]);
-            Assert.Equal(0, SumArray(array));
+            Assert.Equal(0, Bindings.RuntimeTests.sumArray(array));
         }
 
         [Fact]
         public void TestBigArray()
         {
-            var array = GetArray(10000);
+            var array = Bindings.RuntimeTests.getArray(10000);
             Assert.Equal(10000, array.Count);
             var sum = 0;
             for (int i = 0; i < 10000; i++)
@@ -77,30 +77,8 @@ namespace BindingsGeneration.FunctionalTests
                 Assert.Equal(i, array[i]);
                 sum += i;
             }
-            Assert.Equal(sum, SumArray(array));
+            Assert.Equal(sum, Bindings.RuntimeTests.sumArray(array));
         }
-
-        // TODO: Remove helper methods when https://github.com/dotnet/runtimelab/issues/2970
-        private static unsafe SwiftArray<int> GetArray(int count)
-        {
-            ArrayBuffer buffer = PInvoke_GetArray(count);
-            return SwiftMarshal.MarshalFromSwift<SwiftArray<int>>((SwiftHandle)new IntPtr(&buffer));
-        }
-
-        [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
-        [DllImport("Runtime/libRuntimeTests.dylib", EntryPoint = "$s12RuntimeTests8getArray5countSays5Int32VGAE_tF")]
-        private static extern ArrayBuffer PInvoke_GetArray(int count);
-
-        private static unsafe int SumArray(SwiftArray<int> array)
-        {
-            ArrayBuffer buffer = new ArrayBuffer();
-            SwiftMarshal.MarshalToSwift<SwiftArray<int>>(array, new IntPtr(&buffer));
-            return PInvoke_SumArray(buffer);
-        }
-
-        [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
-        [DllImport("Runtime/libRuntimeTests.dylib", EntryPoint = "$s12RuntimeTests8sumArray5arrays5Int32VSayAEG_tF")]
-        private static extern int PInvoke_SumArray(ArrayBuffer array);
 
         [Fact]
         public void SmokeTestSet()

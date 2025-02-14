@@ -92,4 +92,9 @@ public static class NameProvider
         PropertyNameMappings.TryGetValue(swiftPropertyName, out var mappedName)
             ? mappedName
             : swiftPropertyName;
+
+    /// <summary>
+    /// Gets the C# variable name for the buffer of a bound generic type.
+    /// </summary>
+    public static string GetBoundGenericBufferName(string typeName) => $"{typeName}Buffer";
 }
