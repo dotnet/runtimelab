@@ -10,7 +10,7 @@ function InstallWorkloads {
         echo "dotnet is installed at $(command -v dotnet)."
     fi
 
-    ./dotnet.sh workload install maui maccatalyst --version 9.0.100-rc.1.24453.3 --source https://api.nuget.org/v3/index.json
+    ./dotnet.sh workload install maui maccatalyst --version 9.0.103 --source https://api.nuget.org/v3/index.json
 
     if [[ $? != 0 ]]; then
         Write-PipelineTelemetryError -category 'InitializeToolset' "Failed to install workloads."
