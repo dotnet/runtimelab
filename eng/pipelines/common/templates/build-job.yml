@@ -70,7 +70,6 @@ jobs:
           -c $(_BuildConfig) \
           -r maccatalyst-${{ parameters.archType }} \
           /p:UseMaui=true
-          /bl:./artifacts/msbuild-publish.binlog
         displayName: Publish app
 
       - script: |
