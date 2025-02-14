@@ -206,7 +206,6 @@ namespace System.Runtime.CompilerServices
 
             state.Notifier = awaiter;
             SuspendAsync2(sentinelContinuation);
-            return;
         }
 
         // Marked intrinsic since this needs to be
@@ -239,7 +238,6 @@ namespace System.Runtime.CompilerServices
             }
 
             awaiter.GetResult();
-            return;
         }
 
         // Marked intrinsic since this needs to be
@@ -272,7 +270,6 @@ namespace System.Runtime.CompilerServices
             }
 
             awaiter.GetResult();
-            return;
         }
 
 #endif
