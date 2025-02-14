@@ -61,7 +61,7 @@ jobs:
         - script: ./generate.sh --configuration $(_BuildConfig) ${{ parameters.bindings.scriptArgs }}
           displayName: Generate Bindings
 
-      - script: xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+      - script: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
         displayName: Select Xcode 16.2
 
       - script: |
