@@ -1,8 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
-
+		<TargetFramework>net9.0-maccatalyst</TargetFramework>
 		<OutputType>Exe</OutputType>
 		<RootNamespace>RunnerApp</RootNamespace>
 		<UseMaui>true</UseMaui>
