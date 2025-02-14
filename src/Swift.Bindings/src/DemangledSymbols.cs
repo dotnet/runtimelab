@@ -49,8 +49,8 @@ public sealed class DemangledSymbolsRegister
 
             foreach (var descriptor in descriptors)
             {
-                var implementingType = SwiftTypeNameConverter.Convert(descriptor.ImplementingType);
-                var protocolType = SwiftTypeNameConverter.Convert(descriptor.ProtocolType);
+                var implementingType = SwiftTypeName.FromTypeSpec(descriptor.ImplementingType);
+                var protocolType = SwiftTypeName.FromTypeSpec(descriptor.ProtocolType);
                 dictionary[(implementingType, protocolType)] = descriptor.Symbol[1..];
             }
 

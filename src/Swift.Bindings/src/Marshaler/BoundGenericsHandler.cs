@@ -60,7 +60,7 @@ public class BoundGenericsHandler
             return false;
 
         var namedTypeSpec = (NamedTypeSpec)argumentDecl.SwiftTypeSpec;
-        var swiftTypeName = SwiftTypeNameConverter.Convert(namedTypeSpec);
+        var swiftTypeName = SwiftTypeName.FromTypeSpec(namedTypeSpec);
         return !s_structGenerics.Contains(swiftTypeName);
     }
 

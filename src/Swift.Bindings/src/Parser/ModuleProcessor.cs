@@ -60,7 +60,7 @@ namespace BindingsGeneration
         /// <returns><c>true</c> if the type was found; otherwise, <c>false</c>.</returns>
         private bool TryGetTypeRecord(NamedTypeSpec swiftTypeSpec, [NotNullWhen(true)] out TypeRecord? record)
         {
-            var swiftTypeName = SwiftTypeNameConverter.Convert(swiftTypeSpec);
+            var swiftTypeName = SwiftTypeName.FromTypeSpec(swiftTypeSpec);
 
             // First, check if this module is the one being processed.
             if (swiftTypeName.Module == _module)
@@ -95,7 +95,7 @@ namespace BindingsGeneration
         /// <param name="typeDecl">The associated type declaration.</param>
         private void ProcessTypeRecursively(NamedTypeSpec namedTypeSpec, TypeDecl typeDecl)
         {
-            if (_moduleDatabase.IsTypeProcessed(SwiftTypeNameConverter.Convert(namedTypeSpec)))
+            if (_moduleDatabase.IsTypeProcessed(SwiftTypeName.FromTypeSpec(namedTypeSpec)))
                 return;
 
             switch (typeDecl)

@@ -42,13 +42,29 @@ public record SwiftTypeName
     {
         ArgumentException.ThrowIfNullOrEmpty(moduleQualifiedName, nameof(moduleQualifiedName));
 
-        var parts = SplitModuleQualifiedName(moduleQualifiedName); // TODO: Remove this once bound generic are correctly handled
-        if (parts.Count < 2)
+        if (moduleQualifiedName.Contains('<'))
+        {
+            throw new ArgumentException("Cannot create a SwiftTypeName from a generic type.");
+        }
+
+        var parts = moduleQualifiedName.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 2)
         {
             throw new ArgumentException($"Invalid module-qualified name: {moduleQualifiedName}");
         }
 
         return new SwiftTypeName(parts.First(), parts.Last(), moduleQualifiedName);
+    }
+
+    /// <summary>
+    /// Creates a new SwiftTypeName from a NamedTypeSpec.
+    /// </summary>
+    /// <param name="namedTypeSpec">The NamedTypeSpec.</param>
+    /// <returns>The SwiftTypeName.</returns>
+    public static SwiftTypeName FromTypeSpec(NamedTypeSpec namedTypeSpec)
+    {
+        ArgumentNullException.ThrowIfNull(namedTypeSpec, nameof(namedTypeSpec));
+        return FromModuleQualifiedName(namedTypeSpec.Name);
     }
 
     /// <summary>
@@ -60,48 +76,4 @@ public record SwiftTypeName
     /// Swift type name for Any.
     /// </summary>
     public static readonly SwiftTypeName AnyType = new SwiftTypeName(string.Empty, "Any", "Any");
-
-    //TODO: Remove SplitModuleQualifiedName once we handle bound generics.
-
-    /// <summary>
-    /// Splits a module-qualified name into its parts respecting angle brackets. If the name is "Swift.Array<Swift.String>", the parts will be "Swift" and "Array<Swift.String>".
-    /// </summary>
-    /// <param name="qualifiedName">The module-qualified name.</param>
-    /// <returns>The parts of the module-qualified name.</returns>
-    private static List<string> SplitModuleQualifiedName(string qualifiedName)
-    {
-        var parts = new List<string>();
-        int start = 0;
-        int bracketLevel = 0;
-
-        for (int i = 0; i < qualifiedName.Length; i++)
-        {
-            char c = qualifiedName[i];
-
-            if (c == '<')
-            {
-                // Entering a generic section.
-                bracketLevel++;
-            }
-            else if (c == '>')
-            {
-                // Exiting a generic section.
-                bracketLevel--;
-            }
-            else if (c == '.' && bracketLevel == 0)
-            {
-                // Only split on a period if we're not inside generic brackets.
-                parts.Add(qualifiedName.Substring(start, i - start));
-                start = i + 1;
-            }
-        }
-
-        // Add the final part.
-        if (start < qualifiedName.Length)
-        {
-            parts.Add(qualifiedName.Substring(start));
-        }
-
-        return parts.Where(p => !string.IsNullOrEmpty(p)).ToList();
-    }
 }

@@ -34,7 +34,7 @@ public static class TypeDatabaseExtensions
     /// <returns>True if the type has been processed; otherwise, false.</returns>
     public static bool IsTypeProcessed(this ITypeDatabase typeDatabase, NamedTypeSpec typeSpec)
     {
-        var typeName = SwiftTypeNameConverter.Convert(typeSpec);
+        var typeName = SwiftTypeName.FromTypeSpec(typeSpec);
         return typeDatabase.IsTypeProcessed(typeName);
     }
 
@@ -62,7 +62,7 @@ public static class TypeDatabaseExtensions
     /// <returns>The type record.</returns>
     public static TypeRecord GetTypeRecordOrAnyType(this ITypeDatabase typeDatabase, NamedTypeSpec typeSpec)
     {
-        var typeName = SwiftTypeNameConverter.Convert(typeSpec);
+        var typeName = SwiftTypeName.FromTypeSpec(typeSpec);
         return typeDatabase.GetTypeRecordOrAnyType(typeName);
     }
 
@@ -109,7 +109,7 @@ public static class TypeDatabaseExtensions
     /// <returns>True if the type record was found; otherwise, false.</returns>
     public static bool TryGetTypeRecord(this ITypeDatabase typeDatabase, NamedTypeSpec typeSpec, [NotNullWhen(returnValue: true)] out TypeRecord? record)
     {
-        var typeName = SwiftTypeNameConverter.Convert(typeSpec);
+        var typeName = SwiftTypeName.FromTypeSpec(typeSpec);
         return typeDatabase.TryGetTypeRecord(typeName, out record);
     }
 
@@ -121,7 +121,7 @@ public static class TypeDatabaseExtensions
     /// <returns>The type record.</returns>
     public static TypeRecord GetTypeRecordOrThrow(this ITypeDatabase typeDatabase, NamedTypeSpec typeSpec)
     {
-        var typeName = SwiftTypeNameConverter.Convert(typeSpec);
+        var typeName = SwiftTypeName.FromTypeSpec(typeSpec);
         return typeDatabase.GetTypeRecordOrThrow(typeName);
     }
 
