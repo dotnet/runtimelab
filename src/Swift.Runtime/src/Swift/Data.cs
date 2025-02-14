@@ -22,7 +22,7 @@ public interface ISwiftContiguousBytes { }
 /// <summary>
 /// Represents Foundation.Data type.
 /// </summary>
-public unsafe struct Data : ISwiftObject
+public struct Data : ISwiftObject
 {
     private long _flags;
     private IntPtr _object;
@@ -48,7 +48,7 @@ public unsafe struct Data : ISwiftObject
     [DllImport(KnownLibraries.SwiftFoundation, EntryPoint = "$s10Foundation4DataVMa")]
     public static unsafe extern TypeMetadata PInvoke_getMetadata();
 
-    static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+    static unsafe ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
     {
         return *(Data*)handle;
     }
