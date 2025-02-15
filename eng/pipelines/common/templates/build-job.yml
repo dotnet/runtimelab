@@ -72,15 +72,11 @@ jobs:
           /p:UseMaui=true
         displayName: Publish app
 
-      - script: |
-          ./dotnet.sh tool install Microsoft.DotNet.XHarness.CLI \
-          --global \
-          --add-source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet-eng/nuget/v3/index.json \
-          --version "10.0.0-prerelease*"
+      - script: curl -L https://aka.ms/get-xharness | bash -
         displayName: Install XHarness
 
       - script: |
-          dotnet xharness apple test \
+          ./xharness apple test \
           --target maccatalyst \
           --timeout="00:02:00" \
           --launch-timeout=00:06:00 \
