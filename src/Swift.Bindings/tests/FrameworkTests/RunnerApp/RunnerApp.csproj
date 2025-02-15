@@ -9,9 +9,6 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
-		<IsAotCompatible>true</IsAotCompatible>
-		<PublishAot Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">true</PublishAot>
-
 		<!-- Display name -->
 		<ApplicationTitle>RunnerApp</ApplicationTitle>
 
