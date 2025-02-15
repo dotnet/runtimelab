@@ -80,7 +80,7 @@ jobs:
         displayName: Install XHarness
 
       - script: |
-          ./dotnet.sh xharness apple test \
+          dotnet xharness apple test \
           --target maccatalyst \
           --timeout="00:02:00" \
           --launch-timeout=00:06:00 \
