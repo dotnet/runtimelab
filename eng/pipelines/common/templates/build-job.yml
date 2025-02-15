@@ -84,6 +84,10 @@ jobs:
           --output-directory artifacts
         displayName: Run device tests
 
+      - script: |
+          cat artifacts/RunnerApp.log
+        displayName: Display logs
+
       - ${{ if eq(parameters.isOfficialBuild, true) }}:
         - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
           parameters:
