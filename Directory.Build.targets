@@ -2,7 +2,7 @@
   <!-- Use a custom framework version -->
   <ItemGroup>
     <FrameworkReference Update="Microsoft.NETCore.App"
-                        Condition="'$(UseCustomRuntimeVersion)' == 'true' and '$(TargetFrameworkIdentifier)' == '.NETCoreApp'"
+                        Condition="'$(UseCustomRuntimeVersion)' == 'true' and '$(TargetFrameworkIdentifier)' == '.NETCoreApp' and '$(UseMaui)' != 'true'"
                         TargetFramework="$(TargetFramework)"
                         RuntimeFrameworkVersion="$(MicrosoftNETCoreAppVersion)"
                         TargetingPackVersion="$(MicrosoftNETCoreAppVersion)" />

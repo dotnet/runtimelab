@@ -1,7 +1,7 @@
 <Project>
   <Import Condition="'$(UseMaui)' != 'true'" Project="Sdk.props" Sdk="Microsoft.DotNet.Arcade.Sdk" />
 
-  <PropertyGroup>
+  <PropertyGroup Condition="'$(UseMaui)' != 'true'">
     <Copyright>$(CopyrightNetFoundation)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
@@ -16,13 +16,13 @@
     <RuntimeFrameworkVersion Condition="$(UseCustomRuntimeVersion)">$(MicrosoftNETCoreAppVersion)</RuntimeFrameworkVersion>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true' and '$(UseMaui)' != 'true'">
     <IsPackable>false</IsPackable>
     <TestCaptureOutput>false</TestCaptureOutput>
     <TargetPlatform Condition="'$(TargetPlatform)' == ''">x64</TargetPlatform>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(IsTestProject)' == 'true'">
+  <ItemGroup Condition="'$(IsTestProject)' == 'true' and '$(UseMaui)' != 'true'">
     <PackageReference Update="Microsoft.NET.Test.Sdk" Version="$(MicrosoftNETTestSdkVersion)" PrivateAssets="true" />
     <PackageReference Update="xunit" Version="$(XunitVersion)" />
     <PackageReference Update="xunit.runner.visualstudio" Version="$(XUnitRunnerVisualStudioVersion)" PrivateAssets="all" />
