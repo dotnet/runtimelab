@@ -69,6 +69,7 @@ jobs:
           -f net9.0-maccatalyst \
           -c $(_BuildConfig) \
           -r maccatalyst-${{ parameters.archType }} \
+          /p:TargetPlatform=${{ parameters.archType }} \
           /p:UseMaui=true
         displayName: Publish app
 
