@@ -189,7 +189,6 @@ namespace System.Runtime.CompilerServices
 
             state.Notifier = awaiter;
             SuspendAsync2(sentinelContinuation);
-            return;
         }
 
         // Marked intrinsic since for JIT state machines this needs to be
