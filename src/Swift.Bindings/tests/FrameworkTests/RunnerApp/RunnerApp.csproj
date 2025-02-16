@@ -8,6 +8,7 @@
 		<SingleProject>true</SingleProject>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+    <IsTestProject>false</IsTestProject>
 
 		<!-- Display name -->
 		<ApplicationTitle>RunnerApp</ApplicationTitle>
