@@ -56,7 +56,7 @@ stages:
         archType: arm64
         runTests: true
         pool:
-          vmImage: 'macOS-latest'
+          vmImage: 'macos-14-arm64'
         bindings:
           isBindingsBuild: true
           scriptArgs: '--platform MacOSX --arch arm64e-apple-macos --framework StoreKit'

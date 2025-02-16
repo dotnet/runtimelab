@@ -83,12 +83,6 @@ jobs:
           --launch-timeout=00:06:00 \
           --app ./src/Swift.Bindings/tests/FrameworkTests/RunnerApp/bin/$(_BuildConfig)/net9.0-maccatalyst/maccatalyst-${{ parameters.archType }}/RunnerApp.app \
           --output-directory artifacts
-          EXIT_CODE=$?
-          if [ $EXIT_CODE -ne 0 ]; then
-            echo "Test command failed with exit code $EXIT_CODE. Displaying log:"
-            cat artifacts/AppRunner.log
-            exit $EXIT_CODE
-          fi
         displayName: Run device tests
 
       - script: |
