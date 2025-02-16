@@ -64,7 +64,27 @@ jobs:
 
       - ${{ if eq(parameters.archType, 'x64') }}:
         - script: |
-            ./dotnet.sh new globaljson --sdk-version 9.0.102 --force
+            cat << 'EOF' > global.json
+            {
+              "sdk": {
+                "version": "9.0.102",
+                "allowPrerelease": true,
+                "rollForward": "major"
+              },
+              "tools": {
+                "dotnet": "9.0.102",
+                "runtimes": {
+                  "dotnet": [
+                    "$(MicrosoftNETCoreAppVersion)"
+                  ]
+                }
+              },
+              "msbuild-sdks": {
+                "Microsoft.DotNet.Arcade.Sdk": "10.0.0-beta.24515.3"
+              }
+            }
+            EOF
+            ./build.sh
             ./dotnet.sh workload install maui maccatalyst --version 9.0.103 --source https://api.nuget.org/v3/index.json
             ./dotnet.sh new tool-manifest && ./dotnet.sh tool install microsoft.dotnet.xharness.cli --version "9.0.0-prerelease*"
             sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
