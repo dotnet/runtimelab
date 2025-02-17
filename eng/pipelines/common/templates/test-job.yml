@@ -62,7 +62,6 @@ jobs:
           -f net9.0-${{ parameters.platform }} \
           -c $(_BuildConfig) \
           -r ${{ parameters.platform }}-${{ parameters.archType }} \
-          /p:TargetPlatform=${{ parameters.archType }} \
           /p:UseMaui=true
         displayName: Publish app
 
