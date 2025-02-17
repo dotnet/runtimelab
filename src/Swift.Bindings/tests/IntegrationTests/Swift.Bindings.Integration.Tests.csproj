@@ -23,7 +23,7 @@
 
     <!-- Compile generated bindings with tests -->
     <ItemGroup>
-      <Compile Include="$(OutputPath)/**/*.cs" Exclude="$(OutputPath)/Metadata/*.cs;$(OutputPath)/ManualBindings/*.cs" />
+      <Compile Include="$(OutputPath)/**/*.cs" />
     </ItemGroup>
   </Target>
 </Project>

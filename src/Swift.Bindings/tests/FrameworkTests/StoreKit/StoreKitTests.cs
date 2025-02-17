@@ -15,7 +15,7 @@ public static class MauiProgram
 
         // Tracking issue: https://github.com/dotnet/runtimelab/issues/2850
 		[Fact]
-		public async Task Test1()
+		public void Test()
 		{
             Assert.True(true);
 		}
