@@ -50,7 +50,7 @@ public struct Data : ISwiftObject
 
     static unsafe ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
     {
-        return *(Data*)handle;
+        return new Data(handle);
     }
 
     IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
