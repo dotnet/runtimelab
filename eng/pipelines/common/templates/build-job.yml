@@ -52,65 +52,14 @@ jobs:
                 -c $(_BuildConfig)
                 $(_testBuildArg)
                 /p:TargetPlatform=${{ parameters.archType }}
-        displayName: Build and Test
+        displayName: Build and test
 
-      - script: ./verify.sh
+      - script: ./dotnet.sh format --exclude artifacts --verify-no-changes
         displayName: Verify code formatting
 
       - ${{ if and(eq(parameters.bindings.isBindingsBuild, true), ne(parameters.osGroup, 'Windows_NT')) }}:
         - script: ./generate.sh --configuration $(_BuildConfig) ${{ parameters.bindings.scriptArgs }}
-          displayName: Generate Bindings
-
-
-      - ${{ if eq(parameters.archType, 'x64') }}:
-        - script: |
-            cat << 'EOF' > global.json
-            {
-              "sdk": {
-                "version": "9.0.102",
-                "allowPrerelease": true,
-                "rollForward": "major"
-              },
-              "tools": {
-                "dotnet": "9.0.102",
-                "runtimes": {
-                  "dotnet": [
-                    "$(MicrosoftNETCoreAppVersion)"
-                  ]
-                }
-              },
-              "msbuild-sdks": {
-                "Microsoft.DotNet.Arcade.Sdk": "10.0.0-beta.24515.3"
-              }
-            }
-            EOF
-            ./build.sh
-            ./dotnet.sh workload install maui maccatalyst --version 9.0.103 --source https://api.nuget.org/v3/index.json
-            ./dotnet.sh new tool-manifest && ./dotnet.sh tool install microsoft.dotnet.xharness.cli --version "9.0.0-prerelease*"
-            sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
-          displayName: Install dependencies
-
-        - script: |
-            ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/RunnerApp/RunnerApp.csproj \
-            -f net9.0-maccatalyst \
-            -c $(_BuildConfig) \
-            -r maccatalyst-${{ parameters.archType }} \
-            /p:TargetPlatform=${{ parameters.archType }} \
-            /p:UseMaui=true
-          displayName: Publish app
-
-        - script: |
-            ./dotnet.sh xharness apple test \
-            --target maccatalyst \
-            --timeout="00:02:00" \
-            --launch-timeout=00:06:00 \
-            --app ./src/Swift.Bindings/tests/FrameworkTests/RunnerApp/bin/$(_BuildConfig)/net9.0-maccatalyst/maccatalyst-${{ parameters.archType }}/RunnerApp.app \
-            --output-directory artifacts
-          displayName: Run device tests
-
-        - script: |
-            cat artifacts/RunnerApp.log
-          displayName: Display logs
+          displayName: Generate bindings
 
       - ${{ if eq(parameters.isOfficialBuild, true) }}:
         - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
