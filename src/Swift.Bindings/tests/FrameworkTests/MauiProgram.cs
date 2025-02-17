@@ -4,7 +4,7 @@ using DeviceRunners.XHarness;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Hosting;
 
-namespace RunnerApp;
+namespace BindingsGeneration.FrameworkTests;
 
 public static class MauiProgram
 {

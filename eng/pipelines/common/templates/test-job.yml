@@ -58,7 +58,7 @@ jobs:
         displayName: Install dependencies
 
       - script: |
-          ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/RunnerApp/RunnerApp.csproj \
+          ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/Swift.Bindings.Framework.Tests.csproj \
           -f net9.0-${{ parameters.platform }} \
           -c $(_BuildConfig) \
           -r ${{ parameters.platform }}-${{ parameters.archType }} \
@@ -71,10 +71,10 @@ jobs:
           --target ${{ parameters.platform }} \
           --timeout="00:02:00" \
           --launch-timeout=00:06:00 \
-          --app ./src/Swift.Bindings/tests/FrameworkTests/RunnerApp/bin/$(_BuildConfig)/net9.0-${{ parameters.platform }}/${{ parameters.platform }}-${{ parameters.archType }}/RunnerApp.app \
+          --app ./src/Swift.Bindings/tests/FrameworkTests/bin/$(_BuildConfig)/net9.0-${{ parameters.platform }}/${{ parameters.platform }}-${{ parameters.archType }}/Swift.Bindings.Framework.Tests.app \
           --output-directory artifacts
         displayName: Run device tests
 
       - script: |
-          cat artifacts/RunnerApp.log
+          cat artifacts/Swift.Bindings.Framework.Tests.log
         displayName: Display logs

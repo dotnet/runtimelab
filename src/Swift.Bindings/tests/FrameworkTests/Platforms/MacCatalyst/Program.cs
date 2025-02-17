@@ -1,7 +1,7 @@
 ﻿using ObjCRuntime;
 using UIKit;
 
-namespace RunnerApp;
+namespace BindingsGeneration.FrameworkTests;
 
 public class Program
 {

@@ -1,6 +1,6 @@
 ﻿using Foundation;
 
-namespace RunnerApp;
+namespace BindingsGeneration.FrameworkTests;
 
 [Register("AppDelegate")]
 public class AppDelegate : MauiUIApplicationDelegate
