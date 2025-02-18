@@ -38,7 +38,7 @@ namespace Swift.Runtime
         /// void Destroy (object, witnessTable)
         /// Destroy the type pointed to by object leaving it invalid.
         /// </summary>
-        public delegate* unmanaged<void*, ValueWitnessTable*, void> Destroy;
+        public delegate* unmanaged<void*, TypeMetadata, void> Destroy;
 
         /// <summary>
         /// void *InitializeWithCopy (dest, src, metadata)
