@@ -9,37 +9,6 @@
   <Import Project="$(MSBuildThisFileDirectory)/Common/disableversioncheck.targets"
           Condition="'$(DisableVersionCheckImported)' != 'true'" />
 
-<<<<<<< HEAD
-  <PropertyGroup Condition="'$(TargetsAppleMobile)' == 'true' and '$(RuntimeFlavor)' == 'mono'">
-    <OSPlatformConfig>$(TargetOS).AnyCPU.$(Configuration)</OSPlatformConfig>
-    <TestArchiveRoot>$(ArtifactsDir)helix/</TestArchiveRoot>
-    <TestArchiveTestsRoot>$(TestArchiveRoot)tests/</TestArchiveTestsRoot>
-    <TestArchiveTestsDir>$(TestArchiveTestsRoot)$(OSPlatformConfig)/</TestArchiveTestsDir>
-    <TestArchiveRuntimeRoot>$(TestArchiveRoot)runtime/</TestArchiveRuntimeRoot>
-
-    <PublishTestAsSelfContainedDependsOn>BuildMonoiOSApp</PublishTestAsSelfContainedDependsOn>
-    <PublishTestAsSelfContainedAfterTargets>BuildMonoiOSApp</PublishTestAsSelfContainedAfterTargets>
-    <BundleTestAppleAppDependsOn>GenerateRunScript</BundleTestAppleAppDependsOn>
-
-    <IsRuntimeTests>true</IsRuntimeTests>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(TargetsWasm)' == 'true' and '$(RuntimeFlavor)' == 'coreclr'">
-    <!-- NativeAOT-LLVM: https://github.com/dotnet/runtimelab/issues/2695. -->
-    <BuildAllTestsAsStandalone>true</BuildAllTestsAsStandalone>
-  </PropertyGroup>  
-
-  <Import Project="$(RepositoryEngineeringDir)testing\tests.targets"
-          Condition="'$(TargetsAppleMobile)' == 'true' and '$(RuntimeFlavor)' == 'mono'" />
-
-  <Target Name="_SetRunScriptOutputDirectory" Condition="'$(TargetsAppleMobile)' == 'true' and '$(RuntimeFlavor)' == 'mono' and '$(IsRuntimeTests)' == 'true'" BeforeTargets="GenerateRunScript">
-    <PropertyGroup>
-      <RunScriptOutputDirectory>$(ArtifactsDir)/tests/coreclr/obj/$(TargetOS).$(Platform).$(Configuration)/Managed/build/iOSApps/$(TestProjectName)/AppBundle</RunScriptOutputDirectory>
-    </PropertyGroup>
-  </Target>
-
-=======
->>>>>>> runtime/main
   <!-- Default priority building values. -->
   <PropertyGroup>
     <DisableProjectBuild Condition="'$(IsMergedTestRunnerAssembly)' == 'true' and '$(BuildAllTestsAsStandalone)' == 'true' and '$(HasMergedInTests)' != 'true'">true</DisableProjectBuild>

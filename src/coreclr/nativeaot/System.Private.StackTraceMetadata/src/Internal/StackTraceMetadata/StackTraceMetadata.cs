@@ -71,12 +71,7 @@ namespace Internal.StackTraceMetadata
             isStackTraceHidden = false;
 
             // We haven't found information in the stack trace metadata tables, but maybe reflection will have this
-<<<<<<< HEAD
-            methodStartAddress = ReflectionExecution.ConvertStackTraceIpToFunctionPointer(methodStartAddress);
-            if (IsReflectionExecutionAvailable() && ReflectionExecution.TryGetMethodMetadataFromStartAddress(methodStartAddress,
-=======
             if (ReflectionExecution.TryGetMethodMetadataFromStartAddress(methodStartAddress,
->>>>>>> runtime/main
                 out MetadataReader reader,
                 out TypeDefinitionHandle typeHandle,
                 out MethodHandle methodHandle))
@@ -131,12 +126,7 @@ namespace Internal.StackTraceMetadata
             }
 
             // We haven't found information in the stack trace metadata tables, but maybe reflection will have this
-<<<<<<< HEAD
-            methodStartAddress = ReflectionExecution.ConvertStackTraceIpToFunctionPointer(methodStartAddress);
-            if (IsReflectionExecutionAvailable() && ReflectionExecution.TryGetMethodMetadataFromStartAddress(methodStartAddress,
-=======
             if (ReflectionExecution.TryGetMethodMetadataFromStartAddress(methodStartAddress,
->>>>>>> runtime/main
                 out MetadataReader reader,
                 out TypeDefinitionHandle typeHandle,
                 out MethodHandle methodHandle))

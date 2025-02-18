@@ -54,19 +54,10 @@ public:
     void Build();
 
 private:
-<<<<<<< HEAD
-    // Compute flow graph dominance frontiers.
-    void ComputeDominanceFrontiers(BasicBlock** postOrder, int count, BlkToBlkVectorMap* mapDF);
-
-    // Compute the iterated dominance frontier for the specified block.
-    void ComputeIteratedDominanceFrontier(BasicBlock* b, const BlkToBlkVectorMap* mapDF, BlkVector* bIDF);
-
 #if defined(TARGET_WASM)
     void InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum);
 #endif
 
-=======
->>>>>>> runtime/main
     // Insert a new GT_PHI statement.
     static Statement* InsertPhi(Compiler* comp, BasicBlock* block, unsigned lclNum);
 

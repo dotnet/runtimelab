@@ -1163,12 +1163,9 @@ inline bool isFloatRegType(var_types type)
 #endif
 #endif
 
-<<<<<<< HEAD
 #if !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
-=======
 // RBM_ALLINT is not known at compile time on TARGET_AMD64 since it's dependent on APX support.
 // Check should still be functional minus eGPR registers
->>>>>>> runtime/main
 /*****************************************************************************/
 // Some sanity checks on some of the register masks
 // Stack pointer is never part of RBM_ALLINT

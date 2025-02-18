@@ -97,15 +97,11 @@ namespace ILCompiler
                 if (potentialType.Namespace != "System.Runtime.Intrinsics.Arm")
                     return "";
             }
-<<<<<<< HEAD
-            else if (architecture == TargetArchitecture.Wasm32 || architecture == TargetArchitecture.Wasm64)
+            else if (architecture is TargetArchitecture.Wasm32 || architecture is TargetArchitecture.Wasm64)
             {
                 return ""; // No "hardware" for Wasm at all.
             }
-            else if (architecture == TargetArchitecture.LoongArch64)
-=======
             else if (architecture is TargetArchitecture.LoongArch64)
->>>>>>> runtime/main
             {
                 return "";
             }

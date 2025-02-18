@@ -17,14 +17,8 @@ endif()
 
 function(create_standalone_jit)
 
-<<<<<<< HEAD
-  set(oneValueArgs TARGET OS ARCH CMAKE_CXX_STANDARD)
-  set(multiValueArgs DESTINATIONS)
-  cmake_parse_arguments(TARGETDETAILS "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-=======
   set(oneValueArgs TARGET OS ARCH)
   cmake_parse_arguments(TARGETDETAILS "" "${oneValueArgs}" "" ${ARGN})
->>>>>>> runtime/main
 
   if(TARGETDETAILS_OS STREQUAL "unix_osx" OR TARGETDETAILS_OS STREQUAL "unix_anyos")
     set(JIT_ARCH_LINK_LIBRARIES gcinfo_unix_${TARGETDETAILS_ARCH})

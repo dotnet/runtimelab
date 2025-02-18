@@ -44,12 +44,9 @@ set __TargetArchX64=0
 set __TargetArchX86=0
 set __TargetArchArm=0
 set __TargetArchArm64=0
-<<<<<<< HEAD
-set __TargetArchWasm=0
-=======
 set __TargetArchLoongArch64=0
 set __TargetArchRiscV64=0
->>>>>>> runtime/main
+set __TargetArchWasm=0
 
 set __BuildTypeDebug=0
 set __BuildTypeChecked=0
@@ -95,12 +92,9 @@ if /i "%1" == "-x64"                 (set __TargetArchX64=1&shift&goto Arg_Loop)
 if /i "%1" == "-x86"                 (set __TargetArchX86=1&shift&goto Arg_Loop)
 if /i "%1" == "-arm"                 (set __TargetArchArm=1&shift&goto Arg_Loop)
 if /i "%1" == "-arm64"               (set __TargetArchArm64=1&shift&goto Arg_Loop)
-<<<<<<< HEAD
-if /i "%1" == "-wasm"                (set __TargetArchWasm=1&shift&goto Arg_Loop)
-=======
 if /i "%1" == "-loongarch64"         (set __TargetArchLoongArch64=1&shift&goto Arg_Loop)
 if /i "%1" == "-riscv64"             (set __TargetArchRiscV64=1&shift&goto Arg_Loop)
->>>>>>> runtime/main
+if /i "%1" == "-wasm"                (set __TargetArchWasm=1&shift&goto Arg_Loop)
 
 if /i "%1" == "-debug"               (set __BuildTypeDebug=1&shift&goto Arg_Loop)
 if /i "%1" == "-checked"             (set __BuildTypeChecked=1&shift&goto Arg_Loop)
@@ -184,30 +178,19 @@ set __ExtraCmakeArgs="-DRUNTIME_FLAVOR=CoreCLR"
 
 if defined __BuildAll goto BuildAll
 
-<<<<<<< HEAD
-set /A __TotalSpecifiedTargetArch=__TargetArchX64 + __TargetArchX86 + __TargetArchArm + __TargetArchArm64 + __TargetArchWasm
-=======
-set /A __TotalSpecifiedTargetArch=__TargetArchX64 + __TargetArchX86 + __TargetArchArm + __TargetArchArm64 + __TargetArchLoongArch64 + __TargetArchRiscV64
->>>>>>> runtime/main
+set /A __TotalSpecifiedTargetArch=__TargetArchX64 + __TargetArchX86 + __TargetArchArm + __TargetArchArm64 + __TargetArchLoongArch64 + __TargetArchRiscV64 + __TargetArchWasm
 if %__TotalSpecifiedTargetArch% GTR 1 (
     echo Error: more than one build architecture specified, but "all" not specified.
     goto Usage
 )
 
-<<<<<<< HEAD
-if %__TargetArchX64%==1   set __TargetArch=x64
-if %__TargetArchX86%==1   set __TargetArch=x86
-if %__TargetArchArm%==1   set __TargetArch=arm
-if %__TargetArchArm64%==1 set __TargetArch=arm64
-if %__TargetArchWasm%==1  set __TargetArch=wasm
-=======
 if %__TargetArchX64%==1         set __TargetArch=x64
 if %__TargetArchX86%==1         set __TargetArch=x86
 if %__TargetArchArm%==1         set __TargetArch=arm
 if %__TargetArchArm64%==1       set __TargetArch=arm64
 if %__TargetArchLoongArch64%==1 set __TargetArch=loongarch64
 if %__TargetArchRiscV64%==1     set __TargetArch=riscv64
->>>>>>> runtime/main
+if %__TargetArchWasm%==1        set __TargetArch=wasm
 if "%__HostArch%" == "" set __HostArch=%__TargetArch%
 
 set /A __TotalSpecifiedBuildType=__BuildTypeDebug + __BuildTypeChecked + __BuildTypeRelease

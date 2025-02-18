@@ -362,9 +362,6 @@ namespace Internal.Reflection.Augments
             Debug.Assert(runtimeDelegateType.IsDelegate);
 
 <<<<<<< HEAD
-        public abstract IntPtr ConvertStackTraceIpToFunctionPointer(IntPtr methodStartAddress);
-
-        public abstract MethodBase GetMethodBaseFromStartAddressIfAvailable(IntPtr methodStartAddress);
 =======
             BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.ExactBinding;
             if (isStatic)
@@ -530,5 +527,9 @@ namespace Internal.Reflection.Augments
                 RuntimeAugments.EnsureClassConstructorRun(pStaticClassConstructionContext);
             }
         }
+
+        public abstract IntPtr ConvertStackTraceIpToFunctionPointer(IntPtr methodStartAddress);
+
+        public abstract MethodBase GetMethodBaseFromStartAddressIfAvailable(IntPtr methodStartAddress);
     }
 }

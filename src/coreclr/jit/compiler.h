@@ -8411,12 +8411,6 @@ protected:
     */
 
 public:
-<<<<<<< HEAD
-#ifndef TARGET_WASM
-    regNumber raUpdateRegStateForArg(RegState* regState, LclVarDsc* argDsc);
-#endif
-=======
->>>>>>> runtime/main
     void raMarkStkVars();
 
 #if FEATURE_PARTIAL_SIMD_CALLEE_SAVE

@@ -4,13 +4,7 @@
 #ifndef __NATIVE_CONTEXT_H__
 #define __NATIVE_CONTEXT_H__
 
-<<<<<<< HEAD:src/coreclr/nativeaot/Runtime/unix/UnixContext.h
-// WASM has no thread state contexts.
-#ifndef HOST_WASM
-
-=======
 #if HAVE_UCONTEXT_H
->>>>>>> runtime/main:src/coreclr/nativeaot/Runtime/unix/NativeContext.h
 #include <ucontext.h>
 #else
 #include <signal.h>

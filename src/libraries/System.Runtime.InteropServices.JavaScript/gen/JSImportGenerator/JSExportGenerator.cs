@@ -507,11 +507,7 @@ namespace Microsoft.Interop.JavaScript
                     }
                     )))));
 
-<<<<<<< HEAD
-            return (PrintGeneratedSource(incrementalContext, wrapper, wrapperName),
-=======
             return (PrintGeneratedSource(incrementalContext.ContainingSyntaxContext, wrapperToInnerStubBlock, wrapperName),
->>>>>>> runtime/main
                 registration, registrationAttribute,
                 incrementalContext.Diagnostics.Array.AddRange(diagnostics.Diagnostics));
         }

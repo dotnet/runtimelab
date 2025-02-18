@@ -1,10 +1,5 @@
 parameters:
-<<<<<<< HEAD
   PublishRidAgnosticPackagesFromPlatform: Browser_wasm_win
-  publishingInfraVersion: 3
-=======
-  PublishRidAgnosticPackagesFromPlatform: windows_x64
->>>>>>> runtime/main
 
 stages:
 

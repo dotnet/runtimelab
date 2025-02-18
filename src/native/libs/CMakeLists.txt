@@ -130,11 +130,9 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         add_compile_options(-Wno-cast-align)
         add_compile_options(-Wno-typedef-redefinition)
         add_compile_options(-Wno-thread-safety-analysis)
-<<<<<<< HEAD
         add_compile_options(-Wno-strict-prototypes)
         # TODO-LLVM: fix the reasons for this warning failure
         add_compile_options(-Wno-unused-but-set-variable)
-=======
         add_compile_options(-Wno-c11-extensions)
 
         check_c_compiler_flag(-Wpre-c11-compat COMPILER_SUPPORTS_W_PRE_C11_COMPAT)
@@ -142,7 +140,6 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
             add_compile_options(-Wno-pre-c11-compat)
         endif()
 
->>>>>>> runtime/main
         if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
             add_compile_options(-Wno-unsafe-buffer-usage)
             add_compile_options(-Wno-cast-function-type-strict)

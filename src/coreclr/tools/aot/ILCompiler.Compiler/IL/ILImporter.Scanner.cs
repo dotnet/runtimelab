@@ -177,14 +177,6 @@ namespace Internal.IL
                             _dependencies.Add(_compilation.NodeFactory.MethodEntrypoint(_compilation.NodeFactory.TypeSystemContext.GetHelperEntryPoint("SynchronizedMethodHelpers", "GetClassFromMethodParam")), reason);
                     }
                 }
-<<<<<<< HEAD
-                else
-                {
-                    _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.MonitorEnter), reason);
-                    _dependencies.Add(GetHelperEntrypoint(ReadyToRunHelper.MonitorExit), reason);
-                }
-=======
->>>>>>> runtime/main
             }
 
             FindBasicBlocks();

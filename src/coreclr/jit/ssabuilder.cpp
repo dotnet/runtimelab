@@ -41,21 +41,9 @@ PhaseStatus Compiler::fgSsaBuild()
 //
 void Compiler::fgResetForSsa(bool deepClean)
 {
-<<<<<<< HEAD
     m_blockToEHPreds = nullptr;
 
-    for (unsigned i = 0; i < lvaCount; ++i)
-    {
-        lvaTable[i].lvPerSsaData.Reset();
-    }
-    lvMemoryPerSsaData.Reset();
-    for (MemoryKind memoryKind : allMemoryKinds())
-    {
-        m_memorySsaMap[memoryKind] = nullptr;
-    }
-=======
     JITDUMP("Removing %s\n", deepClean ? "all SSA artifacts" : "PHI functions");
->>>>>>> runtime/main
 
     if (deepClean)
     {
@@ -92,7 +80,6 @@ void Compiler::fgResetForSsa(bool deepClean)
             }
         }
 
-<<<<<<< HEAD
 #if defined(TARGET_WASM)
         if (blk->IsLIR())
         {
@@ -105,10 +92,7 @@ void Compiler::fgResetForSsa(bool deepClean)
             }
         }
 #endif
-        for (Statement* const stmt : blk->Statements())
-=======
         if (deepClean)
->>>>>>> runtime/main
         {
             for (Statement* const stmt : blk->Statements())
             {
@@ -447,16 +431,12 @@ void SsaBuilder::InsertPhiFunctions()
                 {
                     // We have a variable i that is defined in block j and live at l, and l belongs to dom frontier of
                     // j. So insert a phi node at l.
-<<<<<<< HEAD
 #if defined(TARGET_WASM)
                     bbInDomFront->IsLIR() ? InsertPhiToRationalIRForm(bbInDomFront, lclNum)
-                                          : InsertPhi(bbInDomFront, lclNum);
+                                          : InsertPhi(m_pCompiler, bbInDomFront, lclNum);
 #else
-                    InsertPhi(bbInDomFront, lclNum);
-#endif
-=======
                     InsertPhi(m_pCompiler, bbInDomFront, lclNum);
->>>>>>> runtime/main
+#endif
                 }
             }
         }
@@ -794,7 +774,6 @@ void SsaBuilder::AddDefToEHSuccessorPhis(BasicBlock* block, unsigned lclNum, uns
                 }
             }
         }
-<<<<<<< HEAD
         else
 #endif
         {
@@ -806,16 +785,6 @@ void SsaBuilder::AddDefToEHSuccessorPhis(BasicBlock* block, unsigned lclNum, uns
                 {
                     break;
                 }
-=======
-
-#ifdef DEBUG
-        // If 'succ' is the handler of an unreachable try it is possible for
-        // 'block' to dominate it, in which case we will not find any phi.
-        // Tolerate this case.
-        EHblkDsc* ehDsc = m_pCompiler->ehGetBlockHndDsc(succ);
-        assert(phiFound || ((ehDsc != nullptr) && !m_pCompiler->m_dfsTree->Contains(ehDsc->ebdTryBeg)));
-#endif
->>>>>>> runtime/main
 
                 GenTreeLclVar* phiDef = stmt->GetRootNode()->AsLclVar();
                 assert(phiDef->IsPhiDefn());
@@ -831,8 +800,13 @@ void SsaBuilder::AddDefToEHSuccessorPhis(BasicBlock* block, unsigned lclNum, uns
                 }
             }
         }
+
 #ifdef DEBUG
-        assert(phiFound);
+        // If 'succ' is the handler of an unreachable try it is possible for
+        // 'block' to dominate it, in which case we will not find any phi.
+        // Tolerate this case.
+        EHblkDsc* ehDsc = m_pCompiler->ehGetBlockHndDsc(succ);
+        assert(phiFound || ((ehDsc != nullptr) && !m_pCompiler->m_dfsTree->Contains(ehDsc->ebdTryBeg)));
 #endif
         return BasicBlockVisit::Continue;
     });

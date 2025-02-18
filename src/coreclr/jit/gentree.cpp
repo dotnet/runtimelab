@@ -3339,11 +3339,7 @@ AGAIN:
                 add = tree->AsStrCon()->gtSconCPX;
                 break;
 
-<<<<<<< HEAD
-#ifndef TARGET_WASM
-=======
 #if defined(FEATURE_SIMD)
->>>>>>> runtime/main
             case GT_CNS_VEC:
             {
                 GenTreeVecCon* vecCon = tree->AsVecCon();
@@ -3401,11 +3397,7 @@ AGAIN:
                 }
                 break;
             }
-<<<<<<< HEAD
-#endif
-=======
 #endif // FEATURE_SIMD
->>>>>>> runtime/main
 
 #if defined(FEATURE_MASKED_HW_INTRINSICS)
             case GT_CNS_MSK:

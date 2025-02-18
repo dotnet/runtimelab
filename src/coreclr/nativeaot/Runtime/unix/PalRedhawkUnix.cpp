@@ -30,11 +30,7 @@
 #include <unistd.h>
 #include <sched.h>
 #include <sys/types.h>
-<<<<<<< HEAD
-#include <sys/syscall.h>
 #ifndef TARGET_WASI // no dynamic linking in Wasi
-=======
->>>>>>> runtime/main
 #include <dlfcn.h>
 #endif
 #include <dirent.h>
@@ -67,17 +63,16 @@
 #include <mach/mach.h>
 #endif
 
-<<<<<<< HEAD
 #ifndef HOST_WASM
 #include <sys/mman.h>
 #endif
 
 #ifdef HOST_WASM
 #include "wasm/PalRedhawkWasm.h"
-=======
+#endif
+
 #ifdef TARGET_HAIKU
 #include <OS.h>
->>>>>>> runtime/main
 #endif
 
 using std::nullptr_t;

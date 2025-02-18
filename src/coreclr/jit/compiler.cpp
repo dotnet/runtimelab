@@ -1442,16 +1442,7 @@ void DisplayNowayAssertMap()
             fout = fopen_utf8(strJitMeasureNowayAssertFile, "a");
             if (fout == nullptr)
             {
-<<<<<<< HEAD
-#if !defined(HOST_WINDOWS)
-                // TODO: how do we print a `const char16_t*` portably?
-#else
-                fprintf(jitstdout(), "Failed to open JitMeasureNowayAssertFile \"%ws\"\n",
-                        strJitMeasureNowayAssertFile);
-#endif
-=======
                 fprintf(jitstdout(), "Failed to open JitMeasureNowayAssertFile \"%s\"\n", strJitMeasureNowayAssertFile);
->>>>>>> runtime/main
                 return;
             }
         }

@@ -815,15 +815,7 @@ namespace System.Globalization
                 return null;
             }
 #if TARGET_BROWSER
-<<<<<<< HEAD
-            // populate fields for which ICU does not provide data in Hybrid mode
-            if (GlobalizationMode.Hybrid && !string.IsNullOrEmpty(culture._sName))
-            {
-                culture = JSLoadCultureInfoFromBrowser(culture._sName, culture);
-            }
 #if !NATIVEAOT // TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2557
-=======
->>>>>>> runtime/main
             culture.JSInitLocaleInfo();
 #endif
 #endif

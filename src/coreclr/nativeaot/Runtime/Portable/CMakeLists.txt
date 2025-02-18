@@ -40,13 +40,4 @@ add_custom_command(
 )
 
 install_static_library(PortableRuntime aotsdk nativeaot)
-<<<<<<< HEAD
-install_static_library(standalonegc-disabled aotsdk nativeaot)
-
-if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
-  install_static_library(standalonegc-enabled aotsdk nativeaot)
-endif()
-
-=======
 install_static_library(aotminipal aotsdk nativeaot)
->>>>>>> runtime/main
