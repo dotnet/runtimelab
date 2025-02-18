@@ -54,7 +54,7 @@ jobs:
                 /p:TargetPlatform=${{ parameters.archType }}
         displayName: Build and test
 
-      - script: ./dotnet.sh format --exclude artifacts --verify-no-changes
+      - script: ./dotnet.sh format --exclude artifacts --verify-no-changes --verbosity detailed
         displayName: Verify code formatting
 
       - ${{ if and(eq(parameters.bindings.isBindingsBuild, true), ne(parameters.osGroup, 'Windows_NT')) }}:
