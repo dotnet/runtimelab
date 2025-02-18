@@ -50,6 +50,7 @@ if ($ShowHelp)
     Write-Host " further inspected using tools like git-diff."
     Write-Host ""
     Write-Host " -Analyze depends on https://github.com/WebAssembly/wabt tools being available in PATH."
+    Write-Host " -Analyze for WASI depends on https://github.com/bytecodealliance/wasm-tools being available in PATH."
     Write-Host " -Llvm depends on llvm-dis being available in PATH."
     Write-Host ""
     return
@@ -203,6 +204,29 @@ if ($Analyze -or $Summary)
     }
     else
     {
+        function WasmObjDump($Options, $Path)
+        {
+            if ($OS -eq "wasi")
+            {
+                $UnbundlePath = "$([IO.Path]::GetDirectoryName($Path))/wasmjit-diff"
+                if (!(Test-Path $UnbundlePath))
+                {
+                    mkdir $UnbundlePath > $null | Write-Verbose
+                }
+                $CoreModulePath = "$UnbundlePath/unbundled-module0.wasm"
+                $ComponentTimeStamp = (Get-ChildItem $Path).LastAccessTime
+                $CoreModuleTimeStamp = (Get-ChildItem $CoreModulePath -ErrorAction Ignore).LastAccessTime
+                if ($ComponentTimeStamp -gt $CoreModuleTimeStamp)
+                {
+                    # Component newer than our cached core module, update the latter.
+                    Write-Host "Unbundling $Path as $CoreModulePath"
+                    wasm-tools component unbundle $Path --module-dir $UnbundlePath > $null
+                }
+                $Path = $CoreModulePath
+            }
+            return wasm-objdump @Options $Path
+        }
+
         $WasmSummaryLineRegex = [Regex]::New(" - func\[(\d+)\] size=(\d+) <(.*)>", "Compiled")
         function ParseWasmSummary($RawSummary, $SummaryName)
         {
@@ -243,8 +267,8 @@ if ($Analyze -or $Summary)
             return $SummaryList, $TotalCodeSize
         }
 
-        $BaseSummaryRaw = wasm-objdump -x -j Code $TestProjectBaseWasmOutput
-        $DiffSummaryRaw = wasm-objdump -x -j Code $TestProjectWasmOutput
+        $BaseSummaryRaw = WasmObjDump @("-x", "-j", "Code") $TestProjectBaseWasmOutput
+        $DiffSummaryRaw = WasmObjDump @("-x", "-j", "Code") $TestProjectWasmOutput
 
         $BaseSummary, $TotalBaseCodeSize = ParseWasmSummary $BaseSummaryRaw "base"
         $DiffSummary, $TotalDiffCodeSize = ParseWasmSummary $DiffSummaryRaw "diff"
@@ -357,9 +381,9 @@ if ($Analyze -or $Summary)
             else
             {
                 Write-Host "Collecting full disassembly for the base..."
-                $BaseWat = wasm-objdump -d $TestProjectBaseWasmOutput
+                $BaseWat = WasmObjDump @("-d") $TestProjectBaseWasmOutput
                 Write-Host "Collecting full disassembly for the diff..."
-                $DiffWat = wasm-objdump -d $TestProjectWasmOutput
+                $DiffWat = WasmObjDump @("-d") $TestProjectWasmOutput
 
                 function CreateWatIndex($Wat)
                 {

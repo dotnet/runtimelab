@@ -5,9 +5,6 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <RequiresProcessIsolation>true</RequiresProcessIsolation>
     <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
-
-    <!-- Only works without optimizations for now. -->
-    <CLRTestTargetUnsupported Condition="'$(Configuration)' != 'Debug'">true</CLRTestTargetUnsupported>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetsWasi)' == 'true'">
