@@ -57,6 +57,7 @@ stages:
         runTests: true
         pool:
           vmImage: 'macOS-latest'
+          hostArchitecture: Arm64
         bindings:
           isBindingsBuild: true
           scriptArgs: '--platform MacOSX --arch arm64e-apple-macos --framework StoreKit'
@@ -76,15 +77,15 @@ stages:
       parameters:
         osGroup: OSX
         platform: maccatalyst
-        archType: x64
+        archType: arm64
         pool:
           vmImage: 'macOS-latest'
+          hostArchitecture: Arm64
 
     - template: /eng/pipelines/common/templates/test-job.yml
       parameters:
         osGroup: OSX
         platform: maccatalyst
-        archType: arm64
+        archType: x64
         pool:
           vmImage: 'macOS-latest'
-          hostArchitecture: Arm64
