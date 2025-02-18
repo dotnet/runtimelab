@@ -79,3 +79,12 @@ stages:
         archType: x64
         pool:
           vmImage: 'macOS-latest'
+
+    - template: /eng/pipelines/common/templates/test-job.yml
+      parameters:
+        osGroup: OSX
+        platform: maccatalyst
+        archType: arm64
+        pool:
+          vmImage: 'macOS-latest'
+          hostArchitecture: Arm64
