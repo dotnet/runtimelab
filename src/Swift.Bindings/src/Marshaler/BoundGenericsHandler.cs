@@ -37,7 +37,7 @@ public class BoundGenericsHandler
     /// <param name="propertyDecl">The property declaration.</param>
     /// <returns><c>true</c> if the property’s Swift type contains generic parameters; otherwise, <c>false</c>.</returns>
     public bool IsBoundGeneric(PropertyDecl propertyDecl) =>
-        propertyDecl.SwiftTypeSpec is NamedTypeSpec namedTypeSpec && namedTypeSpec.ContainsGenericParameters; // TODO: Check whether return type is not type's generic parameter
+        propertyDecl.SwiftTypeSpec is NamedTypeSpec namedTypeSpec && namedTypeSpec.ContainsGenericParameters; // TODO: Check whether return type is not type's generic parameter https://github.com/dotnet/runtimelab/issues/3013
 
     /// <summary>
     /// Determines whether the specified argument declaration represents a bound generic type.
