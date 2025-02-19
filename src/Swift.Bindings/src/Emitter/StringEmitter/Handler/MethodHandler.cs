@@ -200,7 +200,7 @@ namespace BindingsGeneration
 
             if (_env.BoundGenericsHandler.IsBoundGeneric(argument))
             {
-                var csTypeParam = _env.BoundGenericsHandler.TranslateToCSharpName(argument);
+                var csTypeParam = _env.BoundGenericsHandler.TranslateToCSharpTypeName(argument);
                 SetReturnType(csTypeParam);
                 return;
             }
@@ -225,7 +225,7 @@ namespace BindingsGeneration
             {
                 if (_env.BoundGenericsHandler.IsBoundGeneric(argument))
                 {
-                    var csTypeParam = _env.BoundGenericsHandler.TranslateToCSharpName(argument);
+                    var csTypeParam = _env.BoundGenericsHandler.TranslateToCSharpTypeName(argument);
                     AddParameter(csTypeParam, argument.Name);
                     continue;
                 }
@@ -305,7 +305,7 @@ namespace BindingsGeneration
                 var csTypeParam = _env.BoundGenericsHandler.RequiresBoundGenericMarshalling(returnType) switch
                 {
                     true => _env.BoundGenericsHandler.GetBufferType(returnType),
-                    false => _env.BoundGenericsHandler.TranslateToCSharpName(returnType)
+                    false => _env.BoundGenericsHandler.TranslateToCSharpTypeName(returnType)
                 };
                 SetReturnType(csTypeParam);
                 return;
@@ -347,7 +347,7 @@ namespace BindingsGeneration
                     var (csTypeParam, csTypeName) = _env.BoundGenericsHandler.RequiresBoundGenericMarshalling(argument) switch
                     {
                         true => (_env.BoundGenericsHandler.GetBufferType(argument), NameProvider.GetBoundGenericBufferName(argument.Name)),
-                        false => (_env.BoundGenericsHandler.TranslateToCSharpName(argument), argument.Name)
+                        false => (_env.BoundGenericsHandler.TranslateToCSharpTypeName(argument), argument.Name)
                     };
 
                     AddParameter(csTypeParam, csTypeName);
@@ -847,7 +847,7 @@ namespace BindingsGeneration
 
             if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(returnArg))
             {
-                csWriter.WriteLine($"return SwiftMarshal.MarshalFromSwift<{_env.BoundGenericsHandler.TranslateToCSharpName(returnArg)}>((SwiftHandle)new IntPtr(&result));");
+                csWriter.WriteLine($"return SwiftMarshal.MarshalFromSwift<{_env.BoundGenericsHandler.TranslateToCSharpTypeName(returnArg)}>((SwiftHandle)new IntPtr(&result));");
                 return;
             }
 

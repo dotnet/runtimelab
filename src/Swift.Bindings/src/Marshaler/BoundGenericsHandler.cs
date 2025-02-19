@@ -70,13 +70,13 @@ public class BoundGenericsHandler
     /// <param name="propertyDecl">The property declaration.</param>
     /// <returns>The C# type name with generic parameters.</returns>
     /// <exception cref="NotSupportedException">Thrown when the property is not bound generic.</exception>
-    public string TranslateToCSharpName(PropertyDecl propertyDecl)
+    public string TranslateToCSharpTypeName(PropertyDecl propertyDecl)
     {
         if (!IsBoundGeneric(propertyDecl))
             throw new NotSupportedException(
                 $"Attempted to translate to C# name for a non-bound generic property {propertyDecl.Name}");
         var namedTypeSpec = (NamedTypeSpec)propertyDecl.SwiftTypeSpec;
-        return TranslateToCSharpName(namedTypeSpec);
+        return TranslateToCSharpTypeName(namedTypeSpec);
     }
 
     /// <summary>
@@ -85,13 +85,13 @@ public class BoundGenericsHandler
     /// <param name="argumentDecl">The argument declaration.</param>
     /// <returns>The C# type name with generic parameters.</returns>
     /// <exception cref="NotSupportedException">Thrown when the argument is not bound generic.</exception>
-    public string TranslateToCSharpName(ArgumentDecl argumentDecl)
+    public string TranslateToCSharpTypeName(ArgumentDecl argumentDecl)
     {
         if (!IsBoundGeneric(argumentDecl))
             throw new NotSupportedException(
                 $"Attempted to translate to C# name for a non-bound generic argument {argumentDecl.Name}");
         var namedTypeSpec = (NamedTypeSpec)argumentDecl.SwiftTypeSpec;
-        return TranslateToCSharpName(namedTypeSpec);
+        return TranslateToCSharpTypeName(namedTypeSpec);
     }
 
     /// <summary>
@@ -102,7 +102,7 @@ public class BoundGenericsHandler
     /// <exception cref="NotSupportedException">
     /// Thrown when any generic parameter is not a named type specification.
     /// </exception>
-    private string TranslateToCSharpName(NamedTypeSpec namedTypeSpec)
+    private string TranslateToCSharpTypeName(NamedTypeSpec namedTypeSpec)
     {
         List<string> translatedGenericParameters = new();
         foreach (var genericParameter in namedTypeSpec.GenericParameters)
@@ -110,7 +110,7 @@ public class BoundGenericsHandler
             if (genericParameter is not NamedTypeSpec namedGenericParameter)
                 throw new NotSupportedException(
                     $"Generic parameter {genericParameter} is not a named type spec");
-            translatedGenericParameters.Add(TranslateToCSharpName(namedGenericParameter));
+            translatedGenericParameters.Add(TranslateToCSharpTypeName(namedGenericParameter));
         }
 
         var typeReference = _typeDatabase.GetTypeRecordOrAnyType(namedTypeSpec); // TODO: consider throwing an exception instead
