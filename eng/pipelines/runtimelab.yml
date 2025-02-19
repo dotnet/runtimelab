@@ -49,6 +49,7 @@ stages:
 - stage: build
   displayName: Build
   jobs:
+  - ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
     - template: /eng/pipelines/common/templates/build-job.yml
       parameters:
         osGroup: OSX
