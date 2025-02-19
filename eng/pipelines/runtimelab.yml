@@ -49,19 +49,6 @@ stages:
 - stage: build
   displayName: Build
   jobs:
-  - ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
-    - template: /eng/pipelines/common/templates/build-job.yml
-      parameters:
-        osGroup: OSX
-        archType: arm64
-        runTests: true
-        pool:
-          vmImage: 'macOS-latest'
-          hostArchitecture: Arm64
-        bindings:
-          isBindingsBuild: true
-          scriptArgs: '--platform MacOSX --arch arm64e-apple-macos --framework StoreKit'
-
     - template: /eng/pipelines/common/templates/build-job.yml
       parameters:
         osGroup: OSX
@@ -72,15 +59,6 @@ stages:
         bindings:
           isBindingsBuild: true
           scriptArgs: '--platform MacOSX --arch x86_64-apple-macos --framework StoreKit'
-
-    - template: /eng/pipelines/common/templates/test-job.yml
-      parameters:
-        osGroup: OSX
-        platform: maccatalyst
-        archType: arm64
-        pool:
-          vmImage: 'macOS-latest'
-          hostArchitecture: Arm64
 
     - template: /eng/pipelines/common/templates/test-job.yml
       parameters:
