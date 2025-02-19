@@ -21,6 +21,7 @@ public static class NameProvider
     private static readonly Dictionary<string, string> PropertyNameMappings = new()
     {
         { "isEligibleForIntroOffer", "isEligibleForIntroOfferProperty" },
+        { "status", "statusProperty"}
     };
 
     /// <summary>
