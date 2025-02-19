@@ -139,10 +139,11 @@ namespace BindingsGeneration
                 var swiftTypeName = SwiftTypeName.FromModuleQualifiedName($"{moduleName}.{swiftTypeIdentifier}"); // TODO: Change layout of xml
                 var typeRecord = new TypeRecord()
                 {
+                    Namespace = @namespace,
                     CSTypeIdentifier = csharpTypeIdentifier,
+                    NamespaceQualifiedCSTypeIdentifier = $"{@namespace}.{csharpTypeIdentifier}",
                     SwiftTypeName = swiftTypeName,
                     MetadataAccessor = swiftMangledName,
-                    Namespace = @namespace,
                     IsBlittable = blittable.ToLower() == "true",
                     IsFrozen = frozen.ToLower() == "true",
                 };

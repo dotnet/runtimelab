@@ -76,7 +76,7 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
         var csTypeName = propertyEnv.BoundGenericsHandler.IsBoundGeneric(propertyDecl) switch
         {
             true => propertyEnv.BoundGenericsHandler.TranslateToCSharpName(propertyDecl),
-            false => typeRecord!.CSTypeIdentifier
+            false => typeRecord!.NamespaceQualifiedCSTypeIdentifier
         };
 
         // TODO Detect and skip / Handle async properties https://github.com/dotnet/runtimelab/issues/2996

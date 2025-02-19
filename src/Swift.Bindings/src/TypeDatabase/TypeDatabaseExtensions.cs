@@ -161,6 +161,7 @@ public static class TypeDatabaseExtensions
     {
         Namespace = "Swift",
         CSTypeIdentifier = "AnyType",
+        NamespaceQualifiedCSTypeIdentifier = "Swift.AnyType",
         SwiftTypeName = SwiftTypeName.AnyType,
         MetadataAccessor = string.Empty,
         IsBlittable = false,
@@ -174,6 +175,7 @@ public static class TypeDatabaseExtensions
     public static TypeRecord VoidType { get; } = new TypeRecord
     {
         Namespace = "",
+        NamespaceQualifiedCSTypeIdentifier = "void",
         CSTypeIdentifier = "void",
         SwiftTypeName = SwiftTypeName.VoidType,
         MetadataAccessor = string.Empty,

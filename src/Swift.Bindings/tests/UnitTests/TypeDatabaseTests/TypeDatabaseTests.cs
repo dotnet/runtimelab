@@ -48,10 +48,11 @@ namespace BindingsGeneration.Tests
             var swiftTypeName = SwiftTypeName.FromModuleQualifiedName("TestModule.MyType");
             var myType = new TypeRecord
             {
+                Namespace = "BindingsGeneration.Tests",
                 CSTypeIdentifier = "MyType",
+                NamespaceQualifiedCSTypeIdentifier = "BindingsGeneration.Tests.MyType",
                 SwiftTypeName = swiftTypeName,
                 MetadataAccessor = "mangledAccessor",
-                Namespace = "BindingsGeneration.Tests",
                 IsBlittable = false,
                 IsFrozen = false
             };
@@ -89,10 +90,11 @@ namespace BindingsGeneration.Tests
 
             var outOfModuleRecord = new TypeRecord
             {
+                Namespace = "BindingsGeneration.Tests",
                 CSTypeIdentifier = "MyOutOfModuleType",
+                NamespaceQualifiedCSTypeIdentifier = "BindingsGeneration.Tests.MyOutOfModuleType",
                 SwiftTypeName = swiftTypeName,
                 MetadataAccessor = "mangledOutOfModule",
-                Namespace = "BindingsGeneration.Tests",
                 IsBlittable = false,
                 IsFrozen = false
             };
@@ -119,10 +121,11 @@ namespace BindingsGeneration.Tests
             var swiftTypeName = SwiftTypeName.FromModuleQualifiedName("TestModule.ProcessedType");
             module.RegisterType(swiftTypeName, new TypeRecord
             {
+                Namespace = string.Empty,
                 CSTypeIdentifier = "ProcessedType",
+                NamespaceQualifiedCSTypeIdentifier = "ProcessedType",
                 SwiftTypeName = swiftTypeName,
                 MetadataAccessor = string.Empty,
-                Namespace = string.Empty,
                 IsBlittable = false,
                 IsFrozen = false
             });

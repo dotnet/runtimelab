@@ -21,6 +21,11 @@ public record TypeRecord
     public required string CSTypeIdentifier { get; init; }
 
     /// <summary>
+    /// The fully qualified C# type identifier.
+    /// </summary>
+    public required string NamespaceQualifiedCSTypeIdentifier { get; init; }
+
+    /// <summary>
     /// The Swift type identifier.
     /// </summary>
     public required SwiftTypeName SwiftTypeName { get; init; }

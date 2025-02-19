@@ -114,7 +114,7 @@ public class BoundGenericsHandler
         }
 
         var typeReference = _typeDatabase.GetTypeRecordOrAnyType(namedTypeSpec); // TODO: consider throwing an exception instead
-        return typeReference.CSTypeIdentifier +
+        return typeReference.NamespaceQualifiedCSTypeIdentifier +
                (translatedGenericParameters.Count > 0
                     ? $"<{string.Join(", ", translatedGenericParameters)}>"
                     : "");
@@ -140,7 +140,7 @@ public class BoundGenericsHandler
             return bufferType;
 
         // Fallback when no mapping is available.
-        return TypeDatabaseExtensions.AnyType.CSTypeIdentifier; // TODO: Consider throwing an exception instead
+        return TypeDatabaseExtensions.AnyType.NamespaceQualifiedCSTypeIdentifier; // TODO: Consider throwing an exception instead
     }
 }
 

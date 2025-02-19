@@ -159,7 +159,9 @@ namespace BindingsGeneration
     /// <param name="Parameters"></param>
     public record Signature(string ReturnType, IReadOnlyList<Parameter> Parameters)
     {
-        public bool ContainsPlaceholder => Parameters.Any(p => p.Type.Contains("AnyType") || ReturnType.Contains("AnyType"));
+        public bool ContainsPlaceholder =>
+        Parameters.Any(p => p.Type.Contains(TypeDatabaseExtensions.AnyType.NamespaceQualifiedCSTypeIdentifier))
+        || ReturnType.Contains(TypeDatabaseExtensions.AnyType.NamespaceQualifiedCSTypeIdentifier);
         public string ParametersString() => string.Join(", ", Parameters.Select(p => p.SignatureString()));
 
         public string CallArgumentsString() => string.Join(", ", Parameters.Select(p => GetCallArgumentString(p)));
@@ -211,7 +213,7 @@ namespace BindingsGeneration
             }
 
             var typeRecord = _env.TypeDatabase.GetTypeRecordOrAnyType(argument.SwiftTypeSpec);
-            SetReturnType(typeRecord.CSTypeIdentifier);
+            SetReturnType(typeRecord.NamespaceQualifiedCSTypeIdentifier);
         }
 
         /// <summary>
@@ -236,7 +238,7 @@ namespace BindingsGeneration
                 else
                 {
                     var typeRecord = _env.TypeDatabase.GetTypeRecordOrAnyType(argument.SwiftTypeSpec);
-                    AddParameter(typeRecord.CSTypeIdentifier, argument.Name);
+                    AddParameter(typeRecord.NamespaceQualifiedCSTypeIdentifier, argument.Name);
                 }
             }
         }
@@ -317,7 +319,7 @@ namespace BindingsGeneration
             }
 
             var returnTypeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(returnType.SwiftTypeSpec);
-            SetReturnType(returnTypeRecord.CSTypeIdentifier);
+            SetReturnType(returnTypeRecord.NamespaceQualifiedCSTypeIdentifier);
         }
 
         /// <summary>
@@ -366,7 +368,7 @@ namespace BindingsGeneration
                 }
 
                 var argumentTypeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(argument.SwiftTypeSpec);
-                AddParameter(argumentTypeRecord.CSTypeIdentifier, argument.Name);
+                AddParameter(argumentTypeRecord.NamespaceQualifiedCSTypeIdentifier, argument.Name);
             }
         }
 
