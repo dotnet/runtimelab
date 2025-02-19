@@ -75,7 +75,7 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
 
         var csTypeName = propertyEnv.BoundGenericsHandler.IsBoundGeneric(propertyDecl) switch
         {
-            true => propertyEnv.BoundGenericsHandler.TranslateToCSharpTypeName(propertyDecl),
+            true => propertyEnv.BoundGenericsHandler.TranslateBoundGenericTypeToCSharp(propertyDecl),
             false => typeRecord!.NamespaceQualifiedCSTypeIdentifier
         };
 
