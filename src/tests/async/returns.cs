@@ -34,19 +34,11 @@ public class Async2Returns
             AssertEqual(424242, c.Val.C);
             AssertEqual(42424242, c.Val.D);
 
-            // TODO: need to fix this
-
-            // Throws around the following code when jitting continuation.Resume  ( IL_STUB_AsyncResume )
-            //
-            //     // There is a pathological case where invalid IL refereces __Canon type directly, but there is no dictionary availabled to store the lookup.
-            //     if (!pContextMD->IsSharedByGenericInstantiations())
-            //     COMPlusThrow(kInvalidProgramException);
-            // 
-            //S<string> strings = await ReturnsStructGC();
-            //AssertEqual("A", strings.A);
-            //AssertEqual("B", strings.B);
-            //AssertEqual("C", strings.C);
-            //AssertEqual("D", strings.D);
+            S<string> strings = await ReturnsStructGC();
+            AssertEqual("A", strings.A);
+            AssertEqual("B", strings.B);
+            AssertEqual("C", strings.C);
+            AssertEqual("D", strings.D);
 
             S<byte> bytes = await ReturnsBytes();
             AssertEqual(4, bytes.A);
