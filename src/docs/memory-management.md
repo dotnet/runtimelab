@@ -103,7 +103,7 @@ call swiftcc void @"output.callByVal(vtype: output.VType) -> ()"(ptr noalias noc
 
 ### Parameters passed by reference (inout)
 
-When `inout` reference type or a value type containing a reference property is passed as a parameter, it is passed by reference, so no counters are updated.
+When `inout` reference type or a value type containing a reference property is passed as a parameter, it is passed by reference, so no reference counters are updated.
 ```swift
 public func TestInOutParameter()
 {
@@ -177,5 +177,5 @@ To ensure correct memory handling:
  - When a type is marshalled to Swift as a function parameter, `InitWithCopy` should be invoked to create the copy
  - When a type is marshalled to Swift as an `inout` function parameters, an instance reference is passed
  - When a type is marshalled to Swift as a return paramter, `InitWithCopy` should be invoked to create the copy
- - When a type is marshalled from Swift as a return paramter, a created instance in a callee is consumed and counters are not updated
+ - When a type is marshalled from Swift as a return paramter, no reference counters are updated
  - When using a private "copy" constructor on the C# side for marshalling from Swift, `InitWithCopy` should be invoked
