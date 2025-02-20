@@ -30,22 +30,6 @@ jobs:
         value: $[ coalesce(variables.OfficialSignType, 'real') ]
 
     steps:
-    - ${{ if and(eq(parameters.bindings.isBindingsBuild, true), ne(parameters.osGroup, 'Windows_NT')) }}:
-      - script: >-
-          ./generate.sh --configuration Release ${{ parameters.bindings.scriptArgs }}
-        displayName: Generate bindings
-
-      - script: >-
-          ./dotnet.sh pack
-          GeneratedBindings/Swift.Bindings.MacOSX.Experimental.csproj
-          /p:Configuration=Release
-          /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
-          /p:OfficialBuildId=$(Build.BuildNumber)
-          /p:SignType=$(_SignType)
-          /p:DotNetSignType=$(_SignType)
-          /p:DotNetPublishUsingPipelines=true
-        displayName: Prepare bindings artifacts and upload to build
-
     - script: >-
         ./build.sh -ci
         -publish
@@ -58,6 +42,25 @@ jobs:
         /p:DotNetPublishUsingPipelines=true
         /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
       displayName: Prepare tooling artifacts and upload to build
+
+    - ${{ if eq(parameters.bindings.isBindingsBuild, true)) }}:
+      - script: >-
+          ./generate.sh --configuration Release ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate bindings
+
+      - script: >-
+          ./build.sh -ci
+          -publish
+          -pack
+          -configuration Release
+          --projects $(pwd)/GeneratedBindings/Swift.Bindings.MacOSX.Experimental.csproj
+          /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
+          /p:OfficialBuildId=$(Build.BuildNumber)
+          /p:SignType=$(_SignType)
+          /p:DotNetSignType=$(_SignType)
+          /p:DotNetPublishUsingPipelines=true
+          /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
+        displayName: Prepare bindings artifacts and upload to build
 
     - task: CopyFiles@2
       displayName: Copy Files to $(Build.StagingDirectory)\BuildLogs
