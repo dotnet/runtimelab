@@ -169,13 +169,13 @@ ret void, !dbg !333
 
 ## Memory handling
 
-To handle native memory in the scenarios above, the projections should could use the value witness table to invoke `InitWithCopy` for copy operations and `Destroy` for finalization. These functions manage reference counts at any level of nesting.
+To handle native memory in the scenarios above, the projections should use the value witness table to invoke `InitWithCopy` for copy operations and `Destroy` for finalization. These functions manage reference counts at any level of nesting.
 
 To ensure correct memory handling:
  - Swift value types that contain reference properties should be projected as C# classes
  - When a type goes out of the block the destructor/dispose should invoke `Destroy` function
  - When a type is marshalled to Swift as a function parameter, `InitWithCopy` should be invoked to create the copy
  - When a type is marshalled to Swift as an `inout` function parameters, an instance reference is passed
- - When a type is marshalled to Swift as a return paramter, `InitWithCopy` should be invoked to create the copy
+ - When a type is marshalled to Swift as a return parameter, `InitWithCopy` should be invoked to create the copy
  - When a type is marshalled from Swift as a return paramter, no reference counters are updated
  - When using a private "copy" constructor on the C# side for marshalling from Swift, `InitWithCopy` should be invoked
