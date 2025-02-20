@@ -58,7 +58,7 @@ jobs:
 
     - script: |
         ./generate.sh --configuration Release --platform MacOSX --arch x86_64-apple-macos --framework StoreKit
-        ./dotnet.sh pack GeneratedBindings/Swift.Bindings.MacOSX.Experimental.csproj /p:Configuration=Release /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }} p:OfficialBuildId=$(Build.BuildNumber) /p:SignType=$(_SignType) /p:DotNetSignType=$(_SignType) /p:DotNetPublishUsingPipelines=true
+        ./dotnet.sh pack GeneratedBindings/Swift.Bindings.MacOSX.Experimental.csproj /p:Configuration=Release /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }} /p:OfficialBuildId=$(Build.BuildNumber) /p:SignType=$(_SignType) /p:DotNetSignType=$(_SignType) /p:DotNetPublishUsingPipelines=true
       displayName: Generate bindings and upload to build
 
     - task: CopyFiles@2
