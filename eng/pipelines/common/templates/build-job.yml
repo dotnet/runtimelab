@@ -52,14 +52,14 @@ jobs:
                 -c $(_BuildConfig)
                 $(_testBuildArg)
                 /p:TargetPlatform=${{ parameters.archType }}
-        displayName: Build and Test
+        displayName: Build and test
 
-      - script: ./verify.sh
+      - script: ./dotnet.sh format --exclude artifacts --verify-no-changes --verbosity detailed
         displayName: Verify code formatting
 
       - ${{ if and(eq(parameters.bindings.isBindingsBuild, true), ne(parameters.osGroup, 'Windows_NT')) }}:
         - script: ./generate.sh --configuration $(_BuildConfig) ${{ parameters.bindings.scriptArgs }}
-          displayName: Generate Bindings
+          displayName: Generate bindings
 
       - ${{ if eq(parameters.isOfficialBuild, true) }}:
         - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml

@@ -1,5 +1,5 @@
 <Project>
-  <Import Project="Sdk.props" Sdk="Microsoft.DotNet.Arcade.Sdk" />
+  <Import Condition="'$(UseMaui)' != 'true'" Project="Sdk.props" Sdk="Microsoft.DotNet.Arcade.Sdk" />
 
   <PropertyGroup>
     <Copyright>$(CopyrightNetFoundation)</Copyright>

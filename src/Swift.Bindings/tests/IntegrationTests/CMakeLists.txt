@@ -16,6 +16,8 @@ if (NOT SWIFT_COMPILER_TARGET)
     set(SWIFT_COMPILER_TARGET "${CMAKE_OSX_ARCHITECTURES}-apple-${SWIFT_PLATFORM}${SWIFT_DEPLOYMENT_TARGET}")
 endif()
 
+set(TARGETS)
+
 foreach(SOURCE_FILE ${SOURCES})
     get_filename_component(SOURCE_DIR ${SOURCE_FILE} DIRECTORY)
     get_filename_component(PARENT_DIR_NAME ${SOURCE_DIR} NAME)
@@ -24,9 +26,8 @@ foreach(SOURCE_FILE ${SOURCES})
     message(STATUS "Generating ${OUTPUT_DIR} library")
     file(MAKE_DIRECTORY ${OUTPUT_DIR})
 
-    add_custom_target(${SOURCE_BASE_NAME} ALL
+    add_custom_target(${SOURCE_BASE_NAME}
         COMMAND xcrun swiftc -target ${SWIFT_COMPILER_TARGET} -emit-module -emit-library -enable-library-evolution -emit-module-interface ${SOURCE_FILE} -o ${OUTPUT_DIR}/lib${SOURCE_BASE_NAME}.dylib
-        DEPENDS ${SOURCE_FILE}
         COMMENT "Generating ${SOURCE_BASE_NAME} library"
     )
 
@@ -51,7 +52,10 @@ foreach(SOURCE_FILE ${SOURCES})
 
     add_custom_command(TARGET ${SOURCE_BASE_NAME} POST_BUILD
         COMMAND xcrun swiftc -target ${SWIFT_COMPILER_TARGET} -emit-module -emit-library -enable-library-evolution -emit-module-interface ${SOURCE_FILE} "${OUTPUT_DIR}/*.swift" -o ${OUTPUT_DIR}/lib${SOURCE_BASE_NAME}.dylib
-        DEPENDS ${SOURCE_FILE}
         COMMENT "Generating final ${SOURCE_BASE_NAME} library"
     )
+
+    list(APPEND TARGETS ${SOURCE_BASE_NAME})
 endforeach()
+
+add_custom_target(build_all ALL DEPENDS ${TARGETS})
