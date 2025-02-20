@@ -41,10 +41,17 @@ To define memory handling rules at the Swift and C# boundary, the following scen
 ### Code blocks
 
 When a value type is initialized within a block, it is stack-allocated. At the end of the block, all reference properties must be deallocated. For example:
+```swift
+public func TestBlock()
+{
+    var vtype = VType()
+}
+```
 ```
 %vtype = alloca %T6output5VTypeV, align 8
 ...
-%0 = call ptr @"outlined destroy of output.VType"(ptr %vtype), !dbg !156
+call swiftcc void @"output.VType.init() -> output.VType"(ptr noalias nocapture sret(%T6output5VTypeV) %vtype), !dbg !248
+%0 = call ptr @"outlined destroy of output.VType"(ptr %vtype), !dbg !250
 
 // VWT->Destroy
 define linkonce_odr hidden ptr @"outlined destroy of output.VType"(ptr %0) #8 !dbg !143 {
@@ -64,7 +71,6 @@ When a reference type or a value type containing a reference property is passed 
 var refType = RefType()
 var vtype = VType(refType: refType)
 ```
-
 ```
 %3 = call ptr @swift_retain(ptr returned %2) #4, !dbg !164
 store ptr %2, ptr %refType, align 8, !dbg !164
@@ -77,24 +83,40 @@ call void @swift_release(ptr %toDestroy) #1, !dbg !170
 
 When a reference type or a value type containing a reference property is passed as a parameter, a copy is made (reference counter is retained before the call) and released after:
 
+```swift
+public func TestParameter()
+{
+    var vtype = VType()
+    callByVal(vtype: vtype)
+}
+
+public func callByVal(vtype: VType) { }
 ```
-%1 = load ptr, ptr %vtype.refType, align 8, !dbg !154
-%2 = call ptr @swift_retain(ptr returned %1) #4, !dbg !154
-%.refType = getelementptr inbounds %T6output5VTypeV, ptr %0, i32 0, i32 0, !dbg !156
-store ptr %1, ptr %.refType, align 8, !dbg !156
-call swiftcc void @"output.PassThrough(vtype: output.VType) -> ()"(ptr noalias nocapture dereferenceable(8) %0), !dbg !157
-%3 = call ptr @"outlined destroy of output.VType"(ptr %0), !dbg !158
+```
+%1 = load ptr, ptr %vtype.refType, align 8, !dbg !258
+%2 = call ptr @swift_retain(ptr returned %1) #5, !dbg !258
+%.refType = getelementptr inbounds %T6output5VTypeV, ptr %0, i32 0, i32 0, !dbg !260
+store ptr %1, ptr %.refType, align 8, !dbg !260
+call swiftcc void @"output.callByVal(vtype: output.VType) -> ()"(ptr noalias nocapture dereferenceable(8) %0), !dbg !261
+%3 = call ptr @"outlined destroy of output.VType"(ptr %0), !dbg !262
 ```
 
 ### Parameters passed by reference (inout)
 
 When `inout` reference type or a value type containing a reference property is passed as a parameter, it is passed by reference, so no counters are updated.
+```swift
+public func TestInOutParameter()
+{
+    var vtype = VType()
+    callByRef(vtype: &vtype)
+}
+
+public func callByRef(vtype: inout VType) { }
 ```
-%vtype.debug = alloca ptr, align 8
-call void @llvm.dbg.declare(metadata ptr %vtype.debug, metadata !285, metadata !DIExpression(DW_OP_deref)), !dbg !286
-call void @llvm.memset.p0.i64(ptr align 8 %vtype.debug, i8 0, i64 8, i1 false)
-store ptr %0, ptr %vtype.debug, align 8, !dbg !287
-ret void, !dbg !288
+```
+%vtype = alloca %T6output5VTypeV, align 8
+...
+call swiftcc void @"output.callByRef(vtype: inout output.VType) -> ()"(ptr nocapture dereferenceable(8) %vtype), !dbg !280
 ```
 
 ### Return types
@@ -105,23 +127,44 @@ When a value type is returned from a function, the caller takes ownership of the
  - If an inout parameter is returned, a copy is created and returned
 
 Pass-through callee:
+```swift
+public func TestPassThrough()
+{
+    var vtype = VType()
+    var result = PassThrough(vtype: vtype)
+}
+
+public func PassThrough(vtype: VType) -> VType
+{
+    return vtype
+}
 ```
-%test.debug = alloca ptr, align 8
-call void @llvm.dbg.declare(metadata ptr %test.debug, metadata !265, metadata !DIExpression()), !dbg !266
-call void @llvm.memset.p0.i64(ptr align 8 %test.debug, i8 0, i64 8, i1 false)
-%.refType = getelementptr inbounds %T6output5VTypeV, ptr %1, i32 0, i32 0, !dbg !267
-%2 = load ptr, ptr %.refType, align 8, !dbg !267
-store ptr %2, ptr %test.debug, align 8, !dbg !269
-%3 = call ptr @swift_retain(ptr returned %2) #5, !dbg !270
-%.refType1 = getelementptr inbounds %T6output5VTypeV, ptr %0, i32 0, i32 0, !dbg !270
-store ptr %2, ptr %.refType1, align 8, !dbg !270
-ret void, !dbg !271
+```
+%vtype.debug = alloca ptr, align 8
+%.refType = getelementptr inbounds %T6output5VTypeV, ptr %1, i32 0, i32 0, !dbg !314
+%2 = load ptr, ptr %.refType, align 8, !dbg !314
+store ptr %2, ptr %vtype.debug, align 8, !dbg !316
+%3 = call ptr @swift_retain(ptr returned %2) #5, !dbg !317
+%.refType1 = getelementptr inbounds %T6output5VTypeV, ptr %0, i32 0, i32 0, !dbg !317
+store ptr %2, ptr %.refType1, align 8, !dbg !317
+ret void, !dbg !318
 ```
 
 New instance callee:
+```swift
+public func TestNewInstance()
+{
+    var result = NewInstance()
+}
+
+public func NewInstance() -> VType
+{
+    return VType()
+}
 ```
-call swiftcc void @"$s6output5VTypeVACycfC"(ptr noalias nocapture sret(%T6output5VTypeV) %0), !dbg !302
-ret void, !dbg !303
+```
+call swiftcc void @"output.VType.init() -> output.VType"(ptr noalias nocapture sret(%T6output5VTypeV) %0), !dbg !332
+ret void, !dbg !333
 ```
 
 ## Memory handling
