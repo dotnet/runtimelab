@@ -169,7 +169,7 @@ ret void, !dbg !333
 
 ## Memory handling
 
-To handle native memory in the scenarios above, the projections should could use the value witness table to invoke `InitWithCopy` for copy operations and `Destroy` for finalization. These functions manage reference counts at any level of nesting.
+To handle native memory in the scenarios above, the projections should use the value witness table to invoke `InitWithCopy` for copy operations and `Destroy` for finalization. These functions manage reference counts at any level of nesting.
 
 To ensure correct memory handling:
  - Swift value types that contain reference properties should be projected as C# classes
