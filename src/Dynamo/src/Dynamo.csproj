@@ -6,5 +6,6 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <IsAotCompatible>true</IsAotCompatible>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 </Project>
