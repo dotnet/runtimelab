@@ -176,6 +176,6 @@ To ensure correct memory handling:
  - When a type goes out of the block the destructor/dispose should invoke `Destroy` function
  - When a type is marshalled to Swift as a function parameter, `InitWithCopy` should be invoked to create the copy
  - When a type is marshalled to Swift as an `inout` function parameters, an instance reference is passed
- - When a type is marshalled to Swift as a return paramter, `InitWithCopy` should be invoked to create the copy
+ - When a type is marshalled to Swift as a return parameter, `InitWithCopy` should be invoked to create the copy
  - When a type is marshalled from Swift as a return paramter, a created instance in a callee is consumed and counters are not updated
  - When using a private "copy" constructor on the C# side for marshalling from Swift, `InitWithCopy` should be invoked
