@@ -43,7 +43,7 @@ jobs:
         /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
       displayName: Prepare tooling artifacts and upload to build
 
-    - ${{ if eq(parameters.bindings.isBindingsBuild, true)) }}:
+    - ${{ if eq(parameters.bindings.isBindingsBuild, true) }}:
       - script: >-
           ./generate.sh --configuration Release ${{ parameters.bindings.scriptArgs }}
         displayName: Generate bindings
