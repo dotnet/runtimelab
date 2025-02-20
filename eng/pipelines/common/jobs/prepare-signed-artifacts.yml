@@ -10,8 +10,9 @@ jobs:
     displayName: 'Prepare Signed Artifacts'
 
     pool:
-      name: $(DncEngInternalBuildPool)
-      demands: ImageOverride -equals 1es-windows-2022
+      name: Azure Pipelines
+      image: macos-latest
+      os: macOS
 
     # Double the default timeout.
     timeoutInMinutes: 240
@@ -24,7 +25,7 @@ jobs:
     variables:
       - name: '_SignType'
         value: $[ coalesce(variables.OfficialSignType, 'real') ]
-      
+
     templateContext:
       inputs:
       - input: checkout
@@ -40,10 +41,10 @@ jobs:
         condition: succeededOrFailed()
         targetPath: '$(Build.StagingDirectory)\BuildLogs'
         artifactName: ${{ parameters.logArtifactName }}
-    
+
     steps:
     - script: >-
-        build.cmd -ci
+        build.sh -ci
         -publish
         -pack
         -configuration Release
@@ -54,7 +55,12 @@ jobs:
         /p:DotNetPublishUsingPipelines=true
         /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
       displayName: Prepare artifacts and upload to build
-    
+
+    - script: |
+        ./generate.sh --configuration Release --platform MacOSX --arch x86_64-apple-macos --framework StoreKit
+        ./dotnet.sh pack GeneratedBindings/Swift.Bindings.MacOSX.Experimental.csproj -configuration Release /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }} p:OfficialBuildId=$(Build.BuildNumber) /p:SignType=$(_SignType) /p:DotNetSignType=$(_SignType) /p:DotNetPublishUsingPipelines=true
+      displayName: Generate bindings and upload to build
+
     - task: CopyFiles@2
       displayName: Copy Files to $(Build.StagingDirectory)\BuildLogs
       inputs:

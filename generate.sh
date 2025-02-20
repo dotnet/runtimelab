@@ -111,8 +111,8 @@ function InvokeProjectionTooling {
     fi
 }
 
-# Function to generate NuGet package
-function PackNuGet {
+# Function to generate project
+function CreateProject {
     local project_file="./Swift.Bindings.${platform}.Experimental.csproj"
 
     cat <<EOL > "$project_file"
@@ -129,7 +129,7 @@ function PackNuGet {
 </Project>
 EOL
 
-    $scriptroot/dotnet.sh pack "$project_file"
+    $scriptroot/dotnet.sh build "$project_file"
 }
 
 function Generate {
@@ -144,7 +144,7 @@ function Generate {
         fi
     done
 
-    PackNuGet
+    CreateProject
 
     echo "Process completed."
 }

@@ -1,5 +1,5 @@
 parameters:
-  PublishRidAgnosticPackagesFromPlatform: windows_x64
+  PublishRidAgnosticPackagesFromPlatform: macos_x64
   publishingInfraVersion: 3
   enableSigningValidation: false
   enableNugetValidation: false
