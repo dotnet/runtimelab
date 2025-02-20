@@ -29,36 +29,7 @@ jobs:
       - name: '_SignType'
         value: $[ coalesce(variables.OfficialSignType, 'real') ]
 
-    templateContext:
-      inputs:
-      - input: checkout
-        repository: self
-        clean: true
-        fetchDepth: 20
-      - input: pipelineArtifact
-        artifactName: IntermediateArtifacts
-        targetPath: $(Build.SourcesDirectory)\artifacts\PackageDownload\IntermediateArtifacts
-      outputs:
-      - output: pipelineArtifact
-        displayName: 'Publish BuildLogs'
-        condition: succeededOrFailed()
-        targetPath: '$(Build.StagingDirectory)\BuildLogs'
-        artifactName: ${{ parameters.logArtifactName }}
-
     steps:
-    - script: >-
-        ./build.sh -ci
-        -publish
-        -pack
-        -configuration Release
-        /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
-        /p:OfficialBuildId=$(Build.BuildNumber)
-        /p:SignType=$(_SignType)
-        /p:DotNetSignType=$(_SignType)
-        /p:DotNetPublishUsingPipelines=true
-        /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
-      displayName: Prepare tooling artifacts and upload to build
-
     - ${{ if and(eq(parameters.bindings.isBindingsBuild, true), ne(parameters.osGroup, 'Windows_NT')) }}:
       - script: >-
           ./generate.sh --configuration Release ${{ parameters.bindings.scriptArgs }}
@@ -74,6 +45,19 @@ jobs:
           /p:DotNetSignType=$(_SignType)
           /p:DotNetPublishUsingPipelines=true
         displayName: Prepare bindings artifacts and upload to build
+
+    - script: >-
+        ./build.sh -ci
+        -publish
+        -pack
+        -configuration Release
+        /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
+        /p:OfficialBuildId=$(Build.BuildNumber)
+        /p:SignType=$(_SignType)
+        /p:DotNetSignType=$(_SignType)
+        /p:DotNetPublishUsingPipelines=true
+        /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
+      displayName: Prepare tooling artifacts and upload to build
 
     - task: CopyFiles@2
       displayName: Copy Files to $(Build.StagingDirectory)\BuildLogs
