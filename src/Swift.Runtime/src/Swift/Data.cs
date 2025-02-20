@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using Swift;
 using Swift.Runtime;
 
+namespace Swift;
 
 /// <summary>
 /// Represents Swift Foundation.DataProtocol in C#.

@@ -37,7 +37,7 @@
         <entity managedNameSpace="System" managedTypeName="UIntPtr">
             <typedeclaration kind="struct" name="UInt" module="Swift" mangledName="$sSu" frozen="true" blittable ="true" />
         </entity>
-        <entity managedNameSpace="System" managedTypeName="bool">
+        <entity managedNameSpace="System" managedTypeName="Boolean">
             <typedeclaration kind="struct" name="Bool" module="Swift" mangledName="$sSb" frozen="true" blittable ="true" />
         </entity>
         <entity managedNameSpace="Swift" managedTypeName="UnsafePointer">
@@ -64,14 +64,14 @@
         <entity managedNameSpace="Swift" managedTypeName="UnsafeMutableRawBufferPointer">
             <typedeclaration kind="struct" name="UnsafeMutableRawBufferPointer" module="Swift" mangledName="sSw" frozen="true" blittable ="true"/>
         </entity>
-        <entity managedNameSpace="Swift" managedTypeName="UnsafeMutablePointer&lt;System.Byte&gt;">
-            <typedeclaration kind="struct" name="UnsafeMutablePointer&lt;Swift.UInt8&gt;" module="Swift" mangledName="sSp" frozen="true" blittable="true"/>
-        </entity>
-        <entity managedNameSpace="Swift" managedTypeName="UnsafeMutableBufferPointer&lt;System.Byte&gt;">
-            <typedeclaration kind="struct" name="UnsafeMutableBufferPointer&lt;Swift.UInt8&gt;" module="Swift" mangledName="sSr" frozen="true" blittable="true"/>
-        </entity>
         <entity managedNameSpace="Swift" managedTypeName="SwiftString">
             <typedeclaration kind="struct" name="String" module="Swift" mangledName="sSS" frozen="true" blittable="true"/>
+        </entity>
+        <entity managedNameSpace="Swift" managedTypeName="SwiftArray">
+            <typedeclaration kind="struct" name="Array" module="Swift" mangledName="sSa" frozen="true" blittable="true"/>
+        </entity>
+        <entity managedNameSpace="Swift" managedTypeName="SwiftSet">
+            <typedeclaration kind="struct" name="Set" module="Swift" mangledName="sSh" frozen="true" blittable="true"/>
         </entity>
     </entities>
 </swifttypedatabase>

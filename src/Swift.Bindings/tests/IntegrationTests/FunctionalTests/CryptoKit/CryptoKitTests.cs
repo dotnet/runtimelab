@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Swift;
 using System.Security.Cryptography;
 using Xunit;
+using Swift;
 using AesGcm = BindingsGeneration.FunctionalTests.AesGcm;
 
 
