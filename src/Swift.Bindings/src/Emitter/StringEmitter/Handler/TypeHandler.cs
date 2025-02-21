@@ -88,7 +88,7 @@ namespace BindingsGeneration
                 if (propertyDecl.HasStorage)
                 {
                     var fieldRecord = env.TypeDatabase.GetTypeRecordOrThrow(propertyDecl.SwiftTypeSpec);
-                    csWriter.WriteLine($"private {fieldRecord.NamespaceQualifiedCSTypeIdentifier} {propertyDecl.Name}_;  // Note: Do not access this field directly - use the property accessors");
+                    csWriter.WriteLine($"private {fieldRecord.CSharpTypeName.FullyQualifiedName} {propertyDecl.Name}_;  // Note: Do not access this field directly - use the property accessors");
                 }
             }
 

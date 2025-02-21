@@ -252,15 +252,13 @@ namespace BindingsGeneration
             bool isFrozen,
             bool isBlittable)
         {
-            var @namespace = namedTypeSpec.Module; // TODO: Correctly map to a .NET namespace
+            var @namespace = $"Swift.{namedTypeSpec.Module}"; // TODO: Correctly map to a .NET namespace
             // TODO: Remove this logic once correct csharp type names are used
             var csharpTypeIdentifier = structDecl.SwiftTypeName.Module == "" ? structDecl.SwiftTypeName.Name : structDecl.SwiftTypeName.ModuleQualifiedName.Substring(structDecl.SwiftTypeName.ModuleQualifiedName.IndexOf(".") + 1);
             var typeRecord = new TypeRecord
             {
                 SwiftTypeName = structDecl.SwiftTypeName,
-                Namespace = @namespace,
-                CSTypeIdentifier = csharpTypeIdentifier,
-                NamespaceQualifiedCSTypeIdentifier = $"Swift.{@namespace}.{csharpTypeIdentifier}",
+                CSharpTypeName = CSharpTypeName.FromNamespaceAndName(@namespace, csharpTypeIdentifier),
                 SwiftTypeInfo = swiftTypeInfo,
                 MetadataAccessor = $"{structDecl.MangledName}Ma",
                 IsBlittable = isBlittable,
