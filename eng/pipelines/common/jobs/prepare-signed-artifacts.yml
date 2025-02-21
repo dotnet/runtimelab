@@ -53,7 +53,7 @@ jobs:
           -publish
           -pack
           -configuration Release
-          --projects $(pwd)/GeneratedBindings/Swift.Bindings.MacOSX.Experimental.csproj
+          --projects $(pwd)/GeneratedBindings/Swift.Bindings.Experimental.csproj
           /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
           /p:OfficialBuildId=$(Build.BuildNumber)
           /p:SignType=$(_SignType)

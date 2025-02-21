@@ -633,13 +633,14 @@ namespace BindingsGeneration
                 )
             );
 
+            var parentTypeName = (_env.ParentDecl as TypeDecl)!.SwiftTypeName;
             swiftWriter.WriteLine($$"""
-            extension {{_env.ParentDecl.Name}} {
+            extension {{parentTypeName.ModuleQualifiedName}} {
                 @_silgen_name("{{NameProvider.GetMangledName(_env.MethodDecl)}}")
                 public {{(_env.MethodDecl.MethodType == MethodType.Static ? "static " : "")}} func {{NameProvider.GetPInvokeName(_env.MethodDecl)}}({{parameters}}) {
                     Task {
-                        {{(isEmptyTuple ? "" : "let result = ")}}await {{(_env.MethodDecl.MethodType == MethodType.Static ? $"{_env.ParentDecl.Name}." : "")}}{{_env.MethodDecl.Name}}(
-                            {{string.Join(", ", _env.MethodDecl.CSSignature.Skip(1).Select(p => p.Name + ": " + p.Name))}}
+                        {{(isEmptyTuple ? "" : "let result = ")}}await {{(_env.MethodDecl.MethodType == MethodType.Static ? $"{parentTypeName.ModuleQualifiedName}." : "")}}{{_env.MethodDecl.Name}}(
+                            {{string.Join(", ", _env.MethodDecl.CSSignature.Skip(1).Select(p => (p.Name.First() == '_' ? p.Name.Remove(0, 1) : p.Name) + ": " + p.Name))}}
                         )
                         callback({{(isEmptyTuple ? "" : "result, ")}}task)
                     }
@@ -859,7 +860,6 @@ namespace BindingsGeneration
                 return;
 
             var text = $$"""
-                
                         private static unsafe delegate* unmanaged[Cdecl]<{{(_env.MethodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple ? "" : $"{_wrapperSignature.ReturnType}, ")}}IntPtr, void> s_{{_env.MethodDecl.Name}}Callback = &{{_env.MethodDecl.Name}}OnComplete;
                         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
                         private static void {{_env.MethodDecl.Name}}OnComplete({{(_env.MethodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple ? "" : $"{_wrapperSignature.ReturnType} result, ")}}IntPtr task)

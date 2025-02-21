@@ -27,9 +27,9 @@
     </ImageAsset>
   </ItemGroup>
 
-  <!-- Reference Swift.Bindings.MacOSX.Experimental NuGet package locally -->
+  <!-- Reference Swift.Bindings.Experimental NuGet package locally -->
   <!-- <ItemGroup>
-    <PackageReference Include="Swift.Bindings.MacOSX.Experimental" />
+    <PackageReference Include="Swift.Bindings.Experimental" />
   </ItemGroup> -->
 
   <!-- Notes about the values set below:
