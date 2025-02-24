@@ -248,12 +248,41 @@ public struct TimerStruct {
     }
 }
 
-public func getArray(a: Int32, b: Int32) -> Array<Int32>
-{
-    return [a, b]
+@frozen
+public struct PropertiesTestStruct {
+    public let letProperty: Int32
+    public var computedPropertyAmongStorageProperties: Double {
+        return Double(letProperty) * Double(multiplier)
+    } // This property is added to make sure the layout is correct
+    public var varProperty: Double
+    private let multiplier: Float
+    
+    public init(letValue: Int32, varValue: Double, multiplier: Float) {
+        self.letProperty = letValue
+        self.varProperty = varValue
+        self.multiplier = multiplier
+    }
+    
+    public var computedProperty: Double {
+        return Double(letProperty) * Double(multiplier)
+    }
 }
 
-public func sumArray(array: Array<Int32>) -> Int32
-{
-    return array.reduce(0, +)
+public struct NonFrozenPropertiesTestStruct {
+    public let letProperty: Int32
+    public var computedPropertyAmongStorageProperties: Double {
+        return Double(letProperty) * Double(multiplier)
+    } // This property is added to make sure the layout is correct
+    public var varProperty: Double
+    private let multiplier: Float
+    
+    public init(letValue: Int32, varValue: Double, multiplier: Float) {
+        self.letProperty = letValue
+        self.varProperty = varValue
+        self.multiplier = multiplier
+    }
+    
+    public var computedProperty: Double {
+        return Double(letProperty) * Double(multiplier)
+    }
 }

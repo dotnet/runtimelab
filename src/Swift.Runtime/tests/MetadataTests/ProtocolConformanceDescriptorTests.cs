@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using Swift;
 using Swift.Runtime;
 using Xunit;
 
@@ -48,7 +49,7 @@ public class ProtocolConformanceDescriptorTests : IClassFixture<ProtocolConforma
     [Fact]
     public static void RetrievesProtocolConformanceDescriptorUsingStaticAccessor()
     {
-        var result = ProtocolConformanceDescriptor.TryGet<SwiftIntMock, ISwiftHashableMock>(out var descriptor);
+        var result = ProtocolConformanceDescriptor.TryGet<SwiftIntMock, ISwiftHashable>(out var descriptor);
         Assert.True(result);
         Assert.NotNull(descriptor);
         Assert.True(descriptor!.Value.IsValid);
@@ -57,7 +58,7 @@ public class ProtocolConformanceDescriptorTests : IClassFixture<ProtocolConforma
     [Fact]
     public static void FailsToRetrieveProtocolConformanceDescriptorUsingStaticAccessorWhenTypeDoesNotConformToProtocol()
     {
-        var result = ProtocolConformanceDescriptor.TryGet<TypeNotImplementingAnyProtocols, ISwiftHashableMock>(out var _);
+        var result = ProtocolConformanceDescriptor.TryGet<TypeNotImplementingAnyProtocols, ISwiftHashable>(out var _);
         Assert.False(result);
     }
 }

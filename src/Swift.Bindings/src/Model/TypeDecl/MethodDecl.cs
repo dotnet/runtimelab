@@ -47,6 +47,11 @@ namespace BindingsGeneration
         /// Indicates if the method is generic.
         /// </summary>
         public bool IsGeneric => GenericParameters.Count > 0;
+
+        /// <summary>
+        /// Gets or sets the visibility of the method.
+        /// </summary>
+        public required Visibility Visibility { get; set; } = Visibility.Public;
     }
 
     /// <summary>

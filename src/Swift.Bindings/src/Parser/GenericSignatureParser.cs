@@ -35,7 +35,7 @@ public class GenericSignatureParser
             new GenericArgumentDecl(
                 typeName,
                 paramMap[typeName],
-                constraints.Where(c => c.TargetType.NameWithoutModule.StartsWith(typeName)).ToList()
+                constraints.Where(c => c.GenericParameter.Contains(typeName)).ToList()
             )
         ).ToList();
     }
@@ -59,11 +59,11 @@ public class GenericSignatureParser
     /// </summary>
     /// <param name="signature">The generic signature to extract constraints from.</param>
     /// <returns>A list of constraints.</returns>
-    private static List<ProtocolConformance> ExtractConstraints(string signature)
+    private static List<GenericParameterConformance> ExtractConstraints(string signature)
     {
         var whereIndex = signature.IndexOf("where", StringComparison.OrdinalIgnoreCase);
         if (whereIndex == -1)
-            return new List<ProtocolConformance>();
+            return new List<GenericParameterConformance>();
 
         var constraintsSection = signature[(whereIndex + "where".Length)..];
         var constraints = constraintsSection.Split(',');
@@ -71,7 +71,7 @@ public class GenericSignatureParser
         var parsedConstraints = constraints
             .Select(ParseConstraint)
             .Where(constraint => constraint is not null)
-            .Cast<ProtocolConformance>();
+            .Cast<GenericParameterConformance>();
 
         return [.. parsedConstraints];
     }
@@ -81,7 +81,7 @@ public class GenericSignatureParser
     /// </summary>
     /// <param name="clause">The constraint clause to parse.</param>
     /// <returns>A Conformance object. Null if the constraint refers to the associated type.</returns>
-    private static ProtocolConformance? ParseConstraint(string clause)
+    private static GenericParameterConformance? ParseConstraint(string clause)
     {
         var parts = clause.Split(new[] { ":", "==" }, StringSplitOptions.TrimEntries);
         if (parts.Length != 2)
@@ -92,7 +92,7 @@ public class GenericSignatureParser
         var target = parts[0];
         var protocol = parts[1];
 
-        if (!target.Contains(".")) return new ProtocolConformance(new NamedTypeSpec(target), new NamedTypeSpec(protocol));
+        if (!target.Contains(".")) return new GenericParameterConformance(target, SwiftTypeName.FromModuleQualifiedName(protocol));
 
         return null;
     }

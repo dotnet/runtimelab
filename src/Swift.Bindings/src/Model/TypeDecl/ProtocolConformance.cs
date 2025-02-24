@@ -7,9 +7,19 @@ namespace BindingsGeneration;
 /// <summary>
 /// Represents a protocol conformance.
 /// </summary>
-/// <param name="TargetType">The type spec of the target type of the conformance</param>
-/// <param name="ProtocolSpec">The protocol spec of the conformance</param>
-public record ProtocolConformance(
-    NamedTypeSpec TargetType,
-    NamedTypeSpec ProtocolSpec
+/// <param name="ConformingType">The type that conforms to the protocol</param>
+/// <param name="Protocol">The protocol that the type conforms to</param>
+public record TypeConformance(
+    SwiftTypeName ConformingType,
+    SwiftTypeName Protocol
+);
+
+/// <summary>
+/// Represents a generic parameter conformance.
+/// </summary>
+/// <param name="GenericParameter">The generic parameter</param>
+/// <param name="Protocol">The protocol that the generic parameter conforms to</param>
+public record GenericParameterConformance(
+    string GenericParameter,
+    SwiftTypeName Protocol
 );

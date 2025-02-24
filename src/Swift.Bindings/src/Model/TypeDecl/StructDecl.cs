@@ -15,6 +15,6 @@ namespace BindingsGeneration
         /// <summary>
         /// Protocol conformances.
         /// </summary>
-        public required List<ProtocolConformance> Conformances { get; set; }
+        public required List<TypeConformance> Conformances { get; set; }
     }
 }

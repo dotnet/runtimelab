@@ -56,7 +56,7 @@ namespace BindingsGeneration
             var parentDecl = structDecl.ParentDecl ?? throw new ArgumentNullException(nameof(structDecl.ParentDecl));
             var moduleDecl = structDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(structDecl.ParentDecl));
             // Retrieve type info from the type database
-            var typeRecord = env.TypeDatabase.GetTypeRecordOrThrow(moduleDecl.Name, structDecl.FullyQualifiedNameWithoutModule);
+            var typeRecord = env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
 
             var ISwiftObjectMethodWriter = new ISwiftObjectMethodWriter(csWriter, env.TypeDatabase, moduleDecl, structDecl);
 
@@ -74,19 +74,35 @@ namespace BindingsGeneration
             csWriter.WriteLine($"public unsafe struct {structDecl.Name} : {typeof(ISwiftObject).Name} {{");
             csWriter.Indent++;
 
-            // Emit each field in the struct
-            foreach (var fieldDecl in structDecl.Fields)
-            {
-                string accessModifier = fieldDecl.Visibility == Visibility.Public ? "public" : "private";
-                var fieldRecord = env.TypeDatabase.GetTypeRecordOrThrow(fieldDecl.SwiftTypeSpec);
-                csWriter.WriteLine($"{accessModifier} {fieldRecord.CSTypeIdentifier} {fieldDecl.Name};");
+            csWriter.WriteLine(@"
+            // For frozen structs, we need to emit fields that match the Swift struct's memory layout exactly.
+            // These backing fields are required for proper memory layout and marshalling, even though they
+            // are never directly accessed from C# code. The actual value access happens through Swift's
+            // accessor methods.
+            //
+            // Important: Direct access to these fields from C# will not provide the correct value - always
+            // use the generated property accessors which call into Swift.");
 
-                // TODO: Fix memory access violation
-                // // Verify field against Swift type information
-                // if (swiftTypeInfo.HasValue && !VerifyFieldRecord(swiftTypeInfo.Value, structDecl.Fields.IndexOf(fieldDecl), fieldDecl))
-                // {
-                //     Console.WriteLine("Field record does not match the field declaration");
-                // }
+            foreach (PropertyDecl propertyDecl in structDecl.Properties)
+            {
+                if (propertyDecl.HasStorage)
+                {
+                    var fieldRecord = env.TypeDatabase.GetTypeRecordOrThrow(propertyDecl.SwiftTypeSpec);
+                    csWriter.WriteLine($"private {fieldRecord.NamespaceQualifiedCSTypeIdentifier} {propertyDecl.Name}_;  // Note: Do not access this field directly - use the property accessors");
+                }
+            }
+
+            foreach (PropertyDecl propertyDecl in structDecl.Properties)
+            {
+                if (conductor.TryGetPropertyHandler(propertyDecl, out var propertyHandler))
+                {
+                    var propertyEnv = propertyHandler.Marshal(propertyDecl, env.TypeDatabase);
+                    propertyHandler.Emit(csWriter, swiftWriter, propertyEnv, conductor);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"No handler found for property {propertyDecl.Name}");
+                }
             }
             csWriter.WriteLine();
 
@@ -97,34 +113,6 @@ namespace BindingsGeneration
 
             csWriter.Indent--;
             csWriter.WriteLine("}");
-        }
-
-        /// <summary>
-        /// Verify field record with the Swift type information.
-        /// </summary>
-        private unsafe bool VerifyFieldRecord(SwiftTypeInfo swiftTypeInfo, int fieldIndex, FieldDecl fieldDecl)
-        {
-            // Access the field descriptor using pointer arithmetic
-            FieldDescriptor* desc = (FieldDescriptor*)IntPtr.Add(
-                (IntPtr)(((StructDescriptor*)swiftTypeInfo.Metadata->TypeDescriptor))->NominalType.FieldsPtr.Target,
-                IntPtr.Size * fieldIndex
-            );
-
-            // Ensure the field number is within bounds
-            if (desc->NumFields <= fieldIndex)
-            {
-                return false;
-            }
-
-            FieldRecord* fieldRecord = desc->GetFieldRecord(fieldIndex);
-
-            // Check field name
-            if ((System.Runtime.InteropServices.Marshal.PtrToStringAnsi((IntPtr)fieldRecord->Name.Target) ?? string.Empty) != fieldDecl.Name)
-            {
-                return false;
-            }
-
-            return true;
         }
     }
 
@@ -183,6 +171,17 @@ namespace BindingsGeneration
             csWriter.WriteLine($"public unsafe class {structDecl.Name} : IDisposable, {typeof(ISwiftObject).Name}");
             csWriter.WriteLine("{");
             csWriter.Indent++;
+
+            foreach (PropertyDecl propertyDecl in structDecl.Properties)
+            {
+                if (conductor.TryGetPropertyHandler(propertyDecl, out var propertyHandler))
+                {
+                    var propertyEnv = propertyHandler.Marshal(propertyDecl, env.TypeDatabase);
+                    propertyHandler.Emit(csWriter, swiftWriter, propertyEnv, conductor);
+                }
+                else
+                    Console.WriteLine($"No handler found for field {propertyDecl.Name}");
+            }
 
             WritePrivateFields(csWriter, structDecl);
             WriteDisposeMethod(csWriter);
@@ -535,11 +534,11 @@ namespace BindingsGeneration
             var entries = new List<string>();
             var protocolConformanceDescriptors = DemangledSymbolsRegister.Instance.GetData(libPath).ProtocolConformanceDescriptors;
 
-            foreach (var conformance in _structDecl.Conformances.Where(c => c.ProtocolSpec.Module == _moduleDecl.Name)) // Process only protocol conformances from current module for now
+            foreach (var conformance in _structDecl.Conformances.Where(c => c.Protocol.Module == _moduleDecl.Name)) // Process only protocol conformances from current module for now
             {
-                var protocol = NameProvider.GetInterfaceName(conformance.ProtocolSpec.NameWithoutModule);
-                var typeRecord = _typeDatabase.GetTypeRecordOrThrow(_moduleDecl.Name, _structDecl.FullyQualifiedNameWithoutModule);
-                var protocolConformanceSymbol = protocolConformanceDescriptors.GetValueOrDefault((new NamedTypeSpec(_structDecl.FullyQualifiedName), conformance.ProtocolSpec)); // TODO: Get rid of TypeSpec https://github.com/dotnet/runtimelab/issues/2889
+                var protocol = NameProvider.GetInterfaceName(conformance.Protocol.Name);
+                var typeRecord = _typeDatabase.GetTypeRecordOrThrow(_structDecl.SwiftTypeName);
+                var protocolConformanceSymbol = protocolConformanceDescriptors.GetValueOrDefault((_structDecl.SwiftTypeName, conformance.Protocol)); // TODO: Get rid of TypeSpec https://github.com/dotnet/runtimelab/issues/2889
 
                 entries.Add($"{{typeof({protocol}), \"{protocolConformanceSymbol}\"}}");
             }

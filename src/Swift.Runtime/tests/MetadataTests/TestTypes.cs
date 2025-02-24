@@ -1,10 +1,9 @@
+using Swift;
 using Swift.Runtime;
 
 namespace BindingsGeneration.Tests;
 
 struct TypeNotImplementingAnyProtocols { }
-
-interface ISwiftHashableMock { }
 
 struct SwiftIntMock : ISwiftObject
 {
@@ -12,7 +11,7 @@ struct SwiftIntMock : ISwiftObject
     {
         var dic = new Dictionary<Type, string>
             {
-                { typeof(ISwiftHashableMock), "$sSiSHsMc"} // protocol conformance descriptor for Swift.Int : Swift.Hashable in Swift
+                { typeof(ISwiftHashable), "$sSiSHsMc"} // protocol conformance descriptor for Swift.Int : Swift.Hashable in Swift
             };
 
         if (!dic.ContainsKey(typeof(TProtocol)))

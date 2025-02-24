@@ -50,8 +50,10 @@ namespace BindingsGeneration
         public required string? GenericSig { get; set; }
         public required string? sugared_genericSig { get; set; }
         public required bool? throwing { get; set; }
+        public required string? AccessorKind { get; set; }
         public required IEnumerable<Node> Children { get; set; } = Enumerable.Empty<Node>();
         public required IEnumerable<Node> Conformances { get; set; } = Enumerable.Empty<Node>();
+        public required IEnumerable<Node> Accessors { get; set; } = Enumerable.Empty<Node>();
     }
 
     /// <summary>
@@ -142,8 +144,7 @@ namespace BindingsGeneration
             var moduleDecl = new ModuleDecl
             {
                 Name = ExtractUniqueName(moduleName),
-                FullyQualifiedName = ExtractUniqueName(moduleName),
-                Fields = new List<FieldDecl>(),
+                Properties = new List<PropertyDecl>(),
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
                 Dependencies = dependencies,
@@ -155,14 +156,14 @@ namespace BindingsGeneration
 
             dependencies.Remove(moduleName);
 
-            moduleDecl.Fields = decls.OfType<FieldDecl>().ToList();
+            moduleDecl.Properties = decls.OfType<PropertyDecl>().ToList();
             moduleDecl.Methods = decls.OfType<MethodDecl>().ToList();
             moduleDecl.Types = decls.OfType<TypeDecl>().ToList();
             moduleDecl.Dependencies = dependencies;
 
             foreach (var type in moduleDecl.Types)
             {
-                _moduleTypes.Add(new NamedTypeSpec(type.FullyQualifiedName), type);
+                _moduleTypes.Add(new NamedTypeSpec(type.SwiftTypeName.ModuleQualifiedName), type);
             }
 
             return new ModuleParsingResult(moduleDecl, _moduleTypes);
@@ -210,9 +211,7 @@ namespace BindingsGeneration
                         result = IsOperator(node.Name) ? null : CreateMethodDecl(node, parentDecl, moduleDecl);
                         break;
                     case "Var":
-                        // TODO: Implement computed properties
-                        if (node.DeclAttributes is not null && Array.IndexOf(node.DeclAttributes, "HasStorage") != -1)
-                            result = CreateFieldDecl(node, parentDecl, moduleDecl);
+                        result = CreatePropertyDecl(node, parentDecl, moduleDecl);
                         break;
                     case "Import":
                         break;
@@ -243,11 +242,10 @@ namespace BindingsGeneration
         /// <returns>The type declaration.</returns>
         private TypeDecl? HandleTypeDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl)
         {
-            if (_typeDatabase.IsTypeProcessed(node.ModuleName, ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name)))
+            var typeName = GetSwiftTypeName(parentDecl, node.Name);
+            if (_typeDatabase.IsTypeProcessed(typeName))
             {
-                if (_verbose > 1)
-                    Console.WriteLine($"Type '{node.Name}' already processed. Skipping.");
-                return null;
+                throw new InvalidOperationException($"Type '{node.Name}' already processed.");
             }
 
             if (string.IsNullOrEmpty(node.MangledName))
@@ -270,8 +268,7 @@ namespace BindingsGeneration
             {
                 case "Struct":
                 case "Enum":
-                    var hasFrozenAttribute = node.DeclAttributes is not null && Array.IndexOf(node.DeclAttributes, "Frozen") != -1;
-                    decl = CreateStructDecl(node, parentDecl, moduleDecl, hasFrozenAttribute);
+                    decl = CreateStructDecl(node, parentDecl, moduleDecl);
                     break;
 
                 case "Class":
@@ -291,25 +288,25 @@ namespace BindingsGeneration
             if (decl is not null)
             {
                 var childDecls = CollectDeclarations(node.Children, decl, moduleDecl);
-                decl.Fields.AddRange(childDecls.OfType<FieldDecl>());
+                decl.Properties.AddRange(childDecls.OfType<PropertyDecl>());
                 decl.Methods.AddRange(childDecls.OfType<MethodDecl>());
                 decl.Types.AddRange(childDecls.OfType<TypeDecl>());
 
                 foreach (var type in decl.Types)
                 {
-                    _moduleTypes.Add(new NamedTypeSpec(type.FullyQualifiedName), type);
+                    _moduleTypes.Add(new NamedTypeSpec(type.SwiftTypeName.ModuleQualifiedName), type);
                 }
             }
 
             return decl;
         }
 
-        private ProtocolConformance HandleConformance(Node node, string typeName)
+        private TypeConformance HandleConformance(Node node, SwiftTypeName typeName)
         {
             var reduction = demangler.Run(node.MangledName) as TypeSpecReduction ?? throw new InvalidOperationException($"Invalid demangling result for '{node.MangledName}'.");
             var protocolTypeSpec = reduction.TypeSpec as NamedTypeSpec ?? throw new InvalidOperationException($"TypeSpec '{reduction.TypeSpec}' is not a NamedTypeSpec");
 
-            var conformance = new ProtocolConformance(new NamedTypeSpec(typeName), protocolTypeSpec);
+            var conformance = new TypeConformance(typeName, SwiftTypeName.FromTypeSpec(protocolTypeSpec));
 
             return conformance;
         }
@@ -321,18 +318,20 @@ namespace BindingsGeneration
         /// <param name="parentDecl">The parent declaration.</param>
         /// <param name="moduleDecl">The module declaration.</param>
         /// <returns>The struct declaration.</returns>
-        private StructDecl CreateStructDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl, bool hasFrozenAttribute)
+        private StructDecl CreateStructDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl)
         {
-            var fullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name);
+            var swiftTypeName = GetSwiftTypeName(parentDecl, node.Name);
+            var hasFrozenAttribute = node.DeclAttributes is not null && Array.IndexOf(node.DeclAttributes, "Frozen") != -1;
+
             return new StructDecl
             {
                 Name = ExtractUniqueName(node.Name),
-                FullyQualifiedName = fullyQualifiedName,
+                SwiftTypeName = GetSwiftTypeName(parentDecl, node.Name),
                 MangledName = node.MangledName,
-                Fields = new List<FieldDecl>(),
+                Properties = new List<PropertyDecl>(),
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
-                Conformances = [.. node.Conformances.Select(x => HandleConformance(x, fullyQualifiedName))],
+                Conformances = [.. node.Conformances.Select(x => HandleConformance(x, swiftTypeName))],
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl,
                 IsFrozen = hasFrozenAttribute,
@@ -349,16 +348,16 @@ namespace BindingsGeneration
         /// <returns>The class declaration.</returns>
         private ClassDecl CreateClassDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl)
         {
-            var fullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name);
+            var swiftTypeName = GetSwiftTypeName(parentDecl, node.Name);
             return new ClassDecl
             {
                 Name = ExtractUniqueName(node.Name),
-                FullyQualifiedName = fullyQualifiedName,
+                SwiftTypeName = swiftTypeName,
                 MangledName = node.MangledName,
-                Fields = new List<FieldDecl>(),
+                Properties = new List<PropertyDecl>(),
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
-                Conformances = [.. node.Conformances.Select(x => HandleConformance(x, fullyQualifiedName))],
+                Conformances = [.. node.Conformances.Select(x => HandleConformance(x, swiftTypeName))],
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl
             };
@@ -376,9 +375,9 @@ namespace BindingsGeneration
             return new ProtocolDecl
             {
                 Name = ExtractUniqueName(node.Name),
-                FullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name),
+                SwiftTypeName = GetSwiftTypeName(parentDecl, node.Name),
                 MangledName = node.MangledName,
-                Fields = new List<FieldDecl>(),
+                Properties = new List<PropertyDecl>(),
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
                 ParentDecl = parentDecl,
@@ -406,7 +405,6 @@ namespace BindingsGeneration
             var methodDecl = new MethodDecl
             {
                 Name = ExtractUniqueName(node.Name),
-                FullyQualifiedName = parentDecl.FullyQualifiedName,
                 // Constructors for structs are named with a trailing 'C' instead of 'c'
                 // because a constructor wrapper is missing in the library.
                 MangledName = mangledName,
@@ -417,7 +415,8 @@ namespace BindingsGeneration
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl,
                 Throws = node.throwing ?? false,
-                IsAsync = functionReduction?.Function?.IsAsync ?? false
+                IsAsync = functionReduction?.Function?.IsAsync ?? false,
+                Visibility = Visibility.Public,
             };
 
             for (int i = 0; i < node.Children.Count(); i++)
@@ -428,7 +427,6 @@ namespace BindingsGeneration
                 {
                     SwiftTypeSpec = typeSpec,
                     Name = paramNames[i],
-                    FullyQualifiedName = string.Empty,
                     PrivateName = string.Empty,
                     IsInOut = false,
                     IsGeneric = node.Children.ElementAt(i).Name == "GenericTypeParam",
@@ -440,28 +438,72 @@ namespace BindingsGeneration
             return methodDecl;
         }
 
-        /// <summary>
-        /// Creates a field declaration from a given node.
-        /// </summary>
-        /// <param name="node">The node representing the field declaration.</param>
-        /// <param name="parentDecl">The parent declaration.</param>
-        /// <param name="moduleDecl">The module declaration.</param>
-        /// <returns>The field declaration.</returns>
-        private FieldDecl CreateFieldDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl)
+        private List<AccessorDecl> HandleAccessors(IEnumerable<Node> accessors, string fieldName, BaseDecl parentDecl, ModuleDecl moduleDecl)
+        {
+            var result = new List<AccessorDecl>();
+
+            foreach (var accessor in accessors)
+            {
+                switch (accessor.AccessorKind)
+                {
+                    case "get":
+                        result.Add(CreateGetAccessor(accessor, fieldName, parentDecl, moduleDecl));
+                        break;
+                    default:
+                        Console.WriteLine($"Unsupported accessor kind '{accessor.AccessorKind}' encountered.");
+                        break;
+                }
+            }
+
+            return result;
+        }
+
+        private GetAccessorDecl CreateGetAccessor(Node accessor, string fieldName, BaseDecl parentDecl, ModuleDecl moduleDecl)
+        {
+            var methodDecl = new MethodDecl
+            {
+                Name = $"{fieldName}_Get",
+                MangledName = accessor.MangledName,
+                MethodType = MethodType.Instance,
+                IsConstructor = false,
+                CSSignature = new List<ArgumentDecl>
+                {
+                    new ArgumentDecl
+                    {
+                        SwiftTypeSpec = CreateTypeSpec(accessor.Children.ElementAt(0)),
+                        Name = string.Empty,
+                        PrivateName = string.Empty,
+                        IsInOut = false,
+                        IsGeneric = false,
+                        ParentDecl = parentDecl,
+                        ModuleDecl = moduleDecl
+                    }
+                },
+                GenericParameters = new List<GenericArgumentDecl>(),
+                ParentDecl = parentDecl,
+                ModuleDecl = moduleDecl,
+                Throws = false,
+                IsAsync = false,
+                Visibility = Visibility.Private,
+            };
+
+            return new GetAccessorDecl { Method = methodDecl };
+        }
+
+        private PropertyDecl CreatePropertyDecl(Node node, BaseDecl parentDecl, ModuleDecl moduleDecl)
         {
             var typeSpec = CreateTypeSpec(node.Children.ElementAt(0));
-            var fieldDecl = new FieldDecl
+
+            return new PropertyDecl
             {
                 SwiftTypeSpec = typeSpec,
                 Name = node.Name,
-                FullyQualifiedName = ExtractFullyQualifiedName(parentDecl.FullyQualifiedName, node.Name),
-                Visibility = node.IsInternal ?? false ? Visibility.Private : Visibility.Public,
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl,
-                IsStatic = node.@static ?? false
+                IsStatic = node.@static ?? false,
+                HasStorage = node.DeclAttributes is not null && Array.IndexOf(node.DeclAttributes, "HasStorage") != -1,
+                Accessors = HandleAccessors(node.Accessors, node.Name, parentDecl, moduleDecl)
             };
-
-            return fieldDecl;
         }
 
         /// <summary>
@@ -527,10 +569,13 @@ namespace BindingsGeneration
             return name;
         }
 
-        private static string ExtractFullyQualifiedName(string parentName, string name)
-        {
-            return string.IsNullOrEmpty(parentName) ? ExtractUniqueName(name) : $"{parentName}.{ExtractUniqueName(name)}";
-        }
+        private static SwiftTypeName GetSwiftTypeName(BaseDecl parentDecl, string name)
+            => parentDecl switch
+            {
+                ModuleDecl moduleDecl => SwiftTypeName.FromModuleQualifiedName($"{moduleDecl.Name}.{name}"),
+                TypeDecl typeDecl => SwiftTypeName.FromModuleQualifiedName($"{typeDecl.SwiftTypeName.ModuleQualifiedName}.{name}"),
+                _ => throw new InvalidOperationException("Parent declaration is not a module or type.")
+            };
 
         /// <summary>
         /// Check if the name is an operator.

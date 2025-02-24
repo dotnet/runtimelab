@@ -21,14 +21,14 @@ public record TypeRecord
     public required string CSTypeIdentifier { get; init; }
 
     /// <summary>
-    /// The Swift module name.
+    /// The fully qualified C# type identifier.
     /// </summary>
-    public required string ModuleName { get; init; }
+    public required string NamespaceQualifiedCSTypeIdentifier { get; init; }
 
     /// <summary>
     /// The Swift type identifier.
     /// </summary>
-    public required string SwiftTypeIdentifier { get; init; }
+    public required SwiftTypeName SwiftTypeName { get; init; }
 
     /// <summary>
     /// The Swift metadata accessor.

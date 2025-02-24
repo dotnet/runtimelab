@@ -9,9 +9,9 @@ namespace BindingsGeneration
     public sealed record ModuleDecl : BaseDecl
     {
         /// <summary>
-        /// The module's fields.
+        /// The module's properties.
         /// </summary>
-        public required List<FieldDecl> Fields { get; set; }
+        public required List<PropertyDecl> Properties { get; set; }
 
         /// <summary>
         /// The module's methods.

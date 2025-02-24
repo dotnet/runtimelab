@@ -87,5 +87,36 @@ namespace BindingsGeneration
         /// Mapping of Swift generic type names to C# generic type names.
         /// </summary>
         public Dictionary<string, GenericParameterCSName> GenericTypeMapping { get; } = NameProvider.GetGenericTypeMapping(methodDecl);
+
+        /// <summary>
+        /// Bound generic helper instance.
+        /// </summary>
+        public BoundGenericsHandler BoundGenericsHandler { get; } = new BoundGenericsHandler(typeDatabase);
+    }
+
+    /// <summary>
+    /// Represents a property environment.
+    /// </summary>
+    /// <remarks>
+    /// Initializes a new instance of the PropertyEnvironment class.
+    /// </remarks>
+    /// <param name="propertyDecl">The property declaration.</param>
+    /// <param name="typeDatabase">The type database instance.</param>
+    public class PropertyEnvironment(PropertyDecl propertyDecl, ITypeDatabase typeDatabase) : IEnvironment
+    {
+        /// <summary>
+        /// Gets the property declaration.
+        /// </summary>
+        public PropertyDecl PropertyDecl { get; private set; } = propertyDecl;
+
+        /// <summary>
+        /// Gets the TypeDatabase
+        /// </summary>
+        public ITypeDatabase TypeDatabase { get; } = typeDatabase;
+
+        /// <summary>
+        /// Bound generic helper instance.
+        /// </summary>
+        public BoundGenericsHandler BoundGenericsHandler { get; } = new BoundGenericsHandler(typeDatabase);
     }
 }

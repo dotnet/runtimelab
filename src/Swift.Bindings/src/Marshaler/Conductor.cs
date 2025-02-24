@@ -2,14 +2,13 @@
 // Licensed under the MIT License.
 
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
 
 namespace BindingsGeneration
 {
     using IArgumentHandlerFactory = IFactory<BaseDecl, IArgumentHandler>;
-    using IFieldHandlerFactory = IFactory<BaseDecl, IFieldHandler>;
     using IMethodHandlerFactory = IFactory<BaseDecl, IMethodHandler>;
     using IModuleHandlerFactory = IFactory<BaseDecl, IModuleHandler>;
+    using IPropertyHandlerFactory = IFactory<BaseDecl, IPropertyHandler>;
     using ITypeHandlerFactory = IFactory<BaseDecl, ITypeHandler>;
 
     /// <summary>
@@ -27,7 +26,9 @@ namespace BindingsGeneration
             new ProtocolHandlerFactory(),
             new ClassHandlerFactory(),
         ];
-        private readonly List<IFieldHandlerFactory> _fieldHandlerFactories = [];
+        private readonly List<IPropertyHandlerFactory> _propertyHandlerFactories = [
+            new PropertyHandlerFactory(),
+        ];
         private readonly List<IMethodHandlerFactory> _methodHandlerFactories = [
             new ConstructorHandlerFactory(),
             new MethodHandlerFactory(),
@@ -84,6 +85,17 @@ namespace BindingsGeneration
         public bool TryGetArgumentHandler(ArgumentDecl argumentDecl, [NotNullWhen(returnValue: true)] out IArgumentHandler? handler)
         {
             return TryGetFooHandler(argumentDecl, out handler, _argumentHandlerFactories);
+        }
+
+        /// <summary>
+        /// Tries to get a property handler for a given PropertyDecl.
+        /// </summary>
+        /// <param name="propertyDecl">The property declaration to get the handler for.</param>
+        /// <param name="handler">The handler found for the given declaration.</param>
+        /// <returns>True if a handler is found, otherwise false.</returns>
+        public bool TryGetPropertyHandler(PropertyDecl propertyDecl, [NotNullWhen(returnValue: true)] out IPropertyHandler? handler)
+        {
+            return TryGetFooHandler(propertyDecl, out handler, _propertyHandlerFactories);
         }
 
         /// <summary>
