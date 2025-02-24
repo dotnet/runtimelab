@@ -19,7 +19,7 @@ public record CSharpTypeName
     public string Name { get; }
 
     /// <summary>
-    /// The fully qualified type name, including namespace.
+    /// The fully qualified type name, including namespace. The name is not assembly qualified.
     /// </summary>
     public string FullyQualifiedName { get; }
 
