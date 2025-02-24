@@ -35,7 +35,8 @@ public class GenericSignatureParser
             new GenericArgumentDecl(
                 typeName,
                 paramMap[typeName],
-                constraints.Where(c => c.GenericParameter.Contains(typeName)).ToList()
+                constraints.Where(c => c.GenericParameter.Contains(typeName) && !c.IsAssociatedType).ToList(),
+                constraints.Where(c => c.GenericParameter.Contains(typeName) && c.IsAssociatedType).ToList()
             )
         ).ToList();
     }
@@ -70,7 +71,6 @@ public class GenericSignatureParser
 
         var parsedConstraints = constraints
             .Select(ParseConstraint)
-            .Where(constraint => constraint is not null)
             .Cast<GenericParameterConformance>();
 
         return [.. parsedConstraints];
@@ -92,8 +92,7 @@ public class GenericSignatureParser
         var target = parts[0];
         var protocol = parts[1];
 
-        if (!target.Contains(".")) return new GenericParameterConformance(target, SwiftTypeName.FromModuleQualifiedName(protocol));
-
-        return null;
+        var isAssociatedType = target.Contains(".");
+        return new GenericParameterConformance(target, SwiftTypeName.FromModuleQualifiedName(protocol), isAssociatedType);
     }
 }

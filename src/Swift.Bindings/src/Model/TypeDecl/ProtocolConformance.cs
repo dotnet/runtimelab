@@ -19,7 +19,9 @@ public record TypeConformance(
 /// </summary>
 /// <param name="GenericParameter">The generic parameter</param>
 /// <param name="Protocol">The protocol that the generic parameter conforms to</param>
+/// <param name="IsAssociatedType">Indicates if the conformance is on an associated type</param>
 public record GenericParameterConformance(
     string GenericParameter,
-    SwiftTypeName Protocol
+    SwiftTypeName Protocol,
+    bool IsAssociatedType
 );

@@ -8,9 +8,11 @@ namespace BindingsGeneration;
 /// </summary>
 /// <param name="TypeName">The name of the generic argument type</param>
 /// <param name="SugaredTypeName">The sugared name of the generic argument type</param>
-/// <param name="Constraints">The constraints of the generic argument type</param>
+/// <param name="GenericConformances">The conformances of the generic argument type</param>
+/// <param name="TypeConformances">The conformances of the generic with associated types</param>
 public record GenericArgumentDecl(
     string TypeName,
     string SugaredTypeName,
-    List<GenericParameterConformance> Constraints
+    List<GenericParameterConformance> GenericConformances,
+    List<GenericParameterConformance> TypeConformances
 );

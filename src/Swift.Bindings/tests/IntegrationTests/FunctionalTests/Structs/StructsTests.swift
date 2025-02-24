@@ -222,32 +222,6 @@ public func createNonFrozenStruct(a: Int, b: Int) -> NonFrozenStruct
     return NonFrozenStruct(x: a, y: b)
 }
 
-public struct TimerStruct {
-    let returnValue: Int32
-
-    public init(returnValue: Int32) {
-        self.returnValue = returnValue
-    }
-
-    public func waitFor(seconds: UInt64) async -> Int32 {
-        do {
-            try await Task.sleep(nanoseconds: seconds * 1_000_000_000)
-        } catch {
-            print("Failed to sleep: \(error)")
-            return -1
-        }
-        return returnValue
-    }
-
-    public func waitFor5Seconds() async -> Void {
-        try? await Task.sleep(nanoseconds: 5_000_000_000)
-    }
-
-    public static func waitFor5SecondsStatic() async -> Void {
-        try? await Task.sleep(nanoseconds: 5_000_000_000)
-    }
-}
-
 @frozen
 public struct PropertiesTestStruct {
     public let letProperty: Int32
@@ -256,13 +230,13 @@ public struct PropertiesTestStruct {
     } // This property is added to make sure the layout is correct
     public var varProperty: Double
     private let multiplier: Float
-    
+
     public init(letValue: Int32, varValue: Double, multiplier: Float) {
         self.letProperty = letValue
         self.varProperty = varValue
         self.multiplier = multiplier
     }
-    
+
     public var computedProperty: Double {
         return Double(letProperty) * Double(multiplier)
     }
@@ -275,13 +249,13 @@ public struct NonFrozenPropertiesTestStruct {
     } // This property is added to make sure the layout is correct
     public var varProperty: Double
     private let multiplier: Float
-    
+
     public init(letValue: Int32, varValue: Double, multiplier: Float) {
         self.letProperty = letValue
         self.varProperty = varValue
         self.multiplier = multiplier
     }
-    
+
     public var computedProperty: Double {
         return Double(letProperty) * Double(multiplier)
     }

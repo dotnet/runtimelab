@@ -117,6 +117,24 @@ internal class Swift5Reducer
             }
         },
         new MatchRule() {
+            Name = "FunctionType", NodeKindList = new List<NodeKind> () { NodeKind.FunctionType, NodeKind.NoEscapeFunctionType },
+            Reducer = ConvertFunctionTypeAsyncThrows,
+            ChildRules = new List<MatchRule> () {
+                new MatchRule () {
+                    Name = "ThrowsAnnotation", NodeKind = NodeKind.ThrowsAnnotation, Reducer = MatchRule.ErrorReducer
+                },
+                new MatchRule () {
+                    Name = "AsyncAnnotation", NodeKind = NodeKind.AsyncAnnotation, Reducer = MatchRule.ErrorReducer
+                },
+                new MatchRule () {
+                    Name = "Arguments", NodeKind = NodeKind.ArgumentTuple, Reducer = MatchRule.ErrorReducer
+                },
+                new MatchRule () {
+                    Name = "ReturnType", NodeKind = NodeKind.ReturnType, Reducer = MatchRule.ErrorReducer
+                },
+            }
+        },
+        new MatchRule() {
             Name = "Function", NodeKind = NodeKind.Function, Reducer = ConvertFunction,
             ChildRules = new List<MatchRule> () {
                 new MatchRule () {
@@ -340,7 +358,7 @@ internal class Swift5Reducer
     /// <param name="node">The node for a Tuple</param>
     /// <param name="mangledName">the mangled name that generated the Node</param>
     /// <returns>a TypeSpecReduction</returns>
-    /// 
+    ///
     static IReduction ConvertTuple(Node node, string mangledName)
     {
         // What to expect here:
@@ -453,7 +471,7 @@ internal class Swift5Reducer
         var argTuple = node.Children[0];
         var @return = node.Children[1];
 
-        return ConvertFunctionMaybeThrows(argTuple, @return, false, noEscaping, mangledName);
+        return ConvertFunctionAsyncThrows(argTuple, @return, false, false, noEscaping, mangledName);
 
         // var reduction = ConvertFirstChild (argTuple, mangledName);
         // if (reduction is ReductionError error)
@@ -467,7 +485,7 @@ internal class Swift5Reducer
         //         return new TypeSpecReduction () { Symbol = argsTypeSpecReduction.Symbol, TypeSpec = closure };
         //     } else {
         //         return ReductionErrorLow (ExpectedButGot ("TypeSpecReduction in function return type", reduction.GetType ().Name, mangledName), mangledName);
-        //     }            
+        //     }
         // } else {
         //     return ReductionErrorLow (ExpectedButGot ("TypeSpecReduction in argument tuple type", reduction.GetType ().Name, mangledName), mangledName);
         // }
@@ -486,7 +504,7 @@ internal class Swift5Reducer
         // ArgumentTuple
         // ReturnType
         var noEscaping = node.Kind == NodeKind.NoEscapeFunctionType;
-        return ConvertFunctionMaybeThrows(node.Children[1], node.Children[2], true, noEscaping, mangledName);
+        return ConvertFunctionAsyncThrows(node.Children[1], node.Children[2], false, true, noEscaping, mangledName);
     }
 
     /// <summary>
@@ -502,7 +520,18 @@ internal class Swift5Reducer
         // ArgumentTuple
         // ReturnType
         var noEscaping = node.Kind == NodeKind.NoEscapeFunctionType;
-        return ConvertFunctionAsync(node.Children[1], node.Children[2], true, noEscaping, mangledName);
+        return ConvertFunctionAsyncThrows(node.Children[1], node.Children[2], true, false, noEscaping, mangledName);
+    }
+
+    static IReduction ConvertFunctionTypeAsyncThrows(Node node, string mangledName)
+    {
+        // Expect:
+        // AsyncAnnotation
+        // ThrowsAnnotation
+        // ArgumentTuple
+        // ReturnType
+        var noEscaping = node.Kind == NodeKind.NoEscapeFunctionType;
+        return ConvertFunctionAsyncThrows(node.Children[2], node.Children[3], true, true, noEscaping, mangledName);
     }
 
     /// <summary>
@@ -510,11 +539,12 @@ internal class Swift5Reducer
     /// </summary>
     /// <param name="argTuple">The function arguments Node</param>
     /// <param name="return">The return type Node</param>
+    /// <param name="async">Whether or not the function is async</param>
     /// <param name="throws">Whether or not the function can throw</param>
     /// <param name="noEscaping">Whether or not the function can't escape</param>
     /// <param name="mangledName">the mangled name that generated the Node</param>
     /// <returns>A TypeSpecReduction containing a ClosureTypeSpec</returns>
-    static IReduction ConvertFunctionMaybeThrows(Node argTuple, Node @return, bool throws, bool noEscaping, string mangledName)
+    static IReduction ConvertFunctionAsyncThrows(Node argTuple, Node @return, bool async, bool throws, bool noEscaping, string mangledName)
     {
         var reduction = ConvertFirstChild(argTuple, mangledName);
         if (reduction is ReductionError error)
@@ -528,44 +558,7 @@ internal class Swift5Reducer
             {
                 var closure = new ClosureTypeSpec(argsTypeSpecReduction.TypeSpec, returnTypeSpecReduction.TypeSpec);
                 closure.Throws = throws;
-                if (!noEscaping)
-                    closure.Attributes.Add(new TypeSpecAttribute("escaping"));
-                return new TypeSpecReduction() { Symbol = argsTypeSpecReduction.Symbol, TypeSpec = closure };
-            }
-            else
-            {
-                return ReductionErrorLow(ExpectedButGot("TypeSpecReduction in function return type", reduction.GetType().Name, mangledName), mangledName);
-            }
-        }
-        else
-        {
-            return ReductionErrorLow(ExpectedButGot("TypeSpecReduction in argument tuple type", reduction.GetType().Name, mangledName), mangledName);
-        }
-    }
-
-    /// <summary>
-    /// Converts an argument tuple and return type to a TypeSpecReduction
-    /// </summary>
-    /// <param name="argTuple">The function arguments Node</param>
-    /// <param name="return">The return type Node</param>
-    /// <param name="isAsync">Whether or not the function is async</param>
-    /// <param name="noEscaping">Whether or not the function can't escape</param>
-    /// <param name="mangledName">the mangled name that generated the Node</param>
-    /// <returns>A TypeSpecReduction containing a ClosureTypeSpec</returns>
-    static IReduction ConvertFunctionAsync(Node argTuple, Node @return, bool isAsync, bool noEscaping, string mangledName)
-    {
-        var reduction = ConvertFirstChild(argTuple, mangledName);
-        if (reduction is ReductionError error)
-            return error;
-        else if (reduction is TypeSpecReduction argsTypeSpecReduction)
-        {
-            reduction = ConvertFirstChild(@return, mangledName);
-            if (reduction is ReductionError returnError)
-                return returnError;
-            else if (reduction is TypeSpecReduction returnTypeSpecReduction)
-            {
-                var closure = new ClosureTypeSpec(argsTypeSpecReduction.TypeSpec, returnTypeSpecReduction.TypeSpec);
-                closure.IsAsync = isAsync;
+                closure.IsAsync = async;
                 if (!noEscaping)
                     closure.Attributes.Add(new TypeSpecAttribute("escaping"));
                 return new TypeSpecReduction() { Symbol = argsTypeSpecReduction.Symbol, TypeSpec = closure };
