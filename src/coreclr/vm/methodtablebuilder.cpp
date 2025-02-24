@@ -3595,12 +3595,12 @@ MethodTableBuilder::EnumerateClassMethods()
                 if (IsAsyncTaskMethodTaskReturningMethod(asyncMethodType))
                 {
                     // ordinary Task-returning method:
-                    //    declare an ordinary method and add a helper thunk with Async2 signature
+                    //    declare a TaskReturning method and add a helper thunk with Async2 signature
                     // 
                     // IsMiAsync Task-returning method:
-                    //    declare an Async method and add a helper method with the actual implementation
-                    //    the Async method becomes a thunk to the implementation helper.
-                    pNewMethod->SetAsyncMethodKind(IsMiAsync(dwImplFlags) ? AsyncMethodKind::Async : AsyncMethodKind::NotAsync);
+                    //    declare a RuntimeAsync method and add a helper method with the actual implementation
+                    //    the RuntimeAsync method becomes a thunk to the implementation helper.
+                    pNewMethod->SetAsyncMethodKind(IsMiAsync(dwImplFlags) ? AsyncMethodKind::RuntimeAsync : AsyncMethodKind::TaskReturning);
                 }
                 else
                 {

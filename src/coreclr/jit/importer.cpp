@@ -8986,8 +8986,19 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                     if (isAwait)
                     {
                         _impResolveToken(CORINFO_TOKENKIND_Await);
-                        // consume the extra call
-                        codeAddr += 1 + sizeof(mdToken);
+                        if (resolvedToken.hMethod != NULL)
+                        {
+                            // There is a runtime async variant that is implicitly awaitable, just call that.
+                            // Skip the call to `Await`
+                            codeAddr += 1 + sizeof(mdToken);
+                        }
+                        else
+                        {
+                            // This can happen in rare cases when the Task-returning method is not a runtime Async function.
+                            // For example "T M1<T>(T arg) => arg" when called with a Task argument.
+                            // Treat that as a regualr call that is Awaited
+                            _impResolveToken(CORINFO_TOKENKIND_Method);
+                        }
                     }
                     else
                     {

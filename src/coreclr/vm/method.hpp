@@ -57,19 +57,24 @@ EXTERN_C VOID STDCALL NDirectImportThunk();
 
 enum class AsyncMethodKind
 {
-    // Regular methods, including Task-returning ones.
-    // Those that do not return Task/ValueTask do not get a thunk sibling
+    // Regular methods not returning tasks
+    // These do not get a thunk sibling.
+    // N.B. Generic T-returning methods are NotAsync
     NotAsync,
+
+    // Regular methods that return Task/ValueTask
+    // These methods have a synthetic sibling that is an async2 thunk
+    TaskReturning,
 
     // Task-returning methods marked as async in IL.
     // The method body forwards to Async2 implementation thunk (method with kind AsyncImplHelper)
-    Async,
+    RuntimeAsync,
 
     // Synthetic Async2 method that contains the
     // actual implementation transformed into a resumable state machine
     AsyncImplHelper,
 
-    // Synthetic Async2 method that forwards to the NotAsync Task-returning method
+    // Synthetic Async2 method that forwards to a TaskReturning method
     AsyncThunkHelper,
 
     // Actual IL method that is explicitly declared as Async2 and thus compiled into a state machine.
@@ -1619,9 +1624,9 @@ public:
                                                                      TypeHandle instType,
                                                                      Instantiation methodInst);
 
-    MethodDesc* GetAsyncOtherVariant()
+    MethodDesc* GetAsyncOtherVariant(BOOL allowInstParam = TRUE)
     {
-        return FindOrCreateAssociatedMethodDesc(this, GetMethodTable(), FALSE, GetMethodInstantiation(), TRUE, FALSE, TRUE, AsyncVariantLookup::AsyncOtherVariant);
+        return FindOrCreateAssociatedMethodDesc(this, GetMethodTable(), FALSE, GetMethodInstantiation(), allowInstParam, FALSE, TRUE, AsyncVariantLookup::AsyncOtherVariant);
     }
 
     // True if a MD is an funny BoxedEntryPointStub (not from the method table) or
@@ -1829,6 +1834,16 @@ public:
             asyncKind == AsyncMethodKind::AsyncImplHelper;
     }
 
+    inline bool IsTaskReturningMethod() const
+    {
+        LIMITED_METHOD_DAC_CONTRACT;
+        if (!HasAsyncMethodData())
+            return false;
+        auto asyncKind = GetAddrOfAsyncMethodData()->kind;
+        return asyncKind == AsyncMethodKind::RuntimeAsync ||
+            asyncKind == AsyncMethodKind::TaskReturning;
+    }
+
     // We use "async2" for runtime async methods that return "Unwrapped" values (i.e. T instead of Task<T>)
     // The type of promise is typically captured in a modreq.
     // CONSIDER: We probably need a better name for the concept, but it is hard to beat shortness of "async2"
@@ -1856,7 +1871,7 @@ public:
         return GetAddrOfAsyncMethodData()->kind == AsyncMethodKind::AsyncImplHelper;
     }
 
-    // The method is a Task/async2 adapter to an async2/Task implementation
+    // The method is a synthetic Task/async2 adapter to an async2/Task implementation
     inline bool IsAsyncThunkMethod() const
     {
         LIMITED_METHOD_DAC_CONTRACT;
@@ -1865,7 +1880,7 @@ public:
 
         auto asyncType = GetAddrOfAsyncMethodData()->kind;
         return asyncType == AsyncMethodKind::AsyncThunkHelper ||
-            asyncType == AsyncMethodKind::Async;
+            asyncType == AsyncMethodKind::RuntimeAsync;
     }
 
     inline bool HasAsyncMethodData() const
