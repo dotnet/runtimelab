@@ -35,7 +35,7 @@ namespace Swift.Runtime
         public delegate* unmanaged<void*, void*, TypeMetadata, void*> InitializeBufferWithCopyOfBuffer;
 
         /// <summary>
-        /// void Destroy (object, witnessTable)
+        /// void Destroy (object, metadata)
         /// Destroy the type pointed to by object leaving it invalid.
         /// </summary>
         public delegate* unmanaged<void*, TypeMetadata, void> Destroy;
