@@ -175,7 +175,7 @@ To ensure correct memory handling:
  - Swift value types that contain reference properties should be projected as C# classes
  - When a type goes out of the block the finalizer/dispose should invoke `Destroy` function
  - When a type is marshalled to Swift as a function parameter, `InitWithCopy` should be invoked to create the copy
- - When a type is marshalled to Swift as an `inout` function parameters, an instance reference is passed
+ - When a type is marshalled to Swift as an `inout` function parameters, an instance reference is passed. If the projected Swift instance in C# remains in C# beyond the lifetime of the callee, `InitWithCopy` should be invoked to create the copy
  - When a type is marshalled to Swift as a return parameter, `InitWithCopy` should be invoked to create the copy
  - When a type is marshalled from Swift as a return paramter, no reference counters are updated
  - When using a private "copy" constructor on the C# side for marshalling from Swift, `InitWithCopy` should be invoked
