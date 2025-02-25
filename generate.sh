@@ -144,11 +144,11 @@ function CreateFramework {
     if [[ $platform == "MacOSX" ]]; then
         # MacCatalyst x86_64
         echo "Building ${framework} for MacCatalyst x86_64..."
-        swiftc -emit-library -target x86_64-apple-ios15.0-macabi -module-name ${framework} -o ${framework}-maccatalyst-x64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/iOSSupport/System/Library/Frameworks
+        swiftc -emit-library -target x86_64-apple-ios18.1-macabi -module-name ${framework} -o ${framework}-maccatalyst-x64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/iOSSupport/System/Library/Frameworks
 
         # MacCatalyst arm64
         echo "Building ${framework} for MacCatalyst arm64..."
-        swiftc -emit-library -target arm64-apple-ios15.0-macabi -module-name ${framework} -o ${framework}-maccatalyst-arm64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/iOSSupport/System/Library/Frameworks
+        swiftc -emit-library -target arm64-apple-ios18.1-macabi -module-name ${framework} -o ${framework}-maccatalyst-arm64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/iOSSupport/System/Library/Frameworks
     fi
 
     # Function to create a Swift framework
