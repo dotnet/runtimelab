@@ -1223,12 +1223,14 @@ namespace BindingsGeneration.Demangling
             if (funcType.Kind != NodeKind.FunctionType && funcType.Kind != NodeKind.NoEscapeFunctionType)
                 return null;
 
-            var parameterType = funcType.Children[0];
-            if (parameterType.Kind == NodeKind.ThrowsAnnotation)
-                parameterType = funcType.Children[1];
+            var parameterIndex = 0;
+            if (funcType.Children[parameterIndex].Kind == NodeKind.ThrowsAnnotation)
+                parameterIndex++;
 
-            if (parameterType.Kind == NodeKind.AsyncAnnotation)
-                parameterType = funcType.Children[1];
+            if (funcType.Children[parameterIndex].Kind == NodeKind.AsyncAnnotation)
+                parameterIndex++;
+
+            var parameterType = funcType.Children[parameterIndex];
 
             if (parameterType.Index == 0)
                 return null;

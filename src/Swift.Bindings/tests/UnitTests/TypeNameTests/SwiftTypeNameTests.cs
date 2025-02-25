@@ -26,12 +26,9 @@ namespace BindingsGeneration.Tests
         }
 
         [Fact]
-        public void FromModuleQualifiedName_GenericTypeName_SetPropertiesCorrectly()
+        public void FromModuleQualifiedName_GenericTypeName_ThrowsArgumentException()
         {
-            var typeName = SwiftTypeName.FromModuleQualifiedName("Swift.Array<Swift.String>");
-            Assert.Equal("Swift", typeName.Module);
-            Assert.Equal("Array<Swift.String>", typeName.Name);
-            Assert.Equal("Swift.Array<Swift.String>", typeName.ModuleQualifiedName);
+            Assert.Throws<ArgumentException>(() => SwiftTypeName.FromModuleQualifiedName("Swift.Array<Swift.String>"));
         }
 
         [Fact]

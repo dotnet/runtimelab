@@ -80,7 +80,7 @@ function ExtractABI {
     local framework=$1
 
     echo "Generating ABI for framework '$framework', platform '$platform', architecture '$arch'"
-    
+
     local sdk_path=$(xcrun -sdk $(echo "$platform" | tr '[:upper:]' '[:lower:]') --show-sdk-path)
     local swift_interface_path="$(xcode-select -p)/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/Library/Frameworks/${framework}.framework/Versions/Current/Modules/${framework}.swiftmodule/${arch}.swiftinterface"
 

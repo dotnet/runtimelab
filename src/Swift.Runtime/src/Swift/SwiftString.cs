@@ -112,23 +112,24 @@ public struct SwiftString : ISwiftObject
             return string.Empty;
 
         var contiguousArray = PInvoke_GetUtf8ContiguousArray(_payload);
+
+#pragma warning disable CS8500
         unsafe
         {
-            ToStringCallbackContext callbackContext = new ToStringCallbackContext { _length = length };
-            GCHandle handle = GCHandle.Alloc(callbackContext);
-            PInvoke_WithUnsafeBytes(&Callback, GCHandle.ToIntPtr(handle), contiguousArray, elementType, resultType);
-            handle.Free();
+            ToStringCallbackContext callbackContext;
+            callbackContext._length = length;
+            PInvoke_WithUnsafeBytes(&Callback, (IntPtr)(void*)&callbackContext, contiguousArray, elementType, resultType);
             return callbackContext._returnString!;
 
             [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvSwift) })]
             static IntPtr Callback(byte* bytes, SwiftSelf context)
             {
-                GCHandle handle = GCHandle.FromIntPtr((IntPtr)context.Value);
-                ToStringCallbackContext pContext = (ToStringCallbackContext)handle.Target!;
-                pContext._returnString = Encoding.UTF8.GetString(new ReadOnlySpan<byte>(bytes, pContext._length));
+                ToStringCallbackContext* pContext = (ToStringCallbackContext*)context.Value;
+                pContext->_returnString = Encoding.UTF8.GetString(new ReadOnlySpan<byte>(bytes, pContext->_length));
                 return default;
             }
         }
+#pragma warning restore CS8500
     }
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
@@ -153,9 +154,9 @@ public struct SwiftString : ISwiftObject
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$ss15ContiguousArrayV15withUnsafeBytesyqd__qd__SWKXEKlF")]
     public static extern unsafe IntPtr PInvoke_WithUnsafeBytes(delegate* unmanaged[Swift]<byte*, SwiftSelf, IntPtr> callback, IntPtr context, IntPtr contiguousArray, TypeMetadata elementType, TypeMetadata resultType);
 
-    private class ToStringCallbackContext
+    private struct ToStringCallbackContext
     {
         public int _length;
-        public string? _returnString;
+        public string _returnString;
     }
 }

@@ -87,6 +87,11 @@ namespace BindingsGeneration
         /// Mapping of Swift generic type names to C# generic type names.
         /// </summary>
         public Dictionary<string, GenericParameterCSName> GenericTypeMapping { get; } = NameProvider.GetGenericTypeMapping(methodDecl);
+
+        /// <summary>
+        /// Bound generic helper instance.
+        /// </summary>
+        public BoundGenericsHandler BoundGenericsHandler { get; } = new BoundGenericsHandler(typeDatabase);
     }
 
     /// <summary>
@@ -108,5 +113,10 @@ namespace BindingsGeneration
         /// Gets the TypeDatabase
         /// </summary>
         public ITypeDatabase TypeDatabase { get; } = typeDatabase;
+
+        /// <summary>
+        /// Bound generic helper instance.
+        /// </summary>
+        public BoundGenericsHandler BoundGenericsHandler { get; } = new BoundGenericsHandler(typeDatabase);
     }
 }

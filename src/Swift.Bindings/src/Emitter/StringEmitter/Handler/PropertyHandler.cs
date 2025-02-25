@@ -73,8 +73,13 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
             return;
         }
 
+        var csTypeName = propertyEnv.BoundGenericsHandler.IsBoundGeneric(propertyDecl) switch
+        {
+            true => propertyEnv.BoundGenericsHandler.TranslateBoundGenericTypeToCSharp(propertyDecl),
+            false => typeRecord!.CSharpTypeName.FullyQualifiedName
+        };
+
         // TODO Detect and skip / Handle async properties https://github.com/dotnet/runtimelab/issues/2996
-        var csTypeName = typeRecord!.CSTypeIdentifier;
 
         // Get the C# property name, handling reserved keywords and special cases
         var propertyName = NameProvider.GetPropertyName(propertyDecl.Name);

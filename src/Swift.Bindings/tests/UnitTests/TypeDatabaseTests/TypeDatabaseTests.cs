@@ -48,10 +48,9 @@ namespace BindingsGeneration.Tests
             var swiftTypeName = SwiftTypeName.FromModuleQualifiedName("TestModule.MyType");
             var myType = new TypeRecord
             {
-                CSTypeIdentifier = "MyType",
+                CSharpTypeName = CSharpTypeName.FromNamespaceAndName("BindingsGeneration.Tests", "MyType"),
                 SwiftTypeName = swiftTypeName,
                 MetadataAccessor = "mangledAccessor",
-                Namespace = "BindingsGeneration.Tests",
                 IsBlittable = false,
                 IsFrozen = false
             };
@@ -62,7 +61,7 @@ namespace BindingsGeneration.Tests
 
             Assert.True(found);
             Assert.NotNull(record);
-            Assert.Equal("MyType", record!.CSTypeIdentifier);
+            Assert.Equal("MyType", record!.CSharpTypeName.Name);
         }
 
         [Fact]
@@ -89,10 +88,9 @@ namespace BindingsGeneration.Tests
 
             var outOfModuleRecord = new TypeRecord
             {
-                CSTypeIdentifier = "MyOutOfModuleType",
+                CSharpTypeName = CSharpTypeName.FromNamespaceAndName("BindingsGeneration.Tests", "MyOutOfModuleType"),
                 SwiftTypeName = swiftTypeName,
                 MetadataAccessor = "mangledOutOfModule",
-                Namespace = "BindingsGeneration.Tests",
                 IsBlittable = false,
                 IsFrozen = false
             };
@@ -106,7 +104,7 @@ namespace BindingsGeneration.Tests
 
             Assert.True(found);
             Assert.NotNull(record);
-            Assert.Equal("MyOutOfModuleType", record!.CSTypeIdentifier);
+            Assert.Equal("MyOutOfModuleType", record!.CSharpTypeName.Name);
             Assert.Equal("AnotherModule", record.SwiftTypeName.Module);
         }
 
@@ -119,10 +117,9 @@ namespace BindingsGeneration.Tests
             var swiftTypeName = SwiftTypeName.FromModuleQualifiedName("TestModule.ProcessedType");
             module.RegisterType(swiftTypeName, new TypeRecord
             {
-                CSTypeIdentifier = "ProcessedType",
+                CSharpTypeName = CSharpTypeName.FromNamespaceAndName("TestModule", "ProcessedType"),
                 SwiftTypeName = swiftTypeName,
                 MetadataAccessor = string.Empty,
-                Namespace = string.Empty,
                 IsBlittable = false,
                 IsFrozen = false
             });
