@@ -142,6 +142,17 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(strings[0], stringsInstance[0]);
             Assert.Equal(strings[1], stringsInstance[1]);
             Assert.Equal(strings[2], stringsInstance[2]);
+
+
+            strings.Append(new SwiftString("four"));
+            stringsInstance = await myStruct.ArrayPassThrough(strings);
+            Assert.True(stopwatch.Elapsed.TotalSeconds >= 1);
+            Assert.Equal(4, stringsInstance.Count);
+            Assert.Equal(strings[0], stringsInstance[0]);
+            Assert.Equal(strings[1], stringsInstance[1]);
+            Assert.Equal(strings[2], stringsInstance[2]);
+            Assert.Equal(strings[3], stringsInstance[3]);
+
         }
 
         [Fact]

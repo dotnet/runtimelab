@@ -707,18 +707,13 @@ namespace BindingsGeneration
                 false => ""
             };
 
-
-            // TODO: Fix https://github.com/dotnet/runtimelab/issues/3020
-            var globalResult = $"public var result{_env.MethodDecl.Name}: {(_env.MethodDecl.CSSignature.First().IsGeneric ? "Any?" : ($"{_env.MethodDecl.CSSignature.First().SwiftTypeSpec} = {_env.MethodDecl.CSSignature.First().SwiftTypeSpec}()"))}";
-
             var parentTypeName = (_env.ParentDecl as TypeDecl)!.SwiftTypeName;
             swiftWriter.WriteLine($$"""
-            {{(isEmptyTuple ? "" : globalResult)}}
             extension {{parentTypeName.ModuleQualifiedName}} {
                 @_silgen_name("{{NameProvider.GetMangledName(_env.MethodDecl)}}")
                 public {{(_env.MethodDecl.MethodType == MethodType.Static ? "static " : "")}} func {{NameProvider.GetPInvokeName(_env.MethodDecl)}}{{genericParams}}({{parameters}}){{whereClause}}{
                     Task {
-                        {{(isEmptyTuple ? "" : $"result{_env.MethodDecl.Name} = ")}}try! await {{(_env.MethodDecl.MethodType == MethodType.Static ? $"{parentTypeName.ModuleQualifiedName}." : "")}}{{_env.MethodDecl.Name}}(
+                        {{(isEmptyTuple ? "" : $"let result{_env.MethodDecl.Name} = ")}}try! await {{(_env.MethodDecl.MethodType == MethodType.Static ? $"{parentTypeName.ModuleQualifiedName}." : "")}}{{_env.MethodDecl.Name}}(
                             {{string.Join(", ", _env.MethodDecl.CSSignature.Skip(1).Select(p => (p.Name.First() == '_' ? p.Name.Remove(0, 1) : p.Name) + ": " + (p.Name)))}}
                         )
                         callback({{(isEmptyTuple ? "" : $"result{_env.MethodDecl.Name}{(_env.MethodDecl.CSSignature.First().IsGeneric ? $" as! {_env.MethodDecl.GenericParameters[0].SugaredTypeName}" : "")}, ")}}task);
@@ -964,7 +959,23 @@ namespace BindingsGeneration
             if (!_requiresSwiftAsync)
                 return;
 
-            var voidReturn = _env.MethodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple;
+            var returnType = _env.MethodDecl.CSSignature.First();
+            var voidReturn = returnType.SwiftTypeSpec.IsEmptyTuple;
+            var requiresInitWithCopy = !voidReturn && (!MarshallingHelpers.ArgumentIsMarshalledAsCSStruct(returnType, _env.TypeDatabase) || _env.BoundGenericsHandler.IsBoundGeneric(returnType));
+
+            var copyExpression = $$"""
+            IntPtr payload = IntPtr.Zero;
+            try
+            {
+                var metadata = SwiftObjectHelper<{{_wrapperSignature.ReturnType}}>.GetTypeMetadata();
+                payload = (IntPtr)NativeMemory.Alloc(metadata.Size);
+                SwiftMarshal.MarshalToSwift(result, payload);
+            }
+            finally
+            {
+                NativeMemory.Free((void*)payload);
+            }
+            """;
 
             var text = $$"""
                         private static unsafe delegate* unmanaged[Cdecl]<{{(voidReturn ? "" : $"{_pInvokeSignature.ReturnType}, ")}}IntPtr, void> s_{{_env.MethodDecl.Name}}Callback = &{{_env.MethodDecl.Name}}OnComplete;
@@ -974,8 +985,8 @@ namespace BindingsGeneration
                             GCHandle handle = GCHandle.FromIntPtr(task);
                             try
                             {
-
                                 {{(voidReturn ? "" : $"var result = SwiftMarshal.MarshalFromSwift<{_wrapperSignature.ReturnType}>((SwiftHandle)new IntPtr(&rawResult));")}}
+                                {{(requiresInitWithCopy ? copyExpression : "")}}
                                 if (handle.Target is TaskCompletionSource{{(voidReturn ? "" : $"<{_wrapperSignature.ReturnType}>")}} tcs)
                                 {
                                     tcs.TrySetResult({{(voidReturn ? "" : "result")}});
