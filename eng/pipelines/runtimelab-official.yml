@@ -35,24 +35,11 @@ extends:
   template: /eng/pipelines/common/templates/template1es.yml@self
   parameters:
     stages:
-    - stage: Build
-      jobs:
-      - template: /eng/pipelines/common/templates/build-job.yml
-        parameters:
-          osGroup: OSX
-          archType: x64
-          isOfficialBuild: true
-          runTests: false
-          pool:
-            name: Azure Pipelines
-            image: macos-latest
-            os: macOS
-          bindings:
-            isBindingsBuild: true
-            scriptArgs: '--platform MacOSX --arch arm64e-apple-macos --framework StoreKit --experimental'
-
     - ${{ if eq(variables.isOfficialBuild, true) }}:
       - template: /eng/pipelines/common/templates/publish.yml
         parameters:
           isOfficialBuild: true
           enableSourceLinkValidation: true
+          bindings:
+            isBindingsBuild: true
+            scriptArgs: '--platform MacOSX --arch x86_64-apple-macos --version 12.0 --framework StoreKit --experimental'

@@ -160,8 +160,8 @@ namespace BindingsGeneration
     public record Signature(string ReturnType, IReadOnlyList<Parameter> Parameters)
     {
         public bool ContainsPlaceholder =>
-        Parameters.Any(p => p.Type.Contains(TypeDatabaseExtensions.AnyType.NamespaceQualifiedCSTypeIdentifier))
-        || ReturnType.Contains(TypeDatabaseExtensions.AnyType.NamespaceQualifiedCSTypeIdentifier);
+        Parameters.Any(p => p.Type.Contains(TypeDatabaseExtensions.AnyType.CSharpTypeName.FullyQualifiedName))
+        || ReturnType.Contains(TypeDatabaseExtensions.AnyType.CSharpTypeName.FullyQualifiedName);
         public string ParametersString() => string.Join(", ", Parameters.Select(p => p.SignatureString()));
 
         public string CallArgumentsString() => string.Join(", ", Parameters.Select(p => GetCallArgumentString(p)));
@@ -213,7 +213,7 @@ namespace BindingsGeneration
             }
 
             var typeRecord = _env.TypeDatabase.GetTypeRecordOrAnyType(argument.SwiftTypeSpec);
-            SetReturnType(typeRecord.NamespaceQualifiedCSTypeIdentifier);
+            SetReturnType(typeRecord.CSharpTypeName.FullyQualifiedName);
         }
 
         /// <summary>
@@ -238,7 +238,7 @@ namespace BindingsGeneration
                 else
                 {
                     var typeRecord = _env.TypeDatabase.GetTypeRecordOrAnyType(argument.SwiftTypeSpec);
-                    AddParameter(typeRecord.NamespaceQualifiedCSTypeIdentifier, argument.Name);
+                    AddParameter(typeRecord.CSharpTypeName.FullyQualifiedName, argument.Name);
                 }
             }
         }
@@ -319,7 +319,7 @@ namespace BindingsGeneration
             }
 
             var returnTypeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(returnType.SwiftTypeSpec);
-            SetReturnType(returnTypeRecord.NamespaceQualifiedCSTypeIdentifier);
+            SetReturnType(returnTypeRecord.CSharpTypeName.FullyQualifiedName);
         }
 
         /// <summary>
@@ -368,7 +368,7 @@ namespace BindingsGeneration
                 }
 
                 var argumentTypeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(argument.SwiftTypeSpec);
-                AddParameter(argumentTypeRecord.NamespaceQualifiedCSTypeIdentifier, argument.Name);
+                AddParameter(argumentTypeRecord.CSharpTypeName.FullyQualifiedName, argument.Name);
             }
         }
 
@@ -705,9 +705,10 @@ namespace BindingsGeneration
             // TODO: Fix https://github.com/dotnet/runtimelab/issues/3020
             var globalResult = $"public var result{_env.MethodDecl.Name}: {(_env.MethodDecl.CSSignature.First().IsGeneric ? "Any?" : ($"{_env.MethodDecl.CSSignature.First().SwiftTypeSpec} = {_env.MethodDecl.CSSignature.First().SwiftTypeSpec}()"))}";
 
+            var parentTypeName = (_env.ParentDecl as TypeDecl)!.SwiftTypeName;
             swiftWriter.WriteLine($$"""
             {{(isEmptyTuple ? "" : globalResult)}}
-            extension {{_env.ParentDecl.Name}} {
+            extension {{parentTypeName.ModuleQualifiedName}} {
                 @_silgen_name("{{NameProvider.GetMangledName(_env.MethodDecl)}}")
                 public {{(_env.MethodDecl.MethodType == MethodType.Static ? "static " : "")}} func {{NameProvider.GetPInvokeName(_env.MethodDecl)}}{{genericParams}}({{parameters}}){{whereClause}}{
                     Task {
@@ -956,13 +957,6 @@ namespace BindingsGeneration
         {
             if (!_requiresSwiftAsync)
                 return;
-
-            // if (_env.BoundGenericsHandler.IsBoundGeneric(argument))
-            // {
-            //     var csTypeParam = _env.BoundGenericsHandler.TranslateBoundGenericTypeToCSharp(argument);
-            //     SetReturnType(csTypeParam);
-            //     return;
-            // }
 
             var voidReturn = _env.MethodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple;
 

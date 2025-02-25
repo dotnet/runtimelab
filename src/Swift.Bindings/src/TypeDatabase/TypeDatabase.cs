@@ -136,12 +136,11 @@ namespace BindingsGeneration
                     throw new Exception("Invalid XML structure: Missing attributes.");
 
 
-                var swiftTypeName = SwiftTypeName.FromModuleQualifiedName($"{moduleName}.{swiftTypeIdentifier}"); // TODO: Change layout of xml
+                var swiftTypeName = SwiftTypeName.FromModuleQualifiedName($"{moduleName}.{swiftTypeIdentifier}");
+                var csharpTypeName = CSharpTypeName.FromNamespaceAndName(@namespace, csharpTypeIdentifier);
                 var typeRecord = new TypeRecord()
                 {
-                    Namespace = @namespace,
-                    CSTypeIdentifier = csharpTypeIdentifier,
-                    NamespaceQualifiedCSTypeIdentifier = $"{@namespace}.{csharpTypeIdentifier}",
+                    CSharpTypeName = csharpTypeName,
                     SwiftTypeName = swiftTypeName,
                     MetadataAccessor = swiftMangledName,
                     IsBlittable = blittable.ToLower() == "true",

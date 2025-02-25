@@ -2,6 +2,9 @@ parameters:
   PublishRidAgnosticPackagesFromPlatform: ''
   isOfficialBuild: false
   logArtifactName: 'Logs-PrepareSignedArtifacts_Attempt$(System.JobAttempt)'
+  bindings:
+    isBindingsBuild: false
+    scriptArgs: ''
 
 jobs:
 - template: /eng/common/templates-official/job/job.yml
@@ -10,8 +13,9 @@ jobs:
     displayName: 'Prepare Signed Artifacts'
 
     pool:
-      name: $(DncEngInternalBuildPool)
-      demands: ImageOverride -equals 1es-windows-2022
+      name: Azure Pipelines
+      image: macos-latest
+      os: macOS
 
     # Double the default timeout.
     timeoutInMinutes: 240
@@ -24,26 +28,10 @@ jobs:
     variables:
       - name: '_SignType'
         value: $[ coalesce(variables.OfficialSignType, 'real') ]
-      
-    templateContext:
-      inputs:
-      - input: checkout
-        repository: self
-        clean: true
-        fetchDepth: 20
-      - input: pipelineArtifact
-        artifactName: IntermediateArtifacts
-        targetPath: $(Build.SourcesDirectory)\artifacts\PackageDownload\IntermediateArtifacts
-      outputs:
-      - output: pipelineArtifact
-        displayName: 'Publish BuildLogs'
-        condition: succeededOrFailed()
-        targetPath: '$(Build.StagingDirectory)\BuildLogs'
-        artifactName: ${{ parameters.logArtifactName }}
-    
+
     steps:
     - script: >-
-        build.cmd -ci
+        ./build.sh -ci
         -publish
         -pack
         -configuration Release
@@ -53,8 +41,27 @@ jobs:
         /p:DotNetSignType=$(_SignType)
         /p:DotNetPublishUsingPipelines=true
         /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
-      displayName: Prepare artifacts and upload to build
-    
+      displayName: Prepare tooling artifacts and upload to build
+
+    - ${{ if eq(parameters.bindings.isBindingsBuild, true) }}:
+      - script: >-
+          ./generate.sh --configuration Release ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate bindings
+
+      - script: >-
+          ./build.sh -ci
+          -publish
+          -pack
+          -configuration Release
+          --projects $(pwd)/GeneratedBindings/Swift.Bindings.Experimental.csproj
+          /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
+          /p:OfficialBuildId=$(Build.BuildNumber)
+          /p:SignType=$(_SignType)
+          /p:DotNetSignType=$(_SignType)
+          /p:DotNetPublishUsingPipelines=true
+          /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
+        displayName: Prepare bindings artifacts and upload to build
+
     - task: CopyFiles@2
       displayName: Copy Files to $(Build.StagingDirectory)\BuildLogs
       inputs:
