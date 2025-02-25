@@ -318,6 +318,12 @@ namespace BindingsGeneration
                 return;
             }
 
+            if (_env.MethodDecl.IsAsync && !MarshallingHelpers.ArgumentIsMarshalledAsCSStruct(returnType, _env.TypeDatabase))
+            {
+                SetReturnType("IntPtr");
+                return;
+            }
+
             var returnTypeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(returnType.SwiftTypeSpec);
             SetReturnType(returnTypeRecord.CSharpTypeName.FullyQualifiedName);
         }
@@ -712,7 +718,7 @@ namespace BindingsGeneration
                 @_silgen_name("{{NameProvider.GetMangledName(_env.MethodDecl)}}")
                 public {{(_env.MethodDecl.MethodType == MethodType.Static ? "static " : "")}} func {{NameProvider.GetPInvokeName(_env.MethodDecl)}}{{genericParams}}({{parameters}}){{whereClause}}{
                     Task {
-                        {{(isEmptyTuple ? "" : $"result{_env.MethodDecl.Name} = ")}}try! await {{(_env.MethodDecl.MethodType == MethodType.Static ? $"{_env.ParentDecl.Name}." : "")}}{{_env.MethodDecl.Name}}(
+                        {{(isEmptyTuple ? "" : $"result{_env.MethodDecl.Name} = ")}}try! await {{(_env.MethodDecl.MethodType == MethodType.Static ? $"{parentTypeName.ModuleQualifiedName}." : "")}}{{_env.MethodDecl.Name}}(
                             {{string.Join(", ", _env.MethodDecl.CSSignature.Skip(1).Select(p => (p.Name.First() == '_' ? p.Name.Remove(0, 1) : p.Name) + ": " + (p.Name)))}}
                         )
                         callback({{(isEmptyTuple ? "" : $"result{_env.MethodDecl.Name}{(_env.MethodDecl.CSSignature.First().IsGeneric ? $" as! {_env.MethodDecl.GenericParameters[0].SugaredTypeName}" : "")}, ")}}task);
