@@ -42,4 +42,4 @@ extends:
           enableSourceLinkValidation: true
           bindings:
             isBindingsBuild: true
-            scriptArgs: '--platform MacOSX --arch x86_64-apple-macos --version 12.0 --framework StoreKit --experimental'
+            scriptArgs: '--platform MacOSX --arch x86_64-apple-macos --version 16.0 --framework StoreKit --experimental'
