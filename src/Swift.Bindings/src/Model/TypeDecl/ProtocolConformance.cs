@@ -15,13 +15,22 @@ public record TypeConformance(
 );
 
 /// <summary>
+/// Represents the kind of conformance.
+/// </summary>
+public enum ConformanceKind
+{
+    Protocol,
+    ConcreteType
+}
+
+/// <summary>
 /// Represents a generic parameter conformance.
 /// </summary>
-/// <param name="GenericParameter">The generic parameter</param>
-/// <param name="Protocol">The protocol that the generic parameter conforms to</param>
-/// <param name="IsAssociatedType">Indicates if the conformance is on an associated type</param>
+/// <param name="path">The path to the generic parameter</param>
+/// <param name="ConformanceTarget">The type that conforms to the protocol</param>
+/// <param name="Kind">The kind of conformance</param>
 public record GenericParameterConformance(
-    string GenericParameter,
-    SwiftTypeName Protocol,
-    bool IsAssociatedType
+    string[] Path,
+    SwiftTypeName ConformanceTarget,
+    ConformanceKind Kind
 );

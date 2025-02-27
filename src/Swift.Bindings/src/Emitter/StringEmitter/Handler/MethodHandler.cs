@@ -397,10 +397,10 @@ namespace BindingsGeneration
         {
             foreach (var genericParameter in _env.MethodDecl.GenericParameters)
             {
-                var conformances = genericParameter.GenericConformances.OrderBy(c => c.Protocol.ModuleQualifiedName);
+                var conformances = genericParameter.GenericConformances.OrderBy(c => c.ConformanceTarget.ModuleQualifiedName);
                 foreach (var conformance in conformances)
                 {
-                    var pwtName = NameProvider.GetProtocolWitnessTableName(_env.GenericTypeMapping[genericParameter.TypeName].TypeParameter, conformance.Protocol.Name);
+                    var pwtName = NameProvider.GetProtocolWitnessTableName(_env.GenericTypeMapping[genericParameter.TypeName].TypeParameter, conformance.ConformanceTarget.Name);
                     AddParameter("ProtocolWitnessTable", pwtName);
                 }
             }
@@ -685,7 +685,7 @@ namespace BindingsGeneration
                 false => ""
             };
 
-            var whereClause = (_env.MethodDecl.IsGeneric && _env.MethodDecl.GenericParameters.Any(p => p.GenericConformances.Any() || p.TypeConformances.Any())) switch
+            var whereClause = (_env.MethodDecl.IsGeneric && _env.MethodDecl.GenericParameters.Any(p => p.GenericConformances.Any() || p.AssosiatedTypeConformances.Any())) switch
             {
                 true => " where " + string.Join(
                     ", ",
@@ -693,12 +693,12 @@ namespace BindingsGeneration
                     {
                         // Build conformances of the form "T : ProtocolName"
                         var genericConformances = p.GenericConformances
-                            .Select(gc => $"{p.SugaredTypeName} : {gc.Protocol.Name}");
+                            .Select(gc => $"{p.SugaredTypeName} : {gc.ConformanceTarget.Name}");
 
                         // Build type conformances of the form "T.AssociatedType == ProtocolName"
-                        var typeConformances = p.TypeConformances
+                        var typeConformances = p.AssosiatedTypeConformances
                             .Select(tc =>
-                                $"{p.SugaredTypeName}.{string.Join(".", tc.GenericParameter.Split('.').Skip(1))} == {tc.Protocol.Name}"
+                                $"{p.SugaredTypeName}.{string.Join(".", tc.Path.Skip(1))} == {tc.ConformanceTarget.Name}"
                             );
 
                         return string.Join(", ", genericConformances.Concat(typeConformances));
@@ -815,11 +815,11 @@ namespace BindingsGeneration
             foreach (var genericParameter in _env.MethodDecl.GenericParameters)
             {
                 var csTypeParamName = _env.GenericTypeMapping[genericParameter.TypeName].TypeParameter;
-                var conformances = genericParameter.GenericConformances.OrderBy(c => c.Protocol.ModuleQualifiedName);
+                var conformances = genericParameter.GenericConformances.OrderBy(c => c.ConformanceTarget.ModuleQualifiedName);
                 foreach (var conformance in conformances)
                 {
-                    var pwtName = NameProvider.GetProtocolWitnessTableName(csTypeParamName, conformance.Protocol.Name);
-                    var protocolName = NameProvider.GetInterfaceName(conformance.Protocol.Name);
+                    var pwtName = NameProvider.GetProtocolWitnessTableName(csTypeParamName, conformance.ConformanceTarget.Name);
+                    var protocolName = NameProvider.GetInterfaceName(conformance.ConformanceTarget.Name);
                     csWriter.WriteLine($"var {pwtName} = ProtocolWitnessTable.GetOrThrow<{csTypeParamName}, {protocolName}>();");
                 }
             }

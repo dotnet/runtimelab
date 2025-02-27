@@ -71,8 +71,8 @@ public class GenericSignatureParserTests
         Assert.Equal("T", decl.SugaredTypeName);
         Assert.Single(decl.GenericConformances);
         var conformance = Assert.IsType<GenericParameterConformance>(decl.GenericConformances[0]);
-        Assert.Equal("τ_0_0", conformance.GenericParameter);
-        Assert.Equal("Swift.Equatable", conformance.Protocol.ModuleQualifiedName);
+        Assert.Equal("τ_0_0", conformance.Path[0]);
+        Assert.Equal("Swift.Equatable", conformance.ConformanceTarget.ModuleQualifiedName);
     }
 
     [Fact]
@@ -90,23 +90,23 @@ public class GenericSignatureParserTests
         Assert.Equal("T", first.SugaredTypeName);
         Assert.Single(first.GenericConformances);
         var firstConformance = Assert.IsType<GenericParameterConformance>(first.GenericConformances[0]);
-        Assert.Equal("τ_0_0", firstConformance.GenericParameter);
-        Assert.Equal("Swift.Equatable", firstConformance.Protocol.ModuleQualifiedName);
+        Assert.Equal("τ_0_0", firstConformance.Path[0]);
+        Assert.Equal("Swift.Equatable", firstConformance.ConformanceTarget.ModuleQualifiedName);
 
         var second = result[1];
         Assert.Equal("τ_0_1", second.TypeName);
         Assert.Equal("U", second.SugaredTypeName);
         Assert.Single(second.GenericConformances);
         var secondConformance = Assert.IsType<GenericParameterConformance>(second.GenericConformances[0]);
-        Assert.Equal("τ_0_1", secondConformance.GenericParameter);
-        Assert.Equal("Swift.Hashable", secondConformance.Protocol.ModuleQualifiedName);
+        Assert.Equal("τ_0_1", secondConformance.Path[0]);
+        Assert.Equal("Swift.Hashable", secondConformance.ConformanceTarget.ModuleQualifiedName);
     }
 
     [Fact]
     public void ParseGenericSignature_ParsesAssociatedTypeConstraints()
     {
-        var genericSig = "<τ_0_0 where τ_0_0 : SomeModule.SomeProtocol, τ_0_0.ID == System.Guid>";
-        var sugaredSig = "<T where T : SomeModule.SomeProtocol, T.ID == System.Guid>";
+        var genericSig = "<τ_0_0 where τ_0_0 : SomeModule.SomeProtocol, τ_0_0.ID == System.Guid, τ_0_0.ID : SomeModule.SomeProtocol>";
+        var sugaredSig = "<T where T : SomeModule.SomeProtocol, T.ID == System.Guid, T.ID : SomeModule.SomeProtocol>";
 
         var result = GenericSignatureParser.ParseGenericSignature(genericSig, sugaredSig);
 
@@ -115,16 +115,23 @@ public class GenericSignatureParserTests
         Assert.Equal("τ_0_0", decl.TypeName);
         Assert.Equal("T", decl.SugaredTypeName);
         Assert.Single(decl.GenericConformances);
-        Assert.Single(decl.TypeConformances);
+        Assert.Equal(2, decl.AssosiatedTypeConformances.Count);
 
         var proto = Assert.IsType<GenericParameterConformance>(decl.GenericConformances[0]);
-        Assert.Equal("τ_0_0", proto.GenericParameter);
-        Assert.Equal("SomeModule.SomeProtocol", proto.Protocol.ModuleQualifiedName);
-        Assert.False(proto.IsAssociatedType);
+        Assert.Equal("τ_0_0", proto.Path[0]);
+        Assert.Equal("SomeModule.SomeProtocol", proto.ConformanceTarget.ModuleQualifiedName);
+        Assert.Equal(ConformanceKind.Protocol, proto.Kind);
 
-        proto = Assert.IsType<GenericParameterConformance>(decl.TypeConformances[0]);
-        Assert.Equal("τ_0_0.ID", proto.GenericParameter);
-        Assert.Equal("System.Guid", proto.Protocol.ModuleQualifiedName);
-        Assert.True(proto.IsAssociatedType);
+        proto = Assert.IsType<GenericParameterConformance>(decl.AssosiatedTypeConformances[0]);
+        Assert.Equal("τ_0_0", proto.Path[0]);
+        Assert.Equal("ID", proto.Path[1]);
+        Assert.Equal("System.Guid", proto.ConformanceTarget.ModuleQualifiedName);
+        Assert.Equal(ConformanceKind.ConcreteType, proto.Kind);
+
+        proto = Assert.IsType<GenericParameterConformance>(decl.AssosiatedTypeConformances[1]);
+        Assert.Equal("τ_0_0", proto.Path[0]);
+        Assert.Equal("ID", proto.Path[1]);
+        Assert.Equal("SomeModule.SomeProtocol", proto.ConformanceTarget.ModuleQualifiedName);
+        Assert.Equal(ConformanceKind.Protocol, proto.Kind);
     }
 }
