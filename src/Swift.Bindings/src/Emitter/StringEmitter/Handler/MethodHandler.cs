@@ -665,7 +665,6 @@ namespace BindingsGeneration
             GCHandle handle = GCHandle.Alloc(task, GCHandleType.Normal);
             """);
 
-            int genericIndex = 0;
             string parameters = string.Join(
                 ", ",
                 new[]
@@ -675,7 +674,7 @@ namespace BindingsGeneration
                 }.Concat(
                     _env.MethodDecl.CSSignature
                         .Skip(1)
-                        .Select(p => $"{p.Name}: {(p.IsGeneric ? _env.MethodDecl.GenericParameters[genericIndex++].SugaredTypeName : p.SwiftTypeSpec)}")
+                        .Select(p => $"{p.Name}: {(p.IsGeneric ? _env.MethodDecl.GenericParameters.Find(g => g.TypeName == p.SwiftTypeSpec.ToString())!.SugaredTypeName : p.SwiftTypeSpec)}")
                 )
             );
 
