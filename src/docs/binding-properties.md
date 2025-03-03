@@ -101,3 +101,7 @@ public class NonFrozenPoint : IDisposable {
 ## Static Properties
 
 TODO
+
+## Async Properties
+
+TODO
