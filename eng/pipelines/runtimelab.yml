@@ -88,6 +88,22 @@ extends:
                 - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
                   parameters:
                     librariesConfiguration: Debug
+        
+        #
+        # Build and test wasi library tests
+        #
+        - template: /eng/pipelines/common/templates/wasm-library-tests.yml
+          parameters:
+            platforms:
+              - wasi_wasm
+              - wasi_wasm_win
+              - wasi_wasm_linux_x64_naot_llvm
+            nameSuffix: '_Smoke'
+            extraBuildArgs: /p:EnableAggressiveTrimming=true /p:RunWasmSamples=true /p:AotHostArchitecture=x64 /p:AotHostOS=$(_hostedOS)
+            shouldRunSmokeOnly: true
+            alwaysRun: ${{ variables.isRollingBuild }}
+            scenarios:
+              - WasmTestOnWasmtime
 
         #
         # Build and test with Release libraries and Release runtime
