@@ -292,6 +292,9 @@ namespace BindingsGeneration.FunctionalTests
         [Fact]
         public void TestFrozenStructProperties()
         {
+            var staticPropertyValue = PropertiesTestStruct.staticLetProperty;
+            Assert.Equal(42, staticPropertyValue);
+
             var struct1 = new PropertiesTestStruct(letValue: 10, varValue: 20, multiplier: 3);
 
             Assert.Equal(10, struct1.letProperty);
@@ -304,6 +307,9 @@ namespace BindingsGeneration.FunctionalTests
         [Fact]
         public void TestNonFrozenStructProperties()
         {
+            var staticPropertyValue = NonFrozenPropertiesTestStruct.staticLetProperty;
+            Assert.Equal(42, staticPropertyValue);
+
             var struct1 = new NonFrozenPropertiesTestStruct(letValue: 10, varValue: 20, multiplier: 3);
 
             Assert.Equal(10, struct1.letProperty);

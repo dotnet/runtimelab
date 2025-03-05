@@ -67,12 +67,6 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
             return;
         }
 
-        if (propertyDecl.IsStatic) // TODO: https://github.com/dotnet/runtimelab/issues/2995
-        {
-            Console.WriteLine($"PropertyHandler: Static properties are not supported. Skipping property {propertyDecl.Name}.");
-            return;
-        }
-
         var csTypeName = propertyEnv.BoundGenericsHandler.IsBoundGeneric(propertyDecl) switch
         {
             true => propertyEnv.BoundGenericsHandler.TranslateBoundGenericTypeToCSharp(propertyDecl),
@@ -97,9 +91,9 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
                 throw new InvalidOperationException($"No handler found for properties accessor {accessor.Method.Name}");
             }
         }
-
+        var staticModifier = propertyDecl.IsStatic ? "static " : string.Empty;
         // Then emit the property
-        csWriter.WriteLine($"public {csTypeName} {propertyName}");
+        csWriter.WriteLine($"public {staticModifier}{csTypeName} {propertyName}");
         csWriter.WriteLine("{");
         csWriter.Indent++;
 

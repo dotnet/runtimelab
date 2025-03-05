@@ -224,6 +224,7 @@ public func createNonFrozenStruct(a: Int, b: Int) -> NonFrozenStruct
 
 @frozen
 public struct PropertiesTestStruct {
+    public static let staticLetProperty: Int32 = 42
     public let letProperty: Int32
     public var computedPropertyAmongStorageProperties: Double {
         return Double(letProperty) * Double(multiplier)
@@ -243,6 +244,7 @@ public struct PropertiesTestStruct {
 }
 
 public struct NonFrozenPropertiesTestStruct {
+    public static let staticLetProperty: Int32 = 42
     public let letProperty: Int32
     public var computedPropertyAmongStorageProperties: Double {
         return Double(letProperty) * Double(multiplier)

@@ -100,7 +100,35 @@ public class NonFrozenPoint : IDisposable {
 
 ## Static Properties
 
-TODO
+Static properties should be bound as static properties in C#.
+
+```swift
+@frozen
+public struct SomeFrozenStruct {
+    public static var someStaticProperty: Int = 42
+}
+```
+
+```csharp
+public struct SomeStruct {
+    public static int SomeStaticProperty {
+        get => PInvoke_get_someStaticProperty();
+        set => PInvoke_set_someStaticProperty(value);
+    }
+}
+```
+
+On the ABI side the setter and getter are static functions. We can bind them in the same way as we bind static functions.
+
+```csharp
+[UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
+[DllImport("MySwiftModule", EntryPoint = "...")]
+private static extern nint PInvoke_get_someStaticProperty();
+
+[UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
+[DllImport("MySwiftModule", EntryPoint = "...")]
+private static extern void PInvoke_set_someStaticProperty(nint value);
+```
 
 ## Async Properties
 

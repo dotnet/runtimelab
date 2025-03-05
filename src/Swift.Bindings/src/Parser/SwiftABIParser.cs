@@ -464,7 +464,7 @@ namespace BindingsGeneration
             {
                 Name = $"{fieldName}_Get",
                 MangledName = accessor.MangledName,
-                MethodType = MethodType.Instance,
+                MethodType = accessor.@static ?? false ? MethodType.Static : MethodType.Instance,
                 IsConstructor = false,
                 CSSignature = new List<ArgumentDecl>
                 {
