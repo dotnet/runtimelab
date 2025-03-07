@@ -59,6 +59,7 @@ namespace BindingsGeneration
             var typeRecord = env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
 
             var ISwiftObjectMethodWriter = new ISwiftObjectMethodWriter(csWriter, env.TypeDatabase, moduleDecl, structDecl);
+            var SwiftEquatableMethodWriter = new SwiftEquatableMethodWriter(csWriter, structDecl);
 
             SwiftTypeInfo? swiftTypeInfo = typeRecord?.SwiftTypeInfo;
 
@@ -106,6 +107,8 @@ namespace BindingsGeneration
             }
             csWriter.WriteLine();
 
+            // Add Equatable support if the struct conforms to Equatable
+            SwiftEquatableMethodWriter.WriteSwiftEquatableImplementation();
             ISwiftObjectMethodWriter.WriteFrozenStructImplementation();
 
             base.HandleBaseDecl(csWriter, swiftWriter, structDecl.Types, conductor, env.TypeDatabase);
@@ -167,6 +170,7 @@ namespace BindingsGeneration
             var moduleDecl = structDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(structDecl.ModuleDecl));
 
             var ISwiftObjectMethodWriter = new ISwiftObjectMethodWriter(csWriter, env.TypeDatabase, moduleDecl, structDecl);
+            var SwiftEquatableMethodWriter = new SwiftEquatableMethodWriter(csWriter, structDecl);
 
             csWriter.WriteLine($"public unsafe class {structDecl.Name} : IDisposable, {typeof(ISwiftObject).Name}");
             csWriter.WriteLine("{");
@@ -189,6 +193,8 @@ namespace BindingsGeneration
             WritePayloadSize(csWriter);
             WritePayload(csWriter);
 
+            // Add Equatable support if the struct conforms to Equatable
+            SwiftEquatableMethodWriter.WriteSwiftEquatableImplementation();
             ISwiftObjectMethodWriter.WriteNonFrozenStructImplementation();
 
             csWriter.WriteLine();
@@ -530,12 +536,21 @@ namespace BindingsGeneration
 
         private string GenerateGetProtocolConformanceDictionaryEntries()
         {
+            var crossModuleSupportedProtocols = new HashSet<string> // TODO: Remove this once we process multiple modules
+            {
+                { "Swift.Equatable"},
+            };
             var libPath = _typeDatabase.GetLibraryPath(_moduleDecl.Name);
             var entries = new List<string>();
             var protocolConformanceDescriptors = DemangledSymbolsRegister.Instance.GetData(libPath).ProtocolConformanceDescriptors;
 
-            foreach (var conformance in _structDecl.Conformances.Where(c => c.Protocol.Module == _moduleDecl.Name)) // Process only protocol conformances from current module for now
+            foreach (var conformance in _structDecl.Conformances)
             {
+                if (conformance.Protocol.Module != _moduleDecl.Name && !crossModuleSupportedProtocols.Contains(conformance.Protocol.ModuleQualifiedName))
+                {
+                    continue;
+                }
+
                 var protocol = NameProvider.GetInterfaceName(conformance.Protocol.Name);
                 var typeRecord = _typeDatabase.GetTypeRecordOrThrow(_structDecl.SwiftTypeName);
                 var protocolConformanceSymbol = protocolConformanceDescriptors.GetValueOrDefault((_structDecl.SwiftTypeName, conformance.Protocol)); // TODO: Get rid of TypeSpec https://github.com/dotnet/runtimelab/issues/2889
@@ -544,6 +559,34 @@ namespace BindingsGeneration
             }
 
             return string.Join(",\n", entries);
+        }
+    }
+
+    public class SwiftEquatableMethodWriter
+    {
+        private readonly IndentedTextWriter _writer;
+        private readonly StructDecl _structDecl;
+
+        public SwiftEquatableMethodWriter(CSharpWriter csWriter, StructDecl structDecl)
+        {
+            _writer = csWriter;
+            _structDecl = structDecl;
+        }
+
+        public void WriteSwiftEquatableImplementation()
+        {
+            if (_structDecl.Conformances.Any(c => c.Protocol.Name == "Equatable"))
+            {
+                var code = $$"""
+                public static bool SwiftEquals({{_structDecl.Name}} a, {{_structDecl.Name}} b)
+                {
+                    return Swift.Runtime.SwiftEquatable.Equals(a, b);
+                }
+                """;
+
+                _writer.WriteLines(code);
+                _writer.WriteLine();
+            }
         }
     }
 

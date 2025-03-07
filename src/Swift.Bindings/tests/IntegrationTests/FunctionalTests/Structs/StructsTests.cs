@@ -318,5 +318,47 @@ namespace BindingsGeneration.FunctionalTests
 
             Assert.Equal(30, struct1.computedProperty);
         }
+
+        [Fact]
+        public void TestFrozenEquatableStruct()
+        {
+            var struct1 = new FrozenEquatableStruct(10, 20);
+            var struct2 = new FrozenEquatableStruct(10, 20);
+            var struct3 = new FrozenEquatableStruct(30, 40);
+
+            // Verify that two identical structs are equal
+            Assert.True(FrozenEquatableStruct.SwiftEquals(struct1, struct2));
+
+            // Verify that two different structs are not equal
+            Assert.False(FrozenEquatableStruct.SwiftEquals(struct1, struct3));
+        }
+
+        [Fact]
+        public void TestNonFrozenEquatableStruct()
+        {
+            var struct1 = new NonFrozenEquatableStruct(10, 20);
+            var struct2 = new NonFrozenEquatableStruct(10, 20);
+            var struct3 = new NonFrozenEquatableStruct(30, 40);
+
+            // Verify that two identical structs are equal
+            Assert.True(NonFrozenEquatableStruct.SwiftEquals(struct1, struct2));
+
+            // Verify that two different structs are not equal
+            Assert.False(NonFrozenEquatableStruct.SwiftEquals(struct1, struct3));
+        }
+
+        [Fact]
+        public void TestCustomEquatableStruct()
+        {
+            var struct1 = new CustomEquatableStruct(10);
+            var struct2 = new CustomEquatableStruct(13);
+            var struct3 = new CustomEquatableStruct(30);
+
+            // Verify that two structures with absolute difference less than 5 are equal
+            Assert.True(CustomEquatableStruct.SwiftEquals(struct1, struct2));
+
+            // Verify that two structures with absolute difference greater than 5 are not equal
+            Assert.False(CustomEquatableStruct.SwiftEquals(struct1, struct3));
+        }
     }
 }
