@@ -6680,11 +6680,11 @@ MethodTableBuilder::InitMethodDesc(
 
     if (asyncKind != AsyncMethodKind::NotAsync)
     {
-        AsyncMethodData* pThunkData = pNewMD->GetAddrOfAsyncMethodData();
-        pThunkData->kind = asyncKind;
+        AsyncMethodData* pAsyncMethodData = pNewMD->GetAddrOfAsyncMethodData();
+        pAsyncMethodData->kind = asyncKind;
         if (asyncKind == AsyncMethodKind::Async2VariantThunk || asyncKind == AsyncMethodKind::Async2VariantImpl)
         {
-            pThunkData->sig = sig;
+            pAsyncMethodData->sig = sig;
         }
         else
         {
