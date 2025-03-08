@@ -80,8 +80,8 @@ enum class AsyncMethodKind
     //
     // The signature of the Async2 variant is formed from the original signature by replacing Task return type with
     // modreq'd element type:
-    //   Example: Task<int> Foo()  ===> modreq(Task`) int Foo()
-    //   Example: ValueTask Bar()  ===> modreq(ValueTask) void Bar()
+    //   Example: "Task<int> Foo();"  ===> "modreq(Task`) int Foo();"
+    //   Example: "ValueTask Bar();"  ===> "modreq(ValueTask) void Bar();"
     //
     // It is possible to get from one variant to another unambiguously via GetAsyncOtherVariant.
     //
