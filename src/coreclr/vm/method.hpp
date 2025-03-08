@@ -63,7 +63,7 @@ enum class AsyncMethodKind
     NotAsync,
 
     // Regular methods that return Task/ValueTask
-    // These methods have a synthetic variant that is an Async2-callable helper
+    // These methods have a synthetic variant that is an Async2-callable helper.
     TaskReturning,
 
     // Task-returning methods marked as MethodImpl::Async in metadata.
