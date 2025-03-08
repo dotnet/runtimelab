@@ -57,7 +57,7 @@ BOOL LoadedMethodDescIterator::Next(
         return FALSE;
     }
 
-    if (m_fIsAsync2Helper)
+    if (m_fIsAsync2Variant)
     {
         m_mainMD = m_mainMD->GetMethodTable()->GetParallelMethodDesc(m_mainMD, AsyncVariantLookup::AsyncOtherVariant);
 
@@ -147,7 +147,7 @@ ADVANCE_METHOD:
             goto ADVANCE_METHOD;
         if (m_methodIteratorEntry->GetMethod()->GetMemberDef() != m_md)
             goto ADVANCE_METHOD;
-        if (m_methodIteratorEntry->GetMethod()->IsAsync2HelperMethod() != m_fIsAsync2Helper)
+        if (m_methodIteratorEntry->GetMethod()->IsAsync2VariantMethod() != m_fIsAsync2Variant)
             goto ADVANCE_METHOD;
     }
     else if (m_startedNonGenericMethod)
@@ -216,7 +216,7 @@ LoadedMethodDescIterator::Start(
     AppDomain * pAppDomain,
     Module *pModule,
     mdMethodDef md,
-    bool fIsAsync2Helper,
+    bool fIsAsync2Variant,
     AssemblyIterationFlags assemblyIterationFlags)
 {
     CONTRACTL
@@ -228,7 +228,7 @@ LoadedMethodDescIterator::Start(
     }
     CONTRACTL_END;
 
-    m_fIsAsync2Helper = fIsAsync2Helper;
+    m_fIsAsync2Variant = fIsAsync2Variant;
 
     m_assemIterationFlags = assemblyIterationFlags;
     m_mainMD = NULL;
@@ -250,7 +250,7 @@ LoadedMethodDescIterator::Start(
     mdMethodDef     md,
     MethodDesc      *pMethodDesc)
 {
-    Start(pAppDomain, pModule, md, pMethodDesc->IsAsync2HelperMethod());
+    Start(pAppDomain, pModule, md, pMethodDesc->IsAsync2VariantMethod());
     m_mainMD = pMethodDesc;
 }
 
@@ -261,5 +261,5 @@ LoadedMethodDescIterator::LoadedMethodDescIterator(void)
     m_module = NULL;
     m_md = mdTokenNil;
     m_pAppDomain = NULL;
-    m_fIsAsync2Helper = false;
+    m_fIsAsync2Variant = false;
 }

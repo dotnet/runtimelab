@@ -1090,7 +1090,7 @@ public:
         DWORD dwToken = 0;
         if (pTargetMD)
         {
-            _ASSERTE(!pTargetMD->IsAsync2HelperMethod());
+            _ASSERTE(!pTargetMD->IsAsync2VariantMethod());
             dwToken = pTargetMD->GetMemberDef();
         }
 

@@ -992,7 +992,7 @@ MethodTableBuilder::bmtRTMethod::bmtRTMethod(
     MethodDesc *    pMD)
     : m_pOwningType(pOwningType),
       m_pMD(pMD),
-      m_methodSig(pMD->IsAsync2HelperMethod()
+      m_methodSig(pMD->IsAsync2VariantMethod()
        ? MethodSignature(pMD->GetModule(),
                          pMD->GetMemberDef(),
                          pMD->GetSignature(),
@@ -5945,7 +5945,7 @@ MethodTableBuilder::FindDeclMethodOnInterfaceEntry(bmtInterfaceEntry *pItfEntry,
             if ((slotDeclMethod->GetOwningType() == declRTMethod->GetOwningType()) &&
                 (slotDeclMethod->GetMethodDesc()->GetMethodTable() == declRTMethod->GetMethodDesc()->GetMethodTable()) &&
                 (slotDeclMethod->GetMethodDesc()->GetMemberDef() == declRTMethod->GetMethodDesc()->GetMemberDef()) &&
-                (slotDeclMethod->GetMethodDesc()->IsAsync2HelperMethod() != declRTMethod->GetMethodDesc()->IsAsync2HelperMethod()))
+                (slotDeclMethod->GetMethodDesc()->IsAsync2VariantMethod() != declRTMethod->GetMethodDesc()->IsAsync2VariantMethod()))
             {
                 declMethod = slotIt->Decl();
                 foundOtherVariant = true;

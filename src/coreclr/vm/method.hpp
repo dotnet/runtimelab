@@ -1847,7 +1847,7 @@ public:
 
     // Is this an Async2-callable variant method?
     // If yes, the method has another non-Async2 variant.
-    inline bool IsAsync2HelperMethod() const
+    inline bool IsAsync2VariantMethod() const
     {
         LIMITED_METHOD_DAC_CONTRACT;
         if (!HasAsyncMethodData())

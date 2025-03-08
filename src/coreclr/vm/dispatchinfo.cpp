@@ -2588,7 +2588,7 @@ bool DispatchInfo::IsPropertyAccessorVisible(bool fIsSetter, OBJECTREF* pMemberI
 
         // Check to see if the new method is a property accessor.
         mdToken tkMember = mdTokenNil;
-        if (pMDForProperty->IsAsync2HelperMethod())
+        if (pMDForProperty->IsAsync2VariantMethod())
         {
             return false;
         }
