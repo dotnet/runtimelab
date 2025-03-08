@@ -929,7 +929,7 @@ MethodDesc *ZapSig::DecodeMethod(ModuleBase *pInfoModule,
                                                             !(isInstantiatingStub || isUnboxingStub) && !actualOwnerRequired,
                                                             actualOwnerRequired,
                                                             TRUE,
-                                                            isAsyncHelper == pMethod->IsAsyncHelperMethod() ? AsyncVariantLookup::MatchingAsyncVariant : AsyncVariantLookup::AsyncOtherVariant);
+                                                            isAsyncHelper == pMethod->IsAsync2HelperMethod() ? AsyncVariantLookup::MatchingAsyncVariant : AsyncVariantLookup::AsyncOtherVariant);
 
     if (methodFlags & ENCODE_METHOD_SIG_Constrained)
     {
@@ -1219,7 +1219,7 @@ BOOL ZapSig::EncodeMethod(
         methodFlags |= ENCODE_METHOD_SIG_InstantiatingStub;
     if (fMethodNeedsInstantiation)
         methodFlags |= ENCODE_METHOD_SIG_MethodInstantiation;
-    if (pMethod->IsAsyncHelperMethod())
+    if (pMethod->IsAsync2HelperMethod())
         methodFlags |= ENCODE_METHOD_SIG_AsyncHelper;
 
     // Assume that the owner type is going to be needed

@@ -161,7 +161,7 @@ MethodDesc* InstMethodHashTable::FindMethodDesc(TypeHandle declaringType,
             continue;  // Next iteration of the for loop
         }
 
-        if (pMD->IsAsyncHelperMethod() != isAsyncHelper)
+        if (pMD->IsAsync2HelperMethod() != isAsyncHelper)
         {
             continue;
         }
@@ -208,7 +208,7 @@ BOOL InstMethodHashTable::ContainsMethodDesc(MethodDesc* pMD)
 
     return FindMethodDesc(
         pMD->GetMethodTable(), pMD->GetMemberDef(), pMD->IsUnboxingStub(),
-        pMD->GetMethodInstantiation(), pMD->RequiresInstArg(), pMD->IsAsyncHelperMethod()) != NULL;
+        pMD->GetMethodInstantiation(), pMD->RequiresInstArg(), pMD->IsAsync2HelperMethod()) != NULL;
 }
 
 #endif // #ifndef DACCESS_COMPILE

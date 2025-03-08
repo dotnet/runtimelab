@@ -1077,7 +1077,7 @@ Dictionary::PopulateEntry(
                 break;
             }
 
-            _ASSERTE((!!isAsyncHelper) == pMethod->IsAsyncHelperMethod());
+            _ASSERTE((!!isAsyncHelper) == pMethod->IsAsync2HelperMethod());
 
             Instantiation inst;
 
@@ -1123,7 +1123,7 @@ Dictionary::PopulateEntry(
                 inst,
                 (!isInstantiatingStub && !isUnboxingStub));
 
-            _ASSERTE((!!isAsyncHelper) == pMethod->IsAsyncHelperMethod());
+            _ASSERTE((!!isAsyncHelper) == pMethod->IsAsync2HelperMethod());
 
             if (kind == ConstrainedMethodEntrySlot)
             {

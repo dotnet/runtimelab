@@ -735,7 +735,7 @@ namespace
         // For async method the methoddef represents a thunk with runtime-provided implementation,
         // while the default IL logically belongs to the implementation method desc.
         // If config returned no IL for an implementation method desc, then ask the method desc itself.
-        if (ilHeader == NULL && pMD->IsAsyncHelperMethod() && !pMD->IsAsyncThunkMethod())
+        if (ilHeader == NULL && pMD->IsAsync2HelperMethod() && !pMD->IsAsyncThunkMethod())
         {
             ilHeader = pMD->GetILHeader();
         }
