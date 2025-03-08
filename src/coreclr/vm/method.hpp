@@ -91,7 +91,8 @@ enum class AsyncMethodKind
     //=============================================================
 
     // The following methods use special calling convention (CORINFO_CALLCONV_ASYNCCALL)
-    // These methods are emitted by the JIT as resumable state machines
+    // These methods are emitted by the JIT as resumable state machines and also take an extra
+    // parameter and extra return - the continuation object.
 
     // Async2 methods with actual IL implementation of a MethodImpl::Async method.
     Async2VariantImpl,
