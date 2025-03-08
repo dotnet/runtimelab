@@ -101,10 +101,9 @@ enum class AsyncMethodKind
 
     // Methods that are explicitly declared as Async2 in metadata while not Task returning.
     // This is a special case used in a few infrastructure methods like `Await`.
-    // Such methods do not get non-Async2 variants/thunks and can only be called from another Async2 method using
-    // CORINFO_CALLCONV_ASYNCCALL call convention.
-    // These methods have the original signature and it is not possible to tell if the method is Async2 from the signature alone,
-    // thus all these methods are also JIT intrinsics.
+    // Such methods do not get non-Async2 variants/thunks and can only be called from another Async2 method.
+    // NOTE: These methods have the original signature and it is not possible to tell if the method is Async2
+    //       from the signature alone, thus all these methods are also JIT intrinsics.
     Async2ExplicitImpl,
 };
 
