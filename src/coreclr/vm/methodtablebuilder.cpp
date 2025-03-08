@@ -3621,7 +3621,7 @@ MethodTableBuilder::EnumerateClassMethods()
                             BuildMethodTableThrowException(IDS_CLASSLOAD_BADFORMAT);
                         }
 
-                        pNewMethod->SetAsyncMethodKind(AsyncMethodKind::AsyncImplExplicit);
+                        pNewMethod->SetAsyncMethodKind(AsyncMethodKind::Async2ExplicitImpl);
                     }
                     else
                     {
@@ -3647,7 +3647,7 @@ MethodTableBuilder::EnumerateClassMethods()
                     cAsyncThunkMemberSignature += 1;
                     originalTokenOffsetFromAsyncDetailsOffset = 1;
                     newTokenOffsetFromAsyncDetailsOffset = 1;
-                    asyncKind = IsMiAsync(dwImplFlags) ? AsyncMethodKind::AsyncImplHelper : AsyncMethodKind::AsyncThunkHelper;
+                    asyncKind = IsMiAsync(dwImplFlags) ? AsyncMethodKind::Async2VariantImpl : AsyncMethodKind::Async2VariantThunk;
                     originalPrefixSize = 1;
                     newPrefixSize = 1;
                     originalSuffixSize = 0;
@@ -3658,7 +3658,7 @@ MethodTableBuilder::EnumerateClassMethods()
                     cAsyncThunkMemberSignature -= 2;
                     originalTokenOffsetFromAsyncDetailsOffset = 2;
                     newTokenOffsetFromAsyncDetailsOffset = 1;
-                    asyncKind = IsMiAsync(dwImplFlags)? AsyncMethodKind::AsyncImplHelper : AsyncMethodKind::AsyncThunkHelper;
+                    asyncKind = IsMiAsync(dwImplFlags)? AsyncMethodKind::Async2VariantImpl : AsyncMethodKind::Async2VariantThunk;
                     originalPrefixSize = 2;
                     newPrefixSize = 1;
                     originalSuffixSize = 1;
@@ -6682,7 +6682,7 @@ MethodTableBuilder::InitMethodDesc(
     {
         AsyncMethodData* pThunkData = pNewMD->GetAddrOfAsyncMethodData();
         pThunkData->kind = asyncKind;
-        if (asyncKind == AsyncMethodKind::AsyncThunkHelper || asyncKind == AsyncMethodKind::AsyncImplHelper)
+        if (asyncKind == AsyncMethodKind::Async2VariantThunk || asyncKind == AsyncMethodKind::Async2VariantImpl)
         {
             pThunkData->sig = sig;
         }

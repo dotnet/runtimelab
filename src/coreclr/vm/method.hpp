@@ -59,36 +59,53 @@ enum class AsyncMethodKind
 {
     // Regular methods not returning tasks
     // These are "normal" methods that do not get other variants.
-    // N.B. Generic T-returning methods are NotAsync
+    // Note: Generic T-returning methods are NotAsync, even if T could be a Task.
     NotAsync,
 
     // Regular methods that return Task/ValueTask
-    // These methods have a synthetic sibling/variant that is an Async2-callable helper
+    // These methods have a synthetic variant that is an Async2-callable helper
     TaskReturning,
 
     // Task-returning methods marked as MethodImpl::Async in metadata.
-    // These methods have synthetic body that calls an Async2 implementation helper (method with kind AsyncImplHelper)
+    // These methods have bodies that are actually thunks to Async2 implementation variants (Async2VariantImpl)
     RuntimeAsync,
 
-    // the following methods use special calling convention (CORINFO_CALLCONV_ASYNCCALL)
-
-    // Synthetic (not present in metadata) Async2 methods whoose body is the
-    // IL implementation of a MethodImpl::Async method, which is transformed by JIT into a resumable state machine
-    AsyncImplHelper,
-
-    // Synthetic (not present in metadata) Async2 methods with synthetic bodies that forward to a TaskReturning method
-    AsyncThunkHelper,
-
-    // On {TaskReturning, AsyncImplHelper} and {RuntimeAsync, AsyncThunkHelper} pairs:
+    //=============================================================
+    // On {TaskReturning, Async2VariantThunk} and {RuntimeAsync, Async2VariantImpl} pairs:
+    //
+    // When we see a Task-returning method we create 2 method varaints that logically match the same method definition.
+    // One variant has the same signature/callconv as the defining method and another is an Async2 variant.
+    // Depending on whether the definition was a runtime async method or an ordinary method,
+    // one variant is the actual implementation and another is a thunk.
+    //
+    // The signature of the Async2 variant is formed from the original signature by replacing Task return type with
+    // modreq'd element type:
+    //   Example: Task<int> Foo()  ===> modreq(Task`) int Foo()
+    //   Example: ValueTask Bar()  ===> modreq(ValueTask) void Bar()
+    //
+    // It is possible to get from one variant to another unambiguously via GetAsyncOtherVariant.
+    //
+    // Async2 methods are called with CORINFO_CALLCONV_ASYNCCALL call convention.
     // 
-    // Logically these pairs of methods are variants with different call convention that represent the same method definition.
-    // The one with a signature that does not match the definition is a "helper".
-    // It is possible to get from one variant to another via GetAsyncOtherVariant.
+    // NOTE: not all Async2 methods are "variants" from a pair, see Async2ExplicitImpl below.
+    //=============================================================
 
-    // Actual methods that are explicitly declared as Async2 in metadata while not Task returning.
-    // This is a special case used in a few infrastructure methods like `Await`
-    // Such methods do not get non-Async2 thunks and can only be called from another Async2 method using Async2 call convention.
-    AsyncImplExplicit,
+    // The following methods use special calling convention (CORINFO_CALLCONV_ASYNCCALL)
+    // These methods are emitted by the JIT as resumable state machines
+
+    // Async2 methods with actual IL implementation of a MethodImpl::Async method.
+    Async2VariantImpl,
+
+    // Async2 methods with synthetic bodies that forward to a TaskReturning method.
+    Async2VariantThunk,
+
+    // Methods that are explicitly declared as Async2 in metadata while not Task returning.
+    // This is a special case used in a few infrastructure methods like `Await`.
+    // Such methods do not get non-Async2 variants/thunks and can only be called from another Async2 method using
+    // CORINFO_CALLCONV_ASYNCCALL call convention.
+    // These methods have the original signature and it is not possible to tell if the method is Async2 from the signature alone,
+    // thus all these methods are also JIT intrinsics.
+    Async2ExplicitImpl,
 };
 
 struct AsyncMethodData
@@ -1840,9 +1857,9 @@ public:
         if (!HasAsyncMethodData())
             return false;
         auto asyncKind = GetAddrOfAsyncMethodData()->kind;
-        return asyncKind == AsyncMethodKind::AsyncThunkHelper ||
-            asyncKind == AsyncMethodKind::AsyncImplHelper ||
-            asyncKind == AsyncMethodKind::AsyncImplExplicit;
+        return asyncKind == AsyncMethodKind::Async2VariantThunk ||
+            asyncKind == AsyncMethodKind::Async2VariantImpl ||
+            asyncKind == AsyncMethodKind::Async2ExplicitImpl;
     }
 
     // Is this an Async2-callable variant method?
@@ -1853,12 +1870,14 @@ public:
         if (!HasAsyncMethodData())
             return false;
         auto asyncKind = GetAddrOfAsyncMethodData()->kind;
-        return asyncKind == AsyncMethodKind::AsyncThunkHelper ||
-            asyncKind == AsyncMethodKind::AsyncImplHelper;
+        return asyncKind == AsyncMethodKind::Async2VariantThunk ||
+            asyncKind == AsyncMethodKind::Async2VariantImpl;
     }
 
-    // The method is a small(ish) synthetic Task/async2 adapter to an async2/Task implementation
+    // Is this a small(ish) synthetic Task/async2 adapter to an async2/Task implementation?
     // If yes, the method has another variant, which has the actual user-defined method body.
+    // Depending on whether user defined method was runtime async or not, the corresponding thunk
+    // will be an ordinary or async2 variant.
     inline bool IsAsyncThunkMethod() const
     {
         LIMITED_METHOD_DAC_CONTRACT;
@@ -1866,7 +1885,7 @@ public:
             return false;
 
         auto asyncType = GetAddrOfAsyncMethodData()->kind;
-        return asyncType == AsyncMethodKind::AsyncThunkHelper ||
+        return asyncType == AsyncMethodKind::Async2VariantThunk ||
             asyncType == AsyncMethodKind::RuntimeAsync;
     }
 
@@ -1890,7 +1909,7 @@ public:
 
         // Only async2 methods backed by actual user code operate on copies.
         // Thunks with runtime-supplied implementation do not.
-        return GetAddrOfAsyncMethodData()->kind == AsyncMethodKind::AsyncImplHelper;
+        return GetAddrOfAsyncMethodData()->kind == AsyncMethodKind::Async2VariantImpl;
     }
 
     inline bool HasAsyncMethodData() const
