@@ -74,7 +74,7 @@ enum class AsyncMethodKind
     // On {TaskReturning, Async2VariantThunk} and {RuntimeAsync, Async2VariantImpl} pairs:
     //
     // When we see a Task-returning method we create 2 method varaints that logically match the same method definition.
-    // One variant has the same signature/callconv as the defining method and another is an Async2 variant.
+    // One variant has the same signature/callconv as the defining method and another is a matching Async2 variant.
     // Depending on whether the definition was a runtime async method or an ordinary method,
     // one variant is the actual implementation and another is a thunk.
     //
