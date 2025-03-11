@@ -1,8 +1,9 @@
+using BindingsGeneration;
 using BindingsGeneration.Demangling;
 using Xamarin;
 
 /// <summary>
-/// A class to contain results from demangling the set of symbols in a MachO file.
+/// A class to contain results from demangling the set of symbols in a MachO or TBD file.
 /// </summary>
 public class DemanglingResults
 {
@@ -103,5 +104,59 @@ public class DemanglingResults
     public static async Task<DemanglingResults> FromFileAsync(string path, Abi target)
     {
         return await Task.Run(() => FromFile(path, target));
+    }
+
+    public static DemanglingResults FromTbd(string path)
+    {
+        var logger = new TbdParser.Logging.ConsoleLogger { MinimumLevel = TbdParser.Logging.LogLevel.Debug };
+        var tbdParser = new TbdParser.TbdParser(logger);
+        var tbdFile = tbdParser.ParseFile(path);
+
+        var demangler = new Swift5Demangler();
+        // Run demangler for each export and aggregate results
+        var allReductions = tbdFile.Exports.SelectMany(export => export.SwiftSymbols.Select(sym => demangler.Run(sym.Name[1..]))).ToArray();
+        return new DemanglingResults(allReductions);
+    }
+
+    /// <summary>
+    /// Retrieve MetadataAccessor for a type.
+    /// </summary>
+    /// <param name="swiftTypeName">The Swift type name.</param>
+    /// <returns>The mangled name of the metadata accessor.</returns>
+    /// exception cref="Exception">
+    /// Thrown if the metadata accessor is not found in the TBD file.
+    /// </exception>
+    public string GetMetadataAccessor(SwiftTypeName swiftTypeName)
+    {
+        var metadataAccessor = MetadataAccessors.FirstOrDefault(x => x.TypeSpec.Name == swiftTypeName.ModuleQualifiedName);
+
+        if (metadataAccessor == null)
+        {
+            throw new Exception($"Metadata accessor not found for type '{swiftTypeName}'.");
+        }
+
+        return metadataAccessor.Symbol;
+    }
+
+    /// <summary>
+    /// Retrieve ProtocolConformanceDescriptor for a type.
+    /// </summary>
+    /// <param name="implementingType">The implementing Swift type.</param>
+    /// <param name="protocol">The Swift protocol.</param>
+    /// <returns>The mangled name of the protocol conformance descriptor.</returns>
+    /// exception cref="Exception">
+    /// Thrown if the protocol conformance descriptor is not found in the TBD file.
+    /// </exception>
+    public string GetProtocolConformanceDescriptor(SwiftTypeName implementingType, SwiftTypeName protocol)
+    {
+        var protocolConformanceDescriptor = ProtocolConformanceDescriptors.FirstOrDefault(
+            x => x.ImplementingType.Name == implementingType.ModuleQualifiedName && x.ProtocolType.Name == protocol.ModuleQualifiedName);
+
+        if (protocolConformanceDescriptor == null)
+        {
+            throw new Exception($"Protocol conformance descriptor not found for type '{implementingType}' and protocol '{protocol}'.");
+        }
+
+        return protocolConformanceDescriptor.Symbol;
     }
 }

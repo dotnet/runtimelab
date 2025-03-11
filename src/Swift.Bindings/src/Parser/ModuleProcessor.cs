@@ -79,10 +79,15 @@ namespace BindingsGeneration
         /// <returns>A <see cref="ModuleProcessingResult"/>The module database and out-of-module type records.</returns>
         public ModuleProcessingResult FinalizeTypeProcessingAndCreateModuleDatabase()
         {
+            // TODO:
+            // We could run Mach0 First here, pass the demangled results to the ProcessTypeRecursively and for each type register the stuff that we need.
             foreach (var (typeSpec, typeDecl) in _typeDecls)
             {
                 ProcessTypeRecursively(typeSpec, typeDecl);
             }
+
+            //var abis = MachO.GetArchitectures(_dylibPath);
+            //var demangling_results = DemanglingResults.FromFile(_dylibPath, abis[0]);
 
             return new ModuleProcessingResult(_moduleDatabase);
         }
@@ -112,6 +117,10 @@ namespace BindingsGeneration
                     ProcessClass(namedTypeSpec, classDecl);
                     break;
 
+                case ProtocolDecl protocolDecl:
+                    ProcessProtocol(namedTypeSpec, protocolDecl);
+                    break;
+
                 default:
                     if (_verbosity > 1)
                     {
@@ -132,8 +141,11 @@ namespace BindingsGeneration
             // Ensure that all properties are processed or known in the database.
             ProcessStructProperties(structDecl);
 
+            // Retrieve MetadataAccessor associated with namedTypeSpec.
+            // structDecl.MetadataAccessor = GetMetadataAccessor(namedTypeSpec);
+
             // TODO: Remove loading dylib
-            IntPtr metadataPtr = DynamicLibraryLoader.invoke(_dylibPath, $"{structDecl.MangledName}Ma");
+            IntPtr metadataPtr = DynamicLibraryLoader.invoke(_dylibPath, structDecl.MetadataAccessor);
             var swiftTypeInfo = new SwiftTypeInfo { MetadataPtr = metadataPtr };
 
             bool isFrozen = EvaluateFrozenness(structDecl);
@@ -262,7 +274,7 @@ namespace BindingsGeneration
                 CSTypeIdentifier = csharpTypeIdentifier,
                 NamespaceQualifiedCSTypeIdentifier = $"Swift.{@namespace}.{csharpTypeIdentifier}",
                 SwiftTypeInfo = swiftTypeInfo,
-                MetadataAccessor = $"{structDecl.MangledName}Ma",
+                MetadataAccessor = structDecl.MetadataAccessor, // TODO: How to use tbd file output here
                 IsBlittable = isBlittable,
                 IsFrozen = isFrozen
             };
@@ -288,6 +300,17 @@ namespace BindingsGeneration
         private void ProcessClass(NamedTypeSpec namedTypeSpec, ClassDecl classDecl)
         {
             return;
+        }
+
+        /// <summary>
+        /// Processes a protocol declaration. Currently unimplemented.
+        /// </summary>
+        /// <param name="namedTypeSpec">Spec for the protocol's name, module, etc.</param>
+        /// <param name="protocolDecl">The protocol declaration node.</param>
+        /// <returns><c>true</c> if the protocol was processed successfully; otherwise, <c>false</c>.</returns>
+        private bool ProcessProtocol(NamedTypeSpec namedTypeSpec, ProtocolDecl protocolDecl)
+        {
+            return true;
         }
     }
 }
