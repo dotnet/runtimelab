@@ -99,7 +99,7 @@ function ExtractABI {
 function InvokeProjectionTooling {
     local framework=$1
 
-    $scriptroot/dotnet.sh $scriptroot/artifacts/bin/Swift.Bindings/$configuration/net9.0/Swift.Bindings.dll -a "./$framework.abi.json" -d "/System/Library/Frameworks/$framework.framework/$framework" -o "./"
+    $scriptroot/dotnet.sh $scriptroot/artifacts/bin/Swift.Bindings/$configuration/net9.0/Swift.Bindings.dll -a "./$framework.abi.json" -d "/System/Library/Frameworks/$framework.framework/$framework" -t "/Applications/Xcode.app/Contents/Developer/Platforms/$platform.platform/Developer/SDKs/$platform.sdk/System/Library/Frameworks/$framework.framework/$framework.tbd" -o "./"
 
     echo ""
     echo "C# source code for Swift.$framework.cs:"
