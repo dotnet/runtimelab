@@ -28,7 +28,7 @@
     </ReadLinesFromFile>
 
     <ItemGroup>
-      <CMakeWarnings Include="@(CMakeOutputLines)" Condition="$([System.Text.RegularExpressions.Regex]::Match(%(Identity),'.*CMake Warning.*').Success)" />
+      <CMakeWarnings Include="@(CMakeOutputLines)" Condition="$([System.Text.RegularExpressions.Regex]::Match('%(Identity)','.*CMake Warning.*').Success)" />
     </ItemGroup>
 
     <Warning Text="%(CMakeWarnings.Identity)  (see: $(OutputPath)/cmake_output.log)" Condition="'%(Identity)' != ''"/>
