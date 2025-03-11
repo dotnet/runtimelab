@@ -79,15 +79,10 @@ namespace BindingsGeneration
         /// <returns>A <see cref="ModuleProcessingResult"/>The module database and out-of-module type records.</returns>
         public ModuleProcessingResult FinalizeTypeProcessingAndCreateModuleDatabase()
         {
-            // TODO:
-            // We could run Mach0 First here, pass the demangled results to the ProcessTypeRecursively and for each type register the stuff that we need.
             foreach (var (typeSpec, typeDecl) in _typeDecls)
             {
                 ProcessTypeRecursively(typeSpec, typeDecl);
             }
-
-            //var abis = MachO.GetArchitectures(_dylibPath);
-            //var demangling_results = DemanglingResults.FromFile(_dylibPath, abis[0]);
 
             return new ModuleProcessingResult(_moduleDatabase);
         }
@@ -141,8 +136,6 @@ namespace BindingsGeneration
             // Ensure that all properties are processed or known in the database.
             ProcessStructProperties(structDecl);
 
-            // Retrieve MetadataAccessor associated with namedTypeSpec.
-            // structDecl.MetadataAccessor = GetMetadataAccessor(namedTypeSpec);
 
             // TODO: Remove loading dylib
             IntPtr metadataPtr = DynamicLibraryLoader.invoke(_dylibPath, structDecl.MetadataAccessor);
@@ -274,7 +267,7 @@ namespace BindingsGeneration
                 CSTypeIdentifier = csharpTypeIdentifier,
                 NamespaceQualifiedCSTypeIdentifier = $"Swift.{@namespace}.{csharpTypeIdentifier}",
                 SwiftTypeInfo = swiftTypeInfo,
-                MetadataAccessor = structDecl.MetadataAccessor, // TODO: How to use tbd file output here
+                MetadataAccessor = structDecl.MetadataAccessor,
                 IsBlittable = isBlittable,
                 IsFrozen = isFrozen
             };
