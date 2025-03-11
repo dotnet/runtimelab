@@ -103,7 +103,7 @@ namespace BindingsGeneration
 
             // Parse the TBD file
             DemanglingResults demangledTbdFile = DemanglingResults.FromTbd(tbdPath);
-            
+
             // Initialize the Swift ABI parser
             var swiftParser = new SwiftABIParser(swiftAbiPath, typeDatabase, demangledTbdFile, verbose);
             var moduleName = swiftParser.GetModuleName();

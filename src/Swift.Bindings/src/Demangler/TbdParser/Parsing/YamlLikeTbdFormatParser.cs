@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using TbdParser.Logging;
 using TbdParser.Models;
-using System.Text;
 
 namespace TbdParser.Parsing
 {
@@ -24,7 +24,7 @@ namespace TbdParser.Parsing
         {
             Logger = logger ?? NullLogger.Instance;
         }
-        
+
         public bool CanParse(string[] lines)
         {
             if (lines == null || lines.Length == 0)
@@ -32,7 +32,7 @@ namespace TbdParser.Parsing
                 Logger.Debug("Cannot parse empty file");
                 return false;
             }
-                
+
             // YAML-like format typically starts with "--- !tapi-tbd"
             string firstLine = lines[0].Trim();
             if (firstLine != "--- !tapi-tbd")
@@ -43,13 +43,13 @@ namespace TbdParser.Parsing
 
             return true;
         }
-        
+
         public TbdFile Parse(string[] lines)
         {
             Logger.Debug("Starting YAML-like TBD format parsing");
             var tbdFile = new TbdFile();
             int lineIndex = 0;
-            
+
             // Skip the YAML document marker if present
             if (lineIndex < lines.Length && lines[lineIndex].Trim() == "--- !tapi-tbd")
             {
@@ -84,11 +84,13 @@ namespace TbdParser.Parsing
                 switch (key)
                 {
                     case "tbd-version":
-                        try {
+                        try
+                        {
                             tbdFile.Version = int.Parse(value);
                             Logger.Debug($"Parsed tbd-version = {tbdFile.Version}");
                         }
-                        catch (FormatException) {
+                        catch (FormatException)
+                        {
                             Logger.Warning($"Failed to parse tbd-version: {value}");
                         }
                         break;
@@ -99,11 +101,13 @@ namespace TbdParser.Parsing
                         break;
 
                     case "swift-abi-version":
-                        try {
+                        try
+                        {
                             tbdFile.SwiftAbiVersion = int.Parse(value);
                             Logger.Debug($"Parsed swift-abi-version = {tbdFile.SwiftAbiVersion}");
                         }
-                        catch (FormatException) {
+                        catch (FormatException)
+                        {
                             Logger.Warning($"Failed to parse swift-abi-version: {value}");
                         }
                         break;
@@ -146,7 +150,7 @@ namespace TbdParser.Parsing
             if (value.StartsWith("[") && value.EndsWith("]"))
             {
                 string content = value.Substring(1, value.Length - 2).Trim();
-                
+
                 // Split by comma, but handle commas within quoted strings
                 var splitItems = SplitArrayItems(content);
                 foreach (var item in splitItems)
@@ -174,25 +178,25 @@ namespace TbdParser.Parsing
             var result = new List<string>();
             bool inQuote = false;
             int start = 0;
-            
+
             for (int i = 0; i < content.Length; i++)
             {
                 char c = content[i];
-                
+
                 if (c == '\'' || c == '"')
                     inQuote = !inQuote;
-                
+
                 else if (c == ',' && !inQuote)
                 {
                     result.Add(content.Substring(start, i - start).Trim());
                     start = i + 1;
                 }
             }
-            
+
             // Add the last item
             if (start < content.Length)
                 result.Add(content.Substring(start).Trim());
-            
+
             return result;
         }
 
@@ -213,7 +217,7 @@ namespace TbdParser.Parsing
             while (lineIndex < lines.Length)
             {
                 string rawLine = lines[lineIndex];
-                
+
                 // Get indentation level before trimming
                 int indentation = GetIndentation(rawLine);
                 string line = rawLine.Trim();
@@ -239,12 +243,12 @@ namespace TbdParser.Parsing
                     exportEntryIndentation = indentation;
                     currentExport = new ExportEntry();
                     exports.Add(currentExport);
-                    
+
                     // Parse the targets on this line
                     string targetsValue = line.Substring("- targets:".Length).Trim();
                     currentExport.Targets = ParseArray(targetsValue);
                     Logger.Debug($"Found new export entry at line {lineIndex} with {currentExport.Targets.Count} targets");
-                    
+
                     lineIndex++;
                     continue;
                 }
@@ -256,7 +260,7 @@ namespace TbdParser.Parsing
                     if (line.StartsWith("symbols:"))
                     {
                         string symbolsValue = line.Substring("symbols:".Length).Trim();
-                        
+
                         if (symbolsValue.StartsWith("[") && !symbolsValue.EndsWith("]"))
                         {
                             // Start of multi-line array format
@@ -277,7 +281,7 @@ namespace TbdParser.Parsing
                     else if (line.StartsWith("objc-classes:"))
                     {
                         string objcClassesValue = line.Substring("objc-classes:".Length).Trim();
-                        
+
                         if (objcClassesValue.StartsWith("[") && !objcClassesValue.EndsWith("]"))
                         {
                             // Start of multi-line array format
@@ -305,16 +309,16 @@ namespace TbdParser.Parsing
                 {
                     // Append this line to the array builder
                     multilineArrayBuilder!.Append(" ").Append(line);
-                    
+
                     // Check if we've found the closing bracket
                     if (line.Contains("]"))
                     {
                         // We've reached the end of the multi-line array
                         insideMultilineArray = false;
-                        
+
                         // Get the complete array value including brackets
                         string arrayValue = multilineArrayBuilder.ToString();
-                        
+
                         // Determine which export property we're filling based on the array type
                         if (currentArrayType == "symbols")
                         {
@@ -326,7 +330,7 @@ namespace TbdParser.Parsing
                             currentExport!.ObjcClasses = ParseArray(arrayValue);
                             Logger.Debug($"Parsed {currentExport.ObjcClasses.Count} objc-classes from multi-line array");
                         }
-                        
+
                         multilineArrayBuilder = null;
                         currentArrayType = string.Empty;
                     }
@@ -356,7 +360,7 @@ namespace TbdParser.Parsing
             {
                 symbols.Add(new Symbol(item));
             }
-            return symbols;            
+            return symbols;
         }
 
         /// <summary>

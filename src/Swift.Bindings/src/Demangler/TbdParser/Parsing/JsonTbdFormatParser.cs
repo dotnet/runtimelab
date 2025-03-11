@@ -23,7 +23,7 @@ namespace TbdParser.Parsing
         {
             Logger = logger ?? NullLogger.Instance;
         }
-        
+
         public bool CanParse(string[] lines)
         {
             Logger.Warning("JSON format TBD parsing is not yet implemented");

@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using TbdParser.Parsing;
 using TbdParser.Logging;
 using TbdParser.Models;
+using TbdParser.Parsing;
 
 namespace TbdParser
 {
@@ -29,7 +29,7 @@ namespace TbdParser
         public TbdParser(ILogger logger)
         {
             _logger = logger ?? NullLogger.Instance;
-            
+
             // Register all format parsers
             _formatParsers = new List<ITbdFormatParser>
             {
@@ -38,9 +38,8 @@ namespace TbdParser
                 // It's here for format detection purposes
                 new JsonTbdFormatParser(_logger)
             };
-            
-            Console.WriteLine("TBD Parser initialized with parsers: " + string.Join(", ", 
-                _formatParsers.Select(p => p.GetType().Name)));
+
+            _logger.Info("TBD Parser initialized with parsers: " + string.Join(", ", _formatParsers.Select(p => p.GetType().Name)));
         }
 
         /// <summary>
@@ -49,7 +48,7 @@ namespace TbdParser
         public TbdFile ParseFile(string filePath)
         {
             _logger.Info($"Parsing file: {filePath}");
-            
+
             if (!File.Exists(filePath))
             {
                 _logger.Error($"File not found: {filePath}");

@@ -6,7 +6,7 @@ namespace TbdParser.Models
     /// Represents the type of a symbol in a TBD file
     /// </summary>
     public enum SymbolType
-    {          
+    {
         /// <summary>
         /// A Swift symbol (starts with _$s)
         /// </summary>
@@ -16,7 +16,7 @@ namespace TbdParser.Models
         /// An Objective-C symbol (starts with underscore)
         /// </summary>
         ObjectiveC,
-        
+
         /// <summary>
         /// Other symbol that doesn't match specific patterns
         /// </summary>
@@ -32,7 +32,7 @@ namespace TbdParser.Models
         /// The name of the symbol as it appears in the TBD file
         /// </summary>
         public string Name { get; }
-        
+
         /// <summary>
         /// The type of the symbol based on its prefix
         /// </summary>
@@ -52,13 +52,13 @@ namespace TbdParser.Models
         {
             if (name.StartsWith("_$s"))
                 return SymbolType.Swift;
-            
+
             if (name.StartsWith("_") && !name.StartsWith("_$"))
                 return SymbolType.ObjectiveC;
-                
+
             return SymbolType.Other;
         }
-        
+
         /// <summary>
         /// Returns a string representation of this symbol
         /// </summary>

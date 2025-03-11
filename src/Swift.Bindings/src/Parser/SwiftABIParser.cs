@@ -121,8 +121,8 @@ namespace BindingsGeneration
         private readonly Swift5Demangler demangler = new();
 
         public SwiftABIParser(
-            string filePath, 
-            ITypeDatabase typeDatabase, 
+            string filePath,
+            ITypeDatabase typeDatabase,
             DemanglingResults demangledTbd,
             int verbose = 0)
         {

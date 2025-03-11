@@ -47,22 +47,22 @@ namespace TbdParser.Models
         /// List of categorized symbols in this export entry
         /// </summary>
         public List<Symbol> Symbols { get; set; } = new List<Symbol>();
-        
+
         /// <summary>
         /// List of Objective-C classes in this export entry
         /// </summary>
         public List<string> ObjcClasses { get; set; } = new List<string>();
-        
+
         /// <summary>
         /// Get Swift symbols only
         /// </summary>
         public IEnumerable<Symbol> SwiftSymbols => Symbols.Where(s => s.Type == SymbolType.Swift);
-        
+
         /// <summary>
         /// Get Objective-C symbols only (excluding ObjcClasses)
         /// </summary>
         public IEnumerable<Symbol> ObjectiveCSymbols => Symbols.Where(s => s.Type == SymbolType.ObjectiveC);
-        
+
         /// <summary>
         /// Get other symbols that are neither Swift nor Objective-C
         /// </summary>

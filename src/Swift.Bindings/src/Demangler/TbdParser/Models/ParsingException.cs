@@ -10,7 +10,7 @@ namespace TbdParser.Models
         /// </summary>
         /// <param name="message">The error message</param>
         public ParsingException(string message) : base(message) { }
-        
+
         /// <summary>
         /// Creates a new instance of ParsingException with an inner exception
         /// </summary>

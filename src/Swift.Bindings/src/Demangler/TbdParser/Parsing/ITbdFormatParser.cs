@@ -12,14 +12,14 @@ namespace TbdParser.Parsing
         /// Gets the logger used by this parser
         /// </summary>
         ILogger Logger { get; }
-        
+
         /// <summary>
         /// Determines if this parser can handle the given file format based on its content
         /// </summary>
         /// <param name="lines">The lines of the file</param>
         /// <returns>True if this parser can handle the format</returns>
         bool CanParse(string[] lines);
-        
+
         /// <summary>
         /// Parses the TBD file content
         /// </summary>
