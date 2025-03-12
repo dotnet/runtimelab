@@ -1,13 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import Foundation
-
 public func getArray(count: Int32) -> Array<Int32> {
     var array = Array<Int32>()
     for i in 0..<count {
         array.append(i)
     }
+    return array
+}
+
+public func passThroughArray(array: Array<Int32>) -> Array<Int32> {
     return array
 }
 
@@ -25,3 +27,6 @@ public func verifyString(str: String) -> Int32 {
     return str.allSatisfy { $0 == "a" } ? Int32(count) : -1
 }
 
+public func passThroughString(str: String) -> String {
+    return str
+}

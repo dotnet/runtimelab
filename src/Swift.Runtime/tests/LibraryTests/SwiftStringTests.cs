@@ -9,6 +9,18 @@ using Xunit;
 
 namespace BindingsGeneration.Tests;
 
+public static unsafe class MemoryExtensions
+{
+    /// <summary>
+    /// Reads a pointer stored at the given index.
+    /// </summary>
+    public static IntPtr At(this IntPtr ptr, int index)
+    {
+        byte* bytePtr = (byte*)ptr.ToPointer();
+        return *(IntPtr*)(bytePtr + index * IntPtr.Size);
+    }
+}
+
 public class SwiftStringTests : IClassFixture<SwiftStringTests.TestFixture>
 {
     private readonly TestFixture _fixture;
@@ -30,13 +42,13 @@ public class SwiftStringTests : IClassFixture<SwiftStringTests.TestFixture>
     }
 
     [Fact]
-    static void SmokeTest()
+    public void SmokeTest()
     {
         var metadata = TypeMetadata.GetTypeMetadataOrThrow<SwiftString>();
         // sizeof(Data)
         Assert.Equal((nuint)16, metadata.Size);
 
-        var str = new SwiftString();
+        var str = new SwiftString(string.Empty);
         Assert.Equal(0, str.Length);
 
         string text = "Hello world!";

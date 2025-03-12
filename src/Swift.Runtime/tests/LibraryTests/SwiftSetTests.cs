@@ -30,7 +30,7 @@ public class SwiftSetTests : IClassFixture<SwiftSetTests.TestFixture>
     }
 
     [Fact]
-    static void SmokeTest()
+    public void SmokeTest()
     {
         var metadata = TypeMetadata.GetTypeMetadataOrThrow<SwiftSet<SwiftIntMock>>();
         // sizeof (Variant)
@@ -40,20 +40,13 @@ public class SwiftSetTests : IClassFixture<SwiftSetTests.TestFixture>
         Assert.Equal(0, set.Count);
     }
 
-    [Fact(Skip = "https://github.com/dotnet/runtimelab/issues/2851")]
+    [Fact]
     public unsafe void SetDispose()
     {
-        var array = new SwiftSet<SwiftIntMock>();
-        var payload = *(IntPtr*)array.Payload.rawValue;
-
-        // Retain the payload to ensure it stays alive after the dispose
-        Arc.Retain(payload);
-        var count = Arc.RetainCount(payload);
-
-        array.Dispose();
-
-        Assert.Equal(count - 1, Arc.RetainCount(payload));
-        // Release the payload after the assertion
-        Arc.Release(payload);
+        var set = new SwiftSet<SwiftIntMock>();
+        Assert.Equal(0, set.Count);
+        // An empty array is singleton and it's count doesn't change with new instances
+        // https://github.com/swiftlang/swift/blob/50a98d3055e5a636d80c376a99b4eea35387cd0d/stdlib/public/SwiftShims/swift/shims/GlobalObjects.h#L44
+        Assert.True(Arc.RetainCount(set.Payload) > 1);
     }
 }

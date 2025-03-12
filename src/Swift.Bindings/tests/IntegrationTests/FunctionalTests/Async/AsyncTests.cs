@@ -139,20 +139,19 @@ namespace BindingsGeneration.FunctionalTests
             stopwatch.Stop();
             Assert.True(stopwatch.Elapsed.TotalSeconds >= 1);
             Assert.Equal(3, stringsInstance.Count);
-            Assert.Equal(strings[0], stringsInstance[0]);
-            Assert.Equal(strings[1], stringsInstance[1]);
-            Assert.Equal(strings[2], stringsInstance[2]);
+            Assert.Equal(strings[0].ToString(), stringsInstance[0].ToString());
+            Assert.Equal(strings[1].ToString(), stringsInstance[1].ToString());
+            Assert.Equal(strings[2].ToString(), stringsInstance[2].ToString());
 
 
             strings.Append(new SwiftString("four"));
             stringsInstance = await myStruct.ArrayPassThrough(strings);
             Assert.True(stopwatch.Elapsed.TotalSeconds >= 1);
             Assert.Equal(4, stringsInstance.Count);
-            Assert.Equal(strings[0], stringsInstance[0]);
-            Assert.Equal(strings[1], stringsInstance[1]);
-            Assert.Equal(strings[2], stringsInstance[2]);
-            Assert.Equal(strings[3], stringsInstance[3]);
-
+            Assert.Equal(strings[0].ToString(), stringsInstance[0].ToString());
+            Assert.Equal(strings[1].ToString(), stringsInstance[1].ToString());
+            Assert.Equal(strings[2].ToString(), stringsInstance[2].ToString());
+            Assert.Equal(strings[3].ToString(), stringsInstance[3].ToString());
         }
 
         [Fact]
@@ -166,7 +165,7 @@ namespace BindingsGeneration.FunctionalTests
             stopwatch.Stop();
             Assert.True(stopwatch.Elapsed.TotalSeconds >= 1);
             Assert.Equal(str.Length, stringInstance.Length);
-            Assert.Equal(str, stringInstance);
+            Assert.Equal(str.ToString(), stringInstance.ToString());
         }
     }
 }

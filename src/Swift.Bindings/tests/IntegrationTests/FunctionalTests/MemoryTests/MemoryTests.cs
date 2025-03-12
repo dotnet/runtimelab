@@ -601,5 +601,157 @@ namespace BindingsGeneration.FunctionalTests
             NativeMemory.Free((void*)payloadCopy);
             NativeMemory.Free((void*)payloadCopyCopy);
         }
+
+        [Fact]
+        public void TestProjectionTypes()
+        {
+            Assert.True(typeof(Bindings.FrozenStruct).IsValueType);
+            Assert.True(typeof(Bindings.FrozenStructHeapAllocated).IsClass);
+            Assert.True(typeof(Bindings.NestedFrozenStructHeapAllocated).IsClass);
+            Assert.True(typeof(Bindings.NonFrozenStruct).IsClass);
+            Assert.True(typeof(Bindings.NonFrozenStructHeapAllocated).IsClass);
+        }
+
+        [Fact]
+        public unsafe void TestDisposeInvokesDestroy()
+        {
+            var frozenHeapAllocated = new Bindings.FrozenStructHeapAllocated(42);
+            var bufferPayload = frozenHeapAllocated.Payload;
+            var payload = *(IntPtr*)&bufferPayload;
+
+            // Check the initial count
+            Assert.Equal(1, Arc.RetainCount(payload));
+            // Check the metadata flags for a class
+            Assert.Equal(0x3, payload.At(1));
+
+            // Retain the payload count
+            Arc.Retain(payload);
+            Assert.Equal(2, Arc.RetainCount(payload));
+
+            // Dispose the frozenHeapAllocated
+            frozenHeapAllocated.Dispose();
+            Assert.Equal(1, Arc.RetainCount(payload));
+
+            var nonfrozenHeapAllocated = new Bindings.NonFrozenStructHeapAllocated(42);
+            payload = nonfrozenHeapAllocated.Payload;
+
+            // Check the initial count
+            Assert.Equal(1, Arc.RetainCount(payload.At(0)));
+            // Check the metadata flags for a class
+            Assert.Equal(0x3, payload.At(0).At(1));
+
+            // Retain the payload count
+            Arc.Retain(payload.At(0));
+            Assert.Equal(2, Arc.RetainCount(payload.At(0)));
+
+            nonfrozenHeapAllocated.Dispose();
+            Assert.Equal(1, Arc.RetainCount(payload.At(0)));
+            Assert.Equal(SwiftHandle.Zero, nonfrozenHeapAllocated.Payload);
+        }
+
+        [Fact]
+        public unsafe void TestParameterByValueInvokesInitWithCopy()
+        {
+            var frozenStructHeapAllocated = new Bindings.FrozenStructHeapAllocated(42);
+            // Check the payload
+            Assert.Equal(42, frozenStructHeapAllocated.b);
+
+            // Check the initial count
+            var bufferPayload = frozenStructHeapAllocated.Payload;
+            var payload = (IntPtr*)&bufferPayload;
+            Assert.Equal(1, Arc.RetainCount(*payload));
+
+            var frozenStructHeapAllocatedCopy = Bindings.MemoryTests.PassThroughFrozenStructHeapAllocated(frozenStructHeapAllocated);
+            // Check the payload
+            Assert.Equal(42, frozenStructHeapAllocatedCopy.b);
+
+            // Check the references are not the same
+            var bufferPayloadCopy = frozenStructHeapAllocatedCopy.Payload;
+            var payloadCopy = (IntPtr*)&bufferPayloadCopy;
+            Assert.NotEqual((IntPtr)payload, (IntPtr)payloadCopy);
+
+            // Check the payloads are the same
+            Assert.Equal(*payload, *payloadCopy);
+
+            // Check the count after copy
+            Assert.Equal(2, Arc.RetainCount(*payload));
+            Assert.Equal(2, Arc.RetainCount(*payloadCopy));
+
+            var nonFrozenStructHeapAllocated = new Bindings.NonFrozenStructHeapAllocated(42);
+            // Check the payload
+            Assert.Equal(42, nonFrozenStructHeapAllocated.b);
+
+            // Check the initial count
+            Assert.Equal(1, Arc.RetainCount(((IntPtr)nonFrozenStructHeapAllocated.Payload).At(0)));
+
+            var nonFrozenStructHeapAllocatedCopy = Bindings.MemoryTests.PassThroughNonFrozenStructHeapAllocated(nonFrozenStructHeapAllocated);
+            // Check the payload
+            Assert.Equal(42, nonFrozenStructHeapAllocatedCopy.b);
+
+            // Check the references are not the same
+            Assert.NotEqual((IntPtr)nonFrozenStructHeapAllocated.Payload, (IntPtr)nonFrozenStructHeapAllocatedCopy.Payload);
+
+            // Check the payloads are the same
+            Assert.Equal(((IntPtr)nonFrozenStructHeapAllocated.Payload).At(0), ((IntPtr)nonFrozenStructHeapAllocatedCopy.Payload).At(0));
+
+            // Check the count after copy
+            Assert.Equal(2, Arc.RetainCount(((IntPtr)nonFrozenStructHeapAllocated.Payload).At(0)));
+            Assert.Equal(2, Arc.RetainCount(((IntPtr)nonFrozenStructHeapAllocatedCopy.Payload).At(0)));
+        }
+
+
+        [Fact]
+        public unsafe void TestDisposeInvokesDestroyThreads()
+        {
+            var frozenHeapAllocated = new Bindings.FrozenStructHeapAllocated(42);
+            var bufferPayload = frozenHeapAllocated.Payload;
+            var payload = *(IntPtr*)&bufferPayload;
+
+            // Check the initial count
+            Assert.Equal(1, Arc.RetainCount(payload));
+            // Check the metadata flags for a class
+            Assert.Equal(0x3, payload.At(1));
+
+            // Retain the payload count
+            Arc.Retain(payload);
+            Assert.Equal(2, Arc.RetainCount(payload));
+
+            var nonfrozenHeapAllocated = new Bindings.NonFrozenStructHeapAllocated(42);
+            IntPtr nonfrozenPayload = nonfrozenHeapAllocated.Payload;
+
+            // Check the initial count
+            Assert.Equal(1, Arc.RetainCount(nonfrozenPayload.At(0)));
+            // Check the metadata flags for a class
+            Assert.Equal(0x3, nonfrozenPayload.At(0).At(1));
+
+            // Retain the payload count
+            Arc.Retain(nonfrozenPayload.At(0));
+            Assert.Equal(2, Arc.RetainCount(nonfrozenPayload.At(0)));
+
+            var threads = new List<Thread>();
+            for (int i = 0; i < 10; i++)
+            {
+                threads.Add(new Thread(() =>
+                {
+                    // Dispose the frozenHeapAllocated
+                    frozenHeapAllocated.Dispose();
+                    // Dispose the nonfrozenHeapAllocated
+                    nonfrozenHeapAllocated.Dispose();
+                }));
+            }
+
+            foreach (var thread in threads)
+            {
+                thread.Start();
+            }
+
+            foreach (var thread in threads)
+            {
+                thread.Join();
+            }
+
+            // Check the count after destroy
+            Assert.Equal(1, Arc.RetainCount(payload));
+        }
     }
 }

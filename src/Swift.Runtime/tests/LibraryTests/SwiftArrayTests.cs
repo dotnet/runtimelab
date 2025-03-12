@@ -30,7 +30,7 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
     }
 
     [Fact]
-    static void SmokeTest()
+    public void SmokeTest()
     {
         var metadata = TypeMetadata.GetTypeMetadataOrThrow<SwiftArray<int>>();
         // sizeof(ArrayBuffer)
@@ -41,7 +41,7 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
     }
 
     [Fact]
-    static void Append()
+    public void Append()
     {
         var array = new SwiftArray<int>();
         array.Append(42);
@@ -52,7 +52,7 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
     }
 
     [Fact]
-    static void Insert()
+    public void Insert()
     {
         var array = new SwiftArray<int>();
         array.Append(42);
@@ -66,7 +66,7 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
     }
 
     [Fact]
-    static void Replace()
+    public void Replace()
     {
         var array = new SwiftArray<int>();
         array.Append(42);
@@ -79,7 +79,7 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
     }
 
     [Fact]
-    static void Remove()
+    public void Remove()
     {
         var array = new SwiftArray<int>();
         array.Append(42);
@@ -93,7 +93,7 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
     }
 
     [Fact]
-    static void Clear()
+    public void Clear()
     {
         var array = new SwiftArray<int>();
         array.Append(42);
@@ -121,24 +121,22 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
         Assert.Equal(999999, array[count - 1]);
     }
 
-    [Fact(Skip = "https://github.com/dotnet/runtimelab/issues/2851")]
+    [Fact]
     public unsafe void ArrayDispose()
     {
         var array = new SwiftArray<int>();
-        var payload = *(IntPtr*)array.Payload.storage;
+        Assert.Equal(0, array.Count);
+        // An empty array is singleton and it's count doesn't change with new instances
+        // https://github.com/swiftlang/swift/blob/50a98d3055e5a636d80c376a99b4eea35387cd0d/stdlib/public/SwiftShims/swift/shims/GlobalObjects.h#L44
+        Assert.True(Arc.RetainCount(array.Payload) > 1);
 
-        // Retain the payload to ensure it stays alive after the dispose
-        Arc.Retain(payload);
-        var count = Arc.RetainCount(payload);
-
-        array.Dispose();
-
-        Assert.Equal(count - 1, Arc.RetainCount(payload));
-        // Release the payload after the assertion
-        Arc.Release(payload);
+        array.Append(42);
+        Assert.Equal(1, array.Count);
+        // A new buffer is created, ref count is 1
+        Assert.Equal(1, Arc.RetainCount(array.Payload));
     }
 
-    private static void PrimitiveArrayTest<T>(T value1, T value2, T overwriteValue)
+    private void PrimitiveArrayTest<T>(T value1, T value2, T overwriteValue)
     {
         var metadata = TypeMetadata.GetTypeMetadataOrThrow<SwiftArray<T>>();
         Assert.True(metadata.Size > 0);
@@ -181,5 +179,40 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
     [Fact] public void ArrayTestFloat() => PrimitiveArrayTest<float>(4.2f, 1.7f, 10.0f);
     [Fact] public void ArrayTestDouble() => PrimitiveArrayTest<double>(4.2, 1.7, 10.0);
     [Fact] public void ArrayTestBool() => PrimitiveArrayTest<bool>(true, false, true);
-    [Fact] public void ArrayTestString() => PrimitiveArrayTest<SwiftString>(new SwiftString("Hello"), new SwiftString("World"), new SwiftString("String"));
+
+    [Fact]
+    public void ArrayTestString()
+    {
+        var value1 = new SwiftString("Hello");
+        var value2 = new SwiftString("World");
+        var overwriteValue = new SwiftString("String");
+        var metadata = TypeMetadata.GetTypeMetadataOrThrow<SwiftArray<SwiftString>>();
+        Assert.True(metadata.Size > 0);
+
+        var array = new SwiftArray<SwiftString>();
+        Assert.Equal(0, array.Count);
+
+        array.Append(value1);
+        Assert.Equal(1, array.Count);
+        Assert.Equal(value1.ToString(), array[0].ToString());
+
+        array.Append(value2);
+        Assert.Equal(2, array.Count);
+        Assert.Equal(value2.ToString(), array[1].ToString());
+
+        array[0] = overwriteValue;
+        Assert.Equal(overwriteValue.ToString(), array[0].ToString());
+
+        array.Insert(1, value1);
+        Assert.Equal(3, array.Count);
+
+        array.Remove(1);
+        Assert.Equal(2, array.Count);
+
+        Assert.Equal(overwriteValue.ToString(), array[0].ToString());
+        Assert.Equal(value2.ToString(), array[1].ToString());
+
+        array.RemoveAll();
+        Assert.Equal(0, array.Count);
+    }
 }
