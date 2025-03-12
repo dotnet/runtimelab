@@ -13,28 +13,6 @@ using Swift.Runtime.InteropServices;
 namespace Swift;
 
 /// <summary>
-/// Represents a Swift array payload.
-///
-/// The following diagram illustrates the hierarchy of a Swift array type.
-/// The actual implementation may differ:
-///
-///    struct Array
-///    +-----------------------------------------------------------------------+
-///    |   struct ArrayBuffer                                                 |
-///    |   +--------------------------------------------------------------+   |
-///    |   |   struct BridgeStorage                                       |   |
-///    |   |   +------------------------------------------------------+   |   |
-///    |   |   | var rawValue: IntPtr                                 |   |   |
-///    |   |   +------------------------------------------------------+   |   |
-///    |   +--------------------------------------------------------------+   |
-///    +-----------------------------------------------------------------------+
-/// </summary>
-public struct ArrayBuffer
-{
-    public IntPtr storage;
-}
-
-/// <summary>
 /// Represents a Swift collection protocol.
 /// </summary>
 public interface ISwiftCollection { }
@@ -49,7 +27,9 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
 
     static nuint _elementSize = ElementTypeMetadata.Size;
 
-    private ArrayBuffer _buffer;
+    private SwiftHandle _buffer;
+
+    private int _disposed = 0;
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -61,30 +41,36 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         };
     }
 
-    public unsafe void Dispose()
+    public void Dispose()
     {
-        if (_buffer.storage != IntPtr.Zero)
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
         {
-            // TODO: https://github.com/dotnet/runtimelab/issues/2851
-            Arc.Release(_buffer.storage);
-            _buffer.storage = IntPtr.Zero;
-            GC.SuppressFinalize(this);
+            var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
+
+            unsafe {
+                fixed (void* payload = &_buffer)
+                {
+                    metadata.ValueWitnessTable->Destroy(payload, metadata);
+                }
+            }
+            _disposed = 1;
         }
     }
 
-    unsafe ~SwiftArray()
+    ~SwiftArray()
     {
-        if (_buffer.storage != IntPtr.Zero)
-        {
-            // TODO: https://github.com/dotnet/runtimelab/issues/2851
-            Arc.Release(_buffer.storage);
-            _buffer.storage = IntPtr.Zero;
-        }
+        Dispose(disposing: false);
     }
 
     public static nuint PayloadSize => _payloadSize;
 
-    public ArrayBuffer Payload => _buffer;
+    public SwiftHandle Payload => _buffer;
 
     public static nuint ElementSize => _elementSize;
 
@@ -136,9 +122,7 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
     /// </summary>
     unsafe SwiftArray(SwiftHandle handle)
     {
-        // copy memory
-        _buffer = *(ArrayBuffer*)handle;
-
+        _buffer = *(SwiftHandle*)handle;
     }
 
     /// <summary>
@@ -280,11 +264,11 @@ internal static class SwiftArrayPInvokes
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sS2ayxGycfC")]
-    public static extern ArrayBuffer Init(TypeMetadata typeMetadata);
+    public static extern SwiftHandle Init(TypeMetadata typeMetadata);
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSayxSicig")]
-    public static unsafe extern void Get(SwiftIndirectResult result, nint index, ArrayBuffer handle, TypeMetadata elementMetadata);
+    public static unsafe extern void Get(SwiftIndirectResult result, nint index, SwiftHandle handle, TypeMetadata elementMetadata);
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSayxSicis")]
@@ -292,7 +276,7 @@ internal static class SwiftArrayPInvokes
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSa5countSivg")]
-    public static extern nint Count(ArrayBuffer handle, TypeMetadata elementMetadata);
+    public static extern nint Count(SwiftHandle handle, TypeMetadata elementMetadata);
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSa6appendyyxnF")]

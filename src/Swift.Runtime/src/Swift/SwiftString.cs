@@ -16,11 +16,18 @@ namespace Swift;
 /// <summary>
 /// Represents a Swift string with Foundation.Data payload.
 /// </summary>
-public struct SwiftString : ISwiftObject
+public class SwiftString : IDisposable, ISwiftObject
 {
     private static nuint _payloadSize = SwiftObjectHelper<SwiftString>.GetTypeMetadata().Size;
 
-    private Data _payload;
+    public struct Buffer
+    {
+        public Data _payload;
+    };
+
+    private Buffer _payload;
+
+    private int _disposed = 0;
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -29,9 +36,36 @@ public struct SwiftString : ISwiftObject
         _protocolConformanceSymbols = new Dictionary<Type, string> { };
     }
 
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
+        {
+            var metadata = SwiftObjectHelper<SwiftString>.GetTypeMetadata();
+
+            unsafe {
+                fixed (void* payload = &_payload)
+                {
+                    metadata.ValueWitnessTable->Destroy(payload, metadata);
+                }
+            }
+            _disposed = 1;
+        }
+    }
+
+    ~SwiftString()
+    {
+        Dispose(disposing: false);
+    }
+
     public static nuint PayloadSize => _payloadSize;
 
-    public Data Payload => _payload;
+    public Buffer Payload => _payload;
 
     static TypeMetadata ISwiftObject.GetTypeMetadata()
     {
@@ -76,7 +110,7 @@ public struct SwiftString : ISwiftObject
     /// </summary>
     unsafe SwiftString(SwiftHandle handle)
     {
-        _payload = *(Data*)handle;
+        _payload = *(Buffer*)handle;
     }
 
     /// <summary>
@@ -138,16 +172,16 @@ public struct SwiftString : ISwiftObject
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, CharSet = CharSet.Unicode, EntryPoint = "$sSS21_builtinStringLiteral17utf8CodeUnitCount7isASCIISSBp_BwBi1_tcfC")]
-    public static unsafe extern Data PInvoke_Create(byte* str, long len, byte flag);
+    public static unsafe extern Buffer PInvoke_Create(byte* str, long len, byte flag);
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSS5countSivg")]
-    public static extern long PInvoke_GetLength(Data str);
+    public static extern long PInvoke_GetLength(Buffer str);
 
     // https://developer.apple.com/documentation/swift/string/utf8cstring
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSS11utf8CStrings15ContiguousArrayVys4Int8VGvg")]
-    public static unsafe extern IntPtr PInvoke_GetUtf8ContiguousArray(Data str);
+    public static unsafe extern IntPtr PInvoke_GetUtf8ContiguousArray(Buffer str);
 
     // https://developer.apple.com/documentation/swift/contiguousarray/withunsafebytes(_:)
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]

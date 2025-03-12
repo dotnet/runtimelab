@@ -13,29 +13,6 @@ using Swift.Runtime.InteropServices;
 namespace Swift;
 
 /// <summary>
-/// Represents a Swift set payload.
-///
-/// The following diagram illustrates the hierarchy of a Swift set type.
-/// The actual implementation may differ:
-///
-///    struct Set
-///    +-----------------------------------------------------------------------+
-///    |   struct Variant                                                     |
-///    |   +--------------------------------------------------------------+   |
-///    |   |   struct Object                                              |   |
-///    |   |   +------------------------------------------------------+   |   |
-///    |   |   | var rawValue: IntPtr                                 |   |   |
-///    |   |   +------------------------------------------------------+   |   |
-///    |   +--------------------------------------------------------------+   |
-///    +-----------------------------------------------------------------------+
-/// </summary>
-[StructLayout(LayoutKind.Sequential, Size = 8)]
-public struct Variant
-{
-    public IntPtr rawValue;
-}
-
-/// <summary>
 /// Represents a Swift hashable protocol.
 /// </summary>
 public interface ISwiftHashable { }
@@ -50,7 +27,9 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
 
     static nuint _elementSize = ElementTypeMetadata.Size;
 
-    private Variant _variant;
+    private SwiftHandle _variant;
+
+    private int _disposed = 0;
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -62,30 +41,36 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
         };
     }
 
-    public unsafe void Dispose()
+    public void Dispose()
     {
-        if (_variant.rawValue != IntPtr.Zero)
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
         {
-            // TODO: https://github.com/dotnet/runtimelab/issues/2851
-            Arc.Release(_variant.rawValue);
-            _variant.rawValue = IntPtr.Zero;
-            GC.SuppressFinalize(this);
+            var metadata = SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata();
+
+            unsafe {
+                fixed (void* payload = &_variant)
+                {
+                    metadata.ValueWitnessTable->Destroy(payload, metadata);
+                }
+            }
+            _disposed = 1;
         }
     }
 
-    unsafe ~SwiftSet()
+    ~SwiftSet()
     {
-        if (_variant.rawValue != IntPtr.Zero)
-        {
-            // TODO: https://github.com/dotnet/runtimelab/issues/2851
-            Arc.Release(_variant.rawValue);
-            _variant.rawValue = IntPtr.Zero;
-        }
+        Dispose(disposing: false);
     }
 
     public static nuint PayloadSize => _payloadSize;
 
-    public Variant Payload => _variant;
+    public SwiftHandle Payload => _variant;
 
     public static nuint ElementSize => _elementSize;
 
@@ -138,7 +123,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
     /// </summary>
     unsafe SwiftSet(SwiftHandle handle)
     {
-        this._variant = *(Variant*)(handle);
+        _variant = *(SwiftHandle*)handle;
     }
 
     /// <summary>
@@ -171,9 +156,9 @@ internal static class SwiftSetPInvokes
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sS2hyxGycfC")]
-    public static extern Variant Init(TypeMetadata elementTypeMetadata, ProtocolWitnessTable witnessTable);
+    public static extern SwiftHandle Init(TypeMetadata elementTypeMetadata, ProtocolWitnessTable witnessTable);
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSh5countSivg")]
-    public static extern nint Count(Variant handle, TypeMetadata elementMetadata, ProtocolWitnessTable witnessTable);
+    public static extern nint Count(SwiftHandle handle, TypeMetadata elementMetadata, ProtocolWitnessTable witnessTable);
 }
