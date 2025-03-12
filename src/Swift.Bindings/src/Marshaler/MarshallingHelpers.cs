@@ -9,12 +9,13 @@ namespace BindingsGeneration
         {
             if (env.MethodDecl.IsAsync) return false;
 
-            if (env.MethodDecl.IsConstructor && !(env.ParentDecl is StructDecl structDecl && StructIsMarshalledAsCSStruct(structDecl))) return true;
+            if (env.MethodDecl.IsConstructor && !(env.ParentDecl is StructDecl structDecl && structDecl.IsFrozen)) return true;
             var returnType = env.MethodDecl.CSSignature.First();
 
             if (returnType.IsGeneric) return true;
 
-            if (!ArgumentIsMarshalledAsCSStruct(returnType, env.TypeDatabase)) return true;
+            TypeRecord typeRecord = env.TypeDatabase.GetTypeRecordOrThrow(returnType.SwiftTypeSpec);
+            if (!IsTypeFrozen(typeRecord)) return true;
             return false;
         }
 
@@ -27,15 +28,20 @@ namespace BindingsGeneration
             return true;
         }
 
-        public static bool StructIsMarshalledAsCSStruct(StructDecl decl)
+        public static bool IsTypeFrozen(TypeRecord typeRecord)
         {
-            return decl is StructDecl structDecl && structDecl.IsFrozen && structDecl.IsBlittable;
+            return (typeRecord.Flags & TypeRecordFlags.Frozen) != 0;
         }
 
-        public static bool ArgumentIsMarshalledAsCSStruct(ArgumentDecl argumentDecl, ITypeDatabase typeDatabase)
+        public static bool IsTypeHeapAllocated(TypeRecord typeRecord)
         {
-            var typeRecord = typeDatabase.GetTypeRecordOrThrow(argumentDecl.SwiftTypeSpec);
-            return typeRecord.IsFrozen && typeRecord.IsBlittable;
+            return (typeRecord.Flags & TypeRecordFlags.HeapAllocated) != 0;
+        }
+
+        public static bool IsFrozenStructProjectedAsClass(StructDecl structDecl, ITypeDatabase typeDatabase)
+        {
+            TypeRecord typeRecord = typeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
+            return (typeRecord.Flags & TypeRecordFlags.Frozen) != 0 && (typeRecord.Flags & TypeRecordFlags.HeapAllocated) != 0;
         }
     }
 }

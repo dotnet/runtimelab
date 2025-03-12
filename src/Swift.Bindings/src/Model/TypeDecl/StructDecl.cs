@@ -8,8 +8,9 @@ namespace BindingsGeneration
     /// </summary>
     public sealed record StructDecl : TypeDecl
     {
-        public required bool IsBlittable { get; set; }
-
+        /// <summary>
+        /// Whether the struct is frozen.
+        /// </summary>
         public required bool IsFrozen { get; set; }
 
         /// <summary>

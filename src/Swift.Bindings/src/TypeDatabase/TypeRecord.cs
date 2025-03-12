@@ -6,6 +6,29 @@ using Swift.Runtime;
 namespace BindingsGeneration;
 
 /// <summary>
+/// Represents type's flags.
+/// </summary>
+[Flags]
+public enum TypeRecordFlags
+{
+    None = 0,
+    Frozen = 1 << 0,
+    HeapAllocated = 1 << 1,
+}
+
+/// <summary>
+/// Represents a type kind.
+/// </summary>
+public enum TypeRecordKind
+{
+    Struct,
+    Enum,
+    Class,
+    Protocol,
+    Tuple
+}
+
+/// <summary>
 /// Represents a type within a module, including metadata for interfacing with Swift.
 /// </summary>
 public record TypeRecord
@@ -31,12 +54,12 @@ public record TypeRecord
     public SwiftTypeInfo? SwiftTypeInfo { get; init; }
 
     /// <summary>
-    /// Indicates if the type is blittable.
+    /// Type flags.
     /// </summary>
-    public required bool IsBlittable { get; init; }
+    public required TypeRecordFlags Flags { get; init; }
 
     /// <summary>
-    /// Indicates if the type is frozen.
+    /// The kind of type.
     /// </summary>
-    public required bool IsFrozen { get; init; }
+    public required TypeRecordKind Kind { get; init; }
 }

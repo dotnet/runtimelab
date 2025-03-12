@@ -136,14 +136,12 @@ namespace BindingsGeneration
             IntPtr metadataPtr = DynamicLibraryLoader.invoke(_dylibPath, $"{structDecl.MangledName}Ma");
             var swiftTypeInfo = new SwiftTypeInfo { MetadataPtr = metadataPtr };
 
-            bool isFrozen = EvaluateFrozenness(structDecl);
-            bool isBlittable = EvaluateBlittability(swiftTypeInfo);
+            TypeRecordFlags flags = CacluateFlags(structDecl);
 
-            RegisterStructType(namedTypeSpec, structDecl, swiftTypeInfo, isFrozen, isBlittable);
+            RegisterStructType(namedTypeSpec, structDecl, swiftTypeInfo, flags);
 
             // Update the struct declaration in memory so future passes see these properties.
-            structDecl.IsBlittable = isBlittable;
-            structDecl.IsFrozen = isFrozen;
+            structDecl.IsFrozen = flags.HasFlag(TypeRecordFlags.Frozen);
         }
 
         /// <summary>
@@ -200,41 +198,37 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="structDecl">The struct declaration.</param>
         /// <returns><c>true</c> if the struct is frozen; otherwise, <c>false</c>.</returns>
-        private bool EvaluateFrozenness(StructDecl structDecl)
+        private TypeRecordFlags CacluateFlags(StructDecl structDecl)
         {
-            if (!structDecl.IsFrozen)
-                return false;
+            TypeRecordFlags flags = TypeRecordFlags.None;
 
-            // If any property is not frozen, the struct cannot be frozen.
+            if (!structDecl.IsFrozen)
+                return TypeRecordFlags.None;
+
+            if (structDecl.IsFrozen)
+                flags |= TypeRecordFlags.Frozen;
+
             foreach (var propertyDecl in structDecl.Properties)
             {
                 if (propertyDecl.SwiftTypeSpec is not NamedTypeSpec namedPropertyType)
                     continue;
 
-                if (!TryGetTypeRecord(namedPropertyType, out var propertyRecord))
-                {
-                    throw new Exception($"Type not found in the database: {namedPropertyType}");
-                }
+                if (propertyDecl.IsStatic)
+                    continue;
 
-                if (!propertyRecord.IsFrozen)
-                    return false;
+                if (!TryGetTypeRecord(namedPropertyType, out var propertyRecord))
+                    throw new Exception($"Type not found in the database: {namedPropertyType}");
+
+                // If any property is not frozen struct, remove the frozen flag
+                if (propertyRecord.Kind == TypeRecordKind.Struct && (propertyRecord.Flags & TypeRecordFlags.Frozen) == 0)
+                    flags &= ~TypeRecordFlags.Frozen;
+
+                // If any property is heap-allocated, set the HeapAllocated flag
+                if ((propertyRecord.Flags & TypeRecordFlags.HeapAllocated) != 0 || propertyRecord.Kind == TypeRecordKind.Class)
+                    flags |= TypeRecordFlags.HeapAllocated;
             }
 
-            return true;
-        }
-
-        /// <summary>
-        /// Determines whether the struct can be treated as blittable under .NET's rules.
-        /// For now, uses Swift's ValueWitnessTable flags to detect non-POD or non-bitwise-takable.
-        /// </summary>
-        /// <param name="swiftTypeInfo">Swift type info containing a pointer to the ValueWitnessTable.</param>
-        /// <returns><c>true</c> if the struct is blittable; otherwise, <c>false</c>.</returns>
-        private unsafe bool EvaluateBlittability(SwiftTypeInfo swiftTypeInfo)
-        {
-            // TODO: Replace with a manual approach.
-            bool isNonPod = swiftTypeInfo.ValueWitnessTable->IsNonPOD;
-            bool isNonBitwiseTakable = swiftTypeInfo.ValueWitnessTable->IsNonBitwiseTakable;
-            return !isNonPod && !isNonBitwiseTakable;
+            return flags;
         }
 
         /// <summary>
@@ -244,13 +238,11 @@ namespace BindingsGeneration
         /// <param name="structDecl">The struct declaration node.</param>
         /// <param name="swiftTypeInfo">Pointer to the Swift metadata plus ValueWitnessTable.</param>
         /// <param name="isFrozen">Indicates whether the struct is effectively frozen.</param>
-        /// <param name="isBlittable">Indicates whether the struct is effectively blittable.</param>
         private void RegisterStructType(
             NamedTypeSpec namedTypeSpec,
             StructDecl structDecl,
             SwiftTypeInfo swiftTypeInfo,
-            bool isFrozen,
-            bool isBlittable)
+            TypeRecordFlags flags)
         {
             var @namespace = $"Swift.{namedTypeSpec.Module}"; // TODO: Correctly map to a .NET namespace
             // TODO: Remove this logic once correct csharp type names are used
@@ -261,8 +253,8 @@ namespace BindingsGeneration
                 CSharpTypeName = CSharpTypeName.FromNamespaceAndName(@namespace, csharpTypeIdentifier),
                 SwiftTypeInfo = swiftTypeInfo,
                 MetadataAccessor = $"{structDecl.MangledName}Ma",
-                IsBlittable = isBlittable,
-                IsFrozen = isFrozen
+                Flags = flags,
+                Kind = TypeRecordKind.Struct,
             };
 
             _moduleDatabase.RegisterType(structDecl.SwiftTypeName, typeRecord);
@@ -279,13 +271,44 @@ namespace BindingsGeneration
         }
 
         /// <summary>
+        /// Inserts a class's details into the type database.
+        /// </summary>
+        /// <param name="namedTypeSpec">The Swift type specification, including module name.</param>
+        /// <param name="classDecl">The class declaration node.</param>
+        /// <param name="swiftTypeInfo">Pointer to the Swift metadata plus ValueWitnessTable.</param>
+        private void RegisterClassType(
+            NamedTypeSpec namedTypeSpec,
+            ClassDecl classDecl,
+            SwiftTypeInfo swiftTypeInfo)
+        {
+            TypeRecordFlags flags = TypeRecordFlags.HeapAllocated;
+            var @namespace = $"Swift.{namedTypeSpec.Module}"; // TODO: Correctly map to a .NET namespace
+            // TODO: Remove this logic once correct csharp type names are used
+            var csharpTypeIdentifier = classDecl.SwiftTypeName.Module == "" ? classDecl.SwiftTypeName.Name : classDecl.SwiftTypeName.ModuleQualifiedName.Substring(classDecl.SwiftTypeName.ModuleQualifiedName.IndexOf(".") + 1);
+            var typeRecord = new TypeRecord
+            {
+                SwiftTypeName = classDecl.SwiftTypeName,
+                CSharpTypeName = CSharpTypeName.FromNamespaceAndName(@namespace, csharpTypeIdentifier),
+                SwiftTypeInfo = swiftTypeInfo,
+                MetadataAccessor = $"{classDecl.MangledName}Ma",
+                Flags = flags,
+                Kind = TypeRecordKind.Class,
+            };
+
+            _moduleDatabase.RegisterType(classDecl.SwiftTypeName, typeRecord);
+        }
+
+        /// <summary>
         /// Processes a class declaration. Currently unimplemented.
         /// </summary>
         /// <param name="namedTypeSpec">Spec for the class's name, module, etc.</param>
         /// <param name="classDecl">The class declaration node.</param>
         private void ProcessClass(NamedTypeSpec namedTypeSpec, ClassDecl classDecl)
         {
-            return;
+            IntPtr metadataPtr = DynamicLibraryLoader.invoke(_dylibPath, $"{classDecl.MangledName}Ma");
+            var swiftTypeInfo = new SwiftTypeInfo { MetadataPtr = metadataPtr };
+
+            RegisterClassType(namedTypeSpec, classDecl, swiftTypeInfo);
         }
     }
 }

@@ -335,7 +335,6 @@ namespace BindingsGeneration
                 ParentDecl = parentDecl,
                 ModuleDecl = moduleDecl,
                 IsFrozen = hasFrozenAttribute,
-                IsBlittable = false,
             };
         }
 

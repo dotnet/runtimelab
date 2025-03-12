@@ -162,8 +162,8 @@ public static class TypeDatabaseExtensions
         CSharpTypeName = CSharpTypeName.AnyType,
         SwiftTypeName = SwiftTypeName.AnyType,
         MetadataAccessor = string.Empty,
-        IsBlittable = false,
-        IsFrozen = false,
+        Flags = TypeRecordFlags.None,
+        Kind = TypeRecordKind.Protocol,
     };
 
     /// <summary>
@@ -175,7 +175,7 @@ public static class TypeDatabaseExtensions
         CSharpTypeName = CSharpTypeName.VoidType,
         SwiftTypeName = SwiftTypeName.VoidType,
         MetadataAccessor = string.Empty,
-        IsBlittable = true,
-        IsFrozen = true,
+        Flags = TypeRecordFlags.Frozen,
+        Kind = TypeRecordKind.Tuple,
     };
 }

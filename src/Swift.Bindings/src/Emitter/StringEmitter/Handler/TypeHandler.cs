@@ -17,7 +17,7 @@ namespace BindingsGeneration
         /// <param name="decl">The base declaration.</param>
         public bool Handles(BaseDecl decl)
         {
-            return decl is StructDecl structDecl && MarshallingHelpers.StructIsMarshalledAsCSStruct(structDecl);
+            return decl is StructDecl structDecl && structDecl.IsFrozen;
         }
 
         /// <summary>
@@ -61,6 +61,13 @@ namespace BindingsGeneration
             var ISwiftObjectMethodWriter = new ISwiftObjectMethodWriter(csWriter, env.TypeDatabase, moduleDecl, structDecl);
 
             SwiftTypeInfo? swiftTypeInfo = typeRecord?.SwiftTypeInfo;
+            bool isProjectedAsClass = MarshallingHelpers.IsFrozenStructProjectedAsClass(structDecl, env.TypeDatabase);
+
+            if (isProjectedAsClass)
+            {
+                csWriter.WriteLine($"public class {structDecl.Name} : IDisposable, {typeof(ISwiftObject).Name} {{");
+                csWriter.Indent++;
+            }
 
             if (swiftTypeInfo.HasValue)
             {
@@ -71,7 +78,14 @@ namespace BindingsGeneration
                     csWriter.WriteLine($"[StructLayout(LayoutKind.Sequential, Size = {swiftTypeInfo.Value.ValueWitnessTable->Size})]");
                 }
             }
-            csWriter.WriteLine($"public unsafe struct {structDecl.Name} : {typeof(ISwiftObject).Name} {{");
+            if (isProjectedAsClass)
+            {
+                csWriter.WriteLine($"public unsafe struct Buffer {{");
+            }
+            else
+            {
+                csWriter.WriteLine($"public unsafe struct {structDecl.Name} : {typeof(ISwiftObject).Name} {{");
+            }
             csWriter.Indent++;
 
             csWriter.WriteLine(@"
@@ -88,8 +102,31 @@ namespace BindingsGeneration
                 if (propertyDecl.HasStorage)
                 {
                     var fieldRecord = env.TypeDatabase.GetTypeRecordOrThrow(propertyDecl.SwiftTypeSpec);
-                    csWriter.WriteLine($"private {fieldRecord.CSharpTypeName.FullyQualifiedName} {propertyDecl.Name}_;  // Note: Do not access this field directly - use the property accessors");
+                    if ((fieldRecord.Flags & TypeRecordFlags.HeapAllocated) != 0)
+                    {
+                        csWriter.WriteLine($"private IntPtr {propertyDecl.Name}_;  // Note: Do not access this field directly - use the property accessors");
+                    }
+                    else
+                    {
+                        csWriter.WriteLine($"private {fieldRecord.CSharpTypeName.FullyQualifiedName} {propertyDecl.Name}_;  // Note: Do not access this field directly - use the property accessors");
+                    }
                 }
+            }
+
+            if (isProjectedAsClass)
+            {
+                csWriter.Indent -= 2;
+                csWriter.WriteLine("}");
+                csWriter.WriteLine();
+                csWriter.WriteLine("private Buffer _payload;");
+                csWriter.WriteLine();
+                csWriter.WriteLine("private int _disposed;");
+                csWriter.WriteLine();
+                csWriter.WriteLine("public Buffer Payload => _payload;");
+                csWriter.WriteLine();
+
+                WriteDisposeMethod(csWriter, structDecl);
+                WriteFinalizer(csWriter, structDecl);
             }
 
             foreach (PropertyDecl propertyDecl in structDecl.Properties)
@@ -114,6 +151,54 @@ namespace BindingsGeneration
             csWriter.Indent--;
             csWriter.WriteLine("}");
         }
+
+        /// <summary>
+        /// Writes the Dispose method for the class.
+        /// </summary>
+        private static void WriteDisposeMethod(CSharpWriter csWriter, StructDecl structDecl)
+        {
+            var text = $$"""
+            public void Dispose()
+            {
+                Dispose(true);
+                GC.SuppressFinalize(this);
+            }
+
+            protected virtual void Dispose(bool disposing)
+            {
+                if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
+                {
+                    var metadata = SwiftObjectHelper<{{structDecl.Name}}>.GetTypeMetadata();
+                    unsafe {
+                        fixed (void* payload = &_payload)
+                        {
+                            metadata.ValueWitnessTable->Destroy((void *)payload, metadata);
+                        }
+                    }
+                    _disposed = 1;
+                }
+            }
+            """;
+
+            csWriter.WriteLines(text);
+            csWriter.WriteLine();
+        }
+
+        /// <summary>
+        /// Writes the finalizer for the class.
+        /// </summary>
+        private static void WriteFinalizer(CSharpWriter csWriter, StructDecl structDecl)
+        {
+            var text = $$"""
+            ~{{structDecl.Name}}()
+            {
+                Dispose(disposing: false);
+            }
+            """;
+
+            csWriter.WriteLines(text);
+            csWriter.WriteLine();
+        }
     }
 
     /// <summary>
@@ -127,7 +212,7 @@ namespace BindingsGeneration
         /// <param name="decl">The base declaration.</param>
         public bool Handles(BaseDecl decl)
         {
-            return decl is StructDecl structDecl && !MarshallingHelpers.StructIsMarshalledAsCSStruct(structDecl);
+            return decl is StructDecl structDecl && !structDecl.IsFrozen;
         }
 
         /// <summary>
@@ -184,7 +269,7 @@ namespace BindingsGeneration
             }
 
             WritePrivateFields(csWriter, structDecl);
-            WriteDisposeMethod(csWriter);
+            WriteDisposeMethod(csWriter, structDecl);
             WriteFinalizer(csWriter, structDecl);
             WritePayloadSize(csWriter);
             WritePayload(csWriter);
@@ -208,24 +293,32 @@ namespace BindingsGeneration
         {
             csWriter.WriteLine($"static nuint _payloadSize = SwiftObjectHelper<{structDecl.Name}>.GetTypeMetadata().Size;");
             csWriter.WriteLine("SwiftHandle _payload = SwiftHandle.Zero;");
-            csWriter.WriteLine("bool _disposed = false;");
+            csWriter.WriteLine("private int _disposed = 0;");
             csWriter.WriteLine();
         }
 
         /// <summary>
         /// Writes the Dispose method for the class.
         /// </summary>
-        private static void WriteDisposeMethod(CSharpWriter csWriter)
+        private static void WriteDisposeMethod(CSharpWriter csWriter, StructDecl structDecl)
         {
             var text = $$"""
             public void Dispose()
             {
-                if (!_disposed)
+                Dispose(true);
+                GC.SuppressFinalize(this);
+            }
+
+            protected virtual void Dispose(bool disposing)
+            {
+                if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
                 {
-                    NativeMemory.Free((void*)_payload);
+                    var metadata = SwiftObjectHelper<{{structDecl.Name}}>.GetTypeMetadata();
+                    unsafe {
+                        metadata.ValueWitnessTable->Destroy((void *)_payload, metadata);
+                    }
                     _payload = SwiftHandle.Zero;
-                    _disposed = true;
-                    GC.SuppressFinalize(this);
+                    _disposed = 1;
                 }
             }
             """;
@@ -242,8 +335,7 @@ namespace BindingsGeneration
             var text = $$"""
             ~{{structDecl.Name}}()
             {
-                NativeMemory.Free((void*)_payload);
-                _payload = SwiftHandle.Zero;
+                Dispose(disposing: false);
             }
             """;
 
@@ -321,6 +413,12 @@ namespace BindingsGeneration
             csWriter.WriteLine($"public unsafe class {classDecl.Name} {{");
             csWriter.Indent++;
 
+
+            csWriter.WriteLine("SwiftHandle _payload = SwiftHandle.Zero;");
+            csWriter.WriteLine();
+            csWriter.WriteLine("public SwiftHandle Payload => _payload;");
+            csWriter.WriteLine();
+
             base.HandleBaseDecl(csWriter, swiftWriter, classDecl.Types, conductor, env.TypeDatabase);
             base.HandleBaseDecl(csWriter, swiftWriter, classDecl.Methods, conductor, env.TypeDatabase);
 
@@ -395,15 +493,34 @@ namespace BindingsGeneration
         /// </summary>
         private void WriteNewFromPayloadFrozenStruct()
         {
-            var text = $$"""
-            static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+            if (MarshallingHelpers.IsFrozenStructProjectedAsClass(_structDecl, _typeDatabase))
             {
-                return *({{_structDecl.Name}}*)handle;
-            }
-            """;
+                var text = $$"""
+                static unsafe ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+                {
+                    return new {{_structDecl.Name}} { _payload = *(Buffer*)handle };
+                }
 
-            _writer.WriteLines(text);
-            _writer.WriteLine();
+                private {{_structDecl.Name}} ()
+                {
+                }
+                """;
+
+                _writer.WriteLines(text);
+                _writer.WriteLine();
+            }
+            else
+            {
+                var text = $$"""
+                static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+                {
+                    return *({{_structDecl.Name}}*)handle;
+                }
+                """;
+
+                _writer.WriteLines(text);
+                _writer.WriteLine();
+            }
         }
 
         /// <summary>
@@ -445,12 +562,18 @@ namespace BindingsGeneration
         /// </summary>
         private void WriteMarshalToSwiftFrozenStruct()
         {
+            string payloadName = "this";
+            if (MarshallingHelpers.IsFrozenStructProjectedAsClass(_structDecl, _typeDatabase))
+            {
+                payloadName = "_payload";
+            }
+
             var text = $$"""
             IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
             {
                 var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
                 unsafe {
-                    fixed (void* payload = &this)
+                    fixed (void* payload = &{{payloadName}})
                     {
                     metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, payload, metadata);
                     }
