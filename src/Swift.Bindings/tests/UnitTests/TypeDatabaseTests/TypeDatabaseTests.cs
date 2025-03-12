@@ -51,8 +51,8 @@ namespace BindingsGeneration.Tests
                 CSharpTypeName = CSharpTypeName.FromNamespaceAndName("BindingsGeneration.Tests", "MyType"),
                 SwiftTypeName = swiftTypeName,
                 MetadataAccessor = "mangledAccessor",
-                IsBlittable = false,
-                IsFrozen = false
+                Flags = TypeRecordFlags.Frozen,
+                Kind = TypeRecordKind.Struct
             };
             module.RegisterType(swiftTypeName, myType);
             typeDatabase.AddModuleDatabase(module);
@@ -91,8 +91,8 @@ namespace BindingsGeneration.Tests
                 CSharpTypeName = CSharpTypeName.FromNamespaceAndName("BindingsGeneration.Tests", "MyOutOfModuleType"),
                 SwiftTypeName = swiftTypeName,
                 MetadataAccessor = "mangledOutOfModule",
-                IsBlittable = false,
-                IsFrozen = false
+                Flags = TypeRecordFlags.None,
+                Kind = TypeRecordKind.Struct
             };
 
             typeDatabase.AddOutOfModuleTypes(new[]
@@ -120,8 +120,8 @@ namespace BindingsGeneration.Tests
                 CSharpTypeName = CSharpTypeName.FromNamespaceAndName("TestModule", "ProcessedType"),
                 SwiftTypeName = swiftTypeName,
                 MetadataAccessor = string.Empty,
-                IsBlittable = false,
-                IsFrozen = false
+                Flags = TypeRecordFlags.None,
+                Kind = TypeRecordKind.Struct
             });
             typeDatabase.AddModuleDatabase(module);
 
