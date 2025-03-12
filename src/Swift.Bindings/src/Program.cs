@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using System.CommandLine;
-using TbdParser;
 
 namespace BindingsGeneration
 {
@@ -102,7 +101,7 @@ namespace BindingsGeneration
                 Console.WriteLine($"Starting bindings generation for {swiftAbiPath}...");
 
             // Parse the TBD file
-            DemanglingResults demangledTbdFile = DemanglingResults.FromTbd(tbdPath);
+            DemanglingResults demangledTbdFile = DemanglingResults.FromTbd(tbdPath, verbose);
 
             // Initialize the Swift ABI parser
             var swiftParser = new SwiftABIParser(swiftAbiPath, typeDatabase, demangledTbdFile, verbose);

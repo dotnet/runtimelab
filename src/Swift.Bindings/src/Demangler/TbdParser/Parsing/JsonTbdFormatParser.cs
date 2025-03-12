@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using TbdParser.Logging;
 using TbdParser.Models;
 
 namespace TbdParser.Parsing
@@ -11,22 +10,20 @@ namespace TbdParser.Parsing
     /// </summary>
     public class JsonTbdFormatParser : ITbdFormatParser
     {
-        /// <summary>
-        /// Gets the logger used by this parser
-        /// </summary>
-        public ILogger Logger { get; }
-
+        private readonly int _verbosity;
         /// <summary>
         /// Creates a new JSON TBD format parser
         /// </summary>
-        public JsonTbdFormatParser(ILogger logger)
+        public JsonTbdFormatParser(int verbosity)
         {
-            Logger = logger ?? NullLogger.Instance;
+            _verbosity = verbosity;
         }
 
         public bool CanParse(string[] lines)
         {
-            Logger.Warning("JSON format TBD parsing is not yet implemented");
+            if (_verbosity > 1)
+                Console.WriteLine("JSON format TBD parsing is not yet implemented");
+
             // This is a placeholder for future implementation
             // For now, we'll throw an exception since JSON parsing is not implemented yet
             throw new NotImplementedException("JSON format parsing for TBD version 5+ is not yet implemented.");
@@ -34,7 +31,9 @@ namespace TbdParser.Parsing
 
         public TbdFile Parse(string[] lines)
         {
-            Logger.Warning("JSON format TBD parsing is not yet implemented");
+            if (_verbosity > 1)
+                Console.WriteLine("JSON format TBD parsing is not yet implemented");
+
             // This is a placeholder for future implementation
             // For now, we'll throw an exception since JSON parsing is not implemented yet
             throw new NotImplementedException("JSON format parsing for TBD version 5+ is not yet implemented.");

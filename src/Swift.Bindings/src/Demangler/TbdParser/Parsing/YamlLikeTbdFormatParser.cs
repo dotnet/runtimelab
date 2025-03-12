@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using TbdParser.Logging;
 using TbdParser.Models;
 
 namespace TbdParser.Parsing
@@ -12,24 +11,22 @@ namespace TbdParser.Parsing
     /// </summary>
     public class YamlLikeTbdFormatParser : ITbdFormatParser
     {
-        /// <summary>
-        /// Gets the logger used by this parser
-        /// </summary>
-        public ILogger Logger { get; }
-
+        private readonly int _verbosity;
         /// <summary>
         /// Creates a new YAML-like TBD format parser
         /// </summary>
-        public YamlLikeTbdFormatParser(ILogger logger)
+        public YamlLikeTbdFormatParser(int verbosity)
         {
-            Logger = logger ?? NullLogger.Instance;
+            _verbosity = verbosity;
         }
 
         public bool CanParse(string[] lines)
         {
             if (lines == null || lines.Length == 0)
             {
-                Logger.Debug("Cannot parse empty file");
+                if (_verbosity > 2)
+                    Console.WriteLine("Cannot parse empty file");
+
                 return false;
             }
 
@@ -37,7 +34,9 @@ namespace TbdParser.Parsing
             string firstLine = lines[0].Trim();
             if (firstLine != "--- !tapi-tbd")
             {
-                Logger.Debug($"First line does not contain \"--- !tapi-tbd\"");
+                if (_verbosity > 2)
+                    Console.WriteLine($"First line does not contain \"--- !tapi-tbd\"");
+
                 return false;
             }
 
@@ -46,14 +45,18 @@ namespace TbdParser.Parsing
 
         public TbdFile Parse(string[] lines)
         {
-            Logger.Debug("Starting YAML-like TBD format parsing");
+            if (_verbosity > 2)
+                Console.WriteLine("Starting YAML-like TBD format parsing");
+
             var tbdFile = new TbdFile();
             int lineIndex = 0;
 
             // Skip the YAML document marker if present
             if (lineIndex < lines.Length && lines[lineIndex].Trim() == "--- !tapi-tbd")
             {
-                Logger.Debug("Skipping YAML document marker");
+                if (_verbosity > 2)
+                    Console.WriteLine("Skipping YAML document marker");
+
                 lineIndex++;
             }
 
@@ -73,13 +76,16 @@ namespace TbdParser.Parsing
                 int colonPos = line.IndexOf(':');
                 if (colonPos == -1)
                 {
-                    Logger.Warning($"Line {lineIndex}: Expected key-value pair but no colon found: '{line}'");
+                    if (_verbosity > 1)
+                        Console.WriteLine($"Line {lineIndex}: Expected key-value pair but no colon found: '{line}'");
+
                     continue;
                 }
 
                 string key = line.Substring(0, colonPos).Trim();
                 string value = line.Substring(colonPos + 1).Trim();
-                Logger.Debug($"Found key-value pair: {key} = {value}");
+                if (_verbosity > 2)
+                    Console.WriteLine($"Found key-value pair: {key} = {value}");
 
                 switch (key)
                 {
@@ -87,49 +93,62 @@ namespace TbdParser.Parsing
                         try
                         {
                             tbdFile.Version = int.Parse(value);
-                            Logger.Debug($"Parsed tbd-version = {tbdFile.Version}");
+                            if (_verbosity > 2)
+                                Console.WriteLine($"Parsed tbd-version = {tbdFile.Version}");
                         }
                         catch (FormatException)
                         {
-                            Logger.Warning($"Failed to parse tbd-version: {value}");
+                            if (_verbosity > 1)
+                                Console.WriteLine($"Failed to parse tbd-version: {value}");
                         }
                         break;
 
                     case "install-name":
                         tbdFile.InstallName = value.Trim('\'', '"');
-                        Logger.Debug($"Parsed install-name = {tbdFile.InstallName}");
+                        if (_verbosity > 2)
+                            Console.WriteLine($"Parsed install-name = {tbdFile.InstallName}");
                         break;
 
                     case "swift-abi-version":
                         try
                         {
                             tbdFile.SwiftAbiVersion = int.Parse(value);
-                            Logger.Debug($"Parsed swift-abi-version = {tbdFile.SwiftAbiVersion}");
+                            if (_verbosity > 2)
+                                Console.WriteLine($"Parsed swift-abi-version = {tbdFile.SwiftAbiVersion}");
                         }
                         catch (FormatException)
                         {
-                            Logger.Warning($"Failed to parse swift-abi-version: {value}");
+                            if (_verbosity > 1)
+                                Console.WriteLine($"Failed to parse swift-abi-version: {value}");
                         }
                         break;
 
                     case "targets":
                         tbdFile.Targets = ParseArray(value);
-                        Logger.Debug($"Parsed {tbdFile.Targets.Count} targets");
+                        if (_verbosity > 2)
+                            Console.WriteLine($"Parsed {tbdFile.Targets.Count} targets");
                         break;
 
                     case "exports":
-                        Logger.Debug($"Starting exports section parsing at line {lineIndex}");
+                        if (_verbosity > 2)
+                            Console.WriteLine($"Starting exports section parsing at line {lineIndex}");
+
                         tbdFile.Exports = ParseExports(lines, ref lineIndex);
-                        Logger.Debug($"Parsed {tbdFile.Exports.Count} export entries");
+
+                        if (_verbosity > 2)
+                            Console.WriteLine($"Parsed {tbdFile.Exports.Count} export entries");
                         break;
 
                     default:
-                        Logger.Warning($"Unknown top-level key: {key}");
+                        if (_verbosity > 1)
+                            Console.WriteLine($"Unknown top-level key: {key}");
                         break;
                 }
             }
 
-            Logger.Debug("Completed YAML-like TBD format parsing");
+            if (_verbosity > 2)
+                Console.WriteLine("Completed YAML-like TBD format parsing");
+
             return tbdFile;
         }
 
@@ -164,7 +183,8 @@ namespace TbdParser.Parsing
             }
             else
             {
-                Logger.Warning($"Invalid array format: {value}");
+                if (_verbosity > 1)
+                    Console.WriteLine($"Invalid array format: {value}");
             }
 
             return items;
@@ -213,7 +233,8 @@ namespace TbdParser.Parsing
             StringBuilder? multilineArrayBuilder = null;
             string currentArrayType = string.Empty;
 
-            Logger.Debug("Parsing exports section");
+            if (_verbosity > 2)
+                Console.WriteLine("Parsing exports section");
             while (lineIndex < lines.Length)
             {
                 string rawLine = lines[lineIndex];
@@ -226,14 +247,16 @@ namespace TbdParser.Parsing
                 if (baseIndentation == -1)
                 {
                     baseIndentation = indentation;
-                    Logger.Debug($"Base indentation set to {baseIndentation}");
+                    if (_verbosity > 2)
+                        Console.WriteLine($"Base indentation set to {baseIndentation}");
                 }
 
                 // If we're back at a lower indentation than the exports level,
                 // we've exited the exports section
                 if (indentation < baseIndentation && currentExport != null && !insideMultilineArray)
                 {
-                    Logger.Debug($"Exiting exports section at line {lineIndex}, indentation {indentation} < base {baseIndentation}");
+                    if (_verbosity > 2)
+                        Console.WriteLine($"Exiting exports section at line {lineIndex}, indentation {indentation} < base {baseIndentation}");
                     break;
                 }
 
@@ -247,7 +270,8 @@ namespace TbdParser.Parsing
                     // Parse the targets on this line
                     string targetsValue = line.Substring("- targets:".Length).Trim();
                     currentExport.Targets = ParseArray(targetsValue);
-                    Logger.Debug($"Found new export entry at line {lineIndex} with {currentExport.Targets.Count} targets");
+                    if (_verbosity > 2)
+                        Console.WriteLine($"Found new export entry at line {lineIndex} with {currentExport.Targets.Count} targets");
 
                     lineIndex++;
                     continue;
@@ -275,7 +299,8 @@ namespace TbdParser.Parsing
                         {
                             // Single line array format
                             currentExport.Symbols = ParseArrayOfSymbols(symbolsValue);
-                            Logger.Debug($"Parsed {currentExport.Symbols.Count} inline symbols");
+                            if (_verbosity > 2)
+                                Console.WriteLine($"Parsed {currentExport.Symbols.Count} inline symbols");
                         }
                     }
                     else if (line.StartsWith("objc-classes:"))
@@ -296,12 +321,14 @@ namespace TbdParser.Parsing
                         {
                             // Single line array format
                             currentExport.ObjcClasses = ParseArray(objcClassesValue);
-                            Logger.Debug($"Parsed {currentExport.ObjcClasses.Count} inline objc-classes");
+                            if (_verbosity > 2)
+                                Console.WriteLine($"Parsed {currentExport.ObjcClasses.Count} inline objc-classes");
                         }
                     }
                     else
                     {
-                        Logger.Warning($"Unknown export property at line {lineIndex}: {line}");
+                        if (_verbosity > 1)
+                            Console.WriteLine($"Unknown export property at line {lineIndex}: {line}");
                     }
                 }
                 // Track if we're inside a multi-line array by watching for the ending bracket
@@ -323,12 +350,14 @@ namespace TbdParser.Parsing
                         if (currentArrayType == "symbols")
                         {
                             currentExport!.Symbols = ParseArrayOfSymbols(arrayValue);
-                            Logger.Debug($"Parsed {currentExport.Symbols.Count} symbols from multi-line array");
+                            if (_verbosity > 2)
+                                Console.WriteLine($"Parsed {currentExport.Symbols.Count} symbols from multi-line array");
                         }
                         else if (currentArrayType == "objc-classes")
                         {
                             currentExport!.ObjcClasses = ParseArray(arrayValue);
-                            Logger.Debug($"Parsed {currentExport.ObjcClasses.Count} objc-classes from multi-line array");
+                            if (_verbosity > 2)
+                                Console.WriteLine($"Parsed {currentExport.ObjcClasses.Count} objc-classes from multi-line array");
                         }
 
                         multilineArrayBuilder = null;
@@ -340,7 +369,8 @@ namespace TbdParser.Parsing
                 }
                 else
                 {
-                    Logger.Warning($"Unexpected export content at line {lineIndex}: {line}");
+                    if (_verbosity > 1)
+                        Console.WriteLine($"Unexpected export content at line {lineIndex}: {line}");
                 }
 
                 lineIndex++;
@@ -410,12 +440,14 @@ namespace TbdParser.Parsing
                 {
                     // If we're here, this line might be a continuation of the previous item
                     // or it could be the start of a new section
-                    Logger.Debug($"Found non-dash line after items at line {lineIndex}, assuming end of list: {line}");
+                    if (_verbosity > 2)
+                        Console.WriteLine($"Found non-dash line after items at line {lineIndex}, assuming end of list: {line}");
                     break;
                 }
                 else
                 {
-                    Logger.Warning($"Expected list item at line {lineIndex} but found: {line}");
+                    if (_verbosity > 1)
+                        Console.WriteLine($"Expected list item at line {lineIndex} but found: {line}");
                     break;
                 }
 

@@ -106,10 +106,9 @@ public class DemanglingResults
         return await Task.Run(() => FromFile(path, target));
     }
 
-    public static DemanglingResults FromTbd(string path)
+    public static DemanglingResults FromTbd(string path, int verbosity)
     {
-        var logger = new TbdParser.Logging.ConsoleLogger { MinimumLevel = TbdParser.Logging.LogLevel.Debug };
-        var tbdParser = new TbdParser.TbdParser(logger);
+        var tbdParser = new TbdParser.TbdParser(verbosity);
         var tbdFile = tbdParser.ParseFile(path);
 
         var demangler = new Swift5Demangler();
