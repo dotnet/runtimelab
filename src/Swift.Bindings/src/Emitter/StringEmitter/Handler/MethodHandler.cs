@@ -327,7 +327,7 @@ namespace BindingsGeneration
             }
 
             if (MarshallingHelpers.IsTypeHeapAllocated(returnTypeRecord))
-                SetReturnType(returnTypeRecord.CSharpTypeName.FullyQualifiedName+".Buffer");
+                SetReturnType(returnTypeRecord.CSharpTypeName.FullyQualifiedName + ".Buffer");
             else
                 SetReturnType(returnTypeRecord.CSharpTypeName.FullyQualifiedName);
         }
@@ -379,7 +379,7 @@ namespace BindingsGeneration
                 }
 
                 if (MarshallingHelpers.IsTypeHeapAllocated(argumentTypeRecord))
-                    AddParameter(argumentTypeRecord.CSharpTypeName.FullyQualifiedName+".Buffer", argument.Name);
+                    AddParameter(argumentTypeRecord.CSharpTypeName.FullyQualifiedName + ".Buffer", argument.Name);
                 else
                     AddParameter(argumentTypeRecord.CSharpTypeName.FullyQualifiedName, argument.Name);
             }
@@ -883,7 +883,8 @@ namespace BindingsGeneration
         {
             if (_env.ParentDecl is StructDecl structDecl)
             {
-                if (MarshallingHelpers.IsFrozenStructProjectedAsClass(structDecl, _env.TypeDatabase)){
+                if (MarshallingHelpers.IsFrozenStructProjectedAsClass(structDecl, _env.TypeDatabase))
+                {
                     csWriter.WriteLine($"_payload = result;");
                     return;
                 }
@@ -917,7 +918,8 @@ namespace BindingsGeneration
             if (!returnArg.IsGeneric)
             {
                 var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(returnArg.SwiftTypeSpec);
-                if ((typeRecord.Flags & TypeRecordFlags.HeapAllocated) != 0 && (typeRecord.Flags & TypeRecordFlags.Frozen) != 0){
+                if ((typeRecord.Flags & TypeRecordFlags.HeapAllocated) != 0 && (typeRecord.Flags & TypeRecordFlags.Frozen) != 0)
+                {
                     csWriter.WriteLine($$"""
                         unsafe {
                             return SwiftMarshal.MarshalFromSwift<{{_wrapperSignature.ReturnType}}>((SwiftHandle)new IntPtr(&result));

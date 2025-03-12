@@ -48,7 +48,8 @@ public class SwiftString : IDisposable, ISwiftObject
         {
             var metadata = SwiftObjectHelper<SwiftString>.GetTypeMetadata();
 
-            unsafe {
+            unsafe
+            {
                 fixed (void* payload = &_payload)
                 {
                     metadata.ValueWitnessTable->Destroy(payload, metadata);

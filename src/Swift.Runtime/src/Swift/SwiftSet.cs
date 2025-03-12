@@ -53,7 +53,8 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
         {
             var metadata = SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata();
 
-            unsafe {
+            unsafe
+            {
                 fixed (void* payload = &_variant)
                 {
                     metadata.ValueWitnessTable->Destroy(payload, metadata);

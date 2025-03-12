@@ -53,7 +53,8 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         {
             var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
 
-            unsafe {
+            unsafe
+            {
                 fixed (void* payload = &_buffer)
                 {
                     metadata.ValueWitnessTable->Destroy(payload, metadata);
