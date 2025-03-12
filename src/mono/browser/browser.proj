@@ -520,7 +520,7 @@
 
     <Copy SourceFiles="$(NativeBinDir)dotnet.native.js;
                        $(NativeBinDir)package.json;
-                       $(NativeBinDir)dotnet.native.wasm
+                       $(NativeBinDir)dotnet.native.wasm;
                        $(NativeBinDir)dotnet.globalization.js"
           Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
           DestinationFolder="$(MicrosoftNetCoreAppRuntimePackNativeDir)"
