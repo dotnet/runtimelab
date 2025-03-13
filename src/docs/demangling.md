@@ -28,6 +28,8 @@ obvious gains in parallel processing but requires the either another pass to
 put the needed symbols where they belong or it requires the binding code to
 look up the required symbols.
 
+An alternative approach to parsing dylib files using MachO.cs is described in [Retrieving symbols missing from abi.json](retrieving-symbols-outside-abi-json.md).
+
 ## Overview of the Demangling Code
 
 The ported Apple demangler works by parsing the little language of the mangled
