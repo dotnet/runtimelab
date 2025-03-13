@@ -37,9 +37,7 @@ namespace TbdParsing
             _formatParsers = new List<ITbdFormatParser>
             {
                 new YamlLikeTbdFormatParser(_logger),
-                // JSON parser is included but will throw NotImplementedException if used
-                // It's here for format detection purposes
-                new JsonTbdFormatParser(_logger)
+                // new JsonTbdFormatParser(_logger) // TODO: Parser of TBD in JSON format is not implemented yet
             };
 
             _logger.Debug("TBD Parser initialized with parsers: " + string.Join(", ",
