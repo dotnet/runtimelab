@@ -1,4 +1,7 @@
-namespace TbdParser.Models
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+namespace TbdParsing.Models
 {
     /// <summary>
     /// Exception thrown when parsing a TBD file fails

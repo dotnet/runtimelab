@@ -1,6 +1,9 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 using System;
 
-namespace TbdParser.Models
+namespace TbdParsing.Models
 {
     /// <summary>
     /// Represents the type of a symbol in a TBD file
@@ -53,7 +56,7 @@ namespace TbdParser.Models
             if (name.StartsWith("_$s"))
                 return SymbolType.Swift;
 
-            if (name.StartsWith("_") && !name.StartsWith("_$"))
+            if (name.StartsWith('_') && !name.StartsWith("_$"))
                 return SymbolType.ObjectiveC;
 
             return SymbolType.Other;

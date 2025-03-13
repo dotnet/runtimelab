@@ -1,18 +1,15 @@
-using TbdParser.Logging;
-using TbdParser.Models;
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
-namespace TbdParser.Parsing
+using TbdParsing.Models;
+
+namespace TbdParsing.Parsing
 {
     /// <summary>
     /// Interface for TBD file format parsers
     /// </summary>
     public interface ITbdFormatParser
     {
-        /// <summary>
-        /// Gets the logger used by this parser
-        /// </summary>
-        ILogger Logger { get; }
-
         /// <summary>
         /// Determines if this parser can handle the given file format based on its content
         /// </summary>

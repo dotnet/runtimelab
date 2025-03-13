@@ -1,6 +1,9 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 using System;
 
-namespace TbdParser.Logging
+namespace TbdParsing.Logging
 {
     /// <summary>
     /// Defines logging levels for the TBD parser

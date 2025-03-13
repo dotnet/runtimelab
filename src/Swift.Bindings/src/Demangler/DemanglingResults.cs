@@ -1,5 +1,6 @@
 using BindingsGeneration;
 using BindingsGeneration.Demangling;
+using TbdParsing;
 using Xamarin;
 
 /// <summary>
@@ -106,10 +107,15 @@ public class DemanglingResults
         return await Task.Run(() => FromFile(path, target));
     }
 
+    /// <summary>
+    /// Factory method to generate a suite of demangling results from the given TBD file.
+    /// </summary>
+    /// <param name="path">Path to the TBD file</param>
+    /// <returns>A set of demangling results</returns>
     public static DemanglingResults FromTbd(string path)
     {
-        var logger = new TbdParser.Logging.ConsoleLogger { MinimumLevel = TbdParser.Logging.LogLevel.Debug };
-        var tbdParser = new TbdParser.TbdParser(logger);
+        var logger = new TbdParsing.Logging.ConsoleLogger { MinimumLevel = TbdParsing.Logging.LogLevel.Debug };
+        var tbdParser = new TbdParser(logger);
         var tbdFile = tbdParser.ParseFile(path);
 
         var demangler = new Swift5Demangler();
@@ -124,7 +130,7 @@ public class DemanglingResults
     /// <param name="swiftTypeName">The Swift type name.</param>
     /// <returns>The mangled name of the metadata accessor.</returns>
     /// exception cref="Exception">
-    /// Thrown if the metadata accessor is not found in the TBD file.
+    /// Thrown if the metadata accessor is not found in demangled results.
     /// </exception>
     public string GetMetadataAccessor(SwiftTypeName swiftTypeName)
     {
@@ -145,7 +151,7 @@ public class DemanglingResults
     /// <param name="protocol">The Swift protocol.</param>
     /// <returns>The mangled name of the protocol conformance descriptor.</returns>
     /// exception cref="Exception">
-    /// Thrown if the protocol conformance descriptor is not found in the TBD file.
+    /// Thrown if the protocol conformance descriptor is not found in demangled results.
     /// </exception>
     public string GetProtocolConformanceDescriptor(SwiftTypeName implementingType, SwiftTypeName protocol)
     {

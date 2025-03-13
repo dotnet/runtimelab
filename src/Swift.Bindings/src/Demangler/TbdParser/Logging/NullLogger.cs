@@ -1,6 +1,9 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 using System;
 
-namespace TbdParser.Logging
+namespace TbdParsing.Logging
 {
     /// <summary>
     /// A logger implementation that does nothing (null object pattern)

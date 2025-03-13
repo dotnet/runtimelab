@@ -1,6 +1,9 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 using System.Collections.Generic;
 
-namespace TbdParser.Models
+namespace TbdParsing.Models
 {
     /// <summary>
     /// Represents a TBD file
@@ -39,19 +42,24 @@ namespace TbdParser.Models
     public class ExportEntry
     {
         /// <summary>
-        /// List of targets for this export entry
+        /// List of targets for the export entry
         /// </summary>
         public List<string> Targets { get; set; } = new List<string>();
 
         /// <summary>
-        /// List of categorized symbols in this export entry
+        /// List of categorized symbols in the export entry
         /// </summary>
         public List<Symbol> Symbols { get; set; } = new List<Symbol>();
 
         /// <summary>
-        /// List of Objective-C classes in this export entry
+        /// List of Objective-C classes in the export entry
         /// </summary>
         public List<string> ObjcClasses { get; set; } = new List<string>();
+
+        /// <summary>
+        /// List of Objective-C ivars in the export entry
+        /// </summary>
+        public List<string> ObjcIvars { get; set; } = new List<string>();
 
         /// <summary>
         /// Get Swift symbols only

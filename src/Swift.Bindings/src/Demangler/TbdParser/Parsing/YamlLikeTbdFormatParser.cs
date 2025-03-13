@@ -1,35 +1,31 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using TbdParser.Logging;
-using TbdParser.Models;
+using TbdParsing.Logging;
+using TbdParsing.Models;
 
-namespace TbdParser.Parsing
+namespace TbdParsing.Parsing
 {
     /// <summary>
     /// Parser for YAML-like TBD format (versions 1-4)
     /// </summary>
-    public class YamlLikeTbdFormatParser : ITbdFormatParser
+    public class YamlLikeTbdFormatParser : TbdFormatParserBase
     {
-        /// <summary>
-        /// Gets the logger used by this parser
-        /// </summary>
-        public ILogger Logger { get; }
-
         /// <summary>
         /// Creates a new YAML-like TBD format parser
         /// </summary>
-        public YamlLikeTbdFormatParser(ILogger logger)
+        public YamlLikeTbdFormatParser(ILogger logger) : base(logger)
         {
-            Logger = logger ?? NullLogger.Instance;
         }
-
-        public bool CanParse(string[] lines)
+        public override bool CanParse(string[] lines)
         {
             if (lines == null || lines.Length == 0)
             {
-                Logger.Debug("Cannot parse empty file");
+                _logger.Debug("Cannot parse empty file");
                 return false;
             }
 
@@ -37,23 +33,23 @@ namespace TbdParser.Parsing
             string firstLine = lines[0].Trim();
             if (firstLine != "--- !tapi-tbd")
             {
-                Logger.Debug($"First line does not contain \"--- !tapi-tbd\"");
+                _logger.Debug($"First line does not contain \"--- !tapi-tbd\"");
                 return false;
             }
 
             return true;
         }
 
-        public TbdFile Parse(string[] lines)
+        public override TbdFile Parse(string[] lines)
         {
-            Logger.Debug("Starting YAML-like TBD format parsing");
+            _logger.Debug("Starting YAML-like TBD format parsing");
             var tbdFile = new TbdFile();
             int lineIndex = 0;
 
             // Skip the YAML document marker if present
             if (lineIndex < lines.Length && lines[lineIndex].Trim() == "--- !tapi-tbd")
             {
-                Logger.Debug("Skipping YAML document marker");
+                _logger.Debug("Skipping YAML document marker");
                 lineIndex++;
             }
 
@@ -69,67 +65,75 @@ namespace TbdParser.Parsing
                     continue;
                 }
 
-                // Parse key-value pairs
-                int colonPos = line.IndexOf(':');
-                if (colonPos == -1)
+                if (line == "...")
                 {
-                    Logger.Warning($"Line {lineIndex}: Expected key-value pair but no colon found: '{line}'");
-                    continue;
+                    _logger.Debug("TBD end marker found (...)");
+                    break;
                 }
 
-                string key = line.Substring(0, colonPos).Trim();
-                string value = line.Substring(colonPos + 1).Trim();
-                Logger.Debug($"Found key-value pair: {key} = {value}");
+                // Parse key-value pairs
+                KeyValuePair<string, string> kvp;
+                try
+                {
+                    kvp = ParseKeyValuePair(line);
+                }
+                catch (FormatException ex)
+                {
+                    // TODO: We might not support all top-level keys yet
+                    _logger.Warning($"Line {lineIndex}: {ex.Message}");
+                    continue;
+                }
+                _logger.Debug($"Found top-level key-value pair: {kvp.Key} = {kvp.Value}");
 
-                switch (key)
+                switch (kvp.Key)
                 {
                     case "tbd-version":
                         try
                         {
-                            tbdFile.Version = int.Parse(value);
-                            Logger.Debug($"Parsed tbd-version = {tbdFile.Version}");
+                            tbdFile.Version = int.Parse(kvp.Value);
+                            _logger.Debug($"Parsed tbd-version = {tbdFile.Version}");
                         }
                         catch (FormatException)
                         {
-                            Logger.Warning($"Failed to parse tbd-version: {value}");
+                            _logger.Warning($"Failed to parse tbd-version: {kvp.Value}");
                         }
                         break;
 
                     case "install-name":
-                        tbdFile.InstallName = value.Trim('\'', '"');
-                        Logger.Debug($"Parsed install-name = {tbdFile.InstallName}");
+                        tbdFile.InstallName = kvp.Value.Trim('\'', '"');
+                        _logger.Debug($"Parsed install-name = {tbdFile.InstallName}");
                         break;
 
                     case "swift-abi-version":
                         try
                         {
-                            tbdFile.SwiftAbiVersion = int.Parse(value);
-                            Logger.Debug($"Parsed swift-abi-version = {tbdFile.SwiftAbiVersion}");
+                            tbdFile.SwiftAbiVersion = int.Parse(kvp.Value);
+                            _logger.Debug($"Parsed swift-abi-version = {tbdFile.SwiftAbiVersion}");
                         }
                         catch (FormatException)
                         {
-                            Logger.Warning($"Failed to parse swift-abi-version: {value}");
+                            _logger.Warning($"Failed to parse swift-abi-version: {kvp.Value}");
                         }
                         break;
 
                     case "targets":
-                        tbdFile.Targets = ParseArray(value);
-                        Logger.Debug($"Parsed {tbdFile.Targets.Count} targets");
+                        tbdFile.Targets = ParseMultiLineArray(lines, ref lineIndex, kvp.Value);
+                        _logger.Debug($"Parsed {tbdFile.Targets.Count} targets: [{string.Join(", ", tbdFile.Targets)}]");
                         break;
 
                     case "exports":
-                        Logger.Debug($"Starting exports section parsing at line {lineIndex}");
+                        _logger.Debug($"Starting exports section parsing at line {lineIndex}");
                         tbdFile.Exports = ParseExports(lines, ref lineIndex);
-                        Logger.Debug($"Parsed {tbdFile.Exports.Count} export entries");
+                        _logger.Debug($"Parsed {tbdFile.Exports.Count} export entries");
                         break;
 
                     default:
-                        Logger.Warning($"Unknown top-level key: {key}");
+                        _logger.Warning($"Unknown top-level key: {kvp.Key}");
                         break;
                 }
             }
 
-            Logger.Debug("Completed YAML-like TBD format parsing");
+            _logger.Debug("Completed YAML-like TBD format parsing");
             return tbdFile;
         }
 
@@ -147,9 +151,9 @@ namespace TbdParser.Parsing
             }
 
             // Handle array format like [ item1, item2, item3 ]
-            if (value.StartsWith("[") && value.EndsWith("]"))
+            if (value.StartsWith('[') && value.EndsWith(']'))
             {
-                string content = value.Substring(1, value.Length - 2).Trim();
+                string content = value[1..^1].Trim();
 
                 // Split by comma, but handle commas within quoted strings
                 var splitItems = SplitArrayItems(content);
@@ -164,16 +168,165 @@ namespace TbdParser.Parsing
             }
             else
             {
-                Logger.Warning($"Invalid array format: {value}");
+                _logger.Warning($"Invalid array format: {value}");
             }
 
             return items;
         }
 
         /// <summary>
+        /// Parse an array of strings spanning over multiple lines
+        /// </summary>
+        private List<string> ParseMultiLineArray(string[] lines, ref int lineIndex, string initialValue)
+        {
+            var items = new List<string>();
+
+            // If the array is empty
+            if (string.IsNullOrWhiteSpace(initialValue) || initialValue == "[]")
+            {
+                return items;
+            }
+
+            // If the array is already complete on the first line
+            if (initialValue.StartsWith('[') && initialValue.EndsWith(']'))
+            {
+                _logger.Debug($"Single line array encountered, falling back to ParseArray");
+                return ParseArray(initialValue);
+            }
+
+            // If the array starts but doesn't end on the first line
+            if (initialValue.StartsWith('[') && !initialValue.EndsWith(']'))
+            {
+                StringBuilder arrayBuilder = new StringBuilder(initialValue);
+
+                // Keep reading lines until we find the closing bracket
+                while (lineIndex < lines.Length)
+                {
+                    string nextLine = lines[lineIndex].Trim();
+                    lineIndex++;
+
+                    // If this is a new section or entry, we probably encountered a malformed array
+                    if (nextLine.StartsWith('-') || nextLine.Contains(':'))
+                    {
+                        _logger.Warning($"Array does not have a closing bracket before new section at line {lineIndex} with content: {nextLine}");
+                        break;
+                    }
+
+                    arrayBuilder.Append(' ').Append(nextLine);
+
+                    // Check if this line contains the closing bracket
+                    if (nextLine.Contains(']'))
+                    {
+                        break;
+                    }
+                }
+
+                // Parse the complete array string
+                return ParseArray(arrayBuilder.ToString());
+            }
+
+            // If we got here, the input wasn't an array
+            _logger.Warning($"Expected array format but found: {initialValue}");
+            return items;
+        }
+
+        /// <summary>
+        /// Parse the exports section which has a nested structure
+        /// </summary>
+        private List<ExportEntry> ParseExports(string[] lines, ref int lineIndex)
+        {
+            var exports = new List<ExportEntry>();
+            ExportEntry? currentExport = null;
+            int baseIndentation = -1;
+
+            _logger.Debug("Parsing exports section");
+            while (lineIndex < lines.Length)
+            {
+                string rawLine = lines[lineIndex];
+                // Get indentation level before trimming
+                int indentation = GetIndentation(rawLine);
+                string line = rawLine.Trim();
+                lineIndex++;
+
+                // If we haven't determined base indentation yet, set it now
+                if (baseIndentation == -1)
+                {
+                    baseIndentation = indentation;
+                    _logger.Debug($"Base indentation set to {baseIndentation}");
+                }
+
+                // If we're back at a lower indentation than the exports level,
+                // we've exited the exports section
+                if (indentation < baseIndentation)
+                {
+                    _logger.Debug($"Exiting exports section at line {lineIndex}, indentation {indentation} < base {baseIndentation}");
+                    break;
+                }
+
+                // Parse key-value pairs
+                KeyValuePair<string, string> kvp;
+                kvp = ParseKeyValuePair(line);
+                _logger.Debug($"Found export key-value pair: {kvp.Key} = {kvp.Value}");
+
+                switch (kvp.Key)
+                {
+                    case "- targets":
+                        // Start a new export entry
+                        currentExport = new ExportEntry();
+                        exports.Add(currentExport);
+
+                        // Parse the export targets
+                        currentExport.Targets = ParseMultiLineArray(lines, ref lineIndex, kvp.Value);
+                        _logger.Debug($"Found new export entry at line {lineIndex} with [{string.Join(", ", currentExport.Targets)}] targets.");
+
+                        break;
+                    case "symbols":
+                        if (currentExport == null)
+                        {
+                            _logger.Warning($"Unexpected symbols entry at line {lineIndex} without a current export entry");
+                            break;
+                        }
+
+                        // Parse symbols list
+                        currentExport.Symbols = ConvertToSymbols(ParseMultiLineArray(lines, ref lineIndex, kvp.Value));
+                        _logger.Debug($"Parsed {currentExport.Symbols.Count} symbols");
+                        break;
+
+                    case "objc-classes":
+                        if (currentExport == null)
+                        {
+                            _logger.Warning($"Unexpected objc-classes entry at line {lineIndex} without a current export entry");
+                            break;
+                        }
+
+                        // Parse objc-classes list
+                        currentExport.ObjcClasses = ParseMultiLineArray(lines, ref lineIndex, kvp.Value);
+                        _logger.Debug($"Parsed {currentExport.ObjcClasses.Count} objc-classes");
+                        break;
+                    case "objc-ivars":
+                        if (currentExport == null)
+                        {
+                            _logger.Warning($"Unexpected objc-ivars entry at line {lineIndex} without a current export entry");
+                            break;
+                        }
+
+                        // Parse objc-ivars list
+                        currentExport.ObjcIvars = ParseMultiLineArray(lines, ref lineIndex, kvp.Value);
+                        _logger.Debug($"Parsed {currentExport.ObjcIvars.Count} objc-ivars");
+                        break;
+                    default:
+                        _logger.Warning($"Unknown export property at line {lineIndex}: {kvp.Key}");
+                        break;
+                }
+            }
+
+            return exports;
+        }
+
+        /// <summary>
         /// Split array items respecting quotes
         /// </summary>
-        private List<string> SplitArrayItems(string content)
+        private static List<string> SplitArrayItems(string content)
         {
             var result = new List<string>();
             bool inQuote = false;
@@ -188,175 +341,42 @@ namespace TbdParser.Parsing
 
                 else if (c == ',' && !inQuote)
                 {
-                    result.Add(content.Substring(start, i - start).Trim());
+                    result.Add(content[start..i].Trim());
                     start = i + 1;
                 }
             }
 
             // Add the last item
             if (start < content.Length)
-                result.Add(content.Substring(start).Trim());
+                result.Add(content[start..].Trim());
 
             return result;
         }
 
+
         /// <summary>
-        /// Parse the exports section which has a nested structure
+        /// Parse key-value pairs in the format "key: value"
         /// </summary>
-        private List<ExportEntry> ParseExports(string[] lines, ref int lineIndex)
+        private static KeyValuePair<string, string> ParseKeyValuePair(string line)
         {
-            var exports = new List<ExportEntry>();
-            ExportEntry? currentExport = null;
-            int baseIndentation = -1;
-            int exportEntryIndentation = -1;
-            bool insideMultilineArray = false;
-            StringBuilder? multilineArrayBuilder = null;
-            string currentArrayType = string.Empty;
-
-            Logger.Debug("Parsing exports section");
-            while (lineIndex < lines.Length)
+            int colonPos = line.IndexOf(':');
+            if (colonPos == -1)
             {
-                string rawLine = lines[lineIndex];
-
-                // Get indentation level before trimming
-                int indentation = GetIndentation(rawLine);
-                string line = rawLine.Trim();
-
-                // If we haven't determined base indentation yet, set it now
-                if (baseIndentation == -1)
-                {
-                    baseIndentation = indentation;
-                    Logger.Debug($"Base indentation set to {baseIndentation}");
-                }
-
-                // If we're back at a lower indentation than the exports level,
-                // we've exited the exports section
-                if (indentation < baseIndentation && currentExport != null && !insideMultilineArray)
-                {
-                    Logger.Debug($"Exiting exports section at line {lineIndex}, indentation {indentation} < base {baseIndentation}");
-                    break;
-                }
-
-                // New export entry starts with "- targets:"
-                if (line.StartsWith("- targets:"))
-                {
-                    exportEntryIndentation = indentation;
-                    currentExport = new ExportEntry();
-                    exports.Add(currentExport);
-
-                    // Parse the targets on this line
-                    string targetsValue = line.Substring("- targets:".Length).Trim();
-                    currentExport.Targets = ParseArray(targetsValue);
-                    Logger.Debug($"Found new export entry at line {lineIndex} with {currentExport.Targets.Count} targets");
-
-                    lineIndex++;
-                    continue;
-                }
-
-                // If we have a current export and we're handling a potential property line
-                if (currentExport != null && !insideMultilineArray)
-                {
-                    // Check for property keys (symbols: or objc-classes:)
-                    if (line.StartsWith("symbols:"))
-                    {
-                        string symbolsValue = line.Substring("symbols:".Length).Trim();
-
-                        if (symbolsValue.StartsWith("[") && !symbolsValue.EndsWith("]"))
-                        {
-                            // Start of multi-line array format
-                            insideMultilineArray = true;
-                            currentArrayType = "symbols";
-                            multilineArrayBuilder = new StringBuilder("[");
-                            multilineArrayBuilder.Append(symbolsValue.Substring(1));
-                            lineIndex++;
-                            continue;
-                        }
-                        else
-                        {
-                            // Single line array format
-                            currentExport.Symbols = ParseArrayOfSymbols(symbolsValue);
-                            Logger.Debug($"Parsed {currentExport.Symbols.Count} inline symbols");
-                        }
-                    }
-                    else if (line.StartsWith("objc-classes:"))
-                    {
-                        string objcClassesValue = line.Substring("objc-classes:".Length).Trim();
-
-                        if (objcClassesValue.StartsWith("[") && !objcClassesValue.EndsWith("]"))
-                        {
-                            // Start of multi-line array format
-                            insideMultilineArray = true;
-                            currentArrayType = "objc-classes";
-                            multilineArrayBuilder = new StringBuilder("[");
-                            multilineArrayBuilder.Append(objcClassesValue.Substring(1));
-                            lineIndex++;
-                            continue;
-                        }
-                        else
-                        {
-                            // Single line array format
-                            currentExport.ObjcClasses = ParseArray(objcClassesValue);
-                            Logger.Debug($"Parsed {currentExport.ObjcClasses.Count} inline objc-classes");
-                        }
-                    }
-                    else
-                    {
-                        Logger.Warning($"Unknown export property at line {lineIndex}: {line}");
-                    }
-                }
-                // Track if we're inside a multi-line array by watching for the ending bracket
-                else if (insideMultilineArray)
-                {
-                    // Append this line to the array builder
-                    multilineArrayBuilder!.Append(" ").Append(line);
-
-                    // Check if we've found the closing bracket
-                    if (line.Contains("]"))
-                    {
-                        // We've reached the end of the multi-line array
-                        insideMultilineArray = false;
-
-                        // Get the complete array value including brackets
-                        string arrayValue = multilineArrayBuilder.ToString();
-
-                        // Determine which export property we're filling based on the array type
-                        if (currentArrayType == "symbols")
-                        {
-                            currentExport!.Symbols = ParseArrayOfSymbols(arrayValue);
-                            Logger.Debug($"Parsed {currentExport.Symbols.Count} symbols from multi-line array");
-                        }
-                        else if (currentArrayType == "objc-classes")
-                        {
-                            currentExport!.ObjcClasses = ParseArray(arrayValue);
-                            Logger.Debug($"Parsed {currentExport.ObjcClasses.Count} objc-classes from multi-line array");
-                        }
-
-                        multilineArrayBuilder = null;
-                        currentArrayType = string.Empty;
-                    }
-
-                    lineIndex++;
-                    continue;
-                }
-                else
-                {
-                    Logger.Warning($"Unexpected export content at line {lineIndex}: {line}");
-                }
-
-                lineIndex++;
+                throw new FormatException($"Invalid key-value pair format: {line}");
             }
 
-            return exports;
+            string key = line[..colonPos].Trim();
+            string value = line[(colonPos + 1)..].Trim();
+            return new KeyValuePair<string, string>(key, value);
         }
 
         /// <summary>
-        /// Parse an array of symbols and categorize them
+        /// Convert a list of strings to a list of Symbol objects
         /// </summary>
-        private List<Symbol> ParseArrayOfSymbols(string value)
+        private static List<Symbol> ConvertToSymbols(List<string> arr)
         {
-            List<string> parsedArray = ParseArray(value);
             var symbols = new List<Symbol>();
-            foreach (var item in parsedArray)
+            foreach (var item in arr)
             {
                 symbols.Add(new Symbol(item));
             }
@@ -364,71 +384,9 @@ namespace TbdParser.Parsing
         }
 
         /// <summary>
-        /// Parse a list of symbols from multi-line format
-        /// </summary>
-        private List<Symbol> ParseSymbolsList(string[] lines, ref int lineIndex, int expectedIndentation)
-        {
-            var items = new List<Symbol>();
-            bool foundAnyItem = false;
-            int actualIndentation = -1;
-
-            while (lineIndex < lines.Length)
-            {
-                string rawLine = lines[lineIndex];
-                int indentation = GetIndentation(rawLine);
-                string line = rawLine.Trim();
-
-                // Skip blank lines and comments
-                if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#'))
-                {
-                    lineIndex++;
-                    continue;
-                }
-
-                // If this is the first item, capture its actual indentation
-                if (!foundAnyItem && line.StartsWith("-"))
-                {
-                    foundAnyItem = true;
-                    actualIndentation = indentation;
-                }
-
-                // If we've found items before and now the indentation is less than the actual
-                // indentation of items, we've exited the list
-                if (foundAnyItem && indentation < actualIndentation)
-                {
-                    break;
-                }
-
-                // Parse symbol (should start with dash)
-                if (line.StartsWith("-"))
-                {
-                    string symbolValue = line.Substring(1).Trim().Trim('\'', '"');
-                    items.Add(new Symbol(symbolValue));
-                    foundAnyItem = true;
-                }
-                else if (foundAnyItem)
-                {
-                    // If we're here, this line might be a continuation of the previous item
-                    // or it could be the start of a new section
-                    Logger.Debug($"Found non-dash line after items at line {lineIndex}, assuming end of list: {line}");
-                    break;
-                }
-                else
-                {
-                    Logger.Warning($"Expected list item at line {lineIndex} but found: {line}");
-                    break;
-                }
-
-                lineIndex++;
-            }
-
-            return items;
-        }
-
-        /// <summary>
         /// Get the indentation level (number of leading spaces)
         /// </summary>
-        private int GetIndentation(string line)
+        private static int GetIndentation(string line)
         {
             if (string.IsNullOrEmpty(line))
                 return 0;

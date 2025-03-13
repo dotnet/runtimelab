@@ -1,12 +1,15 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using TbdParser.Logging;
-using TbdParser.Models;
-using TbdParser.Parsing;
+using TbdParsing.Logging;
+using TbdParsing.Models;
+using TbdParsing.Parsing;
 
-namespace TbdParser
+namespace TbdParsing
 {
     /// <summary>
     /// Parser for Text-Based Dynamic Library (TBD) files
@@ -39,7 +42,8 @@ namespace TbdParser
                 new JsonTbdFormatParser(_logger)
             };
 
-            _logger.Info("TBD Parser initialized with parsers: " + string.Join(", ", _formatParsers.Select(p => p.GetType().Name)));
+            _logger.Debug("TBD Parser initialized with parsers: " + string.Join(", ",
+                _formatParsers.Select(p => p.GetType().Name)));
         }
 
         /// <summary>
