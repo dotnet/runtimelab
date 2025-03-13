@@ -380,7 +380,7 @@
       <NoMonoAotAssemblyPaths Include="$([System.IO.Path]::ChangeExtension('%(NoMonoAotMarkerPaths.Identity)', '.dll'))" Condition="'@(NoMonoAotMarkerPaths)' != ''" />
     </ItemGroup>
     <!-- Remove the cmd/sh scripts for merged test runner app bundles from our list. -->
-    <PropertyGroup Condition="'$(TargetsMobile)' == 'true' or '$(TargetsWasm)' == 'true'">
+    <PropertyGroup Condition="'$(TargetsMobile)' == 'true'">
       <MergedRunnableTestAppBundleScriptPathsPattern>@(MergedAssemblyMarkerPaths->'%(RootDir)%(Directory)AppBundle/**/*.$(TestScriptExtension)')</MergedRunnableTestAppBundleScriptPathsPattern>
     </PropertyGroup>
     <ItemGroup>
