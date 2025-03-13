@@ -121,7 +121,7 @@ public class DemanglingResults
         var demangler = new Swift5Demangler();
 
         // Run demangler for each export and aggregate results
-        var allReductions = tbdFile.Exports.SelectMany(export => export.SwiftSymbols.Select(sym => 
+        var allReductions = tbdFile.Exports.SelectMany(export => export.SwiftSymbols.Select(sym =>
             demangler.Run(sym.Name.StartsWith('_') ? sym.Name[1..] : sym.Name))).ToArray();
         return new DemanglingResults(allReductions);
     }
