@@ -5,6 +5,9 @@ parameters:
   archType: ''
   container: ''
   pool: {}
+  bindings:
+    isBindingsBuild: false
+    scriptArgs: ''
 
 jobs:
 
@@ -56,6 +59,15 @@ jobs:
           ./dotnet.sh new tool-manifest && ./dotnet.sh tool install microsoft.dotnet.xharness.cli --version "9.0.0-prerelease*"
           sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
         displayName: Install dependencies
+
+      - script: ./build.sh
+                -pack
+                -c $(_BuildConfig)
+                /p:TargetPlatform=${{ parameters.archType }}
+        displayName: Build and test
+
+      - script: ./generate.sh --configuration $(_BuildConfig) ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate bindings
 
       - script: |
           ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/Swift.Bindings.Framework.Tests.csproj \

@@ -68,3 +68,6 @@ stages:
         archType: x64
         pool:
           vmImage: 'macOS-latest'
+        bindings:
+          isBindingsBuild: true
+          scriptArgs: '--platform MacOSX --arch x86_64-apple-macos --version 16.0 --framework StoreKit'
