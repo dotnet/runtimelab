@@ -292,6 +292,7 @@ GenTree* Compiler::fgMorphExpandCast(GenTreeCast* tree)
     var_types dstType = tree->CastToType();
     unsigned  dstSize = genTypeSize(dstType);
 
+#if !defined(TARGET_WASM) // LLVM codegen supports all casts directly.
     // See if the cast has to be done in two steps.  R -> I
     if (varTypeIsFloating(srcType) && varTypeIsIntegral(dstType))
     {

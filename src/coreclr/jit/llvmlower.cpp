@@ -12,16 +12,18 @@ void Llvm::AddUnhandledExceptionHandler()
     }
 
     BasicBlock* firstTryBlock = _compiler->fgFirstBB;
-    BasicBlock* lastTryBlock = _compiler->fgLastBB;
 
-    // Make sure the first block is not in a protected region to uphold the invariant that no
-    // two such regions share the first block.
-    if (firstTryBlock->hasTryIndex())
+    if (LIR::AsRange(firstTryBlock).IsEmpty() && !firstTryBlock->hasTryIndex())
     {
-        _compiler->fgEnsureFirstBBisScratch();
-        firstTryBlock = _compiler->fgFirstBBScratch;
+        firstTryBlock = firstTryBlock->Next();
     }
-    _compiler->fgFirstBBScratch = nullptr;
+    else
+    {
+        // Maintain the "init BB" invariant, insert a new block before the first block that is outside the region.
+        _compiler->fgCreateNewInitBB();
+    }
+
+    BasicBlock* lastTryBlock = _compiler->fgLastBB;
 
     // Create a block for the filter and filter handler. The handler part is unreachable, but
     // we need it for the EH table to be well-formed.
@@ -30,7 +32,8 @@ void Llvm::AddUnhandledExceptionHandler()
 
     // Add the new EH region at the end, since it is the least nested, and thus should be last.
     unsigned newEhIndex = _compiler->compHndBBtabCount;
-    EHblkDsc* newEhDsc = _compiler->fgAddEHTableEntry(newEhIndex);
+    EHblkDsc* newEhDsc = _compiler->fgTryAddEHTableEntries(newEhIndex);
+    assert(newEhDsc != nullptr);
 
     // Initialize the new entry.
     newEhDsc->ebdHandlerType = EH_HANDLER_FILTER;
@@ -114,7 +117,6 @@ void Llvm::Lower()
     initializeLlvmArgInfo();
     lowerBlocks();
     lowerDissolveDependentlyPromotedLocals();
-    lowerCanonicalizeFirstBlock();
 }
 
 void Llvm::initializeFunclets()
@@ -201,9 +203,9 @@ void Llvm::initializeLlvmArgInfo()
 
     if (m_info->compRetBuffArg != BAD_VAR_NUM)
     {
-        // The return buffer is always pinned in our calling convetion, so that we can pass it as an LLVM argument.
+        // The return buffer is always pinned in our calling convention, so that we can pass it as an LLVM argument.
         LclVarDsc* retBufVarDsc = _compiler->lvaGetDesc(m_info->compRetBuffArg);
-        assert(retBufVarDsc->TypeGet() == TYP_BYREF);
+        assert(retBufVarDsc->TypeGet() == TYP_BYREF || retBufVarDsc->TypeGet() == TYP_I_IMPL);
         retBufVarDsc->lvType = TYP_I_IMPL;
         retBufVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
     }
@@ -1325,17 +1327,6 @@ void Llvm::dissolvePromotedLocal(unsigned lclNum)
     varDsc->lvFieldCnt = 0;
 }
 
-void Llvm::lowerCanonicalizeFirstBlock()
-{
-    // Insert a block suitable for prolog code here so that subsequent phases don't have to alter the flowgraph.
-    if (!isFirstBlockCanonical())
-    {
-        JITDUMP("\nCanonicalizing the first block for later prolog insertion\n");
-        assert(!_compiler->fgFirstBBisScratch());
-        _compiler->fgEnsureFirstBBisScratch();
-    }
-}
-
 bool Llvm::isFirstBlockCanonical()
 {
     // Note this must use conditions at least as broad as "SsaBuilder::SetupBBRoot".
@@ -1991,13 +1982,14 @@ void Llvm::computeBlocksInFilters()
         {
             for (BasicBlock* block : _compiler->Blocks(ehDsc->ebdFilter, ehDsc->BBFilterLast()))
             {
-                if (m_blocksInFilters == BlockSetOps::UninitVal())
+                unsigned bbNumMax = _compiler->fgBBNumMax;
+                BitVecTraits bitVecTraits(_compiler->fgBBNumMax + 1, _compiler);
+                if (m_blocksInFilters == BitVecOps::UninitVal())
                 {
-                    _compiler->EnsureBasicBlockEpoch();
-                    m_blocksInFilters = BlockSetOps::MakeEmpty(_compiler);
+                    m_blocksInFilters = BitVecOps::MakeEmpty(&bitVecTraits);
                 }
 
-                BlockSetOps::AddElemD(_compiler, m_blocksInFilters, block->bbNum);
+                BitVecOps::AddElemD(&bitVecTraits, m_blocksInFilters, block->bbNum);
             }
         }
     }
@@ -2217,7 +2209,7 @@ bool Llvm::mayVirtuallyUnwind(GenTree* node)
 //
 bool Llvm::isBlockInFilter(BasicBlock* block) const
 {
-    if (m_blocksInFilters == BlockSetOps::UninitVal())
+    if (m_blocksInFilters == BitVecOps::UninitVal())
     {
         assert(!m_anyFilterFunclets);
         assert(!block->hasHndIndex() || !_compiler->ehGetBlockHndDsc(block)->InFilterRegionBBRange(block));
@@ -2226,7 +2218,8 @@ bool Llvm::isBlockInFilter(BasicBlock* block) const
 
     // Ideally, this would be a flag (BBF_*), but we make do with a bitset for now to avoid modifying the frontend.
     assert(m_anyFilterFunclets);
-    return BlockSetOps::IsMember(_compiler, m_blocksInFilters, block->bbNum);
+    BitVecTraits bitVecTraits(_compiler->fgBBNumMax + 1, _compiler);
+    return BitVecOps::IsMember(&bitVecTraits, m_blocksInFilters, block->bbNum);
 }
 
 #ifdef DEBUG

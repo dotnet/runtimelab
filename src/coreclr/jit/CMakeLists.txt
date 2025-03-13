@@ -17,7 +17,7 @@ endif()
 
 function(create_standalone_jit)
 
-  set(oneValueArgs TARGET OS ARCH)
+  set(oneValueArgs TARGET OS ARCH CMAKE_CXX_STANDARD)
   cmake_parse_arguments(TARGETDETAILS "" "${oneValueArgs}" "" ${ARGN})
 
   if(TARGETDETAILS_OS STREQUAL "unix_osx" OR TARGETDETAILS_OS STREQUAL "unix_anyos")

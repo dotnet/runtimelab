@@ -24,6 +24,12 @@
     <ProjectReference Include="installer.tasks\installer.tasks.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetsMobile)' != 'true' and '$(TargetsWasm)' == 'true'">
+    <ProjectReference Include="WasmAppBuilder\WasmAppBuilder.csproj" />
+    <ProjectReference Include="WasmBuildTasks\WasmBuildTasks.csproj" />
+    <ProjectReference Include="MonoTargetsTasks\MonoTargetsTasks.csproj" />
+  </ItemGroup>
+
   <!--
     Use synthetic inputs/outputs to avoid building it all the time. This should let devs build with
     MSBuild node reuse enabled (the Arcade default). If it were built every time, it would hit file

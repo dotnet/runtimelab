@@ -285,9 +285,4 @@ struct NATIVE_CONTEXT
 #endif // TARGET_ARM
 };
 
-<<<<<<< HEAD:src/coreclr/nativeaot/Runtime/unix/UnixContext.h
-#endif // HOST_WASM
-#endif // __UNIX_CONTEXT_H__
-=======
 #endif // __NATIVE_CONTEXT_H__
->>>>>>> runtime/main:src/coreclr/nativeaot/Runtime/unix/NativeContext.h

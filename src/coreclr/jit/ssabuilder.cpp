@@ -132,31 +132,6 @@ SsaBuilder::SsaBuilder(Compiler* pCompiler)
  */
 static Statement* GetPhiNode(BasicBlock* block, unsigned lclNum)
 {
-#if defined(TARGET_WASM)
-    if (block->IsLIR())
-    {
-        for (GenTree* tree : LIR::AsRange(block))
-        {
-            if (!tree->IsPhiNode())
-            {
-                break;
-            }
-
-            // skip the phi node to get to the GT_STORE_LCL_VAR
-            if (tree->OperIs(GT_PHI_ARG, GT_PHI))
-            {
-                continue;
-            }
-
-            assert(tree->OperIs(GT_STORE_LCL_VAR));
-            if (tree->AsLclVarCommon()->GetLclNum() == lclNum)
-            {
-                return tree->AsOp()->gtOp1;
-            }
-        }
-        return nullptr;
-    }
-#endif
     // Walk the statements for phi nodes.
     for (Statement* const stmt : block->Statements())
     {
@@ -176,6 +151,43 @@ static Statement* GetPhiNode(BasicBlock* block, unsigned lclNum)
 
     return nullptr;
 }
+
+#if TARGET_WASM
+/**
+ * As GetPhiNode but uses Gentree rather than Statement.
+ *
+ * @param block The block for which the existence of a phi node needs to be checked.
+ * @param lclNum The lclNum for which the occurrence of a phi node needs to be checked.
+ *
+ * @return If there is a phi node for the lclNum, returns the GT_PHI tree, else NULL.
+ */
+static GenTree* GetPhiNodeForRationalIRForm(BasicBlock* block, unsigned lclNum)
+{
+    assert(block->IsLIR());
+
+    for (GenTree* tree : LIR::AsRange(block))
+    {
+        if (!tree->IsPhiNode())
+        {
+            break;
+        }
+
+        // skip the phi node to get to the GT_STORE_LCL_VAR
+        if (tree->OperIs(GT_PHI_ARG, GT_PHI))
+        {
+            continue;
+        }
+
+        assert(tree->OperIs(GT_STORE_LCL_VAR));
+        if (tree->AsLclVarCommon()->GetLclNum() == lclNum)
+        {
+            return tree->AsOp()->gtOp1;
+        }
+    }
+    
+    return nullptr;
+}
+#endif // TARGET_WASM
 
 //------------------------------------------------------------------------
 // InsertPhi: Insert a new GT_PHI statement.
@@ -433,7 +445,7 @@ void SsaBuilder::InsertPhiFunctions()
                     // j. So insert a phi node at l.
 #if defined(TARGET_WASM)
                     bbInDomFront->IsLIR() ? InsertPhiToRationalIRForm(bbInDomFront, lclNum)
-                                          : InsertPhi(m_pCompiler, bbInDomFront, lclNum);
+                                          : (void)InsertPhi(m_pCompiler, bbInDomFront, lclNum);
 #else
                     InsertPhi(m_pCompiler, bbInDomFront, lclNum);
 #endif

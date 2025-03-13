@@ -29,7 +29,7 @@ PalCreateCrashDumpIfEnabled()
 }
 
 void
-PalCreateCrashDumpIfEnabled(void* pExceptionRecord, void* pExContext)
+PalCreateCrashDumpIfEnabled(void* pExceptionRecord)
 {
 }
 

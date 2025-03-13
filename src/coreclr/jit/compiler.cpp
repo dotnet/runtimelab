@@ -4097,17 +4097,13 @@ _SetMinOpts:
         {
             codeGen->SetAlignLoops(JitConfig.JitAlignLoops() == 1);
         }
-<<<<<<< HEAD
-    }
-#endif // !TARGET_WASM
-=======
->>>>>>> runtime/main
 
 #ifdef DEBUG
         const char* tieringName = compGetTieringName(true);
         JitMetadata::report(this, JitMetadata::TieringName, tieringName, strlen(tieringName));
 #endif
     }
+#endif // !TARGET_WASM
 }
 
 #if defined(TARGET_ARMARCH) || defined(TARGET_RISCV64)
@@ -5250,7 +5246,7 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
 
     if (opts.OptimizationEnabled())
     {
-        DoPhase(this, PHASE_DFS_BLOCKS, &Compiler::fgDfsBlocksAndRemove);
+        DoPhase(this, PHASE_DFS_BLOCKS3, &Compiler::fgDfsBlocksAndRemove);
         DoPhase(this, PHASE_COMPUTE_DOMINATORS, &Compiler::fgComputeDominators);
 
         DoPhase(this, PHASE_BUILD_SSA, [this]() {

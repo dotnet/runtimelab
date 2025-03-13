@@ -172,7 +172,6 @@ FCIMPL3(void, RhpCopyContextFromExInfo, void * pOSContext, int32_t cbOSContext, 
 }
 FCIMPLEND
 
-#ifndef USE_PORTABLE_HELPERS
 EXTERN_C void QCALLTYPE RhpFailFastForPInvokeExceptionPreemp(intptr_t PInvokeCallsiteReturnAddr,
                                                              void* pExceptionRecord, void* pContextRecord);
 FCDECL3(void, RhpFailFastForPInvokeExceptionCoop, intptr_t PInvokeCallsiteReturnAddr,
@@ -181,7 +180,6 @@ FCDECL3(void, RhpFailFastForPInvokeExceptionCoop, intptr_t PInvokeCallsiteReturn
 LONG WINAPI RhpVectoredExceptionHandler(PEXCEPTION_POINTERS pExPtrs);
 
 #endif // TARGET_WINDOWS
->>>>>>> runtime/main
 
 FCDECL2(void, RhpThrowHwEx, int exceptionCode, TADDR faultingIP);
 

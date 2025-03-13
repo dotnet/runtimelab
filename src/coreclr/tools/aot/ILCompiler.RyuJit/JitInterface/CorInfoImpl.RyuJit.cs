@@ -762,9 +762,6 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_GETCLASSFROMMETHODPARAM:
                     return _compilation.NodeFactory.MethodEntrypoint(_compilation.NodeFactory.TypeSystemContext.GetHelperEntryPoint("SynchronizedMethodHelpers", "GetClassFromMethodParam"));
 
-                case CorInfoHelpFunc.CORINFO_HELP_STRESS_GC:
-                    mangledName = "RhpGcStressOnce";
-                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_CHECK_OBJ:
                     mangledName = "RhpCheckObj";
                     break;
@@ -812,6 +809,9 @@ namespace Internal.JitInterface
                     break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION:
                     mangledName = "RhpHandleUnhandledException";
+                    break;
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_STRESS_GC:
+                    mangledName = "RhpStressGc";
                     break;
 
                 default:

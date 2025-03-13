@@ -5,8 +5,8 @@ project(PortableRuntime)
 
 add_definitions(-DUSE_PORTABLE_HELPERS)
 
+add_subdirectory(${CLR_SRC_NATIVE_DIR}/minipal minipal)
 add_library(PortableRuntime STATIC ${COMMON_RUNTIME_SOURCES} ${PORTABLE_RUNTIME_SOURCES})
-target_link_libraries(PortableRuntime PRIVATE aotminipal)
 
 add_library(standalonegc-disabled STATIC ${STANDALONEGC_DISABLED_SOURCES})
 
@@ -40,4 +40,5 @@ add_custom_command(
 )
 
 install_static_library(PortableRuntime aotsdk nativeaot)
+install_static_library(standalonegc-disabled aotsdk nativeaot)
 install_static_library(aotminipal aotsdk nativeaot)

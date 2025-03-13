@@ -2,7 +2,7 @@
   <Import Sdk="Microsoft.Build.Traversal" Project="Sdk.props" />
 
   <ItemGroup>
-    <Project Include="Microsoft.DotNet.ILCompiler\Microsoft.DotNet.ILCompiler.LLVM.pkgproj" />
+    <Project Include="Microsoft.DotNet.ILCompiler.LLVM\Microsoft.DotNet.ILCompiler.LLVM.pkgproj" />
     <ProjectReference Include="@(Project)" />
     <ProjectReference Include="@(Project)" AdditionalProperties="PackageTargetRuntime=$(OutputRID)" />
     <ProjectReference Condition="'$(BuildHostTools)' == 'true'" Include="@(Project)" AdditionalProperties="PackageTargetRuntime=$(NETCoreSdkRuntimeIdentifier);PackHostILCompiler=true" />

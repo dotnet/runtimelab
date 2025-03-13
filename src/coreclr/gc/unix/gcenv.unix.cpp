@@ -35,6 +35,10 @@
 #define membarrier(...) syscall(__NR_membarrier, __VA_ARGS__)
 #elif HAVE_SYS_MEMBARRIER_H
 #include <sys/membarrier.h>
+// Emscriptenn's membarrier.h does not have a membarrier function.
+#ifdef TARGET_WASM
+# define membarrier(...)  -ENOSYS
+#endif // TARGET_WASM
 #endif
 
 #include <sys/resource.h>

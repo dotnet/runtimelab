@@ -572,6 +572,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <NativeLibrary Include="$(IlcSdkPath)libbootstrapperdll.o" Condition="'$(IlcIsLibLikeApp)' == 'true'" />
       <NativeLibrary Include="$(IlcSdkPath)libPortableRuntime.a" />
       <NativeLibrary Include="$(IlcSdkPath)libstandalonegc-disabled$(LibFileExt)" />
+      <NativeLibrary Include="$(IlcSdkPath)libaotminipal.a" />
       <NativeLibrary Include="$(IlcSdkPath)libCppExceptionHandling.a" Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" />
       <NativeLibrary Include="$(IlcSdkPath)libWasmExceptionHandling.a" Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'" />
       <NativeLibrary Include="$(IlcSdkPath)libEmulatedExceptionHandling.a" Condition="'$(IlcLlvmExceptionHandlingModel)' == 'emulated'" />

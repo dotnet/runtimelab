@@ -29,7 +29,7 @@ if(CORECLR_SET_RPATH)
     set(MACOSX_RPATH ON)
 endif(CORECLR_SET_RPATH)
 
-if(CLR_CMAKE_HOST_MACCATALYST OR CLR_CMAKE_HOST_IOS OR CLR_CMAKE_HOST_TVOS)
+if(CLR_CMAKE_HOST_MACCATALYST OR CLR_CMAKE_HOST_IOS OR CLR_CMAKE_HOST_TVOS OR CLR_CMAKE_TARGET_ARCH_WASM)
   set(FEATURE_STANDALONE_GC 0)
 endif()
 
@@ -178,7 +178,9 @@ endif(CLR_CMAKE_HOST_WIN32)
 #----------------------------------
 include(clrdefinitions.cmake)
 
-add_subdirectory(gc)
+if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
+  add_subdirectory(gc)
+endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
 if (CLR_CMAKE_HOST_UNIX)
   include_directories("pal/inc")

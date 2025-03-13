@@ -157,7 +157,7 @@ namespace Internal.JitInterface
             IMethodNode methodNode = _this._methodCodeNode;
             RyuJitCompilation compilation = _this._compilation;
 
-            string alternativeName = compilation.NodeFactory.GetSymbolAlternateName(methodNode);
+            string alternativeName = compilation.NodeFactory.GetSymbolAlternateName(methodNode, out _);
             return (alternativeName != null) ? (byte*)_this.GetPin(StringToUTF8(alternativeName)) : null;
         }
 

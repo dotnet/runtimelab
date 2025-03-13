@@ -516,7 +516,7 @@
 
     <Copy SourceFiles="$(NativeBinDir)dotnet.native.js;
                        $(NativeBinDir)package.json;
-                       $(NativeBinDir)dotnet.native.wasm;"
+                       $(NativeBinDir)dotnet.native.wasm"
           Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
           DestinationFolder="$(MicrosoftNetCoreAppRuntimePackNativeDir)"
           SkipUnchangedFiles="true" />

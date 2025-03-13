@@ -845,11 +845,11 @@ CONFIG_INTEGER(JitDispIns, "JitDispIns", 0)
 #endif // defined(TARGET_LOONGARCH64)
 
 #ifdef TARGET_WASM
-RELEASE_CONFIG_INTEGER(JitCheckLlvmIR, W("JitCheckLlvmIR"), 0)
-RELEASE_CONFIG_INTEGER(JitRunLssaTests, W("JitRunLssaTests"), 0)
-RELEASE_CONFIG_INTEGER(JitGcStress, W("JitGcStress"), 0)
+RELEASE_CONFIG_INTEGER(JitCheckLlvmIR, "JitCheckLlvmIR", 0)
+RELEASE_CONFIG_INTEGER(JitRunLssaTests, "JitRunLssaTests", 0)
+RELEASE_CONFIG_INTEGER(JitGcStress, "JitGcStress", 0)
 
-CONFIG_STRING(JitEnableLssaRange, W("JitEnableLssaRange"))
+CONFIG_STRING(JitEnableLssaRange, "JitEnableLssaRange")
 #endif // TARGET_WASM
 
 // Allow to enregister locals with struct type.

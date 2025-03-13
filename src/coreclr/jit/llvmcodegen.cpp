@@ -2580,7 +2580,7 @@ llvm::CallBase* Llvm::emitGcStressCall(GenTreeCall* call, llvm::CallBase* callVa
     Value* flagValue =
         new llvm::GlobalVariable(m_context->Module, llvmType, false, linkage, initValue, "RhpGcStressOnceFlag");
 
-    llvm::CallBase* helperCallValue = emitHelperCall(CORINFO_HELP_STRESS_GC, {objValue, flagValue});
+    llvm::CallBase* helperCallValue = emitHelperCall(CORINFO_HELP_LLVM_STRESS_GC, {objValue, flagValue});
     if (objValue == callValue)
     {
         callValue = helperCallValue;
