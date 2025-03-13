@@ -107,7 +107,7 @@ function InvokeProjectionTooling {
 
     # Patch library name in generated C# code for async methods
     local frameworkPath="/System/Library/Frameworks/${framework}.framework/${framework}"
-    sed -i '' "/_async/ s|${frameworkPath}|SwiftBindings|g" "./Swift.$framework.cs"
+    sed -i '' "/_async/ s|${frameworkPath}|__Internal|g" "./Swift.$framework.cs"
 
     echo ""
     echo "C# source code for Swift.$framework.cs:"
@@ -135,20 +135,20 @@ function CreateFramework {
 
     # x86_64
     echo "Building ${framework} for ${platform} x86_64..."
-    swiftc -emit-library -target x86_64-apple-$(echo "$platform" | tr '[:upper:]' '[:lower:]')${version} -module-name ${framework} -o ${framework}-${platform}-x64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/Library/Frameworks/
+    swiftc -emit-library -static -target x86_64-apple-$(echo "$platform" | tr '[:upper:]' '[:lower:]')${version} -module-name ${framework} -o ${framework}-${platform}-x64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/Library/Frameworks/
 
     # arm64
     echo "Building ${framework} for ${platform} arm64..."
-    swiftc -emit-library -target arm64-apple-$(echo "$platform" | tr '[:upper:]' '[:lower:]')${version} -module-name ${framework} -o ${framework}-${platform}-arm64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/Library/Frameworks/
+    swiftc -emit-library -static -target arm64-apple-$(echo "$platform" | tr '[:upper:]' '[:lower:]')${version} -module-name ${framework} -o ${framework}-${platform}-arm64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/Library/Frameworks/
 
     if [[ $platform == "MacOSX" ]]; then
         # MacCatalyst x86_64
         echo "Building ${framework} for MacCatalyst x86_64..."
-        swiftc -emit-library -target x86_64-apple-ios18.1-macabi -module-name ${framework} -o ${framework}-maccatalyst-x64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/iOSSupport/System/Library/Frameworks
+        swiftc -emit-library -static -target x86_64-apple-ios18.1-macabi -module-name ${framework} -o ${framework}-maccatalyst-x64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/iOSSupport/System/Library/Frameworks
 
         # MacCatalyst arm64
         echo "Building ${framework} for MacCatalyst arm64..."
-        swiftc -emit-library -target arm64-apple-ios18.1-macabi -module-name ${framework} -o ${framework}-maccatalyst-arm64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/iOSSupport/System/Library/Frameworks
+        swiftc -emit-library -static -target arm64-apple-ios18.1-macabi -module-name ${framework} -o ${framework}-maccatalyst-arm64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/iOSSupport/System/Library/Frameworks
     fi
 
     # Function to create a Swift framework
@@ -194,7 +194,7 @@ EOF
     create_framework "$platform-x64"
     create_framework "$platform-arm64"
     args_x64=(-framework "$platform-x64/${framework}.framework")
-    args_arm64=(-framework "$platform-x64/${framework}.framework")
+    args_arm64=(-framework "$platform-arm64/${framework}.framework")
     if [[ $platform == "MacOSX" ]]; then
         create_framework "maccatalyst-x64"
         create_framework "maccatalyst-arm64"
@@ -228,7 +228,7 @@ function CreateProject {
         <PackagePath>runtimes/osx-arm64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
-    <Content Include="./SwiftBindings_x64.xcframework/macos-64/**">
+    <Content Include="./SwiftBindings_x64.xcframework/macos-x86_64/**">
         <PackagePath>runtimes/osx-x64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
@@ -236,7 +236,7 @@ function CreateProject {
         <PackagePath>runtimes/maccatalyst-arm64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
-    <Content Include="./SwiftBindings_x64.xcframework/ios-x64-maccatalyst/**">
+    <Content Include="./SwiftBindings_x64.xcframework/ios-x86_64-maccatalyst/**">
         <PackagePath>runtimes/maccatalyst-x64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
