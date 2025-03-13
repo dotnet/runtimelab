@@ -327,7 +327,7 @@ namespace BindingsGeneration
             }
             catch (Exception e)
             {
-                // TODO: We currently do not support retrievim cross-module protocol conformance descriptors.
+                // TODO: We currently do not support retrieving cross-module protocol conformance descriptors.
                 if (_verbose > 0)
                     Console.WriteLine($"Error while getting protocol conformance descriptor for '{typeName}' and protocol '{protocolName}': {e.Message}");
             }
