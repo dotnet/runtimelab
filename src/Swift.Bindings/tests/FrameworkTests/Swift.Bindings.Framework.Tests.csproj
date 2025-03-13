@@ -9,6 +9,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
     <IsTestProject>false</IsTestProject>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
 		<!-- Display name -->
 		<ApplicationTitle>SwiftBindings</ApplicationTitle>
@@ -62,5 +63,7 @@
 		<PackageReference Include="DeviceRunners.XHarness.Xunit" Version="0.1.0-preview.2" />
 		<PackageReference Include="DeviceRunners.UITesting.Maui" Version="0.1.0-preview.2" />
 		<PackageReference Include="DeviceRunners.UITesting.Xunit" Version="0.1.0-preview.2" />
+    <!-- Swift.Bindings.Experimental package -->
+    <PackageReference Include="Swift.Bindings.Experimental" Version="1.0.0-ci" />
 	</ItemGroup>
 </Project>
