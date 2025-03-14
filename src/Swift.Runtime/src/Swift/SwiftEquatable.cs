@@ -10,7 +10,23 @@ namespace Swift.Runtime
 {
     public interface ISwiftEquatable
     {
-        // This interface is intentionally left empty. It serves as a marker for types that implement Swift's Equatable protocol.
+        /// <summary>
+        /// Compares the current instance with another object of the same type.
+        /// </summary>
+        /// <param name="other">The other object to compare with.</param>
+        /// <returns>True if the objects are equal; otherwise, false.</returns>
+        bool Equals(object other)
+        {
+            if (other == null)
+                return false;
+
+            if (other is ISwiftEquatable otherSwift)
+            {
+                return SwiftEquatable.Equals(this, otherSwift);
+            }
+
+            return false;
+        }
     }
 
     /// <summary>
@@ -31,7 +47,7 @@ namespace Swift.Runtime
         /// <summary>
         /// Compares two objects using Swift's Equatable protocol.
         /// </summary>
-        /// <typeparam name="T">Type that implements IEquatable&lt;T&gt;</typeparam>
+        /// <typeparam name="T">Type that implements ISwiftEquatable</typeparam>
         /// <param name="lhs">Left-hand side object</param>
         /// <param name="rhs">Right-hand side object</param>
         /// <returns>True if the objects are equal according to Swift's equality</returns>
