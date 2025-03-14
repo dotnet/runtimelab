@@ -10,23 +10,7 @@ namespace Swift.Runtime
 {
     public interface ISwiftEquatable
     {
-        /// <summary>
-        /// Compares the current instance with another object of the same type.
-        /// </summary>
-        /// <param name="other">The other object to compare with.</param>
-        /// <returns>True if the objects are equal; otherwise, false.</returns>
-        bool Equals(object other)
-        {
-            if (other == null)
-                return false;
 
-            if (other is ISwiftEquatable otherSwift)
-            {
-                return SwiftEquatable.Equals(this, otherSwift);
-            }
-
-            return false;
-        }
     }
 
     /// <summary>
