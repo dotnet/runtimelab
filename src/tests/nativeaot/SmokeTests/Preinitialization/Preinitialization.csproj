@@ -3,7 +3,8 @@
     <OutputType>Exe</OutputType>
     <CLRTestPriority>0</CLRTestPriority>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <CLRTestTargetUnsupported Condition="'$(IlcMultiModule)' == 'true'">true</CLRTestTargetUnsupported>
+    <!-- TODO-LLVM: Fails on Wasm: Assert.AreEqual(unchecked((byte)GetFloat()), FloatConversions.s_byte); -->
+    <CLRTestTargetUnsupported Condition="'$(IlcMultiModule)' == 'true' or '$(TargetsWasm)' == 'true'">true</CLRTestTargetUnsupported>
 
     <!--
       We rely on reflection metadata for .cctor to detect if a type was preinitialized

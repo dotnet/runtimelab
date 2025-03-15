@@ -524,5 +524,10 @@ namespace Internal.Reflection.Augments
                 RuntimeAugments.EnsureClassConstructorRun(pStaticClassConstructionContext);
             }
         }
+
+        public static IntPtr ConvertStackTraceIpToFunctionPointer(IntPtr methodStartAddress)
+        {
+            return ReflectionCoreExecution.ExecutionEnvironment.ConvertStackTraceIpToFunctionPointer(methodStartAddress);
+        }
     }
 }
