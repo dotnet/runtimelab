@@ -14385,6 +14385,51 @@ static Signature BuildResumptionStubCalliSignature(MetaSig& msig, MethodTable* m
     return AllocateSignature(alloc, sigBuilder);
 }
 
+// Resumption stub cannot box the result if CanonicalSubtypes are involved.
+// Fortunately the only purpose of this kind of boxing is to temporarily store obj-containing structs in a continuation.
+// These structs will always be extracted when the continuation is resumed and the box instance itself is never passed
+// around. Thus we do not really care about correct underlying type of the box, as anything with the same GC shape is
+// sufficient as a storage type.
+// So here we "normalize" the type by recursively replacing CanonicalSubtype references with System.Object
+static TypeHandle normalizeForBoxing(TypeHandle th)
+{
+    CorElementType ty = th.GetSignatureCorElementType();
+    if (CorTypeInfo::IsObjRef(ty))
+    {
+        // Normalize CanonicalSubtype (and especially System.__Canon) to be System.Object
+        return th.IsCanonicalSubtype() ? g_pObjectClass : th;
+    }
+    else if (CorTypeInfo::IsPrimitiveType(ty) || !th.HasInstantiation())
+    {
+        // cannot contain __Canon
+        return th;
+    }
+    else
+    {
+        // here we have a generic struct, dig through it and see if there is anything to normalize.
+        Instantiation inst = Instantiation(th.GetInstantiation());
+        DWORD numTypeArgs = inst.GetNumArgs();
+        TypeHandle* normalizedTypeArgs = (TypeHandle*)alloca(numTypeArgs * sizeof(TypeHandle));
+        bool normalizedAny = false;
+        for (DWORD i = 0; i < numTypeArgs; ++i)
+        {
+            TypeHandle original = inst[i];
+            TypeHandle normalized = normalizeForBoxing(original);
+            if (normalized != original)
+                normalizedAny = true;
+
+            normalizedTypeArgs[i] = normalized;
+        }
+
+        if (!normalizedAny)
+            return th;
+
+        Instantiation newInst = Instantiation(normalizedTypeArgs, numTypeArgs);
+        TypeHandle result = TypeHandle(th.GetCanonicalMethodTable()).Instantiate(newInst);
+        return result;
+    }
+}
+
 CORINFO_METHOD_HANDLE CEEJitInfo::getAsyncResumptionStub()
 {
     CONTRACTL{
@@ -14526,11 +14571,20 @@ CORINFO_METHOD_HANDLE CEEJitInfo::getAsyncResumptionStub()
             // Now we have the GC array. At the first index is the result.
             pCode->EmitLDC(0);
 
-            // Box the result.
+            // load the result
             pCode->EmitLDLOC(resultLoc);
-            pCode->EmitBOX(pCode->GetToken(resultTypeHnd));
 
-            // Finally store it.
+            if (resultTypeHnd.IsValueType())
+            {
+                // box the result
+                TypeHandle boxTypeHnd = normalizeForBoxing(resultTypeHnd);
+                _ASSERTE(!boxTypeHnd.IsCanonicalSubtype());
+                MethodDesc* md = CoreLibBinder::GetMethod(METHOD__RUNTIME_HELPERS__BOX_CONTINUATION_RESULT_1);
+                md = MethodDesc::FindOrCreateAssociatedMethodDesc(md, md->GetMethodTable(), FALSE, Instantiation(&boxTypeHnd, 1), FALSE);
+                pCode->EmitCALL(pCode->GetToken(md), 1, 1);
+            }
+
+            // Store the result.
             pCode->EmitSTELEM_REF();
         }
         else

@@ -6,6 +6,17 @@ using System.Threading.Tasks;
 using Xunit;
 public class Async2SharedGeneric
 {
+    public struct S0
+    {
+        public object _o;
+        public S0(object o) => _o = o;
+    }
+
+    public struct S1<T>
+    {
+        public T t;
+    }
+
     [Fact]
     public static void TestEntryPoint()
     {
@@ -13,9 +24,20 @@ public class Async2SharedGeneric
         Async1EntryPoint<string>(typeof(string), "abc").Wait();
         Async1EntryPoint<object>(typeof(object), "def").Wait();
 
+        Async1EntryPoint<S0>(typeof(S0), new S0(42)).Wait();
+        // TODO: this seems to be hitting some issue with live capture/restore - local nullable becomes null after yield
+        // Async1EntryPoint<S0?>(typeof(S0?), new S0(42)).Wait();
+
+        Async1EntryPoint<S1<string>>(typeof(S1<string>), new S1<string> { t = "ghj" }).Wait();
+
         Async2EntryPoint<int>(typeof(int), 142).Wait();
         Async2EntryPoint<string>(typeof(string), "ghi").Wait();
         Async2EntryPoint<object>(typeof(object), "jkl").Wait();
+
+        Async2EntryPoint<S0>(typeof(S0), new S0(4242)).Wait();
+        Async2EntryPoint<S0?>(typeof(S0?), new S0(424242)).Wait();
+
+        Async2EntryPoint<S1<string>>(typeof(S1<string>), new S1<string> { t = "kl" }).Wait();
     }
 
     private static async Task Async1EntryPoint<T>(Type t, T value)
@@ -25,6 +47,7 @@ public class Async2SharedGeneric
         await GenericClass<T>.StaticMethod<T>(t, t);
         await GenericClass<T>.StaticMethodAsync1(t);
         await GenericClass<T>.StaticMethodAsync1<T>(t, t);
+        Assert.Equal(value, value); // make sure we can compare value
         Assert.Equal(value, await GenericClass<T>.StaticReturnClassType(value));
         Assert.Equal(value, await GenericClass<T>.StaticReturnMethodType<T>(value));
         Assert.Equal(value, await GenericClass<T>.StaticReturnClassTypeAsync1(value));
@@ -38,6 +61,7 @@ public class Async2SharedGeneric
         await GenericClass<T>.StaticMethod<T>(t, t);
         await GenericClass<T>.StaticMethodAsync1(t);
         await GenericClass<T>.StaticMethodAsync1<T>(t, t);
+        Assert.Equal(value, value); // make sure we can compare value
         Assert.Equal(value, await GenericClass<T>.StaticReturnClassType(value));
         Assert.Equal(value, await GenericClass<T>.StaticReturnMethodType<T>(value));
         Assert.Equal(value, await GenericClass<T>.StaticReturnClassTypeAsync1(value));

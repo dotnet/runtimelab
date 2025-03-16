@@ -623,6 +623,21 @@ namespace System.Runtime.CompilerServices
             return newContinuation;
         }
 
+        // We are using our own ContinuationBox instead of regular boxing
+        // because we want structs to be stored without changing layout, including nullables.
+        private sealed class ContinuationBox<T>
+        {
+            // _value is never accessed directly after construction of the box.
+            // Both managed and native code fetch the stored data via raw data offset.
+            private readonly T _value;
+
+            internal ContinuationBox(T value) => _value = value;
+        }
+
+#pragma warning disable CA1859 // Use concrete types when possible for improved performance
+        private static object BoxContinuationResult<T>(T value) => new ContinuationBox<T>(value);
+#pragma warning restore CA1859
+
         private struct RuntimeAsyncAwaitState
         {
             public Continuation? SentinelContinuation;
@@ -710,7 +725,12 @@ namespace System.Runtime.CompilerServices
                     Debug.Assert(finalResult == finalContinuation);
                     if (IsReferenceOrContainsReferences<T>())
                     {
-                        return (T?)finalResult.GCData![0];
+                        if (typeof(T).IsValueType)
+                        {
+                            return Unsafe.As<byte, T>(ref finalResult.GCData![0]!.GetRawData());
+                        }
+
+                        return Unsafe.As<object, T>(ref finalResult.GCData![0]!);
                     }
                     else
                     {
@@ -771,7 +791,12 @@ namespace System.Runtime.CompilerServices
                     Debug.Assert(finalResult == finalContinuation);
                     if (IsReferenceOrContainsReferences<T>())
                     {
-                        return (T?)finalResult.GCData![0];
+                        if (typeof(T).IsValueType)
+                        {
+                            return Unsafe.As<byte, T>(ref finalResult.GCData![0]!.GetRawData());
+                        }
+
+                        return Unsafe.As<object, T>(ref finalResult.GCData![0]!);
                     }
                     else
                     {
