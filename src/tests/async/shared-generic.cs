@@ -20,24 +20,37 @@ public class Async2SharedGeneric
     [Fact]
     public static void TestEntryPoint()
     {
+        // simple cases
         Async1EntryPoint<int>(typeof(int), 42).Wait();
         Async1EntryPoint<string>(typeof(string), "abc").Wait();
         Async1EntryPoint<object>(typeof(object), "def").Wait();
 
+        // struct with an obj and its nullable
         Async1EntryPoint<S0>(typeof(S0), new S0(42)).Wait();
-        // TODO: this seems to be hitting some issue with live capture/restore - local nullable becomes null after yield
+        // TODO: uncomment to repro https://github.com/dotnet/runtimelab/issues/3043
         // Async1EntryPoint<S0?>(typeof(S0?), new S0(42)).Wait();
+        Async1EntryPoint<S0?>(typeof(S0?), null).Wait();
 
+        // generic struct with an obj and its nullable
         Async1EntryPoint<S1<string>>(typeof(S1<string>), new S1<string> { t = "ghj" }).Wait();
+        // TODO: uncomment to repro https://github.com/dotnet/runtimelab/issues/3043
+        // Async1EntryPoint<S1<string>?>(typeof(S1<string>?), new S1<string> { t = "qwe" }).Wait();
+        Async1EntryPoint<S1<string>?>(typeof(S1<string>?), null).Wait();
 
+        // simple cases
         Async2EntryPoint<int>(typeof(int), 142).Wait();
         Async2EntryPoint<string>(typeof(string), "ghi").Wait();
         Async2EntryPoint<object>(typeof(object), "jkl").Wait();
 
+        // struct with an obj and its nullable
         Async2EntryPoint<S0>(typeof(S0), new S0(4242)).Wait();
         Async2EntryPoint<S0?>(typeof(S0?), new S0(424242)).Wait();
+        Async2EntryPoint<S0?>(typeof(S0?), null).Wait();
 
+        // generic struct with an obj and its nullable
         Async2EntryPoint<S1<string>>(typeof(S1<string>), new S1<string> { t = "kl" }).Wait();
+        Async2EntryPoint<S1<string>?>(typeof(S1<string>?), new S1<string> { t = "zx" }).Wait();
+        Async2EntryPoint<S1<string>?>(typeof(S1<string>?), null).Wait();
     }
 
     private static async Task Async1EntryPoint<T>(Type t, T value)
