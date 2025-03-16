@@ -623,21 +623,15 @@ namespace System.Runtime.CompilerServices
             return newContinuation;
         }
 
-        // We are using our own ContinuationBox instead of regular boxing
-        // because we want structs to be stored without changing layout, including nullables.
-        private sealed class ContinuationBox<T>
+        // We are allocating a box directly instead of relying on regular boxing because we want
+        // to store structs without changing layout, including nullables.
+        private static unsafe object AllocContinuationResultBox(void* ptr)
         {
-            // _value is never accessed directly after construction of the box.
-            // Both managed and native code fetch the stored data via raw data offset.
-            private readonly T _value;
-
-            internal ContinuationBox(T value) => _value = value;
+            MethodTable* pMT = (MethodTable*)ptr;
+            Debug.Assert(pMT->IsValueType);
+            // We need no type/cctor checks since we will be storing an instance that already exist.
+            return RuntimeTypeHandle.InternalAllocNoChecks((MethodTable*)pMT);
         }
-
-#pragma warning disable CA1859 // Use concrete types when possible for improved performance
-        private static object BoxContinuationResult<T>(T value) => new ContinuationBox<T>(value);
-#pragma warning restore CA1859
-
         private struct RuntimeAsyncAwaitState
         {
             public Continuation? SentinelContinuation;

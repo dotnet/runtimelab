@@ -14571,17 +14571,28 @@ CORINFO_METHOD_HANDLE CEEJitInfo::getAsyncResumptionStub()
             // Now we have the GC array. At the first index is the result.
             pCode->EmitLDC(0);
 
-            // load the result
-            pCode->EmitLDLOC(resultLoc);
-
             if (resultTypeHnd.IsValueType())
             {
                 // box the result
                 TypeHandle boxTypeHnd = normalizeForBoxing(resultTypeHnd);
                 _ASSERTE(!boxTypeHnd.IsCanonicalSubtype());
-                MethodDesc* md = CoreLibBinder::GetMethod(METHOD__RUNTIME_HELPERS__BOX_CONTINUATION_RESULT_1);
-                md = MethodDesc::FindOrCreateAssociatedMethodDesc(md, md->GetMethodTable(), FALSE, Instantiation(&boxTypeHnd, 1), FALSE);
+
+                // make a box and dup the ref
+                MethodDesc* md = CoreLibBinder::GetMethod(METHOD__RUNTIME_HELPERS__ALLOC_CONTINUATION_RESULT_BOX);
+                pCode->EmitLDC((DWORD_PTR)boxTypeHnd.AsMethodTable());
                 pCode->EmitCALL(pCode->GetToken(md), 1, 1);
+                pCode->EmitDUP();
+                // dst is the offset of the first field in the box
+                pCode->EmitLDFLDA(FIELD__RAW_DATA__DATA);
+                // load the result
+                pCode->EmitLDLOC(resultLoc);
+                // store into the box
+                pCode->EmitSTOBJ(pCode->GetToken(boxTypeHnd));
+            }
+            else
+            {
+                // load the result
+                pCode->EmitLDLOC(resultLoc);
             }
 
             // Store the result.
