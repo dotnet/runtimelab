@@ -19,7 +19,7 @@ struct SwiftIntMock : ISwiftObject
         var dic = new Dictionary<Type, string>
             {
                 { typeof(ISwiftHashable), "$sSiSHsMc"}, // protocol conformance descriptor for Swift.Int : Swift.Hashable in Swift
-                { typeof(ISwiftEquatable), "$sSiSQsMc"}, // protocol conformance descriptor for Swift.Int : Swift.Equatable in Swift
+                { typeof(IEquatable<SwiftIntMock>), "$sSiSQsMc"}, // protocol conformance descriptor for Swift.Int : Swift.Equatable in Swift
             };
 
         if (!dic.ContainsKey(typeof(TProtocol)))

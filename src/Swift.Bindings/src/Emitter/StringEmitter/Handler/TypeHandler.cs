@@ -74,8 +74,16 @@ namespace BindingsGeneration
                 }
             }
 
-            string interfaces = implementsEquatable ? $", ISwiftEquatable, IEquatable<{structDecl.Name}>" : "";
-            csWriter.WriteLine($"public unsafe struct {structDecl.Name} : {typeof(ISwiftObject).Name}{interfaces} {{");
+            var interfaces = new List<string> {
+                typeof(ISwiftObject).Name,
+            };
+            if (implementsEquatable)
+            {
+                interfaces.Add($"IEquatable<{structDecl.Name}>");
+            }
+
+            csWriter.WriteLine($"public unsafe struct {structDecl.Name} : {string.Join(", ", interfaces)}");
+            csWriter.WriteLine("{");
             csWriter.Indent++;
 
             csWriter.WriteLine(@"
@@ -176,8 +184,15 @@ namespace BindingsGeneration
             var SwiftEquatableMethodWriter = new EqualityMethodsWriter(csWriter, structDecl);
             bool implementsEquatable = structDecl.Conformances.Any(c => c.Protocol.Name == "Equatable");
 
-            string interfaces = implementsEquatable ? $", ISwiftEquatable, IEquatable<{structDecl.Name}>" : "";
-            csWriter.WriteLine($"public unsafe class {structDecl.Name} : IDisposable, {typeof(ISwiftObject).Name}{interfaces}");
+            var interfaces = new List<string> {
+                typeof(ISwiftObject).Name,
+                typeof(IDisposable).Name
+            };
+            if (implementsEquatable)
+            {
+                interfaces.Add($"IEquatable<{structDecl.Name}>");
+            }
+            csWriter.WriteLine($"public unsafe class {structDecl.Name} : {string.Join(", ", interfaces)}");
             csWriter.WriteLine("{");
             csWriter.Indent++;
 
@@ -556,7 +571,7 @@ namespace BindingsGeneration
                     continue;
                 }
 
-                var protocol = NameProvider.GetInterfaceName(conformance.Protocol.Name);
+                var protocol = NameProvider.GetInterfaceName(conformance.Protocol.Name, _structDecl.Name);
                 var typeRecord = _typeDatabase.GetTypeRecordOrThrow(_structDecl.SwiftTypeName);
                 var protocolConformanceSymbol = protocolConformanceDescriptors.GetValueOrDefault((_structDecl.SwiftTypeName, conformance.Protocol)); // TODO: Get rid of TypeSpec https://github.com/dotnet/runtimelab/issues/2889
 

@@ -8,11 +8,6 @@ using Swift.Runtime.InteropServices;
 
 namespace Swift.Runtime
 {
-    public interface ISwiftEquatable
-    {
-
-    }
-
     /// <summary>
     /// Provides functionality to use Swift's Equatable protocol for equality comparison.
     /// </summary>
@@ -43,7 +38,7 @@ namespace Swift.Runtime
                 throw new ArgumentNullException(nameof(rhs));
 
             var metadata = TypeMetadata.GetTypeMetadataOrThrow<T>();
-            var equatablePwt = ProtocolWitnessTable.GetOrThrow<T, ISwiftEquatable>();
+            var equatablePwt = ProtocolWitnessTable.GetOrThrow<T, IEquatable<T>>();
 
             IntPtr lhsPayload = IntPtr.Zero;
             IntPtr rhsPayload = IntPtr.Zero;
