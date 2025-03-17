@@ -629,7 +629,7 @@ namespace System.Runtime.CompilerServices
         {
             MethodTable* pMT = (MethodTable*)ptr;
             Debug.Assert(pMT->IsValueType);
-            // We need no type/cctor checks since we will be storing an instance that already exist.
+            // We need no type/cctor checks since we will be storing an instance that already exists.
             return RuntimeTypeHandle.InternalAllocNoChecks((MethodTable*)pMT);
         }
         private struct RuntimeAsyncAwaitState
