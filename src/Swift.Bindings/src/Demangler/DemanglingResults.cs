@@ -1,7 +1,7 @@
-using BindingsGeneration;
-using BindingsGeneration.Demangling;
 using TbdParsing;
 using Xamarin;
+
+namespace BindingsGeneration.Demangling;
 
 /// <summary>
 /// A class to contain results from demangling the set of symbols in a MachO or TBD file.
