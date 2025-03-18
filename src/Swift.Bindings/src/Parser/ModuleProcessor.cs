@@ -141,7 +141,7 @@ namespace BindingsGeneration
             RegisterStructType(namedTypeSpec, structDecl, swiftTypeInfo, flags);
 
             // Update the struct declaration in memory so future passes see these properties.
-            structDecl.IsFrozen = flags.HasFlag(TypeRecordFlags.Frozen);
+            structDecl.IsFrozen = (flags & TypeRecordFlags.Frozen) != 0;
         }
 
         /// <summary>

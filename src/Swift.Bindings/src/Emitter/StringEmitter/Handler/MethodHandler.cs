@@ -609,8 +609,6 @@ namespace BindingsGeneration
 
             EmitDeclarationsForAllocations(csWriter);
 
-            EmitTryBlockStart(csWriter);
-
             EmitSwiftSelf(csWriter);
             EmitIndirectResultMethod(csWriter);
             EmitGenericArguments(csWriter);
@@ -620,8 +618,6 @@ namespace BindingsGeneration
             EmitSwiftError(csWriter);
             EmitReturnMethod(csWriter);
 
-            EmitTryBlockEnd(csWriter);
-            EmitFinally(csWriter);
             EmitBodyEnd(csWriter);
         }
 
@@ -1036,33 +1032,6 @@ namespace BindingsGeneration
                         }
                 """;
             csWriter.WriteLine(text);
-        }
-
-        /// <summary>
-        /// Emits the finally block.
-        /// </summary>
-        private void EmitFinally(CSharpWriter csWriter)
-        {
-            csWriter.WriteLine("finally");
-            EmitBodyStart(csWriter);
-            EmitBodyEnd(csWriter);
-        }
-
-        /// <summary>
-        /// Emits the try block start.
-        /// </summary>
-        private void EmitTryBlockStart(CSharpWriter csWriter)
-        {
-            csWriter.WriteLine("try");
-            EmitBodyStart(csWriter);
-        }
-
-        /// <summary>
-        /// Emits the try block end.
-        /// </summary>
-        private void EmitTryBlockEnd(CSharpWriter csWriter)
-        {
-            EmitBodyEnd(csWriter);
         }
 
         /// <summary>

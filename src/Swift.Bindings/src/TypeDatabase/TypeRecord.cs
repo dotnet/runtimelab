@@ -12,7 +12,9 @@ namespace BindingsGeneration;
 public enum TypeRecordFlags
 {
     None = 0,
+    // Frozen flag indicates the type is enregistered if possible
     Frozen = 1 << 0,
+    // HeapAllocated flag indicates the type is heap allocated (class) or contains a heap allocated property (struct with a ref property)
     HeapAllocated = 1 << 1,
 }
 
@@ -25,7 +27,6 @@ public enum TypeRecordKind
     Enum,
     Class,
     Protocol,
-    Tuple
 }
 
 /// <summary>

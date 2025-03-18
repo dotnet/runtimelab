@@ -176,6 +176,6 @@ public static class TypeDatabaseExtensions
         SwiftTypeName = SwiftTypeName.VoidType,
         MetadataAccessor = string.Empty,
         Flags = TypeRecordFlags.Frozen,
-        Kind = TypeRecordKind.Tuple,
+        Kind = TypeRecordKind.Struct,
     };
 }
