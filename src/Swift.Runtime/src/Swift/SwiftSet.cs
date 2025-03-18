@@ -29,7 +29,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
 
     private SwiftHandle _variant;
 
-    private int _disposed = 0;
+    private bool _disposed = false;
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -49,7 +49,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
 
     protected virtual void Dispose(bool disposing)
     {
-        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
+        if (!_disposed)
         {
             var metadata = SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata();
 
@@ -60,7 +60,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
                     metadata.ValueWitnessTable->Destroy(payload, metadata);
                 }
             }
-            _disposed = 1;
+            _disposed = true;
         }
     }
 

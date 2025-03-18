@@ -27,7 +27,7 @@ public class SwiftString : IDisposable, ISwiftObject
 
     private Buffer _payload;
 
-    private int _disposed = 0;
+    private bool _disposed = false;
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -44,7 +44,7 @@ public class SwiftString : IDisposable, ISwiftObject
 
     protected virtual void Dispose(bool disposing)
     {
-        if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
+        if (!_disposed)
         {
             var metadata = SwiftObjectHelper<SwiftString>.GetTypeMetadata();
 
@@ -55,7 +55,7 @@ public class SwiftString : IDisposable, ISwiftObject
                     metadata.ValueWitnessTable->Destroy(payload, metadata);
                 }
             }
-            _disposed = 1;
+            _disposed = true;
         }
     }
 

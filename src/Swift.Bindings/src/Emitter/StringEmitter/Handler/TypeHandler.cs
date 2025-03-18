@@ -133,7 +133,7 @@ namespace BindingsGeneration
                 csWriter.WriteLine();
                 csWriter.WriteLine("private Buffer _payload;");
                 csWriter.WriteLine();
-                csWriter.WriteLine("private int _disposed;");
+                csWriter.WriteLine("private bool _disposed = false;");
                 csWriter.WriteLine();
                 csWriter.WriteLine("public Buffer Payload => _payload;");
                 csWriter.WriteLine();
@@ -181,7 +181,7 @@ namespace BindingsGeneration
 
             protected virtual void Dispose(bool disposing)
             {
-                if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
+                if (!_disposed)
                 {
                     var metadata = SwiftObjectHelper<{{structDecl.Name}}>.GetTypeMetadata();
                     unsafe {
@@ -190,7 +190,7 @@ namespace BindingsGeneration
                             metadata.ValueWitnessTable->Destroy((void *)payload, metadata);
                         }
                     }
-                    _disposed = 1;
+                    _disposed = true;
                 }
             }
             """;
@@ -320,7 +320,6 @@ namespace BindingsGeneration
         {
             csWriter.WriteLine($"static nuint _payloadSize = SwiftObjectHelper<{structDecl.Name}>.GetTypeMetadata().Size;");
             csWriter.WriteLine("SwiftHandle _payload = SwiftHandle.Zero;");
-            csWriter.WriteLine("private int _disposed = 0;");
             csWriter.WriteLine();
         }
 
@@ -338,14 +337,13 @@ namespace BindingsGeneration
 
             protected virtual void Dispose(bool disposing)
             {
-                if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
+                if (_payload != SwiftHandle.Zero)
                 {
                     var metadata = SwiftObjectHelper<{{structDecl.Name}}>.GetTypeMetadata();
                     unsafe {
                         metadata.ValueWitnessTable->Destroy((void *)_payload, metadata);
                     }
                     _payload = SwiftHandle.Zero;
-                    _disposed = 1;
                 }
             }
             """;
