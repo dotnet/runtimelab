@@ -34,9 +34,8 @@ jobs:
       steps:
       - script: |
           ./build.sh
-          ./dotnet.sh tool install Swift.Bindings --prerelease
           ./dotnet.sh workload install maui maccatalyst mobile-librarybuilder-net9 --version 10.0.100-preview.1.25124.2 --source https://api.nuget.org/v3/index.json
-          ./dotnet.sh new tool-manifest && ./dotnet.sh tool install microsoft.dotnet.xharness.cli --version "10.0.0-prerelease*"
+          ./dotnet.sh new tool-manifest && ./dotnet.sh tool install microsoft.dotnet.xharness.cli --version "10.0.0-prerelease*" && ./dotnet.sh tool install Swift.Bindings --prerelease
           sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
         displayName: Install dependencies
 
