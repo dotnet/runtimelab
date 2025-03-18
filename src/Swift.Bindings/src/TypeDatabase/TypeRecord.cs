@@ -12,9 +12,15 @@ namespace BindingsGeneration;
 public enum TypeRecordFlags
 {
     None = 0,
-    // Frozen flag indicates the type is enregistered if possible
+    // This flag is used in tooling to determine whether the type should be enregistered.
+    // A type marked as "frozen" on the Swift side doesn't change its layout.
+    // However, if it contains a non-frozen struct as a property, it is considered an opaque at compile-time;
+    // otherwise, the layout is considered as known at compile-time and enregistration if possible.
     Frozen = 1 << 0,
-    // HeapAllocated flag indicates the type is heap allocated (class) or contains a heap allocated property (struct with a ref property)
+    // This flag is used in tooling to determine whether a type is projected as a struct or a class,
+    // ensuring that the finalizer can handle memory if needed.
+    // The 'HeapAllocated' flag indicates that the type is allocated on the heap (as in the case of classes)
+    // or that it contains a heap-allocated property (for example, a struct with a reference property).
     HeapAllocated = 1 << 1,
 }
 
