@@ -7,6 +7,8 @@ namespace BindingsGeneration
     {
         public static bool MethodRequiresIndirectResult(MethodEnvironment env)
         {
+            if (env.MethodDecl.IsAsync) return false;
+
             if (env.MethodDecl.IsConstructor && !(env.ParentDecl is StructDecl structDecl && StructIsMarshalledAsCSStruct(structDecl))) return true;
             var returnType = env.MethodDecl.CSSignature.First();
 

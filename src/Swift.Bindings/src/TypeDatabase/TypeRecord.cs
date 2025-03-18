@@ -11,19 +11,9 @@ namespace BindingsGeneration;
 public record TypeRecord
 {
     /// <summary>
-    /// The C# namespace of the module.
+    /// The C# type information.
     /// </summary>
-    public required string Namespace { get; init; }
-
-    /// <summary>
-    /// The C# type identifier.
-    /// </summary>
-    public required string CSTypeIdentifier { get; init; }
-
-    /// <summary>
-    /// The fully qualified C# type identifier.
-    /// </summary>
-    public required string NamespaceQualifiedCSTypeIdentifier { get; init; }
+    public required CSharpTypeName CSharpTypeName { get; init; }
 
     /// <summary>
     /// The Swift type identifier.

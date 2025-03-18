@@ -159,9 +159,7 @@ public static class TypeDatabaseExtensions
     /// <returns>The type record for the Any type.</returns>
     public static TypeRecord AnyType { get; } = new TypeRecord
     {
-        Namespace = "Swift",
-        CSTypeIdentifier = "AnyType",
-        NamespaceQualifiedCSTypeIdentifier = "Swift.AnyType",
+        CSharpTypeName = CSharpTypeName.AnyType,
         SwiftTypeName = SwiftTypeName.AnyType,
         MetadataAccessor = string.Empty,
         IsBlittable = false,
@@ -174,9 +172,7 @@ public static class TypeDatabaseExtensions
     /// <returns>The type record for the Void type.</returns>
     public static TypeRecord VoidType { get; } = new TypeRecord
     {
-        Namespace = "",
-        NamespaceQualifiedCSTypeIdentifier = "void",
-        CSTypeIdentifier = "void",
+        CSharpTypeName = CSharpTypeName.VoidType,
         SwiftTypeName = SwiftTypeName.VoidType,
         MetadataAccessor = string.Empty,
         IsBlittable = true,
