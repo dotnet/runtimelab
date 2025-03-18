@@ -53,8 +53,16 @@ public static class NameProvider
     /// </summary>
     /// <param name="protocolName">The protocol name.</param>
     /// <returns>The name of the interface.</returns>
-    public static string GetInterfaceName(string protocolName)
+    public static string GetInterfaceName(string protocolName, string typeName = "")
     {
+        var specialCases = new Dictionary<string, string>
+        {
+            { "Equatable", $"IEquatable<{typeName}>" },
+        };
+
+        if (specialCases.TryGetValue(protocolName, out var specialCase))
+            return specialCase;
+
         return $"ISwift{protocolName}";
     }
 

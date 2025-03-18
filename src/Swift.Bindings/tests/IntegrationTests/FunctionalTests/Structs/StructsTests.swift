@@ -224,6 +224,7 @@ public func createNonFrozenStruct(a: Int, b: Int) -> NonFrozenStruct
 
 @frozen
 public struct PropertiesTestStruct {
+    public static let staticLetProperty: Int32 = 42
     public let letProperty: Int32
     public var computedPropertyAmongStorageProperties: Double {
         return Double(letProperty) * Double(multiplier)
@@ -243,6 +244,7 @@ public struct PropertiesTestStruct {
 }
 
 public struct NonFrozenPropertiesTestStruct {
+    public static let staticLetProperty: Int32 = 42
     public let letProperty: Int32
     public var computedPropertyAmongStorageProperties: Double {
         return Double(letProperty) * Double(multiplier)
@@ -258,5 +260,39 @@ public struct NonFrozenPropertiesTestStruct {
 
     public var computedProperty: Double {
         return Double(letProperty) * Double(multiplier)
+    }
+}
+
+@frozen
+public struct FrozenEquatableStruct: Equatable {
+    public var x: Int
+    public var y: Int
+    
+    public init(x: Int, y: Int) {
+        self.x = x
+        self.y = y
+    }
+}
+
+public struct NonFrozenEquatableStruct: Equatable {
+    public var x: Int
+    public var y: Int
+    
+    public init(x: Int, y: Int) {
+        self.x = x
+        self.y = y
+    }
+}
+
+@frozen
+public struct CustomEquatableStruct: Equatable {
+    public var value: Int
+    
+    public init(value: Int) {
+        self.value = value
+    }
+    
+    public static func == (lhs: CustomEquatableStruct, rhs: CustomEquatableStruct) -> Bool {
+        return abs(lhs.value - rhs.value) <= 5
     }
 }
