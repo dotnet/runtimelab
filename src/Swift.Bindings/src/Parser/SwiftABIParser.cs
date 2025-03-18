@@ -327,7 +327,8 @@ namespace BindingsGeneration
             }
             catch (Exception e)
             {
-                // TODO: We currently do not support retrieving cross-module protocol conformance descriptors.
+                // TODO: Some types conform to protocols inherently, i.e., they are not explicitly declared.
+                // These conformances are specified in the ABI.json but the descriptors are not present in the TBD.
                 if (_verbose > 0)
                     Console.WriteLine($"Error while getting protocol conformance descriptor for '{typeName}' and protocol '{protocolName}': {e.Message}");
             }
