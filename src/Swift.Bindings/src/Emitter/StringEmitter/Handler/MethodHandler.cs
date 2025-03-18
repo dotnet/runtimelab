@@ -879,7 +879,8 @@ namespace BindingsGeneration
         {
             if (_env.ParentDecl is StructDecl structDecl)
             {
-                if (MarshallingHelpers.IsFrozenStructProjectedAsClass(structDecl, _env.TypeDatabase))
+                TypeRecord typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
+                if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
                 {
                     csWriter.WriteLine($"_payload = result;");
                     return;

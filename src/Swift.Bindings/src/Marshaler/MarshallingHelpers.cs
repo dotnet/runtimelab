@@ -38,9 +38,8 @@ namespace BindingsGeneration
             return (typeRecord.Flags & TypeRecordFlags.HeapAllocated) != 0;
         }
 
-        public static bool IsFrozenStructProjectedAsClass(StructDecl structDecl, ITypeDatabase typeDatabase)
+        public static bool IsFrozenStructProjectedAsClass(TypeRecord typeRecord)
         {
-            TypeRecord typeRecord = typeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
             return (typeRecord.Flags & TypeRecordFlags.Frozen) != 0 && (typeRecord.Flags & TypeRecordFlags.HeapAllocated) != 0;
         }
     }

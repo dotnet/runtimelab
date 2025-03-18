@@ -57,13 +57,13 @@ namespace BindingsGeneration
             var moduleDecl = structDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(structDecl.ParentDecl));
             // Retrieve type info from the type database
             var typeRecord = env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
+            bool isProjectedAsClass = MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord!);
 
             var ISwiftObjectMethodWriter = new ISwiftObjectMethodWriter(csWriter, env.TypeDatabase, moduleDecl, structDecl);
-            var SwiftEquatableMethodWriter = new EqualityMethodsWriter(csWriter, structDecl, false);
+            var SwiftEquatableMethodWriter = new EqualityMethodsWriter(csWriter, structDecl, isProjectedAsClass);
             bool implementsEquatable = structDecl.Conformances.Any(c => c.Protocol.Name == "Equatable");
 
             SwiftTypeInfo? swiftTypeInfo = typeRecord?.SwiftTypeInfo;
-            bool isProjectedAsClass = MarshallingHelpers.IsFrozenStructProjectedAsClass(structDecl, env.TypeDatabase);
 
             var interfaces = new List<string> {
                 typeof(ISwiftObject).Name,
@@ -520,7 +520,8 @@ namespace BindingsGeneration
         /// </summary>
         private void WriteNewFromPayloadFrozenStruct()
         {
-            if (MarshallingHelpers.IsFrozenStructProjectedAsClass(_structDecl, _typeDatabase))
+            TypeRecord typeRecord = _typeDatabase.GetTypeRecordOrThrow(_structDecl.SwiftTypeName);
+            if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
             {
                 var text = $$"""
                 static unsafe ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
@@ -590,7 +591,8 @@ namespace BindingsGeneration
         private void WriteMarshalToSwiftFrozenStruct()
         {
             string payloadName = "this";
-            if (MarshallingHelpers.IsFrozenStructProjectedAsClass(_structDecl, _typeDatabase))
+            TypeRecord typeRecord = _typeDatabase.GetTypeRecordOrThrow(_structDecl.SwiftTypeName);
+            if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
             {
                 payloadName = "_payload";
             }
