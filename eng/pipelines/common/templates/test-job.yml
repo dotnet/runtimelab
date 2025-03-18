@@ -32,46 +32,20 @@ jobs:
             _BuildConfig: Debug
 
       steps:
-      # Use .NET 9 as MAUI workloads are not available for the default SDK
       - script: |
-          cat << 'EOF' > global.json
-          {
-            "sdk": {
-              "version": "9.0.102",
-              "allowPrerelease": true,
-              "rollForward": "major"
-            },
-            "tools": {
-              "dotnet": "9.0.102",
-              "runtimes": {
-                "dotnet": [
-                  "$(MicrosoftNETCoreAppVersion)"
-                ]
-              }
-            },
-            "msbuild-sdks": {
-              "Microsoft.DotNet.Arcade.Sdk": "10.0.0-beta.24515.3"
-            }
-          }
-          EOF
           ./build.sh
-          ./dotnet.sh workload install maui maccatalyst --version 9.0.103 --source https://api.nuget.org/v3/index.json
-          ./dotnet.sh new tool-manifest && ./dotnet.sh tool install microsoft.dotnet.xharness.cli --version "9.0.0-prerelease*"
+          ./dotnet.sh tool install Swift.Bindings --prerelease
+          ./dotnet.sh workload install maui maccatalyst mobile-librarybuilder-net9 --version 10.0.100-preview.1.25124.2 --source https://api.nuget.org/v3/index.json
+          ./dotnet.sh new tool-manifest && ./dotnet.sh tool install microsoft.dotnet.xharness.cli --version "10.0.0-prerelease*"
           sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
         displayName: Install dependencies
-
-      - script: ./build.sh
-                -pack
-                -c $(_BuildConfig)
-                /p:TargetPlatform=${{ parameters.archType }}
-        displayName: Build and test
 
       - script: ./generate.sh --configuration $(_BuildConfig) ${{ parameters.bindings.scriptArgs }}
         displayName: Generate bindings
 
       - script: |
           ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/Swift.Bindings.Framework.Tests.csproj \
-          -f net9.0-${{ parameters.platform }} \
+          -f net10.0-${{ parameters.platform }} \
           -c $(_BuildConfig) \
           -r ${{ parameters.platform }}-${{ parameters.archType }} \
           /p:UseMaui=true
@@ -82,7 +56,7 @@ jobs:
           --target ${{ parameters.platform }} \
           --timeout="00:02:00" \
           --launch-timeout=00:06:00 \
-          --app ./src/Swift.Bindings/tests/FrameworkTests/bin/$(_BuildConfig)/net9.0-${{ parameters.platform }}/${{ parameters.platform }}-${{ parameters.archType }}/Swift.Bindings.Framework.Tests.app \
+          --app ./src/Swift.Bindings/tests/FrameworkTests/bin/$(_BuildConfig)/net10.0-${{ parameters.platform }}/${{ parameters.platform }}-${{ parameters.archType }}/Swift.Bindings.Framework.Tests.app \
           --output-directory artifacts
         displayName: Run device tests
 

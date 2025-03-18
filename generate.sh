@@ -11,6 +11,7 @@ usage()
   echo "  --framework <value>        Framework to generate bindings for"
   echo "  --configuration <value>    Configuration: Debug, Release"
   echo "  --experimental             Generates only Runtime.Swift namespace when bindings for frameworks are not complete"
+  echo "  --tool                     Use the NuGet tool instead of the local build"
   echo "  --help                     Print help and exit (short: -h)"
   echo ""
 }
@@ -35,6 +36,8 @@ arch=''
 frameworks=()
 configuration='Debug'
 experimental=false
+tool=false
+dotnet_version="net10.0"
 
 output_dir="./GeneratedBindings"
 
@@ -47,6 +50,9 @@ while [[ $# > 0 ]]; do
       ;;
     -experimental)
       experimental=true
+      ;;
+    -tool)
+      tool=true
       ;;
     -platform)
       platform=$2
@@ -103,7 +109,15 @@ function ExtractABI {
 function InvokeProjectionTooling {
     local framework=$1
 
-    $scriptroot/dotnet.sh $scriptroot/artifacts/bin/Swift.Bindings/$configuration/net9.0/Swift.Bindings.dll -a "./$framework.abi.json" -d "/System/Library/Frameworks/$framework.framework/$framework" -o "./"
+    # if tool
+    if $tool; then
+        echo "Using tool to generate bindings for framework '$framework'"
+        $scriptroot/dotnet.sh swiftbindings -a "./$framework.abi.json" -d "/System/Library/Frameworks/$framework.framework/$framework" -o "./"
+    else
+        echo "Using local build to generate bindings for framework '$framework'"
+        $scriptroot/dotnet.sh $scriptroot/artifacts/bin/Swift.Bindings/$configuration/$dotnet_version/Swift.Bindings.dll -a "./$framework.abi.json" -d "/System/Library/Frameworks/$framework.framework/$framework" -o "./"
+    fi
+
 
     # Patch library name in generated C# code for async methods
     local frameworkPath="/System/Library/Frameworks/${framework}.framework/${framework}"
@@ -215,7 +229,7 @@ function CreateProject {
     cat <<EOL > "$project_file"
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>$dotnet_version</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
