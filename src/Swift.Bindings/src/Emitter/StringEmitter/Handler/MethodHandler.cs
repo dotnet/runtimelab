@@ -160,8 +160,8 @@ namespace BindingsGeneration
     public record Signature(string ReturnType, IReadOnlyList<Parameter> Parameters)
     {
         public bool ContainsPlaceholder =>
-        Parameters.Any(p => p.Type.Contains(TypeDatabaseExtensions.AnyType.NamespaceQualifiedCSTypeIdentifier))
-        || ReturnType.Contains(TypeDatabaseExtensions.AnyType.NamespaceQualifiedCSTypeIdentifier);
+        Parameters.Any(p => p.Type.Contains(TypeDatabaseExtensions.AnyType.CSharpTypeName.FullyQualifiedName))
+        || ReturnType.Contains(TypeDatabaseExtensions.AnyType.CSharpTypeName.FullyQualifiedName);
         public string ParametersString() => string.Join(", ", Parameters.Select(p => p.SignatureString()));
 
         public string CallArgumentsString() => string.Join(", ", Parameters.Select(p => GetCallArgumentString(p)));
@@ -213,7 +213,7 @@ namespace BindingsGeneration
             }
 
             var typeRecord = _env.TypeDatabase.GetTypeRecordOrAnyType(argument.SwiftTypeSpec);
-            SetReturnType(typeRecord.NamespaceQualifiedCSTypeIdentifier);
+            SetReturnType(typeRecord.CSharpTypeName.FullyQualifiedName);
         }
 
         /// <summary>
@@ -238,7 +238,7 @@ namespace BindingsGeneration
                 else
                 {
                     var typeRecord = _env.TypeDatabase.GetTypeRecordOrAnyType(argument.SwiftTypeSpec);
-                    AddParameter(typeRecord.NamespaceQualifiedCSTypeIdentifier, argument.Name);
+                    AddParameter(typeRecord.CSharpTypeName.FullyQualifiedName, argument.Name);
                 }
             }
         }
@@ -318,8 +318,14 @@ namespace BindingsGeneration
                 return;
             }
 
+            if (_env.MethodDecl.IsAsync && !MarshallingHelpers.ArgumentIsMarshalledAsCSStruct(returnType, _env.TypeDatabase))
+            {
+                SetReturnType("IntPtr");
+                return;
+            }
+
             var returnTypeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(returnType.SwiftTypeSpec);
-            SetReturnType(returnTypeRecord.NamespaceQualifiedCSTypeIdentifier);
+            SetReturnType(returnTypeRecord.CSharpTypeName.FullyQualifiedName);
         }
 
         /// <summary>
@@ -368,7 +374,7 @@ namespace BindingsGeneration
                 }
 
                 var argumentTypeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(argument.SwiftTypeSpec);
-                AddParameter(argumentTypeRecord.NamespaceQualifiedCSTypeIdentifier, argument.Name);
+                AddParameter(argumentTypeRecord.CSharpTypeName.FullyQualifiedName, argument.Name);
             }
         }
 
@@ -391,10 +397,10 @@ namespace BindingsGeneration
         {
             foreach (var genericParameter in _env.MethodDecl.GenericParameters)
             {
-                var conformances = genericParameter.Constraints.OrderBy(c => c.Protocol.ModuleQualifiedName);
+                var conformances = genericParameter.GenericConformances.OrderBy(c => c.ConformanceTarget.ModuleQualifiedName);
                 foreach (var conformance in conformances)
                 {
-                    var pwtName = NameProvider.GetProtocolWitnessTableName(_env.GenericTypeMapping[genericParameter.TypeName].TypeParameter, conformance.Protocol.Name);
+                    var pwtName = NameProvider.GetProtocolWitnessTableName(_env.GenericTypeMapping[genericParameter.TypeName].TypeParameter, conformance.ConformanceTarget.Name);
                     AddParameter("ProtocolWitnessTable", pwtName);
                 }
             }
@@ -532,7 +538,7 @@ namespace BindingsGeneration
 
             csWriter.WriteLine("[UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]");
             csWriter.WriteLine($"[DllImport(\"{libPath}\", EntryPoint = \"{NameProvider.GetMangledName(methodDecl)}\")]");
-            csWriter.WriteLine($"private static extern {pInvokeSignature.ReturnType} {pInvokeName}({pInvokeSignature.ParametersString()});");
+            csWriter.WriteLine($"private static extern {(methodDecl.IsAsync ? "void" : pInvokeSignature.ReturnType)} {pInvokeName}({pInvokeSignature.ParametersString()});");
         }
     }
 
@@ -663,24 +669,53 @@ namespace BindingsGeneration
                 ", ",
                 new[]
                 {
-                    $"callback: @escaping ({(isEmptyTuple ? "" : $"{_env.MethodDecl.CSSignature.First().SwiftTypeSpec}, ")}Int64) -> Void",
+                    $"callback: @escaping ({(isEmptyTuple ? "" : $"{(_env.MethodDecl.CSSignature.First().IsGeneric ? _env.MethodDecl.GenericParameters[0].SugaredTypeName : _env.MethodDecl.CSSignature.First().SwiftTypeSpec)}, ")}Int64) -> Void",
                     "task: Int64"
                 }.Concat(
                     _env.MethodDecl.CSSignature
                         .Skip(1)
-                        .Select(p => $"{p.Name}: {p.SwiftTypeSpec}")
+                        .Select(p => $"{p.Name}: {(p.IsGeneric ? _env.MethodDecl.GenericParameters.Find(g => g.TypeName == p.SwiftTypeSpec.ToString())!.SugaredTypeName : p.SwiftTypeSpec)}")
                 )
             );
 
+            var genericParams = _env.MethodDecl.IsGeneric switch
+            {
+                true => $"<{string.Join(", ", _env.MethodDecl.GenericParameters.Select(p => p.SugaredTypeName))}>",
+                false => ""
+            };
+
+            var whereClause = (_env.MethodDecl.IsGeneric && _env.MethodDecl.GenericParameters.Any(p => p.GenericConformances.Any() || p.AssosiatedTypeConformances.Any())) switch
+            {
+                true => " where " + string.Join(
+                    ", ",
+                    _env.MethodDecl.GenericParameters.Select(p =>
+                    {
+                        // Build conformances of the form "T : ProtocolName"
+                        var genericConformances = p.GenericConformances
+                            .Select(gc => $"{p.SugaredTypeName} : {gc.ConformanceTarget.Name}");
+
+                        // Build type conformances of the form "T.AssociatedType == ProtocolName"
+                        var typeConformances = p.AssosiatedTypeConformances
+                            .Select(tc =>
+                                $"{p.SugaredTypeName}.{string.Join(".", tc.Path.Skip(1))} == {tc.ConformanceTarget.Name}"
+                            );
+
+                        return string.Join(", ", genericConformances.Concat(typeConformances));
+                    })
+                ),
+                false => ""
+            };
+
+            var parentTypeName = (_env.ParentDecl as TypeDecl)!.SwiftTypeName;
             swiftWriter.WriteLine($$"""
-            extension {{_env.ParentDecl.Name}} {
+            extension {{parentTypeName.ModuleQualifiedName}} {
                 @_silgen_name("{{NameProvider.GetMangledName(_env.MethodDecl)}}")
-                public {{(_env.MethodDecl.MethodType == MethodType.Static ? "static " : "")}} func {{NameProvider.GetPInvokeName(_env.MethodDecl)}}({{parameters}}) {
+                public {{(_env.MethodDecl.MethodType == MethodType.Static ? "static " : "")}} func {{NameProvider.GetPInvokeName(_env.MethodDecl)}}{{genericParams}}({{parameters}}){{whereClause}}{
                     Task {
-                        {{(isEmptyTuple ? "" : "let result = ")}}await {{(_env.MethodDecl.MethodType == MethodType.Static ? $"{_env.ParentDecl.Name}." : "")}}{{_env.MethodDecl.Name}}(
-                            {{string.Join(", ", _env.MethodDecl.CSSignature.Skip(1).Select(p => p.Name + ": " + p.Name))}}
+                        {{(isEmptyTuple ? "" : $"let result{_env.MethodDecl.Name} = ")}}try! await {{(_env.MethodDecl.MethodType == MethodType.Static ? $"{parentTypeName.ModuleQualifiedName}." : "")}}{{_env.MethodDecl.Name}}(
+                            {{string.Join(", ", _env.MethodDecl.CSSignature.Skip(1).Select(p => (p.Name.First() == '_' ? p.Name.Remove(0, 1) : p.Name) + ": " + (p.Name)))}}
                         )
-                        callback({{(isEmptyTuple ? "" : "result, ")}}task)
+                        callback({{(isEmptyTuple ? "" : $"result{_env.MethodDecl.Name}{(_env.MethodDecl.CSSignature.First().IsGeneric ? $" as! {_env.MethodDecl.GenericParameters[0].SugaredTypeName}" : "")}, ")}}task);
                     }
                 }
             }
@@ -779,11 +814,11 @@ namespace BindingsGeneration
             foreach (var genericParameter in _env.MethodDecl.GenericParameters)
             {
                 var csTypeParamName = _env.GenericTypeMapping[genericParameter.TypeName].TypeParameter;
-                var conformances = genericParameter.Constraints.OrderBy(c => c.Protocol.ModuleQualifiedName);
+                var conformances = genericParameter.GenericConformances.OrderBy(c => c.ConformanceTarget.ModuleQualifiedName);
                 foreach (var conformance in conformances)
                 {
-                    var pwtName = NameProvider.GetProtocolWitnessTableName(csTypeParamName, conformance.Protocol.Name);
-                    var protocolName = NameProvider.GetInterfaceName(conformance.Protocol.Name);
+                    var pwtName = NameProvider.GetProtocolWitnessTableName(csTypeParamName, conformance.ConformanceTarget.Name);
+                    var protocolName = NameProvider.GetInterfaceName(conformance.ConformanceTarget.Name);
                     csWriter.WriteLine($"var {pwtName} = ProtocolWitnessTable.GetOrThrow<{csTypeParamName}, {protocolName}>();");
                 }
             }
@@ -845,6 +880,12 @@ namespace BindingsGeneration
         {
             var returnArg = _env.MethodDecl.CSSignature.First();
 
+            if (_requiresSwiftAsync)
+            {
+                csWriter.WriteLine("return task.Task;");
+                return;
+            }
+
             if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(returnArg))
             {
                 csWriter.WriteLine($"return SwiftMarshal.MarshalFromSwift<{_env.BoundGenericsHandler.TranslateBoundGenericTypeToCSharp(returnArg)}>((SwiftHandle)new IntPtr(&result));");
@@ -854,12 +895,6 @@ namespace BindingsGeneration
             if (_requiresIndirectResult)
             {
                 csWriter.WriteLine($"return SwiftMarshal.MarshalFromSwift<{_wrapperSignature.ReturnType}>((SwiftHandle)swiftIndirectResult.Value);");
-                return;
-            }
-
-            if (_requiresSwiftAsync)
-            {
-                csWriter.WriteLine("return task.Task;");
                 return;
             }
 
@@ -923,18 +958,37 @@ namespace BindingsGeneration
             if (!_requiresSwiftAsync)
                 return;
 
+            var returnType = _env.MethodDecl.CSSignature.First();
+            var voidReturn = returnType.SwiftTypeSpec.IsEmptyTuple;
+            var requiresInitWithCopy = !voidReturn && (!MarshallingHelpers.ArgumentIsMarshalledAsCSStruct(returnType, _env.TypeDatabase) || _env.BoundGenericsHandler.IsBoundGeneric(returnType));
+
+            var copyExpression = $$"""
+            IntPtr payload = IntPtr.Zero;
+            try
+            {
+                var metadata = SwiftObjectHelper<{{_wrapperSignature.ReturnType}}>.GetTypeMetadata();
+                payload = (IntPtr)NativeMemory.Alloc(metadata.Size);
+                SwiftMarshal.MarshalToSwift(result, payload);
+            }
+            finally
+            {
+                NativeMemory.Free((void*)payload);
+            }
+            """;
+
             var text = $$"""
-                
-                        private static unsafe delegate* unmanaged[Cdecl]<{{(_env.MethodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple ? "" : $"{_wrapperSignature.ReturnType}, ")}}IntPtr, void> s_{{_env.MethodDecl.Name}}Callback = &{{_env.MethodDecl.Name}}OnComplete;
+                        private static unsafe delegate* unmanaged[Cdecl]<{{(voidReturn ? "" : $"{_pInvokeSignature.ReturnType}, ")}}IntPtr, void> s_{{_env.MethodDecl.Name}}Callback = &{{_env.MethodDecl.Name}}OnComplete;
                         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
-                        private static void {{_env.MethodDecl.Name}}OnComplete({{(_env.MethodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple ? "" : $"{_wrapperSignature.ReturnType} result, ")}}IntPtr task)
+                        private static void {{_env.MethodDecl.Name}}OnComplete({{(voidReturn ? "" : $"{_pInvokeSignature.ReturnType} rawResult, ")}}IntPtr task)
                         {
                             GCHandle handle = GCHandle.FromIntPtr(task);
                             try
                             {
-                                if (handle.Target is TaskCompletionSource{{(_env.MethodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple ? "" : $"<{_wrapperSignature.ReturnType}>")}} tcs)
+                                {{(voidReturn ? "" : $"var result = SwiftMarshal.MarshalFromSwift<{_wrapperSignature.ReturnType}>((SwiftHandle)new IntPtr(&rawResult));")}}
+                                {{(requiresInitWithCopy ? copyExpression : "")}}
+                                if (handle.Target is TaskCompletionSource{{(voidReturn ? "" : $"<{_wrapperSignature.ReturnType}>")}} tcs)
                                 {
-                                    tcs.TrySetResult({{(_env.MethodDecl.CSSignature.First().SwiftTypeSpec.IsEmptyTuple ? "" : "result")}});
+                                    tcs.TrySetResult({{(voidReturn ? "" : "result")}});
                                 }
                             }
                             finally

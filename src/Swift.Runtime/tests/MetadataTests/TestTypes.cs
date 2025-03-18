@@ -7,11 +7,19 @@ struct TypeNotImplementingAnyProtocols { }
 
 struct SwiftIntMock : ISwiftObject
 {
+    public int Value { get; set; }
+
+    public SwiftIntMock(int value)
+    {
+        Value = value;
+    }
+
     static ProtocolConformanceDescriptor ISwiftObject.GetProtocolConformanceDescriptor<TProtocol>() where TProtocol : class
     {
         var dic = new Dictionary<Type, string>
             {
-                { typeof(ISwiftHashable), "$sSiSHsMc"} // protocol conformance descriptor for Swift.Int : Swift.Hashable in Swift
+                { typeof(ISwiftHashable), "$sSiSHsMc"}, // protocol conformance descriptor for Swift.Int : Swift.Hashable in Swift
+                { typeof(IEquatable<SwiftIntMock>), "$sSiSQsMc"}, // protocol conformance descriptor for Swift.Int : Swift.Equatable in Swift
             };
 
         if (!dic.ContainsKey(typeof(TProtocol)))
@@ -29,12 +37,16 @@ struct SwiftIntMock : ISwiftObject
 
     static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle payload)
     {
-        throw new NotImplementedException();
+        return new SwiftIntMock((int)payload.Handle);
     }
 
     nint ISwiftObject.MarshalToSwift(nint swiftDest)
     {
-        throw new NotImplementedException();
+        unsafe
+        {
+            *(int*)swiftDest = Value;
+        }
+        return swiftDest;
     }
 }
 

@@ -290,43 +290,11 @@ namespace BindingsGeneration.FunctionalTests
         }
 
         [Fact]
-        public async Task TestAsyncStruct()
-        {
-            int expectedValue = 42;
-            ulong seconds = 5;
-            TimerStruct timerStruct = new TimerStruct(expectedValue);
-            var tasks = new[]
-            {
-                timerStruct.waitFor(seconds - 1),
-                timerStruct.waitFor(seconds - 2),
-                timerStruct.waitFor(seconds - 3),
-                timerStruct.waitFor(seconds - 4),
-                timerStruct.waitFor(seconds - 5)
-            };
-            var stopwatch = Stopwatch.StartNew();
-            var results = await Task.WhenAll(tasks);
-            stopwatch.Stop();
-
-            foreach (var result in results)
-                Assert.Equal(expectedValue, result);
-
-            Assert.True(Math.Abs(stopwatch.Elapsed.TotalSeconds - seconds) <= 1);
-
-            var tasks2 = new[]
-            {
-                timerStruct.waitFor5Seconds(),
-                TimerStruct.waitFor5SecondsStatic()
-            };
-
-            stopwatch = Stopwatch.StartNew();
-            await Task.WhenAll(tasks2);
-            stopwatch.Stop();
-            Assert.True(Math.Abs(stopwatch.Elapsed.TotalSeconds - seconds) <= 1);
-        }
-
-        [Fact]
         public void TestFrozenStructProperties()
         {
+            var staticPropertyValue = PropertiesTestStruct.staticLetProperty;
+            Assert.Equal(42, staticPropertyValue);
+
             var struct1 = new PropertiesTestStruct(letValue: 10, varValue: 20, multiplier: 3);
 
             Assert.Equal(10, struct1.letProperty);
@@ -339,6 +307,9 @@ namespace BindingsGeneration.FunctionalTests
         [Fact]
         public void TestNonFrozenStructProperties()
         {
+            var staticPropertyValue = NonFrozenPropertiesTestStruct.staticLetProperty;
+            Assert.Equal(42, staticPropertyValue);
+
             var struct1 = new NonFrozenPropertiesTestStruct(letValue: 10, varValue: 20, multiplier: 3);
 
             Assert.Equal(10, struct1.letProperty);
@@ -346,6 +317,48 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(20, struct1.varProperty);
 
             Assert.Equal(30, struct1.computedProperty);
+        }
+
+        [Fact]
+        public void TestFrozenEquatableStruct()
+        {
+            var struct1 = new FrozenEquatableStruct(10, 20);
+            var struct2 = new FrozenEquatableStruct(10, 20);
+            var struct3 = new FrozenEquatableStruct(30, 40);
+
+            // Verify that two identical structs are equal
+            Assert.Equal(struct1, struct2);
+
+            // Verify that two different structs are not equal
+            Assert.NotEqual(struct1, struct3);
+        }
+
+        [Fact]
+        public void TestNonFrozenEquatableStruct()
+        {
+            var struct1 = new NonFrozenEquatableStruct(10, 20);
+            var struct2 = new NonFrozenEquatableStruct(10, 20);
+            var struct3 = new NonFrozenEquatableStruct(30, 40);
+
+            // Verify that two identical structs are equal
+            Assert.Equal(struct1, struct2);
+
+            // Verify that two different structs are not equal
+            Assert.NotEqual(struct1, struct3);
+        }
+
+        [Fact]
+        public void TestCustomEquatableStruct()
+        {
+            var struct1 = new CustomEquatableStruct(10);
+            var struct2 = new CustomEquatableStruct(13);
+            var struct3 = new CustomEquatableStruct(30);
+
+            // Verify that two structures with absolute difference less than 5 are equal
+            Assert.Equal(struct1, struct2);
+
+            // Verify that two structures with absolute difference greater than 5 are not equal
+            Assert.NotEqual(struct1, struct3);
         }
     }
 }

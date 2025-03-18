@@ -59,6 +59,8 @@ namespace BindingsGeneration
             var typeRecord = env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
 
             var ISwiftObjectMethodWriter = new ISwiftObjectMethodWriter(csWriter, env.TypeDatabase, moduleDecl, structDecl);
+            var SwiftEquatableMethodWriter = new EqualityMethodsWriter(csWriter, structDecl, false);
+            bool implementsEquatable = structDecl.Conformances.Any(c => c.Protocol.Name == "Equatable");
 
             SwiftTypeInfo? swiftTypeInfo = typeRecord?.SwiftTypeInfo;
 
@@ -71,7 +73,17 @@ namespace BindingsGeneration
                     csWriter.WriteLine($"[StructLayout(LayoutKind.Sequential, Size = {swiftTypeInfo.Value.ValueWitnessTable->Size})]");
                 }
             }
-            csWriter.WriteLine($"public unsafe struct {structDecl.Name} : {typeof(ISwiftObject).Name} {{");
+
+            var interfaces = new List<string> {
+                typeof(ISwiftObject).Name,
+            };
+            if (implementsEquatable)
+            {
+                interfaces.Add($"IEquatable<{structDecl.Name}>");
+            }
+
+            csWriter.WriteLine($"public unsafe struct {structDecl.Name} : {string.Join(", ", interfaces)}");
+            csWriter.WriteLine("{");
             csWriter.Indent++;
 
             csWriter.WriteLine(@"
@@ -88,7 +100,7 @@ namespace BindingsGeneration
                 if (propertyDecl.HasStorage)
                 {
                     var fieldRecord = env.TypeDatabase.GetTypeRecordOrThrow(propertyDecl.SwiftTypeSpec);
-                    csWriter.WriteLine($"private {fieldRecord.NamespaceQualifiedCSTypeIdentifier} {propertyDecl.Name}_;  // Note: Do not access this field directly - use the property accessors");
+                    csWriter.WriteLine($"private {fieldRecord.CSharpTypeName.FullyQualifiedName} {propertyDecl.Name}_;  // Note: Do not access this field directly - use the property accessors");
                 }
             }
 
@@ -106,6 +118,8 @@ namespace BindingsGeneration
             }
             csWriter.WriteLine();
 
+            // Add Equatable support if the struct conforms to Equatable
+            SwiftEquatableMethodWriter.WriteSwiftEquatableImplementation();
             ISwiftObjectMethodWriter.WriteFrozenStructImplementation();
 
             base.HandleBaseDecl(csWriter, swiftWriter, structDecl.Types, conductor, env.TypeDatabase);
@@ -167,8 +181,18 @@ namespace BindingsGeneration
             var moduleDecl = structDecl.ModuleDecl ?? throw new ArgumentNullException(nameof(structDecl.ModuleDecl));
 
             var ISwiftObjectMethodWriter = new ISwiftObjectMethodWriter(csWriter, env.TypeDatabase, moduleDecl, structDecl);
+            var SwiftEquatableMethodWriter = new EqualityMethodsWriter(csWriter, structDecl, true);
+            bool implementsEquatable = structDecl.Conformances.Any(c => c.Protocol.Name == "Equatable");
 
-            csWriter.WriteLine($"public unsafe class {structDecl.Name} : IDisposable, {typeof(ISwiftObject).Name}");
+            var interfaces = new List<string> {
+                typeof(ISwiftObject).Name,
+                typeof(IDisposable).Name
+            };
+            if (implementsEquatable)
+            {
+                interfaces.Add($"IEquatable<{structDecl.Name}>");
+            }
+            csWriter.WriteLine($"public unsafe class {structDecl.Name} : {string.Join(", ", interfaces)}");
             csWriter.WriteLine("{");
             csWriter.Indent++;
 
@@ -189,6 +213,8 @@ namespace BindingsGeneration
             WritePayloadSize(csWriter);
             WritePayload(csWriter);
 
+            // Add Equatable support if the struct conforms to Equatable
+            SwiftEquatableMethodWriter.WriteSwiftEquatableImplementation();
             ISwiftObjectMethodWriter.WriteNonFrozenStructImplementation();
 
             csWriter.WriteLine();
@@ -530,17 +556,121 @@ namespace BindingsGeneration
 
         private string GenerateGetProtocolConformanceDictionaryEntries()
         {
+            var crossModuleSupportedProtocols = new HashSet<string> // TODO: Remove this once we process multiple modules
+            {
+                { "Swift.Equatable"},
+            };
+            var libPath = _typeDatabase.GetLibraryPath(_moduleDecl.Name);
             var entries = new List<string>();
 
-            foreach (var conformance in _structDecl.Conformances.Where(c => c.Protocol.Module == _moduleDecl.Name)) // Process only protocol conformances from current module for now
+            foreach (var conformance in _structDecl.Conformances)
             {
-                var protocol = NameProvider.GetInterfaceName(conformance.Protocol.Name);
-                var protocolConformanceSymbol = conformance.ProtocolConformanceDescriptor;
+                if (conformance.Protocol.Module != _moduleDecl.Name && !crossModuleSupportedProtocols.Contains(conformance.Protocol.ModuleQualifiedName))
+                {
+                    continue;
+                }
+
+                var protocol = NameProvider.GetInterfaceName(conformance.Protocol.Name, _structDecl.Name);
+                var typeRecord = _typeDatabase.GetTypeRecordOrThrow(_structDecl.SwiftTypeName);
+                var protocolConformanceSymbol = protocolConformanceDescriptors.GetValueOrDefault((_structDecl.SwiftTypeName, conformance.Protocol)); // TODO: Get rid of TypeSpec https://github.com/dotnet/runtimelab/issues/2889
 
                 entries.Add($"{{typeof({protocol}), \"{protocolConformanceSymbol}\"}}");
             }
 
             return string.Join(",\n", entries);
+        }
+    }
+
+    public class EqualityMethodsWriter
+    {
+        private readonly IndentedTextWriter _writer;
+        private readonly StructDecl _structDecl;
+        private readonly bool _implementsEquatable;
+        private readonly bool _isRefType;
+
+        public EqualityMethodsWriter(CSharpWriter csWriter, StructDecl structDecl, bool refType)
+        {
+            _writer = csWriter;
+            _structDecl = structDecl;
+            _implementsEquatable = _structDecl.Conformances.Any(c => c.Protocol.Name == "Equatable");
+            _isRefType = refType;
+        }
+
+        public void WriteSwiftEquatableImplementation()
+        {
+            if (_implementsEquatable)
+            {
+                WriteSwiftEquatableImplementationWithSwiftEquals(_isRefType);
+            }
+            else
+            {
+                WriteDefaultEquatableImplementation();
+            }
+        }
+
+        private void WriteSwiftEquatableImplementationWithSwiftEquals(bool refType)
+        {
+            var code = $$"""
+            public override bool Equals(object? obj)
+            {
+                return obj is {{_structDecl.Name}} other && Swift.Runtime.SwiftEquatable.Equals(this, other);
+            }
+
+            public override int GetHashCode()
+            {
+                throw new InvalidOperationException("Type {{_structDecl.Name}} does not implement Swift's Hashable protocol, so GetHashCode() is not supported.");
+            }
+
+            public static bool operator ==({{_structDecl.Name}} left, {{_structDecl.Name}} right)
+            {
+                return Swift.Runtime.SwiftEquatable.Equals(left, right);
+            }
+
+            public static bool operator !=({{_structDecl.Name}} left, {{_structDecl.Name}} right)
+            {
+                return !Swift.Runtime.SwiftEquatable.Equals(left, right);
+            }
+
+            public bool Equals({{_structDecl.Name}}{{(refType == true ? "?" : "")}} other)
+            {
+                return Swift.Runtime.SwiftEquatable.Equals(this, other);
+            }
+            """;
+
+            _writer.WriteLines(code);
+            _writer.WriteLine();
+        }
+
+        private void WriteDefaultEquatableImplementation()
+        {
+            var code = $$"""
+            // Swift structs cannot be compared using .NET's default equality semantics,
+            // since Swift's equality is defined by the Equatable protocol.
+            // This type does not implement Swift's Equatable protocol.
+
+            public override bool Equals(object? obj)
+            {
+                throw new InvalidOperationException("Type {{_structDecl.Name}} does not implement Swift's Equatable protocol, so equality comparison is not supported.");
+            }
+
+            public override int GetHashCode()
+            {
+                throw new InvalidOperationException("Type {{_structDecl.Name}} does not implement Swift's Equatable protocol, so GetHashCode() is not supported.");
+            }
+
+            public static bool operator ==({{_structDecl.Name}} left, {{_structDecl.Name}} right)
+            {
+                throw new InvalidOperationException("Type {{_structDecl.Name}} does not implement Swift's Equatable protocol, so equality comparison is not supported.");
+            }
+
+            public static bool operator !=({{_structDecl.Name}} left, {{_structDecl.Name}} right)
+            {
+                throw new InvalidOperationException("Type {{_structDecl.Name}} does not implement Swift's Equatable protocol, so equality comparison is not supported.");
+            }
+            """;
+
+            _writer.WriteLines(code);
+            _writer.WriteLine();
         }
     }
 

@@ -35,7 +35,8 @@ public class GenericSignatureParser
             new GenericArgumentDecl(
                 typeName,
                 paramMap[typeName],
-                constraints.Where(c => c.GenericParameter.Contains(typeName)).ToList()
+                constraints.Where(c => c.Path[0] == typeName && c.Path.Length == 1).ToList(),
+                constraints.Where(c => c.Path[0] == typeName && c.Path.Length > 1).ToList()
             )
         ).ToList();
     }
@@ -70,7 +71,6 @@ public class GenericSignatureParser
 
         var parsedConstraints = constraints
             .Select(ParseConstraint)
-            .Where(constraint => constraint is not null)
             .Cast<GenericParameterConformance>();
 
         return [.. parsedConstraints];
@@ -89,11 +89,10 @@ public class GenericSignatureParser
             throw new InvalidOperationException($"Invalid constraint clause: {clause}");
         }
 
-        var target = parts[0];
-        var protocol = parts[1];
+        var target = parts[0].Split('.');
+        var conformanceTarget = parts[1];
 
-        if (!target.Contains(".")) return new GenericParameterConformance(target, SwiftTypeName.FromModuleQualifiedName(protocol));
-
-        return null;
+        ConformanceKind kind = clause.Contains(":") ? ConformanceKind.Protocol : ConformanceKind.ConcreteType;
+        return new GenericParameterConformance(target, SwiftTypeName.FromModuleQualifiedName(conformanceTarget), kind);
     }
 }
