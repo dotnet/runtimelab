@@ -76,7 +76,8 @@ namespace BindingsGeneration.FunctionalTests
         {
             var a = new FrozenStruct(1, 2);
             var result = GenericTests.AcceptsGenericParameterAndReturnsGeneric(a);
-            Assert.Equal(a, result);
+            Assert.Equal(a.x, result.x);
+            Assert.Equal(a.y, result.y);
 
             var b = new NonFrozenStruct(3, 4);
             var result2 = GenericTests.AcceptsGenericParameterAndReturnsGeneric(b);
@@ -89,7 +90,8 @@ namespace BindingsGeneration.FunctionalTests
             var a = new FrozenStruct(1, 2);
             var b = new FrozenStruct(3, 4);
             var result = GenericTests.AcceptsTwoValuesOfTheSameGenericType(a, b);
-            Assert.Equal(a, result);
+            Assert.Equal(a.x, result.x);
+            Assert.Equal(a.y, result.y);
         }
 
         [Fact]

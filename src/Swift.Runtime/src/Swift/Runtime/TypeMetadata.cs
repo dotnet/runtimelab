@@ -142,8 +142,8 @@ public enum TypeMetadataRequest
 /// </summary>
 public readonly struct TypeMetadata : IEquatable<TypeMetadata>
 {
-    readonly IntPtr handle;
-
+    private readonly IntPtr handle;
+    public IntPtr Handle => handle;
     static TypeMetadata()
     {
         // TODO - add metadata for common built-in types like scalars and strings

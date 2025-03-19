@@ -95,6 +95,12 @@ namespace BindingsGeneration
         private readonly ITypeDatabase _typeDatabase;
 
         /// <summary>
+        /// The demangled TBD.
+        /// </summary>
+        private readonly DemanglingResults _demangledTbd;
+
+
+        /// <summary>
         /// The verbosity level.
         /// </summary>
         private readonly int _verbose;
@@ -114,10 +120,15 @@ namespace BindingsGeneration
         /// </summary>
         private readonly Swift5Demangler demangler = new();
 
-        public SwiftABIParser(string filePath, ITypeDatabase typeDatabase, int verbose = 0)
+        public SwiftABIParser(
+            string filePath,
+            ITypeDatabase typeDatabase,
+            DemanglingResults demangledTbd,
+            int verbose = 0)
         {
             _filePath = filePath;
             _typeDatabase = typeDatabase;
+            _demangledTbd = demangledTbd;
             _verbose = verbose;
 
             string jsonContent = File.ReadAllText(_filePath);
@@ -148,6 +159,7 @@ namespace BindingsGeneration
                 Methods = new List<MethodDecl>(),
                 Types = new List<TypeDecl>(),
                 Dependencies = dependencies,
+                Protocols = new List<ProtocolDecl>(),
                 ParentDecl = null,
                 ModuleDecl = null
             };
@@ -160,6 +172,7 @@ namespace BindingsGeneration
             moduleDecl.Methods = decls.OfType<MethodDecl>().ToList();
             moduleDecl.Types = decls.OfType<TypeDecl>().ToList();
             moduleDecl.Dependencies = dependencies;
+            moduleDecl.Protocols = decls.OfType<ProtocolDecl>().ToList();
 
             foreach (var type in moduleDecl.Types)
             {
@@ -305,8 +318,22 @@ namespace BindingsGeneration
         {
             var reduction = demangler.Run(node.MangledName) as TypeSpecReduction ?? throw new InvalidOperationException($"Invalid demangling result for '{node.MangledName}'.");
             var protocolTypeSpec = reduction.TypeSpec as NamedTypeSpec ?? throw new InvalidOperationException($"TypeSpec '{reduction.TypeSpec}' is not a NamedTypeSpec");
+            SwiftTypeName protocolName = SwiftTypeName.FromTypeSpec(protocolTypeSpec);
+            string protocolConformanceDescriptor = string.Empty;
 
-            var conformance = new TypeConformance(typeName, SwiftTypeName.FromTypeSpec(protocolTypeSpec));
+            try
+            {
+                protocolConformanceDescriptor = _demangledTbd.GetProtocolConformanceDescriptor(typeName, protocolName);
+            }
+            catch (Exception e)
+            {
+                // TODO: Some types conform to protocols inherently, i.e., they are not explicitly declared.
+                // These conformances are specified in the ABI.json but the descriptors are not present in the TBD.
+                if (_verbose > 0)
+                    Console.WriteLine($"Error while getting protocol conformance descriptor for '{typeName}' and protocol '{protocolName}': {e.Message}");
+            }
+
+            var conformance = new TypeConformance(typeName, protocolName, protocolConformanceDescriptor);
 
             return conformance;
         }
@@ -326,7 +353,7 @@ namespace BindingsGeneration
             return new StructDecl
             {
                 Name = ExtractUniqueName(node.Name),
-                SwiftTypeName = GetSwiftTypeName(parentDecl, node.Name),
+                SwiftTypeName = swiftTypeName,
                 MangledName = node.MangledName,
                 Properties = new List<PropertyDecl>(),
                 Methods = new List<MethodDecl>(),
@@ -336,6 +363,7 @@ namespace BindingsGeneration
                 ModuleDecl = moduleDecl,
                 IsFrozen = hasFrozenAttribute,
                 IsBlittable = false,
+                MetadataAccessor = _demangledTbd.GetMetadataAccessor(swiftTypeName)
             };
         }
 

@@ -31,6 +31,11 @@ foreach(SOURCE_FILE ${SOURCES})
         COMMENT "Generating ${SOURCE_BASE_NAME} library"
     )
 
+    add_custom_command(TARGET ${SOURCE_BASE_NAME} POST_BUILD
+        COMMAND xcrun tapi stubify --filetype=tbd-v4  ${OUTPUT_DIR}/lib${SOURCE_BASE_NAME}.dylib -o ${OUTPUT_DIR}/lib${SOURCE_BASE_NAME}.tbd
+        COMMENT "Generating ${SOURCE_BASE_NAME} .tbd file"
+    )
+
     install(FILES ${OUTPUT_DIR}/lib${SOURCE_BASE_NAME}.dylib
         DESTINATION bin
     )
@@ -40,7 +45,7 @@ foreach(SOURCE_FILE ${SOURCES})
     get_filename_component(DOTNET_CONFIGURATION ${DOTNET_CONFIGURATION} NAME)
 
     add_custom_command(TARGET ${SOURCE_BASE_NAME} POST_BUILD
-        COMMAND ${CMAKE_SOURCE_DIR}/../../../../dotnet.sh ${CMAKE_BINARY_DIR}/../../../Swift.Bindings/${DOTNET_CONFIGURATION}/${DOTNET_VERSION}/Swift.Bindings.dll -a ${OUTPUT_DIR}/${SOURCE_BASE_NAME}.abi.json -d ${OUTPUT_DIR}/lib${SOURCE_BASE_NAME}.dylib -o ${OUTPUT_DIR}
+        COMMAND ${CMAKE_SOURCE_DIR}/../../../../dotnet.sh ${CMAKE_BINARY_DIR}/../../../Swift.Bindings/${DOTNET_CONFIGURATION}/${DOTNET_VERSION}/Swift.Bindings.dll -a ${OUTPUT_DIR}/${SOURCE_BASE_NAME}.abi.json -d ${OUTPUT_DIR}/lib${SOURCE_BASE_NAME}.dylib -t ${OUTPUT_DIR}/lib${SOURCE_BASE_NAME}.tbd -o ${OUTPUT_DIR}
         COMMENT "Generating ${SOURCE_BASE_NAME} bindings"
     )
 

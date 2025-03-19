@@ -27,5 +27,10 @@ namespace BindingsGeneration
         // The module's `using` dependencies.
         // </summary>
         public required List<string> Dependencies { get; set; }
+
+        // <summary>
+        // The module's protocols.
+        // </summary>
+        public required List<ProtocolDecl> Protocols { get; set; }
     }
 }

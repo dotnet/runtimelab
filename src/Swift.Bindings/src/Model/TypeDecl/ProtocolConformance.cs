@@ -11,7 +11,8 @@ namespace BindingsGeneration;
 /// <param name="Protocol">The protocol that the type conforms to</param>
 public record TypeConformance(
     SwiftTypeName ConformingType,
-    SwiftTypeName Protocol
+    SwiftTypeName Protocol,
+    string ProtocolConformanceDescriptor
 );
 
 /// <summary>

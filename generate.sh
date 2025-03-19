@@ -155,10 +155,10 @@ function InvokeProjectionTooling {
 
     if $tool; then
         echo "Using tool to generate bindings for framework '$framework'"
-        $scriptroot/dotnet.sh swiftbindings -a "./$framework.abi.json" -d "/System/Library/Frameworks/$framework.framework/$framework" -o "./"
+        $scriptroot/dotnet.sh swiftbindings -a "./$framework.abi.json" -d "/System/Library/Frameworks/$framework.framework/$framework" -t "/Applications/Xcode.app/Contents/Developer/Platforms/$platform.platform/Developer/SDKs/$platform.sdk/System/Library/Frameworks/$framework.framework/$framework.tbd" -o "./"
     else
         echo "Using local build to generate bindings for framework '$framework'"
-        $scriptroot/dotnet.sh $scriptroot/artifacts/bin/Swift.Bindings/$configuration/$dotnet_version/Swift.Bindings.dll -a "./$framework.abi.json" -d "/System/Library/Frameworks/$framework.framework/$framework" -o "./"
+        $scriptroot/dotnet.sh $scriptroot/artifacts/bin/Swift.Bindings/$configuration/$dotnet_version/Swift.Bindings.dll -a "./$framework.abi.json" -d "/System/Library/Frameworks/$framework.framework/$framework" -t "/Applications/Xcode.app/Contents/Developer/Platforms/$platform.platform/Developer/SDKs/$platform.sdk/System/Library/Frameworks/$framework.framework/$framework.tbd" -o "./"
     fi
 
     # Patch library name in generated C# code for async methods
