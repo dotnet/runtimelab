@@ -64,7 +64,9 @@ public class Interfaces
         TestDefaultDynamicStaticNonGeneric.Run();
         TestDefaultDynamicStaticGeneric.Run();
         TestDynamicStaticGenericVirtualMethods.Run();
+#if !CODEGEN_WASM
         TestRuntime109496Regression.Run();
+#endif
 
         return Pass;
     }

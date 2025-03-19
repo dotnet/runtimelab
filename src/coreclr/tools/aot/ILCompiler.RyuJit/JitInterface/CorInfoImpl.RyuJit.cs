@@ -811,7 +811,7 @@ namespace Internal.JitInterface
                     mangledName = "RhpHandleUnhandledException";
                     break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_STRESS_GC:
-                    mangledName = "RhpStressGc";
+                    mangledName = "RhpGcStressOnce";
                     break;
 
                 default:
