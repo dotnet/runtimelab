@@ -19,7 +19,7 @@ public class GenericSignatureParser
             return [];
 
         if (string.IsNullOrWhiteSpace(sugaredSignature))
-             throw new NotImplementedException($"Generic method without sugared signature is not supported.");
+            throw new NotImplementedException($"Generic method without sugared signature is not supported.");
 
         genericSignature = genericSignature[1..^1];
         sugaredSignature = sugaredSignature[1..^1];

@@ -714,10 +714,11 @@ namespace BindingsGeneration
                     Task {
                         {{(isEmptyTuple ? "" : $"let result{_env.MethodDecl.Name} = ")}}try! await {{(_env.MethodDecl.MethodType == MethodType.Static ? $"{parentTypeName.ModuleQualifiedName}." : "")}}{{_env.MethodDecl.Name}}(
                             {{string.Join(", ", _env.MethodDecl.CSSignature.Skip(1)
-                                .Select(p => p.Name switch {
+                                .Select(p => p.Name switch
+                                {
                                     var n when n.StartsWith("arg") => n,
-                                    var n when n.StartsWith("_")   => $"{n.Substring(1)}: {n}",
-                                    var n                          => $"{n}: {n}"
+                                    var n when n.StartsWith("_") => $"{n.Substring(1)}: {n}",
+                                    var n => $"{n}: {n}"
                                 })
                             )}}
                         )
