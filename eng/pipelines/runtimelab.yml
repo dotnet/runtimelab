@@ -59,7 +59,7 @@ stages:
           vmImage: 'macOS-latest'
         bindings:
           isBindingsBuild: true
-          scriptArgs: '--platform MacOSX --arch x86_64-apple-macos --version 16.0 --framework StoreKit'
+          scriptArgs: '--framework StoreKit'
 
     - template: /eng/pipelines/common/templates/test-job.yml
       parameters:
@@ -70,4 +70,4 @@ stages:
           vmImage: 'macOS-latest'
         bindings:
           isBindingsBuild: true
-          scriptArgs: '--platform MacOSX --arch x86_64-apple-macos --version 16.0 --framework StoreKit --tool'
+          scriptArgs: '--tool --framework StoreKit'

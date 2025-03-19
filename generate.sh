@@ -5,13 +5,13 @@ set -o pipefail
 usage()
 {
   echo "Common settings:"
-  echo "  --platform <value>         Platform: MacOSX, iPhoneOS, iPhoneSimulator, AppleTVOS, AppleTVSimulator"
+  echo "  --platform <value>         Platform: iPhoneOS, iPhoneSimulator, AppleTVOS, AppleTVSimulator, MacOSX"
   echo "  --version <value>          Version of the SDK"
-  echo "  --arch <value>             Architecture: arm64e-apple-macos, x86_64-apple-macos"
   echo "  --framework <value>        Framework to generate bindings for"
   echo "  --configuration <value>    Configuration: Debug, Release"
-  echo "  --experimental             Generates only Runtime.Swift namespace when bindings for frameworks are not complete"
+  echo "  --maccatalyst              Use Mac Catalyst instead of iOS"
   echo "  --tool                     Use the NuGet tool instead of the local build"
+  echo "  --experimental             Generates only Runtime.Swift namespace when bindings for frameworks are not complete"
   echo "  --help                     Print help and exit (short: -h)"
   echo ""
 }
@@ -32,11 +32,11 @@ scriptroot="$( cd -P "$( dirname "$source" )" && pwd )"
 
 platform=''
 version=''
-arch=''
 frameworks=()
 configuration='Debug'
-experimental=false
+is_maccatalyst=false
 tool=false
+experimental=false
 dotnet_version="net10.0"
 
 output_dir="./GeneratedBindings"
@@ -44,26 +44,12 @@ output_dir="./GeneratedBindings"
 while [[ $# > 0 ]]; do
   opt="$(echo "${1/#--/-}" | tr "[:upper:]" "[:lower:]")"
   case "$opt" in
-    -help|-h)
-      usage
-      exit 0
-      ;;
-    -experimental)
-      experimental=true
-      ;;
-    -tool)
-      tool=true
-      ;;
     -platform)
       platform=$2
       shift
       ;;
     -version)
       version=$2
-      shift
-      ;;
-    -arch)
-      arch=$2
       shift
       ;;
     -framework)
@@ -74,10 +60,68 @@ while [[ $# > 0 ]]; do
       configuration=$2
       shift
       ;;
+    -maccatalyst)
+      is_maccatalyst=true
+      ;;
+    -tool)
+      tool=true
+      ;;
+    -experimental)
+      experimental=true
+      ;;
+    -help|-h)
+      usage
+      exit 0
+      ;;
   esac
 
   shift
 done
+
+if [[ -z $version ]]; then
+    version=$(xcrun --sdk "$(echo "$platform" | tr '[:upper:]' '[:lower:]')" --show-sdk-version)
+fi
+
+case "$platform" in
+    "iPhoneOS")
+        target="apple-ios"
+        if $is_maccatalyst; then
+            target_with_version="apple-ios${version}-macabi"
+            platform_display_name="MacCatalyst"
+        else
+            target_with_version="apple-ios${version}"
+        fi
+        arch="arm64e"
+        ;;
+    "iPhoneSimulator")
+        target="apple-ios-simulator"
+        target_with_version="apple-ios${version}-simulator"
+        arch="x86_64"
+        ;;
+    "AppleTVOS")
+        target="apple-tvos"
+        target_with_version="apple-tvos${version}"
+        arch="arm64e"
+        ;;
+    "AppleTVSimulator")
+        target="apple-tvos-simulator"
+        target_with_version="apple-tvos${version}-simulator"
+        arch="x86_64"
+        ;;
+    "MacOSX")
+        target="apple-macos"
+        target_with_version="apple-macos${version}"
+        arch="arm64e"
+        ;;
+    *)
+        echo "Error: Unsupported platform '$platform'."
+        exit 1
+        ;;
+esac
+
+if [[ -z $platform_display_name ]]; then
+    platform_display_name=$platform
+fi
 
 # Output directory for generated bindings
 rm -rf "$output_dir"
@@ -89,10 +133,10 @@ cd "$output_dir"
 function ExtractABI {
     local framework=$1
 
-    echo "Generating ABI for framework '$framework', platform '$platform', architecture '$arch'"
+    echo "Generating ABI for framework '$framework' with target '$arch-$target'"
 
     local sdk_path=$(xcrun -sdk $(echo "$platform" | tr '[:upper:]' '[:lower:]') --show-sdk-path)
-    local swift_interface_path="$(xcode-select -p)/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/Library/Frameworks/${framework}.framework/Versions/Current/Modules/${framework}.swiftmodule/${arch}.swiftinterface"
+    local swift_interface_path="$(xcode-select -p)/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/Library/Frameworks/${framework}.framework/Modules/${framework}.swiftmodule/${arch}-${target}.swiftinterface"
 
     if [ ! -f "$swift_interface_path" ]; then
         echo "Error: Swift interface file not found for framework '$framework'."
@@ -109,7 +153,6 @@ function ExtractABI {
 function InvokeProjectionTooling {
     local framework=$1
 
-    # if tool
     if $tool; then
         echo "Using tool to generate bindings for framework '$framework'"
         $scriptroot/dotnet.sh swiftbindings -a "./$framework.abi.json" -d "/System/Library/Frameworks/$framework.framework/$framework" -o "./"
@@ -117,7 +160,6 @@ function InvokeProjectionTooling {
         echo "Using local build to generate bindings for framework '$framework'"
         $scriptroot/dotnet.sh $scriptroot/artifacts/bin/Swift.Bindings/$configuration/$dotnet_version/Swift.Bindings.dll -a "./$framework.abi.json" -d "/System/Library/Frameworks/$framework.framework/$framework" -o "./"
     fi
-
 
     # Patch library name in generated C# code for async methods
     local frameworkPath="/System/Library/Frameworks/${framework}.framework/${framework}"
@@ -147,23 +189,24 @@ function CreateFramework {
         return
     fi
 
-    # x86_64
+    if [[ $is_maccatalyst == true ]]; then
+        fpath="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/iOSSupport/System/Library/Frameworks"
+        sdk="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+    else
+        fpath="/Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/Library/Frameworks/"
+        sdk="/Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk"
+    fi
+    flags=""
+
+    # x86_64 (simulators, macOS, and maccatalyst)
+    if [[ ($platform == "iPhoneOS" && $is_maccatalyst == true) || $platform == "iPhoneSimulator" || $platform == "AppleTVSimulator" || $platform == "MacOSX" ]]; then
     echo "Building ${framework} for ${platform} x86_64..."
-    swiftc -emit-library -static -target x86_64-apple-$(echo "$platform" | tr '[:upper:]' '[:lower:]')${version} -module-name ${framework} -o ${framework}-${platform}-x64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/Library/Frameworks/
+    xcrun --sdk $(echo "$platform" | tr '[:upper:]' '[:lower:]') swiftc -emit-library -static -target x86_64-${target_with_version} -module-name ${framework} -o ${framework}-${platform_display_name}-x86_64.dylib *.swift -F ${fpath} -sdk ${sdk}
+    fi
 
     # arm64
     echo "Building ${framework} for ${platform} arm64..."
-    swiftc -emit-library -static -target arm64-apple-$(echo "$platform" | tr '[:upper:]' '[:lower:]')${version} -module-name ${framework} -o ${framework}-${platform}-arm64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/Library/Frameworks/
-
-    if [[ $platform == "MacOSX" ]]; then
-        # MacCatalyst x86_64
-        echo "Building ${framework} for MacCatalyst x86_64..."
-        swiftc -emit-library -static -target x86_64-apple-ios18.1-macabi -module-name ${framework} -o ${framework}-maccatalyst-x64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/iOSSupport/System/Library/Frameworks
-
-        # MacCatalyst arm64
-        echo "Building ${framework} for MacCatalyst arm64..."
-        swiftc -emit-library -static -target arm64-apple-ios18.1-macabi -module-name ${framework} -o ${framework}-maccatalyst-arm64.dylib *.swift -F /Applications/Xcode.app/Contents/Developer/Platforms/${platform}.platform/Developer/SDKs/${platform}.sdk/System/iOSSupport/System/Library/Frameworks
-    fi
+    xcrun --sdk $(echo "$platform" | tr '[:upper:]' '[:lower:]') swiftc -emit-library -static -target arm64-${target_with_version} -module-name ${framework} -o ${framework}-${platform_display_name}-arm64.dylib *.swift -F ${fpath} -sdk ${sdk}
 
     # Function to create a Swift framework
     create_framework() {
@@ -205,26 +248,24 @@ EOF
         echo "// Header file" > ${framework_dir}/${framework}.h
     }
 
-    create_framework "$platform-x64"
-    create_framework "$platform-arm64"
-    args_x64=(-framework "$platform-x64/${framework}.framework")
-    args_arm64=(-framework "$platform-arm64/${framework}.framework")
-    if [[ $platform == "MacOSX" ]]; then
-        create_framework "maccatalyst-x64"
-        create_framework "maccatalyst-arm64"
-        args_x64+=(-framework "maccatalyst-x64/${framework}.framework")
-        args_arm64+=(-framework "maccatalyst-arm64/${framework}.framework")
+    # x86_64 (simulators, macOS, and maccatalyst)
+    if [[ ($platform == "iPhoneOS" && $is_maccatalyst == true) || $platform == "iPhoneSimulator" || $platform == "AppleTVSimulator" || $platform == "MacOSX" ]]; then
+        create_framework "$platform_display_name-x86_64"
+        args_x64=(-framework "$platform_display_name-x86_64/${framework}.framework")
+        args_x64+=(-output "${framework}_x86_64.xcframework")
+        xcodebuild -create-xcframework "${args_x64[@]}"
     fi
 
-    args_x64+=(-output "${framework}_x64.xcframework")
+    # arm64
+    create_framework "$platform_display_name-arm64"
+    args_arm64=(-framework "$platform_display_name-arm64/${framework}.framework")
     args_arm64+=(-output "${framework}_arm64.xcframework")
-    xcodebuild -create-xcframework "${args_x64[@]}"
     xcodebuild -create-xcframework "${args_arm64[@]}"
 }
 
 # Function to generate project
 function CreateProject {
-    local project_file="./Swift.Bindings.Experimental.csproj"
+    local project_file="./Swift.Bindings.$platform_display_name.Experimental.csproj"
 
     cat <<EOL > "$project_file"
 <Project Sdk="Microsoft.NET.Sdk">
@@ -238,11 +279,37 @@ function CreateProject {
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
+    <!-- iOS is arm64 only -->
+    <Content Include="./SwiftBindings_arm64.xcframework/ios-arm64/**">
+        <PackagePath>runtimes/ios-arm64/native/</PackagePath>
+        <Pack>true</Pack>
+    </Content>
+    <Content Include="./SwiftBindings_arm64.xcframework/ios-arm64-simulator/**">
+        <PackagePath>runtimes/iossimulator-arm64/native/</PackagePath>
+        <Pack>true</Pack>
+    </Content>
+    <Content Include="./SwiftBindings_x86_64.xcframework/ios-x86_64-simulator/**">
+        <PackagePath>runtimes/iossimulator-x64/native/</PackagePath>
+        <Pack>true</Pack>
+    </Content>
+    <!-- tvOS is arm64 only -->
+    <Content Include="./SwiftBindings_arm64.xcframework/tvos-arm64/**">
+        <PackagePath>runtimes/tvos-arm64/native/</PackagePath>
+        <Pack>true</Pack>
+    </Content>
+    <Content Include="./SwiftBindings_arm64.xcframework/tvos-arm64-simulator/**">
+        <PackagePath>runtimes/tvossimulator-arm64/native/</PackagePath>
+        <Pack>true</Pack>
+    </Content>
+    <Content Include="./SwiftBindings_x86_64.xcframework/tvos-x86_64-simulator/**">
+        <PackagePath>runtimes/tvossimulator-x64/native/</PackagePath>
+        <Pack>true</Pack>
+    </Content>
     <Content Include="./SwiftBindings_arm64.xcframework/macos-arm64/**">
         <PackagePath>runtimes/osx-arm64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
-    <Content Include="./SwiftBindings_x64.xcframework/macos-x86_64/**">
+    <Content Include="./SwiftBindings_x86_64.xcframework/macos-x86_64/**">
         <PackagePath>runtimes/osx-x64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
@@ -250,7 +317,7 @@ function CreateProject {
         <PackagePath>runtimes/maccatalyst-arm64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
-    <Content Include="./SwiftBindings_x64.xcframework/ios-x86_64-maccatalyst/**">
+    <Content Include="./SwiftBindings_x86_64.xcframework/ios-x86_64-maccatalyst/**">
         <PackagePath>runtimes/maccatalyst-x64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>

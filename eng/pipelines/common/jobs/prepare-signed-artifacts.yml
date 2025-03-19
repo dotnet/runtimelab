@@ -44,16 +44,25 @@ jobs:
       displayName: Prepare tooling artifacts and upload to build
 
     - ${{ if eq(parameters.bindings.isBindingsBuild, true) }}:
-      - script: >-
-          ./generate.sh --configuration Release ${{ parameters.bindings.scriptArgs }}
-        displayName: Generate bindings
+      - script: ./generate.sh --configuration Release --platform MacOSX ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate MacOSX bindings
+      - script: ./generate.sh --configuration Release --platform iPhoneOS ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate iOS bindings
+      - script: ./generate.sh --configuration Release --platform iPhoneSimulator ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate iOSSimulator bindings
+      - script: ./generate.sh --configuration Release --platform AppleTVOS ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate tvOS bindings
+      - script: ./generate.sh --configuration Release --platform AppleTVSimulator ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate tvOSSimulator bindings
+      - script: ./generate.sh --configuration Release --platform iPhoneOS --maccatalyst ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate MacCatalyst bindings
 
       - script: >-
           ./build.sh -ci
           -publish
           -pack
           -configuration Release
-          --projects $(pwd)/GeneratedBindings/Swift.Bindings.Experimental.csproj
+          --projects $(pwd)/GeneratedBindings/Swift.Bindings.MacOSX.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.iPhoneOS.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.iPhoneSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.AppleTVOS.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.AppleTVSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.MacCatalyst.Experimental.csproj
           /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
           /p:OfficialBuildId=$(Build.BuildNumber)
           /p:SignType=$(_SignType)

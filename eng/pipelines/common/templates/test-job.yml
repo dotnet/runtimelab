@@ -39,8 +39,18 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
         displayName: Install dependencies
 
-      - script: ./generate.sh --configuration $(_BuildConfig) ${{ parameters.bindings.scriptArgs }}
-        displayName: Generate bindings
+      - script: ./generate.sh --configuration $(_BuildConfig) --platform MacOSX ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate MacOSX bindings
+      - script: ./generate.sh --configuration $(_BuildConfig) --platform iPhoneOS ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate iOS bindings
+      - script: ./generate.sh --configuration $(_BuildConfig) --platform iPhoneSimulator ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate iOSSimulator bindings
+      - script: ./generate.sh --configuration $(_BuildConfig) --platform AppleTVOS ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate tvOS bindings
+      - script: ./generate.sh --configuration $(_BuildConfig) --platform AppleTVSimulator ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate tvOSSimulator bindings
+      - script: ./generate.sh --configuration $(_BuildConfig) --platform iPhoneOS --maccatalyst ${{ parameters.bindings.scriptArgs }}
+        displayName: Generate MacCatalyst bindings
 
       - script: |
           ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/Swift.Bindings.Framework.Tests.csproj \

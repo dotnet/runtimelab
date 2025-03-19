@@ -713,7 +713,13 @@ namespace BindingsGeneration
                 public {{(_env.MethodDecl.MethodType == MethodType.Static ? "static " : "")}} func {{NameProvider.GetPInvokeName(_env.MethodDecl)}}{{genericParams}}({{parameters}}){{whereClause}}{
                     Task {
                         {{(isEmptyTuple ? "" : $"let result{_env.MethodDecl.Name} = ")}}try! await {{(_env.MethodDecl.MethodType == MethodType.Static ? $"{parentTypeName.ModuleQualifiedName}." : "")}}{{_env.MethodDecl.Name}}(
-                            {{string.Join(", ", _env.MethodDecl.CSSignature.Skip(1).Select(p => (p.Name.First() == '_' ? p.Name.Remove(0, 1) : p.Name) + ": " + (p.Name)))}}
+                            {{string.Join(", ", _env.MethodDecl.CSSignature.Skip(1)
+                                .Select(p => p.Name switch {
+                                    var n when n.StartsWith("arg") => n,
+                                    var n when n.StartsWith("_")   => $"{n.Substring(1)}: {n}",
+                                    var n                          => $"{n}: {n}"
+                                })
+                            )}}
                         )
                         callback({{(isEmptyTuple ? "" : $"result{_env.MethodDecl.Name}{(_env.MethodDecl.CSSignature.First().IsGeneric ? $" as! {_env.MethodDecl.GenericParameters[0].SugaredTypeName}" : "")}, ")}}task);
                     }
