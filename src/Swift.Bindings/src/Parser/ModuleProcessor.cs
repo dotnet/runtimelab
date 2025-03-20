@@ -112,6 +112,10 @@ namespace BindingsGeneration
                     ProcessClass(namedTypeSpec, classDecl);
                     break;
 
+                case ProtocolDecl protocolDecl:
+                    ProcessProtocol(namedTypeSpec, protocolDecl);
+                    break;
+
                 default:
                     if (_verbosity > 1)
                     {
@@ -132,8 +136,9 @@ namespace BindingsGeneration
             // Ensure that all properties are processed or known in the database.
             ProcessStructProperties(structDecl);
 
+
             // TODO: Remove loading dylib
-            IntPtr metadataPtr = DynamicLibraryLoader.invoke(_dylibPath, $"{structDecl.MangledName}Ma");
+            IntPtr metadataPtr = DynamicLibraryLoader.invoke(_dylibPath, structDecl.MetadataAccessor);
             var swiftTypeInfo = new SwiftTypeInfo { MetadataPtr = metadataPtr };
 
             TypeRecordFlags flags = CacluateFlags(structDecl);
@@ -252,7 +257,7 @@ namespace BindingsGeneration
                 SwiftTypeName = structDecl.SwiftTypeName,
                 CSharpTypeName = CSharpTypeName.FromNamespaceAndName(@namespace, csharpTypeIdentifier),
                 SwiftTypeInfo = swiftTypeInfo,
-                MetadataAccessor = $"{structDecl.MangledName}Ma",
+                MetadataAccessor = structDecl.MetadataAccessor,
                 Flags = flags,
                 Kind = TypeRecordKind.Struct,
             };
@@ -309,6 +314,17 @@ namespace BindingsGeneration
             var swiftTypeInfo = new SwiftTypeInfo { MetadataPtr = metadataPtr };
 
             RegisterClassType(namedTypeSpec, classDecl, swiftTypeInfo);
+        }
+
+        /// <summary>
+        /// Processes a protocol declaration. Currently unimplemented.
+        /// </summary>
+        /// <param name="namedTypeSpec">Spec for the protocol's name, module, etc.</param>
+        /// <param name="protocolDecl">The protocol declaration node.</param>
+        /// <returns><c>true</c> if the protocol was processed successfully; otherwise, <c>false</c>.</returns>
+        private bool ProcessProtocol(NamedTypeSpec namedTypeSpec, ProtocolDecl protocolDecl)
+        {
+            return true;
         }
     }
 }

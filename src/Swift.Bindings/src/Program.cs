@@ -17,6 +17,7 @@ namespace BindingsGeneration
         {
             Option<string> swiftAbiOption = new(aliases: new[] { "-a", "--swiftabi" }, "Path to the Swift ABI file.") { IsRequired = true };
             Option<string> dylibOption = new(aliases: new[] { "-d", "--dylib" }, "Path to the dynamic library.") { IsRequired = true };
+            Option<string> tbdOption = new(aliases: new[] { "-t", "--tbd" }, "Path to the TBD file.") { IsRequired = true };
             Option<string> outputDirectoryOption = new(aliases: new[] { "-o", "--output" }, "Output directory for generated bindings.") { IsRequired = true };
             Option<int> verboseOption = new(aliases: new[] { "-v", "--verbose" }, "Verbosity level.");
             Option<bool> helpOption = new(aliases: new[] { "-h", "--help" }, "Display a help message.");
@@ -25,17 +26,19 @@ namespace BindingsGeneration
             {
                 swiftAbiOption,
                 dylibOption,
+                tbdOption,
                 outputDirectoryOption,
                 verboseOption,
                 helpOption,
             };
-            rootCommand.SetHandler((string swiftAbiPath, string dylibPath, string outputDirectory, int verbose, bool help) =>
+            rootCommand.SetHandler((string swiftAbiPath, string dylibPath, string tbdPath, string outputDirectory, int verbose, bool help) =>
             {
                 if (help)
                 {
                     Console.WriteLine("Usage:");
                     Console.WriteLine("  -a, --swiftabi     Required. Path to the Swift ABI file.");
                     Console.WriteLine("  -d, --dylib        Required. Path to the dynamic library.");
+                    Console.WriteLine("  -t, --tbd          Required. Path to the TBD file.");
                     Console.WriteLine("  -o, --output       Required. Output directory for generated bindings.");
                     Console.WriteLine("  -v, --verbose      Verbosity level.");
                     return;
@@ -53,16 +56,23 @@ namespace BindingsGeneration
                     return;
                 }
 
+                if (string.IsNullOrWhiteSpace(tbdPath) || !File.Exists(tbdPath))
+                {
+                    Console.Error.WriteLine("Error: Valid TBD file is required.");
+                    return;
+                }
+
                 if (string.IsNullOrWhiteSpace(outputDirectory) || !Directory.Exists(outputDirectory))
                 {
                     Console.Error.WriteLine("Error: Valid output directory is required.");
                     return;
                 }
 
-                GenerateBindings(swiftAbiPath, dylibPath, outputDirectory, verbose);
+                GenerateBindings(swiftAbiPath, dylibPath, tbdPath, outputDirectory, verbose);
             },
             swiftAbiOption,
             dylibOption,
+            tbdOption,
             outputDirectoryOption,
             verboseOption,
             helpOption
@@ -78,7 +88,7 @@ namespace BindingsGeneration
         /// <param name="dylibPath">Path to the dynamic library.</param>
         /// <param name="outputDirectory">Output directory for generated bindings.</param>
         /// <param name="verbose">Verbosity level.</param>
-        public static void GenerateBindings(string swiftAbiPath, string dylibPath, string outputDirectory, int verbose = 2)
+        public static void GenerateBindings(string swiftAbiPath, string dylibPath, string tbdPath, string outputDirectory, int verbose = 2)
         {
             var typeDatabase = new TypeDatabase();
             string[] moduleDatabases = { "FoundationDatabase.xml", "SwiftDatabase.xml" };
@@ -90,8 +100,11 @@ namespace BindingsGeneration
             if (verbose > 0)
                 Console.WriteLine($"Starting bindings generation for {swiftAbiPath}...");
 
+            // Parse the TBD file
+            Demangling.DemanglingResults demangledTbdFile = Demangling.DemanglingResults.FromTbd(tbdPath);
+
             // Initialize the Swift ABI parser
-            var swiftParser = new SwiftABIParser(swiftAbiPath, typeDatabase, verbose);
+            var swiftParser = new SwiftABIParser(swiftAbiPath, typeDatabase, demangledTbdFile, verbose);
             var moduleName = swiftParser.GetModuleName();
 
             // Skip if the module has already been processed

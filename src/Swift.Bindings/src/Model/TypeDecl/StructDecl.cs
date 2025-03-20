@@ -17,5 +17,10 @@ namespace BindingsGeneration
         /// Protocol conformances.
         /// </summary>
         public required List<TypeConformance> Conformances { get; set; }
+
+        /// <summary>
+        /// Metadata accessor.
+        /// </summary>
+        public required string MetadataAccessor { get; set; }
     }
 }

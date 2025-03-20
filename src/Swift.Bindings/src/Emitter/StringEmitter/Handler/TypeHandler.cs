@@ -505,7 +505,7 @@ namespace BindingsGeneration
 
             var pinvokeText = $$"""
             [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
-            [DllImport("{{libPath}}", EntryPoint = "{{_structDecl.MangledName}}Ma")]
+            [DllImport("{{libPath}}", EntryPoint = "{{_structDecl.MetadataAccessor}}")]
             internal static extern TypeMetadata PInvoke_getMetadata();
             """;
 
@@ -686,7 +686,6 @@ namespace BindingsGeneration
             };
             var libPath = _typeDatabase.GetLibraryPath(_moduleDecl.Name);
             var entries = new List<string>();
-            var protocolConformanceDescriptors = DemangledSymbolsRegister.Instance.GetData(libPath).ProtocolConformanceDescriptors;
 
             foreach (var conformance in _structDecl.Conformances)
             {
@@ -696,8 +695,7 @@ namespace BindingsGeneration
                 }
 
                 var protocol = NameProvider.GetInterfaceName(conformance.Protocol.Name, _structDecl.Name);
-                var typeRecord = _typeDatabase.GetTypeRecordOrThrow(_structDecl.SwiftTypeName);
-                var protocolConformanceSymbol = protocolConformanceDescriptors.GetValueOrDefault((_structDecl.SwiftTypeName, conformance.Protocol)); // TODO: Get rid of TypeSpec https://github.com/dotnet/runtimelab/issues/2889
+                var protocolConformanceSymbol = conformance.ProtocolConformanceDescriptor;
 
                 entries.Add($"{{typeof({protocol}), \"{protocolConformanceSymbol}\"}}");
             }
