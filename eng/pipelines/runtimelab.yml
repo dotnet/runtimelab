@@ -70,4 +70,4 @@ stages:
           vmImage: 'macOS-latest'
         bindings:
           isBindingsBuild: true
-          scriptArgs: '--tool --framework StoreKit'
+          scriptArgs: '--framework StoreKit'
