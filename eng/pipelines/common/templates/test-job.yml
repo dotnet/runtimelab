@@ -45,16 +45,16 @@ jobs:
                 /p:TargetPlatform=${{ parameters.archType }}
         displayName: Build and test
 
-      - script: ./generate.sh --configuration $(_BuildConfig) --platform MacOSX ${{ parameters.bindings.scriptArgs }}
-        displayName: Generate MacOSX bindings
-      - script: ./generate.sh --configuration $(_BuildConfig) --platform iPhoneOS ${{ parameters.bindings.scriptArgs }}
-        displayName: Generate iOS bindings
-      - script: ./generate.sh --configuration $(_BuildConfig) --platform iPhoneSimulator ${{ parameters.bindings.scriptArgs }}
-        displayName: Generate iOSSimulator bindings
-      - script: ./generate.sh --configuration $(_BuildConfig) --platform AppleTVOS ${{ parameters.bindings.scriptArgs }}
-        displayName: Generate tvOS bindings
-      - script: ./generate.sh --configuration $(_BuildConfig) --platform AppleTVSimulator ${{ parameters.bindings.scriptArgs }}
-        displayName: Generate tvOSSimulator bindings
+      # - script: ./generate.sh --configuration $(_BuildConfig) --platform MacOSX ${{ parameters.bindings.scriptArgs }}
+      #   displayName: Generate MacOSX bindings
+      # - script: ./generate.sh --configuration $(_BuildConfig) --platform iPhoneOS ${{ parameters.bindings.scriptArgs }}
+      #   displayName: Generate iOS bindings
+      # - script: ./generate.sh --configuration $(_BuildConfig) --platform iPhoneSimulator ${{ parameters.bindings.scriptArgs }}
+      #   displayName: Generate iOSSimulator bindings
+      # - script: ./generate.sh --configuration $(_BuildConfig) --platform AppleTVOS ${{ parameters.bindings.scriptArgs }}
+      #   displayName: Generate tvOS bindings
+      # - script: ./generate.sh --configuration $(_BuildConfig) --platform AppleTVSimulator ${{ parameters.bindings.scriptArgs }}
+      #   displayName: Generate tvOSSimulator bindings
       - script: ./generate.sh --configuration $(_BuildConfig) --platform iPhoneOS --maccatalyst ${{ parameters.bindings.scriptArgs }}
         displayName: Generate MacCatalyst bindings
 
@@ -63,7 +63,7 @@ jobs:
           -publish
           -pack
           -configuration Release
-          --projects $(pwd)/GeneratedBindings/Swift.Bindings.MacOSX.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.iPhoneOS.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.iPhoneSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.AppleTVOS.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.AppleTVSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.MacCatalyst.Experimental.csproj
+          --projects $(pwd)/GeneratedBindings/Swift.Bindings.MacCatalyst.Experimental.csproj
         displayName: Prepare bindings artifacts and upload to build
 
       - script: |
