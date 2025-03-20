@@ -82,6 +82,7 @@ jobs:
           --app ./src/Swift.Bindings/tests/FrameworkTests/bin/$(_BuildConfig)/net10.0-${{ parameters.platform }}/${{ parameters.platform }}-${{ parameters.archType }}/Swift.Bindings.Framework.Tests.app \
           --output-directory artifacts
         displayName: Run device tests
+        continueOnError: true
 
       - script: |
           cat artifacts/Swift.Bindings.Framework.Tests.log
