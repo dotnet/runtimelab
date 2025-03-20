@@ -66,6 +66,14 @@ jobs:
           /p:UseMaui=true
         displayName: Publish app
 
+      - script: >-
+          ./build.sh -ci
+          -publish
+          -pack
+          -configuration Release
+          --projects $(pwd)/GeneratedBindings/Swift.Bindings.MacOSX.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.iPhoneOS.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.iPhoneSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.AppleTVOS.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.AppleTVSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.MacCatalyst.Experimental.csproj
+        displayName: Prepare bindings artifacts and upload to build
+
       - script: |
           ./dotnet.sh xharness apple test \
           --target ${{ parameters.platform }} \
