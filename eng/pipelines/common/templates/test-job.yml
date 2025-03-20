@@ -67,20 +67,20 @@ jobs:
         displayName: Prepare bindings artifacts and upload to build
 
       - script: |
-          ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/Swift.Bindings.Framework.Tests.csproj \
-          -f net10.0-${{ parameters.platform }} \
-          -c $(_BuildConfig) \
-          -r ${{ parameters.platform }}-${{ parameters.archType }} \
-          /p:UseMaui=true
-        displayName: Publish app
-
-      - script: |
           cd ./src/Swift.Bindings/tests/FrameworkTests/WrapperApp
           xcodebuild -project swiftbindings.xcodeproj -scheme swiftbindings -configuration Release -destination "platform=macOS,variant=Mac Catalyst" -derivedDataPath ./MyBuild CODE_SIGN_IDENTITY="-" CODE_SIGN_STYLE="Manual" PRODUCT_BUNDLE_IDENTIFIER="com.companyname.swiftbindings" IPHONEOS_DEPLOYMENT_TARGET=17.5 build
           otool -l ./MyBuild/Build/Products/Release-maccatalyst/swiftbindings.app/Contents/MacOS/swiftbindings | grep "sdk\|minos"
           open ./MyBuild/Build/Products/Release-maccatalyst/swiftbindings.app
         displayName: Build and run wrapper app
         continueOnError: true
+
+      - script: |
+          ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/Swift.Bindings.Framework.Tests.csproj \
+          -f net10.0-${{ parameters.platform }} \
+          -c $(_BuildConfig) \
+          -r ${{ parameters.platform }}-${{ parameters.archType }} \
+          /p:UseMaui=true
+        displayName: Publish app
 
       - script: |
           ./dotnet.sh xharness apple test \
