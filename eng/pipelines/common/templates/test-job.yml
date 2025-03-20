@@ -58,6 +58,14 @@ jobs:
       - script: ./generate.sh --configuration $(_BuildConfig) --platform iPhoneOS --maccatalyst ${{ parameters.bindings.scriptArgs }}
         displayName: Generate MacCatalyst bindings
 
+      - script: >-
+          ./build.sh -ci
+          -publish
+          -pack
+          -configuration Release
+          --projects $(pwd)/GeneratedBindings/Swift.Bindings.MacOSX.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.iPhoneOS.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.iPhoneSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.AppleTVOS.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.AppleTVSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.MacCatalyst.Experimental.csproj
+        displayName: Prepare bindings artifacts and upload to build
+
       - script: |
           ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/Swift.Bindings.Framework.Tests.csproj \
           -f net10.0-${{ parameters.platform }} \
@@ -66,13 +74,11 @@ jobs:
           /p:UseMaui=true
         displayName: Publish app
 
-      - script: >-
-          ./build.sh -ci
-          -publish
-          -pack
-          -configuration Release
-          --projects $(pwd)/GeneratedBindings/Swift.Bindings.MacOSX.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.iPhoneOS.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.iPhoneSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.AppleTVOS.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.AppleTVSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.MacCatalyst.Experimental.csproj
-        displayName: Prepare bindings artifacts and upload to build
+      - script: |
+          cd ./src/Swift.Bindings/tests/FrameworkTests/WrapperApp
+          xcodebuild -project swiftbindings.xcodeproj -scheme swiftbindings -configuration Release -destination "platform=macOS,variant=Mac Catalyst" -derivedDataPath ./MyBuild build
+          open ./MyBuild/Build/Products/Release-iphoneos/swiftbindings.app
+        displayName: Build and run wrapper app
 
       - script: |
           ./dotnet.sh xharness apple test \
