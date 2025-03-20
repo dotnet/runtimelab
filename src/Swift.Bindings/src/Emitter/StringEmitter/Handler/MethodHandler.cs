@@ -810,8 +810,8 @@ namespace BindingsGeneration
                 var payloadName = NameProvider.GetPayloadName(argument.Name);
 
                 var text = $$"""
-                var {{payloadName}}Span = stackalloc byte[(int){{metadataName}}.Size];
-                {{payloadName}} = (IntPtr)Unsafe.AsPointer(ref {{payloadName}}Span[0]);
+                byte* {{payloadName}}Ptr = stackalloc byte[(int){{metadataName}}.Size];
+                {{payloadName}} = (IntPtr){{payloadName}}Ptr;
                 SwiftMarshal.MarshalToSwift({{argument.Name}}, {{payloadName}});
                 """;
                 csWriter.WriteLines(text);
@@ -998,17 +998,9 @@ namespace BindingsGeneration
             var requiresInitWithCopy = !voidReturn && (!MarshallingHelpers.IsTypeFrozen(returnTypeRecord) || _env.BoundGenericsHandler.IsBoundGeneric(returnType));
 
             var copyExpression = $$"""
-            IntPtr payload = IntPtr.Zero;
-            try
-            {
                 var metadata = SwiftObjectHelper<{{_wrapperSignature.ReturnType}}>.GetTypeMetadata();
-                var payloadSpan = stackalloc byte[(int)metadata.Size];
-                payload = (IntPtr)Unsafe.AsPointer(ref payloadSpan[0]);
-                SwiftMarshal.MarshalToSwift(result, payload);
-            }
-            finally
-            {
-            }
+                byte* payload = stackalloc byte[(int)metadata.Size];
+                SwiftMarshal.MarshalToSwift(result, (IntPtr)payload);
             """;
 
             var text = $$"""
