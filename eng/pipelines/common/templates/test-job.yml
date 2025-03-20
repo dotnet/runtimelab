@@ -39,6 +39,12 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
         displayName: Install dependencies
 
+      - script: ./build.sh
+                -pack
+                -c $(_BuildConfig)
+                /p:TargetPlatform=${{ parameters.archType }}
+        displayName: Build and test
+
       - script: ./generate.sh --configuration $(_BuildConfig) --platform MacOSX ${{ parameters.bindings.scriptArgs }}
         displayName: Generate MacOSX bindings
       - script: ./generate.sh --configuration $(_BuildConfig) --platform iPhoneOS ${{ parameters.bindings.scriptArgs }}
