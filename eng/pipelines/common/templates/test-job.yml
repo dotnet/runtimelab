@@ -75,12 +75,6 @@ jobs:
         displayName: Publish app
 
       - script: |
-          cd ./src/Swift.Bindings/tests/FrameworkTests/WrapperApp
-          xcodebuild -project swiftbindings.xcodeproj -scheme swiftbindings -configuration Release -destination "platform=macOS,variant=Mac Catalyst" -derivedDataPath ./MyBuild build
-          open ./MyBuild/Build/Products/Release-iphoneos/swiftbindings.app
-        displayName: Build and run wrapper app
-
-      - script: |
           ./dotnet.sh xharness apple test \
           --target ${{ parameters.platform }} \
           --timeout="00:02:00" \
