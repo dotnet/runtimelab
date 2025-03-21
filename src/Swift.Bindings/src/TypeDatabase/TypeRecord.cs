@@ -17,11 +17,11 @@ public enum TypeRecordFlags
     // However, if it contains a non-frozen struct as a property, it is considered an opaque at compile-time;
     // otherwise, the layout is considered as known at compile-time and enregistration if possible.
     Frozen = 1 << 0,
-    // This flag is used in tooling to determine whether a type is projected as a struct or a class,
+    // This flag is used in tooling to determine whether a type requires memory management,
     // ensuring that the finalizer can handle memory if needed.
-    // The 'HeapAllocated' flag indicates that the type is allocated on the heap (as in the case of classes)
+    // The 'RequiresMemoryManagement' flag indicates that the type is allocated on the heap (as in the case of classes)
     // or that it contains a heap-allocated property (for example, a struct with a reference property).
-    HeapAllocated = 1 << 1,
+    RequiresMemoryManagement = 1 << 1,
 }
 
 /// <summary>

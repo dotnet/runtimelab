@@ -139,7 +139,7 @@ public struct FrozenStruct {
 }
 
 @frozen
-public struct FrozenStructHeapAllocated {
+public struct FrozenStructRequiresMemoryManagement {
     public var a: RefType
     public var b: Int32
 
@@ -150,12 +150,12 @@ public struct FrozenStructHeapAllocated {
 }
 
 @frozen
-public struct NestedFrozenStructHeapAllocated {
-    public var a: FrozenStructHeapAllocated
+public struct NestedFrozenStructRequiresMemoryManagement {
+    public var a: FrozenStructRequiresMemoryManagement
     public var b: Int32
 
     public init (b: Int32) {
-        self.a = FrozenStructHeapAllocated(b: b)
+        self.a = FrozenStructRequiresMemoryManagement(b: b)
         self.b = b
     }
 }
@@ -168,7 +168,7 @@ public struct NonFrozenStruct {
     }
 }
 
-public struct NonFrozenStructHeapAllocated {
+public struct NonFrozenStructRequiresMemoryManagement {
     public var a: RefType
     public var b: Int32
 
@@ -178,10 +178,10 @@ public struct NonFrozenStructHeapAllocated {
     }
 }
 
-public func PassThroughFrozenStructHeapAllocated(a: FrozenStructHeapAllocated) -> FrozenStructHeapAllocated {
+public func PassThroughFrozenStructRequiresMemoryManagement(a: FrozenStructRequiresMemoryManagement) -> FrozenStructRequiresMemoryManagement {
     return a
 }
 
-public func PassThroughNonFrozenStructHeapAllocated(a: NonFrozenStructHeapAllocated) -> NonFrozenStructHeapAllocated {
+public func PassThroughNonFrozenStructRequiresMemoryManagement(a: NonFrozenStructRequiresMemoryManagement) -> NonFrozenStructRequiresMemoryManagement {
     return a
 }

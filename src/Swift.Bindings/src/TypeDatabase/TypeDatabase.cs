@@ -131,7 +131,7 @@ namespace BindingsGeneration
                 string csharpTypeIdentifier = entityNode?.Attributes?["managedTypeName"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'managedTypeName' attribute.");
                 string @namespace = entityNode?.Attributes?["managedNameSpace"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'managedNameSpace' attribute.");
                 string frozen = typeDeclarationNode?.Attributes?["frozen"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'frozen' attribute.");
-                string heapAllocated = typeDeclarationNode?.Attributes?["heapAllocated"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'heapAllocated' attribute.");
+                string requiresMemoryManagement = typeDeclarationNode?.Attributes?["requiresMemoryManagement"]?.Value ?? throw new Exception("Invalid XML structure: Missing 'requiresMemoryManagement' attribute.");
                 if (swiftTypeIdentifier == null || csharpTypeIdentifier == null)
                     throw new Exception("Invalid XML structure: Missing attributes.");
 
@@ -144,7 +144,7 @@ namespace BindingsGeneration
                     SwiftTypeName = swiftTypeName,
                     MetadataAccessor = swiftMangledName,
                     Flags = (frozen.ToLower() == "true" ? TypeRecordFlags.Frozen : TypeRecordFlags.None) |
-                            (heapAllocated.ToLower() == "true" ? TypeRecordFlags.HeapAllocated : TypeRecordFlags.None),
+                            (requiresMemoryManagement.ToLower() == "true" ? TypeRecordFlags.RequiresMemoryManagement : TypeRecordFlags.None),
                     Kind = TypeRecordKind.Struct,
                 };
 

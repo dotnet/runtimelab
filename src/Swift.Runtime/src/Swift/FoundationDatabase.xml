@@ -2,7 +2,7 @@
 <swifttypedatabase version="1.0" moduleName="Foundation" modulePath="/System/Library/Frameworks/Foundation.framework/Foundation">
     <entities>
         <entity managedNameSpace="Swift" managedTypeName="Data">
-            <typedeclaration kind="struct" name="Data" module="Foundation" mangledName="s10Foundation4DataV" frozen="true" heapAllocated="false" />
+            <typedeclaration kind="struct" name="Data" module="Foundation" mangledName="s10Foundation4DataV" frozen="true" requiresMemoryManagement="false" />
         </entity>
     </entities>
 </swifttypedatabase>

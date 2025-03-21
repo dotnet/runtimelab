@@ -228,9 +228,9 @@ namespace BindingsGeneration
                 if (propertyRecord.Kind == TypeRecordKind.Struct && (propertyRecord.Flags & TypeRecordFlags.Frozen) == 0)
                     flags &= ~TypeRecordFlags.Frozen;
 
-                // If any property is heap-allocated, set the HeapAllocated flag
-                if ((propertyRecord.Flags & TypeRecordFlags.HeapAllocated) != 0 || propertyRecord.Kind == TypeRecordKind.Class)
-                    flags |= TypeRecordFlags.HeapAllocated;
+                // If any property is heap-allocated, set the RequiresMemoryManagement flag
+                if ((propertyRecord.Flags & TypeRecordFlags.RequiresMemoryManagement) != 0 || propertyRecord.Kind == TypeRecordKind.Class)
+                    flags |= TypeRecordFlags.RequiresMemoryManagement;
             }
 
             return flags;
@@ -286,7 +286,7 @@ namespace BindingsGeneration
             ClassDecl classDecl,
             SwiftTypeInfo swiftTypeInfo)
         {
-            TypeRecordFlags flags = TypeRecordFlags.HeapAllocated;
+            TypeRecordFlags flags = TypeRecordFlags.RequiresMemoryManagement;
             var @namespace = $"Swift.{namedTypeSpec.Module}"; // TODO: Correctly map to a .NET namespace
             // TODO: Remove this logic once correct csharp type names are used
             var csharpTypeIdentifier = classDecl.SwiftTypeName.Module == "" ? classDecl.SwiftTypeName.Name : classDecl.SwiftTypeName.ModuleQualifiedName.Substring(classDecl.SwiftTypeName.ModuleQualifiedName.IndexOf(".") + 1);

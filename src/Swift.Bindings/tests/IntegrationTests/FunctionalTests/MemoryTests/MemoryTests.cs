@@ -606,17 +606,17 @@ namespace BindingsGeneration.FunctionalTests
         public void TestProjectionTypes()
         {
             Assert.True(typeof(Bindings.FrozenStruct).IsValueType);
-            Assert.True(typeof(Bindings.FrozenStructHeapAllocated).IsClass);
-            Assert.True(typeof(Bindings.NestedFrozenStructHeapAllocated).IsClass);
+            Assert.True(typeof(Bindings.FrozenStructRequiresMemoryManagement).IsClass);
+            Assert.True(typeof(Bindings.NestedFrozenStructRequiresMemoryManagement).IsClass);
             Assert.True(typeof(Bindings.NonFrozenStruct).IsClass);
-            Assert.True(typeof(Bindings.NonFrozenStructHeapAllocated).IsClass);
+            Assert.True(typeof(Bindings.NonFrozenStructRequiresMemoryManagement).IsClass);
         }
 
         [Fact]
         public unsafe void TestDisposeInvokesDestroy()
         {
-            var frozenHeapAllocated = new Bindings.FrozenStructHeapAllocated(42);
-            var bufferPayload = frozenHeapAllocated.Payload;
+            var frozenRequiresMemoryManagement = new Bindings.FrozenStructRequiresMemoryManagement(42);
+            var bufferPayload = frozenRequiresMemoryManagement.Payload;
             var payload = *(IntPtr*)&bufferPayload;
 
             // Check the initial count
@@ -628,12 +628,12 @@ namespace BindingsGeneration.FunctionalTests
             Arc.Retain(payload);
             Assert.Equal(2, Arc.RetainCount(payload));
 
-            // Dispose the frozenHeapAllocated
-            frozenHeapAllocated.Dispose();
+            // Dispose the frozenRequiresMemoryManagement
+            frozenRequiresMemoryManagement.Dispose();
             Assert.Equal(1, Arc.RetainCount(payload));
 
-            var nonfrozenHeapAllocated = new Bindings.NonFrozenStructHeapAllocated(42);
-            payload = nonfrozenHeapAllocated.Payload;
+            var nonfrozenRequiresMemoryManagement = new Bindings.NonFrozenStructRequiresMemoryManagement(42);
+            payload = nonfrozenRequiresMemoryManagement.Payload;
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -644,29 +644,29 @@ namespace BindingsGeneration.FunctionalTests
             Arc.Retain(payload.At(0));
             Assert.Equal(2, Arc.RetainCount(payload.At(0)));
 
-            nonfrozenHeapAllocated.Dispose();
+            nonfrozenRequiresMemoryManagement.Dispose();
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
-            Assert.Equal(SwiftHandle.Zero, nonfrozenHeapAllocated.Payload);
+            Assert.Equal(SwiftHandle.Zero, nonfrozenRequiresMemoryManagement.Payload);
         }
 
         [Fact]
         public unsafe void TestParameterByValueInvokesInitWithCopy()
         {
-            var frozenStructHeapAllocated = new Bindings.FrozenStructHeapAllocated(42);
+            var frozenStructRequiresMemoryManagement = new Bindings.FrozenStructRequiresMemoryManagement(42);
             // Check the payload
-            Assert.Equal(42, frozenStructHeapAllocated.b);
+            Assert.Equal(42, frozenStructRequiresMemoryManagement.b);
 
             // Check the initial count
-            var bufferPayload = frozenStructHeapAllocated.Payload;
+            var bufferPayload = frozenStructRequiresMemoryManagement.Payload;
             var payload = (IntPtr*)&bufferPayload;
             Assert.Equal(1, Arc.RetainCount(*payload));
 
-            var frozenStructHeapAllocatedCopy = Bindings.MemoryTests.PassThroughFrozenStructHeapAllocated(frozenStructHeapAllocated);
+            var frozenStructRequiresMemoryManagementCopy = Bindings.MemoryTests.PassThroughFrozenStructRequiresMemoryManagement(frozenStructRequiresMemoryManagement);
             // Check the payload
-            Assert.Equal(42, frozenStructHeapAllocatedCopy.b);
+            Assert.Equal(42, frozenStructRequiresMemoryManagementCopy.b);
 
             // Check the references are not the same
-            var bufferPayloadCopy = frozenStructHeapAllocatedCopy.Payload;
+            var bufferPayloadCopy = frozenStructRequiresMemoryManagementCopy.Payload;
             var payloadCopy = (IntPtr*)&bufferPayloadCopy;
             Assert.NotEqual((IntPtr)payload, (IntPtr)payloadCopy);
 
@@ -677,34 +677,34 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(*payload));
             Assert.Equal(2, Arc.RetainCount(*payloadCopy));
 
-            var nonFrozenStructHeapAllocated = new Bindings.NonFrozenStructHeapAllocated(42);
+            var nonFrozenStructRequiresMemoryManagement = new Bindings.NonFrozenStructRequiresMemoryManagement(42);
             // Check the payload
-            Assert.Equal(42, nonFrozenStructHeapAllocated.b);
+            Assert.Equal(42, nonFrozenStructRequiresMemoryManagement.b);
 
             // Check the initial count
-            Assert.Equal(1, Arc.RetainCount(((IntPtr)nonFrozenStructHeapAllocated.Payload).At(0)));
+            Assert.Equal(1, Arc.RetainCount(((IntPtr)nonFrozenStructRequiresMemoryManagement.Payload).At(0)));
 
-            var nonFrozenStructHeapAllocatedCopy = Bindings.MemoryTests.PassThroughNonFrozenStructHeapAllocated(nonFrozenStructHeapAllocated);
+            var nonFrozenStructRequiresMemoryManagementCopy = Bindings.MemoryTests.PassThroughNonFrozenStructRequiresMemoryManagement(nonFrozenStructRequiresMemoryManagement);
             // Check the payload
-            Assert.Equal(42, nonFrozenStructHeapAllocatedCopy.b);
+            Assert.Equal(42, nonFrozenStructRequiresMemoryManagementCopy.b);
 
             // Check the references are not the same
-            Assert.NotEqual((IntPtr)nonFrozenStructHeapAllocated.Payload, (IntPtr)nonFrozenStructHeapAllocatedCopy.Payload);
+            Assert.NotEqual((IntPtr)nonFrozenStructRequiresMemoryManagement.Payload, (IntPtr)nonFrozenStructRequiresMemoryManagementCopy.Payload);
 
             // Check the payloads are the same
-            Assert.Equal(((IntPtr)nonFrozenStructHeapAllocated.Payload).At(0), ((IntPtr)nonFrozenStructHeapAllocatedCopy.Payload).At(0));
+            Assert.Equal(((IntPtr)nonFrozenStructRequiresMemoryManagement.Payload).At(0), ((IntPtr)nonFrozenStructRequiresMemoryManagementCopy.Payload).At(0));
 
             // Check the count after copy
-            Assert.Equal(2, Arc.RetainCount(((IntPtr)nonFrozenStructHeapAllocated.Payload).At(0)));
-            Assert.Equal(2, Arc.RetainCount(((IntPtr)nonFrozenStructHeapAllocatedCopy.Payload).At(0)));
+            Assert.Equal(2, Arc.RetainCount(((IntPtr)nonFrozenStructRequiresMemoryManagement.Payload).At(0)));
+            Assert.Equal(2, Arc.RetainCount(((IntPtr)nonFrozenStructRequiresMemoryManagementCopy.Payload).At(0)));
         }
 
 
         [Fact]
         public unsafe void TestDisposeInvokesDestroyThreads()
         {
-            var frozenHeapAllocated = new Bindings.FrozenStructHeapAllocated(42);
-            var bufferPayload = frozenHeapAllocated.Payload;
+            var frozenRequiresMemoryManagement = new Bindings.FrozenStructRequiresMemoryManagement(42);
+            var bufferPayload = frozenRequiresMemoryManagement.Payload;
             var payload = *(IntPtr*)&bufferPayload;
 
             // Check the initial count
@@ -716,8 +716,8 @@ namespace BindingsGeneration.FunctionalTests
             Arc.Retain(payload);
             Assert.Equal(2, Arc.RetainCount(payload));
 
-            var nonfrozenHeapAllocated = new Bindings.NonFrozenStructHeapAllocated(42);
-            IntPtr nonfrozenPayload = nonfrozenHeapAllocated.Payload;
+            var nonfrozenRequiresMemoryManagement = new Bindings.NonFrozenStructRequiresMemoryManagement(42);
+            IntPtr nonfrozenPayload = nonfrozenRequiresMemoryManagement.Payload;
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(nonfrozenPayload.At(0)));
@@ -733,10 +733,10 @@ namespace BindingsGeneration.FunctionalTests
             {
                 threads.Add(new Thread(() =>
                 {
-                    // Dispose the frozenHeapAllocated
-                    frozenHeapAllocated.Dispose();
-                    // Dispose the nonfrozenHeapAllocated
-                    nonfrozenHeapAllocated.Dispose();
+                    // Dispose the frozenRequiresMemoryManagement
+                    frozenRequiresMemoryManagement.Dispose();
+                    // Dispose the nonfrozenRequiresMemoryManagement
+                    nonfrozenRequiresMemoryManagement.Dispose();
                 }));
             }
 

@@ -326,7 +326,7 @@ namespace BindingsGeneration
                 return;
             }
 
-            if (MarshallingHelpers.IsTypeHeapAllocated(returnTypeRecord))
+            if (MarshallingHelpers.RequiresMemoryManagement(returnTypeRecord))
                 SetReturnType(returnTypeRecord.CSharpTypeName.FullyQualifiedName + ".Buffer");
             else
                 SetReturnType(returnTypeRecord.CSharpTypeName.FullyQualifiedName);
@@ -378,7 +378,7 @@ namespace BindingsGeneration
                     continue;
                 }
 
-                if (MarshallingHelpers.IsTypeHeapAllocated(argumentTypeRecord))
+                if (MarshallingHelpers.RequiresMemoryManagement(argumentTypeRecord))
                     AddParameter(argumentTypeRecord.CSharpTypeName.FullyQualifiedName + ".Buffer", argument.Name);
                 else
                     AddParameter(argumentTypeRecord.CSharpTypeName.FullyQualifiedName, argument.Name);
@@ -423,7 +423,7 @@ namespace BindingsGeneration
                 if (_env.ParentDecl is StructDecl structDecl && structDecl.IsFrozen)
                 {
                     var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
-                    if (MarshallingHelpers.IsTypeHeapAllocated(typeRecord))
+                    if (MarshallingHelpers.RequiresMemoryManagement(typeRecord))
                         AddParameter($"SwiftSelf<Buffer>", "self");
                     else
                         AddParameter($"SwiftSelf<{_env.ParentDecl.Name}>", "self");
@@ -647,7 +647,7 @@ namespace BindingsGeneration
             if (_env.ParentDecl is StructDecl structDecl && structDecl.IsFrozen)
             {
                 var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
-                if ((typeRecord.Flags & TypeRecordFlags.HeapAllocated) != 0)
+                if ((typeRecord.Flags & TypeRecordFlags.RequiresMemoryManagement) != 0)
                     csWriter.WriteLine($"var self = new SwiftSelf<Buffer>(_payload);");
                 else
                     csWriter.WriteLine($"var self = new SwiftSelf<{_env.ParentDecl.Name}>(this);");
@@ -915,7 +915,7 @@ namespace BindingsGeneration
             if (!returnArg.IsGeneric)
             {
                 var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(returnArg.SwiftTypeSpec);
-                if ((typeRecord.Flags & TypeRecordFlags.HeapAllocated) != 0 && (typeRecord.Flags & TypeRecordFlags.Frozen) != 0)
+                if ((typeRecord.Flags & TypeRecordFlags.RequiresMemoryManagement) != 0 && (typeRecord.Flags & TypeRecordFlags.Frozen) != 0)
                 {
                     csWriter.WriteLine($$"""
                         unsafe {

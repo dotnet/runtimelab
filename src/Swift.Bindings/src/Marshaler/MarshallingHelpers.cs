@@ -33,14 +33,14 @@ namespace BindingsGeneration
             return (typeRecord.Flags & TypeRecordFlags.Frozen) != 0;
         }
 
-        public static bool IsTypeHeapAllocated(TypeRecord typeRecord)
+        public static bool RequiresMemoryManagement(TypeRecord typeRecord)
         {
-            return (typeRecord.Flags & TypeRecordFlags.HeapAllocated) != 0;
+            return (typeRecord.Flags & TypeRecordFlags.RequiresMemoryManagement) != 0;
         }
 
         public static bool IsFrozenStructProjectedAsClass(TypeRecord typeRecord)
         {
-            return (typeRecord.Flags & TypeRecordFlags.Frozen) != 0 && (typeRecord.Flags & TypeRecordFlags.HeapAllocated) != 0;
+            return (typeRecord.Flags & TypeRecordFlags.Frozen) != 0 && (typeRecord.Flags & TypeRecordFlags.RequiresMemoryManagement) != 0;
         }
     }
 }

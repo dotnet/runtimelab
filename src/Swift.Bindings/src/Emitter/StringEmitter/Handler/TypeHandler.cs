@@ -115,7 +115,7 @@ namespace BindingsGeneration
                 if (propertyDecl.HasStorage)
                 {
                     var fieldRecord = env.TypeDatabase.GetTypeRecordOrThrow(propertyDecl.SwiftTypeSpec);
-                    if ((fieldRecord.Flags & TypeRecordFlags.HeapAllocated) != 0)
+                    if ((fieldRecord.Flags & TypeRecordFlags.RequiresMemoryManagement) != 0)
                     {
                         csWriter.WriteLine($"private IntPtr {propertyDecl.Name}_;  // Note: Do not access this field directly - use the property accessors");
                     }
