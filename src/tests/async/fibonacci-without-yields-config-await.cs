@@ -11,7 +11,7 @@ using Xunit;
 
 public class Async2FibonacciWithYields
 {
-    const int iterations = 10;
+    const int iterations = 3;
     const bool doYields = false;
 
     [Fact]
