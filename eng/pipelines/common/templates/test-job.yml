@@ -67,11 +67,6 @@ jobs:
         displayName: Prepare bindings artifacts and upload to build
 
       - script: |
-          open ./src/Swift.Bindings/tests/FrameworkTests/WrapperApp/swiftbindings.app
-        displayName: Run wrapper app
-        continueOnError: true
-
-      - script: |
           ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/Swift.Bindings.Framework.Tests.csproj \
           -f net10.0-${{ parameters.platform }} \
           -c $(_BuildConfig) \
