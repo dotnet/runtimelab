@@ -1,6 +1,7 @@
 parameters:
   variables: {}
   osGroup: ''
+  platform: ''
   archType: ''
   container: ''
   pool: {}
@@ -70,6 +71,40 @@ jobs:
           displayName: Generate tvOSSimulator bindings
         - script: ./generate.sh --configuration $(_BuildConfig) --platform iPhoneOS --maccatalyst ${{ parameters.bindings.scriptArgs }}
           displayName: Generate MacCatalyst bindings
+
+      # This will be moved to an internal pipeline once the packages are avaiable in the experimental feed
+      - ${{ if and(ne(parameters.isOfficialBuild, true), eq(parameters.osGroup, 'maccatalyst')) }}:
+        - script: |
+            $(_buildScript)
+            ./dotnet.sh workload install maui maccatalyst mobile-librarybuilder-net9 --version 10.0.100-preview.1.25124.2 --source https://api.nuget.org/v3/index.json
+            ./dotnet.sh new tool-manifest && ./dotnet.sh tool install microsoft.dotnet.xharness.cli --version "10.0.0-prerelease*"
+            sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          displayName: Install dependencies
+
+        - script: >-
+            $(_buildScript) -ci
+            -publish
+            -pack
+            -configuration $(_BuildConfig)
+            --projects $(pwd)/GeneratedBindings/Swift.Bindings.MacOSX.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.iPhoneOS.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.iPhoneSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.AppleTVOS.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.AppleTVSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.MacCatalyst.Experimental.csproj
+          displayName: Publish local NuGet package
+
+        - script: |
+            ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/Swift.Bindings.Framework.Tests.csproj \
+            -f net10.0-${{ parameters.platform }} \
+            -c $(_BuildConfig) \
+            -r ${{ parameters.platform }}-${{ parameters.archType }} \
+            /p:UseMaui=true
+          displayName: Publish app
+
+        - script: |
+            ./dotnet.sh xharness apple test \
+            --target ${{ parameters.platform }} \
+            --timeout="00:02:00" \
+            --launch-timeout=00:06:00 \
+            --app ./src/Swift.Bindings/tests/FrameworkTests/bin/$(_BuildConfig)/net10.0-${{ parameters.platform }}/${{ parameters.platform }}-${{ parameters.archType }}/Swift.Bindings.Framework.Tests.app \
+            --output-directory artifacts
+        displayName: Run device tests
 
       - ${{ if eq(parameters.isOfficialBuild, true) }}:
         - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
