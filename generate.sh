@@ -37,7 +37,7 @@ configuration='Debug'
 is_maccatalyst=false
 tool=false
 experimental=false
-dotnet_version="net10.0"
+dotnet_version="net9.0"
 
 output_dir="./GeneratedBindings"
 
