@@ -73,7 +73,7 @@ jobs:
           displayName: Generate MacCatalyst bindings
 
       # This will be moved to an internal pipeline once the packages are avaiable in the experimental feed
-      - ${{ if and(ne(parameters.isOfficialBuild, true), eq(parameters.osGroup, 'maccatalyst')) }}:
+      - ${{ if and(ne(parameters.isOfficialBuild, true), eq(parameters.platform, 'maccatalyst')) }}:
         - script: |
             $(_buildScript)
             ./dotnet.sh workload install maui maccatalyst mobile-librarybuilder-net9 --version 10.0.100-preview.1.25124.2 --source https://api.nuget.org/v3/index.json
