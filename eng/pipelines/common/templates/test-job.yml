@@ -67,10 +67,8 @@ jobs:
         displayName: Prepare bindings artifacts and upload to build
 
       - script: |
-          cd ./src/Swift.Bindings/tests/FrameworkTests/WrapperApp
-          xcodebuild -project swiftbindings.xcodeproj -scheme swiftbindings -configuration Release -destination "platform=macOS,variant=Mac Catalyst" -derivedDataPath ./MyBuild CODE_SIGN_STYLE="Automatic" PRODUCT_BUNDLE_IDENTIFIER="com.companyname.swiftbindings" IPHONEOS_DEPLOYMENT_TARGET=17.5 GENERATE_INFOPLIST_FILE=NO INFOPLIST_FILE="./swiftbindings/Info.plist" build
-          open ./MyBuild/Build/Products/Release-maccatalyst/swiftbindings.app
-        displayName: Build and run wrapper app
+          open ./src/Swift.Bindings/tests/FrameworkTests/WrapperApp/swiftbindings.app
+        displayName: Run wrapper app
         continueOnError: true
 
       - script: |
