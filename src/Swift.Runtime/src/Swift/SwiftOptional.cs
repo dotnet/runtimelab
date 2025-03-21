@@ -52,7 +52,7 @@ public class SwiftOptional<T> : ISwiftObject
         {
             fixed (byte* payloadPtr = instance._payload)
             {
-                metadata.ValueWitnessTable->InitializeWithCopy(payloadPtr, (byte*)payload, metadata);
+                metadata.ValueWitnessTable->InitializeWithCopy(payloadPtr, (byte*)payload.Handle, metadata);
                 return instance;
             }
         }
@@ -159,8 +159,7 @@ public class SwiftOptional<T> : ISwiftObject
                 _payload.CopyTo(payload);
                 fixed (byte* payloadPtr = payload)
                 {
-                    metadata.ValueWitnessTable->DestructiveProjectEnumData(payloadPtr, metadata);
-                    return SwiftMarshal.MarshalFromSwift<T>((SwiftHandle)new IntPtr(payloadPtr));
+                    return SwiftMarshal.MarshalFromSwift<T>(new IntPtr(payloadPtr));
                 }
             }
         }

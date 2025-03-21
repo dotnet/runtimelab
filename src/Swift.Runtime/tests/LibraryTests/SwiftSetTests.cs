@@ -47,6 +47,6 @@ public class SwiftSetTests : IClassFixture<SwiftSetTests.TestFixture>
         Assert.Equal(0, set.Count);
         // An empty array is singleton and it's count doesn't change with new instances
         // https://github.com/swiftlang/swift/blob/50a98d3055e5a636d80c376a99b4eea35387cd0d/stdlib/public/SwiftShims/swift/shims/GlobalObjects.h#L44
-        Assert.True(Arc.RetainCount(set.Payload) > 1);
+        Assert.True(Arc.RetainCount(set.Payload.Handle) > 1);
     }
 }

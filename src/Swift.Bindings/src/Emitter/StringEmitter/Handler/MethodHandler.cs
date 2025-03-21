@@ -654,7 +654,7 @@ namespace BindingsGeneration
             }
             else
             {
-                csWriter.WriteLine("var self = new SwiftSelf((void*)_payload);");
+                csWriter.WriteLine("var self = new SwiftSelf((void*)_payload.Handle);");
             }
 
             csWriter.WriteLine();
@@ -745,8 +745,8 @@ namespace BindingsGeneration
             }
 
             var text = $$"""
-            _payload = (SwiftHandle)NativeMemory.Alloc(_payloadSize);
-            var swiftIndirectResult = new SwiftIndirectResult((void*)_payload);
+            _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc(_payloadSize));
+            var swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
             """;
 
             csWriter.WriteLines(text);
@@ -767,7 +767,7 @@ namespace BindingsGeneration
 
             var text = $$"""
             var returnMetadata = TypeMetadata.GetTypeMetadataOrThrow<{{_wrapperSignature.ReturnType}}>();
-            var payload = (SwiftHandle)NativeMemory.Alloc(returnMetadata.Size);
+            var payload = (IntPtr)NativeMemory.Alloc(returnMetadata.Size);
             var swiftIndirectResult = new SwiftIndirectResult((void*)payload);
             """;
 
@@ -785,7 +785,7 @@ namespace BindingsGeneration
                 if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(argumentDecl))
                 {
                     var bufferName = NameProvider.GetBoundGenericBufferName(argumentDecl.Name);
-                    csWriter.WriteLine($"var {bufferName} = {argumentDecl.Name}.Payload;");
+                    csWriter.WriteLine($"var {bufferName} = {argumentDecl.Name}.Payload.Handle;");
                 }
             }
         }
@@ -908,7 +908,7 @@ namespace BindingsGeneration
 
             if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(returnArg))
             {
-                csWriter.WriteLine($"return SwiftMarshal.MarshalFromSwift<{_env.BoundGenericsHandler.TranslateBoundGenericTypeToCSharp(returnArg)}>((SwiftHandle)new IntPtr(&result));");
+                csWriter.WriteLine($"return SwiftMarshal.MarshalFromSwift<{_env.BoundGenericsHandler.TranslateBoundGenericTypeToCSharp(returnArg)}>(result);");
                 return;
             }
 
@@ -919,7 +919,7 @@ namespace BindingsGeneration
                 {
                     csWriter.WriteLine($$"""
                         unsafe {
-                            return SwiftMarshal.MarshalFromSwift<{{_wrapperSignature.ReturnType}}>((SwiftHandle)new IntPtr(&result));
+                            return SwiftMarshal.MarshalFromSwift<{{_wrapperSignature.ReturnType}}>(new IntPtr(&result));
                         }
                         """);
                     return;
@@ -928,7 +928,7 @@ namespace BindingsGeneration
 
             if (_requiresIndirectResult)
             {
-                csWriter.WriteLine($"return SwiftMarshal.MarshalFromSwift<{_wrapperSignature.ReturnType}>((SwiftHandle)swiftIndirectResult.Value);");
+                csWriter.WriteLine($"return SwiftMarshal.MarshalFromSwift<{_wrapperSignature.ReturnType}>(new IntPtr(swiftIndirectResult.Value));");
                 return;
             }
 
@@ -997,6 +997,8 @@ namespace BindingsGeneration
             var voidReturn = returnType.SwiftTypeSpec.IsEmptyTuple;
             var requiresInitWithCopy = !voidReturn && (!MarshallingHelpers.IsTypeFrozen(returnTypeRecord) || _env.BoundGenericsHandler.IsBoundGeneric(returnType));
 
+            var marshallFromSwiftArgument = _pInvokeSignature.ReturnType == "IntPtr" ? "rawResult" : "new IntPtr(&rawResult)";
+
             var copyExpression = $$"""
                 var metadata = SwiftObjectHelper<{{_wrapperSignature.ReturnType}}>.GetTypeMetadata();
                 byte* payload = stackalloc byte[(int)metadata.Size];
@@ -1011,7 +1013,7 @@ namespace BindingsGeneration
                             GCHandle handle = GCHandle.FromIntPtr(task);
                             try
                             {
-                                {{(voidReturn ? "" : $"var result = SwiftMarshal.MarshalFromSwift<{_wrapperSignature.ReturnType}>((SwiftHandle)new IntPtr(&rawResult));")}}
+                                {{(voidReturn ? "" : $"var result = SwiftMarshal.MarshalFromSwift<{_wrapperSignature.ReturnType}>({marshallFromSwiftArgument});")}}
                                 {{(requiresInitWithCopy ? copyExpression : "")}}
                                 if (handle.Target is TaskCompletionSource{{(voidReturn ? "" : $"<{_wrapperSignature.ReturnType}>")}} tcs)
                                 {

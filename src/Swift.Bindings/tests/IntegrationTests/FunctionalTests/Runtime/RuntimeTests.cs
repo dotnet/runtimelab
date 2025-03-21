@@ -91,7 +91,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(3, Bindings.RuntimeTests.sumArray(array));
 
             // Check the initial count
-            var bufferPayload = array.Payload;
+            var bufferPayload = array.Payload.Handle;
             IntPtr payload = new IntPtr(&bufferPayload);
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
 
@@ -103,7 +103,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(3, Bindings.RuntimeTests.sumArray(arrayCopy));
 
             // Check the references are not the same
-            var bufferPayloadCopy = arrayCopy.Payload;
+            var bufferPayloadCopy = arrayCopy.Payload.Handle;
             IntPtr payloadCopy = new IntPtr(&bufferPayloadCopy);
             Assert.NotEqual(payload, payloadCopy);
 
@@ -131,7 +131,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(3, Bindings.RuntimeTests.sumArray(array));
 
             // Check the initial count
-            var bufferPayload = array.Payload;
+            var bufferPayload = array.Payload.Handle;
             IntPtr payload = new IntPtr(&bufferPayload);
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
 
@@ -143,7 +143,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(3, Bindings.RuntimeTests.sumArray(arrayCopy));
 
             // Check the count after the copy
-            var bufferPayloadCopy = arrayCopy.Payload;
+            var bufferPayloadCopy = arrayCopy.Payload.Handle;
             IntPtr payloadCopy = new IntPtr(&bufferPayloadCopy);
 
             Assert.Equal(2, Arc.RetainCount(payload.At(0)));
@@ -167,16 +167,16 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(arrayCopy[2], arrayCopyCopy[2]);
 
             // Check the count after the copy
-            Assert.Equal(1, Arc.RetainCount(array.Payload));
-            Assert.Equal(2, Arc.RetainCount(arrayCopy.Payload));
-            Assert.Equal(2, Arc.RetainCount(arrayCopyCopy.Payload));
+            Assert.Equal(1, Arc.RetainCount(array.Payload.Handle));
+            Assert.Equal(2, Arc.RetainCount(arrayCopy.Payload.Handle));
+            Assert.Equal(2, Arc.RetainCount(arrayCopyCopy.Payload.Handle));
 
             arrayCopy.Dispose();
 
             // Check the count after the copy is disposed
-            Assert.Equal(1, Arc.RetainCount(array.Payload));
-            Assert.Equal(1, Arc.RetainCount(arrayCopy.Payload));
-            Assert.Equal(1, Arc.RetainCount(arrayCopyCopy.Payload));
+            Assert.Equal(1, Arc.RetainCount(array.Payload.Handle));
+            Assert.Equal(1, Arc.RetainCount(arrayCopy.Payload.Handle));
+            Assert.Equal(1, Arc.RetainCount(arrayCopyCopy.Payload.Handle));
         }
 
         [Fact]
@@ -220,7 +220,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(3, SumSet(set));
 
             // Check the initial count
-            var bufferPayload = set.Payload;
+            var bufferPayload = set.Payload.Handle;
             var payload = (IntPtr*)&bufferPayload;
             Assert.Equal(1, Arc.RetainCount(*payload));
 
@@ -229,7 +229,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(3, SumSet(setCopy));
 
             // Check the references are not the same
-            var bufferPayloadCopy = setCopy.Payload;
+            var bufferPayloadCopy = setCopy.Payload.Handle;
             var payloadCopy = (IntPtr*)&bufferPayloadCopy;
             Assert.NotEqual((IntPtr)payload, (IntPtr)payloadCopy);
 
@@ -249,34 +249,34 @@ namespace BindingsGeneration.FunctionalTests
         // TODO: Remove helper methods when https://github.com/dotnet/runtimelab/issues/2970
         private static unsafe SwiftSet<SwiftIntMock> GetSet(int count)
         {
-            SwiftHandle variant = PInvoke_GetSet(count);
-            return SwiftMarshal.MarshalFromSwift<SwiftSet<SwiftIntMock>>((SwiftHandle)new IntPtr(&variant));
+            IntPtr variant = PInvoke_GetSet(count);
+            return SwiftMarshal.MarshalFromSwift<SwiftSet<SwiftIntMock>>(variant);
         }
 
         private static unsafe int SumSet(SwiftSet<SwiftIntMock> set)
         {
-            SwiftHandle variant = set.Payload;
+            IntPtr variant = set.Payload.Handle;
             return PInvoke_SumSet(variant);
         }
 
         private static unsafe SwiftSet<SwiftIntMock> PassThroughSet(SwiftSet<SwiftIntMock> set)
         {
-            SwiftHandle variant = set.Payload;
+            IntPtr variant = set.Payload.Handle;
             variant = PInvoke_PassThroughSet(variant);
-            return SwiftMarshal.MarshalFromSwift<SwiftSet<SwiftIntMock>>((SwiftHandle)new IntPtr(&variant));
+            return SwiftMarshal.MarshalFromSwift<SwiftSet<SwiftIntMock>>(variant);
         }
 
         [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
         [DllImport("Runtime/libRuntimeTests.dylib", EntryPoint = "$s12RuntimeTests8getArray5countSays5Int32VGAE_tF")]
-        private static extern SwiftHandle PInvoke_GetSet(int count);
+        private static extern IntPtr PInvoke_GetSet(int count);
 
         [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
         [DllImport("Runtime/libRuntimeTests.dylib", EntryPoint = "$s12RuntimeTests8sumArray5arrays5Int32VSayAEG_tF")]
-        private static extern int PInvoke_SumSet(SwiftHandle set);
+        private static extern int PInvoke_SumSet(IntPtr set);
 
         [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
         [DllImport("Runtime/libRuntimeTests.dylib", EntryPoint = "$s12RuntimeTests16passThroughArray5arraySays5Int32VGAF_tF")]
-        private static extern SwiftHandle PInvoke_PassThroughSet(SwiftHandle set);
+        private static extern IntPtr PInvoke_PassThroughSet(IntPtr set);
 
         [Fact]
         public void SmokeTestString()

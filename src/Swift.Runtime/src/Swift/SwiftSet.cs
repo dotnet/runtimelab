@@ -55,10 +55,8 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
 
             unsafe
             {
-                fixed (void* payload = &_variant)
-                {
-                    metadata.ValueWitnessTable->Destroy(payload, metadata);
-                }
+                var handle = _variant.Handle;
+                metadata.ValueWitnessTable->Destroy(&handle, metadata);
             }
             _disposed = true;
         }
@@ -96,10 +94,8 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
         var metadata = SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata();
         unsafe
         {
-            fixed (void* _payloadPtr = &_variant)
-            {
-                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payloadPtr, metadata);
-            }
+            IntPtr handle = _variant.Handle;
+            metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &handle, metadata);
         }
         return swiftDest;
     }
@@ -124,7 +120,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
     /// </summary>
     unsafe SwiftSet(SwiftHandle handle)
     {
-        _variant = *(SwiftHandle*)handle;
+        _variant = handle;
     }
 
     /// <summary>
@@ -133,7 +129,8 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
     public SwiftSet()
     {
         var witnessTable = ProtocolWitnessTable.GetOrThrow<Element, ISwiftHashable>();
-        _variant = SwiftSetPInvokes.Init(ElementTypeMetadata, witnessTable);
+        IntPtr handle = SwiftSetPInvokes.Init(ElementTypeMetadata, witnessTable);
+        _variant = new SwiftHandle(handle);
     }
 
     /// <summary>
@@ -144,7 +141,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
         get
         {
             var witnessTable = ProtocolWitnessTable.GetOrThrow<Element, ISwiftHashable>();
-            return (int)SwiftSetPInvokes.Count(_variant, ElementTypeMetadata, witnessTable);
+            return (int)SwiftSetPInvokes.Count(_variant.Handle, ElementTypeMetadata, witnessTable);
         }
     }
 }
@@ -157,9 +154,9 @@ internal static class SwiftSetPInvokes
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sS2hyxGycfC")]
-    public static extern SwiftHandle Init(TypeMetadata elementTypeMetadata, ProtocolWitnessTable witnessTable);
+    public static extern IntPtr Init(TypeMetadata elementTypeMetadata, ProtocolWitnessTable witnessTable);
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSh5countSivg")]
-    public static extern nint Count(SwiftHandle handle, TypeMetadata elementMetadata, ProtocolWitnessTable witnessTable);
+    public static extern nint Count(IntPtr handle, TypeMetadata elementMetadata, ProtocolWitnessTable witnessTable);
 }

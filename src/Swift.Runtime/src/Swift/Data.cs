@@ -87,7 +87,8 @@ public struct Data : ISwiftObject
     /// </summary>
     unsafe Data(SwiftHandle handle)
     {
-        this = *(Data*)handle;
+        this = *(Data*)handle.Handle;
+        // TODO: Add SwiftHandle field
     }
 
     /// <summary>

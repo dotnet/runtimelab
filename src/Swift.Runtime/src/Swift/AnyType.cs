@@ -49,7 +49,7 @@ public struct AnyType : ISwiftObject
         }
         unsafe
         {
-            metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload, metadata);
+            metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
         }
         return swiftDest;
     }

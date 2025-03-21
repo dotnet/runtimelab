@@ -341,7 +341,7 @@ namespace BindingsGeneration
                 {
                     var metadata = SwiftObjectHelper<{{structDecl.Name}}>.GetTypeMetadata();
                     unsafe {
-                        metadata.ValueWitnessTable->Destroy((void *)_payload, metadata);
+                        metadata.ValueWitnessTable->Destroy((void *)_payload.Handle, metadata);
                     }
                     _payload = SwiftHandle.Zero;
                 }
@@ -524,7 +524,8 @@ namespace BindingsGeneration
                 var text = $$"""
                 static unsafe ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
                 {
-                    return new {{_structDecl.Name}} { _payload = *(Buffer*)handle };
+                    return new {{_structDecl.Name}} { _payload = *(Buffer*)handle.Handle };
+                    // TODO: Store handle for reference counting
                 }
 
                 private {{_structDecl.Name}} ()
@@ -540,7 +541,7 @@ namespace BindingsGeneration
                 var text = $$"""
                 static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
                 {
-                    return *({{_structDecl.Name}}*)handle;
+                    return *({{_structDecl.Name}}*)handle.Handle;
                 }
                 """;
 
@@ -623,7 +624,7 @@ namespace BindingsGeneration
             {
                 var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
                 unsafe {
-                    metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload, metadata);
+                    metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
                 }
                 return swiftDest;
             }

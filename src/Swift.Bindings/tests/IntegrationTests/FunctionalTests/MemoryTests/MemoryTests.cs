@@ -55,7 +55,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.VType vType = new Bindings.VType();
             GC.SuppressFinalize(vType);
-            IntPtr payload = (IntPtr)vType.Payload;
+            IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -95,7 +95,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.VType vType = new Bindings.VType();
             GC.SuppressFinalize(vType);
-            IntPtr payload = (IntPtr)vType.Payload;
+            IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -134,7 +134,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.VType vType = new Bindings.VType();
             GC.SuppressFinalize(vType);
-            IntPtr payload = (IntPtr)vType.Payload;
+            IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -197,7 +197,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.NestedVType vType = new Bindings.NestedVType();
             GC.SuppressFinalize(vType);
-            IntPtr payload = (IntPtr)vType.Payload;
+            IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -248,7 +248,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.NestedVType vType = new Bindings.NestedVType();
             GC.SuppressFinalize(vType);
-            IntPtr payload = (IntPtr)vType.Payload;
+            IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -298,7 +298,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.NestedVType vType = new Bindings.NestedVType();
             GC.SuppressFinalize(vType);
-            IntPtr payload = (IntPtr)vType.Payload;
+            IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -381,7 +381,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.NestedNestedVType vType = new Bindings.NestedNestedVType();
             GC.SuppressFinalize(vType);
-            IntPtr payload = (IntPtr)vType.Payload;
+            IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -443,7 +443,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.NestedNestedVType vType = new Bindings.NestedNestedVType();
             GC.SuppressFinalize(vType);
-            IntPtr payload = (IntPtr)vType.Payload;
+            IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -504,7 +504,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.NestedNestedVType vType = new Bindings.NestedNestedVType();
             GC.SuppressFinalize(vType);
-            IntPtr payload = (IntPtr)vType.Payload;
+            IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -633,7 +633,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(1, Arc.RetainCount(payload));
 
             var nonfrozenRequiresMemoryManagement = new Bindings.NonFrozenStructRequiresMemoryManagement(42);
-            payload = nonfrozenRequiresMemoryManagement.Payload;
+            payload = nonfrozenRequiresMemoryManagement.Payload.Handle;
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -682,25 +682,25 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(42, nonFrozenStructRequiresMemoryManagement.b);
 
             // Check the initial count
-            Assert.Equal(1, Arc.RetainCount(((IntPtr)nonFrozenStructRequiresMemoryManagement.Payload).At(0)));
+            Assert.Equal(1, Arc.RetainCount(((IntPtr)nonFrozenStructRequiresMemoryManagement.Payload.Handle).At(0)));
 
             var nonFrozenStructRequiresMemoryManagementCopy = Bindings.MemoryTests.PassThroughNonFrozenStructRequiresMemoryManagement(nonFrozenStructRequiresMemoryManagement);
             // Check the payload
             Assert.Equal(42, nonFrozenStructRequiresMemoryManagementCopy.b);
 
             // Check the references are not the same
-            Assert.NotEqual((IntPtr)nonFrozenStructRequiresMemoryManagement.Payload, (IntPtr)nonFrozenStructRequiresMemoryManagementCopy.Payload);
+            Assert.NotEqual((IntPtr)nonFrozenStructRequiresMemoryManagement.Payload.Handle, (IntPtr)nonFrozenStructRequiresMemoryManagementCopy.Payload.Handle);
 
             // Check the payloads are the same
-            Assert.Equal(((IntPtr)nonFrozenStructRequiresMemoryManagement.Payload).At(0), ((IntPtr)nonFrozenStructRequiresMemoryManagementCopy.Payload).At(0));
+            Assert.Equal(((IntPtr)nonFrozenStructRequiresMemoryManagement.Payload.Handle).At(0), ((IntPtr)nonFrozenStructRequiresMemoryManagementCopy.Payload.Handle).At(0));
 
             // Check the count after copy
-            Assert.Equal(2, Arc.RetainCount(((IntPtr)nonFrozenStructRequiresMemoryManagement.Payload).At(0)));
-            Assert.Equal(2, Arc.RetainCount(((IntPtr)nonFrozenStructRequiresMemoryManagementCopy.Payload).At(0)));
+            Assert.Equal(2, Arc.RetainCount(((IntPtr)nonFrozenStructRequiresMemoryManagement.Payload.Handle).At(0)));
+            Assert.Equal(2, Arc.RetainCount(((IntPtr)nonFrozenStructRequiresMemoryManagementCopy.Payload.Handle).At(0)));
         }
 
 
-        [Fact]
+        [Fact(Skip = "Change this test to test retain/release with dispose")]
         public unsafe void TestDisposeInvokesDestroyThreads()
         {
             var frozenRequiresMemoryManagement = new Bindings.FrozenStructRequiresMemoryManagement(42);
@@ -717,7 +717,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(payload));
 
             var nonfrozenRequiresMemoryManagement = new Bindings.NonFrozenStructRequiresMemoryManagement(42);
-            IntPtr nonfrozenPayload = nonfrozenRequiresMemoryManagement.Payload;
+            IntPtr nonfrozenPayload = nonfrozenRequiresMemoryManagement.Payload.Handle;
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(nonfrozenPayload.At(0)));

@@ -111,7 +111,7 @@ public class SwiftString : IDisposable, ISwiftObject
     /// </summary>
     unsafe SwiftString(SwiftHandle handle)
     {
-        _payload = *(Buffer*)handle;
+        _payload = *(Buffer*)handle.Handle;
     }
 
     /// <summary>

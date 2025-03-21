@@ -131,7 +131,7 @@ public static class SwiftMarshal
     /// <param name="swiftSource">Memory to read from</param>
     /// <returns>The C# type created by marshaling</returns>
     /// <exception cref="NotSupportedException"></exception>
-    public static T MarshalFromSwift<T>(SwiftHandle swiftSource)
+    public static T MarshalFromSwift<T>(IntPtr swiftSource)
     {
         if (typeof(ISwiftObject).IsAssignableFrom(typeof(T)))
         {

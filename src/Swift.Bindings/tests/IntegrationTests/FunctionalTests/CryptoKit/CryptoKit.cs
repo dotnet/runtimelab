@@ -30,17 +30,17 @@ namespace BindingsGeneration.FunctionalTests
             {
                 if (!_disposed)
                 {
-                    NativeMemory.Free((void*)_payload);
-                    _payload = SwiftHandle.Zero;
-                    _disposed = true;
-                    GC.SuppressFinalize(this);
+                    // NativeMemory.Free((void*)_payload);
+                    // _payload = SwiftHandle.Zero;
+                    // _disposed = true;
+                    // GC.SuppressFinalize(this);
                 }
             }
 
             ~Nonce()
             {
-                NativeMemory.Free((void*)_payload);
-                _payload = SwiftHandle.Zero;
+                // NativeMemory.Free((void*)_payload);
+                // _payload = SwiftHandle.Zero;
             }
 
             public static nuint PayloadSize => _payloadSize;
@@ -68,7 +68,7 @@ namespace BindingsGeneration.FunctionalTests
                 var metadata = SwiftObjectHelper<Nonce>.GetTypeMetadata();
                 unsafe
                 {
-                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload, metadata);
+                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
                 }
                 return swiftDest;
             }
@@ -94,8 +94,8 @@ namespace BindingsGeneration.FunctionalTests
 
             public Nonce(Data data)
             {
-                _payload = (SwiftHandle)NativeMemory.Alloc(PayloadSize);
-                SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload);
+                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc(PayloadSize));
+                SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
 
                 TypeMetadata metadata = SwiftObjectHelper<Data>.GetTypeMetadata();
                 ProtocolWitnessTable witnessTable = ProtocolWitnessTable.GetOrThrow<Data, ISwiftDataProtocol>();
@@ -104,7 +104,7 @@ namespace BindingsGeneration.FunctionalTests
 
                 if (error.Value != null)
                 {
-                    NativeMemory.Free((void*)_payload);
+                    NativeMemory.Free((void*)_payload.Handle);
                     throw new CryptographicException();
                 }
             }
@@ -237,17 +237,17 @@ namespace BindingsGeneration.FunctionalTests
             {
                 if (!_disposed)
                 {
-                    NativeMemory.Free((void*)_payload);
-                    _payload = SwiftHandle.Zero;
-                    _disposed = true;
-                    GC.SuppressFinalize(this);
+                    // NativeMemory.Free((void*)_payload);
+                    // _payload = SwiftHandle.Zero;
+                    // _disposed = true;
+                    // GC.SuppressFinalize(this);
                 }
             }
 
             ~Nonce()
             {
-                NativeMemory.Free((void*)_payload);
-                _payload = SwiftHandle.Zero;
+                // NativeMemory.Free((void*)_payload);
+                // _payload = SwiftHandle.Zero;
             }
 
             public static nuint PayloadSize => _payloadSize;
@@ -275,7 +275,7 @@ namespace BindingsGeneration.FunctionalTests
                 var metadata = SwiftObjectHelper<Nonce>.GetTypeMetadata();
                 unsafe
                 {
-                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload, metadata);
+                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
                 }
                 return swiftDest;
             }
@@ -301,8 +301,8 @@ namespace BindingsGeneration.FunctionalTests
 
             public Nonce(Data data)
             {
-                _payload = (SwiftHandle)NativeMemory.Alloc(PayloadSize);
-                SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload);
+                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc(PayloadSize));
+                SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
 
                 TypeMetadata metadata = SwiftObjectHelper<Data>.GetTypeMetadata();
                 ProtocolWitnessTable witnessTable = ProtocolWitnessTable.GetOrThrow<Data, ISwiftDataProtocol>();
@@ -311,7 +311,7 @@ namespace BindingsGeneration.FunctionalTests
 
                 if (error.Value != null)
                 {
-                    NativeMemory.Free((void*)_payload);
+                    NativeMemory.Free((void*)_payload.Handle);
                     throw new CryptographicException();
                 }
             }
@@ -334,17 +334,17 @@ namespace BindingsGeneration.FunctionalTests
             {
                 if (!_disposed)
                 {
-                    NativeMemory.Free((void*)_payload);
-                    _payload = SwiftHandle.Zero;
-                    _disposed = true;
-                    GC.SuppressFinalize(this);
+                    // NativeMemory.Free((void*)_payload);
+                    // _payload = SwiftHandle.Zero;
+                    // _disposed = true;
+                    // GC.SuppressFinalize(this);
                 }
             }
 
             ~SealedBox()
             {
-                NativeMemory.Free((void*)_payload);
-                _payload = SwiftHandle.Zero;
+                // NativeMemory.Free((void*)_payload);
+                // _payload = SwiftHandle.Zero;
             }
 
             public static nuint PayloadSize => _payloadSize;
@@ -372,7 +372,7 @@ namespace BindingsGeneration.FunctionalTests
                 var metadata = SwiftObjectHelper<SealedBox>.GetTypeMetadata();
                 unsafe
                 {
-                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload, metadata);
+                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
                 }
                 return swiftDest;
             }
@@ -398,13 +398,13 @@ namespace BindingsGeneration.FunctionalTests
 
             public SealedBox()
             {
-                _payload = (SwiftHandle)NativeMemory.Alloc(_payloadSize);
+                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc(_payloadSize));
             }
 
             public SealedBox(AesGcm.Nonce nonce, Data ciphertext, Data tag)
             {
-                _payload = (SwiftHandle)NativeMemory.Alloc(PayloadSize);
-                SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload);
+                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc(PayloadSize));
+                SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
 
                 TypeMetadata ciphertextMetadata = SwiftObjectHelper<Data>.GetTypeMetadata();
                 TypeMetadata tagMetadata = SwiftObjectHelper<Data>.GetTypeMetadata();
@@ -424,7 +424,7 @@ namespace BindingsGeneration.FunctionalTests
 
                 if (error.Value != null)
                 {
-                    NativeMemory.Free((void*)_payload);
+                    NativeMemory.Free((void*)_payload.Handle);
                     throw new CryptographicException();
                 }
             }
@@ -434,13 +434,13 @@ namespace BindingsGeneration.FunctionalTests
             public static unsafe extern void PInvoke_init(SwiftIndirectResult result, SwiftHandle nonce, void* ciphertext, void* tag, TypeMetadata ciphertextMetadata, TypeMetadata tagMetadata, ProtocolWitnessTable ciphertextWitnessTable, ProtocolWitnessTable tagWitnessTable, out SwiftError error);
 
 
-            public Data Ciphertext => PInvoke_GetCiphertext(new SwiftSelf((void*)_payload));
+            public Data Ciphertext => PInvoke_GetCiphertext(new SwiftSelf((void*)_payload.Handle));
 
             [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
             [DllImport("/System/Library/Frameworks/CryptoKit.framework/CryptoKit", EntryPoint = "$s9CryptoKit3AESO3GCMO9SealedBoxV10ciphertext10Foundation4DataVvg")]
             public static unsafe extern Data PInvoke_GetCiphertext(SwiftSelf sealedBox);
 
-            public Data Tag => PInvoke_GetTag(new SwiftSelf((void*)_payload));
+            public Data Tag => PInvoke_GetTag(new SwiftSelf((void*)_payload.Handle));
 
             [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
             [DllImport("/System/Library/Frameworks/CryptoKit.framework/CryptoKit", EntryPoint = "$s9CryptoKit3AESO3GCMO9SealedBoxV3tag10Foundation4DataVvg")]
@@ -453,7 +453,7 @@ namespace BindingsGeneration.FunctionalTests
         public static unsafe SealedBox seal<Plaintext, AuthenticateData>(Plaintext plaintext, SymmetricKey key, Nonce nonce, AuthenticateData aad, out SwiftError error) where Plaintext : unmanaged, ISwiftObject where AuthenticateData : unmanaged, ISwiftObject
         {
             AesGcm.SealedBox sealedBox = new AesGcm.SealedBox();
-            SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)sealedBox.Payload);
+            SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)sealedBox.Payload.Handle);
 
 
             TypeMetadata plaintextMetadata = SwiftObjectHelper<Plaintext>.GetTypeMetadata();
@@ -517,17 +517,17 @@ namespace BindingsGeneration.FunctionalTests
         {
             if (!_disposed)
             {
-                NativeMemory.Free((void*)_payload);
-                _payload = SwiftHandle.Zero;
-                _disposed = true;
-                GC.SuppressFinalize(this);
+                // NativeMemory.Free((void*)_payload);
+                // _payload = SwiftHandle.Zero;
+                // _disposed = true;
+                // GC.SuppressFinalize(this);
             }
         }
 
         ~SymmetricKey()
         {
-            NativeMemory.Free((void*)_payload);
-            _payload = SwiftHandle.Zero;
+            // NativeMemory.Free((void*)_payload);
+            // _payload = SwiftHandle.Zero;
         }
 
         public static nuint PayloadSize => _payloadSize;
@@ -555,7 +555,7 @@ namespace BindingsGeneration.FunctionalTests
             var metadata = SwiftObjectHelper<SymmetricKey>.GetTypeMetadata();
             unsafe
             {
-                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload, metadata);
+                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
             }
             return swiftDest;
         }
@@ -581,8 +581,8 @@ namespace BindingsGeneration.FunctionalTests
 
         public SymmetricKey(Data data)
         {
-            _payload = (SwiftHandle)NativeMemory.Alloc(PayloadSize);
-            SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload);
+            _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc(PayloadSize));
+            SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
 
             TypeMetadata metadata = SwiftObjectHelper<Data>.GetTypeMetadata();
             ProtocolWitnessTable witnessTable = ProtocolWitnessTable.GetOrThrow<Data, ISwiftContiguousBytes>();
