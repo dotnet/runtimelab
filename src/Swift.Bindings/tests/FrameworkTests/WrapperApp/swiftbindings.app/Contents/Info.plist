@@ -43,7 +43,7 @@
 	<key>DTXcodeBuild</key>
 	<string>16C5032a</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>15.2</string>
+	<string>14.5</string>
 	<key>NSSupportsAutomaticTermination</key>
 	<true/>
 	<key>NSSupportsSuddenTermination</key>

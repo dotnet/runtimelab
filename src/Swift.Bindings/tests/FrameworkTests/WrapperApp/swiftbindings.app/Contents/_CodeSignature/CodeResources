@@ -4,13 +4,9 @@
 <dict>
 	<key>files</key>
 	<dict>
-		<key>Resources/Info.plist</key>
-		<data>
-		zFMSSlnHIhPOyA3n/sPo2rrz0rc=
-		</data>
 		<key>Resources/localStore.storekit</key>
 		<data>
-		GFsVLQBaulIKr/vah8ZABlZs5/E=
+		E6zfWe1wQ6lPoXPFo9UXuQ72Kvw=
 		</data>
 		<key>Resources/swiftbindings.xcscheme</key>
 		<data>
@@ -19,18 +15,11 @@
 	</dict>
 	<key>files2</key>
 	<dict>
-		<key>Resources/Info.plist</key>
-		<dict>
-			<key>hash2</key>
-			<data>
-			CSsdNccjFT++7OX9CkMg2zVQ1FMcbjK6RgM4EexE2ck=
-			</data>
-		</dict>
 		<key>Resources/localStore.storekit</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			Q3m0t7ngZpmcEmXrjLLhVx2Jwm5rXEjpwlUQixp59OU=
+			pOdU/tAy+zhfmguemHJmtKAqjv/KD7r1oZJDFnwUz88=
 			</data>
 		</dict>
 		<key>Resources/swiftbindings.xcscheme</key>
