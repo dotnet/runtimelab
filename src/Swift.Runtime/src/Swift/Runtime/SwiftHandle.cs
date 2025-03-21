@@ -23,7 +23,6 @@ public sealed class SwiftHandle : SafeHandleZeroOrMinusOneIsInvalid
     /// </summary>
     public readonly static SwiftHandle Zero = new SwiftHandle(IntPtr.Zero);
 
-// get set
     public IntPtr Handle
     {
         get => handle;
