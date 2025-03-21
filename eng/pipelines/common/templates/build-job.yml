@@ -104,7 +104,7 @@ jobs:
             --launch-timeout=00:06:00 \
             --app ./src/Swift.Bindings/tests/FrameworkTests/bin/$(_BuildConfig)/net10.0-${{ parameters.platform }}/${{ parameters.platform }}-${{ parameters.archType }}/Swift.Bindings.Framework.Tests.app \
             --output-directory artifacts
-        displayName: Run device tests
+          displayName: Run device tests
 
       - ${{ if eq(parameters.isOfficialBuild, true) }}:
         - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml
