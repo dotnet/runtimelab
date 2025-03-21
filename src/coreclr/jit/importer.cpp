@@ -9013,11 +9013,18 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                 if (opcode != CEE_CALLI)
                 {
                     bool isAwait = false;
-                    if (JitConfig.JitOptimizeAwait())
+                    // TODO: The configVal should be wired to the actual implementation
+                    //       that control the flow of sync context.
+                    //       We do not have that yet.
+                    int configVal= -1;  // -1 not congigured, 0/1 configured to false/true
+                    if (compIsAsync2() && JitConfig.JitOptimizeAwait())
                     {
                         // If we see the following code pattern in runtime async methods:
                         //
                         //    call[virt] <Method>
+                        //    [ OPTIONAL ]
+                        //       ldc.i4.0 / ldc.i4.1
+                        //       call[virt] <ConfigureAwait>
                         //    call       <Await>
                         //
                         //  we emit an eqivalent of
@@ -9031,7 +9038,36 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                         //        replacing the pattern with a call to a thunk, which contains roughly the same code.
 
                         const BYTE* nextOpcode = codeAddr + sizeof(mdToken);
-                        if (compIsAsync2() && (nextOpcode + sizeof(mdToken) < codeEndp) &&
+                        // There must be enough space after ldc for {call + tk + call + tk}
+                        if (nextOpcode + 2 * (1 + sizeof(mdToken)) < codeEndp)
+                        {
+                            uint8_t nextOp = getU1LittleEndian(nextOpcode);
+                            uint8_t nextNextOp = getU1LittleEndian(nextOpcode + 1);
+                            if ((nextOp != CEE_LDC_I4_0 && nextOp != CEE_LDC_I4_1) ||
+                                (nextNextOp != CEE_CALL && nextNextOp != CEE_CALLVIRT))
+                            {
+                                goto checkForAwait;
+                            }
+
+                            // check if the token after {ldc, call[virt]} is ConfigAwait
+                            CORINFO_RESOLVED_TOKEN nextCallTok;
+                            impResolveToken(nextOpcode + 2, &nextCallTok, CORINFO_TOKENKIND_Method);
+
+                            if (!eeIsIntrinsic(nextCallTok.hMethod) ||
+                                lookupNamedIntrinsic(nextCallTok.hMethod) !=
+                                    NI_System_Threading_Tasks_Task_ConfigureAwait)
+                            {
+                                goto checkForAwait;
+                            }
+
+                            configVal = nextOp == CEE_LDC_I4_0 ? 0 : 1;
+                            // skip {ldc; call; <ConfigureAwait>}
+                            nextOpcode += 1 + 1 + sizeof(mdToken);
+                        }
+
+                    checkForAwait:
+
+                        if ((nextOpcode + sizeof(mdToken) < codeEndp) &&
                             (getU1LittleEndian(nextOpcode) == CEE_CALL))
                         {
                             // resolve the next token
@@ -9055,6 +9091,10 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                         if (resolvedToken.hMethod != NULL)
                         {
                             // There is a runtime async variant that is implicitly awaitable, just call that.
+                            // if configured, skip {ldc call ConfigureAwait}
+                            if (configVal >= 0)
+                                codeAddr += 2 + sizeof(mdToken);
+
                             // Skip the call to `Await`
                             codeAddr += 1 + sizeof(mdToken);
                         }

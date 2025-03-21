@@ -49,7 +49,7 @@ public class Async2FibonacciWithYields
             return 1;
         }
 
-        int i1 = RuntimeHelpers.Await(Fib(i - 1).ConfigureAwait(false));
+        int i1 = RuntimeHelpers.Await(Fib(i - 1).ConfigureAwait(true));
         int i2 = RuntimeHelpers.Await(Fib(i - 2).ConfigureAwait(false));
 
         return i1 + i2;
