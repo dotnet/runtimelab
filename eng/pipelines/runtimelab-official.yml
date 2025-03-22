@@ -40,6 +40,4 @@ extends:
         parameters:
           isOfficialBuild: true
           enableSourceLinkValidation: true
-          bindings:
-            isBindingsBuild: true
-            frameworks: '--framework StoreKit'
+          scriptArgs: '--framework StoreKit'

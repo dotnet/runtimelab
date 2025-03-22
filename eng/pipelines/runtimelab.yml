@@ -58,6 +58,4 @@ stages:
         runTests: true
         pool:
           vmImage: 'macOS-latest'
-        bindings:
-          isBindingsBuild: true
-          scriptArgs: '--framework StoreKit'
+        scriptArgs: '--framework StoreKit'

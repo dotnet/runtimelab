@@ -7,9 +7,7 @@ parameters:
   pool: {}
   isOfficialBuild: false
   runTests: true
-  bindings:
-    isBindingsBuild: false
-    scriptArgs: ''
+  scriptArgs: ''
 
 jobs:
 
@@ -39,9 +37,9 @@ jobs:
         testRunTitle: ${{ parameters.osGroup }}_${{ parameters.archType }}_$(_BuildConfig)
 
       variables:
-        - _buildScript: build.cmd
-        - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
-          - _buildScript: ./build.sh
+        - _buildScript: ./build.sh
+        - _generateScript: ./generate.sh
+        - _dotnetScript: ./dotnet.sh
 
         - _testBuildArg: ''
         - ${{ if eq(parameters.runTests, true) }}:
@@ -58,36 +56,17 @@ jobs:
       - script: ./dotnet.sh format --exclude artifacts --verify-no-changes --verbosity detailed
         displayName: Verify code formatting
 
-      - ${{ if and(eq(parameters.bindings.isBindingsBuild, true), ne(parameters.osGroup, 'Windows_NT')) }}:
-        - script: ./generate.sh --configuration $(_BuildConfig) --platform MacOSX ${{ parameters.bindings.scriptArgs }}
-          displayName: Generate MacOSX bindings
-        - script: ./generate.sh --configuration $(_BuildConfig) --platform iPhoneOS ${{ parameters.bindings.scriptArgs }}
-          displayName: Generate iOS bindings
-        - script: ./generate.sh --configuration $(_BuildConfig) --platform iPhoneSimulator ${{ parameters.bindings.scriptArgs }}
-          displayName: Generate iOSSimulator bindings
-        - script: ./generate.sh --configuration $(_BuildConfig) --platform AppleTVOS ${{ parameters.bindings.scriptArgs }}
-          displayName: Generate tvOS bindings
-        - script: ./generate.sh --configuration $(_BuildConfig) --platform AppleTVSimulator ${{ parameters.bindings.scriptArgs }}
-          displayName: Generate tvOSSimulator bindings
-        - script: ./generate.sh --configuration $(_BuildConfig) --platform iPhoneOS --maccatalyst ${{ parameters.bindings.scriptArgs }}
-          displayName: Generate MacCatalyst bindings
-
-      # This will be moved to an internal pipeline once the packages are avaiable in the experimental feed
       - ${{ if and(ne(parameters.isOfficialBuild, true), eq(parameters.platform, 'maccatalyst')) }}:
         - script: |
-            $(_buildScript)
+            $(_generateScript) --configuration $(_BuildConfig) --platform MacCatalyst ${{ parameters.scriptArgs }}
+            $(_buildScript) -ci -publish -pack -configuration $(_BuildConfig) --projects $(pwd)/GeneratedBindings/MacCatalyst/Swift.Bindings.MacCatalyst.Experimental.csproj
+          displayName: Generate MacCatalyst bindings
+
+        - script: |
             ./dotnet.sh workload install maui maccatalyst mobile-librarybuilder-net9 --version 10.0.100-preview.1.25124.2 --source https://api.nuget.org/v3/index.json
             ./dotnet.sh new tool-manifest && ./dotnet.sh tool install microsoft.dotnet.xharness.cli --version "10.0.0-prerelease*"
             sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
           displayName: Install dependencies
-
-        - script: >-
-            $(_buildScript) -ci
-            -publish
-            -pack
-            -configuration $(_BuildConfig)
-            --projects $(pwd)/GeneratedBindings/Swift.Bindings.MacOSX.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.iPhoneOS.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.iPhoneSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.AppleTVOS.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.AppleTVSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/Swift.Bindings.MacCatalyst.Experimental.csproj
-          displayName: Publish local NuGet package
 
         - script: |
             ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/Swift.Bindings.Framework.Tests.csproj \
@@ -95,7 +74,7 @@ jobs:
             -c $(_BuildConfig) \
             -r ${{ parameters.platform }}-${{ parameters.archType }} \
             /p:UseMaui=true
-          displayName: Publish app
+          displayName: Build device tests
 
         - script: |
             ./dotnet.sh xharness apple test \
