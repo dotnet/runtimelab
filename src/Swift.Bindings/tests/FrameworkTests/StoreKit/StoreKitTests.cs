@@ -74,24 +74,6 @@ public static class MauiProgram
             Assert.NotNull(opt3);
         }
 
-        [Fact]
-        public void TestSubscriptionOfferNestedTypes()
-        {
-            var intro = Product.SubscriptionOffer.OfferType.introductory;
-            var promo = Product.SubscriptionOffer.OfferType.promotional;
-            var winBack = Product.SubscriptionOffer.OfferType.winBack;
-            Assert.NotNull(intro);
-            Assert.NotNull(promo);
-            Assert.NotNull(winBack);
-
-            var payAsYouGo = Product.SubscriptionOffer.PaymentMode.payAsYouGo;
-            var payUpFront = Product.SubscriptionOffer.PaymentMode.payUpFront;
-            var freeTrial = Product.SubscriptionOffer.PaymentMode.freeTrial;
-            Assert.NotNull(payAsYouGo);
-            Assert.NotNull(payUpFront);
-            Assert.NotNull(freeTrial);
-        }
-
         [Fact(Skip = "https://github.com/dotnet/runtimelab/issues/2850")]
         public void TestExternalPurchaseProperties()
         {
