@@ -439,16 +439,21 @@ void SsaBuilder::InsertPhiFunctions()
                 }
 
                 // Check if we've already inserted a phi node.
+#if defined(TARGET_WASM)
+                if (bbInDomFront->IsLIR())
+                {
+                    if (GetPhiNodeForRationalIRForm(bbInDomFront, lclNum) == nullptr)
+                    {
+                        InsertPhiToRationalIRForm(bbInDomFront, lclNum);
+                    }
+                }
+                else
+#endif
                 if (GetPhiNode(bbInDomFront, lclNum) == nullptr)
                 {
                     // We have a variable i that is defined in block j and live at l, and l belongs to dom frontier of
                     // j. So insert a phi node at l.
-#if defined(TARGET_WASM)
-                    bbInDomFront->IsLIR() ? InsertPhiToRationalIRForm(bbInDomFront, lclNum)
-                                          : (void)InsertPhi(m_pCompiler, bbInDomFront, lclNum);
-#else
                     InsertPhi(m_pCompiler, bbInDomFront, lclNum);
-#endif
                 }
             }
         }
