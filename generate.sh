@@ -39,8 +39,6 @@ tool=false
 experimental=false
 dotnet_version="net9.0"
 
-output_dir="./GeneratedBindings"
-
 while [[ $# > 0 ]]; do
   opt="$(echo "${1/#--/-}" | tr "[:upper:]" "[:lower:]")"
   case "$opt" in
@@ -77,6 +75,8 @@ while [[ $# > 0 ]]; do
 
   shift
 done
+
+output_dir="./GeneratedBindings/$platform"
 
 if [[ -z $version ]]; then
     version=$(xcrun --sdk "$(echo "$platform" | tr '[:upper:]' '[:lower:]')" --show-sdk-version)
