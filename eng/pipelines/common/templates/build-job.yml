@@ -53,23 +53,23 @@ jobs:
                 /p:TargetPlatform=${{ parameters.archType }}
         displayName: Build and test
 
-      - script: ./dotnet.sh format --exclude artifacts --verify-no-changes --verbosity detailed
+      - script: $(_dotnetScript) format --exclude artifacts --verify-no-changes --verbosity detailed
         displayName: Verify code formatting
 
       - ${{ if and(ne(parameters.isOfficialBuild, true), eq(parameters.platform, 'maccatalyst')) }}:
         - script: |
             $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneOS --maccatalyst ${{ parameters.scriptArgs }}
-            $(_buildScript) -ci -publish -pack -configuration $(_BuildConfig) --projects $(pwd)/GeneratedBindings/MacCatalyst/Swift.Bindings.MacCatalyst.Experimental.csproj
+            $(_buildScript) -ci -publish -pack -configuration $(_BuildConfig) --projects ./GeneratedBindings/MacCatalyst/Swift.Bindings.MacCatalyst.Experimental.csproj
           displayName: Generate MacCatalyst bindings
 
         - script: |
-            ./dotnet.sh workload install maui maccatalyst mobile-librarybuilder-net9 --version 10.0.100-preview.1.25124.2 --source https://api.nuget.org/v3/index.json
-            ./dotnet.sh new tool-manifest && ./dotnet.sh tool install microsoft.dotnet.xharness.cli --version "10.0.0-prerelease*"
+            $(_dotnetScript) workload install maui maccatalyst mobile-librarybuilder-net9 --version 10.0.100-preview.1.25124.2 --source https://api.nuget.org/v3/index.json
+            $(_dotnetScript) new tool-manifest && $(_dotnetScript) tool install microsoft.dotnet.xharness.cli --version "10.0.0-prerelease*"
             sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
           displayName: Install dependencies
 
         - script: |
-            ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/Swift.Bindings.Framework.Tests.csproj \
+            $(_dotnetScript) build ./src/Swift.Bindings/tests/FrameworkTests/Swift.Bindings.Framework.Tests.csproj \
             -f net10.0-${{ parameters.platform }} \
             -c $(_BuildConfig) \
             -r ${{ parameters.platform }}-${{ parameters.archType }} \
@@ -77,7 +77,7 @@ jobs:
           displayName: Build device tests
 
         - script: |
-            ./dotnet.sh xharness apple test \
+            $(_dotnetScript) xharness apple test \
             --target ${{ parameters.platform }} \
             --timeout="00:02:00" \
             --launch-timeout=00:06:00 \

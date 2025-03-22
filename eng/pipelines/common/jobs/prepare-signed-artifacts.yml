@@ -31,7 +31,6 @@ jobs:
       - _BuildConfig: Release
       - _buildScript: ./build.sh
       - _generateScript: ./generate.sh
-      - _dotnetScript: ./dotnet.sh
 
     steps:
     - script: >-
@@ -47,25 +46,25 @@ jobs:
         /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
       displayName: Prepare tooling artifacts and upload to build
 
-    - script: ./generate.sh --configuration Release --platform MacOSX ${{ scriptArgs }}
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform MacOSX ${{ scriptArgs }}
       displayName: Generate MacOSX bindings
-    - script: ./generate.sh --configuration Release --platform iPhoneOS ${{ scriptArgs }}
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneOS ${{ scriptArgs }}
       displayName: Generate iOS bindings
-    - script: ./generate.sh --configuration Release --platform iPhoneSimulator ${{ scriptArgs }}
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneSimulator ${{ scriptArgs }}
       displayName: Generate iOSSimulator bindings
-    - script: ./generate.sh --configuration Release --platform AppleTVOS ${{ scriptArgs }}
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform AppleTVOS ${{ scriptArgs }}
       displayName: Generate tvOS bindings
-    - script: ./generate.sh --configuration Release --platform AppleTVSimulator ${{ scriptArgs }}
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform AppleTVSimulator ${{ scriptArgs }}
       displayName: Generate tvOSSimulator bindings
-    - script: ./generate.sh --configuration Release --platform iPhoneOS --maccatalyst ${{ scriptArgs }}
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneOS --maccatalyst ${{ scriptArgs }}
       displayName: Generate MacCatalyst bindings
 
     - script: >-
-        ./build.sh -ci
+        $(_buildScript) -ci
         -publish
         -pack
-        -configuration Release
-        --projects $(pwd)/GeneratedBindings/MacOSX/Swift.Bindings.MacOSX.Experimental.csproj;$(pwd)/GeneratedBindings/iPhoneOS/Swift.Bindings.iPhoneOS.Experimental.csproj;$(pwd)/GeneratedBindings/iPhoneSimulator/Swift.Bindings.iPhoneSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/AppleTVOS/Swift.Bindings.AppleTVOS.Experimental.csproj;$(pwd)/GeneratedBindings/AppleTVSimulator/Swift.Bindings.AppleTVSimulator.Experimental.csproj;$(pwd)/GeneratedBindings/MacCatalyst/Swift.Bindings.MacCatalyst.Experimental.csproj
+        -configuration $(_BuildConfig)
+        --projects ./GeneratedBindings/MacOSX/Swift.Bindings.MacOSX.Experimental.csproj;./GeneratedBindings/iPhoneOS/Swift.Bindings.iPhoneOS.Experimental.csproj;./GeneratedBindings/iPhoneSimulator/Swift.Bindings.iPhoneSimulator.Experimental.csproj;./GeneratedBindings/AppleTVOS/Swift.Bindings.AppleTVOS.Experimental.csproj;./GeneratedBindings/AppleTVSimulator/Swift.Bindings.AppleTVSimulator.Experimental.csproj;./GeneratedBindings/MacCatalyst/Swift.Bindings.MacCatalyst.Experimental.csproj
         /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
         /p:OfficialBuildId=$(Build.BuildNumber)
         /p:SignType=$(_SignType)
