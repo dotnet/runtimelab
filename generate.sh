@@ -82,8 +82,6 @@ if [[ $platform != "iPhoneOS" && $platform != "iPhoneSimulator" && $platform != 
     exit 1
 fi
 
-output_dir="./GeneratedBindings/$platform"
-
 if [[ -z $version ]]; then
     version=$(xcrun --sdk "$(echo "$platform" | tr '[:upper:]' '[:lower:]')" --show-sdk-version)
 fi
@@ -130,6 +128,8 @@ if [[ -z $platform_display_name ]]; then
 fi
 
 # Output directory for generated bindings
+output_dir="./GeneratedBindings/$platform_display_name"
+
 rm -rf "$output_dir"
 mkdir -p "$output_dir"
 
