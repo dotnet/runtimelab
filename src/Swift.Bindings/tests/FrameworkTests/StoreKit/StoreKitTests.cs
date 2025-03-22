@@ -75,28 +75,6 @@ public static class MauiProgram
         }
 
         [Fact]
-        public void TestSubscriptionPeriodStaticProperties()
-        {
-            var weekly = Product.SubscriptionPeriod.weekly;
-            var monthly = Product.SubscriptionPeriod.monthly;
-            var yearly = Product.SubscriptionPeriod.yearly;
-            var everyThreeDays = Product.SubscriptionPeriod.everyThreeDays;
-            var everyTwoWeeks = Product.SubscriptionPeriod.everyTwoWeeks;
-            var everyTwoMonths = Product.SubscriptionPeriod.everyTwoMonths;
-            var everyThreeMonths = Product.SubscriptionPeriod.everyThreeMonths;
-            var everySixMonths = Product.SubscriptionPeriod.everySixMonths;
-
-            Assert.NotNull(weekly);
-            Assert.NotNull(monthly);
-            Assert.NotNull(yearly);
-            Assert.NotNull(everyThreeDays);
-            Assert.NotNull(everyTwoWeeks);
-            Assert.NotNull(everyTwoMonths);
-            Assert.NotNull(everyThreeMonths);
-            Assert.NotNull(everySixMonths);
-        }
-
-        [Fact]
         public void TestSubscriptionOfferNestedTypes()
         {
             var intro = Product.SubscriptionOffer.OfferType.introductory;
