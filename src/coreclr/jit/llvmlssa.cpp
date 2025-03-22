@@ -957,7 +957,8 @@ private:
                 LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
                 if (IsCandidateLocal(varDsc))
                 {
-                    printf("V%02u/%d ", lclNum, m_activeDefs.Top(lclVarIndex));
+                    // TOOD-LLVM Reinstate when https://github.com/dotnet/runtimelab/issues/3053 is addressed.
+//                    printf("V%02u/%d ", lclNum, m_activeDefs.Top(lclVarIndex));
                 }
             }
             printf("}\n");

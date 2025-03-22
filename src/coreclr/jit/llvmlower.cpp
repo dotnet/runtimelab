@@ -13,15 +13,10 @@ void Llvm::AddUnhandledExceptionHandler()
 
     BasicBlock* firstTryBlock = _compiler->fgFirstBB;
 
-    if (LIR::AsRange(firstTryBlock).IsEmpty() && !firstTryBlock->hasTryIndex())
-    {
-        firstTryBlock = firstTryBlock->Next();
-    }
-    else
-    {
-        // Maintain the "init BB" invariant, insert a new block before the first block that is outside the region.
-        _compiler->fgCreateNewInitBB();
-    }
+    // TODO-LLVM-CQ: Optimize for empty blocks.
+
+    // Maintain the "init BB" invariant, insert a new block before the first block that is outside the region.
+    _compiler->fgCreateNewInitBB();
 
     BasicBlock* lastTryBlock = _compiler->fgLastBB;
 
@@ -63,11 +58,13 @@ void Llvm::AddUnhandledExceptionHandler()
     filterBlock->bbCatchTyp = BBCT_FILTER;
     filterBlock->clearTryIndex();
     filterBlock->setHndIndex(newEhIndex);
+    filterBlock->bbRefs = 1; // Artificial ref count to satisfy assert in fgRemoveEmptyTryCatchOrTryFault.
 
     handlerBlock->SetFlags(BBF_DONT_REMOVE | BBF_IMPORTED);
     handlerBlock->bbCatchTyp = BBCT_FILTER_HANDLER;
     handlerBlock->clearTryIndex();
     handlerBlock->setHndIndex(newEhIndex);
+    handlerBlock->bbRefs = 1; // Artificial ref count to satisfy assert in fgRemoveEmptyTryCatchOrTryFault.
 
     // Walk the user code blocks and set all blocks that don't already have a try handler
     // to point to the new try handler.
