@@ -64,7 +64,7 @@ jobs:
         -publish
         -pack
         -configuration $(_BuildConfig)
-        --projects ./GeneratedBindings/MacOSX/Swift.Bindings.MacOSX.Experimental.csproj;./GeneratedBindings/iPhoneOS/Swift.Bindings.iPhoneOS.Experimental.csproj;./GeneratedBindings/iPhoneSimulator/Swift.Bindings.iPhoneSimulator.Experimental.csproj;./GeneratedBindings/AppleTVOS/Swift.Bindings.AppleTVOS.Experimental.csproj;./GeneratedBindings/AppleTVSimulator/Swift.Bindings.AppleTVSimulator.Experimental.csproj;./GeneratedBindings/MacCatalyst/Swift.Bindings.MacCatalyst.Experimental.csproj
+        --projects $(pwd)/artifacts/MacOSX/Swift.Bindings.MacOSX.Experimental.csproj;$(pwd)/artifacts/iPhoneOS/Swift.Bindings.iPhoneOS.Experimental.csproj;$(pwd)/artifacts/iPhoneSimulator/Swift.Bindings.iPhoneSimulator.Experimental.csproj;$(pwd)/artifacts/AppleTVOS/Swift.Bindings.AppleTVOS.Experimental.csproj;$(pwd)/artifacts/AppleTVSimulator/Swift.Bindings.AppleTVSimulator.Experimental.csproj;$(pwd)/artifacts/MacCatalyst/Swift.Bindings.MacCatalyst.Experimental.csproj
         /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
         /p:OfficialBuildId=$(Build.BuildNumber)
         /p:SignType=$(_SignType)

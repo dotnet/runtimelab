@@ -128,7 +128,7 @@ if [[ -z $platform_display_name ]]; then
 fi
 
 # Output directory for generated bindings
-output_dir="./GeneratedBindings/$platform_display_name"
+output_dir="./artifacts/$platform_display_name"
 
 rm -rf "$output_dir"
 mkdir -p "$output_dir"
