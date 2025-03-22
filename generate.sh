@@ -76,6 +76,12 @@ while [[ $# > 0 ]]; do
   shift
 done
 
+if [[ $platform != "iPhoneOS" && $platform != "iPhoneSimulator" && $platform != "AppleTVOS" && $platform != "AppleTVSimulator" && $platform != "MacOSX" ]]; then
+    echo "Error: Invalid platform '$platform'."
+    usage
+    exit 1
+fi
+
 output_dir="./GeneratedBindings/$platform"
 
 if [[ -z $version ]]; then

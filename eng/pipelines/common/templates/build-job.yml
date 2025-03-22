@@ -58,7 +58,7 @@ jobs:
 
       - ${{ if and(ne(parameters.isOfficialBuild, true), eq(parameters.platform, 'maccatalyst')) }}:
         - script: |
-            $(_generateScript) --configuration $(_BuildConfig) --platform MacCatalyst ${{ parameters.scriptArgs }}
+            $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneOS --maccatalyst ${{ parameters.scriptArgs }}
             $(_buildScript) -ci -publish -pack -configuration $(_BuildConfig) --projects $(pwd)/GeneratedBindings/MacCatalyst/Swift.Bindings.MacCatalyst.Experimental.csproj
           displayName: Generate MacCatalyst bindings
 
