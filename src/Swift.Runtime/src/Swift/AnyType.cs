@@ -17,16 +17,16 @@ public struct AnyType : ISwiftObject
     {
         return TypeMetadata.Zero;
     }
-    public AnyType(SwiftHandle payload)
+    public AnyType(IntPtr payload)
     {
-        _payload = payload;
+        _payload = new SwiftHandle(payload);
     }
     public SwiftHandle Payload => _payload;
 
     /// <summary>
     /// Creates a new SwiftOptional from a Swift payload
     /// </summary>
-    static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle payload)
+    static ISwiftObject ISwiftObject.NewFromPayload(IntPtr payload)
     {
         return new AnyType(payload);
     }

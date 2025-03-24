@@ -15,14 +15,19 @@ namespace Swift.Runtime;
 /// </summary>
 public sealed class SwiftHandle : SafeHandleZeroOrMinusOneIsInvalid
 {
-    private TypeMetadata _metadata = default;
-    public TypeMetadata Metadata => _metadata;
+    /// <summary>
+    /// The metadata for the Swift object
+    /// </summary>
+    private TypeMetadata _metadata;
 
     /// <summary>
     /// Returns an SwiftHandle with a zero value
     /// </summary>
     public readonly static SwiftHandle Zero = new SwiftHandle(IntPtr.Zero);
 
+    /// <summary>
+    /// The handle to the Swift native object
+    /// </summary>
     public IntPtr Handle
     {
         get => handle;
@@ -36,28 +41,27 @@ public sealed class SwiftHandle : SafeHandleZeroOrMinusOneIsInvalid
         : base(ownsHandle: true)
     {
         SetHandle(handle);
+        _metadata = TypeMetadata.Zero;
     }
 
+    /// <summary>
+    /// Sets the metadata for the Swift object
+    /// </summary>
+    public void SetMetadata(TypeMetadata metadata)
+    {
+        _metadata = metadata;
+    }
+
+    /// <summary>
+    /// Releases the handle to the Swift object
+    /// </summary>
     protected override unsafe bool ReleaseHandle()
     {
-        // _metadata.ValueWitnessTable->Destroy((void*)handle, _metadata);
+        if (_metadata.Handle == IntPtr.Zero)
+            return false;
+
+        _metadata.ValueWitnessTable->Destroy((void*)handle, _metadata);
+        handle = IntPtr.Zero;
         return true;
     }
-
-    // /// <summary>
-    // /// Implicit conversion from SwiftHandle to IntPtr
-    // /// </summary>
-    // public static implicit operator IntPtr(SwiftHandle value)
-    // {
-    //     return value.handle;
-    // }
-
-    // /// <summary>
-    // /// Explicit conversion from SwiftHandle to void*
-    // /// </summary>
-    // public unsafe static explicit operator void*(SwiftHandle value)
-    // {
-    //     return (void*)value.handle;
-    // }
-
 }

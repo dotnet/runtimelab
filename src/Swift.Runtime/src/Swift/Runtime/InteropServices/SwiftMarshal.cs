@@ -22,7 +22,7 @@ public static class SwiftMarshal
     {
         if (value is ISwiftObject swiftValue)
         {
-            return swiftValue.MarshalToSwift(new IntPtr(swiftDest));
+            return swiftValue.MarshalToSwift(swiftDest);
         }
 
         var type = typeof(T);
@@ -136,7 +136,7 @@ public static class SwiftMarshal
         if (typeof(ISwiftObject).IsAssignableFrom(typeof(T)))
         {
             var helper = typeof(SwiftObjectHelper<>).MakeGenericType(typeof(T));
-            return (T)helper.GetMethod("NewFromPayload")!.Invoke(null, new object[] { new SwiftHandle(swiftSource) })!;
+            return (T)helper.GetMethod("NewFromPayload")!.Invoke(null, new object[] { swiftSource })!;
         }
         var type = typeof(T);
         if (type.IsPrimitive)

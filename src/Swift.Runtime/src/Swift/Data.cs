@@ -49,7 +49,7 @@ public struct Data : ISwiftObject
     [DllImport(KnownLibraries.SwiftFoundation, EntryPoint = "$s10Foundation4DataVMa")]
     public static unsafe extern TypeMetadata PInvoke_getMetadata();
 
-    static unsafe ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+    static unsafe ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
     {
         return new Data(handle);
     }
@@ -85,10 +85,9 @@ public struct Data : ISwiftObject
     /// <summary>
     /// Constructs a new Data from the given handle.
     /// </summary>
-    unsafe Data(SwiftHandle handle)
+    unsafe Data(IntPtr handle)
     {
-        this = *(Data*)handle.Handle;
-        // TODO: Add SwiftHandle field
+        this = *(Data*)handle;
     }
 
     /// <summary>

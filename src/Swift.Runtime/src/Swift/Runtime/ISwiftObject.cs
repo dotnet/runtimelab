@@ -17,7 +17,7 @@ public interface ISwiftObject
     /// <summary>
     /// Creates a new Swift object from a given payload
     /// </summary>
-    public static abstract ISwiftObject NewFromPayload(SwiftHandle payload);
+    public static abstract ISwiftObject NewFromPayload(IntPtr payload);
 
     /// <summary>
     /// Marshals this object to a Swift destination
@@ -49,7 +49,7 @@ public struct SwiftObjectHelper<T> where T : ISwiftObject
     /// </summary>
     /// <param name="payload"></param>
     /// <returns>a new ISwiftObject</returns>
-    public static ISwiftObject NewFromPayload(SwiftHandle payload)
+    public static ISwiftObject NewFromPayload(IntPtr payload)
     {
         return T.NewFromPayload(payload);
     }

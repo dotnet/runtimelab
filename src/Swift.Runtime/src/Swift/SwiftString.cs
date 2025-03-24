@@ -20,14 +20,16 @@ public class SwiftString : IDisposable, ISwiftObject
 {
     private static nuint _payloadSize = SwiftObjectHelper<SwiftString>.GetTypeMetadata().Size;
 
-    public struct Buffer
-    {
-        public Data _payload;
-    };
+    public struct Buffer {
+        public long _flags;
+        public IntPtr _object;
+    }
 
     private Buffer _payload;
 
-    private bool _disposed = false;
+    private SwiftHandle _refPayload;
+
+    public SwiftHandle RefPayload => _refPayload;
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -44,18 +46,46 @@ public class SwiftString : IDisposable, ISwiftObject
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_refPayload.IsInvalid)
         {
-            var metadata = SwiftObjectHelper<SwiftString>.GetTypeMetadata();
-
             unsafe
             {
                 fixed (void* payload = &_payload)
                 {
-                    metadata.ValueWitnessTable->Destroy(payload, metadata);
+                    // Debug.Assert(_refPayload.Handle == (IntPtr)payload, "RefPayload should be the same as &_buffer");
+                }
+
+                _refPayload.SetMetadata(SwiftObjectHelper<SwiftString>.GetTypeMetadata());
+
+                // Use localPayload to pin the payload and prevent it from being moved by the GC
+                SwiftString.Buffer localPayload = _payload;
+                _refPayload.Handle = (IntPtr)(void*)&localPayload;
+                _refPayload.Dispose();
+            }
+        }
+        if (!_refPayload.IsInvalid)
+        {
+            unsafe
+            {
+                fixed (void* payload = &_payload)
+                {
+                    // Debug.Assert(_refPayload.Handle == (IntPtr)payload, "RefPayload should be the same as &_buffer");
+                }
+
+                _refPayload.SetMetadata(SwiftObjectHelper<SwiftString>.GetTypeMetadata());
+
+                // Pin the payload to prevent it from being moved by the GC
+                int size = Marshal.SizeOf<ArrayBuffer>();
+                IntPtr pPinned = Marshal.AllocHGlobal(size);
+                try {
+                    Marshal.StructureToPtr(_payload, pPinned, false);
+                    _refPayload.Handle = pPinned;
+                    _refPayload.Dispose();
+                }
+                finally {
+                    Marshal.FreeHGlobal(pPinned);
                 }
             }
-            _disposed = true;
         }
     }
 
@@ -73,7 +103,7 @@ public class SwiftString : IDisposable, ISwiftObject
         return TypeMetadata.Cache.GetOrAdd(typeof(SwiftString), _ => PInvoke_getMetadata());
     }
 
-    static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+    static ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
     {
         return new SwiftString(handle);
     }
@@ -83,10 +113,9 @@ public class SwiftString : IDisposable, ISwiftObject
         var metadata = SwiftObjectHelper<SwiftString>.GetTypeMetadata();
         unsafe
         {
-            fixed (void* _payloadPtr = &_payload)
-            {
-                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payloadPtr, metadata);
-            }
+            // Use localPayload to pin the payload and prevent it from being moved by the GC
+            SwiftString.Buffer localPayload = _payload;
+            metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &localPayload, metadata);
         }
         return swiftDest;
     }
@@ -109,9 +138,13 @@ public class SwiftString : IDisposable, ISwiftObject
     /// <summary>
     /// Constructs a new SwiftString from the given handle.
     /// </summary>
-    unsafe SwiftString(SwiftHandle handle)
+    unsafe SwiftString(IntPtr handle)
     {
-        _payload = *(Buffer*)handle.Handle;
+        _payload = *(Buffer*)handle;
+        fixed (void* _payloadPtr = &_payload)
+        {
+            _refPayload = new SwiftHandle((IntPtr)_payloadPtr);
+        }
     }
 
     /// <summary>
@@ -125,6 +158,10 @@ public class SwiftString : IDisposable, ISwiftObject
             fixed (byte* utf8BytesPtr = utf8Bytes)
             {
                 _payload = PInvoke_Create(utf8BytesPtr, utf8Bytes.Length, 1);
+                fixed (void* _payloadPtr = &_payload)
+                {
+                    _refPayload = new SwiftHandle((IntPtr)_payloadPtr);
+                }
             }
         }
     }
