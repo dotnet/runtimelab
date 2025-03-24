@@ -97,6 +97,7 @@ namespace BindingsGeneration.FunctionalTests
             strings.Append(new SwiftString("one"));
             strings.Append(new SwiftString("two"));
             strings.Append(new SwiftString("three"));
+            Assert.Equal(3, strings.Count);
 
             var stopwatch = Stopwatch.StartNew();
             nint countInstance = await myStruct.GenericCollectionConstraint(strings);

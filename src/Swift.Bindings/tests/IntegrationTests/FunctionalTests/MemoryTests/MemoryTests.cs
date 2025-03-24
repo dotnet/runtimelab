@@ -617,20 +617,24 @@ namespace BindingsGeneration.FunctionalTests
         {
             var frozenRequiresMemoryManagement = new Bindings.FrozenStructRequiresMemoryManagement(42);
             var bufferPayload = frozenRequiresMemoryManagement.Payload;
-            var payload = *(IntPtr*)&bufferPayload;
+            var payload = (IntPtr)(void*)&bufferPayload;
 
             // Check the initial count
-            Assert.Equal(1, Arc.RetainCount(payload));
+            Assert.Equal(1, Arc.RetainCount(payload.At(0)));
             // Check the metadata flags for a class
-            Assert.Equal(0x3, payload.At(1));
+            Assert.Equal(0x3, payload.At(0).At(1));
 
             // Retain the payload count
-            Arc.Retain(payload);
-            Assert.Equal(2, Arc.RetainCount(payload));
+            Arc.Retain(payload.At(0));
+            Assert.Equal(2, Arc.RetainCount(payload.At(0)));
 
             // Dispose the frozenRequiresMemoryManagement
+            Assert.False(frozenRequiresMemoryManagement.RefPayload.IsClosed);
+            Assert.False(frozenRequiresMemoryManagement.RefPayload.IsInvalid);
             frozenRequiresMemoryManagement.Dispose();
-            Assert.Equal(1, Arc.RetainCount(payload));
+            Assert.True(frozenRequiresMemoryManagement.RefPayload.IsClosed);
+            Assert.True(frozenRequiresMemoryManagement.RefPayload.IsInvalid);
+            Assert.Equal(1, Arc.RetainCount(payload.At(0)));
 
             var nonfrozenRequiresMemoryManagement = new Bindings.NonFrozenStructRequiresMemoryManagement(42);
             payload = nonfrozenRequiresMemoryManagement.Payload.Handle;
@@ -644,9 +648,14 @@ namespace BindingsGeneration.FunctionalTests
             Arc.Retain(payload.At(0));
             Assert.Equal(2, Arc.RetainCount(payload.At(0)));
 
+            Assert.False(nonfrozenRequiresMemoryManagement.Payload.IsClosed);
+            Assert.False(nonfrozenRequiresMemoryManagement.Payload.IsInvalid);
             nonfrozenRequiresMemoryManagement.Dispose();
+            Assert.True(nonfrozenRequiresMemoryManagement.Payload.IsClosed);
+            Assert.True(nonfrozenRequiresMemoryManagement.Payload.IsInvalid);
+            // Check the count after destroy
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
-            Assert.Equal(SwiftHandle.Zero, nonfrozenRequiresMemoryManagement.Payload);
+            Assert.Equal(IntPtr.Zero, nonfrozenRequiresMemoryManagement.Payload.Handle);
         }
 
         [Fact]
@@ -658,8 +667,8 @@ namespace BindingsGeneration.FunctionalTests
 
             // Check the initial count
             var bufferPayload = frozenStructRequiresMemoryManagement.Payload;
-            var payload = (IntPtr*)&bufferPayload;
-            Assert.Equal(1, Arc.RetainCount(*payload));
+            var payload = (IntPtr)(void*)&bufferPayload;
+            Assert.Equal(1, Arc.RetainCount(payload.At(0)));
 
             var frozenStructRequiresMemoryManagementCopy = Bindings.MemoryTests.PassThroughFrozenStructRequiresMemoryManagement(frozenStructRequiresMemoryManagement);
             // Check the payload
@@ -667,15 +676,15 @@ namespace BindingsGeneration.FunctionalTests
 
             // Check the references are not the same
             var bufferPayloadCopy = frozenStructRequiresMemoryManagementCopy.Payload;
-            var payloadCopy = (IntPtr*)&bufferPayloadCopy;
+            var payloadCopy = (IntPtr)(void*)&bufferPayloadCopy;
             Assert.NotEqual((IntPtr)payload, (IntPtr)payloadCopy);
 
             // Check the payloads are the same
-            Assert.Equal(*payload, *payloadCopy);
+            Assert.Equal(payload.At(0), payloadCopy.At(0));
 
             // Check the count after copy
-            Assert.Equal(2, Arc.RetainCount(*payload));
-            Assert.Equal(2, Arc.RetainCount(*payloadCopy));
+            Assert.Equal(2, Arc.RetainCount(payload.At(0)));
+            Assert.Equal(2, Arc.RetainCount(payloadCopy.At(0)));
 
             var nonFrozenStructRequiresMemoryManagement = new Bindings.NonFrozenStructRequiresMemoryManagement(42);
             // Check the payload
@@ -700,7 +709,7 @@ namespace BindingsGeneration.FunctionalTests
         }
 
 
-        [Fact(Skip = "Change this test to test retain/release with dispose")]
+        [Fact(Skip = "Refactor to test thread-safety using SafeHandle")]
         public unsafe void TestDisposeInvokesDestroyThreads()
         {
             var frozenRequiresMemoryManagement = new Bindings.FrozenStructRequiresMemoryManagement(42);

@@ -24,23 +24,19 @@ namespace BindingsGeneration.FunctionalTests
         {
             static nuint _payloadSize = SwiftObjectHelper<Nonce>.GetTypeMetadata().Size;
             SwiftHandle _payload = SwiftHandle.Zero;
-            bool _disposed = false;
 
             public void Dispose()
             {
-                if (!_disposed)
+                if (!_payload.IsInvalid)
                 {
-                    // NativeMemory.Free((void*)_payload);
-                    // _payload = SwiftHandle.Zero;
-                    // _disposed = true;
-                    // GC.SuppressFinalize(this);
+                    _payload.SetMetadata(SwiftObjectHelper<Nonce>.GetTypeMetadata());
+                    _payload.Dispose();
                 }
             }
 
             ~Nonce()
             {
-                // NativeMemory.Free((void*)_payload);
-                // _payload = SwiftHandle.Zero;
+                Dispose();
             }
 
             public static nuint PayloadSize => _payloadSize;
@@ -53,22 +49,23 @@ namespace BindingsGeneration.FunctionalTests
             [DllImport("/System/Library/Frameworks/CryptoKit.framework/CryptoKit", EntryPoint = "$s9CryptoKit03ChaC4PolyO5NonceVMa")]
             internal static extern TypeMetadata PInvoke_getMetadata();
 
-            static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+            static ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
             {
                 return new Nonce(handle);
             }
 
-            unsafe Nonce(SwiftHandle handle)
+            unsafe Nonce(IntPtr handle)
             {
-                _payload = handle;
+                _payload = new SwiftHandle(handle);
             }
 
             IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
             {
                 var metadata = SwiftObjectHelper<Nonce>.GetTypeMetadata();
-                unsafe
-                {
-                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                unsafe {
+                    bool success = false;
+                    _payload.DangerousAddRef(ref success);
+                    metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
                 }
                 return swiftDest;
             }
@@ -231,23 +228,19 @@ namespace BindingsGeneration.FunctionalTests
         {
             static nuint _payloadSize = SwiftObjectHelper<Nonce>.GetTypeMetadata().Size;
             SwiftHandle _payload = SwiftHandle.Zero;
-            bool _disposed = false;
 
             public void Dispose()
             {
-                if (!_disposed)
+                if (!_payload.IsInvalid)
                 {
-                    // NativeMemory.Free((void*)_payload);
-                    // _payload = SwiftHandle.Zero;
-                    // _disposed = true;
-                    // GC.SuppressFinalize(this);
+                    _payload.SetMetadata(SwiftObjectHelper<Nonce>.GetTypeMetadata());
+                    _payload.Dispose();
                 }
             }
 
             ~Nonce()
             {
-                // NativeMemory.Free((void*)_payload);
-                // _payload = SwiftHandle.Zero;
+                Dispose();
             }
 
             public static nuint PayloadSize => _payloadSize;
@@ -260,22 +253,23 @@ namespace BindingsGeneration.FunctionalTests
             [DllImport("/System/Library/Frameworks/CryptoKit.framework/CryptoKit", EntryPoint = "$s9CryptoKit3AESO3GCMO5NonceVMa")]
             internal static extern TypeMetadata PInvoke_getMetadata();
 
-            static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+            static ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
             {
                 return new Nonce(handle);
             }
 
-            unsafe Nonce(SwiftHandle handle)
+            unsafe Nonce(IntPtr handle)
             {
-                _payload = handle;
+                _payload = new SwiftHandle(handle);
             }
 
             IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
             {
                 var metadata = SwiftObjectHelper<Nonce>.GetTypeMetadata();
-                unsafe
-                {
-                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                unsafe {
+                    bool success = false;
+                    _payload.DangerousAddRef(ref success);
+                    metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
                 }
                 return swiftDest;
             }
@@ -328,23 +322,19 @@ namespace BindingsGeneration.FunctionalTests
         {
             static nuint _payloadSize = SwiftObjectHelper<SealedBox>.GetTypeMetadata().Size;
             SwiftHandle _payload = SwiftHandle.Zero;
-            bool _disposed = false;
 
             public void Dispose()
             {
-                if (!_disposed)
+                if (!_payload.IsInvalid)
                 {
-                    // NativeMemory.Free((void*)_payload);
-                    // _payload = SwiftHandle.Zero;
-                    // _disposed = true;
-                    // GC.SuppressFinalize(this);
+                    _payload.SetMetadata(SwiftObjectHelper<SealedBox>.GetTypeMetadata());
+                    _payload.Dispose();
                 }
             }
 
             ~SealedBox()
             {
-                // NativeMemory.Free((void*)_payload);
-                // _payload = SwiftHandle.Zero;
+                Dispose();
             }
 
             public static nuint PayloadSize => _payloadSize;
@@ -357,22 +347,23 @@ namespace BindingsGeneration.FunctionalTests
             [DllImport("/System/Library/Frameworks/CryptoKit.framework/CryptoKit", EntryPoint = "$s9CryptoKit3AESO3GCMO9SealedBoxVMa")]
             internal static extern TypeMetadata PInvoke_getMetadata();
 
-            static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+            static ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
             {
                 return new SealedBox(handle);
             }
 
-            unsafe SealedBox(SwiftHandle handle)
+            unsafe SealedBox(IntPtr handle)
             {
-                _payload = handle;
+                _payload = new SwiftHandle(handle);
             }
 
             IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
             {
                 var metadata = SwiftObjectHelper<SealedBox>.GetTypeMetadata();
-                unsafe
-                {
-                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                unsafe {
+                    bool success = false;
+                    _payload.DangerousAddRef(ref success);
+                    metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
                 }
                 return swiftDest;
             }
@@ -511,23 +502,19 @@ namespace BindingsGeneration.FunctionalTests
     {
         static nuint _payloadSize = SwiftObjectHelper<SymmetricKey>.GetTypeMetadata().Size;
         SwiftHandle _payload = SwiftHandle.Zero;
-        bool _disposed = false;
 
         public void Dispose()
         {
-            if (!_disposed)
+            if (!_payload.IsInvalid)
             {
-                // NativeMemory.Free((void*)_payload);
-                // _payload = SwiftHandle.Zero;
-                // _disposed = true;
-                // GC.SuppressFinalize(this);
+                _payload.SetMetadata(SwiftObjectHelper<SymmetricKey>.GetTypeMetadata());
+                _payload.Dispose();
             }
         }
 
         ~SymmetricKey()
         {
-            // NativeMemory.Free((void*)_payload);
-            // _payload = SwiftHandle.Zero;
+            Dispose();
         }
 
         public static nuint PayloadSize => _payloadSize;
@@ -540,22 +527,23 @@ namespace BindingsGeneration.FunctionalTests
         [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
         internal static extern TypeMetadata PInvoke_getMetadata();
 
-        static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+        static ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
         {
             return new SymmetricKey(handle);
         }
 
-        unsafe SymmetricKey(SwiftHandle handle)
+        unsafe SymmetricKey(IntPtr handle)
         {
-            _payload = handle;
+            _payload = new SwiftHandle(handle);
         }
 
         IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
         {
             var metadata = SwiftObjectHelper<SymmetricKey>.GetTypeMetadata();
-            unsafe
-            {
-                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+            unsafe {
+                bool success = false;
+                _payload.DangerousAddRef(ref success);
+                metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
             }
             return swiftDest;
         }

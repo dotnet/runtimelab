@@ -28,7 +28,7 @@ struct SwiftIntMock : ISwiftObject
         return TypeMetadata.GetTypeMetadataOrThrow<nint>();
     }
 
-    static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle payload)
+    static ISwiftObject ISwiftObject.NewFromPayload(IntPtr payload)
     {
         throw new NotImplementedException();
     }
