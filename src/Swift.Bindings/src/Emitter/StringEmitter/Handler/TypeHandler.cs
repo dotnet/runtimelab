@@ -79,6 +79,11 @@ namespace BindingsGeneration
                 csWriter.WriteLine($"public class {structDecl.Name} : {string.Join(", ", interfaces)}");
                 csWriter.WriteLine("{");
                 csWriter.Indent++;
+
+                // Payload used for reference counting
+                csWriter.WriteLine($"private SwiftHandle _refPayload = SwiftHandle.Zero;");
+                csWriter.WriteLine();
+                csWriter.WriteLine($"public SwiftHandle RefPayload => _refPayload;");
             }
 
             if (swiftTypeInfo.HasValue)
@@ -128,12 +133,11 @@ namespace BindingsGeneration
 
             if (isProjectedAsClass)
             {
+                // Payload used for lowering at PInvoke boundary
                 csWriter.Indent -= 2;
                 csWriter.WriteLine("}");
                 csWriter.WriteLine();
                 csWriter.WriteLine("private Buffer _payload;");
-                csWriter.WriteLine();
-                csWriter.WriteLine("private bool _disposed = false;");
                 csWriter.WriteLine();
                 csWriter.WriteLine("public Buffer Payload => _payload;");
                 csWriter.WriteLine();
@@ -181,16 +185,29 @@ namespace BindingsGeneration
 
             protected virtual void Dispose(bool disposing)
             {
-                if (!_disposed)
+                if (!_refPayload.IsInvalid)
                 {
-                    var metadata = SwiftObjectHelper<{{structDecl.Name}}>.GetTypeMetadata();
-                    unsafe {
+                    unsafe
+                    {
                         fixed (void* payload = &_payload)
                         {
-                            metadata.ValueWitnessTable->Destroy((void *)payload, metadata);
+                            // Debug.Assert(_refPayload.Handle == (IntPtr)payload, "RefPayload should be the same as &_payload");
+                        }
+
+                        _refPayload.SetMetadata(SwiftObjectHelper<{{structDecl.Name}}>.GetTypeMetadata());
+
+                        // Pin the payload to prevent it from being moved by the GC
+                        int size = Marshal.SizeOf<{{structDecl.Name}}.Buffer>();
+                        IntPtr pPinned = Marshal.AllocHGlobal(size);
+                        try {
+                            Marshal.StructureToPtr(_payload, pPinned, false);
+                            _refPayload.Handle = pPinned;
+                            _refPayload.Dispose();
+                        }
+                        finally {
+                            Marshal.FreeHGlobal(pPinned);
                         }
                     }
-                    _disposed = true;
                 }
             }
             """;
@@ -337,13 +354,10 @@ namespace BindingsGeneration
 
             protected virtual void Dispose(bool disposing)
             {
-                if (_payload != SwiftHandle.Zero)
+                if (!_payload.IsInvalid)
                 {
-                    var metadata = SwiftObjectHelper<{{structDecl.Name}}>.GetTypeMetadata();
-                    unsafe {
-                        metadata.ValueWitnessTable->Destroy((void *)_payload.Handle, metadata);
-                    }
-                    _payload = SwiftHandle.Zero;
+                    _payload.SetMetadata(SwiftObjectHelper<{{structDecl.Name}}>.GetTypeMetadata());
+                    _payload.Dispose();
                 }
             }
             """;
@@ -522,14 +536,16 @@ namespace BindingsGeneration
             if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
             {
                 var text = $$"""
-                static unsafe ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+                static unsafe ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
                 {
-                    return new {{_structDecl.Name}} { _payload = *(Buffer*)handle.Handle };
-                    // TODO: Store handle for reference counting
+                    return new {{_structDecl.Name}}(handle);
                 }
 
-                private {{_structDecl.Name}} ()
+                unsafe {{_structDecl.Name}}(IntPtr handle)
                 {
+                    _payload = *(Buffer*)handle;
+                    fixed (void* payload = &_payload)
+                        _refPayload = new SwiftHandle((IntPtr)payload);
                 }
                 """;
 
@@ -539,9 +555,9 @@ namespace BindingsGeneration
             else
             {
                 var text = $$"""
-                static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+                static ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
                 {
-                    return *({{_structDecl.Name}}*)handle.Handle;
+                    return *({{_structDecl.Name}}*)handle;
                 }
                 """;
 
@@ -556,9 +572,9 @@ namespace BindingsGeneration
         private void WriteNewFromPayloadNonFrozenStruct()
         {
             var text = $$"""
-            static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle handle)
+            static ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
             {
-                return new {{_structDecl.Name}}(handle);
+                return new {{_structDecl.Name}}((void*)handle);
             }
             """;
 
@@ -574,9 +590,9 @@ namespace BindingsGeneration
         private void EmitPrivateConstructor()
         {
             var text = $$"""
-            unsafe {{_structDecl.Name}}(SwiftHandle handle)
+            unsafe {{_structDecl.Name}}(void* handle)
             {
-                _payload = handle;
+                _payload = new SwiftHandle((IntPtr)handle);
             }
             """;
 
@@ -589,28 +605,45 @@ namespace BindingsGeneration
         /// </summary>
         private void WriteMarshalToSwiftFrozenStruct()
         {
-            string payloadName = "this";
             TypeRecord typeRecord = _typeDatabase.GetTypeRecordOrThrow(_structDecl.SwiftTypeName);
             if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
             {
-                payloadName = "_payload";
-            }
-
-            var text = $$"""
-            IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
-            {
-                var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
-                unsafe {
-                    fixed (void* payload = &{{payloadName}})
-                    {
-                    metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, payload, metadata);
+                // GENERIC RETAIN
+                // Retain the payload of frozen struct projected as C# class
+                var text = $$"""
+                IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+                {
+                    var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
+                    unsafe {
+                        bool success = false;
+                        _refPayload.DangerousAddRef(ref success);
+                        // Use localPayload to pin the payload and prevent it from being moved by the GC
+                        Buffer localPayload = _payload;
+                        metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, &localPayload, metadata);
                     }
+                    return swiftDest;
                 }
-                return swiftDest;
-            }
-            """;
+                """;
 
-            _writer.WriteLines(text);
+                _writer.WriteLines(text);
+            }else{
+                var text = $$"""
+                IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+                {
+                    var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
+                    unsafe {
+                        fixed (void* payload = &this)
+                        {
+                            metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, payload, metadata);
+                        }
+                    }
+                    return swiftDest;
+                }
+                """;
+
+                _writer.WriteLines(text);
+            }
+
             _writer.WriteLine();
         }
 
@@ -619,11 +652,15 @@ namespace BindingsGeneration
         /// </summary>
         private void WriteMarshalToSwiftNonFrozenStruct()
         {
+            // GENERIC RETAIN
+            // Retain the payload of non-frozen struct projected as C# class
             var text = $$"""
             IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
             {
                 var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
                 unsafe {
+                    bool success = false;
+                    _payload.DangerousAddRef(ref success);
                     metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
                 }
                 return swiftDest;

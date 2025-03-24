@@ -57,6 +57,7 @@ namespace BindingsGeneration
             var generatedNamespace = $"Swift.{moduleDecl.Name}";
 
             csWriter.WriteLine($"using System;");
+            csWriter.WriteLine($"using System.Diagnostics;");
             csWriter.WriteLine($"using System.Runtime.CompilerServices;");
             csWriter.WriteLine($"using System.Runtime.InteropServices;");
             csWriter.WriteLine($"using System.Runtime.InteropServices.Swift;");

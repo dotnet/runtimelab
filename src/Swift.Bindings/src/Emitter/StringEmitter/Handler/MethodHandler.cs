@@ -606,6 +606,7 @@ namespace BindingsGeneration
             EmitSignatureMethod(csWriter);
             EmitBodyStart(csWriter);
             EmitAsync(csWriter, swiftWriter);
+            EmitSafeHandleAddRef(csWriter);
 
             EmitDeclarationsForAllocations(csWriter);
 
@@ -615,6 +616,7 @@ namespace BindingsGeneration
             EmitBoundGenericArguments(csWriter);
             EmitProtocolWitnessTables(csWriter);
             EmitPInvokeCall(csWriter);
+            EmitSafeHandleRelease(csWriter);
             EmitSwiftError(csWriter);
             EmitReturnMethod(csWriter);
 
@@ -785,8 +787,70 @@ namespace BindingsGeneration
                 if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(argumentDecl))
                 {
                     var bufferName = NameProvider.GetBoundGenericBufferName(argumentDecl.Name);
-                    csWriter.WriteLine($"var {bufferName} = {argumentDecl.Name}.Payload.Handle;");
+                    csWriter.WriteLine($"var {bufferName} = {argumentDecl.Name}.Payload;");
                 }
+            }
+        }
+
+        /// <summary>
+        /// Emits safe handle add reference.
+        /// </summary>
+        private void EmitSafeHandleAddRef(CSharpWriter csWriter)
+        {
+            foreach (var argumentDecl in _env.MethodDecl.CSSignature.Skip(1).Where(a => !a.IsGeneric))
+            {
+                // GENERIC RETAIN
+                // Generic arguments are copied to the stack prior to the call via MarshalToSwift,
+                // which handles reference counting
+
+                // FROZEN STRUCT RETAIN
+                // Retain the SwiftHandle payload
+                TypeRecord typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(argumentDecl.SwiftTypeSpec);
+                if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
+                {
+                    csWriter.WriteLine($"var success{argumentDecl.Name} = false;");
+                    csWriter.WriteLine($"{argumentDecl.Name}.RefPayload.DangerousAddRef(ref success{argumentDecl.Name});");
+                }
+
+                // NON-FROZEN STRUCT RETAIN
+                // Non-frozen structs are represented as C# classes and SwiftHandle is passed across the PInvoke boundary
+                // Reference counting is managed automatically by the runtime
+            }
+        }
+
+        /// <summary>
+        /// Emits swift handle release.
+        /// </summary>
+        private void EmitSafeHandleRelease(CSharpWriter csWriter)
+        {
+
+            foreach (var argumentDecl in _env.MethodDecl.CSSignature.Skip(1))
+            {
+                // GENERIC RELEASE
+                // Release the SwiftHandle payload
+                // Decrement the reference counter on the Swift side
+                if (argumentDecl.IsGeneric)
+                {
+                    var csTypeParamName = _env.GenericTypeMapping[argumentDecl.SwiftTypeSpec.ToString()].TypeParameter;
+                    var metadataName = NameProvider.GetMetadataName(csTypeParamName);
+                    var payloadName = NameProvider.GetPayloadName(argumentDecl.Name);
+                    // csWriter.WriteLine($"{argumentDecl.Name}.Payload.DangerousRelease();");
+                    // csWriter.WriteLine($"{metadataName}.ValueWitnessTable->Destroy((void *){payloadName}, {metadataName});");
+                    continue;
+                }
+
+                // FROZEN STRUCT RELEASE
+                // Release the SwiftHandle payload
+                TypeRecord typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(argumentDecl.SwiftTypeSpec);
+                if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
+                {
+                    csWriter.WriteLine($"if (success{argumentDecl.Name})");
+                    csWriter.WriteLine($"   {argumentDecl.Name}.RefPayload.DangerousRelease();");
+                }
+
+                // NON-FROZEN STRUCT RELEASE
+                // Non-frozen structs are represented as C# classes and SwiftHandle is passed across the PInvoke boundary
+                // Reference counting is managed automatically by the runtime
             }
         }
 
@@ -883,6 +947,12 @@ namespace BindingsGeneration
                 if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
                 {
                     csWriter.WriteLine($"_payload = result;");
+                    csWriter.WriteLine($@"
+                        unsafe
+                        {{
+                            fixed (void* payload = &_payload)
+                                _refPayload = new SwiftHandle((IntPtr)payload);
+                        }}");
                     return;
                 }
             }
@@ -908,7 +978,7 @@ namespace BindingsGeneration
 
             if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(returnArg))
             {
-                csWriter.WriteLine($"return SwiftMarshal.MarshalFromSwift<{_env.BoundGenericsHandler.TranslateBoundGenericTypeToCSharp(returnArg)}>(result);");
+                csWriter.WriteLine($"return SwiftMarshal.MarshalFromSwift<{_env.BoundGenericsHandler.TranslateBoundGenericTypeToCSharp(returnArg)}>(new IntPtr(&result));");
                 return;
             }
 
@@ -995,15 +1065,9 @@ namespace BindingsGeneration
             var returnType = _env.MethodDecl.CSSignature.First();
             TypeRecord returnTypeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(returnType.SwiftTypeSpec);
             var voidReturn = returnType.SwiftTypeSpec.IsEmptyTuple;
-            var requiresInitWithCopy = !voidReturn && (!MarshallingHelpers.IsTypeFrozen(returnTypeRecord) || _env.BoundGenericsHandler.IsBoundGeneric(returnType));
+            var requiresInitWithCopy = !voidReturn && (MarshallingHelpers.RequiresMemoryManagement(returnTypeRecord) || returnType.IsGeneric);
 
             var marshallFromSwiftArgument = _pInvokeSignature.ReturnType == "IntPtr" ? "rawResult" : "new IntPtr(&rawResult)";
-
-            var copyExpression = $$"""
-                var metadata = SwiftObjectHelper<{{_wrapperSignature.ReturnType}}>.GetTypeMetadata();
-                byte* payload = stackalloc byte[(int)metadata.Size];
-                SwiftMarshal.MarshalToSwift(result, (IntPtr)payload);
-            """;
 
             var text = $$"""
                         private static unsafe delegate* unmanaged[Cdecl]<{{(voidReturn ? "" : $"{_pInvokeSignature.ReturnType}, ")}}IntPtr, void> s_{{_env.MethodDecl.Name}}Callback = &{{_env.MethodDecl.Name}}OnComplete;
@@ -1014,7 +1078,9 @@ namespace BindingsGeneration
                             try
                             {
                                 {{(voidReturn ? "" : $"var result = SwiftMarshal.MarshalFromSwift<{_wrapperSignature.ReturnType}>({marshallFromSwiftArgument});")}}
-                                {{(requiresInitWithCopy ? copyExpression : "")}}
+                                {{(requiresInitWithCopy ? $"var metadata = SwiftObjectHelper<{_wrapperSignature.ReturnType}>.GetTypeMetadata();" : "")}}
+                                {{(requiresInitWithCopy ? $"byte* payload = stackalloc byte[(int)metadata.Size];" : "")}}
+                                {{(requiresInitWithCopy ? $"SwiftMarshal.MarshalToSwift(result, (IntPtr)payload);" : "")}}
                                 if (handle.Target is TaskCompletionSource{{(voidReturn ? "" : $"<{_wrapperSignature.ReturnType}>")}} tcs)
                                 {
                                     tcs.TrySetResult({{(voidReturn ? "" : "result")}});
