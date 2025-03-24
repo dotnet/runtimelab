@@ -44,7 +44,7 @@ public class SwiftOptional<T> : ISwiftObject
     /// <summary>
     /// Creates a new SwiftOptional from a Swift payload
     /// </summary>
-    static ISwiftObject ISwiftObject.NewFromPayload(SwiftHandle payload)
+    static ISwiftObject ISwiftObject.NewFromPayload(IntPtr payload)
     {
         var metadata = SwiftObjectHelper<SwiftOptional<T>>.GetTypeMetadata();
         var instance = new SwiftOptional<T>();
@@ -52,7 +52,7 @@ public class SwiftOptional<T> : ISwiftObject
         {
             fixed (byte* payloadPtr = instance._payload)
             {
-                metadata.ValueWitnessTable->InitializeWithCopy(payloadPtr, (byte*)payload.Handle, metadata);
+                metadata.ValueWitnessTable->InitializeWithCopy(payloadPtr, (byte*)payload, metadata);
                 return instance;
             }
         }
