@@ -20,7 +20,8 @@ public class SwiftString : IDisposable, ISwiftObject
 {
     private static nuint _payloadSize = SwiftObjectHelper<SwiftString>.GetTypeMetadata().Size;
 
-    public struct Buffer {
+    public struct Buffer
+    {
         public long _flags;
         public IntPtr _object;
     }
@@ -77,12 +78,14 @@ public class SwiftString : IDisposable, ISwiftObject
                 // Pin the payload to prevent it from being moved by the GC
                 int size = Marshal.SizeOf<ArrayBuffer>();
                 IntPtr pPinned = Marshal.AllocHGlobal(size);
-                try {
+                try
+                {
                     Marshal.StructureToPtr(_payload, pPinned, false);
                     _refPayload.Handle = pPinned;
                     _refPayload.Dispose();
                 }
-                finally {
+                finally
+                {
                     Marshal.FreeHGlobal(pPinned);
                 }
             }

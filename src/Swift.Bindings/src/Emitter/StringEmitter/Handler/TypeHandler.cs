@@ -626,7 +626,9 @@ namespace BindingsGeneration
                 """;
 
                 _writer.WriteLines(text);
-            }else{
+            }
+            else
+            {
                 var text = $$"""
                 IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
                 {

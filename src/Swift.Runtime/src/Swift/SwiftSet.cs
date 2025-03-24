@@ -81,12 +81,14 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
                 // Pin the payload to prevent it from being moved by the GC
                 int size = Marshal.SizeOf<ArrayBuffer>();
                 IntPtr pPinned = Marshal.AllocHGlobal(size);
-                try {
+                try
+                {
                     Marshal.StructureToPtr(_variant, pPinned, false);
                     _refPayload.Handle = pPinned;
                     _refPayload.Dispose();
                 }
-                finally {
+                finally
+                {
                     Marshal.FreeHGlobal(pPinned);
                 }
             }

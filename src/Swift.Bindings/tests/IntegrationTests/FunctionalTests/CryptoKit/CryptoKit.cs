@@ -62,10 +62,11 @@ namespace BindingsGeneration.FunctionalTests
             IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
             {
                 var metadata = SwiftObjectHelper<Nonce>.GetTypeMetadata();
-                unsafe {
+                unsafe
+                {
                     bool success = false;
                     _payload.DangerousAddRef(ref success);
-                    metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
+                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
                 }
                 return swiftDest;
             }
@@ -266,10 +267,11 @@ namespace BindingsGeneration.FunctionalTests
             IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
             {
                 var metadata = SwiftObjectHelper<Nonce>.GetTypeMetadata();
-                unsafe {
+                unsafe
+                {
                     bool success = false;
                     _payload.DangerousAddRef(ref success);
-                    metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
+                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
                 }
                 return swiftDest;
             }
@@ -360,10 +362,11 @@ namespace BindingsGeneration.FunctionalTests
             IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
             {
                 var metadata = SwiftObjectHelper<SealedBox>.GetTypeMetadata();
-                unsafe {
+                unsafe
+                {
                     bool success = false;
                     _payload.DangerousAddRef(ref success);
-                    metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
+                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
                 }
                 return swiftDest;
             }
@@ -540,10 +543,11 @@ namespace BindingsGeneration.FunctionalTests
         IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
         {
             var metadata = SwiftObjectHelper<SymmetricKey>.GetTypeMetadata();
-            unsafe {
+            unsafe
+            {
                 bool success = false;
                 _payload.DangerousAddRef(ref success);
-                metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
+                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
             }
             return swiftDest;
         }
