@@ -27,8 +27,8 @@ public class BoundGenericsHandler
     // Mapping of Swift generic types to their corresponding buffer types.
     private static readonly Dictionary<SwiftTypeName, string> s_bufferTypeMap = new()
         {
-            { SwiftTypeName.FromModuleQualifiedName("Swift.Array"), "IntPtr" },
-            { SwiftTypeName.FromModuleQualifiedName("Swift.Set"), "IntPtr" }
+            { SwiftTypeName.FromModuleQualifiedName("Swift.Array"), "ArrayBuffer" },
+            { SwiftTypeName.FromModuleQualifiedName("Swift.Set"), "SetBuffer" }
         };
 
     /// <summary>
