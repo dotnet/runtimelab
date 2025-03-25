@@ -797,6 +797,20 @@ namespace BindingsGeneration
         /// </summary>
         private void EmitSafeHandleAddRef(CSharpWriter csWriter)
         {
+
+            if (_env.MethodDecl.MethodType != MethodType.Static)
+            {
+                if (_env.ParentDecl is StructDecl structDecl)
+                {
+                    var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
+                    if (MarshallingHelpers.RequiresMemoryManagement(typeRecord))
+                    {
+                        csWriter.WriteLine($"var _success = false;");
+                        csWriter.WriteLine($"_payload.DangerousAddRef(ref _success);");
+                    }
+                }
+            }
+
             foreach (var argumentDecl in _env.MethodDecl.CSSignature.Skip(1).Where(a => !a.IsGeneric))
             {
                 // GENERIC RETAIN
@@ -822,6 +836,18 @@ namespace BindingsGeneration
         /// </summary>
         private void EmitSafeHandleRelease(CSharpWriter csWriter)
         {
+            if (_env.MethodDecl.MethodType != MethodType.Static)
+            {
+                if (_env.ParentDecl is StructDecl structDecl)
+                {
+                    var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
+                    if (MarshallingHelpers.RequiresMemoryManagement(typeRecord))
+                    {
+                        csWriter.WriteLine($"if (_success)");
+                        csWriter.WriteLine($"   _payload.DangerousRelease();");
+                    }
+                }
+            }
 
             foreach (var argumentDecl in _env.MethodDecl.CSSignature.Skip(1))
             {

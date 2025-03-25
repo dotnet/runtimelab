@@ -140,8 +140,13 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
     {
         get
         {
+            bool _success = false;
+            _payload.DangerousAddRef(ref _success);
             var witnessTable = ProtocolWitnessTable.GetOrThrow<Element, ISwiftHashable>();
-            return (int)SwiftSetPInvokes.Count(_payload.Handle, ElementTypeMetadata, witnessTable);
+            int result = (int)SwiftSetPInvokes.Count(_payload.Handle, ElementTypeMetadata, witnessTable);
+            if (_success)
+                _payload.DangerousRelease();
+            return result;
         }
     }
 }

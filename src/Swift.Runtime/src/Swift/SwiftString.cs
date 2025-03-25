@@ -139,7 +139,18 @@ public class SwiftString : IDisposable, ISwiftObject
     /// <summary>
     /// Gets the length of string.
     /// </summary>
-    public int Length => (int)PInvoke_GetLength(_buffer);
+    public int Length
+    {
+        get
+        {
+            bool _success = false;
+            _payload.DangerousAddRef(ref _success);
+            int result = (int)PInvoke_GetLength(_buffer);
+            if (_success)
+                _payload.DangerousRelease();
+            return result;
+        }
+    }
 
     /// <summary>
     /// Converts the SwiftString to a C# string.
@@ -153,6 +164,9 @@ public class SwiftString : IDisposable, ISwiftObject
         if (length <= 0)
             return string.Empty;
 
+        bool _success = false;
+        _payload.DangerousAddRef(ref _success);
+
         var contiguousArray = PInvoke_GetUtf8ContiguousArray(_buffer);
 
 #pragma warning disable CS8500
@@ -161,6 +175,8 @@ public class SwiftString : IDisposable, ISwiftObject
             ToStringCallbackContext callbackContext;
             callbackContext._length = length;
             PInvoke_WithUnsafeBytes(&Callback, (IntPtr)(void*)&callbackContext, contiguousArray, elementType, resultType);
+            if (_success)
+                _payload.DangerousRelease();
             return callbackContext._returnString!;
 
             [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvSwift) })]
