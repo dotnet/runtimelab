@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Swift;
 using BindingsGeneration.Tests;
 using Swift;
+using Swift.MemoryTests;
 using Swift.Runtime;
 using Swift.Runtime.InteropServices;
 using Xunit;
@@ -701,57 +702,55 @@ namespace BindingsGeneration.FunctionalTests
         }
 
 
-        [Fact(Skip = "Refactor to test thread-safety using SafeHandle")]
-        public unsafe void TestDisposeInvokesDestroyThreads()
+        class FrozenStructExtension : FrozenStructRequiresMemoryManagement
         {
-            var frozenRequiresMemoryManagement = new Bindings.FrozenStructRequiresMemoryManagement(42);
-
-            // Check the initial count
-            Assert.Equal(1, Arc.RetainCount(frozenRequiresMemoryManagement.Payload.Handle));
-            // Check the metadata flags for a class
-            Assert.Equal(0x3, frozenRequiresMemoryManagement.Payload.Handle.At(1));
-
-            // Retain the payload count
-            Arc.Retain(frozenRequiresMemoryManagement.Payload.Handle);
-            Assert.Equal(2, Arc.RetainCount(frozenRequiresMemoryManagement.Payload.Handle));
-
-            var nonfrozenRequiresMemoryManagement = new Bindings.NonFrozenStructRequiresMemoryManagement(42);
-
-            // Check the initial count
-            Assert.Equal(1, Arc.RetainCount(nonfrozenRequiresMemoryManagement.Payload.Handle.At(0)));
-            // Check the metadata flags for a class
-            Assert.Equal(0x3, nonfrozenRequiresMemoryManagement.Payload.Handle.At(0).At(1));
-
-            // Retain the payload count
-            Arc.Retain(nonfrozenRequiresMemoryManagement.Payload.Handle.At(0));
-            Assert.Equal(2, Arc.RetainCount(nonfrozenRequiresMemoryManagement.Payload.Handle.At(0)));
-
-            var handle = frozenRequiresMemoryManagement.Payload.Handle;
-
-            var threads = new List<Thread>();
-            for (int i = 0; i < 10; i++)
+            public FrozenStructExtension() : base(42)
             {
-                threads.Add(new Thread(() =>
+            }
+
+            public void CallDispose()
+            {
+                bool _success = false;
+                this.Payload.DangerousAddRef(ref _success);
+#pragma warning disable CS8500
+                unsafe
                 {
-                    // Dispose the frozenRequiresMemoryManagement
-                    frozenRequiresMemoryManagement.Dispose();
-                    // Dispose the nonfrozenRequiresMemoryManagement
-                    nonfrozenRequiresMemoryManagement.Dispose();
-                }));
+                    var handle = this.Payload;
+                    var thisPtr = this;
+                    PInvoke_CallDispose(&Callback, &handle);
+
+                    [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvSwift) })]
+                    static void Callback(SwiftSelf context)
+                    {
+                        SwiftHandle pContext = *(SwiftHandle*)context.Value;
+                        pContext.Dispose();
+                    }
+                }
+
+                Assert.False(Payload.IsClosed);
+                Assert.False(Payload.IsInvalid);
+
+                Assert.Equal(1, Arc.RetainCount(Payload.Handle.At(0)));
+                Assert.Equal(42, b);
+
+#pragma warning restore CS8500
+                if (_success)
+                    this.Payload.DangerousRelease();
             }
 
-            foreach (var thread in threads)
-            {
-                thread.Start();
-            }
+            [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
+            [DllImport("MemoryTests/libMemoryTests.dylib", EntryPoint = "$s11MemoryTests020FrozenStructRequiresA10ManagementV11callDispose8callbackyyyc_tF")]
+            private unsafe static extern void PInvoke_CallDispose(delegate* unmanaged[Swift]<SwiftSelf, void> callback, void* context);
+        }
 
-            foreach (var thread in threads)
-            {
-                thread.Join();
-            }
+        [Fact]
+        public unsafe void TestDisposeSafeHandle()
+        {
+            FrozenStructExtension frozenRequiresMemoryManagement = new FrozenStructExtension();
+            Assert.Equal(42, frozenRequiresMemoryManagement.b);
 
-            // Check the count after destroy
-            Assert.Equal(1, Arc.RetainCount(handle));
+            frozenRequiresMemoryManagement.CallDispose();
+            Assert.True(frozenRequiresMemoryManagement.Payload.IsClosed);
         }
     }
 }

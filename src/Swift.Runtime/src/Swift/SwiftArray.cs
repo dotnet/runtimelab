@@ -93,7 +93,6 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         {
             var handle = _payload.Handle;
             metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &handle, metadata);
-            // _payload.Handle = handle;
         }
         return swiftDest;
     }

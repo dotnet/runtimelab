@@ -147,6 +147,10 @@ public struct FrozenStructRequiresMemoryManagement {
         self.a = RefType(test: UnsafeMutablePointer<Int64>.allocate(capacity: 1))
         self.b = b
     }
+
+    public func callDispose(callback: @escaping () -> Void) {
+        callback()
+    }
 }
 
 @frozen
@@ -175,6 +179,10 @@ public struct NonFrozenStructRequiresMemoryManagement {
     public init (b: Int32) {
         self.a = RefType(test: UnsafeMutablePointer<Int64>.allocate(capacity: 1))
         self.b = b
+    }
+
+    public func callDispose(callback: @escaping () -> Void) {
+        callback()
     }
 }
 
