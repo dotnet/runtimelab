@@ -597,14 +597,12 @@ namespace BindingsGeneration
             if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
             {
                 // GENERIC RETAIN
-                // Retain the payload of frozen struct projected as C# class
+                // Generic arguments are copied to the stack prior to the call via MarshalToSwift, no SwiftHandle ref counting is needed
                 var text = $$"""
                 IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
                 {
                     var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
                     unsafe {
-                        bool success = false;
-                        _payload.DangerousAddRef(ref success);
                         fixed (void* buffer = &_buffer)
                         {
                             metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void*)buffer, metadata);
@@ -644,14 +642,12 @@ namespace BindingsGeneration
         private void WriteMarshalToSwiftNonFrozenStruct()
         {
             // GENERIC RETAIN
-            // Retain the payload of non-frozen struct projected as C# class
+            // Generic arguments are copied to the stack prior to the call via MarshalToSwift, no SwiftHandle ref counting is needed
             var text = $$"""
             IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
             {
                 var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
                 unsafe {
-                    bool success = false;
-                    _payload.DangerousAddRef(ref success);
                     metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
                 }
                 return swiftDest;

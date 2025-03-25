@@ -800,8 +800,7 @@ namespace BindingsGeneration
             foreach (var argumentDecl in _env.MethodDecl.CSSignature.Skip(1).Where(a => !a.IsGeneric))
             {
                 // GENERIC RETAIN
-                // Generic arguments are copied to the stack prior to the call via MarshalToSwift,
-                // which handles reference counting
+                // Generic arguments are copied to the stack prior to the call via MarshalToSwift, no no SafeHandle ref counting is needed
 
                 // FROZEN STRUCT RETAIN
                 // Retain the SwiftHandle payload
@@ -827,15 +826,13 @@ namespace BindingsGeneration
             foreach (var argumentDecl in _env.MethodDecl.CSSignature.Skip(1))
             {
                 // GENERIC RELEASE
-                // Release the SwiftHandle payload
-                // Decrement the reference counter on the Swift side
+                // Generic arguments are copied to the stack prior to the call via MarshalToSwift, no SafeHandle ref counting is needed
                 if (argumentDecl.IsGeneric)
                 {
                     var csTypeParamName = _env.GenericTypeMapping[argumentDecl.SwiftTypeSpec.ToString()].TypeParameter;
                     var metadataName = NameProvider.GetMetadataName(csTypeParamName);
                     var payloadName = NameProvider.GetPayloadName(argumentDecl.Name);
-                    // csWriter.WriteLine($"{argumentDecl.Name}.Payload.DangerousRelease();");
-                    // csWriter.WriteLine($"{metadataName}.ValueWitnessTable->Destroy((void *){payloadName}, {metadataName});");
+                    csWriter.WriteLine($"{metadataName}.ValueWitnessTable->Destroy((void *){payloadName}, {metadataName});");
                     continue;
                 }
 
