@@ -171,7 +171,7 @@ namespace BindingsGeneration
             return parameter switch
             {
                 { Type: "SwiftHandle" } => $"{parameter.Name}.Payload",
-                { Type: var type } when type.EndsWith(".Buffer") => $"{parameter.Name}.Payload",
+                { Type: var type } when type.EndsWith(".TypeBuffer") => $"{parameter.Name}.Buffer",
                 { Type: "AsyncCallback" } => $"(IntPtr){parameter.Name}",
                 { Type: "AsyncContext" } => "IntPtr.Zero",
                 { Type: "AsyncTask" } => $"GCHandle.ToIntPtr({parameter.Name})",
@@ -327,7 +327,7 @@ namespace BindingsGeneration
             }
 
             if (MarshallingHelpers.RequiresMemoryManagement(returnTypeRecord))
-                SetReturnType(returnTypeRecord.CSharpTypeName.FullyQualifiedName + ".Buffer");
+                SetReturnType(returnTypeRecord.CSharpTypeName.FullyQualifiedName + ".TypeBuffer");
             else
                 SetReturnType(returnTypeRecord.CSharpTypeName.FullyQualifiedName);
         }
@@ -379,7 +379,7 @@ namespace BindingsGeneration
                 }
 
                 if (MarshallingHelpers.RequiresMemoryManagement(argumentTypeRecord))
-                    AddParameter(argumentTypeRecord.CSharpTypeName.FullyQualifiedName + ".Buffer", argument.Name);
+                    AddParameter(argumentTypeRecord.CSharpTypeName.FullyQualifiedName + ".TypeBuffer", argument.Name);
                 else
                     AddParameter(argumentTypeRecord.CSharpTypeName.FullyQualifiedName, argument.Name);
             }
@@ -424,7 +424,7 @@ namespace BindingsGeneration
                 {
                     var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
                     if (MarshallingHelpers.RequiresMemoryManagement(typeRecord))
-                        AddParameter($"SwiftSelf<Buffer>", "self");
+                        AddParameter($"SwiftSelf<TypeBuffer>", "self");
                     else
                         AddParameter($"SwiftSelf<{_env.ParentDecl.Name}>", "self");
                 }
@@ -650,7 +650,7 @@ namespace BindingsGeneration
             {
                 var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
                 if ((typeRecord.Flags & TypeRecordFlags.RequiresMemoryManagement) != 0)
-                    csWriter.WriteLine($"var self = new SwiftSelf<Buffer>(_payload);");
+                    csWriter.WriteLine($"var self = new SwiftSelf<TypeBuffer>(_buffer);");
                 else
                     csWriter.WriteLine($"var self = new SwiftSelf<{_env.ParentDecl.Name}>(this);");
             }
@@ -787,7 +787,7 @@ namespace BindingsGeneration
                 if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(argumentDecl))
                 {
                     var bufferName = NameProvider.GetBoundGenericBufferName(argumentDecl.Name);
-                    csWriter.WriteLine($"var {bufferName} = {argumentDecl.Name}.Payload;");
+                    csWriter.WriteLine($"var {bufferName} = {argumentDecl.Name}.Payload.Handle;");
                 }
             }
         }
@@ -809,7 +809,7 @@ namespace BindingsGeneration
                 if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
                 {
                     csWriter.WriteLine($"var success{argumentDecl.Name} = false;");
-                    csWriter.WriteLine($"{argumentDecl.Name}.RefPayload.DangerousAddRef(ref success{argumentDecl.Name});");
+                    csWriter.WriteLine($"{argumentDecl.Name}.Payload.DangerousAddRef(ref success{argumentDecl.Name});");
                 }
 
                 // NON-FROZEN STRUCT RETAIN
@@ -845,7 +845,7 @@ namespace BindingsGeneration
                 if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
                 {
                     csWriter.WriteLine($"if (success{argumentDecl.Name})");
-                    csWriter.WriteLine($"   {argumentDecl.Name}.RefPayload.DangerousRelease();");
+                    csWriter.WriteLine($"   {argumentDecl.Name}.Payload.DangerousRelease();");
                 }
 
                 // NON-FROZEN STRUCT RELEASE
@@ -946,12 +946,12 @@ namespace BindingsGeneration
                 TypeRecord typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
                 if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
                 {
-                    csWriter.WriteLine($"_payload = result;");
+                    csWriter.WriteLine($"_buffer = result;");
                     csWriter.WriteLine($@"
                         unsafe
                         {{
-                            fixed (void* payload = &_payload)
-                                _refPayload = new SwiftHandle((IntPtr)payload);
+                            fixed (void* buffer = &_buffer)
+                                _payload = new SwiftHandle((IntPtr)buffer);
                         }}");
                     return;
                 }
@@ -978,7 +978,7 @@ namespace BindingsGeneration
 
             if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(returnArg))
             {
-                csWriter.WriteLine($"return SwiftMarshal.MarshalFromSwift<{_env.BoundGenericsHandler.TranslateBoundGenericTypeToCSharp(returnArg)}>(new IntPtr(&result));");
+                csWriter.WriteLine($"return SwiftMarshal.MarshalFromSwift<{_env.BoundGenericsHandler.TranslateBoundGenericTypeToCSharp(returnArg)}>(result);");
                 return;
             }
 

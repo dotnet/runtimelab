@@ -4,6 +4,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Swift;
@@ -20,17 +21,17 @@ public class SwiftString : IDisposable, ISwiftObject
 {
     private static nuint _payloadSize = SwiftObjectHelper<SwiftString>.GetTypeMetadata().Size;
 
-    public struct Buffer
+    public struct TypeBuffer
     {
         public long _flags;
         public IntPtr _object;
     }
 
-    private Buffer _payload;
+    private TypeBuffer _buffer;
 
-    private SwiftHandle _refPayload;
+    private SwiftHandle _payload;
 
-    public SwiftHandle RefPayload => _refPayload;
+    public SwiftHandle Payload => _payload;
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -47,46 +48,15 @@ public class SwiftString : IDisposable, ISwiftObject
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!_refPayload.IsInvalid)
+        if (!_payload.IsInvalid)
         {
             unsafe
             {
-                fixed (void* payload = &_payload)
+                _payload.SetMetadata(SwiftObjectHelper<SwiftString>.GetTypeMetadata());
+                fixed (void* buffer = &_buffer)
                 {
-                    // Debug.Assert(_refPayload.Handle == (IntPtr)payload, "RefPayload should be the same as &_buffer");
-                }
-
-                _refPayload.SetMetadata(SwiftObjectHelper<SwiftString>.GetTypeMetadata());
-
-                // Use localPayload to pin the payload and prevent it from being moved by the GC
-                SwiftString.Buffer localPayload = _payload;
-                _refPayload.Handle = (IntPtr)(void*)&localPayload;
-                _refPayload.Dispose();
-            }
-        }
-        if (!_refPayload.IsInvalid)
-        {
-            unsafe
-            {
-                fixed (void* payload = &_payload)
-                {
-                    // Debug.Assert(_refPayload.Handle == (IntPtr)payload, "RefPayload should be the same as &_buffer");
-                }
-
-                _refPayload.SetMetadata(SwiftObjectHelper<SwiftString>.GetTypeMetadata());
-
-                // Pin the payload to prevent it from being moved by the GC
-                int size = Marshal.SizeOf<ArrayBuffer>();
-                IntPtr pPinned = Marshal.AllocHGlobal(size);
-                try
-                {
-                    Marshal.StructureToPtr(_payload, pPinned, false);
-                    _refPayload.Handle = pPinned;
-                    _refPayload.Dispose();
-                }
-                finally
-                {
-                    Marshal.FreeHGlobal(pPinned);
+                    _payload.Handle = (IntPtr)buffer;
+                    _payload.Dispose();
                 }
             }
         }
@@ -99,7 +69,7 @@ public class SwiftString : IDisposable, ISwiftObject
 
     public static nuint PayloadSize => _payloadSize;
 
-    public Buffer Payload => _payload;
+    public TypeBuffer Buffer => _buffer;
 
     static TypeMetadata ISwiftObject.GetTypeMetadata()
     {
@@ -116,9 +86,10 @@ public class SwiftString : IDisposable, ISwiftObject
         var metadata = SwiftObjectHelper<SwiftString>.GetTypeMetadata();
         unsafe
         {
-            // Use localPayload to pin the payload and prevent it from being moved by the GC
-            SwiftString.Buffer localPayload = _payload;
-            metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &localPayload, metadata);
+            fixed (void* buffer = &_buffer)
+            {
+                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, buffer, metadata);
+            }
         }
         return swiftDest;
     }
@@ -143,11 +114,9 @@ public class SwiftString : IDisposable, ISwiftObject
     /// </summary>
     unsafe SwiftString(IntPtr handle)
     {
-        _payload = *(Buffer*)handle;
-        fixed (void* _payloadPtr = &_payload)
-        {
-            _refPayload = new SwiftHandle((IntPtr)_payloadPtr);
-        }
+        _buffer = *(TypeBuffer*)handle;
+        fixed (void* buffer = &_buffer)
+            _payload = new SwiftHandle((IntPtr)buffer);
     }
 
     /// <summary>
@@ -160,11 +129,9 @@ public class SwiftString : IDisposable, ISwiftObject
         {
             fixed (byte* utf8BytesPtr = utf8Bytes)
             {
-                _payload = PInvoke_Create(utf8BytesPtr, utf8Bytes.Length, 1);
-                fixed (void* _payloadPtr = &_payload)
-                {
-                    _refPayload = new SwiftHandle((IntPtr)_payloadPtr);
-                }
+                _buffer = PInvoke_Create(utf8BytesPtr, utf8Bytes.Length, 1);
+                fixed (void* buffer = &_buffer)
+                    _payload = new SwiftHandle((IntPtr)buffer);
             }
         }
     }
@@ -172,7 +139,7 @@ public class SwiftString : IDisposable, ISwiftObject
     /// <summary>
     /// Gets the length of string.
     /// </summary>
-    public int Length => (int)PInvoke_GetLength(_payload);
+    public int Length => (int)PInvoke_GetLength(_buffer);
 
     /// <summary>
     /// Converts the SwiftString to a C# string.
@@ -186,7 +153,7 @@ public class SwiftString : IDisposable, ISwiftObject
         if (length <= 0)
             return string.Empty;
 
-        var contiguousArray = PInvoke_GetUtf8ContiguousArray(_payload);
+        var contiguousArray = PInvoke_GetUtf8ContiguousArray(_buffer);
 
 #pragma warning disable CS8500
         unsafe
@@ -213,16 +180,16 @@ public class SwiftString : IDisposable, ISwiftObject
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, CharSet = CharSet.Unicode, EntryPoint = "$sSS21_builtinStringLiteral17utf8CodeUnitCount7isASCIISSBp_BwBi1_tcfC")]
-    public static unsafe extern Buffer PInvoke_Create(byte* str, long len, byte flag);
+    public static unsafe extern TypeBuffer PInvoke_Create(byte* str, long len, byte flag);
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSS5countSivg")]
-    public static extern long PInvoke_GetLength(Buffer str);
+    public static extern long PInvoke_GetLength(TypeBuffer str);
 
     // https://developer.apple.com/documentation/swift/string/utf8cstring
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSS11utf8CStrings15ContiguousArrayVys4Int8VGvg")]
-    public static unsafe extern IntPtr PInvoke_GetUtf8ContiguousArray(Buffer str);
+    public static unsafe extern IntPtr PInvoke_GetUtf8ContiguousArray(TypeBuffer str);
 
     // https://developer.apple.com/documentation/swift/contiguousarray/withunsafebytes(_:)
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]

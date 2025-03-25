@@ -128,16 +128,17 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
         Assert.Equal(0, array.Count);
         // An empty array is singleton and it's count doesn't change with new instances
         // https://github.com/swiftlang/swift/blob/50a98d3055e5a636d80c376a99b4eea35387cd0d/stdlib/public/SwiftShims/swift/shims/GlobalObjects.h#L44
-        Assert.True(Arc.RetainCount(array.Payload._buffer._storage) > 1);
+        Assert.True(Arc.RetainCount(array.Payload.Handle) > 1);
 
         array.Append(42);
         Assert.Equal(1, array.Count);
-        Assert.Equal(1, Arc.RetainCount(array.Payload._buffer._storage));
-        Arc.Retain(array.Payload._buffer._storage);
-        Assert.Equal(2, Arc.RetainCount(array.Payload._buffer._storage));
+        Assert.Equal(1, Arc.RetainCount(array.Payload.Handle));
+        Arc.Retain(array.Payload.Handle);
+        Assert.Equal(2, Arc.RetainCount(array.Payload.Handle));
 
+        var handle = array.Payload.Handle;
         array.Dispose();
-        Assert.Equal(1, Arc.RetainCount(array.Payload._buffer._storage));
+        Assert.Equal(1, Arc.RetainCount(handle));
     }
 
     private void PrimitiveArrayTest<T>(T value1, T value2, T overwriteValue)

@@ -81,9 +81,9 @@ namespace BindingsGeneration
                 csWriter.Indent++;
 
                 // Payload used for reference counting
-                csWriter.WriteLine($"private SwiftHandle _refPayload = SwiftHandle.Zero;");
+                csWriter.WriteLine($"private SwiftHandle _payload = SwiftHandle.Zero;");
                 csWriter.WriteLine();
-                csWriter.WriteLine($"public SwiftHandle RefPayload => _refPayload;");
+                csWriter.WriteLine($"public SwiftHandle Payload => _payload;");
             }
 
             if (swiftTypeInfo.HasValue)
@@ -97,7 +97,7 @@ namespace BindingsGeneration
             }
             if (isProjectedAsClass)
             {
-                csWriter.WriteLine($"public unsafe struct Buffer {{");
+                csWriter.WriteLine($"public unsafe struct TypeBuffer {{");
             }
             else
             {
@@ -137,9 +137,9 @@ namespace BindingsGeneration
                 csWriter.Indent -= 2;
                 csWriter.WriteLine("}");
                 csWriter.WriteLine();
-                csWriter.WriteLine("private Buffer _payload;");
+                csWriter.WriteLine("private TypeBuffer _buffer;");
                 csWriter.WriteLine();
-                csWriter.WriteLine("public Buffer Payload => _payload;");
+                csWriter.WriteLine("public TypeBuffer Buffer => _buffer;");
                 csWriter.WriteLine();
 
                 WriteDisposeMethod(csWriter, structDecl);
@@ -185,27 +185,15 @@ namespace BindingsGeneration
 
             protected virtual void Dispose(bool disposing)
             {
-                if (!_refPayload.IsInvalid)
+                if (!_payload.IsInvalid)
                 {
                     unsafe
                     {
-                        fixed (void* payload = &_payload)
+                        _payload.SetMetadata(SwiftObjectHelper<{{structDecl.Name}}>.GetTypeMetadata());
+                        fixed (void* buffer = &_buffer)
                         {
-                            // Debug.Assert(_refPayload.Handle == (IntPtr)payload, "RefPayload should be the same as &_payload");
-                        }
-
-                        _refPayload.SetMetadata(SwiftObjectHelper<{{structDecl.Name}}>.GetTypeMetadata());
-
-                        // Pin the payload to prevent it from being moved by the GC
-                        int size = Marshal.SizeOf<{{structDecl.Name}}.Buffer>();
-                        IntPtr pPinned = Marshal.AllocHGlobal(size);
-                        try {
-                            Marshal.StructureToPtr(_payload, pPinned, false);
-                            _refPayload.Handle = pPinned;
-                            _refPayload.Dispose();
-                        }
-                        finally {
-                            Marshal.FreeHGlobal(pPinned);
+                            _payload.Handle = (IntPtr)buffer;
+                            _payload.Dispose();
                         }
                     }
                 }
@@ -543,9 +531,9 @@ namespace BindingsGeneration
 
                 unsafe {{_structDecl.Name}}(IntPtr handle)
                 {
-                    _payload = *(Buffer*)handle;
-                    fixed (void* payload = &_payload)
-                        _refPayload = new SwiftHandle((IntPtr)payload);
+                    _buffer = *(TypeBuffer*)handle;
+                    fixed (void* buffer = &_buffer)
+                        _payload = new SwiftHandle((IntPtr)buffer);
                 }
                 """;
 
@@ -616,10 +604,11 @@ namespace BindingsGeneration
                     var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
                     unsafe {
                         bool success = false;
-                        _refPayload.DangerousAddRef(ref success);
-                        // Use localPayload to pin the payload and prevent it from being moved by the GC
-                        Buffer localPayload = _payload;
-                        metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, &localPayload, metadata);
+                        _payload.DangerousAddRef(ref success);
+                        fixed (void* buffer = &_buffer)
+                        {
+                            metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void*)buffer, metadata);
+                        }
                     }
                     return swiftDest;
                 }

@@ -17,22 +17,6 @@ namespace Swift;
 /// </summary>
 public interface ISwiftHashable { }
 
-[StructLayout(LayoutKind.Sequential)]
-public struct SetBuffer
-{
-    [StructLayout(LayoutKind.Sequential)]
-    public struct Variant
-    {
-        [StructLayout(LayoutKind.Sequential)]
-        public struct VariantObject
-        {
-            public IntPtr _rawValue;
-        }
-        public VariantObject _object;
-    }
-    public Variant _buffer;
-}
-
 /// <summary>
 /// Represents a Swift set.
 /// </summary>
@@ -43,11 +27,9 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
 
     static nuint _elementSize = ElementTypeMetadata.Size;
 
-    private SetBuffer _variant;
+    private SwiftHandle _payload;
 
-    private SwiftHandle _refPayload;
-
-    public SwiftHandle RefPayload => _refPayload;
+    public SwiftHandle Payload => _payload;
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -67,30 +49,14 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!_refPayload.IsInvalid)
+        if (!_payload.IsInvalid)
         {
             unsafe
             {
-                fixed (void* payload = &_variant)
-                {
-                    // Debug.Assert(_refPayload.Handle == (IntPtr)payload, "RefPayload should be the same as &_buffer");
-                }
-
-                _refPayload.SetMetadata(SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata());
-
-                // Pin the payload to prevent it from being moved by the GC
-                int size = Marshal.SizeOf<ArrayBuffer>();
-                IntPtr pPinned = Marshal.AllocHGlobal(size);
-                try
-                {
-                    Marshal.StructureToPtr(_variant, pPinned, false);
-                    _refPayload.Handle = pPinned;
-                    _refPayload.Dispose();
-                }
-                finally
-                {
-                    Marshal.FreeHGlobal(pPinned);
-                }
+                _payload.SetMetadata(SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata());
+                var handle = _payload.Handle;
+                _payload.Handle = (IntPtr)(void*)&handle;
+                _payload.Dispose();
             }
         }
     }
@@ -101,8 +67,6 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
     }
 
     public static nuint PayloadSize => _payloadSize;
-
-    public SetBuffer Payload => _variant;
 
     public static nuint ElementSize => _elementSize;
 
@@ -128,9 +92,9 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
 
         unsafe
         {
-            // Use localPayload to pin the payload and prevent it from being moved by the GC
-            SetBuffer localPayload = _variant;
-            metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &localPayload, metadata);
+            var handle = _payload.Handle;
+            metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &handle, metadata);
+            _payload.Handle = handle;
         }
 
         return swiftDest;
@@ -156,11 +120,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
     /// </summary>
     unsafe SwiftSet(IntPtr handle)
     {
-        _variant = *(SetBuffer*)handle;
-        fixed (void* _payloadPtr = &_variant)
-        {
-            _refPayload = new SwiftHandle((IntPtr)_payloadPtr);
-        }
+        _payload = new SwiftHandle(handle);
     }
 
     /// <summary>
@@ -169,11 +129,8 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
     public unsafe SwiftSet()
     {
         var witnessTable = ProtocolWitnessTable.GetOrThrow<Element, ISwiftHashable>();
-        _variant = SwiftSetPInvokes.Init(ElementTypeMetadata, witnessTable);
-        fixed (void* _payloadPtr = &_variant)
-        {
-            _refPayload = new SwiftHandle((IntPtr)_payloadPtr);
-        }
+        var handle = SwiftSetPInvokes.Init(ElementTypeMetadata, witnessTable);
+        _payload = new SwiftHandle(handle);
     }
 
     /// <summary>
@@ -184,7 +141,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
         get
         {
             var witnessTable = ProtocolWitnessTable.GetOrThrow<Element, ISwiftHashable>();
-            return (int)SwiftSetPInvokes.Count(_variant, ElementTypeMetadata, witnessTable);
+            return (int)SwiftSetPInvokes.Count(_payload.Handle, ElementTypeMetadata, witnessTable);
         }
     }
 }
@@ -197,9 +154,9 @@ internal static class SwiftSetPInvokes
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sS2hyxGycfC")]
-    public static extern SetBuffer Init(TypeMetadata elementTypeMetadata, ProtocolWitnessTable witnessTable);
+    public static extern IntPtr Init(TypeMetadata elementTypeMetadata, ProtocolWitnessTable witnessTable);
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSh5countSivg")]
-    public static extern nint Count(SetBuffer handle, TypeMetadata elementMetadata, ProtocolWitnessTable witnessTable);
+    public static extern nint Count(IntPtr handle, TypeMetadata elementMetadata, ProtocolWitnessTable witnessTable);
 }
