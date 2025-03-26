@@ -192,9 +192,7 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         bool _success = false;
         _payload.DangerousAddRef(ref _success);
         var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
-        byte* payload = stackalloc byte[sizeof(int)];
-        Span<byte> span = new Span<byte>(payload, sizeof(int));
-        SwiftMarshal.MarshalToSwift(index, span);
+        byte* payload = stackalloc byte[(int)ElementSize];
 
         IntPtr handle = _payload.Handle;
         SwiftArrayPInvokes.Remove(new SwiftIndirectResult(payload), index, metadata, new SwiftSelf(&handle));
