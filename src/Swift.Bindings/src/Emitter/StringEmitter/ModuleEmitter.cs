@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 using System.CodeDom.Compiler;
-using Swift.Runtime;
 using Microsoft.Extensions.Logging;
+using Swift.Runtime;
 
 namespace BindingsGeneration
 {

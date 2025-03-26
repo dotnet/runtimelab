@@ -1,5 +1,5 @@
-using TbdParsing;
 using Microsoft.Extensions.Logging;
+using TbdParsing;
 
 namespace BindingsGeneration.Demangling;
 

@@ -3,8 +3,8 @@
 
 using BindingsGeneration.Demangling;
 using Microsoft.CodeAnalysis.CSharp;
-using Newtonsoft.Json;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace BindingsGeneration
 {

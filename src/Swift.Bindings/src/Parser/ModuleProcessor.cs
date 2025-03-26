@@ -3,8 +3,8 @@
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
-using Swift.Runtime;
 using Microsoft.Extensions.Logging;
+using Swift.Runtime;
 
 namespace BindingsGeneration
 {

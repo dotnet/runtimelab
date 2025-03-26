@@ -5,10 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using TbdParsing.Models;
-using TbdParsing.Parsing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using TbdParsing.Models;
+using TbdParsing.Parsing;
 
 namespace TbdParsing
 {

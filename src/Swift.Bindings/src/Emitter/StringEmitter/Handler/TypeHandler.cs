@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 using System.CodeDom.Compiler;
-using Swift.Runtime;
 using Microsoft.Extensions.Logging;
+using Swift.Runtime;
 
 namespace BindingsGeneration
 {
@@ -47,7 +47,7 @@ namespace BindingsGeneration
     public class FrozenStructHandler : BaseHandler, ITypeHandler
     {
         private readonly ILogger _logger;
-        
+
         /// <summary>
         /// Initializes a new instance of the <see cref="FrozenStructHandler"/> class.
         /// </summary>
