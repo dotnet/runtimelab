@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-using TbdParsing.Logging;
+using Utils.Logging;
 using TbdParsing.Models;
 
 namespace TbdParsing.Parsing

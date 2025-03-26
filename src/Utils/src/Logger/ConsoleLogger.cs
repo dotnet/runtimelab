@@ -3,7 +3,7 @@
 
 using System;
 
-namespace TbdParsing.Logging
+namespace Utils.Logging
 {
     /// <summary>
     /// Simple console logger implementation
@@ -47,7 +47,7 @@ namespace TbdParsing.Logging
             if (MinimumLevel <= LogLevel.Error)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"[ERROR] {message}");
+                Console.Error.WriteLine($"[ERROR] {message}");
                 Console.ResetColor();
             }
         }
@@ -57,9 +57,9 @@ namespace TbdParsing.Logging
             if (MinimumLevel <= LogLevel.Error)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"[ERROR] {message}");
-                Console.WriteLine($"Exception: {ex.Message}");
-                Console.WriteLine(ex.StackTrace);
+                Console.Error.WriteLine($"[ERROR] {message}");
+                Console.Error.WriteLine($"Exception: {ex.Message}");
+                Console.Error.WriteLine(ex.StackTrace);
                 Console.ResetColor();
             }
         }

@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using TbdParsing.Logging;
+using Utils.Logging;
 using TbdParsing.Models;
 using TbdParsing.Parsing;
 

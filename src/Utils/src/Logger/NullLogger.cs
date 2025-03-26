@@ -3,7 +3,7 @@
 
 using System;
 
-namespace TbdParsing.Logging
+namespace Utils.Logging
 {
     /// <summary>
     /// A logger implementation that does nothing (null object pattern)

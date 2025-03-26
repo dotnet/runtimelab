@@ -3,7 +3,7 @@
 
 using System;
 using System.Collections.Generic;
-using TbdParsing.Logging;
+using Utils.Logging;
 using TbdParsing.Models;
 
 namespace TbdParsing.Parsing

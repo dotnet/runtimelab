@@ -3,7 +3,7 @@
 
 using System;
 
-namespace TbdParsing.Logging
+namespace Utils.Logging
 {
     /// <summary>
     /// Defines logging levels for the TBD parser
