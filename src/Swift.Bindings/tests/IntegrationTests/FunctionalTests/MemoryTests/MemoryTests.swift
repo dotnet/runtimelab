@@ -193,3 +193,31 @@ public func PassThroughFrozenStructRequiresMemoryManagement(a: FrozenStructRequi
 public func PassThroughNonFrozenStructRequiresMemoryManagement(a: NonFrozenStructRequiresMemoryManagement) -> NonFrozenStructRequiresMemoryManagement {
     return a
 }
+
+@frozen
+public struct S {
+    public var x: Int32
+    public var y: UInt8
+
+    public init() {
+        self.x = 1
+        self.y = 2
+    }
+}
+
+@frozen
+public struct S2 {
+    public var x: S
+    public var y: UInt8
+    public var z: RefType
+
+    public init() {
+        self.x = S()
+        self.y = 3
+        self.z = RefType(test: UnsafeMutablePointer<Int64>.allocate(capacity: 1))
+    }
+}
+
+public func PassThroughS2(a: S2) -> S2 {
+    return a
+}

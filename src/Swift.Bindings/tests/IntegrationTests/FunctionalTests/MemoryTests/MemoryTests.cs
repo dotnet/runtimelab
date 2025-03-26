@@ -752,5 +752,31 @@ namespace BindingsGeneration.FunctionalTests
             frozenRequiresMemoryManagement.CallDispose();
             Assert.True(frozenRequiresMemoryManagement.Payload.IsClosed);
         }
+
+        [Fact]
+        public unsafe void TestEmbeddedStruct()
+        {
+            S2 s2 = new S2();
+            Assert.Equal(1, s2.x.x);
+            Assert.Equal(2, s2.x.y);
+            Assert.Equal(3, s2.y);
+
+            Assert.Equal(1, Arc.RetainCount(s2.Payload.Handle.At(1)));
+            S2 s2Copy = Bindings.MemoryTests.PassThroughS2(s2);
+
+            Assert.Equal(1, s2Copy.x.x);
+            Assert.Equal(2, s2Copy.x.y);
+            Assert.Equal(3, s2Copy.y);
+
+            Assert.Equal(2, Arc.RetainCount(s2.Payload.Handle.At(1)));
+            Assert.Equal(2, Arc.RetainCount(s2Copy.Payload.Handle.At(1)));
+
+            s2Copy.Dispose();
+
+            Assert.True(s2Copy.Payload.IsClosed);
+            Assert.True(s2Copy.Payload.IsInvalid);
+
+            Assert.Equal(1, Arc.RetainCount(s2.Payload.Handle.At(1)));
+        }
     }
 }
