@@ -63,7 +63,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
                 _payload.Dispose();
                 if (_payload.IsClosed && !_payload.IsInvalid)
                 {
-                    lock(_syncLock)
+                    lock (_syncLock)
                     {
                         var handle = _payload.Handle;
                         metadata.ValueWitnessTable->Destroy(&handle, metadata);
@@ -107,10 +107,10 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
         {
             fixed (void* swiftDest = swiftDestSpan)
             {
-                 // Ensure the payload is valid before making copy
+                // Ensure the payload is valid before making copy
                 bool _success = false;
                 _payload.DangerousAddRef(ref _success);
-                lock(_syncLock)
+                lock (_syncLock)
                 {
                     var handle = _payload.Handle;
                     metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &handle, metadata);

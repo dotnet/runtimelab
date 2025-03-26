@@ -63,7 +63,7 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
                 _payload.Dispose();
                 if (_payload.IsClosed && !_payload.IsInvalid)
                 {
-                    lock(_syncLock)
+                    lock (_syncLock)
                     {
                         var handle = _payload.Handle;
                         metadata.ValueWitnessTable->Destroy(&handle, metadata);
@@ -109,7 +109,7 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
                 // Ensure the payload is valid before making copy
                 bool _success = false;
                 _payload.DangerousAddRef(ref _success);
-                lock(_syncLock)
+                lock (_syncLock)
                 {
                     var handle = _payload.Handle;
                     metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &handle, metadata);
@@ -178,7 +178,7 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         byte* payload = stackalloc byte[(int)ElementSize];
         Span<byte> span = new Span<byte>(payload, (int)ElementSize);
         SwiftMarshal.MarshalToSwift(item, span);
-        lock(_syncLock)
+        lock (_syncLock)
         {
             IntPtr handle = _payload.Handle;
             SwiftArrayPInvokes.Append((IntPtr)payload, metadata, new SwiftSelf(&handle));
@@ -200,7 +200,7 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         Span<byte> span = new Span<byte>(payload, (int)ElementSize);
         SwiftMarshal.MarshalToSwift(item, span);
 
-        lock(_syncLock)
+        lock (_syncLock)
         {
             IntPtr handle = _payload.Handle;
             SwiftArrayPInvokes.Insert((IntPtr)payload, index, metadata, new SwiftSelf(&handle));
@@ -220,7 +220,7 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
         byte* payload = stackalloc byte[(int)ElementSize];
 
-        lock(_syncLock)
+        lock (_syncLock)
         {
             IntPtr handle = _payload.Handle;
             SwiftArrayPInvokes.Remove(new SwiftIndirectResult(payload), index, metadata, new SwiftSelf(&handle));
@@ -239,7 +239,7 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         _payload.DangerousAddRef(ref _success);
         var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
 
-        lock(_syncLock)
+        lock (_syncLock)
         {
             IntPtr handle = _payload.Handle;
             SwiftArrayPInvokes.RemoveAll(1, metadata, new SwiftSelf(&handle));
@@ -273,7 +273,7 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
             Span<byte> span = new Span<byte>(payload, (int)ElementSize);
             SwiftMarshal.MarshalToSwift(value, span);
 
-            lock(_syncLock)
+            lock (_syncLock)
             {
                 IntPtr handle = _payload.Handle;
                 SwiftArrayPInvokes.Set((IntPtr)payload, index, metadata, new SwiftSelf(&handle));
