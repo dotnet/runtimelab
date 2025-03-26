@@ -1,5 +1,5 @@
-using Utils.Logging;
 using TbdParsing;
+using Utils.Logging;
 
 namespace BindingsGeneration.Demangling;
 

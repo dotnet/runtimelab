@@ -37,10 +37,10 @@ namespace Utils.Logging
                 3 => LogLevel.Info,
                 _ => LogLevel.Debug // 4 or higher
             };
-            
+
             return new ConsoleLogger { MinimumLevel = logLevel };
         }
-        
+
         /// <summary>
         /// Creates a logger with the specified minimum log level.
         /// </summary>
@@ -50,7 +50,7 @@ namespace Utils.Logging
         {
             return new ConsoleLogger { MinimumLevel = level };
         }
-        
+
         /// <summary>
         /// Creates a null logger that discards all log messages.
         /// </summary>

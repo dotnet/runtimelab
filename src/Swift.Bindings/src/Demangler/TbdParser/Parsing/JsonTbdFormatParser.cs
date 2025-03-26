@@ -3,8 +3,8 @@
 
 using System;
 using System.Collections.Generic;
-using Utils.Logging;
 using TbdParsing.Models;
+using Utils.Logging;
 
 namespace TbdParsing.Parsing
 {

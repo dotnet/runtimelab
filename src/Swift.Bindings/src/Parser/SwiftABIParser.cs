@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using BindingsGeneration.Demangling;
 using Microsoft.CodeAnalysis.CSharp;
 using Newtonsoft.Json;
-using BindingsGeneration.Demangling;
 using Utils.Logging;
 
 namespace BindingsGeneration

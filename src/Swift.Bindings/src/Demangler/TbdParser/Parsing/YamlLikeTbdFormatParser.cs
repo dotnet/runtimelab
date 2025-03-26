@@ -5,8 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Utils.Logging;
 using TbdParsing.Models;
+using Utils.Logging;
 
 namespace TbdParsing.Parsing
 {

@@ -5,9 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Utils.Logging;
 using TbdParsing.Models;
 using TbdParsing.Parsing;
+using Utils.Logging;
 
 namespace TbdParsing
 {

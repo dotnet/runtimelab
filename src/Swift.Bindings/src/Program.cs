@@ -21,8 +21,8 @@ namespace BindingsGeneration
             Option<string> tbdOption = new(aliases: new[] { "-t", "--tbd" }, "Path to the TBD file.") { IsRequired = true };
             Option<string> outputDirectoryOption = new(aliases: new[] { "-o", "--output" }, "Output directory for generated bindings.") { IsRequired = true };
             Option<int> verboseOption = new(
-                aliases: new[] { "-v", "--verbose" }, 
-                description: "Verbosity level. 0 = No logging, 1 = Error, 2 = Warning, 3 = Info, 4 = Debug. (default: 3)", 
+                aliases: new[] { "-v", "--verbose" },
+                description: "Verbosity level. 0 = No logging, 1 = Error, 2 = Warning, 3 = Info, 4 = Debug. (default: 3)",
                 getDefaultValue: () => 3);
             Option<bool> helpOption = new(aliases: new[] { "-h", "--help" }, "Display a help message.");
 
