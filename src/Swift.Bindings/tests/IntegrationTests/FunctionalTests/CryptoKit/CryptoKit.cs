@@ -59,16 +59,17 @@ namespace BindingsGeneration.FunctionalTests
                 _payload = new SwiftHandle(handle);
             }
 
-            IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+            void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
             {
                 var metadata = SwiftObjectHelper<Nonce>.GetTypeMetadata();
+                Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
                 unsafe
                 {
-                    bool success = false;
-                    _payload.DangerousAddRef(ref success);
-                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                    fixed (byte* swiftDest = swiftDestSpan)
+                    {
+                        metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                    }
                 }
-                return swiftDest;
             }
 
             private static Dictionary<Type, string> _protocolConformanceSymbols;
@@ -264,16 +265,17 @@ namespace BindingsGeneration.FunctionalTests
                 _payload = new SwiftHandle(handle);
             }
 
-            IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+            void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
             {
                 var metadata = SwiftObjectHelper<Nonce>.GetTypeMetadata();
+                Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
                 unsafe
                 {
-                    bool success = false;
-                    _payload.DangerousAddRef(ref success);
-                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                    fixed (byte* swiftDest = swiftDestSpan)
+                    {
+                        metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                    }
                 }
-                return swiftDest;
             }
 
             private static Dictionary<Type, string> _protocolConformanceSymbols;
@@ -359,16 +361,17 @@ namespace BindingsGeneration.FunctionalTests
                 _payload = new SwiftHandle(handle);
             }
 
-            IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+            void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
             {
                 var metadata = SwiftObjectHelper<SealedBox>.GetTypeMetadata();
+                Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
                 unsafe
                 {
-                    bool success = false;
-                    _payload.DangerousAddRef(ref success);
-                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                    fixed (byte* swiftDest = swiftDestSpan)
+                    {
+                        metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                    }
                 }
-                return swiftDest;
             }
 
             private static Dictionary<Type, string> _protocolConformanceSymbols;
@@ -540,16 +543,17 @@ namespace BindingsGeneration.FunctionalTests
             _payload = new SwiftHandle(handle);
         }
 
-        IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+        void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
         {
             var metadata = SwiftObjectHelper<SymmetricKey>.GetTypeMetadata();
+            Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
             unsafe
             {
-                bool success = false;
-                _payload.DangerousAddRef(ref success);
-                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                fixed (byte* swiftDest = swiftDestSpan)
+                {
+                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                }
             }
-            return swiftDest;
         }
 
         private static Dictionary<Type, string> _protocolConformanceSymbols;

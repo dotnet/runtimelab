@@ -33,7 +33,7 @@ struct SwiftIntMock : ISwiftObject
         throw new NotImplementedException();
     }
 
-    nint ISwiftObject.MarshalToSwift(nint swiftDest)
+    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
     {
         throw new NotImplementedException();
     }

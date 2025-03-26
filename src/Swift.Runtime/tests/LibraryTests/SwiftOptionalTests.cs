@@ -44,7 +44,6 @@ public class SwiftOptionalTests : IClassFixture<SwiftOptionalTests.TestFixture>
         Assert.Equal(SwiftOptionalCases.None, optional.Case);
     }
 
-
     [Fact]
     public static void TestOptionIntOptionSome()
     {

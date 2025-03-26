@@ -599,16 +599,17 @@ namespace BindingsGeneration
                 // GENERIC RETAIN
                 // Generic arguments are copied to the stack prior to the call via MarshalToSwift, no SwiftHandle ref counting is needed
                 var text = $$"""
-                IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+                void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
                 {
                     var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
+                    Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
                     unsafe {
                         fixed (void* buffer = &_buffer)
+                        fixed (void* swiftDest = swiftDestSpan)
                         {
                             metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void*)buffer, metadata);
                         }
                     }
-                    return swiftDest;
                 }
                 """;
 
@@ -617,16 +618,17 @@ namespace BindingsGeneration
             else
             {
                 var text = $$"""
-                IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+                void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
                 {
                     var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
+                    Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
                     unsafe {
                         fixed (void* payload = &this)
+                        fixed (void* swiftDest = swiftDestSpan)
                         {
                             metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, payload, metadata);
                         }
                     }
-                    return swiftDest;
                 }
                 """;
 
@@ -644,13 +646,16 @@ namespace BindingsGeneration
             // GENERIC RETAIN
             // Generic arguments are copied to the stack prior to the call via MarshalToSwift, no SwiftHandle ref counting is needed
             var text = $$"""
-            IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+            void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
             {
                 var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
+                Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
                 unsafe {
-                    metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
+                    fixed (void* swiftDest = swiftDestSpan)
+                    {
+                        metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
+                    }
                 }
-                return swiftDest;
             }
             """;
 

@@ -86,15 +86,18 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         return new SwiftArray<Element>(handle);
     }
 
-    IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
     {
         var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
+        Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
         unsafe
         {
-            var handle = _payload.Handle;
-            metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &handle, metadata);
+            fixed (void* swiftDest = swiftDestSpan)
+            {
+                var handle = _payload.Handle;
+                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &handle, metadata);
+            }
         }
-        return swiftDest;
     }
 
     /// <summary>
@@ -153,7 +156,8 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         bool _success = false;
         _payload.DangerousAddRef(ref _success);
         byte* payload = stackalloc byte[(int)ElementSize];
-        SwiftMarshal.MarshalToSwift(item, (IntPtr)payload);
+        Span<byte> span = new Span<byte>(payload, (int)ElementSize);
+        SwiftMarshal.MarshalToSwift(item, span);
         IntPtr handle = _payload.Handle;
         SwiftArrayPInvokes.Append((IntPtr)payload, metadata, new SwiftSelf(&handle));
         _payload.Handle = handle;
@@ -170,7 +174,8 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         _payload.DangerousAddRef(ref _success);
         var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
         byte* payload = stackalloc byte[(int)ElementSize];
-        SwiftMarshal.MarshalToSwift(item, (IntPtr)payload);
+        Span<byte> span = new Span<byte>(payload, (int)ElementSize);
+        SwiftMarshal.MarshalToSwift(item, span);
 
         IntPtr handle = _payload.Handle;
         SwiftArrayPInvokes.Insert((IntPtr)payload, index, metadata, new SwiftSelf(&handle));
@@ -187,8 +192,9 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         bool _success = false;
         _payload.DangerousAddRef(ref _success);
         var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
-        byte* payload = stackalloc byte[(int)ElementSize];
-        SwiftMarshal.MarshalToSwift(index, (IntPtr)payload);
+        byte* payload = stackalloc byte[sizeof(int)];
+        Span<byte> span = new Span<byte>(payload, sizeof(int));
+        SwiftMarshal.MarshalToSwift(index, span);
 
         IntPtr handle = _payload.Handle;
         SwiftArrayPInvokes.Remove(new SwiftIndirectResult(payload), index, metadata, new SwiftSelf(&handle));
@@ -239,7 +245,8 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
             _payload.DangerousAddRef(ref _success);
             var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
             byte* payload = stackalloc byte[(int)ElementSize];
-            SwiftMarshal.MarshalToSwift(value, (IntPtr)payload);
+            Span<byte> span = new Span<byte>(payload, (int)ElementSize);
+            SwiftMarshal.MarshalToSwift(value, span);
 
             IntPtr handle = _payload.Handle;
             SwiftArrayPInvokes.Set((IntPtr)payload, index, metadata, new SwiftSelf(&handle));

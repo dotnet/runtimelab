@@ -898,8 +898,9 @@ namespace BindingsGeneration
 
                 var text = $$"""
                 byte* {{payloadName}}Ptr = stackalloc byte[(int){{metadataName}}.Size];
+                Span<byte> {{payloadName}}Span = new Span<byte>({{payloadName}}Ptr, (int){{metadataName}}.Size);
                 {{payloadName}} = (IntPtr){{payloadName}}Ptr;
-                SwiftMarshal.MarshalToSwift({{argument.Name}}, {{payloadName}});
+                SwiftMarshal.MarshalToSwift({{argument.Name}}, {{payloadName}}Span);
                 """;
                 csWriter.WriteLines(text);
             }
@@ -1103,7 +1104,8 @@ namespace BindingsGeneration
                                 {{(voidReturn ? "" : $"var result = SwiftMarshal.MarshalFromSwift<{_wrapperSignature.ReturnType}>({marshallFromSwiftArgument});")}}
                                 {{(requiresInitWithCopy ? $"var metadata = SwiftObjectHelper<{_wrapperSignature.ReturnType}>.GetTypeMetadata();" : "")}}
                                 {{(requiresInitWithCopy ? $"byte* payload = stackalloc byte[(int)metadata.Size];" : "")}}
-                                {{(requiresInitWithCopy ? $"SwiftMarshal.MarshalToSwift(result, (IntPtr)payload);" : "")}}
+                                {{(requiresInitWithCopy ? $"Span<byte> payloadSpan = new Span<byte>(payload, (int)metadata.Size);" : "")}}
+                                {{(requiresInitWithCopy ? $"SwiftMarshal.MarshalToSwift(result, payloadSpan);" : "")}}
                                 if (handle.Target is TaskCompletionSource{{(voidReturn ? "" : $"<{_wrapperSignature.ReturnType}>")}} tcs)
                                 {
                                     tcs.TrySetResult({{(voidReturn ? "" : "result")}});

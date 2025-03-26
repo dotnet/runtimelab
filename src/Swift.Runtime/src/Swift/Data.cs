@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System;
+using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -54,17 +55,18 @@ public struct Data : ISwiftObject
         return new Data(handle);
     }
 
-    IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
     {
         var metadata = SwiftObjectHelper<Data>.GetTypeMetadata();
+        Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
         unsafe
         {
             fixed (void* _payloadPtr = &this)
+            fixed (void* swiftDest = swiftDestSpan)
             {
                 metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payloadPtr, metadata);
             }
         }
-        return swiftDest;
     }
 
     /// <summary>

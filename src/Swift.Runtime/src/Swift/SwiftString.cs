@@ -81,17 +81,18 @@ public class SwiftString : IDisposable, ISwiftObject
         return new SwiftString(handle);
     }
 
-    IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
     {
         var metadata = SwiftObjectHelper<SwiftString>.GetTypeMetadata();
+        Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
         unsafe
         {
             fixed (void* buffer = &_buffer)
+            fixed (void* swiftDest = swiftDestSpan)
             {
                 metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, buffer, metadata);
             }
         }
-        return swiftDest;
     }
 
     /// <summary>

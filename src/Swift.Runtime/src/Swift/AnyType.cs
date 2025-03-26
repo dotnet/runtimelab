@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System.Diagnostics;
 using Swift.Runtime;
 
 #nullable enable
@@ -34,11 +35,12 @@ public struct AnyType : ISwiftObject
     /// <summary>
     /// Marshals this object to a Swift destination
     /// </summary>
-    /// <param name="swiftDest"></param>
+    /// <param name="swiftDestSpan"></param>
     /// <returns></returns>
-    IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
     {
         var metadata = SwiftObjectHelper<AnyType>.GetTypeMetadata();
+        Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
         if (!metadata.IsValid)
         {
             throw new InvalidOperationException("Cannot marshal AnyType to Swift without metadata");
@@ -49,9 +51,11 @@ public struct AnyType : ISwiftObject
         }
         unsafe
         {
-            metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+            fixed (byte* swiftDest = swiftDestSpan)
+            {
+                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+            }
         }
-        return swiftDest;
     }
 
     /// <summary>

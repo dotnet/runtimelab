@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections;
+using System.Diagnostics;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -86,18 +87,19 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
         return new SwiftSet<Element>(handle);
     }
 
-    IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
     {
         var metadata = SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata();
-
+        Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
         unsafe
         {
-            var handle = _payload.Handle;
-            metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &handle, metadata);
-            _payload.Handle = handle;
+            fixed (void* swiftDest = swiftDestSpan)
+            {
+                var handle = _payload.Handle;
+                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &handle, metadata);
+                _payload.Handle = handle;
+            }
         }
-
-        return swiftDest;
     }
 
     /// <summary>

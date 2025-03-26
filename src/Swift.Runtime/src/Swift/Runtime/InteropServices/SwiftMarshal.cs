@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 namespace Swift.Runtime.InteropServices;
 
 #nullable enable
@@ -15,14 +17,15 @@ public static class SwiftMarshal
     /// </summary>
     /// <typeparam name="T">The type of the value being marshaled</typeparam>
     /// <param name="value">The value to marshal</param>
-    /// <param name="swiftDest">the destination for marshaling</param>
+    /// <param name="swiftDestSpan">the destination for marshaling</param>
     /// <returns>A pointer to memory to pass in to Swift for marshaling. Note: this value may be different from the value passed in.</returns>
     /// <exception cref="NotSupportedException"></exception>
-    public static IntPtr MarshalToSwift<T>(T value, IntPtr swiftDest)
+    public static void MarshalToSwift<T>(T value, Span<byte> swiftDestSpan)
     {
         if (value is ISwiftObject swiftValue)
         {
-            return swiftValue.MarshalToSwift(swiftDest);
+            swiftValue.MarshalToSwift(swiftDestSpan);
+            return;
         }
 
         var type = typeof(T);
@@ -30,7 +33,17 @@ public static class SwiftMarshal
         {
             unsafe
             {
-                return new IntPtr(MarshalPrimitiveToSwift(value, (void*)swiftDest));
+                var typeSize = Marshal.SizeOf<T>();
+                if (typeof(T) == typeof(bool))
+                {
+                    typeSize = 1;
+                }
+                Debug.Assert(typeSize == swiftDestSpan.Length, $"Span size does not match type size, Expected: {typeSize}, Actual: {swiftDestSpan.Length}");
+                fixed (void* swiftDest = swiftDestSpan)
+                {
+                    MarshalPrimitiveToSwift(value, swiftDest);
+                    return;
+                }
             }
         }
 
@@ -51,72 +64,59 @@ public static class SwiftMarshal
     /// <param name="swiftDest">where in memory to marshal it</param>
     /// <returns>the resulting pointer for passing to a Swift method.</returns>
     /// <exception cref="NotSupportedException"></exception>
-    static unsafe void* MarshalPrimitiveToSwift<T>(T value, void* swiftDest)
+    static unsafe void MarshalPrimitiveToSwift<T>(T value, void* swiftDest)
     {
         if (value is bool boolValue)
         {
             *((byte*)swiftDest) = (byte)(boolValue ? 1 : 0);
-            return swiftDest;
         }
         else if (value is byte byteValue)
         {
             *((byte*)swiftDest) = byteValue;
-            return swiftDest;
         }
         else if (value is sbyte sbyteValue)
         {
             *((sbyte*)swiftDest) = sbyteValue;
-            return swiftDest;
         }
         else if (value is short shortValue)
         {
             *((short*)swiftDest) = shortValue;
-            return swiftDest;
         }
         else if (value is ushort ushortValue)
         {
             *((ushort*)swiftDest) = ushortValue;
-            return swiftDest;
         }
         else if (value is int intValue)
         {
             *((int*)swiftDest) = intValue;
-            return swiftDest;
         }
         else if (value is uint uintValue)
         {
             *((uint*)swiftDest) = uintValue;
-            return swiftDest;
         }
         else if (value is long longValue)
         {
             *((long*)swiftDest) = longValue;
-            return swiftDest;
         }
         else if (value is ulong ulongValue)
         {
             *((ulong*)swiftDest) = ulongValue;
-            return swiftDest;
         }
         else if (value is float floatValue)
         {
             *((float*)swiftDest) = floatValue;
-            return swiftDest;
         }
         else if (value is double doubleValue)
         {
             *((double*)swiftDest) = doubleValue;
-            return swiftDest;
         }
         else if (value is nint nintValue)
         {
             *((nint*)swiftDest) = nintValue;
-            return swiftDest;
         }
         else if (value is nuint nuintValue)
         {
             *((nuint*)swiftDest) = nuintValue;
-            return swiftDest;
         }
         else
         {

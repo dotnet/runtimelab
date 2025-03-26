@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Swift.Runtime;
 using Swift.Runtime.InteropServices;
@@ -61,19 +62,20 @@ public class SwiftOptional<T> : ISwiftObject
     /// <summary>
     /// Marshals this object to a Swift destination
     /// </summary>
-    /// <param name="swiftDest"></param>
+    /// <param name="swiftDestSpan"></param>
     /// <returns></returns>
-    IntPtr ISwiftObject.MarshalToSwift(IntPtr swiftDest)
+    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
     {
         var metadata = SwiftObjectHelper<SwiftOptional<T>>.GetTypeMetadata();
+        Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
         unsafe
         {
             fixed (byte* payload = _payload)
+            fixed (void* swiftDest = swiftDestSpan)
             {
                 metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, payload, metadata);
             }
         }
-        return swiftDest;
     }
 
     /// <summary>
@@ -99,7 +101,8 @@ public class SwiftOptional<T> : ISwiftObject
             fixed (byte* payload = instance._payload)
             {
                 var metadata = SwiftObjectHelper<SwiftOptional<T>>.GetTypeMetadata();
-                SwiftMarshal.MarshalToSwift(value, new IntPtr(payload));
+                Span<byte> payloadSpan = new Span<byte>(payload, (int)metadata.Size - 1);
+                SwiftMarshal.MarshalToSwift(value, payloadSpan);
                 metadata.ValueWitnessTable->DestructiveInjectEnumTag(payload, (uint)SwiftOptionalCases.Some, metadata);
                 return instance;
             }
