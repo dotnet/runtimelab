@@ -1,3 +1,4 @@
+using Utils.Logging;
 using TbdParsing;
 
 namespace BindingsGeneration.Demangling;
@@ -59,11 +60,11 @@ public class DemanglingResults
     /// <summary>
     /// Factory method to generate a suite of demangling results from the given TBD file.
     /// </summary>
-    /// <param name="path">Path to the TBD file</param>
+    /// <param name="path">Path to the TBD file.</param>
+    /// <param name="logger">Logger.</param>
     /// <returns>A set of demangling results</returns>
-    public static DemanglingResults FromTbd(string path)
+    public static DemanglingResults FromTbd(string path, ILogger logger)
     {
-        var logger = new TbdParsing.Logging.ConsoleLogger { MinimumLevel = TbdParsing.Logging.LogLevel.Debug };
         var tbdParser = new TbdParser(logger);
         var tbdFile = tbdParser.ParseFile(path);
 

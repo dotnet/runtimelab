@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-using BindingsGeneration.Demangling;
 using Microsoft.CodeAnalysis.CSharp;
 using Newtonsoft.Json;
+using BindingsGeneration.Demangling;
+using Utils.Logging;
 
 namespace BindingsGeneration
 {
@@ -101,9 +102,9 @@ namespace BindingsGeneration
 
 
         /// <summary>
-        /// The verbosity level.
+        /// Logger.
         /// </summary>
-        private readonly int _verbose;
+        private readonly ILogger _logger;
 
         /// <summary>
         /// The module root node.
@@ -124,12 +125,12 @@ namespace BindingsGeneration
             string filePath,
             ITypeDatabase typeDatabase,
             DemanglingResults demangledTbd,
-            int verbose = 0)
+            ILogger logger)
         {
             _filePath = filePath;
             _typeDatabase = typeDatabase;
             _demangledTbd = demangledTbd;
-            _verbose = verbose;
+            _logger = logger;
 
             string jsonContent = File.ReadAllText(_filePath);
             _moduleRoot = JsonConvert.DeserializeObject<ABIRootNode>(jsonContent) ?? throw new InvalidOperationException("Invalid ABI structure.");
@@ -234,13 +235,11 @@ namespace BindingsGeneration
             }
             catch (NotImplementedException e)
             {
-                if (_verbose > 1)
-                    Console.WriteLine($"Not implemented '{node.Name}' ({node.MangledName}): {e.Message}");
+                _logger.Warning($"Not implemented '{node.Name}' ({node.MangledName}): {e.Message}");
             }
             catch (Exception e)
             {
-                if (_verbose > 0)
-                    Console.WriteLine($"Error while processing node '{node.Name} ({node.MangledName})': {e.Message}");
+                _logger.Warning($"Error while processing node '{node.Name} ({node.MangledName})': {e.Message}");
             }
 
             return result;
@@ -263,8 +262,7 @@ namespace BindingsGeneration
 
             if (string.IsNullOrEmpty(node.MangledName))
             {
-                if (_verbose > 1)
-                    Console.WriteLine($"Type '{node.Name}' has no mangled name. Skipping.");
+                _logger.Warning($"Type '{node.Name}' has no mangled name. Skipping.");
                 return null;
             }
 
@@ -272,8 +270,7 @@ namespace BindingsGeneration
 
             if (node.GenericSig is not null)
             {
-                if (_verbose > 1)
-                    Console.WriteLine($"Generic type '{node.Name}' not supported. Skipping.");
+                _logger.Warning($"Generic type '{node.Name}' not supported. Skipping.");
                 return null;
             }
 
@@ -293,8 +290,7 @@ namespace BindingsGeneration
                     break;
 
                 default:
-                    if (_verbose > 1)
-                        Console.WriteLine($"Unsupported declaration type '{node.DeclKind} {node.Name}' encountered.");
+                    _logger.Warning($"Unsupported declaration type '{node.DeclKind} {node.Name}' encountered.");
                     return null;
             }
 
@@ -329,8 +325,7 @@ namespace BindingsGeneration
             {
                 // TODO: Some types conform to protocols inherently, i.e., they are not explicitly declared.
                 // These conformances are specified in the ABI.json but the descriptors are not present in the TBD.
-                if (_verbose > 0)
-                    Console.WriteLine($"Error while getting protocol conformance descriptor for '{typeName}' and protocol '{protocolName}': {e.Message}");
+                _logger.Warning($"Error while getting protocol conformance descriptor for '{typeName}' and protocol '{protocolName}': {e.Message}");
             }
 
             var conformance = new TypeConformance(typeName, protocolName, protocolConformanceDescriptor);

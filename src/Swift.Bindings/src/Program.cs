@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.CommandLine;
+using Utils.Logging;
 
 namespace BindingsGeneration
 {
@@ -19,7 +20,10 @@ namespace BindingsGeneration
             Option<string> dylibOption = new(aliases: new[] { "-d", "--dylib" }, "Path to the dynamic library.") { IsRequired = true };
             Option<string> tbdOption = new(aliases: new[] { "-t", "--tbd" }, "Path to the TBD file.") { IsRequired = true };
             Option<string> outputDirectoryOption = new(aliases: new[] { "-o", "--output" }, "Output directory for generated bindings.") { IsRequired = true };
-            Option<int> verboseOption = new(aliases: new[] { "-v", "--verbose" }, "Verbosity level.");
+            Option<int> verboseOption = new(
+                aliases: new[] { "-v", "--verbose" }, 
+                description: "Verbosity level. 0 = No logging, 1 = Error, 2 = Warning, 3 = Info, 4 = Debug. (default: 3)", 
+                getDefaultValue: () => 3);
             Option<bool> helpOption = new(aliases: new[] { "-h", "--help" }, "Display a help message.");
 
             RootCommand rootCommand = new(description: "Swift bindings generator.")
@@ -44,31 +48,33 @@ namespace BindingsGeneration
                     return;
                 }
 
+                ILogger logger = LoggerFactory.Create(verbose);
+
                 if (string.IsNullOrWhiteSpace(swiftAbiPath) || !File.Exists(swiftAbiPath))
                 {
-                    Console.Error.WriteLine("Error: Valid Swift ABI file is required.");
+                    logger.Error("Error: Valid Swift ABI file is required.");
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(dylibPath) || !File.Exists(dylibPath))
                 {
-                    Console.Error.WriteLine("Error: Valid dynamic library is required.");
+                    logger.Error("Error: Valid dynamic library is required.");
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(tbdPath) || !File.Exists(tbdPath))
                 {
-                    Console.Error.WriteLine("Error: Valid TBD file is required.");
+                    logger.Error("Error: Valid TBD file is required.");
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(outputDirectory) || !Directory.Exists(outputDirectory))
                 {
-                    Console.Error.WriteLine("Error: Valid output directory is required.");
+                    logger.Error("Error: Valid output directory is required.");
                     return;
                 }
 
-                GenerateBindings(swiftAbiPath, dylibPath, tbdPath, outputDirectory, verbose);
+                GenerateBindings(swiftAbiPath, dylibPath, tbdPath, outputDirectory, logger);
             },
             swiftAbiOption,
             dylibOption,
@@ -87,8 +93,8 @@ namespace BindingsGeneration
         /// <param name="swiftAbiPath">Path to the Swift ABI file.</param>
         /// <param name="dylibPath">Path to the dynamic library.</param>
         /// <param name="outputDirectory">Output directory for generated bindings.</param>
-        /// <param name="verbose">Verbosity level.</param>
-        public static void GenerateBindings(string swiftAbiPath, string dylibPath, string tbdPath, string outputDirectory, int verbose = 2)
+        /// <param name="logger">Logger.</param>
+        public static void GenerateBindings(string swiftAbiPath, string dylibPath, string tbdPath, string outputDirectory, ILogger logger)
         {
             var typeDatabase = new TypeDatabase();
             string[] moduleDatabases = { "FoundationDatabase.xml", "SwiftDatabase.xml" };
@@ -97,14 +103,13 @@ namespace BindingsGeneration
                 typeDatabase.LoadModuleDatabaseFromFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Swift", database)).Wait();
             }
 
-            if (verbose > 0)
-                Console.WriteLine($"Starting bindings generation for {swiftAbiPath}...");
+            logger.Info($"Starting bindings generation for {swiftAbiPath}...");
 
             // Parse the TBD file
-            Demangling.DemanglingResults demangledTbdFile = Demangling.DemanglingResults.FromTbd(tbdPath);
+            Demangling.DemanglingResults demangledTbdFile = Demangling.DemanglingResults.FromTbd(tbdPath, logger);
 
             // Initialize the Swift ABI parser
-            var swiftParser = new SwiftABIParser(swiftAbiPath, typeDatabase, demangledTbdFile, verbose);
+            var swiftParser = new SwiftABIParser(swiftAbiPath, typeDatabase, demangledTbdFile, logger);
             var moduleName = swiftParser.GetModuleName();
 
             // Skip if the module has already been processed
@@ -114,23 +119,21 @@ namespace BindingsGeneration
                 // Parse the Swift ABI file and generate declarations
                 var (decl, moduleTypes) = swiftParser.ParseModule();
 
-                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, moduleTypes, typeDatabase, verbose);
+                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, moduleTypes, typeDatabase, 2);
                 var moduleDatabase = moduleProcessor.FinalizeTypeProcessingAndCreateModuleDatabase().ModuleDatabase;
                 typeDatabase.AddModuleDatabase(moduleDatabase);
 
-                if (verbose > 1)
-                    Console.WriteLine("Parsed Swift ABI file successfully.");
+                logger.Debug("Parsed Swift ABI file successfully.");
 
                 // Emit the C# bindings
-                var stringEmitter = new StringEmitter(outputDirectory, typeDatabase, verbose);
+                var stringEmitter = new StringEmitter(outputDirectory, typeDatabase, 2);
                 stringEmitter.EmitModule(decl);
 
-                if (verbose > 0)
-                    Console.WriteLine($"Bindings generation completed for {swiftAbiPath}.");
+                logger.Info($"Bindings generation completed for {swiftAbiPath}.");
 
             }
-            else if (verbose > 0)
-                Console.WriteLine($"Bindings generation already completed for {swiftAbiPath}.");
+            else
+                logger.Warning($"Bindings generation already completed for {swiftAbiPath}.");
 
             // Copy the Swift library to the output directory
             CopyDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Swift"), Path.Combine(outputDirectory, "Swift"), true);
