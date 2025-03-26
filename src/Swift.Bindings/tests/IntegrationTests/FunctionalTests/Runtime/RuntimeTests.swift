@@ -30,3 +30,7 @@ public func verifyString(str: String) -> Int32 {
 public func passThroughString(str: String) -> String {
     return str
 }
+
+public func passThroughGeneric<T>(value: T) -> T {
+    return value
+}

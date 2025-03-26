@@ -116,7 +116,6 @@ namespace BindingsGeneration.FunctionalTests
             arrayCopy.Dispose();
 
             Assert.True(arrayCopy.Payload.IsClosed);
-            Assert.True(arrayCopy.Payload.IsInvalid);
 
             Assert.False(array.Payload.IsClosed);
             Assert.False(array.Payload.IsInvalid);
@@ -182,6 +181,93 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(1, Arc.RetainCount(array.Payload.Handle));
             Assert.Equal(1, Arc.RetainCount(handle));
             Assert.Equal(1, Arc.RetainCount(arrayCopyCopy.Payload.Handle));
+        }
+
+        [Fact]
+        public unsafe void TestSwiftMarshalArray()
+        {
+            SwiftArray<Int32> vtype = new SwiftArray<Int32>();
+            vtype.Append(42);
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle));
+
+            var metadata = SwiftObjectHelper<SwiftArray<Int32>>.GetTypeMetadata();
+            byte* payloadPtr = stackalloc byte[(int)metadata.Size];
+            Span<byte> payloadSpan = new Span<byte>(payloadPtr, (int)metadata.Size);
+
+            // Marshal the object to Swift
+            SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
+            Assert.Equal(2, Arc.RetainCount(vtype.Payload.Handle));
+
+            // Marshal back from Swift
+            var copy = SwiftMarshal.MarshalFromSwift<SwiftArray<Int32>>((*(IntPtr*)payloadPtr));
+            Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle));
+
+            // Dispose the copy and verify retain count
+            copy.Dispose();
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle));
+        }
+
+        [Fact]
+        public async Task ConcurrentArray()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                SwiftArray<Int32> resource = new SwiftArray<Int32>();
+                resource.Append(42);
+                var barrier = new Barrier(4);
+
+                var getterTask = Task.Run(() =>
+                {
+                    barrier.SignalAndWait();
+                    try
+                    {
+                        Assert.Equal(42, resource[0]);
+                    }
+                    catch (ObjectDisposedException ex)
+                    {
+                        Assert.IsType<ObjectDisposedException>(ex);
+                    }
+                });
+
+                var methodTask = Task.Run(() =>
+                {
+                    barrier.SignalAndWait();
+                    try
+                    {
+                        resource.Append(42);
+                    }
+                    catch (ObjectDisposedException ex)
+                    {
+                        Assert.IsType<ObjectDisposedException>(ex);
+                    }
+                });
+
+                var passThroughTask = Task.Run(() =>
+                {
+                    barrier.SignalAndWait();
+                    try
+                    {
+                        var copy = Bindings.RuntimeTests.passThroughArray(resource);
+                        var genericCopy = Bindings.RuntimeTests.passThroughGeneric<SwiftArray<Int32>>(resource);
+                        copy.Dispose();
+                        genericCopy.Dispose();
+                    }
+                    catch (ObjectDisposedException ex)
+                    {
+                        Assert.IsType<ObjectDisposedException>(ex);
+                    }
+                });
+
+                var disposeTask = Task.Run(() =>
+                {
+                    barrier.SignalAndWait();
+                    resource.Dispose();
+                });
+
+                await Task.WhenAll(methodTask, getterTask, passThroughTask, disposeTask);
+
+                Assert.True(resource.Payload.IsClosed);
+            }
         }
 
         [Fact]
@@ -278,6 +364,62 @@ namespace BindingsGeneration.FunctionalTests
         private static extern IntPtr PInvoke_PassThroughSet(IntPtr set);
 
         [Fact]
+        public unsafe void TestSwiftMarshalSet()
+        {
+            SwiftSet<SwiftIntMock> vtype = GetSet(1);
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle));
+
+            var metadata = SwiftObjectHelper<SwiftSet<SwiftIntMock>>.GetTypeMetadata();
+            byte* payloadPtr = stackalloc byte[(int)metadata.Size];
+            Span<byte> payloadSpan = new Span<byte>(payloadPtr, (int)metadata.Size);
+
+            // Marshal the object to Swift
+            SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
+            Assert.Equal(2, Arc.RetainCount(vtype.Payload.Handle));
+
+            // Marshal back from Swift
+            var copy = SwiftMarshal.MarshalFromSwift<SwiftSet<SwiftIntMock>>((*(IntPtr*)payloadPtr));
+            Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle));
+
+            // Dispose the copy and verify retain count
+            copy.Dispose();
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle));
+        }
+
+        [Fact]
+        public async Task ConcurrentSet()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                SwiftSet<SwiftIntMock> resource = GetSet(1);
+                var barrier = new Barrier(2);
+
+                var getterTask = Task.Run(() =>
+                {
+                    barrier.SignalAndWait();
+                    try
+                    {
+                        Assert.Equal(1, resource.Count);
+                    }
+                    catch (ObjectDisposedException ex)
+                    {
+                        Assert.IsType<ObjectDisposedException>(ex);
+                    }
+                });
+
+                var disposeTask = Task.Run(() =>
+                {
+                    barrier.SignalAndWait();
+                    resource.Dispose();
+                });
+
+                await Task.WhenAll(getterTask, disposeTask);
+
+                Assert.True(resource.Payload.IsClosed);
+            }
+        }
+
+        [Fact]
         public void SmokeTestString()
         {
             var str = Bindings.RuntimeTests.getString(3);
@@ -350,7 +492,66 @@ namespace BindingsGeneration.FunctionalTests
             // Check the count after the copy is disposed
             Assert.Equal(1, Arc.RetainCount(heapString.Payload.Handle.At(1)));
             Assert.Equal(1, Arc.RetainCount(handle.At(1)));
+        }
 
+        [Fact]
+        public unsafe void TestSwiftMarshalString()
+        {
+            SwiftString vtype = Bindings.RuntimeTests.getString(16);
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(1)));
+
+            var metadata = SwiftObjectHelper<SwiftString>.GetTypeMetadata();
+            byte* payloadPtr = stackalloc byte[(int)metadata.Size];
+            Span<byte> payloadSpan = new Span<byte>(payloadPtr, (int)metadata.Size);
+
+            // Marshal the object to Swift
+            SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
+            Assert.Equal(2, Arc.RetainCount(vtype.Payload.Handle.At(1)));
+
+            // Marshal back from Swift
+            var copy = SwiftMarshal.MarshalFromSwift<SwiftString>((IntPtr)payloadPtr);
+            Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle.At(1)));
+
+            // Dispose the copy and verify retain count
+            copy.Dispose();
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(1)));
+        }
+
+
+        [Fact]
+        public async Task ConcurrentString()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                SwiftString resource = Bindings.RuntimeTests.getString(16);
+                var barrier = new Barrier(2);
+
+                var passThroughTask = Task.Run(() =>
+                {
+                    barrier.SignalAndWait();
+                    try
+                    {
+                        var copy = Bindings.RuntimeTests.passThroughString(resource);
+                        var genericCopy = Bindings.RuntimeTests.passThroughGeneric<SwiftString>(resource);
+                        copy.Dispose();
+                        genericCopy.Dispose();
+                    }
+                    catch (ObjectDisposedException ex)
+                    {
+                        Assert.IsType<ObjectDisposedException>(ex);
+                    }
+                });
+
+                var disposeTask = Task.Run(() =>
+                {
+                    barrier.SignalAndWait();
+                    resource.Dispose();
+                });
+
+                await Task.WhenAll(passThroughTask, disposeTask);
+
+                Assert.True(resource.Payload.IsClosed);
+            }
         }
     }
 }

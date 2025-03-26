@@ -607,7 +607,12 @@ namespace BindingsGeneration
                         fixed (void* buffer = &_buffer)
                         fixed (void* swiftDest = swiftDestSpan)
                         {
+                            // Ensure the payload is valid before making copy
+                            bool _success = false;
+                            _payload.DangerousAddRef(ref _success);
                             metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void*)buffer, metadata);
+                            if (_success)
+                                _payload.DangerousRelease();
                         }
                     }
                 }
@@ -653,7 +658,12 @@ namespace BindingsGeneration
                 unsafe {
                     fixed (void* swiftDest = swiftDestSpan)
                     {
+                        // Ensure the payload is valid before making copy
+                        bool _success = false;
+                        _payload.DangerousAddRef(ref _success);
                         metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
+                        if (_success)
+                            _payload.DangerousRelease();
                     }
                 }
             }

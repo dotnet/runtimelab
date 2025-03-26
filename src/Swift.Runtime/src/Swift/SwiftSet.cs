@@ -34,6 +34,8 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
+    private readonly object _syncLock = new object();
+
     static SwiftSet()
     {
         _protocolConformanceSymbols = new Dictionary<Type, string>
@@ -54,10 +56,20 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
         {
             unsafe
             {
-                _payload.SetMetadata(SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata());
-                var handle = _payload.Handle;
-                _payload.Handle = (IntPtr)(void*)&handle;
+                var metadata = SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata();
+                // Don't set the metadata, and let Dispose call Destroy when the handle is closed
+                // _payload.SetMetadata(SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata());
+
                 _payload.Dispose();
+                if (_payload.IsClosed && !_payload.IsInvalid)
+                {
+                    lock(_syncLock)
+                    {
+                        var handle = _payload.Handle;
+                        metadata.ValueWitnessTable->Destroy(&handle, metadata);
+                        _payload.Handle = IntPtr.Zero;
+                    }
+                }
             }
         }
     }
@@ -95,9 +107,16 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
         {
             fixed (void* swiftDest = swiftDestSpan)
             {
-                var handle = _payload.Handle;
-                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &handle, metadata);
-                _payload.Handle = handle;
+                 // Ensure the payload is valid before making copy
+                bool _success = false;
+                _payload.DangerousAddRef(ref _success);
+                lock(_syncLock)
+                {
+                    var handle = _payload.Handle;
+                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &handle, metadata);
+                }
+                if (_success)
+                    _payload.DangerousRelease();
             }
         }
     }

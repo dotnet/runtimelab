@@ -803,7 +803,7 @@ namespace BindingsGeneration
                 if (_env.ParentDecl is StructDecl structDecl)
                 {
                     var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
-                    if (MarshallingHelpers.RequiresMemoryManagement(typeRecord))
+                    if (MarshallingHelpers.RequiresMemoryManagement(typeRecord) || !MarshallingHelpers.IsTypeFrozen(typeRecord))
                     {
                         csWriter.WriteLine($"var _success = false;");
                         csWriter.WriteLine($"_payload.DangerousAddRef(ref _success);");
@@ -841,7 +841,7 @@ namespace BindingsGeneration
                 if (_env.ParentDecl is StructDecl structDecl)
                 {
                     var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
-                    if (MarshallingHelpers.RequiresMemoryManagement(typeRecord))
+                    if (MarshallingHelpers.RequiresMemoryManagement(typeRecord) || !MarshallingHelpers.IsTypeFrozen(typeRecord))
                     {
                         csWriter.WriteLine($"if (_success)");
                         csWriter.WriteLine($"   _payload.DangerousRelease();");

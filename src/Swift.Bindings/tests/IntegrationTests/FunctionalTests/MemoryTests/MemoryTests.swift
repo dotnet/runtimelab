@@ -148,6 +148,10 @@ public struct FrozenStructRequiresMemoryManagement {
         self.b = b
     }
 
+    public func getValue() -> Int32 {
+        return b
+    }
+
     public func callDispose(callback: @escaping () -> Void) {
         callback()
     }
@@ -161,6 +165,10 @@ public struct NestedFrozenStructRequiresMemoryManagement {
     public init (b: Int32) {
         self.a = FrozenStructRequiresMemoryManagement(b: b)
         self.b = b
+    }
+
+    public func getValue() -> Int32 {
+        return b
     }
 }
 
@@ -181,21 +189,13 @@ public struct NonFrozenStructRequiresMemoryManagement {
         self.b = b
     }
 
-    public func callDispose(callback: @escaping () -> Void) {
-        callback()
+    public func getValue() -> Int32 {
+        return b
     }
 }
 
-public func PassThroughFrozenStructRequiresMemoryManagement(a: FrozenStructRequiresMemoryManagement) -> FrozenStructRequiresMemoryManagement {
-    return a
-}
-
-public func PassThroughNonFrozenStructRequiresMemoryManagement(a: NonFrozenStructRequiresMemoryManagement) -> NonFrozenStructRequiresMemoryManagement {
-    return a
-}
-
 @frozen
-public struct S {
+public struct InnerStruct {
     public var x: Int32
     public var y: UInt8
 
@@ -206,18 +206,34 @@ public struct S {
 }
 
 @frozen
-public struct S2 {
-    public var x: S
+public struct EmbeddedStruct {
+    public var x: InnerStruct
     public var y: UInt8
-    public var z: RefType
+    public var z: RefType // offset is 8
 
     public init() {
-        self.x = S()
+        self.x = InnerStruct()
         self.y = 3
         self.z = RefType(test: UnsafeMutablePointer<Int64>.allocate(capacity: 1))
     }
 }
 
-public func PassThroughS2(a: S2) -> S2 {
+public func PassThroughFrozenStruct(a: FrozenStructRequiresMemoryManagement) -> FrozenStructRequiresMemoryManagement {
+    return a
+}
+
+public func PassThroughNestedFrozenStruct(a: NestedFrozenStructRequiresMemoryManagement) -> NestedFrozenStructRequiresMemoryManagement {
+    return a
+}
+
+public func PassThroughNonFrozenStruct(a: NonFrozenStructRequiresMemoryManagement) -> NonFrozenStructRequiresMemoryManagement {
+    return a
+}
+
+public func PassThroughEmbeddedStruct(a: EmbeddedStruct) -> EmbeddedStruct {
+    return a
+}
+
+public func PassThroughGeneric<T>(a: T) -> T {
     return a
 }
