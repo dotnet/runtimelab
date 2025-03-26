@@ -3,6 +3,7 @@
 
 using System.CodeDom.Compiler;
 using Swift.Runtime;
+using Utils.Logging;
 
 namespace BindingsGeneration
 {
@@ -14,17 +15,17 @@ namespace BindingsGeneration
         // Private properties
         private readonly string _outputDirectory;
         private readonly ITypeDatabase _typeDatabase;
-        private readonly int _verbose;
+        private readonly ILogger _logger;
         private readonly Conductor _conductor;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="StringEmitter"/> class.
         /// </summary>
-        public StringEmitter(string outputDirectory, ITypeDatabase typeDatabase, int verbose = 0)
+        public StringEmitter(string outputDirectory, ITypeDatabase typeDatabase, ILogger logger)
         {
             _outputDirectory = outputDirectory;
             _typeDatabase = typeDatabase;
-            _verbose = verbose;
+            _logger = logger;
             _conductor = new Conductor();
         }
 
@@ -58,8 +59,7 @@ namespace BindingsGeneration
             }
             else
             {
-                if (_verbose > 0)
-                    Console.WriteLine($"No module handler found for {moduleDecl.Name}");
+                _logger.Warning($"No module handler found for {moduleDecl.Name}");
             }
         }
     }

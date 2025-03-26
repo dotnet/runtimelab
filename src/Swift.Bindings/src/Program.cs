@@ -126,7 +126,7 @@ namespace BindingsGeneration
                 logger.Debug("Parsed Swift ABI file successfully.");
 
                 // Emit the C# bindings
-                var stringEmitter = new StringEmitter(outputDirectory, typeDatabase, 2);
+                var stringEmitter = new StringEmitter(outputDirectory, typeDatabase, logger);
                 stringEmitter.EmitModule(decl);
 
                 logger.Info($"Bindings generation completed for {swiftAbiPath}.");

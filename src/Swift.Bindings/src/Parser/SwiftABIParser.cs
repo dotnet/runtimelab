@@ -472,7 +472,7 @@ namespace BindingsGeneration
                         result.Add(CreateGetAccessor(accessor, fieldName, parentDecl, moduleDecl));
                         break;
                     default:
-                        Console.WriteLine($"Unsupported accessor kind '{accessor.AccessorKind}' encountered.");
+                        _logger.Warning($"Unsupported accessor kind '{accessor.AccessorKind}' encountered.");
                         break;
                 }
             }
