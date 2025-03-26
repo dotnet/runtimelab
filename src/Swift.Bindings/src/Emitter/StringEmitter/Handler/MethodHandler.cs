@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.CodeDom.Compiler;
+using Microsoft.Extensions.Logging;
 
 namespace BindingsGeneration
 {
@@ -10,6 +11,17 @@ namespace BindingsGeneration
     /// </summary>
     public class ConstructorHandlerFactory : IFactory<BaseDecl, IMethodHandler>
     {
+        private readonly ILogger _logger;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConstructorHandlerFactory"/> class.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
+        public ConstructorHandlerFactory(ILogger<ConstructorHandlerFactory> logger)
+        {
+            _logger = logger;
+        }
+
         /// <summary>
         /// Determines if the factory handles the specified declaration.
         /// </summary>
@@ -24,7 +36,7 @@ namespace BindingsGeneration
         /// </summary>
         public IMethodHandler Construct()
         {
-            return new ConstructorHandler();
+            return new ConstructorHandler(_logger);
         }
     }
 
@@ -33,8 +45,15 @@ namespace BindingsGeneration
     /// </summary>
     public class ConstructorHandler : BaseHandler, IMethodHandler
     {
-        public ConstructorHandler()
+        private readonly ILogger _logger;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConstructorHandler"/> class.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
+        public ConstructorHandler(ILogger logger)
         {
+            _logger = logger;
         }
 
         /// <inheritdoc/>
@@ -56,13 +75,13 @@ namespace BindingsGeneration
             if (methodEnv.MethodDecl.IsGeneric)
             {
                 // TODO: This should revert writing the entire struct: https://github.com/dotnet/runtimelab/issues/2890
-                Console.WriteLine($"Constructor {methodEnv.MethodDecl.Name} has unsupported generic parameters");
+                _logger.LogWarning($"Constructor {methodEnv.MethodDecl.Name} has unsupported generic parameters");
                 return;
             }
 
             if (signatureHandler.GetWrapperSignature().ContainsPlaceholder)
             {
-                Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported signature: ({signatureHandler.GetWrapperSignature().ParametersString()}) -> {signatureHandler.GetWrapperSignature().ReturnType}");
+                _logger.LogWarning($"Constructor {methodEnv.MethodDecl.Name} has unsupported signature: ({signatureHandler.GetWrapperSignature().ParametersString()}) -> {signatureHandler.GetWrapperSignature().ReturnType}");
                 return;
             }
 
@@ -78,6 +97,17 @@ namespace BindingsGeneration
     /// </summary>
     public class MethodHandlerFactory : IFactory<BaseDecl, IMethodHandler>
     {
+        private readonly ILogger _logger;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MethodHandlerFactory"/> class.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
+        public MethodHandlerFactory(ILogger<MethodHandlerFactory> logger)
+        {
+            _logger = logger;
+        }
+
         /// <summary>
         /// Checks if the factory can handle the declaration.
         /// </summary>
@@ -93,7 +123,7 @@ namespace BindingsGeneration
         /// </summary>
         public IMethodHandler Construct()
         {
-            return new MethodHandler();
+            return new MethodHandler(_logger);
         }
     }
 
@@ -102,8 +132,15 @@ namespace BindingsGeneration
     /// </summary>
     public class MethodHandler : BaseHandler, IMethodHandler
     {
-        public MethodHandler()
+        private readonly ILogger _logger;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MethodHandler"/> class.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
+        public MethodHandler(ILogger logger)
         {
+            _logger = logger;
         }
 
         /// <inheritdoc/>
@@ -124,7 +161,7 @@ namespace BindingsGeneration
 
             if (signatureHandler.GetWrapperSignature().ContainsPlaceholder)
             {
-                Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported signature: ({signatureHandler.GetWrapperSignature().ParametersString()}) -> {signatureHandler.GetWrapperSignature().ReturnType}");
+                _logger.LogWarning($"Method {methodEnv.MethodDecl.Name} has unsupported signature: ({signatureHandler.GetWrapperSignature().ParametersString()}) -> {signatureHandler.GetWrapperSignature().ReturnType}");
                 return;
             }
 

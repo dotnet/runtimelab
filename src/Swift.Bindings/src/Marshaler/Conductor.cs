@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.Logging;
 
 namespace BindingsGeneration
 {
@@ -17,29 +18,38 @@ namespace BindingsGeneration
     /// </summary>
     public class Conductor
     {
-        private readonly List<IModuleHandlerFactory> _moduleHandlerFactories = [
-            new ModuleHandlerFactory()
-        ];
-        private readonly List<ITypeHandlerFactory> _typeHandlerFactories = [
-            new NonFrozenStructHandlerFactory(),
-            new FrozenStructHandlerFactory(),
-            new ProtocolHandlerFactory(),
-            new ClassHandlerFactory(),
-        ];
-        private readonly List<IPropertyHandlerFactory> _propertyHandlerFactories = [
-            new PropertyHandlerFactory(),
-        ];
-        private readonly List<IMethodHandlerFactory> _methodHandlerFactories = [
-            new ConstructorHandlerFactory(),
-            new MethodHandlerFactory(),
-        ];
-        private readonly List<IArgumentHandlerFactory> _argumentHandlerFactories = [];
+        private readonly List<IModuleHandlerFactory> _moduleHandlerFactories;
+        private readonly List<ITypeHandlerFactory> _typeHandlerFactories;
+        private readonly List<IPropertyHandlerFactory> _propertyHandlerFactories;
+        private readonly List<IMethodHandlerFactory> _methodHandlerFactories;
+        private readonly List<IArgumentHandlerFactory> _argumentHandlerFactories;
 
         /// <summary>
         /// Initializes a new instance of the Conductor class and loads all handler factories.
         /// </summary>
-        public Conductor()
+        public Conductor(ILoggerFactory loggerFactory)
         {
+            _moduleHandlerFactories = [
+                new ModuleHandlerFactory(loggerFactory.CreateLogger<ModuleHandlerFactory>())
+            ];
+
+            _typeHandlerFactories = [
+                new NonFrozenStructHandlerFactory(loggerFactory.CreateLogger<NonFrozenStructHandlerFactory>()),
+                new FrozenStructHandlerFactory(loggerFactory.CreateLogger<FrozenStructHandlerFactory>()),
+                new ProtocolHandlerFactory(loggerFactory.CreateLogger<ProtocolHandlerFactory>()),
+                new ClassHandlerFactory(loggerFactory.CreateLogger<ClassHandlerFactory>())
+            ];
+
+            _propertyHandlerFactories = [
+                new PropertyHandlerFactory(loggerFactory.CreateLogger<PropertyHandlerFactory>())
+            ];
+
+            _methodHandlerFactories = [
+                new ConstructorHandlerFactory(loggerFactory.CreateLogger<ConstructorHandlerFactory>()),
+                new MethodHandlerFactory(loggerFactory.CreateLogger<MethodHandlerFactory>())
+            ];
+
+            _argumentHandlerFactories = [];
         }
 
 

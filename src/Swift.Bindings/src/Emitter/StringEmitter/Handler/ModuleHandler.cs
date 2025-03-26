@@ -3,6 +3,7 @@
 
 using System.CodeDom.Compiler;
 using Swift.Runtime;
+using Microsoft.Extensions.Logging;
 
 namespace BindingsGeneration
 {
@@ -11,6 +12,17 @@ namespace BindingsGeneration
     /// </summary>
     public class ModuleHandlerFactory : IFactory<BaseDecl, IModuleHandler>
     {
+        private readonly ILogger _logger;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ModuleHandlerFactory"/> class.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
+        public ModuleHandlerFactory(ILogger<ModuleHandlerFactory> logger)
+        {
+            _logger = logger;
+        }
+
         /// <summary>
         /// Determines if the factory handles the specified declaration.
         /// </summary>
@@ -25,7 +37,7 @@ namespace BindingsGeneration
         /// </summary>
         public IModuleHandler Construct()
         {
-            return new ModuleHandler();
+            return new ModuleHandler(_logger);
         }
     }
 
@@ -34,8 +46,10 @@ namespace BindingsGeneration
     /// </summary>
     public class ModuleHandler : BaseHandler, IModuleHandler
     {
-        public ModuleHandler()
+        private readonly ILogger _logger;
+        public ModuleHandler(ILogger logger)
         {
+            _logger = logger;
         }
 
         /// <inheritdoc/>
@@ -84,7 +98,7 @@ namespace BindingsGeneration
                     }
                     else
                     {
-                        Console.WriteLine($"No handler found for method {methodDecl.Name}");
+                        _logger.LogWarning($"No handler found for method {methodDecl.Name}");
                     }
                     // EmitMethod(csWriter, swiftWriter, moduleDecl, moduleDecl, methodDecl);
                     csWriter.WriteLine();

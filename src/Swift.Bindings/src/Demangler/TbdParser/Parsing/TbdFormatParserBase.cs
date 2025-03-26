@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-using TbdParsing.Logging;
 using TbdParsing.Models;
+using Microsoft.Extensions.Logging;
 
 namespace TbdParsing.Parsing
 {
@@ -21,7 +21,7 @@ namespace TbdParsing.Parsing
         /// </summary>
         protected TbdFormatParserBase(ILogger logger)
         {
-            _logger = logger ?? NullLogger.Instance;
+            _logger = logger;
         }
 
         /// <summary>

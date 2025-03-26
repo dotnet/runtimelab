@@ -1,4 +1,5 @@
 using TbdParsing;
+using Microsoft.Extensions.Logging;
 
 namespace BindingsGeneration.Demangling;
 
@@ -59,12 +60,12 @@ public class DemanglingResults
     /// <summary>
     /// Factory method to generate a suite of demangling results from the given TBD file.
     /// </summary>
-    /// <param name="path">Path to the TBD file</param>
-    /// <returns>A set of demangling results</returns>
-    public static DemanglingResults FromTbd(string path)
+    /// <param name="path">Path to the TBD file.</param>
+    /// <param name="loggerFactory">ILoggerFactory instance.</param>
+    /// <returns>A set of demangling results.</returns>
+    public static DemanglingResults FromTbd(string path, ILoggerFactory loggerFactory)
     {
-        var logger = new TbdParsing.Logging.ConsoleLogger { MinimumLevel = TbdParsing.Logging.LogLevel.Debug };
-        var tbdParser = new TbdParser(logger);
+        var tbdParser = new TbdParser(loggerFactory);
         var tbdFile = tbdParser.ParseFile(path);
 
         var demangler = new Swift5Demangler();
