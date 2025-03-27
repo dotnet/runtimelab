@@ -7,18 +7,18 @@ using Swift.StoreKit;
 
 public static class MauiProgram
 {
-	public class StoreKitTests
-	{
-		readonly ITestOutputHelper _output;
+    public class StoreKitTests
+    {
+        readonly ITestOutputHelper _output;
 
-		public StoreKitTests(ITestOutputHelper output)
-		{
-			_output = output;
-		}
+        public StoreKitTests(ITestOutputHelper output)
+        {
+            _output = output;
+        }
 
-		[Fact]
-		public async Task TestProductsWithInvalidIdsReturnsEmpty()
-		{
+        [Fact]
+        public async Task TestProductsWithInvalidIdsReturnsEmpty()
+        {
             var productIdentifiers = new SwiftArray<SwiftString>();
             productIdentifiers.Append(new SwiftString("p1"));
             productIdentifiers.Append(new SwiftString("p2"));
