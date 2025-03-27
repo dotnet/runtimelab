@@ -57,18 +57,20 @@ jobs:
     - script: $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneOS --maccatalyst ${{ parameters.scriptArgs }}
       displayName: Generate MacCatalyst bindings
 
-    - script: >-
-        $(_buildScript) -ci
-        -publish
-        -pack
-        -configuration $(_BuildConfig)
-        --projects $(pwd)/artifacts/MacOSX/Swift.Bindings.MacOSX.Experimental.csproj;$(pwd)/artifacts/iPhoneOS/Swift.Bindings.iPhoneOS.Experimental.csproj;$(pwd)/artifacts/iPhoneSimulator/Swift.Bindings.iPhoneSimulator.Experimental.csproj;$(pwd)/artifacts/AppleTVOS/Swift.Bindings.AppleTVOS.Experimental.csproj;$(pwd)/artifacts/AppleTVSimulator/Swift.Bindings.AppleTVSimulator.Experimental.csproj;$(pwd)/artifacts/MacCatalyst/Swift.Bindings.MacCatalyst.Experimental.csproj
-        /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
-        /p:OfficialBuildId=$(Build.BuildNumber)
-        /p:SignType=$(_SignType)
-        /p:DotNetSignType=$(_SignType)
-        /p:DotNetPublishUsingPipelines=true
-        /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
+    - script: |
+        for proj in artifacts/MacOSX/*.csproj artifacts/iPhoneOS/*.csproj artifacts/iPhoneSimulator/*.csproj artifacts/AppleTVOS/*.csproj artifacts/AppleTVSimulator/*.csproj artifacts/MacCatalyst/*.csproj; do
+          $(_buildScript) -ci \
+          -publish \
+          -pack \
+          -configuration $(_BuildConfig) \
+          --projects "$(pwd)/$proj" \
+          /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }} \
+          /p:OfficialBuildId=$(Build.BuildNumber) \
+          /p:SignType=$(_SignType) \
+          /p:DotNetSignType=$(_SignType) \
+          /p:DotNetPublishUsingPipelines=true \
+          /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
+        done
       displayName: Prepare bindings artifacts and upload to build
 
     - task: CopyFiles@2
