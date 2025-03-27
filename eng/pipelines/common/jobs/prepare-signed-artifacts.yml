@@ -44,17 +44,17 @@ jobs:
         /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
       displayName: Prepare tooling artifacts and upload to build
 
-    - script: $(_generateScript) --configuration $(_BuildConfig) --platform MacOSX ${{ scriptArgs }}
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform MacOSX ${{ parameters.scriptArgs }}
       displayName: Generate MacOSX bindings
-    - script: $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneOS ${{ scriptArgs }}
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneOS ${{ parameters.scriptArgs }}
       displayName: Generate iOS bindings
-    - script: $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneSimulator ${{ scriptArgs }}
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneSimulator ${{ parameters.scriptArgs }}
       displayName: Generate iOSSimulator bindings
-    - script: $(_generateScript) --configuration $(_BuildConfig) --platform AppleTVOS ${{ scriptArgs }}
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform AppleTVOS ${{ parameters.scriptArgs }}
       displayName: Generate tvOS bindings
-    - script: $(_generateScript) --configuration $(_BuildConfig) --platform AppleTVSimulator ${{ scriptArgs }}
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform AppleTVSimulator ${{ parameters.scriptArgs }}
       displayName: Generate tvOSSimulator bindings
-    - script: $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneOS --maccatalyst ${{ scriptArgs }}
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneOS --maccatalyst ${{ parameters.scriptArgs }}
       displayName: Generate MacCatalyst bindings
 
     - script: >-
