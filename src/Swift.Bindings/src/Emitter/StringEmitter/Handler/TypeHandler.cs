@@ -53,7 +53,7 @@ namespace BindingsGeneration
         /// </summary>
         /// <param name="logger">The logger instance.</param>
         /// <remarks>
-        public FrozenStructHandler(ILogger logger)
+        public FrozenStructHandler(ILogger logger) : base(logger)
         {
             _logger = logger;
         }
@@ -281,7 +281,7 @@ namespace BindingsGeneration
         /// Initializes a new instance of the <see cref="NonFrozenStructHandler"/> class.
         /// </summary>
         /// <param name="logger">The logger instance.</param>
-        public NonFrozenStructHandler(ILogger logger)
+        public NonFrozenStructHandler(ILogger logger) : base(logger)
         {
             _logger = logger;
         }
@@ -465,7 +465,7 @@ namespace BindingsGeneration
     public class ClassHandler : BaseHandler, ITypeHandler
     {
         private readonly ILogger _logger;
-        public ClassHandler(ILogger logger)
+        public ClassHandler(ILogger logger) : base(logger)
         {
             _logger = logger;
         }
@@ -893,7 +893,7 @@ namespace BindingsGeneration
         /// Initializes a new instance of the <see cref="ProtocolHandler"/> class.
         /// </summary>
         /// <param name="logger">The logger instance.</param>
-        public ProtocolHandler(ILogger logger)
+        public ProtocolHandler(ILogger logger) : base(logger)
         {
             _logger = logger;
         }

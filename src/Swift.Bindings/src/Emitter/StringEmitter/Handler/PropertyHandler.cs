@@ -44,7 +44,7 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
     /// Initializes a new instance of the <see cref="PropertyHandler"/> class.
     /// </summary>
     /// <param name="logger">The logger instance.</param>
-    public PropertyHandler(ILogger logger)
+    public PropertyHandler(ILogger logger) : base(logger)
     {
         _logger = logger;
     }

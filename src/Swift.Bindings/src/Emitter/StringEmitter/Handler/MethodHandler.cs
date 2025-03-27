@@ -51,7 +51,7 @@ namespace BindingsGeneration
         /// Initializes a new instance of the <see cref="ConstructorHandler"/> class.
         /// </summary>
         /// <param name="logger">The logger instance.</param>
-        public ConstructorHandler(ILogger logger)
+        public ConstructorHandler(ILogger logger) : base(logger)
         {
             _logger = logger;
         }
@@ -138,7 +138,7 @@ namespace BindingsGeneration
         /// Initializes a new instance of the <see cref="MethodHandler"/> class.
         /// </summary>
         /// <param name="logger">The logger instance.</param>
-        public MethodHandler(ILogger logger)
+        public MethodHandler(ILogger logger) : base(logger)
         {
             _logger = logger;
         }

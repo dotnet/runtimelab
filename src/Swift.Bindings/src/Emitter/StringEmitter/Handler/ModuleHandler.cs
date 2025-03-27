@@ -47,7 +47,7 @@ namespace BindingsGeneration
     public class ModuleHandler : BaseHandler, IModuleHandler
     {
         private readonly ILogger _logger;
-        public ModuleHandler(ILogger logger)
+        public ModuleHandler(ILogger logger) : base(logger)
         {
             _logger = logger;
         }
