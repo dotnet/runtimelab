@@ -29,7 +29,6 @@ namespace BindingsGeneration.FunctionalTests
             {
                 if (!_payload.IsInvalid)
                 {
-                    _payload.SetMetadata(SwiftObjectHelper<Nonce>.GetTypeMetadata());
                     _payload.Dispose();
                 }
             }
@@ -56,7 +55,7 @@ namespace BindingsGeneration.FunctionalTests
 
             unsafe Nonce(IntPtr handle)
             {
-                _payload = new SwiftHandle(handle);
+                _payload = new SwiftHandle(handle, SwiftObjectHelper<Nonce>.GetTypeMetadata(), false);
             }
 
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -93,7 +92,7 @@ namespace BindingsGeneration.FunctionalTests
 
             public Nonce(Data data)
             {
-                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc(PayloadSize));
+                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc((nuint)PayloadSize), SwiftObjectHelper<Nonce>.GetTypeMetadata());
                 SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
 
                 TypeMetadata metadata = SwiftObjectHelper<Data>.GetTypeMetadata();
@@ -103,7 +102,6 @@ namespace BindingsGeneration.FunctionalTests
 
                 if (error.Value != null)
                 {
-                    NativeMemory.Free((void*)_payload.Handle);
                     throw new CryptographicException();
                 }
             }
@@ -235,7 +233,6 @@ namespace BindingsGeneration.FunctionalTests
             {
                 if (!_payload.IsInvalid)
                 {
-                    _payload.SetMetadata(SwiftObjectHelper<Nonce>.GetTypeMetadata());
                     _payload.Dispose();
                 }
             }
@@ -262,7 +259,7 @@ namespace BindingsGeneration.FunctionalTests
 
             unsafe Nonce(IntPtr handle)
             {
-                _payload = new SwiftHandle(handle);
+                _payload = new SwiftHandle(handle, SwiftObjectHelper<Nonce>.GetTypeMetadata(), false);
             }
 
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -299,7 +296,7 @@ namespace BindingsGeneration.FunctionalTests
 
             public Nonce(Data data)
             {
-                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc(PayloadSize));
+                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc((nuint)_payloadSize), SwiftObjectHelper<Nonce>.GetTypeMetadata());
                 SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
 
                 TypeMetadata metadata = SwiftObjectHelper<Data>.GetTypeMetadata();
@@ -309,7 +306,6 @@ namespace BindingsGeneration.FunctionalTests
 
                 if (error.Value != null)
                 {
-                    NativeMemory.Free((void*)_payload.Handle);
                     throw new CryptographicException();
                 }
             }
@@ -331,7 +327,6 @@ namespace BindingsGeneration.FunctionalTests
             {
                 if (!_payload.IsInvalid)
                 {
-                    _payload.SetMetadata(SwiftObjectHelper<SealedBox>.GetTypeMetadata());
                     _payload.Dispose();
                 }
             }
@@ -358,7 +353,7 @@ namespace BindingsGeneration.FunctionalTests
 
             unsafe SealedBox(IntPtr handle)
             {
-                _payload = new SwiftHandle(handle);
+                _payload = new SwiftHandle(handle, SwiftObjectHelper<SealedBox>.GetTypeMetadata(), false);
             }
 
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -395,12 +390,12 @@ namespace BindingsGeneration.FunctionalTests
 
             public SealedBox()
             {
-                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc(_payloadSize));
+                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc((nuint)_payloadSize), SwiftObjectHelper<SealedBox>.GetTypeMetadata());
             }
 
             public SealedBox(AesGcm.Nonce nonce, Data ciphertext, Data tag)
             {
-                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc(PayloadSize));
+                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc((nuint)_payloadSize), SwiftObjectHelper<SealedBox>.GetTypeMetadata());
                 SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
 
                 TypeMetadata ciphertextMetadata = SwiftObjectHelper<Data>.GetTypeMetadata();
@@ -421,7 +416,6 @@ namespace BindingsGeneration.FunctionalTests
 
                 if (error.Value != null)
                 {
-                    NativeMemory.Free((void*)_payload.Handle);
                     throw new CryptographicException();
                 }
             }
@@ -513,7 +507,6 @@ namespace BindingsGeneration.FunctionalTests
         {
             if (!_payload.IsInvalid)
             {
-                _payload.SetMetadata(SwiftObjectHelper<SymmetricKey>.GetTypeMetadata());
                 _payload.Dispose();
             }
         }
@@ -540,7 +533,7 @@ namespace BindingsGeneration.FunctionalTests
 
         unsafe SymmetricKey(IntPtr handle)
         {
-            _payload = new SwiftHandle(handle);
+            _payload = new SwiftHandle(handle, SwiftObjectHelper<SymmetricKey>.GetTypeMetadata(), false);
         }
 
         void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -577,7 +570,7 @@ namespace BindingsGeneration.FunctionalTests
 
         public SymmetricKey(Data data)
         {
-            _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc(PayloadSize));
+            _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc((nuint)PayloadSize), SwiftObjectHelper<SymmetricKey>.GetTypeMetadata());
             SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
 
             TypeMetadata metadata = SwiftObjectHelper<Data>.GetTypeMetadata();

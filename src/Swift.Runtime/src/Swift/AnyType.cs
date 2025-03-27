@@ -20,7 +20,7 @@ public struct AnyType : ISwiftObject
     }
     public AnyType(IntPtr payload)
     {
-        _payload = new SwiftHandle(payload);
+        _payload = new SwiftHandle(payload, TypeMetadata.Zero);
     }
     public SwiftHandle Payload => _payload;
 

@@ -137,9 +137,7 @@ namespace BindingsGeneration
                 csWriter.Indent -= 2;
                 csWriter.WriteLine("}");
                 csWriter.WriteLine();
-                csWriter.WriteLine("private TypeBuffer _buffer;");
-                csWriter.WriteLine();
-                csWriter.WriteLine("public TypeBuffer Buffer => _buffer;");
+                csWriter.WriteLine("public unsafe TypeBuffer Buffer => Marshal.PtrToStructure<TypeBuffer>(_payload.Handle);");
                 csWriter.WriteLine();
 
                 WriteDisposeMethod(csWriter, structDecl);
@@ -187,15 +185,7 @@ namespace BindingsGeneration
             {
                 if (!_payload.IsInvalid)
                 {
-                    unsafe
-                    {
-                        _payload.SetMetadata(SwiftObjectHelper<{{structDecl.Name}}>.GetTypeMetadata());
-                        fixed (void* buffer = &_buffer)
-                        {
-                            _payload.Handle = (IntPtr)buffer;
-                            _payload.Dispose();
-                        }
-                    }
+                    _payload.Dispose();
                 }
             }
             """;
@@ -344,7 +334,6 @@ namespace BindingsGeneration
             {
                 if (!_payload.IsInvalid)
                 {
-                    _payload.SetMetadata(SwiftObjectHelper<{{structDecl.Name}}>.GetTypeMetadata());
                     _payload.Dispose();
                 }
             }
@@ -531,9 +520,10 @@ namespace BindingsGeneration
 
                 unsafe {{_structDecl.Name}}(IntPtr handle)
                 {
-                    _buffer = *(TypeBuffer*)handle;
-                    fixed (void* buffer = &_buffer)
-                        _payload = new SwiftHandle((IntPtr)buffer);
+                    IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(TypeBuffer));
+                    System.Buffer.MemoryCopy((void*)handle, (void*)bufferPtr, sizeof(TypeBuffer), sizeof(TypeBuffer));
+
+                    _payload = new SwiftHandle(bufferPtr, SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata()); // SwiftHandle takes ownership
                 }
                 """;
 
@@ -580,7 +570,7 @@ namespace BindingsGeneration
             var text = $$"""
             unsafe {{_structDecl.Name}}(void* handle)
             {
-                _payload = new SwiftHandle((IntPtr)handle);
+                _payload = new SwiftHandle((IntPtr)handle, SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata(), false);
             }
             """;
 
@@ -604,13 +594,12 @@ namespace BindingsGeneration
                     var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
                     Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
                     unsafe {
-                        fixed (void* buffer = &_buffer)
                         fixed (void* swiftDest = swiftDestSpan)
                         {
                             // Ensure the payload is valid before making copy
                             bool _success = false;
                             _payload.DangerousAddRef(ref _success);
-                            metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void*)buffer, metadata);
+                            metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void*)_payload.Handle, metadata);
                             if (_success)
                                 _payload.DangerousRelease();
                         }

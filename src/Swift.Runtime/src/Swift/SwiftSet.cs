@@ -32,9 +32,9 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
 
     public SwiftHandle Payload => _payload;
 
-    private static Dictionary<Type, string> _protocolConformanceSymbols;
+    public IntPtr Buffer => Marshal.PtrToStructure<IntPtr>(_payload.Handle);
 
-    private readonly object _syncLock = new object();
+    private static Dictionary<Type, string> _protocolConformanceSymbols;
 
     static SwiftSet()
     {
@@ -56,20 +56,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
         {
             unsafe
             {
-                var metadata = SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata();
-                // Don't set the metadata, and let Dispose call Destroy when the handle is closed
-                // _payload.SetMetadata(SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata());
-
                 _payload.Dispose();
-                if (_payload.IsClosed && !_payload.IsInvalid)
-                {
-                    lock (_syncLock)
-                    {
-                        var handle = _payload.Handle;
-                        metadata.ValueWitnessTable->Destroy(&handle, metadata);
-                        _payload.Handle = IntPtr.Zero;
-                    }
-                }
             }
         }
     }
@@ -110,11 +97,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
                 // Ensure the payload is valid before making copy
                 bool _success = false;
                 _payload.DangerousAddRef(ref _success);
-                lock (_syncLock)
-                {
-                    var handle = _payload.Handle;
-                    metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, &handle, metadata);
-                }
+                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
                 if (_success)
                     _payload.DangerousRelease();
             }
@@ -141,7 +124,9 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
     /// </summary>
     unsafe SwiftSet(IntPtr handle)
     {
-        _payload = new SwiftHandle(handle);
+        IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(IntPtr));
+        System.Buffer.MemoryCopy((void*)handle, (void*)bufferPtr, sizeof(IntPtr), sizeof(IntPtr));
+        _payload = new SwiftHandle(bufferPtr, SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata());
     }
 
     /// <summary>
@@ -150,8 +135,11 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
     public unsafe SwiftSet()
     {
         var witnessTable = ProtocolWitnessTable.GetOrThrow<Element, ISwiftHashable>();
-        var handle = SwiftSetPInvokes.Init(ElementTypeMetadata, witnessTable);
-        _payload = new SwiftHandle(handle);
+        var result = SwiftSetPInvokes.Init(ElementTypeMetadata, witnessTable);
+
+        IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(IntPtr));
+        System.Buffer.MemoryCopy((void*)&result, (void*)bufferPtr, sizeof(IntPtr), sizeof(IntPtr));
+        _payload = new SwiftHandle(bufferPtr, SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata());
     }
 
     /// <summary>
@@ -164,7 +152,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
             bool _success = false;
             _payload.DangerousAddRef(ref _success);
             var witnessTable = ProtocolWitnessTable.GetOrThrow<Element, ISwiftHashable>();
-            int result = (int)SwiftSetPInvokes.Count(_payload.Handle, ElementTypeMetadata, witnessTable);
+            int result = (int)SwiftSetPInvokes.Count(this.Buffer, ElementTypeMetadata, witnessTable);
             if (_success)
                 _payload.DangerousRelease();
             return result;

@@ -650,7 +650,7 @@ namespace BindingsGeneration
             {
                 var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
                 if ((typeRecord.Flags & TypeRecordFlags.RequiresMemoryManagement) != 0)
-                    csWriter.WriteLine($"var self = new SwiftSelf<TypeBuffer>(_buffer);");
+                    csWriter.WriteLine($"var self = new SwiftSelf<TypeBuffer>(this.Buffer);");
                 else
                     csWriter.WriteLine($"var self = new SwiftSelf<{_env.ParentDecl.Name}>(this);");
             }
@@ -747,7 +747,7 @@ namespace BindingsGeneration
             }
 
             var text = $$"""
-            _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc(_payloadSize));
+            _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc((nuint)_payloadSize), SwiftObjectHelper<{{_env.ParentDecl.Name}}>.GetTypeMetadata());
             var swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
             """;
 
@@ -769,7 +769,7 @@ namespace BindingsGeneration
 
             var text = $$"""
             var returnMetadata = TypeMetadata.GetTypeMetadataOrThrow<{{_wrapperSignature.ReturnType}}>();
-            var payload = (IntPtr)NativeMemory.Alloc(returnMetadata.Size);
+            var payload = (IntPtr)NativeMemory.Alloc((nuint)returnMetadata.Size);
             var swiftIndirectResult = new SwiftIndirectResult((void*)payload);
             """;
 
@@ -787,7 +787,7 @@ namespace BindingsGeneration
                 if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(argumentDecl))
                 {
                     var bufferName = NameProvider.GetBoundGenericBufferName(argumentDecl.Name);
-                    csWriter.WriteLine($"var {bufferName} = {argumentDecl.Name}.Payload.Handle;");
+                    csWriter.WriteLine($"var {bufferName} = {argumentDecl.Name}.Buffer;");
                 }
             }
         }
@@ -970,12 +970,12 @@ namespace BindingsGeneration
                 TypeRecord typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
                 if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
                 {
-                    csWriter.WriteLine($"_buffer = result;");
                     csWriter.WriteLine($@"
-                        unsafe
-                        {{
-                            fixed (void* buffer = &_buffer)
-                                _payload = new SwiftHandle((IntPtr)buffer);
+                        unsafe {{
+                            IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(TypeBuffer));
+                            System.Buffer.MemoryCopy((void*)&result, (void*)bufferPtr, sizeof(TypeBuffer), sizeof(TypeBuffer));
+
+                            _payload = new SwiftHandle(bufferPtr, SwiftObjectHelper<{structDecl.Name}>.GetTypeMetadata()); // SwiftHandle takes ownership
                         }}");
                     return;
                 }
@@ -1002,7 +1002,7 @@ namespace BindingsGeneration
 
             if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(returnArg))
             {
-                csWriter.WriteLine($"return SwiftMarshal.MarshalFromSwift<{_env.BoundGenericsHandler.TranslateBoundGenericTypeToCSharp(returnArg)}>(result);");
+                csWriter.WriteLine($"return SwiftMarshal.MarshalFromSwift<{_env.BoundGenericsHandler.TranslateBoundGenericTypeToCSharp(returnArg)}>(new IntPtr(&result));");
                 return;
             }
 
@@ -1091,7 +1091,7 @@ namespace BindingsGeneration
             var voidReturn = returnType.SwiftTypeSpec.IsEmptyTuple;
             var requiresInitWithCopy = !voidReturn && (MarshallingHelpers.RequiresMemoryManagement(returnTypeRecord) || returnType.IsGeneric);
 
-            var marshallFromSwiftArgument = _pInvokeSignature.ReturnType == "IntPtr" ? "rawResult" : "new IntPtr(&rawResult)";
+            var marshallFromSwiftArgument = "new IntPtr(&rawResult)";
 
             var text = $$"""
                         private static unsafe delegate* unmanaged[Cdecl]<{{(voidReturn ? "" : $"{_pInvokeSignature.ReturnType}, ")}}IntPtr, void> s_{{_env.MethodDecl.Name}}Callback = &{{_env.MethodDecl.Name}}OnComplete;

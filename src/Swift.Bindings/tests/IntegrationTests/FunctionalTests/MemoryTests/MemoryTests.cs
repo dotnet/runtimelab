@@ -56,6 +56,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.VType vType = new Bindings.VType();
             GC.SuppressFinalize(vType);
+            GC.SuppressFinalize(vType.Payload);
             IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
@@ -79,13 +80,13 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(payloadCopy.At(0)));
 
             Arc.Release(payload.At(0));
-            // Check the count after release
+            // // Check the count after release
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
             Assert.Equal(1, Arc.RetainCount(payloadCopy.At(0)));
 
             Arc.Release(payload.At(0));
 
-            // Check deinit is called
+            // // Check deinit is called
             Assert.Equal(1, vType.refTypeTest);
 
             NativeMemory.Free((void*)payloadCopy);
@@ -96,6 +97,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.VType vType = new Bindings.VType();
             GC.SuppressFinalize(vType);
+            GC.SuppressFinalize(vType.Payload);
             IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
@@ -135,6 +137,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.VType vType = new Bindings.VType();
             GC.SuppressFinalize(vType);
+            GC.SuppressFinalize(vType.Payload);
             IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
@@ -198,6 +201,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.NestedVType vType = new Bindings.NestedVType();
             GC.SuppressFinalize(vType);
+            GC.SuppressFinalize(vType.Payload);
             IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
@@ -249,6 +253,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.NestedVType vType = new Bindings.NestedVType();
             GC.SuppressFinalize(vType);
+            GC.SuppressFinalize(vType.Payload);
             IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
@@ -299,6 +304,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.NestedVType vType = new Bindings.NestedVType();
             GC.SuppressFinalize(vType);
+            GC.SuppressFinalize(vType.Payload);
             IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
@@ -382,6 +388,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.NestedNestedVType vType = new Bindings.NestedNestedVType();
             GC.SuppressFinalize(vType);
+            GC.SuppressFinalize(vType.Payload);
             IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
@@ -444,6 +451,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.NestedNestedVType vType = new Bindings.NestedNestedVType();
             GC.SuppressFinalize(vType);
+            GC.SuppressFinalize(vType.Payload);
             IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
@@ -505,6 +513,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             Bindings.NestedNestedVType vType = new Bindings.NestedNestedVType();
             GC.SuppressFinalize(vType);
+            GC.SuppressFinalize(vType.Payload);
             IntPtr payload = (IntPtr)vType.Payload.Handle;
 
             // Check the initial count
@@ -630,11 +639,11 @@ namespace BindingsGeneration.FunctionalTests
             // Dispose the frozenRequiresMemoryManagement
             Assert.False(frozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.False(frozenRequiresMemoryManagement.Payload.IsInvalid);
-            var handle = frozenRequiresMemoryManagement.Payload.Handle;
+            var handle = frozenRequiresMemoryManagement.Buffer;
             frozenRequiresMemoryManagement.Dispose();
             Assert.True(frozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.True(frozenRequiresMemoryManagement.Payload.IsInvalid);
-            Assert.Equal(1, Arc.RetainCount(handle.At(0)));
+            Assert.Equal(1, Arc.RetainCount(new IntPtr(&handle).At(0)));
 
             var nestedFrozenRequiresMemoryManagement = new Bindings.NestedFrozenStructRequiresMemoryManagement(42);
 
@@ -650,11 +659,11 @@ namespace BindingsGeneration.FunctionalTests
             // Dispose the NestedFrozenRequiresMemoryManagement
             Assert.False(nestedFrozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.False(nestedFrozenRequiresMemoryManagement.Payload.IsInvalid);
-            handle = nestedFrozenRequiresMemoryManagement.Payload.Handle;
+            var nestedHandle = nestedFrozenRequiresMemoryManagement.Buffer;
             nestedFrozenRequiresMemoryManagement.Dispose();
             Assert.True(nestedFrozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.True(nestedFrozenRequiresMemoryManagement.Payload.IsInvalid);
-            Assert.Equal(1, Arc.RetainCount(handle.At(0)));
+            Assert.Equal(1, Arc.RetainCount(new IntPtr(&nestedHandle).At(0)));
 
             var nonfrozenRequiresMemoryManagement = new Bindings.NonFrozenStructRequiresMemoryManagement(42);
 
@@ -669,12 +678,14 @@ namespace BindingsGeneration.FunctionalTests
 
             Assert.False(nonfrozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.False(nonfrozenRequiresMemoryManagement.Payload.IsInvalid);
-            handle = nonfrozenRequiresMemoryManagement.Payload.Handle;
+            // Memory is allocated from C# side and released in Dispose
+            // Take the payload to check the retain count
+            var nonFrozenHandle = nonfrozenRequiresMemoryManagement.Payload.Handle.At(0);
             nonfrozenRequiresMemoryManagement.Dispose();
             Assert.True(nonfrozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.True(nonfrozenRequiresMemoryManagement.Payload.IsInvalid);
             // Check the count after destroy
-            Assert.Equal(1, Arc.RetainCount(handle.At(0)));
+            Assert.Equal(1, Arc.RetainCount(nonFrozenHandle));
             Assert.Equal(IntPtr.Zero, nonfrozenRequiresMemoryManagement.Payload.Handle);
         }
 
@@ -810,7 +821,6 @@ namespace BindingsGeneration.FunctionalTests
                 unsafe
                 {
                     var handle = this.Payload;
-                    var thisPtr = this;
                     PInvoke_CallDispose(&Callback, &handle);
 
                     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvSwift) })]
@@ -903,9 +913,6 @@ namespace BindingsGeneration.FunctionalTests
                     barrier.SignalAndWait();
                     resource.Dispose();
                 });
-
-
-
 
                 await Task.WhenAll(methodTask, getterTask, passThroughTask, disposeTask);
 

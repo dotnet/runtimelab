@@ -27,8 +27,6 @@ public class SwiftString : IDisposable, ISwiftObject
         public IntPtr _object;
     }
 
-    private TypeBuffer _buffer;
-
     private SwiftHandle _payload;
 
     public SwiftHandle Payload => _payload;
@@ -50,15 +48,7 @@ public class SwiftString : IDisposable, ISwiftObject
     {
         if (!_payload.IsInvalid)
         {
-            unsafe
-            {
-                _payload.SetMetadata(SwiftObjectHelper<SwiftString>.GetTypeMetadata());
-                fixed (void* buffer = &_buffer)
-                {
-                    _payload.Handle = (IntPtr)buffer;
-                    _payload.Dispose();
-                }
-            }
+            _payload.Dispose();
         }
     }
 
@@ -69,7 +59,7 @@ public class SwiftString : IDisposable, ISwiftObject
 
     public static nuint PayloadSize => _payloadSize;
 
-    public TypeBuffer Buffer => _buffer;
+    public unsafe TypeBuffer Buffer => Marshal.PtrToStructure<TypeBuffer>(_payload.Handle);
 
     static TypeMetadata ISwiftObject.GetTypeMetadata()
     {
@@ -87,10 +77,14 @@ public class SwiftString : IDisposable, ISwiftObject
         Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
         unsafe
         {
-            fixed (void* buffer = &_buffer)
             fixed (void* swiftDest = swiftDestSpan)
             {
-                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, buffer, metadata);
+                // Ensure the payload is valid before making copy
+                bool _success = false;
+                _payload.DangerousAddRef(ref _success);
+                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                if (_success)
+                    _payload.DangerousRelease();
             }
         }
     }
@@ -115,9 +109,9 @@ public class SwiftString : IDisposable, ISwiftObject
     /// </summary>
     unsafe SwiftString(IntPtr handle)
     {
-        _buffer = *(TypeBuffer*)handle;
-        fixed (void* buffer = &_buffer)
-            _payload = new SwiftHandle((IntPtr)buffer);
+        IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(TypeBuffer));
+        System.Buffer.MemoryCopy((void*)handle, (void*)bufferPtr, sizeof(TypeBuffer), sizeof(TypeBuffer));
+        _payload = new SwiftHandle(bufferPtr, SwiftObjectHelper<SwiftString>.GetTypeMetadata());
     }
 
     /// <summary>
@@ -130,9 +124,10 @@ public class SwiftString : IDisposable, ISwiftObject
         {
             fixed (byte* utf8BytesPtr = utf8Bytes)
             {
-                _buffer = PInvoke_Create(utf8BytesPtr, utf8Bytes.Length, 1);
-                fixed (void* buffer = &_buffer)
-                    _payload = new SwiftHandle((IntPtr)buffer);
+                var result = PInvoke_Create(utf8BytesPtr, utf8Bytes.Length, 1);
+                IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(TypeBuffer));
+                System.Buffer.MemoryCopy((void*)&result, (void*)bufferPtr, sizeof(TypeBuffer), sizeof(TypeBuffer));
+                _payload = new SwiftHandle((IntPtr)bufferPtr, SwiftObjectHelper<SwiftString>.GetTypeMetadata());
             }
         }
     }
@@ -146,7 +141,7 @@ public class SwiftString : IDisposable, ISwiftObject
         {
             bool _success = false;
             _payload.DangerousAddRef(ref _success);
-            int result = (int)PInvoke_GetLength(_buffer);
+            int result = (int)PInvoke_GetLength(this.Buffer);
             if (_success)
                 _payload.DangerousRelease();
             return result;
@@ -168,7 +163,7 @@ public class SwiftString : IDisposable, ISwiftObject
         bool _success = false;
         _payload.DangerousAddRef(ref _success);
 
-        var contiguousArray = PInvoke_GetUtf8ContiguousArray(_buffer);
+        var contiguousArray = PInvoke_GetUtf8ContiguousArray(this.Buffer);
 
 #pragma warning disable CS8500
         unsafe
