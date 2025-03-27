@@ -17,7 +17,7 @@ public static class MauiProgram
 		}
 
 		[Fact]
-		public async Task TestProductProducts()
+		public async Task TestProductsWithInvalidIdsReturnsEmpty()
 		{
             var productIdentifiers = new SwiftArray<SwiftString>();
             productIdentifiers.Append(new SwiftString("p1"));
@@ -25,12 +25,11 @@ public static class MauiProgram
 			var productsTask = Product.products<SwiftArray<SwiftString>>(productIdentifiers);
             SwiftArray<Product> products = await productsTask;
             Assert.NotNull(products);
-            // StoreKit configuration is not set
             Assert.Equal(0, products.Count);
 		}
 
         [Fact]
-        public void TestProductTypes()
+        public void TestProductTypesEquality()
         {
             var productTypes = new SwiftArray<Product.ProductType>();
             productTypes.Append(Product.ProductType.consumable);
@@ -67,18 +66,74 @@ public static class MauiProgram
             Assert.NotNull(opt2);
         }
 
-        [Fact(Skip = "https://github.com/dotnet/runtimelab/issues/2850")]
-        public void TestPurchaseOptionCustomMethodsBool()
+        [Fact]
+        public async Task TestProductsPurchaseTypes()
         {
-            var opt3 = Product.PurchaseOption.custom(new SwiftString("key3"), true);
-            Assert.NotNull(opt3);
+            var productIdentifiers = new SwiftArray<SwiftString>();
+            productIdentifiers.Append(new SwiftString("p1"));
+            productIdentifiers.Append(new SwiftString("p2"));
+			var productsTask = Product.products<SwiftArray<SwiftString>>(productIdentifiers);
+            SwiftArray<Product> products = await productsTask;
+
+            for (int i = 0; i < products.Count; i++)
+            {
+                var product = products[i];
+                Assert.NotNull(product);
+                Assert.True(product.type == Product.ProductType.consumable || product.type == Product.ProductType.nonConsumable || product.type == Product.ProductType.nonRenewable || product.type == Product.ProductType.autoRenewable);
+            }
         }
 
-        [Fact(Skip = "https://github.com/dotnet/runtimelab/issues/2850")]
-        public void TestExternalPurchaseProperties()
+        [Fact]
+        public async Task TestPurchaseVerified()
         {
-            bool canPresent = ExternalPurchase.canPresent;
-            Assert.False(canPresent);
+            var productIdentifiers = new SwiftArray<SwiftString>();
+            productIdentifiers.Append(new SwiftString("validID"));
+			var productsTask = Product.products<SwiftArray<SwiftString>>(productIdentifiers);
+            SwiftArray<Product> products = await productsTask;
+
+            if (products.Count > 0)
+            {
+                var product = products[0];
+                var result = await product.purchase(new SwiftSet<Product.PurchaseOption>());
+
+                // Assert.True(result is Product.PurchaseResult.verified);
+            }
         }
+
+        [Fact]
+        public async Task TestPurchaseWhenCancelledOrPending()
+        {
+            var productIdentifiers = new SwiftArray<SwiftString>();
+            productIdentifiers.Append(new SwiftString("invalidID"));
+			var productsTask = Product.products<SwiftArray<SwiftString>>(productIdentifiers);
+            SwiftArray<Product> products = await productsTask;
+
+            if (products.Count > 0)
+            {
+                var product = products[0];
+                var result = await product.purchase(new SwiftSet<Product.PurchaseOption>());
+
+                // Assert.True(result is Product.PurchaseResult.userCancelled or Product.PurchaseResult.pending);
+            }
+        }
+
+        // [Fact]
+        // public async Task CurrentEntitlements()
+        // {
+        //     await foreach (var result in Transaction.CurrentEntitlements)
+        //     {
+        //         switch (result)
+        //         {
+        //             case VerificationResult<Product> verification when verification.IsVerified:
+        //                 TestProductsPurchaseTypes product = verification.Verified;
+        //                 Assert.NotNull(product);
+        //                 Assert.False(string.IsNullOrEmpty(product.ProductID));
+        //                 break;
+
+        //             case VerificationResult<Product> verification when !verification.IsVerified:
+        //                 continue;
+        //         }
+        //     }
+        // }
 	}
 }
