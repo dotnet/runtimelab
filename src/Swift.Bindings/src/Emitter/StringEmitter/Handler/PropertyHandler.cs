@@ -11,15 +11,15 @@ namespace BindingsGeneration;
 /// </summary>
 public class PropertyHandlerFactory : IFactory<BaseDecl, IPropertyHandler>
 {
-    private readonly ILogger _logger;
+    private readonly ILogger<PropertyHandler> _handlerLogger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PropertyHandlerFactory"/> class.
     /// </summary>
-    /// <param name="logger">The logger instance.</param>
-    public PropertyHandlerFactory(ILogger<PropertyHandlerFactory> logger)
+    /// <param name="loggerFactory">The logger factory instance.</param>
+    public PropertyHandlerFactory(ILoggerFactory loggerFactory)
     {
-        _logger = logger;
+        _handlerLogger = loggerFactory.CreateLogger<PropertyHandler>();
     }
 
     public bool Handles(BaseDecl decl)
@@ -29,7 +29,7 @@ public class PropertyHandlerFactory : IFactory<BaseDecl, IPropertyHandler>
 
     public IPropertyHandler Construct()
     {
-        return new PropertyHandler(_logger);
+        return new PropertyHandler(_handlerLogger);
     }
 }
 
@@ -38,15 +38,14 @@ public class PropertyHandlerFactory : IFactory<BaseDecl, IPropertyHandler>
 /// </summary> 
 public class PropertyHandler : BaseHandler, IPropertyHandler
 {
-    private readonly ILogger _logger;
+    // private readonly ILogger _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PropertyHandler"/> class.
     /// </summary>
     /// <param name="logger">The logger instance.</param>
-    public PropertyHandler(ILogger logger) : base(logger)
+    public PropertyHandler(ILogger<PropertyHandler> logger) : base(logger)
     {
-        _logger = logger;
     }
     private static readonly Dictionary<string, string> PropertyNameMappings = new()
     {

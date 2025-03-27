@@ -10,17 +10,14 @@ namespace BindingsGeneration
     /// <summary>
     /// Factory class for creating instances of ModuleHandler.
     /// </summary>
-    public class ModuleHandlerFactory : IFactory<BaseDecl, IModuleHandler>
+    public class ModuleHandlerFactory : HandlerFactory, IFactory<BaseDecl, IModuleHandler>
     {
-        private readonly ILogger _logger;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="ModuleHandlerFactory"/> class.
         /// </summary>
-        /// <param name="logger">The logger instance.</param>
-        public ModuleHandlerFactory(ILogger<ModuleHandlerFactory> logger)
+        /// <param name="loggerFactory">The logger factory instance.</param>
+        public ModuleHandlerFactory(ILoggerFactory loggerFactory) : base(loggerFactory.CreateLogger<ModuleHandler>())
         {
-            _logger = logger;
         }
 
         /// <summary>
@@ -37,7 +34,7 @@ namespace BindingsGeneration
         /// </summary>
         public IModuleHandler Construct()
         {
-            return new ModuleHandler(_logger);
+            return new ModuleHandler(_handlerLogger);
         }
     }
 
@@ -46,10 +43,8 @@ namespace BindingsGeneration
     /// </summary>
     public class ModuleHandler : BaseHandler, IModuleHandler
     {
-        private readonly ILogger _logger;
         public ModuleHandler(ILogger logger) : base(logger)
         {
-            _logger = logger;
         }
 
         /// <inheritdoc/>

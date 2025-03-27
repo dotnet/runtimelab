@@ -30,23 +30,23 @@ namespace BindingsGeneration
         public Conductor(ILoggerFactory loggerFactory)
         {
             _moduleHandlerFactories = [
-                new ModuleHandlerFactory(loggerFactory.CreateLogger<ModuleHandlerFactory>())
+                new ModuleHandlerFactory(loggerFactory)
             ];
 
             _typeHandlerFactories = [
-                new NonFrozenStructHandlerFactory(loggerFactory.CreateLogger<NonFrozenStructHandlerFactory>()),
-                new FrozenStructHandlerFactory(loggerFactory.CreateLogger<FrozenStructHandlerFactory>()),
-                new ProtocolHandlerFactory(loggerFactory.CreateLogger<ProtocolHandlerFactory>()),
-                new ClassHandlerFactory(loggerFactory.CreateLogger<ClassHandlerFactory>())
+                new NonFrozenStructHandlerFactory(loggerFactory),
+                new FrozenStructHandlerFactory(loggerFactory),
+                new ProtocolHandlerFactory(loggerFactory),
+                new ClassHandlerFactory(loggerFactory)
             ];
 
             _propertyHandlerFactories = [
-                new PropertyHandlerFactory(loggerFactory.CreateLogger<PropertyHandlerFactory>())
+                new PropertyHandlerFactory(loggerFactory)
             ];
 
             _methodHandlerFactories = [
-                new ConstructorHandlerFactory(loggerFactory.CreateLogger<ConstructorHandlerFactory>()),
-                new MethodHandlerFactory(loggerFactory.CreateLogger<MethodHandlerFactory>())
+                new ConstructorHandlerFactory(loggerFactory),
+                new MethodHandlerFactory(loggerFactory)
             ];
 
             _argumentHandlerFactories = [];

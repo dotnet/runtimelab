@@ -70,7 +70,7 @@ namespace BindingsGeneration
     /// </summary>
     public class BaseHandler
     {
-        private readonly ILogger _logger;
+        protected readonly ILogger _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BaseHandler"/> class.

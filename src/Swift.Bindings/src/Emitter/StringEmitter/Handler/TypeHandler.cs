@@ -10,17 +10,15 @@ namespace BindingsGeneration
     /// <summary>
     /// Factory class for creating instances of FrozenStructHandler.
     /// </summary>
-    public class FrozenStructHandlerFactory : IFactory<BaseDecl, ITypeHandler>
+    public class FrozenStructHandlerFactory : HandlerFactory, IFactory<BaseDecl, ITypeHandler>
     {
-        private readonly ILogger _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FrozenStructHandlerFactory"/> class.
         /// </summary>
-        /// <param name="logger">The logger instance.</param>
-        public FrozenStructHandlerFactory(ILogger<FrozenStructHandlerFactory> logger)
+        /// <param name="loggerFactory">The logger factory instance.</param>
+        public FrozenStructHandlerFactory(ILoggerFactory loggerFactory) : base(loggerFactory.CreateLogger<FrozenStructHandler>())
         {
-            _logger = logger;
         }
 
         /// <summary>
@@ -37,7 +35,7 @@ namespace BindingsGeneration
         /// </summary>
         public ITypeHandler Construct()
         {
-            return new FrozenStructHandler(_logger);
+            return new FrozenStructHandler(_handlerLogger);
         }
     }
 
@@ -46,8 +44,6 @@ namespace BindingsGeneration
     /// </summary>
     public class FrozenStructHandler : BaseHandler, ITypeHandler
     {
-        private readonly ILogger _logger;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="FrozenStructHandler"/> class.
         /// </summary>
@@ -55,7 +51,6 @@ namespace BindingsGeneration
         /// <remarks>
         public FrozenStructHandler(ILogger logger) : base(logger)
         {
-            _logger = logger;
         }
 
         /// <inheritdoc/>
@@ -239,17 +234,14 @@ namespace BindingsGeneration
     /// <summary>
     /// Factory class for creating instances of NonFrozenStructHandler.
     /// </summary>
-    public class NonFrozenStructHandlerFactory : IFactory<BaseDecl, ITypeHandler>
+    public class NonFrozenStructHandlerFactory : HandlerFactory, IFactory<BaseDecl, ITypeHandler>
     {
-        private readonly ILogger _logger;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="NonFrozenStructHandlerFactory"/> class.
         /// </summary>
-        /// <param name="logger">The logger instance.</param>
-        public NonFrozenStructHandlerFactory(ILogger<NonFrozenStructHandlerFactory> logger)
+        /// <param name="loggerFactory">The logger factory instance.</param>
+        public NonFrozenStructHandlerFactory(ILoggerFactory loggerFactory) : base(loggerFactory.CreateLogger<NonFrozenStructHandler>())
         {
-            _logger = logger;
         }
 
         /// <summary>
@@ -266,7 +258,7 @@ namespace BindingsGeneration
         /// </summary>
         public ITypeHandler Construct()
         {
-            return new NonFrozenStructHandler(_logger);
+            return new NonFrozenStructHandler(_handlerLogger);
         }
     }
 
@@ -275,15 +267,12 @@ namespace BindingsGeneration
     /// </summary>
     public class NonFrozenStructHandler : BaseHandler, ITypeHandler
     {
-        private readonly ILogger _logger;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="NonFrozenStructHandler"/> class.
         /// </summary>
         /// <param name="logger">The logger instance.</param>
         public NonFrozenStructHandler(ILogger logger) : base(logger)
         {
-            _logger = logger;
         }
 
         /// <inheritdoc/>
@@ -428,17 +417,14 @@ namespace BindingsGeneration
     /// <summary>
     /// Factory class for creating instances of ClassHandler.
     /// </summary>
-    public class ClassHandlerFactory : IFactory<BaseDecl, ITypeHandler>
+    public class ClassHandlerFactory : HandlerFactory, IFactory<BaseDecl, ITypeHandler>
     {
-        private readonly ILogger _logger;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="ClassHandlerFactory"/> class.
         /// </summary>
-        /// <param name="logger">The logger instance.</param>
-        public ClassHandlerFactory(ILogger<ClassHandlerFactory> logger)
+        /// <param name="loggerFactory">The logger factory instance.</param>
+        public ClassHandlerFactory(ILoggerFactory loggerFactory) : base(loggerFactory.CreateLogger<ClassHandler>())
         {
-            _logger = logger;
         }
 
         /// <summary>
@@ -455,7 +441,7 @@ namespace BindingsGeneration
         /// </summary>
         public ITypeHandler Construct()
         {
-            return new ClassHandler(_logger);
+            return new ClassHandler(_handlerLogger);
         }
     }
 
@@ -464,10 +450,8 @@ namespace BindingsGeneration
     /// </summary>
     public class ClassHandler : BaseHandler, ITypeHandler
     {
-        private readonly ILogger _logger;
         public ClassHandler(ILogger logger) : base(logger)
         {
-            _logger = logger;
         }
 
         /// <inheritdoc/>
@@ -851,17 +835,14 @@ namespace BindingsGeneration
     /// <summary>
     /// Factory class for creating instances of ProtocolHandler.
     /// </summary>
-    public class ProtocolHandlerFactory : IFactory<BaseDecl, ITypeHandler>
+    public class ProtocolHandlerFactory : HandlerFactory, IFactory<BaseDecl, ITypeHandler>
     {
-        private readonly ILogger _logger;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="ProtocolHandlerFactory"/> class.
         /// </summary>
-        /// <param name="logger">The logger instance.</param>
-        public ProtocolHandlerFactory(ILogger<ProtocolHandlerFactory> logger)
+        /// <param name="loggerFactory">The logger factory instance.</param>
+        public ProtocolHandlerFactory(ILoggerFactory loggerFactory) : base(loggerFactory.CreateLogger<ProtocolHandler>())
         {
-            _logger = logger;
         }
 
         /// <summary>
@@ -878,7 +859,7 @@ namespace BindingsGeneration
         /// </summary>
         public ITypeHandler Construct()
         {
-            return new ProtocolHandler(_logger);
+            return new ProtocolHandler(_handlerLogger);
         }
     }
 
@@ -887,15 +868,12 @@ namespace BindingsGeneration
     /// </summary>
     public class ProtocolHandler : BaseHandler, ITypeHandler
     {
-        private readonly ILogger _logger;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="ProtocolHandler"/> class.
         /// </summary>
         /// <param name="logger">The logger instance.</param>
         public ProtocolHandler(ILogger logger) : base(logger)
         {
-            _logger = logger;
         }
 
         /// <inheritdoc/>

@@ -9,17 +9,14 @@ namespace BindingsGeneration
     /// <summary>
     /// Factory class for creating instances of ConstructorHandler.
     /// </summary>
-    public class ConstructorHandlerFactory : IFactory<BaseDecl, IMethodHandler>
+    public class ConstructorHandlerFactory : HandlerFactory, IFactory<BaseDecl, IMethodHandler>
     {
-        private readonly ILogger _logger;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="ConstructorHandlerFactory"/> class.
         /// </summary>
-        /// <param name="logger">The logger instance.</param>
-        public ConstructorHandlerFactory(ILogger<ConstructorHandlerFactory> logger)
+        /// <param name="loggerFactory">The logger factory instance.</param>
+        public ConstructorHandlerFactory(ILoggerFactory loggerFactory) : base(loggerFactory.CreateLogger<ConstructorHandler>())
         {
-            _logger = logger;
         }
 
         /// <summary>
@@ -36,7 +33,7 @@ namespace BindingsGeneration
         /// </summary>
         public IMethodHandler Construct()
         {
-            return new ConstructorHandler(_logger);
+            return new ConstructorHandler(_handlerLogger);
         }
     }
 
@@ -45,15 +42,12 @@ namespace BindingsGeneration
     /// </summary>
     public class ConstructorHandler : BaseHandler, IMethodHandler
     {
-        private readonly ILogger _logger;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="ConstructorHandler"/> class.
         /// </summary>
         /// <param name="logger">The logger instance.</param>
         public ConstructorHandler(ILogger logger) : base(logger)
         {
-            _logger = logger;
         }
 
         /// <inheritdoc/>
@@ -95,17 +89,14 @@ namespace BindingsGeneration
     /// <summary>
     /// Represents a method handler factory.
     /// </summary>
-    public class MethodHandlerFactory : IFactory<BaseDecl, IMethodHandler>
+    public class MethodHandlerFactory : HandlerFactory, IFactory<BaseDecl, IMethodHandler>
     {
-        private readonly ILogger _logger;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="MethodHandlerFactory"/> class.
         /// </summary>
-        /// <param name="logger">The logger instance.</param>
-        public MethodHandlerFactory(ILogger<MethodHandlerFactory> logger)
+        /// <param name="loggerFactory">The logger factory instance.</param>
+        public MethodHandlerFactory(ILoggerFactory loggerFactory) : base(loggerFactory.CreateLogger<MethodHandler>())
         {
-            _logger = logger;
         }
 
         /// <summary>
@@ -123,7 +114,7 @@ namespace BindingsGeneration
         /// </summary>
         public IMethodHandler Construct()
         {
-            return new MethodHandler(_logger);
+            return new MethodHandler(_handlerLogger);
         }
     }
 
@@ -132,15 +123,12 @@ namespace BindingsGeneration
     /// </summary>
     public class MethodHandler : BaseHandler, IMethodHandler
     {
-        private readonly ILogger _logger;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="MethodHandler"/> class.
         /// </summary>
         /// <param name="logger">The logger instance.</param>
         public MethodHandler(ILogger logger) : base(logger)
         {
-            _logger = logger;
         }
 
         /// <inheritdoc/>
