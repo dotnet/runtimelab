@@ -21,7 +21,7 @@ public sealed class SwiftHandle : SafeHandleZeroOrMinusOneIsInvalid
     private TypeMetadata _metadata;
 
     /// <summary>
-    /// Returns an SwiftHandle with a zero value
+    /// Returns a SwiftHandle with a zero value
     /// </summary>
     public readonly static SwiftHandle Zero = new SwiftHandle(IntPtr.Zero);
 
