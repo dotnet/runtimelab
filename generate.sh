@@ -169,7 +169,7 @@ function InvokeProjectionTooling {
 
     # Patch library name in generated C# code for async methods
     local frameworkPath="/System/Library/Frameworks/${framework}.framework/${framework}"
-    sed -i '' "/_async/ s|${frameworkPath}|__Internal|g" "./Swift.$framework.cs"
+    sed -i '' "/_async/ s|${frameworkPath}|SwiftBindings.framework/SwiftBindings|g" "./Swift.$framework.cs"
 
     echo ""
     echo "C# source code for Swift.$framework.cs:"
@@ -207,12 +207,12 @@ function CreateFramework {
     # x86_64 (simulators, macOS, and maccatalyst)
     if [[ ($platform == "iPhoneOS" && $is_maccatalyst == true) || $platform == "iPhoneSimulator" || $platform == "AppleTVSimulator" || $platform == "MacOSX" ]]; then
     echo "Building ${framework} for ${platform} x86_64..."
-    xcrun --sdk $(echo "$platform" | tr '[:upper:]' '[:lower:]') swiftc -emit-library -static -target x86_64-${target_with_version} -module-name ${framework} -o ${framework}-${platform_display_name}-x86_64.dylib *.swift -F ${fpath} -sdk ${sdk}
+    xcrun --sdk $(echo "$platform" | tr '[:upper:]' '[:lower:]') swiftc -emit-library -target x86_64-${target_with_version} -module-name ${framework} -o ${framework}-${platform_display_name}-x86_64.dylib *.swift -F ${fpath} -sdk ${sdk} -Xlinker -install_name -Xlinker @rpath/$framework.framework/$framework
     fi
 
     # arm64
     echo "Building ${framework} for ${platform} arm64..."
-    xcrun --sdk $(echo "$platform" | tr '[:upper:]' '[:lower:]') swiftc -emit-library -static -target arm64-${target_with_version} -module-name ${framework} -o ${framework}-${platform_display_name}-arm64.dylib *.swift -F ${fpath} -sdk ${sdk}
+    xcrun --sdk $(echo "$platform" | tr '[:upper:]' '[:lower:]') swiftc -emit-library -target arm64-${target_with_version} -module-name ${framework} -o ${framework}-${platform_display_name}-arm64.dylib *.swift -F ${fpath} -sdk ${sdk} -Xlinker -install_name -Xlinker @rpath/$framework.framework/$framework
 
     # Function to create a Swift framework
     create_framework() {
