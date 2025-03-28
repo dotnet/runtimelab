@@ -243,7 +243,6 @@ namespace BindingsGeneration
             }
 
             WritePrivateFields(csWriter, structDecl);
-            WritePayloadSize(csWriter);
             WritePayload(csWriter, structDecl);
 
             // Add Equatable support if the struct conforms to Equatable
@@ -267,15 +266,6 @@ namespace BindingsGeneration
         {
             csWriter.WriteLine($"static nuint _payloadSize = SwiftObjectHelper<{structDecl.Name}>.GetTypeMetadata().Size;");
             csWriter.WriteLine($"SwiftHandle<{structDecl.Name}> _payload = SwiftHandle<{structDecl.Name}>.Zero;");
-            csWriter.WriteLine();
-        }
-
-        /// <summary>
-        /// Writes the payload size accessor for the class.
-        /// </summary>
-        private static void WritePayloadSize(CSharpWriter csWriter)
-        {
-            csWriter.WriteLine("public static nuint PayloadSize => _payloadSize;");
             csWriter.WriteLine();
         }
 

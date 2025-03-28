@@ -26,8 +26,6 @@ public class SwiftSet<Element> : ISwiftObject
 {
     static nuint _payloadSize = SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata().Size;
 
-    static nuint _elementSize = ElementTypeMetadata.Size;
-
     private SwiftHandle<SwiftSet<Element>> _payload;
 
     public SwiftHandle<SwiftSet<Element>> Payload => _payload;
@@ -43,10 +41,6 @@ public class SwiftSet<Element> : ISwiftObject
             { typeof(ISwiftCollection), "$sShyxGSlsMc" }
         };
     }
-
-    public static nuint PayloadSize => _payloadSize;
-
-    public static nuint ElementSize => _elementSize;
 
     static TypeMetadata ISwiftObject.GetTypeMetadata()
     {

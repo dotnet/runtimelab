@@ -23,9 +23,8 @@ namespace BindingsGeneration.FunctionalTests
         public unsafe class Nonce : ISwiftObject
         {
             static nuint _payloadSize = SwiftObjectHelper<Nonce>.GetTypeMetadata().Size;
-            SwiftHandle<Nonce> _payload = SwiftHandle<Nonce>.Zero;
 
-            public static nuint PayloadSize => _payloadSize;
+            SwiftHandle<Nonce> _payload = SwiftHandle<Nonce>.Zero;
 
             public SwiftHandle<Nonce> Payload => _payload;
 
@@ -214,9 +213,8 @@ namespace BindingsGeneration.FunctionalTests
         public unsafe class Nonce : ISwiftObject
         {
             static nuint _payloadSize = SwiftObjectHelper<Nonce>.GetTypeMetadata().Size;
-            SwiftHandle<Nonce> _payload = SwiftHandle<Nonce>.Zero;
 
-            public static nuint PayloadSize => _payloadSize;
+            SwiftHandle<Nonce> _payload = SwiftHandle<Nonce>.Zero;
 
             public SwiftHandle<Nonce> Payload => _payload;
 
@@ -295,9 +293,8 @@ namespace BindingsGeneration.FunctionalTests
         public unsafe class SealedBox : ISwiftObject
         {
             static nuint _payloadSize = SwiftObjectHelper<SealedBox>.GetTypeMetadata().Size;
-            SwiftHandle<SealedBox> _payload = SwiftHandle<SealedBox>.Zero;
 
-            public static nuint PayloadSize => _payloadSize;
+            SwiftHandle<SealedBox> _payload = SwiftHandle<SealedBox>.Zero;
 
             public SwiftHandle<SealedBox> Payload => _payload;
 
@@ -465,8 +462,6 @@ namespace BindingsGeneration.FunctionalTests
 
         SwiftHandle<SymmetricKey> _payload = SwiftHandle<SymmetricKey>.Zero;
 
-        public static nuint PayloadSize => _payloadSize;
-
         public SwiftHandle<SymmetricKey> Payload => _payload;
 
         static TypeMetadata ISwiftObject.GetTypeMetadata() => PInvoke_getMetadata();
@@ -519,7 +514,7 @@ namespace BindingsGeneration.FunctionalTests
 
         public SymmetricKey(Data data)
         {
-            _payload = new SwiftHandle<SymmetricKey>((IntPtr)NativeMemory.Alloc(PayloadSize));
+            _payload = new SwiftHandle<SymmetricKey>((IntPtr)NativeMemory.Alloc(_payloadSize));
             SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult(_payload);
 
             TypeMetadata metadata = SwiftObjectHelper<Data>.GetTypeMetadata();

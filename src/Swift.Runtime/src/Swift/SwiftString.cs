@@ -39,8 +39,6 @@ public class SwiftString : ISwiftObject
         _protocolConformanceSymbols = new Dictionary<Type, string> { };
     }
 
-    public static nuint PayloadSize => _payloadSize;
-
     public unsafe SwiftString.Buffer PayloadBuffer => *(SwiftString.Buffer*)_payload.Handle;
 
     static TypeMetadata ISwiftObject.GetTypeMetadata()
