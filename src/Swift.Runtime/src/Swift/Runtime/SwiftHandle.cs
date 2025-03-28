@@ -75,7 +75,7 @@ public sealed class SwiftHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T :
         : base(ownsHandle: true)
     {
         SetHandle(handle);
-        _allocatedHandle = false;
+        _allocatedHandle = true;
     }
 
     /// <summary>
