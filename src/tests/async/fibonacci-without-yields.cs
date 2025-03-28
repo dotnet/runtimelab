@@ -22,7 +22,7 @@ public class Async2FibonacciWithoutYields
         System.Console.WriteLine("allocated: " + allocated);
     }
 
-    public static async2 Task AsyncEntry()
+    public static async Task AsyncEntry()
     {
         for (int i = 0; i < iterations; i++)
         {
@@ -34,7 +34,7 @@ public class Async2FibonacciWithoutYields
         }
     }
 
-    static async2 Task<int> Fib(int i)
+    static async Task<int> Fib(int i)
     {
         if (i <= 1)
         {

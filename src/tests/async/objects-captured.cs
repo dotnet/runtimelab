@@ -8,7 +8,7 @@ using Xunit;
 
 public class Async2ObjectsWithYields
 {
-    internal static async2 Task<int> A(object n)
+    internal static async Task<int> A(object n)
     {
         // use string equality so that JIT would not think of hoisting "(int)n"
         // also to produce some amout of garbage
@@ -21,6 +21,7 @@ public class Async2ObjectsWithYields
         return 0;
     }
 
+    [System.Runtime.CompilerServices.RuntimeAsyncMethodGeneration(false)]
     private static async Task<int> AsyncEntry()
     {
         object result = 0;

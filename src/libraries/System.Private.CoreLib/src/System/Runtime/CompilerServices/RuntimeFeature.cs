@@ -48,13 +48,30 @@ namespace System.Runtime.CompilerServices
         public const string NumericIntPtr = nameof(NumericIntPtr);
 
         /// <summary>
+        /// Indicates that this version of the runtime supports async methods.
+        /// </summary>
+        [RequiresPreviewFeatures]
+        public const string Async = nameof(Async);
+
+        /// <summary>
         /// Checks whether a certain feature is supported by the Runtime.
         /// </summary>
         public static bool IsSupported(string feature)
         {
             return feature switch
             {
-                PortablePdb or CovariantReturnsOfClasses or ByRefFields or ByRefLikeGenerics or UnmanagedSignatureCallingConvention or DefaultImplementationsOfInterfaces or VirtualStaticsInInterfaces or NumericIntPtr => true,
+                PortablePdb or
+                CovariantReturnsOfClasses or
+                ByRefFields or
+                ByRefLikeGenerics or
+                UnmanagedSignatureCallingConvention or
+                DefaultImplementationsOfInterfaces or
+                VirtualStaticsInInterfaces or
+                NumericIntPtr or
+#pragma warning disable CA2252 // Using preview features
+                Async=> true,
+#pragma warning restore CA2252 // Using preview features
+
                 nameof(IsDynamicCodeSupported) => IsDynamicCodeSupported,
                 nameof(IsDynamicCodeCompiled) => IsDynamicCodeCompiled,
                 _ => false,
