@@ -14,7 +14,7 @@ namespace Swift.Runtime;
 /// <summary>
 /// Represents an opaque handle to a Swift object
 /// </summary>
-public sealed class SwiftHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T: ISwiftObject
+public sealed class SwiftHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T : ISwiftObject
 {
     /// <summary>
     /// Indicates whether the handle was allocated by C#
