@@ -122,11 +122,16 @@ public class SwiftArray<Element> : ISwiftObject
         {
             bool _success = false;
             _payload.DangerousAddRef(ref _success);
-            int result = (int)SwiftArrayPInvokes.Count(PayloadBuffer, ElementTypeMetadata);
-            if (_success)
-                _payload.DangerousRelease();
-
-            return result;
+            try
+            {
+                int result = (int)SwiftArrayPInvokes.Count(PayloadBuffer, ElementTypeMetadata);
+                return result;
+            }
+            finally
+            {
+                if (_success)
+                    _payload.DangerousRelease();
+            }
         }
     }
 
@@ -138,12 +143,18 @@ public class SwiftArray<Element> : ISwiftObject
         var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
         bool _success = false;
         _payload.DangerousAddRef(ref _success);
-        byte* payload = stackalloc byte[(int)_elementSize];
-        Span<byte> span = new Span<byte>(payload, (int)_elementSize);
-        SwiftMarshal.MarshalToSwift(item, span);
-        SwiftArrayPInvokes.Append((IntPtr)payload, metadata, new SwiftSelf(_payload));
-        if (_success)
-            _payload.DangerousRelease();
+        try
+        {
+            byte* payload = stackalloc byte[(int)_elementSize];
+            Span<byte> span = new Span<byte>(payload, (int)_elementSize);
+            SwiftMarshal.MarshalToSwift(item, span);
+            SwiftArrayPInvokes.Append((IntPtr)payload, metadata, new SwiftSelf(_payload));
+        }
+        finally
+        {
+            if (_success)
+                _payload.DangerousRelease();
+        }
     }
 
     /// <summary>
@@ -153,13 +164,18 @@ public class SwiftArray<Element> : ISwiftObject
     {
         bool _success = false;
         _payload.DangerousAddRef(ref _success);
-        var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
-        byte* payload = stackalloc byte[(int)_elementSize];
-        Span<byte> span = new Span<byte>(payload, (int)_elementSize);
-        SwiftMarshal.MarshalToSwift(item, span);
-        SwiftArrayPInvokes.Insert((IntPtr)payload, index, metadata, new SwiftSelf((_payload)));
-        if (_success)
-            _payload.DangerousRelease();
+        try{
+            var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
+            byte* payload = stackalloc byte[(int)_elementSize];
+            Span<byte> span = new Span<byte>(payload, (int)_elementSize);
+            SwiftMarshal.MarshalToSwift(item, span);
+            SwiftArrayPInvokes.Insert((IntPtr)payload, index, metadata, new SwiftSelf(_payload));
+        }
+        finally
+        {
+            if (_success)
+                _payload.DangerousRelease();
+        }
     }
 
     /// <summary>
@@ -169,11 +185,17 @@ public class SwiftArray<Element> : ISwiftObject
     {
         bool _success = false;
         _payload.DangerousAddRef(ref _success);
-        var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
-        byte* payload = stackalloc byte[(int)_elementSize];
-        SwiftArrayPInvokes.Remove(new SwiftIndirectResult(payload), index, metadata, new SwiftSelf(_payload));
-        if (_success)
-            _payload.DangerousRelease();
+        try
+        {
+            var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
+            byte* payload = stackalloc byte[(int)_elementSize];
+            SwiftArrayPInvokes.Remove(new SwiftIndirectResult(payload), index, metadata, new SwiftSelf(_payload));
+        }
+        finally
+        {
+            if (_success)
+                _payload.DangerousRelease();
+        }
     }
 
     /// <summary>
@@ -183,10 +205,15 @@ public class SwiftArray<Element> : ISwiftObject
     {
         bool _success = false;
         _payload.DangerousAddRef(ref _success);
-        var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
-        SwiftArrayPInvokes.RemoveAll(1, metadata, new SwiftSelf(_payload));
-        if (_success)
-            _payload.DangerousRelease();
+        try{
+            var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
+            SwiftArrayPInvokes.RemoveAll(1, metadata, new SwiftSelf(_payload));
+        }
+        finally
+        {
+            if (_success)
+                _payload.DangerousRelease();
+        }
     }
 
     /// <summary>
@@ -198,23 +225,34 @@ public class SwiftArray<Element> : ISwiftObject
         {
             bool _success = false;
             _payload.DangerousAddRef(ref _success);
-            byte* payload = stackalloc byte[(int)_elementSize];
-            SwiftArrayPInvokes.Get(new SwiftIndirectResult(payload), (nint)index, PayloadBuffer, ElementTypeMetadata);
-            if (_success)
-                _payload.DangerousRelease();
-            return SwiftMarshal.MarshalFromSwift<Element>((IntPtr)payload);
+            try{
+                byte* payload = stackalloc byte[(int)_elementSize];
+                SwiftArrayPInvokes.Get(new SwiftIndirectResult(payload), (nint)index, PayloadBuffer, ElementTypeMetadata);
+                return SwiftMarshal.MarshalFromSwift<Element>((IntPtr)payload);
+            }
+            finally
+            {
+                if (_success)
+                    _payload.DangerousRelease();
+            }
         }
         set
         {
             bool _success = false;
             _payload.DangerousAddRef(ref _success);
-            var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
-            byte* payload = stackalloc byte[(int)_elementSize];
-            Span<byte> span = new Span<byte>(payload, (int)_elementSize);
-            SwiftMarshal.MarshalToSwift(value, span);
-            SwiftArrayPInvokes.Set((IntPtr)payload, index, metadata, new SwiftSelf(_payload));
-            if (_success)
-                _payload.DangerousRelease();
+            try
+            {
+                var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
+                byte* payload = stackalloc byte[(int)_elementSize];
+                Span<byte> span = new Span<byte>(payload, (int)_elementSize);
+                SwiftMarshal.MarshalToSwift(value, span);
+                SwiftArrayPInvokes.Set((IntPtr)payload, index, metadata, new SwiftSelf(_payload));
+            }
+            finally
+            {
+                if (_success)
+                    _payload.DangerousRelease();
+            }
         }
     }
 }

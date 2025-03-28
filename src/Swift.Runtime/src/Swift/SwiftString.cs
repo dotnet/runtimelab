@@ -107,7 +107,7 @@ public class SwiftString : ISwiftObject
                 var result = PInvoke_Create(utf8BytesPtr, utf8Bytes.Length, 1);
                 IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(SwiftString.Buffer));
                 *(SwiftString.Buffer*)bufferPtr = result;
-                _payload = new SwiftHandle<SwiftString>((IntPtr)bufferPtr);
+                _payload = new SwiftHandle<SwiftString>(bufferPtr);
             }
         }
     }
@@ -121,10 +121,16 @@ public class SwiftString : ISwiftObject
         {
             bool _success = false;
             _payload.DangerousAddRef(ref _success);
-            int result = (int)PInvoke_GetLength(PayloadBuffer);
-            if (_success)
-                _payload.DangerousRelease();
-            return result;
+            try
+            {
+                int result = (int)PInvoke_GetLength(PayloadBuffer);
+                return result;
+            }
+            finally
+            {
+                if (_success)
+                    _payload.DangerousRelease();
+            }
         }
     }
 
@@ -136,34 +142,39 @@ public class SwiftString : ISwiftObject
         var elementType = TypeMetadata.GetTypeMetadataOrThrow<byte>();
         var resultType = TypeMetadata.GetTypeMetadataOrThrow<long>();
 
-        var length = Length;
-        if (length <= 0)
-            return string.Empty;
-
         bool _success = false;
         _payload.DangerousAddRef(ref _success);
-
-        var contiguousArray = PInvoke_GetUtf8ContiguousArray(PayloadBuffer);
-
-#pragma warning disable CS8500
-        unsafe
+        try
         {
-            ToStringCallbackContext callbackContext;
-            callbackContext._length = length;
-            PInvoke_WithUnsafeBytes(&Callback, &callbackContext, contiguousArray, elementType, resultType);
+            var length = Length;
+            if (length <= 0)
+                return string.Empty;
+
+            var contiguousArray = PInvoke_GetUtf8ContiguousArray(PayloadBuffer);
+
+    #pragma warning disable CS8500
+            unsafe
+            {
+                ToStringCallbackContext callbackContext;
+                callbackContext._length = length;
+                PInvoke_WithUnsafeBytes(&Callback, &callbackContext, contiguousArray, elementType, resultType);
+                return callbackContext._returnString!;
+
+                [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvSwift) })]
+                static IntPtr Callback(byte* bytes, SwiftSelf context)
+                {
+                    ToStringCallbackContext* pContext = (ToStringCallbackContext*)context.Value;
+                    pContext->_returnString = Encoding.UTF8.GetString(new ReadOnlySpan<byte>(bytes, pContext->_length));
+                    return default;
+                }
+            }
+    #pragma warning restore CS8500
+        }
+        finally
+        {
             if (_success)
                 _payload.DangerousRelease();
-            return callbackContext._returnString!;
-
-            [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvSwift) })]
-            static IntPtr Callback(byte* bytes, SwiftSelf context)
-            {
-                ToStringCallbackContext* pContext = (ToStringCallbackContext*)context.Value;
-                pContext->_returnString = Encoding.UTF8.GetString(new ReadOnlySpan<byte>(bytes, pContext->_length));
-                return default;
-            }
         }
-#pragma warning restore CS8500
     }
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]

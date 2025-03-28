@@ -610,16 +610,19 @@ namespace BindingsGeneration
 
             EmitDeclarationsForAllocations(csWriter);
 
+            EmitTryBlockStart(csWriter);
+
             EmitSwiftSelf(csWriter);
             EmitIndirectResultMethod(csWriter);
             EmitGenericArguments(csWriter);
             EmitBoundGenericArguments(csWriter);
             EmitProtocolWitnessTables(csWriter);
             EmitPInvokeCall(csWriter);
-            EmitSafeHandleRelease(csWriter);
             EmitSwiftError(csWriter);
             EmitReturnMethod(csWriter);
 
+            EmitTryBlockEnd(csWriter);
+            EmitFinally(csWriter);
             EmitBodyEnd(csWriter);
         }
 
@@ -628,6 +631,14 @@ namespace BindingsGeneration
         /// </summary>
         private void EmitDeclarationsForAllocations(CSharpWriter csWriter)
         {
+            foreach (var genericParameter in _env.MethodDecl.GenericParameters)
+            {
+                var csTypeParamName = _env.GenericTypeMapping[genericParameter.TypeName].TypeParameter;
+                var metadataName = NameProvider.GetMetadataName(csTypeParamName);
+
+                csWriter.WriteLine($"TypeMetadata {metadataName} = TypeMetadata.GetTypeMetadataOrThrow<{csTypeParamName}>();");
+            }
+
             foreach (var argument in _env.MethodDecl.CSSignature.Skip(1).Where(a => a.IsGeneric))
             {
                 var payloadName = NameProvider.GetPayloadName(argument.Name);
@@ -881,14 +892,6 @@ namespace BindingsGeneration
         /// </summary>
         private void EmitGenericArguments(CSharpWriter csWriter)
         {
-            foreach (var genericParameter in _env.MethodDecl.GenericParameters)
-            {
-                var csTypeParamName = _env.GenericTypeMapping[genericParameter.TypeName].TypeParameter;
-                var metadataName = NameProvider.GetMetadataName(csTypeParamName);
-
-                csWriter.WriteLine($"var {metadataName} = TypeMetadata.GetTypeMetadataOrThrow<{csTypeParamName}>();");
-            }
-
             foreach (var argument in _env.MethodDecl.CSSignature.Skip(1).Where(a => a.IsGeneric))
             {
                 var csTypeParamName = _env.GenericTypeMapping[argument.SwiftTypeSpec.ToString()].TypeParameter;
@@ -1126,6 +1129,34 @@ namespace BindingsGeneration
         {
             csWriter.WriteLine("{");
             csWriter.Indent++;
+        }
+
+        /// <summary>
+        /// Emits the finally block.
+        /// </summary>
+        private void EmitFinally(CSharpWriter csWriter)
+        {
+            csWriter.WriteLine("finally");
+            EmitBodyStart(csWriter);
+            EmitSafeHandleRelease(csWriter);
+            EmitBodyEnd(csWriter);
+        }
+
+        /// <summary>
+        /// Emits the try block start.
+        /// </summary>
+        private void EmitTryBlockStart(CSharpWriter csWriter)
+        {
+            csWriter.WriteLine("try");
+            EmitBodyStart(csWriter);
+        }
+
+        /// <summary>
+        /// Emits the try block end.
+        /// </summary>
+        private void EmitTryBlockEnd(CSharpWriter csWriter)
+        {
+            EmitBodyEnd(csWriter);
         }
 
         /// <summary>

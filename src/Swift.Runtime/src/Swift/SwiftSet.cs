@@ -69,9 +69,15 @@ public class SwiftSet<Element> : ISwiftObject
                 // Ensure the payload is valid before making copy
                 bool _success = false;
                 _payload.DangerousAddRef(ref _success);
-                metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
-                if (_success)
-                    _payload.DangerousRelease();
+                try
+                {
+                    metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
+                }
+                finally
+                {
+                    if (_success)
+                        _payload.DangerousRelease();
+                }
             }
         }
     }
@@ -123,11 +129,17 @@ public class SwiftSet<Element> : ISwiftObject
         {
             bool _success = false;
             _payload.DangerousAddRef(ref _success);
-            var witnessTable = ProtocolWitnessTable.GetOrThrow<Element, ISwiftHashable>();
-            int result = (int)SwiftSetPInvokes.Count(PayloadBuffer, ElementTypeMetadata, witnessTable);
-            if (_success)
-                _payload.DangerousRelease();
-            return result;
+            try
+            {
+                var witnessTable = ProtocolWitnessTable.GetOrThrow<Element, ISwiftHashable>();
+                int result = (int)SwiftSetPInvokes.Count(PayloadBuffer, ElementTypeMetadata, witnessTable);
+                return result;
+            }
+            finally
+            {
+                if (_success)
+                    _payload.DangerousRelease();
+            }
         }
     }
 }
