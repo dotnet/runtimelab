@@ -826,7 +826,7 @@ namespace BindingsGeneration.FunctionalTests
                     [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvSwift) })]
                     static void Callback(SwiftSelf context)
                     {
-                        SwiftHandle pContext = *(SwiftHandle*)context.Value;
+                        SwiftHandle<FrozenStructExtension> pContext = *(SwiftHandle<FrozenStructExtension>*)context.Value;
                         pContext.Dispose();
                     }
                 }

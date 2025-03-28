@@ -14,13 +14,8 @@ namespace Swift.Runtime;
 /// <summary>
 /// Represents an opaque handle to a Swift object
 /// </summary>
-public sealed class SwiftHandle : SafeHandleZeroOrMinusOneIsInvalid
+public sealed class SwiftHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T: ISwiftObject
 {
-    /// <summary>
-    /// The metadata for the Swift object
-    /// </summary>
-    private TypeMetadata _metadata;
-
     /// <summary>
     /// Indicates whether the handle was allocated by C#
     /// </summary>
@@ -29,7 +24,7 @@ public sealed class SwiftHandle : SafeHandleZeroOrMinusOneIsInvalid
     /// <summary>
     /// Returns a SwiftHandle with a zero value
     /// </summary>
-    public readonly static SwiftHandle Zero = new SwiftHandle(IntPtr.Zero, TypeMetadata.Zero);
+    public readonly static SwiftHandle<T> Zero = new SwiftHandle<T>(IntPtr.Zero);
 
     /// <summary>
     /// The handle to the Swift native object
@@ -39,11 +34,10 @@ public sealed class SwiftHandle : SafeHandleZeroOrMinusOneIsInvalid
     /// <summary>
     /// Constructs a SwiftHandle from the given IntPtr
     /// </summary>
-    public SwiftHandle(IntPtr handle, TypeMetadata metadata, bool allocatedHandle = true)
+    public SwiftHandle(IntPtr handle, bool allocatedHandle = true)
         : base(ownsHandle: true)
     {
         SetHandle(handle);
-        _metadata = metadata;
         _allocatedHandle = allocatedHandle;
     }
 
@@ -52,7 +46,8 @@ public sealed class SwiftHandle : SafeHandleZeroOrMinusOneIsInvalid
     /// </summary>
     protected override unsafe bool ReleaseHandle()
     {
-        _metadata.ValueWitnessTable->Destroy((void*)handle, _metadata);
+        var metadata = SwiftObjectHelper<T>.GetTypeMetadata();
+        metadata.ValueWitnessTable->Destroy((void*)handle, metadata);
         if (_allocatedHandle)
             NativeMemory.Free((void*)handle);
         handle = IntPtr.Zero;

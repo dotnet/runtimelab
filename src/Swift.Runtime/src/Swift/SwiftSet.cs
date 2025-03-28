@@ -28,9 +28,9 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
 
     static nuint _elementSize = ElementTypeMetadata.Size;
 
-    private SwiftHandle _payload;
+    private SwiftHandle<SwiftSet<Element>> _payload;
 
-    public SwiftHandle Payload => _payload;
+    public SwiftHandle<SwiftSet<Element>> Payload => _payload;
 
     public IntPtr Buffer => Marshal.PtrToStructure<IntPtr>(_payload.Handle);
 
@@ -126,7 +126,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
     {
         IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(IntPtr));
         System.Buffer.MemoryCopy((void*)handle, (void*)bufferPtr, sizeof(IntPtr), sizeof(IntPtr));
-        _payload = new SwiftHandle(bufferPtr, SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata());
+        _payload = new SwiftHandle<SwiftSet<Element>>(bufferPtr);
     }
 
     /// <summary>
@@ -139,7 +139,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
 
         IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(IntPtr));
         System.Buffer.MemoryCopy((void*)&result, (void*)bufferPtr, sizeof(IntPtr), sizeof(IntPtr));
-        _payload = new SwiftHandle(bufferPtr, SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata());
+        _payload = new SwiftHandle<SwiftSet<Element>>(bufferPtr);
     }
 
     /// <summary>

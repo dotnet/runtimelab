@@ -23,7 +23,7 @@ namespace BindingsGeneration.FunctionalTests
         public unsafe class Nonce : IDisposable, ISwiftObject
         {
             static nuint _payloadSize = SwiftObjectHelper<Nonce>.GetTypeMetadata().Size;
-            SwiftHandle _payload = SwiftHandle.Zero;
+            SwiftHandle<Nonce> _payload = SwiftHandle<Nonce>.Zero;
 
             public void Dispose()
             {
@@ -40,7 +40,7 @@ namespace BindingsGeneration.FunctionalTests
 
             public static nuint PayloadSize => _payloadSize;
 
-            public SwiftHandle Payload => _payload;
+            public SwiftHandle<Nonce> Payload => _payload;
 
             static TypeMetadata ISwiftObject.GetTypeMetadata() => PInvoke_getMetadata();
 
@@ -55,7 +55,7 @@ namespace BindingsGeneration.FunctionalTests
 
             unsafe Nonce(IntPtr handle)
             {
-                _payload = new SwiftHandle(handle, SwiftObjectHelper<Nonce>.GetTypeMetadata(), false);
+                _payload = new SwiftHandle<Nonce>(handle, false);
             }
 
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -92,7 +92,7 @@ namespace BindingsGeneration.FunctionalTests
 
             public Nonce(Data data)
             {
-                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc((nuint)PayloadSize), SwiftObjectHelper<Nonce>.GetTypeMetadata());
+                _payload = new SwiftHandle<Nonce>((IntPtr)NativeMemory.Alloc((nuint)PayloadSize));
                 SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
 
                 TypeMetadata metadata = SwiftObjectHelper<Data>.GetTypeMetadata();
@@ -145,7 +145,7 @@ namespace BindingsGeneration.FunctionalTests
 
             [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
             [DllImport("/System/Library/Frameworks/CryptoKit.framework/CryptoKit", EntryPoint = "$s9CryptoKit03ChaC4PolyO9SealedBoxV5nonce10ciphertext3tagAeC5NonceV_xq_tKc10Foundation12DataProtocolRzAkLR_r0_lufC")]
-            public static unsafe extern ChaChaPoly.SealedBox PInvoke_init(SwiftHandle nonce, void* ciphertext, void* tag, TypeMetadata ciphertextMetadata, TypeMetadata tagMetadata, ProtocolWitnessTable ciphertextWitnessTable, ProtocolWitnessTable tagWitnessTable, out SwiftError error);
+            public static unsafe extern ChaChaPoly.SealedBox PInvoke_init(SafeHandle nonce, void* ciphertext, void* tag, TypeMetadata ciphertextMetadata, TypeMetadata tagMetadata, ProtocolWitnessTable ciphertextWitnessTable, ProtocolWitnessTable tagWitnessTable, out SwiftError error);
 
 
             public Data Ciphertext => PInvoke_GetCiphertext(this);
@@ -187,7 +187,7 @@ namespace BindingsGeneration.FunctionalTests
 
         [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
         [DllImport("/System/Library/Frameworks/CryptoKit.framework/CryptoKit", EntryPoint = "$s9CryptoKit03ChaC4PolyO4seal_5using5nonce14authenticatingAC9SealedBoxVx_AA12SymmetricKeyVAC5NonceVSgq_tK10Foundation12DataProtocolRzAoPR_r0_lFZ")]
-        public static unsafe extern ChaChaPoly.SealedBox PInvoke_Seal(void* plaintext, SwiftHandle key, SwiftHandle nonce, void* aad, TypeMetadata plaintextMetadata, TypeMetadata aadMetadata, ProtocolWitnessTable plaintextWitnessTable, ProtocolWitnessTable aadWitnessTable, out SwiftError error);
+        public static unsafe extern ChaChaPoly.SealedBox PInvoke_Seal(void* plaintext, SafeHandle key, SafeHandle nonce, void* aad, TypeMetadata plaintextMetadata, TypeMetadata aadMetadata, ProtocolWitnessTable plaintextWitnessTable, ProtocolWitnessTable aadWitnessTable, out SwiftError error);
 
 
         /// <summary>
@@ -212,7 +212,7 @@ namespace BindingsGeneration.FunctionalTests
 
         [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
         [DllImport("/System/Library/Frameworks/CryptoKit.framework/CryptoKit", EntryPoint = "$s9CryptoKit03ChaC4PolyO4open_5using14authenticating10Foundation4DataVAC9SealedBoxV_AA12SymmetricKeyVxtKAG0I8ProtocolRzlFZ")]
-        public static unsafe extern Data PInvoke_Open(ChaChaPoly.SealedBox sealedBox, SwiftHandle key, void* aad, TypeMetadata metadata, ProtocolWitnessTable witnessTable, out SwiftError error);
+        public static unsafe extern Data PInvoke_Open(ChaChaPoly.SealedBox sealedBox, SafeHandle key, void* aad, TypeMetadata metadata, ProtocolWitnessTable witnessTable, out SwiftError error);
 
     }
 
@@ -227,7 +227,7 @@ namespace BindingsGeneration.FunctionalTests
         public unsafe class Nonce : IDisposable, ISwiftObject
         {
             static nuint _payloadSize = SwiftObjectHelper<Nonce>.GetTypeMetadata().Size;
-            SwiftHandle _payload = SwiftHandle.Zero;
+            SwiftHandle<Nonce> _payload = SwiftHandle<Nonce>.Zero;
 
             public void Dispose()
             {
@@ -244,7 +244,7 @@ namespace BindingsGeneration.FunctionalTests
 
             public static nuint PayloadSize => _payloadSize;
 
-            public SwiftHandle Payload => _payload;
+            public SwiftHandle<Nonce> Payload => _payload;
 
             static TypeMetadata ISwiftObject.GetTypeMetadata() => PInvoke_getMetadata();
 
@@ -259,7 +259,7 @@ namespace BindingsGeneration.FunctionalTests
 
             unsafe Nonce(IntPtr handle)
             {
-                _payload = new SwiftHandle(handle, SwiftObjectHelper<Nonce>.GetTypeMetadata(), false);
+                _payload = new SwiftHandle<Nonce>(handle, false);
             }
 
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -296,7 +296,7 @@ namespace BindingsGeneration.FunctionalTests
 
             public Nonce(Data data)
             {
-                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc((nuint)_payloadSize), SwiftObjectHelper<Nonce>.GetTypeMetadata());
+                _payload = new SwiftHandle<Nonce>((IntPtr)NativeMemory.Alloc((nuint)_payloadSize));
                 SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
 
                 TypeMetadata metadata = SwiftObjectHelper<Data>.GetTypeMetadata();
@@ -321,7 +321,7 @@ namespace BindingsGeneration.FunctionalTests
         public unsafe class SealedBox : IDisposable, ISwiftObject
         {
             static nuint _payloadSize = SwiftObjectHelper<SealedBox>.GetTypeMetadata().Size;
-            SwiftHandle _payload = SwiftHandle.Zero;
+            SwiftHandle<SealedBox> _payload = SwiftHandle<SealedBox>.Zero;
 
             public void Dispose()
             {
@@ -338,7 +338,7 @@ namespace BindingsGeneration.FunctionalTests
 
             public static nuint PayloadSize => _payloadSize;
 
-            public SwiftHandle Payload => _payload;
+            public SwiftHandle<SealedBox> Payload => _payload;
 
             static TypeMetadata ISwiftObject.GetTypeMetadata() => PInvoke_getMetadata();
 
@@ -353,7 +353,7 @@ namespace BindingsGeneration.FunctionalTests
 
             unsafe SealedBox(IntPtr handle)
             {
-                _payload = new SwiftHandle(handle, SwiftObjectHelper<SealedBox>.GetTypeMetadata(), false);
+                _payload = new SwiftHandle<SealedBox>(handle, false);
             }
 
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -390,12 +390,12 @@ namespace BindingsGeneration.FunctionalTests
 
             public SealedBox()
             {
-                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc((nuint)_payloadSize), SwiftObjectHelper<SealedBox>.GetTypeMetadata());
+                _payload = new SwiftHandle<SealedBox>((IntPtr)NativeMemory.Alloc((nuint)_payloadSize));
             }
 
             public SealedBox(AesGcm.Nonce nonce, Data ciphertext, Data tag)
             {
-                _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc((nuint)_payloadSize), SwiftObjectHelper<SealedBox>.GetTypeMetadata());
+                _payload = new SwiftHandle<SealedBox>((IntPtr)NativeMemory.Alloc((nuint)_payloadSize));
                 SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
 
                 TypeMetadata ciphertextMetadata = SwiftObjectHelper<Data>.GetTypeMetadata();
@@ -422,7 +422,7 @@ namespace BindingsGeneration.FunctionalTests
 
             [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
             [DllImport("/System/Library/Frameworks/CryptoKit.framework/CryptoKit", EntryPoint = "$s9CryptoKit3AESO3GCMO9SealedBoxV5nonce10ciphertext3tagAgE5NonceV_xq_tKc10Foundation12DataProtocolRzAmNR_r0_lufC")]
-            public static unsafe extern void PInvoke_init(SwiftIndirectResult result, SwiftHandle nonce, void* ciphertext, void* tag, TypeMetadata ciphertextMetadata, TypeMetadata tagMetadata, ProtocolWitnessTable ciphertextWitnessTable, ProtocolWitnessTable tagWitnessTable, out SwiftError error);
+            public static unsafe extern void PInvoke_init(SwiftIndirectResult result, SafeHandle nonce, void* ciphertext, void* tag, TypeMetadata ciphertextMetadata, TypeMetadata tagMetadata, ProtocolWitnessTable ciphertextWitnessTable, ProtocolWitnessTable tagWitnessTable, out SwiftError error);
 
 
             public Data Ciphertext => PInvoke_GetCiphertext(new SwiftSelf((void*)_payload.Handle));
@@ -469,7 +469,7 @@ namespace BindingsGeneration.FunctionalTests
 
         [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
         [DllImport("/System/Library/Frameworks/CryptoKit.framework/CryptoKit", EntryPoint = "$s9CryptoKit3AESO3GCMO4seal_5using5nonce14authenticatingAE9SealedBoxVx_AA12SymmetricKeyVAE5NonceVSgq_tK10Foundation12DataProtocolRzAqRR_r0_lFZ")]
-        public static unsafe extern void PInvoke_Seal(SwiftIndirectResult result, void* plaintext, SwiftHandle key, SwiftHandle nonce, void* aad, TypeMetadata plaintextMetadata, TypeMetadata aadMetadata, ProtocolWitnessTable plaintextWitnessTable, ProtocolWitnessTable aadWitnessTable, out SwiftError error);
+        public static unsafe extern void PInvoke_Seal(SwiftIndirectResult result, void* plaintext, SafeHandle key, SafeHandle nonce, void* aad, TypeMetadata plaintextMetadata, TypeMetadata aadMetadata, ProtocolWitnessTable plaintextWitnessTable, ProtocolWitnessTable aadWitnessTable, out SwiftError error);
 
         /// <summary>
         /// Decrypts the sealed box using the key and authenticated data.
@@ -492,7 +492,7 @@ namespace BindingsGeneration.FunctionalTests
 
         [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
         [DllImport("/System/Library/Frameworks/CryptoKit.framework/CryptoKit", EntryPoint = "$s9CryptoKit3AESO3GCMO4open_5using14authenticating10Foundation4DataVAE9SealedBoxV_AA12SymmetricKeyVxtKAI0I8ProtocolRzlFZ")]
-        public static unsafe extern Data PInvoke_Open(SwiftHandle sealedBox, SwiftHandle key, void* aad, TypeMetadata metadata, ProtocolWitnessTable witnessTable, out SwiftError error);
+        public static unsafe extern Data PInvoke_Open(SafeHandle sealedBox, SafeHandle key, void* aad, TypeMetadata metadata, ProtocolWitnessTable witnessTable, out SwiftError error);
     }
 
     /// <summary>
@@ -501,7 +501,7 @@ namespace BindingsGeneration.FunctionalTests
     public unsafe class SymmetricKey : IDisposable, ISwiftObject
     {
         static nuint _payloadSize = SwiftObjectHelper<SymmetricKey>.GetTypeMetadata().Size;
-        SwiftHandle _payload = SwiftHandle.Zero;
+        SwiftHandle<SymmetricKey> _payload = SwiftHandle<SymmetricKey>.Zero;
 
         public void Dispose()
         {
@@ -518,7 +518,7 @@ namespace BindingsGeneration.FunctionalTests
 
         public static nuint PayloadSize => _payloadSize;
 
-        public SwiftHandle Payload => _payload;
+        public SwiftHandle<SymmetricKey> Payload => _payload;
 
         static TypeMetadata ISwiftObject.GetTypeMetadata() => PInvoke_getMetadata();
 
@@ -533,7 +533,7 @@ namespace BindingsGeneration.FunctionalTests
 
         unsafe SymmetricKey(IntPtr handle)
         {
-            _payload = new SwiftHandle(handle, SwiftObjectHelper<SymmetricKey>.GetTypeMetadata(), false);
+            _payload = new SwiftHandle<SymmetricKey>(handle, false);
         }
 
         void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -570,7 +570,7 @@ namespace BindingsGeneration.FunctionalTests
 
         public SymmetricKey(Data data)
         {
-            _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc((nuint)PayloadSize), SwiftObjectHelper<SymmetricKey>.GetTypeMetadata());
+            _payload = new SwiftHandle<SymmetricKey>((IntPtr)NativeMemory.Alloc((nuint)PayloadSize));
             SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
 
             TypeMetadata metadata = SwiftObjectHelper<Data>.GetTypeMetadata();

@@ -170,7 +170,7 @@ namespace BindingsGeneration
         {
             return parameter switch
             {
-                { Type: "SwiftHandle" } => $"{parameter.Name}.Payload",
+                { Type: "SafeHandle" } => $"{parameter.Name}.Payload",
                 { Type: var type } when type.EndsWith(".TypeBuffer") => $"{parameter.Name}.Buffer",
                 { Type: "AsyncCallback" } => $"(IntPtr){parameter.Name}",
                 { Type: "AsyncContext" } => "IntPtr.Zero",
@@ -374,7 +374,7 @@ namespace BindingsGeneration
                 TypeRecord argumentTypeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(argument.SwiftTypeSpec);
                 if (!MarshallingHelpers.IsTypeFrozen(argumentTypeRecord))
                 {
-                    AddParameter("SwiftHandle", argument.Name);
+                    AddParameter("SafeHandle", argument.Name);
                     continue;
                 }
 
@@ -747,7 +747,7 @@ namespace BindingsGeneration
             }
 
             var text = $$"""
-            _payload = new SwiftHandle((IntPtr)NativeMemory.Alloc((nuint)_payloadSize), SwiftObjectHelper<{{_env.ParentDecl.Name}}>.GetTypeMetadata());
+            _payload = new SwiftHandle<{{_env.ParentDecl.Name}}>((IntPtr)NativeMemory.Alloc((nuint)_payloadSize));
             var swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
             """;
 
@@ -975,7 +975,7 @@ namespace BindingsGeneration
                             IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(TypeBuffer));
                             System.Buffer.MemoryCopy((void*)&result, (void*)bufferPtr, sizeof(TypeBuffer), sizeof(TypeBuffer));
 
-                            _payload = new SwiftHandle(bufferPtr, SwiftObjectHelper<{structDecl.Name}>.GetTypeMetadata()); // SwiftHandle takes ownership
+                            _payload = new SwiftHandle<{structDecl.Name}>(bufferPtr);
                         }}");
                     return;
                 }

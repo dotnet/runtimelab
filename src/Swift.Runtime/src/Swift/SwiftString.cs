@@ -27,9 +27,9 @@ public class SwiftString : IDisposable, ISwiftObject
         public IntPtr _object;
     }
 
-    private SwiftHandle _payload;
+    private SwiftHandle<SwiftString> _payload;
 
-    public SwiftHandle Payload => _payload;
+    public SwiftHandle<SwiftString> Payload => _payload;
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -111,7 +111,7 @@ public class SwiftString : IDisposable, ISwiftObject
     {
         IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(TypeBuffer));
         System.Buffer.MemoryCopy((void*)handle, (void*)bufferPtr, sizeof(TypeBuffer), sizeof(TypeBuffer));
-        _payload = new SwiftHandle(bufferPtr, SwiftObjectHelper<SwiftString>.GetTypeMetadata());
+        _payload = new SwiftHandle<SwiftString>(bufferPtr);
     }
 
     /// <summary>
@@ -127,7 +127,7 @@ public class SwiftString : IDisposable, ISwiftObject
                 var result = PInvoke_Create(utf8BytesPtr, utf8Bytes.Length, 1);
                 IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(TypeBuffer));
                 System.Buffer.MemoryCopy((void*)&result, (void*)bufferPtr, sizeof(TypeBuffer), sizeof(TypeBuffer));
-                _payload = new SwiftHandle((IntPtr)bufferPtr, SwiftObjectHelper<SwiftString>.GetTypeMetadata());
+                _payload = new SwiftHandle<SwiftString>((IntPtr)bufferPtr);
             }
         }
     }

@@ -28,9 +28,9 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
 
     static nuint _elementSize = ElementTypeMetadata.Size;
 
-    private SwiftHandle _payload;
+    private SwiftHandle<SwiftArray<Element>> _payload;
 
-    public SwiftHandle Payload => _payload;
+    public SwiftHandle<SwiftArray<Element>> Payload => _payload;
 
     public IntPtr Buffer => Marshal.PtrToStructure<IntPtr>(_payload.Handle);
 
@@ -125,7 +125,7 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
     {
         IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(IntPtr));
         System.Buffer.MemoryCopy((void*)handle, (void*)bufferPtr, sizeof(IntPtr), sizeof(IntPtr));
-        _payload = new SwiftHandle(bufferPtr, SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata());
+        _payload = new SwiftHandle<SwiftArray<Element>>(bufferPtr);
     }
 
     /// <summary>
@@ -136,7 +136,7 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         IntPtr result = SwiftArrayPInvokes.Init(ElementTypeMetadata);
         IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(IntPtr));
         System.Buffer.MemoryCopy((void*)&result, (void*)bufferPtr, sizeof(IntPtr), sizeof(IntPtr));
-        _payload = new SwiftHandle(bufferPtr, SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata());
+        _payload = new SwiftHandle<SwiftArray<Element>>(bufferPtr);
     }
 
     /// <summary>

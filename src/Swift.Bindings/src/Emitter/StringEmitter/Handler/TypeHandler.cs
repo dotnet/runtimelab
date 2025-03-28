@@ -81,9 +81,9 @@ namespace BindingsGeneration
                 csWriter.Indent++;
 
                 // Payload used for reference counting
-                csWriter.WriteLine($"private SwiftHandle _payload = SwiftHandle.Zero;");
+                csWriter.WriteLine($"private SwiftHandle<{structDecl.Name}> _payload = SwiftHandle<{structDecl.Name}>.Zero;");
                 csWriter.WriteLine();
-                csWriter.WriteLine($"public SwiftHandle Payload => _payload;");
+                csWriter.WriteLine($"public SwiftHandle<{structDecl.Name}> Payload => _payload;");
             }
 
             if (swiftTypeInfo.HasValue)
@@ -292,7 +292,7 @@ namespace BindingsGeneration
             WriteDisposeMethod(csWriter, structDecl);
             WriteFinalizer(csWriter, structDecl);
             WritePayloadSize(csWriter);
-            WritePayload(csWriter);
+            WritePayload(csWriter, structDecl);
 
             // Add Equatable support if the struct conforms to Equatable
             SwiftEquatableMethodWriter.WriteSwiftEquatableImplementation();
@@ -314,7 +314,7 @@ namespace BindingsGeneration
         private static void WritePrivateFields(CSharpWriter csWriter, StructDecl structDecl)
         {
             csWriter.WriteLine($"static nuint _payloadSize = SwiftObjectHelper<{structDecl.Name}>.GetTypeMetadata().Size;");
-            csWriter.WriteLine("SwiftHandle _payload = SwiftHandle.Zero;");
+            csWriter.WriteLine($"SwiftHandle<{structDecl.Name}> _payload = SwiftHandle<{structDecl.Name}>.Zero;");
             csWriter.WriteLine();
         }
 
@@ -371,9 +371,9 @@ namespace BindingsGeneration
         /// <summary>
         /// Writes the payload accessor for the class.
         /// </summary>
-        private static void WritePayload(CSharpWriter csWriter)
+        private static void WritePayload(CSharpWriter csWriter, StructDecl structDecl)
         {
-            csWriter.WriteLine("public SwiftHandle Payload => _payload;");
+            csWriter.WriteLine($"public SwiftHandle<{structDecl.Name}> Payload => _payload;");
             csWriter.WriteLine();
         }
     }
@@ -426,14 +426,36 @@ namespace BindingsGeneration
             var classEnv = (TypeEnvironment)env;
             var classDecl = (ClassDecl)classEnv.TypeDecl;
 
-            csWriter.WriteLine($"public unsafe class {classDecl.Name} {{");
+            var interfaces = new List<string> {
+                typeof(ISwiftObject).Name,
+            };
+
+            csWriter.WriteLine($"public unsafe class {classDecl.Name} : {string.Join(", ", interfaces)} {{");
             csWriter.Indent++;
 
 
-            csWriter.WriteLine("SwiftHandle _payload = SwiftHandle.Zero;");
+            csWriter.WriteLine($"SwiftHandle<{classDecl.Name}> _payload = SwiftHandle<{classDecl.Name}>.Zero;");
             csWriter.WriteLine();
-            csWriter.WriteLine("public SwiftHandle Payload => _payload;");
+            csWriter.WriteLine($"public SwiftHandle<{classDecl.Name}> Payload => _payload;");
             csWriter.WriteLine();
+            csWriter.WriteLine(@"
+                static TypeMetadata ISwiftObject.GetTypeMetadata() => throw new NotImplementedException();
+
+                static ProtocolConformanceDescriptor ISwiftObject.GetProtocolConformanceDescriptor<TProtocol>()
+                where TProtocol : class
+                {
+                    throw new NotImplementedException();
+                }
+
+                void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+                {
+                    throw new NotImplementedException();
+                }
+                static unsafe ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
+                {
+                    throw new NotImplementedException();
+                }
+            ");
 
             base.HandleBaseDecl(csWriter, swiftWriter, classDecl.Types, conductor, env.TypeDatabase);
             base.HandleBaseDecl(csWriter, swiftWriter, classDecl.Methods, conductor, env.TypeDatabase);
@@ -523,7 +545,7 @@ namespace BindingsGeneration
                     IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(TypeBuffer));
                     System.Buffer.MemoryCopy((void*)handle, (void*)bufferPtr, sizeof(TypeBuffer), sizeof(TypeBuffer));
 
-                    _payload = new SwiftHandle(bufferPtr, SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata()); // SwiftHandle takes ownership
+                    _payload = new SwiftHandle<{{_structDecl.Name}}>(bufferPtr);
                 }
                 """;
 
@@ -570,7 +592,7 @@ namespace BindingsGeneration
             var text = $$"""
             unsafe {{_structDecl.Name}}(void* handle)
             {
-                _payload = new SwiftHandle((IntPtr)handle, SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata(), false);
+                _payload = new SwiftHandle<{{_structDecl.Name}}>((IntPtr)handle, false);
             }
             """;
 
