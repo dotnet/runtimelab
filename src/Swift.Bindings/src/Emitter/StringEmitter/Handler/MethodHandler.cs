@@ -145,8 +145,8 @@ namespace BindingsGeneration
         public string CallString() => $"{Type} {Name}";
         public string SignatureString() => Type switch
         {
-            "AsyncCallback" => $"{modifier} IntPtr {Name}",
-            "AsyncContext" => $"{modifier} IntPtr {Name}",
+            "AsyncCallback" => $"{modifier} void* {Name}",
+            "AsyncContext" => $"{modifier} void* {Name}",
             "AsyncTask" => $"{modifier} IntPtr {Name}",
             _ => $"{modifier} {Type} {Name}"
         };
@@ -172,8 +172,8 @@ namespace BindingsGeneration
             {
                 { Type: "SafeHandle" } => $"{parameter.Name}.Payload",
                 { Type: var type } when type.EndsWith(".Buffer") => $"{parameter.Name}.PayloadBuffer",
-                { Type: "AsyncCallback" } => $"(IntPtr){parameter.Name}",
-                { Type: "AsyncContext" } => "IntPtr.Zero",
+                { Type: "AsyncCallback" } => $"{parameter.Name}",
+                { Type: "AsyncContext" } => "null",
                 { Type: "AsyncTask" } => $"GCHandle.ToIntPtr({parameter.Name})",
                 { modifier: "out" } => $"out var {parameter.Name}",
                 _ => parameter.Name
@@ -656,7 +656,7 @@ namespace BindingsGeneration
             }
             else
             {
-                csWriter.WriteLine("var self = new SwiftSelf((void*)_payload.Handle);");
+                csWriter.WriteLine("var self = new SwiftSelf(_payload);");
             }
 
             csWriter.WriteLine();
@@ -747,8 +747,8 @@ namespace BindingsGeneration
             }
 
             var text = $$"""
-            _payload = new SwiftHandle<{{_env.ParentDecl.Name}}>((IntPtr)NativeMemory.Alloc((nuint)_payloadSize));
-            var swiftIndirectResult = new SwiftIndirectResult((void*)_payload.Handle);
+            _payload = new SwiftHandle<{{_env.ParentDecl.Name}}>((IntPtr)NativeMemory.Alloc(_payloadSize));
+            var swiftIndirectResult = new SwiftIndirectResult(_payload);
             """;
 
             csWriter.WriteLines(text);
@@ -769,8 +769,8 @@ namespace BindingsGeneration
 
             var text = $$"""
             var returnMetadata = TypeMetadata.GetTypeMetadataOrThrow<{{_wrapperSignature.ReturnType}}>();
-            var payload = (IntPtr)NativeMemory.Alloc((nuint)returnMetadata.Size);
-            var swiftIndirectResult = new SwiftIndirectResult((void*)payload);
+            var payload = NativeMemory.Alloc((nuint)returnMetadata.Size);
+            var swiftIndirectResult = new SwiftIndirectResult(payload);
             """;
 
             csWriter.WriteLines(text);
@@ -972,8 +972,7 @@ namespace BindingsGeneration
                     csWriter.WriteLine($@"
                         unsafe {{
                             IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof({_env.ParentDecl.Name}.Buffer));
-                            System.Buffer.MemoryCopy((void*)&result, (void*)bufferPtr, sizeof({_env.ParentDecl.Name}.Buffer), sizeof({_env.ParentDecl.Name}.Buffer));
-
+                            *({_env.ParentDecl.Name}.Buffer*)bufferPtr = result;
                             _payload = new SwiftHandle<{structDecl.Name}>(bufferPtr);
                         }}");
                     return;

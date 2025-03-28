@@ -18,7 +18,7 @@ public struct AnyType : ISwiftObject
     {
         throw new InvalidOperationException("Cannot get type metadata for AnyType");
     }
-    public AnyType(IntPtr payload)
+    public AnyType(SwiftHandle payload)
     {
         _payload = new SwiftHandle<AnyType>(payload);
     }
@@ -51,9 +51,9 @@ public struct AnyType : ISwiftObject
         }
         unsafe
         {
-            fixed (byte* swiftDest = swiftDestSpan)
+            fixed (void* swiftDest = swiftDestSpan)
             {
-                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
             }
         }
     }

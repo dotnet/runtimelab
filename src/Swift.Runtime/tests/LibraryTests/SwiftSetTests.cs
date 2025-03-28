@@ -41,7 +41,7 @@ public class SwiftSetTests : IClassFixture<SwiftSetTests.TestFixture>
     }
 
     [Fact]
-    public unsafe void SetDispose()
+    public void SetDispose()
     {
         var set = new SwiftSet<SwiftIntMock>();
         Assert.Equal(0, set.Count);

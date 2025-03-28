@@ -73,7 +73,7 @@ public class SwiftOptional<T> : ISwiftObject
             fixed (byte* payload = _payload)
             fixed (void* swiftDest = swiftDestSpan)
             {
-                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, payload, metadata);
+                metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, payload, metadata);
             }
         }
     }
@@ -101,6 +101,7 @@ public class SwiftOptional<T> : ISwiftObject
             fixed (byte* payload = instance._payload)
             {
                 var metadata = SwiftObjectHelper<SwiftOptional<T>>.GetTypeMetadata();
+                // The payload is the size of the type minus 1 for the optional tag
                 Span<byte> payloadSpan = new Span<byte>(payload, (int)metadata.Size - 1);
                 SwiftMarshal.MarshalToSwift(value, payloadSpan);
                 metadata.ValueWitnessTable->DestructiveInjectEnumTag(payload, (uint)SwiftOptionalCases.Some, metadata);

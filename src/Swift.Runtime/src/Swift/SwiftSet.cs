@@ -97,7 +97,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
                 // Ensure the payload is valid before making copy
                 bool _success = false;
                 _payload.DangerousAddRef(ref _success);
-                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
                 if (_success)
                     _payload.DangerousRelease();
             }
@@ -125,7 +125,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
     unsafe SwiftSet(IntPtr handle)
     {
         IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(IntPtr));
-        System.Buffer.MemoryCopy((void*)handle, (void*)bufferPtr, sizeof(IntPtr), sizeof(IntPtr));
+        *(IntPtr*)bufferPtr = *(IntPtr*)handle;
         _payload = new SwiftHandle<SwiftSet<Element>>(bufferPtr);
     }
 
@@ -138,14 +138,14 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
         var result = SwiftSetPInvokes.Init(ElementTypeMetadata, witnessTable);
 
         IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(IntPtr));
-        System.Buffer.MemoryCopy((void*)&result, (void*)bufferPtr, sizeof(IntPtr), sizeof(IntPtr));
+        *(IntPtr*)bufferPtr = result;
         _payload = new SwiftHandle<SwiftSet<Element>>(bufferPtr);
     }
 
     /// <summary>
     /// Gets the number of elements in the set.
     /// </summary>
-    public unsafe int Count
+    public int Count
     {
         get
         {

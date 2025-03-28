@@ -97,7 +97,7 @@ namespace BindingsGeneration
             }
             if (isProjectedAsClass)
             {
-                csWriter.WriteLine($"public unsafe struct Buffer {{");
+                csWriter.WriteLine($"public struct Buffer {{");
             }
             else
             {
@@ -442,7 +442,7 @@ namespace BindingsGeneration
                 static TypeMetadata ISwiftObject.GetTypeMetadata() => throw new NotImplementedException();
 
                 static ProtocolConformanceDescriptor ISwiftObject.GetProtocolConformanceDescriptor<TProtocol>()
-                where TProtocol : class
+                    where TProtocol : class
                 {
                     throw new NotImplementedException();
                 }
@@ -451,7 +451,7 @@ namespace BindingsGeneration
                 {
                     throw new NotImplementedException();
                 }
-                static unsafe ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
+                static ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
                 {
                     throw new NotImplementedException();
                 }
@@ -535,7 +535,7 @@ namespace BindingsGeneration
             if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
             {
                 var text = $$"""
-                static unsafe ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
+                static ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
                 {
                     return new {{_structDecl.Name}}(handle);
                 }
@@ -543,8 +543,7 @@ namespace BindingsGeneration
                 unsafe {{_structDecl.Name}}(IntPtr handle)
                 {
                     IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof({{_structDecl.Name}}.Buffer));
-                    System.Buffer.MemoryCopy((void*)handle, (void*)bufferPtr, sizeof({{_structDecl.Name}}.Buffer), sizeof({{_structDecl.Name}}.Buffer));
-
+                    *({{_structDecl.Name}}.Buffer*)bufferPtr = *({{_structDecl.Name}}.Buffer*)handle;
                     _payload = new SwiftHandle<{{_structDecl.Name}}>(bufferPtr);
                 }
                 """;
@@ -574,7 +573,7 @@ namespace BindingsGeneration
             var text = $$"""
             static ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
             {
-                return new {{_structDecl.Name}}((void*)handle);
+                return new {{_structDecl.Name}}(handle);
             }
             """;
 
@@ -590,9 +589,9 @@ namespace BindingsGeneration
         private void EmitPrivateConstructor()
         {
             var text = $$"""
-            unsafe {{_structDecl.Name}}(void* handle)
+            {{_structDecl.Name}}(SwiftHandle handle)
             {
-                _payload = new SwiftHandle<{{_structDecl.Name}}>((IntPtr)handle, false);
+                _payload = new SwiftHandle<{{_structDecl.Name}}>(handle, false);
             }
             """;
 
@@ -611,20 +610,18 @@ namespace BindingsGeneration
                 // GENERIC RETAIN
                 // Generic arguments are copied to the stack prior to the call via MarshalToSwift, no SwiftHandle ref counting is needed
                 var text = $$"""
-                void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+                unsafe void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
                 {
                     var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
                     Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
-                    unsafe {
-                        fixed (void* swiftDest = swiftDestSpan)
-                        {
-                            // Ensure the payload is valid before making copy
-                            bool _success = false;
-                            _payload.DangerousAddRef(ref _success);
-                            metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void*)_payload.Handle, metadata);
-                            if (_success)
-                                _payload.DangerousRelease();
-                        }
+                    fixed (void* swiftDest = swiftDestSpan)
+                    {
+                        // Ensure the payload is valid before making copy
+                        bool _success = false;
+                        _payload.DangerousAddRef(ref _success);
+                        metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, _payload, metadata);
+                        if (_success)
+                            _payload.DangerousRelease();
                     }
                 }
                 """;
@@ -634,16 +631,14 @@ namespace BindingsGeneration
             else
             {
                 var text = $$"""
-                void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+                unsafe void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
                 {
                     var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
                     Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
-                    unsafe {
-                        fixed (void* payload = &this)
-                        fixed (void* swiftDest = swiftDestSpan)
-                        {
-                            metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, payload, metadata);
-                        }
+                    fixed (void* payload = &this)
+                    fixed (void* swiftDest = swiftDestSpan)
+                    {
+                        metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, payload, metadata);
                     }
                 }
                 """;
@@ -662,20 +657,18 @@ namespace BindingsGeneration
             // GENERIC RETAIN
             // Generic arguments are copied to the stack prior to the call via MarshalToSwift, no SwiftHandle ref counting is needed
             var text = $$"""
-            void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+            unsafe void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
             {
                 var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
                 Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
-                unsafe {
-                    fixed (void* swiftDest = swiftDestSpan)
-                    {
-                        // Ensure the payload is valid before making copy
-                        bool _success = false;
-                        _payload.DangerousAddRef(ref _success);
-                        metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
-                        if (_success)
-                            _payload.DangerousRelease();
-                    }
+                fixed (void* swiftDest = swiftDestSpan)
+                {
+                    // Ensure the payload is valid before making copy
+                    bool _success = false;
+                    _payload.DangerousAddRef(ref _success);
+                    metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
+                    if (_success)
+                        _payload.DangerousRelease();
                 }
             }
             """;

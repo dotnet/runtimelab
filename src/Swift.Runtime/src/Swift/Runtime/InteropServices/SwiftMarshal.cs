@@ -18,7 +18,6 @@ public static class SwiftMarshal
     /// <typeparam name="T">The type of the value being marshaled</typeparam>
     /// <param name="value">The value to marshal</param>
     /// <param name="swiftDestSpan">the destination for marshaling</param>
-    /// <returns>A pointer to memory to pass in to Swift for marshaling. Note: this value may be different from the value passed in.</returns>
     /// <exception cref="NotSupportedException"></exception>
     public static void MarshalToSwift<T>(T value, Span<byte> swiftDestSpan)
     {
@@ -143,7 +142,7 @@ public static class SwiftMarshal
         {
             unsafe
             {
-                return MarshalPrimitiveFromSwift<T>((void*)swiftSource);
+                return MarshalPrimitiveFromSwift<T>(swiftSource);
             }
         }
 
@@ -162,7 +161,7 @@ public static class SwiftMarshal
     /// <param name="swiftSource">Memory to read from</param>
     /// <returns>The marshaled type</returns>
     /// <exception cref="NotSupportedException"></exception>
-    public static unsafe T MarshalPrimitiveFromSwift<T>(void* swiftSource)
+    public static unsafe T MarshalPrimitiveFromSwift<T>(IntPtr swiftSource)
     {
         if (typeof(T) == typeof(bool))
         {

@@ -122,7 +122,7 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
     }
 
     [Fact]
-    public unsafe void ArrayDispose()
+    public void ArrayDispose()
     {
         var array = new SwiftArray<int>();
         Assert.Equal(0, array.Count);

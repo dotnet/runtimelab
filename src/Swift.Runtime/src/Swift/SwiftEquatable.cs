@@ -51,7 +51,7 @@ namespace Swift.Runtime
             return PInvoke_SwiftEquals(
                 (IntPtr)lhsPayload,
                 (IntPtr)rhsPayload,
-                new SwiftSelf((void*)metadata.Handle),
+                new SwiftSelf(metadata),
                 metadata,
                 equatablePwt);
         }

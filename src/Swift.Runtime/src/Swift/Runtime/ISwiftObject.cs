@@ -22,7 +22,7 @@ public interface ISwiftObject
     /// <summary>
     /// Marshals this object to a Swift destination
     /// </summary>
-    unsafe void MarshalToSwift(Span<byte> swiftDestSpan);
+    public void MarshalToSwift(Span<byte> swiftDestSpan);
 
     /// <summary>
     /// Gets the protocol conformance descriptor for the given type

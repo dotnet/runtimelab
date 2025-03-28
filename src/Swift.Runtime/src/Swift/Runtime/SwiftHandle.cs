@@ -12,7 +12,42 @@ using Microsoft.Win32.SafeHandles;
 namespace Swift.Runtime;
 
 /// <summary>
-/// Represents an opaque handle to a Swift object
+/// Represents an opaque handle to a Swift object used in private constructors
+/// </summary>
+public struct SwiftHandle
+{
+    /// <summary>
+    /// The handle to the Swift native object
+    /// </summary>
+    public IntPtr Handle { get; }
+
+    /// <summary>
+    /// Constructs a SwiftHandle from the given IntPtr
+    /// </summary>
+    public SwiftHandle(IntPtr handle)
+    {
+        Handle = handle;
+    }
+
+    /// <summary>
+    /// Implicit conversion from SwiftHandle to IntPtr
+    /// </summary>
+    public static implicit operator IntPtr(SwiftHandle value)
+    {
+        return value.Handle;
+    }
+
+    /// <summary>
+    /// Explicit conversion from IntPtr to SwiftHandle
+    /// </summary>
+    public static implicit operator SwiftHandle(IntPtr value)
+    {
+        return new SwiftHandle(value);
+    }
+}
+
+/// <summary>
+/// Represents an opaque handle to a Swift object extending SafeHandle
 /// </summary>
 public sealed class SwiftHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T : ISwiftObject
 {
@@ -34,7 +69,17 @@ public sealed class SwiftHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T :
     /// <summary>
     /// Constructs a SwiftHandle from the given IntPtr
     /// </summary>
-    public SwiftHandle(IntPtr handle, bool allocatedHandle = true)
+    public SwiftHandle(IntPtr handle)
+        : base(ownsHandle: true)
+    {
+        SetHandle(handle);
+        _allocatedHandle = false;
+    }
+
+    /// <summary>
+    /// Constructs a SwiftHandle from the given IntPtr
+    /// </summary>
+    public SwiftHandle(IntPtr handle, bool allocatedHandle)
         : base(ownsHandle: true)
     {
         SetHandle(handle);
@@ -47,10 +92,18 @@ public sealed class SwiftHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T :
     protected override unsafe bool ReleaseHandle()
     {
         var metadata = SwiftObjectHelper<T>.GetTypeMetadata();
-        metadata.ValueWitnessTable->Destroy((void*)handle, metadata);
+        metadata.ValueWitnessTable->Destroy(this, metadata);
         if (_allocatedHandle)
-            NativeMemory.Free((void*)handle);
+            NativeMemory.Free(this);
         handle = IntPtr.Zero;
         return true;
+    }
+
+    /// <summary>
+    /// Implicit conversion from SwiftHandle to void*
+    /// </summary>
+    public static unsafe implicit operator void*(SwiftHandle<T> value)
+    {
+        return (void*)value.Handle;
     }
 }

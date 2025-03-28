@@ -313,7 +313,7 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata>
             var helper = typeof(SwiftObjectHelper<>).MakeGenericType(type);
             var candidate = (TypeMetadata)helper.GetMethod("GetTypeMetadata")!.Invoke(null, null)!;
 
-            // GetTypeMetadata can return an IntPtr.Zero 
+            // GetTypeMetadata can return an IntPtr.Zero
             if (candidate.IsValid)
             {
                 result = candidate;
@@ -378,5 +378,14 @@ public readonly struct TypeMetadata : IEquatable<TypeMetadata>
             return new TypeMetadata(entryPoint);
         }
         throw new SwiftRuntimeException(string.Format("Unable to find symbol {0} in library {1}", symbolName, libraryName));
+    }
+
+
+    /// <summary>
+    /// Implicit conversion from TypeMetadata to void*
+    /// </summary>
+    public static unsafe implicit operator void*(TypeMetadata value)
+    {
+        return (void*)value.Handle;
     }
 }

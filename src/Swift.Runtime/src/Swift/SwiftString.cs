@@ -23,8 +23,9 @@ public class SwiftString : IDisposable, ISwiftObject
 
     public struct Buffer
     {
-        private long _flags;
-        private IntPtr _object;
+#pragma warning disable CS0169
+        private Data _data;
+#pragma warning restore CS0169
     }
 
     private SwiftHandle<SwiftString> _payload;
@@ -82,7 +83,7 @@ public class SwiftString : IDisposable, ISwiftObject
                 // Ensure the payload is valid before making copy
                 bool _success = false;
                 _payload.DangerousAddRef(ref _success);
-                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payload.Handle, metadata);
+                metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
                 if (_success)
                     _payload.DangerousRelease();
             }
@@ -110,7 +111,7 @@ public class SwiftString : IDisposable, ISwiftObject
     unsafe SwiftString(IntPtr handle)
     {
         IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(SwiftString.Buffer));
-        System.Buffer.MemoryCopy((void*)handle, (void*)bufferPtr, sizeof(SwiftString.Buffer), sizeof(SwiftString.Buffer));
+        *(SwiftString.Buffer*)bufferPtr = *(SwiftString.Buffer*)handle;
         _payload = new SwiftHandle<SwiftString>(bufferPtr);
     }
 
@@ -126,7 +127,7 @@ public class SwiftString : IDisposable, ISwiftObject
             {
                 var result = PInvoke_Create(utf8BytesPtr, utf8Bytes.Length, 1);
                 IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(SwiftString.Buffer));
-                System.Buffer.MemoryCopy((void*)&result, (void*)bufferPtr, sizeof(SwiftString.Buffer), sizeof(SwiftString.Buffer));
+                *(SwiftString.Buffer*)bufferPtr = result;
                 _payload = new SwiftHandle<SwiftString>((IntPtr)bufferPtr);
             }
         }
@@ -170,7 +171,7 @@ public class SwiftString : IDisposable, ISwiftObject
         {
             ToStringCallbackContext callbackContext;
             callbackContext._length = length;
-            PInvoke_WithUnsafeBytes(&Callback, (IntPtr)(void*)&callbackContext, contiguousArray, elementType, resultType);
+            PInvoke_WithUnsafeBytes(&Callback, &callbackContext, contiguousArray, elementType, resultType);
             if (_success)
                 _payload.DangerousRelease();
             return callbackContext._returnString!;
@@ -201,12 +202,12 @@ public class SwiftString : IDisposable, ISwiftObject
     // https://developer.apple.com/documentation/swift/string/utf8cstring
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSS11utf8CStrings15ContiguousArrayVys4Int8VGvg")]
-    public static unsafe extern IntPtr PInvoke_GetUtf8ContiguousArray(SwiftString.Buffer str);
+    public static extern IntPtr PInvoke_GetUtf8ContiguousArray(SwiftString.Buffer str);
 
     // https://developer.apple.com/documentation/swift/contiguousarray/withunsafebytes(_:)
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$ss15ContiguousArrayV15withUnsafeBytesyqd__qd__SWKXEKlF")]
-    public static extern unsafe IntPtr PInvoke_WithUnsafeBytes(delegate* unmanaged[Swift]<byte*, SwiftSelf, IntPtr> callback, IntPtr context, IntPtr contiguousArray, TypeMetadata elementType, TypeMetadata resultType);
+    public static extern unsafe IntPtr PInvoke_WithUnsafeBytes(delegate* unmanaged[Swift]<byte*, SwiftSelf, IntPtr> callback, void* context, IntPtr contiguousArray, TypeMetadata elementType, TypeMetadata resultType);
 
     private struct ToStringCallbackContext
     {

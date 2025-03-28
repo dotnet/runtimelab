@@ -23,6 +23,7 @@ public interface ISwiftContiguousBytes { }
 
 /// <summary>
 /// Represents Foundation.Data type.
+/// https://developer.apple.com/documentation/foundation/data
 /// </summary>
 public struct Data : ISwiftObject
 {
@@ -48,9 +49,9 @@ public struct Data : ISwiftObject
 
     [UnmanagedCallConv(CallConvs = [typeof(CallConvSwift)])]
     [DllImport(KnownLibraries.SwiftFoundation, EntryPoint = "$s10Foundation4DataVMa")]
-    public static unsafe extern TypeMetadata PInvoke_getMetadata();
+    public static extern TypeMetadata PInvoke_getMetadata();
 
-    static unsafe ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
+    static ISwiftObject ISwiftObject.NewFromPayload(IntPtr handle)
     {
         return new Data(handle);
     }
@@ -64,7 +65,7 @@ public struct Data : ISwiftObject
             fixed (void* _payloadPtr = &this)
             fixed (void* swiftDest = swiftDestSpan)
             {
-                metadata.ValueWitnessTable->InitializeWithCopy((void*)swiftDest, (void*)_payloadPtr, metadata);
+                metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payloadPtr, metadata);
             }
         }
     }
