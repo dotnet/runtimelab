@@ -804,7 +804,10 @@ namespace BindingsGeneration
         }
 
         /// <summary>
-        /// Emits safe handle add reference.
+        /// Emits the SafeHandle add reference.
+        /// Frozen structs are passed as lowered buffers, so explicit retain is needed.
+        /// Non-frozen structs are passed as SafeHandle, so reference counting is managed automatically.
+        /// Generics are copied prior to the call via MarshalToSwift, no ref counting is needed on a copy. InitWithCopy is called to create a copy.
         /// </summary>
         private void EmitSafeHandleAddRef(CSharpWriter csWriter)
         {
@@ -823,11 +826,6 @@ namespace BindingsGeneration
 
             foreach (var argumentDecl in _env.MethodDecl.CSSignature.Skip(1).Where(a => !a.IsGeneric))
             {
-                // GENERIC RETAIN
-                // Generic arguments are copied to the stack prior to the call via MarshalToSwift, no SafeHandle ref counting is needed
-
-                // FROZEN STRUCT RETAIN
-                // Retain the SwiftHandle payload
                 TypeRecord typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(argumentDecl.SwiftTypeSpec);
                 if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
                 {
@@ -835,14 +833,14 @@ namespace BindingsGeneration
                     csWriter.WriteLine($"{argumentDecl.Name}.Payload.DangerousAddRef(ref success{argumentDecl.Name});");
                 }
 
-                // NON-FROZEN STRUCT RETAIN
-                // Non-frozen structs are represented as C# classes and SwiftHandle is passed across the PInvoke boundary
-                // Reference counting is managed automatically by the runtime
             }
         }
 
         /// <summary>
-        /// Emits swift handle release.
+        /// Emits the SafeHandle release.
+        /// Frozen structs are passed as lowered buffers, so explicit release is needed.
+        /// Non-frozen structs are passed as SafeHandle, so reference counting is managed automatically.
+        /// Generics are copied prior to the call via MarshalToSwift, no ref counting is needed on a copy; Destroy is called on the copy.
         /// </summary>
         private void EmitSafeHandleRelease(CSharpWriter csWriter)
         {
@@ -861,8 +859,6 @@ namespace BindingsGeneration
 
             foreach (var argumentDecl in _env.MethodDecl.CSSignature.Skip(1))
             {
-                // GENERIC RELEASE
-                // Generic arguments are copied to the stack prior to the call via MarshalToSwift, no SafeHandle ref counting is needed
                 if (argumentDecl.IsGeneric)
                 {
                     var csTypeParamName = _env.GenericTypeMapping[argumentDecl.SwiftTypeSpec.ToString()].TypeParameter;
@@ -872,18 +868,12 @@ namespace BindingsGeneration
                     continue;
                 }
 
-                // FROZEN STRUCT RELEASE
-                // Release the SwiftHandle payload
                 TypeRecord typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(argumentDecl.SwiftTypeSpec);
                 if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
                 {
                     csWriter.WriteLine($"if (success{argumentDecl.Name})");
                     csWriter.WriteLine($"   {argumentDecl.Name}.Payload.DangerousRelease();");
                 }
-
-                // NON-FROZEN STRUCT RELEASE
-                // Non-frozen structs are represented as C# classes and SwiftHandle is passed across the PInvoke boundary
-                // Reference counting is managed automatically by the runtime
             }
         }
 

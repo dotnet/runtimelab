@@ -508,8 +508,6 @@ namespace BindingsGeneration
             TypeRecord typeRecord = _typeDatabase.GetTypeRecordOrThrow(_structDecl.SwiftTypeName);
             if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
             {
-                // GENERIC RETAIN
-                // Generic arguments are copied to the stack prior to the call via MarshalToSwift, no SwiftHandle ref counting is needed
                 var text = $$"""
                 unsafe void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
                 {
@@ -517,7 +515,7 @@ namespace BindingsGeneration
                     Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
                     fixed (void* swiftDest = swiftDestSpan)
                     {
-                        // Ensure the payload is valid before making copy
+                        // Ensure that the instance is valid before making copy
                         bool _success = false;
                         _payload.DangerousAddRef(ref _success);
                         metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, _payload, metadata);
@@ -555,8 +553,6 @@ namespace BindingsGeneration
         /// </summary>
         private void WriteMarshalToSwiftNonFrozenStruct()
         {
-            // GENERIC RETAIN
-            // Generic arguments are copied to the stack prior to the call via MarshalToSwift, no SwiftHandle ref counting is needed
             var text = $$"""
             unsafe void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
             {
@@ -564,7 +560,7 @@ namespace BindingsGeneration
                 Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
                 fixed (void* swiftDest = swiftDestSpan)
                 {
-                    // Ensure the payload is valid before making copy
+                    // Ensure that the instance is valid before making copy
                     bool _success = false;
                     _payload.DangerousAddRef(ref _success);
                     metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);

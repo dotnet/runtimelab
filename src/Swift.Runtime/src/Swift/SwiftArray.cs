@@ -164,7 +164,8 @@ public class SwiftArray<Element> : ISwiftObject
     {
         bool _success = false;
         _payload.DangerousAddRef(ref _success);
-        try{
+        try
+        {
             var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
             byte* payload = stackalloc byte[(int)_elementSize];
             Span<byte> span = new Span<byte>(payload, (int)_elementSize);
@@ -205,7 +206,8 @@ public class SwiftArray<Element> : ISwiftObject
     {
         bool _success = false;
         _payload.DangerousAddRef(ref _success);
-        try{
+        try
+        {
             var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
             SwiftArrayPInvokes.RemoveAll(1, metadata, new SwiftSelf(_payload));
         }
@@ -225,7 +227,8 @@ public class SwiftArray<Element> : ISwiftObject
         {
             bool _success = false;
             _payload.DangerousAddRef(ref _success);
-            try{
+            try
+            {
                 byte* payload = stackalloc byte[(int)_elementSize];
                 SwiftArrayPInvokes.Get(new SwiftIndirectResult(payload), (nint)index, PayloadBuffer, ElementTypeMetadata);
                 return SwiftMarshal.MarshalFromSwift<Element>((IntPtr)payload);

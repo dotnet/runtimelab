@@ -152,7 +152,7 @@ public class SwiftString : ISwiftObject
 
             var contiguousArray = PInvoke_GetUtf8ContiguousArray(PayloadBuffer);
 
-    #pragma warning disable CS8500
+#pragma warning disable CS8500
             unsafe
             {
                 ToStringCallbackContext callbackContext;
@@ -168,7 +168,7 @@ public class SwiftString : ISwiftObject
                     return default;
                 }
             }
-    #pragma warning restore CS8500
+#pragma warning restore CS8500
         }
         finally
         {
