@@ -97,7 +97,7 @@ namespace BindingsGeneration
             }
             if (isProjectedAsClass)
             {
-                csWriter.WriteLine($"public unsafe struct TypeBuffer {{");
+                csWriter.WriteLine($"public unsafe struct Buffer {{");
             }
             else
             {
@@ -137,7 +137,7 @@ namespace BindingsGeneration
                 csWriter.Indent -= 2;
                 csWriter.WriteLine("}");
                 csWriter.WriteLine();
-                csWriter.WriteLine("public unsafe TypeBuffer Buffer => Marshal.PtrToStructure<TypeBuffer>(_payload.Handle);");
+                csWriter.WriteLine($"public unsafe {structDecl.Name}.Buffer PayloadBuffer => *({structDecl.Name}.Buffer*)(_payload.Handle);");
                 csWriter.WriteLine();
 
                 WriteDisposeMethod(csWriter, structDecl);
@@ -542,8 +542,8 @@ namespace BindingsGeneration
 
                 unsafe {{_structDecl.Name}}(IntPtr handle)
                 {
-                    IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(TypeBuffer));
-                    System.Buffer.MemoryCopy((void*)handle, (void*)bufferPtr, sizeof(TypeBuffer), sizeof(TypeBuffer));
+                    IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof({{_structDecl.Name}}.Buffer));
+                    System.Buffer.MemoryCopy((void*)handle, (void*)bufferPtr, sizeof({{_structDecl.Name}}.Buffer), sizeof({{_structDecl.Name}}.Buffer));
 
                     _payload = new SwiftHandle<{{_structDecl.Name}}>(bufferPtr);
                 }

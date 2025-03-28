@@ -32,7 +32,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
 
     public SwiftHandle<SwiftSet<Element>> Payload => _payload;
 
-    public IntPtr Buffer => Marshal.PtrToStructure<IntPtr>(_payload.Handle);
+    public unsafe IntPtr PayloadBuffer => *(IntPtr*)_payload.Handle;
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -152,7 +152,7 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
             bool _success = false;
             _payload.DangerousAddRef(ref _success);
             var witnessTable = ProtocolWitnessTable.GetOrThrow<Element, ISwiftHashable>();
-            int result = (int)SwiftSetPInvokes.Count(this.Buffer, ElementTypeMetadata, witnessTable);
+            int result = (int)SwiftSetPInvokes.Count(PayloadBuffer, ElementTypeMetadata, witnessTable);
             if (_success)
                 _payload.DangerousRelease();
             return result;

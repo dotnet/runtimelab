@@ -32,7 +32,7 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
 
     public SwiftHandle<SwiftArray<Element>> Payload => _payload;
 
-    public IntPtr Buffer => Marshal.PtrToStructure<IntPtr>(_payload.Handle);
+    public unsafe IntPtr PayloadBuffer => *(IntPtr*)_payload.Handle;
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -148,7 +148,7 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         {
             bool _success = false;
             _payload.DangerousAddRef(ref _success);
-            int result = (int)SwiftArrayPInvokes.Count(this.Buffer, ElementTypeMetadata);
+            int result = (int)SwiftArrayPInvokes.Count(PayloadBuffer, ElementTypeMetadata);
             if (_success)
                 _payload.DangerousRelease();
 
@@ -225,7 +225,7 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
             bool _success = false;
             _payload.DangerousAddRef(ref _success);
             byte* payload = stackalloc byte[(int)ElementSize];
-            SwiftArrayPInvokes.Get(new SwiftIndirectResult(payload), (nint)index, this.Buffer, ElementTypeMetadata);
+            SwiftArrayPInvokes.Get(new SwiftIndirectResult(payload), (nint)index, PayloadBuffer, ElementTypeMetadata);
             if (_success)
                 _payload.DangerousRelease();
             return SwiftMarshal.MarshalFromSwift<Element>((IntPtr)payload);

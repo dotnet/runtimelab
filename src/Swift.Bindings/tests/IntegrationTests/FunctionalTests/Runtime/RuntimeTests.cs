@@ -91,7 +91,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(3, Bindings.RuntimeTests.sumArray(array));
 
             // Check the initial count
-            Assert.Equal(1, Arc.RetainCount(array.Buffer));
+            Assert.Equal(1, Arc.RetainCount(array.PayloadBuffer));
 
             var arrayCopy = Bindings.RuntimeTests.passThroughArray(array);
             Assert.Equal(3, arrayCopy.Count);
@@ -103,11 +103,11 @@ namespace BindingsGeneration.FunctionalTests
             // Check the references are not the same
             Assert.NotEqual(array.Payload.Handle, arrayCopy.Payload.Handle);
             // Check the payloads are the same
-            Assert.Equal(array.Buffer, arrayCopy.Buffer);
+            Assert.Equal(array.PayloadBuffer, arrayCopy.PayloadBuffer);
 
             // Check the count after the copy
-            Assert.Equal(2, Arc.RetainCount(array.Buffer));
-            Assert.Equal(2, Arc.RetainCount(arrayCopy.Buffer));
+            Assert.Equal(2, Arc.RetainCount(array.PayloadBuffer));
+            Assert.Equal(2, Arc.RetainCount(arrayCopy.PayloadBuffer));
 
             Assert.False(arrayCopy.Payload.IsClosed);
             Assert.False(arrayCopy.Payload.IsInvalid);
@@ -121,7 +121,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.False(array.Payload.IsClosed);
             Assert.False(array.Payload.IsInvalid);
             // Check the count after the copy is disposed
-            Assert.Equal(1, Arc.RetainCount(array.Buffer));
+            Assert.Equal(1, Arc.RetainCount(array.PayloadBuffer));
         }
 
         [Fact]
@@ -135,7 +135,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(3, Bindings.RuntimeTests.sumArray(array));
 
             // Check the initial count
-            Assert.Equal(1, Arc.RetainCount(array.Buffer));
+            Assert.Equal(1, Arc.RetainCount(array.PayloadBuffer));
 
             var arrayCopy = Bindings.RuntimeTests.passThroughArray(array);
             Assert.Equal(3, arrayCopy.Count);
@@ -145,19 +145,19 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(3, Bindings.RuntimeTests.sumArray(arrayCopy));
 
             // Check the count after the copy
-            Assert.Equal(2, Arc.RetainCount(array.Buffer));
-            Assert.Equal(2, Arc.RetainCount(arrayCopy.Buffer));
+            Assert.Equal(2, Arc.RetainCount(array.PayloadBuffer));
+            Assert.Equal(2, Arc.RetainCount(arrayCopy.PayloadBuffer));
 
             // Check the payloads are the same
-            Assert.Equal(array.Buffer, arrayCopy.Buffer);
+            Assert.Equal(array.PayloadBuffer, arrayCopy.PayloadBuffer);
 
             array[0] = 9;
             array[1] = 8;
             array[2] = 7;
 
             // Check the count after the change
-            Assert.Equal(1, Arc.RetainCount(array.Buffer));
-            Assert.Equal(1, Arc.RetainCount(arrayCopy.Buffer));
+            Assert.Equal(1, Arc.RetainCount(array.PayloadBuffer));
+            Assert.Equal(1, Arc.RetainCount(arrayCopy.PayloadBuffer));
 
             var arrayCopyCopy = Bindings.RuntimeTests.passThroughArray(arrayCopy);
             Assert.Equal(arrayCopy.Count, arrayCopyCopy.Count);
@@ -166,9 +166,9 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(arrayCopy[2], arrayCopyCopy[2]);
 
             // Check the count after the copy
-            Assert.Equal(1, Arc.RetainCount(array.Buffer));
-            Assert.Equal(2, Arc.RetainCount(arrayCopy.Buffer));
-            Assert.Equal(2, Arc.RetainCount(arrayCopyCopy.Buffer));
+            Assert.Equal(1, Arc.RetainCount(array.PayloadBuffer));
+            Assert.Equal(2, Arc.RetainCount(arrayCopy.PayloadBuffer));
+            Assert.Equal(2, Arc.RetainCount(arrayCopyCopy.PayloadBuffer));
 
             arrayCopy.Dispose();
 
@@ -177,8 +177,8 @@ namespace BindingsGeneration.FunctionalTests
             Assert.False(arrayCopyCopy.Payload.IsClosed);
 
             // // Check the count after the copy is disposed
-            Assert.Equal(1, Arc.RetainCount(array.Buffer));
-            Assert.Equal(1, Arc.RetainCount(arrayCopyCopy.Buffer));
+            Assert.Equal(1, Arc.RetainCount(array.PayloadBuffer));
+            Assert.Equal(1, Arc.RetainCount(arrayCopyCopy.PayloadBuffer));
         }
 
         [Fact]
@@ -186,7 +186,7 @@ namespace BindingsGeneration.FunctionalTests
         {
             SwiftArray<Int32> vtype = new SwiftArray<Int32>();
             vtype.Append(42);
-            Assert.Equal(1, Arc.RetainCount(vtype.Buffer));
+            Assert.Equal(1, Arc.RetainCount(vtype.PayloadBuffer));
 
             var metadata = SwiftObjectHelper<SwiftArray<Int32>>.GetTypeMetadata();
             byte* payloadPtr = stackalloc byte[(int)metadata.Size];
@@ -194,15 +194,15 @@ namespace BindingsGeneration.FunctionalTests
 
             // Marshal the object to Swift
             SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
-            Assert.Equal(2, Arc.RetainCount(vtype.Buffer));
+            Assert.Equal(2, Arc.RetainCount(vtype.PayloadBuffer));
 
             // Marshal back from Swift
             var copy = SwiftMarshal.MarshalFromSwift<SwiftArray<Int32>>((IntPtr)payloadPtr);
-            Assert.Equal(2, Arc.RetainCount(copy.Buffer));
+            Assert.Equal(2, Arc.RetainCount(copy.PayloadBuffer));
 
             // Dispose the copy and verify retain count
             copy.Dispose();
-            Assert.Equal(1, Arc.RetainCount(vtype.Buffer));
+            Assert.Equal(1, Arc.RetainCount(vtype.PayloadBuffer));
         }
 
         [Fact]
@@ -309,7 +309,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(3, SumSet(set));
 
             // Check the initial count
-            Assert.Equal(1, Arc.RetainCount(set.Buffer));
+            Assert.Equal(1, Arc.RetainCount(set.PayloadBuffer));
 
             var setCopy = PassThroughSet(set);
             Assert.Equal(3, setCopy.Count);
@@ -318,15 +318,15 @@ namespace BindingsGeneration.FunctionalTests
             // Check the references are not the same
             Assert.NotEqual(set.Payload.Handle, setCopy.Payload.Handle);
             // Check the payloads are the same
-            Assert.Equal(set.Buffer, setCopy.Buffer);
+            Assert.Equal(set.PayloadBuffer, setCopy.PayloadBuffer);
 
             // Check the count after the copy
-            Assert.Equal(2, Arc.RetainCount(set.Buffer));
-            Assert.Equal(2, Arc.RetainCount(setCopy.Buffer));
+            Assert.Equal(2, Arc.RetainCount(set.PayloadBuffer));
+            Assert.Equal(2, Arc.RetainCount(setCopy.PayloadBuffer));
 
             setCopy.Dispose();
             // Check the count after the copy is disposed
-            Assert.Equal(1, Arc.RetainCount(set.Buffer));
+            Assert.Equal(1, Arc.RetainCount(set.PayloadBuffer));
         }
 
         // TODO: Remove helper methods when https://github.com/dotnet/runtimelab/issues/2970
@@ -338,13 +338,13 @@ namespace BindingsGeneration.FunctionalTests
 
         private static unsafe int SumSet(SwiftSet<SwiftIntMock> set)
         {
-            IntPtr variant = set.Buffer;
+            IntPtr variant = set.PayloadBuffer;
             return PInvoke_SumSet(variant);
         }
 
         private static unsafe SwiftSet<SwiftIntMock> PassThroughSet(SwiftSet<SwiftIntMock> set)
         {
-            IntPtr variant = set.Buffer;
+            IntPtr variant = set.PayloadBuffer;
             variant = PInvoke_PassThroughSet(variant);
             return SwiftMarshal.MarshalFromSwift<SwiftSet<SwiftIntMock>>(new IntPtr(&variant));
         }
@@ -365,7 +365,7 @@ namespace BindingsGeneration.FunctionalTests
         public unsafe void TestSwiftMarshalSet()
         {
             SwiftSet<SwiftIntMock> vtype = GetSet(1);
-            Assert.Equal(1, Arc.RetainCount(vtype.Buffer));
+            Assert.Equal(1, Arc.RetainCount(vtype.PayloadBuffer));
 
             var metadata = SwiftObjectHelper<SwiftSet<SwiftIntMock>>.GetTypeMetadata();
             byte* payloadPtr = stackalloc byte[(int)metadata.Size];
@@ -373,15 +373,15 @@ namespace BindingsGeneration.FunctionalTests
 
             // Marshal the object to Swift
             SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
-            Assert.Equal(2, Arc.RetainCount(vtype.Buffer));
+            Assert.Equal(2, Arc.RetainCount(vtype.PayloadBuffer));
 
             // Marshal back from Swift
             var copy = SwiftMarshal.MarshalFromSwift<SwiftSet<SwiftIntMock>>((IntPtr)payloadPtr);
-            Assert.Equal(2, Arc.RetainCount(copy.Buffer));
+            Assert.Equal(2, Arc.RetainCount(copy.PayloadBuffer));
 
             // Dispose the copy and verify retain count
             copy.Dispose();
-            Assert.Equal(1, Arc.RetainCount(vtype.Buffer));
+            Assert.Equal(1, Arc.RetainCount(vtype.PayloadBuffer));
         }
 
         [Fact]

@@ -639,7 +639,7 @@ namespace BindingsGeneration.FunctionalTests
             // Dispose the frozenRequiresMemoryManagement
             Assert.False(frozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.False(frozenRequiresMemoryManagement.Payload.IsInvalid);
-            var handle = frozenRequiresMemoryManagement.Buffer;
+            var handle = frozenRequiresMemoryManagement.PayloadBuffer;
             frozenRequiresMemoryManagement.Dispose();
             Assert.True(frozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.True(frozenRequiresMemoryManagement.Payload.IsInvalid);
@@ -659,7 +659,7 @@ namespace BindingsGeneration.FunctionalTests
             // Dispose the NestedFrozenRequiresMemoryManagement
             Assert.False(nestedFrozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.False(nestedFrozenRequiresMemoryManagement.Payload.IsInvalid);
-            var nestedHandle = nestedFrozenRequiresMemoryManagement.Buffer;
+            var nestedHandle = nestedFrozenRequiresMemoryManagement.PayloadBuffer;
             nestedFrozenRequiresMemoryManagement.Dispose();
             Assert.True(nestedFrozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.True(nestedFrozenRequiresMemoryManagement.Payload.IsInvalid);

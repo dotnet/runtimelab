@@ -171,7 +171,7 @@ namespace BindingsGeneration
             return parameter switch
             {
                 { Type: "SafeHandle" } => $"{parameter.Name}.Payload",
-                { Type: var type } when type.EndsWith(".TypeBuffer") => $"{parameter.Name}.Buffer",
+                { Type: var type } when type.EndsWith(".Buffer") => $"{parameter.Name}.PayloadBuffer",
                 { Type: "AsyncCallback" } => $"(IntPtr){parameter.Name}",
                 { Type: "AsyncContext" } => "IntPtr.Zero",
                 { Type: "AsyncTask" } => $"GCHandle.ToIntPtr({parameter.Name})",
@@ -327,7 +327,7 @@ namespace BindingsGeneration
             }
 
             if (MarshallingHelpers.RequiresMemoryManagement(returnTypeRecord))
-                SetReturnType(returnTypeRecord.CSharpTypeName.FullyQualifiedName + ".TypeBuffer");
+                SetReturnType(returnTypeRecord.CSharpTypeName.FullyQualifiedName + ".Buffer");
             else
                 SetReturnType(returnTypeRecord.CSharpTypeName.FullyQualifiedName);
         }
@@ -379,7 +379,7 @@ namespace BindingsGeneration
                 }
 
                 if (MarshallingHelpers.RequiresMemoryManagement(argumentTypeRecord))
-                    AddParameter(argumentTypeRecord.CSharpTypeName.FullyQualifiedName + ".TypeBuffer", argument.Name);
+                    AddParameter(argumentTypeRecord.CSharpTypeName.FullyQualifiedName + ".Buffer", argument.Name);
                 else
                     AddParameter(argumentTypeRecord.CSharpTypeName.FullyQualifiedName, argument.Name);
             }
@@ -424,7 +424,7 @@ namespace BindingsGeneration
                 {
                     var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
                     if (MarshallingHelpers.RequiresMemoryManagement(typeRecord))
-                        AddParameter($"SwiftSelf<TypeBuffer>", "self");
+                        AddParameter($"SwiftSelf<Buffer>", "self");
                     else
                         AddParameter($"SwiftSelf<{_env.ParentDecl.Name}>", "self");
                 }
@@ -650,7 +650,7 @@ namespace BindingsGeneration
             {
                 var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
                 if ((typeRecord.Flags & TypeRecordFlags.RequiresMemoryManagement) != 0)
-                    csWriter.WriteLine($"var self = new SwiftSelf<TypeBuffer>(this.Buffer);");
+                    csWriter.WriteLine($"var self = new SwiftSelf<{_env.ParentDecl.Name}.Buffer>(PayloadBuffer);");
                 else
                     csWriter.WriteLine($"var self = new SwiftSelf<{_env.ParentDecl.Name}>(this);");
             }
@@ -787,7 +787,7 @@ namespace BindingsGeneration
                 if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(argumentDecl))
                 {
                     var bufferName = NameProvider.GetBoundGenericBufferName(argumentDecl.Name);
-                    csWriter.WriteLine($"var {bufferName} = {argumentDecl.Name}.Buffer;");
+                    csWriter.WriteLine($"var {bufferName} = {argumentDecl.Name}.PayloadBuffer;");
                 }
             }
         }
@@ -972,8 +972,8 @@ namespace BindingsGeneration
                 {
                     csWriter.WriteLine($@"
                         unsafe {{
-                            IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(TypeBuffer));
-                            System.Buffer.MemoryCopy((void*)&result, (void*)bufferPtr, sizeof(TypeBuffer), sizeof(TypeBuffer));
+                            IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof({_env.ParentDecl.Name}.Buffer));
+                            System.Buffer.MemoryCopy((void*)&result, (void*)bufferPtr, sizeof({_env.ParentDecl.Name}.Buffer), sizeof({_env.ParentDecl.Name}.Buffer));
 
                             _payload = new SwiftHandle<{structDecl.Name}>(bufferPtr);
                         }}");

@@ -21,10 +21,10 @@ public class SwiftString : IDisposable, ISwiftObject
 {
     private static nuint _payloadSize = SwiftObjectHelper<SwiftString>.GetTypeMetadata().Size;
 
-    public struct TypeBuffer
+    public struct Buffer
     {
-        public long _flags;
-        public IntPtr _object;
+        private long _flags;
+        private IntPtr _object;
     }
 
     private SwiftHandle<SwiftString> _payload;
@@ -59,7 +59,7 @@ public class SwiftString : IDisposable, ISwiftObject
 
     public static nuint PayloadSize => _payloadSize;
 
-    public unsafe TypeBuffer Buffer => Marshal.PtrToStructure<TypeBuffer>(_payload.Handle);
+    public unsafe SwiftString.Buffer PayloadBuffer => *(SwiftString.Buffer*)_payload.Handle;
 
     static TypeMetadata ISwiftObject.GetTypeMetadata()
     {
@@ -109,8 +109,8 @@ public class SwiftString : IDisposable, ISwiftObject
     /// </summary>
     unsafe SwiftString(IntPtr handle)
     {
-        IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(TypeBuffer));
-        System.Buffer.MemoryCopy((void*)handle, (void*)bufferPtr, sizeof(TypeBuffer), sizeof(TypeBuffer));
+        IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(SwiftString.Buffer));
+        System.Buffer.MemoryCopy((void*)handle, (void*)bufferPtr, sizeof(SwiftString.Buffer), sizeof(SwiftString.Buffer));
         _payload = new SwiftHandle<SwiftString>(bufferPtr);
     }
 
@@ -125,8 +125,8 @@ public class SwiftString : IDisposable, ISwiftObject
             fixed (byte* utf8BytesPtr = utf8Bytes)
             {
                 var result = PInvoke_Create(utf8BytesPtr, utf8Bytes.Length, 1);
-                IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(TypeBuffer));
-                System.Buffer.MemoryCopy((void*)&result, (void*)bufferPtr, sizeof(TypeBuffer), sizeof(TypeBuffer));
+                IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(SwiftString.Buffer));
+                System.Buffer.MemoryCopy((void*)&result, (void*)bufferPtr, sizeof(SwiftString.Buffer), sizeof(SwiftString.Buffer));
                 _payload = new SwiftHandle<SwiftString>((IntPtr)bufferPtr);
             }
         }
@@ -141,7 +141,7 @@ public class SwiftString : IDisposable, ISwiftObject
         {
             bool _success = false;
             _payload.DangerousAddRef(ref _success);
-            int result = (int)PInvoke_GetLength(this.Buffer);
+            int result = (int)PInvoke_GetLength(PayloadBuffer);
             if (_success)
                 _payload.DangerousRelease();
             return result;
@@ -163,7 +163,7 @@ public class SwiftString : IDisposable, ISwiftObject
         bool _success = false;
         _payload.DangerousAddRef(ref _success);
 
-        var contiguousArray = PInvoke_GetUtf8ContiguousArray(this.Buffer);
+        var contiguousArray = PInvoke_GetUtf8ContiguousArray(PayloadBuffer);
 
 #pragma warning disable CS8500
         unsafe
@@ -192,16 +192,16 @@ public class SwiftString : IDisposable, ISwiftObject
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, CharSet = CharSet.Unicode, EntryPoint = "$sSS21_builtinStringLiteral17utf8CodeUnitCount7isASCIISSBp_BwBi1_tcfC")]
-    public static unsafe extern TypeBuffer PInvoke_Create(byte* str, long len, byte flag);
+    public static unsafe extern SwiftString.Buffer PInvoke_Create(byte* str, long len, byte flag);
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSS5countSivg")]
-    public static extern long PInvoke_GetLength(TypeBuffer str);
+    public static extern long PInvoke_GetLength(SwiftString.Buffer str);
 
     // https://developer.apple.com/documentation/swift/string/utf8cstring
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSS11utf8CStrings15ContiguousArrayVys4Int8VGvg")]
-    public static unsafe extern IntPtr PInvoke_GetUtf8ContiguousArray(TypeBuffer str);
+    public static unsafe extern IntPtr PInvoke_GetUtf8ContiguousArray(SwiftString.Buffer str);
 
     // https://developer.apple.com/documentation/swift/contiguousarray/withunsafebytes(_:)
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
