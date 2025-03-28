@@ -797,7 +797,6 @@ namespace BindingsGeneration
         /// </summary>
         private void EmitSafeHandleAddRef(CSharpWriter csWriter)
         {
-
             if (_env.MethodDecl.MethodType != MethodType.Static)
             {
                 if (_env.ParentDecl is StructDecl structDecl)
