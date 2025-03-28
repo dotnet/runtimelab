@@ -75,7 +75,6 @@ namespace BindingsGeneration
 
             if (isProjectedAsClass)
             {
-                interfaces.Add(typeof(IDisposable).Name);
                 csWriter.WriteLine($"public class {structDecl.Name} : {string.Join(", ", interfaces)}");
                 csWriter.WriteLine("{");
                 csWriter.Indent++;
@@ -139,9 +138,6 @@ namespace BindingsGeneration
                 csWriter.WriteLine();
                 csWriter.WriteLine($"public unsafe {structDecl.Name}.Buffer PayloadBuffer => *({structDecl.Name}.Buffer*)(_payload.Handle);");
                 csWriter.WriteLine();
-
-                WriteDisposeMethod(csWriter, structDecl);
-                WriteFinalizer(csWriter, structDecl);
             }
 
             foreach (PropertyDecl propertyDecl in structDecl.Properties)
@@ -167,47 +163,6 @@ namespace BindingsGeneration
 
             csWriter.Indent--;
             csWriter.WriteLine("}");
-        }
-
-        /// <summary>
-        /// Writes the Dispose method for the class.
-        /// </summary>
-        private static void WriteDisposeMethod(CSharpWriter csWriter, StructDecl structDecl)
-        {
-            var text = $$"""
-            public void Dispose()
-            {
-                Dispose(true);
-                GC.SuppressFinalize(this);
-            }
-
-            protected virtual void Dispose(bool disposing)
-            {
-                if (!_payload.IsInvalid)
-                {
-                    _payload.Dispose();
-                }
-            }
-            """;
-
-            csWriter.WriteLines(text);
-            csWriter.WriteLine();
-        }
-
-        /// <summary>
-        /// Writes the finalizer for the class.
-        /// </summary>
-        private static void WriteFinalizer(CSharpWriter csWriter, StructDecl structDecl)
-        {
-            var text = $$"""
-            ~{{structDecl.Name}}()
-            {
-                Dispose(disposing: false);
-            }
-            """;
-
-            csWriter.WriteLines(text);
-            csWriter.WriteLine();
         }
     }
 
@@ -267,7 +222,6 @@ namespace BindingsGeneration
 
             var interfaces = new List<string> {
                 typeof(ISwiftObject).Name,
-                typeof(IDisposable).Name
             };
             if (implementsEquatable)
             {
@@ -289,8 +243,6 @@ namespace BindingsGeneration
             }
 
             WritePrivateFields(csWriter, structDecl);
-            WriteDisposeMethod(csWriter, structDecl);
-            WriteFinalizer(csWriter, structDecl);
             WritePayloadSize(csWriter);
             WritePayload(csWriter, structDecl);
 
@@ -315,47 +267,6 @@ namespace BindingsGeneration
         {
             csWriter.WriteLine($"static nuint _payloadSize = SwiftObjectHelper<{structDecl.Name}>.GetTypeMetadata().Size;");
             csWriter.WriteLine($"SwiftHandle<{structDecl.Name}> _payload = SwiftHandle<{structDecl.Name}>.Zero;");
-            csWriter.WriteLine();
-        }
-
-        /// <summary>
-        /// Writes the Dispose method for the class.
-        /// </summary>
-        private static void WriteDisposeMethod(CSharpWriter csWriter, StructDecl structDecl)
-        {
-            var text = $$"""
-            public void Dispose()
-            {
-                Dispose(true);
-                GC.SuppressFinalize(this);
-            }
-
-            protected virtual void Dispose(bool disposing)
-            {
-                if (!_payload.IsInvalid)
-                {
-                    _payload.Dispose();
-                }
-            }
-            """;
-
-            csWriter.WriteLines(text);
-            csWriter.WriteLine();
-        }
-
-        /// <summary>
-        /// Writes the finalizer for the class.
-        /// </summary>
-        private static void WriteFinalizer(CSharpWriter csWriter, StructDecl structDecl)
-        {
-            var text = $$"""
-            ~{{structDecl.Name}}()
-            {
-                Dispose(disposing: false);
-            }
-            """;
-
-            csWriter.WriteLines(text);
             csWriter.WriteLine();
         }
 

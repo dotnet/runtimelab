@@ -137,7 +137,7 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
         Assert.Equal(2, Arc.RetainCount(array.PayloadBuffer));
 
         var handle = array.PayloadBuffer;
-        array.Dispose();
+        array.Payload.Dispose();
         Assert.Equal(1, Arc.RetainCount(handle));
         Arc.Release(handle);
     }

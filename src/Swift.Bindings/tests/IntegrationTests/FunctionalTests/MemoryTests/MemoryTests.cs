@@ -640,7 +640,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.False(frozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.False(frozenRequiresMemoryManagement.Payload.IsInvalid);
             var handle = frozenRequiresMemoryManagement.PayloadBuffer;
-            frozenRequiresMemoryManagement.Dispose();
+            frozenRequiresMemoryManagement.Payload.Dispose();
             Assert.True(frozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.True(frozenRequiresMemoryManagement.Payload.IsInvalid);
             Assert.Equal(1, Arc.RetainCount(new IntPtr(&handle).At(0)));
@@ -660,7 +660,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.False(nestedFrozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.False(nestedFrozenRequiresMemoryManagement.Payload.IsInvalid);
             var nestedHandle = nestedFrozenRequiresMemoryManagement.PayloadBuffer;
-            nestedFrozenRequiresMemoryManagement.Dispose();
+            nestedFrozenRequiresMemoryManagement.Payload.Dispose();
             Assert.True(nestedFrozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.True(nestedFrozenRequiresMemoryManagement.Payload.IsInvalid);
             Assert.Equal(1, Arc.RetainCount(new IntPtr(&nestedHandle).At(0)));
@@ -681,7 +681,7 @@ namespace BindingsGeneration.FunctionalTests
             // Memory is allocated from C# side and released in Dispose
             // Take the payload to check the retain count
             var nonFrozenHandle = nonfrozenRequiresMemoryManagement.Payload.Handle.At(0);
-            nonfrozenRequiresMemoryManagement.Dispose();
+            nonfrozenRequiresMemoryManagement.Payload.Dispose();
             Assert.True(nonfrozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.True(nonfrozenRequiresMemoryManagement.Payload.IsInvalid);
             // Check the count after destroy
@@ -708,7 +708,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle.At(0)));
 
             // Dispose the copy and verify retain count
-            copy.Dispose();
+            copy.Payload.Dispose();
             Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(0)));
         }
 
@@ -731,7 +731,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle.At(0)));
 
             // Dispose the copy and verify retain count
-            copy.Dispose();
+            copy.Payload.Dispose();
             Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(0)));
         }
 
@@ -754,7 +754,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle.At(0)));
 
             // Dispose the copy and verify retain count
-            copy.Dispose();
+            copy.Payload.Dispose();
             Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(0)));
         }
 
@@ -776,7 +776,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(vtype.Payload.Handle.At(1)));
             Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle.At(1)));
 
-            copy.Dispose();
+            copy.Payload.Dispose();
 
             Assert.True(copy.Payload.IsClosed);
             Assert.True(copy.Payload.IsInvalid);
@@ -803,7 +803,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle.At(1)));
 
             // Dispose the copy and verify retain count
-            copy.Dispose();
+            copy.Payload.Dispose();
             Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(1)));
         }
 
@@ -898,8 +898,8 @@ namespace BindingsGeneration.FunctionalTests
                     {
                         var copy = Bindings.MemoryTests.PassThroughFrozenStruct(resource);
                         var genericCopy = Bindings.MemoryTests.PassThroughGeneric<FrozenStructRequiresMemoryManagement>(resource);
-                        copy.Dispose();
-                        genericCopy.Dispose();
+                        copy.Payload.Dispose();
+                        genericCopy.Payload.Dispose();
                     }
                     catch (ObjectDisposedException ex)
                     {
@@ -911,7 +911,7 @@ namespace BindingsGeneration.FunctionalTests
                 var disposeTask = Task.Run(() =>
                 {
                     barrier.SignalAndWait();
-                    resource.Dispose();
+                    resource.Payload.Dispose();
                 });
 
                 await Task.WhenAll(methodTask, getterTask, passThroughTask, disposeTask);
@@ -962,8 +962,8 @@ namespace BindingsGeneration.FunctionalTests
                     {
                         var copy = Bindings.MemoryTests.PassThroughNonFrozenStruct(resource);
                         var genericCopy = Bindings.MemoryTests.PassThroughGeneric<NonFrozenStructRequiresMemoryManagement>(resource);
-                        copy.Dispose();
-                        genericCopy.Dispose();
+                        copy.Payload.Dispose();
+                        genericCopy.Payload.Dispose();
                     }
                     catch (ObjectDisposedException ex)
                     {
@@ -974,7 +974,7 @@ namespace BindingsGeneration.FunctionalTests
                 var disposeTask = Task.Run(() =>
                 {
                     barrier.SignalAndWait();
-                    resource.Dispose();
+                    resource.Payload.Dispose();
                 });
 
                 await Task.WhenAll(methodTask, getterTask, passThroughTask, disposeTask);

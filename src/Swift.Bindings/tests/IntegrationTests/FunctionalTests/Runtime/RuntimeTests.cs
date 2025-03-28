@@ -114,7 +114,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.False(array.Payload.IsClosed);
             Assert.False(array.Payload.IsInvalid);
 
-            arrayCopy.Dispose();
+            arrayCopy.Payload.Dispose();
 
             Assert.True(arrayCopy.Payload.IsClosed);
 
@@ -170,7 +170,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(arrayCopy.PayloadBuffer));
             Assert.Equal(2, Arc.RetainCount(arrayCopyCopy.PayloadBuffer));
 
-            arrayCopy.Dispose();
+            arrayCopy.Payload.Dispose();
 
             Assert.False(array.Payload.IsClosed);
             Assert.True(arrayCopy.Payload.IsClosed);
@@ -201,7 +201,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(copy.PayloadBuffer));
 
             // Dispose the copy and verify retain count
-            copy.Dispose();
+            copy.Payload.Dispose();
             Assert.Equal(1, Arc.RetainCount(vtype.PayloadBuffer));
         }
 
@@ -247,8 +247,8 @@ namespace BindingsGeneration.FunctionalTests
                     {
                         var copy = Bindings.RuntimeTests.passThroughArray(resource);
                         var genericCopy = Bindings.RuntimeTests.passThroughGeneric<SwiftArray<Int32>>(resource);
-                        copy.Dispose();
-                        genericCopy.Dispose();
+                        copy.Payload.Dispose();
+                        genericCopy.Payload.Dispose();
                     }
                     catch (ObjectDisposedException ex)
                     {
@@ -259,7 +259,7 @@ namespace BindingsGeneration.FunctionalTests
                 var disposeTask = Task.Run(() =>
                 {
                     barrier.SignalAndWait();
-                    resource.Dispose();
+                    resource.Payload.Dispose();
                 });
 
                 await Task.WhenAll(methodTask, getterTask, passThroughTask, disposeTask);
@@ -324,7 +324,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(set.PayloadBuffer));
             Assert.Equal(2, Arc.RetainCount(setCopy.PayloadBuffer));
 
-            setCopy.Dispose();
+            setCopy.Payload.Dispose();
             // Check the count after the copy is disposed
             Assert.Equal(1, Arc.RetainCount(set.PayloadBuffer));
         }
@@ -380,7 +380,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(copy.PayloadBuffer));
 
             // Dispose the copy and verify retain count
-            copy.Dispose();
+            copy.Payload.Dispose();
             Assert.Equal(1, Arc.RetainCount(vtype.PayloadBuffer));
         }
 
@@ -408,7 +408,7 @@ namespace BindingsGeneration.FunctionalTests
                 var disposeTask = Task.Run(() =>
                 {
                     barrier.SignalAndWait();
-                    resource.Dispose();
+                    resource.Payload.Dispose();
                 });
 
                 await Task.WhenAll(getterTask, disposeTask);
@@ -480,7 +480,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.False(strCopy.Payload.IsClosed);
             Assert.False(strCopy.Payload.IsInvalid);
 
-            strCopy.Dispose();
+            strCopy.Payload.Dispose();
             Assert.True(strCopy.Payload.IsClosed);
             Assert.True(strCopy.Payload.IsInvalid);
             Assert.False(heapString.Payload.IsClosed);
@@ -509,7 +509,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle.At(1)));
 
             // Dispose the copy and verify retain count
-            copy.Dispose();
+            copy.Payload.Dispose();
             Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(1)));
         }
 
@@ -528,8 +528,8 @@ namespace BindingsGeneration.FunctionalTests
                     {
                         var copy = Bindings.RuntimeTests.passThroughString(resource);
                         var genericCopy = Bindings.RuntimeTests.passThroughGeneric<SwiftString>(resource);
-                        copy.Dispose();
-                        genericCopy.Dispose();
+                        copy.Payload.Dispose();
+                        genericCopy.Payload.Dispose();
                     }
                     catch (ObjectDisposedException ex)
                     {
@@ -540,7 +540,7 @@ namespace BindingsGeneration.FunctionalTests
                 var disposeTask = Task.Run(() =>
                 {
                     barrier.SignalAndWait();
-                    resource.Dispose();
+                    resource.Payload.Dispose();
                 });
 
                 await Task.WhenAll(passThroughTask, disposeTask);

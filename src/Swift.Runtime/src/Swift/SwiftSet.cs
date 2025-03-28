@@ -22,7 +22,7 @@ public interface ISwiftHashable { }
 /// Represents a Swift set.
 /// </summary>
 /// <typeparam name="Element">The element type contained in the set.</typeparam>
-public class SwiftSet<Element> : IDisposable, ISwiftObject
+public class SwiftSet<Element> : ISwiftObject
 {
     static nuint _payloadSize = SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata().Size;
 
@@ -42,28 +42,6 @@ public class SwiftSet<Element> : IDisposable, ISwiftObject
         {
             { typeof(ISwiftCollection), "$sShyxGSlsMc" }
         };
-    }
-
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_payload.IsInvalid)
-        {
-            unsafe
-            {
-                _payload.Dispose();
-            }
-        }
-    }
-
-    ~SwiftSet()
-    {
-        Dispose(disposing: false);
     }
 
     public static nuint PayloadSize => _payloadSize;

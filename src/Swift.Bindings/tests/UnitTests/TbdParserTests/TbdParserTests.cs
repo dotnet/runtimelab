@@ -41,7 +41,7 @@ tbd-version:     4
 targets:         [ x86_64-macos, arm64-macos, arm64e-macos ]
 install-name:    '/System/Library/Frameworks/TestFramework.framework/TestFramework'
 swift-abi-version: 7
-exports:         
+exports:
   - targets:         [ x86_64-macos, arm64-macos, arm64e-macos ]
     symbols:         [ '_$s4Test5ClassCMa', '_$s4Test5ClassCMn', '_$s4Test5ClassCfD' ]
     objc-classes:    [ TestClass1, TestClass2 ]

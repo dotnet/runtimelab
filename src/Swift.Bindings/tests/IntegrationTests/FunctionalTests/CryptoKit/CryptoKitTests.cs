@@ -69,10 +69,6 @@ namespace BindingsGeneration.FunctionalTests
 
                 if (error.Value != null)
                 {
-                    sealedBox.Dispose();
-                    aesGcmNonce.Dispose();
-                    symmetricKey.Dispose();
-
                     throw new CryptographicException();
                 }
 
@@ -119,10 +115,6 @@ namespace BindingsGeneration.FunctionalTests
 
                 if (error.Value != null)
                 {
-                    sealedBox.Dispose();
-                    aesGcmNonce.Dispose();
-                    symmetricKey.Dispose();
-
                     throw new CryptographicException();
                 }
 
@@ -163,9 +155,6 @@ namespace BindingsGeneration.FunctionalTests
 
                 if (error.Value != null)
                 {
-                    chaChaPolyNonce.Dispose();
-                    symmetricKey.Dispose();
-
                     throw new CryptographicException();
                 }
 
@@ -212,9 +201,6 @@ namespace BindingsGeneration.FunctionalTests
 
                 if (error.Value != null)
                 {
-                    chaChaPolyNonce.Dispose();
-                    symmetricKey.Dispose();
-
                     CryptographicOperations.ZeroMemory(plaintext);
                     throw new CryptographicException();
                 }

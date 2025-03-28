@@ -20,23 +20,10 @@ namespace BindingsGeneration.FunctionalTests
         /// <summary>
         /// Represents Nonce in C#.
         /// </summary>
-        public unsafe class Nonce : IDisposable, ISwiftObject
+        public unsafe class Nonce : ISwiftObject
         {
             static nuint _payloadSize = SwiftObjectHelper<Nonce>.GetTypeMetadata().Size;
             SwiftHandle<Nonce> _payload = SwiftHandle<Nonce>.Zero;
-
-            public void Dispose()
-            {
-                if (!_payload.IsInvalid)
-                {
-                    _payload.Dispose();
-                }
-            }
-
-            ~Nonce()
-            {
-                Dispose();
-            }
 
             public static nuint PayloadSize => _payloadSize;
 
@@ -224,23 +211,10 @@ namespace BindingsGeneration.FunctionalTests
         /// <summary>
         /// Represents Nonce in C#.
         /// </summary>
-        public unsafe class Nonce : IDisposable, ISwiftObject
+        public unsafe class Nonce : ISwiftObject
         {
             static nuint _payloadSize = SwiftObjectHelper<Nonce>.GetTypeMetadata().Size;
             SwiftHandle<Nonce> _payload = SwiftHandle<Nonce>.Zero;
-
-            public void Dispose()
-            {
-                if (!_payload.IsInvalid)
-                {
-                    _payload.Dispose();
-                }
-            }
-
-            ~Nonce()
-            {
-                Dispose();
-            }
 
             public static nuint PayloadSize => _payloadSize;
 
@@ -318,23 +292,10 @@ namespace BindingsGeneration.FunctionalTests
         /// <summary>
         /// Represents SealedBox in C#.
         /// </summary>
-        public unsafe class SealedBox : IDisposable, ISwiftObject
+        public unsafe class SealedBox : ISwiftObject
         {
             static nuint _payloadSize = SwiftObjectHelper<SealedBox>.GetTypeMetadata().Size;
             SwiftHandle<SealedBox> _payload = SwiftHandle<SealedBox>.Zero;
-
-            public void Dispose()
-            {
-                if (!_payload.IsInvalid)
-                {
-                    _payload.Dispose();
-                }
-            }
-
-            ~SealedBox()
-            {
-                Dispose();
-            }
 
             public static nuint PayloadSize => _payloadSize;
 
@@ -498,23 +459,11 @@ namespace BindingsGeneration.FunctionalTests
     /// <summary>
     /// Represents SymmetricKey in C#.
     /// </summary>
-    public unsafe class SymmetricKey : IDisposable, ISwiftObject
+    public unsafe class SymmetricKey : ISwiftObject
     {
         static nuint _payloadSize = SwiftObjectHelper<SymmetricKey>.GetTypeMetadata().Size;
+
         SwiftHandle<SymmetricKey> _payload = SwiftHandle<SymmetricKey>.Zero;
-
-        public void Dispose()
-        {
-            if (!_payload.IsInvalid)
-            {
-                _payload.Dispose();
-            }
-        }
-
-        ~SymmetricKey()
-        {
-            Dispose();
-        }
 
         public static nuint PayloadSize => _payloadSize;
 

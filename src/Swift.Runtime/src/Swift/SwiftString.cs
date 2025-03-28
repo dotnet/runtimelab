@@ -17,7 +17,7 @@ namespace Swift;
 /// <summary>
 /// Represents a Swift string with Foundation.Data payload.
 /// </summary>
-public class SwiftString : IDisposable, ISwiftObject
+public class SwiftString : ISwiftObject
 {
     private static nuint _payloadSize = SwiftObjectHelper<SwiftString>.GetTypeMetadata().Size;
 
@@ -37,25 +37,6 @@ public class SwiftString : IDisposable, ISwiftObject
     static SwiftString()
     {
         _protocolConformanceSymbols = new Dictionary<Type, string> { };
-    }
-
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_payload.IsInvalid)
-        {
-            _payload.Dispose();
-        }
-    }
-
-    ~SwiftString()
-    {
-        Dispose(disposing: false);
     }
 
     public static nuint PayloadSize => _payloadSize;

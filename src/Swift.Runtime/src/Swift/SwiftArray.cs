@@ -22,7 +22,7 @@ public interface ISwiftCollection { }
 /// Represents a Swift array.
 /// </summary>
 /// <typeparam name="Element">The element type contained in the array.</typeparam>
-public class SwiftArray<Element> : IDisposable, ISwiftObject
+public class SwiftArray<Element> : ISwiftObject
 {
     static nuint _payloadSize = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata().Size;
 
@@ -42,28 +42,6 @@ public class SwiftArray<Element> : IDisposable, ISwiftObject
         {
             { typeof(ISwiftCollection), "$sSayxGSlsMc" }
         };
-    }
-
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_payload.IsInvalid)
-        {
-            unsafe
-            {
-                _payload.Dispose();
-            }
-        }
-    }
-
-    ~SwiftArray()
-    {
-        Dispose(disposing: false);
     }
 
     public static nuint PayloadSize => _payloadSize;
