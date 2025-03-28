@@ -154,7 +154,9 @@ public record struct TypeRepresentation
 {
     public required CSharpTypeName CSharpTypeName { get; init; }
     public required MarshallingLabel Label { get; init; }
-    public required List<string> Methods { get; init; }
+    public required List<string> Methods { get; init; } 
+    // We will need to have a separate representation for methods. This can either exist us a separate collection, or some external builder will create the method and append a serialized version of it to the representation.
+    // public required List<MethodRepresentation> Methods { get; init; } 
     public required List<string> Properties { get; init; }
     public required List<string> Fields { get; init; }
 }
@@ -227,7 +229,7 @@ Handlers should implement a common interface:
 ```csharp
 public interface IMethodHandler
 {
-    public ITypeDatabase typeDatabase { get; init; }
+    public ITypeDatabase TypeDatabase { get; init; }
     bool CanHandle(MethodDecl methodDecl);
     void Handle(MarshallingContext marshallingContext);
 }
@@ -273,35 +275,35 @@ Handlers can be split into groups:
 1. ConstructorHandler
     - Modifies signature
     - Populates field assignment code. This should call the `ProvidePayloadAssignment()` method on the type representation.
-    - Sets a flag to skip pinvoke result postprocessing - we need to assign a raw payload to the instance.
+    - Sets a flag to skip pInvoke result postprocessing - we need to assign a raw payload to the instance.
 
-2. ReturnableMethodHandler (Static, Instance) - Creates a step which takes the return value of the pinvoke and returns it to the caller
+2. ReturnableMethodHandler (Static, Instance) - Creates a step which takes the return value of the pInvoke and returns it to the caller
     - StaticMethodHandler - Adds static keyword to the method signature
-    - InstanceMethodHandler - Adds SwiftSelf to the pinvoke signature, adds SwiftSelf creation to the marshalling phase (this should call the `ProvideSwiftSelfCreationCode()` method on the type representation) and pushes an appropriate argument to the pinvoke signature and call.
+    - InstanceMethodHandler - Adds `SwiftSelf` to the pInvoke signature, adds SwiftSelf creation to the marshalling phase (this should call the `ProvideSwiftSelfCreationCode()` method on the type representation) and pushes an appropriate argument to the pInvoke signature and call.
 
-3. SwiftErrorHandler - Adds SwiftError to the pinvoke signature and call. This should also add a step which checks if the error is null and throws it if it is not.
+3. SwiftErrorHandler - Adds `SwiftError` to the pInvoke signature and call. Pushes appropriate check to the result postprocessing step.
 
-4. GenericParameterHandler - Adds generic parameters to the method signature and pinvoke signature. Into marshalling phase it adds obtaining the metatadata pointers and PWT pointers. Updates the pinvoke signature and the pinvoke call.
+4. GenericParameterHandler - Adds generic parameters to the method signature and pInvoke signature. Into marshalling phase it adds obtaining the metadata pointers and PWT pointers. Updates the pInvoke signature and the pInvoke call.
 
 5. AsyncMethodHandler - TODO
 
 #### Group 2 - ReturnType Handlers
 
-1. IndirectResultHandler - Creates an indirect result in marshalling phase. Changes the pinvoke signature to return a void. Pushes additional argument to the pinvoke call. Updates the result postprocessing step to marshal the result from Swift.
+1. IndirectResultHandler - Creates an indirect result in marshalling phase. Changes the pInvoke signature to return a void. Pushes `IndirectResult` argument to the pInvoke call. Updates the result postprocessing step to marshal the result from Swift.
 
-2. BoundGenericResultHandler - Changes the pinvoke signature to return a buffer struct. Adds postprocessing step to create the bound generic struct from the buffer.
+2. BoundGenericResultHandler - Changes the pInvoke signature to return a buffer struct. Adds postprocessing step to create the bound generic struct from the buffer.
 
-3. DirectResultHandler - Sets the pinvoke signature return type to the original direct result.
+3. DirectResultHandler - Sets the pInvoke signature return type to the original direct result.
 
-4. VoidResultHandler - Sets the pinvoke signature return type to void. Updates the pinvoke call to not return anything. (This can be merged with the DirectResultHandler and delegated to the emitter).
+4. VoidResultHandler - Sets the pInvoke signature return type to void. Updates the pInvoke call to not return anything. (This can be merged with the DirectResultHandler and delegated to the emitter).
 
 #### Group 3 - Argument Handlers
 
-1. NonFrozenArgumentHandler - Updates the marshalling phase to create a handle for the argument. Pushes the handle to the pinvoke signature and call.
+1. NonFrozenArgumentHandler - Updates the marshalling phase to create a handle for the argument. Pushes the handle to the pInvoke signature and call.
 
-2. GenericArgumentHandler - Updates the marshalling phase to create a handle for the argument. Pushes the handle to the pinvoke signature and call.
+2. GenericArgumentHandler - Updates the marshalling phase to create a handle for the argument. Pushes the handle to the pInvoke signature and call.
 
-3. BoundGenericArgumentHandler - Updates the marshalling phase to cast the argument to a buffer strut. Pushes the buffer struct to the pinvoke signature and call.
+3. BoundGenericArgumentHandler - Updates the marshalling phase to cast the argument to a buffer strut. Pushes the buffer struct to the pInvoke signature and call.
 
 ### Properties and fields
 
@@ -327,3 +329,5 @@ public interface ICSharpWritable
     void Emit(CSharpWriter writer);
 }
 ```
+
+A matter for discussion is whether we want to serialize the representation to a string and then emit it, or whether we want to emit the code directly from the representation. Sometimes it is easier to just append a string to the the representation rather than build up a whole representation - this is particularly true when handling interface implementation methods. One way would be to support both.
