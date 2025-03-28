@@ -814,7 +814,7 @@ namespace BindingsGeneration
             foreach (var argumentDecl in _env.MethodDecl.CSSignature.Skip(1).Where(a => !a.IsGeneric))
             {
                 // GENERIC RETAIN
-                // Generic arguments are copied to the stack prior to the call via MarshalToSwift, no no SafeHandle ref counting is needed
+                // Generic arguments are copied to the stack prior to the call via MarshalToSwift, no SafeHandle ref counting is needed
 
                 // FROZEN STRUCT RETAIN
                 // Retain the SwiftHandle payload
