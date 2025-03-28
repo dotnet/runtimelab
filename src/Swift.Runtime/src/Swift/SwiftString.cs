@@ -28,9 +28,9 @@ public class SwiftString : ISwiftObject
 #pragma warning restore CS0169
     }
 
-    private SwiftHandle<SwiftString> _payload;
+    private SwiftSafeHandle<SwiftString> _payload;
 
-    public SwiftHandle<SwiftString> Payload => _payload;
+    public SwiftSafeHandle<SwiftString> Payload => _payload;
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -91,7 +91,7 @@ public class SwiftString : ISwiftObject
     {
         IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(SwiftString.Buffer));
         *(SwiftString.Buffer*)bufferPtr = *(SwiftString.Buffer*)handle;
-        _payload = new SwiftHandle<SwiftString>(bufferPtr);
+        _payload = new SwiftSafeHandle<SwiftString>(bufferPtr);
     }
 
     /// <summary>
@@ -107,7 +107,7 @@ public class SwiftString : ISwiftObject
                 var result = PInvoke_Create(utf8BytesPtr, utf8Bytes.Length, 1);
                 IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(SwiftString.Buffer));
                 *(SwiftString.Buffer*)bufferPtr = result;
-                _payload = new SwiftHandle<SwiftString>(bufferPtr);
+                _payload = new SwiftSafeHandle<SwiftString>(bufferPtr);
             }
         }
     }

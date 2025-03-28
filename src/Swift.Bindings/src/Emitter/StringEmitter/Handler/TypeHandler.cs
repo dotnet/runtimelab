@@ -80,9 +80,9 @@ namespace BindingsGeneration
                 csWriter.Indent++;
 
                 // Payload used for reference counting
-                csWriter.WriteLine($"private SwiftHandle<{structDecl.Name}> _payload = SwiftHandle<{structDecl.Name}>.Zero;");
+                csWriter.WriteLine($"private SwiftSafeHandle<{structDecl.Name}> _payload = SwiftSafeHandle<{structDecl.Name}>.Zero;");
                 csWriter.WriteLine();
-                csWriter.WriteLine($"public SwiftHandle<{structDecl.Name}> Payload => _payload;");
+                csWriter.WriteLine($"public SwiftSafeHandle<{structDecl.Name}> Payload => _payload;");
             }
 
             if (swiftTypeInfo.HasValue)
@@ -265,7 +265,7 @@ namespace BindingsGeneration
         private static void WritePrivateFields(CSharpWriter csWriter, StructDecl structDecl)
         {
             csWriter.WriteLine($"static nuint _payloadSize = SwiftObjectHelper<{structDecl.Name}>.GetTypeMetadata().Size;");
-            csWriter.WriteLine($"SwiftHandle<{structDecl.Name}> _payload = SwiftHandle<{structDecl.Name}>.Zero;");
+            csWriter.WriteLine($"SwiftSafeHandle<{structDecl.Name}> _payload = SwiftSafeHandle<{structDecl.Name}>.Zero;");
             csWriter.WriteLine();
         }
 
@@ -274,7 +274,7 @@ namespace BindingsGeneration
         /// </summary>
         private static void WritePayload(CSharpWriter csWriter, StructDecl structDecl)
         {
-            csWriter.WriteLine($"public SwiftHandle<{structDecl.Name}> Payload => _payload;");
+            csWriter.WriteLine($"public SwiftSafeHandle<{structDecl.Name}> Payload => _payload;");
             csWriter.WriteLine();
         }
     }
@@ -335,9 +335,9 @@ namespace BindingsGeneration
             csWriter.Indent++;
 
 
-            csWriter.WriteLine($"SwiftHandle<{classDecl.Name}> _payload = SwiftHandle<{classDecl.Name}>.Zero;");
+            csWriter.WriteLine($"SwiftSafeHandle<{classDecl.Name}> _payload = SwiftSafeHandle<{classDecl.Name}>.Zero;");
             csWriter.WriteLine();
-            csWriter.WriteLine($"public SwiftHandle<{classDecl.Name}> Payload => _payload;");
+            csWriter.WriteLine($"public SwiftSafeHandle<{classDecl.Name}> Payload => _payload;");
             csWriter.WriteLine();
             csWriter.WriteLine(@"
                 static TypeMetadata ISwiftObject.GetTypeMetadata() => throw new NotImplementedException();
@@ -445,7 +445,7 @@ namespace BindingsGeneration
                 {
                     IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof({{_structDecl.Name}}.Buffer));
                     *({{_structDecl.Name}}.Buffer*)bufferPtr = *({{_structDecl.Name}}.Buffer*)handle;
-                    _payload = new SwiftHandle<{{_structDecl.Name}}>(bufferPtr);
+                    _payload = new SwiftSafeHandle<{{_structDecl.Name}}>(bufferPtr);
                 }
                 """;
 
@@ -492,7 +492,7 @@ namespace BindingsGeneration
             var text = $$"""
             {{_structDecl.Name}}(SwiftHandle handle)
             {
-                _payload = new SwiftHandle<{{_structDecl.Name}}>(handle, false);
+                _payload = new SwiftSafeHandle<{{_structDecl.Name}}>(handle, false);
             }
             """;
 

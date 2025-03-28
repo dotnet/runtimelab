@@ -13,16 +13,16 @@ namespace Swift;
 /// </summary>
 public struct AnyType : ISwiftObject
 {
-    private SwiftHandle<AnyType> _payload = SwiftHandle<AnyType>.Zero;
+    private SwiftSafeHandle<AnyType> _payload = SwiftSafeHandle<AnyType>.Zero;
     static TypeMetadata ISwiftObject.GetTypeMetadata()
     {
         throw new InvalidOperationException("Cannot get type metadata for AnyType");
     }
     public AnyType(SwiftHandle payload)
     {
-        _payload = new SwiftHandle<AnyType>(payload);
+        _payload = new SwiftSafeHandle<AnyType>(payload);
     }
-    public SwiftHandle<AnyType> Payload => _payload;
+    public SwiftSafeHandle<AnyType> Payload => _payload;
 
     /// <summary>
     /// Creates a new SwiftOptional from a Swift payload
@@ -45,7 +45,7 @@ public struct AnyType : ISwiftObject
         {
             throw new InvalidOperationException("Cannot marshal AnyType to Swift without metadata");
         }
-        if (_payload == SwiftHandle<AnyType>.Zero)
+        if (_payload == SwiftSafeHandle<AnyType>.Zero)
         {
             throw new InvalidOperationException("Cannot marshal AnyType to Swift without payload");
         }

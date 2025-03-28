@@ -26,9 +26,9 @@ public class SwiftSet<Element> : ISwiftObject
 {
     static nuint _payloadSize = SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata().Size;
 
-    private SwiftHandle<SwiftSet<Element>> _payload;
+    private SwiftSafeHandle<SwiftSet<Element>> _payload;
 
-    public SwiftHandle<SwiftSet<Element>> Payload => _payload;
+    public SwiftSafeHandle<SwiftSet<Element>> Payload => _payload;
 
     public unsafe IntPtr PayloadBuffer => *(IntPtr*)_payload.Handle;
 
@@ -104,7 +104,7 @@ public class SwiftSet<Element> : ISwiftObject
     {
         IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(IntPtr));
         *(IntPtr*)bufferPtr = *(IntPtr*)handle;
-        _payload = new SwiftHandle<SwiftSet<Element>>(bufferPtr);
+        _payload = new SwiftSafeHandle<SwiftSet<Element>>(bufferPtr);
     }
 
     /// <summary>
@@ -117,7 +117,7 @@ public class SwiftSet<Element> : ISwiftObject
 
         IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(IntPtr));
         *(IntPtr*)bufferPtr = result;
-        _payload = new SwiftHandle<SwiftSet<Element>>(bufferPtr);
+        _payload = new SwiftSafeHandle<SwiftSet<Element>>(bufferPtr);
     }
 
     /// <summary>

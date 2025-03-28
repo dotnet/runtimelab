@@ -24,9 +24,9 @@ namespace BindingsGeneration.FunctionalTests
         {
             static nuint _payloadSize = SwiftObjectHelper<Nonce>.GetTypeMetadata().Size;
 
-            SwiftHandle<Nonce> _payload = SwiftHandle<Nonce>.Zero;
+            SwiftSafeHandle<Nonce> _payload = SwiftSafeHandle<Nonce>.Zero;
 
-            public SwiftHandle<Nonce> Payload => _payload;
+            public SwiftSafeHandle<Nonce> Payload => _payload;
 
             static TypeMetadata ISwiftObject.GetTypeMetadata() => PInvoke_getMetadata();
 
@@ -41,7 +41,7 @@ namespace BindingsGeneration.FunctionalTests
 
             unsafe Nonce(IntPtr handle)
             {
-                _payload = new SwiftHandle<Nonce>(handle, false);
+                _payload = new SwiftSafeHandle<Nonce>(handle, false);
             }
 
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -78,7 +78,7 @@ namespace BindingsGeneration.FunctionalTests
 
             public Nonce(Data data)
             {
-                _payload = new SwiftHandle<Nonce>((IntPtr)NativeMemory.Alloc(_payloadSize));
+                _payload = new SwiftSafeHandle<Nonce>((IntPtr)NativeMemory.Alloc(_payloadSize));
                 SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult(_payload);
 
                 TypeMetadata metadata = SwiftObjectHelper<Data>.GetTypeMetadata();
@@ -214,9 +214,9 @@ namespace BindingsGeneration.FunctionalTests
         {
             static nuint _payloadSize = SwiftObjectHelper<Nonce>.GetTypeMetadata().Size;
 
-            SwiftHandle<Nonce> _payload = SwiftHandle<Nonce>.Zero;
+            SwiftSafeHandle<Nonce> _payload = SwiftSafeHandle<Nonce>.Zero;
 
-            public SwiftHandle<Nonce> Payload => _payload;
+            public SwiftSafeHandle<Nonce> Payload => _payload;
 
             static TypeMetadata ISwiftObject.GetTypeMetadata() => PInvoke_getMetadata();
 
@@ -231,7 +231,7 @@ namespace BindingsGeneration.FunctionalTests
 
             unsafe Nonce(IntPtr handle)
             {
-                _payload = new SwiftHandle<Nonce>(handle, false);
+                _payload = new SwiftSafeHandle<Nonce>(handle, false);
             }
 
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -268,7 +268,7 @@ namespace BindingsGeneration.FunctionalTests
 
             public Nonce(Data data)
             {
-                _payload = new SwiftHandle<Nonce>((IntPtr)NativeMemory.Alloc(_payloadSize));
+                _payload = new SwiftSafeHandle<Nonce>((IntPtr)NativeMemory.Alloc(_payloadSize));
                 SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult(_payload);
 
                 TypeMetadata metadata = SwiftObjectHelper<Data>.GetTypeMetadata();
@@ -294,9 +294,9 @@ namespace BindingsGeneration.FunctionalTests
         {
             static nuint _payloadSize = SwiftObjectHelper<SealedBox>.GetTypeMetadata().Size;
 
-            SwiftHandle<SealedBox> _payload = SwiftHandle<SealedBox>.Zero;
+            SwiftSafeHandle<SealedBox> _payload = SwiftSafeHandle<SealedBox>.Zero;
 
-            public SwiftHandle<SealedBox> Payload => _payload;
+            public SwiftSafeHandle<SealedBox> Payload => _payload;
 
             static TypeMetadata ISwiftObject.GetTypeMetadata() => PInvoke_getMetadata();
 
@@ -311,7 +311,7 @@ namespace BindingsGeneration.FunctionalTests
 
             unsafe SealedBox(IntPtr handle)
             {
-                _payload = new SwiftHandle<SealedBox>(handle, false);
+                _payload = new SwiftSafeHandle<SealedBox>(handle, false);
             }
 
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -348,12 +348,12 @@ namespace BindingsGeneration.FunctionalTests
 
             public SealedBox()
             {
-                _payload = new SwiftHandle<SealedBox>((IntPtr)NativeMemory.Alloc(_payloadSize));
+                _payload = new SwiftSafeHandle<SealedBox>((IntPtr)NativeMemory.Alloc(_payloadSize));
             }
 
             public SealedBox(AesGcm.Nonce nonce, Data ciphertext, Data tag)
             {
-                _payload = new SwiftHandle<SealedBox>((IntPtr)NativeMemory.Alloc(_payloadSize));
+                _payload = new SwiftSafeHandle<SealedBox>((IntPtr)NativeMemory.Alloc(_payloadSize));
                 SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult(_payload);
 
                 TypeMetadata ciphertextMetadata = SwiftObjectHelper<Data>.GetTypeMetadata();
@@ -460,9 +460,9 @@ namespace BindingsGeneration.FunctionalTests
     {
         static nuint _payloadSize = SwiftObjectHelper<SymmetricKey>.GetTypeMetadata().Size;
 
-        SwiftHandle<SymmetricKey> _payload = SwiftHandle<SymmetricKey>.Zero;
+        SwiftSafeHandle<SymmetricKey> _payload = SwiftSafeHandle<SymmetricKey>.Zero;
 
-        public SwiftHandle<SymmetricKey> Payload => _payload;
+        public SwiftSafeHandle<SymmetricKey> Payload => _payload;
 
         static TypeMetadata ISwiftObject.GetTypeMetadata() => PInvoke_getMetadata();
 
@@ -477,7 +477,7 @@ namespace BindingsGeneration.FunctionalTests
 
         unsafe SymmetricKey(IntPtr handle)
         {
-            _payload = new SwiftHandle<SymmetricKey>(handle, false);
+            _payload = new SwiftSafeHandle<SymmetricKey>(handle, false);
         }
 
         void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -514,7 +514,7 @@ namespace BindingsGeneration.FunctionalTests
 
         public SymmetricKey(Data data)
         {
-            _payload = new SwiftHandle<SymmetricKey>((IntPtr)NativeMemory.Alloc(_payloadSize));
+            _payload = new SwiftSafeHandle<SymmetricKey>((IntPtr)NativeMemory.Alloc(_payloadSize));
             SwiftIndirectResult swiftIndirectResult = new SwiftIndirectResult(_payload);
 
             TypeMetadata metadata = SwiftObjectHelper<Data>.GetTypeMetadata();

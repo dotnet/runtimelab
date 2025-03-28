@@ -51,7 +51,7 @@ public struct SwiftHandle
 /// Represents an opaque handle to a Swift object of type T.
 /// Used to manage native memory associated with a Swift object of type T.
 /// </summary>
-public sealed class SwiftHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T : ISwiftObject
+public sealed class SwiftSafeHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T : ISwiftObject
 {
     /// <summary>
     /// Indicates whether the handle was allocated by C#
@@ -59,9 +59,9 @@ public sealed class SwiftHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T :
     private bool _allocatedHandle;
 
     /// <summary>
-    /// Returns a SwiftHandle with a zero value
+    /// Returns a SwiftSafeHandle with a zero value
     /// </summary>
-    public readonly static SwiftHandle<T> Zero = new SwiftHandle<T>(IntPtr.Zero);
+    public readonly static SwiftSafeHandle<T> Zero = new SwiftSafeHandle<T>(IntPtr.Zero);
 
     /// <summary>
     /// The handle to the Swift native object
@@ -69,9 +69,9 @@ public sealed class SwiftHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T :
     public IntPtr Handle => handle;
 
     /// <summary>
-    /// Constructs a SwiftHandle from the given IntPtr
+    /// Constructs a SwiftSafeHandle from the given IntPtr
     /// </summary>
-    public SwiftHandle(IntPtr handle)
+    public SwiftSafeHandle(IntPtr handle)
         : base(ownsHandle: true)
     {
         SetHandle(handle);
@@ -79,9 +79,9 @@ public sealed class SwiftHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T :
     }
 
     /// <summary>
-    /// Constructs a SwiftHandle from the given IntPtr
+    /// Constructs a SwiftSafeHandle from the given IntPtr
     /// </summary>
-    public SwiftHandle(IntPtr handle, bool allocatedHandle)
+    public SwiftSafeHandle(IntPtr handle, bool allocatedHandle)
         : base(ownsHandle: true)
     {
         SetHandle(handle);
@@ -104,7 +104,7 @@ public sealed class SwiftHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T :
     /// <summary>
     /// Implicit conversion from SwiftHandle to void*
     /// </summary>
-    public static unsafe implicit operator void*(SwiftHandle<T> value)
+    public static unsafe implicit operator void*(SwiftSafeHandle<T> value)
     {
         return (void*)value.Handle;
     }

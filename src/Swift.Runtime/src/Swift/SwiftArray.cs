@@ -28,9 +28,9 @@ public class SwiftArray<Element> : ISwiftObject
 
     static nuint _elementSize = ElementTypeMetadata.Size;
 
-    private SwiftHandle<SwiftArray<Element>> _payload;
+    private SwiftSafeHandle<SwiftArray<Element>> _payload;
 
-    public SwiftHandle<SwiftArray<Element>> Payload => _payload;
+    public SwiftSafeHandle<SwiftArray<Element>> Payload => _payload;
 
     public unsafe IntPtr PayloadBuffer => *(IntPtr*)_payload.Handle;
 
@@ -99,7 +99,7 @@ public class SwiftArray<Element> : ISwiftObject
     {
         IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(IntPtr));
         *(IntPtr*)bufferPtr = *(IntPtr*)handle;
-        _payload = new SwiftHandle<SwiftArray<Element>>(bufferPtr);
+        _payload = new SwiftSafeHandle<SwiftArray<Element>>(bufferPtr);
     }
 
     /// <summary>
@@ -110,7 +110,7 @@ public class SwiftArray<Element> : ISwiftObject
         IntPtr result = SwiftArrayPInvokes.Init(ElementTypeMetadata);
         IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof(IntPtr));
         *(IntPtr*)bufferPtr = result;
-        _payload = new SwiftHandle<SwiftArray<Element>>(bufferPtr);
+        _payload = new SwiftSafeHandle<SwiftArray<Element>>(bufferPtr);
     }
 
     /// <summary>

@@ -758,7 +758,7 @@ namespace BindingsGeneration
             }
 
             var text = $$"""
-            _payload = new SwiftHandle<{{_env.ParentDecl.Name}}>((IntPtr)NativeMemory.Alloc(_payloadSize));
+            _payload = new SwiftSafeHandle<{{_env.ParentDecl.Name}}>((IntPtr)NativeMemory.Alloc(_payloadSize));
             var swiftIndirectResult = new SwiftIndirectResult(_payload);
             """;
 
@@ -966,7 +966,7 @@ namespace BindingsGeneration
                         unsafe {{
                             IntPtr bufferPtr = (IntPtr)NativeMemory.Alloc((nuint)sizeof({_env.ParentDecl.Name}.Buffer));
                             *({_env.ParentDecl.Name}.Buffer*)bufferPtr = result;
-                            _payload = new SwiftHandle<{structDecl.Name}>(bufferPtr);
+                            _payload = new SwiftSafeHandle<{structDecl.Name}>(bufferPtr);
                         }}");
                     return;
                 }
