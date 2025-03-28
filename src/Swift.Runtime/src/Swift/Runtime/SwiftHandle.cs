@@ -12,7 +12,8 @@ using Microsoft.Win32.SafeHandles;
 namespace Swift.Runtime;
 
 /// <summary>
-/// Represents an opaque handle to a Swift object used in private constructors
+/// Represents an opaque raw handle to a Swift object.
+/// Used internally in private constructors to prevent conflicts with public IntPtr constructors.
 /// </summary>
 public struct SwiftHandle
 {
@@ -47,7 +48,8 @@ public struct SwiftHandle
 }
 
 /// <summary>
-/// Represents an opaque handle to a Swift object extending SafeHandle
+/// Represents an opaque handle to a Swift object of type T.
+/// Used to manage native memory associated with a Swift object of type T.
 /// </summary>
 public sealed class SwiftHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T : ISwiftObject
 {
