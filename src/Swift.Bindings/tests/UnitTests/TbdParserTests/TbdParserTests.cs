@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using Microsoft.Extensions.Logging.Abstractions;
 using TbdParsing;
 using TbdParsing.Models;
 using Xunit;
@@ -32,7 +33,7 @@ namespace BindingsGeneration.Tests
             private static void InitializeResources()
             {
                 _tbdFilePath = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/Foundation.framework/Foundation.tbd";
-                _tbdParser = new TbdParser();
+                _tbdParser = new TbdParser(NullLoggerFactory.Instance);
 
                 // Create a mock TBD file for testing
                 _mockTbdFilePath = Path.GetTempFileName();

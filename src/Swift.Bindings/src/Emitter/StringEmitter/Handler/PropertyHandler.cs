@@ -11,7 +11,7 @@ namespace BindingsGeneration;
 /// </summary>
 public class PropertyHandlerFactory : IFactory<BaseDecl, IPropertyHandler>
 {
-    private readonly ILogger<PropertyHandler> _handlerLogger;
+    private readonly ILogger _handlerLogger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PropertyHandlerFactory"/> class.
@@ -44,7 +44,7 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
     /// Initializes a new instance of the <see cref="PropertyHandler"/> class.
     /// </summary>
     /// <param name="logger">The logger instance.</param>
-    public PropertyHandler(ILogger<PropertyHandler> logger) : base(logger)
+    public PropertyHandler(ILogger logger) : base(logger)
     {
     }
     private static readonly Dictionary<string, string> PropertyNameMappings = new()

@@ -18,7 +18,7 @@ namespace TbdParsing.Parsing
         /// <summary>
         /// Creates a new YAML-like TBD format parser
         /// </summary>
-        public YamlLikeTbdFormatParser(ILogger<YamlLikeTbdFormatParser> logger) : base(logger)
+        public YamlLikeTbdFormatParser(ILogger logger) : base(logger)
         {
         }
         public override bool CanParse(string[] lines)

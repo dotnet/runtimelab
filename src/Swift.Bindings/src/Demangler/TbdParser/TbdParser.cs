@@ -21,13 +21,6 @@ namespace TbdParsing
         private readonly ILogger _logger;
 
         /// <summary>
-        /// Initializes a new instance of the TBD parser with a default logger
-        /// </summary>
-        public TbdParser() : this(NullLoggerFactory.Instance)
-        {
-        }
-
-        /// <summary>
         /// Initializes a new instance of the TBD parser with a specified logger
         /// </summary>
         public TbdParser(ILoggerFactory loggerFactory)

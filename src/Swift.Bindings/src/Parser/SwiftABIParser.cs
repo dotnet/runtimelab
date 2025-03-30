@@ -125,7 +125,7 @@ namespace BindingsGeneration
             string filePath,
             ITypeDatabase typeDatabase,
             DemanglingResults demangledTbd,
-            ILogger<SwiftABIParser> logger)
+            ILogger logger)
         {
             _filePath = filePath;
             _typeDatabase = typeDatabase;

@@ -17,7 +17,7 @@ namespace TbdParsing.Parsing
         /// <summary>
         /// Creates a new JSON TBD format parser
         /// </summary>
-        public JsonTbdFormatParser(ILogger<JsonTbdFormatParser> logger) : base(logger)
+        public JsonTbdFormatParser(ILogger logger) : base(logger)
         {
         }
 

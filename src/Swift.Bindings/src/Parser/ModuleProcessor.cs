@@ -41,7 +41,7 @@ namespace BindingsGeneration
             string dylibPath,
             Dictionary<NamedTypeSpec, TypeDecl> typeDecls,
             ITypeDatabase typeDatabase,
-            ILogger<ModuleProcessor> logger)
+            ILogger logger)
         {
             _module = module;
             _dylibPath = dylibPath;
