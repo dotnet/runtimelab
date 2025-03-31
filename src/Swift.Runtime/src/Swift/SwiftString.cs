@@ -60,10 +60,10 @@ public class SwiftString : ISwiftObject
             fixed (void* swiftDest = swiftDestSpan)
             {
                 // Ensure the payload is valid before making copy
-                bool _success = false;
-                _payload.DangerousAddRef(ref _success);
+                bool success = false;
+                _payload.DangerousAddRef(ref success);
                 metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
-                if (_success)
+                if (success)
                     _payload.DangerousRelease();
             }
         }
@@ -119,8 +119,8 @@ public class SwiftString : ISwiftObject
     {
         get
         {
-            bool _success = false;
-            _payload.DangerousAddRef(ref _success);
+            bool success = false;
+            _payload.DangerousAddRef(ref success);
             try
             {
                 int result = (int)PInvoke_GetLength(PayloadBuffer);
@@ -128,7 +128,7 @@ public class SwiftString : ISwiftObject
             }
             finally
             {
-                if (_success)
+                if (success)
                     _payload.DangerousRelease();
             }
         }
@@ -142,8 +142,8 @@ public class SwiftString : ISwiftObject
         var elementType = TypeMetadata.GetTypeMetadataOrThrow<byte>();
         var resultType = TypeMetadata.GetTypeMetadataOrThrow<long>();
 
-        bool _success = false;
-        _payload.DangerousAddRef(ref _success);
+        bool success = false;
+        _payload.DangerousAddRef(ref success);
         try
         {
             var length = Length;
@@ -172,7 +172,7 @@ public class SwiftString : ISwiftObject
         }
         finally
         {
-            if (_success)
+            if (success)
                 _payload.DangerousRelease();
         }
     }

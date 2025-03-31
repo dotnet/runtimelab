@@ -516,10 +516,10 @@ namespace BindingsGeneration
                     fixed (void* swiftDest = swiftDestSpan)
                     {
                         // Ensure that the instance is valid before making copy
-                        bool _success = false;
-                        _payload.DangerousAddRef(ref _success);
+                        bool success = false;
+                        _payload.DangerousAddRef(ref success);
                         metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, _payload, metadata);
-                        if (_success)
+                        if (success)
                             _payload.DangerousRelease();
                     }
                 }
@@ -561,10 +561,10 @@ namespace BindingsGeneration
                 fixed (void* swiftDest = swiftDestSpan)
                 {
                     // Ensure that the instance is valid before making copy
-                    bool _success = false;
-                    _payload.DangerousAddRef(ref _success);
+                    bool success = false;
+                    _payload.DangerousAddRef(ref success);
                     metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
-                    if (_success)
+                    if (success)
                         _payload.DangerousRelease();
                 }
             }

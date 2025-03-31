@@ -68,10 +68,10 @@ public class SwiftArray<Element> : ISwiftObject
             fixed (void* swiftDest = swiftDestSpan)
             {
                 // Ensure the payload is valid before making copy
-                bool _success = false;
-                _payload.DangerousAddRef(ref _success);
+                bool success = false;
+                _payload.DangerousAddRef(ref success);
                 metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
-                if (_success)
+                if (success)
                     _payload.DangerousRelease();
             }
         }
@@ -120,8 +120,8 @@ public class SwiftArray<Element> : ISwiftObject
     {
         get
         {
-            bool _success = false;
-            _payload.DangerousAddRef(ref _success);
+            bool success = false;
+            _payload.DangerousAddRef(ref success);
             try
             {
                 int result = (int)SwiftArrayPInvokes.Count(PayloadBuffer, ElementTypeMetadata);
@@ -129,7 +129,7 @@ public class SwiftArray<Element> : ISwiftObject
             }
             finally
             {
-                if (_success)
+                if (success)
                     _payload.DangerousRelease();
             }
         }
@@ -141,8 +141,8 @@ public class SwiftArray<Element> : ISwiftObject
     public unsafe void Append(Element item)
     {
         var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
-        bool _success = false;
-        _payload.DangerousAddRef(ref _success);
+        bool success = false;
+        _payload.DangerousAddRef(ref success);
         try
         {
             byte* payload = stackalloc byte[(int)_elementSize];
@@ -152,7 +152,7 @@ public class SwiftArray<Element> : ISwiftObject
         }
         finally
         {
-            if (_success)
+            if (success)
                 _payload.DangerousRelease();
         }
     }
@@ -162,8 +162,8 @@ public class SwiftArray<Element> : ISwiftObject
     /// </summary>
     public unsafe void Insert(int index, Element item)
     {
-        bool _success = false;
-        _payload.DangerousAddRef(ref _success);
+        bool success = false;
+        _payload.DangerousAddRef(ref success);
         try
         {
             var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
@@ -174,7 +174,7 @@ public class SwiftArray<Element> : ISwiftObject
         }
         finally
         {
-            if (_success)
+            if (success)
                 _payload.DangerousRelease();
         }
     }
@@ -184,8 +184,8 @@ public class SwiftArray<Element> : ISwiftObject
     /// </summary>
     public unsafe void Remove(int index)
     {
-        bool _success = false;
-        _payload.DangerousAddRef(ref _success);
+        bool success = false;
+        _payload.DangerousAddRef(ref success);
         try
         {
             var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
@@ -194,7 +194,7 @@ public class SwiftArray<Element> : ISwiftObject
         }
         finally
         {
-            if (_success)
+            if (success)
                 _payload.DangerousRelease();
         }
     }
@@ -204,8 +204,8 @@ public class SwiftArray<Element> : ISwiftObject
     /// </summary>
     public unsafe void RemoveAll()
     {
-        bool _success = false;
-        _payload.DangerousAddRef(ref _success);
+        bool success = false;
+        _payload.DangerousAddRef(ref success);
         try
         {
             var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
@@ -213,7 +213,7 @@ public class SwiftArray<Element> : ISwiftObject
         }
         finally
         {
-            if (_success)
+            if (success)
                 _payload.DangerousRelease();
         }
     }
@@ -225,8 +225,8 @@ public class SwiftArray<Element> : ISwiftObject
     {
         get
         {
-            bool _success = false;
-            _payload.DangerousAddRef(ref _success);
+            bool success = false;
+            _payload.DangerousAddRef(ref success);
             try
             {
                 byte* payload = stackalloc byte[(int)_elementSize];
@@ -235,14 +235,14 @@ public class SwiftArray<Element> : ISwiftObject
             }
             finally
             {
-                if (_success)
+                if (success)
                     _payload.DangerousRelease();
             }
         }
         set
         {
-            bool _success = false;
-            _payload.DangerousAddRef(ref _success);
+            bool success = false;
+            _payload.DangerousAddRef(ref success);
             try
             {
                 var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
@@ -253,7 +253,7 @@ public class SwiftArray<Element> : ISwiftObject
             }
             finally
             {
-                if (_success)
+                if (success)
                     _payload.DangerousRelease();
             }
         }

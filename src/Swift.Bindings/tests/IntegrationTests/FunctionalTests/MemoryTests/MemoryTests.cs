@@ -815,8 +815,8 @@ namespace BindingsGeneration.FunctionalTests
 
             public void CallDispose()
             {
-                bool _success = false;
-                this.Payload.DangerousAddRef(ref _success);
+                bool success = false;
+                this.Payload.DangerousAddRef(ref success);
 #pragma warning disable CS8500
                 unsafe
                 {
@@ -838,7 +838,7 @@ namespace BindingsGeneration.FunctionalTests
                 Assert.Equal(42, b);
 
 #pragma warning restore CS8500
-                if (_success)
+                if (success)
                     this.Payload.DangerousRelease();
             }
 
