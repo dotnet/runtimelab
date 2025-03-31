@@ -291,44 +291,44 @@ function CreateProject {
   </PropertyGroup>
   <ItemGroup>
     <!-- iOS is arm64 only -->
-    <Content Include="./SwiftBindings-arm64.xcframework.zip">
+    <Content Include="./SwiftBindings-arm64.xcframework.zip" Condition="Exists('./SwiftBindings-arm64.xcframework.zip')">
         <PackagePath>runtimes/ios-arm64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
-    <Content Include="./SwiftBindings-arm64.xcframework.zip">
+    <Content Include="./SwiftBindings-arm64.xcframework.zip" Condition="Exists('./SwiftBindings-arm64.xcframework.zip')">
         <PackagePath>runtimes/iossimulator-arm64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
-    <Content Include="./SwiftBindings-x86_64.xcframework.zip">
+    <Content Include="./SwiftBindings-x86_64.xcframework.zip" Condition="Exists('./SwiftBindings-x86_64.xcframework.zip')">
         <PackagePath>runtimes/iossimulator-x64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
     <!-- tvOS is arm64 only -->
-    <Content Include="./SwiftBindings-arm64.xcframework.zip">
+    <Content Include="./SwiftBindings-arm64.xcframework.zip" Condition="Exists('./SwiftBindings-arm64.xcframework.zip')">
         <PackagePath>runtimes/tvos-arm64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
-    <Content Include="./SwiftBindings-arm64.xcframework.zip">
+    <Content Include="./SwiftBindings-arm64.xcframework.zip" Condition="Exists('./SwiftBindings-arm64.xcframework.zip')">
         <PackagePath>runtimes/tvossimulator-arm64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
-    <Content Include="./SwiftBindings-x86_64.xcframework.zip">
+    <Content Include="./SwiftBindings-x86_64.xcframework.zip" Condition="Exists('./SwiftBindings-x86_64.xcframework.zip')">
         <PackagePath>runtimes/tvossimulator-x64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
-    <Content Include="./SwiftBindings-arm64.xcframework.zip">
+    <Content Include="./SwiftBindings-arm64.xcframework.zip" Condition="Exists('./SwiftBindings-arm64.xcframework.zip')">
         <PackagePath>runtimes/osx-arm64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
-    <Content Include="./SwiftBindings-x86_64.xcframework.zip">
+    <Content Include="./SwiftBindings-x86_64.xcframework.zip" Condition="Exists('./SwiftBindings-x86_64.xcframework.zip')">
         <PackagePath>runtimes/osx-x64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
-    <Content Include="./SwiftBindings-arm64.xcframework.zip">
+    <Content Include="./SwiftBindings-arm64.xcframework.zip" Condition="Exists('./SwiftBindings-arm64.xcframework.zip')">
         <PackagePath>runtimes/maccatalyst-arm64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
-    <Content Include="./SwiftBindings-x86_64.xcframework.zip">
+    <Content Include="./SwiftBindings-x86_64.xcframework.zip" Condition="Exists('./SwiftBindings-x86_64.xcframework.zip')">
         <PackagePath>runtimes/maccatalyst-x64/native/</PackagePath>
         <Pack>true</Pack>
     </Content>
