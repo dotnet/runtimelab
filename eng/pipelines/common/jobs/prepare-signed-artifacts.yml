@@ -54,7 +54,7 @@ jobs:
       displayName: Generate tvOS bindings
     - script: $(_generateScript) --configuration $(_BuildConfig) --platform AppleTVSimulator ${{ parameters.scriptArgs }}
       displayName: Generate tvOSSimulator bindings
-    - script: $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneOS --maccatalyst ${{ parameters.scriptArgs }}
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform MacCatalyst ${{ parameters.scriptArgs }}
       displayName: Generate MacCatalyst bindings
 
     - script: |
