@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 namespace Swift.Runtime.InteropServices;
 
@@ -32,12 +33,8 @@ public static class SwiftMarshal
         {
             unsafe
             {
-                var typeSize = Marshal.SizeOf<T>();
-                if (typeof(T) == typeof(bool))
-                {
-                    typeSize = 1;
-                }
-                Debug.Assert(typeSize == swiftDestSpan.Length, $"Span size does not match type size, Expected: {typeSize}, Actual: {swiftDestSpan.Length}");
+                int size = Unsafe.SizeOf<T>();
+                Debug.Assert(size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {size}, Actual: {swiftDestSpan.Length}");
                 fixed (void* swiftDest = swiftDestSpan)
                 {
                     MarshalPrimitiveToSwift(value, swiftDest);
