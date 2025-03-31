@@ -818,8 +818,8 @@ namespace BindingsGeneration
                     var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
                     if (MarshallingHelpers.RequiresMemoryManagement(typeRecord) || !MarshallingHelpers.IsTypeFrozen(typeRecord))
                     {
-                        csWriter.WriteLine($"var _success = false;");
-                        csWriter.WriteLine($"_payload.DangerousAddRef(ref _success);");
+                        csWriter.WriteLine($"var success = false;");
+                        csWriter.WriteLine($"_payload.DangerousAddRef(ref success);");
                     }
                 }
             }
@@ -832,7 +832,6 @@ namespace BindingsGeneration
                     csWriter.WriteLine($"var success{argumentDecl.Name} = false;");
                     csWriter.WriteLine($"{argumentDecl.Name}.Payload.DangerousAddRef(ref success{argumentDecl.Name});");
                 }
-
             }
         }
 
@@ -851,7 +850,7 @@ namespace BindingsGeneration
                     var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
                     if (MarshallingHelpers.RequiresMemoryManagement(typeRecord) || !MarshallingHelpers.IsTypeFrozen(typeRecord))
                     {
-                        csWriter.WriteLine($"if (_success)");
+                        csWriter.WriteLine($"if (success)");
                         csWriter.WriteLine($"   _payload.DangerousRelease();");
                     }
                 }

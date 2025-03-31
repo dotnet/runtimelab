@@ -39,7 +39,7 @@ namespace BindingsGeneration.FunctionalTests
                 return new Nonce(handle);
             }
 
-            unsafe Nonce(IntPtr handle)
+            unsafe Nonce(SwiftHandle handle)
             {
                 _payload = new SwiftSafeHandle<Nonce>(handle, false);
             }
@@ -229,7 +229,7 @@ namespace BindingsGeneration.FunctionalTests
                 return new Nonce(handle);
             }
 
-            unsafe Nonce(IntPtr handle)
+            unsafe Nonce(SwiftHandle handle)
             {
                 _payload = new SwiftSafeHandle<Nonce>(handle, false);
             }
@@ -309,7 +309,7 @@ namespace BindingsGeneration.FunctionalTests
                 return new SealedBox(handle);
             }
 
-            unsafe SealedBox(IntPtr handle)
+            unsafe SealedBox(SwiftHandle handle)
             {
                 _payload = new SwiftSafeHandle<SealedBox>(handle, false);
             }
@@ -475,7 +475,7 @@ namespace BindingsGeneration.FunctionalTests
             return new SymmetricKey(handle);
         }
 
-        unsafe SymmetricKey(IntPtr handle)
+        unsafe SymmetricKey(SwiftHandle handle)
         {
             _payload = new SwiftSafeHandle<SymmetricKey>(handle, false);
         }
