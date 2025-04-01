@@ -60,8 +60,7 @@ public class ProtocolWitnessTableTests : IClassFixture<ProtocolWitnessTableTests
     [Fact]
     public static void FailsToRetrieveProtocolWitnessTableWhenProtocolConformanceDescriptorInvalid()
     {
-        var result = ProtocolWitnessTable.TryGet<AnyTypeMock, ISwiftHashable>(out var protocolWitnessTable);
-        Assert.False(result);
-        Assert.Null(protocolWitnessTable);
+        Exception exception = Assert.Throws<System.Reflection.TargetInvocationException>(() => ProtocolWitnessTable.GetOrThrow<AnyTypeMock, ISwiftHashable>());
+        Assert.IsType<InvalidOperationException>(exception.InnerException);
     }
 }

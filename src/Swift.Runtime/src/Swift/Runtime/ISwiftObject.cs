@@ -41,7 +41,16 @@ public struct SwiftObjectHelper<T> where T : ISwiftObject
     /// <returns>the TypeMetadata for T</returns>
     public static TypeMetadata GetTypeMetadata()
     {
-        return TypeMetadata.Cache.GetOrAdd(typeof(T), _ => T.GetTypeMetadata());
+        return TypeMetadata.Cache.GetOrAdd(typeof(T), _ =>
+        {
+            TypeMetadata metadata = T.GetTypeMetadata();
+            if (!metadata.IsValid)
+            {
+                throw new InvalidOperationException($"Failed to retrieve type metadata for {typeof(T)}");
+            }
+
+            return metadata;
+        });
     }
 
     /// <summary>
