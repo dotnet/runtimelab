@@ -93,12 +93,33 @@ public sealed class SwiftSafeHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where
     /// </summary>
     protected override unsafe bool ReleaseHandle()
     {
-        var metadata = SwiftObjectHelper<T>.GetTypeMetadata();
-        metadata.ValueWitnessTable->Destroy(this, metadata);
-        if (_allocatedHandle)
-            NativeMemory.Free(this);
+        bool success = false;
+        try
+        {
+            TypeMetadata metadata = SwiftObjectHelper<T>.GetTypeMetadata();
+            metadata.ValueWitnessTable->Destroy((void*)handle, metadata);
+            success = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error releasing handle: {ex}");
+        }
+
+        try
+        {
+            if (_allocatedHandle && !IsInvalid)
+            {
+                NativeMemory.Free((void*)handle);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error freeing handle memory: {ex}");
+            success = false;
+        }
+
         handle = IntPtr.Zero;
-        return true;
+        return success;
     }
 
     /// <summary>

@@ -29,12 +29,15 @@ public static class SwiftMarshal
         }
 
         var type = typeof(T);
-        if (type.IsPrimitive || typeof(nint).IsAssignableFrom(type) || typeof(nuint).IsAssignableFrom(type))
+        if ((type.IsPrimitive || typeof(nint).IsAssignableFrom(type) || typeof(nuint).IsAssignableFrom(type)) && !typeof(char).IsAssignableFrom(type))
         {
             unsafe
             {
                 int size = Unsafe.SizeOf<T>();
-                Debug.Assert(size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {size}, Actual: {swiftDestSpan.Length}");
+                if (size != swiftDestSpan.Length)
+                {
+                    throw new ArgumentException($"Span size does not match type size, Expected: {size}, Actual: {swiftDestSpan.Length}");
+                }
                 fixed (void* swiftDest = swiftDestSpan)
                 {
                     MarshalPrimitiveToSwift(value, swiftDest);

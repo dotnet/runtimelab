@@ -512,15 +512,24 @@ namespace BindingsGeneration
                 unsafe void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
                 {
                     var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
-                    Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+                    if ((int)metadata.Size != swiftDestSpan.Length)
+                    {
+                        throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+                    }
                     fixed (void* swiftDest = swiftDestSpan)
                     {
                         // Ensure that the instance is valid before making copy
                         bool success = false;
                         _payload.DangerousAddRef(ref success);
-                        metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, _payload, metadata);
-                        if (success)
-                            _payload.DangerousRelease();
+                        try
+                        {
+                            metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
+                        }
+                        finally
+                        {
+                            if (success)
+                                _payload.DangerousRelease();
+                        }
                     }
                 }
                 """;
@@ -533,11 +542,14 @@ namespace BindingsGeneration
                 unsafe void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
                 {
                     var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
-                    Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+                    if ((int)metadata.Size != swiftDestSpan.Length)
+                    {
+                        throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+                    }
                     fixed (void* payload = &this)
                     fixed (void* swiftDest = swiftDestSpan)
                     {
-                        metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, payload, metadata);
+                        metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, payload, metadata);
                     }
                 }
                 """;
@@ -557,15 +569,24 @@ namespace BindingsGeneration
             unsafe void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
             {
                 var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
-                Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+                if ((int)metadata.Size != swiftDestSpan.Length)
+                {
+                    throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+                }
                 fixed (void* swiftDest = swiftDestSpan)
                 {
                     // Ensure that the instance is valid before making copy
                     bool success = false;
                     _payload.DangerousAddRef(ref success);
-                    metadata.ValueWitnessTable->InitializeWithCopy((void *)swiftDest, (void *)_payload.Handle, metadata);
-                    if (success)
-                        _payload.DangerousRelease();
+                    try
+                    {
+                        metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
+                    }
+                    finally
+                    {
+                        if (success)
+                            _payload.DangerousRelease();
+                    }
                 }
             }
             """;

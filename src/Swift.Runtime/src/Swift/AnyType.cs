@@ -39,23 +39,7 @@ public struct AnyType : ISwiftObject
     /// <returns></returns>
     void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
     {
-        var metadata = SwiftObjectHelper<AnyType>.GetTypeMetadata();
-        Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
-        if (!metadata.IsValid)
-        {
-            throw new InvalidOperationException("Cannot marshal AnyType to Swift without metadata");
-        }
-        if (_payload == SwiftSafeHandle<AnyType>.Zero)
-        {
-            throw new InvalidOperationException("Cannot marshal AnyType to Swift without payload");
-        }
-        unsafe
-        {
-            fixed (void* swiftDest = swiftDestSpan)
-            {
-                metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
-            }
-        }
+        throw new InvalidOperationException("Cannot marshal AnyType to Swift");
     }
 
     /// <summary>

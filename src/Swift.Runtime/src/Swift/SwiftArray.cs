@@ -62,7 +62,10 @@ public class SwiftArray<Element> : ISwiftObject
     void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
     {
         var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
-        Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+        if ((int)metadata.Size != swiftDestSpan.Length)
+        {
+            throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+        }
         unsafe
         {
             fixed (void* swiftDest = swiftDestSpan)
@@ -70,9 +73,15 @@ public class SwiftArray<Element> : ISwiftObject
                 // Ensure the payload is valid before making copy
                 bool success = false;
                 _payload.DangerousAddRef(ref success);
-                metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
-                if (success)
-                    _payload.DangerousRelease();
+                try
+                {
+                    metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
+                }
+                finally
+                {
+                    if (success)
+                        _payload.DangerousRelease();
+                }
             }
         }
     }

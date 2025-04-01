@@ -47,7 +47,10 @@ namespace BindingsGeneration.FunctionalTests
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
             {
                 var metadata = SwiftObjectHelper<Nonce>.GetTypeMetadata();
-                Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+                if ((int)metadata.Size != swiftDestSpan.Length)
+                {
+                    throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+                }
                 unsafe
                 {
                     fixed (byte* swiftDest = swiftDestSpan)
@@ -237,7 +240,10 @@ namespace BindingsGeneration.FunctionalTests
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
             {
                 var metadata = SwiftObjectHelper<Nonce>.GetTypeMetadata();
-                Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+                if ((int)metadata.Size != swiftDestSpan.Length)
+                {
+                    throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+                }
                 unsafe
                 {
                     fixed (byte* swiftDest = swiftDestSpan)
@@ -317,7 +323,10 @@ namespace BindingsGeneration.FunctionalTests
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
             {
                 var metadata = SwiftObjectHelper<SealedBox>.GetTypeMetadata();
-                Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+                if ((int)metadata.Size != swiftDestSpan.Length)
+                {
+                    throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+                }
                 unsafe
                 {
                     fixed (byte* swiftDest = swiftDestSpan)
@@ -483,7 +492,10 @@ namespace BindingsGeneration.FunctionalTests
         void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
         {
             var metadata = SwiftObjectHelper<SymmetricKey>.GetTypeMetadata();
-            Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+            if ((int)metadata.Size != swiftDestSpan.Length)
+            {
+                throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+            }
             unsafe
             {
                 fixed (byte* swiftDest = swiftDestSpan)

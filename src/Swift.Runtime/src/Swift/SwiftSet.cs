@@ -61,7 +61,10 @@ public class SwiftSet<Element> : ISwiftObject
     void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
     {
         var metadata = SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata();
-        Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+        if ((int)metadata.Size != swiftDestSpan.Length)
+        {
+            throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+        }
         unsafe
         {
             fixed (void* swiftDest = swiftDestSpan)

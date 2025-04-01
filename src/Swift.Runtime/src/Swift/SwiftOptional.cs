@@ -67,7 +67,10 @@ public class SwiftOptional<T> : ISwiftObject
     void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
     {
         var metadata = SwiftObjectHelper<SwiftOptional<T>>.GetTypeMetadata();
-        Debug.Assert((int)metadata.Size == swiftDestSpan.Length, $"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+        if ((int)metadata.Size != swiftDestSpan.Length)
+        {
+            throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
+        }
         unsafe
         {
             fixed (byte* payload = _payload)
@@ -101,7 +104,8 @@ public class SwiftOptional<T> : ISwiftObject
             fixed (byte* payload = instance._payload)
             {
                 var metadata = SwiftObjectHelper<SwiftOptional<T>>.GetTypeMetadata();
-                // The payload is the size of the type minus 1 for the optional tag
+                // The additional byte is a discriminator for the enum case
+                // https://github.com/swiftlang/swift/blob/8c8ed346edac36f07ece5518f40e35c05e4aa13a/stdlib/public/core/Optional.swift#L121
                 Span<byte> payloadSpan = new Span<byte>(payload, (int)metadata.Size - 1);
                 SwiftMarshal.MarshalToSwift(value, payloadSpan);
                 metadata.ValueWitnessTable->DestructiveInjectEnumTag(payload, (uint)SwiftOptionalCases.Some, metadata);
