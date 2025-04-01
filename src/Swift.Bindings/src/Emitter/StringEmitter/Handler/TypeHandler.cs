@@ -527,7 +527,7 @@ namespace BindingsGeneration
             var text = $$"""
             {{_structDecl.Name}}(SwiftHandle handle)
             {
-                _payload = new SwiftSafeHandle<{{_structDecl.Name}}>(handle, false);
+                _payload = new SwiftSafeHandle<{{_structDecl.Name}}>(handle);
             }
             """;
 

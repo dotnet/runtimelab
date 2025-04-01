@@ -41,7 +41,7 @@ namespace BindingsGeneration.FunctionalTests
 
             unsafe Nonce(SwiftHandle handle)
             {
-                _payload = new SwiftSafeHandle<Nonce>(handle, false);
+                _payload = new SwiftSafeHandle<Nonce>(handle);
             }
 
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -234,7 +234,7 @@ namespace BindingsGeneration.FunctionalTests
 
             unsafe Nonce(SwiftHandle handle)
             {
-                _payload = new SwiftSafeHandle<Nonce>(handle, false);
+                _payload = new SwiftSafeHandle<Nonce>(handle);
             }
 
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -317,7 +317,7 @@ namespace BindingsGeneration.FunctionalTests
 
             unsafe SealedBox(SwiftHandle handle)
             {
-                _payload = new SwiftSafeHandle<SealedBox>(handle, false);
+                _payload = new SwiftSafeHandle<SealedBox>(handle);
             }
 
             void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
@@ -486,7 +486,7 @@ namespace BindingsGeneration.FunctionalTests
 
         unsafe SymmetricKey(SwiftHandle handle)
         {
-            _payload = new SwiftSafeHandle<SymmetricKey>(handle, false);
+            _payload = new SwiftSafeHandle<SymmetricKey>(handle);
         }
 
         void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)

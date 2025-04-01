@@ -69,7 +69,7 @@ namespace BindingsGeneration.FunctionalTests
             var metadata = SwiftObjectHelper<Bindings.VType>.GetTypeMetadata();
 
             // Creates a copy of the vType
-            IntPtr payloadCopy = (IntPtr)NativeMemory.Alloc(metadata.ValueWitnessTable->Size);
+            IntPtr payloadCopy = (IntPtr)NativeMemory.Alloc(metadata.Size);
             metadata.ValueWitnessTable->InitializeWithCopy((void*)payloadCopy, (void*)payload, metadata);
 
             // Check the copy ref is the same
@@ -149,7 +149,7 @@ namespace BindingsGeneration.FunctionalTests
 
             var metadata = SwiftObjectHelper<Bindings.VType>.GetTypeMetadata();
 
-            IntPtr payloadCopy = (IntPtr)NativeMemory.Alloc(metadata.ValueWitnessTable->Size);
+            IntPtr payloadCopy = (IntPtr)NativeMemory.Alloc(metadata.Size);
             metadata.ValueWitnessTable->InitializeWithCopy((void*)payloadCopy, (void*)payload, metadata);
 
             // Check the copy ref is the same
@@ -159,7 +159,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(payload.At(0)));
             Assert.Equal(2, Arc.RetainCount(payloadCopy.At(0)));
 
-            IntPtr payloadCopyCopy = (IntPtr)NativeMemory.Alloc(metadata.ValueWitnessTable->Size);
+            IntPtr payloadCopyCopy = (IntPtr)NativeMemory.Alloc(metadata.Size);
             metadata.ValueWitnessTable->InitializeWithCopy((void*)payloadCopyCopy, (void*)payloadCopy, metadata);
 
             // Check the copy ref is the same
@@ -217,7 +217,7 @@ namespace BindingsGeneration.FunctionalTests
             var metadata = SwiftObjectHelper<Bindings.NestedVType>.GetTypeMetadata();
 
             // Creates a copy of the vType
-            IntPtr payloadCopy = (IntPtr)NativeMemory.Alloc(metadata.ValueWitnessTable->Size);
+            IntPtr payloadCopy = (IntPtr)NativeMemory.Alloc(metadata.Size);
             metadata.ValueWitnessTable->InitializeWithCopy((void*)payloadCopy, (void*)payload, metadata);
 
             // Check the copy ref is the same
@@ -319,7 +319,7 @@ namespace BindingsGeneration.FunctionalTests
 
             var metadata = SwiftObjectHelper<Bindings.NestedVType>.GetTypeMetadata();
 
-            IntPtr payloadCopy = (IntPtr)NativeMemory.Alloc(metadata.ValueWitnessTable->Size);
+            IntPtr payloadCopy = (IntPtr)NativeMemory.Alloc(metadata.Size);
             metadata.ValueWitnessTable->InitializeWithCopy((void*)payloadCopy, (void*)payload, metadata);
 
             // Check the copy ref is the same
@@ -332,7 +332,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(payload.At(2)));
             Assert.Equal(2, Arc.RetainCount(payloadCopy.At(2)));
 
-            IntPtr payloadCopyCopy = (IntPtr)NativeMemory.Alloc(metadata.ValueWitnessTable->Size);
+            IntPtr payloadCopyCopy = (IntPtr)NativeMemory.Alloc(metadata.Size);
             metadata.ValueWitnessTable->InitializeWithCopy((void*)payloadCopyCopy, (void*)payloadCopy, metadata);
 
             // Check the copy ref is the same
@@ -407,7 +407,7 @@ namespace BindingsGeneration.FunctionalTests
             var metadata = SwiftObjectHelper<Bindings.NestedNestedVType>.GetTypeMetadata();
 
             // Creates a copy of the vType
-            IntPtr payloadCopy = (IntPtr)NativeMemory.Alloc(metadata.ValueWitnessTable->Size);
+            IntPtr payloadCopy = (IntPtr)NativeMemory.Alloc(metadata.Size);
             metadata.ValueWitnessTable->InitializeWithCopy((void*)payloadCopy, (void*)payload, metadata);
 
             // Check the copy ref is the same
@@ -531,7 +531,7 @@ namespace BindingsGeneration.FunctionalTests
 
             var metadata = SwiftObjectHelper<Bindings.NestedNestedVType>.GetTypeMetadata();
 
-            IntPtr payloadCopy = (IntPtr)NativeMemory.Alloc(metadata.ValueWitnessTable->Size);
+            IntPtr payloadCopy = (IntPtr)NativeMemory.Alloc(metadata.Size);
             metadata.ValueWitnessTable->InitializeWithCopy((void*)payloadCopy, (void*)payload, metadata);
 
             // Check the copy ref is the same
@@ -547,7 +547,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(payload.At(4)));
             Assert.Equal(2, Arc.RetainCount(payloadCopy.At(4)));
 
-            IntPtr payloadCopyCopy = (IntPtr)NativeMemory.Alloc(metadata.ValueWitnessTable->Size);
+            IntPtr payloadCopyCopy = (IntPtr)NativeMemory.Alloc(metadata.Size);
             metadata.ValueWitnessTable->InitializeWithCopy((void*)payloadCopyCopy, (void*)payloadCopy, metadata);
 
             // Check the copy ref is the same
@@ -727,7 +727,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, Arc.RetainCount(vtype.Payload.Handle.At(0)));
 
             // Marshal back from Swift
-            var copy = SwiftMarshal.MarshalFromSwift<Bindings.FrozenStructRequiresMemoryManagement>((IntPtr)payloadPtr);
+            var copy = SwiftMarshal.MarshalFromSwift<Bindings.NestedFrozenStructRequiresMemoryManagement>((IntPtr)payloadPtr);
             Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle.At(0)));
 
             // Dispose the copy and verify retain count
@@ -742,7 +742,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(0)));
 
             var metadata = SwiftObjectHelper<Bindings.NonFrozenStructRequiresMemoryManagement>.GetTypeMetadata();
-            byte* payloadPtr = stackalloc byte[(int)metadata.Size];
+            void* payloadPtr = NativeMemory.Alloc(metadata.Size);
             Span<byte> payloadSpan = new Span<byte>(payloadPtr, (int)metadata.Size);
 
             // Marshal the object to Swift

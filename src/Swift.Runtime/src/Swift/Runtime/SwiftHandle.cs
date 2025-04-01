@@ -54,11 +54,6 @@ public struct SwiftHandle
 public sealed class SwiftSafeHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where T : ISwiftObject
 {
     /// <summary>
-    /// Indicates whether the handle was allocated by C#
-    /// </summary>
-    private bool _allocatedHandle;
-
-    /// <summary>
     /// Returns a SwiftSafeHandle with a zero value
     /// </summary>
     public readonly static SwiftSafeHandle<T> Zero = new SwiftSafeHandle<T>(IntPtr.Zero);
@@ -75,17 +70,6 @@ public sealed class SwiftSafeHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where
         : base(ownsHandle: true)
     {
         SetHandle(handle);
-        _allocatedHandle = true;
-    }
-
-    /// <summary>
-    /// Constructs a SwiftSafeHandle from the given IntPtr
-    /// </summary>
-    public SwiftSafeHandle(IntPtr handle, bool allocatedHandle)
-        : base(ownsHandle: true)
-    {
-        SetHandle(handle);
-        _allocatedHandle = allocatedHandle;
     }
 
     /// <summary>
@@ -107,10 +91,7 @@ public sealed class SwiftSafeHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where
 
         try
         {
-            if (_allocatedHandle && !IsInvalid)
-            {
-                NativeMemory.Free((void*)handle);
-            }
+            NativeMemory.Free((void*)handle);
         }
         catch (Exception ex)
         {
