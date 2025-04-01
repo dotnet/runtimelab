@@ -7297,6 +7297,13 @@ void CodeGen::genSwiftErrorReturn(GenTree* treeNode)
 }
 #endif // SWIFT_SUPPORT
 
+//------------------------------------------------------------------------
+// genReturnSuspend:
+//   Generate code for a GT_RETURN_SUSPEND node
+//
+// Arguments:
+//   treeNode - The node
+//
 void CodeGen::genReturnSuspend(GenTreeUnOp* treeNode)
 {
     GenTree* op = treeNode->gtGetOp1();
@@ -7319,6 +7326,10 @@ void CodeGen::genReturnSuspend(GenTreeUnOp* treeNode)
     genMarkReturnGCInfo();
 }
 
+//------------------------------------------------------------------------
+// genMarkReturnGCInfo:
+//   Mark GC and non-GC pointers of return registers going into the epilog..
+//
 void CodeGen::genMarkReturnGCInfo()
 {
     const ReturnTypeDesc& retTypeDesc = compiler->compRetTypeDesc;
@@ -7343,6 +7354,13 @@ void CodeGen::genMarkReturnGCInfo()
     }
 }
 
+//------------------------------------------------------------------------
+// genCodeForAsyncContinuation:
+//   Generate code for a GC_ASYNC_CONTINUATION node.
+//
+// Arguments:
+//   tree - The node
+//
 void CodeGen::genCodeForAsyncContinuation(GenTree* tree)
 {
     assert(tree->OperIs(GT_ASYNC_CONTINUATION));
