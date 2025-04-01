@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.CodeDom.Compiler;
+using Microsoft.Extensions.Logging;
 using Swift.Runtime;
 
 namespace BindingsGeneration
@@ -69,6 +70,17 @@ namespace BindingsGeneration
     /// </summary>
     public class BaseHandler
     {
+        protected readonly ILogger _logger;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="BaseHandler"/> class.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
+        public BaseHandler(ILogger logger)
+        {
+            _logger = logger;
+        }
+
         /// <summary>
         /// Handles a base declaration.
         /// </summary>
@@ -89,7 +101,7 @@ namespace BindingsGeneration
                     }
                     else
                     {
-                        Console.WriteLine($"No handler found for method {structDecl.Name}");
+                        _logger.LogWarning($"No handler found for method {structDecl.Name}");
                     }
                 }
                 else if (baseDecl is ClassDecl classDecl)
@@ -101,7 +113,7 @@ namespace BindingsGeneration
                     }
                     else
                     {
-                        Console.WriteLine($"No handler found for method {classDecl.Name}");
+                        _logger.LogWarning($"No handler found for method {classDecl.Name}");
                     }
                 }
                 else if (baseDecl is ProtocolDecl protocolDecl)
@@ -113,7 +125,7 @@ namespace BindingsGeneration
                     }
                     else
                     {
-                        Console.WriteLine($"No handler found for method {protocolDecl.Name}");
+                        _logger.LogWarning($"No handler found for method {protocolDecl.Name}");
                     }
                 }
                 else if (baseDecl is MethodDecl methodDecl)
@@ -125,7 +137,7 @@ namespace BindingsGeneration
                     }
                     else
                     {
-                        Console.WriteLine($"No handler found for method {methodDecl.Name}");
+                        _logger.LogWarning($"No handler found for method {methodDecl.Name}");
                     }
                 }
                 else

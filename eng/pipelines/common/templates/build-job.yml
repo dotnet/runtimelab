@@ -1,14 +1,13 @@
 parameters:
   variables: {}
   osGroup: ''
+  platform: ''
   archType: ''
   container: ''
   pool: {}
   isOfficialBuild: false
   runTests: true
-  bindings:
-    isBindingsBuild: false
-    scriptArgs: ''
+  scriptArgs: ''
 
 jobs:
 
@@ -38,9 +37,9 @@ jobs:
         testRunTitle: ${{ parameters.osGroup }}_${{ parameters.archType }}_$(_BuildConfig)
 
       variables:
-        - _buildScript: build.cmd
-        - ${{ if ne(parameters.osGroup, 'Windows_NT') }}:
-          - _buildScript: ./build.sh
+        - _buildScript: ./build.sh
+        - _generateScript: ./generate.sh
+        - _dotnetScript: ./dotnet.sh
 
         - _testBuildArg: ''
         - ${{ if eq(parameters.runTests, true) }}:
@@ -54,12 +53,37 @@ jobs:
                 /p:TargetPlatform=${{ parameters.archType }}
         displayName: Build and test
 
-      - script: ./dotnet.sh format --exclude artifacts --verify-no-changes --verbosity detailed
+      - script: $(_dotnetScript) format --exclude artifacts --verify-no-changes --verbosity detailed
         displayName: Verify code formatting
 
-      - ${{ if and(eq(parameters.bindings.isBindingsBuild, true), ne(parameters.osGroup, 'Windows_NT')) }}:
-        - script: ./generate.sh --configuration $(_BuildConfig) ${{ parameters.bindings.scriptArgs }}
-          displayName: Generate bindings
+      - ${{ if and(ne(parameters.isOfficialBuild, true), eq(parameters.platform, 'maccatalyst')) }}:
+        - script: |
+            $(_generateScript) --configuration $(_BuildConfig) --platform MacCatalyst ${{ parameters.scriptArgs }}
+            $(_buildScript) -ci -publish -pack -configuration Release --projects $(pwd)/artifacts/MacCatalyst/Swift.Bindings.MacCatalyst.Experimental.csproj
+          displayName: Generate MacCatalyst bindings
+
+        - script: |
+            $(_dotnetScript) workload install maui maccatalyst mobile-librarybuilder-net9 --version 10.0.100-preview.1.25124.2 --source https://api.nuget.org/v3/index.json
+            $(_dotnetScript) new tool-manifest && $(_dotnetScript) tool install microsoft.dotnet.xharness.cli --version "10.0.0-prerelease*"
+            sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          displayName: Install dependencies
+
+        - script: |
+            $(_dotnetScript) build ./src/Swift.Bindings/tests/FrameworkTests/Swift.Bindings.Framework.Tests.csproj \
+            -f net10.0-${{ parameters.platform }} \
+            -c $(_BuildConfig) \
+            -r ${{ parameters.platform }}-${{ parameters.archType }} \
+            /p:UseMaui=true
+          displayName: Build device tests
+
+        - script: |
+            $(_dotnetScript) xharness apple test \
+            --target ${{ parameters.platform }} \
+            --timeout="00:02:00" \
+            --launch-timeout=00:06:00 \
+            --app ./src/Swift.Bindings/tests/FrameworkTests/bin/$(_BuildConfig)/net10.0-${{ parameters.platform }}/${{ parameters.platform }}-${{ parameters.archType }}/Swift.Bindings.Framework.Tests.app \
+            --output-directory artifacts
+          displayName: Run device tests
 
       - ${{ if eq(parameters.isOfficialBuild, true) }}:
         - template: /eng/pipelines/common/upload-intermediate-artifacts-step.yml

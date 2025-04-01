@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net9.0-maccatalyst</TargetFramework>
+		<TargetFramework>net10.0-maccatalyst</TargetFramework>
 		<OutputType>Exe</OutputType>
 		<RootNamespace>BindingsGeneration.FrameworkTests</RootNamespace>
 		<UseMaui>true</UseMaui>
@@ -62,5 +62,12 @@
 		<PackageReference Include="DeviceRunners.XHarness.Xunit" Version="0.1.0-preview.2" />
 		<PackageReference Include="DeviceRunners.UITesting.Maui" Version="0.1.0-preview.2" />
 		<PackageReference Include="DeviceRunners.UITesting.Xunit" Version="0.1.0-preview.2" />
+		<!-- Swift.Bindings.Experimental packages  -->
+		<PackageReference Condition="'$(RuntimeIdentifier)' == 'ios-arm64'" Include="Swift.Bindings.iPhoneOS.Experimental" Version="1.0.0-ci" />
+		<PackageReference Condition="'$(RuntimeIdentifier)' == 'iossimulator-arm64' or '$(RuntimeIdentifier)' == 'iossimulator-x64'" Include="Swift.Bindings.iPhoneSimulator.Experimental" Version="1.0.0-ci" />
+		<PackageReference Condition="'$(RuntimeIdentifier)' == 'tvos-arm64'" Include="Swift.Bindings.AppleTVOS.Experimental" Version="1.0.0-ci" />
+		<PackageReference Condition="'$(RuntimeIdentifier)' == 'tvossimulator-arm64' or '$(RuntimeIdentifier)' == 'tvossimulator-x64'" Include="Swift.Bindings.AppleTVSimulator.Experimental" Version="1.0.0-ci" />
+		<PackageReference Condition="'$(RuntimeIdentifier)' == 'osx-arm64' or '$(RuntimeIdentifier)' == 'osx-x64'" Include="Swift.Bindings.MacOSX.Experimental" Version="1.0.0-ci" />
+		<PackageReference Condition="'$(RuntimeIdentifier)' == 'maccatalyst-x64' or '$(RuntimeIdentifier)' == 'maccatalyst-arm64'" Include="Swift.Bindings.MacCatalyst.Experimental" Version="1.0.0-ci" />
 	</ItemGroup>
 </Project>

@@ -2,9 +2,7 @@ parameters:
   PublishRidAgnosticPackagesFromPlatform: ''
   isOfficialBuild: false
   logArtifactName: 'Logs-PrepareSignedArtifacts_Attempt$(System.JobAttempt)'
-  bindings:
-    isBindingsBuild: false
-    scriptArgs: ''
+  scriptArgs: ''
 
 jobs:
 - template: /eng/common/templates-official/job/job.yml
@@ -28,13 +26,16 @@ jobs:
     variables:
       - name: '_SignType'
         value: $[ coalesce(variables.OfficialSignType, 'real') ]
+      - _BuildConfig: Release
+      - _buildScript: ./build.sh
+      - _generateScript: ./generate.sh
 
     steps:
     - script: >-
-        ./build.sh -ci
+        $(_buildScript) -ci
         -publish
         -pack
-        -configuration Release
+        -configuration $(_BuildConfig)
         /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
         /p:OfficialBuildId=$(Build.BuildNumber)
         /p:SignType=$(_SignType)
@@ -43,24 +44,34 @@ jobs:
         /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
       displayName: Prepare tooling artifacts and upload to build
 
-    - ${{ if eq(parameters.bindings.isBindingsBuild, true) }}:
-      - script: >-
-          ./generate.sh --configuration Release ${{ parameters.bindings.scriptArgs }}
-        displayName: Generate bindings
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform MacOSX ${{ parameters.scriptArgs }}
+      displayName: Generate MacOSX bindings
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneOS ${{ parameters.scriptArgs }}
+      displayName: Generate iOS bindings
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform iPhoneSimulator ${{ parameters.scriptArgs }}
+      displayName: Generate iOSSimulator bindings
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform AppleTVOS ${{ parameters.scriptArgs }}
+      displayName: Generate tvOS bindings
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform AppleTVSimulator ${{ parameters.scriptArgs }}
+      displayName: Generate tvOSSimulator bindings
+    - script: $(_generateScript) --configuration $(_BuildConfig) --platform MacCatalyst ${{ parameters.scriptArgs }}
+      displayName: Generate MacCatalyst bindings
 
-      - script: >-
-          ./build.sh -ci
-          -publish
-          -pack
-          -configuration Release
-          --projects $(pwd)/GeneratedBindings/Swift.Bindings.Experimental.csproj
-          /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
-          /p:OfficialBuildId=$(Build.BuildNumber)
-          /p:SignType=$(_SignType)
-          /p:DotNetSignType=$(_SignType)
-          /p:DotNetPublishUsingPipelines=true
+    - script: |
+        for proj in artifacts/MacOSX/*.csproj artifacts/iPhoneOS/*.csproj artifacts/iPhoneSimulator/*.csproj artifacts/AppleTVOS/*.csproj artifacts/AppleTVSimulator/*.csproj artifacts/MacCatalyst/*.csproj; do
+          $(_buildScript) -ci \
+          -publish \
+          -pack \
+          -configuration $(_BuildConfig) \
+          --projects "$(pwd)/$proj" \
+          /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }} \
+          /p:OfficialBuildId=$(Build.BuildNumber) \
+          /p:SignType=$(_SignType) \
+          /p:DotNetSignType=$(_SignType) \
+          /p:DotNetPublishUsingPipelines=true \
           /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
-        displayName: Prepare bindings artifacts and upload to build
+        done
+      displayName: Prepare bindings artifacts and upload to build
 
     - task: CopyFiles@2
       displayName: Copy Files to $(Build.StagingDirectory)\BuildLogs

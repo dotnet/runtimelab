@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.CodeDom.Compiler;
+using Microsoft.Extensions.Logging;
 
 namespace BindingsGeneration;
 
@@ -10,6 +11,17 @@ namespace BindingsGeneration;
 /// </summary>
 public class PropertyHandlerFactory : IFactory<BaseDecl, IPropertyHandler>
 {
+    private readonly ILogger _handlerLogger;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PropertyHandlerFactory"/> class.
+    /// </summary>
+    /// <param name="loggerFactory">The logger factory instance.</param>
+    public PropertyHandlerFactory(ILoggerFactory loggerFactory)
+    {
+        _handlerLogger = loggerFactory.CreateLogger<PropertyHandler>();
+    }
+
     public bool Handles(BaseDecl decl)
     {
         return decl is PropertyDecl;
@@ -17,7 +29,7 @@ public class PropertyHandlerFactory : IFactory<BaseDecl, IPropertyHandler>
 
     public IPropertyHandler Construct()
     {
-        return new PropertyHandler();
+        return new PropertyHandler(_handlerLogger);
     }
 }
 
@@ -26,6 +38,15 @@ public class PropertyHandlerFactory : IFactory<BaseDecl, IPropertyHandler>
 /// </summary> 
 public class PropertyHandler : BaseHandler, IPropertyHandler
 {
+    // private readonly ILogger _logger;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PropertyHandler"/> class.
+    /// </summary>
+    /// <param name="logger">The logger instance.</param>
+    public PropertyHandler(ILogger logger) : base(logger)
+    {
+    }
     private static readonly Dictionary<string, string> PropertyNameMappings = new()
     {
         { "isEligibleForIntroOffer", "isEligibleForIntroOfferProperty" },
@@ -57,7 +78,7 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
 
         if (!processed)
         {
-            Console.WriteLine($"PropertyHandler: Couldn't process property {propertyDecl.Name} of type {propertyDecl.SwiftTypeSpec}. Skipping.");
+            _logger.LogWarning($"PropertyHandler: Couldn't process property {propertyDecl.Name} of type {propertyDecl.SwiftTypeSpec}. Skipping.");
             return;
         }
 
@@ -88,7 +109,7 @@ public class PropertyHandler : BaseHandler, IPropertyHandler
             }
             else
             {
-                throw new InvalidOperationException($"No handler found for properties accessor {accessor.Method.Name}");
+                _logger.LogWarning($"No handler found for properties accessor {accessor.Method.Name}");
             }
         }
         var staticModifier = propertyDecl.IsStatic ? "static " : string.Empty;

@@ -2,14 +2,23 @@
 // Licensed under the MIT License.
 
 using System.CodeDom.Compiler;
+using Microsoft.Extensions.Logging;
 
 namespace BindingsGeneration
 {
     /// <summary>
     /// Factory class for creating instances of ConstructorHandler.
     /// </summary>
-    public class ConstructorHandlerFactory : IFactory<BaseDecl, IMethodHandler>
+    public class ConstructorHandlerFactory : HandlerFactory, IFactory<BaseDecl, IMethodHandler>
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConstructorHandlerFactory"/> class.
+        /// </summary>
+        /// <param name="loggerFactory">The logger factory instance.</param>
+        public ConstructorHandlerFactory(ILoggerFactory loggerFactory) : base(loggerFactory.CreateLogger<ConstructorHandler>())
+        {
+        }
+
         /// <summary>
         /// Determines if the factory handles the specified declaration.
         /// </summary>
@@ -24,7 +33,7 @@ namespace BindingsGeneration
         /// </summary>
         public IMethodHandler Construct()
         {
-            return new ConstructorHandler();
+            return new ConstructorHandler(_handlerLogger);
         }
     }
 
@@ -33,7 +42,11 @@ namespace BindingsGeneration
     /// </summary>
     public class ConstructorHandler : BaseHandler, IMethodHandler
     {
-        public ConstructorHandler()
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConstructorHandler"/> class.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
+        public ConstructorHandler(ILogger logger) : base(logger)
         {
         }
 
@@ -56,13 +69,13 @@ namespace BindingsGeneration
             if (methodEnv.MethodDecl.IsGeneric)
             {
                 // TODO: This should revert writing the entire struct: https://github.com/dotnet/runtimelab/issues/2890
-                Console.WriteLine($"Constructor {methodEnv.MethodDecl.Name} has unsupported generic parameters");
+                _logger.LogWarning($"Constructor {methodEnv.MethodDecl.Name} has unsupported generic parameters");
                 return;
             }
 
             if (signatureHandler.GetWrapperSignature().ContainsPlaceholder)
             {
-                Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported signature: ({signatureHandler.GetWrapperSignature().ParametersString()}) -> {signatureHandler.GetWrapperSignature().ReturnType}");
+                _logger.LogWarning($"Constructor {methodEnv.MethodDecl.Name} has unsupported signature: ({signatureHandler.GetWrapperSignature().ParametersString()}) -> {signatureHandler.GetWrapperSignature().ReturnType}");
                 return;
             }
 
@@ -76,8 +89,16 @@ namespace BindingsGeneration
     /// <summary>
     /// Represents a method handler factory.
     /// </summary>
-    public class MethodHandlerFactory : IFactory<BaseDecl, IMethodHandler>
+    public class MethodHandlerFactory : HandlerFactory, IFactory<BaseDecl, IMethodHandler>
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MethodHandlerFactory"/> class.
+        /// </summary>
+        /// <param name="loggerFactory">The logger factory instance.</param>
+        public MethodHandlerFactory(ILoggerFactory loggerFactory) : base(loggerFactory.CreateLogger<MethodHandler>())
+        {
+        }
+
         /// <summary>
         /// Checks if the factory can handle the declaration.
         /// </summary>
@@ -93,7 +114,7 @@ namespace BindingsGeneration
         /// </summary>
         public IMethodHandler Construct()
         {
-            return new MethodHandler();
+            return new MethodHandler(_handlerLogger);
         }
     }
 
@@ -102,7 +123,11 @@ namespace BindingsGeneration
     /// </summary>
     public class MethodHandler : BaseHandler, IMethodHandler
     {
-        public MethodHandler()
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MethodHandler"/> class.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
+        public MethodHandler(ILogger logger) : base(logger)
         {
         }
 
@@ -124,7 +149,7 @@ namespace BindingsGeneration
 
             if (signatureHandler.GetWrapperSignature().ContainsPlaceholder)
             {
-                Console.WriteLine($"Method {methodEnv.MethodDecl.Name} has unsupported signature: ({signatureHandler.GetWrapperSignature().ParametersString()}) -> {signatureHandler.GetWrapperSignature().ReturnType}");
+                _logger.LogWarning($"Method {methodEnv.MethodDecl.Name} has unsupported signature: ({signatureHandler.GetWrapperSignature().ParametersString()}) -> {signatureHandler.GetWrapperSignature().ReturnType}");
                 return;
             }
 
@@ -737,7 +762,14 @@ namespace BindingsGeneration
                 public {{(_env.MethodDecl.MethodType == MethodType.Static ? "static " : "")}} func {{NameProvider.GetPInvokeName(_env.MethodDecl)}}{{genericParams}}({{parameters}}){{whereClause}}{
                     Task {
                         {{(isEmptyTuple ? "" : $"let result{_env.MethodDecl.Name} = ")}}try! await {{(_env.MethodDecl.MethodType == MethodType.Static ? $"{parentTypeName.ModuleQualifiedName}." : "")}}{{_env.MethodDecl.Name}}(
-                            {{string.Join(", ", _env.MethodDecl.CSSignature.Skip(1).Select(p => (p.Name.First() == '_' ? p.Name.Remove(0, 1) : p.Name) + ": " + (p.Name)))}}
+                            {{string.Join(", ", _env.MethodDecl.CSSignature.Skip(1)
+                                .Select(p => p.Name switch
+                                {
+                                    var n when n.StartsWith("arg") => n,
+                                    var n when n.StartsWith("_") => $"{n.Substring(1)}: {n}",
+                                    var n => $"{n}: {n}"
+                                })
+                            )}}
                         )
                         callback({{(isEmptyTuple ? "" : $"result{_env.MethodDecl.Name}{(_env.MethodDecl.CSSignature.First().IsGeneric ? $" as! {_env.MethodDecl.GenericParameters[0].SugaredTypeName}" : "")}, ")}}task);
                     }

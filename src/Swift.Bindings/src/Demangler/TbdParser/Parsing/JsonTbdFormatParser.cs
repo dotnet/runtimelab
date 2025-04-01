@@ -3,7 +3,7 @@
 
 using System;
 using System.Collections.Generic;
-using TbdParsing.Logging;
+using Microsoft.Extensions.Logging;
 using TbdParsing.Models;
 
 namespace TbdParsing.Parsing
@@ -23,7 +23,7 @@ namespace TbdParsing.Parsing
 
         public override bool CanParse(string[] lines)
         {
-            _logger.Warning("JSON format TBD parsing is not yet implemented");
+            _logger.LogError("JSON format TBD parsing is not yet implemented");
             // This is a placeholder for future implementation
             // For now, we'll throw an exception since JSON parsing is not implemented yet
             throw new NotImplementedException("JSON format parsing for TBD version 5+ is not yet implemented.");
@@ -31,7 +31,7 @@ namespace TbdParsing.Parsing
 
         public override TbdFile Parse(string[] lines)
         {
-            _logger.Warning("JSON format TBD parsing is not yet implemented");
+            _logger.LogError("JSON format TBD parsing is not yet implemented");
             // This is a placeholder for future implementation
             // For now, we'll throw an exception since JSON parsing is not implemented yet
             throw new NotImplementedException("JSON format parsing for TBD version 5+ is not yet implemented.");

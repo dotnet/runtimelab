@@ -61,7 +61,7 @@ To build the test application, use the following command:
 
 ```sh
 ./dotnet.sh build ./src/Swift.Bindings/tests/FrameworkTests/Swift.Bindings.Framework.Tests.csproj \
--f net9.0-maccatalyst \
+-f net10.0-maccatalyst \
 -c Release \
 -r arm64-maccatalyst \
 /p:UseMaui=true
@@ -76,7 +76,7 @@ Run the tests on an Apple device using `xharness`:
 --target maccatalyst \
 --timeout="00:02:00" \
 --launch-timeout=00:06:00 \
---app ./src/Swift.Bindings/tests/FrameworkTests/bin/Release/net9.0-maccatalyst/maccatalyst-arm64/Swift.Bindings.Framework.Tests.app \
+--app ./src/Swift.Bindings/tests/FrameworkTests/bin/Release/net10.0-maccatalyst/maccatalyst-arm64/Swift.Bindings.Framework.Tests.app \
 --output-directory artifacts
 ```
 

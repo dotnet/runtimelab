@@ -3,6 +3,7 @@
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Swift.Runtime;
 
 namespace BindingsGeneration
@@ -25,7 +26,7 @@ namespace BindingsGeneration
         private readonly ITypeDatabase _typeDatabase;
         private readonly ModuleTypeDatabase _moduleDatabase;
         private readonly Dictionary<NamedTypeSpec, TypeDecl> _typeDecls;
-        private readonly int _verbosity;
+        private readonly ILogger _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ModuleProcessor"/> class.
@@ -34,20 +35,20 @@ namespace BindingsGeneration
         /// <param name="dylibPath">The file path to the Swift dynamic library.</param>
         /// <param name="typeDecls">A dictionary mapping Swift type specs to their declarations.</param>
         /// <param name="typeDatabase">The global type database tracking processed types.</param>
-        /// <param name="verbosity">The verbosity level for logging.</param>
+        /// <param name="logger">Logger instance.</param>
         public ModuleProcessor(
             string module,
             string dylibPath,
             Dictionary<NamedTypeSpec, TypeDecl> typeDecls,
             ITypeDatabase typeDatabase,
-            int verbosity)
+            ILogger logger)
         {
             _module = module;
             _dylibPath = dylibPath;
             _typeDatabase = typeDatabase;
             _moduleDatabase = new ModuleTypeDatabase(module, dylibPath);
             _typeDecls = typeDecls;
-            _verbosity = verbosity;
+            _logger = logger;
         }
 
         /// <summary>
@@ -117,10 +118,7 @@ namespace BindingsGeneration
                     break;
 
                 default:
-                    if (_verbosity > 1)
-                    {
-                        Console.WriteLine($"Skipping unknown type declaration '{typeDecl.GetType().Name}'.");
-                    }
+                    _logger.LogWarning($"Skipping unknown type declaration '{typeDecl.GetType().Name}'.");
                     break;
             }
         }
@@ -169,13 +167,10 @@ namespace BindingsGeneration
                 {
                     if (!_typeDatabase.IsTypeProcessed(namedPropertyType))
                     {
-                        if (_verbosity > 1)
-                        {
-                            Console.WriteLine(
+                        _logger.LogWarning(
                                 $"Skipping property '{propertyDecl.Name}' of type '{namedPropertyType.NameWithoutModule}' " +
                                 $"from module '{namedPropertyType.Module}'. Type should have been processed " +
                                 "in a previous module but was not found.");
-                        }
                         continue;
                     }
                 }
@@ -184,12 +179,9 @@ namespace BindingsGeneration
                 {
                     if (!_typeDecls.TryGetValue(namedPropertyType, out var nestedDecl))
                     {
-                        if (_verbosity > 1)
-                        {
-                            Console.WriteLine(
+                        _logger.LogWarning(
                                 $"Skipping property '{propertyDecl.Name}' of type '{namedPropertyType.NameWithoutModule}' " +
                                 $"from module '{namedPropertyType.Module}'. Not found in type declarations.");
-                        }
                         continue;
                     }
                     ProcessTypeRecursively(namedPropertyType, nestedDecl);

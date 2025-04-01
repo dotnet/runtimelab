@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using TbdParsing.Logging;
+using Microsoft.Extensions.Logging;
 using TbdParsing.Models;
 
 namespace TbdParsing.Parsing
@@ -25,7 +25,7 @@ namespace TbdParsing.Parsing
         {
             if (lines == null || lines.Length == 0)
             {
-                _logger.Debug("Cannot parse empty file");
+                _logger.LogDebug("Cannot parse empty file");
                 return false;
             }
 
@@ -33,7 +33,7 @@ namespace TbdParsing.Parsing
             string firstLine = lines[0].Trim();
             if (firstLine != "--- !tapi-tbd")
             {
-                _logger.Debug($"First line does not contain \"--- !tapi-tbd\"");
+                _logger.LogDebug("First line does not contain \"--- !tapi-tbd\"");
                 return false;
             }
 
@@ -42,14 +42,14 @@ namespace TbdParsing.Parsing
 
         public override TbdFile Parse(string[] lines)
         {
-            _logger.Debug("Starting YAML-like TBD format parsing");
+            _logger.LogDebug("Starting YAML-like TBD format parsing");
             var tbdFile = new TbdFile();
             int lineIndex = 0;
 
             // Skip the YAML document marker if present
             if (lineIndex < lines.Length && lines[lineIndex].Trim() == "--- !tapi-tbd")
             {
-                _logger.Debug("Skipping YAML document marker");
+                _logger.LogDebug("Skipping YAML document marker");
                 lineIndex++;
             }
 
@@ -67,7 +67,7 @@ namespace TbdParsing.Parsing
 
                 if (line == "...")
                 {
-                    _logger.Debug("TBD end marker found (...)");
+                    _logger.LogDebug("TBD end marker found (...)");
                     break;
                 }
 
@@ -80,10 +80,10 @@ namespace TbdParsing.Parsing
                 catch (FormatException ex)
                 {
                     // TODO: We might not support all top-level keys yet
-                    _logger.Warning($"Line {lineIndex}: {ex.Message}");
+                    _logger.LogWarning($"Line {lineIndex}: {ex.Message}");
                     continue;
                 }
-                _logger.Debug($"Found top-level key-value pair: {kvp.Key} = {kvp.Value}");
+                _logger.LogDebug($"Found top-level key-value pair: {kvp.Key} = {kvp.Value}");
 
                 switch (kvp.Key)
                 {
@@ -91,49 +91,49 @@ namespace TbdParsing.Parsing
                         try
                         {
                             tbdFile.Version = int.Parse(kvp.Value);
-                            _logger.Debug($"Parsed tbd-version = {tbdFile.Version}");
+                            _logger.LogDebug($"Parsed tbd-version = {tbdFile.Version}");
                         }
                         catch (FormatException)
                         {
-                            _logger.Warning($"Failed to parse tbd-version: {kvp.Value}");
+                            _logger.LogWarning($"Failed to parse tbd-version: {kvp.Value}");
                         }
                         break;
 
                     case "install-name":
                         tbdFile.InstallName = kvp.Value.Trim('\'', '"');
-                        _logger.Debug($"Parsed install-name = {tbdFile.InstallName}");
+                        _logger.LogDebug($"Parsed install-name = {tbdFile.InstallName}");
                         break;
 
                     case "swift-abi-version":
                         try
                         {
                             tbdFile.SwiftAbiVersion = int.Parse(kvp.Value);
-                            _logger.Debug($"Parsed swift-abi-version = {tbdFile.SwiftAbiVersion}");
+                            _logger.LogDebug($"Parsed swift-abi-version = {tbdFile.SwiftAbiVersion}");
                         }
                         catch (FormatException)
                         {
-                            _logger.Warning($"Failed to parse swift-abi-version: {kvp.Value}");
+                            _logger.LogWarning($"Failed to parse swift-abi-version: {kvp.Value}");
                         }
                         break;
 
                     case "targets":
                         tbdFile.Targets = ParseMultiLineArray(lines, ref lineIndex, kvp.Value);
-                        _logger.Debug($"Parsed {tbdFile.Targets.Count} targets: [{string.Join(", ", tbdFile.Targets)}]");
+                        _logger.LogDebug($"Parsed {tbdFile.Targets.Count} targets: [{string.Join(", ", tbdFile.Targets)}]");
                         break;
 
                     case "exports":
-                        _logger.Debug($"Starting exports section parsing at line {lineIndex}");
+                        _logger.LogDebug($"Starting exports section parsing at line {lineIndex}");
                         tbdFile.Exports = ParseExports(lines, ref lineIndex);
-                        _logger.Debug($"Parsed {tbdFile.Exports.Count} export entries");
+                        _logger.LogDebug($"Parsed {tbdFile.Exports.Count} export entries");
                         break;
 
                     default:
-                        _logger.Warning($"Unknown top-level key: {kvp.Key}");
+                        _logger.LogWarning($"Unknown top-level key: {kvp.Key}");
                         break;
                 }
             }
 
-            _logger.Debug("Completed YAML-like TBD format parsing");
+            _logger.LogDebug("Completed YAML-like TBD format parsing");
             return tbdFile;
         }
 
@@ -168,7 +168,7 @@ namespace TbdParsing.Parsing
             }
             else
             {
-                _logger.Warning($"Invalid array format: {value}");
+                _logger.LogWarning($"Invalid array format: {value}");
             }
 
             return items;
@@ -190,7 +190,7 @@ namespace TbdParsing.Parsing
             // If the array is already complete on the first line
             if (initialValue.StartsWith('[') && initialValue.EndsWith(']'))
             {
-                _logger.Debug($"Single line array encountered, falling back to ParseArray");
+                _logger.LogDebug($"Single line array encountered, falling back to ParseArray");
                 return ParseArray(initialValue);
             }
 
@@ -208,7 +208,7 @@ namespace TbdParsing.Parsing
                     // If this is a new section or entry, we probably encountered a malformed array
                     if (nextLine.StartsWith('-') || nextLine.Contains(':'))
                     {
-                        _logger.Warning($"Array does not have a closing bracket before new section at line {lineIndex} with content: {nextLine}");
+                        _logger.LogWarning($"Array does not have a closing bracket before new section at line {lineIndex} with content: {nextLine}");
                         break;
                     }
 
@@ -226,7 +226,7 @@ namespace TbdParsing.Parsing
             }
 
             // If we got here, the input wasn't an array
-            _logger.Warning($"Expected array format but found: {initialValue}");
+            _logger.LogWarning($"Expected array format but found: {initialValue}");
             return items;
         }
 
@@ -239,7 +239,7 @@ namespace TbdParsing.Parsing
             ExportEntry? currentExport = null;
             int baseIndentation = -1;
 
-            _logger.Debug("Parsing exports section");
+            _logger.LogDebug("Parsing exports section");
             while (lineIndex < lines.Length)
             {
                 string rawLine = lines[lineIndex];
@@ -252,21 +252,21 @@ namespace TbdParsing.Parsing
                 if (baseIndentation == -1)
                 {
                     baseIndentation = indentation;
-                    _logger.Debug($"Base indentation set to {baseIndentation}");
+                    _logger.LogDebug($"Base indentation set to {baseIndentation}");
                 }
 
                 // If we're back at a lower indentation than the exports level,
                 // we've exited the exports section
                 if (indentation < baseIndentation)
                 {
-                    _logger.Debug($"Exiting exports section at line {lineIndex}, indentation {indentation} < base {baseIndentation}");
+                    _logger.LogDebug($"Exiting exports section at line {lineIndex}, indentation {indentation} < base {baseIndentation}");
                     break;
                 }
 
                 // Parse key-value pairs
                 KeyValuePair<string, string> kvp;
                 kvp = ParseKeyValuePair(line);
-                _logger.Debug($"Found export key-value pair: {kvp.Key} = {kvp.Value}");
+                _logger.LogDebug($"Found export key-value pair: {kvp.Key} = {kvp.Value}");
 
                 switch (kvp.Key)
                 {
@@ -277,45 +277,45 @@ namespace TbdParsing.Parsing
 
                         // Parse the export targets
                         currentExport.Targets = ParseMultiLineArray(lines, ref lineIndex, kvp.Value);
-                        _logger.Debug($"Found new export entry at line {lineIndex} with [{string.Join(", ", currentExport.Targets)}] targets.");
+                        _logger.LogDebug($"Found new export entry at line {lineIndex} with [{string.Join(", ", currentExport.Targets)}] targets.");
 
                         break;
                     case "symbols":
                         if (currentExport == null)
                         {
-                            _logger.Warning($"Unexpected symbols entry at line {lineIndex} without a current export entry");
+                            _logger.LogWarning($"Unexpected symbols entry at line {lineIndex} without a current export entry");
                             break;
                         }
 
                         // Parse symbols list
                         currentExport.Symbols = ConvertToSymbols(ParseMultiLineArray(lines, ref lineIndex, kvp.Value));
-                        _logger.Debug($"Parsed {currentExport.Symbols.Count} symbols");
+                        _logger.LogDebug($"Parsed {currentExport.Symbols.Count} symbols");
                         break;
 
                     case "objc-classes":
                         if (currentExport == null)
                         {
-                            _logger.Warning($"Unexpected objc-classes entry at line {lineIndex} without a current export entry");
+                            _logger.LogWarning($"Unexpected objc-classes entry at line {lineIndex} without a current export entry");
                             break;
                         }
 
                         // Parse objc-classes list
                         currentExport.ObjcClasses = ParseMultiLineArray(lines, ref lineIndex, kvp.Value);
-                        _logger.Debug($"Parsed {currentExport.ObjcClasses.Count} objc-classes");
+                        _logger.LogDebug($"Parsed {currentExport.ObjcClasses.Count} objc-classes");
                         break;
                     case "objc-ivars":
                         if (currentExport == null)
                         {
-                            _logger.Warning($"Unexpected objc-ivars entry at line {lineIndex} without a current export entry");
+                            _logger.LogWarning($"Unexpected objc-ivars entry at line {lineIndex} without a current export entry");
                             break;
                         }
 
                         // Parse objc-ivars list
                         currentExport.ObjcIvars = ParseMultiLineArray(lines, ref lineIndex, kvp.Value);
-                        _logger.Debug($"Parsed {currentExport.ObjcIvars.Count} objc-ivars");
+                        _logger.LogDebug($"Parsed {currentExport.ObjcIvars.Count} objc-ivars");
                         break;
                     default:
-                        _logger.Warning($"Unknown export property at line {lineIndex}: {kvp.Key}");
+                        _logger.LogWarning($"Unknown export property at line {lineIndex}: {kvp.Key}");
                         break;
                 }
             }

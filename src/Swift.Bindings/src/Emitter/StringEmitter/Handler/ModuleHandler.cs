@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.CodeDom.Compiler;
+using Microsoft.Extensions.Logging;
 using Swift.Runtime;
 
 namespace BindingsGeneration
@@ -9,8 +10,16 @@ namespace BindingsGeneration
     /// <summary>
     /// Factory class for creating instances of ModuleHandler.
     /// </summary>
-    public class ModuleHandlerFactory : IFactory<BaseDecl, IModuleHandler>
+    public class ModuleHandlerFactory : HandlerFactory, IFactory<BaseDecl, IModuleHandler>
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ModuleHandlerFactory"/> class.
+        /// </summary>
+        /// <param name="loggerFactory">The logger factory instance.</param>
+        public ModuleHandlerFactory(ILoggerFactory loggerFactory) : base(loggerFactory.CreateLogger<ModuleHandler>())
+        {
+        }
+
         /// <summary>
         /// Determines if the factory handles the specified declaration.
         /// </summary>
@@ -25,7 +34,7 @@ namespace BindingsGeneration
         /// </summary>
         public IModuleHandler Construct()
         {
-            return new ModuleHandler();
+            return new ModuleHandler(_handlerLogger);
         }
     }
 
@@ -34,7 +43,7 @@ namespace BindingsGeneration
     /// </summary>
     public class ModuleHandler : BaseHandler, IModuleHandler
     {
-        public ModuleHandler()
+        public ModuleHandler(ILogger logger) : base(logger)
         {
         }
 
@@ -85,7 +94,7 @@ namespace BindingsGeneration
                     }
                     else
                     {
-                        Console.WriteLine($"No handler found for method {methodDecl.Name}");
+                        _logger.LogWarning($"No handler found for method {methodDecl.Name}");
                     }
                     // EmitMethod(csWriter, swiftWriter, moduleDecl, moduleDecl, methodDecl);
                     csWriter.WriteLine();

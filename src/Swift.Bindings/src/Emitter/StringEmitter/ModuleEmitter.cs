@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.CodeDom.Compiler;
+using Microsoft.Extensions.Logging;
 using Swift.Runtime;
 
 namespace BindingsGeneration
@@ -14,18 +15,18 @@ namespace BindingsGeneration
         // Private properties
         private readonly string _outputDirectory;
         private readonly ITypeDatabase _typeDatabase;
-        private readonly int _verbose;
+        private readonly ILogger _logger;
         private readonly Conductor _conductor;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="StringEmitter"/> class.
         /// </summary>
-        public StringEmitter(string outputDirectory, ITypeDatabase typeDatabase, int verbose = 0)
+        public StringEmitter(string outputDirectory, ITypeDatabase typeDatabase, ILoggerFactory loggerFactory)
         {
             _outputDirectory = outputDirectory;
             _typeDatabase = typeDatabase;
-            _verbose = verbose;
-            _conductor = new Conductor();
+            _logger = loggerFactory.CreateLogger<StringEmitter>();
+            _conductor = new Conductor(loggerFactory);
         }
 
         /// <summary>
@@ -58,8 +59,7 @@ namespace BindingsGeneration
             }
             else
             {
-                if (_verbose > 0)
-                    Console.WriteLine($"No module handler found for {moduleDecl.Name}");
+                _logger.LogWarning($"No module handler found for {moduleDecl.Name}");
             }
         }
     }

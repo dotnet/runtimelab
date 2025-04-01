@@ -1,10 +1,10 @@
+using Microsoft.Extensions.Logging;
 using TbdParsing;
-using Xamarin;
 
 namespace BindingsGeneration.Demangling;
 
 /// <summary>
-/// A class to contain results from demangling the set of symbols in a MachO or TBD file.
+/// A class to contain results from demangling the set of symbols in TBD file.
 /// </summary>
 public class DemanglingResults
 {
@@ -58,64 +58,14 @@ public class DemanglingResults
     public ProtocolConformanceDescriptorReduction[] ProtocolConformanceDescriptors { get; private set; }
 
     /// <summary>
-    /// Factory method to generate a suite of demangling results from the set of MachO files with the given target
-    /// </summary>
-    /// <param name="machOFiles">The MachO files to demangle</param>
-    /// <param name="target">The target Abi to demangle from</param>
-    /// <returns>A set of demangling results</returns>
-    public static DemanglingResults FromMachOFiles(IEnumerable<MachOFile> machOFiles, Abi target)
-    {
-        var nlistEntries = machOFiles.PublicSymbols(target);
-        var demangler = new Swift5Demangler();
-        var allReductions = nlistEntries.Select(nle => nle.str).Where(Swift5Demangler.IsSwiftSymbol).Select(demangler.Run).ToArray();
-        return new DemanglingResults(allReductions);
-    }
-
-    /// <summary>
-    /// Async factory method to generate a suite of demangling results from the set of MachO files with the given target
-    /// </summary>
-    /// <param name="machOFiles"></param>
-    /// <param name="target"></param>
-    /// <param name="machOFiles">The MachO files to demangle</param>
-    /// <param name="target">The target Abi to demangle from</param>
-    /// <returns>A set of demangling results</returns>
-    public static async Task<DemanglingResults> FromMachOFilesAsync(IEnumerable<MachOFile> machOFiles, Abi target)
-    {
-        return await Task.Run(() => FromMachOFiles(machOFiles, target));
-    }
-
-    /// <summary>
-    /// Factory method to generate a suite of demangling results from the given file with the given target.
-    /// </summary>
-    /// <param name="path">Path to the file while contains symbols</param>
-    /// <param name="target">The target Abi to demangle from</param>
-    /// <returns>A set of demangling results</returns>
-    public static DemanglingResults FromFile(string path, Abi target)
-    {
-        var files = MachO.Read(path);
-        return FromMachOFiles(files, target);
-    }
-
-    /// <summary>
-    /// Async factory method to generate a suite of demangling results from the given file with the given target.
-    /// </summary>
-    /// <param name="path">Path to the file while contains symbols</param>
-    /// <param name="target">The target Abi to demangle from</param>
-    /// <returns>A set of demangling results</returns>
-    public static async Task<DemanglingResults> FromFileAsync(string path, Abi target)
-    {
-        return await Task.Run(() => FromFile(path, target));
-    }
-
-    /// <summary>
     /// Factory method to generate a suite of demangling results from the given TBD file.
     /// </summary>
-    /// <param name="path">Path to the TBD file</param>
-    /// <returns>A set of demangling results</returns>
-    public static DemanglingResults FromTbd(string path)
+    /// <param name="path">Path to the TBD file.</param>
+    /// <param name="loggerFactory">ILoggerFactory instance.</param>
+    /// <returns>A set of demangling results.</returns>
+    public static DemanglingResults FromTbd(string path, ILoggerFactory loggerFactory)
     {
-        var logger = new TbdParsing.Logging.ConsoleLogger { MinimumLevel = TbdParsing.Logging.LogLevel.Debug };
-        var tbdParser = new TbdParser(logger);
+        var tbdParser = new TbdParser(loggerFactory);
         var tbdFile = tbdParser.ParseFile(path);
 
         var demangler = new Swift5Demangler();

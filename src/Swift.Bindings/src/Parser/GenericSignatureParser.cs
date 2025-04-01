@@ -15,8 +15,11 @@ public class GenericSignatureParser
     /// <returns>A list of GenericArgumentDecl.</returns>
     public static List<GenericArgumentDecl> ParseGenericSignature(string? genericSignature, string? sugaredSignature)
     {
-        if (string.IsNullOrWhiteSpace(genericSignature) || string.IsNullOrWhiteSpace(sugaredSignature))
+        if (string.IsNullOrWhiteSpace(genericSignature))
             return [];
+
+        if (string.IsNullOrWhiteSpace(sugaredSignature))
+            throw new NotImplementedException($"Generic method without sugared signature is not supported.");
 
         genericSignature = genericSignature[1..^1];
         sugaredSignature = sugaredSignature[1..^1];

@@ -53,18 +53,9 @@ stages:
     - template: /eng/pipelines/common/templates/build-job.yml
       parameters:
         osGroup: OSX
+        platform: maccatalyst
         archType: x64
         runTests: true
         pool:
           vmImage: 'macOS-latest'
-        bindings:
-          isBindingsBuild: true
-          scriptArgs: '--platform MacOSX --arch x86_64-apple-macos --version 16.0 --framework StoreKit'
-
-    - template: /eng/pipelines/common/templates/test-job.yml
-      parameters:
-        osGroup: OSX
-        platform: maccatalyst
-        archType: x64
-        pool:
-          vmImage: 'macOS-latest'
+        scriptArgs: '--framework StoreKit'

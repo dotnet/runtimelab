@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.CodeDom.Compiler;
+using Microsoft.Extensions.Logging;
 using Swift.Runtime;
 
 namespace BindingsGeneration
@@ -9,8 +10,17 @@ namespace BindingsGeneration
     /// <summary>
     /// Factory class for creating instances of FrozenStructHandler.
     /// </summary>
-    public class FrozenStructHandlerFactory : IFactory<BaseDecl, ITypeHandler>
+    public class FrozenStructHandlerFactory : HandlerFactory, IFactory<BaseDecl, ITypeHandler>
     {
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="FrozenStructHandlerFactory"/> class.
+        /// </summary>
+        /// <param name="loggerFactory">The logger factory instance.</param>
+        public FrozenStructHandlerFactory(ILoggerFactory loggerFactory) : base(loggerFactory.CreateLogger<FrozenStructHandler>())
+        {
+        }
+
         /// <summary>
         /// Determines if the factory handles the specified declaration.
         /// </summary>
@@ -25,7 +35,7 @@ namespace BindingsGeneration
         /// </summary>
         public ITypeHandler Construct()
         {
-            return new FrozenStructHandler();
+            return new FrozenStructHandler(_handlerLogger);
         }
     }
 
@@ -34,7 +44,12 @@ namespace BindingsGeneration
     /// </summary>
     public class FrozenStructHandler : BaseHandler, ITypeHandler
     {
-        public FrozenStructHandler()
+        /// <summary>
+        /// Initializes a new instance of the <see cref="FrozenStructHandler"/> class.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
+        /// <remarks>
+        public FrozenStructHandler(ILogger logger) : base(logger)
         {
         }
 
@@ -149,7 +164,7 @@ namespace BindingsGeneration
                 }
                 else
                 {
-                    throw new InvalidOperationException($"No handler found for property {propertyDecl.Name}");
+                    _logger.LogWarning($"No handler found for property {propertyDecl.Name}");
                 }
             }
             csWriter.WriteLine();
@@ -169,8 +184,16 @@ namespace BindingsGeneration
     /// <summary>
     /// Factory class for creating instances of NonFrozenStructHandler.
     /// </summary>
-    public class NonFrozenStructHandlerFactory : IFactory<BaseDecl, ITypeHandler>
+    public class NonFrozenStructHandlerFactory : HandlerFactory, IFactory<BaseDecl, ITypeHandler>
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="NonFrozenStructHandlerFactory"/> class.
+        /// </summary>
+        /// <param name="loggerFactory">The logger factory instance.</param>
+        public NonFrozenStructHandlerFactory(ILoggerFactory loggerFactory) : base(loggerFactory.CreateLogger<NonFrozenStructHandler>())
+        {
+        }
+
         /// <summary>
         /// Determines if the factory handles the specified declaration.
         /// </summary>
@@ -185,7 +208,7 @@ namespace BindingsGeneration
         /// </summary>
         public ITypeHandler Construct()
         {
-            return new NonFrozenStructHandler();
+            return new NonFrozenStructHandler(_handlerLogger);
         }
     }
 
@@ -194,7 +217,11 @@ namespace BindingsGeneration
     /// </summary>
     public class NonFrozenStructHandler : BaseHandler, ITypeHandler
     {
-        public NonFrozenStructHandler()
+        /// <summary>
+        /// Initializes a new instance of the <see cref="NonFrozenStructHandler"/> class.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
+        public NonFrozenStructHandler(ILogger logger) : base(logger)
         {
         }
 
@@ -239,7 +266,7 @@ namespace BindingsGeneration
                     propertyHandler.Emit(csWriter, swiftWriter, propertyEnv, conductor);
                 }
                 else
-                    Console.WriteLine($"No handler found for field {propertyDecl.Name}");
+                    _logger.LogWarning($"No handler found for field {propertyDecl.Name}");
             }
 
             WritePrivateFields(csWriter, structDecl);
@@ -282,8 +309,16 @@ namespace BindingsGeneration
     /// <summary>
     /// Factory class for creating instances of ClassHandler.
     /// </summary>
-    public class ClassHandlerFactory : IFactory<BaseDecl, ITypeHandler>
+    public class ClassHandlerFactory : HandlerFactory, IFactory<BaseDecl, ITypeHandler>
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ClassHandlerFactory"/> class.
+        /// </summary>
+        /// <param name="loggerFactory">The logger factory instance.</param>
+        public ClassHandlerFactory(ILoggerFactory loggerFactory) : base(loggerFactory.CreateLogger<ClassHandler>())
+        {
+        }
+
         /// <summary>
         /// Determines if the factory handles the specified declaration.
         /// </summary>
@@ -298,7 +333,7 @@ namespace BindingsGeneration
         /// </summary>
         public ITypeHandler Construct()
         {
-            return new ClassHandler();
+            return new ClassHandler(_handlerLogger);
         }
     }
 
@@ -307,7 +342,7 @@ namespace BindingsGeneration
     /// </summary>
     public class ClassHandler : BaseHandler, ITypeHandler
     {
-        public ClassHandler()
+        public ClassHandler(ILogger logger) : base(logger)
         {
         }
 
@@ -762,8 +797,16 @@ namespace BindingsGeneration
     /// <summary>
     /// Factory class for creating instances of ProtocolHandler.
     /// </summary>
-    public class ProtocolHandlerFactory : IFactory<BaseDecl, ITypeHandler>
+    public class ProtocolHandlerFactory : HandlerFactory, IFactory<BaseDecl, ITypeHandler>
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ProtocolHandlerFactory"/> class.
+        /// </summary>
+        /// <param name="loggerFactory">The logger factory instance.</param>
+        public ProtocolHandlerFactory(ILoggerFactory loggerFactory) : base(loggerFactory.CreateLogger<ProtocolHandler>())
+        {
+        }
+
         /// <summary>
         /// Determines if the factory handles the specified declaration.
         /// </summary>
@@ -778,7 +821,7 @@ namespace BindingsGeneration
         /// </summary>
         public ITypeHandler Construct()
         {
-            return new ProtocolHandler();
+            return new ProtocolHandler(_handlerLogger);
         }
     }
 
@@ -787,7 +830,11 @@ namespace BindingsGeneration
     /// </summary>
     public class ProtocolHandler : BaseHandler, ITypeHandler
     {
-        public ProtocolHandler()
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ProtocolHandler"/> class.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
+        public ProtocolHandler(ILogger logger) : base(logger)
         {
         }
 

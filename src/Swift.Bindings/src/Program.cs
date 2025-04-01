@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.CommandLine;
+using Microsoft.Extensions.Logging;
 
 namespace BindingsGeneration
 {
@@ -19,7 +20,10 @@ namespace BindingsGeneration
             Option<string> dylibOption = new(aliases: new[] { "-d", "--dylib" }, "Path to the dynamic library.") { IsRequired = true };
             Option<string> tbdOption = new(aliases: new[] { "-t", "--tbd" }, "Path to the TBD file.") { IsRequired = true };
             Option<string> outputDirectoryOption = new(aliases: new[] { "-o", "--output" }, "Output directory for generated bindings.") { IsRequired = true };
-            Option<int> verboseOption = new(aliases: new[] { "-v", "--verbose" }, "Verbosity level.");
+            Option<int> verboseOption = new(
+                aliases: new[] { "-v", "--verbose" },
+                description: "Verbosity level. 0 = No logging, 1 = General information, 2 = Debugging information. (default: 1)",
+                getDefaultValue: () => 1);
             Option<bool> helpOption = new(aliases: new[] { "-h", "--help" }, "Display a help message.");
 
             RootCommand rootCommand = new(description: "Swift bindings generator.")
@@ -40,35 +44,38 @@ namespace BindingsGeneration
                     Console.WriteLine("  -d, --dylib        Required. Path to the dynamic library.");
                     Console.WriteLine("  -t, --tbd          Required. Path to the TBD file.");
                     Console.WriteLine("  -o, --output       Required. Output directory for generated bindings.");
-                    Console.WriteLine("  -v, --verbose      Verbosity level.");
+                    Console.WriteLine("  -v, --verbose      Verbosity level. 0 = No logging, 1 = General information, 2 = Debugging information. (default: 1)");
                     return;
                 }
 
+                ILoggerFactory loggerFactory = CreateLoggerFactory(verbose);
+                ILogger logger = loggerFactory.CreateLogger<BindingsGenerator>();
+
                 if (string.IsNullOrWhiteSpace(swiftAbiPath) || !File.Exists(swiftAbiPath))
                 {
-                    Console.Error.WriteLine("Error: Valid Swift ABI file is required.");
+                    logger.LogError("Error: Valid Swift ABI file is required.");
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(dylibPath) || !File.Exists(dylibPath))
                 {
-                    Console.Error.WriteLine("Error: Valid dynamic library is required.");
+                    logger.LogError("Error: Valid dynamic library is required.");
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(tbdPath) || !File.Exists(tbdPath))
                 {
-                    Console.Error.WriteLine("Error: Valid TBD file is required.");
+                    logger.LogError("Error: Valid TBD file is required.");
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(outputDirectory) || !Directory.Exists(outputDirectory))
                 {
-                    Console.Error.WriteLine("Error: Valid output directory is required.");
+                    logger.LogError("Error: Valid output directory is required.");
                     return;
                 }
 
-                GenerateBindings(swiftAbiPath, dylibPath, tbdPath, outputDirectory, verbose);
+                GenerateBindings(swiftAbiPath, dylibPath, tbdPath, outputDirectory, logger, loggerFactory);
             },
             swiftAbiOption,
             dylibOption,
@@ -87,8 +94,8 @@ namespace BindingsGeneration
         /// <param name="swiftAbiPath">Path to the Swift ABI file.</param>
         /// <param name="dylibPath">Path to the dynamic library.</param>
         /// <param name="outputDirectory">Output directory for generated bindings.</param>
-        /// <param name="verbose">Verbosity level.</param>
-        public static void GenerateBindings(string swiftAbiPath, string dylibPath, string tbdPath, string outputDirectory, int verbose = 2)
+        /// <param name="logger">ILogger instance.</param>
+        public static void GenerateBindings(string swiftAbiPath, string dylibPath, string tbdPath, string outputDirectory, ILogger logger, ILoggerFactory loggerFactory)
         {
             var typeDatabase = new TypeDatabase();
             string[] moduleDatabases = { "FoundationDatabase.xml", "SwiftDatabase.xml" };
@@ -97,14 +104,13 @@ namespace BindingsGeneration
                 typeDatabase.LoadModuleDatabaseFromFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Swift", database)).Wait();
             }
 
-            if (verbose > 0)
-                Console.WriteLine($"Starting bindings generation for {swiftAbiPath}...");
+            logger.LogInformation("Starting bindings generation for {SwiftAbiPath}...", swiftAbiPath);
 
             // Parse the TBD file
-            Demangling.DemanglingResults demangledTbdFile = Demangling.DemanglingResults.FromTbd(tbdPath);
+            Demangling.DemanglingResults demangledTbdFile = Demangling.DemanglingResults.FromTbd(tbdPath, loggerFactory);
 
             // Initialize the Swift ABI parser
-            var swiftParser = new SwiftABIParser(swiftAbiPath, typeDatabase, demangledTbdFile, verbose);
+            var swiftParser = new SwiftABIParser(swiftAbiPath, typeDatabase, demangledTbdFile, loggerFactory.CreateLogger<SwiftABIParser>());
             var moduleName = swiftParser.GetModuleName();
 
             // Skip if the module has already been processed
@@ -114,23 +120,21 @@ namespace BindingsGeneration
                 // Parse the Swift ABI file and generate declarations
                 var (decl, moduleTypes) = swiftParser.ParseModule();
 
-                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, moduleTypes, typeDatabase, verbose);
+                var moduleProcessor = new ModuleProcessor(moduleName, dylibPath, moduleTypes, typeDatabase, loggerFactory.CreateLogger<ModuleProcessor>());
                 var moduleDatabase = moduleProcessor.FinalizeTypeProcessingAndCreateModuleDatabase().ModuleDatabase;
                 typeDatabase.AddModuleDatabase(moduleDatabase);
 
-                if (verbose > 1)
-                    Console.WriteLine("Parsed Swift ABI file successfully.");
+                logger.LogDebug("Parsed Swift ABI file successfully.");
 
                 // Emit the C# bindings
-                var stringEmitter = new StringEmitter(outputDirectory, typeDatabase, verbose);
+                var stringEmitter = new StringEmitter(outputDirectory, typeDatabase, loggerFactory);
                 stringEmitter.EmitModule(decl);
 
-                if (verbose > 0)
-                    Console.WriteLine($"Bindings generation completed for {swiftAbiPath}.");
+                logger.LogInformation("Bindings generation completed for {SwiftAbiPath}.", swiftAbiPath);
 
             }
-            else if (verbose > 0)
-                Console.WriteLine($"Bindings generation already completed for {swiftAbiPath}.");
+            else
+                logger.LogWarning("Bindings generation already completed for {SwiftAbiPath}.", swiftAbiPath);
 
             // Copy the Swift library to the output directory
             CopyDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Swift"), Path.Combine(outputDirectory, "Swift"), true);
@@ -167,6 +171,26 @@ namespace BindingsGeneration
                     CopyDirectory(subDir.FullName, newDestinationDir, true);
                 }
             }
+        }
+
+        /// <summary>
+        /// Creates and configures a logger factory based on the verbosity level.
+        /// </summary>
+        /// <param name="verbosity">Verbosity level (0 = No logging, 1 = General information, 2 = Debugging information).</param>
+        static ILoggerFactory CreateLoggerFactory(int verbosity)
+        {
+            return LoggerFactory.Create(builder =>
+            {
+                builder.AddConsole();
+
+                builder.SetMinimumLevel(verbosity switch
+                {
+                    0 => LogLevel.None,  // No logging
+                    1 => LogLevel.Information, // Info and above
+                    2 => LogLevel.Debug,    // Debug and above
+                    _ => throw new ArgumentOutOfRangeException(nameof(verbosity), "Invalid verbosity level.")
+                });
+            });
         }
     }
 }

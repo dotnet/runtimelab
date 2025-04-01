@@ -5,7 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using TbdParsing.Logging;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using TbdParsing.Models;
 using TbdParsing.Parsing;
 
@@ -20,27 +21,20 @@ namespace TbdParsing
         private readonly ILogger _logger;
 
         /// <summary>
-        /// Initializes a new instance of the TBD parser with a default logger
-        /// </summary>
-        public TbdParser() : this(new ConsoleLogger { MinimumLevel = LogLevel.Info })
-        {
-        }
-
-        /// <summary>
         /// Initializes a new instance of the TBD parser with a specified logger
         /// </summary>
-        public TbdParser(ILogger logger)
+        public TbdParser(ILoggerFactory loggerFactory)
         {
-            _logger = logger ?? NullLogger.Instance;
+            _logger = loggerFactory.CreateLogger<TbdParser>();
 
             // Register all format parsers
             _formatParsers = new List<ITbdFormatParser>
             {
-                new YamlLikeTbdFormatParser(_logger),
-                // new JsonTbdFormatParser(_logger) // TODO: Parser of TBD in JSON format is not implemented yet
+                new YamlLikeTbdFormatParser(loggerFactory.CreateLogger<YamlLikeTbdFormatParser>()),
+                // new JsonTbdFormatParser(loggerFactory.CreateLogger<JsonTbdFormatParser>()) // TODO: Parser of TBD in JSON format is not implemented yet
             };
 
-            _logger.Debug("TBD Parser initialized with parsers: " + string.Join(", ",
+            _logger.LogDebug("TBD Parser initialized with parsers: {Parsers}", string.Join(", ",
                 _formatParsers.Select(p => p.GetType().Name)));
         }
 
@@ -49,46 +43,46 @@ namespace TbdParsing
         /// </summary>
         public TbdFile ParseFile(string filePath)
         {
-            _logger.Info($"Parsing file: {filePath}");
+            _logger.LogInformation("Parsing file {FilePath}:", filePath);
 
             if (!File.Exists(filePath))
             {
-                _logger.Error($"File not found: {filePath}");
+                _logger.LogError("File not found {FilePath}:", filePath);
                 throw new FileNotFoundException($"TBD file not found: {filePath}");
             }
 
             // Read all lines from the file
-            _logger.Debug("Reading file content");
+            _logger.LogDebug("Reading file content");
             string[] lines = File.ReadAllLines(filePath);
-            _logger.Debug($"Read {lines.Length} lines");
+            _logger.LogDebug("Read {NumberOfLines} lines", lines.Length);
 
             // Find a parser that can handle this format
-            _logger.Debug("Detecting file format...");
+            _logger.LogDebug("Detecting file format...");
             ITbdFormatParser? parser = _formatParsers.FirstOrDefault(p => p.CanParse(lines));
 
             if (parser == null)
             {
-                _logger.Error("Could not determine TBD file format");
+                _logger.LogError("Could not determine TBD file format");
                 throw new ParsingException("Unsupported TBD file format. Could not determine the format version.");
             }
 
-            _logger.Info($"Detected format: {parser.GetType().Name}");
+            _logger.LogInformation("Detected format: {TbdFormat}", parser.GetType().Name);
 
             try
             {
-                _logger.Debug("Beginning parse operation");
+                _logger.LogDebug("Beginning parse operation");
                 TbdFile result = parser.Parse(lines);
-                _logger.Info($"Successfully parsed TBD file version {result.Version} with {result.Exports.Count} exports");
+                _logger.LogDebug("Successfully parsed TBD file version {TbdFileVersion} with {NumberOfExports} exports", result.Version, result.Exports.Count);
                 return result;
             }
             catch (NotImplementedException ex)
             {
-                _logger.Error("Format detected but parsing not implemented", ex);
+                _logger.LogError("Format detected but parsing not implemented {Exception}", ex);
                 throw new ParsingException($"Format detected but parsing is not yet implemented: {ex.Message}", ex);
             }
             catch (Exception ex) when (!(ex is ParsingException))
             {
-                _logger.Error("Error parsing TBD file", ex);
+                _logger.LogError("Error parsing TBD file {Exception}", ex);
                 throw new ParsingException($"Error parsing TBD file: {ex.Message}", ex);
             }
         }
