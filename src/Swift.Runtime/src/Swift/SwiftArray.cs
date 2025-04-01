@@ -238,8 +238,8 @@ public class SwiftArray<Element> : ISwiftObject
             _payload.DangerousAddRef(ref success);
             try
             {
-                byte* payload = stackalloc byte[(int)_elementSize];
-                SwiftArrayPInvokes.Get(new SwiftIndirectResult(payload), (nint)index, PayloadBuffer, ElementTypeMetadata);
+                void* payload = NativeMemory.Alloc(_elementSize);
+                SwiftArrayPInvokes.Get(new SwiftIndirectResult(payload), index, PayloadBuffer, ElementTypeMetadata);
                 return SwiftMarshal.MarshalFromSwift<Element>((IntPtr)payload);
             }
             finally
