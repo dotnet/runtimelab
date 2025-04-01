@@ -81,7 +81,7 @@ public sealed class SwiftSafeHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where
         try
         {
             TypeMetadata metadata = SwiftObjectHelper<T>.GetTypeMetadata();
-            metadata.ValueWitnessTable->Destroy((void*)handle, metadata);
+            metadata.ValueWitnessTable->Destroy(this, metadata);
             success = true;
         }
         catch (Exception ex)
@@ -91,7 +91,7 @@ public sealed class SwiftSafeHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where
 
         try
         {
-            NativeMemory.Free((void*)handle);
+            NativeMemory.Free(this);
         }
         catch (Exception ex)
         {
