@@ -4736,6 +4736,14 @@ void LinearScan::MarkSwiftErrorBusyForCall(GenTreeCall* call)
 }
 #endif
 
+//------------------------------------------------------------------------
+// MarkAsyncContinuationBusyForCall:
+//   Add a ref position that marks the async continuation register as busy
+//   until it is killed.
+//
+// Arguments:
+//    call - The call node
+//
 void LinearScan::MarkAsyncContinuationBusyForCall(GenTreeCall* call)
 {
     // Async2 calls return an async continuation argument in a separate

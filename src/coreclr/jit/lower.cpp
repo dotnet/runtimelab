@@ -5234,6 +5234,12 @@ void Lowering::LowerRetSingleRegStructLclVar(GenTreeUnOp* ret)
     }
 }
 
+//----------------------------------------------------------------------------------------------
+// LowerAsyncContinuation: Lower a GT_ASYNC_CONTINUATION node
+//
+// Arguments:
+//   asyncCont - Async continuation node
+//
 void Lowering::LowerAsyncContinuation(GenTree* asyncCont)
 {
     assert(asyncCont->OperIs(GT_ASYNC_CONTINUATION));
@@ -5262,6 +5268,13 @@ void Lowering::LowerAsyncContinuation(GenTree* asyncCont)
     }
 }
 
+//----------------------------------------------------------------------------------------------
+// LowerReturnSuspend:
+//   Lower a GT_RETURN_SUSPEND by making it a terminator node.
+//
+// Arguments:
+//   node - The node
+//
 void Lowering::LowerReturnSuspend(GenTree* node)
 {
     assert(node->OperIs(GT_RETURN_SUSPEND));
