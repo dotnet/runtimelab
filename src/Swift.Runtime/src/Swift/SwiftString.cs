@@ -39,7 +39,7 @@ public class SwiftString : ISwiftObject
         _protocolConformanceSymbols = new Dictionary<Type, string> { };
     }
 
-    public unsafe SwiftString.Buffer PayloadBuffer => *(SwiftString.Buffer*)_payload.Handle;
+    public unsafe SwiftString.Buffer PayloadBuffer => *(SwiftString.Buffer*)_payload.DangerousGetHandle();
 
     static TypeMetadata ISwiftObject.GetTypeMetadata()
     {
@@ -67,7 +67,7 @@ public class SwiftString : ISwiftObject
                 _payload.DangerousAddRef(ref success);
                 try
                 {
-                    metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
+                    metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, (void*)_payload.DangerousGetHandle(), metadata);
                 }
                 finally
                 {

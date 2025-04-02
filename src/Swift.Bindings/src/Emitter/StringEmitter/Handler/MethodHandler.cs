@@ -692,7 +692,7 @@ namespace BindingsGeneration
             }
             else
             {
-                csWriter.WriteLine("var self = new SwiftSelf(_payload);");
+                csWriter.WriteLine("var self = new SwiftSelf((void*)_payload.DangerousGetHandle());");
             }
 
             csWriter.WriteLine();
@@ -791,7 +791,7 @@ namespace BindingsGeneration
 
             var text = $$"""
             _payload = new SwiftSafeHandle<{{_env.ParentDecl.Name}}>((IntPtr)NativeMemory.Alloc(_payloadSize));
-            var swiftIndirectResult = new SwiftIndirectResult(_payload);
+            var swiftIndirectResult = new SwiftIndirectResult((void*)_payload.DangerousGetHandle());
             """;
 
             csWriter.WriteLines(text);

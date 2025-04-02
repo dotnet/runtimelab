@@ -59,11 +59,6 @@ public sealed class SwiftSafeHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where
     public readonly static SwiftSafeHandle<T> Zero = new SwiftSafeHandle<T>(IntPtr.Zero);
 
     /// <summary>
-    /// The handle to the Swift native object
-    /// </summary>
-    public IntPtr Handle => handle;
-
-    /// <summary>
     /// Constructs a SwiftSafeHandle from the given IntPtr
     /// </summary>
     public SwiftSafeHandle(IntPtr handle)
@@ -81,7 +76,7 @@ public sealed class SwiftSafeHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where
         try
         {
             TypeMetadata metadata = SwiftObjectHelper<T>.GetTypeMetadata();
-            metadata.ValueWitnessTable->Destroy(this, metadata);
+            metadata.ValueWitnessTable->Destroy((void*)handle, metadata);
             success = true;
         }
         catch (Exception ex)
@@ -91,7 +86,7 @@ public sealed class SwiftSafeHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where
 
         try
         {
-            NativeMemory.Free(this);
+            NativeMemory.Free((void*)handle);
         }
         catch (Exception ex)
         {
@@ -101,13 +96,5 @@ public sealed class SwiftSafeHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where
 
         handle = IntPtr.Zero;
         return success;
-    }
-
-    /// <summary>
-    /// Implicit conversion from SwiftHandle to void*
-    /// </summary>
-    public static unsafe implicit operator void*(SwiftSafeHandle<T> value)
-    {
-        return (void*)value.Handle;
     }
 }

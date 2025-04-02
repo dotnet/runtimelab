@@ -101,7 +101,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(3, Bindings.RuntimeTests.sumArray(arrayCopy));
 
             // Check the references are not the same
-            Assert.NotEqual(array.Payload.Handle, arrayCopy.Payload.Handle);
+            Assert.NotEqual(array.Payload.DangerousGetHandle(), arrayCopy.Payload.DangerousGetHandle());
             // Check the payloads are the same
             Assert.Equal(array.PayloadBuffer, arrayCopy.PayloadBuffer);
 
@@ -316,7 +316,7 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(3, SumSet(setCopy));
 
             // Check the references are not the same
-            Assert.NotEqual(set.Payload.Handle, setCopy.Payload.Handle);
+            Assert.NotEqual(set.Payload.DangerousGetHandle(), setCopy.Payload.DangerousGetHandle());
             // Check the payloads are the same
             Assert.Equal(set.PayloadBuffer, setCopy.PayloadBuffer);
 
@@ -458,22 +458,22 @@ namespace BindingsGeneration.FunctionalTests
             var inlineString = Bindings.RuntimeTests.getString(15);
             Assert.Equal(15, inlineString.Length);
             // No reference counting for inline strings
-            Assert.Equal(0, Arc.RetainCount(inlineString.Payload.Handle.At(1)));
+            Assert.Equal(0, Arc.RetainCount(inlineString.Payload.DangerousGetHandle().At(1)));
 
             var heapString = Bindings.RuntimeTests.getString(16);
             Assert.Equal(16, heapString.Length);
 
-            Assert.Equal(1, Arc.RetainCount(heapString.Payload.Handle.At(1)));
+            Assert.Equal(1, Arc.RetainCount(heapString.Payload.DangerousGetHandle().At(1)));
 
             var strCopy = Bindings.RuntimeTests.passThroughString(heapString);
             Assert.Equal(16, strCopy.Length);
 
             // Check the pointers are not the same
-            Assert.NotEqual(heapString.Payload.Handle, strCopy.Payload.Handle);
+            Assert.NotEqual(heapString.Payload.DangerousGetHandle(), strCopy.Payload.DangerousGetHandle());
 
             // Check the count after the copy
-            Assert.Equal(2, Arc.RetainCount(heapString.Payload.Handle.At(1)));
-            Assert.Equal(2, Arc.RetainCount(strCopy.Payload.Handle.At(1)));
+            Assert.Equal(2, Arc.RetainCount(heapString.Payload.DangerousGetHandle().At(1)));
+            Assert.Equal(2, Arc.RetainCount(strCopy.Payload.DangerousGetHandle().At(1)));
 
             Assert.False(heapString.Payload.IsClosed);
             Assert.False(heapString.Payload.IsInvalid);
@@ -487,14 +487,14 @@ namespace BindingsGeneration.FunctionalTests
             Assert.False(heapString.Payload.IsInvalid);
 
             // Check the count after the copy is disposed
-            Assert.Equal(1, Arc.RetainCount(heapString.Payload.Handle.At(1)));
+            Assert.Equal(1, Arc.RetainCount(heapString.Payload.DangerousGetHandle().At(1)));
         }
 
         [Fact]
         public unsafe void TestSwiftMarshalString()
         {
             SwiftString vtype = Bindings.RuntimeTests.getString(16);
-            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(1)));
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(1)));
 
             var metadata = SwiftObjectHelper<SwiftString>.GetTypeMetadata();
             byte* payloadPtr = stackalloc byte[(int)metadata.Size];
@@ -502,15 +502,15 @@ namespace BindingsGeneration.FunctionalTests
 
             // Marshal the object to Swift
             SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
-            Assert.Equal(2, Arc.RetainCount(vtype.Payload.Handle.At(1)));
+            Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(1)));
 
             // Marshal back from Swift
             var copy = SwiftMarshal.MarshalFromSwift<SwiftString>((IntPtr)payloadPtr);
-            Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle.At(1)));
+            Assert.Equal(2, Arc.RetainCount(copy.Payload.DangerousGetHandle().At(1)));
 
             // Dispose the copy and verify retain count
             copy.Payload.Dispose();
-            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(1)));
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(1)));
         }
 
         [Fact]

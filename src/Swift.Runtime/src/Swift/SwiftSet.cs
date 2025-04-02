@@ -30,7 +30,7 @@ public class SwiftSet<Element> : ISwiftObject
 
     public SwiftSafeHandle<SwiftSet<Element>> Payload => _payload;
 
-    public unsafe IntPtr PayloadBuffer => *(IntPtr*)_payload.Handle;
+    public unsafe IntPtr PayloadBuffer => *(IntPtr*)_payload.DangerousGetHandle();
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -74,7 +74,7 @@ public class SwiftSet<Element> : ISwiftObject
                 _payload.DangerousAddRef(ref success);
                 try
                 {
-                    metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
+                    metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, (void*)_payload.DangerousGetHandle(), metadata);
                 }
                 finally
                 {

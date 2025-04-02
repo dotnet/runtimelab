@@ -57,7 +57,7 @@ namespace BindingsGeneration.FunctionalTests
             Bindings.VType vType = new Bindings.VType();
             GC.SuppressFinalize(vType);
             GC.SuppressFinalize(vType.Payload);
-            IntPtr payload = (IntPtr)vType.Payload.Handle;
+            IntPtr payload = (IntPtr)vType.Payload.DangerousGetHandle();
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -98,7 +98,7 @@ namespace BindingsGeneration.FunctionalTests
             Bindings.VType vType = new Bindings.VType();
             GC.SuppressFinalize(vType);
             GC.SuppressFinalize(vType.Payload);
-            IntPtr payload = (IntPtr)vType.Payload.Handle;
+            IntPtr payload = (IntPtr)vType.Payload.DangerousGetHandle();
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -138,7 +138,7 @@ namespace BindingsGeneration.FunctionalTests
             Bindings.VType vType = new Bindings.VType();
             GC.SuppressFinalize(vType);
             GC.SuppressFinalize(vType.Payload);
-            IntPtr payload = (IntPtr)vType.Payload.Handle;
+            IntPtr payload = (IntPtr)vType.Payload.DangerousGetHandle();
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -202,7 +202,7 @@ namespace BindingsGeneration.FunctionalTests
             Bindings.NestedVType vType = new Bindings.NestedVType();
             GC.SuppressFinalize(vType);
             GC.SuppressFinalize(vType.Payload);
-            IntPtr payload = (IntPtr)vType.Payload.Handle;
+            IntPtr payload = (IntPtr)vType.Payload.DangerousGetHandle();
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -254,7 +254,7 @@ namespace BindingsGeneration.FunctionalTests
             Bindings.NestedVType vType = new Bindings.NestedVType();
             GC.SuppressFinalize(vType);
             GC.SuppressFinalize(vType.Payload);
-            IntPtr payload = (IntPtr)vType.Payload.Handle;
+            IntPtr payload = (IntPtr)vType.Payload.DangerousGetHandle();
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -305,7 +305,7 @@ namespace BindingsGeneration.FunctionalTests
             Bindings.NestedVType vType = new Bindings.NestedVType();
             GC.SuppressFinalize(vType);
             GC.SuppressFinalize(vType.Payload);
-            IntPtr payload = (IntPtr)vType.Payload.Handle;
+            IntPtr payload = (IntPtr)vType.Payload.DangerousGetHandle();
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -389,7 +389,7 @@ namespace BindingsGeneration.FunctionalTests
             Bindings.NestedNestedVType vType = new Bindings.NestedNestedVType();
             GC.SuppressFinalize(vType);
             GC.SuppressFinalize(vType.Payload);
-            IntPtr payload = (IntPtr)vType.Payload.Handle;
+            IntPtr payload = (IntPtr)vType.Payload.DangerousGetHandle();
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -452,7 +452,7 @@ namespace BindingsGeneration.FunctionalTests
             Bindings.NestedNestedVType vType = new Bindings.NestedNestedVType();
             GC.SuppressFinalize(vType);
             GC.SuppressFinalize(vType.Payload);
-            IntPtr payload = (IntPtr)vType.Payload.Handle;
+            IntPtr payload = (IntPtr)vType.Payload.DangerousGetHandle();
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -514,7 +514,7 @@ namespace BindingsGeneration.FunctionalTests
             Bindings.NestedNestedVType vType = new Bindings.NestedNestedVType();
             GC.SuppressFinalize(vType);
             GC.SuppressFinalize(vType.Payload);
-            IntPtr payload = (IntPtr)vType.Payload.Handle;
+            IntPtr payload = (IntPtr)vType.Payload.DangerousGetHandle();
 
             // Check the initial count
             Assert.Equal(1, Arc.RetainCount(payload.At(0)));
@@ -628,13 +628,13 @@ namespace BindingsGeneration.FunctionalTests
             var frozenRequiresMemoryManagement = new Bindings.FrozenStructRequiresMemoryManagement(42);
 
             // Check the initial count
-            Assert.Equal(1, Arc.RetainCount(frozenRequiresMemoryManagement.Payload.Handle.At(0)));
+            Assert.Equal(1, Arc.RetainCount(frozenRequiresMemoryManagement.Payload.DangerousGetHandle().At(0)));
             // Check the metadata flags for a class
-            Assert.Equal(0x3, frozenRequiresMemoryManagement.Payload.Handle.At(0).At(1));
+            Assert.Equal(0x3, frozenRequiresMemoryManagement.Payload.DangerousGetHandle().At(0).At(1));
 
             // Retain the payload count
-            Arc.Retain(frozenRequiresMemoryManagement.Payload.Handle.At(0));
-            Assert.Equal(2, Arc.RetainCount(frozenRequiresMemoryManagement.Payload.Handle.At(0)));
+            Arc.Retain(frozenRequiresMemoryManagement.Payload.DangerousGetHandle().At(0));
+            Assert.Equal(2, Arc.RetainCount(frozenRequiresMemoryManagement.Payload.DangerousGetHandle().At(0)));
 
             // Dispose the frozenRequiresMemoryManagement
             Assert.False(frozenRequiresMemoryManagement.Payload.IsClosed);
@@ -648,13 +648,13 @@ namespace BindingsGeneration.FunctionalTests
             var nestedFrozenRequiresMemoryManagement = new Bindings.NestedFrozenStructRequiresMemoryManagement(42);
 
             // Check the initial count
-            Assert.Equal(1, Arc.RetainCount(nestedFrozenRequiresMemoryManagement.Payload.Handle.At(0)));
+            Assert.Equal(1, Arc.RetainCount(nestedFrozenRequiresMemoryManagement.Payload.DangerousGetHandle().At(0)));
             // Check the metadata flags for a class
-            Assert.Equal(0x3, nestedFrozenRequiresMemoryManagement.Payload.Handle.At(0).At(1));
+            Assert.Equal(0x3, nestedFrozenRequiresMemoryManagement.Payload.DangerousGetHandle().At(0).At(1));
 
             // Retain the payload count
-            Arc.Retain(nestedFrozenRequiresMemoryManagement.Payload.Handle.At(0));
-            Assert.Equal(2, Arc.RetainCount(nestedFrozenRequiresMemoryManagement.Payload.Handle.At(0)));
+            Arc.Retain(nestedFrozenRequiresMemoryManagement.Payload.DangerousGetHandle().At(0));
+            Assert.Equal(2, Arc.RetainCount(nestedFrozenRequiresMemoryManagement.Payload.DangerousGetHandle().At(0)));
 
             // Dispose the NestedFrozenRequiresMemoryManagement
             Assert.False(nestedFrozenRequiresMemoryManagement.Payload.IsClosed);
@@ -668,32 +668,32 @@ namespace BindingsGeneration.FunctionalTests
             var nonfrozenRequiresMemoryManagement = new Bindings.NonFrozenStructRequiresMemoryManagement(42);
 
             // Check the initial count
-            Assert.Equal(1, Arc.RetainCount(nonfrozenRequiresMemoryManagement.Payload.Handle.At(0)));
+            Assert.Equal(1, Arc.RetainCount(nonfrozenRequiresMemoryManagement.Payload.DangerousGetHandle().At(0)));
             // Check the metadata flags for a class
-            Assert.Equal(0x3, nonfrozenRequiresMemoryManagement.Payload.Handle.At(0).At(1));
+            Assert.Equal(0x3, nonfrozenRequiresMemoryManagement.Payload.DangerousGetHandle().At(0).At(1));
 
             // Retain the payload count
-            Arc.Retain(nonfrozenRequiresMemoryManagement.Payload.Handle.At(0));
-            Assert.Equal(2, Arc.RetainCount(nonfrozenRequiresMemoryManagement.Payload.Handle.At(0)));
+            Arc.Retain(nonfrozenRequiresMemoryManagement.Payload.DangerousGetHandle().At(0));
+            Assert.Equal(2, Arc.RetainCount(nonfrozenRequiresMemoryManagement.Payload.DangerousGetHandle().At(0)));
 
             Assert.False(nonfrozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.False(nonfrozenRequiresMemoryManagement.Payload.IsInvalid);
             // Memory is allocated from C# side and released in Dispose
             // Take the payload to check the retain count
-            var nonFrozenHandle = nonfrozenRequiresMemoryManagement.Payload.Handle.At(0);
+            var nonFrozenHandle = nonfrozenRequiresMemoryManagement.Payload.DangerousGetHandle().At(0);
             nonfrozenRequiresMemoryManagement.Payload.Dispose();
             Assert.True(nonfrozenRequiresMemoryManagement.Payload.IsClosed);
             Assert.True(nonfrozenRequiresMemoryManagement.Payload.IsInvalid);
             // Check the count after destroy
             Assert.Equal(1, Arc.RetainCount(nonFrozenHandle));
-            Assert.Equal(IntPtr.Zero, nonfrozenRequiresMemoryManagement.Payload.Handle);
+            Assert.Equal(IntPtr.Zero, nonfrozenRequiresMemoryManagement.Payload.DangerousGetHandle());
         }
 
         [Fact]
         public unsafe void TestSwiftMarshalFrozenStruct()
         {
             var vtype = new Bindings.FrozenStructRequiresMemoryManagement(42);
-            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(0)));
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             var metadata = SwiftObjectHelper<Bindings.FrozenStructRequiresMemoryManagement>.GetTypeMetadata();
             byte* payloadPtr = stackalloc byte[(int)metadata.Size];
@@ -701,22 +701,22 @@ namespace BindingsGeneration.FunctionalTests
 
             // Marshal the object to Swift
             SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
-            Assert.Equal(2, Arc.RetainCount(vtype.Payload.Handle.At(0)));
+            Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             // Marshal back from Swift
             var copy = SwiftMarshal.MarshalFromSwift<Bindings.FrozenStructRequiresMemoryManagement>((IntPtr)payloadPtr);
-            Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle.At(0)));
+            Assert.Equal(2, Arc.RetainCount(copy.Payload.DangerousGetHandle().At(0)));
 
             // Dispose the copy and verify retain count
             copy.Payload.Dispose();
-            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(0)));
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
         }
 
         [Fact]
         public unsafe void TestSwiftMarshalMethodsNestedFrozenStruct()
         {
             var vtype = new Bindings.NestedFrozenStructRequiresMemoryManagement(42);
-            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(0)));
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             var metadata = SwiftObjectHelper<Bindings.NestedFrozenStructRequiresMemoryManagement>.GetTypeMetadata();
             byte* payloadPtr = stackalloc byte[(int)metadata.Size];
@@ -724,22 +724,22 @@ namespace BindingsGeneration.FunctionalTests
 
             // Marshal the object to Swift
             SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
-            Assert.Equal(2, Arc.RetainCount(vtype.Payload.Handle.At(0)));
+            Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             // Marshal back from Swift
             var copy = SwiftMarshal.MarshalFromSwift<Bindings.NestedFrozenStructRequiresMemoryManagement>((IntPtr)payloadPtr);
-            Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle.At(0)));
+            Assert.Equal(2, Arc.RetainCount(copy.Payload.DangerousGetHandle().At(0)));
 
             // Dispose the copy and verify retain count
             copy.Payload.Dispose();
-            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(0)));
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
         }
 
         [Fact]
         public unsafe void TestSwiftMarshalMethodsNonFrozenStruct()
         {
             var vtype = new Bindings.NonFrozenStructRequiresMemoryManagement(42);
-            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(0)));
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             var metadata = SwiftObjectHelper<Bindings.NonFrozenStructRequiresMemoryManagement>.GetTypeMetadata();
             void* payloadPtr = NativeMemory.Alloc(metadata.Size);
@@ -747,15 +747,15 @@ namespace BindingsGeneration.FunctionalTests
 
             // Marshal the object to Swift
             SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
-            Assert.Equal(2, Arc.RetainCount(vtype.Payload.Handle.At(0)));
+            Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             // Marshal back from Swift
             var copy = SwiftMarshal.MarshalFromSwift<Bindings.NonFrozenStructRequiresMemoryManagement>((IntPtr)payloadPtr);
-            Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle.At(0)));
+            Assert.Equal(2, Arc.RetainCount(copy.Payload.DangerousGetHandle().At(0)));
 
             // Dispose the copy and verify retain count
             copy.Payload.Dispose();
-            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(0)));
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
         }
 
         [Fact]
@@ -766,29 +766,29 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(2, vtype.x.y);
             Assert.Equal(3, vtype.y);
 
-            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(1)));
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(1)));
             EmbeddedStruct copy = Bindings.MemoryTests.PassThroughEmbeddedStruct(vtype);
 
             Assert.Equal(1, copy.x.x);
             Assert.Equal(2, copy.x.y);
             Assert.Equal(3, copy.y);
 
-            Assert.Equal(2, Arc.RetainCount(vtype.Payload.Handle.At(1)));
-            Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle.At(1)));
+            Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(1)));
+            Assert.Equal(2, Arc.RetainCount(copy.Payload.DangerousGetHandle().At(1)));
 
             copy.Payload.Dispose();
 
             Assert.True(copy.Payload.IsClosed);
             Assert.True(copy.Payload.IsInvalid);
 
-            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(1)));
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(1)));
         }
 
         [Fact]
         public unsafe void TestSwiftMarshalEmbeddedStruct()
         {
             EmbeddedStruct vtype = new EmbeddedStruct();
-            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(1)));
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(1)));
 
             var metadata = SwiftObjectHelper<EmbeddedStruct>.GetTypeMetadata();
             byte* payloadPtr = stackalloc byte[(int)metadata.Size];
@@ -796,15 +796,15 @@ namespace BindingsGeneration.FunctionalTests
 
             // Marshal the object to Swift
             SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
-            Assert.Equal(2, Arc.RetainCount(vtype.Payload.Handle.At(1)));
+            Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(1)));
 
             // Marshal back from Swift
             var copy = SwiftMarshal.MarshalFromSwift<EmbeddedStruct>((IntPtr)payloadPtr);
-            Assert.Equal(2, Arc.RetainCount(copy.Payload.Handle.At(1)));
+            Assert.Equal(2, Arc.RetainCount(copy.Payload.DangerousGetHandle().At(1)));
 
             // Dispose the copy and verify retain count
             copy.Payload.Dispose();
-            Assert.Equal(1, Arc.RetainCount(vtype.Payload.Handle.At(1)));
+            Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(1)));
         }
 
         class FrozenStructExtension : FrozenStructRequiresMemoryManagement
@@ -834,7 +834,7 @@ namespace BindingsGeneration.FunctionalTests
                 Assert.False(Payload.IsClosed);
                 Assert.False(Payload.IsInvalid);
 
-                Assert.Equal(1, Arc.RetainCount(Payload.Handle.At(0)));
+                Assert.Equal(1, Arc.RetainCount(Payload.DangerousGetHandle().At(0)));
                 Assert.Equal(42, b);
 
 #pragma warning restore CS8500

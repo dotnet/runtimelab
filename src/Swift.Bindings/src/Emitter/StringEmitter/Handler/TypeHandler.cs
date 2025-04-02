@@ -151,7 +151,7 @@ namespace BindingsGeneration
                 csWriter.Indent -= 2;
                 csWriter.WriteLine("}");
                 csWriter.WriteLine();
-                csWriter.WriteLine($"public unsafe {structDecl.Name}.Buffer PayloadBuffer => *({structDecl.Name}.Buffer*)(_payload.Handle);");
+                csWriter.WriteLine($"public unsafe {structDecl.Name}.Buffer PayloadBuffer => *({structDecl.Name}.Buffer*)(_payload.DangerousGetHandle());");
                 csWriter.WriteLine();
             }
 
@@ -558,7 +558,7 @@ namespace BindingsGeneration
                         _payload.DangerousAddRef(ref success);
                         try
                         {
-                            metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
+                            metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, (void*)_payload.DangerousGetHandle(), metadata);
                         }
                         finally
                         {
@@ -615,7 +615,7 @@ namespace BindingsGeneration
                     _payload.DangerousAddRef(ref success);
                     try
                     {
-                        metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payload, metadata);
+                        metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, (void*)_payload.DangerousGetHandle(), metadata);
                     }
                     finally
                     {
