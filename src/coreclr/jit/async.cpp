@@ -148,7 +148,8 @@ bool AsyncLiveness::IsLive(unsigned lclNum)
 
     LclVarDsc* dsc = m_comp->lvaGetDesc(lclNum);
 
-    if ((dsc->TypeGet() == TYP_BYREF) || ((dsc->TypeGet() == TYP_STRUCT) && dsc->GetLayout()->HasGCByRef()))
+    if (((dsc->TypeGet() == TYP_BYREF) && !dsc->IsImplicitByRef()) ||
+        ((dsc->TypeGet() == TYP_STRUCT) && dsc->GetLayout()->HasGCByRef()))
     {
         // Even if these are address exposed we expect them to be dead at
         // suspension points. TODO: It would be good to somehow verify these
@@ -1019,7 +1020,10 @@ void Async2Transformation::FillInGCPointersOnSuspension(const jitstd::vector<Liv
                 }
             }
 
-            m_comp->lvaSetVarDoNotEnregister(inf.LclNum DEBUGARG(DoNotEnregisterReason::LocalField));
+            if (!dsc->IsImplicitByRef())
+            {
+                m_comp->lvaSetVarDoNotEnregister(inf.LclNum DEBUGARG(DoNotEnregisterReason::LocalField));
+            }
         }
     }
 }
