@@ -7356,7 +7356,7 @@ void CodeGen::genMarkReturnGCInfo()
 
 //------------------------------------------------------------------------
 // genCodeForAsyncContinuation:
-//   Generate code for a GC_ASYNC_CONTINUATION node.
+//   Generate code for a GT_ASYNC_CONTINUATION node.
 //
 // Arguments:
 //   tree - The node

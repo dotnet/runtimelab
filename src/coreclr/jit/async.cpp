@@ -764,10 +764,7 @@ CallDefinitionInfo Async2Transformation::CanonicalizeCallDefinition(BasicBlock* 
         assert(call->TypeIs(TYP_VOID));
 
         // For async2 methods we always expect retbufs to point to locals. We
-        // ensure this in impStoreStruct. TODO-CQ: We can handle common "direct
-        // assignment" cases, e.g. obj.StructVal = Call(), by seeing if there
-        // is a base TYP_REF and keeping that live. This would avoid
-        // introducing copies in the importer on the synchronous path.
+        // ensure this in impStoreStruct.
         noway_assert(retbufArg->GetNode()->OperIs(GT_LCL_ADDR));
 
         callDefInfo.DefinitionNode = retbufArg->GetNode()->AsLclVarCommon();
@@ -934,6 +931,8 @@ GenTreeCall* Async2Transformation::CreateAllocContinuationCall(AsyncLiveness& li
 //------------------------------------------------------------------------
 // Async2Transformation::FillInGCPointersOnSuspension:
 //   Create IR that fills the GC pointers of the continuation object.
+//   This also nulls out the GC pointers in the locals if the local has data
+//   parts that need to be stored.
 //
 // Parameters:
 //   liveLocals - Information about each live local.
@@ -1273,8 +1272,6 @@ void Async2Transformation::RestoreFromDataOnResumption(unsigned                 
         if (dsc->IsImplicitByRef())
         {
             GenTree* baseAddr = m_comp->gtNewLclvNode(inf.LclNum, dsc->TypeGet());
-            // TODO-CQ: Incoming data has no non-null GC refs, so this does not need write barriers.
-            // Backend does not handle GTF_IND_TGT_NOT_HEAP for STORE_BLK.
             store = m_comp->gtNewStoreBlkNode(dsc->GetLayout(), baseAddr, value,
                                               GTF_IND_NONFAULTING | GTF_IND_TGT_NOT_HEAP);
         }
@@ -1591,7 +1588,7 @@ GenTreeIndir* Async2Transformation::LoadFromOffset(GenTree*     base,
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::LoadFromOffset:
+// Async2Transformation::StoreAtOffset:
 //   Create a store.
 //
 // Parameters:
@@ -1754,6 +1751,11 @@ GenTree* Async2Transformation::CreateFunctionTargetAddr(CORINFO_METHOD_HANDLE   
     return con;
 }
 
+//------------------------------------------------------------------------
+// Async2Transformation::CreateResumptionSwitch:
+//   Create the IR for the entry of the function that checks the continuation
+//   and dispatches on its state number.
+//
 void Async2Transformation::CreateResumptionSwitch()
 {
     m_comp->fgCreateNewInitBB();
