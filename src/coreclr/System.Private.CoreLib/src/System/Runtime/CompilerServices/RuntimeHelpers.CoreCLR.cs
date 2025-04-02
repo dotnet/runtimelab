@@ -832,7 +832,6 @@ namespace System.Runtime.CompilerServices
 
             while (true)
             {
-                // TODO: Write this so that it doesn't keep a reference to 'continuation' around during resumption?
                 Continuation? newContinuation;
                 try
                 {
