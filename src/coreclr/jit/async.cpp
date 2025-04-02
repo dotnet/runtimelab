@@ -1272,8 +1272,8 @@ void Async2Transformation::RestoreFromDataOnResumption(unsigned                 
         if (dsc->IsImplicitByRef())
         {
             GenTree* baseAddr = m_comp->gtNewLclvNode(inf.LclNum, dsc->TypeGet());
-            store = m_comp->gtNewStoreBlkNode(dsc->GetLayout(), baseAddr, value,
-                                              GTF_IND_NONFAULTING | GTF_IND_TGT_NOT_HEAP);
+            store             = m_comp->gtNewStoreBlkNode(dsc->GetLayout(), baseAddr, value,
+                                                          GTF_IND_NONFAULTING | GTF_IND_TGT_NOT_HEAP);
         }
         else
         {
