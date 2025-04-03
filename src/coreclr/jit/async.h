@@ -128,7 +128,7 @@ class Async2Transformation
                                     unsigned     offset,
                                     var_types    type,
                                     GenTreeFlags indirFlags = GTF_IND_NONFAULTING);
-    GenTreeStoreInd* StoreAtOffset(GenTree* base, unsigned offset, GenTree* value);
+    GenTreeStoreInd* StoreAtOffset(GenTree* base, unsigned offset, GenTree* value, var_types storeType);
 
     unsigned GetDataArrayVar();
     unsigned GetGCDataArrayVar();
