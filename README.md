@@ -18,19 +18,50 @@ Usage:
   SwiftBindings [options]
 
 Options:
-    -a, --swiftabi, -f, --framework     Required. Path to the Swift ABI file or framework
-    -o, --output                        Required. Output directory for generated bindings
-    -platform                           Platform, e.g., MacOSX
-    -sdk                                SDK version, e.g., 14.4
-    -arch                               Architecture, e.g., arm64e
-    -target                             Target, e.g., apple-macos
-    -v                                  Information about work in process
-    -h, --help                          Display a help message
-    --version                           Show version information
-    -?, -h, --help                      Show help and usage information
+    -a, --swiftabi     Required. Path to the Swift ABI file.
+    -d, --dylib        Required. Path to the dynamic library.
+    -t, --tbd          Required. Path to the TBD file.
+    -o, --output       Required. Output directory for generated bindings.
+    -v, --verbose      Verbosity level. 0 = No logging, 1 = General information, 2 = Debugging information. (default: 1)
 ```
 
- If an unsupported syntax element is encountered in the ABI file, the tooling will ignore it and generate C# source code for known syntax elements. The generated C# bindings are published as source files to the output directory, allowing users to modify them before compilation.
+## Supported scenarios
+
+StoreKit in-app purchase example:
+
+```csharp
+SwiftArray<SwiftString> productIdentifiers = new SwiftArray<SwiftString>();
+productIdentifiers.Append(new SwiftString("id1"));
+productIdentifiers.Append(new SwiftString("id2"));
+Task<SwiftArray<SwiftString>> productsTask = Product.products<SwiftArray<SwiftString>>(productIdentifiers);
+SwiftArray<Product> products = await productsTask;
+
+Product product = products[0];
+await product.purchase(new SwiftSet<Product.PurchaseOption>());
+```
+
+A complete list of supported scenarios is available in `src/Swift.Bindings/tests`.
+
+If an unsupported syntax element is encountered in the ABI file, the tooling will ignore it and generate C# source code for known syntax elements. The generated C# bindings are published as source files to the output directory, allowing users to modify them before compilation.
+
+## Experimental packages
+
+NuGet feed: https://dev.azure.com/dnceng/public/_artifacts/feed/dotnet-experimental
+
+StoreKit bindings:
+```
+Swift.Bindings.MacOSX.Experimental -version 1.0.0-alpha.25201.1
+Swift.Bindings.MacCatalyst.Experimental -version 1.0.0-alpha.25201.1
+Swift.Bindings.iPhoneSimulator.Experimental -version 1.0.0-alpha.25201.1
+Swift.Bindings.iPhoneOS.Experimental -version 1.0.0-alpha.25201.1
+Swift.Bindings.AppleTVSimulator.Experimental -version 1.0.0-alpha.25201.1
+Swift.Bindings.AppleTVOS.Experimental -version 1.0.0-alpha.25201.1
+```
+
+Projection tooling:
+```
+Swift.Bindings -version 1.0.0-alpha.25201.1
+```
 
 ## .NET Foundation
 
