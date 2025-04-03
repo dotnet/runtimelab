@@ -27,14 +27,12 @@ public class Async2SharedGeneric
 
         // struct with an obj and its nullable
         Async1EntryPoint<S0>(typeof(S0), new S0(42)).Wait();
-        // TODO: uncomment to repro https://github.com/dotnet/runtimelab/issues/3043
-        // Async1EntryPoint<S0?>(typeof(S0?), new S0(42)).Wait();
+        Async1EntryPoint<S0?>(typeof(S0?), new S0(42)).Wait();
         Async1EntryPoint<S0?>(typeof(S0?), null).Wait();
 
         // generic struct with an obj and its nullable
         Async1EntryPoint<S1<string>>(typeof(S1<string>), new S1<string> { t = "ghj" }).Wait();
-        // TODO: uncomment to repro https://github.com/dotnet/runtimelab/issues/3043
-        // Async1EntryPoint<S1<string>?>(typeof(S1<string>?), new S1<string> { t = "qwe" }).Wait();
+        Async1EntryPoint<S1<string>?>(typeof(S1<string>?), new S1<string> { t = "qwe" }).Wait();
         Async1EntryPoint<S1<string>?>(typeof(S1<string>?), null).Wait();
 
         // simple cases
