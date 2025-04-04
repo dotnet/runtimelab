@@ -829,14 +829,14 @@ BasicBlock* Async2Transformation::CreateSuspension(BasicBlock*               blo
     GenTree* newContinuation = m_comp->gtNewLclvNode(m_newContinuationVar, TYP_REF);
     unsigned resumeOffset    = m_comp->info.compCompHnd->getFieldOffset(m_async2Info.continuationResumeFldHnd);
     GenTree* resumeStubAddr  = CreateResumptionStubAddrTree();
-    GenTree* storeResume     = StoreAtOffset(newContinuation, resumeOffset, resumeStubAddr);
+    GenTree* storeResume     = StoreAtOffset(newContinuation, resumeOffset, resumeStubAddr, TYP_I_IMPL);
     LIR::AsRange(suspendBB).InsertAtEnd(LIR::SeqTree(m_comp, storeResume));
 
     // Fill in 'state'
     newContinuation       = m_comp->gtNewLclvNode(m_newContinuationVar, TYP_REF);
     unsigned stateOffset  = m_comp->info.compCompHnd->getFieldOffset(m_async2Info.continuationStateFldHnd);
     GenTree* stateNumNode = m_comp->gtNewIconNode((ssize_t)stateNum, TYP_INT);
-    GenTree* storeState   = StoreAtOffset(newContinuation, stateOffset, stateNumNode);
+    GenTree* storeState   = StoreAtOffset(newContinuation, stateOffset, stateNumNode, TYP_INT);
     LIR::AsRange(suspendBB).InsertAtEnd(LIR::SeqTree(m_comp, storeState));
 
     // Fill in 'flags'
@@ -851,7 +851,7 @@ BasicBlock* Async2Transformation::CreateSuspension(BasicBlock*               blo
     newContinuation      = m_comp->gtNewLclvNode(m_newContinuationVar, TYP_REF);
     unsigned flagsOffset = m_comp->info.compCompHnd->getFieldOffset(m_async2Info.continuationFlagsFldHnd);
     GenTree* flagsNode   = m_comp->gtNewIconNode((ssize_t)continuationFlags, TYP_INT);
-    GenTree* storeFlags  = StoreAtOffset(newContinuation, flagsOffset, flagsNode);
+    GenTree* storeFlags  = StoreAtOffset(newContinuation, flagsOffset, flagsNode, TYP_INT);
     LIR::AsRange(suspendBB).InsertAtEnd(LIR::SeqTree(m_comp, storeFlags));
 
     if (layout.GCRefsCount > 0)
@@ -963,8 +963,8 @@ void Async2Transformation::FillInGCPointersOnSuspension(const jitstd::vector<Liv
             GenTree* value     = m_comp->gtNewLclvNode(inf.LclNum, TYP_REF);
             GenTree* objectArr = m_comp->gtNewLclvNode(objectArrLclNum, TYP_REF);
             GenTree* store =
-                StoreAtOffset(objectArr, OFFSETOF__CORINFO_Array__data + (inf.GCDataIndex * TARGET_POINTER_SIZE),
-                              value);
+                StoreAtOffset(objectArr, OFFSETOF__CORINFO_Array__data + (inf.GCDataIndex * TARGET_POINTER_SIZE), value,
+                              TYP_REF);
             LIR::AsRange(suspendBB).InsertAtEnd(LIR::SeqTree(m_comp, store));
         }
         else
@@ -996,7 +996,7 @@ void Async2Transformation::FillInGCPointersOnSuspension(const jitstd::vector<Liv
                 GenTree* objectArr = m_comp->gtNewLclvNode(objectArrLclNum, TYP_REF);
                 unsigned offset =
                     OFFSETOF__CORINFO_Array__data + ((inf.GCDataIndex + gcRefIndex) * TARGET_POINTER_SIZE);
-                GenTree* store = StoreAtOffset(objectArr, offset, value);
+                GenTree* store = StoreAtOffset(objectArr, offset, value, TYP_REF);
                 LIR::AsRange(suspendBB).InsertAtEnd(LIR::SeqTree(m_comp, store));
 
                 gcRefIndex++;
@@ -1009,7 +1009,7 @@ void Async2Transformation::FillInGCPointersOnSuspension(const jitstd::vector<Liv
                     if (dsc->IsImplicitByRef())
                     {
                         GenTree* baseAddr = m_comp->gtNewLclvNode(inf.LclNum, dsc->TypeGet());
-                        store             = StoreAtOffset(baseAddr, i * TARGET_POINTER_SIZE, null);
+                        store             = StoreAtOffset(baseAddr, i * TARGET_POINTER_SIZE, null, TYP_REF);
                     }
                     else
                     {
@@ -1057,7 +1057,7 @@ void Async2Transformation::FillInDataOnSuspension(const jitstd::vector<LiveLocal
 
         GenTree* byteArr               = m_comp->gtNewLclvNode(byteArrLclNum, TYP_REF);
         unsigned offset                = OFFSETOF__CORINFO_Array__data;
-        GenTree* storePatchpointOffset = StoreAtOffset(byteArr, offset, ilOffsetToStore);
+        GenTree* storePatchpointOffset = StoreAtOffset(byteArr, offset, ilOffsetToStore, TYP_INT);
         LIR::AsRange(suspendBB).InsertAtEnd(LIR::SeqTree(m_comp, storePatchpointOffset));
     }
 
@@ -1082,7 +1082,7 @@ void Async2Transformation::FillInDataOnSuspension(const jitstd::vector<LiveLocal
         }
         else
         {
-            value = m_comp->gtNewLclvNode(inf.LclNum, genActualType(dsc->TypeGet()));
+            value = m_comp->gtNewLclVarNode(inf.LclNum);
         }
 
         GenTree* store;
@@ -1097,7 +1097,7 @@ void Async2Transformation::FillInDataOnSuspension(const jitstd::vector<LiveLocal
         }
         else
         {
-            store = StoreAtOffset(byteArr, offset, value);
+            store = StoreAtOffset(byteArr, offset, value, dsc->TypeGet());
         }
 
         LIR::AsRange(suspendBB).InsertAtEnd(LIR::SeqTree(m_comp, store));
@@ -1342,7 +1342,7 @@ void Async2Transformation::RestoreFromGCPointersOnResumption(unsigned           
                 if (dsc->IsImplicitByRef())
                 {
                     GenTree* baseAddr = m_comp->gtNewLclvNode(inf.LclNum, dsc->TypeGet());
-                    store             = StoreAtOffset(baseAddr, i * TARGET_POINTER_SIZE, value);
+                    store             = StoreAtOffset(baseAddr, i * TARGET_POINTER_SIZE, value, TYP_REF);
                     // Implicit byref args are never on heap
                     store->gtFlags |= GTF_IND_TGT_NOT_HEAP;
                 }
@@ -1599,17 +1599,21 @@ GenTreeIndir* Async2Transformation::LoadFromOffset(GenTree*     base,
 //   base       - Base address of the store
 //   offset     - Offset to add on top of the base address
 //   value      - Value to store
+//   storeType  - Type of store
 //
 // Returns:
 //   IR node of the store.
 //
-GenTreeStoreInd* Async2Transformation::StoreAtOffset(GenTree* base, unsigned offset, GenTree* value)
+GenTreeStoreInd* Async2Transformation::StoreAtOffset(GenTree*  base,
+                                                     unsigned  offset,
+                                                     GenTree*  value,
+                                                     var_types storeType)
 {
     assert(base->TypeIs(TYP_REF, TYP_BYREF, TYP_I_IMPL));
     GenTree*         cns      = m_comp->gtNewIconNode((ssize_t)offset, TYP_I_IMPL);
     var_types        addrType = base->TypeIs(TYP_I_IMPL) ? TYP_I_IMPL : TYP_BYREF;
     GenTree*         addr     = m_comp->gtNewOperNode(GT_ADD, addrType, base, cns);
-    GenTreeStoreInd* store    = m_comp->gtNewStoreIndNode(value->TypeGet(), addr, value, GTF_IND_NONFAULTING);
+    GenTreeStoreInd* store    = m_comp->gtNewStoreIndNode(storeType, addr, value, GTF_IND_NONFAULTING);
     return store;
 }
 
