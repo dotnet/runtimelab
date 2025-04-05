@@ -74,8 +74,10 @@ private:
     bool rsModifiedRegsMaskInitialized; // Has rsModifiedRegsMask been initialized? Guards against illegal use.
 #endif                                  // DEBUG
 
+#if !defined(TARGET_WASM)
     regMaskTP rsAllCalleeSavedMask = RBM_CALLEE_SAVED;
     regMaskTP rsIntCalleeSavedMask = RBM_INT_CALLEE_SAVED;
+#endif
 
 public:
     regMaskTP rsGetModifiedRegsMask() const
@@ -84,6 +86,7 @@ public:
         return rsModifiedRegsMask;
     }
 
+#if !defined(TARGET_WASM)
     regMaskTP rsGetModifiedCalleeSavedRegsMask() const
     {
         assert(rsModifiedRegsMaskInitialized);
@@ -95,6 +98,7 @@ public:
         assert(rsModifiedRegsMaskInitialized);
         return (rsModifiedRegsMask & rsIntCalleeSavedMask);
     }
+#endif // !TARGET_WASM
 
 #ifdef TARGET_AMD64
     regMaskTP rsGetModifiedOsrIntCalleeSavedRegsMask() const

@@ -80,18 +80,6 @@ void Compiler::fgResetForSsa(bool deepClean)
             }
         }
 
-#if defined(TARGET_WASM)
-        if (blk->IsLIR())
-        {
-            for (GenTree* tree : LIR::AsRange(blk))
-            {
-                if (tree->IsLocal() || tree->OperIs(GT_LCL_ADDR))
-                {
-                    tree->AsLclVarCommon()->SetSsaNum(SsaConfig::RESERVED_SSA_NUM);
-                }
-            }
-        }
-#endif
         if (deepClean)
         {
             for (Statement* const stmt : blk->Statements())
@@ -105,6 +93,19 @@ void Compiler::fgResetForSsa(bool deepClean)
                 }
             }
         }
+
+#if defined(TARGET_WASM)
+        if (blk->IsLIR())
+        {
+            for (GenTree* tree : LIR::AsRange(blk))
+            {
+                if (tree->IsLocal() || tree->OperIs(GT_LCL_ADDR))
+                {
+                    tree->AsLclVarCommon()->SetSsaNum(SsaConfig::RESERVED_SSA_NUM);
+                }
+            }
+        }
+#endif
     }
 }
 

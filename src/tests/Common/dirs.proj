@@ -29,6 +29,9 @@
       <!-- Only automated on WASI with LLDB, which we don't have on Windows CI machines. -->
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\WasmDebugging.csproj" Condition="'$(TargetOS)' == 'browser' or '$(OS)' == 'Windows_NT' or '$(Configuration)' != 'Debug'" />
       <DisabledProjects Include="$(TestRoot)readytorun\**\*.csproj" Condition="'$(TestBuildMode)' == 'nativeaot'" />
+
+      <!-- Fails, see https://github.com/dotnet/runtimelab/issues/3074 -->
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\Preinitialization\Preinitialization.csproj" />
     </ItemGroup>
 
     <ItemGroup>

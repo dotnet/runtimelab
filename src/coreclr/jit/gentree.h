@@ -941,11 +941,9 @@ public:
                                                                              // and fix everyplace that reads undefined
                                                                              // values
         regNumber reg = (regNumber)_gtRegNum;
-#if !TARGET_WASM
         assert((gtRegTag == GT_REGTAG_NONE) || // TODO-Cleanup: get rid of the NONE case, and fix everyplace that reads
                                                // undefined values
                (reg >= REG_FIRST && reg <= REG_COUNT));
-#endif // !TARGET_WASM
         return reg;
     }
 

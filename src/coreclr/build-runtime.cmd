@@ -40,13 +40,13 @@ set "__RootBinDir=%__RepoRootDir%\artifacts"
 
 set __BuildAll=
 
+set __TargetArchWasm=0
 set __TargetArchX64=0
 set __TargetArchX86=0
 set __TargetArchArm=0
 set __TargetArchArm64=0
 set __TargetArchLoongArch64=0
 set __TargetArchRiscV64=0
-set __TargetArchWasm=0
 
 set __BuildTypeDebug=0
 set __BuildTypeChecked=0

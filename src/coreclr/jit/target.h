@@ -114,10 +114,10 @@ inline bool compUnixX86Abi()
 //                       be assigned during register allocation.
 //    REG_NA           - Used to indicate that a register is either not yet assigned or not required.
 //
-#if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
+#if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
 enum _regNumber_enum : unsigned
 {
-#if defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
+#if defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
 // LA64 and RV64 don't require JITREG_ workaround for Android (see register.h)
 #define REGDEF(name, rnum, mask, sname) REG_##name = rnum,
 #define REGALIAS(alias, realname)       REG_##alias = REG_##realname,

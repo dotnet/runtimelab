@@ -202,8 +202,7 @@ void Llvm::initializeLlvmArgInfo()
     {
         // The return buffer is always pinned in our calling convention, so that we can pass it as an LLVM argument.
         LclVarDsc* retBufVarDsc = _compiler->lvaGetDesc(m_info->compRetBuffArg);
-        assert(retBufVarDsc->TypeGet() == TYP_BYREF || retBufVarDsc->TypeGet() == TYP_I_IMPL);
-        retBufVarDsc->lvType = TYP_I_IMPL;
+        assert(retBufVarDsc->TypeGet() == TYP_I_IMPL);
         retBufVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
     }
 
@@ -1973,14 +1972,15 @@ bool Llvm::addVirtualUnwindFrameForExceptionHandling()
 
 void Llvm::computeBlocksInFilters()
 {
+    unsigned bbNumMax = _compiler->fgBBNumMax;
+    BitVecTraits bitVecTraits(_compiler->fgBBNumMax + 1, _compiler);
+    
     for (EHblkDsc* ehDsc : EHClauses(_compiler))
     {
         if (ehDsc->HasFilter())
         {
             for (BasicBlock* block : _compiler->Blocks(ehDsc->ebdFilter, ehDsc->BBFilterLast()))
             {
-                unsigned bbNumMax = _compiler->fgBBNumMax;
-                BitVecTraits bitVecTraits(_compiler->fgBBNumMax + 1, _compiler);
                 if (m_blocksInFilters == BitVecOps::UninitVal())
                 {
                     m_blocksInFilters = BitVecOps::MakeEmpty(&bitVecTraits);
