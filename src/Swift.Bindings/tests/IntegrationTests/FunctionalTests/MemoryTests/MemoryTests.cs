@@ -696,15 +696,15 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             var metadata = SwiftObjectHelper<Bindings.FrozenStructRequiresMemoryManagement>.GetTypeMetadata();
-            byte* payloadPtr = stackalloc byte[(int)metadata.Size];
-            Span<byte> payloadSpan = new Span<byte>(payloadPtr, (int)metadata.Size);
+            Span<byte> payloadSpan = stackalloc byte[(int)metadata.Size];
+            IntPtr payloadPtr = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(payloadSpan));
 
             // Marshal the object to Swift
             SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
             Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             // Marshal back from Swift
-            var copy = SwiftMarshal.MarshalFromSwift<Bindings.FrozenStructRequiresMemoryManagement>((IntPtr)payloadPtr);
+            var copy = SwiftMarshal.MarshalFromSwift<Bindings.FrozenStructRequiresMemoryManagement>(payloadPtr);
             Assert.Equal(2, Arc.RetainCount(copy.Payload.DangerousGetHandle().At(0)));
 
             // Dispose the copy and verify retain count
@@ -719,15 +719,15 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             var metadata = SwiftObjectHelper<Bindings.NestedFrozenStructRequiresMemoryManagement>.GetTypeMetadata();
-            byte* payloadPtr = stackalloc byte[(int)metadata.Size];
-            Span<byte> payloadSpan = new Span<byte>(payloadPtr, (int)metadata.Size);
+            Span<byte> payloadSpan = stackalloc byte[(int)metadata.Size];
+            IntPtr payloadPtr = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(payloadSpan));
 
             // Marshal the object to Swift
             SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
             Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             // Marshal back from Swift
-            var copy = SwiftMarshal.MarshalFromSwift<Bindings.NestedFrozenStructRequiresMemoryManagement>((IntPtr)payloadPtr);
+            var copy = SwiftMarshal.MarshalFromSwift<Bindings.NestedFrozenStructRequiresMemoryManagement>(payloadPtr);
             Assert.Equal(2, Arc.RetainCount(copy.Payload.DangerousGetHandle().At(0)));
 
             // Dispose the copy and verify retain count
@@ -742,15 +742,15 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             var metadata = SwiftObjectHelper<Bindings.NonFrozenStructRequiresMemoryManagement>.GetTypeMetadata();
-            void* payloadPtr = NativeMemory.Alloc(metadata.Size);
-            Span<byte> payloadSpan = new Span<byte>(payloadPtr, (int)metadata.Size);
+            IntPtr payloadPtr = (IntPtr)NativeMemory.Alloc(metadata.Size);
+            Span<byte> payloadSpan = new Span<byte>((byte*)payloadPtr, (int)metadata.Size);
 
             // Marshal the object to Swift
             SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
             Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             // Marshal back from Swift
-            var copy = SwiftMarshal.MarshalFromSwift<Bindings.NonFrozenStructRequiresMemoryManagement>((IntPtr)payloadPtr);
+            var copy = SwiftMarshal.MarshalFromSwift<Bindings.NonFrozenStructRequiresMemoryManagement>(payloadPtr);
             Assert.Equal(2, Arc.RetainCount(copy.Payload.DangerousGetHandle().At(0)));
 
             // Dispose the copy and verify retain count
@@ -791,15 +791,15 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(1)));
 
             var metadata = SwiftObjectHelper<EmbeddedStruct>.GetTypeMetadata();
-            byte* payloadPtr = stackalloc byte[(int)metadata.Size];
-            Span<byte> payloadSpan = new Span<byte>(payloadPtr, (int)metadata.Size);
+            Span<byte> payloadSpan = stackalloc byte[(int)metadata.Size];
+            IntPtr payloadPtr = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(payloadSpan));
 
             // Marshal the object to Swift
             SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
             Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(1)));
 
             // Marshal back from Swift
-            var copy = SwiftMarshal.MarshalFromSwift<EmbeddedStruct>((IntPtr)payloadPtr);
+            var copy = SwiftMarshal.MarshalFromSwift<EmbeddedStruct>(payloadPtr);
             Assert.Equal(2, Arc.RetainCount(copy.Payload.DangerousGetHandle().At(1)));
 
             // Dispose the copy and verify retain count

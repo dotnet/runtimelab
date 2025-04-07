@@ -189,15 +189,15 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(1, Arc.RetainCount(vtype.PayloadBuffer));
 
             var metadata = SwiftObjectHelper<SwiftArray<Int32>>.GetTypeMetadata();
-            byte* payloadPtr = stackalloc byte[(int)metadata.Size];
-            Span<byte> payloadSpan = new Span<byte>(payloadPtr, (int)metadata.Size);
+            Span<byte> payloadSpan = stackalloc byte[(int)metadata.Size];
+            IntPtr payloadPtr = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(payloadSpan));
 
             // Marshal the object to Swift
             SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
             Assert.Equal(2, Arc.RetainCount(vtype.PayloadBuffer));
 
             // Marshal back from Swift
-            var copy = SwiftMarshal.MarshalFromSwift<SwiftArray<Int32>>((IntPtr)payloadPtr);
+            var copy = SwiftMarshal.MarshalFromSwift<SwiftArray<Int32>>(payloadPtr);
             Assert.Equal(2, Arc.RetainCount(copy.PayloadBuffer));
 
             // Dispose the copy and verify retain count
@@ -368,15 +368,15 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(1, Arc.RetainCount(vtype.PayloadBuffer));
 
             var metadata = SwiftObjectHelper<SwiftSet<SwiftIntMock>>.GetTypeMetadata();
-            byte* payloadPtr = stackalloc byte[(int)metadata.Size];
-            Span<byte> payloadSpan = new Span<byte>(payloadPtr, (int)metadata.Size);
+            Span<byte> payloadSpan = stackalloc byte[(int)metadata.Size];
+            IntPtr payloadPtr = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(payloadSpan));
 
             // Marshal the object to Swift
             SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
             Assert.Equal(2, Arc.RetainCount(vtype.PayloadBuffer));
 
             // Marshal back from Swift
-            var copy = SwiftMarshal.MarshalFromSwift<SwiftSet<SwiftIntMock>>((IntPtr)payloadPtr);
+            var copy = SwiftMarshal.MarshalFromSwift<SwiftSet<SwiftIntMock>>(payloadPtr);
             Assert.Equal(2, Arc.RetainCount(copy.PayloadBuffer));
 
             // Dispose the copy and verify retain count
@@ -497,15 +497,15 @@ namespace BindingsGeneration.FunctionalTests
             Assert.Equal(1, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(1)));
 
             var metadata = SwiftObjectHelper<SwiftString>.GetTypeMetadata();
-            byte* payloadPtr = stackalloc byte[(int)metadata.Size];
-            Span<byte> payloadSpan = new Span<byte>(payloadPtr, (int)metadata.Size);
+            Span<byte> payloadSpan = stackalloc byte[(int)metadata.Size];
+            IntPtr payloadPtr = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(payloadSpan));
 
             // Marshal the object to Swift
             SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
             Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(1)));
 
             // Marshal back from Swift
-            var copy = SwiftMarshal.MarshalFromSwift<SwiftString>((IntPtr)payloadPtr);
+            var copy = SwiftMarshal.MarshalFromSwift<SwiftString>(payloadPtr);
             Assert.Equal(2, Arc.RetainCount(copy.Payload.DangerousGetHandle().At(1)));
 
             // Dispose the copy and verify retain count
