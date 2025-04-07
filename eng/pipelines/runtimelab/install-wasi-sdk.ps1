@@ -33,7 +33,7 @@ tar -xzf $WasiSdkGzFile
 mv $WasiSdkDirName wasi-sdk
 
 # The upstream build expects this sentinel to exist, otherwise it tries to use a provisioned SDK.
-$WasiSdkVersion > wasi-sdk/"VERSION$("$WasiSdkVersion".ToUpper())"
+$WasiSdkVersion > wasi-sdk/"WASI-SDK-VERSION-$WasiSdkVersion.0"
 
 if ($CI)
 {
