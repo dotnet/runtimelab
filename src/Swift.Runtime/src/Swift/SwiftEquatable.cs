@@ -40,17 +40,17 @@ namespace Swift.Runtime
             var metadata = TypeMetadata.GetTypeMetadataOrThrow<T>();
             var equatablePwt = ProtocolWitnessTable.GetOrThrow<T, IEquatable<T>>();
 
-            byte* lhsPayload = stackalloc byte[(int)metadata.Size];
-            Span<byte> lhsSpan = new Span<byte>(lhsPayload, (int)metadata.Size);
-            byte* rhsPayload = stackalloc byte[(int)metadata.Size];
-            Span<byte> rhsSpan = new Span<byte>(rhsPayload, (int)metadata.Size);
+            Span<byte> lhsSpan = stackalloc byte[(int)metadata.Size];
+            IntPtr lhsPayload = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(lhsSpan));
+            Span<byte> rhsSpan = stackalloc byte[(int)metadata.Size];
+            IntPtr rhsPayload = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(rhsSpan));
 
             SwiftMarshal.MarshalToSwift(lhs, lhsSpan);
             SwiftMarshal.MarshalToSwift(rhs, rhsSpan);
 
             return PInvoke_SwiftEquals(
-                (IntPtr)lhsPayload,
-                (IntPtr)rhsPayload,
+                lhsPayload,
+                rhsPayload,
                 new SwiftSelf(metadata),
                 metadata,
                 equatablePwt);

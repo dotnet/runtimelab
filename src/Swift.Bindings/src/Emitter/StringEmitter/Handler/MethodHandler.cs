@@ -920,9 +920,8 @@ namespace BindingsGeneration
                 var payloadName = NameProvider.GetPayloadName(argument.Name);
 
                 var text = $$"""
-                byte* {{payloadName}}Ptr = stackalloc byte[(int){{metadataName}}.Size];
-                Span<byte> {{payloadName}}Span = new Span<byte>({{payloadName}}Ptr, (int){{metadataName}}.Size);
-                {{payloadName}} = (IntPtr){{payloadName}}Ptr;
+                Span<byte> {{payloadName}}Span = stackalloc byte[(int){{metadataName}}.Size];
+                {{payloadName}} = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference({{payloadName}}Span));
                 SwiftMarshal.MarshalToSwift({{argument.Name}}, {{payloadName}}Span);
                 """;
                 csWriter.WriteLines(text);
@@ -1125,8 +1124,8 @@ namespace BindingsGeneration
                             {
                                 {{(voidReturn ? "" : $"var result = SwiftMarshal.MarshalFromSwift<{_wrapperSignature.ReturnType}>({marshallFromSwiftArgument});")}}
                                 {{(requiresInitWithCopy ? $"var metadata = SwiftObjectHelper<{_wrapperSignature.ReturnType}>.GetTypeMetadata();" : "")}}
-                                {{(requiresInitWithCopy ? $"byte* payload = stackalloc byte[(int)metadata.Size];" : "")}}
-                                {{(requiresInitWithCopy ? $"Span<byte> payloadSpan = new Span<byte>(payload, (int)metadata.Size);" : "")}}
+                                {{(requiresInitWithCopy ? $"Span<byte> payloadSpan = stackalloc byte[(int)metadata.Size];" : "")}}
+                                {{(requiresInitWithCopy ? $"IntPtr payload = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(payloadSpan));" : "")}}
                                 {{(requiresInitWithCopy ? $"SwiftMarshal.MarshalToSwift(result, payloadSpan);" : "")}}
                                 if (handle.Target is TaskCompletionSource{{(voidReturn ? "" : $"<{_wrapperSignature.ReturnType}>")}} tcs)
                                 {

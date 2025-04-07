@@ -154,10 +154,10 @@ public class SwiftArray<Element> : ISwiftObject
         _payload.DangerousAddRef(ref success);
         try
         {
-            byte* payload = stackalloc byte[(int)_elementSize];
-            Span<byte> span = new Span<byte>(payload, (int)_elementSize);
+            Span<byte> span = stackalloc byte[(int)_elementSize];
+            IntPtr payload = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(span));
             SwiftMarshal.MarshalToSwift(item, span);
-            SwiftArrayPInvokes.Append((IntPtr)payload, metadata, new SwiftSelf((void*)_payload.DangerousGetHandle()));
+            SwiftArrayPInvokes.Append(payload, metadata, new SwiftSelf((void*)_payload.DangerousGetHandle()));
         }
         finally
         {
@@ -176,10 +176,10 @@ public class SwiftArray<Element> : ISwiftObject
         try
         {
             var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
-            byte* payload = stackalloc byte[(int)_elementSize];
-            Span<byte> span = new Span<byte>(payload, (int)_elementSize);
+            Span<byte> span = stackalloc byte[(int)_elementSize];
+            IntPtr payload = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(span));
             SwiftMarshal.MarshalToSwift(item, span);
-            SwiftArrayPInvokes.Insert((IntPtr)payload, index, metadata, new SwiftSelf((void*)_payload.DangerousGetHandle()));
+            SwiftArrayPInvokes.Insert(payload, index, metadata, new SwiftSelf((void*)_payload.DangerousGetHandle()));
         }
         finally
         {
@@ -255,10 +255,10 @@ public class SwiftArray<Element> : ISwiftObject
             try
             {
                 var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
-                byte* payload = stackalloc byte[(int)_elementSize];
-                Span<byte> span = new Span<byte>(payload, (int)_elementSize);
+                Span<byte> span = stackalloc byte[(int)_elementSize];
+                IntPtr payload = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(span));
                 SwiftMarshal.MarshalToSwift(value, span);
-                SwiftArrayPInvokes.Set((IntPtr)payload, index, metadata, new SwiftSelf((void*)_payload.DangerousGetHandle()));
+                SwiftArrayPInvokes.Set(payload, index, metadata, new SwiftSelf((void*)_payload.DangerousGetHandle()));
             }
             finally
             {
