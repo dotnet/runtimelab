@@ -32,7 +32,6 @@
     <EmccExportedFunction Include="stackAlloc" />
     <EmccExportedFunction Include="stackRestore" />
     <EmccExportedFunction Include="stackSave" />
-    <EmccExportedFunction Include="_minipal_get_non_cryptographically_secure_random_bytes" />
     <EmccExportedRuntimeMethod Include="FS" />
     <EmccExportedRuntimeMethod Include="out" />
     <EmccExportedRuntimeMethod Include="err" />
