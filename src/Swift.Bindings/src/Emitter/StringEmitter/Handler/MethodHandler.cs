@@ -613,6 +613,7 @@ namespace BindingsGeneration
         {
             EmitSignatureConstructor(csWriter);
             EmitBodyStart(csWriter);
+            EmitSafeHandleAddRef(csWriter);
             EmitSwiftSelf(csWriter);
             EmitIndirectResultConstructor(csWriter);
             EmitPInvokeCall(csWriter);
@@ -830,7 +831,7 @@ namespace BindingsGeneration
                 if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(argumentDecl))
                 {
                     var bufferName = NameProvider.GetBoundGenericBufferName(argumentDecl.Name);
-                    csWriter.WriteLine($"using IDisposable _ = {argumentDecl.Name}.GetPayloadBuffer(out IntPtr {bufferName});");
+                    csWriter.WriteLine($"using IDisposable {argumentDecl.Name}Disposable = {argumentDecl.Name}.GetPayloadBuffer(out IntPtr {bufferName});");
                 }
             }
         }
@@ -843,7 +844,7 @@ namespace BindingsGeneration
         /// </summary>
         private void EmitSafeHandleAddRef(CSharpWriter csWriter)
         {
-            if (_env.MethodDecl.MethodType != MethodType.Static)
+            if (_env.MethodDecl.MethodType != MethodType.Static && !_env.MethodDecl.IsConstructor)
             {
                 if (_env.ParentDecl is StructDecl structDecl)
                 {
@@ -861,7 +862,7 @@ namespace BindingsGeneration
                 TypeRecord typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(argumentDecl.SwiftTypeSpec);
                 if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
                 {
-                    csWriter.WriteLine($"using IDisposable _ = {argumentDecl.Name}.GetPayloadBuffer(out {typeRecord.CSharpTypeName}.Buffer {argumentDecl.Name}Buffer);");
+                    csWriter.WriteLine($"using IDisposable {argumentDecl.Name}Disposable = {argumentDecl.Name}.GetPayloadBuffer(out {typeRecord.CSharpTypeName}.Buffer {argumentDecl.Name}Buffer);");
                 }
             }
         }
@@ -874,7 +875,7 @@ namespace BindingsGeneration
         /// </summary>
         private void EmitSafeHandleRelease(CSharpWriter csWriter)
         {
-            if (_env.MethodDecl.MethodType != MethodType.Static)
+            if (_env.MethodDecl.MethodType != MethodType.Static && !_env.MethodDecl.IsConstructor)
             {
                 if (_env.ParentDecl is StructDecl structDecl)
                 {
