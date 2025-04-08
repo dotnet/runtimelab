@@ -196,7 +196,7 @@ namespace BindingsGeneration
             return parameter switch
             {
                 { Type: "SafeHandle" } => $"{parameter.Name}.Payload",
-                { Type: var type } when type.EndsWith(".Buffer") => $"{parameter.Name}.PayloadBuffer",
+                { Type: var type } when type.EndsWith(".Buffer") => $"{parameter.Name}Buffer",
                 { Type: "AsyncCallback" } => $"{parameter.Name}",
                 { Type: "AsyncContext" } => "null",
                 { Type: "AsyncTask" } => $"GCHandle.ToIntPtr({parameter.Name})",
@@ -686,9 +686,9 @@ namespace BindingsGeneration
             {
                 var typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(structDecl.SwiftTypeName);
                 if ((typeRecord.Flags & TypeRecordFlags.RequiresMemoryManagement) != 0)
-                    csWriter.WriteLine($"var self = new SwiftSelf<{_env.ParentDecl.Name}.Buffer>(PayloadBuffer);");
+                    csWriter.WriteLine($"var self = new SwiftSelf<{structDecl.Name}.Buffer>(*({structDecl.Name}.Buffer*)_payload.DangerousGetHandle());");
                 else
-                    csWriter.WriteLine($"var self = new SwiftSelf<{_env.ParentDecl.Name}>(this);");
+                    csWriter.WriteLine($"var self = new SwiftSelf<{structDecl.Name}>(this);");
             }
             else
             {
@@ -830,7 +830,7 @@ namespace BindingsGeneration
                 if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(argumentDecl))
                 {
                     var bufferName = NameProvider.GetBoundGenericBufferName(argumentDecl.Name);
-                    csWriter.WriteLine($"var {bufferName} = {argumentDecl.Name}.PayloadBuffer;");
+                    csWriter.WriteLine($"using IDisposable _ = {argumentDecl.Name}.GetPayloadBuffer(out IntPtr {bufferName});");
                 }
             }
         }
@@ -856,13 +856,12 @@ namespace BindingsGeneration
                 }
             }
 
-            foreach (var argumentDecl in _env.MethodDecl.CSSignature.Skip(1).Where(a => !a.IsGeneric))
+            foreach (var argumentDecl in _env.MethodDecl.CSSignature.Skip(1).Where(a => !a.IsGeneric && !_env.BoundGenericsHandler.IsBoundGeneric(a)))
             {
                 TypeRecord typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(argumentDecl.SwiftTypeSpec);
                 if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
                 {
-                    csWriter.WriteLine($"var success{argumentDecl.Name} = false;");
-                    csWriter.WriteLine($"{argumentDecl.Name}.Payload.DangerousAddRef(ref success{argumentDecl.Name});");
+                    csWriter.WriteLine($"using IDisposable _ = {argumentDecl.Name}.GetPayloadBuffer(out {typeRecord.CSharpTypeName}.Buffer {argumentDecl.Name}Buffer);");
                 }
             }
         }
@@ -897,13 +896,6 @@ namespace BindingsGeneration
                     var payloadName = NameProvider.GetPayloadName(argumentDecl.Name);
                     csWriter.WriteLine($"{metadataName}.ValueWitnessTable->Destroy((void *){payloadName}, {metadataName});");
                     continue;
-                }
-
-                TypeRecord typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(argumentDecl.SwiftTypeSpec);
-                if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
-                {
-                    csWriter.WriteLine($"if (success{argumentDecl.Name})");
-                    csWriter.WriteLine($"   {argumentDecl.Name}.Payload.DangerousRelease();");
                 }
             }
         }
@@ -1068,7 +1060,7 @@ namespace BindingsGeneration
                 false => ""
             };
             var accessModifier = NameProvider.GetAccessModifier(_env.MethodDecl.Visibility);
-            csWriter.WriteLine($"{accessModifier} {_env.ParentDecl.Name}{genericParams}({_wrapperSignature.ParametersString()})");
+            csWriter.WriteLine($"{accessModifier} unsafe {_env.ParentDecl.Name}{genericParams}({_wrapperSignature.ParametersString()})");
         }
 
         /// <summary>
@@ -1086,7 +1078,7 @@ namespace BindingsGeneration
             bool containsBoundGenerics = _env.MethodDecl.CSSignature.Any(_env.BoundGenericsHandler.IsBoundGeneric);
 
             var staticKeyword = _env.MethodDecl.MethodType == MethodType.Static || _env.ParentDecl is ModuleDecl ? "static " : "";
-            var unsafeKeyword = _requiresIndirectResult || _requiresSwiftAsync || _env.MethodDecl.IsGeneric || containsBoundGenerics ? "unsafe " : "";
+            var unsafeKeyword = _requiresIndirectResult || _requiresSwiftSelf || _requiresSwiftAsync || _env.MethodDecl.IsGeneric || containsBoundGenerics ? "unsafe " : "";
 
             var returnType = _wrapperSignature.ReturnType;
             if (_requiresSwiftAsync)

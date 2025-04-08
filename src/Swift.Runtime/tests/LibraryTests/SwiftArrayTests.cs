@@ -122,21 +122,21 @@ public class SwiftArrayTests : IClassFixture<SwiftArrayTests.TestFixture>
     }
 
     [Fact]
-    public void ArrayDispose()
+    public unsafe void ArrayDispose()
     {
         var array = new SwiftArray<int>();
         Assert.Equal(0, array.Count);
         // An empty array is singleton and it's count doesn't change with new instances
         // https://github.com/swiftlang/swift/blob/50a98d3055e5a636d80c376a99b4eea35387cd0d/stdlib/public/SwiftShims/swift/shims/GlobalObjects.h#L44
-        Assert.True(Arc.RetainCount(array.PayloadBuffer) > 1);
+        Assert.True(Arc.RetainCount(*(IntPtr*)array.Payload.DangerousGetHandle()) > 1);
 
         array.Append(42);
         Assert.Equal(1, array.Count);
-        Assert.Equal(1, Arc.RetainCount(array.PayloadBuffer));
-        Arc.Retain(array.PayloadBuffer);
-        Assert.Equal(2, Arc.RetainCount(array.PayloadBuffer));
+        Assert.Equal(1, Arc.RetainCount(*(IntPtr*)array.Payload.DangerousGetHandle()));
+        Arc.Retain(*(IntPtr*)array.Payload.DangerousGetHandle());
+        Assert.Equal(2, Arc.RetainCount(*(IntPtr*)array.Payload.DangerousGetHandle()));
 
-        var handle = array.PayloadBuffer;
+        var handle = *(IntPtr*)array.Payload.DangerousGetHandle();
         array.Payload.Dispose();
         Assert.Equal(1, Arc.RetainCount(handle));
         Arc.Release(handle);

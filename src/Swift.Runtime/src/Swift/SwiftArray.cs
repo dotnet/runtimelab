@@ -32,7 +32,12 @@ public class SwiftArray<Element> : ISwiftObject
 
     public SwiftSafeHandle<SwiftArray<Element>> Payload => _payload;
 
-    public unsafe IntPtr PayloadBuffer => *(IntPtr*)_payload.DangerousGetHandle();
+    public unsafe IDisposable GetPayloadBuffer(out IntPtr payloadBuffer)
+    {
+        IDisposable disposable = new PayloadBuffer(_payload);
+        payloadBuffer = *(IntPtr*)_payload.DangerousGetHandle();
+        return disposable;
+    }
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -130,18 +135,9 @@ public class SwiftArray<Element> : ISwiftObject
     {
         get
         {
-            bool success = false;
-            _payload.DangerousAddRef(ref success);
-            try
-            {
-                int result = (int)SwiftArrayPInvokes.Count(PayloadBuffer, ElementTypeMetadata);
-                return result;
-            }
-            finally
-            {
-                if (success)
-                    _payload.DangerousRelease();
-            }
+            using IDisposable _ = GetPayloadBuffer(out IntPtr payloadBuffer);
+            int result = (int)SwiftArrayPInvokes.Count(payloadBuffer, ElementTypeMetadata);
+            return result;
         }
     }
 
@@ -235,37 +231,19 @@ public class SwiftArray<Element> : ISwiftObject
     {
         get
         {
-            bool success = false;
-            _payload.DangerousAddRef(ref success);
-            try
-            {
-                void* payload = NativeMemory.Alloc(_elementSize);
-                SwiftArrayPInvokes.Get(new SwiftIndirectResult(payload), index, PayloadBuffer, ElementTypeMetadata);
-                return SwiftMarshal.MarshalFromSwift<Element>((IntPtr)payload);
-            }
-            finally
-            {
-                if (success)
-                    _payload.DangerousRelease();
-            }
+            using IDisposable _ = GetPayloadBuffer(out IntPtr payloadBuffer);
+            void* payload = NativeMemory.Alloc(_elementSize);
+            SwiftArrayPInvokes.Get(new SwiftIndirectResult(payload), index, payloadBuffer, ElementTypeMetadata);
+            return SwiftMarshal.MarshalFromSwift<Element>((IntPtr)payload);
         }
         set
         {
-            bool success = false;
-            _payload.DangerousAddRef(ref success);
-            try
-            {
-                var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
-                Span<byte> span = stackalloc byte[(int)_elementSize];
-                IntPtr payload = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(span));
-                SwiftMarshal.MarshalToSwift(value, ref span);
-                SwiftArrayPInvokes.Set(payload, index, metadata, new SwiftSelf((void*)_payload.DangerousGetHandle()));
-            }
-            finally
-            {
-                if (success)
-                    _payload.DangerousRelease();
-            }
+            using IDisposable _ = GetPayloadBuffer(out IntPtr _);
+            var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
+            Span<byte> span = stackalloc byte[(int)_elementSize];
+            IntPtr payload = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(span));
+            SwiftMarshal.MarshalToSwift(value, ref span);
+            SwiftArrayPInvokes.Set(payload, index, metadata, new SwiftSelf((void*)_payload.DangerousGetHandle()));
         }
     }
 }

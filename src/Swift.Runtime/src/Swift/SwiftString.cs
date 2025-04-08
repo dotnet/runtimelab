@@ -39,7 +39,12 @@ public class SwiftString : ISwiftObject
         _protocolConformanceSymbols = new Dictionary<Type, string> { };
     }
 
-    public unsafe SwiftString.Buffer PayloadBuffer => *(SwiftString.Buffer*)_payload.DangerousGetHandle();
+    public unsafe IDisposable GetPayloadBuffer(out SwiftString.Buffer payloadBuffer)
+    {
+        IDisposable disposable = new PayloadBuffer(_payload);
+        payloadBuffer = *(SwiftString.Buffer*)_payload.DangerousGetHandle();
+        return disposable;
+    }
 
     static TypeMetadata ISwiftObject.GetTypeMetadata()
     {
@@ -129,18 +134,8 @@ public class SwiftString : ISwiftObject
     {
         get
         {
-            bool success = false;
-            _payload.DangerousAddRef(ref success);
-            try
-            {
-                int result = (int)PInvoke_GetLength(PayloadBuffer);
-                return result;
-            }
-            finally
-            {
-                if (success)
-                    _payload.DangerousRelease();
-            }
+            using IDisposable _ = GetPayloadBuffer(out SwiftString.Buffer payloadBuffer);
+            return (int)PInvoke_GetLength(payloadBuffer);
         }
     }
 
@@ -152,39 +147,30 @@ public class SwiftString : ISwiftObject
         var elementType = TypeMetadata.GetTypeMetadataOrThrow<byte>();
         var resultType = TypeMetadata.GetTypeMetadataOrThrow<long>();
 
-        bool success = false;
-        _payload.DangerousAddRef(ref success);
-        try
-        {
-            var length = Length;
-            if (length <= 0)
-                return string.Empty;
+        using IDisposable _ = GetPayloadBuffer(out SwiftString.Buffer payloadBuffer);
+        var length = Length;
+        if (length <= 0)
+            return string.Empty;
 
-            var contiguousArray = PInvoke_GetUtf8ContiguousArray(PayloadBuffer);
+        var contiguousArray = PInvoke_GetUtf8ContiguousArray(payloadBuffer);
 
 #pragma warning disable CS8500
-            unsafe
-            {
-                ToStringCallbackContext callbackContext;
-                callbackContext._length = length;
-                PInvoke_WithUnsafeBytes(&Callback, &callbackContext, contiguousArray, elementType, resultType);
-                return callbackContext._returnString!;
-
-                [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvSwift) })]
-                static IntPtr Callback(byte* bytes, SwiftSelf context)
-                {
-                    ToStringCallbackContext* pContext = (ToStringCallbackContext*)context.Value;
-                    pContext->_returnString = Encoding.UTF8.GetString(new ReadOnlySpan<byte>(bytes, pContext->_length));
-                    return default;
-                }
-            }
-#pragma warning restore CS8500
-        }
-        finally
+        unsafe
         {
-            if (success)
-                _payload.DangerousRelease();
+            ToStringCallbackContext callbackContext;
+            callbackContext._length = length;
+            PInvoke_WithUnsafeBytes(&Callback, &callbackContext, contiguousArray, elementType, resultType);
+            return callbackContext._returnString!;
+
+            [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvSwift) })]
+            static IntPtr Callback(byte* bytes, SwiftSelf context)
+            {
+                ToStringCallbackContext* pContext = (ToStringCallbackContext*)context.Value;
+                pContext->_returnString = Encoding.UTF8.GetString(new ReadOnlySpan<byte>(bytes, pContext->_length));
+                return default;
+            }
         }
+#pragma warning restore CS8500
     }
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
