@@ -3548,7 +3548,7 @@ void CodeGen::genCallInstruction(GenTreeCall* call)
     }
 #endif // DEBUG
 
-    bool                  hasAsyncRet = call->IsAsync2();
+    bool                  hasAsyncRet = call->IsAsync();
     CORINFO_METHOD_HANDLE methHnd;
     GenTree*              target = getCallTarget(call, &methHnd);
 

@@ -41,13 +41,13 @@ struct CallDefinitionInfo
     GenTree* InsertAfter = nullptr;
 };
 
-class Async2Transformation
+class AsyncTransformation
 {
     friend class AsyncLiveness;
 
     Compiler*                     m_comp;
     jitstd::vector<LiveLocalInfo> m_liveLocalsScratch;
-    CORINFO_ASYNC2_INFO           m_async2Info;
+    CORINFO_ASYNC_INFO            m_asyncInfo;
     jitstd::vector<BasicBlock*>   m_resumptionBBs;
     CORINFO_METHOD_HANDLE         m_resumeStub = NO_METHOD_HANDLE;
     CORINFO_CONST_LOOKUP          m_resumeStubLookup;
@@ -141,10 +141,10 @@ class Async2Transformation
     void CreateResumptionSwitch();
 
 public:
-    Async2Transformation(Compiler* comp)
+    AsyncTransformation(Compiler* comp)
         : m_comp(comp)
-        , m_liveLocalsScratch(comp->getAllocator(CMK_Async2))
-        , m_resumptionBBs(comp->getAllocator(CMK_Async2))
+        , m_liveLocalsScratch(comp->getAllocator(CMK_Async))
+        , m_resumptionBBs(comp->getAllocator(CMK_Async))
     {
     }
 

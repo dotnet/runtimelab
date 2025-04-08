@@ -5245,7 +5245,7 @@ void Lowering::LowerAsyncContinuation(GenTree* asyncCont)
     assert(asyncCont->OperIs(GT_ASYNC_CONTINUATION));
 
     // When the ASYNC_CONTINUATION was created as a result of
-    // StubHelpers.Async2CallContinuation() the previous call hasn't been
+    // StubHelpers.AsyncCallContinuation() the previous call hasn't been
     // marked as an async call. We need to do that to get the right GC
     // reporting behavior for the returned async continuation.
     GenTree* node = asyncCont;
@@ -5256,7 +5256,7 @@ void Lowering::LowerAsyncContinuation(GenTree* asyncCont)
 
         if (node->IsCall())
         {
-            if (!node->AsCall()->IsAsync2())
+            if (!node->AsCall()->IsAsync())
             {
                 JITDUMP("Marking the call [%06u] before async continuation [%06u] as an async call\n",
                         Compiler::dspTreeID(node), Compiler::dspTreeID(asyncCont));

@@ -574,9 +574,9 @@ public:
     void dmpGetEEInfo(DWORD key, const Agnostic_CORINFO_EE_INFO& value);
     void repGetEEInfo(CORINFO_EE_INFO* pEEInfoOut);
 
-    void recGetAsync2Info(const CORINFO_ASYNC2_INFO* pAsync2Info);
-    void dmpGetAsync2Info(DWORD key, const Agnostic_CORINFO_ASYNC2_INFO& value);
-    void repGetAsync2Info(CORINFO_ASYNC2_INFO* pAsync2InfoOut);
+    void recGetAsyncInfo(const CORINFO_ASYNC_INFO* pAsyncInfo);
+    void dmpGetAsyncInfo(DWORD key, const Agnostic_CORINFO_ASYNC_INFO& value);
+    void repGetAsyncInfo(CORINFO_ASYNC_INFO* pAsyncInfoOut);
 
     void recGetGSCookie(GSCookie* pCookieVal, GSCookie** ppCookieVal);
     void dmpGetGSCookie(DWORD key, DLDL value);
@@ -1216,7 +1216,7 @@ enum mcPackets
     Packet_GetMethodInstantiationArgument = 227,
     Packet_GetInstantiatedEntry = 228,
     Packet_NotifyInstructionSetUsage = 229,
-    Packet_GetAsync2Info = 230,
+    Packet_GetAsyncInfo = 230,
     Packet_GetAsyncResumptionStub = 231,
 };
 

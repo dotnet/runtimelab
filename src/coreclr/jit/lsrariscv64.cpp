@@ -966,7 +966,7 @@ int LinearScan::BuildCall(GenTreeCall* call)
         BuildKills(call, killMask);
     }
 
-    if (call->IsAsync2() && compiler->compIsAsync2())
+    if (call->IsAsync() && compiler->compIsAsync())
     {
         MarkAsyncContinuationBusyForCall(call);
     }

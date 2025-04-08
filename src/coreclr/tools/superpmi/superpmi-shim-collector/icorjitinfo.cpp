@@ -1373,11 +1373,11 @@ void interceptor_ICJI::getEEInfo(CORINFO_EE_INFO* pEEInfoOut)
     mc->recGetEEInfo(pEEInfoOut);
 }
 
-void interceptor_ICJI::getAsync2Info(CORINFO_ASYNC2_INFO* pAsync2Info)
+void interceptor_ICJI::getAsyncInfo(CORINFO_ASYNC_INFO* pAsyncInfo)
 {
-    mc->cr->AddCall("getAsync2Info");
-    original_ICorJitInfo->getAsync2Info(pAsync2Info);
-    mc->recGetAsync2Info(pAsync2Info);
+    mc->cr->AddCall("getAsyncInfo");
+    original_ICorJitInfo->getAsyncInfo(pAsyncInfo);
+    mc->recGetAsyncInfo(pAsyncInfo);
 }
 
 /*********************************************************************************/

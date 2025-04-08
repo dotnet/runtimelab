@@ -1600,7 +1600,7 @@ namespace System.StubHelpers
         internal static extern IntPtr NextCallReturnAddress();
 
         [Intrinsic]
-        internal static Continuation? Async2CallContinuation() => null;
+        internal static Continuation? AsyncCallContinuation() => null;
     }  // class StubHelpers
 
 #if FEATURE_COMINTEROP

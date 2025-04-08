@@ -1195,10 +1195,10 @@ void MyICJI::getEEInfo(CORINFO_EE_INFO* pEEInfoOut)
     jitInstance->mc->repGetEEInfo(pEEInfoOut);
 }
 
-void MyICJI::getAsync2Info(CORINFO_ASYNC2_INFO* pAsync2Info)
+void MyICJI::getAsyncInfo(CORINFO_ASYNC_INFO* pAsyncInfo)
 {
-    jitInstance->mc->cr->AddCall("getAsync2Info");
-    jitInstance->mc->repGetAsync2Info(pAsync2Info);
+    jitInstance->mc->cr->AddCall("getAsyncInfo");
+    jitInstance->mc->repGetAsyncInfo(pAsyncInfo);
 }
 
 /*********************************************************************************/

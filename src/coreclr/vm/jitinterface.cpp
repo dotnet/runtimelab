@@ -10227,7 +10227,7 @@ void CEEInfo::getEEInfo(CORINFO_EE_INFO *pEEInfoOut)
     EE_TO_JIT_TRANSITION();
 }
 
-void CEEInfo::getAsync2Info(CORINFO_ASYNC2_INFO* pAsync2InfoOut)
+void CEEInfo::getAsyncInfo(CORINFO_ASYNC_INFO* pAsyncInfoOut)
 {
     CONTRACTL {
         THROWS;
@@ -10237,14 +10237,14 @@ void CEEInfo::getAsync2Info(CORINFO_ASYNC2_INFO* pAsync2InfoOut)
 
     JIT_TO_EE_TRANSITION();
 
-    pAsync2InfoOut->continuationClsHnd = CORINFO_CLASS_HANDLE(CoreLibBinder::GetClass(CLASS__CONTINUATION));
-    pAsync2InfoOut->continuationNextFldHnd = CORINFO_FIELD_HANDLE(CoreLibBinder::GetField(FIELD__CONTINUATION__NEXT));
-    pAsync2InfoOut->continuationResumeFldHnd = CORINFO_FIELD_HANDLE(CoreLibBinder::GetField(FIELD__CONTINUATION__RESUME));
-    pAsync2InfoOut->continuationStateFldHnd = CORINFO_FIELD_HANDLE(CoreLibBinder::GetField(FIELD__CONTINUATION__STATE));
-    pAsync2InfoOut->continuationFlagsFldHnd = CORINFO_FIELD_HANDLE(CoreLibBinder::GetField(FIELD__CONTINUATION__FLAGS));
-    pAsync2InfoOut->continuationDataFldHnd = CORINFO_FIELD_HANDLE(CoreLibBinder::GetField(FIELD__CONTINUATION__DATA));
-    pAsync2InfoOut->continuationGCDataFldHnd = CORINFO_FIELD_HANDLE(CoreLibBinder::GetField(FIELD__CONTINUATION__GCDATA));
-    pAsync2InfoOut->continuationsNeedMethodHandle = m_pMethodBeingCompiled->GetLoaderAllocator()->CanUnload();
+    pAsyncInfoOut->continuationClsHnd = CORINFO_CLASS_HANDLE(CoreLibBinder::GetClass(CLASS__CONTINUATION));
+    pAsyncInfoOut->continuationNextFldHnd = CORINFO_FIELD_HANDLE(CoreLibBinder::GetField(FIELD__CONTINUATION__NEXT));
+    pAsyncInfoOut->continuationResumeFldHnd = CORINFO_FIELD_HANDLE(CoreLibBinder::GetField(FIELD__CONTINUATION__RESUME));
+    pAsyncInfoOut->continuationStateFldHnd = CORINFO_FIELD_HANDLE(CoreLibBinder::GetField(FIELD__CONTINUATION__STATE));
+    pAsyncInfoOut->continuationFlagsFldHnd = CORINFO_FIELD_HANDLE(CoreLibBinder::GetField(FIELD__CONTINUATION__FLAGS));
+    pAsyncInfoOut->continuationDataFldHnd = CORINFO_FIELD_HANDLE(CoreLibBinder::GetField(FIELD__CONTINUATION__DATA));
+    pAsyncInfoOut->continuationGCDataFldHnd = CORINFO_FIELD_HANDLE(CoreLibBinder::GetField(FIELD__CONTINUATION__GCDATA));
+    pAsyncInfoOut->continuationsNeedMethodHandle = m_pMethodBeingCompiled->GetLoaderAllocator()->CanUnload();
 
     EE_TO_JIT_TRANSITION();
 }
@@ -12752,7 +12752,7 @@ static CORJIT_FLAGS GetCompileFlags(PrepareCodeConfig* prepareConfig, MethodDesc
     flags.Add(CEEInfo::GetBaseCompileFlags(ftn));
 
     if (ftn->IsAsync2Method())
-        flags.Add(CORJIT_FLAGS::CORJIT_FLAG_RUNTIMEASYNCFUNCTION);
+        flags.Add(CORJIT_FLAGS::CORJIT_FLAG_ASYNC);
 
     //
     // Get CPU specific flags
@@ -14500,7 +14500,7 @@ CORINFO_METHOD_HANDLE CEEJitInfo::getAsyncResumptionStub()
 
     TypeHandle continuationTypeHnd = CoreLibBinder::GetClass(CLASS__CONTINUATION);
     DWORD newContinuationLoc = pCode->NewLocal(LocalDesc(continuationTypeHnd));
-    pCode->EmitCALL(METHOD__STUBHELPERS__ASYNC2_CALL_CONTINUATION, 0, 1);
+    pCode->EmitCALL(METHOD__STUBHELPERS__ASYNC_CALL_CONTINUATION, 0, 1);
     pCode->EmitSTLOC(newContinuationLoc);
 
     if (!msig.IsReturnTypeVoid())

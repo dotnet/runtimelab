@@ -3120,7 +3120,7 @@ void Compiler::fgDebugCheckBBlist(bool checkBBNum /* = false */, bool checkBBRef
         // with the finally block the BBJ_CALLFINALLY is targeting. There is one special case: if the
         // BBJ_CALLFINALLY is the first block of a `try`, then its predecessor can be outside the `try`:
         // either a branch or fall-through to the first block. Similarly internal resumption blocks for
-        // async2 are allowed to do this as they are introduced late enough that we no longer need the invariant.
+        // async are allowed to do this as they are introduced late enough that we no longer need the invariant.
         //
         // Note that this IR condition is a choice. It naturally occurs when importing EH constructs.
         // This condition prevents flow optimizations from skipping blocks in a `try` and branching

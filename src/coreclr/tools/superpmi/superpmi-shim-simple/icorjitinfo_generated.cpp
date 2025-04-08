@@ -849,10 +849,10 @@ void interceptor_ICJI::getEEInfo(
     original_ICorJitInfo->getEEInfo(pEEInfoOut);
 }
 
-void interceptor_ICJI::getAsync2Info(
-          CORINFO_ASYNC2_INFO* pAsync2InfoOut)
+void interceptor_ICJI::getAsyncInfo(
+          CORINFO_ASYNC_INFO* pAsyncInfoOut)
 {
-    original_ICorJitInfo->getAsync2Info(pAsync2InfoOut);
+    original_ICorJitInfo->getAsyncInfo(pAsyncInfoOut);
 }
 
 mdMethodDef interceptor_ICJI::getMethodDefFromMethod(

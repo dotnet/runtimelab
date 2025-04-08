@@ -2256,32 +2256,31 @@ bool GenTreeCall::HasSideEffects(Compiler* compiler, bool ignoreExceptions, bool
 }
 
 //-------------------------------------------------------------------------
-// IsAsync2: Whether or not this call is to an async2 function.
+// IsAsync: Whether or not this call is to an async function.
 //
 // Return Value:
 //   True if so.
 //
 // Remarks:
-//   async2 involves passing an async continuation as a separate argument and
+//   async involves passing an async continuation as a separate argument and
 //   returning an async continuation in REG_ASYNC_CONTINUATION_RET.
 //
 //   The async continuation is usually JIT added
-//   (WellKnownArg::AsyncContinuation). This is the case for an async2 method
-//   calling another async2 method by normal means. However, the VM also
-//   creates stubs that call async2 runtimes through calli where the async
-//   continuations are passed explicitly. See
-//   CEEJitInfo::getAsyncResumptionStub and
+//   (WellKnownArg::AsyncContinuation). This is the case for an async method
+//   calling another async method by normal means. However, the VM also creates
+//   stubs that call async runtimes through calli where the async continuations
+//   are passed explicitly. See CEEJitInfo::getAsyncResumptionStub and
 //   MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk for examples. In
 //   those cases the JIT does not know (and does not need to know) which arg is
 //   the async continuation.
 //
-//   The VM also uses the StubHelpers.Async2CallContinuation() intrinsic in the
+//   The VM also uses the StubHelpers.AsyncCallContinuation() intrinsic in the
 //   stubs discussed above. The JIT must take care in those cases to still mark
 //   the preceding call as an async call; this is required for correct LSRA
 //   behavior and GC reporting around the returned async continuation. This is
 //   currently done in lowering; see LowerAsyncContinuation().
 //
-bool GenTreeCall::IsAsync2() const
+bool GenTreeCall::IsAsync() const
 {
     return gtIsAsyncCall;
 }

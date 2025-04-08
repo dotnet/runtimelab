@@ -1181,12 +1181,12 @@ void WrapICorJitInfo::getEEInfo(
     API_LEAVE(getEEInfo);
 }
 
-void WrapICorJitInfo::getAsync2Info(
-          CORINFO_ASYNC2_INFO* pAsync2InfoOut)
+void WrapICorJitInfo::getAsyncInfo(
+          CORINFO_ASYNC_INFO* pAsyncInfoOut)
 {
-    API_ENTER(getAsync2Info);
-    wrapHnd->getAsync2Info(pAsync2InfoOut);
-    API_LEAVE(getAsync2Info);
+    API_ENTER(getAsyncInfo);
+    wrapHnd->getAsyncInfo(pAsyncInfoOut);
+    API_LEAVE(getAsyncInfo);
 }
 
 mdMethodDef WrapICorJitInfo::getMethodDefFromMethod(

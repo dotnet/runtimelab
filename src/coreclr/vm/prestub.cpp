@@ -1910,7 +1910,7 @@ void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOth
 
             if (logicalResultLocal != UINT_MAX)
                 pCode->EmitSTLOC(logicalResultLocal);
-            pCode->EmitCALL(METHOD__STUBHELPERS__ASYNC2_CALL_CONTINUATION, 0, 1);
+            pCode->EmitCALL(METHOD__STUBHELPERS__ASYNC_CALL_CONTINUATION, 0, 1);
             pCode->EmitSTLOC(continuationLocal);
             pCode->EmitLEAVE(pNoExceptionLabel);
             pCode->EndTryBlock();

@@ -1785,12 +1785,12 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        private static void _getAsync2Info(IntPtr thisHandle, IntPtr* ppException, CORINFO_ASYNC2_INFO* pAsync2InfoOut)
+        private static void _getAsyncInfo(IntPtr thisHandle, IntPtr* ppException, CORINFO_ASYNC_INFO* pAsyncInfoOut)
         {
             var _this = GetThis(thisHandle);
             try
             {
-                _this.getAsync2Info(ref *pAsync2InfoOut);
+                _this.getAsyncInfo(ref *pAsyncInfoOut);
             }
             catch (Exception ex)
             {
@@ -2774,7 +2774,7 @@ namespace Internal.JitInterface
             callbacks[117] = (delegate* unmanaged<IntPtr, IntPtr*, void*, void*, byte>)&_runWithErrorTrap;
             callbacks[118] = (delegate* unmanaged<IntPtr, IntPtr*, void*, void*, byte>)&_runWithSPMIErrorTrap;
             callbacks[119] = (delegate* unmanaged<IntPtr, IntPtr*, CORINFO_EE_INFO*, void>)&_getEEInfo;
-            callbacks[120] = (delegate* unmanaged<IntPtr, IntPtr*, CORINFO_ASYNC2_INFO*, void>)&_getAsync2Info;
+            callbacks[120] = (delegate* unmanaged<IntPtr, IntPtr*, CORINFO_ASYNC_INFO*, void>)&_getAsyncInfo;
             callbacks[121] = (delegate* unmanaged<IntPtr, IntPtr*, CORINFO_METHOD_STRUCT_*, mdToken>)&_getMethodDefFromMethod;
             callbacks[122] = (delegate* unmanaged<IntPtr, IntPtr*, CORINFO_METHOD_STRUCT_*, byte*, UIntPtr, UIntPtr*, UIntPtr>)&_printMethodName;
             callbacks[123] = (delegate* unmanaged<IntPtr, IntPtr*, CORINFO_METHOD_STRUCT_*, byte**, byte**, byte**, UIntPtr, byte*>)&_getMethodNameFromMetadata;

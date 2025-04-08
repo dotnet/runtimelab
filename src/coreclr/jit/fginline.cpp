@@ -1062,8 +1062,8 @@ void Compiler::fgMorphCallInlineHelper(GenTreeCall* call, InlineResult* result, 
     if (call->gtIsAsyncCall && info.compUsesAsyncContinuation)
     {
         // Currently not supported. Could provide a nice perf benefit for
-        // async1 -> async2 thunks if we supported it.
-        result->NoteFatal(InlineObservation::CALLER_ASYNC2_USED_CONTINUATION);
+        // Task -> runtime async thunks if we supported it.
+        result->NoteFatal(InlineObservation::CALLER_ASYNC_USED_CONTINUATION);
         return;
     }
 

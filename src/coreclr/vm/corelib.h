@@ -1021,7 +1021,7 @@ DEFINE_METHOD(STUBHELPERS,          VALIDATE_BYREF,                     Validate
 DEFINE_METHOD(STUBHELPERS,          GET_STUB_CONTEXT,                   GetStubContext,                 SM_RetIntPtr)
 DEFINE_METHOD(STUBHELPERS,          LOG_PINNED_ARGUMENT,                LogPinnedArgument,              SM_IntPtr_IntPtr_RetVoid)
 DEFINE_METHOD(STUBHELPERS,          NEXT_CALL_RETURN_ADDRESS,           NextCallReturnAddress,          SM_RetIntPtr)
-DEFINE_METHOD(STUBHELPERS,          ASYNC2_CALL_CONTINUATION,           Async2CallContinuation,         SM_RetContinuation)
+DEFINE_METHOD(STUBHELPERS,          ASYNC_CALL_CONTINUATION,            AsyncCallContinuation,          SM_RetContinuation)
 DEFINE_METHOD(STUBHELPERS,          SAFE_HANDLE_ADD_REF,    SafeHandleAddRef,           SM_SafeHandle_RefBool_RetIntPtr)
 DEFINE_METHOD(STUBHELPERS,          SAFE_HANDLE_RELEASE,    SafeHandleRelease,          SM_SafeHandle_RetVoid)
 

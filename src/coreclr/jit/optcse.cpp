@@ -999,7 +999,7 @@ void Compiler::optValnumCSE_InitDataFlow()
         }
     }
 
-    if (compIsAsync2())
+    if (compIsAsync())
     {
         optValnumCSE_SetUpAsyncByrefKills();
     }
@@ -1143,7 +1143,7 @@ void Compiler::optValnumCSE_SetUpAsyncByrefKills()
             {
                 for (GenTree* tree = stmt->GetRootNode(); tree != nullptr; tree = tree->gtPrev)
                 {
-                    if (tree->IsCall() && tree->AsCall()->IsAsync2())
+                    if (tree->IsCall() && tree->AsCall()->IsAsync())
                     {
                         asyncCallStmt = stmt;
                         asyncCall     = tree;
@@ -1707,7 +1707,7 @@ void Compiler::optValnumCSE_Availability()
                             BitVecOps::IntersectionD(cseLivenessTraits, available_cses, cseCallKillsMask);
 
                             // In async state machines, make all byref CSEs unavailable after suspension points.
-                            if (tree->AsCall()->IsAsync2() && compIsAsync2())
+                            if (tree->AsCall()->IsAsync() && compIsAsync())
                             {
                                 BitVecOps::IntersectionD(cseLivenessTraits, available_cses, cseAsyncKillsMask);
                             }

@@ -3359,7 +3359,7 @@ namespace Internal.JitInterface
             pEEInfoOut.osType = TargetToOs(_compilation.NodeFactory.Target);
         }
 
-        private void getAsync2Info(ref CORINFO_ASYNC2_INFO pAsync2InfoOut)
+        private void getAsyncInfo(ref CORINFO_ASYNC_INFO pAsyncInfoOut)
         {
             throw new NotImplementedException();
         }
