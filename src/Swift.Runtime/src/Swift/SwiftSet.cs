@@ -58,10 +58,10 @@ public class SwiftSet<Element> : ISwiftObject
         return new SwiftSet<Element>(handle);
     }
 
-    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+    int ISwiftObject.MarshalToSwift(ref Span<byte> swiftDestSpan)
     {
         var metadata = SwiftObjectHelper<SwiftSet<Element>>.GetTypeMetadata();
-        if ((int)metadata.Size != swiftDestSpan.Length)
+        if ((int)metadata.Size > swiftDestSpan.Length)
         {
             throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
         }
@@ -75,6 +75,7 @@ public class SwiftSet<Element> : ISwiftObject
                 try
                 {
                     metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, (void*)_payload.DangerousGetHandle(), metadata);
+                    return (int)metadata.Size;
                 }
                 finally
                 {

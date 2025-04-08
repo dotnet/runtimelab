@@ -64,10 +64,10 @@ public class SwiftOptional<T> : ISwiftObject
     /// </summary>
     /// <param name="swiftDestSpan"></param>
     /// <returns></returns>
-    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+    int ISwiftObject.MarshalToSwift(ref Span<byte> swiftDestSpan)
     {
         var metadata = SwiftObjectHelper<SwiftOptional<T>>.GetTypeMetadata();
-        if ((int)metadata.Size != swiftDestSpan.Length)
+        if ((int)metadata.Size > swiftDestSpan.Length)
         {
             throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
         }
@@ -77,6 +77,7 @@ public class SwiftOptional<T> : ISwiftObject
             fixed (void* swiftDest = swiftDestSpan)
             {
                 metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, payload, metadata);
+                return (int)metadata.Size;
             }
         }
     }
@@ -107,7 +108,7 @@ public class SwiftOptional<T> : ISwiftObject
                 // The additional byte is a discriminator for the enum case
                 // https://github.com/swiftlang/swift/blob/8c8ed346edac36f07ece5518f40e35c05e4aa13a/stdlib/public/core/Optional.swift#L121
                 Span<byte> payloadSpan = new Span<byte>(payload, (int)metadata.Size - 1);
-                SwiftMarshal.MarshalToSwift(value, payloadSpan);
+                SwiftMarshal.MarshalToSwift(value, ref payloadSpan);
                 metadata.ValueWitnessTable->DestructiveInjectEnumTag(payload, (uint)SwiftOptionalCases.Some, metadata);
                 return instance;
             }

@@ -383,7 +383,7 @@ namespace BindingsGeneration
                     throw new NotImplementedException();
                 }
 
-                void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+                int ISwiftObject.MarshalToSwift(ref Span<byte> swiftDestSpan)
                 {
                     throw new NotImplementedException();
                 }
@@ -544,10 +544,10 @@ namespace BindingsGeneration
             if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
             {
                 var text = $$"""
-                unsafe void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+                unsafe int ISwiftObject.MarshalToSwift(ref Span<byte> swiftDestSpan)
                 {
                     var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
-                    if ((int)metadata.Size != swiftDestSpan.Length)
+                    if ((int)metadata.Size > swiftDestSpan.Length)
                     {
                         throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
                     }
@@ -559,6 +559,7 @@ namespace BindingsGeneration
                         try
                         {
                             metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, (void*)_payload.DangerousGetHandle(), metadata);
+                            return (int)metadata.Size;
                         }
                         finally
                         {
@@ -574,10 +575,10 @@ namespace BindingsGeneration
             else
             {
                 var text = $$"""
-                unsafe void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+                unsafe int ISwiftObject.MarshalToSwift(ref Span<byte> swiftDestSpan)
                 {
                     var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
-                    if ((int)metadata.Size != swiftDestSpan.Length)
+                    if ((int)metadata.Size > swiftDestSpan.Length)
                     {
                         throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
                     }
@@ -585,6 +586,7 @@ namespace BindingsGeneration
                     fixed (void* swiftDest = swiftDestSpan)
                     {
                         metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, payload, metadata);
+                        return (int)metadata.Size;
                     }
                 }
                 """;
@@ -601,10 +603,10 @@ namespace BindingsGeneration
         private void WriteMarshalToSwiftNonFrozenStruct()
         {
             var text = $$"""
-            unsafe void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+            unsafe int ISwiftObject.MarshalToSwift(ref Span<byte> swiftDestSpan)
             {
                 var metadata = SwiftObjectHelper<{{_structDecl.Name}}>.GetTypeMetadata();
-                if ((int)metadata.Size != swiftDestSpan.Length)
+                if ((int)metadata.Size > swiftDestSpan.Length)
                 {
                     throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
                 }
@@ -616,6 +618,7 @@ namespace BindingsGeneration
                     try
                     {
                         metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, (void*)_payload.DangerousGetHandle(), metadata);
+                        return (int)metadata.Size;
                     }
                     finally
                     {

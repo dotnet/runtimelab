@@ -700,7 +700,7 @@ namespace BindingsGeneration.FunctionalTests
             IntPtr payloadPtr = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(payloadSpan));
 
             // Marshal the object to Swift
-            SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
+            SwiftMarshal.MarshalToSwift(vtype, ref payloadSpan);
             Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             // Marshal back from Swift
@@ -723,7 +723,7 @@ namespace BindingsGeneration.FunctionalTests
             IntPtr payloadPtr = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(payloadSpan));
 
             // Marshal the object to Swift
-            SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
+            SwiftMarshal.MarshalToSwift(vtype, ref payloadSpan);
             Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             // Marshal back from Swift
@@ -746,7 +746,7 @@ namespace BindingsGeneration.FunctionalTests
             Span<byte> payloadSpan = new Span<byte>((byte*)payloadPtr, (int)metadata.Size);
 
             // Marshal the object to Swift
-            SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
+            SwiftMarshal.MarshalToSwift(vtype, ref payloadSpan);
             Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(0)));
 
             // Marshal back from Swift
@@ -795,7 +795,7 @@ namespace BindingsGeneration.FunctionalTests
             IntPtr payloadPtr = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(payloadSpan));
 
             // Marshal the object to Swift
-            SwiftMarshal.MarshalToSwift(vtype, payloadSpan);
+            SwiftMarshal.MarshalToSwift(vtype, ref payloadSpan);
             Assert.Equal(2, Arc.RetainCount(vtype.Payload.DangerousGetHandle().At(1)));
 
             // Marshal back from Swift

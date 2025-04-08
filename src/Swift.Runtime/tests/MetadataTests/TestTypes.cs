@@ -40,13 +40,14 @@ struct SwiftIntMock : ISwiftObject
         return new SwiftIntMock((int)payload);
     }
 
-    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+    int ISwiftObject.MarshalToSwift(ref Span<byte> swiftDestSpan)
     {
         unsafe
         {
             fixed (void* swiftDest = swiftDestSpan)
             {
                 *(int*)swiftDest = Value;
+                return 4;
             }
         }
     }
@@ -69,7 +70,7 @@ struct AnyTypeMock : ISwiftObject
         throw new NotImplementedException();
     }
 
-    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+    int ISwiftObject.MarshalToSwift(ref Span<byte> swiftDestSpan)
     {
         throw new NotImplementedException();
     }

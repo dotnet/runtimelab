@@ -37,7 +37,7 @@ public struct AnyType : ISwiftObject
     /// </summary>
     /// <param name="swiftDestSpan"></param>
     /// <returns></returns>
-    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+    int ISwiftObject.MarshalToSwift(ref Span<byte> swiftDestSpan)
     {
         throw new InvalidOperationException("Cannot marshal AnyType to Swift");
     }

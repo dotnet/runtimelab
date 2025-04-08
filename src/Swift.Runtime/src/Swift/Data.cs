@@ -56,10 +56,10 @@ public struct Data : ISwiftObject
         return new Data(handle);
     }
 
-    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+    int ISwiftObject.MarshalToSwift(ref Span<byte> swiftDestSpan)
     {
         var metadata = SwiftObjectHelper<Data>.GetTypeMetadata();
-        if ((int)metadata.Size != swiftDestSpan.Length)
+        if ((int)metadata.Size > swiftDestSpan.Length)
         {
             throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
         }
@@ -69,6 +69,7 @@ public struct Data : ISwiftObject
             fixed (void* swiftDest = swiftDestSpan)
             {
                 metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, _payloadPtr, metadata);
+                return (int)metadata.Size;
             }
         }
     }

@@ -59,10 +59,10 @@ public class SwiftArray<Element> : ISwiftObject
         return new SwiftArray<Element>(handle);
     }
 
-    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+    int ISwiftObject.MarshalToSwift(ref Span<byte> swiftDestSpan)
     {
         var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
-        if ((int)metadata.Size != swiftDestSpan.Length)
+        if ((int)metadata.Size > swiftDestSpan.Length)
         {
             throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
         }
@@ -76,6 +76,7 @@ public class SwiftArray<Element> : ISwiftObject
                 try
                 {
                     metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, (void*)_payload.DangerousGetHandle(), metadata);
+                    return (int)metadata.Size;
                 }
                 finally
                 {
@@ -156,7 +157,7 @@ public class SwiftArray<Element> : ISwiftObject
         {
             Span<byte> span = stackalloc byte[(int)_elementSize];
             IntPtr payload = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(span));
-            SwiftMarshal.MarshalToSwift(item, span);
+            SwiftMarshal.MarshalToSwift(item, ref span);
             SwiftArrayPInvokes.Append(payload, metadata, new SwiftSelf((void*)_payload.DangerousGetHandle()));
         }
         finally
@@ -178,7 +179,7 @@ public class SwiftArray<Element> : ISwiftObject
             var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
             Span<byte> span = stackalloc byte[(int)_elementSize];
             IntPtr payload = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(span));
-            SwiftMarshal.MarshalToSwift(item, span);
+            SwiftMarshal.MarshalToSwift(item, ref span);
             SwiftArrayPInvokes.Insert(payload, index, metadata, new SwiftSelf((void*)_payload.DangerousGetHandle()));
         }
         finally
@@ -257,7 +258,7 @@ public class SwiftArray<Element> : ISwiftObject
                 var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
                 Span<byte> span = stackalloc byte[(int)_elementSize];
                 IntPtr payload = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(span));
-                SwiftMarshal.MarshalToSwift(value, span);
+                SwiftMarshal.MarshalToSwift(value, ref span);
                 SwiftArrayPInvokes.Set(payload, index, metadata, new SwiftSelf((void*)_payload.DangerousGetHandle()));
             }
             finally

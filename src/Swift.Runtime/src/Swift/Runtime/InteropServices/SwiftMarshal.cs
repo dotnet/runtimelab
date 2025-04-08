@@ -19,13 +19,12 @@ public static class SwiftMarshal
     /// <typeparam name="T">The type of the value being marshaled</typeparam>
     /// <param name="value">The value to marshal</param>
     /// <param name="swiftDestSpan">the destination for marshaling</param>
-    /// <exception cref="NotSupportedException"></exception>
-    public static void MarshalToSwift<T>(T value, Span<byte> swiftDestSpan)
+    /// <returns>the number of bytes written to the destination</returns>
+    public static int MarshalToSwift<T>(T value, ref Span<byte> swiftDestSpan)
     {
         if (value is ISwiftObject swiftValue)
         {
-            swiftValue.MarshalToSwift(swiftDestSpan);
-            return;
+            return swiftValue.MarshalToSwift(ref swiftDestSpan);
         }
 
         var type = typeof(T);
@@ -34,14 +33,14 @@ public static class SwiftMarshal
             unsafe
             {
                 int size = Unsafe.SizeOf<T>();
-                if (size != swiftDestSpan.Length)
+                if (size > swiftDestSpan.Length)
                 {
                     throw new ArgumentException($"Span size does not match type size, Expected: {size}, Actual: {swiftDestSpan.Length}");
                 }
                 fixed (void* swiftDest = swiftDestSpan)
                 {
                     MarshalPrimitiveToSwift(value, swiftDest);
-                    return;
+                    return size;
                 }
             }
         }

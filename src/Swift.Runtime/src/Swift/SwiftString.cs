@@ -51,10 +51,10 @@ public class SwiftString : ISwiftObject
         return new SwiftString(handle);
     }
 
-    void ISwiftObject.MarshalToSwift(Span<byte> swiftDestSpan)
+    int ISwiftObject.MarshalToSwift(ref Span<byte> swiftDestSpan)
     {
         var metadata = SwiftObjectHelper<SwiftString>.GetTypeMetadata();
-        if ((int)metadata.Size != swiftDestSpan.Length)
+        if ((int)metadata.Size > swiftDestSpan.Length)
         {
             throw new ArgumentException($"Span size does not match type size, Expected: {(int)metadata.Size}, Actual: {swiftDestSpan.Length}");
         }
@@ -68,6 +68,7 @@ public class SwiftString : ISwiftObject
                 try
                 {
                     metadata.ValueWitnessTable->InitializeWithCopy(swiftDest, (void*)_payload.DangerousGetHandle(), metadata);
+                    return (int)metadata.Size;
                 }
                 finally
                 {
@@ -191,8 +192,8 @@ public class SwiftString : ISwiftObject
     public static extern TypeMetadata PInvoke_getMetadata();
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
-    [DllImport(KnownLibraries.SwiftCore, CharSet = CharSet.Unicode, EntryPoint = "$sSS21_builtinStringLiteral17utf8CodeUnitCount7isASCIISSBp_BwBi1_tcfC")]
-    public static unsafe extern SwiftString.Buffer PInvoke_Create(byte* str, long len, byte flag);
+    [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSS21_builtinStringLiteral17utf8CodeUnitCount7isASCIISSBp_BwBi1_tcfC")]
+    public static extern unsafe SwiftString.Buffer PInvoke_Create(byte* str, long len, byte isASCII);
 
     [UnmanagedCallConv(CallConvs = new Type[] { typeof(CallConvSwift) })]
     [DllImport(KnownLibraries.SwiftCore, EntryPoint = "$sSS5countSivg")]

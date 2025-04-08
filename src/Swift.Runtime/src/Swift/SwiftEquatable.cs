@@ -45,8 +45,8 @@ namespace Swift.Runtime
             Span<byte> rhsSpan = stackalloc byte[(int)metadata.Size];
             IntPtr rhsPayload = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(rhsSpan));
 
-            SwiftMarshal.MarshalToSwift(lhs, lhsSpan);
-            SwiftMarshal.MarshalToSwift(rhs, rhsSpan);
+            SwiftMarshal.MarshalToSwift(lhs, ref lhsSpan);
+            SwiftMarshal.MarshalToSwift(rhs, ref rhsSpan);
 
             return PInvoke_SwiftEquals(
                 lhsPayload,
