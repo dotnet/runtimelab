@@ -313,7 +313,7 @@ internal static Continuation? AsyncCallContinuation() => null;
 
 // Suspend the current function by immediately returning with a specific non-zero continuation.
 [Intrinsic]
-private static void SuspendAsync(Continuation continuation) => throw new UnreachableException();
+private static void AsyncSuspend(Continuation continuation) => throw new UnreachableException();
 ```
 
 These intrinsics are NOT used by user code, but they are used internally by the async1<->async2 adapter later, which will be described later.
@@ -366,7 +366,7 @@ public static async2 Task AwaitAwaiterFromRuntimeAsync<TAwaiter>(TAwaiter awaite
         state.SentinelContinuation = sentinelContinuation = new Continuation();
 
     state.Notifier = awaiter;
-    SuspendAsync(sentinelContinuation);
+    AsyncSuspend(sentinelContinuation);
 }
 
 ```

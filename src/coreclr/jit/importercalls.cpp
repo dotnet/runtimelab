@@ -3352,7 +3352,7 @@ GenTree* Compiler::impIntrinsic(CORINFO_CLASS_HANDLE    clsHnd,
         return node;
     }
 
-    if (ni == NI_System_Runtime_CompilerServices_RuntimeHelpers_SuspendAsync)
+    if (ni == NI_System_Runtime_CompilerServices_RuntimeHelpers_AsyncSuspend)
     {
         GenTree* node = gtNewOperNode(GT_RETURN_SUSPEND, TYP_VOID, impPopStack().val);
         node->SetHasOrderingSideEffect();
@@ -10908,9 +10908,9 @@ NamedIntrinsic Compiler::lookupNamedIntrinsic(CORINFO_METHOD_HANDLE method)
                             {
                                 result = NI_System_Runtime_CompilerServices_RuntimeHelpers_Await;
                             }
-                            else if (strcmp(methodName, "SuspendAsync") == 0)
+                            else if (strcmp(methodName, "AsyncSuspend") == 0)
                             {
-                                result = NI_System_Runtime_CompilerServices_RuntimeHelpers_SuspendAsync;
+                                result = NI_System_Runtime_CompilerServices_RuntimeHelpers_AsyncSuspend;
                             }
                             else if (strcmp(methodName, "get_RuntimeAsyncViaJitGeneratedStateMachines") == 0)
                             {

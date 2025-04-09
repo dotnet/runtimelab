@@ -642,7 +642,7 @@ namespace System.Runtime.CompilerServices
         private static RuntimeAsyncAwaitState t_runtimeAsyncAwaitState;
 
         [Intrinsic]
-        private static void SuspendAsync(Continuation continuation) => throw new UnreachableException();
+        private static void AsyncSuspend(Continuation continuation) => throw new UnreachableException();
 
         private struct AwaitableProxy : ICriticalNotifyCompletion
         {

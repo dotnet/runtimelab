@@ -2268,7 +2268,7 @@ bool GenTreeCall::HasSideEffects(Compiler* compiler, bool ignoreExceptions, bool
 //   The async continuation is usually JIT added
 //   (WellKnownArg::AsyncContinuation). This is the case for an async method
 //   calling another async method by normal means. However, the VM also creates
-//   stubs that call async runtimes through calli where the async continuations
+//   stubs that call async methods through calli where the async continuations
 //   are passed explicitly. See CEEJitInfo::getAsyncResumptionStub and
 //   MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk for examples. In
 //   those cases the JIT does not know (and does not need to know) which arg is
