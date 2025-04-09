@@ -875,6 +875,8 @@ public:
     }
 #endif
 
+    void PublishFinalCodeAddress(PCODE addr);
+
     CEEJitInfo(MethodDesc* fd, COR_ILMETHOD_DECODER* header,
                EECodeGenManager* jm, bool allowInlining = true)
         : CEECodeGenInfo(fd, header, jm, allowInlining)
@@ -898,7 +900,7 @@ public:
           m_pPatchpointInfoFromRuntime(NULL),
           m_ilOffset(0)
 #endif
-        , m_finalCodeAddressSlot(NULL),
+        , m_finalCodeAddressSlot(NULL)
     {
         CONTRACTL
         {

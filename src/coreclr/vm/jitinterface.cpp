@@ -11330,7 +11330,7 @@ void CInterpreterJitInfo::SetDebugInfo(PTR_BYTE pDebugInfo)
 }
 #endif // FEATURE_INTERPRETER
 
-void CEECodeGenInfo::CompressDebugInfo()
+void CEECodeGenInfo::CompressDebugInfo(PCODE nativeEntry)
 {
     CONTRACTL {
         THROWS;
@@ -12745,19 +12745,33 @@ void CEECodeGenInfo::getEHinfo(
 
     JIT_TO_EE_TRANSITION();
 
+    MethodDesc* pMD = GetMethod(ftn);
     if (IsDynamicMethodHandle(ftn))
     {
-        GetMethod(ftn)->AsDynamicMethodDesc()->GetResolver()->GetEHInfo(EHnumber, clause);
+        pMD->AsDynamicMethodDesc()->GetResolver()->GetEHInfo(EHnumber, clause);
     }
-    else if (ftn == CORINFO_METHOD_HANDLE(m_pMethodBeingCompiled))
+    else if (pMD == m_pMethodBeingCompiled)
     {
         getEHinfoHelper(ftn, EHnumber, clause, m_ILHeader);
     }
+    else if (pMD->HasILHeader())
+    {
+        COR_ILMETHOD_DECODER header(pMD->GetILHeader(), pMD->GetMDImport(), NULL);
+        getEHinfoHelper(ftn, EHnumber, clause, &header);
+    }
+    else if (pMD->IsIL() && pMD->GetRVA() == 0)
+    {
+        TransientMethodDetails* details;
+        if (!FindTransientMethodDetails(pMD, &details))
+        {
+            _ASSERTE(!"Expected to be able to find transient method details in getEHinfo");
+        }
+
+        getEHinfoHelper(ftn, EHnumber, clause, details->Header);
+    }
     else
     {
-        MethodDesc* method = GetMethod(ftn);
-        COR_ILMETHOD_DECODER header(method->GetILHeader(), method->GetMDImport(), NULL);
-        getEHinfoHelper(ftn, EHnumber, clause, &header);
+        _ASSERTE(!"No IL header; cannot get EH info for function");
     }
 
     EE_TO_JIT_TRANSITION();
