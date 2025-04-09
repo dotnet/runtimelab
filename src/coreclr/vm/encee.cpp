@@ -342,7 +342,6 @@ HRESULT EditAndContinueModule::UpdateMethod(MethodDesc *pMethod)
             AppDomain::GetCurrentDomain(),
             module,
             tkMethod,
-            pMethod->IsAsync2VariantMethod(),
             AssemblyIterationFlags(kIncludeLoaded | kIncludeExecution));
         CollectibleAssemblyHolder<Assembly *> pAssembly;
         while (it.Next(pAssembly.This()))
