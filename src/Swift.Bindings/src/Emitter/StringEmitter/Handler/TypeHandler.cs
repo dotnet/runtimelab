@@ -152,9 +152,9 @@ namespace BindingsGeneration
                 csWriter.WriteLine("}");
                 csWriter.WriteLine();
                 csWriter.WriteLine($$"""
-                public unsafe IDisposable GetPayloadBuffer(out {{structDecl.Name}}.Buffer payloadBuffer)
+                public unsafe PayloadBuffer GetPayloadBuffer(out {{structDecl.Name}}.Buffer payloadBuffer)
                 {
-                    IDisposable disposable = new PayloadBuffer(_payload);
+                    PayloadBuffer disposable = new PayloadBuffer(_payload);
                     payloadBuffer = *({{structDecl.Name}}.Buffer*)_payload.DangerousGetHandle();
                     return disposable;
                 }

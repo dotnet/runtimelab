@@ -32,9 +32,9 @@ public class SwiftArray<Element> : ISwiftObject
 
     public SwiftSafeHandle<SwiftArray<Element>> Payload => _payload;
 
-    public unsafe IDisposable GetPayloadBuffer(out IntPtr payloadBuffer)
+    public unsafe PayloadBuffer GetPayloadBuffer(out IntPtr payloadBuffer)
     {
-        IDisposable disposable = new PayloadBuffer(_payload);
+        PayloadBuffer disposable = new PayloadBuffer(_payload);
         payloadBuffer = *(IntPtr*)_payload.DangerousGetHandle();
         return disposable;
     }
@@ -135,7 +135,7 @@ public class SwiftArray<Element> : ISwiftObject
     {
         get
         {
-            using IDisposable _ = GetPayloadBuffer(out IntPtr payloadBuffer);
+            using PayloadBuffer _ = GetPayloadBuffer(out IntPtr payloadBuffer);
             int result = (int)SwiftArrayPInvokes.Count(payloadBuffer, ElementTypeMetadata);
             return result;
         }
@@ -231,14 +231,14 @@ public class SwiftArray<Element> : ISwiftObject
     {
         get
         {
-            using IDisposable _ = GetPayloadBuffer(out IntPtr payloadBuffer);
+            using PayloadBuffer _ = GetPayloadBuffer(out IntPtr payloadBuffer);
             void* payload = NativeMemory.Alloc(_elementSize);
             SwiftArrayPInvokes.Get(new SwiftIndirectResult(payload), index, payloadBuffer, ElementTypeMetadata);
             return SwiftMarshal.MarshalFromSwift<Element>((IntPtr)payload);
         }
         set
         {
-            using IDisposable _ = GetPayloadBuffer(out IntPtr _);
+            using PayloadBuffer _ = GetPayloadBuffer(out IntPtr _);
             var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
             Span<byte> span = stackalloc byte[(int)_elementSize];
             IntPtr payload = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(span));

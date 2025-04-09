@@ -39,9 +39,9 @@ public class SwiftString : ISwiftObject
         _protocolConformanceSymbols = new Dictionary<Type, string> { };
     }
 
-    public unsafe IDisposable GetPayloadBuffer(out SwiftString.Buffer payloadBuffer)
+    public unsafe PayloadBuffer GetPayloadBuffer(out SwiftString.Buffer payloadBuffer)
     {
-        IDisposable disposable = new PayloadBuffer(_payload);
+        PayloadBuffer disposable = new PayloadBuffer(_payload);
         payloadBuffer = *(SwiftString.Buffer*)_payload.DangerousGetHandle();
         return disposable;
     }
@@ -134,7 +134,7 @@ public class SwiftString : ISwiftObject
     {
         get
         {
-            using IDisposable _ = GetPayloadBuffer(out SwiftString.Buffer payloadBuffer);
+            using PayloadBuffer _ = GetPayloadBuffer(out SwiftString.Buffer payloadBuffer);
             return (int)PInvoke_GetLength(payloadBuffer);
         }
     }
@@ -147,7 +147,7 @@ public class SwiftString : ISwiftObject
         var elementType = TypeMetadata.GetTypeMetadataOrThrow<byte>();
         var resultType = TypeMetadata.GetTypeMetadataOrThrow<long>();
 
-        using IDisposable _ = GetPayloadBuffer(out SwiftString.Buffer payloadBuffer);
+        using PayloadBuffer _ = GetPayloadBuffer(out SwiftString.Buffer payloadBuffer);
         var length = Length;
         if (length <= 0)
             return string.Empty;

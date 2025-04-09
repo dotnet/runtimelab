@@ -831,7 +831,7 @@ namespace BindingsGeneration
                 if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(argumentDecl))
                 {
                     var bufferName = NameProvider.GetBoundGenericBufferName(argumentDecl.Name);
-                    csWriter.WriteLine($"using IDisposable {argumentDecl.Name}Disposable = {argumentDecl.Name}.GetPayloadBuffer(out IntPtr {bufferName});");
+                    csWriter.WriteLine($"using PayloadBuffer {argumentDecl.Name}Disposable = {argumentDecl.Name}.GetPayloadBuffer(out IntPtr {bufferName});");
                 }
             }
         }
@@ -862,7 +862,7 @@ namespace BindingsGeneration
                 TypeRecord typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(argumentDecl.SwiftTypeSpec);
                 if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
                 {
-                    csWriter.WriteLine($"using IDisposable {argumentDecl.Name}Disposable = {argumentDecl.Name}.GetPayloadBuffer(out {typeRecord.CSharpTypeName}.Buffer {argumentDecl.Name}Buffer);");
+                    csWriter.WriteLine($"using PayloadBuffer {argumentDecl.Name}Disposable = {argumentDecl.Name}.GetPayloadBuffer(out {typeRecord.CSharpTypeName}.Buffer {argumentDecl.Name}Buffer);");
                 }
             }
         }
