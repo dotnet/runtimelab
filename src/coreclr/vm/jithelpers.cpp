@@ -1690,7 +1690,7 @@ HCIMPL1(void, IL_ThrowExact, Object* obj)
     OBJECTREF oref = ObjectToOBJECTREF(obj);
 
 #if defined(_DEBUG) && defined(TARGET_X86)
-    __helperframe.InsureInit(NULL);
+    __helperframe.EnsureInit(NULL);
     g_ExceptionEIP = (LPVOID)__helperframe.GetReturnAddress();
 #endif // defined(_DEBUG) && defined(TARGET_X86)
 
@@ -2586,7 +2586,7 @@ extern "C" void JIT_ResumeOSRWorker(TransitionBlock * pTransitionBlock)
 
     // Find OSR method code for this IL offset.
 
-    PCODE osrMethodCode = NULL;
+    PCODE osrMethodCode = 0;
 
     {
         EECodeInfo codeInfo(ip);
@@ -2766,7 +2766,7 @@ HCIMPL1(VOID, JIT_PartialCompilationPatchpoint, int ilOffset)
 }
 HCIMPLEND
 
-void JIT_ResumeOSR(unsigned ilOffset)
+HCIMPL1(VOID, JIT_ResumeOSR, int ilOffset)
 {
     // Stub version if OSR feature is disabled
     //
@@ -2774,6 +2774,7 @@ void JIT_ResumeOSR(unsigned ilOffset)
 
     UNREACHABLE();
 }
+HCIMPLEND
 
 #endif // FEATURE_ON_STACK_REPLACEMENT
 
