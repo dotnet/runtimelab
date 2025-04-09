@@ -14583,11 +14583,6 @@ static Signature BuildResumptionStubSignature(LoaderAllocator* alloc)
 static Signature BuildResumptionStubCalliSignature(MetaSig& msig, MethodTable* mt, LoaderAllocator* alloc)
 {
     unsigned numArgs = 0;
-    if (msig.HasThis())
-    {
-        numArgs++;
-    }
-
     if (msig.HasGenericContextArg())
     {
         numArgs++;
@@ -14598,7 +14593,12 @@ static Signature BuildResumptionStubCalliSignature(MetaSig& msig, MethodTable* m
     numArgs += msig.NumFixedArgs();
 
     SigBuilder sigBuilder;
-    sigBuilder.AppendByte(IMAGE_CEE_CS_CALLCONV_DEFAULT | IMAGE_CEE_CS_CALLCONV_HASTHIS | IMAGE_CEE_CS_CALLCONV_EXPLICITTHIS);
+    BYTE callConv = IMAGE_CEE_CS_CALLCONV_DEFAULT;
+    if (msig.HasThis())
+    {
+        callConv |= IMAGE_CEE_CS_CALLCONV_HASTHIS;
+    }
+    sigBuilder.AppendByte(callConv);
     sigBuilder.AppendData(numArgs);
 
     auto appendTypeHandle = [&](TypeHandle th) {
@@ -14621,18 +14621,6 @@ static Signature BuildResumptionStubCalliSignature(MetaSig& msig, MethodTable* m
         };
 
     appendTypeHandle(msig.GetRetTypeHandleThrowing()); // return type
-    if (msig.HasThis())
-    {
-        if (mt->IsValueType())
-        {
-            sigBuilder.AppendElementType(ELEMENT_TYPE_BYREF);
-            appendTypeHandle(TypeHandle(mt));
-        }
-        else
-        {
-            sigBuilder.AppendElementType(ELEMENT_TYPE_OBJECT);
-        }
-    }
 #ifndef TARGET_X86
     if (msig.HasGenericContextArg())
     {
