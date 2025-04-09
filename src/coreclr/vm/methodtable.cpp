@@ -8215,6 +8215,13 @@ MethodTable::TryResolveVirtualStaticMethodOnThisType(MethodTable* pInterfaceType
             {
                 differsByAsyncVariant = true;
                 pMethodDecl = pMethodDecl->GetAsyncOtherVariant();
+                if (verifyImplemented)
+                {
+                    // if only asked to verify, return pMethodDecl as a success (not NULL)
+                    // otherwise GetAsyncOtherVariant down below will trigger verifying again and we will keep coming here
+                    _ASSERTE(pMethodDecl != NULL);
+                    return pMethodDecl;
+                }
             }
             else
             {
