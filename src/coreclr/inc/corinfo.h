@@ -1716,7 +1716,7 @@ enum CorInfoContinuationFlags
     CORINFO_CONTINUATION_OSR_IL_OFFSET_IN_DATA = 4,
 };
 
-struct CORINFO_ASYNC2_INFO
+struct CORINFO_ASYNC_INFO
 {
     // Class handle for System.Runtime.CompilerServices.Continuation
     CORINFO_CLASS_HANDLE continuationClsHnd;
@@ -1732,7 +1732,7 @@ struct CORINFO_ASYNC2_INFO
     CORINFO_FIELD_HANDLE continuationDataFldHnd;
     // 'GCData' field
     CORINFO_FIELD_HANDLE continuationGCDataFldHnd;
-    // Whether or not the continuation needs to be alloated through the
+    // Whether or not the continuation needs to be allocated through the
     // helper that also takes a method handle
     bool continuationsNeedMethodHandle;
 };
@@ -3008,8 +3008,8 @@ public:
             CORINFO_EE_INFO            *pEEInfoOut
             ) = 0;
 
-    virtual void getAsync2Info(
-        CORINFO_ASYNC2_INFO* pAsync2InfoOut
+    virtual void getAsyncInfo(
+        CORINFO_ASYNC_INFO* pAsyncInfoOut
     ) = 0;
 
     /*********************************************************************************/

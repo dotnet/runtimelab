@@ -223,29 +223,29 @@ void AsyncLiveness::GetLiveLocals(jitstd::vector<LiveLocalInfo>& liveLocals, uns
 }
 
 //------------------------------------------------------------------------
-// TransformAsync2: Run async2 transformation.
+// TransformAsync: Run async transformation.
 //
 // Returns:
 //   Suitable phase status.
 //
-PhaseStatus Compiler::TransformAsync2()
+PhaseStatus Compiler::TransformAsync()
 {
-    assert(compIsAsync2());
+    assert(compIsAsync());
 
-    Async2Transformation transformation(this);
+    AsyncTransformation transformation(this);
     return transformation.Run();
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::Run:
+// AsyncTransformation::Run:
 //   Run the transformation over all the IR.
 //
 // Returns:
 //   Suitable phase status.
 //
-PhaseStatus Async2Transformation::Run()
+PhaseStatus AsyncTransformation::Run()
 {
-    ArrayStack<BasicBlock*> worklist(m_comp->getAllocator(CMK_Async2));
+    ArrayStack<BasicBlock*> worklist(m_comp->getAllocator(CMK_Async));
 
     // First find all basic blocks with awaits in them. We'll have to track
     // liveness in these basic blocks, so it does not help to record the calls
@@ -254,7 +254,7 @@ PhaseStatus Async2Transformation::Run()
     {
         for (GenTree* tree : LIR::AsRange(block))
         {
-            if (tree->IsCall() && tree->AsCall()->IsAsync2() && !tree->AsCall()->IsTailCall())
+            if (tree->IsCall() && tree->AsCall()->IsAsync() && !tree->AsCall()->IsTailCall())
             {
                 JITDUMP(FMT_BB " contains await(s)\n", block->bbNum);
                 worklist.Push(block);
@@ -281,7 +281,7 @@ PhaseStatus Async2Transformation::Run()
     m_newContinuationVar                                  = m_comp->lvaGrabTemp(false DEBUGARG("new continuation"));
     m_comp->lvaGetDesc(m_newContinuationVar)->lvType      = TYP_REF;
 
-    m_comp->info.compCompHnd->getAsync2Info(&m_async2Info);
+    m_comp->info.compCompHnd->getAsyncInfo(&m_asyncInfo);
 
 #ifdef JIT32_GCENCODER
     // Due to a hard cap on epilogs we need a shared return here.
@@ -315,10 +315,10 @@ PhaseStatus Async2Transformation::Run()
 
     AsyncLiveness liveness(m_comp, m_comp->opts.OptimizationEnabled());
 
-    // Now walk the IR for all the blocks that contain async2 calls. Keep track
+    // Now walk the IR for all the blocks that contain async calls. Keep track
     // of liveness and outstanding LIR edges as we go; the LIR edges that cross
-    // async2 calls are additional live variables that must be spilled.
-    jitstd::vector<GenTree*> defs(m_comp->getAllocator(CMK_Async2));
+    // async calls are additional live variables that must be spilled.
+    jitstd::vector<GenTree*> defs(m_comp->getAllocator(CMK_Async));
 
     for (int i = 0; i < worklist.Height(); i++)
     {
@@ -355,7 +355,7 @@ PhaseStatus Async2Transformation::Run()
                 // Update liveness to reflect state after this node.
                 liveness.Update(tree);
 
-                if (tree->IsCall() && tree->AsCall()->IsAsync2() && !tree->AsCall()->IsTailCall())
+                if (tree->IsCall() && tree->AsCall()->IsAsync() && !tree->AsCall()->IsTailCall())
                 {
                     // Transform call; continue with the remainder block
                     Transform(block, tree->AsCall(), defs, liveness, &block);
@@ -384,17 +384,17 @@ PhaseStatus Async2Transformation::Run()
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::Transform:
-//   Transform a single async2 call in the specified block.
+// AsyncTransformation::Transform:
+//   Transform a single async call in the specified block.
 //
 // Parameters:
-//   block     - The block containing the async2 call
-//   call      - The async2 call
+//   block     - The block containing the async call
+//   call      - The async call
 //   defs      - Current live LIR edges
 //   life      - Liveness information about live locals
 //   remainder - [out] Remainder block after the transformation
 //
-void Async2Transformation::Transform(
+void AsyncTransformation::Transform(
     BasicBlock* block, GenTreeCall* call, jitstd::vector<GenTree*>& defs, AsyncLiveness& life, BasicBlock** remainder)
 {
 #ifdef DEBUG
@@ -439,22 +439,22 @@ void Async2Transformation::Transform(
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::CreateLiveSetForSuspension:
+// AsyncTransformation::CreateLiveSetForSuspension:
 //   Create the set of live state to be captured for suspension, for the
 //   specified call.
 //
 // Parameters:
-//   block        - The block containing the async2 call
-//   call         - The async2 call
+//   block        - The block containing the async call
+//   call         - The async call
 //   defs         - Current live LIR edges
 //   life         - Liveness information about live locals
 //   liveLocals   - Information about each live local.
 //
-void Async2Transformation::CreateLiveSetForSuspension(BasicBlock*                     block,
-                                                      GenTreeCall*                    call,
-                                                      const jitstd::vector<GenTree*>& defs,
-                                                      AsyncLiveness&                  life,
-                                                      jitstd::vector<LiveLocalInfo>&  liveLocals)
+void AsyncTransformation::CreateLiveSetForSuspension(BasicBlock*                     block,
+                                                     GenTreeCall*                    call,
+                                                     const jitstd::vector<GenTree*>& defs,
+                                                     AsyncLiveness&                  life,
+                                                     jitstd::vector<LiveLocalInfo>&  liveLocals)
 {
     unsigned fullyDefinedRetBufLcl = BAD_VAR_NUM;
     CallArg* retbufArg             = call->gtArgs.GetRetBufferArg();
@@ -500,7 +500,7 @@ void Async2Transformation::CreateLiveSetForSuspension(BasicBlock*               
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::LiftLIREdges:
+// AsyncTransformation::LiftLIREdges:
 //   Create locals capturing outstanding LIR edges and add information
 //   indicating that these locals are live.
 //
@@ -509,9 +509,9 @@ void Async2Transformation::CreateLiveSetForSuspension(BasicBlock*               
 //   defs       - Current outstanding LIR edges
 //   liveLocals - [out] Vector to add new live local information into
 //
-void Async2Transformation::LiftLIREdges(BasicBlock*                     block,
-                                        const jitstd::vector<GenTree*>& defs,
-                                        jitstd::vector<LiveLocalInfo>&  liveLocals)
+void AsyncTransformation::LiftLIREdges(BasicBlock*                     block,
+                                       const jitstd::vector<GenTree*>& defs,
+                                       jitstd::vector<LiveLocalInfo>&  liveLocals)
 {
     if (defs.size() <= 0)
     {
@@ -547,22 +547,22 @@ void Async2Transformation::LiftLIREdges(BasicBlock*                     block,
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::LayOutContinuation:
+// AsyncTransformation::LayOutContinuation:
 //   Create the layout of the GC pointer and data arrays in the continuation
 //   object.
 //
 // Parameters:
-//   block      - The block containing the async2 call
-//   call       - The async2 call
+//   block      - The block containing the async call
+//   call       - The async call
 //   liveLocals - [in, out] Information about each live local. Size/alignment
 //                information is read and offset/index information is written.
 //
 // Returns:
 //   Layout information.
 //
-ContinuationLayout Async2Transformation::LayOutContinuation(BasicBlock*                    block,
-                                                            GenTreeCall*                   call,
-                                                            jitstd::vector<LiveLocalInfo>& liveLocals)
+ContinuationLayout AsyncTransformation::LayOutContinuation(BasicBlock*                    block,
+                                                           GenTreeCall*                   call,
+                                                           jitstd::vector<LiveLocalInfo>& liveLocals)
 {
     ContinuationLayout layout(liveLocals);
 
@@ -714,22 +714,22 @@ ContinuationLayout Async2Transformation::LayOutContinuation(BasicBlock*         
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::CanonicalizeCallDefinition:
+// AsyncTransformation::CanonicalizeCallDefinition:
 //   Put the call definition in a canonical form. This ensures that either the
 //   value is defined by a LCL_ADDR retbuffer or by a
 //   STORE_LCL_VAR/STORE_LCL_FLD that follows the call node.
 //
 // Parameters:
-//   block        - The block containing the async2 call
-//   call         - The async2 call
+//   block        - The block containing the async call
+//   call         - The async call
 //   life         - Liveness information about live locals
 //
 // Returns:
 //   Information about the definition after canonicalization.
 //
-CallDefinitionInfo Async2Transformation::CanonicalizeCallDefinition(BasicBlock*    block,
-                                                                    GenTreeCall*   call,
-                                                                    AsyncLiveness& life)
+CallDefinitionInfo AsyncTransformation::CanonicalizeCallDefinition(BasicBlock*    block,
+                                                                   GenTreeCall*   call,
+                                                                   AsyncLiveness& life)
 {
     CallDefinitionInfo callDefInfo;
 
@@ -764,7 +764,7 @@ CallDefinitionInfo Async2Transformation::CanonicalizeCallDefinition(BasicBlock* 
     {
         assert(call->TypeIs(TYP_VOID));
 
-        // For async2 methods we always expect retbufs to point to locals. We
+        // For async methods we always expect retbufs to point to locals. We
         // ensure this in impStoreStruct.
         noway_assert(retbufArg->GetNode()->OperIs(GT_LCL_ADDR));
 
@@ -775,12 +775,12 @@ CallDefinitionInfo Async2Transformation::CanonicalizeCallDefinition(BasicBlock* 
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::CreateSuspension:
+// AsyncTransformation::CreateSuspension:
 //   Create the basic block that when branched to suspends execution after the
-//   specified async2 call.
+//   specified async call.
 //
 // Parameters:
-//   block    - The block containing the async2 call
+//   block    - The block containing the async call
 //   stateNum - State number assigned to this suspension point
 //   life     - Liveness information about live locals
 //   layout   - Layout information for the continuation object
@@ -788,10 +788,10 @@ CallDefinitionInfo Async2Transformation::CanonicalizeCallDefinition(BasicBlock* 
 // Returns:
 //   The new basic block that was created.
 //
-BasicBlock* Async2Transformation::CreateSuspension(BasicBlock*               block,
-                                                   unsigned                  stateNum,
-                                                   AsyncLiveness&            life,
-                                                   const ContinuationLayout& layout)
+BasicBlock* AsyncTransformation::CreateSuspension(BasicBlock*               block,
+                                                  unsigned                  stateNum,
+                                                  AsyncLiveness&            life,
+                                                  const ContinuationLayout& layout)
 {
     if (m_lastSuspensionBB == nullptr)
     {
@@ -827,14 +827,14 @@ BasicBlock* Async2Transformation::CreateSuspension(BasicBlock*               blo
 
     // Fill in 'Resume'
     GenTree* newContinuation = m_comp->gtNewLclvNode(m_newContinuationVar, TYP_REF);
-    unsigned resumeOffset    = m_comp->info.compCompHnd->getFieldOffset(m_async2Info.continuationResumeFldHnd);
+    unsigned resumeOffset    = m_comp->info.compCompHnd->getFieldOffset(m_asyncInfo.continuationResumeFldHnd);
     GenTree* resumeStubAddr  = CreateResumptionStubAddrTree();
     GenTree* storeResume     = StoreAtOffset(newContinuation, resumeOffset, resumeStubAddr, TYP_I_IMPL);
     LIR::AsRange(suspendBB).InsertAtEnd(LIR::SeqTree(m_comp, storeResume));
 
     // Fill in 'state'
     newContinuation       = m_comp->gtNewLclvNode(m_newContinuationVar, TYP_REF);
-    unsigned stateOffset  = m_comp->info.compCompHnd->getFieldOffset(m_async2Info.continuationStateFldHnd);
+    unsigned stateOffset  = m_comp->info.compCompHnd->getFieldOffset(m_asyncInfo.continuationStateFldHnd);
     GenTree* stateNumNode = m_comp->gtNewIconNode((ssize_t)stateNum, TYP_INT);
     GenTree* storeState   = StoreAtOffset(newContinuation, stateOffset, stateNumNode, TYP_INT);
     LIR::AsRange(suspendBB).InsertAtEnd(LIR::SeqTree(m_comp, storeState));
@@ -849,7 +849,7 @@ BasicBlock* Async2Transformation::CreateSuspension(BasicBlock*               blo
         continuationFlags |= CORINFO_CONTINUATION_OSR_IL_OFFSET_IN_DATA;
 
     newContinuation      = m_comp->gtNewLclvNode(m_newContinuationVar, TYP_REF);
-    unsigned flagsOffset = m_comp->info.compCompHnd->getFieldOffset(m_async2Info.continuationFlagsFldHnd);
+    unsigned flagsOffset = m_comp->info.compCompHnd->getFieldOffset(m_asyncInfo.continuationFlagsFldHnd);
     GenTree* flagsNode   = m_comp->gtNewIconNode((ssize_t)continuationFlags, TYP_INT);
     GenTree* storeFlags  = StoreAtOffset(newContinuation, flagsOffset, flagsNode, TYP_INT);
     LIR::AsRange(suspendBB).InsertAtEnd(LIR::SeqTree(m_comp, storeFlags));
@@ -875,7 +875,7 @@ BasicBlock* Async2Transformation::CreateSuspension(BasicBlock*               blo
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::CreateAllocContinuationCall:
+// AsyncTransformation::CreateAllocContinuationCall:
 //   Create a call to the JIT helper that allocates a continuation.
 //
 // Parameters:
@@ -887,10 +887,10 @@ BasicBlock* Async2Transformation::CreateSuspension(BasicBlock*               blo
 // Returns:
 //   IR node representing the allocation.
 //
-GenTreeCall* Async2Transformation::CreateAllocContinuationCall(AsyncLiveness& life,
-                                                               GenTree*       prevContinuation,
-                                                               unsigned       gcRefsCount,
-                                                               unsigned       dataSize)
+GenTreeCall* AsyncTransformation::CreateAllocContinuationCall(AsyncLiveness& life,
+                                                              GenTree*       prevContinuation,
+                                                              unsigned       gcRefsCount,
+                                                              unsigned       dataSize)
 {
     GenTree* gcRefsCountNode = m_comp->gtNewIconNode((ssize_t)gcRefsCount, TYP_I_IMPL);
     GenTree* dataSizeNode    = m_comp->gtNewIconNode((ssize_t)dataSize, TYP_I_IMPL);
@@ -908,7 +908,7 @@ GenTreeCall* Async2Transformation::CreateAllocContinuationCall(AsyncLiveness& li
     {
         classHandleArg = m_comp->gtNewLclvNode(m_comp->info.compTypeCtxtArg, TYP_I_IMPL);
     }
-    else if (m_async2Info.continuationsNeedMethodHandle)
+    else if (m_asyncInfo.continuationsNeedMethodHandle)
     {
         methodHandleArg = m_comp->gtNewIconEmbMethHndNode(m_comp->info.compMethodHnd);
     }
@@ -930,7 +930,7 @@ GenTreeCall* Async2Transformation::CreateAllocContinuationCall(AsyncLiveness& li
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::FillInGCPointersOnSuspension:
+// AsyncTransformation::FillInGCPointersOnSuspension:
 //   Create IR that fills the GC pointers of the continuation object.
 //   This also nulls out the GC pointers in the locals if the local has data
 //   parts that need to be stored.
@@ -939,13 +939,13 @@ GenTreeCall* Async2Transformation::CreateAllocContinuationCall(AsyncLiveness& li
 //   liveLocals - Information about each live local.
 //   suspendBB  - Basic block to add IR to.
 //
-void Async2Transformation::FillInGCPointersOnSuspension(const jitstd::vector<LiveLocalInfo>& liveLocals,
-                                                        BasicBlock*                          suspendBB)
+void AsyncTransformation::FillInGCPointersOnSuspension(const jitstd::vector<LiveLocalInfo>& liveLocals,
+                                                       BasicBlock*                          suspendBB)
 {
     unsigned objectArrLclNum = GetGCDataArrayVar();
 
     GenTree* newContinuation       = m_comp->gtNewLclvNode(m_newContinuationVar, TYP_REF);
-    unsigned gcDataOffset          = m_comp->info.compCompHnd->getFieldOffset(m_async2Info.continuationGCDataFldHnd);
+    unsigned gcDataOffset          = m_comp->info.compCompHnd->getFieldOffset(m_asyncInfo.continuationGCDataFldHnd);
     GenTree* gcDataInd             = LoadFromOffset(newContinuation, gcDataOffset, TYP_REF);
     GenTree* storeAllocedObjectArr = m_comp->gtNewStoreLclVarNode(objectArrLclNum, gcDataInd);
     LIR::AsRange(suspendBB).InsertAtEnd(LIR::SeqTree(m_comp, storeAllocedObjectArr));
@@ -1029,20 +1029,19 @@ void Async2Transformation::FillInGCPointersOnSuspension(const jitstd::vector<Liv
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::FillInDataOnSuspension:
+// AsyncTransformation::FillInDataOnSuspension:
 //   Create IR that fills the data array of the continuation object.
 //
 // Parameters:
 //   liveLocals - Information about each live local.
 //   suspendBB  - Basic block to add IR to.
 //
-void Async2Transformation::FillInDataOnSuspension(const jitstd::vector<LiveLocalInfo>& liveLocals,
-                                                  BasicBlock*                          suspendBB)
+void AsyncTransformation::FillInDataOnSuspension(const jitstd::vector<LiveLocalInfo>& liveLocals, BasicBlock* suspendBB)
 {
     unsigned byteArrLclNum = GetDataArrayVar();
 
     GenTree* newContinuation     = m_comp->gtNewLclvNode(m_newContinuationVar, TYP_REF);
-    unsigned dataOffset          = m_comp->info.compCompHnd->getFieldOffset(m_async2Info.continuationDataFldHnd);
+    unsigned dataOffset          = m_comp->info.compCompHnd->getFieldOffset(m_asyncInfo.continuationDataFldHnd);
     GenTree* dataInd             = LoadFromOffset(newContinuation, dataOffset, TYP_REF);
     GenTree* storeAllocedByteArr = m_comp->gtNewStoreLclVarNode(byteArrLclNum, dataInd);
     LIR::AsRange(suspendBB).InsertAtEnd(LIR::SeqTree(m_comp, storeAllocedByteArr));
@@ -1105,22 +1104,22 @@ void Async2Transformation::FillInDataOnSuspension(const jitstd::vector<LiveLocal
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::CreateCheckAndSuspendAfterCall:
-//   Split the block containing the specified async2 call, and create the IR
+// AsyncTransformation::CreateCheckAndSuspendAfterCall:
+//   Split the block containing the specified async call, and create the IR
 //   that checks whether suspension should be done after an async call.
 //
 // Parameters:
-//   block       - The block containing the async2 call
-//   callDefInfo - Information about the async2 call's definition
+//   block       - The block containing the async call
+//   callDefInfo - Information about the async call's definition
 //   life        - Liveness information about live locals
 //   suspendBB   - Basic block to add IR to
-//   remainder   - [out] The remainder block containing the IR that was after the async2 call.
+//   remainder   - [out] The remainder block containing the IR that was after the async call.
 //
-void Async2Transformation::CreateCheckAndSuspendAfterCall(BasicBlock*               block,
-                                                          const CallDefinitionInfo& callDefInfo,
-                                                          AsyncLiveness&            life,
-                                                          BasicBlock*               suspendBB,
-                                                          BasicBlock**              remainder)
+void AsyncTransformation::CreateCheckAndSuspendAfterCall(BasicBlock*               block,
+                                                         const CallDefinitionInfo& callDefInfo,
+                                                         AsyncLiveness&            life,
+                                                         BasicBlock*               suspendBB,
+                                                         BasicBlock**              remainder)
 {
     GenTree* continuationArg = new (m_comp, GT_ASYNC_CONTINUATION) GenTree(GT_ASYNC_CONTINUATION, TYP_REF);
     continuationArg->SetHasOrderingSideEffect();
@@ -1145,27 +1144,27 @@ void Async2Transformation::CreateCheckAndSuspendAfterCall(BasicBlock*           
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::CreateResumption:
+// AsyncTransformation::CreateResumption:
 //   Create the basic block that when branched to resumes execution on entry to
 //   the function.
 //
 // Parameters:
-//   block       - The block containing the async2 call
-//   remainder   - The block that contains the IR after the (split) async2 call
-//   call        - The async2 call
-//   callDefInfo - Information about the async2 call's definition
+//   block       - The block containing the async call
+//   remainder   - The block that contains the IR after the (split) async call
+//   call        - The async call
+//   callDefInfo - Information about the async call's definition
 //   stateNum    - State number assigned to this suspension point
 //   layout      - Layout information for the continuation object
 //
 // Returns:
 //   The new basic block that was created.
 //
-BasicBlock* Async2Transformation::CreateResumption(BasicBlock*               block,
-                                                   BasicBlock*               remainder,
-                                                   GenTreeCall*              call,
-                                                   const CallDefinitionInfo& callDefInfo,
-                                                   unsigned                  stateNum,
-                                                   const ContinuationLayout& layout)
+BasicBlock* AsyncTransformation::CreateResumption(BasicBlock*               block,
+                                                  BasicBlock*               remainder,
+                                                  GenTreeCall*              call,
+                                                  const CallDefinitionInfo& callDefInfo,
+                                                  unsigned                  stateNum,
+                                                  const ContinuationLayout& layout)
 {
     if (m_lastResumptionBB == nullptr)
     {
@@ -1193,7 +1192,7 @@ BasicBlock* Async2Transformation::CreateResumption(BasicBlock*               blo
         resumeByteArrLclNum = GetDataArrayVar();
 
         GenTree* newContinuation     = m_comp->gtNewLclvNode(m_comp->lvaAsyncContinuationArg, TYP_REF);
-        unsigned dataOffset          = m_comp->info.compCompHnd->getFieldOffset(m_async2Info.continuationDataFldHnd);
+        unsigned dataOffset          = m_comp->info.compCompHnd->getFieldOffset(m_asyncInfo.continuationDataFldHnd);
         GenTree* dataInd             = LoadFromOffset(newContinuation, dataOffset, TYP_REF);
         GenTree* storeAllocedByteArr = m_comp->gtNewStoreLclVarNode(resumeByteArrLclNum, dataInd);
 
@@ -1209,9 +1208,9 @@ BasicBlock* Async2Transformation::CreateResumption(BasicBlock*               blo
     {
         resumeObjectArrLclNum = GetGCDataArrayVar();
 
-        GenTree* newContinuation = m_comp->gtNewLclvNode(m_comp->lvaAsyncContinuationArg, TYP_REF);
-        unsigned gcDataOffset    = m_comp->info.compCompHnd->getFieldOffset(m_async2Info.continuationGCDataFldHnd);
-        GenTree* gcDataInd       = LoadFromOffset(newContinuation, gcDataOffset, TYP_REF);
+        GenTree* newContinuation       = m_comp->gtNewLclvNode(m_comp->lvaAsyncContinuationArg, TYP_REF);
+        unsigned gcDataOffset          = m_comp->info.compCompHnd->getFieldOffset(m_asyncInfo.continuationGCDataFldHnd);
+        GenTree* gcDataInd             = LoadFromOffset(newContinuation, gcDataOffset, TYP_REF);
         GenTree* storeAllocedObjectArr = m_comp->gtNewStoreLclVarNode(resumeObjectArrLclNum, gcDataInd);
         LIR::AsRange(resumeBB).InsertAtEnd(LIR::SeqTree(m_comp, storeAllocedObjectArr));
 
@@ -1234,7 +1233,7 @@ BasicBlock* Async2Transformation::CreateResumption(BasicBlock*               blo
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::RestoreFromDataOnResumption:
+// AsyncTransformation::RestoreFromDataOnResumption:
 //   Create IR that restores locals from the data array of the continuation
 //   object.
 //
@@ -1243,9 +1242,9 @@ BasicBlock* Async2Transformation::CreateResumption(BasicBlock*               blo
 //   liveLocals          - Information about each live local.
 //   resumeBB            - Basic block to append IR to
 //
-void Async2Transformation::RestoreFromDataOnResumption(unsigned                             resumeByteArrLclNum,
-                                                       const jitstd::vector<LiveLocalInfo>& liveLocals,
-                                                       BasicBlock*                          resumeBB)
+void AsyncTransformation::RestoreFromDataOnResumption(unsigned                             resumeByteArrLclNum,
+                                                      const jitstd::vector<LiveLocalInfo>& liveLocals,
+                                                      BasicBlock*                          resumeBB)
 {
     // Copy data
     for (const LiveLocalInfo& inf : liveLocals)
@@ -1289,7 +1288,7 @@ void Async2Transformation::RestoreFromDataOnResumption(unsigned                 
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::RestoreFromGCPointersOnResumption:
+// AsyncTransformation::RestoreFromGCPointersOnResumption:
 //   Create IR that restores locals from the GC pointers array of the
 //   continuation object.
 //
@@ -1298,9 +1297,9 @@ void Async2Transformation::RestoreFromDataOnResumption(unsigned                 
 //   liveLocals            - Information about each live local.
 //   resumeBB              - Basic block to append IR to
 //
-void Async2Transformation::RestoreFromGCPointersOnResumption(unsigned                             resumeObjectArrLclNum,
-                                                             const jitstd::vector<LiveLocalInfo>& liveLocals,
-                                                             BasicBlock*                          resumeBB)
+void AsyncTransformation::RestoreFromGCPointersOnResumption(unsigned                             resumeObjectArrLclNum,
+                                                            const jitstd::vector<LiveLocalInfo>& liveLocals,
+                                                            BasicBlock*                          resumeBB)
 {
     for (const LiveLocalInfo& inf : liveLocals)
     {
@@ -1360,13 +1359,13 @@ void Async2Transformation::RestoreFromGCPointersOnResumption(unsigned           
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::RethrowExceptionOnResumption:
+// AsyncTransformation::RethrowExceptionOnResumption:
 //   Create IR that checks for an exception and rethrows it at the original
 //   suspension point if necessary.
 //
 // Parameters:
-//   block                 - The block containing the async2 call
-//   remainder             - The block that contains the IR after the (split) async2 call
+//   block                 - The block containing the async call
+//   remainder             - The block that contains the IR after the (split) async call
 //   resumeObjectArrLclNum - Local that has the continuation object's GC pointers array
 //   layout                - Layout information for the continuation object
 //   resumeBB              - Basic block to append IR to
@@ -1376,11 +1375,11 @@ void Async2Transformation::RestoreFromGCPointersOnResumption(unsigned           
 //   basic block where execution will continue if there was no exception to
 //   rethrow.
 //
-BasicBlock* Async2Transformation::RethrowExceptionOnResumption(BasicBlock*               block,
-                                                               BasicBlock*               remainder,
-                                                               unsigned                  resumeObjectArrLclNum,
-                                                               const ContinuationLayout& layout,
-                                                               BasicBlock*               resumeBB)
+BasicBlock* AsyncTransformation::RethrowExceptionOnResumption(BasicBlock*               block,
+                                                              BasicBlock*               remainder,
+                                                              unsigned                  resumeObjectArrLclNum,
+                                                              const ContinuationLayout& layout,
+                                                              BasicBlock*               resumeBB)
 {
     JITDUMP("  We need to rethrow an exception\n");
 
@@ -1438,25 +1437,25 @@ BasicBlock* Async2Transformation::RethrowExceptionOnResumption(BasicBlock*      
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::CopyReturnValueOnResumption:
+// AsyncTransformation::CopyReturnValueOnResumption:
 //   Create IR that copies the return value from the continuation object to the
 //   right local.
 //
 // Parameters:
-//   call                  - The async2 call
-//   callDefInfo           - Information about the async2 call's definition
-//   block                 - The block containing the async2 call
+//   call                  - The async call
+//   callDefInfo           - Information about the async call's definition
+//   block                 - The block containing the async call
 //   resumeByteArrLclNum   - Local that has the continuation object's data array
 //   resumeObjectArrLclNum - Local that has the continuation object's GC pointers array
 //   layout                - Layout information for the continuation object
 //   storeResultBB         - Basic block to append IR to
 //
-void Async2Transformation::CopyReturnValueOnResumption(GenTreeCall*              call,
-                                                       const CallDefinitionInfo& callDefInfo,
-                                                       unsigned                  resumeByteArrLclNum,
-                                                       unsigned                  resumeObjectArrLclNum,
-                                                       const ContinuationLayout& layout,
-                                                       BasicBlock*               storeResultBB)
+void AsyncTransformation::CopyReturnValueOnResumption(GenTreeCall*              call,
+                                                      const CallDefinitionInfo& callDefInfo,
+                                                      unsigned                  resumeByteArrLclNum,
+                                                      unsigned                  resumeObjectArrLclNum,
+                                                      const ContinuationLayout& layout,
+                                                      BasicBlock*               storeResultBB)
 {
     GenTree*     resultBase;
     unsigned     resultOffset;
@@ -1566,7 +1565,7 @@ void Async2Transformation::CopyReturnValueOnResumption(GenTreeCall*             
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::LoadFromOffset:
+// AsyncTransformation::LoadFromOffset:
 //   Create a load.
 //
 // Parameters:
@@ -1578,10 +1577,10 @@ void Async2Transformation::CopyReturnValueOnResumption(GenTreeCall*             
 // Returns:
 //   IR node of the load.
 //
-GenTreeIndir* Async2Transformation::LoadFromOffset(GenTree*     base,
-                                                   unsigned     offset,
-                                                   var_types    type,
-                                                   GenTreeFlags indirFlags)
+GenTreeIndir* AsyncTransformation::LoadFromOffset(GenTree*     base,
+                                                  unsigned     offset,
+                                                  var_types    type,
+                                                  GenTreeFlags indirFlags)
 {
     assert(base->TypeIs(TYP_REF, TYP_BYREF, TYP_I_IMPL));
     GenTree*      cns      = m_comp->gtNewIconNode((ssize_t)offset, TYP_I_IMPL);
@@ -1592,7 +1591,7 @@ GenTreeIndir* Async2Transformation::LoadFromOffset(GenTree*     base,
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::StoreAtOffset:
+// AsyncTransformation::StoreAtOffset:
 //   Create a store.
 //
 // Parameters:
@@ -1604,10 +1603,7 @@ GenTreeIndir* Async2Transformation::LoadFromOffset(GenTree*     base,
 // Returns:
 //   IR node of the store.
 //
-GenTreeStoreInd* Async2Transformation::StoreAtOffset(GenTree*  base,
-                                                     unsigned  offset,
-                                                     GenTree*  value,
-                                                     var_types storeType)
+GenTreeStoreInd* AsyncTransformation::StoreAtOffset(GenTree* base, unsigned offset, GenTree* value, var_types storeType)
 {
     assert(base->TypeIs(TYP_REF, TYP_BYREF, TYP_I_IMPL));
     GenTree*         cns      = m_comp->gtNewIconNode((ssize_t)offset, TYP_I_IMPL);
@@ -1618,7 +1614,7 @@ GenTreeStoreInd* Async2Transformation::StoreAtOffset(GenTree*  base,
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::GetDataArrayVar:
+// AsyncTransformation::GetDataArrayVar:
 //   Create a new local to hold the data array of the continuation object. This
 //   local can be validly used for the entire suspension point; the returned
 //   local may be used by multiple suspension points.
@@ -1626,7 +1622,7 @@ GenTreeStoreInd* Async2Transformation::StoreAtOffset(GenTree*  base,
 // Returns:
 //   Local number.
 //
-unsigned Async2Transformation::GetDataArrayVar()
+unsigned AsyncTransformation::GetDataArrayVar()
 {
     // Create separate locals unless we have many locals in the method for live
     // range splitting purposes. This helps LSRA to avoid create additional
@@ -1641,7 +1637,7 @@ unsigned Async2Transformation::GetDataArrayVar()
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::GetGCDataArrayVar:
+// AsyncTransformation::GetGCDataArrayVar:
 //   Create a new local to hold the GC pointers array of the continuation
 //   object. This local can be validly used for the entire suspension point;
 //   the returned local may be used by multiple suspension points.
@@ -1649,7 +1645,7 @@ unsigned Async2Transformation::GetDataArrayVar()
 // Returns:
 //   Local number.
 //
-unsigned Async2Transformation::GetGCDataArrayVar()
+unsigned AsyncTransformation::GetGCDataArrayVar()
 {
     if ((m_gcDataArrayVar == BAD_VAR_NUM) || !m_comp->lvaHaveManyLocals())
     {
@@ -1661,7 +1657,7 @@ unsigned Async2Transformation::GetGCDataArrayVar()
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::GetResultBaseVar:
+// AsyncTransformation::GetResultBaseVar:
 //   Create a new local to hold the base address of the incoming result from
 //   the continuation. This local can be validly used for the entire suspension
 //   point; the returned local may be used by multiple suspension points.
@@ -1669,7 +1665,7 @@ unsigned Async2Transformation::GetGCDataArrayVar()
 // Returns:
 //   Local number.
 //
-unsigned Async2Transformation::GetResultBaseVar()
+unsigned AsyncTransformation::GetResultBaseVar()
 {
     if ((m_resultBaseVar == BAD_VAR_NUM) || !m_comp->lvaHaveManyLocals())
     {
@@ -1681,7 +1677,7 @@ unsigned Async2Transformation::GetResultBaseVar()
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::GetExceptionVar:
+// AsyncTransformation::GetExceptionVar:
 //   Create a new local to hold the exception in the continuation. This
 //   local can be validly used for the entire suspension point; the returned
 //   local may be used by multiple suspension points.
@@ -1689,7 +1685,7 @@ unsigned Async2Transformation::GetResultBaseVar()
 // Returns:
 //   Local number.
 //
-unsigned Async2Transformation::GetExceptionVar()
+unsigned AsyncTransformation::GetExceptionVar()
 {
     if ((m_exceptionVar == BAD_VAR_NUM) || !m_comp->lvaHaveManyLocals())
     {
@@ -1701,14 +1697,14 @@ unsigned Async2Transformation::GetExceptionVar()
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::CreateResumptionStubAddrTree:
+// AsyncTransformation::CreateResumptionStubAddrTree:
 //   Create a tree that represents the address of the resumption stub entry
 //   point.
 //
 // Returns:
 //   IR node.
 //
-GenTree* Async2Transformation::CreateResumptionStubAddrTree()
+GenTree* AsyncTransformation::CreateResumptionStubAddrTree()
 {
     switch (m_resumeStubLookup.accessType)
     {
@@ -1744,15 +1740,15 @@ GenTree* Async2Transformation::CreateResumptionStubAddrTree()
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::CreateFunctionTargetAddr:
+// AsyncTransformation::CreateFunctionTargetAddr:
 //   Create a tree that represents the address of the resumption stub entry
 //   point.
 //
 // Returns:
 //   IR node.
 //
-GenTree* Async2Transformation::CreateFunctionTargetAddr(CORINFO_METHOD_HANDLE       methHnd,
-                                                        const CORINFO_CONST_LOOKUP& lookup)
+GenTree* AsyncTransformation::CreateFunctionTargetAddr(CORINFO_METHOD_HANDLE       methHnd,
+                                                       const CORINFO_CONST_LOOKUP& lookup)
 {
     GenTree* con = m_comp->gtNewIconHandleNode((size_t)lookup.addr, GTF_ICON_FTN_ADDR);
     INDEBUG(con->AsIntCon()->gtTargetHandle = (size_t)methHnd);
@@ -1760,11 +1756,11 @@ GenTree* Async2Transformation::CreateFunctionTargetAddr(CORINFO_METHOD_HANDLE   
 }
 
 //------------------------------------------------------------------------
-// Async2Transformation::CreateResumptionSwitch:
+// AsyncTransformation::CreateResumptionSwitch:
 //   Create the IR for the entry of the function that checks the continuation
 //   and dispatches on its state number.
 //
-void Async2Transformation::CreateResumptionSwitch()
+void AsyncTransformation::CreateResumptionSwitch()
 {
     m_comp->fgCreateNewInitBB();
     BasicBlock* newEntryBB = m_comp->fgFirstBB;
@@ -1800,7 +1796,7 @@ void Async2Transformation::CreateResumptionSwitch()
                 newEntryBB->bbNum, condBB->bbNum);
 
         continuationArg          = m_comp->gtNewLclvNode(m_comp->lvaAsyncContinuationArg, TYP_REF);
-        unsigned stateOffset     = m_comp->info.compCompHnd->getFieldOffset(m_async2Info.continuationStateFldHnd);
+        unsigned stateOffset     = m_comp->info.compCompHnd->getFieldOffset(m_asyncInfo.continuationStateFldHnd);
         GenTree* stateOffsetNode = m_comp->gtNewIconNode((ssize_t)stateOffset, TYP_I_IMPL);
         GenTree* stateAddr       = m_comp->gtNewOperNode(GT_ADD, TYP_BYREF, continuationArg, stateOffsetNode);
         GenTree* stateInd        = m_comp->gtNewIndir(TYP_INT, stateAddr, GTF_IND_NONFAULTING);
@@ -1822,7 +1818,7 @@ void Async2Transformation::CreateResumptionSwitch()
                 newEntryBB->bbNum, switchBB->bbNum, m_resumptionBBs.size());
 
         continuationArg          = m_comp->gtNewLclvNode(m_comp->lvaAsyncContinuationArg, TYP_REF);
-        unsigned stateOffset     = m_comp->info.compCompHnd->getFieldOffset(m_async2Info.continuationStateFldHnd);
+        unsigned stateOffset     = m_comp->info.compCompHnd->getFieldOffset(m_asyncInfo.continuationStateFldHnd);
         GenTree* stateOffsetNode = m_comp->gtNewIconNode((ssize_t)stateOffset, TYP_I_IMPL);
         GenTree* stateAddr       = m_comp->gtNewOperNode(GT_ADD, TYP_BYREF, continuationArg, stateOffsetNode);
         GenTree* stateInd        = m_comp->gtNewIndir(TYP_INT, stateAddr, GTF_IND_NONFAULTING);
@@ -1837,7 +1833,7 @@ void Async2Transformation::CreateResumptionSwitch()
         BBswtDesc* swtDesc     = new (m_comp, CMK_BasicBlock) BBswtDesc;
         swtDesc->bbsCount      = (unsigned)m_resumptionBBs.size();
         swtDesc->bbsHasDefault = true;
-        swtDesc->bbsDstTab     = new (m_comp, CMK_Async2) FlowEdge*[m_resumptionBBs.size()];
+        swtDesc->bbsDstTab     = new (m_comp, CMK_Async) FlowEdge*[m_resumptionBBs.size()];
 
         weight_t stateLikelihood = 1.0 / m_resumptionBBs.size();
         for (size_t i = 0; i < m_resumptionBBs.size(); i++)
@@ -1887,7 +1883,7 @@ void Async2Transformation::CreateResumptionSwitch()
 
         // We need to dispatch to the OSR version if the IL offset is non-negative.
         continuationArg           = m_comp->gtNewLclvNode(m_comp->lvaAsyncContinuationArg, TYP_REF);
-        unsigned offsetOfData     = m_comp->info.compCompHnd->getFieldOffset(m_async2Info.continuationDataFldHnd);
+        unsigned offsetOfData     = m_comp->info.compCompHnd->getFieldOffset(m_asyncInfo.continuationDataFldHnd);
         GenTree* dataArr          = LoadFromOffset(continuationArg, offsetOfData, TYP_REF);
         unsigned offsetOfIlOffset = OFFSETOF__CORINFO_Array__data;
         GenTree* ilOffset         = LoadFromOffset(dataArr, offsetOfIlOffset, TYP_INT);
@@ -1941,7 +1937,7 @@ void Async2Transformation::CreateResumptionSwitch()
         JITDUMP("    Created " FMT_BB " to check for Tier-0 continuations\n", checkILOffsetBB->bbNum);
 
         continuationArg           = m_comp->gtNewLclvNode(m_comp->lvaAsyncContinuationArg, TYP_REF);
-        unsigned offsetOfData     = m_comp->info.compCompHnd->getFieldOffset(m_async2Info.continuationDataFldHnd);
+        unsigned offsetOfData     = m_comp->info.compCompHnd->getFieldOffset(m_asyncInfo.continuationDataFldHnd);
         GenTree* dataArr          = LoadFromOffset(continuationArg, offsetOfData, TYP_REF);
         unsigned offsetOfIlOffset = OFFSETOF__CORINFO_Array__data;
         GenTree* ilOffset         = LoadFromOffset(dataArr, offsetOfIlOffset, TYP_INT);

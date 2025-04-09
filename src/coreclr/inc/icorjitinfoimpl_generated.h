@@ -498,8 +498,8 @@ bool runWithSPMIErrorTrap(
 void getEEInfo(
           CORINFO_EE_INFO* pEEInfoOut) override;
 
-void getAsync2Info(
-          CORINFO_ASYNC2_INFO* pAsync2InfoOut) override;
+void getAsyncInfo(
+          CORINFO_ASYNC_INFO* pAsyncInfoOut) override;
 
 mdMethodDef getMethodDefFromMethod(
           CORINFO_METHOD_HANDLE hMethod) override;

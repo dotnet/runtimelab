@@ -5523,7 +5523,7 @@ public:
     PhaseStatus placeLoopAlignInstructions();
 #endif
 
-    PhaseStatus TransformAsync2();
+    PhaseStatus TransformAsync();
 
     // This field keep the R2R helper call that would be inserted to trigger the constructor
     // of the static class. It is set as nongc or gc static base if they are imported, so
@@ -10777,7 +10777,7 @@ public:
         bool compProfilerCallback      : 1; // JIT inserted a profiler Enter callback
         bool compPublishStubParam      : 1; // EAX captured in prolog will be available through an intrinsic
         bool compHasNextCallRetAddr    : 1; // The NextCallReturnAddress intrinsic is used.
-        bool compUsesAsyncContinuation : 1; // The Async2CallContinuation intrinsic is used.
+        bool compUsesAsyncContinuation : 1; // The AsyncCallContinuation intrinsic is used.
 
         var_types compRetType;       // Return type of the method as declared in IL (including SIMD normalization)
         var_types compRetNativeType; // Normalized return type as per target arch ABI
@@ -10902,9 +10902,9 @@ public:
 #endif // TARGET_AMD64
     }
 
-    bool compIsAsync2() const
+    bool compIsAsync() const
     {
-        return opts.jitFlags->IsSet(JitFlags::JIT_FLAG_RUNTIMEASYNCFUNCTION);
+        return opts.jitFlags->IsSet(JitFlags::JIT_FLAG_ASYNC);
     }
 
     bool compIsStructMethodThatOperatesOnCopy() const
@@ -10936,7 +10936,7 @@ public:
 
     bool compObjectStackAllocation()
     {
-        if (compIsAsync2())
+        if (compIsAsync())
         {
             // Object stack allocation takes the address of locals around
             // suspension points. Disable entirely for now.

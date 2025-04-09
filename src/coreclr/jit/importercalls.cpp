@@ -522,9 +522,9 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
             call->AsCall()->gtCallMoreFlags |= GTF_CALL_M_SPECIAL_INTRINSIC;
         }
 
-        // Temporary hack since these functions have to be recognized as async2
+        // Temporary hack since these functions have to be recognized as async
         // calls in JIT generated state machines only.
-        if (compIsAsync2() &&
+        if (compIsAsync() &&
             ((ni == NI_System_Runtime_CompilerServices_RuntimeHelpers_AwaitAwaiterFromRuntimeAsync) ||
              (ni == NI_System_Runtime_CompilerServices_RuntimeHelpers_UnsafeAwaitAwaiterFromRuntimeAsync) ||
              (ni == NI_System_Runtime_CompilerServices_RuntimeHelpers_Await)))
@@ -900,7 +900,7 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
     impPopCallArgs(sig, call->AsCall());
 
     // Extra args
-    if ((instParam != nullptr) || call->AsCall()->IsAsync2() || (varArgsCookie != nullptr))
+    if ((instParam != nullptr) || call->AsCall()->IsAsync() || (varArgsCookie != nullptr))
     {
         if (Target::g_tgtArgOrder == Target::ARG_ORDER_R2L)
         {
@@ -910,7 +910,7 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
                                                            .WellKnown(WellKnownArg::VarArgsCookie));
             }
 
-            if (call->AsCall()->IsAsync2())
+            if (call->AsCall()->IsAsync())
             {
                 call->AsCall()->gtArgs.PushFront(this, NewCallArg::Primitive(gtNewNull(), TYP_REF)
                                                            .WellKnown(WellKnownArg::AsyncContinuation));
@@ -930,7 +930,7 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
                                                 NewCallArg::Primitive(instParam).WellKnown(WellKnownArg::InstParam));
             }
 
-            if (call->AsCall()->IsAsync2())
+            if (call->AsCall()->IsAsync())
             {
                 call->AsCall()->gtArgs.PushBack(this, NewCallArg::Primitive(gtNewNull(), TYP_REF)
                                                           .WellKnown(WellKnownArg::AsyncContinuation));
@@ -3343,7 +3343,7 @@ GenTree* Compiler::impIntrinsic(CORINFO_CLASS_HANDLE    clsHnd,
         return new (this, GT_LABEL) GenTree(GT_LABEL, TYP_I_IMPL);
     }
 
-    if (ni == NI_System_StubHelpers_Async2CallContinuation)
+    if (ni == NI_System_StubHelpers_AsyncCallContinuation)
     {
         GenTree* node = new (this, GT_ASYNC_CONTINUATION) GenTree(GT_ASYNC_CONTINUATION, TYP_REF);
         node->SetHasOrderingSideEffect();
@@ -3352,7 +3352,7 @@ GenTree* Compiler::impIntrinsic(CORINFO_CLASS_HANDLE    clsHnd,
         return node;
     }
 
-    if (ni == NI_System_Runtime_CompilerServices_RuntimeHelpers_SuspendAsync2)
+    if (ni == NI_System_Runtime_CompilerServices_RuntimeHelpers_AsyncSuspend)
     {
         GenTree* node = gtNewOperNode(GT_RETURN_SUSPEND, TYP_VOID, impPopStack().val);
         node->SetHasOrderingSideEffect();
@@ -10908,9 +10908,9 @@ NamedIntrinsic Compiler::lookupNamedIntrinsic(CORINFO_METHOD_HANDLE method)
                             {
                                 result = NI_System_Runtime_CompilerServices_RuntimeHelpers_Await;
                             }
-                            else if (strcmp(methodName, "SuspendAsync2") == 0)
+                            else if (strcmp(methodName, "AsyncSuspend") == 0)
                             {
-                                result = NI_System_Runtime_CompilerServices_RuntimeHelpers_SuspendAsync2;
+                                result = NI_System_Runtime_CompilerServices_RuntimeHelpers_AsyncSuspend;
                             }
                             else if (strcmp(methodName, "get_RuntimeAsyncViaJitGeneratedStateMachines") == 0)
                             {
@@ -11166,9 +11166,9 @@ NamedIntrinsic Compiler::lookupNamedIntrinsic(CORINFO_METHOD_HANDLE method)
                         {
                             result = NI_System_StubHelpers_NextCallReturnAddress;
                         }
-                        else if (strcmp(methodName, "Async2CallContinuation") == 0)
+                        else if (strcmp(methodName, "AsyncCallContinuation") == 0)
                         {
-                            result = NI_System_StubHelpers_Async2CallContinuation;
+                            result = NI_System_StubHelpers_AsyncCallContinuation;
                         }
                     }
                 }

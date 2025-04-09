@@ -4487,9 +4487,9 @@ GenTree* Compiler::fgMorphPotentialTailCall(GenTreeCall* call)
     }
 #endif
 
-    if (compIsAsync2() != call->IsAsync2())
+    if (compIsAsync() != call->IsAsync())
     {
-        failTailCall("Caller and callee do not agree on async2-ness");
+        failTailCall("Caller and callee do not agree on async-ness");
         return nullptr;
     }
 

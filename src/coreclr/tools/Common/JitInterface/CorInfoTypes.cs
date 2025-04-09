@@ -873,7 +873,7 @@ namespace Internal.JitInterface
         public CORINFO_OS osType;
     }
 
-    public unsafe struct CORINFO_ASYNC2_INFO
+    public unsafe struct CORINFO_ASYNC_INFO
     {
         // Class handle for System.Runtime.CompilerServices.Continuation
         public CORINFO_CLASS_STRUCT_* continuationClsHnd;

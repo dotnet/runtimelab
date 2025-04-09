@@ -131,7 +131,7 @@ struct JitInterfaceCallbacks
     bool (* runWithErrorTrap)(void * thisHandle, CorInfoExceptionClass** ppException, ICorJitInfo::errorTrapFunction function, void* parameter);
     bool (* runWithSPMIErrorTrap)(void * thisHandle, CorInfoExceptionClass** ppException, ICorJitInfo::errorTrapFunction function, void* parameter);
     void (* getEEInfo)(void * thisHandle, CorInfoExceptionClass** ppException, CORINFO_EE_INFO* pEEInfoOut);
-    void (* getAsync2Info)(void * thisHandle, CorInfoExceptionClass** ppException, CORINFO_ASYNC2_INFO* pAsync2InfoOut);
+    void (* getAsyncInfo)(void * thisHandle, CorInfoExceptionClass** ppException, CORINFO_ASYNC_INFO* pAsyncInfoOut);
     mdMethodDef (* getMethodDefFromMethod)(void * thisHandle, CorInfoExceptionClass** ppException, CORINFO_METHOD_HANDLE hMethod);
     size_t (* printMethodName)(void * thisHandle, CorInfoExceptionClass** ppException, CORINFO_METHOD_HANDLE ftn, char* buffer, size_t bufferSize, size_t* pRequiredBufferSize);
     const char* (* getMethodNameFromMetadata)(void * thisHandle, CorInfoExceptionClass** ppException, CORINFO_METHOD_HANDLE ftn, const char** className, const char** namespaceName, const char** enclosingClassNames, size_t maxEnclosingClassNames);
@@ -1362,11 +1362,11 @@ public:
     if (pException != nullptr) throw pException;
 }
 
-    virtual void getAsync2Info(
-          CORINFO_ASYNC2_INFO* pAsync2InfoOut)
+    virtual void getAsyncInfo(
+          CORINFO_ASYNC_INFO* pAsyncInfoOut)
 {
     CorInfoExceptionClass* pException = nullptr;
-    _callbacks->getAsync2Info(_thisHandle, &pException, pAsync2InfoOut);
+    _callbacks->getAsyncInfo(_thisHandle, &pException, pAsyncInfoOut);
     if (pException != nullptr) throw pException;
 }
 

@@ -4466,46 +4466,46 @@ void MethodContext::repGetEEInfo(CORINFO_EE_INFO* pEEInfoOut)
     pEEInfoOut->osType                             = (CORINFO_OS)value.osType;
 }
 
-void MethodContext::recGetAsync2Info(const CORINFO_ASYNC2_INFO* pAsync2Info)
+void MethodContext::recGetAsyncInfo(const CORINFO_ASYNC_INFO* pAsyncInfo)
 {
-    if (GetAsync2Info == nullptr)
-        GetAsync2Info = new LightWeightMap<DWORD, Agnostic_CORINFO_ASYNC2_INFO>();
+    if (GetAsyncInfo == nullptr)
+        GetAsyncInfo = new LightWeightMap<DWORD, Agnostic_CORINFO_ASYNC_INFO>();
 
-    Agnostic_CORINFO_ASYNC2_INFO value;
+    Agnostic_CORINFO_ASYNC_INFO value;
     ZeroMemory(&value, sizeof(value));
 
-    value.continuationClsHnd = CastHandle(pAsync2Info->continuationClsHnd);
-    value.continuationNextFldHnd = CastHandle(pAsync2Info->continuationNextFldHnd);
-    value.continuationResumeFldHnd = CastHandle(pAsync2Info->continuationResumeFldHnd);
-    value.continuationStateFldHnd = CastHandle(pAsync2Info->continuationStateFldHnd);
-    value.continuationFlagsFldHnd = CastHandle(pAsync2Info->continuationFlagsFldHnd);
-    value.continuationDataFldHnd = CastHandle(pAsync2Info->continuationDataFldHnd);
-    value.continuationGCDataFldHnd = CastHandle(pAsync2Info->continuationGCDataFldHnd);
-    value.continuationsNeedMethodHandle = pAsync2Info->continuationsNeedMethodHandle ? 1 : 0;
+    value.continuationClsHnd = CastHandle(pAsyncInfo->continuationClsHnd);
+    value.continuationNextFldHnd = CastHandle(pAsyncInfo->continuationNextFldHnd);
+    value.continuationResumeFldHnd = CastHandle(pAsyncInfo->continuationResumeFldHnd);
+    value.continuationStateFldHnd = CastHandle(pAsyncInfo->continuationStateFldHnd);
+    value.continuationFlagsFldHnd = CastHandle(pAsyncInfo->continuationFlagsFldHnd);
+    value.continuationDataFldHnd = CastHandle(pAsyncInfo->continuationDataFldHnd);
+    value.continuationGCDataFldHnd = CastHandle(pAsyncInfo->continuationGCDataFldHnd);
+    value.continuationsNeedMethodHandle = pAsyncInfo->continuationsNeedMethodHandle ? 1 : 0;
 
-    GetAsync2Info->Add(0, value);
-    DEBUG_REC(dmpGetAsync2Info(0, value));
+    GetAsyncInfo->Add(0, value);
+    DEBUG_REC(dmpGetAsyncInfo(0, value));
 }
-void MethodContext::dmpGetAsync2Info(DWORD key, const Agnostic_CORINFO_ASYNC2_INFO& value)
+void MethodContext::dmpGetAsyncInfo(DWORD key, const Agnostic_CORINFO_ASYNC_INFO& value)
 {
-    printf("GetAsync2Info key %u value contClsHnd-%016" PRIX64 " contNextFldHnd-%016" PRIX64 " contResumeFldHnd-%016" PRIX64
+    printf("GetAsyncInfo key %u value contClsHnd-%016" PRIX64 " contNextFldHnd-%016" PRIX64 " contResumeFldHnd-%016" PRIX64
            " contStateFldHnd-%016" PRIX64 " contFlagsFldHnd-%016" PRIX64 " contDataFldHnd-%016" PRIX64 " contGCDataFldHnd-%016" PRIX64 " contsNeedMethodHandle-%d",
         key, value.continuationClsHnd, value.continuationNextFldHnd, value.continuationResumeFldHnd,
         value.continuationStateFldHnd, value.continuationFlagsFldHnd, value.continuationDataFldHnd,
         value.continuationGCDataFldHnd, value.continuationsNeedMethodHandle);
 }
-void MethodContext::repGetAsync2Info(CORINFO_ASYNC2_INFO* pAsync2InfoOut)
+void MethodContext::repGetAsyncInfo(CORINFO_ASYNC_INFO* pAsyncInfoOut)
 {
-    Agnostic_CORINFO_ASYNC2_INFO value = LookupByKeyOrMissNoMessage(GetAsync2Info, 0);
-    pAsync2InfoOut->continuationClsHnd = (CORINFO_CLASS_HANDLE)value.continuationClsHnd;
-    pAsync2InfoOut->continuationNextFldHnd = (CORINFO_FIELD_HANDLE)value.continuationNextFldHnd;
-    pAsync2InfoOut->continuationResumeFldHnd = (CORINFO_FIELD_HANDLE)value.continuationResumeFldHnd;
-    pAsync2InfoOut->continuationStateFldHnd = (CORINFO_FIELD_HANDLE)value.continuationStateFldHnd;
-    pAsync2InfoOut->continuationFlagsFldHnd = (CORINFO_FIELD_HANDLE)value.continuationFlagsFldHnd;
-    pAsync2InfoOut->continuationDataFldHnd = (CORINFO_FIELD_HANDLE)value.continuationDataFldHnd;
-    pAsync2InfoOut->continuationGCDataFldHnd = (CORINFO_FIELD_HANDLE)value.continuationGCDataFldHnd;
-    pAsync2InfoOut->continuationsNeedMethodHandle = value.continuationsNeedMethodHandle != 0;
-    DEBUG_REP(dmpGetAsync2Info(0, value));
+    Agnostic_CORINFO_ASYNC_INFO value = LookupByKeyOrMissNoMessage(GetAsyncInfo, 0);
+    pAsyncInfoOut->continuationClsHnd = (CORINFO_CLASS_HANDLE)value.continuationClsHnd;
+    pAsyncInfoOut->continuationNextFldHnd = (CORINFO_FIELD_HANDLE)value.continuationNextFldHnd;
+    pAsyncInfoOut->continuationResumeFldHnd = (CORINFO_FIELD_HANDLE)value.continuationResumeFldHnd;
+    pAsyncInfoOut->continuationStateFldHnd = (CORINFO_FIELD_HANDLE)value.continuationStateFldHnd;
+    pAsyncInfoOut->continuationFlagsFldHnd = (CORINFO_FIELD_HANDLE)value.continuationFlagsFldHnd;
+    pAsyncInfoOut->continuationDataFldHnd = (CORINFO_FIELD_HANDLE)value.continuationDataFldHnd;
+    pAsyncInfoOut->continuationGCDataFldHnd = (CORINFO_FIELD_HANDLE)value.continuationGCDataFldHnd;
+    pAsyncInfoOut->continuationsNeedMethodHandle = value.continuationsNeedMethodHandle != 0;
+    DEBUG_REP(dmpGetAsyncInfo(0, value));
 }
 
 void MethodContext::recGetGSCookie(GSCookie* pCookieVal, GSCookie** ppCookieVal)

@@ -68,7 +68,7 @@ public:
         CORJIT_FLAG_VECTOR512_THROTTLING    = 31, // On x86/x64, 512-bit vector usage may incur CPU frequency throttling
 #endif
 
-        CORJIT_FLAG_RUNTIMEASYNCFUNCTION    = 32, // Generate Code for use as an async2 function
+        CORJIT_FLAG_ASYNC                   = 32, // Generate Code for use as an async function
     };
 
     CORJIT_FLAGS()

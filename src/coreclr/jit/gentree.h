@@ -5009,7 +5009,7 @@ struct GenTreeCall final : public GenTree
 #endif
     }
 
-    bool IsAsync2() const;
+    bool IsAsync() const;
 
     //---------------------------------------------------------------------------
     // GetRegNumByIdx: get i'th return register allocated to this call node.

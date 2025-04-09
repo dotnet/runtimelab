@@ -188,7 +188,7 @@ namespace System.Runtime.CompilerServices
                 state.SentinelContinuation = sentinelContinuation = new Continuation();
 
             state.Notifier = awaiter;
-            SuspendAsync2(sentinelContinuation);
+            AsyncSuspend(sentinelContinuation);
         }
 
         // Marked intrinsic since for JIT state machines this needs to be
@@ -204,7 +204,7 @@ namespace System.Runtime.CompilerServices
                 state.SentinelContinuation = sentinelContinuation = new Continuation();
 
             state.Notifier = awaiter;
-            SuspendAsync2(sentinelContinuation);
+            AsyncSuspend(sentinelContinuation);
         }
 
         // Marked intrinsic since this needs to be

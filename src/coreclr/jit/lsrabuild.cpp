@@ -4746,7 +4746,7 @@ void LinearScan::MarkSwiftErrorBusyForCall(GenTreeCall* call)
 //
 void LinearScan::MarkAsyncContinuationBusyForCall(GenTreeCall* call)
 {
-    // Async2 calls return an async continuation argument in a separate
+    // Async calls return an async continuation argument in a separate
     // register. Since we do not have a flexible representation for
     // multiple definitions (multi-reg support is tied into promotion) we
     // have to utilize a hack here to make it work. We expect the return

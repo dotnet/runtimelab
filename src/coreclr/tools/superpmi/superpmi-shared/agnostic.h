@@ -193,7 +193,7 @@ struct Agnostic_CORINFO_EE_INFO
     DWORD osType;
 };
 
-struct Agnostic_CORINFO_ASYNC2_INFO
+struct Agnostic_CORINFO_ASYNC_INFO
 {
     DWORDLONG continuationClsHnd;
     DWORDLONG continuationNextFldHnd;

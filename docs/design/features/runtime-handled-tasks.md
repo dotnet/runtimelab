@@ -289,7 +289,7 @@ static Continuation? IL_STUB_AsyncResume_Foo(Continuation continuation)
 {
     delegate*<Continuation, int, int, int> foo = &Foo;
     int result = foo(continuation, 0, 0);
-    Continuation? newContinuation = StubHelpers.Async2CallContinuation();
+    Continuation? newContinuation = StubHelpers.AsyncCallContinuation();
 
     if (newContinuation == null)
     {
@@ -305,20 +305,20 @@ static Continuation? IL_STUB_AsyncResume_Foo(Continuation continuation)
 
 ### Intrinsics used for suspension/resumption
 
-To interact with the async2 calling convention the JIT/VM provides the following intrinsics:
+To interact with the async calling convention the JIT/VM provides the following intrinsics:
 ```csharp
-// Retrieve the continuation returned by a preceding async2 function call
+// Retrieve the continuation returned by a preceding async function call
 [Intrinsic]
-internal static Continuation? Async2CallContinuation() => null;
+internal static Continuation? AsyncCallContinuation() => null;
 
 // Suspend the current function by immediately returning with a specific non-zero continuation.
 [Intrinsic]
-private static void SuspendAsync2(Continuation continuation) => throw new UnreachableException();
+private static void AsyncSuspend(Continuation continuation) => throw new UnreachableException();
 ```
 
 These intrinsics are NOT used by user code, but they are used internally by the async1<->async2 adapter later, which will be described later.
 
-`Async2CallContinuation()` is also used by generated resumption stubs to capture the returned continuation.
+`AsyncCallContinuation()` is also used by generated resumption stubs to capture the returned continuation.
 
 Since the continuation is a normal parameter no intrinsic is required to allow the resumption stub to pass the continuation to the target.
 Instead, the resumption stub calls the target by `calli` with a signature that includes the continuation, in the same way as IL instantiating stubs work.
@@ -366,7 +366,7 @@ public static async2 Task AwaitAwaiterFromRuntimeAsync<TAwaiter>(TAwaiter awaite
         state.SentinelContinuation = sentinelContinuation = new Continuation();
 
     state.Notifier = awaiter;
-    SuspendAsync2(sentinelContinuation);
+    AsyncSuspend(sentinelContinuation);
 }
 
 ```
@@ -392,7 +392,7 @@ static Task<int> FooAdapter(int a, int b)
     try
     {
         result = Foo(a, b);
-        continuation = StubHelpers.Async2CallContinuation();
+        continuation = StubHelpers.AsyncCallContinuation();
     }
     catch (Exception ex)
     {
