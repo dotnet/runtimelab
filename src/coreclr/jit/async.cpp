@@ -1899,7 +1899,7 @@ void AsyncTransformation::CreateResumptionSwitch()
         LIR::AsRange(checkILOffsetBB).InsertAtEnd(ilOffset, zero, geZero, jtrue);
 
         ilOffset                = m_comp->gtNewLclvNode(ilOffsetLclNum, TYP_INT);
-        GenTreeCall* callHelper = m_comp->gtNewHelperCallNode(CORINFO_HELP_RESUME_OSR, TYP_VOID, ilOffset);
+        GenTreeCall* callHelper = m_comp->gtNewHelperCallNode(CORINFO_HELP_PATCHPOINT_FORCED, TYP_VOID, ilOffset);
         callHelper->gtCallMoreFlags |= GTF_CALL_M_DOES_NOT_RETURN;
 
         m_comp->compCurBB = callHelperBB;

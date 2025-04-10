@@ -91,7 +91,7 @@ public:
 #endif // FEATURE_TIERED_COMPILATION
 
 #ifdef FEATURE_ON_STACK_REPLACEMENT
-    PatchpointInfo * GetOSRInfo(unsigned * iloffset) const;
+    PatchpointInfo * GetOSRInfo(unsigned * iloffset);
 #endif // FEATURE_ON_STACK_REPLACEMENT
 
 #ifdef HAVE_GCCOVER
@@ -291,7 +291,7 @@ public:
 #endif
 
 #ifdef FEATURE_ON_STACK_REPLACEMENT
-    PatchpointInfo * GetOSRInfo(unsigned * ilOffset) const;
+    PatchpointInfo * GetOSRInfo(unsigned * ilOffset);
 #endif
 
 private:
