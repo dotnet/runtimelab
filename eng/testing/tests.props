@@ -11,7 +11,7 @@
     <TestSingleFile Condition="'$(TestReadyToRun)' == 'true'">true</TestSingleFile>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetsMobile)' == 'true' or '$(TargetsWasm)' == 'true'">
+  <PropertyGroup Condition="'$(TargetsMobile)' == 'true'">
     <!-- Test runners are built as part of libs.pretest so we need to use libraries configuration -->
     <AppleTestRunnerDir>$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'AppleTestRunner', '$(Configuration)', '$(NetCoreAppCurrent)'))</AppleTestRunnerDir>
     <AndroidTestRunnerDir>$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'AndroidTestRunner', '$(Configuration)', '$(NetCoreAppCurrent)'))</AndroidTestRunnerDir>
