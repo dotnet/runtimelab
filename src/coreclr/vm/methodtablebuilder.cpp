@@ -2875,6 +2875,9 @@ AsyncMethodSignatureKind ClassifyAsyncMethodSignatureCore(SigPointer sig, Module
     if (elemType == ELEMENT_TYPE_GENERICINST)
     {
         IfFailThrow(sig.GetElemType(&elemType));
+        if (elemType == ELEMENT_TYPE_INTERNAL)
+            return AsyncMethodSignatureKind::NormalMethod;
+
         *pIsValueTask = (elemType == ELEMENT_TYPE_VALUETYPE);
         IfFailThrow(sig.GetToken(&tk));
         IfFailThrow(sig.GetData(&data));
@@ -5600,8 +5603,9 @@ MethodTableBuilder::InitNewMethodDesc(
 #endif // _DEBUG
 
     Signature sig;
-    if (pMethod->IsAsyncThunk())
+    if (pMethod->IsAsync2Variant())
     {
+        // async variants do not get the default signature from metadata
         sig = pMethod->GetMethodSignature().GetSignatureClass();
     }
 
@@ -5934,10 +5938,12 @@ MethodTableBuilder::FindDeclMethodOnInterfaceEntry(bmtInterfaceEntry *pItfEntry,
         }
     }
 
-    if (variantLookup == AsyncVariantLookup::AsyncOtherVariant)
+    if (variantLookup == AsyncVariantLookup::AsyncOtherVariant && !declMethod.IsNull())
     {
         bmtRTMethod* declRTMethod = declMethod.AsRTMethod();
-        bool foundOtherVariant = false;
+        // Other varian may not exist. For example we return Task and the base is generic and returns T.
+        // Then we return Null.
+        declMethod = {};
         for (; !slotIt.AtEnd(); slotIt.Next())
         {
             bmtRTMethod* slotDeclMethod = slotIt->Decl().AsRTMethod();
@@ -5948,12 +5954,9 @@ MethodTableBuilder::FindDeclMethodOnInterfaceEntry(bmtInterfaceEntry *pItfEntry,
                 (slotDeclMethod->GetMethodDesc()->IsAsync2VariantMethod() != declRTMethod->GetMethodDesc()->IsAsync2VariantMethod()))
             {
                 declMethod = slotIt->Decl();
-                foundOtherVariant = true;
                 break;
             }
         }
-
-        _ASSERTE(foundOtherVariant);
     }
 
     return declMethod;
@@ -6024,7 +6027,9 @@ MethodTableBuilder::ProcessInexactMethodImpls()
             continue;
         }
 
-        AsyncVariantLookup asyncVariantOfDeclToFind = !it->IsAsyncThunk() ? AsyncVariantLookup::MatchingAsyncVariant : AsyncVariantLookup::AsyncOtherVariant;
+        AsyncVariantLookup asyncVariantOfDeclToFind = !it->IsAsync2Variant() ?
+            AsyncVariantLookup::MatchingAsyncVariant :
+            AsyncVariantLookup::AsyncOtherVariant;
 
         // If this method serves as the BODY of a MethodImpl specification, then
         // we should iterate all the MethodImpl's for this class and see just how many
@@ -6167,7 +6172,9 @@ MethodTableBuilder::ProcessMethodImpls()
             continue;
         }
 
-        AsyncVariantLookup asyncVariantOfDeclToFind = !it->IsAsyncThunk() ? AsyncVariantLookup::MatchingAsyncVariant : AsyncVariantLookup::AsyncOtherVariant;
+        AsyncVariantLookup asyncVariantOfDeclToFind = !it->IsAsync2Variant() ?
+            AsyncVariantLookup::MatchingAsyncVariant :
+            AsyncVariantLookup::AsyncOtherVariant;
 
         // If this method serves as the BODY of a MethodImpl specification, then
         // we should iterate all the MethodImpl's for this class and see just how many
@@ -6352,6 +6359,14 @@ MethodTableBuilder::ProcessMethodImpls()
                                 declMethod = FindDeclMethodOnClassInHierarchy(it, pDeclMT, declSig, asyncVariantOfDeclToFind);
                             }
 
+                            if (declMethod.IsNull() && asyncVariantOfDeclToFind == AsyncVariantLookup::AsyncOtherVariant)
+                            {
+                                // when implementing/overriding, we may see a Task-returning method
+                                // which matches a T-returning method in the interface/base, which would not have variants.
+                                // in such case the async2 variant of the Task-returning method does not implement/override anything.
+                                continue;
+                            }
+
                             if (declMethod.IsNull())
                             {   // Would prefer to let this fall out to the BuildMethodTableThrowException
                                 // below, but due to v2.0 and earlier behaviour throwing a MissingMethodException,
@@ -6487,10 +6502,19 @@ MethodTableBuilder::bmtMethodHandle MethodTableBuilder::FindDeclMethodOnClassInH
                         iPass == 0 ? &newVisited : NULL))
                     {
                         if (variantLookup == AsyncVariantLookup::AsyncOtherVariant)
-                            pCurMD = pCurMD->GetAsyncOtherVariant();
+                        {
+                            if (pCurMD->IsTaskReturningMethod() || pCurMD->IsAsync2VariantMethod())
+                            {
+                                pCurMD = pCurMD->GetAsyncOtherVariant();
+                            }
+                            else
+                            {
+                                declMethod = {};
+                                break;
+                            }
+                        }
 
                         declMethod = (*bmtParent->pSlotTable)[pCurMD->GetSlot()].Decl();
-
                         break;
                     }
                 }
