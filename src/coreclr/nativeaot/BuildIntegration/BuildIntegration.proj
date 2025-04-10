@@ -43,6 +43,5 @@
     <Copy SourceFiles="@(AnalyzerFile)" DestinationFolder="$(RuntimeBinDir)\analyzers\dotnet\cs" />
   </Target>
 
-  <Target Name="Restore" Condition="'$(TargetsWasm)' != 'true'"/>
   <Target Name="Pack" />
 </Project>

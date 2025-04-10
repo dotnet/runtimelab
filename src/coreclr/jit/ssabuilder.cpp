@@ -92,20 +92,20 @@ void Compiler::fgResetForSsa(bool deepClean)
                     }
                 }
             }
-        }
 
 #if defined(TARGET_WASM)
-        if (blk->IsLIR())
-        {
-            for (GenTree* tree : LIR::AsRange(blk))
+            if (blk->IsLIR())
             {
-                if (tree->IsLocal() || tree->OperIs(GT_LCL_ADDR))
+                for (GenTree* tree : LIR::AsRange(blk))
                 {
-                    tree->AsLclVarCommon()->SetSsaNum(SsaConfig::RESERVED_SSA_NUM);
+                    if (tree->IsLocal() || tree->OperIs(GT_LCL_ADDR))
+                    {
+                        tree->AsLclVarCommon()->SetSsaNum(SsaConfig::RESERVED_SSA_NUM);
+                    }
                 }
             }
-        }
 #endif
+        }
     }
 }
 

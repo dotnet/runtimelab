@@ -949,9 +949,7 @@ public:
 
     void SetRegNum(regNumber reg)
     {
-#if !TARGET_WASM
         assert(reg >= REG_FIRST && reg <= REG_COUNT);
-#endif // !TARGET_WASM
         _gtRegNum = (regNumberSmall)reg;
         INDEBUG(gtRegTag = GT_REGTAG_REG;)
         assert(_gtRegNum == reg);
