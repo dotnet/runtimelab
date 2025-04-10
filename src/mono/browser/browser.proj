@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.Build.NoTargets">
 
-  <UsingTask TaskName="Microsoft.WebAssembly.Build.Tasks.RunWithEmSdkEnv" AssemblyFile="$(WasmAppBuilderTasksAssemblyPath)" />
+  <UsingTask TaskName="Microsoft.WebAssembly.Build.Tasks.RunWithEmSdkEnv" AssemblyFile="$(WasmAppBuilderTasksAssemblyPath)" TaskFactory="TaskHostFactory" />
 
   <PropertyGroup>
     <EMSDK_PATH Condition="'$(EMSDK_PATH)' == ''">$(EMSDK)</EMSDK_PATH>
@@ -19,11 +19,6 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <MonoDiagnosticsMock Condition="'$(MonoDiagnosticsMock)' == '' and '$(Configuration)' == 'Release'">false</MonoDiagnosticsMock>
-    <MonoDiagnosticsMock Condition="'$(MonoDiagnosticsMock)' == '' and '$(Configuration)' == 'Debug'">true</MonoDiagnosticsMock>
-  </PropertyGroup>
-
-  <PropertyGroup>
     <ICULibDir Condition="'$(WasmEnableThreads)' != 'true'">$([MSBuild]::NormalizeDirectory('$(PkgMicrosoft_NETCore_Runtime_ICU_Transport)', 'runtimes', 'browser-wasm', 'native', 'lib'))</ICULibDir>
     <ICULibDir Condition="'$(WasmEnableThreads)' == 'true'">$([MSBuild]::NormalizeDirectory('$(PkgMicrosoft_NETCore_Runtime_ICU_Transport)', 'runtimes', 'browser-wasm-threads', 'native', 'lib'))</ICULibDir>
     <InvariantTimezone Condition="'$(InvariantTimezone)' == ''">false</InvariantTimezone>
@@ -36,6 +31,7 @@
     <WasmEnableJsInteropByValue Condition="'$(WasmEnableJsInteropByValue)' == '' and '$(WasmEnableThreads)' == 'true'">true</WasmEnableJsInteropByValue>
     <WasmEnableJsInteropByValue Condition="'$(RuntimeFlavor)' == 'CoreCLR'">true</WasmEnableJsInteropByValue>
     <WasmEnableJsInteropByValue Condition="'$(WasmEnableJsInteropByValue)' == ''">false</WasmEnableJsInteropByValue>
+    <FeaturePerfTracing Condition="'$(FeaturePerfTracing)' == ''">false</FeaturePerfTracing>
     <FilterSystemTimeZones Condition="'$(FilterSystemTimeZones)' == ''">false</FilterSystemTimeZones>
     <EmccCmd>emcc</EmccCmd>
     <WasmObjDir>$(ArtifactsObjDir)wasm</WasmObjDir>
@@ -59,7 +55,7 @@
     <PackageReference Include="System.Runtime.TimeZoneData" PrivateAssets="all" Version="$(SystemRuntimeTimeZoneDataVersion)" GeneratePathProperty="true" />
   </ItemGroup>
 
-  <UsingTask TaskName="ManagedToNativeGenerator" AssemblyFile="$(WasmAppBuilderTasksAssemblyPath)" />
+  <UsingTask TaskName="ManagedToNativeGenerator" AssemblyFile="$(WasmAppBuilderTasksAssemblyPath)" TaskFactory="TaskHostFactory" />
   <Target Name="GenerateManagedToNative" DependsOnTargets="CheckEnv;ResolveLibrariesFromLocalBuild" Condition="'$(RuntimeFlavor)' != 'CoreCLR'">
     <PropertyGroup>
       <WasmPInvokeTablePath>$(WasmObjDir)\pinvoke-table.h</WasmPInvokeTablePath>
@@ -91,7 +87,7 @@
     </ManagedToNativeGenerator>
   </Target>
 
-  <UsingTask TaskName="EmitBundleSourceFiles" AssemblyFile="$(MonoTargetsTasksAssemblyPath)" />
+  <UsingTask TaskName="EmitBundleSourceFiles" AssemblyFile="$(MonoTargetsTasksAssemblyPath)" TaskFactory="TaskHostFactory" />
   <Target Name="GenerateTimezonesArchive" Returns="@(_WasmArchivedTimezones)" Condition="'$(InvariantTimezone)' != 'true'">
     <PropertyGroup>
       <_WasmTimezonesPath>$([MSBuild]::NormalizePath('$(PkgSystem_Runtime_TimeZoneData)', 'contentFiles', 'any', 'any', 'data'))</_WasmTimezonesPath>
@@ -218,6 +214,7 @@
       <EmccExportedFunction Include="_malloc" />
       <EmccExportedFunction Include="_sbrk" />
       <EmccExportedFunction Include="_memalign" />
+      <EmccExportedFunction Include="_posix_memalign" />
       <EmccExportedFunction Include="_memset" />
       <EmccExportedFunction Include="_ntohs" />
       <EmccExportedFunction Include="stackAlloc" />
@@ -386,8 +383,7 @@
     <ItemGroup>
       <ICULibNativeFiles Include="$(ICULibDir)/libicuuc.a;
                                   $(ICULibDir)/libicui18n.a;
-                                  $(ICULibDir)/libicudata.a;
-                                  $(BrowserProjectRoot)runtime/hybrid-globalization/segmentation-rules.json" />
+                                  $(ICULibDir)/libicudata.a" />
       <ICULibFiles Include="$(ICULibDir)/*.dat" />
     </ItemGroup>
     <PropertyGroup>
@@ -520,8 +516,7 @@
 
     <Copy SourceFiles="$(NativeBinDir)dotnet.native.js;
                        $(NativeBinDir)package.json;
-                       $(NativeBinDir)dotnet.native.wasm;
-                       $(NativeBinDir)dotnet.globalization.js"
+                       $(NativeBinDir)dotnet.native.wasm"
           Condition="'$(RuntimeFlavor)' != 'CoreCLR'"
           DestinationFolder="$(MicrosoftNetCoreAppRuntimePackNativeDir)"
           SkipUnchangedFiles="true" />
@@ -570,21 +565,27 @@
 
   <ItemGroup>
     <_RollupInputs Include="$(BrowserProjectRoot)runtime/**/*.ts"
-		   Exclude="$(BrowserProjectRoot)runtime/dotnet.d.ts;$(BrowserProjectRoot)runtime/diagnostics-mock.d.ts;$(BrowserProjectRoot)runtime/node_modules/**/*.ts" />
+		   Exclude="$(BrowserProjectRoot)runtime/dotnet.d.ts;$(BrowserProjectRoot)runtime/node_modules/**/*.ts" />
     <_RollupInputs Include="$(BrowserProjectRoot)runtime/**/tsconfig.*"
 		   Exclude="$(BrowserProjectRoot)runtime/node_modules/**/tsconfig.*" />
-    <_RollupInputs Include="$(BrowserProjectRoot)runtime/workers/**/*.js"/>
     <_RollupInputs Include="$(BrowserProjectRoot)runtimetypes/*.d.ts"/>
     <_RollupInputs Include="$(BrowserProjectRoot)runtime/*.json"/>
     <_RollupInputs Include="$(BrowserProjectRoot)runtime/*.js"/>
   </ItemGroup>
 
-  <Target Name="SetMonoRollupEnvironment" DependsOnTargets="GetProductVersions">
+  <Target Name="SetMonoRollupEnvironment">
+    <!-- Retrieve the runtime pack product version. -->
+    <MSBuild Projects="$(RepoRoot)src/installer/pkg/sfx/Microsoft.NETCore.App/Microsoft.NETCore.App.Runtime.Mono.sfxproj"
+             Targets="ReturnProductVersion"
+             Properties="Crossgen2SdkOverridePropsPath=;
+                         Crossgen2SdkOverrideTargetsPath=">
+      <Output TaskParameter="TargetOutputs" PropertyName="RuntimePackProductVersion" />
+    </MSBuild>
     <ItemGroup>
       <_MonoRollupEnvironmentVariable Include="Configuration:$(Configuration)" />
       <_MonoRollupEnvironmentVariable Include="NativeBinDir:$(NativeBinDir)" />
       <_MonoRollupEnvironmentVariable Include="WasmObjDir:$(WasmObjDir)" />
-      <_MonoRollupEnvironmentVariable Include="ProductVersion:$(ProductVersion)" />
+      <_MonoRollupEnvironmentVariable Include="ProductVersion:$(RuntimePackProductVersion)" />
       <_MonoRollupEnvironmentVariable Include="WasmEnableThreads:$(WasmEnableThreads)" />
       <_MonoRollupEnvironmentVariable Include="WASM_ENABLE_SIMD:1" Condition="'$(WasmEnableSIMD)' != 'false'" />
       <_MonoRollupEnvironmentVariable Include="WASM_ENABLE_SIMD:0" Condition="'$(WasmEnableSIMD)' == 'false'" />
@@ -594,7 +595,6 @@
       <_MonoRollupEnvironmentVariable Include="NATIVE_AOT:1" Condition="'$(RuntimeFlavor)' == 'CoreCLR'" />
       <_MonoRollupEnvironmentVariable Include="ENABLE_JS_INTEROP_BY_VALUE:1" Condition="'$(WasmEnableJsInteropByValue)' == 'true'" />
       <_MonoRollupEnvironmentVariable Include="ENABLE_JS_INTEROP_BY_VALUE:0" Condition="'$(WasmEnableJsInteropByValue)' != 'true'" />
-      <_MonoRollupEnvironmentVariable Include="MonoDiagnosticsMock:$(MonoDiagnosticsMock)" />
       <_MonoRollupEnvironmentVariable Include="ContinuousIntegrationBuild:$(ContinuousIntegrationBuild)" />
     </ItemGroup>
 

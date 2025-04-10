@@ -5,6 +5,7 @@ project(PortableRuntime)
 
 add_definitions(-DUSE_PORTABLE_HELPERS)
 
+add_subdirectory(${CLR_SRC_NATIVE_DIR}/minipal minipal)
 add_library(PortableRuntime STATIC ${COMMON_RUNTIME_SOURCES} ${PORTABLE_RUNTIME_SOURCES})
 
 add_library(standalonegc-disabled STATIC ${STANDALONEGC_DISABLED_SOURCES})
@@ -21,6 +22,10 @@ if(WIN32)
     set(COMPILER_LANGUAGE "")
     set(PREPROCESSOR_FLAGS -EP -nologo)
     set(ASM_OFFSETS_CPP ${RUNTIME_DIR}/windows/AsmOffsets.cpp)
+
+    set_target_properties(aotminipal PROPERTIES
+        COMPILE_PDB_NAME "aotminipal"
+        COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
 else()
     set(COMPILER_LANGUAGE -x c++)
     set(PREPROCESSOR_FLAGS -E -P -C) # include license for code cop
@@ -36,8 +41,4 @@ add_custom_command(
 
 install_static_library(PortableRuntime aotsdk nativeaot)
 install_static_library(standalonegc-disabled aotsdk nativeaot)
-
-if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
-  install_static_library(standalonegc-enabled aotsdk nativeaot)
-endif()
-
+install_static_library(aotminipal aotsdk nativeaot)

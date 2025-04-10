@@ -373,9 +373,6 @@ namespace Internal.ReadyToRunConstants
         CheckInstanceInterface,
         CheckInstanceClass,
 
-        MonitorEnterStatic,
-        MonitorExitStatic,
-
         NewMultiDimArrRare,
 
         // GVM lookup helper

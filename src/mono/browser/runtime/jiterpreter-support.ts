@@ -10,7 +10,7 @@ import { WasmOpcode, WasmSimdOpcode, WasmAtomicOpcode, WasmValtype } from "./jit
 import { MintOpcode } from "./mintops";
 import cwraps from "./cwraps";
 import { mono_log_error, mono_log_info } from "./logging";
-import { localHeapViewU8, localHeapViewU32 } from "./memory";
+import { localHeapViewU8, localHeapViewU32, malloc } from "./memory";
 import {
     JiterpNumberMode, BailoutReason, JiterpreterTable,
     JiterpCounter, JiterpMember, OpcodeInfoType
@@ -22,7 +22,8 @@ export const maxFailures = 2,
     shortNameBase = 36,
     // NOTE: This needs to be big enough to hold the maximum module size since there's no auto-growth
     //  support yet. If that becomes a problem, we should just make it growable
-    blobBuilderCapacity = 24 * 1024;
+    blobBuilderCapacity = 24 * 1024,
+    INT32_MIN = -2147483648;
 
 // uint16
 export declare interface MintOpcodePtr extends NativePointer {
@@ -950,7 +951,7 @@ export class BlobBuilder {
 
     constructor () {
         this.capacity = blobBuilderCapacity;
-        this.buffer = <any>Module._malloc(this.capacity);
+        this.buffer = <any>malloc(this.capacity);
         mono_assert(this.buffer, () => `Failed to allocate ${blobBuilderCapacity}b buffer for BlobBuilder`);
         localHeapViewU8().fill(0, this.buffer, this.buffer + this.capacity);
         this.size = 0;
@@ -1667,7 +1668,7 @@ export function append_exit (builder: WasmBuilder, ip: MintOpcodePtr, opcodeCoun
 
 export function copyIntoScratchBuffer (src: NativePointer, size: number): NativePointer {
     if (!scratchBuffer)
-        scratchBuffer = Module._malloc(64);
+        scratchBuffer = malloc(64);
     if (size > 64)
         throw new Error("Scratch buffer size is 64");
 
@@ -2108,7 +2109,7 @@ function updateOptions () {
     optionTable = <any>{};
     for (const k in optionNames) {
         const value = cwraps.mono_jiterp_get_option_as_int(optionNames[k]);
-        if (value > -2147483647)
+        if (value !== INT32_MIN)
             (<any>optionTable)[k] = value;
         else
             mono_log_info(`Failed to retrieve value of option ${optionNames[k]}`);

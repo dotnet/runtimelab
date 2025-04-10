@@ -116,9 +116,6 @@ namespace Internal.JitInterface
 
         CORINFO_HELP_MON_ENTER,
         CORINFO_HELP_MON_EXIT,
-        CORINFO_HELP_MON_ENTER_STATIC,
-        CORINFO_HELP_MON_EXIT_STATIC,
-
         CORINFO_HELP_GETCLASSFROMMETHODPARAM, // Given a generics method handle, returns a class handle
         CORINFO_HELP_GETSYNCFROMCLASSHANDLE,  // Given a generics class handle, returns the sync monitor
                                               // in its ManagedClassObject
@@ -128,7 +125,6 @@ namespace Internal.JitInterface
         CORINFO_HELP_STOP_FOR_GC,       // Call GC (force a GC)
         CORINFO_HELP_POLL_GC,           // Ask GC if it wants to collect
 
-        CORINFO_HELP_STRESS_GC,         // Force a GC, but then update the JITTED code to be a noop call
         CORINFO_HELP_CHECK_OBJ,         // confirm that ECX is a valid object pointer (debugging only)
 
         /* GC Write barrier support */
@@ -175,6 +171,7 @@ namespace Internal.JitInterface
         CORINFO_HELP_GETDYNAMIC_GCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED,
         CORINFO_HELP_GETDYNAMIC_NONGCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED,
         CORINFO_HELP_GETDYNAMIC_NONGCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED2,
+        CORINFO_HELP_GETDYNAMIC_NONGCTHREADSTATIC_BASE_NOCTOR_OPTIMIZED2_NOJITOPT,
         /* Debugger */
 
         CORINFO_HELP_DBG_IS_JUST_MY_CODE,    // Check if this is "JustMyCode" and needs to be stepped through.
@@ -296,6 +293,7 @@ namespace Internal.JitInterface
         CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION,
         CORINFO_HELP_LLVM_RESOLVE_INTERFACE_CALL_TARGET,
         CORINFO_HELP_LLVM_GET_EXTERNAL_CALL_TARGET,
+        CORINFO_HELP_LLVM_STRESS_GC,
 
         CORINFO_HELP_COUNT,
     }

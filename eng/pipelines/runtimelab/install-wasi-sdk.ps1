@@ -3,7 +3,7 @@ param(
     [switch]$CI
 )
 
-$WasiSdkVersion = 24
+$WasiSdkVersion = 25
 Set-Location -Path $InstallDir
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
@@ -12,7 +12,7 @@ $ProgressPreference = "SilentlyContinue"
 $UpstreamWasiSdkVersion = Get-Content $PSScriptRoot/../../../src/mono/wasi/wasi-sdk-version.txt
 if ($WasiSdkVersion -lt [int]$UpstreamWasiSdkVersion)
 {
-    Write-Error "Upstream WASI SDK version is $UpstreamWasiSdkVersion; update `$WasiSdlVersion (currently $WasiSdkVersion)!"
+    Write-Error "Upstream WASI SDK version is $UpstreamWasiSdkVersion; update `$WasiSdkVersion (currently $WasiSdkVersion)!"
     exit
 }
 
@@ -33,7 +33,7 @@ tar -xzf $WasiSdkGzFile
 mv $WasiSdkDirName wasi-sdk
 
 # The upstream build expects this sentinel to exist, otherwise it tries to use a provisioned SDK.
-$WasiSdkVersion > wasi-sdk/"VERSION$("$WasiSdkVersion".ToUpper())"
+$WasiSdkVersion > wasi-sdk/"WASI-SDK-VERSION-$WasiSdkVersion.0"
 
 if ($CI)
 {

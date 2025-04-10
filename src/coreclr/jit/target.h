@@ -114,11 +114,17 @@ inline bool compUnixX86Abi()
 //                       be assigned during register allocation.
 //    REG_NA           - Used to indicate that a register is either not yet assigned or not required.
 //
-#if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
+#if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
 enum _regNumber_enum : unsigned
 {
+#if defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
+// LA64 and RV64 don't require JITREG_ workaround for Android (see register.h)
 #define REGDEF(name, rnum, mask, sname) REG_##name = rnum,
 #define REGALIAS(alias, realname)       REG_##alias = REG_##realname,
+#else
+#define REGDEF(name, rnum, mask, sname) JITREG_##name = rnum,
+#define REGALIAS(alias, realname)       JITREG_##alias = JITREG_##realname,
+#endif
 #include "register.h"
 
     REG_COUNT,
@@ -138,8 +144,8 @@ enum _regMask_enum : uint64_t
 
 enum _regNumber_enum : unsigned
 {
-#define REGDEF(name, rnum, mask, xname, wname) REG_##name = rnum,
-#define REGALIAS(alias, realname)              REG_##alias = REG_##realname,
+#define REGDEF(name, rnum, mask, xname, wname) JITREG_##name = rnum,
+#define REGALIAS(alias, realname)              JITREG_##alias = JITREG_##realname,
 #include "register.h"
 
     REG_COUNT,
@@ -159,8 +165,8 @@ enum _regMask_enum : uint64_t
 
 enum _regNumber_enum : unsigned
 {
-#define REGDEF(name, rnum, mask, sname) REG_##name = rnum,
-#define REGALIAS(alias, realname)       REG_##alias = REG_##realname,
+#define REGDEF(name, rnum, mask, sname) JITREG_##name = rnum,
+#define REGALIAS(alias, realname)       JITREG_##alias = JITREG_##realname,
 #include "register.h"
 
     REG_COUNT,
@@ -181,8 +187,8 @@ enum _regMask_enum : uint64_t
 
 enum _regNumber_enum : unsigned
 {
-#define REGDEF(name, rnum, mask, sname) REG_##name = rnum,
-#define REGALIAS(alias, realname)       REG_##alias = REG_##realname,
+#define REGDEF(name, rnum, mask, sname) JITREG_##name = rnum,
+#define REGALIAS(alias, realname)       JITREG_##alias = JITREG_##realname,
 #include "register.h"
 
     REG_COUNT,
@@ -262,7 +268,7 @@ public:
     void RemoveRegNumFromMask(regNumber reg, var_types type);
     bool IsRegNumInMask(regNumber reg, var_types type) const;
 #endif
-    void                       AddGprRegs(SingleTypeRegSet gprRegs);
+    void                       AddGprRegs(SingleTypeRegSet gprRegs DEBUG_ARG(regMaskTP availableIntRegs));
     void                       AddRegNum(regNumber reg, var_types type);
     void                       AddRegNumInMask(regNumber reg);
     void                       AddRegsetForType(SingleTypeRegSet regsToAdd, var_types type);
@@ -1158,15 +1164,25 @@ inline bool isFloatRegType(var_types type)
 #endif
 
 #if !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
+// RBM_ALLINT is not known at compile time on TARGET_AMD64 since it's dependent on APX support.
+// Check should still be functional minus eGPR registers
 /*****************************************************************************/
 // Some sanity checks on some of the register masks
 // Stack pointer is never part of RBM_ALLINT
+#if defined(TARGET_AMD64)
+C_ASSERT((RBM_ALLINT_ALL & RBM_SPBASE) == RBM_NONE);
+#else
 C_ASSERT((RBM_ALLINT & RBM_SPBASE) == RBM_NONE);
+#endif
 C_ASSERT((RBM_INT_CALLEE_SAVED & RBM_SPBASE) == RBM_NONE);
 
 #if ETW_EBP_FRAMED
 // Frame pointer isn't either if we're supporting ETW frame chaining
+#if defined(TARGET_AMD64)
+C_ASSERT((RBM_ALLINT_ALL & RBM_FPBASE) == RBM_NONE);
+#else
 C_ASSERT((RBM_ALLINT & RBM_FPBASE) == RBM_NONE);
+#endif
 C_ASSERT((RBM_INT_CALLEE_SAVED & RBM_FPBASE) == RBM_NONE);
 #endif
 /*****************************************************************************/

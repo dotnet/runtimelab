@@ -27,7 +27,7 @@ Abstract:
 #include <sys/mount.h>
 #elif defined(TARGET_WASI)
 #include "../wasm/wasi.h"
-#else
+#elif !defined(__HAIKU__)
 #include <sys/vfs.h>
 #endif
 #include <errno.h>

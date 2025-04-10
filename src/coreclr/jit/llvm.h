@@ -327,7 +327,7 @@ private:
 
     // Shared between unwind index insertion and EH codegen.
     ArrayStack<unsigned>* m_unwindIndexMap = nullptr;
-    BlockSet m_blocksInFilters = BlockSetOps::UninitVal();
+    BitVec m_blocksInFilters = BitVecOps::UninitVal();
 
     // Shared between LSSA and codegen.
     bool m_anyAddressExposedOrPinnedShadowLocals = false;

@@ -89,7 +89,7 @@ namespace ILCompiler.ObjectWriter
                 int symbolIndex = AddSymbol(definedSymbol, isDefinition: true);
                 definedSymbolIndices.Add(symbolIndex);
 
-                if (_compilation.NodeFactory.GetSymbolAlternateName(definedSymbol) is string alternateName)
+                if (_compilation.NodeFactory.GetSymbolAlternateName(definedSymbol, out _) is string alternateName)
                 {
                     symbolIndex = AddSymbol(definedSymbol, isDefinition: true, alternateName);
                     definedSymbolIndices.Add(symbolIndex);

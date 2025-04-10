@@ -14,7 +14,7 @@ import { marshal_int32_to_js, end_marshal_task_to_js, marshal_string_to_js, begi
 import { do_not_force_dispose, is_gcv_handle } from "./gc-handles";
 import { assert_c_interop, assert_js_interop } from "./invoke-js";
 import { monoThreadInfo, mono_wasm_main_thread_ptr } from "./pthreads";
-import { _zero_region, copyBytes } from "./memory";
+import { _zero_region, copyBytes, malloc } from "./memory";
 import { stringToUTF8Ptr } from "./strings";
 import { mono_log_error } from "./logging";
 
@@ -287,7 +287,7 @@ function invoke_async_jsexport_mono (managedTID: PThreadPtr, method: MonoMethod,
     } else {
         set_receiver_should_free(args);
         const bytes = JavaScriptMarshalerArgSize * size;
-        const cpy = Module._malloc(bytes) as any;
+        const cpy = malloc(bytes) as any;
         copyBytes(args as any, cpy, bytes);
         twraps.mono_wasm_invoke_jsexport_async_post(managedTID, method, cpy);
     }

@@ -26,6 +26,8 @@
     <_targetPackageName>runtime.$(_originalTargetOS)-$(_targetArchitecture).Microsoft.DotNet.ILCompiler</_targetPackageName>
     <_targetPackageName Condition="'$(_targetsNonPortableSdkRid)' == 'true'">runtime.$(RuntimeIdentifier).Microsoft.DotNet.ILCompiler</_targetPackageName>
     <_targetPackageName Condition="'$(_targetArchitecture)' == 'wasm'">$(_targetPackageName).LLVM</_targetPackageName>
+    <_targetRuntimePackName>Microsoft.NETCore.App.Runtime.NativeAOT.$(_originalTargetOS)-$(_targetArchitecture)</_targetRuntimePackName>
+    <_targetRuntimePackName Condition="'$(_targetsNonPortableSdkRid)' == 'true'">Microsoft.NETCore.App.Runtime.NativeAOT.$(RuntimeIdentifier)</_targetRuntimePackName>
 
     <!-- Treat linux-musl and linux-bionic etc. as linux -->
     <_targetOS>$(_originalTargetOS)</_targetOS>
@@ -68,8 +70,10 @@
 
     <PropertyGroup>
       <IlcHostPackagePath Condition="'@(ResolvedILCompilerPack)' == '$(_hostPackageName)'">@(ResolvedILCompilerPack->'%(PackageDirectory)')</IlcHostPackagePath>
-      <RuntimePackagePath Condition="'@(ResolvedTargetILCompilerPack)' == '$(_targetPackageName)'">@(ResolvedTargetILCompilerPack->'%(PackageDirectory)')</RuntimePackagePath>
       <RuntimePackagePath Condition="'@(ResolvedTargetILCompilerPack)' == ''">@(ResolvedILCompilerPack->'%(PackageDirectory)')</RuntimePackagePath>
+      <RuntimePackagePath Condition="'@(ResolvedTargetILCompilerPack)' != ''">@(ResolvedTargetILCompilerPack->'%(PackageDirectory)')</RuntimePackagePath>
+      <IlcUseNativeAOTRuntimePackLayout Condition="'@(ResolvedTargetILCompilerPack)' == '$(_targetRuntimePackName)'">true</IlcUseNativeAOTRuntimePackLayout>
+      <IlcUseNativeAOTRuntimePackLayout Condition="'$(IlcUseNativeAOTRuntimePackLayout)' == ''">$(PublishAotUsingRuntimePack)</IlcUseNativeAOTRuntimePackLayout>
     </PropertyGroup>
 
   </Target>
