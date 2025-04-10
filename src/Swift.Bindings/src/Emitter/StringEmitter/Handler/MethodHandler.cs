@@ -196,7 +196,7 @@ namespace BindingsGeneration
             return parameter switch
             {
                 { Type: "SafeHandle" } => $"{parameter.Name}.Payload",
-                { Type: var type } when type.EndsWith(".Buffer") => $"{parameter.Name}Buffer",
+                { Type: var type } when type.EndsWith(".Buffer") => $"{parameter.Name}Disposable.Buffer",
                 { Type: "AsyncCallback" } => $"{parameter.Name}",
                 { Type: "AsyncContext" } => "null",
                 { Type: "AsyncTask" } => $"GCHandle.ToIntPtr({parameter.Name})",
@@ -831,7 +831,8 @@ namespace BindingsGeneration
                 if (_env.BoundGenericsHandler.RequiresBoundGenericMarshalling(argumentDecl))
                 {
                     var bufferName = NameProvider.GetBoundGenericBufferName(argumentDecl.Name);
-                    csWriter.WriteLine($"using PayloadBuffer {argumentDecl.Name}Disposable = {argumentDecl.Name}.GetPayloadBuffer(out IntPtr {bufferName});");
+                    csWriter.WriteLine($"using PayloadBuffer<IntPtr> {argumentDecl.Name}Disposable = {argumentDecl.Name}.PayloadBuffer;");
+                    csWriter.WriteLine($"IntPtr {bufferName} = {argumentDecl.Name}Disposable.Buffer;");
                 }
             }
         }
@@ -862,7 +863,7 @@ namespace BindingsGeneration
                 TypeRecord typeRecord = _env.TypeDatabase.GetTypeRecordOrThrow(argumentDecl.SwiftTypeSpec);
                 if (MarshallingHelpers.IsFrozenStructProjectedAsClass(typeRecord))
                 {
-                    csWriter.WriteLine($"using PayloadBuffer {argumentDecl.Name}Disposable = {argumentDecl.Name}.GetPayloadBuffer(out {typeRecord.CSharpTypeName}.Buffer {argumentDecl.Name}Buffer);");
+                    csWriter.WriteLine($"using PayloadBuffer<{typeRecord.CSharpTypeName}.Buffer> {argumentDecl.Name}Disposable = {argumentDecl.Name}.PayloadBuffer;");
                 }
             }
         }

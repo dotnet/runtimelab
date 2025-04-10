@@ -151,14 +151,7 @@ namespace BindingsGeneration
                 csWriter.Indent -= 2;
                 csWriter.WriteLine("}");
                 csWriter.WriteLine();
-                csWriter.WriteLine($$"""
-                public unsafe PayloadBuffer GetPayloadBuffer(out {{structDecl.Name}}.Buffer payloadBuffer)
-                {
-                    PayloadBuffer disposable = new PayloadBuffer(_payload);
-                    payloadBuffer = *({{structDecl.Name}}.Buffer*)_payload.DangerousGetHandle();
-                    return disposable;
-                }
-                """);
+                csWriter.WriteLine($"public unsafe PayloadBuffer<{structDecl.Name}.Buffer> PayloadBuffer => new PayloadBuffer<{structDecl.Name}.Buffer>(_payload);");
                 csWriter.WriteLine();
             }
 

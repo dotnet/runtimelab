@@ -30,12 +30,7 @@ public class SwiftSet<Element> : ISwiftObject
 
     public SwiftSafeHandle<SwiftSet<Element>> Payload => _payload;
 
-    public unsafe PayloadBuffer GetPayloadBuffer(out IntPtr payloadBuffer)
-    {
-        PayloadBuffer disposable = new PayloadBuffer(_payload);
-        payloadBuffer = *(IntPtr*)_payload.DangerousGetHandle();
-        return disposable;
-    }
+    public unsafe PayloadBuffer<IntPtr> PayloadBuffer => new PayloadBuffer<IntPtr>(_payload);
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -136,9 +131,9 @@ public class SwiftSet<Element> : ISwiftObject
     {
         get
         {
-            using PayloadBuffer _ = GetPayloadBuffer(out IntPtr payloadBuffer);
+            using PayloadBuffer<IntPtr> disposable = PayloadBuffer;
             var witnessTable = ProtocolWitnessTable.GetOrThrow<Element, ISwiftHashable>();
-            int result = (int)SwiftSetPInvokes.Count(payloadBuffer, ElementTypeMetadata, witnessTable);
+            int result = (int)SwiftSetPInvokes.Count(disposable.Buffer, ElementTypeMetadata, witnessTable);
             return result;
         }
     }

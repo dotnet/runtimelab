@@ -39,12 +39,7 @@ public class SwiftString : ISwiftObject
         _protocolConformanceSymbols = new Dictionary<Type, string> { };
     }
 
-    public unsafe PayloadBuffer GetPayloadBuffer(out SwiftString.Buffer payloadBuffer)
-    {
-        PayloadBuffer disposable = new PayloadBuffer(_payload);
-        payloadBuffer = *(SwiftString.Buffer*)_payload.DangerousGetHandle();
-        return disposable;
-    }
+    public unsafe PayloadBuffer<SwiftString.Buffer> PayloadBuffer => new PayloadBuffer<SwiftString.Buffer>(_payload);
 
     static TypeMetadata ISwiftObject.GetTypeMetadata()
     {
@@ -134,8 +129,8 @@ public class SwiftString : ISwiftObject
     {
         get
         {
-            using PayloadBuffer _ = GetPayloadBuffer(out SwiftString.Buffer payloadBuffer);
-            return (int)PInvoke_GetLength(payloadBuffer);
+            using PayloadBuffer<SwiftString.Buffer> disposable = PayloadBuffer;
+            return (int)PInvoke_GetLength(disposable.Buffer);
         }
     }
 
@@ -147,12 +142,12 @@ public class SwiftString : ISwiftObject
         var elementType = TypeMetadata.GetTypeMetadataOrThrow<byte>();
         var resultType = TypeMetadata.GetTypeMetadataOrThrow<long>();
 
-        using PayloadBuffer _ = GetPayloadBuffer(out SwiftString.Buffer payloadBuffer);
+        using PayloadBuffer<SwiftString.Buffer> disposable = PayloadBuffer;
         var length = Length;
         if (length <= 0)
             return string.Empty;
 
-        var contiguousArray = PInvoke_GetUtf8ContiguousArray(payloadBuffer);
+        var contiguousArray = PInvoke_GetUtf8ContiguousArray(disposable.Buffer);
 
 #pragma warning disable CS8500
         unsafe

@@ -32,12 +32,7 @@ public class SwiftArray<Element> : ISwiftObject
 
     public SwiftSafeHandle<SwiftArray<Element>> Payload => _payload;
 
-    public unsafe PayloadBuffer GetPayloadBuffer(out IntPtr payloadBuffer)
-    {
-        PayloadBuffer disposable = new PayloadBuffer(_payload);
-        payloadBuffer = *(IntPtr*)_payload.DangerousGetHandle();
-        return disposable;
-    }
+    public unsafe PayloadBuffer<IntPtr> PayloadBuffer => new PayloadBuffer<IntPtr>(_payload);
 
     private static Dictionary<Type, string> _protocolConformanceSymbols;
 
@@ -135,8 +130,8 @@ public class SwiftArray<Element> : ISwiftObject
     {
         get
         {
-            using PayloadBuffer _ = GetPayloadBuffer(out IntPtr payloadBuffer);
-            int result = (int)SwiftArrayPInvokes.Count(payloadBuffer, ElementTypeMetadata);
+            using PayloadBuffer<IntPtr> disposable = PayloadBuffer;
+            int result = (int)SwiftArrayPInvokes.Count(disposable.Buffer, ElementTypeMetadata);
             return result;
         }
     }
@@ -231,14 +226,14 @@ public class SwiftArray<Element> : ISwiftObject
     {
         get
         {
-            using PayloadBuffer _ = GetPayloadBuffer(out IntPtr payloadBuffer);
+            using PayloadBuffer<IntPtr> disposable = PayloadBuffer;
             void* payload = NativeMemory.Alloc(_elementSize);
-            SwiftArrayPInvokes.Get(new SwiftIndirectResult(payload), index, payloadBuffer, ElementTypeMetadata);
+            SwiftArrayPInvokes.Get(new SwiftIndirectResult(payload), index, disposable.Buffer, ElementTypeMetadata);
             return SwiftMarshal.MarshalFromSwift<Element>((IntPtr)payload);
         }
         set
         {
-            using PayloadBuffer _ = GetPayloadBuffer(out IntPtr _);
+            using PayloadBuffer<IntPtr> _ = PayloadBuffer;
             var metadata = SwiftObjectHelper<SwiftArray<Element>>.GetTypeMetadata();
             Span<byte> span = stackalloc byte[(int)_elementSize];
             IntPtr payload = (IntPtr)Unsafe.AsPointer(ref MemoryMarshal.GetReference(span));

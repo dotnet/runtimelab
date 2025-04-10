@@ -85,27 +85,26 @@ public sealed class SwiftSafeHandle<T> : SafeHandleZeroOrMinusOneIsInvalid where
 /// <summary>
 /// Represents a buffer for a Swift object used for lowering.
 /// </summary>
-public ref struct PayloadBuffer : IDisposable
+public unsafe ref struct PayloadBuffer<T> : IDisposable where T : unmanaged
 {
     private readonly SafeHandle _payload;
-    private bool _disposed;
-    private bool _success;
+
+    private bool _shouldDispose;
+
+    public T Buffer => *(T*)_payload.DangerousGetHandle();
 
     public PayloadBuffer(SafeHandle payload)
     {
         _payload = payload;
-        _payload.DangerousAddRef(ref _success);
+        _payload.DangerousAddRef(ref _shouldDispose);
     }
 
     public void Dispose()
     {
-        if (!_disposed)
+        if (_shouldDispose)
         {
-            if (_success)
-            {
-                _payload.DangerousRelease();
-            }
-            _disposed = true;
+            _payload.DangerousRelease();
+            _shouldDispose = false;
         }
     }
 }
