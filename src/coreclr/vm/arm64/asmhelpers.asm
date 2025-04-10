@@ -1166,22 +1166,11 @@ __HelperNakedFuncName SETS "$helper":CC:"Naked"
     NESTED_END
 
     // first arg register holds iloffset, which needs to be moved to the second register, and the first register filled with NULL
-    LEAF_ENTRY JIT_PartialCompilationPatchpoint
+    LEAF_ENTRY JIT_PatchpointForced
         mov x1, x0
         mov x0, #0
         b JIT_Patchpoint
     LEAF_END
-
-    IMPORT JIT_ResumeOSRWorker
-
-    NESTED_ENTRY JIT_ResumeOSR
-        PROLOG_WITH_TRANSITION_BLOCK
-
-        add     x0, sp, #__PWTB_TransitionBlock ; TransitionBlock *
-        bl      JIT_ResumeOSRWorker
-
-        EPILOG_WITH_TRANSITION_BLOCK_RETURN
-    NESTED_END
 
 #endif ; FEATURE_TIERED_COMPILATION
 

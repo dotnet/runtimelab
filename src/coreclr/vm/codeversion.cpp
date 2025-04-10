@@ -169,7 +169,7 @@ void NativeCodeVersionNode::SetOptimizationTier(NativeCodeVersion::OptimizationT
 
 #ifdef FEATURE_ON_STACK_REPLACEMENT
 
-PatchpointInfo* NativeCodeVersionNode::GetOSRInfo(unsigned * ilOffset) const
+PatchpointInfo* NativeCodeVersionNode::GetOSRInfo(unsigned * ilOffset)
 {
     LIMITED_METHOD_DAC_CONTRACT;
     *ilOffset = m_ilOffset;
@@ -381,7 +381,7 @@ void NativeCodeVersion::SetOptimizationTier(OptimizationTier tier)
 
 #ifdef FEATURE_ON_STACK_REPLACEMENT
 
-PatchpointInfo * NativeCodeVersion::GetOSRInfo(unsigned * ilOffset) const
+PatchpointInfo * NativeCodeVersion::GetOSRInfo(unsigned * ilOffset)
 {
     LIMITED_METHOD_DAC_CONTRACT;
     if (m_storageKind == StorageKind::Explicit)
