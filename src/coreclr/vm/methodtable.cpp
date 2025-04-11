@@ -7814,7 +7814,7 @@ MethodDesc* MethodTable::GetParallelMethodDesc(MethodDesc* pDefMD, AsyncVariantL
         // This could be optimized with some trickery around slot numbers, but doing so is ... confusing, so I'm not implementing this yet
         mdMethodDef tkMethod = pDefMD->GetMemberDef();
         Module* mod = pDefMD->GetModule();
-        bool isAsync2VariantMethod = pDefMD->IsAsyncVariantMethod();
+        bool isAsyncVariantMethod = pDefMD->IsAsyncVariantMethod();
 
         MethodTable::IntroducedMethodIterator it(this);
         for (; it.IsValid(); it.Next())
@@ -7822,7 +7822,7 @@ MethodDesc* MethodTable::GetParallelMethodDesc(MethodDesc* pDefMD, AsyncVariantL
             MethodDesc* pMD = it.GetMethodDesc();
             if (pMD->GetMemberDef() == tkMethod
                 && pMD->GetModule() == mod
-                && pMD->IsAsyncVariantMethod() != isAsync2VariantMethod)
+                && pMD->IsAsyncVariantMethod() != isAsyncVariantMethod)
             {
                 return pMD;
             }

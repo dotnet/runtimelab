@@ -2780,7 +2780,8 @@ AsyncMethodSignatureKind ClassifyAsyncMethodSignatureCore(SigPointer sig, Module
 
     // Now we should be parsing the return type
 
-    // If the first custommodifier is a MOD_REQ to CallConvAsync2Call
+    // TODO: (async) this is always runtime-provided now. Perhaps we can avoid parsing modreq'd variant?
+    // If the first custom modifier is a MOD_REQ to Task/Task`1/ValueTask/ValueTask`1
     // Then this is a Async signature
     CorElementType elemType;
     if (offsetOfAsyncDetails != NULL)
@@ -5603,7 +5604,7 @@ MethodTableBuilder::InitNewMethodDesc(
 #endif // _DEBUG
 
     Signature sig;
-    if (pMethod->IsAsync2Variant())
+    if (pMethod->IsAsyncVariant())
     {
         // async variants do not get the default signature from metadata
         sig = pMethod->GetMethodSignature().GetSignatureClass();
@@ -6027,7 +6028,7 @@ MethodTableBuilder::ProcessInexactMethodImpls()
             continue;
         }
 
-        AsyncVariantLookup asyncVariantOfDeclToFind = !it->IsAsync2Variant() ?
+        AsyncVariantLookup asyncVariantOfDeclToFind = !it->IsAsyncVariant() ?
             AsyncVariantLookup::MatchingAsyncVariant :
             AsyncVariantLookup::AsyncOtherVariant;
 
@@ -6172,7 +6173,7 @@ MethodTableBuilder::ProcessMethodImpls()
             continue;
         }
 
-        AsyncVariantLookup asyncVariantOfDeclToFind = !it->IsAsync2Variant() ?
+        AsyncVariantLookup asyncVariantOfDeclToFind = !it->IsAsyncVariant() ?
             AsyncVariantLookup::MatchingAsyncVariant :
             AsyncVariantLookup::AsyncOtherVariant;
 

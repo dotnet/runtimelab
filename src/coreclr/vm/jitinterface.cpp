@@ -3235,7 +3235,7 @@ NoSpecialCase:
             }
             if (pTemplateMD->IsAsyncVariantMethod())
             {
-                methodFlags |= ENCODE_METHOD_SIG_Async2Variant;
+                methodFlags |= ENCODE_METHOD_SIG_AsyncVariant;
             }
 
             sigBuilder.AppendData(methodFlags);

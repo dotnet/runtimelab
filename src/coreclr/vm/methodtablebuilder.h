@@ -1060,7 +1060,7 @@ private:
         GetRVA() const
             { LIMITED_METHOD_CONTRACT; return m_dwRVA; }
 
-        bool IsAsync2Variant() const
+        bool IsAsyncVariant() const
         {
             return GetAsyncMethodKind() == AsyncMethodKind::AsyncVariantThunk ||
                 GetAsyncMethodKind() == AsyncMethodKind::AsyncVariantImpl;
