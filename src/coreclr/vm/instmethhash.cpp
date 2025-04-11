@@ -161,7 +161,7 @@ MethodDesc* InstMethodHashTable::FindMethodDesc(TypeHandle declaringType,
             continue;  // Next iteration of the for loop
         }
 
-        if (pMD->IsAsync2VariantMethod() != isAsync2Variant)
+        if (pMD->IsAsyncVariantMethod() != isAsync2Variant)
         {
             continue;
         }
@@ -208,7 +208,7 @@ BOOL InstMethodHashTable::ContainsMethodDesc(MethodDesc* pMD)
 
     return FindMethodDesc(
         pMD->GetMethodTable(), pMD->GetMemberDef(), pMD->IsUnboxingStub(),
-        pMD->GetMethodInstantiation(), pMD->RequiresInstArg(), pMD->IsAsync2VariantMethod()) != NULL;
+        pMD->GetMethodInstantiation(), pMD->RequiresInstArg(), pMD->IsAsyncVariantMethod()) != NULL;
 }
 
 #endif // #ifndef DACCESS_COMPILE

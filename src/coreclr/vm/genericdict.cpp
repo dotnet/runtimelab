@@ -1077,7 +1077,7 @@ Dictionary::PopulateEntry(
                 break;
             }
 
-            _ASSERTE((!!isAsync2Variant) == pMethod->IsAsync2VariantMethod());
+            _ASSERTE((!!isAsync2Variant) == pMethod->IsAsyncVariantMethod());
 
             Instantiation inst;
 
@@ -1123,7 +1123,7 @@ Dictionary::PopulateEntry(
                 inst,
                 (!isInstantiatingStub && !isUnboxingStub));
 
-            _ASSERTE((!!isAsync2Variant) == pMethod->IsAsync2VariantMethod());
+            _ASSERTE((!!isAsync2Variant) == pMethod->IsAsyncVariantMethod());
 
             if (kind == ConstrainedMethodEntrySlot)
             {

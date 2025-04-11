@@ -246,7 +246,7 @@ static MethodDesc * FindTightlyBoundWrappedMethodDesc_DEBUG(MethodDesc * pMD)
 
     mdMethodDef methodDef = pMD->GetMemberDef();
     Module *pModule = pMD->GetModule();
-    bool isAsync2VariantMethod = pMD->IsAsync2VariantMethod();
+    bool isAsync2VariantMethod = pMD->IsAsyncVariantMethod();
 
     MethodTable::MethodIterator it(pMD->GetCanonicalMethodTable());
     it.MoveToEnd();
@@ -258,7 +258,7 @@ static MethodDesc * FindTightlyBoundWrappedMethodDesc_DEBUG(MethodDesc * pMD)
             if (pCurMethod && !pCurMethod->IsUnboxingStub()) {
                 if ((pCurMethod->GetMemberDef() == methodDef)  &&
                     (pCurMethod->GetModule() == pModule) &&
-                    (pCurMethod->IsAsync2VariantMethod() == isAsync2VariantMethod))
+                    (pCurMethod->IsAsyncVariantMethod() == isAsync2VariantMethod))
                 {
                     return pCurMethod;
                 }
@@ -286,7 +286,7 @@ static MethodDesc * FindTightlyBoundUnboxingStub_DEBUG(MethodDesc * pMD)
 
     mdMethodDef methodDef = pMD->GetMemberDef();
     Module *pModule = pMD->GetModule();
-    bool isAsync2VariantMethod = pMD->IsAsync2VariantMethod();
+    bool isAsync2VariantMethod = pMD->IsAsyncVariantMethod();
 
     MethodTable::MethodIterator it(pMD->GetCanonicalMethodTable());
     it.MoveToEnd();
@@ -296,7 +296,7 @@ static MethodDesc * FindTightlyBoundUnboxingStub_DEBUG(MethodDesc * pMD)
             if (pCurMethod && pCurMethod->IsUnboxingStub()) {
                 if ((pCurMethod->GetMemberDef() == methodDef) &&
                     (pCurMethod->GetModule() == pModule) &&
-                    (pCurMethod->IsAsync2VariantMethod() == isAsync2VariantMethod)) {
+                    (pCurMethod->IsAsyncVariantMethod() == isAsync2VariantMethod)) {
                     return pCurMethod;
                 }
             }
@@ -363,7 +363,7 @@ InstantiatedMethodDesc::NewInstantiatedMethodDesc(MethodTable *pExactMT,
                                                   pGenericMDescInRepMT->GetMemberDef(),
                                                   methodInst,
                                                   getWrappedCode,
-                                                  pGenericMDescInRepMT->IsAsync2VariantMethod());
+                                                  pGenericMDescInRepMT->IsAsyncVariantMethod());
 
         // Crst goes out of scope here
         // We don't need to hold the crst while we build the MethodDesc, but we reacquire it later
@@ -484,7 +484,7 @@ InstantiatedMethodDesc::NewInstantiatedMethodDesc(MethodTable *pExactMT,
                                                       pGenericMDescInRepMT->GetMemberDef(),
                                                       methodInst,
                                                       getWrappedCode,
-                                                      pGenericMDescInRepMT->IsAsync2VariantMethod());
+                                                      pGenericMDescInRepMT->IsAsyncVariantMethod());
 
             if (pOldMD == NULL)
             {
@@ -559,7 +559,7 @@ InstantiatedMethodDesc::FindOrCreateExactClassMethod(MethodTable *pExactMT,
                                                                        pCanonicalMD->GetMemberDef(),
                                                                        Instantiation(),
                                                                        FALSE,
-                                                                       pCanonicalMD->IsAsync2VariantMethod());
+                                                                       pCanonicalMD->IsAsyncVariantMethod());
 
     if (pInstMD == NULL)
     {
@@ -895,7 +895,7 @@ MethodDesc::FindOrCreateAssociatedMethodDesc(MethodDesc* pDefMD,
                                                TRUE /* forceBoxedEntryPoint */,
                                                Instantiation(),
                                                FALSE /* no inst param */,
-                                               pMDescInCanonMT->IsAsync2VariantMethod());
+                                               pMDescInCanonMT->IsAsyncVariantMethod());
 
             // If we didn't find it then create it...
             if (!pResultMD)
@@ -914,7 +914,7 @@ MethodDesc::FindOrCreateAssociatedMethodDesc(MethodDesc* pDefMD,
                                                    TRUE,
                                                    Instantiation(),
                                                    FALSE,
-                                                   pMDescInCanonMT->IsAsync2VariantMethod());
+                                                   pMDescInCanonMT->IsAsyncVariantMethod());
                 if (pResultMD == NULL)
                 {
                     AllocMemTracker amt;
@@ -961,7 +961,7 @@ MethodDesc::FindOrCreateAssociatedMethodDesc(MethodDesc* pDefMD,
                                                TRUE, /* forceBoxedEntryPoint */
                                                methodInst,
                                                FALSE /* no inst param */,
-                                               pMDescInCanonMT->IsAsync2VariantMethod());
+                                               pMDescInCanonMT->IsAsyncVariantMethod());
 
             if (!pResultMD)
             {
@@ -983,7 +983,7 @@ MethodDesc::FindOrCreateAssociatedMethodDesc(MethodDesc* pDefMD,
                 _ASSERTE(pNonUnboxingStub->GetClassification() == mcInstantiated);
                 _ASSERTE(!pNonUnboxingStub->RequiresInstArg());
                 _ASSERTE(!pNonUnboxingStub->IsUnboxingStub());
-                _ASSERTE(pNonUnboxingStub->IsAsync2VariantMethod() == pMDescInCanonMT->IsAsync2VariantMethod());
+                _ASSERTE(pNonUnboxingStub->IsAsyncVariantMethod() == pMDescInCanonMT->IsAsyncVariantMethod());
 
                 // Enter the critical section *after* we've found or created the non-unboxing instantiating stub (else we'd have a race,
                 // and its possible that the non-unboxing instantiating stub may be in a different loader module than pLoaderModule
@@ -996,7 +996,7 @@ MethodDesc::FindOrCreateAssociatedMethodDesc(MethodDesc* pDefMD,
                                                    TRUE, /* forceBoxedEntryPoint */
                                                    methodInst,
                                                    FALSE /* no inst param */,
-                                                   pNonUnboxingStub->IsAsync2VariantMethod());
+                                                   pNonUnboxingStub->IsAsyncVariantMethod());
 
                 if (pResultMD == NULL)
                 {
@@ -1138,7 +1138,7 @@ MethodDesc::FindOrCreateAssociatedMethodDesc(MethodDesc* pDefMD,
                                                                          methodDef,
                                                                          Instantiation(repInst, methodInst.GetNumArgs()),
                                                                          TRUE,
-                                                                         pMDescInCanonMT->IsAsync2VariantMethod());
+                                                                         pMDescInCanonMT->IsAsyncVariantMethod());
 
             // No - so create one.
             if (pInstMD == NULL)
@@ -1163,7 +1163,7 @@ MethodDesc::FindOrCreateAssociatedMethodDesc(MethodDesc* pDefMD,
                                                                          methodDef,
                                                                          methodInst,
                                                                          FALSE,
-                                                                         pMDescInCanonMT->IsAsync2VariantMethod());
+                                                                         pMDescInCanonMT->IsAsyncVariantMethod());
 
             // No - so create one.  Go fetch the shared one first
             if (pInstMD == NULL)
@@ -1204,7 +1204,7 @@ MethodDesc::FindOrCreateAssociatedMethodDesc(MethodDesc* pDefMD,
                                                                          methodDef,
                                                                          methodInst,
                                                                          FALSE,
-                                                                         pMDescInCanonMT->IsAsync2VariantMethod());
+                                                                         pMDescInCanonMT->IsAsyncVariantMethod());
 
             // No - so create one.
             if (pInstMD == NULL)

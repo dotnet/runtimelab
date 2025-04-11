@@ -302,9 +302,9 @@ extern "C" INT32 QCALLTYPE ModuleBuilder_GetMemberRefOfMethodInfo(QCall::ModuleH
         COMPlusThrow(kNotSupportedException);
     }
 
-    if (pMeth->IsAsync2VariantMethod())
+    if (pMeth->IsAsyncVariantMethod())
     {
-        _ASSERTE(!"Should not have come here!");
+        _ASSERTE(!"Async variants should be hidden from reflection.");
         COMPlusThrow(kNotSupportedException);
     }
 

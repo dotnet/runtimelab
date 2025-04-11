@@ -433,7 +433,9 @@ void MethodDesc::GetSig(PCCOR_SIGNATURE *ppSig, DWORD *pcSig)
             return;
         }
     }
-    if (IsAsync2VariantMethod())
+
+    // Async variant methods have alternative signatures that do not match metadata.
+    if (IsAsyncVariantMethod())
     {
         Signature sig = GetAddrOfAsyncMethodData()->sig;
         *ppSig = sig.GetRawSig();
@@ -468,7 +470,7 @@ void MethodDesc::GetSigFromMetadata(IMDInternalImport * importer,
     }
     CONTRACTL_END
 
-    _ASSERTE(!IsAsync2VariantMethod());
+    _ASSERTE(!IsAsyncVariantMethod());
     if (FAILED(importer->GetSigOfMethodDef(GetMemberDef(), pcSig, ppSig)))
     {   // Class loader already asked for signature, so this should always succeed (unless there's a
         // bug or a new code path)
@@ -741,7 +743,7 @@ BOOL MethodDesc::HasSameMethodDefAs(MethodDesc * pMD)
     if (this == pMD)
         return TRUE;
 
-    return (GetMemberDef() == pMD->GetMemberDef()) && (GetModule() == pMD->GetModule() && pMD->IsAsync2VariantMethod() == IsAsync2VariantMethod());
+    return (GetMemberDef() == pMD->GetMemberDef()) && (GetModule() == pMD->GetModule() && pMD->IsAsyncVariantMethod() == IsAsyncVariantMethod());
 }
 
 //*******************************************************************************

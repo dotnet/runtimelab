@@ -514,7 +514,7 @@ static void ConvToJitSig(
         sigRet->retTypeSigClass = CORINFO_CLASS_HANDLE(typeHnd.AsPtr());
 
         auto asyncMethodClassification = ClassifyAsyncMethodSignatureCore(sig, module, NULL, NULL, NULL);
-        if (IsAsyncSigAsync2(asyncMethodClassification))
+        if (IsAsyncSigAsync(asyncMethodClassification))
         {
             sigRet->callConv = (CorInfoCallConv)(sigRet->callConv | CORINFO_CALLCONV_ASYNCCALL);
         }
@@ -3233,7 +3233,7 @@ NoSpecialCase:
 
                 methodFlags |= ENCODE_METHOD_SIG_SlotInsteadOfToken;
             }
-            if (pTemplateMD->IsAsync2VariantMethod())
+            if (pTemplateMD->IsAsyncVariantMethod())
             {
                 methodFlags |= ENCODE_METHOD_SIG_Async2Variant;
             }
@@ -12991,7 +12991,7 @@ static CORJIT_FLAGS GetCompileFlags(PrepareCodeConfig* prepareConfig, MethodDesc
     //
     flags.Add(CEEInfo::GetBaseCompileFlags(ftn));
 
-    if (ftn->IsAsync2Method())
+    if (ftn->IsAsyncMethod())
         flags.Add(CORJIT_FLAGS::CORJIT_FLAG_ASYNC);
 
     //

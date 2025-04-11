@@ -684,7 +684,7 @@ MetaSig::MetaSig(MethodDesc *pMD, Instantiation classInst, Instantiation methodI
 
     if (pMD->RequiresInstArg())
         SetHasParamTypeArg();
-    if (pMD->IsAsync2Method())
+    if (pMD->IsAsyncMethod())
         SetIsAsyncCall();
 }
 
@@ -707,7 +707,7 @@ MetaSig::MetaSig(MethodDesc *pMD, TypeHandle declaringType)
 
     if (pMD->RequiresInstArg())
         SetHasParamTypeArg();
-    if (pMD->IsAsync2Method())
+    if (pMD->IsAsyncMethod())
         SetIsAsyncCall();
 }
 

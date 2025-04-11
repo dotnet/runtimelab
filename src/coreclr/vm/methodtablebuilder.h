@@ -1062,8 +1062,8 @@ private:
 
         bool IsAsync2Variant() const
         {
-            return GetAsyncMethodKind() == AsyncMethodKind::Async2VariantThunk ||
-                GetAsyncMethodKind() == AsyncMethodKind::Async2VariantImpl;
+            return GetAsyncMethodKind() == AsyncMethodKind::AsyncVariantThunk ||
+                GetAsyncMethodKind() == AsyncMethodKind::AsyncVariantImpl;
         }
 
         void SetAsyncMethodKind(AsyncMethodKind kind)

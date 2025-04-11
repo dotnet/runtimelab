@@ -986,10 +986,9 @@ void ComCallMethodDesc::InitNativeInfo()
 
             MethodTable * pMT = pMD->GetMethodTable();
             IMDInternalImport * pInternalImport = pMT->GetMDImport();
-            if (pMD->IsAsync2Method())
-            {
+            if (pMD->IsAsyncMethod())
                 ThrowHR(COR_E_NOTSUPPORTED);
-            }
+
             mdMethodDef md = pMD->GetMemberDef();
 
             ULONG ulCodeRVA;
