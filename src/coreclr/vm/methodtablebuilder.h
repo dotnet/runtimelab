@@ -2686,7 +2686,7 @@ private:
         DWORD               RVA,          // Only needed for NDirect case
         IMDInternalImport * pIMDII,  // Needed for NDirect, EEImpl(Delegate) cases
         LPCSTR              pMethodName, // Only needed for mcEEImpl (Delegate) case
-        Signature           sig, // Only needed for the async thunk (Async2 Thunk) case
+        Signature           sig, // Only needed for the Async thunk case
         AsyncMethodKind      asyncKind
         COMMA_INDEBUG(LPCUTF8             pszDebugMethodName)
         COMMA_INDEBUG(LPCUTF8             pszDebugClassName)

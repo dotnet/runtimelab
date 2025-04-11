@@ -3604,7 +3604,7 @@ MethodTableBuilder::EnumerateClassMethods()
                 if (IsAsyncSigTaskReturning(asyncMethodType))
                 {
                     // ordinary Task-returning method:
-                    //    declare a TaskReturning method and add a helper thunk with Async2 signature
+                    //    declare a TaskReturning method and add a helper thunk with Async signature
                     // 
                     // IsMiAsync Task-returning method:
                     //    declare a RuntimeAsync method and add a helper method with the actual implementation
@@ -6542,7 +6542,7 @@ MethodTableBuilder::InitMethodDesc(
     DWORD               RVA,        // Only needed for NDirect case
     IMDInternalImport * pIMDII,     // Needed for NDirect, EEImpl(Delegate) cases
     LPCSTR              pMethodName, // Only needed for mcEEImpl (Delegate) case
-    Signature           sig, // Only needed for the Async2 Thunk case
+    Signature           sig, // Only needed for the Async thunk case
     AsyncMethodKind     asyncKind
     COMMA_INDEBUG(LPCUTF8 pszDebugMethodName)
     COMMA_INDEBUG(LPCUTF8 pszDebugClassName)

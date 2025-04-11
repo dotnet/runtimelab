@@ -7810,7 +7810,7 @@ MethodDesc* MethodTable::GetParallelMethodDesc(MethodDesc* pDefMD, AsyncVariantL
     }
     else
     {
-        // Slow path for finding the Async2 variant (or not-Async2 variant, if we start from Async2 one)
+        // Slow path for finding the Async variant (or not-Async variant, if we start from Async one)
         // This could be optimized with some trickery around slot numbers, but doing so is ... confusing, so I'm not implementing this yet
         mdMethodDef tkMethod = pDefMD->GetMemberDef();
         Module* mod = pDefMD->GetModule();
