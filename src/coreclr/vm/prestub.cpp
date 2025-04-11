@@ -1347,8 +1347,8 @@ void MethodDesc::EmitTaskReturningThunk(MethodDesc* pAsyncOtherVariant, MetaSig&
     pCode->EmitRET();
 }
 
-// Given an async method, return a SigPointer to the unwrapped result type. For
-// example, for async2 Task<T> Foo<T>() this returns the signature representing
+// Given an async thunk method, return a SigPointer to the unwrapped result type. For
+// example, for Task<T> Foo<T>() this returns the signature representing
 // (MVAR 0). For Task<int>, it returns the signature representing (int).
 SigPointer MethodDesc::GetAsyncThunkResultTypeSig()
 {
@@ -1375,7 +1375,7 @@ SigPointer MethodDesc::GetAsyncThunkResultTypeSig()
     // ParamCount
     IfFailThrow(pSig.GetData(NULL));
 
-    // ReturnType comes now. Skip the modifiers (like async2 modifier).
+    // ReturnType comes now. Skip the modifiers (like modreqs in async signatures).
     IfFailThrow(pSig.SkipCustomModifiers());
 
     CorElementType etype;
@@ -1411,7 +1411,7 @@ SigPointer MethodDesc::GetAsyncThunkResultTypeSig()
 
 // Given a method Foo<T>, return a MethodSpec token for Foo<T> instantiated
 // with the result type from the current async method's return type. For
-// example, if "this" represents async2 Task<List<T>> Foo<T>(), and "md" is
+// example, if "this" represents Task<List<T>> Foo<T>(), and "md" is
 // Task.FromResult<T>, this returns a MethodSpec representing
 // Task.FromResult<List<T>>.
 int MethodDesc::GetTokenForGenericMethodCallWithAsyncReturnType(ILCodeStream* pCode, MethodDesc* md)
@@ -1442,7 +1442,7 @@ int MethodDesc::GetTokenForGenericMethodCallWithAsyncReturnType(ILCodeStream* pC
 
 // Given a method Bar<T>.Foo, return a MethodSpec token for Bar<T>.Foo
 // instantiated with the result type from the current async method's return
-// type. For example, if "this" represents async2 Task<List<T>> Foo<T>(), and
+// type. For example, if "this" represents Task<List<T>> Foo<T>(), and
 // "md" is TaskAwaiter<T>.GetResult(), this returns a MethodSpec representing
 // TaskAwaiter<List<T>>.GetResult().
 int MethodDesc::GetTokenForGenericTypeMethodCallWithAsyncReturnType(ILCodeStream* pCode, MethodDesc* md)

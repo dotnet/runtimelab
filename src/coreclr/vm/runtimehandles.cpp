@@ -191,7 +191,7 @@ FCIMPL1(MethodDesc *, RuntimeTypeHandle::GetFirstIntroducedMethod, ReflectClassB
 
     MethodTable* pMT = typeHandle.AsMethodTable();
     MethodDesc* pMethod = MethodTable::IntroducedMethodIterator::GetFirst(pMT);
-    // do not report async2 variants to reflection.
+    // do not report async variants to reflection.
     while (pMethod && pMethod->IsAsyncVariantMethod())
         pMethod = MethodTable::IntroducedMethodIterator::GetNext(pMethod);
 
@@ -209,7 +209,7 @@ FCIMPL1(void, RuntimeTypeHandle::GetNextIntroducedMethod, MethodDesc ** ppMethod
     CONTRACTL_END;
 
     MethodDesc *pMethod = MethodTable::IntroducedMethodIterator::GetNext(*ppMethod);
-    // do not report async2 variants to reflection.
+    // do not report async variants to reflection.
     while (pMethod && pMethod->IsAsyncVariantMethod())
         pMethod = MethodTable::IntroducedMethodIterator::GetNext(pMethod);
 
@@ -1838,7 +1838,7 @@ FCIMPL2(MethodDesc*, RuntimeMethodHandle::GetStubIfNeededInternal,
 
     TypeHandle instType = refType->GetType();
 
-    // do not report async2 variants to reflection.
+    // do not report async variants to reflection.
     if (pMethod->IsAsyncVariantMethod())
         return NULL;
 
@@ -1868,7 +1868,7 @@ extern "C" MethodDesc* QCALLTYPE RuntimeMethodHandle_GetStubIfNeededSlow(MethodD
 
     if (pMethod->IsAsyncVariantMethod())
     {
-        // do not report async2 variants to reflection.
+        // do not report async variants to reflection.
         pMethod = pMethod->GetAsyncOtherVariant(/*allowInstParam*/ false);
     }
 

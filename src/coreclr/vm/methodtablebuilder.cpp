@@ -2781,7 +2781,7 @@ AsyncMethodSignatureKind ClassifyAsyncMethodSignatureCore(SigPointer sig, Module
     // Now we should be parsing the return type
 
     // If the first custommodifier is a MOD_REQ to CallConvAsync2Call
-    // Then this is a async2 function
+    // Then this is a Async signature
     CorElementType elemType;
     if (offsetOfAsyncDetails != NULL)
         *offsetOfAsyncDetails = (ULONG)(sig.GetPtr() - initialSig);
@@ -6363,7 +6363,7 @@ MethodTableBuilder::ProcessMethodImpls()
                             {
                                 // when implementing/overriding, we may see a Task-returning method
                                 // which matches a T-returning method in the interface/base, which would not have variants.
-                                // in such case the async2 variant of the Task-returning method does not implement/override anything.
+                                // in such case the async variant of the Task-returning method does not implement/override anything.
                                 continue;
                             }
 
