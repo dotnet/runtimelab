@@ -514,7 +514,7 @@ static void ConvToJitSig(
         sigRet->retTypeSigClass = CORINFO_CLASS_HANDLE(typeHnd.AsPtr());
 
         auto asyncMethodClassification = ClassifyAsyncMethodSignatureCore(sig, module, NULL, NULL, NULL);
-        if (IsAsyncSigAsync2(asyncMethodClassification))
+        if (IsAsyncSigAsync(asyncMethodClassification))
         {
             sigRet->callConv = (CorInfoCallConv)(sigRet->callConv | CORINFO_CALLCONV_ASYNCCALL);
         }
@@ -1098,7 +1098,7 @@ void CEEInfo::resolveToken(/* IN, OUT */ CORINFO_RESOLVED_TOKEN * pResolvedToken
 
         case CORINFO_TOKENKIND_Await:
             // in rare cases a method that returns Task is not actually TaskReturning (i.e. returns T).
-            // we cannot resolve to an async2 variant in such case.
+            // we cannot resolve to an Async variant in such case.
             // return NULL, so that caller would re-resolve as a regular method call
             pMD = pMD->IsTaskReturningMethod() ?
                 pMD->GetAsyncOtherVariant(/*allowInstParam*/FALSE):
@@ -3233,9 +3233,9 @@ NoSpecialCase:
 
                 methodFlags |= ENCODE_METHOD_SIG_SlotInsteadOfToken;
             }
-            if (pTemplateMD->IsAsync2VariantMethod())
+            if (pTemplateMD->IsAsyncVariantMethod())
             {
-                methodFlags |= ENCODE_METHOD_SIG_Async2Variant;
+                methodFlags |= ENCODE_METHOD_SIG_AsyncVariant;
             }
 
             sigBuilder.AppendData(methodFlags);
@@ -12991,7 +12991,7 @@ static CORJIT_FLAGS GetCompileFlags(PrepareCodeConfig* prepareConfig, MethodDesc
     //
     flags.Add(CEEInfo::GetBaseCompileFlags(ftn));
 
-    if (ftn->IsAsync2Method())
+    if (ftn->IsAsyncMethod())
         flags.Add(CORJIT_FLAGS::CORJIT_FLAG_ASYNC);
 
     //

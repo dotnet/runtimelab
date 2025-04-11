@@ -449,10 +449,9 @@ ComMTMethodProps * DispatchMemberInfo::GetMemberProps(OBJECTREF MemberInfoObj, C
             MethodDesc* pMeth = (MethodDesc*) getMethodHandle.Call_RetLPVOID(&GetMethodHandleArg);
             if (pMeth)
             {
-                if (pMeth->IsAsync2Method())
-                {
+                if (pMeth->IsAsyncMethod())
                     ThrowHR(COR_E_NOTSUPPORTED);
-                }
+
                 pMemberProps = pMemberMap->GetMethodProps(pMeth->GetMemberDef(), pMeth->GetModule());
             }
         }
@@ -834,6 +833,9 @@ void DispatchMemberInfo::SetUpMethodMarshalerInfo(MethodDesc *pMD, BOOL bReturnV
 
     GCX_PREEMP();
 
+    if (pMD->IsAsyncMethod())
+        ThrowHR(COR_E_NOTSUPPORTED);
+
     MetaSig         msig(pMD);
     LPCSTR          szName;
     USHORT          usSequence;
@@ -850,10 +852,6 @@ void DispatchMemberInfo::SetUpMethodMarshalerInfo(MethodDesc *pMD, BOOL bReturnV
     //
     // Initialize the parameter definition enum.
     //
-    if (pMD->IsAsync2Method())
-    {
-        ThrowHR(COR_E_NOTSUPPORTED);
-    }
     hEnumParams.EnumInit(mdtParamDef, pMD->GetMemberDef());
 
     //
@@ -2588,7 +2586,7 @@ bool DispatchInfo::IsPropertyAccessorVisible(bool fIsSetter, OBJECTREF* pMemberI
 
         // Check to see if the new method is a property accessor.
         mdToken tkMember = mdTokenNil;
-        if (pMDForProperty->IsAsync2VariantMethod())
+        if (pMDForProperty->IsAsyncVariantMethod())
         {
             return false;
         }

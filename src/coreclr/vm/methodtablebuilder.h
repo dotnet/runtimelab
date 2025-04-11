@@ -673,7 +673,7 @@ private:
 
         //-----------------------------------------------------------------------------------------
         // This constructor can be used with hard-coded signatures that are used for
-        // representing async2 variant methods
+        // representing async variant methods
         MethodSignature(
             Module *             pModule,
             mdToken              tok,
@@ -1060,10 +1060,10 @@ private:
         GetRVA() const
             { LIMITED_METHOD_CONTRACT; return m_dwRVA; }
 
-        bool IsAsync2Variant() const
+        bool IsAsyncVariant() const
         {
-            return GetAsyncMethodKind() == AsyncMethodKind::Async2VariantThunk ||
-                GetAsyncMethodKind() == AsyncMethodKind::Async2VariantImpl;
+            return GetAsyncMethodKind() == AsyncMethodKind::AsyncVariantThunk ||
+                GetAsyncMethodKind() == AsyncMethodKind::AsyncVariantImpl;
         }
 
         void SetAsyncMethodKind(AsyncMethodKind kind)
@@ -2686,7 +2686,7 @@ private:
         DWORD               RVA,          // Only needed for NDirect case
         IMDInternalImport * pIMDII,  // Needed for NDirect, EEImpl(Delegate) cases
         LPCSTR              pMethodName, // Only needed for mcEEImpl (Delegate) case
-        Signature           sig, // Only needed for the async thunk (Async2 Thunk) case
+        Signature           sig, // Only needed for the Async thunk case
         AsyncMethodKind      asyncKind
         COMMA_INDEBUG(LPCUTF8             pszDebugMethodName)
         COMMA_INDEBUG(LPCUTF8             pszDebugClassName)

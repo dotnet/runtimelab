@@ -398,9 +398,9 @@ HRESULT MulticoreJitRecorder::WriteOutput(IStream * pStream)
         }
 
         MethodDesc * pMethod = m_JitInfoArray[i].GetMethodDescAndClean();
-        if (pMethod->IsAsync2VariantMethod())
+        if (pMethod->IsAsyncVariantMethod())
         {
-            // TODO consider adding support for async variants in the future
+            // TODO: (async) consider adding support for async variants in the future
             skipped++;
             continue;
         }

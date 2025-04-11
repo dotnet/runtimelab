@@ -4922,7 +4922,7 @@ static bool GetReturnAddressHijackInfo(EECodeInfo *pCodeInfo X86_ARG(ReturnKind 
         return false;
 
     MethodDesc* pMD = pCodeInfo->GetMethodDesc();
-    X86_ONLY(*hasAsyncRet = pMD->IsAsync2Method());
+    X86_ONLY(*hasAsyncRet = pMD->IsAsyncMethod());
 
     return true;
 }

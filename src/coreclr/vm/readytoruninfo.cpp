@@ -969,7 +969,7 @@ static bool SigMatchesMethodDesc(MethodDesc* pMD, SigPointer &sig, ModuleBase * 
 {
     STANDARD_VM_CONTRACT;
 
-    _ASSERTE(!pMD->IsAsync2VariantMethod());
+    _ASSERTE(!pMD->IsAsyncVariantMethod());
 
     ModuleBase *pOrigModule = pModule;
     ZapSig::Context    zapSigContext(pModule, (void *)pModule, ZapSig::NormalTokens);
@@ -1079,7 +1079,8 @@ bool ReadyToRunInfo::GetPgoInstrumentationData(MethodDesc * pMD, BYTE** pAllocat
     if (ReadyToRunCodeDisabled())
         return false;
 
-    if (pMD->IsAsync2VariantMethod())
+    // TODO: (async) PGO support for async variants
+    if (pMD->IsAsyncVariantMethod())
         return false;
 
     if (m_pgoInstrumentationDataHashtable.IsNull())
@@ -1154,7 +1155,8 @@ PCODE ReadyToRunInfo::GetEntryPoint(MethodDesc * pMD, PrepareCodeConfig* pConfig
     if (ReadyToRunCodeDisabled())
         goto done;
 
-    if (pMD->IsAsync2VariantMethod())
+    // TODO: (async) R2R support for async variants
+    if (pMD->IsAsyncVariantMethod())
         goto done;
 
     ETW::MethodLog::GetR2RGetEntryPointStart(pMD);

@@ -2270,7 +2270,7 @@ bool GenTreeCall::HasSideEffects(Compiler* compiler, bool ignoreExceptions, bool
 //   calling another async method by normal means. However, the VM also creates
 //   stubs that call async methods through calli where the async continuations
 //   are passed explicitly. See CEEJitInfo::getAsyncResumptionStub and
-//   MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk for examples. In
+//   MethodDesc::EmitTaskReturningThunk for examples. In
 //   those cases the JIT does not know (and does not need to know) which arg is
 //   the async continuation.
 //

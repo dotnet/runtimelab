@@ -192,7 +192,7 @@ namespace System.Runtime.CompilerServices
         }
 
         // Marked intrinsic since for JIT state machines this needs to be
-        // recognized as an async2 call.
+        // recognized as an async call.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
@@ -208,7 +208,7 @@ namespace System.Runtime.CompilerServices
         }
 
         // Marked intrinsic since this needs to be
-        // recognized as an async2 call.
+        // recognized as an async call.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -224,7 +224,7 @@ namespace System.Runtime.CompilerServices
         }
 
         // Marked intrinsic since this needs to be
-        // recognized as an async2 call.
+        // recognized as an async call.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -240,7 +240,7 @@ namespace System.Runtime.CompilerServices
         }
 
         // Marked intrinsic since this needs to be
-        // recognized as an async2 call.
+        // recognized as an async call.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -256,7 +256,7 @@ namespace System.Runtime.CompilerServices
         }
 
         // Marked intrinsic since this needs to be
-        // recognized as an async2 call.
+        // recognized as an async call.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -272,7 +272,7 @@ namespace System.Runtime.CompilerServices
         }
 
         // Marked intrinsic since this needs to be
-        // recognized as an async2 call.
+        // recognized as an async call.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -288,7 +288,7 @@ namespace System.Runtime.CompilerServices
         }
 
         // Marked intrinsic since this needs to be
-        // recognized as an async2 call.
+        // recognized as an async call.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -304,7 +304,7 @@ namespace System.Runtime.CompilerServices
         }
 
         // Marked intrinsic since this needs to be
-        // recognized as an async2 call.
+        // recognized as an async call.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -320,7 +320,7 @@ namespace System.Runtime.CompilerServices
         }
 
         // Marked intrinsic since this needs to be
-        // recognized as an async2 call.
+        // recognized as an async call.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]

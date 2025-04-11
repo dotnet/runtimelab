@@ -730,10 +730,11 @@ namespace
         COR_ILMETHOD_DECODER* pHeader = NULL;
         COR_ILMETHOD* ilHeader = pConfig->GetILHeader();
 
-        // For async method the methoddef represents a thunk with runtime-provided implementation,
-        // while the default IL logically belongs to the implementation method desc.
-        // If config returned no IL for an implementation method desc, then ask the method desc itself.
-        if (ilHeader == NULL && pMD->IsAsync2VariantMethod() && !pMD->IsAsyncThunkMethod())
+        // For a Runtime Async method the methoddef maps to a Task-returning thunk with runtime-provided implementation,
+        // while the default IL belongs to the Async implementation variant.
+        // By default the config captures the default methoddesc, which would be a thunk, thus no IL header.
+        // So, if config provides no header and we see an implementation method desc, then just ask the method desc itself.
+        if (ilHeader == NULL && pMD->IsAsyncVariantMethod() && !pMD->IsAsyncThunkMethod())
         {
             ilHeader = pMD->GetILHeader();
         }
@@ -1083,13 +1084,13 @@ bool MethodDesc::TryGenerateAsyncThunk(DynamicResolver** resolver, COR_ILMETHOD_
         pAsyncOtherVariant,
         (ILStubLinkerFlags)ILSTUB_LINKER_FLAG_NONE);
 
-    if (IsAsync2Method())
+    if (IsAsyncMethod())
     {
-        EmitAsync2MethodThunk(pAsyncOtherVariant, msig, &sl);
+        EmitAsyncMethodThunk(pAsyncOtherVariant, msig, &sl);
     }
     else
     {
-        EmitJitStateMachineBasedRuntimeAsyncThunk(pAsyncOtherVariant, msig, &sl);
+        EmitTaskReturningThunk(pAsyncOtherVariant, msig, &sl);
     }
 
     NewHolder<ILStubResolver> ilResolver = new ILStubResolver();
@@ -1129,7 +1130,7 @@ bool MethodDesc::TryGenerateAsyncThunk(DynamicResolver** resolver, COR_ILMETHOD_
     return true;
 }
 
-void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOtherVariant, MetaSig& thunkMsig, ILStubLinker* pSL)
+void MethodDesc::EmitTaskReturningThunk(MethodDesc* pAsyncOtherVariant, MetaSig& thunkMsig, ILStubLinker* pSL)
 {
     _ASSERTE(!pAsyncOtherVariant->IsAsyncThunkMethod());
 
@@ -1346,10 +1347,10 @@ void MethodDesc::EmitJitStateMachineBasedRuntimeAsyncThunk(MethodDesc* pAsyncOth
     pCode->EmitRET();
 }
 
-// Given an async method, return a SigPointer to the unwrapped result type. For
-// example, for async2 Task<T> Foo<T>() this returns the signature representing
+// Given an async thunk method, return a SigPointer to the unwrapped result type. For
+// example, for Task<T> Foo<T>() this returns the signature representing
 // (MVAR 0). For Task<int>, it returns the signature representing (int).
-SigPointer MethodDesc::GetAsync2ThunkResultTypeSig()
+SigPointer MethodDesc::GetAsyncThunkResultTypeSig()
 {
     _ASSERTE(IsAsyncThunkMethod());
     PCCOR_SIGNATURE pSigRaw;
@@ -1374,7 +1375,7 @@ SigPointer MethodDesc::GetAsync2ThunkResultTypeSig()
     // ParamCount
     IfFailThrow(pSig.GetData(NULL));
 
-    // ReturnType comes now. Skip the modifiers (like async2 modifier).
+    // ReturnType comes now. Skip the modifiers (like modreqs in async signatures).
     IfFailThrow(pSig.SkipCustomModifiers());
 
     CorElementType etype;
@@ -1410,7 +1411,7 @@ SigPointer MethodDesc::GetAsync2ThunkResultTypeSig()
 
 // Given a method Foo<T>, return a MethodSpec token for Foo<T> instantiated
 // with the result type from the current async method's return type. For
-// example, if "this" represents async2 Task<List<T>> Foo<T>(), and "md" is
+// example, if "this" represents Task<List<T>> Foo<T>(), and "md" is
 // Task.FromResult<T>, this returns a MethodSpec representing
 // Task.FromResult<List<T>>.
 int MethodDesc::GetTokenForGenericMethodCallWithAsyncReturnType(ILCodeStream* pCode, MethodDesc* md)
@@ -1426,7 +1427,7 @@ int MethodDesc::GetTokenForGenericMethodCallWithAsyncReturnType(ILCodeStream* pC
     SigBuilder methodSigBuilder;
     methodSigBuilder.AppendByte(IMAGE_CEE_CS_CALLCONV_GENERICINST);
     methodSigBuilder.AppendData(1);
-    SigPointer retTypeSig = GetAsync2ThunkResultTypeSig();
+    SigPointer retTypeSig = GetAsyncThunkResultTypeSig();
     PCCOR_SIGNATURE retTypeSigRaw;
     uint32_t retTypeSigLen;
     retTypeSig.GetSignature(&retTypeSigRaw, &retTypeSigLen);
@@ -1441,7 +1442,7 @@ int MethodDesc::GetTokenForGenericMethodCallWithAsyncReturnType(ILCodeStream* pC
 
 // Given a method Bar<T>.Foo, return a MethodSpec token for Bar<T>.Foo
 // instantiated with the result type from the current async method's return
-// type. For example, if "this" represents async2 Task<List<T>> Foo<T>(), and
+// type. For example, if "this" represents Task<List<T>> Foo<T>(), and
 // "md" is TaskAwaiter<T>.GetResult(), this returns a MethodSpec representing
 // TaskAwaiter<List<T>>.GetResult().
 int MethodDesc::GetTokenForGenericTypeMethodCallWithAsyncReturnType(ILCodeStream* pCode, MethodDesc* md)
@@ -1463,7 +1464,7 @@ int MethodDesc::GetTokenForGenericTypeMethodCallWithAsyncReturnType(ILCodeStream
     typeSigBuilder.AppendPointer(md->GetMethodTable());
     typeSigBuilder.AppendData(1);
 
-    SigPointer retTypeSig = GetAsync2ThunkResultTypeSig();
+    SigPointer retTypeSig = GetAsyncThunkResultTypeSig();
     PCCOR_SIGNATURE retTypeSigRaw;
     uint32_t retTypeSigLen;
     retTypeSig.GetSignature(&retTypeSigRaw, &retTypeSigLen);
@@ -1477,7 +1478,7 @@ int MethodDesc::GetTokenForGenericTypeMethodCallWithAsyncReturnType(ILCodeStream
     return pCode->GetToken(md, typeSigToken);
 }
 
-void MethodDesc::EmitAsync2MethodThunk(MethodDesc* pAsyncOtherVariant, MetaSig& msig, ILStubLinker* pSL)
+void MethodDesc::EmitAsyncMethodThunk(MethodDesc* pAsyncOtherVariant, MetaSig& msig, ILStubLinker* pSL)
 {
     _ASSERTE(!pAsyncOtherVariant->IsAsyncThunkMethod());
     _ASSERTE(!pAsyncOtherVariant->IsVoid());
@@ -1646,7 +1647,7 @@ int MethodDesc::GetTokenForAwaitAwaiterInstantiatedOverTaskAwaiterType(ILCodeStr
     SigBuilder methodSigBuilder;
     methodSigBuilder.AppendByte(IMAGE_CEE_CS_CALLCONV_GENERICINST);
     methodSigBuilder.AppendData(1);
-    SigPointer retTypeSig = GetAsync2ThunkResultTypeSig();
+    SigPointer retTypeSig = GetAsyncThunkResultTypeSig();
     PCCOR_SIGNATURE retTypeSigRaw;
     uint32_t retTypeSigLen;
     retTypeSig.GetSignature(&retTypeSigRaw, &retTypeSigLen);

@@ -1516,7 +1516,7 @@ void TransitionFrame::PromoteCallerStack(promote_func* fn, ScanContext* sc)
         if (pFunction->RequiresInstArg() && !SuppressParamTypeArg())
             msig.SetHasParamTypeArg();
 
-        if (pFunction->IsAsync2Method())
+        if (pFunction->IsAsyncMethod())
             msig.SetIsAsyncCall();
 
         PromoteCallerStackHelper (fn, sc, pFunction, &msig);
@@ -2359,7 +2359,7 @@ void ComputeCallRefMap(MethodDesc* pMD,
             msig.SetHasParamTypeArg();
         }
 
-        if (pMD->IsAsync2Method())
+        if (pMD->IsAsyncMethod())
         {
             msig.SetIsAsyncCall();
         }

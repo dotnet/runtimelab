@@ -191,7 +191,8 @@ FCIMPL1(MethodDesc *, RuntimeTypeHandle::GetFirstIntroducedMethod, ReflectClassB
 
     MethodTable* pMT = typeHandle.AsMethodTable();
     MethodDesc* pMethod = MethodTable::IntroducedMethodIterator::GetFirst(pMT);
-    while (pMethod && pMethod->IsAsync2VariantMethod())
+    // do not report async variants to reflection.
+    while (pMethod && pMethod->IsAsyncVariantMethod())
         pMethod = MethodTable::IntroducedMethodIterator::GetNext(pMethod);
 
     return pMethod;
@@ -208,7 +209,8 @@ FCIMPL1(void, RuntimeTypeHandle::GetNextIntroducedMethod, MethodDesc ** ppMethod
     CONTRACTL_END;
 
     MethodDesc *pMethod = MethodTable::IntroducedMethodIterator::GetNext(*ppMethod);
-    while (pMethod && pMethod->IsAsync2VariantMethod())
+    // do not report async variants to reflection.
+    while (pMethod && pMethod->IsAsyncVariantMethod())
         pMethod = MethodTable::IntroducedMethodIterator::GetNext(pMethod);
 
     *ppMethod = pMethod;
@@ -1795,16 +1797,21 @@ extern "C" void QCALLTYPE RuntimeMethodHandle_StripMethodInstantiation(MethodDes
 }
 
 // In the VM there might be more than one MethodDescs for a "method"
-// examples are methods on generic types which may have additional instantiating stubs
-//          and methods on value types which may have additional unboxing stubs.
+// examples are methods on generic types which may have additional instantiating stubs,
+//          methods on value types which may have additional unboxing stubs and
+//          async variants for task-returning methods
 //
+// For {task-returning, async} variants Reflection hands out only the task-returning variant.
+//  the async varinat is an implementation detail that conceptually does not exist.
+//  TODO: (async) the filtering may not cover all scenarios. Review and add tests.
+// 
 // For generic methods we always hand out an instantiating stub except for a generic method definition
 // For non-generic methods on generic types we need an instantiating stub if it's one of the following
 //  - static method on a generic class
 //  - static or instance method on a generic interface
 //  - static or instance method on a generic value type
 // The Reflection policy is to always hand out instantiating stubs in these cases
-//
+// 
 // For methods on non-generic value types we can use either the canonical method or the unboxing stub
 // The Reflection policy is to always hand out unboxing stubs if the methods are virtual methods
 // The reason for this is that in the current implementation of the class loader, the v-table slots for
@@ -1831,8 +1838,8 @@ FCIMPL2(MethodDesc*, RuntimeMethodHandle::GetStubIfNeededInternal,
 
     TypeHandle instType = refType->GetType();
 
-    // do not report async2 variants to reflection.
-    if (pMethod->IsAsync2VariantMethod())
+    // do not report async variants to reflection.
+    if (pMethod->IsAsyncVariantMethod())
         return NULL;
 
     // Perf optimization: this logic is actually duplicated in FindOrCreateAssociatedMethodDescForReflection, but since it
@@ -1859,9 +1866,9 @@ extern "C" MethodDesc* QCALLTYPE RuntimeMethodHandle_GetStubIfNeededSlow(MethodD
 
     GCX_COOP();
 
-    if (pMethod->IsAsync2VariantMethod())
+    if (pMethod->IsAsyncVariantMethod())
     {
-        // do not report async2 variants to reflection.
+        // do not report async variants to reflection.
         pMethod = pMethod->GetAsyncOtherVariant(/*allowInstParam*/ false);
     }
 
