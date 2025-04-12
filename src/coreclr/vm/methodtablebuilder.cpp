@@ -2943,11 +2943,10 @@ MethodTableBuilder::EnumerateClassMethods()
         }
 
         SigParser sig(pMemberSignature, cMemberSignature);
+
         ULONG offsetOfAsyncDetails = 0;
         bool returnsValueTask = false;
-        MethodReturnKind returnKind;
-        
-        returnKind = IsDelegate() ?
+        MethodReturnKind returnKind = IsDelegate() ?
             MethodReturnKind::NormalMethod :
             ClassifyMethodReturnKind(sig, GetModule(), &offsetOfAsyncDetails, &returnsValueTask);
 
@@ -3586,6 +3585,7 @@ MethodTableBuilder::EnumerateClassMethods()
 
                 BYTE elemTypeClassOrValuetype = returnsValueTask ? (BYTE)ELEMENT_TYPE_VALUETYPE : (BYTE)ELEMENT_TYPE_CLASS;
 
+                // for more info about constructing the signature of an async varint see comments in AsyncMethodKind
                 if (returnKind == MethodReturnKind::NonGenericTaskReturningMethod)
                 {
                     // Incoming sig will look like ... E_T_CLASS/E_T_VALUETYPE <TokenOfTask>

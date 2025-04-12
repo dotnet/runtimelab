@@ -85,10 +85,15 @@ enum class AsyncMethodKind
     //   Example: "Task<int> Foo();"  ===> "modreq(Task`) int Foo();"
     //   Example: "ValueTask Bar();"  ===> "modreq(ValueTask) void Bar();"
     //
-    // It is possible to get from one variant to another unambiguously via GetAsyncOtherVariant.
-    //
-    // Async methods are called with CORINFO_CALLCONV_ASYNCCALL call convention.
+    // The reason for this encoding is that:
+    //   - it uses parts of original signature, as-is, thus does not need to look for or construct anything
+    //   - it "unwraps" the element type.
+    //   - it is reversible. In particular nonconflicting signatures will map to nonconflicting ones.
     // 
+    // Async methods are called with CORINFO_CALLCONV_ASYNCCALL call convention.
+    //
+    // It is possible to get from one variant to another via GetAsyncOtherVariant.
+    //
     // NOTE: not all Async methods are "variants" from a pair, see AsyncExplicitImpl below.
     //=============================================================
 
