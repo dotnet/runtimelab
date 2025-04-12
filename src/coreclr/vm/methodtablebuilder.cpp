@@ -3503,11 +3503,11 @@ MethodTableBuilder::EnumerateClassMethods()
                 if (IsTaskReturning(returnKind))
                 {
                     // ordinary Task-returning method:
-                    //    declare a TaskReturning method and add a helper thunk with Async signature
+                    //    Declare a TaskReturning method and add an Async variant that is a thunk to the TaskReturing one.
                     // 
                     // IsMiAsync Task-returning method:
-                    //    declare a RuntimeAsync method and add a helper method with the actual implementation
-                    //    the RuntimeAsync method becomes a thunk to the implementation helper.
+                    //    Declare a RuntimeAsync method and add an Async variant with the actual implementation.
+                    //    The RuntimeAsync method becomes a thunk to the implementation helper.
                     pNewMethod->SetAsyncMethodKind(IsMiAsync(dwImplFlags) ? AsyncMethodKind::RuntimeAsync : AsyncMethodKind::TaskReturning);
                 }
                 else
@@ -3515,7 +3515,7 @@ MethodTableBuilder::EnumerateClassMethods()
                     if (IsMiAsync(dwImplFlags))
                     {
                         // Explicitly-async methods have special semantics that is useful in the implementation of runtime async itself.
-                        // It should not be valid to declare such methods outside of runtime infrastructure methods.
+                        // It should not be valid to declare such methods outside of runtime infrastructure.
                         if (!IsTypeDefOrRefImplementedInSystemModule(GetModule(), this->GetCl()))
                         {
                             BuildMethodTableThrowException(IDS_CLASSLOAD_BADFORMAT);
