@@ -190,7 +190,6 @@ namespace System.Runtime.CompilerServices
             AsyncSuspend(sentinelContinuation);
         }
 
-        // Marked intrinsic since we recognise it by name when doing optimizations.
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
         public static void UnsafeAwaitAwaiterFromRuntimeAsync<TAwaiter>(TAwaiter awaiter) where TAwaiter : ICriticalNotifyCompletion
@@ -204,7 +203,7 @@ namespace System.Runtime.CompilerServices
             AsyncSuspend(sentinelContinuation);
         }
 
-        // Marked intrinsic since we recognise it by name when doing optimizations.
+        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -219,7 +218,7 @@ namespace System.Runtime.CompilerServices
             return awaiter.GetResult();
         }
 
-        // Marked intrinsic since we recognise it by name when doing optimizations.
+        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -234,7 +233,7 @@ namespace System.Runtime.CompilerServices
             awaiter.GetResult();
         }
 
-        // Marked intrinsic since we recognise it by name when doing optimizations.
+        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -249,7 +248,7 @@ namespace System.Runtime.CompilerServices
             return awaiter.GetResult();
         }
 
-        // Marked intrinsic since we recognise it by name when doing optimizations.
+        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -264,7 +263,7 @@ namespace System.Runtime.CompilerServices
             awaiter.GetResult();
         }
 
-        // Marked intrinsic since we recognise it by name when doing optimizations.
+        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -279,7 +278,7 @@ namespace System.Runtime.CompilerServices
             awaiter.GetResult();
         }
 
-        // Marked intrinsic since we recognise it by name when doing optimizations.
+        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -294,7 +293,7 @@ namespace System.Runtime.CompilerServices
             awaiter.GetResult();
         }
 
-        // Marked intrinsic since we recognise it by name when doing optimizations.
+        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -309,7 +308,7 @@ namespace System.Runtime.CompilerServices
             return awaiter.GetResult();
         }
 
-        // Marked intrinsic since we recognise it by name when doing optimizations.
+        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
