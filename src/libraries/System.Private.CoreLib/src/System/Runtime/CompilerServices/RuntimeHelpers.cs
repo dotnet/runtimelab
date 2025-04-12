@@ -177,7 +177,6 @@ namespace System.Runtime.CompilerServices
         public static bool IsReferenceOrContainsReferences<T>() where T: allows ref struct => IsReferenceOrContainsReferences<T>();
 
 #if !NATIVEAOT
-        [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
         public static void AwaitAwaiterFromRuntimeAsync<TAwaiter>(TAwaiter awaiter) where TAwaiter : INotifyCompletion
@@ -191,9 +190,7 @@ namespace System.Runtime.CompilerServices
             AsyncSuspend(sentinelContinuation);
         }
 
-        // Marked intrinsic since for JIT state machines this needs to be
-        // recognized as an async call.
-        [Intrinsic]
+        // Marked intrinsic since we recognise it by name when doing optimizations.
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
         public static void UnsafeAwaitAwaiterFromRuntimeAsync<TAwaiter>(TAwaiter awaiter) where TAwaiter : ICriticalNotifyCompletion
@@ -207,8 +204,7 @@ namespace System.Runtime.CompilerServices
             AsyncSuspend(sentinelContinuation);
         }
 
-        // Marked intrinsic since this needs to be
-        // recognized as an async call.
+        // Marked intrinsic since we recognise it by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -223,8 +219,7 @@ namespace System.Runtime.CompilerServices
             return awaiter.GetResult();
         }
 
-        // Marked intrinsic since this needs to be
-        // recognized as an async call.
+        // Marked intrinsic since we recognise it by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -239,8 +234,7 @@ namespace System.Runtime.CompilerServices
             awaiter.GetResult();
         }
 
-        // Marked intrinsic since this needs to be
-        // recognized as an async call.
+        // Marked intrinsic since we recognise it by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -255,8 +249,7 @@ namespace System.Runtime.CompilerServices
             return awaiter.GetResult();
         }
 
-        // Marked intrinsic since this needs to be
-        // recognized as an async call.
+        // Marked intrinsic since we recognise it by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -271,8 +264,7 @@ namespace System.Runtime.CompilerServices
             awaiter.GetResult();
         }
 
-        // Marked intrinsic since this needs to be
-        // recognized as an async call.
+        // Marked intrinsic since we recognise it by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -287,8 +279,7 @@ namespace System.Runtime.CompilerServices
             awaiter.GetResult();
         }
 
-        // Marked intrinsic since this needs to be
-        // recognized as an async call.
+        // Marked intrinsic since we recognise it by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -303,8 +294,7 @@ namespace System.Runtime.CompilerServices
             awaiter.GetResult();
         }
 
-        // Marked intrinsic since this needs to be
-        // recognized as an async call.
+        // Marked intrinsic since we recognise it by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
@@ -319,8 +309,7 @@ namespace System.Runtime.CompilerServices
             return awaiter.GetResult();
         }
 
-        // Marked intrinsic since this needs to be
-        // recognized as an async call.
+        // Marked intrinsic since we recognise it by name when doing optimizations.
         [Intrinsic]
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]

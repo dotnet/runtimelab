@@ -235,28 +235,17 @@ enum class AsyncVariantLookup
     AsyncOtherVariant
 };
 
-enum class AsyncMethodSignatureKind
+enum class MethodReturnKind
 {
+    NormalMethod,
     GenericTaskReturningMethod,
-    NonGenericTaskReturningMethod,
-    NonVoidAsyncMethod,
-    VoidAsyncMethod,
-    NormalMethod
+    NonGenericTaskReturningMethod
 };
 
-inline bool IsAsyncSigNormal(AsyncMethodSignatureKind input)
+inline bool IsTaskReturning(MethodReturnKind input)
 {
-    return input == AsyncMethodSignatureKind::NormalMethod;
-}
-
-inline bool IsAsyncSigAsync(AsyncMethodSignatureKind input)
-{
-    return (input == AsyncMethodSignatureKind::NonVoidAsyncMethod) || (input == AsyncMethodSignatureKind::VoidAsyncMethod);
-}
-
-inline bool IsAsyncSigTaskReturning(AsyncMethodSignatureKind input)
-{
-    return (input == AsyncMethodSignatureKind::GenericTaskReturningMethod) || (input == AsyncMethodSignatureKind::NonGenericTaskReturningMethod);
+    return (input == MethodReturnKind::GenericTaskReturningMethod) ||
+        (input == MethodReturnKind::NonGenericTaskReturningMethod);
 }
 
 // The size of this structure needs to be a multiple of MethodDesc::ALIGNMENT
@@ -3850,7 +3839,7 @@ ReadyToRunStandaloneMethodMetadata* GetReadyToRunStandaloneMethodMetadata(Method
 void InitReadyToRunStandaloneMethodMetadata();
 #endif // FEATURE_READYTORUN
 
-AsyncMethodSignatureKind ClassifyAsyncMethodSignature(SigPointer sig, Module* pModule, ULONG* offsetOfAsyncDetails, bool *pIsValueType);
+MethodReturnKind ClassifyMethodReturnKind(SigPointer sig, Module* pModule, ULONG* offsetOfAsyncDetails, bool *pIsValueType);
 
 #include "method.inl"
 

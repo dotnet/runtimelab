@@ -418,8 +418,6 @@ enum ConvToJitSigFlags : int
     CONV_TO_JITSIG_FLAGS_LOCALSIG   = 0x1,
 };
 
-AsyncMethodSignatureKind ClassifyAsyncMethodSignatureCore(SigPointer sig, Module* pModule, PCCOR_SIGNATURE initialSig, ULONG* offsetOfAsyncDetails, bool *isValueTask);
-
 //---------------------------------------------------------------------------------------
 //
 //@GENERICS:
@@ -512,12 +510,6 @@ static void ConvToJitSig(
         }
         sigRet->retType = CEEInfo::asCorInfoType(type, typeHnd, &sigRet->retTypeClass);
         sigRet->retTypeSigClass = CORINFO_CLASS_HANDLE(typeHnd.AsPtr());
-
-        auto asyncMethodClassification = ClassifyAsyncMethodSignatureCore(sig, module, NULL, NULL, NULL);
-        if (IsAsyncSigAsync(asyncMethodClassification))
-        {
-            sigRet->callConv = (CorInfoCallConv)(sigRet->callConv | CORINFO_CALLCONV_ASYNCCALL);
-        }
 
         IfFailThrow(sig.SkipExactlyOne());  // must to a skip so we skip any class tokens associated with the return type
         _ASSERTE(sigRet->retType < CORINFO_TYPE_COUNT);
@@ -4893,6 +4885,9 @@ static void getMethodSigInternal(
             sigRet->callConv = (CorInfoCallConv) (sigRet->callConv | CORINFO_CALLCONV_PARAMTYPE);
     }
 
+    if (ftn->IsAsyncMethod())
+        sigRet->callConv = (CorInfoCallConv)(sigRet->callConv | CORINFO_CALLCONV_ASYNCCALL);
+
     // We want the calling convention bit to be consistant with the method attribute bit
     _ASSERTE( (IsMdStatic(ftn->GetAttrs()) == 0) == ((sigRet->callConv & CORINFO_CALLCONV_HASTHIS) != 0) );
 }
@@ -7677,6 +7672,9 @@ static void getMethodInfoHelper(
     // take an extra argument representing their instantiation
     if (ftn->RequiresInstArg())
         methInfo->args.callConv = (CorInfoCallConv)(methInfo->args.callConv | CORINFO_CALLCONV_PARAMTYPE);
+
+    if (ftn->IsAsyncMethod())
+        methInfo->args.callConv = (CorInfoCallConv)(methInfo->args.callConv | CORINFO_CALLCONV_ASYNCCALL);
 
     _ASSERTE((IsMdStatic(ftn->GetAttrs()) == 0) == ((methInfo->args.callConv & CORINFO_CALLCONV_HASTHIS) != 0));
 

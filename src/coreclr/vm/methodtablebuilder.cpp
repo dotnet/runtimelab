@@ -2749,9 +2749,7 @@ bool IsTypeDefOrRefAByRefStruct(Module* pModule, mdToken tk)
     return false;
 }
 
-AsyncMethodSignatureKind ClassifyAsyncMethodSignatureCore(SigPointer sig, Module* pModule, PCCOR_SIGNATURE initialSig, ULONG* offsetOfAsyncDetails, bool *isValueTask);
-
-AsyncMethodSignatureKind ClassifyAsyncMethodSignature(SigPointer sig, Module* pModule, ULONG* offsetOfAsyncDetails, bool *isValueTask)
+MethodReturnKind ClassifyMethodReturnKind(SigPointer sig, Module* pModule, ULONG* offsetOfAsyncDetails, bool *isValueTask)
 {
     PCCOR_SIGNATURE initialSig = sig.GetPtr();
     uint32_t data;
@@ -2762,151 +2760,56 @@ AsyncMethodSignatureKind ClassifyAsyncMethodSignature(SigPointer sig, Module* pM
         IfFailThrow(sig.GetData(&data));
     }
 
-    // Return argument count
+    // skip argument count
     IfFailThrow(sig.GetData(&data));
-    return ClassifyAsyncMethodSignatureCore(sig, pModule, initialSig, offsetOfAsyncDetails, isValueTask);
-}
 
-AsyncMethodSignatureKind ClassifyAsyncMethodSignatureCore(SigPointer sig, Module* pModule, PCCOR_SIGNATURE initialSig, ULONG* offsetOfAsyncDetails, bool *pIsValueTask)
-{
-    uint32_t data;
-    bool dummy = false;
-    if (pIsValueTask == NULL)
-    {
-        pIsValueTask = &dummy;
-    }
-
-    *pIsValueTask = false;
-
-    // Now we should be parsing the return type
-
-    // TODO: (async) this is always runtime-provided now. Perhaps we can avoid parsing modreq'd variant?
-    // If the first custom modifier is a MOD_REQ to Task/Task`1/ValueTask/ValueTask`1
-    // Then this is a Async signature
+    // now look at return type
+    // NOTE: this will skip modifiers
     CorElementType elemType;
-    if (offsetOfAsyncDetails != NULL)
-        *offsetOfAsyncDetails = (ULONG)(sig.GetPtr() - initialSig);
-    BYTE elemTypeByte;
-    IfFailThrow(sig.GetByte(&elemTypeByte)); // Don't use GetElemType as it skips custom modifiers
-    elemType = (CorElementType)elemTypeByte;
+    IfFailThrow(sig.GetElemType(&elemType));
 
+    // can't reason about ELEMENT_TYPE_INTERNAL, but should not see it in metadata
+    if (elemType == ELEMENT_TYPE_INTERNAL)
+        ThrowHR(COR_E_BADIMAGEFORMAT);
+
+    *offsetOfAsyncDetails = (ULONG)(sig.GetPtr() - initialSig) - 1;
     LPCSTR name, _namespace;
     mdToken tk;
-    while ((elemType == ELEMENT_TYPE_CMOD_OPT) || (elemType == ELEMENT_TYPE_CMOD_REQD))
-    {
-        CorElementType elemTypeCmod = elemType;
-
-        IfFailThrow(sig.GetToken(&tk));
-        GetNameOfTypeDefOrRef(pModule, tk, &name, &_namespace);
-        IfFailThrow(sig.GetByte(&elemTypeByte)); // Don't use GetElemType as it skips custom modifiers
-        elemType = (CorElementType)elemTypeByte;
-        if (strcmp(_namespace, "System.Threading.Tasks") == 0 && IsTypeDefOrRefImplementedInSystemModule(pModule, tk) && (elemTypeCmod == ELEMENT_TYPE_CMOD_REQD))
-        {
-            if ((strcmp(name, "Task`1") == 0) || (strcmp(name, "ValueTask`1") == 0))
-            {
-                *pIsValueTask = name[0] == 'V';
-                // This must have been the last CMOD before the element type, and the element type MUST be one which can be expressed structurally as a generic parameter
-                switch (elemType)
-                {
-                    case ELEMENT_TYPE_CLASS:
-                    case ELEMENT_TYPE_VALUETYPE:
-                    case ELEMENT_TYPE_STRING:
-                    case ELEMENT_TYPE_OBJECT:
-                    case ELEMENT_TYPE_I:
-                    case ELEMENT_TYPE_U:
-                    case ELEMENT_TYPE_I1:
-                    case ELEMENT_TYPE_U1:
-                    case ELEMENT_TYPE_I2:
-                    case ELEMENT_TYPE_U2:
-                    case ELEMENT_TYPE_I4:
-                    case ELEMENT_TYPE_U4:
-                    case ELEMENT_TYPE_I8:
-                    case ELEMENT_TYPE_U8:
-                    case ELEMENT_TYPE_R4:
-                    case ELEMENT_TYPE_R8:
-                    case ELEMENT_TYPE_BOOLEAN:
-                    case ELEMENT_TYPE_CHAR:
-                    case ELEMENT_TYPE_ARRAY:
-                    case ELEMENT_TYPE_SZARRAY:
-                    case ELEMENT_TYPE_VAR:
-                    case ELEMENT_TYPE_MVAR:
-                        return AsyncMethodSignatureKind::NonVoidAsyncMethod;
-                    case ELEMENT_TYPE_TYPEDBYREF:
-                        ThrowHR(COR_E_BADIMAGEFORMAT);
-                    case ELEMENT_TYPE_GENERICINST:
-                        IfFailThrow(sig.GetElemType(&elemType));
-                        if (elemType == ELEMENT_TYPE_CLASS)
-                        {
-                            return AsyncMethodSignatureKind::NonVoidAsyncMethod;
-                        }
-                        else
-                        {
-                            IfFailThrow(sig.GetToken(&tk));
-                            if (IsTypeDefOrRefAByRefStruct(pModule, tk))
-                            {
-                                ThrowHR(COR_E_BADIMAGEFORMAT);
-                            }
-                            else
-                            {
-                                return AsyncMethodSignatureKind::NonVoidAsyncMethod;
-                            }
-                        }
-                    default:
-                        ThrowHR(COR_E_BADIMAGEFORMAT);
-                }
-            }
-            else if ((strcmp(name, "Task") == 0) || (strcmp(name, "ValueTask") == 0))
-            {
-                *pIsValueTask = name[0] == 'V';
-                if (elemType == ELEMENT_TYPE_VOID)
-                {
-                    return AsyncMethodSignatureKind::VoidAsyncMethod;
-                }
-                else
-                {
-                    ThrowHR(COR_E_BADIMAGEFORMAT);
-                }
-            }
-        }
-
-        if (offsetOfAsyncDetails != NULL)
-            *offsetOfAsyncDetails = (ULONG)(sig.GetPtr() - initialSig) - 1;
-    }
-
     if (elemType == ELEMENT_TYPE_GENERICINST)
     {
         IfFailThrow(sig.GetElemType(&elemType));
+        // can't reason about ELEMENT_TYPE_INTERNAL, but should not see it in metadata
         if (elemType == ELEMENT_TYPE_INTERNAL)
-            return AsyncMethodSignatureKind::NormalMethod;
+            ThrowHR(COR_E_BADIMAGEFORMAT);
 
-        *pIsValueTask = (elemType == ELEMENT_TYPE_VALUETYPE);
+        *isValueTask = (elemType == ELEMENT_TYPE_VALUETYPE);
         IfFailThrow(sig.GetToken(&tk));
         IfFailThrow(sig.GetData(&data));
         if (data == 1)
         {
             // This might be System.Threading.Tasks.Task`1
             GetNameOfTypeDefOrRef(pModule, tk, &name, &_namespace);
-            if ((strcmp(name, *pIsValueTask ? "ValueTask`1" : "Task`1") == 0) && strcmp(_namespace, "System.Threading.Tasks") == 0)
+            if ((strcmp(name, *isValueTask ? "ValueTask`1" : "Task`1") == 0) && strcmp(_namespace, "System.Threading.Tasks") == 0)
             {
                 if (IsTypeDefOrRefImplementedInSystemModule(pModule, tk))
-                    return AsyncMethodSignatureKind::GenericTaskReturningMethod;
+                    return MethodReturnKind::GenericTaskReturningMethod;
             }
         }
     }
     else if ((elemType == ELEMENT_TYPE_CLASS) || (elemType == ELEMENT_TYPE_VALUETYPE))
     {
         IfFailThrow(sig.GetToken(&tk));
-        *pIsValueTask = (elemType == ELEMENT_TYPE_VALUETYPE);
+        *isValueTask = (elemType == ELEMENT_TYPE_VALUETYPE);
         // This might be System.Threading.Tasks.Task or ValueTask
         GetNameOfTypeDefOrRef(pModule, tk, &name, &_namespace);
-        if ((strcmp(name, *pIsValueTask ? "ValueTask" : "Task") == 0) && strcmp(_namespace, "System.Threading.Tasks") == 0)
+        if ((strcmp(name, *isValueTask ? "ValueTask" : "Task") == 0) && strcmp(_namespace, "System.Threading.Tasks") == 0)
         {
             if (IsTypeDefOrRefImplementedInSystemModule(pModule, tk))
-                return AsyncMethodSignatureKind::NonGenericTaskReturningMethod;
+                return MethodReturnKind::NonGenericTaskReturningMethod;
         }
     }
 
-    return AsyncMethodSignatureKind::NormalMethod;
+    return MethodReturnKind::NormalMethod;
 }
 
 //---------------------------------------------------------------------------------------
@@ -3041,16 +2944,12 @@ MethodTableBuilder::EnumerateClassMethods()
 
         SigParser sig(pMemberSignature, cMemberSignature);
         ULONG offsetOfAsyncDetails = 0;
-        bool isAsyncValueType = false;
-        AsyncMethodSignatureKind asyncMethodType;
+        bool returnsValueTask = false;
+        MethodReturnKind returnKind;
         
-        asyncMethodType = IsDelegate() ? AsyncMethodSignatureKind::NormalMethod : ClassifyAsyncMethodSignature(sig, GetModule(), &offsetOfAsyncDetails, &isAsyncValueType);
-
-        if (IsAsyncSigAsync(asyncMethodType))
-        {
-            // not expected in actual metadata methods
-            BuildMethodTableThrowException(IDS_CLASSLOAD_BADFORMAT);
-        }
+        returnKind = IsDelegate() ?
+            MethodReturnKind::NormalMethod :
+            ClassifyMethodReturnKind(sig, GetModule(), &offsetOfAsyncDetails, &returnsValueTask);
 
         bool hasGenericMethodArgsComputed = false;
         bool hasGenericMethodArgs = this->GetModule()->m_pMethodIsGenericMap->IsGeneric(tok, &hasGenericMethodArgsComputed);
@@ -3602,7 +3501,7 @@ MethodTableBuilder::EnumerateClassMethods()
                     type,
                     implType);
 
-                if (IsAsyncSigTaskReturning(asyncMethodType))
+                if (IsTaskReturning(returnKind))
                 {
                     // ordinary Task-returning method:
                     //    declare a TaskReturning method and add a helper thunk with Async signature
@@ -3614,8 +3513,6 @@ MethodTableBuilder::EnumerateClassMethods()
                 }
                 else
                 {
-                    _ASSERTE(IsAsyncSigNormal(asyncMethodType));
-
                     if (IsMiAsync(dwImplFlags))
                     {
                         // Explicitly-async methods have special semantics that is useful in the implementation of runtime async itself.
@@ -3646,7 +3543,7 @@ MethodTableBuilder::EnumerateClassMethods()
                 ULONG newSuffixSize;
                 ULONG newPrefixSize;
 
-                if (asyncMethodType == AsyncMethodSignatureKind::NonGenericTaskReturningMethod)
+                if (returnKind == MethodReturnKind::NonGenericTaskReturningMethod)
                 {
                     cAsyncThunkMemberSignature += 1;
                     originalTokenOffsetFromAsyncDetailsOffset = 1;
@@ -3657,7 +3554,7 @@ MethodTableBuilder::EnumerateClassMethods()
                     originalSuffixSize = 0;
                     newSuffixSize = 1;
                 }
-                else if (asyncMethodType == AsyncMethodSignatureKind::GenericTaskReturningMethod)
+                else if (returnKind == MethodReturnKind::GenericTaskReturningMethod)
                 {
                     cAsyncThunkMemberSignature -= 2;
                     originalTokenOffsetFromAsyncDetailsOffset = 2;
@@ -3687,9 +3584,9 @@ MethodTableBuilder::EnumerateClassMethods()
                 _ASSERTE((cMemberSignature - originalRemainingSigOffset) == (cAsyncThunkMemberSignature - newRemainingSigOffset));
                 memcpy(pNewMemberSignature + newRemainingSigOffset, pMemberSignature + originalRemainingSigOffset, cMemberSignature - originalRemainingSigOffset);
 
-                BYTE elemTypeClassOrValuetype = isAsyncValueType ? (BYTE)ELEMENT_TYPE_VALUETYPE : (BYTE)ELEMENT_TYPE_CLASS;
+                BYTE elemTypeClassOrValuetype = returnsValueTask ? (BYTE)ELEMENT_TYPE_VALUETYPE : (BYTE)ELEMENT_TYPE_CLASS;
 
-                if (asyncMethodType == AsyncMethodSignatureKind::NonGenericTaskReturningMethod)
+                if (returnKind == MethodReturnKind::NonGenericTaskReturningMethod)
                 {
                     // Incoming sig will look like ... E_T_CLASS/E_T_VALUETYPE <TokenOfTask>
                     // and needs to be translated to ELEMENT_TYPE_CMOD_REQD <TokenOfTask> E_T_VOID
@@ -3700,7 +3597,7 @@ MethodTableBuilder::EnumerateClassMethods()
                 }
                 else
                 {
-                    _ASSERTE(asyncMethodType == AsyncMethodSignatureKind::GenericTaskReturningMethod);
+                    _ASSERTE(returnKind == MethodReturnKind::GenericTaskReturningMethod);
                     // Incoming sig will look something like ... E_T_GENERICINST E_T_CLASS/E_T_VALUETYPE <TokenOfTask> 1 E_T_I4 ....
                     // And needs to be translated to ELEMENT_TYPE_CMOD_REQD <TokenOfTask> E_T_I4
 
@@ -3739,7 +3636,7 @@ MethodTableBuilder::EnumerateClassMethods()
             }
 
             // Normal methods only insert a single method
-            if (IsAsyncSigNormal(asyncMethodType))
+            if (!IsTaskReturning(returnKind))
             {
                 break;
             }
