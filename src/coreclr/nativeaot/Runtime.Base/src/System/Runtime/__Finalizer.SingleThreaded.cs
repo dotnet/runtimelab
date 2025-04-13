@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 
 //
@@ -22,9 +23,15 @@ namespace System.Runtime
                 if (target == null)
                     return;
 
-                // Call the finalizer on the current target object. If the finalizer throws we'll fail
-                // fast via normal Redhawk exception semantics (since we are in an RPI method).
-                ((delegate*<object, void>)target.GetMethodTable()->FinalizerCode)(target);
+                try
+                {
+                    // Call the finalizer on the current target object.
+                    ((delegate*<object, void>)target.GetMethodTable()->FinalizerCode)(target);
+                }
+                catch (Exception ex) when (ExceptionHandling.IsHandledByGlobalHandler(ex))
+                {
+                    // the handler returned "true" means the exception is now "handled" and we should continue.
+                }
             }
         }
     }
