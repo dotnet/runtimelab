@@ -5631,7 +5631,8 @@ MethodTableBuilder::PlaceNonVirtualMethods()
 #endif // _DEBUG
 
         if (!fCanHaveNonVtableSlots ||
-            it->GetMethodType() == mcInstantiated)
+            it->GetMethodType() == mcInstantiated ||
+            it->GetAsyncMethodKind() != AsyncMethodKind::NotAsync)
         {
             // We use slot during remoting and to map methods between generic instantiations
             // (see MethodTable::GetParallelMethodDesc). The current implementation

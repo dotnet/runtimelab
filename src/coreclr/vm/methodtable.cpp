@@ -7810,23 +7810,25 @@ MethodDesc* MethodTable::GetParallelMethodDesc(MethodDesc* pDefMD, AsyncVariantL
     }
     else
     {
-        // Slow path for finding the Async variant (or not-Async variant, if we start from Async one)
-        // This could be optimized with some trickery around slot numbers, but doing so is ... confusing, so I'm not implementing this yet
-        mdMethodDef tkMethod = pDefMD->GetMemberDef();
-        Module* mod = pDefMD->GetModule();
-        bool isAsyncVariantMethod = pDefMD->IsAsyncVariantMethod();
+        WORD slot = pDefMD->GetSlot();
 
-        MethodTable::IntroducedMethodIterator it(this);
-        for (; it.IsValid(); it.Next())
+        // Async variants are laid out one after another
+        // - fist the task-returning entry and then async2 variant.
+        // Thus what we look for is at +1 or -1 from the definition we are given.
+        // 
+        // TODO: if we search within the same MT and the current chunk has space,
+        //       we may just increment/decrement pDefMD by the size of current desc.
+        //       (it would be even faster than through slot tables)
+        if (pDefMD->IsTaskReturningMethod())
         {
-            MethodDesc* pMD = it.GetMethodDesc();
-            if (pMD->GetMemberDef() == tkMethod
-                && pMD->GetModule() == mod
-                && pMD->IsAsyncVariantMethod() != isAsyncVariantMethod)
-            {
-                return pMD;
-            }
+            return GetMethodDescForSlot_NoThrow(slot + 1);
         }
+        else if (pDefMD->IsAsyncVariantMethod())
+        {
+            return GetMethodDescForSlot_NoThrow(slot - 1);
+        }
+
+        // the definition is not a variant from a pair. (TODO: this is likely unreachable)
         return NULL;
     }
 }
