@@ -523,18 +523,6 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
         {
             call->AsCall()->gtCallMoreFlags |= GTF_CALL_M_SPECIAL_INTRINSIC;
         }
-
-        // Temporary hack since these functions have to be recognized as async
-        // calls in JIT generated state machines only.
-        if (compIsAsync() &&
-            ((ni == NI_System_Runtime_CompilerServices_RuntimeHelpers_AwaitAwaiterFromRuntimeAsync) ||
-             (ni == NI_System_Runtime_CompilerServices_RuntimeHelpers_UnsafeAwaitAwaiterFromRuntimeAsync) ||
-             (ni == NI_System_Runtime_CompilerServices_RuntimeHelpers_Await)))
-        {
-            assert((call != nullptr) && call->OperIs(GT_CALL));
-            call->AsCall()->gtIsAsyncCall = true;
-            JITDUMP("Marking [%06u] as a special-case async call\n", dspTreeID(call));
-        }
     }
     assert(sig);
     assert(clsHnd || (opcode == CEE_CALLI)); // We're never verifying for CALLI, so this is not set.
@@ -3362,14 +3350,11 @@ GenTree* Compiler::impIntrinsic(CORINFO_CLASS_HANDLE    clsHnd,
         return node;
     }
 
-    if ((ni == NI_System_Runtime_CompilerServices_RuntimeHelpers_AwaitAwaiterFromRuntimeAsync) ||
-        (ni == NI_System_Runtime_CompilerServices_RuntimeHelpers_UnsafeAwaitAwaiterFromRuntimeAsync) ||
-        (ni == NI_System_Runtime_CompilerServices_RuntimeHelpers_Await))
+    if (ni == NI_System_Runtime_CompilerServices_RuntimeHelpers_Await)
     {
-        // These are marked intrinsics simply to mark the call node as async,
-        // which the caller will do. Make sure we keep pIntrinsicName assigned
-        // (it would be overridden if we left this up to the rest of this
-        // function).
+        // These are marked intrinsics simply to match them by name in
+        // the Await pattern optimization. Make sure we keep pIntrinsicName assigned
+        // (it would be overridden if we left this up to the rest of this function).
         *pIntrinsicName = ni;
         return nullptr;
     }
@@ -11032,15 +11017,6 @@ NamedIntrinsic Compiler::lookupNamedIntrinsic(CORINFO_METHOD_HANDLE method)
                             else if (strcmp(methodName, "GetMethodTable") == 0)
                             {
                                 result = NI_System_Runtime_CompilerServices_RuntimeHelpers_GetMethodTable;
-                            }
-                            else if (strcmp(methodName, "AwaitAwaiterFromRuntimeAsync") == 0)
-                            {
-                                result = NI_System_Runtime_CompilerServices_RuntimeHelpers_AwaitAwaiterFromRuntimeAsync;
-                            }
-                            else if (strcmp(methodName, "UnsafeAwaitAwaiterFromRuntimeAsync") == 0)
-                            {
-                                result =
-                                    NI_System_Runtime_CompilerServices_RuntimeHelpers_UnsafeAwaitAwaiterFromRuntimeAsync;
                             }
                             else if (strcmp(methodName, "Await") == 0)
                             {
