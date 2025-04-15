@@ -657,8 +657,6 @@ struct InlArgInfo
     unsigned argIsByRefToStructLocal : 1; // Is this arg an address of a struct local or a normed struct local or a
                                           // field in them?
     unsigned argIsExact       : 1;        // Is this arg of an exact class?
-    unsigned argIsByRefToCopy : 1;        // Arg is a reference to a local that will be copied (used when inlining async
-                                          // struct instance methods)
 };
 
 // InlLclVarInfo describes inline candidate argument and local variable properties.

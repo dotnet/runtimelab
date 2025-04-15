@@ -2041,24 +2041,6 @@ void Compiler::fgInsertInlineeArgument(InlineInfo*       inlineInfo,
             argSingleUseNode->ReplaceWith(argNode, this);
             return;
         }
-        else if (argInfo.argIsByRefToCopy)
-        {
-            ClassLayout* layout        = typGetObjLayout(inlineInfo->inlineCandidateInfo->clsHandle);
-            unsigned     copyOfThisLcl = lvaGrabTemp(false DEBUGARG("Copy of inlinee struct instance"));
-            lvaSetStruct(copyOfThisLcl, layout, false);
-            GenTree* copyBlock = gtNewStoreLclVarNode(copyOfThisLcl, gtNewBlkIndir(layout, argNode));
-            *newStmt           = gtNewStmt(copyBlock, callDI);
-            fgInsertStmtAfter(block, *afterStmt, *newStmt);
-            DISPSTMT(*newStmt);
-            *afterStmt = *newStmt;
-
-            GenTree* storeTmp =
-                gtNewTempStore(argInfo.argTmpNum, gtNewLclVarAddrNode(copyOfThisLcl, argNode->TypeGet()));
-            *newStmt = gtNewStmt(storeTmp, callDI);
-            fgInsertStmtAfter(block, *afterStmt, *newStmt);
-            DISPSTMT(*newStmt);
-            *afterStmt = *newStmt;
-        }
         else
         {
             // We're going to assign the argument value to the temp we use for it in the inline body.
@@ -2081,7 +2063,6 @@ void Compiler::fgInsertInlineeArgument(InlineInfo*       inlineInfo,
         noway_assert(!argInfo.argIsUsed || argInfo.argIsInvariant || argInfo.argIsLclVar);
         noway_assert((argInfo.argIsLclVar == 0) ==
                      (argNode->gtOper != GT_LCL_VAR || (argNode->gtFlags & GTF_GLOB_REF)));
-        noway_assert(!argInfo.argIsByRefToCopy);
 
         // If the argument has side effects, append it
         if (argInfo.argHasSideEff)

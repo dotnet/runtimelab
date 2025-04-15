@@ -13792,7 +13792,7 @@ GenTree* Compiler::impInlineFetchArg(InlArgInfo& argInfo, const InlLclVarInfo& l
 {
     // Cache the relevant arg and lcl info for this argument.
     // We will modify argInfo but not lclVarInfo.
-    const bool      argCanBeModified = argInfo.argHasLdargaOp || argInfo.argHasStargOp || argInfo.argIsByRefToCopy;
+    const bool      argCanBeModified = argInfo.argHasLdargaOp || argInfo.argHasStargOp;
     const var_types lclTyp           = lclInfo.lclTypeInfo;
     GenTree*        op1              = nullptr;
 
@@ -13869,7 +13869,7 @@ GenTree* Compiler::impInlineFetchArg(InlArgInfo& argInfo, const InlLclVarInfo& l
             }
         }
     }
-    else if (argInfo.argIsByRefToStructLocal && !argInfo.argHasStargOp && !argInfo.argIsByRefToCopy)
+    else if (argInfo.argIsByRefToStructLocal && !argInfo.argHasStargOp)
     {
         /* Argument is a by-ref address to a struct, a normed struct, or its field.
            In these cases, don't spill the byref to a local, simply clone the tree and use it.
