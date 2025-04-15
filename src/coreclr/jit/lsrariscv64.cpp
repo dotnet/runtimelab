@@ -1018,11 +1018,6 @@ int LinearScan::BuildCall(GenTreeCall* call)
         BuildKills(call, killMask);
     }
 
-    if (call->IsAsync() && compiler->compIsAsync())
-    {
-        MarkAsyncContinuationBusyForCall(call);
-    }
-
     // No args are placed in registers anymore.
     placedArgRegs      = RBM_NONE;
     numPlacedArgLocals = 0;
