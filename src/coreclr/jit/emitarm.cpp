@@ -6547,6 +6547,9 @@ size_t emitter::emitOutputInstr(insGroup* ig, instrDesc* id, BYTE** dp)
             else if (id->idGCref() == GCT_BYREF)
                 byrefRegs |= RBM_R0;
 
+            if (id->idIsLargeCall() && ((instrDescCGCA*)id)->hasAsyncContinuationRet())
+                gcrefRegs |= RBM_ASYNC_CONTINUATION_RET;
+
             // If the GC register set has changed, report the new set.
             if (gcrefRegs != emitThisGCrefRegs)
                 emitUpdateLiveGCregs(GCT_GCREF, gcrefRegs, dst);
