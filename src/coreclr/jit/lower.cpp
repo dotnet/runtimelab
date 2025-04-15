@@ -733,8 +733,7 @@ GenTree* Lowering::LowerNode(GenTree* node)
             break;
 
         case GT_ASYNC_CONTINUATION:
-            LowerAsyncContinuation(node);
-            break;
+            return LowerAsyncContinuation(node);
 
         case GT_RETURN_SUSPEND:
             LowerReturnSuspend(node);
@@ -5424,14 +5423,21 @@ void Lowering::LowerRetSingleRegStructLclVar(GenTreeUnOp* ret)
 // Arguments:
 //   asyncCont - Async continuation node
 //
-void Lowering::LowerAsyncContinuation(GenTree* asyncCont)
+// Returns:
+//   Next node to lower.
+//
+GenTree* Lowering::LowerAsyncContinuation(GenTree* asyncCont)
 {
     assert(asyncCont->OperIs(GT_ASYNC_CONTINUATION));
 
-    // When the ASYNC_CONTINUATION was created as a result of
-    // StubHelpers.AsyncCallContinuation() the previous call hasn't been
-    // marked as an async call. We need to do that to get the right GC
-    // reporting behavior for the returned async continuation.
+    GenTree* next = asyncCont->gtNext;
+
+    // When the ASYNC_CONTINUATION was created as a result of the
+    // AsyncCallContinuation() intrinsic the previous call hasn't been marked
+    // as an async call. We need to do that to get the right GC reporting
+    // behavior for the returned async continuation. Furthermore, we ensure the
+    // async continuation follows the call to simplify marking the registers
+    // busy in LSRA.
     GenTree* node = asyncCont;
     while (true)
     {
@@ -5447,9 +5453,13 @@ void Lowering::LowerAsyncContinuation(GenTree* asyncCont)
                 node->AsCall()->gtIsAsyncCall = true;
             }
 
+            BlockRange().Remove(asyncCont);
+            BlockRange().InsertAfter(node, asyncCont);
             break;
         }
     }
+
+    return next;
 }
 
 //----------------------------------------------------------------------------------------------

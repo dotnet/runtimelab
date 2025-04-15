@@ -4754,16 +4754,13 @@ void LinearScan::MarkSwiftErrorBusyForCall(GenTreeCall* call)
 //
 void LinearScan::MarkAsyncContinuationBusyForCall(GenTreeCall* call)
 {
-    // Async calls return an async continuation argument in a separate
-    // register. Since we do not have a flexible representation for
-    // multiple definitions (multi-reg support is tied into promotion) we
-    // have to utilize a hack here to make it work. We expect the return
-    // value to be consumed by an upcoming ASYNC_CONTINUATION node, but we
-    // must take care not to overwrite the register until we get to that
-    // node. To accomplish that we mark the register as "busy until next
-    // kill" when we see the call's kill, and then we have
-    // ASYNC_CONTINUATION insert its own kill to free up the register
-    // again.
-    RefPosition* refPos       = addKillForRegs(RBM_ASYNC_CONTINUATION_RET, currentLoc + 1);
-    refPos->busyUntilNextKill = true;
+    // We model the async continuation like the swift error register: we ensure
+    // the node follows the call in lowering, and make it delay freed to ensure
+    // nothing is allocated into the register between the call and
+    // ASYNC_CONTINUATION node. We need to add a kill here in the right spot as
+    // not all targets may naturally have one created.
+    assert(call->gtNext != nullptr);
+    assert(call->gtNext->OperIs(GT_ASYNC_CONTINUATION));
+    RefPosition* refPos = addKillForRegs(RBM_ASYNC_CONTINUATION_RET, currentLoc + 1);
+    setDelayFree(refPos);
 }
