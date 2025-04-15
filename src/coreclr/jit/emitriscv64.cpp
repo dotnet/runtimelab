@@ -2005,6 +2005,10 @@ unsigned emitter::emitOutputCall(const insGroup* ig, BYTE* dst, instrDesc* id, c
         {
             byrefRegs |= RBM_INTRET_1;
         }
+        if (idCall->hasAsyncContinuationRet())
+        {
+            gcrefRegs |= RBM_ASYNC_CONTINUATION_RET;
+        }
     }
 
     // If the GC register set has changed, report the new set.
