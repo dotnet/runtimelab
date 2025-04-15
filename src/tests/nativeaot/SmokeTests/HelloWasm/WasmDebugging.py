@@ -36,9 +36,8 @@ def run_wasm_debugging_tests(debugger):
     test_simple_class_display(target, process, thread)
     test_derived_class_display(target, process, thread)
     test_recursive_class_display(target, process, thread)
-    # TODO-LLVM-DI: need to fix wasmtime issues with "this".
-    process.Continue() # test_struct_instance_method(target, process, thread)
-    process.Continue() # test_class_instance_method(target, process, thread)
+    test_struct_instance_method(target, process, thread)
+    test_class_instance_method(target, process, thread)
     test_variables(target, process, thread);
 
     if all_tests_passed:
@@ -140,6 +139,14 @@ def test_derived_class_display(target, process, thread):
 def test_recursive_class_display(target, process, thread):
     test_values_display_single(target, process, thread, 'test_recursive_class_display',
         [('s->Value', '1'), ('s->Next->Value', '2')])
+
+def test_struct_instance_method(target, process, thread):
+    test_values_display_single(target, process, thread, 'test_struct_instance_method',
+        [('__this->IntField', '1'), ('__this->FloatField', '2')])
+
+def test_class_instance_method(target, process, thread):
+    test_values_display_single(target, process, thread, 'test_class_instance_method',
+        [('__this->IntField', '1'), ('__this->FloatField', '2')])
 
 def test_variables(target, process, thread):
     test_values_display(target, process, thread, "test_variables",
