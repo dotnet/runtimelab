@@ -7617,8 +7617,7 @@ static void getMethodInfoHelper(
     methInfo->options = (CorInfoOptions)(((UINT32)methInfo->options) |
                             ((ftn->AcquiresInstMethodTableFromThis() ? CORINFO_GENERICS_CTXT_FROM_THIS : 0) |
                              (ftn->RequiresInstMethodTableArg() ? CORINFO_GENERICS_CTXT_FROM_METHODTABLE : 0) |
-                             (ftn->RequiresInstMethodDescArg() ? CORINFO_GENERICS_CTXT_FROM_METHODDESC : 0) |
-                             (ftn->IsStructMethodOperatingOnCopy() ? CORINFO_OPT_COPY_STRUCT_INSTANCE : 0)));
+                             (ftn->RequiresInstMethodDescArg() ? CORINFO_GENERICS_CTXT_FROM_METHODDESC : 0)));
 
     if (methInfo->options & CORINFO_GENERICS_CTXT_MASK)
     {

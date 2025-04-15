@@ -3964,11 +3964,6 @@ public:
                          // However, if there is a "ldarga 0" or "starg 0" in the IL,
                          // we will redirect all "ldarg(a) 0" and "starg 0" to this temp.
 
-     // For struct instance functions with CORINFO_OPT_COPY_STRUCT_INSTANCE
-     // this is the local that has the copy of "this" to which accesses on
-     // "this" are redirected to
-    unsigned lvaThisCopyVar = BAD_VAR_NUM;
-
     unsigned lvaInlineeReturnSpillTemp = BAD_VAR_NUM; // The temp to spill the non-VOID return expression
                                         // in case there are multiple BBJ_RETURN blocks in the inlinee
                                         // or if the inlinee has GC ref locals.
@@ -6435,7 +6430,6 @@ protected:
     void fgObserveInlineConstants(OPCODE opcode, const FgStack& stack, bool isInlining);
 
     void fgAdjustForAddressExposedOrWrittenThis();
-    void fgInitializeThisCopyVar();
 
     unsigned fgStressBBProf()
     {
@@ -10891,11 +10885,6 @@ public:
     bool compIsAsync() const
     {
         return opts.jitFlags->IsSet(JitFlags::JIT_FLAG_ASYNC);
-    }
-
-    bool compIsStructMethodThatOperatesOnCopy() const
-    {
-        return (info.compMethodInfo->options & CORINFO_OPT_COPY_STRUCT_INSTANCE) != 0;
     }
 
     //------------------------------------------------------------------------

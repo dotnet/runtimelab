@@ -45,22 +45,28 @@ public class Async2Struct
 
         public async2 Task Test()
         {
-            AssertEqual(100, Value);
-            Value++;
-            await InstanceCall();
-            AssertEqual(101, Value);
+            // TODO: C# compiler is expected to do this, but not in the prototype.
+            S @this = this;
 
-            await TaskButNotAsync();
-            AssertEqual(102, Value);
+            AssertEqual(100, @this.Value);
+            @this.Value++;
+            await @this.InstanceCall();
+            AssertEqual(101, @this.Value);
+
+            await @this.TaskButNotAsync();
+            AssertEqual(102, @this.Value);
         }
 
         private async2 Task InstanceCall()
         {
-            AssertEqual(101, Value);
-            Value++;
-            AssertEqual(102, Value);
+            // TODO: C# compiler is expected to do this, but not in the prototype.
+            S @this = this;
+
+            AssertEqual(101, @this.Value);
+            @this.Value++;
+            AssertEqual(102, @this.Value);
             await Task.Yield();
-            AssertEqual(102, Value);
+            AssertEqual(102, @this.Value);
         }
 
         private Task TaskButNotAsync()
