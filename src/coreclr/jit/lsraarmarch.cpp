@@ -274,6 +274,11 @@ int LinearScan::BuildCall(GenTreeCall* call)
     buildInternalRegisterUses();
 
     // Now generate defs and kills.
+    if (call->IsAsync() && compiler->compIsAsync() && !call->IsFastTailCall())
+    {
+        MarkAsyncContinuationBusyForCall(call);
+    }
+
     regMaskTP killMask = getKillSetForCall(call);
     if (dstCount > 0)
     {
@@ -301,11 +306,6 @@ int LinearScan::BuildCall(GenTreeCall* call)
         MarkSwiftErrorBusyForCall(call);
     }
 #endif // SWIFT_SUPPORT
-
-    if (call->IsAsync() && compiler->compIsAsync())
-    {
-        MarkAsyncContinuationBusyForCall(call);
-    }
 
     // No args are placed in registers anymore.
     placedArgRegs      = RBM_NONE;

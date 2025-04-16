@@ -758,12 +758,6 @@ int LinearScan::BuildNode(GenTree* tree)
 
         case GT_ASYNC_CONTINUATION:
             srcCount = 0;
-            assert(dstCount == 1);
-            // We kill the continuation arg here to communicate to the
-            // selection phase that the argument is no longer busy. This is a
-            // hack to make sure we do not overwrite the continuation between
-            // the call and this node.
-            addKillForRegs(RBM_ASYNC_CONTINUATION_RET, currentLoc);
             BuildDef(tree, RBM_ASYNC_CONTINUATION_RET.GetIntRegSet());
             break;
 
@@ -998,6 +992,11 @@ int LinearScan::BuildCall(GenTreeCall* call)
     buildInternalRegisterUses();
 
     // Now generate defs and kills.
+    if (call->IsAsync() && compiler->compIsAsync() && !call->IsFastTailCall())
+    {
+        MarkAsyncContinuationBusyForCall(call);
+    }
+
     regMaskTP killMask = getKillSetForCall(call);
     if (dstCount > 0)
     {
@@ -1017,11 +1016,6 @@ int LinearScan::BuildCall(GenTreeCall* call)
     else
     {
         BuildKills(call, killMask);
-    }
-
-    if (call->IsAsync() && compiler->compIsAsync())
-    {
-        MarkAsyncContinuationBusyForCall(call);
     }
 
     // No args are placed in registers anymore.
