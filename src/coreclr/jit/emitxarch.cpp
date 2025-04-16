@@ -11165,7 +11165,8 @@ void emitter::emitIns_Call(const EmitCallParams& params)
         /* Indirect call, virtual calls */
 
         id = emitNewInstrCallInd(argCnt, params.disp, params.ptrVars, gcrefRegs, byrefRegs,
-                                 params.retSize MULTIREG_HAS_SECOND_GC_RET_ONLY_ARG(params.secondRetSize), params.hasAsyncRet);
+                                 params.retSize MULTIREG_HAS_SECOND_GC_RET_ONLY_ARG(params.secondRetSize),
+                                 params.hasAsyncRet);
     }
     else
     {
@@ -11175,7 +11176,8 @@ void emitter::emitIns_Call(const EmitCallParams& params)
         assert(params.callType == EC_FUNC_TOKEN || params.callType == EC_FUNC_TOKEN_INDIR);
 
         id = emitNewInstrCallDir(argCnt, params.ptrVars, gcrefRegs, byrefRegs,
-                                 params.retSize MULTIREG_HAS_SECOND_GC_RET_ONLY_ARG(params.secondRetSize), params.hasAsyncRet);
+                                 params.retSize MULTIREG_HAS_SECOND_GC_RET_ONLY_ARG(params.secondRetSize),
+                                 params.hasAsyncRet);
     }
 
     /* Update the emitter's live GC ref sets */

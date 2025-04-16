@@ -4725,7 +4725,8 @@ void emitter::emitIns_Call(const EmitCallParams& params)
     {
         /* Indirect call, virtual calls */
 
-        id = emitNewInstrCallInd(argCnt, 0 /* disp */, params.ptrVars, gcrefRegs, byrefRegs, params.retSize, params.hasAsyncRet);
+        id = emitNewInstrCallInd(argCnt, 0 /* disp */, params.ptrVars, gcrefRegs, byrefRegs, params.retSize,
+                                 params.hasAsyncRet);
     }
     else
     {

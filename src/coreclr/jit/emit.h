@@ -473,6 +473,7 @@ struct EmitCallParams
     emitAttr retSize = EA_PTRSIZE;
     // For multi-reg args with GC returns in the second arg
     emitAttr  secondRetSize = EA_UNKNOWN;
+    bool      hasAsyncRet   = false;
     BitVec    ptrVars       = BitVecOps::UninitVal();
     regMaskTP gcrefRegs     = RBM_NONE;
     regMaskTP byrefRegs     = RBM_NONE;
