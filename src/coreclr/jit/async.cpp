@@ -290,6 +290,13 @@ PhaseStatus AsyncTransformation::Run()
     m_sharedReturnBB->clearTryIndex();
     m_sharedReturnBB->clearHndIndex();
 
+    if (m_comp->fgIsUsingProfileWeights())
+    {
+        // All suspension BBs are cold, so we do not need to propagate any
+        // weights, but we do need to propagate the flag.
+        m_sharedReturnBB->SetFlags(BBF_PROF_WEIGHT);
+    }
+
     GenTree* continuation = m_comp->gtNewLclvNode(m_newContinuationVar, TYP_REF);
     GenTree* ret          = m_comp->gtNewOperNode(GT_RETURN_SUSPEND, TYP_VOID, continuation);
     LIR::AsRange(m_sharedReturnBB).InsertAtEnd(continuation, ret);
