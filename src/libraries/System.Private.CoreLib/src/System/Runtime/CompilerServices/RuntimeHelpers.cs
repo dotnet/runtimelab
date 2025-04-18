@@ -181,26 +181,26 @@ namespace System.Runtime.CompilerServices
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
         public static void AwaitAwaiterFromRuntimeAsync<TAwaiter>(TAwaiter awaiter) where TAwaiter : INotifyCompletion
         {
-            ref RuntimeAsyncAwaitState state = ref t_runtimeAsyncAwaitState;
+            ref AsyncHelpers.RuntimeAsyncAwaitState state = ref AsyncHelpers.t_runtimeAsyncAwaitState;
             Continuation? sentinelContinuation = state.SentinelContinuation;
             if (sentinelContinuation == null)
                 state.SentinelContinuation = sentinelContinuation = new Continuation();
 
             state.Notifier = awaiter;
-            AsyncSuspend(sentinelContinuation);
+            AsyncHelpers.AsyncSuspend(sentinelContinuation);
         }
 
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
         public static void UnsafeAwaitAwaiterFromRuntimeAsync<TAwaiter>(TAwaiter awaiter) where TAwaiter : ICriticalNotifyCompletion
         {
-            ref RuntimeAsyncAwaitState state = ref t_runtimeAsyncAwaitState;
+            ref AsyncHelpers.RuntimeAsyncAwaitState state = ref AsyncHelpers.t_runtimeAsyncAwaitState;
             Continuation? sentinelContinuation = state.SentinelContinuation;
             if (sentinelContinuation == null)
                 state.SentinelContinuation = sentinelContinuation = new Continuation();
 
             state.Notifier = awaiter;
-            AsyncSuspend(sentinelContinuation);
+            AsyncHelpers.AsyncSuspend(sentinelContinuation);
         }
 
         // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
