@@ -1155,6 +1155,11 @@ ULONG MethodDesc::GetRVA()
         return 0;
     }
 
+    if (IsAsyncThunkMethod())
+    {
+        return 0;
+    }
+
     if (GetMemberDef() & 0x00FFFFFF)
     {
         Module *pModule = GetModule();
@@ -1203,9 +1208,6 @@ COR_ILMETHOD* MethodDesc::GetILHeader()
         PRECONDITION(!IsUnboxingStub());
     }
     CONTRACTL_END
-
-    if (IsRuntimeSupplied())
-        return NULL;
 
     Module *pModule = GetModule();
 
