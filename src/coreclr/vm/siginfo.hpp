@@ -129,7 +129,7 @@ public:
 
         void ConvertToInternalExactlyOne(Module* pSigModule, const SigTypeContext *pTypeContext, SigBuilder * pSigBuilder, BOOL bSkipCustomModifier = TRUE);
         void ConvertToInternalSignature(Module* pSigModule, const SigTypeContext *pTypeContext, SigBuilder * pSigBuilder, BOOL bSkipCustomModifier = TRUE);
-
+        void CopySignature(Module* pSigModule, SigBuilder * pSigBuilder, BYTE additionalCallConv);
 
     //=========================================================================
     // The CLOSED interface for reading signatures.  With the following
