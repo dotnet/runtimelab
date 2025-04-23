@@ -14,7 +14,8 @@ namespace System.Runtime.CompilerServices
     public static partial class AsyncHelpers
     {
 #if CORECLR
-        [BypassReadyToRun]
+        // Must be NoInlining because we use AsyncSuspend to manufacture an explicit suspension point.
+        // It will not capture/restore any local state that is live across it.
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
         public static void AwaitAwaiter<TAwaiter>(TAwaiter awaiter) where TAwaiter : INotifyCompletion
         {
@@ -27,7 +28,8 @@ namespace System.Runtime.CompilerServices
             AsyncHelpers.AsyncSuspend(sentinelContinuation);
         }
 
-        [BypassReadyToRun]
+        // Must be NoInlining because we use AsyncSuspend to manufacture an explicit suspension point.
+        // It will not capture/restore any local state that is live across it.
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
         public static void UnsafeAwaitAwaiter<TAwaiter>(TAwaiter awaiter) where TAwaiter : ICriticalNotifyCompletion
         {
@@ -40,9 +42,7 @@ namespace System.Runtime.CompilerServices
             AsyncHelpers.AsyncSuspend(sentinelContinuation);
         }
 
-        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
-        [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
         public static T Await<T>(Task<T> task)
         {
@@ -55,9 +55,7 @@ namespace System.Runtime.CompilerServices
             return awaiter.GetResult();
         }
 
-        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
-        [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
         public static void Await(Task task)
         {
@@ -70,9 +68,7 @@ namespace System.Runtime.CompilerServices
             awaiter.GetResult();
         }
 
-        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
-        [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
         public static T Await<T>(ValueTask<T> task)
         {
@@ -85,9 +81,7 @@ namespace System.Runtime.CompilerServices
             return awaiter.GetResult();
         }
 
-        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
-        [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
         public static void Await(ValueTask task)
         {
@@ -100,9 +94,7 @@ namespace System.Runtime.CompilerServices
             awaiter.GetResult();
         }
 
-        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
-        [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
         public static void Await(ConfiguredTaskAwaitable configuredAwaitable)
         {
@@ -115,9 +107,7 @@ namespace System.Runtime.CompilerServices
             awaiter.GetResult();
         }
 
-        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
-        [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
         public static void Await(ConfiguredValueTaskAwaitable configuredAwaitable)
         {
@@ -130,9 +120,7 @@ namespace System.Runtime.CompilerServices
             awaiter.GetResult();
         }
 
-        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
-        [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
         public static T Await<T>(ConfiguredTaskAwaitable<T> configuredAwaitable)
         {
@@ -145,9 +133,7 @@ namespace System.Runtime.CompilerServices
             return awaiter.GetResult();
         }
 
-        // Marked intrinsic since JIT recognises the helper by name when doing optimizations.
         [Intrinsic]
-        [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.Async)]
         public static T Await<T>(ConfiguredValueTaskAwaitable<T> configuredAwaitable)
         {
