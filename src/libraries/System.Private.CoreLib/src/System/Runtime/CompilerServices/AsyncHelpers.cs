@@ -13,7 +13,7 @@ namespace System.Runtime.CompilerServices
     [System.Diagnostics.CodeAnalysis.ExperimentalAttribute("SYSLIB5007", UrlFormat = "https://aka.ms/dotnet-warnings/{0}")]
     public static partial class AsyncHelpers
     {
-#if !NATIVEAOT && !MONO
+#if CORECLR
         [BypassReadyToRun]
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
         public static void AwaitAwaiter<TAwaiter>(TAwaiter awaiter) where TAwaiter : INotifyCompletion
@@ -159,6 +159,17 @@ namespace System.Runtime.CompilerServices
 
             return awaiter.GetResult();
         }
+#else
+        public static void UnsafeAwaitAwaiter<TAwaiter>(TAwaiter awaiter) where TAwaiter : ICriticalNotifyCompletion { throw new NotImplementedException(); }
+        public static void AwaitAwaiter<TAwaiter>(TAwaiter awaiter) where TAwaiter : INotifyCompletion { throw new NotImplementedException(); }
+        public static void Await(System.Threading.Tasks.Task task) { throw new NotImplementedException(); }
+        public static T Await<T>(System.Threading.Tasks.Task<T> task) { throw new NotImplementedException(); }
+        public static void Await(System.Threading.Tasks.ValueTask task) { throw new NotImplementedException(); }
+        public static T Await<T>(System.Threading.Tasks.ValueTask<T> task) { throw new NotImplementedException(); }
+        public static void Await(System.Runtime.CompilerServices.ConfiguredTaskAwaitable configuredAwaitable) { throw new NotImplementedException(); }
+        public static void Await(System.Runtime.CompilerServices.ConfiguredValueTaskAwaitable configuredAwaitable) { throw new NotImplementedException(); }
+        public static T Await<T>(System.Runtime.CompilerServices.ConfiguredTaskAwaitable<T> configuredAwaitable) { throw new NotImplementedException(); }
+        public static T Await<T>(System.Runtime.CompilerServices.ConfiguredValueTaskAwaitable<T> configuredAwaitable) { throw new NotImplementedException(); }
 #endif
     }
 }
