@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using Xunit;
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+#pragma warning disable SYSLIB5007 // 'System.Runtime.CompilerServices.AsyncHelpers' is for evaluation purposes only
 
 public class Async2FibonacciWithYields
 {
@@ -30,7 +31,7 @@ public class Async2FibonacciWithYields
         for (int i = 0; i < iterations; i++)
         {
             var sw = Stopwatch.StartNew();
-            int result = RuntimeHelpers.Await(Fib(30).ConfigureAwait(false));
+            int result = AsyncHelpers.Await(Fib(30).ConfigureAwait(false));
             sw.Stop();
 
             Console.WriteLine($"{sw.ElapsedMilliseconds} ms result={result}");
@@ -49,8 +50,8 @@ public class Async2FibonacciWithYields
             return 1;
         }
 
-        int i1 = RuntimeHelpers.Await(Fib(i - 1).ConfigureAwait(true));
-        int i2 = RuntimeHelpers.Await(Fib(i - 2).ConfigureAwait(false));
+        int i1 = AsyncHelpers.Await(Fib(i - 1).ConfigureAwait(true));
+        int i2 = AsyncHelpers.Await(Fib(i - 2).ConfigureAwait(false));
 
         return i1 + i2;
     }
