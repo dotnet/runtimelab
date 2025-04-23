@@ -1,7 +1,7 @@
 setlocal ENABLEEXTENSIONS
 pushd %~dp0
-set ASYNC_ROSLYN_COMMIT=d2174cf2f5a1d13c1fc393b44246b9dce851c555
-set ASYNC_SUFFIX=async-14
+set ASYNC_ROSLYN_COMMIT=792910b18a652dbf46bf292ee66dec974e39da9b
+set ASYNC_SUFFIX=async-15
 set ASYNC_ROSLYN_BRANCH=demos/async2-experiment1
 
 cd ..
