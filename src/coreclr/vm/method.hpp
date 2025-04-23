@@ -689,8 +689,7 @@ public:
     {
         LIMITED_METHOD_DAC_CONTRACT;
         return mcFCall == GetClassification()
-            || mcArray == GetClassification()
-            || IsAsyncThunkMethod();
+            || mcArray == GetClassification();
     }
 
     inline DWORD IsArray() const
@@ -891,7 +890,7 @@ public:
             MODE_ANY;
         }
         CONTRACTL_END;
-        return IsIL() && !IsUnboxingStub() && GetRVA() && !IsRuntimeSupplied();
+        return IsIL() && !IsUnboxingStub() && GetRVA();
     }
 
     COR_ILMETHOD* GetILHeader();
@@ -2116,7 +2115,6 @@ public:
     BOOL MayUsePrecompiledCode();
     virtual PCODE IsJitCancellationRequested();
     virtual BOOL SetNativeCode(PCODE pCode, PCODE * ppAlternateCodeToUse);
-    virtual PTR_PCODE GetNativeCodeSlot();
     virtual COR_ILMETHOD* GetILHeader();
     virtual CORJIT_FLAGS GetJitCompilationFlags();
 #ifdef FEATURE_ON_STACK_REPLACEMENT
