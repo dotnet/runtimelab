@@ -60,7 +60,8 @@ public enum MarshallingLabel
    Example:
 
    ```swift
-   @frozen struct Point {
+   @frozen 
+   struct Point {
        let x: Int
        let y: Int
    }
@@ -71,9 +72,9 @@ public enum MarshallingLabel
    Example:
 
    ```swift
-   struct DynamicBuffer {  // Non-frozen
-       var elements: [Int]
-       var capacity: Int
+   struct NonFrozenPoint {
+       let x: Int
+       let y: Int
    }
    ```
 
