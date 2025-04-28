@@ -180,9 +180,15 @@ static DISubprogram* CreateMethodDecl(DIBuilder* diBuilder, CORINFO_LLVM_METHOD_
 {
     DIType* debugOwnerType = getType(pInfo->OwnerType);
     DISubroutineType* debugFuncType = llvm::cast<DISubroutineType>(getType(pInfo->Type));
+    llvm::DITypeRefArray debugFuncParamTypes = debugFuncType->getTypeArray();
 
-    DISubprogram* debugDecl = diBuilder->createMethod(debugOwnerType, pInfo->Name, AsRef(pInfo->LinkageName), nullptr, 0,
-        debugFuncType, 0, 0, nullptr, DINode::FlagPrototyped);
+    DINode::DIFlags diFlags = DINode::FlagPrototyped;
+    if (debugFuncParamTypes.size() < 2 || !debugFuncParamTypes[1]->isObjectPointer())
+    {
+        diFlags |= DINode::FlagStaticMember;
+    }
+    DISubprogram* debugDecl = diBuilder->createMethod(debugOwnerType, pInfo->Name, AsRef(pInfo->LinkageName), nullptr,
+        0, debugFuncType, 0, 0, nullptr, diFlags);
     return debugDecl;
 }
 
@@ -215,7 +221,7 @@ void Llvm::initializeDebugInfo()
 
     DIFile* debugFile = m_diBuilder->createFile(info.FileName, info.Directory);
     m_diFunction = m_diBuilder->createFunction(nullptr, debugDecl->getName(), debugDecl->getLinkageName(),
-        debugFile, lineNo, debugDecl->getType(), 0, DINode::FlagPrototyped, funcFlags, nullptr, debugDecl);
+        debugFile, lineNo, debugDecl->getType(), 0, debugDecl->getFlags(), funcFlags, nullptr, debugDecl);
 
     initializeDebugVariables(&info);
 
@@ -249,22 +255,21 @@ void Llvm::initializeDebugVariables(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
         CORINFO_LLVM_VARIABLE_DEBUG_INFO* pVariableInfo = &pInfo->Variables[i];
         DIType* debugType = getOrCreateDebugType(pVariableInfo->Type);
         unsigned num = pVariableInfo->VarNumber;
+        unsigned lclNum = _compiler->compMapILvarNum(num);
 
         llvm::DILocalVariable* debugVariable;
         if (num < m_info->compILargsCount)
         {
-            bool isThis = (m_info->compThisArg != BAD_VAR_NUM) && (num == 0);
+            bool isThis = m_info->compThisArg == lclNum;
             DINode::DIFlags flags = isThis ? (DINode::FlagObjectPointer | DINode::FlagArtificial) : DINode::FlagZero;
 
             debugVariable = m_diBuilder->createParameterVariable(m_diFunction, pVariableInfo->Name, num + 1, debugFile,
-                                                                 0, debugType, flags);
+                                                                 0, debugType, false, flags);
         }
         else
         {
             debugVariable = m_diBuilder->createAutoVariable(m_diFunction, pVariableInfo->Name, debugFile, 0, debugType);
         }
-
-        unsigned lclNum = _compiler->compMapILvarNum(num);
         m_debugVariablesMap.Set(lclNum, debugVariable);
     }
 }
@@ -515,7 +520,8 @@ static DIType* CreateFunctionType(
     debugParameters[index++] = getType(pInfo->ReturnType);
     if (pInfo->TypeOfThisPointer != NO_DEBUG_TYPE)
     {
-        debugParameters[index++] = getType(pInfo->TypeOfThisPointer);
+        DIType* objPtrType = getType(pInfo->TypeOfThisPointer);
+        debugParameters[index++] = diBuilder->createObjectPointerType(objPtrType);
     }
     for (size_t i = 0; i < pInfo->NumberOfArguments; i++)
     {
