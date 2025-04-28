@@ -417,18 +417,6 @@ namespace Internal.JitInterface
         }
 
         [UnmanagedCallersOnly]
-        private static CORINFO_LLVM_DEBUG_TYPE_HANDLE getDebugTypeForType(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* typeHandle)
-        {
-            return GetThis(thisHandle).GetDebugTypeForType(typeHandle);
-        }
-
-        [UnmanagedCallersOnly]
-        private static void getDebugInfoForDebugType(IntPtr thisHandle, CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo)
-        {
-            GetThis(thisHandle).GetDebugInfoForDebugType(debugTypeHandle, pInfo);
-        }
-
-        [UnmanagedCallersOnly]
         private static void getDebugInfoForCurrentMethod(IntPtr thisHandle, CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
         {
             GetThis(thisHandle).GetDebugInfoForCurrentMethod(pInfo);
@@ -449,8 +437,6 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.EEAI_GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor*, void>)&getTypeDescriptor;
             jitImports[(int)EEApiId.EEAI_GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
             jitImports[(int)EEApiId.EEAI_GetExternalMethodAccessor] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, IntPtr>)&getExternalMethodAccessor;
-            jitImports[(int)EEApiId.EEAI_GetDebugTypeForType] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_LLVM_DEBUG_TYPE_HANDLE>)&getDebugTypeForType;
-            jitImports[(int)EEApiId.EEAI_GetDebugInfoForDebugType] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_DEBUG_TYPE_HANDLE, CORINFO_LLVM_TYPE_DEBUG_INFO*, void>)&getDebugInfoForDebugType;
             jitImports[(int)EEApiId.EEAI_GetDebugInfoForCurrentMethod] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_METHOD_DEBUG_INFO*, void>)&getDebugInfoForCurrentMethod;
             jitImports[(int)EEApiId.EEAI_GetSingleThreadedCompilationContext] = (delegate* unmanaged<IntPtr, void*>)&getSingleThreadedCompilationContext;
             jitImports[(int)EEApiId.EEAI_GetExceptionHandlingModel] = (delegate* unmanaged<IntPtr, CorInfoLlvmEHModel>)&getExceptionHandlingModel;
@@ -479,12 +465,14 @@ namespace Internal.JitInterface
             }
         }
 
-        internal void JitStartSingleThreadedCompilation(string outputFileName, string triple, string dataLayout)
+        internal void JitStartSingleThreadedCompilation(
+            CorInfoLlvmSingleThreadedCompilationContextFlags flags, string outputFileName, string triple, string dataLayout)
         {
             fixed (byte* pOutputFileName = StringToUTF8(outputFileName), pTriple = StringToUTF8(triple), pDataLayout = StringToUTF8(dataLayout))
             {
-                var pExport = (delegate* unmanaged<byte*, byte*, byte*, void*>)GetJitExport(CorJitApiId.CJAI_StartSingleThreadedCompilation);
-                _pNativeContext = pExport(pOutputFileName, pTriple, pDataLayout);
+                var pExport = (delegate* unmanaged<CorInfoLlvmSingleThreadedCompilationContextFlags, byte*, byte*, byte*, void*>)
+                    GetJitExport(CorJitApiId.CJAI_StartSingleThreadedCompilation);
+                _pNativeContext = pExport(flags, pOutputFileName, pTriple, pDataLayout);
             }
         }
 

@@ -280,19 +280,22 @@ class TypeDebugInfoModule;
 class SingleThreadedCompilationContext
 {
 public:
+    CorInfoLlvmSingleThreadedCompilationContextFlags Flags;
     LLVMContext Context;
     Module Module;
     JitHashTable<CORINFO_CLASS_HANDLE, JitPtrKeyFuncs<CORINFO_CLASS_STRUCT_>, Type*, MallocAllocator> LlvmStructTypesMap = {{}};
     JitHashTable<CORINFO_CLASS_HANDLE, JitPtrKeyFuncs<CORINFO_CLASS_STRUCT_>, StructDesc*, MallocAllocator> StructDescMap = {{}};
-    JitHashTable<CORINFO_LLVM_DEBUG_TYPE_HANDLE, JitSmallPrimitiveKeyFuncs<CORINFO_LLVM_DEBUG_TYPE_HANDLE>, llvm::DIType*, MallocAllocator> DebugTypesMap = {{}};
     TypeDebugInfoModule* DebugTypes = nullptr;
 
-    SingleThreadedCompilationContext(StringRef name) : Module(name, Context)
+    SingleThreadedCompilationContext(CorInfoLlvmSingleThreadedCompilationContextFlags flags, StringRef name)
+        : Flags(flags)
+        , Module(name, Context)
     {
     }
 
     static CORINFO_LLVM_DEBUG_TYPE_HANDLE EmitDebugTypeInfo(SingleThreadedCompilationContext* context, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo);
     static CORINFO_LLVM_DEBUG_METHOD_DECL_HANDLE EmitDebugMethodDecl(SingleThreadedCompilationContext* context, CORINFO_LLVM_METHOD_DECL_DEBUG_INFO* pInfo);
+    TypeDebugInfoModule* GetDebugTypes();
     void FinishDebugInfo();
 };
 
@@ -422,8 +425,6 @@ private:
     const char* GetAlternativeFunctionName();
     CORINFO_GENERIC_HANDLE GetExternalMethodAccessor(
         CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* callSiteSig, int sigLength);
-    CORINFO_LLVM_DEBUG_TYPE_HANDLE GetDebugTypeForType(CORINFO_CLASS_HANDLE typeHandle);
-    void GetDebugInfoForDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo);
     void GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
     SingleThreadedCompilationContext* GetSingleThreadedCompilationContext();
     CorInfoLlvmEHModel GetExceptionHandlingModel();
@@ -725,7 +726,6 @@ private:
     // ================================================================================================================
 
     void initializeDebugInfo();
-    void initializeDebugInfoBuilder();
     void initializeDebugVariables(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
 
     void declareDebugVariables();
@@ -735,8 +735,5 @@ private:
     llvm::DILocation* getDebugLocation(unsigned lineNo);
     llvm::DILocation* getArtificialDebugLocation();
     llvm::DILocation* getCurrentOrArtificialDebugLocation();
-
-    llvm::DIType* getOrCreateDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle);
-    llvm::DIType* createDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle);
 };
 #endif /* End of _LLVM_H_ */

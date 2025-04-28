@@ -784,16 +784,6 @@ CORINFO_GENERIC_HANDLE Llvm::GetExternalMethodAccessor(
         m_pEECorInfo, methodHandle, sig, sigLength);
 }
 
-CORINFO_LLVM_DEBUG_TYPE_HANDLE Llvm::GetDebugTypeForType(CORINFO_CLASS_HANDLE typeHandle)
-{
-    return CallEEApi<EEAI_GetDebugTypeForType, CORINFO_LLVM_DEBUG_TYPE_HANDLE>(m_pEECorInfo, typeHandle);
-}
-
-void Llvm::GetDebugInfoForDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo)
-{
-    CallEEApi<EEAI_GetDebugInfoForDebugType, void>(m_pEECorInfo, debugTypeHandle, pInfo);
-}
-
 void Llvm::GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
 {
     CallEEApi<EEAI_GetDebugInfoForCurrentMethod, void>(m_pEECorInfo, pInfo);
@@ -841,9 +831,12 @@ void Llvm::GetJitTestInfo(CorInfoLlvmJitTestKind kind, CORINFO_LLVM_JIT_TEST_INF
 }
 
 static SingleThreadedCompilationContext* StartSingleThreadedCompilation(
-    const char* path, const char* triple, const char* dataLayout)
+    CorInfoLlvmSingleThreadedCompilationContextFlags flags,
+    const char* path,
+    const char* triple,
+    const char* dataLayout)
 {
-    SingleThreadedCompilationContext* context = new SingleThreadedCompilationContext(path);
+    SingleThreadedCompilationContext* context = new SingleThreadedCompilationContext(flags, path);
     context->Module.setTargetTriple(triple);
     context->Module.setDataLayout(dataLayout);
 

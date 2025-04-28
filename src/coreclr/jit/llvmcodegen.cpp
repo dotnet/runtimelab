@@ -28,7 +28,7 @@ void Llvm::Compile()
 
     if (m_diFunction != nullptr)
     {
-        m_diBuilder->finalize();
+        m_diBuilder->finalizeSubprogram(m_diFunction);
     }
 
     generateAuxiliaryArtifacts();
