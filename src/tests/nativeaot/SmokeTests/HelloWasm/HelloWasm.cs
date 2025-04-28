@@ -4274,11 +4274,8 @@ internal unsafe partial class Program
         DiagnosticMethodInfo delClosedInstanceNotExposedDmi = DiagnosticMethodInfo.Create(delClosedInstanceNotExposed);
         if (delClosedInstanceNotExposedDmi is not { Name: nameof(UniqueStructTypeTwo.InstanceMethodTwo), DeclaringTypeName: $"{nameof(Program)}+{nameof(UniqueStructTypeTwo)}" })
         {
-            if (s_usingPreciseVirtualUnwind) // TODO-LLVM: remove after https://github.com/dotnet/runtime/issues/108688 is fixed.
-            {
-                PrintLine($"Unexpected DiagnosticMethodInfo from a non-reflected closed instance (VT) delegate: {delClosedInstanceNotExposedDmi?.DeclaringTypeName}::{delClosedInstanceNotExposedDmi?.Name}");
-                return false;
-            }
+            PrintLine($"Unexpected DiagnosticMethodInfo from a non-reflected closed instance (VT) delegate: {delClosedInstanceNotExposedDmi?.DeclaringTypeName}::{delClosedInstanceNotExposedDmi?.Name}");
+            return false;
         }
 
         ActionExposed delClosedInstanceGenericMethodExposed = uniqueStructOne.GenericInstanceMethodOne<object>;
@@ -4313,11 +4310,8 @@ internal unsafe partial class Program
         DiagnosticMethodInfo delClosedGenericInstanceNotExposedDmi = DiagnosticMethodInfo.Create(delClosedGenericInstanceNotExposed);
         if (delClosedGenericInstanceNotExposedDmi is not { Name: nameof(GenericUniqueStructTypeTwo<object>.InstanceMethodFour), DeclaringTypeName: $"{nameof(Program)}+{nameof(GenericUniqueStructTypeTwo<object>)}`1" })
         {
-            if (s_usingPreciseVirtualUnwind) // TODO-LLVM: remove after https://github.com/dotnet/runtime/issues/108688 is fixed.
-            {
-                PrintLine($"Unexpected DiagnosticMethodInfo from a non-reflected closed generic instance (VT) delegate: {delClosedGenericInstanceNotExposedDmi?.DeclaringTypeName}::{delClosedGenericInstanceNotExposedDmi?.Name}");
-                return false;
-            }
+            PrintLine($"Unexpected DiagnosticMethodInfo from a non-reflected closed generic instance (VT) delegate: {delClosedGenericInstanceNotExposedDmi?.DeclaringTypeName}::{delClosedGenericInstanceNotExposedDmi?.Name}");
+            return false;
         }
 
         MethodInfo openInstanceMethodInfo = typeof(UniqueStructTypeOne).GetMethod(nameof(UniqueStructTypeOne.AnotherInstanceMethodOne));

@@ -360,27 +360,6 @@ private:
                     continue;
                 }
 
-                // Handle a special case: calls with return buffer pointers need them pinned.
-                if (node->IsCall() && node->AsCall()->gtArgs.HasRetBuffer())
-                {
-                    assert(m_lssa->IsGcConservative());
-
-                    GenTree* retBufNode = node->AsCall()->gtArgs.GetRetBufferArg()->GetNode();
-                    if ((retBufNode->gtLIRFlags & LIR::Flags::Mark) != 0)
-                    {
-                        unsigned spillLclNum;
-                        m_liveSdsuGcDefs.TryGetValue(retBufNode, &spillLclNum);
-                        SpillSdsuValue(blockRange, retBufNode, &spillLclNum);
-                        m_liveSdsuGcDefs.AddOrUpdate(retBufNode, spillLclNum);
-                    }
-                    else if (varTypeIsGC(retBufNode) && IsCandidateLocalNode(retBufNode))
-                    {
-                        unsigned lclNum = retBufNode->AsLclVarCommon()->GetLclNum();
-                        unsigned ssaNum = retBufNode->AsLclVarCommon()->GetSsaNum();
-                        SpillLocalValue(lclNum, ssaNum DEBUGARG("is used as a return buffer"));
-                    }
-                }
-
                 GenTree* user = node;
                 while (true)
                 {

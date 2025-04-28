@@ -349,9 +349,11 @@
     <Compile Include="System\Diagnostics\StackFrame.NativeAot.Browser.cs" Condition="'$(TargetsBrowser)' == 'true'" />
   </ItemGroup>
 
-  <!-- WASM-specific threading things. Keep in sync with Mono. -->
+  <!-- WASM-specific things. Keep in sync with Mono. -->
   <PropertyGroup>
     <MonoBclSourcesRoot>$([MSBuild]::NormalizePath('$(MonoProjectRoot)', 'System.Private.CoreLib', 'src'))</MonoBclSourcesRoot>
+    <FeatureSingleThread Condition="'$(TargetsSingleThreadedWasm)' == 'true'">true</FeatureSingleThread>
+    <DefineConstants Condition="'$(FeatureSingleThread)' == 'true'">$(DefineConstants);FEATURE_SINGLE_THREADED</DefineConstants>
   </PropertyGroup>
   <ItemGroup Condition="'$(TargetsBrowser)' == 'true' and '$(TargetsSingleThreadedWasm)' == 'true'">
     <Compile Include="$(MonoBclSourcesRoot)\System\Threading\ThreadPoolBoundHandle.Browser.Mono.cs" />
