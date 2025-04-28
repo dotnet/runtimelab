@@ -126,12 +126,12 @@ unsafe class Program
 
         p2.IntField = p1;
         p3.IntField = p1;
-        Debugger.Break(); // "p2.IntField" and "p3.IntField" should be equal to "p1".
+        Debugger.Break(); // "p1", "p2.IntField" and "p3.IntField" should be equal to 5.
 
         structLocal = p2;
-        Debugger.Break(); // "structLocal" should be equal to "p2".
+        Debugger.Break(); // "p2" and "structLocal" should be equal to "{ 5, 2.0 }".
         classLocal = p3;
-        Debugger.Break(); // "classLocal" should be equal to "p3".        
+        Debugger.Break(); // "p3" and "classLocal" should be equal to "{ 5, 2.0 }".
     }
 }
 

@@ -293,7 +293,7 @@ void Llvm::declareDebugVariables()
         }
 
         Value* addressValue;
-        DIExpression* debugExpression;
+        ArrayStack<uint64_t> diExpression(_compiler->getAllocator(CMK_DebugInfo));
         if (isShadowFrameLocal(varDsc))
         {
             // The obvious way to implement this (by just passing the shadow stack to dbg.declare) does not
@@ -307,20 +307,25 @@ void Llvm::declareDebugVariables()
             }
 
             addressValue = spilledShadowStackAddr;
-            unsigned offset = static_cast<unsigned>(varDsc->GetStackOffset());
-            debugExpression = m_diBuilder->createExpression({DW_OP_deref, DW_OP_plus_uconst, offset});
+            diExpression.Push(DW_OP_deref);
+            diExpression.Push(DW_OP_plus_uconst);
+            diExpression.Push(varDsc->GetStackOffset());
         }
         else if (varDsc->lvRefCnt() != 0)
         {
             addressValue = getLocalAddr(lclNum);
-            debugExpression = m_diBuilder->createExpression();
         }
         else
         {
             continue;
         }
+        if (_compiler->lvaIsImplicitByRefLocal(lclNum))
+        {
+            diExpression.Push(DW_OP_deref);
+        }
 
         llvm::DILocalVariable* debugVariable = lcl->GetValue();
+        DIExpression* debugExpression = m_diBuilder->createExpression(AsRef(diExpression));
         Instruction* debugInst =
             m_diBuilder->insertDeclare(addressValue, debugVariable, debugExpression, debugLocation, insertInst);
         JITDUMP("Declaring V%02u:\n", lclNum);
@@ -335,17 +340,21 @@ void Llvm::assignDebugVariable(unsigned lclNum, Value* value)
     llvm::DILocalVariable* debugVariable;
     if (m_debugVariablesMap.Lookup(lclNum, &debugVariable))
     {
+        DIExpression* diExpression = _compiler->lvaIsImplicitByRefLocal(lclNum)
+            ? m_diBuilder->createExpression({DW_OP_deref})
+            : m_diBuilder->createExpression();
+
         DILocation* debugLocation = getCurrentOrArtificialDebugLocation();
         Instruction* debugInst;
         if (_builder.GetInsertPoint() == _builder.GetInsertBlock()->end())
         {
-            debugInst = m_diBuilder->insertDbgValueIntrinsic(value, debugVariable, m_diBuilder->createExpression(),
-                                                             debugLocation, _builder.GetInsertBlock());
+            debugInst = m_diBuilder->insertDbgValueIntrinsic(
+                value, debugVariable, diExpression, debugLocation, _builder.GetInsertBlock());
         }
         else
         {
-            debugInst = m_diBuilder->insertDbgValueIntrinsic(value, debugVariable, m_diBuilder->createExpression(),
-                                                             debugLocation, &*_builder.GetInsertPoint());
+            debugInst = m_diBuilder->insertDbgValueIntrinsic(
+                value, debugVariable, diExpression, debugLocation, &*_builder.GetInsertPoint());
         }
         DBEXEC(CurrentBlock() == nullptr, JITDUMPEXEC(displayValue(debugInst)));
     }
