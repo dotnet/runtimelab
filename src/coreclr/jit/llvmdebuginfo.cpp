@@ -139,7 +139,7 @@ struct CORINFO_LLVM_METHOD_DECL_DEBUG_INFO
 
 struct CORINFO_LLVM_METHOD_DEBUG_INFO
 {
-    CORINFO_LLVM_METHOD_DECL_DEBUG_INFO Decl;
+    CORINFO_LLVM_DEBUG_METHOD_DECL_HANDLE Decl;
     const char* Directory;
     const char* FileName;
     unsigned LineNumberCount;
@@ -153,44 +153,388 @@ static StringRef AsRef(CORINFO_LLVM_STRING string)
     return StringRef(string.Data, string.Length);
 }
 
-static DICompileUnit* CreateCompileUnit(DIBuilder* diBuilder, Module* module)
+class TypeDebugInfoModule
 {
-    StringRef path = module->getName();
-    StringRef dir;
-    StringRef name;
-    size_t dirEnd = path.find_last_of("\\/");
-    if (dirEnd != StringRef::npos)
+    SingleThreadedCompilationContext* m_context;
+    DIBuilder m_diBuilder;
+    jitstd::vector<DIType*, MallocAllocator> m_diTypes;
+    DISubprogram* m_lastEmittedMethodDecl = nullptr;
+    unsigned m_lastEmittedDeclIndex = 0;
+
+public:
+    TypeDebugInfoModule(SingleThreadedCompilationContext* context)
+        : m_context(context)
+        , m_diBuilder(context->Module, /* AllowUnresolved */ true)
+        , m_diTypes({})
     {
-        dir = path.take_front(dirEnd);
-        name = path.substr(dirEnd + 1);
-    }
-    else
-    {
-        dir = "";
-        name = path;
+        m_diTypes.push_back(nullptr);
+        InitializeCompileUnit();
     }
 
-    DIFile* debugFile = diBuilder->createFile(name, dir);
-    return diBuilder->createCompileUnit(DW_LANG_C_plus_plus, debugFile, "ILC", false, "", 1, "",
-        DICompileUnit::FullDebug, 0, false);
-}
-
-template <typename TGetTypeFunc>
-static DISubprogram* CreateMethodDecl(DIBuilder* diBuilder, CORINFO_LLVM_METHOD_DECL_DEBUG_INFO* pInfo, TGetTypeFunc getType)
-{
-    DIType* debugOwnerType = getType(pInfo->OwnerType);
-    DISubroutineType* debugFuncType = llvm::cast<DISubroutineType>(getType(pInfo->Type));
-    llvm::DITypeRefArray debugFuncParamTypes = debugFuncType->getTypeArray();
-
-    DINode::DIFlags diFlags = DINode::FlagPrototyped;
-    if (debugFuncParamTypes.size() < 2 || !debugFuncParamTypes[1]->isObjectPointer())
+    DIBuilder* GetDIBuilder()
     {
-        diFlags |= DINode::FlagStaticMember;
+        return &m_diBuilder;
     }
-    DISubprogram* debugDecl = diBuilder->createMethod(debugOwnerType, pInfo->Name, AsRef(pInfo->LinkageName), nullptr,
-        0, debugFuncType, 0, 0, nullptr, diFlags);
-    return debugDecl;
-}
+
+    void Finish()
+    {
+        EmitDebugInfoRootFunction();
+        m_diBuilder.finalize();
+    }
+
+    CORINFO_LLVM_DEBUG_TYPE_HANDLE EmitType(CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo)
+    {
+        DIType* debugType;
+        switch (pInfo->Kind)
+        {
+            case CORINFO_LLVM_DEBUG_TYPE_PRIMITIVE:
+                debugType = EmitPrimitiveType(pInfo->PrimitiveType);
+                break;
+            case CORINFO_LLVM_DEBUG_TYPE_COMPOSITE:
+                debugType = EmitCompositeType(&pInfo->CompositeInfo);
+                break;
+            case CORINFO_LLVM_DEBUG_TYPE_ENUM:
+                debugType = EmitEnumType(&pInfo->EnumInfo);
+                break;
+            case CORINFO_LLVM_DEBUG_TYPE_ARRAY:
+                debugType = EmitArrayType(&pInfo->ArrayInfo);
+                break;
+            case CORINFO_LLVM_DEBUG_TYPE_POINTER:
+                debugType = EmitPointerType(&pInfo->PointerInfo);
+                break;
+            case CORINFO_LLVM_DEBUG_TYPE_FORWARD:
+                debugType = EmitForwardType(&pInfo->ForwardInfo);
+                break;
+            case CORINFO_LLVM_DEBUG_TYPE_FUNCTION:
+                debugType = EmitFunctionType(&pInfo->FunctionInfo);
+                break;
+            default:
+                unreached();
+        }
+
+        unsigned index = static_cast<unsigned>(m_diTypes.size());
+        m_diTypes.push_back(debugType);
+        return index;
+    }
+
+    CORINFO_LLVM_DEBUG_METHOD_DECL_HANDLE EmitMethodDecl(CORINFO_LLVM_METHOD_DECL_DEBUG_INFO* pInfo)
+    {
+        DICompositeType* debugOwnerType = llvm::cast<DICompositeType>(GetEmittedType(pInfo->OwnerType));
+        DISubroutineType* debugFuncType = llvm::cast<DISubroutineType>(GetEmittedType(pInfo->Type));
+        llvm::DITypeRefArray debugFuncParamTypes = debugFuncType->getTypeArray();
+
+        DINode::DIFlags diFlags = DINode::FlagPrototyped;
+        if (debugFuncParamTypes.size() < 2 || !debugFuncParamTypes[1]->isObjectPointer())
+        {
+            diFlags |= DINode::FlagStaticMember;
+        }
+        DISubprogram* debugDecl = m_diBuilder.createMethod(debugOwnerType, pInfo->Name, AsRef(pInfo->LinkageName),
+            nullptr, 0, debugFuncType, 0, 0, nullptr, diFlags);
+
+        if (!debugOwnerType->isForwardDecl())
+        {
+            // We've previously made the elements distinct, hence we can add to them.
+            debugOwnerType->getElements()->push_back(debugDecl);
+        }
+        m_lastEmittedMethodDecl = debugDecl;
+        return ++m_lastEmittedDeclIndex;
+    }
+
+    DIType* GetEmittedType(CORINFO_LLVM_DEBUG_TYPE_HANDLE handle)
+    {
+        unsigned index = handle;
+        assert(index < m_diTypes.size());
+        return m_diTypes[index];
+    }
+
+    DISubprogram* GetEmittedMethodDecl(CORINFO_LLVM_DEBUG_METHOD_DECL_HANDLE handle)
+    {
+        // Our current users do not need decls other than the last one. Once/if
+        // that changes, we can store them in an array like we do with types.
+        assert(handle == m_lastEmittedDeclIndex);
+        assert(m_lastEmittedMethodDecl != nullptr);
+        return m_lastEmittedMethodDecl;
+    }
+
+private:
+    DICompileUnit* InitializeCompileUnit()
+    {
+        StringRef path = m_context->Module.getName();
+        StringRef dir;
+        StringRef name;
+        size_t dirEnd = path.find_last_of("\\/");
+        if (dirEnd != StringRef::npos)
+        {
+            dir = path.take_front(dirEnd);
+            name = path.substr(dirEnd + 1);
+        }
+        else
+        {
+            dir = "";
+            name = path;
+        }
+
+        DIFile* debugFile = m_diBuilder.createFile(name, dir);
+        return m_diBuilder.createCompileUnit(DW_LANG_C_plus_plus, debugFile, "ILC", false, "", 1, "",
+            DICompileUnit::FullDebug, 0, false);
+    }
+
+    DIType* EmitPrimitiveType(CorInfoType type)
+    {
+        switch (type)
+        {
+            case CORINFO_TYPE_VOID:
+                return nullptr;
+            case CORINFO_TYPE_BOOL:
+                return m_diBuilder.createBasicType("bool", 8, DW_ATE_boolean);
+            case CORINFO_TYPE_CHAR:
+                return m_diBuilder.createBasicType("char16_t", 16, DW_ATE_UTF);
+            case CORINFO_TYPE_BYTE:
+                return m_diBuilder.createBasicType("signed char", 8, DW_ATE_signed);
+            case CORINFO_TYPE_UBYTE:
+                return m_diBuilder.createBasicType("unsigned char", 8, DW_ATE_unsigned);
+            case CORINFO_TYPE_SHORT:
+                return m_diBuilder.createBasicType("short", 16, DW_ATE_signed);
+            case CORINFO_TYPE_USHORT:
+                return m_diBuilder.createBasicType("unsigned short", 16, DW_ATE_unsigned);
+            case CORINFO_TYPE_INT:
+                return m_diBuilder.createBasicType("int", 32, DW_ATE_signed);
+            case CORINFO_TYPE_UINT:
+                return m_diBuilder.createBasicType("unsigned int", 32, DW_ATE_unsigned);
+            case CORINFO_TYPE_LONG:
+                return m_diBuilder.createBasicType("long long", 64, DW_ATE_signed);
+            case CORINFO_TYPE_ULONG:
+                return m_diBuilder.createBasicType("unsigned long long", 64, DW_ATE_unsigned);
+            case CORINFO_TYPE_NATIVEINT:
+                return m_diBuilder.createBasicType("long", TARGET_POINTER_BITS, DW_ATE_signed);
+            case CORINFO_TYPE_NATIVEUINT:
+                return m_diBuilder.createBasicType("unsigned long", TARGET_POINTER_BITS, DW_ATE_unsigned);
+            case CORINFO_TYPE_FLOAT:
+                return m_diBuilder.createBasicType("float", 32, DW_ATE_float);
+            case CORINFO_TYPE_DOUBLE:
+                return m_diBuilder.createBasicType("double", 64, DW_ATE_float);
+            default:
+                unreached();
+        }
+    }
+
+    DIType* EmitCompositeType(CORINFO_LLVM_COMPOSITE_TYPE_DEBUG_INFO* pInfo)
+    {
+        // Forward-declare our structure to handle inheritance.
+        llvm::TempDIType declType = llvm::TempDIType(
+            m_diBuilder.createReplaceableCompositeType(DW_TAG_structure_type, "", nullptr, nullptr, 0));
+        unsigned debugElementsCount = (pInfo->BaseClass != NO_DEBUG_TYPE) + pInfo->InstanceFieldCount;
+        llvm::SmallVector<Metadata*> debugElements(debugElementsCount);
+        if (pInfo->BaseClass != NO_DEBUG_TYPE)
+        {
+            DIType* baseDebugType = GetEmittedType(pInfo->BaseClass);
+            DIDerivedType* inheritance =
+                m_diBuilder.createInheritance(declType.get(), baseDebugType, 0, 0, DINode::FlagZero);
+            debugElements.push_back(inheritance);
+        }
+
+        for (size_t i = 0; i < pInfo->InstanceFieldCount; i++)
+        {
+            CORINFO_LLVM_INSTANCE_FIELD_DEBUG_INFO* pFieldInfo = &pInfo->InstanceFields[i];
+            DIType* fieldDebugType = GetEmittedType(pFieldInfo->Type);
+            DIDerivedType* debugField = CreateMember(pFieldInfo->Name, fieldDebugType, pFieldInfo->Offset);
+            debugElements.push_back(debugField);
+        }
+
+        DIType* debugType = EmitClassTypeWithMembers(pInfo->Name, pInfo->Size, debugElements);
+        m_diBuilder.replaceTemporary(std::move(declType), debugType);
+
+        // TODO-LLVM-DI: static fields.
+        return debugType;
+    }
+
+    DIType* EmitEnumType(CORINFO_LLVM_ENUM_TYPE_DEBUG_INFO* pInfo)
+    {
+        llvm::SmallVector<Metadata*, 24> elements(static_cast<size_t>(pInfo->ElementCount));
+        for (size_t i = 0; i < pInfo->ElementCount; i++)
+        {
+            CORINFO_LLVM_ENUM_ELEMENT_DEBUG_INFO* pElementInfo = &pInfo->Elements[i];
+            llvm::DIEnumerator* element = m_diBuilder.createEnumerator(pElementInfo->Name, pElementInfo->Value);
+            elements.push_back(element);
+        }
+
+        DINodeArray elementsArray = m_diBuilder.getOrCreateArray(elements);
+        DIType* underlyingDebugType = GetEmittedType(pInfo->ElementType);
+        DIType* enumDebugType =
+            m_diBuilder.createEnumerationType(nullptr, pInfo->Name, nullptr, 0,
+                underlyingDebugType->getSizeInBits(), underlyingDebugType->getAlignInBits(),
+                elementsArray, underlyingDebugType);
+        return enumDebugType;
+    }
+
+    DIType* EmitArrayType(CORINFO_LLVM_ARRAY_TYPE_DEBUG_INFO* pInfo)
+    {
+        // Array layout: [void* m_pEEType, int32 Length, [int32 padding on 64 bit], <bounds>, Data].
+        // Where <bounds> (for an MD array) is an array of [LowerBound..., Length...].
+        unsigned rank = pInfo->Rank;
+        bool isMDArray = pInfo->IsMultiDimensional != 0;
+        llvm::SmallVector<Metadata*> members;
+
+        DIType* lengthDebugType = EmitPrimitiveType(CORINFO_TYPE_INT);
+        DIDerivedType* lengthDebugField = CreateMember("Length", lengthDebugType, OFFSETOF__CORINFO_Array__length);
+        members.push_back(lengthDebugField);
+
+        if (isMDArray)
+        {
+            unsigned lowerBoundsOffset = Compiler::eeGetMDArrayLowerBoundOffset(rank, 0);
+            DIType* boundsDebugType = CreateFixedArrayType(lengthDebugType, rank);
+            DIDerivedType* lowerBoundsDebugField = CreateMember("LowerBounds", boundsDebugType, lowerBoundsOffset);
+            members.push_back(lowerBoundsDebugField);
+
+            unsigned lengthsOffset = Compiler::eeGetMDArrayLengthOffset(rank, 0);
+            DIDerivedType* lengthsDebugField = CreateMember("Lengths", boundsDebugType, lengthsOffset);
+            members.push_back(lengthsDebugField);
+        }
+
+        unsigned dataOffset = isMDArray ? Compiler::eeGetMDArrayDataOffset(rank) : Compiler::eeGetArrayDataOffset();
+        DIType* elementDebugType = GetEmittedType(pInfo->ElementType);
+        DIType* dataDebugType = CreateFixedArrayType(elementDebugType, 0);
+        DIDerivedType* dataDebugField = CreateMember("Data", dataDebugType, dataOffset);
+        members.push_back(dataDebugField);
+
+        DIType* debugType = EmitClassTypeWithMembers(pInfo->Name, dataOffset, members);
+        return debugType;
+    }
+
+    DIType* EmitPointerType(CORINFO_LLVM_POINTER_TYPE_DEBUG_INFO* pInfo)
+    {
+        DIType* debugPointeeType = GetEmittedType(pInfo->ElementType);
+        DIType* debugPointerType;
+        if (pInfo->IsReference != 0)
+        {
+            // Reference to a reference is not valid C++; our target debuggers cannot handle it. Emit reference to
+            // a pointer instead.
+            if (debugPointeeType->getTag() == DW_TAG_reference_type)
+            {
+                debugPointeeType = llvm::cast<DIDerivedType>(debugPointeeType)->getBaseType();
+                debugPointeeType = m_diBuilder.createPointerType(debugPointeeType, TARGET_POINTER_BITS);
+            }
+
+            debugPointerType =
+                m_diBuilder.createReferenceType(DW_TAG_reference_type, debugPointeeType, TARGET_POINTER_BITS);
+        }
+        else
+        {
+            debugPointerType = m_diBuilder.createPointerType(debugPointeeType, TARGET_POINTER_BITS);
+        }
+
+        return debugPointerType;
+    }
+
+    DIType* EmitForwardType(CORINFO_LLVM_FORWARD_TYPE_DEBUG_INFO* pInfo)
+    {
+        unsigned tag;
+        switch (pInfo->Kind)
+        {
+            case CORINFO_LLVM_DEBUG_TYPE_FORWARD_STRUCT:
+                tag = DW_TAG_structure_type;
+                break;
+            case CORINFO_LLVM_DEBUG_TYPE_FORWARD_ENUM:
+                tag = DW_TAG_enumeration_type;
+                break;
+            default:
+                unreached();
+        }
+        return m_diBuilder.createForwardDecl(tag, pInfo->Name, nullptr, nullptr, 0);
+    }
+
+    DIType* EmitFunctionType(CORINFO_LLVM_FUNCTION_TYPE_DEBUG_INFO* pInfo)
+    {
+        llvm::SmallVector<Metadata*> debugParameters;
+        debugParameters.push_back(GetEmittedType(pInfo->ReturnType));
+        if (pInfo->TypeOfThisPointer != NO_DEBUG_TYPE)
+        {
+            DIType* objPtrType = GetEmittedType(pInfo->TypeOfThisPointer);
+            debugParameters.push_back(m_diBuilder.createObjectPointerType(objPtrType));
+        }
+        for (size_t i = 0; i < pInfo->NumberOfArguments; i++)
+        {
+            debugParameters.push_back(GetEmittedType(pInfo->ArgumentTypes[i]));
+        }
+
+        llvm::DITypeRefArray debugParametersArray = m_diBuilder.getOrCreateTypeArray(debugParameters);
+        DIType* debugFuncType = m_diBuilder.createSubroutineType(debugParametersArray);
+        return debugFuncType;
+    }
+
+    DIType* EmitClassTypeWithMembers(StringRef name, unsigned size, ArrayRef<Metadata*> elements)
+    {
+        // We create a distinct array here because we may later need to append declared methods to it.
+        DINodeArray members = llvm::MDTuple::getDistinct(m_context->Context, elements);
+        DIType* debugType = m_diBuilder.createClassType(nullptr, name, nullptr, 0, size * BITS_PER_BYTE, 0, 0,
+            DINode::FlagZero, nullptr, members);
+        return debugType;
+    }
+
+    DIDerivedType* CreateMember(StringRef name, llvm::DIType* debugType, unsigned offset)
+    {
+        return m_diBuilder.createMemberType(nullptr, name, nullptr, 0, debugType->getSizeInBits(),
+            debugType->getAlignInBits(), offset * BITS_PER_BYTE, DINode::FlagZero, debugType);
+    }
+
+    DIType* CreateFixedArrayType(DIType* elementDebugType, unsigned size)
+    {
+        uint64_t sizeInBits = elementDebugType->getSizeInBits() * size;
+        llvm::DISubrange* boundsRange = m_diBuilder.getOrCreateSubrange(0, size);
+        DINodeArray boundsArray = m_diBuilder.getOrCreateArray(boundsRange);
+        DIType* debugType =
+            m_diBuilder.createArrayType(sizeInBits, elementDebugType->getAlignInBits(), elementDebugType, boundsArray);
+
+        return debugType;
+    }
+
+    void EmitDebugInfoRootFunction()
+    {
+        if ((m_context->Flags & CORINFO_LLVM_STCC_ROOT_DEBUG_TYPES) == 0)
+        {
+            // This is a code module, all the necessary types are already referenced.
+            return;
+        }
+
+        // Create our no-op defined function.
+        Type* llvmPtrType = llvm::PointerType::getUnqual(m_context->Context);
+        FunctionType* llvmFuncType = FunctionType::get(llvmPtrType, /* isVarArg */ true);
+        Function* llvmFunc = Function::Create(
+            llvmFuncType, llvm::GlobalValue::ExternalLinkage, "dotnet_debug_types_root", m_context->Module);
+        llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(m_context->Context, "", llvmFunc);
+        llvm::ReturnInst::Create(m_context->Context, llvm::Constant::getNullValue(llvmPtrType), llvmBlock);
+
+        // Make sure it's preserved by the linker.
+        llvm::ArrayType* usedType = llvm::ArrayType::get(llvmFunc->getType(), 1);
+        llvm::Constant* usedValue = llvm::ConstantArray::get(usedType, {llvmFunc});
+        new llvm::GlobalVariable(m_context->Module, usedType, true, llvm::GlobalValue::AppendingLinkage, usedValue, "llvm.used");
+
+        // Now for the last step - pretend it's got a huge function pointer containing all of the types we've emitted.
+        // This way, our consumers (wasmtime's DI GC) will preserve the types. This is a workaround which wouldn't be
+        // needed had LLVM had a way to emit DWARF's DW_FORM_ref_addr relocations directly. Alas, we have to rely on
+        // forward declarations, which won't be resolved by the simple-minded GC algorithm in wasmtime.
+        // TODO-LLVM-DI: make this into a linked list of some kind to avoid algorithmic problems in consumers.
+        llvm::DITypeRefArray diRootedTypes = llvm::DINode::getDistinct(m_context->Context, {nullptr});
+        for (int i = 0; i < m_diTypes.size(); i++)
+        {
+            DIType* diType = m_diTypes[i];
+            if ((diType != nullptr) &&
+                (diType->getTag() == DW_TAG_structure_type || diType->getTag() == DW_TAG_enumeration_type) &&
+                !diType->isForwardDecl())
+            {
+                // We could optimize this by only including roots of strongly connected components.
+                diRootedTypes->push_back(diType);
+            }
+        }
+        DIType* diRootTypes = m_diBuilder.createSubroutineType(diRootedTypes);
+        diRootTypes = m_diBuilder.createPointerType(diRootTypes, TARGET_POINTER_BITS);
+
+        DISubroutineType* debugFuncType = m_diBuilder.createSubroutineType(m_diBuilder.getOrCreateTypeArray({diRootTypes}));
+        DISubprogram* debugFunc = m_diBuilder.createFunction(
+            nullptr, llvmFunc->getName(), "", nullptr, 0, debugFuncType, 0, DINode::FlagZero, DISubprogram::SPFlagDefinition);
+        llvmFunc->setSubprogram(debugFunc);
+    }
+};
 
 void Llvm::initializeDebugInfo()
 {
@@ -210,12 +554,13 @@ void Llvm::initializeDebugInfo()
     assert(info.SortedLineNumbers != nullptr);
     m_lineNumberCount = info.LineNumberCount;
     m_lineNumbers = info.SortedLineNumbers;
-    initializeDebugInfoBuilder();
+
+    TypeDebugInfoModule* debugTypes = m_context->GetDebugTypes();
+    m_diBuilder = debugTypes->GetDIBuilder();
 
     // For debug type unification across compile units to work, we need to first declare our methods. This is not
     // really specified anywhere, but it is how C++ DI is emitted and how LLDB expects these things to be shaped.
-    DISubprogram* debugDecl = CreateMethodDecl(
-        m_diBuilder, &info.Decl, [this](CORINFO_LLVM_DEBUG_TYPE_HANDLE hnd) { return getOrCreateDebugType(hnd); });
+    DISubprogram* debugDecl = debugTypes->GetEmittedMethodDecl(info.Decl);
     unsigned lineNo = m_lineNumbers[0].LineNumber;
     DISubprogram::DISPFlags funcFlags = DISubprogram::SPFlagDefinition;
 
@@ -229,31 +574,14 @@ void Llvm::initializeDebugInfo()
     getRootLlvmFunction()->setSubprogram(m_diFunction);
 }
 
-void Llvm::initializeDebugInfoBuilder()
-{
-    DICompileUnit* debugCompileUnit = nullptr;
-    for (DICompileUnit* unit : m_context->Module.debug_compile_units())
-    {
-        debugCompileUnit = unit;
-        break;
-    }
-
-    m_diBuilder =
-        new (_compiler->getAllocator(CMK_DebugInfo)) llvm::DIBuilder(m_context->Module, true, debugCompileUnit);
-
-    if (debugCompileUnit == nullptr)
-    {
-        debugCompileUnit = CreateCompileUnit(m_diBuilder, &m_context->Module);
-    }
-}
-
 void Llvm::initializeDebugVariables(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
 {
     DIFile* debugFile = m_diFunction->getFile();
+    TypeDebugInfoModule* debugTypes = m_context->GetDebugTypes();
     for (size_t i = 0; i < pInfo->VariableCount; i++)
     {
         CORINFO_LLVM_VARIABLE_DEBUG_INFO* pVariableInfo = &pInfo->Variables[i];
-        DIType* debugType = getOrCreateDebugType(pVariableInfo->Type);
+        DIType* debugType = debugTypes->GetEmittedType(pVariableInfo->Type);
         unsigned num = pVariableInfo->VarNumber;
         unsigned lclNum = _compiler->compMapILvarNum(num);
 
@@ -427,401 +755,25 @@ DILocation* Llvm::getCurrentOrArtificialDebugLocation()
     return debugLocation;
 }
 
-static DIType* CreatePrimitiveType(DIBuilder* m_diBuilder, CorInfoType type)
-{
-    switch (type)
-    {
-        case CORINFO_TYPE_VOID:
-            return nullptr;
-        case CORINFO_TYPE_BOOL:
-            return m_diBuilder->createBasicType("bool", 8, DW_ATE_boolean);
-        case CORINFO_TYPE_CHAR:
-            return m_diBuilder->createBasicType("char16_t", 16, DW_ATE_UTF);
-        case CORINFO_TYPE_BYTE:
-            return m_diBuilder->createBasicType("signed char", 8, DW_ATE_signed);
-        case CORINFO_TYPE_UBYTE:
-            return m_diBuilder->createBasicType("unsigned char", 8, DW_ATE_unsigned);
-        case CORINFO_TYPE_SHORT:
-            return m_diBuilder->createBasicType("short", 16, DW_ATE_signed);
-        case CORINFO_TYPE_USHORT:
-            return m_diBuilder->createBasicType("unsigned short", 16, DW_ATE_unsigned);
-        case CORINFO_TYPE_INT:
-            return m_diBuilder->createBasicType("int", 32, DW_ATE_signed);
-        case CORINFO_TYPE_UINT:
-            return m_diBuilder->createBasicType("unsigned int", 32, DW_ATE_unsigned);
-        case CORINFO_TYPE_LONG:
-            return m_diBuilder->createBasicType("long long", 64, DW_ATE_signed);
-        case CORINFO_TYPE_ULONG:
-            return m_diBuilder->createBasicType("unsigned long long", 64, DW_ATE_unsigned);
-        case CORINFO_TYPE_NATIVEINT:
-            return m_diBuilder->createBasicType("long", TARGET_POINTER_BITS, DW_ATE_signed);
-        case CORINFO_TYPE_NATIVEUINT:
-            return m_diBuilder->createBasicType("unsigned long", TARGET_POINTER_BITS, DW_ATE_unsigned);
-        case CORINFO_TYPE_FLOAT:
-            return m_diBuilder->createBasicType("float", 32, DW_ATE_float);
-        case CORINFO_TYPE_DOUBLE:
-            return m_diBuilder->createBasicType("double", 64, DW_ATE_float);
-        default:
-            unreached();
-    }
-}
-
-template <typename TGetTypeFunc>
-static DIType* CreatePointerType(DIBuilder* diBuilder, CORINFO_LLVM_POINTER_TYPE_DEBUG_INFO* pInfo, TGetTypeFunc getType)
-{
-    DIType* debugPointeeType = getType(pInfo->ElementType);
-    DIType* debugPointerType;
-    if (pInfo->IsReference != 0)
-    {
-        // Reference to a reference is not valid C++; our target debuggers cannot handle it. Emit reference to
-        // a pointer instead.
-        if (debugPointeeType->getTag() == DW_TAG_reference_type)
-        {
-            debugPointeeType = llvm::cast<DIDerivedType>(debugPointeeType)->getBaseType();
-            debugPointeeType = diBuilder->createPointerType(debugPointeeType, TARGET_POINTER_BITS);
-        }
-
-        debugPointerType =
-            diBuilder->createReferenceType(DW_TAG_reference_type, debugPointeeType, TARGET_POINTER_BITS);
-    }
-    else
-    {
-        debugPointerType = diBuilder->createPointerType(debugPointeeType, TARGET_POINTER_BITS);
-    }
-
-    return debugPointerType;
-}
-
-static DIType* CreateForwardType(DIBuilder* diBuilder, CORINFO_LLVM_FORWARD_TYPE_DEBUG_INFO* pInfo)
-{
-    unsigned tag;
-    switch (pInfo->Kind)
-    {
-        case CORINFO_LLVM_DEBUG_TYPE_FORWARD_STRUCT:
-            tag = DW_TAG_structure_type;
-            break;
-        case CORINFO_LLVM_DEBUG_TYPE_FORWARD_ENUM:
-            tag = DW_TAG_enumeration_type;
-            break;
-        default:
-            unreached();
-    }
-    return diBuilder->createForwardDecl(tag, pInfo->Name, nullptr, nullptr, 0);
-}
-
-template <typename TGetTypeFunc, typename TAlloc>
-static DIType* CreateFunctionType(
-    DIBuilder* diBuilder, CORINFO_LLVM_FUNCTION_TYPE_DEBUG_INFO* pInfo, TAlloc alloc, TGetTypeFunc getType)
-{
-    unsigned debugParameterCount = 1 + (pInfo->TypeOfThisPointer != NO_DEBUG_TYPE) + pInfo->NumberOfArguments;
-    Metadata** debugParameters = alloc.template allocate<Metadata*>(debugParameterCount);
-
-    size_t index = 0;
-    debugParameters[index++] = getType(pInfo->ReturnType);
-    if (pInfo->TypeOfThisPointer != NO_DEBUG_TYPE)
-    {
-        DIType* objPtrType = getType(pInfo->TypeOfThisPointer);
-        debugParameters[index++] = diBuilder->createObjectPointerType(objPtrType);
-    }
-    for (size_t i = 0; i < pInfo->NumberOfArguments; i++)
-    {
-        debugParameters[index++] = getType(pInfo->ArgumentTypes[i]);
-    }
-    llvm::DITypeRefArray debugParametersArray =
-        diBuilder->getOrCreateTypeArray(ArrayRef(debugParameters, debugParameterCount));
-    DIType* debugFuncType = diBuilder->createSubroutineType(debugParametersArray);
-
-    alloc.deallocate(debugParameters);
-    return debugFuncType;
-}
-
-static DIType* CreateClassType(
-    LLVMContext& context, DIBuilder* diBuilder, StringRef name, unsigned size, ArrayRef<Metadata*> elements)
-{
-    // We create a distinct array here because we may later need to append declared methods to it.
-    DINodeArray members = llvm::MDTuple::getDistinct(context, elements);
-    DIType* debugType = diBuilder->createClassType(nullptr, name, nullptr, 0, size * BITS_PER_BYTE, 0, 0,
-        DINode::FlagZero, nullptr, members);
-    return debugType;
-}
-
-static DIType* CreateFixedArrayType(DIBuilder* diBuilder, DIType* elementDebugType, unsigned size)
-{
-    uint64_t sizeInBits = elementDebugType->getSizeInBits() * size;
-    llvm::DISubrange* boundsRange = diBuilder->getOrCreateSubrange(0, size);
-    DINodeArray boundsArray = diBuilder->getOrCreateArray(boundsRange);
-    DIType* debugType =
-        diBuilder->createArrayType(sizeInBits, elementDebugType->getAlignInBits(), elementDebugType, boundsArray);
-
-    return debugType;
-}
-
-static DIDerivedType* CreateMember(
-    DIBuilder* diBuilder, StringRef name, llvm::DIType* debugType, unsigned offset)
-{
-    return diBuilder->createMemberType(nullptr, name, nullptr, 0, debugType->getSizeInBits(),
-        debugType->getAlignInBits(), offset * BITS_PER_BYTE, DINode::FlagZero, debugType);
-}
-
-DIType* Llvm::getOrCreateDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle)
-{
-    DIType** pDebugType = m_context->DebugTypesMap.LookupPointerOrAdd(debugTypeHandle, nullptr);
-    if (*pDebugType == nullptr)
-    {
-        *pDebugType = createDebugType(debugTypeHandle);
-    }
-    return *pDebugType;
-}
-
-DIType* Llvm::createDebugType(CORINFO_LLVM_DEBUG_TYPE_HANDLE debugTypeHandle)
-{
-    CORINFO_LLVM_TYPE_DEBUG_INFO info;
-    GetDebugInfoForDebugType(debugTypeHandle, &info);
-
-    switch (info.Kind)
-    {
-        case CORINFO_LLVM_DEBUG_TYPE_PRIMITIVE:
-            return CreatePrimitiveType(m_diBuilder, info.PrimitiveType);
-        case CORINFO_LLVM_DEBUG_TYPE_POINTER:
-            return CreatePointerType(m_diBuilder, &info.PointerInfo,
-                [this](CORINFO_LLVM_DEBUG_TYPE_HANDLE hnd) { return getOrCreateDebugType(hnd); });
-        case CORINFO_LLVM_DEBUG_TYPE_FORWARD:
-            return CreateForwardType(m_diBuilder, &info.ForwardInfo);
-        case CORINFO_LLVM_DEBUG_TYPE_FUNCTION:
-            return CreateFunctionType(m_diBuilder, &info.FunctionInfo, _compiler->getAllocator(CMK_DebugInfo),
-                [this](CORINFO_LLVM_DEBUG_TYPE_HANDLE hnd) { return getOrCreateDebugType(hnd); });
-        default:
-            unreached();
-    }
-}
-
-class TypeDebugInfoModule
-{
-    SingleThreadedCompilationContext* m_context;
-    DIBuilder m_diBuilder;
-    jitstd::vector<DIType*, MallocAllocator> m_diTypes;
-    unsigned m_declIndex = 0;
-
-public:
-    TypeDebugInfoModule(SingleThreadedCompilationContext* context)
-        : m_context(context)
-        , m_diBuilder(context->Module, /* AllowUnresolved */ true)
-        , m_diTypes({})
-    {
-        m_diTypes.push_back(nullptr);
-        CreateCompileUnit(&m_diBuilder, &m_context->Module);
-    }
-
-    void Finish()
-    {
-        EmitDebugInfoRootFunction();
-        m_diBuilder.finalize();
-    }
-
-    CORINFO_LLVM_DEBUG_TYPE_HANDLE EmitType(CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo)
-    {
-        DIType* debugType;
-        switch (pInfo->Kind)
-        {
-            case CORINFO_LLVM_DEBUG_TYPE_PRIMITIVE:
-                debugType = CreatePrimitiveType(&m_diBuilder, pInfo->PrimitiveType);
-                break;
-            case CORINFO_LLVM_DEBUG_TYPE_COMPOSITE:
-                debugType = EmitCompositeType(&pInfo->CompositeInfo);
-                break;
-            case CORINFO_LLVM_DEBUG_TYPE_ENUM:
-                debugType = EmitEnumType(&pInfo->EnumInfo);
-                break;
-            case CORINFO_LLVM_DEBUG_TYPE_ARRAY:
-                debugType = EmitArrayType(&pInfo->ArrayInfo);
-                break;
-            case CORINFO_LLVM_DEBUG_TYPE_POINTER:
-                debugType = CreatePointerType(&m_diBuilder, &pInfo->PointerInfo,
-                    [this](CORINFO_LLVM_DEBUG_TYPE_HANDLE hnd) { return GetEmittedType(hnd); });
-                break;
-            case CORINFO_LLVM_DEBUG_TYPE_FORWARD:
-                debugType = CreateForwardType(&m_diBuilder, &pInfo->ForwardInfo);
-                break;
-            case CORINFO_LLVM_DEBUG_TYPE_FUNCTION:
-                debugType = CreateFunctionType(&m_diBuilder, &pInfo->FunctionInfo, MallocAllocator{},
-                    [this](CORINFO_LLVM_DEBUG_TYPE_HANDLE hnd) { return GetEmittedType(hnd); });
-                break;
-            default:
-                unreached();
-        }
-
-        unsigned index = static_cast<unsigned>(m_diTypes.size());
-        m_diTypes.push_back(debugType);
-        return index;
-    }
-
-    CORINFO_LLVM_DEBUG_METHOD_DECL_HANDLE EmitMethodDecl(CORINFO_LLVM_METHOD_DECL_DEBUG_INFO* pInfo)
-    {
-        DISubprogram* debugDecl = CreateMethodDecl(
-            &m_diBuilder, pInfo, [this](CORINFO_LLVM_DEBUG_TYPE_HANDLE hnd) { return GetEmittedType(hnd); });
-
-        // We've previously made the elements distinct, hence we can add to them.
-        DICompositeType* debugOwnerType = llvm::cast<DICompositeType>(GetEmittedType(pInfo->OwnerType));
-        debugOwnerType->getElements()->push_back(debugDecl);
-        return ++m_declIndex;
-    }
-
-private:
-    DIType* GetEmittedType(CORINFO_LLVM_DEBUG_TYPE_HANDLE handle)
-    {
-        unsigned index = handle;
-        assert(index < m_diTypes.size());
-        return m_diTypes[index];
-    }
-
-    DIType* EmitCompositeType(CORINFO_LLVM_COMPOSITE_TYPE_DEBUG_INFO* pInfo)
-    {
-        // Forward-declare our structure to handle inheritance.
-        llvm::TempDIType declType = llvm::TempDIType(
-            m_diBuilder.createReplaceableCompositeType(DW_TAG_structure_type, "", nullptr, nullptr, 0));
-        unsigned debugElementsCount = (pInfo->BaseClass != NO_DEBUG_TYPE) + pInfo->InstanceFieldCount;
-        llvm::SmallVector<Metadata*> debugElements(debugElementsCount);
-        if (pInfo->BaseClass != NO_DEBUG_TYPE)
-        {
-            DIType* baseDebugType = GetEmittedType(pInfo->BaseClass);
-            DIDerivedType* inheritance =
-                m_diBuilder.createInheritance(declType.get(), baseDebugType, 0, 0, DINode::FlagZero);
-            debugElements.push_back(inheritance);
-        }
-
-        for (size_t i = 0; i < pInfo->InstanceFieldCount; i++)
-        {
-            CORINFO_LLVM_INSTANCE_FIELD_DEBUG_INFO* pFieldInfo = &pInfo->InstanceFields[i];
-            DIType* fieldDebugType = GetEmittedType(pFieldInfo->Type);
-            DIDerivedType* debugField =
-                CreateMember(&m_diBuilder, pFieldInfo->Name, fieldDebugType, pFieldInfo->Offset);
-            debugElements.push_back(debugField);
-        }
-
-        DIType* debugType =
-            CreateClassType(m_context->Context, &m_diBuilder, pInfo->Name, pInfo->Size, debugElements);
-        m_diBuilder.replaceTemporary(std::move(declType), debugType);
-
-        // TODO-LLVM-DI: static fields.
-        return debugType;
-    }
-
-    DIType* EmitEnumType(CORINFO_LLVM_ENUM_TYPE_DEBUG_INFO* pInfo)
-    {
-        llvm::SmallVector<Metadata*, 24> elements(static_cast<size_t>(pInfo->ElementCount));
-        for (size_t i = 0; i < pInfo->ElementCount; i++)
-        {
-            CORINFO_LLVM_ENUM_ELEMENT_DEBUG_INFO* pElementInfo = &pInfo->Elements[i];
-            llvm::DIEnumerator* element = m_diBuilder.createEnumerator(pElementInfo->Name, pElementInfo->Value);
-            elements.push_back(element);
-        }
-
-        DINodeArray elementsArray = m_diBuilder.getOrCreateArray(elements);
-        DIType* underlyingDebugType = GetEmittedType(pInfo->ElementType);
-        DIType* enumDebugType =
-            m_diBuilder.createEnumerationType(nullptr, pInfo->Name, nullptr, 0,
-                underlyingDebugType->getSizeInBits(), underlyingDebugType->getAlignInBits(),
-                elementsArray, underlyingDebugType);
-
-        return enumDebugType;
-    }
-
-    DIType* EmitArrayType(CORINFO_LLVM_ARRAY_TYPE_DEBUG_INFO* pInfo)
-    {
-        // Array layout: [void* m_pEEType, int32 Length, [int32 padding on 64 bit], <bounds>, Data].
-        // Where <bounds> (for an MD array) is an array of [LowerBound..., Length...].
-        unsigned rank = pInfo->Rank;
-        bool isMDArray = pInfo->IsMultiDimensional != 0;
-        llvm::SmallVector<Metadata*> members;
-
-        DIType* lengthDebugType = CreatePrimitiveType(&m_diBuilder, CORINFO_TYPE_INT);
-        DIDerivedType* lengthDebugField =
-            CreateMember(&m_diBuilder, "Length", lengthDebugType, OFFSETOF__CORINFO_Array__length);
-        members.push_back(lengthDebugField);
-
-        if (isMDArray)
-        {
-            unsigned lowerBoundsOffset = Compiler::eeGetMDArrayLowerBoundOffset(rank, 0);
-            DIType* boundsDebugType = CreateFixedArrayType(&m_diBuilder, lengthDebugType, rank);
-            DIDerivedType* lowerBoundsDebugField =
-                CreateMember(&m_diBuilder, "LowerBounds", boundsDebugType, lowerBoundsOffset);
-            members.push_back(lowerBoundsDebugField);
-
-            unsigned lengthsOffset = Compiler::eeGetMDArrayLengthOffset(rank, 0);
-            DIDerivedType* lengthsDebugField = CreateMember(&m_diBuilder, "Lengths", boundsDebugType, lengthsOffset);
-            members.push_back(lengthsDebugField);
-        }
-
-        unsigned dataOffset = isMDArray ? Compiler::eeGetMDArrayDataOffset(rank) : Compiler::eeGetArrayDataOffset();
-        DIType* elementDebugType = GetEmittedType(pInfo->ElementType);
-        DIType* dataDebugType = CreateFixedArrayType(&m_diBuilder, elementDebugType, 0);
-        DIDerivedType* dataDebugField = CreateMember(&m_diBuilder, "Data", dataDebugType, dataOffset);
-        members.push_back(dataDebugField);
-
-        DIType* debugType = CreateClassType(m_context->Context, &m_diBuilder, pInfo->Name, dataOffset, members);
-        return debugType;
-    }
-
-    void EmitDebugInfoRootFunction()
-    {
-        // Create our no-op defined function.
-        Type* llvmPtrType = llvm::PointerType::getUnqual(m_context->Context);
-        FunctionType* llvmFuncType = FunctionType::get(llvmPtrType, /* isVarArg */ true);
-        Function* llvmFunc = Function::Create(
-            llvmFuncType, llvm::GlobalValue::ExternalLinkage, "dotnet_debug_types_root", m_context->Module);
-        llvm::BasicBlock* llvmBlock = llvm::BasicBlock::Create(m_context->Context, "", llvmFunc);
-        llvm::ReturnInst::Create(m_context->Context, llvm::Constant::getNullValue(llvmPtrType), llvmBlock);
-
-        // Make sure it's preserved by the linker.
-        llvm::ArrayType* usedType = llvm::ArrayType::get(llvmFunc->getType(), 1);
-        llvm::Constant* usedValue = llvm::ConstantArray::get(usedType, {llvmFunc});
-        new llvm::GlobalVariable(m_context->Module, usedType, true, llvm::GlobalValue::AppendingLinkage, usedValue, "llvm.used");
-
-        // Now for the last step - pretend it's got a huge function pointer containing all of the types we've emitted.
-        // This way, our consumers (wasmtime's DI GC) will preserve the types. This is a workaround which wouldn't be
-        // needed had LLVM had a way to emit DWARF's DW_FORM_ref_addr relocations directly. Alas, we have to rely on
-        // forward declarations, which won't be resolved by the simple-minded GC algorithm in wasmtime.
-        // TODO-LLVM-DI: make this into a linked list of some kind to avoid algorithmic problems in consumers.
-        llvm::DITypeRefArray diRootedTypes = llvm::DINode::getDistinct(m_context->Context, {nullptr});
-        for (int i = 0; i < m_diTypes.size(); i++)
-        {
-            DIType* diType = m_diTypes[i];
-            if ((diType != nullptr) &&
-                (diType->getTag() == DW_TAG_structure_type || diType->getTag() == DW_TAG_enumeration_type) &&
-                !diType->isForwardDecl())
-            {
-                // We could optimize this by only including roots of strongly connected components.
-                diRootedTypes->push_back(diType);
-            }
-        }
-        DIType* diRootTypes = m_diBuilder.createSubroutineType(diRootedTypes);
-        diRootTypes = m_diBuilder.createPointerType(diRootTypes, TARGET_POINTER_BITS);
-
-        DISubroutineType* debugFuncType = m_diBuilder.createSubroutineType(m_diBuilder.getOrCreateTypeArray({diRootTypes}));
-        DISubprogram* debugFunc = m_diBuilder.createFunction(
-            nullptr, llvmFunc->getName(), "", nullptr, 0, debugFuncType, 0, DINode::FlagZero, DISubprogram::SPFlagDefinition);
-        llvmFunc->setSubprogram(debugFunc);
-    }
-};
-
 CORINFO_LLVM_DEBUG_TYPE_HANDLE SingleThreadedCompilationContext::EmitDebugTypeInfo(
     SingleThreadedCompilationContext* context, CORINFO_LLVM_TYPE_DEBUG_INFO* pInfo)
 {
-    if (context->DebugTypes == nullptr)
-    {
-        context->DebugTypes = new TypeDebugInfoModule(context);
-    }
-    return context->DebugTypes->EmitType(pInfo);
+    return context->GetDebugTypes()->EmitType(pInfo);
 }
 
 CORINFO_LLVM_DEBUG_METHOD_DECL_HANDLE SingleThreadedCompilationContext::EmitDebugMethodDecl(
     SingleThreadedCompilationContext* context, CORINFO_LLVM_METHOD_DECL_DEBUG_INFO* pInfo)
 {
-    if (context->DebugTypes == nullptr)
+    return context->GetDebugTypes()->EmitMethodDecl(pInfo);
+}
+
+TypeDebugInfoModule* SingleThreadedCompilationContext::GetDebugTypes()
+{
+    if (DebugTypes == nullptr)
     {
-        context->DebugTypes = new TypeDebugInfoModule(context);
+        DebugTypes = new TypeDebugInfoModule(this);
     }
-    return context->DebugTypes->EmitMethodDecl(pInfo);
+    return DebugTypes;
 }
 
 void SingleThreadedCompilationContext::FinishDebugInfo()

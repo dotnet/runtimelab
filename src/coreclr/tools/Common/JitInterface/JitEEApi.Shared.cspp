@@ -6,6 +6,11 @@
 namespace Internal.JitInterface;
 #endif
 
+enum CorInfoLlvmSingleThreadedCompilationContextFlags
+{
+    CORINFO_LLVM_STCC_ROOT_DEBUG_TYPES = 1 << 1
+};
+
 enum CorJitApiId
 {
     CJAI_StartSingleThreadedCompilation,
@@ -26,8 +31,6 @@ enum EEApiId
     EEAI_GetTypeDescriptor,
     EEAI_GetAlternativeFunctionName,
     EEAI_GetExternalMethodAccessor,
-    EEAI_GetDebugTypeForType,
-    EEAI_GetDebugInfoForDebugType,
     EEAI_GetDebugInfoForCurrentMethod,
     EEAI_GetSingleThreadedCompilationContext,
     EEAI_GetExceptionHandlingModel,

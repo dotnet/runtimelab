@@ -89,7 +89,8 @@ namespace ILCompiler
             }
 
             long start = Stopwatch.GetTimestamp();
-            CorInfoImpl diModule = CreateModuleCompilationContext("debug");
+            CorInfoImpl diModule = CreateModuleCompilationContext(
+                "debug", CorInfoLlvmSingleThreadedCompilationContextFlags.CORINFO_LLVM_STCC_ROOT_DEBUG_TYPES);
             LlvmTypesDebugInfoEmit diEmit = new LlvmTypesDebugInfoEmit(this, diModule);
 
             // Keep the logic below in sync with "ObjectWriter::EmitObject".
@@ -236,12 +237,12 @@ namespace ILCompiler
             }
         }
 
-        private CorInfoImpl CreateModuleCompilationContext(string kind)
+        private CorInfoImpl CreateModuleCompilationContext(string kind, CorInfoLlvmSingleThreadedCompilationContextFlags flags = 0)
         {
             CorInfoImpl corInfo = new CorInfoImpl(this);
             string outputFilePath = Path.ChangeExtension(_outputFile, $".{kind}.bc");
 
-            corInfo.JitStartSingleThreadedCompilation(outputFilePath, Options.Target, Options.DataLayout);
+            corInfo.JitStartSingleThreadedCompilation(flags, outputFilePath, Options.Target, Options.DataLayout);
             _compilationResults.Add(outputFilePath);
             return corInfo;
         }
