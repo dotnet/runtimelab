@@ -863,6 +863,15 @@ static void FinishSingleThreadedCompilation(SingleThreadedCompilationContext* co
         module.addModuleFlag(llvm::Module::Warning, "Debug Info Version", 3);
     }
 
+    if (JitConfig.JitVerifyLlvmIR())
+    {
+        // Serialize verification so that the results are more legible.
+        static CritSecObject s_verifyLock;
+        CritSecHolder verifyLock(s_verifyLock);
+        llvm::errs() << "Verifying: '" << module.getName() << "'\n";
+        llvm::verifyModule(module, &llvm::errs());
+    }
+
     std::error_code code;
     StringRef outputFilePath = module.getName();
     if (JitConfig.JitCheckLlvmIR())

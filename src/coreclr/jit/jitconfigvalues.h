@@ -845,6 +845,7 @@ CONFIG_INTEGER(JitDispIns, "JitDispIns", 0)
 #endif // defined(TARGET_LOONGARCH64)
 
 #ifdef TARGET_WASM
+RELEASE_CONFIG_INTEGER(JitVerifyLlvmIR, "JitVerifyLlvmIR", 0)
 RELEASE_CONFIG_INTEGER(JitCheckLlvmIR, "JitCheckLlvmIR", 0)
 RELEASE_CONFIG_INTEGER(JitRunLssaTests, "JitRunLssaTests", 0)
 RELEASE_CONFIG_INTEGER(JitGcStress, "JitGcStress", 0)
