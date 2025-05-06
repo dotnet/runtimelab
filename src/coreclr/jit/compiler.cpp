@@ -2680,6 +2680,13 @@ void Compiler::compInitOptions(JitFlags* jitFlags)
             {
                 verboseDump = true;
             }
+
+#ifdef TARGET_WASM
+            if (!verboseDump && m_llvm->EnableVerboseDump())
+            {
+                verboseDump = true;
+            }
+#endif // TARGET_WASM
         }
     }
 

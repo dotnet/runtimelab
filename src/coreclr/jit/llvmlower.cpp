@@ -1322,11 +1322,17 @@ bool Llvm::isFirstBlockCanonical()
     return !block->hasTryIndex() && (block->bbPreds == nullptr);
 }
 
-void Llvm::lowerAndInsertIntoFirstBlock(LIR::Range& range, GenTree* insertAfter)
+GenTree* Llvm::lowerAndInsertIntoFirstBlock(LIR::Range& range, GenTree* insertAfter)
 {
     assert(isFirstBlockCanonical());
     lowerRange(_compiler->fgFirstBB, range);
-    LIR::AsRange(_compiler->fgFirstBB).InsertAfter(insertAfter, std::move(range));
+
+    GenTree* lastNode = range.LastNode();
+    if (!range.IsEmpty())
+    {
+        LIR::AsRange(_compiler->fgFirstBB).InsertAfter(insertAfter, std::move(range));
+    }
+    return lastNode;
 }
 
 //------------------------------------------------------------------------
@@ -2139,6 +2145,13 @@ bool Llvm::mayPhysicallyThrow(GenTree* node)
         {
             return false;
         }
+    }
+
+    if (node->OperIs(GT_LCLHEAP))
+    {
+        // This is supposed to throw SO, but we don't implement that currently.
+        // TODO-LLVM: come up with a way to do so...?
+        return false;
     }
 
     return node->OperMayThrow(_compiler);
