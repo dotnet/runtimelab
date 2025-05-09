@@ -14,8 +14,8 @@ public class Async2Small
         SmallType(123).Wait();
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static async2 Task SmallType(byte arg)
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
+    private static async Task SmallType(byte arg)
     {
         await Task.Yield();
         Assert.Equal(123, arg);

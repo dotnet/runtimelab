@@ -17,12 +17,22 @@ public class Async2Struct
         Async2().Wait();
     }
 
+    [System.Runtime.CompilerServices.RuntimeAsyncMethodGeneration(false)]
     private static async Task Async()
     {
         S s = new S(100);
         await s.Test();
         AssertEqual(100, s.Value);
     }
+
+    [MethodImpl(MethodImplOptions.Async)]
+    private static async Task Async2()
+    {
+        S s = new S(100);
+        await s.Test();
+        AssertEqual(100, s.Value);
+    }
+
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void AssertEqual(int expected, int val)

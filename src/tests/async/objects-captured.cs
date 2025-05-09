@@ -4,10 +4,12 @@
 using System;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 public class Async2ObjectsWithYields
 {
+    [MethodImpl(MethodImplOptions.Async)]
     internal static async Task<int> A(object n)
     {
         // use string equality so that JIT would not think of hoisting "(int)n"
@@ -21,7 +23,7 @@ public class Async2ObjectsWithYields
         return 0;
     }
 
-    [System.Runtime.CompilerServices.RuntimeAsyncMethodGeneration(false)]
+    [RuntimeAsyncMethodGeneration(false)]
     private static async Task<int> AsyncEntry()
     {
         object result = 0;

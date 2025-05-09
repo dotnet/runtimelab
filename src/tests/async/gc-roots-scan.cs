@@ -4,6 +4,7 @@
 using System;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 public class Async2RootReporting
@@ -51,6 +52,7 @@ public class Async2RootReporting
         return result;
     }
 
+    [MethodImpl(MethodImplOptions.Async)]
     static async Task<int> Recursive2(int n)
     {
         Task<int> cTask = cs.Task;

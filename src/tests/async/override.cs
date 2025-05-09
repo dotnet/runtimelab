@@ -10,6 +10,7 @@ public class Async2Override
 {
     class Base
     {
+        [MethodImpl(MethodImplOptions.Async)]
         public virtual async Task<int> M1()
         {
             await Task.Yield();
@@ -29,6 +30,7 @@ public class Async2Override
 
     class Derived2 : Derived1
     {
+        [MethodImpl(MethodImplOptions.Async)]
         public override async Task<int> M1()
         {
             await Task.Yield();
@@ -49,6 +51,7 @@ public class Async2Override
 
     class Derived11 : Base1
     {
+        [MethodImpl(MethodImplOptions.Async)]
         public override async Task<int> M1()
         {
             await Task.Yield();

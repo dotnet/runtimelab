@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -14,7 +15,7 @@ public class Async2Implement
 
     class Derived1 : IBase1
     {
-        [System.Runtime.CompilerServices.RuntimeAsyncMethodGeneration(false)]
+        [RuntimeAsyncMethodGeneration(false)]
         public async Task<int> M1()
         {
             await Task.Yield();
@@ -24,6 +25,7 @@ public class Async2Implement
 
     class Derived1a : IBase1
     {
+        [MethodImpl(MethodImplOptions.Async)]
         public async Task<int> M1()
         {
             await Task.Yield();
@@ -38,6 +40,7 @@ public class Async2Implement
 
     class Derived2 : IBase2
     {
+        [MethodImpl(MethodImplOptions.Async)]
         public async Task<int> M1()
         {
             await Task.Yield();
@@ -47,7 +50,7 @@ public class Async2Implement
 
     class Derived2a : IBase2
     {
-        [System.Runtime.CompilerServices.RuntimeAsyncMethodGeneration(false)]
+        [RuntimeAsyncMethodGeneration(false)]
         public async Task<int> M1()
         {
             await Task.Yield();

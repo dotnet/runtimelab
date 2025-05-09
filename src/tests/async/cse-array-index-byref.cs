@@ -22,7 +22,7 @@ public class CseArrayIndexByref
         await HoistedByref(arr, index);
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
     private static async Task<int> HoistedByref(int[] arr, int index)
     {
         for (int i = 0; i < 20000; i++)

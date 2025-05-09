@@ -51,7 +51,7 @@ public class Async2SharedGeneric
         Async2EntryPoint<S1<string>?>(typeof(S1<string>?), null).Wait();
     }
 
-    [System.Runtime.CompilerServices.RuntimeAsyncMethodGeneration(false)]
+    [RuntimeAsyncMethodGeneration(false)]
     private static async Task Async1EntryPoint<T>(Type t, T value)
     {
         await new GenericClass<T>().InstanceMethod(t);
@@ -66,6 +66,7 @@ public class Async2SharedGeneric
         Assert.Equal(value, await GenericClass<T>.StaticReturnMethodTypeAsync1<T>(value));
     }
 
+    [MethodImpl(MethodImplOptions.Async)]
     private static async Task Async2EntryPoint<T>(Type t, T value)
     {
         await new GenericClass<T>().InstanceMethod(t);
@@ -84,7 +85,7 @@ public class Async2SharedGeneric
 public class GenericClass<T>
 {
     // 'this' is context
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
     public async Task InstanceMethod(Type t)
     {
         Assert.Equal(typeof(T), t);
@@ -93,7 +94,7 @@ public class GenericClass<T>
     }
 
     // Class context
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
     public static async Task StaticMethod(Type t)
     {
         Assert.Equal(typeof(T), t);
@@ -102,7 +103,7 @@ public class GenericClass<T>
     }
 
     // Method context
-    [MethodImpl(MethodImplOptions.NoInlining)]
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
     public static async Task StaticMethod<TM>(Type t, Type tm)
     {
         Assert.Equal(typeof(T), t);
@@ -134,12 +135,14 @@ public class GenericClass<T>
         Assert.Equal(typeof(TM), tm);
     }
 
+    [MethodImpl(MethodImplOptions.Async)]
     public static async Task<T> StaticReturnClassType(T value)
     {
         await Task.Yield();
         return value;
     }
 
+    [MethodImpl(MethodImplOptions.Async)]
     public static async Task<TM> StaticReturnMethodType<TM>(TM value)
     {
         await Task.Yield();
