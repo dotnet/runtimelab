@@ -14,7 +14,6 @@ public class Async2PInvoke
         AsyncEntryPoint().Wait();
     }
 
-    [MethodImpl(MethodImplOptions.Async)]
     private static async Task AsyncEntryPoint()
     {
         unsafe

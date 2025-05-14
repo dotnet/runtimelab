@@ -9,7 +9,6 @@ using Xunit;
 
 public class Async2ObjectsWithYields
 {
-    [MethodImpl(MethodImplOptions.Async)]
     internal static async Task<int> A(object n)
     {
         // use string equality so that JIT would not think of hoisting "(int)n"

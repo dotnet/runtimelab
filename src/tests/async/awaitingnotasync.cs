@@ -34,7 +34,6 @@ public class AwaitNotAsync
 
     private static T sIdentity<T>(T arg) => arg;
 
-    [MethodImpl(MethodImplOptions.Async)]
     private static async Task AsyncEntryPoint()
     {
         // static field

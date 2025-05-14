@@ -35,7 +35,6 @@ public class Async2FibonacceWithYields
         public MyInt(int i) => this.i = i;
     }
 
-    [MethodImpl(MethodImplOptions.Async)]
     public static async Task AsyncEntry()
     {
         for (int i = 0; i < iterations; i++)
@@ -48,7 +47,6 @@ public class Async2FibonacceWithYields
         }
     }
 
-    [MethodImpl(MethodImplOptions.Async)]
     static async Task<MyInt> Fib(MyInt n)
     {
         int i = n.i;

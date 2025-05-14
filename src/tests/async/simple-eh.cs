@@ -25,7 +25,6 @@ public class Async2SimpleEH
         Assert.Equal(42, result);
     }
 
-    [MethodImpl(MethodImplOptions.Async)]
     public static async Task<int> Handler()
     {
         try
@@ -38,7 +37,7 @@ public class Async2SimpleEH
         }
     }
 
-    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.Async)]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public static async Task<int> Throw(int value)
     {
         await Task.Yield();

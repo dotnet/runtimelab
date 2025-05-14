@@ -25,7 +25,6 @@ public class Async2Struct
         AssertEqual(100, s.Value);
     }
 
-    [MethodImpl(MethodImplOptions.Async)]
     private static async Task Async2()
     {
         S s = new S(100);
