@@ -1,0 +1,7 @@
+<Project>
+  <!-- Ignore repo build setting; use properties passed by the parent project to reroute the output. -->
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$([MSBuild]::NormalizeDirectory('$(Test_TestOutputPath)', 'obj'))</BaseIntermediateOutputPath>
+    <BaseOutputPath>$([MSBuild]::NormalizeDirectory('$(Test_TestOutputPath)', 'bin'))</BaseOutputPath>
+  </PropertyGroup>
+</Project>
