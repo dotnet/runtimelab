@@ -44,8 +44,13 @@ namespace Internal.JitInterface
         private void GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
         {
             *pInfo = default;
-            MethodDesc method = _methodCodeNode.Method;
+            if (_debugInfo == null)
+            {
+                // The Jit may call us more than once (e. g. due to internal fallbacks).
+                return;
+            }
 
+            MethodDesc method = _methodCodeNode.Method;
             string documentPath = null;
             ArrayBuilder<CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO> lineNumbersBuilder = default;
             foreach (ILSequencePoint sequencePoint in _debugInfo.GetSequencePoints())
