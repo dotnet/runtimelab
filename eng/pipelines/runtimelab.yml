@@ -61,7 +61,7 @@ extends:
             - windows_x64
             - browser_wasm_win
             - wasi_wasm_win
-            - Browser_wasm_linux_x64_naot_llvm
+            - browser_wasm_linux_x64_naot_llvm
             - wasi_wasm_linux_x64_naot_llvm
             jobParameters:
               timeoutInMinutes: 300
@@ -101,10 +101,10 @@ extends:
             - linux_x64
             - osx_x64
             - windows_x64
-            - Browser_wasm_win
+            - browser_wasm_win
             - wasi_wasm_win
+            - browser_wasm_linux_x64_naot_llvm
             - wasi_wasm_linux_x64_naot_llvm
-            - Browser_wasm_linux_x64_naot_llvm
             jobParameters:
               timeoutInMinutes: 300
               buildArgs: -s clr.aot+libs -c $(_BuildConfig)

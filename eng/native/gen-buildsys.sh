@@ -97,6 +97,7 @@ fi
 cmake_extra_defines_wasm=()
 if [[ "$host_arch" == "wasm" ]]; then
     if [[ "$target_os" == "browser" ]]; then
+        export EMSDK_QUIET=1 && source $EMSDK/emsdk_env.sh
         cmake_command="emcmake $cmake_command"
     elif [[ "$target_os" == "wasi" ]]; then
         if [[ -z $WASI_SDK_PATH ]]; then
