@@ -514,7 +514,7 @@ jobs:
       targetRid: browser-wasm
       platform: browser_wasm_linux_x64_naot_llvm
       shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
-      container: linux_x64_sanitizer_naot_llvm
+      container: linux_x64_naot_llvm
       jobParameters:
         hostedOs: linux
         runtimeFlavor: ${{ parameters.runtimeFlavor }}
@@ -533,9 +533,30 @@ jobs:
       targetRid: wasi-wasm
       platform: wasi_wasm_linux_x64_naot_llvm
       shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
-      container: linux_x64_sanitizer_naot_llvm
+      container: linux_x64_naot_llvm
       jobParameters:
         hostedOs: linux
+        runtimeFlavor: ${{ parameters.runtimeFlavor }}
+        stagedBuild: ${{ parameters.stagedBuild }}
+        buildConfig: ${{ parameters.buildConfig }}
+        ${{ insert }}: ${{ parameters.jobParameters }}
+
+- ${{ if containsValue(parameters.platforms, 'browser_wasm_linux_arm64_naot_llvm') }}:
+  - template: xplat-setup.yml
+    parameters:
+      jobTemplate: ${{ parameters.jobTemplate }}
+      helixQueuesTemplate: ${{ parameters.helixQueuesTemplate }}
+      variables: ${{ parameters.variables }}
+      osGroup: browser
+      archType: wasm
+      targetRid: browser-wasm
+      platform: browser_wasm_linux_arm64_naot_llvm
+      shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
+      container: linux_arm64_naot_llvm
+      jobParameters:
+        hostedOs: linux
+        hostedTargetArch: arm64
+        nameSuffix: arm64
         runtimeFlavor: ${{ parameters.runtimeFlavor }}
         stagedBuild: ${{ parameters.stagedBuild }}
         buildConfig: ${{ parameters.buildConfig }}

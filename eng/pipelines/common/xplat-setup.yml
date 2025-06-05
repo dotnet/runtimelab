@@ -52,6 +52,12 @@ jobs:
       - name: osSubgroup
         value: ${{ parameters.osSubgroup }}
 
+      - name: hostedTargetArch
+        ${{ if ne(parameters.jobParameters.hostedTargetArch, '') }}:
+          value: ${{ parameters.jobParameters.hostedTargetArch }}
+        ${{ else }}:
+          value: x64
+
       - name: _runSmokeTestsOnlyArg
         value: '/p:RunSmokeTestsOnly=$(isRunSmokeTestsOnly)'
 

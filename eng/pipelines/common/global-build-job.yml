@@ -207,14 +207,14 @@ jobs:
       - ${{ if ne(parameters.hostedOs, 'windows') }}:
         - script: /tmp/docker exec -t -u 0 naot-llvm-ci-container sh -c "tdnf install -y sudo"
           displayName: Install sudo
-        - script: $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-build-and-test-tools.sh $(Build.SourcesDirectory)/wasm-tools
+        - script: $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-build-and-test-tools.sh
           displayName: Install NativeAOT-LLVM build and test tools
       - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.ps1 $(Build.SourcesDirectory)/wasm-tools -CI
         displayName: Install/activate emscripten
       - ${{ if eq(parameters.hostedOs, 'windows') }}:
         - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/set-cmake-path.cmd
           displayName: Set CMake path
-      - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.ps1 -CloneDir $(Build.SourcesDirectory)/wasm-tools -Configs ${{ parameters.buildConfig }} -CI
+      - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-llvm.ps1 -CloneDir $(Build.SourcesDirectory)/wasm-tools -Configs $(_BuildConfig) -Arch $(hostedTargetArch) -CI
         displayName: Install/build LLVM
       - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-nodejs.ps1 $(Build.SourcesDirectory)/wasm-tools
         displayName: Install NodeJS

@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 set -e
-dir=$(dirname "$0")
-echo; $dir/install-python.sh
-echo; $dir/install-lldb.sh
+
+echo Setting EMSDK_PYTHON to /usr/bin/python3
+echo '##vso[task.setvariable variable=EMSDK_PYTHON]'/usr/bin/python3
+echo
+
+echo Installing LLDB, QEMU
+sudo tdnf install -y lldb python3-lldb qemu-user
+echo
