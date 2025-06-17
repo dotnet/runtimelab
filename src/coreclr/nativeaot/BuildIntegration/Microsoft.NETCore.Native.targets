@@ -598,9 +598,9 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Condition="'$(WasmHtmlTemplate)' != ''" Include="--shell-file &quot;$(WasmHtmlTemplate)&quot;" />
       <CustomLinkerArg Condition="'$(ExportsFile)' != '' and '$([System.IO.File]::ReadAllText($(ExportsFile)))' != ''" Include="-s EXPORTED_FUNCTIONS=@&quot;$(ExportsFile)&quot;" />
       <CustomLinkerArg Include="-s ALLOW_MEMORY_GROWTH=1" />
-      <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" />
       <CustomLinkerArg Include="-s GLOBAL_BASE=$(IlcWasmGlobalBase)" />
       <CustomLinkerArg Include="-s TOTAL_STACK=$(IlcWasmStackSize)" />
+      <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" Condition="'$(IlcTreatWarningsAsErrors)' != 'true'" />
       <CustomLinkerArg Condition="'$(WasmEnableJSBigIntIntegration)' == 'true'" Include="-s WASM_BIGINT=1" />
       <CustomLinkerArg Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="-s DISABLE_EXCEPTION_CATCHING=0" />
 
@@ -618,12 +618,12 @@ The .NET Foundation licenses this file to you under the MIT license.
     <ItemGroup Condition="'$(_targetOS)' == 'wasi'" >
       <CustomLinkerArg Include="--sysroot=&quot;$(WASI_SDK_PATH.Replace(&quot;\&quot;, &quot;/&quot;))/share/wasi-sysroot&quot;" />
       <CustomLinkerArg Include="@(CustomLinkerArgExport->'-Wl,--export=%(Identity)')" />
-      <!-- TODO-LLVM: change to 'warn-unresolved-symbols' once we have a WASI SDK with https://github.com/llvm/llvm-project/pull/78643. -->
-      <CustomLinkerArg Include="-Wl,--unresolved-symbols=ignore-all" />
-      <CustomLinkerArg Include="-lstdc++ -lwasi-emulated-process-clocks -lwasi-emulated-signal -lwasi-emulated-getpid" />
+      <CustomLinkerArg Include="-lstdc++;-lwasi-emulated-process-clocks;-lwasi-emulated-signal;-lwasi-emulated-getpid" />
       <CustomLinkerArg Include="-Wl,--max-memory=2147483648" />
       <CustomLinkerArg Include="-Wl,--global-base=$(IlcWasmGlobalBase)" />
       <CustomLinkerArg Include="-Wl,-z,stack-size=$(IlcWasmStackSize)" />
+      <CustomLinkerArg Include="-Wl,--warn-unresolved-symbols" />
+      <CustomLinkerArg Include="-Wl,--fatal-warnings" Condition="'$(IlcTreatWarningsAsErrors)' == 'true'" />
       <CustomLinkerArg Include="-mexec-model=reactor" Condition="'$(NativeLib)' == 'Shared'" />
     </ItemGroup>
 
