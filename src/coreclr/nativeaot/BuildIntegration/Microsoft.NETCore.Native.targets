@@ -616,7 +616,6 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ReadLinesFromFile>
 
     <ItemGroup Condition="'$(_targetOS)' == 'wasi'" >
-      <CustomLinkerArg Include="--sysroot=&quot;$(WASI_SDK_PATH.Replace(&quot;\&quot;, &quot;/&quot;))/share/wasi-sysroot&quot;" />
       <CustomLinkerArg Include="@(CustomLinkerArgExport->'-Wl,--export=%(Identity)')" />
       <CustomLinkerArg Include="-lstdc++;-lwasi-emulated-process-clocks;-lwasi-emulated-signal;-lwasi-emulated-getpid" />
       <CustomLinkerArg Include="-Wl,--max-memory=2147483648" />
