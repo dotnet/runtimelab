@@ -32,6 +32,11 @@
     </ItemGroup>
 
     <ItemGroup>
+      <!-- These projects are built separately in an isolated way. -->
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\PackagingTests\*.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
       <BuildTestProjects Include="$(__BuildTestProject.Split(';'))" />
       <BuildTestDirs Include="$(__BuildTestDir.Split(';'))" />
       <BuildTestTrees Include="$(__BuildTestTree.Split(';'))" />

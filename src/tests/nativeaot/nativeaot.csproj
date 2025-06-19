@@ -2,7 +2,7 @@
 
     <ItemGroup Condition="'$(TargetsWasm)' != 'true'">
       <DisabledProjects Include="*/**/Library.csproj" />
-      <DisabledProjects Include="*/**/HelloWasm/*.??proj" />
+      <DisabledProjects Include="*/**/HelloWasm/**/*.??proj" />
     </ItemGroup>
 
     <!-- Wasm disabled projects are still in dirs.proj because Wasm is not using this merged test wrapper -->

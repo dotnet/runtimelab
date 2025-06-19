@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.Build.NoTargets">
+  <PropertyGroup>
+    <!-- This is the part of the package testing exposed to the runtime test infrastructure.
+         The projects themselves are intentionally isolated from the rest of the tree. -->
+    <CLRTestKind>BuildOnly</CLRTestKind>
+    <CLRTestTargetUnsupported Condition="'$(TargetsWasm)' != 'true'">true</CLRTestTargetUnsupported>
+  </PropertyGroup>
+
+  <Target Name="PublishPackagingTestProject" BeforeTargets="BeforeBuild">
+    <ItemGroup>
+      <PackagingTestProject Include="PackagingTests/PackagingTestProject.csproj" />
+
+      <PackagingTestProject>
+        <TestOutputPath>$(OutputPath)%(FileName)</TestOutputPath>
+      </PackagingTestProject>
+    </ItemGroup>
+
+    <PropertyGroup>
+      <Test_Configuration>$(Configuration)</Test_Configuration>
+      <Test_TargetFramework>$(NetCoreAppCurrent)</Test_TargetFramework>
+      <Test_RuntimeIdentifier>$(TargetOS)-$(TargetArchitecture)</Test_RuntimeIdentifier>
+      <Test_RestoreSource>$(ArtifactsShippingPackagesDir)</Test_RestoreSource>
+      <Test_RestorePackagesPath>$([MSBuild]::NormalizeDirectory('$(PackageOutputPath)', 'packages', '$(Configuration)'))</Test_RestorePackagesPath>
+    </PropertyGroup>
+
+    <Error Condition="!Exists($(Test_RestoreSource))"
+           Text="The 'nativeaot.packages' subset must be built before building this project" />
+
+    <Message Text="Packed packages: '$(Test_RestoreSource)'" Importance="High" />
+    <Message Text="Unpacked packages: '$(Test_RestorePackagesPath)'" Importance="High" />
+
+    <!-- Always start with a clean unpacked state so that there is no need to
+         manually delete the old packages for the new ones to be picked up. 
+         WARNING: one still needs to manually delete the **source** packages
+         before "./build nativeaot.packages" because the pkgproj targets do
+         not declare their inputs properly. -->
+    <RemoveDir Directories="$(Test_RestorePackagesPath)" />
+    <RemoveDir Directories="@(PackagingTestProject->'%(TestOutputPath)')" />
+
+    <PropertyGroup>
+      <PackagingTestProjectProperties>
+        Test_Configuration=$(Test_Configuration);
+        Test_TargetFramework=$(Test_TargetFramework);
+        Test_RuntimeIdentifier=$(Test_RuntimeIdentifier);
+        Test_PackageVersion=$(NetCoreAppCurrentVersion).0-*;
+        Test_RestoreSource=$(Test_RestoreSource);
+        Test_RestorePackagesPath=$(Test_RestorePackagesPath);
+      </PackagingTestProjectProperties>
+    </PropertyGroup>
+
+    <MSBuild Projects="@(PackagingTestProject)"
+             Targets="Restore"
+             Properties="$(PackagingTestProjectProperties);
+                         Test_TestOutputPath=%(TestOutputPath);
+                         MSBuildRestoreSessionId=$([System.Guid]::NewGuid())" />
+
+    <MSBuild Projects="@(PackagingTestProject)"
+             Targets="Publish"
+             Properties="$(PackagingTestProjectProperties);
+                         Test_TestOutputPath=%(TestOutputPath)" />
+
+    <Error Condition="!Exists('%(TestOutputPath)/bin/$(Test_Configuration)/$(Test_TargetFramework)/$(Test_RuntimeIdentifier)/publish/%(FileName).wasm')"
+           Text="%(PackagingTestProject.FullPath) did not produce the expected native artifacts" />
+  </Target>
+</Project>
