@@ -18,10 +18,16 @@ git checkout ca7b40ae222a2d8763b6ac845388744b0e57cfb7
 ./emsdk install 3.1.56
 ./emsdk activate 3.1.56
 
-
 if ($CI)
 {
     Write-Host "Setting EMSDK to '$InstallDir/emsdk'"
     Write-Output "##vso[task.setvariable variable=EMSDK]$InstallDir/emsdk"
+
+    if ($env:EMSDK_PYTHON)
+    {
+        # Workaround for https://github.com/dotnet/runtime/issues/116746
+        Write-Host "Setting EMSDK_PYTHON to '$env:EMSDK_PYTHON'"
+        Write-Output "##vso[task.setvariable variable=EMSDK_PYTHON]$env:EMSDK_PYTHON"
+    }
 }
 
