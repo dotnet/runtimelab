@@ -2719,42 +2719,45 @@ FunctionType* Llvm::createFunctionType()
 
 llvm::FunctionCallee Llvm::consumeCallTarget(GenTreeCall* call)
 {
-    llvm::FunctionCallee callee;
+    Value* calleeValue;
     if (call->IsVirtualVtable() || call->IsDelegateInvoke() || (call->gtCallType == CT_INDIRECT))
     {
-        FunctionType* calleeFuncType = createFunctionTypeForCall(call);
         GenTree* calleeNode = (call->gtCallType == CT_INDIRECT) ? call->gtCallAddr : call->gtControlExpr;
-        Value* calleeValue = consumeValue(calleeNode, getPtrLlvmType());
-
-        callee = {calleeFuncType, calleeValue};
+        calleeValue = consumeValue(calleeNode, getPtrLlvmType());
     }
     else
     {
-        CORINFO_GENERIC_HANDLE handle = call->gtEntryPoint.handle;
-        CorInfoHelpFunc helperFunc = _compiler->eeGetHelperNum(call->gtCallMethHnd);
-        if (handle == nullptr)
+        CORINFO_CONST_LOOKUP lookup = call->gtEntryPoint;
+        CorInfoHelpFunc helperFunc = call->GetHelperNum();
+        if (lookup.handle == nullptr)
         {
-            handle = getSymbolHandleForHelperFunc(helperFunc);
-        }
-        else
-        {
-            assert(call->gtEntryPoint.accessType == IAT_VALUE);
+            lookup.accessType = IAT_VALUE;
+            lookup.handle = getSymbolHandleForHelperFunc(helperFunc);
         }
 
-        const char* symbolName = GetMangledSymbolName(handle);
-        AddCodeReloc(handle); // Replacement for _info.compCompHnd->recordRelocation.
+        StringRef symbolName = GetMangledSymbolName(lookup.handle);
+        AddCodeReloc(lookup.handle); // Replacement for _info.compCompHnd->recordRelocation.
 
-        callee = getOrCreateKnownLlvmFunction(symbolName, [this, call]() -> FunctionType* {
-            return createFunctionTypeForCall(call);
-        }, [this, helperFunc](Function* llvmFunc) {
-            if (helperFunc != CORINFO_HELP_UNDEF)
-            {
-                annotateHelperFunction(helperFunc, llvmFunc);
-            }
-        });
+        if (lookup.accessType == IAT_VALUE)
+        {
+            Function* llvmFunc = getOrCreateKnownLlvmFunction(symbolName, [this, call]() -> FunctionType* {
+                return createFunctionTypeForCall(call);
+            }, [this, helperFunc](Function* llvmFunc) {
+                if (helperFunc != CORINFO_HELP_UNDEF)
+                {
+                    annotateHelperFunction(helperFunc, llvmFunc);
+                }
+            });
+            return llvmFunc;
+        }
+
+        assert(lookup.accessType == IAT_PVALUE);
+        calleeValue = getOrCreateSymbol(lookup.handle);
+        calleeValue = _builder.CreateLoad(getPtrLlvmType(), calleeValue);
     }
 
-    return callee;
+    FunctionType* calleeFuncType = createFunctionTypeForCall(call);
+    return {calleeFuncType, calleeValue};
 }
 
 FunctionType* Llvm::createFunctionTypeForSignature(CORINFO_SIG_INFO* pSig)

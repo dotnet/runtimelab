@@ -20,7 +20,7 @@ using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
 {
-    internal sealed class ExternMethodAccessorNode(string externMethodName) : AssemblyStubNode, IWasmFunctionNode
+    internal sealed class ExternMethodCellNode(string externMethodName) : ObjectNode, ISymbolDefinitionNode
     {
         private readonly Utf8String _externMethodName = externMethodName;
         private TargetAbiType[] _signature;
@@ -29,7 +29,10 @@ namespace ILCompiler.DependencyAnalysis
         public Utf8String ExternMethodName => _externMethodName;
         public ref TargetAbiType[] Signature => ref _signature;
 
-        public override int ClassCode => 935251149;
+        public int Offset => 0;
+        public override bool RepresentsIndirectionCell => true;
+        public override bool IsShareable => false;
+        public override bool StaticDependenciesAreComputed => true;
 
         public void AddMethod(MethodDesc method)
         {
@@ -87,20 +90,6 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
-        {
-            sb.Append("get.");
-            sb.Append(ExternMethodName);
-        }
-
-        public override int CompareToImpl(ISortableNode other, CompilerComparer comparer)
-        {
-            return ExternMethodName.CompareTo(((ExternMethodAccessorNode)other).ExternMethodName);
-        }
-
-        public WasmFunctionType GetWasmFunctionType(NodeFactory factory) =>
-            new WasmFunctionType(WasmAbi.GetNaturalIntType(factory.Target), []);
-
         public void EmitWarnings(Compilation compilation)
         {
             if (HasSignatureMismatch(compilation.NodeFactory))
@@ -117,32 +106,40 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        protected override void EmitCode(NodeFactory factory, ref WasmEmitter encoder, bool relocsOnly)
+        public override ObjectData GetData(NodeFactory factory, bool relocsOnly)
         {
-            encoder.DefineLocals();
-            encoder.EmitNaturalConst(((LLVMCodegenNodeFactory)factory).ExternWasmMethod(this));
-            encoder.EmitEnd();
+            ObjectDataBuilder builder = new(factory, relocsOnly);
+            builder.AddSymbol(this);
+            builder.EmitPointerReloc(((LLVMCodegenNodeFactory)factory).ExternWasmMethod(this));
+
+            return builder.ToObjectData();
         }
 
-        protected override void EmitCode(NodeFactory factory, ref X64Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
-        protected override void EmitCode(NodeFactory factory, ref X86Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
-        protected override void EmitCode(NodeFactory factory, ref ARMEmitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
-        protected override void EmitCode(NodeFactory factory, ref ARM64Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
-        protected override void EmitCode(NodeFactory factory, ref LoongArch64Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
-        protected override void EmitCode(NodeFactory factory, ref RiscV64Emitter instructionEncoder, bool relocsOnly) => throw new NotImplementedException();
+        public override ObjectNodeSection GetSection(NodeFactory factory) => ObjectNodeSection.ReadOnlyDataSection;
 
-        protected override string GetName(NodeFactory context) => $"ExternMethodAccessor {ExternMethodName}";
+        public void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
+        {
+            sb.Append("cell.");
+            sb.Append(ExternMethodName);
+        }
+
+        public override int ClassCode => 935251149;
+
+        public override int CompareToImpl(ISortableNode other, CompilerComparer comparer)
+        {
+            return ExternMethodName.CompareTo(((ExternMethodCellNode)other).ExternMethodName);
+        }
+
+        protected override string GetName(NodeFactory context) => $"{nameof(ExternMethodCellNode)} {ExternMethodName}";
     }
 
-    internal sealed class ExternWasmMethodNode(ExternMethodAccessorNode accessor) : ExternSymbolNode(accessor.ExternMethodName), IWasmFunctionNode
+    internal sealed class ExternWasmMethodNode(ExternMethodCellNode methodCell) : ExternSymbolNode(methodCell.ExternMethodName), IWasmFunctionNode
     {
-        private readonly ExternMethodAccessorNode _accessor = accessor;
-
-        public override int ClassCode => 1890343813;
+        private readonly ExternMethodCellNode _methodCell = methodCell;
 
         public WasmFunctionType GetWasmFunctionType(NodeFactory factory)
         {
-            if (_accessor.HasSignatureMismatch(factory))
+            if (_methodCell.HasSignatureMismatch(factory))
             {
                 return new WasmFunctionType(WasmValueType.Invalid, []);
             }
@@ -162,7 +159,7 @@ namespace ILCompiler.DependencyAnalysis
                 _ => throw new NotImplementedException()
             };
 
-            ReadOnlySpan<TargetAbiType> jitSig = _accessor.Signature;
+            ReadOnlySpan<TargetAbiType> jitSig = _methodCell.Signature;
             WasmValueType wasmReturnType = ToWasmType(jitSig[0]);
             WasmValueType[] wasmParamTypes = new WasmValueType[jitSig.Length - 1];
             for (int i = 0; i < wasmParamTypes.Length; i++)
@@ -176,15 +173,17 @@ namespace ILCompiler.DependencyAnalysis
         public bool GetImportModuleAndName(Compilation compilation, out string module, out string name)
         {
             NodeFactory factory = compilation.NodeFactory;
-            if (_accessor.HasSignatureMismatch(factory))
+            if (_methodCell.HasSignatureMismatch(factory))
             {
                 (module, name) = (null, null);
                 return false;
             }
 
-            MethodDesc method = _accessor.GetSingleMethod(factory);
+            MethodDesc method = _methodCell.GetSingleMethod(factory);
             return compilation.PInvokeILProvider.GetWasmImportCallInfo(method, out name, out module);
         }
+
+        public override int ClassCode => 1890343813;
 
         protected override string GetName(NodeFactory context) => $"WasmImportFunctionNode {Utf8Name}";
     }

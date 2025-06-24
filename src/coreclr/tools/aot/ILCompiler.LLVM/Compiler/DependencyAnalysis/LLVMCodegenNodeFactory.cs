@@ -16,9 +16,9 @@ namespace ILCompiler.DependencyAnalysis
     {
         private readonly CorInfoLlvmEHModel _ehModel;
 
-        private readonly Dictionary<string, ExternMethodAccessorNode> _externMethodAccessors = new();
-        private readonly NodeCache<ExternMethodAccessorNode, ExternWasmMethodNode> _externWasmMethods =
-            new(accessor => new ExternWasmMethodNode(accessor));
+        private readonly Dictionary<string, ExternMethodCellNode> _externMethodAccessors = new();
+        private readonly NodeCache<ExternMethodCellNode, ExternWasmMethodNode> _externWasmMethods =
+            new(methodCell => new ExternWasmMethodNode(methodCell));
 
         public LLVMCodegenNodeFactory(
             LLVMCodegenConfigProvider options,
@@ -52,19 +52,19 @@ namespace ILCompiler.DependencyAnalysis
 
         public override bool TargetsEmulatedEH() => _ehModel is CorInfoLlvmEHModel.Emulated;
 
-        internal ExternMethodAccessorNode ExternMethodAccessor(string name, MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
+        internal ExternMethodCellNode ExternMethodCell(string name, MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
         {
-            Dictionary<string, ExternMethodAccessorNode> map = _externMethodAccessors;
+            Dictionary<string, ExternMethodCellNode> map = _externMethodAccessors;
 
             // Not lockless since we mutate the node. Contention on this path is not expected.
             //
             lock (map)
             {
-                ref ExternMethodAccessorNode node = ref CollectionsMarshal.GetValueRefOrAddDefault(map, name, out bool exists);
+                ref ExternMethodCellNode node = ref CollectionsMarshal.GetValueRefOrAddDefault(map, name, out bool exists);
 
                 if (!exists)
                 {
-                    node = new ExternMethodAccessorNode(name);
+                    node = new ExternMethodCellNode(name);
                     node.Signature = sig.ToArray();
                 }
                 else if (!node.Signature.AsSpan().SequenceEqual(sig))
@@ -78,7 +78,7 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
-        internal ExternWasmMethodNode ExternWasmMethod(ExternMethodAccessorNode accessor) => _externWasmMethods.GetOrAdd(accessor);
+        internal ExternWasmMethodNode ExternWasmMethod(ExternMethodCellNode accessor) => _externWasmMethods.GetOrAdd(accessor);
 
         protected override IMethodNode CreateMethodEntrypointNode(MethodDesc method)
         {

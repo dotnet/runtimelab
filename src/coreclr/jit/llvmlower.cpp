@@ -850,18 +850,10 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
         // given module, we can only have one function declaration, thus, one callee type. And we cannot know whether
         // this type will be the right one until, in general, runtime (this is the case for WASM imports provided by
         // the host environment). Thus, to achieve the experience of runtime erros on signature mismatches, we "hide"
-        // the target behind an external function from another module, turning this call into an indirect one.
-        GenTreeCall* getTargetCall =
-            _compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_GET_EXTERNAL_CALL_TARGET, TYP_I_IMPL);
-        getTargetCall->gtEntryPoint.handle =
-            GetExternalMethodAccessor(callNode->gtCallMethHnd, &sig.BottomRef(), sig.Height());
-        getTargetCall->gtEntryPoint.accessType = IAT_VALUE;
-
-        callNode->gtCallType = CT_INDIRECT;
-        callNode->gtCallAddr = getTargetCall;
-        callNode->gtCallCookie = nullptr;
-        CurrentRange().InsertBefore(callNode, getTargetCall);
-        lowerNode(getTargetCall);
+        // the target behind an indirection, turning this call into an indirect one.
+        // TODO-LLVM-Cleanup: switch to using the standard "getAddressOfPInvokeTarget" Jit-EE call, we no longer need
+        // the signature on the EE side.
+        GetExternalMethodAddress(callNode->gtCallMethHnd, &sig.BottomRef(), sig.Height(), &callNode->gtEntryPoint);
     }
 }
 

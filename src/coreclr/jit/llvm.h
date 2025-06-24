@@ -423,8 +423,8 @@ private:
     CorInfoType GetPrimitiveTypeForTrivialWasmStruct(CORINFO_CLASS_HANDLE structHandle);
     void GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle, TypeDescriptor* pTypeDescriptor);
     const char* GetAlternativeFunctionName();
-    CORINFO_GENERIC_HANDLE GetExternalMethodAccessor(
-        CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* callSiteSig, int sigLength);
+    void GetExternalMethodAddress(
+        CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* callSiteSig, int sigLength, CORINFO_CONST_LOOKUP* pLookup);
     void GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
     SingleThreadedCompilationContext* GetSingleThreadedCompilationContext();
     CorInfoLlvmEHModel GetExceptionHandlingModel();
