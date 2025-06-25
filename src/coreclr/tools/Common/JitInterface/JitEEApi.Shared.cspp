@@ -30,7 +30,7 @@ enum EEApiId
     EEAI_GetPrimitiveTypeForTrivialWasmStruct,
     EEAI_GetTypeDescriptor,
     EEAI_GetAlternativeFunctionName,
-    EEAI_GetExternalMethodAccessor,
+    EEAI_GetExternalMethodAddress,
     EEAI_GetDebugInfoForCurrentMethod,
     EEAI_GetSingleThreadedCompilationContext,
     EEAI_GetExceptionHandlingModel,

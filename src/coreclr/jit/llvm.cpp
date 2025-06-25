@@ -777,11 +777,10 @@ const char* Llvm::GetAlternativeFunctionName()
     return CallEEApi<EEAI_GetAlternativeFunctionName, const char*>(m_pEECorInfo);
 }
 
-CORINFO_GENERIC_HANDLE Llvm::GetExternalMethodAccessor(
-    CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* sig, int sigLength)
+void Llvm::GetExternalMethodAddress(
+    CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* sig, int sigLength, CORINFO_CONST_LOOKUP* pLookup)
 {
-    return CallEEApi<EEAI_GetExternalMethodAccessor, CORINFO_GENERIC_HANDLE>(
-        m_pEECorInfo, methodHandle, sig, sigLength);
+    return CallEEApi<EEAI_GetExternalMethodAddress, void>(m_pEECorInfo, methodHandle, sig, sigLength, pLookup);
 }
 
 void Llvm::GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)

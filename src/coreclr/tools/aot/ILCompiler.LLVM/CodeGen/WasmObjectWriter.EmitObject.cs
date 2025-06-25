@@ -56,9 +56,9 @@ namespace ILCompiler.ObjectWriter
                 }
 
                 WasmObjectWriter writer;
-                if (node is ExternMethodAccessorNode accessor)
+                if (node is ExternMethodCellNode methodCell)
                 {
-                    accessor.EmitWarnings(compilation);
+                    methodCell.EmitWarnings(compilation);
                     writer = externalObjectWriter;
                 }
                 else

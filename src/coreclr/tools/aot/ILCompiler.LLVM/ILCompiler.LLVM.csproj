@@ -24,7 +24,7 @@
     <Compile Include="CodeGen\WasmObjectWriter.cs" />
     <Compile Include="CodeGen\WasmObjectWriter.EmitObject.cs" />
     <Compile Include="CodeGen\WasmNative.cs" />
-    <Compile Include="Compiler\DependencyAnalysis\ExternMethodAccessorNode.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\ExternMethodCellNode.cs" />
     <Compile Include="Compiler\DependencyAnalysis\LLVMCodegenNodeFactory.cs" />
     <Compile Include="Compiler\DependencyAnalysis\LLVMMethodCodeNode.cs" />
     <Compile Include="Compiler\LLVMCompilationResults.cs" />
