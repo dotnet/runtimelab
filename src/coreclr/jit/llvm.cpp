@@ -687,28 +687,6 @@ CorInfoType Llvm::getLlvmReturnType(CorInfoType sigRetType, CORINFO_CLASS_HANDLE
     return toCorInfoType(arg->AbiInfo.ArgType);
 }
 
-TargetAbiType Llvm::getAbiTypeForType(var_types type)
-{
-    switch (genActualType(type))
-    {
-        case TYP_VOID:
-            return TargetAbiType::Void;
-        case TYP_INT:
-            return TargetAbiType::Int32;
-        case TYP_LONG:
-            return TargetAbiType::Int64;
-        case TYP_REF:
-        case TYP_BYREF:
-            return (TARGET_POINTER_SIZE == 4) ? TargetAbiType::Int32 : TargetAbiType::Int64;
-        case TYP_FLOAT:
-            return TargetAbiType::Float;
-        case TYP_DOUBLE:
-            return TargetAbiType::Double;
-        default:
-            unreached();
-    }
-}
-
 CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForHelperFunc(CorInfoHelpFunc helperFunc)
 {
     void* pIndirection = nullptr;
@@ -777,10 +755,9 @@ const char* Llvm::GetAlternativeFunctionName()
     return CallEEApi<EEAI_GetAlternativeFunctionName, const char*>(m_pEECorInfo);
 }
 
-void Llvm::GetExternalMethodAddress(
-    CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* sig, int sigLength, CORINFO_CONST_LOOKUP* pLookup)
+void Llvm::GetExternalMethodAddress(CORINFO_METHOD_HANDLE methodHandle, CORINFO_CONST_LOOKUP* pLookup)
 {
-    return CallEEApi<EEAI_GetExternalMethodAddress, void>(m_pEECorInfo, methodHandle, sig, sigLength, pLookup);
+    return CallEEApi<EEAI_GetExternalMethodAddress, void>(m_pEECorInfo, methodHandle, pLookup);
 }
 
 void Llvm::GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)

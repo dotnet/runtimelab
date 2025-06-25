@@ -54,15 +54,6 @@ const int TARGET_POINTER_BITS = TARGET_POINTER_SIZE * BITS_PER_BYTE;
 
 // Part of the Jit/EE interface, must be kept in sync with the managed versions in "CorInfoImpl.Llvm.cs".
 //
-enum class TargetAbiType : uint8_t
-{
-    Void,
-    Int32,
-    Int64,
-    Float,
-    Double
-};
-
 enum class CorInfoLlvmEHModel
 {
     Cpp, // Landingpad-based LLVM IR; compatible with Itanium ABI.
@@ -408,7 +399,6 @@ private:
 
     static CorInfoType toCorInfoType(var_types varType);
     static CorInfoType getLlvmArgTypeForCallArg(CallArg* arg);
-    TargetAbiType getAbiTypeForType(var_types type);
 
     CORINFO_GENERIC_HANDLE getSymbolHandleForHelperFunc(CorInfoHelpFunc helperFunc);
     CORINFO_GENERIC_HANDLE getSymbolHandleForClassToken(mdToken token);
@@ -423,8 +413,7 @@ private:
     CorInfoType GetPrimitiveTypeForTrivialWasmStruct(CORINFO_CLASS_HANDLE structHandle);
     void GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle, TypeDescriptor* pTypeDescriptor);
     const char* GetAlternativeFunctionName();
-    void GetExternalMethodAddress(
-        CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* callSiteSig, int sigLength, CORINFO_CONST_LOOKUP* pLookup);
+    void GetExternalMethodAddress(CORINFO_METHOD_HANDLE methodHandle, CORINFO_CONST_LOOKUP* pLookup);
     void GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
     SingleThreadedCompilationContext* GetSingleThreadedCompilationContext();
     CorInfoLlvmEHModel GetExceptionHandlingModel();
