@@ -82,11 +82,18 @@ extends:
       # We need to be able to use 'tdnf install'. We can't because of https://github.com/dotnet/dotnet-docker/issues/788.
       # This is the hackaround: https://github.com/microsoft/azure-pipelines-agent/issues/2043#issuecomment-489692810.
       # TODO-LLVM-Upstream: replace with an image that has our prerequisites (LLDB) already installed.
-      linux_x64_sanitizer_naot_llvm:
-        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net9.0-cross-amd64-sanitizer
+      linux_x64_naot_llvm:
+        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net10.0-cross-amd64-sanitizer
         options: '--name naot-llvm-ci-container -v /usr/bin/docker:/tmp/docker:ro'
         env:
           ROOTFS_DIR: /crossrootfs/x64
+
+      # For arm64, we need to install QEMU.
+      linux_arm64_naot_llvm:
+        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net10.0-cross-arm64
+        options: '--name naot-llvm-ci-container -v /usr/bin/docker:/tmp/docker:ro'
+        env:
+          ROOTFS_DIR: /crossrootfs/arm64
 
       # We use a CentOS Stream 8 image here to test building from source on CentOS Stream 9.
       SourceBuild_centos_x64:

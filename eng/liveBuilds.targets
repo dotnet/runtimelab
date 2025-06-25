@@ -32,7 +32,8 @@
          does not scale for local development because it requires you to build the same host tools for each target configuration.
          E. g. you need to build the same Debug compiler 3 times if you want to compile code in Debug, Checked and Release. -->
     <IlcConfig Condition="'$(IlcConfig)' == ''">$(CoreCLRConfiguration)</IlcConfig>
-    <CoreCLRCrossILCompilerDir Condition="'$(CoreCLRCrossILCompilerDir)' != '' and '$(TargetsWasm)' == 'true'">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(BuildArchitecture).$(IlcConfig)', 'ilc'))</CoreCLRCrossILCompilerDir>
+    <IlcHostArch Condition="'$(IlcHostArch)' == ''">$(BuildArchitecture)</IlcHostArch>
+    <CoreCLRCrossILCompilerDir Condition="'$(CoreCLRCrossILCompilerDir)' != '' and '$(TargetsWasm)' == 'true'">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(IlcHostArch).$(IlcConfig)', 'ilc'))</CoreCLRCrossILCompilerDir>
 
     <Crossgen2Dir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'crossgen2-published'))</Crossgen2Dir>
     <Crossgen2InBuildDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', '$(BuildArchitecture)', 'crossgen2'))</Crossgen2InBuildDir>

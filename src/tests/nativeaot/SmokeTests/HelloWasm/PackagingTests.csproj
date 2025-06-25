@@ -45,6 +45,8 @@
         Test_PackageVersion=$(NetCoreAppCurrentVersion).0-*;
         Test_RestoreSource=$(Test_RestoreSource);
         Test_RestorePackagesPath=$(Test_RestorePackagesPath);
+        Test_HostPackageRuntimeIdentifier=$(NETCoreSdkPortableRuntimeIdentifier.Replace('-$(BuildArchitecture)', '-$(IlcHostArch)'));
+        _hostArchitecture=$(IlcHostArch); <!-- Override host package resolution in ILC targets. -->
       </PackagingTestProjectProperties>
     </PropertyGroup>
 

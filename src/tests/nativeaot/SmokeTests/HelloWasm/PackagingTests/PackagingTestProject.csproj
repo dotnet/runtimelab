@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="$(Test_PackageVersion)" />
-    <PackageReference Include="runtime.$(NETCoreSdkPortableRuntimeIdentifier).Microsoft.DotNet.ILCompiler.LLVM" Version="$(Test_PackageVersion)" />
+    <PackageReference Include="runtime.$(Test_HostPackageRuntimeIdentifier).Microsoft.DotNet.ILCompiler.LLVM" Version="$(Test_PackageVersion)" />
   </ItemGroup>
 
 </Project>

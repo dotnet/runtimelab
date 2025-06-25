@@ -189,13 +189,8 @@ if defined __TestArgParsing (
 
 echo %__MsgPrefix%Commencing CoreCLR test build
 
-if "%__BuildArch%" == "wasm" (
-    if "%__TargetOS%" == "windows" (
-        set __TargetOS=browser
-    )
-
-    set __DistroRid=%__TargetOS%-%__BuildArch%
-)
+if "%__TargetOS%" == "browser" (set __BuildArch=wasm)
+if "%__TargetOS%" == "wasi" (set __BuildArch=wasm)
 
 set "__OSPlatformConfig=%__TargetOS%.%__BuildArch%.%__BuildType%"
 set "__BinDir=%__RootBinDir%\bin\coreclr\%__OSPlatformConfig%"

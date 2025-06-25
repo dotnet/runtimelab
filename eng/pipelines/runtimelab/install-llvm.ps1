@@ -3,11 +3,11 @@ param(
     [string]$CloneDir = $null,
     [ValidateSet("Debug","Release","Checked")][string[]]$Configs = @("Debug","Release"),
     [string]$Path = "llvm-project",
+    [string]$Arch = $null,
     [switch]$CI,
     [switch]$NoClone,
     [switch]$NoBuild
 )
-
 $ErrorActionPreference="Stop"
 
 if (!(gcm git -ErrorAction SilentlyContinue))
@@ -23,6 +23,11 @@ if ($CloneDir)
 {
     New-Item -ItemType Directory -Path $CloneDir -Force
     Set-Location -Path $CloneDir
+}
+
+if (!$Arch)
+{
+    $Arch = [Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
 }
 
 $LlvmProjectTag = "llvmorg-18.1.3"
@@ -45,22 +50,6 @@ else
 {
     $DepthOption = if ($CI) {"--depth","1"} else {}
     git clone https://github.com/llvm/llvm-project $Path --branch $LlvmProjectTag $DepthOption
-}
-
-# Set the compiler for CI on non-Windows
-if (!$IsWindows) {
-    $RepoDir = Split-path $PSScriptRoot | Split-Path | Split-Path
-
-    bash -c "build_arch=amd64 compiler=clang source $RepoDir/eng/common/native/init-compiler.sh && set | grep -e CC -e CXX -e LDFLAGS" |
-      ForEach-Object {
-        if ($CI)
-        {
-            # Split the "<name>=<value>" line into the variable's name and value.
-            $name, $value = $_ -split '=', 2
-            # Define it as a process-level environment variable in PowerShell.
-            Set-Content ENV:$name $value
-        }
-     }
 }
 
 # There is no [C/c]hecked LLVM config, so change to Debug
@@ -90,7 +79,23 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
     }
     elseif ($env:ROOTFS_DIR)
     {
-        $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=$env:ROOTFS_DIR", "-DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross"
+        # This logic was copied from gen-buildsys.sh. Maybe we should just call it here directly?
+        $RepoRoot = Split-Path $PSScriptRoot | Split-Path | Split-Path
+        # We're assuming here that the sysroot is coming from our CI docker images.
+        $TargetTriple = (Get-ChildItem $env:ROOTFS_DIR/usr/lib/gcc).Name
+
+        bash -c "build_arch=$Arch compiler=clang source $RepoRoot/eng/common/native/init-compiler.sh && set | grep -e CC -e CXX -e LDFLAGS" |
+            ForEach-Object {
+                # Split the "<name>=<value>" line into the variable's name and value.
+                $name, $value = $_ -Split '=', 2
+                # Define it as a process-level environment variable in PowerShell.
+                Set-Content ENV:$name $value
+            }
+        $env:TARGET_BUILD_ARCH = $Arch # Used by toolchain.cmake
+        $CmakeConfigureCommandLine +=
+            "-DCMAKE_TOOLCHAIN_FILE=$RepoRoot/eng/common/cross/toolchain.cmake",
+            "-DLLVM_HOST_TRIPLE=$TargetTriple",
+            "-DCMAKE_ASM_COMPILER_VERSION=18.1.2" # Workaround for https://gitlab.kitware.com/cmake/cmake/-/issues/22995.
     }
 
     Write-Host "Invoking CMake configure: 'cmake $CmakeConfigureCommandLine'"

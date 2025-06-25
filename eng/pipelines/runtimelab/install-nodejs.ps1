@@ -1,19 +1,15 @@
 $InstallPath = $Args[0]
 $NodeJSVersion = "v20.2.0"
 
-if (!(Test-Path variable:global:IsWindows))
+$HostArch = [Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
+if ($IsWindows)
 {
-    $IsWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
-}
-
-if ($IsWIndows)
-{
-    $NodeJSInstallName = "node-$NodeJSVersion-win-x64"
+    $NodeJSInstallName = "node-$NodeJSVersion-win-$HostArch"
     $NodeJSZipName = "$NodeJSInstallName.zip"
 }
 else
 {
-    $NodeJSInstallName = "node-$NodeJSVersion-linux-x64"
+    $NodeJSInstallName = "node-$NodeJSVersion-linux-$HostArch"
     $NodeJSZipName = "$NodeJSInstallName.tar.xz"
 }
 
