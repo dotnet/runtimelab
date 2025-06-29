@@ -179,7 +179,7 @@
 
   <ItemGroup>
     <!-- NativeAOT-LLVM subsets. -->
-    <SubsetName Include="NativeAot.Packages" Description="The CoreCLR native AOT compiler." />
+    <SubsetName Include="NativeAot.Packages" Description="The CoreCLR native AOT packages." />
     <SubsetName Include="NativeAot.Build" Description="The CoreCLR native AOT build integration." />
     <SubsetName Include="Clr.Ilc" Description="The CoreCLR native AOT compiler (ILC)." />
 
