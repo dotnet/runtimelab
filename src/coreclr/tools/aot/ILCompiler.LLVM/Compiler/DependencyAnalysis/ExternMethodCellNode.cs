@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
 
 using ILCompiler.DependencyAnalysis.ARM;
 using ILCompiler.DependencyAnalysis.ARM64;
@@ -20,14 +21,21 @@ using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
 {
+    //
+    // WASM requires the callee and caller signature to match. At the LLVM level, "callee type" is the function
+    // type attached of the called operand and "caller" - that of its callsite. The problem, then, is that for a
+    // given module, we can only have one function declaration, thus, one callee type. And we cannot know whether
+    // this type will be the right one until, in general, runtime (this is the case for WASM imports provided by
+    // the host environment). Thus, to achieve the experience of runtime erros on signature mismatches, we "hide"
+    // the target behind an indirection.
+    //
     internal sealed class ExternMethodCellNode(string externMethodName) : ObjectNode, ISymbolDefinitionNode
     {
-        private readonly Utf8String _externMethodName = externMethodName;
-        private TargetAbiType[] _signature;
+        private WasmFunctionType? _signature;
         private object _methods;
 
-        public Utf8String ExternMethodName => _externMethodName;
-        public ref TargetAbiType[] Signature => ref _signature;
+        public string ExternMethodName { get; } = externMethodName;
+        public WasmFunctionType Signature => _signature.Value;
 
         public int Offset => 0;
         public override bool RepresentsIndirectionCell => true;
@@ -42,16 +50,24 @@ namespace ILCompiler.DependencyAnalysis
             {
                 case null:
                     _methods = method;
-                    break;
+                    _signature = WasmAbi.GetWasmFunctionType(method, WasmFunctionAbiOptions.IsNative);
+                    return;
+
                 case MethodDesc oneMethod:
                     if (oneMethod != method)
                     {
                         _methods = new HashSet<MethodDesc>() { oneMethod, method };
                     }
                     break;
+
                 default:
                     ((HashSet<MethodDesc>)_methods).Add(method);
                     break;
+            }
+
+            if (_signature != null && !WasmAbi.HasWasmFunctionType(method, Signature, WasmFunctionAbiOptions.IsNative))
+            {
+                _signature = null; // Mismatch!
             }
         }
 
@@ -59,19 +75,6 @@ namespace ILCompiler.DependencyAnalysis
         {
             Debug.Assert(factory.MarkingComplete); // This question can only be answered after we've encountered all PIs.
             return _signature == null;
-        }
-
-        public IEnumerable<MethodDesc> EnumerateMethods()
-        {
-            switch (_methods)
-            {
-                case null:
-                    return Array.Empty<MethodDesc>();
-                case MethodDesc oneMethod:
-                    return new MethodDesc[] { oneMethod };
-                default:
-                    return (HashSet<MethodDesc>)_methods;
-            }
         }
 
         public MethodDesc GetSingleMethod(NodeFactory factory)
@@ -94,15 +97,22 @@ namespace ILCompiler.DependencyAnalysis
         {
             if (HasSignatureMismatch(compilation.NodeFactory))
             {
-                string text = $"Signature mismatch detected: '{ExternMethodName}' will not be imported from the host environment";
-
-                foreach (MethodDesc method in EnumerateMethods())
+                IEnumerable<MethodDesc> methods = _methods switch
                 {
-                    text += $"\n Defined as: {method.Signature.ReturnType} {method}";
+                    null => [],
+                    MethodDesc oneMethod => [oneMethod],
+                    _ => (HashSet<MethodDesc>)_methods,
+                };
+
+                StringBuilder text = new();
+                text.Append($"Signature mismatch detected: '{ExternMethodName}' will not be imported from the host environment");
+                foreach (MethodDesc method in methods)
+                {
+                    text.Append($"\n Defined as: {method.Signature.ReturnType} {method}");
                 }
 
                 // Error code is just below the "AOT analysis" namespace.
-                compilation.Logger.LogWarning(text, 3049, (string)null);
+                compilation.Logger.LogWarning(text.ToString(), 3049, (string)null);
             }
         }
 
@@ -137,38 +147,8 @@ namespace ILCompiler.DependencyAnalysis
     {
         private readonly ExternMethodCellNode _methodCell = methodCell;
 
-        public WasmFunctionType GetWasmFunctionType(NodeFactory factory)
-        {
-            if (_methodCell.HasSignatureMismatch(factory))
-            {
-                return new WasmFunctionType(WasmValueType.Invalid, []);
-            }
-
-            // TODO-LLVM: the initial design of ExternMethodAccessorNode assumed that, eventually, ILC would not
-            // need to concern itself with ABI (i. e. that only the Jit would need to know the ABI details). That
-            // is why Signature is provided by Jit. However, at this point, it has become clear that we will not
-            // be able to avoid WASM signature building in ILC, and so the Jit-based mechanism is redundant (ILC
-            // can compute the details by itself). Remove it.
-            static WasmValueType ToWasmType(TargetAbiType type) => type switch
-            {
-                TargetAbiType.Void => WasmValueType.Invalid,
-                TargetAbiType.Int32 => WasmValueType.I32,
-                TargetAbiType.Int64 => WasmValueType.I64,
-                TargetAbiType.Float => WasmValueType.F32,
-                TargetAbiType.Double => WasmValueType.F64,
-                _ => throw new NotImplementedException()
-            };
-
-            ReadOnlySpan<TargetAbiType> jitSig = _methodCell.Signature;
-            WasmValueType wasmReturnType = ToWasmType(jitSig[0]);
-            WasmValueType[] wasmParamTypes = new WasmValueType[jitSig.Length - 1];
-            for (int i = 0; i < wasmParamTypes.Length; i++)
-            {
-                wasmParamTypes[i] = ToWasmType(jitSig[i + 1]);
-            }
-
-            return new WasmFunctionType(wasmReturnType, wasmParamTypes);
-        }
+        public WasmFunctionType GetWasmFunctionType(NodeFactory factory) =>
+            _methodCell.HasSignatureMismatch(factory) ? new(WasmValueType.Invalid, []) : _methodCell.Signature;
 
         public bool GetImportModuleAndName(Compilation compilation, out string module, out string name)
         {

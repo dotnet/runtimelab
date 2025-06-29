@@ -16,7 +16,7 @@ namespace ILCompiler.DependencyAnalysis
     {
         private readonly CorInfoLlvmEHModel _ehModel;
 
-        private readonly Dictionary<string, ExternMethodCellNode> _externMethodAccessors = new();
+        private readonly Dictionary<string, ExternMethodCellNode> _externMethodCells = new();
         private readonly NodeCache<ExternMethodCellNode, ExternWasmMethodNode> _externWasmMethods =
             new(methodCell => new ExternWasmMethodNode(methodCell));
 
@@ -52,33 +52,25 @@ namespace ILCompiler.DependencyAnalysis
 
         public override bool TargetsEmulatedEH() => _ehModel is CorInfoLlvmEHModel.Emulated;
 
-        internal ExternMethodCellNode ExternMethodCell(string name, MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
+        internal ExternMethodCellNode ExternMethodCell(string name, MethodDesc method)
         {
-            Dictionary<string, ExternMethodCellNode> map = _externMethodAccessors;
+            Dictionary<string, ExternMethodCellNode> map = _externMethodCells;
 
             // Not lockless since we mutate the node. Contention on this path is not expected.
             //
             lock (map)
             {
                 ref ExternMethodCellNode node = ref CollectionsMarshal.GetValueRefOrAddDefault(map, name, out bool exists);
-
                 if (!exists)
                 {
                     node = new ExternMethodCellNode(name);
-                    node.Signature = sig.ToArray();
                 }
-                else if (!node.Signature.AsSpan().SequenceEqual(sig))
-                {
-                    // We have already seen this name with a different signature. Currently, we don't try to disambiguate.
-                    node.Signature = null;
-                }
-
                 node.AddMethod(method);
                 return node;
             }
         }
 
-        internal ExternWasmMethodNode ExternWasmMethod(ExternMethodCellNode accessor) => _externWasmMethods.GetOrAdd(accessor);
+        internal ExternWasmMethodNode ExternWasmMethod(ExternMethodCellNode methodCell) => _externWasmMethods.GetOrAdd(methodCell);
 
         protected override IMethodNode CreateMethodEntrypointNode(MethodDesc method)
         {
