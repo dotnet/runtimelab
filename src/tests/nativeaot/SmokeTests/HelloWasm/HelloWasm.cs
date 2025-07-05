@@ -40,7 +40,9 @@ internal unsafe partial class Program
         TestMetaData();
 
         TestGC();
+#if !NO_EXPLICIT_FINALIZER
         TestFinalization();
+#endif
 
         Add(1, 2);
         PrintLine("Hello from C#!");

@@ -28,6 +28,30 @@ internal static partial class Interop
         [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_cancel_promise", StringMarshalling = StringMarshalling.Utf16)]
         public static unsafe partial void CancelPromise(IntPtr gcHandle);
 
+#if FEATURE_WASM_MANAGED_THREADS
+        // Required by JavaScript/JSFunctionBinding.cs
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_invoke_js_function_send")]
+        public static unsafe partial void InvokeJSFunctionSend(nint targetNativeTID, nint functionHandle, nint data);
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_invoke_jsimport_MT")]
+        public static unsafe partial void InvokeJSImportSync(nint signature, nint args);
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_invoke_jsimport_sync_send")]
+        public static unsafe partial void InvokeJSImportSyncSend(nint targetNativeTID, nint signature, nint args);
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_invoke_jsimport_async_post")]
+        public static unsafe partial void InvokeJSImportAsyncPost(nint targetNativeTID, nint signature, nint args);
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_resolve_or_reject_promise_post")]
+        public static unsafe partial void ResolveOrRejectPromisePost(nint targetNativeTID, nint data);
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_install_js_worker_interop_wrapper")]
+        public static unsafe partial void InstallWebWorkerInterop(nint proxyContextGCHandle, void* beforeSyncJSImport, void* afterSyncJSImport, void* pumpHandler);
+        // Required by JavaScript/JSProxyContext.cs
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_release_cs_owned_object_post")]
+        internal static unsafe partial void ReleaseCSOwnedObjectPost(nint targetNativeTID, nint jsHandle);
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_uninstall_js_worker_interop")]
+        public static unsafe partial void UninstallWebWorkerInterop();
+        // Required by JavaScript/CancelablePromise.cs
+        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_cancel_promise_post")]
+        public static unsafe partial void CancelPromisePost(nint targetNativeTID, nint taskHolderGCHandle);
+#endif
+
         #region Not used by NativeAOT
         public static IntPtr RegisterGCRoot(void* start, int bytesSize, IntPtr name) => throw new NotImplementedException();
         public static void DeregisterGCRoot(IntPtr handle) => throw new NotImplementedException();

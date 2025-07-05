@@ -72,6 +72,25 @@ extends:
                     librariesConfiguration: Debug
 
         #
+        # Build and test Wasm Debug multithreaded libraries and Debug runtime
+        #
+        - template: /eng/pipelines/common/platform-matrix.yml
+          parameters:
+            jobTemplate: /eng/pipelines/common/global-build-job.yml
+            helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
+            buildConfig: debug
+            platforms:
+            - browser_multithread_wasm_win
+            - wasi_multithread_wasm_win
+            jobParameters:
+              timeoutInMinutes: 300
+              buildArgs: -s clr.aot+libs -c debug -rc $(_BuildConfig) -cmakeargs -DCLR_CMAKE_TARGET_OS_SUBGROUP=multithread '/p:WasmEnableThreads=true'
+              postBuildSteps:
+                - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+                  parameters:
+                    librariesConfiguration: Debug
+
+        #
         # Build and test with Debug libraries and Checked runtime
         #
         - template: /eng/pipelines/common/platform-matrix.yml

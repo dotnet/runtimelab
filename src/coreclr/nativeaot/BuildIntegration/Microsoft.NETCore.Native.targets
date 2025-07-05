@@ -438,6 +438,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CompileWasmArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileWasmArgs) -g3</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(WasmEnableNonTrappingFloatToIntConversions)' == 'true'">$(CompileWasmArgs) -mnontrapping-fptoint</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'">$(CompileWasmArgs) -fwasm-exceptions</CompileWasmArgs>
+      <CompileWasmArgs Condition="'$(WasmEnableThreads)' == 'true'">$(CompileWasmArgs) -pthread -matomics -mbulk-memory</CompileWasmArgs>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(_targetOS)' == 'browser'">
@@ -608,6 +609,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
       <CustomLinkerArg Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" Condition="'$(EmccInitialHeapSize)' != ''" />
       <CustomLinkerArg Condition="'$(EmccEnableAssertions)' == 'true'" Include="-s ASSERTIONS=1" />
+      <CustomLinkerArg Condition="'$(WasmEnableThreads)' == 'true'" Include="-pthread" />
     </ItemGroup>
 
     <!-- wasm-ld only supports listing exports on the command line -->

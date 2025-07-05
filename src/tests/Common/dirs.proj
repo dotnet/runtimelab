@@ -29,6 +29,14 @@
       <!-- Only automated on WASI with LLDB, which we don't have on Windows CI machines. -->
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\WasmDebugging.csproj" Condition="'$(TargetOS)' == 'browser' or '$(OS)' == 'Windows_NT' or '$(Configuration)' != 'Debug'" />
       <DisabledProjects Include="$(TestRoot)readytorun\**\*.csproj" Condition="'$(TestBuildMode)' == 'nativeaot'" />
+  
+      <!-- TODO-LLVM: Reinstate when more thread support is implemented. -->
+      <!-- WaitForPendingFinalizers fails, FinalizeFinalizableObjects is not implemented when WasmEnableThreads. -->
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DynamicGenerics\DynamicGenerics.csproj" Condition="'$(WasmEnableThreads)' == 'true'"/>
+      <!-- Hangs attemping to create thread. -->
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\HelloWasm.csproj" Condition="'$(WasmEnableThreads)' == 'true' and '$(TargetOS)' == 'browser'"/>
+      <!-- Fails with MONO_WASM: Assert failed: Expect to have one js-module-threads asset in resources -->
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DotnetJs\DotNetJs.App.csproj" Condition="'$(WasmEnableThreads)' == 'true' and '$(TargetOS)' == 'browser'"/>
     </ItemGroup>
 
     <ItemGroup>

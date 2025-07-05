@@ -148,6 +148,10 @@ elseif (CLR_CMAKE_HOST_UNIX)
     add_compile_options(-Wno-alloca)
     add_compile_options(-Wno-implicit-int-float-conversion)
   endif()
+
+  if (CLR_CMAKE_TARGET_OS_SUBGROUP STREQUAL multithread AND CLR_CMAKE_HOST_BROWSER)
+    add_compile_options(-pthread)
+  endif(CLR_CMAKE_TARGET_OS_SUBGROUP STREQUAL multithread AND CLR_CMAKE_HOST_BROWSER)
 endif(MSVC)
 
 if (CLR_CMAKE_ENABLE_SANITIZERS)

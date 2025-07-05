@@ -1151,6 +1151,8 @@ REDHAWK_PALEXPORT bool PalGetMaximumStackBounds(_Out_ void** ppStackLowOut, _Out
     {
 #if defined(HOST_WASM) && !defined(FEATURE_WASM_MANAGED_THREADS)
         PalGetMaximumStackBounds_SingleThreadedWasm(&pStackLowOut, &pStackHighOut);
+#elif defined(HOST_WASM) && defined(FEATURE_WASM_MANAGED_THREADS)
+        PalGetMaximumStackBounds_MultiThreadedWasm(&pStackLowOut, &pStackHighOut);
 #elif defined(__APPLE__)
         // This is a Mac specific method
         pStackHighOut = pthread_get_stackaddr_np(pthread_self());

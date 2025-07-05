@@ -500,6 +500,44 @@ jobs:
         buildConfig: ${{ parameters.buildConfig }}
         ${{ insert }}: ${{ parameters.jobParameters }}
 
+- ${{ if containsValue(parameters.platforms, 'wasi_multithread_wasm_win') }}:
+  - template: xplat-setup.yml
+    parameters:
+      jobTemplate: ${{ parameters.jobTemplate }}
+      helixQueuesTemplate: ${{ parameters.helixQueuesTemplate }}
+      variables: ${{ parameters.variables }}
+      osGroup: wasi
+      osSubgroup: multithread
+      archType: wasm
+      targetRid: wasi-wasm
+      platform: wasi_multithread_wasm_win
+      shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
+      jobParameters:
+        hostedOs: windows
+        runtimeFlavor: ${{ parameters.runtimeFlavor }}
+        stagedBuild: ${{ parameters.stagedBuild }}
+        buildConfig: ${{ parameters.buildConfig }}
+        ${{ insert }}: ${{ parameters.jobParameters }}
+
+- ${{ if containsValue(parameters.platforms, 'browser_multithread_wasm_win') }}:
+  - template: xplat-setup.yml
+    parameters:
+      jobTemplate: ${{ parameters.jobTemplate }}
+      helixQueuesTemplate: ${{ parameters.helixQueuesTemplate }}
+      variables: ${{ parameters.variables }}
+      osGroup: browser
+      osSubgroup: multithread
+      archType: wasm
+      targetRid: browser-wasm
+      platform: browser_multithread_wasm_win
+      shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
+      jobParameters:
+        hostedOs: windows
+        runtimeFlavor: ${{ parameters.runtimeFlavor }}
+        stagedBuild: ${{ parameters.stagedBuild }}
+        buildConfig: ${{ parameters.buildConfig }}
+        ${{ insert }}: ${{ parameters.jobParameters }}
+
 # WebAssembly Linux for NAOT-LLVM
 # Use a different name to differentiate from upstream as we need the -sanitizer image to get build tools that are not present in the stock browser_wasm image.
 

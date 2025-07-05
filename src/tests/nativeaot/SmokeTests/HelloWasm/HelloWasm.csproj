@@ -10,6 +10,7 @@
     <RequiresProcessIsolation>true</RequiresProcessIsolation>
     <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
     <CLRTestTargetUnsupported Condition="'$(TargetsWasm)' != 'true'">true</CLRTestTargetUnsupported>
+    <DefineConstants Condition="'$(TargetsWasm)' == 'true' and '$(WasmEnableThreads)' == 'true'">$(DefineConstants);NO_EXPLICIT_FINALIZER</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
