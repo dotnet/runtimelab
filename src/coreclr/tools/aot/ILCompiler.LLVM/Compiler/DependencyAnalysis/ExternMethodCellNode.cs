@@ -143,7 +143,7 @@ namespace ILCompiler.DependencyAnalysis
         protected override string GetName(NodeFactory context) => $"{nameof(ExternMethodCellNode)} {ExternMethodName}";
     }
 
-    internal sealed class ExternWasmMethodNode(ExternMethodCellNode methodCell) : ExternSymbolNode(methodCell.ExternMethodName), IWasmFunctionNode
+    internal sealed class ExternWasmMethodNode(ExternMethodCellNode methodCell) : ExternFunctionSymbolNode(methodCell.ExternMethodName), IWasmFunctionNode
     {
         private readonly ExternMethodCellNode _methodCell = methodCell;
 
