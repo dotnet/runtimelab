@@ -1344,7 +1344,7 @@ private:
                 (varDsc->GetRegNum() == REG_STK_CANDIDATE_UNCONDITIONAL))
             {
                 // We model candidates like "any other [non-GC] local" that just happened to need to be stored
-                // to the shadow stock. Therefore, we don't need to "initialize" them here (it'll happen in
+                // to the shadow stack. Therefore, we don't need to "initialize" them here (it'll happen in
                 // codegen). What we do here for them is initialize the shadow stack slot itself. For locals
                 // that are unconditionally rewritten to be shadow stack references however, they need to be
                 // initialized properly (e. g. if they're parameters).
