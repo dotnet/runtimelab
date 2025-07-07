@@ -11,6 +11,7 @@ public unsafe class LSSATests
     public static void Run()
     {
         int value = 10;
+        bool flag = true;
         object obj = NewObject();
 
 #if DEBUG
@@ -21,17 +22,27 @@ public unsafe class LSSATests
         Optimized_ParameterExposed(NewObject());
         Optimized_AddressExposedValuesAndEH();
         Optimized_LastUses_DisjointValuesNotExposed();
-        Optimized_LastUses_ForkedFlowNotExposed(flag: true);
-        Optimized_LastUses_ForkedFlowExposed(flag: true, NewObject());
+        Optimized_LastUses_ForkedFlowNotExposed(flag);
+        Optimized_LastUses_ForkedFlowExposed(flag, NewObject());
         Optimized_LastUses_UseLocation(NewObject());
         Optimized_LastUses_OutOfOrder(NewObject());
-        Optimized_LastUses_OutOfOrderMultiple(flag: true, NewObject());
+        Optimized_LastUses_OutOfOrderMultiple(flag, NewObject());
         Optimized_ExplicitInit_NotExposed(ref value, &obj);
+        Optimized_ExplicitInit_NotExposed_SingleDefSimpleFlow(flag, &obj, &obj);
+        Optimized_ExplicitInit_NotExposed_SingleDefComplexFlow(value, &obj, &obj);
+        Optimized_ExplicitInit_NotExposed_MultipleDefsSimpleFlow(flag, &obj, &obj);
+        Optimized_ExplicitInit_NotExposed_MultipleDefsComplexFlow(value, &obj, &obj, &obj);
+        Optimized_ExplicitInit_NotExposed_DefSafePointDef(flag, &obj, &obj);
+        Optimized_ExplicitInit_NotExposed_ShadowTailCall(flag, &obj);
         Optimized_ExplicitInit_Exposed();
-        Optimized_NonGcValues_SingleDef(flag: true);
+        Optimized_ExplicitInit_Exposed_DeadSlotBefore(flag, &obj);
+        Optimized_ExplicitInit_Exposed_DeadSlotAfter(value, &obj);
+        Optimized_ExplicitInit_Exposed_DefSafePointDef(1);
+        Optimized_ExplicitInit_Exposed_EHFlow(flag, &obj);
+        Optimized_NonGcValues_SingleDef(flag);
         Optimized_AlreadySpilled(NewObject());
         Optimized_AlreadySpilled_AddressExposed(NewObject());
-        Optimized_AlreadySpilled_DerivedAddress(flag: true, new ClassWithField(), new int[1]);
+        Optimized_AlreadySpilled_DerivedAddress(flag, new ClassWithField(), new int[1]);
 
         LSSATestsIL.Optimized_Run();
 #endif
@@ -203,6 +214,154 @@ public unsafe class LSSATests
         SafePoint(x, x);
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining), LSSATest("BB01: STORE SS00 USR03 USR03/4")]
+    private static unsafe object Optimized_ExplicitInit_NotExposed_SingleDefSimpleFlow(bool flag, object* pObjOne, object* pObjTwo)
+    {
+        // Test that this object does not get zero-init-ed. There are no safe points between its spill and the prolog.
+        object x;
+        ForceILLocal(&x);
+        if (flag)
+        {
+            x = *pObjOne;
+        }
+        else
+        {
+            x = *pObjTwo;
+        }
+        SafePoint(); // The spill occurs at the beginning of this block.
+        return x;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining), LSSATest("BB01: STORE SS00 USR03 USR03/4")]
+    private static unsafe object Optimized_ExplicitInit_NotExposed_SingleDefComplexFlow(int value, object* pObjOne, object* pObjTwo)
+    {
+        // Test that this object does not get zero-init-ed. There are no safe points between its spill and the prolog.
+        object x;
+        ForceILLocal(&x);
+        for (int i = 0; i < 10; i++)
+        {
+            if (value < 100)
+            {
+                value -= 10;
+            }
+            value *= 20;
+            if (value % 12 == 0)
+            {
+                goto EXIT;
+            }
+        }
+        if (value < 0)
+        {
+            x = *pObjOne;
+        }
+        else
+        {
+            x = *pObjTwo;
+        }
+    EXIT:
+        SafePoint(); // The spill occurs at the beginning of this block.
+        return x;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining), LSSATest("""
+     BB01:
+       STORE SS00 USR03 USR03/3
+     BB02:
+       STORE SS00 USR03 USR03/2
+     """)]
+    private static unsafe object Optimized_ExplicitInit_NotExposed_MultipleDefsSimpleFlow(bool flag, object* pObjOne, object* pObjTwo)
+    {
+        // Test that this object does not get zero-init-ed. There are no safe points between its spills and the prolog.
+        object x;
+        ForceILLocal(&x);
+        if (flag)
+        {
+            x = *pObjOne; // Spill one
+            SafePoint();
+        }
+        else
+        {
+            x = *pObjTwo; // Spill two
+            AnotherSafePoint();
+        }
+        return x;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining), LSSATest("""
+     BB01:
+       STORE SS00 USR04 USR04/4
+     BB02:
+       STORE SS00 USR04 USR04/3
+     BB03:
+       STORE SS00 USR04 USR04/2
+     """)]
+    private static unsafe object Optimized_ExplicitInit_NotExposed_MultipleDefsComplexFlow(int value, object* pObjOne, object* pObjTwo, object* pObjThree)
+    {
+        // Test that this object does not get zero-init-ed. There are no safe points between its spill and the prolog.
+        object x;
+        ForceILLocal(&x);
+        for (int i = 0; i < 10; i++)
+        {
+            if (value < 100)
+            {
+                value -= 10;
+            }
+            value *= 20;
+            if (value % 12 == 0)
+            {
+                x = *pObjThree; // Spill one
+                YetAnotherSafePoint();
+                goto EXIT;
+            }
+        }
+        if (value < 0)
+        {
+            x = *pObjOne; // Spill two
+            SafePoint();
+        }
+        else
+        {
+            x = *pObjTwo; // Spill three
+            AnotherSafePoint();
+        }
+    EXIT:
+        return x;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining), LSSATest("""
+     BB01:
+       STORE SS00 USR03 USR03/3
+       STORE SS00 USR03 USR03/4
+     """)]
+    private static unsafe object Optimized_ExplicitInit_NotExposed_DefSafePointDef(bool flag, object* pObjOne, object* pObjTwo)
+    {
+        object x = null;
+        if (flag)
+        {
+            // Test that our logic can correct see that the spilled definition is **before** a safepoint in this block.
+            x = *pObjOne; // Spill one
+            SafePoint();
+            SafePoint(x, x);
+            x = *pObjTwo; // Spill two
+            SafePoint();
+        }
+        return x;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining), LSSATest("BB01: STORE SS00 USR02 USR02/2")]
+    private static unsafe void Optimized_ExplicitInit_NotExposed_ShadowTailCall(bool flag, object* pObj)
+    {
+        if (flag)
+        {
+            object x = *pObj; // This will be spilled.
+            ForceILLocal(&x);
+            SafePoint();
+            SafePoint(x, x);
+        }
+
+        SafePoint(); // No need for a zero-init of 'x' since this should be tail-called.
+    }
+
     [MethodImpl(MethodImplOptions.NoInlining), LSSATest("""
      BB01:
        ZEROINIT SS00
@@ -218,6 +377,89 @@ public unsafe class LSSATests
         ForceILLocal(&x);
         SafePoint(null);
         SafePoint(x, x);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining), LSSATest("""
+     BB01:
+       ZEROINIT SS00
+     BB02:
+       STORE SS00 USR02 USR02/2
+     """)]
+    private static unsafe void Optimized_ExplicitInit_Exposed_DeadSlotBefore(bool flag, object* pObj)
+    {
+        // Test that we zero-init the shadow slot for 'x'.
+        if (flag)
+        {
+            SafePoint(); // 'x' not live at this point.
+            return;
+        }
+
+        object x = *pObj; // This will be spilled.
+        ForceILLocal(&x);
+        SafePoint();
+        SafePoint(x, x);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining), LSSATest("""
+     BB01:
+       ZEROINIT SS00
+     BB02:
+       STORE SS00 USR02 USR02/2
+     """)]
+    private static unsafe void Optimized_ExplicitInit_Exposed_DeadSlotAfter(int value, object* pObj)
+    {
+        // Test that we zero-init the shodow slot for 'x'.
+        if (value != 0)
+        {
+            object x = *pObj; // This will be spilled.
+            ForceILLocal(&x);
+            SafePoint();
+            SafePoint(x, x);
+        }
+
+        if (value != 1)
+        {
+            SafePoint(); // 'x' not live at this point.
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining), LSSATest("""
+     BB01:
+       ZEROINIT SS00
+     BB02:
+       STORE SS00 USR02 USR02/4
+     """)]
+    private static ref int Optimized_ExplicitInit_Exposed_DefSafePointDef(int one)
+    {
+        int local = 0;
+        ref int x = ref *(int*)null;
+        if (one != 0)
+        {
+            // Test that our logic can correctly see that the spilled definition is **after** a safepoint in this block.
+            x = ref *(int*)((byte*)&local + one); // Not spilled.
+            SafePoint();
+            SafePoint(ref x, ref x);
+            x = ref NewObject().Field; // Spilled.
+            SafePoint();
+        }
+        return ref x;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining), LSSATest("""
+     BB01:
+       ZEROINIT SS00 SS01
+       STORE SS00 USR02 USR02/2
+       STORE SS01 USR03 SDSU
+     """)]
+    private static object Optimized_ExplicitInit_Exposed_EHFlow(bool flag, object* pObj)
+    {
+        // We cannot optimize out the zeroing of 'x' here because "*pObj" might throw
+        // and invoke managed code with this method's shadow frame active on the stack.
+        object x = *pObj; // Potential exception & spill.
+        ForceILLocal(&x);
+        object y = NewObject();
+        SafePoint(ref y); // An address-exposed local to block shadow tail calling.
+        return x;
     }
 
     // TODO-LLVM: add this test, but in such a way that we don't need to encode the virtual unwind
@@ -354,6 +596,9 @@ public unsafe class LSSATests
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void SafePoint() { }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void SafePoint(object x) { }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -369,7 +614,16 @@ public unsafe class LSSATests
     private static void SafePoint(ref int x) { }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void SafePoint(ref int x, ref int y) { }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void AnotherSafePoint() { }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private static void AnotherSafePoint(object x) { }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void YetAnotherSafePoint() { }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static ClassWithField NewObject() => new();
