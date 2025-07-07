@@ -489,47 +489,10 @@ jobs:
       helixQueuesTemplate: ${{ parameters.helixQueuesTemplate }}
       variables: ${{ parameters.variables }}
       osGroup: wasi
+      osSubGroup: ${{ parameters.osSubGroup }}
       archType: wasm
       targetRid: wasi-wasm
       platform: wasi_wasm_win
-      shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
-      jobParameters:
-        hostedOs: windows
-        runtimeFlavor: ${{ parameters.runtimeFlavor }}
-        stagedBuild: ${{ parameters.stagedBuild }}
-        buildConfig: ${{ parameters.buildConfig }}
-        ${{ insert }}: ${{ parameters.jobParameters }}
-
-- ${{ if containsValue(parameters.platforms, 'wasi_multithread_wasm_win') }}:
-  - template: xplat-setup.yml
-    parameters:
-      jobTemplate: ${{ parameters.jobTemplate }}
-      helixQueuesTemplate: ${{ parameters.helixQueuesTemplate }}
-      variables: ${{ parameters.variables }}
-      osGroup: wasi
-      osSubgroup: multithread
-      archType: wasm
-      targetRid: wasi-wasm
-      platform: wasi_multithread_wasm_win
-      shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
-      jobParameters:
-        hostedOs: windows
-        runtimeFlavor: ${{ parameters.runtimeFlavor }}
-        stagedBuild: ${{ parameters.stagedBuild }}
-        buildConfig: ${{ parameters.buildConfig }}
-        ${{ insert }}: ${{ parameters.jobParameters }}
-
-- ${{ if containsValue(parameters.platforms, 'browser_multithread_wasm_win') }}:
-  - template: xplat-setup.yml
-    parameters:
-      jobTemplate: ${{ parameters.jobTemplate }}
-      helixQueuesTemplate: ${{ parameters.helixQueuesTemplate }}
-      variables: ${{ parameters.variables }}
-      osGroup: browser
-      osSubgroup: multithread
-      archType: wasm
-      targetRid: browser-wasm
-      platform: browser_multithread_wasm_win
       shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
       jobParameters:
         hostedOs: windows
@@ -649,6 +612,7 @@ jobs:
       helixQueuesTemplate: ${{ parameters.helixQueuesTemplate }}
       variables: ${{ parameters.variables }}
       osGroup: browser
+      osSubGroup: ${{ parameters.osSubGroup }}
       archType: wasm
       targetRid: browser-wasm
       platform: browser_wasm_win

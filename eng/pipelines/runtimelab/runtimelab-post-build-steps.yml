@@ -31,11 +31,11 @@ steps:
         displayName: Set up ILC emulation environment
 
     - ${{ if eq(parameters.archType, 'wasm') }}:
-      - ${{ if eq(parameters.platform, 'browser_multithread_wasm_win') }}:
+      - ${{ if and(eq(parameters.platform, 'browser_wasm_win'), eq(parameters.nameSuffix, 'Multithreaded')) }}:
         - script: |
             $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) $(_officialBuildParameter) ci browser tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} /p:WasmEnableThreads=true
           displayName: Build WebAssembly browser Mutlithread runtime tests
-      - ${{ elseif eq(parameters.platform, 'wasi_multithread_wasm_win') }}:
+      - ${{ elseif and(eq(parameters.platform, 'wasi_wasm_win'), eq(parameters.nameSuffix, 'Multithreaded')) }}:
         - script: |
             $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) $(_officialBuildParameter) ci wasi tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} /p:WasmEnableThreads=true
           displayName: Build WebAssembly wasi Mutlithread runtime tests
@@ -58,7 +58,7 @@ steps:
         displayName: Run runtime tests
 
     # Don't compile/run the libraries tests with emulated ILC to save CI time/resources.
-    - ${{ if and(and(eq(parameters.archType, 'wasm'), eq(parameters.nameSuffix, '')), not(in(parameters.platform, 'browser_multithread_wasm_win', 'wasi_multithread_wasm_win'))) }}:
+    - ${{ if and(and(eq(parameters.archType, 'wasm'), eq(parameters.nameSuffix, '')), not(eq(parameters.nameSuffix, 'Multithreaded'))) }}:
       - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
         displayName: Build and run WebAssembly libraries tests
 

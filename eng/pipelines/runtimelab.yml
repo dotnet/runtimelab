@@ -79,12 +79,14 @@ extends:
             jobTemplate: /eng/pipelines/common/global-build-job.yml
             helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
             buildConfig: debug
+            osSubgroup: multithread
             platforms:
-            - browser_multithread_wasm_win
-            - wasi_multithread_wasm_win
+            - browser_wasm_win
+            - wasi_wasm_win
             jobParameters:
               timeoutInMinutes: 300
               buildArgs: -s clr.aot+libs -c debug -rc $(_BuildConfig) -cmakeargs -DCLR_CMAKE_TARGET_OS_SUBGROUP=multithread '/p:WasmEnableThreads=true'
+              nameSuffix: Multithreaded
               postBuildSteps:
                 - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
                   parameters:
