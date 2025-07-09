@@ -80,11 +80,11 @@ Once you build the repo, you can use the produced binaries in one of four ways s
 
 This is a work in progress and far from functional.  Currentlty there exists just enough infrastucture to build packages for mutlithreaded runtime and libs, but they are not functional in the sense that they support multithreaded programs yet.  To build the WASI packages:
 ```
-build clr.aot+libs+nativeaot.packages -c Debug -a wasm -os wasi -cmakeargs -DCLR_CMAKE_TARGET_OS_SUBGROUP=multithread '/p:WasmEnableThreads=true'
+build clr.aot+libs+nativeaot.packages -c Debug -a wasm -os wasi -cmakeargs '/p:WasmEnableThreads=true'
 ```
 To build the browser multithreaded packages:
 ```
-build clr.aot+libs+nativeaot.packages -c Debug -a wasm -os browser -cmakeargs -DCLR_CMAKE_TARGET_OS_SUBGROUP=multithread '/p:WasmEnableThreads=true'
+build clr.aot+libs+nativeaot.packages -c Debug -a wasm -os browser -cmakeargs '/p:WasmEnableThreads=true'
 ```
 To build the runtime tests for WASI
 ```
