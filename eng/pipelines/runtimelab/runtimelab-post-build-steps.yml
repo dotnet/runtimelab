@@ -17,8 +17,12 @@ steps:
       displayName: Build the ILC and RyuJit cross-compilers
 
     # Build target packages (note: target libs already built).
-    - script: $(Build.SourcesDirectory)/build$(scriptExt) nativeaot.packages -os ${{ parameters.osGroup }} -a wasm -c $(buildConfigUpper) $(_officialBuildParameter) -ci
-      displayName: Build target packages
+    - ${{ if ne(parameters.nameSuffix, 'Multithreaded') }}:
+      - script: $(Build.SourcesDirectory)/build$(scriptExt) nativeaot.packages -os ${{ parameters.osGroup }} -a wasm -c $(buildConfigUpper) $(_officialBuildParameter) -ci
+        displayName: Build target packages
+    - ${{ else }}:
+      - script: $(Build.SourcesDirectory)/build$(scriptExt) nativeaot.packages -os ${{ parameters.osGroup }} -a wasm -c $(buildConfigUpper) $(_officialBuildParameter) -ci /p:WasmEnableThreads=true
+        displayName: Build target multithread packages
 
     # Build host packages.
     - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -a $(hostedTargetArch) -c $(buildConfigUpper) -cross $(_officialBuildParameter) -ci
