@@ -454,7 +454,7 @@ The .NET Foundation licenses this file to you under the MIT license.
    <PropertyGroup Condition="'$(_targetOS)' == 'wasi'">
       <WasmCompilerPath>&quot;$(WASI_SDK_PATH)/bin/clang++&quot;</WasmCompilerPath>
       <WasmLinkerPath>&quot;$(WASI_SDK_PATH)/bin/clang&quot;</WasmLinkerPath>
-    </PropertyGroup>
+  </PropertyGroup>
 
     <!-- Invoke the compilers in parallel. -->
     <ItemGroup>
@@ -552,6 +552,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <PropertyGroup>
       <IlcIsLibLikeApp Condition="'$(IlcIsLibLikeApp)' == '' and ('$(NativeLib)' != '' or '$(CustomNativeMain)' != '')">true</IlcIsLibLikeApp>
+      <WasmSymbolFile>$([System.IO.Path]::ChangeExtension('$(NativeBinary)', '.debug.wasm'))</WasmSymbolFile>
     </PropertyGroup>
 
     <ItemGroup Condition="'$(InvariantGlobalization)' != 'true'">
@@ -603,6 +604,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" Condition="'$(IlcTreatWarningsAsErrors)' != 'true'" />
       <CustomLinkerArg Condition="'$(WasmEnableJSBigIntIntegration)' == 'true'" Include="-s WASM_BIGINT=1" />
       <CustomLinkerArg Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" Include="-s DISABLE_EXCEPTION_CATCHING=0" />
+	    <CustomLinkerArg Condition="'$(StripSymbols)' == 'true'" Include="-gseparate-dwarf=&quot;$(WasmSymbolFile)&quot;" />
 
       <CustomLinkerArg Include="$(EmccFlags)" />
       <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
