@@ -657,6 +657,7 @@ private:
 
     Value* consumeAddressAndEmitNullCheck(GenTreeIndir* indir);
     void emitNullCheckForAddress(GenTree* addr, Value* addrValue DEBUGARG(GenTree* indir));
+    bool isAddressNullOrValid(GenTree* addr);
     void emitAlignmentCheckForAddress(GenTree* addr, Value* addrValue, unsigned alignment DEBUGARG(GenTree* indir));
     bool isAddressAligned(GenTree* addr, unsigned alignment);
 
