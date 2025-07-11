@@ -37,6 +37,8 @@
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\HelloWasm.csproj" Condition="'$(WasmEnableThreads)' == 'true' and '$(TargetOS)' == 'browser'"/>
       <!-- Fails with MONO_WASM: Assert failed: Expect to have one js-module-threads asset in resources -->
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DotnetJs\DotNetJs.App.csproj" Condition="'$(WasmEnableThreads)' == 'true' and '$(TargetOS)' == 'browser'"/>
+      <!-- This test uses nuget to resolve the target runtime package name using just the RID so does not work with the "multithread" prefix -->
+      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\PackagingTests.csproj" Condition="'$(WasmEnableThreads)' == 'true'"/>
     </ItemGroup>
 
     <ItemGroup>
