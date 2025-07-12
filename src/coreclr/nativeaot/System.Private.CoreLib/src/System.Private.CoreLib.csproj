@@ -588,8 +588,11 @@
     <Compile Include="$(RuntimeBasePath)System\Runtime\MethodTable.Runtime.cs">
       <Link>Runtime.Base\src\System\Runtime\MethodTable.Runtime.cs</Link>
     </Compile>
-    <Compile Include="$(RuntimeBasePath)System\Runtime\ExceptionHandling.cs">
+    <Compile Include="$(RuntimeBasePath)System\Runtime\ExceptionHandling.cs" Condition="'$(WasmAbi)' != 'true'">
       <Link>Runtime.Base\src\System\Runtime\ExceptionHandling.cs</Link>
+    </Compile>
+    <Compile Include="$(RuntimeBasePath)System\Runtime\ExceptionHandling.wasm.cs" Condition="'$(WasmAbi)' == 'true'">
+      <Link>Runtime.Base\src\System\Runtime\ExceptionHandling.wasm.cs</Link>
     </Compile>
     <Compile Include="$(RuntimeBasePath)System\Runtime\InternalCalls.cs">
       <Link>Runtime.Base\src\System\Runtime\InternalCalls.cs</Link>
@@ -611,9 +614,6 @@
     </Compile>
     <Compile Include="$(AotCommonPath)\Internal\Runtime\TransitionBlock.cs">
       <Link>Common\TransitionBlock.cs</Link>
-    </Compile>
-    <Compile Include="$(RuntimeBasePath)System\Runtime\ExceptionHandling.wasm.cs" Condition="'$(WasmAbi)' == 'true'">
-      <Link>Runtime.Base\src\System\Runtime\ExceptionHandling.wasm.cs</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
