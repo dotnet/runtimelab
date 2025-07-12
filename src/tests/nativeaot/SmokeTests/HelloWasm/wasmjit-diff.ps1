@@ -496,10 +496,6 @@ if ($Analyze -or $Summary)
 
         $RegressionCount = 0
         $ImprovementCount = 0
-        $HaveRegressionDiffs = $false
-        $HaveImprovementDiffs = $false
-        $HaveBaseOnlyMethods = $false
-        $HaveDiffOnlyMethods = $false
         $AverageRelativeCodeSizeDelta = 0.0
         foreach ($Diff in $Diffs)
         {
@@ -517,22 +513,11 @@ if ($Analyze -or $Summary)
             # Just skip them for now.
             if ($Diff.Base.Size -eq 0)
             {
-                $HaveDiffOnlyMethods = $true
                 continue
             }
             if ($Diff.Diff.Size -eq 0)
             {
-                $HaveBaseOnlyMethods = $true
                 continue
-            }
-
-            if ($IsRegression)
-            {
-                $HaveRegressionDiffs = $true
-            }
-            else
-            {
-                $HaveImprovementDiffs = $true
             }
 
             $AverageRelativeCodeSizeDelta += $Diff.CodeSizeDelta / $Diff.Base.Size
@@ -558,8 +543,13 @@ if ($Analyze -or $Summary)
         Write-Host "    average relative diff is $($AverageRelativeCodeSizeDelta -lt 0 ? 'an improvement' : 'a regression')"
         Write-Host ""
 
-        function ShowRelativeDiffs($DiffsToShow, $Message, $ShowBaseOnlyMethods = $false, $ShowDiffOnlyMethods = $false)
+        function ShowRelativeDiffs($DiffsToShow, $Message)
         {
+            if ($DiffsToShow.Length -eq 0)
+            {
+                return
+            }
+
             Write-Host $Message
 
             $DiffsShown = 0
@@ -570,42 +560,33 @@ if ($Analyze -or $Summary)
                     break
                 }
 
-                $IsBaseOnlyMethod = $Diff.Diff.Size -eq 0
-                $IsDiffOnlyMethod = $Diff.Base.Size -eq 0
-                if (($ShowBaseOnlyMethods -eq $IsBaseOnlyMethod) -and ($ShowDiffOnlyMethods -eq $IsDiffOnlyMethod))
-                {
-                    Write-Host ("    {0,8} ({1,6:P} of base) : {2} - {3}" -f
-                        $Diff.CodeSizeDelta, ($Diff.CodeSizeDelta / $Diff.Base.Size), $Diff.DiffFileName, $Diff.Name)
-                    $DiffsShown++
-                }
+                Write-Host("    {0,8} ({1,6:P} of base) : {2} - {3}" -f
+                    $Diff.CodeSizeDelta, ($Diff.CodeSizeDelta / $Diff.Base.Size), $Diff.DiffFileName, $Diff.Name)
+                $DiffsShown++
             }
             Write-Host ""
         }
 
         if ($RegressionCount -ne 0)
         {
-            $RegressionDiffs = $Diffs | sort { $_.CodeSizeDelta / $_.Base.Size } -Descending | where CodeSizeDelta -gt 0
-            if ($HaveRegressionDiffs)
-            {
-                ShowRelativeDiffs $RegressionDiffs "Top method regressions (percentages):"
-            }
-            if ($HaveDiffOnlyMethods)
-            {
-                ShowRelativeDiffs $RegressionDiffs "Top methods only present in diff:" -ShowDiffOnlyMethods $true
-            }
+            $RegressionDiffs = $Diffs | where CodeSizeDelta -gt 0
+
+            $ActualRegressionDiffs = $RegressionDiffs | where { $_.Base.Size -ne 0 } | sort { $_.CodeSizeDelta / $_.Base.Size } -Descending
+            ShowRelativeDiffs $ActualRegressionDiffs "Top method regressions (percentages):"
+
+            $DiffOnlyDiffs = $RegressionDiffs | where { $_.Base.Size -eq 0 } | sort CodeSizeDelta -Descending
+            ShowRelativeDiffs $DiffOnlyDiffs "Top methods only present in diff:"
         }
 
         if ($ImprovementCount -ne 0)
         {
-            $ImprovementDiffs = $Diffs | sort { $_.CodeSizeDelta / $_.Base.Size } | where CodeSizeDelta -lt 0
-            if ($HaveImprovementDiffs)
-            {
-                ShowRelativeDiffs $ImprovementDiffs "Top method improvements (percentages):"
-            }
-            if ($HaveBaseOnlyMethods)
-            {
-                ShowRelativeDiffs $ImprovementDiffs "Top methods only present in base:" -ShowBaseOnlyMethods $true
-            }
+            $ImprovementDiffs = $Diffs | where CodeSizeDelta -lt 0
+
+            $ActualImprovementDiffs = $ImprovementDiffs | where { $_.Diff.Size -ne 0 } | sort { $_.CodeSizeDelta / $_.Base.Size }
+            ShowRelativeDiffs $ActualImprovementDiffs "Top method improvements (percentages):"
+
+            $BaseOnlyDiffs = $ImprovementDiffs | where { $_.Diff.Size -eq 0 } | sort CodeSizeDelta
+            ShowRelativeDiffs $BaseOnlyDiffs "Top methods only present in base:"
         }
 
         Write-Host "$($Diffs.Count) total methods with Code Size differences ($ImprovementCount improved, $RegressionCount regressed)"
