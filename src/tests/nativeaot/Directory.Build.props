@@ -15,4 +15,10 @@
     <DefineConstants Condition="'$(TargetsWasm)' == 'true'">$(DefineConstants);CODEGEN_WASM</DefineConstants>
     <DefineConstants Condition="$(TargetOS) == 'wasi'">$(DefineConstants);CODEGEN_WASI</DefineConstants>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Our stack trace implementation is not compatible with post-link optimizations/changes. -->
+    <!-- Exempt $(EmccExtraArgs) so that quick experimentation from the command line is still possible. -->
+    <LinkerArg Include="-sERROR_ON_WASM_CHANGES_AFTER_LINK=1" Condition="'$(TargetsBrowser)' == 'true' and '$(EmccExtraArgs)' == ''" />
+  </ItemGroup>
 </Project>
