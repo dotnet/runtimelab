@@ -205,23 +205,6 @@ int __cxa_thread_atexit(void (*func)(), void *obj, void *dso_symbol)
 //
 extern "C" unsigned char __stack_low;
 extern "C" unsigned char __stack_high;
-void PalGetMaximumStackBounds_MultiThreadedWasm(void** ppStackLowOut, void** ppStackHighOut)
-{
-    // See https://github.com/emscripten-core/emscripten/pull/18057 and https://reviews.llvm.org/D135910.
-    unsigned char* pStackLow = &__stack_low;
-    unsigned char* pStackHigh = &__stack_high;
-
-    // Sanity check that we have the expected memory layout.
-    ASSERT((pStackHigh - pStackLow) >= 64 * 1024);
-    if (pStackLow >= pStackHigh)
-    {
-        PalPrintFatalError("\nFatal error. Unexpected stack layout.\n");
-        RhFailFast();
-    }
-
-    *ppStackLowOut = pStackLow;
-    *ppStackHighOut = pStackHigh;
-}
 
 #ifdef TARGET_WASI
 // TODO-LLVM: No-op stubs, maybe when threads are implemented in WASI, we wont have to provide all of these.
@@ -297,6 +280,28 @@ int pthread_equal(pthread_t, pthread_t)
 
 int pthread_attr_init(pthread_attr_t *)
 {
+    // See https://github.com/emscripten-core/emscripten/pull/18057 and https://reviews.llvm.org/D135910.
+    unsigned char* pStackLow = &__stack_low;
+    unsigned char* pStackHigh = &__stack_high;
+
+    // Sanity check that we have the expected memory layout.
+    ASSERT((pStackHigh - pStackLow) >= 64 * 1024);
+    if (pStackLow >= pStackHigh)
+    {
+        PalPrintFatalError("\nFatal error. Unexpected stack layout.\n");
+        RhFailFast();
+    }
+
+    return 0;
+}
+
+int pthread_attr_getstack(pthread_attr_t *, void **stackaddr, size_t *stacksize)
+{
+    unsigned char* pStackLow = &__stack_low;
+    unsigned char* pStackHigh = &__stack_high;
+
+    *stackaddr = pStackLow;
+    *stacksize = pStackHigh - pStackLow;
     return 0;
 }
 

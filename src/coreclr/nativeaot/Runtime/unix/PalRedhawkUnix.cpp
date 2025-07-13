@@ -1151,8 +1151,6 @@ REDHAWK_PALEXPORT bool PalGetMaximumStackBounds(_Out_ void** ppStackLowOut, _Out
     {
 #if defined(HOST_WASM) && !defined(FEATURE_WASM_MANAGED_THREADS)
         PalGetMaximumStackBounds_SingleThreadedWasm(&pStackLowOut, &pStackHighOut);
-#elif defined(HOST_WASM) && defined(FEATURE_WASM_MANAGED_THREADS)
-        PalGetMaximumStackBounds_MultiThreadedWasm(&pStackLowOut, &pStackHighOut);
 #elif defined(__APPLE__)
         // This is a Mac specific method
         pStackHighOut = pthread_get_stackaddr_np(pthread_self());
@@ -1171,6 +1169,8 @@ REDHAWK_PALEXPORT bool PalGetMaximumStackBounds(_Out_ void** ppStackLowOut, _Out
         status = pthread_attr_get_np(thread, &attr);
 #elif HAVE_PTHREAD_GETATTR_NP
         status = pthread_getattr_np(thread, &attr);
+#elif defined(HOST_WASM) && defined(FEATURE_WASM_MANAGED_THREADS)
+        // We dont have a pthread_getattr_np, but so far we don't need it.
 #else
 #error Dont know how to get thread attributes on this platform!
 #endif
