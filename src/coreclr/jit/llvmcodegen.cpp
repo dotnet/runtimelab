@@ -2340,10 +2340,10 @@ void Llvm::emitNullCheckForAddress(GenTree* addr, Value* addrValue DEBUGARG(GenT
 {
     // The frontend's contract with the backend is that it will not insert null checks for accesses which
     // are inside the "[0..compMaxUncheckedOffsetForNullObject]" range. Thus, we usually need to check not
-    // just for "null", but "null + small offset". However, for TYP_REF, we know it will either be a valid
-    // object on heap, or null, and can utilize the more direct form.
+    // just for "null", but "null + small offset". However, for certain addresses, we know it will either
+    // be a valid address, or null.
     Value* isNullValue;
-    if (addr->TypeIs(TYP_REF))
+    if (isAddressNullOrValid(addr))
     {
         // LLVM's FastISel, used for unoptimized code, is not able to generate sensible WASM unless we do
         // a comparison using an integer zero here. This workaround saves 5+% on debug code size.
@@ -2366,6 +2366,30 @@ void Llvm::emitNullCheckForAddress(GenTree* addr, Value* addrValue DEBUGARG(GenT
     }
 
     emitJumpToThrowHelper(isNullValue, CORINFO_HELP_THROWNULLREF DEBUGARG(indir));
+}
+
+bool Llvm::isAddressNullOrValid(GenTree* addr)
+{
+    if (addr->TypeIs(TYP_REF))
+    {
+        return true;
+    }
+
+    // Weed out transient byrefs that could've been created by "fgMorphField". This is not as easy as it may look
+    // as we must accomodate for the possibility of the frontend transforming these in arbitrary ways. We do this
+    // by taking advantage of the managed ABI which prohibits passing such byrefs across call boundaries.
+    if (addr->OperIs(GT_LCL_VAR) && (addr->AsLclVar()->GetSsaNum() == SsaConfig::FIRST_SSA_NUM) &&
+        _compiler->lvaGetDesc(addr->AsLclVar())->lvIsParam)
+    {
+        return true;
+    }
+
+    if (addr->IsCall())
+    {
+        return true;
+    }
+
+    return false;
 }
 
 void Llvm::emitAlignmentCheckForAddress(GenTree* addr, Value* addrValue, unsigned alignment DEBUGARG(GenTree* indir))

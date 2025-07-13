@@ -977,7 +977,7 @@ void Llvm::lowerAddressToAddressMode(GenTreeIndir* indir)
             (size_t)offset);
 
     // Invariant access can be assumed to be in bounds by construction.
-    if (((indir->gtFlags & GTF_IND_INVARIANT) == 0) && !isAddressInBounds(baseAddr, fieldSeq, offset))
+    if (!indir->IsInvariantLoad() && !isAddressInBounds(baseAddr, fieldSeq, offset))
     {
         JITDUMP("no, not in bounds\n");
         return;
