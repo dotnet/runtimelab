@@ -90,7 +90,7 @@ namespace ILCompiler.ObjectWriter
             public override ObjectData GetData(NodeFactory factory, bool relocsOnly)
             {
                 byte[] data = new byte[4];
-                ExternSymbolNode canary = new ExternSymbolNode("RhpGetStackTraceIpCanary");
+                ExternFunctionSymbolNode canary = new ExternFunctionSymbolNode("RhpGetStackTraceIpCanary");
                 Relocation reloc = new Relocation(RelocType.R_WASM_FUNCTION_INDEX_I32, 0, canary);
                 return new ObjectData(data, [reloc], data.Length, [this]);
             }

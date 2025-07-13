@@ -112,7 +112,7 @@ namespace Internal.JitInterface
 
             // TODO-LLVM: below is a hack. A proper solution would involve upstream work to allow ExternSymbolNode
             // to specify whether it represents a function or data symbol (and what its signature is if the former).
-            if (node is ExternSymbolNode externSymbolNode)
+            if (node is ExternFunctionSymbolNode externSymbolNode)
             {
                 ReadOnlySpan<byte> name = externSymbolNode.Utf8Name.AsSpan();
                 if (name.StartsWith("RhpNew"u8))
@@ -187,7 +187,7 @@ namespace Internal.JitInterface
         private static IntPtr getExceptionThrownVariable(IntPtr thisHandle)
         {
             CorInfoImpl _this = GetThis(thisHandle);
-            ISymbolNode node = _this._compilation.NodeFactory.ExternSymbol("RhpExceptionThrown");
+            ISymbolNode node = _this._compilation.NodeFactory.ExternDataSymbol("RhpExceptionThrown");
             return _this.ObjectToHandle(node);
         }
 
@@ -277,7 +277,7 @@ namespace Internal.JitInterface
                 if ((pClause->Flags & CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_FILTER) != 0)
                 {
                     GetMangledFilterFuncletName(sb, pClause->FilterIndex);
-                    symbol = factory.ExternSymbol(sb.ToString());
+                    symbol = factory.ExternFunctionSymbol(sb.ToString());
                 }
                 else
                 {

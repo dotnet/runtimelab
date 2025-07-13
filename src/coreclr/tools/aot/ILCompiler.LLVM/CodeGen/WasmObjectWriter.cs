@@ -819,13 +819,12 @@ namespace ILCompiler.ObjectWriter
                     case IMethodNode methodNode:
                         return WasmAbi.GetWasmFunctionType(methodNode.Method);
                     default:
-                        // We assume extenal symbol nodes are functions. This is rather fragile, but handling this precisely
-                        // would require modifying producers of these nodes to provide more information (namely, the signature
-                        // for function symbols).
+                        // The below is rather fragile, but handling this precisely would require modifying producers of
+                        // these nodes to provide more information (namely, the signature for function symbols).
                         // TODO-LLVM-Bug: depending on the order symbols are encountered, this hack could lead to problems.
                         // E. g. a "naked" RhpNewFast, then a "properly typed" RhpNewFast runtime import. However, the linker
                         // can tolerate mismatches, so as long as the problematic functions aren't called directly...
-                        Debug.Assert(Symbol is ExternSymbolNode);
+                        Debug.Assert(Symbol is ExternFunctionSymbolNode);
                         return new WasmFunctionType(WasmValueType.Invalid, []);
                 }
             }
