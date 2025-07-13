@@ -85,7 +85,7 @@ extends:
             - wasi_wasm_win
             jobParameters:
               timeoutInMinutes: 300
-              buildArgs: -s clr.aot+libs -c debug -rc $(_BuildConfig) -cmakeargs '/p:WasmEnableThreads=true'
+              buildArgs: -s clr.aot+libs -c debug -rc $(_BuildConfig) '/p:WasmEnableThreads=true'
               nameSuffix: Multithreaded
               postBuildSteps:
                 - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
