@@ -91,6 +91,7 @@ extends:
                 - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
                   parameters:
                     librariesConfiguration: Debug
+                    wasmEnableThreadsArg: /p:WasmEnableThreads=true
 
         #
         # Build and test with Debug libraries and Checked runtime
