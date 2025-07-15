@@ -8,7 +8,7 @@ parameters:
   runtimeVariant: ''
   isOfficialBuild: false
   librariesConfiguration: Debug
-  wasmEnableThreadsArgg: ''
+  wasmEnableThreadsArg: ''
 
 steps:
   # For NativeAOT-LLVM, we have just built the Wasm-targeting native artifacts (the runtime and libraries).
