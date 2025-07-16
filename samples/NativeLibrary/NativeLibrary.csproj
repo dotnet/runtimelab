@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>library</OutputType>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <PublishTrimmed>true</PublishTrimmed>
@@ -15,7 +15,7 @@
     <PackageReference Include="runtime.$(NETCoreSdkPortableRuntimeIdentifier).Microsoft.DotNet.ILCompiler.LLVM" Version="10.0.0-*" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == 'browser-wasm'">
     <LinkerArg Include="-sEXPORTED_RUNTIME_METHODS=stringToNewUTF8" />
   </ItemGroup>
 
