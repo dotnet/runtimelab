@@ -8,7 +8,7 @@ parameters:
   runtimeVariant: ''
   isOfficialBuild: false
   librariesConfiguration: Debug
-  wasmEnableThreadsArgg: ''
+  wasmEnableThreadsArg: ''
 
 steps:
   # For NativeAOT-LLVM, we have just built the Wasm-targeting native artifacts (the runtime and libraries).
@@ -18,12 +18,8 @@ steps:
       displayName: Build the ILC and RyuJit cross-compilers
 
     # Build target packages (note: target libs already built).
-    - ${{ if ne(parameters.nameSuffix, 'Multithreaded') }}:
-      - script: $(Build.SourcesDirectory)/build$(scriptExt) nativeaot.packages -os ${{ parameters.osGroup }} -a wasm -c $(buildConfigUpper) $(_officialBuildParameter) -ci
-        displayName: Build target packages
-    - ${{ else }}:
-      - script: $(Build.SourcesDirectory)/build$(scriptExt) nativeaot.packages -os ${{ parameters.osGroup }} -a wasm -c $(buildConfigUpper) $(_officialBuildParameter) -ci /p:WasmEnableThreads=true
-        displayName: Build target multithread packages
+    - script: $(Build.SourcesDirectory)/build$(scriptExt) nativeaot.packages -os ${{ parameters.osGroup }} -a wasm -c $(buildConfigUpper) $(_officialBuildParameter) -ci $(wasmEnableThreadsArg)
+      displayName: Build target packages
 
     # Build host packages.
     - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -a $(hostedTargetArch) -c $(buildConfigUpper) -cross $(_officialBuildParameter) -ci
@@ -31,13 +27,14 @@ steps:
 
   # Build coreclr native test output outside of official build
   - ${{ if ne(parameters.isOfficialBuild, true) }}:
-    - ${{ if and(eq(parameters.archType, 'wasm'), and(ne(parameters.nameSuffix, ''), ne(parameters.nameSuffix, 'Multithreaded'))) }}:
+    - ${{ if and(eq(parameters.archType, 'wasm'), and(eq(parameters.wasmEnableThreadsArg, ''))) }}:
       - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/set-ilc-emulation-environment.ps1 -Arch $(hostedTargetArch)
         displayName: Set up ILC emulation environment
 
     - ${{ if eq(parameters.archType, 'wasm') }}:
-      - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.osGroup }} $(crossArg) $(_officialBuildParameter) ci tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} ${{ parameters.wasmEnableThreadsArg }}
-        displayName: Build runtime tests
+      - ${{ if not(and(eq(parameters.osGroup, 'browser'), ne(parameters.wasmEnableThreadsArg, ''))) }}:
+        - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.osGroup }} $(crossArg) $(_officialBuildParameter) ci tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} ${{ parameters.wasmEnableThreadsArg }}
+          displayName: Build runtime tests
     - ${{ else }}:
       - ${{ if eq(parameters.osGroup, 'windows') }}:
         - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) $(_officialBuildParameter) ci tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
@@ -50,11 +47,12 @@ steps:
       - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
         displayName: Run runtime tests
     - ${{ else }}:
-      - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
-        displayName: Run runtime tests
+      - ${{ if not(and(eq(parameters.osGroup, 'browser'), ne(parameters.wasmEnableThreadsArg, ''))) }}:
+        - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
+          displayName: Run runtime tests
 
     # Don't compile/run the libraries tests with emulated ILC to save CI time/resources.
-    - ${{ if and(and(eq(parameters.archType, 'wasm'), eq(parameters.nameSuffix, '')), not(eq(parameters.nameSuffix, 'Multithreaded'))) }}:
+    - ${{ if and(eq(parameters.archType, 'wasm'), eq(parameters.wasmEnableThreadsArg, '')) }}:
       - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
         displayName: Build and run WebAssembly libraries tests
 
