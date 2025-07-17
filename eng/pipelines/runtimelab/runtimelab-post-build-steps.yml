@@ -27,7 +27,7 @@ steps:
 
   # Build coreclr native test output outside of official build
   - ${{ if ne(parameters.isOfficialBuild, true) }}:
-    - ${{ if and(eq(parameters.archType, 'wasm'), and(eq(parameters.wasmEnableThreadsArg, ''))) }}:
+    - ${{ if and(eq(parameters.archType, 'wasm'), and(ne(parameters.nameSuffix, ''), eq(parameters.wasmEnableThreadsArg, ''))) }}:
       - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/set-ilc-emulation-environment.ps1 -Arch $(hostedTargetArch)
         displayName: Set up ILC emulation environment
 
