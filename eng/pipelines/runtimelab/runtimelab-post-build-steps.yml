@@ -44,12 +44,12 @@ steps:
           displayName: Build runtime tests
 
     - ${{ if contains(parameters.platform, 'win') }}:
-      - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
-        displayName: Run runtime tests
-    - ${{ else }}:
       - ${{ if not(and(eq(parameters.osGroup, 'browser'), ne(parameters.wasmEnableThreadsArg, ''))) }}:
-        - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
+        - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
           displayName: Run runtime tests
+    - ${{ else }}:
+      - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
+        displayName: Run runtime tests
 
     # Don't compile/run the libraries tests with emulated ILC to save CI time/resources.
     - ${{ if and(eq(parameters.archType, 'wasm'), eq(parameters.wasmEnableThreadsArg, '')) }}:
