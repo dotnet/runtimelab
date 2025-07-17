@@ -119,14 +119,14 @@
   .method private static void Optimized_ExposedLocal_Untracked(object* pObj) noinlining
   {
     .custom instance void System.Runtime.JitTesting.LSSATestAttribute::.ctor(string) =
-      {string('BB01:\n  STORE SS00 USR01 SDSU\n  LOAD SS00 USR01\n  STORE SS01 USR02 USR02/1\n  STORE SS00 USR01 SDSU')}
+      {string('BB01:\n  ZEROINIT SS01\n  STORE SS00 USR01 SDSU\n  LOAD SS00 USR01\n  STORE SS01 USR02 USR02/1\n  STORE SS00 USR01 SDSU')}
     .locals (object pinned pinnedObj, object objCopy)
 
     // Pinned locals will always be untracked, so they're convenient to use for
     // this kind of test.
     ldarg pObj
-    ldind.ref
-    stloc pinnedObj
+    ldind.ref       // Note how we need to zero-init SS01 since this might throw and we can't
+    stloc pinnedObj // tail-call the throw helper due to the presence of a pinned local.
     ldloc pinnedObj
     stloc objCopy
 

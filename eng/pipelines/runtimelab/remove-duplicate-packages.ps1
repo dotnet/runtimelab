@@ -7,6 +7,7 @@
 [CmdletBinding(PositionalBinding=$false)]
 param(
     [string]$Config,
+    [string]$HostArch,
     [string]$TargetOS,
     [string]$TargetArch
 )
@@ -27,7 +28,8 @@ if (!(Test-Path $PackagesPath))
     exit
 }
 
-$HostRid = [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+$BuildHostRid = [Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier
+$HostRid = $BuildHostRid.Substring(0, $BuildHostRid.LastIndexOf("-")) + "-" + $HostArch
 $PublishTargetPackages = $HostRid -eq "win-x64"
 if (!$PublishTargetPackages)
 {

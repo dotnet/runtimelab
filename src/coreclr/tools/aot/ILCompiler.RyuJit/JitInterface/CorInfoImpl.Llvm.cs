@@ -112,7 +112,7 @@ namespace Internal.JitInterface
 
             // TODO-LLVM: below is a hack. A proper solution would involve upstream work to allow ExternSymbolNode
             // to specify whether it represents a function or data symbol (and what its signature is if the former).
-            if (node is ExternSymbolNode externSymbolNode)
+            if (node is ExternFunctionSymbolNode externSymbolNode)
             {
                 ReadOnlySpan<byte> name = externSymbolNode.Utf8Name.AsSpan();
                 if (name.StartsWith("RhpNew"u8))
@@ -163,11 +163,11 @@ namespace Internal.JitInterface
 
         [UnmanagedCallersOnly]
         public static void getExternalMethodAddress(
-            IntPtr thisHandle, CORINFO_METHOD_STRUCT_* methodHandle, TargetAbiType* sig, int sigLength, CORINFO_CONST_LOOKUP* pLookup)
+            IntPtr thisHandle, CORINFO_METHOD_STRUCT_* methodHandle, CORINFO_CONST_LOOKUP* pLookup)
         {
             CorInfoImpl _this = GetThis(thisHandle);
             MethodDesc method = _this.HandleToObject(methodHandle);
-            ISymbolNode cellNode = _this._compilation.GetExternalMethodCell(method, new ReadOnlySpan<TargetAbiType>(sig, sigLength));
+            ISymbolNode cellNode = _this._compilation.GetExternalMethodCell(method);
             *pLookup = _this.CreateConstLookupToSymbol(cellNode);
         }
 
@@ -187,7 +187,7 @@ namespace Internal.JitInterface
         private static IntPtr getExceptionThrownVariable(IntPtr thisHandle)
         {
             CorInfoImpl _this = GetThis(thisHandle);
-            ISymbolNode node = _this._compilation.NodeFactory.ExternSymbol("RhpExceptionThrown");
+            ISymbolNode node = _this._compilation.NodeFactory.ExternDataSymbol("RhpExceptionThrown");
             return _this.ObjectToHandle(node);
         }
 
@@ -277,7 +277,7 @@ namespace Internal.JitInterface
                 if ((pClause->Flags & CORINFO_EH_CLAUSE_FLAGS.CORINFO_EH_CLAUSE_FILTER) != 0)
                 {
                     GetMangledFilterFuncletName(sb, pClause->FilterIndex);
-                    symbol = factory.ExternSymbol(sb.ToString());
+                    symbol = factory.ExternFunctionSymbol(sb.ToString());
                 }
                 else
                 {
@@ -436,7 +436,7 @@ namespace Internal.JitInterface
             jitImports[(int)EEApiId.EEAI_GetPrimitiveTypeForTrivialWasmStruct] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType>)&getPrimitiveTypeForTrivialWasmStruct;
             jitImports[(int)EEApiId.EEAI_GetTypeDescriptor] = (delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor*, void>)&getTypeDescriptor;
             jitImports[(int)EEApiId.EEAI_GetAlternativeFunctionName] = (delegate* unmanaged<IntPtr, byte*>)&getAlternativeFunctionName;
-            jitImports[(int)EEApiId.EEAI_GetExternalMethodAddress] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, TargetAbiType*, int, CORINFO_CONST_LOOKUP*, void>)&getExternalMethodAddress;
+            jitImports[(int)EEApiId.EEAI_GetExternalMethodAddress] = (delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, CORINFO_CONST_LOOKUP*, void>)&getExternalMethodAddress;
             jitImports[(int)EEApiId.EEAI_GetDebugInfoForCurrentMethod] = (delegate* unmanaged<IntPtr, CORINFO_LLVM_METHOD_DEBUG_INFO*, void>)&getDebugInfoForCurrentMethod;
             jitImports[(int)EEApiId.EEAI_GetSingleThreadedCompilationContext] = (delegate* unmanaged<IntPtr, void*>)&getSingleThreadedCompilationContext;
             jitImports[(int)EEApiId.EEAI_GetExceptionHandlingModel] = (delegate* unmanaged<IntPtr, CorInfoLlvmEHModel>)&getExceptionHandlingModel;
@@ -494,15 +494,6 @@ namespace Internal.JitInterface
         }
 
         private static void* GetJitExport(CorJitApiId id) => s_jitExports[(int)id];
-    }
-
-    public enum TargetAbiType : byte
-    {
-        Void,
-        Int32,
-        Int64,
-        Float,
-        Double
     }
 
     public enum CorInfoLlvmEHModel

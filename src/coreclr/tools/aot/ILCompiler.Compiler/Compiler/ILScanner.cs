@@ -198,7 +198,7 @@ namespace ILCompiler
 
                 ISymbolNode entryPoint;
                 if (mangledName != null)
-                    entryPoint = _compilation.NodeFactory.ExternSymbol(mangledName);
+                    entryPoint = _compilation.NodeFactory.ExternFunctionSymbol(mangledName);
                 else
                     entryPoint = _compilation.NodeFactory.MethodEntrypoint(methodDesc);
 

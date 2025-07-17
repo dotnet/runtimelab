@@ -82,6 +82,9 @@ Llvm::Llvm(Compiler* compiler)
     , m_phiPairs(compiler->getAllocator(CMK_Codegen))
     , m_ehModel(GetExceptionHandlingModel())
     , m_debugVariablesMap(compiler->getAllocator(CMK_Codegen))
+#ifdef DEBUG
+    , m_optimizationRequirements(compiler->getAllocator(CMK_DebugOnly))
+#endif // DEBUG
 {
 }
 
@@ -106,6 +109,20 @@ Llvm::Llvm(Compiler* compiler)
     _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
     _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
 #endif // HOST_WINDOWS
+}
+
+bool Llvm::EnableVerboseDump()
+{
+#ifdef DEBUG
+    const char* dumpSymbolName = JitConfig.JitDumpSymbol();
+    const char* compilingSymbolName = GetMangledMethodName(m_info->compMethodHnd);
+    if ((dumpSymbolName != nullptr) && (strcmp(dumpSymbolName, compilingSymbolName) == 0))
+    {
+        return true;
+    }
+#endif // DEBUG
+
+    return false;
 }
 
 var_types Llvm::GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind)
@@ -687,28 +704,6 @@ CorInfoType Llvm::getLlvmReturnType(CorInfoType sigRetType, CORINFO_CLASS_HANDLE
     return toCorInfoType(arg->AbiInfo.ArgType);
 }
 
-TargetAbiType Llvm::getAbiTypeForType(var_types type)
-{
-    switch (genActualType(type))
-    {
-        case TYP_VOID:
-            return TargetAbiType::Void;
-        case TYP_INT:
-            return TargetAbiType::Int32;
-        case TYP_LONG:
-            return TargetAbiType::Int64;
-        case TYP_REF:
-        case TYP_BYREF:
-            return (TARGET_POINTER_SIZE == 4) ? TargetAbiType::Int32 : TargetAbiType::Int64;
-        case TYP_FLOAT:
-            return TargetAbiType::Float;
-        case TYP_DOUBLE:
-            return TargetAbiType::Double;
-        default:
-            unreached();
-    }
-}
-
 CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForHelperFunc(CorInfoHelpFunc helperFunc)
 {
     void* pIndirection = nullptr;
@@ -777,10 +772,9 @@ const char* Llvm::GetAlternativeFunctionName()
     return CallEEApi<EEAI_GetAlternativeFunctionName, const char*>(m_pEECorInfo);
 }
 
-void Llvm::GetExternalMethodAddress(
-    CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* sig, int sigLength, CORINFO_CONST_LOOKUP* pLookup)
+void Llvm::GetExternalMethodAddress(CORINFO_METHOD_HANDLE methodHandle, CORINFO_CONST_LOOKUP* pLookup)
 {
-    return CallEEApi<EEAI_GetExternalMethodAddress, void>(m_pEECorInfo, methodHandle, sig, sigLength, pLookup);
+    return CallEEApi<EEAI_GetExternalMethodAddress, void>(m_pEECorInfo, methodHandle, pLookup);
 }
 
 void Llvm::GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
@@ -827,6 +821,44 @@ bool Llvm::IsVirtualUnwindFrameVisible()
 void Llvm::GetJitTestInfo(CorInfoLlvmJitTestKind kind, CORINFO_LLVM_JIT_TEST_INFO* pInfo)
 {
     CallEEApi<EEAI_GetJitTestInfo, CORINFO_GENERIC_HANDLE>(m_pEECorInfo, kind, pInfo);
+}
+
+void Llvm::ImposeOptimizationRequirement(GenTree* node, NodeOptimizationRequirement requirement)
+{
+#ifdef DEBUG
+    assert(node != nullptr);
+    *m_optimizationRequirements.LookupPointerOrAdd(node, NOR_NONE) |= requirement;
+#endif // DEBUG
+}
+
+void Llvm::SatisfyOptimizationRequirement(GenTree* node, NodeOptimizationRequirement requirement)
+{
+#ifdef DEBUG
+    assert(node != nullptr);
+    NodeOptimizationRequirement* pRequired = m_optimizationRequirements.LookupPointer(node);
+    if (pRequired != nullptr)
+    {
+        *pRequired &= ~requirement;
+        if (*pRequired == NOR_NONE)
+        {
+            m_optimizationRequirements.Remove(node);
+        }
+    }
+#endif // DEBUG
+}
+
+void Llvm::VerifyAllOptimizationRequirementsSatisfied()
+{
+#ifdef DEBUG
+    if (m_optimizationRequirements.GetCount() != 0)
+    {
+        for (GenTree* node : decltype(m_optimizationRequirements)::KeyIteration(&m_optimizationRequirements))
+        {
+            _compiler->gtDispTree(node, nullptr, nullptr, true);
+        }
+        assert(!"Found nodes with unsatisfied optimization requirements");
+    }
+#endif // DEBUG
 }
 
 static SingleThreadedCompilationContext* StartSingleThreadedCompilation(

@@ -178,9 +178,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- CoreClr Native AOT -->
-    <SubsetName Include="NativeAot.Packages" Description="The CoreCLR native AOT compiler." />
+    <!-- NativeAOT-LLVM subsets. -->
+    <SubsetName Include="NativeAot.Packages" Description="The CoreCLR native AOT packages." />
     <SubsetName Include="NativeAot.Build" Description="The CoreCLR native AOT build integration." />
+    <SubsetName Include="Clr.Ilc" Description="The CoreCLR native AOT compiler (ILC)." />
 
     <!-- CoreClr -->
     <SubsetName Include="Clr" Description="The full CoreCLR runtime. Equivalent to: $(DefaultCoreClrSubsets)" />
@@ -509,6 +510,10 @@
   <ItemGroup Condition="$(_subset.Contains('+nativeaot.build+'))">
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(_subset.Contains('+clr.ilc+'))">
+    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\ILCompiler.csproj" Category="clr" />
   </ItemGroup>
 
   <!-- Mono sets -->

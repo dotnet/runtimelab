@@ -86,6 +86,6 @@ namespace ILCompiler
     public partial class ObjectDataInterner
     {
         public static ObjectDataInterner NullWithTracking { get; } =
-            new ObjectDataInterner() { _symbolRemapping = new() { [new ExternSymbolNode("")] = null } };
+            new ObjectDataInterner() { _symbolRemapping = new() { [new ExternFunctionSymbolNode("")] = null } };
     }
 }

@@ -873,6 +873,8 @@ void Llvm::generateAuxiliaryArtifacts()
 void Llvm::verifyGeneratedCode()
 {
 #ifdef DEBUG
+    VerifyAllOptimizationRequirementsSatisfied();
+
     for (unsigned funcIdx = 0; funcIdx < _compiler->compFuncCount(); funcIdx++)
     {
         Function* llvmFunc = m_functions[funcIdx].LlvmFunction;
@@ -1349,7 +1351,7 @@ void Llvm::buildAdd(GenTreeOp* node)
         {
             llvm::Intrinsic::ID intrinsicId =
                 node->IsUnsigned() ? llvm::Intrinsic::uadd_with_overflow : llvm::Intrinsic::sadd_with_overflow;
-            addValue = emitCheckedArithmeticOperation(intrinsicId, op1Value, op2Value);
+            addValue = emitCheckedArithmeticOperation(intrinsicId, op1Value, op2Value DEBUGARG(node));
         }
         else
         {
@@ -1394,7 +1396,7 @@ void Llvm::buildSub(GenTreeOp* node)
         {
             llvm::Intrinsic::ID intrinsicId =
                 node->IsUnsigned() ? llvm::Intrinsic::usub_with_overflow: llvm::Intrinsic::ssub_with_overflow;
-            subValue = emitCheckedArithmeticOperation(intrinsicId, op1Value, op2Value);
+            subValue = emitCheckedArithmeticOperation(intrinsicId, op1Value, op2Value DEBUGARG(node));
         }
         else
         {
@@ -1433,7 +1435,7 @@ void Llvm::buildDivMod(GenTree* node)
     if ((exceptions & ExceptionSetFlags::DivideByZeroException) != ExceptionSetFlags::None)
     {
         Value* isDivisorZeroValue = _builder.CreateICmpEQ(divisorValue, llvm::ConstantInt::get(llvmType, 0));
-        emitJumpToThrowHelper(isDivisorZeroValue, CORINFO_HELP_THROWDIVZERO);
+        emitJumpToThrowHelper(isDivisorZeroValue, CORINFO_HELP_THROWDIVZERO DEBUGARG(node));
     }
     if ((exceptions & ExceptionSetFlags::ArithmeticException) != ExceptionSetFlags::None)
     {
@@ -1442,7 +1444,7 @@ void Llvm::buildDivMod(GenTree* node)
         Value* isDivisorMinusOneValue = _builder.CreateICmpEQ(divisorValue, llvm::ConstantInt::get(llvmType, -1));
         Value* isDividendMinValue = _builder.CreateICmpEQ(dividendValue, llvm::ConstantInt::get(llvmType, minDividend));
         Value* isOverflowValue = _builder.CreateAnd(isDivisorMinusOneValue, isDividendMinValue);
-        emitJumpToThrowHelper(isOverflowValue, CORINFO_HELP_OVERFLOW);
+        emitJumpToThrowHelper(isOverflowValue, CORINFO_HELP_OVERFLOW DEBUGARG(node));
     }
 
     switch (node->OperGet())
@@ -1591,7 +1593,7 @@ void Llvm::buildCast(GenTreeCast* cast)
             isOverflowValue = _builder.CreateCmp(llvm::CmpInst::ICMP_UGT, checkedValue, upperBoundValue);
         }
 
-        emitJumpToThrowHelper(isOverflowValue, CORINFO_HELP_OVERFLOW);
+        emitJumpToThrowHelper(isOverflowValue, CORINFO_HELP_OVERFLOW DEBUGARG(cast));
     }
 
     switch (castFromType)
@@ -1804,7 +1806,7 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
     Type* constLlvmType = getLlvmTypeForVarType(constType);
 
     Value* constValue;
-    if (node->IsCnsIntOrI() && node->IsIconHandle()) // TODO-LLVM: change to simply "IsIconHandle" once upstream does.
+    if (node->IsIconHandle())
     {
         constValue = getOrCreateSymbol(CORINFO_GENERIC_HANDLE(node->AsIntCon()->IconValue()));
     }
@@ -1962,7 +1964,7 @@ void Llvm::buildBinaryOperation(GenTree* node)
             {
                 llvm::Intrinsic::ID intrinsicId =
                     node->IsUnsigned() ? llvm::Intrinsic::umul_with_overflow : llvm::Intrinsic::smul_with_overflow;
-                result = emitCheckedArithmeticOperation(intrinsicId, op1Value, op2Value);
+                result = emitCheckedArithmeticOperation(intrinsicId, op1Value, op2Value DEBUGARG(node));
             }
             else
             {
@@ -2049,7 +2051,7 @@ void Llvm::buildAtomicOp(GenTreeIndir* atomicOpNode)
     var_types opType = atomicOpNode->TypeGet();
     Value* addrValue = consumeAddressAndEmitNullCheck(atomicOpNode);
     Value* valueValue = consumeValue(atomicOpNode->Data(), getLlvmTypeForVarType(opType));
-    emitAlignmentCheckForAddress(atomicOpNode->Addr(), addrValue, genTypeSize(opType));
+    emitAlignmentCheckForAddress(atomicOpNode->Addr(), addrValue, genTypeSize(opType) DEBUGARG(atomicOpNode));
 
     llvm::AtomicRMWInst::BinOp binOpInst;
     switch (atomicOpNode->OperGet())
@@ -2083,7 +2085,7 @@ void Llvm::buildCmpXchg(GenTreeCmpXchg* cmpXchgNode)
     Value* addrValue = consumeAddressAndEmitNullCheck(cmpXchgNode);
     Value* newValue = consumeValue(cmpXchgNode->Data(), opLlvmType);
     Value* cmpValue = consumeValue(cmpXchgNode->Comparand(), opLlvmType);
-    emitAlignmentCheckForAddress(cmpXchgNode->Addr(), addrValue, genTypeSize(opType));
+    emitAlignmentCheckForAddress(cmpXchgNode->Addr(), addrValue, genTypeSize(opType) DEBUGARG(cmpXchgNode));
 
     // CmpXchg returns a tuple of { <type> previous value, i1 success }. We only need the former.
     llvm::AtomicOrdering order = llvm::AtomicOrdering::SequentiallyConsistent;
@@ -2213,7 +2215,7 @@ void Llvm::buildBoundsCheck(GenTreeBoundsChk* boundsCheckNode)
 
     Value* indexOutOfRangeValue = _builder.CreateCmp(llvm::CmpInst::ICMP_UGE, indexValue, lengthValue);
     CorInfoHelpFunc helperFunc = static_cast<CorInfoHelpFunc>(_compiler->acdHelper(boundsCheckNode->gtThrowKind));
-    emitJumpToThrowHelper(indexOutOfRangeValue, helperFunc);
+    emitJumpToThrowHelper(indexOutOfRangeValue, helperFunc DEBUGARG(boundsCheckNode));
 }
 
 void Llvm::buildCkFinite(GenTreeUnOp* ckNode)
@@ -2225,7 +2227,7 @@ void Llvm::buildCkFinite(GenTreeUnOp* ckNode)
     // Taken from IR Clang generates for "isfinite".
     Value* absOpValue = _builder.CreateIntrinsic(llvm::Intrinsic::fabs, fpLlvmType, opValue);
     Value* isNotFiniteValue = _builder.CreateFCmpUEQ(absOpValue, llvm::ConstantFP::get(fpLlvmType, INFINITY));
-    emitJumpToThrowHelper(isNotFiniteValue, CORINFO_HELP_OVERFLOW);;
+    emitJumpToThrowHelper(isNotFiniteValue, CORINFO_HELP_OVERFLOW DEBUGARG(ckNode));;
 
     mapGenTreeToValue(ckNode, opValue);
 }
@@ -2327,21 +2329,21 @@ Value* Llvm::consumeAddressAndEmitNullCheck(GenTreeIndir* indir)
     if ((indir->gtFlags & GTF_IND_NONFAULTING) == 0)
     {
         // Note how we emit the check **before** the inbounds GEP so as to avoid the latter producing poison.
-        emitNullCheckForAddress(addr, addrValue);
+        emitNullCheckForAddress(addr, addrValue DEBUGARG(indir));
     }
 
     addrValue = gepOrAddrInBounds(addrValue, offset);
     return addrValue;
 }
 
-void Llvm::emitNullCheckForAddress(GenTree* addr, Value* addrValue)
+void Llvm::emitNullCheckForAddress(GenTree* addr, Value* addrValue DEBUGARG(GenTree* indir))
 {
     // The frontend's contract with the backend is that it will not insert null checks for accesses which
     // are inside the "[0..compMaxUncheckedOffsetForNullObject]" range. Thus, we usually need to check not
-    // just for "null", but "null + small offset". However, for TYP_REF, we know it will either be a valid
-    // object on heap, or null, and can utilize the more direct form.
+    // just for "null", but "null + small offset". However, for certain addresses, we know it will either
+    // be a valid address, or null.
     Value* isNullValue;
-    if (addr->TypeIs(TYP_REF))
+    if (isAddressNullOrValid(addr))
     {
         // LLVM's FastISel, used for unoptimized code, is not able to generate sensible WASM unless we do
         // a comparison using an integer zero here. This workaround saves 5+% on debug code size.
@@ -2363,10 +2365,34 @@ void Llvm::emitNullCheckForAddress(GenTree* addr, Value* addrValue)
         isNullValue = _builder.CreateICmpULT(addrValue, checkValue);
     }
 
-    emitJumpToThrowHelper(isNullValue, CORINFO_HELP_THROWNULLREF);
+    emitJumpToThrowHelper(isNullValue, CORINFO_HELP_THROWNULLREF DEBUGARG(indir));
 }
 
-void Llvm::emitAlignmentCheckForAddress(GenTree* addr, Value* addrValue, unsigned alignment)
+bool Llvm::isAddressNullOrValid(GenTree* addr)
+{
+    if (addr->TypeIs(TYP_REF))
+    {
+        return true;
+    }
+
+    // Weed out transient byrefs that could've been created by "fgMorphField". This is not as easy as it may look
+    // as we must accomodate for the possibility of the frontend transforming these in arbitrary ways. We do this
+    // by taking advantage of the managed ABI which prohibits passing such byrefs across call boundaries.
+    if (addr->OperIs(GT_LCL_VAR) && (addr->AsLclVar()->GetSsaNum() == SsaConfig::FIRST_SSA_NUM) &&
+        _compiler->lvaGetDesc(addr->AsLclVar())->lvIsParam)
+    {
+        return true;
+    }
+
+    if (addr->IsCall())
+    {
+        return true;
+    }
+
+    return false;
+}
+
+void Llvm::emitAlignmentCheckForAddress(GenTree* addr, Value* addrValue, unsigned alignment DEBUGARG(GenTree* indir))
 {
     if (isAddressAligned(addr, alignment))
     {
@@ -2377,7 +2403,7 @@ void Llvm::emitAlignmentCheckForAddress(GenTree* addr, Value* addrValue, unsigne
     Value* addrValueAsIntValue = _builder.CreatePtrToInt(addrValue, getIntPtrLlvmType());
     Value* addrAlignBitsValue = _builder.CreateAnd(addrValueAsIntValue, alignment - 1);
     Value* addrIsNotAlignedValue = _builder.CreateICmpNE(addrAlignBitsValue, getIntPtrConst(0));
-    emitJumpToThrowHelper(addrIsNotAlignedValue, CORINFO_HELP_THROWMISALIGN);
+    emitJumpToThrowHelper(addrIsNotAlignedValue, CORINFO_HELP_THROWMISALIGN DEBUGARG(indir));
 }
 
 bool Llvm::isAddressAligned(GenTree* addr, unsigned alignment)
@@ -2494,44 +2520,46 @@ unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned en
     return size;
 }
 
-void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, CorInfoHelpFunc helperFunc)
+void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, CorInfoHelpFunc helperFunc DEBUGARG(GenTree* nodeThrowing))
 {
+    bool shadowTailCalledThrowHelper = false;
     if (_compiler->fgUseThrowHelperBlocks())
     {
         assert(CurrentBlock() != nullptr);
 
         // For code with throw helper blocks, create and use the shared helper block for raising the exception.
-        llvm::BasicBlock* throwLlvmBlock;
+        ThrowHelperCode throwCode;
         Compiler::AcdKeyDesignator dsg = Compiler::AcdKeyDesignator::KD_NONE;
         ThrowHelperKey throwBlockKey{_compiler->bbThrowIndex(CurrentBlock(), &dsg), helperFunc};
-        if (!m_throwHelperBlocksMap.Lookup(throwBlockKey, &throwLlvmBlock))
+        if (!m_throwHelperBlocksMap.Lookup(throwBlockKey, &throwCode))
         {
             LlvmBlockRange* currentLlvmBlocks = getCurrentLlvmBlocks();
 
-            throwLlvmBlock = llvm::BasicBlock::Create(m_context->Context, "BBTH", getCurrentLlvmFunction());
-            LlvmBlockRange throwLlvmBlocks(throwLlvmBlock);
+            throwCode.LlvmBlock = llvm::BasicBlock::Create(m_context->Context, "BBTH", getCurrentLlvmFunction());
+            LlvmBlockRange throwLlvmBlocks(throwCode.LlvmBlock);
 
             setCurrentEmitContextBlocks(&throwLlvmBlocks);
-            emitHelperCall(helperFunc);
+            emitHelperCall(helperFunc, {} DEBUGARG(&throwCode.ShadowTailCalledThrowHelper));
             _builder.CreateUnreachable();
-            m_throwHelperBlocksMap.Set(throwBlockKey, throwLlvmBlock);
+            m_throwHelperBlocksMap.Set(throwBlockKey, throwCode);
 
             setCurrentEmitContextBlocks(currentLlvmBlocks);
         }
+        INDEBUG(shadowTailCalledThrowHelper = throwCode.ShadowTailCalledThrowHelper);
 
         // Jump to the exception-throwing block on error.
         llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
-        _builder.CreateCondBr(jumpCondValue, throwLlvmBlock, nextLlvmBlock);
+        _builder.CreateCondBr(jumpCondValue, throwCode.LlvmBlock, nextLlvmBlock);
         _builder.SetInsertPoint(nextLlvmBlock);
     }
     else
     {
-        // The code to throw the exception will be generated inline; we will jump around it in the non-exception case.
+        // The code to throw the exception will be generated inline; we will jump around it in the no exception case.
         llvm::BasicBlock* jumpCondLlvmBlock = _builder.GetInsertBlock();
 
         llvm::BasicBlock* throwLlvmBlock = createInlineLlvmBlock();
         _builder.SetInsertPoint(throwLlvmBlock);
-        emitHelperCall(helperFunc);
+        emitHelperCall(helperFunc, {} DEBUGARG(&shadowTailCalledThrowHelper));
         _builder.CreateUnreachable();
 
         llvm::BasicBlock* nextLlvmBlock = createInlineLlvmBlock();
@@ -2540,15 +2568,23 @@ void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, CorInfoHelpFunc helperFun
 
         _builder.SetInsertPoint(nextLlvmBlock);
     }
+
+#ifdef DEBUG
+    if (shadowTailCalledThrowHelper)
+    {
+        SatisfyOptimizationRequirement(nodeThrowing, NOR_SHADOW_TAILCALL);
+    }
+#endif // DEBUG
 }
 
-Value* Llvm::emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value)
+Value* Llvm::emitCheckedArithmeticOperation(
+    llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value DEBUGARG(GenTree* opNode))
 {
     assert(op1Value->getType()->isIntegerTy() && op2Value->getType()->isIntegerTy());
 
     Value* checkedValue = _builder.CreateIntrinsic(intrinsicId, op1Value->getType(), {op1Value, op2Value});
     Value* isOverflowValue = _builder.CreateExtractValue(checkedValue, 1);
-    emitJumpToThrowHelper(isOverflowValue, CORINFO_HELP_OVERFLOW);
+    emitJumpToThrowHelper(isOverflowValue, CORINFO_HELP_OVERFLOW DEBUGARG(opNode));
 
     return _builder.CreateExtractValue(checkedValue, 0);
 }
@@ -2595,7 +2631,8 @@ llvm::CallBase* Llvm::emitGcStressCall(GenTreeCall* call, llvm::CallBase* callVa
     return callValue;
 }
 
-llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs)
+llvm::CallBase* Llvm::emitHelperCall(
+    CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs DEBUGARG(bool* pIsShadowTailCall))
 {
     CORINFO_GENERIC_HANDLE handle = getSymbolHandleForHelperFunc(helperFunc);
     const char* symbolName = GetMangledSymbolName(handle);
@@ -2611,7 +2648,9 @@ llvm::CallBase* Llvm::emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*
     CallSiteFacts callSiteFacts = getCallSiteFactsForHelper(helperFunc);
     if (helperCallHasShadowStackArg(helperFunc))
     {
-        Value* shadowStackArg = getShadowStackForCallee(canEmitHelperCallAsShadowTailCall(helperFunc));
+        bool isShadowTailCall = canEmitHelperCallAsShadowTailCall(helperFunc);
+        DBEXEC(pIsShadowTailCall != nullptr, *pIsShadowTailCall = isShadowTailCall);
+        Value* shadowStackArg = getShadowStackForCallee(isShadowTailCall);
         ArrayStack<Value*> args(_compiler->getAllocator(CMK_Codegen), static_cast<int>(sigArgs.size() + 1));
         args.Push(shadowStackArg);
         for (Value* sigArg : sigArgs)
@@ -2634,10 +2673,8 @@ bool Llvm::canEmitHelperCallAsShadowTailCall(CorInfoHelpFunc helperFunc)
     assert(helperCallHasShadowStackArg(helperFunc));
 
     // Right now the check on whether the call is in a "tail" position is simply that it won't return.
-    INDEBUG(const char* reasonWhyNot);
-    if (Compiler::s_helperCallProperties.AlwaysThrow(helperFunc) &&
-        canEmitCallAsShadowTailCall(getCurrentProtectedRegionIndex() != EHblkDsc::NO_ENCLOSING_INDEX,
-                                    isCurrentContextInFilter() DEBUGARG(&reasonWhyNot)))
+    if (Compiler::s_helperCallProperties.AlwaysThrow(helperFunc) && canEmitCallAsShadowTailCall(
+            getCurrentProtectedRegionIndex() != EHblkDsc::NO_ENCLOSING_INDEX, isCurrentContextInFilter()))
     {
         return true;
     }

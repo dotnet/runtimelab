@@ -837,23 +837,7 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
     {
         // We cannot easily handle varargs as we do not know which args are the fixed ones.
         assert((callNode->gtCallType == CT_USER_FUNC) && !callNode->IsVarargs());
-
-        ArrayStack<TargetAbiType> sig(_compiler->getAllocator(CMK_Codegen));
-        sig.Push(getAbiTypeForType(JITtype2varType(callNode->gtCorInfoType)));
-        for (CallArg& arg : callNode->gtArgs.Args())
-        {
-            sig.Push(getAbiTypeForType(JITtype2varType(getLlvmArgTypeForCallArg(&arg))));
-        }
-
-        // WASM requires the callee and caller signature to match. At the LLVM level, "callee type" is the function
-        // type attached of the called operand and "caller" - that of its callsite. The problem, then, is that for a
-        // given module, we can only have one function declaration, thus, one callee type. And we cannot know whether
-        // this type will be the right one until, in general, runtime (this is the case for WASM imports provided by
-        // the host environment). Thus, to achieve the experience of runtime erros on signature mismatches, we "hide"
-        // the target behind an indirection, turning this call into an indirect one.
-        // TODO-LLVM-Cleanup: switch to using the standard "getAddressOfPInvokeTarget" Jit-EE call, we no longer need
-        // the signature on the EE side.
-        GetExternalMethodAddress(callNode->gtCallMethHnd, &sig.BottomRef(), sig.Height(), &callNode->gtEntryPoint);
+        GetExternalMethodAddress(callNode->gtCallMethHnd, &callNode->gtEntryPoint);
     }
 }
 
@@ -993,7 +977,7 @@ void Llvm::lowerAddressToAddressMode(GenTreeIndir* indir)
             (size_t)offset);
 
     // Invariant access can be assumed to be in bounds by construction.
-    if (((indir->gtFlags & GTF_IND_INVARIANT) == 0) && !isAddressInBounds(baseAddr, fieldSeq, offset))
+    if (!indir->IsInvariantLoad() && !isAddressInBounds(baseAddr, fieldSeq, offset))
     {
         JITDUMP("no, not in bounds\n");
         return;
@@ -1322,11 +1306,17 @@ bool Llvm::isFirstBlockCanonical()
     return !block->hasTryIndex() && (block->bbPreds == nullptr);
 }
 
-void Llvm::lowerAndInsertIntoFirstBlock(LIR::Range& range, GenTree* insertAfter)
+GenTree* Llvm::lowerAndInsertIntoFirstBlock(LIR::Range& range, GenTree* insertAfter)
 {
     assert(isFirstBlockCanonical());
     lowerRange(_compiler->fgFirstBB, range);
-    LIR::AsRange(_compiler->fgFirstBB).InsertAfter(insertAfter, std::move(range));
+
+    GenTree* lastNode = range.LastNode();
+    if (!range.IsEmpty())
+    {
+        LIR::AsRange(_compiler->fgFirstBB).InsertAfter(insertAfter, std::move(range));
+    }
+    return lastNode;
 }
 
 //------------------------------------------------------------------------
@@ -2139,6 +2129,13 @@ bool Llvm::mayPhysicallyThrow(GenTree* node)
         {
             return false;
         }
+    }
+
+    if (node->OperIs(GT_LCLHEAP))
+    {
+        // This is supposed to throw SO, but we don't implement that currently.
+        // TODO-LLVM: come up with a way to do so...?
+        return false;
     }
 
     return node->OperMayThrow(_compiler);

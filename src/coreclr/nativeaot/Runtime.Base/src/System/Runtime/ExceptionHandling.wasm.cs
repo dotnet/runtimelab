@@ -96,7 +96,7 @@ namespace System.Runtime
                     }
                     else
                     {
-                        if (ShouldTypedClauseCatchThisException(exception, clause.ClauseType, false /* tryUnwrapException, not used for NATIVEAOT */))
+                        if (ShouldTypedClauseCatchThisException(exception, clause.ClauseType))
                         {
                             goto FoundHandler;
                         }
@@ -868,5 +868,99 @@ namespace System.Runtime
 
             return (int)(pCurrent - pUnwindInfo);
         }
+    }
+
+    // TODO-LLVM-Upstream: create ExceptionHandling.Common.cs and put the things below there.
+    internal static unsafe partial class EH
+    {
+        private enum RhEHFrameType
+        {
+            RH_EH_FIRST_FRAME = 1,
+            RH_EH_FIRST_RETHROW_FRAME = 2,
+        }
+
+        private enum RhEHClauseKind
+        {
+            RH_EH_CLAUSE_TYPED = 0,
+            RH_EH_CLAUSE_FAULT = 1,
+            RH_EH_CLAUSE_FILTER = 2,
+            RH_EH_CLAUSE_UNUSED = 3,
+        }
+
+        internal struct MethodRegionInfo
+        {
+        }
+
+        internal struct ExInfo
+        {
+        }
+
+        internal struct PAL_LIMITED_CONTEXT
+        {
+        }
+
+        [StackTraceHidden]
+        [RuntimeExport("RhExceptionHandling_FailedAllocation")]
+        public static void FailedAllocation(MethodTable* pEEType, bool fIsOverflow)
+        {
+            ExceptionIDs exID = fIsOverflow ? ExceptionIDs.Overflow : ExceptionIDs.OutOfMemory;
+
+            // Throw the out of memory exception defined by the classlib, using the input MethodTable*
+            // to find the correct classlib.
+
+            throw pEEType->GetClasslibException(exID);
+        }
+
+        private static bool ShouldTypedClauseCatchThisException(object exception, MethodTable* pClauseType)
+        {
+            return TypeCast.IsInstanceOfException(pClauseType, exception);
+        }
+
+        private static void OnFirstChanceExceptionViaClassLib(object exception)
+        {
+            IntPtr pOnFirstChanceFunction =
+                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(exception.GetMethodTable(), ClassLibFunctionId.OnFirstChance);
+
+            if (pOnFirstChanceFunction == IntPtr.Zero)
+            {
+                return;
+            }
+
+            try
+            {
+                ((delegate*<object, void>)pOnFirstChanceFunction)(exception);
+            }
+            catch when (true)
+            {
+                // disallow all exceptions leaking out of callbacks
+            }
+        }
+
+        private static void OnUnhandledExceptionViaClassLib(object exception)
+        {
+            IntPtr pOnUnhandledExceptionFunction =
+                (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType(exception.GetMethodTable(), ClassLibFunctionId.OnUnhandledException);
+
+            if (pOnUnhandledExceptionFunction == IntPtr.Zero)
+            {
+                return;
+            }
+
+            try
+            {
+                ((delegate*<object, void>)pOnUnhandledExceptionFunction)(exception);
+            }
+            catch when (true)
+            {
+                // disallow all exceptions leaking out of callbacks
+            }
+        }
+
+#pragma warning disable IDE0060
+        internal static void FallbackFailFast(RhFailFastReason reason, object? unhandledException)
+        {
+            InternalCalls.RhpFallbackFailFast();
+        }
+#pragma warning restore IDE0060
     }
 }

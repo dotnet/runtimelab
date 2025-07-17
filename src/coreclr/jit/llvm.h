@@ -14,9 +14,6 @@
 #include "JitEEApi.Shared.cspp"
 #include <new>
 
-// this breaks StringMap.h
-#undef NumItems
-
 // TODO-LLVM-Upstream: figure out how to fix these warnings in LLVM headers.
 #pragma warning(push)
 #pragma warning(disable : 4146)
@@ -54,15 +51,6 @@ const int TARGET_POINTER_BITS = TARGET_POINTER_SIZE * BITS_PER_BYTE;
 
 // Part of the Jit/EE interface, must be kept in sync with the managed versions in "CorInfoImpl.Llvm.cs".
 //
-enum class TargetAbiType : uint8_t
-{
-    Void,
-    Int32,
-    Int64,
-    Float,
-    Double
-};
-
 enum class CorInfoLlvmEHModel
 {
     Cpp, // Landingpad-based LLVM IR; compatible with Itanium ABI.
@@ -224,6 +212,27 @@ inline CallSiteFacts& operator |=(CallSiteFacts& a, CallSiteFacts b)
     return a = static_cast<CallSiteFacts>(static_cast<int>(a) | static_cast<int>(b));
 }
 
+enum NodeOptimizationRequirement
+{
+    NOR_NONE = 0,
+    NOR_SHADOW_TAILCALL = 1
+};
+
+inline NodeOptimizationRequirement& operator |=(NodeOptimizationRequirement& a, NodeOptimizationRequirement b)
+{
+    return a = static_cast<NodeOptimizationRequirement>(static_cast<int>(a) | static_cast<int>(b));
+}
+
+inline NodeOptimizationRequirement& operator &=(NodeOptimizationRequirement& a, NodeOptimizationRequirement b)
+{
+    return a = static_cast<NodeOptimizationRequirement>(static_cast<int>(a) & static_cast<int>(b));
+}
+
+inline NodeOptimizationRequirement operator ~(NodeOptimizationRequirement a)
+{
+    return static_cast<NodeOptimizationRequirement>(~static_cast<int>(a));
+}
+
 struct ThrowHelperKey
 {
     unsigned ThrowIndex;
@@ -238,6 +247,14 @@ struct ThrowHelperKey
     {
         return (keyOne.ThrowIndex == keyTwo.ThrowIndex) && (keyOne.HelperFunc == keyTwo.HelperFunc);
     }
+};
+
+struct ThrowHelperCode
+{
+    llvm::BasicBlock* LlvmBlock;
+#ifdef DEBUG
+    bool ShadowTailCalledThrowHelper;
+#endif // DEBUG
 };
 
 struct PhiPair
@@ -339,7 +356,7 @@ private:
     llvm::IRBuilder<> _builder;
     JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, Value*> _sdsuMap;
     JitHashTable<SSAName, SSAName, Value*> _localsMap;
-    JitHashTable<ThrowHelperKey, ThrowHelperKey, llvm::BasicBlock*> m_throwHelperBlocksMap;
+    JitHashTable<ThrowHelperKey, ThrowHelperKey, ThrowHelperCode> m_throwHelperBlocksMap;
     jitstd::vector<PhiPair> m_phiPairs;
     FunctionInfo* m_functions;
 
@@ -370,6 +387,10 @@ private:
     unsigned m_preciseVirtualUnwindFrameLclNum = BAD_VAR_NUM;
     unsigned _llvmArgCount = 0;
 
+#ifdef DEBUG
+    JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, NodeOptimizationRequirement> m_optimizationRequirements;
+#endif // DEBUG
+
     // ================================================================================================================
     // |                                                   General                                                    |
     // ================================================================================================================
@@ -378,6 +399,7 @@ public:
     Llvm(Compiler* compiler);
 
     static void ConfigureDiagnosticOutput();
+    bool EnableVerboseDump();
 
     var_types GetArgTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind);
     var_types GetReturnTypeForStructWasm(CORINFO_CLASS_HANDLE structHnd, structPassingKind* pPassKind);
@@ -408,7 +430,6 @@ private:
 
     static CorInfoType toCorInfoType(var_types varType);
     static CorInfoType getLlvmArgTypeForCallArg(CallArg* arg);
-    TargetAbiType getAbiTypeForType(var_types type);
 
     CORINFO_GENERIC_HANDLE getSymbolHandleForHelperFunc(CorInfoHelpFunc helperFunc);
     CORINFO_GENERIC_HANDLE getSymbolHandleForClassToken(mdToken token);
@@ -423,8 +444,7 @@ private:
     CorInfoType GetPrimitiveTypeForTrivialWasmStruct(CORINFO_CLASS_HANDLE structHandle);
     void GetTypeDescriptor(CORINFO_CLASS_HANDLE typeHandle, TypeDescriptor* pTypeDescriptor);
     const char* GetAlternativeFunctionName();
-    void GetExternalMethodAddress(
-        CORINFO_METHOD_HANDLE methodHandle, const TargetAbiType* callSiteSig, int sigLength, CORINFO_CONST_LOOKUP* pLookup);
+    void GetExternalMethodAddress(CORINFO_METHOD_HANDLE methodHandle, CORINFO_CONST_LOOKUP* pLookup);
     void GetDebugInfoForCurrentMethod(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo);
     SingleThreadedCompilationContext* GetSingleThreadedCompilationContext();
     CorInfoLlvmEHModel GetExceptionHandlingModel();
@@ -435,6 +455,10 @@ private:
         unsigned* pAbsoluteValue, unsigned shadowFrameSize, CORINFO_LLVM_EH_CLAUSE* pClauses, int clauseCount);
     bool IsVirtualUnwindFrameVisible();
     void GetJitTestInfo(CorInfoLlvmJitTestKind kind, CORINFO_LLVM_JIT_TEST_INFO* pInfo);
+
+    void ImposeOptimizationRequirement(GenTree* node, NodeOptimizationRequirement requirement);
+    void SatisfyOptimizationRequirement(GenTree* node, NodeOptimizationRequirement requirement);
+    void VerifyAllOptimizationRequirementsSatisfied();
 
     // ================================================================================================================
     // |                                                 Type system                                                  |
@@ -506,9 +530,8 @@ private:
     void lowerDissolveDependentlyPromotedLocals();
     void dissolvePromotedLocal(unsigned lclNum);
 
-    void lowerCanonicalizeFirstBlock();
     bool isFirstBlockCanonical();
-    void lowerAndInsertIntoFirstBlock(LIR::Range& range, GenTree* insertAfter = nullptr);
+    GenTree* lowerAndInsertIntoFirstBlock(LIR::Range& range, GenTree* insertAfter = nullptr);
 
 public:
     PhaseStatus AddVirtualUnwindFrame();
@@ -554,7 +577,8 @@ private:
 
     unsigned getShadowFrameSize(unsigned funcIdx) const;
     unsigned getCalleeShadowStackOffset(unsigned funcIdx, bool isTailCall) const;
-    bool canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter DEBUGARG(const char** pReasonWhyNot)) const;
+    bool canEmitCallAsShadowTailCall(
+        bool callIsInTry, bool callIsInFilter DEBUGARG(const char** pReasonWhyNot = nullptr)) const;
     bool isPotentialGcSafePoint(GenTree* node) const;
     bool isShadowFrameLocal(LclVarDsc* varDsc) const;
     bool isShadowStackLocal(unsigned lclNum) const;
@@ -632,19 +656,22 @@ private:
     void buildCallFinally(BasicBlock* block);
 
     Value* consumeAddressAndEmitNullCheck(GenTreeIndir* indir);
-    void emitNullCheckForAddress(GenTree* addr, Value* addrValue);
-    void emitAlignmentCheckForAddress(GenTree* addr, Value* addrValue, unsigned alignment);
+    void emitNullCheckForAddress(GenTree* addr, Value* addrValue DEBUGARG(GenTree* indir));
+    bool isAddressNullOrValid(GenTree* addr);
+    void emitAlignmentCheckForAddress(GenTree* addr, Value* addrValue, unsigned alignment DEBUGARG(GenTree* indir));
     bool isAddressAligned(GenTree* addr, unsigned alignment);
 
     Value* consumeInitVal(GenTree* initVal);
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
 
-    void emitJumpToThrowHelper(Value* jumpCondValue, CorInfoHelpFunc helperFunc);
-    Value* emitCheckedArithmeticOperation(llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value);
+    void emitJumpToThrowHelper(Value* jumpCondValue, CorInfoHelpFunc helperFunc DEBUGARG(GenTree* nodeThrowing));
+    Value* emitCheckedArithmeticOperation(
+        llvm::Intrinsic::ID intrinsicId, Value* op1Value, Value* op2Value DEBUGARG(GenTree* opNode));
 
     llvm::CallBase* emitGcStressCall(GenTreeCall* call, llvm::CallBase* callValue);
-    llvm::CallBase* emitHelperCall(CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = {});
+    llvm::CallBase* emitHelperCall(
+        CorInfoHelpFunc helperFunc, ArrayRef<Value*> sigArgs = {} DEBUGARG(bool* pIsShadowTailCall = nullptr));
     bool canEmitHelperCallAsShadowTailCall(CorInfoHelpFunc helperFunc);
     llvm::CallBase* emitCallOrInvoke(llvm::FunctionCallee callee, ArrayRef<Value*> args, CallSiteFacts facts);
 

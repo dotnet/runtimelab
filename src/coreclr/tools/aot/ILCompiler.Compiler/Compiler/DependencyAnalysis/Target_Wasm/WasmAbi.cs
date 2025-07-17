@@ -12,59 +12,18 @@ namespace ILCompiler.DependencyAnalysis.Wasm
         public static WasmValueType GetNaturalIntType(TargetDetails target) =>
             target.PointerSize == 4 ? WasmValueType.I32 : WasmValueType.I64;
 
-        public static WasmFunctionType GetWasmFunctionType(MethodDesc method) =>
-            GetWasmFunctionType(method.Signature, method.RequiresInstArg());
-
-        public static WasmFunctionType GetWasmFunctionType(MethodSignature signature, bool hasHiddenParam)
+        public static bool HasWasmFunctionType(MethodDesc method, WasmFunctionType type, WasmFunctionAbiOptions options = 0)
         {
-            WasmValueType wasmPointerType = GetNaturalIntType(signature.Context.Target);
+            WasmFunctionType? expectedType = type;
+            GetWasmFunctionTypeImpl(ref expectedType, method, options);
+            return expectedType != null;
+        }
 
-            WasmValueType GetWasmArgTypeForArg(TypeDesc argSigType)
-            {
-                bool isPassedByRef = false;
-                TypeDesc argType = argSigType;
-                if (IsStruct(argSigType))
-                {
-                    argType = GetPrimitiveTypeForTrivialWasmStruct(argSigType);
-                    if (argType == null)
-                    {
-                        isPassedByRef = true;
-                    }
-                }
-
-                return isPassedByRef ? wasmPointerType : GetWasmTypeForTypeDesc(argType);
-            }
-
-            WasmValueType wasmReturnType = GetWasmReturnType(signature.ReturnType, out bool isReturnByRef);
-
-            int maxWasmSigLength = signature.Length + 4;
-            Span<WasmValueType> signatureTypes =
-                maxWasmSigLength > 100 ? new WasmValueType[maxWasmSigLength] : stackalloc WasmValueType[maxWasmSigLength];
-
-            int index = 0;
-            signatureTypes[index++] = wasmPointerType; // Shadow stack.
-
-            if (!signature.IsStatic) // TODO-LLVM-Bug: doesn't handle explicit 'this'.
-            {
-                signatureTypes[index++] = wasmPointerType;
-            }
-
-            if (isReturnByRef)
-            {
-                signatureTypes[index++] = wasmPointerType;
-            }
-
-            if (hasHiddenParam)
-            {
-                signatureTypes[index++] = wasmPointerType;
-            }
-
-            foreach (TypeDesc type in signature)
-            {
-                signatureTypes[index++] = GetWasmArgTypeForArg(type);
-            }
-
-            return new WasmFunctionType(wasmReturnType, signatureTypes.Slice(0, index).ToArray());
+        public static WasmFunctionType GetWasmFunctionType(MethodDesc method, WasmFunctionAbiOptions options = 0)
+        {
+            WasmFunctionType? type = null;
+            GetWasmFunctionTypeImpl(ref type, method, options);
+            return type.Value;
         }
 
         public static WasmValueType GetWasmReturnType(MethodDesc method, out bool isPassedByRef) =>
@@ -112,6 +71,71 @@ namespace ILCompiler.DependencyAnalysis.Wasm
             }
 
             return null;
+        }
+
+        private static void GetWasmFunctionTypeImpl(
+            ref WasmFunctionType? expectedType, MethodDesc method, WasmFunctionAbiOptions options = 0)
+        {
+            MethodSignature signature = method.Signature;
+            WasmValueType wasmPointerType = GetNaturalIntType(signature.Context.Target);
+
+            WasmValueType GetWasmArgTypeForArg(TypeDesc argSigType)
+            {
+                bool isPassedByRef = false;
+                TypeDesc argType = argSigType;
+                if (IsStruct(argSigType))
+                {
+                    argType = GetPrimitiveTypeForTrivialWasmStruct(argSigType);
+                    if (argType == null)
+                    {
+                        isPassedByRef = true;
+                    }
+                }
+
+                return isPassedByRef ? wasmPointerType : GetWasmTypeForTypeDesc(argType);
+            }
+
+            WasmValueType wasmReturnType = GetWasmReturnType(signature.ReturnType, out bool isReturnByRef);
+
+            int maxWasmSigLength = signature.Length + 4;
+            Span<WasmValueType> wasmParamTypes =
+                maxWasmSigLength > 100 ? new WasmValueType[maxWasmSigLength] : stackalloc WasmValueType[maxWasmSigLength];
+
+            int index = 0;
+            if ((options & WasmFunctionAbiOptions.IsNative) == 0)
+            {
+                wasmParamTypes[index++] = wasmPointerType; // Shadow stack.
+            }
+
+            if (!signature.IsStatic) // TODO-LLVM-Bug: doesn't handle explicit 'this'.
+            {
+                wasmParamTypes[index++] = wasmPointerType;
+            }
+
+            if (isReturnByRef)
+            {
+                wasmParamTypes[index++] = wasmPointerType;
+            }
+
+            if (method.RequiresInstArg())
+            {
+                wasmParamTypes[index++] = wasmPointerType;
+            }
+
+            foreach (TypeDesc type in signature)
+            {
+                wasmParamTypes[index++] = GetWasmArgTypeForArg(type);
+            }
+
+            wasmParamTypes = wasmParamTypes.Slice(0, index);
+            if (expectedType is null)
+            {
+                expectedType = new WasmFunctionType(wasmReturnType, wasmParamTypes.ToArray());
+            }
+            else if (!WasmFunctionType.Equals(expectedType.Value, wasmReturnType, wasmParamTypes))
+            {
+                expectedType = null;
+            }
         }
 
         private static WasmValueType GetWasmReturnType(TypeDesc sigReturnType, out bool isPassedByRef)
@@ -173,5 +197,11 @@ namespace ILCompiler.DependencyAnalysis.Wasm
         }
 
         private static bool IsStruct(TypeDesc type) => type.Category is TypeFlags.ValueType or TypeFlags.Nullable;
+    }
+
+    [Flags]
+    public enum WasmFunctionAbiOptions
+    {
+        IsNative = 0x1,
     }
 }

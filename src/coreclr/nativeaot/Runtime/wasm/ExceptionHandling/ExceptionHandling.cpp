@@ -48,8 +48,3 @@ FCIMPL0(void*, RhpGetLastPreciseVirtualUnwindFrame)
     return static_cast<uint8_t*>(pShadowStack) - sizeof(void*);
 }
 FCIMPLEND
-
-// We do not use these helpers. TODO-LLVM: exclude them from the WASM build.
-FCIMPL4(void*, RhpCallCatchFunclet, void*, void*, void*, void*) { abort(); } FCIMPLEND
-FCIMPL3(bool, RhpCallFilterFunclet, void*, void*, void*) { abort(); } FCIMPLEND
-FCIMPL2(void, RhpCallFinallyFunclet, void*, void*) { abort(); } FCIMPLEND

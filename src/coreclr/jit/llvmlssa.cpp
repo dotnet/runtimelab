@@ -20,12 +20,12 @@
 // optimizing, we utilize liveness as well as SSA to only allocate those locals that have their lifetimes
 // crossed by a safe point (a call which may trigger GC). This is a three-step process:
 //
-// 1) We determine which locals are may be allocated on the shadow stack. Broadly, there are two cases:
+// 1) We determine which locals may need to be allocated on the shadow stack. Broadly, there are two cases:
 //    - "Tentative", where we know the precise lifetimes. These locals may not end up on the shadow stack at
-//      all, as we may determine that they don't cross any safe point, or only some of their defs may end up
+//      all, as we may determine that they don't cross any safe point, or only some of their defs end up
 //      there.
 //    - "Unconditional" cases, where the local will be fully commited to the shadow stack and stored on each def,
-//      and reloaded on each use. This may be because the local was address-exposed, and we don't know its exact
+//      reloaded on each use. This may be because the local was address-exposed, and we don't know its exact
 //      live range, or due to implementation constraints.
 //
 // 2) We walk over the totality of IR, in dominator pre-order, maintaining the stack of currently active SSA
@@ -44,6 +44,9 @@ class ShadowStackAllocator
 
     // TODO-LLVM-LSSA-TP: we could use a denser indexing for the candidates to save memory...
     unsigned m_largestCandidateVarIndexPlusOne = 0;
+
+    BitVecTraits m_candidateBitSetTraits = BitVecTraits(0, nullptr);
+    BitVec m_explicitInitShadowSlots = BitVecOps::UninitVal();
 
     unsigned m_prologZeroingOffset = 0;
     unsigned m_prologZeroingSize = 0;
@@ -204,6 +207,12 @@ private:
 
             if (allocLocation != REG_NA)
             {
+                if (varDsc->IsAddressExposed() || varDsc->lvPinned)
+                {
+                    assert(allocLocation == REG_STK_CANDIDATE_UNCONDITIONAL);
+                    m_llvm->m_anyAddressExposedOrPinnedShadowLocals = true;
+                }
+
                 JITDUMP("V%02u: %s (%s)\n", lclNum, getRegName(allocLocation), reason);
                 varDsc->SetRegNum(allocLocation);
             }
@@ -258,10 +267,45 @@ private:
             Active // The stack slot (if any) associated with the def contains its value.
         };
 
+        // Zero initialization of locals follows special rules in our model. As a choice, we don't want
+        // to leave "random" state on the shadow stack. This implies zero-initializing the whole shadow
+        // frame on entry, even those parts of it not "live" on entry (overwritten before any explicit
+        // use). Still, we can optimize out the cases where there are no **implicit** uses - no safe
+        // points before the shadow stack slot is initialized with a valid (GC) value, by collecting
+        // the set of candidate locals (which will later be assigned SS slots) for which their spilled
+        // definitions dominate **all** safe points.
+        enum class SafePointLocation
+        {
+            None,
+            ThisBlock,
+            Descendant
+        };
+        struct BlockShadowSlotsState
+        {
+            BitVec Defs;
+            BitVec DescendantDefs;
+            bool DefsInitialized;
+            SafePointLocation SafePoint;
+        };
+
+        static const unsigned DEF_STATUS_UNINIT = ValueNumStore::NoVN;
+
         static const unsigned GC_EXPOSED_NO = 0;
         static const unsigned GC_EXPOSED_SPILL = 1;
         static const unsigned GC_EXPOSED_YES = 2;
-        static const unsigned GC_EXPOSED_UNKNOWN = ValueNumStore::NoVN;
+        static const unsigned GC_EXPOSED_BIT_COUNT = 2;
+        static const unsigned GC_EXPOSED_MASK = (1 << GC_EXPOSED_BIT_COUNT) - 1;
+        static const unsigned GC_EXPOSED_UNKNOWN = DEF_STATUS_UNINIT & GC_EXPOSED_MASK;
+
+        static const unsigned EXPLICIT_INIT_INDEX_SHIFT = GC_EXPOSED_BIT_COUNT;
+        static const unsigned EXPLICIT_INIT_INDEX_MASK = ~0u << EXPLICIT_INIT_INDEX_SHIFT;
+        static const unsigned EXPLICIT_INIT_INDEX_INVALID = DEF_STATUS_UNINIT >> EXPLICIT_INIT_INDEX_SHIFT;
+
+        static_assert_no_msg(
+            GC_EXPOSED_NO != GC_EXPOSED_UNKNOWN &&
+            GC_EXPOSED_SPILL != GC_EXPOSED_UNKNOWN &&
+            GC_EXPOSED_YES != GC_EXPOSED_UNKNOWN);
+
         static const unsigned LAST_ACTIVE_USE_IS_LAST_USE_BIT = 1 << 31;
 
         Llvm* m_llvm;
@@ -274,6 +318,12 @@ private:
         bool m_anyCandidates;
         SsaRenameState m_activeDefs;
         VARSET_TP m_liveDefs;
+
+        // The zeroing optimization tracking data structures.
+        int m_domWalkDepth = 0;
+        ArrayStack<BlockShadowSlotsState> m_shadowSlotsStates;
+        BitVecTraits m_candidateBitSetTraits;
+        ArrayStack<BitVec> m_candidateBitSetPool;
 
 #ifdef DEBUG
         JitHashTable<LclSsaVarDsc*, JitPtrKeyFuncs<LclSsaVarDsc>, const char*> m_gcExposedStatusReasonMap;
@@ -291,6 +341,9 @@ private:
             , m_anyCandidates(lssa->m_largestCandidateVarIndexPlusOne != 0)
             , m_activeDefs(m_compiler->getAllocator(CMK_LSRA), lssa->m_largestCandidateVarIndexPlusOne)
             , m_liveDefs(VarSetOps::MakeEmpty(m_compiler))
+            , m_shadowSlotsStates(m_compiler->getAllocator(CMK_LSRA))
+            , m_candidateBitSetTraits(lssa->m_largestCandidateVarIndexPlusOne, m_compiler)
+            , m_candidateBitSetPool(m_compiler->getAllocator(CMK_LSRA))
 #ifdef DEBUG
             , m_gcExposedStatusReasonMap(m_compiler->getAllocator(CMK_DebugOnly))
 #endif // DEBUG
@@ -299,11 +352,13 @@ private:
 
         void PreOrderVisit(BasicBlock* block)
         {
+            PushShadowSlotsStateForBlock();
             ProcessBlock(block);
         }
 
         void PostOrderVisit(BasicBlock* block)
         {
+            PopShadowSlotsStateForBlock(block);
             m_activeDefs.PopBlockStacks(block);
         }
 
@@ -311,6 +366,8 @@ private:
         {
             if (m_anyCandidates)
             {
+                JITDUMPEXEC(PrintDomTree());
+
                 // Push the live-in definitions on the stack.
                 unsigned lclVarIndex;
                 BasicBlock* initBlock = m_compiler->fgFirstBB;
@@ -325,10 +382,13 @@ private:
                     }
                 }
 
+                InitializeShadowSlotsStates();
+
                 // When optimizing, we need to keep track of the most recent SSA defininions for locals,
                 // and so process blocks in dominator pre-order.
                 WalkTree(m_compiler->m_domTree);
 
+                FinalizeShadowSlotsStates();
                 INDEBUG(VerifyActiveUseCounts());
             }
             else
@@ -343,8 +403,9 @@ private:
     private:
         void ProcessBlock(BasicBlock* block)
         {
+            JITDUMP("\n ==== ");
+            JITDUMPEXEC(block->dspBlockHeader(m_compiler, /* showKind */ true, /* showFlags */ true));
             assert(m_liveSdsuGcDefs.Count() == 0);
-            LIR::Range& blockRange = LIR::AsRange(block);
 
             if (m_anyCandidates)
             {
@@ -352,11 +413,12 @@ private:
                 JITDUMPEXEC(PrintCurrentLiveCandidates());
             }
 
+            LIR::Range& blockRange = LIR::AsRange(block);
             for (GenTree* node = blockRange.FirstNode(); node != nullptr; node = node->gtNext)
             {
                 if (node->isContained())
                 {
-                    assert(!m_llvm->isPotentialGcSafePoint(node));
+                    assert(!m_llvm->isPotentialGcSafePoint(node) && !m_llvm->mayPhysicallyThrow(node));
                     continue;
                 }
 
@@ -385,7 +447,8 @@ private:
                     user = m_containedOperands.Pop();
                 }
 
-                // Find out if we need to spill anything.
+                UpdateShadowSlotsStateForSafepoint(block, node);
+
                 if (m_llvm->isPotentialGcSafePoint(node))
                 {
                     ProcessSafePoint(block, node);
@@ -570,25 +633,11 @@ private:
         {
             LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
             LclSsaVarDsc* ssaDsc = varDsc->GetPerSsaData(ssaNum);
-            GenTreeLclVarCommon* defNode = ssaDsc->GetDefNode();
 
             INDEBUG(const char* reason);
             if (!IsGcExposedLocalValue(varDsc, ssaNum, DefStatus::Active DEBUGARG(&reason)))
             {
                 JITDUMP("V%02u/%d %s, but did not insert a spill: %s\n", lclNum, ssaNum, spillReason, reason);
-                return;
-            }
-
-            if (defNode == nullptr)
-            {
-                // The implicit definitions is always "spilled", see "AllocateAndInitializeLocals". We could be more
-                // precise by:
-                // 1. Only spilling the implicit definition when it is explicitly live (same as for other definitions).
-                // 2. At each safe point, mark all candidates that do not have a dominating spill as "implicitly live",
-                //    so that they are zero-initialized in the prolog.
-                // TODO-LLVM-LSSA-CQ: implement the above optimization.
-                JITDUMP("V%02u/%d (implicit def) %s, anticipating initialization in prolog\n", lclNum, ssaNum);
-                MarkLocalSpilled(varDsc, ssaDsc);
                 return;
             }
 
@@ -599,8 +648,16 @@ private:
             value->SetRegNum(REG_LLVM);
             GenTree* store = m_compiler->gtNewStoreLclVarNode(lclNum, value);
 
-            LIR::Range& defBlockRange = LIR::AsRange(ssaDsc->GetBlock());
-            if (defNode->IsPhiDefn())
+            BasicBlock* block = GetDefBlock(ssaDsc);
+            LIR::Range& defBlockRange = LIR::AsRange(block);
+            GenTreeLclVarCommon* defNode = ssaDsc->GetDefNode();
+            if (defNode == nullptr)
+            {
+                VarSetOps::AddElemD(m_compiler, block->bbLiveIn, varDsc->lvVarIndex);
+                defBlockRange.InsertAfter(m_lssa->m_lastPrologNode, value, store);
+                m_lssa->m_lastPrologNode = store;
+            }
+            else if (defNode->IsPhiDefn())
             {
                 defBlockRange.InsertBefore(
                     defBlockRange.FirstNonPhiOrCatchArgNode(), value, store);
@@ -610,9 +667,12 @@ private:
                 defBlockRange.InsertAfter(defNode, value, store);
             }
 
-            JITDUMP("V%02u/%d %s, inserted a spill:\n", lclNum, ssaNum, spillReason);
+            JITDUMP("V%02u/%d %s, inserted a spill in " FMT_BB ":\n", lclNum, ssaNum, spillReason, block->bbNum);
             DISPTREERANGE(defBlockRange, store);
-            MarkLocalSpilled(varDsc, ssaDsc);
+
+            varDsc->SetRegNum(REG_STK_CANDIDATE_COMMITED);
+            SetGcExposedStatus(ssaDsc, GC_EXPOSED_SPILL DEBUGARG("already spilled"));
+            UpdateShadowSlotsStateForSpilledDef(varDsc, ssaDsc);
         }
 
         bool IsGcExposedValue(GenTree* node, DefStatus defStatus)
@@ -678,20 +738,30 @@ private:
             unsigned status = GetGcExposedStatus(ssaDsc DEBUGARG(pReason));
             if (status == GC_EXPOSED_UNKNOWN)
             {
+                bool isExposed = true;
                 INDEBUG(const char* reason = nullptr);
                 GenTreeLclVarCommon* defNode = ssaDsc->GetDefNode();
-                if ((defNode != nullptr) && defNode->OperIs(GT_STORE_LCL_VAR) &&
-                    !IsGcExposedValue(defNode->Data(), DefStatus::Unknown))
+                if (defNode == nullptr)
+                {
+                    assert(ssaNum == SsaConfig::FIRST_SSA_NUM);
+
+                    // For a non-parameter, all GC pointers of the implicit on-entry def must be zeroed.
+                    ValueInitKind initKind = m_llvm->getInitKindForLocal(m_compiler->lvaGetLclNum(varDsc));
+                    assert(initKind != ValueInitKind::None);
+                    if (initKind != ValueInitKind::Param)
+                    {
+                        INDEBUG(reason = "value is zero at implicit def");
+                        isExposed = false;
+                    }
+                }
+                else if (defNode->OperIs(GT_STORE_LCL_VAR) && !IsGcExposedValue(defNode->Data(), DefStatus::Unknown))
                 {
                     INDEBUG(reason = "value not exposed");
-                    status = GC_EXPOSED_NO;
-                }
-                else
-                {
-                    status = GC_EXPOSED_YES;
+                    isExposed = false;
                 }
 
                 // This caching is designed to prevent quadratic behavior.
+                status = isExposed ? GC_EXPOSED_YES : GC_EXPOSED_NO;
                 SetGcExposedStatus(ssaDsc, status DEBUGARG(reason));
                 DBEXEC(pReason != nullptr, *pReason = reason);
             }
@@ -711,41 +781,13 @@ private:
             // shadow stack slots to distinct SSA definitions of the same local.
             //
             else if ((status == GC_EXPOSED_SPILL) && (defStatus == DefStatus::Unknown) &&
-                     (m_activeDefs.Top(varDsc->lvVarIndex) != ssaNum))
+                (m_activeDefs.Top(varDsc->lvVarIndex) != ssaNum))
             {
                 status = GC_EXPOSED_YES;
             }
 
             assert(status != GC_EXPOSED_UNKNOWN);
             return status == GC_EXPOSED_YES;
-        }
-
-        void SetGcExposedStatus(LclSsaVarDsc* ssaDsc, unsigned status DEBUGARG(const char* reason))
-        {
-            unsigned* pStatus = GetRawGcExposedStatusRef(ssaDsc);
-            assert((*pStatus == GC_EXPOSED_UNKNOWN) || ((*pStatus == GC_EXPOSED_YES) && (status == GC_EXPOSED_SPILL)));
-            assert(status != GC_EXPOSED_UNKNOWN);
-
-            DBEXEC(reason != nullptr, m_gcExposedStatusReasonMap.Set(ssaDsc, reason));
-            *pStatus = status;
-        }
-
-        unsigned GetGcExposedStatus(LclSsaVarDsc* ssaDsc DEBUGARG(const char** pReason))
-        {
-            INDEBUG(m_gcExposedStatusReasonMap.Lookup(ssaDsc, pReason));
-            return *GetRawGcExposedStatusRef(ssaDsc);
-        }
-
-        unsigned* GetRawGcExposedStatusRef(LclSsaVarDsc* ssaDsc)
-        {
-            // We do a little hack here to avoid modifying "LclSsaVarDsc". VNs are not used at this point.
-            return ssaDsc->m_vnPair.GetLiberalAddr();
-        }
-
-        void MarkLocalSpilled(LclVarDsc* varDsc, LclSsaVarDsc* ssaDsc)
-        {
-            varDsc->SetRegNum(REG_STK_CANDIDATE_COMMITED);
-            SetGcExposedStatus(ssaDsc, GC_EXPOSED_SPILL DEBUGARG("already spilled"));
         }
 
         void ProcessDef(BasicBlock* block, GenTree* node)
@@ -759,6 +801,9 @@ private:
             LclVarDsc* varDsc;
             if (IsCandidateLocalNode(node, &varDsc))
             {
+                JITDUMP(" -- Processing a candidate:\n");
+                DISPNODE(node);
+
                 // We depend here on the conservativeness of GC in not reloading after a safepoint.
                 assert(m_lssa->IsGcConservative());
                 node->SetRegNum(REG_LLVM);
@@ -769,6 +814,7 @@ private:
                 {
                     PushActiveLocalDef(block, varDsc, ssaNum);
                     UpdateLiveLocalDefs(varDsc, node->AsLclVarCommon()->HasLastUse(), /* isBorn */ true);
+                    UpdateShadowSlotsStateForDef(node->AsLclVarCommon());
                 }
                 // Increment the "active" use count used for accurate last use detection. Note that skipping
                 // unused locals here means that we could technically extend their live ranges unnecessarily
@@ -780,7 +826,7 @@ private:
                 }
             }
             else if (node->IsValue() && !node->IsUnusedValue() && IsGcExposedType(node) &&
-                     IsGcExposedSdsuValue(node, DefStatus::Active))
+                IsGcExposedSdsuValue(node, DefStatus::Active))
             {
                 node->gtLIRFlags |= LIR::Flags::Mark;
                 m_liveSdsuGcDefs.AddOrUpdate(node, BAD_VAR_NUM);
@@ -832,6 +878,274 @@ private:
             JITDUMPEXEC(PrintCurrentLiveCandidates());
         }
 
+        void InitializeShadowSlotsStates()
+        {
+            // Add a virtual "first block" to simplify the logic below.
+            m_domWalkDepth++;
+            m_shadowSlotsStates.Push({});
+        }
+
+        void FinalizeShadowSlotsStates()
+        {
+            assert(m_domWalkDepth == 1);
+            assert(m_shadowSlotsStates.Height() == 1);
+
+            BitVec initDefs;
+            BlockShadowSlotsState* state = &m_shadowSlotsStates.TopRef();
+            if (state->SafePoint == SafePointLocation::None)
+            {
+                initDefs = BitVecOps::MakeFull(&m_candidateBitSetTraits);
+                JITDUMP("\nExplicit init shadow slots: { all; no safepoints }\n");
+            }
+            else
+            {
+                assert(state->SafePoint == SafePointLocation::Descendant);
+                initDefs = state->DescendantDefs;
+                JITDUMP("\nExplicit init shadow slots: ");
+                JITDUMPEXEC(PrintCandidateBitSet(initDefs));
+                JITDUMP("\n");
+            }
+
+            m_lssa->m_candidateBitSetTraits = m_candidateBitSetTraits;
+            m_lssa->m_explicitInitShadowSlots = initDefs;
+        }
+
+        void PushShadowSlotsStateForBlock()
+        {
+            m_domWalkDepth++;
+
+            // If we already know there is a dominating safe point, the set of "stack slot stores dominating all safe
+            // points" will by definition be empty for this block and its successors. We do not (need to) track it.
+            if (m_shadowSlotsStates.TopRef().SafePoint != SafePointLocation::ThisBlock)
+            {
+                m_shadowSlotsStates.Push({});
+            }
+        }
+
+        void UpdateShadowSlotsStateForSafepoint(BasicBlock* block, GenTree* node)
+        {
+            if (!m_anyCandidates)
+            {
+                return;
+            }
+
+            BlockShadowSlotsState* state = &m_shadowSlotsStates.TopRef();
+            if (state->SafePoint != SafePointLocation::ThisBlock)
+            {
+                assert(m_domWalkDepth == m_shadowSlotsStates.Height());
+                assert(state->SafePoint == SafePointLocation::None);
+
+                // We need to include may-throw nodes here in addition to regular safepoints since
+                // at the point of the throw, the shadow frame of this function will still be live,
+                // and throwing by itself will of course call managed code.
+                bool canShadowTailCall = false;
+                if (m_llvm->isPotentialGcSafePoint(node))
+                {
+                    canShadowTailCall = node->IsCall() && m_lssa->CanShadowTailCall(block, node->AsCall());
+                }
+                else if (m_llvm->mayPhysicallyThrow(node))
+                {
+                    canShadowTailCall = m_lssa->CanShadowTailCallInBlock(block);
+                }
+                else
+                {
+                    return;
+                }
+                if (canShadowTailCall)
+                {
+                    m_llvm->ImposeOptimizationRequirement(node, NOR_SHADOW_TAILCALL);
+                    return;
+                }
+
+                JITDUMP("BlockShadowSlotsState[" FMT_BB "]::SafePoint: None -> ThisBlock due to [%06u]\n",
+                    block->bbNum, Compiler::dspTreeID(node));
+                state->SafePoint = SafePointLocation::ThisBlock;
+            }
+        }
+
+        void UpdateShadowSlotsStateForDef(GenTreeLclVarCommon* lclNode)
+        {
+            assert(lclNode->OperIsLocalStore() && IsCandidateLocalNode(lclNode));
+            BlockShadowSlotsState* state = &m_shadowSlotsStates.TopRef();
+            if (state->SafePoint == SafePointLocation::None) // Only dominating defs are tracked.
+            {
+                assert(m_domWalkDepth == m_shadowSlotsStates.Height());
+                if (lclNode->IsPartialLclFld(m_compiler))
+                {
+                    return; // We don't do partial initialization tracking, though in theory we could.
+                }
+
+                LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNode);
+                LclSsaVarDsc* ssaDsc = varDsc->GetPerSsaData(lclNode->GetSsaNum());
+                unsigned blockIndex = m_shadowSlotsStates.Height() - 1;
+                SetShadowSlotExplicitInitBlockIndex(ssaDsc, blockIndex);
+            }
+            else
+            {
+                assert(state->SafePoint == SafePointLocation::ThisBlock);
+            }
+        }
+
+        void UpdateShadowSlotsStateForSpilledDef(LclVarDsc* varDsc, LclSsaVarDsc* ssaDsc)
+        {
+            unsigned blockIndex = GetShadowSlotExplicitInitBlockIndex(ssaDsc);
+            if (blockIndex == EXPLICIT_INIT_INDEX_INVALID)
+            {
+                return; // This def does not dominate the safepoints of its block.
+            }
+            BlockShadowSlotsState* state = &m_shadowSlotsStates.BottomRef(blockIndex);
+            if (!state->DefsInitialized)
+            {
+                state->Defs = AcquireCandidateBitSet();
+                state->DefsInitialized = true;
+            }
+
+            JITDUMP("BlockShadowSlotsState[" FMT_BB "]::Defs: adding V%02u\n", GetDefBlock(ssaDsc)->bbNum,
+                m_compiler->lvaGetLclNum(varDsc));
+            BitVecOps::AddElemD(&m_candidateBitSetTraits, state->Defs, varDsc->lvVarIndex);
+        }
+
+        void PopShadowSlotsStateForBlock(BasicBlock* block)
+        {
+            JITDUMP(" PopShadowSlotsStateForBlock[" FMT_BB "] => ", block->bbNum);
+
+            int domWalkDepth = m_domWalkDepth--;
+            if (domWalkDepth > m_shadowSlotsStates.Height())
+            {
+                JITDUMP("skipped\n");
+                return; // Skipping this part of the graph.
+            }
+
+            assert(domWalkDepth == m_shadowSlotsStates.Height());
+            BlockShadowSlotsState current = m_shadowSlotsStates.Pop();
+            BlockShadowSlotsState* parent = &m_shadowSlotsStates.TopRef();
+            JITDUMP("[" FMT_BB "]::", block->bbIDom != nullptr ? block->bbIDom->bbNum : 0);
+            JITDUMPEXEC(PrintCandidateBitSet(parent->DescendantDefs, parent->SafePoint == SafePointLocation::None));
+            JITDUMP(" &= ");
+
+            if (current.SafePoint != SafePointLocation::None)
+            {
+                // Compute the current block's def set.
+                BitVec defsSet;
+                bool isEmptySet = false;
+                if (current.SafePoint == SafePointLocation::ThisBlock)
+                {
+                    defsSet = current.Defs;
+                    isEmptySet = !current.DefsInitialized;
+                }
+                else
+                {
+                    assert(current.SafePoint == SafePointLocation::Descendant);
+                    defsSet = current.DescendantDefs;
+                    if (current.DefsInitialized)
+                    {
+                        BitVecOps::UnionD(&m_candidateBitSetTraits, defsSet, current.Defs);
+                        ReleaseCandidateBitSet(current.Defs);
+                    }
+                }
+
+                JITDUMPEXEC(PrintCandidateBitSet(defsSet, /* isFull */ false, isEmptySet));
+
+                // Now intersect the current set with the parent's descendant set.
+                assert(parent->SafePoint != SafePointLocation::ThisBlock);
+                if (parent->SafePoint == SafePointLocation::None)
+                {
+                    parent->SafePoint = SafePointLocation::Descendant;
+                    parent->DescendantDefs = isEmptySet ? AcquireCandidateBitSet() : defsSet;
+                }
+                else if (isEmptySet)
+                {
+                    BitVecOps::ClearD(&m_candidateBitSetTraits, parent->DescendantDefs);
+                }
+                else
+                {
+                    BitVecOps::IntersectionD(&m_candidateBitSetTraits, parent->DescendantDefs, defsSet);
+                    ReleaseCandidateBitSet(defsSet);
+                }
+            }
+            else
+            {
+                // No safe points - equivalent to a full set of defs.
+                assert(current.SafePoint == SafePointLocation::None);
+                if (current.DefsInitialized)
+                {
+                    ReleaseCandidateBitSet(current.Defs);
+                }
+
+                JITDUMP("{ all; no safepoints }");
+            }
+
+            JITDUMP(" => ");
+            JITDUMPEXEC(PrintCandidateBitSet(parent->DescendantDefs, parent->SafePoint == SafePointLocation::None));
+            JITDUMP("\n");
+        }
+
+        BitVec AcquireCandidateBitSet()
+        {
+            BitVec set;
+            if (!m_candidateBitSetPool.Empty())
+            {
+                set = m_candidateBitSetPool.Pop();
+                BitVecOps::ClearD(&m_candidateBitSetTraits, set);
+            }
+            else
+            {
+                set = BitVecOps::MakeEmpty(&m_candidateBitSetTraits);
+            }
+            return set;
+        }
+
+        void ReleaseCandidateBitSet(BitVec bitSet)
+        {
+            m_candidateBitSetPool.Push(bitSet);
+        }
+
+        void SetGcExposedStatus(LclSsaVarDsc* ssaDsc, unsigned status DEBUGARG(const char* reason))
+        {
+            unsigned oldStatus = GetGcExposedStatus(ssaDsc);
+            assert((oldStatus == GC_EXPOSED_UNKNOWN) || ((oldStatus == GC_EXPOSED_YES) && (status == GC_EXPOSED_SPILL)));
+            assert(status != GC_EXPOSED_UNKNOWN);
+
+            unsigned* pStatus = GetRawDefStatusRef(ssaDsc);
+            DBEXEC(reason != nullptr, m_gcExposedStatusReasonMap.Set(ssaDsc, reason));
+            *pStatus = (*pStatus & ~GC_EXPOSED_MASK) | status;
+        }
+
+        unsigned GetGcExposedStatus(LclSsaVarDsc* ssaDsc DEBUGARG(const char** pReason = nullptr))
+        {
+            INDEBUG(m_gcExposedStatusReasonMap.Lookup(ssaDsc, pReason));
+            return *GetRawDefStatusRef(ssaDsc) & GC_EXPOSED_MASK;
+        }
+
+        void SetShadowSlotExplicitInitBlockIndex(LclSsaVarDsc* ssaDsc, unsigned index)
+        {
+            unsigned indexEncoded = index << EXPLICIT_INIT_INDEX_SHIFT;
+            if ((index == EXPLICIT_INIT_INDEX_INVALID) || ((indexEncoded >> EXPLICIT_INIT_INDEX_SHIFT) != index))
+            {
+                IMPL_LIMITATION("Too many blocks");
+            }
+
+            assert(GetShadowSlotExplicitInitBlockIndex(ssaDsc) != index);
+            unsigned* pDefStatus = GetRawDefStatusRef(ssaDsc);
+            *pDefStatus = (*pDefStatus & ~EXPLICIT_INIT_INDEX_MASK) | indexEncoded;
+        }
+
+        unsigned GetShadowSlotExplicitInitBlockIndex(LclSsaVarDsc* ssaDsc)
+        {
+            if (ssaDsc->GetDefNode() == nullptr)
+            {
+                // The implicit def by definition dominates all safepoints.
+                return 1;
+            }
+            return *GetRawDefStatusRef(ssaDsc) >> EXPLICIT_INIT_INDEX_SHIFT;
+        }
+
+        unsigned* GetRawDefStatusRef(LclSsaVarDsc* ssaDsc)
+        {
+            // We do a little hack here to avoid modifying "LclSsaVarDsc". VNs are not used at this point.
+            return ssaDsc->m_vnPair.GetLiberalAddr();
+        }
+
         void SetLastActiveUseIsLastUse(LclSsaVarDsc* ssaDsc)
         {
             assert(!IsLastActiveUseLastUse(ssaDsc));
@@ -876,7 +1190,7 @@ private:
         bool IsCandidateLocal(LclVarDsc* varDsc)
         {
             return (varDsc->GetRegNum() == REG_STK_CANDIDATE_TENTATIVE) ||
-                   (varDsc->GetRegNum() == REG_STK_CANDIDATE_COMMITED);
+                (varDsc->GetRegNum() == REG_STK_CANDIDATE_COMMITED);
         }
 
         bool IsCandidateLocalNode(GenTree* node, LclVarDsc** pVarDsc = nullptr)
@@ -895,6 +1209,17 @@ private:
             }
 
             return false;
+        }
+
+        BasicBlock* GetDefBlock(LclSsaVarDsc* ssaDsc)
+        {
+            BasicBlock* block = ssaDsc->GetBlock();
+            if (block == nullptr)
+            {
+                assert(ssaDsc->GetDefNode() == nullptr);
+                block = m_compiler->fgFirstBB;
+            }
+            return block;
         }
 
 #ifdef DEBUG
@@ -920,6 +1245,60 @@ private:
             }
         }
 
+        void PrintDomTree()
+        {
+            static const int STEP = 2;
+
+            class DomTreePrinter final : public DomTreeVisitor<DomTreePrinter>
+            {
+            public:
+                int Depth = 0;
+
+                DomTreePrinter(Compiler* compiler) : DomTreeVisitor<DomTreePrinter>(compiler)
+                {
+                }
+
+                void PreOrderVisit(BasicBlock* block)
+                {
+                    for (size_t i = 0; i < Depth; i++)
+                    {
+                        printf(" ");
+                    }
+                    printf(FMT_BB "\n", block->bbNum);
+                    Depth += STEP;
+                }
+
+                void PostOrderVisit(BasicBlock* block)
+                {
+                    Depth -= STEP;
+                }
+            };
+
+            printf("Doms:\n");
+            DomTreePrinter visitor(m_compiler);
+            visitor.Depth = 1;
+            visitor.WalkTree(m_compiler->m_domTree);
+        }
+
+        void PrintCandidateBitSet(BitVec bitSet, bool isFull = false, bool isEmpty = false)
+        {
+            printf("{ ");
+            if (isFull)
+            {
+                printf("all ");
+            }
+            else if (!isEmpty)
+            {
+                unsigned lclVarIndex;
+                BitVecOps::Iter iter(&m_candidateBitSetTraits, bitSet);
+                while (iter.NextElem(&lclVarIndex))
+                {
+                    printf("V%02u ", m_compiler->lvaTrackedIndexToLclNum(lclVarIndex));
+                }
+            }
+            printf("}");
+        }
+
         void PrintCurrentLiveCandidates()
         {
             if (!m_anyCandidates)
@@ -927,7 +1306,7 @@ private:
                 return;
             }
 
-            printf("Liveness: { ");
+            // printf("Liveness: { ");
             unsigned lclVarIndex;
             VarSetOps::Iter iter(m_compiler, m_liveDefs);
             while (iter.NextElem(&lclVarIndex))
@@ -937,10 +1316,10 @@ private:
                 if (IsCandidateLocal(varDsc))
                 {
                     // TOOD-LLVM Reinstate when https://github.com/dotnet/runtimelab/issues/3053 is addressed.
-//                    printf("V%02u/%d ", lclNum, m_activeDefs.Top(lclVarIndex));
+                    // printf("V%02u/%d ", lclNum, m_activeDefs.Top(lclVarIndex));
                 }
             }
-            printf("}\n");
+            // printf("}\n");
         }
 #endif // DEBUG
     };
@@ -964,17 +1343,27 @@ private:
             if ((varDsc->GetRegNum() == REG_STK_CANDIDATE_COMMITED) ||
                 (varDsc->GetRegNum() == REG_STK_CANDIDATE_UNCONDITIONAL))
             {
-                ValueInitKind initValueKind = m_llvm->getInitKindForLocal(lclNum, ValueInitOpts::IncludeImplicitGcUse);
+                // We model candidates like "any other [non-GC] local" that just happened to need to be stored
+                // to the shadow stack. Therefore, we don't need to "initialize" them here (it'll happen in
+                // codegen). What we do here for them is initialize the shadow stack slot itself. For locals
+                // that are unconditionally rewritten to be shadow stack references however, they need to be
+                // initialized properly (e. g. if they're parameters).
+                ValueInitKind initValueKind;
+                if (varDsc->GetRegNum() == REG_STK_CANDIDATE_COMMITED)
+                {
+                    initValueKind =
+                        BitVecOps::IsMember(&m_candidateBitSetTraits, m_explicitInitShadowSlots, varDsc->lvVarIndex)
+                        ? ValueInitKind::None
+                        : ValueInitKind::Zero;
+                }
+                else
+                {
+                    initValueKind = m_llvm->getInitKindForLocal(lclNum, ValueInitOpts::IncludeImplicitGcUse);
+                }
                 if (initValueKind == ValueInitKind::Param)
                 {
-                    GenTreeLclVar* initValue = m_compiler->gtNewLclvNode(lclNum, varDsc->TypeGet());
+                    GenTreeLclVar* initValue = m_compiler->gtNewLclVarNode(lclNum);
                     initValue->SetRegNum(REG_LLVM);
-                    if (m_compiler->lvaInSsa(lclNum))
-                    {
-                        // Fortunately for the implicit GC def logic, SSA always adds an implicit def for parameters.
-                        assert(varDsc->GetPerSsaData(SsaConfig::FIRST_SSA_NUM)->GetDefNode() == nullptr);
-                        initValue->SetSsaNum(SsaConfig::FIRST_SSA_NUM);
-                    }
                     if (varDsc->lvTracked)
                     {
                         VarSetOps::AddElemD(m_compiler, m_compiler->fgFirstBB->bbLiveIn, varDsc->lvVarIndex);
@@ -1007,8 +1396,6 @@ private:
         // defs will increment the count back if there are any non-shadow references.
         varDsc->lvImplicitlyReferenced = 0;
         varDsc->setLvRefCnt(0);
-
-        m_llvm->m_anyAddressExposedOrPinnedShadowLocals |= (varDsc->IsAddressExposed() || varDsc->lvPinned);
     }
 
     void AssignShadowFrameOffsets(jitstd::vector<unsigned>& shadowFrameLocals)
@@ -1016,12 +1403,12 @@ private:
         if (m_compiler->opts.OptimizationEnabled())
         {
             jitstd::sort(shadowFrameLocals.begin(), shadowFrameLocals.end(),
-                         [compiler = m_compiler](unsigned lhsLclNum, unsigned rhsLclNum)
-            {
-                LclVarDsc* lhsVarDsc = compiler->lvaGetDesc(lhsLclNum);
-                LclVarDsc* rhsVarDsc = compiler->lvaGetDesc(rhsLclNum);
-                return lhsVarDsc->lvRefCntWtd() > rhsVarDsc->lvRefCntWtd();
-            });
+                [compiler = m_compiler](unsigned lhsLclNum, unsigned rhsLclNum)
+                {
+                    LclVarDsc* lhsVarDsc = compiler->lvaGetDesc(lhsLclNum);
+                    LclVarDsc* rhsVarDsc = compiler->lvaGetDesc(rhsLclNum);
+                    return lhsVarDsc->lvRefCntWtd() > rhsVarDsc->lvRefCntWtd();
+                });
         }
 
         unsigned offset = 0;
@@ -1039,7 +1426,7 @@ private:
             varDsc->SetStackOffset(offset);
             offset += m_compiler->lvaLclSize(m_compiler->lvaGetLclNum(varDsc));
             varDsc->SetRegNum(REG_STK);
-        };
+            };
 
         unsigned preciseVirtualUnwindFrameLclNum = m_llvm->m_preciseVirtualUnwindFrameLclNum;
         if (preciseVirtualUnwindFrameLclNum != BAD_VAR_NUM)
@@ -1108,8 +1495,8 @@ private:
 
     void FinalizeProlog()
     {
-        LIR::Range range;
-        m_llvm->m_currentRange = &range;
+        LIR::Range initRange;
+        m_llvm->m_currentRange = &initRange;
         m_llvm->initializePreciseVirtualUnwindFrame();
 
         unsigned zeroingSize = m_prologZeroingSize;
@@ -1120,20 +1507,24 @@ private:
             GenTree* zero = m_compiler->gtNewIconNode(0);
             ClassLayout* layout = m_compiler->typGetBlkLayout(zeroingSize);
             GenTree* store = m_compiler->gtNewStoreBlkNode(layout, addr, zero, GTF_IND_NONFAULTING);
-            range.InsertAfter(addr, zero, store);
+            initRange.InsertAfter(addr, zero, store);
 
             JITDUMP("Added zero-initialization for shadow locals at: [%i, %i]:\n", offset, offset + zeroingSize);
-            DISPTREERANGE(range, store);
+            DISPTREERANGE(initRange, store);
             RecordAllocationActionZeroInit(m_compiler->fgFirstBB, offset, zeroingSize);
+        }
+
+        GenTree* lastInitNode = m_llvm->lowerAndInsertIntoFirstBlock(initRange); // Insert at the start.
+        if (m_lastPrologNode == nullptr)
+        {
+            m_lastPrologNode = lastInitNode;
         }
 
         // Insert a zero-offset ILOffset to notify codegen this is the start of user code.
         DebugInfo zeroILOffsetDi =
             DebugInfo(m_compiler->compInlineContext, ILLocation(0, /* isStackEmpty */ true, /* isCall */ false));
         GenTree* zeroILOffsetNode = new (m_compiler, GT_IL_OFFSET) GenTreeILOffset(zeroILOffsetDi);
-        range.InsertAtEnd(zeroILOffsetNode);
-
-        m_llvm->lowerAndInsertIntoFirstBlock(range, m_lastPrologNode);
+        LIR::AsRange(m_compiler->fgFirstBB).InsertAfter(m_lastPrologNode, zeroILOffsetNode);
     }
 
     GenTreeLclVar* InitializeLocalInProlog(unsigned lclNum, GenTree* value)
@@ -1146,12 +1537,9 @@ private:
         LIR::Range range;
         range.InsertAtEnd(value);
         range.InsertAtEnd(store);
-        m_llvm->lowerRange(m_compiler->fgFirstBB, range);
-        DISPTREERANGE(range, store);
+        m_lastPrologNode = m_llvm->lowerAndInsertIntoFirstBlock(range, m_lastPrologNode);
 
-        LIR::AsRange(m_compiler->fgFirstBB).InsertAfter(m_lastPrologNode, std::move(range));
-        m_lastPrologNode = store;
-
+        DISPTREERANGE(LIR::AsRange(m_compiler->fgFirstBB), store);
         return store;
     }
 
@@ -1285,9 +1673,11 @@ private:
         if (m_llvm->callHasManagedCallingConvention(call))
         {
             INDEBUG(const char* reasonWhyNot = nullptr);
-            bool isTailCall = CanShadowTailCall(call DEBUGARG(&reasonWhyNot));
+            BasicBlock* block = m_llvm->CurrentBlock();
+            bool isTailCall = CanShadowTailCall(block, call DEBUGARG(&reasonWhyNot));
             if (isTailCall)
             {
+                m_llvm->SatisfyOptimizationRequirement(call, NOR_SHADOW_TAILCALL);
                 JITDUMP("Shadow tail-calling [%06u]\n", Compiler::dspTreeID(call));
             }
             else
@@ -1295,7 +1685,7 @@ private:
                 JITDUMP("Not shadow tail-calling [%06u]: %s\n", Compiler::dspTreeID(call), reasonWhyNot);
             }
 
-            unsigned funcIdx = m_llvm->getLlvmFunctionIndexForBlock(m_llvm->CurrentBlock());
+            unsigned funcIdx = m_llvm->getLlvmFunctionIndexForBlock(block);
             unsigned calleeShadowStackOffset = m_llvm->getCalleeShadowStackOffset(funcIdx, isTailCall);
             GenTree* calleeShadowStack =
                 m_llvm->insertShadowStackAddr(call, calleeShadowStackOffset, m_llvm->_shadowStackLclNum);
@@ -1313,11 +1703,9 @@ private:
         }
     }
 
-    bool CanShadowTailCall(GenTreeCall* call DEBUGARG(const char** pReasonWhyNot))
+    bool CanShadowTailCall(BasicBlock* block, GenTreeCall* call DEBUGARG(const char** pReasonWhyNot = nullptr))
     {
-        BasicBlock* block = m_llvm->CurrentBlock();
-        if (!m_llvm->canEmitCallAsShadowTailCall(
-            block->hasTryIndex(), m_llvm->isBlockInFilter(block) DEBUGARG(pReasonWhyNot)))
+        if (!CanShadowTailCallInBlock(block DEBUGARG(pReasonWhyNot)))
         {
             return false;
         }
@@ -1338,8 +1726,14 @@ private:
             return true;
         }
 
-        INDEBUG(*pReasonWhyNot = "not in a tail position");
+        DBEXEC(pReasonWhyNot != nullptr, *pReasonWhyNot = "not in a tail position");
         return false;
+    }
+
+    bool CanShadowTailCallInBlock(BasicBlock* block DEBUGARG(const char** pReasonWhyNot = nullptr))
+    {
+        return m_llvm->canEmitCallAsShadowTailCall(
+            block->hasTryIndex(), m_llvm->isBlockInFilter(block) DEBUGARG(pReasonWhyNot));
     }
 
     bool IsGcConservative() const
@@ -1696,7 +2090,7 @@ private:
                 case AllocationActionKind::ZeroInit:
                     PrintFormatted(pBuffer, format);
                     for (unsigned offset = action.ZeroInitOffset; offset < action.ZeroInitOffsetEnd;
-                         offset += TARGET_POINTER_SIZE)
+                        offset += TARGET_POINTER_SIZE)
                     {
                         unsigned slot;
                         if (m_slotMap.Lookup(offset, &slot))
@@ -1791,11 +2185,11 @@ private:
         }
     };
 #else // !FEATURE_LSSA_ALLOCATION_RESULT
-    void InitializeAllocationResult() { }
-    void ReportAllocationResult() { }
+    void InitializeAllocationResult() {}
+    void ReportAllocationResult() {}
     bool RecordAllocationResult() const { return false; }
-    void RecordAllocationActionZeroInit(BasicBlock* initialBlock, unsigned offset, unsigned size) { }
-    void RecordAllocationActionLoadStore(BasicBlock* block, unsigned offset, GenTreeLclVarCommon* lclNode) { }
+    void RecordAllocationActionZeroInit(BasicBlock* initialBlock, unsigned offset, unsigned size) {}
+    void RecordAllocationActionLoadStore(BasicBlock* block, unsigned offset, GenTreeLclVarCommon* lclNode) {}
 #endif // !FEATURE_LSSA_ALLOCATION_RESULT
 };
 
@@ -1956,7 +2350,7 @@ bool Llvm::canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter DEB
     // calls down the stack may modify (corrupt) shadow variables from their callers.
     if (_compiler->opts.compDbgCode)
     {
-        INDEBUG(*pReasonWhyNot = "debug code");
+        DBEXEC(pReasonWhyNot != nullptr, *pReasonWhyNot = "debug code");
         return false;
     }
 
@@ -1964,7 +2358,7 @@ bool Llvm::canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter DEB
     // Likewise with pinning.
     if (m_anyAddressExposedOrPinnedShadowLocals)
     {
-        INDEBUG(*pReasonWhyNot = "pinned or address-exposed shadow locals present");
+        DBEXEC(pReasonWhyNot != nullptr, *pReasonWhyNot = "pinned or address-exposed shadow locals present");
         return false;
     }
 
@@ -1977,7 +2371,7 @@ bool Llvm::canEmitCallAsShadowTailCall(bool callIsInTry, bool callIsInFilter DEB
     // Both protected regions and filters induce exceptional flow that may return back to this method.
     if (callIsInTry || callIsInFilter)
     {
-        INDEBUG(*pReasonWhyNot = "call is in a protected region or filter handler");
+        DBEXEC(pReasonWhyNot != nullptr, *pReasonWhyNot = "call is in a protected region or filter handler");
         return false;
     }
 

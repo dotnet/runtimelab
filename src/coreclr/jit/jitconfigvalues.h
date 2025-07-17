@@ -850,6 +850,7 @@ RELEASE_CONFIG_INTEGER(JitCheckLlvmIR, "JitCheckLlvmIR", 0)
 RELEASE_CONFIG_INTEGER(JitRunLssaTests, "JitRunLssaTests", 0)
 RELEASE_CONFIG_INTEGER(JitGcStress, "JitGcStress", 0)
 
+CONFIG_STRING(JitDumpSymbol, "JitDumpSymbol")
 CONFIG_STRING(JitEnableLssaRange, "JitEnableLssaRange")
 #endif // TARGET_WASM
 

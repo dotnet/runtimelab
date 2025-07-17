@@ -247,12 +247,10 @@ namespace ILCompiler
             return corInfo;
         }
 
-        public override ISymbolNode GetExternalMethodCell(MethodDesc method, ReadOnlySpan<TargetAbiType> sig)
+        public override ISymbolNode GetExternalMethodCell(MethodDesc method)
         {
-            Debug.Assert(!sig.IsEmpty);
             string name = PInvokeILProvider.GetDirectCallExternName(method);
-
-            return NodeFactory.ExternMethodCell(name, method, sig);
+            return NodeFactory.ExternMethodCell(name, method);
         }
 
         public override CorInfoLlvmEHModel GetLlvmExceptionHandlingModel() => Options.ExceptionHandlingModel;
