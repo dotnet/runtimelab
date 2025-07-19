@@ -95,7 +95,7 @@
     </ItemGroup>
 
     <ItemGroup Condition="'$(WasmEnableThreads)' == 'true'">
-      <_CoreClrBuildArg Include="-cmakeargs &quot;-DCLR_CMAKE_TARGET_OS_SUBGROUP=multithread&quot;" />
+      <_CoreClrBuildArg Include="-cmakeargs &quot;-DCMAKE_USE_PTHREADS=1&quot;" />
     </ItemGroup>
 
     <PropertyGroup>
