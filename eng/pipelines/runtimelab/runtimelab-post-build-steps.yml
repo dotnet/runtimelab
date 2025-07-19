@@ -32,7 +32,7 @@ steps:
         displayName: Set up ILC emulation environment
 
     - ${{ if eq(parameters.archType, 'wasm') }}:
-      - ${{ if not(and(eq(parameters.osGroup, 'browser'), ne(parameters.wasmEnableThreadsArg, ''))) }}:
+      - ${{ if not(and(eq(parameters.osGroup, 'wasi'), ne(parameters.wasmEnableThreadsArg, ''))) }}:
         - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.osGroup }} $(crossArg) $(_officialBuildParameter) ci tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} ${{ parameters.wasmEnableThreadsArg }}
           displayName: Build runtime tests
     - ${{ else }}:

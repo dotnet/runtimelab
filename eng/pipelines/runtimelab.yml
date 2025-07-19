@@ -82,7 +82,6 @@ extends:
             osSubgroup: multithread
             platforms:
             - browser_wasm_win
-            - wasi_wasm_win
             jobParameters:
               timeoutInMinutes: 300
               buildArgs: -s clr.aot+libs -c debug -rc $(_BuildConfig) '/p:WasmEnableThreads=true'

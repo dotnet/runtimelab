@@ -26,11 +26,8 @@ if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
 
   # zlib-ng uses atomics, so we need to enable threads when requested for browser/wasi, otherwise the wasm target won't have thread support.
   if (CMAKE_USE_PTHREADS)
-    # TODO-LLVM: We can't build zlib-ng with threads enabled for browser/wasi yet, because it requires a libc with pthreads, which we don't have as we use the wasip2 libc.
-    if (CLR_CMAKE_TARGET_BROWSER)  
-      add_compile_options(-pthread)
-      add_linker_flag(-pthread)
-    endif()
+    add_compile_options(-pthread)
+    add_linker_flag(-pthread)
   endif()
 endif()
 

@@ -33,9 +33,7 @@
 
       <!-- TODO-LLVM: Reinstate when more thread support is implemented. -->
     <ItemGroup Condition="'$(WasmEnableThreads)' == 'true'">
-      <DisabledProjects Include="$(TestRoot)nativeaot\**\*.??proj" Condition="'$(WasmEnableThreads)' == 'true'"/>
-      <!-- Browser hangs attemping to create thread. -->
-      <DisabledProjects Remove="$(TestRoot)nativeaot\SmokeTests\HelloWasm\HelloWasm.csproj" Condition="'$(TargetOS)' == 'wasi'"/>
+      <DisabledProjects Include="$(TestRoot)nativeaot\**\PackagingTests.csproj" />
     </ItemGroup>
 
     <ItemGroup>
