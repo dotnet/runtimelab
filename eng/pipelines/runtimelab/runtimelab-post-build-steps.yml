@@ -27,14 +27,13 @@ steps:
 
   # Build coreclr native test output outside of official build
   - ${{ if ne(parameters.isOfficialBuild, true) }}:
-    - ${{ if and(eq(parameters.archType, 'wasm'), and(ne(parameters.nameSuffix, ''), eq(parameters.wasmEnableThreadsArg, ''))) }}:
+    - ${{ if and(eq(parameters.archType, 'wasm'), ne(parameters.nameSuffix, ''), eq(parameters.wasmEnableThreadsArg, ''))) }}:
       - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/set-ilc-emulation-environment.ps1 -Arch $(hostedTargetArch)
         displayName: Set up ILC emulation environment
 
     - ${{ if eq(parameters.archType, 'wasm') }}:
-      - ${{ if not(and(eq(parameters.osGroup, 'wasi'), ne(parameters.wasmEnableThreadsArg, ''))) }}:
-        - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.osGroup }} $(crossArg) $(_officialBuildParameter) ci tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} ${{ parameters.wasmEnableThreadsArg }}
-          displayName: Build runtime tests
+      - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.osGroup }} $(crossArg) $(_officialBuildParameter) ci tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} ${{ parameters.wasmEnableThreadsArg }}
+        displayName: Build runtime tests
     - ${{ else }}:
       - ${{ if eq(parameters.osGroup, 'windows') }}:
         - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) $(_officialBuildParameter) ci tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
