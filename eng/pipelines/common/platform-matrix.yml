@@ -489,7 +489,6 @@ jobs:
       helixQueuesTemplate: ${{ parameters.helixQueuesTemplate }}
       variables: ${{ parameters.variables }}
       osGroup: wasi
-      osSubGroup: ${{ parameters.osSubGroup }}
       archType: wasm
       targetRid: wasi-wasm
       platform: wasi_wasm_win
