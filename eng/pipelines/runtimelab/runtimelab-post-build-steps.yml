@@ -44,7 +44,7 @@ steps:
           displayName: Build runtime tests
 
     - ${{ if contains(parameters.platform, 'win') }}:
-      - ${{ if not(and(eq(parameters.osGroup, 'browser'), ne(parameters.wasmEnableThreadsArg, ''))) }}:
+      - ${{ if eq(parameters.wasmEnableThreadsArg, '') }}:
         - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
           displayName: Run runtime tests
     - ${{ else }}:
