@@ -79,7 +79,6 @@ extends:
             jobTemplate: /eng/pipelines/common/global-build-job.yml
             helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
             buildConfig: debug
-            osSubgroup: multithread
             platforms:
             - browser_wasm_win
             jobParameters:
