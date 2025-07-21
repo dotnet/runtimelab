@@ -85,7 +85,7 @@ build clr.aot+libs+nativeaot.packages -c Debug -a wasm -os browser '/p:WasmEnabl
 ```
 To build the runtime tests for browser
 ```
-src\tests\build nativeaot Debug wasm tree nativeaot browser /p:LibrariesConfiguration=debug /p:TestWrapperTargetsWindows=true /p:WasmEnableThreads=true
+src\tests\build nativeaot Debug wasm tree nativeaot browser /p:LibrariesConfiguration=debug /p:WasmEnableThreads=true
 ```
 
 
