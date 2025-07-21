@@ -242,7 +242,6 @@ private:
     class LssaDomTreeVisitor : public DomTreeVisitor<LssaDomTreeVisitor>
     {
         class NotExposedReason;
-        struct NotExposedReasonLink;
 
         // Cannot use raw node pointers as their values influence hash table iteration order.
         struct DeterministicNodeHashInfo : public HashTableInfo<DeterministicNodeHashInfo>
@@ -329,7 +328,7 @@ private:
         ArrayStack<BitVec> m_candidateBitSetPool;
 
 #ifdef DEBUG
-        JitHashTable<LclSsaVarDsc*, JitPtrKeyFuncs<LclSsaVarDsc>, NotExposedReasonLink*> m_notExposedReasonMap;
+        JitHashTable<LclSsaVarDsc*, JitPtrKeyFuncs<LclSsaVarDsc>, const char*> m_notExposedReasonMap;
 #endif // DEBUG
 
     public:
@@ -748,9 +747,7 @@ private:
             unsigned status = GetGcExposedStatus(ssaDsc);
             if (status == GC_EXPOSED_UNKNOWN)
             {
-                bool isExposed = true;
                 GenTreeLclVarCommon* defNode = ssaDsc->GetDefNode();
-                INDEBUG(NotExposedReason defReason(this));
                 if (defNode == nullptr)
                 {
                     assert(ssaNum == SsaConfig::FIRST_SSA_NUM);
@@ -760,19 +757,25 @@ private:
                     assert(initKind != ValueInitKind::None);
                     if (initKind != ValueInitKind::Param)
                     {
-                        INDEBUG(defReason.Add("implicit zero def"));
-                        isExposed = false;
+                        INDEBUG(pReason->Add("implicit zero def"));
+                        status = GC_EXPOSED_NO;
                     }
                 }
                 else if (defNode->OperIs(GT_STORE_LCL_VAR) &&
-                    !IsGcExposedValue(defNode->Data(), DefStatus::Unknown DEBUGARG(&defReason)))
+                    !IsGcExposedValue(defNode->Data(), DefStatus::Unknown DEBUGARG(pReason)))
                 {
-                    isExposed = false;
+                    status = GC_EXPOSED_NO;
                 }
 
-                // This caching is designed to prevent quadratic behavior.
-                status = isExposed ? GC_EXPOSED_YES : GC_EXPOSED_NO;
-                SetGcExposedStatus(ssaDsc, status DEBUGARG(varDsc) DEBUGARG(&defReason));
+                if (status != GC_EXPOSED_NO)
+                {
+                    // This caching is designed to prevent quadratic behavior. However, we can't cache "NO" results as
+                    // they depend on the current execution point (different points may yield different results as
+                    // shadow slots get overwritten with new values), so this is not a complete solution...
+                    // TODO-LLVM-LSSA: fix the above with a new LSSA algorithm.
+                    status = GC_EXPOSED_YES;
+                    SetGcExposedStatus(ssaDsc, status DEBUGARG(varDsc));
+                }
             }
             // Take care not to depend on potentially stale information. Consider:
             //
@@ -1112,7 +1115,7 @@ private:
         }
 
         void SetGcExposedStatus(
-            LclSsaVarDsc* ssaDsc, unsigned status DEBUGARG(LclVarDsc* varDsc) DEBUGARG(NotExposedReason* pReason))
+            LclSsaVarDsc* ssaDsc, unsigned status DEBUGARG(LclVarDsc* varDsc) DEBUGARG(NotExposedReason* pReason = nullptr))
         {
             unsigned oldStatus = GetGcExposedStatus(ssaDsc);
             assert((oldStatus == GC_EXPOSED_UNKNOWN) || ((oldStatus == GC_EXPOSED_YES) && (status == GC_EXPOSED_SPILL)));
@@ -1123,7 +1126,7 @@ private:
 
             JITDUMP("V%02u/%u: %s -> %s\n", m_compiler->lvaGetLclNum(varDsc),
                 varDsc->GetSsaNumForSsaDef(ssaDsc), GcStatusToString(oldStatus), GcStatusToString(status));
-            INDEBUG(pReason->SaveForDef(ssaDsc));
+            DBEXEC(pReason != nullptr, pReason->SaveForDef(ssaDsc));
         }
 
         unsigned GetGcExposedStatus(LclSsaVarDsc* ssaDsc)
@@ -1353,12 +1356,6 @@ private:
             }
         }
 
-        struct NotExposedReasonLink
-        {
-            const char* Reason;
-            NotExposedReasonLink* Next;
-        };
-
         class NotExposedReason
         {
             LssaDomTreeVisitor* m_visitor;
@@ -1393,12 +1390,11 @@ private:
             {
                 if (m_enabled)
                 {
+                    const char* reason;
                     LclSsaVarDsc* ssaDsc = varDsc->GetPerSsaData(ssaNum);
-                    NotExposedReasonLink* link = m_visitor->m_notExposedReasonMap[ssaDsc];
-                    while (link != nullptr)
+                    if (m_visitor->m_notExposedReasonMap.Lookup(ssaDsc, &reason))
                     {
-                        Add(link->Reason);
-                        link = link->Next;
+                        Add(reason);
                     }
 
                     unsigned lclNum = m_visitor->m_compiler->lvaGetLclNum(varDsc);
@@ -1429,26 +1425,11 @@ private:
 
             void SaveForDef(LclSsaVarDsc* ssaDsc)
             {
-                CompAllocator alloc = m_visitor->m_compiler->getAllocator(CMK_DebugOnly);
-                NotExposedReasonLink* links = nullptr;
-                NotExposedReasonLink* last = nullptr;
-                for (int i = 0; i < m_chain.Height(); i++)
+                if (m_enabled)
                 {
-                    NotExposedReasonLink* link = new (alloc) NotExposedReasonLink();
-                    link->Reason = m_chain.Bottom(i);
-                    if (last == nullptr)
-                    {
-                        links = link;
-                    }
-                    else
-                    {
-                        last->Next = link;
-                    }
-                    last = link;
-                }
-                if (links != nullptr)
-                {
-                    m_visitor->m_notExposedReasonMap.Set(ssaDsc, links);
+                    assert(m_chain.Height() == 1); // Full support currently not needed.
+                    const char* reason = m_chain.Top();
+                    m_visitor->m_notExposedReasonMap.Set(ssaDsc, reason);
                 }
             }
 
