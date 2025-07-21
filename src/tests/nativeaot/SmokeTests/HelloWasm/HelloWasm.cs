@@ -430,6 +430,8 @@ internal unsafe partial class Program
 
         LSSATests.Run();
 
+        FunctionalLSSATests.Run();
+
         TestThreadStaticAlignment();
 
         TestLiveInFirstBlockForTracked(new object());
