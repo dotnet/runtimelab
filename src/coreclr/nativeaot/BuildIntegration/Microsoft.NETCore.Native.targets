@@ -602,7 +602,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" Condition="'$(IlcTreatWarningsAsErrors)' != 'true'" />
       <CustomLinkerArg Include="-s WASM_BIGINT=1" Condition="'$(WasmEnableJSBigIntIntegration)' == 'true'" />
       <CustomLinkerArg Include="-s DISABLE_EXCEPTION_CATCHING=0" Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" />
-      <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''"/>
+      <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
       <CustomLinkerArg Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" Condition="'$(EmccInitialHeapSize)' != ''" />
       <CustomLinkerArg Include="-s ASSERTIONS=1" Condition="'$(EmccEnableAssertions)' == 'true'" />
       <CustomLinkerArg Include="-pthread" Condition="'$(WasmEnableThreads)' == 'true'"/>
