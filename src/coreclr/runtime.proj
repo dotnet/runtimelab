@@ -94,6 +94,10 @@
       <_CoreClrBuildArg Include="-cmakeargs &quot;-DCLR_CMAKE_ESRP_CLIENT=$(DotNetEsrpToolPath)&quot;" />
     </ItemGroup>
 
+    <ItemGroup Condition="'$(WasmEnableThreads)' == 'true'">
+      <_CoreClrBuildArg Include="-cmakeargs &quot;-DCMAKE_USE_PTHREADS=1&quot;" />
+    </ItemGroup>
+
     <PropertyGroup>
       <_CoreClrBuildScript Condition="$([MSBuild]::IsOsPlatform(Windows))">build-runtime.cmd</_CoreClrBuildScript>
       <_CoreClrBuildScript Condition="!$([MSBuild]::IsOsPlatform(Windows))">build-runtime.sh</_CoreClrBuildScript>

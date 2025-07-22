@@ -76,6 +76,19 @@ You should now be able to publish the project for Wasm: `dotnet publish -r brows
 
 Once you build the repo, you can use the produced binaries in one of four ways specified below ("Using built binaries", "Building packages", "Convenience Visual Studio "repro" project", "Running tests").
 
+## Building for Multithreaded packages
+
+This is a work in progress and far from functional.  Currently there exists just enough infrastructure to build packages for multithreaded runtime and libs, but they are not functional in the sense that they support multithreaded programs yet.
+To build the browser multithreaded packages:
+```
+build clr.aot+libs+nativeaot.packages -c Debug -a wasm -os browser '/p:WasmEnableThreads=true'
+```
+To build the runtime tests for browser
+```
+src\tests\build nativeaot Debug wasm tree nativeaot browser /p:LibrariesConfiguration=debug /p:WasmEnableThreads=true
+```
+
+
 ### Using built binaries
 
 In this workflow, you have a project file that you want to `dotnet publish`, but you want to use your own build of the compiler/runtime/framework. You need to be using a daily build of the .NET SDK downloaded from the dotnet/sdk repo. It's typically enough to just download the daily build ZIP file, unpack it, and make sure the unpacked directory is the first thing in your PATH. Don't forget to add a NuGet.config as specified by the dotnet/sdk repo- you'll hit restore issues otherwise.

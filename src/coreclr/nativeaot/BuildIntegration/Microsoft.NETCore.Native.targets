@@ -438,6 +438,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CompileWasmArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileWasmArgs) -g3</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(WasmEnableNonTrappingFloatToIntConversions)' == 'true'">$(CompileWasmArgs) -mnontrapping-fptoint</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'">$(CompileWasmArgs) -fwasm-exceptions</CompileWasmArgs>
+      <CompileWasmArgs Condition="'$(WasmEnableThreads)' == 'true'">$(CompileWasmArgs) -pthread</CompileWasmArgs>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(_targetOS)' == 'browser'">
@@ -604,6 +605,8 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
       <CustomLinkerArg Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" Condition="'$(EmccInitialHeapSize)' != ''" />
       <CustomLinkerArg Include="-s ASSERTIONS=1" Condition="'$(EmccEnableAssertions)' == 'true'" />
+      <CustomLinkerArg Include="-pthread" Condition="'$(WasmEnableThreads)' == 'true'"/>
+      <CustomLinkerArg Include="-Wno-pthreads-mem-growth" Condition="'$(WasmEnableThreads)' == 'true'"/>
 
       <!-- See https://github.com/dotnet/runtimelab/issues/2357 for why we don't run wasm-opt (it would mangle our strack trace info). -->
       <CustomLinkerArg Condition="'$(Optimize)' == 'true'" Include="-O1" />

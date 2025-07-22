@@ -35,6 +35,9 @@
   <PropertyGroup Condition="'$(TargetsSingleThreadedWasm)' != 'true'">
     <FeaturePortableThreadPool>true</FeaturePortableThreadPool>
     <FeaturePortableTimer>true</FeaturePortableTimer>
+    <!-- LLVM-TODO: Remove FeatureWasmManagedThreads in favor of WasmEnableThreads. -->
+    <FeatureWasmManagedThreads Condition="'$(WasmEnableThreads)' == 'true'">true</FeatureWasmManagedThreads>
+    <DefineConstants Condition="'$(WasmEnableThreads)' == 'true'">$(DefineConstants);FEATURE_WASM_MANAGED_THREADS</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>
     <FeatureHardwareIntrinsics>true</FeatureHardwareIntrinsics>
@@ -347,6 +350,8 @@
     <Compile Include="System\Diagnostics\StackFrame.NativeAot.Wasm.cs" />
     <Compile Include="System\Diagnostics\StackFrame.NativeAot.Wasi.cs" Condition="'$(TargetsWasi)' == 'true'" />
     <Compile Include="System\Diagnostics\StackFrame.NativeAot.Browser.cs" Condition="'$(TargetsBrowser)' == 'true'" />
+    <Compile Include="$(MonoBclSourcesRoot)\System\Threading\PortableThreadPool.Browser.Threads.Mono.cs" Condition="'$(TargetsBrowser)' == 'true' and '$(WasmEnableThreads)' == 'true'" />
+    <Compile Include="$(MonoBclSourcesRoot)\System\Threading\ThreadPool.Browser.Threads.Mono.cs" Condition="'$(TargetsBrowser)' == 'true' and '$(WasmEnableThreads)' == 'true'" />
   </ItemGroup>
 
   <!-- WASM-specific things. Keep in sync with Mono. -->
