@@ -596,16 +596,17 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="--js-library &quot;$(IlcFrameworkNativePath)pal_random.lib.js&quot;" Condition="'$(DotNetJsApi)' != 'true'" />
       <CustomLinkerArg Condition="'$(WasmHtmlTemplate)' != ''" Include="--shell-file &quot;$(WasmHtmlTemplate)&quot;" />
       <CustomLinkerArg Condition="'$(ExportsFile)' != '' and '$([System.IO.File]::ReadAllText($(ExportsFile)))' != ''" Include="-s EXPORTED_FUNCTIONS=@&quot;$(ExportsFile)&quot;" />
-      <CustomLinkerArg Include="-s ALLOW_MEMORY_GROWTH=1" Condition="'$(WasmEnableThreads)' != 'true'" />
+      <CustomLinkerArg Include="-s ALLOW_MEMORY_GROWTH=1" />
       <CustomLinkerArg Include="-s GLOBAL_BASE=$(IlcWasmGlobalBase)" />
       <CustomLinkerArg Include="-s TOTAL_STACK=$(IlcWasmStackSize)" />
       <CustomLinkerArg Include="-s ERROR_ON_UNDEFINED_SYMBOLS=0" Condition="'$(IlcTreatWarningsAsErrors)' != 'true'" />
       <CustomLinkerArg Include="-s WASM_BIGINT=1" Condition="'$(WasmEnableJSBigIntIntegration)' == 'true'" />
       <CustomLinkerArg Include="-s DISABLE_EXCEPTION_CATCHING=0" Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'" />
-      <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != '' and '$(WasmEnableThreads)' != 'true'"/>
+      <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''"/>
       <CustomLinkerArg Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" Condition="'$(EmccInitialHeapSize)' != ''" />
       <CustomLinkerArg Include="-s ASSERTIONS=1" Condition="'$(EmccEnableAssertions)' == 'true'" />
-      <CustomLinkerArg Condition="'$(WasmEnableThreads)' == 'true'" Include="-pthread" />
+      <CustomLinkerArg Include="-pthread" Condition="'$(WasmEnableThreads)' == 'true'"/>
+      <CustomLinkerArg Include="-Wno-pthreads-mem-growth" Condition="'$(WasmEnableThreads)' == 'true'"/>
 
       <!-- See https://github.com/dotnet/runtimelab/issues/2357 for why we don't run wasm-opt (it would mangle our strack trace info). -->
       <CustomLinkerArg Condition="'$(Optimize)' == 'true'" Include="-O1" />
