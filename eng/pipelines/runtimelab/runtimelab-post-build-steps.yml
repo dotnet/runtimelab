@@ -51,7 +51,7 @@ steps:
         displayName: Run runtime tests
 
     # Don't compile/run the libraries tests with emulated ILC to save CI time/resources.
-    - ${{ if and(eq(parameters.archType, 'wasm'), eq(parameters.wasmEnableThreadsArg, '')) }}:
+    - ${{ if and(eq(parameters.archType, 'wasm'), eq(parameters.nameSuffix, ''), eq(parameters.wasmEnableThreadsArg, '')) }}:
       - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
         displayName: Build and run WebAssembly libraries tests
 
