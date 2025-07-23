@@ -615,6 +615,16 @@ private:
 
         void SpillSdsuValue(LIR::Range& blockRange, GenTree* defNode, unsigned* pSpillLclNum)
         {
+            // Like with candidates, the GC status of an SDSU can change during its lifetime, so we need to check it
+            // at every safepoint, in the general case. We could tighten this by filtering out more SDSUs early (like
+            // 'null' and such), but live-across-a-safepoint SDSUs are not that common, so we currently don't.
+            INDEBUG(NotExposedReason reason(this));
+            if (!IsGcExposedSdsuValue(defNode, DefStatus::Active DEBUGARG(&reason)))
+            {
+                JITDUMPEXEC(reason.Print("[%06u] is live, but not exposed: ", "\n", Compiler::dspTreeID(defNode)));
+                return;
+            }
+
             if (*pSpillLclNum != BAD_VAR_NUM)
             {
                 // We may have already spilled this def live across multiple safe points.
@@ -812,7 +822,6 @@ private:
             }
 
             LclVarDsc* varDsc;
-            INDEBUG(NotExposedReason reason(this));
             if (IsCandidateLocalNode(node, &varDsc))
             {
                 JITDUMP(" -- Processing a candidate:\n");
@@ -839,8 +848,7 @@ private:
                     IncrementActiveUseCount(varDsc->GetPerSsaData(ssaNum));
                 }
             }
-            else if (node->IsValue() && !node->IsUnusedValue() && IsGcExposedType(node) &&
-                IsGcExposedSdsuValue(node, DefStatus::Active DEBUGARG(&reason)))
+            else if (node->IsValue() && !node->IsUnusedValue() && IsGcExposedType(node))
             {
                 node->gtLIRFlags |= LIR::Flags::Mark;
                 m_liveSdsuGcDefs.AddOrUpdate(node, BAD_VAR_NUM);
@@ -855,17 +863,7 @@ private:
             }
             if (node->TypeIs(TYP_STRUCT))
             {
-                // TODO-LLVM: delete this once we're up to date with upstream deleting "STORE_DYN_BLK".
-                if (node->OperIs(GT_IND))
-                {
-                    return false;
-                }
-                if (!node->GetLayout(m_compiler)->HasGCPtr())
-                {
-                    return false;
-                }
-
-                return true;
+                return node->GetLayout(m_compiler)->HasGCPtr();
             }
 
             return false;
