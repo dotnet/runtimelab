@@ -23,11 +23,14 @@
 #pragma warning(disable : 4459)
 #pragma warning(disable : 4702)
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/Verifier.h"
-#include "llvm/IR/IntrinsicsWebAssembly.h"
 #pragma warning(pop)
+
+// Forward-declare some LLVM types to avoid including the corresponding header into each compilation unit.
+namespace llvm
+{
+    class DIBuilder;
+};
 
 using llvm::LLVMContext;
 using llvm::Module;
@@ -51,24 +54,12 @@ const int TARGET_POINTER_BITS = TARGET_POINTER_SIZE * BITS_PER_BYTE;
 
 // Part of the Jit/EE interface, must be kept in sync with the managed versions in "CorInfoImpl.Llvm.cs".
 //
-enum class CorInfoLlvmEHModel
-{
-    Cpp, // Landingpad-based LLVM IR; compatible with Itanium ABI.
-    Wasm, // WinEH-based LLVM IR; custom WASM EH-based ABI.
-    Emulated, // Invoke-free LLVM IR; "unwinding" performed via explicit checks and returns
-};
-
 struct CORINFO_LLVM_EH_CLAUSE
 {
     CORINFO_EH_CLAUSE_FLAGS Flags;
     unsigned EnclosingIndex;
     mdToken ClauseTypeToken;
     unsigned FilterIndex;
-};
-
-enum CorInfoLlvmJitTestKind
-{
-    CORINFO_JIT_TEST_LSSA = 1
 };
 
 struct CORINFO_LLVM_JIT_TEST_INFO
@@ -117,7 +108,7 @@ template <typename T>
 struct JitStdMallocAllocator
 {
     MallocAllocator m_alloc;
-    JitStdMallocAllocator(MallocAllocator alloc) : m_alloc(alloc) { }
+    JitStdMallocAllocator(MallocAllocator alloc) : m_alloc(alloc) {}
 
     T* allocate(size_t count)
     {
@@ -263,35 +254,9 @@ struct PhiPair
     llvm::PHINode* LlvmPhiNode;
 };
 
-struct LlvmBlockRange
-{
-    llvm::BasicBlock* FirstBlock;
-    llvm::BasicBlock* LastBlock;
-    INDEBUG(unsigned Count = 1);
-
-    LlvmBlockRange(llvm::BasicBlock* llvmBlock) : FirstBlock(llvmBlock), LastBlock(llvmBlock)
-    {
-    }
-};
-
-typedef JitHashTable<unsigned, JitSmallPrimitiveKeyFuncs<unsigned>, llvm::AllocaInst*> AllocaMap;
-
-struct FunctionInfo
-{
-    Function* LlvmFunction;
-    union {
-        llvm::AllocaInst** Allocas; // Dense "lclNum -> Alloca*" mapping used for the main function.
-        AllocaMap* AllocaMap; // Sparse "lclNum -> Alloca*" mapping used for funclets.
-    };
-    llvm::BasicBlock* ResumeLlvmBlock;
-    llvm::BasicBlock* ExceptionThrownReturnLlvmBlock;
-};
-
-struct EHRegionInfo
-{
-    llvm::BasicBlock* UnwindBlock;
-    Value* CatchArgValue;
-};
+struct LlvmBlockRange;
+struct EHRegionInfo;
+struct FunctionInfo;
 
 class TypeDebugInfoModule;
 class SingleThreadedCompilationContext
@@ -684,8 +649,8 @@ private:
     CallSiteFacts getCallSiteFactsForHelper(CorInfoHelpFunc helperFunc);
     void annotateHelperFunction(CorInfoHelpFunc helperFunc, Function* llvmFunc);
     Function* getOrCreateKnownLlvmFunction(StringRef name,
-                                           std::function<FunctionType*()> createFunctionType,
-                                           std::function<void(Function*)> annotateFunction = [](Function*) { });
+        std::function<FunctionType* ()> createFunctionType,
+        std::function<void(Function*)> annotateFunction = [](Function*) {});
 
     EHRegionInfo& getEHRegionInfo(unsigned ehIndex);
     llvm::BasicBlock* getUnwindLlvmBlockForCurrentInvoke();
@@ -757,6 +722,8 @@ private:
 
     void declareDebugVariables();
     void assignDebugVariable(unsigned lclNum, Value* value);
+
+    void finalizeDebugInfo();
 
     unsigned getLineNumberForILOffset(unsigned ilOffset);
     llvm::DILocation* getDebugLocation(unsigned lineNo);

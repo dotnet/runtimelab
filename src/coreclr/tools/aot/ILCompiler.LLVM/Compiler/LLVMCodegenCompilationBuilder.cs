@@ -57,9 +57,9 @@ namespace ILCompiler
                     case "LlvmExceptionHandlingModel":
                         ExceptionHandlingModel = value switch
                         {
-                            "cpp" => CorInfoLlvmEHModel.Cpp,
-                            "wasm" => CorInfoLlvmEHModel.Wasm,
-                            "emulated" => CorInfoLlvmEHModel.Emulated,
+                            "cpp" => CorInfoLlvmEHModel.CORINFO_LLVM_EH_CPP,
+                            "wasm" => CorInfoLlvmEHModel.CORINFO_LLVM_EH_WASM,
+                            "emulated" => CorInfoLlvmEHModel.CORINFO_LLVM_EH_EMULATED,
                             _ => throw new ArgumentException("Invalid LlvmExceptionHandlingModel value")
                         };
                         break;
@@ -85,7 +85,7 @@ namespace ILCompiler
         // S128 natural alignment of stack
         public string DataLayout { get; private set; } = "e-m:e-p:32:32-i64:64-n32:64-S128";
         public string Target { get; private set; } = "wasm32-unknown-emscripten";
-        public CorInfoLlvmEHModel ExceptionHandlingModel { get; private set; } = CorInfoLlvmEHModel.Wasm;
+        public CorInfoLlvmEHModel ExceptionHandlingModel { get; private set; } = CorInfoLlvmEHModel.CORINFO_LLVM_EH_WASM;
 
         // Below options are debug-only and not supported.
         public int MaxLlvmModuleCount { get; private set; } = 16;

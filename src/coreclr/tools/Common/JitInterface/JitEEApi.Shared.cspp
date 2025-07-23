@@ -1,10 +1,24 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#if !__cplusplus
+#if __cplusplus
+#define public
+#else
 #pragma warning disable SA1400 // Element '<type>' should declare an access modifier
 namespace Internal.JitInterface;
 #endif
+
+public enum CorInfoLlvmEHModel
+{
+    CORINFO_LLVM_EH_CPP, // Landingpad-based LLVM IR; compatible with Itanium ABI.
+    CORINFO_LLVM_EH_WASM, // WinEH-based LLVM IR; custom WASM EH-based ABI.
+    CORINFO_LLVM_EH_EMULATED, // Invoke-free LLVM IR; "unwinding" performed via explicit checks and returns
+};
+
+enum CorInfoLlvmJitTestKind
+{
+    CORINFO_LLVM_JIT_TEST_LSSA = 1
+};
 
 enum CorInfoLlvmSingleThreadedCompilationContextFlags
 {
@@ -67,3 +81,7 @@ enum CorInfoLlvmDebugTypeForwardKind
     CORINFO_LLVM_DEBUG_TYPE_FORWARD_STRUCT,
     CORINFO_LLVM_DEBUG_TYPE_FORWARD_ENUM
 };
+
+#if __cplusplus
+#undef public
+#endif

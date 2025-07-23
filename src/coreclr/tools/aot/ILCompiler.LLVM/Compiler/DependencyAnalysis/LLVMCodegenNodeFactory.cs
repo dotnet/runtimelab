@@ -50,7 +50,7 @@ namespace ILCompiler.DependencyAnalysis
             _ehModel = options.ExceptionHandlingModel;
         }
 
-        public override bool TargetsEmulatedEH() => _ehModel is CorInfoLlvmEHModel.Emulated;
+        public override bool TargetsEmulatedEH() => _ehModel is CorInfoLlvmEHModel.CORINFO_LLVM_EH_EMULATED;
 
         internal ExternMethodCellNode ExternMethodCell(string name, MethodDesc method)
         {
