@@ -241,6 +241,9 @@ private:
 
     class LssaDomTreeVisitor : public DomTreeVisitor<LssaDomTreeVisitor>
     {
+        class NotExposedReason;
+        struct NotExposedReasonLink;
+
         // Cannot use raw node pointers as their values influence hash table iteration order.
         struct DeterministicNodeHashInfo : public HashTableInfo<DeterministicNodeHashInfo>
         {
@@ -326,7 +329,7 @@ private:
         ArrayStack<BitVec> m_candidateBitSetPool;
 
 #ifdef DEBUG
-        JitHashTable<LclSsaVarDsc*, JitPtrKeyFuncs<LclSsaVarDsc>, const char*> m_gcExposedStatusReasonMap;
+        JitHashTable<LclSsaVarDsc*, JitPtrKeyFuncs<LclSsaVarDsc>, NotExposedReasonLink*> m_notExposedReasonMap;
 #endif // DEBUG
 
     public:
@@ -345,7 +348,7 @@ private:
             , m_candidateBitSetTraits(lssa->m_largestCandidateVarIndexPlusOne, m_compiler)
             , m_candidateBitSetPool(m_compiler->getAllocator(CMK_LSRA))
 #ifdef DEBUG
-            , m_gcExposedStatusReasonMap(m_compiler->getAllocator(CMK_DebugOnly))
+            , m_notExposedReasonMap(m_compiler->getAllocator(CMK_DebugOnly))
 #endif // DEBUG
         {
         }
@@ -550,7 +553,7 @@ private:
                     if (IsCandidateLocal(varDsc))
                     {
                         unsigned ssaNum = m_activeDefs.Top(lclVarIndex);
-                        SpillLocalValue(lclNum, ssaNum DEBUGARG("is live"));
+                        SpillLocalValue(lclNum, ssaNum DEBUGARG(node));
                     }
                 }
             }
@@ -616,6 +619,7 @@ private:
             if (*pSpillLclNum != BAD_VAR_NUM)
             {
                 // We may have already spilled this def live across multiple safe points.
+                JITDUMP("[%06u] is live, but not exposed: already spilled\n", Compiler::dspTreeID(defNode));
                 return;
             }
 
@@ -629,15 +633,15 @@ private:
             *pSpillLclNum = spillLclNum;
         }
 
-        void SpillLocalValue(unsigned lclNum, unsigned ssaNum DEBUGARG(const char* spillReason))
+        void SpillLocalValue(unsigned lclNum, unsigned ssaNum DEBUGARG(GenTree* safePoint))
         {
             LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
             LclSsaVarDsc* ssaDsc = varDsc->GetPerSsaData(ssaNum);
 
-            INDEBUG(const char* reason);
+            INDEBUG(NotExposedReason reason(this));
             if (!IsGcExposedLocalValue(varDsc, ssaNum, DefStatus::Active DEBUGARG(&reason)))
             {
-                JITDUMP("V%02u/%d %s, but did not insert a spill: %s\n", lclNum, ssaNum, spillReason, reason);
+                JITDUMPEXEC(reason.Print("V%02u/%d is live, but not exposed: ", "\n", lclNum, ssaNum));
                 return;
             }
 
@@ -667,28 +671,30 @@ private:
                 defBlockRange.InsertAfter(defNode, value, store);
             }
 
-            JITDUMP("V%02u/%d %s, inserted a spill in " FMT_BB ":\n", lclNum, ssaNum, spillReason, block->bbNum);
+            JITDUMP("V%02u/%d is live, inserted a spill in " FMT_BB ":\n", lclNum, ssaNum, block->bbNum);
             DISPTREERANGE(defBlockRange, store);
 
+            INDEBUG(NotExposedReason spillReason(this));
+            INDEBUG(spillReason.AddSpill(safePoint));
             varDsc->SetRegNum(REG_STK_CANDIDATE_COMMITED);
-            SetGcExposedStatus(ssaDsc, GC_EXPOSED_SPILL DEBUGARG("already spilled"));
+            SetGcExposedStatus(ssaDsc, GC_EXPOSED_SPILL DEBUGARG(varDsc) DEBUGARG(&spillReason));
             UpdateShadowSlotsStateForSpilledDef(varDsc, ssaDsc);
         }
 
-        bool IsGcExposedValue(GenTree* node, DefStatus defStatus)
+        bool IsGcExposedValue(GenTree* node, DefStatus defStatus DEBUGARG(NotExposedReason* pReason))
         {
             // TODO-LLVM-LSSA-CQ: add handling for PHIs here. Take note to handle cycles properly.
             assert(node->IsValue());
             LclVarDsc* varDsc;
             if (IsCandidateLocalNode(node, &varDsc))
             {
-                return IsGcExposedLocalValue(varDsc, node->AsLclVarCommon()->GetSsaNum(), defStatus);
+                return IsGcExposedLocalValue(varDsc, node->AsLclVarCommon()->GetSsaNum(), defStatus DEBUGARG(pReason));
             }
 
-            return IsGcExposedSdsuValue(node, defStatus);
+            return IsGcExposedSdsuValue(node, defStatus DEBUGARG(pReason));
         }
 
-        bool IsGcExposedSdsuValue(GenTree* node, DefStatus defStatus)
+        bool IsGcExposedSdsuValue(GenTree* node, DefStatus defStatus DEBUGARG(NotExposedReason* pReason))
         {
             assert(node->IsValue() && !IsCandidateLocalNode(node));
 
@@ -697,10 +703,13 @@ private:
             // of the underlying object, or be performed on pinned values only.
             if (node->OperIs(GT_ADD, GT_SUB) && node->gtGetOp2()->TypeIs(TYP_I_IMPL))
             {
-                return IsGcExposedValue(node->gtGetOp1(), DefStatus::Unknown);
+                if (!IsGcExposedValue(node->gtGetOp1(), DefStatus::Unknown DEBUGARG(pReason)))
+                {
+                    INDEBUG(pReason->AddOp(node));
+                    return false;
+                }
             }
-
-            if (node->OperIsLocalRead())
+            else if (node->OperIsLocalRead())
             {
                 // For non-candidate locals, all definitions are spilled to the shadow stack. Thus, the only
                 // way for a value to get exposed is if something modifies the backing location. This can
@@ -712,19 +721,18 @@ private:
                 // even a 'normal' untracked local may be redefined via a local store; we handle this via
                 // the check on 'defStatus'.
                 //
-                if ((defStatus == DefStatus::Unknown) ||
-                    m_compiler->lvaGetDesc(node->AsLclVarCommon())->IsAddressExposed())
+                if ((defStatus == DefStatus::Active) &&
+                    !m_compiler->lvaGetDesc(node->AsLclVarCommon())->IsAddressExposed())
                 {
-                    return true;
+                    INDEBUG(pReason->AddNonCandidate(node->AsLclVarCommon()));
+                    return false;
                 }
-
-                return false;
             }
-
             // Local address nodes always point to the stack (native or shadow). Constant handles will
             // only point to immortal and immovable (frozen) objects. TODO-LLVM-LSSA-CQ: add LCLHEAP here.
-            if (node->OperIs(GT_LCL_ADDR) || node->IsIconHandle() || node->IsIntegralConst(0))
+            else if (node->OperIs(GT_LCL_ADDR) || node->IsIconHandle() || node->IsIntegralConst(0))
             {
+                INDEBUG(pReason->AddOp(node));
                 return false;
             }
 
@@ -732,15 +740,17 @@ private:
         }
 
         bool IsGcExposedLocalValue(
-            LclVarDsc* varDsc, unsigned ssaNum, DefStatus defStatus DEBUGARG(const char** pReason = nullptr))
+            LclVarDsc* varDsc, unsigned ssaNum, DefStatus defStatus DEBUGARG(NotExposedReason* pReason))
         {
+            assert(IsCandidateLocal(varDsc));
+
             LclSsaVarDsc* ssaDsc = varDsc->GetPerSsaData(ssaNum);
-            unsigned status = GetGcExposedStatus(ssaDsc DEBUGARG(pReason));
+            unsigned status = GetGcExposedStatus(ssaDsc);
             if (status == GC_EXPOSED_UNKNOWN)
             {
                 bool isExposed = true;
-                INDEBUG(const char* reason = nullptr);
                 GenTreeLclVarCommon* defNode = ssaDsc->GetDefNode();
+                INDEBUG(NotExposedReason defReason(this));
                 if (defNode == nullptr)
                 {
                     assert(ssaNum == SsaConfig::FIRST_SSA_NUM);
@@ -750,20 +760,19 @@ private:
                     assert(initKind != ValueInitKind::None);
                     if (initKind != ValueInitKind::Param)
                     {
-                        INDEBUG(reason = "value is zero at implicit def");
+                        INDEBUG(defReason.Add("implicit zero def"));
                         isExposed = false;
                     }
                 }
-                else if (defNode->OperIs(GT_STORE_LCL_VAR) && !IsGcExposedValue(defNode->Data(), DefStatus::Unknown))
+                else if (defNode->OperIs(GT_STORE_LCL_VAR) &&
+                    !IsGcExposedValue(defNode->Data(), DefStatus::Unknown DEBUGARG(&defReason)))
                 {
-                    INDEBUG(reason = "value not exposed");
                     isExposed = false;
                 }
 
                 // This caching is designed to prevent quadratic behavior.
                 status = isExposed ? GC_EXPOSED_YES : GC_EXPOSED_NO;
-                SetGcExposedStatus(ssaDsc, status DEBUGARG(reason));
-                DBEXEC(pReason != nullptr, *pReason = reason);
+                SetGcExposedStatus(ssaDsc, status DEBUGARG(varDsc) DEBUGARG(&defReason));
             }
             // Take care not to depend on potentially stale information. Consider:
             //
@@ -787,6 +796,7 @@ private:
             }
 
             assert(status != GC_EXPOSED_UNKNOWN);
+            DBEXEC(status != GC_EXPOSED_YES, pReason->AddDef(varDsc, ssaNum));
             return status == GC_EXPOSED_YES;
         }
 
@@ -799,6 +809,7 @@ private:
             }
 
             LclVarDsc* varDsc;
+            INDEBUG(NotExposedReason reason(this));
             if (IsCandidateLocalNode(node, &varDsc))
             {
                 JITDUMP(" -- Processing a candidate:\n");
@@ -826,7 +837,7 @@ private:
                 }
             }
             else if (node->IsValue() && !node->IsUnusedValue() && IsGcExposedType(node) &&
-                IsGcExposedSdsuValue(node, DefStatus::Active))
+                IsGcExposedSdsuValue(node, DefStatus::Active DEBUGARG(&reason)))
             {
                 node->gtLIRFlags |= LIR::Flags::Mark;
                 m_liveSdsuGcDefs.AddOrUpdate(node, BAD_VAR_NUM);
@@ -1100,20 +1111,23 @@ private:
             m_candidateBitSetPool.Push(bitSet);
         }
 
-        void SetGcExposedStatus(LclSsaVarDsc* ssaDsc, unsigned status DEBUGARG(const char* reason))
+        void SetGcExposedStatus(
+            LclSsaVarDsc* ssaDsc, unsigned status DEBUGARG(LclVarDsc* varDsc) DEBUGARG(NotExposedReason* pReason))
         {
             unsigned oldStatus = GetGcExposedStatus(ssaDsc);
             assert((oldStatus == GC_EXPOSED_UNKNOWN) || ((oldStatus == GC_EXPOSED_YES) && (status == GC_EXPOSED_SPILL)));
             assert(status != GC_EXPOSED_UNKNOWN);
 
             unsigned* pStatus = GetRawDefStatusRef(ssaDsc);
-            DBEXEC(reason != nullptr, m_gcExposedStatusReasonMap.Set(ssaDsc, reason));
             *pStatus = (*pStatus & ~GC_EXPOSED_MASK) | status;
+
+            JITDUMP("V%02u/%u: %s -> %s\n", m_compiler->lvaGetLclNum(varDsc),
+                varDsc->GetSsaNumForSsaDef(ssaDsc), GcStatusToString(oldStatus), GcStatusToString(status));
+            INDEBUG(pReason->SaveForDef(ssaDsc));
         }
 
-        unsigned GetGcExposedStatus(LclSsaVarDsc* ssaDsc DEBUGARG(const char** pReason = nullptr))
+        unsigned GetGcExposedStatus(LclSsaVarDsc* ssaDsc)
         {
-            INDEBUG(m_gcExposedStatusReasonMap.Lookup(ssaDsc, pReason));
             return *GetRawDefStatusRef(ssaDsc) & GC_EXPOSED_MASK;
         }
 
@@ -1321,6 +1335,147 @@ private:
             }
             // printf("}\n");
         }
+
+        const char* GcStatusToString(unsigned status)
+        {
+            switch (status)
+            {
+                case GC_EXPOSED_NO:
+                    return "GC_EXPOSED_NO";
+                case GC_EXPOSED_SPILL:
+                    return "GC_EXPOSED_SPILL";
+                case GC_EXPOSED_YES:
+                    return "GC_EXPOSED_YES";
+                case GC_EXPOSED_UNKNOWN:
+                    return "GC_EXPOSED_UNKNOWN";
+                default:
+                    unreached();
+            }
+        }
+
+        struct NotExposedReasonLink
+        {
+            const char* Reason;
+            NotExposedReasonLink* Next;
+        };
+
+        class NotExposedReason
+        {
+            LssaDomTreeVisitor* m_visitor;
+            ArrayStack<const char*> m_chain;
+            bool m_enabled;
+
+        public:
+            NotExposedReason(LssaDomTreeVisitor* visitor)
+                : m_visitor(visitor)
+                , m_chain(visitor->m_compiler->getAllocator(CMK_DebugOnly))
+                , m_enabled(visitor->m_compiler->verbose)
+            {
+            }
+
+            void AddOp(GenTree* node)
+            {
+                if (m_enabled)
+                {
+                    Add("%s [%06u]", GenTree::OpName(node->OperGet()), Compiler::dspTreeID(node));
+                }
+            }
+
+            void AddNonCandidate(GenTreeLclVarCommon* node)
+            {
+                if (m_enabled)
+                {
+                    Add("V%02u [%06u]", node->GetLclNum(), Compiler::dspTreeID(node));
+                }
+            }
+
+            void AddDef(LclVarDsc* varDsc, unsigned ssaNum)
+            {
+                if (m_enabled)
+                {
+                    LclSsaVarDsc* ssaDsc = varDsc->GetPerSsaData(ssaNum);
+                    NotExposedReasonLink* link = m_visitor->m_notExposedReasonMap[ssaDsc];
+                    while (link != nullptr)
+                    {
+                        Add(link->Reason);
+                        link = link->Next;
+                    }
+
+                    unsigned lclNum = m_visitor->m_compiler->lvaGetLclNum(varDsc);
+                    Add("V%02u/%u def", lclNum, ssaNum);
+                }
+            }
+
+            void AddSpill(GenTree* safePoint)
+            {
+                if (m_enabled)
+                {
+                    Add("spilled due to [%06u]", Compiler::dspTreeID(safePoint));
+                }
+            }
+
+            template <typename... TArgs>
+            void Add(const char* linkFmt, TArgs... args)
+            {
+                const char* link = m_visitor->m_compiler->printfAlloc(linkFmt, args...);
+                Add(link);
+            }
+
+            void Add(const char* link)
+            {
+                assert(m_enabled);
+                m_chain.Push(link);
+            }
+
+            void SaveForDef(LclSsaVarDsc* ssaDsc)
+            {
+                CompAllocator alloc = m_visitor->m_compiler->getAllocator(CMK_DebugOnly);
+                NotExposedReasonLink* links = nullptr;
+                NotExposedReasonLink* last = nullptr;
+                for (int i = 0; i < m_chain.Height(); i++)
+                {
+                    NotExposedReasonLink* link = new (alloc) NotExposedReasonLink();
+                    link->Reason = m_chain.Bottom(i);
+                    if (last == nullptr)
+                    {
+                        links = link;
+                    }
+                    else
+                    {
+                        last->Next = link;
+                    }
+                    last = link;
+                }
+                if (links != nullptr)
+                {
+                    m_visitor->m_notExposedReasonMap.Set(ssaDsc, links);
+                }
+            }
+
+            template <typename... TArgs>
+            void Print(const char* prefix, const char* postfix, TArgs... args)
+            {
+                printf(prefix, args...);
+                PrintLinks();
+                printf("%s", postfix);
+            }
+
+        private:
+            void PrintLinks()
+            {
+                for (int i = m_chain.Height() - 1; i >= 0; i--)
+                {
+                    const char* link = m_chain.Bottom(i);
+                    assert(link != nullptr);
+                    printf("%s", link);
+
+                    if (i != 0)
+                    {
+                        printf(" <= ");
+                    }
+                }
+            }
+        };
 #endif // DEBUG
     };
 
