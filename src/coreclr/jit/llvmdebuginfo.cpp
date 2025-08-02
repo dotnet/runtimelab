@@ -7,6 +7,14 @@
 
 #include "llvm.h"
 
+// TODO-LLVM-Upstream: figure out how to fix these warnings in LLVM headers.
+#pragma warning(push)
+#pragma warning(disable : 4242)
+#pragma warning(disable : 4244)
+#pragma warning(disable : 4267)
+#include "llvm/IR/DIBuilder.h"
+#pragma warning(pop)
+
 using namespace llvm::dwarf;
 
 using llvm::DIBuilder;
@@ -690,6 +698,14 @@ void Llvm::assignDebugVariable(unsigned lclNum, Value* value)
                 value, debugVariable, diExpression, debugLocation, &*_builder.GetInsertPoint());
         }
         DBEXEC(CurrentBlock() == nullptr, JITDUMPEXEC(displayValue(debugInst)));
+    }
+}
+
+void Llvm::finalizeDebugInfo()
+{
+    if (m_diFunction != nullptr)
+    {
+        m_diBuilder->finalizeSubprogram(m_diFunction);
     }
 }
 

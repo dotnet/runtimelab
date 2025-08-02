@@ -1,7 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#include "jitpch.h"
 #include "llvm.h"
 
 // TODO-LLVM-Upstream: figure out how to fix these warnings in LLVM headers.
@@ -12,6 +11,7 @@
 #pragma warning (disable : 4267)
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/Signals.h"
+#include "llvm/IR/Verifier.h"
 #pragma warning(pop)
 
 void* g_callbacks[EEAI_Count];

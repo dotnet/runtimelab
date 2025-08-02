@@ -1882,7 +1882,7 @@ private:
         if (JitConfig.JitRunLssaTests())
         {
             CORINFO_LLVM_JIT_TEST_INFO info;
-            m_llvm->GetJitTestInfo(CORINFO_JIT_TEST_LSSA, &info);
+            m_llvm->GetJitTestInfo(CORINFO_LLVM_JIT_TEST_LSSA, &info);
             expectedAllocation = info.ExpectedLssaAllocation;
         }
 

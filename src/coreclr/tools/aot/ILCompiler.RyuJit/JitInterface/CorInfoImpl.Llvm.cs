@@ -335,11 +335,6 @@ namespace Internal.JitInterface
             return isVisible ? 1 : 0;
         }
 
-        public enum CorInfoLlvmJitTestKind
-        {
-            CORINFO_JIT_TEST_LSSA = 1
-        }
-
         public struct CORINFO_LLVM_JIT_TEST_INFO
         {
             public byte* ExpectedLssaAllocation;
@@ -357,7 +352,7 @@ namespace Internal.JitInterface
                 return;
             }
 
-            if ((kind & CorInfoLlvmJitTestKind.CORINFO_JIT_TEST_LSSA) != 0)
+            if ((kind & CorInfoLlvmJitTestKind.CORINFO_LLVM_JIT_TEST_LSSA) != 0)
             {
                 string expectedAllocation = null;
                 if (_this._methodCodeNode.Method is EcmaMethod ecmaMethod &&
@@ -495,11 +490,4 @@ namespace Internal.JitInterface
 
         private static void* GetJitExport(CorJitApiId id) => s_jitExports[(int)id];
     }
-
-    public enum CorInfoLlvmEHModel
-    {
-        Cpp,
-        Wasm,
-        Emulated
-    };
 }
