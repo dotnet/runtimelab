@@ -3,6 +3,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace System.Runtime.JitTesting;
 
@@ -630,9 +631,83 @@ public unsafe class LSSATests
 
     // Roslyn likes to eliminate locals we write. Force it to abstain with this function.
     private static void ForceILLocal(void* x) { }
+}
 
-    class ClassWithField
+public unsafe class FunctionalLSSATests
+{
+    private static bool s_failed;
+    private static GCHandle s_chkObjWeakHandle;
+
+    // These tests, unlike the ones above, test the generated code indirectly, by creating objects and checking they're
+    // kept alive as expected. They are ideally suited for testing correctness, where we need something to be visible
+    // to the GC but do not care particularly about how precisely that is achieved.
+    public static void Run()
     {
-        public int Field;
+        s_chkObjWeakHandle = GCHandle.Alloc(null, GCHandleType.Weak);
+
+        Program.StartTest("FunctionalLSSATests");
+
+        SpilledCandidateSlotInvalidated();
+        if (!FunctionalTestSucceeded(nameof(SpilledCandidateSlotInvalidated)))
+            return;
+
+        Program.PassTest();
     }
+
+    private static bool FunctionalTestSucceeded(string name)
+    {
+        if (s_failed)
+        {
+            Program.FailTest($"  {name} failed");
+            return false;
+        }
+        return true;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static ref int SpilledCandidateSlotInvalidated()
+    {
+        // Here we are testing that 'derivedRef' keeps 'chkObj' alive as expected,
+        // despite the fact 'chkObj' is spilled at the point 'derivedRef' is formed.
+        ClassWithField chkObj = NewCheckedObject();
+        LogicalSafePoint(chkObj, chkObj);
+        LogicalSafePoint(chkObj, chkObj);
+
+        ref int derivedRef = ref chkObj.Field;
+        chkObj = GetNullOpaquely(); // Invalidate the pin.
+        LogicalSafePoint(chkObj, chkObj);
+        LogicalSafePoint(chkObj, chkObj);
+        ValidateCheckedObjectIsAlive();
+
+        return ref derivedRef;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static ClassWithField NewCheckedObject()
+    {
+        ClassWithField obj = new();
+        s_chkObjWeakHandle.Target = obj;
+        return obj;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ValidateCheckedObjectIsAlive()
+    {
+        GC.Collect();
+        if (s_chkObjWeakHandle.Target is null)
+        {
+            s_failed = true;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void LogicalSafePoint(object x = null, object y = null) { }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static ClassWithField GetNullOpaquely() => null;
+}
+
+class ClassWithField
+{
+    public int Field;
 }
