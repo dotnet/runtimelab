@@ -268,21 +268,18 @@ private:
     DICompileUnit* InitializeCompileUnit()
     {
         StringRef path = m_context->Module.getName();
-        StringRef dir;
         StringRef name;
         size_t dirEnd = path.find_last_of("\\/");
         if (dirEnd != StringRef::npos)
         {
-            dir = path.take_front(dirEnd);
             name = path.substr(dirEnd + 1);
         }
         else
         {
-            dir = "";
             name = path;
         }
 
-        DIFile* debugFile = m_diBuilder.createFile(name, dir);
+        DIFile* debugFile = m_diBuilder.createFile(name, "");
         return m_diBuilder.createCompileUnit(DW_LANG_C_plus_plus, debugFile, "ILC", false, "", 1, "",
             DICompileUnit::FullDebug, 0, false);
     }
