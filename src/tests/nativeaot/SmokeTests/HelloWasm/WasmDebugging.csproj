@@ -1,10 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <CLRTestKind>BuildAndRun</CLRTestKind>
     <InvariantGlobalization>true</InvariantGlobalization>
     <RequiresProcessIsolation>true</RequiresProcessIsolation>
     <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
+
+    <PathMap>$(MSBuildThisFileDirectory)WasmDebuggingMappedPath=MAPPED_PATH</PathMap>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetsWasi)' == 'true'">
@@ -31,5 +33,6 @@ CLRTestExecutionArguments=("$WASM_DEBUGGING_LLDB" $(_LldbArgs) -- "$WASM_DEBUGGI
 
   <ItemGroup>
     <Compile Include="WasmDebugging.cs" />
+    <Compile Include="WasmDebuggingMappedPath/WasmDebuggingMappedFile.cs" />
   </ItemGroup>
 </Project>

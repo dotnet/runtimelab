@@ -9,7 +9,7 @@
 using System;
 using System.Diagnostics;
 
-unsafe class Program
+unsafe partial class Program
 {
     public static int Main()
     {
@@ -32,6 +32,8 @@ unsafe class Program
         simpleStruct.TestStructInstanceMethod();
         simpleClass.TestClassInstanceMethod();
         TestVariables(5, simpleStruct, simpleClass);
+        TestSourceFileResolved();
+        TestMappedSourceFileResolved();
 
         // TODO-LLVM-DI: debugging and EH.
         return 100;
@@ -132,6 +134,11 @@ unsafe class Program
         Debugger.Break(); // "p2" and "structLocal" should be equal to "{ 5, 2.0 }".
         classLocal = p3;
         Debugger.Break(); // "p3" and "classLocal" should be equal to "{ 5, 2.0 }".
+    }
+
+    private static void TestSourceFileResolved()
+    {
+        Debugger.Break(); // This source code should be resolved and visible.
     }
 }
 
