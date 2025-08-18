@@ -39,6 +39,8 @@ def run_wasm_debugging_tests(debugger):
     test_struct_instance_method(target, process, thread)
     test_class_instance_method(target, process, thread)
     test_variables(target, process, thread);
+    test_source_file_resolved(target, process, thread)
+    test_mapped_source_file_resolved(target, process, thread)
 
     if all_tests_passed:
         print('==== All WASM debugging tests passed ====')
@@ -184,6 +186,25 @@ def test_values_display(target, process, thread, pyname, expected_states, use_ge
                 fail_test(f'unexpected "{name}": "{actual_value_as_string}" (expected "{value}")')
                 return
     pass_test()
+
+def test_source_file_resolved(target, process, thread):
+    start_test('test_source_file_resolved')
+    process.Continue()
+    source_file = thread.GetSelectedFrame().line_entry.file;
+    print(f'File under test: "{source_file}"')
+    end_test(source_file.exists, f'"{source_file}" not found')
+
+def test_mapped_source_file_resolved(target, process, thread):
+    start_test('test_mapped_source_file_resolved')
+    path = os.path.abspath(os.path.dirname(__file__))
+    path = os.path.join(path, "WasmDebuggingMappedPath")
+    print(f'Mapping MAPPED_PATH to "{path}"')
+    target.GetDebugger().HandleCommand(f'settings set target.source-map MAPPED_PATH "{path}"')
+    process.Continue()
+
+    source_file = thread.GetSelectedFrame().line_entry.file;
+    print(f'File under test: "{source_file}"')
+    end_test(source_file.exists, f'"{source_file}" not found')
 
 all_tests_passed = True
 current_test_name = None
