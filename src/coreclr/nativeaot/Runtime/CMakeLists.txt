@@ -137,10 +137,6 @@ else()
 
   include(${GC_DIR}/unix/configure.cmake)
 
-  if(CLR_CMAKE_TARGET_ARCH_WASM)
-    include_directories($ENV{EMSCRIPTEN/system/lib/libcxxabi/include})
-  endif()
-
   # Disable building _Unwind_XXX style APIs of libunwind, since we don't use them.
   add_definitions(-D_LIBUNWIND_DISABLE_ZERO_COST_APIS=1)
 
