@@ -184,6 +184,8 @@ static uint8_t* g_helperPage = 0;
 // Mutex to make the FlushProcessWriteBuffersMutex thread safe
 static pthread_mutex_t g_flushProcessWriteBuffersMutex;
 
+uint64_t GetTotalPhysicalMemory_Wasm();
+
 size_t GetRestrictedPhysicalMemoryLimit();
 bool GetPhysicalMemoryUsed(size_t* val);
 
@@ -329,7 +331,9 @@ bool GCToOSInterface::Initialize()
 #endif
 
     // Get the physical memory size
-#if HAVE_SYSCONF && HAVE__SC_PHYS_PAGES
+#ifdef TARGET_WASM
+    g_totalPhysicalMemSize = GetTotalPhysicalMemory_Wasm();
+#elif HAVE_SYSCONF && HAVE__SC_PHYS_PAGES
     long pages = sysconf(_SC_PHYS_PAGES);
     if (pages == -1)
     {
@@ -1264,7 +1268,9 @@ uint64_t GetAvailablePhysicalMemory()
     uint64_t available = 0;
 
     // Get the physical memory available.
-#if defined(__APPLE__)
+#if defined(TARGET_WASM)
+    abort(); // Unreachable.
+#elif defined(__APPLE__)
     uint32_t mem_free = 0;
     size_t mem_free_length = sizeof(uint32_t);
     assert(g_kern_memorystatus_level_mib != NULL);
@@ -1286,8 +1292,6 @@ uint64_t GetAvailablePhysicalMemory()
     sysctlbyname("vm.stats.vm.v_free_count", &free_count, &sz, NULL, 0);
 
     available = (inactive_count + laundry_count + free_count) * sysconf(_SC_PAGESIZE);
-#elif defined(TARGET_WASM)
-    available = sysconf(SYSCONF_PAGES) * sysconf(_SC_PAGE_SIZE);
 #elif defined(__HAIKU__)
     system_info info;
     if (get_system_info(&info) == B_OK)

@@ -4,6 +4,10 @@
 #include "common.h"
 #include "gcenv.h"
 
+#ifdef TARGET_BROWSER
+#include <emscripten/heap.h>
+#endif
+
 // Flush write buffers of processors that are executing threads of the current process - a NOP for Wasm
 void GCToOSInterface::FlushProcessWriteBuffers()
 {
@@ -119,7 +123,7 @@ bool GCToOSInterface::VirtualReset(void* address, size_t size, bool unlock)
 }
 
 //
-// CPU and memory limits - not avaliable on WASM (yet).
+// CPU and memory limits.
 //
 void InitializeCGroup()
 {
@@ -129,12 +133,31 @@ void CleanupCGroup()
 {
 }
 
+uint64_t GetTotalPhysicalMemory_Wasm()
+{
+#ifdef TARGET_BROWSER
+    // Note that Emscripten takes care not to return a value larger than max<size_t> here.
+    return emscripten_get_heap_max();
+#else // TARGET_WASI
+    // WASI doesn't have any API that could return the maximum memory size.
+    // The best we can do here is use the value we set as default --maximum-memory.
+    return 2 * 1024 * 1024 * 1024ULL; // 2GB.
+#endif // TARGET_WASI
+}
+
 size_t GetRestrictedPhysicalMemoryLimit()
 {
-    return 0; // 'Unlimited'.
+    // We must return a valid value here since you can't "overcommit" memory in WASM.
+    return GetTotalPhysicalMemory_Wasm();
 }
 
 bool GetPhysicalMemoryUsed(size_t* val)
 {
-    return false; // 'Unknown'.
+    *val = __builtin_wasm_memory_size(0) * OS_PAGE_SIZE;
+    if (*val == 0)
+    {
+        // This overflow can happen when all 4GB of memory are in use.
+        *val = GetTotalPhysicalMemory_Wasm();
+    }
+    return true;
 }
