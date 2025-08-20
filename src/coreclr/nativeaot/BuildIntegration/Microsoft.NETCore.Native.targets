@@ -620,7 +620,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <ItemGroup Condition="'$(_targetOS)' == 'wasi'" >
       <CustomLinkerArg Include="@(_CustomLinkerArgExport->'-Wl,--export=%(Identity)')" />
-      <CustomLinkerArg Include="-lstdc++;-lwasi-emulated-process-clocks;-lwasi-emulated-signal;-lwasi-emulated-mman;-lwasi-emulated-getpid" />
+      <CustomLinkerArg Include="-lstdc++;-lwasi-emulated-process-clocks;-lwasi-emulated-signal;-lwasi-emulated-mman;-lwasi-emulated-getpid;-lwasi-emulated-pthread" />
       <CustomLinkerArg Include="-Wl,--max-memory=2147483648" />
       <CustomLinkerArg Include="-Wl,--global-base=$(IlcWasmGlobalBase)" />
       <CustomLinkerArg Include="-Wl,-z,stack-size=$(IlcWasmStackSize)" />

@@ -142,13 +142,6 @@ elseif (CLR_CMAKE_HOST_UNIX)
   # Use uppercase CMAKE_BUILD_TYPE for the string comparisons below
   string(TOUPPER ${CMAKE_BUILD_TYPE} UPPERCASE_CMAKE_BUILD_TYPE)
 
-  if(CLR_CMAKE_HOST_BROWSER OR CLR_CMAKE_HOST_WASI)
-    # The emscripten build has additional warnings so -Werror breaks
-    add_compile_options(-Wno-unused-parameter)
-    add_compile_options(-Wno-alloca)
-    add_compile_options(-Wno-implicit-int-float-conversion)
-  endif()
-
   if (CMAKE_USE_PTHREADS AND CLR_CMAKE_HOST_BROWSER)
     add_compile_options(-pthread)
   endif(CMAKE_USE_PTHREADS AND CLR_CMAKE_HOST_BROWSER)
@@ -523,7 +516,7 @@ endif ()
 #--------------------------------------
 # Compile Options
 #--------------------------------------
-if (CLR_CMAKE_HOST_UNIX)
+if (CLR_CMAKE_HOST_UNIX OR CLR_CMAKE_HOST_WASI)
   # Disable frame pointer optimizations so profilers can get better call stacks
   add_compile_options(-fno-omit-frame-pointer)
 
@@ -701,16 +694,7 @@ if (CLR_CMAKE_HOST_UNIX)
     endif()
   endif(CLR_CMAKE_HOST_MACCATALYST)
 
-endif(CLR_CMAKE_HOST_UNIX)
-
-if(CLR_CMAKE_HOST_WASI)
-  # TODO-LLVM: deduplicate with the suppressions above (WASI is not "Unix").
-  add_compile_options(-Wno-unused-variable)
-  add_compile_options(-Wno-unused-value)
-  add_compile_options(-Wno-unused-function)
-  add_compile_options(-Wno-tautological-compare)
-  add_compile_options(-Wno-invalid-offsetof)
-endif()
+endif(CLR_CMAKE_HOST_UNIX OR CLR_CMAKE_HOST_WASI)
 
 if(CLR_CMAKE_TARGET_UNIX)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_OS>>>:TARGET_UNIX>)
@@ -751,12 +735,7 @@ if(CLR_CMAKE_TARGET_UNIX)
   endif()
 elseif(CLR_CMAKE_TARGET_WASI)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_OS>>>:TARGET_WASI>)
-  if (CLR_CMAKE_TARGET_OS STREQUAL wasi)
-    add_definitions(-D_WASI_EMULATED_PROCESS_CLOCKS -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_GETPID -D_GNU_SOURCE)
-    # no-unsafe-buffer-usage for pal_random.c
-    # no-unused-macros for _version.c
-    add_compile_options(-Wno-deprecated-declarations -Wno-unsafe-buffer-usage -Wno-unused-macros)
-  endif ()
+  add_compile_definitions(_WASI_EMULATED_PROCESS_CLOCKS _WASI_EMULATED_SIGNAL _WASI_EMULATED_GETPID _GNU_SOURCE)
 else(CLR_CMAKE_TARGET_UNIX)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_OS>>>:TARGET_WINDOWS>)
 endif(CLR_CMAKE_TARGET_UNIX)

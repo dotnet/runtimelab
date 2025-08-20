@@ -1,5 +1,10 @@
 include(FindPython)
 
+# Workaround from https://github.com/dotnet/runtime/pull/117513
+if (NOT "$ENV{EMSDK_PYTHON}" STREQUAL "")
+  set(Python_EXECUTABLE "$ENV{EMSDK_PYTHON}")
+endif()
+
 set(ETW_PROVIDER_SCRIPT ${CLR_DIR}/scripts/genEtwProvider.py)
 
 set (ETW_PROVIDER_OUTPUTS
