@@ -377,7 +377,11 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.NoInlining)] // Ensures that the RhGetCurrentThreadStackTrace frame is always present
         private static unsafe int RhGetCurrentThreadStackTrace(IntPtr[] outputBuffer)
         {
-            Debug.Assert(RuntimeAugments.PreciseVirtualUnwind);
+            if (!RuntimeAugments.PreciseVirtualUnwind) // This helps to trim out the code below from !PreciseVirtualUnwind builds.
+            {
+                Debug.Fail("RhGetCurrentThreadStackTrace called with !PreciseVirtualUnwind");
+                return 0;
+            }
 
             int count = 0;
             void* pFrameLimit = PreciseVirtualUnwindFrame.GetLimit();
