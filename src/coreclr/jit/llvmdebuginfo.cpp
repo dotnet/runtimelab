@@ -328,8 +328,7 @@ private:
         // Forward-declare our structure to handle inheritance.
         llvm::TempDIType declType = llvm::TempDIType(
             m_diBuilder.createReplaceableCompositeType(DW_TAG_structure_type, "", nullptr, nullptr, 0));
-        unsigned debugElementsCount = (pInfo->BaseClass != NO_DEBUG_TYPE) + pInfo->InstanceFieldCount;
-        llvm::SmallVector<Metadata*> debugElements(debugElementsCount);
+        llvm::SmallVector<Metadata*, 32> debugElements;
         if (pInfo->BaseClass != NO_DEBUG_TYPE)
         {
             DIType* baseDebugType = GetEmittedType(pInfo->BaseClass);
@@ -355,12 +354,12 @@ private:
 
     DIType* EmitEnumType(CORINFO_LLVM_ENUM_TYPE_DEBUG_INFO* pInfo)
     {
-        llvm::SmallVector<Metadata*, 24> elements(static_cast<size_t>(pInfo->ElementCount));
+        llvm::SmallVector<Metadata*, 32> elements(static_cast<size_t>(pInfo->ElementCount));
         for (size_t i = 0; i < pInfo->ElementCount; i++)
         {
             CORINFO_LLVM_ENUM_ELEMENT_DEBUG_INFO* pElementInfo = &pInfo->Elements[i];
             llvm::DIEnumerator* element = m_diBuilder.createEnumerator(pElementInfo->Name, pElementInfo->Value);
-            elements.push_back(element);
+            elements[i] = element;
         }
 
         DINodeArray elementsArray = m_diBuilder.getOrCreateArray(elements);
