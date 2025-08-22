@@ -56,7 +56,7 @@
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\InternalCalls.cs">
       <Link>Runtime.Base\src\System\Runtime\InternalCalls.cs</Link>
     </Compile>
-    <Compile Include="..\..\Runtime.Base\src\System\Runtime\InternalCalls.Wasm.cs" Condition="'$(WasmAbi)' == 'true'">
+    <Compile Include="..\..\Runtime.Base\src\System\Runtime\InternalCalls.Wasm.cs" Condition="'$(TargetsWasm)' == 'true'">
       <Link>Runtime.Base\src\System\Runtime\InternalCalls.Wasm.cs</Link>
     </Compile>
     <Compile Include="..\..\Runtime.Base\src\System\Runtime\RuntimeExports.cs">
@@ -79,8 +79,8 @@
     </Compile>
   </ItemGroup>
   <ItemGroup Condition="'$(InPlaceRuntime)' == 'true'">
-    <Compile Include="$(IntermediatesDir)\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(WasmAbi)' != 'true'"/>
-    <Compile Include="$(IntermediatesDir.Replace('\ide', ''))\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(WasmAbi)' == 'true'"/> <!-- its never in \ide\ -->
+    <Compile Include="$(IntermediatesDir)\nativeaot\Runtime\Full\AsmOffsets.cs" Condition="'$(TargetsWasm)' != 'true'"/>
+    <Compile Include="$(IntermediatesDir.Replace('\ide', ''))\nativeaot\Runtime\Portable\AsmOffsetsPortable.cs" Condition="'$(TargetsWasm)' == 'true'"/> <!-- its never in \ide\ -->
   </ItemGroup>
   <ItemGroup>
     <Compile Include="$(CompilerCommonPath)\Internal\NativeFormat\NativeFormatReader.Primitives.cs">

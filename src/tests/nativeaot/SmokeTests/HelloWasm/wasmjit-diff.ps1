@@ -7,13 +7,14 @@
 Param(
     [Parameter(Position=0)]$TestProject = "HelloWasm.csproj",
     [ValidateSet("browser","wasi")][string]$OS = "browser",
-    [switch]$Build,
+    [switch][Alias("b")]$Build,
     [switch]$Rebuild,
     [switch]$Analyze,
     [switch]$Summary,
     [switch]$Llvm,
     [ValidateSet("Debug","Checked","Release")][string]$Config = "Release",
     [ValidateSet("Debug","Checked","Release")][string]$IlcConfig = "Release",
+    [string][Alias("bt")]$BaseTag = "",
     [Nullable[bool]]$DebugSymbols = $null,
     [uint]$NumberOfDiffsToShow = 20,
     [string]$PassThrough = ""
@@ -40,6 +41,7 @@ if ($ShowHelp)
     Write-Host "  -Llvm                : Analyze LLVM bitcode output instead of WASM"
     Write-Host "  -Config              : Test configuration (Debug/Release). Default is Release"
     Write-Host "  -IlcConfig           : ILC configuration (Debug/Checked/Release). Default is Release"
+    Write-Host "  -BaseTag             : Suffix to use for the 'base' directory. Default is none"
     Write-Host "  -DebugSymbols        : Whether to build with debug symbols. Default is yes"
     Write-Host "  -NumberOfDiffsToShow : Number of diffs to show. Default is 20"
     Write-Host "  -PassThrough         : Additional command line to pass directly to 'dotnet'"
@@ -82,10 +84,11 @@ $TestProjectDirectory = [IO.Path]::GetDirectoryName($TestProjectPath)
 $RuntimeTestsDirectory = "$RuntimelabDirectory/src/tests"
 $TestProjectDirectoryRelativePath = [System.IO.Path]::GetRelativePath($RuntimeTestsDirectory, $TestProjectDirectory)
 
+$FullBaseTag = $BaseTag ? "base.$BaseTag" : "base"
 $TestProjectNativeObjDirectory = "$RuntimelabDirectory/artifacts/tests/coreclr/obj/$OS.$Arch.$Config/Managed/$TestProjectDirectoryRelativePath/$TestProjectName/native"
-$TestProjectBaseNativeObjDirectory = "$TestProjectNativeObjDirectory.base"
+$TestProjectBaseNativeObjDirectory = "$TestProjectNativeObjDirectory.$FullBaseTag"
 $TestProjectNativeOutputDirectory = "$RuntimelabDirectory/artifacts/tests/coreclr/$OS.$Arch.$Config/$TestProjectDirectoryRelativePath/$TestProjectName/native"
-$TestProjectBaseNativeOutputDirectory = "$TestProjectNativeOutputDirectory.base"
+$TestProjectBaseNativeOutputDirectory = "$TestProjectNativeOutputDirectory.$FullBaseTag"
 $TestProjectWasmOutput = "$TestProjectNativeOutputDirectory/$TestProjectName.wasm"
 $TestProjectBaseWasmOutput = "$TestProjectBaseNativeOutputDirectory/$TestProjectName.wasm"
 
