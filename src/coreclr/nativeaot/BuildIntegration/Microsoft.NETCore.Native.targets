@@ -391,8 +391,7 @@ The .NET Foundation licenses this file to you under the MIT license.
   </Target>
 
   <Target Name="InitializeTheListOfLlvmObjects"
-      AfterTargets="IlcCompile"
-      BeforeTargets="CompileWasmObjects;LinkNativeLlvm">
+          DependsOnTargets="IlcCompile">
     <ReadLinesFromFile File="$(NativeIntermediateOutputPath)$(TargetName).results.txt">
       <Output TaskParameter="Lines" ItemName="_IlcProducedFiles" />
     </ReadLinesFromFile>
@@ -406,28 +405,10 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
   </Target>
 
-  <Target Name="CheckWasmSdks">
-    <!-- $(EMSDK) is typically set by the user and points to a standard emscripten layout. -->
-    <!-- $(EmscriptenSdkToolsPath) comes from upstream mono workload and points to the dotnet/emsdk-style SDK layout. -->
-    <!-- See https://github.com/dotnet/runtime/blob/main/src/mono/browser/build/EmSdkRepo.Defaults.props. -->
-    <Error Text="Emscripten not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Emscripten and ensure the EMSDK environment variable points to the directory containing emsdk.bat"
-           Condition="'$(EMSDK)' == '' and '$(EmscriptenSdkToolsPath)' == '' and '$(_targetOS)' == 'browser'" />
-
-    <!-- Verify the WASI SDK location and version (through indirect means...). -->
-    <Error Text="Wasi SDK not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Wasi SDK and ensure the WASI_SDK_PATH environment variable points to the directory containing share/wasi-sysroot"
-           Condition="'$(_targetOS)' == 'wasi' and '$(WASI_SDK_PATH)' == ''" />
-    <Exec Command="&quot;$(WASI_SDK_PATH)/bin/wasm-component-ld&quot; --version" StandardOutputImportance="Low" ConsoleToMsBuild="true"
-          Condition="'$(_targetOS)' == 'wasi'">
-      <Output TaskParameter="ConsoleOutput" PropertyName="_WasmComponentLdVersion" />
-    </Exec>
-    <Warning Text="The WASI SDK version is too low. Please use WASI SDK 24 or newer."
-             Condition="'$(_targetOS)' == 'wasi' and $([MSBuild]::VersionLessThan($(_WasmComponentLdVersion.Replace('wasm-component-ld ', '')), '0.5.6'))" />
-  </Target>
-
   <Target Name="CompileWasmObjects"
       Inputs="@(LlvmObjects)"
       Outputs="@(LlvmObjects->'%(NativeObject)')"
-      DependsOnTargets="IlcCompile;CheckWasmSdks"
+      DependsOnTargets="InitializeTheListOfLlvmObjects;ValidateEmsdk;ValidateWasiSdk"
       Condition="'$(NativeCodeGen)' == 'llvm'">
 
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
