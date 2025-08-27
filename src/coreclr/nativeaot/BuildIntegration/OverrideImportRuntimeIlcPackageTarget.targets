@@ -1,7 +1,16 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!-- NativeAOT-LLVM: override ImportRuntimeIlcPackageTarget to not depend on the SDK-provided ResolvedILCompilerPack item -->
   <Target Name="ImportRuntimeIlcPackageTarget" Condition="'$(BuildingFrameworkLibrary)' != 'true' and '$(_targetArchitecture)' == 'wasm'" DependsOnTargets="$(ImportRuntimeIlcPackageTargetDependsOn)" BeforeTargets="Publish">
-    <Error Condition="'@(PackageDefinitions)' == ''" Text="The PackageDefinitions ItemGroup is required for target ImportRuntimeIlcPackageTarget" />
+    <Error Condition="'@(PackageDefinitions)' == ''"
+           Text="The PackageDefinitions ItemGroup is required for target ImportRuntimeIlcPackageTarget" />
+
+    <PropertyGroup>
+      <_IlcHostPackageVersion Condition="'%(PackageDefinitions.Name)' == '$(_hostPackageName)'">%(PackageDefinitions.Version)</_IlcHostPackageVersion>
+      <_IlcRuntimePackageVersion Condition="'%(PackageDefinitions.Name)' == '$(_targetPackageName)'">%(PackageDefinitions.Version)</_IlcRuntimePackageVersion>
+    </PropertyGroup>
+
+    <Warning Condition="'$(_IlcHostPackageVersion)' != '$(_IlcRuntimePackageVersion)'"
+             Text="$(_hostPackageName) version ($(_IlcHostPackageVersion)) differs from the Microsoft.DotNet.ILCompiler.LLVM version ($(_IlcRuntimePackageVersion)). This will likely result in build or runtime failures." />
 
     <PropertyGroup>
       <IlcHostPackagePath Condition="'%(PackageDefinitions.Name)' == '$(_hostPackageName)'">%(PackageDefinitions.ResolvedPath)</IlcHostPackagePath>
