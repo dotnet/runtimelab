@@ -21,4 +21,30 @@ The .NET Foundation licenses this file to you under the MIT license.
     <DirectPInvoke Include="libSystem.Globalization.Native" />
     <DirectPInvoke Include="libSystem.Native" />
   </ItemGroup>
+
+  <Target Name="ValidateEmsdk"
+          Condition="'$(_targetOS)' == 'browser'">
+    <!-- $(EMSDK) is typically set by the user and points to a standard emscripten layout. -->
+    <!-- $(EmscriptenSdkToolsPath) comes from upstream mono workload and points to the dotnet/emsdk-style SDK layout. -->
+    <!-- See https://github.com/dotnet/runtime/blob/main/src/mono/browser/build/EmSdkRepo.Defaults.props. -->
+    <Error Text="Emscripten not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Emscripten and ensure the EMSDK environment variable points to the directory containing emsdk.bat"
+           Condition="'$(EMSDK)' == '' and '$(EmscriptenSdkToolsPath)' == ''" />
+  </Target>
+
+  <Target Name="ValidateWasiSdk"
+          Condition="'$(_targetOS)' == 'wasi'">
+    <Error Text="Wasi SDK not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Wasi SDK and ensure the WASI_SDK_PATH environment variable points to the directory containing share/wasi-sysroot"
+           Condition="'$(WASI_SDK_PATH)' == ''" />
+
+    <!-- Verify the SDK version. We only issue a warning since it's **possible** a newer SDK might work. -->
+    <PropertyGroup>
+      <_ExpectedWasiSdkVersion>25.0</_ExpectedWasiSdkVersion>
+      <_ActualWasiSdkVersion>?</_ActualWasiSdkVersion>
+      <_ActualWasiSdkVersion Condition="Exists('$(WASI_SDK_PATH)/VERSION')">$([System.IO.File]::ReadAllText('$(WASI_SDK_PATH)/VERSION').Split()[0])</_ActualWasiSdkVersion>
+    </PropertyGroup>
+
+    <Warning Text="Wasi SDK version $(_ActualWasiSdkVersion) is being used. This differs from the expected $(_ExpectedWasiSdkVersion) and might result in build or runtime failures."
+             Condition="'$(_ExpectedWasiSdkVersion)' != '$(_ActualWasiSdkVersion)'" />
+  </Target>
+
 </Project>
