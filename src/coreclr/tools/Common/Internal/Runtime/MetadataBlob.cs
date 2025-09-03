@@ -43,5 +43,9 @@ namespace Internal.Runtime
         StaticsInfoHashtable                        = 34,
         GenericMethodsHashtable                     = 35,
         ExactMethodInstantiationsHashtable          = 36,
+
+        // Type map blobs:
+        ExternalTypeMap                             = 40,
+        ProxyTypeMap                                = 41,
     }
 }

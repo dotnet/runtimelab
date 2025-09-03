@@ -4,8 +4,12 @@
   <ItemGroup>
     <Project Include="Microsoft.DotNet.ILCompiler.LLVM\Microsoft.DotNet.ILCompiler.LLVM.pkgproj" />
     <ProjectReference Include="@(Project)" />
+<<<<<<< HEAD
     <ProjectReference Include="@(Project)" Condition="'$(WasmEnableThreads)' != 'true'" AdditionalProperties="PackageTargetRuntime=$(OutputRID)" />
     <ProjectReference Include="@(Project)" Condition="'$(WasmEnableThreads)' == 'true'" AdditionalProperties="PackageTargetRuntime=multithread.$(OutputRID)" />
+=======
+    <ProjectReference Include="@(Project)" AdditionalProperties="PackageTargetRuntime=$(TargetRid)" />
+>>>>>>> upstream/main
     <ProjectReference Condition="'$(BuildHostTools)' == 'true'" Include="@(Project)" AdditionalProperties="PackageTargetRuntime=$(NETCoreSdkRuntimeIdentifier);PackHostILCompiler=true" />
   </ItemGroup>
 

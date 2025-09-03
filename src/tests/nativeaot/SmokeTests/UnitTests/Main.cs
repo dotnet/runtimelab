@@ -18,7 +18,11 @@ success &= RunTest(Threading.Run);
 success &= RunTest(Devirtualization.Run);
 #if !CODEGEN_WASM
 success &= RunTest(StackTraces.Run);
+<<<<<<< HEAD
 #endif
+=======
+success &= RunTest(Ordering.Run);
+>>>>>>> upstream/main
 
 return success ? 0 : 1;
 

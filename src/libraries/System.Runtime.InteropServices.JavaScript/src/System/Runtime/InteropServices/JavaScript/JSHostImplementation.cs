@@ -273,7 +273,7 @@ namespace System.Runtime.InteropServices.JavaScript
             }
         }
 
-        public static unsafe Task BindAssemblyExports(string? assemblyName)
+        public static Task BindAssemblyExports(string? assemblyName)
         {
             Interop.Runtime.BindAssemblyExports(Marshal.StringToCoTaskMemUTF8(assemblyName));
             return Task.CompletedTask;
@@ -283,11 +283,14 @@ namespace System.Runtime.InteropServices.JavaScript
         {
             var (assemblyName, nameSpace, shortClassName, methodName) = ParseFQN(fullyQualifiedName);
 
+<<<<<<< HEAD
             var dllName = assemblyName + ".dll";
 
 #if NATIVE_AOT
             IntPtr monoMethod = IntPtr.Zero;
 #else
+=======
+>>>>>>> upstream/main
             IntPtr monoMethod;
             Interop.Runtime.GetAssemblyExport(
                 // FIXME: Pass UTF-16 through directly so C can work with it, doing the conversion
@@ -295,7 +298,7 @@ namespace System.Runtime.InteropServices.JavaScript
                 // I tested removing the UTF8 conversion from this specific call, but other parts
                 //  of startup I can't identify still pull in UTF16->UTF8 conversion, so it's not
                 //  worth it to do that yet.
-                Marshal.StringToCoTaskMemUTF8(dllName),
+                Marshal.StringToCoTaskMemUTF8(assemblyName),
                 Marshal.StringToCoTaskMemUTF8(nameSpace),
                 Marshal.StringToCoTaskMemUTF8(shortClassName),
                 Marshal.StringToCoTaskMemUTF8(methodName),

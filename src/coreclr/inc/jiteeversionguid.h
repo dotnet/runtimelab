@@ -11,7 +11,7 @@
 // the EE changes (by adding or removing methods to any interface shared between them), this GUID should
 // be changed. This is the identifier verified by ICorJitCompiler::getVersionIdentifier().
 //
-// You can use "uuidgen.exe -s" to generate this value.
+// You can use src/coreclr/tools/Common/JitInterface/ThunkGenerator/gen.bat (or .sh on Unix) to update this file.
 //
 // Note that this file is parsed by some tools, namely superpmi.py, so make sure the first line is exactly
 // of the form:
@@ -32,26 +32,16 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 
-#ifndef GUID_DEFINED
-typedef struct _GUID {
-    uint32_t   Data1;    // NOTE: diff from Win32, for LP64
-    uint16_t   Data2;
-    uint16_t   Data3;
-    uint8_t    Data4[ 8 ];
-} GUID;
-typedef const GUID *LPCGUID;
-#define GUID_DEFINED
-#endif // !GUID_DEFINED
+#ifndef JIT_EE_VERSIONING_GUID_H
+#define JIT_EE_VERSIONING_GUID_H
 
-constexpr GUID JITEEVersionIdentifier = { /* a116647a-3f80-4fd6-9c80-95156c7e9923 */
-    0xa116647a,
-    0x3f80,
-    0x4fd6,
-    {0x9c, 0x80, 0x95, 0x15, 0x6c, 0x7e, 0x99, 0x23}
-};
+#include <minipal/guid.h>
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// END JITEEVersionIdentifier
-//
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
+constexpr GUID JITEEVersionIdentifier = { /* 3d2bdd20-eced-4a07-b9fb-227ce7f55fcd */
+    0x3d2bdd20,
+    0xeced,
+    0x4a07,
+    {0xb9, 0xfb, 0x22, 0x7c, 0xe7, 0xf5, 0x5f, 0xcd}
+  };
+
+#endif // JIT_EE_VERSIONING_GUID_H

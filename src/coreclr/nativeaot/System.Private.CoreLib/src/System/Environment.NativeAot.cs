@@ -55,6 +55,7 @@ namespace System
             AppContext.OnProcessExit();
 #endif
         }
+<<<<<<< HEAD
 
         public static int TickCount => (int)TickCount64;
 
@@ -64,5 +65,7 @@ namespace System
             return Array.Empty<string>();
         }
 #endif
+=======
+>>>>>>> upstream/main
     }
 }

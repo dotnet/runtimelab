@@ -5,7 +5,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/configuretools.cmake)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # We need to set this to Release as there's no way to intercept configuration-specific linker flags
@@ -69,6 +69,12 @@ if (MSVC)
 
   add_compile_options($<$<COMPILE_LANGUAGE:CXX>:$<TARGET_PROPERTY:CLR_EH_OPTION>>)
   add_link_options($<$<BOOL:$<TARGET_PROPERTY:CLR_CONTROL_FLOW_GUARD>>:/guard:cf>)
+
+  if (NOT CLR_CMAKE_PGO_INSTRUMENT)
+    # Load all imported DLLs from the System32 directory.
+    # Don't do this when instrumenting for PGO as a local DLL dependency is introduced by the instrumentation
+    add_linker_flag(/DEPENDENTLOADFLAG:0x800)
+  endif()
 
   # Linker flags
   #
@@ -299,6 +305,8 @@ elseif(CLR_CMAKE_HOST_APPLE)
   add_definitions(-D_XOPEN_SOURCE)
   # enable support for Darwin extension APIs, like pthread_getthreadid_np
   add_definitions(-D_DARWIN_C_SOURCE)
+  # enable the non-cancellable versions of APIs with $NOCANCEL variants, like close(2)
+  add_definitions(-D__DARWIN_NON_CANCELABLE=1)
 
   if(CLR_CMAKE_HOST_OSX)
     # the new linker in Xcode 15 (ld_new/ld_prime) deprecated the -bind_at_load flag for macOS which causes a warning
@@ -433,6 +441,8 @@ if (CLR_CMAKE_HOST_UNIX)
     message("Detected Haiku x86_64")
   elseif(CLR_CMAKE_HOST_BROWSER)
     add_definitions(-DHOST_BROWSER)
+  elseif(CLR_CMAKE_HOST_ANDROID)
+    add_definitions(-DHOST_ANDROID)
   endif()
 elseif(CLR_CMAKE_HOST_WASI)
   add_definitions(-DHOST_WASI)
@@ -663,9 +673,21 @@ if (CLR_CMAKE_HOST_UNIX OR CLR_CMAKE_HOST_WASI)
     # a value for mmacosx-version-min (blank CMAKE_OSX_DEPLOYMENT_TARGET gets
     # replaced with a default value, and always gets expanded to an OS version.
     # https://gitlab.kitware.com/cmake/cmake/-/issues/20132
-    # We need to disable the warning that -tagret replaces -mmacosx-version-min
-    set(DISABLE_OVERRIDING_MIN_VERSION_ERROR -Wno-overriding-t-option)
-    add_link_options(-Wno-overriding-t-option)
+    # We need to disable the warning that -target replaces -mmacosx-version-min
+    #
+    # With https://github.com/llvm/llvm-project/commit/1c66d08b0137cef7761b8220d3b7cb7833f57cdb clang renamed the option so we need to check for both
+    check_c_compiler_flag("-Wno-overriding-option" COMPILER_SUPPORTS_W_NO_OVERRIDING_OPTION)
+    if (COMPILER_SUPPORTS_W_NO_OVERRIDING_OPTION)
+      set(DISABLE_OVERRIDING_MIN_VERSION_ERROR -Wno-overriding-option)
+    else()
+      check_c_compiler_flag("-Wno-overriding-t-option" COMPILER_SUPPORTS_W_NO_OVERRIDING_T_OPTION)
+      if (COMPILER_SUPPORTS_W_NO_OVERRIDING_T_OPTION)
+        set(DISABLE_OVERRIDING_MIN_VERSION_ERROR -Wno-overriding-t-option)
+      else()
+        message(FATAL_ERROR "Compiler does not support -Wno-overriding-option or -Wno-overriding-t-option, needed for Mac Catalyst builds.")
+      endif()
+    endif()
+    add_link_options(${DISABLE_OVERRIDING_MIN_VERSION_ERROR})
     if(CLR_CMAKE_HOST_ARCH_ARM64)
       set(CLR_CMAKE_MACCATALYST_COMPILER_TARGET "arm64-apple-ios15.0-macabi")
       add_link_options(-target ${CLR_CMAKE_MACCATALYST_COMPILER_TARGET})

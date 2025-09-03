@@ -66,22 +66,8 @@ namespace System.Reflection.Metadata.Tests
         public void AppendRankOrModifierStringRepresentationAppendsExpectedString(int input, string expected)
         {
             ValueStringBuilder builder = new ValueStringBuilder(initialCapacity: 10);
-            Assert.Equal(expected, TypeNameParserHelpers.GetRankOrModifierStringRepresentation(input, ref builder));
-        }
-
-        [Theory]
-        [InlineData(typeof(List<int>))]
-        [InlineData(typeof(int?))]
-        [InlineData(typeof(List<string>))]
-        [InlineData(typeof(Dictionary<string, DateTime>))]
-        [InlineData(typeof(ValueTuple<bool, short, int, DateTime>))]
-        [InlineData(typeof(ValueTuple<bool, short, int, DateTime, char, ushort, long, sbyte>))]
-        public void GetGenericTypeFullNameReturnsSameStringAsTypeAPI(Type genericType)
-        {
-            TypeName openGenericTypeName = TypeName.Parse(genericType.GetGenericTypeDefinition().FullName.AsSpan());
-            ReadOnlySpan<TypeName> genericArgNames = genericType.GetGenericArguments().Select(arg => TypeName.Parse(arg.AssemblyQualifiedName.AsSpan())).ToArray();
-
-            Assert.Equal(genericType.FullName, TypeNameParserHelpers.GetGenericTypeFullName(openGenericTypeName.FullName.AsSpan(), genericArgNames));
+            TypeNameParserHelpers.AppendRankOrModifierStringRepresentation(input, ref builder);
+            Assert.Equal(expected, builder.ToString());
         }
 
         [Theory]
@@ -116,7 +102,7 @@ namespace System.Reflection.Metadata.Tests
         [InlineData("A+B`1+C1`2+DD2`3+E", true, new int[] { 1, 3, 4, 5 }, 18)]
         [InlineData("Integer`2147483646+NoOverflow`1", true, new int[] { 18 }, 31)]
         [InlineData("Integer`2147483647+Overflow`1", true, new int[] { 18 }, 29)]
-        public void TryGetTypeNameInfoGetsAllTheInfo(string input, bool expectedResult, int[] expectedNestedNameLengths, int expectedTotalLength)
+        public void TryGetTypeNameInfoGetsAllTheInfo(string input, bool expectedResult, int[]? expectedNestedNameLengths, int expectedTotalLength)
         {
             List<int>? nestedNameLengths = null;
             ReadOnlySpan<char> span = input.AsSpan();

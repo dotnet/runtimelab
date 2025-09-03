@@ -75,8 +75,11 @@ namespace Internal.JitInterface
                 // https://github.com/dotnet/runtimelab/issues/1128
                 for (int i = 0; i < _codeRelocs.Count; i++)
                 {
-                    Debug.Assert(_codeRelocs[i].Target.GetType() != typeof(EETypeNode)
-                        || _compilation.NecessaryTypeSymbolIfPossible(((EETypeNode)_codeRelocs[i].Target).Type) == _codeRelocs[i].Target);
+                    if (_codeRelocs[i].Target is EETypeNode eetype)
+                    {
+                        IEETypeNode expectedeetype = _compilation.NecessaryTypeSymbolIfPossible(eetype.Type);
+                        Debug.Assert(expectedeetype == eetype);
+                    }
                 }
 #endif
 
@@ -420,7 +423,7 @@ namespace Internal.JitInterface
                 }
                 else if (staticResolution is DefaultInterfaceMethodResolution.Diamond or DefaultInterfaceMethodResolution.Reabstraction)
                 {
-                    // TODO
+                    // TODO: https://github.com/dotnet/runtime/issues/72589
                     ThrowHelper.ThrowInvalidProgramException();
                 }
             }
@@ -618,10 +621,18 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_DIRECT:
                     id = ReadyToRunHelper.NewArray;
                     break;
+                case CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_PTR:
+                    return _compilation.NodeFactory.ExternFunctionSymbol("RhpNewPtrArrayFast");
                 case CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_ALIGN8:
+<<<<<<< HEAD
                     return _compilation.NodeFactory.ExternFunctionSymbol("RhpNewArrayAlign8");
                 case CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_VC:
                     return _compilation.NodeFactory.ExternFunctionSymbol("RhpNewArray");
+=======
+                    return _compilation.NodeFactory.ExternFunctionSymbol("RhpNewArrayFastAlign8");
+                case CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_VC:
+                    return _compilation.NodeFactory.ExternFunctionSymbol("RhpNewArrayFast");
+>>>>>>> upstream/main
 
                 case CorInfoHelpFunc.CORINFO_HELP_STACK_PROBE:
                     return _compilation.NodeFactory.ExternFunctionSymbol("RhpStackProbe");
@@ -679,9 +690,6 @@ namespace Internal.JitInterface
                     id = ReadyToRunHelper.UMod;
                     break;
 
-                case CorInfoHelpFunc.CORINFO_HELP_DBL2INT:
-                    id = ReadyToRunHelper.Dbl2Int;
-                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_DBL2INT_OVF:
                     id = ReadyToRunHelper.Dbl2IntOvf;
                     break;
@@ -691,9 +699,6 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_DBL2LNG_OVF:
                     id = ReadyToRunHelper.Dbl2LngOvf;
                     break;
-                case CorInfoHelpFunc.CORINFO_HELP_DBL2UINT:
-                    id = ReadyToRunHelper.Dbl2UInt;
-                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_DBL2UINT_OVF:
                     id = ReadyToRunHelper.Dbl2UIntOvf;
                     break;
@@ -702,6 +707,12 @@ namespace Internal.JitInterface
                     break;
                 case CorInfoHelpFunc.CORINFO_HELP_DBL2ULNG_OVF:
                     id = ReadyToRunHelper.Dbl2ULngOvf;
+                    break;
+                case CorInfoHelpFunc.CORINFO_HELP_LNG2FLT:
+                    id = ReadyToRunHelper.Lng2Flt;
+                    break;
+                case CorInfoHelpFunc.CORINFO_HELP_ULNG2FLT:
+                    id = ReadyToRunHelper.ULng2Flt;
                     break;
 
                 case CorInfoHelpFunc.CORINFO_HELP_FLTREM:
@@ -788,6 +799,7 @@ namespace Internal.JitInterface
                     return _compilation.NodeFactory.ExternIndirectFunctionSymbol("__guard_check_icall_fptr");
                 case CorInfoHelpFunc.CORINFO_HELP_DISPATCH_INDIRECT_CALL:
                     return _compilation.NodeFactory.ExternIndirectFunctionSymbol("__guard_dispatch_icall_fptr");
+<<<<<<< HEAD
 
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
                     mangledName = "RhpGetOrInitShadowStackTop";
@@ -813,6 +825,8 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_STRESS_GC:
                     mangledName = "RhpGcStressOnce";
                     break;
+=======
+>>>>>>> upstream/main
 
                 default:
                     throw new NotImplementedException(ftnNum.ToString());
@@ -1189,6 +1203,11 @@ namespace Internal.JitInterface
 
             Debug.Assert(type.IsArray);
 
+            TypeDesc elementType = ((ArrayType)type).ElementType;
+
+            if (elementType.GetElementSize().AsInt == _compilation.TypeSystemContext.Target.PointerSize)
+                return CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_PTR;
+
             if (type.RequiresAlign8())
                 return CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_ALIGN8;
 
@@ -1406,7 +1425,7 @@ namespace Internal.JitInterface
                 ThrowHelper.ThrowBadImageFormatException();
             }
 
-            if (directCall && resolvedConstraint && pResult->exactContextNeedsRuntimeLookup)
+            if (directCall && resolvedConstraint && (pResult->exactContextNeedsRuntimeLookup || forceUseRuntimeLookup))
             {
                 // We want to do a direct call to a shared method on a type. We need to provide
                 // a generic context, but the JitInterface doesn't provide a way for us to do it from here.
@@ -1416,39 +1435,43 @@ namespace Internal.JitInterface
                 pResult->codePointerOrStubLookup.constLookup.accessType = InfoAccessType.IAT_VALUE;
                 pResult->nullInstanceCheck = !targetMethod.Signature.IsStatic;
 
-                // We have the canonical version of the method - find the runtime determined version.
-                // For now simplify it by assuming the resolved method is on the same type as the constraint.
-                Debug.Assert(targetMethod.OwningType.GetTypeDefinition() == constrainedType.GetTypeDefinition());
                 TypeDesc runtimeDeterminedConstrainedType = (TypeDesc)GetRuntimeDeterminedObjectForToken(ref *pConstrainedResolvedToken);
 
+                object targetOfLookup;
+                ReadyToRunHelperId lookupHelper;
                 if (forceUseRuntimeLookup)
                 {
-                    // The below logic would incorrectly resolve the lookup into the first match we found,
-                    // but there was a compile-time ambiguity due to shared code. The correct fix should
-                    // use the ConstrainedMethodUseLookupResult dictionary entry so that the exact
-                    // dispatch can be computed with the help of the generic dictionary.
-                    // We fail the compilation here to avoid bad codegen. This is not actually an invalid program.
-                    // https://github.com/dotnet/runtimelab/issues/1431
-                    ThrowHelper.ThrowInvalidProgramException();
+                    MethodDesc runtimeDeterminedInterfaceMethod = (MethodDesc)GetRuntimeDeterminedObjectForToken(ref pResolvedToken);
+                    targetOfLookup = new ConstrainedCallInfo(runtimeDeterminedConstrainedType, runtimeDeterminedInterfaceMethod);
+                    lookupHelper = ReadyToRunHelperId.ConstrainedDirectCall;
                 }
-
-                MethodDesc targetOfLookup;
-                if (runtimeDeterminedConstrainedType.IsRuntimeDeterminedType)
-                    targetOfLookup = _compilation.TypeSystemContext.GetMethodForRuntimeDeterminedType(targetMethod.GetTypicalMethodDefinition(), (RuntimeDeterminedType)runtimeDeterminedConstrainedType);
-                else if (runtimeDeterminedConstrainedType.HasInstantiation)
-                    targetOfLookup = _compilation.TypeSystemContext.GetMethodForInstantiatedType(targetMethod.GetTypicalMethodDefinition(), (InstantiatedType)runtimeDeterminedConstrainedType);
                 else
-                    targetOfLookup = targetMethod.GetMethodDefinition();
-                if (targetOfLookup.HasInstantiation)
                 {
-                    var methodToGetInstantiation = (MethodDesc)GetRuntimeDeterminedObjectForToken(ref pResolvedToken);
-                    targetOfLookup = targetOfLookup.MakeInstantiatedMethod(methodToGetInstantiation.Instantiation);
+                    // We have the canonical version of the method - find the runtime determined version.
+                    // For now simplify it by assuming the resolved method is on the same type as the constraint.
+                    Debug.Assert(targetMethod.OwningType.GetTypeDefinition() == constrainedType.GetTypeDefinition());
+
+                    MethodDesc lookupMethod;
+                    if (runtimeDeterminedConstrainedType.IsRuntimeDeterminedType)
+                        lookupMethod = _compilation.TypeSystemContext.GetMethodForRuntimeDeterminedType(targetMethod.GetTypicalMethodDefinition(), (RuntimeDeterminedType)runtimeDeterminedConstrainedType);
+                    else if (runtimeDeterminedConstrainedType.HasInstantiation)
+                        lookupMethod = _compilation.TypeSystemContext.GetMethodForInstantiatedType(targetMethod.GetTypicalMethodDefinition(), (InstantiatedType)runtimeDeterminedConstrainedType);
+                    else
+                        lookupMethod = targetMethod.GetMethodDefinition();
+                    if (lookupMethod.HasInstantiation)
+                    {
+                        var methodToGetInstantiation = (MethodDesc)GetRuntimeDeterminedObjectForToken(ref pResolvedToken);
+                        lookupMethod = lookupMethod.MakeInstantiatedMethod(methodToGetInstantiation.Instantiation);
+                    }
+                    Debug.Assert(lookupMethod.GetCanonMethodTarget(CanonicalFormKind.Specific) == targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific));
+
+                    targetOfLookup = lookupMethod;
+                    lookupHelper = ReadyToRunHelperId.MethodEntry;
                 }
-                Debug.Assert(targetOfLookup.GetCanonMethodTarget(CanonicalFormKind.Specific) == targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific));
 
                 ComputeLookup(ref pResolvedToken,
                     targetOfLookup,
-                    ReadyToRunHelperId.MethodEntry,
+                    lookupHelper,
                     HandleToObject(callerHandle),
                     ref pResult->codePointerOrStubLookup);
 
@@ -1802,7 +1825,8 @@ namespace Internal.JitInterface
                 if (pResolvedToken.tokenType == CorInfoTokenKind.CORINFO_TOKENKIND_NewObj
                         || pResolvedToken.tokenType == CorInfoTokenKind.CORINFO_TOKENKIND_Newarr
                         || pResolvedToken.tokenType == CorInfoTokenKind.CORINFO_TOKENKIND_Box
-                        || pResolvedToken.tokenType == CorInfoTokenKind.CORINFO_TOKENKIND_Constrained)
+                        || pResolvedToken.tokenType == CorInfoTokenKind.CORINFO_TOKENKIND_Constrained
+                        || pResolvedToken.tokenType == CorInfoTokenKind.CORINFO_TOKENKIND_Method)
                 {
                     helperId = ReadyToRunHelperId.TypeHandle;
                 }
@@ -1812,7 +1836,26 @@ namespace Internal.JitInterface
                 }
                 else if (pResolvedToken.tokenType == CorInfoTokenKind.CORINFO_TOKENKIND_Ldtoken)
                 {
-                    helperId = _compilation.GetLdTokenHelperForType(td);
+                    if (((TypeDesc)target).IsRuntimeDeterminedSubtype)
+                    {
+                        // If we're in a generic context and the type is canonical, Compilation cannot give
+                        // us a good answer on what handle kind to use because we don't track canonical forms.
+                        // If we already have a fixed generic dictionary layout (a build with a scanner pass),
+                        // ask for NecessaryTypeSymbol - it will get upgraded as needed.
+                        // If we don't have a fixed dictionary layout, ask for a full type symbol because that's
+                        // always correct.
+                        MethodDesc callerContextMethod = HandleToObject(callerHandle);
+                        DictionaryLayoutNode contextLayout = _compilation.NodeFactory.GenericDictionaryLayout(
+                            callerContextMethod.RequiresInstMethodDescArg() ? callerContextMethod : callerContextMethod.OwningType);
+                        if (contextLayout.HasFixedSlots)
+                            helperId = ReadyToRunHelperId.NecessaryTypeHandle;
+                        else
+                            helperId = ReadyToRunHelperId.TypeHandle;
+                    }
+                    else
+                    {
+                        helperId = _compilation.GetLdTokenHelperForType(td);
+                    }
                 }
                 else
                 {
@@ -1901,26 +1944,6 @@ namespace Internal.JitInterface
         private uint getMethodAttribs(CORINFO_METHOD_STRUCT_* ftn)
         {
             return getMethodAttribsInternal(HandleToObject(ftn));
-        }
-
-        private void* getMethodSync(CORINFO_METHOD_STRUCT_* ftn, ref void* ppIndirection)
-        {
-            MethodDesc method = HandleToObject(ftn);
-            TypeDesc type = method.OwningType;
-            ISymbolNode methodSync = _compilation.NecessaryTypeSymbolIfPossible(type);
-
-            void* result = (void*)ObjectToHandle(methodSync);
-
-            if (methodSync.RepresentsIndirectionCell)
-            {
-                ppIndirection = result;
-                return null;
-            }
-            else
-            {
-                ppIndirection = null;
-                return result;
-            }
         }
 
         private unsafe HRESULT allocPgoInstrumentationBySchema(CORINFO_METHOD_STRUCT_* ftnHnd, PgoInstrumentationSchema* pSchema, uint countSchemaItems, byte** pInstrumentationData)
@@ -2053,9 +2076,6 @@ namespace Internal.JitInterface
                 return size;
             }
         }
-
-        private bool canGetCookieForPInvokeCalliSig(CORINFO_SIG_INFO* szMetaSig)
-        { throw new NotImplementedException("canGetCookieForPInvokeCalliSig"); }
 
 #pragma warning disable CA1822 // Mark members as static
         private void classMustBeLoadedBeforeCodeIsRun(CORINFO_CLASS_STRUCT_* cls)
@@ -2284,6 +2304,10 @@ namespace Internal.JitInterface
 
             // We don't track unconstructable types very well and they are rare anyway
             if (!ConstructedEETypeNode.CreationAllowed(type))
+                return false;
+
+            // We don't track information that would allow us to deal with array variance
+            if (_compilation.TypeSystemContext.IsArrayVariantCastable(type))
                 return false;
 
             TypeDesc canonType = type.ConvertToCanonForm(CanonicalFormKind.Specific);

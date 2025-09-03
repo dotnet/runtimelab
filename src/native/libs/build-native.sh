@@ -21,6 +21,7 @@ handle_arguments() {
             __ShiftArgs=1
             ;;
 
+<<<<<<< HEAD
         tzddir|-tzddir)
             __tzdDir="$2"
             __ShiftArgs=1
@@ -30,6 +31,8 @@ handle_arguments() {
             __usePThreads=1
             ;;
 
+=======
+>>>>>>> upstream/main
         staticliblink|-staticliblink)
             __StaticLibLink=1
             ;;
@@ -53,12 +56,16 @@ __StaticLibLink=0
 __UnprocessedBuildArgs=
 __VerboseBuild=false
 __icuDir=""
+<<<<<<< HEAD
 __tzdDir=""
 __usePThreads=0
+=======
+>>>>>>> upstream/main
 
 source "$__RepoRootDir"/eng/native/build-commons.sh
 
 # Set cross build
+<<<<<<< HEAD
 EMSDK_PATH=$EMSDK
 if [[ "$__TargetOS" == browser ]]; then
     if [[ -z "$EMSDK_PATH" ]]; then
@@ -85,9 +92,15 @@ elif [[ "$__TargetOS" == wasi ]]; then
     export TARGET_BUILD_ARCH=wasm
     __CMakeArgs="-DCLR_CMAKE_TARGET_OS=wasi -DCLR_CMAKE_TARGET_ARCH=wasm -DWASI_SDK_PREFIX=$WASI_SDK_PATH -DCMAKE_TOOLCHAIN_FILE=${WASI_SDK_PATH}/share/cmake/wasi-sdk-p2.cmake $__CMakeArgs"
 elif [[ "$__TargetOS" == ios || "$__TargetOS" == iossimulator ]]; then
+=======
+if [[ "$__TargetOS" == browser || "$__TargetOS" == wasi || "$__TargetOS" == ios || "$__TargetOS" == iossimulator ]]; then
+>>>>>>> upstream/main
     # nothing to do here
     true
 elif [[ "$__TargetOS" == tvos || "$__TargetOS" == tvossimulator ]]; then
+    # nothing to do here
+    true
+elif [[ "$__TargetOS" == osx || "$__TargetOS" == maccatalyst ]]; then
     # nothing to do here
     true
 elif [[ "$__TargetOS" == android && -z "$ROOTFS_DIR" ]]; then
@@ -162,10 +175,13 @@ fi
 if [[ -n "$__icuDir" ]]; then
     __CMakeArgs="-DCMAKE_ICU_DIR=\"$__icuDir\" $__CMakeArgs"
 fi
+<<<<<<< HEAD
 if [[ -n "$__tzdDir" ]]; then
     __CMakeArgs="-DCMAKE_TZD_DIR=\"$__tzdDir\" $__CMakeArgs"
 fi
 __CMakeArgs="-DCMAKE_USE_PTHREADS=$__usePThreads $__CMakeArgs"
+=======
+>>>>>>> upstream/main
 
 # Set the remaining variables based upon the determined build configuration
 __outConfig="${__outConfig:-"$__TargetOS-$__TargetArch-$__BuildType"}"

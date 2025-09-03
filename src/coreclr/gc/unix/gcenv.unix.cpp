@@ -23,12 +23,15 @@
 #include "volatile.h"
 #include "gcconfig.h"
 #include "numasupport.h"
+#include <minipal/memorybarrierprocesswide.h>
 #include <minipal/thread.h>
+#include <minipal/time.h>
 
 #if HAVE_SWAPCTL
 #include <sys/swap.h>
 #endif
 
+<<<<<<< HEAD
 #ifdef __linux__
 #include <linux/membarrier.h>
 #include <sys/syscall.h>
@@ -41,6 +44,8 @@
 #endif // TARGET_WASM
 #endif
 
+=======
+>>>>>>> upstream/main
 #include <sys/resource.h>
 
 #undef min
@@ -87,21 +92,6 @@
 
 #include <mach/task.h>
 #include <mach/vm_map.h>
-extern "C"
-{
-#  include <mach/thread_state.h>
-}
-
-#define CHECK_MACH(_msg, machret) do {                                      \
-        if (machret != KERN_SUCCESS)                                        \
-        {                                                                   \
-            char _szError[1024];                                            \
-            snprintf(_szError, ARRAY_SIZE(_szError), "%s: %u: %s", __FUNCTION__, __LINE__, _msg);  \
-            mach_error(_szError, machret);                                  \
-            abort();                                                        \
-        }                                                                   \
-    } while (false)
-
 #endif // __APPLE__
 
 #ifdef __HAIKU__
@@ -142,48 +132,6 @@ typedef cpuset_t cpu_set_t;
 // The cached total number of CPUs that can be used in the OS.
 static uint32_t g_totalCpuCount = 0;
 
-bool CanFlushUsingMembarrier()
-{
-#if defined(__linux__) || HAVE_SYS_MEMBARRIER_H
-
-#ifdef TARGET_ANDROID
-    // Avoid calling membarrier on older Android versions where membarrier
-    // may be barred by seccomp causing the process to be killed.
-    int apiLevel = android_get_device_api_level();
-    if (apiLevel < __ANDROID_API_Q__)
-    {
-        return false;
-    }
-#endif
-
-    // Starting with Linux kernel 4.14, process memory barriers can be generated
-    // using MEMBARRIER_CMD_PRIVATE_EXPEDITED.
-
-    int mask = membarrier(MEMBARRIER_CMD_QUERY, 0, 0);
-
-    if (mask >= 0 &&
-        mask & MEMBARRIER_CMD_PRIVATE_EXPEDITED &&
-        // Register intent to use the private expedited command.
-        membarrier(MEMBARRIER_CMD_REGISTER_PRIVATE_EXPEDITED, 0, 0) == 0)
-    {
-        return true;
-    }
-#endif
-
-    return false;
-}
-
-//
-// Tracks if the OS supports FlushProcessWriteBuffers using membarrier
-//
-static int s_flushUsingMemBarrier = 0;
-
-// Helper memory page used by the FlushProcessWriteBuffers
-static uint8_t* g_helperPage = 0;
-
-// Mutex to make the FlushProcessWriteBuffersMutex thread safe
-static pthread_mutex_t g_flushProcessWriteBuffersMutex;
-
 size_t GetRestrictedPhysicalMemoryLimit();
 bool GetPhysicalMemoryUsed(size_t* val);
 
@@ -221,6 +169,7 @@ bool GCToOSInterface::Initialize()
 
     g_totalCpuCount = cpuCount;
 
+<<<<<<< HEAD
     //
     // support for FlusProcessWriteBuffers
     //
@@ -229,9 +178,13 @@ bool GCToOSInterface::Initialize()
     assert(s_flushUsingMemBarrier == 0);
 
     if (CanFlushUsingMembarrier())
+=======
+    if (!minipal_initialize_memory_barrier_process_wide())
+>>>>>>> upstream/main
     {
-        s_flushUsingMemBarrier = TRUE;
+        return false;
     }
+<<<<<<< HEAD
 #ifndef TARGET_APPLE
     else
     {
@@ -266,6 +219,8 @@ bool GCToOSInterface::Initialize()
     }
 #endif // !TARGET_APPLE
 #endif // !TARGET_WASM
+=======
+>>>>>>> upstream/main
 
     InitializeCGroup();
 
@@ -359,6 +314,7 @@ bool GCToOSInterface::Initialize()
 // Shutdown the interface implementation
 void GCToOSInterface::Shutdown()
 {
+<<<<<<< HEAD
 #ifndef TARGET_WASM
     int ret = munlock(g_helperPage, OS_PAGE_SIZE);
     assert(ret == 0);
@@ -368,6 +324,8 @@ void GCToOSInterface::Shutdown()
     munmap(g_helperPage, OS_PAGE_SIZE);
 #endif // !TARGET_WASM
 
+=======
+>>>>>>> upstream/main
     CleanupCGroup();
 }
 
@@ -417,6 +375,7 @@ bool GCToOSInterface::CanGetCurrentProcessorNumber()
     return HAVE_SCHED_GETCPU;
 }
 
+<<<<<<< HEAD
 #ifndef TARGET_WASM
 // Flush write buffers of processors that are executing threads of the current process
 void GCToOSInterface::FlushProcessWriteBuffers()
@@ -502,6 +461,8 @@ void GCToOSInterface::FlushProcessWriteBuffers()
 }
 #endif // !TARGET_WASM
 
+=======
+>>>>>>> upstream/main
 // Break into a debugger. Uses a compiler intrinsic if one is available,
 // otherwise raises a SIGTRAP.
 void GCToOSInterface::DebugBreak()
@@ -587,7 +548,7 @@ static void* VirtualReserveInner(size_t size, size_t alignment, uint32_t flags, 
         }
 
         pRetVal = pAlignedRetVal;
-#ifdef MADV_DONTDUMP
+#if defined(MADV_DONTDUMP) && !defined(TARGET_WASM)
         // Do not include reserved uncommitted memory in coredump.
         if (!committing)
         {
@@ -635,9 +596,13 @@ bool GCToOSInterface::VirtualRelease(void* address, size_t size)
 //  true if it has succeeded, false if it has failed
 static bool VirtualCommitInner(void* address, size_t size, uint16_t node, bool newMemory)
 {
+#ifndef TARGET_WASM
     bool success = mprotect(address, size, PROT_WRITE | PROT_READ) == 0;
+#else
+    bool success = true;
+#endif // !TARGET_WASM
 
-#ifdef MADV_DODUMP
+#if defined(MADV_DONTDUMP) && !defined(TARGET_WASM)
     if (success && !newMemory)
     {
         // Include committed memory in coredump. New memory is included by default.
@@ -916,7 +881,7 @@ static void GetLogicalProcessorCacheSizeFromSysFs(size_t* cacheLevel, size_t* ca
             }
         }
     }
-#endif 
+#endif
 }
 
 static void GetLogicalProcessorCacheSizeFromHeuristic(size_t* cacheLevel, size_t* cacheSize)
@@ -964,7 +929,7 @@ static size_t GetLogicalProcessorCacheSizeFromOS()
         GetLogicalProcessorCacheSizeFromSysConf(&cacheLevel, &cacheSize);
     }
 
-    if (cacheSize == 0) 
+    if (cacheSize == 0)
     {
         GetLogicalProcessorCacheSizeFromSysFs(&cacheLevel, &cacheSize);
         if (cacheSize == 0)
@@ -1468,22 +1433,7 @@ void GCToOSInterface::GetMemoryStatus(uint64_t restricted_limit, uint32_t* memor
 //  The counter value
 int64_t GCToOSInterface::QueryPerformanceCounter()
 {
-#if HAVE_CLOCK_GETTIME_NSEC_NP
-    return (int64_t)clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
-#elif HAVE_CLOCK_MONOTONIC
-    struct timespec ts;
-    int result = clock_gettime(CLOCK_MONOTONIC, &ts);
-
-    if (result != 0)
-    {
-        assert(!"clock_gettime(CLOCK_MONOTONIC) failed");
-        __UNREACHABLE();
-    }
-
-    return ((int64_t)(ts.tv_sec) * (int64_t)(tccSecondsToNanoSeconds)) + (int64_t)(ts.tv_nsec);
-#else
-#error " clock_gettime(CLOCK_MONOTONIC) or clock_gettime_nsec_np() must be supported."
-#endif
+    return minipal_hires_ticks();
 }
 
 // Get a frequency of the high precision performance counter
@@ -1492,7 +1442,7 @@ int64_t GCToOSInterface::QueryPerformanceCounter()
 int64_t GCToOSInterface::QueryPerformanceFrequency()
 {
     // The counter frequency of gettimeofday is in microseconds.
-    return tccSecondsToNanoSeconds;
+    return minipal_hires_tick_frequency();
 }
 
 // Get a time stamp with a low precision
@@ -1500,42 +1450,7 @@ int64_t GCToOSInterface::QueryPerformanceFrequency()
 //  Time stamp in milliseconds
 uint64_t GCToOSInterface::GetLowPrecisionTimeStamp()
 {
-    uint64_t retval = 0;
-
-#if HAVE_CLOCK_GETTIME_NSEC_NP
-    retval = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) / tccMilliSecondsToNanoSeconds;
-#elif HAVE_CLOCK_MONOTONIC
-    struct timespec ts;
-
-#if HAVE_CLOCK_MONOTONIC_COARSE
-    clockid_t clockType = CLOCK_MONOTONIC_COARSE; // good enough resolution, fastest speed
-#else
-    clockid_t clockType = CLOCK_MONOTONIC;
-#endif
-
-    if (clock_gettime(clockType, &ts) != 0)
-    {
-#if HAVE_CLOCK_MONOTONIC_COARSE
-        assert(!"clock_gettime(HAVE_CLOCK_MONOTONIC_COARSE) failed\n");
-#else
-        assert(!"clock_gettime(CLOCK_MONOTONIC) failed\n");
-#endif
-    }
-
-    retval = (ts.tv_sec * tccSecondsToMilliSeconds) + (ts.tv_nsec / tccMilliSecondsToNanoSeconds);
-#else
-    struct timeval tv;
-    if (gettimeofday(&tv, NULL) == 0)
-    {
-        retval = (tv.tv_sec * tccSecondsToMilliSeconds) + (tv.tv_usec / tccMilliSecondsToMicroSeconds);
-    }
-    else
-    {
-        assert(!"gettimeofday() failed\n");
-    }
-#endif
-
-    return retval;
+    return (uint64_t)minipal_lowres_ticks();
 }
 
 // Gets the total number of processors on the machine, not taking
@@ -1610,44 +1525,4 @@ bool GCToOSInterface::GetProcessorForHeap(uint16_t heap_number, uint16_t* proc_n
 bool GCToOSInterface::ParseGCHeapAffinitizeRangesEntry(const char** config_string, size_t* start_index, size_t* end_index)
 {
     return ParseIndexOrRange(config_string, start_index, end_index);
-}
-
-// Initialize the critical section
-bool CLRCriticalSection::Initialize()
-{
-    pthread_mutexattr_t mutexAttributes;
-    int st = pthread_mutexattr_init(&mutexAttributes);
-    if (st != 0)
-    {
-        return false;
-    }
-
-    st = pthread_mutexattr_settype(&mutexAttributes, PTHREAD_MUTEX_RECURSIVE);
-    if (st == 0)
-    {
-        st = pthread_mutex_init(&m_cs.mutex, &mutexAttributes);
-    }
-
-    pthread_mutexattr_destroy(&mutexAttributes);
-
-    return (st == 0);
-}
-
-// Destroy the critical section
-void CLRCriticalSection::Destroy()
-{
-    int st = pthread_mutex_destroy(&m_cs.mutex);
-    assert(st == 0);
-}
-
-// Enter the critical section. Blocks until the section can be entered.
-void CLRCriticalSection::Enter()
-{
-    pthread_mutex_lock(&m_cs.mutex);
-}
-
-// Leave the critical section
-void CLRCriticalSection::Leave()
-{
-    pthread_mutex_unlock(&m_cs.mutex);
 }
