@@ -27,7 +27,7 @@ if exist "%__WasmBinaryPathWithoutExtension%.js" (
 
 if "%__WasmBinaryExtension%" == ".wasm" (
   :: Assume wasmtime is in PATH.
-  set WASM_HOST_EXECUTABLE=wasmtime run -S http
+  set WASM_HOST_EXECUTABLE=wasmtime run -S http --dir=.
 ) else (
   if "%NODEJS_EXECUTABLE%" == "" (
     :: When running tests locally, assume NodeJS is in PATH.

@@ -590,8 +590,7 @@
     <SmokeTestProject Remove="@(SmokeTestProject)" />
     <SmokeTestProject Include="$(MSBuildThisFileDirectory)System.Collections.Specialized\tests\System.Collections.Specialized.Tests.csproj" />
     <SmokeTestProject Include="$(MSBuildThisFileDirectory)System.Diagnostics.StackTrace\tests\System.Diagnostics.StackTrace.Tests.csproj" />
-    <!-- S.R.Tests aren't yet passing upstream on WASI. -->
-    <SmokeTestProject Include="$(MSBuildThisFileDirectory)System.Runtime\tests\System.Runtime.Tests\System.Runtime.Tests.csproj" Condition="'$(TargetsBrowser)' == 'true'" />
+    <SmokeTestProject Include="$(MSBuildThisFileDirectory)System.Runtime\tests\System.Runtime.Tests\System.Runtime.Tests.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetOS)' == 'browser' and '$(WasmEnableThreads)' == 'true'">
