@@ -119,7 +119,7 @@ extends:
             buildConfig: release
             platforms:
             - linux_x64
-            - osx_x64
+            # - osx_x64 https://github.com/dotnet/runtimelab/issues/3168
             - windows_x64
             - browser_wasm_win
             - wasi_wasm_win

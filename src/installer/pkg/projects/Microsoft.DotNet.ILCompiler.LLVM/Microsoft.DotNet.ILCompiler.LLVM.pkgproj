@@ -2,56 +2,48 @@
 
   <PropertyGroup>
     <GeneratePackage>true</GeneratePackage>
-    <IncludeSymbolsInPackage>true</IncludeSymbolsInPackage>
     <PackageDescription>Provides a native AOT compiler and runtime for .NET</PackageDescription>
-  </PropertyGroup>
 
-  <PropertyGroup>
-    <!-- For now, send symbols package into a dummy directory to avoid conflicts with dotnet/runtime and
-         to avoid issues with objwriter not having the rigth ELF version resource -->
-    <SymbolPackageOutputPath>$([MSBuild]::NormalizeDirectory('$(ArtifactsPackagesDir)', 'Ignored'))</SymbolPackageOutputPath>
+    <BuildingIlcHostPackage Condition="'$(TargetsWasm)' != 'true'">true</BuildingIlcHostPackage>
   </PropertyGroup>
 
   <Target Name="GetIlcCompilerFiles"
           DependsOnTargets="ResolveLibrariesFromLocalBuild"
           BeforeTargets="GetPackageFiles">
 
-    <ItemGroup Condition="'$(PackageTargetRuntime)' != ''">
-      <File Include="@(LibrariesRuntimeFiles)">
-        <TargetPath>framework/%(LibrariesRuntimeFiles.NativeSubDirectory)</TargetPath>
-      </File>
-      <File Include="$(CoreCLRILCompilerDir)*">
-        <TargetPath>tools</TargetPath>
-      </File>
-      <File Include="$(CoreCLRAotSdkDir)*">
-        <TargetPath>sdk</TargetPath>
-      </File>
+    <ItemGroup Condition="'$(PackageTargetRuntime)' == ''">
+      <File Include="$(CoreCLRBuildIntegrationDir)*" TargetPath="build" />
+      <File Include="$(CoreCLRILCompilerDir)netstandard\*" TargetPath="tools/netstandard" />
+
+      <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
+      <File Include="$(ArtifactsBinDir)Microsoft.Interop.SourceGeneration\$(Configuration)\netstandard2.0\*" TargetPath="analyzers/dotnet/cs" />
+      <File Include="$(ArtifactsBinDir)JSImportGenerator\$(Configuration)\netstandard2.0\*" TargetPath="analyzers/dotnet/cs" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(PackageTargetRuntime)' != '' and '$(BuildingIlcHostPackage)' == 'true'">
+      <File Include="$(CoreCLRILCompilerDir)*" TargetPath="tools" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(PackageTargetRuntime)' != '' and '$(BuildingIlcHostPackage)' != 'true'">
+      <File Include="@(LibrariesRuntimeFiles)" TargetPath="framework/%(LibrariesRuntimeFiles.NativeSubDirectory)" />
+      <File Include="$(CoreCLRAotSdkDir)*" TargetPath="sdk" />
+      <File Include="$(MibcOptimizationDataDir)/$(TargetOS)/$(TargetArchitecture)/**/*.mibc" TargetPath="mibc" />
+
       <DotnetJsCoreCLRAotSdkExtension Include="ts;js;map;json" />
       <File Include="$(CoreCLRAotSdkDir)dotnetjs/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="sdk/dotnetjs" />
       <File Include="$(CoreCLRAotSdkDir)dotnetjs/src/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="sdk/dotnetjs/src" />
       <File Include="$(CoreCLRAotSdkDir)dotnetjs/src/es6/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="sdk/dotnetjs/src/es6" />
-      <File Include="$(MibcOptimizationDataDir)/$(TargetOS)/$(TargetArchitecture)/**/*.mibc">
-        <TargetPath>mibc</TargetPath>
-      </File>
     </ItemGroup>
 
+    <!-- exclude native symbols from ilc package (they are included in symbols package) -->
     <ItemGroup>
-      <File Include="$(CoreCLRBuildIntegrationDir)*">
-        <TargetPath>build</TargetPath>
-      </File>
-      <File Include="$(CoreCLRILCompilerDir)netstandard\*">
-        <TargetPath>tools/netstandard</TargetPath>
-      </File>
-    </ItemGroup>
+       <!-- on windows, remove the pdbs only from tools directory (both managed and native) -->
+      <LibPackageExcludes Include="tools\%2A%2A\%2A.pdb"/>
 
-    <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
-    <ItemGroup Condition="'$(PackageTargetRuntime)' == ''">
-      <File Include="$(ArtifactsBinDir)Microsoft.Interop.SourceGeneration\$(Configuration)\netstandard2.0\*">
-        <TargetPath>analyzers/dotnet/cs</TargetPath>
-      </File>
-      <File Include="$(ArtifactsBinDir)JSImportGenerator\$(Configuration)\netstandard2.0\*">
-        <TargetPath>analyzers/dotnet/cs</TargetPath>
-      </File>
+      <LibPackageExcludes Include="%2A%2A\%2A.dbg"/>
+      <LibPackageExcludes Include="%2A%2A\%2A.debug"/>
+      <LibPackageExcludes Include="%2A%2A\%2A.dSYM"/>
+      <LibPackageExcludes Include="%2A%2A\%2A.dwarf"/>
     </ItemGroup>
   </Target>
 
