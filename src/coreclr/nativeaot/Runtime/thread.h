@@ -402,7 +402,6 @@ public:
     void* GetShadowStackTop();
     void SetShadowStackTop(void* pShadowStack);
 #endif
-
     void                SetInterrupted(bool isInterrupted);
     bool                CheckInterrupted();
 };

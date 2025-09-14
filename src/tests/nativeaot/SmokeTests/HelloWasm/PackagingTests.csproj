@@ -33,13 +33,13 @@
       <PackagingTestProject BuildProperties="Test_TestOutputPath=%(OutputPathRoot);%(BuildProperties)" />
 
       <!-- TODO-LLVM: on ARM64 these fail. -->
-      <!-- <SampleProject Include="$(RepoRoot)samples/HelloWorld/HelloWorld.csproj;
+      <SampleProject Include="$(RepoRoot)samples/HelloWorld/HelloWorld.csproj;
                               $(RepoRoot)samples/NativeLibrary/NativeLibrary.csproj">
         <BuildProperties>
           Configuration=$(Test_Configuration);
           RuntimeIdentifier=$(Test_RuntimeIdentifier);
         </BuildProperties>
-      </SampleProject> -->
+      </SampleProject>
       <SampleProject OutputPathRoot="%(RootDir)%(Directory)" />
 
       <PackagingTestProject Include="@(SampleProject)"

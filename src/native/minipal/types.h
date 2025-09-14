@@ -13,15 +13,15 @@
 #endif
 
 #ifndef PRIX64
-//#define PRIX64 FORMAT_PREFIX "lX"
+#define PRIX64 FORMAT_PREFIX "lX"
 #endif
 
 #ifndef PRIx64
-//#define PRIx64 FORMAT_PREFIX "lx"
+#define PRIx64 FORMAT_PREFIX "lx"
 #endif
 
 #ifndef PRIu64
-//#define PRIu64 FORMAT_PREFIX "lu"
+#define PRIu64 FORMAT_PREFIX "lu"
 #endif
 
 #ifdef TARGET_WINDOWS

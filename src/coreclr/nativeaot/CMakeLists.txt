@@ -56,4 +56,3 @@ add_compile_definitions($<${FEATURE_JAVAMARSHAL}:FEATURE_JAVAMARSHAL>)
 
 add_subdirectory(Bootstrap)
 add_subdirectory(Runtime)
-

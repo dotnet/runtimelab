@@ -834,7 +834,7 @@ bool CommandLine::Parse(int argc, char* argv[], /* OUT */ Options* o)
                 }
             }
 
-            const char* const jitBaseName = "clrjitxx";
+            const char* const jitBaseName = "clrjit";
             size_t len = programPathLen + strlen(jitHostOSPrefix) + strlen(jitBaseName) + strlen(jitHostOSExtension) + 1;
             if (jitOSName != nullptr)
             {

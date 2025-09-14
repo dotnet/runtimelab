@@ -6,7 +6,6 @@
     <CLRTestTargetUnsupported Condition="'$(TargetsBrowser)' != 'true'">true</CLRTestTargetUnsupported>
     <DotNetJsApi>true</DotNetJsApi>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
     <RequiresProcessIsolation>true</RequiresProcessIsolation>
     <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
 
