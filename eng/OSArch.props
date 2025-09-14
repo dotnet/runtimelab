@@ -1,4 +1,9 @@
 <Project>
+  <PropertyGroup Condition="'$(Platform)' != ''">
+    <TargetOS Condition="'$(Platform)' == 'wasm'">browser</TargetOS>
+    <TargetArchitecture Condition="'$(Platform)' != 'AnyCPU'">$(Platform)</TargetArchitecture>
+  </PropertyGroup>
+  
   <PropertyGroup Label="CalculateTargetOS">
     <_hostOS>linux</_hostOS>
     <_hostOS Condition="$([MSBuild]::IsOSPlatform('OSX'))">osx</_hostOS>

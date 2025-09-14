@@ -400,25 +400,7 @@ void Compiler::lvaInitArgs(bool hasRetBuffArg)
     //----------------------------------------------------------------------
 
     // We have set info.compArgsCount in compCompile()
-<<<<<<< HEAD
-    noway_assert(varDscInfo->varNum == info.compArgsCount);
-
-    assert(varDscInfo->intRegArgNum <= MAX_REG_ARG);
-
-#ifndef TARGET_WASM
-    codeGen->intRegState.rsCalleeRegArgCount   = varDscInfo->intRegArgNum;
-    codeGen->floatRegState.rsCalleeRegArgCount = varDscInfo->floatRegArgNum;
-#endif // !TARGET_WASM
-
-#if FEATURE_FASTTAILCALL
-    // Save the stack usage information
-    // We can get register usage information using codeGen->intRegState and
-    // codeGen->floatRegState
-    info.compArgStackSize = varDscInfo->stackArgSize;
-#endif // FEATURE_FASTTAILCALL
-=======
     noway_assert(varNum == info.compArgsCount);
->>>>>>> upstream/main
 
     // Now we have parameters created in the right order. Figure out how they're passed.
     lvaClassifyParameterABI();
@@ -799,20 +781,9 @@ void Compiler::lvaInitVarDsc(LclVarDsc*              varDsc,
         compFloatingPointUsed = true;
     }
 
-<<<<<<< HEAD
-#if FEATURE_IMPLICIT_BYREFS
-    varDsc->lvIsImplicitByRef = 0;
-#endif // FEATURE_IMPLICIT_BYREFS
-#if defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
-    varDsc->lvIsSplit = 0;
-#endif // TARGET_LOONGARCH64 || TARGET_RISCV64
-
 #ifdef TARGET_WASM
     varDsc->lvCorInfoType = corInfoType;
 #endif // TARGET_WASM
-
-=======
->>>>>>> upstream/main
     // Set the lvType (before this point it is TYP_UNDEF).
     if ((varTypeIsStruct(type)))
     {
@@ -896,10 +867,12 @@ void Compiler::lvaClassifyParameterABI(Classifier& classifier)
 
     lvaParameterStackSize = classifier.StackSize();
 
+#ifndef TARGET_WASM
     // genFnPrologCalleeRegArgs expect these to be the counts of registers it knows how to handle.
     // TODO-Cleanup: Recompute these values in the backend instead, where they are used.
     codeGen->intRegState.rsCalleeRegArgCount   = genCountBits(argRegs & RBM_ARG_REGS);
     codeGen->floatRegState.rsCalleeRegArgCount = genCountBits(argRegs & RBM_FLTARG_REGS);
+#endif // !TARGET_WASM
 
 #ifdef TARGET_ARM
     // Prespill all argument regs on to stack in case of Arm when under profiler.
@@ -1001,93 +974,6 @@ void Compiler::lvaClassifyParameterABI()
     }
 
 #ifdef DEBUG
-<<<<<<< HEAD
-    if (lvaParameterPassingInfo == nullptr)
-    {
-        return;
-    }
-
-    for (unsigned lclNum = 0; lclNum < info.compArgsCount; lclNum++)
-    {
-        LclVarDsc*                   dsc     = lvaGetDesc(lclNum);
-        const ABIPassingInformation& abiInfo = lvaGetParameterABIInfo(lclNum);
-
-        assert(abiInfo.NumSegments > 0);
-
-        if ((dsc->TypeGet() == TYP_STRUCT) && (info.compCallConv == CorInfoCallConvExtension::Swift))
-        {
-            continue;
-        }
-
-        unsigned numSegmentsToCompare = abiInfo.NumSegments;
-        if (dsc->lvIsHfa())
-        {
-            // LclVarDsc only has one register set for HFAs
-            numSegmentsToCompare = 1;
-        }
-
-#ifdef TARGET_ARM
-        // On arm the old representation only represents the start register for
-        // struct multireg args.
-        if (varTypeIsStruct(dsc))
-        {
-            numSegmentsToCompare = 1;
-        }
-
-        // And also for TYP_DOUBLE on soft FP
-        if (opts.compUseSoftFP && (dsc->TypeGet() == TYP_DOUBLE))
-        {
-            numSegmentsToCompare = 1;
-        }
-#endif
-
-        for (unsigned i = 0; i < numSegmentsToCompare; i++)
-        {
-            const ABIPassingSegment& expected = abiInfo.Segment(i);
-            regNumber                reg      = REG_NA;
-            if (i == 0)
-            {
-                reg = dsc->GetArgReg();
-            }
-#if FEATURE_MULTIREG_ARGS
-            else if (i == 1)
-            {
-                reg = dsc->GetOtherArgReg();
-            }
-#endif
-
-            if (expected.IsPassedOnStack())
-            {
-                if (i == 0)
-                {
-                    assert(reg == REG_STK);
-
-                    unsigned dscStackOffset = (unsigned)dsc->GetStackOffset();
-#ifdef WINDOWS_AMD64_ABI
-                    // The LclVarDsc value does not account for the 4 shadow slots allocated by the caller.
-                    dscStackOffset += 32;
-#endif
-
-// On x86, varargs methods access stack args off of a base pointer, and the
-// first stack arg is not considered to be at offset 0.
-// TODO-Cleanup: Unify things so that x86 is consistent with other platforms
-// here and change fgMorphExpandStackArgForVarArgs to account for that.
-// LLVM: staock offsets are not aligned in the classifier, if they are then this passes and
-// assert(segment.Offset + segment.Size <= lvaLclExactSize(lclNum)) below fails.
-#if !defined(TARGET_X86) && !defined(TARGET_WASM)
-                    assert(dscStackOffset == expected.GetStackOffset());
-#endif
-                }
-            }
-            else
-            {
-                assert(reg == expected.GetRegister());
-            }
-        }
-    }
-
-=======
->>>>>>> upstream/main
     for (unsigned lclNum = 0; lclNum < info.compArgsCount; lclNum++)
     {
         const ABIPassingInformation& abiInfo = lvaGetParameterABIInfo(lclNum);
@@ -2465,11 +2351,7 @@ bool Compiler::lvaIsImplicitByRefLocal(unsigned lclNum) const
     {
         assert(varDsc->lvIsParam);
 
-<<<<<<< HEAD
-        assert(varTypeIsStruct(varDsc) || (varDsc->TypeGet() == TYP_BYREF) || (varDsc->TypeGet() == TYP_I_IMPL));
-=======
-        assert(varTypeIsStruct(varDsc) || varDsc->TypeIs(TYP_BYREF));
->>>>>>> upstream/main
+        assert(varTypeIsStruct(varDsc) || varDsc->TypeIs(TYP_BYREF) || varDsc->TypeIs(TYP_I_IMPL));
         return true;
     }
 #endif // FEATURE_IMPLICIT_BYREFS

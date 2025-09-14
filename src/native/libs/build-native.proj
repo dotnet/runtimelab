@@ -15,19 +15,15 @@
     <_RuntimeVariant Condition="'$(WasmEnableThreads)' == 'true'">-threads</_RuntimeVariant>
     <_IcuDir Condition="'$(PkgMicrosoft_NETCore_Runtime_ICU_Transport)' != ''">$(PkgMicrosoft_NETCore_Runtime_ICU_Transport)/runtimes/$(TargetOS)-$(TargetArchitecture)$(_RuntimeVariant)/native</_IcuDir>
     <_IcuDirArg Condition="'$(_IcuDir)' != ''"> icudir "$(_IcuDir)"</_IcuDirArg>
-<<<<<<< HEAD
-    <_BuildNativeArgs>$(_BuildNativeArgs)$(_IcuDirArg)$(_UsePThreads)</_BuildNativeArgs>
-
-    <_TzdDir Condition="'$(PkgSystem_Runtime_TimeZoneData)' != ''">$([MSBuild]::NormalizePath('$(PkgSystem_Runtime_TimeZoneData)', 'contentFiles', 'any', 'any', 'data'))</_TzdDir>
-    <_TzdDirArg Condition="'$(_TzdDir)' != ''"> tzddir "$(_TzdDir)"</_TzdDirArg>
-    <_BuildNativeArgs>$(_BuildNativeArgs)$(_TzdDirArg)</_BuildNativeArgs>
-=======
 
     <_CMakeArgs Condition="'$(CMakeArgs)' != ''"> -cmakeargs "$(CMakeArgs)"</_CMakeArgs>
     <_CMakeArgs Condition="'$(WasmEnableThreads)' == 'true'">$(_CMakeArgs) -cmakeargs "-DCMAKE_USE_PTHREADS=1"</_CMakeArgs>
 
     <_BuildNativeArgs>$(_BuildNativeArgs)$(_IcuDirArg)$(_CMakeArgs)</_BuildNativeArgs>
->>>>>>> upstream/main
+
+    <_TzdDir Condition="'$(PkgSystem_Runtime_TimeZoneData)' != ''">$([MSBuild]::NormalizePath('$(PkgSystem_Runtime_TimeZoneData)', 'contentFiles', 'any', 'any', 'data'))</_TzdDir>
+    <_TzdDirArg Condition="'$(_TzdDir)' != ''"> tzddir "$(_TzdDir)"</_TzdDirArg>
+    <_BuildNativeArgs>$(_BuildNativeArgs)$(_TzdDirArg)</_BuildNativeArgs>
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,9 +35,14 @@
     <PackageReference Include="System.Runtime.TimeZoneData" PrivateAssets="all" Version="$(SystemRuntimeTimeZoneDataVersion)" GeneratePathProperty="true" Condition="'$(TargetsWasm)' == 'true'" />
   </ItemGroup>
 
-<<<<<<< HEAD
+  <Import Project="$(RepositoryEngineeringDir)AcquireWasiSdk.targets" />
+
   <Target Name="BuildNativeCommon"
-          DependsOnTargets="GenerateNativeVersionFile">
+          DependsOnTargets="AcquireWasiSdk;GenerateNativeVersionFile">
+    <PropertyGroup Condition="'$(TargetsWasi)' == 'true'">
+      <_BuildNativeEnvironmentVariables>WASI_SDK_PATH=$(RuntimeBuildWasiSdkPath)</_BuildNativeEnvironmentVariables>
+    </PropertyGroup>
+
     <ItemGroup>
       <_IcuArtifacts Condition="'$(_IcuDir)' != '' and '$(TargetsAppleMobile)' != 'true'"
                      Include="$(_IcuDir)/lib/libicuuc.a;
@@ -51,15 +52,6 @@
     </ItemGroup>
 
     <Copy SourceFiles="@(_IcuArtifacts)" DestinationFolder="$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'native', '$(_BuildNativeOutConfig)'))" SkipUnchangedFiles="true" />
-=======
-  <Import Project="$(RepositoryEngineeringDir)AcquireWasiSdk.targets" />
-
-  <Target Name="BuildNativeCommon"
-          DependsOnTargets="AcquireWasiSdk;GenerateNativeVersionFile">
-    <PropertyGroup Condition="'$(TargetsWasi)' == 'true'">
-      <_BuildNativeEnvironmentVariables>WASI_SDK_PATH=$(RuntimeBuildWasiSdkPath)</_BuildNativeEnvironmentVariables>
-    </PropertyGroup>
->>>>>>> upstream/main
   </Target>
 
   <Target Name="BuildNativeUnix"

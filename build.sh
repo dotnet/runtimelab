@@ -28,7 +28,6 @@ if is_cygwin_or_mingw; then
   # pass control to batch build script.
   "$scriptroot/build.cmd" "$@"
 else
-<<<<<<< HEAD
   if [[ "$*" == *"wasm"* && "$*" == *"-ci"* ]]; then
     # This is a bit of a workaround for the fact that the pipelines do not have a great
     # way of preserving the environment between scripts. Set by install-emscripten.ps1.
@@ -36,8 +35,5 @@ else
         source $EMSDK/emsdk_env.sh
     fi
   fi
-  "$scriptroot/eng/build.sh" $@
-=======
   "$scriptroot/eng/build.sh" "$@"
->>>>>>> upstream/main
 fi

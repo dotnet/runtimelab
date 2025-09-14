@@ -1816,7 +1816,6 @@ Compiler::fgWalkResult Rationalizer::RewriteNode(GenTree** useEdge, Compiler::Ge
             }
             break;
 
-<<<<<<< HEAD
 #ifdef TARGET_WASM
         case GT_RETURN:
             // LLVM lowering needs to know whether the struct is dependently promoted or not in all cases.
@@ -1832,14 +1831,12 @@ Compiler::fgWalkResult Rationalizer::RewriteNode(GenTree** useEdge, Compiler::Ge
             }
             break;
 #endif // TARGET_WASM
-=======
         case GT_BSWAP16:
             if (node->gtGetOp1()->OperIs(GT_CAST))
             {
                 comp->fgSimpleLowerBswap16(BlockRange(), node);
             }
             break;
->>>>>>> upstream/main
 
         default:
             // Check that we don't have nodes not allowed in HIR here.

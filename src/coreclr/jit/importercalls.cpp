@@ -4158,9 +4158,6 @@ GenTree* Compiler::impIntrinsic(CORINFO_CLASS_HANDLE    clsHnd,
                 break;
             }
 
-<<<<<<< HEAD
-#if defined(TARGET_ARM64) || defined(TARGET_RISCV64) || defined(TARGET_XARCH) || defined(TARGET_WASM)
-=======
             case NI_System_Threading_Thread_FastPollGC:
             {
                 optMethodFlags |= OMF_NEEDS_GCPOLLS;
@@ -4177,8 +4174,7 @@ GenTree* Compiler::impIntrinsic(CORINFO_CLASS_HANDLE    clsHnd,
                 break;
             }
 
-#if defined(TARGET_ARM64) || defined(TARGET_RISCV64) || defined(TARGET_XARCH)
->>>>>>> upstream/main
+#if defined(TARGET_ARM64) || defined(TARGET_RISCV64) || defined(TARGET_XARCH) || defined(TARGET_WASM)
             case NI_System_Threading_Interlocked_Or:
             case NI_System_Threading_Interlocked_And:
             {
@@ -6483,16 +6479,13 @@ void Compiler::impPopCallArgs(CORINFO_SIG_INFO* sig, GenTreeCall* call)
         }
         else
         {
-<<<<<<< HEAD
+            // TODO-LLVM: we differ from upstream in that we use the CorInfoType overload, and upstream the var_types.
             arg = NewCallArg::Primitive(argNode, params[i - 1].CorType);
-=======
-            arg = NewCallArg::Primitive(argNode, jitSigType);
 
             if (i == 1 && (sig->callConv & CORINFO_CALLCONV_EXPLICITTHIS))
             {
                 arg = arg.WellKnown(WellKnownArg::ThisPointer);
             }
->>>>>>> upstream/main
         }
 
         call->gtArgs.PushFront(this, arg);
@@ -8392,11 +8385,18 @@ bool Compiler::IsTargetIntrinsic(NamedIntrinsic intrinsicName)
         default:
             return false;
     }
-<<<<<<< HEAD
 #elif defined(TARGET_WASM)
     switch (intrinsicName)
     {
-=======
+        case NI_System_Math_MultiplyAddEstimate:
+        case NI_System_Math_ReciprocalEstimate:
+        case NI_System_Math_ReciprocalSqrtEstimate:
+            return true;
+        default:
+            break;
+    }
+
+    return m_llvm->IsLlvmIntrinsic(intrinsicName);
 #elif defined(TARGET_RISCV64)
     switch (intrinsicName)
     {
@@ -8410,20 +8410,11 @@ bool Compiler::IsTargetIntrinsic(NamedIntrinsic intrinsicName)
         case NI_System_Math_MinMagnitude:
         case NI_System_Math_MinMagnitudeNumber:
         case NI_System_Math_MinNumber:
->>>>>>> upstream/main
         case NI_System_Math_MultiplyAddEstimate:
         case NI_System_Math_ReciprocalEstimate:
         case NI_System_Math_ReciprocalSqrtEstimate:
             return true;
-<<<<<<< HEAD
-        default:
-            break;
-    }
-
-    return m_llvm->IsLlvmIntrinsic(intrinsicName);
-#elif defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
-=======
-
+            
         case NI_System_Math_MinUnsigned:
         case NI_System_Math_MaxUnsigned:
         case NI_PRIMITIVE_LeadingZeroCount:
@@ -8435,7 +8426,6 @@ bool Compiler::IsTargetIntrinsic(NamedIntrinsic intrinsicName)
             return false;
     }
 #elif defined(TARGET_LOONGARCH64)
->>>>>>> upstream/main
     switch (intrinsicName)
     {
         case NI_System_Math_Abs:

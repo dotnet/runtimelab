@@ -102,13 +102,12 @@
       <_CoreClrBuildArg Include="-cmakeargs &quot;-DCLR_CMAKE_ESRP_CLIENT=$(DotNetEsrpToolPath)&quot;" />
     </ItemGroup>
 
-<<<<<<< HEAD
     <ItemGroup Condition="'$(WasmEnableThreads)' == 'true'">
       <_CoreClrBuildArg Include="-cmakeargs &quot;-DCMAKE_USE_PTHREADS=1&quot;" />
-=======
+    </ItemGroup>
+
     <ItemGroup Condition="'$(TargetsBrowser)' == 'true'">
       <_CoreClrBuildArg Include="-keepnativesymbols" />
->>>>>>> upstream/main
     </ItemGroup>
 
     <PropertyGroup>

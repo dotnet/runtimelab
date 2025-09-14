@@ -71,7 +71,7 @@
 #endif
 
 #ifdef HOST_WASM
-#include "wasm/PalRedhawkWasm.h"
+#include "wasm/PalWasm.h"
 #endif
 
 #ifdef TARGET_HAIKU
@@ -877,12 +877,8 @@ char* PalCopyTCharAsChar(const TCHAR* toCopy)
     return copy.Extract();
 }
 
-<<<<<<< HEAD:src/coreclr/nativeaot/Runtime/unix/PalRedhawkUnix.cpp
 #ifndef HOST_WASM
-REDHAWK_PALEXPORT HANDLE PalLoadLibrary(const char* moduleName)
-=======
 HANDLE PalLoadLibrary(const char* moduleName)
->>>>>>> upstream/main:src/coreclr/nativeaot/Runtime/unix/PalUnix.cpp
 {
     return dlopen(moduleName, RTLD_LAZY);
 }
@@ -1189,24 +1185,15 @@ int32_t PalGetProcessCpuCount()
 // the maximum bounds.
 bool PalGetMaximumStackBounds(_Out_ void** ppStackLowOut, _Out_ void** ppStackHighOut)
 {
-<<<<<<< HEAD:src/coreclr/nativeaot/Runtime/unix/PalRedhawkUnix.cpp
-    if (pStackHighOut == NULL)
-    {
-#if defined(HOST_WASM) && !defined(FEATURE_WASM_MANAGED_THREADS)
-        PalGetMaximumStackBounds_SingleThreadedWasm(&pStackLowOut, &pStackHighOut);
-#elif defined(__APPLE__)
-        // This is a Mac specific method
-        pStackHighOut = pthread_get_stackaddr_np(pthread_self());
-        pStackLowOut = ((uint8_t *)pStackHighOut - pthread_get_stacksize_np(pthread_self()));
-=======
     void* pStackHighOut = NULL;
     void* pStackLowOut = NULL;
 
-#ifdef __APPLE__
+#if defined(HOST_WASM) && !defined(FEATURE_WASM_MANAGED_THREADS)
+    PalGetMaximumStackBounds_SingleThreadedWasm(&pStackLowOut, &pStackHighOut);
+#elif defined(__APPLE__)
     // This is a Mac specific method
     pStackHighOut = pthread_get_stackaddr_np(pthread_self());
     pStackLowOut = ((uint8_t *)pStackHighOut - pthread_get_stacksize_np(pthread_self()));
->>>>>>> upstream/main:src/coreclr/nativeaot/Runtime/unix/PalUnix.cpp
 #else // __APPLE__
     pthread_attr_t attr;
     size_t stackSize;

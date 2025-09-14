@@ -46,6 +46,7 @@ void Llvm::AddUnhandledExceptionHandler()
     newEhDsc->ebdFilterBegOffset = 0; // Filter doesn't correspond to any IL.
     newEhDsc->ebdHndBegOffset = 0; // Handler doesn't correspond to any IL.
     newEhDsc->ebdHndEndOffset = 0; // Handler doesn't correspond to any IL.
+    newEhDsc->ebdID = _compiler->compEHID++;
 
     // Set some flags on the new region. This is the same as when we set up
     // EH regions in fgFindBasicBlocks(). Note that the try has no enclosing
@@ -753,7 +754,7 @@ void Llvm::insertNullCheckForCall(GenTreeCall* callNode)
         unsigned thisArgLclNum = representAsLclVar(thisArgUse);
 
         GenTree* thisArgNode = _compiler->gtNewLclvNode(thisArgLclNum, _compiler->lvaGetDesc(thisArgLclNum)->TypeGet());
-        GenTree* thisArgNullCheck = _compiler->gtNewNullCheck(thisArgNode, CurrentBlock());
+        GenTree* thisArgNullCheck = _compiler->gtNewNullCheck(thisArgNode);
         CurrentRange().InsertBefore(callNode, thisArgNode, thisArgNullCheck);
 
         lowerIndir(thisArgNullCheck->AsIndir());

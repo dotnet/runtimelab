@@ -352,11 +352,6 @@ namespace System.Threading.Tests
         }
 
         [Fact]
-<<<<<<< HEAD
-        [ActiveIssue("https://github.com/mono/mono/issues/15158", TestRuntimes.Mono)]
-        [ActiveIssue("https://github.com/dotnet/runtime/issues/48720", TestPlatforms.AnyUnix, TargetFrameworkMonikers.Netcoreapp, TestRuntimes.Any /* NativeAOT */)]
-=======
->>>>>>> upstream/main
         public void OpenExisting_InvalidNames()
         {
             AssertExtensions.Throws<ArgumentNullException>("name", () => Mutex.OpenExisting(null, options: default));

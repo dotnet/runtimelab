@@ -66,11 +66,8 @@ public class Interfaces
         TestDynamicStaticGenericVirtualMethods.Run();
 #if !CODEGEN_WASM
         TestRuntime109496Regression.Run();
-<<<<<<< HEAD
 #endif
-=======
         TestRuntime113664Regression.Run();
->>>>>>> upstream/main
 
         return Pass;
     }

@@ -283,14 +283,6 @@ namespace System.Runtime.InteropServices.JavaScript
         {
             var (assemblyName, nameSpace, shortClassName, methodName) = ParseFQN(fullyQualifiedName);
 
-<<<<<<< HEAD
-            var dllName = assemblyName + ".dll";
-
-#if NATIVE_AOT
-            IntPtr monoMethod = IntPtr.Zero;
-#else
-=======
->>>>>>> upstream/main
             IntPtr monoMethod;
             Interop.Runtime.GetAssemblyExport(
                 // FIXME: Pass UTF-16 through directly so C can work with it, doing the conversion
@@ -309,7 +301,6 @@ namespace System.Runtime.InteropServices.JavaScript
             {
                 Environment.FailFast($"Can't find {nameSpace}{shortClassName}{methodName} in {assemblyName}.dll");
             }
-#endif
 
             var signature = GetMethodSignature(signatures, null, null);
 

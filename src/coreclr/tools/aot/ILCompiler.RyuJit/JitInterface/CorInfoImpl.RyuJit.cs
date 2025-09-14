@@ -624,15 +624,9 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_PTR:
                     return _compilation.NodeFactory.ExternFunctionSymbol("RhpNewPtrArrayFast");
                 case CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_ALIGN8:
-<<<<<<< HEAD
-                    return _compilation.NodeFactory.ExternFunctionSymbol("RhpNewArrayAlign8");
-                case CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_VC:
-                    return _compilation.NodeFactory.ExternFunctionSymbol("RhpNewArray");
-=======
                     return _compilation.NodeFactory.ExternFunctionSymbol("RhpNewArrayFastAlign8");
                 case CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_VC:
                     return _compilation.NodeFactory.ExternFunctionSymbol("RhpNewArrayFast");
->>>>>>> upstream/main
 
                 case CorInfoHelpFunc.CORINFO_HELP_STACK_PROBE:
                     return _compilation.NodeFactory.ExternFunctionSymbol("RhpStackProbe");
@@ -799,7 +793,6 @@ namespace Internal.JitInterface
                     return _compilation.NodeFactory.ExternIndirectFunctionSymbol("__guard_check_icall_fptr");
                 case CorInfoHelpFunc.CORINFO_HELP_DISPATCH_INDIRECT_CALL:
                     return _compilation.NodeFactory.ExternIndirectFunctionSymbol("__guard_dispatch_icall_fptr");
-<<<<<<< HEAD
 
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
                     mangledName = "RhpGetOrInitShadowStackTop";
@@ -825,8 +818,6 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_STRESS_GC:
                     mangledName = "RhpGcStressOnce";
                     break;
-=======
->>>>>>> upstream/main
 
                 default:
                     throw new NotImplementedException(ftnNum.ToString());

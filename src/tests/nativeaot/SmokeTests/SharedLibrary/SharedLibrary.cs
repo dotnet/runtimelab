@@ -10,10 +10,6 @@ using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
-<<<<<<< HEAD
-using System.Threading.Tasks;
-=======
->>>>>>> upstream/main
 
 namespace SharedLibrary
 {
@@ -31,15 +27,12 @@ namespace SharedLibrary
             s_setterThread.Start();
         }
 
-<<<<<<< HEAD
         [UnmanagedCallersOnly(EntryPoint = "returns-primitive-int")]
         public static unsafe int wasmExportReturnsPrimitiveInt()
         {
             return 10;
         }
 
-        [UnmanagedCallersOnly(EntryPoint = "ReturnsPrimitiveBool", CallConvs = new Type[] { typeof(CallConvStdcall) })]
-=======
         [UnmanagedCallersOnly(EntryPoint = "ReturnsPrimitiveInt", CallConvs = [typeof(CallConvStdcall)])]
         public static int ReturnsPrimitiveInt()
         {
@@ -48,46 +41,36 @@ namespace SharedLibrary
         }
 
         [UnmanagedCallersOnly(EntryPoint = "ReturnsPrimitiveBool", CallConvs = [typeof(CallConvStdcall)])]
->>>>>>> upstream/main
         public static bool ReturnsPrimitiveBool()
         {
             return true;
         }
 
-<<<<<<< HEAD
         [UnmanagedCallersOnly(EntryPoint = "returns-primitive-bool")]
         public static unsafe int wasmExportReturnsPrimitiveBool()
         {
             return 1;
         }
 
-        [UnmanagedCallersOnly(EntryPoint = "ReturnsPrimitiveChar", CallConvs = new Type[] { typeof(CallConvStdcall) })]
-=======
         [UnmanagedCallersOnly(EntryPoint = "ReturnsPrimitiveChar", CallConvs = [typeof(CallConvStdcall)])]
->>>>>>> upstream/main
         public static char ReturnsPrimitiveChar()
         {
             return 'a';
         }
 
-<<<<<<< HEAD
         [UnmanagedCallersOnly(EntryPoint = "returns-primitive-char")]
         public static unsafe int wasmExportReturnsPrimitiveChar()
         {
             return (int)'a';
         }
 
-        [UnmanagedCallersOnly(EntryPoint = "EnsureManagedClassLoaders", CallConvs = new Type[] { typeof(CallConvStdcall) })]
-=======
         [UnmanagedCallersOnly(EntryPoint = "EnsureManagedClassLoaders", CallConvs = [typeof(CallConvStdcall)])]
->>>>>>> upstream/main
         public static void EnsureManagedClassLoaders()
         {
             Random random = new Random();
             random.Next();
         }
 
-<<<<<<< HEAD
         [UnmanagedCallersOnly(EntryPoint = "ensure-managed-class-loaders")]
         public static unsafe void wasmExportEnsureManagedClassLoaders()
         {
@@ -95,10 +78,7 @@ namespace SharedLibrary
             random.Next();
         }
 
-        [UnmanagedCallersOnly(EntryPoint = "CheckSimpleExceptionHandling", CallConvs = new Type[] { typeof(CallConvStdcall) })]
-=======
         [UnmanagedCallersOnly(EntryPoint = "CheckSimpleExceptionHandling", CallConvs = [typeof(CallConvStdcall)])]
->>>>>>> upstream/main
         public static int CheckSimpleExceptionHandling()
         {
             return DoCheckSimpleExceptionHandling();

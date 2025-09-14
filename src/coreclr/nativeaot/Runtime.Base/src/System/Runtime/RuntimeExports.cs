@@ -343,63 +343,6 @@ namespace System.Runtime
 
             return success ? (int)nFrames : -(int)nFrames;
         }
-<<<<<<< HEAD
 #endif
-
-        [RuntimeExport("RhGetRuntimeHelperForType")]
-        internal static unsafe IntPtr RhGetRuntimeHelperForType(MethodTable* pEEType, RuntimeHelperKind kind)
-        {
-            switch (kind)
-            {
-                case RuntimeHelperKind.AllocateObject:
-#if FEATURE_64BIT_ALIGNMENT
-                    if (pEEType->RequiresAlign8)
-                    {
-                        if (pEEType->IsFinalizable)
-                            return (IntPtr)(delegate*<MethodTable*, object>)&InternalCalls.RhpNewFinalizableAlign8;
-                        else if (pEEType->IsValueType)            // returns true for enum types as well
-                            return (IntPtr)(delegate*<MethodTable*, object>)&InternalCalls.RhpNewFastMisalign;
-                        else
-                            return (IntPtr)(delegate*<MethodTable*, object>)&InternalCalls.RhpNewFastAlign8;
-                    }
-#endif // FEATURE_64BIT_ALIGNMENT
-
-                    if (pEEType->IsFinalizable)
-                        return (IntPtr)(delegate*<MethodTable*, object>)&InternalCalls.RhpNewFinalizable;
-                    else
-                        return (IntPtr)(delegate*<MethodTable*, object>)&InternalCalls.RhpNewFast;
-
-                case RuntimeHelperKind.IsInst:
-                    if (pEEType->HasGenericVariance || pEEType->IsParameterizedType || pEEType->IsFunctionPointer)
-                        return (IntPtr)(delegate*<MethodTable*, object, object?>)&TypeCast.IsInstanceOfAny;
-                    else if (pEEType->IsInterface)
-                        return (IntPtr)(delegate*<MethodTable*, object?, object?>)&TypeCast.IsInstanceOfInterface;
-                    else
-                        return (IntPtr)(delegate*<MethodTable*, object?, object?>)&TypeCast.IsInstanceOfClass;
-
-                case RuntimeHelperKind.CastClass:
-                    if (pEEType->HasGenericVariance || pEEType->IsParameterizedType || pEEType->IsFunctionPointer)
-                        return (IntPtr)(delegate*<MethodTable*, object, object>)&TypeCast.CheckCastAny;
-                    else if (pEEType->IsInterface)
-                        return (IntPtr)(delegate*<MethodTable*, object, object>)&TypeCast.CheckCastInterface;
-                    else
-                        return (IntPtr)(delegate*<MethodTable*, object, object>)&TypeCast.CheckCastClass;
-
-                case RuntimeHelperKind.AllocateArray:
-#if FEATURE_64BIT_ALIGNMENT
-                    MethodTable* pEEElementType = pEEType->RelatedParameterType;
-                    if (pEEElementType->IsValueType && pEEElementType->RequiresAlign8)
-                        return (IntPtr)(delegate*<MethodTable*, int, object>)&InternalCalls.RhpNewArrayAlign8;
-#endif // FEATURE_64BIT_ALIGNMENT
-
-                    return (IntPtr)(delegate*<MethodTable*, int, object>)&InternalCalls.RhpNewArray;
-
-                default:
-                    Debug.Fail("Unknown RuntimeHelperKind");
-                    return IntPtr.Zero;
-            }
-        }
-=======
->>>>>>> upstream/main
     }
 }

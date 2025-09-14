@@ -5,9 +5,8 @@
 #include "CommonTypes.h"
 #include "CommonMacros.h"
 #include "daccess.h"
-#include "PalRedhawkCommon.h"
 #include "CommonMacros.inl"
-#include "PalRedhawk.h"
+#include "Pal.h"
 #include "rhassert.h"
 
 #include "slist.h"

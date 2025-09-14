@@ -478,11 +478,7 @@ if(CLR_CMAKE_TARGET_OS STREQUAL windows)
 endif()
 
 # check if host & target os/arch combination are valid
-<<<<<<< HEAD
-if (NOT (CLR_CMAKE_TARGET_OS STREQUAL CLR_CMAKE_HOST_OS) AND NOT CLR_CMAKE_TARGET_WASI AND NOT CLR_CMAKE_TARGET_BROWSER)
-=======
 if (NOT (CLR_CMAKE_TARGET_OS STREQUAL CLR_CMAKE_HOST_OS) AND NOT CLR_CMAKE_TARGET_WASI AND NOT CLR_CMAKE_TARGET_ANDROID AND NOT CLR_CMAKE_TARGET_BROWSER)
->>>>>>> upstream/main
     if(NOT (CLR_CMAKE_HOST_OS STREQUAL windows))
         message(FATAL_ERROR "Invalid host and target os/arch combination. Host OS: ${CLR_CMAKE_HOST_OS}")
     endif()

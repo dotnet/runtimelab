@@ -112,6 +112,14 @@ public:
     // can be split out over register and stack, giving
     // multiple register segments and a struct segment.
     unsigned NumSegments = 0;
+#if TARGET_WASM
+    bool IsPointer = false;
+    var_types ArgType = TYP_UNDEF;
+    bool getPassedByRef() const
+    {
+        return m_passedByRef;
+    }
+#endif
 
     ABIPassingInformation()
     {

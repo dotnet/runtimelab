@@ -13,6 +13,7 @@ endif()
 
 if (MSVC)
   add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/permissive->)
+  add_compile_options(/showIncludes)
 endif()
 
 function(create_standalone_jit)

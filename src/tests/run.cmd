@@ -180,13 +180,12 @@ if defined RunNativeAot (
     set __RuntestPyArgs=%__RuntestPyArgs% --run_nativeaot_tests
 )
 
-<<<<<<< HEAD
 if defined __TargetOS (
     set __RuntestPyArgs=%__RuntestPyArgs% -target_os !__TargetOS!
-=======
+)
+
 if defined RunInterpreter (
     set __RuntestPyArgs=%__RuntestPyArgs% --interpreter
->>>>>>> upstream/main
 )
 
 REM Find python and set it to the variable PYTHON

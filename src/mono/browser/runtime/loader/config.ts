@@ -246,12 +246,12 @@ export async function mono_wasm_load_config (module: DotnetModuleInternal): Prom
             }
 
             loaderHelpers.config.resources = {
-                assembly: {},
-                jsModuleNative: { "dotnet.native.js": "" },
-                jsModuleWorker: {},
-                jsModuleRuntime: { "dotnet.runtime.js": "" },
-                wasmNative: { "dotnet.native.wasm": "" },
-                vfs: {},
+                assembly: [],
+                jsModuleNative: [{ name: "dotnet.native.js" }],
+                jsModuleWorker: [],
+                jsModuleRuntime: [{ name: "dotnet.runtime.js" }],
+                wasmNative: [{ name: "dotnet.native.wasm" }],
+                vfs: [],
                 satelliteResources: {},
             };
         }

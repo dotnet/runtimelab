@@ -32,7 +32,8 @@ namespace ILCompiler.DependencyAnalysis
             InlinedThreadStatics inlinedThreadStatics,
             PreinitializationManager preinitializationManager,
             DevirtualizationManager devirtualizationManager,
-            ObjectDataInterner dataInterner)
+            ObjectDataInterner dataInterner,
+            TypeMapManager typeMapManager)
             : base(context,
                   compilationModuleGroup,
                   metadataManager,
@@ -45,7 +46,8 @@ namespace ILCompiler.DependencyAnalysis
                   new ImportedNodeProviderThrowing(),
                   preinitializationManager,
                   devirtualizationManager,
-                  dataInterner)
+                  dataInterner,
+                  typeMapManager)
         {
             _ehModel = options.ExceptionHandlingModel;
         }

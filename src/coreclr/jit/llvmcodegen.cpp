@@ -2219,17 +2219,17 @@ void Llvm::buildSwitch(GenTreeUnOp* switchNode)
     assert(srcBlock->GetKind() == BBJ_SWITCH);
 
     BBswtDesc* switchDesc = srcBlock->GetSwitchTargets();
-    unsigned casesCount = switchDesc->bbsCount - 1;
-    noway_assert(switchDesc->bbsHasDefault);
+    unsigned casesCount = switchDesc->GetCaseCount();
+    noway_assert(switchDesc->HasDefaultCase());
 
-    BasicBlock* defaultDestBlock = switchDesc->getDefault()->getDestinationBlock();
+    BasicBlock* defaultDestBlock = switchDesc->GetDefaultCase()->getDestinationBlock();
     llvm::BasicBlock* defaultDestLlvmBlock = getFirstLlvmBlockForBlock(defaultDestBlock);
     llvm::SwitchInst* switchInst = _builder.CreateSwitch(destValue, defaultDestLlvmBlock, casesCount);
 
     for (unsigned destIndex = 0; destIndex < casesCount; destIndex++)
     {
         llvm::ConstantInt* destIndexValue = llvm::ConstantInt::get(switchLlvmType, destIndex);
-        llvm::BasicBlock* destLlvmBlock = getFirstLlvmBlockForBlock(switchDesc->bbsDstTab[destIndex]->getDestinationBlock());
+        llvm::BasicBlock* destLlvmBlock = getFirstLlvmBlockForBlock(switchDesc->GetCase(destIndex)->getDestinationBlock());
 
         switchInst->addCase(destIndexValue, destLlvmBlock);
     }

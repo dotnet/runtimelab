@@ -1,13 +1,9 @@
-<<<<<<< HEAD
-<Project Sdk="Microsoft.Build.Traversal">
+<Project Sdk="Microsoft.Build.NoTargets">
   <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
   <PropertyGroup>
     <IsNativeAotProject>false</IsNativeAotProject>
   </PropertyGroup>
 
-=======
-<Project Sdk="Microsoft.Build.NoTargets">
->>>>>>> upstream/main
   <PropertyGroup>
     <OutputPath>$(RuntimeBinDir)/build/</OutputPath>
   </PropertyGroup>
@@ -15,40 +11,4 @@
   <ItemGroup>
     <Content Include="*.*" Exclude="$(MSBuildProjectFile)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
-<<<<<<< HEAD
-
-  <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
-  <ItemGroup>
-    <ProjectReference Include="$(LibrariesProjectRoot)\System.Runtime.InteropServices.JavaScript\gen\JSImportGenerator\JSImportGenerator.csproj" OutputItemType="Analyzer" />
-  </ItemGroup>
-
-  <Target Name="CopyAfterBuild" AfterTargets="Build">
-    <Copy SourceFiles="@(Content)" DestinationFolder="$(OutputPath)" />
-
-    <!-- Create breadcrumb to disable dynamic linking of release crt for debug runtime -->
-    <WriteLinesToFile
-      File="$(RuntimeBinDir)/aotsdk/debugucrt.txt"
-      Overwrite="true"
-      Condition="'$(TargetsWindows)'=='true' and '$(Configuration)' != 'Release'" />
-
-    <!-- Create breadcrumb to add additional libraries for non-portable builds -->
-    <WriteLinesToFile
-      File="$(RuntimeBinDir)/aotsdk/nonportable.txt"
-      Overwrite="true"
-      Condition="'$(TargetsWindows)'!='true' and '$(PortableBuild)' != 'true'" />
-    <Delete
-      Files="$(RuntimeBinDir)/aotsdk/nonportable.txt"
-      Condition="'$(TargetsWindows)'=='true' or '$(PortableBuild)' == 'true'" />
-
-    <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
-    <ItemGroup>
-      <AnalyzerFile Include="$(ArtifactsBinDir)Microsoft.Interop.SourceGeneration\$(Configuration)\netstandard2.0\*" />
-      <AnalyzerFile Include="$(ArtifactsBinDir)JSImportGenerator\$(Configuration)\netstandard2.0\*" />
-    </ItemGroup>
-    <Copy SourceFiles="@(AnalyzerFile)" DestinationFolder="$(RuntimeBinDir)\analyzers\dotnet\cs" />
-  </Target>
-
-  <Target Name="Pack" />
-=======
->>>>>>> upstream/main
 </Project>

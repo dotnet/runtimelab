@@ -1813,13 +1813,9 @@ void CallArgs::PushLateBack(CallArg* arg)
 //
 void CallArgs::Remove(CallArg* arg)
 {
-<<<<<<< HEAD
 #ifndef TARGET_WASM
-    assert(!m_abiInformationDetermined && !m_argsComplete);
-#endif // !TARGET_WASM
-=======
     assert(!m_hasAddedFinalArgs && !m_argsComplete);
->>>>>>> upstream/main
+#endif // !TARGET_WASM
 
     CallArg** slot = &m_head;
     while (*slot != nullptr)
@@ -1837,29 +1833,6 @@ void CallArgs::Remove(CallArg* arg)
     assert(!"Did not find arg to remove in CallArgs::Remove");
 }
 
-<<<<<<< HEAD
-#ifdef TARGET_WASM
-//------------------------------------------------------------------------
-// MoveLateToEarly: Sets all late nodes as the early nodes
-//
-// Moves and clears all the late nodes, leaving the "CallArgs" as just
-// containing early nodes.
-//
-void CallArgs::MoveLateToEarly()
-{
-    CallArg* lateArg = m_lateHead;
-    
-    while (lateArg != nullptr)
-    {
-        lateArg->SetEarlyNode(lateArg->GetLateNode());
-        lateArg->SetLateNode(nullptr);
-        lateArg = lateArg->GetLateNext();
-    }
-    
-    m_lateHead = nullptr;
-}
-#endif
-=======
 //---------------------------------------------------------------
 // RemoveUnsafe: Remove an argument from the argument list, without validation.
 //
@@ -1900,7 +1873,27 @@ void CallArgs::RemoveUnsafe(CallArg* arg)
     assert(!"Did not find arg to remove in CallArgs::Remove");
 }
 
->>>>>>> upstream/main
+#ifdef TARGET_WASM
+//------------------------------------------------------------------------
+// MoveLateToEarly: Sets all late nodes as the early nodes
+//
+// Moves and clears all the late nodes, leaving the "CallArgs" as just
+// containing early nodes.
+//
+void CallArgs::MoveLateToEarly()
+{
+    CallArg* lateArg = m_lateHead;
+    
+    while (lateArg != nullptr)
+    {
+        lateArg->SetEarlyNode(lateArg->GetLateNode());
+        lateArg->SetLateNode(nullptr);
+        lateArg = lateArg->GetLateNext();
+    }
+    
+    m_lateHead = nullptr;
+}
+#endif
 #ifdef TARGET_XARCH
 //---------------------------------------------------------------
 // NeedsVzeroupper: Determines if the call needs a vzeroupper emitted before it is invoked
@@ -13694,18 +13687,6 @@ void Compiler::gtGetLateArgMsg(GenTreeCall* call, CallArg* arg, char* bufp, unsi
     gtPrintABILocation(arg->AbiInfo, &bufp, &bufLength);
 }
 
-<<<<<<< HEAD
-#if defined(FEATURE_FIXED_OUT_ARGS) && !defined(TARGET_WASM)
-    if (argReg == REG_STK)
-    {
-        sprintf_s(bufp, bufLength, " in out+%02x", arg->AbiInfo.ByteOffset);
-    }
-    else
-#endif
-    {
-#ifdef TARGET_ARM
-        if (arg->AbiInfo.IsSplit())
-=======
 //------------------------------------------------------------------------
 // gtPrintABILocation: Print location that an argument is being passed in.
 //
@@ -13728,7 +13709,6 @@ void Compiler::gtPrintABILocation(const ABIPassingInformation& abiInfo, char** b
 
     auto printRegs = [&]() {
         if (firstReg == REG_NA)
->>>>>>> upstream/main
         {
             return;
         }
@@ -31580,6 +31560,9 @@ regNumber ReturnTypeDesc::GetABIReturnReg(unsigned idx, CorInfoCallConvExtension
         }
     }
 
+#elif defined(TARGET_WASM)
+    // Need something for verbose debugging.
+    resultReg = REG_LLVM;
 #endif // TARGET_XXX
 
     assert(resultReg != REG_NA);

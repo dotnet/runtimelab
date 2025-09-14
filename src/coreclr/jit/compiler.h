@@ -510,27 +510,6 @@ enum class AddressExposedReason
 class LclVarDsc
 {
 public:
-<<<<<<< HEAD
-    // The constructor. Most things can just be zero'ed.
-    //
-    // Initialize the ArgRegs to REG_STK.
-    LclVarDsc() :
-#if defined(TARGET_WASM)
-        lvLlvmArgNum(BAD_LLVM_ARG_NUM),
-        lvCorInfoType(CORINFO_TYPE_UNDEF),
-        lvHasLocalAddr(0),
-#endif // TARGET_WASM
-        _lvArgReg(REG_STK)
-#if FEATURE_MULTIREG_ARGS
-        , _lvOtherArgReg(REG_STK)
-#endif // FEATURE_MULTIREG_ARGS
-        , lvClassHnd(NO_CLASS_HANDLE)
-        , lvPerSsaData()
-    {
-    }
-
-=======
->>>>>>> upstream/main
     // note this only packs because var_types is a typedef of unsigned char
     var_types lvType : 5; // TYP_INT/LONG/FLOAT/DOUBLE/REF
 
@@ -1071,12 +1050,8 @@ public:
     ClassLayout* GetLayout() const
     {
 #if FEATURE_IMPLICIT_BYREFS
-<<<<<<< HEAD
-        assert(varTypeIsStruct(TypeGet()) ||
-               (lvIsImplicitByRef && ((TypeGet() == TYP_BYREF) || (TypeGet() == TYP_I_IMPL))));
-=======
-        assert(varTypeIsStruct(TypeGet()) || (lvIsImplicitByRef && TypeIs(TYP_BYREF)));
->>>>>>> upstream/main
+        // LLVM: We differ from upstream here by adding the TYP_I_IMPL option.
+        assert(varTypeIsStruct(TypeGet()) || (lvIsImplicitByRef && (TypeIs(TYP_BYREF) || (TypeIs(TYP_I_IMPL)))));
 #else
         assert(varTypeIsStruct(TypeGet()));
 #endif
@@ -6571,37 +6546,6 @@ private:
 
     //------------------------- Morphing --------------------------------------
 
-<<<<<<< HEAD
-    unsigned fgPtrArgCntMax = 0;
-
-public:
-    //------------------------------------------------------------------------
-    // fgGetPtrArgCntMax: Return the maximum number of pointer-sized stack arguments that calls inside this method
-    // can push on the stack. This value is calculated during morph.
-    //
-    // Return Value:
-    //    Returns fgPtrArgCntMax, that is a private field.
-    //
-    unsigned fgGetPtrArgCntMax() const
-    {
-        return fgPtrArgCntMax;
-    }
-
-    //------------------------------------------------------------------------
-    // fgSetPtrArgCntMax: Set the maximum number of pointer-sized stack arguments that calls inside this method
-    // can push on the stack. This function is used during StackLevelSetter to fix incorrect morph calculations.
-    //
-    void fgSetPtrArgCntMax(unsigned argCntMax)
-    {
-        fgPtrArgCntMax = argCntMax;
-    }
-
-    bool compCanEncodePtrArgCntMax();
-    bool fgIsThrow(GenTree* tree);
-
-private:
-=======
->>>>>>> upstream/main
     hashBv*               fgAvailableOutgoingArgTemps;
     ArrayStack<unsigned>* fgUsedSharedTemps = nullptr;
 
@@ -6616,6 +6560,9 @@ private:
     bool fgIsCommaThrow(GenTree* tree, bool forFolding = false);
 
 public:
+    // TODO-LLVM: This is a diff to upstream as we want it public.
+    bool fgIsThrow(GenTree* tree);
+
     bool fgInDifferentRegions(const BasicBlock* blk1, const BasicBlock* blk2) const;
 
 private:

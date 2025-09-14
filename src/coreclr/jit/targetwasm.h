@@ -82,6 +82,12 @@
   #define CNT_CALLEE_TRASH_FLOAT   4
   #define CNT_CALL_GC_REGS         (CNT_CALLEE_SAVED) // This is how targetx86 is defined.
 
+  #define CNT_CALLEE_ENREG_FLOAT  (CNT_CALLEE_SAVED_FLOAT)
+
+  #define CNT_CALLEE_SAVED_MASK   (0)
+  #define CNT_CALLEE_TRASH_MASK   (0)
+  #define CNT_CALLEE_ENREG_MASK   (CNT_CALLEE_SAVED_MASK)
+
   #define REG_CALLEE_SAVED_ORDER   REG_R0
   #define RBM_CALLEE_SAVED_ORDER   RBM_R0
 

@@ -44,6 +44,7 @@
 #include "jitpch.h"
 #include "jitstd/algorithm.h"
 #include "async.h"
+#include "treelifeupdater.h"
 
 //------------------------------------------------------------------------
 // Compiler::SaveAsyncContexts:

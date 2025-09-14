@@ -11,11 +11,7 @@ using Internal.TypeSystem;
 
 namespace ILCompiler
 {
-<<<<<<< HEAD
-    internal sealed partial class ILCompilerRootCommand : CliRootCommand
-=======
-    internal sealed class ILCompilerRootCommand : RootCommand
->>>>>>> upstream/main
+    internal sealed partial class ILCompilerRootCommand : RootCommand
     {
         public Argument<Dictionary<string, string>> InputFilePaths { get; } =
             new("input-file-path") { CustomParser = result => Helpers.BuildPathDictionary(result.Tokens, true), Description = "Input file(s)", Arity = ArgumentArity.OneOrMore };

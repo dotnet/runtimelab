@@ -396,17 +396,15 @@ public:
     bool                CheckPendingRedirect(PCODE eip);
 #endif
 
-<<<<<<< HEAD
 #ifdef HOST_WASM
     void* GetShadowStackBottom();
     void SetShadowStackBottom(void* pShadowStack);
     void* GetShadowStackTop();
     void SetShadowStackTop(void* pShadowStack);
 #endif
-=======
+
     void                SetInterrupted(bool isInterrupted);
     bool                CheckInterrupted();
->>>>>>> upstream/main
 };
 
 #ifndef __GCENV_BASE_INCLUDED__

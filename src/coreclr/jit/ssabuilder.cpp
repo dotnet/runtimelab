@@ -518,45 +518,9 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
 {
     assert(defNode->OperIsStore() || defNode->OperIs(GT_CALL));
 
-<<<<<<< HEAD
-    GenTreeLclVarCommon* lclNode;
-    bool                 isFullDef = false;
-    ssize_t              offset    = 0;
-    unsigned             storeSize = 0;
-#if defined(TARGET_WASM)
-    bool isLocal;
-    if (block->IsLIR())
-    {
-        isLocal = defNode->OperIsLocalStore();
-        lclNode = isLocal ? defNode->AsLclVarCommon() : nullptr;
-        isFullDef = !lclNode->IsPartialLclFld(m_pCompiler);
-
-        if (lclNode->OperIs(GT_STORE_LCL_FLD))
-        {
-            offset = lclNode->AsLclFld()->GetLclOffs();
-            storeSize = lclNode->AsLclFld()->GetSize();
-        }
-        else
-        {
-            offset = 0;
-            storeSize = m_pCompiler->lvaLclExactSize(lclNode->GetLclNum());
-        }
-    }
-    else
-    {
-        isLocal = defNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef, &offset, &storeSize);
-    }
-#else
-    bool isLocal   = defNode->DefinesLocal(m_pCompiler, &lclNode, &isFullDef, &offset, &storeSize);
-#endif
-
-    if (isLocal)
-    {
-=======
     bool anyDefs  = false;
     auto visitDef = [&](const LocalDef& def) {
         anyDefs = true;
->>>>>>> upstream/main
         // This should have been marked as definition.
         assert(((def.Def->gtFlags & GTF_VAR_DEF) != 0) &&
                (((def.Def->gtFlags & GTF_VAR_USEASG) != 0) == !def.IsEntire));
@@ -604,24 +568,7 @@ void SsaBuilder::RenameDef(GenTree* defNode, BasicBlock* block)
             }
         }
 
-<<<<<<< HEAD
-#ifdef TARGET_WASM
-    // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
-    if (block->IsLIR())
-    {
-        return;
-    }
-#endif // TARGET_WASM
-
-    // Figure out if "defNode" may make a new GC heap state (if we care for this block).
-    if (((block->bbMemoryHavoc & memoryKindSet(GcHeap)) == 0) && m_pCompiler->ehBlockHasExnFlowDsc(block))
-    {
-        bool isAddrExposedLocal = isLocal && m_pCompiler->lvaVarAddrExposed(lclNode->GetLclNum());
-        bool hasByrefHavoc      = ((block->bbMemoryHavoc & memoryKindSet(ByrefExposed)) != 0);
-        if (!isLocal || (isAddrExposedLocal && !hasByrefHavoc))
-=======
         if (varDsc->IsAddressExposed())
->>>>>>> upstream/main
         {
             RenamePushMemoryDef(def.Def, block);
         }
@@ -694,6 +641,11 @@ unsigned SsaBuilder::RenamePushDef(GenTree* defNode, BasicBlock* block, unsigned
 
 void SsaBuilder::RenamePushMemoryDef(GenTree* defNode, BasicBlock* block)
 {
+    if(block->IsLIR())
+    {
+        return;
+    }
+    
     // Figure out if "defNode" may make a new GC heap state (if we care for this block).
     if (((block->bbMemoryHavoc & memoryKindSet(GcHeap)) != 0) || !m_pCompiler->ehBlockHasExnFlowDsc(block))
     {

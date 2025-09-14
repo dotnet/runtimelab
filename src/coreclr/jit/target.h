@@ -632,17 +632,11 @@ static uint32_t BitScanForward(const regMaskTP& mask)
 
 #endif // TARGET_XARCH
 
-<<<<<<< HEAD
 #if !defined(TARGET_WASM32) && !defined(TARGET_WASM64) // has no registers
-C_ASSERT(REG_FIRST == 0);
-C_ASSERT(REG_INT_FIRST < REG_INT_LAST);
-C_ASSERT(REG_FP_FIRST  < REG_FP_LAST);
-#endif
-=======
 static_assert(REG_FIRST == 0);
 static_assert(REG_INT_FIRST < REG_INT_LAST);
 static_assert(REG_FP_FIRST  < REG_FP_LAST);
->>>>>>> upstream/main
+#endif
 
 // Opportunistic tail call feature converts non-tail prefixed calls into
 // tail calls where possible. It requires fast tail calling mechanism for

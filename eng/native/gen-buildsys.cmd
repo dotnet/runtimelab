@@ -2,12 +2,8 @@
 rem
 rem This file invokes cmake and generates the build system for windows.
 
-<<<<<<< HEAD
-setlocal enabledelayedexpansion
-=======
 set __argCount=0
 for %%x in (%*) do set /A __argCount+=1
->>>>>>> upstream/main
 
 if %__argCount% lss 4 goto :USAGE
 if %1=="/?" goto :USAGE
@@ -21,14 +17,14 @@ for %%i in ("%__repoRoot%") do set "__repoRoot=%%~fi"
 
 :: Set up the EMSDK environment before setlocal so that it propagates to the caller.
 if /i "%__Os%" == "browser" (
-    if "%EMSDK_PATH%" == "" (
+    if "%EMSDK%" == "" (
         if not exist "%__repoRoot%\src\mono\browser\emsdk" (
-            echo Error: Should set EMSDK_PATH environment variable pointing to emsdk root.
+            echo Error: Should set EMSDK environment variable pointing to emsdk root.
             exit /B 1
         )
         set EMSDK_QUIET=1 && call "%__repoRoot%\src\mono\browser\emsdk\emsdk_env"
     ) else (
-        set EMSDK_QUIET=1 && call "%EMSDK_PATH%\emsdk_env"
+        set EMSDK_QUIET=1 && call "%EMSDK%\emsdk_env"
     )
 )
 
@@ -39,26 +35,21 @@ set __IntermediatesDir=%2
 set __VSVersion=%3
 set __Arch=%4
 set __CmakeGenerator=Visual Studio
-<<<<<<< HEAD
 set __UseEmcmake=0
 
 if /i "%__Ninja%" == "1" (
     set __CmakeGenerator=Ninja
 ) else (
-    if /i "%__VSVersion%" == "vs2022" (set __CmakeGenerator=%__CmakeGenerator% 17 2022)
-=======
-set __ExtraCmakeParams=
-if /i "%__Ninja%" == "1" (
-    set __CmakeGenerator=Ninja
-) else (
     if /i NOT "%__Arch%" == "wasm" (
         if /i "%__VSVersion%" == "17.0" (set __CmakeGenerator=%__CmakeGenerator% 17 2022)
->>>>>>> upstream/main
 
-    if /i "%__Arch%" == "x64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A x64)
-    if /i "%__Arch%" == "arm" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM)
-    if /i "%__Arch%" == "arm64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM64)
-    if /i "%__Arch%" == "x86" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A Win32)
+        if /i "%__Arch%" == "x64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A x64)
+        if /i "%__Arch%" == "arm" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM)
+        if /i "%__Arch%" == "arm64" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A ARM64)
+        if /i "%__Arch%" == "x86" (set __ExtraCmakeParams=%__ExtraCmakeParams% -A Win32)
+    ) else (
+        set __CmakeGenerator=NMake Makefiles
+    )
 )
 
 if /i "%__Arch%" == "wasm" (
@@ -67,17 +58,13 @@ if /i "%__Arch%" == "wasm" (
         exit /B 1
     )
     if /i "%__Os%" == "browser" (
-<<<<<<< HEAD
         if "%EMSDK%" == "" (
             echo Error: Should set EMSDK environment variable pointing to emsdk root.
             exit /B 1
         )
 
         set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
-        set __UseEmcmake=1
-=======
         set CMakeToolPrefix=emcmake
->>>>>>> upstream/main
     )
     if /i "%__Os%" == "wasi" (
         if "%WASI_SDK_PATH%" == "" (
@@ -150,16 +137,11 @@ if not "%__ConfigureOnly%" == "1" (
     )
 )
 
-<<<<<<< HEAD
-if /i "%__UseEmcmake%" == "1" (
-    call "!EMSDK!/emsdk_env" > nul 2>&1 && emcmake "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir%
-) else (
-    "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir%
+if /i "%CMakeToolPrefix%" == "emcmake" (
+    call "!EMSDK!/emsdk_env" > nul 2>&1
 )
-=======
 echo %CMakeToolPrefix% "%CMakePath% %__ExtraCmakeParams% --no-warn-unused-cli -G %__CmakeGenerator% -B %__IntermediatesDir% -S %__SourceDir%"
 %CMakeToolPrefix% "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir%
->>>>>>> upstream/main
 
 if "%errorlevel%" == "0" (
     echo %__ExtraCmakeParams% > %__CmdLineOptionsUpToDateFile%

@@ -30,6 +30,7 @@ namespace ILCompiler.DependencyAnalysis
                 case ReadyToRunHelperId.ObjectAllocator:
                 case ReadyToRunHelperId.TypeHandleForCasting:
                 case ReadyToRunHelperId.ConstrainedDirectCall:
+                case ReadyToRunHelperId.NecessaryTypeHandle:
                     return new WasmFunctionType(wasmPointerType, [wasmPointerType, wasmPointerType]);
                 case ReadyToRunHelperId.DelegateCtor:
                     // (Shadow stack, this, targetObj, GenericContext).
@@ -174,6 +175,7 @@ namespace ILCompiler.DependencyAnalysis
                 case ReadyToRunHelperId.ObjectAllocator:
                 case ReadyToRunHelperId.TypeHandleForCasting:
                 case ReadyToRunHelperId.ConstrainedDirectCall:
+                case ReadyToRunHelperId.NecessaryTypeHandle:
                     localCount = InitializeLocals(argCount: 2, &handlesInvalidEntriesLocal);
                     encoder.DefineLocals([(localCount, wasmPointerType)]);
                     EmitLoadGenericContext(factory, ref encoder, ContextArg, saveIntoContextLocal: false, relocsOnly);

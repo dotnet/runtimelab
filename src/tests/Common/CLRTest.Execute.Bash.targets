@@ -371,11 +371,7 @@ $__Command msbuild $CORE_ROOT/wasm-test-runner/WasmTestRunner.proj /p:NetCoreApp
    ]]>
       </CLRTestBashPreCommands>
 
-<<<<<<< HEAD
-      <BashCLRTestLaunchCmds Condition="'$(CLRTestKind)' == 'BuildAndRun' And ('$(TargetOS)' != 'browser' Or '$(RuntimeFlavor)' != 'mono') And '$(TargetOS)' != 'android' And '$(TargetArchitecture)' != 'arm64'">
-=======
       <BashCLRTestLaunchCmds Condition="'$(CLRTestKind)' == 'BuildAndRun' And '$(TargetOS)' != 'browser' And '$(TargetOS)' != 'android'">
->>>>>>> upstream/main
     <![CDATA[
 $(BashLinkerTestLaunchCmds)
 

@@ -374,23 +374,7 @@ namespace ILCompiler
                         {
                             if (!assignableField.TryAssign(stack.PopIntoLocation(field.FieldType)))
                             {
-<<<<<<< HEAD
-                                if (!assignableField.TryAssign(stack.PopIntoLocation(field.FieldType)))
-                                {
-                                    return Status.Fail(methodIL.OwningMethod, opcode, "Unsupported store");
-                                }
-                            }
-                            else
-                            {
-                                Value value = stack.PopIntoLocation(field.FieldType);
-                                if (value is IInternalModelingOnlyValue)
-                                    return Status.Fail(methodIL.OwningMethod, opcode, "Value with no external representation");
-                                if (value is { TargetSupportsWritingFieldData: false })
-                                    return Status.Fail(methodIL.OwningMethod, opcode, "Value cannot be written to target as it does not support SupportsRelativePointers and hence FrozenRuntimeTypeNode");
-                                _fieldValues[field] = value;
-=======
                                 return Status.Fail(methodIL.OwningMethod, opcode, "Unsupported store");
->>>>>>> upstream/main
                             }
                         }
                         else
@@ -2886,19 +2870,8 @@ namespace ILCompiler
 
             public override bool GetRawData(NodeFactory factory, out object data)
             {
-<<<<<<< HEAD
-                if (TargetSupportsWritingFieldData)
-                {
-                    data = factory.SerializedMaximallyConstructableRuntimeTypeObject(TypeRepresented);
-                    return true;
-                }
-
-                data = null;
-                return false;
-=======
                 data = factory.SerializedMetadataRuntimeTypeObject(TypeRepresented);
                 return true;
->>>>>>> upstream/main
             }
 
             public override ReferenceTypeValue ToForeignInstance(int baseInstructionCounter, TypePreinit preinitContext)

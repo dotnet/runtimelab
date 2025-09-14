@@ -40,10 +40,13 @@ namespace ILCompiler
             InstructionSetSupport instructionSetSupport,
             MethodImportationErrorProvider errorProvider,
             ReadOnlyFieldPolicy readOnlyFieldPolicy,
+            MethodLayoutAlgorithm methodLayoutAlgorithm,
+            FileLayoutAlgorithm fileLayoutAlgorithm,
             RyuJitCompilationOptions baseOptions,
-            int parallelism)
+            int parallelism,
+            string orderFile)
             : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, logger, inliningPolicy, instructionSetSupport,
-                null /* ProfileDataManager */, errorProvider, readOnlyFieldPolicy, baseOptions, parallelism)
+                null /* ProfileDataManager */, errorProvider, readOnlyFieldPolicy, baseOptions, methodLayoutAlgorithm, fileLayoutAlgorithm, parallelism, orderFile)
         {
             _parallelOptions = new() { MaxDegreeOfParallelism = parallelism };
             NodeFactory = nodeFactory;

@@ -26,7 +26,7 @@ partial class Program
         return 100;
     }
 
-    static partial class Interop
+    internal static partial class Interop
     {
         [JSImport("interop.math", "main.js")]
         internal static partial int Math(int a, int b, int c);

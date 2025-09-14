@@ -4678,166 +4678,6 @@ enum class WellKnownArg : unsigned
 const char* getWellKnownArgName(WellKnownArg arg);
 #endif
 
-<<<<<<< HEAD
-struct CallArgABIInformation
-{
-    CallArgABIInformation()
-        : NumRegs(0)
-        , ByteOffset(0)
-        , ByteSize(0)
-#ifdef TARGET_WASM
-        , IsPointer(false)
-#endif
-        , ArgType(TYP_UNDEF)
-        , PassedByRef(false)
-#if FEATURE_ARG_SPLIT
-        , m_isSplit(false)
-#endif
-#ifdef FEATURE_HFA_FIELDS_PRESENT
-        , m_hfaElemKind(CORINFO_HFA_ELEM_NONE)
-#endif
-    {
-        for (size_t i = 0; i < MAX_ARG_REG_COUNT; i++)
-        {
-            RegNums[i] = REG_NA;
-        }
-    }
-
-private:
-    // The registers to use when passing this argument, set to REG_STK for
-    // arguments passed on the stack
-    regNumberSmall RegNums[MAX_ARG_REG_COUNT];
-
-public:
-    // Count of number of registers that this argument uses. Note that on ARM,
-    // if we have a double hfa, this reflects the number of DOUBLE registers.
-    unsigned NumRegs;
-    unsigned ByteOffset;
-    unsigned ByteSize;
-
-#ifdef TARGET_WASM
-    // Whether the ABI type of this argument is an unmanaged pointer.
-    bool IsPointer : 1;
-#endif // TARGET_WASM
-
-    // The type used to pass this argument. This is generally the original
-    // argument type, but when a struct is passed as a scalar type, this is
-    // that type. Note that if a struct is passed by reference, this will still
-    // be the struct type.
-    var_types ArgType : 5;
-    // True iff the argument is passed by reference.
-    bool PassedByRef : 1;
-
-private:
-#if FEATURE_ARG_SPLIT
-    // True when this argument is split between the registers and OutArg area
-    bool m_isSplit : 1;
-#endif
-
-#ifdef FEATURE_HFA_FIELDS_PRESENT
-    // What kind of an HFA this is (CORINFO_HFA_ELEM_NONE if it is not an HFA).
-    CorInfoHFAElemType m_hfaElemKind : 3;
-#endif
-
-public:
-    CorInfoHFAElemType GetHfaElemKind() const
-    {
-#ifdef FEATURE_HFA_FIELDS_PRESENT
-        return m_hfaElemKind;
-#else
-        NOWAY_MSG("GetHfaElemKind");
-        return CORINFO_HFA_ELEM_NONE;
-#endif
-    }
-
-    void SetHfaElemKind(CorInfoHFAElemType elemKind)
-    {
-#ifdef FEATURE_HFA_FIELDS_PRESENT
-        m_hfaElemKind = elemKind;
-#else
-        NOWAY_MSG("SetHfaElemKind");
-#endif
-    }
-
-    bool      IsHfaArg() const;
-    bool      IsHfaRegArg() const;
-    var_types GetHfaType() const;
-    void      SetHfaType(var_types type, unsigned hfaSlots);
-
-    regNumber GetRegNum() const
-    {
-        return (regNumber)RegNums[0];
-    }
-
-    regNumber GetOtherRegNum() const
-    {
-        return (regNumber)RegNums[1];
-    }
-    regNumber GetRegNum(unsigned int i)
-    {
-        assert(i < MAX_ARG_REG_COUNT);
-        return (regNumber)RegNums[i];
-    }
-    void SetRegNum(unsigned int i, regNumber regNum)
-    {
-        assert(i < MAX_ARG_REG_COUNT);
-        RegNums[i] = (regNumberSmall)regNum;
-    }
-
-    bool IsSplit() const
-    {
-#if FEATURE_ARG_SPLIT
-        return compFeatureArgSplit() && m_isSplit;
-#else // FEATURE_ARG_SPLIT
-        return false;
-#endif
-    }
-    void SetSplit(bool value)
-    {
-#if FEATURE_ARG_SPLIT
-        m_isSplit = value;
-#endif
-    }
-
-    bool IsPassedInRegisters() const
-    {
-        return !IsSplit() && (NumRegs != 0);
-    }
-
-    bool IsPassedInFloatRegisters() const
-    {
-#ifdef TARGET_X86
-        return false;
-#else
-        return isValidFloatArgReg(GetRegNum());
-#endif
-    }
-
-    bool IsMismatchedArgType() const
-    {
-#if defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
-        return genIsValidIntReg(GetRegNum()) && varTypeUsesFloatReg(ArgType);
-#else
-        return false;
-#endif // TARGET_LOONGARCH64 || TARGET_RISCV64
-    }
-
-    // Get the number of bytes that this argument is occupying on the stack,
-    // including padding up to the target pointer size for platforms
-    // where a stack argument can't take less.
-    unsigned GetStackByteSize() const;
-
-    // Return number of stack slots that this argument is taking.
-    // This value is not meaningful on Apple arm64 where multiple arguments can
-    // be passed in the same stack slot.
-    unsigned GetStackSlotsNumber() const
-    {
-        return roundUp(GetStackByteSize(), TARGET_POINTER_SIZE) / TARGET_POINTER_SIZE;
-    }
-};
-
-=======
->>>>>>> upstream/main
 struct NewCallArg
 {
     // The node being passed.
@@ -4954,14 +4794,10 @@ public:
         m_earlyNode       = arg.Node;
         m_wellKnownArg    = arg.WellKnownArg;
         m_signatureType   = arg.SignatureType;
-<<<<<<< HEAD
 #ifdef TARGET_WASM
         m_signatureCorInfoType = arg.SignatureCorInfoType;
 #endif
-        m_signatureClsHnd = arg.SignatureClsHnd;
-=======
         m_signatureLayout = arg.SignatureLayout;
->>>>>>> upstream/main
     }
 
     CallArg(const CallArg&)      = delete;
@@ -5078,13 +4914,10 @@ public:
     CallArg* InsertAfterThisOrFirst(Compiler* comp, const NewCallArg& arg);
     void     PushLateBack(CallArg* arg);
     void     Remove(CallArg* arg);
-<<<<<<< HEAD
 #ifdef TARGET_WASM
     void     MoveLateToEarly();
 #endif
-=======
     void     RemoveUnsafe(CallArg* arg);
->>>>>>> upstream/main
 
     template <typename CopyNodeFunc>
     void InternalCopyFrom(Compiler* comp, CallArgs* other, CopyNodeFunc copyFunc);
@@ -8193,22 +8026,15 @@ public:
         return m_layout;
     }
 
-<<<<<<< HEAD
-#ifdef TARGET_WASM
-    void SetLayout(ClassLayout* layout)
-    {
-        assert((layout != nullptr));
-        m_layout = layout;
-    }
-#endif // TARGET_WASM
-=======
     void SetLayout(ClassLayout* newLayout)
     {
         assert(newLayout != nullptr);
+        // TARGET_WASM does not always initialize m_layout before calling SetLayout.
+#ifndef TARGET_WASM
         assert(newLayout->GetSize() == m_layout->GetSize());
+#endif
         m_layout = newLayout;
     }
->>>>>>> upstream/main
 
     // The data to be stored (null for GT_BLK)
     GenTree*& Data()
@@ -10359,23 +10185,12 @@ inline GenTreeFlags GenTree::GetRegSpillFlagByIdx(int regIndex) const
         return AsCall()->GetRegSpillFlagByIdx(regIndex);
     }
 
-<<<<<<< HEAD
-#if FEATURE_ARG_SPLIT
-    if (OperIsPutArgSplit())
-    {
-        return AsPutArgSplit()->GetRegSpillFlagByIdx(regIndex);
-    }
-#endif // FEATURE_ARG_SPLIT
-
 #if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
-=======
-#if !defined(TARGET_64BIT)
->>>>>>> upstream/main
     if (OperIsMultiRegOp())
     {
         return AsMultiRegOp()->GetRegSpillFlagByIdx(regIndex);
     }
-#endif // !defined(TARGET_64BIT)
+#endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
 #endif // FEATURE_MULTIREG_RET
 
 #ifdef FEATURE_HW_INTRINSICS

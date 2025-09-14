@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputPath>$(RuntimeBinDir)ilc/</OutputPath>
+    <Platforms>x64;x86;ARM64;ARM64</Platforms>
   </PropertyGroup>
 
   <Import Project="ILCompiler.props" />

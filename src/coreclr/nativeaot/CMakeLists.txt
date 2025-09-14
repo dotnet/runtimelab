@@ -1,3 +1,8 @@
+# Remove this option for wasm upstream as we need different options for different exception handling.
+get_directory_property(current_opts COMPILE_OPTIONS)
+list(REMOVE_ITEM current_opts "-fwasm-exceptions")
+set_directory_properties(PROPERTIES COMPILE_OPTIONS "${current_opts}")
+
 if(WIN32)
   add_definitions(-DUNICODE=1)
   add_compile_definitions(NOMINMAX)
@@ -51,3 +56,4 @@ add_compile_definitions($<${FEATURE_JAVAMARSHAL}:FEATURE_JAVAMARSHAL>)
 
 add_subdirectory(Bootstrap)
 add_subdirectory(Runtime)
+

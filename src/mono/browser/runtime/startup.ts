@@ -536,17 +536,8 @@ export async function start_runtime () {
         const mark = startMeasure();
         const environmentVariables = runtimeHelpers.config.environmentVariables || {};
         mono_log_debug("Initializing mono runtime");
-<<<<<<< HEAD
-        if (NativeAOT) {
-            runtimeHelpers.config.environmentVariables = {};
-        }
-
-        for (const k in runtimeHelpers.config.environmentVariables) {
-            const v = runtimeHelpers.config.environmentVariables![k];
-=======
         for (const k in environmentVariables) {
             const v = environmentVariables![k];
->>>>>>> upstream/main
             if (typeof (v) === "string")
                 mono_wasm_setenv(k, v);
             else

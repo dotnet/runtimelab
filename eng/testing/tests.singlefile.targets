@@ -55,14 +55,10 @@
   <ItemGroup>
     <Compile Include="$(CommonTestPath)SingleFileTestRunner\SingleFileTestRunner.cs"
              Link="Common\SingleFileTestRunner\SingleFileTestRunner.cs"
-<<<<<<< HEAD
-             Condition="'$(TargetsSingleThreadedWasm)' != 'true'" />
+             Condition="'$(TargetsSingleThreadedWasm)' != 'true' and '$(IsFunctionalTest)' != 'true'" />
     <Compile Include="$(CommonTestPath)WasmTestRunner\WasmTestRunner.cs"
              Link="Common\WasmTestRunner\WasmTestRunner.cs"
-             Condition="'$(TargetsSingleThreadedWasm)' == 'true'" />
-=======
-             Condition="'$(IsFunctionalTest)' != 'true'" />
->>>>>>> upstream/main
+             Condition="'$(TargetsSingleThreadedWasm)' == 'true' and '$(IsFunctionalTest)' != 'true'" />
   </ItemGroup>
 
   <ItemGroup>

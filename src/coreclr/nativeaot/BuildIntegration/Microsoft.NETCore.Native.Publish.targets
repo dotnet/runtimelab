@@ -32,11 +32,7 @@
 
     <ItemGroup>
       <IntermediateAssembly Remove="@(IntermediateAssembly)" />
-<<<<<<< HEAD
-      <IntermediateAssembly Include="@(_NativeIntermediateAssembly)" Condition="'$(DotNetJsApi)' != 'true'" />
-=======
       <IntermediateAssembly Include="$(NativeBinary)" />
->>>>>>> upstream/main
     </ItemGroup>
   </Target>
 
@@ -95,8 +91,7 @@
   <Target Name="CopyNativeBinary" AfterTargets="Publish">
     <!-- replace apphost with binary we generated during native compilation -->
     <Delete Files="$(PublishDir)\$(TargetName)$(NativeBinaryExt)" />
-<<<<<<< HEAD
-    <Copy SourceFiles="$(NativeOutputPath)$(TargetName)$(NativeBinaryExt)" DestinationFolder="$(PublishDir)" Condition="'$(DotNetJsApi)' != 'true'" />
+    <Copy SourceFiles="$(NativeBinary)" DestinationFolder="$(PublishDir)" Condition="'$(DotNetJsApi)' != 'true'" />
 
     <Delete Files="$(PublishDir)\$(TargetName).js" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName).js" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
@@ -109,9 +104,6 @@
       <_FilesToCopyToNative Include="$(NativeOutputPath)\dotnet.native.wasm" />
     </ItemGroup>
     <Copy SourceFiles="@(_FilesToCopyToNative)" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotnetJsApi)' == 'true'"/>
-=======
-    <Copy SourceFiles="$(NativeBinary)" DestinationFolder="$(PublishDir)" />
->>>>>>> upstream/main
   </Target>
 
   <Target Name="_CopyAotSymbols" AfterTargets="Publish"

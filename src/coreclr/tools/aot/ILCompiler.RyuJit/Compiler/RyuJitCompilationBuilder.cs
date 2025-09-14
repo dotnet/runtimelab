@@ -17,11 +17,11 @@ namespace ILCompiler
         // These need to provide reasonable defaults so that the user can optionally skip
         // calling the Use/Configure methods and still get something reasonable back.
         private KeyValuePair<string, string>[] _ryujitOptions = Array.Empty<KeyValuePair<string, string>>();
-        private MethodLayoutAlgorithm _methodLayoutAlgorithm;
-        private FileLayoutAlgorithm _fileLayoutAlgorithm;
+        protected MethodLayoutAlgorithm _methodLayoutAlgorithm;
+        protected FileLayoutAlgorithm _fileLayoutAlgorithm;
         private ILProvider _ilProvider = new NativeAotILProvider();
         private ProfileDataManager _profileDataManager;
-        private string _orderFile;
+        protected string _orderFile;
         private string _jitPath;
 
         protected RyuJitCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group, NodeMangler mangler)
@@ -143,29 +143,26 @@ namespace ILCompiler
             if (_resilient)
                 options |= RyuJitCompilationOptions.UseResilience;
 
-<<<<<<< HEAD
-            JitConfigProvider.Initialize(_context.Target, jitFlagBuilder.ToArray(), _ryujitOptions, _jitPath);
-            return CreateCompilation(options);
-        }
-
-        protected virtual RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options)
-        {
-            ObjectDataInterner interner = _methodBodyFolding ? new ObjectDataInterner() : ObjectDataInterner.Null;
-=======
             ObjectDataInterner interner = _methodBodyFolding switch
             {
                 MethodBodyFoldingMode.Generic => new ObjectDataInterner(genericsOnly: true),
                 MethodBodyFoldingMode.All => new ObjectDataInterner(genericsOnly: false),
                 _ => ObjectDataInterner.Null,
             };
->>>>>>> upstream/main
 
+            return CreateCompilation(options, interner, jitFlagBuilder.ToArray(), _ryujitOptions, _jitPath);
+        }
+
+        protected virtual RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options, ObjectDataInterner interner, CorJitFlag[] jitFlags,  KeyValuePair<string, string>[] ryujitOptions, string jitPath)
+        {
             var factory = new RyuJitNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, interner, _typeMapManager);
 
+            JitConfigProvider.Initialize(_context.Target, jitFlags, ryujitOptions, jitPath);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(CompilerComparer.Instance));
+
             return new RyuJitCompilation(graph,
                 factory,
-                [.._compilationRoots, _typeMapManager],
+                [.. _compilationRoots, _typeMapManager],
                 _ilProvider,
                 _debugInformationProvider,
                 _logger,
