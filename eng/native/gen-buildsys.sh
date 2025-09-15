@@ -97,6 +97,7 @@ fi
 cmake_extra_defines_wasm=()
 if [[ "$host_arch" == "wasm" ]]; then
     if [[ "$target_os" == "browser" ]]; then
+        EMSDK_PATH=$EMSDK
         if [[ -z "$EMSDK_PATH" ]]; then
             if [[ -d "$reporoot"/src/mono/browser/emsdk/ ]]; then
                 export EMSDK_PATH="$reporoot"/src/mono/browser/emsdk/

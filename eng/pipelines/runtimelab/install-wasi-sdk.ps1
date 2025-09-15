@@ -8,14 +8,6 @@ Set-Location -Path $InstallDir
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
-# Verify that we're not behind upstream (and allow us to be ahead).
-$UpstreamWasiSdkVersion = Get-Content $PSScriptRoot/../../../src/mono/wasi/wasi-sdk-version.txt
-if ($WasiSdkVersion -lt [int]$UpstreamWasiSdkVersion)
-{
-    Write-Error "Upstream WASI SDK version is $UpstreamWasiSdkVersion; update `$WasiSdkVersion (currently $WasiSdkVersion)!"
-    exit
-}
-
 if ($IsWindows)
 {
     $WasiSdkHost = "x86_64-windows"
