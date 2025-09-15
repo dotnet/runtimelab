@@ -38,13 +38,13 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <!-- Verify the SDK version. We only issue a warning since it's **possible** a newer SDK might work. -->
     <PropertyGroup>
-      <_ExpectedWasiSdkVersion>25.0</_ExpectedWasiSdkVersion>
+      <_ExpectedWasiSdkVersions>25.0|26.0|27.0</_ExpectedWasiSdkVersions>
       <_ActualWasiSdkVersion>?</_ActualWasiSdkVersion>
       <_ActualWasiSdkVersion Condition="Exists('$(WASI_SDK_PATH)/VERSION')">$([System.IO.File]::ReadAllText('$(WASI_SDK_PATH)/VERSION').Split()[0])</_ActualWasiSdkVersion>
     </PropertyGroup>
 
-    <Warning Text="Wasi SDK version $(_ActualWasiSdkVersion) is being used. This differs from the expected $(_ExpectedWasiSdkVersion) and might result in build or runtime failures."
-             Condition="'$(_ExpectedWasiSdkVersion)' != '$(_ActualWasiSdkVersion)'" />
+    <Warning Text="Wasi SDK version $(_ActualWasiSdkVersion) is being used. This differs from the expected $(_ExpectedWasiSdkVersions) and might result in build or runtime failures."
+             Condition="!$(_ExpectedWasiSdkVersions.Contains($(_ActualWasiSdkVersion)))" />
   </Target>
 
 </Project>
