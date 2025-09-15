@@ -18,6 +18,7 @@
 #define BBNAME(prefix, index) Twine(prefix) + ((index < 10) ? "0" : "") + Twine(index)
 
 using AllocaMap = JitHashTable<unsigned, JitSmallPrimitiveKeyFuncs<unsigned>, llvm::AllocaInst*>;
+using InsertPoint = llvm::IRBuilderBase::InsertPoint;
 
 struct LlvmBlockRange
 {
@@ -43,6 +44,7 @@ struct FunctionInfo
         llvm::AllocaInst** Allocas; // Dense "lclNum -> Alloca*" mapping used for the main function.
         AllocaMap* AllocaMap; // Sparse "lclNum -> Alloca*" mapping used for funclets.
     };
+    Instruction* LastEarlyPrologInst;
     llvm::BasicBlock* ResumeLlvmBlock;
     llvm::BasicBlock* ExceptionThrownReturnLlvmBlock;
 };
@@ -59,10 +61,8 @@ void Llvm::Compile()
     JITDUMPEXEC(_compiler->fgDispHandlerTab());
 
     initializeBlocks();
-    generateProlog();
-    generateUnwindBlocks();
     generateBlocks();
-    fillPhis();
+    generatePhis();
     finalizeDebugInfo();
     generateAuxiliaryArtifacts();
 
@@ -196,7 +196,7 @@ void Llvm::annotateFunctions()
             }
 
             // Mark the shadow stack dereferenceable.
-            if ((funcIdx != ROOT_FUNC_IDX) || _compiler->lvaGetDesc(_shadowStackLclNum)->lvIsParam)
+            if ((funcIdx != ROOT_FUNC_IDX) || _compiler->lvaGetDesc(m_shadowStackLclNum)->lvIsParam)
             {
                 unsigned derefSize = getShadowFrameSize(funcIdx);
                 if (derefSize != 0)
@@ -263,67 +263,19 @@ void Llvm::initializeBlocks()
     }
 }
 
-void Llvm::generateProlog()
+void Llvm::generateEarlyProlog()
 {
-    JITDUMP("\n=============== Generating prolog:\n");
-
-    LlvmBlockRange prologLlvmBlocks(getOrCreatePrologLlvmBlockForFunction(ROOT_FUNC_IDX));
-    setCurrentEmitContext(ROOT_FUNC_IDX, EHblkDsc::NO_ENCLOSING_INDEX, EHblkDsc::NO_ENCLOSING_INDEX, &prologLlvmBlocks);
+    // "fgFirstBB" is guaranteed to not have any incoming flow, so we can reuse its LLVM blocks for the prolog.
+    assert(isFirstBlockCanonical());
+    JITDUMP("=============== Generating early prolog:\n");
     _builder.SetCurrentDebugLocation(nullptr); // By convention, prologs have no debug info.
 
-    initializeShadowStack();
     initializeLocals();
-    declareDebugVariables();
-}
 
-void Llvm::initializeShadowStack()
-{
-    Value* shadowStackValue;
-    if (_compiler->opts.IsReversePInvoke())
-    {
-        shadowStackValue = emitHelperCall(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP);
-
-        JITDUMP("Setting V%02u's initial value to the recovered shadow stack\n", _shadowStackLclNum);
-        JITDUMPEXEC(displayValue(shadowStackValue));
-    }
-    else
-    {
-        shadowStackValue = getRootLlvmFunction()->getArg(SHADOW_STACK_ARG_INDEX);
-    }
-
-    unsigned alignment = m_shadowFrameAlignment;
-    if (alignment != DEFAULT_SHADOW_STACK_ALIGNMENT)
-    {
-        JITDUMP("Aligning the shadow frame to %u bytes:\n", alignment);
-        assert(isPow2(alignment));
-
-        // Zero the padding that may be introduced by the code below. This serves two purposes:
-        // 1. We don't leave "random" pointers on the shadow stack.
-        // 2. We allow precise virtual unwinding out of overaligned frames, by skipping the zeroed padding.
-        unsigned maxPaddingSize = alignment - DEFAULT_SHADOW_STACK_ALIGNMENT;
-        llvm::Align existingAlign = llvm::Align(DEFAULT_SHADOW_STACK_ALIGNMENT);
-        Value* memsetInst = _builder.CreateMemSet(
-            shadowStackValue, _builder.getInt8(0), _builder.getInt32(maxPaddingSize), existingAlign);
-        JITDUMPEXEC(displayValue(memsetInst));
-
-        // IR taken from what Clang generates for "__builtin_align_up".
-        Value* shadowStackIntValue = _builder.CreatePtrToInt(shadowStackValue, getIntPtrLlvmType());
-        JITDUMPEXEC(displayValue(shadowStackIntValue));
-        Value* alignedShadowStackIntValue = _builder.CreateAdd(shadowStackIntValue, getIntPtrConst(alignment - 1));
-        JITDUMPEXEC(displayValue(alignedShadowStackIntValue));
-        alignedShadowStackIntValue = _builder.CreateAnd(alignedShadowStackIntValue, getIntPtrConst(~(alignment - 1)));
-        JITDUMPEXEC(displayValue(alignedShadowStackIntValue));
-        Value* alignOffset = _builder.CreateSub(alignedShadowStackIntValue, shadowStackIntValue);
-        JITDUMPEXEC(displayValue(alignOffset));
-        shadowStackValue = _builder.CreateGEP(Type::getInt8Ty(m_context->Context), shadowStackValue, alignOffset);
-        JITDUMPEXEC(displayValue(shadowStackValue));
-
-        llvm::CallInst* alignAssume =
-            _builder.CreateAlignmentAssumption(m_context->Module.getDataLayout(), shadowStackValue, alignment);
-        JITDUMPEXEC(alignAssume);
-    }
-
-    m_rootFunctionShadowStackValue = shadowStackValue;
+    Instruction* lastInst =
+        _builder.GetInsertPoint() == _builder.GetInsertBlock()->end() ? nullptr : &*_builder.GetInsertPoint();
+    getLlvmFunctionInfoForIndex(ROOT_FUNC_IDX).LastEarlyPrologInst = lastInst;
+    JITDUMP("\n");
 }
 
 void Llvm::initializeLocals()
@@ -332,12 +284,6 @@ void Llvm::initializeLocals()
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
-
-        if (isFuncletParameter(lclNum))
-        {
-            // We model funclet parameters specially because it is not trivial to represent them in IR faithfully.
-            continue;
-        }
 
         // Don't look at unreferenced temporaries.
         if (varDsc->lvRefCnt() == 0)
@@ -404,6 +350,15 @@ void Llvm::initializeLocals()
     getLlvmFunctionInfoForIndex(ROOT_FUNC_IDX).Allocas = allocas;
 }
 
+void Llvm::generateLateProlog()
+{
+    // Now that we have the shadow stack set up by LSSA in its IR prolog, generate EH and debug declares.
+    JITDUMP("\n=============== Generating late prolog:\n");
+    declareDebugVariables();
+    generateUnwindBlocks();
+    JITDUMP("\n");
+}
+
 void Llvm::generateUnwindBlocks()
 {
     if (!_compiler->ehHasCallableHandlers())
@@ -414,6 +369,7 @@ void Llvm::generateUnwindBlocks()
     // Generate the unwind blocks used to catch native exceptions during the second pass.
     // We generate these before the rest of the code because throwing calls need a certain
     // amount of pieces filled in (in particular, "catchswitch"es in the Wasm EH model).
+    BasicBlock* ambientEmitContextBlock = CurrentBlock();
     CompAllocator alloc = _compiler->getAllocator(CMK_Codegen);
     m_EHRegionsInfo = new (alloc) EHRegionInfo[_compiler->compHndBBtabCount]();
 
@@ -552,9 +508,7 @@ void Llvm::generateUnwindBlocks()
         llvm::AllocaInst* cppExcTupleAlloca = funcData.CppExcTupleAlloca;
         if ((model == CORINFO_LLVM_EH_CPP) && (cppExcTupleAlloca == nullptr))
         {
-            llvm::BasicBlock* prologLlvmBlock = getOrCreatePrologLlvmBlockForFunction(funcIdx);
-
-            _builder.SetInsertPoint(prologLlvmBlock->getTerminator());
+            _builder.restoreIP(getOrCreateEarlyPrologForFunction(funcIdx));
             cppExcTupleAlloca = _builder.CreateAlloca(cppExcTupleLlvmType);
 
             funcData.CppExcTupleAlloca = cppExcTupleAlloca;
@@ -711,6 +665,8 @@ void Llvm::generateUnwindBlocks()
 
         funcData.InsertBeforeLlvmBlock = unwindLlvmBlocks.FirstBlock;
     }
+
+    setCurrentEmitContextForBlock(ambientEmitContextBlock);
 }
 
 void Llvm::generateBlocks()
@@ -756,8 +712,19 @@ void Llvm::generateBlock(BasicBlock* block)
 
     setCurrentEmitContextForBlock(block);
 
+    if (block == _compiler->fgFirstBB)
+    {
+        assert(m_prologEnd != nullptr);
+        generateEarlyProlog();
+    }
+
     for (GenTree* node : LIR::AsRange(block))
     {
+        if (node == m_prologEnd)
+        {
+            generateLateProlog();
+        }
+
         visitNode(node);
     }
 
@@ -788,7 +755,7 @@ void Llvm::generateBlock(BasicBlock* block)
     }
 }
 
-void Llvm::fillPhis()
+void Llvm::generatePhis()
 {
     // LLVM requires PHI inputs to match the list of predecessors exactly, which is different from IR in two ways:
     //
@@ -1098,6 +1065,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_CNS_LNG:
             buildIntegralConst(node->AsIntConCommon());
             break;
+        case GT_PHYSREG:
+            buildPhysReg(node->AsPhysReg());
+            break;
         case GT_IND:
             buildInd(node->AsIndir());
             break;
@@ -1106,6 +1076,9 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_SWITCH:
             buildSwitch(node->AsUnOp());
+            break;
+        case GT_PHI:
+            buildEmptyPhi(node->AsPhi());
             break;
         case GT_LCL_FLD:
             buildLocalField(node->AsLclFld());
@@ -1166,9 +1139,6 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_BLK:
             buildBlk(node->AsBlk());
-            break;
-        case GT_PHI:
-            buildEmptyPhi(node->AsPhi());
             break;
         case GT_PHI_ARG:
             break;
@@ -1234,18 +1204,7 @@ void Llvm::buildLocalVar(GenTreeLclVar* lclVar)
     unsigned int ssaNum = lclVar->GetSsaNum();
     LclVarDsc*   varDsc = _compiler->lvaGetDesc(lclVar);
 
-    // We model funclet parameters specially - it is simpler then representing them faithfully in IR.
-    if (lclNum == _shadowStackLclNum)
-    {
-        assert((ssaNum == SsaConfig::FIRST_SSA_NUM) || (ssaNum == SsaConfig::RESERVED_SSA_NUM));
-        llvmRef = getShadowStack();
-    }
-    else if (lclNum == _originalShadowStackLclNum)
-    {
-        assert((ssaNum == SsaConfig::FIRST_SSA_NUM) || (ssaNum == SsaConfig::RESERVED_SSA_NUM));
-        llvmRef = getOriginalShadowStack();
-    }
-    else if (lclVar->HasSsaName())
+    if (lclVar->HasSsaName())
     {
         llvmRef = _localsMap[{lclNum, ssaNum}];
     }
@@ -1850,6 +1809,30 @@ void Llvm::buildIntegralConst(GenTreeIntConCommon* node)
     }
 
     mapGenTreeToValue(node, constValue);
+}
+
+void Llvm::buildPhysReg(GenTreePhysReg* physReg)
+{
+    Value* regValue;
+    Function* llvmFunc = getCurrentLlvmFunction();
+    switch (physReg->gtSrcReg)
+    {
+        case REG_SHADOW_STACK_ARG:
+            // The root function is expected to reference the shadow stack via "m_shadowStackLclNum".
+            assert(getCurrentLlvmFunctionIndex() != ROOT_FUNC_IDX);
+            regValue = llvmFunc->getArg(SHADOW_STACK_ARG_INDEX);
+            break;
+
+        case REG_ORIGINAL_SHADOW_STACK_ARG:
+            // Only filters have the original shadow stack parameter.
+            assert(isCurrentContextInFilter());
+            regValue = llvmFunc->getArg(ORIGINAL_SHADOW_STACK_ARG_INDEX);
+            break;
+
+        default:
+            unreached();
+    }
+    mapGenTreeToValue(physReg, regValue);
 }
 
 void Llvm::buildCall(GenTreeCall* call)
@@ -3255,11 +3238,11 @@ Value* Llvm::getShadowStack()
 {
     if (getCurrentLlvmFunctionIndex() == ROOT_FUNC_IDX)
     {
-        assert(m_rootFunctionShadowStackValue != nullptr);
-        return m_rootFunctionShadowStackValue;
+        Value* value = _localsMap[{m_shadowStackLclNum, m_shadowStackSsaNum}];
+        return value;
     }
 
-    // Note that funclets have the shadow stack arg in the 0th position.
+    // Note that funclets also have the shadow stack arg in the 0th position.
     return getCurrentLlvmFunction()->getArg(SHADOW_STACK_ARG_INDEX);
 }
 
@@ -3268,17 +3251,6 @@ Value* Llvm::getShadowStackForCallee(bool isTailCall)
 {
     unsigned calleeShadowStackOffset = getCalleeShadowStackOffset(getCurrentLlvmFunctionIndex(), isTailCall);
     return gepOrAddrInBounds(getShadowStack(), calleeShadowStackOffset);
-}
-
-Value* Llvm::getOriginalShadowStack()
-{
-    if (isCurrentContextInFilter())
-    {
-        // The original shadow stack pointer is the second filter parameter.
-        return getCurrentLlvmFunction()->getArg(1);
-    }
-
-    return getShadowStack();
 }
 
 void Llvm::setCurrentEmitContextForBlock(BasicBlock* block)
@@ -3472,23 +3444,31 @@ llvm::BasicBlock* Llvm::getLastLlvmBlockForBlock(BasicBlock* block)
     return getLlvmBlocksForBlock(block)->LastBlock;
 }
 
-llvm::BasicBlock* Llvm::getOrCreatePrologLlvmBlockForFunction(unsigned funcIdx)
+InsertPoint Llvm::getOrCreateEarlyPrologForFunction(unsigned funcIdx)
 {
-    const char* const PROLOG_BLOCK_NAME = "BB00";
-
-    BasicBlock* firstUserBlock = getFirstBlockForFunction(funcIdx);
-    llvm::BasicBlock* firstLlvmUserBlock = getFirstLlvmBlockForBlock(firstUserBlock);
-    llvm::BasicBlock* prologLlvmBlock = firstLlvmUserBlock->getPrevNode();
-    if ((prologLlvmBlock == nullptr) || !prologLlvmBlock->getName().starts_with(PROLOG_BLOCK_NAME))
+    FunctionInfo& funcInfo = getLlvmFunctionInfoForIndex(funcIdx);
+    Instruction* inst = funcInfo.LastEarlyPrologInst;
+    if (funcIdx == ROOT_FUNC_IDX)
     {
-        Function* llvmFunc = firstLlvmUserBlock->getParent();
-        prologLlvmBlock = llvm::BasicBlock::Create(m_context->Context, PROLOG_BLOCK_NAME, llvmFunc, firstLlvmUserBlock);
-
-        // Eagerly insert jump to the user block to simplify calling code.
-        llvm::BranchInst::Create(firstLlvmUserBlock, prologLlvmBlock);
+        // The root prolog is always created eagerly.
+        if (inst == nullptr)
+        {
+            llvm::BasicBlock* llvmBlock = &funcInfo.LlvmFunction->getEntryBlock();
+            return {llvmBlock, llvmBlock->begin()};
+        }
+        return {inst->getParent(), inst->getNextNode()->getIterator()};
     }
+    if (inst == nullptr)
+    {
+        Function* llvmFunc = funcInfo.LlvmFunction;
+        llvm::BasicBlock* llvmFuncBlock = &llvmFunc->getEntryBlock();
+        llvm::BasicBlock* prologLlvmBlock =
+            llvm::BasicBlock::Create(m_context->Context, BBNAME("BB", 0), llvmFunc, llvmFuncBlock);
 
-    return prologLlvmBlock;
+        inst = llvm::BranchInst::Create(llvmFuncBlock, prologLlvmBlock);
+        funcInfo.LastEarlyPrologInst = inst;
+    }
+    return {inst->getParent(), inst->getIterator()};
 }
 
 //------------------------------------------------------------------------
@@ -3573,10 +3553,13 @@ Value* Llvm::getOrCreateAllocaForLocalInFunclet(unsigned lclNum)
     llvm::AllocaInst* allocaInst;
     if (!allocaMap->Lookup(lclNum, &allocaInst))
     {
-        llvm::BasicBlock* prologLlvmBlock = getOrCreatePrologLlvmBlockForFunction(funcIdx);
-        allocaInst = new llvm::AllocaInst(getLlvmTypeForLclVar(varDsc), 0, "", prologLlvmBlock->getTerminator());
+        InsertPoint ambientIp = _builder.saveIP();
 
+        _builder.restoreIP(getOrCreateEarlyPrologForFunction(funcIdx));
+        allocaInst = _builder.CreateAlloca(getLlvmTypeForLclVar(varDsc));
         allocaMap->Set(lclNum, allocaInst);
+
+        _builder.restoreIP(ambientIp);
     }
 
     return allocaInst;
