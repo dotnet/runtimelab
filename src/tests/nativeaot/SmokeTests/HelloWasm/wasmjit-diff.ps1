@@ -15,7 +15,6 @@ Param(
     [ValidateSet("Debug","Checked","Release")][string]$Config = "Release",
     [ValidateSet("Debug","Checked","Release")][string]$IlcConfig = "Release",
     [string][Alias("bt")]$BaseTag = "",
-    [Nullable[bool]]$DebugSymbols = $null,
     [uint]$NumberOfDiffsToShow = 20,
     [string]$PassThrough = ""
 )
@@ -42,7 +41,6 @@ if ($ShowHelp)
     Write-Host "  -Config              : Test configuration (Debug/Release). Default is Release"
     Write-Host "  -IlcConfig           : ILC configuration (Debug/Checked/Release). Default is Release"
     Write-Host "  -BaseTag             : Suffix to use for the 'base' directory. Default is none"
-    Write-Host "  -DebugSymbols        : Whether to build with debug symbols. Default is yes"
     Write-Host "  -NumberOfDiffsToShow : Number of diffs to show. Default is 20"
     Write-Host "  -PassThrough         : Additional command line to pass directly to 'dotnet'"
     Write-Host ""
@@ -56,11 +54,6 @@ if ($ShowHelp)
     Write-Host " -Llvm depends on llvm-dis being available in PATH."
     Write-Host ""
     return
-}
-
-if ($DebugSymbols -eq $null)
-{
-    $DebugSymbols = $true
 }
 
 $RuntimelabDirectory = [System.IO.Path]::GetFullPath("./../../../../../", $PSScriptRoot)
@@ -121,7 +114,7 @@ if ($Build -or $Rebuild)
         Write-Host ""
     }
 
-    $UserBuildArgs = "/p:TargetOS=$OS /p:TargetArchitecture=$Arch /p:IlcConfig=$IlcConfig /p:NativeDebugSymbols=$DebugSymbols -c $Config $PassThrough"
+    $UserBuildArgs = "/p:TargetOS=$OS /p:TargetArchitecture=$Arch /p:IlcConfig=$IlcConfig -c $Config $PassThrough"
     $BuildExpression = "dotnet build $TestProjectPath /t:BuildNativeAot /p:TestBuildMode=nativeaot $UserBuildArgs"
     Write-Verbose "Invoking: '$BuildExpression'"
     Invoke-Expression $BuildExpression
