@@ -22,7 +22,7 @@ using ObjectData = ILCompiler.DependencyAnalysis.ObjectNode.ObjectData;
 
 namespace ILCompiler
 {
-    public class MstatObjectDumper : ObjectDumper
+    public partial class MstatObjectDumper : ObjectDumper
     {
         private const int VersionMajor = 2;
         private const int VersionMinor = 1;
@@ -160,6 +160,8 @@ namespace ILCompiler
                 methods.LoadConstantI4(_methodEhInfo.GetValueOrDefault(m.Method));
                 methods.LoadConstantI4(AppendMangledName(m.MangledName));
             }
+
+            EmitRelocatableNodes(methods);
 
             var blobs = new InstructionEncoder(new BlobBuilder());
             foreach (var b in _blobs)

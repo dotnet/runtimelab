@@ -5,7 +5,7 @@ using ObjectData = ILCompiler.DependencyAnalysis.ObjectNode.ObjectData;
 
 namespace ILCompiler.DependencyAnalysis
 {
-    public interface IObjectDumper
+    public partial interface IObjectDumper
     {
         void DumpObjectNode(NodeFactory factory, ObjectNode node, ObjectData objectData);
     }
