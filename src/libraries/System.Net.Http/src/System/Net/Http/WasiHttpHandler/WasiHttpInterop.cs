@@ -167,13 +167,29 @@ namespace System.Net.Http
             foreach ((var key, var value) in headers.Entries())
             {
                 var valueString = Encoding.UTF8.GetString(value);
-                if (IsContentHeader(key))
+
+                // Skip invalid header values, particularly sentinel values like "-1" for Content-Length
+                if (!IsValidHeaderValue(key, valueString))
                 {
-                    response.Content.Headers.Add(key, valueString);
+                    continue;
                 }
-                else
+
+                try
                 {
-                    response.Headers.Add(key, valueString);
+                    if (IsContentHeader(key))
+                    {
+                        response.Content.Headers.Add(key, valueString);
+                    }
+                    else
+                    {
+                        response.Headers.Add(key, valueString);
+                    }
+                }
+                catch (FormatException)
+                {
+                    // Log and skip headers that can't be parsed
+                    // This prevents FormatExceptions from surfacing to application code
+                    continue;
                 }
             }
         }
@@ -181,6 +197,21 @@ namespace System.Net.Http
         private static bool IsContentHeader(string headerName)
         {
             return HeaderDescriptor.TryGet(headerName, out HeaderDescriptor descriptor) && (descriptor.HeaderType & HttpHeaderType.Content) != 0;
+        }
+
+        internal static bool IsValidHeaderValue(string headerName, string value)
+        {
+            // Handle Content-Length specifically - negative values indicate unknown length and should be omitted
+            if (string.Equals(headerName, "Content-Length", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!long.TryParse(value, out var length) || length < 0)
+                {
+                    return false;
+                }
+            }
+
+            // Additional validation can be added here for other headers if needed
+            return true;
         }
 
         public static string ErrorCodeToString(ErrorCode code)
