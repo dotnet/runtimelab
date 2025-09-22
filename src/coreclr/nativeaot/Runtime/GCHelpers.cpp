@@ -672,7 +672,7 @@ EXTERN_C void* F_CALL_CONV RhpGcAlloc(MethodTable* pEEType, uint32_t uFlags, uin
         ASSERT(pThread->IsHijacked());
         pTransitionFrame->m_RIP = pThread->GetHijackedReturnAddress();
     }
-#else
+#elif !defined(HOST_WASM)
 
     // NOTE: The x64 fixup above would not be sufficient on ARM64 and similar architectures since
     //       m_RIP is used to restore LR in POP_COOP_PINVOKE_FRAME.

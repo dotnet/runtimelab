@@ -29,7 +29,7 @@ namespace Internal.JitInterface
         private const CORINFO_RUNTIME_ABI TargetABI = CORINFO_RUNTIME_ABI.CORINFO_NATIVEAOT_ABI;
 
         private uint OffsetOfDelegateFirstTarget => (uint)(4 * PointerSize); // Delegate._functionPointer
-        private int SizeOfReversePInvokeTransitionFrame => 2 * PointerSize;
+        private int SizeOfReversePInvokeTransitionFrame => (_compilation.TypeSystemContext.Target.IsWasm ? 1 : 2) * PointerSize;
 
         private RyuJitCompilation _compilation;
         private MethodDebugInformation _debugInfo;
@@ -789,9 +789,6 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_DISPATCH_INDIRECT_CALL:
                     return _compilation.NodeFactory.ExternIndirectFunctionSymbol("__guard_dispatch_icall_fptr");
 
-                case CorInfoHelpFunc.CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
-                    mangledName = "RhpGetOrInitShadowStackTop";
-                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_CATCH:
                     mangledName = "RhpHandleExceptionWasmCatch";
                     break;
@@ -804,8 +801,14 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME:
                     mangledName = "RhpPushSparseVirtualUnwindFrame";
                     break;
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_REVERSE_PINVOKE_ENTER_AND_PUSH_VIRTUAL_UNWIND_FRAME:
+                    mangledName = "RhpReversePInvokeAndPushSparseVirtualUnwindFrame";
+                    break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME:
                     mangledName = "RhpPopSparseVirtualUnwindFrame";
+                    break;
+                case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_REVERSE_PINVOKE_EXIT_AND_POP_VIRTUAL_UNWIND_FRAME:
+                    mangledName = "RhpReversePInvokeReturnAndPopSparseVirtualUnwindFrame";
                     break;
                 case CorInfoHelpFunc.CORINFO_HELP_LLVM_EH_UNHANDLED_EXCEPTION:
                     mangledName = "RhpHandleUnhandledException";
@@ -2028,8 +2031,7 @@ namespace Internal.JitInterface
             {
                 if (_compilation.TypeSystemContext.Target.IsWasm)
                 {
-                    // Only m_pThread used.
-                    return this.PointerSize;
+                    return 0; // Shadow stack top pointer used as the transition frame.
                 }
 
                 // struct PInvokeTransitionFrame:
