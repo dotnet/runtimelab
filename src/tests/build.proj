@@ -446,9 +446,8 @@
     <!-- ActiveIssue https://github.com/dotnet/runtime/issues/114123
     The groups 2..n are disabled for browser target because they get OOM kill in CI.
     -->
-    <MSBuild Projects="$(MSBuildThisFileFullPath)" Targets="BuildManagedTestGroup" Properties="__TestGroupToBuild=%(_GroupStartsWith.GroupNumber);__SkipRestorePackages=1"
-        Condition="'$(TargetOS)' != 'browser' or '$(ContinuousIntegrationBuild)' != 'true'"
-    />
+    <!-- TODO-LLVM: We differ from upstream where this is disabled as above -->
+    <MSBuild Projects="$(MSBuildThisFileFullPath)" Targets="BuildManagedTestGroup" Properties="__TestGroupToBuild=%(_GroupStartsWith.GroupNumber);__SkipRestorePackages=1" />
   </Target>
 
   <Target Name="BuildManagedTestGroup"
