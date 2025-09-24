@@ -34,6 +34,7 @@
     <IlcConfig Condition="'$(IlcConfig)' == ''">$(CoreCLRConfiguration)</IlcConfig>
     <IlcHostArch Condition="'$(IlcHostArch)' == ''">$(BuildArchitecture)</IlcHostArch>
     <CoreCLRCrossILCompilerDir Condition="'$(CoreCLRCrossILCompilerDir)' != '' and '$(TargetsWasm)' == 'true'">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(IlcHostArch).$(IlcConfig)', 'ilc'))</CoreCLRCrossILCompilerDir>
+    <CoreCLRCrossILCompilerDir Condition="'$(TargetsWasm)' == 'true' and '$(ContinuousIntegrationBuild)' == 'true'">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(IlcHostArch).$(IlcConfig)', 'ilc-published'))</CoreCLRCrossILCompilerDir>
 
     <Crossgen2Dir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'crossgen2-published'))</Crossgen2Dir>
     <Crossgen2InBuildDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', '$(BuildArchitecture)', 'crossgen2'))</Crossgen2InBuildDir>
