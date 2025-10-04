@@ -52,7 +52,7 @@ steps:
 
     # Don't compile/run the libraries tests with emulated ILC to save CI time/resources.
     - ${{ if and(eq(parameters.archType, 'wasm'), eq(parameters.nameSuffix, ''), eq(parameters.wasmEnableThreadsArg, '')) }}:
-      - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests ci -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
+      - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -ci -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
         displayName: Build and run WebAssembly libraries tests
 
   - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/remove-duplicate-packages.ps1 -Config $(_BuildConfig) -HostArch $(hostedTargetArch) -TargetOS ${{ parameters.osGroup }} -TargetArch ${{ parameters.archType }}
