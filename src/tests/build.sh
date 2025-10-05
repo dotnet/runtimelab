@@ -167,8 +167,6 @@ usage_list+=("-test:xxx - Only build the specified test project ^(relative or ab
 usage_list+=("-dir:xxx - Build all test projects in the given directory ^(relative or absolute directory under src\tests^).");
 usage_list+=("-tree:xxx - Build all test projects in the given subtree ^(relative or absolute directory under src\tests^).");
 usage_list+=("-log:xxx - Base file name to use for log files (used in lab pipelines that build tests in multiple steps to retain logs for each step).")
-usage_list+=("-browser - Target Wasm/browser.")
-usage_list+=("-wasi - Target Wasm/WASI.")
 usage_list+=("")
 usage_list+=("Any unrecognized arguments will be passed directly to MSBuild.")
 
@@ -320,16 +318,6 @@ handle_arguments_local() {
             else
                 __BuildLogRootName="${parts[1]}"
             fi
-            ;;
-
-        browser|-browser)
-            __TargetOS=browser
-            __TargetArch=wasm
-            ;;
-
-        wasi|-wasi)
-            __TargetOS=wasi
-            __TargetArch=wasm
             ;;
 
         *)

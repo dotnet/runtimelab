@@ -1,0 +1,98 @@
+<Project Sdk="Microsoft.DotNet.Helix.Sdk" DefaultTargets="Test">
+
+  <!-- This project uses the Helix SDK, documented at
+       https://github.com/dotnet/arcade/tree/master/src/Microsoft.DotNet.Helix/Sdk,
+       to send a small test job that uses ILC to compile a few projects.
+       This is used to smoke-test ILC compiled for architectures we don't
+       have native test machines for (not-x64).
+  -->
+  <PropertyGroup>
+    <Creator>$(_Creator)</Creator>
+    <HelixAccessToken>$(_HelixAccessToken)</HelixAccessToken>
+    <HelixBuild>$(_HelixBuild)</HelixBuild>
+    <HelixSource>$(_HelixSource)</HelixSource>
+    <HelixTargetQueues>$(_HelixTargetQueues)</HelixTargetQueues>
+    <HelixType>$(_HelixType)</HelixType>
+
+    <GlobalJsonContent>$([System.IO.File]::ReadAllText('$(RepoRoot)global.json'))</GlobalJsonContent>
+    <IncludeDotNetCli>true</IncludeDotNetCli>
+    <DotNetCliPackageType>sdk</DotNetCliPackageType>
+    <DotNetCliVersion>$([System.Text.RegularExpressions.Regex]::Match($(GlobalJsonContent), '(%3F&lt;="dotnet": ").*(%3F=")'))</DotNetCliVersion>
+  </PropertyGroup>
+
+  <Target Name="BuildHelixWorkItems" BeforeTargets="CoreTest" Condition="'$(HelixTargetQueue)' != ''">
+    <PropertyGroup>
+      <TestTargetOS>wasi</TestTargetOS>
+      <TestTargetRid>$(TestTargetOS)-wasm</TestTargetRid>
+      <IlcHostPlatform>$(TargetOS)-$(TargetArchitecture)</IlcHostPlatform>
+      <WindowsShell Condition="$(HelixTargetQueue.ToLowerInvariant().Contains('windows'))">true</WindowsShell>
+      <ExeExt Condition="'$(WindowsShell)' == 'true'">.exe</ExeExt>
+      <WorkItemDirectory>$([MSBuild]::NormalizeDirectory('$(ArtifactsObjDir)', '$(IlcHostPlatform)-$(Configuration)-NativeAOT-LLVM-HelixTestPayload'))</WorkItemDirectory>
+    </PropertyGroup>
+
+    <Error Text="Only WASI SDK supported for $(IlcHostPlatform)" Condition="'$(TestTargetOS)' != 'wasi'" />
+
+    <ItemGroup>
+      <PackageFile Include="$(ArtifactsShippingPackagesDir)*" />
+      <SampleProjectFile Include="$(RepoRoot)samples/**/*" />
+    </ItemGroup>
+
+    <RemoveDir Directories="$(WorkItemDirectory)" />
+    <Copy SourceFiles="@(PackageFile)" DestinationFolder="$(WorkItemDirectory)pkg-src" />
+    <Copy SourceFiles="@(SampleProjectFile)" DestinationFolder="$(WorkItemDirectory)samples/%(RecursiveDir)" Condition="'%(Filename)%(Extension)' != 'nuget.config'" />
+    <Exec Command="pwsh install-wasi-sdk.ps1 -InstallDir $(WorkItemDirectory) -HostArch $(TargetArchitecture)" Condition="'$(TestTargetOS)' == 'wasi'" />
+
+    <!-- Windows WASI SDK is very heavy due to **many** clang copies. Remove them for better upload times. -->
+    <Delete Files="$(WorkItemDirectory)wasi-sdk/bin/wasm32-wasi-clang$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/wasm32-wasi-clang++$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/wasm32-wasi-threads-clang$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/wasm32-wasi-threads-clang++$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/wasm32-wasip1-clang$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/wasm32-wasip1-clang++$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/wasm32-wasip1-threads-clang$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/wasm32-wasip1-threads-clang++$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/wasm32-wasip2-clang$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/wasm32-wasip2-clang++$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/clang-tidy$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/clang-cpp$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/clang-cl$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/ld.lld$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/ld64.lld$(ExeExt);
+                   $(WorkItemDirectory)wasi-sdk/bin/lld-link$(ExeExt)" />
+
+    <PropertyGroup Condition="'$(WindowsShell)' == 'true'">
+      <HelixPreCommands>set RestoreAdditionalProjectSources=%HELIX_WORKITEM_PAYLOAD%\pkg-src</HelixPreCommands>
+      <HelixPreCommands Condition="'$(TestTargetOS)' == 'wasi'">$(HelixPreCommands);set WASI_SDK_PATH=%HELIX_WORKITEM_PAYLOAD%\wasi-sdk</HelixPreCommands>
+      <HelixCommand>
+dotnet publish %HELIX_WORKITEM_PAYLOAD%\samples\HelloWorld\HelloWorld.csproj -c $(Configuration) -r $(TestTargetRid) &amp;&amp;^
+dotnet publish %HELIX_WORKITEM_PAYLOAD%\samples\NativeLibrary\NativeLibrary.csproj -c $(Configuration) -r $(TestTargetRid)
+      </HelixCommand>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(WindowsShell)' != 'true'">
+      <HelixPreCommands>export RestoreAdditionalProjectSources=$HELIX_WORKITEM_PAYLOAD/pkg-src</HelixPreCommands>
+      <HelixPreCommands Condition="'$(TestTargetOS)' == 'wasi'">$(HelixPreCommands);export WASI_SDK_PATH=$HELIX_WORKITEM_PAYLOAD/wasi-sdk</HelixPreCommands>
+      <HelixPreCommands Condition="'$(TestTargetOS)' == 'wasi'">$(HelixPreCommands);chmod +x $WASI_SDK_PATH/bin/*</HelixPreCommands>
+      <HelixCommand>
+dotnet publish $HELIX_WORKITEM_PAYLOAD/samples/HelloWorld/HelloWorld.csproj -c $(Configuration) -r $(TestTargetRid) &amp;&amp;\
+dotnet publish $HELIX_WORKITEM_PAYLOAD/samples/NativeLibrary/NativeLibrary.csproj -c $(Configuration) -r $(TestTargetRid)
+      </HelixCommand>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <HelixWorkItem Include="NativeAOT-LLVM-$(IlcHostPlatform)-ILC-SmokeTest">
+        <Command>$(HelixCommand)</Command>
+        <PayloadDirectory>$(WorkItemDirectory)</PayloadDirectory>
+        <Timeout>01:00:00</Timeout>
+      </HelixWorkItem>
+    </ItemGroup>
+
+    <Message Text="HelixWorkItem: %(HelixWorkItem.Identity)
+      PreCommands: $(HelixPreCommands)
+      Command: %(HelixWorkItem.Command)
+      PayloadDirectory: %(HelixWorkItem.PayloadDirectory)" Importance="High" />
+
+    <Error Text="Stopping the build for dry run" Condition="'$(HelixDryRun)' == 'true'" />
+  </Target>
+
+</Project>
