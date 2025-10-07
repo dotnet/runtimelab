@@ -140,7 +140,7 @@ if ($Analyze -or $Summary)
 
     if ($Llvm)
     {
-        $LlvmSummaryLineRegex = [Regex]::New('define.*@"?([^"]*)"?\(.*\).*{', "Compiled")
+        $LlvmSummaryLineRegex = [Regex]::New('define.*@"?([^"]*?)"?\(.*\).*{', "Compiled")
         function ParseLlvmSummary($ObjDirectory, $SummaryName)
         {
             Write-Host -NoNewLine "Analysing ${SummaryName}"
@@ -148,6 +148,7 @@ if ($Analyze -or $Summary)
             # Use the results file to be resilient against stale bitcode files.
             $SummaryList = [Collections.Generic.Dictionary[string, object]]::new()
             $BitcodeFiles = Get-Content "$ObjDirectory/$TestProjectName.results.txt"
+            $BitcodeFiles = $BitcodeFiles | Where-Object { $_.EndsWith(".bc") }
 
             # The results file in the 'base' directory will refer to the original ('diff') files. Fix this up.
             for ($i = 0; $i -lt $BitcodeFiles.Length; $i++)
