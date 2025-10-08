@@ -626,9 +626,11 @@ private:
     void emitAlignmentCheckForAddress(GenTree* addr, Value* addrValue, unsigned alignment DEBUGARG(GenTree* indir));
     bool isAddressAligned(GenTree* addr, unsigned alignment);
 
-    Value* consumeInitVal(GenTree* initVal);
+    Value* consumeInitVal(GenTree* initVal, uint8_t* pValue);
+    void consumeInitValAndEmitInitBlk(GenTree* initVal, Value* addrValue, ClassLayout* layout);
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
+    void emitMemSet(Value* addr, uint8_t value, unsigned size);
 
     void emitJumpToThrowHelper(Value* jumpCondValue, CorInfoHelpFunc helperFunc DEBUGARG(GenTree* nodeThrowing));
     Value* emitCheckedArithmeticOperation(
@@ -666,6 +668,7 @@ private:
 
     Value* gepOrAddr(Value* addr, unsigned offset);
     Value* gepOrAddrInBounds(Value* addr, unsigned offset);
+    Value* emitAddLoadStoreOffset(Value* addr, unsigned offset);
     llvm::Constant* getIntPtrConst(target_size_t value, Type* llvmType = nullptr);
     Value* getShadowStack();
     Value* getShadowStackForCallee(bool isTailCall = false);

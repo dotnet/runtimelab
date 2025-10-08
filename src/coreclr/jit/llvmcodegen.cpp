@@ -1329,9 +1329,7 @@ void Llvm::buildStoreLocalField(GenTreeLclFld* lclFld)
 
     if (lclFld->TypeIs(TYP_STRUCT) && genActualTypeIsInt(data))
     {
-        Value* fillValue = consumeInitVal(data);
-        Value* sizeValue = _builder.getInt32(layout->GetSize());
-        _builder.CreateMemSet(addrValue, fillValue, sizeValue, llvm::MaybeAlign());
+        consumeInitValAndEmitInitBlk(data, addrValue, layout);
     }
     else
     {
@@ -1931,8 +1929,7 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
     // Check for the "initblk" operation ("dataNode" is either INIT_VAL or constant zero).
     if (blockOp->OperIsInitBlkOp())
     {
-        Value* fillValue = consumeInitVal(dataNode);
-        _builder.CreateMemSet(addrValue, fillValue, _builder.getInt32(layout->GetSize()), llvm::Align());
+        consumeInitValAndEmitInitBlk(dataNode, addrValue, layout);
         return;
     }
 
@@ -2467,17 +2464,31 @@ bool Llvm::isAddressAligned(GenTree* addr, unsigned alignment)
     return alignment == 1; // Any address is aligned to one byte.
 }
 
-Value* Llvm::consumeInitVal(GenTree* initVal)
+Value* Llvm::consumeInitVal(GenTree* initVal, uint8_t* pValue)
 {
     assert(initVal->isContained());
     if (initVal->IsIntegralConst())
     {
         assert(initVal->IsIntegralConst(0));
-        return _builder.getInt8(0);
+        *pValue = 0;
+        return nullptr;
     }
 
     assert(initVal->OperIsInitVal());
     return consumeValue(initVal->gtGetOp1(), Type::getInt8Ty(m_context->Context));
+}
+
+void Llvm::consumeInitValAndEmitInitBlk(GenTree* initVal, Value* addrValue, ClassLayout* layout)
+{
+    uint8_t constInitValue;
+    Value* initValue = consumeInitVal(initVal, &constInitValue);
+    if (initValue != nullptr)
+    {
+        _builder.CreateMemSet(addrValue, initValue, layout->GetSize(), llvm::MaybeAlign());
+        return;
+    }
+
+    emitMemSet(addrValue, constInitValue, layout->GetSize());
 }
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
@@ -2551,6 +2562,66 @@ unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned en
     _builder.CreateMemCpy(destAddress, llvm::Align(), srcAddress, llvm::Align(), size);
 
     return size;
+}
+
+void Llvm::emitMemSet(Value* addr, uint8_t value, unsigned size)
+{
+    static const unsigned LLVM_MAX_UNROLL_SIZE = 64;
+
+    llvm::Align align(1);
+    if (size > LLVM_MAX_UNROLL_SIZE)
+    {
+        _builder.CreateMemSet(addr, _builder.getInt8(value), size, align);
+        return;
+    }
+
+    // TODO-LLVM: remove this manual unrolling once https://github.com/llvm/llvm-project/issues/79692 is fixed.
+    unsigned offset = 0;
+    Value* int64Value = nullptr;
+    for (; size - offset >= 8; offset += 8)
+    {
+        if (int64Value == nullptr)
+        {
+            int64Value = _builder.getInt64(0x0101010101010101ULL * value);
+        }
+        Value* addrAtOffset = emitAddLoadStoreOffset(addr, offset);
+        _builder.CreateAlignedStore(int64Value, addrAtOffset, llvm::commonAlignment(align, offset));
+    }
+
+    Value* int32Value = nullptr;
+    for (; size - offset >= 4; offset += 4)
+    {
+        if (int32Value == nullptr)
+        {
+            int32Value = _builder.getInt32(0x01010101u * value);
+        }
+        Value* addrAtOffset = emitAddLoadStoreOffset(addr, offset);
+        _builder.CreateAlignedStore(int32Value, addrAtOffset, llvm::commonAlignment(align, offset));
+    }
+
+    Value* int16Value = nullptr;
+    for (; size - offset >= 2; offset += 2)
+    {
+        if (int16Value == nullptr)
+        {
+            int16Value = _builder.getInt16(0x0101 * value);
+        }
+        Value* addrAtOffset = emitAddLoadStoreOffset(addr, offset);
+        _builder.CreateAlignedStore(int16Value, addrAtOffset, llvm::commonAlignment(align, offset));
+    }
+
+    Value* int8Value = nullptr;
+    for (; size - offset >= 1; offset += 1)
+    {
+        if (int8Value == nullptr)
+        {
+            int8Value = _builder.getInt8(value);
+        }
+        Value* addrAtOffset = emitAddLoadStoreOffset(addr, offset);
+        _builder.CreateAlignedStore(int8Value, addrAtOffset, llvm::commonAlignment(align, offset));
+    }
+
+    assert(offset == size);
 }
 
 void Llvm::emitJumpToThrowHelper(Value* jumpCondValue, CorInfoHelpFunc helperFunc DEBUGARG(GenTree* nodeThrowing))
@@ -3249,6 +3320,21 @@ Value* Llvm::gepOrAddrInBounds(Value* addr, unsigned offset)
     }
 
     return _builder.CreateInBoundsGEP(Type::getInt8Ty(m_context->Context), addr, _builder.getInt32(offset));
+}
+
+Value* Llvm::emitAddLoadStoreOffset(Value* addr, unsigned offset)
+{
+    // TODO-LLVM: replace this with getelementptr 'nusw' once we move to LLVM 20+.
+    assert(addr->getType()->isPointerTy());
+    if (offset == 0)
+    {
+        return addr;
+    }
+
+    addr = _builder.CreatePtrToInt(addr, getIntPtrLlvmType());
+    addr = _builder.CreateNUWAdd(addr, getIntPtrConst(offset));
+    addr = _builder.CreateIntToPtr(addr, getPtrLlvmType());
+    return addr;
 }
 
 Value* Llvm::getShadowStack()
