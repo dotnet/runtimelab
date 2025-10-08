@@ -8,6 +8,7 @@ jobs:
   parameters:
     name: 'PrepareSignedArtifacts'
     displayName: 'Prepare Signed Artifacts'
+    microbuildUseESRP: ${{ parameters.isOfficialBuild }}
 
     pool:
       name: $(DncEngInternalBuildPool)
@@ -22,9 +23,13 @@ jobs:
     enableMicrobuild: true
 
     variables:
+    - ${{ if eq(parameters.isOfficialBuild, true) }}:
       - name: '_SignType'
         value: $[ coalesce(variables.OfficialSignType, 'real') ]
-      
+    - ${{ else }}:
+      - name: '_SignType'
+        value: $[ coalesce(variables.OfficialSignType, 'test') ]
+
     templateContext:
       inputs:
       - input: checkout
@@ -40,7 +45,7 @@ jobs:
         condition: succeededOrFailed()
         targetPath: '$(Build.StagingDirectory)\BuildLogs'
         artifactName: ${{ parameters.logArtifactName }}
-    
+
     steps:
     - script: >-
         build.cmd -restore -sign -publish -ci -configuration Release
@@ -53,7 +58,7 @@ jobs:
         /p:DotNetPublishUsingPipelines=true
         /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
       displayName: Prepare artifacts and upload to build
-    
+
     - task: CopyFiles@2
       displayName: Copy Files to $(Build.StagingDirectory)\BuildLogs
       inputs:
