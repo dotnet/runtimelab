@@ -54,4 +54,4 @@ extends:
                 librariesConfiguration: Release
     - template: /eng/pipelines/official/stages/publish.yml
       parameters:
-        isOfficialBuild: true
+        isOfficialBuild: false
