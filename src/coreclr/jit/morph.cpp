@@ -2249,6 +2249,7 @@ bool Compiler::fgTryMorphStructArg(CallArg* arg)
         {
             lvaSetVarDoNotEnregister(argNode->AsLclFld()->GetLclNum() DEBUGARG(DoNotEnregisterReason::LocalField));
         }
+#ifndef TARGET_WASM
         else if (argNode->OperIs(GT_BLK))
         {
             ClassLayout* layout = argNode->AsBlk()->GetLayout();
@@ -2262,6 +2263,7 @@ bool Compiler::fgTryMorphStructArg(CallArg* arg)
                 argNode->gtType = primitiveType;
             }
         }
+#endif // TARGET_WASM
 
         // Potentially update commas
         arg->GetNode()->ChangeType((*use)->TypeGet());
