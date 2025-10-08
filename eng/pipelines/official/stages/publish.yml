@@ -1,5 +1,6 @@
 parameters:
   PublishRidAgnosticPackagesFromPlatform: Browser_wasm_win
+  isOfficialBuild: true
 
 stages:
 
@@ -12,6 +13,7 @@ stages:
   - template: /eng/pipelines/official/jobs/prepare-signed-artifacts.yml
     parameters:
       PublishRidAgnosticPackagesFromPlatform: ${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
+      isOfficialBuild: ${{ parameters.isOfficialBuild }}
 
   # Publish to Build Asset Registry in order to generate the ReleaseConfigs artifact.
   - template: /eng/common/templates-official/job/publish-build-assets.yml
