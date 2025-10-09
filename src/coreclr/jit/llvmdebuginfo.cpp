@@ -617,7 +617,7 @@ void Llvm::declareDebugVariables()
     }
 
     DILocation* debugLocation = getArtificialDebugLocation();
-    Instruction* insertInst = _builder.GetInsertBlock()->getTerminator();
+    llvm::BasicBlock* insertBlock = _builder.GetInsertBlock();
     Value* spilledShadowStackAddr = nullptr;
     for (auto lcl : decltype(m_debugVariablesMap)::KeyValueIteration(&m_debugVariablesMap))
     {
@@ -664,7 +664,7 @@ void Llvm::declareDebugVariables()
         llvm::DILocalVariable* debugVariable = lcl->GetValue();
         DIExpression* debugExpression = m_diBuilder->createExpression(AsRef(diExpression));
         Instruction* debugInst =
-            m_diBuilder->insertDeclare(addressValue, debugVariable, debugExpression, debugLocation, insertInst);
+            m_diBuilder->insertDeclare(addressValue, debugVariable, debugExpression, debugLocation, insertBlock);
         JITDUMP("Declaring V%02u:\n", lclNum);
         JITDUMPEXEC(displayValue(debugInst));
     }

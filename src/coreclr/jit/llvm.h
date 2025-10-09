@@ -285,7 +285,7 @@ class Llvm
 {
 private:
     static const unsigned SHADOW_STACK_ARG_INDEX = 0;
-    static const unsigned DEFAULT_SHADOW_STACK_ALIGNMENT = TARGET_POINTER_SIZE;
+    static const unsigned ORIGINAL_SHADOW_STACK_ARG_INDEX = 1;
     static const unsigned MIN_HEAP_OBJ_SIZE = TARGET_POINTER_SIZE * 2;
 
     void* const m_pEECorInfo; // TODO-LLVM: workaround for not changing the JIT/EE interface.
@@ -301,7 +301,6 @@ private:
     // Lowering members.
     LIR::Range* m_currentRange = nullptr;
     SideEffectSet m_scratchSideEffects; // Used for IsInvariantInRange.
-    bool m_anyFilterFunclets = false;
 
     // Optimization facts provided by lowering.
     BooleanFact m_anyVirtuallyUnwindableCalleesViaLowering = BooleanFact::Unknown;
@@ -316,6 +315,7 @@ private:
 
     // Shared between LSSA and codegen.
     bool m_anyAddressExposedOrPinnedShadowLocals = false;
+    GenTree* m_prologEnd = nullptr; // First 'user' node after the prolog.
 
     // Codegen members.
     llvm::IRBuilder<> _builder;
@@ -328,8 +328,6 @@ private:
     CorInfoLlvmEHModel m_ehModel;
     EHRegionInfo* m_EHRegionsInfo;
     Value* m_exceptionThrownAddressValue = nullptr;
-
-    Value* m_rootFunctionShadowStackValue = nullptr;
 
     // Codegen emit context.
     unsigned m_currentLlvmFunctionIndex = ROOT_FUNC_IDX;
@@ -344,10 +342,9 @@ private:
     unsigned m_lineNumberCount;
     CORINFO_LLVM_LINE_NUMBER_DEBUG_INFO* m_lineNumbers;
 
-    unsigned m_shadowFrameAlignment = DEFAULT_SHADOW_STACK_ALIGNMENT;
     unsigned _shadowStackLocalsSize = 0;
-    unsigned _originalShadowStackLclNum = BAD_VAR_NUM;
-    unsigned _shadowStackLclNum = BAD_VAR_NUM;
+    unsigned m_shadowStackSsaNum = SsaConfig::RESERVED_SSA_NUM;
+    unsigned m_shadowStackLclNum = BAD_VAR_NUM;
     unsigned m_sparseVirtualUnwindFrameLclNum = BAD_VAR_NUM;
     unsigned m_preciseVirtualUnwindFrameLclNum = BAD_VAR_NUM;
     unsigned _llvmArgCount = 0;
@@ -473,7 +470,6 @@ private:
     void lowerVirtualStubCall(GenTreeCall* callNode);
     void insertNullCheckForCall(GenTreeCall* callNode);
     void lowerDelegateInvoke(GenTreeCall* callNode);
-    void lowerReversePInvokeExit(GenTreeCall* callNode);
     void lowerUnmanagedCall(GenTreeCall* callNode);
     void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerCallReturn(GenTreeCall* callNode);
@@ -485,7 +481,6 @@ private:
     GenTree* normalizeStructUse(LIR::Use& use, ClassLayout* layout);
 
     unsigned representAsLclVar(LIR::Use& use);
-    GenTree* insertShadowStackAddr(GenTree* insertBefore, unsigned offset, unsigned shadowStackLclNum);
     GenTreeAddrMode* createAddrModeNode(GenTree* base, unsigned offset);
 
     void lowerCollectOptimizationFacts(GenTree* node);
@@ -496,7 +491,7 @@ private:
     void dissolvePromotedLocal(unsigned lclNum);
 
     bool isFirstBlockCanonical();
-    GenTree* lowerAndInsertIntoFirstBlock(LIR::Range& range, GenTree* insertAfter = nullptr);
+    GenTree* lowerAndInsertIntoFirstBlock(LIR::Range&& range, GenTree* insertAfter = nullptr);
 
 public:
     PhaseStatus AddVirtualUnwindFrame();
@@ -546,8 +541,6 @@ private:
         bool callIsInTry, bool callIsInFilter DEBUGARG(const char** pReasonWhyNot = nullptr)) const;
     bool isPotentialGcSafePoint(GenTree* node) const;
     bool isShadowFrameLocal(LclVarDsc* varDsc) const;
-    bool isShadowStackLocal(unsigned lclNum) const;
-    bool isFuncletParameter(unsigned lclNum) const;
 
     // ================================================================================================================
     // |                                                   Codegen                                                    |
@@ -561,14 +554,14 @@ private:
 
     void initializeFunctions();
     void annotateFunctions();
-    void generateProlog();
-    void initializeShadowStack();
+    void generateEarlyProlog();
     void initializeLocals();
     void initializeBlocks();
+    void generateLateProlog();
     void generateUnwindBlocks();
     void generateBlocks();
     void generateBlock(BasicBlock* block);
-    void fillPhis();
+    void generatePhis();
     void generateAuxiliaryArtifacts();
     void verifyGeneratedCode();
     void displayGeneratedCode();
@@ -595,6 +588,7 @@ private:
     void buildCmp(GenTreeOp* node);
     void buildCnsDouble(GenTreeDblCon* node);
     void buildIntegralConst(GenTreeIntConCommon* node);
+    void buildPhysReg(GenTreePhysReg* physReg);
     void buildCall(GenTreeCall* node);
     void buildInd(GenTreeIndir* indNode);
     void buildBlk(GenTreeBlk* blkNode);
@@ -672,7 +666,6 @@ private:
     llvm::Constant* getIntPtrConst(target_size_t value, Type* llvmType = nullptr);
     Value* getShadowStack();
     Value* getShadowStackForCallee(bool isTailCall = false);
-    Value* getOriginalShadowStack();
 
     void setCurrentEmitContextForBlock(BasicBlock* block);
     void setCurrentEmitContextBlocks(LlvmBlockRange* llvmBlocks);
@@ -696,7 +689,7 @@ private:
     LlvmBlockRange* getLlvmBlocksForBlock(BasicBlock* block);
     llvm::BasicBlock* getFirstLlvmBlockForBlock(BasicBlock* block);
     llvm::BasicBlock* getLastLlvmBlockForBlock(BasicBlock* block);
-    llvm::BasicBlock* getOrCreatePrologLlvmBlockForFunction(unsigned funcIdx);
+    llvm::IRBuilderBase::InsertPoint getOrCreateEarlyPrologForFunction(unsigned funcIdx);
 
     bool isReachable(BasicBlock* block) const;
     BasicBlock* getFirstBlockForFunction(unsigned funcIdx) const;

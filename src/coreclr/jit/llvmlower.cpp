@@ -135,8 +135,6 @@ void Llvm::initializeFunclets()
             FuncInfoDsc* funcInfo = _compiler->funGetFunc(ehDsc->ebdFilterFuncIndex);
             funcInfo->funKind = FUNC_FILTER;
             funcInfo->funEHIndex = static_cast<unsigned short>(ehIndex);
-
-            m_anyFilterFunclets = true;
         }
 
         if (ehDsc->HasFinallyHandler())
@@ -171,19 +169,11 @@ void Llvm::initializeFunclets()
 //
 void Llvm::initializeLlvmArgInfo()
 {
-    if (m_anyFilterFunclets)
-    {
-        _originalShadowStackLclNum = _compiler->lvaGrabTemp(true DEBUGARG("original shadowstack"));
-        LclVarDsc* originalShadowStackVarDsc = _compiler->lvaGetDesc(_originalShadowStackLclNum);
-        originalShadowStackVarDsc->lvType = TYP_I_IMPL;
-        originalShadowStackVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
-    }
-
     unsigned nextLlvmArgNum = 0;
     bool isManagedAbi = !_compiler->opts.IsReversePInvoke();
 
-    _shadowStackLclNum = _compiler->lvaGrabTempWithImplicitUse(true DEBUGARG("shadowstack"));
-    LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(_shadowStackLclNum);
+    m_shadowStackLclNum = _compiler->lvaGrabTempWithImplicitUse(true DEBUGARG("shadowstack"));
+    LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(m_shadowStackLclNum);
     shadowStackVarDsc->lvType = TYP_I_IMPL;
     shadowStackVarDsc->lvCorInfoType = CORINFO_TYPE_PTR;
     if (isManagedAbi)
@@ -436,10 +426,6 @@ void Llvm::lowerCall(GenTreeCall* callNode)
     if (callNode->IsHelperCall(_compiler, CORINFO_HELP_RETHROW))
     {
         lowerRethrow(callNode);
-    }
-    else if (callNode->IsHelperCall(_compiler, CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT))
-    {
-        lowerReversePInvokeExit(callNode);
     }
     // "gtFoldExprConst" can attach a superflous argument to the overflow helper. Remove it.
     else if (callNode->IsHelperCall(_compiler, CORINFO_HELP_OVERFLOW) && !callNode->gtArgs.IsEmpty())
@@ -801,13 +787,6 @@ void Llvm::lowerDelegateInvoke(GenTreeCall* callNode)
     lowerIndir(callTarget->AsIndir());
 }
 
-void Llvm::lowerReversePInvokeExit(GenTreeCall* callNode)
-{
-    // The RPI exit call has an additional argument - the shadow stack top on entry to this RPI method.
-    GenTree* previousShadowStackTop = insertShadowStackAddr(callNode, 0, _shadowStackLclNum);
-    callNode->gtArgs.PushFront(_compiler, NewCallArg::Primitive(previousShadowStackTop, CORINFO_TYPE_PTR));
-}
-
 void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
 {
     assert(callNode->IsUnmanaged());
@@ -1162,26 +1141,6 @@ unsigned Llvm::representAsLclVar(LIR::Use& use)
     return use.ReplaceWithLclVar(_compiler);
 }
 
-GenTree* Llvm::insertShadowStackAddr(GenTree* insertBefore, unsigned offset, unsigned shadowStackLclNum)
-{
-    assert(isShadowStackLocal(shadowStackLclNum));
-
-    GenTree* shadowStackLcl = _compiler->gtNewLclvNode(shadowStackLclNum, TYP_I_IMPL);
-    CurrentRange().InsertBefore(insertBefore, shadowStackLcl);
-
-    if (offset == 0)
-    {
-        return shadowStackLcl;
-    }
-
-    // Using an address mode node here explicitizes our assumption that the shadow stack does not overflow.
-    assert(offset <= getShadowFrameSize(ROOT_FUNC_IDX));
-    GenTree* addrModeNode = createAddrModeNode(shadowStackLcl, offset);
-    CurrentRange().InsertBefore(insertBefore, addrModeNode);
-
-    return addrModeNode;
-}
-
 //------------------------------------------------------------------------
 // createAddrModeNode: Create an address mode node.
 //
@@ -1306,7 +1265,7 @@ bool Llvm::isFirstBlockCanonical()
     return !block->hasTryIndex() && (block->bbPreds == nullptr);
 }
 
-GenTree* Llvm::lowerAndInsertIntoFirstBlock(LIR::Range& range, GenTree* insertAfter)
+GenTree* Llvm::lowerAndInsertIntoFirstBlock(LIR::Range&& range, GenTree* insertAfter)
 {
     assert(isFirstBlockCanonical());
     lowerRange(_compiler->fgFirstBB, range);
@@ -1652,7 +1611,7 @@ bool Llvm::addVirtualUnwindFrameForExceptionHandling()
                 initRange.InsertAtEnd(ehInfoNode);
                 initRange.InsertAtEnd(initialUnwindIndexNode);
                 initRange.InsertAtEnd(initializeCall);
-                m_llvm->lowerAndInsertIntoFirstBlock(initRange);
+                m_llvm->lowerAndInsertIntoFirstBlock(std::move(initRange));
                 m_llvm->m_sparseVirtualUnwindFrameLclNum = unwindFrameLclNum;
             }
 
@@ -2197,13 +2156,11 @@ bool Llvm::isBlockInFilter(BasicBlock* block) const
 {
     if (m_blocksInFilters == BitVecOps::UninitVal())
     {
-        assert(!m_anyFilterFunclets);
         assert(!block->hasHndIndex() || !_compiler->ehGetBlockHndDsc(block)->InFilterRegionBBRange(block));
         return false;
     }
 
     // Ideally, this would be a flag (BBF_*), but we make do with a bitset for now to avoid modifying the frontend.
-    assert(m_anyFilterFunclets);
     BitVecTraits bitVecTraits(_compiler->fgBBNumMax + 1, _compiler);
     return BitVecOps::IsMember(&bitVecTraits, m_blocksInFilters, block->bbNum);
 }

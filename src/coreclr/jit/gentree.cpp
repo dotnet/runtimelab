@@ -8178,7 +8178,7 @@ GenTree* Compiler::gtNewPhysRegNode(regNumber reg, var_types type)
 {
 #ifdef TARGET_ARM64
     assert(genIsValidIntReg(reg) || (reg == REG_SPBASE) || (reg == REG_FFR));
-#else
+#elif !defined(TARGET_WASM)
     assert(genIsValidIntReg(reg) || (reg == REG_SPBASE));
 #endif
     GenTree* result = new (this, GT_PHYSREG) GenTreePhysReg(reg, type);
