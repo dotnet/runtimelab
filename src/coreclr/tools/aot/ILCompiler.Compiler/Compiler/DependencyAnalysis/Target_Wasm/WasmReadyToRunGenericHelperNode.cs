@@ -175,6 +175,7 @@ namespace ILCompiler.DependencyAnalysis
                 case ReadyToRunHelperId.ObjectAllocator:
                 case ReadyToRunHelperId.TypeHandleForCasting:
                 case ReadyToRunHelperId.ConstrainedDirectCall:
+                case ReadyToRunHelperId.MetadataTypeHandle:
                 case ReadyToRunHelperId.NecessaryTypeHandle:
                     localCount = InitializeLocals(argCount: 2, &handlesInvalidEntriesLocal);
                     encoder.DefineLocals([(localCount, wasmPointerType)]);
