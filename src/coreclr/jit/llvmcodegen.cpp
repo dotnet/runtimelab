@@ -3238,8 +3238,7 @@ Value* Llvm::getShadowStack()
 {
     if (getCurrentLlvmFunctionIndex() == ROOT_FUNC_IDX)
     {
-        Value* value = _localsMap[{m_shadowStackLclNum, m_shadowStackSsaNum}];
-        return value;
+        return _localsMap[{m_shadowStackLclNum, m_shadowStackSsaNum}];
     }
 
     // Note that funclets also have the shadow stack arg in the 0th position.
