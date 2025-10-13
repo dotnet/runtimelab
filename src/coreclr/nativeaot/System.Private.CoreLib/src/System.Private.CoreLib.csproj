@@ -335,8 +335,6 @@
     <Compile Include="System\Diagnostics\StackFrame.NativeAot.Wasm.cs" />
     <Compile Include="System\Diagnostics\StackFrame.NativeAot.Wasi.cs" Condition="'$(TargetsWasi)' == 'true'" />
     <Compile Include="System\Diagnostics\StackFrame.NativeAot.Browser.cs" Condition="'$(TargetsBrowser)' == 'true'" />
-    <Compile Include="$(MonoBclSourcesRoot)\System\Threading\PortableThreadPool.Browser.Threads.Mono.cs" Condition="'$(TargetsBrowser)' == 'true' and '$(WasmEnableThreads)' == 'true'" />
-    <Compile Include="$(MonoBclSourcesRoot)\System\Threading\ThreadPool.Browser.Threads.Mono.cs" Condition="'$(TargetsBrowser)' == 'true' and '$(WasmEnableThreads)' == 'true'" />
   </ItemGroup>
 
   <!-- WASM-specific things. Keep in sync with Mono. -->

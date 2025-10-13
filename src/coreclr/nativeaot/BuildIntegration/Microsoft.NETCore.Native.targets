@@ -100,7 +100,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <ExportsFileExt Condition="'$(_targetOS)' != 'win'">.exports</ExportsFileExt>
 
     <NativeObject>$(NativeIntermediateOutputPath)$(TargetName)$(NativeObjectExt)</NativeObject>
-    <NativeBinary>$(NativeOutputPath)$(NativeBinaryPrefix)$(TargetName)$(NativeBinaryExt)</NativeBinary>
+    <NativeBinary Condition="'$(NativeBinary)' == ''">$(NativeOutputPath)$(NativeBinaryPrefix)$(TargetName)$(NativeBinaryExt)</NativeBinary>
     <IlcExportUnmanagedEntrypoints Condition="'$(IlcExportUnmanagedEntrypoints)' == '' and '$(NativeLib)' == 'Shared'">true</IlcExportUnmanagedEntrypoints>
     <ExportsFile Condition="$(ExportsFile) == '' and '$(BuildingFrameworkLibrary)' != 'true'">$(NativeIntermediateOutputPath)$(TargetName)$(ExportsFileExt)</ExportsFile>
 
@@ -181,7 +181,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       -->
       <_NETCoreAppRuntimePackPath Condition="'$(PublishAotUsingRuntimePack)' == 'true'">%(_NETCoreAppFrameworkReference.RuntimePackPath)/runtimes/$(RuntimeIdentifier)/</_NETCoreAppRuntimePackPath>
       <_NETCoreAppRuntimePackPath Condition="'$(PublishAotUsingRuntimePack)' != 'true'">$(RuntimePackagePath)/runtimes/$(RuntimeIdentifier)/</_NETCoreAppRuntimePackPath>
-      <IlcFrameworkPath Condition="'$(IlcFrameworkPath)' == ''">$(_NETCoreAppRuntimePackPath)\lib\</IlcFrameworkPath>
+      <IlcFrameworkPath Condition="'$(IlcFrameworkPath)' == ''">$(_NETCoreAppRuntimePackPath)\libs\</IlcFrameworkPath>
       <IlcFrameworkNativePath Condition="'$(IlcFrameworkNativePath)' == ''">$(_NETCoreAppRuntimePackPath)\native\</IlcFrameworkNativePath>
       <IlcSdkPath Condition="'$(IlcSdkPath)' == ''">$(IlcFrameworkNativePath)</IlcSdkPath>
     </PropertyGroup>
@@ -589,6 +589,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
       <CustomLinkerArg Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" Condition="'$(EmccInitialHeapSize)' != ''" />
       <CustomLinkerArg Include="-s ASSERTIONS=1" Condition="'$(EmccEnableAssertions)' == 'true'" />
+      <CustomLinkerArg Include="-s EXPORTED_RUNTIME_METHODS=['HEAPU8','HEAP32','HEAP16']" />
       <CustomLinkerArg Include="-pthread" Condition="'$(WasmEnableThreads)' == 'true'"/>
       <CustomLinkerArg Include="-Wno-pthreads-mem-growth" Condition="'$(WasmEnableThreads)' == 'true'"/>
 
