@@ -2219,7 +2219,7 @@ void Llvm::buildSwitch(GenTreeUnOp* switchNode)
     assert(srcBlock->GetKind() == BBJ_SWITCH);
 
     BBswtDesc* switchDesc = srcBlock->GetSwitchTargets();
-    unsigned casesCount = switchDesc->GetCaseCount();
+    unsigned casesCount = switchDesc->GetCaseCount() - 1;
     noway_assert(switchDesc->HasDefaultCase());
 
     BasicBlock* defaultDestBlock = switchDesc->GetDefaultCase()->getDestinationBlock();

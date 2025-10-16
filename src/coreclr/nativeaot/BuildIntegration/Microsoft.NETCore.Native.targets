@@ -589,7 +589,6 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
       <CustomLinkerArg Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" Condition="'$(EmccInitialHeapSize)' != ''" />
       <CustomLinkerArg Include="-s ASSERTIONS=1" Condition="'$(EmccEnableAssertions)' == 'true'" />
-      <CustomLinkerArg Include="-s EXPORTED_RUNTIME_METHODS=['HEAPU8','HEAP32','HEAP16']" />
       <CustomLinkerArg Include="-pthread" Condition="'$(WasmEnableThreads)' == 'true'"/>
       <CustomLinkerArg Include="-Wno-pthreads-mem-growth" Condition="'$(WasmEnableThreads)' == 'true'"/>
 

@@ -2226,6 +2226,7 @@ bool Compiler::fgTryMorphStructArg(CallArg* arg)
         if (argNode->OperIs(GT_LCL_VAR) &&
             (lvaGetPromotionType(argNode->AsLclVar()->GetLclNum()) == PROMOTION_TYPE_INDEPENDENT))
         {
+#ifndef TARGET_WASM
             // TODO-Arm-CQ: support decomposing "large" promoted structs into field lists.
             if (!isSplit)
             {
@@ -2240,6 +2241,7 @@ bool Compiler::fgTryMorphStructArg(CallArg* arg)
                 *use = fgMorphTree(*use);
             }
             else
+#endif // !TARGET_WASM
             {
                 // Set DNER to block independent promotion.
                 lvaSetVarDoNotEnregister(argNode->AsLclVar()->GetLclNum() DEBUGARG(DoNotEnregisterReason::IsStructArg));
@@ -7469,6 +7471,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
         {
             GenTree*& retVal = tree->AsOp()->ReturnValueRef();
 
+#ifndef TARGET_WASM
             // Apply some optimizations that change the type of the return.
             // These are not applicable when this is a merged return that will
             // be changed into a store and jump to the return BB.
@@ -7481,6 +7484,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
 
                 fgTryReplaceStructLocalWithFields(&retVal);
             }
+#endif // !TARGET_WASM
 
             // normalize small integer return values
             if (fgGlobalMorph && varTypeIsSmall(info.compRetType) && (retVal != nullptr) && !retVal->TypeIs(TYP_VOID) &&
@@ -8447,6 +8451,7 @@ DONE_MORPHING_CHILDREN:
             }
             break;
 
+#ifndef TARGET_WASM
         case GT_RETURN:
         case GT_SWIFT_ERROR_RET:
         {
@@ -8464,6 +8469,7 @@ DONE_MORPHING_CHILDREN:
             }
             break;
         }
+#endif // !TARGET_WASM
 
         default:
             break;

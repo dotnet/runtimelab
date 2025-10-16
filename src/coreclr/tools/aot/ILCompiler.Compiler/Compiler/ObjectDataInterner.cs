@@ -72,6 +72,9 @@ namespace ILCompiler
                     if (factory.GetSymbolAlternateName(body, out _) != null)
                         continue;
 
+                    if (!(body is ObjectNode))
+                        continue;
+
                     var key = new MethodInternKey(body, factory);
                     if (methodHash.TryGetValue(key, out MethodInternKey found))
                     {
