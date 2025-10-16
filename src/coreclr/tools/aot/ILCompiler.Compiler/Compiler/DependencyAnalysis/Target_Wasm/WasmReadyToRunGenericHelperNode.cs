@@ -185,7 +185,7 @@ namespace ILCompiler.DependencyAnalysis
                     break;
 
                 default:
-                    throw new NotImplementedException();
+                    throw new NotImplementedException(_id.ToString());
             }
         }
 

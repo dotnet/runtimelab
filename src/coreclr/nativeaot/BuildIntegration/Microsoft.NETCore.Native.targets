@@ -527,7 +527,8 @@ The .NET Foundation licenses this file to you under the MIT license.
         strip -no_code_signature_warning -x &quot;$(NativeBinary)&quot;" />
   </Target>
 
-  <!-- NativeAOT-LLVM: separate target to reduce conflicts -->
+  <!-- NativeAOT-LLVM: separate target to avoid conflicts -->
+  <UsingTask TaskName="RelocateMstat" AssemblyFile="$(IlcBuildTasksPath)" />
   <Target Name="LinkNativeLlvm"
       Inputs="@(NativeObjects);@(NativeLibrary)"
       Outputs="$(NativeBinary)"
@@ -614,12 +615,21 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-mexec-model=reactor" Condition="'$(NativeLib)' == 'Shared'" />
     </ItemGroup>
 
+    <ItemGroup Condition="'$(IlcGenerateMstatFile)' == 'true'">
+      <_LinkMapFilePath Include="$(NativeIntermediateOutputPath)$(TargetName).linkmap" />
+      <CustomLinkerArg Include="@(_LinkMapFilePath->Replace('\', '/')->'-Wl,--Map=&quot;%(Identity)&quot;')" />
+    </ItemGroup>
+
     <ItemGroup>
       <CustomLinkerArg Include="@(LinkerArg)" />
     </ItemGroup>
 
     <WriteLinesToFile File="$(NativeIntermediateOutputPath)link.rsp" Lines="@(CustomLinkerArg)" Overwrite="true" Encoding="utf-8" />
     <Exec Command="$(WasmLinkerPath) @$(NativeIntermediateOutputPath)link.rsp $(EmccExtraArgs)" EnvironmentVariables="@(EmscriptenEnvVars)" />
+
+    <RelocateMstat Condition="'$(IlcGenerateMstatFile)' == 'true'"
+        MstatFilePath="$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).mstat"
+        LinkMapPath="@(_LinkMapFilePath)" />
   </Target>
 
   <Target Name="LinkNative"

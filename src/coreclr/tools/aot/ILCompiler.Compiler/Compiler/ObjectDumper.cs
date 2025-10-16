@@ -9,7 +9,7 @@ using ObjectData = ILCompiler.DependencyAnalysis.ObjectNode.ObjectData;
 
 namespace ILCompiler
 {
-    public abstract class ObjectDumper : IObjectDumper
+    public abstract partial class ObjectDumper : IObjectDumper
     {
         internal abstract void Begin();
         internal abstract void End();
@@ -49,7 +49,7 @@ namespace ILCompiler
             };
         }
 
-        private sealed class ComposedObjectDumper : ObjectDumper
+        private sealed partial class ComposedObjectDumper : ObjectDumper
         {
             private readonly ObjectDumper[] _dumpers;
 

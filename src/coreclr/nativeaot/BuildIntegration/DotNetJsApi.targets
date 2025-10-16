@@ -74,7 +74,7 @@
       <_DotNetJsLinkerFlag Include="-s EXPORT_ES6=1" /><!-- Produce ES6 module as expented by hosting API -->
       <_DotNetJsLinkerFlag Include="-s MODULARIZE=1" /><!-- Produce ES6 module as expented by hosting API -->
       <_DotNetJsLinkerFlag Include="-s EXPORT_NAME=&quot;'createDotnetRuntime'&quot;" /><!-- Export emscripten factory as 'createDotnetRuntime', as expented by hosting API -->
-      <_DotNetJsLinkerFlag Include="-s ENVIRONMENT=&quot;'web,webview,worker,node,shell'&quot;" /><!-- Add support for all enviroments (default list is smaller) -->
+      <_DotNetJsLinkerFlag Include="-s ENVIRONMENT=&quot;web,webview,worker,node,shell&quot;" /><!-- Add support for all enviroments (default list is smaller) -->
       <_DotNetJsLinkerFlag Condition="'$(EmccEnvironment)' != ''" Include="-s ENVIRONMENT=&quot;$(EmccEnvironment)&quot;" />
       <_DotNetJsLinkerFlag Include="-s FORCE_FILESYSTEM=1" /><!-- We are using JS API for accessing FS -->
       <_DotNetJsLinkerFlag Include="--emit-symbol-map" Condition="'$(WasmEmitSymbolMap)' == 'true'" />

@@ -370,13 +370,15 @@ REGDEF(STK,    8+KBASE,    0x0000,       "STK"  )
 // (in particular, fixing the assumption that "this" is always enregistered), we will
 // pretend we have one register (both integer and FP, for simplicity).
 //
-REGDEF(R0,                          0, 0x01, "R0")
-REGDEF(F0,                          1, 0x02, "F0")
-REGDEF(LLVM,                        2, 0x04, "LLVM")
-REGDEF(STK_CANDIDATE_UNCONDITIONAL, 3, 0x08, "SS_UNCONDITIONAL")
-REGDEF(STK_CANDIDATE_TENTATIVE,     4, 0x10, "SS_TENTATIVE")
-REGDEF(STK_CANDIDATE_COMMITED,      5, 0x20, "SS_COMMITED")
-REGDEF(STK,                         6, 0x40, "SS")
+REGDEF(R0,                          0, 0x001, "R0")
+REGDEF(F0,                          1, 0x002, "F0")
+REGDEF(LLVM,                        2, 0x004, "LLVM")
+REGDEF(STK_CANDIDATE_UNCONDITIONAL, 3, 0x008, "SS_UNCONDITIONAL")
+REGDEF(STK_CANDIDATE_TENTATIVE,     4, 0x010, "SS_TENTATIVE")
+REGDEF(STK_CANDIDATE_COMMITED,      5, 0x020, "SS_COMMITED")
+REGDEF(SHADOW_STACK_ARG,            6, 0x040, "SS_ARG")
+REGDEF(ORIGINAL_SHADOW_STACK_ARG,   7, 0x080, "ORIGINAL_SS_ARG")
+REGDEF(STK,                         8, 0x100, "SS")
 
 #elif defined(TARGET_LOONGARCH64)
  #include "registerloongarch64.h"

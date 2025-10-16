@@ -39,6 +39,8 @@
 //
 class ShadowStackAllocator
 {
+    static const unsigned DEFAULT_SHADOW_STACK_ALIGNMENT = TARGET_POINTER_SIZE;
+
     Compiler* const m_compiler;
     Llvm* const m_llvm;
 
@@ -48,9 +50,9 @@ class ShadowStackAllocator
     BitVecTraits m_candidateBitSetTraits = BitVecTraits(0, nullptr);
     BitVec m_explicitInitShadowSlots = BitVecOps::UninitVal();
 
+    unsigned m_shadowFrameAlignment = DEFAULT_SHADOW_STACK_ALIGNMENT;
     unsigned m_prologZeroingOffset = 0;
     unsigned m_prologZeroingSize = 0;
-    GenTree* m_lastPrologNode = nullptr;
 
 #ifdef FEATURE_LSSA_ALLOCATION_RESULT
     class LssaAllocationResult;
@@ -146,7 +148,7 @@ private:
                 continue;
             }
 
-            if ((varDsc->lvRefCnt() == 0) || m_llvm->isFuncletParameter(lclNum))
+            if ((varDsc->lvRefCnt() == 0) || (lclNum == m_llvm->m_shadowStackLclNum))
             {
                 continue;
             }
@@ -667,8 +669,8 @@ private:
             if (defNode == nullptr)
             {
                 VarSetOps::AddElemD(m_compiler, block->bbLiveIn, varDsc->lvVarIndex);
-                defBlockRange.InsertAfter(m_lssa->m_lastPrologNode, value, store);
-                m_lssa->m_lastPrologNode = store;
+                defBlockRange.InsertAfter(m_llvm->m_prologEnd, value, store);
+                m_llvm->m_prologEnd = store;
             }
             else if (defNode->IsPhiDefn())
             {
@@ -1552,7 +1554,7 @@ private:
             if (varDsc->lvStructDoubleAlign)
             {
                 alignment = 8;
-                m_llvm->m_shadowFrameAlignment = alignment;
+                m_shadowFrameAlignment = alignment;
             }
 #endif // !TARGET_64BIT
 
@@ -1617,7 +1619,7 @@ private:
             }
         }
 
-        m_llvm->_shadowStackLocalsSize = AlignUp(offset, Llvm::DEFAULT_SHADOW_STACK_ALIGNMENT);
+        m_llvm->_shadowStackLocalsSize = AlignUp(offset, DEFAULT_SHADOW_STACK_ALIGNMENT);
         m_compiler->compLclFrameSize = m_llvm->_shadowStackLocalsSize;
 
         m_compiler->lvaDoneFrameLayout = Compiler::TENTATIVE_FRAME_LAYOUT;
@@ -1630,35 +1632,122 @@ private:
     void FinalizeProlog()
     {
         LIR::Range initRange;
+        m_llvm->m_currentBlock = m_compiler->fgFirstBB;
         m_llvm->m_currentRange = &initRange;
+
+        InitializeShadowStackValue();
         m_llvm->initializePreciseVirtualUnwindFrame();
 
         unsigned zeroingSize = m_prologZeroingSize;
         if (zeroingSize != 0)
         {
             unsigned offset = m_prologZeroingOffset;
-            GenTree* addr = m_llvm->insertShadowStackAddr(nullptr, offset, m_llvm->_shadowStackLclNum);
-            GenTree* zero = m_compiler->gtNewIconNode(0);
-            ClassLayout* layout = m_compiler->typGetBlkLayout(zeroingSize);
-            GenTree* store = m_compiler->gtNewStoreBlkNode(layout, addr, zero, GTF_IND_NONFAULTING);
-            initRange.InsertAfter(addr, zero, store);
-
+            GenTree* store = InsertZeroShadowFrame(offset, zeroingSize);
             JITDUMP("Added zero-initialization for shadow locals at: [%i, %i]:\n", offset, offset + zeroingSize);
             DISPTREERANGE(initRange, store);
-            RecordAllocationActionZeroInit(m_compiler->fgFirstBB, offset, zeroingSize);
+            RecordAllocationActionZeroInit(m_llvm->CurrentBlock(), offset, zeroingSize);
         }
 
-        GenTree* lastInitNode = m_llvm->lowerAndInsertIntoFirstBlock(initRange); // Insert at the start.
-        if (m_lastPrologNode == nullptr)
+        // TODO-LLVM-Cleanup: this seems more complicated than it needs to be...
+        GenTree* lastInitNode = m_llvm->lowerAndInsertIntoFirstBlock(std::move(initRange)); // Insert at the start.
+        if (m_llvm->m_prologEnd == nullptr)
         {
-            m_lastPrologNode = lastInitNode;
+            m_llvm->m_prologEnd = lastInitNode;
         }
 
         // Insert a zero-offset ILOffset to notify codegen this is the start of user code.
         DebugInfo zeroILOffsetDi =
             DebugInfo(m_compiler->compInlineContext, ILLocation(0, /* isStackEmpty */ true, /* isCall */ false));
         GenTree* zeroILOffsetNode = new (m_compiler, GT_IL_OFFSET) GenTreeILOffset(zeroILOffsetDi);
-        LIR::AsRange(m_compiler->fgFirstBB).InsertAfter(m_lastPrologNode, zeroILOffsetNode);
+        LIR::AsRange(m_compiler->fgFirstBB).InsertAfter(m_llvm->m_prologEnd, zeroILOffsetNode);
+
+        m_llvm->m_prologEnd = zeroILOffsetNode;
+    }
+
+    void InitializeShadowStackValue()
+    {
+        unsigned lclNum = m_llvm->m_shadowStackLclNum;
+        LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
+        // The liveness of our shadow stack local that has been computed before LSSA is not correct since we haven't
+        // yet added all the uses. Since we don't use the liveness info for it anyway, just mark it untracked.
+        varDsc->lvTracked = 0;
+
+        GenTreeLclVar* def = nullptr;
+        if (!varDsc->lvIsParam)
+        {
+            GenTree* call = m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP, TYP_I_IMPL);
+            def = m_compiler->gtNewStoreLclVarNode(lclNum, call);
+            m_llvm->CurrentRange().InsertAtEnd(call);
+            m_llvm->CurrentRange().InsertAtEnd(def);
+            varDsc->lvHasExplicitInit = 1;
+
+            JITDUMP("ReversePInvoke: initialized the shadow stack:\n");
+            DISPTREERANGE(m_llvm->CurrentRange(), def);
+        }
+        m_llvm->m_shadowStackSsaNum = AddUntrackedSsaDef(def, lclNum);
+
+        unsigned alignment = m_shadowFrameAlignment;
+        if (alignment != DEFAULT_SHADOW_STACK_ALIGNMENT)
+        {
+            // Zero the padding that may be introduced by the code below. This serves two purposes:
+            // 1. We don't leave "random" pointers on the shadow stack.
+            // 2. We allow precise virtual unwinding out of overaligned frames, by skipping the zeroed padding.
+            GenTreeIndir* store = InsertZeroShadowFrame(0, alignment - DEFAULT_SHADOW_STACK_ALIGNMENT);
+
+            // Generate: "pShadowStack = (pShadowStack + 7) & ~7".
+            GenTree* initialValue = InsertShadowStackAddr(nullptr, 0);
+            GenTree* addend = m_compiler->gtNewIconNode(alignment - 1, TYP_I_IMPL);
+            GenTree* valueWithAddend = m_compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, initialValue, addend);
+            m_llvm->CurrentRange().InsertAfter(initialValue, addend, valueWithAddend);
+
+            GenTree* mask = m_compiler->gtNewIconNode(static_cast<int>(~(alignment - 1)), TYP_I_IMPL);
+            GenTree* alignedValue = m_compiler->gtNewOperNode(GT_AND, TYP_I_IMPL, valueWithAddend, mask);
+            GenTreeLclVar* alignedValueDef = m_compiler->gtNewStoreLclVarNode(lclNum, alignedValue);
+            m_llvm->CurrentRange().InsertAfter(valueWithAddend, mask, alignedValue, alignedValueDef);
+            m_llvm->m_shadowStackSsaNum = AddUntrackedSsaDef(alignedValueDef, lclNum);
+
+            JITDUMP("Aligning the shadow frame to %u bytes:\n", alignment);
+            DISPRANGE(LIR::ReadOnlyRange(store->Addr(), m_llvm->CurrentRange().LastNode()));
+        }
+    }
+
+    unsigned AddUntrackedSsaDef(GenTreeLclVar* def, unsigned lclNum)
+    {
+        LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
+        if (!m_compiler->lvaInSsa(lclNum))
+        {
+            varDsc->lvInSsa = 1;
+        }
+
+        // We don't initialize other fields of the LclSsaVarDsc like "HasGlobalUse", etc, since codegen
+        // currently doesn't need them. If/when that changes we'll need to faithfully set them...
+        unsigned ssaNum = (def == nullptr) ? SsaConfig::FIRST_SSA_NUM : SsaConfig::RESERVED_SSA_NUM;
+        if (!varDsc->lvPerSsaData.IsValidSsaNum(ssaNum))
+        {
+            ssaNum = varDsc->lvPerSsaData.AllocSsaNum(m_compiler->getAllocator(CMK_SSA), m_llvm->CurrentBlock(), def);
+        }
+        else
+        {
+            LclSsaVarDsc* ssaDsc = varDsc->GetPerSsaData(ssaNum);
+            ssaDsc->SetBlock(m_llvm->CurrentBlock());
+            ssaDsc->SetDefNode(def);
+        }
+        if (def != nullptr)
+        {
+            def->SetSsaNum(ssaNum);
+        }
+        return ssaNum;
+    }
+
+    GenTreeIndir* InsertZeroShadowFrame(unsigned offset, unsigned size)
+    {
+        GenTree* addr = InsertShadowStackAddr(nullptr, offset);
+        GenTree* zero = m_compiler->gtNewIconNode(0);
+        ClassLayout* layout = m_compiler->typGetBlkLayout(size);
+        GenTreeIndir* store = m_compiler->gtNewStoreBlkNode(layout, addr, zero, GTF_IND_NONFAULTING);
+
+        m_llvm->CurrentRange().InsertAfter(addr, zero, store);
+        return store;
     }
 
     GenTreeLclVar* InitializeLocalInProlog(unsigned lclNum, GenTree* value)
@@ -1671,7 +1760,7 @@ private:
         LIR::Range range;
         range.InsertAtEnd(value);
         range.InsertAtEnd(store);
-        m_lastPrologNode = m_llvm->lowerAndInsertIntoFirstBlock(range, m_lastPrologNode);
+        m_llvm->m_prologEnd = m_llvm->lowerAndInsertIntoFirstBlock(std::move(range), m_llvm->m_prologEnd);
 
         DISPTREERANGE(LIR::AsRange(m_compiler->fgFirstBB), store);
         return store;
@@ -1738,11 +1827,10 @@ private:
             // Filters will be called by the first pass while live state still exists on shadow frames above (in the
             // traditional sense, where stacks grow down) them. For this reason, filters will access state from the
             // original frame via a dedicated shadow stack pointer, and use the actual shadow stack for calls.
-            unsigned shadowStackLclNum = m_llvm->isBlockInFilter(m_llvm->CurrentBlock())
-                ? m_llvm->_originalShadowStackLclNum
-                : m_llvm->_shadowStackLclNum;
+            regNumber shadowStackArgReg =
+                m_llvm->isBlockInFilter(m_llvm->CurrentBlock()) ? REG_ORIGINAL_SHADOW_STACK_ARG : REG_NA;
             unsigned lclOffset = lclBaseOffset + lclNode->GetLclOffs();
-            GenTree* lclAddress = m_llvm->insertShadowStackAddr(lclNode, lclOffset, shadowStackLclNum);
+            GenTree* lclAddress = lclAddress = InsertShadowStackAddr(lclNode, lclOffset, shadowStackArgReg); 
 
             ClassLayout* layout = lclNode->TypeIs(TYP_STRUCT) ? lclNode->GetLayout(m_compiler) : nullptr;
             GenTree* storedValue = nullptr;
@@ -1803,6 +1891,16 @@ private:
 
     void RewriteCall(GenTreeCall* call)
     {
+        if (call->IsHelperCall(m_compiler, CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT))
+        {
+            // The RPI exit call has an additional argument - the shadow stack top on entry to this RPI method.
+            GenTree* previousShadowStackTop = InsertShadowStackAddr(call, 0);
+            CallArg* callArg =
+                call->gtArgs.PushFront(m_compiler, NewCallArg::Primitive(previousShadowStackTop, CORINFO_TYPE_PTR));
+            callArg->AbiInfo.IsPointer = true;
+            callArg->AbiInfo.ArgType = TYP_I_IMPL;
+        }
+
         // Add in the shadow stack argument now that we know the shadow frame size.
         if (m_llvm->callHasManagedCallingConvention(call))
         {
@@ -1821,8 +1919,7 @@ private:
 
             unsigned funcIdx = m_llvm->getLlvmFunctionIndexForBlock(block);
             unsigned calleeShadowStackOffset = m_llvm->getCalleeShadowStackOffset(funcIdx, isTailCall);
-            GenTree* calleeShadowStack =
-                m_llvm->insertShadowStackAddr(call, calleeShadowStackOffset, m_llvm->_shadowStackLclNum);
+            GenTree* calleeShadowStack = InsertShadowStackAddr(call, calleeShadowStackOffset);
             CallArg* calleeShadowStackArg =
                 call->gtArgs.PushFront(m_compiler, NewCallArg::Primitive(calleeShadowStack, CORINFO_TYPE_PTR));
 
@@ -1835,6 +1932,41 @@ private:
             // We may have lost track of a shadow local defined by this call. Clear the flag if so.
             call->gtCallMoreFlags &= ~GTF_CALL_M_RETBUFFARG_LCLOPT;
         }
+    }
+
+    GenTree* InsertShadowStackAddr(GenTree* insertBefore, unsigned offset, regNumber shadowStackArgReg = REG_NA)
+    {
+        GenTree* shadowStack;
+        if ((shadowStackArgReg == REG_NA) &&
+            (m_llvm->getLlvmFunctionIndexForBlock(m_llvm->CurrentBlock()) != Llvm::ROOT_FUNC_IDX))
+        {
+            // Funclets also reference the shadow stack via PHYSREG for simplicity.
+            shadowStackArgReg = REG_SHADOW_STACK_ARG;
+        }
+        if (shadowStackArgReg == REG_NA)
+        {
+            assert(m_llvm->m_shadowStackSsaNum != SsaConfig::RESERVED_SSA_NUM);
+            GenTreeLclVar* shadowStackLcl = m_compiler->gtNewLclVarNode(m_llvm->m_shadowStackLclNum);
+            shadowStackLcl->SetSsaNum(m_llvm->m_shadowStackSsaNum);
+            shadowStack = shadowStackLcl;
+        }
+        else
+        {
+            shadowStack = m_compiler->gtNewPhysRegNode(shadowStackArgReg, TYP_I_IMPL);
+        }
+        m_llvm->CurrentRange().InsertBefore(insertBefore, shadowStack);
+
+        if (offset == 0)
+        {
+            return shadowStack;
+        }
+
+        // Using an address mode node here explicitizes our assumption that the shadow stack does not overflow.
+        assert(offset <= m_llvm->getShadowFrameSize(Llvm::ROOT_FUNC_IDX));
+        GenTree* addrModeNode = m_llvm->createAddrModeNode(shadowStack, offset);
+        m_llvm->CurrentRange().InsertBefore(insertBefore, addrModeNode);
+
+        return addrModeNode;
     }
 
     bool CanShadowTailCall(BasicBlock* block, GenTreeCall* call DEBUGARG(const char** pReasonWhyNot = nullptr))
@@ -2529,14 +2661,4 @@ bool Llvm::isShadowFrameLocal(LclVarDsc* varDsc) const
     // Other backends use "lvOnFrame" for this value, but for us it is
     // not a great fit because of defaulting to "true" for new locals.
     return varDsc->GetRegNum() == REG_STK;
-}
-
-bool Llvm::isShadowStackLocal(unsigned lclNum) const
-{
-    return (lclNum == _shadowStackLclNum) || (lclNum == _originalShadowStackLclNum);
-}
-
-bool Llvm::isFuncletParameter(unsigned lclNum) const
-{
-    return isShadowStackLocal(lclNum);
 }

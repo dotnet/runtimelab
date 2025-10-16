@@ -43,7 +43,11 @@ namespace ILCompiler.ObjectWriter
             {
                 ObjectNode node = depNode as ObjectNode;
                 if (node == null)
+                {
+                    if (dumper != null && depNode is LLVMMethodCodeNode methodCodeNode)
+                        dumper.DumpExternalObjectNode(factory, methodCodeNode);
                     continue;
+                }
 
                 if (node.ShouldSkipEmittingObjectNode(factory))
                     continue;
