@@ -2,7 +2,7 @@ id: binaryformatter-migration
 name: BinaryFormatter migration label automation
 owner: jeffhandley
 resource: repository
-disabled: false
+disabled: true
 configuration:
   resourceManagementConfiguration:
     eventResponderTasks:

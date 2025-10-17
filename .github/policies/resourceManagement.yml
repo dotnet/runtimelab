@@ -3,7 +3,7 @@ name: GitOps.PullRequestIssueManagement
 description: GitOps.PullRequestIssueManagement primitive
 owner:
 resource: repository
-disabled: false
+disabled: true
 where:
 configuration:
   resourceManagementConfiguration:
