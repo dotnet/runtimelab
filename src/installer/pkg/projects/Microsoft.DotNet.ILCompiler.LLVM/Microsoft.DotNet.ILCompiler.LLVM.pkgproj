@@ -25,11 +25,11 @@
     </ItemGroup>
 
     <ItemGroup Condition="'$(PackageTargetRuntime)' != '' and '$(BuildingIlcHostPackage)' != 'true'">
-      <File Include="@(LibrariesRuntimeFiles)" TargetPath="runtimes/browser-wasm/libs/%(LibrariesRuntimeFiles.NativeSubDirectory)" 
+      <File Include="@(LibrariesRuntimeFiles)" TargetPath="runtimes/$(PackageTargetRuntime)/libs/%(LibrariesRuntimeFiles.NativeSubDirectory)" 
         Condition="'%(LibrariesRuntimeFiles.IsNative)' != 'true'" />
-      <File Include="@(LibrariesRuntimeFiles)" TargetPath="runtimes/browser-wasm/native/%(LibrariesRuntimeFiles.NativeSubDirectory)" 
+      <File Include="@(LibrariesRuntimeFiles)" TargetPath="runtimes/$(PackageTargetRuntime)/native/%(LibrariesRuntimeFiles.NativeSubDirectory)" 
         Condition="'%(LibrariesRuntimeFiles.IsNative)' == 'true'" />
-      <File Include="$(CoreCLRAotSdkDir)*" TargetPath="runtimes/browser-wasm/native/%(LibrariesRuntimeFiles.NativeSubDirectory)" />
+      <File Include="$(CoreCLRAotSdkDir)*" TargetPath="runtimes/$(PackageTargetRuntime)/native/%(LibrariesRuntimeFiles.NativeSubDirectory)" />
       <File Include="$(MibcOptimizationDataDir)/$(TargetOS)/$(TargetArchitecture)/**/*.mibc" TargetPath="mibc" />
 
       <DotnetJsCoreCLRAotSdkExtension Include="ts;js;map;json" />
