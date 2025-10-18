@@ -618,10 +618,18 @@ namespace Internal.JitInterface
                 case CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_DIRECT:
                     id = ReadyToRunHelper.NewArray;
                     break;
+                case CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_PTR:
+                    return _compilation.NodeFactory.ExternSymbol("RhpNewPtrArrayFast");
                 case CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_ALIGN8:
+<<<<<<< HEAD
                     return _compilation.NodeFactory.ExternFunctionSymbol("RhpNewArrayAlign8");
                 case CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_VC:
                     return _compilation.NodeFactory.ExternFunctionSymbol("RhpNewArray");
+=======
+                    return _compilation.NodeFactory.ExternSymbol("RhpNewArrayFastAlign8");
+                case CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_VC:
+                    return _compilation.NodeFactory.ExternSymbol("RhpNewArrayFast");
+>>>>>>> upstream-jun
 
                 case CorInfoHelpFunc.CORINFO_HELP_STACK_PROBE:
                     return _compilation.NodeFactory.ExternFunctionSymbol("RhpStackProbe");
@@ -702,6 +710,12 @@ namespace Internal.JitInterface
                     break;
                 case CorInfoHelpFunc.CORINFO_HELP_DBL2ULNG_OVF:
                     id = ReadyToRunHelper.Dbl2ULngOvf;
+                    break;
+                case CorInfoHelpFunc.CORINFO_HELP_LNG2FLT:
+                    id = ReadyToRunHelper.Lng2Flt;
+                    break;
+                case CorInfoHelpFunc.CORINFO_HELP_ULNG2FLT:
+                    id = ReadyToRunHelper.ULng2Flt;
                     break;
 
                 case CorInfoHelpFunc.CORINFO_HELP_FLTREM:
@@ -1188,6 +1202,11 @@ namespace Internal.JitInterface
             TypeDesc type = HandleToObject(arrayCls);
 
             Debug.Assert(type.IsArray);
+
+            TypeDesc elementType = ((ArrayType)type).ElementType;
+
+            if (elementType.GetElementSize().AsInt == _compilation.TypeSystemContext.Target.PointerSize)
+                return CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_PTR;
 
             if (type.RequiresAlign8())
                 return CorInfoHelpFunc.CORINFO_HELP_NEWARR_1_ALIGN8;

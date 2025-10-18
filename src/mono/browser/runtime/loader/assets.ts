@@ -4,12 +4,11 @@
 import WasmEnableThreads from "consts:wasmEnableThreads";
 
 import { PThreadPtrNull, type AssetEntryInternal, type PThreadWorker, type PromiseAndController } from "../types/internal";
-import { type AssetBehaviors, type AssetEntry, type LoadingResource, type ResourceList, type SingleAssetBehaviors as SingleAssetBehaviors, type WebAssemblyBootResourceType } from "../types";
+import { BootModule, type AssetBehaviors, type AssetEntry, type LoadingResource, type ResourceList, type SingleAssetBehaviors as SingleAssetBehaviors, type WebAssemblyBootResourceType } from "../types";
 import { ENVIRONMENT_IS_NODE, ENVIRONMENT_IS_SHELL, ENVIRONMENT_IS_WEB, ENVIRONMENT_IS_WORKER, loaderHelpers, mono_assert, runtimeHelpers } from "./globals";
 import { createPromiseController } from "./promise-controller";
 import { mono_log_debug, mono_log_warn } from "./logging";
 import { mono_exit } from "./exit";
-import { addCachedReponse, findCachedResponse } from "./assetsCache";
 import { getIcuResourceName } from "./icu";
 import { makeURLAbsoluteWithApplicationBase } from "./polyfills";
 import { mono_log_info } from "./logging";
@@ -32,6 +31,7 @@ const jsRuntimeModulesAssetTypes: {
     "js-module-runtime": true,
     "js-module-dotnet": true,
     "js-module-native": true,
+    "js-module-diagnostics": true,
 };
 
 const jsModulesAssetTypes: {
@@ -119,16 +119,10 @@ function set_single_asset (asset: AssetEntryInternal) {
     }
 }
 
-function get_single_asset (behavior: SingleAssetBehaviors): AssetEntryInternal {
+export function try_resolve_single_asset_path (behavior: SingleAssetBehaviors): AssetEntryInternal|undefined {
     mono_assert(singleAssetTypes[behavior], `Unknown single asset behavior ${behavior}`);
     const asset = singleAssets.get(behavior);
-    mono_assert(asset, `Single asset for ${behavior} not found`);
-    return asset;
-}
-
-export function resolve_single_asset_path (behavior: SingleAssetBehaviors): AssetEntryInternal {
-    const asset = get_single_asset(behavior);
-    if (!asset.resolvedUrl) {
+    if (asset && !asset.resolvedUrl) {
         asset.resolvedUrl = loaderHelpers.locateFile(asset.name);
 
         if (jsRuntimeModulesAssetTypes[asset.behavior]) {
@@ -144,6 +138,12 @@ export function resolve_single_asset_path (behavior: SingleAssetBehaviors): Asse
             throw new Error(`Unknown single asset behavior ${behavior}`);
         }
     }
+    return asset;
+}
+
+export function resolve_single_asset_path (behavior: SingleAssetBehaviors): AssetEntryInternal {
+    const asset = try_resolve_single_asset_path(behavior);
+    mono_assert(asset, `Single asset for ${behavior} not found`);
     return asset;
 }
 
@@ -303,6 +303,9 @@ export function prepareAssets () {
         convert_single_asset(assetsToLoad, resources.wasmNative, "dotnetwasm");
         convert_single_asset(modulesAssets, resources.jsModuleNative, "js-module-native");
         convert_single_asset(modulesAssets, resources.jsModuleRuntime, "js-module-runtime");
+        if (resources.jsModuleDiagnostics) {
+            convert_single_asset(modulesAssets, resources.jsModuleDiagnostics, "js-module-diagnostics");
+        }
         if (WasmEnableThreads) {
             convert_single_asset(modulesAssets, resources.jsModuleWorker, "js-module-threads");
         }
@@ -671,7 +674,7 @@ const totalResources = new Set<string>();
 function download_resource (asset: AssetEntryInternal): LoadingResource {
     try {
         mono_assert(asset.resolvedUrl, "Request's resolvedUrl must be set");
-        const fetchResponse = download_resource_with_cache(asset);
+        const fetchResponse = fetchResource(asset);
         const response = { name: asset.name, url: asset.resolvedUrl, response: fetchResponse };
 
         totalResources.add(asset.name!);
@@ -704,16 +707,6 @@ function download_resource (asset: AssetEntryInternal): LoadingResource {
     }
 }
 
-async function download_resource_with_cache (asset: AssetEntryInternal): Promise<Response> {
-    let response = await findCachedResponse(asset);
-    if (!response) {
-        response = await fetchResource(asset);
-        addCachedReponse(asset, response);
-    }
-
-    return response;
-}
-
 function fetchResource (asset: AssetEntryInternal): Promise<Response> {
     // Allow developers to override how the resource is loaded
     let url = asset.resolvedUrl!;
@@ -721,7 +714,7 @@ function fetchResource (asset: AssetEntryInternal): Promise<Response> {
         const customLoadResult = invokeLoadBootResource(asset);
         if (customLoadResult instanceof Promise) {
             // They are supplying an entire custom response, so just use that
-            return customLoadResult;
+            return customLoadResult as Promise<Response>;
         } else if (typeof customLoadResult === "string") {
             url = customLoadResult;
         }
@@ -762,7 +755,7 @@ const monoToBlazorAssetTypeMap: { [key: string]: WebAssemblyBootResourceType | u
     "js-module-threads": "dotnetjs"
 };
 
-function invokeLoadBootResource (asset: AssetEntryInternal): string | Promise<Response> | null | undefined {
+function invokeLoadBootResource (asset: AssetEntryInternal): string | Promise<Response> | Promise<BootModule> | null | undefined {
     if (loaderHelpers.loadBootResource) {
         const requestHash = asset.hash ?? "";
         const url = asset.resolvedUrl!;
@@ -828,6 +821,7 @@ export async function streamingCompileWasm () {
         loaderHelpers.wasmCompilePromise.promise_control.reject(err);
     }
 }
+
 export function preloadWorkers () {
     if (!WasmEnableThreads) return;
     const jsModuleWorker = resolve_single_asset_path("js-module-threads");

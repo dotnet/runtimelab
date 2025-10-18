@@ -7,7 +7,7 @@ import BuildConfiguration from "consts:configuration";
 import WasmEnableThreads from "consts:wasmEnableThreads";
 
 import { type DotnetModuleInternal, type MonoConfigInternal, JSThreadBlockingMode } from "../types/internal";
-import type { DotnetModuleConfig, MonoConfig, ResourceGroups, ResourceList } from "../types";
+import type { BootModule, DotnetModuleConfig, MonoConfig, ResourceGroups, ResourceList } from "../types";
 import { exportedRuntimeAPI, loaderHelpers, runtimeHelpers } from "./globals";
 import { mono_log_error, mono_log_debug } from "./logging";
 import { importLibraryInitializers, invokeLibraryInitializers } from "./libraryInitializers";
@@ -72,6 +72,9 @@ function deep_merge_resources (target: ResourceGroups, source: ResourceGroups): 
     }
     if (providedResources.jsModuleNative !== undefined) {
         providedResources.jsModuleNative = { ...(target.jsModuleNative || {}), ...(providedResources.jsModuleNative || {}) };
+    }
+    if (providedResources.jsModuleDiagnostics !== undefined) {
+        providedResources.jsModuleDiagnostics = { ...(target.jsModuleDiagnostics || {}), ...(providedResources.jsModuleDiagnostics || {}) };
     }
     if (providedResources.jsModuleRuntime !== undefined) {
         providedResources.jsModuleRuntime = { ...(target.jsModuleRuntime || {}), ...(providedResources.jsModuleRuntime || {}) };
@@ -169,6 +172,9 @@ export function normalizeConfig () {
                 case "js-module-native":
                     toMerge.jsModuleNative = resource;
                     break;
+                case "js-module-diagnostics":
+                    toMerge.jsModuleDiagnostics = resource;
+                    break;
                 case "js-module-dotnet":
                     // don't merge loader
                     break;
@@ -183,8 +189,8 @@ export function normalizeConfig () {
         config.debugLevel = -1;
     }
 
-    if (config.cachedResourcesPurgeDelay === undefined) {
-        config.cachedResourcesPurgeDelay = 10000;
+    if (!config.applicationEnvironment) {
+        config.applicationEnvironment = "Production";
     }
 
     // ActiveIssue https://github.com/dotnet/runtime/issues/75602
@@ -215,12 +221,17 @@ export function normalizeConfig () {
         config.environmentVariables!["LANG"] = `${config.applicationCulture}.UTF-8`;
     }
 
+    if (config.debugLevel !== 0 && globalThis.window?.document?.querySelector("script[src*='aspnetcore-browser-refresh']")) {
+        if (!config.environmentVariables["DOTNET_MODIFIABLE_ASSEMBLIES"]) {
+            config.environmentVariables["DOTNET_MODIFIABLE_ASSEMBLIES"] = "debug";
+        }
+        if (!config.environmentVariables["__ASPNETCORE_BROWSER_TOOLS"]) {
+            config.environmentVariables["__ASPNETCORE_BROWSER_TOOLS"] = "true";
+        }
+    }
+
     runtimeHelpers.diagnosticTracing = loaderHelpers.diagnosticTracing = !!config.diagnosticTracing;
     runtimeHelpers.waitForDebugger = config.waitForDebugger;
-
-    runtimeHelpers.enablePerfMeasure = !!config.browserProfilerOptions
-        && globalThis.performance
-        && typeof globalThis.performance.measure === "function";
 
     loaderHelpers.maxParallelDownloads = config.maxParallelDownloads || loaderHelpers.maxParallelDownloads;
     loaderHelpers.enableDownloadRetry = config.enableDownloadRetry !== undefined ? config.enableDownloadRetry : loaderHelpers.enableDownloadRetry;
@@ -253,7 +264,7 @@ export async function mono_wasm_load_config (module: DotnetModuleInternal): Prom
 
         if (!module.configSrc && (!loaderHelpers.config || Object.keys(loaderHelpers.config).length === 0 || (!loaderHelpers.config.assets && !loaderHelpers.config.resources))) {
             // if config file location nor assets are provided
-            module.configSrc = "./blazor.boot.json";
+            module.configSrc = "dotnet.boot.js";
         }
 
         configFilePath = module.configSrc;
@@ -300,26 +311,49 @@ export function isDebuggingSupported (): boolean {
 }
 
 async function loadBootConfig (module: DotnetModuleInternal): Promise<void> {
-    const defaultConfigSrc = loaderHelpers.locateFile(module.configSrc!);
+    const defaultConfigSrc = module.configSrc!;
+    const defaultConfigUrl = loaderHelpers.locateFile(defaultConfigSrc);
 
-    const loaderResponse = loaderHelpers.loadBootResource !== undefined ?
-        loaderHelpers.loadBootResource("manifest", "blazor.boot.json", defaultConfigSrc, "", "manifest") :
-        defaultLoadBootConfig(defaultConfigSrc);
-
-    let loadConfigResponse: Response;
-
-    if (!loaderResponse) {
-        loadConfigResponse = await defaultLoadBootConfig(appendUniqueQuery(defaultConfigSrc, "manifest"));
-    } else if (typeof loaderResponse === "string") {
-        loadConfigResponse = await defaultLoadBootConfig(makeURLAbsoluteWithApplicationBase(loaderResponse));
-    } else {
-        loadConfigResponse = await loaderResponse;
+    let loaderResponse = null;
+    if (loaderHelpers.loadBootResource !== undefined) {
+        loaderResponse = loaderHelpers.loadBootResource("manifest", defaultConfigSrc, defaultConfigUrl, "", "manifest");
     }
 
-    const loadedConfig: MonoConfig = await readBootConfigResponse(loadConfigResponse);
+    let loadedConfigResponse: Response | null = null;
+    let loadedConfig: MonoConfig;
+    if (!loaderResponse) {
+        if (defaultConfigUrl.includes(".json")) {
+            loadedConfigResponse = await fetchBootConfig(appendUniqueQuery(defaultConfigUrl, "manifest"));
+            loadedConfig = await readBootConfigResponse(loadedConfigResponse);
+        } else {
+            loadedConfig = (await import(appendUniqueQuery(defaultConfigUrl, "manifest"))).config;
+        }
+    } else if (typeof loaderResponse === "string") {
+        if (loaderResponse.includes(".json")) {
+            loadedConfigResponse = await fetchBootConfig(makeURLAbsoluteWithApplicationBase(loaderResponse));
+            loadedConfig = await readBootConfigResponse(loadedConfigResponse);
+        } else {
+            loadedConfig = (await import(makeURLAbsoluteWithApplicationBase(loaderResponse))).config;
+        }
+    } else {
+        const loadedResponse = await loaderResponse;
+        if (typeof (loadedResponse as Response).json == "function") {
+            loadedConfigResponse = loadedResponse as Response;
+            loadedConfig = await readBootConfigResponse(loadedConfigResponse);
+        } else {
+            // If the response doesn't contain .json(), consider it an imported module.
+            loadedConfig = (loadedResponse as BootModule).config;
+        }
+    }
+
+    // Prefer user-defined application environment
+    if (loaderHelpers.config.applicationEnvironment) {
+        loadedConfig.applicationEnvironment = loaderHelpers.config.applicationEnvironment;
+    }
+
     deep_merge_config(loaderHelpers.config, loadedConfig);
 
-    function defaultLoadBootConfig (url: string): Promise<Response> {
+    function fetchBootConfig (url: string): Promise<Response> {
         return loaderHelpers.fetch_like(url, {
             method: "GET",
             credentials: "include",
@@ -332,8 +366,8 @@ async function readBootConfigResponse (loadConfigResponse: Response): Promise<Mo
     const config = loaderHelpers.config;
     const loadedConfig: MonoConfig = await loadConfigResponse.json();
 
-    if (!config.applicationEnvironment) {
-        loadedConfig.applicationEnvironment = loadConfigResponse.headers.get("Blazor-Environment") || loadConfigResponse.headers.get("DotNet-Environment") || "Production";
+    if (!config.applicationEnvironment && !loadedConfig.applicationEnvironment) {
+        loadedConfig.applicationEnvironment = loadConfigResponse.headers.get("Blazor-Environment") || loadConfigResponse.headers.get("DotNet-Environment") || undefined;
     }
 
     if (!loadedConfig.environmentVariables)

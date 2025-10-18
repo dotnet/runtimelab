@@ -58,7 +58,7 @@ namespace System.Linq
                     return iterator.GetCount(onlyIfCheap);
                 }
 
-                return !onlyIfCheap || _source is ICollection<TElement> || _source is ICollection ? _source.Count() : -1;
+                return !onlyIfCheap || _source is IReadOnlyCollection<TElement> || _source is ICollection ? _source.Count() : -1;
             }
 
             internal TElement[] ToArray(int minIdx, int maxIdx)
@@ -226,6 +226,9 @@ namespace System.Linq
                 found = false;
                 return default;
             }
+
+            public override bool Contains(TElement value) =>
+                _source.Contains(value);
 
             private TElement Last(TElement[] items)
             {

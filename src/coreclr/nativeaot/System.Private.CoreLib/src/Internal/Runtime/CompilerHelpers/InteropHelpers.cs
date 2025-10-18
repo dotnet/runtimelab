@@ -293,7 +293,7 @@ namespace Internal.Runtime.CompilerHelpers
         {
             string moduleName = GetModuleName(pCell);
 
-            uint dllImportSearchPath = 0;
+            uint dllImportSearchPath = (uint)DllImportSearchPath.AssemblyDirectory;
             bool hasDllImportSearchPath = (pCell->DllImportSearchPathAndCookie & InteropDataConstants.HasDllImportSearchPath) != 0;
             if (hasDllImportSearchPath)
             {
@@ -311,6 +311,7 @@ namespace Internal.Runtime.CompilerHelpers
 
                 hModule = NativeLibrary.LoadBySearch(
                     callingAssembly,
+                    hasDllImportSearchPath,
                     searchAssemblyDirectory: (dllImportSearchPath & (uint)DllImportSearchPath.AssemblyDirectory) != 0,
                     dllImportSearchPathFlags: (int)(dllImportSearchPath & ~(uint)DllImportSearchPath.AssemblyDirectory),
                     ref loadLibErrorTracker,
@@ -454,7 +455,7 @@ namespace Internal.Runtime.CompilerHelpers
         /// <summary>
         /// Retrieves the current delegate that is being called
         /// </summary>
-        public static T GetCurrentCalleeDelegate<T>() where T : class // constraint can't be System.Delegate
+        public static T GetCurrentCalleeDelegate<T>() where T : Delegate
         {
             return PInvokeMarshal.GetCurrentCalleeDelegate<T>();
         }

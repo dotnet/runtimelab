@@ -1,16 +1,21 @@
+<<<<<<< HEAD
 <Project Sdk="Microsoft.Build.Traversal">
   <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
   <PropertyGroup>
     <IsNativeAotProject>false</IsNativeAotProject>
   </PropertyGroup>
 
+=======
+<Project Sdk="Microsoft.Build.NoTargets">
+>>>>>>> upstream-jun
   <PropertyGroup>
     <OutputPath>$(RuntimeBinDir)/build/</OutputPath>
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="*.*" Exclude="$(MSBuildProjectFile)" />
+    <Content Include="*.*" Exclude="$(MSBuildProjectFile)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+<<<<<<< HEAD
 
   <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
   <ItemGroup>
@@ -44,4 +49,6 @@
   </Target>
 
   <Target Name="Pack" />
+=======
+>>>>>>> upstream-jun
 </Project>

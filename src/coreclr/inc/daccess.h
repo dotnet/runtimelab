@@ -699,7 +699,6 @@ PWSTR   DacInstantiateStringW(TADDR addr, ULONG32 maxChars, bool throwEx);
 TADDR   DacGetTargetAddrForHostAddr(LPCVOID ptr, bool throwEx);
 TADDR   DacGetTargetAddrForHostInteriorAddr(LPCVOID ptr, bool throwEx);
 TADDR   DacGetTargetVtForHostVt(LPCVOID vtHost, bool throwEx);
-PWSTR   DacGetVtNameW(TADDR targetVtable);
 
 // Report a region of memory to the debugger
 bool    DacEnumMemoryRegion(TADDR addr, TSIZE_T size, bool fExpectSuccess = true);
@@ -829,11 +828,6 @@ struct _UNWIND_INFO * DacGetUnwindInfo(TADDR taUnwindInfo);
 // virtually unwind a CONTEXT out-of-process
 BOOL DacUnwindStackFrame(T_CONTEXT * pContext, T_KNONVOLATILE_CONTEXT_POINTERS* pContextPointers);
 #endif // FEATURE_EH_FUNCLETS
-
-#if defined(TARGET_UNIX)
-// call back through data target to unwind out-of-process
-HRESULT DacVirtualUnwind(ULONG32 threadId, PT_CONTEXT context, PT_KNONVOLATILE_CONTEXT_POINTERS contextPointers);
-#endif // TARGET_UNIX
 
 #ifdef FEATURE_MINIMETADATA_IN_TRIAGEDUMPS
 class SString;

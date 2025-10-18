@@ -47,6 +47,7 @@ set __TargetArchArm=0
 set __TargetArchArm64=0
 set __TargetArchLoongArch64=0
 set __TargetArchRiscV64=0
+set __TargetArchWasm=0
 
 set __BuildTypeDebug=0
 set __BuildTypeChecked=0
@@ -67,12 +68,14 @@ set __UnprocessedBuildArgs=
 
 set __BuildNative=1
 set __RestoreOptData=1
+set __CrossTarget=0
+set __HostOS=
 set __HostArch=
 set __PgoOptDataPath=
 set __CMakeArgs=
 set __Ninja=1
 set __RequestedBuildComponents=
-set __OutputRid=
+set __TargetRid=
 set __SubDir=
 
 :Arg_Loop
@@ -135,9 +138,11 @@ if [!__PassThroughArgs!]==[] (
     set "__PassThroughArgs=%__PassThroughArgs% %1"
 )
 
+if /i "%1" == "-hostos"              (set __HostOS=%2&shift&shift&goto Arg_Loop)
 if /i "%1" == "-hostarch"            (set __HostArch=%2&shift&shift&goto Arg_Loop)
 if /i "%1" == "-os"                  (set __TargetOS=%2&shift&shift&goto Arg_Loop)
-if /i "%1" == "-outputrid"           (set __OutputRid=%2&shift&shift&goto Arg_Loop)
+if /i "%1" == "-targetrid"           (set __TargetRid=%2&shift&shift&goto Arg_Loop)
+if /i "%1" == "-outputrid"           (set __TargetRid=%2&shift&shift&goto Arg_Loop)
 if /i "%1" == "-subdir"              (set __SubDir=%2&shift&shift&goto Arg_Loop)
 
 if /i "%1" == "-cmakeargs"           (set __CMakeArgs=%2 %__CMakeArgs%&set __remainingArgs="!__remainingArgs:*%2=!"&shift&shift&goto Arg_Loop)
@@ -152,6 +157,7 @@ if /i "%1" == "-enforcepgo"          (set __EnforcePgo=1&shift&goto Arg_Loop)
 if /i "%1" == "-pgodatapath"         (set __PgoOptDataPath=%~2&set __PgoOptimize=1&shift&shift&goto Arg_Loop)
 if /i "%1" == "-component"           (set __RequestedBuildComponents=%__RequestedBuildComponents%-%2&set "__remainingArgs=!__remainingArgs:*%2=!"&shift&shift&goto Arg_Loop)
 if /i "%1" == "-fsanitize"           (set __CMakeArgs=%__CMakeArgs% "-DCLR_CMAKE_ENABLE_SANITIZERS=%2"&shift&shift&goto Arg_Loop)
+if /i "%1" == "-keepnativesymbols"   (set __CMakeArgs=%__CMakeArgs% "-DCLR_CMAKE_KEEP_NATIVE_SYMBOLS=true"&shift&goto Arg_Loop)
 
 REM TODO these are deprecated remove them eventually
 REM don't add more, use the - syntax instead
@@ -285,7 +291,18 @@ REM ============================================================================
 
 @if defined _echo @echo on
 
-call "%__RepoRootDir%\eng\native\version\copy_version_files.cmd"
+if "%__TargetOS%"=="android" (
+    set __CrossTarget=1
+)
+if "%__TargetOS%"=="browser" (
+    set __CrossTarget=1
+)
+
+if %__CrossTarget% EQU 0 (
+    call "%__RepoRootDir%\eng\native\version\copy_version_files.cmd"
+) else (
+    call powershell -NoProfile -ExecutionPolicy ByPass -File "%__RepoRootDir%\eng\native\version\copy_version_files.ps1"
+)
 
 REM =========================================================================================
 REM ===
@@ -374,7 +391,7 @@ REM ============================================================================
 
 :: When the host runs on an unknown rid, it falls back to the output rid
 :: Strip the architecture
-for /f "delims=-" %%i in ("%__OutputRid%") do set __HostFallbackOS=%%i
+for /f "delims=-" %%i in ("%__TargetRid%") do set __HostFallbackOS=%%i
 :: The "win" host build is Windows 10 compatible
 if "%__HostFallbackOS%" == "win"       (set __HostFallbackOS=win10)
 :: Default to "win10" fallback
@@ -423,9 +440,23 @@ if %__BuildNative% EQU 1 (
         set __CMakeTargetOS="%__TargetOS%"
     )
 
+<<<<<<< HEAD
     set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLR_CMAKE_TARGET_ARCH=%__TargetArch%" "-DCLR_CMAKE_TARGET_OS=!__CMakeTargetOS!" "-DCLI_CMAKE_FALLBACK_OS=%__HostFallbackOS%" "-DCLR_CMAKE_PGO_INSTRUMENT=%__PgoInstrument%" "-DCLR_CMAKE_OPTDATA_PATH=%__PgoOptDataPath%" "-DCLR_CMAKE_PGO_OPTIMIZE=%__PgoOptimize%" %__CMakeArgs%
     echo Calling "%__RepoRootDir%\eng\native\gen-buildsys.cmd" "%__ProjectDir%" "%__IntermediatesDir%" %__VSVersion% %__HostArch% %__TargetOS% !__ExtraCmakeArgs!
     call "%__RepoRootDir%\eng\native\gen-buildsys.cmd" "%__ProjectDir%" "%__IntermediatesDir%" %__VSVersion% %__HostArch% %__TargetOS% !__ExtraCmakeArgs!
+=======
+    set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLR_CMAKE_TARGET_ARCH=%__TargetArch%" "-DCLR_CMAKE_TARGET_OS=%__TargetOS%"
+    set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLI_CMAKE_FALLBACK_OS=%__HostFallbackOS%" "-DCLR_CMAKE_PGO_INSTRUMENT=%__PgoInstrument%" "-DCLR_CMAKE_OPTDATA_PATH=%__PgoOptDataPath%" "-DCLR_CMAKE_PGO_OPTIMIZE=%__PgoOptimize%"
+
+    if "%__HostOS%" == "" (
+        set "__HostOS=!__TargetOS!"
+    )
+
+    set __ExtraCmakeArgs=!__ExtraCmakeArgs! %__CMakeArgs%
+
+    echo Calling "%__RepoRootDir%\eng\native\gen-buildsys.cmd" "%__ProjectDir%" "%__IntermediatesDir%" %VisualStudioVersion% %__HostArch% !__HostOS! !__ExtraCmakeArgs!
+    call "%__RepoRootDir%\eng\native\gen-buildsys.cmd" "%__ProjectDir%" "%__IntermediatesDir%" %VisualStudioVersion% %__HostArch% !__HostOS! !__ExtraCmakeArgs!
+>>>>>>> upstream-jun
     if not !errorlevel! == 0 (
         echo %__ErrMsgPrefix%%__MsgPrefix%Error: failed to generate native component build project!
         goto ExitWithError
@@ -509,11 +540,11 @@ REM ============================================================================
 
 set __TargetArchList=
 
-set /A __TotalSpecifiedTargetArch=__TargetArchX64 + __TargetArchX86 + __TargetArchArm + __TargetArchArm64 + __TargetArchLoongArch64 + __TargetArchRiscV64
+set /A __TotalSpecifiedTargetArch=__TargetArchX64 + __TargetArchX86 + __TargetArchArm + __TargetArchArm64 + __TargetArchLoongArch64 + __TargetArchRiscV64 + __TargetArchWasm
 if %__TotalSpecifiedTargetArch% EQU 0 (
     REM Nothing specified means we want to build all architectures.
     set __TargetArchList=x64 x86 arm arm64
-    
+
     if %__BuildAllJitsCommunity%==1 (
         set __TargetArchList=%__TargetArchList% loongarch64 riscv64
     )
@@ -527,6 +558,7 @@ if %__TargetArchArm%==1         set __TargetArchList=%__TargetArchList% arm
 if %__TargetArchArm64%==1       set __TargetArchList=%__TargetArchList% arm64
 if %__TargetArchLoongArch64%==1 set __TargetArchList=%__TargetArchList% loongarch64
 if %__TargetArchRiscV64%==1     set __TargetArchList=%__TargetArchList% riscv64
+if %__TargetArchWasm%==1        set __TargetArchList=%__TargetArchList% wasm
 
 set __BuildTypeList=
 
