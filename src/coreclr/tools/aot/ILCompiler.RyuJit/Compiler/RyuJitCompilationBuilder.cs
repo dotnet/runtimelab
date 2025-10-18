@@ -143,6 +143,11 @@ namespace ILCompiler
             if (_resilient)
                 options |= RyuJitCompilationOptions.UseResilience;
 
+            return CreateCompilation(options, jitFlagBuilder.ToArray(), _ryujitOptions, _jitPath);
+        }
+
+        protected virtual RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options, CorJitFlag[] jitFlags,  KeyValuePair<string, string>[] ryujitOptions, string jitPath)
+        {
             ObjectDataInterner interner = _methodBodyFolding switch
             {
                 MethodBodyFoldingMode.Generic => new ObjectDataInterner(genericsOnly: true),
@@ -150,11 +155,6 @@ namespace ILCompiler
                 _ => ObjectDataInterner.Null,
             };
 
-            return CreateCompilation(options, interner, jitFlagBuilder.ToArray(), _ryujitOptions, _jitPath);
-        }
-
-        protected virtual RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options, ObjectDataInterner interner, CorJitFlag[] jitFlags,  KeyValuePair<string, string>[] ryujitOptions, string jitPath)
-        {
             var factory = new RyuJitNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, interner, _typeMapManager);
 
             JitConfigProvider.Initialize(_context.Target, jitFlags, ryujitOptions, jitPath);

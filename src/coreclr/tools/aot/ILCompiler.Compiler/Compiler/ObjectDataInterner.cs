@@ -13,7 +13,7 @@ using Debug = System.Diagnostics.Debug;
 
 namespace ILCompiler
 {
-    public sealed partial class ObjectDataInterner
+    public partial class ObjectDataInterner
     {
         private readonly bool _genericsOnly;
         private Dictionary<ISymbolNode, ISymbolNode> _symbolRemapping;
@@ -25,7 +25,7 @@ namespace ILCompiler
             _genericsOnly = genericsOnly;
         }
 
-        public bool CanFold(MethodDesc method)
+        public virtual bool CanFold(MethodDesc method)
         {
             if (this == Null)
                 return false;
@@ -70,9 +70,6 @@ namespace ILCompiler
                     // Bodies that are visible from outside should not be folded because we don't know
                     // if they're address taken.
                     if (factory.GetSymbolAlternateName(body, out _) != null)
-                        continue;
-
-                    if (!(body is ObjectNode))
                         continue;
 
                     var key = new MethodInternKey(body, factory);

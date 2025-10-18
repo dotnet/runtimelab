@@ -30,9 +30,9 @@ namespace ILCompiler
             return this;
         }
 
-        protected override RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options, ObjectDataInterner interner, CorJitFlag[] jitFlags,  KeyValuePair<string, string>[] ryujitOptions, string jitPath)
+        protected override RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options, CorJitFlag[] jitFlags,  KeyValuePair<string, string>[] ryujitOptions, string jitPath)
         {
-            var factory = new LLVMCodegenNodeFactory(_config, _context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, interner, _typeMapManager);
+            var factory = new LLVMCodegenNodeFactory(_config, _context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, ObjectDataInterner.NullWithTracking, _typeMapManager);
             JitConfigProvider.Initialize(_context.Target, jitFlags, ryujitOptions, jitPath);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
 

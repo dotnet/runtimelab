@@ -86,6 +86,18 @@ namespace ILCompiler
     public partial class ObjectDataInterner
     {
         public static ObjectDataInterner NullWithTracking { get; } =
-            new ObjectDataInterner(false) { _symbolRemapping = new() { [new ExternFunctionSymbolNode("")] = null } };
+            new CanFoldAlwaysObjectDataInterner() { _symbolRemapping = new() { [new ExternFunctionSymbolNode("")] = null } };
+
+        public sealed class CanFoldAlwaysObjectDataInterner : ObjectDataInterner
+        {
+            public CanFoldAlwaysObjectDataInterner() : base(genericsOnly: false)
+            {
+            }
+
+            public override bool CanFold(MethodDesc method)
+            {
+                return true;
+            }
+        }
     }
 }
