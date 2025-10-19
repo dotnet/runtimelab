@@ -103,6 +103,9 @@ do
         wasm)
             buildArch="wasm"
             ;;
+        -os=*)
+            buildOS=${i#*=}
+            ;;
         android)
             buildOS="android"
             ;;

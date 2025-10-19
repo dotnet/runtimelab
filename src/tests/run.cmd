@@ -46,6 +46,8 @@ if /i "%1" == "x64"                                     (set __BuildArch=x64&shi
 if /i "%1" == "x86"                                     (set __BuildArch=x86&shift&goto Arg_Loop)
 if /i "%1" == "arm64"                                   (set __BuildArch=arm64&shift&goto Arg_Loop)
 if /i "%1" == "wasm"                                    (set __BuildArch=wasm&shift&goto Arg_Loop)
+
+if /i "%1" == "os"                                      (set __TargetOS=%2&shift&shift&goto Arg_Loop)
 if /i "%1" == "wasi"                                    (set __TargetOS=wasi&shift&goto Arg_Loop)
 if /i "%1" == "browser"                                 (set __TargetOS=browser&shift&goto Arg_Loop)
 
@@ -98,12 +100,6 @@ if defined __TestEnv (if not exist %__TestEnv% echo %__MsgPrefix%Error: Test Env
 
 :: Set the remaining variables based upon the determined configuration
 set __MSBuildBuildArch=%__BuildArch%
-
-if "%__BuildArch%" == "wasm" (
-    if "%__TargetOS%" == "windows" (
-        set __TargetOS=browser
-    )
-)
 
 set "__BinDir=%__RootBinDir%\bin\coreclr\%__TargetOS%.%__BuildArch%.%__BuildType%"
 set "__TestWorkingDir=%__RootBinDir%\tests\coreclr\%__TargetOS%.%__BuildArch%.%__BuildType%"

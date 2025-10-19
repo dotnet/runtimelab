@@ -88,13 +88,6 @@ extends:
         env:
           ROOTFS_DIR: /crossrootfs/x64
 
-      # For arm64, we need to install QEMU.
-      linux_arm64_naot_llvm:
-        image: mcr.microsoft.com/dotnet-buildtools/prereqs:azurelinux-3.0-net10.0-cross-arm64
-        options: '--name naot-llvm-ci-container -v /usr/bin/docker:/tmp/docker:ro'
-        env:
-          ROOTFS_DIR: /crossrootfs/arm64
-
       # We use a CentOS Stream 8 image here to test building from source on CentOS Stream 9.
       SourceBuild_centos_x64:
         image: mcr.microsoft.com/dotnet-buildtools/prereqs:centos-stream9

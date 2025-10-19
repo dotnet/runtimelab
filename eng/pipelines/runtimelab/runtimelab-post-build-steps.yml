@@ -18,42 +18,49 @@ steps:
       displayName: Build the ILC and RyuJit cross-compilers
 
     # Build target packages (note: target libs already built).
-    - script: $(Build.SourcesDirectory)/build$(scriptExt) nativeaot.packages -os ${{ parameters.osGroup }} -a wasm -c $(buildConfigUpper) $(_officialBuildParameter) -ci $(wasmEnableThreadsArg)
+    - script: $(Build.SourcesDirectory)/build$(scriptExt) nativeaot.packages -os ${{ parameters.osGroup }} -a wasm -c $(buildConfigUpper) $(_officialBuildParameter) -ci ${{ parameters.wasmEnableThreadsArg }}
       displayName: Build target packages
 
     # Build host packages.
     - script: $(Build.SourcesDirectory)/build$(scriptExt) libs+nativeaot.packages -a $(hostedTargetArch) -c $(buildConfigUpper) -cross $(_officialBuildParameter) -ci
       displayName: Build host packages
 
-  # Build coreclr native test output outside of official build
+  # Build and run runtime tests outside of official build
   - ${{ if ne(parameters.isOfficialBuild, true) }}:
-    - ${{ if and(eq(parameters.archType, 'wasm'), ne(parameters.nameSuffix, ''), eq(parameters.wasmEnableThreadsArg, '')) }}:
-      - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/set-ilc-emulation-environment.ps1 -Arch $(hostedTargetArch)
-        displayName: Set up ILC emulation environment
-
-    - ${{ if eq(parameters.archType, 'wasm') }}:
-      - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.osGroup }} $(crossArg) $(_officialBuildParameter) ci tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} ${{ parameters.wasmEnableThreadsArg }}
-        displayName: Build runtime tests
-    - ${{ else }}:
-      - ${{ if eq(parameters.osGroup, 'windows') }}:
-        - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) $(_officialBuildParameter) ci tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
+    # Full validation with ILC that we can run on the build machine.
+    - ${{ if ne(parameters.nameSuffix, 'arm64') }}:
+      - ${{ if or(eq(parameters.osGroup, 'windows'), eq(parameters.hostedOs, 'windows')) }}:
+        - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) os ${{ parameters.osGroup }} ${{ parameters.archType }} $(crossArg) $(_officialBuildParameter) ci tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} ${{ parameters.wasmEnableThreadsArg }}
           displayName: Build runtime tests
       - ${{ else }}:
-        - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) $(_officialBuildParameter) ci 'tree nativeaot' /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
+        - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) -os ${{ parameters.osGroup }} ${{ parameters.archType }} $(crossArg) $(_officialBuildParameter) ci 'tree nativeaot' /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} ${{ parameters.wasmEnableThreadsArg }}
           displayName: Build runtime tests
 
-    - ${{ if contains(parameters.platform, 'win') }}:
       - ${{ if eq(parameters.wasmEnableThreadsArg, '') }}:
-        - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
-          displayName: Run runtime tests
-    - ${{ else }}:
-      - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
-        displayName: Run runtime tests
+        - ${{ if or(eq(parameters.osGroup, 'windows'), eq(parameters.hostedOs, 'windows')) }}:
+          - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} os ${{ parameters.osGroup }}
+            displayName: Run runtime tests
+        - ${{ else }}:
+          - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) --runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} -os=${{ parameters.osGroup }}
+            displayName: Run runtime tests
 
-    # Don't compile/run the libraries tests with emulated ILC to save CI time/resources.
-    - ${{ if and(eq(parameters.archType, 'wasm'), eq(parameters.nameSuffix, ''), eq(parameters.wasmEnableThreadsArg, '')) }}:
-      - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
-        displayName: Build and run WebAssembly libraries tests
+        - ${{ if eq(parameters.archType, 'wasm') }}:
+          - script: $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
+            displayName: Build and run WebAssembly libraries tests
+    # Minimal Helix-based validation for cross-compiled ILC.
+    - ${{ elseif eq(parameters.osGroup, 'wasi') }}:
+      - template: /eng/pipelines/common/templates/runtimes/send-to-helix-step.yml
+        parameters:
+          displayName: Test cross-compiled ILC on Helix
+          buildConfig: $(buildConfigUpper)
+          archType: $(hostedTargetArch)
+          osGroup: ${{ parameters.hostedOs }}
+          creator: $(Build.DefinitionName)
+          helixBuild: $(Build.BuildNumber)
+          helixSource: $(_HelixSource)
+          helixType: 'test/functional/ilc/'
+          helixQueues: ${{ parameters.helixQueues }}
+          helixProjectArguments: '$(Build.SourcesDirectory)/eng/pipelines/runtimelab/sendtohelix-naot-llvm.proj /p:TestTargetOS=${{ parameters.osGroup }}'
 
   - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/remove-duplicate-packages.ps1 -Config $(_BuildConfig) -HostArch $(hostedTargetArch) -TargetOS ${{ parameters.osGroup }} -TargetArch ${{ parameters.archType }}
     displayName: Remove duplicate packages before publishing

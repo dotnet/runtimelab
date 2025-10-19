@@ -68,7 +68,7 @@ jobs:
         - (Debian.12.Arm32)Ubuntu.2204.ArmArch@mcr.microsoft.com/dotnet-buildtools/prereqs:debian-12-helix-arm32v7
 
     # Linux arm64
-    - ${{ if eq(parameters.platform, 'linux_arm64') }}:
+    - ${{ if in(parameters.platform, 'linux_arm64', 'wasi_wasm_linux_arm64_naot_llvm') }}:
       - ${{ if eq(variables['System.TeamProject'], 'public') }}:
         - (Ubuntu.2004.Arm64.Open)Ubuntu.2204.Armarch.Open@mcr.microsoft.com/dotnet-buildtools/prereqs:ubuntu-20.04-helix-arm64v8
       - ${{ if eq(variables['System.TeamProject'], 'internal') }}:

@@ -370,7 +370,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <_IlcEnvironmentVariables Condition="'$(IlcUseServerGc)' == 'false'">DOTNET_gcServer=0;$(_IlcEnvironmentVariables)</_IlcEnvironmentVariables>
     </PropertyGroup>
 
-    <Exec Command="$(IlcLauncher) &quot;$(IlcToolsPath)/ilc&quot; @&quot;$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).ilc.rsp&quot;"
+    <Exec Command="&quot;$(IlcToolsPath)/ilc&quot; @&quot;$(NativeIntermediateOutputPath)%(ManagedBinary.Filename).ilc.rsp&quot;"
           EnvironmentVariables="$(_IlcEnvironmentVariables)" />
 
     <!-- Trick ILLinker into not actually running -->

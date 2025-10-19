@@ -541,18 +541,18 @@ jobs:
         buildConfig: ${{ parameters.buildConfig }}
         ${{ insert }}: ${{ parameters.jobParameters }}
 
-- ${{ if containsValue(parameters.platforms, 'browser_wasm_linux_arm64_naot_llvm') }}:
+- ${{ if containsValue(parameters.platforms, 'wasi_wasm_linux_arm64_naot_llvm') }}:
   - template: xplat-setup.yml
     parameters:
       jobTemplate: ${{ parameters.jobTemplate }}
       helixQueuesTemplate: ${{ parameters.helixQueuesTemplate }}
       variables: ${{ parameters.variables }}
-      osGroup: browser
+      osGroup: wasi
       archType: wasm
-      targetRid: browser-wasm
-      platform: browser_wasm_linux_arm64_naot_llvm
+      targetRid: wasi-wasm
+      platform: wasi_wasm_linux_arm64_naot_llvm
       shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
-      container: linux_arm64_naot_llvm
+      container: linux_arm64
       jobParameters:
         hostedOs: linux
         hostedTargetArch: arm64

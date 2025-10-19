@@ -40,7 +40,7 @@ if (!$PublishTargetPackages)
     Remove-Item -Force $PackagesPath/$TargetPackagePattern
 }
 
-$PublishHostPackages = $TargetOS -eq "browser"
+$PublishHostPackages = $TargetOS -eq "wasi"
 if (!$PublishHostPackages)
 {
     $HostPackagePattern = "runtime.$HostRid.Microsoft.DotNet.ILCompiler.LLVM.*.nupkg"

@@ -1,5 +1,6 @@
 param(
     $InstallDir,
+    $HostArch = $null,
     [switch]$CI
 )
 
@@ -16,13 +17,21 @@ if ($WasiSdkVersion -lt [int]$UpstreamWasiSdkVersion)
     exit
 }
 
-if ($IsWindows)
+if (!$HostArch)
 {
-    $WasiSdkHost = "x86_64-windows"
+    $HostArch = [Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
 }
-else
+$WasiSdkHostArch = switch ($HostArch)
 {
-    $WasiSdkHost = "x86_64-linux"
+    x64 { "x86_64" }
+    default { "$HostArch".ToLowerInvariant() }
+}
+
+$WasiSdkHost = $IsWindows ? "$WasiSdkHostArch-windows" : "$WasiSdkHostArch-linux"
+if ($WasiSdkHost -eq "arm64-windows")
+{
+    # TODO-LLVM: remove once we updgrade to WASI SDK 27.0 that supports win-arm64. For now we rely on emulation.
+    $WasiSdkHost = "x86_64-windows"
 }
 $WasiSdkDirName = "wasi-sdk-$WasiSdkVersion.0-$WasiSdkHost"
 $WasiSdkGzFile = "$WasiSdkDirName.tar.gz"
@@ -30,6 +39,7 @@ $WasiSdkGzFile = "$WasiSdkDirName.tar.gz"
 Invoke-WebRequest -Uri https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-$WasiSdkVersion/$WasiSdkGzFile -OutFile $WasiSdkGzFile
 
 tar -xzf $WasiSdkGzFile
+del $WasiSdkGzFile
 mv $WasiSdkDirName wasi-sdk
 
 # The upstream build expects this sentinel to exist, otherwise it tries to use a provisioned SDK.
