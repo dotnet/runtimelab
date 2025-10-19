@@ -42,8 +42,22 @@ FCIMPL2(void*, RhpGcStressOnce, void* obj, uint8_t* pFlag)
             pThread->PushGCFrameRegistration(&gc);
         }
 
-        pThread->SetShadowStackTop(pShadowStack);
+        bool isCooperative = pThread->IsCurrentThreadInCooperativeMode();
+        if (isCooperative)
+        {
+            pThread->SetDeferredTransitionFrame((PInvokeTransitionFrame*)pShadowStack);
+        }
+        else // We can be called in preemptive mode - on an exit from a PInvoke.
+        {
+            ASSERT(obj == nullptr);
+            pThread->DeferTransitionFrame();
+            pThread->DisablePreemptiveMode();
+        }
         GCHeapUtilities::GetGCHeap()->GarbageCollect();
+        if (!isCooperative)
+        {
+            pThread->EnablePreemptiveMode();
+        }
 
         if (obj != nullptr)
         {

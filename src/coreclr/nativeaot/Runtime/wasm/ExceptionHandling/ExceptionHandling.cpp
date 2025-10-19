@@ -6,34 +6,22 @@
 
 #include "../wasm.h"
 
-struct SparseVirtualUnwindFrame
-{
-    SparseVirtualUnwindFrame* Prev;
-    void* UnwindTable;
-    size_t UnwindIndex;
-};
-
 // This variable is defined here in native code because:
 //  1) Unmanaged thread locals are currently much more efficient than managed ones.
 //  2) Push/pop functions do not need the shadow stack argument.
 //
-thread_local SparseVirtualUnwindFrame* t_pLastSparseVirtualUnwindFrame = nullptr;
+// TODO-LLVM-Cleanup: replace with with PLATFORM_THREAD_LOCAL after merge.
+__thread SparseVirtualUnwindFrame* t_pLastSparseVirtualUnwindFrame = nullptr;
 
 FCIMPL_NO_SS(void, RhpPushSparseVirtualUnwindFrame, SparseVirtualUnwindFrame* pFrame, void* pUnwindTable, size_t unwindIndex)
 {
-    ASSERT(t_pLastSparseVirtualUnwindFrame < pFrame);
-    pFrame->Prev = t_pLastSparseVirtualUnwindFrame;
-    pFrame->UnwindTable = pUnwindTable;
-    pFrame->UnwindIndex = unwindIndex;
-
-    t_pLastSparseVirtualUnwindFrame = pFrame;
+    InlinePushSparseVirtualUnwindFrame(pFrame, pUnwindTable, unwindIndex);
 }
 FCIMPLEND
 
 FCIMPL_NO_SS(void, RhpPopSparseVirtualUnwindFrame)
 {
-    ASSERT(t_pLastSparseVirtualUnwindFrame != nullptr);
-    t_pLastSparseVirtualUnwindFrame = t_pLastSparseVirtualUnwindFrame->Prev;
+    InlinePopSparseVirtualUnwindFrame(t_pLastSparseVirtualUnwindFrame);
 }
 FCIMPLEND
 
