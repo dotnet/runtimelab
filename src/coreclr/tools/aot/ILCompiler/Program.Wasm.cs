@@ -51,9 +51,9 @@ namespace ILCompiler
 
     internal partial class ILCompilerRootCommand
     {
-        public CliOption<WasmMethodLevelVirtualUnwindModel?> WasmMethodLevelVirtualUnwindModel { get; } =
+        public Option<WasmMethodLevelVirtualUnwindModel?> WasmMethodLevelVirtualUnwindModel { get; } =
             new("--wasm-method-level-virtual-unwind-model") { Description = "WASM method-level virtual unwind model override" };
-        public CliOption<uint> WasmGlobalBase { get; } =
+        public Option<uint> WasmGlobalBase { get; } =
             new("--wasm-global-base") { Description = "WASM global base value" };
 
         private void InitializeWasmOptions()

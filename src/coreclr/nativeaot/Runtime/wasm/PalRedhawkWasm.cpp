@@ -9,8 +9,7 @@
 #include "CommonTypes.h"
 #include "CommonMacros.h"
 #include "daccess.h"
-#include "PalRedhawkCommon.h"
-#include "PalRedhawk.h"
+#include "Pal.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -101,7 +100,7 @@ extern "C" int __cxa_thread_atexit(Dtor dtor, void* obj, void*)
 // runtime does not require this functionality either, and so we can implement this function in terms of simple
 // "malloc".
 //
-REDHAWK_PALEXPORT _Ret_maybenull_ _Post_writable_byte_size_(size) void* REDHAWK_PALAPI PalVirtualAlloc(uintptr_t size, uint32_t protect)
+_Ret_maybenull_ _Post_writable_byte_size_(size) void* PalVirtualAlloc(uintptr_t size, uint32_t protect)
 {
     if (protect != PAGE_READWRITE)
     {
@@ -118,12 +117,12 @@ REDHAWK_PALEXPORT _Ret_maybenull_ _Post_writable_byte_size_(size) void* REDHAWK_
     return pRetVal;
 }
 
-REDHAWK_PALEXPORT void REDHAWK_PALAPI PalVirtualFree(_In_ void* pAddress, uintptr_t size)
+void PalVirtualFree(_In_ void* pAddress, uintptr_t size)
 {
     free(pAddress);
 }
 
-REDHAWK_PALEXPORT UInt32_BOOL REDHAWK_PALAPI PalVirtualProtect(_In_ void* pAddress, size_t size, uint32_t protect)
+UInt32_BOOL PalVirtualProtect(_In_ void* pAddress, size_t size, uint32_t protect)
 {
     if (protect == PAGE_READWRITE)
     {

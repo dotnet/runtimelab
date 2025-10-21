@@ -1813,13 +1813,9 @@ void CallArgs::PushLateBack(CallArg* arg)
 //
 void CallArgs::Remove(CallArg* arg)
 {
-<<<<<<< HEAD
 #ifndef TARGET_WASM
-    assert(!m_abiInformationDetermined && !m_argsComplete);
-#endif // !TARGET_WASM
-=======
     assert(!m_hasAddedFinalArgs && !m_argsComplete);
->>>>>>> upstream-jun
+#endif // !TARGET_WASM
 
     CallArg** slot = &m_head;
     while (*slot != nullptr)
@@ -13687,18 +13683,6 @@ void Compiler::gtGetLateArgMsg(GenTreeCall* call, CallArg* arg, char* bufp, unsi
     gtPrintABILocation(arg->AbiInfo, &bufp, &bufLength);
 }
 
-<<<<<<< HEAD
-#if defined(FEATURE_FIXED_OUT_ARGS) && !defined(TARGET_WASM)
-    if (argReg == REG_STK)
-    {
-        sprintf_s(bufp, bufLength, " in out+%02x", arg->AbiInfo.ByteOffset);
-    }
-    else
-#endif
-    {
-#ifdef TARGET_ARM
-        if (arg->AbiInfo.IsSplit())
-=======
 //------------------------------------------------------------------------
 // gtPrintABILocation: Print location that an argument is being passed in.
 //
@@ -13721,7 +13705,6 @@ void Compiler::gtPrintABILocation(const ABIPassingInformation& abiInfo, char** b
 
     auto printRegs = [&]() {
         if (firstReg == REG_NA)
->>>>>>> upstream-jun
         {
             return;
         }

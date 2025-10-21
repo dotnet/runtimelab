@@ -1560,7 +1560,7 @@ private:
 
             offset = AlignUp(offset, alignment);
             varDsc->SetStackOffset(offset);
-            offset += m_compiler->lvaLclSize(m_compiler->lvaGetLclNum(varDsc));
+            offset += m_compiler->lvaLclStackHomeSize(m_compiler->lvaGetLclNum(varDsc));
             varDsc->SetRegNum(REG_STK);
             };
 

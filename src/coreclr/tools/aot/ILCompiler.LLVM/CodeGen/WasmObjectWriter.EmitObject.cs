@@ -16,6 +16,14 @@ namespace ILCompiler.ObjectWriter
 {
     internal partial class WasmObjectWriter
     {
+        /// <summary>
+        /// Returns true if the section is a standard one (defined as text, data, or rdata currently)
+        /// </summary>
+        private static bool IsStandardSection(ObjectNodeSection section)
+        {
+            return section == ObjectNodeSection.DataSection || section == ObjectNodeSection.ReadOnlyDataSection || section == ObjectNodeSection.FoldableReadOnlyDataSection || section == ObjectNodeSection.TextSection || section == ObjectNodeSection.XDataSection || section == ObjectNodeSection.BssSection;
+        }
+
         public static void EmitObject(string objectFilePath, IEnumerable<DependencyNode> nodes, LLVMCodegenCompilation compilation, IObjectDumper dumper)
         {
             // External accessors must be kept separate from the rest of the code to keep the linker's
@@ -49,7 +57,7 @@ namespace ILCompiler.ObjectWriter
 
                 ISymbolDefinitionNode sectionSymbol = null;
                 ObjectNodeSection section = node.GetSection(factory);
-                if (section.IsStandardSection && node is ISymbolDefinitionNode definingSymbol)
+                if (IsStandardSection(section) && node is ISymbolDefinitionNode definingSymbol)
                 {
                     // We **could** emit everything into one huge section, which is also how other targets do it.
                     // However, that would hinder linker GC and diagnosability. We therefore choose to split

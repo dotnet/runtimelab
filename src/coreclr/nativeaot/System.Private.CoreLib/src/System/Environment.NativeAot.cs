@@ -55,9 +55,6 @@ namespace System
             AppContext.OnProcessExit();
 #endif
         }
-<<<<<<< HEAD
-
-        public static int TickCount => (int)TickCount64;
 
 #if TARGET_WASM
         private static unsafe string[] GetCommandLineArgsNative()
@@ -65,7 +62,5 @@ namespace System
             return Array.Empty<string>();
         }
 #endif
-=======
->>>>>>> upstream-jun
     }
 }

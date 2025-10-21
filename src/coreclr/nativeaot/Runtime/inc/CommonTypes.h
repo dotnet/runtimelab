@@ -44,11 +44,7 @@ typedef uint32_t            UInt32_BOOL;    // windows 4-byte BOOL, 0 -> false, 
 #define UInt32_FALSE        0
 #define UInt32_TRUE         1
 
-<<<<<<< HEAD
-#if (defined(FEATURE_EVENT_TRACE) && !defined(_INC_WINDOWS)) || defined(TARGET_WASM)
-=======
-#if defined(FEATURE_EVENT_TRACE) && defined(TARGET_UNIX)
->>>>>>> upstream-jun
+#if (defined(FEATURE_EVENT_TRACE) && defined(TARGET_UNIX)) || defined(TARGET_WASM)
 typedef int BOOL;
 typedef void* LPVOID;
 typedef uint32_t UINT;

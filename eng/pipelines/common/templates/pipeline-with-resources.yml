@@ -74,7 +74,6 @@ extends:
         env:
           ROOTFS_DIR: /crossrootfs/x64
 
-<<<<<<< HEAD
       # We need to be able to use 'tdnf install'. We can't because of https://github.com/dotnet/dotnet-docker/issues/788.
       # This is the hackaround: https://github.com/microsoft/azure-pipelines-agent/issues/2043#issuecomment-489692810.
       # TODO-LLVM-Upstream: replace with an image that has our prerequisites (LLDB) already installed.
@@ -91,10 +90,7 @@ extends:
         env:
           ROOTFS_DIR: /crossrootfs/arm64
 
-      # We use a CentOS Stream 8 image here to test building from source on CentOS Stream 9.
-=======
       # Used to test RHEL compatibility: CentOS Stream is upstream of RHEL
->>>>>>> upstream-jun
       SourceBuild_centos_x64:
         image: mcr.microsoft.com/dotnet-buildtools/prereqs:centos-stream-10-amd64
 

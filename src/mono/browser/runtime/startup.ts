@@ -534,19 +534,13 @@ async function ensureUsedWasmFeatures () {
 export async function start_runtime () {
     try {
         const mark = startMeasure();
-        const environmentVariables = runtimeHelpers.config.environmentVariables || {};
-        mono_log_debug("Initializing mono runtime");
-<<<<<<< HEAD
         if (NativeAOT) {
             runtimeHelpers.config.environmentVariables = {};
         }
-
-        for (const k in runtimeHelpers.config.environmentVariables) {
-            const v = runtimeHelpers.config.environmentVariables![k];
-=======
+        const environmentVariables = runtimeHelpers.config.environmentVariables || {};
+        mono_log_debug("Initializing mono runtime");
         for (const k in environmentVariables) {
             const v = environmentVariables![k];
->>>>>>> upstream-jun
             if (typeof (v) === "string")
                 mono_wasm_setenv(k, v);
             else

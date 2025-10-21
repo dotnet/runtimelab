@@ -513,12 +513,8 @@
                        $(NativeBinDir)dotnet.js.map;
                        $(NativeBinDir)dotnet.runtime.js;
                        $(NativeBinDir)dotnet.runtime.js.map;
-<<<<<<< HEAD
-=======
                        $(NativeBinDir)dotnet.diagnostics.js;
                        $(NativeBinDir)dotnet.diagnostics.js.map;
-                       $(NativeBinDir)dotnet.native.js;
->>>>>>> upstream-jun
                        $(NativeBinDir)dotnet.d.ts;
                        $(NativeBinDir)package.json"
           DestinationFolder="$(MicrosoftNetCoreAppRuntimePackNativeDir)"

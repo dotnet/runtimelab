@@ -17,8 +17,8 @@ namespace ILCompiler
         // These need to provide reasonable defaults so that the user can optionally skip
         // calling the Use/Configure methods and still get something reasonable back.
         private KeyValuePair<string, string>[] _ryujitOptions = Array.Empty<KeyValuePair<string, string>>();
-        private MethodLayoutAlgorithm _methodLayoutAlgorithm;
-        private FileLayoutAlgorithm _fileLayoutAlgorithm;
+        protected MethodLayoutAlgorithm _methodLayoutAlgorithm;
+        protected FileLayoutAlgorithm _fileLayoutAlgorithm;
         private ILProvider _ilProvider = new NativeAotILProvider();
         private ProfileDataManager _profileDataManager;
         private string _jitPath;

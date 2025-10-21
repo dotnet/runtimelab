@@ -25,12 +25,8 @@ namespace ILCompiler
         private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new ConditionalWeakTable<Thread, CorInfoImpl>();
         internal readonly RyuJitCompilationOptions _compilationOptions;
         private readonly ProfileDataManager _profileDataManager;
-<<<<<<< HEAD
-        protected readonly MethodImportationErrorProvider _methodImportationErrorProvider;
-=======
         private readonly FileLayoutOptimizer _fileLayoutOptimizer;
-        private readonly MethodImportationErrorProvider _methodImportationErrorProvider;
->>>>>>> upstream-jun
+        protected readonly MethodImportationErrorProvider _methodImportationErrorProvider;
         private readonly ReadOnlyFieldPolicy _readOnlyFieldPolicy;
         private readonly int _parallelism;
 

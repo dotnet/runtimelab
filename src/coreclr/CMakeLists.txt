@@ -29,11 +29,7 @@ if(CORECLR_SET_RPATH)
     set(MACOSX_RPATH ON)
 endif(CORECLR_SET_RPATH)
 
-<<<<<<< HEAD
-if(CLR_CMAKE_HOST_MACCATALYST OR CLR_CMAKE_HOST_IOS OR CLR_CMAKE_HOST_TVOS OR CLR_CMAKE_TARGET_ARCH_WASM)
-=======
-if(CLR_CMAKE_HOST_MACCATALYST OR CLR_CMAKE_HOST_IOS OR CLR_CMAKE_HOST_TVOS OR CLR_CMAKE_HOST_BROWSER OR CLR_CMAKE_HOST_ANDROID)
->>>>>>> upstream-jun
+if(CLR_CMAKE_HOST_MACCATALYST OR CLR_CMAKE_HOST_IOS OR CLR_CMAKE_HOST_TVOS OR CLR_CMAKE_TARGET_ARCH_WASM OR CLR_CMAKE_HOST_ANDROID)
   set(FEATURE_STANDALONE_GC 0)
 endif()
 
@@ -141,14 +137,8 @@ if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_subdirectory(${CLR_SRC_NATIVE_DIR}/eventpipe eventpipe)
   add_subdirectory(${CLR_SRC_NATIVE_DIR}/minipal shared_minipal)
 
-<<<<<<< HEAD
-  if(NOT CLR_CMAKE_HOST_TVOS)
-    add_subdirectory(debug/debug-pal)
-  endif()
+  add_subdirectory(debug/debug-pal)
 endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
-=======
-add_subdirectory(debug/debug-pal)
->>>>>>> upstream-jun
 
 add_subdirectory(minipal)
 
@@ -163,16 +153,9 @@ endif()
 include_directories("pal/prebuilt/inc")
 include_directories(${CLR_ARTIFACTS_OBJ_DIR})
 
-<<<<<<< HEAD
-if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
-    add_subdirectory(tools/aot/jitinterface)
-endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
-
-=======
-if (NOT CLR_CMAKE_TARGET_BROWSER)
+if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_subdirectory(tools/aot/jitinterface)
-endif (NOT CLR_CMAKE_TARGET_BROWSER)
->>>>>>> upstream-jun
+endif (NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
 if(NOT CLR_CROSS_COMPONENTS_BUILD)
   # NativeAOT only buildable for a subset of CoreCLR-supported configurations
@@ -195,17 +178,13 @@ endif(CLR_CMAKE_HOST_WIN32)
 #----------------------------------
 include(clrdefinitions.cmake)
 
-<<<<<<< HEAD
-if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
-  add_subdirectory(gc)
-endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
-=======
 if(FEATURE_STANDALONE_GC)
   add_definitions(-DFEATURE_STANDALONE_GC)
 endif(FEATURE_STANDALONE_GC)
 
-add_subdirectory(gc)
->>>>>>> upstream-jun
+if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
+  add_subdirectory(gc)
+endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
 if (CLR_CMAKE_HOST_UNIX)
   include_directories("pal/inc")
@@ -299,37 +278,27 @@ if(CLR_CMAKE_HOST_UNIX)
   add_subdirectory(nativeresources)
 endif(CLR_CMAKE_HOST_UNIX)
 
-<<<<<<< HEAD
-if(NOT CLR_CMAKE_HOST_TVOS AND NOT CLR_CMAKE_TARGET_ARCH_WASM)
+if(NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_subdirectory(utilcode)
   add_subdirectory(inc)
-=======
-add_subdirectory(utilcode)
-add_subdirectory(inc)
->>>>>>> upstream-jun
 
-if (CLR_CMAKE_BUILD_TOOLS)
-  add_subdirectory(ilasm)
-  add_subdirectory(ildasm)
-endif(CLR_CMAKE_BUILD_TOOLS)
-add_subdirectory(gcinfo)
+  if (CLR_CMAKE_BUILD_TOOLS)
+    add_subdirectory(ilasm)
+    add_subdirectory(ildasm)
+  endif(CLR_CMAKE_BUILD_TOOLS)
+  add_subdirectory(gcinfo)
 
-if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_subdirectory(jit)
-endif()
 
-add_subdirectory(vm)
-add_subdirectory(md)
+  add_subdirectory(vm)
+  add_subdirectory(md)
 
-if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_subdirectory(debug)
-endif()
 
-add_subdirectory(binder)
-add_subdirectory(classlibnative)
-add_subdirectory(dlls)
+  add_subdirectory(binder)
+  add_subdirectory(classlibnative)
+  add_subdirectory(dlls)
 
-if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_subdirectory(unwinder)
   add_subdirectory(interop)
 endif()

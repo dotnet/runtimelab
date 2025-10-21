@@ -36,17 +36,11 @@
 #define membarrier(...) syscall(__NR_membarrier, __VA_ARGS__)
 #elif HAVE_SYS_MEMBARRIER_H
 #include <sys/membarrier.h>
-<<<<<<< HEAD
-// Emscriptenn's membarrier.h does not have a membarrier function.
+#endif
 #ifdef TARGET_WASM
+// Emscriptenn's membarrier.h does not have a membarrier function.
 # define membarrier(...)  -ENOSYS
 #endif // TARGET_WASM
-=======
-#ifdef TARGET_BROWSER
-#define membarrier(cmd, flags, cpu_id) 0 // browser/wasm is currently single threaded
-#endif
->>>>>>> upstream-jun
-#endif
 
 #include <sys/resource.h>
 

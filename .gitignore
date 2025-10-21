@@ -364,12 +364,9 @@ src/coreclr/System.Private.CoreLib/common
 run-stress-*
 test:.cs
 
-<<<<<<< HEAD
 # NativeAOT-LLVM: wasmjit-diff analysis results
 wasmjit-diff/
-=======
 # XUnit
 *.tempLog.xml
 *.testResults.xml
 *.testStats.csv
->>>>>>> upstream-jun

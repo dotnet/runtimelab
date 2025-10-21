@@ -150,12 +150,8 @@ namespace System.Runtime
         internal static extern unsafe object RhpNewFastMisalign(MethodTable * pEEType);
 #endif // FEATURE_64BIT_ALIGNMENT
 
-<<<<<<< HEAD
 #if !TARGET_WASM
-        [RuntimeImport(Redhawk.BaseName, "RhpAssignRef")]
-=======
         [RuntimeImport(RuntimeLibrary, "RhpAssignRef")]
->>>>>>> upstream-jun
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpAssignRef(ref object? address, object? obj);
 #endif
@@ -246,15 +242,7 @@ namespace System.Runtime
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpFallbackFailFast();
 
-<<<<<<< HEAD
-        [RuntimeImport(Redhawk.BaseName, "RhpClearThreadDoNotTriggerGC")]
-        [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void RhpClearThreadDoNotTriggerGC();
-
-        [RuntimeImport(Redhawk.BaseName, "RhpSetThreadDoNotTriggerGC")]
-=======
         [RuntimeImport(RuntimeLibrary, "RhpSetThreadDoNotTriggerGC")]
->>>>>>> upstream-jun
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern void RhpSetThreadDoNotTriggerGC();
 

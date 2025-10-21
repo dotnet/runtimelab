@@ -334,15 +334,11 @@
     <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrILToolsSubset=true</ClrRuntimeBuildSubsets>
   </PropertyGroup>
 
-<<<<<<< HEAD
-  <PropertyGroup Condition="$(_subset.Contains('+clr.nativeaotruntime+')) and ('$(NativeAotSupported)' == 'true' or '$(TargetsWasm)' == 'true')">
-=======
   <PropertyGroup Condition="$(_subset.Contains('+tools.cdac+'))">
     <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrCdacSubset=true</ClrRuntimeBuildSubsets>
   </PropertyGroup>
 
-  <PropertyGroup Condition="$(_subset.Contains('+clr.nativeaotruntime+')) and '$(NativeAotSupported)' == 'true'">
->>>>>>> upstream-jun
+  <PropertyGroup Condition="$(_subset.Contains('+clr.nativeaotruntime+')) and ('$(NativeAotSupported)' == 'true' or '$(TargetsWasm)' == 'true')">
     <ClrRuntimeBuildSubsets>$(ClrRuntimeBuildSubsets);ClrNativeAotSubset=true</ClrRuntimeBuildSubsets>
   </PropertyGroup>
 

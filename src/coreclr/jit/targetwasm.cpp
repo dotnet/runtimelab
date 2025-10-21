@@ -51,10 +51,12 @@ ABIPassingInformation WasmClassifier::Classify(Compiler*    comp,
                                                ClassLayout* structLayout,
                                                WellKnownArg wellKnownParam)
 {
+    bool passedByRef = false;
     if (type == TYP_STRUCT)
     {
         structPassingKind wbPassStruct;
         type = comp->m_llvm->GetArgTypeForStructWasm(structLayout->GetClassHandle(), &wbPassStruct);
+        passedByRef = wbPassStruct == structPassingKind::SPK_ByReference;
     }
 
     assert(type != TYP_STRUCT);
@@ -62,7 +64,7 @@ ABIPassingInformation WasmClassifier::Classify(Compiler*    comp,
     unsigned typeSize = genTypeSize(type);
 
     ABIPassingSegment segment = ABIPassingSegment::OnStack(m_stackArgSize, 0, typeSize);
-    m_stackArgSize += typeSize;
+    m_stackArgSize += roundUp(typeSize, TARGET_POINTER_SIZE); // We will effect alignment on the "stack" sizes.
 
-    return ABIPassingInformation::FromSegment(comp, segment);
+    return ABIPassingInformation::FromSegment(comp, passedByRef, segment);
 }

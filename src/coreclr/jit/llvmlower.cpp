@@ -46,6 +46,7 @@ void Llvm::AddUnhandledExceptionHandler()
     newEhDsc->ebdFilterBegOffset = 0; // Filter doesn't correspond to any IL.
     newEhDsc->ebdHndBegOffset = 0; // Handler doesn't correspond to any IL.
     newEhDsc->ebdHndEndOffset = 0; // Handler doesn't correspond to any IL.
+    newEhDsc->ebdID = _compiler->compEHID++;
 
     // Set some flags on the new region. This is the same as when we set up
     // EH regions in fgFindBasicBlocks(). Note that the try has no enclosing

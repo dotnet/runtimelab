@@ -28,13 +28,8 @@ if(WIN32)
         COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
 else()
     set(COMPILER_LANGUAGE -x c++)
-<<<<<<< HEAD
     set(PREPROCESSOR_FLAGS -E -P -C) # include license for code cop
-    set(ASM_OFFSETS_CPP ${RUNTIME_DIR}/unix/AsmOffsets.cpp)
-=======
-    set(PREPROCESSOR_FLAGS -E -P)
     set(ASM_OFFSETS_CPP ${NATIVEAOT_RUNTIME_DIR}/unix/AsmOffsets.cpp)
->>>>>>> upstream-jun
 endif()
 
 add_custom_command(

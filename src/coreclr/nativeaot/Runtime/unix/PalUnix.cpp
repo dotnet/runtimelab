@@ -775,12 +775,8 @@ char* PalCopyTCharAsChar(const TCHAR* toCopy)
     return copy.Extract();
 }
 
-<<<<<<< HEAD:src/coreclr/nativeaot/Runtime/unix/PalRedhawkUnix.cpp
 #ifndef HOST_WASM
-REDHAWK_PALEXPORT HANDLE PalLoadLibrary(const char* moduleName)
-=======
 HANDLE PalLoadLibrary(const char* moduleName)
->>>>>>> upstream-jun:src/coreclr/nativeaot/Runtime/unix/PalUnix.cpp
 {
     return dlopen(moduleName, RTLD_LAZY);
 }

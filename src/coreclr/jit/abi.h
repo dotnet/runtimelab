@@ -143,6 +143,15 @@ public:
     static bool GetShadowSpaceCallerOffsetForReg(regNumber reg, int* offset);
 #endif
 
+#if TARGET_WASM
+    bool IsPointer = false;
+    var_types ArgType = TYP_UNDEF;
+    bool getPassedByRef() const
+    {
+        return m_passedByRef;
+    }
+#endif
+
 #ifdef DEBUG
     void Dump() const;
 #endif
