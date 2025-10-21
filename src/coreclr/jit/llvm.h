@@ -308,6 +308,7 @@ private:
 
     // Shared between virtual unwind frame insertion and LSSA.
     unsigned m_initialUnwindIndex = UNWIND_INDEX_NONE;
+    CORINFO_GENERIC_HANDLE m_ehInfoSymbol = nullptr;
 
     // Shared between unwind index insertion and EH codegen.
     ArrayStack<unsigned>* m_unwindIndexMap = nullptr;

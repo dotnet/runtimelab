@@ -166,19 +166,21 @@ struct RuntimeThreadLocals
     uint8_t*                m_redirectionContextBuffer;             // storage for redirection context, allocated on demand
 #endif //FEATURE_SUSPEND_REDIRECTION
 
+#ifdef HOST_WASM
+    uint8_t*                m_pShadowStackBottom;
+#endif // HOST_WASM
+
 #ifdef FEATURE_GC_STRESS
     uint32_t                m_uRand;                                // current per-thread random number
 #endif // FEATURE_GC_STRESS
-#ifdef HOST_WASM
-    void*                   m_pShadowStackBottom;
-    void*                   m_pShadowStackTop;
-#endif // HOST_WASM
 };
 
 struct ReversePInvokeFrame
 {
     PInvokeTransitionFrame*   m_savedPInvokeTransitionFrame;
+#ifndef HOST_WASM
     Thread* m_savedThread;
+#endif // !HOST_WASM
 };
 
 class Thread : private RuntimeThreadLocals
@@ -251,8 +253,8 @@ private:
     PInvokeTransitionFrame* GetTransitionFrame();
 
 #ifdef HOST_WASM
-    void GcScanWasmShadowStack(ScanFunc* pfnEnumCallback, ScanContext* pvCallbackData);
-#endif
+    void GcScanRootsWorker_Wasm(ScanFunc* pfnEnumCallback, ScanContext* pvCallbackData);
+#endif // HOST_WASM
 
     void GcScanRootsWorker(ScanFunc* pfnEnumCallback, ScanContext* pvCallbackData, StackFrameIterator & sfIter);
 
@@ -394,16 +396,16 @@ public:
     pthread_t           GetOSThreadHandle() { return m_hOSThread; }
 #endif
 
+#ifdef HOST_WASM
+    void*               GetShadowStackBottom();
+    void*               GetShadowStackTop(PInvokeTransitionFrame* pTransitionFrame);
+    void*               InlineTryFastReversePInvoke_Wasm(size_t alignment);
+    void*               ReversePInvokeAttachOrTrapThread_Wasm(size_t alignment);
+#endif // HOST_WASM
+
 #ifdef TARGET_X86
     void                SetPendingRedirect(PCODE eip);
     bool                CheckPendingRedirect(PCODE eip);
-#endif
-
-#ifdef HOST_WASM
-    void* GetShadowStackBottom();
-    void SetShadowStackBottom(void* pShadowStack);
-    void* GetShadowStackTop();
-    void SetShadowStackTop(void* pShadowStack);
 #endif
 };
 

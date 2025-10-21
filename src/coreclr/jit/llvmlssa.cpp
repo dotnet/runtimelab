@@ -80,6 +80,14 @@ public:
 private:
     void IdentifyCandidatesAndInitializeLocals()
     {
+        if (m_compiler->lvaReversePInvokeFrameVar != BAD_VAR_NUM)
+        {
+            // Expose this explicitly since we delay inserting the RPI helpers until after allocation.
+            m_compiler->lvaSetVarAddrExposed(
+                m_compiler->lvaReversePInvokeFrameVar DEBUGARG(AddressExposedReason::ESCAPE_ADDRESS));
+            m_compiler->lvaGetDesc(m_compiler->lvaReversePInvokeFrameVar)->lvHasExplicitInit = true;
+        }
+
         // Initialize independently promoted parameter field locals.
         //
         for (unsigned lclNum = 0; lclNum < m_compiler->lvaCount; lclNum++)
@@ -162,6 +170,12 @@ private:
             {
                 allocLocation = REG_STK_CANDIDATE_UNCONDITIONAL;
                 INDEBUG(reason = "sparse virtual unwind frame");
+            }
+            // RPI frame being on the shadow stack allows us to combine it with the sparse virtual unwind frame.
+            else if (lclNum == m_compiler->lvaReversePInvokeFrameVar)
+            {
+                allocLocation = REG_STK_CANDIDATE_UNCONDITIONAL;
+                INDEBUG(reason = "RPI frame");
             }
             // Precise virtual unwind frames work by being at known offsets from each other on the shadow stack.
             else if (lclNum == m_llvm->m_preciseVirtualUnwindFrameLclNum)
@@ -1572,8 +1586,15 @@ private:
             m_compiler->lvaGetDesc(preciseVirtualUnwindFrameLclNum)->SetRegNum(REG_STK);
         }
 
-        // The shadow frame must be allocated at a zero offset; the runtime uses its value as the original
-        // shadow frame parameter to filter funclets.
+        // As an optimization, the RPI frame is hardcoded to be at offset zero so that so that we don't
+        // need to pass its offset to the RPI helper.
+        if (m_compiler->lvaReversePInvokeFrameVar != BAD_VAR_NUM)
+        {
+            assignOffset(m_compiler->lvaGetDesc(m_compiler->lvaReversePInvokeFrameVar));
+        }
+
+        // As another optimization the sparse virtual unwind frame is allocated right after the RPI frame
+        // so that we can use the RPI helpers which combine the transition itself with the EH frame push/pop.
         if (m_llvm->m_sparseVirtualUnwindFrameLclNum != BAD_VAR_NUM)
         {
             assignOffset(m_compiler->lvaGetDesc(m_llvm->m_sparseVirtualUnwindFrameLclNum));
@@ -1635,7 +1656,7 @@ private:
         m_llvm->m_currentBlock = m_compiler->fgFirstBB;
         m_llvm->m_currentRange = &initRange;
 
-        InitializeShadowStackValue();
+        InitializeShadowStackValueAndInsertReversePInvokeTransitions();
         m_llvm->initializePreciseVirtualUnwindFrame();
 
         unsigned zeroingSize = m_prologZeroingSize;
@@ -1664,8 +1685,11 @@ private:
         m_llvm->m_prologEnd = zeroILOffsetNode;
     }
 
-    void InitializeShadowStackValue()
+    void InitializeShadowStackValueAndInsertReversePInvokeTransitions()
     {
+        unsigned alignment = m_shadowFrameAlignment;
+        bool explicitAlignNeeded = alignment != DEFAULT_SHADOW_STACK_ALIGNMENT;
+
         unsigned lclNum = m_llvm->m_shadowStackLclNum;
         LclVarDsc* varDsc = m_compiler->lvaGetDesc(lclNum);
         // The liveness of our shadow stack local that has been computed before LSSA is not correct since we haven't
@@ -1673,21 +1697,64 @@ private:
         varDsc->lvTracked = 0;
 
         GenTreeLclVar* def = nullptr;
-        if (!varDsc->lvIsParam)
+        assert(!varDsc->lvIsParam == m_compiler->opts.IsReversePInvoke());
+        if (m_compiler->opts.IsReversePInvoke())
         {
-            GenTree* call = m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP, TYP_I_IMPL);
+            assert(!m_compiler->opts.jitFlags->IsSet(JitFlags::JIT_FLAG_TRACK_TRANSITIONS));
+
+            // We optimize the case where the transition can be combined with the virtual unwind frame push/pop.
+            GenTree* call;
+            GenTree* alignValueNode = m_compiler->gtNewIconNode(explicitAlignNeeded ? alignment : 0, TYP_I_IMPL);
+            m_llvm->CurrentRange().InsertAtEnd(alignValueNode);
+            if (m_llvm->m_sparseVirtualUnwindFrameLclNum != BAD_VAR_NUM)
+            {
+                GenTree* ehInfoNode = m_compiler->gtNewIconHandleNode(
+                    reinterpret_cast<size_t>(m_llvm->m_ehInfoSymbol), GTF_ICON_CONST_PTR);
+                m_llvm->CurrentRange().InsertAtEnd(ehInfoNode);
+
+                GenTreeIntCon* initialUnwindIndexNode =
+                    m_compiler->gtNewIconNode(m_llvm->m_initialUnwindIndex, TYP_I_IMPL);
+                m_llvm->CurrentRange().InsertAtEnd(initialUnwindIndexNode);
+
+                call = m_compiler->gtNewHelperCallNode(
+                    CORINFO_HELP_LLVM_EH_REVERSE_PINVOKE_ENTER_AND_PUSH_VIRTUAL_UNWIND_FRAME,
+                    TYP_I_IMPL, alignValueNode, ehInfoNode, initialUnwindIndexNode);
+            }
+            else
+            {
+                call = m_compiler->gtNewHelperCallNode(
+                    CORINFO_HELP_JIT_REVERSE_PINVOKE_ENTER, TYP_I_IMPL, alignValueNode);
+            }
             def = m_compiler->gtNewStoreLclVarNode(lclNum, call);
             m_llvm->CurrentRange().InsertAtEnd(call);
             m_llvm->CurrentRange().InsertAtEnd(def);
             varDsc->lvHasExplicitInit = 1;
+            explicitAlignNeeded = false; // The helper will align the shadow stack as necessary.
 
             JITDUMP("ReversePInvoke: initialized the shadow stack:\n");
             DISPTREERANGE(m_llvm->CurrentRange(), def);
+
+            for (BasicBlock* block : m_compiler->Blocks())
+            {
+                if (block->KindIs(BBJ_RETURN))
+                {
+                    LIR::Range callRange;
+                    CorInfoHelpFunc helperFunc = m_llvm->m_sparseVirtualUnwindFrameLclNum != BAD_VAR_NUM
+                        ? CORINFO_HELP_LLVM_EH_REVERSE_PINVOKE_EXIT_AND_POP_VIRTUAL_UNWIND_FRAME
+                        : CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT;
+                    GenTree* addr = m_compiler->gtNewLclVarAddrNode(m_compiler->lvaReversePInvokeFrameVar);
+                    GenTree* call = m_compiler->gtNewHelperCallNode(helperFunc, TYP_VOID, addr);
+                    callRange.InsertAtEnd(addr);
+                    callRange.InsertAtEnd(call);
+
+                    m_llvm->lowerRange(block, callRange);
+                    LIR::InsertBeforeTerminator(block, std::move(callRange));
+                }
+            }
         }
         m_llvm->m_shadowStackSsaNum = AddUntrackedSsaDef(def, lclNum);
 
-        unsigned alignment = m_shadowFrameAlignment;
-        if (alignment != DEFAULT_SHADOW_STACK_ALIGNMENT)
+        if (explicitAlignNeeded)
         {
             // Zero the padding that may be introduced by the code below. This serves two purposes:
             // 1. We don't leave "random" pointers on the shadow stack.
@@ -1827,9 +1894,14 @@ private:
             // Filters will be called by the first pass while live state still exists on shadow frames above (in the
             // traditional sense, where stacks grow down) them. For this reason, filters will access state from the
             // original frame via a dedicated shadow stack pointer, and use the actual shadow stack for calls.
-            regNumber shadowStackArgReg =
-                m_llvm->isBlockInFilter(m_llvm->CurrentBlock()) ? REG_ORIGINAL_SHADOW_STACK_ARG : REG_NA;
+            bool isFilter = m_llvm->isBlockInFilter(m_llvm->CurrentBlock());
+            regNumber shadowStackArgReg = isFilter ? REG_ORIGINAL_SHADOW_STACK_ARG : REG_NA;
             unsigned lclOffset = lclBaseOffset + lclNode->GetLclOffs();
+            if (isFilter && (m_llvm->m_sparseVirtualUnwindFrameLclNum != BAD_VAR_NUM))
+            {
+                // In the sparse model, the original shadow stack pointer is the address of the virtual uwnind frame.
+                lclOffset -= m_compiler->lvaGetDesc(m_llvm->m_sparseVirtualUnwindFrameLclNum)->GetStackOffset();
+            }
             GenTree* lclAddress = lclAddress = InsertShadowStackAddr(lclNode, lclOffset, shadowStackArgReg); 
 
             ClassLayout* layout = lclNode->TypeIs(TYP_STRUCT) ? lclNode->GetLayout(m_compiler) : nullptr;
@@ -1891,16 +1963,6 @@ private:
 
     void RewriteCall(GenTreeCall* call)
     {
-        if (call->IsHelperCall(m_compiler, CORINFO_HELP_JIT_REVERSE_PINVOKE_EXIT))
-        {
-            // The RPI exit call has an additional argument - the shadow stack top on entry to this RPI method.
-            GenTree* previousShadowStackTop = InsertShadowStackAddr(call, 0);
-            CallArg* callArg =
-                call->gtArgs.PushFront(m_compiler, NewCallArg::Primitive(previousShadowStackTop, CORINFO_TYPE_PTR));
-            callArg->AbiInfo.IsPointer = true;
-            callArg->AbiInfo.ArgType = TYP_I_IMPL;
-        }
-
         // Add in the shadow stack argument now that we know the shadow frame size.
         if (m_llvm->callHasManagedCallingConvention(call))
         {

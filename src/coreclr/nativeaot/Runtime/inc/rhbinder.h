@@ -494,9 +494,11 @@ class Thread;
 #if defined(USE_PORTABLE_HELPERS)
 struct PInvokeTransitionFrame
 {
+#ifndef HOST_WASM
     Thread*     m_pThread; // Cached so that GetThread is only called once per method
-    uint32_t    m_Flags; // PInvokeTransitionFrameFlags. TODO-LLVM-CQ: Remove. Only needed for Thread.Abort "support".
-    TgtPTR_Void m_RIP; // PInvokeTransitionFrameFlags. TODO-LLVM-CQ: Remove.
+    uint32_t    m_Flags; // PInvokeTransitionFrameFlags.
+    TgtPTR_Void m_RIP; // PInvokeTransitionFrameFlags.
+#endif // HOST_WASM
 };
 #else // USE_PORTABLE_HELPERS
 struct PInvokeTransitionFrame

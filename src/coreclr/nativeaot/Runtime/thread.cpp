@@ -149,9 +149,7 @@ void Thread::ResetCachedTransitionFrame()
 void Thread::EnablePreemptiveMode()
 {
     ASSERT(ThreadStore::GetCurrentThread() == this);
-#if !defined(HOST_WASM)
     ASSERT(m_pDeferredTransitionFrame != NULL);
-#endif
 
     // set preemptive mode
     VolatileStoreWithoutBarrier(&m_pTransitionFrame, m_pDeferredTransitionFrame);
@@ -320,6 +318,13 @@ void Thread::Construct()
 
     ASSERT(m_threadAbortException == NULL);
 
+#ifdef HOST_WASM
+    // TODO-LLVM: make this configurable. E. g. dependent on native stack size.
+    m_pShadowStackBottom = new (nothrow) uint8_t[1 * 1024 * 1024];
+    if (m_pShadowStackBottom == nullptr)
+        RhFailFast();
+#endif // HOST_WASM
+
 #ifdef FEATURE_SUSPEND_REDIRECTION
     ASSERT(m_redirectionContextBuffer == NULL);
 #endif //FEATURE_SUSPEND_REDIRECTION
@@ -390,6 +395,13 @@ void Thread::Destroy()
     StressLog::ThreadDetach(ptsl);
 #endif // STRESS_LOG
 
+#ifdef HOST_WASM
+    if (m_pShadowStackBottom != nullptr)
+    {
+        delete[] m_pShadowStackBottom;
+    }
+#endif // HOST_WASM
+
 #ifdef FEATURE_SUSPEND_REDIRECTION
     if (m_redirectionContextBuffer != NULL)
     {
@@ -401,10 +413,12 @@ void Thread::Destroy()
 }
 
 #ifdef HOST_WASM
-void Thread::GcScanWasmShadowStack(ScanFunc * pfnEnumCallback, ScanContext * pvCallbackData)
+void Thread::GcScanRootsWorker_Wasm(ScanFunc * pfnEnumCallback, ScanContext * pvCallbackData)
 {
     // Wasm does not permit iteration of stack frames so is uses a shadow stack instead
-    EnumGcRefsInRegionConservatively((PTR_OBJECTREF)m_pShadowStackBottom, (PTR_OBJECTREF)m_pShadowStackTop, pfnEnumCallback, pvCallbackData);
+    PTR_OBJECTREF pShadowStackBottom = (PTR_OBJECTREF)GetShadowStackBottom();
+    PTR_OBJECTREF pShadowStackTop = (PTR_OBJECTREF)GetShadowStackTop(GetTransitionFrame());
+    EnumGcRefsInRegionConservatively(pShadowStackBottom, pShadowStackTop, pfnEnumCallback, pvCallbackData);
 
     // TODO-LLVM-Upstream: unify this method with the general "GcScanRootsWorker" below.
     for (GCFrameRegistration* pCurGCFrame = m_pGCFrameRegistrations; pCurGCFrame != NULL; pCurGCFrame = pCurGCFrame->m_pNext)
@@ -425,7 +439,7 @@ void Thread::GcScanRoots(ScanFunc * pfnEnumCallback, ScanContext * pvCallbackDat
     this->CrossThreadUnhijack();
 
 #ifdef HOST_WASM
-    GcScanWasmShadowStack(pfnEnumCallback, pvCallbackData);
+    GcScanRootsWorker_Wasm(pfnEnumCallback, pvCallbackData);
 #else
     StackFrameIterator frameIterator(this, GetTransitionFrame());
     GcScanRootsWorker(pfnEnumCallback, pvCallbackData, frameIterator);
@@ -1040,7 +1054,11 @@ EXTERN_C void FASTCALL RhpUnsuppressGcStress()
 // Standard calling convention variant and actual implementation for RhpWaitForGC
 EXTERN_C NOINLINE void FASTCALL RhpWaitForGC2(PInvokeTransitionFrame * pFrame)
 {
-    Thread * pThread = pFrame->m_pThread;
+#ifdef HOST_WASM
+    Thread* pThread = ThreadStore::GetCurrentThread();
+#else
+    Thread* pThread = pFrame->m_pThread;
+#endif
     if (pThread->IsDoNotTriggerGcSet())
         return;
 
@@ -1050,10 +1068,12 @@ EXTERN_C NOINLINE void FASTCALL RhpWaitForGC2(PInvokeTransitionFrame * pFrame)
 // Standard calling convention variant and actual implementation for RhpGcPoll
 EXTERN_C NOINLINE void FASTCALL RhpGcPoll2(PInvokeTransitionFrame* pFrame)
 {
+#ifndef HOST_WASM
     ASSERT(!Thread::IsHijackTarget(pFrame->m_RIP));
 
     Thread* pThread = ThreadStore::GetCurrentThread();
     pFrame->m_pThread = pThread;
+#endif // !HOST_WASM
 
     RhpWaitForGC2(pFrame);
 }
@@ -1328,6 +1348,7 @@ FCIMPL0(uint64_t, RhCurrentOSThreadId)
 }
 FCIMPLEND
 
+#ifndef HOST_WASM
 // Standard calling convention variant and actual implementation for RhpReversePInvokeAttachOrTrapThread
 EXTERN_C NOINLINE void FASTCALL RhpReversePInvokeAttachOrTrapThread2(ReversePInvokeFrame* pFrame)
 {
@@ -1339,7 +1360,6 @@ EXTERN_C NOINLINE void FASTCALL RhpReversePInvokeAttachOrTrapThread2(ReversePInv
 // PInvoke
 //
 
-#ifndef HOST_WASM
 FCIMPL1(void, RhpReversePInvoke, ReversePInvokeFrame * pFrame)
 {
     Thread * pCurThread = ThreadStore::RawGetCurrentThread();

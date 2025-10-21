@@ -341,6 +341,7 @@ void ThreadStore::ResumeAllThreads(bool waitForGCEvent)
     }
 } // ResumeAllThreads
 
+#ifndef HOST_WASM
 void ThreadStore::InitiateThreadAbort(Thread* targetThread, Object * threadAbortException, bool doRudeAbort)
 {
     SuspendAllThreads(/* waitForGCEvent = */ false);
@@ -397,6 +398,7 @@ void ThreadStore::CancelThreadAbort(Thread* targetThread)
 
     ResumeAllThreads(/* waitForGCEvent = */ false);
 }
+#endif // !HOST_WASM
 
 EXTERN_C void* QCALLTYPE RhpGetCurrentThread()
 {

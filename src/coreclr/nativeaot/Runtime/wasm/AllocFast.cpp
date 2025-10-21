@@ -33,7 +33,7 @@ extern "C" void* RhpGcAlloc(MethodTable* pEEType, uint32_t uFlags, uintptr_t num
 extern "C" void RhExceptionHandling_FailedAllocation(void* pShadowStack, MethodTable* pEEType, bool isOverflow);
 
 // Automatic finalization.
-extern "C" void RhpPInvoke(void* pShadowStack, PInvokeTransitionFrame* pFrame);
+extern "C" void RhpPInvoke(PInvokeTransitionFrame* pFrame);
 extern "C" void RhpPInvokeReturn(PInvokeTransitionFrame* pFrame);
 extern bool g_FinalizationRequestPending;
 void FinalizeFinalizableObjects();
@@ -41,10 +41,9 @@ void FinalizeFinalizableObjects();
 static Object* AllocateObject(void* pShadowStack, MethodTable* pEEType, uint32_t uFlags, uintptr_t numElements)
 {
     // Save the current shadow stack before calling into GC; we may need to scan it for live references.
-    PInvokeTransitionFrame frame;
+    PInvokeTransitionFrame* pFrame = (PInvokeTransitionFrame*)pShadowStack;
     Thread* pThread = ThreadStore::GetCurrentThread();
-    pThread->SetShadowStackTop(pShadowStack);
-    Object* obj = (Object*)RhpGcAlloc(pEEType, uFlags, numElements, &frame);
+    Object* obj = (Object*)RhpGcAlloc(pEEType, uFlags, numElements, pFrame);
 
 #ifndef FEATURE_WASM_MANAGED_THREADS
     if (g_FinalizationRequestPending)
@@ -60,9 +59,9 @@ static Object* AllocateObject(void* pShadowStack, MethodTable* pEEType, uint32_t
         }
 
         // "FinalizeFinalizableObjects" runs in preemptive mode.
-        RhpPInvoke(pShadowStack, &frame);
+        RhpPInvoke(pFrame);
         FinalizeFinalizableObjects();
-        RhpPInvokeReturn(&frame);
+        RhpPInvokeReturn(pFrame);
 
         if (obj != nullptr)
         {
