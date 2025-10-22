@@ -1818,7 +1818,6 @@ void HelperCallProperties::init()
 
             // This is a debugging aid; it simply returns a constant address.
             case CORINFO_HELP_LOOP_CLONE_CHOICE_ADDR:
-            case CORINFO_HELP_LLVM_GET_EXTERNAL_CALL_TARGET:
                 isPure  = true;
                 noThrow = true;
                 break;
@@ -1849,22 +1848,16 @@ void HelperCallProperties::init()
                 mutatesHeap = true; // Conservatively.
                 break;
 
-            case CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
+            case CORINFO_HELP_LLVM_EH_REVERSE_PINVOKE_ENTER_AND_PUSH_VIRTUAL_UNWIND_FRAME:
+            case CORINFO_HELP_LLVM_EH_REVERSE_PINVOKE_EXIT_AND_POP_VIRTUAL_UNWIND_FRAME:
+                isNoGC = true;
+                FALLTHROUGH;
             case CORINFO_HELP_LLVM_EH_CATCH:
             case CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES:
             case CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME:
             case CORINFO_HELP_LLVM_EH_POP_VIRTUAL_UNWIND_FRAME:
                 noThrow     = true;
                 mutatesHeap = true;
-                switch (helper)
-                {
-                    case CORINFO_HELP_LLVM_GET_OR_INIT_SHADOW_STACK_TOP:
-                        nonNullReturn = true;
-                        break;
-
-                    default:
-                        break;
-                }
                 break;
 
             default:

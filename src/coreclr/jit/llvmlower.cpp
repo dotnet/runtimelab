@@ -244,6 +244,8 @@ void Llvm::lowerBlock(BasicBlock* block)
 
 void Llvm::lowerRange(BasicBlock* block, LIR::Range& range)
 {
+    BasicBlock* savedBlock = m_currentBlock;
+    LIR::Range* savedRange = m_currentRange;
     m_currentBlock = block;
     m_currentRange = &range;
 
@@ -254,8 +256,8 @@ void Llvm::lowerRange(BasicBlock* block, LIR::Range& range)
 
     INDEBUG(range.CheckLIR(_compiler, /* checkUnusedValues */ true));
 
-    m_currentBlock = nullptr;
-    m_currentRange = nullptr;
+    m_currentBlock = savedBlock;
+    m_currentRange = savedRange;
 }
 
 void Llvm::lowerNode(GenTree* node)
@@ -796,21 +798,19 @@ void Llvm::lowerUnmanagedCall(GenTreeCall* callNode)
     // two or more consecutive PI calls.
     if (!callNode->IsSuppressGCTransition())
     {
+        // TODO-LLVM-Upstream: don't allocate lvaInlinedPInvokeFrameVar (its size is zero).
         assert(_compiler->opts.ShouldUsePInvokeHelpers()); // No inline transition support yet.
         assert(_compiler->lvaInlinedPInvokeFrameVar != BAD_VAR_NUM);
 
         // Insert CORINFO_HELP_JIT_PINVOKE_BEGIN.
-        GenTreeLclFld* frameAddr = _compiler->gtNewLclVarAddrNode(_compiler->lvaInlinedPInvokeFrameVar);
-        GenTreeCall* helperCall = _compiler->gtNewHelperCallNode(CORINFO_HELP_JIT_PINVOKE_BEGIN, TYP_VOID, frameAddr);
-        CurrentRange().InsertBefore(callNode, frameAddr, helperCall);
-        lowerNode(frameAddr);
+        GenTreeCall* helperCall = _compiler->gtNewHelperCallNode(CORINFO_HELP_JIT_PINVOKE_BEGIN, TYP_VOID);
+        CurrentRange().InsertBefore(callNode, helperCall);
         lowerNode(helperCall);
 
         // Insert CORINFO_HELP_JIT_PINVOKE_END. No need to explicitly lower the call/local address as the
         // normal lowering loop will pick them up.
-        frameAddr = _compiler->gtNewLclVarAddrNode(_compiler->lvaInlinedPInvokeFrameVar);
-        helperCall = _compiler->gtNewHelperCallNode(CORINFO_HELP_JIT_PINVOKE_END, TYP_VOID, frameAddr);
-        CurrentRange().InsertAfter(callNode, frameAddr, helperCall);
+        helperCall = _compiler->gtNewHelperCallNode(CORINFO_HELP_JIT_PINVOKE_END, TYP_VOID);
+        CurrentRange().InsertAfter(callNode, helperCall);
     }
 
     if (callNode->gtCallType != CT_INDIRECT)
@@ -1599,20 +1599,27 @@ bool Llvm::addVirtualUnwindFrameForExceptionHandling()
                 CORINFO_GENERIC_HANDLE ehInfoSymbol =
                     m_llvm->GetSparseVirtualUnwindInfo(&clauses.BottomRef(), clauses.Height());
 
-                GenTree* ehInfoNode =
-                    m_compiler->gtNewIconHandleNode(reinterpret_cast<size_t>(ehInfoSymbol), GTF_ICON_CONST_PTR);
-                GenTree* unwindFrameLclAddr = m_compiler->gtNewLclVarAddrNode(unwindFrameLclNum);
-                GenTreeIntCon* initialUnwindIndexNode = m_compiler->gtNewIconNode(m_initialIndexValue, TYP_I_IMPL);
-                GenTreeCall* initializeCall =
-                    m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME, TYP_VOID,
-                        unwindFrameLclAddr, ehInfoNode, initialUnwindIndexNode);
+                // For frames with an RPI transition, we will use RPI helpers that combine the transitions with unwind
+                // frame linking.
+                if (!m_compiler->opts.IsReversePInvoke())
+                {
+                    GenTree* ehInfoNode =
+                        m_compiler->gtNewIconHandleNode(reinterpret_cast<size_t>(ehInfoSymbol), GTF_ICON_CONST_PTR);
+                    GenTree* unwindFrameLclAddr = m_compiler->gtNewLclVarAddrNode(unwindFrameLclNum);
+                    GenTreeIntCon* initialUnwindIndexNode = m_compiler->gtNewIconNode(m_initialIndexValue, TYP_I_IMPL);
+                    GenTreeCall* initializeCall =
+                        m_compiler->gtNewHelperCallNode(CORINFO_HELP_LLVM_EH_PUSH_VIRTUAL_UNWIND_FRAME, TYP_VOID,
+                            unwindFrameLclAddr, ehInfoNode, initialUnwindIndexNode);
 
-                LIR::Range initRange;
-                initRange.InsertAtEnd(unwindFrameLclAddr);
-                initRange.InsertAtEnd(ehInfoNode);
-                initRange.InsertAtEnd(initialUnwindIndexNode);
-                initRange.InsertAtEnd(initializeCall);
-                m_llvm->lowerAndInsertIntoFirstBlock(std::move(initRange));
+                    LIR::Range initRange;
+                    initRange.InsertAtEnd(unwindFrameLclAddr);
+                    initRange.InsertAtEnd(ehInfoNode);
+                    initRange.InsertAtEnd(initialUnwindIndexNode);
+                    initRange.InsertAtEnd(initializeCall);
+                    m_llvm->lowerAndInsertIntoFirstBlock(std::move(initRange));
+                }
+
+                m_llvm->m_ehInfoSymbol = ehInfoSymbol;
                 m_llvm->m_sparseVirtualUnwindFrameLclNum = unwindFrameLclNum;
             }
 
@@ -1631,7 +1638,7 @@ bool Llvm::addVirtualUnwindFrameForExceptionHandling()
             }
 
             // Explicit pops are only needed for explicitly linked (via TLS) sparse frames.
-            if (m_llvm->m_sparseVirtualUnwindFrameLclNum != BAD_VAR_NUM)
+            if ((m_llvm->m_sparseVirtualUnwindFrameLclNum != BAD_VAR_NUM) && !m_compiler->opts.IsReversePInvoke())
             {
                 for (BasicBlock* block : m_compiler->Blocks())
                 {

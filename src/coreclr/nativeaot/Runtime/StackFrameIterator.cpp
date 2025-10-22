@@ -65,6 +65,7 @@ EXTERN_C CODE_LOCATION RhpRethrow2;
 #define FAILFAST_OR_DAC_FAIL_UNCONDITIONALLY(msg) { ASSERT_UNCONDITIONALLY(msg); RhFailFast(); }
 #endif
 
+#ifndef HOST_WASM // TODO-LLVM: consider excluding this whole file from the portable runtime build...
 StackFrameIterator::StackFrameIterator(Thread * pThreadToWalk, PInvokeTransitionFrame* pInitialTransitionFrame)
 {
     STRESS_LOG0(LF_STACKWALK, LL_INFO10000, "----Init---- [ GC ]\n");
@@ -89,6 +90,7 @@ StackFrameIterator::StackFrameIterator(Thread * pThreadToWalk, PInvokeTransition
 
     PrepareToYieldFrame();
 }
+#endif // !HOST_WASM
 
 StackFrameIterator::StackFrameIterator(Thread * pThreadToWalk, PTR_PAL_LIMITED_CONTEXT pCtx)
 {

@@ -1744,6 +1744,7 @@ void Compiler::fgAddReversePInvokeEnterExit()
     LclVarDsc* varDsc = lvaGetDesc(lvaReversePInvokeFrameVar);
     lvaSetStruct(lvaReversePInvokeFrameVar, typGetBlkLayout(eeGetEEInfo()->sizeOfReversePInvokeFrame), false);
 
+#ifndef TARGET_WASM // WASM RPI helpers have special ABI and are inserted in lowering.
     // Add enter pinvoke exit callout at the start of prolog
 
     GenTree* pInvokeFrameVar = gtNewLclVarAddrNode(lvaReversePInvokeFrameVar);
@@ -1808,6 +1809,7 @@ void Compiler::fgAddReversePInvokeEnterExit()
         printf("\n");
     }
 #endif
+#endif // !TARGET_WASM
 }
 
 /*****************************************************************************
