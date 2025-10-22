@@ -32,7 +32,9 @@ namespace ILCompiler
 
         protected override RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options, CorJitFlag[] jitFlags,  KeyValuePair<string, string>[] ryujitOptions, string jitPath)
         {
-            var factory = new LLVMCodegenNodeFactory(_config, _context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, ObjectDataInterner.NullWithTracking, _typeMapManager);
+            ObjectDataInterner interner = _metadataManager.CreateObjectInternerForAddressExposureTracking() ?? ObjectDataInterner.NullWithTracking;
+
+            var factory = new LLVMCodegenNodeFactory(_config, _context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, interner, _typeMapManager);
             JitConfigProvider.Initialize(_context.Target, jitFlags, ryujitOptions, jitPath);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
 

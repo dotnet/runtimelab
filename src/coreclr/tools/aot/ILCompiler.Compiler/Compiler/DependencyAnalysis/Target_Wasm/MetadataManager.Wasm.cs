@@ -55,7 +55,7 @@ namespace ILCompiler
             return factory.AddressTakenMethodEntrypoint(method, unboxingStub: method.OwningType.IsValueType && !method.Signature.IsStatic).Marked;
         }
 
-        public ObjectDataInterner CreateObjectInternerForAddressExposureTracking(MethodBodyFoldingMode methodBodyFoldingMode)
+        public ObjectDataInterner CreateObjectInternerForAddressExposureTracking()
         {
             return _typeSystemContext.WasmMethodLevelVirtualUnwindModel == WasmMethodLevelVirtualUnwindModel.Precise
                 ? ObjectDataInterner.NullWithTracking
