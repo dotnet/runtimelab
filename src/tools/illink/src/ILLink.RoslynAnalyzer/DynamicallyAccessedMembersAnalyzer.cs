@@ -29,7 +29,8 @@ namespace ILLink.RoslynAnalyzer
             ImmutableArray.Create<RequiresAnalyzerBase>(
                 new RequiresAssemblyFilesAnalyzer(),
                 new RequiresUnreferencedCodeAnalyzer(),
-                new RequiresDynamicCodeAnalyzer());
+                new RequiresDynamicCodeAnalyzer(),
+                new RequiresUnsafeAnalyzer());
 
         public static ImmutableArray<DiagnosticDescriptor> GetSupportedDiagnostics()
         {

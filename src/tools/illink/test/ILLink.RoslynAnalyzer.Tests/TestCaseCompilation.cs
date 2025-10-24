@@ -21,7 +21,8 @@ namespace ILLink.RoslynAnalyzer.Tests
                 new COMAnalyzer(),
                 new RequiresAssemblyFilesAnalyzer(),
                 new RequiresUnreferencedCodeAnalyzer(),
-                new DynamicallyAccessedMembersAnalyzer());
+                new DynamicallyAccessedMembersAnalyzer(),
+                new RequiresUnsafeAnalyzer());
 
         public static (CompilationWithAnalyzers Compilation, SemanticModel SemanticModel, List<Diagnostic> ExceptionDiagnostics) CreateCompilation(
             string src,
@@ -30,7 +31,7 @@ namespace ILLink.RoslynAnalyzer.Tests
             IEnumerable<MetadataReference>? additionalReferences = null,
             IEnumerable<SyntaxTree>? additionalSources = null,
             IEnumerable<AdditionalText>? additionalFiles = null)
-            => CreateCompilation(CSharpSyntaxTree.ParseText(src, new CSharpParseOptions(LanguageVersion.Preview)), consoleApplication, globalAnalyzerOptions, additionalReferences, additionalSources, additionalFiles);
+            => CreateCompilation(CSharpSyntaxTree.ParseText(src, new CSharpParseOptions(LanguageVersion.Preview)),consoleApplication, globalAnalyzerOptions, additionalReferences, additionalSources, additionalFiles);
 
         public static (CompilationWithAnalyzers Compilation, SemanticModel SemanticModel, List<Diagnostic> ExceptionDiagnostics) CreateCompilation(
             SyntaxTree src,
@@ -68,7 +69,8 @@ namespace ILLink.RoslynAnalyzer.Tests
                     {
                         // Allow the polyfilled DynamicallyAccessedMembersAttribute to take precedence over the one in corelib.
                         { "CS0436", ReportDiagnostic.Suppress }
-                    }));
+                    },
+                    allowUnsafe: true));
             var analyzerOptions = new AnalyzerOptions(
                 additionalFiles: additionalFiles?.ToImmutableArray() ?? ImmutableArray<AdditionalText>.Empty,
                 new SimpleAnalyzerOptions(globalAnalyzerOptions));
