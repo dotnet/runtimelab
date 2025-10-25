@@ -38,8 +38,10 @@ namespace System.Diagnostics
                 string result = DeveloperExperience.GetMethodName(ip, out _, out isStackTraceHidden);
                 if (result == null)
                 {
+                    DeveloperExperience.GetMethodName(ip, out _, out isStackTraceHidden);
                     // In the current setup, we hide frames without stack trace metadata on the unwinder level.
-                    Debug.Fail("Unexpected null method name with precise virtual unwinding enabled");
+                    // TODO-LLVM: re-enable once we pick up a fix for https://github.com/dotnet/runtime/issues/121093. 
+                    // Debug.Fail("Unexpected null method name with precise virtual unwinding enabled");
                     return UnknownStackFrameString;
                 }
                 return result;
