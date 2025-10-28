@@ -8414,7 +8414,7 @@ bool Compiler::IsTargetIntrinsic(NamedIntrinsic intrinsicName)
         case NI_System_Math_ReciprocalEstimate:
         case NI_System_Math_ReciprocalSqrtEstimate:
             return true;
-            
+
         case NI_System_Math_MinUnsigned:
         case NI_System_Math_MaxUnsigned:
         case NI_PRIMITIVE_LeadingZeroCount:

@@ -115,10 +115,6 @@ public:
 #if TARGET_WASM
     bool IsPointer = false;
     var_types ArgType = TYP_UNDEF;
-    bool getPassedByRef() const
-    {
-        return m_passedByRef;
-    }
 #endif
 
     ABIPassingInformation()

@@ -2226,6 +2226,7 @@ bool Compiler::fgTryMorphStructArg(CallArg* arg)
         if (argNode->OperIs(GT_LCL_VAR) &&
             (lvaGetPromotionType(argNode->AsLclVar()->GetLclNum()) == PROMOTION_TYPE_INDEPENDENT))
         {
+            // TODO-LLVM: see https://github.com/dotnet/runtimelab/issues/3191
 #ifndef TARGET_WASM
             // TODO-Arm-CQ: support decomposing "large" promoted structs into field lists.
             if (!isSplit)
@@ -2251,6 +2252,7 @@ bool Compiler::fgTryMorphStructArg(CallArg* arg)
         {
             lvaSetVarDoNotEnregister(argNode->AsLclFld()->GetLclNum() DEBUGARG(DoNotEnregisterReason::LocalField));
         }
+        // TODO-LLVM: see https://github.com/dotnet/runtimelab/issues/3191
 #ifndef TARGET_WASM
         else if (argNode->OperIs(GT_BLK))
         {
@@ -7471,6 +7473,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
         {
             GenTree*& retVal = tree->AsOp()->ReturnValueRef();
 
+            // TODO-LLVM: see https://github.com/dotnet/runtimelab/issues/3191
 #ifndef TARGET_WASM
             // Apply some optimizations that change the type of the return.
             // These are not applicable when this is a merged return that will
@@ -8451,6 +8454,7 @@ DONE_MORPHING_CHILDREN:
             }
             break;
 
+            // TODO-LLVM: see https://github.com/dotnet/runtimelab/issues/3191
 #ifndef TARGET_WASM
         case GT_RETURN:
         case GT_SWIFT_ERROR_RET:

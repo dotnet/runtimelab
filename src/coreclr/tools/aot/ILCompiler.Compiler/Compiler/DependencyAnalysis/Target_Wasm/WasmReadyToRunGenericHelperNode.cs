@@ -31,6 +31,7 @@ namespace ILCompiler.DependencyAnalysis
                 case ReadyToRunHelperId.TypeHandleForCasting:
                 case ReadyToRunHelperId.ConstrainedDirectCall:
                 case ReadyToRunHelperId.NecessaryTypeHandle:
+                case ReadyToRunHelperId.MetadataTypeHandle:
                     return new WasmFunctionType(wasmPointerType, [wasmPointerType, wasmPointerType]);
                 case ReadyToRunHelperId.DelegateCtor:
                     // (Shadow stack, this, targetObj, GenericContext).

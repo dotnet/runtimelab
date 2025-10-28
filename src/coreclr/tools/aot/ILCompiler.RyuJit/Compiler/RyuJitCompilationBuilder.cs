@@ -162,7 +162,7 @@ namespace ILCompiler
 
             return new RyuJitCompilation(graph,
                 factory,
-                [.. _compilationRoots, _typeMapManager],
+                [.._compilationRoots, _typeMapManager],
                 _ilProvider,
                 _debugInformationProvider,
                 _logger,

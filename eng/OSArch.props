@@ -39,7 +39,9 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <!-- Will include wasm64 once we support it -->
     <TargetsWasm Condition="'$(TargetArchitecture)' == 'wasm'">true</TargetsWasm>
+    <TargetsSingleThreadedWasm Condition="'$(TargetsWasm)' == 'true' and '$(WasmEnableThreads)' != 'true'">true</TargetsSingleThreadedWasm>
   </PropertyGroup>
 
   <PropertyGroup>

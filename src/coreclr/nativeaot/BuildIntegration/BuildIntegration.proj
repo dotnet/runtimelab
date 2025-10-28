@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.Build.NoTargets">
+<Project Sdk="Microsoft.Build.Traversal">
   <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
   <PropertyGroup>
     <IsNativeAotProject>false</IsNativeAotProject>
@@ -24,6 +24,7 @@
       <AnalyzerFile Include="$(ArtifactsBinDir)JSImportGenerator\$(Configuration)\netstandard2.0\*" />
     </ItemGroup>
     <Copy SourceFiles="@(AnalyzerFile)" DestinationFolder="$(RuntimeBinDir)\analyzers\dotnet\cs" />
+    <Copy SourceFiles="@(Content)" DestinationFolder="$(OutputPath)" />
   </Target>
 
 </Project>

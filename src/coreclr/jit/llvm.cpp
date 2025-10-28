@@ -301,8 +301,8 @@ bool Llvm::helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_NEWARR_1_DIRECT) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_NEWARR_1_MAYBEFROZEN) },
 
-        { FUNC(CORINFO_HELP_NEWARR_1_PTR) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT }, HFIF_SS_ARG },
         // Implemented in "Runtime\wasm\AllocFast.cpp".
+        { FUNC(CORINFO_HELP_NEWARR_1_PTR) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_NEWARR_1_VC) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_NEWARR_1_ALIGN8) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT }, HFIF_SS_ARG },
 
@@ -339,7 +339,7 @@ bool Llvm::helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const
         // Runtime exports implemented in "Runtime.Base\src\System\Runtime\ExceptionHandling.wasm.cs".
         { FUNC(CORINFO_HELP_THROW) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_RETHROW) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_THROWEXACT) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_THROWEXACT) },
 
         // Implemented in "Runtime\MiscHelpers.cpp".
         { FUNC(CORINFO_HELP_USER_BREAKPOINT) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG},
@@ -701,13 +701,14 @@ CorInfoType Llvm::getLlvmReturnType(CorInfoType sigRetType, CORINFO_CLASS_HANDLE
         return CORINFO_TYPE_PTR;
     }
 
-    assert(!arg->AbiInfo.getPassedByRef());
+    assert(!arg->AbiInfo.IsPassedByReference());
     return toCorInfoType(arg->AbiInfo.ArgType);
 }
 
 CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForHelperFunc(CorInfoHelpFunc helperFunc)
 {
     CORINFO_CONST_LOOKUP constLookup = _compiler->compGetHelperFtn(static_cast<CorInfoHelpFunc>(helperFunc));
+    assert(constLookup.accessType == IAT_VALUE);
 
     return constLookup.handle;
 }
