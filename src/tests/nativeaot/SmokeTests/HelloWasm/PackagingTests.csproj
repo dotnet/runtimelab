@@ -3,7 +3,6 @@
     <!-- This is the part of the package testing exposed to the runtime test infrastructure.
          The projects themselves are intentionally isolated from the rest of the tree. -->
     <CLRTestKind>BuildOnly</CLRTestKind>
-    <CLRTestTargetUnsupported Condition="'$(TargetsWasm)' != 'true'">true</CLRTestTargetUnsupported>
   </PropertyGroup>
 
   <Target Name="PublishPackagingTestProject" BeforeTargets="BeforeBuild">

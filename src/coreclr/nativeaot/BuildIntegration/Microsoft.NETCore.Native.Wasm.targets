@@ -13,25 +13,27 @@ The .NET Foundation licenses this file to you under the MIT license.
 ***********************************************************************************************
 -->
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <!-- Part of workaround for lack of secondary build artifact import - https://github.com/Microsoft/msbuild/issues/2807 -->
-  <!-- required Target, but nothing to do for Wasm -->
-  <Target Name="SetupOSSpecificProps" />
-
-  <ItemGroup>
-    <DirectPInvoke Include="libSystem.Globalization.Native" />
-    <DirectPInvoke Include="libSystem.Native" />
-  </ItemGroup>
-
-  <Target Name="ValidateEmsdk"
+  <Target Name="_InitializeEmsdk"
           Condition="'$(_targetOS)' == 'browser'">
     <!-- $(EMSDK) is typically set by the user and points to a standard emscripten layout. -->
     <!-- $(EmscriptenSdkToolsPath) comes from upstream mono workload and points to the dotnet/emsdk-style SDK layout. -->
     <!-- See https://github.com/dotnet/runtime/blob/main/src/mono/browser/build/EmSdkRepo.Defaults.props. -->
     <Error Text="Emscripten not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Emscripten and ensure the EMSDK environment variable points to the directory containing emsdk.bat"
            Condition="'$(EMSDK)' == '' and '$(EmscriptenSdkToolsPath)' == ''" />
+
+    <PropertyGroup>
+      <_NativeWasmSdkBinPath Condition="'$(EMSDK)' != ''">$([MSBuild]::NormalizeDirectory('$(EMSDK)', 'upstream', 'bin'))</_NativeWasmSdkBinPath>
+      <_NativeWasmSdkBinPath Condition="'$(EMSDK)' == ''">$([MSBuild]::NormalizeDirectory('$(EmscriptenSdkToolsPath)', 'bin'))</_NativeWasmSdkBinPath>
+      <_EmscriptenScriptsPath Condition="'$(EMSDK)' != ''">$([MSBuild]::NormalizeDirectory('$(EMSDK)', 'upstream', 'emscripten'))</_EmscriptenScriptsPath>
+      <_EmscriptenScriptsPath Condition="'$(EMSDK)' == ''">$([MSBuild]::NormalizeDirectory('$(EmscriptenSdkToolsPath)', 'emscripten'))</_EmscriptenScriptsPath>
+      <_EmccScriptExt Condition="$([System.OperatingSystem]::IsWindows())">.bat</_EmccScriptExt>
+
+      <CppCompiler Condition="'$(CppCompiler)' == ''">&quot;$(_NativeWasmSdkBinPath)clang&quot;</CppCompiler>
+      <CppLinker Condition="'$(CppLinker)' == ''">&quot;$(_EmscriptenScriptsPath)emcc$(_EmccScriptExt)&quot;</CppLinker>
+    </PropertyGroup>
   </Target>
 
-  <Target Name="ValidateWasiSdk"
+  <Target Name="_InitializeWasiSdk"
           Condition="'$(_targetOS)' == 'wasi'">
     <Error Text="Wasi SDK not found, not compiling to WebAssembly. To enable WebAssembly compilation, install Wasi SDK and ensure the WASI_SDK_PATH environment variable points to the directory containing share/wasi-sysroot"
            Condition="'$(WASI_SDK_PATH)' == ''" />
@@ -45,6 +47,26 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <Warning Text="Wasi SDK version $(_ActualWasiSdkVersion) is being used. This differs from the expected $(_ExpectedWasiSdkVersions) and might result in build or runtime failures."
              Condition="!$(_ExpectedWasiSdkVersions.Contains($(_ActualWasiSdkVersion)))" />
+
+    <PropertyGroup>
+      <_NativeWasmSdkBinPath>$([MSBuild]::NormalizeDirectory('$(WASI_SDK_PATH)', 'bin'))</_NativeWasmSdkBinPath>
+
+      <CppCompiler Condition="'$(CppCompiler)' == ''">&quot;$(_NativeWasmSdkBinPath)clang&quot;</CppCompiler>
+      <CppLinker Condition="'$(CppLinker)' == ''">$(CppCompiler)</CppLinker>
+    </PropertyGroup>
+  </Target>
+
+  <!-- Part of workaround for lack of secondary build artifact import - https://github.com/Microsoft/msbuild/issues/2807 -->
+  <Target Name="SetupOSSpecificProps" DependsOnTargets="_InitializeEmsdk;_InitializeWasiSdk">
+    <PropertyGroup>
+      <_HostToolExeExt Condition="$([System.OperatingSystem]::IsWindows())">.exe</_HostToolExeExt>
+      <CppLibCreator Condition="'$(CppLibCreator)' == ''">$(_NativeWasmSdkBinPath)llvm-ar$(_HostToolExeExt)</CppLibCreator>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <DirectPInvoke Include="libSystem.Globalization.Native" />
+      <DirectPInvoke Include="libSystem.Native" />
+    </ItemGroup>
   </Target>
 
 </Project>
