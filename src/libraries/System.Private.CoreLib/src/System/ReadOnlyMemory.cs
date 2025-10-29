@@ -245,8 +245,8 @@ namespace System
                         {
                             Span<T> memoryManagerSpan = Unsafe.As<MemoryManager<T>>(tmpObject).GetSpan();
                             refToReturn = ref MemoryMarshal.GetReference(memoryManagerSpan);
+                            lengthOfUnderlyingSpan = memoryManagerSpan.Length;
                         }
-                        lengthOfUnderlyingSpan = memoryManagerSpan.Length;
                     }
 
                     // If the Memory<T> or ReadOnlyMemory<T> instance is torn, this property getter has undefined behavior.
