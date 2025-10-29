@@ -5905,7 +5905,10 @@ namespace System
                 _source = source;
                 if (typeof(T) == typeof(char) && separators.Length == 0)
                 {
-                    _searchValues = Unsafe.As<SearchValues<T>>(string.SearchValuesStorage.WhiteSpaceChars);
+                    unsafe
+                    {
+                        _searchValues = Unsafe.As<SearchValues<T>>(string.SearchValuesStorage.WhiteSpaceChars);
+                    }
                     _splitMode = SpanSplitEnumeratorMode.SearchValues;
                 }
                 else

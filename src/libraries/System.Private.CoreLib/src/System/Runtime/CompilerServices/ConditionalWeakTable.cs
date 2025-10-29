@@ -711,7 +711,10 @@ namespace System.Runtime.CompilerServices
                 if (entryIndex != -1)
                 {
                     RemoveIndex(entryIndex);
-                    value = Unsafe.As<TValue>(valueObject!);
+                    unsafe
+                    {
+                        value = Unsafe.As<TValue>(valueObject!);
+                    }
                     return true;
                 }
 

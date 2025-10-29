@@ -560,11 +560,14 @@ namespace System.Buffers
                     object? bucket = _buckets[candidateOffset];
                     Debug.Assert(bucket is not null);
 
-                    if (TBucketized.Value
-                        ? StartsWith<TCaseSensitivity>(ref matchRef, lengthRemaining, Unsafe.As<string[]>(bucket))
-                        : StartsWith<TCaseSensitivity>(ref matchRef, lengthRemaining, Unsafe.As<string>(bucket)))
+                    unsafe
                     {
-                        return true;
+                        if (TBucketized.Value
+                            ? StartsWith<TCaseSensitivity>(ref matchRef, lengthRemaining, Unsafe.As<string[]>(bucket))
+                            : StartsWith<TCaseSensitivity>(ref matchRef, lengthRemaining, Unsafe.As<string>(bucket)))
+                        {
+                            return true;
+                        }
                     }
 
                     candidateMask = BitOperations.ResetLowestSetBit(candidateMask);
@@ -605,11 +608,14 @@ namespace System.Buffers
                     object? bucket = _buckets[candidateOffset];
                     Debug.Assert(bucket is not null);
 
-                    if (TBucketized.Value
-                        ? StartsWith<TCaseSensitivity>(ref matchRef, lengthRemaining, Unsafe.As<string[]>(bucket))
-                        : StartsWith<TCaseSensitivity>(ref matchRef, lengthRemaining, Unsafe.As<string>(bucket)))
+                    unsafe
                     {
-                        return true;
+                        if (TBucketized.Value
+                            ? StartsWith<TCaseSensitivity>(ref matchRef, lengthRemaining, Unsafe.As<string[]>(bucket))
+                            : StartsWith<TCaseSensitivity>(ref matchRef, lengthRemaining, Unsafe.As<string>(bucket)))
+                        {
+                            return true;
+                        }
                     }
 
                     candidateMask = BitOperations.ResetLowestSetBit(candidateMask);
@@ -650,11 +656,14 @@ namespace System.Buffers
                     object? bucket = _buckets[candidateOffset];
                     Debug.Assert(bucket is not null);
 
-                    if (TBucketized.Value
-                        ? StartsWith<TCaseSensitivity>(ref matchRef, lengthRemaining, Unsafe.As<string[]>(bucket))
-                        : StartsWith<TCaseSensitivity>(ref matchRef, lengthRemaining, Unsafe.As<string>(bucket)))
+                    unsafe
                     {
-                        return true;
+                        if (TBucketized.Value
+                            ? StartsWith<TCaseSensitivity>(ref matchRef, lengthRemaining, Unsafe.As<string[]>(bucket))
+                            : StartsWith<TCaseSensitivity>(ref matchRef, lengthRemaining, Unsafe.As<string>(bucket)))
+                        {
+                            return true;
+                        }
                     }
 
                     candidateMask = BitOperations.ResetLowestSetBit(candidateMask);

@@ -206,8 +206,11 @@ namespace System
                     {
                         // Special-case string since it's the most common for ROM<char>.
 
-                        refToReturn = ref Unsafe.As<char, T>(ref ((string)tmpObject).GetRawStringData());
-                        lengthOfUnderlyingSpan = Unsafe.As<string>(tmpObject).Length;
+                        unsafe
+                        {
+                            refToReturn = ref Unsafe.As<char, T>(ref ((string)tmpObject).GetRawStringData());
+                            lengthOfUnderlyingSpan = Unsafe.As<string>(tmpObject).Length;
+                        }
                     }
                     else if (RuntimeHelpers.ObjectHasComponentSize(tmpObject))
                     {
@@ -223,8 +226,11 @@ namespace System
                         // 'tmpObject is T[]' below also handles things like int[] <-> uint[] being convertible
                         Debug.Assert(tmpObject is T[]);
 
-                        refToReturn = ref MemoryMarshal.GetArrayDataReference(Unsafe.As<T[]>(tmpObject));
-                        lengthOfUnderlyingSpan = Unsafe.As<T[]>(tmpObject).Length;
+                        unsafe
+                        {
+                            refToReturn = ref MemoryMarshal.GetArrayDataReference(Unsafe.As<T[]>(tmpObject));
+                            lengthOfUnderlyingSpan = Unsafe.As<T[]>(tmpObject).Length;
+                        }
                     }
                     else
                     {
@@ -235,8 +241,11 @@ namespace System
                         // constructor or other public API which would allow such a conversion.
 
                         Debug.Assert(tmpObject is MemoryManager<T>);
-                        Span<T> memoryManagerSpan = Unsafe.As<MemoryManager<T>>(tmpObject).GetSpan();
-                        refToReturn = ref MemoryMarshal.GetReference(memoryManagerSpan);
+                        unsafe
+                        {
+                            Span<T> memoryManagerSpan = Unsafe.As<MemoryManager<T>>(tmpObject).GetSpan();
+                            refToReturn = ref MemoryMarshal.GetReference(memoryManagerSpan);
+                        }
                         lengthOfUnderlyingSpan = memoryManagerSpan.Length;
                     }
 

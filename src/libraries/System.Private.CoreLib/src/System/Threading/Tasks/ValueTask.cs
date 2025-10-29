@@ -762,7 +762,10 @@ namespace System.Threading.Tasks
                     return t.IsFaulted;
                 }
 
-                return Unsafe.As<IValueTaskSource<TResult>>(obj).GetStatus(_token) == ValueTaskSourceStatus.Faulted;
+                unsafe
+                {
+                    return Unsafe.As<IValueTaskSource<TResult>>(obj).GetStatus(_token) == ValueTaskSourceStatus.Faulted;
+                }
             }
         }
 
@@ -789,7 +792,10 @@ namespace System.Threading.Tasks
                     return t.IsCanceled;
                 }
 
-                return Unsafe.As<IValueTaskSource<TResult>>(obj).GetStatus(_token) == ValueTaskSourceStatus.Canceled;
+                unsafe
+                {
+                    return Unsafe.As<IValueTaskSource<TResult>>(obj).GetStatus(_token) == ValueTaskSourceStatus.Canceled;
+                }
             }
         }
 
@@ -814,7 +820,10 @@ namespace System.Threading.Tasks
                     return t.ResultOnSuccess;
                 }
 
-                return Unsafe.As<IValueTaskSource<TResult>>(obj).GetResult(_token);
+                unsafe
+                {
+                    return Unsafe.As<IValueTaskSource<TResult>>(obj).GetResult(_token);
+                }
             }
         }
 

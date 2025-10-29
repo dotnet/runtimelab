@@ -22,6 +22,7 @@
     <FeaturePortableThreadPool Condition="'$(TargetsBrowser)' != 'true'">true</FeaturePortableThreadPool>
     <FeaturePortableTimer Condition="'$(TargetsBrowser)' != 'true'">true</FeaturePortableTimer>
     <FeatureSingleThread Condition="'$(TargetsBrowser)' == 'true'">true</FeatureSingleThread>
+    <EnableUnsafeAnalyzer>true</EnableUnsafeAnalyzer>
   </PropertyGroup>
 
   <ItemGroup>

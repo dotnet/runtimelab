@@ -284,8 +284,11 @@ namespace System
                     {
                         // Special-case string since it's the most common for ROM<char>.
 
-                        refToReturn = ref Unsafe.As<char, T>(ref ((string)tmpObject).GetRawStringData());
-                        lengthOfUnderlyingSpan = Unsafe.As<string>(tmpObject).Length;
+                        unsafe
+                        {
+                            refToReturn = ref Unsafe.As<char, T>(ref ((string)tmpObject).GetRawStringData());
+                            lengthOfUnderlyingSpan = Unsafe.As<string>(tmpObject).Length;
+                        }
                     }
                     else if (RuntimeHelpers.ObjectHasComponentSize(tmpObject))
                     {
@@ -379,6 +382,11 @@ namespace System
         /// <exception cref="ArgumentException">
         /// An instance with nonprimitive (non-blittable) members cannot be pinned.
         /// </exception>
+        /// <remarks>
+        /// To use this method safely, the target <see cref="Memory{T}"/> must not be torn while the
+        /// returned <see cref="MemoryHandle"/> is in use.
+        /// </remarks>
+        [RequiresUnsafe]
         public unsafe MemoryHandle Pin()
         {
             // Just like the Span property getter, we have special support for a mutable Memory<char>

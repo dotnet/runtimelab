@@ -60,7 +60,10 @@ namespace System.Buffers
             SharedArrayPoolThreadLocalArray[]? tlsBuckets = t_tlsBuckets;
             if (tlsBuckets is not null && (uint)bucketIndex < (uint)tlsBuckets.Length)
             {
-                buffer = Unsafe.As<T[]>(tlsBuckets[bucketIndex].Array);
+                unsafe
+                {
+                    buffer = Unsafe.As<T[]>(tlsBuckets[bucketIndex].Array);
+                }
                 if (buffer is not null)
                 {
                     tlsBuckets[bucketIndex].Array = null;
@@ -79,7 +82,10 @@ namespace System.Buffers
                 SharedArrayPoolPartitions? b = perCoreBuckets[bucketIndex];
                 if (b is not null)
                 {
-                    buffer = Unsafe.As<T[]>(b.TryPop());
+                    unsafe
+                    {
+                        buffer = Unsafe.As<T[]>(b.TryPop());
+                    }
                     if (buffer is not null)
                     {
                         if (log.IsEnabled())

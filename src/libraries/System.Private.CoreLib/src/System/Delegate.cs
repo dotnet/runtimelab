@@ -128,9 +128,15 @@ namespace System
             public bool MoveNext()
             {
                 int index = _index + 1;
-                if ((_current = Unsafe.As<TDelegate>(_delegate?.TryGetAt(index))) == null)
+                unsafe
                 {
-                    return false;
+                    unsafe
+                    {
+                        if ((_current = Unsafe.As<TDelegate>(_delegate?.TryGetAt(index))) == null)
+                        {
+                            return false;
+                        }
+                    }
                 }
                 _index = index;
                 return true;
