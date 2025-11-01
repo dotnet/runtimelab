@@ -15,7 +15,7 @@ The .NET Runtime has historically supported a programming model of developing as
 4. Develop a set of microbenchmarks for measuring the different performance characteristics of the new model
 5. Develop a set of application scenario benchmarks
 
-Throughput this document, any references to the term async2 refer exclusively to the new model.
+Throughout this document, any references to the term async2 refer exclusively to the new model.
 
 ## New Semantics
 
