@@ -25,7 +25,7 @@ class Program
             throw new Exception("Method");
 #endif
 
-        return 100;
+        return 0;
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2057", Justification = "That's the point")]

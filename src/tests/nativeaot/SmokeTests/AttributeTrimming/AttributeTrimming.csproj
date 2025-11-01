@@ -5,6 +5,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RequiresProcessIsolation>true</RequiresProcessIsolation>
     <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
+    <CLRTestExitCode>0</CLRTestExitCode>
 
     <!-- Fails with the not very helpful:
       Using WASM host executable: wasmtime run -S http
@@ -13,7 +14,7 @@
       Expected: 100
       Actual: 1
     -->
-    <CLRTestTargetUnsupported Condition="'$(TargetsWasm)' == 'true'">true</CLRTestTargetUnsupported>
+    <!-- <CLRTestTargetUnsupported Condition="'$(TargetsWasm)' == 'true'">true</CLRTestTargetUnsupported> -->
 
   </PropertyGroup>
   <ItemGroup>
