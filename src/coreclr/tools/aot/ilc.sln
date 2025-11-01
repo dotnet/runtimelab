@@ -32,8 +32,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Mono.Linker.Tests.Cases.Exp
 EndProject
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "ILLink.Shared", "..\..\..\tools\illink\src\ILLink.Shared\ILLink.Shared.shproj", "{FF598E93-8E9E-4091-9F50-61A7572663AE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ILCompiler.Trimming.Tests", "ILCompiler.Trimming.Tests\ILCompiler.Trimming.Tests.csproj", "{C331F49A-B2BA-46A4-975B-E922AA43FB6F}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ILLink.RoslynAnalyzer", "..\..\..\tools\illink\src\ILLink.RoslynAnalyzer\ILLink.RoslynAnalyzer.csproj", "{B49A6D20-EF0F-48EE-A686-0E615D6640B0}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clrjit_universal_wasm32_arm64", "..\..\..\..\artifacts\obj\coreclr\windows.arm64.Debug\ide\jit\clrjit_universal_wasm32_arm64.vcxproj", "{15BA5287-99BC-363C-B034-25EC2E36E1D6}"

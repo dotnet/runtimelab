@@ -31,13 +31,6 @@
 #include <sys/swap.h>
 #endif
 
-#ifdef __linux__
-// Emscriptenn's membarrier.h does not have a membarrier function.
-#ifdef TARGET_WASM
-# define membarrier(...)  -ENOSYS
-#endif // TARGET_WASM
-#endif
-
 #include <sys/resource.h>
 
 #undef min

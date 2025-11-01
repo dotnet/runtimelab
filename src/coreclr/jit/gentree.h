@@ -8029,7 +8029,7 @@ public:
     void SetLayout(ClassLayout* newLayout)
     {
         assert(newLayout != nullptr);
-        // TARGET_WASM does not always initialize m_layout before calling SetLayout.
+        // TARGET_WASM does not initialize m_layout before calling SetLayout when rewriting locals.
 #ifndef TARGET_WASM
         assert(newLayout->GetSize() == m_layout->GetSize());
 #endif

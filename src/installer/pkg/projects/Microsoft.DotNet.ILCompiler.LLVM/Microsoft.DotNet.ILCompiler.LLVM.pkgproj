@@ -25,7 +25,7 @@
     </ItemGroup>
 
     <ItemGroup Condition="'$(PackageTargetRuntime)' != '' and '$(BuildingIlcHostPackage)' != 'true'">
-      <File Include="@(LibrariesRuntimeFiles)" TargetPath="runtimes/$(PackageTargetRuntime)/libs/%(LibrariesRuntimeFiles.NativeSubDirectory)" 
+      <File Include="@(LibrariesRuntimeFiles)" TargetPath="runtimes/$(PackageTargetRuntime)/lib/%(LibrariesRuntimeFiles.NativeSubDirectory)" 
         Condition="'%(LibrariesRuntimeFiles.IsNative)' != 'true'" />
       <File Include="@(LibrariesRuntimeFiles)" TargetPath="runtimes/$(PackageTargetRuntime)/native/%(LibrariesRuntimeFiles.NativeSubDirectory)" 
         Condition="'%(LibrariesRuntimeFiles.IsNative)' == 'true'" />
@@ -33,9 +33,9 @@
       <File Include="$(MibcOptimizationDataDir)/$(TargetOS)/$(TargetArchitecture)/**/*.mibc" TargetPath="mibc" />
 
       <DotnetJsCoreCLRAotSdkExtension Include="ts;js;map;json" />
-      <File Include="$(CoreCLRAotSdkDir)dotnetjs/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="sdk/dotnetjs" />
-      <File Include="$(CoreCLRAotSdkDir)dotnetjs/src/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="sdk/dotnetjs/src" />
-      <File Include="$(CoreCLRAotSdkDir)dotnetjs/src/es6/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="sdk/dotnetjs/src/es6" />
+      <File Include="$(CoreCLRAotSdkDir)dotnetjs/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="runtimes/$(PackageTargetRuntime)/native/%(LibrariesRuntimeFiles.NativeSubDirectory)" />
+      <File Include="$(CoreCLRAotSdkDir)dotnetjs/src/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="runtimes/$(PackageTargetRuntime)/native/%(LibrariesRuntimeFiles.NativeSubDirectory)" />
+      <File Include="$(CoreCLRAotSdkDir)dotnetjs/src/es6/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="runtimes/$(PackageTargetRuntime)/native/%(LibrariesRuntimeFiles.NativeSubDirectory)" />
     </ItemGroup>
 
     <!-- exclude native symbols from ilc package (they are included in symbols package) -->

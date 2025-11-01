@@ -16,9 +16,7 @@ success &= RunTest(Interfaces.Run);
 success &= RunTest(Threading.Run);
 #endif
 success &= RunTest(Devirtualization.Run);
-#if !CODEGEN_WASM
 success &= RunTest(StackTraces.Run);
-#endif
 success &= RunTest(Ordering.Run);
 
 return success ? 0 : 1;

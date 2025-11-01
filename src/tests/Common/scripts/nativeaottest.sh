@@ -14,8 +14,6 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 source $SCRIPT_DIR/../../../../eng/testing/FindWasmHostExecutable.sh "$1/native/$2"
 
 if [ -n "${WASM_HOST_EXECUTABLE}" ]; then
-  echo "Using WASM host executable: $WASM_HOST_EXECUTABLE"
-  echo "Using WASM binary to execute: $WASM_BINARY_TO_EXECUTE"
   $WASM_HOST_EXECUTABLE "$WASM_BINARY_TO_EXECUTE" "${@:3}"
 else
   exename=$(basename $2 .dll)

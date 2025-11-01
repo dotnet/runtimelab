@@ -181,7 +181,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       -->
       <_NETCoreAppRuntimePackPath Condition="'$(PublishAotUsingRuntimePack)' == 'true'">%(_NETCoreAppFrameworkReference.RuntimePackPath)/runtimes/$(RuntimeIdentifier)/</_NETCoreAppRuntimePackPath>
       <_NETCoreAppRuntimePackPath Condition="'$(PublishAotUsingRuntimePack)' != 'true'">$(RuntimePackagePath)/runtimes/$(RuntimeIdentifier)/</_NETCoreAppRuntimePackPath>
-      <IlcFrameworkPath Condition="'$(IlcFrameworkPath)' == ''">$(_NETCoreAppRuntimePackPath)\libs\</IlcFrameworkPath>
+      <IlcFrameworkPath Condition="'$(IlcFrameworkPath)' == ''">$(_NETCoreAppRuntimePackPath)\lib\</IlcFrameworkPath>
       <IlcFrameworkNativePath Condition="'$(IlcFrameworkNativePath)' == ''">$(_NETCoreAppRuntimePackPath)\native\</IlcFrameworkNativePath>
       <IlcSdkPath Condition="'$(IlcSdkPath)' == ''">$(IlcFrameworkNativePath)</IlcSdkPath>
     </PropertyGroup>

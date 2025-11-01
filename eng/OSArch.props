@@ -1,4 +1,5 @@
 <Project>
+  <!-- NativeAOT-LLVM: this allows the build to pick up target OS/Arch from Platform in VS. -->
   <PropertyGroup Condition="'$(Platform)' != ''">
     <TargetOS Condition="'$(Platform)' == 'wasm'">browser</TargetOS>
     <TargetArchitecture Condition="'$(Platform)' != 'AnyCPU'">$(Platform)</TargetArchitecture>
