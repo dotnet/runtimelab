@@ -7,15 +7,6 @@
     <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
     <CLRTestExitCode>0</CLRTestExitCode>
 
-    <!-- Fails with the not very helpful:
-      Using WASM host executable: wasmtime run -S http
-      Using WASM binary to execute: /__w/1/s/artifacts/tests/coreclr/wasi.wasm.Debug/nativeaot/SmokeTests/AttributeTrimming/AttributeTrimming//native/AttributeTrimming.wasm
-      Using WASM binary to execute: /__w/1/s/artifacts/tests/coreclr/wasi.wasm.Debug/nativeaot/SmokeTests/AttributeTrimming/AttributeTrimming//native/AttributeTrimming.wasm
-      Expected: 100
-      Actual: 1
-    -->
-    <!-- <CLRTestTargetUnsupported Condition="'$(TargetsWasm)' == 'true'">true</CLRTestTargetUnsupported> -->
-
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AttributeTrimming.cs" />
