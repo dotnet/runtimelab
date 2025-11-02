@@ -20,12 +20,13 @@
     <!-- Determine _targetArchitecture from RuntimeIdentifier -->
     <_targetArchitecture>$(RuntimeIdentifier.SubString($([MSBuild]::Add($(RuntimeIdentifier.LastIndexOf('-')), 1))))</_targetArchitecture>
 
+    <_llvmPackageLayout Condition="'$(_targetArchitecture)' == 'wasm'">true</_llvmPackageLayout>
     <_hostPackageName>runtime.$(_hostOS)-$(_hostArchitecture).Microsoft.DotNet.ILCompiler</_hostPackageName>
     <_hostPackageName Condition="'$(_targetsNonPortableSdkRid)' == 'true'">runtime.$(RuntimeIdentifier).Microsoft.DotNet.ILCompiler</_hostPackageName>
-    <_hostPackageName Condition="'$(_targetArchitecture)' == 'wasm'">$(_hostPackageName).LLVM</_hostPackageName>
+    <_hostPackageName Condition="'$(_llvmPackageLayout)' == 'true'">$(_hostPackageName).LLVM</_hostPackageName>
     <_targetPackageName>runtime.$(_originalTargetOS)-$(_targetArchitecture).Microsoft.DotNet.ILCompiler</_targetPackageName>
     <_targetPackageName Condition="'$(_targetsNonPortableSdkRid)' == 'true'">runtime.$(RuntimeIdentifier).Microsoft.DotNet.ILCompiler</_targetPackageName>
-    <_targetPackageName Condition="'$(_targetArchitecture)' == 'wasm'">$(_targetPackageName).LLVM</_targetPackageName>
+    <_targetPackageName Condition="'$(_llvmPackageLayout)' == 'true'">$(_targetPackageName).LLVM</_targetPackageName>
     <_targetRuntimePackName>Microsoft.NETCore.App.Runtime.NativeAOT.$(_originalTargetOS)-$(_targetArchitecture)</_targetRuntimePackName>
     <_targetRuntimePackName Condition="'$(_targetsNonPortableSdkRid)' == 'true'">Microsoft.NETCore.App.Runtime.NativeAOT.$(RuntimeIdentifier)</_targetRuntimePackName>
 

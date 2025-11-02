@@ -13,7 +13,7 @@ using Debug = System.Diagnostics.Debug;
 
 namespace ILCompiler
 {
-    public partial class ObjectDataInterner
+    public sealed partial class ObjectDataInterner
     {
         private readonly bool _genericsOnly;
         private Dictionary<ISymbolNode, ISymbolNode> _symbolRemapping;
@@ -25,7 +25,7 @@ namespace ILCompiler
             _genericsOnly = genericsOnly;
         }
 
-        public virtual bool CanFold(MethodDesc method)
+        public bool CanFold(MethodDesc method)
         {
             if (this == Null)
                 return false;
