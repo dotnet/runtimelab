@@ -255,9 +255,10 @@ bool Llvm::helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_ULMOD) CORINFO_TYPE_ULONG, { CORINFO_TYPE_ULONG, CORINFO_TYPE_ULONG }, HFIF_SS_ARG },
 
         // Implemented in "Runtime\MathHelpers.cpp".
+        { FUNC(CORINFO_HELP_LNG2FLT) CORINFO_TYPE_FLOAT, { CORINFO_TYPE_LONG }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_LNG2DBL) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_LONG }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_ULNG2FLT) CORINFO_TYPE_FLOAT, { CORINFO_TYPE_ULONG }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_ULNG2DBL) CORINFO_TYPE_DOUBLE, { CORINFO_TYPE_ULONG }, HFIF_SS_ARG },
-        { FUNC(CORINFO_HELP_DBL2INT) CORINFO_TYPE_INT, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
         { FUNC(CORINFO_HELP_DBL2INT_OVF) CORINFO_TYPE_INT, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
@@ -267,9 +268,6 @@ bool Llvm::helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
         { FUNC(CORINFO_HELP_DBL2LNG_OVF) CORINFO_TYPE_LONG, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
-
-        // Implemented in "Runtime\MathHelpers.cpp".
-        { FUNC(CORINFO_HELP_DBL2UINT) CORINFO_TYPE_UINT, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
 
         // Implemented in "CoreLib\src\Internal\Runtime\CompilerHelpers\MathHelpers.cs".
         { FUNC(CORINFO_HELP_DBL2UINT_OVF) CORINFO_TYPE_UINT, { CORINFO_TYPE_DOUBLE }, HFIF_SS_ARG },
@@ -303,10 +301,8 @@ bool Llvm::helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_NEWARR_1_DIRECT) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_NEWARR_1_MAYBEFROZEN) },
 
-        // Not used in NativeAOT.
-        { FUNC(CORINFO_HELP_NEWARR_1_OBJ) },
-
         // Implemented in "Runtime\wasm\AllocFast.cpp".
+        { FUNC(CORINFO_HELP_NEWARR_1_PTR) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_NEWARR_1_VC) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_NEWARR_1_ALIGN8) CORINFO_TYPE_CLASS, { CORINFO_TYPE_PTR, CORINFO_TYPE_INT }, HFIF_SS_ARG },
 
@@ -343,6 +339,7 @@ bool Llvm::helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const
         // Runtime exports implemented in "Runtime.Base\src\System\Runtime\ExceptionHandling.wasm.cs".
         { FUNC(CORINFO_HELP_THROW) CORINFO_TYPE_VOID, { CORINFO_TYPE_CLASS }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_RETHROW) CORINFO_TYPE_VOID, { CORINFO_TYPE_PTR }, HFIF_SS_ARG },
+        { FUNC(CORINFO_HELP_THROWEXACT) },
 
         // Implemented in "Runtime\MiscHelpers.cpp".
         { FUNC(CORINFO_HELP_USER_BREAKPOINT) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG},
@@ -530,7 +527,7 @@ bool Llvm::helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const
         // Not used in NativeAOT (stack probing - not used for LLVM).
         { FUNC(CORINFO_HELP_STACK_PROBE) },
         { FUNC(CORINFO_HELP_PATCHPOINT) },
-        { FUNC(CORINFO_HELP_PARTIAL_COMPILATION_PATCHPOINT) },
+        { FUNC(CORINFO_HELP_PATCHPOINT_FORCED) },
         { FUNC(CORINFO_HELP_CLASSPROFILE32) },
         { FUNC(CORINFO_HELP_CLASSPROFILE64) },
         { FUNC(CORINFO_HELP_DELEGATEPROFILE32) },
@@ -543,6 +540,10 @@ bool Llvm::helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const
         { FUNC(CORINFO_HELP_VALUEPROFILE64) },
         { FUNC(CORINFO_HELP_VALIDATE_INDIRECT_CALL) },
         { FUNC(CORINFO_HELP_DISPATCH_INDIRECT_CALL) },
+
+        { FUNC(CORINFO_HELP_ALLOC_CONTINUATION) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG},
+        { FUNC(CORINFO_HELP_ALLOC_CONTINUATION_METHOD) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG},
+        { FUNC(CORINFO_HELP_ALLOC_CONTINUATION_CLASS) CORINFO_TYPE_PTR, { }, HFIF_SS_ARG},
 
         { FUNC(CORINFO_HELP_LLVM_EH_CATCH) CORINFO_TYPE_CLASS, { CORINFO_TYPE_NATIVEUINT }, HFIF_SS_ARG },
         { FUNC(CORINFO_HELP_LLVM_EH_POP_UNWOUND_VIRTUAL_FRAMES) CORINFO_TYPE_VOID, { }, HFIF_SS_ARG },
@@ -557,7 +558,7 @@ bool Llvm::helperCallMayVirtuallyUnwind(CorInfoHelpFunc helperFunc) const
     // clang-format on
 
     // Make sure our array is up-to-date.
-    static_assert_no_msg(ArrLen(s_infos) == CORINFO_HELP_COUNT);
+    static_assert(ArrLen(s_infos) == CORINFO_HELP_COUNT);
 
 #ifdef DEBUG
     static bool s_infosVerified = false;
@@ -700,17 +701,16 @@ CorInfoType Llvm::getLlvmReturnType(CorInfoType sigRetType, CORINFO_CLASS_HANDLE
         return CORINFO_TYPE_PTR;
     }
 
-    assert(!arg->AbiInfo.PassedByRef);
+    assert(!arg->AbiInfo.IsPassedByReference());
     return toCorInfoType(arg->AbiInfo.ArgType);
 }
 
 CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForHelperFunc(CorInfoHelpFunc helperFunc)
 {
-    void* pIndirection = nullptr;
-    void* handle = _compiler->compGetHelperFtn(static_cast<CorInfoHelpFunc>(helperFunc), &pIndirection);
-    assert(pIndirection == nullptr);
+    CORINFO_CONST_LOOKUP constLookup = _compiler->compGetHelperFtn(static_cast<CorInfoHelpFunc>(helperFunc));
+    assert(constLookup.accessType == IAT_VALUE);
 
-    return CORINFO_GENERIC_HANDLE(handle);
+    return constLookup.handle;
 }
 
 CORINFO_GENERIC_HANDLE Llvm::getSymbolHandleForClassToken(mdToken token)

@@ -8,5 +8,6 @@ namespace ILCompiler.DependencyAnalysis
     public partial interface IObjectDumper
     {
         void DumpObjectNode(NodeFactory factory, ObjectNode node, ObjectData objectData);
+        void ReportFoldedNode(NodeFactory factory, ObjectNode originalNode, ISymbolNode targetNode);
     }
 }

@@ -57,7 +57,7 @@ internal static partial class Interop
         public static void DeregisterGCRoot(IntPtr handle) => throw new NotImplementedException();
         public static void AssemblyGetEntryPoint(IntPtr assemblyNamePtr, int auto_insert_breakpoint, void** monoMethodPtrPtr) => throw new NotImplementedException();
         public static void BindAssemblyExports(IntPtr assemblyNamePtr) => throw new NotImplementedException();
-        public static void GetAssemblyExport(IntPtr assemblyNamePtr, IntPtr namespacePtr, IntPtr classnamePtr, IntPtr methodNamePtr, IntPtr* monoMethodPtrPtr) => throw new NotImplementedException();
+        public static void GetAssemblyExport(IntPtr assemblyNamePtr, IntPtr namespacePtr, IntPtr classnamePtr, IntPtr methodNamePtr, int signatureHash, IntPtr* monoMethodPtrPtr) => throw new NotImplementedException();
         #endregion
     }
 }

@@ -1,10 +1,10 @@
 <Project>
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType Condition="!('$(TargetOS)' == 'android' and '$(TestNativeAot)' == 'true')">Exe</OutputType>
 
-    <BundleDir>$([MSBuild]::NormalizeDirectory('$(OutDir)', 'publish'))</BundleDir>
+    <BundleDir Condition="'$(BundleDir)' == ''">$([MSBuild]::NormalizeDirectory('$(OutDir)', 'publish'))</BundleDir>
     <RunScriptOutputPath>$([MSBuild]::NormalizePath('$(BundleDir)', '$(RunScriptOutputName)'))</RunScriptOutputPath>
-    <RuntimeIdentifier>$(OutputRID)</RuntimeIdentifier>
+    <RuntimeIdentifier>$(TargetRid)</RuntimeIdentifier>
 
     <_OutputExeExt Condition="'$(TargetsBrowser)' == 'true'">.js</_OutputExeExt>
     <_OutputExeExt Condition="'$(TargetsWasi)' == 'true'">.wasm</_OutputExeExt>
@@ -27,12 +27,6 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TestNativeAot)' == 'true'">
-    <IlcToolsPath>$(CoreCLRCrossILCompilerDir)</IlcToolsPath>
-    <SysRoot Condition="('$(CrossBuild)' == 'true' or '$(BuildArchitecture)' != '$(TargetArchitecture)') and '$(HostOS)' != 'windows'">$(ROOTFS_DIR)</SysRoot>
-    <IlcBuildTasksPath>$(CoreCLRILCompilerDir)netstandard/ILCompiler.Build.Tasks.dll</IlcBuildTasksPath>
-    <IlcSdkPath>$(CoreCLRAotSdkDir)</IlcSdkPath>
-    <IlcFrameworkPath>$(NetCoreAppCurrentTestHostSharedFrameworkPath)</IlcFrameworkPath>
-    <IlcFrameworkNativePath>$(NetCoreAppCurrentTestHostSharedFrameworkPath)</IlcFrameworkNativePath>
     <IlcCppLinkerCustomWarningRegularExpression>module compiled with /GL found</IlcCppLinkerCustomWarningRegularExpression>
     <NoWarn>$(NoWarn);IL1005;IL2122;IL3000;IL3001;IL3002;IL3003;IL3050;IL3051;IL3052;IL3053</NoWarn>
     <TrimMode>partial</TrimMode>
@@ -55,20 +49,16 @@
 
   <ItemGroup Condition="'$(TestNativeAot)' == 'true'">
     <RdXmlFile Include="$(MSBuildThisFileDirectory)default.rd.xml" />
-
-    <!-- xunit calls MakeGenericType to check if something is IEquatable -->
-    <IlcArg Include="--feature:System.Reflection.IsTypeConstructionEagerlyValidated=false" />
-
     <TrimmerRootAssembly Include="TestUtilities" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="$(CommonTestPath)SingleFileTestRunner\SingleFileTestRunner.cs"
              Link="Common\SingleFileTestRunner\SingleFileTestRunner.cs"
-             Condition="'$(TargetsSingleThreadedWasm)' != 'true'" />
+             Condition="'$(TargetsSingleThreadedWasm)' != 'true' and '$(IsFunctionalTest)' != 'true'" />
     <Compile Include="$(CommonTestPath)WasmTestRunner\WasmTestRunner.cs"
              Link="Common\WasmTestRunner\WasmTestRunner.cs"
-             Condition="'$(TargetsSingleThreadedWasm)' == 'true'" />
+             Condition="'$(TargetsSingleThreadedWasm)' == 'true' and '$(IsFunctionalTest)' != 'true'" />
   </ItemGroup>
 
   <ItemGroup>
@@ -106,7 +96,7 @@
           BeforeTargets="_PrepareForReadyToRunCompilation">
     <PropertyGroup>
       <ArtifactsNetCoreAppBundlePath>$(ArtifactsObjDir)Microsoft.NETCore.App.Bundle/</ArtifactsNetCoreAppBundlePath>
-      <ArtifactsNetCoreAppBundlePath>$(ArtifactsNetCoreAppBundlePath)$(Configuration)/$(NetCoreAppCurrent)/$(OutputRID)/output/</ArtifactsNetCoreAppBundlePath>
+      <ArtifactsNetCoreAppBundlePath>$(ArtifactsNetCoreAppBundlePath)$(Configuration)/$(NetCoreAppCurrent)/$(TargetRid)/output/</ArtifactsNetCoreAppBundlePath>
       <ArtifactsNetCoreAppBundlePath>$(ArtifactsNetCoreAppBundlePath)shared/$(MicrosoftNetCoreAppFrameworkName)/$(PackageVersion)/</ArtifactsNetCoreAppBundlePath>
     </PropertyGroup>
 

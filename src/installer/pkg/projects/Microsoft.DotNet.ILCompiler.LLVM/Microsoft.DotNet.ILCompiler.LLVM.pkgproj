@@ -5,11 +5,12 @@
     <PackageDescription>Provides a native AOT compiler and runtime for .NET</PackageDescription>
 
     <BuildingIlcHostPackage Condition="'$(TargetsWasm)' != 'true'">true</BuildingIlcHostPackage>
+    <GetLlvmPackageFilesDependsOn Condition="'$(BuildingIlcHostPackage)' != 'true'">ResolveLibrariesFromLocalBuild</GetLlvmPackageFilesDependsOn>
   </PropertyGroup>
 
-  <Target Name="GetIlcCompilerFiles"
-          DependsOnTargets="ResolveLibrariesFromLocalBuild"
-          BeforeTargets="GetPackageFiles">
+ <Target Name="GetLlvmPackageFiles"
+         BeforeTargets="GetPackageFiles"
+         DependsOnTargets="$(GetLlvmPackageFilesDependsOn)">
 
     <ItemGroup Condition="'$(PackageTargetRuntime)' == ''">
       <File Include="$(CoreCLRBuildIntegrationDir)*" TargetPath="build" />
@@ -25,14 +26,18 @@
     </ItemGroup>
 
     <ItemGroup Condition="'$(PackageTargetRuntime)' != '' and '$(BuildingIlcHostPackage)' != 'true'">
-      <File Include="@(LibrariesRuntimeFiles)" TargetPath="framework/%(LibrariesRuntimeFiles.NativeSubDirectory)" />
-      <File Include="$(CoreCLRAotSdkDir)*" TargetPath="sdk" />
+      <File Include="@(LibrariesRuntimeFiles)" TargetPath="runtimes/$(PackageTargetRuntime)/lib/%(LibrariesRuntimeFiles.NativeSubDirectory)" 
+        Condition="'%(LibrariesRuntimeFiles.IsNative)' != 'true'" />
+      <!-- We can't use the upstream layout as-is since files from 'runtimes/<rid>/native'
+           are copied by the SDK unconditionally on publish and we don't want that. -->
+      <File Include="@(LibrariesRuntimeFiles)" TargetPath="runtimes/$(PackageTargetRuntime)/native-hidden/%(LibrariesRuntimeFiles.NativeSubDirectory)" />
+      <File Include="$(CoreCLRAotSdkDir)*" TargetPath="runtimes/$(PackageTargetRuntime)/native-hidden" />
       <File Include="$(MibcOptimizationDataDir)/$(TargetOS)/$(TargetArchitecture)/**/*.mibc" TargetPath="mibc" />
 
       <DotnetJsCoreCLRAotSdkExtension Include="ts;js;map;json" />
-      <File Include="$(CoreCLRAotSdkDir)dotnetjs/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="sdk/dotnetjs" />
-      <File Include="$(CoreCLRAotSdkDir)dotnetjs/src/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="sdk/dotnetjs/src" />
-      <File Include="$(CoreCLRAotSdkDir)dotnetjs/src/es6/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="sdk/dotnetjs/src/es6" />
+      <File Include="$(CoreCLRAotSdkDir)dotnetjs/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="runtimes/$(PackageTargetRuntime)/native-hidden/dotnetjs" />
+      <File Include="$(CoreCLRAotSdkDir)dotnetjs/src/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="runtimes/$(PackageTargetRuntime)/native-hidden/dotnetjs/src" />
+      <File Include="$(CoreCLRAotSdkDir)dotnetjs/src/es6/*.%(DotnetJsCoreCLRAotSdkExtension.Identity)" TargetPath="runtimes/$(PackageTargetRuntime)/native-hidden/dotnetjs/src/es6" />
     </ItemGroup>
 
     <!-- exclude native symbols from ilc package (they are included in symbols package) -->

@@ -162,7 +162,13 @@ public:
                 regMaskSmall rpdDel; // regptr bitset being removed
             } rpdCompiler;
 
-            unsigned short rpdPtrArg; // arg offset or popped arg count
+            struct
+            {
+                // Registers after call containing GC/byref (index 0 = REG_INT_FIRST)
+                unsigned int   rpdCallGCrefRegs;
+                unsigned int   rpdCallByrefRegs;
+                unsigned short rpdPtrArg; // arg offset or popped arg count
+            };
         };
 
 #ifndef JIT32_GCENCODER
@@ -184,11 +190,8 @@ public:
         }
 #endif // !TARGET_WASM
 
-        unsigned short rpdIsThis : 1;                       // is it the 'this' pointer
-        unsigned short rpdCall   : 1;                       // is this a true call site?
-        unsigned short           : 1;                       // Padding bit, so next two start on a byte boundary
-        unsigned short rpdCallGCrefRegs : CNT_CALL_GC_REGS; // Callee-saved and return registers containing GC pointers.
-        unsigned short rpdCallByrefRegs : CNT_CALL_GC_REGS; // Callee-saved and return registers containing byrefs.
+        unsigned short rpdIsThis : 1; // is it the 'this' pointer
+        unsigned short rpdCall   : 1; // is this a true call site?
 
 #ifndef JIT32_GCENCODER
         bool rpdIsCallInstr()
@@ -288,7 +291,9 @@ public:
     //-------------------------------------------------------------------------
 
 #ifdef JIT32_GCENCODER
-    void gcCountForHeader(UNALIGNED unsigned int* pUntrackedCount, UNALIGNED unsigned int* pVarPtrTableSize);
+    void gcCountForHeader(UNALIGNED unsigned int* pUntrackedCount,
+                          UNALIGNED unsigned int* pVarPtrTableSize,
+                          UNALIGNED unsigned int* pNoGCRegionCount);
 
     bool gcIsUntrackedLocalOrNonEnregisteredArg(unsigned varNum, bool* pThisKeptAliveIsInUntracked = nullptr);
 
@@ -362,6 +367,8 @@ public:
 
 private:
     static size_t gcRecordEpilog(void* pCallBackData, unsigned offset);
+
+    ReturnKind getReturnKind();
 #else // JIT32_GCENCODER
     void gcInfoBlockHdrSave(GcInfoEncoder* gcInfoEncoder, unsigned methodSize, unsigned prologSize);
 
@@ -395,9 +402,6 @@ private:
 public:
     // This method updates the appropriate reg masks when a variable is moved.
     void gcUpdateForRegVarMove(regMaskTP srcMask, regMaskTP dstMask, LclVarDsc* varDsc);
-
-private:
-    ReturnKind getReturnKind();
 };
 
 inline unsigned char encodeUnsigned(BYTE* dest, unsigned value)

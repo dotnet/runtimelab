@@ -16,10 +16,13 @@ namespace ILCompiler
     {
         // These need to provide reasonable defaults so that the user can optionally skip
         // calling the Use/Configure methods and still get something reasonable back.
-        private KeyValuePair<string, string>[] _ryujitOptions = Array.Empty<KeyValuePair<string, string>>();
+        protected KeyValuePair<string, string>[] _ryujitOptions = Array.Empty<KeyValuePair<string, string>>();
+        protected MethodLayoutAlgorithm _methodLayoutAlgorithm;
+        protected FileLayoutAlgorithm _fileLayoutAlgorithm;
         private ILProvider _ilProvider = new NativeAotILProvider();
         private ProfileDataManager _profileDataManager;
-        private string _jitPath;
+        protected string _orderFile;
+        protected string _jitPath;
 
         protected RyuJitCompilationBuilder(CompilerTypeSystemContext context, CompilationModuleGroup group, NodeMangler mangler)
             : base(context, group, new NativeAotNameMangler(mangler))
@@ -38,9 +41,22 @@ namespace ILCompiler
             return this;
         }
 
+        public RyuJitCompilationBuilder UseSymbolOrder(string filePath)
+        {
+            _orderFile = filePath;
+            return this;
+        }
+
         public RyuJitCompilationBuilder UseJitPath(string jitPath)
         {
             _jitPath = jitPath;
+            return this;
+        }
+
+        public RyuJitCompilationBuilder FileLayoutAlgorithms(MethodLayoutAlgorithm methodLayoutAlgorithm, FileLayoutAlgorithm fileLayoutAlgorithm)
+        {
+            _methodLayoutAlgorithm = methodLayoutAlgorithm;
+            _fileLayoutAlgorithm = fileLayoutAlgorithm;
             return this;
         }
 
@@ -127,18 +143,39 @@ namespace ILCompiler
             if (_resilient)
                 options |= RyuJitCompilationOptions.UseResilience;
 
-            JitConfigProvider.Initialize(_context.Target, jitFlagBuilder.ToArray(), _ryujitOptions, _jitPath);
-            return CreateCompilation(options);
+            return CreateCompilation(options, jitFlagBuilder.ToArray());
         }
 
-        protected virtual RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options)
+        protected virtual RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options, CorJitFlag[] jitFlags)
         {
-            ObjectDataInterner interner = _methodBodyFolding ? new ObjectDataInterner() : ObjectDataInterner.Null;
+            ObjectDataInterner interner = _methodBodyFolding switch
+            {
+                MethodBodyFoldingMode.Generic => new ObjectDataInterner(genericsOnly: true),
+                MethodBodyFoldingMode.All => new ObjectDataInterner(genericsOnly: false),
+                _ => ObjectDataInterner.Null,
+            };
 
-            var factory = new RyuJitNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, interner);
+            var factory = new RyuJitNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, interner, _typeMapManager);
 
+            JitConfigProvider.Initialize(_context.Target, jitFlags, _ryujitOptions, _jitPath);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(CompilerComparer.Instance));
-            return new RyuJitCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _inliningPolicy ?? _compilationGroup, _instructionSetSupport, _profileDataManager, _methodImportationErrorProvider, _readOnlyFieldPolicy, options, _parallelism);
+
+            return new RyuJitCompilation(graph,
+                factory,
+                [.._compilationRoots, _typeMapManager],
+                _ilProvider,
+                _debugInformationProvider,
+                _logger,
+                _inliningPolicy ?? _compilationGroup,
+                _instructionSetSupport,
+                _profileDataManager,
+                _methodImportationErrorProvider,
+                _readOnlyFieldPolicy,
+                options,
+                _methodLayoutAlgorithm,
+                _fileLayoutAlgorithm,
+                _parallelism,
+                _orderFile);
         }
     }
 }

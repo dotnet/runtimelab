@@ -5,6 +5,7 @@
 #define HAVE_MINIPAL_TYPES_H
 
 #include <stdlib.h>
+#include <inttypes.h>
 
 #if defined(TARGET_32BIT) || defined(TARGET_OSX) || defined(TARGET_WINDOWS)
 #define FORMAT_PREFIX "l"

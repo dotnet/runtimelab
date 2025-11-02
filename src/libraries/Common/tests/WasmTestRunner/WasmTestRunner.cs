@@ -25,11 +25,23 @@ public class WasmTestRunner : WasmApplicationEntryPoint
 
 
 #else
+#if SINGLE_FILE_TEST_RUNNER
+    public static void Main(string[] args)
+    {
+        DeferredMain(args);
+    }
+
+    private static async void DeferredMain(string[] args)
+    {
+        Environment.Exit(await MainAsync(args));
+    }
+#else
     public static Task<int> Main(string[] args)
     {
         return MainAsync(args);
     }
-#endif
+#endif // SINGLE_FILE_TEST_RUNNER
+#endif // TARGET_WASI
 
     public static async Task<int> MainAsync(string[] args)
     {

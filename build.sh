@@ -25,9 +25,8 @@ scriptroot="$( cd -P "$( dirname "$source" )" && pwd )"
 
 if is_cygwin_or_mingw; then
   # if bash shell running on Windows (not WSL),
-  # pass control to powershell build script.
-  scriptroot=$(cygpath -d "$scriptroot")
-  powershell -c "$scriptroot\\build.cmd" $@
+  # pass control to batch build script.
+  "$scriptroot/build.cmd" "$@"
 else
   if [[ "$*" == *"wasm"* && "$*" == *"-ci"* ]]; then
     # This is a bit of a workaround for the fact that the pipelines do not have a great
@@ -36,5 +35,5 @@ else
         source $EMSDK/emsdk_env.sh
     fi
   fi
-  "$scriptroot/eng/build.sh" $@
+  "$scriptroot/eng/build.sh" "$@"
 fi

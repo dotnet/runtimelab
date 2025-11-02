@@ -15,31 +15,10 @@ namespace System.Reflection.Metadata
         internal const int Pointer = -2;
         internal const int ByRef = -3;
         private const char EscapeCharacter = '\\';
-#if NET8_0_OR_GREATER
+#if NET
         // Keep this in sync with GetFullTypeNameLength/NeedsEscaping
         private static readonly SearchValues<char> s_endOfFullTypeNameDelimitersSearchValues = SearchValues.Create("[]&*,+\\");
 #endif
-
-        internal static string GetGenericTypeFullName(ReadOnlySpan<char> fullTypeName, ReadOnlySpan<TypeName> genericArgs)
-        {
-            Debug.Assert(genericArgs.Length > 0);
-
-            ValueStringBuilder result = new(stackalloc char[128]);
-            result.Append(fullTypeName);
-
-            result.Append('[');
-            foreach (TypeName genericArg in genericArgs)
-            {
-                result.Append('[');
-                result.Append(genericArg.AssemblyQualifiedName); // see recursion comments in TypeName.FullName
-                result.Append(']');
-                result.Append(',');
-            }
-            result[result.Length - 1] = ']'; // replace ',' with ']'
-
-            return result.ToString();
-        }
-
         /// <returns>Positive length or negative value for invalid name</returns>
         internal static int GetFullTypeNameLength(ReadOnlySpan<char> input, out bool isNestedType)
         {
@@ -57,7 +36,7 @@ namespace System.Reflection.Metadata
             // input, that makes the total loop complexity potentially O(m * n^2), where
             // 'n' is adversary-controlled. To avoid DoS issues here, we'll loop manually.
 
-#if NET8_0_OR_GREATER
+#if NET
             int offset = input.IndexOfAny(s_endOfFullTypeNameDelimitersSearchValues);
             if (offset < 0)
             {
@@ -186,7 +165,7 @@ namespace System.Reflection.Metadata
             }
         }
 
-        internal static string GetRankOrModifierStringRepresentation(int rankOrModifier, ref ValueStringBuilder builder)
+        internal static void AppendRankOrModifierStringRepresentation(int rankOrModifier, ref ValueStringBuilder builder)
         {
             if (rankOrModifier == ByRef)
             {
@@ -219,8 +198,6 @@ namespace System.Reflection.Metadata
                 builder.Append(',', rankOrModifier - 1);
                 builder.Append(']');
             }
-
-            return builder.ToString();
         }
 
         /// <summary>

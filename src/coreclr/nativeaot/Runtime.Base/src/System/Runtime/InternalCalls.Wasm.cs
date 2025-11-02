@@ -10,27 +10,27 @@ namespace System.Runtime
 {
     internal static partial class InternalCalls
     {
-        [RuntimeImport(Redhawk.BaseName, "RhpGetCurrentThreadShadowStackBottom")]
+        [RuntimeImport(RuntimeLibrary, "RhpGetCurrentThreadShadowStackBottom")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void* RhpGetCurrentThreadShadowStackBottom();
 
-        [RuntimeImport(Redhawk.BaseName, "RhpGetLastSparseVirtualUnwindFrameRef")]
+        [RuntimeImport(RuntimeLibrary, "RhpGetLastSparseVirtualUnwindFrameRef")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void* RhpGetLastSparseVirtualUnwindFrameRef();
 
-        [RuntimeImport(Redhawk.BaseName, "RhpGetLastPreciseVirtualUnwindFrame")]
+        [RuntimeImport(RuntimeLibrary, "RhpGetLastPreciseVirtualUnwindFrame")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void* RhpGetLastPreciseVirtualUnwindFrame();
 
-        [RuntimeImport(Redhawk.BaseName, "RhpThrowNativeException")]
+        [RuntimeImport(RuntimeLibrary, "RhpThrowNativeException")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern void RhpThrowNativeException();
 
-        [RuntimeImport(Redhawk.BaseName, "RhpReleaseNativeException")]
+        [RuntimeImport(RuntimeLibrary, "RhpReleaseNativeException")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern void RhpReleaseNativeException();
 
-        [RuntimeImport(Redhawk.BaseName, "RhpAssignRefWithShadowStack")]
+        [RuntimeImport(RuntimeLibrary, "RhpAssignRefWithShadowStack")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern void RhpAssignRef(ref object? address, object? obj);
     }

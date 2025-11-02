@@ -30,13 +30,15 @@ namespace ILCompiler
             return this;
         }
 
-        protected override RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options)
+        protected override RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options, CorJitFlag[] jitFlags)
         {
             ObjectDataInterner interner = _metadataManager.CreateObjectInternerForAddressExposureTracking() ?? ObjectDataInterner.Null;
-            var factory = new LLVMCodegenNodeFactory(_config, _context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, interner);
+
+            var factory = new LLVMCodegenNodeFactory(_config, _context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, interner, _typeMapManager);
+            JitConfigProvider.Initialize(_context.Target, jitFlags, _ryujitOptions, _jitPath);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(new CompilerComparer()));
 
-            return new LLVMCodegenCompilation(graph, factory, _compilationRoots, GetILProvider(), _debugInformationProvider, _logger, _config, _inliningPolicy, _instructionSetSupport, _methodImportationErrorProvider, _readOnlyFieldPolicy, options, _parallelism);
+            return new LLVMCodegenCompilation(graph, factory, [.._compilationRoots, _typeMapManager], GetILProvider(), _debugInformationProvider, _logger, _config, _inliningPolicy, _instructionSetSupport, _methodImportationErrorProvider, _readOnlyFieldPolicy, _methodLayoutAlgorithm, _fileLayoutAlgorithm, options, _parallelism, _orderFile);
         }
     }
 

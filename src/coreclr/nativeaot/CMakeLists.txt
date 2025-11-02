@@ -1,3 +1,8 @@
+# Remove this option for wasm upstream as we need different options for different exception handling.
+get_directory_property(current_opts COMPILE_OPTIONS)
+list(REMOVE_ITEM current_opts "-fwasm-exceptions")
+set_directory_properties(PROPERTIES COMPILE_OPTIONS "${current_opts}")
+
 if(WIN32)
   add_definitions(-DUNICODE=1)
   add_compile_definitions(NOMINMAX)
@@ -23,7 +28,7 @@ if(CLR_CMAKE_HOST_UNIX)
   endif(CLR_CMAKE_TARGET_APPLE)
 
   if(CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_I386)
-    # Allow 16 byte compare-exchange
+    # Allow 16 byte compare-exchange (cmpxchg16b)
     add_compile_options(-mcx16)
   endif(CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_I386)
 endif (CLR_CMAKE_HOST_UNIX)
@@ -40,7 +45,14 @@ endif((CLR_CMAKE_TARGET_OS STREQUAL wasi OR CLR_CMAKE_TARGET_OS STREQUAL emscrip
 
 if(CLR_CMAKE_TARGET_ANDROID)
     add_definitions(-DFEATURE_EMULATED_TLS)
+    set(FEATURE_JAVAMARSHAL 1)
 endif()
+
+if(NOT DEFINED FEATURE_JAVAMARSHAL)
+  set(FEATURE_JAVAMARSHAL $<IF:$<CONFIG:Debug,Checked>,1,0>)
+endif()
+
+add_compile_definitions($<${FEATURE_JAVAMARSHAL}:FEATURE_JAVAMARSHAL>)
 
 add_subdirectory(Bootstrap)
 add_subdirectory(Runtime)

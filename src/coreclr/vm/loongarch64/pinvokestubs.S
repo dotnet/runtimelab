@@ -21,7 +21,7 @@
         NESTED_ENTRY \__PInvokeStubFuncName, _TEXT, NoHandler
 
         // get the stub
-        ld.d   $t0, \VASigCookieReg, VASigCookie__pNDirectILStub
+        ld.d   $t0, \VASigCookieReg, VASigCookie__pPInvokeILStub
 
         // if null goto stub generation
         beq  $t0, $zero, \__PInvokeGenStubFuncName
@@ -90,7 +90,7 @@ NESTED_ENTRY JIT_PInvokeBegin, _TEXT, NoHandler
 
     // s0 = pFrame
     // set first slot to the value of InlinedCallFrame identifier (checked by runtime code)
-    li.d $t0, FRAMETYPE_InlinedCallFrame
+    li.d  $t4, FRAMETYPE_InlinedCallFrame
     st.d  $t4, $s0, 0
 
     st.d  $zero, $s0, InlinedCallFrame__m_Datum

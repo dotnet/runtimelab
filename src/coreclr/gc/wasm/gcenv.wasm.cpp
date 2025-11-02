@@ -8,11 +8,6 @@
 #include <emscripten/heap.h>
 #endif
 
-// Flush write buffers of processors that are executing threads of the current process - a NOP for Wasm
-void GCToOSInterface::FlushProcessWriteBuffers()
-{
-}
-
 // Emscripten does not provide a complete implementation of mmap and munmap: munmap cannot unmap partial allocations
 // Emscripten does provide an implementation of posix_memalign which is used here.
 

@@ -55,14 +55,5 @@ namespace System
             AppContext.OnProcessExit();
 #endif
         }
-
-        public static int TickCount => (int)TickCount64;
-
-#if TARGET_WASM
-        private static unsafe string[] GetCommandLineArgsNative()
-        {
-            return Array.Empty<string>();
-        }
-#endif
     }
 }

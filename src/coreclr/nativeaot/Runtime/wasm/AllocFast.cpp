@@ -5,9 +5,8 @@
 #include "CommonTypes.h"
 #include "CommonMacros.h"
 #include "daccess.h"
-#include "PalRedhawkCommon.h"
 #include "CommonMacros.inl"
-#include "PalRedhawk.h"
+#include "Pal.h"
 #include "rhassert.h"
 
 #include "slist.h"
@@ -126,7 +125,7 @@ FCIMPL1(Object*, RhpNewFinalizable, MethodTable* pEEType)
 }
 FCIMPLEND
 
-FCIMPL2(Array*, RhpNewArray, MethodTable* pArrayEEType, int numElements)
+FCIMPL2(Array*, RhpNewArrayFast, MethodTable* pArrayEEType, int numElements)
 {
     Thread* pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context* acontext = pCurThread->GetAllocContext();
@@ -165,10 +164,17 @@ FCIMPL2(Array*, RhpNewArray, MethodTable* pArrayEEType, int numElements)
 }
 FCIMPLEND
 
+FCIMPL2(Array*, RhpNewPtrArrayFast, MethodTable* pArrayEEType, int numElements)
+{
+    // TODO: Implement. We call RhpNewArrayFast for now.
+    return (Array*)RhpNewArrayFast(pShadowStack, pArrayEEType, numElements);
+}
+FCIMPLEND
+
 FCIMPL2(String*, RhNewString, MethodTable* pArrayEEType, int numElements)
 {
     // TODO: Implement. We call RhpNewArray for now since there's a bunch of TODOs in the places that matter anyway.
-    return (String*)RhpNewArray(pShadowStack, pArrayEEType, numElements);
+    return (String*)RhpNewArrayFast(pShadowStack, pArrayEEType, numElements);
 }
 FCIMPLEND
 
@@ -252,7 +258,7 @@ FCIMPL1(Object*, RhpNewFastMisalign, MethodTable* pEEType)
 }
 FCIMPLEND
 
-FCIMPL2(Array*, RhpNewArrayAlign8, MethodTable* pArrayEEType, int numElements)
+FCIMPL2(Array*, RhpNewArrayFastAlign8, MethodTable* pArrayEEType, int numElements)
 {
     Thread* pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context* acontext = pCurThread->GetAllocContext();

@@ -23,6 +23,8 @@
     <Compile Include="$(CompilerCommonPath)\Internal\Runtime\StackTraceData.cs">
       <Link>Internal\Runtime\StackTraceData.cs</Link>
     </Compile>
+    <Compile Include="..\..\System.Private.CoreLib\src\System\Runtime\CompilerServices\AnalysisCharacteristicAttribute.cs" />
+    <Compile Include="..\..\Runtime.Base\src\System\Runtime\CompilerServices\IntrinsicAttribute.cs" />
   </ItemGroup>
 
   <ItemGroup>

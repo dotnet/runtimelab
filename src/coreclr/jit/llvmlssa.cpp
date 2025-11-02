@@ -319,7 +319,7 @@ private:
         static const unsigned EXPLICIT_INIT_INDEX_MASK = ~0u << EXPLICIT_INIT_INDEX_SHIFT;
         static const unsigned EXPLICIT_INIT_INDEX_INVALID = DEF_STATUS_UNINIT >> EXPLICIT_INIT_INDEX_SHIFT;
 
-        static_assert_no_msg(
+        static_assert(
             GC_EXPOSED_NO != GC_EXPOSED_UNKNOWN &&
             GC_EXPOSED_SPILL != GC_EXPOSED_UNKNOWN &&
             GC_EXPOSED_YES != GC_EXPOSED_UNKNOWN);
@@ -1574,7 +1574,7 @@ private:
 
             offset = AlignUp(offset, alignment);
             varDsc->SetStackOffset(offset);
-            offset += m_compiler->lvaLclSize(m_compiler->lvaGetLclNum(varDsc));
+            offset += m_compiler->lvaLclStackHomeSize(m_compiler->lvaGetLclNum(varDsc));
             varDsc->SetRegNum(REG_STK);
             };
 

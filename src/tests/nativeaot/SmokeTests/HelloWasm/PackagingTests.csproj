@@ -32,6 +32,7 @@
       <PackagingTestProject OutputPathRoot="$(OutputPath)%(FileName)/" />
       <PackagingTestProject BuildProperties="Test_TestOutputPath=%(OutputPathRoot);%(BuildProperties)" />
 
+      <!-- TODO-LLVM: on ARM64 these fail. -->
       <SampleProject Include="$(RepoRoot)samples/HelloWorld/HelloWorld.csproj;
                               $(RepoRoot)samples/NativeLibrary/NativeLibrary.csproj">
         <BuildProperties>
