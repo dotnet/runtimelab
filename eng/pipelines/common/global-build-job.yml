@@ -34,7 +34,7 @@ parameters:
   extraVariablesTemplates: []
   preBuildSteps: []
   templatePath: 'templates'
-  templateContext: ''
+  templateContext: {}
   disableComponentGovernance: ''
 
 jobs:
