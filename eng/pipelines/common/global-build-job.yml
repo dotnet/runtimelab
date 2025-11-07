@@ -24,6 +24,7 @@ parameters:
   condition: true
   useContinueOnErrorDuringBuild: false
   shouldContinueOnError: false
+  enableSigning: ''
   isOfficialBuild: false
   runtimeFlavor: 'coreclr'
   runtimeVariant: ''
@@ -52,8 +53,8 @@ jobs:
     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
     enablePublishTestResults: ${{ parameters.enablePublishTestResults }}
     testResultsFormat: ${{ parameters.testResultsFormat }}
-    enableMicrobuild: ${{ parameters.isOfficialBuild }}
-    enableMicrobuildForMacAndLinux: ${{ parameters.isOfficialBuild }}
+    enableMicrobuild: ${{ coalesce(parameters.enableSigning, parameters.isOfficialBuild) }}
+    enableMicrobuildForMacAndLinux: ${{ coalesce(parameters.enableSigning, parameters.isOfficialBuild) }}
     templateContext: ${{ parameters.templateContext }}
 
     artifacts:

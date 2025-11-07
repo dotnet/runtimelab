@@ -43,6 +43,7 @@ extends:
           jobParameters:
             templatePath: 'templates-official'
             timeoutInMinutes: 300
+            enableSigning: false
             isOfficialBuild: true
             testGroup: innerloop
             buildArgs: -s clr.aot+libs -c $(_BuildConfig)
