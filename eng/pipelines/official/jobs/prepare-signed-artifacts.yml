@@ -26,9 +26,13 @@ jobs:
     - ${{ if eq(parameters.isOfficialBuild, true) }}:
       - name: '_SignType'
         value: $[ coalesce(variables.OfficialSignType, 'real') ]
+      - name: _SignArgs
+        value:  -sign
     - ${{ else }}:
       - name: '_SignType'
         value: $[ coalesce(variables.OfficialSignType, 'test') ]
+      - name: _SignArgs
+        value: ''
 
     templateContext:
       inputs:
@@ -48,7 +52,8 @@ jobs:
 
     steps:
     - script: >-
-        build.cmd -restore -sign -publish -ci -configuration Release
+        build.cmd -restore -publish -ci -configuration Release
+        $(_SignArgs)
         /p:RestoreToolsetOnly=true
         /p:PublishRidAgnosticPackagesFromPlatform=${{ parameters.PublishRidAgnosticPackagesFromPlatform }}
         /p:DownloadDirectory=$(Build.SourcesDirectory)\artifacts\PackageDownload\
