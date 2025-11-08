@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <NativeLib>Static</NativeLib>
+    <SkipInferOutputType>true</SkipInferOutputType>
+    <CLRTestKind>BuildAndRun</CLRTestKind>
+    <CLRTestExitCode>0</CLRTestExitCode>
+    <RequiresProcessIsolation>true</RequiresProcessIsolation>
+    <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
+
+    <NativeDriverBinary Condition="'$(TargetsBrowser)' == 'true'">WasmStaticLib.js</NativeDriverBinary>
+    <NativeDriverBinary Condition="'$(TargetsWasi)' == 'true'">WasmStaticLib.wasm</NativeDriverBinary>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="WasmStaticLib.cs" />
+  </ItemGroup>
+
+  <Target Name="LinkFinalExecutable" AfterTargets="LinkNative">
+    <ItemGroup>
+      <_FinalLinkerArg Include="-o &quot;$(NativeOutputPath)$(NativeDriverBinary)&quot;" />
+      <_FinalLinkerArg Include="&quot;$(NativeBinary)&quot;" />
+      <_FinalLinkerArg Include="&quot;$(MSBuildThisFileDirectory)WasmStaticLibDriver.cpp&quot;" />
+
+      <!-- This is NOT meant to be a fully robust filter, it's here only to minimize the impact of targets changes. -->
+      <_ExcludedLinkerArg Include="@(NativeObjects->'&quot;%(Identity)&quot;'->Replace('\', '/'))" />
+      <_ExcludedLinkerArg Include="-o &quot;$(NativeBinary.Replace('\', '/'))&quot;" />
+      <_FinalLinkerArg Include="@(CustomLinkerArg)" Exclude="@(_ExcludedLinkerArg)" />
+    </ItemGroup>
+
+    <Exec Command="$(CppLinker) @(_FinalLinkerArg, ' ')" />
+  </Target>
+
+</Project>
