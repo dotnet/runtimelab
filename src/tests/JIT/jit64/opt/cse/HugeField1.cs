@@ -1351,6 +1351,8 @@ namespace CseTest
     public class Test_Main
     {
         [Fact]
+        [OuterLoop]
+        [SkipOnCoreClr("", RuntimeTestModes.AnyGCStress)]
         public static int TestEntryPoint()
         {
             int ret = 100;

@@ -31,10 +31,15 @@
 
 #include "GCMemoryHelpers.inl"
 
+<<<<<<< HEAD
 #if defined(USE_PORTABLE_HELPERS) && !defined(HOST_WASM)
 EXTERN_C void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame);
+=======
+#if defined(FEATURE_PORTABLE_HELPERS)
+EXTERN_C void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, intptr_t numElements, void * pTransitionFrame);
+>>>>>>> main
 
-static Object* AllocateObject(MethodTable* pEEType, uint32_t uFlags, uintptr_t numElements)
+static Object* AllocateObject(MethodTable* pEEType, uint32_t uFlags, intptr_t numElements)
 {
     Object* pObject = (Object*)RhpGcAlloc(pEEType, uFlags, numElements, nullptr);
     if (pObject == nullptr)
@@ -69,7 +74,7 @@ FCIMPL1(Object *, RhpNewFast, MethodTable* pEEType)
     {
         acontext->alloc_ptr = alloc_ptr + size;
         Object* pObject = (Object *)alloc_ptr;
-        pObject->set_EEType(pEEType);
+        pObject->SetMethodTable(pEEType);
         return pObject;
     }
 
@@ -88,7 +93,7 @@ FCIMPL1(Object *, RhpNewFinalizable, MethodTable* pEEType)
 }
 FCIMPLEND
 
-FCIMPL2(Array *, RhpNewArrayFast, MethodTable * pArrayEEType, int numElements)
+FCIMPL2(Array *, RhpNewArrayFast, MethodTable * pArrayEEType, intptr_t numElements)
 {
     Thread * pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context * acontext = pCurThread->GetAllocContext();
@@ -118,8 +123,8 @@ FCIMPL2(Array *, RhpNewArrayFast, MethodTable * pArrayEEType, int numElements)
     {
         acontext->alloc_ptr = alloc_ptr + size;
         Array* pObject = (Array*)alloc_ptr;
-        pObject->set_EEType(pArrayEEType);
-        pObject->InitArrayLength((uint32_t)numElements);
+        pObject->SetMethodTable(pArrayEEType);
+        pObject->SetNumComponents((uint32_t)numElements);
         return pObject;
     }
 
@@ -135,6 +140,11 @@ FCIMPL2(String *, RhNewString, MethodTable * pArrayEEType, intptr_t numElements)
 }
 FCIMPLEND
 
+<<<<<<< HEAD
+=======
+#endif
+#if defined(FEATURE_PORTABLE_HELPERS)
+>>>>>>> main
 #if defined(FEATURE_64BIT_ALIGNMENT)
 GPTR_DECL(MethodTable, g_pFreeObjectEEType);
 
@@ -171,11 +181,11 @@ FCIMPL1(Object*, RhpNewFastAlign8, MethodTable* pEEType)
         if (requiresPadding)
         {
             Object* dummy = (Object*)alloc_ptr;
-            dummy->set_EEType(g_pFreeObjectEEType);
+            dummy->SetMethodTable(g_pFreeObjectEEType);
             alloc_ptr += 12;
         }
         Object* pObject = (Object *)alloc_ptr;
-        pObject->set_EEType(pEEType);
+        pObject->SetMethodTable(pEEType);
         return pObject;
     }
 
@@ -206,11 +216,11 @@ FCIMPL1(Object*, RhpNewFastMisalign, MethodTable* pEEType)
         if (requiresPadding)
         {
             Object* dummy = (Object*)alloc_ptr;
-            dummy->set_EEType(g_pFreeObjectEEType);
+            dummy->SetMethodTable(g_pFreeObjectEEType);
             alloc_ptr += 12;
         }
         Object* pObject = (Object *)alloc_ptr;
-        pObject->set_EEType(pEEType);
+        pObject->SetMethodTable(pEEType);
         return pObject;
     }
 
@@ -218,7 +228,7 @@ FCIMPL1(Object*, RhpNewFastMisalign, MethodTable* pEEType)
 }
 FCIMPLEND
 
-FCIMPL2(Array*, RhpNewArrayFastAlign8, MethodTable* pArrayEEType, int numElements)
+FCIMPL2(Array*, RhpNewArrayFastAlign8, MethodTable* pArrayEEType, intptr_t numElements)
 {
     Thread* pCurThread = ThreadStore::GetCurrentThread();
     gc_alloc_context* acontext = pCurThread->GetAllocContext();
@@ -256,12 +266,12 @@ FCIMPL2(Array*, RhpNewArrayFastAlign8, MethodTable* pArrayEEType, int numElement
         if (requiresAlignObject)
         {
             Object* dummy = (Object*)alloc_ptr;
-            dummy->set_EEType(g_pFreeObjectEEType);
+            dummy->SetMethodTable(g_pFreeObjectEEType);
             alloc_ptr += 12;
         }
         Array* pObject = (Array*)alloc_ptr;
-        pObject->set_EEType(pArrayEEType);
-        pObject->InitArrayLength((uint32_t)numElements);
+        pObject->SetMethodTable(pArrayEEType);
+        pObject->SetNumComponents((uint32_t)numElements);
         return pObject;
     }
 
@@ -335,7 +345,7 @@ void * ReturnFromUniversalTransition_DebugStepTailCall;
 #if !defined (HOST_ARM64)
 FCIMPL2(void, RhpAssignRef, Object ** dst, Object * ref)
 {
-    // @TODO: USE_PORTABLE_HELPERS - Null check
+    // @TODO: FEATURE_PORTABLE_HELPERS - Null check
     *dst = ref;
     InlineWriteBarrier(dst, ref);
 }
@@ -343,7 +353,7 @@ FCIMPLEND
 
 FCIMPL2(void, RhpCheckedAssignRef, Object ** dst, Object * ref)
 {
-    // @TODO: USE_PORTABLE_HELPERS - Null check
+    // @TODO: FEATURE_PORTABLE_HELPERS - Null check
     *dst = ref;
     InlineCheckedWriteBarrier(dst, ref);
 }
@@ -361,7 +371,7 @@ FCIMPLEND
 
 FCIMPL2(Object *, RhpCheckedXchg, Object ** location, Object * value)
 {
-    // @TODO: USE_PORTABLE_HELPERS - Null check
+    // @TODO: FEATURE_PORTABLE_HELPERS - Null check
     Object * ret = (Object *)PalInterlockedExchangePointer((void * volatile *)location, value);
     InlineCheckedWriteBarrier(location, value);
     return ret;

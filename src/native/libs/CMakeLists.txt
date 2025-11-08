@@ -16,7 +16,17 @@ include_directories(${CLR_SRC_NATIVE_DIR})
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-if (STATIC_LIBS_ONLY)
+if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
+    set(STATIC_LIBS_ONLY 1)
+    set(GEN_SHARED_LIB 0)
+    if (NOT STATIC_LIB_DESTINATION)
+        if (BUILD_LIBS_NATIVE_BROWSER)
+            set(STATIC_LIB_DESTINATION ${CMAKE_BINARY_DIR}/lib)
+        else ()
+            set(STATIC_LIB_DESTINATION .)
+        endif ()
+    endif ()
+elseif (STATIC_LIBS_ONLY)
     # Suppress exporting of the PAL APIs
     add_definitions(-DPALEXPORT=EXTERN_C)
 
@@ -44,6 +54,7 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
     add_compile_options(-I${CMAKE_CURRENT_SOURCE_DIR}/Common)
     add_compile_options(-I${CMAKE_CURRENT_BINARY_DIR}/Common)
 
+<<<<<<< HEAD
     if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         # NativeAOT-LLVM enables -Weverything but these will cause failures so disable individually
         add_compile_options(-Wno-unused-parameter -Wno-declaration-after-statement)
@@ -51,9 +62,10 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         set(STATIC_LIB_DESTINATION .)
     endif ()
 
+=======
+>>>>>>> main
     if (CLR_CMAKE_TARGET_WASI)
         set(HOST_WASI 1)
-        add_compile_options(-Wno-unused-variable)
         add_compile_options(-Wno-unused-parameter)
         add_compile_options(-Wno-gnu-statement-expression)
         add_compile_options(-DHOST_WASI)
@@ -61,9 +73,6 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         add_compile_options(-D_WASI_EMULATED_SIGNAL)
         add_compile_options(-D_WASI_EMULATED_MMAN)
         add_compile_options(-D_WASI_EMULATED_PTHREAD)
-        # keep in sync with src\mono\wasi\build\WasiApp.targets
-        # keep in sync with src\mono\wasi\wasi.proj
-        add_link_options(-Wl,-z,stack-size=1048576,--initial-memory=5242880,--max-memory=52428800,-lwasi-emulated-process-clocks,-lwasi-emulated-signal,-lwasi-emulated-mman,-lwasi-emulated-pthread)
     endif ()
 
     if (CLR_CMAKE_TARGET_ANDROID)
@@ -92,6 +101,8 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
                 # -O2 optimization generates faster/smaller code on Android
                 # TODO: This duplicates the settings in eng/native/configureoptimization.cmake, we should unify it
                 add_compile_options (-O2)
+            elseif (CLR_CMAKE_TARGET_BROWSER)
+                add_compile_options (-Oz)
             else()
                 add_compile_options (-O3)
             endif ()
@@ -112,7 +123,17 @@ else ()
     add_subdirectory(System.Globalization.Native)
 endif ()
 
-add_subdirectory(System.IO.Compression.Native)
+if (NOT CORERUN_LIBS_ONLY)
+    add_subdirectory(System.IO.Compression.Native)
+endif ()
+
+# Only when Browser for CoreCLR
+if (CLR_CMAKE_TARGET_BROWSER AND BUILD_LIBS_NATIVE_BROWSER)
+    add_subdirectory(System.Native.Browser)
+    if (NOT CORERUN_LIBS_ONLY)
+        add_subdirectory(System.Runtime.InteropServices.JavaScript.Native)
+    endif ()
+endif ()
 
 if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
     include(configure.cmake)

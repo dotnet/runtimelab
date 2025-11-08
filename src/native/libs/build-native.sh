@@ -16,6 +16,7 @@ handle_arguments() {
             __ShiftArgs=1
             ;;
 
+<<<<<<< HEAD
         icudir|-icudir)
             __icuDir="$2"
             __ShiftArgs=1
@@ -26,6 +27,8 @@ handle_arguments() {
             __ShiftArgs=1
             ;;
 
+=======
+>>>>>>> main
         staticliblink|-staticliblink)
             __StaticLibLink=1
             ;;
@@ -48,8 +51,11 @@ __SkipConfigure=0
 __StaticLibLink=0
 __UnprocessedBuildArgs=
 __VerboseBuild=false
+<<<<<<< HEAD
 __icuDir=""
 __tzdDir=""
+=======
+>>>>>>> main
 
 source "$__RepoRootDir"/eng/native/build-commons.sh
 
@@ -135,6 +141,7 @@ elif [[ "$__TargetOS" == tvos ]]; then
     fi
 fi
 
+<<<<<<< HEAD
 if [[ -n "$__icuDir" ]]; then
     __CMakeArgs="-DCMAKE_ICU_DIR=\"$__icuDir\" $__CMakeArgs"
 fi
@@ -142,6 +149,8 @@ if [[ -n "$__tzdDir" ]]; then
     __CMakeArgs="-DCMAKE_TZD_DIR=\"$__tzdDir\" $__CMakeArgs"
 fi
 
+=======
+>>>>>>> main
 # Set the remaining variables based upon the determined build configuration
 __outConfig="${__outConfig:-"$__TargetOS-$__TargetArch-$__BuildType"}"
 __IntermediatesDir="$__RootBinDir/obj/native/$__outConfig"

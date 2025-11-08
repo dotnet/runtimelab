@@ -36,10 +36,6 @@
 #undef min
 #undef max
 
-#ifndef __has_cpp_attribute
-#define __has_cpp_attribute(x) (0)
-#endif
-
 #include <algorithm>
 
 #if HAVE_SYS_TIME_H
@@ -113,6 +109,11 @@ typedef cpuset_t cpu_set_t;
 #else
 #define SYSCONF_GET_NUMPROCS _SC_NPROCESSORS_ONLN
 #endif
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten/heap.h>
+#endif // __EMSCRIPTEN__
+
 
 // The cached total number of CPUs that can be used in the OS.
 static uint32_t g_totalCpuCount = 0;
@@ -828,7 +829,7 @@ static uint64_t GetMemorySizeMultiplier(char units)
     return 1;
 }
 
-#if !defined(__APPLE__) && !defined(__HAIKU__)
+#if !defined(__APPLE__) && !defined(__HAIKU__) && !defined(__EMSCRIPTEN__)
 // Try to read the MemAvailable entry from /proc/meminfo.
 // Return true if the /proc/meminfo existed, the entry was present and we were able to parse it.
 static bool ReadMemAvailable(uint64_t* memAvailable)
@@ -1100,6 +1101,8 @@ uint64_t GetAvailablePhysicalMemory()
     {
         available = info.free_memory;
     }
+#elif defined(__EMSCRIPTEN__)
+    available = emscripten_get_heap_max() - emscripten_get_heap_size();
 #else // Linux
     static volatile bool tryReadMemInfo = true;
 

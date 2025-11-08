@@ -876,7 +876,7 @@ function generate_wasm (
             return 0;
         }
 
-        const traceModule = new WebAssembly.Module(buffer);
+        const traceModule = new WebAssembly.Module(buffer as BufferSource);
         const wasmImports = builder.getWasmImports();
         const traceInstance = new WebAssembly.Instance(traceModule, wasmImports);
 
@@ -946,7 +946,7 @@ function generate_wasm (
                     builder.endSection();
             } catch {
                 // eslint-disable-next-line @typescript-eslint/no-extra-semi
-                ;
+
             }
 
             const buf = builder.getArrayView(false, true);

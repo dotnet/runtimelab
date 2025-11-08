@@ -18,16 +18,21 @@
     <MonoArtifactsPath Condition="'$(MonoArtifactsPath)' == ''">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'mono', '$(TargetOS).$(TargetArchitecture).$(MonoConfiguration)'))</MonoArtifactsPath>
     <LibrariesArtifactsPath Condition="'$(LibrariesArtifactsPath)' == ''">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts'))</LibrariesArtifactsPath>
     <LibrariesAllConfigurationsArtifactsPath Condition="'$(LibrariesAllConfigurationsArtifactsPath)' == ''">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts'))</LibrariesAllConfigurationsArtifactsPath>
+    <HostArtifactsPath Condition="'$(HostArtifactsPath)' == ''">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', '$(TargetOS)-$(TargetArchitecture).$(HostConfiguration)'))</HostArtifactsPath>
   </PropertyGroup>
 
   <!-- Set up artifact subpaths. -->
   <PropertyGroup>
     <CoreCLRSharedFrameworkDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'sharedFramework'))</CoreCLRSharedFrameworkDir>
+    <LibrariesSharedFrameworkDir>$([MSBuild]::NormalizeDirectory('$(LibrariesNativeArtifactsPath)','sharedFramework'))</LibrariesSharedFrameworkDir>
+    <HostSharedFrameworkDir>$([MSBuild]::NormalizeDirectory('$(HostArtifactsPath)','sharedFramework'))</HostSharedFrameworkDir>
+    <CoreCLRCoreHostDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'corehost'))</CoreCLRCoreHostDir>
     <CoreCLRILCompilerDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'ilc-published'))</CoreCLRILCompilerDir>
     <CoreCLRCrossILCompilerDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', '$(BuildArchitecture)', 'ilc'))</CoreCLRCrossILCompilerDir>
     <CoreCLRAotSdkDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'aotsdk'))</CoreCLRAotSdkDir>
     <CoreCLRBuildIntegrationDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'build'))</CoreCLRBuildIntegrationDir>
 
+<<<<<<< HEAD
     <!-- NativeAOT-LLVM: we set up cross-compilation for WASM differently from upstream. The upstream cross-compilation scheme
          does not scale for local development because it requires you to build the same host tools for each target configuration.
          E. g. you need to build the same Debug compiler 3 times if you want to compile code in Debug, Checked and Release. -->
@@ -37,6 +42,8 @@
     <CoreCLRCrossILCompilerDir Condition="'$(TargetsWasm)' == 'true' and '$(ContinuousIntegrationBuild)' == 'true'">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(IlcHostArch).$(IlcConfig)', 'ilc-published'))</CoreCLRCrossILCompilerDir>
 
     <Crossgen2Dir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'crossgen2-published'))</Crossgen2Dir>
+=======
+>>>>>>> main
     <Crossgen2InBuildDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', '$(BuildArchitecture)', 'crossgen2'))</Crossgen2InBuildDir>
 
     <ToolsILLinkDir>$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'ILLink.Tasks', '$(ToolsConfiguration)'))</ToolsILLinkDir>
@@ -96,6 +103,8 @@
         value is different after CoreCLRArtifactsPath is normalized.
       -->
       <CoreCLRSharedFrameworkDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)','sharedFramework'))</CoreCLRSharedFrameworkDir>
+      <LibrariesSharedFrameworkDir>$([MSBuild]::NormalizeDirectory('$(LibrariesNativeArtifactsPath)','sharedFramework'))</LibrariesSharedFrameworkDir>
+      <HostSharedFrameworkDir>$([MSBuild]::NormalizeDirectory('$(HostArtifactsPath)','sharedFramework'))</HostSharedFrameworkDir>
       <CoreCLRSharedFrameworkPdbDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRSharedFrameworkDir)','PDB'))</CoreCLRSharedFrameworkPdbDir>
       <CoreCLRCrossTargetComponentDir
         Condition="'$(CoreCLRCrossTargetComponentDirName)' != ''">$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)','$(CoreCLRCrossTargetComponentDirName)','sharedFramework'))</CoreCLRCrossTargetComponentDir>
@@ -225,6 +234,7 @@
         IsNative="true" />
 
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
+<<<<<<< HEAD
                              Include="
         $(LibrariesNativeArtifactsPath)pal_random.lib.js;"
         IsNative="true" />
@@ -234,19 +244,40 @@
         IsNative="true" />
 
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'Mono'"
+=======
+>>>>>>> main
                              Include="
+        $(CoreCLRSharedFrameworkDir)libcoreclr_static.a;
+        $(CoreCLRSharedFrameworkDir)libcoreclrminipal.a;
+        $(CoreCLRSharedFrameworkDir)libcoreclrpal.a;
+        $(CoreCLRSharedFrameworkDir)libgcinfo_unix_wasm.a;
+        $(CoreCLRSharedFrameworkDir)libnativeresourcestring.a;
+        $(LibrariesSharedFrameworkDir)package.json;
+        $(LibrariesSharedFrameworkDir)dotnet.d.ts;
+        $(LibrariesSharedFrameworkDir)*.map;
+        $(LibrariesSharedFrameworkDir)*.js;
+        $(LibrariesSharedFrameworkDir)*.a;
+        $(LibrariesSharedFrameworkDir)*.dat;
+        $(HostSharedFrameworkDir)libBrowserHost.a;
+        $(HostSharedFrameworkDir)dotnet.native.js;
+        $(HostSharedFrameworkDir)dotnet.native.wasm;
+        "
+        IsNative="true" />
+
+      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'Mono'"
+                             Include="
+        $(LibrariesNativeArtifactsPath)dotnet.d.ts;
         $(LibrariesNativeArtifactsPath)dotnet.js;
         $(LibrariesNativeArtifactsPath)dotnet.js.map;
-        $(LibrariesNativeArtifactsPath)dotnet.native.js;
         $(LibrariesNativeArtifactsPath)dotnet.runtime.js;
         $(LibrariesNativeArtifactsPath)dotnet.runtime.js.map;
+        $(LibrariesNativeArtifactsPath)*.dat;
         $(LibrariesNativeArtifactsPath)dotnet.diagnostics.js;
-        $(LibrariesNativeArtifactsPath)dotnet.diagnostics.js.map;
-        $(LibrariesNativeArtifactsPath)dotnet.d.ts;
-        $(LibrariesNativeArtifactsPath)package.json;
+        $(LibrariesNativeArtifactsPath)dotnet.native.js;
         $(LibrariesNativeArtifactsPath)dotnet.native.wasm;
-        $(LibrariesNativeArtifactsPath)dotnet.native.js.symbols;
-        $(LibrariesNativeArtifactsPath)*.dat;"
+        $(LibrariesNativeArtifactsPath)package.json;
+        $(LibrariesNativeArtifactsPath)dotnet.diagnostics.js.map;
+        $(LibrariesNativeArtifactsPath)dotnet.native.js.symbols;"
         IsNative="true" />
 
       <!-- for threaded wasm -->

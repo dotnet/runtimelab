@@ -1352,6 +1352,7 @@ namespace CseTest
     public class Test_Main
     {
         [Fact]
+        [SkipOnCoreClr("Timeout on Arm64", RuntimeTestModes.AnyGCStress)]
         public static int TestEntryPoint()
         {
             int ret = 100;
