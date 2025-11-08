@@ -53,7 +53,12 @@ namespace System.Buffers
             }
             else
             {
-                return Unsafe.As<Dictionary<char, int>>(children).TryGetValue(c, out index);
+                Dictionary<char, int> dict;
+                unsafe
+                {
+                    dict = Unsafe.As<Dictionary<char, int>>(children);
+                }
+                return dict.TryGetValue(c, out index);
             }
 
             index = 0;

@@ -2382,7 +2382,7 @@ namespace System.Threading.Tasks
         {
             Debug.Assert(obj is Task);
             // Only used privately to pass directly to EC.Run
-            Unsafe.As<Task>(obj).InnerInvoke();
+            unsafe { Unsafe.As<Task>(obj).InnerInvoke(); }
         };
 
         /// <summary>

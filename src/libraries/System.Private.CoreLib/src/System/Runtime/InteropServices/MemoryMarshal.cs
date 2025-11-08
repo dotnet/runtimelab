@@ -287,7 +287,12 @@ namespace System.Runtime.InteropServices
                     // The array may be prepinned, so remove the high bit from the start index in the line below.
                     // The ArraySegment<T> ctor will perform bounds checking on index & length.
 
-                    segment = new ArraySegment<T>(Unsafe.As<T[]>(obj), index & ReadOnlyMemory<T>.RemoveFlagsBitMask, length);
+                    T[] array;
+                    unsafe
+                    {
+                        array = Unsafe.As<T[]>(obj);
+                    }
+                    segment = new ArraySegment<T>(array, index & ReadOnlyMemory<T>.RemoveFlagsBitMask, length);
                     return true;
                 }
                 else
@@ -296,7 +301,12 @@ namespace System.Runtime.InteropServices
                     // is MemoryManager<T>. The ArraySegment<T> ctor will perform bounds checking on index & length.
 
                     Debug.Assert(obj is MemoryManager<T>);
-                    if (Unsafe.As<MemoryManager<T>>(obj).TryGetArray(out ArraySegment<T> tempArraySegment))
+                    MemoryManager<T> manager;
+                    unsafe
+                    {
+                        manager = Unsafe.As<MemoryManager<T>>(obj);
+                    }
+                    if (manager.TryGetArray(out ArraySegment<T> tempArraySegment))
                     {
                         segment = new ArraySegment<T>(tempArraySegment.Array!, tempArraySegment.Offset + index, length);
                         return true;
@@ -408,7 +418,11 @@ namespace System.Runtime.InteropServices
             // enumerable. Otherwise, return an iterator dedicated to enumerating the object.
             if (RuntimeHelpers.ObjectHasComponentSize(obj)) // Same check as in TryGetArray to confirm that obj is a T[] or a U[] which is blittable to a T[].
             {
-                T[] array = Unsafe.As<T[]>(obj);
+                T[] array;
+                unsafe
+                {
+                    array = Unsafe.As<T[]>(obj);
+                }
                 index &= ReadOnlyMemory<T>.RemoveFlagsBitMask; // the array may be prepinned, so remove the high bit from the start index in the line below.
                 return index == 0 && length == array.Length ?
                     array :

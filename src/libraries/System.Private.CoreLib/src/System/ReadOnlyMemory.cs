@@ -331,25 +331,36 @@ namespace System
                     // 'tmpObject is T[]' below also handles things like int[] <-> uint[] being convertible
                     Debug.Assert(tmpObject is T[]);
 
+                    T[] array;
+                    unsafe
+                    {
+                        array = Unsafe.As<T[]>(tmpObject);
+                    }
+
                     // Array is already pre-pinned
                     if (_index < 0)
                     {
                         // Unsafe.AsPointer is safe since it's pinned
-                        void* pointer = Unsafe.Add<T>(Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(Unsafe.As<T[]>(tmpObject))), _index & RemoveFlagsBitMask);
+                        void* pointer = Unsafe.Add<T>(Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(array)), _index & RemoveFlagsBitMask);
                         return new MemoryHandle(pointer);
                     }
                     else
                     {
                         // Unsafe.AsPointer is safe since the handle pins it
                         GCHandle handle = GCHandle.Alloc(tmpObject, GCHandleType.Pinned);
-                        void* pointer = Unsafe.Add<T>(Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(Unsafe.As<T[]>(tmpObject))), _index);
+                        void* pointer = Unsafe.Add<T>(Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(array)), _index);
                         return new MemoryHandle(pointer, handle);
                     }
                 }
                 else
                 {
                     Debug.Assert(tmpObject is MemoryManager<T>);
-                    return Unsafe.As<MemoryManager<T>>(tmpObject).Pin(_index);
+                    MemoryManager<T> manager;
+                    unsafe
+                    {
+                        manager = Unsafe.As<MemoryManager<T>>(tmpObject);
+                    }
+                    return manager.Pin(_index);
                 }
             }
 

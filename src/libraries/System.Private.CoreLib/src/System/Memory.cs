@@ -304,8 +304,13 @@ namespace System
                         // 'tmpObject is T[]' below also handles things like int[] <-> uint[] being convertible
                         Debug.Assert(tmpObject is T[]);
 
-                        refToReturn = ref MemoryMarshal.GetArrayDataReference(Unsafe.As<T[]>(tmpObject));
-                        lengthOfUnderlyingSpan = Unsafe.As<T[]>(tmpObject).Length;
+                        T[] array;
+                        unsafe
+                        {
+                            array = Unsafe.As<T[]>(tmpObject);
+                        }
+                        refToReturn = ref MemoryMarshal.GetArrayDataReference(array);
+                        lengthOfUnderlyingSpan = array.Length;
                     }
                     else
                     {
@@ -316,7 +321,12 @@ namespace System
                         // constructor or other public API which would allow such a conversion.
 
                         Debug.Assert(tmpObject is MemoryManager<T>);
-                        Span<T> memoryManagerSpan = Unsafe.As<MemoryManager<T>>(tmpObject).GetSpan();
+                        MemoryManager<T> manager;
+                        unsafe
+                        {
+                            manager = Unsafe.As<MemoryManager<T>>(tmpObject);
+                        }
+                        Span<T> memoryManagerSpan = manager.GetSpan();
                         refToReturn = ref MemoryMarshal.GetReference(memoryManagerSpan);
                         lengthOfUnderlyingSpan = memoryManagerSpan.Length;
                     }

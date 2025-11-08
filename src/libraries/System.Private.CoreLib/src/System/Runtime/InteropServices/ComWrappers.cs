@@ -132,7 +132,12 @@ namespace System.Runtime.InteropServices
             public static unsafe T GetInstance<T>(ComInterfaceDispatch* dispatchPtr) where T : class
             {
                 ManagedObjectWrapper* comInstance = ToManagedObjectWrapper(dispatchPtr);
-                return Unsafe.As<T>(comInstance->Holder!.WrappedObject);
+                T result;
+                unsafe
+                {
+                    result = Unsafe.As<T>(comInstance->Holder!.WrappedObject);
+                }
+                return result;
             }
 
             internal static unsafe ManagedObjectWrapper* ToManagedObjectWrapper(ComInterfaceDispatch* dispatchPtr)
@@ -226,7 +231,14 @@ namespace System.Runtime.InteropServices
                     if (handle == IntPtr.Zero)
                         return null;
                     else
-                        return Unsafe.As<ManagedObjectWrapperHolder>(GCHandle.FromIntPtr(handle).Target);
+                    {
+                        ManagedObjectWrapperHolder? holder;
+                        unsafe
+                        {
+                            holder = Unsafe.As<ManagedObjectWrapperHolder>(GCHandle.FromIntPtr(handle).Target);
+                        }
+                        return holder;
+                    }
                 }
             }
 

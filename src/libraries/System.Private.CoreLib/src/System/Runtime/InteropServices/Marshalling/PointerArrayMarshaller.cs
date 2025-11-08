@@ -50,7 +50,14 @@ namespace System.Runtime.InteropServices.Marshalling
         /// <param name="managed">The managed array to get a source for.</param>
         /// <returns>The <see cref="ReadOnlySpan{IntPtr}"/> containing the managed elements to marshal.</returns>
         public static ReadOnlySpan<IntPtr> GetManagedValuesSource(T*[]? managed)
-            => Unsafe.As<IntPtr[]>(managed);
+        {
+            IntPtr[]? result;
+            unsafe
+            {
+                result = Unsafe.As<IntPtr[]>(managed);
+            }
+            return result;
+        }
 
         /// <summary>
         /// Gets a destination for the unmanaged elements in the array.
@@ -86,7 +93,14 @@ namespace System.Runtime.InteropServices.Marshalling
         /// <param name="managed">The managed array to get a destination for.</param>
         /// <returns>The <see cref="Span{T}"/> of managed elements.</returns>
         public static Span<IntPtr> GetManagedValuesDestination(T*[]? managed)
-            => Unsafe.As<IntPtr[]>(managed);
+        {
+            IntPtr[]? result;
+            unsafe
+            {
+                result = Unsafe.As<IntPtr[]>(managed);
+            }
+            return result;
+        }
 
         /// <summary>
         /// Gets a source for the unmanaged elements in the array.
@@ -166,7 +180,15 @@ namespace System.Runtime.InteropServices.Marshalling
             /// Returns a span that points to the memory where the managed values of the array are stored.
             /// </summary>
             /// <returns>A span over managed values of the array.</returns>
-            public ReadOnlySpan<IntPtr> GetManagedValuesSource() => Unsafe.As<IntPtr[]>(_managedArray);
+            public ReadOnlySpan<IntPtr> GetManagedValuesSource()
+            {
+                IntPtr[]? result;
+                unsafe
+                {
+                    result = Unsafe.As<IntPtr[]>(_managedArray);
+                }
+                return result;
+            }
 
             /// <summary>
             /// Returns a span that points to the memory where the unmanaged values of the array should be stored.

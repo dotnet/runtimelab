@@ -70,7 +70,11 @@ namespace System.IO
                 for (int i = 0; i < buffersCount; i++)
                 {
                     Memory<byte> buffer = buffers[i];
-                    MemoryHandle memoryHandle = buffer.Pin();
+                    MemoryHandle memoryHandle;
+                    unsafe
+                    {
+                        memoryHandle = buffer.Pin();
+                    }
                     vectors[i] = new Interop.Sys.IOVector { Base = (byte*)memoryHandle.Pointer, Count = (UIntPtr)buffer.Length };
                     handles[i] = memoryHandle;
                 }

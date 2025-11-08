@@ -173,10 +173,20 @@ namespace System.Threading.Tasks
         {
             object? obj = _obj;
             Debug.Assert(obj == null || obj is Task || obj is IValueTaskSource);
-            return
-                obj == null ? Task.CompletedTask :
-                obj as Task ??
-                GetTaskForValueTaskSource(Unsafe.As<IValueTaskSource>(obj));
+            if (obj == null)
+            {
+                return Task.CompletedTask;
+            }
+            if (obj is Task t)
+            {
+                return t;
+            }
+            IValueTaskSource source;
+            unsafe
+            {
+                source = Unsafe.As<IValueTaskSource>(obj);
+            }
+            return GetTaskForValueTaskSource(source);
         }
 
         /// <summary>Gets a <see cref="ValueTask"/> that may be used at any point in the future.</summary>
@@ -310,7 +320,12 @@ namespace System.Threading.Tasks
                     return t.IsCompleted;
                 }
 
-                return Unsafe.As<IValueTaskSource>(obj).GetStatus(_token) != ValueTaskSourceStatus.Pending;
+                IValueTaskSource source;
+                unsafe
+                {
+                    source = Unsafe.As<IValueTaskSource>(obj);
+                }
+                return source.GetStatus(_token) != ValueTaskSourceStatus.Pending;
             }
         }
 
@@ -333,7 +348,12 @@ namespace System.Threading.Tasks
                     return t.IsCompletedSuccessfully;
                 }
 
-                return Unsafe.As<IValueTaskSource>(obj).GetStatus(_token) == ValueTaskSourceStatus.Succeeded;
+                IValueTaskSource source;
+                unsafe
+                {
+                    source = Unsafe.As<IValueTaskSource>(obj);
+                }
+                return source.GetStatus(_token) == ValueTaskSourceStatus.Succeeded;
             }
         }
 
@@ -355,7 +375,12 @@ namespace System.Threading.Tasks
                     return t.IsFaulted;
                 }
 
-                return Unsafe.As<IValueTaskSource>(obj).GetStatus(_token) == ValueTaskSourceStatus.Faulted;
+                IValueTaskSource source;
+                unsafe
+                {
+                    source = Unsafe.As<IValueTaskSource>(obj);
+                }
+                return source.GetStatus(_token) == ValueTaskSourceStatus.Faulted;
             }
         }
 
@@ -382,7 +407,12 @@ namespace System.Threading.Tasks
                     return t.IsCanceled;
                 }
 
-                return Unsafe.As<IValueTaskSource>(obj).GetStatus(_token) == ValueTaskSourceStatus.Canceled;
+                IValueTaskSource source;
+                unsafe
+                {
+                    source = Unsafe.As<IValueTaskSource>(obj);
+                }
+                return source.GetStatus(_token) == ValueTaskSourceStatus.Canceled;
             }
         }
 
@@ -401,7 +431,12 @@ namespace System.Threading.Tasks
                 }
                 else
                 {
-                    Unsafe.As<IValueTaskSource>(obj).GetResult(_token);
+                    IValueTaskSource source;
+                    unsafe
+                    {
+                        source = Unsafe.As<IValueTaskSource>(obj);
+                    }
+                    source.GetResult(_token);
                 }
             }
         }
@@ -585,7 +620,12 @@ namespace System.Threading.Tasks
                 return t;
             }
 
-            return GetTaskForValueTaskSource(Unsafe.As<IValueTaskSource<TResult>>(obj));
+            IValueTaskSource<TResult> source;
+            unsafe
+            {
+                source = Unsafe.As<IValueTaskSource<TResult>>(obj);
+            }
+            return GetTaskForValueTaskSource(source);
         }
 
         /// <summary>Gets a <see cref="ValueTask{TResult}"/> that may be used at any point in the future.</summary>
@@ -717,7 +757,12 @@ namespace System.Threading.Tasks
                     return t.IsCompleted;
                 }
 
-                return Unsafe.As<IValueTaskSource<TResult>>(obj).GetStatus(_token) != ValueTaskSourceStatus.Pending;
+                IValueTaskSource<TResult> source;
+                unsafe
+                {
+                    source = Unsafe.As<IValueTaskSource<TResult>>(obj);
+                }
+                return source.GetStatus(_token) != ValueTaskSourceStatus.Pending;
             }
         }
 
@@ -740,7 +785,12 @@ namespace System.Threading.Tasks
                     return t.IsCompletedSuccessfully;
                 }
 
-                return Unsafe.As<IValueTaskSource<TResult>>(obj).GetStatus(_token) == ValueTaskSourceStatus.Succeeded;
+                IValueTaskSource<TResult> source;
+                unsafe
+                {
+                    source = Unsafe.As<IValueTaskSource<TResult>>(obj);
+                }
+                return source.GetStatus(_token) == ValueTaskSourceStatus.Succeeded;
             }
         }
 

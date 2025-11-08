@@ -29,21 +29,36 @@ namespace System.Threading
         public static void Increment(object threadLocalCountObject)
         {
             Debug.Assert(threadLocalCountObject is ThreadLocalNode);
-            Unsafe.As<ThreadLocalNode>(threadLocalCountObject).Increment();
+            ThreadLocalNode node;
+            unsafe
+            {
+                node = Unsafe.As<ThreadLocalNode>(threadLocalCountObject);
+            }
+            node.Increment();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Decrement(object threadLocalCountObject)
         {
             Debug.Assert(threadLocalCountObject is ThreadLocalNode);
-            Unsafe.As<ThreadLocalNode>(threadLocalCountObject).Decrement();
+            ThreadLocalNode node;
+            unsafe
+            {
+                node = Unsafe.As<ThreadLocalNode>(threadLocalCountObject);
+            }
+            node.Decrement();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Add(object threadLocalCountObject, uint count)
         {
             Debug.Assert(threadLocalCountObject is ThreadLocalNode);
-            Unsafe.As<ThreadLocalNode>(threadLocalCountObject).Add(count);
+            ThreadLocalNode node;
+            unsafe
+            {
+                node = Unsafe.As<ThreadLocalNode>(threadLocalCountObject);
+            }
+            node.Add(count);
         }
 
         public object CreateThreadLocalCountObject()

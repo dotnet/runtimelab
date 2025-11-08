@@ -631,7 +631,10 @@ namespace System.Runtime.CompilerServices
                 Debug.Assert(key != null); // Key already validated as non-null
 
                 int entryIndex = FindEntry(key, out object? secondary);
-                value = Unsafe.As<TValue>(secondary);
+                unsafe
+                {
+                    value = Unsafe.As<TValue>(secondary);
+                }
                 return entryIndex != -1;
             }
 
@@ -682,8 +685,11 @@ namespace System.Runtime.CompilerServices
 
                     if (oKey != null)
                     {
-                        key = Unsafe.As<TKey>(oKey);
-                        value = Unsafe.As<TValue>(oValue!);
+                        unsafe
+                        {
+                            key = Unsafe.As<TKey>(oKey);
+                            value = Unsafe.As<TValue>(oValue!);
+                        }
                         return true;
                     }
                 }

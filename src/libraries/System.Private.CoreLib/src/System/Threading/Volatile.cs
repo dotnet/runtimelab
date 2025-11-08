@@ -218,8 +218,15 @@ namespace System.Threading
         [Intrinsic]
         [NonVersionable]
         [return: NotNullIfNotNull(nameof(location))]
-        public static T Read<T>([NotNullIfNotNull(nameof(location))] ref readonly T location) where T : class? =>
-            Unsafe.As<T>(Unsafe.As<T, VolatileObject>(ref Unsafe.AsRef(in location)).Value)!;
+        public static T Read<T>([NotNullIfNotNull(nameof(location))] ref readonly T location) where T : class?
+        {
+            T result;
+            unsafe
+            {
+                result = Unsafe.As<T>(Unsafe.As<T, VolatileObject>(ref Unsafe.AsRef(in location)).Value)!;
+            }
+            return result;
+        }
 
         [Intrinsic]
         [NonVersionable]

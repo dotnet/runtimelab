@@ -60,7 +60,12 @@ namespace System.Runtime.CompilerServices
                 }
                 else if (obj != null)
                 {
-                    Unsafe.As<IValueTaskSource>(obj).OnCompleted(ValueTaskAwaiter.s_invokeActionDelegate, continuation, _value._token,
+                    IValueTaskSource source;
+                    unsafe
+                    {
+                        source = Unsafe.As<IValueTaskSource>(obj);
+                    }
+                    source.OnCompleted(ValueTaskAwaiter.s_invokeActionDelegate, continuation, _value._token,
                         ValueTaskSourceOnCompletedFlags.FlowExecutionContext |
                             (_value._continueOnCapturedContext ? ValueTaskSourceOnCompletedFlags.UseSchedulingContext : ValueTaskSourceOnCompletedFlags.None));
                 }
@@ -82,7 +87,12 @@ namespace System.Runtime.CompilerServices
                 }
                 else if (obj != null)
                 {
-                    Unsafe.As<IValueTaskSource>(obj).OnCompleted(ValueTaskAwaiter.s_invokeActionDelegate, continuation, _value._token,
+                    IValueTaskSource source;
+                    unsafe
+                    {
+                        source = Unsafe.As<IValueTaskSource>(obj);
+                    }
+                    source.OnCompleted(ValueTaskAwaiter.s_invokeActionDelegate, continuation, _value._token,
                         _value._continueOnCapturedContext ? ValueTaskSourceOnCompletedFlags.UseSchedulingContext : ValueTaskSourceOnCompletedFlags.None);
                 }
                 else
@@ -102,7 +112,12 @@ namespace System.Runtime.CompilerServices
                 }
                 else if (obj != null)
                 {
-                    Unsafe.As<IValueTaskSource>(obj).OnCompleted(ThreadPool.s_invokeAsyncStateMachineBox, box, _value._token,
+                    IValueTaskSource source;
+                    unsafe
+                    {
+                        source = Unsafe.As<IValueTaskSource>(obj);
+                    }
+                    source.OnCompleted(ThreadPool.s_invokeAsyncStateMachineBox, box, _value._token,
                         _value._continueOnCapturedContext ? ValueTaskSourceOnCompletedFlags.UseSchedulingContext : ValueTaskSourceOnCompletedFlags.None);
                 }
                 else
@@ -165,7 +180,12 @@ namespace System.Runtime.CompilerServices
                 }
                 else if (obj != null)
                 {
-                    Unsafe.As<IValueTaskSource<TResult>>(obj).OnCompleted(ValueTaskAwaiter.s_invokeActionDelegate, continuation, _value._token,
+                    IValueTaskSource<TResult> source;
+                    unsafe
+                    {
+                        source = Unsafe.As<IValueTaskSource<TResult>>(obj);
+                    }
+                    source.OnCompleted(ValueTaskAwaiter.s_invokeActionDelegate, continuation, _value._token,
                         ValueTaskSourceOnCompletedFlags.FlowExecutionContext |
                             (_value._continueOnCapturedContext ? ValueTaskSourceOnCompletedFlags.UseSchedulingContext : ValueTaskSourceOnCompletedFlags.None));
                 }
@@ -187,7 +207,12 @@ namespace System.Runtime.CompilerServices
                 }
                 else if (obj != null)
                 {
-                    Unsafe.As<IValueTaskSource<TResult>>(obj).OnCompleted(ValueTaskAwaiter.s_invokeActionDelegate, continuation, _value._token,
+                    IValueTaskSource<TResult> source;
+                    unsafe
+                    {
+                        source = Unsafe.As<IValueTaskSource<TResult>>(obj);
+                    }
+                    source.OnCompleted(ValueTaskAwaiter.s_invokeActionDelegate, continuation, _value._token,
                         _value._continueOnCapturedContext ? ValueTaskSourceOnCompletedFlags.UseSchedulingContext : ValueTaskSourceOnCompletedFlags.None);
                 }
                 else
@@ -207,7 +232,12 @@ namespace System.Runtime.CompilerServices
                 }
                 else if (obj != null)
                 {
-                    Unsafe.As<IValueTaskSource<TResult>>(obj).OnCompleted(ThreadPool.s_invokeAsyncStateMachineBox, box, _value._token,
+                    IValueTaskSource<TResult> source;
+                    unsafe
+                    {
+                        source = Unsafe.As<IValueTaskSource<TResult>>(obj);
+                    }
+                    source.OnCompleted(ThreadPool.s_invokeAsyncStateMachineBox, box, _value._token,
                         _value._continueOnCapturedContext ? ValueTaskSourceOnCompletedFlags.UseSchedulingContext : ValueTaskSourceOnCompletedFlags.None);
                 }
                 else

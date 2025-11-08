@@ -78,7 +78,15 @@ namespace System
         /// Gets a value that indicates whether the <see cref="Delegate"/> has a single invocation target.
         /// </summary>
         /// <value>true if the <see cref="Delegate"/> has a single invocation target.</value>
-        public bool HasSingleTarget => Unsafe.As<MulticastDelegate>(this).HasSingleTarget;
+        public bool HasSingleTarget
+        {
+            get
+            {
+                MulticastDelegate md;
+                unsafe { md = Unsafe.As<MulticastDelegate>(this); }
+                return md.HasSingleTarget;
+            }
+        }
 #endif
 
         /// <summary>
@@ -94,7 +102,11 @@ namespace System
         /// The method returns an empty enumerator for null delegate.
         /// </remarks>
         public static System.Delegate.InvocationListEnumerator<TDelegate> EnumerateInvocationList<TDelegate>(TDelegate? d) where TDelegate : System.Delegate
-            => new InvocationListEnumerator<TDelegate>(Unsafe.As<MulticastDelegate>(d));
+        {
+            MulticastDelegate? md;
+            unsafe { md = Unsafe.As<MulticastDelegate>(d); }
+            return new InvocationListEnumerator<TDelegate>(md);
+        }
 
         /// <summary>
         /// Provides an enumerator for the invocation list of a delegate.

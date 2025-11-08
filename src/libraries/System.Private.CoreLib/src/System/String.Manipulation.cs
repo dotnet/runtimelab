@@ -947,7 +947,11 @@ namespace System
                     // and string.Concat(IEnumerable<char>) can be used as an efficient
                     // enumerable-based equivalent of new string(char[]).
 
-                    IEnumerator<char> en = Unsafe.As<IEnumerator<char>>(e);
+                    IEnumerator<char> en;
+                    unsafe
+                    {
+                        en = Unsafe.As<IEnumerator<char>>(e);
+                    }
 
                     char c = en.Current; // save the first value
                     if (!en.MoveNext())

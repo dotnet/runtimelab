@@ -55,7 +55,8 @@ namespace System
             // the types are the same, obj should also be a
             // MulticastDelegate
             Debug.Assert(obj is MulticastDelegate, "Shouldn't have failed here since we already checked the types are the same!");
-            MulticastDelegate d = Unsafe.As<MulticastDelegate>(obj);
+            MulticastDelegate d;
+            unsafe { d = Unsafe.As<MulticastDelegate>(obj); }
 
             if (_invocationCount != 0)
             {
@@ -168,7 +169,11 @@ namespace System
         private unsafe MulticastDelegate NewMulticastDelegate(object[] invocationList, int invocationCount, bool thisIsMultiCastAlready)
         {
             // First, allocate a new multicast delegate just like this one, i.e. same type as the this object
-            MulticastDelegate result = Unsafe.As<MulticastDelegate>(RuntimeTypeHandle.InternalAllocNoChecks(RuntimeHelpers.GetMethodTable(this)));
+            MulticastDelegate result;
+            unsafe
+            {
+                result = Unsafe.As<MulticastDelegate>(RuntimeTypeHandle.InternalAllocNoChecks(RuntimeHelpers.GetMethodTable(this)));
+            }
 
             // Performance optimization - if this already points to a true multicast delegate,
             // copy _methodPtr and _methodPtrAux fields rather than calling into the EE to get them

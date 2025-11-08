@@ -2321,7 +2321,9 @@ namespace System.Collections.Concurrent
              where TAlternateKey : notnull, allows ref struct
         {
             Debug.Assert(IsCompatibleKey<TAlternateKey>(tables));
-            return Unsafe.As<IAlternateEqualityComparer<TAlternateKey, TKey>>(tables._comparer!);
+            IAlternateEqualityComparer<TAlternateKey, TKey> result;
+            unsafe { result = Unsafe.As<IAlternateEqualityComparer<TAlternateKey, TKey>>(tables._comparer!); }
+            return result;
         }
 
         /// <summary>

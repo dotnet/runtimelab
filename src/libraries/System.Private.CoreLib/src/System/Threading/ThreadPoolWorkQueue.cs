@@ -1252,9 +1252,14 @@ namespace System.Threading
             else
             {
                 Debug.Assert(workItem is IThreadPoolWorkItem);
+                IThreadPoolWorkItem tpWorkItem;
+                unsafe
+                {
+                    tpWorkItem = Unsafe.As<IThreadPoolWorkItem>(workItem);
+                }
                 try
                 {
-                    Unsafe.As<IThreadPoolWorkItem>(workItem).Execute();
+                    tpWorkItem.Execute();
                 }
                 catch (Exception ex) when (ExceptionHandling.IsHandledByGlobalHandler(ex))
                 {
