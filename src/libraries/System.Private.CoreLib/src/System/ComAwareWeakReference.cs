@@ -112,7 +112,11 @@ namespace System
                 if (_comInfo != null)
                 {
                     // Check if the target is still null
-                    unsafe { target = Unsafe.As<T>(GCHandle.InternalGet(_weakHandle)); }
+                    // FIXME: review unsafe to confirm correct annotation
+                    unsafe
+                    {
+                        target = Unsafe.As<T>(GCHandle.InternalGet(_weakHandle));
+                    }
                     if (target == null)
                     {
                         // Resolve and reset. Perform runtime cast to catch bugs
@@ -147,7 +151,11 @@ namespace System
             }
 
             ComAwareWeakReference result;
-            unsafe { result = Unsafe.As<ComAwareWeakReference>(GCHandle.InternalGet(taggedHandle & ~HandleTagBits)!); }
+            // FIXME: review unsafe to confirm correct annotation
+            unsafe
+            {
+                result = Unsafe.As<ComAwareWeakReference>(GCHandle.InternalGet(taggedHandle & ~HandleTagBits)!);
+            }
             return result;
         }
 
@@ -156,7 +164,11 @@ namespace System
         {
             Debug.Assert((taggedHandle & ComAwareBit) != 0);
             ComAwareWeakReference result;
-            unsafe { result = Unsafe.As<ComAwareWeakReference>(GCHandle.InternalGet(taggedHandle & ~HandleTagBits)!); }
+            // FIXME: review unsafe to confirm correct annotation
+            unsafe
+            {
+                result = Unsafe.As<ComAwareWeakReference>(GCHandle.InternalGet(taggedHandle & ~HandleTagBits)!);
+            }
             return result;
         }
 
@@ -170,7 +182,11 @@ namespace System
             }
             else
             {
-                unsafe { comAwareRef = Unsafe.As<ComAwareWeakReference>(GCHandle.InternalGet(taggedHandle & ~HandleTagBits)!); }
+                // FIXME: review unsafe to confirm correct annotation
+                unsafe
+                {
+                    comAwareRef = Unsafe.As<ComAwareWeakReference>(GCHandle.InternalGet(taggedHandle & ~HandleTagBits)!);
+                }
             }
 
             comAwareRef.SetTarget(target, comInfo);

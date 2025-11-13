@@ -445,7 +445,11 @@ namespace System.Collections.Generic
             {
                 Debug.Assert(IsCompatibleItem(set));
                 IAlternateEqualityComparer<TAlternate, T> result;
-                unsafe { result = Unsafe.As<IAlternateEqualityComparer<TAlternate, T>>(set._comparer)!; }
+                // FIXME: review unsafe to confirm correct annotation
+                unsafe
+                {
+                    result = Unsafe.As<IAlternateEqualityComparer<TAlternate, T>>(set._comparer)!;
+                }
                 return result;
             }
 

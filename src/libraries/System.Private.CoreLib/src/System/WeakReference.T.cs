@@ -143,7 +143,11 @@ namespace System
                 {
                     ComAwareWeakReference cwr = ComAwareWeakReference.GetFromTaggedReference(th);
 
-                    unsafe { target = Unsafe.As<T>(cwr.Target) ?? cwr.RehydrateTarget<T>(); }
+                    // FIXME: review unsafe to confirm correct annotation
+                    unsafe
+                    {
+                        target = Unsafe.As<T>(cwr.Target) ?? cwr.RehydrateTarget<T>();
+                    }
 
                     // must keep the instance alive as long as we use the handle.
                     GC.KeepAlive(this);
@@ -154,9 +158,17 @@ namespace System
 
                 // unsafe cast is ok as the handle cannot be destroyed and recycled while we keep the instance alive
 #if FEATURE_JAVAMARSHAL
-                unsafe { target = Unsafe.As<T>(GCHandle.InternalGetBridgeWait(th)); }
+                // FIXME: review unsafe to confirm correct annotation
+                unsafe
+                {
+                    target = Unsafe.As<T>(GCHandle.InternalGetBridgeWait(th));
+                }
 #else
-                unsafe { target = Unsafe.As<T>(GCHandle.InternalGet(th)); }
+                // FIXME: review unsafe to confirm correct annotation
+                unsafe
+                {
+                    target = Unsafe.As<T>(GCHandle.InternalGet(th));
+                }
 #endif
 
                 // must keep the instance alive as long as we use the handle.

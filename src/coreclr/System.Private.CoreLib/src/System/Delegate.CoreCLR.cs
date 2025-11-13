@@ -436,7 +436,11 @@ namespace System
         {
             Debug.Assert(type.IsAssignableTo(typeof(MulticastDelegate)));
             MulticastDelegate result;
-            unsafe { result = Unsafe.As<MulticastDelegate>(RuntimeTypeHandle.InternalAlloc(type)); }
+            // FIXME: review unsafe to confirm correct annotation
+            unsafe
+            {
+                result = Unsafe.As<MulticastDelegate>(RuntimeTypeHandle.InternalAlloc(type));
+            }
             return result;
         }
 

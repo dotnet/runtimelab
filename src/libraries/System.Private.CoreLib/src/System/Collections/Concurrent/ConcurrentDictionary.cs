@@ -2322,7 +2322,11 @@ namespace System.Collections.Concurrent
         {
             Debug.Assert(IsCompatibleKey<TAlternateKey>(tables));
             IAlternateEqualityComparer<TAlternateKey, TKey> result;
-            unsafe { result = Unsafe.As<IAlternateEqualityComparer<TAlternateKey, TKey>>(tables._comparer!); }
+            // FIXME: review unsafe to confirm correct annotation
+            unsafe
+            {
+                result = Unsafe.As<IAlternateEqualityComparer<TAlternateKey, TKey>>(tables._comparer!);
+            }
             return result;
         }
 
