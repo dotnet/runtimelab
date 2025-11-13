@@ -60,6 +60,7 @@ namespace System.Runtime.CompilerServices
                 }
                 else if (obj != null)
                 {
+                    // obj is either Task, null, or IValueTaskSource and the other cases are checked
                     IValueTaskSource source;
                     unsafe
                     {
@@ -87,6 +88,7 @@ namespace System.Runtime.CompilerServices
                 }
                 else if (obj != null)
                 {
+                    // obj is either Task, null, or IValueTaskSource and the other cases are checked
                     IValueTaskSource source;
                     unsafe
                     {
@@ -112,6 +114,7 @@ namespace System.Runtime.CompilerServices
                 }
                 else if (obj != null)
                 {
+                    // obj is either Task, null, or IValueTaskSource and the other cases are checked
                     IValueTaskSource source;
                     unsafe
                     {

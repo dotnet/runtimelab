@@ -402,7 +402,6 @@ namespace System
             // ! Warning: "this" is an array, not an SZArrayHelper. See comments above
             // ! or you may introduce a security hole!
             T[] @this;
-            // FIXME: review unsafe to confirm correct annotation
             unsafe
             {
                 @this = Unsafe.As<T[]>(this);
@@ -417,7 +416,6 @@ namespace System
             // ! or you may introduce a security hole!
 
             T[] @this;
-            // FIXME: review unsafe to confirm correct annotation
             unsafe
             {
                 @this = Unsafe.As<T[]>(this);
@@ -430,7 +428,6 @@ namespace System
             // ! Warning: "this" is an array, not an SZArrayHelper. See comments above
             // ! or you may introduce a security hole!
             T[] @this;
-            // FIXME: review unsafe to confirm correct annotation
             unsafe
             {
                 @this = Unsafe.As<T[]>(this);
@@ -443,7 +440,6 @@ namespace System
             // ! Warning: "this" is an array, not an SZArrayHelper. See comments above
             // ! or you may introduce a security hole!
             T[] @this;
-            // FIXME: review unsafe to confirm correct annotation
             unsafe
             {
                 @this = Unsafe.As<T[]>(this);
@@ -461,7 +457,6 @@ namespace System
             // ! Warning: "this" is an array, not an SZArrayHelper. See comments above
             // ! or you may introduce a security hole!
             T[] @this;
-            // FIXME: review unsafe to confirm correct annotation
             unsafe
             {
                 @this = Unsafe.As<T[]>(this);
@@ -485,7 +480,6 @@ namespace System
             // ! Warning: "this" is an array, not an SZArrayHelper. See comments above
             // ! or you may introduce a security hole!
             T[] @this;
-            // FIXME: review unsafe to confirm correct annotation
             unsafe
             {
                 @this = Unsafe.As<T[]>(this);
@@ -511,7 +505,6 @@ namespace System
             // ! Warning: "this" is an array, not an SZArrayHelper. See comments above
             // ! or you may introduce a security hole!
             T[] @this;
-            // FIXME: review unsafe to confirm correct annotation
             unsafe
             {
                 @this = Unsafe.As<T[]>(this);

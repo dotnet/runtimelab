@@ -285,13 +285,13 @@ namespace System.Runtime.InteropServices
                     // or a U[] which is blittable to a T[] (e.g., int[] and uint[]).
 
                     // The array may be prepinned, so remove the high bit from the start index in the line below.
-                    // The ArraySegment<T> ctor will perform bounds checking on index & length.
 
                     T[] array;
                     unsafe
                     {
                         array = Unsafe.As<T[]>(obj);
                     }
+                    // The ArraySegment<T> ctor will perform bounds checking on index & length.
                     segment = new ArraySegment<T>(array, index & ReadOnlyMemory<T>.RemoveFlagsBitMask, length);
                     return true;
                 }

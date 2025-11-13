@@ -435,13 +435,11 @@ namespace System
         private static MulticastDelegate InternalAlloc(RuntimeType type)
         {
             Debug.Assert(type.IsAssignableTo(typeof(MulticastDelegate)));
-            MulticastDelegate result;
             // FIXME: review unsafe to confirm correct annotation
             unsafe
             {
-                result = Unsafe.As<MulticastDelegate>(RuntimeTypeHandle.InternalAlloc(type));
+                return Unsafe.As<MulticastDelegate>(RuntimeTypeHandle.InternalAlloc(type));
             }
-            return result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
