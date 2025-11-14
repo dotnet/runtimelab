@@ -682,10 +682,6 @@ UInt32_BOOL PalFreeThunksFromTemplate(void *pBaseAddress, size_t templateSize)
     PORTABILITY_ASSERT("UNIXTODO: Implement this function");
 #endif
 }
-<<<<<<< HEAD
-=======
-#endif // !FEATURE_PORTABLE_HELPERS && !FEATURE_RX_THUNKS
->>>>>>> main
 
 UInt32_BOOL PalMarkThunksAsValidCallTargets(
     void *virtualAddress,
@@ -700,7 +696,7 @@ UInt32_BOOL PalMarkThunksAsValidCallTargets(
         PROT_READ | PROT_WRITE);
     return ret == 0 ? UInt32_TRUE : UInt32_FALSE;
 }
-#endif // !USE_PORTABLE_HELPERS && !FEATURE_RX_THUNKS
+#endif // !FEATURE_PORTABLE_HELPERS && !FEATURE_RX_THUNKS
 
 void PalSleep(uint32_t milliseconds)
 {

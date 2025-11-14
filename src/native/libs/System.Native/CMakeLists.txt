@@ -148,7 +148,6 @@ set_target_properties(System.Native-Static PROPERTIES OUTPUT_NAME System.Native 
 
 install (TARGETS System.Native-Static DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
 
-<<<<<<< HEAD
 if (CLR_CMAKE_TARGET_BROWSER)
     install(FILES pal_random.lib.js DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
 endif()
@@ -158,32 +157,11 @@ if (CLR_CMAKE_TARGET_WASI)
     install(FILES ../../../libraries/System.Net.Http/src/System/Net/Http/WasiHttpHandler/WasiHttpWorld_component_type.wit DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
 endif()
 
-if (CLR_CMAKE_TARGET_ARCH_WASM AND DEFINED CMAKE_TZD_DIR)
-    # Companion library used by NativeAOT that polyfills "mono_bundled_resources_get_data_resource_values".
-    cmake_path(CONVERT "${CMAKE_TZD_DIR}/" TO_CMAKE_PATH_LIST TZ_FILES_DIR NORMALIZE)
-    file(GLOB_RECURSE TZ_FILES RELATIVE "${TZ_FILES_DIR}" "${TZ_FILES_DIR}*")
-    string(REPLACE ";" "\",\"" TZ_FILES "${TZ_FILES}")
-    configure_file(pal_datetime_time_zone_data-config.h.in inc/pal_datetime_time_zone_data-config.h)
 
-    add_library(System.Native.TimeZoneData STATIC pal_datetime_time_zone_data.c)
-    target_compile_options(System.Native.TimeZoneData PRIVATE -Wno-overlength-strings)
-    target_compile_definitions(System.Native.TimeZoneData PRIVATE TZ_DATA_ENABLED)
-    target_include_directories(System.Native.TimeZoneData PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/inc")
-    install(TARGETS System.Native.TimeZoneData DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
-
-    # Also add a stub to support InvariantTimezone.
-    add_library(System.Native.TimeZoneData.Disabled STATIC pal_datetime_time_zone_data.c)
-    install(TARGETS System.Native.TimeZoneData.Disabled DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
-endif()
-
-if(CLR_CMAKE_HOST_ANDROID OR CLR_CMAKE_HOST_IOS OR CLR_CMAKE_HOST_TVOS OR CLR_CMAKE_HOST_MACCATALYST)
-    install (TARGETS System.Native-Static DESTINATION sharedFramework COMPONENT runtime)
-=======
 if(CLR_CMAKE_HOST_ANDROID OR CLR_CMAKE_HOST_IOS OR CLR_CMAKE_HOST_TVOS OR CLR_CMAKE_HOST_MACCATALYST OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
     if (NOT CORERUN_LIBS_ONLY)
         install (TARGETS System.Native-Static DESTINATION sharedFramework COMPONENT runtime)
     endif()
->>>>>>> main
 endif()
 
 if (CLR_CMAKE_TARGET_ARCH_WASM AND DEFINED CMAKE_TZD_DIR)

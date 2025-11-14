@@ -44,7 +44,7 @@ namespace System.Threading
             }
 
             // TODO-LLVM-Upstream: remove this double thunking by modifying "TimerHandler" directly.
-            ((delegate* unmanaged[Cdecl]<void>)&TimerHandler)();
+            ((delegate* unmanaged<void>)&TimerHandler)();
         }
 
         private static unsafe void MainThreadScheduleTimer(void* _, int shortestDueTimeMs)
@@ -58,13 +58,11 @@ namespace System.Threading
 #if MONO
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         private static extern unsafe void MainThreadScheduleTimer(void* callback, int shortestDueTimeMs);
-<<<<<<< HEAD
-=======
 #else
         [LibraryImport(RuntimeHelpers.QCall)]
         private static unsafe partial void SystemJS_ScheduleTimer(int shortestDueTimeMs);
->>>>>>> main
 #endif
+#endif // NATIVEAOT
 
         [UnmanagedCallersOnly(EntryPoint = "SystemJS_ExecuteTimerCallback")]
         // this callback will arrive on the main thread, called from mono_wasm_execute_timer
@@ -118,7 +116,7 @@ namespace System.Threading
                 s_shortestDueTimeMs = shortestDueTimeMs;
                 int shortestWait = Math.Max((int)(shortestDueTimeMs - currentTimeMs), 0);
                 // this would cancel the previous schedule and create shorter one, it is expensive callback
-#if MONO
+#if MONO || NATIVEAOT
                 MainThreadScheduleTimer((void*)(delegate* unmanaged<void>)&TimerHandler, shortestWait);
 #else
                 SystemJS_ScheduleTimer(shortestWait);

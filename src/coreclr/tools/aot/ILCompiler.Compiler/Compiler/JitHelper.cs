@@ -45,7 +45,7 @@ namespace ILCompiler
                     methodDesc = context.GetHelperEntryPoint("ThrowHelpers"u8, "ThrowDivideByZeroException"u8);
                     break;
                 case ReadyToRunHelper.ThrowMisalign:
-                    methodDesc = context.GetHelperEntryPoint("ThrowHelpers", "ThrowDataMisalignedException");
+                    methodDesc = context.GetHelperEntryPoint("ThrowHelpers"u8, "ThrowDataMisalignedException"u8);
                     break;
                 case ReadyToRunHelper.ThrowArgumentOutOfRange:
                     methodDesc = context.GetHelperEntryPoint("ThrowHelpers"u8, "ThrowArgumentOutOfRangeException"u8);

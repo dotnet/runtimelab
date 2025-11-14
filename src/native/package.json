@@ -47,5 +47,8 @@
   },
   "dependencies": {
     "wasm-feature-detect": "1.8.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-arm64-gnu": "^4.53.1"
   }
 }

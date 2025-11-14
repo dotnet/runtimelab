@@ -545,6 +545,11 @@ namespace ILCompiler
             return new CompilationResults(_dependencyGraph, _nodeFactory);
         }
 
+        public virtual void RenameTempOutput(string tempOutputFilePath, string outputFilePath)
+        {
+            File.Move(tempOutputFilePath, outputFilePath, overwrite: true);
+        }
+
         private sealed class ILCache : LockFreeReaderHashtable<MethodDesc, ILCache.MethodILData>
         {
             public ILProvider ILProvider { get; }
@@ -608,6 +613,8 @@ namespace ILCompiler
     public interface ICompilation
     {
         CompilationResults Compile(string outputFileName, ObjectDumper dumper);
+
+        void RenameTempOutput(string tempOutputFilePath, string outputFilePath);
     }
 
     public class CompilationResults

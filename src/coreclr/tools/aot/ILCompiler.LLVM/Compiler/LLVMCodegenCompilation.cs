@@ -55,6 +55,9 @@ namespace ILCompiler
 
         protected override void CompileInternal(string outputFile, ObjectDumper dumper)
         {
+            // The outputFile ends ".tmp", but we don't want that.
+            outputFile = Path.ChangeExtension(outputFile, null);
+
             Stopwatch stopwatch = Stopwatch.StartNew();
             StartCompilation(outputFile);
 
@@ -259,5 +262,10 @@ namespace ILCompiler
         public override CorInfoLlvmEHModel GetLlvmExceptionHandlingModel() => Options.ExceptionHandlingModel;
 
         internal LLVMCompilationResults GetCompilationResults() => _compilationResults;
+
+        public override void RenameTempOutput(string tempOutputFilePath, string outputFilePath)
+        {
+            //TODO-LLVM: Create tmp files to allow for easier tidying up on failure.
+        }
     }
 }

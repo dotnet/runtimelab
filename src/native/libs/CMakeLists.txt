@@ -54,7 +54,6 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
     add_compile_options(-I${CMAKE_CURRENT_SOURCE_DIR}/Common)
     add_compile_options(-I${CMAKE_CURRENT_BINARY_DIR}/Common)
 
-<<<<<<< HEAD
     if (CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         # NativeAOT-LLVM enables -Weverything but these will cause failures so disable individually
         add_compile_options(-Wno-unused-parameter -Wno-declaration-after-statement)
@@ -62,8 +61,6 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         set(STATIC_LIB_DESTINATION .)
     endif ()
 
-=======
->>>>>>> main
     if (CLR_CMAKE_TARGET_WASI)
         set(HOST_WASI 1)
         add_compile_options(-Wno-unused-parameter)
@@ -127,8 +124,8 @@ if (NOT CORERUN_LIBS_ONLY)
     add_subdirectory(System.IO.Compression.Native)
 endif ()
 
-# Only when Browser for CoreCLR
-if (CLR_CMAKE_TARGET_BROWSER AND BUILD_LIBS_NATIVE_BROWSER)
+# Only when Browser for CoreCLR, TODO: NAOT-LLVM but not for NativeAOT, but how to detect that?
+if (CLR_CMAKE_TARGET_BROWSER AND BUILD_LIBS_NATIVE_BROWSER AND false)
     add_subdirectory(System.Native.Browser)
     if (NOT CORERUN_LIBS_ONLY)
         add_subdirectory(System.Runtime.InteropServices.JavaScript.Native)

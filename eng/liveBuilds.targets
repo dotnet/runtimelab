@@ -32,7 +32,6 @@
     <CoreCLRAotSdkDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'aotsdk'))</CoreCLRAotSdkDir>
     <CoreCLRBuildIntegrationDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'build'))</CoreCLRBuildIntegrationDir>
 
-<<<<<<< HEAD
     <!-- NativeAOT-LLVM: we set up cross-compilation for WASM differently from upstream. The upstream cross-compilation scheme
          does not scale for local development because it requires you to build the same host tools for each target configuration.
          E. g. you need to build the same Debug compiler 3 times if you want to compile code in Debug, Checked and Release. -->
@@ -41,9 +40,6 @@
     <CoreCLRCrossILCompilerDir Condition="'$(CoreCLRCrossILCompilerDir)' != '' and '$(TargetsWasm)' == 'true'">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(IlcHostArch).$(IlcConfig)', 'ilc'))</CoreCLRCrossILCompilerDir>
     <CoreCLRCrossILCompilerDir Condition="'$(TargetsWasm)' == 'true' and '$(ContinuousIntegrationBuild)' == 'true'">$([MSBuild]::NormalizeDirectory('$(RepoRoot)', 'artifacts', 'bin', 'coreclr', '$(HostOS).$(IlcHostArch).$(IlcConfig)', 'ilc-published'))</CoreCLRCrossILCompilerDir>
 
-    <Crossgen2Dir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', 'crossgen2-published'))</Crossgen2Dir>
-=======
->>>>>>> main
     <Crossgen2InBuildDir>$([MSBuild]::NormalizeDirectory('$(CoreCLRArtifactsPath)', '$(BuildArchitecture)', 'crossgen2'))</Crossgen2InBuildDir>
 
     <ToolsILLinkDir>$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'ILLink.Tasks', '$(ToolsConfiguration)'))</ToolsILLinkDir>
@@ -234,7 +230,6 @@
         IsNative="true" />
 
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'CoreCLR'"
-<<<<<<< HEAD
                              Include="
         $(LibrariesNativeArtifactsPath)pal_random.lib.js;"
         IsNative="true" />
@@ -244,8 +239,6 @@
         IsNative="true" />
 
       <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'browser' and '$(RuntimeFlavor)' == 'Mono'"
-=======
->>>>>>> main
                              Include="
         $(CoreCLRSharedFrameworkDir)libcoreclr_static.a;
         $(CoreCLRSharedFrameworkDir)libcoreclrminipal.a;

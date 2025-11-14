@@ -2,11 +2,8 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 //
 
-<<<<<<< HEAD
-=======
 #include "pal_datetime.h"
 #include <stdlib.h>
->>>>>>> main
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
@@ -69,35 +66,16 @@ __asm(
 );
 
 static const char *g_nameIndex[] = { TZ_FILES };
-<<<<<<< HEAD
-extern uint8_t *g_dataIndex[];
-#endif // TZ_DATA_ENABLED
-
-bool mono_bundled_resources_get_data_resource_values(const char *id, const uint8_t **data_out, uint32_t *size_out);
-bool mono_bundled_resources_get_data_resource_values(const char *id, const uint8_t **data_out, uint32_t *size_out)
-=======
 extern const char *g_dataIndex[];
 #endif // TZ_DATA_ENABLED
 
 const char* SystemNative_GetTimeZoneData(const char* name, int* length)
->>>>>>> main
 {
 #ifdef TZ_DATA_ENABLED
     // Small size and speed optimization: skip comparing the prefix.
     static const char TZ_PREFIX[] = "/usr/share/zoneinfo/";
     static const size_t TZ_PREFIX_LENGTH = STRING_LENGTH(TZ_PREFIX);
 
-<<<<<<< HEAD
-    // TODO-LLVM: use a binary search here. The index is ~500 entries long.
-    assert(strncmp(TZ_PREFIX, id, TZ_PREFIX_LENGTH) == 0);
-    for (size_t i = 0; i < ARRAY_SIZE(g_nameIndex); i++)
-    {
-        if (strcmp(id + TZ_PREFIX_LENGTH, g_nameIndex[i]) == 0)
-        {
-            *data_out = g_dataIndex[i];
-            *size_out = (uint32_t)(g_dataIndex[i + 1] - g_dataIndex[i]);
-            return true;
-=======
     // TODO: use a binary search here. The index is ~500 entries long.
     assert(strncmp(TZ_PREFIX, name, TZ_PREFIX_LENGTH) == 0);
     for (size_t i = 0; i < ARRAY_SIZE(g_nameIndex); i++)
@@ -106,17 +84,10 @@ const char* SystemNative_GetTimeZoneData(const char* name, int* length)
         {
             *length = (int)(g_dataIndex[i + 1] - g_dataIndex[i]);
             return g_dataIndex[i];
->>>>>>> main
         }
     }
 #endif // TZ_DATA_ENABLED
 
-<<<<<<< HEAD
-    *data_out = NULL;
-    *size_out = 0;
-    return false;
-=======
     *length = 0;
     return NULL;
->>>>>>> main
 }

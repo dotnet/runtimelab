@@ -3382,7 +3382,6 @@ namespace Internal.JitInterface
 
             pEEInfoOut.osPageSize = 0x1000;
 
-<<<<<<< HEAD
 #if !READYTORUN
             if (_compilation.NodeFactory.Target.IsWasm)
             {
@@ -3392,12 +3391,8 @@ namespace Internal.JitInterface
 #endif
             {
                 pEEInfoOut.maxUncheckedOffsetForNullObject = (_compilation.NodeFactory.Target.IsWindows) ?
-                    new UIntPtr(32 * 1024 - 1) : new UIntPtr((uint)pEEInfoOut.osPageSize / 2 - 1);
+                    (32 * 1024 - 1) : (pEEInfoOut.osPageSize / 2 - 1);
             }
-=======
-            pEEInfoOut.maxUncheckedOffsetForNullObject = (_compilation.NodeFactory.Target.IsWindows) ?
-                (32 * 1024 - 1) : (pEEInfoOut.osPageSize / 2 - 1);
->>>>>>> main
 
             pEEInfoOut.targetAbi = TargetABI;
             pEEInfoOut.osType = TargetToOs(_compilation.NodeFactory.Target);

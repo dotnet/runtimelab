@@ -74,7 +74,7 @@ namespace ILCompiler.DependencyAnalysis
         //
         IMAGE_REL_SYMBOL_SIZE                = 0x1000, // The size of data in the image represented by the target symbol node
         IMAGE_REL_FILE_ABSOLUTE              = 0x1001, // 32 bit offset from beginning of image
-<<<<<<< HEAD
+        IMAGE_REL_FILE_CHECKSUM_CALLBACK     = 0x1002, // After the image has been emitted, call the IChecksumNode.EmitChecksum method on the target symbol to emit the checksum data.
 
         //
         // WASM relocations.
@@ -85,9 +85,6 @@ namespace ILCompiler.DependencyAnalysis
         R_WASM_TABLE_INDEX_SLEB,    // 32 bit signed LEB for function pointer references in code (i32.const).
         R_WASM_MEMORY_ADDR_SLEB64,  // 64 bit signed LEB for data references in code (i64.const).
         R_WASM_TABLE_INDEX_SLEB64,  // 64 bit signed LEB for function pointer references in code (i64.const).
-=======
-        IMAGE_REL_FILE_CHECKSUM_CALLBACK     = 0x1002, // After the image has been emitted, call the IChecksumNode.EmitChecksum method on the target symbol to emit the checksum data.
->>>>>>> main
     }
 
     public struct Relocation

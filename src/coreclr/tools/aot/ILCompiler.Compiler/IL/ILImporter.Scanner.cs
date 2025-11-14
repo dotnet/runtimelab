@@ -406,13 +406,8 @@ namespace Internal.IL
                 }
             }
 
-<<<<<<< HEAD
-            if (method.OwningType.IsDelegate && method.Name == "Invoke" &&
-                    opcode != ILOpcode.ldftn && opcode != ILOpcode.ldvirtftn)
-=======
             if (method.OwningType.IsDelegate && method.Name.SequenceEqual("Invoke"u8) &&
                 opcode != ILOpcode.ldftn && opcode != ILOpcode.ldvirtftn)
->>>>>>> main
             {
                 // This call is expanded as an intrinsic; it's not an actual function call.
                 // Before codegen realizes this is an intrinsic, it might still ask questions about
@@ -1599,7 +1594,8 @@ namespace Internal.IL
         private static bool IsInterlockedMethod(MethodDesc method)
         {
             Debug.Assert(method.IsIntrinsic);
-            return method.OwningType is MetadataType { Name: "Interlocked", Namespace: "System.Threading" };
+            return method.OwningType is MetadataType metadataType &&
+                metadataType.Name.SequenceEqual("Interlocked"u8) && metadataType.Namespace.SequenceEqual("System.Threading"u8);
         }
 
         private DefType GetWellKnownType(WellKnownType wellKnownType)

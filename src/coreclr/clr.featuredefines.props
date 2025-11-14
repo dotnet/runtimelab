@@ -15,7 +15,7 @@
     <PropertyGroup Condition="'$(TargetsWasm)' == 'true'">
         <FeaturePortableEntryPoints>true</FeaturePortableEntryPoints>
         <FeaturePortableHelpers>true</FeaturePortableHelpers>
-        <FeatureInterpreter>true</FeatureInterpreter>
+        <FeatureInterpreter>false</FeatureInterpreter>
         <FeaturePerfTracing>false</FeaturePerfTracing>
     </PropertyGroup>
 
@@ -40,7 +40,7 @@
         <FeatureInterpreter>true</FeatureInterpreter>
     </PropertyGroup>
 
-    <PropertyGroup Condition="('$(Platform)' == 'x64' OR '$(Platform)' == 'arm64') AND ('$(Configuration)' == 'debug' OR '$(Configuration)' == 'checked') AND '$(TargetsAndroid)' != 'true'">
+    <PropertyGroup Condition="('$(Platform)' == 'x64' OR '$(Platform)' == 'arm64') AND ('$(Configuration)' == 'debug' OR '$(Configuration)' == 'checked') AND '$(TargetsAndroid)' != 'true' AND '$(TargetsWasm)' != 'true'">
         <FeatureInterpreter>true</FeatureInterpreter>
     </PropertyGroup>
 

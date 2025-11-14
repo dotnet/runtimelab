@@ -31,13 +31,8 @@
 
 #include "GCMemoryHelpers.inl"
 
-<<<<<<< HEAD
-#if defined(USE_PORTABLE_HELPERS) && !defined(HOST_WASM)
-EXTERN_C void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, uintptr_t numElements, void * pTransitionFrame);
-=======
-#if defined(FEATURE_PORTABLE_HELPERS)
+#if defined(FEATURE_PORTABLE_HELPERS) && !defined(HOST_WASM)
 EXTERN_C void* RhpGcAlloc(MethodTable *pEEType, uint32_t uFlags, intptr_t numElements, void * pTransitionFrame);
->>>>>>> main
 
 static Object* AllocateObject(MethodTable* pEEType, uint32_t uFlags, intptr_t numElements)
 {
@@ -140,11 +135,6 @@ FCIMPL2(String *, RhNewString, MethodTable * pArrayEEType, intptr_t numElements)
 }
 FCIMPLEND
 
-<<<<<<< HEAD
-=======
-#endif
-#if defined(FEATURE_PORTABLE_HELPERS)
->>>>>>> main
 #if defined(FEATURE_64BIT_ALIGNMENT)
 GPTR_DECL(MethodTable, g_pFreeObjectEEType);
 

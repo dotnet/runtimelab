@@ -82,7 +82,7 @@ namespace System.Threading
             if (_callbackQueued)
                 return;
             _callbackQueued = true;
-#if MONO
+#if MONO || NATIVEAOT
             MainThreadScheduleBackgroundJob((void*)(delegate* unmanaged<void>)&BackgroundJobHandler);
 #else
             SystemJS_ScheduleBackgroundJob();
@@ -119,7 +119,6 @@ namespace System.Threading
             throw new PlatformNotSupportedException();
         }
 
-<<<<<<< HEAD
 #if NATIVEAOT
         internal static unsafe void MainThreadScheduleBackgroundJob(void* callback)
         {
@@ -128,18 +127,14 @@ namespace System.Threading
             emscripten_async_call(callback, null, 0);
         }
 #else
-        [MethodImplAttribute(MethodImplOptions.InternalCall)]
-        internal static extern unsafe void MainThreadScheduleBackgroundJob(void* callback);
-=======
-
 #if MONO
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal static extern unsafe void MainThreadScheduleBackgroundJob(void* callback);
 #else
         [LibraryImport(RuntimeHelpers.QCall)]
         private static unsafe partial void SystemJS_ScheduleBackgroundJob();
->>>>>>> main
 #endif
+#endif // NATIVEAOT
 
         [UnmanagedCallersOnly(EntryPoint = "SystemJS_ExecuteBackgroundJobCallback")]
         // this callback will arrive on the bound thread, called from mono_background_exec

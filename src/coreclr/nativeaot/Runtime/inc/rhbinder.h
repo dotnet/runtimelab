@@ -481,14 +481,10 @@ enum PInvokeTransitionFrameFlags
 #pragma warning(push)
 #pragma warning(disable:4200) // nonstandard extension used: zero-sized array in struct/union
 class Thread;
-<<<<<<< HEAD
-#if defined(USE_PORTABLE_HELPERS)
-=======
 #if defined(FEATURE_PORTABLE_HELPERS)
 //the members of this structure are currently unused except m_pThread and exist only to allow compilation
 //of StackFrameIterator their values are not currently being filled in and will require significant rework
 //in order to satisfy the runtime requirements of StackFrameIterator
->>>>>>> main
 struct PInvokeTransitionFrame
 {
 #ifndef HOST_WASM

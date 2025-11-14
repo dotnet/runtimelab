@@ -1473,12 +1473,8 @@ FCIMPL1(void, RhpPInvokeReturn, PInvokeTransitionFrame* pFrame)
 }
 FCIMPLEND
 
-<<<<<<< HEAD
-#endif //USE_PORTABLE_HELPERS
-#endif // !HOST_WASM
-=======
 #endif //FEATURE_PORTABLE_HELPERS
->>>>>>> main
+#endif // !HOST_WASM
 
 #endif // !DACCESS_COMPILE
 

@@ -105,16 +105,7 @@ namespace System.Threading
         }
         #endregion
 
-<<<<<<< HEAD
-        #region Public Wait/Pulse methods
-
-#if !FEATURE_WASM_MANAGED_THREADS
-        [UnsupportedOSPlatform("browser")]
-#endif
-        public static bool Wait(object obj, int millisecondsTimeout)
-=======
         private static void SynchronizedMethodEnter(object obj, ref bool lockTaken)
->>>>>>> main
         {
             // Inlined Monitor.Enter with a few tweaks
             int currentThreadID = ManagedThreadId.CurrentManagedThreadIdUnchecked;
