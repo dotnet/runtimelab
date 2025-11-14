@@ -444,13 +444,11 @@ namespace System.Collections.Generic
             internal static IAlternateEqualityComparer<TAlternate, T> GetAlternateComparer(HashSet<T> set)
             {
                 Debug.Assert(IsCompatibleItem(set));
-                IAlternateEqualityComparer<TAlternate, T> result;
                 // FIXME: review unsafe to confirm correct annotation
                 unsafe
                 {
-                    result = Unsafe.As<IAlternateEqualityComparer<TAlternate, T>>(set._comparer)!;
+                    return Unsafe.As<IAlternateEqualityComparer<TAlternate, T>>(set._comparer)!;
                 }
-                return result;
             }
 
             /// <summary>Adds the specified element to a set.</summary>

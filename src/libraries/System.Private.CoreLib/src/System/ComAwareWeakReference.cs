@@ -150,26 +150,22 @@ namespace System
                 GC.SuppressFinalize(newRef);
             }
 
-            ComAwareWeakReference result;
             // FIXME: review unsafe to confirm correct annotation
             unsafe
             {
-                result = Unsafe.As<ComAwareWeakReference>(GCHandle.InternalGet(taggedHandle & ~HandleTagBits)!);
+                return Unsafe.As<ComAwareWeakReference>(GCHandle.InternalGet(taggedHandle & ~HandleTagBits)!);
             }
-            return result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static ComAwareWeakReference GetFromTaggedReference(nint taggedHandle)
         {
             Debug.Assert((taggedHandle & ComAwareBit) != 0);
-            ComAwareWeakReference result;
             // FIXME: review unsafe to confirm correct annotation
             unsafe
             {
-                result = Unsafe.As<ComAwareWeakReference>(GCHandle.InternalGet(taggedHandle & ~HandleTagBits)!);
+                return Unsafe.As<ComAwareWeakReference>(GCHandle.InternalGet(taggedHandle & ~HandleTagBits)!);
             }
-            return result;
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]

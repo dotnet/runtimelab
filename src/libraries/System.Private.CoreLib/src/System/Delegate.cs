@@ -82,13 +82,11 @@ namespace System
         {
             get
             {
-                MulticastDelegate md;
                 // FIXME: review unsafe to confirm correct annotation
                 unsafe
                 {
-                    md = Unsafe.As<MulticastDelegate>(this);
+                    return Unsafe.As<MulticastDelegate>(this).HasSingleTarget;
                 }
-                return md.HasSingleTarget;
             }
         }
 #endif
@@ -107,13 +105,11 @@ namespace System
         /// </remarks>
         public static System.Delegate.InvocationListEnumerator<TDelegate> EnumerateInvocationList<TDelegate>(TDelegate? d) where TDelegate : System.Delegate
         {
-            MulticastDelegate? md;
             // FIXME: review unsafe to confirm correct annotation
             unsafe
             {
-                md = Unsafe.As<MulticastDelegate>(d);
+                return new InvocationListEnumerator<TDelegate>(Unsafe.As<MulticastDelegate>(d));
             }
-            return new InvocationListEnumerator<TDelegate>(md);
         }
 
         /// <summary>

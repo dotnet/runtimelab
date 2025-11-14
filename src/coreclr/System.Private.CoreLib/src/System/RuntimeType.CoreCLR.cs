@@ -2448,12 +2448,10 @@ namespace System
                 {
                     object? cache = GCHandle.InternalGet(m_cache);
                     Debug.Assert(cache == null || cache is RuntimeTypeCache);
-                    RuntimeTypeCache? result;
                     unsafe
                     {
-                        result = Unsafe.As<RuntimeTypeCache>(cache);
+                        return Unsafe.As<RuntimeTypeCache>(cache);
                     }
-                    return result;
                 }
                 return null;
             }
@@ -2470,12 +2468,10 @@ namespace System
                     if (cache != null)
                     {
                         Debug.Assert(cache is RuntimeTypeCache);
-                        RuntimeTypeCache result;
                         unsafe
                         {
-                            result = Unsafe.As<RuntimeTypeCache>(cache);
+                            return Unsafe.As<RuntimeTypeCache>(cache);
                         }
-                        return result;
                     }
                 }
                 return InitializeCache();
