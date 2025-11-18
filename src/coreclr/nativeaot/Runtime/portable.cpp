@@ -327,9 +327,9 @@ void * ReturnFromUniversalTransition;
 EXTERN_C void * ReturnFromUniversalTransition_DebugStepTailCall;
 void * ReturnFromUniversalTransition_DebugStepTailCall;
 
-#endif // defined(USE_PORTABLE_HELPERS) && !defined(HOST_WASM)
+#endif // defined(FEATURE_PORTABLE_HELPERS) && !defined(HOST_WASM)
 
-#if defined(USE_PORTABLE_HELPERS)
+#if defined(FEATURE_PORTABLE_HELPERS)
 
 #ifndef HOST_WASM
 #if !defined (HOST_ARM64)
