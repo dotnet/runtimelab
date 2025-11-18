@@ -43,7 +43,8 @@ endif()
 if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_library_clr(clrinterpreter SHARED $<TARGET_OBJECTS:clrinterpreter_objects> $<TARGET_OBJECTS:dn-containers>)
 else()
-  add_library_clr(clrinterpreter STATIC $<TARGET_OBJECTS:clrinterpreter_objects> $<TARGET_OBJECTS:dn-containers>)
+# TODO-LLVM
+  add_library_clr(clrinterpreter STATIC $<TARGET_OBJECTS:clrinterpreter_objects>)
 endif()
 
 target_include_directories(clrinterpreter INTERFACE "interpreter/inc")
