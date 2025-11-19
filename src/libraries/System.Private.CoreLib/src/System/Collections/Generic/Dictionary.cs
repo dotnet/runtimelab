@@ -32,7 +32,8 @@ namespace System.Collections.Generic
         private int _freeList;
         private int _freeCount;
         private int _version;
-        private IEqualityComparer<TKey>? _comparer;
+        // Must be IAlternateEqualityComparer<TAlternateKey, TKey>
+        private unsafe IEqualityComparer<TKey>? _comparer;
         private KeyCollection? _keys;
         private ValueCollection? _values;
         private const int StartOfFreeList = -3;
@@ -734,13 +735,11 @@ namespace System.Collections.Generic
 
             /// <summary>Gets the dictionary's alternate comparer. The dictionary must have already been verified as compatible.</summary>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [RequiresUnsafe]
             internal static IAlternateEqualityComparer<TAlternateKey, TKey> GetAlternateComparer(Dictionary<TKey, TValue> dictionary)
             {
                 Debug.Assert(IsCompatibleKey(dictionary));
-                unsafe
-                {
-                    return Unsafe.As<IAlternateEqualityComparer<TAlternateKey, TKey>>(dictionary._comparer)!;
-                }
+                return Unsafe.As<IAlternateEqualityComparer<TAlternateKey, TKey>>(dictionary._comparer)!;
             }
 
             /// <summary>Gets the value associated with the specified alternate key.</summary>

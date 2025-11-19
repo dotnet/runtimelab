@@ -2258,7 +2258,8 @@ namespace System.Collections.Concurrent
         private sealed class Tables
         {
             /// <summary>The comparer to use for lookups in the tables.</summary>
-            internal readonly IEqualityComparer<TKey>? _comparer;
+            // Must be IAlternateEqualityComparer<TAlternateKey, TKey>
+            internal readonly unsafe IEqualityComparer<TKey>? _comparer;
             /// <summary>A singly-linked list for each bucket.</summary>
             internal readonly VolatileNode[] _buckets;
             /// <summary>Pre-computed multiplier for use on 64-bit performing faster modulo operations.</summary>
@@ -2317,15 +2318,12 @@ namespace System.Collections.Concurrent
 
         /// <summary>Gets the dictionary's alternate comparer. The dictionary must have already been verified as compatible.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [RequiresUnsafe]
         private static IAlternateEqualityComparer<TAlternateKey, TKey> GetAlternateComparer<TAlternateKey>(ConcurrentDictionary<TKey, TValue>.Tables tables)
              where TAlternateKey : notnull, allows ref struct
         {
             Debug.Assert(IsCompatibleKey<TAlternateKey>(tables));
-            // FIXME: review unsafe to confirm correct annotation
-            unsafe
-            {
-                return Unsafe.As<IAlternateEqualityComparer<TAlternateKey, TKey>>(tables._comparer!);
-            }
+            return Unsafe.As<IAlternateEqualityComparer<TAlternateKey, TKey>>(tables._comparer!);
         }
 
         /// <summary>

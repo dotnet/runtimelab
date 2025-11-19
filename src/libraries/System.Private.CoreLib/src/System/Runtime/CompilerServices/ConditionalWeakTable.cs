@@ -631,6 +631,7 @@ namespace System.Runtime.CompilerServices
                 Debug.Assert(key != null); // Key already validated as non-null
 
                 int entryIndex = FindEntry(key, out object? secondary);
+                // FIXME: Validate the unsafe block
                 unsafe
                 {
                     value = Unsafe.As<TValue>(secondary);
@@ -685,6 +686,7 @@ namespace System.Runtime.CompilerServices
 
                     if (oKey != null)
                     {
+                        // FIXME: Validate the unsafe block
                         unsafe
                         {
                             key = Unsafe.As<TKey>(oKey);
@@ -717,6 +719,7 @@ namespace System.Runtime.CompilerServices
                 if (entryIndex != -1)
                 {
                     RemoveIndex(entryIndex);
+                    // FIXME: Validate the unsafe block
                     unsafe
                     {
                         value = Unsafe.As<TValue>(valueObject!);

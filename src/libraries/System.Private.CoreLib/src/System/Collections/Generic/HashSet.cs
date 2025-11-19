@@ -46,7 +46,8 @@ namespace System.Collections.Generic
         private int _freeList;
         private int _freeCount;
         private int _version;
-        private IEqualityComparer<T>? _comparer;
+        // Must be IAlternateEqualityComparer<TAlternate, T>
+        private unsafe IEqualityComparer<T>? _comparer;
 
         #region Constructors
 
@@ -441,14 +442,11 @@ namespace System.Collections.Generic
 
             /// <summary>Gets the set's alternate comparer. The set must have already been verified as compatible.</summary>
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [RequiresUnsafe]
             internal static IAlternateEqualityComparer<TAlternate, T> GetAlternateComparer(HashSet<T> set)
             {
                 Debug.Assert(IsCompatibleItem(set));
-                // FIXME: review unsafe to confirm correct annotation
-                unsafe
-                {
-                    return Unsafe.As<IAlternateEqualityComparer<TAlternate, T>>(set._comparer)!;
-                }
+                return Unsafe.As<IAlternateEqualityComparer<TAlternate, T>>(set._comparer)!;
             }
 
             /// <summary>Adds the specified element to a set.</summary>

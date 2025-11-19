@@ -94,12 +94,11 @@ namespace System.Runtime.InteropServices.Marshalling
         /// <returns>The <see cref="Span{T}"/> of managed elements.</returns>
         public static Span<IntPtr> GetManagedValuesDestination(T*[]? managed)
         {
-            IntPtr[]? result;
+            // IntPtr[] and T*[] have the same representation
             unsafe
             {
-                result = Unsafe.As<IntPtr[]>(managed);
+                return Unsafe.As<IntPtr[]>(managed);
             }
-            return result;
         }
 
         /// <summary>
@@ -182,12 +181,11 @@ namespace System.Runtime.InteropServices.Marshalling
             /// <returns>A span over managed values of the array.</returns>
             public ReadOnlySpan<IntPtr> GetManagedValuesSource()
             {
-                IntPtr[]? result;
+                // IntPtr[] and T*[] have the same representation
                 unsafe
                 {
-                    result = Unsafe.As<IntPtr[]>(_managedArray);
+                    return Unsafe.As<IntPtr[]>(_managedArray);
                 }
-                return result;
             }
 
             /// <summary>

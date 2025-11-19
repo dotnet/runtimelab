@@ -232,12 +232,10 @@ namespace System.Runtime.InteropServices
                         return null;
                     else
                     {
-                        ManagedObjectWrapperHolder? holder;
                         unsafe
                         {
-                            holder = Unsafe.As<ManagedObjectWrapperHolder>(GCHandle.FromIntPtr(handle).Target);
+                            return Unsafe.As<ManagedObjectWrapperHolder>(GCHandle.FromIntPtr(handle).Target);
                         }
-                        return holder;
                     }
                 }
             }

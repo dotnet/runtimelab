@@ -56,7 +56,6 @@ namespace System
             // MulticastDelegate
             Debug.Assert(obj is MulticastDelegate, "Shouldn't have failed here since we already checked the types are the same!");
             MulticastDelegate d;
-            // FIXME: review unsafe to confirm correct annotation
             unsafe
             {
                 d = Unsafe.As<MulticastDelegate>(obj);
@@ -170,7 +169,7 @@ namespace System
             return false;
         }
 
-        private unsafe MulticastDelegate NewMulticastDelegate(object[] invocationList, int invocationCount, bool thisIsMultiCastAlready)
+        private MulticastDelegate NewMulticastDelegate(object[] invocationList, int invocationCount, bool thisIsMultiCastAlready)
         {
             // First, allocate a new multicast delegate just like this one, i.e. same type as the this object
             MulticastDelegate result;

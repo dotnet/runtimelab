@@ -59,7 +59,8 @@ namespace System.Threading.Tasks
         private static volatile Task? s_canceledTask;
 
         /// <summary>null if representing a successful synchronous completion, otherwise a <see cref="Task"/> or a <see cref="IValueTaskSource"/>.</summary>
-        internal readonly object? _obj;
+        // Must be either a Task or IValueTaskSource
+        internal readonly unsafe object? _obj;
         /// <summary>Opaque value passed through to the <see cref="IValueTaskSource"/>.</summary>
         internal readonly short _token;
         /// <summary>true to continue on the captured context; otherwise, false.</summary>
@@ -499,7 +500,8 @@ namespace System.Threading.Tasks
         /// <summary>A task canceled using `new CancellationToken(true)`. Lazily created only when first needed.</summary>
         private static volatile Task<TResult>? s_canceledTask;
         /// <summary>null if <see cref="_result"/> has the result, otherwise a <see cref="Task{TResult}"/> or a <see cref="IValueTaskSource{TResult}"/>.</summary>
-        internal readonly object? _obj;
+        // Must be either a Task or IValueTaskSource
+        internal readonly unsafe object? _obj;
         /// <summary>The result to be used if the operation completed successfully synchronously.</summary>
         internal readonly TResult? _result;
         /// <summary>Opaque value passed through to the <see cref="IValueTaskSource{TResult}"/>.</summary>

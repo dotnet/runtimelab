@@ -62,6 +62,7 @@ namespace System.Buffers
             {
                 unsafe
                 {
+                    // Array should always be an array of T[]
                     buffer = Unsafe.As<T[]>(tlsBuckets[bucketIndex].Array);
                 }
                 if (buffer is not null)
@@ -308,7 +309,8 @@ namespace System.Buffers
     internal struct SharedArrayPoolThreadLocalArray
     {
         /// <summary>The stored array.</summary>
-        public Array? Array;
+        // Must be an array of T[] at runtime
+        public unsafe Array? Array;
         /// <summary>Environment.TickCount timestamp for when this array was observed by Trim.</summary>
         public int MillisecondsTimeStamp;
 
@@ -396,7 +398,8 @@ namespace System.Buffers
             private int _millisecondsTimestamp;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool TryPush(Array array)
+            // Array parameter must be a T[]
+            public unsafe bool TryPush(Array array)
             {
                 bool enqueued = false;
                 Monitor.Enter(this);

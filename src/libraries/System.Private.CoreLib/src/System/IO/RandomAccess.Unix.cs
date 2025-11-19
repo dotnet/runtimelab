@@ -70,13 +70,12 @@ namespace System.IO
                 for (int i = 0; i < buffersCount; i++)
                 {
                     Memory<byte> buffer = buffers[i];
-                    MemoryHandle memoryHandle;
                     unsafe
                     {
-                        memoryHandle = buffer.Pin();
+                        MemoryHandle memoryHandle = buffer.Pin();
+                        vectors[i] = new Interop.Sys.IOVector { Base = (byte*)memoryHandle.Pointer, Count = (UIntPtr)buffer.Length };
+                        handles[i] = memoryHandle;
                     }
-                    vectors[i] = new Interop.Sys.IOVector { Base = (byte*)memoryHandle.Pointer, Count = (UIntPtr)buffer.Length };
-                    handles[i] = memoryHandle;
                 }
 
                 fixed (Interop.Sys.IOVector* pinnedVectors = &MemoryMarshal.GetReference(vectors))

@@ -2407,7 +2407,8 @@ namespace System
         private readonly object m_keepalive; // This will be filled with a LoaderAllocator reference when this RuntimeType represents a collectible type
 #pragma warning restore CS0169
 #pragma warning restore CA1823
-        private IntPtr m_cache;
+        // Must be a handle to a RuntimeTypeCache type
+        private unsafe IntPtr m_cache;
         internal IntPtr m_handle;
 
         internal static readonly RuntimeType ValueType = (RuntimeType)typeof(ValueType);
