@@ -24,6 +24,7 @@ namespace System.Runtime.InteropServices
         where T : class?
     {
         // The actual integer handle value that the EE uses internally.
+        [RequiresUnsafe]
         private IntPtr _handle;
 
         /// <summary>

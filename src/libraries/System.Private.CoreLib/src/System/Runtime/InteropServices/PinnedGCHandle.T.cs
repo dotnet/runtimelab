@@ -25,6 +25,7 @@ namespace System.Runtime.InteropServices
         where T : class?
     {
         // The actual integer handle value that the EE uses internally.
+        [RequiresUnsafe]
         private IntPtr _handle;
 
         /// <summary>
@@ -51,12 +52,10 @@ namespace System.Runtime.InteropServices
                 IntPtr handle = _handle;
                 GCHandle.CheckUninitialized(handle);
                 // Skip the type check to provide lowest overhead.
-                T result;
                 unsafe
                 {
-                    result = Unsafe.As<T>(GCHandle.InternalGet(handle)!);
+                    return Unsafe.As<T>(GCHandle.InternalGet(handle)!);
                 }
-                return result;
             }
             set
             {

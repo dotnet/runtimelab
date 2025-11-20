@@ -2259,6 +2259,7 @@ namespace System.Collections.Concurrent
         {
             /// <summary>The comparer to use for lookups in the tables.</summary>
             // Must be IAlternateEqualityComparer<TAlternateKey, TKey>
+            [RequiresUnsafe]
             internal readonly unsafe IEqualityComparer<TKey>? _comparer;
             /// <summary>A singly-linked list for each bucket.</summary>
             internal readonly VolatileNode[] _buckets;

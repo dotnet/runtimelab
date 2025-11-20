@@ -10,6 +10,7 @@ using System.Runtime.Serialization;
 
 namespace System.Threading
 {
+    [RequiresUnsafe]
     public delegate void ContextCallback(object? state);
 
     internal delegate void ContextCallback<TState>(ref TState state);

@@ -51,12 +51,11 @@ namespace System.Runtime.InteropServices.Marshalling
         /// <returns>The <see cref="ReadOnlySpan{IntPtr}"/> containing the managed elements to marshal.</returns>
         public static ReadOnlySpan<IntPtr> GetManagedValuesSource(T*[]? managed)
         {
-            IntPtr[]? result;
+            // IntPtr[] and T*[] have the same representation
             unsafe
             {
-                result = Unsafe.As<IntPtr[]>(managed);
+                return Unsafe.As<IntPtr[]>(managed);
             }
-            return result;
         }
 
         /// <summary>

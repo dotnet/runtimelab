@@ -47,6 +47,7 @@ namespace System.Collections.Generic
         private int _freeCount;
         private int _version;
         // Must be IAlternateEqualityComparer<TAlternate, T>
+        [RequiresUnsafe]
         private unsafe IEqualityComparer<T>? _comparer;
 
         #region Constructors

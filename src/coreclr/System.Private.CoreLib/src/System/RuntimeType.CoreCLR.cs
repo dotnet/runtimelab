@@ -2408,6 +2408,7 @@ namespace System
 #pragma warning restore CS0169
 #pragma warning restore CA1823
         // Must be a handle to a RuntimeTypeCache type
+        [RequiresUnsafe]
         private unsafe IntPtr m_cache;
         internal IntPtr m_handle;
 

@@ -1253,6 +1253,7 @@ namespace System.Threading
             {
                 Debug.Assert(workItem is IThreadPoolWorkItem);
                 IThreadPoolWorkItem tpWorkItem;
+                // FIXME: parent should be unsafe and specify input must be Task or IThreadPoolWorkItem
                 unsafe
                 {
                     tpWorkItem = Unsafe.As<IThreadPoolWorkItem>(workItem);

@@ -948,6 +948,7 @@ namespace System
                     // enumerable-based equivalent of new string(char[]).
 
                     IEnumerator<char> en;
+                    // FIXME: Consider if (e is IEnumerator<char> en) instead
                     unsafe
                     {
                         en = Unsafe.As<IEnumerator<char>>(e);

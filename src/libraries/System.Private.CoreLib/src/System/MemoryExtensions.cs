@@ -5905,6 +5905,7 @@ namespace System
                 _source = source;
                 if (typeof(T) == typeof(char) && separators.Length == 0)
                 {
+                    // FIXME: review unsafe to confirm correct annotation
                     unsafe
                     {
                         _searchValues = Unsafe.As<SearchValues<T>>(string.SearchValuesStorage.WhiteSpaceChars);

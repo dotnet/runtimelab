@@ -19,6 +19,8 @@ namespace System.Buffers
         // We save 1 child separately to avoid allocating a separate collection in such cases.
         private int _firstChildChar;
         private int _firstChildIndex;
+        // Must be int[] or Dictionary<char, int>
+        [RequiresUnsafe]
         private object _children; // Either int[] or Dictionary<char, int>
 
         public AhoCorasickNode()

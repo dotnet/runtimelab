@@ -17,6 +17,7 @@ namespace System.IO
         private const int MaxCharBytesSize = 128;
 
         // If _isMemoryStream is true, this must be a MemoryStream
+        [RequiresUnsafe]
         private readonly unsafe Stream _stream;
         private readonly Encoding _encoding;
         private Decoder? _decoder;

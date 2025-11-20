@@ -33,6 +33,7 @@ namespace System.Collections.Generic
         private int _freeCount;
         private int _version;
         // Must be IAlternateEqualityComparer<TAlternateKey, TKey>
+        [RequiresUnsafe]
         private unsafe IEqualityComparer<TKey>? _comparer;
         private KeyCollection? _keys;
         private ValueCollection? _values;

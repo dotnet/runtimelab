@@ -310,6 +310,7 @@ namespace System.Buffers
     {
         /// <summary>The stored array.</summary>
         // Must be an array of T[] at runtime
+        [RequiresUnsafe]
         public unsafe Array? Array;
         /// <summary>Environment.TickCount timestamp for when this array was observed by Trim.</summary>
         public int MillisecondsTimeStamp;
@@ -399,7 +400,8 @@ namespace System.Buffers
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             // Array parameter must be a T[]
-            public unsafe bool TryPush(Array array)
+            [RequiresUnsafe]
+            public bool TryPush(Array array)
             {
                 bool enqueued = false;
                 Monitor.Enter(this);

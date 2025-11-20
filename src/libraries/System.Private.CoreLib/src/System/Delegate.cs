@@ -144,14 +144,12 @@ namespace System
             public bool MoveNext()
             {
                 int index = _index + 1;
+                // FIXME: review unsafe to confirm correct annotation
                 unsafe
                 {
-                    unsafe
+                    if ((_current = Unsafe.As<TDelegate>(_delegate?.TryGetAt(index))) == null)
                     {
-                        if ((_current = Unsafe.As<TDelegate>(_delegate?.TryGetAt(index))) == null)
-                        {
-                            return false;
-                        }
+                        return false;
                     }
                 }
                 _index = index;

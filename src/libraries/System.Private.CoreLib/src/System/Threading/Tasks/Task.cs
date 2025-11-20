@@ -2378,6 +2378,7 @@ namespace System.Threading.Tasks
             }
         }
 
+        [RequiresUnsafe]
         private static readonly ContextCallback s_ecCallback = obj =>
         {
             Debug.Assert(obj is Task);
