@@ -44,9 +44,6 @@ internal static partial class Interop
         public static unsafe partial void ResolveOrRejectPromisePost(nint targetNativeTID, nint data);
         [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_install_js_worker_interop_wrapper")]
         public static unsafe partial void InstallWebWorkerInterop(nint proxyContextGCHandle, void* beforeSyncJSImport, void* afterSyncJSImport, void* pumpHandler);
-        // Required by JavaScript/JSProxyContext.cs
-        [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_release_cs_owned_object_post")]
-        internal static unsafe partial void ReleaseCSOwnedObjectPost(nint targetNativeTID, nint jsHandle);
         [LibraryImport(JSLibrary, EntryPoint = "mono_wasm_uninstall_js_worker_interop")]
         public static unsafe partial void UninstallWebWorkerInterop();
         // Required by JavaScript/CancelablePromise.cs
