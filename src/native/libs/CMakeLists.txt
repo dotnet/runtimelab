@@ -124,7 +124,7 @@ if (NOT CORERUN_LIBS_ONLY)
     add_subdirectory(System.IO.Compression.Native)
 endif ()
 
-# Only when Browser for CoreCLR, TODO: NAOT-LLVM but not for NativeAOT, but how to detect that?
+# Only when Browser for CoreCLR, TODO: NAOT-LLVM but not for NativeAOT, but how to detect that?  Remove when it is ready to be used.
 if (CLR_CMAKE_TARGET_BROWSER AND BUILD_LIBS_NATIVE_BROWSER AND false)
     add_subdirectory(System.Native.Browser)
     if (NOT CORERUN_LIBS_ONLY)
