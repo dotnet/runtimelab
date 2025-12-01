@@ -756,7 +756,7 @@ namespace ILCompiler
             }
 
             // Rename the temporary file to the final output file
-            compilation.RenameTempOutput(tempOutputFilePath, outputFilePath);
+            File.Move(tempOutputFilePath, outputFilePath, overwrite: true);
 
             return 0;
         }

@@ -75,6 +75,9 @@ namespace ILCompiler.ObjectWriter
 
             LLVMCompilationResults compilationResults = compilation.GetCompilationResults();
             mainObjectWriter.WriteObject(objectFilePath);
+
+            // Remove .tmp
+            objectFilePath = Path.ChangeExtension(objectFilePath, null);
             compilationResults.Add(objectFilePath);
 
             string externalObjectPath = Path.ChangeExtension(objectFilePath, "external.o");
