@@ -976,7 +976,7 @@ struct InterpreterGcInfoEncoding {
     static const int LIVESTATE_RLE_SKIP_ENCBASE = 4;
     static const bool HAS_FIXED_STACK_PARAMETER_SCRATCH_AREA = false;
 };
-#else // TODO-LLVM
+#else // TODO-LLVM: remove once we merge-in the upstream WasmJit
 struct InterpreterGcInfoEncoding 
 {
 };
