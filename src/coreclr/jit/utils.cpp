@@ -1734,7 +1734,7 @@ void HelperCallProperties::init()
 
             case CORINFO_HELP_INITCLASS:
             case CORINFO_HELP_INITINSTCLASS:
-                isPure      = true;
+                mutatesHeap = true;
                 mayRunCctor = true;
                 break;
 

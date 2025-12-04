@@ -243,7 +243,8 @@ namespace ILCompiler
         private CorInfoImpl CreateModuleCompilationContext(string kind, CorInfoLlvmSingleThreadedCompilationContextFlags flags = 0)
         {
             CorInfoImpl corInfo = new CorInfoImpl(this);
-            string outputFilePath = Path.ChangeExtension(_outputFile, $".{kind}.bc");
+            // Remove .tmp, then remove .o
+            string outputFilePath = Path.ChangeExtension(Path.ChangeExtension(_outputFile, null), $".{kind}.bc");
 
             corInfo.JitStartSingleThreadedCompilation(flags, outputFilePath, Options.Target, Options.DataLayout);
             _compilationResults.Add(outputFilePath);

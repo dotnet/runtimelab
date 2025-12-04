@@ -279,7 +279,7 @@ public:
     ee_alloc_context *  GetEEAllocContext();
     gc_alloc_context *  GetAllocContext();
 
-    uint64_t            GetPalThreadIdForLogging();
+    uint64_t            GetOSThreadId();
 
     void                GcScanRoots(ScanFunc* pfnEnumCallback, ScanContext * pvCallbackData);
 

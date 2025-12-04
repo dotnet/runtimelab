@@ -35,14 +35,6 @@ endif()
 
 OPTION(CLR_CMAKE_ENABLE_CODE_COVERAGE "Enable code coverage" OFF)
 
-if (DEFINED CLR_CMAKE_ICU_DIR)
-  include_directories(${CLR_CMAKE_ICU_DIR}/include)
-endif(DEFINED CLR_CMAKE_ICU_DIR)
-
-if (CLR_CMAKE_TARGET_ARCH_WASM)
-    add_compile_options(-fwasm-exceptions)
-endif()
-
 #----------------------------------------------------
 # Cross target Component build specific configuration
 #----------------------------------------------------
@@ -74,6 +66,7 @@ if(NOT CLR_CROSS_COMPONENTS_BUILD AND NOT CLR_CMAKE_TARGET_MACCATALYST AND NOT C
   add_subdirectory(${CLR_SRC_NATIVE_DIR}/corehost/apphost/static Corehost.Static)
   add_dependencies(runtime singlefilehost)
 endif()
+
 #-------------------------
 # Enable C++ EH with SEH
 #-------------------------
@@ -86,6 +79,13 @@ endif()
 #-------------------------------
 if(NOT CLR_CROSS_COMPONENTS_BUILD)
   set(STATIC_LIBS_ONLY 1)
+  if(CLR_CMAKE_TARGET_BROWSER)
+    # WASM-TODO set GEN_PINVOKE to 1 once we generate them. static entrypoint.c prevents C linker from trimming, when IL trimming trims PInvokes
+    set(GEN_PINVOKE 0)
+    set(BUILD_LIBS_NATIVE_BROWSER 1)
+    set(STATIC_LIB_DESTINATION ${CMAKE_BINARY_DIR}/libs-native)
+    set(CORERUN_LIBS_ONLY 1)
+  endif()
   add_subdirectory(${CLR_SRC_NATIVE_DIR}/libs libs-native)
 endif()
 
@@ -210,14 +210,15 @@ include_directories("classlibnative/bcltype")
 include_directories("classlibnative/inc")
 include_directories("${GENERATED_INCLUDE_DIR}")
 include_directories("hosts/inc")
+include_directories("interpreter/inc")
 include_directories("minipal")
 
 if(FEATURE_INTERPRETER)
-add_subdirectory(interpreter)
+  add_subdirectory(interpreter)
 endif()
 
 if(CLR_CMAKE_TARGET_WIN32 AND FEATURE_EVENT_TRACE)
-    include_directories("${GENERATED_INCLUDE_DIR}/etw")
+  include_directories("${GENERATED_INCLUDE_DIR}/etw")
 endif(CLR_CMAKE_TARGET_WIN32 AND FEATURE_EVENT_TRACE)
 
 if (NOT CLR_CMAKE_TARGET_ARCH_WASM)

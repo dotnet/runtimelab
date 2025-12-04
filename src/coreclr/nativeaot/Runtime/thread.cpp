@@ -272,9 +272,9 @@ PTR_ExInfo Thread::GetCurExInfo()
 
 void Thread::Construct()
 {
-#ifndef USE_PORTABLE_HELPERS
+#ifndef FEATURE_PORTABLE_HELPERS
     static_assert(OFFSETOF__Thread__m_pTransitionFrame == (offsetof(Thread, m_pTransitionFrame)));
-#endif // USE_PORTABLE_HELPERS
+#endif // FEATURE_PORTABLE_HELPERS
 
     // NOTE: We do not explicitly defer to the GC implementation to initialize the alloc_context.  The
     // alloc_context will be initialized to 0 via the static initialization of tls_CurrentThread. If the
@@ -350,7 +350,7 @@ bool Thread::IsGCSpecial()
     return IsStateSet(TSF_IsGcSpecialThread);
 }
 
-uint64_t Thread::GetPalThreadIdForLogging()
+uint64_t Thread::GetOSThreadId()
 {
     return m_threadId;
 }
@@ -842,7 +842,7 @@ void Thread::HijackReturnAddressWorker(StackFrameIterator* frameIterator, Hijack
         *ppvRetAddrLocation = (void*)pfnHijackFunction;
 
         STRESS_LOG2(LF_STACKWALK, LL_INFO10000, "InternalHijack: TgtThread = %llx, IP = %p\n",
-            GetPalThreadIdForLogging(), frameIterator->GetRegisterSet()->GetIP());
+            GetOSThreadId(), frameIterator->GetRegisterSet()->GetIP());
     }
 }
 #endif // FEATURE_HIJACK
@@ -896,7 +896,7 @@ bool Thread::Redirect()
     redirectionContext->SetIp(origIP);
 
     STRESS_LOG2(LF_STACKWALK, LL_INFO10000, "InternalRedirect: TgtThread = %llx, IP = %p\n",
-        GetPalThreadIdForLogging(), origIP);
+        GetOSThreadId(), origIP);
 
     return true;
 }
@@ -1457,7 +1457,7 @@ FCIMPL1(void, RhpReversePInvokeReturn, ReversePInvokeFrame * pFrame)
 }
 FCIMPLEND
 
-#ifdef USE_PORTABLE_HELPERS
+#ifdef FEATURE_PORTABLE_HELPERS
 
 FCIMPL1(void, RhpPInvoke, PInvokeTransitionFrame* pFrame)
 {
@@ -1473,7 +1473,7 @@ FCIMPL1(void, RhpPInvokeReturn, PInvokeTransitionFrame* pFrame)
 }
 FCIMPLEND
 
-#endif //USE_PORTABLE_HELPERS
+#endif //FEATURE_PORTABLE_HELPERS
 #endif // !HOST_WASM
 
 #endif // !DACCESS_COMPILE

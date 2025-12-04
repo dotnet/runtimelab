@@ -15,8 +15,10 @@ internal static partial class Interop
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal static extern void ReleaseCSOwnedObject(nint jsHandle);
 #if FEATURE_WASM_MANAGED_THREADS
+#if USE_MONO_RUNTIME
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal static extern void ReleaseCSOwnedObjectPost(nint targetNativeTID, nint jsHandle);
+#endif
 #endif
 
         [MethodImpl(MethodImplOptions.InternalCall)]

@@ -1523,7 +1523,10 @@ public:
 #if defined(TARGET_XARCH)
     bool isEvexCompatibleHWIntrinsic(Compiler* comp) const;
     bool isEmbeddedBroadcastCompatibleHWIntrinsic(Compiler* comp) const;
-    bool isEmbeddedMaskingCompatible(Compiler* comp, unsigned tgtMaskSize, CorInfoType& tgtSimdBaseJitType) const;
+    bool isEmbeddedMaskingCompatible(Compiler*    comp,
+                                     unsigned     tgtMaskSize,
+                                     CorInfoType& tgtSimdBaseJitType,
+                                     size_t*      broadcastOpIndex = nullptr) const;
 #endif // TARGET_XARCH
     bool isEmbeddedMaskingCompatible() const;
 #else
@@ -2068,6 +2071,8 @@ public:
     bool IsArrayAddr(GenTreeArrAddr** pArrAddr);
 
     bool SupportsSettingZeroFlag();
+
+    bool SupportsSettingResultFlags();
 
     // These are only used for dumping.
     // The GetRegNum() is only valid in LIR, but the dumping methods are not easily
@@ -4363,6 +4368,9 @@ enum class ContinuationContextHandling
 // Additional async call info.
 struct AsyncCallInfo
 {
+    // DebugInfo with SOURCE_TYPE_ASYNC pointing at the await call IL instruction
+    DebugInfo CallAsyncDebugInfo;
+
     // The following information is used to implement the proper observable handling of `ExecutionContext`,
     // `SynchronizationContext` and `TaskScheduler` in async methods.
     //

@@ -158,8 +158,8 @@ namespace ILCompiler.DependencyAnalysis
 
                     if (targetMethod.OwningType.IsInterface)
                     {
-                        MetadataType helperType = factory.TypeSystemContext.SystemModule.GetKnownType("System.Runtime", "RuntimeImports");
-                        MethodDesc helperMethod = helperType.GetKnownMethod("RhpResolveInterfaceMethod", null);
+                        MetadataType helperType = factory.TypeSystemContext.SystemModule.GetKnownType("System.Runtime"u8, "RuntimeImports"u8);
+                        MethodDesc helperMethod = helperType.GetKnownMethod("RhpResolveInterfaceMethod"u8, null);
 
                         encoder.EmitLocalGet(0); // Shadow stack.
                         encoder.EmitLocalGet(ObjThisArg); // "this".

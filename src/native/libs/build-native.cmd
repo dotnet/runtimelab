@@ -18,7 +18,6 @@ set __BuildTarget="build"
 set __TargetOS=windows
 set CMAKE_BUILD_TYPE=Debug
 set __Ninja=1
-set __icuDir=""
 set __ExtraCmakeParams=
 set __CrossTarget=0
 
@@ -41,9 +40,6 @@ if /i [%1] == [outconfig] ( set __outConfig=%2&&shift&&shift&goto Arg_Loop)
 if /i [%1] == [rebuild] ( set __BuildTarget=rebuild&&shift&goto Arg_Loop)
 
 if /i [%1] == [msbuild] ( set __Ninja=0&&shift&goto Arg_Loop)
-
-if /i [%1] == [icudir] ( set __icuDir=%2&&shift&&shift&goto Arg_Loop)
-if /i [%1] == [tzddir] ( set __tzdDir=%2&&shift&&shift&goto Arg_Loop)
 
 if /i [%1] == [-fsanitize] ( set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCLR_CMAKE_ENABLE_SANITIZERS=$2"&&shift&&shift&goto Arg_Loop)
 if /i [%1] == [-cmakeargs] ( set __ExtraCmakeParams=%__ExtraCmakeParams% %2&&shift&&shift&goto Arg_Loop)
@@ -74,13 +70,6 @@ if %__CrossTarget% EQU 0 (
 )
 
 set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE%"
-
-if NOT %__icuDir% == "" (
-    set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_ICU_DIR=%__icuDir%"
-)
-if NOT "%__tzdDir%" == "" (
-    set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_TZD_DIR=%__tzdDir%"
-)
 
 if [%__outConfig%] == [] set __outConfig=%__TargetOS%-%__BuildArch%-%CMAKE_BUILD_TYPE%
 
@@ -123,18 +112,7 @@ if NOT [%errorlevel%] == [0] goto :Failure
 
 :BuildNativeProj
 :: Build the project created by Cmake
-set __generatorArgs=
-if [%__Ninja%] == [1] (
-    set __generatorArgs=
-) else if [%__TargetOS%] == [browser] (
-    set __generatorArgs=
-) else if [%__TargetOS%] == [wasi] (
-    set __generatorArgs=
-) else (
-    set __generatorArgs=
-)
-
-call "%CMakePath%" --build "%__IntermediatesDir%" --target install --config %CMAKE_BUILD_TYPE% -- %__generatorArgs%
+call "%CMakePath%" --build "%__IntermediatesDir%" --target install --config %CMAKE_BUILD_TYPE%
 IF ERRORLEVEL 1 (
     goto :Failure
 )

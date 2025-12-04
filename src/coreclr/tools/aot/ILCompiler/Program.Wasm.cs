@@ -39,8 +39,8 @@ namespace ILCompiler
             if (!context.Target.IsWasm)
                 return;
 
-            TypeDesc targetType = context.SystemModule.GetType("System.Runtime", "PreciseVirtualUnwindInfo");
-            MethodDesc target = targetType.GetKnownMethod("GetUnwindInfoViaAbsoluteValueLimit", null);
+            TypeDesc targetType = context.SystemModule.GetType("System.Runtime"u8, "PreciseVirtualUnwindInfo"u8);
+            MethodDesc target = targetType.GetKnownMethod("GetUnwindInfoViaAbsoluteValueLimit"u8, null);
             uint value = WasmMethodPreciseVirtualUnwindInfoNode.GetUnwindInfoViaAbsoluteValueLimit(context);
             BodySubstitution substitution = BodySubstitution.Create((int)value);
 

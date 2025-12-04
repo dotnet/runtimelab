@@ -105,7 +105,7 @@ namespace System.CommandLine
                 }
 
                 string jitInterfaceLibrary = "jitinterface_" + RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant();
-                nint libHandle = NativeLibrary.Load(jitInterfaceLibrary, System.Reflection.Assembly.GetExecutingAssembly(), DllImportSearchPath.ApplicationDirectory);
+                nint libHandle = NativeLibrary.Load(jitInterfaceLibrary, System.Reflection.Assembly.GetExecutingAssembly(), DllImportSearchPath.AssemblyDirectory);
                 int cpuFeatures;
                 unsafe
                 {
@@ -181,6 +181,17 @@ namespace System.CommandLine
                     if ((firstChar != '+') && (firstChar != '-'))
                     {
                         instructionSet = "+" + instructionSet;
+                    }
+
+                    if (instructionSet == "+optimistic")
+                    {
+                        allowOptimistic = true;
+                        continue;
+                    }
+                    if (instructionSet == "-optimistic")
+                    {
+                        allowOptimistic = false;
+                        continue;
                     }
 
                     instructionSetParams.Add(instructionSet);

@@ -181,19 +181,24 @@ if (GEN_SHARED_LIB)
     endif()
 endif()
 
+if (NOT GEN_PINVOKE)
+    set(NATIVEGLOBALIZATION_SOURCES ${NATIVEGLOBALIZATION_SOURCES} entrypoints.c)
+endif()
+
 add_library(System.Globalization.Native-Static
     STATIC
     ${NATIVEGLOBALIZATION_SOURCES}
-    entrypoints.c
 )
 
-if(CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_WASI)
+if(CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_WASI OR CLR_CMAKE_TARGET_BROWSER)
     set_target_properties(System.Globalization.Native-Static PROPERTIES OUTPUT_NAME System.Globalization.Native  CLEAN_DIRECT_OUTPUT 1)
 endif()
 
 install (TARGETS System.Globalization.Native-Static DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
-if(CLR_CMAKE_HOST_ANDROID OR CLR_CMAKE_HOST_IOS OR CLR_CMAKE_HOST_TVOS OR CLR_CMAKE_HOST_MACCATALYST)
-    install (TARGETS System.Globalization.Native-Static DESTINATION sharedFramework COMPONENT runtime)
+if(CLR_CMAKE_HOST_ANDROID OR CLR_CMAKE_HOST_IOS OR CLR_CMAKE_HOST_TVOS OR CLR_CMAKE_HOST_MACCATALYST OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
+    if (NOT CORERUN_LIBS_ONLY)
+        install (TARGETS System.Globalization.Native-Static DESTINATION sharedFramework COMPONENT runtime)
+    endif()
 endif()
 
 if(NOT CLR_CMAKE_TARGET_WIN32 AND NOT CLR_CMAKE_TARGET_APPLE AND NOT CLR_CMAKE_TARGET_ANDROID AND NOT CLR_CMAKE_TARGET_LINUX_MUSL AND NOT CLR_CMAKE_TARGET_HAIKU)
@@ -224,5 +229,19 @@ if(CLR_CMAKE_TARGET_WIN32)
         )
         set_target_properties(System.Globalization.Native.Aot PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
         install_static_library(System.Globalization.Native.Aot aotsdk nativeaot)
+    endif()
+endif()
+
+if((CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI) AND DEFINED CMAKE_ICU_DIR)
+    file(TO_CMAKE_PATH "${CMAKE_ICU_DIR}" CMAKE_ICU_DIR)
+    file(GLOB ICU_DATA_AND_LIB_FILES "${CMAKE_ICU_DIR}/lib/*.dat")
+    list(APPEND ICU_DATA_AND_LIB_FILES
+        "${CMAKE_ICU_DIR}/lib/libicuuc.a"
+        "${CMAKE_ICU_DIR}/lib/libicui18n.a"
+        "${CMAKE_ICU_DIR}/lib/libicudata.a"
+    )
+    install(FILES ${ICU_DATA_AND_LIB_FILES} DESTINATION ${STATIC_LIB_DESTINATION} COMPONENT libs)
+    if (NOT CORERUN_LIBS_ONLY)
+        install(FILES ${ICU_DATA_AND_LIB_FILES} DESTINATION sharedFramework COMPONENT runtime)
     endif()
 endif()

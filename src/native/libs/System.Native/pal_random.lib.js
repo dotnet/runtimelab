@@ -33,7 +33,7 @@ const DotNetEntropyLib = {
     // so we stay with the plain Javascript implementation but rename to avoid changing random.c
     // Revist if and when the Wasi HTTP or CLI proposal progresses (which contain a secure RNG in wasi-random)
     // See https://github.com/WebAssembly/wasi-http and https://github.com/WebAssembly/wasi-random/blob/main/wit/random.wit
-    mono_wasm_browser_entropy: function (buffer, bufferLength) {
+    SystemJS_RandomBytes: function (buffer, bufferLength) {
         // check that we have crypto available
         let cryptoAvailable = typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function';
 

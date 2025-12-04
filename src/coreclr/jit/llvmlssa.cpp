@@ -1678,7 +1678,7 @@ private:
 
         // Insert a zero-offset ILOffset to notify codegen this is the start of user code.
         DebugInfo zeroILOffsetDi =
-            DebugInfo(m_compiler->compInlineContext, ILLocation(0, /* isStackEmpty */ true, /* isCall */ false));
+            DebugInfo(m_compiler->compInlineContext, ILLocation(0, ICorDebugInfo::SourceTypes::STACK_EMPTY));
         GenTree* zeroILOffsetNode = new (m_compiler, GT_IL_OFFSET) GenTreeILOffset(zeroILOffsetDi);
         LIR::AsRange(m_compiler->fgFirstBB).InsertAfter(m_llvm->m_prologEnd, zeroILOffsetNode);
 
