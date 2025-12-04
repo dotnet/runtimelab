@@ -44,6 +44,7 @@ if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_library_clr(clrinterpreter SHARED $<TARGET_OBJECTS:clrinterpreter_objects> $<TARGET_OBJECTS:dn-containers>)
 else()
   # The NAOT-LLVM target does not define dn-containers.
+  # TODO-LLVM: fix as part of https://github.com/dotnet/runtimelab/issues/3193.
   if(TARGET dn-containers)
     add_library_clr(clrinterpreter STATIC $<TARGET_OBJECTS:clrinterpreter_objects> $<TARGET_OBJECTS:dn-containers>)
   else()
