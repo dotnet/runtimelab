@@ -3,7 +3,7 @@ param(
     [switch]$CI
 )
 
-$WasiSdkVersion = 25
+$WasiSdkVersion = 29
 Set-Location -Path $InstallDir
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
