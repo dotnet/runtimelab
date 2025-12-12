@@ -40,7 +40,7 @@ The .NET Foundation licenses this file to you under the MIT license.
 
     <!-- Verify the SDK version. We only issue a warning since it's **possible** a newer SDK might work. -->
     <PropertyGroup>
-      <_ExpectedWasiSdkVersions>25.0|26.0|27.0</_ExpectedWasiSdkVersions>
+      <_ExpectedWasiSdkVersions>29.0</_ExpectedWasiSdkVersions>
       <_ActualWasiSdkVersion>?</_ActualWasiSdkVersion>
       <_ActualWasiSdkVersion Condition="Exists('$(WASI_SDK_PATH)/VERSION')">$([System.IO.File]::ReadAllText('$(WASI_SDK_PATH)/VERSION').Split()[0])</_ActualWasiSdkVersion>
     </PropertyGroup>
