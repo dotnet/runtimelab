@@ -6,6 +6,9 @@
   </PropertyGroup>
 
   <!-- NativeAOT-LLVM: using the old publishing method from circa https://github.com/dotnet/runtime/pull/108990 -->
+  <PropertyGroup>
+    <NativeAotLlvmSetVersionForBlobs>true</NativeAotLlvmSetVersionForBlobs>
+  </PropertyGroup>
   <ItemGroup>
     <DownloadedArtifactFile Include="$(DownloadDirectory)**" />
     <DownloadedSymbolNupkgFile Include="$(DownloadDirectory)**\*.symbols.nupkg" />
@@ -205,12 +208,12 @@
           DependsOnTargets="GetNonStableProductVersion"
           BeforeTargets="PublishToAzureDevOpsArtifacts"
           AfterTargets="GenerateChecksumsFromArtifacts">
-    <ItemGroup Condition="'$(DotNetBuildFromVMR)' == 'true'">
+    <ItemGroup Condition="'$(DotNetBuildFromVMR)' == 'true' or '$(NativeAotLlvmSetVersionForBlobs)' == 'true'">
       <Artifact Condition="'%(Artifact.Kind)' != 'Package' and '%(Artifact.RelativeBlobPath)' == ''"
                 RelativeBlobPath="Runtime/$(NonStableProductVersion)/%(Artifact.SubBlobFolder)%(Filename)%(Extension)" />
     </ItemGroup>
     <!-- In vertical dotnet/runtime legs outside of the VMR, set the "relative blob path" to shipping vs non-shipping to make our download/upload work. -->
-    <ItemGroup Condition="'$(DotNetBuildFromVMR)' != 'true'">
+    <ItemGroup Condition="'$(DotNetBuildFromVMR)' != 'true' and '$(NativeAotLlvmSetVersionForBlobs)' != 'true'">
       <Artifact Condition="'%(Artifact.Kind)' == 'Blob' and '%(Artifact.IsShipping)' == 'true'"
                 RelativeBlobPath="packages/$(Configuration)/Shipping/%(Filename)%(Extension)" />
       <Artifact Condition="'%(Artifact.Kind)' == 'Blob' and '%(Artifact.IsShipping)' != 'true'"
