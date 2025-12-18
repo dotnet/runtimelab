@@ -104,17 +104,21 @@
     <!-- Packages -->
     <Artifact Include="@(NupkgToPublishFile)"
               IsShipping="$([System.String]::new('%(Identity)').Contains('\Shipping\'))"
-              PublishFlatContainer="false" />
-    <Artifact Include="@(SymbolNupkgToPublishFile)" PublishFlatContainer="false" />
+              PublishFlatContainer="false"
+              Kind="Package" />
+    <Artifact Include="@(SymbolNupkgToPublishFile)" PublishFlatContainer="false"
+              Kind="Package"/>
 
     <!-- Blob storage -->
     <Artifact Include="@(UploadToBlobStorageFile)"
               Exclude="@(NupkgToPublishFile);@(SymbolNupkgToPublishFile)"
               IsShipping="$([System.String]::new('%(Identity)').Contains('\Shipping\'))"
-              ChecksumPath="%(FullPath).sha512" />
+              ChecksumPath="%(FullPath).sha512"
+              Kind="Blob" />
     <Artifact Include="@(WorkloadsVSInsertionFile)"
               SubBlobFolder="workloads/"
-              IsShipping="$([System.String]::new('%(Identity)').Contains('\Shipping\'))" />
+              IsShipping="$([System.String]::new('%(Identity)').Contains('\Shipping\'))"
+              Kind="Blob" />
   </ItemGroup>
 
   <!-- The PGO runtime should always have External visibility, even if someone changes the default artifact visibility -->
