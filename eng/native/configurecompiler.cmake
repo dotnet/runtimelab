@@ -24,16 +24,11 @@ include(${CMAKE_CURRENT_LIST_DIR}/configureoptimization.cmake)
 # Initialize Cmake compiler flags and other variables
 #-----------------------------------------------------
 
-if (CLR_CMAKE_HOST_UNIX OR CLR_CMAKE_HOST_WASI)
+if (CLR_CMAKE_HOST_UNIX)
     add_compile_options(-Wall)
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         add_compile_options(-Wno-null-conversion)
-        add_compile_options(-Wno-jump-misses-init)
-        add_compile_options(-Wno-c++-keyword)
-        add_compile_options(-Wno-implicit-int-enum-cast)
-        add_compile_options(-Wno-implicit-void-ptr-cast)
         add_compile_options(-glldb)
-
     else()
         add_compile_options(-g)
     endif()
