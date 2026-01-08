@@ -3400,10 +3400,12 @@ int32_t SystemNative_GetWasiSocketDescriptor(intptr_t socket, void** entry)
     }
 
     int fd = ToFileDescriptor(socket);
-    if(descriptor_table_get_ref(fd) == NULL)
+    void * ref = descriptor_table_get_ref(fd);
+    if(ref == NULL)
     {
         return Error_EFAULT;
     }
+    *entry = ref;
     return Error_SUCCESS;
 }
 #else
