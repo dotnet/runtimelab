@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.20)
 
 include(CheckCCompilerFlag)
 
+project(LibsNative C)
+
 if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
     # This is our root CMakeList.txt, so we need to set up some global settings and include the minipal here.
     include(../../../eng/native/configurepaths.cmake)
