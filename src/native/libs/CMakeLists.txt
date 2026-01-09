@@ -149,6 +149,13 @@ if (CLR_CMAKE_TARGET_UNIX OR CLR_CMAKE_TARGET_BROWSER OR CLR_CMAKE_TARGET_WASI)
         add_compile_options(-Wno-typedef-redefinition)
         add_compile_options(-Wno-thread-safety-analysis)
         add_compile_options(-Wno-strict-prototypes)
+        add_compile_options(-Wno-null-conversion)
+        add_compile_options(-Wno-jump-misses-init)
+        add_compile_options(-Wno-c++-keyword)
+        add_compile_options(-Wno-implicit-int-enum-cast)
+        add_compile_options(-Wno-implicit-void-ptr-cast)
+        add_compile_options(-glldb)
+
         # TODO-LLVM: fix the reasons for this warning failure
         add_compile_options(-Wno-unused-but-set-variable)
         add_compile_options(-Wno-c11-extensions)
