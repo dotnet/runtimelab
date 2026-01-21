@@ -94,9 +94,10 @@ struct IndentStack;
 
 class Lowering; // defined in lower.h
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
+blah blah
 class Llvm; // defined in llvm.h
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
 // The following are defined in this file, Compiler.h
 
@@ -679,7 +680,7 @@ public:
     unsigned char lvFldOffset;
     unsigned char lvFldOrdinal;
 
-#if defined(TARGET_WASM)
+#if defined(TARGET_LLVM)
     unsigned int lvLlvmArgNum;
     CorInfoType  lvCorInfoType;
     unsigned char lvHasLocalAddr : 1;
@@ -2393,7 +2394,7 @@ enum class IPmappingDscKind
     Normal,    // The mapping maps to an IL offset.
 };
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 struct IPmappingDsc
 {
     emitLocation     ipmdNativeLoc; // the emitter location of the native code corresponding to the IL offset
@@ -2626,9 +2627,9 @@ public:
     var_types GetHfaType(CORINFO_CLASS_HANDLE hClass);
     unsigned GetHfaCount(CORINFO_CLASS_HANDLE hClass);
 
-#if !defined(TARGET_WASM)
+#if !defined(TARGET_LLVM)
     bool IsMultiRegReturnedType(CORINFO_CLASS_HANDLE hClass, CorInfoCallConvExtension callConv);
-#endif // !TARGET_WASM
+#endif // !TARGTARGET_LLVMET_WASM
 
     //-------------------------------------------------------------------------
     // The following is used for validating format of EH table
@@ -2913,9 +2914,9 @@ public:
     bool AddInsertedSsaLiveIn(BasicBlock* block, unsigned lclNum);
 
     void* ehEmitCookie(BasicBlock* block);
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     UNATIVE_OFFSET ehCodeOffset(BasicBlock* block);
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
     EHblkDsc* ehInitHndRange(BasicBlock* src, IL_OFFSET* hndBeg, IL_OFFSET* hndEnd, bool* inFilter);
 
@@ -6818,7 +6819,7 @@ public:
     AddCodeDscMap* fgGetAddCodeDscMap();
 
 private:
-#if !defined(TARGET_WASM)
+#if !defined(TARGET_LLVM)
     static unsigned acdHelper(SpecialCodeKind codeKind);
 #endif
 
@@ -6829,7 +6830,7 @@ private:
     PhaseStatus fgCreateThrowHelperBlocks();
 
 public:
-#if defined(TARGET_WASM) // Accessed in llvmcodegen.cpp
+#if defined(TARGET_LLVM) // Accessed in llvmcodegen.cpp
     static unsigned acdHelper(SpecialCodeKind codeKind);
 #endif
 
@@ -8428,7 +8429,7 @@ public:
 #elif defined(TARGET_ARM64)
             reg     = REG_R11;
             regMask = RBM_R11;
-#elif defined(TARGET_WASM)
+#elif defined(TARGET_LLVM)
             reg     = REG_R0;
             regMask = SRBM_R0;
 #elif defined(TARGET_LOONGARCH64)
@@ -8537,7 +8538,7 @@ public:
 
     unsigned eeVarsCount;
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     struct VarResultInfo
     {
         UNATIVE_OFFSET             startOffset;
@@ -8652,18 +8653,18 @@ public:
     */
 
 public:
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     Llvm* m_llvm;
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     CodeGenInterface* codeGen = nullptr;
 
     // Record the instr offset mapping to the generated code
 
     jitstd::list<IPmappingDsc>  genIPmappings;
     jitstd::list<RichIPMapping> genRichIPmappings;
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
     jitstd::vector<ICorDebugInfo::AsyncSuspensionPoint>*     compSuspensionPoints = nullptr;
     jitstd::vector<ICorDebugInfo::AsyncContinuationVarInfo>* compAsyncVars        = nullptr;
@@ -8693,7 +8694,7 @@ public:
     // convenience and backward compatibility, but the properties can only be set by invoking
     // the setter on CodeGenContext directly.
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     emitter* GetEmitter() const
     {
         return codeGen->GetEmitter();
@@ -8706,7 +8707,7 @@ public:
 #endif
     bool GetInterruptible()
     {
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
         return false;
 #else
         return codeGen->GetInterruptible();
@@ -8714,10 +8715,10 @@ public:
     }
     void SetInterruptible(bool value)
     {
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
         codeGen->SetInterruptible(value);
 #else
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
     }
 
 #if DOUBLE_ALIGN
@@ -8735,18 +8736,18 @@ public:
 
     bool IsFullPtrRegMapRequired()
     {
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
         return codeGen->IsFullPtrRegMapRequired();
 #else
         return false; // For GCInfo TODO: sensible default?
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
     }
     void SetFullPtrRegMapRequired(bool value)
     {
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
         codeGen->SetFullPtrRegMapRequired(value);
 #else
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
     }
 
     // Things that MAY belong either in CodeGen or CodeGenContext
@@ -8900,7 +8901,7 @@ private:
 
     UNATIVE_OFFSET unwindGetCurrentOffset(FuncInfoDsc* func);
 
-#if defined(TARGET_AMD64) || defined(TARGET_WASM) // TODO: delete?
+#if defined(TARGET_AMD64) || defined(TARGET_LLVM) // TODO: delete?
 
     void unwindBegPrologWindows();
     void unwindPushWindows(regNumber reg);
@@ -9921,7 +9922,7 @@ public:
     // copies of susceptible parameters to avoid buffer overrun attacks through locals/params
     bool getNeedsGSSecurityCookie() const
     {
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
         return false; // Cookie checks NYI in the LLVM backend.
 #else
         return compNeedsGSSecurityCookie;

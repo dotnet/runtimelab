@@ -194,7 +194,7 @@
 #error Cannot define both TARGET_ARM64 and TARGET_RISCV64
 #endif
 
-#elif defined(TARGET_WASM)
+#elif defined(TARGET_LLVM)
 
 #elif defined(TARGET_LOONGARCH64)
 #if defined(TARGET_X86)
@@ -428,7 +428,7 @@ const IL_OFFSET BAD_IL_OFFSET = 0xffffffff;
 const unsigned BAD_VAR_NUM    = UINT_MAX;
 const uint16_t BAD_LCL_OFFSET = UINT16_MAX;
 
-#if defined(TARGET_WASM)
+#if defined(TARGET_LLVM)
 const unsigned BAD_LLVM_ARG_NUM = UINT_MAX;
 #endif
 

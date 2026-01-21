@@ -28,9 +28,9 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 extern ICorJitHost* g_jitHost;
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
 #include "llvm.h"
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
 unsigned Compiler::jitTotalMethodCompiled = 0;
 
@@ -300,10 +300,10 @@ Compiler::Compiler(ArenaAllocator*       arena,
     , impPendingBlockMembers(CompAllocator(arena, CMK_Generic))
     , impSpillCliquePredMembers(CompAllocator(arena, CMK_Generic))
     , impSpillCliqueSuccMembers(CompAllocator(arena, CMK_Generic))
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     , genIPmappings(CompAllocator(arena, CMK_DebugInfo))
     , genRichIPmappings(CompAllocator(arena, CMK_DebugInfo))
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 {
     info.compCompHnd    = compHnd;
     info.compMethodHnd  = methodHnd;
@@ -357,9 +357,9 @@ Compiler::Compiler(ArenaAllocator*       arena,
         compInlineResult = nullptr;
     }
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     m_llvm = new (getAllocator(CMK_Codegen)) Llvm(this);
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
     for (int i = 0; i < TYP_COUNT; i++)
     {
@@ -386,9 +386,9 @@ Compiler::Compiler(ArenaAllocator*       arena,
 
     if (!compIsForInlining())
     {
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
         codeGen = getCodeGenerator(this);
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
         hashBv::Init(this);
 
         //
@@ -400,9 +400,9 @@ Compiler::Compiler(ArenaAllocator*       arena,
     }
     else
     {
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
         codeGen = nullptr;
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
     }
 
     for (MemoryKind memoryKind : allMemoryKinds())
@@ -763,9 +763,9 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
 
     assert(clsHnd != NO_CLASS_HANDLE);
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     return m_llvm->GetReturnTypeForStructWasm(clsHnd, wbReturnStruct);
-#else // !TARGET_WASM
+#else // !TARGET_LLVM
     if (structSize == 0)
     {
         structSize = info.compCompHnd->getClassSize(clsHnd);
@@ -1043,7 +1043,7 @@ var_types Compiler::getReturnTypeForStruct(CORINFO_CLASS_HANDLE     clsHnd,
     }
 
     return useType;
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1264,18 +1264,18 @@ void Compiler::compStartup()
 #endif
 
     /* Initialize the emitter */
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     emitter::emitInit();
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
     // Static vars of ValueNumStore
     ValueNumStore::ValidateValueNumStoreStatics();
 
     compDisplayStaticSizes();
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     Llvm::ConfigureDiagnosticOutput();
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 }
 
 /*****************************************************************************
@@ -1304,11 +1304,11 @@ void Compiler::compShutdown()
     DisplayNowayAssertMap();
 #endif // MEASURE_NOWAY
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     /* Shut down the emitter */
 
     emitter::emitDone();
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
 #if defined(DEBUG)
     // Finish reading and/or writing inline xml
@@ -2229,9 +2229,9 @@ void Compiler::compInitOptions(JitFlags* jitFlags)
     else
     {
         verbose = false;
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
         codeGen->setVerbose(false);
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
     }
     verboseTrees     = verbose && shouldUseVerboseTrees();
     verboseSsa       = verbose && shouldUseVerboseSsa();
@@ -2380,9 +2380,9 @@ void Compiler::compInitOptions(JitFlags* jitFlags)
                 verboseDump = true;
             }
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
             verboseDump |= m_llvm->EnableVerboseDump();
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
         }
     }
 
@@ -2714,9 +2714,9 @@ void Compiler::compInitOptions(JitFlags* jitFlags)
         verbose         = true;
         verboseTrees    = shouldUseVerboseTrees();
         verboseSsa      = shouldUseVerboseSsa();
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
         codeGen->setVerbose(true);
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
     }
 
     treesBeforeAfterMorph = (JitConfig.JitDumpBeforeAfterMorph() == 1);
@@ -2845,9 +2845,9 @@ void Compiler::compInitOptions(JitFlags* jitFlags)
     }
 
 #ifdef DEBUG
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     assert(!codeGen->isGCTypeFixed());
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
     opts.compGcChecks = (JitConfig.JitGCChecks() != 0) || compStressCompile(STRESS_GENERIC_VARN, 5);
 #endif
 
@@ -3788,7 +3788,7 @@ _SetMinOpts:
         fgRemoveProfileData("compiling with minopt");
     }
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     if (!compIsForInlining())
     {
         codeGen->setFramePointerRequired(false);
@@ -3826,7 +3826,7 @@ _SetMinOpts:
         JitMetadata::report(this, JitMetadata::TieringName, tieringName, strlen(tieringName));
 #endif
     }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 }
 
 #if defined(TARGET_ARMARCH) || defined(TARGET_RISCV64)
@@ -4583,10 +4583,10 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
         lvaRefCountState       = RCS_INVALID;
         fgLocalVarLivenessDone = false;
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
         // Decide the kind of code we want to generate
         fgSetOptions();
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
         fgExpandQmarkNodes();
 
@@ -4938,11 +4938,11 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     // Insert GC Polls
     DoPhase(this, PHASE_INSERT_GC_POLLS, &Compiler::fgInsertGCPolls);
 
-#if !defined(TARGET_WASM) // For LLVM, codegen will handle these.
+#if !defined(TARGET_LLVM) // For LLVM, codegen will handle these.
     // Create any throw helper blocks that might be needed
     //
     DoPhase(this, PHASE_CREATE_THROW_HELPERS, &Compiler::fgCreateThrowHelperBlocks);
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
     if (opts.OptimizationEnabled())
     {
@@ -4994,7 +4994,7 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     // call and register argument info, flowgraph and loop info, etc.
     compJitStats();
 
-#if defined(TARGET_WASM)
+#if defined(TARGET_LLVM)
     assert(m_llvm != nullptr);
     DoPhase(this, PHASE_LOWER_LLVM, [this]() {
         m_llvm->Lower();
@@ -5027,7 +5027,7 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     DoPhase(this, PHASE_BUILD_LLVM, [this]() {
         m_llvm->Compile();
     });
-#else // !TARGET_WASM
+#else // !TARGET_LLVM
 
 #ifdef TARGET_ARM
     if (compLocallocUsed)
@@ -5128,7 +5128,7 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
 
     // Generate PatchpointInfo
     generatePatchpointInfo();
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
     RecordStateAtEndOfCompilation();
 
@@ -5710,9 +5710,9 @@ void Compiler::generatePatchpointInfo()
 
     // Patchpoints are only found in Tier0 code, which is unoptimized, and so
     // should always have frame pointer.
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     assert(codeGen->isFramePointerUsed());
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
     // Allocate patchpoint info storage from runtime, and fill in initial bits of data.
     const unsigned        patchpointInfoSize = PatchpointInfo::ComputeSize(info.compLocalsCount);
@@ -6336,10 +6336,10 @@ int Compiler::compCompileAfterInit(CORINFO_MODULE_HANDLE classPtr,
     param.compileFlags   = compileFlags;
     param.result         = CORJIT_INTERNALERROR;
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     // normally done in codegencommon.cpp, but that file is not included
     genCallSite2DebugInfoMap = nullptr;
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
     setErrorTrap(info.compCompHnd, Param*, pParam, &param) // ERROR TRAP: Start normal block
     {
@@ -6356,11 +6356,11 @@ int Compiler::compCompileAfterInit(CORINFO_MODULE_HANDLE classPtr,
             goto DoneCleanUp;
         }
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
         /* Tell the emitter that we're done with this function */
 
         GetEmitter()->emitEndCG();
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
     DoneCleanUp:
         compDone();
@@ -6852,14 +6852,14 @@ int Compiler::compCompileHelper(CORINFO_MODULE_HANDLE classPtr,
     info.compXcptnsCount = methodInfo->EHcount;
     info.compMaxStack    = methodInfo->maxStack;
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     /* Initialize emitter */
 
     if (!compIsForInlining())
     {
         codeGen->GetEmitter()->emitBegCG(this, compHnd);
     }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
     info.compIsStatic = (info.compFlags & CORINFO_FLG_STATIC) != 0;
 

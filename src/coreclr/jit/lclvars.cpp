@@ -781,9 +781,9 @@ void Compiler::lvaInitVarDsc(LclVarDsc*              varDsc,
         compFloatingPointUsed = true;
     }
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     varDsc->lvCorInfoType = corInfoType;
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
     // Set the lvType (before this point it is TYP_UNDEF).
     if ((varTypeIsStruct(type)))
     {
@@ -867,12 +867,12 @@ void Compiler::lvaClassifyParameterABI(Classifier& classifier)
 
     lvaParameterStackSize = classifier.StackSize();
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     // genFnPrologCalleeRegArgs expect these to be the counts of registers it knows how to handle.
     // TODO-Cleanup: Recompute these values in the backend instead, where they are used.
     codeGen->intRegState.rsCalleeRegArgCount   = genCountBits(argRegs & RBM_ARG_REGS);
     codeGen->floatRegState.rsCalleeRegArgCount = genCountBits(argRegs & RBM_FLTARG_REGS);
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
 #ifdef TARGET_ARM
     // Prespill all argument regs on to stack in case of Arm when under profiler.
@@ -1074,9 +1074,9 @@ unsigned Compiler::compMapILvarNum(unsigned ILvarNum)
     {
         // Parameter
         varNum = compMapILargNum(ILvarNum);
-#ifndef TARGET_WASM // Shadow parameters will not be marked "lvIsParam" by LLVM debug info generation time.
+#ifndef TARGET_LLVM // Shadow parameters will not be marked "lvIsParam" by LLVM debug info generation time.
         noway_assert(lvaTable[varNum].lvIsParam);
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
     }
     else if (ILvarNum < info.compILlocalsCount)
     {
@@ -4021,7 +4021,7 @@ inline void Compiler::lvaIncrementFrameSize(unsigned size)
     compLclFrameSize += size;
 }
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 /****************************************************************************
  *
  *  Return true if absolute offsets of temps are larger than vars, or in other
@@ -4806,7 +4806,7 @@ void Compiler::lvaUpdateArgsWithInitialReg()
     }
 }
 
-#if !defined(TARGET_WASM)
+#if !defined(TARGET_LLVM)
 //-----------------------------------------------------------------------------
 // lvaAssignVirtualFrameOffsetsToArgs:
 //   Assign virtual frame offsets to the incoming parameters.
@@ -4853,7 +4853,7 @@ void Compiler::lvaAssignVirtualFrameOffsetsToArgs()
         }
     }
 }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
 //-----------------------------------------------------------------------------
 // lvaGetRelativeOffsetToCallerAllocatedSpaceForParameter:
@@ -6237,7 +6237,7 @@ int Compiler::lvaAllocateTemps(int stkOffs, bool mustDoubleAlign)
 
     return stkOffs;
 }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
 #ifdef DEBUG
 
@@ -6276,7 +6276,7 @@ void Compiler::lvaDumpFrameLocation(unsigned lclNum, int minLength)
     int       offset;
     regNumber baseReg;
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     LclVarDsc* varDsc = lvaGetDesc(lclNum);
     offset  = varDsc->GetStackOffset();
     baseReg = varDsc->GetRegNum();
@@ -6365,12 +6365,12 @@ void Compiler::lvaDumpEntry(unsigned lclNum, FrameLayoutState curState, size_t r
         }
 
         bool isZeroRef = (varDsc->lvRefCnt(lvaRefCountState) == 0) && !varDsc->lvImplicitlyReferenced;
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
         if (varDsc->GetRegNum() == REG_STK)
         {
             isZeroRef = false; // This could be a shadow local without physical references.
         }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
         // The register or stack location field is 11 characters wide.
         if (isZeroRef)
@@ -6644,7 +6644,7 @@ void Compiler::lvaTableDump(FrameLayoutState curState)
         lvaDumpEntry(lclNum, curState, refCntWtdWidth);
     }
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     //-------------------------------------------------------------------------
     // Display the code-gen temps
 
@@ -6657,7 +6657,7 @@ void Compiler::lvaTableDump(FrameLayoutState curState)
         printf(" [%2s%1s0x%02X]\n", isFramePointerUsed() ? STR_FPBASE : STR_SPBASE, (offset < 0 ? "-" : "+"),
                (offset < 0 ? -offset : offset));
     }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
     if (curState >= TENTATIVE_FRAME_LAYOUT)
     {
@@ -6667,7 +6667,7 @@ void Compiler::lvaTableDump(FrameLayoutState curState)
 }
 #endif // DEBUG
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 /*****************************************************************************
  *
  *  Conservatively estimate the layout of the stack frame.
@@ -6868,7 +6868,7 @@ int Compiler::lvaGetInitialSPRelativeOffset(unsigned varNum)
 
     return lvaToInitialSPRelativeOffset(varDsc->GetStackOffset(), varDsc->lvFramePointerBased);
 }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
 // Given a local variable offset, and whether that offset is frame-pointer based, return its offset from Initial-SP.
 // This is used, for example, to figure out the offset of the frame pointer from Initial-SP.

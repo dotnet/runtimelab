@@ -77,7 +77,7 @@ void GCInfo::gcResetForBB()
     VarSetOps::AssignNoCopy(compiler, gcVarPtrSetCur, VarSetOps::MakeEmpty(compiler));
 }
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 #ifdef DEBUG
 
 /*****************************************************************************
@@ -222,7 +222,7 @@ void GCInfo::gcMarkRegPtrVal(regNumber reg, var_types type)
             break;
     }
 }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
 //------------------------------------------------------------------------
 // gcIsWriteBarrierCandidate: Get the write barrier kind for the given store.

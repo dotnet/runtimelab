@@ -17,7 +17,7 @@
 // accessed from members of Compiler.
 //
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 #ifndef _CODEGEN_INTERFACE_H_
 #define _CODEGEN_INTERFACE_H_
 
@@ -878,4 +878,4 @@ private:
 #endif // !defined(TARGET_LOONGARCH64) && !defined(TARGET_RISCV64)
 
 #endif // _CODEGEN_INTERFACE_H_
-#endif // TARGET_WASM
+#endif // TARGET_LLVM

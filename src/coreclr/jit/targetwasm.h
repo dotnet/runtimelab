@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 #pragma once
 
-#if !defined(TARGET_WASM)
+#if !defined(TARGET_LLVM)
 #error The file should not be included for this platform.
 #endif
 

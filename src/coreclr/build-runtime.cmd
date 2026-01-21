@@ -333,8 +333,8 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
     if not "!string:-jit-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! jit
     )
-    if not "!string:-wasmjit-=!"=="!string!" (
-        set __CMakeTarget=!__CMakeTarget! wasmjit
+    if not "!string:-llvmjit-=!"=="!string!" (
+        set __CMakeTarget=!__CMakeTarget! llvmjit
         set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLR_CMAKE_BUILD_LLVM_JIT=1"
 
         if "%__BuildType%"=="Release" (

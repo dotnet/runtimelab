@@ -2470,13 +2470,13 @@ void Compiler::fgDumpTrees(BasicBlock* firstBlock, BasicBlock* lastBlock)
 //
 void Compiler::fgDumpBlockMemorySsaIn(BasicBlock* block)
 {
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
     if (block->IsLIR())
     {
         return;
     }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
     for (MemoryKind memoryKind : allMemoryKinds())
     {
@@ -3829,7 +3829,7 @@ void Compiler::fgDebugCheckLinks(bool morphTrees)
     }
 
     fgDebugCheckNodesUniqueness();
-#ifndef TARGET_WASM // Does not handle LIR.
+#ifndef TARGET_LLVM // Does not handle LIR.
     fgDebugCheckSsa();
 #endif
 }

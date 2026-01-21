@@ -112,7 +112,7 @@ public:
     // can be split out over register and stack, giving
     // multiple register segments and a struct segment.
     unsigned NumSegments = 0;
-#if TARGET_WASM
+#if TARGET_LLVM
     bool IsPointer = false;
     var_types ArgType = TYP_UNDEF;
 #endif
@@ -368,7 +368,7 @@ typedef Arm32Classifier PlatformClassifier;
 typedef RiscV64Classifier PlatformClassifier;
 #elif defined(TARGET_LOONGARCH64)
 typedef LoongArch64Classifier PlatformClassifier;
-#elif defined(TARGET_WASM)
+#elif defined(TARGET_LLVM)
 typedef WasmClassifier PlatformClassifier;
 #endif
 

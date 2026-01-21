@@ -479,7 +479,7 @@ private:
         const int FAT_POINTER_MASK = 0x8000000000000000;
 #else
         const int FAT_POINTER_MASK = 0x2;
-#endif // TARGET_WASM
+#endif // TARGET_WASM32
 
         GenTree*  fptrAddress;
         var_types pointerType;

@@ -48,7 +48,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
  *
  ******************************************************************************
  */
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 
 #include "jitpch.h"
 #ifdef _MSC_VER
@@ -2070,4 +2070,4 @@ const char* CodeGen::siStackVarName(size_t offs, size_t size, unsigned reg, unsi
 /*****************************************************************************/
 #endif // defined(DEBUG)
 #endif // LATE_DISASM
-#endif // TARGET_WASM
+#endif // TARGET_LLVM

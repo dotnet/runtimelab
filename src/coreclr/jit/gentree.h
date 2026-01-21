@@ -4697,7 +4697,7 @@ struct NewCallArg
     // The type of well known arg
     enum WellKnownArg WellKnownArg = ::WellKnownArg::None;
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     // Only used to differentiate pointer types (CORINFO_TYPE_PTR) from ints
     CorInfoType SignatureCorInfoType = CORINFO_TYPE_UNDEF;
 #endif
@@ -4734,7 +4734,7 @@ struct NewCallArg
     {
         assert(corInfoType != CORINFO_TYPE_UNDEF);
         NewCallArg arg = Primitive(node, JITtype2varType(corInfoType));
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
         arg.SignatureCorInfoType = corInfoType;
 #endif
         return arg;
@@ -4762,7 +4762,7 @@ class CallArg
     ClassLayout* m_signatureLayout;
     // The type of the argument in the signature.
     var_types m_signatureType : 5;
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     // The CorInfoType of argument in the signature.
     CorInfoType m_signatureCorInfoType : 8;
 #endif
@@ -4783,7 +4783,7 @@ private:
         , m_lateNext(nullptr)
         , m_signatureLayout(nullptr)
         , m_signatureType(TYP_UNDEF)
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
         , m_signatureCorInfoType(CORINFO_TYPE_UNDEF)
 #endif
         , m_wellKnownArg(WellKnownArg::None)
@@ -4802,7 +4802,7 @@ public:
         m_earlyNode       = arg.Node;
         m_wellKnownArg    = arg.WellKnownArg;
         m_signatureType   = arg.SignatureType;
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
         m_signatureCorInfoType = arg.SignatureCorInfoType;
 #endif
         m_signatureLayout = arg.SignatureLayout;
@@ -4827,7 +4827,7 @@ public:
     ClassLayout* GetSignatureLayout() { return m_signatureLayout; }
     CORINFO_CLASS_HANDLE GetSignatureClassHandle() { return m_signatureLayout == nullptr ? NO_CLASS_HANDLE : m_signatureLayout->GetClassHandle(); }
     var_types GetSignatureType() { return m_signatureType; }
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     CorInfoType GetSignatureCorInfoType() { return m_signatureCorInfoType; }
 #endif
     WellKnownArg GetWellKnownArg() { return m_wellKnownArg; }
@@ -4922,7 +4922,7 @@ public:
     CallArg* InsertAfterThisOrFirst(Compiler* comp, const NewCallArg& arg);
     void     PushLateBack(CallArg* arg);
     void     Remove(CallArg* arg);
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     void     MoveLateToEarly();
 #endif
     void     RemoveUnsafe(CallArg* arg);
@@ -5758,9 +5758,9 @@ struct GenTreeCall final : public GenTree
     uint8_t gtInlineInfoCount; // number of inline candidates for the given call
 
     CORINFO_CLASS_HANDLE gtRetClsHnd; // The return type handle of the call if it is a struct; always available
-#if defined(TARGET_WASM)
+#if defined(TARGET_LLVM)
     CorInfoType gtCorInfoType = CORINFO_TYPE_UNDEF; // the precise return type used to construct the signature
-#endif                                              // defined(TARGET_WASM)
+#endif                                              // defined(TARGET_LLVM)
     union
     {
         void*                gtStubCallStubAddr;   // GTF_CALL_VIRT_STUB - these are never inlined
@@ -8037,8 +8037,8 @@ public:
     void SetLayout(ClassLayout* newLayout)
     {
         assert(newLayout != nullptr);
-        // TARGET_WASM does not initialize m_layout before calling SetLayout when rewriting locals.
-#ifndef TARGET_WASM
+        // TARGET_LLVM does not initialize m_layout before calling SetLayout when rewriting locals.
+#ifndef TARGET_LLVM
         assert(newLayout->GetSize() == m_layout->GetSize());
 #endif
         m_layout = newLayout;

@@ -645,7 +645,7 @@ void Compiler::eeGetStmtOffsets()
     info.compCompHnd->freeArray(offsets);
 }
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 /*****************************************************************************
  *
  *                  Debugging support - Local var info
@@ -713,7 +713,7 @@ void Compiler::eeSetLVdone()
     info.compCompHnd->setVars(info.compMethodHnd, eeVarsCount, (ICorDebugInfo::NativeVarInfo*)eeVars);
     eeVars = nullptr; // We give up ownership after setVars()
 }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
 void Compiler::eeGetVars()
 {
@@ -842,7 +842,7 @@ void Compiler::eeGetVars()
 }
 
 #ifdef DEBUG
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 void Compiler::eeDispVar(ICorDebugInfo::NativeVarInfo* var)
 {
     const char* name = nullptr;
@@ -970,7 +970,7 @@ void Compiler::eeDispVars(CORINFO_METHOD_HANDLE ftn, ULONG32 cVars, ICorDebugInf
         eeDispVar(&vars[i]);
     }
 }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 #endif // DEBUG
 
 /*****************************************************************************
@@ -1293,7 +1293,7 @@ WORD Compiler::eeGetRelocTypeHint(void* target)
     }
 }
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 CORINFO_FIELD_HANDLE Compiler::eeFindJitDataOffs(unsigned dataOffs)
 {
     // Data offsets are marked by the fact that the low two bits are 0b01 0x1
@@ -1331,7 +1331,7 @@ int Compiler::eeGetJitDataOffs(CORINFO_FIELD_HANDLE field)
         return -1;
     }
 }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
 /*****************************************************************************
  *
@@ -1438,10 +1438,10 @@ unsigned Compiler::eeTryGetClassSize(CORINFO_CLASS_HANDLE clsHnd)
 
 #endif // !DEBUG
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 extern "C" DLLEXPORT int registerLlvmCallbacks(void** jitImports, void** jitExports)
 {
-    // No-op stub; see llvm.cpp for the real implementation for `TARGET_WASM`
+    // No-op stub; see llvm.cpp for the real implementation for `TARGET_LLVM`
     return 0;
 }
 #endif

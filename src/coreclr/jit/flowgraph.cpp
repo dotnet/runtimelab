@@ -3,9 +3,9 @@
 
 #include "jitpch.h"
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
 #include "llvm.h"
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
 #ifdef _MSC_VER
 #pragma hdrstop
@@ -1745,7 +1745,7 @@ void Compiler::fgAddReversePInvokeEnterExit()
     LclVarDsc* varDsc = lvaGetDesc(lvaReversePInvokeFrameVar);
     lvaSetStruct(lvaReversePInvokeFrameVar, typGetBlkLayout(eeGetEEInfo()->sizeOfReversePInvokeFrame), false);
 
-#ifndef TARGET_WASM // WASM RPI helpers have special ABI and are inserted in lowering.
+#ifndef TARGET_LLVM // WASM RPI helpers have special ABI and are inserted in lowering.
     // Add enter pinvoke exit callout at the start of prolog
 
     GenTree* pInvokeFrameVar = gtNewLclVarAddrNode(lvaReversePInvokeFrameVar);
@@ -1810,7 +1810,7 @@ void Compiler::fgAddReversePInvokeEnterExit()
         printf("\n");
     }
 #endif
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 }
 
 /*****************************************************************************
@@ -2401,9 +2401,9 @@ PhaseStatus Compiler::fgAddInternal()
     // Merge return points if required or beneficial
     MergedReturns merger(this);
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     m_llvm->AddUnhandledExceptionHandler();
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
     // Add the synchronized method enter/exit calls and try/finally protection. Note
     // that this must happen before the one BBJ_RETURN block is created below, so the
@@ -3666,7 +3666,7 @@ PhaseStatus Compiler::fgCreateThrowHelperBlocks()
     return PhaseStatus::MODIFIED_EVERYTHING;
 }
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 //------------------------------------------------------------------------
 // fgCreateThrowHelperBlockCode: create the code for throw helper blocks
 //
