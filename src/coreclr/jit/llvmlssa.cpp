@@ -1427,14 +1427,19 @@ private:
             template <typename... TArgs>
             void Add(const char* linkFmt, TArgs... args)
             {
-                const char* link = m_visitor->m_compiler->printfAlloc(linkFmt, args...);
-                Add(link);
+                if (m_enabled)
+                {
+                    const char* link = m_visitor->m_compiler->printfAlloc(linkFmt, args...);
+                    Add(link);
+                }
             }
 
             void Add(const char* link)
             {
-                assert(m_enabled);
-                m_chain.Push(link);
+                if (m_enabled)
+                {
+                    m_chain.Push(link);
+                }
             }
 
             void SaveForDef(LclSsaVarDsc* ssaDsc)
