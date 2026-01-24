@@ -10433,13 +10433,13 @@ GenTree* Compiler::fgOptimizeAddition(GenTreeOp* add)
 //
 GenTree* Compiler::fgOptimizeMultiply(GenTreeOp* mul)
 {
-#ifdef TARGET_WASM32
+#ifdef TARGET_LLVM_WASM32
     if (mul->TypeIs(TYP_LONG))
     {
         // TODO-LLVM-CQ: fix upstream to not assume not-LONG multiplies on 32 bit.
         return nullptr;
     }
-#endif // TARGET_WASM32
+#endif // TARGET_LLVM_WASM32
 
     assert(mul->OperIs(GT_MUL));
     assert(varTypeIsIntOrI(mul) || varTypeIsFloating(mul));

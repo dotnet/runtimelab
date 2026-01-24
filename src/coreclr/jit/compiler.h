@@ -95,7 +95,6 @@ struct IndentStack;
 class Lowering; // defined in lower.h
 
 #ifdef TARGET_LLVM
-blah blah
 class Llvm; // defined in llvm.h
 #endif // TARGET_LLVM
 
@@ -2629,7 +2628,7 @@ public:
 
 #if !defined(TARGET_LLVM)
     bool IsMultiRegReturnedType(CORINFO_CLASS_HANDLE hClass, CorInfoCallConvExtension callConv);
-#endif // !TARGTARGET_LLVMET_WASM
+#endif // !TARGET_LLVM
 
     //-------------------------------------------------------------------------
     // The following is used for validating format of EH table

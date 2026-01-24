@@ -276,9 +276,9 @@
 #define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_ARMNT
 #elif defined(TARGET_ARM64)
 #define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_ARM64 // 0xAA64
-#elif defined(TARGET_WASM32)
+#elif defined(TARGET_LLVM_WASM32)
 #define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_WASM32
-#elif defined(TARGET_WASM64)
+#elif defined(TARGET_LLVM_WASM64)
 #define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_WASM64
 #elif defined(TARGET_LOONGARCH64)
 #define IMAGE_FILE_MACHINE_TARGET IMAGE_FILE_MACHINE_LOONGARCH64 // 0x6264
@@ -345,7 +345,7 @@ typedef ptrdiff_t ssize_t;
 #endif // defined(UNIX_AMD64_ABI)
 
 // For Wasm32 doubles are 8 bytes so can't be asserted against the size of a "register"
-#if defined(DEBUG) && !defined(TARGET_WASM32)
+#if defined(DEBUG) && !defined(TARGET_LLVM_WASM32)
 #define DEBUG_ARG_SLOTS
 #endif
 

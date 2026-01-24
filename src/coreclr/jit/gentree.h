@@ -10193,12 +10193,12 @@ inline GenTreeFlags GenTree::GetRegSpillFlagByIdx(int regIndex) const
         return AsCall()->GetRegSpillFlagByIdx(regIndex);
     }
 
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
+#if !defined(TARGET_64BIT) && !defined(TARGET_LLVM_WASM32) && !defined(TARGET_LLVM_WASM64)
     if (OperIsMultiRegOp())
     {
         return AsMultiRegOp()->GetRegSpillFlagByIdx(regIndex);
     }
-#endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
+#endif // !defined(TARGET_64BIT) && !defined(TARGET_LLVM_WASM32) && !defined(TARGET_LLVM_WASM64)
 #endif // FEATURE_MULTIREG_RET
 
 #ifdef FEATURE_HW_INTRINSICS
