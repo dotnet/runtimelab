@@ -1816,7 +1816,7 @@ Compiler::fgWalkResult Rationalizer::RewriteNode(GenTree** useEdge, Compiler::Ge
             }
             break;
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
         case GT_RETURN:
             // LLVM lowering needs to know whether the struct is dependently promoted or not in all cases.
             // Morph will sometimes miss this one. TODO-LLVM: delete once upstream improves morph's logic
@@ -1830,7 +1830,7 @@ Compiler::fgWalkResult Rationalizer::RewriteNode(GenTree** useEdge, Compiler::Ge
                 }
             }
             break;
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
         case GT_BSWAP16:
             if (node->gtGetOp1()->OperIs(GT_CAST))
             {

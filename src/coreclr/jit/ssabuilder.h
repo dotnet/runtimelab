@@ -54,7 +54,7 @@ public:
     void Build();
 
 private:
-#if defined(TARGET_WASM)
+#if defined(TARGET_LLVM)
     void InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum);
 #endif
 

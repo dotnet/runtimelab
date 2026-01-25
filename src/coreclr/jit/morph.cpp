@@ -27,7 +27,7 @@ PhaseStatus Compiler::fgMorphInit()
 {
     bool madeChanges = false;
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     // We could allow ESP frames. Just need to reserve space for
     // pushing EBP if the method becomes an EBP-frame after an edit.
     // Note that requiring a EBP Frame disallows double alignment.  Thus if we change this
@@ -43,7 +43,7 @@ PhaseStatus Compiler::fgMorphInit()
         //
         // compLocallocUsed            = true;
     }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
     fgAvailableOutgoingArgTemps = hashBv::Create(this);
 
@@ -292,7 +292,7 @@ GenTree* Compiler::fgMorphExpandCast(GenTreeCast* tree)
     var_types dstType = tree->CastToType();
     unsigned  dstSize = genTypeSize(dstType);
 
-#if !defined(TARGET_WASM) // LLVM codegen supports all casts directly.
+#if !defined(TARGET_LLVM) // LLVM codegen supports all casts directly.
     // See if the cast has to be done in two steps.  R -> I
     if (varTypeIsFloating(srcType) && varTypeIsIntegral(dstType))
     {
@@ -464,7 +464,7 @@ GenTree* Compiler::fgMorphExpandCast(GenTreeCast* tree)
     }
 #endif // TARGET_X86
     else
-#endif // !defined(TARGET_WASM)
+#endif // !defined(TARGET_LLVM)
         if (varTypeIsGC(srcType) != varTypeIsGC(dstType))
     {
         // We are casting away GC information.  we would like to just
@@ -1398,7 +1398,7 @@ void CallArgs::EvalArgsToTemps(Compiler* comp, GenTreeCall* call)
         GenTree* setupArg = nullptr;
         GenTree* defArg;
 
-#if !FEATURE_FIXED_OUT_ARGS && !defined(TARGET_WASM)
+#if !FEATURE_FIXED_OUT_ARGS && !defined(TARGET_LLVM)
         // Only ever set for FEATURE_FIXED_OUT_ARGS
         assert(!arg.m_needPlace);
 
@@ -1789,7 +1789,7 @@ void CallArgs::AddFinalArgsAndDetermineABIInfo(Compiler* comp, GenTreeCall* call
         call->gtCallType    = CT_HELPER;
         call->gtCallMethHnd = comp->eeFindHelper(CORINFO_HELP_PINVOKE_CALLI);
     }
-#if defined(FEATURE_READYTORUN) && !defined(TARGET_WASM)
+#if defined(FEATURE_READYTORUN) && !defined(TARGET_LLVM)
     // For arm/arm64, we dispatch code same as VSD using virtualStubParamInfo->GetReg()
     // for indirection cell address, which ZapIndirectHelperThunk expects.
     // For x64/x86 we use return address to get the indirection cell by disassembling the call site.
@@ -2232,7 +2232,7 @@ bool Compiler::fgTryMorphStructArg(CallArg* arg)
             (lvaGetPromotionType(argNode->AsLclVar()->GetLclNum()) == PROMOTION_TYPE_INDEPENDENT))
         {
             // TODO-LLVM: see https://github.com/dotnet/runtimelab/issues/3191
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
             // TODO-Arm-CQ: support decomposing "large" promoted structs into field lists.
             if (!isSplit)
             {
@@ -2247,7 +2247,7 @@ bool Compiler::fgTryMorphStructArg(CallArg* arg)
                 *use = fgMorphTree(*use);
             }
             else
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
             {
                 // Set DNER to block independent promotion.
                 lvaSetVarDoNotEnregister(argNode->AsLclVar()->GetLclNum() DEBUGARG(DoNotEnregisterReason::IsStructArg));
@@ -2258,7 +2258,7 @@ bool Compiler::fgTryMorphStructArg(CallArg* arg)
             lvaSetVarDoNotEnregister(argNode->AsLclFld()->GetLclNum() DEBUGARG(DoNotEnregisterReason::LocalField));
         }
         // TODO-LLVM: see https://github.com/dotnet/runtimelab/issues/3191
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
         else if (argNode->OperIs(GT_BLK))
         {
             ClassLayout* layout = argNode->AsBlk()->GetLayout();
@@ -2272,7 +2272,7 @@ bool Compiler::fgTryMorphStructArg(CallArg* arg)
                 argNode->gtType = primitiveType;
             }
         }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
         // Potentially update commas
         arg->GetNode()->ChangeType((*use)->TypeGet());
@@ -2946,7 +2946,7 @@ GenTree* Compiler::fgMorphIndexAddr(GenTreeIndexAddr* indexAddr)
 
     noway_assert(!varTypeIsStruct(elemTyp) || (elemStructType != NO_CLASS_HANDLE));
 
-#if !defined(TARGET_WASM)
+#if !defined(TARGET_LLVM)
     // In minopts, we will not be expanding GT_INDEX_ADDR in order to minimize the size of the IR. As minopts
     // compilation time is roughly proportional to the size of the IR, this helps keep compilation times down.
     // Furthermore, this representation typically saves on code size in minopts w.r.t. the complete expansion
@@ -2981,7 +2981,7 @@ GenTree* Compiler::fgMorphIndexAddr(GenTreeIndexAddr* indexAddr)
 
         return indexAddr;
     }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
 #ifdef FEATURE_SIMD
     if (varTypeIsStruct(elemTyp) && structSizeMightRepresentSIMDType(elemSize))
@@ -7126,7 +7126,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
         case GT_MUL:
             noway_assert(op2 != nullptr);
 
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM)
+#if !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
             if (typ == TYP_LONG)
             {
                 // For (long)int1 * (long)int2, we dont actually do the
@@ -7161,7 +7161,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
                     goto USE_HELPER_FOR_ARITH;
                 }
             }
-#endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM)
+#endif // !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
             break;
 
         case GT_ARR_LENGTH:
@@ -7237,7 +7237,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
                 return fgMorphSmpOp(tree, mac);
             }
 
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM)
+#if !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
             if (typ == TYP_LONG)
             {
                 helper = CORINFO_HELP_LDIV;
@@ -7251,12 +7251,12 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
                 goto USE_HELPER_FOR_ARITH;
             }
 #endif
-#endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM)
+#endif // !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
             break;
 
         case GT_UDIV:
 
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM)
+#if !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
             if (typ == TYP_LONG)
             {
                 helper = CORINFO_HELP_ULDIV;
@@ -7269,7 +7269,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
                 goto USE_HELPER_FOR_ARITH;
             }
 #endif
-#endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM)
+#endif // !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
             break;
 
         case GT_MOD:
@@ -7377,7 +7377,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
                 }
             }
 
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM)
+#if !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
             if (typ == TYP_LONG)
             {
                 helper = (oper == GT_UMOD) ? CORINFO_HELP_ULMOD : CORINFO_HELP_LMOD;
@@ -7399,7 +7399,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
                 }
             }
 #endif
-#endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM)
+#endif // !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
 
             if (tree->OperIs(GT_UMOD) && op2->IsIntegralConstUnsignedPow2())
             {
@@ -7467,7 +7467,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
             GenTree*& retVal = tree->AsOp()->ReturnValueRef();
 
             // TODO-LLVM: see https://github.com/dotnet/runtimelab/issues/3191
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
             // Apply some optimizations that change the type of the return.
             // These are not applicable when this is a merged return that will
             // be changed into a store and jump to the return BB.
@@ -7480,7 +7480,7 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
 
                 fgTryReplaceStructLocalWithFields(&retVal);
             }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
             // normalize small integer return values
             if (fgGlobalMorph && varTypeIsSmall(info.compRetType) && (retVal != nullptr) && !retVal->TypeIs(TYP_VOID) &&
@@ -7699,9 +7699,9 @@ GenTree* Compiler::fgMorphSmpOp(GenTree* tree, MorphAddrContext* mac, bool* optA
         }
     }
 
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM)
+#if !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
 DONE_MORPHING_CHILDREN:
-#endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM)
+#endif // !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
 
     gtUpdateNodeOperSideEffects(tree);
 
@@ -7937,14 +7937,14 @@ DONE_MORPHING_CHILDREN:
 
         case GT_MUL:
 
-#if !defined(TARGET_64BIT) && !defined(TARGET_WASM)
+#if !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
             if (typ == TYP_LONG)
             {
                 // This must be GTF_MUL_64RSLT
                 INDEBUG(tree->AsOp()->DebugCheckLongMul());
                 return tree;
             }
-#endif // !defined(TARGET_64BIT) && !defined(TARGET_WASM)
+#endif // !defined(TARGET_64BIT) && !defined(TARGET_LLVM)
             goto CM_OVF_OP;
 
         case GT_SUB:
@@ -8448,7 +8448,7 @@ DONE_MORPHING_CHILDREN:
             break;
 
             // TODO-LLVM: see https://github.com/dotnet/runtimelab/issues/3191
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
         case GT_RETURN:
         case GT_SWIFT_ERROR_RET:
         {
@@ -8466,7 +8466,7 @@ DONE_MORPHING_CHILDREN:
             }
             break;
         }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
         default:
             break;
@@ -10433,13 +10433,13 @@ GenTree* Compiler::fgOptimizeAddition(GenTreeOp* add)
 //
 GenTree* Compiler::fgOptimizeMultiply(GenTreeOp* mul)
 {
-#ifdef TARGET_WASM32
+#ifdef TARGET_LLVM_WASM32
     if (mul->TypeIs(TYP_LONG))
     {
         // TODO-LLVM-CQ: fix upstream to not assume not-LONG multiplies on 32 bit.
         return nullptr;
     }
-#endif // TARGET_WASM32
+#endif // TARGET_LLVM_WASM32
 
     assert(mul->OperIs(GT_MUL));
     assert(varTypeIsIntOrI(mul) || varTypeIsFloating(mul));
@@ -14157,7 +14157,7 @@ void Compiler::fgMergeBlockReturn(BasicBlock* block)
     }
 }
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 /*****************************************************************************
  *
  *  Make some decisions about the kind of code to generate.
@@ -14244,7 +14244,7 @@ void Compiler::fgSetOptions()
 
     // printf("method will %s be fully interruptible\n", GetInterruptible() ? "   " : "not");
 }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
 /*****************************************************************************/
 

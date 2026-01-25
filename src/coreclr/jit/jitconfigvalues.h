@@ -851,7 +851,7 @@ CONFIG_INTEGER(JitSaveFpLrWithCalleeSavedRegisters, "JitSaveFpLrWithCalleeSavedR
 CONFIG_INTEGER(JitDispIns, "JitDispIns", 0)
 #endif // defined(TARGET_LOONGARCH64)
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
 RELEASE_CONFIG_INTEGER(JitVerifyLlvmIR, "JitVerifyLlvmIR", 0)
 RELEASE_CONFIG_INTEGER(JitCheckLlvmIR, "JitCheckLlvmIR", 0)
 RELEASE_CONFIG_INTEGER(JitRunLssaTests, "JitRunLssaTests", 0)
@@ -859,7 +859,7 @@ RELEASE_CONFIG_INTEGER(JitGcStress, "JitGcStress", 0)
 
 CONFIG_STRING(JitDumpSymbol, "JitDumpSymbol")
 CONFIG_STRING(JitEnableLssaRange, "JitEnableLssaRange")
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
 // Allow to enregister locals with struct type.
 RELEASE_CONFIG_INTEGER(JitEnregStructLocals, "JitEnregStructLocals", 1)

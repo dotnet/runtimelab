@@ -167,7 +167,7 @@ if [[ -n "$__RequestedBuildComponents" ]]; then
     __CMakeTarget="${__CMakeTarget// paltests / paltests_install }"
 fi
 
-if [[ "$__CMakeTarget" == *"wasmjit"* ]]; then
+if [[ "$__CMakeTarget" == *"llvmjit"* ]]; then
   __CMakeArgs="$__CMakeArgs -DCLR_CMAKE_BUILD_LLVM_JIT=1"
 
   if [[ "$__BuildType" == "Release" ]]; then

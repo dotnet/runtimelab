@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 #pragma once
 
-#if !defined(TARGET_WASM)
+#if !defined(TARGET_LLVM)
 #error The file should not be included for this platform.
 #endif
 
@@ -35,7 +35,7 @@
                                            // Note that this must be greater than 1 so that GenTreeLclVar can have an array of
                                            // MAX_MULTIREG_COUNT - 1.
   #define USER_ARGS_COME_LAST      1
-#if defined(TARGET_WASM32)
+#if defined(TARGET_LLVM_WASM32)
   #define TARGET_POINTER_SIZE      4       // equal to sizeof(void*) and the managed pointer size in bytes for this target
 #else
   #define TARGET_POINTER_SIZE      8
@@ -53,7 +53,7 @@
 
   #define REGNUM_BITS              6       // number of bits in a REG_*
   #define REGMASK_BITS             32      // number of bits in a REGNUM_MASK
-#if defined(TARGET_WASM32)               // morph phase uses this
+#if defined(TARGET_LLVM_WASM32)            // morph phase uses this
   #define REGSIZE_BYTES            4       // number of bytes in one register
 #else
   #define REGSIZE_BYTES            8       // number of bytes in one register

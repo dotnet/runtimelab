@@ -183,12 +183,12 @@ public:
         }
 
         unsigned short rpdGCtype : 2; // is this a pointer, after all?
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
         GCtype         rpdGCtypeGet()
         {
             return (GCtype)rpdGCtype;
         }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
         unsigned short rpdIsThis : 1; // is it the 'this' pointer
         unsigned short rpdCall   : 1; // is this a true call site?

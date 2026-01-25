@@ -90,7 +90,7 @@ REGALIAS(EDI, RDI)
 #define KBASE 64
 #define KMASK(x) (1ULL << ((x)))
 
-#elif defined(TARGET_WASM)
+#elif defined(TARGET_LLVM)
 #define XMMBASE 16
 #define XMMMASK(x) ((__int64)(1) << ((x)+XMMBASE))
 
@@ -364,7 +364,7 @@ REGDEF(STK,    8+KBASE,    0x0000,       "STK"  )
 #elif defined(TARGET_ARM64)
  #include "registerarm64.h"
 
-#elif defined(TARGET_WASM)
+#elif defined(TARGET_LLVM)
 
 // WASM doesn't actually have any registers. But to avoid having to modify the frontend
 // (in particular, fixing the assumption that "this" is always enregistered), we will

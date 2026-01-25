@@ -203,7 +203,7 @@ ValueNumFuncDef(HWI_##isa##_##name, ((argCount == -1) ? -1 : (argCount + 1)), ((
 #elif defined (TARGET_ARM)
 // No Hardware Intrinsics on ARM32
 
-#elif defined(TARGET_WASM)
+#elif defined(TARGET_LLVM)
 // No Hardware Intrinsics on WebAssembly
 
 #elif defined (TARGET_LOONGARCH64)

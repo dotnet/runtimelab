@@ -93,7 +93,7 @@ void Compiler::fgResetForSsa(bool deepClean)
                 }
             }
 
-#if defined(TARGET_WASM)
+#if defined(TARGET_LLVM)
             if (blk->IsLIR())
             {
                 for (GenTree* tree : LIR::AsRange(blk))
@@ -153,7 +153,7 @@ static Statement* GetPhiNode(BasicBlock* block, unsigned lclNum)
     return nullptr;
 }
 
-#if TARGET_WASM
+#if TARGET_LLVM
 /**
  * As GetPhiNode but uses Gentree rather than Statement.
  *
@@ -188,7 +188,7 @@ static GenTree* GetPhiNodeForRationalIRForm(BasicBlock* block, unsigned lclNum)
     
     return nullptr;
 }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
 //------------------------------------------------------------------------
 // InsertPhi: Insert a new GT_PHI statement.
@@ -231,7 +231,7 @@ Statement* SsaBuilder::InsertPhi(Compiler* comp, BasicBlock* block, unsigned lcl
     return stmt;
 }
 
-#if defined(TARGET_WASM)
+#if defined(TARGET_LLVM)
 void SsaBuilder::InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum)
 {
     assert(block->IsLIR());
@@ -254,7 +254,7 @@ void SsaBuilder::InsertPhiToRationalIRForm(BasicBlock* block, unsigned lclNum)
 
     JITDUMP("Added PHI definition for V%02u at start of " FMT_BB ".\n", lclNum, block->bbNum);
 }
-#endif // defined(TARGET_WASM)
+#endif // defined(TARGET_LLVM)
 
 //------------------------------------------------------------------------
 // AddPhiArg: Ensure an existing GT_PHI node contains an appropriate PhiArg
@@ -329,7 +329,7 @@ void SsaBuilder::AddNewPhiArg(Compiler*   comp,
     // will be first in linear order as well.
     phi->gtUses = new (comp, CMK_ASTNode) GenTreePhi::Use(phiArg, phi->gtUses);
 
-#if defined(TARGET_WASM)
+#if defined(TARGET_LLVM)
     if (block->IsLIR())
     {
         // TODO: multiple phis in one block
@@ -440,7 +440,7 @@ void SsaBuilder::InsertPhiFunctions()
                 }
 
                 // Check if we've already inserted a phi node.
-#if defined(TARGET_WASM)
+#if defined(TARGET_LLVM)
                 if (bbInDomFront->IsLIR())
                 {
                     if (GetPhiNodeForRationalIRForm(bbInDomFront, lclNum) == nullptr)
@@ -757,7 +757,7 @@ void SsaBuilder::AddDefToEHSuccessorPhis(BasicBlock* block, unsigned lclNum, uns
         bool phiFound = false;
 #endif
 
-#if defined(TARGET_WASM)
+#if defined(TARGET_LLVM)
         if (succ->IsLIR())
         {
             for (GenTree* tree : LIR::AsRange(succ))
@@ -901,13 +901,13 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
     // First handle the incoming memory states.
     for (MemoryKind memoryKind : allMemoryKinds())
     {
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
         // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
         if (block->IsLIR())
         {
             break;
         }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
         if ((memoryKind == GcHeap) && m_pCompiler->byrefStatesMatchGcHeapStates)
         {
@@ -938,7 +938,7 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
         }
     }
 
-#if defined(TARGET_WASM)
+#if defined(TARGET_LLVM)
     if (block->IsLIR())
     {
         // Walk the statements of the block and rename definitions and uses.
@@ -975,17 +975,17 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
                 }
             }
         }
-#if defined(TARGET_WASM)
+#if defined(TARGET_LLVM)
     }
 #endif
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
     if (block->IsLIR())
     {
         return;
     }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
     // Now handle the final memory states.
     for (MemoryKind memoryKind : allMemoryKinds())
@@ -1037,7 +1037,7 @@ void SsaBuilder::BlockRenameVariables(BasicBlock* block)
 void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
 {
     block->VisitAllSuccs(m_pCompiler, [this, block](BasicBlock* succ) {
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
         if (block->IsLIR())
         {
             for (GenTree* tree : LIR::AsRange(succ))
@@ -1060,7 +1060,7 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
             }
         }
         else
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
         {
             // Walk the statements for phi nodes.
             for (Statement* const stmt : succ->Statements())
@@ -1084,13 +1084,13 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
         // Now handle memory.
         for (MemoryKind memoryKind : allMemoryKinds())
         {
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
             // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
             if (block->IsLIR())
             {
                 break;
             }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
             BasicBlock::MemoryPhiArg*& succMemoryPhi = succ->bbMemorySsaPhiFunc[memoryKind];
             if (succMemoryPhi != nullptr)
@@ -1102,11 +1102,11 @@ void SsaBuilder::AddPhiArgsToSuccessors(BasicBlock* block)
                     // between GcHeap and ByrefExposed.
                     assert(memoryKind > ByrefExposed);
                     assert(block->bbMemorySsaNumOut[memoryKind] == block->bbMemorySsaNumOut[ByrefExposed]);
-#if !defined(TARGET_WASM)
+#if !defined(TARGET_LLVM)
                     assert((succ->bbMemorySsaPhiFunc[ByrefExposed] == succMemoryPhi) ||
                            (succ->bbMemorySsaPhiFunc[ByrefExposed]->m_nextArg ==
                             (succMemoryPhi == BasicBlock::EmptyMemoryPhiDef ? nullptr : succMemoryPhi)));
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
                     succMemoryPhi = succ->bbMemorySsaPhiFunc[ByrefExposed];
 
                     continue;
@@ -1244,13 +1244,13 @@ void SsaBuilder::AddPhiArgsToNewlyEnteredHandler(BasicBlock* predEnterBlock,
     // Now handle memory.
     for (MemoryKind memoryKind : allMemoryKinds())
     {
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
         // TODO-LLVM: LIR memory liveness is NYI upstream. Delete when that is fixed.
         if (handlerStart->IsLIR())
         {
             break;
         }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
         BasicBlock::MemoryPhiArg*& handlerMemoryPhi = handlerStart->bbMemorySsaPhiFunc[memoryKind];
         if (handlerMemoryPhi != nullptr)
@@ -1430,7 +1430,7 @@ void SsaBuilder::Build()
     for (unsigned lclNum = 0; lclNum < m_pCompiler->lvaCount; lclNum++)
     {
         m_pCompiler->lvaTable[lclNum].lvInSsa = m_pCompiler->lvaGetDesc(lclNum)->lvTracked
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
                                                 && !m_pCompiler->lvaGetDesc(lclNum)->lvHasLocalAddr
 #endif
         ;

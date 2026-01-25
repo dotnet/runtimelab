@@ -351,7 +351,7 @@ const char* dspRegRange(regMaskTP regMask, size_t& minSiz, const char* sep, regN
                         inRegRange = true;
                         sep        = "-";
                     }
-#elif defined(TARGET_X86) || defined(TARGET_WASM)
+#elif defined(TARGET_X86) || defined(TARGET_LLVM)
                     // No register ranges
 #elif defined(TARGET_LOONGARCH64)
                     if (REG_A0 <= regNum && regNum <= REG_T8)
@@ -1689,7 +1689,7 @@ void HelperCallProperties::init()
             // GETREFANY is pure up to the value of the struct argument. We
             // only support that when it is not an implicit byref.
             case CORINFO_HELP_GETREFANY:
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 #ifndef WINDOWS_AMD64_ABI
                 isPure = true;
 #endif

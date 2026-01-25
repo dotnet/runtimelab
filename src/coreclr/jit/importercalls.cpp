@@ -3,9 +3,9 @@
 
 #include "jitpch.h"
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
 #include "llvm.h"
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
 //------------------------------------------------------------------------
 // impImportCall: import a call-inspiring opcode
@@ -372,7 +372,7 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
                 call = gtNewCallNode(CT_USER_FUNC, callInfo->hMethod, callRetTyp, di);
                 call->gtFlags |= GTF_CALL_VIRT_VTABLE;
 
-#if !defined(TARGET_WASM)
+#if !defined(TARGET_LLVM)
                 if (opts.OptimizationEnabled())
 #endif
                 {
@@ -1404,9 +1404,9 @@ DONE_CALL:
                 callRetTyp = call->TypeGet();
             }
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
             origCall->gtCorInfoType = sig->retType;
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
             // TODO: consider handling fatcalli cases this way too...?
             if (isInlineCandidate || isGuardedDevirtualizationCandidate)
@@ -4171,7 +4171,7 @@ GenTree* Compiler::impIntrinsic(CORINFO_CLASS_HANDLE    clsHnd,
                 break;
             }
 
-#if defined(TARGET_ARM64) || defined(TARGET_RISCV64) || defined(TARGET_XARCH) || defined(TARGET_WASM)
+#if defined(TARGET_ARM64) || defined(TARGET_RISCV64) || defined(TARGET_XARCH) || defined(TARGET_LLVM)
             case NI_System_Threading_Interlocked_Or:
             case NI_System_Threading_Interlocked_And:
             {
@@ -4200,14 +4200,14 @@ GenTree* Compiler::impIntrinsic(CORINFO_CLASS_HANDLE    clsHnd,
                 }
                 break;
             }
-#endif // defined(TARGET_ARM64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
+#endif // defined(TARGET_ARM64) || defined(TARGET_RISCV64) || defined(TARGET_LLVM)
 
-#if defined(TARGET_XARCH) || defined(TARGET_ARM64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
+#if defined(TARGET_XARCH) || defined(TARGET_ARM64) || defined(TARGET_RISCV64) || defined(TARGET_LLVM)
             // TODO-ARM-CQ: reenable treating InterlockedCmpXchg32 operation as intrinsic
             case NI_System_Threading_Interlocked_CompareExchange:
             {
                 var_types retType = JITtype2varType(sig->retType);
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
                 if (genTypeSize(retType) > TARGET_POINTER_SIZE)
                 {
                     break;
@@ -4218,7 +4218,7 @@ GenTree* Compiler::impIntrinsic(CORINFO_CLASS_HANDLE    clsHnd,
                     break;
                 }
 #endif // !defined(TARGET_XARCH) && !defined(TARGET_ARM64)
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
                 if ((retType == TYP_REF) &&
                     (impStackTop(1).val->IsIntegralConst(0) || impStackTop(1).val->IsIconHandle(GTF_ICON_OBJ_HDL)))
@@ -4251,7 +4251,7 @@ GenTree* Compiler::impIntrinsic(CORINFO_CLASS_HANDLE    clsHnd,
             {
                 var_types retType = JITtype2varType(sig->retType);
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
                 if (genTypeSize(retType) > TARGET_POINTER_SIZE)
                 {
                     break;
@@ -4262,7 +4262,7 @@ GenTree* Compiler::impIntrinsic(CORINFO_CLASS_HANDLE    clsHnd,
                     break;
                 }
 #endif // !defined(TARGET_XARCH) && !defined(TARGET_ARM64)
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
                 if ((retType == TYP_REF) &&
                     (impStackTop().val->IsIntegralConst(0) || impStackTop().val->IsIconHandle(GTF_ICON_OBJ_HDL)))
@@ -4292,7 +4292,7 @@ GenTree* Compiler::impIntrinsic(CORINFO_CLASS_HANDLE    clsHnd,
                                           callType, op1, op2);
                 break;
             }
-#endif // defined(TARGET_XARCH) || defined(TARGET_ARM64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
+#endif // defined(TARGET_XARCH) || defined(TARGET_ARM64) || defined(TARGET_RISCV64) || defined(TARGET_LLVM)
 
             case NI_System_Threading_Interlocked_MemoryBarrier:
             {
@@ -8416,7 +8416,7 @@ bool Compiler::IsTargetIntrinsic(NamedIntrinsic intrinsicName)
         default:
             return false;
     }
-#elif defined(TARGET_WASM)
+#elif defined(TARGET_LLVM)
     switch (intrinsicName)
     {
         case NI_System_Math_MultiplyAddEstimate:
