@@ -745,9 +745,7 @@ if (CLR_CMAKE_BUILD_LLVM_JIT)
     list(FILTER JIT_SOURCES EXCLUDE REGEX lsrabuild\.cpp)
     list(FILTER JIT_SOURCES EXCLUDE REGEX regalloc\.cpp)
     create_standalone_jit(TARGET clrjit_universal_llvm32_${ARCH_HOST_NAME} OS universal ARCH wasm32 CMAKE_CXX_STANDARD 17 DESTINATIONS .)
-    target_compile_definitions(clrjit_universal_llvm32_${ARCH_HOST_NAME} PRIVATE $<$<NOT:$<BOOL:$<TARGET_PROPERTY:TARGET_64BIT>>>:TARGET_LLVM_WASM32>)
-    target_compile_definitions(clrjit_universal_llvm32_${ARCH_HOST_NAME} PRIVATE $<$<BOOL:$<TARGET_PROPERTY:TARGET_64BIT>>:TARGET_LLVM_WASM64>)
-    target_compile_definitions(clrjit_universal_llvm32_${ARCH_HOST_NAME} PRIVATE TARGET_LLVM)
+    target_compile_definitions(clrjit_universal_llvm32_${ARCH_HOST_NAME} PRIVATE TARGET_LLVM TARGET_LLVM_WASM32)
     install_clr(TARGETS clrjit_universal_llvm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT llvmjit)
 
     # Uncomment to enable 8 byte pointer size version of the wasm clrjit.dll.
