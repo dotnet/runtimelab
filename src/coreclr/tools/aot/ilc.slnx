@@ -8,6 +8,8 @@
     <Platform Name="x86" />
   </Configurations>
   <Project Path="../../../../artifacts/obj/coreclr/windows.x64.Debug/ide/jit/clrjit_universal_llvm32_x64.vcxproj" Id="dc05b581-fec7-3255-8853-8bf62c22b558">
+    <Platform Project="x64" />
+  </Project>
   <Project Path="../../../tools/illink/src/ILLink.RoslynAnalyzer/ILLink.RoslynAnalyzer.csproj">
     <BuildType Solution="Checked|*" Project="Debug" />
   </Project>
@@ -74,12 +76,6 @@
     <Build Solution="*|Any CPU" Project="false" />
   </Project>
   <Project Path="ILCompiler/repro/repro.csproj">
-    <Platform Solution="*|Any CPU" Project="x86" />
-    <Platform Solution="*|x64" Project="x64" />
-    <Platform Solution="*|x86" Project="x86" />
-    <Build Solution="*|Any CPU" Project="false" />
-  </Project>
-  <Project Path="ILCompiler.Trimming.Tests\ILCompiler.Trimming.Tests.csproj">
     <Platform Solution="*|Any CPU" Project="x86" />
     <Platform Solution="*|x64" Project="x64" />
     <Platform Solution="*|x86" Project="x86" />
