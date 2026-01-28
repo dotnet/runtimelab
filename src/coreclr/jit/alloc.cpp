@@ -330,7 +330,7 @@ void ArenaAllocator::dumpMaxMemStats(FILE* file)
 
 #ifdef JIT_STANDALONE_BUILD
 
-#if !defined(TARGET_WASM) 
+#if !defined(TARGET_LLVM)
 void* __cdecl operator new(std::size_t size)
 {
     assert(!"Global new called; use HostAllocator if long-lived allocation was intended");
@@ -376,6 +376,6 @@ void __cdecl operator delete[](void* ptr) noexcept
 {
     free(ptr);
 }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
 #endif

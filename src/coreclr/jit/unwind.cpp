@@ -15,7 +15,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #pragma hdrstop
 #endif
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 //------------------------------------------------------------------------
 // Compiler::unwindGetFuncLocations: Get the start/end emitter locations for this
 // function or funclet. If 'getHotSectionData' is true, get the start/end locations
@@ -134,7 +134,7 @@ void Compiler::unwindGetFuncLocations(FuncInfoDsc*             func,
         }
     }
 }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
 #if defined(FEATURE_CFI_SUPPORT)
 
@@ -425,7 +425,7 @@ void Compiler::DumpCfiInfo(bool                  isHotCode,
 
 #endif // FEATURE_CFI_SUPPORT
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 //------------------------------------------------------------------------
 // Compiler::unwindGetCurrentOffset: Calculate the current byte offset of the
 // prolog being generated.
@@ -461,7 +461,7 @@ UNATIVE_OFFSET Compiler::unwindGetCurrentOffset(FuncInfoDsc* func)
 
     return offset;
 }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
 #if defined(TARGET_AMD64)
 
@@ -479,7 +479,7 @@ UNATIVE_OFFSET Compiler::unwindGetCurrentOffset(FuncInfoDsc* func)
 
 // See unwindX86.cpp
 
-#elif defined(TARGET_WASM)
+#elif defined(TARGET_LLVM)
 
 // No unwind info on WASM.
 

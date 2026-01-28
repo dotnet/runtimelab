@@ -66,14 +66,14 @@ void Compiler::fgMarkUseDef(GenTreeLclVarCommon* tree)
 
         if (compRationalIRForm && (varDsc->lvType != TYP_STRUCT) && !varTypeIsMultiReg(varDsc))
         {
-#if defined(TARGET_WASM)
+#if defined(TARGET_LLVM)
             assert(!tree->OperIs(GT_LCL_ADDR) || varDsc->lvHasLocalAddr);
 #else
             // If this is an enregisterable variable that is not marked doNotEnregister and not defined via address,
             // we should only see direct references (not ADDRs).
             assert(varDsc->lvDoNotEnregister || varDsc->lvDefinedViaAddress ||
                    tree->OperIs(GT_LCL_VAR, GT_STORE_LCL_VAR));
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
         }
 
         if (isUse && !VarSetOps::IsMember(this, fgCurDefSet, varDsc->lvVarIndex))
@@ -1413,12 +1413,12 @@ void Compiler::fgComputeLifeLIR(VARSET_TP& life, BasicBlock* block, VARSET_VALAR
                                 GenTree* data = store->AsIndir()->Data();
                                 data->SetUnusedValue();
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
                                 if (data->isIndir())
                                 {
                                     Lowering::TransformUnusedIndirection(data->AsIndir(), this, block);
                                 }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
                             }
                         }
                     }
@@ -1445,12 +1445,12 @@ void Compiler::fgComputeLifeLIR(VARSET_TP& life, BasicBlock* block, VARSET_VALAR
                     GenTree* value = lclVarNode->Data();
                     value->SetUnusedValue();
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
                     if (value->isIndir())
                     {
                         Lowering::TransformUnusedIndirection(value->AsIndir(), this, block);
                     }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
                 }
                 break;
             }
@@ -1562,14 +1562,14 @@ void Compiler::fgComputeLifeLIR(VARSET_TP& life, BasicBlock* block, VARSET_VALAR
             case GT_BLK:
             {
                 bool removed = fgTryRemoveNonLocal(node, &blockRange);
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
                 if (!removed && node->IsUnusedValue())
                 {
                     // IR doesn't expect dummy uses of `GT_BLK`.
                     JITDUMP("Transform an unused BLK node [%06d]\n", dspTreeID(node));
                     Lowering::TransformUnusedIndirection(node->AsIndir(), this, block);
                 }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
             }
             break;
 

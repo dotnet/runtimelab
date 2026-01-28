@@ -353,7 +353,7 @@ protected:
     }
 
 public:
-#if defined(DEBUG) || defined(TARGET_WASM)
+#if defined(DEBUG) || defined(TARGET_LLVM)
     class Iterator;
 
     class KeyValuePair final
@@ -466,7 +466,7 @@ public:
     {
         return Iterator(m_buckets, m_numBuckets, m_numBuckets);
     }
-#endif // defined(DEBUG) || defined(TARGET_WASM)
+#endif // defined(DEBUG) || defined(TARGET_LLVM)
 
     unsigned Count() const
     {

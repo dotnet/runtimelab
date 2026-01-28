@@ -231,7 +231,7 @@ set( JIT_AMD64_SOURCES
 )
 
 set( JIT_WASM64_SOURCES
-  targetwasm.cpp
+  targetllvm.cpp
   llvm.cpp
   llvmtypes.cpp
   llvmlower.cpp
@@ -240,7 +240,7 @@ set( JIT_WASM64_SOURCES
   llvmdebuginfo.cpp
 )
 set( JIT_WASM32_SOURCES
-  targetwasm.cpp
+  targetllvm.cpp
   llvm.cpp
   llvmtypes.cpp
   llvmlower.cpp
@@ -722,6 +722,10 @@ else()
   create_standalone_jit(TARGET clrjit_win_x86_${ARCH_HOST_NAME} OS win ARCH x86)
 endif (CLR_CMAKE_TARGET_ARCH_RISCV64)
 
+if (CLR_CMAKE_TARGET_ARCH_I386 AND CLR_CMAKE_TARGET_UNIX)
+  create_standalone_jit(TARGET clrjit_unix_x86_${ARCH_HOST_NAME} OS unix ARCH x86)
+endif (CLR_CMAKE_TARGET_ARCH_I386 AND CLR_CMAKE_TARGET_UNIX)
+
 # Note that we need this "CLR_CMAKE_BUILD_LLVM_JIT", defined by the build scripts,
 # because there is no way in CMake to ask "what --target's' am I being asked to configure?".
 if (CLR_CMAKE_BUILD_LLVM_JIT)
@@ -740,18 +744,14 @@ if (CLR_CMAKE_BUILD_LLVM_JIT)
     list(FILTER JIT_SOURCES EXCLUDE REGEX lsra\.cpp)
     list(FILTER JIT_SOURCES EXCLUDE REGEX lsrabuild\.cpp)
     list(FILTER JIT_SOURCES EXCLUDE REGEX regalloc\.cpp)
-
-    create_standalone_jit(TARGET clrjit_universal_wasm32_${ARCH_HOST_NAME} OS universal ARCH wasm32 CMAKE_CXX_STANDARD 17 DESTINATIONS .)
-    install_clr(TARGETS clrjit_universal_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
+    create_standalone_jit(TARGET clrjit_universal_llvm32_${ARCH_HOST_NAME} OS universal ARCH wasm32 CMAKE_CXX_STANDARD 17 DESTINATIONS .)
+    target_compile_definitions(clrjit_universal_llvm32_${ARCH_HOST_NAME} PRIVATE TARGET_LLVM TARGET_LLVM_WASM32)
+    install_clr(TARGETS clrjit_universal_llvm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT llvmjit)
 
     # Uncomment to enable 8 byte pointer size version of the wasm clrjit.dll.
     # create_standalone_jit(TARGET clrjit_universal_wasm64_${ARCH_HOST_NAME} OS universal ARCH wasm64 DESTINATIONS .)
-    # install_clr(TARGETS clrjit_universal_wasm64_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
+    # install_clr(TARGETS clrjit_universal_wasm64_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT llvmjit)
 endif (CLR_CMAKE_BUILD_LLVM_JIT)
-
-if (CLR_CMAKE_TARGET_ARCH_I386 AND CLR_CMAKE_TARGET_UNIX)
-  create_standalone_jit(TARGET clrjit_unix_x86_${ARCH_HOST_NAME} OS unix ARCH x86)
-endif (CLR_CMAKE_TARGET_ARCH_I386 AND CLR_CMAKE_TARGET_UNIX)
 
 if (CLR_CMAKE_TARGET_UNIX)
     if (NOT ARCH_TARGET_NAME STREQUAL s390x AND NOT ARCH_TARGET_NAME STREQUAL armv6 AND NOT ARCH_TARGET_NAME STREQUAL ppc64le AND NOT ARCH_TARGET_NAME STREQUAL riscv64)

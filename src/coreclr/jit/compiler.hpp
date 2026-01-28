@@ -1196,7 +1196,7 @@ inline bool isRegParamType(var_types type)
 {
 #if defined(TARGET_X86)
     return (type <= TYP_INT || type == TYP_REF || type == TYP_BYREF);
-#elif defined(TARGET_WASM)
+#elif defined(TARGET_LLVM)
     return false;
 #else  // !TARGET_X86
     return true;
@@ -2729,7 +2729,7 @@ inline int Compiler::lvaCachedGenericContextArgOffset()
     return lvaCachedGenericContextArgOffs;
 }
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 //------------------------------------------------------------------------
 // lvaFrameAddress: Determine the stack frame offset of the given variable,
 // and how to generate an address to that stack frame.

@@ -98,7 +98,7 @@ struct AllocMemArgs
 #include "corjithost.h"
 
 extern "C" void jitStartup(ICorJitHost* host);
-#if TARGET_WASM
+#if TARGET_LLVM
 extern "C" void jitShutdown(bool processIsTerminating);
 #endif
 

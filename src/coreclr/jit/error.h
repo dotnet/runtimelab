@@ -203,7 +203,7 @@ extern void notYetImplemented(const char* msg, const char* file, unsigned line);
 #define NYI_LOONGARCH64(msg) do { } while (0)
 #define NYI_RISCV64(msg) do { } while (0)
 
-#elif defined(TARGET_WASM64)
+#elif defined(TARGET_LLVM_WASM64)
 
 #define NYI_AMD64(msg)  do { } while (0)
 #define NYI_X86(msg)    do { } while (0)
@@ -214,7 +214,7 @@ extern void notYetImplemented(const char* msg, const char* file, unsigned line);
 #define NYI_LOONGARCH64(msg) do { } while (0)
 #define NYI_RISCV64(msg) do { } while (0)
 
-#elif defined(TARGET_WASM32)
+#elif defined(TARGET_LLVM_WASM32)
 
 #define NYI_AMD64(msg)  do { } while (0)
 #define NYI_X86(msg)    do { } while (0)

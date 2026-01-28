@@ -10544,11 +10544,11 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                     { // compDonotInline()
                         return;
                     }
-#if defined(TARGET_WASM) // TODO-LLVM: delete when IL module gone
+#if defined(TARGET_LLVM) // TODO-LLVM: delete when IL module gone
                     op1 = gtNewHelperCallNode(helper, TYP_REF, op2, op1);
 #else
                     op1 = gtNewHelperCallNode(helper, TYP_VOID, op2, op1);
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
                     op1 = new (this, GT_COLON) GenTreeColon(TYP_VOID, gtNewNothingNode(), op1);
                     op1 = gtNewQmarkNode(TYP_VOID, condBox, op1->AsColon());
@@ -11271,9 +11271,9 @@ GenTree* Compiler::impStoreMultiRegValueToVar(GenTree*                    op,
     // TODO-1stClassStructs: Handle constant propagation and CSE-ing of multireg returns.
     ret->SetDoNotCSE();
 
-#if !defined(TARGET_WASM)
+#if !defined(TARGET_LLVM)
     assert(IsMultiRegReturnedType(hClass, callConv) || op->IsMultiRegNode());
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
     return ret;
 }
 

@@ -54,7 +54,7 @@ bool TreeLifeUpdater<ForCodeGen>::UpdateLifeFieldVar(GenTreeLclVar* lclNode, uns
         bool previouslyLive = VarSetOps::IsMember(compiler, compiler->compCurLife, fldVarDsc->lvVarIndex);
         UpdateLifeBit(compiler->compCurLife, fldVarDsc, isBorn, isDying);
 
-#ifndef TARGET_WASM // Not used and not compilable on WASM.
+#ifndef TARGET_LLVM // Not used and not compilable on WASM.
         if (ForCodeGen)
         {
             regNumber reg        = lclNode->GetRegNumByIdx(multiRegIndex);
@@ -81,11 +81,11 @@ bool TreeLifeUpdater<ForCodeGen>::UpdateLifeFieldVar(GenTreeLclVar* lclNode, uns
                                                                                             isBorn, isDying);
             }
         }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
     }
 
     bool spill = false;
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     // GTF_SPILL will be set if any registers need to be spilled.
     if (ForCodeGen && ((lclNode->gtFlags & lclNode->GetRegSpillFlagByIdx(multiRegIndex) & GTF_SPILL) != 0))
     {
@@ -105,7 +105,7 @@ bool TreeLifeUpdater<ForCodeGen>::UpdateLifeFieldVar(GenTreeLclVar* lclNode, uns
 
         spill = true;
     }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
     DumpLifeDelta(lclNode);
 
@@ -158,7 +158,7 @@ void TreeLifeUpdater<ForCodeGen>::UpdateLifeVar(GenTree* tree, GenTreeLclVarComm
                 ForCodeGen && VarSetOps::IsMember(compiler, compiler->compCurLife, varDsc->lvVarIndex);
             UpdateLifeBit(compiler->compCurLife, varDsc, isBorn, isDying);
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
             if (ForCodeGen)
             {
                 if (isBorn && varDsc->lvIsRegCandidate() && tree->gtHasReg(compiler))
@@ -185,10 +185,10 @@ void TreeLifeUpdater<ForCodeGen>::UpdateLifeVar(GenTree* tree, GenTreeLclVarComm
                                                                                                 !isDying, isDying);
                 }
             }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
         }
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
         if (ForCodeGen && ((lclVarTree->gtFlags & GTF_SPILL) != 0))
         {
             compiler->codeGen->genSpillVar(tree);
@@ -244,7 +244,7 @@ void TreeLifeUpdater<ForCodeGen>::UpdateLifeVar(GenTree* tree, GenTreeLclVarComm
                     continue;
                 }
 
-#ifndef TARGET_WASM // Not used and not compilable on WASM.
+#ifndef TARGET_LLVM // Not used and not compilable on WASM.
                 // We should never see enregistered fields in a struct local unless
                 // IsMultiRegLclVar() returns true.
                 assert(isMultiRegLocal || !fldVarDsc->lvIsInReg());
@@ -280,7 +280,7 @@ void TreeLifeUpdater<ForCodeGen>::UpdateLifeVar(GenTree* tree, GenTreeLclVarComm
                     compiler->codeGen->getVariableLiveKeeper()->siStartOrCloseVariableLiveRange(fldVarDsc, fldLclNum,
                                                                                                 !isDying, isDying);
                 }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
             }
         }
     }
@@ -357,12 +357,12 @@ void TreeLifeUpdater<ForCodeGen>::StoreCurrentLifeForDump()
     {
         VarSetOps::Assign(compiler, oldLife, compiler->compCurLife);
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
         if (ForCodeGen)
         {
             VarSetOps::Assign(compiler, oldStackPtrsLife, compiler->codeGen->gcInfo.gcVarPtrSetCur);
         }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
     }
 #endif
 }
@@ -403,7 +403,7 @@ void TreeLifeUpdater<ForCodeGen>::DumpLifeDelta(GenTree* tree)
         printf("\n");
     }
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     if (ForCodeGen && compiler->verbose &&
         !VarSetOps::Equal(compiler, oldStackPtrsLife, compiler->codeGen->gcInfo.gcVarPtrSetCur))
     {
@@ -413,7 +413,7 @@ void TreeLifeUpdater<ForCodeGen>::DumpLifeDelta(GenTree* tree)
         dumpConvertedVarSet(compiler, compiler->codeGen->gcInfo.gcVarPtrSetCur);
         printf("\n");
     }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 #endif // DEBUG
 }
 

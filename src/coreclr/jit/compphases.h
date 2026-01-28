@@ -141,7 +141,7 @@ CompPhaseNameMacro(PHASE_EMIT_CODE,                  "Emit code",               
 CompPhaseNameMacro(PHASE_EMIT_GCEH,                  "Emit GC+EH tables",              false, -1, false)
 CompPhaseNameMacro(PHASE_POST_EMIT,                  "Post-Emit",                      false, -1, false)
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
 CompPhaseNameMacro(PHASE_LOWER_LLVM,                 "LLVM Lowering",                  false, -1, false)
 CompPhaseNameMacro(PHASE_ALLOCATE_SHADOW_STACK,      "Allocate shadow stack slots",    false, -1, false)
 CompPhaseNameMacro(PHASE_ADD_VIRTUAL_UNWIND_FRAME,   "Add virtual unwind frame",       false, -1, false)

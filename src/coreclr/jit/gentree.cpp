@@ -1572,7 +1572,7 @@ regNumber CallArgs::GetCustomRegister(Compiler* comp, CorInfoCallConvExtension c
         case WellKnownArg::PInvokeTarget:
             return REG_PINVOKE_TARGET_PARAM;
 
-#if !defined(TARGET_WASM)
+#if !defined(TARGET_LLVM)
         case WellKnownArg::R2RIndirectionCell:
             return REG_R2R_INDIRECT_PARAM;
 
@@ -1581,7 +1581,7 @@ regNumber CallArgs::GetCustomRegister(Compiler* comp, CorInfoCallConvExtension c
             {
                 return REG_VALIDATE_INDIRECT_CALL_ADDR;
             }
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
             break;
 
@@ -1813,9 +1813,9 @@ void CallArgs::PushLateBack(CallArg* arg)
 //
 void CallArgs::Remove(CallArg* arg)
 {
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
     assert(!m_hasAddedFinalArgs && !m_argsComplete);
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
 
     CallArg** slot = &m_head;
     while (*slot != nullptr)
@@ -1873,7 +1873,7 @@ void CallArgs::RemoveUnsafe(CallArg* arg)
     assert(!"Did not find arg to remove in CallArgs::Remove");
 }
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
 //------------------------------------------------------------------------
 // MoveLateToEarly: Sets all late nodes as the early nodes
 //
@@ -4526,7 +4526,7 @@ bool Compiler::gtCanSwapOrder(GenTree* firstNode, GenTree* secondNode)
     return canSwap;
 }
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
 bool genCreateAddrMode(Compiler* compiler,
                        GenTree*  addr,
                        bool      fold,
@@ -4962,7 +4962,7 @@ FOUND_AM:
 
     return true;
 }
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
 //------------------------------------------------------------------------
 // Given an address expression, compute its costs and addressing mode opportunities,
@@ -5005,7 +5005,7 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
     naturalMul = genTypeSize(type);
 #endif
 
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     if (genCreateAddrMode(this, addr, false /*fold*/, naturalMul, &rev, &base, &idx, &mul, &cns))
 #else
     if (codeGen->genCreateAddrMode(addr, false /*fold*/, naturalMul, &rev, &base, &idx, &mul, &cns))
@@ -5024,7 +5024,7 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
         int addrModeCostEx     = 0;
         int addrModeCostSz     = 0;
 
-#if defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
+#if defined(TARGET_XARCH) || defined(TARGET_LLVM) // TODO Wasm
         // addrmodeCount is the count of items that we used to form
         // an addressing mode.  The maximum value is 4 when we have
         // all of these:   { base, idx, cns, mul }
@@ -5245,7 +5245,7 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
         gtWalkOp(&op1, &op2, base, false);
 
         // op1 and op2 are now descendents of the root GT_ADD of the addressing mode.
-#if defined(TARGET_XARCH) || defined(TARGET_WASM)
+#if defined(TARGET_XARCH) || defined(TARGET_LLVM)
         // Walk the operands again (the third operand is unused in this case).
         // This time we will only consider adds with constant op2's, since
         // we have already found either a non-ADD op1 or a non-constant op2.
@@ -5262,7 +5262,7 @@ bool Compiler::gtMarkAddrMode(GenTree* addr, int* pCostEx, int* pCostSz, var_typ
         // into the addressing mode.
         // Walk op2 looking for non-overflow GT_ADDs of constants.
         gtWalkOp(&op2, &op1, nullptr, true);
-#endif // defined(TARGET_XARCH) || defined(TARGET_WASM)
+#endif // defined(TARGET_XARCH) || defined(TARGET_LLVM)
 
         if ((mul > 1) && (op2 != nullptr) && op2->OperIs(GT_LSH, GT_MUL))
         {
@@ -5462,7 +5462,7 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
                 goto COMMON_CNS;
             }
 
-#elif defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
+#elif defined(TARGET_XARCH) || defined(TARGET_LLVM) // TODO Wasm
 
             case GT_CNS_STR:
 #ifdef TARGET_AMD64
@@ -5644,7 +5644,7 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
             case GT_CNS_DBL:
             {
                 level = 0;
-#if defined(TARGET_XARCH) || defined(TARGET_WASM)
+#if defined(TARGET_XARCH) || defined(TARGET_LLVM)
                 if (tree->IsFloatPositiveZero() || tree->IsFloatAllBitsSet())
                 {
                     // We generate `xorp* tgtReg, tgtReg` for PositiveZero and
@@ -5873,7 +5873,7 @@ unsigned Compiler::gtSetEvalOrder(GenTree* tree)
                         costEx = IND_COST_EX * 2;
                         costSz = 6;
                     }
-#elif defined(TARGET_WASM)
+#elif defined(TARGET_LLVM)
                     costEx = 1;
                     costSz = 2;
 
@@ -8247,7 +8247,7 @@ GenTree* Compiler::gtNewPhysRegNode(regNumber reg, var_types type)
 {
 #ifdef TARGET_ARM64
     assert(genIsValidIntReg(reg) || (reg == REG_SPBASE) || (reg == REG_FFR));
-#elif !defined(TARGET_WASM)
+#elif !defined(TARGET_LLVM)
     assert(genIsValidIntReg(reg) || (reg == REG_SPBASE));
 #endif
     GenTree* result = new (this, GT_PHYSREG) GenTreePhysReg(reg, type);
@@ -10449,9 +10449,9 @@ void CallArgs::InternalCopyFrom(Compiler* comp, CallArgs* other, CopyNodeFunc co
     for (CallArg& arg : other->Args())
     {
         CallArg* carg           = new (comp, CMK_CallArgs) CallArg();
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
         carg->m_signatureCorInfoType = arg.m_signatureCorInfoType;
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
         carg->m_earlyNode       = arg.m_earlyNode != nullptr ? copyNode(arg.m_earlyNode) : nullptr;
         carg->m_lateNode        = arg.m_lateNode != nullptr ? copyNode(arg.m_lateNode) : nullptr;
         carg->m_signatureLayout = arg.m_signatureLayout;
@@ -10556,9 +10556,9 @@ GenTreeCall* Compiler::gtCloneExprCallHelper(GenTreeCall* tree)
 
     copy->gtCallType   = tree->gtCallType;
     copy->gtReturnType = tree->gtReturnType;
-#ifdef TARGET_WASM
+#ifdef TARGET_LLVM
     copy->gtCorInfoType = tree->gtCorInfoType;
-#endif // TARGET_WASM
+#endif // TARGET_LLVM
 
 #if FEATURE_MULTIREG_RET
     copy->gtReturnTypeDesc = tree->gtReturnTypeDesc;
@@ -12196,14 +12196,14 @@ void Compiler::gtDispNode(GenTree* tree, IndentStack* indentStack, _In_ _In_opt_
 
         // for tracking down problems in reguse prediction or liveness tracking
 
-#if !defined(TARGET_WASM)
+#if !defined(TARGET_LLVM)
         if (verbose && 0)
         {
             printf(" RR=");
             dspRegMask(JitTls::GetCompiler()->codeGen->internalRegisters.GetAll(tree));
             printf("\n");
         }
-#endif //!TARGET_WASM
+#endif //!TARGET_LLVM
     }
 }
 
@@ -31806,7 +31806,7 @@ regNumber ReturnTypeDesc::GetABIReturnReg(unsigned idx, CorInfoCallConvExtension
         }
     }
 
-#elif defined(TARGET_WASM)
+#elif defined(TARGET_LLVM)
     // Need something for verbose debugging.
     resultReg = REG_LLVM;
 #endif // TARGET_XXX

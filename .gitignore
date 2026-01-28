@@ -370,5 +370,5 @@ test:.cs
 *.testResults.xml
 *.testStats.csv
 
-# NativeAOT-LLVM: wasmjit-diff analysis results
-wasmjit-diff/
+# NativeAOT-LLVM: llvmjit-diff analysis results
+llvmjit-diff/

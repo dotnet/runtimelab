@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 /*****************************************************************************/
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 #ifndef _INSTR_H_
 #define _INSTR_H_
 /*****************************************************************************/
@@ -654,4 +654,4 @@ enum emitAttr : unsigned
 /*****************************************************************************/
 #endif //_INSTR_H_
 /*****************************************************************************/
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM

@@ -56,9 +56,9 @@ inline bool compUnixX86Abi()
 #define TARGET_READABLE_NAME "ARM"
 #elif defined(TARGET_ARM64)
 #define TARGET_READABLE_NAME "ARM64"
-#elif defined(TARGET_WASM64)
+#elif defined(TARGET_LLVM_WASM64)
 #define TARGET_READABLE_NAME "WASM64"
-#elif defined(TARGET_WASM32)
+#elif defined(TARGET_LLVM_WASM32)
 #define TARGET_READABLE_NAME "WASM32"
 #elif defined(TARGET_LOONGARCH64)
 #define TARGET_READABLE_NAME "LOONGARCH64"
@@ -87,7 +87,7 @@ inline bool compUnixX86Abi()
 #define REGMASK_BITS              64
 #define CSE_CONST_SHARED_LOW_BITS 12
 
-#elif defined(TARGET_WASM)
+#elif defined(TARGET_LLVM)
 #define REGMASK_BITS 32
 #define CSE_CONST_SHARED_LOW_BITS 16
 
@@ -114,10 +114,10 @@ inline bool compUnixX86Abi()
 //                       be assigned during register allocation.
 //    REG_NA           - Used to indicate that a register is either not yet assigned or not required.
 //
-#if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
+#if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_LLVM)
 enum _regNumber_enum : unsigned
 {
-#if defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
+#if defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_LLVM)
 // LA64 and RV64 don't require JITREG_ workaround for Android (see register.h)
 #define REGDEF(name, rnum, mask, sname) REG_##name = rnum,
 #define REGALIAS(alias, realname)       REG_##alias = REG_##realname,
@@ -183,7 +183,7 @@ enum _regMask_enum : uint64_t
 #include "register.h"
 };
 
-#elif defined(TARGET_X86) || defined(TARGET_WASM)
+#elif defined(TARGET_X86) || defined(TARGET_LLVM)
 
 enum _regNumber_enum : unsigned
 {
@@ -339,7 +339,7 @@ public:
     }
 #endif
 
-#if !defined(TARGET_X86) && !defined(TARGET_WASM32) 
+#if !defined(TARGET_X86) && !defined(TARGET_LLVM_WASM32)
     explicit operator unsigned int() const
     {
         return (unsigned int)low;
@@ -421,7 +421,7 @@ public:
     }
 };
 
-#if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
+#if defined(TARGET_ARM) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_LLVM)
 
 #define REGDEF(name, rnum, mask, sname)                                                                                \
     static constexpr regMaskTP RBM_##name =                                                                            \
@@ -603,8 +603,8 @@ static uint32_t BitScanForward(const regMaskTP& mask)
 #include "targetarm.h"
 #elif defined(TARGET_ARM64)
 #include "targetarm64.h"
-#elif defined(TARGET_WASM)
-#include "targetwasm.h"
+#elif defined(TARGET_LLVM)
+#include "targetllvm.h"
 #elif defined(TARGET_LOONGARCH64)
 #include "targetloongarch64.h"
 #elif defined(TARGET_RISCV64)
@@ -632,7 +632,7 @@ static uint32_t BitScanForward(const regMaskTP& mask)
 
 #endif // TARGET_XARCH
 
-#if !defined(TARGET_WASM32) && !defined(TARGET_WASM64) // has no registers
+#if !defined(TARGET_LLVM_WASM32) && !defined(TARGET_LLVM_WASM64) // has no registers
 static_assert(REG_FIRST == 0);
 static_assert(REG_INT_FIRST < REG_INT_LAST);
 static_assert(REG_FP_FIRST  < REG_FP_LAST);
@@ -707,7 +707,7 @@ inline regMaskTP genRegMaskFloat(regNumber reg ARM_ARG(var_types type = TYP_DOUB
  */
 inline bool genIsValidReg(regNumber reg)
 {
-#if defined(TARGET_WASM) // infinite "registers"
+#if defined(TARGET_LLVM) // infinite "registers"
     return true;
 #else
     /* It's safest to perform an unsigned comparison in case reg is negative */
@@ -936,7 +936,7 @@ extern const regMaskSmall regMasks[REG_COUNT];
 inline SingleTypeRegSet genSingleTypeFloatMask(regNumber reg ARM_ARG(var_types type /* = TYP_DOUBLE */))
 {
 #if defined(TARGET_AMD64) || defined(TARGET_ARM64) || defined(TARGET_X86) || defined(TARGET_LOONGARCH64) ||            \
-    defined(TARGET_RISCV64) || defined(TARGET_WASM)
+    defined(TARGET_RISCV64) || defined(TARGET_LLVM)
     assert(genIsValidFloatReg(reg));
     assert((unsigned)reg < ArrLen(regMasks));
     return regMasks[reg];
@@ -1147,12 +1147,12 @@ inline bool isFloatRegType(var_types type)
 
 // If the WINDOWS_AMD64_ABI is defined make sure that TARGET_AMD64 is also defined.
 #if defined(WINDOWS_AMD64_ABI)
-#if !defined(TARGET_AMD64) && !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
+#if !defined(TARGET_AMD64) && !defined(TARGET_LLVM_WASM32) && !defined(TARGET_LLVM_WASM64)
 #error When WINDOWS_AMD64_ABI is defined you must define TARGET_AMD64 defined as well.
 #endif
 #endif
 
-#if !defined(TARGET_WASM32) && !defined(TARGET_WASM64)
+#if !defined(TARGET_LLVM_WASM32) && !defined(TARGET_LLVM_WASM64)
 // RBM_ALLINT is not known at compile time on TARGET_AMD64 since it's dependent on APX support.
 // Check should still be functional minus eGPR registers
 /*****************************************************************************/

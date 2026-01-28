@@ -3,7 +3,7 @@
 
 #pragma once
 
-#ifndef TARGET_WASM
+#ifndef TARGET_LLVM
 
 #include "compiler.h"
 #include "phase.h"
@@ -44,4 +44,4 @@ private:
 #endif                         // !FEATURE_FIXED_OUT_ARGS
 };
 
-#endif // !TARGET_WASM
+#endif // !TARGET_LLVM
