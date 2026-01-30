@@ -13,6 +13,7 @@ function InstallDarcCli ($darcVersion, $toolpath) {
   $dotnetRoot = InitializeDotNetCli -install:$true
   $dotnet = "$dotnetRoot\dotnet.exe"
   $toolList = & "$dotnet" tool list -g
+  $env:DOTNET_ROOT = $dotnetRoot # NativeAOT-LLVM context: https://github.com/dotnet/runtimelab/issues/3200#issuecomment-3672636096
 
   if ($toolList -like "*$darcCliPackageName*") {
     & "$dotnet" tool uninstall $darcCliPackageName -g
