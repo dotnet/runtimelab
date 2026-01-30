@@ -2,7 +2,7 @@
 
 This branch contains an experimental fork of the [Native AOT](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/) toolchain that uses LLVM.
 
-Currenly, the only supported target is [WebAssembly](https://webassembly.org/). Other targets may be enabled in the future, but we are not investing work into them at present.
+Currently, the only supported target is [WebAssembly](https://webassembly.org/). Other targets may be enabled in the future, but we are not investing work into them at present.
 
 ## Documentation
 
