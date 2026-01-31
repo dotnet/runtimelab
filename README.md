@@ -15,7 +15,6 @@ Currently, this repo contains the following experimental projects:
 - [CompatibilityPackages](https://github.com/dotnet/runtimelab/tree/feature/CompatibilityPackages) - a set of packages which help satisfy binary dependencies of .NETFramework assemblies on .NET.
 - [Hot-Cold Splitting](https://github.com/dotnet/runtimelab/tree/feature/hot-cold-splitting) - Support the hot-cold splitting optimization in crossgen2.
 - [ManagedZLib](https://github.com/dotnet/runtimelab/tree/feature/ManagedZLib) - Fully managed implementation of DEFLATE algorithm and GZip/ZLib envelope formats.
-- [Async](https://github.com/dotnet/runtimelab/tree/feature/async2-experiment) - Move support for async state machine generation from the C# compiler to the runtime.
 - [SwiftBindings](https://github.com/dotnet/runtimelab/tree/feature/swift-bindings) - Swift bindings for .NET.
 - [CoreCLR Interpreter](https://github.com/dotnet/runtimelab/tree/feature/CoreclrInterpreter) - An interpreter for CoreCLR.
 
@@ -30,6 +29,7 @@ You can create your own experiment, learn more [here](CreateAnExperiment.md)!
 - [AssemblyBuilder.Save()](https://github.com/dotnet/runtimelab/tree/feature/assembly-builder-save) - Prototyping the implementation of AssemblyBuilder.Save() functionality.
 - [Green Threads](https://github.com/dotnet/runtimelab/tree/feature/green-threads) - Prototyping the implementation of green threads.
 - [NativeAOT for Android](https://github.com/dotnet/runtimelab/tree/feature/nativeaot-android) - Prototyping the Native AOT for Android apps and Java interop layer.
+- [Async](https://github.com/dotnet/runtimelab/tree/feature/async2-experiment) - Move support for async state machine generation from the C# compiler to the runtime.
 
 ## Filing issues
 
