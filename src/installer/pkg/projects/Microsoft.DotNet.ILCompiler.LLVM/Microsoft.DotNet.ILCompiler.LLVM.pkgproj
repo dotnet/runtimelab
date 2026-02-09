@@ -15,10 +15,6 @@
     <ItemGroup Condition="'$(PackageTargetRuntime)' == ''">
       <File Include="$(CoreCLRBuildIntegrationDir)*" TargetPath="build" />
       <File Include="$(CoreCLRILCompilerDir)netstandard\*" TargetPath="tools/netstandard" />
-
-      <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
-      <File Include="$(ArtifactsBinDir)Microsoft.Interop.SourceGeneration\$(Configuration)\netstandard2.0\*" TargetPath="analyzers/dotnet/cs" />
-      <File Include="$(ArtifactsBinDir)JSImportGenerator\$(Configuration)\netstandard2.0\*" TargetPath="analyzers/dotnet/cs" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(PackageTargetRuntime)' != '' and '$(BuildingIlcHostPackage)' == 'true'">

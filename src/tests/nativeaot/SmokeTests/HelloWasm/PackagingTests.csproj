@@ -18,6 +18,7 @@
     <ItemGroup>
       <PackagingTestProject Include="PackagingTests/PackagingTestProject.csproj">
         <BuildProperties>
+          TreatWarningsAsErrors=true;
           Test_Configuration=$(Test_Configuration);
           Test_TargetFramework=$(Test_TargetFramework);
           Test_RuntimeIdentifier=$(Test_RuntimeIdentifier);

@@ -117,8 +117,8 @@
   <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
   <Target Name="ReplaceJSImportGenerator" AfterTargets="ResolveTargetingPackAssets">
     <ItemGroup>
-      <Analyzer Remove="@(Analyzer)" Condition="'%(Analyzer.AssemblyName)' == 'Microsoft.Interop.JavaScript.JSImportGenerator' or '%(Analyzer.AssemblyName)' == 'Microsoft.Interop.SourceGeneration'" />
-      <Analyzer Include="$(MSBuildThisFileDirectory)..\analyzers\**\*.dll" />
+      <Analyzer Remove="@(Analyzer)" Condition="'%(Analyzer.AssemblyName)' == 'Microsoft.Interop.JavaScript.JSImportGenerator'" />
+      <Analyzer Include="$(MSBuildThisFileDirectory)*.dll" />
     </ItemGroup>
   </Target>
 </Project>

@@ -17,8 +17,10 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="$(MicrosoftCodeAnalysisVersion_LatestVS)" PrivateAssets="all" />
   </ItemGroup>
 
+  <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576. -->
+  <!-- We rename the ISG assembly so that it doesn't conflict with the one in the ref pack (which may be older and used by other generators). -->
   <ItemGroup>
-    <ProjectReference Include="$(LibrariesProjectRoot)System.Runtime.InteropServices\gen\Microsoft.Interop.SourceGeneration\Microsoft.Interop.SourceGeneration.csproj" />
+    <ProjectReference Include="$(LibrariesProjectRoot)System.Runtime.InteropServices\gen\Microsoft.Interop.SourceGeneration\Microsoft.Interop.SourceGeneration$(NativeAotLlvmRefOverride).csproj" />
   </ItemGroup>
 
   <ItemGroup>
