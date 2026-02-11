@@ -39,6 +39,7 @@
 
   <PropertyGroup Condition="('$(PublishSingleFile)' == 'true' or '$(TestNativeAot)' == 'true') and '$(IsFunctionalTest)' != 'true'">
     <DefineConstants>$(DefineConstants);SINGLE_FILE_TEST_RUNNER</DefineConstants>
+    <DefineConstants Condition="'$(TargetsWasi)' == 'true'">$(DefineConstants);TARGET_WASI</DefineConstants> <!-- Used by WasmTestRunner.cs -->
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TestReadyToRun)' == 'true'">
