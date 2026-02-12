@@ -1,0 +1,4 @@
+<Project>
+  <!-- TODO-LLVM-Upstream: https://github.com/dotnet/runtimelab/issues/2576 -->
+  <Import Project="Microsoft.Interop.SourceGeneration.csproj" />
+</Project>

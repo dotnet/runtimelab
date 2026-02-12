@@ -16,8 +16,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackagingTestProject Include="PackagingTests/PackagingTestProject.csproj">
+      <DotNetJsApiTestProject Include="PackagingTests/PackagingTestProject.DotNetJsApi.csproj"
+                              Condition="'$(TargetsBrowser)' == 'true'"
+                              ExpectedOutputName="dotnet.native.wasm" />
+
+      <PackagingTestProject Include="PackagingTests/PackagingTestProject.csproj;@(DotNetJsApiTestProject)">
         <BuildProperties>
+          TreatWarningsAsErrors=true;
           Test_Configuration=$(Test_Configuration);
           Test_TargetFramework=$(Test_TargetFramework);
           Test_RuntimeIdentifier=$(Test_RuntimeIdentifier);
@@ -43,6 +48,8 @@
 
       <PackagingTestProject Include="@(SampleProject)"
                             Condition="'$(Test_HostPackageRuntimeIdentifier)' == '$(NETCoreSdkPortableRuntimeIdentifier)'" />
+
+      <PackagingTestProject Condition="'%(PackagingTestProject.ExpectedOutputName)' == ''" ExpectedOutputName="%(FileName).wasm" />
     </ItemGroup>
 
     <Error Condition="!Exists($(Test_RestoreSource))"
@@ -69,7 +76,7 @@
              Targets="Publish"
              Properties="%(BuildProperties)" />
 
-    <Error Condition="!Exists('%(OutputPathRoot)/bin/$(Test_Configuration)/$(Test_TargetFramework)/$(Test_RuntimeIdentifier)/publish/%(FileName).wasm')"
+    <Error Condition="!Exists('%(OutputPathRoot)/bin/$(Test_Configuration)/$(Test_TargetFramework)/$(Test_RuntimeIdentifier)/publish/%(ExpectedOutputName)')"
            Text="%(PackagingTestProject.FullPath) did not produce the expected native artifacts" />
   </Target>
 </Project>
