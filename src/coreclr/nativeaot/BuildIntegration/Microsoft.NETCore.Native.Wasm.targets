@@ -67,6 +67,10 @@ The .NET Foundation licenses this file to you under the MIT license.
       <DirectPInvoke Include="libSystem.Globalization.Native" />
       <DirectPInvoke Include="libSystem.Native" />
     </ItemGroup>
+
+    <ItemGroup Condition="'$(_targetOS)' == 'wasi'">
+      <WasmComponentTypeWit Include="$(IlcFrameworkNativePath)*.wit" />
+    </ItemGroup>
   </Target>
 
 </Project>
