@@ -939,18 +939,25 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
 
     if (nodeValue->getType() != targetLlvmType)
     {
-        Type* intPtrLlvmType = getIntPtrLlvmType();
-
-        // Integer -> pointer.
-        if ((nodeValue->getType() == intPtrLlvmType) && targetLlvmType->isPointerTy())
+        // Pointer -> integer.
+        if (nodeValue->getType()->isPointerTy() && targetLlvmType->isIntegerTy())
         {
-            return _builder.CreateIntToPtr(nodeValue, targetLlvmType);
+            assert(targetLlvmType->getPrimitiveSizeInBits() <= TARGET_POINTER_BITS);
+            return _builder.CreatePtrToInt(nodeValue, targetLlvmType);
         }
 
-        // Pointer -> integer.
-        if (nodeValue->getType()->isPointerTy() && (targetLlvmType == intPtrLlvmType))
+        // Integer -> pointer.
+        Type* targetPtrType = nullptr;
+        if (nodeValue->getType()->isIntegerTy() && targetLlvmType->isPointerTy())
         {
-            return _builder.CreatePtrToInt(nodeValue, intPtrLlvmType);
+            Type* intPtrLlvmType = getIntPtrLlvmType();
+            if (nodeValue->getType() == intPtrLlvmType)
+            {
+                return _builder.CreateIntToPtr(nodeValue, targetLlvmType);
+            }
+
+            targetPtrType = targetLlvmType;
+            targetLlvmType = intPtrLlvmType;
         }
 
         // int and smaller int conversions
@@ -999,6 +1006,11 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
         {
             // Truncate.
             finalValue = _builder.CreateTrunc(nodeValue, targetLlvmType);
+        }
+
+        if (targetPtrType != nullptr)
+        {
+            finalValue = _builder.CreateIntToPtr(finalValue, targetPtrType);
         }
     }
 
