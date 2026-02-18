@@ -232,6 +232,8 @@ internal unsafe partial class Program
 
         ConvUTest();
 
+        PointerToSmallTypeCastsTest();
+
         CastByteForIndex();
 
         ldindTest();
@@ -1412,6 +1414,42 @@ internal unsafe partial class Program
         nuint nativeUnsignedFromUshort = msbUshort;
         EndTest(nativeUnsignedFromUshort == 0x8000, $"Expected 0x8000 but got {nativeUnsignedFromUshort}");
     }
+
+    private static void PointerToSmallTypeCastsTest()
+    {
+        StartTest("PointerToSmallTypeCastsTest");
+        ushort smallValue;
+        ushort* pSmallValue = (ushort*)ConsumePointer(&smallValue);
+        JitUse(pSmallValue); // Expose it.
+
+        *pSmallValue = (ushort)CastToPointer(-1);
+        if (smallValue != ushort.MaxValue)
+        {
+            FailTest("ptr -> i16");
+            return;
+        }
+
+        if (ConsumePointer((void*)*pSmallValue) != (void*)ushort.MaxValue)
+        {
+            FailTest("u16 -> ptr");
+            return;
+        }
+
+        if (ConsumePointer((void*)*(short*)pSmallValue) != (void*)uint.MaxValue)
+        {
+            FailTest("i16 -> ptr");
+            return;
+        }
+
+        JitUse(smallValue);
+        PassTest();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void* CastToPointer(nint value) => (void*)value;
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void* ConsumePointer(void* value) => value;
 
     private static void CastByteForIndex()
     {
