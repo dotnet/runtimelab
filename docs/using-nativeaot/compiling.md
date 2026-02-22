@@ -115,6 +115,16 @@ Note that assemblies other than the one being published (e. g. those from refere
 
 See also the [NativeLibrary sample](../../samples/NativeLibrary).
 
+### WebAssembly Core Modules for WASI
+
+NativeAOT-LLVM by default will produce Wasi component modules using the `wasm32-unknown-wasip2` triple.  If you need to produce WebAssemblyCore modules from a library project, add
+```xml
+<PropertyGroup>
+  <WasmCoreModule>true</WasmCoreModule>
+</PropertyGroup>
+```
+to your project file.  This can be useful for uses that do not support WebAssembly components, e.g. extism.
+
 ## WebAssembly module imports
 
 Functions in other WebAssembly modules can be imported and invoked using `DllImport` and `WasmImportLinkage` e.g.
