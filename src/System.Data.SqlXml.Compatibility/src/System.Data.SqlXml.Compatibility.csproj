@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>$(MSBuildProjectName)</PackageId>
+    <AssemblyName>System.Data.SqlXml</AssemblyName>
+    <VersionPrefix>0.0.1</VersionPrefix>
+
+    <!-- set version higher than that provided by framework -->
+    <AssemblyVersion>4.1.0.0</AssemblyVersion>
+
+    <!-- Target each framework version, since we're forwarding to implementation this can act as a test that the types are still present. -->
+    <TargetFrameworks>net6.0;net8.0;net10.0</TargetFrameworks>
+
+    <!-- sign the assembly with the same key as System.Data.SqlXml -->
+    <StrongNameKeyId>ECMA</StrongNameKeyId>
+  </PropertyGroup>
+
+  <Target Name="ConfigureRuntimePackReference" AfterTargets="ProcessFrameworkReferences">
+    <PropertyGroup>
+      <_runtimePackVersion Condition="'%(RuntimeFramework.FrameworkName)' == 'Microsoft.NETCore.App'">%(RuntimeFramework.Version)</_runtimePackVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <!-- We have to choose a single runtime as our reference, there's no guarantee that these types are present on all runtimes or will remain -->
+      <PackageDownload Include="Microsoft.NETCore.App.Runtime.linux-x64" Version="[$(_runtimePackVersion)]" />
+      <!-- Reference System.Private.Xml from the runtime-pack in the nuget cache -->
+      <Reference Include="$(NuGetPackageRoot)Microsoft.NETCore.App.Runtime.linux-x64/$(_runtimePackVersion)/runtimes/linux-x64/lib/$(TargetFramework)/System.Private.Xml.dll"
+                Private="false" />
+    </ItemGroup>
+  </Target>
+
+</Project>

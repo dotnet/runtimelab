@@ -18,6 +18,12 @@ This project is a replacement for that copy that takes precedence over the inbox
 
 It is a non-goal of this project to provide any real, functionally equivalent implementation of System.Web types, especially not a full implementation of ASP.NET.
 
+## System.Data.SqlXml
+
+System.Data.SqlXml is a .NETFramework assembly that exposed XSLT runtime types from the `System.Xml.Xsl.Runtime` namespace.  These types still exist in .NETCore within `System.Private.Xml` but are not exposed through a `System.Data.SqlXml` assembly.
+
+This project provides a version of this assembly which type-forwards all of its types to the .NETCore runtime implementation in `System.Private.Xml`.
+
 ## .NET Foundation
 
 .NET Runtime is a [.NET Foundation](https://www.dotnetfoundation.org/projects) project.

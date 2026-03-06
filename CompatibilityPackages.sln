@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "System.Data.Linq.Compatibil
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "System.Data.Linq.Compatibility.Tests", "src\System.Data.Linq.Compatibility\tests\System.Data.Linq.Compatibility.Tests.csproj", "{F486774E-8A93-4A5D-8E87-793F7F893436}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "System.Data.SqlXml.Compatibility", "src\System.Data.SqlXml.Compatibility\src\System.Data.SqlXml.Compatibility.csproj", "{A2E7E430-F9C6-4B5E-B853-6D268B10E4F0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,18 @@ Global
 		{F486774E-8A93-4A5D-8E87-793F7F893436}.Release|x64.Build.0 = Release|Any CPU
 		{F486774E-8A93-4A5D-8E87-793F7F893436}.Release|x86.ActiveCfg = Release|Any CPU
 		{F486774E-8A93-4A5D-8E87-793F7F893436}.Release|x86.Build.0 = Release|Any CPU
+		{A2E7E430-F9C6-4B5E-B853-6D268B10E4F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2E7E430-F9C6-4B5E-B853-6D268B10E4F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2E7E430-F9C6-4B5E-B853-6D268B10E4F0}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A2E7E430-F9C6-4B5E-B853-6D268B10E4F0}.Debug|x64.Build.0 = Debug|Any CPU
+		{A2E7E430-F9C6-4B5E-B853-6D268B10E4F0}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A2E7E430-F9C6-4B5E-B853-6D268B10E4F0}.Debug|x86.Build.0 = Debug|Any CPU
+		{A2E7E430-F9C6-4B5E-B853-6D268B10E4F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2E7E430-F9C6-4B5E-B853-6D268B10E4F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2E7E430-F9C6-4B5E-B853-6D268B10E4F0}.Release|x64.ActiveCfg = Release|Any CPU
+		{A2E7E430-F9C6-4B5E-B853-6D268B10E4F0}.Release|x64.Build.0 = Release|Any CPU
+		{A2E7E430-F9C6-4B5E-B853-6D268B10E4F0}.Release|x86.ActiveCfg = Release|Any CPU
+		{A2E7E430-F9C6-4B5E-B853-6D268B10E4F0}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
