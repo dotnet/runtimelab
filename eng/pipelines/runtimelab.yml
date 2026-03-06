@@ -58,7 +58,7 @@ stages:
         runTests: false
         pool:
           name: NetCore1ESPool-Internal
-          demands: ImageOverride -equals Build.Windows.10.Amd64.VS2019
+          demands: ImageOverride -equals windows.vs2026preview.scout.amd64
       ${{ if or(eq(variables['System.TeamProject'], 'public'), in(variables['Build.Reason'], 'PullRequest')) }}:
         pool:
           vmImage: 'windows-latest'
