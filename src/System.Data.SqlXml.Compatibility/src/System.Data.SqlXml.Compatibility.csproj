@@ -18,13 +18,14 @@
   <Target Name="ConfigureRuntimePackReference" AfterTargets="ProcessFrameworkReferences">
     <PropertyGroup>
       <_runtimePackVersion Condition="'%(RuntimeFramework.FrameworkName)' == 'Microsoft.NETCore.App'">%(RuntimeFramework.Version)</_runtimePackVersion>
+      <_runtimePackId>Microsoft.NETCore.App.Runtime.linux-x64</_runtimePackId>
     </PropertyGroup>
 
     <ItemGroup>
       <!-- We have to choose a single runtime as our reference, there's no guarantee that these types are present on all runtimes or will remain -->
-      <PackageDownload Include="Microsoft.NETCore.App.Runtime.linux-x64" Version="[$(_runtimePackVersion)]" />
+      <PackageDownload Include="$(_runtimePackId)" Version="[$(_runtimePackVersion)]" />
       <!-- Reference System.Private.Xml from the runtime-pack in the nuget cache -->
-      <Reference Include="$(NuGetPackageRoot)Microsoft.NETCore.App.Runtime.linux-x64/$(_runtimePackVersion)/runtimes/linux-x64/lib/$(TargetFramework)/System.Private.Xml.dll"
+      <Reference Include="$(NuGetPackageRoot)$(_runtimePackId.ToLowerInvariant())/$(_runtimePackVersion)/runtimes/linux-x64/lib/$(TargetFramework)/System.Private.Xml.dll"
                 Private="false" />
     </ItemGroup>
   </Target>
