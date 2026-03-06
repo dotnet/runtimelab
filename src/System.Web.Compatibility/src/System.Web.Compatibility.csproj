@@ -16,13 +16,13 @@
     <!-- fill in all System.Web APIs with throw new PlatformNotSupportedException(..) -->
     <GeneratePlatformNotSupportedAssemblyMessage>SR.PlatformNotSupportedSystemWeb</GeneratePlatformNotSupportedAssemblyMessage>
     <!-- omit these APIs from the generated code, we'll define them explicitly -->
-    <GeneratePlatformNotSupportedAdditionalParameters>--exclude-api-list NotSupported.Exclude.txt</GeneratePlatformNotSupportedAdditionalParameters>
+    <GenAPIExcludeApiList>NotSupported.Exclude.txt</GenAPIExcludeApiList>
 
     <!-- Build against .NETFramework assemblies to avoid having to deal with all the dependencies of System.Web that don't exist in .NETCore -->
     <Net48Ref>$(PkgMicrosoft_NETFramework_ReferenceAssemblies_net48)\build\.NETFramework\v4.8\</Net48Ref>
     <AssemblySearchPaths>$(Net48Ref);$(AssemblySearchPaths)</AssemblySearchPaths>
 
-    <NoWarn>$(NoWarn);CS0618;CS3021;NU5131</NoWarn>
+    <NoWarn>$(NoWarn);CS0618;CS3021;NU5131;NU1902;NU1903</NoWarn>
   </PropertyGroup>
 
   <ItemDefinitionGroup>

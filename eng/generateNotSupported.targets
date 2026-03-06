@@ -31,19 +31,16 @@
 
     <Error Text="No single matching contract found." Condition="'@(ResolvedMatchingContract -> Count())' != '1'" />
 
-    <PropertyGroup>
-      <GenAPIArgs>"%(ResolvedMatchingContract.Identity)"</GenAPIArgs>
-      <GenAPIArgs>$(GenAPIArgs) --lib-path "@(_referencePathDirectories)"</GenAPIArgs>
-      <GenAPIArgs>$(GenAPIArgs) --out "$(NotSupportedSourceFile)"</GenAPIArgs>
-      <GenAPIArgs Condition="'$(LangVersion)' != ''">$(GenAPIArgs) --lang-version "$(LangVersion)"</GenAPIArgs>
-      <GenAPIArgs Condition="'$(GeneratePlatformNotSupportedAssembly)' == 'true' or '$(GeneratePlatformNotSupportedAssemblyMessage)' != ''">$(GenAPIArgs) --throw "$(GeneratePlatformNotSupportedAssemblyMessage)"</GenAPIArgs>
-      <GenAPIArgs Condition="'$(GeneratePlatformNotSupportedAssemblyWithGlobalPrefix)' == 'true'">$(GenAPIArgs) --global</GenAPIArgs>
-      <GenAPIArgs Condition="'$(GeneratePlatformNotSupportedAssemblyHeaderFile)' != ''">$(GenAPIArgs) --header-file "$(GeneratePlatformNotSupportedAssemblyHeaderFile)"</GenAPIArgs>
-      <GenAPIArgs Condition="'$(GeneratePlatformNotSupportedAdditionalParameters)' != ''">$(GenAPIArgs) $(GeneratePlatformNotSupportedAdditionalParameters)</GenAPIArgs>
-    </PropertyGroup>
+    <Microsoft.DotNet.GenAPI.GenAPITask
+      Assembly="@(ResolvedMatchingContract)"
+      LibPath="@(_referencePathDirectories)"
+      OutputPath="$(NotSupportedSourceFile)"
+      HeaderFile="$(GeneratePlatformNotSupportedAssemblyHeaderFile)"
+      DocIdKinds="$(GenAPIDocIdKinds)"
+      ExceptionMessage="$(GeneratePlatformNotSupportedAssemblyMessage)"
+      ExcludeApiList="$(GenAPIExcludeApiList)"
+      LangVersion="$(LangVersion)" />
 
-    <Exec Command="$(_GenAPICommand) $(GenAPIArgs)" 
-          WorkingDirectory="$(ToolRuntimePath)" />
 
     <ItemGroup>
       <FileWrites Include="$(NotSupportedSourceFile)" />
