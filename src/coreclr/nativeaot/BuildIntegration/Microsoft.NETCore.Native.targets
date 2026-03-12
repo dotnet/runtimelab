@@ -538,8 +538,6 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
 
     <ItemGroup>
-      <WasmComponentTypeWit Include="$(IlcFrameworkNativePath)*.wit" />
-
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.a" />
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.TimeZoneData.a" Condition="'$(InvariantTimezone)' != 'true'" />
       <NativeLibrary Include="$(IlcFrameworkNativePath)libSystem.Native.TimeZoneData.Invariant.a" Condition="'$(InvariantTimezone)' == 'true'" />
@@ -557,13 +555,13 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="@(NativeObjects->'&quot;%(Identity)&quot;'->Replace(&quot;\&quot;, &quot;/&quot;))" />
       <!-- The canary function should be last in the linked output. But adding it to Native[Library|Object] runs into https://github.com/dotnet/msbuild/issues/5937. -->
       <CustomLinkerArg Include="&quot;$(IlcSdkPath.Replace('\', '/'))libStackTraceIpCanary.o&quot;" Condition="'$(_targetOS)' == 'browser'" />
-      <CustomLinkerArg Include="@(WasmComponentTypeWit->'%(FullPath)'->Replace('\', '/')->'-Wl,--component-type,&quot;%(Identity)&quot;')" />
       <CustomLinkerArg Include="-o &quot;$(NativeBinary.Replace(&quot;\&quot;, &quot;/&quot;))&quot;" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' == 'true'" Include="-g3" />
       <CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-Wl,--strip-all" />
       <!-- TODO-LLVM: https://github.com/dotnet/runtimelab/issues/2752. -->
       <!--<CustomLinkerArg Condition="'$(NativeDebugSymbols)' != 'true'" Include="-Wl,compress-relocations" />-->
       <CustomLinkerArg Condition="'$(IlcLlvmTarget)' != ''" Include="-target $(IlcLlvmTarget)" />
+      <CustomLinkerArg Condition="'$(LinkerFlavor)' != ''" Include="-fuse-ld=$(LinkerFlavor)" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(_targetOS)' == 'browser'" >
@@ -593,9 +591,10 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ReadLinesFromFile>
 
     <ItemGroup Condition="'$(_targetOS)' == 'wasi'" >
-      <CustomLinkerArg Include="@(_CustomLinkerArgExport->'-Wl,--export=%(Identity)')" />
+      <CustomLinkerArg Include="@(WasmComponentTypeWit->'%(FullPath)'->Replace('\', '/')->'-Wl,--component-type,&quot;%(Identity)&quot;')" Condition="'$(LinkerFlavor)' != 'lld'" />
       <CustomLinkerArg Include="-lstdc++;-lwasi-emulated-process-clocks;-lwasi-emulated-signal;-lwasi-emulated-mman;-lwasi-emulated-getpid" />
       <CustomLinkerArg Include="-lwasi-emulated-pthread" Condition="'$(_ActualWasiSdkVersion)' == '25.0'" />
+      <CustomLinkerArg Include="@(_CustomLinkerArgExport->'-Wl,--export=%(Identity)')" />
       <CustomLinkerArg Include="-Wl,--max-memory=2147483648" />
       <CustomLinkerArg Include="-Wl,--global-base=$(IlcWasmGlobalBase)" />
       <CustomLinkerArg Include="-Wl,-z,stack-size=$(IlcWasmStackSize)" />
