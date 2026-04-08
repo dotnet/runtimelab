@@ -20,6 +20,7 @@ jobs:
       clean: all
 
     enableMicrobuild: true
+    enablePublishing: true
 
     variables:
       - name: '_SignType'
@@ -51,7 +52,6 @@ jobs:
         /p:OfficialBuildId=$(Build.BuildNumber)
         /p:SignType=$(_SignType)
         /p:DotNetSignType=$(_SignType)
-        /p:DotNetPublishUsingPipelines=true
         /bl:$(Build.SourcesDirectory)\prepare-artifacts.binlog
       displayName: Prepare artifacts and upload to build
     
