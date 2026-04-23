@@ -414,6 +414,8 @@ internal unsafe partial class Program
 
         TestStructStoreWithSignificantPadding();
 
+        TestGcStructStoreWithSignificantPadding();
+
         TestLclVarAddr(new LlvmStruct { i1 = 1, i2 = 2 });
 
         TestJitUseStruct();
@@ -627,6 +629,52 @@ internal unsafe partial class Program
         ptrCopySized = ptrCopySized + 1;
 
         EndTest(*ptrCopySized == 2);
+    }
+
+    [StructLayout(LayoutKind.Explicit, Size = 8)]
+    private struct TestTwoInts_Explicit(int i0, int i1)
+    {
+        [FieldOffset(0)]
+        public int I0 = i0;
+        [FieldOffset(4)]
+        public int I1 = i1;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Size = 8)]
+    private struct TestTwoInts_Sequential(int i0, int i1)
+    {
+        public int I0 = i0;
+        public int I1 = i1;
+    }
+
+    private struct TestTwoInts(int i0, int i1)
+    {
+        public int I0 = i0;
+        public int I1 = i1;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Size = 24)]
+    private struct TestSixInts(int i0, int i1, int i2, int i3, int i4, int i5)
+    {
+        public TestTwoInts Normal = new(i0, i1);
+        public TestTwoInts_Sequential Sequential = new(i2, i3);
+        public TestTwoInts_Explicit Explicit = new(i4, i5);
+
+        public int Value() => Normal.I0 + Normal.I1 + Sequential.I0 + Sequential.I1 + Explicit.I0 + Explicit.I1;
+    }
+
+    private struct TestNested(object obj, int i1, int i2, int i3, int i4, int i5, int i6)
+    {
+        public object Object = obj;
+        public TestSixInts SixInts = new(i1, i2, i3, i4, i5, i6);
+    }
+
+    private static unsafe void TestGcStructStoreWithSignificantPadding()
+    {
+        StartTest("TestGcStructStoreWithSignificantPadding");
+        object obj = new TestNested(new object(), 1, 2, 3, 4, 5, 6);
+        JitUse(&obj);
+        EndTest(((TestNested)obj).SixInts.Value() == 21);
     }
 
     struct LlvmStruct

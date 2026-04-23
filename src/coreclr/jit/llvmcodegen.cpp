@@ -2489,26 +2489,39 @@ void Llvm::consumeInitValAndEmitInitBlk(GenTree* initVal, Value* addrValue, Clas
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
 {
     size_t fieldCount = structDesc->getFieldCount();
-    unsigned bytesStored = 0;
+    unsigned lastLlvmFieldIndex = INT32_MAX;
+
+    const llvm::StructLayout* dataLayout = nullptr;
+    if (data->getType()->isStructTy())
+    {
+        dataLayout = m_context->Module.getDataLayout().getStructLayout(static_cast<llvm::StructType*>(data->getType()));
+    }
+    auto copyPaddingFields = [=, &lastLlvmFieldIndex](unsigned endLlvmFieldIndex) {
+        for (unsigned llvmFieldIndex = lastLlvmFieldIndex + 1; llvmFieldIndex < endLlvmFieldIndex; llvmFieldIndex++)
+        {
+            if (dataLayout != nullptr)
+            {
+                unsigned offset = static_cast<unsigned>(dataLayout->getElementOffset(llvmFieldIndex).getFixedValue());
+                Value* fieldValue = _builder.CreateExtractValue(data, llvmFieldIndex);
+                Value* address = gepOrAddr(baseAddress, offset);
+                _builder.CreateStore(fieldValue, address);
+            }
+        }
+        lastLlvmFieldIndex = endLlvmFieldIndex;
+    };
 
     for (unsigned i = 0; i < fieldCount; i++)
     {
         FieldDesc* fieldDesc = structDesc->getFieldDesc(i);
         unsigned   fieldOffset = fieldDesc->getFieldOffset();
-        Value*     address     = gepOrAddr(baseAddress, fieldOffset);
-
-        if (structDesc->hasSignificantPadding() && fieldOffset > bytesStored)
-        {
-            bytesStored += buildMemCpy(baseAddress, bytesStored, fieldOffset, address);
-        }
 
         Value* fieldData = nullptr;
-        if (data->getType()->isStructTy())
+        if (dataLayout != nullptr)
         {
-            const llvm::StructLayout* structLayout = m_context->Module.getDataLayout().getStructLayout(static_cast<llvm::StructType*>(data->getType()));
+            unsigned llvmFieldIndex = dataLayout->getElementContainingOffset(fieldOffset);
+            copyPaddingFields(llvmFieldIndex);
 
-            unsigned llvmFieldIndex = structLayout->getElementContainingOffset(fieldOffset);
-            fieldData               = _builder.CreateExtractValue(data, llvmFieldIndex);
+            fieldData = _builder.CreateExtractValue(data, llvmFieldIndex);
         }
         else
         {
@@ -2516,6 +2529,7 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
             fieldData = data;
         }
 
+        Value* address = gepOrAddr(baseAddress, fieldOffset);
         if (fieldData->getType()->isStructTy())
         {
             assert(fieldDesc->getClassHandle() != NO_CLASS_HANDLE);
@@ -2535,28 +2549,12 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
                 _builder.CreateStore(fieldData, address);
             }
         }
-
-        bytesStored += static_cast<unsigned>(fieldData->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE);
     }
 
-    unsigned llvmStructSize = static_cast<unsigned>(data->getType()->getPrimitiveSizeInBits() / BITS_PER_BYTE);
-    if (structDesc->hasSignificantPadding() && llvmStructSize > bytesStored)
+    if (dataLayout != nullptr)
     {
-        Value* srcAddress = gepOrAddr(baseAddress, bytesStored);
-
-        buildMemCpy(baseAddress, bytesStored, llvmStructSize, srcAddress);
+        copyPaddingFields(static_cast<unsigned>(dataLayout->getMemberOffsets().size()));
     }
-}
-
-// Copies endOffset - startOffset bytes, endOffset is exclusive.
-unsigned Llvm::buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress)
-{
-    Value* destAddress = gepOrAddr(baseAddress, startOffset);
-    unsigned size = endOffset - startOffset;
-
-    _builder.CreateMemCpy(destAddress, llvm::Align(), srcAddress, llvm::Align(), size);
-
-    return size;
 }
 
 void Llvm::emitMemSet(Value* addr, uint8_t value, unsigned size)
