@@ -7,8 +7,13 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+<<<<<<< HEAD
   <Project Path="../../../../artifacts/obj/coreclr/windows.x64.Debug/ide/jit/clrjit_universal_llvm32_x64.vcxproj" Id="dc05b581-fec7-3255-8853-8bf62c22b558">
     <Platform Project="x64" />
+=======
+  <Project Path="../../../tools/illink/src/ILLink.CodeFix/ILLink.CodeFixProvider.csproj">
+    <BuildType Solution="Checked|*" Project="Debug" />
+>>>>>>> upstream/main
   </Project>
   <Project Path="../../../tools/illink/src/ILLink.RoslynAnalyzer/ILLink.RoslynAnalyzer.csproj">
     <BuildType Solution="Checked|*" Project="Debug" />

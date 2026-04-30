@@ -77,15 +77,20 @@ namespace System.Formats.Tar
                     header.ReadPosixAndGnuSharedAttributes(buffer);
 
                     Debug.Assert(header._format is TarEntryFormat.Ustar or TarEntryFormat.Pax or TarEntryFormat.Gnu);
-                    if (header._format == TarEntryFormat.Ustar)
+                    if (header._format is TarEntryFormat.Ustar or TarEntryFormat.Pax)
                     {
+                        // PAX extends USTAR and uses the same header layout including the
+                        // prefix field.  When an actual entry follows a PAX extended
+                        // attributes header, the entry's prefix may still carry part of
+                        // the path.  The PAX "path" extended attribute, if present, will
+                        // override the combined prefix/name afterward in
+                        // ReplaceNormalAttributesWithExtended.
                         header.ReadUstarAttributes(buffer);
                     }
                     else if (header._format == TarEntryFormat.Gnu)
                     {
                         header.ReadGnuAttributes(buffer);
                     }
-                    // In PAX, there is nothing to read in this section (empty space)
                 }
                 // Finished reading the header metadata, next byte belongs to the data section, save the position
                 SetDataOffset(header, archiveStream);
@@ -98,16 +103,24 @@ namespace System.Formats.Tar
         // If any of the dictionary entries use the name of a standard attribute, that attribute's value gets replaced with the one from the dictionary.
         // Unlike the historic header, numeric values in extended attributes are stored using decimal, not octal.
         // Throws if any conversion from string to the expected data type fails.
-        internal void ReplaceNormalAttributesWithExtended(Dictionary<string, string>? dictionaryFromExtendedAttributesHeader)
+        internal void ReplaceNormalAttributesWithExtended(IEnumerable<KeyValuePair<string, string>>? extendedAttributes)
         {
-            if (dictionaryFromExtendedAttributesHeader == null || dictionaryFromExtendedAttributesHeader.Count == 0)
+            if (extendedAttributes == null)
             {
                 return;
             }
 
-            AddExtendedAttributes(dictionaryFromExtendedAttributesHeader);
+            AddExtendedAttributes(extendedAttributes);
 
-            // Find all the extended attributes with known names and save them in the expected standard attribute.
+            if (_ea == null || _ea.Count == 0)
+            {
+                // no extended attributes were added, so we can skip the rest of the processing
+                return;
+            }
+
+            // Find all the extended attributes with known names and save them
+            // in the expected standard attribute. Extended attributes are preserved
+            // as-is to avoid data loss during roundtripping.
 
             // The 'name' header field only fits 100 bytes, so we always store the full name text to the dictionary.
             if (ExtendedAttributes.TryGetValue(PaxEaName, out string? paxEaName))
@@ -116,7 +129,9 @@ namespace System.Formats.Tar
             }
 
             // The 'linkName' header field only fits 100 bytes, so we always store the full linkName text to the dictionary.
-            if (ExtendedAttributes.TryGetValue(PaxEaLinkName, out string? paxEaLinkName))
+            // Only apply to link entries to avoid setting _linkName on non-link entry types.
+            if (_typeFlag is TarEntryType.HardLink or TarEntryType.SymbolicLink &&
+                ExtendedAttributes.TryGetValue(PaxEaLinkName, out string? paxEaLinkName))
             {
                 _linkName = paxEaLinkName;
             }
@@ -137,6 +152,36 @@ namespace System.Formats.Tar
             if (TarHelpers.TryGetStringAsBaseTenLong(ExtendedAttributes, PaxEaSize, out long size))
             {
                 _size = size;
+            }
+
+            // GNU sparse format 1.0 (encoded via PAX) uses RegularFile type flag ('0') and stores sparse metadata in
+            // PAX extended attributes. Process all GNU sparse 1.0 attributes together in this block.
+            if (_typeFlag is TarEntryType.RegularFile or TarEntryType.V7RegularFile)
+            {
+                // 'GNU.sparse.name' overrides the placeholder path (e.g. 'GNUSparseFile.0/...') in the header's 'path' field.
+                if (ExtendedAttributes.TryGetValue(PaxEaGnuSparseName, out string? gnuSparseName))
+                {
+                    _name = gnuSparseName;
+                }
+
+                // 'GNU.sparse.realsize' is the expanded (virtual) file size; stored separately from _size so that
+                // _size retains the archive data section length needed for correct stream positioning.
+                if (TarHelpers.TryGetStringAsBaseTenLong(ExtendedAttributes, PaxEaGnuSparseRealSize, out long gnuSparseRealSize))
+                {
+                    if (gnuSparseRealSize < 0)
+                    {
+                        throw new InvalidDataException(SR.TarSizeFieldNegative);
+                    }
+                    _gnuSparseRealSize = gnuSparseRealSize;
+                }
+
+                // 'GNU.sparse.major=1' and 'GNU.sparse.minor=0' identify format 1.0, where the data section begins
+                // with an embedded text-format sparse map followed by the packed non-zero data segments.
+                if (ExtendedAttributes.TryGetValue(PaxEaGnuSparseMajor, out string? gnuSparseMajor) && gnuSparseMajor == "1" &&
+                    ExtendedAttributes.TryGetValue(PaxEaGnuSparseMinor, out string? gnuSparseMinor) && gnuSparseMinor == "0")
+                {
+                    _isGnuSparse10 = true;
+                }
             }
 
             // The 'uid' header field only fits 8 bytes, or the user could've stored an override in the extended attributes
@@ -215,6 +260,17 @@ namespace System.Formats.Tar
                 case TarEntryType.TapeVolume: // Might contain data
                 default: // Unrecognized entry types could potentially have a data section
                     _dataStream = GetDataStream(archiveStream, copyData);
+
+                    // GNU sparse format 1.0 PAX entries embed a sparse map at the start of the
+                    // data section. Create a GnuSparseStream wrapper that presents the expanded
+                    // virtual file content. The sparse map is parsed lazily on first Read, so
+                    // _dataStream remains unconsumed here — TarWriter can copy the raw condensed
+                    // data, and AdvanceDataStreamIfNeeded can advance past it normally.
+                    if (_isGnuSparse10 && _gnuSparseRealSize > 0 && _dataStream is not null)
+                    {
+                        _gnuSparseDataStream = new GnuSparseStream(_dataStream, _gnuSparseRealSize);
+                    }
+
                     if (_dataStream is SeekableSubReadStream)
                     {
                         TarHelpers.AdvanceStream(archiveStream, _size);
@@ -277,6 +333,12 @@ namespace System.Formats.Tar
                 case TarEntryType.TapeVolume: // Might contain data
                 default: // Unrecognized entry types could potentially have a data section
                     _dataStream = await GetDataStreamAsync(archiveStream, copyData, _size, cancellationToken).ConfigureAwait(false);
+
+                    if (_isGnuSparse10 && _gnuSparseRealSize > 0 && _dataStream is not null)
+                    {
+                        _gnuSparseDataStream = new GnuSparseStream(_dataStream, _gnuSparseRealSize);
+                    }
+
                     if (_dataStream is SeekableSubReadStream)
                     {
                         await TarHelpers.AdvanceStreamAsync(archiveStream, _size, cancellationToken).ConfigureAwait(false);
@@ -370,7 +432,20 @@ namespace System.Formats.Tar
             {
                 return null;
             }
-            int checksum = (int)TarHelpers.ParseOctal<uint>(spanChecksum);
+
+            int checksum;
+            try
+            {
+                checksum = (int)TarHelpers.ParseOctal<uint>(spanChecksum);
+            }
+            catch (InvalidDataException)
+            {
+                // Check if this might be a compressed file by looking at the buffer for compression magic numbers
+                ThrowIfCompressedArchive(buffer);
+                // If not a compressed file, re-throw the original parsing exception
+                throw;
+            }
+
             // Zero checksum means the whole header is empty
             if (checksum == 0)
             {
@@ -387,7 +462,7 @@ namespace System.Formats.Tar
             long size = TarHelpers.ParseNumeric<long>(buffer.Slice(FieldLocations.Size, FieldLengths.Size));
             if (size < 0)
             {
-                throw new InvalidDataException(SR.Format(SR.TarSizeFieldNegative));
+                throw new InvalidDataException(SR.TarSizeFieldNegative);
             }
 
             // Continue with the rest of the fields that require no special checks
@@ -667,7 +742,7 @@ namespace System.Formats.Tar
 
             if (buffer.Length > 0)
             {
-                throw new InvalidDataException(SR.Format(SR.ExtHeaderInvalidRecords));
+                throw new InvalidDataException(SR.ExtHeaderInvalidRecords);
             }
         }
 
@@ -788,6 +863,94 @@ namespace System.Formats.Tar
             // Update buffer to point to the next line for the next call
             buffer = buffer.Slice(newlinePos + 1);
             return true;
+        }
+
+        /// <summary>
+        /// Analyzes the buffer for known compression format magic numbers and throws an InvalidDataException
+        /// with a specific error message if a compression format is detected.
+        /// If no compression format is detected, the method returns without throwing.
+        /// </summary>
+        /// <exception cref="InvalidDataException">
+        /// Thrown if a compression format is detected.
+        /// </exception>
+        private static void ThrowIfCompressedArchive(ReadOnlySpan<byte> buffer)
+        {
+            if (buffer.Length < 2)
+            {
+                return;
+            }
+
+            byte firstByte = buffer[0];
+            switch (firstByte)
+            {
+                case 0x37: // 7-Zip
+                    if (buffer.Length >= 6 &&
+                        buffer[1] == 0x7A && buffer[2] == 0xBC &&
+                        buffer[3] == 0xAF && buffer[4] == 0x27 && buffer[5] == 0x1C)
+                    {
+                        throw new InvalidDataException(SR.Format(SR.TarCompressionArchiveDetected, "7-Zip"));
+                    }
+                    break;
+
+                case 0x50: // ZIP files start with "PK"
+                    if (buffer.Length >= 2 && buffer[1] == 0x4B)
+                    {
+                        throw new InvalidDataException(SR.Format(SR.TarCompressionArchiveDetected, "ZIP"));
+                    }
+                    break;
+
+                case 0x1F: // GZIP
+                    if (buffer.Length >= 2 && buffer[1] == 0x8B)
+                    {
+                        throw new InvalidDataException(SR.Format(SR.TarCompressionArchiveDetected, "GZIP"));
+                    }
+                    break;
+
+                case 0x42: // BZIP2 - "BZh"
+                    if (buffer.Length >= 3 && buffer[1] == 0x5A && buffer[2] == 0x68)
+                    {
+                        throw new InvalidDataException(SR.Format(SR.TarCompressionArchiveDetected, "BZIP2"));
+                    }
+                    break;
+
+                case 0xFD: // XZ
+                    if (buffer.Length >= 6 &&
+                        buffer[1] == 0x37 && buffer[2] == 0x7A &&
+                        buffer[3] == 0x58 && buffer[4] == 0x5A && buffer[5] == 0x00)
+                    {
+                        throw new InvalidDataException(SR.Format(SR.TarCompressionArchiveDetected, "XZ"));
+                    }
+                    break;
+
+                case 0x28: // Could be Zstandard or ZLIB
+                    if (buffer.Length >= 4 &&
+                        buffer[1] == 0xB5 && buffer[2] == 0x2F && buffer[3] == 0xFD)
+                    {
+                        throw new InvalidDataException(SR.Format(SR.TarCompressionArchiveDetected, "Zstandard"));
+                    }
+                    // If not Zstandard, check if it's ZLIB
+                    goto CheckZlib;
+
+                // ZLIB (deflate compression) - various compression methods and window sizes
+                case 0x08:
+                case 0x18:
+                case 0x38:
+                case 0x48:
+                case 0x58:
+                case 0x68:
+                case 0x78:
+                CheckZlib:
+                    if (buffer.Length >= 2)
+                    {
+                        byte secondByte = buffer[1];
+                        // Check if this is a valid ZLIB header (must be divisible by 31)
+                        if (((firstByte * 256) + secondByte) % 31 == 0)
+                        {
+                            throw new InvalidDataException(SR.Format(SR.TarCompressionArchiveDetected, "ZLIB"));
+                        }
+                    }
+                    break;
+            }
         }
     }
 }

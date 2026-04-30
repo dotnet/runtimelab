@@ -64,21 +64,12 @@ namespace System
 
         internal static IntPtr EdiSeparator => (IntPtr)1;  // Marks a boundary where an ExceptionDispatchInfo rethrew an exception.
 
-        private void AppendStackIP(IntPtr IP, bool isFirstRethrowFrame)
+        private void AppendStackIP(IntPtr IP)
         {
             if (_idxFirstFreeStackTraceEntry == 0)
             {
                 _corDbgStackTrace = new IntPtr[16];
             }
-            else if (isFirstRethrowFrame)
-            {
-                // For the first frame after rethrow, we replace the last entry in the stack trace with the IP
-                // of the rethrow.  This is overwriting the IP of where control left the corresponding try
-                // region for the catch that is rethrowing.
-                _corDbgStackTrace[_idxFirstFreeStackTraceEntry - 1] = IP;
-                return;
-            }
-
             if (_idxFirstFreeStackTraceEntry >= _corDbgStackTrace.Length)
                 GrowStackTrace();
 
@@ -108,7 +99,7 @@ namespace System
         internal static uint GetExceptionCount() => s_exceptionCount;
 
         [RuntimeExport("AppendExceptionStackFrame")]
-        private static void AppendExceptionStackFrame(object exceptionObj, IntPtr IP, int flags)
+        internal static void AppendExceptionStackFrame(object exceptionObj, IntPtr IP, int flags)
         {
             // This method is called by the runtime's EH dispatch code and is not allowed to leak exceptions
             // back into the dispatcher.
@@ -139,12 +130,17 @@ namespace System
                 // with another OutOfMemoryException, which may lead to infinite recursion.
                 bool fatalOutOfMemory = ex == PreallocatedOutOfMemoryException.Instance;
 
+<<<<<<< HEAD
                 if (!fatalOutOfMemory)
 #if TARGET_WASM
                     ex.AppendStack(IP, isFirstFrame, isFirstRethrowFrame);
 #else
                     ex.AppendStackIP(IP, isFirstRethrowFrame);
 #endif
+=======
+                if (!isFirstRethrowFrame && !fatalOutOfMemory)
+                    ex.AppendStackIP(IP);
+>>>>>>> upstream/main
 
 #if FEATURE_PERFTRACING
                 if (isFirstFrame && NativeRuntimeEventSource.Log.IsEnabled())

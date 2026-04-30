@@ -13,10 +13,18 @@
 #include <eventpipe/ep-provider.h>
 #include <eventpipe/ep-session-provider.h>
 #include <eventpipe/ep-string.h>
-#include "fstream.h"
 #include "typestring.h"
 #include "clrversion.h"
 #include "hostinformation.h"
+
+#ifdef HOST_WINDOWS
+#include <windows.h>
+#else // !HOST_WINDOWS
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif // HOST_WINDOWS
+
 #include <minipal/guid.h>
 #include <minipal/strings.h>
 #include <minipal/time.h>
@@ -436,9 +444,9 @@ ep_rt_provider_config_init (EventPipeProviderConfiguration *provider_config)
 // This function is auto-generated from /src/scripts/genEventPipe.py
 #ifdef TARGET_UNIX
 extern "C" void InitProvidersAndEvents ();
-#else
+#else // TARGET_UNIX
 extern void InitProvidersAndEvents ();
-#endif
+#endif // TARGET_UNIX
 
 static
 void
@@ -524,7 +532,7 @@ ep_rt_config_value_get_config (void)
 {
 	STATIC_CONTRACT_NOTHROW;
 	CLRConfigStringHolder value(CLRConfig::GetConfigValue (CLRConfig::INTERNAL_EventPipeConfig));
-	return ep_rt_utf16_to_utf8_string (reinterpret_cast<ep_char16_t *>(value.GetValue ()));
+	return ep_rt_utf16_to_utf8_string (reinterpret_cast<ep_char16_t *>(static_cast<LPWSTR>(value)));
 }
 
 static
@@ -534,7 +542,7 @@ ep_rt_config_value_get_output_path (void)
 {
 	STATIC_CONTRACT_NOTHROW;
 	CLRConfigStringHolder value(CLRConfig::GetConfigValue (CLRConfig::INTERNAL_EventPipeOutputPath));
-	return ep_rt_utf16_to_utf8_string (reinterpret_cast<ep_char16_t *>(value.GetValue ()));
+	return ep_rt_utf16_to_utf8_string (reinterpret_cast<ep_char16_t *>(static_cast<LPWSTR>(value)));
 }
 
 static
@@ -562,6 +570,15 @@ ep_rt_config_value_get_enable_stackwalk (void)
 {
 	STATIC_CONTRACT_NOTHROW;
 	return CLRConfig::GetConfigValue(CLRConfig::INTERNAL_EventPipeEnableStackwalk) != 0;
+}
+
+static
+inline
+uint32_t
+ep_rt_config_value_get_sampling_rate (void)
+{
+	STATIC_CONTRACT_NOTHROW;
+	return CLRConfig::GetConfigValue(CLRConfig::INTERNAL_EventPipeThreadSamplingRate);
 }
 
 /*
@@ -614,13 +631,12 @@ void
 ep_rt_notify_profiler_provider_created (EventPipeProvider *provider)
 {
 	STATIC_CONTRACT_NOTHROW;
-
-#ifndef DACCESS_COMPILE
+#if !defined(DACCESS_COMPILE) && defined(PROFILING_SUPPORTED)
 		// Let the profiler know the provider has been created so it can register if it wants to
 		BEGIN_PROFILER_CALLBACK (CORProfilerTrackEventPipe ());
 		(&g_profControlBlock)->EventPipeProviderCreated (provider);
 		END_PROFILER_CALLBACK ();
-#endif // DACCESS_COMPILE
+#endif // !DACCESS_COMPILE && PROFILING_SUPPORTED
 }
 
 /*
@@ -733,7 +749,7 @@ ep_rt_wait_event_get_wait_handle (ep_rt_wait_event_handle_t *wait_event)
 	STATIC_CONTRACT_NOTHROW;
 	EP_ASSERT (wait_event != NULL && wait_event->event != NULL);
 
-	return reinterpret_cast<EventPipeWaitHandle>(wait_event->event->GetHandleUNHOSTED ());
+	return reinterpret_cast<EventPipeWaitHandle>(wait_event->event->GetOSEvent ());
 }
 
 static
@@ -1023,7 +1039,7 @@ void
 ep_rt_system_time_get (EventPipeSystemTime *system_time)
 {
 	STATIC_CONTRACT_NOTHROW;
-    
+
 #ifdef HOST_WINDOWS
     SYSTEMTIME value;
     GetSystemTime (&value);
@@ -1117,17 +1133,25 @@ ep_rt_file_open_write (const ep_char8_t *path)
 {
 	STATIC_CONTRACT_NOTHROW;
 
-	ep_char16_t *path_utf16 = ep_rt_utf8_to_utf16le_string (path);
-	ep_return_null_if_nok (path_utf16 != NULL);
+    if (!path)
+        return INVALID_HANDLE_VALUE;
 
-	CFileStream *file_stream = new (nothrow) CFileStream ();
-	if (file_stream && FAILED (file_stream->OpenForWrite (reinterpret_cast<LPWSTR>(path_utf16)))) {
-		delete file_stream;
-		file_stream = NULL;
-	}
+#ifdef HOST_WINDOWS
+    ep_char16_t *path_utf16 = ep_rt_utf8_to_utf16le_string (path);
+    if (!path_utf16)
+        return INVALID_HANDLE_VALUE;
 
-	ep_rt_utf16_string_free (path_utf16);
-	return static_cast<ep_rt_file_handle_t>(file_stream);
+    HANDLE res = ::CreateFileW (reinterpret_cast<LPCWSTR>(path_utf16), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    ep_rt_utf16_string_free (path_utf16);
+    return static_cast<ep_rt_file_handle_t>(res);
+#else // !HOST_WINDOWS
+    mode_t perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
+    int fd = creat (path, perms);
+    if (fd == -1)
+        return INVALID_HANDLE_VALUE;
+
+    return (ep_rt_file_handle_t)(ptrdiff_t)fd;
+#endif // HOST_WINDOWS
 }
 
 static
@@ -1137,10 +1161,13 @@ ep_rt_file_close (ep_rt_file_handle_t file_handle)
 {
 	STATIC_CONTRACT_NOTHROW;
 
-	// Closed in destructor.
-	if (file_handle)
-		delete file_handle;
-	return true;
+#ifdef HOST_WINDOWS
+    return ::CloseHandle (file_handle) != FALSE;
+#else // !HOST_WINDOWS
+    int fd = (int)(ptrdiff_t)file_handle;
+    close (fd);
+    return true;
+#endif // HOST_WINDOWS
 }
 
 static
@@ -1157,10 +1184,28 @@ ep_rt_file_write (
 
 	ep_return_false_if_nok (file_handle != NULL);
 
-	ULONG out_count;
-	HRESULT result = reinterpret_cast<CFileStream *>(file_handle)->Write (buffer, bytes_to_write, &out_count);
-	*bytes_written = static_cast<uint32_t>(out_count);
-	return result == S_OK;
+#ifdef HOST_WINDOWS
+    return ::WriteFile (file_handle, buffer, bytes_to_write, reinterpret_cast<LPDWORD>(bytes_written), NULL) != FALSE;
+#else // !HOST_WINDOWS
+    int fd = (int)(ptrdiff_t)file_handle;
+    int ret;
+    do {
+        ret = write (fd, buffer, bytes_to_write);
+    } while (ret == -1 && errno == EINTR);
+
+    if (ret == -1) {
+        if (bytes_written != NULL) {
+            *bytes_written = 0;
+        }
+
+        return false;
+    }
+
+    if (bytes_written != NULL)
+        *bytes_written = ret;
+
+    return true;
+#endif // HOST_WINDOWS
 }
 
 static

@@ -143,19 +143,27 @@ namespace ILCompiler
             if (_resilient)
                 options |= RyuJitCompilationOptions.UseResilience;
 
+<<<<<<< HEAD
             return CreateCompilation(options, jitFlagBuilder.ToArray());
         }
 
         protected virtual RyuJitCompilation CreateCompilation(RyuJitCompilationOptions options, CorJitFlag[] jitFlags)
         {
             ObjectDataInterner interner = _methodBodyFolding switch
+=======
+            MethodBodyDeduplicator methodBodyDeduplicator = _methodBodyFolding switch
+>>>>>>> upstream/main
             {
-                MethodBodyFoldingMode.Generic => new ObjectDataInterner(genericsOnly: true),
-                MethodBodyFoldingMode.All => new ObjectDataInterner(genericsOnly: false),
-                _ => ObjectDataInterner.Null,
+                MethodBodyFoldingMode.Generic => new MethodBodyDeduplicator(genericsOnly: true),
+                MethodBodyFoldingMode.All => new MethodBodyDeduplicator(genericsOnly: false),
+                _ => null,
             };
 
-            var factory = new RyuJitNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, interner, _typeMapManager);
+            ObjectDataInterner interner = methodBodyDeduplicator is not null
+                ? new ObjectDataInterner(methodBodyDeduplicator)
+                : ObjectDataInterner.Null;
+
+            var factory = new RyuJitNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, interner, methodBodyDeduplicator, _typeMapManager);
 
             JitConfigProvider.Initialize(_context.Target, jitFlags, _ryujitOptions, _jitPath);
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(CompilerComparer.Instance));

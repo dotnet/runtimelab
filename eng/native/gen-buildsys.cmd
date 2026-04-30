@@ -22,9 +22,13 @@ if /i "%__Os%" == "browser" (
             echo Error: Should set EMSDK environment variable pointing to emsdk root.
             exit /B 1
         )
-        set EMSDK_QUIET=1 && call "%__repoRoot%\src\mono\browser\emsdk\emsdk_env"
+        set "EMSDK_QUIET=1" && call "%__repoRoot%\src\mono\browser\emsdk\emsdk_env.cmd"
     ) else (
+<<<<<<< HEAD
         set EMSDK_QUIET=1 && call "%EMSDK%\emsdk_env"
+=======
+        set "EMSDK_QUIET=1" && call "%EMSDK_PATH%\emsdk_env.cmd"
+>>>>>>> upstream/main
     )
 )
 
@@ -85,7 +89,7 @@ if /i "%__Arch%" == "wasm" (
 
 if /i "%__Os%" == "android" (
     :: Keep in sync with $(AndroidApiLevelMin) in Directory.Build.props in the repository rooot
-    set __ANDROID_API_LEVEL=21
+    set __ANDROID_API_LEVEL=24
     if "%ANDROID_NDK_ROOT%" == "" (
         echo Error: You need to set the ANDROID_NDK_ROOT environment variable pointing to the Android NDK root.
         exit /B 1

@@ -13,7 +13,7 @@ using Internal.TypeSystem.Ecma;
 
 namespace ILCompiler.DependencyAnalysis.ReadyToRun
 {
-    public class MethodWithGCInfo : ObjectNode, IMethodBodyNode, ISymbolDefinitionNode
+    public class MethodWithGCInfo : ObjectNode, IMethodBodyNode, IMethodCodeNodeWithTypeSignature
     {
         public readonly MethodGCInfoNode GCInfoNode;
 
@@ -303,7 +303,12 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
 
         public override ObjectNodeSection GetSection(NodeFactory factory)
         {
-            return ObjectNodeSection.TextSection;
+            return factory.Format switch
+            {
+                ReadyToRunContainerFormat.PE => ObjectNodeSection.ManagedCodeWindowsContentSection,
+                ReadyToRunContainerFormat.Wasm => ObjectNodeSection.WasmCodeSection,
+                _ => ObjectNodeSection.ManagedCodeUnixContentSection
+            };
         }
 
         public FrameInfo[] FrameInfos => _frameInfos;

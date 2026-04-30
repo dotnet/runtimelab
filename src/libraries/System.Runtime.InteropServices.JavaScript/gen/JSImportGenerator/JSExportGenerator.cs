@@ -23,8 +23,7 @@ namespace Microsoft.Interop.JavaScript
             ContainingSyntaxContext ContainingSyntaxContext,
             ContainingSyntax StubMethodSyntaxTemplate,
             MethodSignatureDiagnosticLocations DiagnosticLocation,
-            JSExportData JSExportData,
-            SequenceEqualImmutableArray<DiagnosticInfo> Diagnostics);
+            JSExportData JSExportData);
 
         public static class StepNames
         {
@@ -37,30 +36,22 @@ namespace Microsoft.Interop.JavaScript
             var assemblyName = context.CompilationProvider.Select(static (c, _) => c.AssemblyName);
 
             // Collect all methods adorned with JSExportAttribute
-            var attributedMethods = context.SyntaxProvider
+            // (diagnostics for invalid methods are reported by the analyzer)
+            var methodsToGenerate = context.SyntaxProvider
                 .ForAttributeWithMetadataName(Constants.JSExportAttribute,
                    static (node, ct) => node is MethodDeclarationSyntax,
-                   static (context, ct) => new { Syntax = (MethodDeclarationSyntax)context.TargetNode, Symbol = (IMethodSymbol)context.TargetSymbol });
-
-            // Validate if attributed methods can have source generated
-            var methodsWithDiagnostics = attributedMethods.Select(static (data, ct) =>
-            {
-                Diagnostic? diagnostic = GetDiagnosticIfInvalidMethodForGeneration(data.Syntax, data.Symbol);
-                return new { Syntax = data.Syntax, Symbol = data.Symbol, Diagnostic = diagnostic };
-            });
-
-            var methodsToGenerate = methodsWithDiagnostics.Where(static data => data.Diagnostic is null);
-            var invalidMethodDiagnostics = methodsWithDiagnostics.Where(static data => data.Diagnostic is not null);
-
-            // Report diagnostics for invalid methods
-            context.RegisterSourceOutput(invalidMethodDiagnostics, static (context, invalidMethod) =>
-            {
-                context.ReportDiagnostic(invalidMethod.Diagnostic);
-            });
+                   static (context, ct) => new { Syntax = (MethodDeclarationSyntax)context.TargetNode, Symbol = (IMethodSymbol)context.TargetSymbol })
+                .Where(static data =>
+                    JSInteropDiagnosticsAnalyzer.GetDiagnosticIfInvalidMethodForGeneration(
+                        data.Syntax, data.Symbol,
+                        GeneratorDiagnostics.InvalidExportAttributedMethodSignature,
+                        GeneratorDiagnostics.InvalidExportAttributedMethodContainingTypeMissingModifiers,
+                        requiresImplementation: true) is null);
 
             IncrementalValueProvider<StubEnvironment> stubEnvironment = context.CreateStubEnvironmentProvider();
             var allAttributedMethods = attributedMethods.Collect();
 
+<<<<<<< HEAD
             // Validate environment that is being used to generate stubs.
             context.RegisterDiagnostics(stubEnvironment.Combine(allAttributedMethods).SelectMany((data, ct) =>
             {
@@ -74,6 +65,9 @@ namespace Microsoft.Interop.JavaScript
             }));
 
             IncrementalValuesProvider<(MemberDeclarationSyntax, StatementSyntax, AttributeListSyntax, ImmutableArray<DiagnosticInfo>)> generateSingleStub = methodsToGenerate
+=======
+            IncrementalValuesProvider<(MemberDeclarationSyntax, StatementSyntax, AttributeListSyntax)> generateSingleStub = methodsToGenerate
+>>>>>>> upstream/main
                 .Combine(stubEnvironment)
                 .Select(static (data, ct) => new
                 {
@@ -88,10 +82,8 @@ namespace Microsoft.Interop.JavaScript
                 .Select(
                     static (data, ct) => GenerateSource(data)
                 )
-                .WithComparer(Comparers.GeneratedSyntax4)
+                .WithComparer(Comparers.GeneratedSyntax3)
                 .WithTrackingName(StepNames.GenerateSingleStub);
-
-            context.RegisterDiagnostics(generateSingleStub.SelectMany((stubInfo, ct) => stubInfo.Item4));
 
             IncrementalValueProvider<ImmutableArray<(StatementSyntax, AttributeListSyntax)>> regSyntax = generateSingleStub
                 .Select(
@@ -284,11 +276,7 @@ namespace Microsoft.Interop.JavaScript
             // Process the JSExport attribute
             JSExportData? jsExportData = ProcessJSExportAttribute(jsExportAttr!);
 
-            if (jsExportData is null)
-            {
-                generatorDiagnostics.ReportConfigurationNotSupported(jsExportAttr!, "Invalid syntax");
-                jsExportData = new JSExportData();
-            }
+            jsExportData ??= new JSExportData();
 
             // Create the stub.
             var signatureContext = JSSignatureContext.Create(symbol, environment, generatorDiagnostics, ct);
@@ -302,8 +290,7 @@ namespace Microsoft.Interop.JavaScript
                 containingTypeContext,
                 methodSyntaxTemplate,
                 locations,
-                jsExportData,
-                new SequenceEqualImmutableArray<DiagnosticInfo>(generatorDiagnostics.Diagnostics.ToImmutableArray()));
+                jsExportData);
         }
 
         private static NamespaceDeclarationSyntax GenerateRegSource(
@@ -446,7 +433,7 @@ namespace Microsoft.Interop.JavaScript
             ];
         }
 
-        private static (MemberDeclarationSyntax, StatementSyntax, AttributeListSyntax, ImmutableArray<DiagnosticInfo>) GenerateSource(
+        private static (MemberDeclarationSyntax, StatementSyntax, AttributeListSyntax) GenerateSource(
             IncrementalStubGenerationContext incrementalContext)
         {
             var diagnostics = new GeneratorDiagnosticsBag(new DescriptorProvider(), incrementalContext.DiagnosticLocation, SR.ResourceManager, typeof(FxResources.Microsoft.Interop.JavaScript.JSImportGenerator.SR));
@@ -507,9 +494,14 @@ namespace Microsoft.Interop.JavaScript
                     }
                     )))));
 
+<<<<<<< HEAD
             return (PrintGeneratedSource(incrementalContext, wrapperToInnerStubBlock, wrapperName),
                 registration, registrationAttribute,
                 incrementalContext.Diagnostics.Array.AddRange(diagnostics.Diagnostics));
+=======
+            return (PrintGeneratedSource(incrementalContext.ContainingSyntaxContext, wrapperToInnerStubBlock, wrapperName),
+                registration, registrationAttribute);
+>>>>>>> upstream/main
         }
 
         private static ExpressionStatementSyntax CreateWrapperToInnerStubCall(ImmutableArray<TypePositionInfo> signatureElements, string innerWrapperName)
@@ -575,36 +567,6 @@ namespace Microsoft.Interop.JavaScript
             return ExpressionStatement(InvocationExpression(MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                 IdentifierName(Constants.JSFunctionSignatureGlobal), IdentifierName(Constants.BindCSFunctionMethod)))
                 .WithArgumentList(ArgumentList(SeparatedList(signatureArgs))));
-        }
-
-        private static Diagnostic? GetDiagnosticIfInvalidMethodForGeneration(MethodDeclarationSyntax methodSyntax, IMethodSymbol method)
-        {
-            // Verify the method has no generic types or defined implementation
-            // and is marked static and partial.
-            if (methodSyntax.TypeParameterList is not null
-                || (methodSyntax.Body is null && methodSyntax.ExpressionBody is null)
-                || !methodSyntax.Modifiers.Any(SyntaxKind.StaticKeyword)
-                || methodSyntax.Modifiers.Any(SyntaxKind.PartialKeyword))
-            {
-                return Diagnostic.Create(GeneratorDiagnostics.InvalidExportAttributedMethodSignature, methodSyntax.Identifier.GetLocation(), method.Name);
-            }
-
-            // Verify that the types the method is declared in are marked partial.
-            for (SyntaxNode? parentNode = methodSyntax.Parent; parentNode is TypeDeclarationSyntax typeDecl; parentNode = parentNode.Parent)
-            {
-                if (!typeDecl.Modifiers.Any(SyntaxKind.PartialKeyword))
-                {
-                    return Diagnostic.Create(GeneratorDiagnostics.InvalidExportAttributedMethodContainingTypeMissingModifiers, methodSyntax.Identifier.GetLocation(), method.Name, typeDecl.Identifier);
-                }
-            }
-
-            // Verify the method does not have a ref return
-            if (method.ReturnsByRef || method.ReturnsByRefReadonly)
-            {
-                return Diagnostic.Create(GeneratorDiagnostics.ReturnConfigurationNotSupported, methodSyntax.Identifier.GetLocation(), "ref return", method.ToDisplayString());
-            }
-
-            return null;
         }
     }
 }

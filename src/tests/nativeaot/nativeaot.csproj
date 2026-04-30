@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+<<<<<<< HEAD
 
     <ItemGroup Condition="'$(TargetsWasm)' != 'true'">
       <DisabledProjects Include="*/**/Library.csproj" />
@@ -14,3 +15,11 @@
     <Import Project="$(TestSourceDir)MergedTestRunner.targets" />
   </Project>
   
+=======
+  <ItemGroup>
+    <MergedWrapperProjectReference Include="*/**/*.??proj" Exclude="*/**/Library.csproj;MobileSmokeTest/MobileSmokeTest.csproj" />
+  </ItemGroup>
+
+  <Import Project="$(TestSourceDir)MergedTestRunner.targets" />
+</Project>
+>>>>>>> upstream/main

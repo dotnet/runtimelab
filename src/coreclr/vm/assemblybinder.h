@@ -19,7 +19,7 @@ class AssemblyBinder
 public:
 
     HRESULT BindAssemblyByName(AssemblyNameData* pAssemblyNameData, BINDER_SPACE::Assembly** ppAssembly);
-    virtual HRESULT BindUsingPEImage(PEImage* pPEImage, bool excludeAppPaths, BINDER_SPACE::Assembly** ppAssembly) = 0;
+    virtual HRESULT BindUsingPEImage(PEImage* pPEImage, bool excludeAppPaths, BINDER_SPACE::Assembly** ppAssembly, BINDER_SPACE::Assembly** ppExistingAssemblyOnConflict = nullptr) = 0;
     virtual HRESULT BindUsingAssemblyName(BINDER_SPACE::AssemblyName* pAssemblyName, BINDER_SPACE::Assembly** ppAssembly) = 0;
 
     /// <summary>
@@ -47,7 +47,7 @@ public:
         m_ptrAssemblyLoadContext = ptrManagedDefaultBinderInstance;
     }
 
-    NativeImage* LoadNativeImage(Module* componentModule, LPCUTF8 nativeImageName);
+    NativeImage* LoadNativeImage(Module* componentModule, LPCUTF8 nativeImageName, bool isPlatformNative);
     void AddLoadedAssembly(Assembly* loadedAssembly);
 
     void GetNameForDiagnostics(/*out*/ SString& alcName);

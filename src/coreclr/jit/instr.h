@@ -77,6 +77,11 @@ enum instruction : uint32_t
     #include "instrs.h"
 
     INS_lea,   // Not a real instruction. It is used for load the address of stack locals
+#elif defined(TARGET_WASM)
+    #define INST(id, nm, info, fmt, opcode         ) INS_##id,
+    #define INST2(id, nm, info, fmt, prefix, opcode) INS_##id,
+    #include "instrs.h"
+
 #else
 #error Unsupported target architecture
 #endif
@@ -313,7 +318,7 @@ enum insOpts: unsigned
 
 };
 
-#elif defined(TARGET_ARM) || defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
+#elif defined(TARGET_ARM) || defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) || defined(TARGET_WASM)
 // TODO-Cleanup: Move 'insFlags' under TARGET_ARM
 enum insFlags: unsigned
 {
@@ -435,6 +440,15 @@ enum insScalableOpts : unsigned
     INS_SCALABLE_OPTS_IMM_BITMASK,         // Variants with an immediate that is a bitmask
 
     INS_SCALABLE_OPTS_IMM_FIRST,           // Variants with an immediate and a register, where the immediate comes first
+};
+
+// Some SVE RMW instructions require a mov/movprfx instruction to setup the destination
+// register, using this option to specify which variant of mov/movprfx to use.
+enum insSveMovOpts : unsigned
+{
+    INS_SVE_MOV_OPTS_UNPRED,  // <Zd>, <Zn>
+    INS_SVE_MOV_OPTS_ZEROING, // <Zd>.<T>, <Pg>/Z, <Zn>.<T>
+    INS_SVE_MOV_OPTS_MERGING, // <Zd>.<T>, <Pg>/M, <Zn>.<T>
 };
 
 // Maps directly to the pattern used in SVE instructions such as cntb.
@@ -562,9 +576,15 @@ enum insOpts : unsigned
 
 enum insBarrier : unsigned
 {
-    INS_BARRIER_FULL  =  0x33,
+    INS_BARRIER_FULL       = 0x33, // fence rw, rw
+    INS_BARRIER_LOAD_ONLY  = 0x23, // fence r, rw
+    INS_BARRIER_STORE_ONLY = 0x31, // fence rw, w
 };
-
+#elif defined(TARGET_WASM)
+enum insOpts : unsigned
+{
+    INS_OPTS_NONE,
+};
 #endif
 
 #if defined(TARGET_XARCH)

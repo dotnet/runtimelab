@@ -109,25 +109,23 @@ namespace System.Runtime.InteropServices.JavaScript
         public static unsafe JSFunctionBinding GetMethodSignature(ReadOnlySpan<JSMarshalerType> types, string? functionName, string? moduleName)
         {
             int argsCount = types.Length - 1;
-            int size = JSFunctionBinding.JSBindingHeader.JSMarshalerSignatureHeaderSize + ((argsCount + 2) * sizeof(JSFunctionBinding.JSBindingType));
+            int size = checked(JSFunctionBinding.JSBindingHeader.JSMarshalerSignatureHeaderSize + ((argsCount + 2) * sizeof(JSFunctionBinding.JSBindingType)));
 
             int functionNameBytes = 0;
             int functionNameOffset = 0;
             if (functionName != null)
             {
                 functionNameOffset = size;
-                size += 4;
-                functionNameBytes = functionName.Length * 2;
-                size += functionNameBytes;
+                functionNameBytes = checked(functionName.Length * 2);
+                size = checked(size + 4 + functionNameBytes);
             }
             int moduleNameBytes = 0;
             int moduleNameOffset = 0;
             if (moduleName != null)
             {
                 moduleNameOffset = size;
-                size += 4;
-                moduleNameBytes = moduleName.Length * 2;
-                size += moduleNameBytes;
+                moduleNameBytes = checked(moduleName.Length * 2);
+                size = checked(size + 4 + moduleNameBytes);
             }
 
             // this is never unallocated
@@ -273,6 +271,7 @@ namespace System.Runtime.InteropServices.JavaScript
             }
         }
 
+<<<<<<< HEAD
         public static Task BindAssemblyExports(string? assemblyName)
         {
             Interop.Runtime.BindAssemblyExports(Marshal.StringToCoTaskMemUTF8(assemblyName));
@@ -316,6 +315,8 @@ namespace System.Runtime.InteropServices.JavaScript
             return signature;
         }
 
+=======
+>>>>>>> upstream/main
 #if FEATURE_WASM_MANAGED_THREADS
         [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "external_eventloop")]
         private static extern ref bool GetThreadExternalEventloop(Thread @this);
@@ -338,29 +339,34 @@ namespace System.Runtime.InteropServices.JavaScript
         // The BCL implementations of IndexOf/LastIndexOf/Trim are vectorized & fast,
         //  but they pull in a bunch of code that is otherwise not necessarily
         //  useful during early app startup, so we use simple scalar implementations
-        private static int SmallIndexOf (string s, char ch, int direction = 1) {
+        private static int SmallIndexOf(string s, char ch, int direction = 1)
+        {
             if (s.Length < 1)
                 return -1;
             int start_index = (direction > 0) ? 0 : s.Length - 1,
                 end_index = (direction > 0) ? s.Length - 1 : 0;
-            for (int i = start_index; i != end_index; i += direction) {
+            for (int i = start_index; i != end_index; i += direction)
+            {
                 if (s[i] == ch)
                     return i;
             }
             return -1;
         }
 
-        private static string SmallTrim (string s) {
+        private static string SmallTrim(string s)
+        {
             if (s.Length < 1)
                 return s;
             int head = 0, tail = s.Length - 1;
-            while (head < s.Length) {
+            while (head < s.Length)
+            {
                 if (s[head] == ' ')
                     head++;
                 else
                     break;
             }
-            while (tail >= 0) {
+            while (tail >= 0)
+            {
                 if (s[tail] == ' ')
                     tail--;
                 else
@@ -372,7 +378,7 @@ namespace System.Runtime.InteropServices.JavaScript
                 return s;
         }
 
-        public static (string assemblyName, string nameSpace, string shortClassName, string methodName) ParseFQN(string fqn)
+        private static (string assemblyName, string nameSpace, string shortClassName, string methodName) ParseFQN(string fqn)
         {
             var assembly = fqn.Substring(SmallIndexOf(fqn, '[') + 1, SmallIndexOf(fqn, ']') - 1);
             fqn = SmallTrim(fqn);

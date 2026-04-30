@@ -5,6 +5,7 @@
     <AutoGenerateSymbolPackages>false</AutoGenerateSymbolPackages>
   </PropertyGroup>
 
+<<<<<<< HEAD
   <!-- NativeAOT-LLVM: using the old publishing method from circa https://github.com/dotnet/runtime/pull/108990 -->
   <PropertyGroup>
     <NativeAotLlvmSetVersionForBlobs>true</NativeAotLlvmSetVersionForBlobs>
@@ -122,6 +123,11 @@
               SubBlobFolder="workloads/"
               IsShipping="$([System.String]::new('%(Identity)').Contains('\Shipping\'))"
               Kind="Blob" />
+=======
+  <!-- remove the manifest packages, they are built in the SDK repo now -->
+  <ItemGroup>
+    <Artifact Remove="$(ArtifactsShippingPackagesDir)*.Manifest-*.nupkg" />
+>>>>>>> upstream/main
   </ItemGroup>
 
   <!-- The PGO runtime should always have External visibility, even if someone changes the default artifact visibility -->

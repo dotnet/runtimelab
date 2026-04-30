@@ -6823,16 +6823,16 @@ emit_wasm_supported_intrinsics (
 
 				switch (arg0_type) {
 				case MONO_TYPE_I1:
-						c0 = INTRINS_WASM_SUB_SAT_SIGNED_V16;
+						c0 = INTRINS_SSE_SSUB_SATI8;
 						break;
 				case MONO_TYPE_I2:
-						c0 = INTRINS_WASM_SUB_SAT_SIGNED_V8;
+						c0 = INTRINS_SSE_SSUB_SATI16;
 						break;
 				case MONO_TYPE_U1:
-						c0 = INTRINS_WASM_SUB_SAT_UNSIGNED_V16;
+						c0 = INTRINS_SSE_USUB_SATI8;
 						break;
 				case MONO_TYPE_U2:
-						c0 = INTRINS_WASM_SUB_SAT_UNSIGNED_V8;
+						c0 = INTRINS_SSE_USUB_SATI16;
 						break;
 				}
 
@@ -7135,7 +7135,7 @@ mono_simd_unsupported_aggressive_inline_intrinsic_type (MonoCompile *cfg, MonoMe
 
 #if defined(TARGET_AMD64)
 void
-ves_icall_System_Runtime_Intrinsics_X86_X86Base___cpuidex (int abcd[4], int function_id, int subfunction_id)
+ves_icall_System_Runtime_Intrinsics_X86_X86Base_CpuId (int abcd[4], int function_id, int subfunction_id)
 {
 #ifndef MONO_CROSS_COMPILE
 	mono_hwcap_x86_call_cpuidex (function_id, subfunction_id,

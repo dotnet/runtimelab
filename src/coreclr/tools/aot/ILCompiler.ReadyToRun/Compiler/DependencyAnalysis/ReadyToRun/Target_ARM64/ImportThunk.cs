@@ -15,25 +15,26 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
     {
         protected override void EmitCode(NodeFactory factory, ref ARM64Emitter instructionEncoder, bool relocsOnly)
         {
-            if (_thunkKind == Kind.Eager)
+            if (_thunkKind == ImportThunkKind.Eager)
             {
                 instructionEncoder.EmitJMP(_helperCell);
                 return;
             }
-
             if (relocsOnly)
             {
                 // When doing relocs only, we don't need to generate the actual instructions
-                // as they will be ignored. Just emit the jump so we record the dependency.
+                // as they will be ignored. Just emit the module import load and jump so we record the dependencies.
+                instructionEncoder.EmitADRP(Register.X1, factory.ModuleImport);
+                instructionEncoder.EmitLDR(Register.X1, Register.X1, factory.ModuleImport);
                 instructionEncoder.EmitJMP(_helperCell);
                 return;
             }
 
             switch (_thunkKind)
             {
-                case Kind.DelayLoadHelper:
-                case Kind.DelayLoadHelperWithExistingIndirectionCell:
-                case Kind.VirtualStubDispatch:
+                case ImportThunkKind.DelayLoadHelper:
+                case ImportThunkKind.DelayLoadHelperWithExistingIndirectionCell:
+                case ImportThunkKind.VirtualStubDispatch:
 
                     // x11 contains indirection cell
                     // Do nothing x11 contains our first param
@@ -50,7 +51,7 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
                     instructionEncoder.EmitLDR(Register.X10, Register.X10, factory.ModuleImport);
                     break;
 
-                case Kind.Lazy:
+                case ImportThunkKind.Lazy:
 
                     // Move Module* -> x1
                     // adrp x1, ModuleImport

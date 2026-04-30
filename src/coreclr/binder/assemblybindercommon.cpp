@@ -192,7 +192,8 @@ namespace BINDER_SPACE
     HRESULT AssemblyBinderCommon::BindAssembly(/* in */  AssemblyBinder      *pBinder,
                                                /* in */  AssemblyName        *pAssemblyName,
                                                /* in */  bool                 excludeAppPaths,
-                                               /* out */ Assembly           **ppAssembly)
+                                               /* out */ Assembly           **ppAssembly,
+                                               /* [out, optional] */ Assembly **ppExistingAssemblyOnFailure)
     {
         HRESULT hr = S_OK;
         LONG kContextVersion = 0;
@@ -213,7 +214,8 @@ namespace BINDER_SPACE
                                     false, // skipFailureCaching
                                     false, // skipVersionCompatibilityCheck
                                     excludeAppPaths,
-                                    &bindResult));
+                                    &bindResult,
+                                    ppExistingAssemblyOnFailure));
 
             // Remember the post-bind version
             kContextVersion = pApplicationContext->GetVersion();
@@ -298,9 +300,8 @@ namespace BINDER_SPACE
             {
                 SString fileName;
                 SString simpleName;
-                bool isNativeImage = false;
                 HRESULT pathResult = S_OK;
-                IF_FAIL_GO(pathResult = GetNextTPAPath(sTrustedPlatformAssemblies, i, /*dllOnly*/ true, fileName, simpleName, isNativeImage));
+                IF_FAIL_GO(pathResult = GetNextTPAPath(sTrustedPlatformAssemblies, i, /*dllOnly*/ true, fileName, simpleName));
                 if (pathResult == S_FALSE)
                 {
                     break;
@@ -394,7 +395,8 @@ namespace BINDER_SPACE
                                        bool                skipFailureCaching,
                                        bool                skipVersionCompatibilityCheck,
                                        bool                excludeAppPaths,
-                                       BindResult         *pBindResult)
+                                       BindResult         *pBindResult,
+                                       Assembly           **ppExistingAssemblyOnFailure)
     {
         HRESULT hr = S_OK;
         PathString assemblyDisplayName;
@@ -431,7 +433,8 @@ namespace BINDER_SPACE
                               pAssemblyName,
                               skipVersionCompatibilityCheck,
                               excludeAppPaths,
-                              pBindResult));
+                              pBindResult,
+                              ppExistingAssemblyOnFailure));
 
         if (!pBindResult->HaveResult())
         {
@@ -468,7 +471,8 @@ namespace BINDER_SPACE
                                              AssemblyName       *pAssemblyName,
                                              bool                skipVersionCompatibilityCheck,
                                              bool                excludeAppPaths,
-                                             BindResult         *pBindResult)
+                                             BindResult         *pBindResult,
+                                             Assembly           **ppExistingAssemblyOnFailure)
     {
         HRESULT hr = S_OK;
 
@@ -490,9 +494,11 @@ namespace BINDER_SPACE
                 hr = isCompatible ? S_OK : FUSION_E_APP_DOMAIN_LOCKED;
                 pBindResult->SetAttemptResult(hr, pAssembly, /*isInContext*/ true);
 
-                // TPA binder returns FUSION_E_REF_DEF_MISMATCH for incompatible version
-                if (hr == FUSION_E_APP_DOMAIN_LOCKED && isTpaListProvided)
-                    hr = FUSION_E_REF_DEF_MISMATCH;
+                if (FAILED(hr) && ppExistingAssemblyOnFailure != nullptr)
+                {
+                    pAssembly->AddRef();
+                    *ppExistingAssemblyOnFailure = pAssembly;
+                }
             }
             else
             {
@@ -517,9 +523,10 @@ namespace BINDER_SPACE
                 hr = isCompatible ? S_OK : FUSION_E_APP_DOMAIN_LOCKED;
                 pBindResult->SetAttemptResult(hr, pBindResult->GetAssembly());
 
-                // TPA binder returns FUSION_E_REF_DEF_MISMATCH for incompatible version
-                if (hr == FUSION_E_APP_DOMAIN_LOCKED && isTpaListProvided)
-                    hr = FUSION_E_REF_DEF_MISMATCH;
+                if (FAILED(hr) && ppExistingAssemblyOnFailure != nullptr)
+                {
+                    *ppExistingAssemblyOnFailure = pBindResult->GetAssembly(TRUE /* fAddRef */);
+                }
             }
 
             if (FAILED(hr))
@@ -845,44 +852,38 @@ namespace BINDER_SPACE
             // For single-file, bundled assemblies should only be in the bundle manifest, not in the TPA.
             if (AssemblyProbeExtension::IsEnabled())
             {
-                // Search Assembly.ni.dll, then Assembly.dll
-                // The Assembly.ni.dll paths are rare, and intended for supporting managed C++ R2R assemblies.
-                const WCHAR* const candidates[] = { W(".ni.dll"),  W(".dll") };
+                const WCHAR* const dllExtension = W(".dll");
 
-                // Loop through the binding paths looking for a matching assembly
-                for (int i = 0; i < 2; i++)
+                SString assemblyFileName(simpleName);
+                assemblyFileName.Append(dllExtension);
+
+                ProbeExtensionResult probeExtensionResult = AssemblyProbeExtension::Probe(assemblyFileName, /* pathIsBundleRelative */ true);
+                if (probeExtensionResult.IsValid())
                 {
-                    SString assemblyFileName(simpleName);
-                    assemblyFileName.Append(candidates[i]);
+                    SString assemblyFilePath;
+                    if (Bundle::AppIsBundle())
+                        assemblyFilePath.SetUTF8(Bundle::AppBundle->BasePath());
 
-                    ProbeExtensionResult probeExtensionResult = AssemblyProbeExtension::Probe(assemblyFileName, /* pathIsBundleRelative */ true);
-                    if (probeExtensionResult.IsValid())
+                    assemblyFilePath.Append(assemblyFileName);
+
+                    hr = GetAssembly(assemblyFilePath,
+                                        TRUE,  // fIsInTPA
+                                        &pTPAAssembly,
+                                        probeExtensionResult);
+
+                    BinderTracing::PathProbed(assemblyFilePath, BinderTracing::PathSource::Bundle, hr);
+
+                    if (hr != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
                     {
-                        SString assemblyFilePath;
-                        if (Bundle::AppIsBundle())
-                           assemblyFilePath.SetUTF8(Bundle::AppBundle->BasePath());
+                        // Any other error is fatal
+                        IF_FAIL_GO(hr);
 
-                        assemblyFilePath.Append(assemblyFileName);
-
-                        hr = GetAssembly(assemblyFilePath,
-                                         TRUE,  // fIsInTPA
-                                         &pTPAAssembly,
-                                         probeExtensionResult);
-
-                        BinderTracing::PathProbed(assemblyFilePath, BinderTracing::PathSource::Bundle, hr);
-
-                        if (hr != HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
+                        if (TestCandidateRefMatchesDef(pRequestedAssemblyName, pTPAAssembly->GetAssemblyName(), true /*tpaListAssembly*/))
                         {
-                            // Any other error is fatal
-                            IF_FAIL_GO(hr);
-
-                            if (TestCandidateRefMatchesDef(pRequestedAssemblyName, pTPAAssembly->GetAssemblyName(), true /*tpaListAssembly*/))
-                            {
-                                // We have found the requested assembly match in the bundle with validation of the full-qualified name.
-                                // Bind to it.
-                                pBindResult->SetResult(pTPAAssembly);
-                                GO_WITH_HRESULT(S_OK);
-                            }
+                            // We have found the requested assembly match in the bundle with validation of the full-qualified name.
+                            // Bind to it.
+                            pBindResult->SetResult(pTPAAssembly);
+                            GO_WITH_HRESULT(S_OK);
                         }
                     }
                 }
@@ -893,25 +894,13 @@ namespace BINDER_SPACE
             const SimpleNameToFileNameMapEntry *pTpaEntry = tpaMap->LookupPtr(simpleName.GetUnicode());
             if (pTpaEntry != nullptr)
             {
-                if (pTpaEntry->m_wszNIFileName != nullptr)
-                {
-                    SString fileName(pTpaEntry->m_wszNIFileName);
+                _ASSERTE(pTpaEntry->m_wszILFileName != nullptr);
+                SString fileName(pTpaEntry->m_wszILFileName);
 
-                    hr = GetAssembly(fileName,
-                                     TRUE,  // fIsInTPA
-                                     &pTPAAssembly);
-                    BinderTracing::PathProbed(fileName, BinderTracing::PathSource::ApplicationAssemblies, hr);
-                }
-                else
-                {
-                    _ASSERTE(pTpaEntry->m_wszILFileName != nullptr);
-                    SString fileName(pTpaEntry->m_wszILFileName);
-
-                    hr = GetAssembly(fileName,
-                                     TRUE,  // fIsInTPA
-                                     &pTPAAssembly);
-                    BinderTracing::PathProbed(fileName, BinderTracing::PathSource::ApplicationAssemblies, hr);
-                }
+                hr = GetAssembly(fileName,
+                                    TRUE,  // fIsInTPA
+                                    &pTPAAssembly);
+                BinderTracing::PathProbed(fileName, BinderTracing::PathSource::ApplicationAssemblies, hr);
 
                 pBindResult->SetAttemptResult(hr, pTPAAssembly);
 
@@ -1175,7 +1164,8 @@ HRESULT AssemblyBinderCommon::BindUsingPEImage(/* in */  AssemblyBinder* pBinder
                                                /* in */  BINDER_SPACE::AssemblyName *pAssemblyName,
                                                /* in */  PEImage            *pPEImage,
                                                /* in */  bool               excludeAppPaths,
-                                               /* [retval] [out] */  Assembly **ppAssembly)
+                                               /* [retval] [out] */  Assembly **ppAssembly,
+                                               /* [out, optional] */ Assembly **ppExistingAssemblyOnConflict)
 {
     HRESULT hr = E_FAIL;
 
@@ -1239,6 +1229,11 @@ Retry:
                 if (mvidMismatch)
                 {
                     // MVIDs do not match, so fail the load.
+                    // If caller wants the existing assembly for error message, provide it
+                    if (ppExistingAssemblyOnConflict != nullptr)
+                    {
+                        *ppExistingAssemblyOnConflict = bindResult.GetAssembly(TRUE /* fAddRef */);
+                    }
                     IF_FAIL_GO(COR_E_FILELOAD);
                 }
 

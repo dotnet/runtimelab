@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using ILCompiler.DependencyAnalysis;
 using ILCompiler.DependencyAnalysisFramework;
 
+using Internal.Text;
 using Internal.IL;
 using Internal.IL.Stubs;
 using Internal.JitInterface;
@@ -63,7 +64,7 @@ namespace ILCompiler
                 {
                     // To compute dependencies of the shadow method that tracks dictionary
                     // dependencies we need to ensure there is code for the canonical method body.
-                    var dependencyMethod = (ShadowConcreteMethodNode)dependency;
+                    var dependencyMethod = (ShadowMethodNode)dependency;
                     methodCodeNodeNeedingCode = (ScannedMethodNode)dependencyMethod.CanonicalMethodNode;
                 }
 
@@ -199,7 +200,7 @@ namespace ILCompiler
 
                 ISymbolNode entryPoint;
                 if (mangledName != null)
-                    entryPoint = _compilation.NodeFactory.ExternFunctionSymbol(mangledName);
+                    entryPoint = _compilation.NodeFactory.ExternFunctionSymbol(new Utf8String(mangledName));
                 else
                     entryPoint = _compilation.NodeFactory.MethodEntrypoint(methodDesc);
 
@@ -330,7 +331,6 @@ namespace ILCompiler
                         // On the path, you'll find a node that exists in both graphs, but it's predecessor
                         // only exists in the compiler's graph. That's the place to focus the investigation on.
                         // Use the ILCompiler-DependencyGraph-Viewer tool to investigate.
-                        Debug.Assert(false);
                         string typeName = ExceptionTypeNameFormatter.Instance.FormatName(type);
                         throw new ScannerFailedException($"VTable of type '{typeName}' not computed by the IL scanner.");
                     }
@@ -432,7 +432,6 @@ namespace ILCompiler
                     // On the path, you'll find a node that exists in both graphs, but it's predecessor
                     // only exists in the compiler's graph. That's the place to focus the investigation on.
                     // Use the ILCompiler-DependencyGraph-Viewer tool to investigate.
-                    Debug.Assert(false);
                     throw new ScannerFailedException($"Dictionary layout of '{methodOrType}' was not computed by the IL scanner.");
                 }
                 return new PrecomputedDictionaryLayoutNode(methodOrType, layout.Slots, layout.DiscardedSlots);
@@ -487,6 +486,14 @@ namespace ILCompiler
             public ScannedDevirtualizationManager(NodeFactory factory, ImmutableArray<DependencyNodeCore<NodeFactory>> markedNodes)
             {
                 _context = factory.TypeSystemContext;
+
+                // Do not try to optimize around continuation types, we don't keep good track of them.
+                // Allow CoreLib not to have this type.
+                if (_context.SystemModule.GetType("System.Runtime.CompilerServices"u8, "Continuation"u8, throwIfNotFound: false) is MetadataType continuationType)
+                {
+                    _unsealedTypes.Add(continuationType);
+                    _disqualifiedTypes.Add(continuationType);
+                }
 
                 var vtables = new Dictionary<TypeDesc, List<MethodDesc>>();
                 var dynamicInterfaceCastableImplementationTargets = new HashSet<TypeDesc>();

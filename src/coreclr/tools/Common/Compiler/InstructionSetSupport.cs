@@ -162,6 +162,10 @@ namespace ILCompiler
             {
                 return SimdVectorLength.None;
             }
+            else if (_targetArchitecture == TargetArchitecture.Wasm32)
+            {
+                return SimdVectorLength.Vector128Bit;
+            }
             else
             {
                 Debug.Assert(false); // Unknown architecture

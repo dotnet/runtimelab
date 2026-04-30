@@ -43,7 +43,7 @@ namespace System.Runtime
         {
             if (pObject == null)
             {
-                // Optimizer may perform code motion on dispatch such that it occurs independant of
+                // Optimizer may perform code motion on dispatch such that it occurs independent of
                 // null check on "this" pointer. Allow for this case by returning back an invalid pointer.
                 return IntPtr.Zero;
             }

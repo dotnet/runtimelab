@@ -278,6 +278,7 @@ namespace ILCompiler.DependencyAnalysis
             // And add space for the reloc
             switch (relocType)
             {
+<<<<<<< HEAD
                 case RelocType.R_WASM_MEMORY_ADDR_SLEB:
                 case RelocType.R_WASM_TABLE_INDEX_SLEB:
                 case RelocType.R_WASM_FUNCTION_INDEX_LEB:
@@ -296,6 +297,9 @@ namespace ILCompiler.DependencyAnalysis
                     }
                     break;
                 case RelocType.R_WASM_FUNCTION_INDEX_I32:
+=======
+                case RelocType.WASM_TABLE_INDEX_I32:
+>>>>>>> upstream/main
                 case RelocType.IMAGE_REL_BASED_REL32:
                 case RelocType.IMAGE_REL_BASED_RELPTR32:
                 case RelocType.IMAGE_REL_BASED_ABSOLUTE:
@@ -329,7 +333,9 @@ namespace ILCompiler.DependencyAnalysis
                 case RelocType.IMAGE_REL_BASED_LOONGARCH64_PC:
                 case RelocType.IMAGE_REL_BASED_LOONGARCH64_JIR:
 
-                case RelocType.IMAGE_REL_BASED_RISCV64_PC:
+                case RelocType.IMAGE_REL_BASED_RISCV64_CALL_PLT:
+                case RelocType.IMAGE_REL_BASED_RISCV64_PCREL_I:
+                case RelocType.IMAGE_REL_BASED_RISCV64_PCREL_S:
                     Debug.Assert(delta == 0);
                     // Do not vacate space for this kind of relocation, because
                     // the space is embedded in the instruction.
@@ -338,6 +344,7 @@ namespace ILCompiler.DependencyAnalysis
                 case RelocType.IMAGE_REL_FILE_CHECKSUM_CALLBACK:
                     EmitZeros(delta);
                     break;
+
                 default:
                     throw new NotImplementedException();
             }

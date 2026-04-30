@@ -2,6 +2,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 include_directories("./jitstd")
 include_directories("../inc")
+include_directories("../jitshared")
 
 # gcc 10 and lower versions are too sensitive to bit fields width and warn from core compiler.
 # Since there is no better / specific suppression available for these core warnings, we disable
@@ -22,7 +23,11 @@ function(create_standalone_jit)
 
   if(TARGETDETAILS_OS STREQUAL "unix_osx" OR TARGETDETAILS_OS STREQUAL "unix_anyos")
     set(JIT_ARCH_LINK_LIBRARIES gcinfo_unix_${TARGETDETAILS_ARCH})
+<<<<<<< HEAD
   elseif(NOT (TARGETDETAILS_ARCH STREQUAL "wasm32" OR TARGETDETAILS_ARCH STREQUAL "wasm64"))
+=======
+  elseif(NOT ${TARGETDETAILS_ARCH} MATCHES "wasm")
+>>>>>>> upstream/main
     set(JIT_ARCH_LINK_LIBRARIES gcinfo_${TARGETDETAILS_OS}_${TARGETDETAILS_ARCH})
   endif()
 
@@ -57,6 +62,9 @@ function(create_standalone_jit)
   elseif(TARGETDETAILS_ARCH STREQUAL "riscv64")
     set(JIT_ARCH_SOURCES ${JIT_RISCV64_SOURCES})
     set(JIT_ARCH_HEADERS ${JIT_RISCV64_HEADERS})
+  elseif(TARGETDETAILS_ARCH STREQUAL "wasm")
+    set(JIT_ARCH_SOURCES ${JIT_WASM_SOURCES})
+    set(JIT_ARCH_HEADERS ${JIT_WASM_HEADERS})
   else()
     clr_unknown_arch()
   endif()
@@ -98,7 +106,7 @@ function(create_standalone_jit)
 
 endfunction()
 
-if (CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_ARM64 OR (CLR_CMAKE_TARGET_ARCH_I386 AND NOT CLR_CMAKE_HOST_UNIX))
+if (CLR_CMAKE_TARGET_ARCH_AMD64 OR CLR_CMAKE_TARGET_ARCH_ARM64 OR CLR_CMAKE_TARGET_ARCH_I386)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_ARCH>>>:FEATURE_SIMD>)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_ARCH>>>:FEATURE_HW_INTRINSICS>)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_ARCH>>>:FEATURE_MASKED_HW_INTRINSICS>)
@@ -116,6 +124,7 @@ set( JIT_SOURCES
   alloc.cpp
   assertionprop.cpp
   async.cpp
+  asyncanalysis.cpp
   bitset.cpp
   block.cpp
   buildstring.cpp
@@ -141,8 +150,6 @@ set( JIT_SOURCES
   fgstmt.cpp
   flowgraph.cpp
   forwardsub.cpp
-  gcdecode.cpp
-  gcencode.cpp
   gcinfo.cpp
   gentree.cpp
   gschecks.cpp
@@ -171,8 +178,6 @@ set( JIT_SOURCES
   liveness.cpp
   loopcloning.cpp
   lower.cpp
-  lsra.cpp
-  lsrabuild.cpp
   morph.cpp
   morphblock.cpp
   objectalloc.cpp
@@ -190,7 +195,6 @@ set( JIT_SOURCES
   rationalize.cpp
   redundantbranchopts.cpp
   regalloc.cpp
-  regMaskTPOps.cpp
   regset.cpp
   scev.cpp
   scopeinfo.cpp
@@ -204,9 +208,17 @@ set( JIT_SOURCES
   stacklevelsetter.cpp
   switchrecognition.cpp
   treelifeupdater.cpp
-  unwind.cpp
   utils.cpp
   valuenum.cpp
+)
+
+set ( JIT_NATIVE_TARGET_SOURCES
+  lsra.cpp
+  lsrabuild.cpp
+  regMaskTPOps.cpp
+  gcdecode.cpp
+  gcencode.cpp
+  unwind.cpp
 )
 
 if (CLR_CMAKE_TARGET_WIN32)
@@ -218,6 +230,7 @@ endif(CLR_CMAKE_TARGET_WIN32)
 # Define all the architecture-specific source files
 
 set( JIT_AMD64_SOURCES
+  ${JIT_NATIVE_TARGET_SOURCES}
   codegenxarch.cpp
   emitxarch.cpp
   lowerxarch.cpp
@@ -250,6 +263,7 @@ set( JIT_WASM32_SOURCES
 )
 
 set( JIT_ARM_SOURCES
+  ${JIT_NATIVE_TARGET_SOURCES}
   codegenarmarch.cpp
   codegenarm.cpp
   decomposelongs.cpp
@@ -262,6 +276,7 @@ set( JIT_ARM_SOURCES
 )
 
 set( JIT_I386_SOURCES
+  ${JIT_NATIVE_TARGET_SOURCES}
   codegenxarch.cpp
   decomposelongs.cpp
   emitxarch.cpp
@@ -276,6 +291,7 @@ set( JIT_I386_SOURCES
 )
 
 set( JIT_ARM64_SOURCES
+  ${JIT_NATIVE_TARGET_SOURCES}
   codegenarmarch.cpp
   codegenarm64.cpp
   codegenarm64test.cpp
@@ -305,6 +321,7 @@ set( JIT_POWERPC64_SOURCES
 )
 
 set( JIT_LOONGARCH64_SOURCES
+  ${JIT_NATIVE_TARGET_SOURCES}
   codegenloongarch64.cpp
   emitloongarch64.cpp
   lowerloongarch64.cpp
@@ -314,12 +331,24 @@ set( JIT_LOONGARCH64_SOURCES
 )
 
 set( JIT_RISCV64_SOURCES
+  ${JIT_NATIVE_TARGET_SOURCES}
   codegenriscv64.cpp
   emitriscv64.cpp
   lowerriscv64.cpp
   lsrariscv64.cpp
   targetriscv64.cpp
   unwindriscv64.cpp
+)
+
+set( JIT_WASM_SOURCES
+  codegenwasm.cpp
+  emitwasm.cpp
+  fgwasm.cpp
+  lowerwasm.cpp
+  regallocwasm.cpp
+  registeropswasm.cpp
+  targetwasm.cpp
+  unwindwasm.cpp
 )
 
 # We include the headers here for better experience in IDEs.
@@ -409,6 +438,7 @@ set( JIT_HEADERS
   rangecheckcloning.h
   rationalize.h
   regalloc.h
+  regallocimpl.h
   register.h
   regset.h
   scev.h
@@ -424,6 +454,7 @@ set( JIT_HEADERS
   ssarenamestate.h
   stacklevelsetter.h
   target.h
+  targetcommon.h
   targetx86.h
   targetamd64.h
   targetarm.h
@@ -495,9 +526,25 @@ set( JIT_RISCV64_HEADERS
     registerriscv64.h
 )
 
+set( JIT_WASM_HEADERS
+    regallocwasm.h
+    registeropswasm.h
+    targetwasm.h
+    emitwasm.h
+    emitfmtswasm.h
+    instrswasm.h
+    registerwasm.h
+    fgwasm.h
+)
+
+set ( JITSHARED_SOURCES
+    ../jitshared/histogram.cpp
+)
+
 convert_to_absolute_path(JIT_SOURCES ${JIT_SOURCES})
 convert_to_absolute_path(JIT_HEADERS ${JIT_HEADERS})
 convert_to_absolute_path(JIT_RESOURCES ${JIT_RESOURCES})
+convert_to_absolute_path(JITSHARED_SOURCES ${JITSHARED_SOURCES})
 
 # Also convert the per-architecture sources to absolute paths, if the subdirs want to use them.
 
@@ -519,6 +566,8 @@ convert_to_absolute_path(JIT_LOONGARCH64_SOURCES ${JIT_LOONGARCH64_SOURCES})
 convert_to_absolute_path(JIT_LOONGARCH64_HEADERS ${JIT_LOONGARCH64_HEADERS})
 convert_to_absolute_path(JIT_RISCV64_SOURCES ${JIT_RISCV64_SOURCES})
 convert_to_absolute_path(JIT_RISCV64_HEADERS ${JIT_RISCV64_HEADERS})
+convert_to_absolute_path(JIT_WASM_SOURCES ${JIT_WASM_SOURCES})
+convert_to_absolute_path(JIT_WASM_HEADERS ${JIT_WASM_HEADERS})
 
 if(CLR_CMAKE_TARGET_ARCH_AMD64)
   set(JIT_ARCH_SOURCES ${JIT_AMD64_SOURCES})
@@ -548,12 +597,11 @@ elseif(CLR_CMAKE_TARGET_ARCH_RISCV64)
   set(JIT_ARCH_SOURCES ${JIT_RISCV64_SOURCES})
   set(JIT_ARCH_HEADERS ${JIT_RISCV64_HEADERS})
 elseif(CLR_CMAKE_TARGET_ARCH_WASM)
-  set(JIT_ARCH_SOURCES ${JIT_WASM32_SOURCES})
-  set(JIT_ARCH_HEADERS ${JIT_WASM32_HEADERS})
+  set(JIT_ARCH_SOURCES ${JIT_WASM_SOURCES})
+  set(JIT_ARCH_HEADERS ${JIT_WASM_HEADERS})
 else()
   clr_unknown_arch()
 endif()
-
 
 set(JIT_DLL_MAIN_FILE ${CMAKE_CURRENT_LIST_DIR}/dllmain.cpp)
 
@@ -571,7 +619,7 @@ else()
 
   if(CLR_CMAKE_TARGET_LINUX OR CLR_CMAKE_TARGET_FREEBSD OR CLR_CMAKE_TARGET_NETBSD OR CLR_CMAKE_TARGET_SUNOS)
     # This is required to force using our own PAL, not one that we are loaded with.
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Xlinker -Bsymbolic")
+    add_link_options(LINKER:-Bsymbolic)
   endif()
 
   set_exports_linker_option(${JIT_EXPORTS_FILE})
@@ -609,7 +657,6 @@ else()
        shlwapi.lib
        bcrypt.lib
        crypt32.lib
-       RuntimeObject.lib
        coreclrminipal
     )
 endif(CLR_CMAKE_HOST_UNIX)
@@ -629,6 +676,7 @@ function(add_jit jitName)
       add_library_clr(${jitName}
           SHARED
           ${JIT_SOURCES}
+          ${JITSHARED_SOURCES}
           ${JIT_ARCH_SOURCES}
           ${JIT_HEADERS}
           ${JIT_ARCH_HEADERS}
@@ -640,6 +688,7 @@ function(add_jit jitName)
       add_library_clr(${jitName}
           SHARED
           ${JIT_SOURCES}
+          ${JITSHARED_SOURCES}
           ${JIT_ARCH_SOURCES}
           ${JIT_RESOURCES}
           ${JIT_DEF_FILE}
@@ -672,7 +721,12 @@ function(add_jit jitName)
     target_compile_definitions(${jitName} PRIVATE JIT_STANDALONE_BUILD)
 
     # add the install targets
-    install_clr(TARGETS ${jitName} DESTINATIONS . COMPONENT alljits)
+    if (${jitName} MATCHES "clrjit_universal_wasm")
+        # TODO-WASM: add the WASM Jit to alljits once that becomes necessary.
+        install_clr(TARGETS ${jitName} DESTINATIONS . COMPONENT wasmjit)
+    else()
+        install_clr(TARGETS ${jitName} DESTINATIONS . COMPONENT alljits)
+    endif()
 endfunction()
 
 set(JIT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -702,6 +756,7 @@ add_pgo(clrjit)
 
 if (CLR_CMAKE_TARGET_ARCH_ARM64 OR CLR_CMAKE_TARGET_ARCH_AMD64)
   create_standalone_jit(TARGET clrjit_universal_arm64_${ARCH_HOST_NAME} OS universal ARCH arm64)
+  create_standalone_jit(TARGET clrjit_universal_wasm_${ARCH_HOST_NAME} OS universal ARCH wasm)
   create_standalone_jit(TARGET clrjit_unix_x64_${ARCH_HOST_NAME} OS unix_anyos ARCH x64)
   create_standalone_jit(TARGET clrjit_win_x64_${ARCH_HOST_NAME} OS win ARCH x64)
   if (CLR_CMAKE_BUILD_COMMUNITY_ALTJITS EQUAL 1)
@@ -754,13 +809,13 @@ if (CLR_CMAKE_BUILD_LLVM_JIT)
 endif (CLR_CMAKE_BUILD_LLVM_JIT)
 
 if (CLR_CMAKE_TARGET_UNIX)
-    if (NOT ARCH_TARGET_NAME STREQUAL s390x AND NOT ARCH_TARGET_NAME STREQUAL armv6 AND NOT ARCH_TARGET_NAME STREQUAL ppc64le AND NOT ARCH_TARGET_NAME STREQUAL riscv64)
+    if (NOT ARCH_TARGET_NAME STREQUAL s390x AND NOT ARCH_TARGET_NAME STREQUAL armv6 AND NOT ARCH_TARGET_NAME STREQUAL ppc64le AND NOT ARCH_TARGET_NAME STREQUAL riscv64 AND NOT ARCH_TARGET_NAME STREQUAL wasm)
       if(CLR_CMAKE_TARGET_ARCH_ARM OR CLR_CMAKE_TARGET_ARCH_ARM64)
         install_clr(TARGETS clrjit_universal_${ARCH_TARGET_NAME}_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT jit)
       else()
         install_clr(TARGETS clrjit_unix_${ARCH_TARGET_NAME}_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT jit)
       endif()
-    endif(NOT ARCH_TARGET_NAME STREQUAL s390x AND NOT ARCH_TARGET_NAME STREQUAL armv6 AND NOT ARCH_TARGET_NAME STREQUAL ppc64le AND NOT ARCH_TARGET_NAME STREQUAL riscv64)
+    endif()
 endif()
 if (CLR_CMAKE_TARGET_WIN32 AND CLR_CMAKE_PGO_INSTRUMENT)
   # Copy PGO dependency to target dir

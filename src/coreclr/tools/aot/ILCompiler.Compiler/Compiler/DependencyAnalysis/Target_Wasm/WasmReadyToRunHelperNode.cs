@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
@@ -190,6 +191,22 @@ namespace ILCompiler.DependencyAnalysis
             encoder.EmitLocalGet(thisObjLocal);
             encoder.EmitLoad(wasmPointerType); // [this] -> MethodTable*.
             encoder.EmitLoad(wasmPointerType, checked((uint)slotOffset)); // MethodTable*[slot] -> value.
+=======
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System;
+
+using ILCompiler.DependencyAnalysis.Wasm;
+
+namespace ILCompiler.DependencyAnalysis
+{
+    public partial class ReadyToRunHelperNode
+    {
+        protected override void EmitCode(NodeFactory factory, ref WasmEmitter encoder, bool relocsOnly)
+        {
+            throw new NotImplementedException();
+>>>>>>> upstream/main
         }
     }
 }

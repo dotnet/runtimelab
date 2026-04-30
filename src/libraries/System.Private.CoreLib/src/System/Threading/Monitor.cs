@@ -99,6 +99,7 @@ namespace System.Threading
 #endif
         public static bool Wait(object obj, int millisecondsTimeout)
         {
+            RuntimeFeature.ThrowIfMultithreadingIsNotSupported();
             return GetCondition(obj).Wait(millisecondsTimeout, obj);
         }
 

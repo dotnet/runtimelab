@@ -270,18 +270,6 @@ echo %__MsgPrefix%Using CMake from !CMakePath!
 
 :SkipLocateCMake
 
-REM NumberOfCores is an WMI property providing number of physical cores on machine
-REM processor(s). It is used to set optimal level of CL parallelism during native build step
-if not defined NumberOfCores (
-    REM Determine number of physical processor cores available on machine
-    set TotalNumberOfCores=0
-    for /f "tokens=*" %%I in (
-        'wmic cpu get NumberOfCores /value ^| find "=" 2^>NUL'
-    ) do set %%I & set /a TotalNumberOfCores=TotalNumberOfCores+NumberOfCores
-    set NumberOfCores=!TotalNumberOfCores!
-)
-echo %__MsgPrefix%Number of processor cores %NumberOfCores%
-
 REM =========================================================================================
 REM ===
 REM === Start the build steps
@@ -333,6 +321,7 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
     if not "!string:-jit-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! jit
     )
+<<<<<<< HEAD
     if not "!string:-llvmjit-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! llvmjit
         set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCLR_CMAKE_BUILD_LLVM_JIT=1"
@@ -351,6 +340,10 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
             echo %__ErrMsgPrefix%%__MsgPrefix%Error: The LLVM_CMAKE_CONFIG environment variable pointing to llvm-build-dir/lib/cmake/llvm must be set.
             goto ExitWithError
         )
+=======
+    if not "!string:-wasmjit-=!"=="!string!" (
+        set __CMakeTarget=!__CMakeTarget! wasmjit
+>>>>>>> upstream/main
     )
     if not "!string:-alljits-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! alljits

@@ -37,7 +37,7 @@ class SsaBuilder
 private:
     inline void EndPhase(Phases phase)
     {
-        m_pCompiler->EndPhase(phase);
+        m_compiler->EndPhase(phase);
     }
 
 public:
@@ -106,19 +106,19 @@ private:
     // the handlers of a newly entered block based on one entering block.
     void AddPhiArgsToNewlyEnteredHandler(BasicBlock* predEnterBlock, BasicBlock* enterBlock, BasicBlock* handlerStart);
 
-    Compiler*      m_pCompiler;
+    Compiler*      m_compiler;
     CompAllocator  m_allocator;
     SsaRenameState m_renameStack;
 };
 
 class IncrementalLiveInBuilder
 {
-    Compiler*               m_comp;
+    Compiler*               m_compiler;
     ArrayStack<BasicBlock*> m_queue;
 
 public:
     IncrementalLiveInBuilder(Compiler* comp)
-        : m_comp(comp)
+        : m_compiler(comp)
         , m_queue(comp->getAllocator(CMK_SSA))
     {
     }
@@ -128,7 +128,7 @@ public:
 
 class IncrementalSsaBuilder
 {
-    Compiler*                  m_comp;
+    Compiler*                  m_compiler;
     unsigned                   m_lclNum;
     ArrayStack<UseDefLocation> m_defs;
     BitVecTraits               m_poTraits;
@@ -145,7 +145,7 @@ class IncrementalSsaBuilder
     bool           FindReachingDefInSameStatement(const UseDefLocation& use, UseDefLocation* def);
 public:
     IncrementalSsaBuilder(Compiler* comp, unsigned lclNum)
-        : m_comp(comp)
+        : m_compiler(comp)
         , m_lclNum(lclNum)
         , m_defs(comp->getAllocator(CMK_SSA))
         , m_poTraits(0, comp)

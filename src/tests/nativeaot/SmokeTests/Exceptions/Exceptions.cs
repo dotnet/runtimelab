@@ -26,9 +26,13 @@ public class BringUpTest
 
     public static int Main()
     {
+<<<<<<< HEAD
 #if !CODEGEN_WASM // FEATURE_SVR_GC is not defined for WASM
+=======
+
+>>>>>>> upstream/main
         // This test also doubles as server GC test
-        if (!System.Runtime.GCSettings.IsServerGC)
+        if (Environment.ProcessorCount > 1 && !System.Runtime.GCSettings.IsServerGC)
             return 42;
 #endif
         if (string.Empty.Length > 0)
@@ -164,7 +168,21 @@ public class BringUpTest
 
         TestUnwindInFunclet();
 
+<<<<<<< HEAD
         throw new Exception("UnhandledException");
+=======
+        if (!OperatingSystem.IsAndroid())
+        {
+            // Environment.Exit doesn't propagate to MonoRunner.java
+            throw new Exception("UnhandledException");
+
+            return Fail;
+        }
+        else
+        {
+            return Pass;
+        }
+>>>>>>> upstream/main
     }
 
     static void UnhandledExceptionEventHandler(object sender, UnhandledExceptionEventArgs e)

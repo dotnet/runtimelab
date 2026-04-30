@@ -1,6 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <!-- https://github.com/dotnet/dotnet/issues/5640 -->
+    <NoWarn>$(NoWarn);CS9368</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -44,8 +46,13 @@
     <FeatureSharedLowLevelLock>true</FeatureSharedLowLevelLock>
   </PropertyGroup>
 
+<<<<<<< HEAD
   <PropertyGroup Condition="'$(TargetsWasm)' == 'true'">
     <FeaturePortableGetUnboxingStubTarget>true</FeaturePortableGetUnboxingStubTarget>
+=======
+  <PropertyGroup>
+    <Features>$(Features);runtime-async=on</Features>
+>>>>>>> upstream/main
   </PropertyGroup>
 
   <!-- Sources -->
@@ -114,12 +121,10 @@
     <Compile Include="Internal\Runtime\FrozenObjectHeapManager.cs" />
     <Compile Include="Internal\Runtime\ThreadStatics.cs" />
     <Compile Include="Internal\Runtime\CompilerHelpers\StartupCode\StartupCodeHelpers.Extensions.cs" />
-    <Compile Include="Internal\Runtime\CompilerHelpers\ArrayHelpers.cs" />
     <Compile Include="Internal\Runtime\CompilerHelpers\InteropHelpers.cs" />
     <Compile Include="Internal\Runtime\CompilerHelpers\InteropHelpers.LazyPInvoke.NotSupported.cs" Condition="'$(TargetsWasm)' == 'true'" />
     <Compile Include="Internal\Runtime\CompilerHelpers\LdTokenHelpers.cs" />
     <Compile Include="Internal\Runtime\CompilerHelpers\RuntimeInteropData.cs" />
-    <Compile Include="Internal\Runtime\CompilerHelpers\TypedReferenceHelpers.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Internal\IntrinsicSupport\ComparerHelpers.cs" />
@@ -132,7 +137,6 @@
     <Compile Include="Internal\Runtime\CompilerServices\MethodNameAndSignature.cs" />
     <Compile Include="Internal\Runtime\CompilerServices\OpenMethodResolver.cs" />
     <Compile Include="Internal\Runtime\TypeLoaderExceptionHelper.cs" />
-    <Compile Include="Internal\DeveloperExperience\DeveloperExperience.cs" />
     <Compile Include="Internal\Runtime\Augments\RuntimeAugments.cs" />
     <Compile Include="Internal\Runtime\Augments\TypeLoaderCallbacks.cs" />
     <Compile Include="Internal\Runtime\Augments\StackTraceMetadataCallbacks.cs" />
@@ -225,7 +229,6 @@
     <Compile Include="System\Runtime\InteropServices\MemoryMarshal.NativeAot.cs" />
     <Compile Include="System\Runtime\InteropServices\TrackerObjectManager.NativeAot.cs" Condition="'$(FeatureComWrappers)' == 'true'" />
     <Compile Include="System\Runtime\InteropServices\ObjectiveCMarshal.NativeAot.cs" Condition="'$(FeatureObjCMarshal)' == 'true'" />
-    <Compile Include="System\Runtime\Intrinsics\X86\X86Base.NativeAot.cs" Condition="'$(SupportsX86Intrinsics)' == 'true'" />
     <Compile Include="System\Runtime\JitInfo.NativeAot.cs" />
     <Compile Include="System\Runtime\Loader\AssemblyLoadContext.NativeAot.cs" />
     <Compile Include="System\String.NativeAot.cs" />
@@ -267,7 +270,6 @@
   <ItemGroup Condition="'$(TargetsWindows)'=='true'">
     <Compile Include="System\EventReporter.cs" />
     <Compile Include="Internal\Runtime\FrozenObjectHeapManager.Windows.cs" />
-    <Compile Include="System\Runtime\InteropServices\NativeLibrary.NativeAot.Windows.cs" />
     <Compile Include="System\Runtime\InteropServices\PInvokeMarshal.Windows.cs" />
     <Compile Include="$(CommonPath)\System\Runtime\InteropServices\BuiltInVariantExtensions.cs">
       <Link>System\Runtime\InteropServices\BuiltInVariantExtensions.cs</Link>
@@ -297,9 +299,6 @@
       <Link>Interop\Windows\OleAut32\Interop.VariantClear.cs</Link>
     </Compile>
     <Compile Include="System\Environment.NativeAot.Windows.cs" />
-    <Compile Include="$(CommonPath)\Interop\Windows\Kernel32\Interop.DynamicLoad.cs">
-      <Link>Interop\Windows\Kernel32\Interop.DynamicLoad.cs</Link>
-    </Compile>
     <Compile Include="System\Threading\Thread.NativeAot.Windows.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetsWindows)'=='true'">
@@ -309,9 +308,11 @@
     <Compile Include="Internal\Runtime\FrozenObjectHeapManager.Unix.cs" Condition="'$(TargetsWasm)' != 'true'" />
     <Compile Include="Internal\Runtime\FrozenObjectHeapManager.Wasm.cs" Condition="'$(TargetsWasm)' == 'true'" />
     <Compile Include="System\Environment.NativeAot.Unix.cs" />
-    <Compile Include="System\Runtime\InteropServices\NativeLibrary.NativeAot.Unix.cs" />
     <Compile Include="System\Runtime\InteropServices\PInvokeMarshal.Unix.cs" />
+<<<<<<< HEAD
     <Compile Include="System\Threading\LowLevelLifoSemaphore.Unix.cs" Condition="'$(TargetsSingleThreadedWasm)' != 'true'" />
+=======
+>>>>>>> upstream/main
     <Compile Include="System\Threading\Thread.NativeAot.Unix.cs" />
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.Abort.cs">
       <Link>Interop\Unix\System.Native\Interop.Abort.cs</Link>

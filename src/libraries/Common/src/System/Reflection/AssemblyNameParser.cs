@@ -303,7 +303,7 @@ namespace System.Reflection
         {
             if (attributeValue.Equals("null", StringComparison.OrdinalIgnoreCase) || attributeValue == string.Empty)
             {
-                result = Array.Empty<byte>();
+                result = [];
                 return true;
             }
 
@@ -333,7 +333,6 @@ namespace System.Reflection
                 _ when attributeValue.Equals("ia64", StringComparison.OrdinalIgnoreCase) => ProcessorArchitecture.IA64,
                 _ when attributeValue.Equals("amd64", StringComparison.OrdinalIgnoreCase) => ProcessorArchitecture.Amd64,
                 _ when attributeValue.Equals("arm", StringComparison.OrdinalIgnoreCase) => ProcessorArchitecture.Arm,
-                _ when attributeValue.Equals("msil", StringComparison.OrdinalIgnoreCase) => ProcessorArchitecture.MSIL,
                 _ => ProcessorArchitecture.None
             };
             return result != ProcessorArchitecture.None;

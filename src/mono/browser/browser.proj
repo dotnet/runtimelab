@@ -2,12 +2,17 @@
 
   <UsingTask TaskName="Microsoft.WebAssembly.Build.Tasks.RunWithEmSdkEnv" AssemblyFile="$(WasmAppBuilderTasksAssemblyPath)" TaskFactory="TaskHostFactory" />
 
+  <Import Project="$(RepositoryEngineeringDir)AcquireEmscriptenSdk.targets" />
+
   <PropertyGroup>
+<<<<<<< HEAD
     <EMSDK_PATH Condition="'$(EMSDK_PATH)' == ''">$(EMSDK)</EMSDK_PATH>
 
     <!-- FIXME: clean up the duplication with libraries Directory.Build.props -->
     <NativeBinDir>$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'native', '$(NetCoreAppCurrent)-$(TargetOS)-$(Configuration)-$(TargetArchitecture)'))</NativeBinDir>
     <NativeBinDir Condition="'$(RuntimeFlavor)' == 'CoreCLR'">$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'coreclr', '$(TargetOS).$(TargetArchitecture).$(Configuration)', 'aotsdk', 'dotnetjs'))</NativeBinDir>
+=======
+>>>>>>> upstream/main
     <!-- only use for files that are not configuration dependent -->
     <NativeGeneratedFilesDir>$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'native', 'generated'))</NativeGeneratedFilesDir>
   </PropertyGroup>
@@ -32,23 +37,25 @@
     <EnableDiagnostics Condition="'$(EnableDiagnostics)' == ''">false</EnableDiagnostics>
     <EmccCmd>emcc</EmccCmd>
     <WasmObjDir>$(ArtifactsObjDir)wasm</WasmObjDir>
-    <_EmccDefaultsRspPath>$(NativeBinDir)src\emcc-default.rsp</_EmccDefaultsRspPath>
-    <_EmccCompileRspPath>$(NativeBinDir)src\emcc-compile.rsp</_EmccCompileRspPath>
-    <_EmccLinkRspPath>$(NativeBinDir)src\emcc-link.rsp</_EmccLinkRspPath>
     <EmSdkLLVMAr>$(EMSDK_PATH)\bin\llvm-ar</EmSdkLLVMAr>
     <!-- NativeAOT-LLVM does not use the dotnet/emsdk EMSDK, which differs in layout from EMSDK proper. -->
     <EmSdkLLVMAr Condition="'$(RuntimeFlavor)' == 'CoreCLR'">$(EMSDK_PATH)\upstream\bin\llvm-ar</EmSdkLLVMAr>
     <EmSdkLLVMAr Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(EmSdkLLVMAr).exe</EmSdkLLVMAr>
   </PropertyGroup>
 
-  <Target Name="CheckEnv">
+  <Target Name="CheckEnv" DependsOnTargets="AcquireEmscriptenSdk">
     <Error Condition="'$(TargetArchitecture)' != 'wasm'" Text="Expected TargetArchitecture==wasm, got '$(TargetArchitecture)'"/>
     <Error Condition="'$(TargetOS)' != 'browser'" Text="Expected TargetOS==browser, got '$(TargetOS)'"/>
     <Error Condition="'$(EMSDK_PATH)' == ''" Text="The EMSDK_PATH environment variable should be set pointing to the emscripten SDK root dir."/>
   </Target>
 
+<<<<<<< HEAD
   <UsingTask TaskName="ManagedToNativeGenerator" AssemblyFile="$(WasmAppBuilderTasksAssemblyPath)" TaskFactory="TaskHostFactory" />
   <Target Name="GenerateManagedToNative" DependsOnTargets="CheckEnv;ResolveLibrariesFromLocalBuild" Condition="'$(RuntimeFlavor)' != 'CoreCLR'">
+=======
+  <UsingTask TaskName="Microsoft.WebAssembly.Build.Tasks.Mono.ManagedToNativeGenerator" AssemblyFile="$(WasmAppBuilderTasksAssemblyPath)" TaskFactory="TaskHostFactory" />
+  <Target Name="GenerateManagedToNative" DependsOnTargets="CheckEnv;ResolveLibrariesFromLocalBuild">
+>>>>>>> upstream/main
     <PropertyGroup>
       <WasmPInvokeTablePath>$(WasmObjDir)\pinvoke-table.h</WasmPInvokeTablePath>
       <WasmInterpToNativeTablePath>$(WasmObjDir)\wasm_m2n_invoke.g.h</WasmInterpToNativeTablePath>
@@ -79,9 +86,26 @@
     </ManagedToNativeGenerator>
   </Target>
 
+<<<<<<< HEAD
   <Target Name="GenerateEmccPropsAndRspFiles">
+=======
+
+
+  <Target Name="GenerateEmccPropsAndRspFiles" DependsOnTargets="AcquireEmscriptenSdk">
+    <PropertyGroup>
+      <_EmccDefaultsRspPath>$(NativeBinDir)src\emcc-default.rsp</_EmccDefaultsRspPath>
+      <_EmccCompileRspPath>$(NativeBinDir)src\emcc-compile.rsp</_EmccCompileRspPath>
+      <_EmccLinkRspPath>$(NativeBinDir)src\emcc-link.rsp</_EmccLinkRspPath>
+    </PropertyGroup>
+>>>>>>> upstream/main
 
     <!-- Generate wasm-props.json -->
+
+    <!-- Clear stale _VersionLines items that may have been added by _AcquireLocalEmscriptenSdk
+         (which reads emscripten-version.txt into the same item group during SDK provisioning) -->
+    <ItemGroup>
+      <_VersionLines Remove="@(_VersionLines)" />
+    </ItemGroup>
 
     <RunWithEmSdkEnv Command="$(EmccCmd) --version"
           ConsoleToMsBuild="true"
@@ -128,6 +152,16 @@
       <EmccExportedRuntimeMethod Include="runtimeKeepalivePop" />
       <EmccExportedRuntimeMethod Include="maybeExit" />
       <EmccExportedRuntimeMethod Include="abort" />
+      <EmccExportedRuntimeMethod Include="HEAP8" />
+      <EmccExportedRuntimeMethod Include="HEAP16" />
+      <EmccExportedRuntimeMethod Include="HEAPU8" />
+      <EmccExportedRuntimeMethod Include="HEAPU16" />
+      <EmccExportedRuntimeMethod Include="HEAP32" />
+      <EmccExportedRuntimeMethod Include="HEAPU32" />
+      <EmccExportedRuntimeMethod Include="HEAPF32" />
+      <EmccExportedRuntimeMethod Include="HEAPF64" />
+      <EmccExportedRuntimeMethod Include="HEAP64" />
+      <EmccExportedRuntimeMethod Include="HEAPU64" />
 
       <EmccExportedFunction Include="_free" />
       <EmccExportedFunction Include="_htons" />
@@ -140,7 +174,6 @@
       <EmccExportedFunction Include="stackAlloc" />
       <EmccExportedFunction Include="stackRestore" />
       <EmccExportedFunction Include="stackSave"  />
-      <EmccExportedFunction Include="_emscripten_force_exit" />
     </ItemGroup>
     <!-- for the jiterpreter -->
     <ItemGroup>
@@ -233,10 +266,7 @@
     </ItemGroup>
 
     <ItemGroup Condition="'$(WasmEnableThreads)' == 'true'">
-      <WasmOptConfigurationFlags Include="--enable-threads;--enable-bulk-memory;--enable-sign-ext" />
-
-      <!-- workaround for https://github.com/emscripten-core/emscripten/issues/18034 -->
-      <_EmccLinkFlags Include="-s TEXTDECODER=0"/>
+      <WasmOptConfigurationFlags Include="--enable-threads;--enable-bulk-memory;--enable-nontrapping-float-to-int;--enable-sign-ext" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
@@ -461,6 +491,7 @@
   </Target>
 
   <Target Name="InstallNpmPackages"
+          DependsOnTargets="AcquireEmscriptenSdk"
           Inputs="$(BrowserProjectRoot)runtime/package.json"
           Outputs="$(BrowserProjectRoot)runtime/node_modules/.npm-stamp"
           >
@@ -538,7 +569,7 @@
   <Target Name="BuildWithRollup"
           Inputs="@(_RollupInputs);$(_RollupEnvIntermediateFile);$(NativeGeneratedFilesDir)mintops.ts"
           Outputs="$(NativeBinDir).rollup-stamp"
-	  DependsOnTargets="WriteRollupEnvToFile;GenerateMintopsTS"
+	  DependsOnTargets="AcquireEmscriptenSdk;WriteRollupEnvToFile;GenerateMintopsTS"
           >
     <!-- code style check -->
     <RunWithEmSdkEnv Command="npm run lint" StandardOutputImportance="High" EmSdkPath="$(EMSDK_PATH)" WorkingDirectory="$(BrowserProjectRoot)runtime/"/>

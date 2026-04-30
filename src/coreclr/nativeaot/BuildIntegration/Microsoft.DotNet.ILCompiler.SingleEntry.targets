@@ -45,7 +45,7 @@
   <PropertyGroup>
     <!-- If the NativeAOT toolchain is being consumed via package, runtime-specific properties must be set before compilation can proceed -->
     <ImportRuntimeIlcPackageTargetDependsOn>RunResolvePackageDependencies</ImportRuntimeIlcPackageTargetDependsOn>
-    <IlcSetupPropertiesDependsOn>ImportRuntimeIlcPackageTarget</IlcSetupPropertiesDependsOn>
+    <IlcSetupPropertiesDependsOn Condition="'$(_IlcReferencedAsPackage)' != 'false'">ImportRuntimeIlcPackageTarget</IlcSetupPropertiesDependsOn>
     <IlcDynamicBuildPropertyDependencies>SetupProperties</IlcDynamicBuildPropertyDependencies>
   </PropertyGroup>
 
@@ -66,8 +66,12 @@
 
 
   <!-- Locate the runtime package according to the current target runtime -->
+<<<<<<< HEAD
   <!-- Upstream version which we can't use with the current SDK for LLVM/Wasm -->
   <Target Name="ImportRuntimeIlcPackageTarget" Condition="'$(BuildingFrameworkLibrary)' != 'true' and '$(PublishAot)' == 'true'" DependsOnTargets="$(ImportRuntimeIlcPackageTargetDependsOn)" BeforeTargets="Publish">
+=======
+  <Target Name="ImportRuntimeIlcPackageTarget" Condition="'$(BuildingFrameworkLibrary)' != 'true' and '$(PublishAot)' == 'true'" DependsOnTargets="$(ImportRuntimeIlcPackageTargetDependsOn)">
+>>>>>>> upstream/main
     <Error Condition="'@(ResolvedILCompilerPack)' == ''" Text="The ResolvedILCompilerPack ItemGroup is required for target ImportRuntimeIlcPackageTarget" />
 
     <PropertyGroup>

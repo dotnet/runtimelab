@@ -319,13 +319,9 @@ FCIMPL0(void, RhpInterfaceDispatch64)
 }
 FCIMPLEND
 
-// @TODO Implement UniversalTransition
-EXTERN_C void * ReturnFromUniversalTransition;
-void * ReturnFromUniversalTransition;
-
-// @TODO Implement UniversalTransition_DebugStepTailCall
-EXTERN_C void * ReturnFromUniversalTransition_DebugStepTailCall;
-void * ReturnFromUniversalTransition_DebugStepTailCall;
+// @TODO Implement UniversalTransitionTailCall
+EXTERN_C void * ReturnFromUniversalTransitionTailCall;
+void * ReturnFromUniversalTransitionTailCall;
 
 #endif // defined(FEATURE_PORTABLE_HELPERS) && !defined(HOST_WASM)
 

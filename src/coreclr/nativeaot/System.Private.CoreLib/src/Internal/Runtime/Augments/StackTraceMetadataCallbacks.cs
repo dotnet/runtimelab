@@ -17,6 +17,7 @@ namespace Internal.Runtime.Augments
     [CLSCompliant(false)]
     public abstract class StackTraceMetadataCallbacks
     {
+<<<<<<< HEAD
         /// <summary>
         /// Convert the given function pointer into a stack trace IP suitable for use in APIs below.
         /// </summary>
@@ -30,6 +31,9 @@ namespace Internal.Runtime.Augments
         /// <param name="isStackTraceHidden">Returns a value indicating whether the method should be hidden in stack traces</param>
         /// <returns>Formatted method name or null if metadata for the method is not available</returns>
         public abstract string TryGetMethodNameFromStartAddress(IntPtr methodStartAddress, out bool isStackTraceHidden);
+=======
+        public abstract string TryGetMethodStackFrameInfo(IntPtr methodStartAddress, int offset, bool needsFileInfo, out string owningType, out string genericArgs, out string methodSignature, out bool isStackTraceHidden, out string fileName, out int lineNumber);
+>>>>>>> upstream/main
 
         public abstract DiagnosticMethodInfo TryGetDiagnosticMethodInfoFromStartAddress(IntPtr methodStartAddress);
     }

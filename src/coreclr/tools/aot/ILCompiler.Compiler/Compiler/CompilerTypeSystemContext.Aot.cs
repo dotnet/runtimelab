@@ -53,6 +53,8 @@ namespace ILCompiler
         {
             _genericsMode = genericsMode;
 
+            _virtualMethodAlgorithm = new AsyncAwareVirtualMethodResolutionAlgorithm(this);
+
             _vectorOfTFieldLayoutAlgorithm = new VectorOfTFieldLayoutAlgorithm(_metadataFieldLayoutAlgorithm);
             _vectorFieldLayoutAlgorithm = new VectorFieldLayoutAlgorithm(_metadataFieldLayoutAlgorithm);
             _int128FieldLayoutAlgorithm = new Int128FieldLayoutAlgorithm(_metadataFieldLayoutAlgorithm);
@@ -207,10 +209,6 @@ namespace ILCompiler
             if (type.IsDelegate)
             {
                 return GetAllMethodsForDelegate(type, virtualOnly);
-            }
-            else if (type.IsEnum)
-            {
-                return GetAllMethodsForEnum(type, virtualOnly);
             }
             else if (type.IsValueType)
             {

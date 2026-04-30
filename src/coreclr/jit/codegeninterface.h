@@ -31,35 +31,59 @@
 class CodeGenInterface;
 class emitter;
 
-// Small helper types
-
-//-------------------- Register selection ---------------------------------
-
-struct RegState
-{
-    regMaskTP rsCalleeRegArgMaskLiveIn; // mask of register arguments (live on entry to method)
-    unsigned  rsCalleeRegArgCount;      // total number of incoming register arguments of this kind (int or float)
-    bool      rsIsFloat;                // true for float argument registers, false for integer argument registers
-};
-
 //-------------------- CodeGenInterface ---------------------------------
 // interface to hide the full CodeGen implementation from rest of Compiler
 
 CodeGenInterface* getCodeGenerator(Compiler* comp);
 
+#if HAS_FIXED_REGISTER_SET
+using InternalRegs = regMaskTP;
+#else  // !HAS_FIXED_REGISTER_SET
+class InternalRegs
+{
+public:
+    static const unsigned MAX_REG_COUNT = 2;
+
+private:
+    regNumber m_regs[MAX_REG_COUNT];
+
+public:
+    InternalRegs();
+
+    bool      IsEmpty() const;
+    unsigned  Count() const;
+    void      Add(regNumber reg);
+    regNumber GetAt(unsigned index) const;
+    void      SetAt(unsigned index, regNumber reg);
+    regNumber Extract();
+};
+#endif // !HAS_FIXED_REGISTER_SET
+
+using NodeInternalRegistersTable = JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, InternalRegs>;
 class NodeInternalRegisters
 {
-    typedef JitHashTable<GenTree*, JitPtrKeyFuncs<GenTree>, regMaskTP> NodeInternalRegistersTable;
-    NodeInternalRegistersTable                                         m_table;
+    NodeInternalRegistersTable m_table;
 
 public:
     NodeInternalRegisters(Compiler* comp);
 
+#if HAS_FIXED_REGISTER_SET
     void      Add(GenTree* tree, regMaskTP reg);
     regNumber Extract(GenTree* tree, regMaskTP mask = static_cast<regMaskTP>(-1));
     regNumber GetSingle(GenTree* tree, regMaskTP mask = static_cast<regMaskTP>(-1));
     regMaskTP GetAll(GenTree* tree);
     unsigned  Count(GenTree* tree, regMaskTP mask = static_cast<regMaskTP>(-1));
+#else  // !HAS_FIXED_REGISTER_SET
+    void                                          Add(GenTree* tree, regNumber reg);
+    InternalRegs*                                 GetAll(GenTree* tree);
+    NodeInternalRegistersTable::KeyValueIteration Iterate();
+#endif // !HAS_FIXED_REGISTER_SET
+};
+
+struct EHClauseInfo
+{
+    CORINFO_EH_CLAUSE clause;
+    EHblkDsc*         HBtab;
 };
 
 class CodeGenInterface
@@ -72,7 +96,7 @@ public:
 
     Compiler* GetCompiler() const
     {
-        return compiler;
+        return m_compiler;
     }
 
 #if defined(TARGET_AMD64)
@@ -156,21 +180,20 @@ public:
                                    unsigned* mulPtr,
                                    ssize_t*  cnsPtr) = 0;
 
-    GCInfo gcInfo;
-
+    GCInfo                gcInfo;
     RegSet                regSet;
-    RegState              intRegState;
-    RegState              floatRegState;
+    regMaskTP             calleeRegArgMaskLiveIn; // Mask of register arguments live on entry to the (root) method.
     NodeInternalRegisters internalRegisters;
 
 protected:
-    Compiler* compiler;
+    Compiler* m_compiler;
     bool      m_genAlignLoops;
 
 private:
 #if defined(TARGET_XARCH)
     static const insFlags instInfo[INS_count];
-#elif defined(TARGET_ARM) || defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64)
+#elif defined(TARGET_ARM) || defined(TARGET_ARM64) || defined(TARGET_LOONGARCH64) || defined(TARGET_RISCV64) ||        \
+    defined(TARGET_WASM)
     static const BYTE instInfo[INS_count];
 #else
 #error Unsupported target architecture
@@ -254,6 +277,16 @@ public:
         m_cgFrameRequired = value;
     }
 
+#if !HAS_FIXED_REGISTER_SET
+
+    void SetStackPointerReg(unsigned funcletIndex, regNumber reg);
+    void SetFramePointerReg(unsigned funcletIndex, regNumber reg);
+
+#endif // !HAS_FIXED_REGISTER_SET
+
+    regNumber GetStackPointerReg(unsigned funcletIndex) const;
+    regNumber GetFramePointerReg(unsigned funcletIndex) const;
+
 public:
     int genCallerSPtoFPdelta() const;
     int genCallerSPtoInitialSPdelta() const;
@@ -270,7 +303,7 @@ public:
 #ifdef TARGET_XARCH
 #ifdef TARGET_AMD64
     // There are no reloc hints on x86
-    unsigned short genAddrRelocTypeHint(size_t addr);
+    CorInfoReloc genAddrRelocTypeHint(size_t addr);
 #endif
     bool genDataIndirAddrCanBeEncodedAsPCRelOffset(size_t addr);
     bool genCodeIndirAddrCanBeEncodedAsPCRelOffset(size_t addr);
@@ -779,7 +812,7 @@ public:
         unsigned int m_LiveDscCount;  // count of args, special args, and IL local variables to report home
         unsigned int m_LiveArgsCount; // count of arguments to report home
 
-        Compiler* m_Compiler;
+        Compiler* m_compiler;
 
         VariableLiveDescriptor* m_vlrLiveDsc; // Array of descriptors that manage VariableLiveRanges.
                                               // Its indices correspond to lvaTable indexes (or lvSlotNum).

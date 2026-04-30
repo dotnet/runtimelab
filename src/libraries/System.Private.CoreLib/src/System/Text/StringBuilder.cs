@@ -1470,14 +1470,12 @@ namespace System.Text
 
         public StringBuilder AppendFormat([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, object? arg0, object? arg1)
         {
-            TwoObjects two = new TwoObjects(arg0, arg1);
-            return AppendFormat(null, format, (ReadOnlySpan<object?>)two);
+            return AppendFormat(null, format, [arg0, arg1]);
         }
 
         public StringBuilder AppendFormat([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, object? arg0, object? arg1, object? arg2)
         {
-            ThreeObjects three = new ThreeObjects(arg0, arg1, arg2);
-            return AppendFormat(null, format, (ReadOnlySpan<object?>)three);
+            return AppendFormat(null, format, [arg0, arg1, arg2]);
         }
 
         public StringBuilder AppendFormat([StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, params object?[] args)
@@ -1518,14 +1516,12 @@ namespace System.Text
 
         public StringBuilder AppendFormat(IFormatProvider? provider, [StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, object? arg0, object? arg1)
         {
-            TwoObjects two = new TwoObjects(arg0, arg1);
-            return AppendFormat(provider, format, (ReadOnlySpan<object?>)two);
+            return AppendFormat(provider, format, [arg0, arg1]);
         }
 
         public StringBuilder AppendFormat(IFormatProvider? provider, [StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, object? arg0, object? arg1, object? arg2)
         {
-            ThreeObjects three = new ThreeObjects(arg0, arg1, arg2);
-            return AppendFormat(provider, format, (ReadOnlySpan<object?>)three);
+            return AppendFormat(provider, format, [arg0, arg1, arg2]);
         }
 
         public StringBuilder AppendFormat(IFormatProvider? provider, [StringSyntax(StringSyntaxAttribute.CompositeFormat)] string format, params object?[] args)
@@ -2327,6 +2323,7 @@ namespace System.Text
         /// <param name="value">The pointer to the start of the buffer.</param>
         /// <param name="valueCount">The number of characters in the buffer.</param>
         [CLSCompliant(false)]
+        [RequiresUnsafe]
         public unsafe StringBuilder Append(char* value, int valueCount)
         {
             // We don't check null value as this case will throw null reference exception anyway

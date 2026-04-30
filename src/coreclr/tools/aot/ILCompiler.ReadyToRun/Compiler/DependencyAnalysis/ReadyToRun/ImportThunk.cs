@@ -1,34 +1,34 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using Internal.Text;
 using Internal.ReadyToRunConstants;
+using Internal.Text;
+using Internal.TypeSystem;
 using System.Diagnostics;
 
 namespace ILCompiler.DependencyAnalysis.ReadyToRun
 {
+    public enum ImportThunkKind
+    {
+        Eager,
+        Lazy,
+        DelayLoadHelper,
+        DelayLoadHelperWithExistingIndirectionCell,
+        VirtualStubDispatch,
+    }
+
+
     /// <summary>
     /// This node emits a thunk calling DelayLoad_Helper with a given instance signature
     /// to populate its indirection cell.
     /// </summary>
-    public partial class ImportThunk : AssemblyStubNode, ISymbolDefinitionNode
+    public partial class ImportThunk : AssemblyStubNode, ISymbolDefinitionNode, ISortableSymbolNode
     {
-        enum Kind
-        {
-            Eager,
-            Lazy,
-            DelayLoadHelper,
-            DelayLoadHelperWithExistingIndirectionCell,
-            VirtualStubDispatch,
-        }
-
         private readonly Import _helperCell;
 
-        private readonly Kind _thunkKind;
+        private readonly ImportThunkKind _thunkKind;
 
         private readonly ImportSectionNode _containingImportSection;
-
-        private readonly int _symbolOffset = 0;
 
         /// <summary>
         /// Import thunks are used to call a runtime-provided helper which fixes up an indirection cell in a particular
@@ -41,41 +41,28 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
 
             if (useVirtualCall)
             {
-                _thunkKind = Kind.VirtualStubDispatch;
+                _thunkKind = ImportThunkKind.VirtualStubDispatch;
             }
             else if (useJumpableStub)
             {
-                _thunkKind = Kind.DelayLoadHelperWithExistingIndirectionCell;
+                _thunkKind = ImportThunkKind.DelayLoadHelperWithExistingIndirectionCell;
             }
             else if (helperId == ReadyToRunHelper.GetString)
             {
-                _thunkKind = Kind.Lazy;
+                _thunkKind = ImportThunkKind.Lazy;
             }
             else if (helperId == ReadyToRunHelper.DelayLoad_MethodCall ||
                 helperId == ReadyToRunHelper.DelayLoad_Helper ||
                 helperId == ReadyToRunHelper.DelayLoad_Helper_Obj ||
                 helperId == ReadyToRunHelper.DelayLoad_Helper_ObjObj)
             {
-                _thunkKind = Kind.DelayLoadHelper;
+                _thunkKind = ImportThunkKind.DelayLoadHelper;
             }
             else
             {
-                _thunkKind = Kind.Eager;
-            }
-
-            if (_thunkKind != Kind.Eager
-                && factory.Target.Architecture is Internal.TypeSystem.TargetArchitecture.LoongArch64
-                    or Internal.TypeSystem.TargetArchitecture.RiscV64)
-            {
-                // We stuff the reloc to the module import pointer before the start of the thunk
-                // to ensure alignment.
-                // The thunk itself starts immediately after the reloc.
-                // We don't need this for an Eager thunk.
-                _symbolOffset = 8;
+                _thunkKind = ImportThunkKind.Eager;
             }
         }
-
-        int ISymbolNode.Offset => base.Offset + _symbolOffset;
 
         public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
         {
@@ -117,7 +104,7 @@ namespace ILCompiler.DependencyAnalysis.ReadyToRun
 
         protected override void OnMarked(NodeFactory factory)
         {
-            factory.DelayLoadMethodCallThunks.OnImportThunkMarked(this);
+            factory.DelayLoadMethodCallThunks.OnNodeInRangeMarked(this);
         }
     }
 }

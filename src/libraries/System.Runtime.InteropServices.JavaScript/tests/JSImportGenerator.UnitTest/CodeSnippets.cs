@@ -199,7 +199,7 @@ namespace JSImportGenerator.Unit.Tests
                     Task<float> ta5,
                     Task<IntPtr> ta7,
                     JSObject jso,
-                    string[] aa1, byte[] aab, double[] aad, int[] aai
+                    string[] aa1, byte[] aab, double[] aad, float[] aaf, int[] aai
                 );
             }
             """;
@@ -227,7 +227,8 @@ namespace JSImportGenerator.Unit.Tests
                     [JSMarshalAs<JSType.Promise<JSType.Date>>] Task<DateTime> a12,
                     [JSMarshalAs<JSType.Promise<JSType.Date>>] Task<DateTimeOffset> a13,
                     [JSMarshalAs<JSType.Promise<JSType.Number>>] Task<long> a14,
-                    [JSMarshalAs<JSType.Promise<JSType.BigInt>>] Task<long> a15
+                    [JSMarshalAs<JSType.Promise<JSType.BigInt>>] Task<long> a15,
+                    [JSMarshalAs<JSType.MemoryView>] ArraySegment<float> a16
                 );
             }
             """;
@@ -255,7 +256,8 @@ namespace JSImportGenerator.Unit.Tests
                     [JSMarshalAs<JSType.Promise<JSType.Date>>] Task<DateTime> a12,
                     [JSMarshalAs<JSType.Promise<JSType.Date>>] Task<DateTimeOffset> a13,
                     [JSMarshalAs<JSType.Promise<JSType.Number>>] Task<long> a14,
-                    [JSMarshalAs<JSType.Promise<JSType.BigInt>>] Task<long> a15
+                    [JSMarshalAs<JSType.Promise<JSType.BigInt>>] Task<long> a15,
+                    [JSMarshalAs<JSType.MemoryView>] ArraySegment<float> a16
                 )
                 {}
             }
@@ -284,7 +286,8 @@ namespace JSImportGenerator.Unit.Tests
                     Task<DateTime> a12,
                     Task<DateTimeOffset> a13,
                     Task<long> a14,
-                    Task<long> a15
+                    Task<long> a15,
+                    ArraySegment<float> a16
                 );
             }
             """;
