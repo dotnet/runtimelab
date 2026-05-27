@@ -1,6 +1,6 @@
 parameters:
   PublishRidAgnosticPackagesFromPlatform: windows_x64
-  publishingInfraVersion: 3
+  publishingInfraVersion: 4
   enableSigningValidation: false
   enableNugetValidation: false
   enableSourceLinkValidation: false
@@ -21,6 +21,7 @@ stages:
   - template: /eng/common/templates-official/job/publish-build-assets.yml
     parameters:
       publishUsingPipelines: true
+      publishingVersion: 4
       publishAssetsImmediately: true
       dependsOn: PrepareSignedArtifacts
       pool:
