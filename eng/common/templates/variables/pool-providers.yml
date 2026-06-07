@@ -24,7 +24,7 @@
 #        pool:
 #           name: $(DncEngInternalBuildPool)
 #           demands: ImageOverride -equals windows.vs2026.amd64
-PVvariables:
+variables:
   - ${{ if eq(variables['System.TeamProject'], 'internal') }}:
     - template: /eng/common/templates-official/variables/pool-providers.yml
   - ${{ else }}:
