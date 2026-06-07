@@ -65,7 +65,7 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
 
     $LlvmConfig = $Config -eq "Release" ? "Release" : "Debug"
     $CmakeConfigureCommandLine =
-        "-G", ($IsWindows ? "Visual Studio 17 2022" : "Unix Makefiles"),
+        "-G", ($IsWindows ? "Visual Studio 18 2026" : "Unix Makefiles"),
         "-S", $SourceDirName,
         "-B", $BuildDirPath,
         "-DLLVM_INCLUDE_BENCHMARKS=OFF",
